@@ -28,3 +28,12 @@ export function nextAvailableMs(availableAts: Array<string | null | undefined>, 
   }
   return next;
 }
+
+/** Extra re-reads while a row reads "Available soon" (MESITA-3750): at most
+ *  this many per stuck moment, one per 30 s tick, then the page waits for the
+ *  next visit. A failed or slow read never loops. */
+export const MAX_STUCK_REREADS = 3;
+
+export function shouldReread(attempts: number): boolean {
+  return attempts < MAX_STUCK_REREADS;
+}
