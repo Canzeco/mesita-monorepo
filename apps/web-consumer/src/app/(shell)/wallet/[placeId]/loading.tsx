@@ -5,7 +5,7 @@ import { HouseCardSkeleton } from "@/components/consumer/wallet/PlaceCredit";
 // MESITA-3647) and the amounts and buttons in bones (MESITA-3741).
 export default function Loading() {
   return (
-    <Screen title="Wallet" flush>
+    <Screen title="Wallet" flush paper scrolls>
       <div className="px-4 pt-5" aria-busy>
         <HouseCardSkeleton />
       </div>

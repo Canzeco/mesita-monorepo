@@ -21,7 +21,8 @@ import { useWallet } from "./use-wallet";
 // the guest came from (goBack), or on the Wallet when opened from outside.
 // A place the Wallet holds no card for sends the guest to the Wallet. A
 // voucher bought at the place comes back here from Stripe (?prepay=,
-// MESITA-3617), so the new credit shows on its own card.
+// MESITA-3617), so the new credit shows on its own card. On white, like the
+// Wallet it opens from (MESITA-3747).
 
 export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   const router = useRouter();
@@ -59,7 +60,7 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
     : [];
 
   return (
-    <Screen title={row?.card.name ?? "Wallet"} onBack={back} flush>
+    <Screen title={row?.card.name ?? "Wallet"} onBack={back} flush paper scrolls>
       <div className="flex flex-1 flex-col px-4 pt-5 pb-8">
         {confirming ? (
           <p className="text-muted-foreground mb-3 text-sm" role="status">

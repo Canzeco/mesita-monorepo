@@ -26,7 +26,9 @@ import { cn } from "@/lib/utils";
 // pay screens sit on white, header included, not on the grey ground. Off a
 // production build a paper screen also flags its own overflow
 // (`data-overflow` and one console warning), because those screens are
-// built to never scroll and the app has no visual QA path.
+// built to never scroll and the app has no visual QA path. A white page
+// that is a list (a House Card's history, MESITA-3747) says `scrolls` and is
+// not watched.
 //
 // BACK IS A HISTORY POP (lib/navigate.ts goBack): the screen slides away and
 // uncovers the one under it, scrolled where you left it; a screen opened
@@ -39,6 +41,7 @@ export function Screen({
   action,
   onBack,
   paper = false,
+  scrolls = false,
 }: {
   title: string;
   children: React.ReactNode;
@@ -51,6 +54,8 @@ export function Screen({
   onBack?: () => void;
   /** White ground and header instead of the grey (the pay screens). */
   paper?: boolean;
+  /** A paper screen that is meant to scroll: no overflow watch. */
+  scrolls?: boolean;
 }) {
   const router = useRouter();
   const back = useCallback(() => goBack(router), [router]);
@@ -59,10 +64,10 @@ export function Screen({
   const setBody = useCallback(
     (el: HTMLDivElement | null) => {
       keep(el);
-      if (!el || !paper) return;
+      if (!el || !paper || scrolls) return;
       return watchOverflow(el);
     },
-    [keep, paper],
+    [keep, paper, scrolls],
   );
 
   return (
