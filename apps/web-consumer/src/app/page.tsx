@@ -50,11 +50,6 @@ export default async function ConsumerRootPage({
     <CoverAuthLayout
       headline={payPlaceName ? `Pay at ${payPlaceName}` : "Every table in Monterrey"}
       title={payPlaceName ? `Sign in to pay at ${payPlaceName}` : undefined}
-      subtitle={
-        showGoogle
-          ? "Continue with Google, or get a one-time code."
-          : "We'll send you a one-time code."
-      }
       openWith={params.error === "oauth_failed" ? "login" : undefined}
       notice={
         params.error === "oauth_failed"
@@ -64,7 +59,7 @@ export default async function ConsumerRootPage({
       footer={
         <>
           By continuing you agree to Mesita&apos;s terms of service and privacy
-          policy.
+          policy. SMS rates may apply.
         </>
       }
     >

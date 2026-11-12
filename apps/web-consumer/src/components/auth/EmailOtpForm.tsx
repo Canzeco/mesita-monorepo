@@ -8,6 +8,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { EMAIL_OTP_LENGTH, RESEND_COOLDOWN_SECONDS, otpErrorMessage } from "@/lib/phone-otp";
 import { ERROR_BOX_CLASS, INFO_BOX_CLASS, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
+import { AUTH_BUTTON_SIZE } from "./auth-ui";
 
 // Email code (MESITA-3777): PhoneOtpForm's two steps with an address. The
 // first verified code makes the account, later ones sign it in. The email
@@ -93,7 +94,7 @@ export function EmailOtpForm({ redirectAfter }: { redirectAfter: string }) {
         className="flex flex-col gap-3"
       >
         <label className="block">
-          <span className="text-muted-foreground mb-1.5 block text-xs font-medium">Email</span>
+          <span className="text-foreground mb-1.5 block text-sm font-semibold">Email</span>
           <input
             type="email"
             inputMode="email"
@@ -106,7 +107,7 @@ export function EmailOtpForm({ redirectAfter }: { redirectAfter: string }) {
           />
         </label>
         {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
-        <button type="submit" disabled={loading || !valid} className={cn(PRIMARY_BUTTON_CLASS, "mt-2")}>
+        <button type="submit" disabled={loading} className={cn(PRIMARY_BUTTON_CLASS, AUTH_BUTTON_SIZE, "mt-1")}>
           {loading ? (
             <Spinner size="sm" className="border-white/40 border-t-white" />
           ) : (
@@ -167,7 +168,7 @@ export function EmailOtpForm({ redirectAfter }: { redirectAfter: string }) {
       <button
         type="submit"
         disabled={loading || code.length !== EMAIL_OTP_LENGTH}
-        className={cn(PRIMARY_BUTTON_CLASS, "mt-2")}
+        className={cn(PRIMARY_BUTTON_CLASS, AUTH_BUTTON_SIZE, "mt-2")}
       >
         {loading ? <Spinner size="sm" className="border-white/40 border-t-white" /> : "Verify"}
       </button>
