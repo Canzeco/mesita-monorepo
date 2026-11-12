@@ -11,18 +11,21 @@
 
 // FAVORITES LEFT (Pato, 2026-11-11, MESITA-3723: "remove favorites from
 // activity"): the hearts live on Home's Saved row (MESITA-3718).
+//
+// NOTIFICATIONS LEADS (Pato, 2026-11-11, MESITA-3769: "Notification events,
+// Reservations, Visits, Vouchers, Gifts"), and is what a bare /activity opens.
 export const ACTIVITY_TYPES = [
+  "notifications",
   "reservations",
   "visits",
   "vouchers",
   "gifts",
-  "notifications",
 ] as const;
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
 /** The chip a bare `/activity` (or an unknown `?type=`) shows. */
-export const DEFAULT_ACTIVITY_TYPE: ActivityType = "reservations";
+export const DEFAULT_ACTIVITY_TYPE: ActivityType = "notifications";
 
 /** The old chips' slugs and where each lives now (MESITA-3697), so a
  *  bookmark or a link from before lands on its new chip. Notifications is a
@@ -38,7 +41,7 @@ export function activityHref(type: ActivityType): string {
   return `/activity?type=${type}`;
 }
 
-/** The chip a `?type=` names, a retired slug's new chip, else Reservations
+/** The chip a `?type=` names, a retired slug's new chip, else Notifications
  *  (a held `?type=favorites` too, since MESITA-3723). */
 export function activityTypeOf(value: string | null | undefined): ActivityType {
   const v = value ?? "";

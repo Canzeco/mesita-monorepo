@@ -9,7 +9,7 @@
 // then Notifications (MESITA-3716, Pato: "add notifications subpage to
 // this"). The list is lib/activity-types.ts; the chosen one is in the address
 // (`?type=`), so Me's tiles, Back and a shared link land on it; a bare
-// /activity is Reservations. FAVORITES LEFT (Pato, 2026-11-11, MESITA-3723:
+// /activity is Notifications (MESITA-3769). FAVORITES LEFT (Pato, 2026-11-11, MESITA-3723:
 // "remove favorites from activity"): the hearts are Home's Saved row
 // (MESITA-3718), and the old Favorites addresses land on Home:
 //
