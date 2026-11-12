@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { ACTIVITY_TYPES, activityHref } from "@/lib/activity-types";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -88,6 +89,8 @@ function liveAddresses(): Set<string> {
     `${CONSUMER_ROUTES.walletPlace.prefix}:id`,
     `${CONSUMER_ROUTES.walletGift.prefix}:token`,
     CONSUMER_ROUTES.activity,
+    // Each Activity chip is its own path (MESITA-3811).
+    ...ACTIVITY_TYPES.map(activityHref),
     CONSUMER_ROUTES.share,
     CONSUMER_ROUTES.me,
     ...Object.values(CONSUMER_ROUTES.mePages),
@@ -437,7 +440,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/me/help", destination: "/me/settings", permanent: true },
       { source: "/me/transactions", destination: "/activity", permanent: true },
       { source: "/me/connector", destination: "/me/plan", permanent: true },
-      { source: "/me/refunds", destination: "/activity?type=refunds", permanent: true },
+      { source: "/me/refunds", destination: "/activity/refunds", permanent: true },
       { source: "/invite", destination: "/me", permanent: true },
       // The retired Home hub's leaves (2026-09-01), and bare /home since each
       // tab got its own address (MESITA-2597). /home itself was live
@@ -518,19 +521,19 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       {
         source: "/saved",
         has: [{ type: "query", key: "tab", value: "reservations" }],
-        destination: "/activity?type=reservations",
+        destination: "/activity/reservations",
         permanent: true,
       },
       {
         source: "/me/saved",
         has: [{ type: "query", key: "tab", value: "reservations" }],
-        destination: "/activity?type=reservations",
+        destination: "/activity/reservations",
         permanent: true,
       },
       {
         source: "/me/favorites",
         has: [{ type: "query", key: "tab", value: "reservations" }],
-        destination: "/activity?type=reservations",
+        destination: "/activity/reservations",
         permanent: true,
       },
       // Favorites left Activity (MESITA-3723): Home's Saved row has them.
@@ -539,22 +542,22 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/me/favorites", destination: "/home/places", permanent: true },
       {
         source: "/me/reservations",
-        destination: "/activity?type=reservations",
+        destination: "/activity/reservations",
         permanent: true,
       },
       {
         source: "/reservations",
-        destination: "/activity?type=reservations",
+        destination: "/activity/reservations",
         permanent: true,
       },
       {
         source: "/bookings",
-        destination: "/activity?type=reservations",
+        destination: "/activity/reservations",
         permanent: true,
       },
       {
         source: "/saved/reservations",
-        destination: "/activity?type=reservations",
+        destination: "/activity/reservations",
         permanent: true,
       },
       {
@@ -570,12 +573,12 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/profile", destination: "/me/profile", permanent: true },
       {
         source: "/notifications",
-        destination: "/activity?type=notifications",
+        destination: "/activity/notifications",
         permanent: true,
       },
       {
         source: "/me/notifications",
-        destination: "/activity?type=notifications",
+        destination: "/activity/notifications",
         permanent: true,
       },
       // /inbox is the Activity tab again (MESITA-3688; Me since MESITA-1626).

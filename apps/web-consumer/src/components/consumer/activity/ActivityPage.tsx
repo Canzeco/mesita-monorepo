@@ -40,7 +40,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useUnseenNotifications } from "@/components/consumer/use-unseen-notifications";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
@@ -478,18 +478,11 @@ const SOURCE_NAME: Record<TicketType, string> = {
 };
 
 export function ActivityPage() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const raw = params.get("type");
-  const type = activityTypeOf(raw);
+  // THE CHIP IS THE PATH (MESITA-3811): /activity/<chip>, bare /activity is
+  // Notifications. The pages turn retired or unknown names away on the server.
+  const pathname = usePathname() ?? CONSUMER_ROUTES.activity;
+  const type = activityTypeOf(pathname.split("/")[2]);
   const getSupabase = useLazyBrowserSupabase();
-
-  // A retired or unknown chip tidies its own address onto the one it shows.
-  useEffect(() => {
-    if (raw !== null && raw !== activityTypeOf(raw)) {
-      router.replace(activityHref(activityTypeOf(raw)));
-    }
-  }, [raw, router]);
 
   const reservations = useCachedQuery<ReservationsRead>(
     RESERVATIONS_KEY,
@@ -623,8 +616,10 @@ export function ActivityPage() {
         )
       : null) ?? null;
 
+  // A chip tap rewrites the address in place: no navigation, so no loading
+  // frame between chips; Next keeps usePathname in step (MESITA-3811).
   const pick = (t: ActivityType) =>
-    router.replace(activityHref(t), { scroll: false });
+    window.history.replaceState(null, "", activityHref(t));
 
   return (
     <ActivityFrame

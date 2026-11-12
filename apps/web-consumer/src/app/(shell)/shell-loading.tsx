@@ -53,6 +53,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   walletPlace: () => <WalletPlaceLoading />,
   walletGift: () => <WalletGiftLoading />,
   activity: () => <ActivityLoading />,
+  activityChip: () => <ActivityLoading />,
   visit: () => <VisitLoading />,
   credit: () => <CreditLoading />,
   share: () => <ShareLoading />,

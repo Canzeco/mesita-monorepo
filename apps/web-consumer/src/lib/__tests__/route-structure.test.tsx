@@ -205,9 +205,14 @@ describe("T4 — every redirect destination resolves", () => {
       // :id / :tab params in a destination correspond to [id] / [tab] segments.
       // A `?tab=` query picks a tab of the page (MESITA-2521).
       const normalized = dest.split("?")[0].replace(/:[a-zA-Z]+/g, "[param]");
+      // A page's [segment] also takes a literal one: /activity/visits is
+      // /activity/[type] (MESITA-3811).
+      const want = normalized.replace(/\/$/, "").split("/");
       return pages.some((page) => {
         const p = page.replace(/\[[^\]]+\]/g, "[param]");
-        return p === normalized || p === normalized.replace(/\/$/, "");
+        if (p === normalized || p === normalized.replace(/\/$/, "")) return true;
+        const got = p.split("/");
+        return got.length === want.length && got.every((seg, i) => seg === want[i] || (seg === "[param]" && want[i] !== ""));
       });
     };
 
@@ -823,9 +828,9 @@ describe("T7 — every former url still resolves after the move", () => {
     ["/saved", "/home/places"],
     ["/me/saved", "/home/places"],
     ["/me/favorites", "/home/places"],
-    ["/me/reservations", "/activity?type=reservations"],
-    ["/me/notifications", "/activity?type=notifications"],
-    ["/saved/reservations", "/activity?type=reservations"],
+    ["/me/reservations", "/activity/reservations"],
+    ["/me/notifications", "/activity/notifications"],
+    ["/saved/reservations", "/activity/reservations"],
     ["/saved/reservation/:id", "/reservation/:id"],
     ["/saved/place/:id", "/place/:id"],
   ])(
