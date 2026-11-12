@@ -562,7 +562,11 @@ export function VouchersPane({
   // SHORTER ROWS, SYMMETRIC NAMES (MESITA-3490, Pato: "make the items a bit
   // shorter"; "Mesita Payments Cashback ... External Pay Cashback").
   const ROW = "flex w-full items-center gap-3 px-4 py-2 text-left";
-  const CHIP = "flex h-11 w-[72px] shrink-0 items-center justify-center rounded-xl text-xl font-extrabold tracking-tight tabular-nums";
+  // A BIT SMALLER (MESITA-3768, Pato: "make this a bit smaller, the text, just
+  // a bit"): one small step each, titles 15px, fact lines 13px, chips 18px.
+  const CHIP = "flex h-11 w-[72px] shrink-0 items-center justify-center rounded-xl text-lg font-extrabold tracking-tight tabular-nums";
+  const NAME = "flex items-center gap-1 text-[15px] font-semibold";
+  const FACT = "text-muted-foreground text-[13px] leading-snug";
 
   return (
     // A LIST (MESITA-3486, Pato: "make the things as a list, not as boxes"):
@@ -594,7 +598,7 @@ export function VouchersPane({
                   +{p.bonus.replace(/ bonus$/, "")}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="flex items-center gap-1 text-base font-semibold">
+                  <span className={NAME}>
                     <span className="flex items-center gap-1" aria-hidden>
                       {Mark ? <Mark className="h-4 w-4 shrink-0" strokeWidth={2.25} /> : null}
                       {p.short}
@@ -616,7 +620,7 @@ export function VouchersPane({
                       }
                     />
                   </span>
-                  <span className="text-muted-foreground text-sm leading-snug tabular-nums" aria-hidden>
+                  <span className={cn(FACT, "tabular-nums")} aria-hidden>
                     {opening
                       ? "Opening…"
                       : `Pay ${pay} · Get ${get} ${readyIn(p.key)}`}
@@ -679,7 +683,7 @@ export function VouchersPane({
               {cardPct ? `+${cardPct}` : "Off"}
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="flex items-center gap-1 text-base font-semibold">
+              <span className={NAME}>
                 <span aria-hidden>Mesita Payments Cashback</span>
                 <InfoButton
                   title="Mesita Payments Cashback"
@@ -699,7 +703,7 @@ export function VouchersPane({
                   ]}
                 />
               </span>
-              <span className="text-muted-foreground text-sm" aria-hidden>{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
+              <span className={FACT} aria-hidden>{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
             </span>
           </li>
           {/* EXTERNAL PAY EARNS 2% (Pato, MESITA-3547: "external cash is 2%";
@@ -713,7 +717,7 @@ export function VouchersPane({
               {outside ? `+${cashPct}` : "Off"}
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="flex items-center gap-1 text-base font-semibold">
+              <span className={NAME}>
                 <span className="flex items-center gap-1" aria-hidden>
                   <Banknote className="h-4 w-4 shrink-0" strokeWidth={2.25} />
                   External Pay Cashback
@@ -728,7 +732,7 @@ export function VouchersPane({
                   ]}
                 />
               </span>
-              <span className="text-muted-foreground text-sm" aria-hidden>{outside ? `Cash or their terminal, ${cashPct} back` : "Not at this place yet"}</span>
+              <span className={FACT} aria-hidden>{outside ? `Cash or their terminal, ${cashPct} back` : "Not at this place yet"}</span>
             </span>
           </li>
         </ul>
