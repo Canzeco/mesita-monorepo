@@ -5,6 +5,8 @@ import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { oauthCallbackPath } from "@/lib/auth-redirect";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
+import { AUTH_BUTTON_SIZE } from "./auth-ui";
 
 // Continue with Google (MESITA-3777). Google sends the guest back to
 // /auth/callback with the raw `next` (a Pay QR, a shared place), which
@@ -39,7 +41,7 @@ export function GoogleSignInButton({ next }: { next?: string }) {
         type="button"
         onClick={() => void onClick()}
         disabled={pending}
-        className="border-border bg-card text-foreground flex h-12 w-full items-center justify-center gap-2.5 rounded-lg border text-sm font-semibold transition active:scale-[0.98] disabled:opacity-60"
+        className={cn("border-border bg-card text-foreground flex w-full items-center justify-center gap-2.5 border shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition active:scale-[0.98] disabled:opacity-60", AUTH_BUTTON_SIZE)}
       >
         {pending ? <Spinner size="sm" /> : <GoogleGlyph />}
         Continue with Google
