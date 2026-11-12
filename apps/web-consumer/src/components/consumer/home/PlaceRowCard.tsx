@@ -13,11 +13,6 @@ import {
 import { cn } from "@/lib/utils";
 import { CardActions } from "@/components/consumer/place-card";
 import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
-import {
-  CONSUMER_ROUTES,
-  isRouteId,
-  payPlacePath,
-} from "@/lib/consumer-route-contract";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsRun } from "./place-facts";
 
@@ -131,6 +126,10 @@ export function PlaceRowCard({
       )}
 
       <div className={ROW_INFO}>
+        {/* THE WHOLE SQUARE OPENS THE PROFILE (Pato, MESITA-3797: "all this
+            box must be clickable … there is a dead spot between name and
+            buttons"): the name's link stretches over the square (after:
+            inset-0); the offer and Save · Share sit above it on their own. */}
         {open(
           <>
             <p className="flex min-w-0 items-start gap-1 text-sm leading-5 font-semibold tracking-tight">
@@ -142,13 +141,16 @@ export function PlaceRowCard({
             </p>
             <PlaceFactsRun place={place} />
           </>,
-          cn("flex min-w-0 flex-col gap-0.5 rounded-lg text-left", focus),
+          cn(
+            "flex min-w-0 flex-col gap-0.5 rounded-lg text-left after:absolute after:inset-0 after:rounded-r-2xl after:content-['']",
+            focus,
+          ),
         )}
         {/* ONE BUTTON GRID (Pato, MESITA-3665: "fix the spacing between the
             boxes buttons, like keep an ordered grid"): the offer line and
             Save · Share share one block pinned to the square's bottom, 8px
             apart both ways, the gap Save and Share already keep. */}
-        <div className="mt-auto flex flex-col gap-2">
+        <div className="relative z-10 mt-auto flex flex-col gap-2">
           {/* EVERY OFFER, MOVING (Pato, MESITA-3665: "make the green
               buttons offers moving and switching across all the offers with
               different colors"): the shared OfferButton, each offer in its
@@ -156,9 +158,6 @@ export function PlaceRowCard({
               "Pay (+5% Cashback)", "$200MX (+10%)"). */}
           <OfferButton
             href={placeHref(place.slug || place.id)}
-            payHref={
-              isRouteId(place.id) ? payPlacePath(place.id) : CONSUMER_ROUTES.pay
-            }
             name={place.name}
             slides={slides}
             short

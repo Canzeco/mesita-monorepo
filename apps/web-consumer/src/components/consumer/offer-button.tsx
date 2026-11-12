@@ -153,15 +153,12 @@ const OFFER_BOX =
  *  the button holds that slide while a finger or keyboard focus is on it. */
 export function OfferButton({
   href,
-  payHref,
   name,
   slides,
   short = false,
   className,
 }: {
   href: string;
-  /** Where the Payment slide goes: the place's bill, /pay/<placeId>. */
-  payHref: string;
   name: string;
   slides: OfferSlide[];
   /** The short words: Places 3.0 (MESITA-3671). */
@@ -177,7 +174,10 @@ export function OfferButton({
   const release = () => setHeld(null);
   return (
     <PushLink
-      href={slide.section === "payment" ? payHref : `${href}?rewards=${slide.section}`}
+      // EVERY SLIDE OPENS THE PROFILE WITH ITS OFFERS (Pato, MESITA-3797:
+      // "if i click the offer, that opens profile and then offers too
+      // directly"): Pay too, at its Payment section; it went to /pay before.
+      href={`${href}?rewards=${slide.section}`}
       aria-label={offersLabel(name, slides)}
       onPointerDown={hold}
       onFocus={hold}

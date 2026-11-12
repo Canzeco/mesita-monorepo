@@ -23,4 +23,4 @@ export const ROW_PHOTO =
  *  At least square; it grows with its facts (an aspect-ratio box's minimum
  *  height is its content), and the photo grows with it. */
 export const ROW_INFO =
-  "bg-muted/60 flex aspect-square min-w-0 flex-col gap-1 rounded-r-2xl p-3";
+  "bg-muted/60 relative flex aspect-square min-w-0 flex-col gap-1 rounded-r-2xl p-3";
