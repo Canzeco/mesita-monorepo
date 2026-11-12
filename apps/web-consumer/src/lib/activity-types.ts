@@ -20,6 +20,9 @@ export const ACTIVITY_TYPES = [
   "visits",
   "vouchers",
   "gifts",
+  // REFUNDS (Pato, 2026-11-11, MESITA-3771: "Refunds also in Activity"):
+  // Me's Refunds page, as the sixth chip.
+  "refunds",
 ] as const;
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];

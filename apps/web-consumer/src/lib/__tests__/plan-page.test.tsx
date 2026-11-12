@@ -52,7 +52,7 @@ describe("Me › Plan (MESITA-2167, MESITA-2553)", () => {
     expect(perks(premium)).toEqual([
       "Everything in Free",
       `${PRO_RESERVATIONS_PER_MONTH} reservations a month`,
-      "Ask your AI assistant, like ChatGPT, to find and book places for you",
+      "MCP: find and book places from ChatGPT or Claude",
     ]);
     expect(soonCount(premium)).toBe(1);
     expect(free).not.toMatch(/ChatGPT|AI assistant/);

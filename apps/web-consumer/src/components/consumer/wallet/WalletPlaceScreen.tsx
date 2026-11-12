@@ -2,7 +2,7 @@
 
 import { Screen } from "@/components/consumer/nav/Screen";
 import { useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
@@ -26,6 +26,8 @@ import { useWallet } from "./use-wallet";
 
 export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   const router = useRouter();
+  // Me › Gift opens a House Card with Gift Credits open (MESITA-3771).
+  const startGift = useSearchParams()?.get("gift") === "1";
   const getSupabase = useLazyBrowserSupabase();
   const { wallet, failed, credits, reread, confirming } = useWallet();
   const row = credits?.find((r) => r.placeId === placeId) ?? null;
@@ -75,6 +77,7 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
             stories={(wallet?.waiting_stories ?? []).filter((s) => s.place_id === row.placeId)}
             onReread={reread}
             onRemove={removeHouseCard}
+            startGift={startGift}
           />
         ) : failed ? (
           <EmptyState

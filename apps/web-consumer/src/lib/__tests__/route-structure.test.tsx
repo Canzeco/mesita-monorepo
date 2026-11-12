@@ -611,13 +611,14 @@ describe("T6 — Activity's chips live on the bar's tab, not on Me", () => {
     expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
   });
 
-  it("the chips are Notifications · Reservations · Visits · Vouchers · Gifts (MESITA-3769)", () => {
+  it("the chips are Notifications · Reservations · Visits · Vouchers · Gifts · Refunds (MESITA-3769, MESITA-3771)", () => {
     expect([...ACTIVITY_TYPES]).toEqual([
       "notifications",
       "reservations",
       "visits",
       "vouchers",
       "gifts",
+      "refunds",
     ]);
   });
 
@@ -632,13 +633,13 @@ describe("T6 — Activity's chips live on the bar's tab, not on Me", () => {
 
 // ── T8 — the destination grid holds only things that work ──────────────────
 //
-// Me is a 3-up grid of eight cells (MESITA-3769; thirteen before) (MESITA-1628, MESITA-3450, MESITA-3465). In a grid a dead cell reads as broken
+// Me is a grid of seven cells (MESITA-3771; eight before, thirteen before that) (MESITA-1628, MESITA-3450, MESITA-3465). In a grid a dead cell reads as broken
 // rather than upcoming, so the grid holds live doors only.
 //
 // The regression this catches is a tile for a surface that does not exist
 // — `DestTile` has no `soon` prop and its `href` is required, so such a tile
 // would ship as a live Link pointing at nothing.
-describe("T8 — Me's grid is eight live cells", () => {
+describe("T8 — Me's grid is seven live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
@@ -647,7 +648,7 @@ describe("T8 — Me's grid is eight live cells", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders eight cells in Pato's order", () => {
+  it("renders seven cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -666,11 +667,11 @@ describe("T8 — Me's grid is eight live cells", () => {
       // The Activity chips' tiles left with MESITA-3769 (from MESITA-3688).
       // Transactions sat here (MESITA-3465) until it became the bar's
       // Activity tab (MESITA-3631).
-      // Refunds: credit a closed place can't honour (MESITA-3517).
-      "Refunds",
-      // Connector until MESITA-3561.
-      "MCP",
+      // Refunds left for Activity's chip and MCP for a perk on Plan
+      // (MESITA-3771).
       "Share",
+      // Gift: credit held at a place, sent to a friend (MESITA-3771).
+      "Gift",
       "Settings",
     ]);
   });
@@ -679,7 +680,8 @@ describe("T8 — Me's grid is eight live cells", () => {
     for (const gone of [
       "Wallet",
       "Orders",
-      "Gift",
+      "MCP",
+      "Refunds",
       "Integrations",
       "Friends",
       "Diamond",

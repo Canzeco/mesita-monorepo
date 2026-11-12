@@ -117,6 +117,7 @@ export function PlaceCredit({
   stories = [],
   onReread,
   onRemove,
+  startGift = false,
 }: {
   row: CreditRow;
   /** Sending credit is open here (MESITA-3292). */
@@ -127,6 +128,9 @@ export function PlaceCredit({
   stories?: WaitingStory[];
   onReread?: () => void;
   onRemove?: (placeId: string) => Promise<void>;
+  /** Open with Gift Credits showing (Me › Gift, MESITA-3771); only when
+   *  sending is open here and there is credit to send. */
+  startGift?: boolean;
 }) {
   const { card, balance } = row;
   const href = placeHref(row.placeSlug);
@@ -169,7 +173,9 @@ export function PlaceCredit({
     onReread();
   }, [now, stuckAt, onReread]);
 
-  const [sending, setSending] = useState(false);
+  const [sending, setSending] = useState(
+    () => startGift && canSend && (balance?.spendable_cents ?? 0) > 0,
+  );
   const [confirming, setConfirming] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [method, setMethod] = useState<Method | null>(null);

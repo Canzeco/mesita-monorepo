@@ -45,8 +45,10 @@ export const PLAN_ROWS: Record<GuestPlan, PlanRowWords> = {
     items: [
       { text: "Everything in Free" },
       { text: `${PRO_RESERVATIONS_PER_MONTH} reservations a month` },
+      // MCP lives here as a perk since its Me tile left (MESITA-3771, Pato:
+      // "put it inside plan but as a perk, not as a weird box").
       {
-        text: "Ask your AI assistant, like ChatGPT, to find and book places for you",
+        text: "MCP: find and book places from ChatGPT or Claude",
         soon: true,
       },
     ],

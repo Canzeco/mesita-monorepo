@@ -111,12 +111,9 @@ export const CONSUMER_ROUTES = {
     // Class, Regular or VIP, as a page behind Me's Class tile (MESITA-2562);
     // the header's Class chip opens the same body as a sheet.
     class: "/me/class",
-    // Use Mesita from an AI assistant (ChatGPT, Claude). Not built: the page
-    // says Soon (MESITA-2562).
-    connector: "/me/connector",
-    // Mesita refunds credit a place that closed for good can no longer honour.
-    // The view only, empty and with no button (MESITA-3517).
-    refunds: "/me/refunds",
+    // GIFT (Pato, 2026-11-11, MESITA-3771): the places the guest holds credit
+    // at; a tap opens that House Card with Gift Credits open.
+    gift: "/me/gift",
     settings: "/me/settings",
     settingsContact: "/me/settings/contact",
     // Feedback about the app itself, not a place (MESITA-3029).
@@ -199,6 +196,9 @@ export const CONSUMER_ROUTES = {
     qr: "/qr",
     // Me › Transactions became Activity (MESITA-3631; under Me, MESITA-3717).
     meTransactions: "/me/transactions",
+    // MCP is a Pro perk on Plan and Refunds an Activity chip (MESITA-3771).
+    meConnector: "/me/connector",
+    meRefunds: "/me/refunds",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
     // Diamond pair, Plan's Pro checkout, Visits, Metrics, Passport.
     // /me/plan (MESITA-2134) and /me/class (MESITA-2562) are live again.
@@ -394,8 +394,7 @@ export const ROUTE_MAP = {
   meInstagram: row("/me/instagram", "me", "page", "me"),
   mePlan: row("/me/plan", "me", "page", "me"),
   meClass: row("/me/class", "me", "page", "me"),
-  meConnector: row("/me/connector", "me", "page", "me"),
-  meRefunds: row("/me/refunds", "me", "page", "me"),
+  meGift: row("/me/gift", "me", "page", "me"),
   meSettings: row("/me/settings", "me", "page", "me"),
   meSettingsContact: row("/me/settings/contact", "me", "page", "meSettings"),
   meSettingsFeedback: row("/me/settings/feedback", "me", "page", "meSettings"),

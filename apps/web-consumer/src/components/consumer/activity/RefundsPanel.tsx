@@ -1,21 +1,19 @@
 "use client";
 
-// /me/refunds — Mesita's promise on prepaid credit (Pato, MESITA-3517: "In
-// the weird but possible case the place bankrupts and your credits are gone.
-// Mesita will give you a refund. just create the view, but leave it empty or
-// not functional"). NOT BUILT: no refund is read or requested here, no EF is
-// called, and the page offers no button. It states the promise and an empty
-// list, as Cards and Connector say Soon.
+// Activity › Refunds (MESITA-3771, Pato: "Refunds also in Activity"; Me's
+// /me/refunds page from MESITA-3517 until then, which now 308s here).
+// Mesita's promise on prepaid credit: if a place closes for good with the
+// guest's credit unspent, Mesita refunds it. NOT BUILT: no refund is read or
+// requested, no EF is called, no button. The promise, then an empty list.
 
 import { LifeBuoy, Undo2 } from "lucide-react";
 
-import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { EmptyState } from "@/components/shared";
-import { IconChip, SettingsGroup } from "./settings-rows";
+import { IconChip, SettingsGroup } from "@/components/consumer/me/settings-rows";
 
-export function RefundsModal() {
+export function RefundsPanel() {
   return (
-    <MeScreen title="Refunds">
+    <div className="flex flex-col gap-2">
       <SettingsGroup>
         <div className="flex items-start gap-3 px-4 py-3" data-refunds>
           <IconChip>
@@ -35,6 +33,6 @@ export function RefundsModal() {
         title="No refunds"
         description="Any refund Mesita gives you shows up here."
       />
-    </MeScreen>
+    </div>
   );
 }
