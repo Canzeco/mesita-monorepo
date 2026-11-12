@@ -1,4 +1,3 @@
-import { payStepLabel } from "@mesita/place-profile/lib/pay-steps";
 import { Skeleton } from "@/components/shared";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { GuestPayLoading } from "./GuestPayScreen";
@@ -11,17 +10,11 @@ import { RowsSkeleton, WalletList } from "../wallet/WalletLists";
  *  you are loading"). Every Pay address draws it (MESITA-3614). */
 export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | "proof" }) {
   if (body === "list") {
-    // /pay: the band (switch and search bar, MESITA-3738), the list's
-    // heading "1 · Pick a place" (always there, MESITA-3759) and the places.
+    // /pay: the band (switch and search bar, MESITA-3738) and the places.
     return (
       <div className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
         <PayHeader tab="pay" bar={<span className="text-muted-foreground text-sm font-semibold">Search a place</span>} />
-        <div className="mt-5">
-          <div className="mb-2 flex min-h-6 items-center">
-            <h2 className="font-display text-base font-semibold tracking-tight">{payStepLabel("pick", "guest")}</h2>
-          </div>
-          <Skeleton className="h-56 w-full rounded-2xl" />
-        </div>
+        <Skeleton className="mt-5 h-56 w-full rounded-2xl" />
       </div>
     );
   }
