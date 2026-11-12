@@ -8,12 +8,14 @@ import { PAY_DRAFT_MAX_AGE_MS, payDraftExpired, readPayDraft, stampPayDraft } fr
 
 const NOW = 1_800_000_000_000;
 const saved = (over: Record<string, unknown> = {}) =>
-  JSON.stringify({ step: "pay", amount: "1250", tip: 15, other: "", useCredit: false, method: "card", cardId: "pm_1", savedAt: NOW - 1000, ...over });
+  JSON.stringify({ step: "pay", ticket: "1234", ticketSkipped: false, amount: "1250", tip: 15, other: "", useCredit: false, method: "card", cardId: "pm_1", savedAt: NOW - 1000, ...over });
 
 describe("readPayDraft", () => {
   it("reads a fresh draft whole", () => {
     expect(readPayDraft(saved(), NOW)).toEqual({
       step: "pay",
+      ticket: "1234",
+      ticketSkipped: false,
       amount: "1250",
       tip: 15,
       other: "",
@@ -83,8 +85,30 @@ describe("readPayDraft", () => {
     expect(readPayDraft(saved({ step: "pay", tip: "other", other: "0" }), NOW)?.step).toBe("pay");
   });
   it("every write carries its time and reads back", () => {
-    const d = { step: "methods" as const, amount: "690", tip: "other" as const, other: "0", useCredit: true, method: null, cardId: null };
+    const d = { step: "methods" as const, ticket: "A-12", ticketSkipped: false, amount: "690", tip: "other" as const, other: "0", useCredit: true, method: null, cardId: null };
     expect(readPayDraft(stampPayDraft(d, NOW), NOW)).toEqual({ ...d, savedAt: NOW });
     expect(readPayDraft(stampPayDraft(d, NOW), NOW + PAY_DRAFT_MAX_AGE_MS + 1)).toBeNull();
+  });
+
+  // MESITA-3776: the ticket number, step 2.
+  it("a draft from before the Ticket step opens on Ticket with its amount, tip and method kept", () => {
+    const d = readPayDraft(saved({ ticket: undefined, ticketSkipped: undefined }), NOW);
+    expect(d).toMatchObject({ step: "ticket", ticket: "", ticketSkipped: false, amount: "1250", tip: 15, method: "card", cardId: "pm_1", useCredit: false });
+  });
+  it("a skipped draft is not sent back to Ticket", () => {
+    expect(readPayDraft(saved({ ticket: undefined, ticketSkipped: true }), NOW)).toMatchObject({ step: "pay", ticket: "", ticketSkipped: true });
+    expect(readPayDraft(saved({ ticket: "", ticketSkipped: true, step: "bill" }), NOW)?.step).toBe("bill");
+  });
+  it("a ticket with leading zeros stays a string", () => {
+    const d = readPayDraft(saved({ ticket: "0012" }), NOW);
+    expect(d?.ticket).toBe("0012");
+    expect(d?.step).toBe("pay");
+  });
+  it("a ticket of the wrong type or with symbols never comes back as typed", () => {
+    expect(readPayDraft(saved({ ticket: 12 }), NOW)).toMatchObject({ ticket: "", step: "ticket", amount: "1250" });
+    expect(readPayDraft(saved({ ticket: "12#4;" }), NOW)?.ticket).toBe("124");
+  });
+  it("a draft with neither a ticket nor a skip opens on Ticket even for an unknown step", () => {
+    expect(readPayDraft(saved({ ticket: "", ticketSkipped: false, step: "checkout" }), NOW)?.step).toBe("ticket");
   });
 });

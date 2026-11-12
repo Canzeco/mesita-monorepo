@@ -7,12 +7,16 @@
 -- unsigned counts; signed, closed and cancelled do not); a card earns its
 -- cashback only when the waiter signs, once; the guest closes a payment
 -- where money moved, with no cashback; a signed payment cannot be closed.
+-- MESITA-3776 — the guest's ticket number: stored as typed, compared
+-- normalised; another guest's payment of the same ticket here in 12 hours
+-- asks first (p_repeat_ok), the guest's own refuses; waiter tabs, other
+-- places and older payments never warn.
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(67);
+select plan(86);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3707'), ('00000000-0000-4000-8000-0000000b3707');
 insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a3707'), ('00000000-0000-4000-8000-0000000b3707');
@@ -61,13 +65,14 @@ $$;
 
 select has_column('public', 'pay_tabs', 'origin', 'a tab says who started it');
 select ok(
-  not has_function_privilege('authenticated', 'public.pay_tab_guest_pay(uuid, uuid, text, boolean, text, integer, integer, integer, integer, integer, integer, uuid, text, integer, timestamptz, text, integer, integer, text, timestamptz, interval, integer)', 'EXECUTE')
+  not has_function_privilege('authenticated', 'public.pay_tab_guest_pay(uuid, uuid, text, boolean, text, integer, integer, integer, integer, integer, integer, uuid, text, integer, timestamptz, text, integer, integer, text, timestamptz, interval, integer, text, boolean)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.pay_tab_verify(uuid, uuid, text, integer, timestamptz)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.pay_tab_verify(uuid, uuid, text, integer, timestamptz)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.pay_tab_guest_remint(uuid, uuid, text, timestamptz)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.pay_tabs_close_guest(timestamptz, integer)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.pay_tab_guest_end(uuid, timestamptz)', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.pay_tab_card_cashback(uuid, timestamptz)', 'EXECUTE'),
+    and not has_function_privilege('authenticated', 'public.pay_tab_card_cashback(uuid, timestamptz)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.pay_ticket_norm(text)', 'EXECUTE'),
   'client roles cannot call the guest pay functions');
 
 -- ━━━ The guest's tap ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -278,6 +283,117 @@ select pay_tab_guest_pay('00000000-0000-4000-8000-0000000a3707', '00000000-0000-
   repeat('8', 63) || '0', 1000, 0, 1000, 0, 0, 0, gen_random_uuid(), null, 200) as r;
 select is(pay_tab_change((select (r->>'tab_id')::uuid from g8), '00000000-0000-4000-8000-0000000a3707', 'close')->>'outcome',
   'cancelled', 'closing a payment where nothing moved cancels it');
+
+-- ━━━ MESITA-3776: the ticket number ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+insert into auth.users (id) values ('00000000-0000-4000-8000-0000000c3776');
+insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000c3776');
+
+select is(array[pay_ticket_norm('A-0123'), pay_ticket_norm('a123'), pay_ticket_norm('000'), pay_ticket_norm('0012'), pay_ticket_norm('a 12/0-04')],
+  array['A123', 'A123', '0', '12', 'A12004'], 'a ticket compares uppercase, without separators or leading zeros');
+
+-- Tap 9: guest A pays $10MX cash on ticket " a-0123 ".
+create temp table g9 on commit drop as
+select pay_tab_guest_pay('00000000-0000-4000-8000-0000000a3707', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+  repeat('9', 63) || '1', 1000, 0, 1000, 0, 0, 0, '00000000-0000-4000-8000-000000e37761', null, 200,
+  p_ticket => ' a-0123 ') as r;
+select is((select ticket from pay_tabs where id = (select (r->>'tab_id')::uuid from g9)), 'a-0123',
+  'the ticket is stored as typed, trimmed');
+select ok(
+  (select pay_tab_guest_pay('00000000-0000-4000-8000-0000000a3707', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+     repeat('9', 63) || '1', 1000, 0, 1000, 0, 0, 0, '00000000-0000-4000-8000-000000e37761', null, 200,
+     p_ticket => 'ZZZ')->>'outcome') = 'replayed'
+    and (select ticket from pay_tabs where id = (select (r->>'tab_id')::uuid from g9)) = 'a-0123',
+  'a retry keeps the first ticket');
+select is(
+  pay_tab_guest_pay('00000000-0000-4000-8000-0000000a3707', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+    repeat('9', 63) || '1', 1000, 0, 1000, 0, 0, 0, '00000000-0000-4000-8000-000000e37761', null, 200,
+    p_ticket => 'a-0123')->>'outcome',
+  'replayed', 'a retry of the created request does not warn about its own ticket');
+select throws_like(
+  $$select pay_tab_guest_pay('00000000-0000-4000-8000-0000000b3707', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+      repeat('c', 64), 1000, 0, 1000, 0, 0, 0, gen_random_uuid(), null, 200, p_ticket => '12345678901234567')$$,
+  'guest_refused:%ticket_invalid%', 'a 17-character ticket is refused');
+select throws_like(
+  $$select pay_tab_guest_pay('00000000-0000-4000-8000-0000000b3707', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+      repeat('c', 64), 1000, 0, 1000, 0, 0, 0, gen_random_uuid(), null, 200, p_ticket => 'A#1')$$,
+  'guest_refused:%ticket_invalid%', 'a ticket with a symbol is refused');
+
+-- Guest B types "A123" for the same ticket while A's cash share is unsigned.
+select is(
+  (select (regexp_match(e, 'guest_refused:(.*)$'))[1]::jsonb
+     from (select pg_temp.refusal($$select pay_tab_guest_pay('00000000-0000-4000-8000-0000000b3707', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+       repeat('c', 64), 1000, 0, 1000, 0, 0, 0, '00000000-0000-4000-8000-000000e37762', null, 200, p_ticket => 'A123')$$) as e) x),
+  '{"code": "ticket_paid"}'::jsonb,
+  'an unsigned cash share of "a-0123" makes "A123" ticket_paid, with no time and no amount');
+select is(pay_tab_verify((select (r->>'tab_id')::uuid from g9), '00000000-0000-4000-8000-000000013707', repeat('a', 64))->>'outcome',
+  'verified', 'the waiter signs guest A''s share');
+select throws_like(
+  $$select pay_tab_guest_pay('00000000-0000-4000-8000-0000000b3707', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+      repeat('c', 64), 1000, 0, 1000, 0, 0, 0, '00000000-0000-4000-8000-000000e37762', null, 200, p_ticket => 'A123')$$,
+  'guest_refused:%ticket_paid%', 'another guest''s paid share of the ticket in 12 hours is refused ticket_paid');
+select is((select count(*)::int from pay_tabs where pay_request_id = '00000000-0000-4000-8000-000000e37762'), 0,
+  'and the refusal leaves no tab');
+
+-- "Yes, my share": the same request id with p_repeat_ok.
+create temp table g10 on commit drop as
+select pay_tab_guest_pay('00000000-0000-4000-8000-0000000b3707', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+  repeat('c', 64), 1000, 0, 1000, 0, 0, 0, '00000000-0000-4000-8000-000000e37762', null, 200,
+  p_ticket => 'A123', p_repeat_ok => true) as r;
+select is((select r->>'status' from g10), 'paying', 'with p_repeat_ok the share goes through');
+select is(
+  pay_tab_guest_pay('00000000-0000-4000-8000-0000000b3707', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+    repeat('c', 64), 1000, 0, 1000, 0, 0, 0, '00000000-0000-4000-8000-000000e37762', null, 200,
+    p_ticket => 'A123', p_repeat_ok => true)->>'outcome',
+  'replayed', 'resending the share replays it');
+select is((select count(*)::int from pay_tabs where pay_request_id = '00000000-0000-4000-8000-000000e37762'), 1,
+  'and the request id made exactly one tab');
+
+-- Guest A tries to pay the same ticket again, even saying it is a share.
+select is(
+  (select (regexp_match(e, 'guest_refused:(.*)$'))[1]::jsonb
+     from (select pg_temp.refusal($$select pay_tab_guest_pay('00000000-0000-4000-8000-0000000a3707', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+       repeat('d', 64), 1000, 0, 1000, 0, 0, 0, gen_random_uuid(), null, 200, p_ticket => 'a 0123', p_repeat_ok => true)$$) as e) x),
+  jsonb_build_object('code', 'ticket_paid_by_you', 'paid_tab_id', (select r->>'tab_id' from g9)),
+  'the guest''s own earlier payment of the ticket refuses ticket_paid_by_you with its id, even with p_repeat_ok');
+select lives_ok(
+  $$select pay_tab_guest_pay('00000000-0000-4000-8000-0000000a3707', '00000000-0000-4000-8000-000000023707', 'MXN', false,
+      repeat('d', 63) || '1', 1000, 0, 1000, 0, 0, 0, gen_random_uuid(), null, 200, p_ticket => 'A123')$$,
+  'the same ticket at another place does not warn');
+
+-- A waiter-billed tab here carrying the same free-text ticket.
+create temp table w2 on commit drop as
+select pay_tab_open('00000000-0000-4000-8000-0000000b3707', '00000000-0000-4000-8000-000000013707',
+  repeat('e', 64), 'MXN', false) as r;
+update pay_tabs set ticket = 'W-77', status = 'paid', bill_cents = 1000, billed_at = now(), paid_at = now()
+ where id = (select (r->>'tab_id')::uuid from w2);
+create temp table g11 on commit drop as
+select pay_tab_guest_pay('00000000-0000-4000-8000-0000000c3776', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+  repeat('e', 63) || '1', 1000, 0, 1000, 0, 0, 0, gen_random_uuid(), null, 200, p_ticket => 'w77') as r;
+select is((select r->>'status' from g11), 'paying', 'a waiter-billed tab with the same ticket does not warn');
+do $$ begin
+  perform pay_tab_change((select (r->>'tab_id')::uuid from g11), '00000000-0000-4000-8000-0000000c3776', 'cancel');
+end $$;
+
+create temp table g12 on commit drop as
+select pay_tab_guest_pay('00000000-0000-4000-8000-0000000c3776', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+  repeat('e', 63) || '2', 1000, 0, 1000, 0, 0, 0, gen_random_uuid(), null, 200) as r;
+select ok((select r->>'status' from g12) = 'paying'
+          and (select ticket from pay_tabs where id = (select (r->>'tab_id')::uuid from g12)) is null,
+  'no ticket is allowed and stores none');
+do $$ begin
+  perform pay_tab_change((select (r->>'tab_id')::uuid from g12), '00000000-0000-4000-8000-0000000c3776', 'cancel');
+end $$;
+
+select lives_ok(
+  $$select pay_tab_guest_pay('00000000-0000-4000-8000-0000000c3776', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+      repeat('e', 63) || '3', 1000, 0, 1000, 0, 0, 0, gen_random_uuid(), null, 200, now() + interval '13 hours',
+      p_ticket => 'A123')$$,
+  '13 hours later the ticket no longer warns');
+
+select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public' and p.proname = 'pay_tab_guest_pay'),
+  1, 'pay_tab_guest_pay has exactly one overload');
 
 select * from finish();
 rollback;

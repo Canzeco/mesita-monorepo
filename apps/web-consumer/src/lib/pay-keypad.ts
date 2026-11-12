@@ -23,6 +23,13 @@
 //   payButton  the Pay step's button and the one line under it, for every
 //              shape a split can take. The button's amount is what the tap
 //              charges or spends in the app: credit + card bill + card tip.
+//   pressDigitKey  the keypad in digits mode (the Ticket step, MESITA-3776):
+//              digits only, never ".", leading zeros kept ("0012" is a
+//              ticket, not 12), TICKET_MAX characters at most.
+//   cleanTicket  the client filter on a typed ticket (the text keyboard):
+//              letters, digits, dashes, slashes and spaces only, no leading
+//              space, TICKET_MAX characters at most. The server refuses
+//              anything else (ticket_invalid), so it should never see it.
 //
 // Every peso is still the server's; these only decide what the screen offers.
 
@@ -54,6 +61,35 @@ export function pressKey(text: string, key: PadKey): string {
 /** Whether a key would change the text now (a dead key is dimmed). */
 export function keyLive(text: string, key: PadKey): boolean {
   return pressKey(text, key) !== text;
+}
+
+/** The longest ticket the server takes (MESITA-3776). */
+export const TICKET_MAX = 16;
+
+/** The ticket text after one key of the keypad in digits mode: a digit is
+ *  appended as typed (a leading zero stays), "." does nothing, ⌫ deletes. */
+export function pressDigitKey(text: string, key: PadKey): string {
+  if (key === "back") return text.slice(0, -1);
+  if (key === ".") return text;
+  if (text.length >= TICKET_MAX) return text;
+  return text + key;
+}
+
+/** Whether a key would change the ticket now (a dead key is dimmed). */
+export function digitKeyLive(text: string, key: PadKey): boolean {
+  return pressDigitKey(text, key) !== text;
+}
+
+/** A typed ticket through the client filter: only letters, digits, dashes,
+ *  slashes and spaces are kept, never a leading space, at most TICKET_MAX
+ *  characters (a 17th is refused). */
+export function cleanTicket(text: string): string {
+  return text.replace(/[^A-Za-z0-9 /-]/g, "").replace(/^ +/, "").slice(0, TICKET_MAX);
+}
+
+/** Whether the ticket holds only digits (or nothing): the keypad can type it. */
+export function ticketIsDigits(text: string): boolean {
+  return /^[0-9]*$/.test(text);
 }
 
 /** A saved amount in the keypad's form: what readAmount reads, or "". */
