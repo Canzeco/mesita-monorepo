@@ -50,9 +50,9 @@ const OFFER_SLIDES: OfferSlide[] = [
   // the place's cash rate, `cash_cashback_bps`.
   { key: "cash", lead: "Cash", pill: "Cashback", short: "Cash Pay", spoken: "Cash cashback", section: "payment", tone: GREEN },
   // "$X Prepay", never "Prepay $X"; "Mesita Payments +5% Cashback" (MESITA-3508). $…MX: the currency after the amount (MESITA-3490, MESITA-3481).
-  { key: "voucher_200", lead: "$200MX Prepay", pill: "+10% Bonus", short: "$200MX", spoken: "$200MX prepay, 10% bonus", section: "prepayment", tone: GREEN, bonus: 10 },
-  { key: "voucher_1000", lead: "$1,000MX Prepay", pill: "+20% Bonus", short: "$1000MX", spoken: "$1,000MX prepay, 20% bonus", section: "prepayment", tone: GREEN, bonus: 20 },
-  { key: "voucher_5000", lead: "$5,000MX Prepay", pill: "+30% Bonus", short: "$5000MX", spoken: "$5,000MX prepay, 30% bonus", section: "prepayment", tone: GREEN, bonus: 30 },
+  { key: "voucher_200", lead: "$200.00MX Prepay", pill: "+10% Bonus", short: "$200.00MX", spoken: "$200.00MX prepay, 10% bonus", section: "prepayment", tone: GREEN, bonus: 10 },
+  { key: "voucher_1000", lead: "$1,000.00MX Prepay", pill: "+20% Bonus", short: "$1000.00MX", spoken: "$1,000.00MX prepay, 20% bonus", section: "prepayment", tone: GREEN, bonus: 20 },
+  { key: "voucher_5000", lead: "$5,000.00MX Prepay", pill: "+30% Bonus", short: "$5000.00MX", spoken: "$5,000.00MX prepay, 30% bonus", section: "prepayment", tone: GREEN, bonus: 30 },
   { key: "voucher_welcome", lead: "Welcome Prepay", pill: "+30% Bonus", short: "Welcome", spoken: "Welcome prepay, 30% bonus", section: "special", tone: "bg-[#2563EB] text-white", bonus: 30 },
   { key: "voucher_story", lead: "Story Prepay", pill: "+30% Bonus", short: "Story", spoken: "Story prepay, 30% bonus", section: "special", tone: "bg-[#E1306C] text-white", bonus: 30 },
   { key: "voucher_vip", lead: "VIP Prepay", pill: "+30% Bonus", short: "VIP", spoken: "VIP prepay, 30% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950", bonus: 30 },

@@ -418,11 +418,11 @@ Deno.test("outside: Received after the guest cancelled reads closed; after 30 mi
   }
   const closed = await confirmCharge(m.store, tokens[0]);
   assert(!closed.ok && closed.code === "closed");
-  assertEquals(closed.error, "Cancelled by the guest. Collect $450MX: nothing was paid from credit.");
+  assertEquals(closed.error, "Cancelled by the guest. Collect $450.00MX: nothing was paid from credit.");
   m.clock.ms = T0 + 1_800_000;
   const expired = await confirmCharge(m.store, tokens[1]);
   assert(!expired.ok && expired.code === "expired");
-  assertEquals(expired.error, "Expired. Collect $450MX: nothing was paid from credit.");
+  assertEquals(expired.error, "Expired. Collect $450.00MX: nothing was paid from credit.");
   const other = await confirmCharge(m.store, tokens[2]);
   assert(!other.ok && other.code === "forbidden");
   assertEquals(late.paid_at, null);

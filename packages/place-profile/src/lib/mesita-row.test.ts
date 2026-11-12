@@ -47,7 +47,7 @@ describe("mesitaRowState", () => {
       },
     });
     expect(s.prepay).toEqual({ works: true, pill: "20% Bonus" });
-    expect(s.wallet).toEqual({ works: true, pill: "$120MX" });
+    expect(s.wallet).toEqual({ works: true, pill: "$120.00MX" });
     // The place's own rates (MESITA-3589), never a typed-in 5% / 2%.
     expect(s.pay).toEqual({ works: true, pill: "3% Back" });
     expect(mesitaRowState({ money: { ...BASE, cashback: true, card_cashback_bps: 700, outside_cashback: true, cash_cashback_bps: 300 } }).pay.pill).toBe("7% Back");

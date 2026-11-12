@@ -201,11 +201,13 @@ describe("amountShown", () => {
     expect(amountShown("0.5", "mxn").body).toBe("0.5");
     expect(amountShown("1250.50", "mxn").body).toBe("1,250.50");
   });
-  it("a whole amount reads as the money formatter writes it", () => {
-    const a = amountShown("1250", "mxn");
-    expect(a.prefix + a.body + a.suffix).toBe(money(125000, "mxn"));
-    const usd = amountShown("1250", "usd");
-    expect(usd.prefix + usd.body + usd.suffix).toBe(money(125000, "usd"));
+  it("a typed amount, with its ghost cents, reads as the money formatter writes it", () => {
+    for (const [text, cents] of [["1250", 125000], ["1250.5", 125050], ["0", 0]] as const) {
+      for (const cur of ["mxn", "usd"]) {
+        const a = amountShown(text, cur);
+        expect(a.prefix + a.body + a.ghost + a.suffix).toBe(money(cents, cur));
+      }
+    }
   });
 });
 

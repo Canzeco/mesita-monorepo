@@ -102,7 +102,7 @@ Deno.test("startPayment: insufficient says how much credit there is", async () =
   });
   assert(!r.ok);
   assertEquals([r.status, r.code, r.detail], [409, "insufficient", { spendable_cents: 17000 }]);
-  assertEquals(r.error, "You have $170MX of credit here");
+  assertEquals(r.error, "You have $170.00MX of credit here");
 });
 
 Deno.test("startPayment: taken carries the payment that already went through", async () => {

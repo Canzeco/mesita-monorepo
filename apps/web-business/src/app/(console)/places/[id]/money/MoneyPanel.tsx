@@ -35,7 +35,7 @@ const NOTE = "text-muted-foreground text-xs";
 
 /** Shown under the totals, never in the TestBand. */
 export const FEE_NOTE = "Mesita's fee: 5% on vouchers, 5% on card payments.";
-export const CAP_NOTE = "In test mode a place holds at most $20,000MX of guests' credit.";
+export const CAP_NOTE = "In test mode a place holds at most $20,000.00MX of guests' credit.";
 
 const KIND: Record<string, string> = {
   voucher_200: "Small Voucher",

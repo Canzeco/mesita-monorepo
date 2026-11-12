@@ -113,44 +113,45 @@ type Product = {
 // of the thing should be Welcome, Story, VIP, Standard, Medium Standard,
 // Large Standard"): the deal line carries the amounts.
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "Small", line: "Pay $200MX, get $220MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Medium", line: "Pay $1,000MX, get $1,200MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Bonus", brief: "As many as you like" },
-  { key: "voucher_5000", name: "Big", line: "Pay $5,000MX, get $6,500MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Bonus", brief: "As many as you like" },
+  { key: "voucher_200", name: "Small", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Medium", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Bonus", brief: "As many as you like" },
+  { key: "voucher_5000", name: "Big", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Bonus", brief: "As many as you like" },
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay $100MX, get $130MX.", limit: "One per place.", bonus: "30% bonus", short: "Welcome Bonus", brief: "One per place" },
-  { key: "voucher_story", name: "Story", line: "Pay $100MX, get $130MX.", limit: "One per day.", bonus: "30% bonus", short: "Story Bonus", brief: "Post a story · 1/day" },
-  { key: "voucher_vip", name: "VIP", line: "Pay $100MX, get $130MX.", when: "VIP guests only.", limit: "One per day.", bonus: "30% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $130.00MX.", limit: "One per place.", bonus: "30% bonus", short: "Welcome Bonus", brief: "One per place" },
+  { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $130.00MX.", limit: "One per day.", bonus: "30% bonus", short: "Story Bonus", brief: "Post a story · 1/day" },
+  { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $130.00MX.", when: "VIP guests only.", limit: "One per day.", bonus: "30% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
 ];
 
-/** "$1,200MX" from cents. Formatting only, never arithmetic. */
+/** "$1,200.00MX" from cents: always two decimals (MESITA-3767). Formatting
+ *  only, never arithmetic. */
 export function pesos(cents: number, currency: string): string {
   const code = currency.toUpperCase();
-  const whole = cents % 100 === 0;
+  const c = Math.round(cents);
   try {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: code,
       currencyDisplay: "narrowSymbol",
-      minimumFractionDigits: whole ? 0 : 2,
-      maximumFractionDigits: whole ? 0 : 2,
-    }).format(cents / 100).replace(/^(-?)\$(.*)$/, code === "MXN" ? "$1$$$2MX" : "$1$$$2");
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(c / 100).replace(/^(-?)\$(.*)$/, code === "MXN" ? "$1$$$2MX" : "$1$$$2");
   } catch {
-    return `${(cents / 100).toFixed(whole ? 0 : 2)} ${code}`;
+    return `${(c / 100).toFixed(2)} ${code}`;
   }
 }
 
 /** The credit: the server's, else from the copy. */
 function creditValue(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
   if (line) return pesos(line.credit_cents, currency);
-  const m = /get (\$[\d,]+MX)/.exec(product.line);
+  const m = /get (\$[\d,.]+MX)/.exec(product.line);
   return m ? m[1] : product.name;
 }
 /** What a guest pays: the server's, else from the copy. */
 function priceValue(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
   if (line) return pesos(line.price_cents, currency);
-  const m = /Pay (\$[\d,]+MX)/.exec(product.line);
+  const m = /Pay (\$[\d,.]+MX)/.exec(product.line);
   return m ? m[1] : product.name;
 }
 
