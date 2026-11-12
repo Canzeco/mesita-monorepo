@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
-import { apiAddCard, apiListCards, apiRemoveCard, CARD_REFUSAL, CARD_RETURN_PARAM, MAX_SAVED_CARDS, type SavedCard } from "@/lib/api/cards";
+import { photoUrl } from "@mesita/place-profile";
+import { apiAddCard, apiRemoveCard, CARD_REFUSAL, CARD_RETURN_PARAM, MAX_SAVED_CARDS, type SavedCard } from "@/lib/api/cards";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -20,11 +21,23 @@ import {
   EmptyCreditsRow,
   AddRow,
   GiftCodeRow,
-  RowsSkeleton,
   SavedCardRow,
   StoryRow,
+  WalletBodySkeleton,
   WalletList,
 } from "./WalletLists";
+
+// ONE READ, ONE PAINT (Pato, 2026-11-12, MESITA-3814: "first load the
+// functions and then display all the wallets, don't display stuff in an
+// async manner ... unify them"): the saved cards ride the Wallet's own read
+// (consumer-web-get-wallet `with_cards`; consumer-web-list-cards no longer
+// feeds this page), and nothing shows until that read answers and the first
+// Credits photos are decoded (PHOTO_WAIT_MS at most): until then the whole
+// page is WalletBodySkeleton, the shape /wallet's loading frame draws too.
+// Cash and both Add rows wait with the rest. A refresh (a removed card, a
+// redeemed code, a settling retry) keeps the page shown and swaps it whole.
+// Stripe failing leaves `cards` null: Cash shows alone, one toast says so,
+// the money still shows.
 
 // TWO LISTS, ONE ROW SHAPE (Pato, 2026-11-11, MESITA-3741: "make the same
 // list of cards as with the money payment methods. keep the symmetry"):
@@ -112,16 +125,27 @@ function cardRefusal(err: unknown): string {
   const code = err instanceof EFError ? err.code : null;
   return (code && CARD_REFUSAL[code]) || "Something went wrong. Try again.";
 }
-/** Photos of the first cards load eagerly; the rest lazily. */
+/** Photos of the first cards load eagerly; the rest lazily. The page waits
+ *  for these to decode before it shows (MESITA-3814). */
 const EAGER_CARDS = 3;
+/** The longest the page waits on those photos: a slow photo never holds it. */
+const PHOTO_WAIT_MS = 800;
+
+/** Resolves once every photo is decoded (or failed), or after `ms`. */
+function decodeAll(urls: string[], ms: number): Promise<void> {
+  const each = urls.map((src) => {
+    const img = new Image();
+    img.src = src;
+    return img.decode().catch(() => undefined);
+  });
+  return Promise.race([Promise.all(each).then(() => undefined), new Promise<void>((r) => setTimeout(r, ms))]);
+}
 
 export function WalletSection({ giftToken = null }: { giftToken?: string | null }) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
-  const { wallet, failed, credits, reread } = useWallet();
+  const { wallet, failed, credits, reread } = useWallet({ withCards: true });
   const [method, setMethod] = useState<Method | null>(null);
-  const [cards, setCards] = useState<SavedCard[] | null>(null);
-  const [cardsNonce, setCardsNonce] = useState(0);
   const [adding, setAdding] = useState(false);
   // The saved-card failure toast fires at most once per mount.
   const cardsToasted = useRef(false);
@@ -135,34 +159,46 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
     navigateTo(router, CONSUMER_ROUTES.wallet, { replace: true });
   }, [router]);
 
-  // Saved cards: on mount, on Stripe's return, after a remove.
+  // Stripe's return from saving a card (`?card=`): say so, drop the param.
   useEffect(() => {
-    let cancelled = false;
     const params = new URLSearchParams(window.location.search);
-    if (params.has(CARD_RETURN_PARAM)) {
-      params.delete(CARD_RETURN_PARAM);
-      const q = params.toString();
-      window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
-      toast.success("Card saved.");
+    if (!params.has(CARD_RETURN_PARAM)) return;
+    params.delete(CARD_RETURN_PARAM);
+    const q = params.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
+    toast.success("Card saved.");
+  }, []);
+
+  // Saved cards come with the Wallet's read; null means Stripe failed.
+  const cards: SavedCard[] = wallet?.cards ?? [];
+  const cardsFailed = wallet !== null && wallet.cards === null;
+  useEffect(() => {
+    if (cardsFailed && !cardsToasted.current) {
+      cardsToasted.current = true;
+      toast.error("Couldn't load your saved cards");
     }
-    void apiListCards(getSupabase())
-      .then((r) => {
-        if (!cancelled) setCards(r.cards);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        // A first-load failure shows Cash alone; a later one keeps the cards shown.
-        setCards((prev) => prev ?? []);
-        if (!cardsToasted.current) {
-          cardsToasted.current = true;
-          toast.error("Couldn't load your saved cards");
-        }
-      });
+  }, [cardsFailed]);
+
+  // The first Credits photos, decoded before the page shows.
+  const photoKey = (credits ?? [])
+    .slice(0, EAGER_CARDS)
+    .map((r) => r.card.photo)
+    .filter((p): p is string => !!p)
+    .map((p) => photoUrl(p, "thumb"))
+    .join("\n");
+  // Painted once, the page stays: a refresh swaps it whole, never blanks it.
+  const [painted, setPainted] = useState(false);
+  useEffect(() => {
+    if (!wallet || painted) return;
+    let cancelled = false;
+    void decodeAll(photoKey ? photoKey.split("\n") : [], PHOTO_WAIT_MS).then(() => {
+      if (!cancelled) setPainted(true);
+    });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardsNonce]);
+  }, [wallet, photoKey, painted]);
+  const ready = painted || (failed && !wallet);
 
   const addCard = useCallback(async () => {
     if (adding) return;
@@ -182,13 +218,15 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
         await apiRemoveCard(getSupabase(), card.id);
         toast.success("Card removed.");
         setMethod(null);
-        setCardsNonce((n) => n + 1);
+        reread();
       } catch (err) {
         toast.error(cardRefusal(err));
       }
     },
-    [getSupabase],
+    [getSupabase, reread],
   );
+
+  if (!ready) return <WalletBodySkeleton />;
 
   let shown = 0;
   const stories = wallet?.waiting_stories ?? [];
@@ -211,14 +249,13 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
       ) : null}
 
       <WalletList title="Money Payment Methods">
-        {cards === null ? <RowsSkeleton count={1} /> : null}
-        {cards?.map((c) => <SavedCardRow key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
+        {cards.map((c) => <SavedCardRow key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
         <CashRow />
         {/* Add is the list's last row (MESITA-3744), and reads "Add" in both
             lists (Pato, MESITA-3740: "add and add, keep the symmetry"). It
             leaves once three cards are saved (MESITA-3749); Credits Cards
             have no limit. */}
-        {(cards?.length ?? 0) < MAX_SAVED_CARDS ? (
+        {cards.length < MAX_SAVED_CARDS ? (
           <AddRow line="A debit or credit card" ariaLabel="Add a payment card" onClick={() => void addCard()} disabled={adding} busy={adding} />
         ) : null}
       </WalletList>
@@ -236,7 +273,6 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
           ) : null
         }
       >
-        {creditsState === "loading" ? <RowsSkeleton count={1} /> : null}
         {creditsState === "empty" ? <EmptyCreditsRow href={CONSUMER_ROUTES.search} /> : null}
         {creditsState === "rows"
           ? stories.map((s) => <StoryRow key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)

@@ -91,7 +91,9 @@ export function WalletList({
 export function GiftCodeRow({ onOpen }: { onOpen: () => void }) {
   return (
     <button type="button" onClick={onOpen} className={ROW} data-redeem-code-open>
-      <span className={cn(CHIP, "bg-muted text-foreground")} aria-hidden>
+      {/* Yellow, its own colour beside Cash green and Story pink (Pato,
+          MESITA-3814: "add a bit of color to the gift code"). */}
+      <span className={cn(CHIP, "bg-yellow-300 text-neutral-950")} aria-hidden>
         <Gift className="h-4 w-4" />
       </span>
       <RowText title="Gift code" line="Redeem a code a friend sent you" />
@@ -290,6 +292,22 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
       <RowText title={name} line="Story voucher · show the QR" />
       <span className="shrink-0 text-lg font-semibold tabular-nums">{money(story.credit_cents, story.currency)}</span>
     </button>
+  );
+}
+
+/** The whole Wallet while its one read runs (MESITA-3814): both lists in
+ *  the rows' own shape, so the page lands without a jump. /wallet's
+ *  loading frame draws the same. */
+export function WalletBodySkeleton() {
+  return (
+    <div aria-busy>
+      <WalletList title="Money Payment Methods">
+        <RowsSkeleton count={2} />
+      </WalletList>
+      <WalletList title="Credits Payment Methods">
+        <RowsSkeleton count={2} />
+      </WalletList>
+    </div>
   );
 }
 
