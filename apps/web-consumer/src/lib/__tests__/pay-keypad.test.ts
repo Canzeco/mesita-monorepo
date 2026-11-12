@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import type { PayPlace } from "@/lib/api/wallet";
-import { draftAmount, keyLive, type PadKey, payProblem, type PayProblemArgs, pressKey, tipWays } from "@/lib/pay-keypad";
+import { draftAmount, draftTip, keyLive, type PadKey, payProblem, type PayProblemArgs, pressKey, readTip, tipWays } from "@/lib/pay-keypad";
 
 // Money (MVP test rule): the keypad is the only way a guest types a bill or
 // a tip, so every text it can build must be one readAmount reads; and the
@@ -49,6 +49,28 @@ describe("pressKey", () => {
         expect(text === "" || zero || readAmount(text) !== null, `"${text}"`).toBe(true);
       }
     }
+  });
+});
+
+describe("readTip", () => {
+  // No tip is Other with 0 typed (MESITA-3748): 0 is a tip, empty is not.
+  it("reads a typed 0 as a tip of 0", () => {
+    expect(readTip(type(["0"]))).toBe(0);
+    expect(readTip("0.")).toBe(0);
+    expect(readTip("0.00")).toBe(0);
+  });
+  it("reads nothing typed, or junk, as no answer", () => {
+    expect(readTip("")).toBeNull();
+    expect(readTip("abc")).toBeNull();
+  });
+  it("reads any other amount as readAmount does", () => {
+    expect(readTip("30")).toBe(3000);
+    expect(readTip("0.5")).toBe(50);
+  });
+  it("a saved 0 tip comes back as 0", () => {
+    expect(draftTip("0")).toBe("0");
+    expect(draftTip("30.5")).toBe("30.50");
+    expect(draftTip(undefined)).toBe("");
   });
 });
 

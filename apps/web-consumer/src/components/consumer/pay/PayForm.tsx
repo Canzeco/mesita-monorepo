@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ArrowLeft, CreditCard, Wallet as WalletIcon, X } from "lucide-react";
 import { cashbackFor, paySplit } from "@mesita/place-profile";
 import { amountText, readAmount } from "@mesita/place-profile/lib/money";
+import { readTip } from "@/lib/pay-keypad";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -74,7 +75,7 @@ export function PayFormSheet({
 
 /** The tip buttons, in percent of the bill (MESITA-3536). */
 const TIP_PERCENTS = [10, 15, 20] as const;
-type TipChoice = (typeof TIP_PERCENTS)[number] | "other" | "none";
+type TipChoice = (typeof TIP_PERCENTS)[number] | "other";
 type Step = "bill" | "tip" | "billWith" | "tipWith";
 type BillWith = "credit" | "card";
 
@@ -147,8 +148,9 @@ function PayForm({
   const steps: Step[] = place.card_ok ? ["bill", "tip", "billWith", "tipWith"] : ["bill", "billWith"];
   const [step, setStep] = useState(() => (refill ? steps.length - 1 : 0));
   const [amount, setAmount] = useState(() => (refill ? amountText(refill.amountCents) : ""));
-  const [tipChoice, setTipChoice] = useState<TipChoice | null>(() => (refill ? (refill.tipCents > 0 ? "other" : "none") : null));
-  const [tip, setTip] = useState(() => (refill && refill.tipCents > 0 ? amountText(refill.tipCents) : ""));
+  const [tipChoice, setTipChoice] = useState<TipChoice | null>(() => (refill ? "other" : null));
+  // No tip is Other with 0 typed (MESITA-3748); a refill carries its tip, 0 included.
+  const [tip, setTip] = useState(() => (refill ? amountText(refill.tipCents) : ""));
   // Credit first while the guest holds some here; else the card.
   const [billWith, setBillWith] = useState<BillWith>(() => (!place.card_ok || place.available_cents > 0 ? "credit" : "card"));
   const [ticket, setTicket] = useState(() => refill?.ticket ?? "");
@@ -174,7 +176,7 @@ function PayForm({
     : typeof tipChoice === "number"
     ? cents === null ? 0 : Math.round((cents * tipChoice) / 100)
     : tipChoice === "other"
-    ? readAmount(tip)
+    ? readTip(tip)
     : 0;
   const tipBad = tipChoice === "other" && tip.trim() !== "" && tipTyped === null;
   const tipCents = tipTyped ?? 0;
@@ -207,7 +209,7 @@ function PayForm({
   const canNext = at === "bill"
     ? cents !== null && cents > 0 && !looking
     : at === "tip"
-    ? tipChoice !== null && !tipBad
+    ? tipChoice !== null && (tipChoice !== "other" || tipTyped !== null)
     : canPay;
 
   /** A refusal of the waiter's code: true when handled here. */
@@ -503,17 +505,6 @@ function PayForm({
                 className={cn(FIELD_CLASS, "mt-3 tabular-nums")}
               />
             ) : null}
-            <button
-              type="button"
-              aria-pressed={tipChoice === "none"}
-              onClick={() => setTipChoice("none")}
-              className={cn(
-                "mt-3 flex min-h-11 w-full items-center justify-center rounded-2xl text-base font-semibold",
-                tipChoice === "none" ? "border-foreground border-2" : "text-muted-foreground",
-              )}
-            >
-              No tip
-            </button>
           </>
         ) : null}
 

@@ -120,9 +120,7 @@ export function AddRow({
 }) {
   const inner = (
     <>
-      <span className={cn(CHIP, "border-muted-foreground/40 text-muted-foreground border-2 border-dashed")} aria-hidden>
-        <Plus className="h-4 w-4" />
-      </span>
+      <AddChip />
       <RowText title={busy ? "Opening…" : "Add"} line={line} />
     </>
   );
@@ -146,15 +144,47 @@ function RowText({ title, line }: { title: ReactNode; line?: ReactNode }) {
   );
 }
 
+/** The method chips, also the rows of Pay's "How do you pay?" (MESITA-3748). */
+export function CashChip() {
+  return (
+    <span className={cn(CHIP, "bg-green-400")} aria-hidden>
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-950 text-xs font-bold text-green-400">$</span>
+    </span>
+  );
+}
+
+export function SavedCardChip({ last4 }: { last4: string }) {
+  return (
+    <span className={cn(CHIP, "bg-neutral-900 text-[0.625rem] font-semibold text-white tabular-nums")} aria-hidden>
+      {last4}
+    </span>
+  );
+}
+
+export function AddChip() {
+  return (
+    <span className={cn(CHIP, "border-muted-foreground/40 text-muted-foreground border-2 border-dashed")} aria-hidden>
+      <Plus className="h-4 w-4" />
+    </span>
+  );
+}
+
+/** A chip for a method with no colour of its own: grey, one ink icon. */
+export function PlainChip({ children }: { children: ReactNode }) {
+  return (
+    <span className={cn(CHIP, "bg-muted text-foreground [&>svg]:h-4 [&>svg]:w-4")} aria-hidden>
+      {children}
+    </span>
+  );
+}
+
 const Chevron = () => <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />;
 
 /** Cash: nothing to open (MESITA-3584's green with the black $ coin). */
 export function CashRow() {
   return (
     <div className={cn(ROW, "hover:bg-transparent")} data-wallet-method="cash">
-      <span className={cn(CHIP, "bg-green-400")} aria-hidden>
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-950 text-xs font-bold text-green-400">$</span>
-      </span>
+      <CashChip />
       <RowText title="Cash" line="Pay at the place" />
     </div>
   );
@@ -171,9 +201,7 @@ export function SavedCardRow({ card, onOpen }: { card: SavedCard; onOpen: () => 
       className={ROW}
       data-wallet-method="saved-card"
     >
-      <span className={cn(CHIP, "bg-neutral-900 text-[0.625rem] font-semibold text-white tabular-nums")} aria-hidden>
-        {card.last4}
-      </span>
+      <SavedCardChip last4={card.last4} />
       <RowText title={`${brand} •••• ${card.last4}`} line={`Expires ${expiryLabel(card)}`} />
       <Chevron />
     </button>

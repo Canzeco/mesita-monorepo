@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Banknote, ChevronRight, CreditCard, Plus, Wallet } from "lucide-react";
+import { ChevronRight, CreditCard, Wallet } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
+import { AddChip, CashChip, PlainChip, SavedCardChip } from "@/components/consumer/wallet/WalletLists";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { EFError } from "@/lib/api/_invoke";
 import { apiAddCard, apiListCards, brandLabel, CARD_RETURN_PARAM, type SavedCard } from "@/lib/api/cards";
 import { apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
 import { money, type PayPlace } from "@/lib/api/wallet";
-import { draftAmount, type PadKey, payProblem, paySplit, pressKey, tipWays } from "@/lib/pay-keypad";
+import { draftAmount, draftTip, type PadKey, payProblem, paySplit, pressKey, readTip, tipWays } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
 import { NETWORK_FAILURE, PlacePhoto, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
@@ -39,7 +40,9 @@ import { NETWORK_FAILURE, PlacePhoto, QUIET_BUTTON_CLASS, rememberGuestTab } fro
 
 const TIP_PERCENTS = [10, 15, 20] as const;
 type Pct = (typeof TIP_PERCENTS)[number];
-type Tip = "none" | Pct | "other";
+/** null: not answered yet. There is no "No tip" button: no tip is Other
+ *  with 0 typed (Pato, MESITA-3748). */
+type Tip = Pct | "other" | null;
 /** The amount past which Pay asks "Pay MX$X at <place>?" first. */
 const CONFIRM_ABOVE_CENTS = 300_000;
 const DRAFT_KEY = (placeId: string) => `mesita.pay.guest-draft.${placeId}`;
@@ -96,13 +99,19 @@ export function GuestPayScreen({
 }) {
   const place = places?.find((p) => p.place_id === placeId) ?? null;
   const draft = useMemo(() => (typeof window === "undefined" ? null : readDraft(placeId)), [placeId]);
-  const [step, setStep] = useState<Step>(draft?.step && STEPS.includes(draft.step) ? draft.step : "bill");
+  // A draft from before MESITA-3748 may say "none": that is unanswered now.
+  const draftTipPick: Tip = draft?.tip === "other" || TIP_PERCENTS.some((p) => p === draft?.tip) ? (draft?.tip as Tip) : null;
+  const [step, setStep] = useState<Step>(() => {
+    const s = draft?.step && STEPS.includes(draft.step) ? draft.step : "bill";
+    // Never past Tip with the tip unanswered.
+    return draftTipPick === null && STEPS.indexOf(s) > STEPS.indexOf("tip") ? "tip" : s;
+  });
   // A draft from before the keypad (or typed "1,250") is put into the
   // keypad's own form, so a key never extends text it could not have made.
   const [amount, setAmount] = useState(() => draftAmount(draft?.amount));
-  const [tip, setTip] = useState<Tip>(draft?.tip ?? "none");
+  const [tip, setTip] = useState<Tip>(draftTipPick);
   const [lastPct, setLastPct] = useState<Pct | null>(typeof draft?.tip === "number" ? draft.tip : null);
-  const [other, setOther] = useState(() => draftAmount(draft?.other));
+  const [other, setOther] = useState(() => draftTip(draft?.other));
   const [useCredit, setUseCredit] = useState(draft?.useCredit ?? true);
   const [method, setMethod] = useState<PayWith | null>(draft?.method ?? null);
   const [cardId, setCardId] = useState<string | null>(draft?.cardId ?? null);
@@ -145,7 +154,7 @@ export function GuestPayScreen({
 
   const billCents = readAmount(amount) ?? 0;
   const tipCents =
-    tip === "none" ? 0 : tip === "other" ? readAmount(other) ?? 0 : Math.round((billCents * tip) / 100);
+    tip === null ? 0 : tip === "other" ? readTip(other) ?? 0 : Math.round((billCents * tip) / 100);
   const creditOn = (useCredit || creditOnly) && spendable > 0;
   const creditCovers = creditOn && spendable >= billCents && billCents > 0;
   const firstCard = cards?.[0]?.id ?? null;
@@ -269,12 +278,12 @@ export function GuestPayScreen({
     );
   }
 
-  const otherOk = readAmount(other) !== null;
+  const otherOk = readTip(other) !== null;
   const nextOk =
     step === "bill"
       ? billCents > 0
       : step === "tip"
-      ? tip !== "other" || otherOk
+      ? tip !== null && (tip !== "other" || otherOk)
       : step === "method"
       ? !problem && (creditCovers || !!restWith)
       : true;
@@ -314,8 +323,8 @@ export function GuestPayScreen({
     const rest = cardRows.filter((c) => c.id !== chosenCard);
     return (chosen ? [chosen, ...rest] : rest).slice(0, CARDS_SHOWN);
   })();
-  const cardBack = place.cashback_bps > 0 ? ` · ${place.cashback_bps / 100}% back` : "";
-  const cashBack = (place.outside_bps ?? 0) > 0 ? ` · ${(place.outside_bps ?? 0) / 100}% back` : "";
+  const cardBack = place.cashback_bps > 0 ? `${place.cashback_bps / 100}% back` : undefined;
+  const cashBack = (place.outside_bps ?? 0) > 0 ? `${(place.outside_bps ?? 0) / 100}% back` : undefined;
   const status = step === "method" || step === "review" ? error ?? problem : error;
 
   return (
@@ -357,8 +366,7 @@ export function GuestPayScreen({
           ) : null}
 
           {step === "tip" && tip !== "other" ? (
-            <div className="flex flex-col gap-2" role="group" aria-labelledby="guest-pay-question">
-              <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="guest-pay-question">
                 {TIP_PERCENTS.map((p) => (
                   <button
                     key={p}
@@ -376,12 +384,8 @@ export function GuestPayScreen({
                     </span>
                   </button>
                 ))}
-                <button type="button" className={chip(false, "h-16 text-lg")} aria-pressed={false} onClick={() => setTip("other")}>
-                  Other
-                </button>
-              </div>
-              <button type="button" className={chip(tip === "none", "h-12")} aria-pressed={tip === "none"} onClick={() => setTip("none")}>
-                No tip
+              <button type="button" className={chip(false, "h-16 text-lg")} aria-pressed={false} onClick={() => setTip("other")}>
+                Other
               </button>
             </div>
           ) : null}
@@ -395,7 +399,7 @@ export function GuestPayScreen({
                   className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center text-sm font-semibold underline"
                   onClick={() => {
                     setOther("");
-                    setTip(lastPct ?? "none");
+                    setTip(lastPct);
                   }}
                 >
                   Back to %
@@ -417,11 +421,9 @@ export function GuestPayScreen({
                     aria-checked={creditOn}
                     disabled={creditOnly}
                     onClick={() => setUseCredit((u) => !u)}
-                    className="flex h-12 w-full items-center justify-between gap-3 px-4 text-left"
+                    className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2 text-left"
                   >
-                    <MethodLabel icon={<Wallet />}>
-                      {m(spendable)} credit · <span className="text-muted-foreground">{creditOn ? "applied" : "not used"}</span>
-                    </MethodLabel>
+                    <MethodLabel chip={<PlainChip><Wallet /></PlainChip>} title={`${m(spendable)} credit`} line={creditOn ? "Applied" : "Not used"} />
                     <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
                       <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full transition", creditOn ? "left-[1.125rem]" : "left-0.5")} />
                     </span>
@@ -432,7 +434,7 @@ export function GuestPayScreen({
                   <div role="radiogroup" aria-label={creditOn ? "The rest" : "Pay with"}>
                     {cardOk && cards === null
                       ? [0, 1].map((i) => (
-                          <div key={i} className={cn("flex h-12 items-center px-4", (i > 0 || spendable > 0) && "border-border border-t")}>
+                          <div key={i} className={cn("flex h-14 items-center px-4", (i > 0 || spendable > 0) && "border-border border-t")}>
                             <Skeleton className="h-5 w-40" />
                           </div>
                         ))
@@ -443,36 +445,33 @@ export function GuestPayScreen({
                             key={c.id}
                             divided={i > 0 || spendable > 0}
                             on={restWith === "card" && chosenCard === c.id}
-                            icon={<CreditCard />}
+                            chip={<SavedCardChip last4={c.last4} />}
+                            title={`${brandLabel(c.brand)} •••• ${c.last4}`}
+                            line={cardBack}
                             onPick={() => {
                               setMethod("card");
                               setCardId(c.id);
                             }}
-                          >
-                            {brandLabel(c.brand)} •••• {c.last4}
-                            <span className="text-muted-foreground">{cardBack}</span>
-                          </Row>
+                          />
                         ))
                       : null}
                     {cashOk ? (
-                      <Row divided={spendable > 0 || shownCards.length > 0 || (cardOk && cards === null)} on={restWith === "cash"} icon={<Banknote />} onPick={() => setMethod("cash")}>
-                        Cash to the waiter<span className="text-muted-foreground">{cashBack}</span>
-                      </Row>
+                      <Row divided={spendable > 0 || shownCards.length > 0 || (cardOk && cards === null)} on={restWith === "cash"} chip={<CashChip />} title="Cash" line={cashBack} onPick={() => setMethod("cash")} />
                     ) : null}
                     {cardOk && cards !== null ? (
                       cardRows.length > CARDS_SHOWN ? (
-                        <button type="button" className="border-border flex h-12 w-full items-center justify-between gap-3 border-t px-4 text-left" onClick={() => setMoreCards(true)}>
-                          <MethodLabel icon={<CreditCard />}>More cards</MethodLabel>
+                        <button type="button" className="border-border flex min-h-14 w-full items-center justify-between gap-3 border-t px-4 py-2 text-left" onClick={() => setMoreCards(true)}>
+                          <MethodLabel chip={<PlainChip><CreditCard /></PlainChip>} title="More cards" />
                           <ChevronRight className="text-muted-foreground h-5 w-5" aria-hidden />
                         </button>
                       ) : (
                         <button
                           type="button"
-                          className="border-border flex h-12 w-full items-center gap-3 border-t px-4 text-left disabled:opacity-60"
+                          className="border-border flex min-h-14 w-full items-center gap-3 border-t px-4 py-2 text-left disabled:opacity-60"
                           disabled={busy || addingCard}
                           onClick={() => void addCard()}
                         >
-                          <MethodLabel icon={<Plus />}>{addingCard ? "Opening…" : "Add a card"}</MethodLabel>
+                          <MethodLabel chip={<AddChip />} title={addingCard ? "Opening…" : "Add"} line="Add a card" />
                         </button>
                       )
                     ) : null}
@@ -481,17 +480,21 @@ export function GuestPayScreen({
                   <div role="radiogroup" aria-label={`Tip ${m(tipCents)} with`} className="border-border border-t">
                     <p className="text-muted-foreground px-4 pt-2 text-sm">Tip {m(tipCents)} with</p>
                     {ways.includes("cash") ? (
-                      <Row on={tipWith === "cash"} icon={<Banknote />} onPick={() => setTipMethod("cash")}>
-                        Cash to the waiter
-                      </Row>
+                      <Row on={tipWith === "cash"} chip={<CashChip />} title="Cash" onPick={() => setTipMethod("cash")} />
                     ) : null}
                     {ways.includes("card") && chosenCard ? (
-                      <Row divided={ways.includes("cash")} on={tipWith === "card"} icon={<CreditCard />} onPick={() => setTipMethod("card")}>
-                        {(() => {
-                          const c = cardRows.find((x) => x.id === chosenCard);
-                          return c ? `${brandLabel(c.brand)} •••• ${c.last4}` : "Card";
-                        })()}
-                      </Row>
+                      (() => {
+                        const c = cardRows.find((x) => x.id === chosenCard);
+                        return (
+                          <Row
+                            divided={ways.includes("cash")}
+                            on={tipWith === "card"}
+                            chip={c ? <SavedCardChip last4={c.last4} /> : <PlainChip><CreditCard /></PlainChip>}
+                            title={c ? `${brandLabel(c.brand)} •••• ${c.last4}` : "Card"}
+                            onPick={() => setTipMethod("card")}
+                          />
+                        );
+                      })()
                     ) : null}
                   </div>
                 ) : null}
@@ -510,7 +513,11 @@ export function GuestPayScreen({
                   <Line label="Card" value={m(split.card_bill_cents + split.card_tip_cents)} icon={<CreditCard />} />
                 ) : null}
                 {split.cash_bill_cents + split.cash_tip_cents > 0 ? (
-                  <Line label="Cash to the waiter" value={m(split.cash_bill_cents + split.cash_tip_cents)} icon={<Banknote />} />
+                  <Line
+                    label="Cash"
+                    value={m(split.cash_bill_cents + split.cash_tip_cents)}
+                    icon={<span className="flex h-4 w-4 items-center justify-center rounded-full bg-green-400 text-[0.625rem] font-bold text-neutral-950" aria-hidden>$</span>}
+                  />
                 ) : null}
                 <div className="border-border mt-1 flex h-8 items-center justify-between gap-3 border-t pt-1 text-lg font-semibold">
                   <dt>Total</dt>
@@ -562,24 +569,23 @@ export function GuestPayScreen({
                 key={c.id}
                 divided={i > 0}
                 on={restWith === "card" && chosenCard === c.id}
-                icon={<CreditCard />}
+                chip={<SavedCardChip last4={c.last4} />}
+                title={`${brandLabel(c.brand)} •••• ${c.last4}`}
                 onPick={() => {
                   setMethod("card");
                   setCardId(c.id);
                   setMoreCards(false);
                   focusRoot();
                 }}
-              >
-                {brandLabel(c.brand)} •••• {c.last4}
-              </Row>
+              />
             ))}
             <button
               type="button"
-              className="border-border flex h-12 w-full items-center gap-3 border-t px-4 text-left disabled:opacity-60"
+              className="border-border flex min-h-14 w-full items-center gap-3 border-t px-4 py-2 text-left disabled:opacity-60"
               disabled={busy || addingCard}
               onClick={() => void addCard()}
             >
-              <MethodLabel icon={<Plus />}>{addingCard ? "Opening…" : "Add a card"}</MethodLabel>
+              <MethodLabel chip={<AddChip />} title={addingCard ? "Opening…" : "Add"} line="Add a card" />
             </button>
           </div>
         </div>
@@ -631,15 +637,17 @@ function chip(on: boolean, extra: string) {
 function Row({
   on,
   divided = false,
-  icon,
+  chip,
+  title,
+  line,
   onPick,
-  children,
 }: {
   on: boolean;
   divided?: boolean;
-  icon: React.ReactNode;
+  chip: React.ReactNode;
+  title: string;
+  line?: string;
   onPick: () => void;
-  children: React.ReactNode;
 }) {
   return (
     <button
@@ -648,12 +656,12 @@ function Row({
       aria-checked={on}
       onClick={onPick}
       className={cn(
-        "relative flex h-12 w-full items-center justify-between gap-3 px-4 text-left transition",
+        "relative flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2 text-left transition",
         divided && "border-border border-t",
         on ? "ring-foreground z-10 ring-1 ring-inset" : "hover:bg-muted/60",
       )}
     >
-      <MethodLabel icon={icon}>{children}</MethodLabel>
+      <MethodLabel chip={chip} title={title} line={line} />
       <span className={cn("h-5 w-5 shrink-0 rounded-full border-2", on ? "border-foreground bg-foreground ring-card ring-2 ring-inset" : "border-border")} aria-hidden />
     </button>
   );
@@ -671,14 +679,17 @@ function Line({ label, value, icon }: { label: string; value: string; icon?: Rea
   );
 }
 
-/** One way to pay: a grey ink icon chip, then its words (MESITA-3714). */
-function MethodLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+/** One way to pay, drawn as the Wallet draws it: the method's own chip
+ *  (green $ Cash, a black saved card, a dashed Add), its name, a quiet
+ *  second line (Pato, MESITA-3748). */
+function MethodLabel({ chip, title, line }: { chip: React.ReactNode; title: string; line?: string }) {
   return (
-    <span className="flex min-w-0 items-center gap-3">
-      <span className="bg-muted text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-lg [&>svg]:h-[18px] [&>svg]:w-[18px]" aria-hidden>
-        {icon}
+    <span className="flex min-w-0 items-center gap-3.5">
+      {chip}
+      <span className="min-w-0">
+        <span className="block truncate text-base font-semibold">{title}</span>
+        {line ? <span className="text-muted-foreground block truncate text-sm">{line}</span> : null}
       </span>
-      <span className="min-w-0 truncate text-base">{children}</span>
     </span>
   );
 }
