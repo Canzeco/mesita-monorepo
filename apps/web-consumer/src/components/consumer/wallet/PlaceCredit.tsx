@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronRight, Gift, Plus, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
+import { SizedImg } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import {
@@ -191,6 +192,36 @@ export function PlaceCredit({
   const historyKeys = groupKeys(shownHistory);
   return (
     <>
+      {/* THE PLACE FIRST (MESITA-3788, Pato: "show the logo as a circle here
+          … like you need the profile page"): its photo as a circle, its name
+          and "View place", opening its profile. A place gone from Mesita has
+          no page, so its row is not a link. */}
+      {(() => {
+        const inner = (
+          <>
+            <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full text-base font-semibold" aria-hidden>
+              {card.photo ? (
+                <SizedImg src={card.photo} size="thumb" alt="" className="h-full w-full object-cover" />
+              ) : (
+                (card.name ?? "?").trim().charAt(0).toUpperCase()
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-base font-semibold">{card.name}</span>
+              {gone ? null : <span className="text-muted-foreground block text-sm">View place</span>}
+            </span>
+            {gone ? null : <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />}
+          </>
+        );
+        const cls = "mb-3 flex items-center gap-3 rounded-2xl py-1";
+        return gone ? (
+          <div className={cls} data-house-card-place>{inner}</div>
+        ) : (
+          <PushLink href={href} className={cn(cls, "hover:bg-muted/40 -mx-2 px-2 transition")} data-house-card-place>
+            {inner}
+          </PushLink>
+        );
+      })()}
       {/* THE PINK PASS (MESITA-3774, Pato picked "A · Pink pass" of four
           rendered options): the one spot of colour on the page, in the
           brand's own pink; everything below stays achromatic. A $0 is
