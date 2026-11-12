@@ -571,7 +571,8 @@ export function CatalogRails() {
   );
 
   // PLACES 3.0'S FAMILY CHIPS (MESITA-3658, MESITA-3762): the column's
-  // rows, Top first (Saved stays the column's), as one scrolling line of
+  // rows, ❤️ Saved first and Top after it (Pato, MESITA-3763: "add saved as
+  // option before top"), as one scrolling line of
   // pills, each with its family's emoji (MESITA-3668), so the rows get the
   // whole width. The chosen pill is ink. The row and the column share
   // `chip`, so a family carries across the two tabs. THE FILTERS DISC
@@ -615,7 +616,6 @@ export function CatalogRails() {
         data-places-chips
       >
         {chips
-          .filter((c) => c.key !== SAVED_CHIP)
           .map((c) => {
             const on = chip === c.key;
             return (
@@ -626,7 +626,8 @@ export function CatalogRails() {
                   if (!on)
                     trackEvent(supabase, "home_mode_view", { mode: c.label });
                   setChip(c.key);
-                  setFamilies(chipFamilies(c.key));
+                  // Saved reads no pool: the last pool row's family stays.
+                  if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
                   e.currentTarget.scrollIntoView({
                     block: "nearest",
                     inline: "center",
