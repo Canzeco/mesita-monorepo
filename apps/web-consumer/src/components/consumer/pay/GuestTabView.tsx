@@ -28,21 +28,22 @@ import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, remem
 // nothing moved. From 2 h 30 a line asks the guest to get the waiter's scan;
 // past the three-hour window the cash is not signed and earns nothing.
 //
-// THE TOP (MESITA-3759) comes from payStrip (lib/pay-strip.ts): the six-step
-// strip at "6 · Waiter signs" while it waits, all solid and "Signed" once
+// THE TOP (MESITA-3759) comes from payStrip (lib/pay-strip.ts): the seven-step
+// strip at "7 · Waiter signs" while it waits, all solid and "Signed" once
 // the waiter signed; a payment that ended any other way has no strip and its
 // status is the heading. "Sign" is the label; the wire keeps `verified`.
 //
 // ONE OPEN PAYMENT, WALKED BACK (MESITA-3772): the strip's done segments
-// open steps 2 to 5 again as read-only views of what was paid (Bill, Tip,
-// Methods, Pay), and the header's back arrow steps 6 → 5 → 4 → 3 → 2, then
-// leaves. Step 6 ends the payment one of two ways besides the waiter's
+// open steps 2 to 6 again as read-only views of what was paid (Bill, Tip,
+// Methods, Total, Pay), and the header's back arrow steps 7 → 6 → … → 2,
+// then leaves. Total is the sums; Pay is each way and where it stands, as
+// the Pay step's instructions read (MESITA-3798). Step 7 ends the payment one of two ways besides the waiter's
 // signature: Cancel while nothing moved (the credit comes back), Close once
 // money moved and nobody signed (it ends now, no cashback). Cashback turns on
 // only with the waiter's signature, card and cash alike.
 
 /** The steps this page can show, in order (step 1, Pick, is the Pay tab). */
-const VIEW_STEPS = ["bill", "tip", "methods", "pay", "sign"] as const;
+const VIEW_STEPS = ["bill", "tip", "methods", "total", "pay", "sign"] as const;
 type ViewStep = (typeof VIEW_STEPS)[number];
 
 const FAST_MS = 1500;
@@ -84,7 +85,7 @@ export function GuestTabView({
   const { closed, green } = top;
   const verified = top.signed;
   const done = verified || closed;
-  // Only a payment with a strip can be walked back; any other shows step 6.
+  // Only a payment with a strip can be walked back; any other shows step 7.
   const shownStep: ViewStep = top.strip ? viewStep : "sign";
 
   // A lost QR (a new browser) is minted again, only for this guest's own tab.
@@ -256,7 +257,7 @@ export function GuestTabView({
     />
   );
 
-  // STEPS 2 TO 5, READ-ONLY (MESITA-3772): what was paid, from the payment
+  // STEPS 2 TO 6, READ-ONLY (MESITA-3772): what was paid, from the payment
   // itself; nothing here changes it.
   if (top.strip && shownStep !== "sign") {
     return (
@@ -507,28 +508,54 @@ function PaidStep({
     );
   }
 
-  // Pay: the sums, then each way it was paid and where it stands.
-  const cardFailed = tab.parts.some((p) => p.part === "card" && !p.paid_at && (p.status === "failed" || p.status === "expired"));
-  const ways = steps.filter((s) => s.key === "credit" || s.key === "card" || s.key === "cash");
-  const word = (s: Step) =>
-    s.key === "card" && cardFailed ? "Failed" : s.state === "done" ? "Paid" : s.note ?? (s.state === "failed" ? "Failed" : "Waiting");
-  return (
-    <dl className="border-border flex flex-col rounded-2xl border px-4 py-3 text-base tabular-nums" aria-label={label}>
-      <PaidLine label="Bill" value={m(bill)} />
-      <PaidLine label="Tip" value={tip > 0 ? m(tip) : "No tip"} />
-      <div className="border-border mt-1 flex h-8 items-center justify-between gap-3 border-t pt-1 text-lg font-semibold">
-        <dt>Total</dt>
-        <dd>{m(total)}</dd>
-      </div>
-      {ways.map((s) => (
-        <div key={s.key} className="flex min-h-7 items-center justify-between gap-3 text-sm">
-          <dt className="text-muted-foreground min-w-0 truncate">
-            {s.label} · {word(s)}
-          </dt>
-          <dd className="shrink-0">{s.cents !== null ? m(s.cents) : ""}</dd>
+  if (step === "total") {
+    return (
+      <dl className="border-border flex flex-col rounded-2xl border px-4 py-3 text-base tabular-nums" aria-label={label}>
+        <PaidLine label="Bill" value={m(bill)} />
+        <PaidLine label="Tip" value={tip > 0 ? m(tip) : "No tip"} />
+        <div className="border-border mt-1 flex h-8 items-center justify-between gap-3 border-t pt-1 text-lg font-semibold">
+          <dt>Total</dt>
+          <dd>{m(total)}</dd>
         </div>
+      </dl>
+    );
+  }
+
+  // Pay (MESITA-3798): each way, as the Pay step's instructions read, and
+  // where it stands. The card, the cash, then the credits.
+  const cardFailed = tab.parts.some((p) => p.part === "card" && !p.paid_at && (p.status === "failed" || p.status === "expired"));
+  const find = (key: Step["key"]) => steps.find((s) => s.key === key);
+  const rows: Array<{ key: string; chip: React.ReactNode; title: string; line: string; cents: number }> = [];
+  const cardStep = find("card");
+  if (cardStep) {
+    const word = cardFailed || cardStep.state === "failed" ? "Failed" : cardStep.state === "done" ? "Paid" : "Waiting";
+    rows.push({ key: "card", chip: <PlainChip><CreditCard /></PlainChip>, title: "Card", line: word, cents: card });
+  }
+  const cashStep = find("cash");
+  if (cashStep) {
+    const line = cashStep.state === "done" ? "Paid" : cashStep.state === "failed" ? cashStep.note ?? "Not signed" : "Give it to the waiter";
+    rows.push({ key: "cash", chip: <CashChip />, title: "Cash", line, cents: cash });
+  }
+  const creditStep = find("credit");
+  if (creditStep) {
+    const line = creditStep.state === "done" ? "Paid" : creditStep.note ?? "Waiting";
+    rows.push({ key: "credit", chip: <PlainChip><Wallet /></PlainChip>, title: "Credits", line, cents: tab.credit_cents });
+  }
+  return (
+    <ul className="border-border overflow-hidden rounded-2xl border" aria-label={label}>
+      {rows.map((r, i) => (
+        <li key={r.key} className={cn("flex min-h-14 items-center justify-between gap-3 px-4 py-2", i > 0 && "border-border border-t")} data-pay-way={r.key}>
+          <span className="flex min-w-0 items-center gap-3.5">
+            {r.chip}
+            <span className="min-w-0">
+              <span className="block truncate text-base font-semibold">{r.title}</span>
+              <span className="text-muted-foreground block text-sm break-words">{r.line}</span>
+            </span>
+          </span>
+          <span className="shrink-0 text-base font-semibold tabular-nums">{m(r.cents)}</span>
+        </li>
       ))}
-    </dl>
+    </ul>
   );
 }
 

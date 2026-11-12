@@ -20,7 +20,7 @@
 //              whole part grouped, the decimals exactly as typed, and the
 //              cents not typed yet as a muted ghost, so an amount always
 //              reads with two decimals ("$20.00MX", MESITA-3766).
-//   payButton  the Pay step's button and the one line under it, for every
+//   payButton  the Pay step's button and the one line above it, for every
 //              shape a split can take. The button's amount is what the tap
 //              charges or spends in the app: credit + card bill + card tip.
 //
@@ -157,28 +157,19 @@ export type PayButtonSplit = {
   card_tip_cents: number;
 };
 
-/** The Pay step's button and the line under it.
+/** The Pay step's button and the line above it (MESITA-3798). The Pay
+ *  step's rows already say how each way is paid (the card, the credits, the
+ *  cash), so the line is only the cash that stays at the table:
  *
- *    in the app, one method      Pay $690 · "Visa •••• 4242" or "Credit"
- *    credit and card             Pay $690 · "Credit $200 + Visa •••• 4242 $490"
- *    one method and cash         Pay $490 · "+ $200 cash"
- *    credit, card and cash       Pay $490 · "Credit $200 + Visa •••• 4242 $290 + $200 cash"
- *    all cash                    Confirm · $690 cash (no line)
+ *    anything moves in the app   Pay $490 · "+ $200 cash to the waiter" or none
+ *    all cash                    Show the waiter (no line)
  *
  *  The button's amount is always credit + card bill + card tip: what this
- *  tap charges or spends in the app. Cash is handed to the waiter. */
-export function payButton(
-  split: PayButtonSplit,
-  o: { cardLabel: string | null; m: (cents: number) => string },
-): { button: string; line: string | null } {
-  const credit = split.credit_cents;
-  const card = split.card_bill_cents + split.card_tip_cents;
+ *  tap charges or spends in the app. Cash is handed to the waiter, and a
+ *  cash-only tap moves nothing: it opens the QR the waiter signs. */
+export function payButton(split: PayButtonSplit, o: { m: (cents: number) => string }): { button: string; line: string | null } {
+  const inApp = split.credit_cents + split.card_bill_cents + split.card_tip_cents;
   const cash = split.cash_bill_cents + split.cash_tip_cents;
-  const inApp = credit + card;
-  if (inApp === 0) return { button: `Confirm · ${o.m(cash)} cash`, line: null };
-  const cardName = o.cardLabel ?? "Card";
-  const cashPart = cash > 0 ? `+ ${o.m(cash)} cash` : null;
-  const both = credit > 0 && card > 0 ? `Credit ${o.m(credit)} + ${cardName} ${o.m(card)}` : null;
-  const line = both ? (cashPart ? `${both} ${cashPart}` : both) : cashPart ?? (card > 0 ? cardName : "Credit");
-  return { button: `Pay ${o.m(inApp)}`, line };
+  if (inApp === 0) return { button: "Show the waiter", line: null };
+  return { button: `Pay ${o.m(inApp)}`, line: cash > 0 ? `+ ${o.m(cash)} cash to the waiter` : null };
 }

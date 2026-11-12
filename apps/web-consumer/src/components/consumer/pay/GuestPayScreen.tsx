@@ -24,9 +24,11 @@ import { BillHelpSheet } from "./BillHelpSheet";
 import { PaySteps } from "./PaySteps";
 
 // THE GUEST PAYS ALONE (MESITA-3709), one step per screen at /pay/<placeId>
-// (MESITA-3715). These are steps 2 to 5 of the six pay steps (MESITA-3759,
-// lib/pay-steps in place-profile): Bill (before tip) → Tip → Methods → Pay
-// (Bill, Tip, Total, the cashback, and one button that says what the tap
+// (MESITA-3715). These are steps 2 to 6 of the seven pay steps (MESITA-3759,
+// MESITA-3798, lib/pay-steps in place-profile): Bill (before tip) → Tip →
+// Methods → Total (Bill, Tip, Total, the cashback; no money moves) → Pay
+// (how each part is paid: "Pay with your card" charged now with Stripe, "Pay
+// the waiter in cash", or credits, then one button that says what the tap
 // does). The header's back arrow steps back. After Pay the guest lands on
 // their payment's page (/pay/tab/<id>) and shows its QR to the waiter, who
 // signs it. Every rule and peso is the server's; this screen proposes.
@@ -40,7 +42,7 @@ import { PaySteps } from "./PaySteps";
 // dialog.
 //
 //   ┌ photo · name ················ 2 · Bill ┐   PaySteps, row one (36px)
-//   │ ━━━━ ▭▭▭▭ ──── ──── ──── ────           │   PaySteps, six segments
+//   │ ━━━━ ▭▭▭▭ ──── ──── ──── ──── ────      │   PaySteps, seven segments
 //   │ body (flex-1: keypad docked at the      │
 //   │       bottom / rows card at the top)    │
 //   │ [ status line ]                         │
@@ -358,13 +360,16 @@ export function GuestPayScreen({
   }
 
   const otherOk = readTip(other) !== null;
+  // Methods and Total share one rule: Next stays off while anything would
+  // stop Pay (Total moves no money; it only shows the sums).
+  const methodsOk = !problem && (creditCovers || !!restWith) && !methodsWaitOnCards({ cardOk, load: cardsLoad, method, creditCovers });
   const nextOk =
     step === "bill"
       ? billCents > 0
       : step === "tip"
       ? tip !== null && (tip !== "other" || otherOk)
-      : step === "methods"
-      ? !problem && (creditCovers || !!restWith) && !methodsWaitOnCards({ cardOk, load: cardsLoad, method, creditCovers })
+      : step === "methods" || step === "total"
+      ? methodsOk
       : true;
   // Methods at a place where only a card can pay what is left, and the
   // guest has none saved (the list loaded, empty): the bottom button adds a
@@ -422,7 +427,7 @@ export function GuestPayScreen({
   // (or the loading row) is the message.
   const cardsUnknown = cardOk && cards === null;
   const shownProblem = cardsUnknown && restWith === "card" ? null : problem;
-  const status = step === "methods" || step === "pay" ? error ?? shownProblem?.message ?? null : error;
+  const status = step === "methods" || step === "total" || step === "pay" ? error ?? shownProblem?.message ?? null : error;
   // One row of each radio group is in the tab order: the chosen one, or the
   // first when none is chosen.
   const cardRowOn = restWith === "card" && shownCards.some((c) => c.id === chosenCard);
@@ -430,8 +435,28 @@ export function GuestPayScreen({
   const chosenCardRow = cardRows.find((c) => c.id === chosenCard);
   const cardLabel = chosenCardRow ? `${brandLabel(chosenCardRow.brand)} •••• ${chosenCardRow.last4}` : null;
   // The Pay step's button and its line: what this tap charges or spends in
-  // the app, and how the rest goes (lib/pay-keypad.ts).
-  const payNow = split ? payButton(split, { cardLabel, m }) : null;
+  // the app, and the cash left for the waiter (lib/pay-keypad.ts).
+  const payNow = split ? payButton(split, { m }) : null;
+  // The Pay step's instructions (MESITA-3798): one row per way, bill and tip
+  // together, the card first, then the cash, then the credits.
+  const cardCents = split ? split.card_bill_cents + split.card_tip_cents : 0;
+  const cashCents = split ? split.cash_bill_cents + split.cash_tip_cents : 0;
+  const creditCents = split?.credit_cents ?? 0;
+  const payHeading = cardCents > 0 ? "Pay with your card" : cashCents > 0 ? "Pay the waiter in cash" : "Pay with credits";
+  const payRows: Array<{ key: string; chip: React.ReactNode; title: string; cents: number; line: string }> = [];
+  if (cardCents > 0) {
+    payRows.push({
+      key: "card",
+      chip: chosenCardRow ? <SavedCardChip last4={chosenCardRow.last4} /> : <PlainChip><CreditCard /></PlainChip>,
+      title: cardLabel ?? "Card",
+      cents: cardCents,
+      line: "Charged now with Stripe",
+    });
+  }
+  if (cashCents > 0) payRows.push({ key: "cash", chip: <CashChip />, title: "Cash", cents: cashCents, line: "Give it to the waiter when they sign" });
+  if (creditCents > 0) {
+    payRows.push({ key: "credit", chip: <PlainChip><Wallet /></PlainChip>, title: "Credits", cents: creditCents, line: "From your credits here" });
+  }
 
   return (
     <>
@@ -614,7 +639,7 @@ export function GuestPayScreen({
             </>
           ) : null}
 
-          {step === "pay" && split ? (
+          {step === "total" && split ? (
             <>
               <dl className="border-border flex flex-col rounded-2xl border px-4 py-3 text-base tabular-nums" data-guest-split>
                 <Line label="Bill" value={m(billCents)} />
@@ -629,6 +654,27 @@ export function GuestPayScreen({
                   You get {m(split.cashback_cents)} in credits to spend here next time
                 </p>
               ) : null}
+            </>
+          ) : null}
+
+          {step === "pay" && split ? (
+            <>
+              <h3 className="font-display mt-5 shrink-0 text-center text-lg font-semibold">{payHeading}</h3>
+              <ul className="border-border mt-4 overflow-hidden rounded-2xl border" aria-label="How you pay" data-guest-pay-ways>
+                {payRows.map((r, i) => (
+                  <li key={r.key} className={cn("flex min-h-14 items-center justify-between gap-3 px-4 py-2", i > 0 && "border-border border-t")} data-pay-way={r.key}>
+                    {/* The instruction wraps, never truncates: it is what the guest does. */}
+                    <span className="flex min-w-0 items-center gap-3.5">
+                      {r.chip}
+                      <span className="min-w-0">
+                        <span className="block truncate text-base font-semibold">{r.title}</span>
+                        <span className="text-muted-foreground block text-sm break-words">{r.line}</span>
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-base font-semibold tabular-nums">{m(r.cents)}</span>
+                  </li>
+                ))}
+              </ul>
             </>
           ) : null}
 
