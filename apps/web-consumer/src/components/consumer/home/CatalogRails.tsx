@@ -104,12 +104,15 @@ const BAR_RED = "before:bg-red-600";
 // ONE ROW, CLOSED OR OPEN (Pato, MESITA-3800: "it must be vertically
 // aligned the closed menu with the open menu"): the rail and the open menu
 // draw every family in the same 44px row, the emoji centred in the same 48px
-// column, so opening only grows the width. The chosen row is white with the
-// blue bar (red for Saved) in both.
+// column, so opening only grows the width. DARK, REALLY DARK (Pato,
+// MESITA-3812: "make the sidebar menu dark, really dark"): the ink token
+// (bg-foreground, never a raw colour), names in text-card, the chosen row a
+// lighter ink band (bg-card/15) with the blue bar (red for Saved) in both.
+const RAIL_SURFACE = "bg-foreground text-card";
 const RAIL_ROW =
-  "text-foreground relative flex h-11 w-full shrink-0 items-center text-left transition";
+  "text-card relative flex h-11 w-full shrink-0 items-center text-left transition";
 const RAIL_ROW_ON =
-  "bg-card before:absolute before:inset-y-0 before:left-0 before:w-1";
+  "bg-card/15 before:absolute before:inset-y-0 before:left-0 before:w-1";
 const RAIL_EMOJI =
   "flex w-12 shrink-0 justify-center text-xl leading-none";
 
@@ -490,7 +493,7 @@ export function CatalogRails() {
   const chips = placesChips();
   // PLACES' EMOJI RAIL (Pato, MESITA-3781: "put a lateral menu when you
   // only show the items … i can click the lateral vertical menu and open with
-  // names"): a slim grey column (bg-border, MESITA-3792) at the left edge
+  // names"): a slim dark column (ink since MESITA-3812) at the left edge
   // with only each family's emoji, ❤️ Saved and ⭐ Top first (MESITA-3763),
   // every one full strength (MESITA-3785). A TAP PICKS AND OPENS (Pato,
   // MESITA-3792: "CLICK A, THE ITEM GETS SELECTED, THE MENU GETS LARGER").
@@ -546,7 +549,7 @@ export function CatalogRails() {
             RAIL_ROW,
             on
               ? cn(RAIL_ROW_ON, c.key === SAVED_CHIP ? BAR_RED : BAR_BLUE)
-              : "hover:bg-card/60",
+              : "hover:bg-card/10",
             on && open && "font-semibold",
           )}
         >
@@ -568,7 +571,7 @@ export function CatalogRails() {
   const railScrolled = (el: HTMLElement) =>
     setRailAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
   const emojiRail = (
-    <div className="bg-border relative flex w-12 shrink-0 flex-col">
+    <div className={cn(RAIL_SURFACE, "relative flex w-12 shrink-0 flex-col")}>
       <nav
         ref={railRef}
         aria-label="Families"
@@ -590,7 +593,7 @@ export function CatalogRails() {
             if (el)
               el.scrollBy({ top: el.clientHeight * 0.8, behavior: "smooth" });
           }}
-          className="from-border via-border/90 text-muted-foreground absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t to-transparent pb-1.5"
+          className="from-foreground via-foreground/90 text-card/70 absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t to-transparent pb-1.5"
           data-places-rail-more
         >
           <ChevronDown className="h-4 w-4" strokeWidth={2.5} aria-hidden />
@@ -618,7 +621,8 @@ export function CatalogRails() {
         ref={menuRef}
         aria-label="Families menu"
         className={cn(
-          "bg-border shadow-elev absolute inset-y-0 left-0 z-20 flex flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain transition-[width] duration-200 ease-out motion-reduce:transition-none",
+          RAIL_SURFACE,
+          "shadow-elev absolute inset-y-0 left-0 z-20 flex flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain transition-[width] duration-200 ease-out motion-reduce:transition-none",
           "scrollbar-hide",
           // A THIRD OF THE SCREEN (Pato, MESITA-3809: "make this menu 1/3
           // of the screen when open, not half").
