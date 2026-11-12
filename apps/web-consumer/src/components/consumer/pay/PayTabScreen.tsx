@@ -71,6 +71,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
           onWaiterCode={setFormPlaceId}
           onDone={leave}
           onPayAgain={(placeId) => navigateTo(router, payPlacePath(placeId), { replace: true })}
+          registerBack={registerBack}
         />
         )}
       </div>
