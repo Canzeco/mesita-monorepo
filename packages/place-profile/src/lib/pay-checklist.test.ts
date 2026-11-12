@@ -44,7 +44,7 @@ describe("payChecklist", () => {
 
   it("names the action on the waiter's button, never the total", () => {
     const money = (c: number) => `MX$${c / 100}`;
-    expect(verifyLabel({ cashBillCents: 25000, cashTipCents: 0 }, money)).toBe("Verify · collect MX$250");
-    expect(verifyLabel({ cashBillCents: 0, cashTipCents: 0 }, money)).toBe("Verify · paid in the app");
+    expect(verifyLabel({ cashBillCents: 25000, cashTipCents: 0 }, money)).toBe("Sign · collect MX$250");
+    expect(verifyLabel({ cashBillCents: 0, cashTipCents: 0 }, money)).toBe("Sign · paid in the app");
   });
 });

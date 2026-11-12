@@ -10,10 +10,17 @@
 //   readTip    a typed tip: readAmount, and 0 too (no tip is Other with 0
 //              typed, MESITA-3748; a bill is never 0).
 //   draftTip   draftAmount for a typed tip: it keeps the 0.
-//   payProblem what stops Pay, in the guest's words (null = good to go).
+//   payProblem what stops Pay: a code and the guest's sentence (null =
+//              good to go). The screen acts on the code, never the sentence.
 //   tipWays    the ways a tip can go when credit pays the whole bill: only
 //              those payProblem would accept, so the screen never offers a
 //              way the next check refuses.
+//   amountShown  the typed amount in the app's money format (MESITA-3759):
+//              the formatter's own prefix and suffix for the currency, the
+//              whole part grouped, the decimals exactly as typed.
+//   payButton  the Pay step's button and the one line under it, for every
+//              shape a split can take. The button's amount is what the tap
+//              charges or spends in the app: credit + card bill + card tip.
 //
 // Every peso is still the server's; these only decide what the screen offers.
 
@@ -94,24 +101,77 @@ export function paySplit(a: PayProblemArgs) {
   });
 }
 
-/** What stops Pay, in the guest's words; null when it can go. */
-export function payProblem(a: PayProblemArgs): string | null {
+export type PayProblemCode = "card_unavailable" | "add_card" | "cash_off" | "card_min" | "card_tip_alone";
+export type PayProblem = { code: PayProblemCode; message: string };
+
+/** What stops Pay: its code and the guest's sentence; null when it can go. */
+export function payProblem(a: PayProblemArgs): PayProblem | null {
   if (a.billCents <= 0) return null;
   const split = paySplit(a);
   const cardParts = split.card_bill_cents + split.card_tip_cents;
   const cashParts = split.cash_bill_cents + split.cash_tip_cents;
   if (cashParts === 0 && cardParts === 0) return null;
-  if (cardParts > 0 && a.place.card_ok !== true) return TAB_REFUSAL.card_unavailable;
-  if (cardParts > 0 && !a.cardId) return "Add a card to pay by card.";
-  if (cashParts > 0 && a.place.outside_ok !== true) return TAB_REFUSAL.cash_off;
+  if (cardParts > 0 && a.place.card_ok !== true) return { code: "card_unavailable", message: TAB_REFUSAL.card_unavailable };
+  if (cardParts > 0 && !a.cardId) return { code: "add_card", message: "Add a card to pay by card." };
+  if (cashParts > 0 && a.place.outside_ok !== true) return { code: "cash_off", message: TAB_REFUSAL.cash_off };
   if (cardParts > 0 && cardParts < a.place.card_min_cents) {
-    return `Cards need at least ${money(a.place.card_min_cents, a.place.currency)} here.`;
+    return { code: "card_min", message: `Cards need at least ${money(a.place.card_min_cents, a.place.currency)} here.` };
   }
-  if (split.card_tip_alone) return TAB_REFUSAL.card_tip_alone;
+  if (split.card_tip_alone) return { code: "card_tip_alone", message: TAB_REFUSAL.card_tip_alone };
   return null;
 }
 
 /** The ways the tip can go when credit already pays the whole bill. */
 export function tipWays(a: Omit<PayProblemArgs, "tipWith">): PayWith[] {
   return (["cash", "card"] as const).filter((w) => payProblem({ ...a, tipWith: w }) === null);
+}
+
+/** The typed amount as the screen draws it. `prefix` and `suffix` are what
+ *  the money formatter puts around an amount in this currency (pesos read
+ *  "$" before and "MX" after); `body` is the whole part with thousands
+ *  separators and the decimal part exactly as typed ("12." stays "12.").
+ *  Nothing typed: the prefix alone, no "0" and no suffix. */
+export function amountShown(text: string, currency: string): { prefix: string; body: string; suffix: string } {
+  const zero = money(0, currency);
+  const at = zero.indexOf("0");
+  const prefix = at < 0 ? "" : zero.slice(0, at);
+  if (text === "") return { prefix, body: "", suffix: "" };
+  const dot = text.indexOf(".");
+  const whole = dot < 0 ? text : text.slice(0, dot);
+  const rest = dot < 0 ? "" : text.slice(dot);
+  return { prefix, body: whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + rest, suffix: at < 0 ? "" : zero.slice(at + 1) };
+}
+
+export type PayButtonSplit = {
+  credit_cents: number;
+  cash_bill_cents: number;
+  cash_tip_cents: number;
+  card_bill_cents: number;
+  card_tip_cents: number;
+};
+
+/** The Pay step's button and the line under it.
+ *
+ *    in the app, one method      Pay $690 · "Visa •••• 4242" or "Credit"
+ *    credit and card             Pay $690 · "Credit $200 + Visa •••• 4242 $490"
+ *    one method and cash         Pay $490 · "+ $200 cash"
+ *    credit, card and cash       Pay $490 · "Credit $200 + Visa •••• 4242 $290 + $200 cash"
+ *    all cash                    Confirm · $690 cash (no line)
+ *
+ *  The button's amount is always credit + card bill + card tip: what this
+ *  tap charges or spends in the app. Cash is handed to the waiter. */
+export function payButton(
+  split: PayButtonSplit,
+  o: { cardLabel: string | null; m: (cents: number) => string },
+): { button: string; line: string | null } {
+  const credit = split.credit_cents;
+  const card = split.card_bill_cents + split.card_tip_cents;
+  const cash = split.cash_bill_cents + split.cash_tip_cents;
+  const inApp = credit + card;
+  if (inApp === 0) return { button: `Confirm · ${o.m(cash)} cash`, line: null };
+  const cardName = o.cardLabel ?? "Card";
+  const cashPart = cash > 0 ? `+ ${o.m(cash)} cash` : null;
+  const both = credit > 0 && card > 0 ? `Credit ${o.m(credit)} + ${cardName} ${o.m(card)}` : null;
+  const line = both ? (cashPart ? `${both} ${cashPart}` : both) : cashPart ?? (card > 0 ? cardName : "Credit");
+  return { button: `Pay ${o.m(inApp)}`, line };
 }

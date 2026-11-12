@@ -906,8 +906,8 @@ function SplitScreen({
 
         {step === "tip" && tipChoice === "other" ? (
           <>
-            <div className="flex h-11 shrink-0 items-center justify-between gap-3">
-              <AmountDisplay text={tipText} currency={tab.currency} label="Tip" className="[&>span:nth-child(2)]:text-4xl" />
+            <div className="flex h-12 shrink-0 items-center justify-between gap-3">
+              <AmountDisplay text={tipText} currency={tab.currency} label="Tip" />
               <button
                 type="button"
                 className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center text-sm font-semibold underline"

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import type { PayPlace } from "@/lib/api/wallet";
-import { draftAmount, draftTip, keyLive, type PadKey, payProblem, type PayProblemArgs, pressKey, readTip, tipWays } from "@/lib/pay-keypad";
+import { tabSplit } from "@/lib/api/tab";
+import { money } from "@/lib/api/wallet";
+import { amountShown, draftAmount, draftTip, keyLive, type PadKey, payButton, payProblem, type PayProblemArgs, pressKey, readTip, tipWays } from "@/lib/pay-keypad";
 
 // Money (MVP test rule): the keypad is the only way a guest types a bill or
 // a tip, so every text it can build must be one readAmount reads; and the
@@ -137,6 +139,143 @@ describe("tipWays", () => {
             for (const cardId of ["pm_1", null]) {
               const a = covered({ card_ok, outside_ok, card_min_cents }, tip, cardId);
               for (const w of tipWays(a)) expect(payProblem({ ...a, tipWith: w })).toBeNull();
+            }
+  });
+});
+
+describe("payProblem", () => {
+  // The screen acts on the code (Add a card), so each stop has its own.
+  const paying = (p: Partial<PayPlace>, over: Partial<PayProblemArgs> = {}): PayProblemArgs => ({
+    place: place(p),
+    billCents: 30000,
+    tipCents: 0,
+    spendableCents: 0,
+    useCredit: false,
+    restWith: "card",
+    tipWith: "card",
+    cardId: "pm_1",
+    ...over,
+  });
+  it("a card part with no saved card is add_card", () => {
+    expect(payProblem(paying({}, { cardId: null }))?.code).toBe("add_card");
+  });
+  it("credit covering the bill needs no card", () => {
+    expect(payProblem(paying({}, { cardId: null, useCredit: true, spendableCents: 30000 }))).toBeNull();
+  });
+  it("each other stop has its own code and a sentence", () => {
+    expect(payProblem(paying({ card_ok: false }))?.code).toBe("card_unavailable");
+    expect(payProblem(paying({ outside_ok: false }, { restWith: "cash", tipWith: "cash" }))?.code).toBe("cash_off");
+    expect(payProblem(paying({ card_min_cents: 50000 }))?.code).toBe("card_min");
+    expect(payProblem(paying({}, { restWith: "cash", tipCents: 3000, tipWith: "card" }))?.code).toBe("card_tip_alone");
+    expect(payProblem(paying({ card_min_cents: 50000 }))?.message).toBeTruthy();
+    expect(payProblem(paying({}))).toBeNull();
+  });
+});
+
+describe("amountShown", () => {
+  // The prefix and suffix are the money formatter's own for the currency.
+  const zero = money(0, "mxn");
+  const prefix = zero.slice(0, zero.indexOf("0"));
+  const suffix = zero.slice(zero.indexOf("0") + 1);
+  it("nothing typed is the prefix alone", () => {
+    expect(amountShown("", "mxn")).toEqual({ prefix, body: "", suffix: "" });
+  });
+  it("a typed 0 is a 0", () => {
+    expect(amountShown("0", "mxn")).toEqual({ prefix, body: "0", suffix });
+  });
+  it("groups the whole part", () => {
+    expect(amountShown("1250", "mxn").body).toBe("1,250");
+    expect(amountShown("1234567.89", "mxn").body).toBe("1,234,567.89");
+    expect(amountShown("999", "mxn").body).toBe("999");
+  });
+  it("keeps the decimals exactly as typed", () => {
+    expect(amountShown("12.", "mxn").body).toBe("12.");
+    expect(amountShown("0.5", "mxn").body).toBe("0.5");
+    expect(amountShown("1250.50", "mxn").body).toBe("1,250.50");
+  });
+  it("a whole amount reads as the money formatter writes it", () => {
+    const a = amountShown("1250", "mxn");
+    expect(a.prefix + a.body + a.suffix).toBe(money(125000, "mxn"));
+    const usd = amountShown("1250", "usd");
+    expect(usd.prefix + usd.body + usd.suffix).toBe(money(125000, "usd"));
+  });
+});
+
+describe("payButton", () => {
+  const m = (c: number) => money(c, "mxn");
+  const cardLabel = "Visa •••• 4242";
+  const split = (a: { bill: number; tip?: number; credit?: number; billWith: "cash" | "card"; tipWith?: "cash" | "card" }) =>
+    tabSplit({
+      billCents: a.bill,
+      tipCents: a.tip ?? 0,
+      spendableCents: a.credit ?? 0,
+      useCredit: (a.credit ?? 0) > 0,
+      cashBackBps: 0,
+      billWith: a.billWith,
+      tipWith: a.tipWith ?? a.billWith,
+    });
+  const btn = (s: ReturnType<typeof split>) => payButton(s, { cardLabel, m });
+
+  it("card only: the whole amount, the card's name", () => {
+    expect(btn(split({ bill: 60000, tip: 9000, billWith: "card" }))).toEqual({ button: `Pay ${m(69000)}`, line: cardLabel });
+  });
+  it("credit only: the whole amount, Credit", () => {
+    expect(btn(split({ bill: 60000, credit: 80000, billWith: "card" }))).toEqual({ button: `Pay ${m(60000)}`, line: "Credit" });
+  });
+  it("credit and card: both named, name then amount", () => {
+    expect(btn(split({ bill: 60000, tip: 9000, credit: 20000, billWith: "card" }))).toEqual({
+      button: `Pay ${m(69000)}`,
+      line: `Credit ${m(20000)} + ${cardLabel} ${m(49000)}`,
+    });
+  });
+  it("card with a cash tip: the card amount, plus the cash", () => {
+    expect(btn(split({ bill: 49000, tip: 20000, billWith: "card", tipWith: "cash" }))).toEqual({
+      button: `Pay ${m(49000)}`,
+      line: `+ ${m(20000)} cash`,
+    });
+  });
+  it("credit with the rest in cash: the credit amount, plus the cash", () => {
+    expect(btn(split({ bill: 60000, tip: 9000, credit: 20000, billWith: "cash" }))).toEqual({
+      button: `Pay ${m(20000)}`,
+      line: `+ ${m(49000)} cash`,
+    });
+  });
+  it("credit, card and a cash tip: both named, then the cash", () => {
+    expect(btn(split({ bill: 60000, tip: 9000, credit: 20000, billWith: "card", tipWith: "cash" }))).toEqual({
+      button: `Pay ${m(60000)}`,
+      line: `Credit ${m(20000)} + ${cardLabel} ${m(40000)} + ${m(9000)} cash`,
+    });
+  });
+  it("credit covers the bill, the tip in cash or by card", () => {
+    expect(btn(split({ bill: 60000, tip: 9000, credit: 60000, billWith: "cash", tipWith: "cash" }))).toEqual({
+      button: `Pay ${m(60000)}`,
+      line: `+ ${m(9000)} cash`,
+    });
+    expect(btn(split({ bill: 60000, tip: 9000, credit: 60000, billWith: "cash", tipWith: "card" }))).toEqual({
+      button: `Pay ${m(69000)}`,
+      line: `Credit ${m(60000)} + ${cardLabel} ${m(9000)}`,
+    });
+  });
+  it("all cash: Confirm with the cash amount, no line", () => {
+    expect(btn(split({ bill: 60000, tip: 9000, billWith: "cash" }))).toEqual({ button: `Confirm · ${m(69000)} cash`, line: null });
+  });
+  it("the button's amount is always credit + card bill + card tip", () => {
+    for (const bill of [100, 49000, 60000, 300050])
+      for (const tip of [0, 500, 9000])
+        for (const credit of [0, 100, 20000, 60000, 999999])
+          for (const billWith of ["cash", "card"] as const)
+            for (const tipWith of ["cash", "card"] as const) {
+              const s = split({ bill, tip, credit, billWith, tipWith });
+              const inApp = s.credit_cents + s.card_bill_cents + s.card_tip_cents;
+              const cash = s.cash_bill_cents + s.cash_tip_cents;
+              const b = btn(s);
+              expect(inApp + cash).toBe(s.total_cents);
+              if (inApp === 0) expect(b).toEqual({ button: `Confirm · ${m(cash)} cash`, line: null });
+              else {
+                expect(b.button).toBe(`Pay ${m(inApp)}`);
+                // The cash part is on the line exactly when there is one.
+                expect(b.line?.endsWith(`+ ${m(cash)} cash`) ?? false).toBe(cash > 0);
+              }
             }
   });
 });

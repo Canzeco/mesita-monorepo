@@ -3,16 +3,19 @@
 import { useEffect, useState } from "react";
 import { clockTime, moneyLabel, readAmount } from "@mesita/place-profile/lib/money";
 import { payChecklist, verifyLabel } from "@mesita/place-profile/lib/pay-checklist";
+import { payStepLabel, SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { listPayments, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
 import { keepStaff, readStaff } from "@/lib/staff-key";
 
 // The waiter's side of a guest's payment (MESITA-3708). The guest typed the
 // amount, chose how to pay and paid; the waiter scanned their QR and lands
-// here. Top to bottom: the amount before tip (to match the ticket), the tip,
-// the same checklist the guest sees, one action line, the live clock, and one
-// button that names the action. A phone signed in with the waiter code may
-// verify (MESITA-3734: there is no Staff QR); any other phone types the
-// waiter code here first, once per 12-hour shift.
+// here. Top to bottom: the heading "Sign" (MESITA-3759: no number, no
+// segments), the amount before tip (to match the ticket), the tip, the same
+// checklist the guest sees, one action line, the live clock, what signing
+// means, and one button that names the action. A phone signed in with the
+// waiter code may sign (MESITA-3734: there is no Staff QR); any other phone
+// types the waiter code here first, once per 12-hour shift. Labels say
+// "Sign"; names in code and on the wire keep "verify".
 
 /** A live clock: a screenshot of this page is visibly stale. */
 function useNow(): Date {
@@ -84,7 +87,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
       return;
     }
     if (r.code === "short" && typeof r.detail.missing_cents === "number" && cashCents !== null) {
-      setError(`${money(r.detail.missing_cents)} short. Ask for ${money(r.detail.missing_cents)} more, or verify ${money(cashCents)} received.`);
+      setError(SIGN.shortOrSignFor(money(r.detail.missing_cents), money(cashCents)));
       return;
     }
     if (r.code === "card_pending") return setError("Card still going through");
@@ -100,7 +103,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
     setError(null);
     try {
       const r = await verifyTab({ token, place_id: placeId, staff_token: staffToken, cash_received_cents: owed > 0 ? cashCents : null });
-      if (r === "failed") return setError("Couldn't reach Mesita. Tap Verify again.");
+      if (r === "failed") return setError(SIGN.tapSignAgain);
       if ("refused" in r) {
         refused(r);
         if (r.code === "card_pending") setTimeout(() => void onChanged(), 2000);
@@ -155,7 +158,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
         <main className="tab-paid tab-paid-alert" data-tab-state="verified-elsewhere" role="alert">
           {band}
           <span className="tab-paid-tick" aria-hidden>!</span>
-          <p className="tab-paid-title">Verified by another phone at {clockTime(verifiedAt)}</p>
+          <p className="tab-paid-title">{SIGN.signedElsewhereAt(clockTime(verifiedAt))}</p>
           <p className="tab-paid-amount">{money(tab.bill_cents ?? 0)}</p>
           <p className="tab-paid-line">Check with your team before the guest leaves.</p>
           <p className="tab-paid-line">{tab.place.name ?? "A Mesita place"}</p>
@@ -168,7 +171,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
         {band}
         <span className="tab-paid-tick" aria-hidden>✓</span>
         <p className="tab-paid-title" role="status">
-          {again ? "Already verified" : "Verified"} · {clockTime(verifiedAt)}
+          {again ? SIGN.alreadySignedAt(clockTime(verifiedAt)) : SIGN.signedAt(clockTime(verifiedAt))}
         </p>
         <p className="tab-paid-amount">{money(tab.bill_cents ?? 0)}</p>
         {tip > 0 ? <p className="tab-paid-line">+ {money(tip)} tip</p> : null}
@@ -221,6 +224,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
     <main className="proof" data-tab-state="verify">
       {band}
       {reconnecting}
+      <h1>{payStepLabel("sign", "waiter")}</h1>
       <p className="verify-amount" aria-label={`Amount before tip ${money(tab.bill_cents ?? 0)}`}>
         {money(tab.bill_cents ?? 0)}
       </p>
@@ -273,8 +277,9 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
             {error}
           </p>
         ) : null}
+        <p>{SIGN.meaning}</p>
         <button type="submit" disabled={busy || !cashOk || tab.card_pending === true} style={{ minHeight: 56 }}>
-          {busy ? "Verifying…" : verifyLabel({ cashBillCents: owed > 0 ? cashCents ?? owed : 0, cashTipCents: 0 }, money)}
+          {busy ? SIGN.signing : verifyLabel({ cashBillCents: owed > 0 ? cashCents ?? owed : 0, cashTipCents: 0 }, money)}
         </button>
       </form>
       <p className="proof-place">{tab.place.name ?? "A Mesita place"}</p>
