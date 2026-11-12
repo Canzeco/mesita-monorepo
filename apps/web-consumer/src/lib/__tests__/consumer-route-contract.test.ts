@@ -10,6 +10,8 @@ import {
 import { shouldGate } from "@/lib/supabase/middleware";
 import {
   consumerAuthDestination,
+  oauthCallbackPath,
+  oauthFailedPath,
   safeNextPath,
   withNext,
 } from "@/lib/auth-redirect";
@@ -619,6 +621,8 @@ describe("middleware auth wall (shouldGate)", () => {
     "/discover/chat", // 308s to /search/chat (MESITA-2401)
     "/discover/favs", // 308s to Home (MESITA-2383)
     "/onboard",
+    // Google hands a signed-out guest back here with ?code= (MESITA-3777).
+    "/auth/callback",
     // Not gated but also unreachable as pages — next.config 308s them to a
     // canonical destination that IS gated.
     "/new-visit",
@@ -680,6 +684,21 @@ describe("?next= threading (safeNextPath / withNext)", () => {
     );
     expect(withNext("/onboard", null)).toBe("/onboard");
     expect(withNext("/onboard", "//evil.com")).toBe("/onboard");
+  });
+
+  it("survives Continue with Google: callback → post-signin (MESITA-3777)", () => {
+    // The Pay QR's next carries its own `?place=`, so it must be encoded.
+    const pay = "/pay?place=7f3c2a10-1111-4222-8333-944455556666";
+    const callback = oauthCallbackPath(pay);
+    expect(callback).toBe(`/auth/callback?next=${encodeURIComponent(pay)}`);
+    const back = new URL(callback, "https://mesita.ai").searchParams.get("next");
+    expect(back).toBe(pay);
+    expect(consumerAuthDestination(back ?? undefined)).toBe(
+      `/auth/post-signin?next=${encodeURIComponent(pay)}`,
+    );
+    expect(oauthCallbackPath("//evil.com")).toBe("/auth/callback");
+    expect(oauthFailedPath(pay)).toBe(`/?error=oauth_failed&next=${encodeURIComponent(pay)}`);
+    expect(oauthFailedPath("https://evil.com")).toBe("/?error=oauth_failed");
   });
 
   it("survives the wall → post-signin → onboard round trip", () => {

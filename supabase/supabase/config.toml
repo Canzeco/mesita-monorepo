@@ -40,7 +40,8 @@ file_size_limit = "50MiB"
 # credentials, SMS OTP length, rate limits, captcha) live in the Supabase
 # dashboard and are NOT represented here, so do not run `supabase config
 # push` to "sync" them: it would push this file over production, pointing
-# site_url at localhost. Auth changes on the hosted project are a human step.
+# site_url at localhost. Hosted auth changes go through the Management API
+# (PATCH /v1/projects/<ref>/config/auth) under an issue; secrets stay human.
 # To check what production actually has, probe it (the three auth doors: Rules §2).
 [auth]
 enabled = true
@@ -59,24 +60,35 @@ enable_anonymous_sign_ins = false
 # enrol if they want. Admin-side enforcement lives in admin-signin-email.
 enable_manual_linking = false
 
-# Email — password only. No magic link, no email OTP. Consumers don't get
-# email auth at all; business + admin live here.
+# Email — a one-time code (MESITA-3777): consumers can sign in with an email
+# code beside phone and Google. Cloud sends 8 digits (mailer_otp_length); both
+# templates below carry {{ .Token }}, never a link. Cloud needs a custom SMTP
+# provider before guests receive it (the built-in mailer reaches team members
+# only); until then the consumer app hides the email door.
 [auth.email]
 enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 secure_password_change = false
 max_frequency = "1s"
-otp_length = 6
+otp_length = 8
 otp_expiry = 3600
+
+[auth.email.template.magic_link]
+subject = "Your Mesita code"
+content_path = "./supabase/templates/email-code.html"
+
+[auth.email.template.confirmation]
+subject = "Your Mesita code"
+content_path = "./supabase/templates/email-code.html"
 
 # Phone — Twilio Programmable Messaging (NOT Twilio Verify). Since MESITA-3405
 # the cloud texts the code through the Send SMS hook below
 # (supabase-auth-send-sms), which keeps it so "Call me with the code" can say
 # it, and sends it through the same Messaging Service (+16282784122).
 # [auth.sms.twilio] is what Auth uses with the hook off (this local stack).
-# Consumers + staff sign in here; businesses + admins never see this
-# provider. Twilio Verify is the standing fallback if Mexican carriers
+# Consumers (beside Google and email) + staff sign in here; businesses +
+# admins never see this provider. Twilio Verify is the standing fallback if Mexican carriers
 # filter the US long code.
 [auth.sms]
 enable_signup = true
@@ -98,7 +110,9 @@ auth_token = "env(TWILIO_AUTH_TOKEN)"
 enabled = false
 uri = "http://host.docker.internal:54321/functions/v1/supabase-auth-send-sms"
 
-# OAuth providers — all explicitly disabled. Spec: no Google, no Apple.
+# OAuth. Google is ON in the cloud (client in the dashboard): Business and
+# Admin sign in with it, and consumers can Continue with Google (MESITA-3777).
+# Off on the local stack, which has no client secret. No Apple yet.
 [auth.external.google]
 enabled = false
 
