@@ -123,6 +123,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       payJoin: { prefix: "/pay/join/" },
       payReceipt: { prefix: "/pay/receipt/" },
       visit: { prefix: "/activity/visit/" },
+      credit: { prefix: "/activity/credit/" },
       // Pay's second half (MESITA-3698).
       wallet: "/wallet",
       walletPlace: { prefix: "/wallet/" },

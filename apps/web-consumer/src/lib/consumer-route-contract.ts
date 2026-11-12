@@ -77,6 +77,9 @@ export const CONSUMER_ROUTES = {
   // tickets and the output ticket must be different"): what was paid, how,
   // and what came back. An open bill stays /pay/tab/<id>; /visit/ is a legacy address.
   visit: { prefix: "/activity/visit/" },
+  // ONE CREDIT MOVEMENT, ONE PAGE (MESITA-3782): a voucher, bonus, refund or
+  // gift row from Activity opens /activity/credit/<placeId>/<kind>.<ms>.
+  credit: { prefix: "/activity/credit/" },
   // PAY · WALLET (Pato, 2026-11-11, MESITA-3698: "Divide Payments across
   // two sections: Pay and Wallet"): the bar's Pay tab has two halves, each
   // its own address, /pay and /wallet, under one band. Wallet was the bar's
@@ -291,6 +294,12 @@ export function visitPath(tabId: string): string {
   return `${CONSUMER_ROUTES.visit.prefix}${tabId}`;
 }
 
+/** One credit movement's page (MESITA-3782): the entry is its kind and
+ *  its time, which together name it on the guest's balance at the place. */
+export function creditEntryPath(placeId: string, e: { kind: string; at: string }): string {
+  return `${CONSUMER_ROUTES.credit.prefix}${placeId}/${e.kind}.${Date.parse(e.at)}`;
+}
+
 /** A paid bill's proof. */
 export function payReceiptPath(paymentId: string): string {
   return `${CONSUMER_ROUTES.payReceipt.prefix}${paymentId}`;
@@ -372,6 +381,8 @@ export const ROUTE_MAP = {
   reservation: row("/reservation/:id", "activity", "panel", "activity"),
   // A finished Visit, opened from Activity › Visits (MESITA-3770).
   visit: row("/activity/visit/:tabId", "activity", "page", "activity"),
+  // A voucher, bonus, refund or gift, opened from Activity (MESITA-3782).
+  credit: row("/activity/credit/:placeId/:entry", "activity", "page", "activity"),
   pay: row("/pay", "pay", "tab", null),
   // The pay screens own the whole frame, as the place screen does: no bar,
   // the header's back is the way out, so every step fits (MESITA-3739).

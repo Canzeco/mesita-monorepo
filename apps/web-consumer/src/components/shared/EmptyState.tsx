@@ -63,7 +63,7 @@ export function EmptyState({
         (action.href ? (
           <Button
             asChild
-            className="shadow-glow mt-5 text-sm font-semibold active:scale-[0.98]"
+            className="mt-5 text-sm font-semibold active:scale-[0.98]"
           >
             <Link href={action.href}>{action.label}</Link>
           </Button>
@@ -71,7 +71,7 @@ export function EmptyState({
           <Button
             type="button"
             onClick={action.onClick}
-            className="shadow-glow mt-5 text-sm font-semibold active:scale-[0.98]"
+            className="mt-5 text-sm font-semibold active:scale-[0.98]"
           >
             {action.label}
           </Button>

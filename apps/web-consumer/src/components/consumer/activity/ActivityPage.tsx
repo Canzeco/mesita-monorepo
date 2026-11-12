@@ -64,6 +64,7 @@ import {
   CONSUMER_ROUTES,
   payReceiptPath,
   payTabPath,
+  creditEntryPath,
   reservationPath,
   visitPath,
   walletPlacePath,
@@ -80,6 +81,7 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useCachedQuery } from "@/lib/use-cached-query";
 import { ACTIVITY_CHIPS } from "./activity-chips";
 import { RefundsPanel } from "./RefundsPanel";
+import { ChipIntro } from "./ChipIntro";
 import {
   type ActivityItem,
   ActivityRow,
@@ -272,7 +274,7 @@ function walletRows(w: Wallet): Row[] {
             bonus && `+${money(bonus.amount_cents, cur)} bonus`,
             onDay(e.at),
           ),
-          href,
+          href: creditEntryPath(b.place_id, e),
         });
         return;
       }
@@ -289,7 +291,7 @@ function walletRows(w: Wallet): Row[] {
           big: money(Math.abs(e.amount_cents), cur),
           money: true,
           line: join("Purchase refunded", onDay(e.at)),
-          href,
+          href: creditEntryPath(b.place_id, e),
         });
         return;
       }
@@ -306,7 +308,7 @@ function walletRows(w: Wallet): Row[] {
           big: money(Math.abs(e.amount_cents), cur),
           money: true,
           line: join(onDay(e.at), e.pending && "pending"),
-          href,
+          href: creditEntryPath(b.place_id, e),
         });
       }
     });
@@ -327,7 +329,7 @@ function walletRows(w: Wallet): Row[] {
         big: money(e.amount_cents, cur),
           money: true,
         line: join("Bonus", onDay(e.at)),
-        href,
+        href: creditEntryPath(b.place_id, e),
       });
     }
 
@@ -444,23 +446,27 @@ function ordered(rows: Row[]): { upcoming: Row[]; past: Row[] } {
 
 const EMPTY: Record<
   TicketType,
-  { title: string; action: { label: string; href: string } }
+  { title: string; text: string; action: { label: string; href: string } }
 > = {
   reservations: {
     title: "No reservations yet",
+    text: "Book a table from any place's page and it lands here.",
     action: { label: "Find a place", href: CONSUMER_ROUTES.home },
   },
   visits: {
     title: "No visits yet",
+    text: "Pay a bill with Mesita at the table and its full statement lands here.",
     action: { label: "Pay", href: CONSUMER_ROUTES.pay },
   },
   vouchers: {
     title: "No vouchers yet",
-    action: { label: "Wallet", href: CONSUMER_ROUTES.wallet },
+    text: "Open a place that sells credit and buy some from its Vouchers tab.",
+    action: { label: "Find a place", href: CONSUMER_ROUTES.search },
   },
   gifts: {
     title: "No gifts yet",
-    action: { label: "Wallet", href: CONSUMER_ROUTES.wallet },
+    text: "Credit you send to a friend, or a friend sends you, lands here.",
+    action: { label: "Gift credit", href: CONSUMER_ROUTES.mePages.gift },
   },
 };
 
@@ -644,20 +650,27 @@ export function ActivityPage() {
           <NotificationsList quietEmpty={!!nextUp} />
         </>
       ) : type === "refunds" ? (
-        <RefundsPanel />
+        <div className="flex flex-col gap-4">
+          <ChipIntro type="refunds" />
+          <RefundsPanel />
+        </div>
       ) : (
-        <Tickets
-          type={type}
-          rows={byType[type]}
-          ready={ready[type]}
-          failed={failed[type]}
-          retry={retry[type]}
-          note={
-            type === "visits" && !!wallet.error
-              ? "Couldn't load your payments. Visits shows your tables only."
-              : null
-          }
-        />
+        // Each chip says what it holds first (MESITA-3782).
+        <div className="flex flex-col gap-4">
+          <ChipIntro type={type} />
+          <Tickets
+            type={type}
+            rows={byType[type]}
+            ready={ready[type]}
+            failed={failed[type]}
+            retry={retry[type]}
+            note={
+              type === "visits" && !!wallet.error
+                ? "Couldn't load your payments. Visits shows your tables only."
+                : null
+            }
+          />
+        </div>
       )}
     </ActivityFrame>
   );
@@ -695,6 +708,7 @@ function Tickets({
       <EmptyState
         icon={chip.Icon}
         title={EMPTY[type].title}
+        description={EMPTY[type].text}
         action={EMPTY[type].action}
       />
     );
