@@ -652,8 +652,18 @@ export function CatalogRails() {
             card's stretched link, MESITA-3797) stays inside this pane, so the
             open menu's blur covers all of it and nothing under it takes a tap
             (Pato, MESITA-3804: "blurred and not clickable"). */}
+        {/* THE ROWS THEMSELVES BLUR AND GO DEAF while the menu is open
+            (Pato, MESITA-3807: "the sections of places must be blurred and
+            not clickable"): the dim's backdrop-filter (MESITA-3804) drew no
+            blur on the live page, so the pane wears the filter itself and
+            takes no taps; the dim above still closes the menu. */}
         <div
-          className="bg-card scrollbar-thin-dark isolate flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
+          className={cn(
+            "bg-card scrollbar-thin-dark isolate flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain transition-[filter] duration-200",
+            tab === "places" && menuOpen && "pointer-events-none",
+            tab === "places" && menuWide && "blur-sm",
+          )}
+          aria-hidden={tab === "places" && menuOpen ? true : undefined}
           data-home-scroller
         >
           {inner}
