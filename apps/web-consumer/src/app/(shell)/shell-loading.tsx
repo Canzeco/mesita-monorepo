@@ -26,6 +26,7 @@ import PlaceReserveLoading from "./place/[id]/reserve/loading";
 import PayPlaceLoading from "./pay/[placeId]/loading";
 import PayTabLoading from "./pay/tab/[tabId]/loading";
 import PayReceiptLoading from "./pay/receipt/[paymentId]/loading";
+import VisitLoading from "./activity/visit/[tabId]/loading";
 
 // One frame per screen in the route map (MESITA-3646): a screen without one
 // is a type error, never a blank card.
@@ -53,6 +54,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   walletPlace: () => <WalletPlaceLoading />,
   walletGift: () => <WalletGiftLoading />,
   activity: () => <ActivityLoading />,
+  visit: () => <VisitLoading />,
   share: () => <ShareLoading />,
   me: () => <MeLoading />,
   meProfile: () => <ProfileLoading />,

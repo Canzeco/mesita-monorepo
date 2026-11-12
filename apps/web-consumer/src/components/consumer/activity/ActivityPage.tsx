@@ -65,6 +65,7 @@ import {
   payReceiptPath,
   payTabPath,
   reservationPath,
+  visitPath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
 import {
@@ -79,17 +80,18 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useCachedQuery } from "@/lib/use-cached-query";
 import { ACTIVITY_CHIPS } from "./activity-chips";
 import {
-  type PillTone,
-  type Ticket,
-  TicketCard,
-  TicketSkeleton,
-} from "./TicketCard";
+  type ActivityItem,
+  ActivityRow,
+  ActivityRows,
+  ActivityRowsSkeleton,
+  type StatusTone,
+} from "./ActivityRow";
 
 type TicketType = Exclude<ActivityType, "notifications">;
 
 /** One ticket and where it sorts: Upcoming soonest first, then Past newest
  *  first. */
-type Row = Ticket & {
+type Row = ActivityItem & {
   type: TicketType;
   at: string | null;
   upcoming: boolean;
@@ -128,7 +130,7 @@ function reservationRows(rows: EFReservationRow[], nowMs: number): Row[] {
     const at = item.reservedAt ?? row.reserved_at;
     const upcoming = live && Date.parse(at) >= nowMs;
     const label = stateMeta(item.state).label;
-    const tone: PillTone =
+    const tone: StatusTone =
       item.state === "confirmed" ? "green" : live ? "ink" : "grey";
     return {
       key: `r-${row.id}`,
@@ -137,7 +139,7 @@ function reservationRows(rows: EFReservationRow[], nowMs: number): Row[] {
       upcoming,
       place: item.placeName,
       photo: item.placePhoto,
-      pill: { label: label === "Passed" ? "Past" : label, tone },
+      status: { label: label === "Passed" ? "Past" : label, tone },
       big: item.when,
       line: join(
         `${item.partySize} ${item.partySize === 1 ? "person" : "people"}`,
@@ -151,7 +153,7 @@ function reservationRows(rows: EFReservationRow[], nowMs: number): Row[] {
 
 // ─── Visits ─────────────────────────────────────────────────────────────────
 
-const VISIT_PILL: Record<string, [string, PillTone]> = {
+const VISIT_PILL: Record<string, [string, StatusTone]> = {
   waiting_bill: ["Open", "ink"],
   billed: ["Billed", "ink"],
   paying: ["Paying", "ink"],
@@ -166,7 +168,7 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
   return visits.map((v) => {
     const [label, tone] = VISIT_PILL[v.status] ?? [
       v.status,
-      "grey" as PillTone,
+      "grey" as StatusTone,
     ];
     const open =
       v.status === "waiting_bill" ||
@@ -179,11 +181,12 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
       upcoming: open,
       place: v.place.name ?? "A Mesita place",
       photo: v.place.photo_url,
-      pill: { label, tone },
+      status: { label, tone },
       big:
         v.bill_cents != null
           ? money(v.bill_cents + v.tip_cents, v.currency)
           : "Waiting for the bill",
+      money: v.bill_cents != null,
       line: join(
         v.waiter_name,
         v.ticket && `#${v.ticket}`,
@@ -191,14 +194,17 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
         onDay(v.created_at),
       ),
       dim: v.status === "expired" || v.status === "cancelled",
-      href: payTabPath(v.tab_id),
+      // An open bill is the live pay screen; a finished one is its one-page
+      // summary (MESITA-3770: "the live workflow and the output must be
+      // different").
+      href: open ? payTabPath(v.tab_id) : visitPath(v.tab_id),
     };
   });
 }
 
 // ─── The wallet: payments, vouchers, gifts ───────────────────────────────
 
-const GIFT_PILL: Record<string, [string, PillTone]> = {
+const GIFT_PILL: Record<string, [string, StatusTone]> = {
   gift_out: ["Sent", "ink"],
   gift_in: ["Received", "green"],
   gift_back: ["Taken back", "ink"],
@@ -253,10 +259,11 @@ function walletRows(w: Wallet): Row[] {
           upcoming: false,
           place,
           photo,
-          pill: pending
+          status: pending
             ? { label: "Pending", tone: "ink" }
             : { label: "Available", tone: "green" },
           big: money(e.amount_cents, cur),
+          money: true,
           line: join(
             ENTRY_LABEL[e.kind] ?? e.kind,
             bonus && `+${money(bonus.amount_cents, cur)} bonus`,
@@ -275,8 +282,9 @@ function walletRows(w: Wallet): Row[] {
           upcoming: false,
           place,
           photo,
-          pill: { label: "Refunded", tone: "grey" },
+          status: { label: "Refunded", tone: "grey" },
           big: money(Math.abs(e.amount_cents), cur),
+          money: true,
           line: join("Purchase refunded", onDay(e.at)),
           href,
         });
@@ -291,8 +299,9 @@ function walletRows(w: Wallet): Row[] {
           upcoming: false,
           place,
           photo,
-          pill: { label: gift[0], tone: gift[1] },
+          status: { label: gift[0], tone: gift[1] },
           big: money(Math.abs(e.amount_cents), cur),
+          money: true,
           line: join(onDay(e.at), e.pending && "pending"),
           href,
         });
@@ -309,10 +318,11 @@ function walletRows(w: Wallet): Row[] {
         upcoming: false,
         place,
         photo,
-        pill: e.pending
+        status: e.pending
           ? { label: "Pending", tone: "ink" }
           : { label: "Available", tone: "green" },
         big: money(e.amount_cents, cur),
+          money: true,
         line: join("Bonus", onDay(e.at)),
         href,
       });
@@ -333,8 +343,9 @@ function walletRows(w: Wallet): Row[] {
       upcoming: false,
       place: s.place?.name ?? "A Mesita place",
       photo: s.place?.photo ?? null,
-      pill: { label: "Waiting", tone: "ink" },
+      status: { label: "Waiting", tone: "ink" },
       big: money(s.credit_cents, s.currency),
+          money: true,
       line: join(
         "Story voucher · waiting for your post",
         s.paid_at && onDay(s.paid_at),
@@ -354,8 +365,9 @@ function walletRows(w: Wallet): Row[] {
       upcoming: false,
       place: p?.name ?? "A Mesita place",
       photo: p?.photo ?? null,
-      pill: { label: "Not taken", tone: "ink" },
+      status: { label: "Not taken", tone: "ink" },
       big: money(l.amount_cents, l.currency),
+          money: true,
       line: join("Link sent", onDay(l.created_at)),
       href: walletPlacePath(l.place_id),
     });
@@ -365,7 +377,7 @@ function walletRows(w: Wallet): Row[] {
 
 /** One payment: the credits it used is the big fact; with none, the cashback
  *  it earned; with neither, "Paid in cash". A refund on it is a field and
- *  the pill. */
+ *  the state. */
 function paymentRow(
   key: string,
   place: string,
@@ -400,10 +412,11 @@ function paymentRow(
     upcoming: false,
     place,
     photo,
-    pill: refund.length
+    status: refund.length
       ? { label: "Refunded", tone: "grey" }
       : { label: "Paid", tone: "green" },
     big,
+    money: true,
     line: join(
       cash ? "Cash" : spend.length ? "Credits" : null,
       spend.length && back ? `+${money(back, cur)} cashback` : null,
@@ -595,7 +608,7 @@ export function ActivityPage() {
     (byType.reservations
       ? ordered(byType.reservations).upcoming.find(
           (r) =>
-            r.pill.label === stateMeta("confirmed").label &&
+            r.status.label === stateMeta("confirmed").label &&
             r.at &&
             Date.parse(r.at) - nowMs < DAY_MS,
         )
@@ -620,7 +633,9 @@ export function ActivityPage() {
         <>
           {nextUp ? (
             <div className="mb-6">
-              <TicketCard t={{ ...nextUp, label: "Next up" }} />
+              <ActivityRows>
+                <ActivityRow t={{ ...nextUp, label: "Next up" }} />
+              </ActivityRows>
             </div>
           ) : null}
           <NotificationsList quietEmpty={!!nextUp} />
@@ -659,7 +674,7 @@ function Tickets({
   note: string | null;
 }) {
   const chip = ACTIVITY_CHIPS.find((c) => c.type === type)!;
-  if (!ready) return <TicketsSkeleton />;
+  if (!ready) return <ActivityRowsSkeleton />;
   if (failed || !rows) {
     return (
       <EmptyState
@@ -686,19 +701,18 @@ function Tickets({
         {title ? (
           <h2 className="text-muted-foreground type-eyebrow mb-2">{title}</h2>
         ) : null}
-        <ul className="flex flex-col gap-3" data-activity>
+        <ActivityRows>
           {list.map((r, i) => (
-            <li key={r.key}>
-              <TicketCard
-                t={
-                  type === "reservations" && title === "Upcoming" && i === 0
-                    ? { ...r, label: "Next up" }
-                    : r
-                }
-              />
-            </li>
+            <ActivityRow
+              key={r.key}
+              t={
+                type === "reservations" && title === "Upcoming" && i === 0
+                  ? { ...r, label: "Next up" }
+                  : r
+              }
+            />
           ))}
-        </ul>
+        </ActivityRows>
       </section>
     ) : null;
   // Only Reservations and Visits have tickets still ahead.
@@ -833,13 +847,7 @@ function RailSkeleton() {
   );
 }
 
-/** Three tickets' bones, on the list's step. */
+/** The list's bones: one card of rows (MESITA-3770). */
 export function TicketsSkeleton() {
-  return (
-    <div className="flex flex-col gap-3" aria-busy>
-      {[0, 1, 2].map((i) => (
-        <TicketSkeleton key={i} />
-      ))}
-    </div>
-  );
+  return <ActivityRowsSkeleton />;
 }
