@@ -550,9 +550,7 @@ export function CatalogRails() {
             on && open && "font-semibold",
           )}
         >
-          {/* Closed, the emoji fills what the scrollbar leaves of the rail;
-              open, the same 48px column. */}
-          <span aria-hidden className={cn(RAIL_EMOJI, !open && "w-full")}>
+          <span aria-hidden className={RAIL_EMOJI}>
             {c.emoji}
           </span>
           {open ? (
@@ -575,10 +573,10 @@ export function CatalogRails() {
         ref={railRef}
         aria-label="Families"
         onScroll={(e) => railScrolled(e.currentTarget)}
-        // ITS OWN SCROLLBAR ON THE RIGHT (Pato, MESITA-3806: "show
-        // scrollbar in the right side … like the contents"): the rows'
-        // thin grey bar.
-        className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
+        // NO SCROLLBAR (Pato, MESITA-3807: "the scrolling bar in the
+        // sidebar menu looks like shit"; MESITA-3806 gave it the rows' thin
+        // bar for one round): the down arrow at its foot says it scrolls.
+        className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
         data-places-rail
       >
         {railRows(false)}
