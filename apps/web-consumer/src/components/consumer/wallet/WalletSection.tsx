@@ -18,7 +18,7 @@ import {
   CashRow,
   CreditsRow,
   EmptyCreditsRow,
-  HeadingButton,
+  AddRow,
   RowsSkeleton,
   SavedCardRow,
   StoryRow,
@@ -75,7 +75,8 @@ import {
 //
 // THE WALLET, PAY'S SECOND HALF (Pato, 2026-11-11, MESITA-3698: "Divide
 // Payments across two sections: Pay and Wallet"): two lists, Money
-// Payment Methods and Credits Payment Methods, each led by Add
+// Payment Methods and Credits Payment Methods, each ending in an Add row
+// (MESITA-3744; led by Add on the heading until then)
 // (WalletLists; horizontal rails until MESITA-3701), the Wallet tab's page
 // since MESITA-3722 (WalletPage, /wallet); MESITA-3720 drew it under Pay's
 // places, with the page's band switched off (`testBand`).
@@ -208,28 +209,17 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
         </p>
       ) : null}
 
-      <WalletList
-        title="Money Payment Methods"
-        action={
-          <HeadingButton
-            // "Add", as Credits' (Pato, MESITA-3740: "add and add, keep the symmetry").
-            label={adding ? "Opening…" : "Add"}
-            ariaLabel="Add a payment card"
-            onClick={() => void addCard()}
-            disabled={adding}
-          />
-        }
-      >
+      <WalletList title="Money Payment Methods">
         {cards === null ? <RowsSkeleton count={1} /> : null}
         {cards?.map((c) => <SavedCardRow key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
         <CashRow />
+        {/* Add is the list's last row (MESITA-3744), and reads "Add" in both
+            lists (Pato, MESITA-3740: "add and add, keep the symmetry"). */}
+        <AddRow line="A debit or credit card" ariaLabel="Add a payment card" onClick={() => void addCard()} disabled={adding} busy={adding} />
       </WalletList>
 
       <WalletList
         title="Credits Payment Methods"
-        action={
-          creditsState === "rows" ? <HeadingButton label="Add" ariaLabel="Add a Credits Card" href={CONSUMER_ROUTES.search} /> : null
-        }
         fallback={
           creditsState === "failed" ? (
             <EmptyState
@@ -257,6 +247,9 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
               />
             ))
           : null}
+        {creditsState === "rows" ? (
+          <AddRow line="A place's Credits Card" ariaLabel="Add a Credits Card" href={CONSUMER_ROUTES.search} />
+        ) : null}
       </WalletList>
       <div>
         <button
