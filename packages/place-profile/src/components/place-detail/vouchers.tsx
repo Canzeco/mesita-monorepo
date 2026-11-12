@@ -565,6 +565,9 @@ export function VouchersPane({
   const chosen = picked && !loading && buyable(picked) ? products.find((p) => p.key === picked) ?? null : null;
   // SHORTER ROWS, SYMMETRIC NAMES (MESITA-3490, Pato: "make the items a bit
   // shorter"; "Mesita Payments Cashback ... External Pay Cashback").
+  // RENAMED (Pato, 2026-11-12, MESITA-3815: "Mesita Payment Cashback / back
+  // in credits ... Cash Payment Cashback / back in credits"): both lines open
+  // "Back in credits"; the chip already says the rate.
   const ROW = "flex w-full items-center gap-3 px-4 py-2 text-left";
   // A BIT SMALLER (MESITA-3768, Pato: "make this a bit smaller, the text, just
   // a bit"): one small step each, titles 15px, fact lines 13px, chips 18px.
@@ -681,16 +684,16 @@ export function VouchersPane({
         <ul className="border-border divide-border divide-y rounded-2xl border" data-cashback>
           <li
             className={cn(ROW, !loading && !cashback && dim && "opacity-50")}
-            aria-label={`Mesita Payments Cashback: pay the bill here with Mesita, ${cardPct ?? "cashback"} comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
+            aria-label={`Mesita Payment Cashback: pay the bill here with Mesita, ${cardPct ?? "cashback"} comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
           >
             <span className={cn(CHIP, CASHBACK_FACE.card)} aria-hidden>
               {cardPct ? `+${cardPct}` : "Off"}
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
               <span className={NAME}>
-                <span aria-hidden>Mesita Payments Cashback</span>
+                <span aria-hidden>Mesita Payment Cashback</span>
                 <InfoButton
-                  title="Mesita Payments Cashback"
+                  title="Mesita Payment Cashback"
                   status={
                     loading
                       ? undefined
@@ -715,7 +718,7 @@ export function VouchersPane({
               confirmed by the waiter's Received through the waiter's code. */}
           <li
             className={cn(ROW, !outside && dim && "opacity-50")}
-            aria-label={`External Pay Cashback: pay the place directly, by cash or their terminal, with the waiter's code. ${outside ? `${cashPct} comes back as credits.` : "Not at this place yet."}`}
+            aria-label={`Cash Payment Cashback: pay the place directly, by cash or their terminal, with the waiter's code. ${outside ? `${cashPct} comes back as credits.` : "Not at this place yet."}`}
           >
             <span className={cn(CHIP, EXTERNAL_FACE)} aria-hidden>
               {outside ? `+${cashPct}` : "Off"}
@@ -724,10 +727,10 @@ export function VouchersPane({
               <span className={NAME}>
                 <span className="flex items-center gap-1" aria-hidden>
                   <Banknote className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                  External Pay Cashback
+                  Cash Payment Cashback
                 </span>
                 <InfoButton
-                  title="External Pay Cashback"
+                  title="Cash Payment Cashback"
                   status={outside ? { ok: true, text: `${cashPct} back on bills you pay the waiter.` } : { ok: false, text: "Not at this place yet" }}
                   text={[
                     `Pay the place directly: cash or their card terminal, and get ${cashPct ?? "the place's cash cashback"} of the bill back as credits at this place.`,
@@ -736,7 +739,7 @@ export function VouchersPane({
                   ]}
                 />
               </span>
-              <span className={FACT} aria-hidden>{outside ? `Cash or their terminal, ${cashPct} back` : "Not at this place yet"}</span>
+              <span className={FACT} aria-hidden>{outside ? "Back in credits, cash or their terminal" : "Not at this place yet"}</span>
             </span>
           </li>
         </ul>
