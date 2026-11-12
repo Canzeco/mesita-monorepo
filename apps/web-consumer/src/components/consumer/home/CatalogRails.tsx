@@ -25,7 +25,8 @@ import dynamic from "next/dynamic";
 // (SocialFeed), full width. Every row's mark is the family's emoji (Pato,
 // MESITA-3683; MESITA-2478's monochrome line icons until then). Places 2.0,
 // 3.0 and 4.0 were tried beside this list (MESITA-3658…3680) and deleted
-// (MESITA-3684, Pato: "only leave Places 1 and rename it to Places").
+// (MESITA-3684); Places 3.0 came back as its own tab, the chip row over rows
+// of photo · facts (Pato, MESITA-3762: "I want Places 1.0 and Places 3.0").
 //
 // All (the default: every place) is ranked the Map's way (Pato, MESITA-2516:
 // "only keeping All is cleaner. just like in map"), Proximity ×
@@ -51,7 +52,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, Heart } from "lucide-react";
+import { Compass, Heart, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
@@ -69,7 +70,12 @@ import {
   readAreaPool,
   writeAreaPool,
 } from "@/lib/area-pool-cache";
-import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
+import {
+  FILTERABLE_PLACE_FAMILIES,
+  type FamilyKey,
+} from "@/lib/place-families";
+import { FamilyFilterSheet } from "@/components/consumer/search/FamilyFilterSheet";
+import { DISC_BADGE } from "@/components/consumer/search/header-classes";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
 import {
@@ -85,7 +91,13 @@ import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { CatalogTile } from "./CatalogTile";
-import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
+import {
+  DiscoverFallback,
+  PLACES_LIST,
+  RowFallback,
+} from "./DiscoverFallback";
+import { GRID_CHIPS, ROW_LIST } from "./place-grid-classes";
+import { PlaceRowCard } from "./PlaceRowCard";
 import { useActiveLocation } from "@/lib/active-location";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
@@ -135,19 +147,36 @@ export const SAVED_LABEL = "Saved";
 export function isEveryFamily(chip: string): boolean {
   return chip === ALL_CHIP;
 }
-/** Home's two tabs (Pato, MESITA-2517: "another header (Places. Social)"),
- *  each its own address (Pato, MESITA-2597: "we should have home/places and
- *  home/social"). */
+/** The chip state while the Filters sheet holds two or more families
+ *  (MESITA-3666): no one chip is lit, and the pool is already their union. */
+export const FILTERS_CHIP = "filters";
+
+/** Home's three tabs, each its own address (Pato, MESITA-2597; MESITA-3762:
+ *  "I want Places 1.0 and Places 3.0"):
+ *    1.0  the family column beside big tiles, /home/places, where every
+ *         "go Home" lands
+ *    3.0  the chip row over rows of two squares, photo · facts with the
+ *         offer and Save · Share (MESITA-3662…3671), /home/rows */
 export const HOME_TABS = [
-  { key: "places", label: "Places", href: CONSUMER_ROUTES.home },
+  { key: "places", label: "Places 1.0", href: CONSUMER_ROUTES.home },
+  { key: "rows", label: "Places 3.0", href: CONSUMER_ROUTES.homeRows },
   { key: "social", label: "Social", href: CONSUMER_ROUTES.homeSocial },
 ] as const;
 export type HomeTab = (typeof HOME_TABS)[number]["key"];
 
-/** The tab a Home address shows: Social at /home/social, Places anywhere
- *  else under Home. */
+/** The tab a Home address shows: Social and Places 3.0 at their own
+ *  addresses, Places 1.0 anywhere else under Home. */
 export function homeTabOf(pathname: string): HomeTab {
-  return pathname === CONSUMER_ROUTES.homeSocial ? "social" : "places";
+  if (pathname === CONSUMER_ROUTES.homeSocial) return "social";
+  return pathname === CONSUMER_ROUTES.homeRows ? "rows" : "places";
+}
+
+/** A place's family word for Places 3.0's fact line when it has no kind of
+ *  its own: the first family the server ranked it under, or null. */
+export function placeFamilyLabel(place: Place): string | null {
+  const key = place.area?.familyKeys?.[0];
+  if (!key) return null;
+  return FILTERABLE_PLACE_FAMILIES.find((f) => f.key === key)?.label ?? null;
 }
 
 /** The Places tab's left column, top to bottom (MESITA-2519): Saved, the
@@ -185,7 +214,7 @@ export function chipFamilies(chip: string): string[] {
  *  row's pool is already that family's (MESITA-2438); the filter stays as a
  *  guard when area.familyKeys and family_keys disagree. */
 export function poolPlaces(pool: AreaPool, chip: string): Place[] {
-  return isEveryFamily(chip)
+  return isEveryFamily(chip) || chip === FILTERS_CHIP
     ? pool.places
     : pool.places.filter((p) => (p.area?.familyKeys ?? []).includes(chip));
 }
@@ -237,6 +266,7 @@ export function CatalogRails() {
   // The family the pool was asked for (MESITA-2438): a family row's own,
   // none for All.
   const [families, setFamilies] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const requestKey = `${areaPoolKey(from)}|${
     families.length > 0 ? families.join(",") : ALL_CHIP
   }`;
@@ -394,9 +424,11 @@ export function CatalogRails() {
   // SAVE AND SHARE ON A TILE (MESITA-2663, MESITA-2668): the shared card
   // hook, which creates a Google-only place first. A save is a
   // `home_card_save` with the tile's facts.
+  // Places 3.0 says which it is, so the two can be compared (MESITA-3762).
+  const cardMode = tab === "rows" ? "rows" : "places";
   const cards = useCardSaveShare((place, rank) =>
     trackEvent(supabase, "home_card_save", {
-      mode: "places",
+      mode: cardMode,
       place_id: place.id,
       ...tileFacts(place, rank),
     }),
@@ -434,7 +466,7 @@ export function CatalogRails() {
                 trackEvent(supabase, "home_mode_view", { mode: t.label });
             }}
             className={cn(
-              "relative flex-1 py-3 text-center text-sm transition",
+              "relative flex-1 px-1 py-3 text-center text-sm whitespace-nowrap transition",
               // INK, NOT BLUE (Pato, MESITA-3687: "only paint the left
               // sidebar menu with blue; the places and social keep them
               // black"): MESITA-3685's blue tab lasted minutes.
@@ -538,12 +570,101 @@ export function CatalogRails() {
     </nav>
   );
 
+  // PLACES 3.0'S FAMILY CHIPS (MESITA-3658, MESITA-3762): the column's
+  // rows, Top first (Saved stays the column's), as one scrolling line of
+  // pills, each with its family's emoji (MESITA-3668), so the rows get the
+  // whole width. The chosen pill is ink. The row and the column share
+  // `chip`, so a family carries across the two tabs. THE FILTERS DISC
+  // BEFORE TOP (Pato, MESITA-3666): Search's disc and sheet, pinned at the
+  // row's left while the pills scroll; pick any number of families and the
+  // server ORs them in one pool. A bubble counts the picks.
+  const picked = chip === SAVED_CHIP ? 0 : families.length;
+  const applyFilters = (keys: FamilyKey[]) => {
+    trackEvent(supabase, "home_mode_view", { mode: "Filters" });
+    setFamilies(keys);
+    setChip(
+      keys.length === 0 ? ALL_CHIP : keys.length === 1 ? keys[0] : FILTERS_CHIP,
+    );
+  };
+  const chipRow = (
+    <div className="bg-card flex shrink-0 items-center gap-1.5 pl-3">
+      <button
+        type="button"
+        onClick={() => setFiltersOpen(true)}
+        aria-label={picked > 0 ? `Filters (${picked} selected)` : "Filters"}
+        aria-haspopup="dialog"
+        className="bg-border/60 text-foreground hover:bg-border relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition after:absolute after:-inset-1.5 active:scale-[0.97]"
+        data-places-filters
+      >
+        <SlidersHorizontal className="h-4 w-4" strokeWidth={2} aria-hidden />
+        {picked > 0 ? (
+          <span
+            aria-hidden
+            className={cn(
+              DISC_BADGE,
+              "bg-destructive text-destructive-foreground",
+            )}
+          >
+            {picked}
+          </span>
+        ) : null}
+      </button>
+      <nav
+        className={cn("bg-card min-w-0 flex-1 pl-0", GRID_CHIPS)}
+        aria-label="Families"
+        data-places-chips
+      >
+        {chips
+          .filter((c) => c.key !== SAVED_CHIP)
+          .map((c) => {
+            const on = chip === c.key;
+            return (
+              <button
+                key={c.key}
+                type="button"
+                onClick={(e) => {
+                  if (!on)
+                    trackEvent(supabase, "home_mode_view", { mode: c.label });
+                  setChip(c.key);
+                  setFamilies(chipFamilies(c.key));
+                  e.currentTarget.scrollIntoView({
+                    block: "nearest",
+                    inline: "center",
+                  });
+                }}
+                aria-pressed={on}
+                className={cn(
+                  "relative h-8 shrink-0 rounded-full px-3 text-xs transition after:absolute after:inset-x-0 after:-inset-y-1.5",
+                  on
+                    ? "bg-foreground text-card font-semibold"
+                    : "bg-border/60 text-foreground hover:bg-border",
+                )}
+              >
+                <span aria-hidden className="mr-1">
+                  {c.emoji}
+                </span>
+                {c.label}
+              </button>
+            );
+          })}
+      </nav>
+      <FamilyFilterSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        applied={(chip === SAVED_CHIP ? [] : families) as FamilyKey[]}
+        onApply={applyFilters}
+        note="Pick as many families as you like. Home shows places in any of them."
+      />
+    </div>
+  );
+
   // Home's header (the location alone, MESITA-2405) → the tabs → on Places
-  // the family column beside the tiles, on Social the feed full width; the
-  // pane scrolls on its own.
+  // 1.0 the family column beside the tiles, on Places 3.0 the chip row over
+  // the rows, on Social the feed full width; the pane scrolls on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       {tabs}
+      {tab === "rows" ? chipRow : null}
       <div className="flex min-h-0 flex-1">
         {tab === "places" ? categories : null}
         <div
@@ -556,7 +677,41 @@ export function CatalogRails() {
     </div>
   );
 
+  // PLACES 3.0 (MESITA-3662, MESITA-3762): the same places, order and
+  // paging, one row each, drawn as PlaceRowCard. The family word fills a
+  // missing kind on Top only; a family chip already says it.
+  const rows = (list: readonly Place[], label: string, paged: boolean) => (
+    <div className="pb-6">
+      <ul role="list" aria-label={label} className={ROW_LIST}>
+        {list.map((place, i) => (
+          <PlaceRowCard
+            key={place.id}
+            place={withUserDistance(place, coords)}
+            family={isEveryFamily(chip) ? placeFamilyLabel(place) : null}
+            saved={cards.isSaved(place)}
+            onToggle={() => cards.toggle(place, i + 1)}
+            onShare={() => cards.share(place)}
+            onOpen={() =>
+              trackEvent(supabase, "home_card_open", {
+                mode: cardMode,
+                place_id: place.id,
+                ...tileFacts(place, i + 1),
+              })
+            }
+            onOpenGoogle={() => openGooglePlace(place)}
+          />
+        ))}
+        {paged && hasMore ? (
+          <li ref={sentinel} aria-hidden className="h-px" data-places-more />
+        ) : null}
+      </ul>
+    </div>
+  );
+  // One list draw per tab: rows on Places 3.0, tiles on Places 1.0.
+  const waiting = tab === "rows" ? <RowFallback /> : <DiscoverFallback />;
+
   const tiles = (list: readonly Place[], label: string, paged: boolean) => {
+    if (tab === "rows") return rows(list, label, paged);
     const page = list;
     return (
       <div className="pb-6">
@@ -577,7 +732,7 @@ export function CatalogRails() {
                   onShare={() => cards.share(place)}
                   onOpen={() =>
                     trackEvent(supabase, "home_card_open", {
-                      mode: "places",
+                      mode: cardMode,
                       place_id: place.id,
                       ...tileFacts(place, i + 1),
                     })
@@ -604,7 +759,7 @@ export function CatalogRails() {
   // SAVED (MESITA-3718): the hearts, newest first, as Home's own tiles; local,
   // so no error and no paging. Unsaving here drops the tile (with Undo).
   if (chip === SAVED_CHIP) {
-    if (!savedHydrated) return shell(<DiscoverFallback />);
+    if (!savedHydrated) return shell(waiting);
     const saved = savedPlaceList(savedIds, readSavedPlacePreviews<Place>());
     return shell(
       saved.length === 0 ? (
@@ -624,7 +779,7 @@ export function CatalogRails() {
   // sizes"): the same three tile silhouettes, 60/40 with the Save · Share
   // row, in the list's own pb-6 and gaps (DiscoverFallback.tsx). Locating
   // drew one bare square before, so it grew to three, then to tiles.
-  if (waitingForFix) return shell(<DiscoverFallback />);
+  if (waitingForFix) return shell(waiting);
 
   if (fetchError) {
     return shell(
@@ -637,9 +792,12 @@ export function CatalogRails() {
     );
   }
 
-  if (pool === null) return shell(<DiscoverFallback />);
+  if (pool === null) return shell(waiting);
 
-  const label = chips.find((c) => c.key === chip)?.label ?? "Places";
+  const label =
+    chip === FILTERS_CHIP
+      ? "your filters"
+      : (chips.find((c) => c.key === chip)?.label ?? "Places");
   // The Catalog has no radius (MESITA-2909): an empty pool is an empty
   // catalog (or every place under the floor), wherever the point is.
   const empty = isEveryFamily(chip) ? (
