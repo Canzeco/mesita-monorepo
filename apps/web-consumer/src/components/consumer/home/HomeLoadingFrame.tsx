@@ -25,7 +25,7 @@ export function HomeLoadingFrame() {
         ))}
       </div>
       <div className="flex min-h-0 flex-1">
-        <div className="bg-foreground w-12 shrink-0" />
+        <div className="bg-[color-mix(in_oklab,var(--foreground)_85%,var(--card))] w-12 shrink-0" />
         <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden">
           <RowFallback />
         </div>

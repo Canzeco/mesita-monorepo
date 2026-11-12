@@ -108,7 +108,9 @@ const BAR_RED = "before:bg-red-600";
 // MESITA-3812: "make the sidebar menu dark, really dark"): the ink token
 // (bg-foreground, never a raw colour), names in text-card, the chosen row a
 // lighter ink band (bg-card/15) with the blue bar (red for Saved) in both.
-const RAIL_SURFACE = "bg-foreground text-card";
+// ALMOST INK (Pato, MESITA-3813: "not that dark, but almost"): 85% ink
+// with 15% card, solid, from the tokens.
+const RAIL_SURFACE = "bg-[color-mix(in_oklab,var(--foreground)_85%,var(--card))] text-card";
 const RAIL_ROW =
   "text-card relative flex h-11 w-full shrink-0 items-center text-left transition";
 const RAIL_ROW_ON =
@@ -593,7 +595,7 @@ export function CatalogRails() {
             if (el)
               el.scrollBy({ top: el.clientHeight * 0.8, behavior: "smooth" });
           }}
-          className="from-foreground via-foreground/90 text-card/70 absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t to-transparent pb-1.5"
+          className="from-[color-mix(in_oklab,var(--foreground)_85%,var(--card))] text-card/70 absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t to-transparent pb-1.5"
           data-places-rail-more
         >
           <ChevronDown className="h-4 w-4" strokeWidth={2.5} aria-hidden />
