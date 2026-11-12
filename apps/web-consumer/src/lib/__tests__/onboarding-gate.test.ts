@@ -103,8 +103,9 @@ describe("the gate's other copies", () => {
   it.each([
     [
       "the Edge Function routing hint",
-      "supabase/supabase/functions/consumer-web-signin-phone/index.ts",
-      "onboarded:",
+      // The predicate moved into signin.ts with MESITA-3777.
+      "supabase/supabase/functions/consumer-web-signin-phone/signin.ts",
+      "export function isOnboarded",
     ],
   ])("%s checks first_name, birthday and sex", (_name, path, anchor) => {
     const source = read(path);

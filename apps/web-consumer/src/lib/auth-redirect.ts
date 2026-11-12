@@ -57,3 +57,20 @@ export function payPlaceFromNext(raw: string | undefined | null): string | null 
   }
   return null;
 }
+
+/**
+ * Continue with Google (MESITA-3777): where Google hands the guest back.
+ * The raw `next` rides along so a Pay QR or shared link survives the round
+ * trip; an unsafe one is dropped here, before it ever reaches Google.
+ */
+export function oauthCallbackPath(raw: string | undefined | null): string {
+  return withNext("/auth/callback", raw);
+}
+
+/** The sign-in page with the "Google didn't finish" flag, keeping `next`. */
+export function oauthFailedPath(raw: string | undefined | null): string {
+  const target = safeNextPath(raw);
+  return target
+    ? `/?error=oauth_failed&next=${encodeURIComponent(target)}`
+    : "/?error=oauth_failed";
+}

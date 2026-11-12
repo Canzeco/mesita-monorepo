@@ -65,12 +65,16 @@ export type AuthedUser = {
 };
 
 // Shared shaping so getAuthedUser and getOptionalAuthedUser stay in lockstep.
-function shapeAuthedUser(raw: User): AuthedUser {
+// Auth hands a Google or email session `phone: ""` (and a phone session
+// `email: ""`), so a blank is null here: every EF sees null, never "" (a ""
+// written to consumers.phone reads as a number that isn't one, MESITA-3777).
+export function shapeAuthedUser(raw: User): AuthedUser {
+  const email = raw.email || null;
   return {
     id: raw.id,
-    email: raw.email ?? null,
-    emailLower: raw.email?.toLowerCase() ?? null,
-    phone: raw.phone ?? null,
+    email,
+    emailLower: email?.toLowerCase() ?? null,
+    phone: raw.phone || null,
     raw,
   };
 }

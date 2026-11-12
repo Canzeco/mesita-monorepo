@@ -67,7 +67,9 @@ export default async function ConsumerOnboardPage({
     initial = {
       // Legacy rows predate the first/last split: full_name holds whatever
       // the old single field captured (usually just the first name).
-      firstName: profile.first_name ?? profile.full_name ?? "",
+      // A Google sign-in brings a name (MESITA-3777): its first word fills an
+      // empty first name; the guest can change it.
+      firstName: profile.first_name ?? profile.full_name ?? googleFirstName(user) ?? "",
       birthday: profile.birthday ?? "",
       sex: profile.sex ?? "",
     };
@@ -81,11 +83,11 @@ export default async function ConsumerOnboardPage({
   }
   if (onboarded) redirect(nextTarget ?? CONSUMER_ROUTES.home);
 
-  // Phone-OTP is the consumer auth method, so the identity is usually a
-  // phone; fall back to email for accounts created another way. Surfacing
-  // it here lets a user who signed in as the wrong account bail out and
-  // re-authenticate before committing onboarding data.
-  const identity = user.phone ?? user.email ?? null;
+  // The account the guest signed in with: a phone, or the email of a Google
+  // or email sign-in (MESITA-3777; Auth hands those `phone: ""`, hence ||).
+  // Surfacing it lets a guest on the wrong account bail out before
+  // committing onboarding data.
+  const identity = user.phone || user.email || null;
 
   return (
     <MobileFrame>
@@ -107,4 +109,11 @@ export default async function ConsumerOnboardPage({
       </div>
     </MobileFrame>
   );
+}
+
+/** The first word of the name Google gave this account, if any. */
+function googleFirstName(user: { user_metadata?: Record<string, unknown> }): string | null {
+  const meta = user.user_metadata ?? {};
+  const name = typeof meta.full_name === "string" ? meta.full_name : typeof meta.name === "string" ? meta.name : "";
+  return name.trim().split(/\s+/)[0] || null;
 }
