@@ -98,7 +98,7 @@ export default async function SignInPage({
 
       <section className="relative overflow-hidden bg-black text-white">
         <Image
-          src="/landing/dusk.jpg"
+          src="/landing/terrace.jpg"
           alt="Friends sharing tacos on a Monterrey terrace at dusk"
           fill
           priority
