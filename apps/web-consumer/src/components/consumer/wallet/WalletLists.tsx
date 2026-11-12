@@ -2,7 +2,7 @@
 
 import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Gift, Plus } from "lucide-react";
 import { PlaceMarks, SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -35,7 +35,8 @@ import { type WalletCardModel, walletCardLabel } from "./WalletCard";
 // TWO LISTS, NOT TWO RAILS (Pato, 2026-11-11, MESITA-3701: "try making the
 // payment methods as lists instead of horizontal scrolls"). Money Payment
 // Methods and Credits Payment Methods are each one white card of rows, Add
-// first. A row is a small payment-card-shaped chip in the method's own
+// last: a row at the bottom of the card, never on the heading (Pato,
+// MESITA-3744: "the add button must be below, not there"). A row is a small payment-card-shaped chip in the method's own
 // colour (MESITA-3643's card shape: green $ Cash, a black saved card, a
 // black House Card wearing the place's photo, a pink Story), its name, a
 // quiet second line, and the amount or a chevron. The rails they replace
@@ -85,33 +86,53 @@ export function WalletList({
   );
 }
 
-const HEADING_BUTTON =
-  "hover:bg-muted -my-3 -mr-2 inline-flex h-11 items-center justify-center rounded-full px-3 text-sm font-semibold transition disabled:opacity-60";
+/** A gift code a friend sent: a row in the Credits list (MESITA-3744; a
+ *  loose "Have a gift code?" link under it until then). */
+export function GiftCodeRow({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button type="button" onClick={onOpen} className={ROW} data-redeem-code-open>
+      <span className={cn(CHIP, "bg-muted text-foreground")} aria-hidden>
+        <Gift className="h-4 w-4" />
+      </span>
+      <RowText title="Gift code" line="Redeem a code a friend sent you" />
+      <Chevron />
+    </button>
+  );
+}
 
-/** A list heading's quiet button: a 44px target pulled in by negative margin
- *  so the heading keeps its height. A link with `href`, else a button. */
-export function HeadingButton({
-  label,
+/** The last row of a list: a dashed chip with a +, "Add" and what it adds
+ *  (MESITA-3744). A link with `href`, else a button. */
+export function AddRow({
+  line,
   ariaLabel,
   href,
   onClick,
   disabled = false,
-  className,
+  busy = false,
 }: {
-  label: string;
+  line: string;
   ariaLabel: string;
   href?: string;
   onClick?: () => void;
   disabled?: boolean;
-  className?: string;
+  /** Opening the next page: the row reads "Opening…". */
+  busy?: boolean;
 }) {
+  const inner = (
+    <>
+      <span className={cn(CHIP, "border-muted-foreground/40 text-muted-foreground border-2 border-dashed")} aria-hidden>
+        <Plus className="h-4 w-4" />
+      </span>
+      <RowText title={busy ? "Opening…" : "Add"} line={line} />
+    </>
+  );
   return href ? (
-    <Link href={href} aria-label={ariaLabel} className={cn(HEADING_BUTTON, className)} data-wallet-add>
-      {label}
+    <Link href={href} aria-label={ariaLabel} className={ROW} data-wallet-add>
+      {inner}
     </Link>
   ) : (
-    <button type="button" onClick={onClick} disabled={disabled} aria-label={ariaLabel} className={cn(HEADING_BUTTON, className)} data-wallet-add>
-      {label}
+    <button type="button" onClick={onClick} disabled={disabled} aria-label={ariaLabel} className={cn(ROW, "disabled:opacity-60")} data-wallet-add>
+      {inner}
     </button>
   );
 }
@@ -200,9 +221,12 @@ export function CreditsRow({
         </span>
         <span className="text-muted-foreground mt-0.5 block truncate text-sm">{creditsLine(card, gone)}</span>
       </span>
-      <span className={cn("shrink-0 text-lg font-semibold tabular-nums", amount.cents === 0 && "text-muted-foreground")}>
-        {money(amount.cents, card.currency)}
-      </span>
+      {/* Nothing on it: the line says so; no grey $0 beside it (MESITA-3744). */}
+      {amount.cents > 0 || gone ? (
+        <span className={cn("shrink-0 text-lg font-semibold tabular-nums", amount.cents === 0 && "text-muted-foreground")}>
+          {money(amount.cents, card.currency)}
+        </span>
+      ) : null}
       <Chevron />
     </Link>
   );
