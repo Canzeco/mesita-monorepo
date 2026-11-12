@@ -213,7 +213,6 @@ describe("amountShown", () => {
 
 describe("payButton", () => {
   const m = (c: number) => money(c, "mxn");
-  const cardLabel = "Visa •••• 4242";
   const split = (a: { bill: number; tip?: number; credit?: number; billWith: "cash" | "card"; tipWith?: "cash" | "card" }) =>
     tabSplit({
       billCents: a.bill,
@@ -224,52 +223,32 @@ describe("payButton", () => {
       billWith: a.billWith,
       tipWith: a.tipWith ?? a.billWith,
     });
-  const btn = (s: ReturnType<typeof split>) => payButton(s, { cardLabel, m });
+  const btn = (s: ReturnType<typeof split>) => payButton(s, { m });
 
-  it("card only: the whole amount, the card's name", () => {
-    expect(btn(split({ bill: 60000, tip: 9000, billWith: "card" }))).toEqual({ button: `Pay ${m(69000)}`, line: cardLabel });
+  // MESITA-3798: the Pay step's rows name each way; the line is only the
+  // cash that stays at the table.
+  it("card only: the whole amount, no line", () => {
+    expect(btn(split({ bill: 60000, tip: 9000, billWith: "card" }))).toEqual({ button: `Pay ${m(69000)}`, line: null });
   });
-  it("credit only: the whole amount, Credit", () => {
-    expect(btn(split({ bill: 60000, credit: 80000, billWith: "card" }))).toEqual({ button: `Pay ${m(60000)}`, line: "Credit" });
+  it("credit and card: the in-app sum, no line", () => {
+    expect(btn(split({ bill: 60000, tip: 9000, credit: 20000, billWith: "card" }))).toEqual({ button: `Pay ${m(69000)}`, line: null });
   });
-  it("credit and card: both named, name then amount", () => {
-    expect(btn(split({ bill: 60000, tip: 9000, credit: 20000, billWith: "card" }))).toEqual({
-      button: `Pay ${m(69000)}`,
-      line: `Credit ${m(20000)} + ${cardLabel} ${m(49000)}`,
-    });
-  });
-  it("card with a cash tip: the card amount, plus the cash", () => {
+  it("card with a cash tip: the card amount, plus the cash to the waiter", () => {
     expect(btn(split({ bill: 49000, tip: 20000, billWith: "card", tipWith: "cash" }))).toEqual({
       button: `Pay ${m(49000)}`,
-      line: `+ ${m(20000)} cash`,
+      line: `+ ${m(20000)} cash to the waiter`,
     });
   });
-  it("credit with the rest in cash: the credit amount, plus the cash", () => {
+  it("credit with the rest in cash: the credit amount, plus the cash to the waiter", () => {
     expect(btn(split({ bill: 60000, tip: 9000, credit: 20000, billWith: "cash" }))).toEqual({
       button: `Pay ${m(20000)}`,
-      line: `+ ${m(49000)} cash`,
+      line: `+ ${m(49000)} cash to the waiter`,
     });
   });
-  it("credit, card and a cash tip: both named, then the cash", () => {
-    expect(btn(split({ bill: 60000, tip: 9000, credit: 20000, billWith: "card", tipWith: "cash" }))).toEqual({
-      button: `Pay ${m(60000)}`,
-      line: `Credit ${m(20000)} + ${cardLabel} ${m(40000)} + ${m(9000)} cash`,
-    });
+  it("all cash: nothing moves in the app, Show the waiter, no line", () => {
+    expect(btn(split({ bill: 60000, tip: 9000, billWith: "cash" }))).toEqual({ button: "Show the waiter", line: null });
   });
-  it("credit covers the bill, the tip in cash or by card", () => {
-    expect(btn(split({ bill: 60000, tip: 9000, credit: 60000, billWith: "cash", tipWith: "cash" }))).toEqual({
-      button: `Pay ${m(60000)}`,
-      line: `+ ${m(9000)} cash`,
-    });
-    expect(btn(split({ bill: 60000, tip: 9000, credit: 60000, billWith: "cash", tipWith: "card" }))).toEqual({
-      button: `Pay ${m(69000)}`,
-      line: `Credit ${m(60000)} + ${cardLabel} ${m(9000)}`,
-    });
-  });
-  it("all cash: Confirm with the cash amount, no line", () => {
-    expect(btn(split({ bill: 60000, tip: 9000, billWith: "cash" }))).toEqual({ button: `Confirm · ${m(69000)} cash`, line: null });
-  });
-  it("the button's amount is always credit + card bill + card tip", () => {
+  it("the button's amount is always credit + card bill + card tip; the line is exactly the cash", () => {
     for (const bill of [100, 49000, 60000, 300050])
       for (const tip of [0, 500, 9000])
         for (const credit of [0, 100, 20000, 60000, 999999])
@@ -280,12 +259,8 @@ describe("payButton", () => {
               const cash = s.cash_bill_cents + s.cash_tip_cents;
               const b = btn(s);
               expect(inApp + cash).toBe(s.total_cents);
-              if (inApp === 0) expect(b).toEqual({ button: `Confirm · ${m(cash)} cash`, line: null });
-              else {
-                expect(b.button).toBe(`Pay ${m(inApp)}`);
-                // The cash part is on the line exactly when there is one.
-                expect(b.line?.endsWith(`+ ${m(cash)} cash`) ?? false).toBe(cash > 0);
-              }
+              if (inApp === 0) expect(b).toEqual({ button: "Show the waiter", line: null });
+              else expect(b).toEqual({ button: `Pay ${m(inApp)}`, line: cash > 0 ? `+ ${m(cash)} cash to the waiter` : null });
             }
   });
 });

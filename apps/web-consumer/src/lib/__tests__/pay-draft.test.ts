@@ -12,8 +12,8 @@ const saved = (over: Record<string, unknown> = {}) =>
 
 describe("readPayDraft", () => {
   it("reads a fresh draft whole", () => {
-    expect(readPayDraft(saved(), NOW)).toEqual({
-      step: "pay",
+    expect(readPayDraft(saved({ step: "total" }), NOW)).toEqual({
+      step: "total",
       amount: "1250",
       tip: 15,
       other: "",
@@ -25,7 +25,23 @@ describe("readPayDraft", () => {
   });
   it("maps the old step names", () => {
     expect(readPayDraft(saved({ step: "method" }), NOW)?.step).toBe("methods");
-    expect(readPayDraft(saved({ step: "review" }), NOW)?.step).toBe("pay");
+    expect(readPayDraft(saved({ step: "review" }), NOW)?.step).toBe("total");
+  });
+  // MESITA-3798: Pay holds the button that moves money; a draft never
+  // reopens there. Saved "pay" and the old "review" open Total, money kept.
+  it("a draft never reopens on Pay: pay and review open Total with amounts, tip and method kept", () => {
+    for (const step of ["pay", "review"]) {
+      expect(readPayDraft(saved({ step }), NOW)).toEqual({
+        step: "total",
+        amount: "1250",
+        tip: 15,
+        other: "",
+        useCredit: false,
+        method: "card",
+        cardId: "pm_1",
+        savedAt: NOW - 1000,
+      });
+    }
   });
   it("opens Bill for a step nobody knows, keeping the amounts", () => {
     for (const step of ["sign", "pick", "checkout", 4, null, undefined]) {
@@ -75,12 +91,12 @@ describe("readPayDraft", () => {
     expect(readPayDraft(saved({ amount: "1,250" }), NOW)?.amount).toBe("1250");
   });
   it("a draft with no tip answer never opens past Tip", () => {
-    for (const step of ["methods", "pay", "method", "review"]) {
+    for (const step of ["methods", "total", "pay", "method", "review"]) {
       expect(readPayDraft(saved({ step, tip: null }), NOW)?.step).toBe("tip");
       expect(readPayDraft(saved({ step, tip: "none" }), NOW)?.step).toBe("tip");
     }
     expect(readPayDraft(saved({ step: "bill", tip: null }), NOW)?.step).toBe("bill");
-    expect(readPayDraft(saved({ step: "pay", tip: "other", other: "0" }), NOW)?.step).toBe("pay");
+    expect(readPayDraft(saved({ step: "total", tip: "other", other: "0" }), NOW)?.step).toBe("total");
   });
   it("every write carries its time and reads back", () => {
     const d = { step: "methods" as const, amount: "690", tip: "other" as const, other: "0", useCredit: true, method: null, cardId: null };
@@ -104,8 +120,8 @@ describe("readPayDraft", () => {
     });
   });
   it("a later-step draft carrying ticket fields keeps its step and drops them", () => {
-    const d = readPayDraft(saved({ step: "pay", ticket: "A-12", ticketSkipped: true }), NOW);
-    expect(d?.step).toBe("pay");
+    const d = readPayDraft(saved({ step: "total", ticket: "A-12", ticketSkipped: true }), NOW);
+    expect(d?.step).toBe("total");
     expect(d).not.toHaveProperty("ticket");
     expect(d).not.toHaveProperty("ticketSkipped");
   });

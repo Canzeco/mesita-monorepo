@@ -2,19 +2,20 @@ import type { ReactNode } from "react";
 import { PAY_STEPS, type PayStepKey, payStepLabel, payStepName, payStepNumber, payStepSpoken, SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { cn } from "@/lib/utils";
 
-// THE PAY STRIP (MESITA-3759): the six named steps, drawn the same on the
-// place page (steps 2 to 5) and on the guest's payment page (step 6).
+// THE PAY STRIP (MESITA-3759): the seven named steps (MESITA-3798), drawn
+// the same on the place page (steps 2 to 6) and on the guest's payment page
+// (step 7).
 //
 //   [photo] Place name (truncates) ............ 2 · Bill   <- the page's h2
-//   ━━━━ ▭▭▭▭ ──── ──── ──── ────                          <- done · current · later
+//   ━━━━ ▭▭▭▭ ──── ──── ──── ──── ────                     <- done · current · later
 //
 // Done steps are solid ink, the current step is a hollow outline, later
-// steps are muted: so all six solid means the waiter signed and nothing
+// steps are muted: so all seven solid means the waiter signed and nothing
 // else, and the label then reads "Signed" with no number. The label is the
 // page's only heading; it never wraps or truncates (the place name does).
 // On the place page the segments are not tappable (Back is the one way
 // back) and are hidden from screen readers, which hear one label, "Step 2 of
-// 6: Bill". On the guest's payment page (MESITA-3772) the steps already
+// 7: Bill". On the guest's payment page (MESITA-3772) the steps already
 // walked can be opened again: with `onStep`, segments 2 to `reached` (never
 // step 1, Pick) are buttons, each named "Show step 3: Tip".
 
@@ -28,7 +29,7 @@ export function PaySteps({
 }: {
   /** The step shown (the current segment and the heading). */
   step: PayStepKey;
-  /** The waiter signed: all six solid; at step 6 the label reads "Signed". */
+  /** The waiter signed: all seven solid; at step 7 the label reads "Signed". */
   signed?: boolean;
   /** Row one's left side: what the screen already shows (photo and name). */
   left: ReactNode;

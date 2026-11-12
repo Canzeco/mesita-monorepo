@@ -8,11 +8,16 @@
 //                  The text is checked, never trusted: anything that is not
 //                  an object, a savedAt that is not a real number, or an
 //                  amount that is not text is no draft.
-//   old step keys  "method" opens Methods and "review" opens Pay (their names
-//                  before the six steps); "ticket" (MESITA-3776's step,
-//                  removed by MESITA-3796) opens Bill with the amounts, tip
-//                  and method kept, and its ticket fields are dropped; a key
-//                  nobody knows opens Bill.
+//   old step keys  "method" opens Methods (its name before the steps had
+//                  names); "ticket" (MESITA-3776's step, removed by
+//                  MESITA-3796) opens Bill with the amounts, tip and method
+//                  kept, and its ticket fields are dropped; a key nobody
+//                  knows opens Bill.
+//   never on Pay   a draft never reopens on Pay, the step whose button moves
+//                  money (MESITA-3798): a draft saved on "pay", and the old
+//                  "review" (Pay before the seven steps), open Total, with
+//                  the amounts, tip and method kept. The guest reads the sums
+//                  again and taps Next before the button is there.
 //   the limit      a draft older than PAY_DRAFT_MAX_AGE_MS is no draft. A
 //                  draft with no savedAt (saved before this rule) or one in
 //                  the future (a wrong clock) is stamped now and KEPT: a
@@ -29,7 +34,7 @@ import { draftAmount, draftTip } from "@/lib/pay-keypad";
 /** How long a draft lives after its last change. */
 export const PAY_DRAFT_MAX_AGE_MS = 30 * 60 * 1000;
 
-/** The place page's steps: Bill, Tip, Methods, Pay (2 to 5 of the six). */
+/** The place page's steps: Bill, Tip, Methods, Total, Pay (2 to 6 of the seven). */
 export type PlacePayStep = Exclude<PayStepKey, "pick" | "sign">;
 export const PLACE_PAY_STEPS: readonly PlacePayStep[] = PAY_STEPS.map((s) => s.key).filter(
   (k): k is PlacePayStep => k !== "pick" && k !== "sign",
@@ -51,10 +56,12 @@ export type PayDraft = {
   savedAt: number;
 };
 
-const OLD_STEP: Record<string, PlacePayStep> = { method: "methods", review: "pay", ticket: "bill" };
+const OLD_STEP: Record<string, PlacePayStep> = { method: "methods", review: "total", ticket: "bill" };
 
 function readStep(v: unknown): PlacePayStep {
   if (typeof v !== "string") return "bill";
+  // Never back onto Pay: its button moves money (MESITA-3798).
+  if (v === "pay") return "total";
   const key = OLD_STEP[v] ?? v;
   return PLACE_PAY_STEPS.find((s) => s === key) ?? "bill";
 }
