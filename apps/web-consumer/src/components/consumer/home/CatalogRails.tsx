@@ -52,7 +52,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, Heart, SlidersHorizontal } from "lucide-react";
+import { Compass, Heart } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
@@ -88,7 +88,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { CatalogTile } from "./CatalogTile";
 import { DiscoverFallback, PLACES_LIST, RowFallback } from "./DiscoverFallback";
-import { GRID_CHIPS, ROW_LIST } from "./place-grid-classes";
+import { ROW_LIST } from "./place-grid-classes";
 import { PlaceRowCard } from "./PlaceRowCard";
 import { useActiveLocation } from "@/lib/active-location";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
@@ -580,76 +580,58 @@ export function CatalogRails() {
     </nav>
   );
 
-  // PLACES 3.0'S FAMILY CHIPS (MESITA-3658, MESITA-3762): the column's
-  // rows, ❤️ Saved first and Top after it (Pato, MESITA-3763: "add saved as
-  // option before top"), as one scrolling line of
-  // pills, each with its family's emoji (MESITA-3668), so the rows get the
-  // whole width. The chosen pill is ink. The row and the column share
-  // `chip`, so a family carries across the two tabs.
-  // THE MENU DISC BEFORE THE PILLS OPENS PLACES 1.0'S COLUMN AS A LEFT DRAWER
-  // (Pato, MESITA-3764: "use the lateral menu of places 1.0 but in places
-  // 3.0 instead of the ugly ass this filters page"): the same rows, one pick,
-  // and the drawer closes and centres that family's pill. It replaced
-  // Search's multi-pick Filters sheet (MESITA-3666); Search keeps its own.
+  // PLACES 3.0'S EMOJI RAIL (Pato, MESITA-3781: "put a lateral menu when you
+  // only show the items … i can click the lateral vertical menu and open with
+  // names … lateral menu, left photo, right box, repeat"): a slim grey column
+  // at the left edge with only each family's emoji, ❤️ Saved and ⭐ Top first
+  // (MESITA-3763), the others faded ("make the items slightly visible") and
+  // the chosen one full on white with the blue bar (red for Saved). It
+  // replaced MESITA-3658's chip row and MESITA-3764's disc. A tap anywhere on
+  // the column opens the names drawer (MESITA-3764, half the card since
+  // MESITA-3779); a pick closes it and brings that emoji into view. The rail
+  // and Places 1.0's column share `chip`, so a family carries across tabs.
   const pickedFromMenu = () => {
     setMenuOpen(false);
     requestAnimationFrame(() =>
       document
-        .querySelector("[data-places-chips] [aria-pressed='true']")
-        ?.scrollIntoView({ block: "nearest", inline: "center" }),
+        .querySelector("[data-places-rail] [data-on]")
+        ?.scrollIntoView({ block: "nearest" }),
     );
   };
-  const chipRow = (
-    <div className="bg-card flex shrink-0 items-center gap-1.5 pl-3">
+  const chosenLabel = chips.find((c) => c.key === chip)?.label ?? TOP_LABEL;
+  const emojiRail = (
+    <div className="bg-background flex w-12 shrink-0 flex-col">
       <button
         type="button"
         onClick={() => setMenuOpen(true)}
-        aria-label="Families"
+        aria-label={`Families: ${chosenLabel}`}
         aria-haspopup="dialog"
         aria-expanded={menuOpen}
-        className="bg-border/60 text-foreground hover:bg-border relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition after:absolute after:-inset-1.5 active:scale-[0.97]"
-        data-places-menu
-      >
-        <SlidersHorizontal className="h-4 w-4" strokeWidth={2} aria-hidden />
-      </button>
-      <nav
-        className={cn("bg-card min-w-0 flex-1 pl-0", GRID_CHIPS)}
-        aria-label="Families"
-        data-places-chips
+        className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
+        data-places-rail
       >
         {chips.map((c) => {
           const on = chip === c.key;
           return (
-            <button
+            <span
               key={c.key}
-              type="button"
-              onClick={(e) => {
-                if (!on)
-                  trackEvent(supabase, "home_mode_view", { mode: c.label });
-                setChip(c.key);
-                // Saved reads no pool: the last pool row's family stays.
-                if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
-                e.currentTarget.scrollIntoView({
-                  block: "nearest",
-                  inline: "center",
-                });
-              }}
-              aria-pressed={on}
+              aria-hidden
+              data-on={on ? "" : undefined}
               className={cn(
-                "relative h-8 shrink-0 rounded-full px-3 text-xs transition after:absolute after:inset-x-0 after:-inset-y-1.5",
+                "relative flex w-full shrink-0 items-center justify-center py-3 text-xl leading-none transition",
                 on
-                  ? "bg-foreground text-card font-semibold"
-                  : "bg-border/60 text-foreground hover:bg-border",
+                  ? cn(
+                      "bg-card before:absolute before:inset-y-0 before:left-0 before:w-1",
+                      c.key === SAVED_CHIP ? BAR_RED : BAR_BLUE,
+                    )
+                  : "opacity-40",
               )}
             >
-              <span aria-hidden className="mr-1">
-                {c.emoji}
-              </span>
-              {c.label}
-            </button>
+              {c.emoji}
+            </span>
           );
         })}
-      </nav>
+      </button>
       <LocalSheet
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
@@ -714,14 +696,14 @@ export function CatalogRails() {
   );
 
   // Home's header (the location alone, MESITA-2405) → the tabs → on Places
-  // 1.0 the family column beside the tiles, on Places 3.0 the chip row over
-  // the rows, on Social the feed full width; the pane scrolls on its own.
+  // 1.0 the family column beside the tiles, on Places 3.0 the emoji rail
+  // beside the rows, on Social the feed full width; the pane scrolls on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       {tabs}
-      {tab === "rows" ? chipRow : null}
       <div className="flex min-h-0 flex-1">
         {tab === "places" ? categories : null}
+        {tab === "rows" ? emojiRail : null}
         <div
           className="bg-card scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
           data-home-scroller

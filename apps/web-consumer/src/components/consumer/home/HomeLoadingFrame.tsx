@@ -3,7 +3,6 @@ import {
   DiscoverFallback,
   RowFallback,
 } from "@/components/consumer/home/DiscoverFallback";
-import { GRID_CHIPS } from "@/components/consumer/home/place-grid-classes";
 import { Skeleton } from "@/components/shared";
 
 // Home's loading frame: CatalogRails' bands, block for block — the white
@@ -33,14 +32,12 @@ export function HomeLoadingFrame({
         ))}
       </div>
       {view === "rows" ? (
-        <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className={GRID_CHIPS}>
-            <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
-            {[0, 1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-8 w-16 shrink-0 rounded-full" />
-            ))}
+        <div className="flex min-h-0 flex-1">
+          {/* Places 3.0's emoji rail (MESITA-3781). */}
+          <div className="bg-background w-12 shrink-0" />
+          <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden">
+            <RowFallback />
           </div>
-          <RowFallback />
         </div>
       ) : (
         <div className="flex min-h-0 flex-1">

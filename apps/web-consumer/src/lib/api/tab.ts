@@ -54,7 +54,20 @@ export type GuestTab = {
     part: string | null;
     status: string;
     paid_at: string | null;
+    /** MESITA-3780: what this part charged, and its stored cashback rate.
+     *  Older reads have none. */
+    created_at?: string;
+    credit_cents?: number;
+    cash_cents?: number;
+    card_cents?: number;
+    tip_cents?: number;
+    cashback_cents?: number;
+    cashback_bps?: number | null;
   }>;
+  /** MESITA-3780: the timeline. Older reads have none. */
+  created_at?: string | null;
+  billed_at?: string | null;
+  paying_at?: string | null;
   paid_at: string | null;
   expires_at: string;
   updated_at: string;

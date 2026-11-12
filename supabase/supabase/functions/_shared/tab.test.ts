@@ -234,3 +234,16 @@ Deno.test("a ticket already paid reads back as its refusal: another guest's, or 
   const mine = rpcRefusal(await callTabRpc(fake(`guest_refused:{"code": "ticket_paid_by_you", "paid_tab_id": "${TAB}"}`), "pay_tab_guest_pay", {}));
   assertEquals([mine.status, mine.code, mine.error, mine.detail?.paid_tab_id], [409, "ticket_paid_by_you", "You already paid this ticket.", TAB]);
 });
+
+Deno.test("guest view: each part says what it charged, and the timeline is there (MESITA-3780)", () => {
+  const extra = { placeName: null, spendableCents: 0, cashOk: true, cashBackBps: 200, nowMs: NOW,
+    card: { card_available: true, card_unavailable_code: null, card_back_bps: 500, card_minimum_cents: 0 } };
+  const v = guestTabView(guestTab({ created_at: "2026-11-09T09:30:00Z", billed_at: "2026-11-09T09:40:00Z" }),
+    [cardPart({ tip_cents: 1500 }), cashPart({ id: "cash", part: "outside" })], extra);
+  const [card, cash] = v.parts;
+  assertEquals([card.card_cents, card.tip_cents, card.cashback_bps], [20000, 1500, 500]);
+  assertEquals([cash.cash_cents, cash.cashback_bps], [10000, 200]);
+  assertEquals([v.created_at, v.billed_at], ["2026-11-09T09:30:00Z", "2026-11-09T09:40:00Z"]);
+  // The proof token never leaves the server.
+  assertEquals(JSON.stringify(v).includes("proof_token"), false);
+});
