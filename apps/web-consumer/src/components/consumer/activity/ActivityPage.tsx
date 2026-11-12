@@ -1,16 +1,15 @@
 "use client";
 
-// /activity — A PAGE UNDER ME (MESITA-3717, Pato: "Make activity hidden. Move
-// it to profile. not in bottom menu."): Me's tiles open its chips, it wears
-// the pushed-page frame with Back and lights Me. It was the bar's fourth tab
-// from MESITA-3631; tickets since MESITA-3688.
+// /activity — THE BAR'S ACTIVITY TAB (MESITA-3769, Pato: "add the activity
+// page again — Home Search Pay Activity Me"; a page under Me with Back for a
+// day, MESITA-3717). Me's tiles still open its chips.
 //
 // Six chips: five since MESITA-3697 (Pato: "Favorites, Reservations,
 // Visits(has payments inside), Vouchers(Prepayments), Gifts"), in his order,
 // then Notifications (MESITA-3716, Pato: "add notifications subpage to
 // this"). The list is lib/activity-types.ts; the chosen one is in the address
 // (`?type=`), so Me's tiles, Back and a shared link land on it; a bare
-// /activity is Reservations. FAVORITES LEFT (Pato, 2026-11-11, MESITA-3723:
+// /activity is Notifications (MESITA-3769). FAVORITES LEFT (Pato, 2026-11-11, MESITA-3723:
 // "remove favorites from activity"): the hearts are Home's Saved row
 // (MESITA-3718), and the old Favorites addresses land on Home:
 //
@@ -42,7 +41,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Screen } from "@/components/consumer/nav/Screen";
+import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useUnseenNotifications } from "@/components/consumer/use-unseen-notifications";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -801,9 +800,9 @@ function TypeRail({
   );
 }
 
-/** The page's frame: the pushed-page header with Back (Screen, MESITA-3717),
- *  the chips held under it on a white strip, then the page. The loading
- *  frame draws the same shape (MESITA-2701). */
+/** The tab's frame: the white header bar Pay wears (MESITA-3534), the title
+ *  and the chips held at the top, then the page. The loading frame draws the
+ *  same shape (MESITA-2701). */
 export function ActivityFrame({
   rail,
   children,
@@ -812,12 +811,15 @@ export function ActivityFrame({
   children: ReactNode;
 }) {
   return (
-    <Screen title="Activity" flush>
-      <div className="border-border bg-card sticky top-0 z-10 border-b px-4 pb-3">
+    <KeptScroll className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
+      <header className="border-border bg-card sticky top-0 z-10 -mx-4 border-b px-4 pt-5 pb-3">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
+          Activity
+        </h1>
         {rail ?? <RailSkeleton />}
-      </div>
-      <div className="px-4 pt-5 pb-8">{children}</div>
-    </Screen>
+      </header>
+      <div className="mt-5">{children}</div>
+    </KeptScroll>
   );
 }
 

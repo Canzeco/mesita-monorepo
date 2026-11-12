@@ -288,12 +288,11 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/wallet", "Pay"],
     ["/wallet/p1", "Pay"],
     ["/wallet/gift/g1", "Pay"],
-    // Activity is a page under Me, off the bar (MESITA-3717; a tab of its
-    // own from MESITA-3631 until then).
-    ["/activity", "Me"],
+    // Activity is the bar's tab again (MESITA-3769).
+    ["/activity", "Activity"],
     // A reservation is reached from a place AND from Activity › Reservations
-    // (MESITA-3688); it lights Me, as Activity does.
-    ["/reservation/r1", "Me"],
+    // (MESITA-3688); it lights Activity.
+    ["/reservation/r1", "Activity"],
     // Share is Me's tile since it left the bar (MESITA-2887).
     ["/share", "Me"],
     ["/me", "Me"],
@@ -370,8 +369,8 @@ describe("the bar is Home · Search · Pay · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Me (MESITA-3726)", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
+  it("is exactly Home · Search · Pay · Activity · Me (MESITA-3769)", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Activity", "Me"]);
   });
 
   it("the @modal host stacks over the body only, not BottomNav (MESITA-2747)", () => {
@@ -396,11 +395,11 @@ describe("the bar is Home · Search · Pay · Me", () => {
     expect(labels).not.toContain("Share");
   });
 
-  // Four <a> tabs and no <button>: Pay navigates to its page like every
+  // Five <a> tabs and no <button>: Pay navigates to its page like every
   // other link.
-  it("draws four links and no button", async () => {
+  it("draws five links and no button", async () => {
     const html = await renderNav("/search");
-    expect(html.split("<a ").slice(1)).toHaveLength(4);
+    expect(html.split("<a ").slice(1)).toHaveLength(5);
     expect(html.split("<button").slice(1)).toHaveLength(0);
   });
 
@@ -422,6 +421,7 @@ describe("the bar is Home · Search · Pay · Me", () => {
       CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
+      CONSUMER_ROUTES.activity,
       CONSUMER_ROUTES.me,
     ]);
     const redirects = await nextConfig.redirects!();
@@ -593,37 +593,32 @@ describe("T5b — Home's header and Search's header", () => {
 //
 // The same class of bug still exists one layer over — a box wired to the wrong
 // page, or a page dropped in a refactor — so the pin moves rather than dies.
-describe("T6 — Me's activity tiles open Activity's chips", () => {
+describe("T6 — Activity's chips live on the bar's tab, not on Me", () => {
   // The page and its cells: the cells are hub-tiles.tsx's rows since
   // MESITA-2701, which ProfileClient and /me's loading.tsx both map.
   const ME = ["ProfileClient.tsx", "hub-tiles.tsx"]
     .map((f) => readFileSync(join(SHELL, "me", f), "utf8"))
     .join("\n");
 
-  it("every Activity chip is a tile, and each opens its chip (MESITA-3697)", () => {
+  it("Me holds no Activity tile (MESITA-3769)", () => {
     const hrefs = ME_HUB_GRID.map((c) => c.href);
-    // Favorites left Activity and Me in MESITA-3723.
-    expect(hrefs).not.toContain("/activity?type=favorites");
-    for (const href of [
-      "/activity?type=reservations",
-      "/activity?type=visits",
-      "/activity?type=vouchers",
-      "/activity?type=gifts",
-      "/activity?type=notifications",
-    ]) {
-      expect(hrefs, href).toContain(href);
-    }
-    for (const href of hrefs.filter((h) => h.startsWith("/activity?type="))) {
-      expect(ACTIVITY_TYPES as readonly string[], href).toContain(
-        href.slice("/activity?type=".length),
-      );
-    }
+    expect(hrefs.filter((h) => h.startsWith("/activity"))).toEqual([]);
     // Me's own pages for these are gone (MESITA-3688).
     for (const gone of ["notifications", "favorites", "reservations"]) {
       expect(existsSync(join(SHELL, "me", gone)), gone).toBe(false);
     }
     expect(ME).not.toContain("SAVED_TAB_HREF");
     expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
+  });
+
+  it("the chips are Notifications · Reservations · Visits · Vouchers · Gifts (MESITA-3769)", () => {
+    expect([...ACTIVITY_TYPES]).toEqual([
+      "notifications",
+      "reservations",
+      "visits",
+      "vouchers",
+      "gifts",
+    ]);
   });
 
   it("no box routes into a container any more", () => {
@@ -637,13 +632,13 @@ describe("T6 — Me's activity tiles open Activity's chips", () => {
 
 // ── T8 — the destination grid holds only things that work ──────────────────
 //
-// Me is a 3-up grid of thirteen cells (MESITA-3716; twelve before) (MESITA-1628, MESITA-3450, MESITA-3465). In a grid a dead cell reads as broken
+// Me is a 3-up grid of eight cells (MESITA-3769; thirteen before) (MESITA-1628, MESITA-3450, MESITA-3465). In a grid a dead cell reads as broken
 // rather than upcoming, so the grid holds live doors only.
 //
 // The regression this catches is a tile for a surface that does not exist
 // — `DestTile` has no `soon` prop and its `href` is required, so such a tile
 // would ship as a live Link pointing at nothing.
-describe("T8 — Me's grid is thirteen live cells", () => {
+describe("T8 — Me's grid is eight live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
@@ -652,7 +647,7 @@ describe("T8 — Me's grid is thirteen live cells", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders thirteen cells in Pato's order", () => {
+  it("renders eight cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -668,14 +663,7 @@ describe("T8 — Me's grid is thirteen live cells", () => {
       "Instagram",
       "Class",
       "Plan",
-      // Every Activity chip, in its order (MESITA-3688; five since
-      // MESITA-3697; Favorites left in MESITA-3723).
-      "Reservations",
-      "Visits",
-      "Vouchers",
-      "Gifts",
-      // Back as the sixth chip (MESITA-3716).
-      "Notifications",
+      // The Activity chips' tiles left with MESITA-3769 (from MESITA-3688).
       // Transactions sat here (MESITA-3465) until it became the bar's
       // Activity tab (MESITA-3631).
       // Refunds: credit a closed place can't honour (MESITA-3517).

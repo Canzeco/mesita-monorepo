@@ -12,8 +12,6 @@ import {
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { activityHref } from "@/lib/activity-types";
-import { ACTIVITY_CHIPS } from "@/components/consumer/activity/activity-chips";
 import { DestGrid, type DestShape } from "./profile-sections";
 
 // ─── Me's ten cells and the page they sit on ─────────────────────────────────
@@ -82,9 +80,9 @@ export type HubTile = {
   href: string;
 };
 
-/** The grid cells, in reading order; Settings is the last (thirteen with
- *  it since MESITA-3716: Profile · Instagram · Class · Plan, the six Activity
- *  chips, Refunds · MCP · Share). */
+/** The grid cells, in reading order; Settings is the last (eight with it
+ *  since MESITA-3769: Profile · Instagram · Class · Plan · Refunds · MCP ·
+ *  Share). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // member number is on /me/profile, with its copy button; the tile only
@@ -118,16 +116,9 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Free or Pro",
     href: CONSUMER_ROUTES.mePages.plan,
   },
-  // EVERY ACTIVITY CHIP HAS A TILE (Pato, MESITA-3688: "add more here, like
-  // all the Activity subpages, and instead of nesting them on Me just
-  // redirect to activity"). Each opens its chip at /activity?type=…; Me's own
-  // Notifications, Favorites and Reservations pages are gone (legacy 308s).
-  ...ACTIVITY_CHIPS.map((c) => ({
-    Icon: c.Icon,
-    title: c.label,
-    summary: c.summary,
-    href: activityHref(c.type),
-  })),
+  // NO ACTIVITY TILES (Pato, 2026-11-11, MESITA-3769: "REMOVE THEM FROM
+  // ME"): Activity is the bar's tab again, its chips live there. Each chip
+  // had a tile here from MESITA-3688.
   // TRANSACTIONS BECAME ACTIVITY (MESITA-3631), a page under Me (MESITA-3717).
   // CARDS LEFT (Pato, MESITA-3561: "remove cards from there. cards is
   // already used in the wallet. its redundant"). /me/cards now redirects to the

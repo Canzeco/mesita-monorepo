@@ -9,8 +9,6 @@ import {
   instagramWithFollowers,
   type ConsumerFacts,
 } from "@/lib/consumer-identity";
-import { useUnseenNotifications } from "@/components/consumer/use-unseen-notifications";
-import { activityHref } from "@/lib/activity-types";
 import { DestTile } from "./profile-sections";
 import { MeHubFrame } from "./hub-tiles";
 import { IdentityBar } from "./IdentityBar";
@@ -45,11 +43,8 @@ import { IdentityBar } from "./IdentityBar";
 // Profile printed the member number, Instagram the handle, Class and Plan the
 // guest's values, each behind a loading skeleton.
 
-const NOTIFICATIONS_HREF = activityHref("notifications");
-
 export function ProfileClient() {
   const identity = useConsumerIdentity();
-  const unseen = useUnseenNotifications();
   // The row the shell already read (MESITA-3014): Me paints the guest's name
   // and photo on its first frame, and revalidates in the background.
   const { data: profile, loading } = useConsumerProfile();
@@ -101,8 +96,6 @@ export function ProfileClient() {
           title={cell.title}
           summary={cell.summary}
           href={cell.href}
-          // The one tile that says something is new (MESITA-3717).
-          dot={unseen && cell.href === NOTIFICATIONS_HREF}
         />
       )}
     />
