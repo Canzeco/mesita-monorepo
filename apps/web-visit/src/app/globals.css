@@ -400,6 +400,24 @@ button.quiet {
   font-variant-numeric: tabular-nums;
 }
 
+/* The ticket number, the Sign card's first line (MESITA-3776): the
+   amount's size, so the waiter matches the ticket before signing. With no
+   ticket the same line reads "No ticket given" in muted ink: nothing moves. */
+.verify-ticket {
+  margin: 16px 0 0;
+  font-size: 32px;
+  font-weight: 700;
+  color: #171717;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.verify-ticket.muted {
+  color: #737373;
+}
+.verify-ticket + .verify-amount {
+  margin-top: 4px;
+}
+
 /* The checklist both phones show (lib/pay-checklist). */
 .checklist {
   align-self: stretch;

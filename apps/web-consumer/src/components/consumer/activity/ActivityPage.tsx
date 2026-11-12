@@ -190,7 +190,7 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
       money: v.bill_cents != null,
       line: join(
         v.waiter_name,
-        v.ticket && `#${v.ticket}`,
+        v.ticket && `Ticket ${v.ticket}`,
         ...v.part_payment_ids.map((id) => notes.get(id)),
         onDay(v.created_at),
       ),

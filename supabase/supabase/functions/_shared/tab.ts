@@ -183,16 +183,37 @@ export function readSplitBody(b: Record<string, unknown>): { ok: true; input: Sp
 
 /** The guest's own payment (MESITA-3707): the bill they typed and how they
  *  pay it. Parts are checked by the SQL (they must sum to the bill). */
-export type GuestPayInput = Omit<SplitInput, "tabId" | "billVersion"> & { placeId: string; billCents: number };
+export type GuestPayInput = Omit<SplitInput, "tabId" | "billVersion"> & {
+  placeId: string;
+  billCents: number;
+  /** MESITA-3776: the ticket number as typed, trimmed; null = none given. */
+  ticket: string | null;
+  /** MESITA-3776: "Yes, my share": pay a ticket another guest already paid. */
+  repeatOk: boolean;
+};
+
+/** The guest's ticket number: 1 to 16 letters, digits, spaces, dashes or
+ *  slashes (pay_tab_guest_pay checks the same). */
+const GUEST_TICKET = /^[A-Za-z0-9 /-]{1,16}$/;
 
 export function readGuestPayBody(b: Record<string, unknown>): { ok: true; input: GuestPayInput } | TabRefusal {
   if (!isUuid(b.place_id)) return refuse(400, "bad_request", "place_id must be a Mesita place id");
   const bill = cents(b.bill_cents, { min: 1 });
   if (bill === null) return refuse(400, "amount_required", "Type the amount you're paying");
+  let ticket: string | null = null;
+  if (b.ticket !== undefined && b.ticket !== null) {
+    if (typeof b.ticket !== "string") return refuse(400, "ticket_invalid", REFUSALS.ticket_invalid[1]);
+    const t = b.ticket.trim();
+    if (t !== "" && !GUEST_TICKET.test(t)) return refuse(400, "ticket_invalid", REFUSALS.ticket_invalid[1]);
+    ticket = t === "" ? null : t;
+  }
+  if (b.repeat_ok !== undefined && b.repeat_ok !== null && typeof b.repeat_ok !== "boolean") {
+    return refuse(400, "bad_request", "repeat_ok must be true or false");
+  }
   const parsed = readSplitBody({ ...b, tab_id: b.place_id, bill_version: 1 });
   if (!parsed.ok) return parsed;
   const { tabId: _t, billVersion: _v, ...parts } = parsed.input;
-  return { ok: true, input: { ...parts, placeId: b.place_id, billCents: bill } };
+  return { ok: true, input: { ...parts, placeId: b.place_id, billCents: bill, ticket, repeatOk: b.repeat_ok === true } };
 }
 
 /** pay_tab_guest_pay raises `guest_refused:<json>` on any refusal (so the
@@ -248,6 +269,11 @@ const REFUSALS: Record<string, [number, string]> = {
   too_many_open: [409, "Get your open payment signed or close it before paying again."],
   not_guest: [409, "Only a payment you made yourself can be closed"],
   staff_code_needed: [403, "Type the waiter code"],
+  // MESITA-3776: the guest's ticket number. ticket_paid carries no time and
+  // no amount; ticket_paid_by_you carries paid_tab_id.
+  ticket_invalid: [400, "That ticket number isn't valid."],
+  ticket_paid: [409, "This ticket already has a payment."],
+  ticket_paid_by_you: [409, "You already paid this ticket."],
 };
 
 /** An RPC's `{ ok: false, code }` as the function answers it. */

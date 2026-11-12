@@ -168,9 +168,19 @@ export type PaidGuest = {
   card?: TabCardStep;
 };
 
+/** The guest pays alone. `ticket` is the restaurant's ticket number as typed
+ *  (null: "No ticket number"); `repeat_ok` is the guest's "Yes, my share"
+ *  after `ticket_paid`, sent with the SAME request id (MESITA-3776). */
 export async function apiPayGuest(
   client: SupabaseClient,
-  args: { place_id: string; bill_cents: number; request_id: string; card_pm_id?: string | null } & TabSplit,
+  args: {
+    place_id: string;
+    bill_cents: number;
+    request_id: string;
+    card_pm_id?: string | null;
+    ticket: string | null;
+    repeat_ok: boolean;
+  } & TabSplit,
 ): Promise<PaidGuest> {
   const { card_pm_id, ...rest } = args;
   const hasCard = rest.card_bill_cents > 0 || rest.card_tip_cents > 0;
@@ -382,7 +392,33 @@ export const TAB_REFUSAL: Record<string, string> = {
   verified: SIGN.alreadySigned,
   guest_tab: "This payment can only be cancelled.",
   parts: "The amounts don't add up to the bill. Check it and pay again.",
+  // MESITA-3776: the ticket number. ticket_paid and ticket_paid_by_you open
+  // a dialog on the Pay step (TICKET); these lines are the fallback.
+  ticket_invalid: "That ticket number isn't valid",
+  ticket_paid: "This ticket already has a payment.",
+  ticket_paid_by_you: "You already paid this ticket.",
 };
+
+/** The Ticket step's words (MESITA-3776): its refusals and the two dialogs
+ *  on the Pay step. */
+export const TICKET = {
+  heading: "Ticket number",
+  line: "From the top of your ticket",
+  whereIsIt: "Where is it?",
+  hasLetters: "Has letters?",
+  numberPad: "Number pad",
+  none: "No ticket number",
+  invalid: "That ticket number isn't valid",
+  label: (t: string) => `Ticket ${t}`,
+  // ticket_paid: another guest paid this ticket (a share).
+  shared: (t: string) => `Ticket ${t} already has a payment. Paying your share?`,
+  yesShare: "Yes, my share",
+  paying: "Paying…",
+  change: "Change ticket",
+  // ticket_paid_by_you: this guest already paid it.
+  mine: (t: string) => `You already paid ticket ${t}`,
+  seeIt: "See that payment",
+} as const;
 
 /** One of the guest's visits, as consumer-web-list-visits answers it
  *  (MESITA-3688, Activity › Visits). `status` is already the effective one

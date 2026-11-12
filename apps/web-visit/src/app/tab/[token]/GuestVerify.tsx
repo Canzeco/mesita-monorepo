@@ -10,7 +10,8 @@ import { keepStaff, readStaff } from "@/lib/staff-key";
 // The waiter's side of a guest's payment (MESITA-3708). The guest typed the
 // amount, chose how to pay and paid; the waiter scanned their QR and lands
 // here. Top to bottom: the heading "Sign" (MESITA-3759: no number, no
-// segments), the amount before tip (to match the ticket), the tip, the same
+// segments), the ticket number the guest typed (MESITA-3776; "No ticket
+// given" muted when they skipped it), the amount before tip (to match the ticket), the tip, the same
 // checklist the guest sees, one action line, the live clock, what signing
 // means, and one button that names the action. A phone signed in with the
 // waiter code may sign (MESITA-3734: there is no Staff QR); any other phone
@@ -225,6 +226,10 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
       {band}
       {reconnecting}
       <h1>{payStepLabel("sign", "waiter")}</h1>
+      {/* MESITA-3776: the ticket first, at the amount's size. */}
+      <p className={tab.ticket ? "verify-ticket" : "verify-ticket muted"} data-verify-ticket>
+        {tab.ticket ? `Ticket ${tab.ticket}` : "No ticket given"}
+      </p>
       <p className="verify-amount" aria-label={`Amount before tip ${money(tab.bill_cents ?? 0)}`}>
         {money(tab.bill_cents ?? 0)}
       </p>

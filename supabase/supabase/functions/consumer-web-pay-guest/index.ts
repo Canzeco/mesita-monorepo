@@ -16,7 +16,10 @@
 // Body: { place_id, bill_cents, credit_cents, cash_bill_cents,
 //         cash_tip_cents, card_bill_cents?, card_tip_cents?, card_pm_id?
 //         (with a card part), request_id (one per tap; a retry after a lost
-//         answer carries the same) }
+//         answer carries the same), ticket? (MESITA-3776: the number on the
+//         restaurant's ticket, 1-16 letters, digits, spaces, dashes or
+//         slashes; null = none), repeat_ok? ("Yes, my share": resend the
+//         SAME request_id with true after ticket_paid) }
 // Response: { ok: true, outcome: opened | replayed, tab_id, status: paying |
 //             paid, token, qr_url, expires_at, card_payment_id?,
 //             card?: { status, payment_intent_id, client_secret?,
@@ -26,9 +29,14 @@
 //             cash rate; nothing is earned unsigned) }
 //   MESITA-3772: one open guest payment per guest at any place; a second
 //   tap answers 409 too_many_open with open_tab_id and open_place_id.
+//   MESITA-3776: a ticket another guest paid here in the last 12 hours
+//   answers 409 ticket_paid (no time, no amount) unless repeat_ok; one the
+//   guest paid themselves answers 409 ticket_paid_by_you with paid_tab_id
+//   (repeat_ok never overrides it); a bad ticket answers 400 ticket_invalid.
 //   400 bad_request | amount_required | parts | tip_by_credit |
-//   card_required · 401 sign_in · 404 gone | card_not_found · 409 parts |
-//   insufficient (+spendable_cents) | too_many_open | cash_off |
+//   card_required | ticket_invalid · 401 sign_in · 404 gone |
+//   card_not_found · 409 parts | insufficient (+spendable_cents) |
+//   too_many_open | ticket_paid | ticket_paid_by_you (+paid_tab_id) | cash_off |
 //   card_unavailable | card_tip_alone | below_minimum | cards_off |
 //   no_account | currency_mismatch | card_declined | card_needs_auth ·
 //   502 card_failed
@@ -120,6 +128,8 @@ serveJson("consumer-web-pay-guest", async (req) => {
       p_request_id: pay.requestId,
       p_proof_token: mintProofToken(),
       p_outside_cashback_bps: Math.max(0, cashMoney.cash_cashback_bps),
+      p_ticket: pay.ticket,
+      p_repeat_ok: pay.repeatOk,
       ...cardArgs,
     });
     if (r.ok !== true) {

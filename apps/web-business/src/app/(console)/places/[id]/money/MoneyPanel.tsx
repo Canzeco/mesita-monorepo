@@ -218,7 +218,7 @@ export function MoneyPanel({ placeId, initial }: { placeId: string; initial: Pla
                 <p className="text-muted-foreground min-w-0 flex-1 truncate">
                   {r.kind === "voucher" ? KIND[r.voucher ?? ""] ?? "Voucher" : outside ? "Cash bill" : "Payment"}
                   {r.tip_cents > 0 ? ` (${outside ? "cash tip" : "tip"} ${money(r.tip_cents)})` : ""} · {r.guest}
-                  {r.ticket ? ` · ${r.ticket}` : ""}
+                  {r.ticket ? ` · Ticket ${r.ticket}` : ""}
                   {r.confirmed_by && CONFIRMER[r.confirmed_by] ? ` · Confirmed by ${CONFIRMER[r.confirmed_by]}` : ""}
                   {r.refunded_cents > 0 && r.refunded_cents < r.amount_cents && r.status !== "refunded" ? ` · ${money(r.refunded_cents)} refunded` : ""}
                   {r.guest_verify

@@ -204,3 +204,33 @@ Deno.test("too_many_open names the open payment", () => {
   const r = rpcRefusal({ ok: false, code: "too_many_open", max_open: 1, open_tab_id: TAB, open_place_id: TAB });
   assertEquals([r.status, r.error, r.detail?.open_tab_id], [409, "Get your open payment signed or close it before paying again.", TAB]);
 });
+
+// ━━━ MESITA-3776: the guest's ticket number ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Money: a ticket already paid must reach the guest as its refusal (never a
+// second charge by accident); the guest's own repeat is never overridable.
+
+Deno.test("the guest's tap reads the ticket, trimmed, and repeat_ok", () => {
+  const base = { place_id: "00000000-0000-4000-8000-000000003707", request_id: "00000000-0000-4000-8000-0000000e3707", bill_cents: 1000, cash_bill_cents: 1000 };
+  const typed = readGuestPayBody({ ...base, ticket: " A-0012 ", repeat_ok: true });
+  assertEquals(typed.ok ? [typed.input.ticket, typed.input.repeatOk] : null, ["A-0012", true]);
+  const none = readGuestPayBody(base);
+  assertEquals(none.ok ? [none.input.ticket, none.input.repeatOk] : null, [null, false]);
+  const blank = readGuestPayBody({ ...base, ticket: "   ", repeat_ok: null });
+  assertEquals(blank.ok ? [blank.input.ticket, blank.input.repeatOk] : null, [null, false]);
+  for (const bad of ["A#1", "12345678901234567", 12]) {
+    const r = readGuestPayBody({ ...base, ticket: bad });
+    assertEquals(r.ok ? null : [r.status, r.code, r.error], [400, "ticket_invalid", "That ticket number isn't valid."]);
+  }
+  const notBool = readGuestPayBody({ ...base, repeat_ok: "yes" });
+  assertEquals(notBool.ok ? null : notBool.code, "bad_request");
+});
+
+Deno.test("a ticket already paid reads back as its refusal: another guest's, or the guest's own with its id", async () => {
+  assertEquals([rpcRefusal({ ok: false, code: "ticket_invalid" }).status, rpcRefusal({ ok: false, code: "ticket_invalid" }).error],
+    [400, "That ticket number isn't valid."]);
+  const fake = (message: string) => ({ rpc: () => Promise.resolve({ data: null, error: { message } }) }) as unknown as Parameters<typeof callTabRpc>[0];
+  const paid = rpcRefusal(await callTabRpc(fake('guest_refused:{"code": "ticket_paid"}'), "pay_tab_guest_pay", {}));
+  assertEquals([paid.status, paid.code, paid.error, paid.detail], [409, "ticket_paid", "This ticket already has a payment.", undefined]);
+  const mine = rpcRefusal(await callTabRpc(fake(`guest_refused:{"code": "ticket_paid_by_you", "paid_tab_id": "${TAB}"}`), "pay_tab_guest_pay", {}));
+  assertEquals([mine.status, mine.code, mine.error, mine.detail?.paid_tab_id], [409, "ticket_paid_by_you", "You already paid this ticket.", TAB]);
+});
