@@ -2,21 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { clockTime, moneyLabel } from "@mesita/place-profile/lib/money";
-import { payChecklist, verifyLabel } from "@mesita/place-profile/lib/pay-checklist";
+import { type ChecklistStep, payChecklist, verifyLabel } from "@mesita/place-profile/lib/pay-checklist";
 import { payStepLabel, SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { listPayments, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
 import { type CashAnswer, signRequest } from "@/lib/sign-gate";
+import { CodeBoxes } from "./CodeBoxes";
 
 // The waiter's side of a guest's payment (MESITA-3708). The guest typed the
 // amount, chose how to pay and paid; the waiter scanned their QR and lands
-// here, on any phone, with nothing to type first (MESITA-3799). Top to
-// bottom: the heading "Sign" (MESITA-3759: no number, no segments), the
-// ticket number when the payment carries one (MESITA-3796: only
-// waiter-billed tabs do), the amount before tip, the tip, the same checklist
-// the guest sees, one action line, the live clock, then the signature: when
-// cash is owed one yes/no question ("Did you get X in cash?", never a typed
-// amount; No never signs), the waiter code, and one button that names the
-// action. The code is typed for every signature: Sign trades it for a staff
+// here, on any phone, with nothing to type first (MESITA-3799). One screen,
+// no scroll on a 375x667 phone (MESITA-3818). Top to bottom: "Sign" with the
+// live clock beside it, the ticket when the payment carries one (MESITA-3796:
+// only waiter-billed tabs do), the amount before tip, the tip, one line of
+// how it was paid (the guest's checklist, compacted), then the signature:
+// when cash is owed one yes/no question ("Did you get X in cash?", never a
+// typed amount; No never signs), the waiter code in six boxes, and one
+// button that names the action. The code is typed for every signature: Sign trades it for a staff
 // token and signs with that; this page keeps neither the code nor the token
 // (MESITA-3734: there is no Staff QR). Labels say "Sign"; names in code and
 // on the wire keep "verify".
@@ -29,6 +30,23 @@ function useNow(): Date {
     return () => clearInterval(t);
   }, []);
   return now;
+}
+
+/** The checklist's ways to pay on one line: "Card MX$300.00 ✓ · Cash
+ *  MX$200.00 to collect". Amount and tip have their own lines; "Waiter
+ *  signed" is the button. */
+function partsLine(steps: ChecklistStep[], money: (c: number) => string): string {
+  return steps
+    .filter((s) => s.key === "credit" || s.key === "card" || s.key === "cash")
+    .map((s) => {
+      const cents = money(s.cents ?? 0);
+      if (s.key === "card" && s.state === "waiting") return "Card still going through";
+      if (s.key === "cash" && s.state !== "done") return `Cash ${cents} to collect`;
+      return s.state === "done" ? `${s.label} ${cents} ✓` : `${s.label} ${cents}`;
+    })
+    // A part never breaks across lines; the line wraps between parts.
+    .map((part) => part.replace(/ /g, " "))
+    .join(" · ");
 }
 
 function vibrate() {
@@ -163,13 +181,21 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
     );
   }
 
+  const alert = error ?? (cashAnswer === "no" ? SIGN.cashNotReceived : null);
+  const parts = partsLine(steps, money);
+
   return (
-    <main className="proof" data-tab-state="verify">
+    <main className="proof verify" data-tab-state="verify">
       {band}
       {reconnecting}
-      <h1>{payStepLabel("sign", "waiter")}</h1>
-      {/* The ticket first, at the amount's size, only when the payment
-          carries one (a waiter-billed tab; MESITA-3776, MESITA-3796). */}
+      <div className="verify-head">
+        <h1>{payStepLabel("sign", "waiter")}</h1>
+        <span className="verify-clock" aria-hidden>
+          {now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+        </span>
+      </div>
+      {/* The ticket only when the payment carries one (a waiter-billed tab;
+          MESITA-3776, MESITA-3796). */}
       {tab.ticket ? (
         <p className="verify-ticket" data-verify-ticket>
           {`Ticket ${tab.ticket}`}
@@ -178,31 +204,18 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
       <p className="verify-amount" aria-label={`Amount before tip ${money(tab.bill_cents ?? 0)}`}>
         {money(tab.bill_cents ?? 0)}
       </p>
-      <p className="proof-line">{tip > 0 ? `+ ${money(tip)} tip` : "No tip"}</p>
-      <ol className="checklist" aria-label="Payment">
-        {steps.map((s) => (
-          <li key={s.key} data-state={s.state}>
-            <span className="checklist-mark" aria-hidden>{s.state === "done" ? "✓" : s.state === "failed" ? "×" : "○"}</span>
-            <span className="checklist-label">
-              {s.label}
-              {s.note ? <span className="checklist-note">{s.note}</span> : null}
-            </span>
-            {s.cents !== null ? <span className="checklist-cents">{money(s.cents)}</span> : null}
-          </li>
-        ))}
-      </ol>
-      <p className="proof-status" role="status">
-        {owed > 0 ? `Collect ${money(owed)} in cash` : tab.card_pending ? "Card still going through" : "Nothing to collect · paid in the app"}
-      </p>
-      <p className="proof-line proof-clock" aria-hidden>
-        {now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-      </p>
+      <p className="verify-tip">{tip > 0 ? `+ ${money(tip)} tip` : "No tip"}</p>
+      {parts ? (
+        <p className="verify-parts" role="status">
+          {parts}
+        </p>
+      ) : null}
       <form
+        className="verify-form"
         onSubmit={(e) => {
           e.preventDefault();
           void sign();
         }}
-        style={{ alignSelf: "stretch" }}
       >
         {owed > 0 ? (
           <div className="cash-question" role="group" aria-labelledby="cash-question">
@@ -217,24 +230,15 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
                 {SIGN.cashNo}
               </button>
             </div>
-            {cashAnswer === "no" ? (
-              <p className="proof-status warn" role="alert">
-                {SIGN.cashNotReceived}
-              </p>
-            ) : null}
           </div>
         ) : null}
-        {error ? (
+        <CodeBoxes value={typedCode} onChange={setTypedCode} />
+        {alert ? (
           <p className="proof-status warn" role="alert" aria-live="polite">
-            {error}
+            {alert}
           </p>
         ) : null}
-        <p>{SIGN.meaning}</p>
-        <label className="field">
-          {SIGN.waiterCode}
-          <input className="secret" inputMode="numeric" autoComplete="off" maxLength={7} value={typedCode} onChange={(e) => setTypedCode(e.target.value)} />
-        </label>
-        <button type="submit" disabled={busy || !request} style={{ minHeight: 56 }}>
+        <button type="submit" className="verify-sign" disabled={busy || !request}>
           {busy ? SIGN.signing : verifyLabel({ cashBillCents: owed, cashTipCents: 0 }, money)}
         </button>
       </form>

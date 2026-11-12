@@ -83,7 +83,6 @@ export const SIGN = {
   showWaiterBy: (time: string) => `Show the waiter by ${time}`,
   alreadySigned: "The waiter already signed this payment.",
   // Waiter
-  meaning: "Signing says you attended this payment.",
   signing: "Signing…",
   signedAt: (time: string) => `Signed · ${time}`,
   alreadySignedAt: (time: string) => `Already signed · ${time}`,

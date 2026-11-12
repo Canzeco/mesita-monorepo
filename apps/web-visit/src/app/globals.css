@@ -383,96 +383,86 @@ button.quiet {
 
 /* ── Guest pays, waiter verifies (MESITA-3708) ─────────────────────────── */
 
-/* The amount before tip, to match the ticket: headline size, not a poster. */
-.verify-amount {
-  margin: 16px 0 0;
-  font-size: 32px;
-  font-weight: 700;
-  color: #171717;
+/* The Sign page fits one 375x667 screen with no scroll, worst case: cash
+   owed, a ticket, an error line (MESITA-3818). */
+.proof.verify {
+  padding-top: 0;
+}
+
+.verify-head {
+  display: flex;
+  align-self: stretch;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.verify-clock {
+  font-size: 14px;
+  color: #525252;
   font-variant-numeric: tabular-nums;
 }
 
-/* The ticket number, the Sign card's first line when the payment carries
-   one (MESITA-3776, MESITA-3796): the amount's size, so the waiter matches
-   the ticket before signing. */
+/* The ticket, when the payment carries one (MESITA-3776, MESITA-3796). */
 .verify-ticket {
-  margin: 16px 0 0;
-  font-size: 32px;
-  font-weight: 700;
+  margin: 8px 0 0;
+  font-size: 16px;
+  font-weight: 600;
   color: #171717;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
+
+/* The amount before tip: the page's one big thing. */
+.verify-amount {
+  margin: 8px 0 0;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #171717;
+  font-variant-numeric: tabular-nums;
+}
+
 .verify-ticket + .verify-amount {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
-/* The checklist both phones show (lib/pay-checklist). */
-.checklist {
-  align-self: stretch;
-  margin: 16px 0 0;
-  padding: 0;
-  list-style: none;
-  border-top: 1px solid #e5e5e5;
-  text-align: left;
-}
-
-.checklist li {
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 8px 0;
-}
-
-.checklist-mark {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  border: 2px solid #d4d4d4;
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.checklist li[data-state="done"] .checklist-mark {
-  border-color: #15803d;
-  background: #15803d;
-}
-
-.checklist li[data-state="waiting"] .checklist-mark {
-  border-color: #b45309;
-  color: #b45309;
-}
-
-.checklist li[data-state="failed"] .checklist-mark {
-  border-color: #b91c1c;
-  background: #b91c1c;
-}
-
-.checklist-label {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
+.verify-tip {
+  margin: 2px 0 0;
   font-size: 16px;
   color: #171717;
+  font-variant-numeric: tabular-nums;
 }
 
-.checklist-note {
+/* How it was paid, one line: the guest's checklist, compacted. */
+.verify-parts {
+  margin: 8px 0 0;
   font-size: 14px;
   color: #525252;
+  font-variant-numeric: tabular-nums;
 }
 
-.checklist-cents {
-  font-size: 16px;
-  font-variant-numeric: tabular-nums;
-  color: #171717;
+.verify-form {
+  align-self: stretch;
+}
+
+.verify-form .proof-status.warn {
+  margin-top: 12px;
+  padding: 8px 12px;
+  font-size: 15px;
+}
+
+.verify-sign {
+  height: 56px;
+  margin-top: 12px;
+}
+
+.proof.verify .proof-place {
+  margin-top: 12px;
 }
 
 /* The cash question (MESITA-3799): one yes/no pair, nothing picked at start. */
 .cash-question {
-  align-self: stretch;
   margin-top: 16px;
   text-align: left;
 }
@@ -488,12 +478,11 @@ button.quiet {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .yes-no button {
-  height: auto;
-  min-height: 56px;
+  height: 48px;
   margin: 0;
   border: 1px solid #d4d4d4;
   border-radius: 12px;
@@ -506,6 +495,48 @@ button.quiet {
   border-color: #171717;
   background: #171717;
   color: #ffffff;
+}
+
+/* The waiter code: six boxes, one digit each (MESITA-3818). */
+.code-boxes {
+  margin-top: 12px;
+}
+
+.code-boxes-label {
+  margin: 0;
+  font-size: 14px;
+  color: #525252;
+  text-align: left;
+}
+
+.code-boxes-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.code-box {
+  width: 48px;
+  height: 56px;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1px solid #d4d4d4;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #171717;
+  font: inherit;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  -webkit-text-security: disc;
+}
+
+.code-box:focus {
+  outline: none;
+  border-color: #171717;
+  box-shadow: 0 0 0 1px #171717;
 }
 
 /* Already verified by this phone: the warning tone. */
