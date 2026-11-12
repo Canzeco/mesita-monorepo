@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
 import { apiGetTab, type GuestTab } from "@/lib/api/tab";
 import { clockTime } from "@mesita/place-profile/lib/money";
+import { payStepLabel, SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { payPlacePath, payTabPath } from "@/lib/consumer-route-contract";
@@ -202,17 +203,34 @@ export function PayPage() {
             onNotNow={notNow}
           />
         ) : failed ? (
-          <EmptyState
-            icon={QrCode}
-            title="Couldn't load Pay"
-            description="Check your connection and try again."
-            action={{ label: "Try again", onClick: refresh }}
-          />
+          <>
+            <PickHeading />
+            <EmptyState
+              icon={QrCode}
+              title="Couldn't load Pay"
+              description="Check your connection and try again."
+              action={{ label: "Try again", onClick: refresh }}
+            />
+          </>
         ) : (
-          <ListSkeleton />
+          <>
+            <PickHeading />
+            <ListSkeleton />
+          </>
         )}
       </div>
     </KeptScroll>
+  );
+}
+
+/** Step 1 of the six pay steps (MESITA-3759): the place list's heading,
+ *  "1 · Pick a place". Always drawn, loaded or not, directly above the list
+ *  and under any payment still waiting. This page has no step segments. */
+function PickHeading() {
+  return (
+    <div className="mb-2 flex min-h-6 items-center">
+      <h2 className="font-display text-base font-semibold tracking-tight">{payStepLabel("pick", "guest")}</h2>
+    </div>
   );
 }
 
@@ -277,6 +295,8 @@ function PlaceList({
           Location is off for mesita.ai. Turn it on in your browser&apos;s site settings.
         </p>
       ) : null}
+
+      <PickHeading />
 
       {loc.state === "asking" && places.length === 0 ? (
         <RowsSkeleton />
@@ -417,7 +437,7 @@ function InProgressCard({ tab, place, onOpen }: { tab: GuestTab; place: PayPlace
           </>
         )}
       </Button>
-      {!cardGoing ? <p className="text-muted-foreground text-center text-xs">Verify by {clockTime(tab.expires_at)}</p> : null}
+      {!cardGoing ? <p className="text-muted-foreground text-center text-xs">{SIGN.showWaiterBy(clockTime(tab.expires_at))}</p> : null}
     </section>
   );
 }

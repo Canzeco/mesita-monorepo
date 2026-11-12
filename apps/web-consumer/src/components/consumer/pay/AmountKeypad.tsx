@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Delete } from "lucide-react";
-import { keyLive, type PadKey } from "@/lib/pay-keypad";
+import { amountShown, keyLive, type PadKey } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
 
 // THE PAY KEYPAD (MESITA-3739): 1–9, ".", 0, ⌫ drawn in the page, so the
@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 // scroll. Its rows share the height left in the step (each 44–64px), so a
 // taller browser bar shrinks the keys a little instead of bringing a scroll
 // back; past four rows of 64px the grid stops growing and sits at the
-// bottom, above Next. THE BUTTON IS THE GRID CELL (MESITA-3758): no gap
+// bottom, above Next. Its flex basis is that full height, so a spacer put
+// above it (and above the amount) takes only what the keys do not need. THE BUTTON IS THE GRID CELL (MESITA-3758): no gap
 // between cells and no maximum height on the tap target, so a tap anywhere
 // in a key's cell types that key (until then each key stopped at 64px inside
 // a taller row and a tap under a digit landed on nothing). The visible key
@@ -23,7 +24,7 @@ const LABEL: Partial<Record<PadKey, string>> = { ".": "Decimal point", back: "De
 
 export function AmountKeypad({ text, onKey }: { text: string; onKey: (k: PadKey) => void }) {
   return (
-    <div className="mt-auto grid max-h-64 min-h-0 flex-1 grid-cols-3 grid-rows-[repeat(4,minmax(2.75rem,1fr))]" data-pay-keypad>
+    <div className="mt-auto grid max-h-64 min-h-0 flex-[1_1_16rem] grid-cols-3 grid-rows-[repeat(4,minmax(2.75rem,1fr))]" data-pay-keypad>
       {KEYS.map((k) => {
         const live = keyLive(text, k);
         return (
@@ -46,8 +47,21 @@ export function AmountKeypad({ text, onKey }: { text: string; onKey: (k: PadKey)
   );
 }
 
-/** The typed amount, big and immediate, with a screen-reader copy that
- *  speaks once the guest stops typing (not once per digit). */
+/** Roughly how wide a character draws, in ems of this face at semibold:
+ *  digits are tabular, points and commas are narrow, letters are wide. */
+function widthEm(text: string): number {
+  let em = 0;
+  for (const ch of text) em += /[0-9$]/.test(ch) ? 0.64 : /[.,\s]/.test(ch) ? 0.32 : 0.86;
+  return em;
+}
+
+/** The typed amount (MESITA-3759): one size, 40px semibold, in the app's
+ *  money format (amountShown: the formatter's prefix and suffix, the whole
+ *  part grouped, decimals as typed). Nothing typed is the muted prefix
+ *  alone; a typed 0 is a 0 in ink. A long amount in a narrow row shrinks to
+ *  fit (the row is a size container and the font is capped by its width):
+ *  a digit is never cut off. A screen-reader copy speaks once the guest
+ *  stops typing (not once per digit). */
 export function AmountDisplay({
   text,
   currency,
@@ -65,19 +79,21 @@ export function AmountDisplay({
     const t = window.setTimeout(() => setSpoken(text), 500);
     return () => window.clearTimeout(t);
   }, [text]);
+  const shown = amountShown(text, currency);
+  const em = Math.max(widthEm(shown.prefix + shown.body + shown.suffix), 1);
   return (
-    <div className={cn("flex items-baseline justify-center gap-1.5", className)}>
-      <span aria-hidden className="text-muted-foreground text-3xl font-semibold">
-        $
-      </span>
-      <span aria-hidden className={cn("min-w-0 truncate text-5xl font-semibold tabular-nums", text === "" && "text-muted-foreground/50")}>
-        {text === "" ? "0" : text}
-      </span>
-      <span aria-hidden className="text-muted-foreground text-base font-semibold">
-        {currency.toUpperCase()}
-      </span>
+    <div className={cn("@container flex h-12 w-full min-w-0 items-center", className)} data-pay-amount>
+      <div
+        aria-hidden
+        className="w-full text-center leading-none font-semibold whitespace-nowrap tabular-nums"
+        style={{ fontSize: `min(2.5rem, ${(100 / em).toFixed(2)}cqw)` }}
+      >
+        <span className={cn(text === "" && "text-muted-foreground")}>{shown.prefix}</span>
+        {shown.body}
+        {shown.suffix}
+      </div>
       <span role="status" className="sr-only">
-        {`${label}, ${spoken === "" ? "0" : spoken} pesos`}
+        {`${label}, ${spoken === "" ? "0" : spoken} ${currency.toUpperCase()}`}
       </span>
     </div>
   );

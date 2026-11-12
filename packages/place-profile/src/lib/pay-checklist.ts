@@ -1,10 +1,15 @@
 // The payment checklist (MESITA-3707/3708/3709): one guest payment is one
 // list of events, the same on the guest's phone and on the waiter's. Amount ·
-// Tip · one line per way it was paid · Waiter verified. Both apps render
+// Tip · one line per way it was paid · Waiter signed. Both apps render
 // these steps; neither decides them on its own.
 //
 // A plain module (no React): web-consumer and web-visit import it from
 // @mesita/place-profile/lib/pay-checklist.
+//
+// The labels say "Sign" (pay-steps.ts owns the words); the key "verified",
+// verifiedAt and verifyLabel keep the wire name.
+
+import { SIGN, signLabel } from "./pay-steps";
 
 export type ChecklistState = "done" | "waiting" | "failed";
 
@@ -54,7 +59,7 @@ export function payChecklist(i: ChecklistInput): ChecklistStep[] {
       label: "Credit",
       cents: i.creditCents,
       state: held || riding ? "waiting" : "done",
-      note: held ? "Held until the waiter verifies" : riding ? "With the card" : null,
+      note: held ? SIGN.heldUntilSigned : riding ? "With the card" : null,
     });
   }
   if (card > 0) {
@@ -76,7 +81,7 @@ export function payChecklist(i: ChecklistInput): ChecklistStep[] {
       note: collected
         ? null
         : i.closed
-        ? "Not verified · no cashback"
+        ? SIGN.notSignedNoCashback
         : i.side === "guest"
         ? "Give it to the waiter"
         : "Collect it",
@@ -84,7 +89,7 @@ export function payChecklist(i: ChecklistInput): ChecklistStep[] {
   }
   steps.push({
     key: "verified",
-    label: "Waiter verified",
+    label: SIGN.waiterSigned,
     cents: null,
     state: i.verifiedAt ? "done" : i.closed ? "failed" : "waiting",
     note: null,
@@ -94,6 +99,5 @@ export function payChecklist(i: ChecklistInput): ChecklistStep[] {
 
 /** What the waiter's button says: the action, never the total. */
 export function verifyLabel(i: Pick<ChecklistInput, "cashBillCents" | "cashTipCents">, money: (cents: number) => string): string {
-  const cash = i.cashBillCents + i.cashTipCents;
-  return cash > 0 ? `Verify · collect ${money(cash)}` : "Verify · paid in the app";
+  return signLabel(i.cashBillCents + i.cashTipCents, money);
 }

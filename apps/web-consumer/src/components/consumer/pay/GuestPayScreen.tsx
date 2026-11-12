@@ -1,50 +1,58 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronRight, CreditCard, Wallet } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
+import { payStepName } from "@mesita/place-profile/lib/pay-steps";
 import { AddChip, CashChip, PlainChip, SavedCardChip } from "@/components/consumer/wallet/WalletLists";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
-import { apiAddCard, apiListCards, brandLabel, CARD_RETURN_PARAM, MAX_SAVED_CARDS } from "@/lib/api/cards";
+import { apiAddCard, apiListCards, brandLabel, CARD_REFUSAL, CARD_RETURN_PARAM, MAX_SAVED_CARDS } from "@/lib/api/cards";
 import { apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { acceptCardsAnswer, type CardsLoad, cardsFailure, fixedMethod, loadedCards, methodsWaitOnCards, pickCard } from "@/lib/pay-cards";
+import { payDraftExpired, type PayDraft, PLACE_PAY_STEPS, type PlacePayStep, readPayDraft, stampPayDraft, TIP_PERCENTS, type TipPercent, type TipPick } from "@/lib/pay-draft";
 import { clearSessionHref } from "@/lib/stale-session";
-import { draftAmount, draftTip, type PadKey, payProblem, paySplit, pressKey, readTip, tipWays } from "@/lib/pay-keypad";
+import { type PadKey, payButton, payProblem, paySplit, pressKey, readTip, tipWays } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
-import { NETWORK_FAILURE, PlacePhoto, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
+import { PlacePhoto, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
+import { PaySteps } from "./PaySteps";
 
 // THE GUEST PAYS ALONE (MESITA-3709), one step per screen at /pay/<placeId>
-// (MESITA-3715): Bill (before tip) → Tip → How do you pay → Review (the
-// split, the cashback, "Pay MX$total"). The header's back arrow steps back.
-// After Pay the guest lands on their payment's checklist (/pay/tab/<id>) and
-// shows its QR to the waiter, who verifies it. Every rule and peso is the
-// server's; this screen proposes.
+// (MESITA-3715). These are steps 2 to 5 of the six pay steps (MESITA-3759,
+// lib/pay-steps in place-profile): Bill (before tip) → Tip → Methods → Pay
+// (Bill, Tip, Total, the cashback, and one button that says what the tap
+// does). The header's back arrow steps back. After Pay the guest lands on
+// their payment's page (/pay/tab/<id>) and shows its QR to the waiter, who
+// signs it. Every rule and peso is the server's; this screen proposes.
 //
 // ONE SCREEN A STEP, NOTHING SCROLLS (MESITA-3739, Pato: "make it not
 // scrollable, try to fit all in one page"): white, no tab bar, and each step
-// is a fixed column — the place and "Step N of 4" on top, one question, the
-// step's body, Next pinned at the bottom. Amounts are typed on a keypad drawn
-// in the page (the phone keyboard covered Next). Credit is the first row of
-// "How do you pay", on by default; above MX$3,000 Pay asks first in a dialog.
+// is a fixed column. The strip's label ("2 · Bill") is the page's only
+// heading: there is no question headline. Amounts are typed on a keypad
+// drawn in the page (the phone keyboard covered Next); the amount sits right
+// above the keypad and spare height goes above the amount. Credit is the
+// first row of Methods, on by default; above MX$3,000 Pay asks first in a
+// dialog.
 //
-//   ┌ top: photo · name ········ Step N of 4 ┐   fixed 56px
-//   │ ▬▬▬▬ ▬▬▬▬ ▭▭▭▭ ▭▭▭▭                     │
-//   │ Question                                │   32px line
-//   │ body (flex-1: keypad rows / rows card)  │   shares what is left
+//   ┌ photo · name ················ 2 · Bill ┐   PaySteps, row one (36px)
+//   │ ━━━━ ▭▭▭▭ ──── ──── ──── ────           │   PaySteps, six segments
+//   │ body (flex-1: keypad docked at the      │
+//   │       bottom / rows card at the top)    │
 //   │ [ status line ]                         │
-//   └ [ Next / Pay ]                          ┘   pinned
+//   └ [ Next / Add a card / Pay ]             ┘   pinned
+//
+// THE DRAFT (lib/pay-draft.ts) lives 30 minutes after its last change; it
+// is checked on opening and again when the tab is looked at after a while.
 
-const TIP_PERCENTS = [10, 15, 20] as const;
-type Pct = (typeof TIP_PERCENTS)[number];
+type Pct = TipPercent;
 /** null: not answered yet. There is no "No tip" button: no tip is Other
  *  with 0 typed (Pato, MESITA-3748). */
-type Tip = Pct | "other" | null;
+type Tip = TipPick;
 /** The amount past which Pay asks "Pay MX$X at <place>?" first. */
 const CONFIRM_ABOVE_CENTS = 300_000;
 const DRAFT_KEY = (placeId: string) => `mesita.pay.guest-draft.${placeId}`;
@@ -53,33 +61,43 @@ const DRAFT_KEY = (placeId: string) => `mesita.pay.guest-draft.${placeId}`;
  *  in a sheet. */
 const CARDS_SHOWN = MAX_SAVED_CARDS;
 
-const STEPS = ["bill", "tip", "method", "review"] as const;
-type Step = (typeof STEPS)[number];
-const QUESTION: Record<Step, string> = {
-  bill: "How much is the bill?",
-  tip: "Add a tip?",
-  method: "How do you pay?",
-  review: "Review and pay",
-};
+const STEPS = PLACE_PAY_STEPS;
+type Step = PlacePayStep;
 
-type Draft = { step?: Step; amount: string; tip: Tip; other: string; useCredit: boolean; method: PayWith | null; cardId: string | null };
+const CARD_PAGE_FAILURE = "Couldn't open the card page. Tap Add a card again.";
 
-function readDraft(placeId: string): Partial<Draft> | null {
+function readDraft(placeId: string): PayDraft | null {
+  if (typeof window === "undefined") return null;
   try {
-    const raw = window.sessionStorage.getItem(DRAFT_KEY(placeId));
-    return raw ? (JSON.parse(raw) as Partial<Draft>) : null;
+    return readPayDraft(window.sessionStorage.getItem(DRAFT_KEY(placeId)), Date.now());
   } catch {
     return null;
   }
 }
 
-function writeDraft(placeId: string, d: Draft | null) {
+/** Saves the draft with the time it was written; null removes it. */
+function writeDraft(placeId: string, d: Omit<PayDraft, "savedAt"> | null, now = 0) {
   try {
-    if (d) window.sessionStorage.setItem(DRAFT_KEY(placeId), JSON.stringify(d));
+    if (d) window.sessionStorage.setItem(DRAFT_KEY(placeId), stampPayDraft(d, now));
     else window.sessionStorage.removeItem(DRAFT_KEY(placeId));
   } catch {
     // The form starts empty next time; nothing breaks.
   }
+}
+
+/** Up and Down (and Left and Right) in a radio group: focus and selection
+ *  move together between its radio rows and wrap at the ends. Rows that are
+ *  not radios (Add, More cards, Retry) are skipped; the page never scrolls. */
+function onRadioKeys(e: React.KeyboardEvent<HTMLDivElement>) {
+  const dir = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 0;
+  if (dir === 0 || e.metaKey || e.ctrlKey || e.altKey) return;
+  const radios = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]'));
+  const at = radios.indexOf(e.target as HTMLElement);
+  if (at < 0) return;
+  e.preventDefault();
+  const to = radios[(at + dir + radios.length) % radios.length];
+  to.focus({ preventScroll: true });
+  if (to !== e.target) to.click();
 }
 
 export function GuestPayScreen({
@@ -102,20 +120,14 @@ export function GuestPayScreen({
   registerBack?: (back: (() => boolean) | null) => void;
 }) {
   const place = places?.find((p) => p.place_id === placeId) ?? null;
-  const draft = useMemo(() => (typeof window === "undefined" ? null : readDraft(placeId)), [placeId]);
-  // A draft from before MESITA-3748 may say "none": that is unanswered now.
-  const draftTipPick: Tip = draft?.tip === "other" || TIP_PERCENTS.some((p) => p === draft?.tip) ? (draft?.tip as Tip) : null;
-  const [step, setStep] = useState<Step>(() => {
-    const s = draft?.step && STEPS.includes(draft.step) ? draft.step : "bill";
-    // Never past Tip with the tip unanswered.
-    return draftTipPick === null && STEPS.indexOf(s) > STEPS.indexOf("tip") ? "tip" : s;
-  });
-  // A draft from before the keypad (or typed "1,250") is put into the
-  // keypad's own form, so a key never extends text it could not have made.
-  const [amount, setAmount] = useState(() => draftAmount(draft?.amount));
-  const [tip, setTip] = useState<Tip>(draftTipPick);
+  // The draft, read once and already checked (types, old step names, the
+  // 30-minute limit, never past Tip unanswered): lib/pay-draft.ts.
+  const [draft] = useState(() => readDraft(placeId));
+  const [step, setStep] = useState<Step>(draft?.step ?? "bill");
+  const [amount, setAmount] = useState(draft?.amount ?? "");
+  const [tip, setTip] = useState<Tip>(draft?.tip ?? null);
   const [lastPct, setLastPct] = useState<Pct | null>(typeof draft?.tip === "number" ? draft.tip : null);
-  const [other, setOther] = useState(() => draftTip(draft?.other));
+  const [other, setOther] = useState(draft?.other ?? "");
   const [useCredit, setUseCredit] = useState(draft?.useCredit ?? true);
   const [method, setMethod] = useState<PayWith | null>(draft?.method ?? null);
   const [cardId, setCardId] = useState<string | null>(draft?.cardId ?? null);
@@ -192,10 +204,44 @@ export function GuestPayScreen({
   const sig = JSON.stringify([amount, tip, other, useCredit, method, cardId, tipMethod]);
   const error = failure && failure.sig === sig ? failure.msg : null;
   const setError = (msg: string | null) => setFailure(msg ? { msg, sig } : null);
+  // Every write carries its time; opening the screen is not a change, so
+  // the first write keeps the time the draft already had.
+  const savedAt = useRef<number | null>(null);
   useEffect(() => {
     requestId.current = null;
-    writeDraft(placeId, { step, amount, tip, other, useCredit, method, cardId });
-  }, [placeId, step, amount, tip, other, useCredit, method, cardId, tipMethod]);
+    const now = savedAt.current === null ? draft?.savedAt ?? Date.now() : Date.now();
+    savedAt.current = now;
+    writeDraft(placeId, { step, amount, tip, other, useCredit, method, cardId }, now);
+  }, [placeId, draft, step, amount, tip, other, useCredit, method, cardId, tipMethod]);
+
+  // The draft's age is asked again when the tab is looked at after a while
+  // (or comes back from the page cache): past the limit it starts over at
+  // Bill with nothing typed, no method, no card and the credit switch as
+  // new, without a word. Never while a payment is going out.
+  const sending = busy || addingCard;
+  useEffect(() => {
+    const check = () => {
+      if (document.visibilityState !== "visible" || sending) return;
+      if (savedAt.current === null || !payDraftExpired(savedAt.current, Date.now())) return;
+      setStep("bill");
+      setAmount("");
+      setTip(null);
+      setLastPct(null);
+      setOther("");
+      setUseCredit(true);
+      setMethod(null);
+      setCardId(null);
+      setTipMethod("cash");
+      setConfirming(false);
+      setFailure(null);
+    };
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("pageshow", check);
+    return () => {
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("pageshow", check);
+    };
+  }, [sending]);
 
   // Focus sits on the step so desktop keys reach the keypad; it moves with
   // every step (and reads the step's question to a screen reader).
@@ -226,8 +272,11 @@ export function GuestPayScreen({
       const back = `${window.location.origin}/pay/${placeId}?${CARD_RETURN_PARAM}=1`;
       const { url } = await apiAddCard(getSupabase(), back);
       window.location.assign(url);
-    } catch {
-      setError(NETWORK_FAILURE);
+    } catch (e) {
+      // A refusal with a reason of its own (too many cards, signed out)
+      // says it; anything else is "the card page did not open".
+      const code = e instanceof EFError ? e.code : null;
+      setError((code && code !== "checkout_failed" && CARD_REFUSAL[code]) || CARD_PAGE_FAILURE);
       setAddingCard(false);
     }
   }
@@ -299,23 +348,33 @@ export function GuestPayScreen({
       ? billCents > 0
       : step === "tip"
       ? tip !== null && (tip !== "other" || otherOk)
-      : step === "method"
+      : step === "methods"
       ? !problem && (creditCovers || !!restWith) && !methodsWaitOnCards({ cardOk, load: cardsLoad, method, creditCovers })
       : true;
+  // Methods at a place where only a card can pay what is left, and the
+  // guest has none saved (the list loaded, empty): the bottom button adds a
+  // card instead of a Next that could never light. A guest whose credit
+  // covers the bill has no such problem and keeps Next.
+  const addCardFirst =
+    step === "methods" && cardsLoad.state === "loaded" && cardsLoad.cards.length === 0 && problem?.code === "add_card";
   const next = () => {
+    if (addCardFirst) {
+      if (!busy && !addingCard) void addCard();
+      return;
+    }
     const i = STEPS.indexOf(step);
     if (!nextOk || i >= STEPS.length - 1) return;
     // The method the guest leaves Methods with stays: a card list that
     // arrives later never turns a cash payment into a card charge.
-    if (step === "method") setMethod(fixedMethod(method, restWith));
+    if (step === "methods") setMethod(fixedMethod(method, restWith));
     setStep(STEPS[i + 1]);
   };
-  const stepIndex = STEPS.indexOf(step);
   const typing = step === "bill" || (step === "tip" && tip === "other");
 
   // Desktop keys: digits, "." and Backspace on a keypad step; Enter is Next
   // only from the step itself or a keypad key, so it still presses a
   // focused chip or row. Events from a sheet or dialog never reach here.
+  // Arrow keys are not handled here: they belong to the radio groups.
   function onKeyDown(e: React.KeyboardEvent<HTMLFormElement>) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const target = e.target as HTMLElement;
@@ -329,7 +388,7 @@ export function GuestPayScreen({
         return;
       }
     }
-    if (e.key === "Enter" && step !== "review" && (target === e.currentTarget || target.dataset.padKey !== undefined)) {
+    if (e.key === "Enter" && step !== "pay" && (target === e.currentTarget || target.dataset.padKey !== undefined)) {
       e.preventDefault();
       next();
     }
@@ -348,48 +407,50 @@ export function GuestPayScreen({
   // (or the loading row) is the message.
   const cardsUnknown = cardOk && cards === null;
   const shownProblem = cardsUnknown && restWith === "card" ? null : problem;
-  const status = step === "method" || step === "review" ? error ?? shownProblem : error;
+  const status = step === "methods" || step === "pay" ? error ?? shownProblem?.message ?? null : error;
+  // One row of each radio group is in the tab order: the chosen one, or the
+  // first when none is chosen.
+  const cardRowOn = restWith === "card" && shownCards.some((c) => c.id === chosenCard);
+  const anyRowOn = cardRowOn || (restWith === "cash" && cashOk);
+  const chosenCardRow = cardRows.find((c) => c.id === chosenCard);
+  const cardLabel = chosenCardRow ? `${brandLabel(chosenCardRow.brand)} •••• ${chosenCardRow.last4}` : null;
+  // The Pay step's button and its line: what this tap charges or spends in
+  // the app, and how the rest goes (lib/pay-keypad.ts).
+  const payNow = split ? payButton(split, { cardLabel, m }) : null;
 
   return (
     <>
       <form
         ref={root}
         tabIndex={-1}
-        aria-labelledby="guest-pay-question"
+        aria-label={payStepName(step, "guest")}
         className="flex min-h-0 flex-1 flex-col outline-none"
         onSubmit={(e) => e.preventDefault()}
         onKeyDown={onKeyDown}
         data-guest-pay={step}
       >
-        <div className="flex h-9 shrink-0 items-center gap-2.5">
-          <PlacePhoto place={place} className="h-9 w-9" />
-          <span className="min-w-0 flex-1 truncate text-base font-semibold">{place.name ?? "A Mesita place"}</span>
-          <span className="text-muted-foreground shrink-0 text-sm tabular-nums">
-            Step {stepIndex + 1} of {STEPS.length}
-          </span>
-        </div>
-        <div className="mt-3 flex shrink-0 gap-1.5" aria-hidden>
-          {STEPS.map((s, i) => (
-            <span key={s} className={cn("h-1 flex-1 rounded-full", i <= stepIndex ? "bg-foreground" : "bg-border")} />
-          ))}
-        </div>
-
-        <h2 id="guest-pay-question" className="mt-4 shrink-0 text-2xl font-semibold">
-          {QUESTION[step]}
-        </h2>
+        <PaySteps
+          step={step}
+          left={
+            <>
+              <PlacePhoto place={place} className="h-9 w-9" />
+              <span className="min-w-0 flex-1 truncate text-base font-semibold">{place.name ?? "A Mesita place"}</span>
+            </>
+          }
+        />
 
         <div className="mt-3 flex min-h-0 flex-1 flex-col">
           {step === "bill" ? (
             <>
-              <AmountDisplay text={amount} currency={place.currency} label="Bill" className="h-13 shrink-0" />
-              <div className="mt-3 flex min-h-0 flex-1 flex-col">
-                <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
-              </div>
+              {/* One block docked at the bottom: spare height goes above the amount. */}
+              <div className="min-h-0 flex-1" aria-hidden />
+              <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mb-2 shrink-0" />
+              <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
             </>
           ) : null}
 
           {step === "tip" && tip !== "other" ? (
-            <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="guest-pay-question">
+            <div className="grid grid-cols-2 gap-2" role="group" aria-label="Tip">
                 {TIP_PERCENTS.map((p) => (
                   <button
                     key={p}
@@ -415,28 +476,25 @@ export function GuestPayScreen({
 
           {step === "tip" && tip === "other" ? (
             <>
-              <div className="flex h-11 shrink-0 items-center justify-between gap-3">
-                <AmountDisplay text={other} currency={place.currency} label="Tip" className="[&>span:nth-child(2)]:text-4xl" />
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center text-sm font-semibold underline"
-                  onClick={() => {
-                    setOther("");
-                    setTip(lastPct);
-                  }}
-                >
-                  Back to %
-                </button>
-              </div>
-              <div className="mt-2 flex min-h-0 flex-1 flex-col">
-                <AmountKeypad text={other} onKey={(k) => setOther((t) => pressKey(t, k))} />
-              </div>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center self-end text-sm font-semibold underline"
+                onClick={() => {
+                  setOther("");
+                  setTip(lastPct);
+                }}
+              >
+                Back to %
+              </button>
+              <div className="min-h-0 flex-1" aria-hidden />
+              <AmountDisplay text={other} currency={place.currency} label="Tip" className="mb-2 shrink-0" />
+              <AmountKeypad text={other} onKey={(k) => setOther((t) => pressKey(t, k))} />
             </>
           ) : null}
 
-          {step === "method" ? (
+          {step === "methods" ? (
             <>
-              <div className="border-border overflow-hidden rounded-2xl border" role="group" aria-labelledby="guest-pay-question">
+              <div className="border-border overflow-hidden rounded-2xl border" role="group" aria-label="Methods">
                 {spendable > 0 ? (
                   <button
                     type="button"
@@ -454,7 +512,7 @@ export function GuestPayScreen({
                 ) : null}
 
                 {!creditCovers ? (
-                  <div role="radiogroup" aria-label={creditOn ? "The rest" : "Pay with"}>
+                  <div role="radiogroup" aria-label={creditOn ? "The rest" : "Pay with"} onKeyDown={onRadioKeys}>
                     {/* The cards row keeps one height while loading, failed and retrying. */}
                     {cardsUnknown ? (
                       cardsLoad.state === "failed" ? (
@@ -479,6 +537,7 @@ export function GuestPayScreen({
                             key={c.id}
                             divided={i > 0 || spendable > 0}
                             on={restWith === "card" && chosenCard === c.id}
+                            tab={!anyRowOn && i === 0}
                             chip={<SavedCardChip last4={c.last4} />}
                             title={`${brandLabel(c.brand)} •••• ${c.last4}`}
                             line={cardBack}
@@ -490,7 +549,7 @@ export function GuestPayScreen({
                         ))
                       : null}
                     {cashOk ? (
-                      <Row divided={spendable > 0 || shownCards.length > 0 || cardsUnknown} on={restWith === "cash"} chip={<CashChip />} title="Cash" line={cashBack} onPick={() => setMethod("cash")} />
+                      <Row divided={spendable > 0 || shownCards.length > 0 || cardsUnknown} on={restWith === "cash"} tab={!anyRowOn && shownCards.length === 0} chip={<CashChip />} title="Cash" line={cashBack} onPick={() => setMethod("cash")} />
                     ) : null}
                     {cardOk && cards !== null ? (
                       cardRows.length > CARDS_SHOWN ? (
@@ -511,7 +570,7 @@ export function GuestPayScreen({
                     ) : null}
                   </div>
                 ) : tipCents > 0 ? (
-                  <div role="radiogroup" aria-label={`Tip ${m(tipCents)} with`} className="border-border border-t">
+                  <div role="radiogroup" aria-label={`Tip ${m(tipCents)} with`} className="border-border border-t" onKeyDown={onRadioKeys}>
                     <p className="text-muted-foreground px-4 pt-2 text-sm">Tip {m(tipCents)} with</p>
                     {ways.includes("cash") ? (
                       <Row on={tipWith === "cash"} chip={<CashChip />} title="Cash" onPick={() => setTipMethod("cash")} />
@@ -537,22 +596,11 @@ export function GuestPayScreen({
             </>
           ) : null}
 
-          {step === "review" && split ? (
+          {step === "pay" && split ? (
             <>
               <dl className="border-border flex flex-col rounded-2xl border px-4 py-3 text-base tabular-nums" data-guest-split>
                 <Line label="Bill" value={m(billCents)} />
                 <Line label="Tip" value={tipCents > 0 ? m(tipCents) : "No tip"} />
-                {split.credit_cents > 0 ? <Line label="Credit" value={`−${m(split.credit_cents)}`} icon={<Wallet />} /> : null}
-                {split.card_bill_cents + split.card_tip_cents > 0 ? (
-                  <Line label="Card" value={m(split.card_bill_cents + split.card_tip_cents)} icon={<CreditCard />} />
-                ) : null}
-                {split.cash_bill_cents + split.cash_tip_cents > 0 ? (
-                  <Line
-                    label="Cash"
-                    value={m(split.cash_bill_cents + split.cash_tip_cents)}
-                    icon={<span className="flex h-4 w-4 items-center justify-center rounded-full bg-green-400 text-[0.625rem] font-bold text-neutral-950" aria-hidden>$</span>}
-                  />
-                ) : null}
                 <div className="border-border mt-1 flex h-8 items-center justify-between gap-3 border-t pt-1 text-lg font-semibold">
                   <dt>Total</dt>
                   <dd>{m(split.total_cents)}</dd>
@@ -575,13 +623,25 @@ export function GuestPayScreen({
         </div>
 
         <div className="shrink-0 pt-4">
-          {step !== "review" ? (
-            <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={!nextOk || busy || addingCard} onClick={next}>
-              Next
+          {step === "pay" ? (
+            <>
+              {/* What the tap does not move, or how it is paid: above the button. */}
+              {payNow?.line ? (
+                <p className="text-muted-foreground mb-2 text-center text-sm break-words" data-guest-pay-line>
+                  {payNow.line}
+                </p>
+              ) : null}
+              <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={!canPay} onClick={() => void pay()}>
+                {busy ? <Spinner size="sm" label="Paying" /> : payNow?.button ?? "Pay"}
+              </Button>
+            </>
+          ) : addCardFirst ? (
+            <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={busy || addingCard} onClick={next} data-guest-add-card>
+              {addingCard ? "Opening…" : "Add a card"}
             </Button>
           ) : (
-            <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={!canPay} onClick={() => void pay()}>
-              {busy ? <Spinner size="sm" label="Paying" /> : `Pay ${split ? m(split.total_cents) : ""}`}
+            <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={!nextOk || busy || addingCard} onClick={next}>
+              Next
             </Button>
           )}
         </div>
@@ -627,11 +687,12 @@ export function GuestPayScreen({
       >
         <div className="p-5" data-guest-confirm>
           <p className="text-lg font-semibold">
-            Pay {split ? m(split.total_cents) : ""} at {place.name ?? "this place"}?
+            Is {split ? m(split.total_cents) : ""} at {place.name ?? "this place"} right?
           </p>
+          {payNow?.line ? <p className="text-muted-foreground mt-1 text-sm break-words">{payNow.line}</p> : null}
           <div className="mt-4 flex gap-2">
             <Button type="button" className="min-h-12 flex-1 text-base font-semibold" disabled={busy} onClick={() => void pay(true)}>
-              {busy ? <Spinner size="sm" label="Paying" /> : `Pay ${split ? m(split.total_cents) : ""}`}
+              {busy ? <Spinner size="sm" label="Paying" /> : payNow?.button ?? "Pay"}
             </Button>
             <button
               type="button"
@@ -662,6 +723,7 @@ function chip(on: boolean, extra: string) {
 /** One way to pay in the rows card: a radio row, ringed when chosen. */
 function Row({
   on,
+  tab = false,
   divided = false,
   chip,
   title,
@@ -669,6 +731,8 @@ function Row({
   onPick,
 }: {
   on: boolean;
+  /** In the tab order though not chosen: the group's first row when none is. */
+  tab?: boolean;
   divided?: boolean;
   chip: React.ReactNode;
   title: string;
@@ -680,6 +744,7 @@ function Row({
       type="button"
       role="radio"
       aria-checked={on}
+      tabIndex={on || tab ? 0 : -1}
       onClick={onPick}
       className={cn(
         "relative flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2 text-left transition",
@@ -693,13 +758,10 @@ function Row({
   );
 }
 
-function Line({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
+function Line({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex h-7 items-center justify-between gap-3">
-      <dt className="text-muted-foreground flex items-center gap-2 [&>svg]:h-4 [&>svg]:w-4">
-        {icon}
-        {label}
-      </dt>
+      <dt className="text-muted-foreground">{label}</dt>
       <dd>{value}</dd>
     </div>
   );
@@ -728,11 +790,12 @@ export function GuestPayLoading() {
       <div className="flex h-9 items-center gap-2.5">
         <Skeleton className="h-9 w-9 rounded-full" />
         <Skeleton className="h-4 w-36" />
+        <Skeleton className="ml-auto h-4 w-14" />
       </div>
-      <Skeleton className="mt-3 h-1 w-full" />
-      <Skeleton className="mt-4 h-8 w-2/3" />
-      <Skeleton className="mt-3 h-13 w-1/2 self-center" />
-      <Skeleton className="mt-3 min-h-0 w-full flex-1 rounded-2xl" />
+      <Skeleton className="mt-3 h-1.5 w-full" />
+      <div className="min-h-0 flex-1" />
+      <Skeleton className="h-12 w-1/2 self-center" />
+      <Skeleton className="mt-2 h-64 min-h-44 w-full shrink rounded-2xl" />
       <Skeleton className="mt-4 h-12 w-full rounded-xl" />
     </div>
   );

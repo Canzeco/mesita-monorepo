@@ -5,6 +5,8 @@
 // changing one in Vercel needs a new build, and only a commit under
 // apps/web-visit makes one.
 
+import { SIGN } from "@mesita/place-profile/lib/pay-steps";
+
 /** What Mesita received, read by the proof's token. Never who paid. */
 export type Proof = {
   place: { name: string | null };
@@ -389,5 +391,8 @@ export async function verifyTab(
     };
   }
   if (!res || res.status >= 500 || !data) return "failed";
-  return tabRefusal(data, "Couldn't verify. Try again.");
+  const refusal = tabRefusal(data, SIGN.couldntSign);
+  // The label is "Sign": for this code the app shows its own sentence, not
+  // the server's wording.
+  return refusal.code === "verified" ? { ...refusal, error: SIGN.alreadySigned } : refusal;
 }

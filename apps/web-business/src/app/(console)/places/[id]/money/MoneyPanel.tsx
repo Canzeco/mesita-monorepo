@@ -24,6 +24,7 @@
 
 import { useState } from "react";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
+import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { Card } from "@/components/shell/Page";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { getPlaceMoney, refundPlaceMoneyRow, type PlaceMoney, type PlaceMoneyRow } from "@/lib/business-api";
@@ -222,15 +223,15 @@ export function MoneyPanel({ placeId, initial }: { placeId: string; initial: Pla
                   {r.refunded_cents > 0 && r.refunded_cents < r.amount_cents && r.status !== "refunded" ? ` · ${money(r.refunded_cents)} refunded` : ""}
                   {r.guest_verify
                     ? r.guest_verify.verified_at
-                      ? ` · Verified ${when(r.guest_verify.verified_at)}${r.guest_verify.phone ? ` · phone ${r.guest_verify.phone}` : ""}`
+                      ? SIGN.ownerSigned(when(r.guest_verify.verified_at), r.guest_verify.phone ?? null)
                       : r.guest_verify.closed && r.guest_verify.cash
                       ? " · Cash not collected"
-                      : " · Not verified"
+                      : SIGN.ownerNotSigned
                     : ""}
                 </p>
                 {r.guest_verify?.check_phone ? (
                   <p className="w-full text-sm font-semibold text-amber-700" data-check-phone>
-                    Check this phone: its only Verify here was cash. If you don&apos;t know it, change the waiter code.
+                    {SIGN.ownerCheckPhone}
                   </p>
                 ) : null}
                 <p className="text-muted-foreground shrink-0 tabular-nums">{when(r.created_at)}</p>

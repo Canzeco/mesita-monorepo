@@ -8,6 +8,7 @@
 // every amount; tabSplit is only what the screen proposes.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { invokeEF } from "./_invoke";
 
 export type TabStatus =
@@ -369,7 +370,7 @@ export const TAB_REFUSAL: Record<string, string> = {
   amount_required: "Type the amount you're paying.",
   cash_off: "This place doesn't take cash through Mesita. Pay with credit or card.",
   above_cap: "That's more than Mesita takes in one payment.",
-  verified: "The waiter already verified this payment.",
+  verified: SIGN.alreadySigned,
   guest_tab: "This payment can only be cancelled.",
   parts: "The amounts don't add up to the bill. Check it and pay again.",
 };

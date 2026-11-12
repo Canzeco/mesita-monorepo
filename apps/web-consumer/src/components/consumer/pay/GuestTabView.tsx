@@ -5,23 +5,31 @@ import { CheckCircle2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { payChecklist } from "@mesita/place-profile/lib/pay-checklist";
+import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { Button } from "@/components/ui/button";
 import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type TabCardStep } from "@/lib/api/tab";
 import { money } from "@/lib/api/wallet";
+import { payStrip } from "@/lib/pay-strip";
 import { cn } from "@/lib/utils";
 import { LiveClock } from "./LiveClock";
+import { PaySteps } from "./PaySteps";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
 
 // A GUEST'S OWN PAYMENT (MESITA-3709), at /pay/tab/<id>: the checklist the
-// waiter sees too (Amount · Tip · each way it was paid · Waiter verified),
-// the QR the waiter scans to Verify, and a live clock (a screenshot is
+// waiter sees too (Amount · Tip · each way it was paid · Waiter signed),
+// the QR the waiter scans to Sign, and a live clock (a screenshot is
 // visibly stale). Two greens: paid in the app with no cash is green Paid at
-// once, and the waiter's Verify adds its tick; with cash it stays amber
-// until the waiter verifies, then green Paid · Verified. Cancel only while
+// once, and the waiter's Sign adds its tick; with cash it stays amber
+// until the waiter signs, then green Paid · Signed. Cancel only while
 // nothing moved. From 2 h 30 a line asks the guest to get the waiter's scan;
-// past the three-hour window the cash is not verified and earns nothing.
+// past the three-hour window the cash is not signed and earns nothing.
+//
+// THE TOP (MESITA-3759) comes from payStrip (lib/pay-strip.ts): the six-step
+// strip at "6 · Waiter signs" while it waits, all solid and "Signed" once
+// the waiter signed; a payment that ended any other way has no strip and its
+// status is the heading. "Sign" is the label; the wire keeps `verified`.
 
 const FAST_MS = 1500;
 const SLOW_MS = 5000;
@@ -51,8 +59,9 @@ export function GuestTabView({
   // When the payment last changed (0 = not read yet): sets the poll's pace.
   const sinceChange = useRef(0);
 
-  const closed = tab.status === "expired" || tab.status === "cancelled" || Date.parse(tab.expires_at) <= now;
-  const verified = !!tab.verified_at;
+  const top = payStrip(tab, now);
+  const { closed, green } = top;
+  const verified = top.signed;
   const done = verified || closed;
 
   // A lost QR (a new browser) is minted again, only for this guest's own tab.
@@ -132,7 +141,6 @@ export function GuestTabView({
     closed,
     side: "guest",
   });
-  const green = verified || (tab.status === "paid" && cash === 0);
   const nudge = !done && cash > 0 && Date.parse(tab.expires_at) - now <= NUDGE_BEFORE_END_MS;
 
   async function cancel() {
@@ -164,42 +172,65 @@ export function GuestTabView({
 
   const surface = green
     ? "bg-green-700 text-white"
-    : closed
+    : closed || !top.strip
     ? "bg-card text-foreground border-border border"
     : "bg-amber-50 text-foreground border border-amber-300";
-  const showQr = !verified && !closed && !!qr;
+  const showQr = top.strip === "waiting" && !!qr;
   // ONE STATUS SLOT (MESITA-3739): the most important message only, so the
   // screen never grows past the phone.
   const message: { text: string; tone: "error" | "plain" | "muted" } | null = error
     ? { text: error, tone: "error" }
     : closed && cash > 0 && !verified
-    ? { text: `The waiter didn't verify · no cashback on the ${m(cash)} cash`, tone: "plain" }
+    ? { text: SIGN.waiterDidntSign(m(cash)), tone: "plain" }
     : nudge
     ? { text: "Ask the waiter to scan before you leave", tone: "plain" }
     : misses >= 2
     ? { text: "Reconnecting…", tone: "muted" }
     : null;
+  // No cashback line on money that went back or is being checked.
   const cashback =
-    tab.cashback_cents > 0
+    tab.cashback_cents > 0 && top.state !== "refunded" && top.state !== "review"
       ? green
         ? `${m(tab.cashback_cents)} in credits added`
-        : `${m(tab.cashback_cents)} in credits${cash > 0 ? " once verified" : ""}`
+        : cash > 0
+        ? SIGN.creditsOnceSigned(m(tab.cashback_cents))
+        : `${m(tab.cashback_cents)} in credits`
       : null;
+  const placeName = tab.place.name ?? "A Mesita place";
   const mark = (state: string) => (state === "done" ? "✓" : state === "failed" ? "×" : "○");
 
-  // THE PAID SCREEN FITS (MESITA-3739): a status band, then either the QR
+  // THE PAID SCREEN FITS (MESITA-3739): the strip (when the payment waits
+  // for the waiter or was signed), a status band, then either the QR
   // (sized to the height left, 140–240px, through a size container) with one
   // progress line and the full checklist behind Details, or — once there is
   // no QR to show — the full checklist itself. The action is pinned last.
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab={verified ? "verified" : green ? "paid" : closed ? "closed" : "waiting"}>
+      {top.strip ? (
+        <PaySteps
+          step="sign"
+          signed={top.strip === "signed"}
+          className="mb-3"
+          left={<span className="min-w-0 flex-1 truncate text-base font-semibold">{placeName}</span>}
+        />
+      ) : null}
       <div className={cn("shrink-0 rounded-3xl px-4 py-3", surface)}>
-        <p className={cn("truncate text-sm font-semibold", green ? "text-white/90" : "text-muted-foreground")}>{tab.place.name ?? "A Mesita place"}</p>
+        {top.strip ? null : (
+          <p className={cn("truncate text-sm font-semibold", green ? "text-white/90" : "text-muted-foreground")}>{placeName}</p>
+        )}
         <div className="flex items-center justify-between gap-3">
-          <p className="font-display flex min-w-0 items-center gap-1.5 truncate text-xl font-semibold" role="status">
-            {green ? <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden /> : null}
-            <span className="truncate">{verified ? "Paid · Verified" : green ? "Paid" : closed ? "Closed" : "Show this to the waiter"}</span>
-          </p>
+          {top.heading ? (
+            // No strip: the status is the page's heading.
+            <h2 className="font-display flex min-w-0 items-center gap-1.5 truncate text-xl font-semibold">
+              {green ? <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden /> : null}
+              <span className="truncate">{top.heading}</span>
+            </h2>
+          ) : (
+            <p className="font-display flex min-w-0 items-center gap-1.5 truncate text-xl font-semibold" role="status">
+              {green ? <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden /> : null}
+              <span className="truncate">{top.band}</span>
+            </p>
+          )}
           <p className="font-display shrink-0 text-2xl font-semibold tabular-nums">{m(total)}</p>
         </div>
         <p className={cn("h-5 truncate text-sm tabular-nums", green ? "text-white/80" : "text-muted-foreground")}>
