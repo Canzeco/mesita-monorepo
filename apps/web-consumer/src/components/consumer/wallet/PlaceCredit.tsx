@@ -285,32 +285,6 @@ export function PlaceCredit({
         ) : null}
       </WalletList>
 
-      {gone ? null : (
-        <div className="mt-6 flex flex-col gap-2">
-          <PushLink href={payPlacePath(row.placeId)} className={cn(PRIMARY, "gap-2")} data-house-card-pay>
-            <QrCode className="h-4 w-4" aria-hidden />
-            Go to Pay
-          </PushLink>
-          <div className="flex gap-2">
-            <PushLink href={`${href}?rewards=prepayment`} className={cn(SECONDARY, "flex-1 gap-1.5")} data-house-card-fund>
-              <Plus className="h-4 w-4" aria-hidden />
-              Buy Credits
-            </PushLink>
-            {gift ? (
-              <button
-                type="button"
-                className={cn(SECONDARY, "flex-1 gap-1.5", gift !== "open" && "text-muted-foreground")}
-                onClick={() => (gift === "open" ? setSending(true) : toast(gift.blocked))}
-                aria-label={gift === "open" ? "Gift Credits" : `Gift Credits: ${gift.blocked}`}
-                data-send-credit-open
-              >
-                <Gift className="h-4 w-4" aria-hidden />
-                Gift Credits
-              </button>
-            ) : null}
-          </div>
-        </div>
-      )}
       <SendCreditSheet
         open={sending}
         onClose={() => setSending(false)}
@@ -328,7 +302,7 @@ export function PlaceCredit({
           checks the money again (409 has_credit). */}
       {removable ? (
         <>
-          <button type="button" className={`${SECONDARY} mt-6`} onClick={() => setConfirming(true)} data-house-card-remove>
+          <button type="button" className={`${SECONDARY} mt-6 mb-6`} onClick={() => setConfirming(true)} data-house-card-remove>
             Remove from Wallet
           </button>
           <LocalSheet open={confirming} onClose={() => (removing ? undefined : setConfirming(false))} ariaLabel="Remove this House Card">
@@ -358,6 +332,42 @@ export function PlaceCredit({
           </LocalSheet>
         </>
       ) : null}
+      {/* THE ACTIONS ARE A BAR FIXED AT THE BOTTOM (MESITA-3790, Pato: "the
+          buttons fixed at the bottom and all the other boxes scrollable"):
+          sticky to the screen's scroller, white with a hairline on top, so
+          the place, the card and both histories scroll above it. It closes
+          the column, eating the page's bottom padding. */}
+      {/* Room between the last list and the bar when the page scrolls. */}
+      <div className="h-6 shrink-0" aria-hidden />
+      {gone ? null : (
+        <div
+          className="border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-8 flex flex-col gap-2 border-t bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          data-house-card-actions
+        >
+          <PushLink href={payPlacePath(row.placeId)} className={cn(PRIMARY, "gap-2")} data-house-card-pay>
+            <QrCode className="h-4 w-4" aria-hidden />
+            Go to Pay
+          </PushLink>
+          <div className="flex gap-2">
+            <PushLink href={`${href}?rewards=prepayment`} className={cn(SECONDARY, "flex-1 gap-1.5")} data-house-card-fund>
+              <Plus className="h-4 w-4" aria-hidden />
+              Buy Credits
+            </PushLink>
+            {gift ? (
+              <button
+                type="button"
+                className={cn(SECONDARY, "flex-1 gap-1.5", gift !== "open" && "text-muted-foreground")}
+                onClick={() => (gift === "open" ? setSending(true) : toast(gift.blocked))}
+                aria-label={gift === "open" ? "Gift Credits" : `Gift Credits: ${gift.blocked}`}
+                data-send-credit-open
+              >
+                <Gift className="h-4 w-4" aria-hidden />
+                Gift Credits
+              </button>
+            ) : null}
+          </div>
+        </div>
+      )}
     </>
   );
 }
