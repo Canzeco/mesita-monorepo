@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { SendCreditSheet, SentLinks } from "./SendCredit";
 import { StoryRow, WalletList } from "./WalletLists";
-import { PRIMARY, SECONDARY } from "./wallet-buttons";
+import { PINK_PRIMARY, PINK_SECONDARY, PRIMARY, SECONDARY } from "./wallet-buttons";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
 import { toast } from "@/lib/toast";
 import type { CreditRow } from "./use-wallet";
@@ -32,15 +32,19 @@ import type { CreditRow } from "./use-wallet";
 // time there ... imagine i bough two vouchers, one 40 minutes ago, and one 20
 // minutes ago ... displaying one time will be wrong"). Top to bottom:
 //
-//   Available $X          one white card, the server's amount; a muted $0
-//                         when nothing is spendable yet (or the server reads
-//                         below zero after a refund)
+//   [mini House Card]     half the column, centred (MESITA-3802): the
+//                         place's photo and name, the server's amount (a
+//                         muted $0 when nothing is spendable yet, or the
+//                         server reads below zero after a refund), "House
+//                         Card"; "View place ›" under it
 //   Pending Vouchers      only when there are any: Story vouchers waiting for
 //                         staff, then one row per purchase with its OWN time,
 //                         soonest to land first
 //   sent links            links nobody took yet
 //   Transactions History  every in and out, newest first; 10, then Show all
-//   [Go to Pay] [Buy Credits | Gift Credits]   last, in the page's flow
+//   [Go to Pay] [Buy Credits | Gift Credits]   a bar fixed at the bottom, in
+//                         the brand's pink (MESITA-3802, Pato: "put colors to
+//                         this stupid buttons for them to be visible")
 //   (Remove from Wallet)
 //
 // Rows come from lib/wallet-entries.ts: a voucher and its bonus are one row
@@ -95,11 +99,13 @@ function EntryRow({ group, currency, now }: { group: EntryGroup; currency: strin
   );
 }
 
-/** The page loading: the Available card, a History card, the buttons. */
+/** The page loading: the mini House Card and "View place", a History card,
+ *  the buttons. */
 export function HouseCardSkeleton() {
   return (
     <div className="flex flex-col" aria-hidden>
-      <Skeleton className="h-[7rem] w-full rounded-2xl" />
+      <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
+      <Skeleton className="mx-auto mt-4 h-4 w-20 rounded-md" />
       <Skeleton className="mt-5 h-5 w-40 rounded-md" />
       <Skeleton className="mt-2 h-32 w-full rounded-2xl" />
       <Skeleton className="mt-6 h-12 w-full rounded-xl" />
@@ -187,57 +193,52 @@ export function PlaceCredit({
   // Nothing spendable yet: a muted $0, never a minus (a refund can settle
   // before the purchase it refunds lands).
   const muted = card.available_cents <= 0;
+  const amount = money(Math.max(0, card.available_cents), card.currency);
   const pendingKeys = groupKeys(pending);
   const shownHistory = allHistory ? history : history.slice(0, HISTORY_FIRST);
   const historyKeys = groupKeys(shownHistory);
   return (
     <>
-      {/* THE PLACE FIRST (MESITA-3788, Pato: "show the logo as a circle here
-          … like you need the profile page"): its photo as a circle, its name
-          and "View place", opening its profile. A place gone from Mesita has
-          no page, so its row is not a link. */}
-      {(() => {
-        const inner = (
-          <>
-            <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full text-base font-semibold" aria-hidden>
-              {card.photo ? (
-                <SizedImg src={card.photo} size="thumb" alt="" className="h-full w-full object-cover" />
-              ) : (
-                (card.name ?? "?").trim().charAt(0).toUpperCase()
-              )}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-base font-semibold">{card.name}</span>
-              {gone ? null : <span className="text-muted-foreground block text-sm">View place</span>}
-            </span>
-            {gone ? null : <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />}
-          </>
-        );
-        const cls = "mb-3 flex items-center gap-3 rounded-2xl py-1";
-        return gone ? (
-          <div className={cls} data-house-card-place>{inner}</div>
-        ) : (
-          <PushLink href={href} className={cn(cls, "hover:bg-muted/40 -mx-2 px-2 transition")} data-house-card-place>
-            {inner}
-          </PushLink>
-        );
-      })()}
-      {/* THE PINK PASS (MESITA-3774, Pato picked "A · Pink pass" of four
-          rendered options): the one spot of colour on the page, in the
-          brand's own pink; everything below stays achromatic. A $0 is
-          white at reduced opacity, never grey on pink. */}
+      {/* THE MINI HOUSE CARD (MESITA-3802, Pato: "instead of that ugly pink
+          box display mini House Card, not occupying full width of screen,
+          only 50% of screen. card must display amount of credits, name, and
+          profile picture"): a card-shaped pink gradient, half the column,
+          centred; the place's photo and name, the amount, "House Card". A $0
+          is white at reduced opacity, never grey on pink. */}
       <div
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--brand-pink-500)] to-[var(--brand-pink-800)] px-4 py-4 text-white"
+        role="img"
+        aria-label={`House Card, ${card.name}, ${amount} available`}
+        className="relative mx-auto aspect-[1.586] w-1/2 overflow-hidden rounded-xl bg-gradient-to-br from-[var(--brand-pink-500)] to-[var(--brand-pink-800)] p-3 text-white shadow-md"
         data-house-card-amounts
       >
-        <span className="pointer-events-none absolute -top-10 -right-8 h-32 w-32 rounded-full bg-white/10" aria-hidden />
-        <span className="pointer-events-none absolute -right-4 -bottom-12 h-24 w-24 rounded-full bg-white/[0.07]" aria-hidden />
-        <p className="relative text-sm text-white/85">Available</p>
-        <p className={cn("relative mt-1 text-2xl font-semibold tabular-nums", muted && "text-white/70")}>
-          {money(Math.max(0, card.available_cents), card.currency)}
+        <span className="pointer-events-none absolute -top-8 -right-6 h-20 w-20 rounded-full bg-white/10" aria-hidden />
+        <div className="relative flex items-center gap-1.5" aria-hidden>
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/20 type-label font-semibold">
+            {card.photo ? (
+              <SizedImg src={card.photo} size="thumb" alt="" className="h-full w-full object-cover" />
+            ) : (
+              (card.name ?? "?").trim().charAt(0).toUpperCase()
+            )}
+          </span>
+          <span className="line-clamp-2 min-w-0 type-label leading-tight font-semibold">{card.name}</span>
+        </div>
+        <p className={cn("relative mt-3 text-xl font-semibold tabular-nums", muted && "text-white/70")} aria-hidden>
+          {amount}
         </p>
-        <p className="type-eyebrow relative mt-1.5 text-white/80">House Card</p>
+        <p className="type-eyebrow relative text-white/80" aria-hidden>House Card</p>
       </div>
+      {/* "View place" under the card (MESITA-3788 moved here by MESITA-3802):
+          a quiet link to the profile; a place gone from Mesita has no page. */}
+      {gone ? null : (
+        <PushLink
+          href={href}
+          className="text-muted-foreground hover:text-foreground mx-auto mt-1 mb-1 flex min-h-11 items-center gap-0.5 px-3 text-sm transition"
+          data-house-card-place
+        >
+          View place
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </PushLink>
+      )}
       {held ? (
         <p className="text-muted-foreground mt-3 text-sm" data-house-card-held>
           Some credit is held by an open payment. It returns when that payment finishes or expires.
@@ -335,7 +336,7 @@ export function PlaceCredit({
       {/* THE ACTIONS ARE A BAR FIXED AT THE BOTTOM (MESITA-3790, Pato: "the
           buttons fixed at the bottom and all the other boxes scrollable"):
           sticky to the screen's scroller, white with a hairline on top, so
-          the place, the card and both histories scroll above it. It closes
+          the card and both histories scroll above it. Pink since MESITA-3802. It closes
           the column, eating the page's bottom padding. */}
       {/* Room between the last list and the bar when the page scrolls. */}
       <div className="h-6 shrink-0" aria-hidden />
@@ -344,19 +345,19 @@ export function PlaceCredit({
           className="border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-8 flex flex-col gap-2 border-t bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           data-house-card-actions
         >
-          <PushLink href={payPlacePath(row.placeId)} className={cn(PRIMARY, "gap-2")} data-house-card-pay>
+          <PushLink href={payPlacePath(row.placeId)} className={cn(PINK_PRIMARY, "gap-2")} data-house-card-pay>
             <QrCode className="h-4 w-4" aria-hidden />
             Go to Pay
           </PushLink>
           <div className="flex gap-2">
-            <PushLink href={`${href}?rewards=prepayment`} className={cn(SECONDARY, "flex-1 gap-1.5")} data-house-card-fund>
+            <PushLink href={`${href}?rewards=prepayment`} className={cn(PINK_SECONDARY, "flex-1 gap-1.5")} data-house-card-fund>
               <Plus className="h-4 w-4" aria-hidden />
               Buy Credits
             </PushLink>
             {gift ? (
               <button
                 type="button"
-                className={cn(SECONDARY, "flex-1 gap-1.5", gift !== "open" && "text-muted-foreground")}
+                className={cn(PINK_SECONDARY, "flex-1 gap-1.5", gift !== "open" && "opacity-60")}
                 onClick={() => (gift === "open" ? setSending(true) : toast(gift.blocked))}
                 aria-label={gift === "open" ? "Gift Credits" : `Gift Credits: ${gift.blocked}`}
                 data-send-credit-open
