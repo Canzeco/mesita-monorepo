@@ -3,7 +3,7 @@
 import { Screen } from "@/components/consumer/nav/Screen";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { payPlacePath, payReceiptPath, payTabPath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payPlacePath, payReceiptPath, payTabPath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { GuestPayScreen } from "./GuestPayScreen";
@@ -71,6 +71,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
           onWaiterCode={setFormPlaceId}
           onDone={leave}
           onPayAgain={(placeId) => navigateTo(router, payPlacePath(placeId), { replace: true })}
+          onEnded={() => navigateTo(router, CONSUMER_ROUTES.pay, { replace: true })}
           registerBack={registerBack}
         />
         )}

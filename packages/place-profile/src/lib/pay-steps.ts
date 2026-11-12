@@ -68,7 +68,9 @@ export const SIGN = {
   waiterSigned: "Waiter signed",
   // Guest
   paidSigned: "Paid · Signed",
-  heldUntilSigned: "Held until the waiter signs",
+  // Credit chosen with cash: kept aside, then spent at the signature or
+  // when the payment closes unsigned (a cancel gives it back) (MESITA-3772).
+  creditSpentWhenSignedOrClosed: "Spent when the waiter signs or the payment closes",
   notSignedNoCashback: "Not signed · no cashback",
   waiterDidntSign: (cash: string) => `The waiter didn't sign · no cashback on the ${cash} cash`,
   creditsOnceSigned: (credits: string) => `${credits} in credits once signed`,

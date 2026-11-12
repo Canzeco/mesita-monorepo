@@ -35,6 +35,10 @@
 //   what is paid and left, the shares by id); on a split table it is the table
 //   itself and `tab.my_share_tab_id` names the guest's own share.
 //   `table.mine`: this guest split it (only they can show the friends' QR).
+//   MESITA-3772: on a guest tab `tab.cashback_cents` is what was granted
+//   (only the waiter's signature grants it, card and cash) and
+//   `tab.cashback_on_sign_cents` what signing would earn now (0 once signed,
+//   cancelled, closed or past its window).
 //   400 (a malformed call) · 401 sign_in · 404 not_found (no such tab of
 //   this guest)
 

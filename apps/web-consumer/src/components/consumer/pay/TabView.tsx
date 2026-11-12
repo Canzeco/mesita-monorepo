@@ -137,6 +137,7 @@ export function TabView({
   onWaiterCode,
   onDone,
   onPayAgain,
+  onEnded,
   registerBack,
 }: {
   start: TabStart;
@@ -145,6 +146,8 @@ export function TabView({
   canUseCode: (placeId: string) => boolean;
   /** MESITA-3709: a guest tab ends back on the form at its place. */
   onPayAgain?: (placeId: string) => void;
+  /** MESITA-3772: the guest cancelled or closed their own payment. */
+  onEnded?: () => void;
   /** The tab's id, for its address /pay/tab/<id> (a reload shows the same tab). */
   onTabId: (tabId: string) => void;
   onWaiterCode: (placeId: string) => void;
@@ -416,6 +419,8 @@ export function TabView({
         getSupabase={getSupabase}
         onPayAgain={(placeId) => (onPayAgain ? onPayAgain(placeId) : onDone())}
         onDone={onDone}
+        onEnded={onEnded ?? onDone}
+        registerBack={registerBack}
       />
     );
   }

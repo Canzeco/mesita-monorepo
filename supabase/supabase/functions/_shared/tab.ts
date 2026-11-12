@@ -243,7 +243,10 @@ const REFUSALS: Record<string, [number, string]> = {
   verified: [409, "The waiter already verified this payment"],
   not_paid: [409, "This payment is not paid yet"],
   guest_tab: [409, "This payment can only be cancelled"],
-  too_many_open: [409, "Finish or cancel a payment here first."],
+  // MESITA-3772: one open guest payment at a time; the detail names it
+  // (open_tab_id, open_place_id).
+  too_many_open: [409, "Get your open payment signed or close it before paying again."],
+  not_guest: [409, "Only a payment you made yourself can be closed"],
   staff_code_needed: [403, "Type the waiter code"],
 };
 
@@ -303,11 +306,16 @@ export type TabPartRow = {
   paid_at: string | null;
   proof_token: string | null;
   created_at: string;
+  /** MESITA-3772: the rates stored on the row when it started (card part:
+   *  cashback_bps; cash part: outside_cashback_bps). */
+  cashback_bps?: number;
+  outside_cashback_bps?: number;
 };
 
 export const TAB_COLUMNS =
   "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, parent_tab_id, split_at, split_ways, origin, verified_at, verified_key_hash";
-const PART_COLUMNS = "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, cashback_cents, paid_at, proof_token, created_at";
+const PART_COLUMNS =
+  "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, cashback_cents, paid_at, proof_token, created_at, cashback_bps, outside_cashback_bps";
 /** The guest's list reads only what a status needs (MESITA-3688): never
  *  `proof_token`, which PART_COLUMNS carries. */
 export const LIST_PART_COLUMNS = "id, tab_id, status, paid_at";
@@ -340,6 +348,31 @@ export function tabMoney(t: TabRow, parts: TabPartRow[], cashBackBps: number, ca
       Math.floor((t.cash_bill_cents * Math.max(0, cashBackBps)) / 10_000) +
         Math.floor((t.card_bill_cents * cardBackBps) / 10_000),
   };
+}
+
+/** MESITA-3772: a guest tab earns cashback only when the waiter signs it.
+ *  What signing would earn now: each card part settled or still going
+ *  through (its stored rate, else the place's card rate) plus the cash part
+ *  (its stored rate, else the place's cash rate), as pay_tab_verify writes
+ *  it (the cash part's daily caps may cut it there). 0 for a waiter's tab,
+ *  and once the tab is signed, cancelled, closed or past its window. */
+export function cashbackOnSign(t: TabRow, parts: TabPartRow[], cashBackBps: number, cardBackBps: number, nowMs: number): number {
+  if ((t.origin ?? "waiter") !== "guest" || t.verified_at) return 0;
+  if (!["paying", "paid"].includes(t.status) || Date.parse(t.expires_at) <= nowMs) return 0;
+  const live = parts.filter((p) => ["opening", "open", "paid", "partly_refunded"].includes(p.status));
+  const card = live
+    .filter((p) => p.part === "card" && !(p.paid_at && p.cashback_cents > 0))
+    .reduce((s, p) => s + Math.floor((p.card_cents * Math.max(0, p.cashback_bps ?? cardBackBps)) / 10_000), 0);
+  const cashRows = live.filter((p) => p.part === "outside");
+  const cash = cashRows.length
+    ? cashRows.filter((p) => !p.paid_at).reduce((s, p) => s + Math.floor((p.outside_cents * Math.max(0, p.outside_cashback_bps ?? cashBackBps)) / 10_000), 0)
+    : t.status === "paying" ? Math.floor((t.cash_bill_cents * Math.max(0, cashBackBps)) / 10_000) : 0;
+  return card + cash;
+}
+
+/** MESITA-3772: what a guest tab's parts were actually granted. */
+export function cashbackGranted(parts: TabPartRow[]): number {
+  return parts.reduce((s, p) => s + (p.paid_at ? p.cashback_cents : 0), 0);
 }
 
 // ── Friends split one bill (MESITA-3695) ────────────────────────────────────
@@ -467,6 +500,9 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
   myShareTabId?: string | null;
 }) {
   const card = extra.card ?? NO_CARD;
+  const cashBps = extra.cashOk ? extra.cashBackBps : 0;
+  const money = tabMoney(t, parts, cashBps, card.card_back_bps);
+  const guest = (t.origin ?? "waiter") === "guest";
   return {
     tab_id: t.id,
     place: { id: t.place_id, name: extra.placeName },
@@ -486,7 +522,12 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
       card_unavailable_code: card.card_unavailable_code,
       card_minimum_cents: card.card_minimum_cents,
     },
-    ...tabMoney(t, parts, extra.cashOk ? extra.cashBackBps : 0, card.card_back_bps),
+    ...money,
+    // MESITA-3772: on a guest tab cashback_cents is what was granted (the
+    // signature turns it on); cashback_on_sign_cents is what signing would
+    // earn now.
+    ...(guest ? { cashback_cents: cashbackGranted(parts) } : {}),
+    cashback_on_sign_cents: cashbackOnSign(t, parts, cashBps, card.card_back_bps, extra.nowMs),
     parts: parts.map((p) => ({ id: p.id, part: p.part, status: p.status, paid_at: p.paid_at })),
     paid_at: t.paid_at,
     expires_at: t.expires_at,

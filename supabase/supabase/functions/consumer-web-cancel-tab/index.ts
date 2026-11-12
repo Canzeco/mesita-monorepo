@@ -6,10 +6,18 @@
 // cancelled, the credit it held is free again, the tab is billed again with
 // the same bill version).
 //
-// Body: { tab_id: uuid, mode: "cancel" | "change" }
-// Response: { ok: true, outcome: cancelled | billed, bill_version? }
+// MESITA-3772: mode "close" ends the guest's own guest payment: cancelled
+// when nothing moved yet, else closed now (the cash part expires, the credit
+// declared with it is spent, no cashback; the window-end rule, run early).
+// A signed payment answers 409 verified; a card still going through answers
+// 409 card_pending. "cancel" on a guest payment where money moved answers
+// 409 paid_part.
+//
+// Body: { tab_id: uuid, mode: "cancel" | "change" | "close" }
+// Response: { ok: true, outcome: cancelled | billed | closed, bill_version? }
 //   400 (a malformed call) · 401 sign_in · 404 not_found ·
-//   409 paying | paid | paid_part | expired | waiting_bill | billed
+//   409 paying | paid | paid_part | expired | waiting_bill | billed |
+//   verified | card_pending | guest_tab | not_guest
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
@@ -25,7 +33,9 @@ serveJson("consumer-web-cancel-tab", async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const { tab_id: tabId, mode } = bodyRes.body;
   if (!isUuid(tabId)) return json({ ok: false, error: "tab_id must be a tab id" }, 400);
-  if (mode !== "cancel" && mode !== "change") return json({ ok: false, error: "mode is cancel or change" }, 400);
+  if (mode !== "cancel" && mode !== "change" && mode !== "close") {
+    return json({ ok: false, error: "mode is cancel, change or close" }, 400);
+  }
 
   try {
     const r = await callTabRpc(admin, "pay_tab_change", {

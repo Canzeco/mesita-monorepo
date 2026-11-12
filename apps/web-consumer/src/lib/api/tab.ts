@@ -43,7 +43,11 @@ export type GuestTab = {
   cash_received_cents: number | null;
   card_bill_cents: number;
   card_tip_cents: number;
+  /** The cashback actually granted so far. */
   cashback_cents: number;
+  /** MESITA-3772: what the waiter's signature would earn now, card and cash
+   *  (cashback turns on only when the waiter signs). Older reads have none. */
+  cashback_on_sign_cents?: number;
   /** The payment rows the guest's split opened: `card` and `outside` (cash). */
   parts: Array<{
     id: string;
@@ -232,13 +236,17 @@ export async function runBankCheck(
 }
 
 /** "cancel" closes the tab before paying; "change" undoes a cash choice
- *  before the waiter's Received and frees the credit it held. */
+ *  before the waiter's Received and frees the credit it held. On the guest's
+ *  own payment (MESITA-3772) the answer says how it ended: "cancelled" when
+ *  nothing had moved, "closed" when money moved and the waiter had not
+ *  signed (it ends now with no cashback). A signed one is refused. */
 export async function apiCancelTab(
   client: SupabaseClient,
   tabId: string,
-  mode: "cancel" | "change",
-): Promise<void> {
-  await invokeEF(client, "consumer-web-cancel-tab", { tab_id: tabId, mode });
+  /** "close" ends a guest payment whose money moved, unsigned: no cashback (MESITA-3772). */
+  mode: "cancel" | "change" | "close",
+): Promise<{ outcome?: "cancelled" | "closed" }> {
+  return await invokeEF<{ outcome?: "cancelled" | "closed" }>(client, "consumer-web-cancel-tab", { tab_id: tabId, mode });
 }
 
 /** Split the bill (MESITA-3695): `ways` and the guest's own share. The
@@ -366,7 +374,8 @@ export const TAB_REFUSAL: Record<string, string> = {
   locked: "Too many card tries. Wait a few minutes or pay another way.",
   closed: "That payment was cancelled. Tap again to start over.",
   // MESITA-3709: guest pays, waiter verifies.
-  too_many_open: "Finish or cancel a payment here first.",
+  // MESITA-3772: one open payment per guest, across every place.
+  too_many_open: "Get your open payment signed or close it before paying again.",
   amount_required: "Type the amount you're paying.",
   cash_off: "This place doesn't take cash through Mesita. Pay with credit or card.",
   above_cap: "That's more than Mesita takes in one payment.",
@@ -397,6 +406,10 @@ export type GuestVisit = {
   expires_at: string;
   /** Every payment of this tab, any status: Payments leaves these to Visits. */
   part_payment_ids: string[];
+  /** MESITA-3772: who opened it (`guest` = the guest paid it themselves) and
+   *  when the waiter signed it. Older reads have neither. */
+  origin?: "guest" | "waiter";
+  verified_at?: string | null;
 };
 
 export async function apiListVisits(
