@@ -44,11 +44,11 @@ export const INSTAGRAM_DM_URL = "https://www.instagram.com/direct/inbox/";
  * THE MESITA SHARE CARD (MESITA-2639): one image, the standard link-preview
  * size (1200×630, 1.91:1). The app's og:image and twitter:image, and the card
  * the Share tab shows, so the guest sees exactly what the recipient's chat
- * unfurls. Source: scripts/share-card/mesita-og.html.
+ * unfurls. Since MESITA-3761 it is the sign-in cover as a 1200×630 JPEG.
  */
 export const SHARE_CARD = {
-  src: "/share/mesita-og.png",
+  src: "/share/mesita-cover-og.jpg",
   width: 1200,
   height: 630,
-  alt: "Mesita — Discover and reserve. mesita.ai",
+  alt: "Mesita — Every table in Monterrey. Find a place, book a table, pay and earn credit back. mesita.ai",
 } as const;

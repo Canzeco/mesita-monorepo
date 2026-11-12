@@ -29,10 +29,10 @@ import { cn } from "@/lib/utils";
 // share create a dedicate page for share. you know.").
 //
 //   ┌──────────────────────────────┐
-//   │ Mesita                       │   the standard Mesita share card, the
-//   │ Discover and reserve.        │   real 1200×630 link preview
-//   │ ──────────────────────────── │   (MESITA-2639); one card since
-//   │ mesita.ai           │   MESITA-2622, ten before (MESITA-2573)
+//   │ Mesita       │  terrace      │   the standard Mesita share card, the
+//   │ Every table  │  photo        │   real 1200×630 link preview
+//   │ in Monterrey │               │   (MESITA-2639, the sign-in cover since
+//   │ mesita.ai    │               │   MESITA-3761); one card since MESITA-2622
 //   └──────────────────────────────┘
 //   SEND IT  (SMS) (Instagram) (WhatsApp) (Other)
 //
