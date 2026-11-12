@@ -30,7 +30,7 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     // Every row asks for its own families; Social is a tab. Saved came back
     // above Top (MESITA-3718) and reads no pool.
     const rails = src("components/consumer/home/CatalogRails.tsx");
-    expect(rails).toContain("setFamilies(chipFamilies(c.key));");
+    expect(rails).toContain("setFamilies(chipFamilies(key));");
     for (const gone of [
       "NEAR_CHIP",
       "POPULAR_CHIP",
