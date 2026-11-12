@@ -76,14 +76,6 @@ form {
   -webkit-text-security: disc;
 }
 
-/* A quiet line under a field. */
-.field-hint {
-  display: block;
-  margin-top: 6px;
-  font-size: 13px;
-  color: #737373;
-}
-
 button {
   display: block;
   width: 100%;
@@ -476,6 +468,44 @@ button.quiet {
   font-size: 16px;
   font-variant-numeric: tabular-nums;
   color: #171717;
+}
+
+/* The cash question (MESITA-3799): one yes/no pair, nothing picked at start. */
+.cash-question {
+  align-self: stretch;
+  margin-top: 16px;
+  text-align: left;
+}
+
+.cash-question-label {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #171717;
+}
+
+.yes-no {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.yes-no button {
+  height: auto;
+  min-height: 56px;
+  margin: 0;
+  border: 1px solid #d4d4d4;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #171717;
+  font-size: 18px;
+}
+
+.yes-no button[aria-pressed="true"] {
+  border-color: #171717;
+  background: #171717;
+  color: #ffffff;
 }
 
 /* Already verified by this phone: the warning tone. */

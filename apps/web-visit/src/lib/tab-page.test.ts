@@ -22,8 +22,11 @@ describe("the waiter's tab screen", () => {
   it("keeps the staff token, never the waiter code", () => {
     expect(PAGE).toMatch(/import \{[^}]*\bkeepStaff\b[^}]*\breadStaff\b[^}]*\} from "@\/lib\/staff-key"/);
     expect(STAFF_KEY).toMatch(/localStorage\.setItem\(staffKeyFor\(placeId\), JSON\.stringify\(\{ token, expires_at/);
-    // MESITA-3734: the Verify screen signs a phone in with the waiter code.
-    expect(VERIFY).toMatch(/keepStaff\(placeId, r\.staff_token, null\)/);
+    // MESITA-3799: the Sign page keeps nothing; the waiter code is typed for
+    // every signature, traded for a staff token, and that token signs.
+    expect(VERIFY).not.toMatch(/keepStaff|readStaff|localStorage/);
+    expect(VERIFY).toMatch(/listPayments\(\{ place_id: placeId, place_code: request\.place_code \}\)/);
+    expect(VERIFY).toMatch(/verifyTab\(\{ token, place_id: placeId, staff_token: key\.staff_token, cash_received_cents: request\.cash_received_cents \}\)/);
     for (const src of [PAGE, VERIFY]) {
       expect(src).not.toMatch(/setItem\([^)]*(placeCode|secret)/);
       expect(src).not.toMatch(/sessionStorage/);
