@@ -59,22 +59,22 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://mesita.ai"),
   title: {
-    default: "Mesita — discover and reserve",
+    default: "Mesita — every table in Monterrey",
     template: "%s · Mesita",
   },
   description:
-    "Discover restaurants, cafés and bars across the city, and reserve a table in seconds. Made in Monterrey.",
+    "Find a place, book a table, pay and earn credit back. Made in Monterrey.",
   openGraph: {
-    title: "Mesita — discover and reserve",
-    description:
-      "Discover restaurants, cafés and bars across the city, and reserve a table in seconds.",
+    title: "Mesita — every table in Monterrey",
+    description: "Find a place, book a table, pay and earn credit back.",
     siteName: "Mesita",
     locale: "en_US",
     type: "website",
     // THE MESITA SHARE CARD (MESITA-2639): every shared link unfurls with
-    // it; the Share tab shows the same file. A static .png under public/,
-    // so signed-out crawlers reach it past the proxy's matcher. Source and
-    // re-render command: scripts/share-card/mesita-og.html.
+    // it; the Share tab shows the same file. A static image under public/,
+    // (.jpg, under WhatsApp's 300 KB cap), so signed-out crawlers reach it past the proxy's matcher. Since
+    // MESITA-3761 it is the sign-in cover: the terrace photo, the wordmark,
+    // "Every table in Monterrey" and the cover's line.
     images: [
       {
         url: SHARE_CARD.src,
@@ -86,8 +86,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mesita",
-    description: "Discover. Reserve. Go out.",
+    title: "Mesita — every table in Monterrey",
+    description: "Find a place, book a table, pay and earn credit back.",
     images: [SHARE_CARD.src],
   },
 };
