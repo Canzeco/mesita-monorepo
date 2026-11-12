@@ -9,7 +9,7 @@ import {
   CalendarCheck,
   Gift,
   type LucideIcon,
-  Ticket,
+  BadgeDollarSign,
   UtensilsCrossed,
 } from "lucide-react";
 import { ACTIVITY_TYPES, type ActivityType } from "@/lib/activity-types";
@@ -37,7 +37,7 @@ const CHIPS: Record<ActivityType, Omit<ActivityChip, "type">> = {
   // The Prepayments chip, renamed (MESITA-3697).
   vouchers: {
     label: "Vouchers",
-    Icon: Ticket,
+    Icon: BadgeDollarSign,
     summary: "Credits you bought",
   },
   gifts: { label: "Gifts", Icon: Gift, summary: "Sent and received" },

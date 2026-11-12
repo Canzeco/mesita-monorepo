@@ -73,6 +73,10 @@ export const CONSUMER_ROUTES = {
   payTab: { prefix: "/pay/tab/" },
   payJoin: { prefix: "/pay/join/" },
   payReceipt: { prefix: "/pay/receipt/" },
+  // A FINISHED VISIT, ONE PAGE (MESITA-3770, Pato: "the live workflow visit
+  // tickets and the output ticket must be different"): what was paid, how,
+  // and what came back. An open bill stays /pay/tab/<id>; /visit/ is a legacy address.
+  visit: { prefix: "/activity/visit/" },
   // PAY · WALLET (Pato, 2026-11-11, MESITA-3698: "Divide Payments across
   // two sections: Pay and Wallet"): the bar's Pay tab has two halves, each
   // its own address, /pay and /wallet, under one band. Wallet was the bar's
@@ -282,6 +286,11 @@ export function payJoinPath(token: string): string {
   return `${CONSUMER_ROUTES.payJoin.prefix}${encodeURIComponent(token)}`;
 }
 
+/** A finished visit's one-page summary (MESITA-3770). */
+export function visitPath(tabId: string): string {
+  return `${CONSUMER_ROUTES.visit.prefix}${tabId}`;
+}
+
 /** A paid bill's proof. */
 export function payReceiptPath(paymentId: string): string {
   return `${CONSUMER_ROUTES.payReceipt.prefix}${paymentId}`;
@@ -361,6 +370,8 @@ export const ROUTE_MAP = {
   // it lights Activity, whose list is where it lands back (MESITA-3688,
   // MESITA-3769).
   reservation: row("/reservation/:id", "activity", "panel", "activity"),
+  // A finished Visit, opened from Activity › Visits (MESITA-3770).
+  visit: row("/activity/visit/:tabId", "activity", "page", "activity"),
   pay: row("/pay", "pay", "tab", null),
   // The pay screens own the whole frame, as the place screen does: no bar,
   // the header's back is the way out, so every step fits (MESITA-3739).
