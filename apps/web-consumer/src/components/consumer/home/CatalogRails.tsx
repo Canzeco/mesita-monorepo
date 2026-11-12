@@ -598,40 +598,65 @@ export function CatalogRails() {
         ?.scrollIntoView({ block: "nearest" }),
     );
   };
-  const chosenLabel = chips.find((c) => c.key === chip)?.label ?? TOP_LABEL;
+  // EVERY EMOJI IS ITS OWN BUTTON, FULL STRENGTH (Pato, MESITA-3785: "don't
+  // make the menu like not clickable, like the emojis must be visible, but
+  // when you click them, instead of instantly changing category, you open
+  // the sidebar menu"): MESITA-3781 faded the others to 40%, which read as
+  // disabled. A tap opens the names drawer with that family's row in the
+  // middle of the list; only a pick there changes the family.
+  const openMenuAt = (key: string) => {
+    setMenuOpen(true);
+    // The drawer mounts a frame later (LocalSheet's presence): try a few.
+    let tries = 0;
+    const centre = () => {
+      const list = document.querySelector<HTMLElement>(
+        "[data-places-menu-list]",
+      );
+      const row = list?.querySelector<HTMLElement>(
+        `[data-menu-key="${key}"]`,
+      );
+      if (list && row) {
+        list.scrollTop =
+          row.offsetTop - list.clientHeight / 2 + row.offsetHeight / 2;
+        return;
+      }
+      if (++tries < 6) requestAnimationFrame(centre);
+    };
+    requestAnimationFrame(centre);
+  };
   const emojiRail = (
     <div className="bg-background flex w-12 shrink-0 flex-col">
-      <button
-        type="button"
-        onClick={() => setMenuOpen(true)}
-        aria-label={`Families: ${chosenLabel}`}
-        aria-haspopup="dialog"
-        aria-expanded={menuOpen}
+      <nav
+        aria-label="Families"
         className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
         data-places-rail
       >
         {chips.map((c) => {
           const on = chip === c.key;
           return (
-            <span
+            <button
               key={c.key}
-              aria-hidden
+              type="button"
+              onClick={() => openMenuAt(c.key)}
+              aria-label={`${c.label}: open families`}
+              aria-haspopup="dialog"
+              aria-current={on ? "true" : undefined}
               data-on={on ? "" : undefined}
               className={cn(
-                "relative flex w-full shrink-0 items-center justify-center py-3 text-xl leading-none transition",
+                "relative flex w-full shrink-0 items-center justify-center py-3 text-xl leading-none transition active:scale-95",
                 on
                   ? cn(
                       "bg-card before:absolute before:inset-y-0 before:left-0 before:w-1",
                       c.key === SAVED_CHIP ? BAR_RED : BAR_BLUE,
                     )
-                  : "opacity-40",
+                  : "hover:bg-card/60",
               )}
             >
-              {c.emoji}
-            </span>
+              <span aria-hidden>{c.emoji}</span>
+            </button>
           );
         })}
-      </button>
+      </nav>
       <LocalSheet
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
@@ -662,6 +687,7 @@ export function CatalogRails() {
                     pickedFromMenu();
                   }}
                   aria-pressed={on}
+                  data-menu-key={c.key}
                   className={cn(
                     MENU_ROW,
                     on
