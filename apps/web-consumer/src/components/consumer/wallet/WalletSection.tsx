@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
-import { apiAddCard, apiListCards, apiRemoveCard, CARD_REFUSAL, CARD_RETURN_PARAM, type SavedCard } from "@/lib/api/cards";
+import { apiAddCard, apiListCards, apiRemoveCard, CARD_REFUSAL, CARD_RETURN_PARAM, MAX_SAVED_CARDS, type SavedCard } from "@/lib/api/cards";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -215,8 +215,12 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
         {cards?.map((c) => <SavedCardRow key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
         <CashRow />
         {/* Add is the list's last row (MESITA-3744), and reads "Add" in both
-            lists (Pato, MESITA-3740: "add and add, keep the symmetry"). */}
-        <AddRow line="A debit or credit card" ariaLabel="Add a payment card" onClick={() => void addCard()} disabled={adding} busy={adding} />
+            lists (Pato, MESITA-3740: "add and add, keep the symmetry"). It
+            leaves once three cards are saved (MESITA-3749); Credits Cards
+            have no limit. */}
+        {(cards?.length ?? 0) < MAX_SAVED_CARDS ? (
+          <AddRow line="A debit or credit card" ariaLabel="Add a payment card" onClick={() => void addCard()} disabled={adding} busy={adding} />
+        ) : null}
       </WalletList>
 
       <WalletList
