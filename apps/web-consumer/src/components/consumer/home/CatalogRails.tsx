@@ -620,7 +620,9 @@ export function CatalogRails() {
         className={cn(
           "bg-border shadow-elev absolute inset-y-0 left-0 z-20 flex flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain transition-[width] duration-200 ease-out motion-reduce:transition-none",
           "scrollbar-hide",
-          menuWide ? "w-1/2" : "w-12",
+          // A THIRD OF THE SCREEN (Pato, MESITA-3809: "make this menu 1/3
+          // of the screen when open, not half").
+          menuWide ? "w-1/3" : "w-12",
         )}
         data-places-menu-list
       >
