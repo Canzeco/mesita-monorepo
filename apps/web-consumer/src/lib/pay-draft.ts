@@ -9,13 +9,10 @@
 //                  an object, a savedAt that is not a real number, or an
 //                  amount that is not text is no draft.
 //   old step keys  "method" opens Methods and "review" opens Pay (their names
-//                  before the six steps); a key nobody knows opens Bill.
-//   the ticket     (MESITA-3776) kept as text, so "0012" stays "0012", with
-//                  a separate `ticketSkipped` ("No ticket number"). A draft
-//                  with neither a ticket nor a skip (one saved before the
-//                  Ticket step) opens on Ticket, keeping its amount, tip and
-//                  method, so the guest adds one field; a skipped draft is
-//                  never sent back to it.
+//                  before the six steps); "ticket" (MESITA-3776's step,
+//                  removed by MESITA-3796) opens Bill with the amounts, tip
+//                  and method kept, and its ticket fields are dropped; a key
+//                  nobody knows opens Bill.
 //   the limit      a draft older than PAY_DRAFT_MAX_AGE_MS is no draft. A
 //                  draft with no savedAt (saved before this rule) or one in
 //                  the future (a wrong clock) is stamped now and KEPT: a
@@ -27,12 +24,12 @@
 
 import { PAY_STEPS, type PayStepKey } from "@mesita/place-profile/lib/pay-steps";
 import type { PayWith } from "@/lib/api/tab";
-import { cleanTicket, draftAmount, draftTip } from "@/lib/pay-keypad";
+import { draftAmount, draftTip } from "@/lib/pay-keypad";
 
 /** How long a draft lives after its last change. */
 export const PAY_DRAFT_MAX_AGE_MS = 30 * 60 * 1000;
 
-/** The place page's steps: Ticket, Bill, Tip, Methods, Pay (2 to 6 of the seven). */
+/** The place page's steps: Bill, Tip, Methods, Pay (2 to 5 of the six). */
 export type PlacePayStep = Exclude<PayStepKey, "pick" | "sign">;
 export const PLACE_PAY_STEPS: readonly PlacePayStep[] = PAY_STEPS.map((s) => s.key).filter(
   (k): k is PlacePayStep => k !== "pick" && k !== "sign",
@@ -45,10 +42,6 @@ export type TipPick = TipPercent | "other" | null;
 
 export type PayDraft = {
   step: PlacePayStep;
-  /** The ticket number as typed ("" when none yet or skipped). */
-  ticket: string;
-  /** The guest chose "No ticket number". */
-  ticketSkipped: boolean;
   amount: string;
   tip: TipPick;
   other: string;
@@ -58,7 +51,7 @@ export type PayDraft = {
   savedAt: number;
 };
 
-const OLD_STEP: Record<string, PlacePayStep> = { method: "methods", review: "pay" };
+const OLD_STEP: Record<string, PlacePayStep> = { method: "methods", review: "pay", ticket: "bill" };
 
 function readStep(v: unknown): PlacePayStep {
   if (typeof v !== "string") return "bill";
@@ -92,21 +85,10 @@ export function readPayDraft(raw: string | null, now: number): PayDraft | null {
   else savedAt = d.savedAt;
   // An older draft may say "none": that is unanswered now.
   const tip: TipPick = d.tip === "other" ? "other" : TIP_PERCENTS.find((p) => p === d.tip) ?? null;
-  const ticket = typeof d.ticket === "string" ? cleanTicket(d.ticket) : "";
-  const ticketSkipped = d.ticketSkipped === true && ticket.trim() === "";
-  const read = readStep(d.step);
-  // No ticket and no skip (a draft from before the Ticket step): Ticket.
-  // Then never past Tip with the tip unanswered.
-  const step: PlacePayStep =
-    ticket.trim() === "" && !ticketSkipped
-      ? "ticket"
-      : tip === null && PLACE_PAY_STEPS.indexOf(read) > PLACE_PAY_STEPS.indexOf("tip")
-      ? "tip"
-      : read;
+  const step = readStep(d.step);
   return {
-    step,
-    ticket,
-    ticketSkipped,
+    // Never past Tip with the tip unanswered.
+    step: tip === null && PLACE_PAY_STEPS.indexOf(step) > PLACE_PAY_STEPS.indexOf("tip") ? "tip" : step,
     // Amounts go into the keypad's own form, so a key never extends text
     // it could not have made.
     amount: draftAmount(d.amount),

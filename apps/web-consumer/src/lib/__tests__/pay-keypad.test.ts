@@ -3,7 +3,7 @@ import { readAmount } from "@mesita/place-profile/lib/money";
 import type { PayPlace } from "@/lib/api/wallet";
 import { tabSplit } from "@/lib/api/tab";
 import { money } from "@/lib/api/wallet";
-import { amountShown, cleanTicket, digitKeyLive, draftAmount, draftTip, keyLive, type PadKey, payButton, payProblem, type PayProblemArgs, pressDigitKey, pressKey, readTip, TICKET_MAX, tipWays } from "@/lib/pay-keypad";
+import { amountShown, draftAmount, draftTip, keyLive, type PadKey, payButton, payProblem, type PayProblemArgs, pressKey, readTip, tipWays } from "@/lib/pay-keypad";
 
 // Money (MVP test rule): the keypad is the only way a guest types a bill or
 // a tip, so every text it can build must be one readAmount reads; and the
@@ -287,56 +287,5 @@ describe("payButton", () => {
                 expect(b.line?.endsWith(`+ ${m(cash)} cash`) ?? false).toBe(cash > 0);
               }
             }
-  });
-});
-
-// MESITA-3776: the ticket number is the reference the waiter signs against;
-// a ticket typed "0012" that reached the server as "12", or with a ".", would
-// point the waiter at the wrong ticket.
-describe("pressDigitKey (the keypad in digits mode)", () => {
-  const typeTicket = (keys: PadKey[]) => keys.reduce((t, k) => pressDigitKey(t, k), "");
-  it("keeps leading zeros", () => {
-    expect(typeTicket(["0", "0", "1", "2"])).toBe("0012");
-    expect(typeTicket(["0"])).toBe("0");
-  });
-  it("never produces a point", () => {
-    expect(typeTicket(["1", ".", "2", "."])).toBe("12");
-    expect(typeTicket(["."])).toBe("");
-    expect(digitKeyLive("12", ".")).toBe(false);
-  });
-  it("stops at sixteen characters and deletes back to empty", () => {
-    const full = typeTicket(Array.from({ length: 20 }, () => "7" as PadKey));
-    expect(full).toHaveLength(TICKET_MAX);
-    expect(TICKET_MAX).toBe(16);
-    expect(digitKeyLive(full, "1")).toBe(false);
-    expect(pressDigitKey(pressDigitKey("1", "back"), "back")).toBe("");
-  });
-  it("any key sequence yields digits only, at most sixteen", () => {
-    const keys: PadKey[] = ["0", "1", "5", "9", ".", "back"];
-    let t = "";
-    for (let i = 0; i < 400; i++) {
-      t = pressDigitKey(t, keys[(i * 7 + (i >> 3)) % keys.length]);
-      expect(t).toMatch(/^[0-9]{0,16}$/);
-    }
-  });
-});
-
-describe("cleanTicket (the client filter)", () => {
-  it("keeps letters, digits, dashes, slashes and spaces as typed", () => {
-    expect(cleanTicket("A-1234")).toBe("A-1234");
-    expect(cleanTicket("mesa 5/b")).toBe("mesa 5/b");
-    expect(cleanTicket("0012")).toBe("0012");
-  });
-  it("refuses symbols", () => {
-    expect(cleanTicket("12#4")).toBe("124");
-    expect(cleanTicket("A.1,2;$%&*()_+=!?<>'\"@")).toBe("A12");
-    expect(cleanTicket("ñ1é2")).toBe("12");
-  });
-  it("refuses a 17th character", () => {
-    expect(cleanTicket("1234567890ABCDEF")).toHaveLength(16);
-    expect(cleanTicket("1234567890ABCDEFG")).toBe("1234567890ABCDEF");
-  });
-  it("never starts with a space", () => {
-    expect(cleanTicket("   12")).toBe("12");
   });
 });

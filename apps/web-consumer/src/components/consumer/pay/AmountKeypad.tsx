@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Delete } from "lucide-react";
-import { amountShown, digitKeyLive, keyLive, type PadKey } from "@/lib/pay-keypad";
+import { amountShown, keyLive, type PadKey } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
 
 // THE PAY KEYPAD (MESITA-3739): 1–9, ".", 0, ⌫ drawn in the page, so the
@@ -18,29 +18,15 @@ import { cn } from "@/lib/utils";
 // is a shape inset inside the cell, which shows the press. A key that cannot
 // add anything now is dimmed, so it never looks broken. The rules are
 // pressKey's (lib/pay-keypad.ts).
-//
-// DIGITS MODE (MESITA-3776, the Ticket step): the "." cell is empty, a
-// leading zero is kept and the text stops at 16 characters (pressDigitKey).
 
 const KEYS: PadKey[] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"];
 const LABEL: Partial<Record<PadKey, string>> = { ".": "Decimal point", back: "Delete" };
 
-export function AmountKeypad({
-  text,
-  onKey,
-  mode = "amount",
-}: {
-  text: string;
-  onKey: (k: PadKey) => void;
-  /** "digits": a ticket number, no ".", leading zeros kept. */
-  mode?: "amount" | "digits";
-}) {
-  const digits = mode === "digits";
+export function AmountKeypad({ text, onKey }: { text: string; onKey: (k: PadKey) => void }) {
   return (
-    <div className="mt-auto grid max-h-64 min-h-0 flex-[1_1_16rem] grid-cols-3 grid-rows-[repeat(4,minmax(2.75rem,1fr))]" data-pay-keypad={mode}>
+    <div className="mt-auto grid max-h-64 min-h-0 flex-[1_1_16rem] grid-cols-3 grid-rows-[repeat(4,minmax(2.75rem,1fr))]" data-pay-keypad>
       {KEYS.map((k) => {
-        if (digits && k === ".") return <span key={k} aria-hidden />;
-        const live = digits ? digitKeyLive(text, k) : keyLive(text, k);
+        const live = keyLive(text, k);
         return (
           <button
             key={k}

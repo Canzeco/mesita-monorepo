@@ -7,7 +7,7 @@ import type { GuestTab } from "@/lib/api/tab";
 //
 //   state      strip      heading (the h2)   band (the money's one line)
 //   waiting    waiting    the strip's label  Card going through · Paid ·
-//                         "7 · Waiter signs" Show this to the waiter
+//                         "6 · Waiter signs" Show this to the waiter
 //   signed     signed     the strip's label  Paid · Signed
 //                         "Signed"
 //   closed     none       the band's line    Paid (in the app, no cash) · Closed
@@ -17,7 +17,7 @@ import type { GuestTab } from "@/lib/api/tab";
 // The strip is only for a payment the waiter can still sign or has signed.
 // One that closed unsigned (its window ended, or it was cancelled), was
 // refunded or is being checked shows no strip, and its status is the page's
-// heading. A card payment that already reads Paid still waits at step 7
+// heading. A card payment that already reads Paid still waits at step 6
 // until the waiter signs.
 //
 // `verified_at` is the wire name for "signed" (see pay-steps.ts).
@@ -28,7 +28,7 @@ export type PayStripState = "waiting" | "signed" | "closed" | "refunded" | "revi
 
 export type PayStrip = {
   state: PayStripState;
-  /** The seven-step strip: at step 7 while it waits, all solid once signed,
+  /** The six-step strip: at step 6 while it waits, all solid once signed,
    *  none for a payment that ended any other way. */
   strip: "waiting" | "signed" | null;
   /** With no strip, the status is the page's heading; null with a strip

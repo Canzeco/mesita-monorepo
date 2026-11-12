@@ -11,53 +11,48 @@ import { Button } from "@/components/ui/button";
 import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiAddCard, apiListCards, brandLabel, CARD_REFUSAL, CARD_RETURN_PARAM, MAX_SAVED_CARDS } from "@/lib/api/cards";
-import { apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL, TICKET } from "@/lib/api/tab";
+import { apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { acceptCardsAnswer, type CardsLoad, cardsFailure, fixedMethod, loadedCards, methodsWaitOnCards, pickCard } from "@/lib/pay-cards";
 import { payDraftExpired, type PayDraft, PLACE_PAY_STEPS, type PlacePayStep, readPayDraft, stampPayDraft, TIP_PERCENTS, type TipPercent, type TipPick } from "@/lib/pay-draft";
 import { clearSessionHref } from "@/lib/stale-session";
-import { cleanTicket, type PadKey, payButton, payProblem, paySplit, pressDigitKey, pressKey, readTip, ticketIsDigits, tipWays } from "@/lib/pay-keypad";
+import { type PadKey, payButton, payProblem, paySplit, pressKey, readTip, tipWays } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
 import { PlacePhoto, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
+import { BillHelpSheet } from "./BillHelpSheet";
 import { PaySteps } from "./PaySteps";
-import { TicketHelpSheet } from "./TicketHelpSheet";
 
 // THE GUEST PAYS ALONE (MESITA-3709), one step per screen at /pay/<placeId>
-// (MESITA-3715). These are steps 2 to 6 of the seven pay steps (MESITA-3759,
-// lib/pay-steps in place-profile): Ticket (MESITA-3776) → Bill (before tip)
-// → Tip → Methods → Pay (Bill, Tip, Total, the cashback, and one button
-// that says what the tap does). The header's back arrow steps back. After Pay the guest lands on
+// (MESITA-3715). These are steps 2 to 5 of the six pay steps (MESITA-3759,
+// lib/pay-steps in place-profile): Bill (before tip) → Tip → Methods → Pay
+// (Bill, Tip, Total, the cashback, and one button that says what the tap
+// does). The header's back arrow steps back. After Pay the guest lands on
 // their payment's page (/pay/tab/<id>) and shows its QR to the waiter, who
 // signs it. Every rule and peso is the server's; this screen proposes.
 //
 // ONE SCREEN A STEP, NOTHING SCROLLS (MESITA-3739, Pato: "make it not
 // scrollable, try to fit all in one page"): white, no tab bar, and each step
-// is a fixed column. The strip's label ("3 · Bill") is the page's only
-// heading: there is no question headline. Amounts are typed on a keypad
-// drawn in the page (the phone keyboard covered Next); the amount sits right
-// above the keypad and spare height goes above the amount. Credit is the
+// is a fixed column. The strip's label ("2 · Bill") is the page's heading.
+// Amounts are typed on a keypad drawn in the page (the phone keyboard
+// covered Next). Credit is the
 // first row of Methods, on by default; above MX$3,000 Pay asks first in a
 // dialog.
 //
 //   ┌ photo · name ················ 2 · Bill ┐   PaySteps, row one (36px)
-//   │ ━━━━ ━━━━ ▭▭▭▭ ──── ──── ──── ────      │   PaySteps, seven segments
+//   │ ━━━━ ▭▭▭▭ ──── ──── ──── ────           │   PaySteps, six segments
 //   │ body (flex-1: keypad docked at the      │
 //   │       bottom / rows card at the top)    │
 //   │ [ status line ]                         │
 //   └ [ Next / Add a card / Pay ]             ┘   pinned
 //
+// THE BILL STEP (MESITA-3796, the reference's design): under the strip the
+// heading "Bill amount" and one muted line "The total on your ticket, before
+// tip"; the amount (MESITA-3766); a "Where is it?" pill that opens "Find the
+// total" (BillHelpSheet); spare height; the keypad at the bottom; Next.
+//
 // THE DRAFT (lib/pay-draft.ts) lives 30 minutes after its last change; it
 // is checked on opening and again when the tab is looked at after a while.
-//
-// THE TICKET (MESITA-3776): step 2 asks for the number printed at the top
-// of the restaurant's ticket, typed on the keypad in digits mode ("0012"
-// stays "0012"), or on the phone's keyboard after "Has letters?". "No
-// ticket number" skips it; typing one clears the skip. From a later step
-// the strip's "2 · Ticket" opens it again. The server compares tickets at
-// the place: another guest's payment of the same ticket asks "Paying your
-// share?" (Yes resends the SAME request id with repeat_ok), the guest's own
-// earlier payment of it is refused with a way to open that payment.
 
 type Pct = TipPercent;
 /** null: not answered yet. There is no "No tip" button: no tip is Other
@@ -134,16 +129,7 @@ export function GuestPayScreen({
   // The draft, read once and already checked (types, old step names, the
   // 30-minute limit, never past Tip unanswered): lib/pay-draft.ts.
   const [draft] = useState(() => readDraft(placeId));
-  const [step, setStep] = useState<Step>(draft?.step ?? "ticket");
-  const [ticket, setTicket] = useState(draft?.ticket ?? "");
-  const [ticketSkipped, setTicketSkipped] = useState(draft?.ticketSkipped ?? false);
-  // The phone's text keyboard instead of the keypad ("Has letters?").
-  const [ticketLetters, setTicketLetters] = useState(() => !ticketIsDigits(draft?.ticket ?? ""));
-  // "Change ticket": the value is selected, so the next key replaces it.
-  const [ticketSelected, setTicketSelected] = useState(false);
-  const [ticketHelp, setTicketHelp] = useState(false);
-  // ticket_paid ("Paying your share?") or ticket_paid_by_you, on the Pay step.
-  const [ticketAsk, setTicketAsk] = useState<{ kind: "shared" | "mine"; ticket: string; tabId: string | null } | null>(null);
+  const [step, setStep] = useState<Step>(draft?.step ?? "bill");
   const [amount, setAmount] = useState(draft?.amount ?? "");
   const [tip, setTip] = useState<Tip>(draft?.tip ?? null);
   const [lastPct, setLastPct] = useState<Pct | null>(typeof draft?.tip === "number" ? draft.tip : null);
@@ -161,6 +147,8 @@ export function GuestPayScreen({
   const [busy, setBusy] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [moreCards, setMoreCards] = useState(false);
+  // "Where is it?" on the Bill step: the "Find the total" sheet.
+  const [billHelp, setBillHelp] = useState(false);
   // A refusal belongs to the payment it refused: it shows only until the
   // guest changes something (no setState in an effect for that).
   const [failure, setFailure] = useState<{ msg: string; sig: string } | null>(null);
@@ -168,9 +156,6 @@ export function GuestPayScreen({
   // One request id per tap; a retry after a lost answer keeps it, any
   // change to the payment makes a new one.
   const requestId = useRef<string | null>(null);
-  // The request the guest said "Yes, my share" to: it goes again with
-  // repeat_ok, under the same id, so exactly one payment is made.
-  const shareOkFor = useRef<string | null>(null);
   const root = useRef<HTMLFormElement | null>(null);
 
   const cardOk = place?.card_ok === true;
@@ -224,7 +209,7 @@ export function GuestPayScreen({
 
   // Any change to the payment: a new tap (new request id), saved as a draft
   // so "Add a card" comes back with the amounts kept.
-  const sig = JSON.stringify([ticket, ticketSkipped, amount, tip, other, useCredit, method, cardId, tipMethod]);
+  const sig = JSON.stringify([amount, tip, other, useCredit, method, cardId, tipMethod]);
   const error = failure && failure.sig === sig ? failure.msg : null;
   const setError = (msg: string | null) => setFailure(msg ? { msg, sig } : null);
   // Every write carries its time; opening the screen is not a change, so
@@ -234,24 +219,19 @@ export function GuestPayScreen({
     requestId.current = null;
     const now = savedAt.current === null ? draft?.savedAt ?? Date.now() : Date.now();
     savedAt.current = now;
-    writeDraft(placeId, { step, ticket, ticketSkipped, amount, tip, other, useCredit, method, cardId }, now);
-  }, [placeId, draft, step, ticket, ticketSkipped, amount, tip, other, useCredit, method, cardId, tipMethod]);
+    writeDraft(placeId, { step, amount, tip, other, useCredit, method, cardId }, now);
+  }, [placeId, draft, step, amount, tip, other, useCredit, method, cardId, tipMethod]);
 
   // The draft's age is asked again when the tab is looked at after a while
   // (or comes back from the page cache): past the limit it starts over at
-  // Ticket with nothing typed, no method, no card and the credit switch as
+  // Bill with nothing typed, no method, no card and the credit switch as
   // new, without a word. Never while a payment is going out.
   const sending = busy || addingCard;
   useEffect(() => {
     const check = () => {
       if (document.visibilityState !== "visible" || sending) return;
       if (savedAt.current === null || !payDraftExpired(savedAt.current, Date.now())) return;
-      setStep("ticket");
-      setTicket("");
-      setTicketSkipped(false);
-      setTicketLetters(false);
-      setTicketSelected(false);
-      setTicketAsk(null);
+      setStep("bill");
       setAmount("");
       setTip(null);
       setLastPct(null);
@@ -278,7 +258,7 @@ export function GuestPayScreen({
     root.current?.focus({ preventScroll: true });
   }, [step, place?.place_id]);
 
-  // The header's back arrow: one step back, and off the screen from Ticket.
+  // The header's back arrow: one step back, and off the screen from Bill.
   // While a payment is going out it does nothing.
   useEffect(() => {
     if (!registerBack) return;
@@ -320,14 +300,11 @@ export function GuestPayScreen({
     setError(null);
     requestId.current ??= crypto.randomUUID();
     const cardParts = split.card_bill_cents + split.card_tip_cents;
-    const sentTicket = ticketSkipped ? null : ticket.trim() || null;
     try {
       const r = await apiPayGuest(getSupabase(), {
         place_id: placeId,
         bill_cents: billCents,
         request_id: requestId.current,
-        ticket: sentTicket,
-        repeat_ok: shareOkFor.current !== null && shareOkFor.current === requestId.current,
         credit_cents: split.credit_cents,
         cash_bill_cents: split.cash_bill_cents,
         cash_tip_cents: split.cash_tip_cents,
@@ -341,29 +318,8 @@ export function GuestPayScreen({
       onPaid(r.tab_id);
     } catch (e) {
       const code = e instanceof EFError ? e.code : null;
-      // MESITA-3776: another guest paid this ticket. Nothing was made; the
-      // guest's "Yes, my share" resends this SAME request id with repeat_ok.
-      if (code === "ticket_paid" && sentTicket) {
-        setTicketAsk({ kind: "shared", ticket: sentTicket, tabId: null });
-        setBusy(false);
-        return;
-      }
-      setTicketAsk(null);
       // A refusal ends this tap; a lost answer (no code) retries the same one.
       if (code) requestId.current = null;
-      if (code === "ticket_paid_by_you" && sentTicket) {
-        const paid = e instanceof EFError ? e.body?.paid_tab_id : null;
-        setTicketAsk({ kind: "mine", ticket: sentTicket, tabId: typeof paid === "string" && paid ? paid : null });
-        setBusy(false);
-        return;
-      }
-      if (code === "ticket_invalid") {
-        setStep("ticket");
-        setTicketLetters(!ticketIsDigits(ticket));
-        setError(TICKET.invalid);
-        setBusy(false);
-        return;
-      }
       // MESITA-3772: one open payment at a time. The refusal names it, so
       // the guest lands on it (to get it signed or close it).
       const openId = code === "too_many_open" && e instanceof EFError ? e.body?.open_tab_id : null;
@@ -403,9 +359,7 @@ export function GuestPayScreen({
 
   const otherOk = readTip(other) !== null;
   const nextOk =
-    step === "ticket"
-      ? ticket.trim() !== ""
-      : step === "bill"
+    step === "bill"
       ? billCents > 0
       : step === "tip"
       ? tip !== null && (tip !== "other" || otherOk)
@@ -425,41 +379,12 @@ export function GuestPayScreen({
     }
     const i = STEPS.indexOf(step);
     if (!nextOk || i >= STEPS.length - 1) return;
-    if (step === "ticket") {
-      setTicketSelected(false);
-      setTicketSkipped(false);
-    }
     // The method the guest leaves Methods with stays: a card list that
     // arrives later never turns a cash payment into a card charge.
     if (step === "methods") setMethod(fixedMethod(method, restWith));
     setStep(STEPS[i + 1]);
   };
   const typing = step === "bill" || (step === "tip" && tip === "other");
-  const ticketPad = step === "ticket" && !ticketLetters;
-
-  // THE TICKET (MESITA-3776). Typing one clears a skip; "Change ticket"
-  // left it selected, so the first key replaces it.
-  const typeTicket = (next: string) => {
-    const clean = cleanTicket(next);
-    setTicket(clean);
-    setTicketSelected(false);
-    if (clean !== "") setTicketSkipped(false);
-  };
-  const pressTicket = (k: PadKey) => typeTicket(pressDigitKey(ticketSelected ? "" : ticket, k));
-  const skipTicket = () => {
-    setTicket("");
-    setTicketSelected(false);
-    setTicketLetters(false);
-    setTicketSkipped(true);
-    setStep("bill");
-  };
-  const changeTicket = () => {
-    setTicketAsk(null);
-    setConfirming(false);
-    setTicketLetters(!ticketIsDigits(ticket));
-    setTicketSelected(ticket !== "");
-    setStep("ticket");
-  };
 
   // Desktop keys: digits, "." and Backspace on a keypad step; Enter is Next
   // only from the step itself or a keypad key, so it still presses a
@@ -469,14 +394,6 @@ export function GuestPayScreen({
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const target = e.target as HTMLElement;
     if (!e.currentTarget.contains(target)) return;
-    if (ticketPad) {
-      const key: PadKey | null = /^[0-9]$/.test(e.key) ? (e.key as PadKey) : e.key === "Backspace" ? "back" : null;
-      if (key) {
-        e.preventDefault();
-        pressTicket(key);
-        return;
-      }
-    }
     if (typing) {
       const key: PadKey | null = /^[0-9]$/.test(e.key) ? (e.key as PadKey) : e.key === "." ? "." : e.key === "Backspace" ? "back" : null;
       if (key) {
@@ -486,11 +403,7 @@ export function GuestPayScreen({
         return;
       }
     }
-    if (
-      e.key === "Enter" &&
-      step !== "pay" &&
-      (target === e.currentTarget || target.dataset.padKey !== undefined || target.dataset.ticketInput !== undefined)
-    ) {
+    if (e.key === "Enter" && step !== "pay" && (target === e.currentTarget || target.dataset.padKey !== undefined)) {
       e.preventDefault();
       next();
     }
@@ -533,15 +446,6 @@ export function GuestPayScreen({
       >
         <PaySteps
           step={step}
-          // "2 · Ticket" opens again from any later step (MESITA-3776).
-          onStep={(k) => {
-            if (k !== "ticket" || busy || addingCard) return;
-            setConfirming(false);
-            setTicketLetters(!ticketIsDigits(ticket));
-            setStep("ticket");
-          }}
-          reached={step}
-          canOpen={(k) => k === "ticket"}
           left={
             <>
               <PlacePhoto place={place} className="h-9 w-9" />
@@ -550,34 +454,14 @@ export function GuestPayScreen({
           }
         />
 
-        {/* mt-1: the strip's tappable segments carry their own 8px. */}
-        <div className="mt-1 flex min-h-0 flex-1 flex-col">
-          {step === "ticket" ? (
-            <TicketStep
-              ticket={ticket}
-              letters={ticketLetters}
-              selected={ticketSelected}
-              onKey={pressTicket}
-              onText={typeTicket}
-              onHelp={() => setTicketHelp(true)}
-              onLetters={(on) => {
-                setTicketLetters(on);
-                setTicketSelected(false);
-              }}
-              onSkip={skipTicket}
-            />
-          ) : null}
-
+        <div className="mt-3 flex min-h-0 flex-1 flex-col">
           {step === "bill" ? (
             <>
-              {/* The amount at the top under the strip, the keypad at the
+              <BillHeading />
+              {/* The amount at the top under the heading, the keypad at the
                   bottom above Next; spare height sits between them (MESITA-3766). */}
-              <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mt-6 shrink-0" />
-              {ticketSkipped ? (
-                <p className="text-muted-foreground shrink-0 text-center text-sm" data-guest-no-ticket>
-                  {TICKET.none}
-                </p>
-              ) : null}
+              <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mt-4 shrink-0" />
+              <WhereIsIt onClick={() => setBillHelp(true)} />
               <div className="min-h-0 flex-1" aria-hidden />
               <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
             </>
@@ -749,7 +633,7 @@ export function GuestPayScreen({
           ) : null}
 
           <p
-            className={cn("text-destructive mt-auto line-clamp-2 shrink-0 pt-2 text-sm", (step === "bill" || step === "ticket") && !status && "hidden")}
+            className={cn("text-destructive mt-auto line-clamp-2 shrink-0 pt-2 text-sm", step === "bill" && !status && "hidden")}
             role={error ? "alert" : "status"}
           >
             {status}
@@ -781,6 +665,14 @@ export function GuestPayScreen({
         </div>
       </form>
 
+      <BillHelpSheet
+        open={billHelp}
+        onClose={() => {
+          setBillHelp(false);
+          focusRoot();
+        }}
+      />
+
       <LocalSheet
         open={moreCards}
         onClose={() => {
@@ -810,42 +702,6 @@ export function GuestPayScreen({
           </div>
         </div>
       </LocalSheet>
-
-      <TicketHelpSheet
-        open={ticketHelp}
-        onClose={() => {
-          setTicketHelp(false);
-          focusRoot();
-        }}
-      />
-
-      <LocalDialog
-        open={ticketAsk !== null}
-        onClose={() => {
-          if (busy) return;
-          setTicketAsk(null);
-          focusRoot();
-        }}
-        ariaLabel={ticketAsk?.kind === "mine" ? "You already paid this ticket" : "This ticket already has a payment"}
-      >
-        {ticketAsk ? (
-          <TicketAskBody
-            kind={ticketAsk.kind}
-            ticket={ticketAsk.ticket}
-            busy={busy}
-            canSee={!!ticketAsk.tabId}
-            onYes={() => {
-              // The same request id, now with repeat_ok: one payment.
-              shareOkFor.current = requestId.current;
-              void pay(true);
-            }}
-            onSee={() => {
-              if (ticketAsk.tabId) onPaid(ticketAsk.tabId);
-            }}
-            onChange={changeTicket}
-          />
-        ) : null}
-      </LocalDialog>
 
       <LocalDialog
         open={confirming}
@@ -881,156 +737,27 @@ export function GuestPayScreen({
   );
 }
 
-/** Roughly how wide a ticket draws, in ems at semibold: digits are tabular,
- *  dashes, slashes and spaces narrow, letters wide. */
-function ticketEm(text: string): number {
-  let em = 0;
-  for (const ch of text) em += /[0-9]/.test(ch) ? 0.64 : /[-/\s]/.test(ch) ? 0.4 : 0.86;
-  return Math.max(em, 1);
-}
-
-/** THE TICKET STEP (MESITA-3776), top to bottom: "Ticket number", "From the
- *  top of your ticket", the ticket large as plain text (a muted "—" when
- *  empty; the Bill amount's size up to 8 characters, the next standard size
- *  down beyond, and never wider than the row), "Where is it?", the keypad in
- *  digits mode, then one row: "Has letters?" (the phone's keyboard on the
- *  same value; then "Number pad", hidden while the value holds anything but
- *  digits) and "No ticket number". Next is the screen's own button. */
-export function TicketStep({
-  ticket,
-  letters,
-  selected,
-  onKey,
-  onText,
-  onHelp,
-  onLetters,
-  onSkip,
-}: {
-  ticket: string;
-  letters: boolean;
-  /** "Change ticket": the value is selected; the next key replaces it. */
-  selected: boolean;
-  onKey: (k: PadKey) => void;
-  onText: (text: string) => void;
-  onHelp: () => void;
-  onLetters: (on: boolean) => void;
-  onSkip: () => void;
-}) {
-  const input = useRef<HTMLInputElement | null>(null);
-  // The text keyboard opens on the value; selected after "Change ticket".
-  useEffect(() => {
-    if (!letters || !input.current) return;
-    input.current.focus({ preventScroll: true });
-    if (selected) input.current.select();
-  }, [letters, selected]);
-  const size = ticket.length > 8 ? "1.875rem" : "2.5rem";
-  const fontSize = `min(${size}, ${(100 / ticketEm(ticket || "—")).toFixed(2)}cqw)`;
-  const digitsOnly = ticketIsDigits(ticket);
+/** The Bill step's heading and its one line (MESITA-3796). */
+export function BillHeading() {
   return (
     <>
-      <h3 className="mt-5 shrink-0 text-center text-lg font-semibold">{TICKET.heading}</h3>
-      <p className="text-muted-foreground shrink-0 text-center text-sm">{TICKET.line}</p>
-      <div className="@container mt-4 flex h-14 w-full min-w-0 shrink-0 items-center justify-center" data-pay-ticket>
-        {letters ? (
-          <input
-            ref={input}
-            data-ticket-input
-            aria-label={TICKET.heading}
-            value={ticket}
-            placeholder="—"
-            onChange={(e) => onText(e.target.value)}
-            maxLength={16}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="characters"
-            spellCheck={false}
-            enterKeyHint="next"
-            className="placeholder:text-muted-foreground w-full bg-transparent text-center leading-none font-semibold tabular-nums outline-none"
-            style={{ fontSize }}
-          />
-        ) : (
-          <p
-            className={cn(
-              "max-w-full rounded-lg px-1 text-center leading-none font-semibold whitespace-nowrap tabular-nums",
-              ticket === "" && "text-muted-foreground",
-              selected && ticket !== "" && "bg-border",
-            )}
-            style={{ fontSize }}
-            aria-label={`${TICKET.heading}: ${ticket === "" ? "none yet" : ticket}`}
-          >
-            {ticket === "" ? "—" : ticket}
-          </p>
-        )}
-      </div>
-      <button
-        type="button"
-        className="border-border hover:bg-muted mt-2 flex h-9 shrink-0 items-center self-center rounded-full border px-4 text-sm font-semibold"
-        onClick={onHelp}
-        data-ticket-where
-      >
-        {TICKET.whereIsIt}
-      </button>
-      <div className="min-h-0 flex-1" aria-hidden />
-      {letters ? null : <AmountKeypad mode="digits" text={selected ? "" : ticket} onKey={onKey} />}
-      <div className="flex h-11 shrink-0 items-center justify-between gap-3 text-sm font-semibold">
-        {!letters ? (
-          <button type="button" className="text-muted-foreground hover:text-foreground min-h-11 underline" onClick={() => onLetters(true)}>
-            {TICKET.hasLetters}
-          </button>
-        ) : digitsOnly ? (
-          <button type="button" className="text-muted-foreground hover:text-foreground min-h-11 underline" onClick={() => onLetters(false)}>
-            {TICKET.numberPad}
-          </button>
-        ) : (
-          <span aria-hidden />
-        )}
-        <button type="button" className="text-muted-foreground hover:text-foreground min-h-11 underline" onClick={onSkip}>
-          {TICKET.none}
-        </button>
-      </div>
+      <h3 className="font-display mt-5 shrink-0 text-center text-lg font-semibold">Bill amount</h3>
+      <p className="text-muted-foreground shrink-0 text-center text-sm">The total on your ticket, before tip</p>
     </>
   );
 }
 
-/** The Pay step's ticket question (MESITA-3776). "shared": another guest
- *  paid this ticket, so this is probably a share. "mine": this guest already
- *  paid it; that payment opens. */
-export function TicketAskBody({
-  kind,
-  ticket,
-  busy,
-  canSee,
-  onYes,
-  onSee,
-  onChange,
-}: {
-  kind: "shared" | "mine";
-  ticket: string;
-  busy: boolean;
-  canSee: boolean;
-  onYes: () => void;
-  onSee: () => void;
-  onChange: () => void;
-}) {
+/** The Bill step's help pill: opens "Find the total" (MESITA-3796). */
+export function WhereIsIt({ onClick }: { onClick: () => void }) {
   return (
-    <div className="p-5" data-ticket-ask={kind}>
-      <p className="text-lg font-semibold break-words">{kind === "shared" ? TICKET.shared(ticket) : TICKET.mine(ticket)}</p>
-      {/* Stacked: "See that payment" and "Change ticket" never wrap at 375px. */}
-      <div className="mt-4 flex flex-col gap-2">
-        {kind === "shared" ? (
-          <Button type="button" className="min-h-12 w-full text-base font-semibold" disabled={busy} onClick={onYes}>
-            {busy ? TICKET.paying : TICKET.yesShare}
-          </Button>
-        ) : (
-          <Button type="button" className="min-h-12 w-full text-base font-semibold" disabled={!canSee} onClick={onSee}>
-            {TICKET.seeIt}
-          </Button>
-        )}
-        <button type="button" className={QUIET_BUTTON_CLASS} disabled={busy} onClick={onChange}>
-          {TICKET.change}
-        </button>
-      </div>
-    </div>
+    <button
+      type="button"
+      className="border-border hover:bg-muted mt-2 flex h-9 shrink-0 items-center self-center rounded-full border px-4 text-sm font-semibold"
+      onClick={onClick}
+      data-bill-where
+    >
+      Where is it?
+    </button>
   );
 }
 
