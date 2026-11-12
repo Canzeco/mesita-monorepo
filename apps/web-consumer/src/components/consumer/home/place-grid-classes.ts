@@ -22,5 +22,7 @@ export const ROW_PHOTO =
  *  only, the buttons pinned to its bottom so every row's buttons line up.
  *  At least square; it grows with its facts (an aspect-ratio box's minimum
  *  height is its content), and the photo grows with it. */
+// A bit darker (Pato, MESITA-3805: "just a bit, its too light"): bg-muted,
+// from bg-muted/60.
 export const ROW_INFO =
-  "bg-muted/60 relative flex aspect-square min-w-0 flex-col gap-1 rounded-r-2xl p-3";
+  "bg-muted relative flex aspect-square min-w-0 flex-col gap-1 rounded-r-2xl p-3";
