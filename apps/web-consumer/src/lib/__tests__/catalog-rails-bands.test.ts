@@ -92,7 +92,11 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
 describe("the location lives in Home's header (MESITA-2401)", () => {
   it("Places draws no location bar or sheet; it reads the shared active location", () => {
     expect(src).not.toContain("data-places-location-bar");
-    expect(src).not.toContain("<LocalSheet");
+    // Its one sheet is Places 3.0's family drawer (MESITA-3764), never a
+    // location sheet.
+    expect(src.match(/<LocalSheet/g)).toHaveLength(1);
+    expect(src).toContain('ariaLabel="Families"');
+    expect(src).not.toContain("LocationPicker");
     expect(src).toContain("const origin = useActiveLocation();");
     // A saved location, else the fix, else the city's centre (MESITA-2472).
     expect(src).toContain(

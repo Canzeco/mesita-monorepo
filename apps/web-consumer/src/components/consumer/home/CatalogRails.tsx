@@ -70,12 +70,8 @@ import {
   readAreaPool,
   writeAreaPool,
 } from "@/lib/area-pool-cache";
-import {
-  FILTERABLE_PLACE_FAMILIES,
-  type FamilyKey,
-} from "@/lib/place-families";
-import { FamilyFilterSheet } from "@/components/consumer/search/FamilyFilterSheet";
-import { DISC_BADGE } from "@/components/consumer/search/header-classes";
+import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
 import {
@@ -147,9 +143,6 @@ export const SAVED_LABEL = "Saved";
 export function isEveryFamily(chip: string): boolean {
   return chip === ALL_CHIP;
 }
-/** The chip state while the Filters sheet holds two or more families
- *  (MESITA-3666): no one chip is lit, and the pool is already their union. */
-export const FILTERS_CHIP = "filters";
 
 /** Home's three tabs, each its own address (Pato, MESITA-2597; MESITA-3762:
  *  "I want Places 1.0 and Places 3.0"):
@@ -214,7 +207,7 @@ export function chipFamilies(chip: string): string[] {
  *  row's pool is already that family's (MESITA-2438); the filter stays as a
  *  guard when area.familyKeys and family_keys disagree. */
 export function poolPlaces(pool: AreaPool, chip: string): Place[] {
-  return isEveryFamily(chip) || chip === FILTERS_CHIP
+  return isEveryFamily(chip)
     ? pool.places
     : pool.places.filter((p) => (p.area?.familyKeys ?? []).includes(chip));
 }
@@ -266,7 +259,7 @@ export function CatalogRails() {
   // The family the pool was asked for (MESITA-2438): a family row's own,
   // none for All.
   const [families, setFamilies] = useState<string[]>([]);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const requestKey = `${areaPoolKey(from)}|${
     families.length > 0 ? families.join(",") : ALL_CHIP
   }`;
@@ -513,7 +506,10 @@ export function CatalogRails() {
   // list has no inset and the rows no rounding; the chosen row is plain
   // white across the whole column, still with no bar.
   const chips = placesChips();
-  const categoryRow = (c: { key: string; label: string; emoji: string }) => {
+  const categoryRow = (
+    c: { key: string; label: string; emoji: string },
+    afterPick?: () => void,
+  ) => {
     const on = chip === c.key;
     return (
       <li key={c.key}>
@@ -524,6 +520,7 @@ export function CatalogRails() {
             setChip(c.key);
             // Saved reads no pool: the last pool row's family stays asked.
             if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
+            afterPick?.();
           }}
           aria-pressed={on}
           className={cn(
@@ -565,7 +562,7 @@ export function CatalogRails() {
         className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
         data-places-group="families"
       >
-        {chips.map(categoryRow)}
+        {chips.map((c) => categoryRow(c))}
       </ul>
     </nav>
   );
@@ -575,40 +572,32 @@ export function CatalogRails() {
   // option before top"), as one scrolling line of
   // pills, each with its family's emoji (MESITA-3668), so the rows get the
   // whole width. The chosen pill is ink. The row and the column share
-  // `chip`, so a family carries across the two tabs. THE FILTERS DISC
-  // BEFORE TOP (Pato, MESITA-3666): Search's disc and sheet, pinned at the
-  // row's left while the pills scroll; pick any number of families and the
-  // server ORs them in one pool. A bubble counts the picks.
-  const picked = chip === SAVED_CHIP ? 0 : families.length;
-  const applyFilters = (keys: FamilyKey[]) => {
-    trackEvent(supabase, "home_mode_view", { mode: "Filters" });
-    setFamilies(keys);
-    setChip(
-      keys.length === 0 ? ALL_CHIP : keys.length === 1 ? keys[0] : FILTERS_CHIP,
+  // `chip`, so a family carries across the two tabs.
+  // THE MENU DISC BEFORE THE PILLS OPENS PLACES 1.0'S COLUMN AS A LEFT DRAWER
+  // (Pato, MESITA-3764: "use the lateral menu of places 1.0 but in places
+  // 3.0 instead of the ugly ass this filters page"): the same rows, one pick,
+  // and the drawer closes and centres that family's pill. It replaced
+  // Search's multi-pick Filters sheet (MESITA-3666); Search keeps its own.
+  const pickedFromMenu = () => {
+    setMenuOpen(false);
+    requestAnimationFrame(() =>
+      document
+        .querySelector("[data-places-chips] [aria-pressed='true']")
+        ?.scrollIntoView({ block: "nearest", inline: "center" }),
     );
   };
   const chipRow = (
     <div className="bg-card flex shrink-0 items-center gap-1.5 pl-3">
       <button
         type="button"
-        onClick={() => setFiltersOpen(true)}
-        aria-label={picked > 0 ? `Filters (${picked} selected)` : "Filters"}
+        onClick={() => setMenuOpen(true)}
+        aria-label="Families"
         aria-haspopup="dialog"
+        aria-expanded={menuOpen}
         className="bg-border/60 text-foreground hover:bg-border relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition after:absolute after:-inset-1.5 active:scale-[0.97]"
-        data-places-filters
+        data-places-menu
       >
         <SlidersHorizontal className="h-4 w-4" strokeWidth={2} aria-hidden />
-        {picked > 0 ? (
-          <span
-            aria-hidden
-            className={cn(
-              DISC_BADGE,
-              "bg-destructive text-destructive-foreground",
-            )}
-          >
-            {picked}
-          </span>
-        ) : null}
       </button>
       <nav
         className={cn("bg-card min-w-0 flex-1 pl-0", GRID_CHIPS)}
@@ -649,13 +638,21 @@ export function CatalogRails() {
             );
           })}
       </nav>
-      <FamilyFilterSheet
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        applied={(chip === SAVED_CHIP ? [] : families) as FamilyKey[]}
-        onApply={applyFilters}
-        note="Pick as many families as you like. Home shows places in any of them."
-      />
+      <LocalSheet
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        ariaLabel="Families"
+        from="left"
+      >
+        <ul
+          role="list"
+          aria-label="Families"
+          className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+          data-places-menu-list
+        >
+          {chips.map((c) => categoryRow(c, pickedFromMenu))}
+        </ul>
+      </LocalSheet>
     </div>
   );
 
@@ -795,10 +792,7 @@ export function CatalogRails() {
 
   if (pool === null) return shell(waiting);
 
-  const label =
-    chip === FILTERS_CHIP
-      ? "your filters"
-      : (chips.find((c) => c.key === chip)?.label ?? "Places");
+  const label = chips.find((c) => c.key === chip)?.label ?? "Places";
   // The Catalog has no radius (MESITA-2909): an empty pool is an empty
   // catalog (or every place under the floor), wherever the point is.
   const empty = isEveryFamily(chip) ? (
