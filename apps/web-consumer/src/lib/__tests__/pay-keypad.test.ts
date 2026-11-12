@@ -176,12 +176,20 @@ describe("amountShown", () => {
   // The prefix and suffix are the money formatter's own for the currency.
   const zero = money(0, "mxn");
   const prefix = zero.slice(0, zero.indexOf("0"));
-  const suffix = zero.slice(zero.indexOf("0") + 1);
-  it("nothing typed is the prefix alone", () => {
-    expect(amountShown("", "mxn")).toEqual({ prefix, body: "", suffix: "" });
+  const suffix = zero.slice(zero.indexOf("0")).replace(/^[0.,]+/, "");
+  it("nothing typed is a muted 0.00", () => {
+    expect(amountShown("", "mxn")).toEqual({ prefix, body: "", ghost: "0.00", suffix });
   });
-  it("a typed 0 is a 0", () => {
-    expect(amountShown("0", "mxn")).toEqual({ prefix, body: "0", suffix });
+  it("a typed 0 is a 0, with its cents to come", () => {
+    expect(amountShown("0", "mxn")).toEqual({ prefix, body: "0", ghost: ".00", suffix });
+  });
+  it("always reads with two decimals (MESITA-3766)", () => {
+    const full = (t: string) => { const s = amountShown(t, "mxn"); return s.body + s.ghost; };
+    expect(full("20")).toBe("20.00");
+    expect(full("20.")).toBe("20.00");
+    expect(full("20.5")).toBe("20.50");
+    expect(full("20.55")).toBe("20.55");
+    expect(full("1250")).toBe("1,250.00");
   });
   it("groups the whole part", () => {
     expect(amountShown("1250", "mxn").body).toBe("1,250");
