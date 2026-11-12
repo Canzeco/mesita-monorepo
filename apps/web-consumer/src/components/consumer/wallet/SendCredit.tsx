@@ -119,10 +119,12 @@ export function SendCreditSheet({
             </p>
             <p className="border-border bg-muted mt-4 rounded-xl border px-3 py-3 font-mono text-xs break-all">{link.url}</p>
             {link.code ? (
-              <p className="text-muted-foreground mt-3 text-sm">
-                Or your friend types this code in their Wallet:{" "}
-                <span className="text-foreground font-mono font-semibold tabular-nums">{formatGiftCode(link.code)}</span>
-              </p>
+              <>
+                <p className="text-muted-foreground mt-3 text-sm">Or your friend types this code in their Wallet:</p>
+                <p className="border-border bg-muted mt-2 rounded-xl border px-3 py-3 text-center font-mono text-xl font-semibold whitespace-nowrap tabular-nums">
+                  {formatGiftCode(link.code)}
+                </p>
+              </>
             ) : null}
             <div className="mt-4 flex flex-col gap-2">
               <button
