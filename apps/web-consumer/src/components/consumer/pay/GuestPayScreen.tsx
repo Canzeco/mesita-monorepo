@@ -113,7 +113,8 @@ export function GuestPayScreen({
   places: PayPlace[] | null;
   placesFailed: boolean;
   getSupabase: () => Parameters<typeof apiListCards>[0];
-  /** The guest tab exists: open its checklist. */
+  /** The guest tab exists (or the guest's one open payment, when Pay was
+   *  refused for it): open its checklist. */
   onPaid: (tabId: string) => void;
   onBack: () => void;
   /** The header's back arrow asks this first: true when it handled it. */
@@ -312,6 +313,13 @@ export function GuestPayScreen({
       const code = e instanceof EFError ? e.code : null;
       // A refusal ends this tap; a lost answer (no code) retries the same one.
       if (code) requestId.current = null;
+      // MESITA-3772: one open payment at a time. The refusal names it, so
+      // the guest lands on it (to get it signed or close it).
+      const openId = code === "too_many_open" && e instanceof EFError ? e.body?.open_tab_id : null;
+      if (typeof openId === "string" && openId) {
+        onPaid(openId);
+        return;
+      }
       setError((code && TAB_REFUSAL[code]) || (e instanceof EFError && (e.status ?? 500) < 500 && e.message) || "Couldn't pay. Try again.");
       setBusy(false);
     }

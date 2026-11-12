@@ -20,7 +20,12 @@
 // Response: { ok: true, outcome: opened | replayed, tab_id, status: paying |
 //             paid, token, qr_url, expires_at, card_payment_id?,
 //             card?: { status, payment_intent_id, client_secret?,
-//                      stripe_account?, publishable_key? } }
+//                      stripe_account?, publishable_key? },
+//             cashback_on_sign_cents (MESITA-3772: what the waiter's
+//             signature would earn: card bill × card rate + cash bill ×
+//             cash rate; nothing is earned unsigned) }
+//   MESITA-3772: one open guest payment per guest at any place; a second
+//   tap answers 409 too_many_open with open_tab_id and open_place_id.
 //   400 bad_request | amount_required | parts | tip_by_credit |
 //   card_required · 401 sign_in · 404 gone | card_not_found · 409 parts |
 //   insufficient (+spendable_cents) | too_many_open | cash_off |
@@ -76,6 +81,7 @@ serveJson("consumer-web-pay-guest", async (req) => {
     const stripe = key ? stripeClient(key) : null;
     let customer: string | null = null;
     let cardArgs: Record<string, unknown> = {};
+    let cardBackBps = 0;
     if (hasCard) {
       const account = await readAccount(admin, pay.placeId);
       const rates = tabCardRates({ account, settings, livemode, currency, stripeReady: !!stripe });
@@ -88,6 +94,7 @@ serveJson("consumer-web-pay-guest", async (req) => {
       if (!(await ownCard(stripe!, customer, pay.cardPmId as string))) {
         return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
       }
+      cardBackBps = rates.card_back_bps;
       cardArgs = {
         p_stripe_account_id: account.stripe_account_id,
         p_card_fee_cents: bps(pay.cardBillCents, MESITA_FEE_BPS_PAYMENT),
@@ -170,6 +177,7 @@ serveJson("consumer-web-pay-guest", async (req) => {
       expires_at: r.expires_at ?? null,
       card_payment_id: cardPaymentId,
       test_mode: !livemode,
+      cashback_on_sign_cents: bps(pay.cardBillCents, cardBackBps) + bps(pay.cashBillCents, Math.max(0, cashMoney.cash_cashback_bps)),
       ...(cardStep ? { card: cardStep } : {}),
     });
   } catch (err) {

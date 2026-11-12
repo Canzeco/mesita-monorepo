@@ -101,3 +101,11 @@ Deno.test("an open tab past its time reads expired", async () => {
   const res = await listVisits(client, ME, false, Date.now());
   assertEquals(res.ok ? res.visits[0].status : null, "expired");
 });
+
+Deno.test("MESITA-3772: a guest's open payment is findable from any device (origin, verified_at)", async () => {
+  const { client, calls } = stub({ tabs: [tab(1, { origin: "guest", verified_at: null, status: "paying" }), tab(2)] });
+  const res = await listVisits(client, ME, false, Date.now());
+  assert(res.ok);
+  assert(calls.find((c) => c.table === "pay_tabs")!.select.includes("origin, verified_at"));
+  assertEquals(res.visits.map((v) => [v.origin, v.verified_at, v.expires_at]), [["guest", null, FUTURE], ["waiter", null, FUTURE]]);
+});

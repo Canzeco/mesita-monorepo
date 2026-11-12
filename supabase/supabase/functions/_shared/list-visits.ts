@@ -17,7 +17,7 @@ import { readWalletPlaces } from "./wallet.ts";
 export const VISITS_LIMIT = 50;
 
 const LIST_TAB_COLUMNS =
-  "id, place_id, status, currency, livemode, bill_cents, tip_cents, ticket, waiter_name, paid_at, expires_at, created_at";
+  "id, place_id, status, currency, livemode, bill_cents, tip_cents, ticket, waiter_name, paid_at, expires_at, created_at, origin, verified_at";
 
 export type GuestVisit = {
   tab_id: string;
@@ -31,6 +31,10 @@ export type GuestVisit = {
   created_at: string;
   paid_at: string | null;
   expires_at: string;
+  /** MESITA-3772: a guest's open payment is origin guest, verified_at null,
+   *  status paying or paid, expires_at in the future (any device finds it). */
+  origin: "waiter" | "guest";
+  verified_at: string | null;
   part_payment_ids: string[];
 };
 
@@ -91,6 +95,8 @@ export async function listVisits(
       created_at: t.created_at,
       paid_at: t.paid_at,
       expires_at: t.expires_at,
+      origin: t.origin ?? "waiter",
+      verified_at: t.verified_at ?? null,
       part_payment_ids: parts.map((p) => p.id),
     };
   });

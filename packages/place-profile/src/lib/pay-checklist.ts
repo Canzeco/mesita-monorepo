@@ -51,7 +51,8 @@ export function payChecklist(i: ChecklistInput): ChecklistStep[] {
   ];
   if (i.creditCents > 0) {
     // With a card the credit rides the card and is spent when it goes
-    // through; with cash only, it is held until the waiter verifies.
+    // through; with cash only, it is kept aside and spent when the waiter
+    // signs or the payment closes unsigned (the server spends it then too).
     const held = card === 0 && cash > 0 && !i.verifiedAt && !i.paid;
     const riding = card > 0 && i.cardPending;
     steps.push({
@@ -59,7 +60,7 @@ export function payChecklist(i: ChecklistInput): ChecklistStep[] {
       label: "Credit",
       cents: i.creditCents,
       state: held || riding ? "waiting" : "done",
-      note: held ? SIGN.heldUntilSigned : riding ? "With the card" : null,
+      note: held ? SIGN.creditSpentWhenSignedOrClosed : riding ? "With the card" : null,
     });
   }
   if (card > 0) {

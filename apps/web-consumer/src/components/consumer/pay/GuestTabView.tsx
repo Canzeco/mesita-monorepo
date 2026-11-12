@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, CreditCard, Wallet } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { payChecklist } from "@mesita/place-profile/lib/pay-checklist";
-import { SIGN } from "@mesita/place-profile/lib/pay-steps";
+import { type PayStepKey, payStepLabel, SIGN } from "@mesita/place-profile/lib/pay-steps";
+import { CashChip, PlainChip } from "@/components/consumer/wallet/WalletLists";
 import { Button } from "@/components/ui/button";
 import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type TabCardStep } from "@/lib/api/tab";
 import { money } from "@/lib/api/wallet";
+import { endAction } from "@/lib/pay-open";
 import { payStrip } from "@/lib/pay-strip";
 import { cn } from "@/lib/utils";
 import { LiveClock } from "./LiveClock";
@@ -30,6 +32,18 @@ import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, remem
 // strip at "6 · Waiter signs" while it waits, all solid and "Signed" once
 // the waiter signed; a payment that ended any other way has no strip and its
 // status is the heading. "Sign" is the label; the wire keeps `verified`.
+//
+// ONE OPEN PAYMENT, WALKED BACK (MESITA-3772): the strip's done segments
+// open steps 2 to 5 again as read-only views of what was paid (Bill, Tip,
+// Methods, Pay), and the header's back arrow steps 6 → 5 → 4 → 3 → 2, then
+// leaves. Step 6 ends the payment one of two ways besides the waiter's
+// signature: Cancel while nothing moved (the credit comes back), Close once
+// money moved and nobody signed (it ends now, no cashback). Cashback turns on
+// only with the waiter's signature, card and cash alike.
+
+/** The steps this page can show, in order (step 1, Pick, is the Pay tab). */
+const VIEW_STEPS = ["bill", "tip", "methods", "pay", "sign"] as const;
+type ViewStep = (typeof VIEW_STEPS)[number];
 
 const FAST_MS = 1500;
 const SLOW_MS = 5000;
@@ -40,12 +54,18 @@ export function GuestTabView({
   getSupabase,
   onPayAgain,
   onDone,
+  onEnded,
+  registerBack,
 }: {
   tab: GuestTab;
   getSupabase: () => Parameters<typeof apiGetTab>[0];
-  /** Back to the form at this place (a card failed, or the guest cancelled). */
+  /** Back to the form at this place (a card failed with nothing paid). */
   onPayAgain: (placeId: string) => void;
   onDone: () => void;
+  /** The guest cancelled or closed it: back to the Pay tab. */
+  onEnded: () => void;
+  /** The header's back arrow asks this first: true when it handled it. */
+  registerBack?: (back: (() => boolean) | null) => void;
 }) {
   const [tab, setTab] = useState(first);
   const [qr, setQr] = useState<string | null>(() => readGuestQr(first.tab_id));
@@ -55,6 +75,7 @@ export function GuestTabView({
   const [misses, setMisses] = useState(0);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [details, setDetails] = useState(false);
+  const [viewStep, setViewStep] = useState<ViewStep>("sign");
   const [now, setNow] = useState(() => Date.now());
   // When the payment last changed (0 = not read yet): sets the poll's pace.
   const sinceChange = useRef(0);
@@ -63,6 +84,8 @@ export function GuestTabView({
   const { closed, green } = top;
   const verified = top.signed;
   const done = verified || closed;
+  // Only a payment with a strip can be walked back; any other shows step 6.
+  const shownStep: ViewStep = top.strip ? viewStep : "sign";
 
   // A lost QR (a new browser) is minted again, only for this guest's own tab.
   useEffect(() => {
@@ -120,6 +143,20 @@ export function GuestTabView({
     if (done) forgetGuestTab(tab.tab_id);
   }, [done, tab.tab_id]);
 
+  // The header's back arrow: one step back, and off the page from Bill.
+  const hasStrip = !!top.strip;
+  useEffect(() => {
+    if (!registerBack) return;
+    registerBack(() => {
+      if (!hasStrip) return false;
+      const i = VIEW_STEPS.indexOf(viewStep);
+      if (i <= 0) return false;
+      setViewStep(VIEW_STEPS[i - 1]);
+      return true;
+    });
+    return () => registerBack(null);
+  }, [registerBack, viewStep, hasStrip]);
+
   const m = (c: number) => money(c, tab.currency);
   const cash = tab.cash_bill_cents + tab.cash_tip_cents;
   const card = tab.card_bill_cents + tab.card_tip_cents;
@@ -127,7 +164,8 @@ export function GuestTabView({
   const total = tab.credit_cents + cash + card;
   const cardPending = tab.parts.some((p) => p.part === "card" && (p.status === "open" || p.status === "opening"));
   const anyPaid = tab.parts.some((p) => p.paid_at);
-  const canCancel = !verified && !closed && tab.status === "paying" && !anyPaid && !cardPending;
+  // Cancel while nothing moved, Close once money moved unsigned (lib/pay-open.ts).
+  const ending = endAction(tab, now);
   const steps = payChecklist({
     billCents: tab.bill_cents ?? 0,
     creditCents: tab.credit_cents,
@@ -147,9 +185,11 @@ export function GuestTabView({
     setBusy(true);
     setError(null);
     try {
-      await apiCancelTab(getSupabase(), tab.tab_id, "cancel");
+      // Close when money moved (no cashback), Cancel when nothing has; the
+      // server refuses a stale Cancel after money moved (paid_part).
+      await apiCancelTab(getSupabase(), tab.tab_id, ending === "close" ? "close" : "cancel");
       forgetGuestTab(tab.tab_id);
-      onPayAgain(tab.place.id);
+      onEnded();
     } catch (e) {
       const code = e instanceof EFError ? e.code : null;
       setError((code && TAB_REFUSAL[code]) || NETWORK_FAILURE);
@@ -187,16 +227,51 @@ export function GuestTabView({
     : misses >= 2
     ? { text: "Reconnecting…", tone: "muted" }
     : null;
-  // No cashback line on money that went back or is being checked.
-  const cashback =
-    tab.cashback_cents > 0 && top.state !== "refunded" && top.state !== "review"
-      ? green
-        ? `${m(tab.cashback_cents)} in credits added`
-        : cash > 0
-        ? SIGN.creditsOnceSigned(m(tab.cashback_cents))
-        : `${m(tab.cashback_cents)} in credits`
+  // The cashback line (MESITA-3772): only the waiter's signature turns it
+  // on, card and cash alike. Granted shows as added; waiting, what signing
+  // would earn now; ended unsigned with a card part, that it earned nothing
+  // (an unsigned cash part says so in the message line). No line on money
+  // that went back or is being checked.
+  const onSign = tab.cashback_on_sign_cents ?? tab.cashback_cents;
+  const cashback: { text: string; earned: boolean } | null =
+    top.state === "refunded" || top.state === "review"
+      ? null
+      : tab.cashback_cents > 0 && (verified || closed)
+      ? { text: `${m(tab.cashback_cents)} in credits added`, earned: true }
+      : top.state === "waiting" && onSign > 0
+      ? { text: SIGN.creditsOnceSigned(m(onSign)), earned: true }
+      : closed && !verified && card > 0 && cash === 0 && (anyPaid || tab.status === "paid")
+      ? { text: SIGN.notSignedNoCashback, earned: false }
       : null;
   const placeName = tab.place.name ?? "A Mesita place";
+  const strip = (
+    <PaySteps
+      step={shownStep}
+      signed={top.strip === "signed"}
+      className="mb-3"
+      onStep={(k: PayStepKey) => {
+        if (k !== "pick") setViewStep(k);
+      }}
+      left={<span className="min-w-0 flex-1 truncate text-base font-semibold">{placeName}</span>}
+    />
+  );
+
+  // STEPS 2 TO 5, READ-ONLY (MESITA-3772): what was paid, from the payment
+  // itself; nothing here changes it.
+  if (top.strip && shownStep !== "sign") {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col" data-guest-tab-step={shownStep}>
+        {strip}
+        <PaidStep step={shownStep} tab={tab} steps={steps} m={m} />
+        <div className="mt-auto shrink-0 pt-4">
+          <Button size="lg" className="min-h-12 w-full text-base font-semibold" onClick={() => setViewStep("sign")}>
+            {top.strip === "waiting" && qr ? "Back to the QR" : "Back to the payment"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const mark = (state: string) => (state === "done" ? "✓" : state === "failed" ? "×" : "○");
 
   // THE PAID SCREEN FITS (MESITA-3739): the strip (when the payment waits
@@ -206,14 +281,7 @@ export function GuestTabView({
   // no QR to show — the full checklist itself. The action is pinned last.
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab={verified ? "verified" : green ? "paid" : closed ? "closed" : "waiting"}>
-      {top.strip ? (
-        <PaySteps
-          step="sign"
-          signed={top.strip === "signed"}
-          className="mb-3"
-          left={<span className="min-w-0 flex-1 truncate text-base font-semibold">{placeName}</span>}
-        />
-      ) : null}
+      {top.strip ? strip : null}
       <div className={cn("shrink-0 rounded-3xl px-4 py-3", surface)}>
         {top.strip ? null : (
           <p className={cn("truncate text-sm font-semibold", green ? "text-white/90" : "text-muted-foreground")}>{placeName}</p>
@@ -270,7 +338,9 @@ export function GuestTabView({
       <div className="flex h-6 shrink-0 items-center justify-center gap-2 text-sm">
         {!closed ? <LiveClock className="mt-0 text-base" /> : null}
         {!closed && cashback ? <span aria-hidden>·</span> : null}
-        {cashback ? <span className="truncate font-semibold text-green-700">{cashback}</span> : null}
+        {cashback ? (
+          <span className={cn("truncate font-semibold", cashback.earned ? "text-green-700" : "text-muted-foreground")}>{cashback.text}</span>
+        ) : null}
       </div>
       <p
         className={cn(
@@ -300,9 +370,9 @@ export function GuestTabView({
           <button type="button" className={QUIET_BUTTON_CLASS} onClick={onDone}>
             Done
           </button>
-        ) : canCancel ? (
+        ) : ending ? (
           <button type="button" className={cn(QUIET_BUTTON_CLASS, "text-muted-foreground")} onClick={() => setConfirmCancel(true)}>
-            Cancel
+            {ending === "close" ? "Close" : "Cancel"}
           </button>
         ) : null}
       </div>
@@ -318,14 +388,25 @@ export function GuestTabView({
         </div>
       </LocalSheet>
 
-      <LocalDialog open={confirmCancel} onClose={() => setConfirmCancel(false)} ariaLabel="Cancel this payment">
+      <LocalDialog
+        open={confirmCancel}
+        onClose={() => setConfirmCancel(false)}
+        ariaLabel={ending === "close" ? "Close this payment" : "Cancel this payment"}
+      >
         <div className="p-5">
-          <p className="text-base font-semibold">
-            Cancel this payment?{tab.credit_cents > 0 ? ` Your ${m(tab.credit_cents)} credit comes back.` : ""}
-          </p>
+          {ending === "close" ? (
+            <>
+              <p className="text-base font-semibold">Close this payment?</p>
+              <p className="text-muted-foreground mt-1 text-sm">You won&apos;t get cashback for it.</p>
+            </>
+          ) : (
+            <p className="text-base font-semibold">
+              Cancel this payment?{tab.credit_cents > 0 ? ` Your ${m(tab.credit_cents)} credit comes back.` : ""}
+            </p>
+          )}
           <div className="mt-4 flex gap-2">
             <Button className="min-h-12 flex-1 text-base font-semibold" disabled={busy} onClick={() => void cancel()}>
-              {busy ? "Cancelling…" : "Cancel payment"}
+              {ending === "close" ? (busy ? "Closing…" : "Close payment") : busy ? "Cancelling…" : "Cancel payment"}
             </Button>
             <button type="button" className={cn(QUIET_BUTTON_CLASS, "flex-1")} onClick={() => setConfirmCancel(false)}>
               Keep it
@@ -363,5 +444,97 @@ function ChecklistRow({ s, m, at }: { s: Step; m: (c: number) => string; at: str
       </span>
       {s.cents !== null ? <span className="shrink-0 tabular-nums">{m(s.cents)}</span> : null}
     </li>
+  );
+}
+
+/** One step of the payment, read-only (MESITA-3772): the strip's label is
+ *  the heading, then one card of rows, as the steps the guest paid through. */
+function PaidStep({
+  step,
+  tab,
+  steps,
+  m,
+}: {
+  step: Exclude<ViewStep, "sign">;
+  tab: GuestTab;
+  steps: Step[];
+  m: (c: number) => string;
+}) {
+  const cash = tab.cash_bill_cents + tab.cash_tip_cents;
+  const card = tab.card_bill_cents + tab.card_tip_cents;
+  const tip = tab.cash_tip_cents + tab.card_tip_cents;
+  const bill = tab.bill_cents ?? tab.credit_cents + tab.cash_bill_cents + tab.card_bill_cents;
+  const total = tab.credit_cents + cash + card;
+  const label = payStepLabel(step, "guest");
+
+  if (step === "bill") {
+    return (
+      <div className="mt-6 flex h-14 w-full shrink-0 items-center justify-center" role="group" aria-label={`${label}: ${m(bill)}`}>
+        <p className="text-[2.5rem] leading-none font-semibold whitespace-nowrap tabular-nums">{m(bill)}</p>
+      </div>
+    );
+  }
+
+  if (step === "tip") {
+    return (
+      <dl className="border-border flex flex-col rounded-2xl border px-4 py-3 text-base tabular-nums" aria-label={label}>
+        <PaidLine label="Tip" value={tip > 0 ? m(tip) : "No tip"} />
+        {tab.card_tip_cents > 0 ? <PaidLine label="By card" value={m(tab.card_tip_cents)} muted /> : null}
+        {tab.cash_tip_cents > 0 ? <PaidLine label="In cash" value={m(tab.cash_tip_cents)} muted /> : null}
+      </dl>
+    );
+  }
+
+  if (step === "methods") {
+    const rows: Array<{ key: string; chip: React.ReactNode; title: string; cents: number }> = [];
+    if (tab.credit_cents > 0) rows.push({ key: "credit", chip: <PlainChip><Wallet /></PlainChip>, title: "Credit", cents: tab.credit_cents });
+    if (card > 0) rows.push({ key: "card", chip: <PlainChip><CreditCard /></PlainChip>, title: "Card", cents: card });
+    if (cash > 0) rows.push({ key: "cash", chip: <CashChip />, title: "Cash", cents: cash });
+    return (
+      <ul className="border-border overflow-hidden rounded-2xl border" aria-label={label}>
+        {rows.map((r, i) => (
+          <li key={r.key} className={cn("flex min-h-14 items-center justify-between gap-3 px-4 py-2", i > 0 && "border-border border-t")}>
+            <span className="flex min-w-0 items-center gap-3.5">
+              {r.chip}
+              <span className="truncate text-base font-semibold">{r.title}</span>
+            </span>
+            <span className="shrink-0 text-base tabular-nums">{m(r.cents)}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  // Pay: the sums, then each way it was paid and where it stands.
+  const cardFailed = tab.parts.some((p) => p.part === "card" && !p.paid_at && (p.status === "failed" || p.status === "expired"));
+  const ways = steps.filter((s) => s.key === "credit" || s.key === "card" || s.key === "cash");
+  const word = (s: Step) =>
+    s.key === "card" && cardFailed ? "Failed" : s.state === "done" ? "Paid" : s.note ?? (s.state === "failed" ? "Failed" : "Waiting");
+  return (
+    <dl className="border-border flex flex-col rounded-2xl border px-4 py-3 text-base tabular-nums" aria-label={label}>
+      <PaidLine label="Bill" value={m(bill)} />
+      <PaidLine label="Tip" value={tip > 0 ? m(tip) : "No tip"} />
+      <div className="border-border mt-1 flex h-8 items-center justify-between gap-3 border-t pt-1 text-lg font-semibold">
+        <dt>Total</dt>
+        <dd>{m(total)}</dd>
+      </div>
+      {ways.map((s) => (
+        <div key={s.key} className="flex min-h-7 items-center justify-between gap-3 text-sm">
+          <dt className="text-muted-foreground min-w-0 truncate">
+            {s.label} · {word(s)}
+          </dt>
+          <dd className="shrink-0">{s.cents !== null ? m(s.cents) : ""}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function PaidLine({ label, value, muted = false }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className={cn("flex h-7 items-center justify-between gap-3", muted && "text-sm")}>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={cn(muted && "text-muted-foreground")}>{value}</dd>
+    </div>
   );
 }

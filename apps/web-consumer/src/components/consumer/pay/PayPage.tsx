@@ -10,13 +10,14 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
-import { apiGetTab, type GuestTab } from "@/lib/api/tab";
+import { apiGetTab, apiListVisits, type GuestTab } from "@/lib/api/tab";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { payPlacePath, payTabPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
+import { inProgressLabel, pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot, requestUserLocation } from "@/lib/use-user-location";
 import { forgetGuestTab, PlacePhoto, readGuestTabIds } from "./pay-common";
@@ -40,6 +41,12 @@ import { PayHeader } from "./PayHeader";
 // Wallet button on a "Pay" header opened it in MESITA-3726, a bar tab in
 // MESITA-3722. MESITA-3720 had drawn the Wallet under
 // these places on one page, and MESITA-3721 put the credits on the rows.
+//
+// ONE OPEN PAYMENT (Pato, 2026-11-11, MESITA-3772: "you can only have one
+// ticket opened at a time ... in the pay page just display the button to go
+// the ticket"): while the guest has a payment of their own open (found on
+// the server, so from any device, and on this device's list), the Pay half
+// shows only that payment's card and one line; no search bar, no places.
 //
 // The location is asked once, after a priming card ("See Mesita Payments
 // places near you"), rounded to 3 decimals and sent only to the list read.
@@ -81,37 +88,45 @@ export function PayPage() {
   const getSupabase = useLazyBrowserSupabase();
   const [loc, setLoc] = useState<Loc>({ state: "unknown" });
   const { places, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
-  const [openTabs, setOpenTabs] = useState<GuestTab[]>([]);
+  // null while the open payment is still being looked for.
+  const [openTabs, setOpenTabs] = useState<GuestTab[] | null>(null);
   // The band's search bar filters the list below (MESITA-3738).
   const [query, setQuery] = useState("");
 
-  // MESITA-3709: the list leads with the guest's own payments still in
-  // progress (paying, or paid and not yet verified, inside their window),
-  // newest first, read fresh each time. A finished one is forgotten.
+  // The guest's own payments still in progress (paying, or paid and not yet
+  // signed, inside their window), read fresh each time: the one the server
+  // names (MESITA-3772, any device) and this device's list (MESITA-3709). A
+  // finished one is forgotten. A failed server read falls back to the list.
   useEffect(() => {
-    const ids = readGuestTabIds();
-    if (ids.length === 0) return;
     let cancelled = false;
-    void Promise.all(
-      ids.map((id) =>
-        apiGetTab(getSupabase(), id)
-          .then((r) => r.tab)
-          .catch((e) => {
-            if (e instanceof EFError && (e.status === 404 || e.status === 403)) forgetGuestTab(id);
-            return null;
-          }),
-      ),
-    ).then((tabs) => {
-      if (cancelled) return;
-      const now = Date.now();
-      const live = tabs.filter((t): t is GuestTab => {
-        if (!t) return false;
-        const open = !t.verified_at && Date.parse(t.expires_at) > now && (t.status === "paying" || t.status === "paid");
-        if (!open) forgetGuestTab(t.tab_id);
-        return open;
+    const local = readGuestTabIds();
+    void apiListVisits(getSupabase())
+      .then((r) => pickOpenGuestPayment(r.visits, Date.now())?.tab_id ?? null)
+      .catch(() => null)
+      .then((serverId) => {
+        const ids = serverId ? [serverId, ...local.filter((x) => x !== serverId)] : local;
+        return Promise.all(
+          ids.map((id) =>
+            apiGetTab(getSupabase(), id)
+              .then((r) => r.tab)
+              .catch((e) => {
+                if (e instanceof EFError && (e.status === 404 || e.status === 403)) forgetGuestTab(id);
+                return null;
+              }),
+          ),
+        );
+      })
+      .then((tabs) => {
+        if (cancelled) return;
+        const now = Date.now();
+        const live = tabs.filter((t): t is GuestTab => {
+          if (!t) return false;
+          const open = !t.verified_at && Date.parse(t.expires_at) > now && (t.status === "paying" || t.status === "paid");
+          if (!open) forgetGuestTab(t.tab_id);
+          return open;
+        });
+        setOpenTabs(live);
       });
-      setOpenTabs(live);
-    });
     return () => {
       cancelled = true;
     };
@@ -180,24 +195,39 @@ export function PayPage() {
       <PayHeader
         tab="pay"
         bar={
-          <SearchBar
-            query={query}
-            showClear={query.length > 0}
-            onQueryChange={setQuery}
-            onClear={() => setQuery("")}
-            placeholder="Search a place"
-          />
+          openTabs && openTabs.length === 0 ? (
+            <SearchBar
+              query={query}
+              showClear={query.length > 0}
+              onQueryChange={setQuery}
+              onClear={() => setQuery("")}
+              placeholder="Search a place"
+            />
+          ) : undefined
         }
       />
 
       <div className="mt-5 flex flex-col">
-        {places ? (
+        {openTabs === null ? (
+          <ListSkeleton />
+        ) : openTabs.length > 0 ? (
+          // MESITA-3772: one open payment at a time, and nothing else to pick.
+          <div className="flex flex-col" data-pay-open-only>
+            {openTabs.map((t) => (
+              <InProgressCard
+                key={t.tab_id}
+                tab={t}
+                place={places?.find((p) => p.place_id === t.place.id) ?? null}
+                onOpen={() => navigateTo(router, payTabPath(t.tab_id), { motion: "push" })}
+              />
+            ))}
+            <p className="text-muted-foreground text-center text-sm">Get this payment signed or close it before paying again.</p>
+          </div>
+        ) : places ? (
           <PlaceList
             places={places}
             query={query}
             loc={loc}
-            openTabs={openTabs}
-            onOpenTab={(id) => navigateTo(router, payTabPath(id), { motion: "push" })}
             onPick={(id) => navigateTo(router, payPlacePath(id), { motion: "push" })}
             onUseLocation={askLocation}
             onNotNow={notNow}
@@ -227,8 +257,6 @@ function PlaceList({
   places,
   query,
   loc,
-  openTabs,
-  onOpenTab,
   onPick,
   onUseLocation,
   onNotNow,
@@ -237,9 +265,6 @@ function PlaceList({
   /** The search bar's text, from the band (PayHeader, MESITA-3738). */
   query: string;
   loc: Loc;
-  /** The guest's own payments still in progress (MESITA-3709). */
-  openTabs: GuestTab[];
-  onOpenTab: (tabId: string) => void;
   onPick: (placeId: string) => void;
   onUseLocation: () => void;
   onNotNow: () => void;
@@ -253,11 +278,6 @@ function PlaceList({
   const hidden = matches.length - shown.length;
   return (
     <div className="flex flex-col">
-
-      {openTabs.map((t) => (
-        <InProgressCard key={t.tab_id} tab={t} place={places.find((p) => p.place_id === t.place.id) ?? null} onOpen={() => onOpenTab(t.tab_id)} />
-      ))}
-
       {loc.state === "prime" ? (
         <div className="border-border bg-card mb-3 rounded-2xl border px-4 py-4">
           <p className="flex items-center gap-2 text-base font-semibold">
@@ -368,9 +388,11 @@ function InProgressCard({ tab, place, onOpen }: { tab: GuestTab; place: PayPlace
   const cash = tab.cash_bill_cents + tab.cash_tip_cents;
   const card = tab.card_bill_cents + tab.card_tip_cents;
   const total = tab.credit_cents + cash + card;
-  const cardGoing = tab.status === "paying";
+  // From the parts, as the payment's own page reads them: a cash payment
+  // that waits for the waiter is never "Card going through".
+  const status = inProgressLabel(tab);
+  const cardGoing = status === "Card going through";
   const name = tab.place.name ?? "A Mesita place";
-  const status = cardGoing ? "Card going through" : "Waiting for the waiter";
   const ways: Array<{ key: string; icon: React.ReactNode; label: string }> = [];
   if (tab.credit_cents > 0) ways.push({ key: "credit", icon: <Wallet />, label: `Credit · ${m(tab.credit_cents)}` });
   if (card > 0) ways.push({ key: "card", icon: <CreditCard />, label: `Card · ${m(card)}` });
