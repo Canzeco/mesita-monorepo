@@ -850,7 +850,7 @@ function SplitScreen({
   }
 
   const cardSub = cards === null ? "…" : cards.length === 0 ? "Add one" : `•••• ${(card ?? cards[0]).last4}`;
-  const backBps = (bps: number) => (bps > 0 ? ` · ${bps / 100}% back` : "");
+  const backBps = (bps: number) => (bps > 0 ? ` · ${bps / 100}% back in credits` : "");
   const status = step === "pay" && belowMinimum
     ? `A card needs at least ${m(tab.rates.card_minimum_cents)}. Pay this part another way.`
     : step === "pay" && tip > 0 && cardOn && !tipCardOk
