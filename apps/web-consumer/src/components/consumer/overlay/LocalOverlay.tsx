@@ -197,6 +197,11 @@ export const SEMI_MODAL_PANEL_CLASS =
 
 const FULL_SCREEN_PANEL_CLASS = "bg-popover relative flex h-full min-h-0 flex-col overflow-hidden";
 
+// A LEFT DRAWER (MESITA-3764): two thirds of the card, full height, Home's
+// grey, for a menu that slides in from the left edge (Places 3.0's families).
+const LEFT_DRAWER_PANEL_CLASS =
+  "bg-background shadow-elev relative flex h-full w-2/3 min-h-0 flex-col self-start overflow-hidden";
+
 export function LocalSheet({
   open,
   onClose,
@@ -213,8 +218,10 @@ export function LocalSheet({
   fullScreen?: boolean;
   /** Where the panel comes from. "right" slides in right to left and out
    *  left to right, the place screen's own motion (SlideOverShell), for a
-   *  full-screen page opened from it (the Offers page, MESITA-3453). */
-  from?: "bottom" | "right";
+   *  full-screen page opened from it (the Offers page, MESITA-3453).
+   *  "left" is a drawer two thirds wide that slides in left to right
+   *  (Places 3.0's family menu, MESITA-3764). */
+  from?: "bottom" | "right" | "left";
 }) {
   const { mounted, shown } = useLocalPresence(open);
   useEscape(open, onClose);
@@ -249,7 +256,11 @@ export function LocalSheet({
           ref={panelRef}
           tabIndex={-1}
           className={cn(
-            fullScreen ? FULL_SCREEN_PANEL_CLASS : SEMI_MODAL_PANEL_CLASS,
+            from === "left"
+              ? LEFT_DRAWER_PANEL_CLASS
+              : fullScreen
+                ? FULL_SCREEN_PANEL_CLASS
+                : SEMI_MODAL_PANEL_CLASS,
             "outline-none",
             "transition-transform duration-300 motion-reduce:transition-none",
             OVERLAY_EASE,
@@ -259,12 +270,18 @@ export function LocalSheet({
               ? shown
                 ? "translate-x-0"
                 : "translate-x-full"
+              : from === "left"
+                ? shown
+                  ? "translate-x-0"
+                  : "-translate-x-full"
               : shown
                 ? "translate-y-0"
                 : "translate-y-full",
           )}
         >
-          {fullScreen ? null : <div className={SHEET_GRABBER_CLASS} />}
+          {fullScreen || from === "left" ? null : (
+            <div className={SHEET_GRABBER_CLASS} />
+          )}
           {children}
         </div>
       </div>
