@@ -422,8 +422,8 @@ export function GuestPayScreen({
     const rest = cardRows.filter((c) => c.id !== chosenCard);
     return (chosen ? [chosen, ...rest] : rest).slice(0, CARDS_SHOWN);
   })();
-  const cardBack = place.cashback_bps > 0 ? `${place.cashback_bps / 100}% back` : undefined;
-  const cashBack = (place.outside_bps ?? 0) > 0 ? `${(place.outside_bps ?? 0) / 100}% back` : undefined;
+  const cardBack = place.cashback_bps > 0 ? `${place.cashback_bps / 100}% back in credits` : undefined;
+  const cashBack = (place.outside_bps ?? 0) > 0 ? `${(place.outside_bps ?? 0) / 100}% back in credits` : undefined;
   // While the cards are unknown, "Add a card" would be a lie: the Retry row
   // (or the loading row) is the message.
   const cardsUnknown = cardOk && cards === null;
