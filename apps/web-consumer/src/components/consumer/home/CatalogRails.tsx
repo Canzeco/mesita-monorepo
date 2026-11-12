@@ -10,23 +10,18 @@ import dynamic from "next/dynamic";
 //   ─────────────────────────────────────  location alone (MESITA-2405),
 //        Places       │      Social         written to lib/active-location.ts
 //   ━━━━━━━━━━━━━━━━━                       and read here.
-//   ┌──────────┬──────────────────────┐
-//   │▌▦ All    │                      │
-//   │ ○ Coffee │        tile          │
-//   │ ○ …   ↕  │                      │
+//   ┌──┬────────────────────────────┐
+//   │❤️│ ┌───────┬─────────────┐    │
+//   │⭐│ │ photo │ name · facts │    │  one row per place
+//   │☕│ └───────┴─────────────┘    │
 //
-// Places: the left family column beside the tiles (Pato, MESITA-2519: "keep
-// the later view of the failies. its fastwer to browse") — Top first,
-// then every family, scrolling on its own, no colour stripes (MESITA-2521:
-// "we don't need to colors now"). Saved, the guest's hearts, sits above Top
-// (Pato, MESITA-3718: "Add Saved above Top … remember it is a heart"); it
-// left the column in MESITA-2522 for the bar's Saved tab. MESITA-2517 tried a
-// horizontal chip row and Pato sent it back. Social: the activity feed
-// (SocialFeed), full width. Every row's mark is the family's emoji (Pato,
-// MESITA-3683; MESITA-2478's monochrome line icons until then). Places 2.0,
-// 3.0 and 4.0 were tried beside this list (MESITA-3658…3680) and deleted
-// (MESITA-3684); Places 3.0 came back as its own tab, the chip row over rows
-// of photo · facts (Pato, MESITA-3762: "I want Places 1.0 and Places 3.0").
+// PLACES IS ONE VIEW (Pato, MESITA-3789: "remove places 1.0 and remake
+// places 3.0 to just places"): the emoji rail at the left edge (MESITA-3781,
+// tappable since MESITA-3785) beside rows of photo · facts (PlaceRowCard,
+// MESITA-3662). Saved, the guest's hearts, sits above Top (MESITA-3718,
+// MESITA-3763). Places 1.0, the family column beside big tiles (MESITA-2519
+// … MESITA-3690), is deleted, and with it the Places 1.0 · 3.0 split of
+// MESITA-3762. Social: the activity feed (SocialFeed), full width.
 //
 // All (the default: every place) is ranked the Map's way (Pato, MESITA-2516:
 // "only keeping All is cleaner. just like in map"), Proximity ×
@@ -86,8 +81,7 @@ import { readSavedPlacePreviews, useSavedPlaces } from "@/lib/saved-places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
-import { CatalogTile } from "./CatalogTile";
-import { DiscoverFallback, PLACES_LIST, RowFallback } from "./DiscoverFallback";
+import { RowFallback } from "./DiscoverFallback";
 import { ROW_LIST } from "./place-grid-classes";
 import { PlaceRowCard } from "./PlaceRowCard";
 import { useActiveLocation } from "@/lib/active-location";
@@ -95,33 +89,19 @@ import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
 
 // Social is the second tab, and a big one: it loads when that tab first
-// opens, not with Places (MESITA-3014). The tile skeleton stands in.
+// opens, not with Places (MESITA-3014). The row skeleton stands in.
 const SocialFeed = dynamic(
   () => import("./SocialFeed").then((m) => m.SocialFeed),
   {
-    loading: () => <DiscoverFallback />,
+    loading: () => <RowFallback />,
   },
 );
 
-// The tile list's classes (PLACES_LIST) live in DiscoverFallback.tsx, beside
-// the skeleton that draws the same column (MESITA-2701).
-
-// 8px in from the left (Pato, MESITA-3445: "put the families a bit more to
-// the left, reduce the left margin"); 12px from MESITA-3441.
-const ROW_BASE =
-  "relative flex w-full items-center gap-1.5 py-3.5 pr-1.5 pl-2 text-left text-xs leading-tight transition";
-// THE CHOSEN FAMILY: white, with a 5px BLUE bar on its left edge, the place
-// screen's blue (Pato, MESITA-3690: "make the selector blue of red"; it was
-// red-600 in MESITA-3687, blue-600 first in MESITA-3685). 3px until
-// MESITA-3689 ("a bit wider").
-const ROW_ON =
-  "bg-card text-foreground font-semibold before:absolute before:inset-y-0 before:left-0 before:w-[5px]";
 const BAR_BLUE = "before:bg-blue-600";
 // SAVED'S BAR IS RED, the heart's colour (Pato, MESITA-3718: "for saved
 // instead of blue selector use red. its the only exception").
 const BAR_RED = "before:bg-red-600";
-const ROW_OFF = "text-foreground hover:bg-card/60";
-// PLACES 3.0'S FAMILY DRAWER ROWS (Pato, MESITA-3775: "the fams too
+// THE FAMILY DRAWER'S ROWS (Pato, MESITA-3775: "the fams too
 // small"): body-size names and a 20px emoji, 20px in from the edge like the
 // title; the chosen row Home's grey with the same blue (red for Saved) bar.
 const MENU_ROW =
@@ -147,24 +127,21 @@ export function isEveryFamily(chip: string): boolean {
   return chip === ALL_CHIP;
 }
 
-/** Home's three tabs, each its own address (Pato, MESITA-2597; MESITA-3762:
- *  "I want Places 1.0 and Places 3.0"):
- *    1.0  the family column beside big tiles, /home/places, where every
- *         "go Home" lands
- *    3.0  the chip row over rows of two squares, photo · facts with the
- *         offer and Save · Share (MESITA-3662…3671), /home/rows */
+/** Home's two tabs, each its own address (Pato, MESITA-2597). PLACES IS
+ *  ONE VIEW (Pato, MESITA-3789: "remove places 1.0 and remake places 3.0 to
+ *  just places"): the emoji rail beside rows of photo · facts, at
+ *  /home/places, where every "go Home" lands. Places 1.0's family column and
+ *  big tiles are gone; /home/rows is a legacy address. */
 export const HOME_TABS = [
-  { key: "places", label: "Places 1.0", href: CONSUMER_ROUTES.home },
-  { key: "rows", label: "Places 3.0", href: CONSUMER_ROUTES.homeRows },
+  { key: "places", label: "Places", href: CONSUMER_ROUTES.home },
   { key: "social", label: "Social", href: CONSUMER_ROUTES.homeSocial },
 ] as const;
 export type HomeTab = (typeof HOME_TABS)[number]["key"];
 
-/** The tab a Home address shows: Social and Places 3.0 at their own
- *  addresses, Places 1.0 anywhere else under Home. */
+/** The tab a Home address shows: Social at its own address, Places
+ *  anywhere else under Home. */
 export function homeTabOf(pathname: string): HomeTab {
-  if (pathname === CONSUMER_ROUTES.homeSocial) return "social";
-  return pathname === CONSUMER_ROUTES.homeRows ? "rows" : "places";
+  return pathname === CONSUMER_ROUTES.homeSocial ? "social" : "places";
 }
 
 /** The Places tab's left column, top to bottom (MESITA-2519): Saved, the
@@ -426,8 +403,8 @@ export function CatalogRails() {
   // SAVE AND SHARE ON A TILE (MESITA-2663, MESITA-2668): the shared card
   // hook, which creates a Google-only place first. A save is a
   // `home_card_save` with the tile's facts.
-  // Places 3.0 says which it is, so the two can be compared (MESITA-3762).
-  const cardMode = tab === "rows" ? "rows" : "places";
+  // One Places view since MESITA-3789; the events keep a mode field.
+  const cardMode = "places";
   const cards = useCardSaveShare((place, rank) =>
     trackEvent(supabase, "home_card_save", {
       mode: cardMode,
@@ -500,88 +477,16 @@ export function CatalogRails() {
     </nav>
   );
 
-  // THE PLACES TAB'S LEFT COLUMN (Pato, MESITA-2519: "keep the later view of
-  // the failies. its fastwer to browse … LEFT MENU OF FAMILIES"): the
-  // lateral menu of MESITA-2367 under the tabs of MESITA-2517, which tried a
-  // horizontal chip row. Top first, then every family, one scrolling list (MESITA-2534) — no group colours (Pato, MESITA-2521: "remove the
-  // stupid blue and orange color from the sidebar menu"; they were
-  // MESITA-2484/2492). Each row a line icon
-  // and a name, never an emoji (MESITA-2478); the chosen row a white rounded
-  // row inset in the grey rail, bold and a heavier stroke (Pato, MESITA-3337:
-  // "the categorical border gray area at the left of selected category looks
-  // like shit": the 3px ink bar on its left edge is gone). EDGE TO EDGE
-  // AGAIN, NO BOX (Pato, MESITA-3441: "the families must be at the left, not
-  // in a box ... all white and it touches both left and right border"): the
-  // list has no inset and the rows no rounding; the chosen row is plain
-  // white across the whole column, still with no bar.
   const chips = placesChips();
-  const categoryRow = (c: { key: string; label: string; emoji: string }) => {
-    const on = chip === c.key;
-    return (
-      <li key={c.key}>
-        <button
-          type="button"
-          onClick={() => {
-            if (!on) trackEvent(supabase, "home_mode_view", { mode: c.label });
-            setChip(c.key);
-            // Saved reads no pool: the last pool row's family stays asked.
-            if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
-          }}
-          aria-pressed={on}
-          className={cn(
-            ROW_BASE,
-            on
-              ? cn(ROW_ON, c.key === SAVED_CHIP ? BAR_RED : BAR_BLUE)
-              : ROW_OFF,
-          )}
-        >
-          {/* THE FAMILY'S EMOJI (Pato, MESITA-3683: "add emojis instead
-              of those black-white icons to the sidebar menu"); MESITA-2478's
-              line icons are gone from the column. */}
-          <span
-            aria-hidden
-            className="w-4 shrink-0 text-center text-sm leading-none"
-          >
-            {c.emoji}
-          </span>
-          <span className="min-w-0 break-words">{c.label}</span>
-        </button>
-      </li>
-    );
-  };
-  // THE PAGE'S GREY (≈ #e6e6e6): Pato asked for "a bit lighter" than
-  // bg-border (MESITA-3682, which tried bg-muted, #efefef), then "a bit
-  // darker" (MESITA-3684); bg-background sits between the two.
-  const categories = (
-    <nav
-      className="bg-background flex w-1/4 shrink-0 flex-col"
-      aria-label="Places"
-      data-places-categories
-    >
-      {/* ONE scrolling list, Top first and the families after it, no
-          pinned head above them (Pato, MESITA-2534: "don't divide al from the
-          other families … now scrollable"). */}
-      <ul
-        role="list"
-        aria-label="Families"
-        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
-        data-places-group="families"
-      >
-        {chips.map(categoryRow)}
-      </ul>
-    </nav>
-  );
-
-  // PLACES 3.0'S EMOJI RAIL (Pato, MESITA-3781: "put a lateral menu when you
+  // PLACES' EMOJI RAIL (Pato, MESITA-3781: "put a lateral menu when you
   // only show the items … i can click the lateral vertical menu and open with
   // names … lateral menu, left photo, right box, repeat"): a slim grey column
   // at the left edge with only each family's emoji, ❤️ Saved and ⭐ Top first
-  // (MESITA-3763), the others faded ("make the items slightly visible") and
-  // the chosen one full on white with the blue bar (red for Saved). It
+  // (MESITA-3763), the chosen one on white with the blue bar (red for
+  // Saved). It
   // replaced MESITA-3658's chip row and MESITA-3764's disc. A tap anywhere on
   // the column opens the names drawer (MESITA-3764, half the card since
-  // MESITA-3779); a pick closes it and brings that emoji into view. The rail
-  // and Places 1.0's column share `chip`, so a family carries across tabs.
+  // MESITA-3779); a pick closes it and brings that emoji into view.
   const pickedFromMenu = () => {
     setMenuOpen(false);
     requestAnimationFrame(() =>
@@ -714,14 +619,13 @@ export function CatalogRails() {
   );
 
   // Home's header (the location alone, MESITA-2405) → the tabs → on Places
-  // 1.0 the family column beside the tiles, on Places 3.0 the emoji rail
-  // beside the rows, on Social the feed full width; the pane scrolls on its own.
+  // the emoji rail beside the rows, on Social the feed full width; the pane
+  // scrolls on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       {tabs}
       <div className="flex min-h-0 flex-1">
-        {tab === "places" ? categories : null}
-        {tab === "rows" ? emojiRail : null}
+        {tab === "places" ? emojiRail : null}
         <div
           className="bg-card scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
           data-home-scroller
@@ -732,9 +636,8 @@ export function CatalogRails() {
     </div>
   );
 
-  // PLACES 3.0 (MESITA-3662, MESITA-3762): the same places, order and
-  // paging, one row each, drawn as PlaceRowCard. The family word fills a
-  // missing kind on Top only; a family chip already says it.
+  // PLACES' ROWS (MESITA-3662, Places since MESITA-3789): the ranked
+  // places, one row each, drawn as PlaceRowCard.
   const rows = (list: readonly Place[], label: string, paged: boolean) => (
     <div className="pb-6">
       <ul role="list" aria-label={label} className={ROW_LIST}>
@@ -761,51 +664,8 @@ export function CatalogRails() {
       </ul>
     </div>
   );
-  // One list draw per tab: rows on Places 3.0, tiles on Places 1.0.
-  const waiting = tab === "rows" ? <RowFallback /> : <DiscoverFallback />;
-
-  const tiles = (list: readonly Place[], label: string, paged: boolean) => {
-    if (tab === "rows") return rows(list, label, paged);
-    const page = list;
-    return (
-      <div className="pb-6">
-        <ul role="list" aria-label={label} className={PLACES_LIST}>
-          {page.map((place, i) => {
-            const located = withUserDistance(place, coords);
-            return (
-              <Fragment key={place.id}>
-                {/* NO SCORE ON THE PHOTO (Pato, MESITA-3319: "remove scores
-                    from image for the moment"): the server's breakdown sat
-                    on the photo from MESITA-3053 (MESITA-2708 had it under
-                    the tile); it lives on the place screen's Overview now,
-                    the Score box. Search's own overlay stays. */}
-                <CatalogTile
-                  place={located}
-                  saved={cards.isSaved(place)}
-                  onToggle={() => cards.toggle(place, i + 1)}
-                  onShare={() => cards.share(place)}
-                  onOpen={() =>
-                    trackEvent(supabase, "home_card_open", {
-                      mode: cardMode,
-                      place_id: place.id,
-                      ...tileFacts(place, i + 1),
-                    })
-                  }
-                  onOpenGoogle={() => openGooglePlace(place)}
-                />
-                {/* The score-breakdown box is hidden (Pato, MESITA-2660:
-                    "remove the boxes for the moment"); AreaDiagnostics.tsx
-                    stays for when it comes back. */}
-              </Fragment>
-            );
-          })}
-          {paged && hasMore ? (
-            <li ref={sentinel} aria-hidden className="h-px" data-places-more />
-          ) : null}
-        </ul>
-      </div>
-    );
-  };
+  const waiting = <RowFallback />;
+  const tiles = rows;
 
   // Social reads its own feed, never the catalog (MESITA-2474, MESITA-2517).
   if (tab === "social") return shell(<SocialFeed />);

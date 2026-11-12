@@ -31,8 +31,6 @@ export const CONSUMER_ROUTES = {
   // its `discovery_config.swipe` slice retired together. The stored key was
   // dropped by the normalizers, never renamed.
   home: "/home/places",
-  // Places 3.0, the chip row over rows of photo · facts (MESITA-3762).
-  homeRows: "/home/rows",
   homeSocial: "/home/social",
   place: {
     prefix: "/place/",
@@ -146,6 +144,8 @@ export const CONSUMER_ROUTES = {
     homeClassic: "/home/classic",
     homeGrid: "/home/grid",
     homeRails: "/home/rails",
+    // Places 3.0's own tab until MESITA-3789 made it Places.
+    homeRows: "/home/rows",
     // Home's namespace and its default pill, until Home became /home
     // (MESITA-2475).
     discover: "/discover",
@@ -368,7 +368,6 @@ const row = (
 
 export const ROUTE_MAP = {
   home: row("/home/places", "home", "tab", null),
-  homeRows: row("/home/rows", "home", "tab", null),
   homeSocial: row("/home/social", "home", "tab", null),
   search: row("/search", "search", "tab", null),
   searchChat: row("/search/chat", "search", "sheet", "search"),
