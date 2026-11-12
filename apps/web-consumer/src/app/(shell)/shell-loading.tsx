@@ -7,7 +7,6 @@ import SearchChatLoading from "./(discovery)/search/chat/loading";
 import SearchLoading from "./(discovery)/search/loading";
 import MeLoading from "./me/(hub)/loading";
 import ClassLoading from "./me/class/loading";
-import ConnectorLoading from "./me/connector/loading";
 import InstagramLoading from "./me/instagram/loading";
 import PlanLoading from "./me/plan/loading";
 import ProfileLoading from "./me/profile/loading";
@@ -17,7 +16,7 @@ import ActivityLoading from "./activity/loading";
 import PayLoading from "./pay/loading";
 import WalletLoading from "./wallet/loading";
 import ShareLoading from "./share/loading";
-import RefundsLoading from "./me/refunds/loading";
+import GiftLoading from "./me/gift/loading";
 import FeedbackLoading from "./me/settings/feedback/loading";
 import ReservationPageLoading from "./reservation/[id]/loading";
 import WalletPlaceLoading from "./wallet/[placeId]/loading";
@@ -61,8 +60,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   meInstagram: () => <InstagramLoading />,
   mePlan: () => <PlanLoading />,
   meClass: () => <ClassLoading />,
-  meConnector: () => <ConnectorLoading />,
-  meRefunds: () => <RefundsLoading />,
+  meGift: () => <GiftLoading />,
   meSettings: () => <SettingsLoading />,
   meSettingsContact: () => <ContactLoading />,
   meSettingsFeedback: () => <FeedbackLoading />,

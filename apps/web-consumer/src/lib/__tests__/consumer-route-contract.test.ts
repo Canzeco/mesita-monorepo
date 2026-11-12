@@ -138,8 +138,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         instagram: "/me/instagram",
         plan: "/me/plan",
         class: "/me/class",
-        connector: "/me/connector",
-        refunds: "/me/refunds",
+        gift: "/me/gift",
         settings: "/me/settings",
         settingsContact: "/me/settings/contact",
         settingsFeedback: "/me/settings/feedback",
@@ -194,6 +193,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         mePassport: "/me/passport",
         meHelp: "/me/help",
         meTransactions: "/me/transactions",
+        meConnector: "/me/connector",
+        meRefunds: "/me/refunds",
         subscribe: "/subscribe/premium",
         getTheApp: "/get-the-app",
         discoverFeed: "/discover/feed",
@@ -433,6 +434,8 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/me/passport", destination: "/me/profile", permanent: true },
       { source: "/me/help", destination: "/me/settings", permanent: true },
       { source: "/me/transactions", destination: "/activity", permanent: true },
+      { source: "/me/connector", destination: "/me/plan", permanent: true },
+      { source: "/me/refunds", destination: "/activity?type=refunds", permanent: true },
       { source: "/invite", destination: "/me", permanent: true },
       // The retired Home hub's leaves (2026-09-01), and bare /home since each
       // tab got its own address (MESITA-2597). /home itself was live

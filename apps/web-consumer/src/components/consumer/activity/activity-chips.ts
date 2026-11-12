@@ -10,6 +10,7 @@ import {
   Gift,
   type LucideIcon,
   BadgeDollarSign,
+  HandCoins,
   UtensilsCrossed,
 } from "lucide-react";
 import { ACTIVITY_TYPES, type ActivityType } from "@/lib/activity-types";
@@ -41,6 +42,8 @@ const CHIPS: Record<ActivityType, Omit<ActivityChip, "type">> = {
     summary: "Credits you bought",
   },
   gifts: { label: "Gifts", Icon: Gift, summary: "Sent and received" },
+  // Me's Refunds page, as a chip (MESITA-3771).
+  refunds: { label: "Refunds", Icon: HandCoins, summary: "If a place closes" },
   // The guest's events (MESITA-3716): reservation updates, credit ready.
   notifications: {
     label: "Notifications",

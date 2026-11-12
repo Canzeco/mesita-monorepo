@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { ClassList, ClassSheet } from "@/components/consumer/me/ClassSheet";
-import { ConnectorModal } from "@/components/consumer/me/ConnectorModal";
 import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ back() {}, replace() {} }) }));
@@ -118,17 +117,3 @@ describe("the Class page body", () => {
   });
 });
 
-// Connector is not built (MESITA-2562): every line Soon, no button, no plan.
-describe("the Connector page", () => {
-  const html = renderToStaticMarkup(<ConnectorModal />);
-  it("promises nothing live", () => {
-    expect(html).toContain("ChatGPT or Claude");
-    const items = html.match(/<li\b/g) ?? [];
-    const soon = html.match(/data-perk-soon/g) ?? [];
-    expect(items.length).toBeGreaterThan(0);
-    expect(soon).toHaveLength(items.length);
-    // The header's Back is the only button.
-    expect(html.match(/<button\b/g)).toHaveLength(1);
-    expect(text(html)).not.toMatch(/Premier|Premium|Free|Pro\b/);
-  });
-});

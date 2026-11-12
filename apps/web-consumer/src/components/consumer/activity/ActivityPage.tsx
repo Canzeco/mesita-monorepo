@@ -79,6 +79,7 @@ import { toReservationItem } from "@/lib/reservations-adapter";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useCachedQuery } from "@/lib/use-cached-query";
 import { ACTIVITY_CHIPS } from "./activity-chips";
+import { RefundsPanel } from "./RefundsPanel";
 import {
   type ActivityItem,
   ActivityRow,
@@ -87,7 +88,7 @@ import {
   type StatusTone,
 } from "./ActivityRow";
 
-type TicketType = Exclude<ActivityType, "notifications">;
+type TicketType = Exclude<ActivityType, "notifications" | "refunds">;
 
 /** One ticket and where it sorts: Upcoming soonest first, then Past newest
  *  first. */
@@ -640,6 +641,8 @@ export function ActivityPage() {
           ) : null}
           <NotificationsList quietEmpty={!!nextUp} />
         </>
+      ) : type === "refunds" ? (
+        <RefundsPanel />
       ) : (
         <Tickets
           type={type}

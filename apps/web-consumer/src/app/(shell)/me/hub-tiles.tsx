@@ -3,11 +3,10 @@ import { Fragment, type ReactNode } from "react";
 import {
   CreditCard,
   Crown,
-  Plug,
   Settings as SettingsIcon,
   Share2,
   UserRound,
-  HandCoins,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -80,9 +79,8 @@ export type HubTile = {
   href: string;
 };
 
-/** The grid cells, in reading order; Settings is the last (eight with it
- *  since MESITA-3769: Profile · Instagram · Class · Plan · Refunds · MCP ·
- *  Share). */
+/** The grid cells, in reading order; Settings is the last (seven with it
+ *  since MESITA-3771: Profile · Instagram · Class · Plan · Share · Gift). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // member number is on /me/profile, with its copy button; the tile only
@@ -123,22 +121,9 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // CARDS LEFT (Pato, MESITA-3561: "remove cards from there. cards is
   // already used in the wallet. its redundant"). /me/cards now redirects to the
   // hub through the /me/[tab] catch-all.
-  // REFUNDS (Pato, MESITA-3517): if a place closes for good with the guest's
-  // credit unspent, Mesita refunds it. The page is the view only, empty.
-  {
-    Icon: HandCoins,
-    title: "Refunds",
-    summary: "If a place closes",
-    href: CONSUMER_ROUTES.mePages.refunds,
-  },
-  {
-    Icon: Plug,
-    // MCP (Pato, MESITA-3561: "Rename Connector to MCP"). The label only:
-    // the route stays /me/connector.
-    title: "MCP",
-    summary: "ChatGPT or Claude",
-    href: CONSUMER_ROUTES.mePages.connector,
-  },
+  // REFUNDS LEFT FOR ACTIVITY and MCP FOR PLAN (Pato, 2026-11-11,
+  // MESITA-3771: "Refunds also in Activity … Remove MCP box and put it
+  // inside plan but as a perk"). /me/refunds and /me/connector 308.
   // Share wears the three joined dots it wore on the bar (MESITA-2568,
   // MESITA-2887).
   {
@@ -146,6 +131,13 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     title: "Share",
     summary: "Invite your friends",
     href: CONSUMER_ROUTES.share,
+  },
+  // GIFT (MESITA-3771): gift credit you hold at a place to a friend.
+  {
+    Icon: Gift,
+    title: "Gift",
+    summary: "Send credit to a friend",
+    href: CONSUMER_ROUTES.mePages.gift,
   },
 ];
 
