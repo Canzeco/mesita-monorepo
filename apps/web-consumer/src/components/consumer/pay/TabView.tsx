@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Banknote, CheckCircle2, ChevronRight, CreditCard, Users } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { clockTime, readAmount } from "@mesita/place-profile/lib/money";
+import { clockTime } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ import {
 import { money } from "@/lib/api/wallet";
 import { payTabPath } from "@/lib/consumer-route-contract";
 import { toast } from "@/lib/toast";
-import { type PadKey, pressKey } from "@/lib/pay-keypad";
+import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
 import { GuestTabView } from "./GuestTabView";
@@ -43,7 +43,7 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS } from "./pay-common";
 //    (consumer-web-open-tab), "Waiting for the bill". The waiter scans it on
 //    visit.mesita.ai and types the bill and a tip suggestion.
 // 2. Billed: one screen. The tip (the waiter's suggestion picked, 10/15/20%,
-//    Other, No tip: the guest decides), how the bill is paid (the guest's
+//    Other; no tip is Other with 0 typed, MESITA-3748: the guest decides), how the bill is paid (the guest's
 //    credit here first, on by default, the rest in cash) and how the tip is
 //    paid (cash; credits never pay a tip), what comes back (2% of the cash
 //    bill part, never the tip) and one button "Pay $total".
@@ -83,7 +83,7 @@ const FINAL = new Set(["paid", "expired", "cancelled"]);
 /** Failed reads before "Pay the usual way" shows. */
 const USUAL_WAY_AFTER = 4;
 const TIP_PERCENTS = [10, 15, 20] as const;
-type TipChoice = "waiter" | (typeof TIP_PERCENTS)[number] | "other" | "none";
+type TipChoice = "waiter" | (typeof TIP_PERCENTS)[number] | "other" | null;
 
 
 export type TabStart =
@@ -735,8 +735,8 @@ function SplitScreen({
   const suggested = tab.tip_suggested_cents;
   const cardOn = tab.rates.card_available;
   const [step, setStep] = useState<SplitStep>("tip");
-  const [tipChoice, setTipChoice] = useState<TipChoice>(suggested > 0 ? "waiter" : "none");
-  const [lastTip, setLastTip] = useState<TipChoice>(suggested > 0 ? "waiter" : "none");
+  const [tipChoice, setTipChoice] = useState<TipChoice>(suggested > 0 ? "waiter" : null);
+  const [lastTip, setLastTip] = useState<TipChoice>(suggested > 0 ? "waiter" : null);
   const [tipText, setTipText] = useState("");
   const [useCredit, setUseCredit] = useState(tab.spendable_cents > 0);
   const [billWith, setBillWith] = useState<PayWith>("cash");
@@ -748,7 +748,7 @@ function SplitScreen({
   const attempt = useRef<{ key: string; id: string } | null>(null);
   const m = (c: number) => money(c, tab.currency);
 
-  const typedTip = tipChoice === "other" ? readAmount(tipText) : null;
+  const typedTip = tipChoice === "other" ? readTip(tipText) : null;
   const tip = tipChoice === "waiter"
     ? suggested
     : typeof tipChoice === "number"
@@ -775,7 +775,7 @@ function SplitScreen({
   const usesCard = split.card_due_cents > 0;
   const card = usesCard && cards && cards.length > 0 ? cards.find((c) => c.id === pmPick) ?? cards[0] : null;
   const belowMinimum = usesCard && split.card_due_cents < tab.rates.card_minimum_cents;
-  const tipOk = tipChoice !== "other" || typedTip !== null;
+  const tipOk = tipChoice !== null && (tipChoice !== "other" || typedTip !== null);
   const payOk = !usesCard || (card !== null && !belowMinimum);
   const canPay = bill > 0 && tipOk && !busy && payOk;
   const stepIndex = SPLIT_STEPS.indexOf(step);
@@ -890,7 +890,6 @@ function SplitScreen({
                 <Chip key={pct} on={tipChoice === pct} onClick={() => { setTipChoice(pct); setLastTip(pct); }} title={`${pct}%`} sub={m(Math.round((bill * pct) / 100))} />
               ))}
               <Chip on={false} onClick={() => setTipChoice("other")} title="Other" sub="Type it" />
-              <Chip on={tipChoice === "none"} onClick={() => { setTipChoice("none"); setLastTip("none"); }} title="No tip" sub={m(0)} />
             </div>
             <div className="mt-3 shrink-0">{friends}</div>
             {usualWay}

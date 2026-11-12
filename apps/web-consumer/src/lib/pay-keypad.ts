@@ -7,6 +7,9 @@
 //              readAmount accepts (≤ 7 integer digits, ≤ 2 decimals).
 //   draftAmount  an amount saved before the keypad (or typed "1,250") put
 //              into the keypad's own form, so a key never extends junk.
+//   readTip    a typed tip: readAmount, and 0 too (no tip is Other with 0
+//              typed, MESITA-3748; a bill is never 0).
+//   draftTip   draftAmount for a typed tip: it keeps the 0.
 //   payProblem what stops Pay, in the guest's words (null = good to go).
 //   tipWays    the ways a tip can go when credit pays the whole bill: only
 //              those payProblem would accept, so the screen never offers a
@@ -48,6 +51,21 @@ export function keyLive(text: string, key: PadKey): boolean {
 export function draftAmount(text: string | undefined | null): string {
   if (!text) return "";
   const cents = readAmount(text);
+  return cents === null ? "" : amountText(cents);
+}
+
+/** A typed tip in cents: what readAmount reads, and 0 ("0", "0.", "0.00").
+ *  Empty or junk is null: nothing typed yet. */
+export function readTip(text: string): number | null {
+  const cents = readAmount(text);
+  if (cents !== null) return cents;
+  return /^0(\.0{0,2})?$/.test(text.replace(/[,\s]/g, "")) ? 0 : null;
+}
+
+/** A saved Other tip in the keypad's form: what readTip reads, or "". */
+export function draftTip(text: string | undefined | null): string {
+  if (!text) return "";
+  const cents = readTip(text);
   return cents === null ? "" : amountText(cents);
 }
 
