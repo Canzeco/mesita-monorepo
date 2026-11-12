@@ -397,6 +397,8 @@ export const ROUTE_MAP = {
   walletGift: row("/wallet/gift/:token", "pay", "page", "wallet"),
   // The bar's Activity tab (MESITA-3769).
   activity: row("/activity", "activity", "tab", null),
+  // One Activity chip, /activity/<chip> (MESITA-3811): the same tab.
+  activityChip: row("/activity/:type", "activity", "tab", null),
   me: row("/me", "me", "tab", null),
   // Me's Share tile since Share left the bar (MESITA-2871).
   share: row("/share", "me", "page", "me"),

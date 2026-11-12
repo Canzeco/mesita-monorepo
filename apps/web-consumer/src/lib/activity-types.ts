@@ -36,12 +36,19 @@ export const DEFAULT_ACTIVITY_TYPE: ActivityType = "notifications";
 export const RETIRED_ACTIVITY_TYPES: Readonly<Record<string, ActivityType>> = {
   payments: "visits",
   prepayments: "vouchers",
+  favorites: "notifications",
 };
 
-/** `/activity?type=<type>`: the chip in the address, so Me's tiles, Back and
- *  a shared link land on it. */
+/** `/activity/<type>`: the chip in the path (MESITA-3811, Pato: "don't
+ *  mention activity?type — activity/route"), so Back and a shared link land
+ *  on it. It was `/activity?type=<type>` until then; that address 308s here. */
 export function activityHref(type: ActivityType): string {
-  return `/activity?type=${type}`;
+  return `/activity/${type}`;
+}
+
+/** Whether `value` names a live chip. */
+export function isActivityType(value: string | null | undefined): value is ActivityType {
+  return (ACTIVITY_TYPES as readonly string[]).includes(value ?? "");
 }
 
 /** The chip a `?type=` names, a retired slug's new chip, else Notifications

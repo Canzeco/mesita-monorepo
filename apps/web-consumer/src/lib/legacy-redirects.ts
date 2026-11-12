@@ -98,7 +98,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/me/transactions", destination: "/activity", permanent: true },
   // MESITA-3771: MCP is a perk on Plan; Refunds is Activity's chip.
   { source: "/me/connector", destination: "/me/plan", permanent: true },
-  { source: "/me/refunds", destination: "/activity?type=refunds", permanent: true },
+  { source: "/me/refunds", destination: activityHref("refunds"), permanent: true },
   { source: "/invite", destination: "/me", permanent: true },
   // The retired Home hub's leaves (2026-09-01). /home ITSELF went to Places
   // when each tab got its own address (MESITA-2597); /home/social is live
