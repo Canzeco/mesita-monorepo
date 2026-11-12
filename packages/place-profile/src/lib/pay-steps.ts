@@ -83,9 +83,16 @@ export const SIGN = {
   alreadySignedAt: (time: string) => `Already signed · ${time}`,
   signedElsewhereAt: (time: string) => `Signed by another phone at ${time}`,
   tapSignAgain: "Couldn't reach Mesita. Tap Sign again.",
-  shortOrSignFor: (missing: string, received: string) =>
-    `${missing} short. Ask for ${missing} more, or sign for ${received} received.`,
   couldntSign: "Couldn't sign. Try again.",
+  // The cash question: a yes or no, never a typed amount (MESITA-3799).
+  cashQuestion: (cash: string) => `Did you get ${cash} in cash?`,
+  cashYes: "Yes",
+  cashNo: "No",
+  cashNotReceived: "Don't sign yet. Collect the cash first, or the guest can cancel.",
+  // The waiter code, typed for every signature (MESITA-3799).
+  waiterCode: "Waiter code",
+  wrongWaiterCode: "That waiter code is not right.",
+  tryAgainInMin: (min: number) => `Try again in ${min} min.`,
   // Owner
   ownerSigned: (when: string, phone: string | null) => ` · Signed ${when}${phone ? ` · phone ${phone}` : ""}`,
   ownerNotSigned: " · Not signed",
