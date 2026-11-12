@@ -9,15 +9,21 @@ import { cn } from "@/lib/utils";
 // phone's keyboard never opens, covers Next or pushes the step into a
 // scroll. Its rows share the height left in the step (each 44–64px), so a
 // taller browser bar shrinks the keys a little instead of bringing a scroll
-// back. A key that cannot add anything now is dimmed, so it never looks
-// broken. The rules are pressKey's (lib/pay-keypad.ts).
+// back; past four rows of 64px the grid stops growing and sits at the
+// bottom, above Next. THE BUTTON IS THE GRID CELL (MESITA-3758): no gap
+// between cells and no maximum height on the tap target, so a tap anywhere
+// in a key's cell types that key (until then each key stopped at 64px inside
+// a taller row and a tap under a digit landed on nothing). The visible key
+// is a shape inset inside the cell, which shows the press. A key that cannot
+// add anything now is dimmed, so it never looks broken. The rules are
+// pressKey's (lib/pay-keypad.ts).
 
 const KEYS: PadKey[] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"];
 const LABEL: Partial<Record<PadKey, string>> = { ".": "Decimal point", back: "Delete" };
 
 export function AmountKeypad({ text, onKey }: { text: string; onKey: (k: PadKey) => void }) {
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-4 gap-1.5" data-pay-keypad>
+    <div className="mt-auto grid max-h-64 min-h-0 flex-1 grid-cols-3 grid-rows-[repeat(4,minmax(2.75rem,1fr))]" data-pay-keypad>
       {KEYS.map((k) => {
         const live = keyLive(text, k);
         return (
@@ -28,12 +34,11 @@ export function AmountKeypad({ text, onKey }: { text: string; onKey: (k: PadKey)
             aria-label={LABEL[k] ?? k}
             aria-disabled={!live}
             onClick={() => live && onKey(k)}
-            className={cn(
-              "flex min-h-11 max-h-16 items-center justify-center rounded-2xl text-2xl font-semibold tabular-nums transition select-none active:bg-muted",
-              !live && "opacity-40",
-            )}
+            className={cn("group flex touch-manipulation items-stretch justify-stretch p-0.5 select-none", !live && "opacity-40")}
           >
-            {k === "back" ? <Delete className="h-6 w-6" aria-hidden /> : k}
+            <span className="group-active:bg-muted flex flex-1 items-center justify-center rounded-2xl text-2xl font-semibold tabular-nums transition">
+              {k === "back" ? <Delete className="h-6 w-6" aria-hidden /> : k}
+            </span>
           </button>
         );
       })}
