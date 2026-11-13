@@ -636,12 +636,15 @@ export function VouchersPane({
   // RENAMED (Pato, 2026-11-12, MESITA-3815: "Mesita Payment Cashback / back
   // in credits ... Cash Payment Cashback / back in credits"): both lines open
   // "Back in credits"; the chip already says the rate.
-  const ROW = "flex w-full items-center gap-3 px-4 py-2 text-left";
+  // SHORTER STILL (Pato, 2026-11-13, MESITA-3829: "make this smaller
+  // somehow, i mean, shorter, its using tooo much space"): 36px chips, 6px
+  // row padding, the fact on one line.
+  const ROW = "flex w-full items-center gap-3 px-4 py-1.5 text-left";
   // A BIT SMALLER (MESITA-3768, Pato: "make this a bit smaller, the text, just
   // a bit"): one small step each, titles 15px, fact lines 13px, chips 18px.
-  const CHIP = "flex h-11 w-[72px] shrink-0 items-center justify-center rounded-xl text-lg font-extrabold tracking-tight tabular-nums";
+  const CHIP = "flex h-9 w-14 shrink-0 items-center justify-center rounded-lg text-base font-extrabold tracking-tight tabular-nums";
   const NAME = "flex items-center gap-1 text-[15px] font-semibold";
-  const FACT = "text-muted-foreground text-[13px] leading-snug";
+  const FACT = "text-muted-foreground truncate text-[13px] leading-snug";
 
   return (
     // A LIST (MESITA-3486, Pato: "make the things as a list, not as boxes"):
@@ -817,8 +820,9 @@ export function VouchersPane({
           {/* CREDITS PAYMENT CASHBACK (Pato, 2026-11-13, MESITA-3827: "add the
               option to give cashback with credits too"): the part of a bill
               paid with credits here earns too, where the place turned it on. */}
+          {creditPct ? (
           <li
-            className={cn(ROW, !creditPct && dim && "opacity-50")}
+            className={ROW}
             aria-label={`Credits Payment Cashback: pay part of the bill with your credits here. ${creditPct ? `${creditPct} comes back as credits.` : "Not at this place yet."}`}
             data-cashback-credits
           >
@@ -843,6 +847,7 @@ export function VouchersPane({
               <span className={FACT} aria-hidden>{creditPct ? "Back in credits, on the credits you spend" : "Not at this place yet"}</span>
             </span>
           </li>
+          ) : null}
         </ul>
       </section>
       {/* ONE BUY AT THE FOOT (MESITA-3487): pick a row, then Buy. No Pay bill
