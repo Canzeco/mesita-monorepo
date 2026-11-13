@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Z_ROUTE_BADGE } from "@/lib/z-index";
 
-import { BESIDE_CARD, useConsoleMode } from "./console-layout";
+import { BESIDE_CARD, useConsoleMode, useHydrated } from "./console-layout";
 
 /**
  * Prints the current route into the page.
@@ -30,6 +30,8 @@ export function RouteBadge() {
   // query string fills in on hydration.
   const pathname = usePathname() ?? "/";
   const mode = useConsoleMode();
+  // Secondary to the phone: joins after hydration, never in the first paint.
+  if (!useHydrated()) return null;
 
   return (
     <div

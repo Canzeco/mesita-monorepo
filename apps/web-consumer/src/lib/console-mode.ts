@@ -3,13 +3,17 @@
 // (the phone and the call log), "terminal" (the phone, the call log and the
 // request/response panel). Remembered per browser; a blocked localStorage
 // just means the default every load.
+//
+// The default is Phone (MESITA-3826): the console is secondary, opt-in. The
+// server renders Phone too, so a loading page paints the card centered,
+// never parked at the left edge waiting for localStorage.
 
 export type ConsoleMode = "phone" | "functions" | "terminal";
 
 export const CONSOLE_MODES: ConsoleMode[] = ["phone", "functions", "terminal"];
 
 const KEY = "mesita:console-mode";
-const DEFAULT: ConsoleMode = "terminal";
+const DEFAULT: ConsoleMode = "phone";
 
 let mode: ConsoleMode | null = null;
 const listeners = new Set<() => void>();
