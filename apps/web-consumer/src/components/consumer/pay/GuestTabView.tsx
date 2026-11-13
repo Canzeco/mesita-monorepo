@@ -329,6 +329,21 @@ export function GuestTabView({
           >
             Details
           </button>
+          {/* EMULATE THE WAITER (Pato, 2026-11-13, MESITA-3823: "a quick link
+              for me to open that as waiter without the need of opening my
+              phone, its just for emulation"): test mode only, the QR's own
+              link in a new tab. */}
+          {tab.test_mode ? (
+            <a
+              href={qr}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground mx-auto -mt-2 flex h-9 shrink-0 items-center text-xs font-semibold underline"
+              data-open-as-waiter
+            >
+              Open as waiter (test)
+            </a>
+          ) : null}
         </>
       ) : (
         <ol className="border-border mt-3 flex min-h-0 flex-1 flex-col border-t pt-1" aria-label="Payment">

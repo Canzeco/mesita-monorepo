@@ -162,7 +162,7 @@ export type PayButtonSplit = {
  *  cash), so the line is only the cash that stays at the table:
  *
  *    anything moves in the app   Pay $490 · "+ $200 cash to the waiter" or none
- *    all cash                    Show the waiter (no line)
+ *    all cash                    I paid (no line; MESITA-3823)
  *
  *  The button's amount is always credit + card bill + card tip: what this
  *  tap charges or spends in the app. Cash is handed to the waiter, and a
@@ -170,6 +170,6 @@ export type PayButtonSplit = {
 export function payButton(split: PayButtonSplit, o: { m: (cents: number) => string }): { button: string; line: string | null } {
   const inApp = split.credit_cents + split.card_bill_cents + split.card_tip_cents;
   const cash = split.cash_bill_cents + split.cash_tip_cents;
-  if (inApp === 0) return { button: "Show the waiter", line: null };
+  if (inApp === 0) return { button: "I paid", line: null };
   return { button: `Pay ${o.m(inApp)}`, line: cash > 0 ? `+ ${o.m(cash)} cash to the waiter` : null };
 }
