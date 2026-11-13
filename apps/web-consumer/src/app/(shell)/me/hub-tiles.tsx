@@ -1,6 +1,7 @@
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, type ReactNode } from "react";
 import {
+  CalendarCheck,
   CreditCard,
   Crown,
   Settings as SettingsIcon,
@@ -10,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
+import { activityHref } from "@/lib/activity-types";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, type DestShape } from "./profile-sections";
 
@@ -79,8 +81,9 @@ export type HubTile = {
   href: string;
 };
 
-/** The grid cells, in reading order; Settings is the last (seven with it
- *  since MESITA-3771: Profile · Instagram · Class · Plan · Share · Gift). */
+/** The grid cells, in reading order; Settings is the last (eight with it
+ *  since MESITA-3821: Profile · Instagram / Class · Plan / Reservations ·
+ *  Gift / Share · Settings). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // member number is on /me/profile, with its copy button; the tile only
@@ -124,13 +127,14 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // REFUNDS LEFT FOR ACTIVITY and MCP FOR PLAN (Pato, 2026-11-11,
   // MESITA-3771: "Refunds also in Activity … Remove MCP box and put it
   // inside plan but as a perk"). /me/refunds and /me/connector 308.
-  // Share wears the three joined dots it wore on the bar (MESITA-2568,
-  // MESITA-2887).
+  // A RESERVATIONS SHORTCUT (Pato, 2026-11-13, MESITA-3821: "keep a shortcut
+  // to Activity Reservations here, even if a bit redundant, its okey"): the
+  // one Activity chip with a door on Me, opening /activity/reservations.
   {
-    Icon: Share2,
-    title: "Share",
-    summary: "Invite your friends",
-    href: CONSUMER_ROUTES.share,
+    Icon: CalendarCheck,
+    title: "Reservations",
+    summary: "Upcoming and past",
+    href: activityHref("reservations"),
   },
   // GIFT (MESITA-3771): gift credit you hold at a place to a friend.
   {
@@ -138,6 +142,15 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     title: "Gift",
     summary: "Send credit to a friend",
     href: CONSUMER_ROUTES.mePages.gift,
+  },
+  // Share wears the three joined dots it wore on the bar (MESITA-2568,
+  // MESITA-2887); beside Settings since MESITA-3821 (Pato: "profile
+  // instagram / class plan / reservations gift / share settings").
+  {
+    Icon: Share2,
+    title: "Share",
+    summary: "Invite your friends",
+    href: CONSUMER_ROUTES.share,
   },
 ];
 
