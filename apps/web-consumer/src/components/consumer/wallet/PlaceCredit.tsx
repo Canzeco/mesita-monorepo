@@ -42,7 +42,7 @@ import type { CreditRow } from "./use-wallet";
 //                         soonest to land first
 //   sent links            links nobody took yet
 //   Transactions History  every in and out, newest first; 10, then Show all
-//   [Go to Pay] [Buy Credits | Gift Credits]   a bar fixed at the bottom, in
+//   [Pay] [Buy Credits | Gift Credits]   a bar fixed at the bottom, in
 //                         the brand's pink (MESITA-3802, Pato: "put colors to
 //                         this stupid buttons for them to be visible")
 //   (Remove from Wallet)
@@ -347,7 +347,7 @@ export function PlaceCredit({
         >
           <PushLink href={payPlacePath(row.placeId)} className={cn(PINK_PRIMARY, "gap-2")} data-house-card-pay>
             <QrCode className="h-4 w-4" aria-hidden />
-            Go to Pay
+            Pay
           </PushLink>
           <div className="flex gap-2">
             <PushLink href={`${href}?rewards=prepayment`} className={cn(PINK_SECONDARY, "flex-1 gap-1.5")} data-house-card-fund>
