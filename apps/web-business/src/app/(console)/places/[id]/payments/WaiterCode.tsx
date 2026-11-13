@@ -1,9 +1,9 @@
 "use client";
 
 // The waiter code (MESITA-3226, Pato: "there they only set the fucking number";
-// on Payments' Cash Payments since MESITA-3600, Pato: "move waiter code
-// configuration to Payments, not there"). Six digits waiters type at
-// visit.mesita.ai to confirm a cash bill. Only a hash is kept, so it is never
+// on Payments since MESITA-3600, Pato: "move waiter code configuration to
+// Payments, not there"; its own section, last, since MESITA-3824). Six digits
+// waiters type at visit.mesita.ai to sign any payment's QR, cash or card. Only a hash is kept, so it is never
 // shown again and a forgotten one is replaced. The server refuses editors.
 
 import { useState } from "react";
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 const QUIET =
   "border-border hover:bg-muted h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors disabled:opacity-40";
 
-/** The Waiter code row: one <li> of the Cash Payments list. */
+/** The Waiter code row: the one <li> of the Waiter Code section (MESITA-3824). */
 export function WaiterCodeRow({
   placeId,
   isSet,
@@ -57,8 +57,8 @@ export function WaiterCodeRow({
           {saved
             ? "Saved. It won't be shown again."
             : isSet
-              ? "Six digits your waiters type at visit.mesita.ai. Type six new digits to replace it."
-              : "Six digits your waiters type at visit.mesita.ai."}
+              ? "Six digits your waiters type at visit.mesita.ai to sign a guest's payment, cash or card. Type six new digits to replace it."
+              : "Six digits your waiters type at visit.mesita.ai to sign a guest's payment, cash or card."}
         </p>
       </div>
       <p className={cn("font-semibold whitespace-nowrap", !isSet && "text-muted-foreground")}>{isSet ? "Set" : "Not set"}</p>
