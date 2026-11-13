@@ -166,10 +166,10 @@ select lives_ok(
 );
 
 select throws_ok(
-  $$insert into public.wallet_entries (consumer_id, place_id, kind, amount_cents, currency, purchase_id, livemode)
-    values ('00000000-0000-4000-8000-0000000c3302', '00000000-0000-4000-8000-000000003302', 'cashback', 500, 'mxn', '00000000-0000-4000-8000-0000000d3302', false)$$,
+  $$insert into public.wallet_entries (consumer_id, place_id, kind, amount_cents, currency, purchase_id, payment_id, livemode)
+    values ('00000000-0000-4000-8000-0000000c3302', '00000000-0000-4000-8000-000000003302', 'cashback', 500, 'mxn', '00000000-0000-4000-8000-0000000d3302', '00000000-0000-4000-8000-0000000e3302', false)$$,
   '23514', null,
-  'a cashback entry cannot name a purchase'
+  'a cashback entry names a payment or a purchase, never both (MESITA-3827)'
 );
 
 select throws_ok(

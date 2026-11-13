@@ -41,8 +41,8 @@ select has_column('public', 'wallet_payments', 'proof_token', 'payments carry a 
 select has_column('public', 'wallet_payments', 'proof_seen_at', 'payments carry the seen stamp');
 
 select ok(
-  not has_function_privilege('authenticated', 'public.wallet_pay_credit(uuid, uuid, integer, text, boolean, uuid, text, text)', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.wallet_pay_credit(uuid, uuid, integer, text, boolean, uuid, text, text)', 'EXECUTE')
+  not has_function_privilege('authenticated', 'public.wallet_pay_credit(uuid, uuid, integer, text, boolean, uuid, text, text, boolean)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.wallet_pay_credit(uuid, uuid, integer, text, boolean, uuid, text, text, boolean)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.wallet_balances(uuid, boolean, timestamptz)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.wallet_balances(uuid, boolean, timestamptz)', 'EXECUTE'),
   'client roles cannot run wallet_pay_credit or wallet_balances'
