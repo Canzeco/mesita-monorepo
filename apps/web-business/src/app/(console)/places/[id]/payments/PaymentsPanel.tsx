@@ -11,10 +11,12 @@
 // its control:
 //   Stripe Account · one row, its state and one button;
 //   House Credits · the Agreement, House Credits, then Credits Payments;
-//   Cash Payments · (the Waiter code sits last, MESITA-3625; moved from Settings, MESITA-3600), Cash
-//     Payments, then its Cashback-as-Credits (Off or 2%);
+//   Cash Payments · Cash Payments, then its Cashback-as-Credits (Off or 2%);
 //   Mesita Payments · Mesita Payments, then its Cashback-as-Credits (Off or 5%);
 //   Mesita Prepayments · Mesita Prepayments, then one row per voucher;
+//   Waiter Code · its own section, last (MESITA-3824; inside Cash Payments
+//     from MESITA-3625, moved from Settings by MESITA-3600): waiters sign
+//     any payment's QR with it, cash or card;
 //   (Credits Payments, one row, Always on, sits last in House Credits:
 //     MESITA-3703, Pato: "Add field call it Credits Payments to maintain
 //     symmetry", then MESITA-3704: "credits payments must go in the House
@@ -471,20 +473,7 @@ export function PaymentsPanel({
             line: "Back as credit here on the bill, once your waiter taps Received. Never on the tip.",
             blocked: !settings.house_credits ? needsHouseCredits : !settings.cash_payments ? needsCash : undefined,
           })}
-          <WaiterCodeRow placeId={placeId} isSet={codeSet} canEdit={canEdit} onSet={() => setCodeSet(true)} onError={setError} />
         </ul>
-        {codeSet ? (
-          <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
-            Waiter&apos;s screen:{" "}
-            <a className="underline" href={chargeUrl} target="_blank" rel="noreferrer">
-              {chargeUrl.replace("https://", "")}
-            </a>
-            {" · "}Staff list:{" "}
-            <a className="underline" href={staffListUrl} target="_blank" rel="noreferrer">
-              {staffListUrl.replace("https://", "")}
-            </a>
-          </p>
-        ) : null}
       </Card>
       <Card className={SECTION}>
         <h2 className={HEAD}>Mesita Payments</h2>
@@ -537,6 +526,29 @@ export function PaymentsPanel({
           })}
           {[...STANDARD, ...SPECIAL].map(voucherRow)}
         </ul>
+      </Card>
+      {/* THE WAITER CODE IS ITS OWN SECTION, LAST (Pato, 2026-11-13,
+          MESITA-3824: "waiter code is not inherent of that. waiter code is to
+          sign qr. any qr, even digital payments. so separate them. waiter
+          code must be at the bottom"). It sat inside Cash Payments from
+          MESITA-3625. Cash Payments still waits for it. */}
+      <Card className={SECTION}>
+        <h2 className={HEAD}>Waiter Code</h2>
+        <ul className="divide-border divide-y">
+          <WaiterCodeRow placeId={placeId} isSet={codeSet} canEdit={canEdit} onSet={() => setCodeSet(true)} onError={setError} />
+        </ul>
+        {codeSet ? (
+          <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
+            Waiter&apos;s screen:{" "}
+            <a className="underline" href={chargeUrl} target="_blank" rel="noreferrer">
+              {chargeUrl.replace("https://", "")}
+            </a>
+            {" · "}Staff list:{" "}
+            <a className="underline" href={staffListUrl} target="_blank" rel="noreferrer">
+              {staffListUrl.replace("https://", "")}
+            </a>
+          </p>
+        ) : null}
       </Card>
       {agreeing ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="presentation" onClick={() => !pending && setAgreeing(false)}>
