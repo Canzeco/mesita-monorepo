@@ -1,19 +1,18 @@
 "use client";
 
-// Discovery: ONE page (MESITA-2327; settings first since MESITA-3819), five boxes, five pipelines (Pato,
-// MESITA-2779, MESITA-2909): Admin Name · Consumer Name · Consumer Map ·
-// Consumer Catalog · Consumer Deep. Each box is a PipelineBox and saves only
+// Discovery: ONE page (MESITA-2327; settings first since MESITA-3819), four
+// boxes, four live pipelines (Pato, MESITA-2779, MESITA-2909): Admin Name ·
+// Consumer Name · Consumer Map · Consumer Catalog. Consumer Deep (Soon) and
+// Premier Prices left the page (MESITA-3828). Each box is a PipelineBox and saves only
 // its own slices, so two boxes can never overwrite each other. The Map and the
 // Catalog were one Area pipeline until MESITA-2909; the Minimum Popularity
 // they share sits in the Map box. Premier's factor is the paid tier, no knob
-// (the Selected boost retired with Selected, MESITA-2925). The Chat Agent is
-// Deep's caller, so its prompt sits in the Deep box.
+// (the Selected boost retired with Selected, MESITA-2925).
 
-import { DollarSign, LayoutGrid, MapPin, ScanSearch, Search, Sparkles } from "lucide-react";
+import { LayoutGrid, MapPin, ScanSearch, Search } from "lucide-react";
 import {
   NumberField,
   SaveRow,
-  SectionCard,
   Switch,
 } from "@/components/admin-ui/config";
 import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
@@ -39,9 +38,6 @@ import {
   NAME_POPULARITY_FLOOR_MAX,
   NAME_POPULARITY_FLOOR_MIN,
   POPULARITY_ROOT_MAX,
-  PREMIER_YEARLY_CENTS_MAX,
-  PREMIER_YEARLY_CENTS_MIN,
-  type PremierTier,
   POPULARITY_ROOT_MIN,
   type DiscoveryConfig,
 } from "./catalog";
@@ -57,6 +53,8 @@ export const BOX_SLICES = {
   name: ["nameDeep", "nameLocations", "nameIdle", "nameFloor"],
   map: ["mapPipeline"],
   catalog: ["catalogPipeline"],
+  // No box writes Premier's prices since MESITA-3828; the slice stays so
+  // actions.test.ts keeps proving no other box can overwrite them.
   premier: ["premier"],
 } as const satisfies Record<string, readonly DiscoverySlice[]>;
 
@@ -561,74 +559,5 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
         </p>
       </Group>
     </PipelineBox>
-  );
-}
-
-// 5 ─ Consumer Deep Pipeline ───────────────────────────────────────────────
-// Soon (MESITA-2345): Deep's only caller is Chat, and no guest reaches Chat
-// yet. Its stored settings stay on the blob; the box has no controls.
-export function DeepBox() {
-  return (
-    <PipelineBox
-      id="s-deep"
-      pipeline="deep"
-      title="Consumer Deep Pipeline"
-      icon={<Sparkles className={ICON} />}
-      explanation="Open-ended discovery for Chat (Don Memo). No guest reaches Chat yet."
-    />
-  );
-}
-
-// 6 ─ Premier Prices (MESITA-3043) ────────────────────────────────────────────
-// Not a pipeline: what the two paid plans cost. The Premier factor (2X, 5X)
-// is the tier's own number; this box sets only the price. Typed in dollars,
-// stored in whole cents.
-const PREMIER_PLANS: { tier: PremierTier; label: string }[] = [
-  { tier: "boost_2x", label: "Pro · Premier 2X ($ a year)" },
-  { tier: "boost_5x", label: "Max · Premier 5X ($ a year)" },
-];
-const usd = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-export function PremierPricesBox(seed: ConfigSeed<DiscoveryConfig>) {
-  const editor = useDiscoveryEditor(seed);
-  const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
-  const off = pending || loadBlocked;
-  const prices = cfg.premier.yearlyCents;
-  const setPrice = (tier: PremierTier, dollars: number) => {
-    setOk(false);
-    setCfg((c) => ({
-      ...c,
-      premier: { yearlyCents: { ...c.premier.yearlyCents, [tier]: Math.round(dollars * 100) } },
-    }));
-  };
-  const dirty = !same(cfg.premier, saved.premier);
-  return (
-    <div id="s-premier-prices" className="scroll-mt-16">
-      <SectionCard
-        icon={<DollarSign className={ICON} />}
-        title="Premier Prices"
-        subtitle="What a place pays a year for each paid plan; plans are yearly only. A new price reaches new subscriptions and plan changes; a subscription already running renews at the price it was bought at."
-      >
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {PREMIER_PLANS.map(({ tier, label }) => (
-            <NumberField
-              key={tier}
-              label={label}
-              value={prices[tier] / 100}
-              min={PREMIER_YEARLY_CENTS_MIN / 100}
-              max={PREMIER_YEARLY_CENTS_MAX / 100}
-              decimals
-              disabled={off}
-              onChange={(v) => setPrice(tier, v)}
-            />
-          ))}
-        </div>
-        <p className="text-muted-foreground mt-3 type-meta">
-          {usd(PREMIER_YEARLY_CENTS_MIN)}–{usd(PREMIER_YEARLY_CENTS_MAX)} a year. Upgrade packs keep their own fixed prices.
-        </p>
-        <Save editor={editor} dirty={dirty} slices={BOX_SLICES.premier} />
-      </SectionCard>
-    </div>
   );
 }
