@@ -463,6 +463,108 @@ export function OffersWalletPill({ place }: { place: PlaceDetail }) {
 /** The Rewards page (MESITA-3412: the host's sheet off Prepay and Pay; it
  *  was the fourth tab). `focus` scrolls its scroller to that section once, on
  *  open: Pay's section is first, so only Prepay moves. */
+type GuestLock = "vip" | "instagram" | "followers" | null;
+
+/** Who may buy what, once for every list of the six vouchers (VouchersPane,
+ *  and the House Card's Vouchers via voucherOffers, MESITA-3822). */
+function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
+  // A Google-only card or an older read has no money: every switch reads off.
+  // Only `unavailable` is valid from this local call: the read strips
+  // `pay_cards`, so its cashback and mesita_pay are not the server's. The
+  // cashback row reads the server's word, `money.cashback` (MESITA-3408).
+  const state = moneyState(
+    {
+      // House Credits as the server says; an older read without it is
+      // read as on, so the server's own unavailable reasons stand.
+      house_credits: money?.house_credits !== false,
+      voucher_200: money?.vouchers.voucher_200 === true,
+      voucher_1000: money?.vouchers.voucher_1000 === true,
+      voucher_5000: money?.vouchers.voucher_5000 === true,
+      voucher_welcome: money?.vouchers.voucher_welcome === true,
+      voucher_story: money?.vouchers.voucher_story === true,
+      voucher_vip: money?.vouchers.voucher_vip === true,
+    },
+    money ? { charges_enabled: money.charges_enabled } : null,
+    null,
+  );
+  // What sells is the server's word (`sell`, with the kill switch and
+  // Welcome-once applied); a read without it sells nothing.
+  const unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>> = { ...state.unavailable };
+  for (const k of state.sell) {
+    if (!money?.sell.includes(k)) unavailable[k] = money?.unavailable[k] ?? "needs_account";
+  }
+  // IN TEST MODE NOTHING IS GREYED (Pato, MESITA-3334); live mode dims a row
+  // not for sale.
+  const dim = money?.test_mode !== true;
+  // THE GUEST'S OWN LOCKS (MESITA-3502): VIP is for the VIP Class, Story needs
+  // a linked Instagram. Unknown guest (no profile read), no lock.
+  const guestLock = (k: MoneyVoucherKey): GuestLock => {
+    if (!guest) return null;
+    if (k === "voucher_vip" && !guest.vip) return "vip";
+    if (k === "voucher_story" && !guest.instagramLinked) return "instagram";
+    // MESITA-3507: the server refuses Story at STORY_MIN_FOLLOWERS or fewer.
+    if (k === "voucher_story" && guest.instagramFollowers != null && guest.instagramFollowers <= STORY_MIN_FOLLOWERS) {
+      return "followers";
+    }
+    return null;
+  };
+  // Buyable: for sale, or in test mode any row the server has not used up or
+  // paused (Pato, MESITA-3342: "must be buyable or whatever").
+  const buyable = (k: MoneyVoucherKey) => {
+    if (guestLock(k)) return false;
+    const reason = unavailable[k];
+    return reason === undefined || (!dim && reason !== "used" && reason !== "paused" && reason !== "needs_visit");
+  };
+  return { unavailable, dim, guestLock, buyable };
+}
+
+/** One of the six vouchers as a row elsewhere (the House Card, MESITA-3822):
+ *  the Offers page's own words, colour and rules, formatted, never added. */
+export type VoucherOffer = {
+  key: MoneyVoucherKey;
+  /** "Small Bonus" … "VIP Bonus". */
+  title: string;
+  /** The chip's tint and ink (the voucher's face). */
+  chipClass: string;
+  /** "+10%". */
+  bonus: string;
+  pay: string;
+  get: string;
+  /** "in 1 hr", "instantly", "after story". */
+  ready: string;
+  /** This guest can buy it now. */
+  buyable: boolean;
+  /** Not buyable and drawn dimmed (live mode). */
+  dimmed: boolean;
+  /** Why not, in one short line, when it is not buyable. */
+  why: string | null;
+};
+
+/** The six vouchers in the Offers page's order, Small · Medium · Big ·
+ *  Welcome · Story · VIP (MESITA-3484). */
+export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions["guest"]): VoucherOffer[] {
+  const { unavailable, dim, guestLock, buyable } = offerRules(money, guest);
+  const catalog = money?.catalog ?? {};
+  const currency = money?.currency ?? "mxn";
+  return [...STANDARD, ...SPECIAL].map((p) => {
+    const line = catalog[p.key];
+    const can = buyable(p.key);
+    const status = offerStatus(p.key, can, guestLock(p.key), unavailable[p.key]);
+    return {
+      key: p.key,
+      title: p.short,
+      chipClass: FACES[p.key].card,
+      bonus: `+${p.bonus.replace(/ bonus$/, "")}`,
+      pay: priceValue(p, line, currency),
+      get: creditValue(p, line, currency),
+      ready: readyIn(p.key),
+      buyable: can,
+      dimmed: !can && dim,
+      why: can ? null : status.text.replace(/\.$/, ""),
+    };
+  });
+}
+
 export function VouchersPane({
   place,
   actions,
@@ -493,36 +595,9 @@ export function VouchersPane({
   // The host is still asking list-vouchers and the place read carried no
   // offer: draw the rows and a bone, never a guess (MESITA-3388).
   const loading = actions?.vouchersLoading === true && !money;
-  // A Google-only card or an older read has no money: every switch reads off.
-  // Only `unavailable` is valid from this local call: the read strips
-  // `pay_cards`, so its cashback and mesita_pay are not the server's. The
-  // cashback row reads the server's word, `money.cashback` (MESITA-3408).
-  const state = moneyState(
-    {
-      // House Credits as the server says; an older read without it is
-      // read as on, so the server's own unavailable reasons stand.
-      house_credits: money?.house_credits !== false,
-      voucher_200: money?.vouchers.voucher_200 === true,
-      voucher_1000: money?.vouchers.voucher_1000 === true,
-      voucher_5000: money?.vouchers.voucher_5000 === true,
-      voucher_welcome: money?.vouchers.voucher_welcome === true,
-      voucher_story: money?.vouchers.voucher_story === true,
-      voucher_vip: money?.vouchers.voucher_vip === true,
-    },
-    money ? { charges_enabled: money.charges_enabled } : null,
-    null,
-  );
-  // What sells is the server's word (`sell`, with the kill switch and
-  // Welcome-once applied); a read without it sells nothing.
-  const unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>> = { ...state.unavailable };
-  for (const k of state.sell) {
-    if (!money?.sell.includes(k)) unavailable[k] = money?.unavailable[k] ?? "needs_account";
-  }
+  const { unavailable, dim, guestLock, buyable } = offerRules(money, actions?.guest);
   const catalog = money?.catalog ?? {};
   const currency = money?.currency ?? "mxn";
-  // IN TEST MODE NOTHING IS GREYED (Pato, MESITA-3334); live mode dims a row
-  // not for sale.
-  const dim = money?.test_mode !== true;
   const cashback = money?.cashback === true;
   // The place's own rates (MESITA-3589); 0 when Off or on an older read.
   const cardPct = money?.card_cashback_bps ? `${money.card_cashback_bps / 100}%` : null;
@@ -532,27 +607,6 @@ export function VouchersPane({
   // Pay shows where the 5% comes back, or in test mode (MESITA-3397): a live
   // Pay at a place without cashback promised 5% that never comes.
   const canPay = Boolean(actions?.onPay) && (cashback || !dim);
-
-  // THE GUEST'S OWN LOCKS (MESITA-3502): VIP is for the VIP Class, Story needs
-  // a linked Instagram. Unknown guest (no profile read), no lock.
-  const guest = actions?.guest;
-  const guestLock = (k: MoneyVoucherKey): "vip" | "instagram" | "followers" | null => {
-    if (!guest) return null;
-    if (k === "voucher_vip" && !guest.vip) return "vip";
-    if (k === "voucher_story" && !guest.instagramLinked) return "instagram";
-    // MESITA-3507: the server refuses Story at STORY_MIN_FOLLOWERS or fewer.
-    if (k === "voucher_story" && guest.instagramFollowers != null && guest.instagramFollowers <= STORY_MIN_FOLLOWERS) {
-      return "followers";
-    }
-    return null;
-  };
-  // Buyable: for sale, or in test mode any row the server has not used up or
-  // paused (Pato, MESITA-3342: "must be buyable or whatever").
-  const buyable = (k: MoneyVoucherKey) => {
-    if (guestLock(k)) return false;
-    const reason = unavailable[k];
-    return reason === undefined || (!dim && reason !== "used" && reason !== "paused" && reason !== "needs_visit");
-  };
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;
   // SELECT, THEN BUY (MESITA-3487, Pato: "you select then you click Buy.

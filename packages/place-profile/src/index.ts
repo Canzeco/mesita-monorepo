@@ -28,7 +28,7 @@ export {
   PlaceProfileSkeleton,
   PlaceTopBarSkeleton,
 } from "./components/place-detail/skeleton";
-export { OffersWalletPill, VouchersPane } from "./components/place-detail/vouchers";
+export { OffersWalletPill, VouchersPane, voucherOffers, type VoucherOffer } from "./components/place-detail/vouchers";
 export type {
   PlaceActions,
   RewardsSection,
