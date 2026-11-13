@@ -127,6 +127,8 @@ serveJson("consumer-web-list-pay-places", async (req) => {
       cashback_bps: cardOk ? cashState.card_cashback_bps : 0,
       outside_ok: outsideOk,
       outside_bps: outsideOk ? cashState.cash_cashback_bps : 0,
+      // MESITA-3827: Credits Payments Cashback on the credit part.
+      credit_bps: active ? cashState.credit_cashback_bps : 0,
       paid_recent: paid.get(p.id) ?? null,
     });
   }

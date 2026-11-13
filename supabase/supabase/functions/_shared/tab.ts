@@ -336,12 +336,16 @@ export type TabPartRow = {
    *  cashback_bps; cash part: outside_cashback_bps). */
   cashback_bps?: number;
   outside_cashback_bps?: number;
+  /** MESITA-3827: the credit part's rate stamped on the row, and what it
+   *  earned once written (cashback_cents stays the card or cash part). */
+  credit_cashback_bps?: number;
+  credit_cashback_cents?: number;
 };
 
 export const TAB_COLUMNS =
   "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, created_at, parent_tab_id, split_at, split_ways, origin, verified_at, verified_key_hash";
 const PART_COLUMNS =
-  "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, cashback_cents, paid_at, proof_token, created_at, cashback_bps, outside_cashback_bps";
+  "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, cashback_cents, paid_at, proof_token, created_at, cashback_bps, outside_cashback_bps, credit_cashback_bps, credit_cashback_cents";
 /** The guest's list reads only what a status needs (MESITA-3688): never
  *  `proof_token`, which PART_COLUMNS carries. */
 export const LIST_PART_COLUMNS = "id, tab_id, status, paid_at";
@@ -361,7 +365,7 @@ export function effectiveStatus(t: TabRow, parts: TabPartRow[], nowMs: number): 
  *  part is paid the stored cashback is the answer. */
 export function tabMoney(t: TabRow, parts: TabPartRow[], cashBackBps: number, cardBackBps = 0) {
   const live = parts.filter((p) => p.status !== "expired" && p.status !== "failed");
-  const cashbackPaid = live.reduce((s, p) => s + (p.paid_at ? p.cashback_cents : 0), 0);
+  const cashbackPaid = live.reduce((s, p) => s + (p.paid_at ? p.cashback_cents + (p.credit_cashback_cents ?? 0) : 0), 0);
   return {
     credit_cents: t.credit_cents,
     cash_bill_cents: t.cash_bill_cents,
@@ -393,12 +397,17 @@ export function cashbackOnSign(t: TabRow, parts: TabPartRow[], cashBackBps: numb
   const cash = cashRows.length
     ? cashRows.filter((p) => !p.paid_at).reduce((s, p) => s + Math.floor((p.outside_cents * Math.max(0, p.outside_cashback_bps ?? cashBackBps)) / 10_000), 0)
     : t.status === "paying" ? Math.floor((t.cash_bill_cents * Math.max(0, cashBackBps)) / 10_000) : 0;
-  return card + cash;
+  // MESITA-3827: the credit part's Credits Payments Cashback, at the row's
+  // stamped rate, wherever the credit sits (a card, cash or credit row).
+  const credit = live
+    .filter((p) => !((p.credit_cashback_cents ?? 0) > 0))
+    .reduce((s, p) => s + Math.floor((p.credit_cents * Math.max(0, p.credit_cashback_bps ?? 0)) / 10_000), 0);
+  return card + cash + credit;
 }
 
 /** MESITA-3772: what a guest tab's parts were actually granted. */
 export function cashbackGranted(parts: TabPartRow[]): number {
-  return parts.reduce((s, p) => s + (p.paid_at ? p.cashback_cents : 0), 0);
+  return parts.reduce((s, p) => s + (p.paid_at ? p.cashback_cents + (p.credit_cashback_cents ?? 0) : 0), 0);
 }
 
 // ── Friends split one bill (MESITA-3695) ────────────────────────────────────

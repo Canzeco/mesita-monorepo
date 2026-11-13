@@ -71,7 +71,7 @@ Deno.test("startPayment: passes the request through and shapes a paid answer", a
     fn: "wallet_pay_credit",
     args: {
       p_consumer_id: USER, p_place_id: PLACE, p_amount_cents: 5000, p_currency: "mxn", p_livemode: false,
-      p_request_id: REQ, p_proof_token: TOKEN, p_ticket: "T-12",
+      p_request_id: REQ, p_proof_token: TOKEN, p_ticket: "T-12", p_cashback: true,
     },
   }]);
   assert(r.ok);

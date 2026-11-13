@@ -36,9 +36,13 @@ export type VoucherOffer = {
   outside_cashback: boolean;
   /** The place's rates now, in bps (0 = Off or not usable; MESITA-3589):
    *  the card part (Mesita Payments Cashback) and the cash bill part (Cash
-   *  Payments Cashback). Never on the tip or the credit part. */
+   *  Payments Cashback). Never on the tip. */
   card_cashback_bps: number;
   cash_cashback_bps: number;
+  /** MESITA-3827: the credit part (Credits Payments Cashback) and a voucher's
+   *  price (Mesita Prepayments Cashback), 0 = Off or not usable. */
+  credit_cashback_bps: number;
+  prepay_cashback_bps: number;
   /** House Credits is On here: new credit can be born. Off never stops a
    *  guest spending what they already hold. */
   house_credits: boolean;
@@ -121,6 +125,8 @@ export function offerFrom(i: OfferInput): VoucherOffer {
     outside_cashback: state.outside_cashback,
     card_cashback_bps: state.card_cashback_bps,
     cash_cashback_bps: state.cash_cashback_bps,
+    credit_cashback_bps: state.credit_cashback_bps,
+    prepay_cashback_bps: state.prepay_cashback_bps,
     house_credits: state.house_credits,
     cash: state.cash,
     mesita_pay: state.mesita_pay,

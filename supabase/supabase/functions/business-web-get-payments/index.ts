@@ -9,7 +9,7 @@
 // Response: { ok: true, can_edit, test_mode,
 //             account: { state: none|onboarding|ready|restricted, ... },
 //             settings: { house_credits, cash_payments, pay_cards, voucher_200,
-//                         ..., voucher_vip, card_cashback_bps, cash_cashback_bps },
+//                         ..., voucher_vip, card_cashback_bps, cash_cashback_bps, credit_cashback_bps, prepay_cashback_bps },
 //             contract: { signed, signed_at, terms_version },  the House
 //                          Credits Contract (MESITA-3589), independent of Stripe
 //             account.stage: none|onboarding|in_review|connected|action_needed|

@@ -76,6 +76,8 @@ export type PayPlaceInput = {
   /** What a bill paid outside and confirmed earns here (the place's Cash Payments Cashback,
    *  with the Cashback switch on, else 0). */
   outside_bps: number;
+  /** MESITA-3827: what the credit part earns here (Credits Payments Cashback), else 0. */
+  credit_bps?: number;
   paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;
 };
 
@@ -117,6 +119,7 @@ export function payPlaces(
       cashback_bps: r.cashback_bps,
       outside_ok: r.outside_ok,
       outside_bps: r.outside_bps,
+      credit_bps: r.credit_bps ?? 0,
       test_mode: opts.testMode,
       card_min_cents: opts.minCents(r.currency),
       paid_recent: r.paid_recent,

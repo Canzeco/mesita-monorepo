@@ -89,7 +89,8 @@ Deno.test("Stripe's Account object becomes the row, missing fields read as off",
 
 Deno.test("settings: no row is everything Off, Mesita Payments included; unknown keys refused", () => {
   const off = settingsFromRow(null);
-  assertEquals(Object.keys(off).length, 12);
+  // Ten switches and four rates (credit and prepay since MESITA-3827).
+  assertEquals(Object.keys(off).length, 14);
   // Mesita Prepayments (MESITA-3597) reads off with no row and from anything but true.
   assertEquals(off.prepayments, false);
   assertEquals(settingsFromRow({ prepayments: "yes" }).prepayments, false);
