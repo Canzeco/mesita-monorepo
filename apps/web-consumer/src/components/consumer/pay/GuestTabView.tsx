@@ -56,7 +56,6 @@ export function GuestTabView({
   onPayAgain,
   onDone,
   onEnded,
-  registerBack,
 }: {
   tab: GuestTab;
   getSupabase: () => Parameters<typeof apiGetTab>[0];
@@ -65,8 +64,6 @@ export function GuestTabView({
   onDone: () => void;
   /** The guest cancelled or closed it: back to the Pay tab. */
   onEnded: () => void;
-  /** The header's back arrow asks this first: true when it handled it. */
-  registerBack?: (back: (() => boolean) | null) => void;
 }) {
   const [tab, setTab] = useState(first);
   const [qr, setQr] = useState<string | null>(() => readGuestQr(first.tab_id));
@@ -144,19 +141,11 @@ export function GuestTabView({
     if (done) forgetGuestTab(tab.tab_id);
   }, [done, tab.tab_id]);
 
-  // The header's back arrow: one step back, and off the page from Bill.
+  // The header's back arrow closes the payment page (MESITA-3825, Pato: "the
+  // top arrow must be to close the ticket"); the ‹ › beside the steps bar
+  // walk the read-only steps.
   const hasStrip = !!top.strip;
-  useEffect(() => {
-    if (!registerBack) return;
-    registerBack(() => {
-      if (!hasStrip) return false;
-      const i = VIEW_STEPS.indexOf(viewStep);
-      if (i <= 0) return false;
-      setViewStep(VIEW_STEPS[i - 1]);
-      return true;
-    });
-    return () => registerBack(null);
-  }, [registerBack, viewStep, hasStrip]);
+  const viewAt = VIEW_STEPS.indexOf(viewStep);
 
   const m = (c: number) => money(c, tab.currency);
   const cash = tab.cash_bill_cents + tab.cash_tip_cents;
@@ -253,6 +242,8 @@ export function GuestTabView({
       onStep={(k: PayStepKey) => {
         if (k !== "pick") setViewStep(k);
       }}
+      onPrev={hasStrip && viewAt > 0 ? () => setViewStep(VIEW_STEPS[viewAt - 1]) : null}
+      onNext={hasStrip && viewAt < VIEW_STEPS.length - 1 ? () => setViewStep(VIEW_STEPS[viewAt + 1]) : null}
       left={<span className="min-w-0 flex-1 truncate text-base font-semibold">{placeName}</span>}
     />
   );
