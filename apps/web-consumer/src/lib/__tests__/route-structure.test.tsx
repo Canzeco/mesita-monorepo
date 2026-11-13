@@ -604,9 +604,9 @@ describe("T6 — Activity's chips live on the bar's tab, not on Me", () => {
     .map((f) => readFileSync(join(SHELL, "me", f), "utf8"))
     .join("\n");
 
-  it("Me holds no Activity tile (MESITA-3769)", () => {
+  it("Me holds one Activity tile, Reservations (MESITA-3769, MESITA-3821)", () => {
     const hrefs = ME_HUB_GRID.map((c) => c.href);
-    expect(hrefs.filter((h) => h.startsWith("/activity"))).toEqual([]);
+    expect(hrefs.filter((h) => h.startsWith("/activity"))).toEqual(["/activity/reservations"]);
     // Me's own pages for these are gone (MESITA-3688).
     for (const gone of ["notifications", "favorites", "reservations"]) {
       expect(existsSync(join(SHELL, "me", gone)), gone).toBe(false);
@@ -637,13 +637,13 @@ describe("T6 — Activity's chips live on the bar's tab, not on Me", () => {
 
 // ── T8 — the destination grid holds only things that work ──────────────────
 //
-// Me is a grid of seven cells (MESITA-3771; eight before, thirteen before that) (MESITA-1628, MESITA-3450, MESITA-3465). In a grid a dead cell reads as broken
+// Me is a grid of eight cells (MESITA-3821; seven under MESITA-3771, eight before, thirteen before that) (MESITA-1628, MESITA-3450, MESITA-3465). In a grid a dead cell reads as broken
 // rather than upcoming, so the grid holds live doors only.
 //
 // The regression this catches is a tile for a surface that does not exist
 // — `DestTile` has no `soon` prop and its `href` is required, so such a tile
 // would ship as a live Link pointing at nothing.
-describe("T8 — Me's grid is seven live cells", () => {
+describe("T8 — Me's grid is eight live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
@@ -652,7 +652,7 @@ describe("T8 — Me's grid is seven live cells", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders seven cells in Pato's order", () => {
+  it("renders eight cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -673,9 +673,11 @@ describe("T8 — Me's grid is seven live cells", () => {
       // Activity tab (MESITA-3631).
       // Refunds left for Activity's chip and MCP for a perk on Plan
       // (MESITA-3771).
-      "Share",
+      // A Reservations shortcut into Activity (MESITA-3821).
+      "Reservations",
       // Gift: credit held at a place, sent to a friend (MESITA-3771).
       "Gift",
+      "Share",
       "Settings",
     ]);
   });
