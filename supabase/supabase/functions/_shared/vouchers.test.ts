@@ -20,7 +20,7 @@ const ALL_ON: PaymentSettings = {
   house_credits: true,
   cash_payments: true,
   card_cashback_bps: 500,
-  cash_cashback_bps: 200,
+  cash_cashback_bps: 200, credit_cashback_bps: null, prepay_cashback_bps: null,
   voucher_200: true,
   voucher_1000: true,
   voucher_5000: true,

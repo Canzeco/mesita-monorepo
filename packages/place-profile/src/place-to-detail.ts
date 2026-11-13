@@ -100,6 +100,8 @@ export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
     // The place's own rates and switches (MESITA-3589); absent on older reads.
     ...(typeof m.card_cashback_bps === "number" ? { card_cashback_bps: m.card_cashback_bps } : {}),
     ...(typeof m.cash_cashback_bps === "number" ? { cash_cashback_bps: m.cash_cashback_bps } : {}),
+    ...(typeof m.credit_cashback_bps === "number" ? { credit_cashback_bps: m.credit_cashback_bps } : {}),
+    ...(typeof m.prepay_cashback_bps === "number" ? { prepay_cashback_bps: m.prepay_cashback_bps } : {}),
     ...(typeof m.house_credits === "boolean" ? { house_credits: m.house_credits } : {}),
     ...(typeof m.cash === "boolean" ? { cash: m.cash } : {}),
     vouchers,

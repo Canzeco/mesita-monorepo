@@ -150,6 +150,8 @@ export async function startPayment(
     p_request_id: args.input.requestId,
     p_proof_token: args.token ?? mintProofToken(),
     p_ticket: args.input.ticket,
+    // MESITA-3827: a direct credit payment earns its Credits Payments Cashback now.
+    p_cashback: true,
   });
   if (error) throw new Error(`wallet_pay_credit: ${error.message}`);
   const r = data as RpcAnswer | null;

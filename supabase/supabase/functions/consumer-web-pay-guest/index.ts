@@ -187,7 +187,9 @@ serveJson("consumer-web-pay-guest", async (req) => {
       expires_at: r.expires_at ?? null,
       card_payment_id: cardPaymentId,
       test_mode: !livemode,
-      cashback_on_sign_cents: bps(pay.cardBillCents, cardBackBps) + bps(pay.cashBillCents, Math.max(0, cashMoney.cash_cashback_bps)),
+      cashback_on_sign_cents: bps(pay.cardBillCents, cardBackBps) + bps(pay.cashBillCents, Math.max(0, cashMoney.cash_cashback_bps))
+        // MESITA-3827: the credit part's Credits Payments Cashback, also at the signature.
+        + bps(pay.creditCents, Math.max(0, cashMoney.credit_cashback_bps)),
       ...(cardStep ? { card: cardStep } : {}),
     });
   } catch (err) {

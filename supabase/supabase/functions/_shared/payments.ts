@@ -52,6 +52,7 @@ export const NEEDS_STRIPE_KEYS = [
   "pay_cards",
   "card_cashback_bps",
   "prepayments",
+  "prepay_cashback_bps",
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
@@ -68,8 +69,9 @@ export function isPaymentKey(v: unknown): v is PaymentKey {
 }
 
 /** The place's own cashback rates in bps (MESITA-3589): null = Off.
- *  Card: Mesita Payments Cashback. Cash: Cash Payments Cashback. */
-export const RATE_KEYS = ["card_cashback_bps", "cash_cashback_bps"] as const;
+ *  Card: Mesita Payments Cashback. Cash: Cash Payments Cashback. Credit:
+ *  Credits Payments Cashback; prepay: Mesita Prepayments Cashback (MESITA-3827). */
+export const RATE_KEYS = ["card_cashback_bps", "cash_cashback_bps", "credit_cashback_bps", "prepay_cashback_bps"] as const;
 export type RateKey = (typeof RATE_KEYS)[number];
 
 export function isRateKey(v: unknown): v is RateKey {
@@ -78,7 +80,13 @@ export function isRateKey(v: unknown): v is RateKey {
 
 /** The one rate each cashback may take when on (MESITA-3596, Pato: "OFF or
  *  2% and OFF or 5%"): Mesita Payments 5%, Cash Payments 2%. Off is null. */
-export const CASHBACK_BPS: Record<RateKey, number> = { card_cashback_bps: 500, cash_cashback_bps: 200 };
+export const CASHBACK_BPS: Record<RateKey, number> = {
+  card_cashback_bps: 500,
+  cash_cashback_bps: 200,
+  // MESITA-3827 (Pato: "add the option to give cashback with credits too").
+  credit_cashback_bps: 200,
+  prepay_cashback_bps: 500,
+};
 export function isValidCashbackBps(key: RateKey, v: unknown): v is number {
   return v === CASHBACK_BPS[key];
 }

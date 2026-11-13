@@ -304,7 +304,8 @@ export type PayWith = "cash" | "card";
  *  when they use it, the rest of the bill in cash or by card, the whole tip
  *  in cash or by card (credits never pay a tip). Cashback is the place's
  *  rate on the cash bill part (2%) plus the card rate on the card bill part
- *  (5%), never on credit or the tip; the server may give less (its daily
+ *  (5%), plus the credits rate on the credit part where the place gives it
+ *  (MESITA-3827), never on the tip; the server may give less (its daily
  *  cap). `card_tip_alone`: a card tip needs part of the bill by card or
  *  credits (the server refuses it otherwise). */
 export function tabSplit(args: {
@@ -316,6 +317,8 @@ export function tabSplit(args: {
   billWith?: PayWith;
   tipWith?: PayWith;
   cardBackBps?: number;
+  /** MESITA-3827: Credits Payments Cashback on the credit part. */
+  creditBackBps?: number;
 }): TabSplit & {
   total_cents: number;
   cash_due_cents: number;
@@ -344,7 +347,8 @@ export function tabSplit(args: {
     card_due_cents: cardBill + cardTip,
     cashback_cents:
       Math.floor((cashBill * Math.max(0, args.cashBackBps)) / 10_000) +
-      Math.floor((cardBill * Math.max(0, args.cardBackBps ?? 0)) / 10_000),
+      Math.floor((cardBill * Math.max(0, args.cardBackBps ?? 0)) / 10_000) +
+      Math.floor((credit * Math.max(0, args.creditBackBps ?? 0)) / 10_000),
     card_tip_alone: cardTip > 0 && cardBill === 0 && credit === 0,
   };
 }

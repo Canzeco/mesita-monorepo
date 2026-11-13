@@ -21,6 +21,8 @@ const settings = (o: Partial<PaymentSettings> = {}): PaymentSettings => ({
   cash_payments: true,
   card_cashback_bps: 500,
   cash_cashback_bps: 200,
+  credit_cashback_bps: null,
+  prepay_cashback_bps: null,
   pay_cards: true,
   prepayments: true,
   voucher_200: true,

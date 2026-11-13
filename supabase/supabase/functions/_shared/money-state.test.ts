@@ -144,3 +144,19 @@ Deno.test("fee_hold (MESITA-3461): an unpaid fee invoice turns cards, cashback a
   assertEquals(moneyState(allOn, { charges_enabled: true, fee_hold: true }, null).pay, "none");
   assertEquals(moneyState(allOn, { charges_enabled: true, fee_hold: false }, null).pay, "card");
 });
+
+Deno.test("MESITA-3827: Credits Payments Cashback needs House Credits alone; Prepayments Cashback only where a voucher sells", () => {
+  const on = { ...allOn, credit_cashback_bps: 200, prepay_cashback_bps: 500 };
+  const s = moneyState(on, can, null);
+  assertEquals([s.credit_cashback_bps, s.prepay_cashback_bps], [200, 500]);
+  // No Stripe: the credit part still earns, the voucher price cannot (nothing sells).
+  const noCards = moneyState(on, cannot, null);
+  assertEquals([noCards.credit_cashback_bps, noCards.prepay_cashback_bps], [200, 0]);
+  // Prepayments Off: no voucher sells, so no voucher cashback.
+  assertEquals(moneyState({ ...on, prepayments: false }, can, null).prepay_cashback_bps, 0);
+  // House Credits Off: neither earns (new credit needs House Credits).
+  const noHc = moneyState({ ...on, house_credits: false }, can, null);
+  assertEquals([noHc.credit_cashback_bps, noHc.prepay_cashback_bps], [0, 0]);
+  // Off reads 0.
+  assertEquals(moneyState(allOn, can, null).credit_cashback_bps, 0);
+});

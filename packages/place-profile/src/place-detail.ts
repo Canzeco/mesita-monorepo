@@ -42,6 +42,10 @@ export type PlaceMoney = {
    *  Payments Cashback). Older reads lack them. */
   card_cashback_bps?: number;
   cash_cashback_bps?: number;
+  /** MESITA-3827: the credit part (Credits Payments Cashback) and a voucher's
+   *  price (Mesita Prepayments Cashback); older reads lack them. */
+  credit_cashback_bps?: number;
+  prepay_cashback_bps?: number;
   /** House Credits is On here (MESITA-3589); older reads lack it. */
   house_credits?: boolean;
   /** Cash Payments is On here (the switch and the place code; MESITA-3589). */

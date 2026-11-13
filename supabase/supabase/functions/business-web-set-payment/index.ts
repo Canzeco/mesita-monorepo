@@ -25,7 +25,11 @@
 //     guard stays as a backstop.
 //
 // Body: { place_id: uuid, key: house_credits|cash_payments|pay_cards|prepayments|voucher_*, enabled: boolean }
-//    or { place_id: uuid, key: card_cashback_bps|cash_cashback_bps, bps: 500 (card) | 200 (cash) | null }
+//    or { place_id: uuid, key: card_cashback_bps|cash_cashback_bps|credit_cashback_bps|prepay_cashback_bps,
+//         bps: 500 (card) | 200 (cash) | 200 (credit) | 500 (prepay) | null }
+//   - Credits Payments Cashback and Mesita Prepayments Cashback (MESITA-3827)
+//     need House Credits On; Prepayments Cashback also needs Mesita
+//     Prepayments On and the Stripe account.
 // Response: { ok: true, settings: { ...every setting } }
 //   409 { code: needs_contract | needs_house_credits | needs_place_code | needs_stripe }
 
@@ -59,7 +63,13 @@ serveJson("business-web-set-payment", async (req) => {
     return json({ ok: false, code: "invalid", error: "enabled must be true or false" }, 400);
   }
   if (isRateKey(key) && bps !== null && !isValidCashbackBps(key, bps)) {
-    return json({ ok: false, code: "invalid", error: key === "card_cashback_bps" ? "Mesita Payments Cashback is Off or 5%." : "Cash Payments Cashback is Off or 2%." }, 400);
+    const line: Record<string, string> = {
+      card_cashback_bps: "Mesita Payments Cashback is Off or 5%.",
+      cash_cashback_bps: "Cash Payments Cashback is Off or 2%.",
+      credit_cashback_bps: "Credits Payments Cashback is Off or 2%.",
+      prepay_cashback_bps: "Mesita Prepayments Cashback is Off or 5%.",
+    };
+    return json({ ok: false, code: "invalid", error: line[key] }, 400);
   }
 
   const access = await requirePlaceAccess(admin, user, placeId);
@@ -103,6 +113,12 @@ serveJson("business-web-set-payment", async (req) => {
     }
     patch[key] = on;
   } else {
+    if ((key === "credit_cashback_bps" || key === "prepay_cashback_bps") && bps !== null && !current.house_credits) {
+      return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
+    }
+    if (key === "prepay_cashback_bps" && bps !== null && !current.prepayments) {
+      return json({ ok: false, code: "needs_prepayments", error: "Turn Mesita Prepayments on first." }, 409);
+    }
     patch[key] = bps;
   }
 

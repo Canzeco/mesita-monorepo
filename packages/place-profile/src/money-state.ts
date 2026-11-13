@@ -58,6 +58,10 @@ export type MoneySettings = {
   cash_payments?: boolean;
   card_cashback_bps?: number | null;
   cash_cashback_bps?: number | null;
+  /** MESITA-3827: Credits Payments Cashback (null/absent = Off). */
+  credit_cashback_bps?: number | null;
+  /** MESITA-3827: Mesita Prepayments Cashback (null/absent = Off). */
+  prepay_cashback_bps?: number | null;
   has_place_code?: boolean;
 } & Record<MoneyVoucherKey, boolean>;
 
@@ -124,6 +128,12 @@ export type MoneyState = {
   /** What the cash part of the bill earns here now, in bps; 0 = none
    *  (needs House Credits, Cash Payments and a place code). */
   cash_cashback_bps: number;
+  /** What the credit part of the bill earns here now, in bps; 0 = none
+   *  (MESITA-3827: Credits Payments Cashback, needs House Credits). */
+  credit_cashback_bps: number;
+  /** What a voucher's price earns here now, in bps; 0 = none (MESITA-3827:
+   *  Mesita Prepayments Cashback, only while a voucher sells). */
+  prepay_cashback_bps: number;
   /** House Credits is On here: new credit can be born (cashback, vouchers).
    *  Off never stops a guest spending credit they already hold. */
   house_credits: boolean;
@@ -160,6 +170,10 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
   // part (cards on) or the cash bill part (Cash Payments on), never the tip.
   const card_cashback_bps = houseCredits && cards ? rate(settings.card_cashback_bps) : 0;
   const cash_cashback_bps = houseCredits && cash ? rate(settings.cash_cashback_bps) : 0;
+  // MESITA-3827: the credit part earns with House Credits alone; a voucher's
+  // price earns only where a voucher sells (House Credits, Prepayments, cards).
+  const credit_cashback_bps = houseCredits ? rate(settings.credit_cashback_bps) : 0;
+  const prepay_cashback_bps = sell.length > 0 ? rate(settings.prepay_cashback_bps) : 0;
   const mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0;
   return {
     sell,
@@ -169,6 +183,8 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
     cash,
     outside_cashback: cash_cashback_bps > 0,
     cash_cashback_bps,
+    credit_cashback_bps,
+    prepay_cashback_bps,
     house_credits: houseCredits,
     pay,
     mesita_pay,
