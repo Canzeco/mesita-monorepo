@@ -245,8 +245,8 @@ describe("payButton", () => {
       line: `+ ${m(49000)} cash to the waiter`,
     });
   });
-  it("all cash: nothing moves in the app, Show the waiter, no line", () => {
-    expect(btn(split({ bill: 60000, tip: 9000, billWith: "cash" }))).toEqual({ button: "Show the waiter", line: null });
+  it("all cash: nothing moves in the app, I paid, no line", () => {
+    expect(btn(split({ bill: 60000, tip: 9000, billWith: "cash" }))).toEqual({ button: "I paid", line: null });
   });
   it("the button's amount is always credit + card bill + card tip; the line is exactly the cash", () => {
     for (const bill of [100, 49000, 60000, 300050])
@@ -259,7 +259,7 @@ describe("payButton", () => {
               const cash = s.cash_bill_cents + s.cash_tip_cents;
               const b = btn(s);
               expect(inApp + cash).toBe(s.total_cents);
-              if (inApp === 0) expect(b).toEqual({ button: "Show the waiter", line: null });
+              if (inApp === 0) expect(b).toEqual({ button: "I paid", line: null });
               else expect(b).toEqual({ button: `Pay ${m(inApp)}`, line: cash > 0 ? `+ ${m(cash)} cash to the waiter` : null });
             }
   });

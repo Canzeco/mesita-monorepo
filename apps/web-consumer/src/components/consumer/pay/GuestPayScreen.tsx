@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, CreditCard, HandCoins, PenLine, QrCode, Wallet } from "lucide-react";
+import { ChevronRight, CreditCard, HandCoins, PenLine, Wallet } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { payStepName } from "@mesita/place-profile/lib/pay-steps";
 import { AddChip, CashChip, PlainChip, SavedCardChip } from "@/components/consumer/wallet/WalletLists";
@@ -28,7 +28,7 @@ import { PaySteps } from "./PaySteps";
 // MESITA-3798, lib/pay-steps in place-profile): Bill (before tip) → Tip →
 // Methods → Total (Bill, Tip, Total, the cashback; no money moves) → Pay
 // (the way drawn big, the amount the guest acts on, "Pay with your card",
-// "Pay the waiter in cash" or "Pay with credits", numbered steps down to the
+// "Give this to the waiter" (cash only, no QR: MESITA-3823) or "Pay with credits", numbered steps down to the
 // waiter's signature (MESITA-3817), then one button that says what the tap
 // does). The header's back arrow steps back. After Pay the guest lands on
 // their payment's page (/pay/tab/<id>) and shows its QR to the waiter, who
@@ -442,19 +442,21 @@ export function GuestPayScreen({
   // instruction must be clearer and more graphical"): the way drawn big (the
   // card, the cash, or the credits), the amount the guest acts on (what moves
   // in the app, else the cash), the heading, then numbered steps in the order
-  // they happen: the card, the credits, the QR (cash only), the cash, and
-  // the waiter's signature last.
+  // they happen: the card, the credits, the cash, and the waiter's
+  // signature last. No QR here (MESITA-3823): it comes on the next page.
   const cardCents = split ? split.card_bill_cents + split.card_tip_cents : 0;
   const cashCents = split ? split.cash_bill_cents + split.cash_tip_cents : 0;
   const creditCents = split?.credit_cents ?? 0;
   const inAppCents = cardCents + creditCents;
-  const payHeading = cardCents > 0 ? "Pay with your card" : cashCents > 0 ? "Pay the waiter in cash" : "Pay with credits";
+  // CASH ONLY SAYS WHAT TO DO, NOTHING ABOUT A QR (Pato, 2026-11-13,
+  // MESITA-3823: "just say, give that amount to the waiter and after paid,
+  // then the qr in the next page but don't mention qr before payments").
+  const payHeading = cardCents > 0 ? "Pay with your card" : cashCents > 0 ? "Give this to the waiter" : "Pay with credits";
   const payHow: Array<{ key: string; icon: React.ReactNode; title: string; line: string; good?: boolean }> = [];
   if (cardCents > 0) {
     payHow.push({ key: "card", icon: <CreditCard />, title: "Tap Pay", line: `Stripe charges your ${cardLabel ?? "card"} now` });
   }
   if (creditCents > 0) payHow.push({ key: "credit", icon: <Wallet />, title: `${m(creditCents)} from your credits`, line: "Taken when you tap Pay" });
-  if (inAppCents === 0) payHow.push({ key: "qr", icon: <QrCode />, title: "Show the waiter your QR", line: "It opens on the next screen" });
   if (cashCents > 0) {
     payHow.push({
       key: "cash",
