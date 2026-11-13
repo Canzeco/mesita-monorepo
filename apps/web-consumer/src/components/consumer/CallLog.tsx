@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Z_ROUTE_BADGE } from "@/lib/z-index";
 
-import { BESIDE_CARD, useConsoleMode } from "./console-layout";
+import { BESIDE_CARD, useConsoleMode, useHydrated } from "./console-layout";
 
 // Over this a line turns amber: slow enough to feel on a tap.
 const SLOW_MS = 800;
@@ -90,8 +90,12 @@ export function CallLog() {
     });
   }, [pathname]);
 
+  const hydrated = useHydrated();
   const unpin = () => setPinnedId(null);
   const terminal = mode === "terminal";
+
+  // Secondary: the phone paints first; the console joins after hydration.
+  if (!hydrated) return null;
 
   return (
     <>

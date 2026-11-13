@@ -27,6 +27,21 @@ export function useConsoleMode(): ConsoleMode {
   );
 }
 
+const noop = () => () => {};
+
+/**
+ * False in the server HTML and during hydration, true after. The console
+ * (route badge, mode switch, call log) waits for it: it is secondary, so it
+ * never paints before the phone does.
+ */
+export function useHydrated(): boolean {
+  return useSyncExternalStore(
+    noop,
+    () => true,
+    () => false,
+  );
+}
+
 /** The frame's left padding: where the card's left edge lands. */
 export const CARD_INSET: Record<ConsoleMode, string> = {
   phone: "md:pl-[max(1rem,calc(50%-15rem))]",
