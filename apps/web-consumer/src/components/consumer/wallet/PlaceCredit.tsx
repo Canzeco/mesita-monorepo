@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronRight, Gift, Plus, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { SizedImg } from "@mesita/place-profile";
+import { SizedImg, voucherOffers, type PlaceActions, type PlaceMoney, type VoucherKey } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import {
@@ -37,15 +37,19 @@ import type { CreditRow } from "./use-wallet";
 //                         muted $0 when nothing is spendable yet, or the
 //                         server reads below zero after a refund), "House
 //                         Card"; "View place ›" under it
+//   Vouchers              the place's six vouchers, the Offers page's rows
+//                         (MESITA-3822, Pato: "where the fuck is the list of
+//                         Vouchers"): tap one to buy it here
 //   Pending Vouchers      only when there are any: Story vouchers waiting for
 //                         staff, then one row per purchase with its OWN time,
 //                         soonest to land first
 //   sent links            links nobody took yet
 //   Transactions History  every in and out, newest first; 10, then Show all
+//   (Remove from Wallet)  a small grey link, no box (MESITA-3822, Pato: "it
+//                         must be more diescret")
 //   [Pay] [Buy Credits | Gift Credits]   a bar fixed at the bottom, in
 //                         the brand's pink (MESITA-3802, Pato: "put colors to
 //                         this stupid buttons for them to be visible")
-//   (Remove from Wallet)
 //
 // Rows come from lib/wallet-entries.ts: a voucher and its bonus are one row
 // (the only sum here, display only, both amounts the server's); a purchase
@@ -106,6 +110,8 @@ export function HouseCardSkeleton() {
     <div className="flex flex-col" aria-hidden>
       <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
       <Skeleton className="mx-auto mt-4 h-4 w-20 rounded-md" />
+      <Skeleton className="mt-5 h-5 w-24 rounded-md" />
+      <Skeleton className="mt-2 h-80 w-full rounded-2xl" />
       <Skeleton className="mt-5 h-5 w-40 rounded-md" />
       <Skeleton className="mt-2 h-32 w-full rounded-2xl" />
       <Skeleton className="mt-6 h-12 w-full rounded-xl" />
@@ -117,6 +123,67 @@ export function HouseCardSkeleton() {
   );
 }
 
+/** The House Card's vouchers (MESITA-3822): list-vouchers' offer, the guest
+ *  (for the VIP and Story locks), and the buy the place's Offers use. */
+export type HouseCardVouchers = {
+  money: PlaceMoney | null;
+  guest?: PlaceActions["guest"];
+  buying: VoucherKey | null;
+  onBuy: (key: VoucherKey) => void;
+};
+
+/** The six vouchers as rows: the voucher's chip, its name, "Pay · Get". A
+ *  row this guest can buy opens the pay sheet; one they can't is dimmed and
+ *  says why. The words and the rules are place-profile's (voucherOffers). */
+function VoucherRows({ vouchers }: { vouchers: HouseCardVouchers }) {
+  const offers = voucherOffers(vouchers.money ?? undefined, vouchers.guest);
+  const row = "flex min-h-16 w-full items-center gap-3 px-4 py-2.5 text-left";
+  return (
+    <WalletList title="Vouchers">
+      {offers.map((o) => {
+        const opening = vouchers.buying === o.key;
+        const body = (
+          <>
+            <span
+              className={cn(
+                "flex h-10 w-[58px] shrink-0 items-center justify-center rounded-xl text-base font-extrabold tracking-tight tabular-nums",
+                o.chipClass,
+              )}
+              aria-hidden
+            >
+              {o.bonus}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-base font-semibold">{o.title}</span>
+              <span className="text-muted-foreground mt-0.5 block text-sm tabular-nums">
+                {opening ? "Opening…" : o.buyable || !o.why ? `Pay ${o.pay} · Get ${o.get}` : o.why}
+              </span>
+            </span>
+            {o.buyable ? <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden /> : null}
+          </>
+        );
+        return o.buyable ? (
+          <button
+            key={o.key}
+            type="button"
+            disabled={vouchers.buying !== null}
+            onClick={() => vouchers.onBuy(o.key)}
+            className={cn(row, "hover:bg-muted/60 transition disabled:opacity-60")}
+            aria-label={`${o.title}: pay ${o.pay}, get ${o.get}`}
+            data-house-card-voucher={o.key}
+          >
+            {body}
+          </button>
+        ) : (
+          <div key={o.key} className={cn(row, o.dimmed && "opacity-50")} data-house-card-voucher={o.key}>
+            {body}
+          </div>
+        );
+      })}
+    </WalletList>
+  );
+}
+
 export function PlaceCredit({
   row,
   canSend,
@@ -125,6 +192,7 @@ export function PlaceCredit({
   onReread,
   onRemove,
   startGift = false,
+  vouchers,
 }: {
   row: CreditRow;
   /** Sending credit is open here (MESITA-3292). */
@@ -138,6 +206,8 @@ export function PlaceCredit({
   /** Open with Gift Credits showing (Me › Gift, MESITA-3771); only when
    *  sending is open here and there is credit to send. */
   startGift?: boolean;
+  /** The place's vouchers, drawn under the card (MESITA-3822). */
+  vouchers?: HouseCardVouchers;
 }) {
   const { card, balance } = row;
   const href = placeHref(row.placeSlug);
@@ -250,6 +320,8 @@ export function PlaceCredit({
         </p>
       ) : null}
 
+      {vouchers && !gone ? <VoucherRows vouchers={vouchers} /> : null}
+
       {stories.length > 0 || pending.length > 0 ? (
         <WalletList title="Pending Vouchers">
           {stories.map((st) => (
@@ -303,7 +375,12 @@ export function PlaceCredit({
           checks the money again (409 has_credit). */}
       {removable ? (
         <>
-          <button type="button" className={`${SECONDARY} mt-6 mb-6`} onClick={() => setConfirming(true)} data-house-card-remove>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground mx-auto mt-4 min-h-11 px-3 type-body transition"
+            onClick={() => setConfirming(true)}
+            data-house-card-remove
+          >
             Remove from Wallet
           </button>
           <LocalSheet open={confirming} onClose={() => (removing ? undefined : setConfirming(false))} ariaLabel="Remove this House Card">

@@ -73,7 +73,7 @@ const BoostSheet = dynamic(() =>
 /** How long the screen waits on the Wallet and reservation reads before it
  *  paints without them (MESITA-3803): a stuck read never strands the guest
  *  on the skeleton; whatever lands later fills in. */
-const FIRST_READS_CAP_MS = 3_000;
+export const FIRST_READS_CAP_MS = 3_000;
 
 function noopSubscribe() {
   return () => {};
@@ -347,7 +347,7 @@ function usePlaceReservation(placeId: string): {
   return { row: found?.placeId === placeId ? found.row : null, load };
 }
 
-function usePlaceVouchers(placeId: string): {
+export function usePlaceVouchers(placeId: string): {
   money: PlaceMoney | null;
   /** This place's House Card is in the guest's Wallet (MESITA-3582). */
   inWallet: boolean | undefined;

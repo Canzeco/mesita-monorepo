@@ -1,7 +1,7 @@
 "use client";
 
 import { Screen } from "@/components/consumer/nav/Screen";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -11,6 +11,8 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
+import { FIRST_READS_CAP_MS, usePlaceVouchers } from "@/components/consumer/member-place-actions";
+import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { HouseCardSkeleton, PlaceCredit } from "./PlaceCredit";
 import { useWallet } from "./use-wallet";
 
@@ -32,6 +34,28 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   const { wallet, failed, credits, reread, confirming } = useWallet();
   const row = credits?.find((r) => r.placeId === placeId) ?? null;
   const back = useCallback(() => goBack(router), [router]);
+  // THE PLACE'S VOUCHERS ON ITS HOUSE CARD (MESITA-3822, Pato: "where the
+  // fuck is the list of Vouchers"): list-vouchers is asked when the page
+  // opens, beside the Wallet read, and the card paints once both answered
+  // (MESITA-3803's one paint), or after FIRST_READS_CAP_MS without it. Buy
+  // opens the same pay sheet as the place's Offers, here on the card.
+  const vouchers = usePlaceVouchers(placeId);
+  const loadVouchers = vouchers.load;
+  const [capped, setCapped] = useState<string | null>(null);
+  useEffect(() => {
+    const cap = setTimeout(() => setCapped(placeId), FIRST_READS_CAP_MS);
+    void loadVouchers().finally(() => clearTimeout(cap));
+    return () => clearTimeout(cap);
+  }, [loadVouchers, placeId]);
+  const vouchersSettled = !vouchers.loading || capped === placeId;
+  const profile = useConsumerProfile().data;
+  const guest = profile
+    ? {
+        vip: profile.guest_class === "vip",
+        instagramLinked: Boolean(profile.instagram_handle),
+        instagramFollowers: profile.instagram_followers_count ?? null,
+      }
+    : undefined;
 
   // No House Card here: the Wallet is the nearest true screen. Not while a
   // purchase here is still confirming: a first one brings the card with it
@@ -69,7 +93,7 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
             Confirming a payment…
           </p>
         ) : null}
-        {row ? (
+        {row && vouchersSettled ? (
           <PlaceCredit
             row={row}
             canSend={wallet?.can_send === true}
@@ -78,6 +102,7 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
             onReread={reread}
             onRemove={removeHouseCard}
             startGift={startGift}
+            vouchers={{ money: vouchers.money, guest, buying: vouchers.buying, onBuy: vouchers.buy }}
           />
         ) : failed ? (
           <EmptyState
@@ -90,6 +115,7 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
           <HouseCardSkeleton />
         )}
       </div>
+      {vouchers.sheet}
     </Screen>
   );
 }
