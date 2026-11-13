@@ -44,9 +44,9 @@ describe("Discovery: one page, five pipeline boxes (MESITA-2327)", () => {
     expect(boxes()).toHaveLength(5);
   });
 
-  it("every live box is the same card: Explanation, Sources, Signals, Scoring, Parameters", () => {
+  it("every live box is the same card: Settings, then How it works with Explanation, Sources, Signals, Scoring (MESITA-3819)", () => {
     for (const box of boxes().slice(0, 4)) {
-      const parts = ["Explanation", "Sources", "Signals", "Scoring", "Parameters"].map((p) =>
+      const parts = ["Settings", "How it works", "Explanation", "Sources", "Signals", "Scoring"].map((p) =>
         box.indexOf(`>${p}<`),
       );
       expect(parts.every((at) => at > -1)).toBe(true);
