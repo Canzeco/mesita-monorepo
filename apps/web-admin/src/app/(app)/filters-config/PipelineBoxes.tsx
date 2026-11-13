@@ -1,6 +1,6 @@
 "use client";
 
-// Discovery: ONE page (MESITA-2327), five boxes, five pipelines (Pato,
+// Discovery: ONE page (MESITA-2327; settings first since MESITA-3819), five boxes, five pipelines (Pato,
 // MESITA-2779, MESITA-2909): Admin Name · Consumer Name · Consumer Map ·
 // Consumer Catalog · Consumer Deep. Each box is a PipelineBox and saves only
 // its own slices, so two boxes can never overwrite each other. The Map and the
@@ -145,6 +145,7 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
       title="Admin & Business Searchbar Pipeline"
       icon={<ScanSearch className={ICON} />}
       callers={["Admin Single Place › Find", "Business › Places"]}
+      summary="Find a place by its name in Admin › Single Place, and when an owner claims their place. Google answers; admin sees Google's own order."
       explanation={
         <p>
           The Name pipeline as an admin runs it. An admin types a name and
@@ -231,6 +232,7 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
       title="Consumer Searchbar Pipeline"
       icon={<Search className={ICON} />}
       callers={["The guest's Search bar"]}
+      summary="The guest types a place's name; Google Autocomplete and Text Search answer together. Google places under the Minimum Popularity sort last; nothing is removed."
       explanation={
         <p>
           The guest knows which place they want. The search runs once they
@@ -335,6 +337,7 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
       pipeline="map"
       title="Consumer Map Pipeline"
       icon={<MapPin className={ICON} />}
+      summary="Pins on the Search map: every Mesita place inside the visible circle, the most popular first. Distance decides who is on the map, never the order."
       explanation={
         <>
           <p>
@@ -352,7 +355,7 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
       }
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.map} />}
     >
-      <Group title="Signals">
+      <Group title="Ranking">
         <div className="grid gap-3 sm:grid-cols-2">
           <NumberField
             label="Popularity root"
@@ -463,6 +466,7 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
       pipeline="catalog"
       title="Consumer Catalog Pipeline"
       icon={<LayoutGrid className={ICON} />}
+      summary="Home's Places: every Mesita place, ranked by how close and how popular it is. A far place is never cut, only lowered."
       explanation={
         <>
           <p>
@@ -486,7 +490,7 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
       }
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.catalog} />}
     >
-      <Group title="Signals">
+      <Group title="Ranking">
         <div className="grid gap-3 sm:grid-cols-2">
           <NumberField
             label="Popularity root"
