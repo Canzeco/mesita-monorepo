@@ -420,7 +420,6 @@ export function TabView({
         onPayAgain={(placeId) => (onPayAgain ? onPayAgain(placeId) : onDone())}
         onDone={onDone}
         onEnded={onEnded ?? onDone}
-        registerBack={registerBack}
       />
     );
   }

@@ -261,20 +261,21 @@ export function GuestPayScreen({
     root.current?.focus({ preventScroll: true });
   }, [step, place?.place_id]);
 
-  // The header's back arrow: one step back, and off the screen from Bill.
-  // While a payment is going out it does nothing.
+  // The header's back arrow closes the screen (MESITA-3825, Pato: "the top
+  // arrow must be to close the ticket, not to return from step to step"); the
+  // draft keeps what was typed. The ‹ beside the steps bar steps back. While
+  // a payment is going out it does nothing.
   useEffect(() => {
     if (!registerBack) return;
-    registerBack(() => {
-      if (busy || addingCard) return true;
-      const i = STEPS.indexOf(step);
-      if (i <= 0) return false;
-      setConfirming(false);
-      setStep(STEPS[i - 1]);
-      return true;
-    });
+    registerBack(() => busy || addingCard);
     return () => registerBack(null);
-  }, [registerBack, step, busy, addingCard]);
+  }, [registerBack, busy, addingCard]);
+  const prevStep = () => {
+    const i = STEPS.indexOf(step);
+    if (i <= 0 || busy || addingCard) return;
+    setConfirming(false);
+    setStep(STEPS[i - 1]);
+  };
 
   // Opening the card page is not paying: its own state, so Pay never reads "Paying…" (MESITA-3714).
   async function addCard() {
@@ -487,6 +488,9 @@ export function GuestPayScreen({
       >
         <PaySteps
           step={step}
+          onPrev={STEPS.indexOf(step) > 0 && !sending ? prevStep : null}
+          // Forward only where Next would go, never into paying (Pay is the button).
+          onNext={STEPS.indexOf(step) < STEPS.length - 1 && nextOk && !addCardFirst && !sending ? next : null}
           left={
             <>
               <PlacePhoto place={place} className="h-9 w-9" />
