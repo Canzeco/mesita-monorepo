@@ -15,7 +15,7 @@ vi.mock("./actions", () => ({
   updateDiscoveryConfig: vi.fn(),
 }));
 
-import { CatalogBox, DeepBox, MapBox, NameAdminBox, NameBox } from "./PipelineBoxes";
+import { CatalogBox, MapBox, NameAdminBox, NameBox } from "./PipelineBoxes";
 
 const seed = { initialConfig: DEFAULT_CONFIG, initialUpdatedAt: null, loadError: null };
 const render = (node: React.ReactElement) => renderToStaticMarkup(node);
@@ -26,22 +26,20 @@ const page = () =>
       <NameBox {...seed} />
       <MapBox {...seed} />
       <CatalogBox {...seed} />
-      <DeepBox />
     </>,
   );
 const boxes = () => page().split("<section ").slice(1);
 
-describe("Discovery: one page, five pipeline boxes (MESITA-2327)", () => {
-  it("is Admin Name, Consumer Name, Consumer Map, Consumer Catalog, Consumer Deep, in that order (MESITA-2779, MESITA-2909)", () => {
+describe("Discovery: one page, four pipeline boxes (MESITA-2327, MESITA-3828)", () => {
+  it("is Admin Name, Consumer Name, Consumer Map, Consumer Catalog, in that order (MESITA-2779, MESITA-2909)", () => {
     const html = page();
     let last = -1;
-    // Deep's title carries its Soon chip inside the heading.
-    for (const title of [">Admin &amp; Business Searchbar Pipeline</h2>", ">Consumer Searchbar Pipeline</h2>", ">Consumer Map Pipeline</h2>", ">Consumer Catalog Pipeline</h2>", ">Consumer Deep Pipeline "]) {
+    for (const title of [">Admin &amp; Business Searchbar Pipeline</h2>", ">Consumer Searchbar Pipeline</h2>", ">Consumer Map Pipeline</h2>", ">Consumer Catalog Pipeline</h2>"]) {
       const at = html.indexOf(title);
       expect(at, title).toBeGreaterThan(last);
       last = at;
     }
-    expect(boxes()).toHaveLength(5);
+    expect(boxes()).toHaveLength(4);
   });
 
   it("every live box is the same card: Settings, then How it works with Explanation, Sources, Signals, Scoring (MESITA-3819)", () => {
@@ -90,7 +88,7 @@ describe("Discovery: one page, five pipeline boxes (MESITA-2327)", () => {
     expect(catalog).toContain(`Fed by ${sourceByKey("mesita_places").label}.`);
   });
 
-  it("nothing on the page shows Not wired: the only unwired source sits in the Soon Deep box", () => {
+  it("nothing on the page shows Not wired: the only unwired source was Deep's, off the page (MESITA-3828)", () => {
     expect(page()).not.toContain("Not wired");
   });
 
@@ -147,16 +145,6 @@ describe("the boxes' controls", () => {
     for (const html of [map, catalog]) {
       expect(html).not.toContain("Nearby call");
       expect(html).not.toContain("Google Popularity");
-    }
-  });
-
-  it("Deep is Soon: title, one line and the chip, its controls deleted from the markup (MESITA-2345)", () => {
-    const html = render(<DeepBox />);
-    expect(html).toContain(">Consumer Deep Pipeline");
-    expect(html).toContain("Soon");
-    expect(html).toContain('id="s-deep"');
-    for (const gone of ["Places handed to Chat", "Minimum Description score", "Chat Agent prompt", "<textarea", 'type="number"', 'type="text"', ">Save<", ">Sources<", ">Signals<"]) {
-      expect(html).not.toContain(gone);
     }
   });
 });

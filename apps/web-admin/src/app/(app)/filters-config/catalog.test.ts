@@ -224,14 +224,14 @@ describe("coerceConfig", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("is ONE page of five pipeline boxes, no subpages (MESITA-2327, MESITA-2909)", () => {
+  it("is ONE page of four pipeline boxes, no subpages (MESITA-2327, MESITA-2909, MESITA-3828)", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
     const nextConfig = readFileSync(
       join(__dirname, "../../../../next.config.ts"),
       "utf8",
     );
-    const order = ["<NameAdminBox", "<NameBox", "<MapBox", "<CatalogBox", "<DeepBox"].map((tag) =>
+    const order = ["<NameAdminBox", "<NameBox", "<MapBox", "<CatalogBox"].map((tag) =>
       page.indexOf(tag),
     );
     expect(order.every((at) => at > -1)).toBe(true);
