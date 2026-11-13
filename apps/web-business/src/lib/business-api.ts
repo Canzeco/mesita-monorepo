@@ -434,7 +434,7 @@ export type PaymentKey =
   | "voucher_story"
   | "voucher_vip";
 /** The place's own cashback rates in bps (MESITA-3589); null = Off. */
-export type PaymentRateKey = "card_cashback_bps" | "cash_cashback_bps";
+export type PaymentRateKey = "card_cashback_bps" | "cash_cashback_bps" | "credit_cashback_bps" | "prepay_cashback_bps";
 export type PaymentSettings = Record<PaymentKey, boolean> & Record<PaymentRateKey, number | null>;
 /** The House Credits Contract (MESITA-3589), independent of Stripe. */
 export type HouseCreditsContract = { signed: boolean; signed_at: string | null; terms_version: string | null; text?: string };

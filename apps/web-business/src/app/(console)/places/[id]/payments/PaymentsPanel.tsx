@@ -9,11 +9,17 @@
 // numbered to-do strip (Agreement → House Credits → Waiter code → Stripe
 // Account, MESITA-3602), then section cards of rows, each row a mark, a title and one line, its value and
 // its control:
-//   Stripe Account · one row, its state and one button;
-//   House Credits · the Agreement, House Credits, then Credits Payments;
+//   (MESITA-3827, Pato: "Main Configuration · Cash Payments · Credits
+//   Payments · Mesita Payments · Mesita Prepayments", each way to pay with its
+//   own Cashback-as-Credits:)
+//   Main Configuration · the Stripe Account row and its button, then the
+//     House Credits Agreement and the House Credits switch it unlocks;
 //   Cash Payments · Cash Payments, then its Cashback-as-Credits (Off or 2%);
+//   Credits Payments · Credits Payments (Always on), then its Cashback-as-
+//     Credits (Off or 2%, on the credit part);
 //   Mesita Payments · Mesita Payments, then its Cashback-as-Credits (Off or 5%);
-//   Mesita Prepayments · Mesita Prepayments, then one row per voucher;
+//   Mesita Prepayments · Mesita Prepayments, its Cashback-as-Credits (Off or
+//     5% of a voucher's price), then one row per voucher;
 //   Waiter Code · its own section, last (MESITA-3824; inside Cash Payments
 //     from MESITA-3625, moved from Settings by MESITA-3600): waiters sign
 //     any payment's QR with it, cash or card;
@@ -111,7 +117,13 @@ const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
 };
 
 /** Each cashback's one rate (Main §10, MESITA-3596): Off or this. The server takes nothing else. */
-const CASHBACK_BPS: Record<PaymentRateKey, number> = { card_cashback_bps: 500, cash_cashback_bps: 200 };
+const CASHBACK_BPS: Record<PaymentRateKey, number> = {
+  card_cashback_bps: 500,
+  cash_cashback_bps: 200,
+  // MESITA-3827: Credits Payments and Mesita Prepayments Cashback.
+  credit_cashback_bps: 200,
+  prepay_cashback_bps: 500,
+};
 const pct = (bps: number) => `${bps / 100}%`;
 
 /** The Stripe Account's seven values, in the owner's words. */
@@ -383,8 +395,11 @@ export function PaymentsPanel({
           </li>
         ))}
       </ol>
+      {/* MAIN CONFIGURATION (Pato, 2026-11-13, MESITA-3827: "Main
+          Configuration · Stripe Account · Credits Agreement"): the account,
+          then the agreement and the House Credits switch it unlocks. */}
       <Card className={SECTION}>
-        <h2 className={HEAD}>Stripe Account</h2>
+        <h2 className={HEAD}>Main Configuration</h2>
         <ul className="divide-border divide-y">
           <li id="stripe-account" className={MARK_ROW} data-place-state="stripe">
             {mark(StripeLogoIcon, ready, "bg-indigo-100 text-indigo-700")}
@@ -415,10 +430,7 @@ export function PaymentsPanel({
             </button>
           </div>
         ) : null}
-      </Card>
-      <Card className={SECTION}>
-        <h2 className={HEAD}>House Credits</h2>
-        <ul className="divide-border divide-y">
+        <ul className="divide-border border-border divide-y border-t">
           <li id="house-credits-agreement" className={MARK_ROW} data-place-state="house_credits_contract">
             {mark(SignatureIcon, contract.signed, "bg-emerald-100 text-emerald-700")}
             <div className="min-w-0">
@@ -444,15 +456,6 @@ export function PaymentsPanel({
             blocked: contract.signed ? undefined : needsContract,
             note: settings.house_credits ? null : "Off: no new credit. Guests still spend what they already hold.",
           })}
-          <li id="credits-payments" className={MARK_ROW} data-place-state="credits_payments">
-            {mark(WalletIcon, true, "bg-emerald-100 text-emerald-700")}
-            <div className="min-w-0">
-              <p className="font-medium">Credits Payments</p>
-              <p className="text-muted-foreground">Guests pay the bill with the credit they hold here. It is your debt, always honoured.</p>
-            </div>
-            <p className="font-semibold whitespace-nowrap">Always on</p>
-            <span />
-          </li>
         </ul>
       </Card>
       <Card className={SECTION}>
@@ -472,6 +475,28 @@ export function PaymentsPanel({
             name: "Cash Payments Cashback-as-Credits",
             line: "Back as credit here on the bill, once your waiter taps Received. Never on the tip.",
             blocked: !settings.house_credits ? needsHouseCredits : !settings.cash_payments ? needsCash : undefined,
+          })}
+        </ul>
+      </Card>
+      {/* CREDITS PAYMENTS, ITS OWN SECTION WITH ITS CASHBACK (MESITA-3827,
+          Pato: "add the option to give cashback with credits too"). */}
+      <Card className={SECTION}>
+        <h2 className={HEAD}>Credits Payments</h2>
+        <ul className="divide-border divide-y">
+          <li id="credits-payments" className={MARK_ROW} data-place-state="credits_payments">
+            {mark(WalletIcon, true, "bg-emerald-100 text-emerald-700")}
+            <div className="min-w-0">
+              <p className="font-medium">Credits Payments</p>
+              <p className="text-muted-foreground">Guests pay the bill with the credit they hold here. It is your debt, always honoured.</p>
+            </div>
+            <p className="font-semibold whitespace-nowrap">Always on</p>
+            <span />
+          </li>
+          {rateRow({
+            key: "credit_cashback_bps",
+            name: "Credits Payments Cashback-as-Credits",
+            line: "Back as credit here on the part of the bill paid with credit. Never on the tip.",
+            blocked: !settings.house_credits ? needsHouseCredits : undefined,
           })}
         </ul>
       </Card>
@@ -497,7 +522,7 @@ export function PaymentsPanel({
           {rateRow({
             key: "card_cashback_bps",
             name: "Mesita Payments Cashback-as-Credits",
-            line: "Back as credit here on the card part of the bill. Never on the tip or the credit part.",
+            line: "Back as credit here on the card part of the bill. Never on the tip.",
             blocked: !settings.house_credits ? needsHouseCredits : undefined,
             stripe: true,
             note: settings.card_cashback_bps !== null && !state.cashback && settings.house_credits ? "Starts once Mesita Payments takes cards." : null,
@@ -523,6 +548,14 @@ export function PaymentsPanel({
                     ? "Switch on at least one voucher to sell."
                     : null
               : null,
+          })}
+          {rateRow({
+            key: "prepay_cashback_bps",
+            name: "Mesita Prepayments Cashback-as-Credits",
+            // MESITA-3827 (Pato: "Yes, build all"): on a voucher's price, on top of its bonus.
+            line: "Back as credit here on a voucher's price, on top of its bonus. It comes back if the voucher is refunded.",
+            blocked: !settings.house_credits ? needsHouseCredits : !settings.prepayments ? needsPrepayments : undefined,
+            stripe: true,
           })}
           {[...STANDARD, ...SPECIAL].map(voucherRow)}
         </ul>
