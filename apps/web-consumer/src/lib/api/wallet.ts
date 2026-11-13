@@ -490,6 +490,8 @@ export type PayPlace = {
   outside_ok?: boolean;
   /** What the cash bill part earns back once the waiter verifies it. */
   outside_bps?: number;
+  /** MESITA-3827: what the credit part earns back (Credits Payments Cashback). */
+  credit_bps?: number;
 };
 
 /** The places, credit first then nearest. `at` is rounded by the caller and

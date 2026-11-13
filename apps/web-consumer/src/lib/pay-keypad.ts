@@ -98,6 +98,7 @@ export function paySplit(a: PayProblemArgs) {
     useCredit: a.useCredit && a.spendableCents > 0,
     cashBackBps: a.place.outside_bps ?? 0,
     cardBackBps: a.place.cashback_bps ?? 0,
+    creditBackBps: a.place.credit_bps ?? 0,
     billWith: a.restWith ?? "cash",
     tipWith: a.tipWith,
   });

@@ -205,6 +205,8 @@ const CASHBACK_FACE: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT, M
 /** EXTERNAL PAY'S OWN FACE (Pato, MESITA-3787: "external cash payment must be
  *  from other color"): light violet, a tint no other offer wears. */
 const EXTERNAL_FACE = "bg-violet-200 text-neutral-950";
+/** Credits Payment Cashback's face (MESITA-3827): light sky, a tint no other offer wears. */
+const CREDITS_FACE = "bg-sky-200 text-neutral-950";
 
 function SectionTitle({ id, title }: { id: string; title: string }) {
   return (
@@ -358,6 +360,12 @@ function readyIn(key: MoneyVoucherKey): string {
 /** The lines every prepayment (i) ends with (MESITA-3498, Pato: "credits are
  *  transferable to friends too"; "you don't need to prepay all the bill";
  *  MESITA-3496: prepaid credits earn no cashback). */
+function creditFacts(creditPct: string | null): string[] {
+  return [...CREDIT_FACTS.slice(0, -1), creditPct
+    // MESITA-3827: where the place pays Credits Payment Cashback, the credit part earns it.
+    ? `Tips never earn cashback. The part of a bill you pay with credits gets ${creditPct} back here.`
+    : CREDIT_FACTS[CREDIT_FACTS.length - 1]];
+}
 const CREDIT_FACTS = [
   // MESITA-3505, Pato: "you can fund your wallet with multiple vouchers and
   // then pay the bill with it ... everywhere, that is super important".
@@ -370,19 +378,21 @@ const CREDIT_FACTS = [
 /** What each offer's (i) says, one short paragraph per idea (MESITA-3492,
  *  split by MESITA-3497, rewritten clearer by MESITA-3498), with the row's
  *  own Pay and Get. */
-function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string): string[] {
-  const deal = `Pay ${pay}, get ${get} in credits at this place. That's ${bonus} extra.`;
+function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string, facts: string[], prepayPct: string | null): string[] {
+  // MESITA-3827: Mesita Prepayments Cashback on the price, on top of the bonus.
+  const deal = `Pay ${pay}, get ${get} in credits at this place. That's ${bonus} extra.`
+    + (prepayPct ? ` Plus ${prepayPct} of the price back as credits when your credits land.` : "");
   switch (key) {
     case "voucher_200":
     case "voucher_1000":
     case "voucher_5000":
-      return [deal, "Your credits are ready 1 hour after you buy.", "Buy as many as you like.", ...CREDIT_FACTS];
+      return [deal, "Your credits are ready 1 hour after you buy.", "Buy as many as you like.", ...facts];
     case "voucher_welcome":
       return [
         deal,
         "Your credits are ready instantly.",
         "One per place. Every other place on Mesita has its own Welcome for you.",
-        ...CREDIT_FACTS,
+        ...facts,
       ];
     case "voucher_story":
       return [
@@ -393,14 +403,14 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string
         "Only for guests with more than 1,000 Instagram followers.",
         "It takes two steps. 1. Buy it here. 2. Activate it: post an Instagram story at the place, tag the place, and show the story to the staff.",
         "One per visit.",
-        ...CREDIT_FACTS,
+        ...facts,
       ];
     case "voucher_vip":
       return [
         deal,
         "Only for Mesita's VIP Class. VIP guests are added by hand: models, modeling agencies, creators and others places want to see. Not VIP? You can't buy this one.",
         "Your credits are ready instantly. One per visit.",
-        ...CREDIT_FACTS,
+        ...facts,
       ];
   }
 }
@@ -602,6 +612,10 @@ export function VouchersPane({
   // The place's own rates (MESITA-3589); 0 when Off or on an older read.
   const cardPct = money?.card_cashback_bps ? `${money.card_cashback_bps / 100}%` : null;
   const cashPct = money?.cash_cashback_bps ? `${money.cash_cashback_bps / 100}%` : null;
+  // MESITA-3827: Credits Payment Cashback and Mesita Prepayments Cashback; 0 when Off.
+  const creditPct = money?.credit_cashback_bps ? `${money.credit_cashback_bps / 100}%` : null;
+  const prepayPct = money?.prepay_cashback_bps ? `${money.prepay_cashback_bps / 100}%` : null;
+  const facts = creditFacts(creditPct);
   const outside = money?.outside_cashback === true && cashPct !== null;
   const cashbackTag = cashback ? "Available here" : "Not at this place yet";
   // Pay shows where the 5% comes back, or in test mode (MESITA-3397): a live
@@ -666,7 +680,7 @@ export function VouchersPane({
                     </span>
                     <InfoButton
                       title={p.short}
-                      text={offerInfo(p.key, pay, get, p.bonus.replace(/ bonus$/, ""))}
+                      text={offerInfo(p.key, pay, get, p.bonus.replace(/ bonus$/, ""), facts, prepayPct)}
                       status={loading ? undefined : offerStatus(p.key, can, lock, reason)}
                       action={
                         loading
@@ -684,7 +698,7 @@ export function VouchersPane({
                   <span className={cn(FACT, "tabular-nums")} aria-hidden>
                     {opening
                       ? "Opening…"
-                      : `Pay ${pay} · Get ${get} ${readyIn(p.key)}`}
+                      : `Pay ${pay} · Get ${get} ${readyIn(p.key)}${prepayPct ? ` · +${prepayPct} back` : ""}`}
                   </span>
                 </span>
               </>
@@ -759,7 +773,9 @@ export function VouchersPane({
                   text={[
                     `Pay your bill in the Mesita app and get ${cardPct ?? "the place's cashback"} of it back as credits at this place. Use them whenever you want.`,
                     "Any amount, every visit. Each place sets its own rate.",
-                    "Neither prepaid credits nor tips earn cashback: it counts only on the part of the bill you pay with Mesita Payments, without the tip.",
+                    creditPct
+                      ? "Tips never earn this cashback: it counts only on the part of the bill you pay with Mesita Payments, without the tip."
+                      : "Neither prepaid credits nor tips earn cashback: it counts only on the part of the bill you pay with Mesita Payments, without the tip.",
                     "You can mix: part of the bill with credits, the rest with Mesita Payments.",
                   ]}
                 />
@@ -789,11 +805,42 @@ export function VouchersPane({
                   text={[
                     `Pay the place directly: cash or their card terminal, and get ${cashPct ?? "the place's cash cashback"} of the bill back as credits at this place.`,
                     "Show your QR to the waiter. They type the bill and the tip, you choose cash, and they tap Received when they get your money.",
-                    "It counts on the bill, never on the tip or on credits you spend. It is ready in 1 hour.",
+                    creditPct
+                      ? "It counts on the cash part of the bill, never on the tip. It is ready in 1 hour."
+                      : "It counts on the bill, never on the tip or on credits you spend. It is ready in 1 hour.",
                   ]}
                 />
               </span>
               <span className={FACT} aria-hidden>{outside ? "Back in credits, cash or their terminal" : "Not at this place yet"}</span>
+            </span>
+          </li>
+          {/* CREDITS PAYMENT CASHBACK (Pato, 2026-11-13, MESITA-3827: "add the
+              option to give cashback with credits too"): the part of a bill
+              paid with credits here earns too, where the place turned it on. */}
+          <li
+            className={cn(ROW, !creditPct && dim && "opacity-50")}
+            aria-label={`Credits Payment Cashback: pay part of the bill with your credits here. ${creditPct ? `${creditPct} comes back as credits.` : "Not at this place yet."}`}
+            data-cashback-credits
+          >
+            <span className={cn(CHIP, CREDITS_FACE)} aria-hidden>
+              {creditPct ? `+${creditPct}` : "Off"}
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className={NAME}>
+                <span className="flex items-center gap-1" aria-hidden>
+                  <Wallet className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                  Credits Payment Cashback
+                </span>
+                <InfoButton
+                  title="Credits Payment Cashback"
+                  status={creditPct ? { ok: true, text: `${creditPct} back on the part you pay with credits.` } : { ok: false, text: "Not at this place yet" }}
+                  text={[
+                    `Pay your bill here with the credits you hold, and get ${creditPct ?? "the place's credits cashback"} of that part back as credits at this place.`,
+                    "It counts on the part of the bill you pay with credits, never on the tip. On a bill the waiter signs, it lands once they sign. It is ready in 1 hour.",
+                  ]}
+                />
+              </span>
+              <span className={FACT} aria-hidden>{creditPct ? "Back in credits, on the credits you spend" : "Not at this place yet"}</span>
             </span>
           </li>
         </ul>

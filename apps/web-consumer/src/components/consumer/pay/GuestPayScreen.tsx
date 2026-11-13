@@ -567,7 +567,7 @@ export function GuestPayScreen({
                     onClick={() => setUseCredit((u) => !u)}
                     className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2 text-left"
                   >
-                    <MethodLabel chip={<PlainChip><Wallet /></PlainChip>} title={`${m(spendable)} credit`} line={creditOn ? "Applied" : "Not used"} />
+                    <MethodLabel chip={<PlainChip><Wallet /></PlainChip>} title={`${m(spendable)} credit`} line={creditOn ? ((place.credit_bps ?? 0) > 0 ? `Applied · ${(place.credit_bps ?? 0) / 100}% back in credits` : "Applied") : "Not used"} />
                     <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
                       <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full transition", creditOn ? "left-[1.125rem]" : "left-0.5")} />
                     </span>

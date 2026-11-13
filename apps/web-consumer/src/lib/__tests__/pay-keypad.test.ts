@@ -264,3 +264,12 @@ describe("payButton", () => {
             }
   });
 });
+
+describe("MESITA-3827: Credits Payments Cashback in the split", () => {
+  it("adds the credits rate on the credit part only, never the tip, each part rounded down", () => {
+    const s = tabSplit({ billCents: 10_099, tipCents: 1_000, spendableCents: 5_099, useCredit: true, cashBackBps: 200, billWith: "cash", tipWith: "cash", creditBackBps: 200 });
+    // credit 5,099 → 101 (101.98 down); cash 5,000 → 100; the tip earns nothing.
+    expect(s.cashback_cents).toBe(201);
+    expect(tabSplit({ billCents: 10_099, tipCents: 1_000, spendableCents: 5_099, useCredit: true, cashBackBps: 200 }).cashback_cents).toBe(100);
+  });
+});
