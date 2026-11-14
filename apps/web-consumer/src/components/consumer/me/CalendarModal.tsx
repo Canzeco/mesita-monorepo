@@ -7,7 +7,7 @@
 // Reservations' header calendar icon opens this page too.
 
 import { useState } from "react";
-import { ArrowUpRight, CalendarDays, Copy, RefreshCw } from "lucide-react";
+import { ArrowUpRight, CalendarDays, RefreshCw } from "lucide-react";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import {
   IconChip,
@@ -69,16 +69,6 @@ export function CalendarModal() {
   const url = link.data;
   const subs = url ? calendarSubscribeLinks(url) : null;
 
-  const copy = async () => {
-    if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied. Paste it in your calendar's \"add by URL\".");
-    } catch {
-      toast.error("Couldn't copy the link.");
-    }
-  };
-
   const reset = async () => {
     setBusy(true);
     try {
@@ -106,15 +96,9 @@ export function CalendarModal() {
           <RowDivider />
           <CalendarRow href={subs?.outlook ?? null} label="Outlook" sub="Microsoft" />
         </SettingsGroup>
-        <SettingsGroup title="Other calendars">
-          <SettingsActionRow
-            Icon={Copy}
-            label="Copy link"
-            sub="For any calendar app"
-            disabled={!url}
-            onClick={copy}
-          />
-          <RowDivider />
+        {/* Google, Apple and Outlook only (MESITA-3964, Pato: "No other
+            calendar must be enabled"): no copy-the-link row for other apps. */}
+        <SettingsGroup title="Link">
           <SettingsActionRow
             Icon={RefreshCw}
             label="Make a new link"
