@@ -18,7 +18,17 @@ import { FLEET_TESTS, type FleetTest, TEST_PREFIX, testName } from "../../_share
 
 type TestRow = { id?: string; name?: string; type?: string };
 
-function testBody(t: FleetTest): Record<string, unknown> {
+/** Each tool the test names answers like the real Edge Function would. */
+function mockOverrides(t: FleetTest, toolIdByName: Map<string, string>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [name, result] of Object.entries(t.mocks ?? {})) {
+    const id = toolIdByName.get(name);
+    if (id && result) out[id] = [{ mock_result: result, parameter_conditions: [], is_error: false }];
+  }
+  return out;
+}
+
+function testBody(t: FleetTest, toolIdByName: Map<string, string>): Record<string, unknown> {
   return {
     type: "simulation",
     name: testName(t),
@@ -28,6 +38,7 @@ function testBody(t: FleetTest): Record<string, unknown> {
     dynamic_variables: t.variables ?? {},
     conversation_initiation_source: "twilio",
     tool_mock_config: { mocking_strategy: "all", fallback_strategy: "raise_error", mocked_tool_ids: [] },
+    tool_mock_overrides: mockOverrides(t, toolIdByName),
   };
 }
 
@@ -50,7 +61,7 @@ async function listOurTests(key: string): Promise<{ ok: true; byName: Map<string
   return { ok: true, byName };
 }
 
-export async function tests(ctx: BaseCtx): Promise<Response> {
+export async function tests(ctx: WorkspaceCtx): Promise<Response> {
   const listed = await listOurTests(ctx.key);
   if (!listed.ok) return json({ ok: false, error: listed.error }, 502);
   const rows: Array<Record<string, unknown>> = [];
@@ -58,8 +69,8 @@ export async function tests(ctx: BaseCtx): Promise<Response> {
     const name = testName(t);
     const id = listed.byName.get(name);
     const res = id
-      ? await elFetch(ctx.key, `/v1/convai/agent-testing/${encodeURIComponent(id)}`, { method: "PUT", body: testBody(t) })
-      : await elFetch(ctx.key, "/v1/convai/agent-testing/create", { method: "POST", body: testBody(t) });
+      ? await elFetch(ctx.key, `/v1/convai/agent-testing/${encodeURIComponent(id)}`, { method: "PUT", body: testBody(t, ctx.toolIdByName) })
+      : await elFetch(ctx.key, "/v1/convai/agent-testing/create", { method: "POST", body: testBody(t, ctx.toolIdByName) });
     if (!res.ok) {
       rows.push({ name, agent: t.agent, ok: false, error: res.error });
       continue;

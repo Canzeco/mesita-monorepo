@@ -16,6 +16,7 @@
 // give the guest's phone, use the place notes, identity before details.
 
 import type { FleetAgentKey } from "./graph.ts";
+import type { ToolName } from "./tools.ts";
 
 export type FleetTest = {
   agent: FleetAgentKey;
@@ -28,6 +29,9 @@ export type FleetTest = {
   /** The call variables the engine would send. */
   variables?: Record<string, string | number>;
   maxTurns?: number;
+  /** What each tool answers in this test, as the real Edge Function would
+   *  (JSON text). A tool not listed gets ElevenLabs' generic mock. */
+  mocks?: Partial<Record<ToolName, string>>;
 };
 
 /** Every pushed test starts with this, so the sync only ever touches its own. */
@@ -36,6 +40,22 @@ export const TEST_PREFIX = "mesita";
 export function testName(t: FleetTest): string {
   return `${TEST_PREFIX} · ${t.agent} · ${t.label}`;
 }
+
+/** Ana López's table at Gran Central, as the tools speak it. */
+const ANA_TICKET = {
+  reference_code: "48213907",
+  guest_name: "Ana López",
+  place_name: "Gran Central",
+  date_es: "sábado 21 de noviembre",
+  time_es: "8:30 p.m.",
+  reserved_at: "2026-11-22T02:30:00.000Z",
+  party_size: 2,
+  state: "confirmed",
+  notes: null,
+  is_test: false,
+};
+const mock = (v: unknown) => JSON.stringify(v);
+const REPORTED = mock({ ok: true, recorded: { reference_code: "48213907", verdict: "confirmed", alternatives: [] } });
 
 const BOOKING = {
   venue_name: "Gran Central",
@@ -67,6 +87,7 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     variables: BOOKING,
     maxTurns: 6,
+    mocks: { a1_report_outcome: REPORTED },
   },
   {
     agent: "a1",
@@ -80,6 +101,16 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     variables: BOOKING,
     maxTurns: 8,
+    mocks: {
+      a1_report_outcome: mock({
+        ok: true,
+        recorded: {
+          reference_code: "48213907",
+          verdict: "counter_offer",
+          alternatives: [{ time: "21:30", note: "en la terraza" }, { time: "19:00", note: "adentro" }],
+        },
+      }),
+    },
   },
   {
     agent: "a1",
@@ -92,6 +123,7 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     variables: BOOKING,
     maxTurns: 8,
+    mocks: { a1_report_outcome: REPORTED },
   },
   {
     agent: "a1",
@@ -108,6 +140,7 @@ export const FLEET_TESTS: FleetTest[] = [
       venue_notes: "Mesas: tienen interior y terraza. · Reglas para reservar: tolerancia de 15 minutos.",
     },
     maxTurns: 6,
+    mocks: { a1_report_outcome: REPORTED },
   },
   {
     agent: "a1",
@@ -120,6 +153,7 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     variables: BOOKING,
     maxTurns: 8,
+    mocks: { a1_report_outcome: REPORTED },
   },
   {
     agent: "a2",
@@ -137,6 +171,20 @@ export const FLEET_TESTS: FleetTest[] = [
       venue_alternatives: "las 9:30 p.m. en la terraza, o las 7:00 p.m. adentro",
     },
     maxTurns: 8,
+    mocks: {
+      a2_confirm_reservation: mock({
+        ok: true,
+        guest_confirmed: true,
+        changed: true,
+        confirmed_on_the_spot: true,
+        both_confirmed: true,
+        needs_new_place_call: false,
+        reference_code: "48213907",
+        date_es: "sábado 21 de noviembre",
+        time_es: "9:30 p.m.",
+        say: "Listo, esa opción ya la tenía apartada el restaurante: su mesa queda confirmada. No hace falta otra llamada.",
+      }),
+    },
   },
   {
     agent: "a2",
@@ -161,6 +209,15 @@ export const FLEET_TESTS: FleetTest[] = [
       "El agente dice que la reservación quedó cancelada y se despide corto.",
     ],
     maxTurns: 8,
+    mocks: {
+      a3_verify_caller: mock({
+        ok: true,
+        verified: true,
+        consumer: { name: "Ana López", first_name: "Ana" },
+        tickets: [ANA_TICKET],
+      }),
+      a3_cancel_reservation: mock({ ok: true, cancelled: true, reference_code: "48213907", place_notified: true }),
+    },
   },
   {
     agent: "a4",
@@ -174,5 +231,26 @@ export const FLEET_TESTS: FleetTest[] = [
       "El agente no da ningún teléfono del comensal.",
     ],
     maxTurns: 8,
+    mocks: {
+      a4_verify_caller: mock({
+        ok: true,
+        verified: true,
+        place: { name: "Gran Central", notes: "" },
+        tickets: [ANA_TICKET],
+      }),
+      a4_find_reservation: mock({
+        ok: true,
+        verified: true,
+        place: { name: "Gran Central" },
+        found: true,
+        tickets: [ANA_TICKET],
+      }),
+      a4_cancel_reservation: mock({
+        ok: true,
+        cancelled: true,
+        reference_code: "48213907",
+        guest_needs_notification: true,
+      }),
+    },
   },
 ];
