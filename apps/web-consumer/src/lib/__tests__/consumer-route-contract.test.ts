@@ -150,7 +150,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         settingsFeedback: "/me/settings/feedback",
         integrations: "/me/integrations",
         integrationsCalendar: "/me/integrations/calendar",
-        integrationsMcp: "/me/integrations/mcp",
       },
       legacy: {
         profile: "/profile",
