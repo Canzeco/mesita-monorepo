@@ -21,9 +21,9 @@
 //               Visit's card (one meal, one ticket); any other payment is
 //               its own ticket
 //     Vouchers  credits bought, bonuses, Story vouchers waiting
-//     Gifts In  credit received (MESITA-3941)
-//     Gifts Out credit sent, taken back, links not taken (MESITA-3941)
-//     Refunds   purchases refunded (under Vouchers until MESITA-3855)
+//     Gifts-In  credit received (MESITA-3941)
+//     Gifts-Out credit sent, taken back, links not taken (MESITA-3941)
+//     Refunds   purchases refunded; its own tab again since MESITA-3949
 //
 // Every source loads on mount and fails on its own; a chip's count shows only
 // once its sources answered. Nothing here computes a balance: it lists and
@@ -553,7 +553,7 @@ const EMPTY: Record<
     text: "Open a place that sells credit and buy some from its Vouchers tab.",
     action: { label: "Find a place", href: CONSUMER_ROUTES.search },
   },
-  // Gifts In and Gifts Out (MESITA-3941).
+  // Gifts-In and Gifts-Out (MESITA-3941).
   "gifts-in": {
     title: "No gifts received",
     text: "Credit a friend sends you lands here once you take it.",
@@ -571,22 +571,25 @@ const EMPTY: Record<
 };
 
 /** Tickets' tabs (MESITA-3893, Pato: "remove all. just Visits. Vouchers.
- *  Gifts"). Refunds sit in Vouchers, as they did before MESITA-3855. */
-type TicketTab = "visits" | "vouchers" | "gifts-in" | "gifts-out";
+ *  Gifts"). REFUNDS IS ITS OWN TAB AGAIN (MESITA-3949, Pato: "add Refunds
+ *  here ... Refunds is important in tickets"), last. */
+type TicketTab = "visits" | "vouchers" | "gifts-in" | "gifts-out" | "refunds";
 // AN ICON ON EACH (MESITA-3900, Pato: "add icons to the top menu here"):
-// the ones the page's empty states already wear. Gifts became Gifts In and
-// Gifts Out (MESITA-3941).
+// the ones the page's empty states already wear. Gifts became Gifts-In and
+// Gifts-Out (MESITA-3941), hyphenated (MESITA-3949, Pato: "use \"-\"").
 const TICKET_TABS: ReadonlyArray<{ kind: TicketTab; label: string; icon: LucideIcon }> = [
   { kind: "visits", label: "Visits", icon: UtensilsCrossed },
   { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
-  { kind: "gifts-in", label: "Gifts In", icon: Gift },
-  { kind: "gifts-out", label: "Gifts Out", icon: Send },
+  { kind: "gifts-in", label: "Gifts-In", icon: Gift },
+  { kind: "gifts-out", label: "Gifts-Out", icon: Send },
+  { kind: "refunds", label: "Refunds", icon: HandCoins },
 ];
 
-/** The tab a /me/tickets address shows: bare is Visits, refunds is
- *  Vouchers (MESITA-3893). */
+/** The tab a /me/tickets address shows: bare is Visits; the old /gifts is
+ *  Gifts-In. */
 function ticketTabOf(seg: string | undefined): TicketTab {
-  if (seg === "vouchers" || seg === "refunds") return "vouchers";
+  if (seg === "vouchers") return "vouchers";
+  if (seg === "refunds") return "refunds";
   if (seg === "gifts-in" || seg === "gifts") return "gifts-in";
   if (seg === "gifts-out") return "gifts-out";
   return "visits";
@@ -766,12 +769,10 @@ export function TicketsPage() {
             ),
           ]
         : null,
-      // Refunds sit with Vouchers (MESITA-3893).
-      vouchers: moneyRows
-        ? moneyRows.filter((r) => r.type === "vouchers" || r.type === "refunds")
-        : null,
+      vouchers: of("vouchers"),
       "gifts-in": of("gifts-in"),
       "gifts-out": of("gifts-out"),
+      refunds: of("refunds"),
     } satisfies Record<TicketTab, Row[] | null>;
   }, [visits.data, wallet.data]);
 
@@ -999,7 +1000,10 @@ function SubpageTabs<K extends string>({
                 className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-600"
               />
             ) : null}
-            {t.icon ? <t.icon className="h-4 w-4 shrink-0" strokeWidth={chosen ? 2.25 : 2} aria-hidden /> : null}
+            {/* FIVE FIT A PHONE (MESITA-3949): under 480px a tab is ~75px,
+                too narrow for an icon and "Gifts-Out", so the word stays and
+                the icon goes. */}
+            {t.icon ? <t.icon className="hidden h-4 w-4 shrink-0 min-[480px]:block" strokeWidth={chosen ? 2.25 : 2} aria-hidden /> : null}
             {t.label}
           </button>
         );
