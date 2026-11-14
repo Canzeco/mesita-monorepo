@@ -612,6 +612,11 @@ verify_jwt = true
 [functions.admin-web-list-admins]
 verify_jwt = true
 
+# MESITA-3918: the voucher catalog, read-only (Admin › Payments › Vouchers);
+# super_admins on the caller.
+[functions.admin-web-get-voucher-prices]
+verify_jwt = true
+
 # Recent app lines from the enrichment workflow. Super-admin only.
 [functions.admin-web-list-logs]
 verify_jwt = true

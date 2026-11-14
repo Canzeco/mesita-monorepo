@@ -18,6 +18,7 @@ import {
 } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
+import { PAYMENTS_PARENT } from "@/app/(app)/payments-config/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { isNavActive } from "@/lib/nav-active";
 import { FOCUS_RING_ON_DARK_CLASS } from "@/lib/ui-classes";
@@ -101,6 +102,8 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
   // Discovery.
   FILTERS_PARENT,
   RESERVATIONS_PARENT,
+  // Payments: the voucher catalog, read-only (MESITA-3918).
+  PAYMENTS_PARENT,
 ];
 
 // Activity — platform observability (MESITA-2745): the feed and logs.
