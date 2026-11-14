@@ -78,7 +78,14 @@ Deno.test("round 2 starts fresh place attempts, so the engine dials instead of e
   assertEquals(validateReservationPatch(patch).ok, true);
   assertEquals(patch.call_attempts, 0);
   assertEquals(patch.outage_retries, 0);
-  assertEquals(patch.next_attempt_at, null);
+  // Queued for the cron (MESITA-3962): a lost kick no longer strands it.
+  assertEquals(patch.attempts_state, "scheduled");
+  assertEquals(patch.next_attempt_at, NOW.toISOString());
+  assertEquals(patch.modification_of, undefined);
+  assertEquals(
+    negotiationRoundPatch({ next, roundsDone: 0, now: NOW, movingFrom: "2026-11-10T02:00:00.000Z" }).modification_of,
+    "2026-11-10T02:00:00.000Z",
+  );
   assertEquals(patch.reported_verdict, null);
   assertEquals(patch.alternatives, []);
   assertEquals(patch.state, "pending");

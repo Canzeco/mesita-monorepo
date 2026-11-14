@@ -53,9 +53,18 @@ export function negotiationRoundPatch(args: {
   next: Date;
   roundsDone: number;
   now?: Date;
+  /** The slot a CONFIRMED table is being moved from (MESITA-3962): a1 then
+   *  asks the place to MOVE it, and a failed try still releases the old one. */
+  movingFrom?: string | null;
 }): ReservationPatch {
+  const nowIso = (args.now ?? new Date()).toISOString();
   return {
     ...freshPlaceRound(),
+    // Queued like a new reservation (MESITA-3962): if the engine kick is
+    // lost, the minute cron wakes a `scheduled` call that is due.
+    attempts_state: "scheduled",
+    next_attempt_at: nowIso,
+    ...(args.movingFrom ? { modification_of: args.movingFrom } : {}),
     reserved_at: args.next.toISOString(),
     // New terms — the place hasn't agreed to them yet.
     state: "pending",

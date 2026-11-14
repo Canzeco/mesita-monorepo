@@ -219,7 +219,13 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
 
   // A new round: fresh place call attempts, the old offers dropped. The
   // booking claim below rotates run_id, so nothing from round 1 lands here.
-  const patch = negotiationRoundPatch({ next, roundsDone: rounds });
+  // A confirmed table being moved by phone is a MODIFICATION, same as the
+  // app's reschedule (MESITA-3962): the old slot rides along.
+  const patch = negotiationRoundPatch({
+    next,
+    roundsDone: rounds,
+    movingFrom: ticket.state === "confirmed" ? ticket.reserved_at : null,
+  });
   if (note) patch.outcome_note = note;
   // Compare-and-swap on the state read above: an offer the cron released
   // meanwhile must not be revived into a new round.
