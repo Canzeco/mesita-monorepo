@@ -1,4 +1,4 @@
-import { ConfigPageLayout } from "@/components/ConfigPageLayout";
+import { ConfigPageLayout } from "@/components/admin-ui";
 import { normalizeTier } from "@/lib/synthesis-quality";
 import { getAtlasSettings } from "./actions";
 import { CrenupClient } from "./CrenupClient";

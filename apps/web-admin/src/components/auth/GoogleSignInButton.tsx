@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
-import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { Notice } from "@/components/admin-ui";
 
 function getAuthBaseUrl() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -50,6 +50,7 @@ export function GoogleSignInButton() {
 
   return (
     <>
+      {/* eslint-disable-next-line no-restricted-syntax -- Google sign-in button brand rules */}
       <button
         type="button"
         onClick={onClick}
@@ -64,9 +65,7 @@ export function GoogleSignInButton() {
         Sign in with Google
       </button>
       {error && (
-        <p className={`${ERROR_BOX_CLASS} leading-relaxed`}>
-          {error}
-        </p>
+        <Notice>{error}</Notice>
       )}
     </>
   );

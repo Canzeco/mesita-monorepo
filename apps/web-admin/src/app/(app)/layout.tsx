@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { efInvoke } from "@/lib/supabase-ef";
 import { authSignOut } from "@/app/auth/actions";
+import { Button, OVERLAY_SURFACE_CLASS } from "@/components/admin-ui";
 
 // Admin shell layout. Two gates, in order:
 //
@@ -82,7 +83,7 @@ function AccessDenied({
 }) {
   return (
     <div className="bg-hero flex min-h-dvh items-center justify-center px-4">
-      <div className="border-border bg-card shadow-elev flex w-full max-w-md flex-col gap-4 rounded-2xl border p-6 text-center">
+      <div className={`${OVERLAY_SURFACE_CLASS} flex w-full max-w-md flex-col gap-4 p-6 text-center`}>
         <span className="bg-muted mx-auto flex h-10 w-10 items-center justify-center rounded-full">
           <Shield className="text-muted-foreground h-5 w-5" />
         </span>
@@ -95,12 +96,9 @@ function AccessDenied({
           </p>
         </div>
         <form action={authSignOut}>
-          <button
-            type="submit"
-            className="bg-foreground text-background mt-2 inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:opacity-90"
-          >
+          <Button type="submit" className="mt-2">
             Sign out
-          </button>
+          </Button>
         </form>
         {footer}
       </div>

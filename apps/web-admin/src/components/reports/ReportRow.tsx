@@ -1,3 +1,4 @@
+import { Chip, FOCUS_RING_CLASS } from "@/components/admin-ui";
 import type { AdminPlaceReport } from "@/components/reports/types";
 import { businessPlaceHref } from "@/lib/business-url";
 import { PlaceDoor } from "@/components/PlaceDoor";
@@ -30,19 +31,17 @@ export function ReportRow({
         {showPlace ? (
           <PlaceDoor
             href={businessPlaceHref(report.place_id, "admin")}
-            className="focus-visible:ring-ring rounded text-sm font-semibold underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+            className={`rounded-full text-sm font-semibold underline-offset-2 hover:underline ${FOCUS_RING_CLASS}`}
           >
             {report.place_name}
           </PlaceDoor>
         ) : null}
-        <span className="bg-muted text-foreground rounded-full px-2 py-0.5 text-xs font-medium">
-          {reportReasonLabel(report.reason)}
-        </span>
+        <Chip>{reportReasonLabel(report.reason)}</Chip>
       </div>
       {report.note ? (
         <p className="text-sm leading-relaxed break-words whitespace-pre-line">{report.note}</p>
       ) : null}
-      <span className="text-muted-foreground text-xs">
+      <span className="text-muted-foreground type-meta">
         {guestLine(report)} · {formatAbsoluteUtc(report.created_at)}
       </span>
     </li>

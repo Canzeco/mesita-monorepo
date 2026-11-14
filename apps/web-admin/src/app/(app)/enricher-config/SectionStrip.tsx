@@ -94,7 +94,7 @@ export function SectionStrip({ view }: { view: CrenupView }) {
             href={`#${l.id}`}
             aria-current={here === l.id ? "true" : undefined}
             className={
-              "rounded-lg px-2 py-1 text-xs whitespace-nowrap transition " +
+              "rounded-full px-2.5 py-1 text-xs whitespace-nowrap transition " +
               (here === l.id
                 ? "bg-foreground text-card font-semibold"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground")

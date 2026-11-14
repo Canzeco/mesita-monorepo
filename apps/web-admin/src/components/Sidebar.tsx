@@ -20,7 +20,7 @@ import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { PAYMENTS_PARENT } from "@/app/(app)/payments-config/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { isNavActive } from "@/lib/nav-active";
-import { FOCUS_RING_ON_DARK_CLASS } from "@/lib/ui-classes";
+import { FOCUS_RING_ON_DARK_CLASS } from "@/components/admin-ui";
 
 type SidebarProps = {
   onNavigate?: () => void;

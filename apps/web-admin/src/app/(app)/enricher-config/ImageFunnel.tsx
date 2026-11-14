@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { ArrowRight, Image as ImageIcon } from "lucide-react";
 import { Instagram } from "@/components/shared/SocialIcons";
-import { Switch } from "@/components/admin-ui/config";
+import { Switch, TextField } from "@/components/admin-ui";
 import {
   MAX_GOOGLE_COLLECT,
   MAX_INSTAGRAM_COLLECT,
@@ -102,23 +102,19 @@ export function ImageFunnel({
         <label className="ml-auto flex items-center gap-2">
           <span className="text-sm font-medium">Vision</span>
           <Switch
-            on={settings.imageVisionEnabled}
+            checked={settings.imageVisionEnabled}
             pending={pending}
             label="Toggle image vision"
-            onClick={() =>
-              onPatch({ imageVisionEnabled: !settings.imageVisionEnabled })
-            }
+            onCheckedChange={(next) => onPatch({ imageVisionEnabled: next })}
           />
         </label>
         <label className="flex items-center gap-2">
           <span className="text-sm font-medium">Mirror</span>
           <Switch
-            on={settings.saveImagesToStorage}
+            checked={settings.saveImagesToStorage}
             pending={pending}
             label="Toggle image storage"
-            onClick={() =>
-              onPatch({ saveImagesToStorage: !settings.saveImagesToStorage })
-            }
+            onCheckedChange={(next) => onPatch({ saveImagesToStorage: next })}
           />
         </label>
       </div>
@@ -179,25 +175,25 @@ function FunnelNum({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase">
+      <span className="text-muted-foreground type-eyebrow">
         {label}
       </span>
       <span className="flex items-center gap-1.5">
-        <input
+        <TextField
           type="number"
           inputMode="numeric"
           min={min}
           max={max}
           step={1}
-          value={value}
+          value={String(value)}
           disabled={disabled}
           aria-label={ariaLabel}
-          onChange={(e) => {
-            const raw = Number(e.target.value);
+          onChange={(v) => {
+            const raw = Number(v);
             if (Number.isNaN(raw)) return;
             onChange(Math.max(min, Math.min(max, Math.round(raw))));
           }}
-          className="border-border bg-card focus:border-foreground h-9 w-14 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:opacity-50"
+          className="w-20"
         />
         <span className="text-muted-foreground text-xs">{suffix}</span>
       </span>

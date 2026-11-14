@@ -1,6 +1,6 @@
 "use client";
 
-import { PageErrorState } from "@/components/admin-ui/PageErrorState";
+import { PageErrorState } from "@/components/admin-ui";
 
 // A page that crashed, with the rail still usable (MESITA-3261). Try again is
 // a full reload, not Next's reset: Admin has no deployment watcher, so a tab

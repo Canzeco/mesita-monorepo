@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { cn } from "./cn";
 import { CARD_CLASS } from "./classes";
+import { PAGE_BAND_CLASS, PageContainer } from "./layout";
 import { Skeleton as Bone } from "./ui/skeleton";
 import { Chip } from "./chip";
 
@@ -47,6 +48,28 @@ export function Skeleton({
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * A whole page while it loads (MESITA-3261): the white band with title bones,
+ * then bones shaped like the page's body. Without it the previous page stays
+ * painted after a rail click.
+ */
+export function PageSkeleton({ variant = "cards" }: { variant?: "cards" | "table" }) {
+  return (
+    <PageContainer className="flex flex-col gap-6 sm:gap-8">
+      <span className="sr-only" role="status">
+        Loading
+      </span>
+      <div aria-hidden className={PAGE_BAND_CLASS}>
+        <div className="flex flex-col gap-1.5">
+          <Bone className="h-8 w-40" />
+          <Bone className="h-4 w-72 max-w-full" />
+        </div>
+      </div>
+      <Skeleton variant={variant} />
+    </PageContainer>
   );
 }
 

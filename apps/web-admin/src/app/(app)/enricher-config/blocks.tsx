@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Collapsible } from "@/components/admin-ui/config";
+import { Chip, Collapsible } from "@/components/admin-ui";
 import {
   fmtTime,
   money,
@@ -10,31 +10,9 @@ import {
 import type { CrenupPrompt } from "./actions";
 
 // Crenup's page-local layout kit. Structural only — controls come from
-// `@/components/admin-ui/config`. Two SectionCards own each page; these
+// `@/components/admin-ui`. Two SectionCards own each page; these
 // primitives live *inside* a card. A function is a disclosure row, never a
 // card of its own.
-
-/** Muted pill. Used for flow membership, cost tier and enforcement state. */
-export function Tag({
-  children,
-  tone = "outline",
-}: {
-  children: React.ReactNode;
-  tone?: "outline" | "solid";
-}) {
-  return (
-    <span
-      className={
-        "inline-block rounded-full px-2 py-0.5 type-meta font-semibold tracking-wide whitespace-nowrap " +
-        (tone === "solid"
-          ? "bg-muted text-muted-foreground"
-          : "border-border text-muted-foreground border")
-      }
-    >
-      {children}
-    </span>
-  );
-}
 
 /**
  * Jump chips into a function module. Anchors, not buttons — Tab reaches them
@@ -51,7 +29,7 @@ function StepChips({
         <Link
           key={s.href}
           href={s.href}
-          className="bg-muted hover:bg-foreground hover:text-card focus-visible:ring-ring inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium whitespace-nowrap transition focus-visible:ring-2 focus-visible:outline-none"
+          className="bg-muted hover:bg-foreground hover:text-card focus-visible:ring-ring inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap transition focus-visible:ring-2 focus-visible:outline-none"
         >
           <span className="text-muted-foreground tabular-nums">{s.number}</span>
           <span>{s.name}</span>
@@ -101,7 +79,7 @@ export function FlowEstimate({
   estimate: CostEstimate;
 }) {
   return (
-    <div className="border-border rounded-lg border px-3 py-2.5">
+    <div className="border-border rounded-xl border px-3 py-2.5">
       <p className="text-muted-foreground type-meta font-bold tracking-wider uppercase">
         Estimate
       </p>
@@ -109,11 +87,8 @@ export function FlowEstimate({
         {money(estimate.perPlace)} / place · {fmtTime(estimate.perPlaceSecs)}
       </p>
       {estimate.active.length > 0 ? (
-        <details className="mt-2">
-          <summary className="text-muted-foreground type-label cursor-pointer font-semibold tracking-wide">
-            Breakdown
-          </summary>
-          <ul className="mt-2 space-y-0.5">
+        <Collapsible summary="Breakdown">
+          <ul className="space-y-0.5">
             {estimate.active.map((l) => (
               <li
                 key={l.label}
@@ -126,7 +101,7 @@ export function FlowEstimate({
               </li>
             ))}
           </ul>
-        </details>
+        </Collapsible>
       ) : null}
       <p className="text-muted-foreground mt-2 type-label leading-snug">
         {caption} Published rates, not a bill.
@@ -174,8 +149,8 @@ export function PromptView({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        {prompt.agent ? <Tag tone="solid">{prompt.agent}</Tag> : null}
-        <Tag>{vendorLine}</Tag>
+        {prompt.agent ? <Chip>{prompt.agent}</Chip> : null}
+        <Chip>{vendorLine}</Chip>
         <span className="text-muted-foreground type-meta">read-only</span>
       </div>
       <p className="text-muted-foreground m-0 max-w-2xl type-body leading-relaxed">
@@ -211,7 +186,7 @@ function PromptBlock({
       <p className="text-muted-foreground m-0 mb-1.5 type-label">{label}</p>
       {/* text-xs, not an arbitrary px: this is a block to READ, and a frozen
           px size ignores the operator's own browser font-size setting. */}
-      <pre className="bg-muted/40 text-foreground/90 m-0 max-h-80 overflow-auto rounded-lg border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+      <pre className="bg-muted/40 text-foreground/90 m-0 max-h-80 overflow-auto rounded-xl border border-border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
         {children}
       </pre>
     </div>

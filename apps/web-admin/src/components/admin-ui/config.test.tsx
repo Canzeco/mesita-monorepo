@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { NumberField, commitNumberDraft, numberDraftAllowed } from "./config";
+import { NumberField, commitNumberDraft, numberDraftAllowed } from "./field";
 
 const penalty = { decimals: true, min: 0.1, max: 10 };
 

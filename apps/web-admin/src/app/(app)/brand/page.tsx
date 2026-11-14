@@ -1,4 +1,4 @@
-import { PageContainer, PageHeader } from "@/components/PageContainer";
+import { Chip, type ChipTone, PageContainer, PageHeader, SectionCard } from "@/components/admin-ui";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { MesitaWordmark } from "@/components/brand/MesitaWordmark";
@@ -17,6 +17,7 @@ import {
 
 export const metadata = { title: "Brand · Mesita Admin" };
 
+/** One brand section: the kit card, its hint as the subtitle. */
 function Section({
   title,
   hint,
@@ -27,18 +28,17 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-12">
-      <h2 className="font-display text-lg font-semibold tracking-tight">
-        {title}
-      </h2>
-      {hint && (
-        <p className="text-muted-foreground mt-1.5 max-w-3xl type-body leading-relaxed">
-          {hint}
-        </p>
-      )}
+    <SectionCard title={title} subtitle={hint}>
       <div className="mt-5">{children}</div>
-    </section>
+    </SectionCard>
   );
+}
+
+/** WCAG verdict on white: AA = done (success), AA large = partial (warning). */
+function aaVerdict(onWhite: number): { label: string; tone: ChipTone } {
+  if (onWhite >= 4.5) return { label: "AA", tone: "success" };
+  if (onWhite >= 3) return { label: "AA large", tone: "warning" };
+  return { label: "decorative", tone: "neutral" };
 }
 
 function Card({
@@ -68,7 +68,7 @@ function Card({
 
 export default function BrandPage() {
   return (
-    <PageContainer>
+    <PageContainer className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
         title="Brand"
         description="The Mesita brand as it actually ships. Every swatch and logo on this page is rendered from the generated tokens and components, so if this page looks wrong, the product looks wrong. Edit assets/brand/brand.json, then run `deno task sync-brand`."
@@ -133,15 +133,14 @@ export default function BrandPage() {
       >
         <div className="border-border overflow-hidden rounded-xl border">
           {BRAND_PINK_RAMP.map((s) => {
-            const aaNormal = s.onWhite >= 4.5;
-            const aaLarge = s.onWhite >= 3;
+            const verdict = aaVerdict(s.onWhite);
             return (
               <div
                 key={s.step}
                 className="border-border flex items-center gap-4 border-b px-4 py-2.5 last:border-b-0"
               >
                 <span
-                  className="border-border h-9 w-14 shrink-0 rounded-md border"
+                  className="border-border h-9 w-14 shrink-0 rounded-xl border"
                   style={{ background: s.hex }}
                 />
                 <span className="w-10 shrink-0 font-mono text-xs font-semibold">
@@ -153,21 +152,13 @@ export default function BrandPage() {
                 <span className="text-muted-foreground hidden shrink-0 font-mono type-label sm:inline">
                   {s.oklch}
                 </span>
-                <span className="ml-auto shrink-0 text-right font-mono type-label">
+                <span className="ml-auto flex shrink-0 items-center text-right font-mono type-label">
                   <span className="text-muted-foreground">
                     {s.onWhite.toFixed(2)}:1
                   </span>
-                  <span
-                    className={`ml-2 rounded px-1.5 py-0.5 type-meta font-semibold ${
-                      aaNormal
-                        ? "bg-emerald-100 text-emerald-800"
-                        : aaLarge
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {aaNormal ? "AA" : aaLarge ? "AA large" : "decorative"}
-                  </span>
+                  <Chip tone={verdict.tone} className="ml-2">
+                    {verdict.label}
+                  </Chip>
                 </span>
               </div>
             );
@@ -277,7 +268,7 @@ export default function BrandPage() {
           ].map((rule) => (
             <li
               key={rule}
-              className="border-border rounded-lg border px-3.5 py-2.5"
+              className="border-border rounded-xl border px-3.5 py-2.5"
             >
               {rule}
             </li>

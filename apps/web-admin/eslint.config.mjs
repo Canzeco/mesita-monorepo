@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
@@ -79,8 +78,7 @@ const TYPE_ROLE_SELECTORS = [
 // class pattern starts at a class boundary, so "context-red-1" passes.
 // esquery regexes cannot hold a "/", so a path separator is written ".".
 const SECTION_C =
-  "THE LAW LIVES IN NOTION: Docs > Design §C (web-admin map).\n" +
-  "  Never add files to legacy-kit-files.txt; it only shrinks (CI compares it with main).";
+  "THE LAW LIVES IN NOTION: Docs > Design §C (web-admin map). No exceptions: never add an ignore.";
 const B = String.raw`(^|\s|:|!)`;
 const KIT_PATTERNS = [
   {
@@ -166,18 +164,6 @@ const KIT_SELECTORS_BRAND = [
   KIT_IMPORT,
 ];
 
-// The ratchet (MESITA-3948): files that broke the kit guard on Wave 1's merge
-// day. It only shrinks (scripts/check-legacy-kit.mjs compares it with main);
-// Wave 3 deletes it. KIT_LEGACY_AUDIT=1 empties it so the check can prove
-// every listed file still has a kit error.
-const LEGACY_KIT_FILES =
-  process.env.KIT_LEGACY_AUDIT === "1"
-    ? []
-    : readFileSync(new URL("./legacy-kit-files.txt", import.meta.url), "utf8")
-        .split("\n")
-        .map((l) => l.trim())
-        .filter((l) => l && !l.startsWith("#"));
-
 const BRAND_FILES = ["src/app/page.tsx", "src/app/(app)/layout.tsx", "src/app/(app)/brand/page.tsx"];
 
 const eslintConfig = defineConfig([
@@ -222,17 +208,15 @@ const eslintConfig = defineConfig([
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
       ...BRAND_FILES,
-      ...LEGACY_KIT_FILES,
     ],
     rules: {
       "no-restricted-syntax": ["error", ...TYPE_ROLE_SELECTORS, ...KIT_SELECTORS],
     },
   },
   {
-    // A later block replaces the earlier one's options, so the legacy
-    // ignores are repeated here for any of these three still listed.
+    // The sign-in card, the access gate and the brand page (MESITA-3952: the
+    // kit guard has no exceptions; these three only keep the brand surfaces).
     files: BRAND_FILES,
-    ignores: [...LEGACY_KIT_FILES],
     rules: {
       "no-restricted-syntax": ["error", ...TYPE_ROLE_SELECTORS, ...KIT_SELECTORS_BRAND],
     },

@@ -2,8 +2,8 @@
 
 import { useId, useRef, useState, useTransition } from "react";
 import { Cpu } from "lucide-react";
-import { ErrorNote } from "@/components/ErrorNote";
-import { SaveRow, SectionCard } from "@/components/admin-ui/config";
+import { Button, Notice, SectionCard, SelectField } from "@/components/admin-ui";
+import { SaveRow } from "@/components/admin-ui/config";
 import type { SynthesisQuality } from "@/lib/synthesis-quality";
 import { updateEnricherModelSettings, updateModelsConfig } from "./actions";
 import {
@@ -26,9 +26,7 @@ import {
 // Ojo) are not shown; see the types.ts header for what still rides the blob.
 
 const UNAVAILABLE = "unavailable";
-const CONTROL = "w-full sm:w-56";
-const SELECT =
-  "border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-2 text-sm font-medium outline-none disabled:opacity-50";
+const CONTROL = "w-full sm:w-64";
 
 function JobRow({
   id,
@@ -98,12 +96,14 @@ function ModelChoice({
       {options.map((o, i) => {
         const checked = o.tier === value;
         return (
-          <button
+          <Button
             key={o.tier}
+            tone={checked ? "primary" : "secondary"}
+            size="sm"
+            className="w-full"
             ref={(el) => {
               refs.current[i] = el;
             }}
-            type="button"
             role="radio"
             aria-checked={checked}
             tabIndex={i === current ? 0 : -1}
@@ -116,14 +116,9 @@ function ModelChoice({
               onChange(options[next].tier);
               refs.current[next]?.focus();
             }}
-            className={`focus-visible:ring-foreground/40 h-9 rounded-lg border px-3 text-left text-xs font-semibold transition outline-none focus-visible:ring-2 disabled:opacity-50 ${
-              checked
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-card hover:border-foreground/40"
-            }`}
           >
             {o.label}
-          </button>
+          </Button>
         );
       })}
     </div>
@@ -241,11 +236,11 @@ export function ModelsConfigClient({
   return (
     <div className="flex flex-col gap-4">
       <SectionCard
-        icon={<Cpu className="h-4 w-4" />}
+        icon={<Cpu />}
         title="AI jobs"
         subtitle="Each job below runs on the model you pick. A change applies from the next run and changes what each run costs."
       >
-        {loadError && <ErrorNote message={loadError} />}
+        {loadError && <Notice className="mt-4">{loadError}</Notice>}
 
         <GroupLabel>Discovery</GroupLabel>
         <div className="divide-border divide-y">
@@ -255,30 +250,29 @@ export function ModelsConfigClient({
             usedBy="Memo, the chat on Home › Chat."
           >
             {cfg ? (
-              <select
+              <SelectField
                 id={id("memo-model")}
                 value={cfg.memo.model}
                 disabled={busy}
-                onChange={(e) => setMemo({ model: e.target.value })}
-                className={SELECT}
+                onChange={(model) => setMemo({ model })}
               >
                 {memoModels.map((m) => (
                   <option key={m.value} value={m.value}>
                     {m.label}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             ) : (
               <Unavailable />
             )}
           </JobRow>
         </div>
         {modelsError && (
-          <ErrorNote
-            message={`Couldn't save Discovery chat: ${modelsError}.${
+          <Notice className="mt-4">
+            {`Couldn't save Discovery chat: ${modelsError}.${
               savedNote.enricher ? " Enricher changes were saved." : ""
             }`}
-          />
+          </Notice>
         )}
 
         <GroupLabel>Enricher</GroupLabel>
@@ -312,34 +306,33 @@ export function ModelsConfigClient({
             usedBy="Finds a place's links and press while it is enriched."
           >
             {enricher ? (
-              <select
+              <SelectField
                 id={id("search")}
                 value={enricher.perplexityPreset}
                 disabled={busy}
-                onChange={(e) =>
+                onChange={(v) =>
                   patchEnricher({
-                    perplexityPreset: e.target.value as EnricherModelSettings["perplexityPreset"],
+                    perplexityPreset: v as EnricherModelSettings["perplexityPreset"],
                   })
                 }
-                className={SELECT}
               >
                 {ENRICHER_PERPLEXITY_PRESETS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             ) : (
               <Unavailable />
             )}
           </JobRow>
         </div>
         {enricherError && (
-          <ErrorNote
-            message={`Couldn't save Enricher writing, photos or web search: ${enricherError}.${
+          <Notice className="mt-4">
+            {`Couldn't save Enricher writing, photos or web search: ${enricherError}.${
               savedNote.models ? " Discovery chat changes were saved." : ""
             }`}
-          />
+          </Notice>
         )}
 
         <GroupLabel>Not editable here</GroupLabel>
