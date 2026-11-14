@@ -70,6 +70,33 @@ export function sameLine(a: unknown, b: unknown): boolean {
   return ta.length === 10 && ta === tb;
 }
 
+// ── Who may touch a ticket (MESITA-3973) ─────────────────────────────────────
+// The caller is the platform's caller id (system__caller_id), never what they
+// say. Pato, 2026-11-14: "someone calling x guest number wanting to edit y
+// geust number ticket. that should not be allowed. same for x place number".
+
+/** The only key get_reservation looks a reservation up by: its 8-digit code.
+ *  A name is never a key: it let any caller hear another guest's table. */
+export function codeLookupKey(digits: string): string | null {
+  return /^\d{8}$/.test(digits) ? digits : null;
+}
+
+/** A guest calling may touch only a ticket booked from their own number. */
+export function guestOwnsTicket(
+  ticket: { consumer?: { phone?: string | null } | null } | null,
+  callerPhone: unknown,
+): boolean {
+  return !!ticket && sameLine(ticket.consumer?.phone, callerPhone);
+}
+
+/** A place calling may touch only its own tickets: the caller is one of its lines. */
+export function placeOwnsTicket(
+  place: { phone?: string | null; reservation_target?: string | null } | null,
+  callerPhone: unknown,
+): boolean {
+  return !!place && (sameLine(place.phone, callerPhone) || sameLine(place.reservation_target, callerPhone));
+}
+
 export type CallerPlace = {
   id: string;
   name: string | null;

@@ -1,7 +1,7 @@
 {
   "generated": "by `deno task sync-elevenlabs` from supabase/supabase/functions/_shared/reservationist/ — never edit",
-  "spec_hash": "7e841ec07ef94b92bf9274ecf5652207ee22334a906bf3bb4b0d4819de362865",
-  "knowledge_version": 7,
+  "spec_hash": "bb9974b537282845fdc3981fc64c6ca888636ec3cf3f1f89f482f1bf8f1d34e3",
+  "knowledge_version": 8,
   "deploy": ".github/workflows/agents-deploy.yml on every merge to main (supabase/scripts/sync-agents.sh)",
   "agents": [
     {
@@ -27,7 +27,7 @@
         "farewell_wrong",
         "end_node"
       ],
-      "knowledge_doc": "a1-kb-v7",
+      "knowledge_doc": "a1-kb-v8",
       "tests": [
         "mesita · a1 · books and confirms once",
         "mesita · a1 · never accepts another hour",
@@ -56,7 +56,7 @@
         "farewell_cancel",
         "end_node"
       ],
-      "knowledge_doc": "a2-kb-v7",
+      "knowledge_doc": "a2-kb-v8",
       "tests": [
         "mesita · a2 · identity first, options once",
         "mesita · a2 · tells a stranger nothing"
@@ -86,9 +86,11 @@
         "code_info",
         "end_node"
       ],
-      "knowledge_doc": "a3-kb-v7",
+      "knowledge_doc": "a3-kb-v8",
       "tests": [
-        "mesita · a3 · guest cancels with one confirmation"
+        "mesita · a3 · guest cancels with one confirmation",
+        "mesita · a3 · spoof: cannot touch another guest's table",
+        "mesita · a3 · spoof: unknown number asks by name"
       ]
     },
     {
@@ -115,9 +117,10 @@
         "deny",
         "end_node"
       ],
-      "knowledge_doc": "a4-kb-v7",
+      "knowledge_doc": "a4-kb-v8",
       "tests": [
-        "mesita · a4 · place cancels by the guest's name"
+        "mesita · a4 · place cancels by the guest's name",
+        "mesita · a4 · spoof: cannot touch another place's table"
       ]
     }
   ],

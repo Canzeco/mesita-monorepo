@@ -17,7 +17,7 @@ import { requireAgentRequest } from "../_shared/request.ts";
 import {
   cancelAsGuest,
   cleanNote,
-  sameLine,
+  guestOwnsTicket,
   ticketByCode,
 } from "../_shared/agent-tools.ts";
 
@@ -34,7 +34,7 @@ serveJson("eleven-a3-cancel-reservation", async (req) => {
 
   const ticket = await ticketByCode(admin, body.reference_code);
   if (!ticket) return json({ ok: false, error: "reservation not found for that reference_code" }, 404);
-  if (!sameLine(ticket.consumer?.phone, body.caller_phone)) {
+  if (!guestOwnsTicket(ticket, body.caller_phone)) {
     return json({
       ok: false,
       error: "caller number does not match this reservation's guest",

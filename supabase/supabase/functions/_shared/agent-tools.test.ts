@@ -6,7 +6,14 @@
 // wrong person's table).
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { accentTolerantPattern, ownTicket, ticketMatchesGuestName } from "./agent-tools.ts";
+import {
+  accentTolerantPattern,
+  codeLookupKey,
+  guestOwnsTicket,
+  ownTicket,
+  placeOwnsTicket,
+  ticketMatchesGuestName,
+} from "./agent-tools.ts";
 
 const booked = {
   guest_first_name: "Ana",
@@ -54,4 +61,45 @@ Deno.test("a4 code lookup: only the verified caller's place", () => {
 Deno.test("a4 never reaches the global get_reservation", async () => {
   const { A4 } = await import("./reservationist/a4.ts");
   assert(!A4.toolNames.includes("get_reservation"), "a4 looks codes up through a4_find_reservation");
+});
+
+// ── Spoofing (MESITA-3973) ──────────────────────────────────────────────────
+// Pato: "someone calling x guest number wanting to edit y geust number
+// ticket. that should not be allowed. same for x place number".
+
+Deno.test("spoof: a guest's number touches only that guest's ticket", () => {
+  const ana = { consumer: { phone: "+5215511112222" } };
+  assert(guestOwnsTicket(ana, "+525511112222"), "the same line in another MX format is the same guest");
+  assert(!guestOwnsTicket(ana, "+525599998888"), "another guest's number is refused");
+  assert(!guestOwnsTicket(ana, ""), "no caller id is refused");
+  assert(!guestOwnsTicket(ana, "12345"), "a short caller id is refused");
+  assert(!guestOwnsTicket({ consumer: null }, "+525511112222"), "a ticket with no guest phone is refused");
+  assert(!guestOwnsTicket(null, "+525511112222"));
+});
+
+Deno.test("spoof: a place's number touches only that place's tickets", () => {
+  const granCentral = { phone: "+525533334444", reservation_target: "+525566667777" };
+  assert(placeOwnsTicket(granCentral, "+525533334444"), "its Google line");
+  assert(placeOwnsTicket(granCentral, "5566667777"), "its Reservations line");
+  assert(!placeOwnsTicket(granCentral, "+525500001111"), "another restaurant's number is refused");
+  assert(!placeOwnsTicket(granCentral, undefined), "no caller id is refused");
+  assert(!placeOwnsTicket({ phone: null, reservation_target: null }, "+525533334444"));
+  assert(!placeOwnsTicket(null, "+525533334444"));
+});
+
+Deno.test("spoof: get_reservation answers a code, never a name", () => {
+  assertEquals(codeLookupKey("48213907"), "48213907");
+  assertEquals(codeLookupKey(""), null);
+  assertEquals(codeLookupKey("4821390"), null);
+  assertEquals(codeLookupKey("482139071"), null);
+});
+
+Deno.test("spoof: get_reservation's tool takes no name", async () => {
+  const { toolConfigs } = await import("./reservationist/tools.ts");
+  const tool = toolConfigs("u", "a", "s").find((t) => t.name === "get_reservation")!;
+  const props = Object.keys(
+    ((tool.config.api_schema as { request_body_schema: { properties: Record<string, unknown> } })
+      .request_body_schema).properties,
+  );
+  assertEquals(props, ["reference_code"]);
 });
