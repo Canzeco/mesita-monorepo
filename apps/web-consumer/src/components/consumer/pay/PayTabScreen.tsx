@@ -62,7 +62,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
       title="Pay"
       onBack={back}
       noBack={start.kind === "place"}
-      lead={hasClose ? <CloseX onClick={() => close.current?.()} label="Cancel this ticket" /> : undefined}
+      lead={hasClose ? <CloseX onClick={() => close.current?.()} label="Close" /> : undefined}
       flush
       paper
     >

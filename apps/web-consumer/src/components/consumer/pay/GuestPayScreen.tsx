@@ -67,6 +67,9 @@ type Draft = {
   savedAt: number;
 };
 
+/** What blocks a new ticket here (MESITA-3908). */
+type Blocked = { kind: "draft"; placeId: string; name: string | null } | { kind: "bill"; tabId: string; name: string | null };
+
 const DRAFT_KEY = (placeId: string) => `mesita.pay.guest-lead.${placeId}`;
 /** The place whose ticket is in progress (MESITA-3879). */
 const PENDING_KEY = "mesita.pay.pending-ticket";
@@ -199,19 +202,22 @@ export function GuestPayScreen({
   const requestId = useRef<string | null>(null);
   const [cancelAsk, setCancelAsk] = useState(false);
 
-  // ONE TICKET AT A TIME (MESITA-3879): another place's ticket in progress,
-  // or a bill already open on the server, opens instead of this place.
+  // ONE TICKET AT A TIME (MESITA-3879, MESITA-3908): another place's ticket
+  // in progress, or a bill open on the server at another place, blocks this
+  // one with "Finish this ticket first"; nothing redirects. A bill open here
+  // opens.
+  const [blocked, setBlocked] = useState<Blocked | null>(() => {
+    const other = pendingTicket();
+    return other && other.placeId !== placeId ? { kind: "draft", placeId: other.placeId, name: other.name } : null;
+  });
   useEffect(() => {
-    const other = pendingTicketPlace();
-    if (other && other !== placeId) {
-      onOpenPlace(other);
-      return;
-    }
     let cancelled = false;
     void apiListVisits(getSupabase())
       .then((r) => {
         const open = pickOpenGuestPayment(r.visits, Date.now());
-        if (!cancelled && open) onPaid(open.tab_id);
+        if (cancelled || !open) return;
+        if (open.place.id === placeId) onPaid(open.tab_id);
+        else setBlocked({ kind: "bill", tabId: open.tab_id, name: open.place.name });
       })
       .catch(() => {});
     return () => {
@@ -242,11 +248,13 @@ export function GuestPayScreen({
     } else if (step === 2) setStage("method");
   };
 
+  // The X closes and keeps the ticket (MESITA-3908): Pay shows it, the
+  // tabs show the banner. Cancelling is its own button.
   const leave = () => {
     if (busy || addingCard) return;
-    if (amount !== "") setCancelAsk(true);
-    else onChoosePlace();
+    onChoosePlace();
   };
+  const askCancel = amount !== "" && !busy && !addingCard ? () => setCancelAsk(true) : undefined;
 
   // The saved cards, when the place takes cards (and again on Retry).
   useEffect(() => {
@@ -390,6 +398,38 @@ export function GuestPayScreen({
     }
   }
 
+  if (blocked) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col" data-guest-pay="blocked">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
+          <ReceiptText className="h-12 w-12 text-amber-700" aria-hidden />
+          <h2 className="font-display mt-4 text-xl font-semibold">Finish this ticket first</h2>
+          <p className="mt-2 text-base">You have a ticket open{blocked.name ? ` at ${blocked.name}` : ""}.</p>
+          <p className="text-muted-foreground mt-1 text-sm">Pay it or cancel it before starting another.</p>
+        </div>
+        <Button
+          type="button"
+          className="min-h-12 w-full shrink-0 text-base font-semibold"
+          onClick={() => (blocked.kind === "bill" ? onPaid(blocked.tabId) : onOpenPlace(blocked.placeId))}
+        >
+          Go to ticket
+        </Button>
+        {blocked.kind === "draft" ? (
+          <button
+            type="button"
+            className={cn("mt-2 flex h-11 shrink-0 items-center justify-center text-sm font-semibold", BAD)}
+            onClick={() => {
+              clearGuestDraft(blocked.placeId);
+              setBlocked(null);
+            }}
+          >
+            Cancel that ticket
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
   if (!place) {
     if (placesFailed || (places && !place)) {
       return (
@@ -455,7 +495,7 @@ export function GuestPayScreen({
   if (notPaid) {
     return frame(
       <>
-        <PlaceBar place={place} />
+        <PlaceBar place={place} onCancel={askCancel} />
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
           <XCircle className={cn("h-14 w-14", BAD)} aria-hidden />
           <h2 className="font-display mt-4 text-xl font-semibold">Not paid</h2>
@@ -493,7 +533,7 @@ export function GuestPayScreen({
   if (stage === "bill" && typing) {
     return frame(
       <>
-        <PlaceHero place={place} off={false} onChoose={leave} />
+        <PlaceHero place={place} off={false} onChoose={leave} onCancel={askCancel} />
         <StepsBar at={0} className="mt-3" />
         <div className="mt-4 flex shrink-0 items-center justify-center gap-2">
           <ReceiptText className="text-muted-foreground h-5 w-5" aria-hidden />
@@ -520,7 +560,7 @@ export function GuestPayScreen({
     const toSign = dueCents === 0;
     return frame(
       <>
-        <PlaceBar place={place} />
+        <PlaceBar place={place} onCancel={askCancel} />
         <StepsBar at={1} onStep={goToStep} className="mt-1" />
         <BackStep to="Bill" onClick={() => goToStep(0)} />
         <button
@@ -627,7 +667,7 @@ export function GuestPayScreen({
   if (stage === "method") {
     return frame(
       <>
-        <PlaceBar place={place} />
+        <PlaceBar place={place} onCancel={askCancel} />
         <StepsBar at={2} onStep={goToStep} className="mt-1" />
         <BackStep to="Tip" onClick={() => !busy && setStage("bill")} />
         <p className="mt-2 shrink-0 text-center">
@@ -682,7 +722,7 @@ export function GuestPayScreen({
     const cardsUnknown = cards === null;
     return frame(
       <>
-        <PlaceBar place={place} />
+        <PlaceBar place={place} onCancel={askCancel} />
         <StepsBar at={3} onStep={goToStep} className="mt-1" />
         <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
@@ -775,7 +815,7 @@ export function GuestPayScreen({
   // 4B CASH PAY: give the cash, then the QR.
   return frame(
     <>
-      <PlaceBar place={place} />
+      <PlaceBar place={place} onCancel={askCancel} />
       <StepsBar at={3} onStep={goToStep} className="mt-1" />
       <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">

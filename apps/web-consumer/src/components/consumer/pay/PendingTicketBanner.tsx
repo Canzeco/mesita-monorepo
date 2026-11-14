@@ -29,6 +29,14 @@ const localSnapshot = () => {
   return t ? `${t.placeId}\n${t.name ?? ""}` : "";
 };
 
+/** The ticket being filled in on this phone, re-read on every render. */
+export function usePendingTicket(): { placeId: string; name: string | null } | null {
+  const local = useSyncExternalStore(subscribe, localSnapshot, () => "");
+  if (!local) return null;
+  const [placeId, name] = local.split("\n");
+  return { placeId, name: name || null };
+}
+
 export function PendingTicketBanner() {
   const pathname = usePathname() ?? "/";
   const onPay = isAtRoute(pathname, CONSUMER_ROUTES.pay);

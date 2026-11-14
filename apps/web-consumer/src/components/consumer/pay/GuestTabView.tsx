@@ -49,7 +49,7 @@ export function GuestTabView({
   /** Back to the bill at this place, everything typed. */
   onPayAgain: (placeId: string) => void;
   onDone: () => void;
-  /** The header's X (MESITA-3880): on Sign it asks to cancel the bill. */
+  /** The header's X (MESITA-3880): on Sign it closes; the bill keeps waiting (MESITA-3908). */
   registerClose?: (close: (() => void) | null) => void;
 }) {
   const [tab, setTab] = useState(first);
@@ -119,9 +119,9 @@ export function GuestTabView({
   const signing = !done && !confirming;
   useEffect(() => {
     if (!registerClose) return;
-    registerClose(signing ? () => setConfirmCancel(true) : null);
+    registerClose(signing ? onDone : null);
     return () => registerClose(null);
-  }, [registerClose, signing]);
+  }, [registerClose, signing, onDone]);
 
   useEffect(() => {
     if (!done) return;
@@ -300,6 +300,14 @@ export function GuestTabView({
           {error}
         </p>
       ) : null}
+      <button
+        type="button"
+        onClick={() => setConfirmCancel(true)}
+        className={cn("mx-auto flex h-11 shrink-0 items-center px-3 text-sm font-semibold", BAD)}
+        data-guest-cancel-bill
+      >
+        Cancel bill
+      </button>
       {tab.test_mode && qr ? (
         <a href={qr} target="_blank" rel="noopener noreferrer" className="text-muted-foreground mx-auto flex h-9 shrink-0 items-center text-xs font-semibold underline" data-open-as-waiter>
           Open as waiter (test)
