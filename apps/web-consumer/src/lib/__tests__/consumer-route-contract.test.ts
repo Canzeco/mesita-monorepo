@@ -11,8 +11,6 @@ import {
 import { shouldGate } from "@/lib/supabase/middleware";
 import {
   consumerAuthDestination,
-  oauthCallbackPath,
-  oauthFailedPath,
   safeNextPath,
   withNext,
 } from "@/lib/auth-redirect";
@@ -407,7 +405,11 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/new-visit", destination: "/pay", permanent: true },
-      { source: "/wallet/balance/:id", destination: "/wallet", permanent: true },
+      {
+        source: "/wallet/balance/:id",
+        destination: "/wallet",
+        permanent: true,
+      },
       { source: "/wallet/buy", destination: "/wallet", permanent: true },
       { source: "/wallet/gift", destination: "/wallet", permanent: true },
       { source: "/wallet/redeem", destination: "/wallet", permanent: true },
@@ -441,9 +443,17 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       { source: "/me/passport", destination: "/me/profile", permanent: true },
       { source: "/me/help", destination: "/me/settings", permanent: true },
-      { source: "/me/transactions", destination: "/me/tickets", permanent: true },
+      {
+        source: "/me/transactions",
+        destination: "/me/tickets",
+        permanent: true,
+      },
       { source: "/me/connector", destination: "/me/plan", permanent: true },
-      { source: "/me/refunds", destination: "/me/tickets/refunds", permanent: true },
+      {
+        source: "/me/refunds",
+        destination: "/me/tickets/refunds",
+        permanent: true,
+      },
       { source: "/invite", destination: "/me", permanent: true },
       // The retired Home hub's leaves (2026-09-01), and bare /home since each
       // tab got its own address (MESITA-2597). /home itself was live
@@ -576,7 +586,11 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       // /inbox is Me › Notifications (MESITA-3855; Activity from MESITA-3688).
       // /inbox/credits and /inbox/orders sit ABOVE this and point at Pay.
-      { source: "/inbox/:path*", destination: "/me/notifications", permanent: true },
+      {
+        source: "/inbox/:path*",
+        destination: "/me/notifications",
+        permanent: true,
+      },
     ]);
   });
 
@@ -634,8 +648,6 @@ describe("middleware auth wall (shouldGate)", () => {
     "/discover/chat", // 308s to /search/chat (MESITA-2401)
     "/discover/favs", // 308s to Home (MESITA-2383)
     "/onboard",
-    // Google hands a signed-out guest back here with ?code= (MESITA-3777).
-    "/auth/callback",
     // Not gated but also unreachable as pages — next.config 308s them to a
     // canonical destination that IS gated.
     "/new-visit",
@@ -697,21 +709,6 @@ describe("?next= threading (safeNextPath / withNext)", () => {
     );
     expect(withNext("/onboard", null)).toBe("/onboard");
     expect(withNext("/onboard", "//evil.com")).toBe("/onboard");
-  });
-
-  it("survives Continue with Google: callback → post-signin (MESITA-3777)", () => {
-    // The Pay QR's next carries its own `?place=`, so it must be encoded.
-    const pay = "/pay?place=7f3c2a10-1111-4222-8333-944455556666";
-    const callback = oauthCallbackPath(pay);
-    expect(callback).toBe(`/auth/callback?next=${encodeURIComponent(pay)}`);
-    const back = new URL(callback, "https://mesita.ai").searchParams.get("next");
-    expect(back).toBe(pay);
-    expect(consumerAuthDestination(back ?? undefined)).toBe(
-      `/auth/post-signin?next=${encodeURIComponent(pay)}`,
-    );
-    expect(oauthCallbackPath("//evil.com")).toBe("/auth/callback");
-    expect(oauthFailedPath(pay)).toBe(`/?error=oauth_failed&next=${encodeURIComponent(pay)}`);
-    expect(oauthFailedPath("https://evil.com")).toBe("/?error=oauth_failed");
   });
 
   it("survives the wall → post-signin → onboard round trip", () => {
