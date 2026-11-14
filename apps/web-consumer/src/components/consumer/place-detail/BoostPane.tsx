@@ -68,9 +68,10 @@ const FACE_CLASS =
 /** One width for Buy and Now, so the column reads as one edge. */
 const SLOT_CLASS = "w-[76px] shrink-0";
 
-/** What a guest should know before paying. The last two sentences are Billing's. */
+/** What a guest should know before paying: the money, nothing else (Pato,
+ *  MESITA-3915: "delete the it doesn't guarantee more views"). */
 const TERMS =
-  "One year. Charged once by Stripe, in US dollars. Nothing renews. Starts after any days already running. Visibility is ranking priority on Home and the Map. It doesn't guarantee more views.";
+  "One year. Charged once by Stripe, in US dollars. Nothing renews. Starts after any days already running.";
 
 const ORIGIN: Record<RefillDays["source"], string> = {
   admin: "Added by Mesita",
