@@ -75,7 +75,7 @@ import { DestGrid, type DestShape } from "./profile-sections";
 // a Share cell, a jump to the bar's Share tab (/share), and MCP back as a
 // Soon cell (it left Me under MESITA-3771), then Settings alone at the left:
 //
-//   Profile · Instagram / Class · Plan (Soon) /
+//   Profile · Instagram / Class · Plan /
 //   Notifications · Reservations / Gift · Tickets /
 //   Share · MCP (Soon) / Settings
 //
@@ -128,15 +128,14 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Regular or VIP",
     href: CONSUMER_ROUTES.mePages.class,
   },
-  // PLAN IS SOON (Pato, 2026-11-14, MESITA-3855: "Move plan to settings for
-  // the moment … Class Plan(Soon)"): the cell holds its place and opens
-  // nothing; the page is Settings › Plan.
+  // PLAN IS SOLD AGAIN (Pato, 2026-11-14, MESITA-3870: "Add the Plan
+  // again"): the cell opens /me/plan — Free 2 reservations a month, Pro 10
+  // at $2 a month. It read Soon under MESITA-3855.
   {
     Icon: CreditCard,
     title: "Plan",
     summary: "Free or Pro",
     href: CONSUMER_ROUTES.mePages.plan,
-    soon: true,
   },
   // ACTIVITY'S CHIPS, AS ME'S PAGES (MESITA-3855). The Notifications cell
   // wears the red dot the bar's Activity tab wore (MESITA-3717).
@@ -176,8 +175,8 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   },
   // MCP IS SOON (Pato, 2026-11-14, MESITA-3867: "add MCP here with soon,
   // before settings"): ChatGPT or Claude reading your Mesita. The cell opens
-  // nothing yet; its old address, /me/connector, lands on Plan, where MCP is
-  // a perk (MESITA-3771), so the Soon cell points at a page that exists.
+  // nothing yet; its old address, /me/connector, lands on Plan (the perk left
+  // Plan with MESITA-3870), so the Soon cell points at a page that exists.
   {
     Icon: Plug,
     title: "MCP",

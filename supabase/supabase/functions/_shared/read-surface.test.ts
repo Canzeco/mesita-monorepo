@@ -142,6 +142,9 @@ const RESERVATION_TICKET_READ_ALLOWLIST = [
   "_shared/reservation-owned.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-list-reservations/index.ts",
+  // Me › Plan's "this month: N of cap" (MESITA-3870): a head-only count by
+  // consumer_id, the same count create-reservation's cap runs. No place_id.
+  "_shared/guest-plan.ts",
   "eleven-agent-get-reservation/index.ts",
   "supabase-cron-retry-reservations/index.ts",
   "supabase-edgefunc-place-reservation-call/index.ts",
@@ -290,6 +293,11 @@ const CONSUMER_READ_ALLOWLIST = [
   // member number for each guest who sent app feedback. Read-only.
   "admin-web-list-app-feedback/index.ts",
   "consumer-web-create-reservation/index.ts",
+  // Me › Plan (MESITA-3870): the caller's OWN plan columns (PLAN_COLUMNS),
+  // error checked. Writes go through the consumer_plan_sync RPC.
+  "consumer-web-get-plan/index.ts",
+  "consumer-web-start-plan/index.ts",
+  "consumer-web-cancel-plan/index.ts",
   // The Reserve page's list (MESITA-3609): the caller's OWN first and last
   // name, the fallback for tickets booked before the typed name. Read-only,
   // error checked.

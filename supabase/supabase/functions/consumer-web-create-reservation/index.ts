@@ -52,6 +52,8 @@ import {
   RESERVATION_LIMIT_CODE,
   RESERVATION_LIMIT_MESSAGE,
 } from "../_shared/reservation-cap.ts";
+import { effectivePlan, needsRefresh, PLAN_COLUMNS, type PlanRow, syncPlan } from "../_shared/guest-plan.ts";
+import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 type Body = {
   project_id?: string;
@@ -207,7 +209,7 @@ serveJson("consumer-web-create-reservation", async (req) => {
 
   const { data: consumerRow, error: consumerErr } = await admin
     .from("consumers")
-    .select("deleted_at, plan, reservation_cap_override")
+    .select(`deleted_at, ${PLAN_COLUMNS}`)
     .eq("id", consumerId)
     .maybeSingle();
   if (consumerErr) return json({ ok: false, error: consumerErr.message }, 500);
@@ -254,9 +256,23 @@ serveJson("consumer-web-create-reservation", async (req) => {
       ?.unlimitedReservations === true;
 
   if (!capLifted) {
-    const cap = monthlyReservationCap(
-      consumerRow as { plan?: unknown; reservation_cap_override?: unknown } | null,
-    );
+    // Pro is paid by subscription (MESITA-3870, _shared/guest-plan.ts): a
+    // paid period that ran out is read back from Stripe once before the
+    // plan's cap applies, so a renewal Stripe already charged never blocks.
+    const livemode = boostLivemode();
+    let planRow = consumerRow as PlanRow | null;
+    const stripeKey = boostStripeKey();
+    if (stripeKey && needsRefresh(planRow, Date.now(), livemode)) {
+      try {
+        planRow = await syncPlan(admin, stripeClient(stripeKey), consumerId, String(planRow!.plan_stripe_subscription), livemode);
+      } catch (err) {
+        console.error("[consumer-web-create-reservation] plan_sync_failed", JSON.stringify({ consumer_id: consumerId, error: String(err) }));
+      }
+    }
+    const cap = monthlyReservationCap({
+      plan: effectivePlan(planRow, Date.now(), livemode),
+      reservation_cap_override: planRow?.reservation_cap_override,
+    });
     // The guest's month is Mexico City's (MESITA-3626): the cap is the
     // guest's, not a place's, and the market's calendar is the one they live
     // by — a booking at 7 p.m. on the 31st counts in that month, not the next

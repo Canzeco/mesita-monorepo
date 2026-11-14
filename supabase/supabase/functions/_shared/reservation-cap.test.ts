@@ -69,11 +69,11 @@ Deno.test("Me › Plan builds that line from the constant, never a typed number"
 
 // ── The cap lookup (MESITA-2555): it gates every reservation a guest makes. ──
 
-Deno.test("the cap is the plan's: Free 10, Pro (stored 'premium') 30, anything else Free", () => {
-  assertEquals(monthlyReservationCap({ plan: "free" }), 10);
-  assertEquals(monthlyReservationCap({ plan: "premium" }), 30);
-  assertEquals(monthlyReservationCap({ plan: "pro" }), 10);
-  assertEquals(monthlyReservationCap({}), 10);
+Deno.test("the cap is the plan's: Free 2, Pro (stored 'premium') 10, anything else Free", () => {
+  assertEquals(monthlyReservationCap({ plan: "free" }), 2);
+  assertEquals(monthlyReservationCap({ plan: "premium" }), 10);
+  assertEquals(monthlyReservationCap({ plan: "pro" }), 2);
+  assertEquals(monthlyReservationCap({}), 2);
   assertEquals(monthlyReservationCap(null), MONTHLY_RESERVATION_CAP);
   assertEquals(RESERVATION_CAP_BY_PLAN.free, MONTHLY_RESERVATION_CAP);
   assert(RESERVATION_CAP_BY_PLAN.premium > RESERVATION_CAP_BY_PLAN.free, "Pro must allow more than Free");
@@ -83,12 +83,12 @@ Deno.test("an operator's override wins over the plan, both ways, and 0 blocks", 
   assertEquals(monthlyReservationCap({ plan: "free", reservation_cap_override: 50 }), 50);
   assertEquals(monthlyReservationCap({ plan: "premium", reservation_cap_override: 2 }), 2);
   assertEquals(monthlyReservationCap({ plan: "premium", reservation_cap_override: 0 }), 0);
-  assertEquals(monthlyReservationCap({ plan: "premium", reservation_cap_override: null }), 30);
+  assertEquals(monthlyReservationCap({ plan: "premium", reservation_cap_override: null }), 10);
 });
 
 Deno.test("a malformed override is ignored, never a bigger cap", () => {
   for (const bad of [-1, 1001, 2.5, "50", Number.NaN, Infinity]) {
-    assertEquals(monthlyReservationCap({ plan: "free", reservation_cap_override: bad }), 10);
+    assertEquals(monthlyReservationCap({ plan: "free", reservation_cap_override: bad }), 2);
     assertEquals(readCapOverride(bad), null);
   }
   assertEquals(readCapOverride(RESERVATION_CAP_OVERRIDE_MAX), RESERVATION_CAP_OVERRIDE_MAX);
@@ -109,4 +109,14 @@ Deno.test("Me › Plan's Pro number equals the Pro cap the server enforces", asy
     words.includes("${PRO_RESERVATIONS_PER_MONTH} reservations a month"),
     "plan-words.ts must render the Pro line from PRO_RESERVATIONS_PER_MONTH",
   );
+});
+
+// Pro's price (MESITA-3870): the page prints PRO_PRICE_CENTS from plan-perks.ts,
+// the Checkout charges guest-plan.ts's. One number.
+Deno.test("Me › Plan's Pro price equals the price Checkout charges", async () => {
+  const { PRO_PRICE_CENTS } = await import("./guest-plan.ts");
+  const perks = await read("lib/plan-perks.ts");
+  const m = perks.match(/export const PRO_PRICE_CENTS\s*=\s*(\d+)\s*;/);
+  if (!m) throw new Error("`export const PRO_PRICE_CENTS = <integer>;` not found in plan-perks.ts");
+  assertEquals(Number(m[1]), PRO_PRICE_CENTS);
 });

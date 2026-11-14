@@ -14,8 +14,7 @@ import { SettingsRowSkeleton } from "../../me-skeletons";
 //
 //   Account   Phone (a fact) · Public profile with its switch; its words are
 //             SocialNameRow's first paint (switch-words.ts), drawn as
-//             themselves because the line wraps to two on a narrow phone ·
-//             Plan (MESITA-3855)
+//             themselves because the line wraps to two on a narrow phone
 //   Help      Contact · Send feedback                      60px rows
 //   Legal     Terms · Privacy                              60px rows
 //   Sign out  one centred row, 52px (MESITA-3793)
@@ -36,8 +35,6 @@ export default function SettingsLoading() {
             sub={PUBLIC_PROFILE_SWITCH.on}
             toggle
           />
-          <RowDivider />
-          <SettingsRowSkeleton />
         </>
       }
       help={
