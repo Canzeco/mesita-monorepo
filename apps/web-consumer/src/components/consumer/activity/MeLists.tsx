@@ -34,7 +34,6 @@ import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
   CalendarCheck,
-  CalendarPlus,
   Gift,
   HandCoins,
   Send,
@@ -43,6 +42,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
+import { CalendarMarksRow } from "@/components/shared/calendar-marks";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -701,9 +701,11 @@ export function ReservationsPage() {
         <PushLink
           href={CONSUMER_ROUTES.mePages.integrationsCalendar}
           aria-label="Add to your calendar"
-          className="bg-card text-foreground border-border hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition active:scale-[0.98]"
+          // THE CALENDARS' OWN MARKS (MESITA-3979, Pato: "add the Icons of
+          // Google Calendar and his friends, that sad icon looks too sad").
+          className="bg-card border-border hover:bg-muted flex h-11 shrink-0 items-center justify-center rounded-xl border px-2.5 transition active:scale-[0.98]"
         >
-          <CalendarPlus className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+          <CalendarMarksRow />
         </PushLink>
       }
     >
