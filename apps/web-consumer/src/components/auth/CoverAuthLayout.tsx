@@ -90,7 +90,7 @@ export function CoverAuthLayout({
               {headline}
             </h1>
             <p className="mt-3 text-base leading-snug text-white/80">
-              Discover places, book a table, pay and earn credit back.
+              Discovery, reservations, payments and rewards.
             </p>
           </div>
           <div className="flex flex-col gap-3">

@@ -63,10 +63,10 @@ export const metadata: Metadata = {
     template: "%s · Mesita",
   },
   description:
-    "Discover places, book a table, pay and earn credit back, all from your phone.",
+    "Discovery, reservations, payments and rewards, all from your phone.",
   openGraph: {
     title: "Mesita — restaurants, from your phone",
-    description: "Discover places, book a table, pay and earn credit back.",
+    description: "Discovery, reservations, payments and rewards.",
     siteName: "Mesita",
     locale: "en_US",
     type: "website",
@@ -87,7 +87,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Mesita — restaurants, from your phone",
-    description: "Discover places, book a table, pay and earn credit back.",
+    description: "Discovery, reservations, payments and rewards.",
     images: [SHARE_CARD.src],
   },
 };
