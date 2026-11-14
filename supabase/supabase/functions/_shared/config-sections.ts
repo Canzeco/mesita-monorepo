@@ -32,7 +32,6 @@ import {
   readModelsSection,
   writeModelsSection,
 } from "./config-section-models.ts";
-import { normalizeMoneySection } from "./money-config.ts";
 import {
   readReservationsSection,
   writeReservationsSection,
@@ -55,13 +54,8 @@ export const CONFIG_SECTIONS: Record<string, ConfigSection> = {
   // controls · ojo · orders · visits · rewards left with the admin pages that
   // reached them (MESITA-2088, the MVP First Stage).
 
-  // Manage › Money (MESITA-3307): the buying_paused switch and the settle
-  // cron's bounds. The normalizer coerces, so a bad bound lands as its default.
-  money: {
-    column: "money_config",
-    normalize: normalizeMoneySection,
-    write: writeSectionColumn,
-  },
+  // money left with Manage › Money (MESITA-3842). money_config stays: the
+  // wallet EFs still read buying_paused and the settle bounds from it.
 
   // ── Own write: the validation the generic path cannot express ────────────
   // Flat body, per-key merge, ranged knobs and the image-funnel lock.
