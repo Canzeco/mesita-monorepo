@@ -143,17 +143,46 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
  *  segment. */
 export const PAY_FLOW_STEPS = ["Bill", "Tip", "Method", "Pay", "Sign"] as const;
 
-/** The progress at the top: one labeled segment per step. Done = ink, current = ink
- *  with its label bold, ahead = grey; `paid` turns them all green. */
-export function StepsBar({ at, paid = false, className }: { at: number; paid?: boolean; className?: string }) {
+/** The progress at the top: one labeled segment per step. Done = ink,
+ *  current = ink with its label bold, ahead = grey; `paid` turns them all
+ *  green. With `onStep`, a done step is a button back to it (MESITA-3906). */
+export function StepsBar({
+  at,
+  paid = false,
+  onStep,
+  className,
+}: {
+  at: number;
+  paid?: boolean;
+  onStep?: (step: number) => void;
+  className?: string;
+}) {
   return (
     <ol className={cn("grid shrink-0 grid-cols-5 gap-1.5", className)} aria-label={`Step ${at + 1} of ${PAY_FLOW_STEPS.length}: ${PAY_FLOW_STEPS[at]}`} data-pay-steps>
-      {PAY_FLOW_STEPS.map((name, i) => (
-        <li key={name} className="flex flex-col gap-1" aria-current={i === at ? "step" : undefined}>
-          <span className={cn("h-1.5 rounded-full", paid ? "bg-green-700" : i <= at ? "bg-foreground" : "bg-border")} aria-hidden />
-          <span className={cn("text-sm", i === at ? "text-foreground font-semibold" : i < at ? "text-foreground" : "text-muted-foreground")}>{name}</span>
-        </li>
-      ))}
+      {PAY_FLOW_STEPS.map((name, i) => {
+        const body = (
+          <>
+            <span className={cn("h-1.5 w-full rounded-full", paid ? "bg-green-700" : i <= at ? "bg-foreground" : "bg-border")} aria-hidden />
+            <span className={cn("text-sm", i === at ? "text-foreground font-semibold" : i < at ? "text-foreground" : "text-muted-foreground")}>{name}</span>
+          </>
+        );
+        return (
+          <li key={name} aria-current={i === at ? "step" : undefined}>
+            {onStep && i < at && !paid ? (
+              <button
+                type="button"
+                onClick={() => onStep(i)}
+                className="flex min-h-11 w-full flex-col items-start gap-1 text-left"
+                aria-label={`Back to ${name}`}
+              >
+                {body}
+              </button>
+            ) : (
+              <span className="flex min-h-11 flex-col gap-1">{body}</span>
+            )}
+          </li>
+        );
+      })}
     </ol>
   );
 }

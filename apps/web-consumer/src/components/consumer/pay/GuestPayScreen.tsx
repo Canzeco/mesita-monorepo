@@ -70,6 +70,8 @@ type Draft = {
 const DRAFT_KEY = (placeId: string) => `mesita.pay.guest-lead.${placeId}`;
 /** The place whose ticket is in progress (MESITA-3879). */
 const PENDING_KEY = "mesita.pay.pending-ticket";
+/** The pending ticket's place name, for the banner on the tabs (MESITA-3906). */
+const PENDING_NAME_KEY = "mesita.pay.pending-ticket-name";
 
 function readDraft(placeId: string): Draft | null {
   if (typeof window === "undefined") return null;
@@ -91,7 +93,10 @@ function writeDraft(placeId: string, d: Omit<Draft, "savedAt"> | null) {
     // A ticket is pending once an amount is typed.
     const pending = window.localStorage.getItem(PENDING_KEY);
     if (d && d.amount !== "") window.localStorage.setItem(PENDING_KEY, placeId);
-    else if (pending === placeId) window.localStorage.removeItem(PENDING_KEY);
+    else if (pending === placeId) {
+      window.localStorage.removeItem(PENDING_KEY);
+      window.localStorage.removeItem(PENDING_NAME_KEY);
+    }
   } catch {
     // The bill starts empty next time; nothing breaks.
   }
@@ -109,6 +114,17 @@ export function pendingTicketPlace(): string | null {
     return null;
   } catch {
     return null;
+  }
+}
+
+/** The ticket in progress and its place's name (null when not known yet). */
+export function pendingTicket(): { placeId: string; name: string | null } | null {
+  const placeId = pendingTicketPlace();
+  if (!placeId) return null;
+  try {
+    return { placeId, name: window.localStorage.getItem(PENDING_NAME_KEY) };
+  } catch {
+    return { placeId, name: null };
   }
 }
 
@@ -150,6 +166,16 @@ export function GuestPayScreen({
   registerClose?: (close: (() => void) | null) => void;
 }) {
   const place = places?.find((p) => p.place_id === placeId) ?? null;
+  // The tabs' banner names the place (MESITA-3906).
+  const placeName = place?.name ?? null;
+  useEffect(() => {
+    if (!placeName) return;
+    try {
+      window.localStorage.setItem(PENDING_NAME_KEY, placeName);
+    } catch {
+      // The banner says "a ticket" without the name.
+    }
+  }, [placeName]);
   const [draft] = useState(() => readDraft(placeId));
   const [stage, setStage] = useState<Stage>(draft?.stage ?? "bill");
   const [typing, setTyping] = useState(draft?.typing ?? true);
@@ -202,6 +228,20 @@ export function GuestPayScreen({
   const off = !!place && !cardOk && !cashOk && spendable === 0;
   const m = (c: number) => money(c, place?.currency ?? "mxn");
   // The X and the place name: with a ticket in progress, cancel it first.
+  // Any done step of the bar is one tap back (MESITA-3906): 0 Bill (the
+  // keypad), 1 Tip, 2 Method. Everything typed stays.
+  const goToStep = (step: number) => {
+    if (busy || addingCard) return;
+    setError(null);
+    if (step === 0) {
+      setStage("bill");
+      setTyping(true);
+    } else if (step === 1) {
+      setStage("bill");
+      setTyping(false);
+    } else if (step === 2) setStage("method");
+  };
+
   const leave = () => {
     if (busy || addingCard) return;
     if (amount !== "") setCancelAsk(true);
@@ -481,7 +521,8 @@ export function GuestPayScreen({
     return frame(
       <>
         <PlaceBar place={place} />
-        <StepsBar at={1} className="mt-1" />
+        <StepsBar at={1} onStep={goToStep} className="mt-1" />
+        <BackStep to="Bill" onClick={() => goToStep(0)} />
         <button
           type="button"
           onClick={() => setTyping(true)}
@@ -587,7 +628,7 @@ export function GuestPayScreen({
     return frame(
       <>
         <PlaceBar place={place} />
-        <StepsBar at={2} className="mt-1" />
+        <StepsBar at={2} onStep={goToStep} className="mt-1" />
         <BackStep to="Tip" onClick={() => !busy && setStage("bill")} />
         <p className="mt-2 shrink-0 text-center">
           <span className="text-muted-foreground block text-sm">{leftCents === 0 ? "Tip to pay" : "Left to pay"}</span>
@@ -642,7 +683,7 @@ export function GuestPayScreen({
     return frame(
       <>
         <PlaceBar place={place} />
-        <StepsBar at={3} className="mt-1" />
+        <StepsBar at={3} onStep={goToStep} className="mt-1" />
         <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
           {cardsUnknown ? (
@@ -735,7 +776,7 @@ export function GuestPayScreen({
   return frame(
     <>
       <PlaceBar place={place} />
-      <StepsBar at={3} className="mt-1" />
+      <StepsBar at={3} onStep={goToStep} className="mt-1" />
       <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
         <span className="flex h-28 w-28 items-center justify-center rounded-full bg-green-400 text-neutral-950" aria-hidden>
