@@ -70,14 +70,20 @@ export type VoucherEntry = {
  *  ready at once (Pato, MESITA-3323: "Prepayments must be one [hour] before
  *  the bill. All but the Instagram one"; Welcome and VIP were instant from
  *  MESITA-3302 until then). WELCOME IS +50% (Pato, 2026-11-13, MESITA-3832:
- *  "set Welcome as 50% Bonus"; +30% until then): pay MX$100, get MX$150. */
+ *  "set Welcome as 50% Bonus"; +30% until then): pay MX$100, get MX$150.
+ *  FOUR ON SALE (Pato, 2026-11-13, MESITA-3834: "Welcome Voucher: $100MX.
+ *  50% Bonus. Small Voucher: $200MX. 10% Bonus. Big Voucher: $1000MX. 20%
+ *  Bonus. VIP Voucher: 50MX. 50% Bonus. KEEP IT LIKE THIS."): VIP is MX$50
+ *  +50% (MX$100 +30% before); voucher_1000 is now called Big (Medium
+ *  before); voucher_5000 and Story stay in this catalog for purchases already
+ *  made but are off sale (money-state's NOT_YET_SELLABLE). */
 export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   voucher_200: { price_cents: 200_00, bonus_bps: 1000, kind: "open", available_after_sec: 3600 },
   voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: 3600 },
   voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: 3600 },
   voucher_welcome: { price_cents: 100_00, bonus_bps: 5000, kind: "earned", available_after_sec: 3600 },
   voucher_story: { price_cents: 100_00, bonus_bps: 3000, kind: "earned", available_after_sec: 0 },
-  voucher_vip: { price_cents: 100_00, bonus_bps: 3000, kind: "earned", available_after_sec: 3600 },
+  voucher_vip: { price_cents: 50_00, bonus_bps: 5000, kind: "earned", available_after_sec: 3600 },
 };
 
 export function voucherBonusCents(key: MoneyVoucherKey): number {

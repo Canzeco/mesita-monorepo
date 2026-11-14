@@ -114,14 +114,14 @@ type Product = {
 // Large Standard"): the deal line carries the amounts.
 const STANDARD: Product[] = [
   { key: "voucher_200", name: "Small", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Medium", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Bonus", brief: "As many as you like" },
-  { key: "voucher_5000", name: "Big", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Bonus", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Big", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Big Bonus", brief: "As many as you like" },
+  { key: "voucher_5000", name: "MX$5,000", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "MX$5,000 Bonus", brief: "As many as you like" },
 ];
 
 const SPECIAL: Product[] = [
   { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $150.00MX.", limit: "One per place.", bonus: "50% bonus", short: "Welcome Bonus", brief: "One per place" },
   { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $130.00MX.", limit: "One per day.", bonus: "30% bonus", short: "Story Bonus", brief: "Post a story · 1/day" },
-  { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $130.00MX.", when: "VIP guests only.", limit: "One per day.", bonus: "30% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
+  { key: "voucher_vip", name: "VIP", line: "Pay $50.00MX, get $75.00MX.", when: "VIP guests only.", limit: "One per day.", bonus: "50% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
 ];
 
 /** "$1,200.00MX" from cents: always two decimals (MESITA-3767). Formatting
@@ -551,14 +551,15 @@ export type VoucherOffer = {
 };
 
 /** The vouchers a guest is shown: every product but the parked ones
- *  (MESITA-3831: Story and VIP are off sale and off the page, money-state's
- *  NOT_YET_SELLABLE). */
+ *  (MESITA-3831, MESITA-3834: Story and the MX$5,000 voucher are off sale and
+ *  off the page, money-state's NOT_YET_SELLABLE). */
 function listedProducts(): Product[] {
-  return [...STANDARD, ...SPECIAL].filter((p) => !NOT_YET_SELLABLE[p.key]);
+  // Welcome, Small, Big, VIP (Pato, MESITA-3834: "KEEP IT LIKE THIS").
+  return [...SPECIAL.slice(0, 1), ...STANDARD, ...SPECIAL.slice(1)].filter((p) => !NOT_YET_SELLABLE[p.key]);
 }
 
-/** The vouchers in the Offers page's order, Small · Medium · Big · Welcome
- *  (MESITA-3484; Story and VIP are parked, MESITA-3831). */
+/** The vouchers in the Offers page's order, Welcome · Small · Big · VIP
+ *  (MESITA-3834). */
 export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions["guest"]): VoucherOffer[] {
   const { unavailable, dim, guestLock, buyable } = offerRules(money, guest);
   const catalog = money?.catalog ?? {};

@@ -39,8 +39,8 @@ export const CAP_NOTE = "In test mode a place holds at most $20,000.00MX of gues
 
 const KIND: Record<string, string> = {
   voucher_200: "Small Voucher",
-  voucher_1000: "Medium Voucher",
-  voucher_5000: "Big Voucher",
+  voucher_1000: "Big Voucher",
+  voucher_5000: "MX$5,000 Voucher",
   voucher_welcome: "Welcome Voucher",
   voucher_story: "Story Voucher",
   voucher_vip: "VIP Voucher",

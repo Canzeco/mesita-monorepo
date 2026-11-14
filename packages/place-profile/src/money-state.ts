@@ -92,16 +92,18 @@ export type VoucherReason =
    *  bought one here for every visit (a paid bill with a card part). */
   | "needs_visit";
 
-/** Vouchers in the catalog that are not on sale, and why. STORY IS PARKED
- *  (Pato, 2026-11-13, MESITA-3831: "remove story and vip for the moment";
- *  VIP came back the same night, MESITA-3833: "Return VIP Class"). Story
- *  does not sell, whatever the owner's stored switch says; Business ›
- *  Payments and the guest's Offers page do not list it (both filter on this
- *  record). Nothing else is removed: its switch, the catalog, its Instagram
- *  gate (MESITA-3507) and one-each-new-visit (MESITA-3463) stay, and Story
- *  vouchers already bought keep working. Emptying this record brings it
- *  back. It was empty from MESITA-3550 until MESITA-3831. */
+/** Vouchers in the catalog that are not on sale, and why. Business ›
+ *  Payments and the guest's Offers page list neither (both filter on this
+ *  record), and the buy EF refuses both, whatever the owner's stored switch
+ *  says. STORY IS PARKED (Pato, 2026-11-13, MESITA-3831: "remove story and
+ *  vip for the moment"; VIP came back the same night, MESITA-3833). THE
+ *  MX$5,000 VOUCHER IS RETIRED (Pato, MESITA-3834: "Lets remove the medium
+ *  shit just like this ... KEEP IT LIKE THIS": four vouchers, Welcome · Small
+ *  · Big · VIP, Big being the MX$1,000 one). Nothing else is removed: the
+ *  switches, the catalog lines and Story's gates stay, and vouchers already
+ *  bought keep working. Deleting a line brings that voucher back. */
 export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {
+  voucher_5000: "not_yet",
   voucher_story: "not_yet",
 };
 
