@@ -23,7 +23,8 @@ export function CalendarMark({ kind, size = 20 }: { kind: CalendarKind; size?: n
       aria-hidden
       width={size}
       height={size}
-      className="shrink-0 object-contain"
+      // Apple's tile is white: a hairline keeps it a tile on a white row.
+      className={`shrink-0 object-contain ${kind === "apple" ? "rounded-[22.5%] ring-1 ring-black/10" : ""}`}
       style={{ width: size, height: size }}
       draggable={false}
     />
