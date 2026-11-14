@@ -32,6 +32,8 @@ import { paymentsLivemode, type StripeCall } from "./stripe.ts";
  *  (which vouchers it sells) and need House Credits On (SQL refuses
  *  otherwise). The old `cashback` switch moved into the two rates below. */
 export const PAYMENT_KEYS = [
+  // MESITA-3946: Accept Stripe Payments, over pay_cards and prepayments.
+  "stripe_payments",
   "house_credits",
   "cash_payments",
   "pay_cards",
@@ -88,8 +90,15 @@ export const CASHBACK_BPS: Record<RateKey, number> = {
   // MESITA-3827 (Pato: "add the option to give cashback with credits too");
   // offered again since MESITA-3944 ("Credits Payments: OFF or 2%").
   credit_cashback_bps: 200,
-  prepay_cashback_bps: 500,
+  // 2% since MESITA-3946 (Pato: "prepayments is 2% or off, not 5%").
+  prepay_cashback_bps: 200,
 };
+
+/** App Payments takes cards here: its own switch AND Accept Stripe Payments
+ *  (MESITA-3946). Every reader of `pay_cards` asks this instead. */
+export function cardsAccepted(s: Partial<Record<"pay_cards" | "stripe_payments", unknown>> | null | undefined): boolean {
+  return s?.pay_cards === true && s?.stripe_payments !== false;
+}
 export function isValidCashbackBps(key: RateKey, v: unknown): v is number {
   return v === CASHBACK_BPS[key];
 }
@@ -106,6 +115,9 @@ export type PaymentSettings = Record<PaymentKey, boolean> & Record<RateKey, numb
 export function settingsFromRow(row: Partial<Record<PaymentKey | RateKey, unknown>> | null): PaymentSettings {
   const out = {} as PaymentSettings;
   for (const k of PAYMENT_KEYS) out[k] = row?.[k] === true;
+  // Accept Stripe Payments defaults On, as its column (MESITA-3946): only an
+  // explicit false turns it off. The card switches under it still read Off.
+  out.stripe_payments = row?.stripe_payments !== false;
   for (const k of RATE_KEYS) {
     const v = row?.[k];
     out[k] = typeof v === "number" && Number.isInteger(v) && v > 0 ? v : null;

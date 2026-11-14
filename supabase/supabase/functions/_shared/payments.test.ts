@@ -12,6 +12,7 @@ import {
   connectApiVersion,
   isDashboardPairRefusal,
   isPaymentKey,
+  cardsAccepted,
   listRowMoney,
   settingsFromRow,
   snapshotFromStripe,
@@ -89,13 +90,16 @@ Deno.test("Stripe's Account object becomes the row, missing fields read as off",
 
 Deno.test("settings: no row is everything Off, App Payments included; unknown keys refused", () => {
   const off = settingsFromRow(null);
-  // Ten switches and four rates (credit and prepay since MESITA-3827).
-  assertEquals(Object.keys(off).length, 14);
+  // Eleven switches and four rates (credit and prepay since MESITA-3827;
+  // Accept Stripe Payments since MESITA-3946, On by default like its column).
+  assertEquals(Object.keys(off).length, 15);
+  assertEquals(off.stripe_payments, true);
+  assertEquals(settingsFromRow({ stripe_payments: false }).stripe_payments, false);
   // Mesita Prepayments (MESITA-3597) reads off with no row and from anything but true.
   assertEquals(off.prepayments, false);
   assertEquals(settingsFromRow({ prepayments: "yes" }).prepayments, false);
   assertEquals(isPaymentKey("prepayments"), true);
-  assertEquals(Object.entries(off).filter(([k]) => !k.endsWith("_bps")).every(([, v]) => v === false), true);
+  assertEquals(Object.entries(off).filter(([k]) => !k.endsWith("_bps") && k !== "stripe_payments").every(([, v]) => v === false), true);
   // The rates read Off (null) with no row, and from anything but a positive integer.
   assertEquals(off.card_cashback_bps, null);
   assertEquals(settingsFromRow({ card_cashback_bps: 700 }).card_cashback_bps, 700);
@@ -136,6 +140,13 @@ Deno.test("list rows (MESITA-3408): the mark lights where a guest can pay by car
   assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: true, house_credits: true, card_cashback_bps: 500 }, true).cashback, true);
   // Without House Credits no new credit is born: no cashback slide (MESITA-3589).
   assertEquals(listRowMoney({ ...settingsFromRow(null), card_cashback_bps: 500 }, true).cashback, false);
+  // Accept Stripe Payments Off (MESITA-3946): no card pay, no voucher, no mark.
+  assertEquals(
+    listRowMoney({ ...settingsFromRow(null), stripe_payments: false, house_credits: true, prepayments: true, pay_cards: true, voucher_200: true, card_cashback_bps: 500 }, true),
+    { sell: [], mesita_pay: false, cashback: false, card_cashback_bps: 0 },
+  );
+  assertEquals(cardsAccepted({ pay_cards: true, stripe_payments: false }), false);
+  assertEquals(cardsAccepted({ pay_cards: true }), true);
 });
 
 // The "Stripe" general state and the guest Pay mark read one rule

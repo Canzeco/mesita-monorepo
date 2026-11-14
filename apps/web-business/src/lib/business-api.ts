@@ -423,6 +423,8 @@ export async function decideVerification(
  *  Payments, Mesita Payments (`pay_cards`), Mesita Prepayments
  *  (`prepayments`, MESITA-3597) and its six vouchers. */
 export type PaymentKey =
+  /** MESITA-3946: Accept Stripe Payments, over App Payments and App Prepayments. */
+  | "stripe_payments"
   | "house_credits"
   | "cash_payments"
   | "pay_cards"
@@ -463,6 +465,8 @@ export type PlacePayments = {
   contract?: HouseCreditsContract;
   /** Whether the place code is set: the waiter's charge needs it (MESITA-3306). */
   code_set: boolean;
+  /** MESITA-3946: credit guests hold here now; null when the read failed. */
+  credits_balance: { available_cents: number; pending_cents: number } | null;
   /** Mesita's fee invoice (MESITA-3461): hold = card payments are off until
    *  it is paid; invoice = the one to pay, on Stripe's page. */
   fee: PlaceFee;
@@ -488,6 +492,12 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
       // MESITA-3599: dropped here, every reload read the signed agreement as "Not signed".
       contract: r.data.contract,
       code_set: r.data.code_set === true,
+      credits_balance: r.data.credits_balance
+        ? {
+            available_cents: Number(r.data.credits_balance.available_cents) || 0,
+            pending_cents: Number(r.data.credits_balance.pending_cents) || 0,
+          }
+        : null,
       fee: { hold: r.data.fee?.hold === true, invoice: r.data.fee?.invoice ?? null },
     },
   };

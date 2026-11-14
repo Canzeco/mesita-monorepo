@@ -71,6 +71,23 @@ serveJson("business-web-get-payments", async (req) => {
     .order("created_at", { ascending: true })
     .limit(10);
   if (feeErr) return json({ ok: false, error: `place_fee_invoices: ${feeErr.message}` }, 500);
+  // CREDITS BALANCE (MESITA-3946, Pato: "Credits Balance"): the credit guests
+  // hold here now, Available + Pending, the sum Operations › Money shows. An
+  // empty window keeps place_money_summary to that sum; a failed read is null.
+  const now = new Date().toISOString();
+  const { data: summary, error: sumErr } = await admin.rpc("place_money_summary", {
+    p_place_id: placeId,
+    p_from: now,
+    p_to: now,
+    p_livemode: paymentsLivemode(),
+    p_before: null,
+    p_before_id: null,
+  });
+  if (sumErr) console.error(`[business-web-get-payments] place_money_summary: ${sumErr.message}`);
+  const sum = (summary ?? null) as { available_cents?: unknown; pending_cents?: unknown } | null;
+  const credits_balance = sumErr || !sum
+    ? null
+    : { available_cents: Number(sum.available_cents ?? 0), pending_cents: Number(sum.pending_cents ?? 0) };
   // No Staff QR any more (MESITA-3734): the waiter code is the one staff key.
   const hold = account?.livemode === paymentsLivemode() && account?.fee_hold === true;
   return json({
@@ -82,6 +99,7 @@ serveJson("business-web-get-payments", async (req) => {
     currency: String(placeRow?.currency ?? "MXN").toUpperCase(),
     contract: { ...contract, text: HOUSE_CREDITS_TERMS_TEXT },
     code_set: !!code,
+    credits_balance,
     fee: feeView(hold, (invoices ?? []) as FeeInvoiceRow[], Date.now()),
   });
 });

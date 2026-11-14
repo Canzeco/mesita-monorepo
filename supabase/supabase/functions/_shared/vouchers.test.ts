@@ -30,6 +30,7 @@ const REQUEST = "00000000-0000-4000-8000-0000000c3303";
 const ROW = "00000000-0000-4000-8000-0000000d3303";
 
 const ALL_ON: PaymentSettings = {
+  stripe_payments: true,
   pay_cards: true,
   prepayments: true,
   house_credits: true,
