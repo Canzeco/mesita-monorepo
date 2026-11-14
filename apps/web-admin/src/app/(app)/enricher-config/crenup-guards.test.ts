@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   clampFunnel,
+  savePayload,
   type CrenupSettings,
 } from "./crenup-guards";
 
@@ -77,5 +78,80 @@ describe("clampFunnel", () => {
       analyzeInstagramImages: 30,
     });
     expect(out.analyzeInstagramImages).toBe(8);
+  });
+});
+
+// A live enrichment_config write (MESITA-3939): the exact keys and values one
+// Save sends, written out by hand. Every value is distinct, so a swapped
+// mapping fails; the key list is exact, so a model tier can never leak in.
+describe("savePayload", () => {
+  const s: CrenupSettings = {
+    gatherGoogleImages: 7,
+    gatherInstagramDepth: 21,
+    gatherReviews: 99,
+    imageVisionEnabled: false,
+    saveImagesToStorage: false,
+    saveTotalImages: 6,
+    analyzeGoogleImages: 5,
+    analyzeInstagramImages: 4,
+    imageAnalysisPrompt: "analyse",
+    imageSortingPrompt: "sort",
+    synthesisQuality: "standard",
+    visionQuality: "standard",
+    perplexityPreset: "deep-research",
+    discoverWebsiteN: 1,
+    discoverInstagramN: 2,
+    discoverFacebookN: 3,
+    discoverOpentableN: 8,
+    discoverUbereatsN: 9,
+    requestThreshold: 11,
+    createOnOpenConsumer: false,
+    createOnOpenAdmin: true,
+    consumerCreatesPerDay: 123,
+    updateEveryViews: 12,
+    reviewsUpdateEveryViews: 13,
+    updateFirstAfterViews: 14,
+    reviewsUpdateFirstAfterViews: 15,
+    enrichEveryViews: 16,
+  };
+
+  it("sends exactly these 25 keys and values", () => {
+    expect(savePayload(s)).toEqual({
+      gatherGoogleImages: 7,
+      gatherInstagramDepth: 21,
+      gatherInstagramPosts: 4,
+      gatherReviews: 99,
+      imageVisionEnabled: false,
+      saveImagesToStorage: false,
+      saveTotalImages: 6,
+      analyzeGoogleImages: 5,
+      analyzeInstagramImages: 4,
+      imageAnalysisPrompt: "analyse",
+      imageSortingPrompt: "sort",
+      discoverWebsiteN: 1,
+      discoverInstagramN: 2,
+      discoverFacebookN: 3,
+      discoverOpentableN: 8,
+      discoverUbereatsN: 9,
+      requestThreshold: 11,
+      createOnOpenConsumer: false,
+      createOnOpenAdmin: true,
+      consumerCreatesPerDay: 123,
+      updateEveryViews: 12,
+      reviewsUpdateEveryViews: 13,
+      updateFirstAfterViews: 14,
+      reviewsUpdateFirstAfterViews: 15,
+      enrichEveryViews: 16,
+    });
+    expect(Object.keys(savePayload(s)).sort()).toEqual([
+      "analyzeGoogleImages", "analyzeInstagramImages", "consumerCreatesPerDay",
+      "createOnOpenAdmin", "createOnOpenConsumer", "discoverFacebookN",
+      "discoverInstagramN", "discoverOpentableN", "discoverUbereatsN",
+      "discoverWebsiteN", "enrichEveryViews", "gatherGoogleImages",
+      "gatherInstagramDepth", "gatherInstagramPosts", "gatherReviews",
+      "imageAnalysisPrompt", "imageSortingPrompt", "imageVisionEnabled",
+      "requestThreshold", "reviewsUpdateEveryViews", "reviewsUpdateFirstAfterViews",
+      "saveImagesToStorage", "saveTotalImages", "updateEveryViews", "updateFirstAfterViews",
+    ]);
   });
 });

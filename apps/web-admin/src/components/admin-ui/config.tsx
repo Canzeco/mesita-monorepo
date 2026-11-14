@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 
 // Shared admin config kit — `@/components/admin-ui/config`.
@@ -95,13 +95,36 @@ export function Collapsible({
   summary,
   children,
   defaultOpen = false,
+  id,
 }: {
   summary: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  /** A link target (MESITA-3939): a URL hash naming it opens it, on first
+   *  load and on hashchange, then brings it into view. Without an id nothing
+   *  listens, so every other collapsible stays as it was. */
+  id?: string;
 }) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (!id) return;
+    const sync = () => {
+      const el = ref.current;
+      if (!el || el.open || decodeURIComponent(location.hash) !== `#${id}`) return;
+      el.open = true;
+      requestAnimationFrame(() => el.scrollIntoView({ block: "start" }));
+    };
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, [id]);
   return (
-    <details className="group mt-5" open={defaultOpen || undefined}>
+    <details
+      ref={ref}
+      id={id}
+      className="group mt-5 scroll-mt-16"
+      open={defaultOpen || undefined}
+    >
       <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
         <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
         {summary}

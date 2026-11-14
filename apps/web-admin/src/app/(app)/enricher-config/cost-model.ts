@@ -130,6 +130,9 @@ type CostParams = {
   synth?: boolean;
 };
 
+/** Reviews Enrich and Deep Update pull, always (no knob reads gatherReviews). */
+export const REVIEWS_FIXED = 100;
+
 export type CostEstimate = {
   lines: CostLine[];
   active: CostLine[];
@@ -334,7 +337,9 @@ function costParamsFromSettings(s: CrenupSettings): CostParams {
       opentable: s.discoverOpentableN,
       ubereats: s.discoverUbereatsN,
     },
-    reviews: s.gatherReviews,
+    // Fixed (MESITA-3939): Enrich and Deep Update pull the 100 newest
+    // reviews; nothing reads gatherReviews, and Updation says "fixed".
+    reviews: REVIEWS_FIXED,
     social: true,
     serp: true,
     synth: true,

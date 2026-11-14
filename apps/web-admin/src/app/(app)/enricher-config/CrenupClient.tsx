@@ -3,30 +3,21 @@
 import { useMemo, useState, useTransition } from "react";
 import {
   Gauge,
-  Globe,
-  ListOrdered,
-  MessageSquareQuote,
-  RefreshCw,
-  ShoppingBag,
   Sparkles,
-  Star,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { Facebook, Instagram } from "@/components/shared/SocialIcons";
 import {
-  Collapsible,
   NumberField,
   SectionCard,
   Switch,
-  TextAreaField,
 } from "@/components/admin-ui/config";
-import { chipsFor, flowTagFor } from "./crenup-steps";
+import { chipsFor } from "./crenup-steps";
 import {
   computeCreateCost,
   computeEnrichTickCost,
 } from "./cost-model";
-import { ImageFunnel } from "./ImageFunnel";
+import { UpdationView } from "./UpdationView";
 import { DISCOVERY_MAP_HREF } from "@/app/(app)/filters-config/nav";
 import {
   updateAtlasConfig,
@@ -36,15 +27,11 @@ import {
   Fields,
   FlowEstimate,
   FlowPanel,
-  FunctionModule,
-  KnobElsewhere,
-  NoKnobs,
-  PromptDisclosure,
   Tag,
 } from "./blocks";
 import { CrenupSaveBar } from "./CrenupSaveBar";
 import { SectionStrip, type CrenupView } from "./SectionStrip";
-import { clampFunnel, type CrenupSettings } from "./crenup-guards";
+import { clampFunnel, savePayload, type CrenupSettings } from "./crenup-guards";
 import { MODELS_PARENT } from "../models-config/nav";
 import { UPRICH_PARENT } from "./nav";
 
@@ -53,12 +40,10 @@ const CREATE_BOX_HREF = "/manage-multiple#create";
 
 // THE CRENUP PAGES (MESITA-2083: two rail rows, two pages, one client).
 //   Creation    Models (a link to /models-config) · Create
-//   Enrichment  Enrich · Functions
+//   Updation    Fast Update · Deep Update · Deep Enrich (UpdationView.tsx, MESITA-3939)
 // Discovery-shaped. One Save for atlas_* on both. Search eligibility lives
 // on Discovery › Map. Creation had a third module, Verification, until
 // MESITA-2106: the MVP has no business app, so nobody proves ownership.
-
-const MAX_DISCOVERY_CANDIDATES = 10;
 
 
 /** One Create-on-open switch (MESITA-2298): the label, the hint, the toggle. */
@@ -86,58 +71,6 @@ function CreateOnOpenRow({
   );
 }
 
-/** "First after N views, then every M views" (MESITA-3934), with the
- *  schedule it makes, read from the same numbers the server uses. */
-function ViewCycle({
-  firstAfter,
-  every,
-  firstMin = 0,
-  firstMax = 1000,
-  onFirstAfter,
-  onEvery,
-  disabled,
-}: {
-  firstAfter: number;
-  every: number;
-  firstMin?: number;
-  firstMax?: number;
-  onFirstAfter: (v: number) => void;
-  onEvery: (v: number) => void;
-  disabled: boolean;
-}) {
-  const schedule = firstAfter < 1
-    ? "Off."
-    : every < 1
-      ? `Once, at view ${firstAfter}.`
-      : `At views ${firstAfter}, ${firstAfter + every}, ${firstAfter + every * 2}…`;
-  return (
-    <div className="mt-4">
-      <Fields>
-        <NumberField
-          icon={<Users className="text-muted-foreground h-4 w-4" />}
-          label="First after N views"
-          value={firstAfter}
-          min={firstMin}
-          max={firstMax}
-          onChange={onFirstAfter}
-          disabled={disabled}
-        />
-        <NumberField
-          label="Then every M views"
-          value={every}
-          min={0}
-          max={1000}
-          onChange={onEvery}
-          disabled={disabled}
-        />
-      </Fields>
-      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-        {schedule} Each guest counts once per place. 0 for every runs it once.
-      </p>
-    </div>
-  );
-}
-
 export function CrenupClient({
   view,
   initialSettings,
@@ -156,7 +89,6 @@ export function CrenupClient({
    */
   prompts: CrenupPrompt[];
 }) {
-  const promptFor = (key: string) => prompts.find((p) => p.key === key);
   const [settings, setSettings] = useState(initialSettings);
   const [savedSettings, setSavedSettings] = useState(initialSettings);
   const [settingsStamp, setSettingsStamp] = useState(settingsUpdatedAt);
@@ -182,33 +114,7 @@ export function CrenupClient({
     if (blocked) return;
     setError(null);
     startTransition(async () => {
-      const r = await updateAtlasConfig({
-        gatherGoogleImages: settings.gatherGoogleImages,
-        gatherInstagramDepth: settings.gatherInstagramDepth,
-        gatherInstagramPosts: settings.analyzeInstagramImages,
-        gatherReviews: settings.gatherReviews,
-        imageVisionEnabled: settings.imageVisionEnabled,
-        saveImagesToStorage: settings.saveImagesToStorage,
-        saveTotalImages: settings.saveTotalImages,
-        analyzeGoogleImages: settings.analyzeGoogleImages,
-        analyzeInstagramImages: settings.analyzeInstagramImages,
-        imageAnalysisPrompt: settings.imageAnalysisPrompt,
-        imageSortingPrompt: settings.imageSortingPrompt,
-        discoverWebsiteN: settings.discoverWebsiteN,
-        discoverInstagramN: settings.discoverInstagramN,
-        discoverFacebookN: settings.discoverFacebookN,
-        discoverOpentableN: settings.discoverOpentableN,
-        discoverUbereatsN: settings.discoverUbereatsN,
-        requestThreshold: settings.requestThreshold,
-        createOnOpenConsumer: settings.createOnOpenConsumer,
-        createOnOpenAdmin: settings.createOnOpenAdmin,
-        consumerCreatesPerDay: settings.consumerCreatesPerDay,
-        updateEveryViews: settings.updateEveryViews,
-        reviewsUpdateEveryViews: settings.reviewsUpdateEveryViews,
-        updateFirstAfterViews: settings.updateFirstAfterViews,
-        reviewsUpdateFirstAfterViews: settings.reviewsUpdateFirstAfterViews,
-        enrichEveryViews: settings.enrichEveryViews,
-      });
+      const r = await updateAtlasConfig(savePayload(settings));
       if (r.ok) {
         setSavedSettings(settings);
         setSettingsStamp(r.data.updatedAt);
@@ -294,7 +200,10 @@ export function CrenupClient({
                 },
               ]}
               // Functions lives on Updation, so Create's chips cross over.
-              steps={chipsFor("create", UPRICH_PARENT.href)}
+              steps={chipsFor("create", UPRICH_PARENT.href).map((c) =>
+                // Seed is Create's own step (MESITA-3939): it stays here.
+                c.number === 0 ? { ...c, href: "#s-create" } : c,
+              )}
               estimate={
                 <FlowEstimate
                   caption="Details + Description + Vectors. One place."
@@ -370,325 +279,14 @@ export function CrenupClient({
         )}
 
         {view === "uprich" && (
-        <>
-        <div id="s-fast-update" className="scroll-mt-16">
-          <SectionCard
-            icon={<RefreshCw className="text-secondary h-4 w-4" />}
-            title="Fast Update"
-            subtitle="Every place, owned or not. Google's facts only."
-            state={<Tag>$ · Google</Tag>}
-          >
-            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              Hours, phone, address, rating and review count, open or closed, Google&apos;s tags and
-              types. It keeps a field a person corrected, never blanks a filled field, and never
-              writes photos, reviews or Mesita&apos;s own text.
-            </p>
-            <ViewCycle
-              firstAfter={settings.updateFirstAfterViews}
-              every={settings.updateEveryViews}
-              onFirstAfter={(v) => patch({ updateFirstAfterViews: v })}
-              onEvery={(v) => patch({ updateEveryViews: v })}
-              disabled={pending || !!blocked}
-            />
-          </SectionCard>
-        </div>
-
-        <div id="s-deep-update" className="scroll-mt-16">
-          <SectionCard
-            icon={<RefreshCw className="text-secondary h-4 w-4" />}
-            title="Deep Update"
-            subtitle="Every place, owned or not. Reviews and followers."
-            state={<Tag>$ · Apify</Tag>}
-          >
-            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              Google&apos;s stars, up to 100 Google reviews, and the Instagram and Facebook
-              followers. Each run is a paid scrape, so keep it well above Fast Update.
-            </p>
-            <ViewCycle
-              firstAfter={settings.reviewsUpdateFirstAfterViews}
-              every={settings.reviewsUpdateEveryViews}
-              onFirstAfter={(v) => patch({ reviewsUpdateFirstAfterViews: v })}
-              onEvery={(v) => patch({ reviewsUpdateEveryViews: v })}
-              disabled={pending || !!blocked}
-            />
-          </SectionCard>
-        </div>
-
-        <div id="s-enrich" className="scroll-mt-16">
-          <SectionCard
-            icon={<RefreshCw className="text-secondary h-4 w-4" />}
-            title="Deep Enrich"
-            subtitle="Places with no owner only. One Render task per place: steps 1–8, research, links, photos, description."
-            state={<Tag>$$ · Apify · Firecrawl · Perplexity</Tag>}
-          >
-            <FlowPanel
-              facts={[
-                {
-                  term: "Starts",
-                  detail:
-                    "N different guests open the profile (the knob below), or admin Enrich. A wrong-number call refetches Google.",
-                },
-                {
-                  term: "Stops",
-                  detail:
-                    "Google failing, or a listing Google calls permanently closed. Any other failed step is stamped and the profile still lands; absence still reaches 8.",
-                },
-              ]}
-              steps={chipsFor("enrich")}
-              estimate={
-                <FlowEstimate
-                  caption="Knobs below. One place."
-                  estimate={enrichCost}
-                />
-              }
-            />
-            {/* AUTO-ENRICH LIVES HERE (Pato, MESITA-2653), first after N views;
-                then every M views since MESITA-3934. A place with an owner is
-                never enriched. */}
-            <ViewCycle
-              firstAfter={settings.requestThreshold}
-              every={settings.enrichEveryViews}
-              firstMin={1}
-              firstMax={100}
-              onFirstAfter={(v) => patch({ requestThreshold: v })}
-              onEvery={(v) => patch({ enrichEveryViews: v })}
-              disabled={pending || !!blocked}
-            />
-          </SectionCard>
-        </div>
-
-        <div id="s-functions" className="scroll-mt-16">
-          <SectionCard
-            icon={<ListOrdered className="text-secondary h-4 w-4" />}
-            title="Functions"
-            subtitle="One ladder: Seed at 0, then 1–8."
-          >
-            <div className="border-border mt-4 overflow-hidden rounded-xl border">
-              <FunctionModule
-                id="f-seed"
-                index="0"
-                name="Seed"
-                flows={flowTagFor("seed")}
-                blurb="Dedupe on the Google Place ID and mint the paired rows. The row existing is the seed."
-                knobs="no knobs"
-              >
-                <NoKnobs>
-                  No knobs. The row existing is the seed. It is never stamped.
-                </NoKnobs>
-              </FunctionModule>
-
-              <FunctionModule
-                id="f-details"
-                index="1 · $"
-                flows={flowTagFor("details")}
-                name="Details"
-                blurb="Hours, address, geo, timezone, price, phone, and the name."
-                knobs="no knobs"
-              >
-                <NoKnobs>
-                  No knobs. Facts Google states. The Mesita <b>name</b> is the
-                  Description step&apos;s and the Place editor&apos;s, never this
-                  step&apos;s.
-                </NoKnobs>
-              </FunctionModule>
-              <FunctionModule
-                id="f-serp"
-                index="2 · $"
-                flows={flowTagFor("serp")}
-                name="Serp"
-                blurb="Editorial read Links spends to recognise the place. Never a fact source."
-                knobs="in Models"
-              >
-                <KnobElsewhere>
-                  The <b>Search model</b> in Models. The Resolver at Links reads the
-                  same setting.
-                </KnobElsewhere>
-                <PromptDisclosure
-                  prompt={promptFor("scout")}
-                  preset={settings.perplexityPreset}
-                />
-              </FunctionModule>
-
-              <FunctionModule
-                id="f-links"
-                index="3 · $$"
-                flows={flowTagFor("links")}
-                name="Links"
-                blurb="Firecrawl candidates, the Resolver picks one or none. Seed first, discover second."
-                knobs="5 knobs"
-                defaultOpen
-              >
-                <Fields>
-                  <NumberField
-                    icon={<Globe className="text-muted-foreground h-4 w-4" />}
-                    label="Website candidates"
-                    value={settings.discoverWebsiteN}
-                    min={0}
-                    max={MAX_DISCOVERY_CANDIDATES}
-                    onChange={(v) => patch({ discoverWebsiteN: v })}
-                    disabled={pending}
-                  />
-                  <NumberField
-                    icon={
-                      <Instagram className="text-muted-foreground h-4 w-4" />
-                    }
-                    label="Instagram candidates"
-                    value={settings.discoverInstagramN}
-                    min={0}
-                    max={MAX_DISCOVERY_CANDIDATES}
-                    onChange={(v) => patch({ discoverInstagramN: v })}
-                    disabled={pending}
-                  />
-                  <NumberField
-                    icon={
-                      <Facebook className="text-muted-foreground h-4 w-4" />
-                    }
-                    label="Facebook candidates"
-                    value={settings.discoverFacebookN}
-                    min={0}
-                    max={MAX_DISCOVERY_CANDIDATES}
-                    onChange={(v) => patch({ discoverFacebookN: v })}
-                    disabled={pending}
-                  />
-                  <NumberField
-                    icon={<Star className="text-muted-foreground h-4 w-4" />}
-                    label="OpenTable candidates"
-                    value={settings.discoverOpentableN}
-                    min={0}
-                    max={MAX_DISCOVERY_CANDIDATES}
-                    onChange={(v) => patch({ discoverOpentableN: v })}
-                    disabled={pending}
-                  />
-                  <NumberField
-                    icon={
-                      <ShoppingBag className="text-muted-foreground h-4 w-4" />
-                    }
-                    label="Uber Eats candidates"
-                    value={settings.discoverUbereatsN}
-                    min={0}
-                    max={MAX_DISCOVERY_CANDIDATES}
-                    onChange={(v) => patch({ discoverUbereatsN: v })}
-                    disabled={pending}
-                  />
-                </Fields>
-                <p className="text-muted-foreground mt-3 text-xs">
-                  0 turns a source off. Google-seeded channels skip discovery.
-                </p>
-                <PromptDisclosure
-                  prompt={promptFor("resolver")}
-                  preset={settings.perplexityPreset}
-                />
-              </FunctionModule>
-
-              <FunctionModule
-                id="f-social"
-                index="4 · $$"
-                flows={flowTagFor("social")}
-                name="Social"
-                blurb="Instagram and Facebook profiles. Does not collect posts."
-                knobs="no knobs"
-              >
-                <NoKnobs>
-                  No knobs. Posts are an Images job.
-                </NoKnobs>
-              </FunctionModule>
-
-              <FunctionModule
-                id="f-reviews"
-                index="5 · $$"
-                flows={flowTagFor("reviews")}
-                name="Reviews"
-                blurb="Newest Google reviews. Description grounds the Presentation on these."
-                knobs="1 knob"
-              >
-                <Fields>
-                  <NumberField
-                    icon={
-                      <MessageSquareQuote className="text-muted-foreground h-4 w-4" />
-                    }
-                    label="Google reviews to pull"
-                    value={settings.gatherReviews}
-                    min={0}
-                    max={100}
-                    onChange={(v) => patch({ gatherReviews: v })}
-                    disabled={pending}
-                  />
-                </Fields>
-                <p className="text-muted-foreground mt-3 text-xs">
-                  0–100. Places API itself returns 5.
-                </p>
-              </FunctionModule>
-
-              <FunctionModule
-                id="f-images"
-                index="6 · $$"
-                flows={flowTagFor("images")}
-                name="Images"
-                blurb="Instagram: last X newest, rank by likes, vision top Y. Google is already ranked."
-                knobs="2 funnels"
-                defaultOpen
-              >
-                <ImageFunnel
-                  settings={settings}
-                  pending={pending}
-                  onPatch={patch}
-                />
-                <Collapsible summary="Analysis & sorting prompts">
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <TextAreaField
-                      label="Analysis prompt"
-                      value={settings.imageAnalysisPrompt}
-                      onChange={(v) => patch({ imageAnalysisPrompt: v })}
-                      disabled={pending}
-                    />
-                    <TextAreaField
-                      label="Sorting prompt"
-                      value={settings.imageSortingPrompt}
-                      onChange={(v) => patch({ imageSortingPrompt: v })}
-                      disabled={pending}
-                    />
-                  </div>
-                </Collapsible>
-                <p className="text-muted-foreground mt-3 text-xs">
-                  Lowering last/take pulls vision and the gallery with it. The
-                  model is in Models.
-                </p>
-              </FunctionModule>
-
-              <FunctionModule
-                id="f-description"
-                index="7 · $"
-                flows={flowTagFor("description")}
-                name="Description"
-                blurb="Family · Category · Tags · Presentation · Reservations Enabled · Mesita Name · Semantic Summary."
-                knobs="in Models"
-              >
-                <KnobElsewhere>
-                  The <b>Text model</b> in Models. Same setting ranks images.
-                </KnobElsewhere>
-                <PromptDisclosure prompt={promptFor("presentation")} />
-                <PromptDisclosure prompt={promptFor("category")} />
-                <PromptDisclosure prompt={promptFor("family")} />
-              </FunctionModule>
-              <FunctionModule
-                id="f-embedding"
-                index="8 · $"
-                flows={flowTagFor("embedding")}
-                name="Vectors"
-                blurb="Semantic Summary Embedding. One vector. Closes Enrich at 8."
-                knobs="locked"
-              >
-                <NoKnobs>
-                  Locked to <b>text-embedding-3-small</b>. It only embeds what
-                  Description wrote — never synthesizes text. Swapping the
-                  model re-embeds the catalog.
-                </NoKnobs>
-              </FunctionModule>
-            </div>
-          </SectionCard>
-        </div>
-
-        </>
+          <UpdationView
+            settings={settings}
+            patch={patch}
+            pending={pending}
+            blocked={!!blocked}
+            prompts={prompts}
+            enrichCost={enrichCost}
+          />
         )}
       </div>
 

@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
 import { Collapsible } from "@/components/admin-ui/config";
 import {
   fmtTime,
@@ -134,81 +132,6 @@ export function FlowEstimate({
         {caption} Published rates, not a bill.
       </p>
     </div>
-  );
-}
-
-/**
- * One function of the ladder, as a disclosure row. Shared functions print
- * once. Create and Enrich name the run shape on their own cards.
- */
-export function FunctionModule({
-  id,
-  index,
-  name,
-  flows,
-  blurb,
-  knobs,
-  defaultOpen = false,
-  children,
-}: {
-  id: string;
-  index: string;
-  name: string;
-  flows?: string;
-  blurb: string;
-  knobs: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  useEffect(() => {
-    const sync = () => {
-      if (decodeURIComponent(location.hash) === `#${id}`) setOpen(true);
-    };
-    sync();
-    window.addEventListener("hashchange", sync);
-    return () => window.removeEventListener("hashchange", sync);
-  }, [id]);
-
-  return (
-    <details
-      id={id}
-      className="border-border group/fn scroll-mt-16 border-t first:border-t-0"
-      open={open}
-      onToggle={(e) => setOpen(e.currentTarget.open)}
-    >
-      <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-start gap-3 py-3.5 [&::-webkit-details-marker]:hidden">
-        <ChevronRight
-          aria-hidden
-          className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0 transition-transform group-open/fn:rotate-90"
-        />
-        <span className="text-muted-foreground type-meta mt-1 w-16 shrink-0 font-bold tracking-wider sm:w-20">
-          {index}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold">{name}</span>
-            {flows ? <Tag>{flows}</Tag> : null}
-          </span>
-          <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
-            {blurb}
-          </span>
-        </span>
-        <span className="text-muted-foreground type-label mt-1 hidden shrink-0 sm:inline">
-          {knobs}
-        </span>
-      </summary>
-      <div className="pb-5 pl-7 sm:pl-[7.25rem]">{children}</div>
-    </details>
-  );
-}
-
-/** The one-line answer a knobless function owes the operator who came looking. */
-export function NoKnobs({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-muted-foreground m-0 max-w-2xl type-body leading-relaxed">
-      {children}
-    </p>
   );
 }
 
