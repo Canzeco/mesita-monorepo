@@ -503,6 +503,7 @@ export function GuestPayScreen({
             on={way === "card"}
             off={appWhy}
             icon={<Smartphone />}
+            tone="bg-pink-gradient text-white"
             title="App"
             line="Card"
             back={(place.cashback_bps ?? 0) > 0 ? `${place.cashback_bps / 100}% back` : null}
@@ -512,6 +513,7 @@ export function GuestPayScreen({
             on={way === "cash"}
             off={cashWhy}
             icon={<Banknote />}
+            tone="bg-green-400 text-neutral-950"
             title="Cash"
             line="Cash or their terminal"
             back={(place.outside_bps ?? 0) > 0 ? `${(place.outside_bps ?? 0) / 100}% back` : null}
@@ -637,7 +639,7 @@ export function GuestPayScreen({
     <>
       <PlaceBar place={place} onClose={onChoosePlace} />
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
-        <span className="bg-muted flex h-28 w-28 items-center justify-center rounded-full" aria-hidden>
+        <span className="flex h-28 w-28 items-center justify-center rounded-full bg-green-400 text-neutral-950" aria-hidden>
           <Banknote className="h-14 w-14" />
         </span>
         <p className="mt-6 text-[2.5rem] leading-tight font-semibold tabular-nums">{m(dueCents)}</p>
@@ -693,6 +695,7 @@ function MethodTile({
   on,
   off,
   icon,
+  tone,
   title,
   line,
   back,
@@ -701,6 +704,9 @@ function MethodTile({
   on: boolean;
   off: string | null;
   icon: React.ReactNode;
+  /** The way's own colour (MESITA-3877): App the brand pink, Cash the
+   *  Wallet's Cash green. Grey when the place can't take it. */
+  tone: string;
   title: string;
   line: string;
   back: string | null;
@@ -719,7 +725,7 @@ function MethodTile({
       )}
       data-guest-method={title.toLowerCase()}
     >
-      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full [&>svg]:h-6 [&>svg]:w-6", off ? "bg-card" : "bg-muted")} aria-hidden>
+      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full [&>svg]:h-6 [&>svg]:w-6", off ? "bg-card" : tone)} aria-hidden>
         {icon}
       </span>
       <span className="min-w-0 flex-1">
