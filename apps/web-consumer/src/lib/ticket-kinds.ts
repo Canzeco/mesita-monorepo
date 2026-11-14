@@ -12,7 +12,7 @@
 // Gifts-Out in the tickets ... you need to decide like in or out"): a gift
 // is one or the other. In: credit a friend sent you. Out: credit you sent,
 // a link you took back, a link nobody took yet. The old /me/tickets/gifts
-// address lands on Gifts In (legacy-redirects.ts).
+// address lands on Gifts-In (legacy-redirects.ts).
 export const TICKET_KINDS = [
   "visits",
   "vouchers",

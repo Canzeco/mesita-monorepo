@@ -108,7 +108,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: ticketsHref("refunds"),
     permanent: true,
   },
-  // Gifts split into Gifts In and Gifts Out (MESITA-3941).
+  // Gifts split into Gifts-In and Gifts-Out (MESITA-3941).
   {
     source: "/me/tickets/gifts",
     destination: ticketsHref("gifts-in"),

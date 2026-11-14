@@ -43,7 +43,7 @@ const INTRO: Record<IntroKind, { Icon: LucideIcon; title: string; text: string }
     title: "Credit you prepaid at a place",
     text: "Buy credit at a place, often with a bonus, and spend it there later with Pay. It pays the bill, never the tip.",
   },
-  // Gifts In and Gifts Out (MESITA-3941).
+  // Gifts-In and Gifts-Out (MESITA-3941).
   "gifts-in": {
     Icon: Gift,
     title: "Credit a friend sent you",
