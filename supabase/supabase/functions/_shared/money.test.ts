@@ -23,19 +23,19 @@ Deno.test("the catalog's bonuses and fees, in centavos", () => {
   assertEquals(voucherBonusCents("voucher_1000", "usd"), 20_00);
   assertEquals(voucherPriceCents("voucher_200", "usd"), 10_00);
   assertEquals(voucherPriceCents("voucher_1000", "usd"), 100_00);
-  // MESITA-3923: all ten sell; ¥1,000 is 100000 in the ledger's hundredths.
+  // MESITA-3933: four sell — MXN, USD, CAD, EUR.
   assertEquals(voucherPriceCents("voucher_200", "eur"), 10_00);
-  assertEquals(voucherPriceCents("voucher_200", "jpy"), 1_000_00);
-  assertEquals(voucherPriceCents("voucher_1000", "cop"), 100_000_00);
-  assertEquals(voucherPriceCents("voucher_200", "xxx"), null);
-  assertEquals(Object.keys(VOUCHER_PRICE_CENTS).length, 10);
+  assertEquals(voucherPriceCents("voucher_1000", "cad"), 100_00);
+  assertEquals(voucherPriceCents("voucher_200", "jpy"), null);
+  assertEquals(voucherPriceCents("voucher_200", "gbp"), null);
+  assertEquals(Object.keys(VOUCHER_PRICE_CENTS).sort(), ["cad", "eur", "mxn", "usd"]);
   // MESITA-3919: every selling currency is on the ten-currency list at the same Small, Big = 10×.
   for (const cur of Object.keys(VOUCHER_PRICE_CENTS)) {
     const row = VOUCHER_CURRENCY_LIST.find((r) => r.code === cur.toUpperCase());
     assertEquals(row?.small, (voucherPriceCents("voucher_200", cur) ?? 0) / 100);
     assertEquals(voucherPriceCents("voucher_1000", cur), (voucherPriceCents("voucher_200", cur) ?? 0) * 10);
   }
-  assertEquals(VOUCHER_CURRENCY_LIST.length, 10);
+  assertEquals(VOUCHER_CURRENCY_LIST.length, 4);
 });
 
 Deno.test("Stripe gets yen and Chilean pesos in whole units; the ledger keeps hundredths (MESITA-3923)", () => {
