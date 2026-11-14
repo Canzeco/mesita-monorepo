@@ -18,7 +18,7 @@ describe("Me › Plan (MESITA-3870)", () => {
 
   it("prices Pro at $1 a month and offers no Upgrade before the plan is known", () => {
     expect(text(html).match(/\$\s?\d+(\.\d+)?/g)).toEqual(["$1"]);
-    expect(text(html)).toContain("$1 a month");
+    expect(text(html)).toContain("$1 USD a month");
     expect(text(html)).not.toMatch(/MX\$/);
     // The header's back arrow is the only button until the read lands.
     expect(html.match(/<button\b/g) ?? []).toHaveLength(1);

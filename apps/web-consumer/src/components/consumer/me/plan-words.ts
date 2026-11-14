@@ -34,7 +34,9 @@ export function dollars(cents: number): string {
     : `$${(cents / 100).toFixed(2)}`;
 }
 
-export const PRO_PRICE_LINE = `${dollars(PRO_PRICE_CENTS)} a month`;
+// The currency is named (MESITA-3887, Pato: "mention usd"): every other
+// amount in the app is pesos ("$1,000MX"), so a bare "$1" read as pesos.
+export const PRO_PRICE_LINE = `${dollars(PRO_PRICE_CENTS)} USD a month`;
 
 export const PLAN_ROWS: Record<GuestPlan, PlanRowWords> = {
   free: {
