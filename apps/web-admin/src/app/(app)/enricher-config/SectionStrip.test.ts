@@ -11,8 +11,7 @@ describe("Creation's Models section is a link, not a copy (MESITA-2126)", () => 
     expect(client).toContain('href={MODELS_PARENT.href}');
     expect(client).not.toContain("QUALITY_LABEL");
     expect(client).not.toContain("QualityPicker");
-    expect(client).not.toContain("synthesisQuality: settings.synthesisQuality");
-    expect(client).not.toContain("visionQuality: settings.visionQuality");
-    expect(client).not.toContain("perplexityPreset: settings.perplexityPreset");
+    // That Save never sends a model tier is pinned by savePayload's exact key
+    // list (crenup-guards.test.ts, MESITA-3939).
   });
 });

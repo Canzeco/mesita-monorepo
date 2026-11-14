@@ -76,3 +76,39 @@ export function clampFunnel(s: CrenupSettings): CrenupSettings {
     requestThreshold: clampN(s.requestThreshold, 1, 100),
   };
 }
+
+/**
+ * What one Save sends (MESITA-3939). Pure, so its exact keys are pinned by a
+ * test: a live enrichment_config write. Model tiers (synthesisQuality,
+ * visionQuality, perplexityPreset) are Models' and never sent from here.
+ * `gatherInstagramPosts` mirrors the analyzed-Instagram count, as before.
+ */
+export function savePayload(s: CrenupSettings) {
+  return {
+    gatherGoogleImages: s.gatherGoogleImages,
+    gatherInstagramDepth: s.gatherInstagramDepth,
+    gatherInstagramPosts: s.analyzeInstagramImages,
+    gatherReviews: s.gatherReviews,
+    imageVisionEnabled: s.imageVisionEnabled,
+    saveImagesToStorage: s.saveImagesToStorage,
+    saveTotalImages: s.saveTotalImages,
+    analyzeGoogleImages: s.analyzeGoogleImages,
+    analyzeInstagramImages: s.analyzeInstagramImages,
+    imageAnalysisPrompt: s.imageAnalysisPrompt,
+    imageSortingPrompt: s.imageSortingPrompt,
+    discoverWebsiteN: s.discoverWebsiteN,
+    discoverInstagramN: s.discoverInstagramN,
+    discoverFacebookN: s.discoverFacebookN,
+    discoverOpentableN: s.discoverOpentableN,
+    discoverUbereatsN: s.discoverUbereatsN,
+    requestThreshold: s.requestThreshold,
+    createOnOpenConsumer: s.createOnOpenConsumer,
+    createOnOpenAdmin: s.createOnOpenAdmin,
+    consumerCreatesPerDay: s.consumerCreatesPerDay,
+    updateEveryViews: s.updateEveryViews,
+    reviewsUpdateEveryViews: s.reviewsUpdateEveryViews,
+    updateFirstAfterViews: s.updateFirstAfterViews,
+    reviewsUpdateFirstAfterViews: s.reviewsUpdateFirstAfterViews,
+    enrichEveryViews: s.enrichEveryViews,
+  };
+}

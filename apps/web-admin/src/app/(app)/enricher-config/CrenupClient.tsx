@@ -44,7 +44,7 @@ import {
 } from "./blocks";
 import { CrenupSaveBar } from "./CrenupSaveBar";
 import { SectionStrip, type CrenupView } from "./SectionStrip";
-import { clampFunnel, type CrenupSettings } from "./crenup-guards";
+import { clampFunnel, savePayload, type CrenupSettings } from "./crenup-guards";
 import { MODELS_PARENT } from "../models-config/nav";
 import { UPRICH_PARENT } from "./nav";
 
@@ -182,33 +182,7 @@ export function CrenupClient({
     if (blocked) return;
     setError(null);
     startTransition(async () => {
-      const r = await updateAtlasConfig({
-        gatherGoogleImages: settings.gatherGoogleImages,
-        gatherInstagramDepth: settings.gatherInstagramDepth,
-        gatherInstagramPosts: settings.analyzeInstagramImages,
-        gatherReviews: settings.gatherReviews,
-        imageVisionEnabled: settings.imageVisionEnabled,
-        saveImagesToStorage: settings.saveImagesToStorage,
-        saveTotalImages: settings.saveTotalImages,
-        analyzeGoogleImages: settings.analyzeGoogleImages,
-        analyzeInstagramImages: settings.analyzeInstagramImages,
-        imageAnalysisPrompt: settings.imageAnalysisPrompt,
-        imageSortingPrompt: settings.imageSortingPrompt,
-        discoverWebsiteN: settings.discoverWebsiteN,
-        discoverInstagramN: settings.discoverInstagramN,
-        discoverFacebookN: settings.discoverFacebookN,
-        discoverOpentableN: settings.discoverOpentableN,
-        discoverUbereatsN: settings.discoverUbereatsN,
-        requestThreshold: settings.requestThreshold,
-        createOnOpenConsumer: settings.createOnOpenConsumer,
-        createOnOpenAdmin: settings.createOnOpenAdmin,
-        consumerCreatesPerDay: settings.consumerCreatesPerDay,
-        updateEveryViews: settings.updateEveryViews,
-        reviewsUpdateEveryViews: settings.reviewsUpdateEveryViews,
-        updateFirstAfterViews: settings.updateFirstAfterViews,
-        reviewsUpdateFirstAfterViews: settings.reviewsUpdateFirstAfterViews,
-        enrichEveryViews: settings.enrichEveryViews,
-      });
+      const r = await updateAtlasConfig(savePayload(settings));
       if (r.ok) {
         setSavedSettings(settings);
         setSettingsStamp(r.data.updatedAt);
