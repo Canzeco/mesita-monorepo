@@ -22,6 +22,8 @@ src/app/(app)/manage-multiple/WriteBox.tsx
 src/app/(app)/manage-single/FindResults.tsx
 src/app/(app)/manage-single/SinglePlaceClient.tsx
 src/app/(app)/models-config/ModelsConfigClient.tsx
+src/app/(app)/payments-config/credits-limit/CreditsLimitPanel.tsx
+src/app/(app)/payments-config/page.tsx
 src/app/(app)/reservations-config/NeedsAttentionCard.tsx
 src/app/(app)/reservations-config/TestingCard.tsx
 src/app/(app)/reservations-config/knobs.tsx
