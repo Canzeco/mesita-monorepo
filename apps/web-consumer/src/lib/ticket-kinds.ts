@@ -7,7 +7,19 @@
 // A PLAIN MODULE ON PURPOSE: next.config loads legacy-redirects.ts, which
 // imports this, so nothing here may import React or a client component.
 
-export const TICKET_KINDS = ["visits", "vouchers", "gifts", "refunds"] as const;
+//
+// GIFTS IN AND GIFTS OUT (Pato, 2026-11-14, MESITA-3941: "add Gifts-In and
+// Gifts-Out in the tickets ... you need to decide like in or out"): a gift
+// is one or the other. In: credit a friend sent you. Out: credit you sent,
+// a link you took back, a link nobody took yet. The old /me/tickets/gifts
+// address lands on Gifts In (legacy-redirects.ts).
+export const TICKET_KINDS = [
+  "visits",
+  "vouchers",
+  "gifts-in",
+  "gifts-out",
+  "refunds",
+] as const;
 
 export type TicketKind = (typeof TICKET_KINDS)[number];
 

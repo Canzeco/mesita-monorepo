@@ -207,6 +207,8 @@ export const CONSUMER_ROUTES = {
     // MCP is a Pro perk on Plan (MESITA-3771); Refunds is Tickets' chip.
     meConnector: "/me/connector",
     meRefunds: "/me/refunds",
+    // Tickets' Gifts chip split into Gifts In and Gifts Out (MESITA-3941).
+    meTicketsGifts: "/me/tickets/gifts",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
     // Diamond pair, Plan's Pro checkout, Visits, Metrics, Passport.
     // /me/plan (MESITA-2134) and /me/class (MESITA-2562) are live again.

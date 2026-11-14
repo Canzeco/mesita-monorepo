@@ -108,6 +108,12 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: ticketsHref("refunds"),
     permanent: true,
   },
+  // Gifts split into Gifts In and Gifts Out (MESITA-3941).
+  {
+    source: "/me/tickets/gifts",
+    destination: ticketsHref("gifts-in"),
+    permanent: true,
+  },
   // NO /activity ADDRESS REDIRECTS ANYWHERE (Pato, 2026-11-14, MESITA-3862:
   // "KILL THIS ATIVITY LINK"). Activity folded into Me (MESITA-3855); its
   // own addresses are gone, not forwarded. Never add one back here.

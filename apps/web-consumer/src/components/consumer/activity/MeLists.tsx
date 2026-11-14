@@ -21,7 +21,8 @@
 //               Visit's card (one meal, one ticket); any other payment is
 //               its own ticket
 //     Vouchers  credits bought, bonuses, Story vouchers waiting
-//     Gifts     credit sent, received, taken back, links not taken
+//     Gifts In  credit received (MESITA-3941)
+//     Gifts Out credit sent, taken back, links not taken (MESITA-3941)
 //     Refunds   purchases refunded (under Vouchers until MESITA-3855)
 //
 // Every source loads on mount and fails on its own; a chip's count shows only
@@ -35,6 +36,7 @@ import {
   CalendarCheck,
   Gift,
   HandCoins,
+  Send,
   Ticket,
   UtensilsCrossed,
   type LucideIcon,
@@ -243,10 +245,15 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
 
 // ─── The wallet: payments, vouchers, gifts ───────────────────────────────
 
-const GIFT_PILL: Record<string, [string, StatusTone]> = {
-  gift_out: ["Sent", "ink"],
-  gift_in: ["Received", "green"],
-  gift_back: ["Taken back", "ink"],
+// IN OR OUT (MESITA-3941): every gift entry lands on one side. Received is
+// In; Sent and Taken back (the sender undid a link nobody claimed) are Out.
+const GIFT_PILL: Record<
+  string,
+  [string, StatusTone, "gifts-in" | "gifts-out"]
+> = {
+  gift_out: ["Sent", "ink", "gifts-out"],
+  gift_in: ["Received", "green", "gifts-in"],
+  gift_back: ["Taken back", "ink", "gifts-out"],
 };
 const BOUGHT_KINDS = new Set(["prepay", "voucher"]);
 const sum = (es: WalletEntry[]) => es.reduce((n, e) => n + e.amount_cents, 0);
@@ -334,7 +341,7 @@ function walletRows(w: Wallet): Row[] {
       if (gift) {
         out.push({
           key: `g-${b.place_id}-${e.at}-${i}`,
-          type: "gifts",
+          type: gift[2],
           at: e.at,
           upcoming: false,
           place,
@@ -400,7 +407,7 @@ function walletRows(w: Wallet): Row[] {
     const p = places.get(l.place_id);
     out.push({
       key: `gl-${l.gift_id}`,
-      type: "gifts",
+      type: "gifts-out",
       at: l.created_at,
       upcoming: false,
       place: p?.name ?? "A Mesita place",
@@ -546,9 +553,14 @@ const EMPTY: Record<
     text: "Open a place that sells credit and buy some from its Vouchers tab.",
     action: { label: "Find a place", href: CONSUMER_ROUTES.search },
   },
-  gifts: {
-    title: "No gifts yet",
-    text: "Credit you send to a friend, or a friend sends you, lands here.",
+  // Gifts In and Gifts Out (MESITA-3941).
+  "gifts-in": {
+    title: "No gifts received",
+    text: "Credit a friend sends you lands here once you take it.",
+  },
+  "gifts-out": {
+    title: "No gifts sent",
+    text: "Credit you send to a friend lands here, with links nobody took yet.",
     action: { label: "Gift credit", href: CONSUMER_ROUTES.mePages.gift },
   },
   // Refunds' words since MESITA-3771, kept (MESITA-3782).
@@ -560,20 +572,23 @@ const EMPTY: Record<
 
 /** Tickets' tabs (MESITA-3893, Pato: "remove all. just Visits. Vouchers.
  *  Gifts"). Refunds sit in Vouchers, as they did before MESITA-3855. */
-type TicketTab = "visits" | "vouchers" | "gifts";
+type TicketTab = "visits" | "vouchers" | "gifts-in" | "gifts-out";
 // AN ICON ON EACH (MESITA-3900, Pato: "add icons to the top menu here"):
-// the ones the page's empty states already wear.
+// the ones the page's empty states already wear. Gifts became Gifts In and
+// Gifts Out (MESITA-3941).
 const TICKET_TABS: ReadonlyArray<{ kind: TicketTab; label: string; icon: LucideIcon }> = [
   { kind: "visits", label: "Visits", icon: UtensilsCrossed },
   { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
-  { kind: "gifts", label: "Gifts", icon: Gift },
+  { kind: "gifts-in", label: "Gifts In", icon: Gift },
+  { kind: "gifts-out", label: "Gifts Out", icon: Send },
 ];
 
 /** The tab a /me/tickets address shows: bare is Visits, refunds is
  *  Vouchers (MESITA-3893). */
 function ticketTabOf(seg: string | undefined): TicketTab {
   if (seg === "vouchers" || seg === "refunds") return "vouchers";
-  if (seg === "gifts") return "gifts";
+  if (seg === "gifts-in" || seg === "gifts") return "gifts-in";
+  if (seg === "gifts-out") return "gifts-out";
   return "visits";
 }
 
@@ -582,7 +597,8 @@ const ICON: Record<ListType | "all", LucideIcon> = {
   all: Ticket,
   visits: UtensilsCrossed,
   vouchers: BadgeDollarSign,
-  gifts: Gift,
+  "gifts-in": Gift,
+  "gifts-out": Send,
   refunds: HandCoins,
 };
 
@@ -754,7 +770,8 @@ export function TicketsPage() {
       vouchers: moneyRows
         ? moneyRows.filter((r) => r.type === "vouchers" || r.type === "refunds")
         : null,
-      gifts: of("gifts"),
+      "gifts-in": of("gifts-in"),
+      "gifts-out": of("gifts-out"),
     } satisfies Record<TicketTab, Row[] | null>;
   }, [visits.data, wallet.data]);
 
@@ -847,7 +864,7 @@ function TicketList({
     return (
       <EmptyState
         icon={Icon}
-        title={`Couldn't load your ${type === "all" ? "tickets" : type}`}
+        title={`Couldn't load your ${type === "all" ? "tickets" : type.replace("-", " ")}`}
         description="Check your connection and try again."
         action={{ label: "Try again", onClick: retry }}
       />
