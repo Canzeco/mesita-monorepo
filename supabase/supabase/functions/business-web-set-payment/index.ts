@@ -72,10 +72,12 @@ serveJson("business-web-set-payment", async (req) => {
     return json({ ok: false, code: "invalid", error: line[key] }, 400);
   }
 
-  // NO CASHBACK ON CREDIT OR VOUCHERS (Pato, MESITA-3836): those can go
-  // off, never on. Cash earns again since MESITA-3837, at 3%.
-  if ((key === "credit_cashback_bps" || key === "prepay_cashback_bps") && bps !== null) {
-    return json({ ok: false, code: "not_offered", error: "Only App Payments and Cash Payments give cashback." }, 409);
+  // CASHBACK ONLY WHERE MESITA'S 5% FEE IS (Pato, 2026-11-14, MESITA-3928:
+  // "App Payments: 5% Fee. 5% Back to user. Cash Payments: 0% Fee. 0% Back
+  // to user. App Prepayment. 5% Fee. 5% Back to user."): credit and cash can
+  // go off, never on. Cash earned 3% under MESITA-3837; vouchers earn again.
+  if ((key === "credit_cashback_bps" || key === "cash_cashback_bps") && bps !== null) {
+    return json({ ok: false, code: "not_offered", error: "Only App Payments and App Prepayments give cashback." }, 409);
   }
 
   const access = await requirePlaceAccess(admin, user, placeId);
