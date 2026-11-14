@@ -18,8 +18,8 @@ export const MONEY_CODES = [
   "cards_off",
   "welcome_used",
   "place_code_required",
-  // Test mode: the place's outstanding credit across guests would pass the
-  // cap after this buy (MESITA-3305, d5a)
+  // The place's outstanding credit across guests would pass its Credits
+  // Limit after this buy (MESITA-3947; the MESITA-3305 test-mode cap before)
   "place_cap",
   // The amount
   "below_minimum",

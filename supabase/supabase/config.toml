@@ -617,6 +617,14 @@ verify_jwt = true
 [functions.admin-web-get-voucher-prices]
 verify_jwt = true
 
+# MESITA-3947: Admin › Payments › Credits Limit, the read and the one write
+# (a currency's default or a place's own limit); super_admins on the caller.
+[functions.admin-web-get-credits-limit]
+verify_jwt = true
+
+[functions.admin-web-save-credits-limit]
+verify_jwt = true
+
 # Recent app lines from the enrichment workflow. Super-admin only.
 [functions.admin-web-list-logs]
 verify_jwt = true

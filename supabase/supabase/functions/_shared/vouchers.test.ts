@@ -13,9 +13,8 @@ import {
   offerFrom,
   openPurchaseRow,
   openVoucherCheckout,
-  overPlaceCap,
+  overCreditLimit,
   parseBasket,
-  PLACE_CAP_CENTS,
   sameUnits,
   storyRefusal,
   vipRefusal,
@@ -166,17 +165,23 @@ type Fake = {
 
 /** A wallet_purchases table of one insert and its updates; the place's
  *  outstanding credit (MESITA-3305's cap) answers `outstanding`, 0 by default. */
+/** Mexico's default Credits Limit, MX$100,000 (MESITA-3947). */
+const LIMIT = 100_000_00;
+
 function fakeAdmin(opts: {
   insertError?: { code: string; message: string };
   /** A basket's follower insert (MESITA-3841). */
   followerError?: { code: string; message: string };
   existing?: Record<string, unknown> | null;
   outstanding?: number;
+  /** place_credit_limit; undefined = MX$100,000, the MXN default. */
+  limit?: number | null;
 }): Fake {
   const inserts: Fake["inserts"] = [];
   const updates: Fake["updates"] = [];
   const admin = {
     rpc: (name: string) => {
+      if (name === "place_credit_limit") return Promise.resolve({ data: opts.limit === undefined ? LIMIT : opts.limit, error: null });
       assertEquals(name, "wallet_place_outstanding");
       return Promise.resolve({ data: opts.outstanding ?? 0, error: null });
     },
@@ -299,20 +304,38 @@ Deno.test("any other insert error is thrown, so the EF answers 500 and nothing r
   await assertRejects(() => openVoucherCheckout(fake.admin, stripe, BUY), Error, "purchase_insert");
 });
 
-// ── MESITA-3305: the test-mode cap and a second Welcome buy ─────────────────
+// ── MESITA-3947: the Credits Limit; MESITA-3305: a second Welcome buy ─────────────────
 
-Deno.test("place_cap: a buy that would push the place past MX$20,000 of outstanding credit is refused in test mode, never live", async () => {
-  // MX$19,900 outstanding + MX$110 of credit from a MX$100 voucher = MX$20,010.
-  const fake = fakeAdmin({ outstanding: 19_900_00 });
-  const stripe: StripeCall = () => Promise.reject(new Error("never called"));
-  const r = await openVoucherCheckout(fake.admin, stripe, BUY);
-  assertEquals(r.ok, false);
-  assertEquals((r as { code: string }).code, "place_cap");
-  assertEquals(fake.inserts.length, 0);
-  assertEquals(overPlaceCap(19_900_00, "voucher_200", false), true);
-  assertEquals(overPlaceCap(19_890_00, "voucher_200", false), false);
-  assertEquals(overPlaceCap(19_900_00, "voucher_200", true), false);
-  assertEquals(PLACE_CAP_CENTS, 20_000_00);
+Deno.test("place_cap: a buy that would take the place past its Credits Limit is refused, in test and live alike", async () => {
+  // MX$99,900 outstanding + MX$110 of credit from a MX$100 voucher = MX$100,010.
+  for (const livemode of [false, true]) {
+    const fake = fakeAdmin({ outstanding: 99_900_00 });
+    const stripe: StripeCall = () => Promise.reject(new Error("never called"));
+    const r = await openVoucherCheckout(fake.admin, stripe, { ...BUY, livemode });
+    assertEquals(r.ok === false && r.code, "place_cap");
+    assertEquals(fake.inserts.length, 0);
+  }
+  assertEquals(overCreditLimit(99_900_00, "voucher_200", LIMIT), true);
+  assertEquals(overCreditLimit(99_890_00, "voucher_200", LIMIT), false);
+});
+
+Deno.test("Credits Limit: landing exactly on the limit sells; a place's own limit binds; no limit refuses", async () => {
+  // MX$110 of credit lands exactly on the limit: allowed (over, not at).
+  assertEquals(overCreditLimit(LIMIT - 110_00, "voucher_200", LIMIT), false);
+  assertEquals(overCreditLimit(LIMIT - 109_00, "voucher_200", LIMIT), true);
+  // A place's own MX$500 limit, nothing owed yet: one Small sells, Big does not.
+  const own = fakeAdmin({ limit: 500_00 });
+  assertEquals((await openPurchaseRow(own.admin, BUY)).ok, true);
+  const big = fakeAdmin({ limit: 500_00 });
+  const r = await openPurchaseRow(big.admin, { ...BUY, voucher: "voucher_1000" });
+  assertEquals(r.ok === false && r.code, "place_cap");
+  // A currency without a default: fail closed.
+  assertEquals(overCreditLimit(0, "voucher_200", null), true);
+  // A limit of 0 stops every sale.
+  assertEquals(overCreditLimit(0, "voucher_200", 0), true);
+  // USD: US$10 Small gives US$11 of credit against US$10,000.
+  assertEquals(overCreditLimit(10_000_00 - 11_00, "voucher_200", 10_000_00, "usd"), false);
+  assertEquals(overCreditLimit(10_000_00 - 10_00, "voucher_200", 10_000_00, "usd"), true);
 });
 
 Deno.test("a second Welcome buy while the first one's Checkout is open answers in_progress with that url, never a 500", async () => {
@@ -404,12 +427,11 @@ Deno.test("basketUnits: one unit per row, Welcome leads; sameUnits compares bask
   assertEquals(sameUnits([], []), true);
 });
 
-Deno.test("the place cap counts the whole basket's credit", () => {
+Deno.test("the Credits Limit counts the whole basket's credit", () => {
   // 2× Small (MX$110 credit each) + Big (MX$1,200): MX$1,420.
   const basket = ["voucher_200", "voucher_200", "voucher_1000"] as const;
-  assertEquals(overPlaceCap(PLACE_CAP_CENTS - 1_420_00, basket, false), false);
-  assertEquals(overPlaceCap(PLACE_CAP_CENTS - 1_419_00, basket, false), true);
-  assertEquals(overPlaceCap(PLACE_CAP_CENTS, basket, true), false);
+  assertEquals(overCreditLimit(LIMIT - 1_420_00, basket, LIMIT), false);
+  assertEquals(overCreditLimit(LIMIT - 1_419_00, basket, LIMIT), true);
 });
 
 Deno.test("a basket's rows: the lead under the request_id, one follower row per other unit pointing to it, no request_id", async () => {
@@ -425,8 +447,8 @@ Deno.test("a basket's rows: the lead under the request_id, one follower row per 
   ]);
 });
 
-Deno.test("a basket the cap refuses writes no row; a follower the database refuses fails the lead (all or nothing)", async () => {
-  const capped = fakeAdmin({ outstanding: PLACE_CAP_CENTS - 200_00 });
+Deno.test("a basket the Credits Limit refuses writes no row; a follower the database refuses fails the lead (all or nothing)", async () => {
+  const capped = fakeAdmin({ outstanding: LIMIT - 200_00 });
   const r = await openPurchaseRow(capped.admin, { ...BUY, followers: ["voucher_200"] });
   assertEquals(r.ok === false && r.code, "place_cap");
   assertEquals(capped.inserts.length, 0);
