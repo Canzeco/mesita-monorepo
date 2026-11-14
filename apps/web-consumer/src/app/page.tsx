@@ -45,7 +45,7 @@ export default async function ConsumerRootPage({
   return (
     <CoverAuthLayout
       headline={
-        payPlaceName ? `Pay at ${payPlaceName}` : "Every table in Monterrey"
+        payPlaceName ? `Pay at ${payPlaceName}` : "Restaurants, from your phone"
       }
       title={payPlaceName ? `Sign in to pay at ${payPlaceName}` : undefined}
       footer={
