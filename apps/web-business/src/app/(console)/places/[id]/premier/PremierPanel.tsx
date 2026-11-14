@@ -3,7 +3,7 @@
 // Premier as one table (MESITA-3638, Pato: "still looks like shit. fully
 // redesign this page with a better UI"; he picked the one-table board). One
 // full-width card says each thing once:
-//   · the level the place runs at ("2X visibility", the red seal above 1X)
+//   · the level the place runs at ("High visibility boost", the red seal above Free)
 //     and one line saying why (statusLine, lib/plans.ts), then the Checkout
 //     outcome after a Stripe return;
 //   · Free · Pro · Max as rows that share five columns (name, visibility,
@@ -28,12 +28,10 @@ import { useEffect, useRef, useState } from "react";
 import { cancelPremier, getPremier, startPremier, type BoostTier, type PlacePremier } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
 import { day } from "@/lib/format";
-import { FREE_PLAN, FREE_VISIBILITY, PLAN_NAME, PLAN_VISIBILITY, shownLevel, statusLine } from "@/lib/plans";
+import { FREE_PLAN, FREE_VISIBILITY, LEVEL_VISIBILITY, PLAN_NAME, PLAN_VISIBILITY, shownLevel, statusLine } from "@/lib/plans";
 import { ORIGIN_OF_SOURCE, REFILL_ORIGIN } from "@/lib/premier-origin";
 import { premierHref, returnUrl } from "@/lib/routes";
 import { cn } from "@/lib/utils";
-
-const LEVELS = ["1X", "2X", "5X"] as const;
 
 const PLANS: Array<{ key: BoostTier; rank: number }> = [
   { key: "boost_2x", rank: 1 },
@@ -121,9 +119,7 @@ function Row({
         {note ? <p className="text-muted-foreground">{note}</p> : null}
       </div>
       <div className="col-span-2 flex flex-wrap items-center gap-x-3 gap-y-1 @3xl:contents">
-        <p className="@3xl:order-2">
-          <span className="font-semibold">{visibility}</span> visibility
-        </p>
+        <p className="font-semibold @3xl:order-2">{visibility}</p>
         <p className={cn("@3xl:order-3", !premier && "text-muted-foreground")}>{premier ? <Seal /> : "No Premier tag"}</p>
       </div>
       <div className={SLOT}>
@@ -197,7 +193,8 @@ export function PremierPanel({
   const onRank = data.paid?.tier ?? 0;
   // A guest pays this place's plan; the place may stop it (MESITA-3103).
   const guestPays = !!data.paid && !data.paid.by_you;
-  const level = LEVELS[shownLevel(data)];
+  const rank = shownLevel(data);
+  const level = LEVEL_VISIBILITY[rank];
   const outcome = data.outcome ? OUTCOME[data.outcome] : null;
   const upgrade = data.manual && data.manual.tier > 0 ? data.manual : null;
   const anyBusy = busy !== null;
@@ -251,9 +248,9 @@ export function PremierPanel({
     <div className="flex flex-col gap-3">
       <Card className="@container overflow-hidden p-0 sm:p-0">
         <div className="px-5 py-5 sm:px-6">
-          <p className="font-display flex items-center gap-2 text-2xl font-semibold tracking-tight" aria-label={`Level ${level}`}>
-            {level} visibility
-            {level !== "1X" ? <PremierRosette /> : null}
+          <p className="font-display flex items-center gap-2 text-2xl font-semibold tracking-tight" >
+            {level}
+            {rank > 0 ? <PremierRosette /> : null}
           </p>
           <p className="text-muted-foreground mt-1 text-sm">{statusLine(data)}</p>
           {outcome ? (
@@ -357,7 +354,7 @@ export function PremierPanel({
           {upgrade ? (
             <Row
               name="Upgrade"
-              visibility={LEVELS[Math.min(upgrade.tier, 2)]}
+              visibility={LEVEL_VISIBILITY[Math.min(upgrade.tier, 2)]}
               premier
               price={REFILL_ORIGIN[ORIGIN_OF_SOURCE[upgrade.source ?? ""] ?? "mesita"]}
               word={day(upgrade.ends_at) ? `Until ${day(upgrade.ends_at)}` : ""}
