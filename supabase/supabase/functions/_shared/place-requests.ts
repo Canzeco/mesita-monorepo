@@ -13,12 +13,13 @@
 // (MESITA-2952): the page loaded before the run began, so the guest whose
 // view started it would otherwise never see the Enriching tag.
 //
-// UPDATE EVERY N VIEWS (MESITA-2997): the count keeps going after Enrich, and
-// each NEW view that lands it on a multiple of "Update every N views"
-// (updateEveryViews: 10, 20, 30…) asks the caller to run Google Update
-// (`updateDue`). Never on the view that just started Enrich, never mid-run.
-// UPDATE REVIEWS EVERY N VIEWS (MESITA-3159) is the same rule on
-// reviewsUpdateEveryViews (`reviewsUpdateDue`), for Update Reviews.
+// THREE LEVELS ON ONE COUNT (MESITA-3934), each "first after N views, then
+// every M views" (`viewCycleDue`): Fast Update (Google facts, `updateDue`),
+// Deep Update (reviews and followers, `reviewsUpdateDue`) on every place, and
+// Deep Enrich on a place with no owner. Deep Enrich's first run keeps the
+// catch-up rule (any count at or past N while never enriched); its repeats,
+// like both Updates, fire only on the NEW view that lands on N + kM. An
+// Update never fires on the view that just started Enrich, nor mid-run.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { loadEnrichmentConfig } from "./enrichment-config.ts";
@@ -80,18 +81,45 @@ export function shouldTriggerRequestEnrichment(input: {
   return input.requestCount >= input.threshold;
 }
 
-/** Cyclical Google Update: every N-th distinct view, enriched or not. */
+/**
+ * "First after N views, then every M views" (MESITA-3934): due at N, N+M,
+ * N+2M… N = 0 turns the level off; M = 0 runs it once, at N.
+ */
+export function viewCycleDue(input: { count: number; firstAfter: number; every: number }): boolean {
+  const { count, firstAfter, every } = input;
+  if (firstAfter < 1 || count < firstAfter) return false;
+  if (count === firstAfter) return true;
+  return every >= 1 && (count - firstAfter) % every === 0;
+}
+
+/** Cyclical Update on a NEW view, enriched or not. */
 export function shouldTriggerViewUpdate(input: {
   inserted: boolean;
   requestCount: number;
+  firstAfter: number;
   everyViews: number;
   contentState: unknown;
   enrichmentTriggered: boolean;
 }): boolean {
   if (!input.inserted || input.enrichmentTriggered) return false;
   if (isPlaceEnriching(input.contentState)) return false;
-  if (input.everyViews < 1 || input.requestCount < 1) return false;
-  return input.requestCount % input.everyViews === 0;
+  return viewCycleDue({ count: input.requestCount, firstAfter: input.firstAfter, every: input.everyViews });
+}
+
+/** Deep Enrich again on an enriched place (MESITA-3934): a NEW view landing
+ *  on first-after + k × every. The first run is shouldTriggerRequestEnrichment. */
+export function shouldTriggerRepeatEnrichment(input: {
+  inserted: boolean;
+  requestCount: number;
+  threshold: number;
+  everyViews: number;
+  contentState: unknown;
+  enrichedAt: unknown;
+}): boolean {
+  if (!input.inserted || !isPlaceEnriched(input.enrichedAt)) return false;
+  if (isPlaceEnriching(input.contentState)) return false;
+  if (input.everyViews < 1 || input.requestCount <= input.threshold) return false;
+  return viewCycleDue({ count: input.requestCount, firstAfter: input.threshold, every: input.everyViews });
 }
 
 export function placeRequestState(input: {
@@ -183,12 +211,20 @@ export async function applyPlaceRequest(
   let enrichmentTriggered = false;
   // Another guest's run won the claim between our read and our start.
   let claimedElsewhere = false;
-  if (shouldTriggerRequestEnrichment({
+  const enrichDue = shouldTriggerRequestEnrichment({
     requestCount: count,
     threshold,
     contentState,
     enrichedAt,
-  })) {
+  }) || shouldTriggerRepeatEnrichment({
+    inserted,
+    requestCount: count,
+    threshold,
+    everyViews: config.enrichEveryViews,
+    contentState,
+    enrichedAt,
+  });
+  if (enrichDue) {
     // The vote already counted, so nothing below fails the request. A missing
     // spine cannot be enriched (Admin adds the id later). The claim loses to a
     // run already in flight (another guest's vote). A refused start is logged
@@ -199,6 +235,8 @@ export async function applyPlaceRequest(
         enrichmentTriggered = true;
       } else if (started.blocked === "enriching") {
         claimedElsewhere = true;
+      } else if (started.blocked === "owned") {
+        // A place with an owner is never enriched (MESITA-3934): no log.
       } else {
         console.error(
           `[${opts.callerName}] the view did not start an Enrich run: ${started.error}`,
@@ -210,6 +248,7 @@ export async function applyPlaceRequest(
   const updateDue = googlePlaceId !== "" && !claimedElsewhere && shouldTriggerViewUpdate({
     inserted,
     requestCount: count,
+    firstAfter: config.updateFirstAfterViews,
     everyViews: config.updateEveryViews,
     contentState,
     enrichmentTriggered,
@@ -218,6 +257,7 @@ export async function applyPlaceRequest(
   const reviewsUpdateDue = !claimedElsewhere && shouldTriggerViewUpdate({
     inserted,
     requestCount: count,
+    firstAfter: config.reviewsUpdateFirstAfterViews,
     everyViews: config.reviewsUpdateEveryViews,
     contentState,
     enrichmentTriggered,

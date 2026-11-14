@@ -20,15 +20,16 @@ const STRIP_LINKS: Record<CrenupView, { id: string; label: string }[]> = {
     { id: "s-create", label: "Create" },
   ],
   uprich: [
-    { id: "s-enrich", label: "Enrich" },
+    { id: "s-fast-update", label: "Fast Update" },
+    { id: "s-deep-update", label: "Deep Update" },
+    { id: "s-enrich", label: "Deep Enrich" },
     { id: "s-functions", label: "Functions" },
-    { id: "s-update", label: "Update" },
   ],
 };
 
 const STRIP_TITLE: Record<CrenupView, string> = {
-  creation: "Creating",
-  uprich: "Uprich",
+  creation: "Creation",
+  uprich: "Updation",
 };
 
 export function SectionStrip({ view }: { view: CrenupView }) {

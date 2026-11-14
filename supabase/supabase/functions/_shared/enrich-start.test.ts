@@ -7,6 +7,7 @@ import {
   ENRICHING_PATCH,
   enrichmentKnobs,
   enrichmentRun,
+  ownedPlaceIds,
   renderApiKey,
   scoutInputFor,
   splitClaims,
@@ -131,6 +132,7 @@ function fakeAdmin(enriching: Set<string>) {
           if (col === "id") q.id = value;
           return builder;
         },
+        is: () => builder,
         neq: (_col: string, value: string) => {
           q.neq = value;
           return builder;
@@ -237,4 +239,12 @@ Deno.test("the job carries the saved links, so a run that finds none still check
 
 Deno.test("splitClaims keeps the order the places were asked in", () => {
   assertEquals(splitClaims(["a", "b", "c"], [false, true, false]), { started: ["b"], skipped: ["a", "c"] });
+});
+
+Deno.test("a place with a live owner is never enriched (MESITA-3934)", () => {
+  const owned = ownedPlaceIds([
+    { place_id: "a", expires_at: "infinity", revoked_at: null },
+    { place_id: "b", expires_at: "2000-01-01T00:00:00Z", revoked_at: null },
+  ]);
+  assertEquals([...owned], ["a"]);
 });

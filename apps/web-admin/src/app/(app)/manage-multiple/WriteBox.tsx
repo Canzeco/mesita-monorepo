@@ -58,8 +58,8 @@ const BUTTONS: Record<
   list: { label: "Enable", variant: "secondary" },
   unlist: { label: "Disable", variant: "secondary" },
   delete: { label: "Delete", variant: "destructive" },
-  "google-update": { label: "Update Google", variant: "primary" },
-  "reviews-update": { label: "Update Reviews", variant: "primary" },
+  "google-update": { label: "Fast Update", variant: "primary" },
+  "reviews-update": { label: "Deep Update", variant: "primary" },
 };
 
 export function WriteBox({

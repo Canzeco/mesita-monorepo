@@ -8,12 +8,12 @@ const APP = join(__dirname, "..", "app", "(app)");
 
 // Models, then Atlas, then the MESITA-2083 order.
 describe("Configurations rail", () => {
-  it("is exactly Models · Atlas · Creating · Uprich · Discovery · Reservations · Payments", () => {
+  it("is exactly Models · Atlas · Creation · Updation · Discovery · Reservations · Payments", () => {
     expect(CONFIGURATIONS_NAV.map((i) => i.label)).toEqual([
       "Models",
       "Atlas",
-      "Creating",
-      "Uprich",
+      "Creation",
+      "Updation",
       "Discovery",
       "Reservations",
       "Payments",

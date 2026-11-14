@@ -218,7 +218,7 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
           </button>
         </Row>
         <Row
-          name="Update Google"
+          name="Fast Update"
           detail="Google's facts. Never touches the photos or Mesita's own name, text or categories. Keeps pinned fields. Also runs by itself every N views."
           note={noteFor("google")}
         >
@@ -228,11 +228,11 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
             onClick={() => void run("google", () => updatePlaceGoogle(place.id), "Updated from Google. Reload to see it.")}
             className={QUIET}
           >
-            {label("google", "Update Google", "Updating…")}
+            {label("google", "Fast Update", "Updating…")}
           </button>
         </Row>
         <Row
-          name="Update Reviews"
+          name="Deep Update"
           detail="Google stars, up to 100 Google reviews (Apify), Instagram and Facebook followers. Also runs by itself every N views, less often."
           note={noteFor("reviews")}
         >
@@ -242,7 +242,7 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
             onClick={() => void run("reviews", () => reloadPlaceReviews(place.id, "sync"), "Reviews updated. Reload to see them.")}
             className={QUIET}
           >
-            {label("reviews", "Update Reviews", "Updating…")}
+            {label("reviews", "Deep Update", "Updating…")}
           </button>
         </Row>
         <Row

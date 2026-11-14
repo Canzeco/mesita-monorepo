@@ -67,6 +67,9 @@ type Body = {
   requestThreshold?: number;
   updateEveryViews?: number;
   reviewsUpdateEveryViews?: number;
+  updateFirstAfterViews?: number;
+  reviewsUpdateFirstAfterViews?: number;
+  enrichEveryViews?: number;
   createOnOpenConsumer?: boolean;
   createOnOpenAdmin?: boolean;
   consumerCreatesPerDay?: number;
@@ -264,6 +267,33 @@ export async function writeEnricherSection(
     const n = intInRange(body.requestThreshold, 1, 100);
     if (n === null) return jsonError("requestThreshold must be an integer 1-100", 400);
     next.enrichRequestThreshold = n;
+    blobTouched = true;
+  }
+
+  if (body.updateFirstAfterViews !== undefined) {
+    const n = intInRange(body.updateFirstAfterViews, 0, UPDATE_EVERY_VIEWS_MAX);
+    if (n === null) {
+      return jsonError(`updateFirstAfterViews must be an integer 0-${UPDATE_EVERY_VIEWS_MAX}`, 400);
+    }
+    next.updateFirstAfterViews = n;
+    blobTouched = true;
+  }
+
+  if (body.reviewsUpdateFirstAfterViews !== undefined) {
+    const n = intInRange(body.reviewsUpdateFirstAfterViews, 0, UPDATE_EVERY_VIEWS_MAX);
+    if (n === null) {
+      return jsonError(`reviewsUpdateFirstAfterViews must be an integer 0-${UPDATE_EVERY_VIEWS_MAX}`, 400);
+    }
+    next.reviewsUpdateFirstAfterViews = n;
+    blobTouched = true;
+  }
+
+  if (body.enrichEveryViews !== undefined) {
+    const n = intInRange(body.enrichEveryViews, 0, UPDATE_EVERY_VIEWS_MAX);
+    if (n === null) {
+      return jsonError(`enrichEveryViews must be an integer 0-${UPDATE_EVERY_VIEWS_MAX}`, 400);
+    }
+    next.enrichEveryViews = n;
     blobTouched = true;
   }
 

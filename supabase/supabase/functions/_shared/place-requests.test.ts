@@ -3,7 +3,9 @@ import {
   placeRequestLifecycle,
   placeRequestState,
   shouldTriggerRequestEnrichment,
+  shouldTriggerRepeatEnrichment,
   shouldTriggerViewUpdate,
+  viewCycleDue,
 } from "./place-requests.ts";
 
 const STAMP = "2026-08-28T00:00:00Z";
@@ -160,7 +162,7 @@ Deno.test("a missing enrichedAt never lets ready read as Enriched (MESITA-2154)"
 });
 
 Deno.test("Update every N views: each new view on a multiple of N, never a repeat view or mid-run (MESITA-2997)", () => {
-  const base = { inserted: true, everyViews: 10, contentState: "ready", enrichmentTriggered: false };
+  const base = { inserted: true, firstAfter: 10, everyViews: 10, contentState: "ready", enrichmentTriggered: false };
   assertEquals([9, 10, 11, 20, 30].map((n) => shouldTriggerViewUpdate({ ...base, requestCount: n })), [
     false,
     true,
@@ -171,5 +173,34 @@ Deno.test("Update every N views: each new view on a multiple of N, never a repea
   assertEquals(shouldTriggerViewUpdate({ ...base, requestCount: 10, inserted: false }), false);
   assertEquals(shouldTriggerViewUpdate({ ...base, requestCount: 10, enrichmentTriggered: true }), false);
   assertEquals(shouldTriggerViewUpdate({ ...base, requestCount: 10, contentState: "generating" }), false);
-  assertEquals(shouldTriggerViewUpdate({ ...base, requestCount: 10, everyViews: 0 }), false);
+  assertEquals(shouldTriggerViewUpdate({ ...base, requestCount: 10, firstAfter: 0 }), false);
+});
+
+Deno.test("first after N, then every M (MESITA-3934)", () => {
+  const due = (count: number, firstAfter: number, every: number) => viewCycleDue({ count, firstAfter, every });
+  // Pato's example: first at 5, then every 50.
+  assertEquals([4, 5, 6, 54, 55, 105].map((n) => due(n, 5, 50)), [false, true, false, false, true, true]);
+  // Every 0 runs once; first 0 is off.
+  assertEquals([5, 55].map((n) => due(n, 5, 0)), [true, false]);
+  assertEquals(due(10, 0, 10), false);
+});
+
+Deno.test("Deep Enrich repeats only on an enriched place, on a new view at N + kM (MESITA-3934)", () => {
+  const base = {
+    inserted: true,
+    threshold: 5,
+    everyViews: 50,
+    contentState: "ready",
+    enrichedAt: "2026-11-01T00:00:00Z",
+  };
+  assertEquals([5, 54, 55, 105].map((n) => shouldTriggerRepeatEnrichment({ ...base, requestCount: n })), [
+    false,
+    false,
+    true,
+    true,
+  ]);
+  assertEquals(shouldTriggerRepeatEnrichment({ ...base, requestCount: 55, enrichedAt: null }), false);
+  assertEquals(shouldTriggerRepeatEnrichment({ ...base, requestCount: 55, inserted: false }), false);
+  assertEquals(shouldTriggerRepeatEnrichment({ ...base, requestCount: 55, everyViews: 0 }), false);
+  assertEquals(shouldTriggerRepeatEnrichment({ ...base, requestCount: 55, contentState: "generating" }), false);
 });

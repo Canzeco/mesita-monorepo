@@ -94,7 +94,7 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
   MODELS_PARENT,
   // Taxonomy. The switches write discovery_config. The lists do not.
   FAMILIES_PARENT,
-  // Creating, then Uprich: Enrich and Update on one page (MESITA-3924).
+  // Creation, then Updation: Fast Update, Deep Update and Deep Enrich on one page (MESITA-3934).
   CREATION_PARENT,
   UPRICH_PARENT,
   // Discovery.

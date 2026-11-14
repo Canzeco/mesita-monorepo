@@ -30,6 +30,9 @@ const seed: CrenupSettings = {
   consumerCreatesPerDay: 1000,
   updateEveryViews: 10,
   reviewsUpdateEveryViews: 50,
+  updateFirstAfterViews: 10,
+  reviewsUpdateFirstAfterViews: 50,
+  enrichEveryViews: 300,
 };
 
 describe("clampFunnel", () => {
