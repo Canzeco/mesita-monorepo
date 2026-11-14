@@ -465,6 +465,39 @@ for (const [app, tile] of Object.entries(brand.appIcons)) {
       `  );\n` +
       `}\n`,
   );
+  // /favicon.ico (MESITA-3978): the Vercel dashboard and some crawlers read
+  // this path, not the <link rel="icon">, so a 404 left the old flame (or the
+  // Next.js "N") on every project card. Same rounded tile, rendered as a PNG
+  // once at build time; browsers and Vercel accept PNG bytes at .ico.
+  await write(
+    `apps/${app}/src/app/favicon.ico/route.tsx`,
+    `// ${FILE_NOTICE}\n` +
+      `import { ImageResponse } from "next/og";\n\n` +
+      `export const dynamic = "force-static";\n\n` +
+      `const MARK =\n  "${mark.d}";\n\n` +
+      `export function GET() {\n` +
+      `  return new ImageResponse(\n` +
+      `    (\n` +
+      `      <div\n` +
+      `        style={{\n` +
+      `          width: "100%",\n` +
+      `          height: "100%",\n` +
+      `          display: "flex",\n` +
+      `          alignItems: "center",\n` +
+      `          justifyContent: "center",\n` +
+      `          borderRadius: 14,\n` +
+      `          background: "${tile}",\n` +
+      `        }}\n` +
+      `      >\n` +
+      `        <svg width={47} height={47} viewBox="${mark.viewBox}">\n` +
+      `          <path fill="#ffffff" d={MARK} />\n` +
+      `        </svg>\n` +
+      `      </div>\n` +
+      `    ),\n` +
+      `    { width: 64, height: 64 },\n` +
+      `  );\n` +
+      `}\n`,
+  );
 }
 
 console.log(`\nsync-brand: ${updated} updated, ${drifted} drifted, ${failed} failed.`);
