@@ -126,7 +126,7 @@ select is((select (r->>'cashback_reversed_cents')::int from refund), 100, 'its c
 select is(
   (select row(available_cents, pending_cents)::text
      from wallet_balance('00000000-0000-4000-8000-0000000a3545', '00000000-0000-4000-8000-000000013545', 'mxn', false)),
-  '(21900,100)', 'the guest holds the $220MX again: the cashback''s Pending $1MX and its reversal net to zero');
+  '(22000,0)', 'the guest holds the $220MX again: the cashback and its reversal net to zero');
 select is(
   wallet_refund_outside((select (r->>'payment_id')::uuid from first))->>'outcome',
   'already_refunded', 'a second refund changes nothing');

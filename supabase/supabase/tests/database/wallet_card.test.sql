@@ -194,8 +194,8 @@ select is(
 select is(
   (select available_cents || ':' || pending_cents || ':' || spendable_cents
      from wallet_balance('00000000-0000-4000-8000-0000000a3305', '00000000-0000-4000-8000-000000013305', 'mxn', false)),
-  '20000:25:20000',
-  'MX$200 Available, the cashback Pending, nothing held'
+  '20025:0:20025',
+  'MX$200 and the cashback Available, nothing held (MESITA-3909)'
 );
 
 select is(
