@@ -38,9 +38,10 @@ import type { CreditRow } from "./use-wallet";
 //   [mini House Card]     half the column, centred (MESITA-3802): the
 //                         place's photo and name, the server's amount (a
 //                         muted $0 when nothing is spendable yet), "House Card"
-//   [Pay][Add Credits][Gift]   one row IN the page, 64px, an icon over its
-//                         label. One is filled pink: Pay, or Add Credits on
-//                         an empty card. Gift follows giftAction (hidden,
+//   [Go to Pay][Buy Credits][Send Gift]   one row IN the page, 64px, an
+//                         icon over its label (labels MESITA-3902, Pato: "ADD
+//                         CREDITS SOUNDS LIKE SHIT"). One is filled pink: Go
+//                         to Pay, or Buy Credits on an empty card. Gift follows giftAction (hidden,
 //                         dimmed with a reason, or open)
 //   (held-credit line)    only while an open payment holds credit
 //   (Confirming a payment…)  only while the server is still confirming one
@@ -268,7 +269,7 @@ export function PlaceCredit({
   const muted = card.available_cents <= 0;
   const amount = money(Math.max(0, card.available_cents), card.currency);
   // AN EMPTY CARD, one boolean: nothing spendable, nothing pending, no entry
-  // and no Story voucher waiting. It moves the pink to Add Credits and shows
+  // and no Story voucher waiting. It moves the pink to Buy Credits and shows
   // "No transactions yet"; a card with a Story voucher waiting is never
   // removable from here.
   const empty =
@@ -314,7 +315,7 @@ export function PlaceCredit({
       ) : (
         /* THE ACTIONS, IN THE PAGE (MESITA-3868): one row under the card that
            scrolls with it; the bar's Pay tab stays one tap away further down.
-           One filled button: Pay, or Add Credits on an empty card. */
+           One filled button: Go to Pay, or Buy Credits on an empty card. */
         <div className="mt-5 flex gap-2" data-house-card-actions>
           <PushLink
             href={payPlacePath(row.placeId)}
@@ -322,7 +323,7 @@ export function PlaceCredit({
             data-house-card-pay
           >
             <QrCode className="h-5 w-5" aria-hidden />
-            Pay
+            Go to Pay
           </PushLink>
           <PushLink
             href={`${href}?rewards=prepayment&from=wallet`}
@@ -330,18 +331,18 @@ export function PlaceCredit({
             data-house-card-fund
           >
             <Plus className="h-5 w-5" aria-hidden />
-            Add Credits
+            Buy Credits
           </PushLink>
           {gift ? (
             <button
               type="button"
               className={cn(ACTION, gift !== "open" && "opacity-50")}
               onClick={() => (gift === "open" ? setSending(true) : toast(gift.blocked))}
-              aria-label={gift === "open" ? "Gift Credits" : `Gift Credits: ${gift.blocked}`}
+              aria-label={gift === "open" ? "Send Gift" : `Send Gift: ${gift.blocked}`}
               data-send-credit-open
             >
               <Gift className="h-5 w-5" aria-hidden />
-              Gift
+              Send Gift
             </button>
           ) : null}
         </div>
