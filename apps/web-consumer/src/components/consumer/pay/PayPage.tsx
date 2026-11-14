@@ -22,6 +22,7 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot, requestUserLocation } from "@/lib/use-user-location";
 import { forgetGuestTab, PlacePhoto, readGuestTabIds } from "./pay-common";
 import { usePayPlaces } from "./use-pay-places";
+import { pendingTicketPlace } from "./GuestPayScreen";
 import { PayHeader } from "./PayHeader";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
@@ -184,6 +185,12 @@ export function PayPage() {
     if (!openTabs) return;
     if (openTabs.length > 0) {
       navigateTo(router, payTabPath(openTabs[0].tab_id), { replace: true });
+      return;
+    }
+    // MESITA-3879: a ticket in progress opens where it was left; no other place.
+    const pending = pendingTicketPlace();
+    if (pending) {
+      navigateTo(router, payPlacePath(pending), { replace: true });
       return;
     }
     if (loc.state !== "on" || !places || places.length === 0) return;

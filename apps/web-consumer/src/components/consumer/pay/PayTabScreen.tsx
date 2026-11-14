@@ -62,6 +62,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
             placesFailed={failed}
             getSupabase={getSupabase}
             onPaid={(id) => navigateTo(router, payTabPath(id), { replace: true })}
+            onOpenPlace={(id) => navigateTo(router, payPlacePath(id), { replace: true })}
             onChoosePlace={() => navigateTo(router, `${CONSUMER_ROUTES.pay}?pick=1`, { replace: true })}
             registerBack={registerBack}
           />
