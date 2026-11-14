@@ -708,12 +708,13 @@ export function VouchersPane({
   // ONE RUN OF TEXT (Pato, 2026-11-14, MESITA-3863: "Name of thing in Bold.
   // and then description starting in the same line. then the i in other
   // part ... vertically save space"; "enable two lines if the page is not
-  // wide enough"): the bold name (13px), then the fact in grey (12px), wrapping
+  // wide enough"): the bold name (15px), then the fact in grey (14px; MESITA-3872,
+  // Pato: "the not bold letters not that small, or in general is too small"), wrapping
   // when narrow (two lines on a 390px phone, so 8px gaps and 12px row
   // padding); the (i) in its own column at the right; chips 28px tall.
   const CHIP = "flex h-7 w-12 shrink-0 items-center justify-center rounded-lg text-sm font-extrabold tracking-tight tabular-nums";
-  const LINE = "text-muted-foreground min-w-0 flex-1 text-xs leading-snug";
-  const NAME = "text-foreground text-[13px] font-semibold";
+  const LINE = "text-muted-foreground min-w-0 flex-1 text-sm leading-snug";
+  const NAME = "text-foreground text-[15px] font-semibold";
   const ICON = "mr-1 inline h-4 w-4 align-[-0.15em]";
   // Where a row has no tick box or lock, so every (i) sits in one column.
   const SLOT = <span className="h-6 w-6 shrink-0" aria-hidden />;
