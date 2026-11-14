@@ -242,12 +242,8 @@ export const CONSUMER_ROUTES = {
     // Me's own Favorites page (MESITA-2565). Its Notifications and
     // Reservations pages are live again (MESITA-3855).
     meFavorites: "/me/favorites",
-    // THE BAR'S ACTIVITY TAB (MESITA-3631, MESITA-3769) and its chips and
-    // pages, until MESITA-3855 folded it into Me. Each lands on its Me page.
-    activity: "/activity",
-    activityChipPrefix: "/activity/",
-    activityVisitPrefix: "/activity/visit/",
-    activityCreditPrefix: "/activity/credit/",
+    // NO /activity HERE (MESITA-3862): the Activity tab's addresses are
+    // gone, not redirected (Pato: "KILL THIS ATIVITY LINK").
     // Share's page (MESITA-2566), until Share became a bar button
     // (MESITA-3855). It lands on Home.
     share: "/share",

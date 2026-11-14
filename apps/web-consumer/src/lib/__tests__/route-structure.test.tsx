@@ -336,9 +336,8 @@ describe("T5 — exactly one tab lights per surface", () => {
     "/me/settings/metrics",
     // Me › Transactions is Me › Tickets (MESITA-3855).
     "/me/transactions",
-    // The Activity tab and its pages, and Share's page (MESITA-3855).
-    "/activity",
-    "/activity/visit/t1",
+    // Share's page (MESITA-3855). /activity is killed, not redirected
+    // (MESITA-3862).
     "/share",
   ])("%s is a redirect source that resolves in one hop", async (address) => {
     const redirects = await nextConfig.redirects!();
@@ -827,12 +826,6 @@ describe("T7 — every former url still resolves after the move", () => {
     ["/me/saved", "/home/places"],
     ["/me/favorites", "/home/places"],
     ["/saved/reservations", "/me/reservations"],
-    // Activity's own addresses (MESITA-3855).
-    ["/activity", "/me/notifications"],
-    ["/activity/reservations", "/me/reservations"],
-    ["/activity/visits", "/me/tickets/visits"],
-    ["/activity/visit/:tabId", "/me/tickets/visit/:tabId"],
-    ["/activity/credit/:placeId/:entry", "/me/tickets/credit/:placeId/:entry"],
     ["/share", "/home/places"],
     ["/saved/reservation/:id", "/reservation/:id"],
     ["/saved/place/:id", "/place/:id"],
