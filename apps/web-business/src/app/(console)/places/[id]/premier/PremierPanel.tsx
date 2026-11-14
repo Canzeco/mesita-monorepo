@@ -371,7 +371,6 @@ export function PremierPanel({
         </ul>
       </Card>
 
-      <p className="text-muted-foreground px-1 text-sm">Visibility is ranking priority on Home and the Map. It doesn&apos;t guarantee more views.</p>
       {error && error.row === null ? (
         <p className="text-destructive px-1 text-sm" aria-live="polite">
           {error.text}
