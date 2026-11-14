@@ -1,9 +1,8 @@
 import { ArrowUpRight } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
+import { Screen } from "@/components/consumer/nav/Screen";
 import { IconChip } from "@/components/consumer/me/settings-rows";
-import { HEADER_BAND } from "@/components/consumer/search/header-classes";
 import {
   CHANNEL_MARKS,
   type ShareChannel,
@@ -16,9 +15,9 @@ import { cn } from "@/lib/utils";
 // card not something fancy"):
 //
 //   ┌──────────────────────────────┐
-//   │ Share Mesita                 │  white band, hairline under
-//   │ Send Mesita to a friend.     │
+//   │ ‹        Share Mesita        │  the pushed page's header (Screen)
 //   ├──────────────────────────────┤
+//   │ Send Mesita to a friend.     │
 //   │ ┌──────────────────────────┐ │  grey ground
 //   │ │ (wa)  WhatsApp         ↗ │ │
 //   │ │ (ig)  Instagram        ↗ │ │
@@ -28,6 +27,10 @@ import { cn } from "@/lib/utils";
 //   │ │ (···) More               │ │  touch only
 //   │ └──────────────────────────┘ │
 //   └──────────────────────────────┘
+//
+// A PAGE PUSHED FROM WALLET'S BIG SHARE BUTTON (MESITA-3886), with Back; it
+// lights Wallet. It was the bar's Share tab from MESITA-3867 until Wallet took
+// the slot.
 //
 // ONE SOURCE FOR THE PAGE AND ITS FALLBACK (MESITA-2701): SharePage and
 // share/loading.tsx both draw ShareFrame and these rows, so nothing moves on
@@ -128,8 +131,8 @@ export function ShareRowBody({ spec }: { spec: ShareRowSpec }) {
   );
 }
 
-/** The page: the white band with the title and its line, then the one card
- *  of rows on the grey ground. `children` follow (the fallback's status). */
+/** The page: the pushed page's header with Back, the line, then the one
+ *  card of rows. `children` follow (the fallback's status). */
 export function ShareFrame({
   rows,
   children,
@@ -138,21 +141,14 @@ export function ShareFrame({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col" data-share-page>
-      <header className={cn(HEADER_BAND, "shrink-0 px-4 pt-5 pb-4")}>
-        <h1 className="font-display text-xl font-bold tracking-tight">
-          Share Mesita
-        </h1>
-        <p className="text-muted-foreground type-body mt-0.5">
-          {APP_SHARE_TEXT}
-        </p>
-      </header>
-      <KeptScroll className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-4 pb-8">
+    <Screen title="Share Mesita" flush>
+      <div className="flex flex-col px-4 pt-4 pb-8" data-share-page>
+        <p className="text-muted-foreground type-body mb-4">{APP_SHARE_TEXT}</p>
         <div className="border-border bg-card overflow-hidden rounded-2xl border">
           {rows}
         </div>
-      </KeptScroll>
-      {children}
-    </div>
+        {children}
+      </div>
+    </Screen>
   );
 }

@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { QrCode, Search, Share2, User } from "lucide-react";
+import { QrCode, Search, User, Wallet } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -26,15 +26,14 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 import { useUnseenNotifications } from "./use-unseen-notifications";
 
-// FIVE TABS, in this order (Pato, 2026-11-14, MESITA-3855: "Home Search
-// Pay Share Me. EASY PEASY"):
+// FIVE TABS, in this order (Pato, 2026-11-14, MESITA-3886: "separate pay
+// and wallet again. only pay and only wallet"):
 //
-//   Home · Search · Pay · Share · Me
+//   Home · Search · Pay · Wallet · Me
 //
-// SHARE IS A TAB AGAIN (MESITA-3867, Pato: "i actually want a share page"):
-// it opens /share, one card of channel rows, and lights there like any tab.
-// For a day it was a button that fired the share sheet and opened nothing
-// (MESITA-3855); before that a page (MESITA-2566) and Me's tile (MESITA-2871).
+// WALLET IS A TAB AGAIN, SHARE IS IN IT: Wallet held this slot before
+// (MESITA-3722); Share held it from MESITA-3855/3867 and is now Wallet's big
+// Share Mesita button, which opens /share.
 //
 // ACTIVITY LEFT THE BAR (MESITA-3855, Pato: "We are going to remove Activity
 // too"): its chips are Me's Notifications, Reservations and Tickets pages. It
@@ -46,10 +45,9 @@ import { useUnseenNotifications } from "./use-unseen-notifications";
 //   put red bubble"; on Activity from MESITA-3769 until MESITA-3855). Opening
 //   Me › Notifications clears it.
 //
-//   PAY OWNS THE MONEY (MESITA-3726): it lights on every address under /pay
-//   (/pay/<placeId>, /pay/tab/<id>, /pay/receipt/<id>) and on the Wallet,
-//   a page pushed from Pay's header (/wallet, /wallet/<placeId>,
-//   /wallet/gift/<token>), so a bill or a House Card keeps Pay lit.
+//   PAY LIGHTS ON EVERY ADDRESS UNDER /pay (/pay/<placeId>, /pay/tab/<id>,
+//   /pay/receipt/<id>); WALLET ON /wallet, its House Cards and gift links,
+//   and /share (MESITA-3886).
 //
 // THE ME TAB WEARS THE GUEST'S PICTURE (Pato, MESITA-3077: "add profile
 // picture to me instead", after first asking for it at Home's and Search's
@@ -98,10 +96,10 @@ const ITEMS: Item[] = [
     tab: "pay",
   },
   {
-    href: CONSUMER_ROUTES.share,
-    Icon: Share2,
-    label: "Share",
-    tab: "share",
+    href: CONSUMER_ROUTES.wallet,
+    Icon: Wallet,
+    label: "Wallet",
+    tab: "wallet",
   },
   {
     href: CONSUMER_ROUTES.me,

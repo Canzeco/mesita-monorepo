@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/shared";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { GuestPayLoading } from "./GuestPayScreen";
 import { PayHeader } from "./PayHeader";
+import { WalletShareGift } from "@/components/consumer/wallet/WalletShareGift";
 import { WalletBodySkeleton } from "../wallet/WalletLists";
 
 /** A Pay screen's frame while it loads: the title in place, the body in
@@ -9,21 +10,23 @@ import { WalletBodySkeleton } from "../wallet/WalletLists";
  *  you are loading"). Every Pay address draws it (MESITA-3614). */
 export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | "proof" }) {
   if (body === "list") {
-    // /pay: the band (switch and search bar, MESITA-3738) and the places.
+    // /pay: the band (title and search bar, MESITA-3886) and the places.
     return (
       <div className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
-        <PayHeader tab="pay" bar={<span className="text-muted-foreground text-sm font-semibold">Search a place</span>} />
+        <PayHeader title="Pay" bar={<span className="text-muted-foreground text-sm font-semibold">Search a place</span>} />
         <Skeleton className="mt-5 h-56 w-full rounded-2xl" />
       </div>
     );
   }
   if (body === "wallet") {
-    // /wallet, the switch's Wallet half (MESITA-3729): the switch, then the
-    // page's own skeleton (MESITA-3814: the rows' shape, the same one the
-    // page shows while its one read runs), so nothing jumps.
+    // /wallet (MESITA-3886): the title band and the Share and Gift buttons as
+    // themselves (they read nothing), then the page's own skeleton
+    // (MESITA-3814: the rows' shape, the same one the page shows while its one
+    // read runs), so nothing jumps.
     return (
       <div className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
-        <PayHeader tab="wallet" />
+        <PayHeader title="Wallet" />
+        <WalletShareGift />
         <WalletBodySkeleton />
       </div>
     );

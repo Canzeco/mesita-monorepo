@@ -3,18 +3,19 @@
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { PayHeader } from "../pay/PayHeader";
 import { WalletSection } from "./WalletSection";
+import { WalletShareGift } from "./WalletShareGift";
 
-// THE WALLET, /wallet: THE SWITCH'S SECOND HALF (Pato, 2026-11-11,
-// MESITA-3729: "divide into Pay and Wallet. no header"): the Pay | Wallet
-// switch at the top (PayHeader), then what you pay with (WalletSection): the
-// Credits Payment Methods, then Money Payment Methods (MESITA-3731). It lights Pay and has no
-// Back. It draws /wallet/gift/<token> too, with the friend's credit sheet over
-// it. It was a page pushed from a Wallet button on Pay's header (MESITA-3726)
-// and a bar tab for MESITA-3722.
+// THE WALLET, /wallet, ITS OWN BAR TAB (Pato, 2026-11-14, MESITA-3886:
+// "separate pay and wallet again. only pay and only wallet"): the title band
+// (PayHeader), Share Mesita and Gift Credits (WalletShareGift), then what you
+// pay with (WalletSection). It draws /wallet/gift/<token> too, with the
+// friend's credit sheet over it. From MESITA-3729 until this it was the
+// second half of a Pay | Wallet switch and lit Pay.
 export function WalletPage({ giftToken = null }: { giftToken?: string | null }) {
   return (
     <KeptScroll className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
-      <PayHeader tab="wallet" />
+      <PayHeader title="Wallet" />
+      <WalletShareGift />
       <WalletSection giftToken={giftToken} />
     </KeptScroll>
   );

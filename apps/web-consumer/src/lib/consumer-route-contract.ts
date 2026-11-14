@@ -3,7 +3,7 @@
 // middleware's sign-in wall and route handlers read these, never a typed
 // path, so they cannot drift into stringly-typed mismatches (MESITA-3642).
 //
-// The live app is the bar (Home · Search · Pay · Share · Me), the place
+// The live app is the bar (Home · Search · Pay · Wallet · Me), the place
 // screen, reservations, and the money objects under Pay and Wallet. ROUTE_MAP below says, once, how each screen opens, which tab
 // it lights, where the bar shows and where Back lands (MESITA-3646).
 // Every address that shipped and no longer renders a page lives only in
@@ -78,11 +78,11 @@ export const CONSUMER_ROUTES = {
   // ONE CREDIT MOVEMENT, ONE PAGE (MESITA-3782): a voucher, bonus, refund or
   // gift ticket opens /me/tickets/credit/<placeId>/<kind>.<ms> (MESITA-3855).
   credit: { prefix: "/me/tickets/credit/" },
-  // PAY · WALLET (Pato, 2026-11-11, MESITA-3698: "Divide Payments across
-  // two sections: Pay and Wallet"): the bar's Pay tab has two halves, each
-  // its own address, /pay and /wallet, under one band. Wallet was the bar's
-  // fourth tab from MESITA-3295 and sat under Pay's list from MESITA-3631
-  // (/wallet a door to /pay) until this. A Mesita Prepay checkout returns to
+  // PAY AND WALLET, TWO TABS (Pato, 2026-11-14, MESITA-3886: "separate pay
+  // and wallet again. only pay and only wallet"): each its own bar tab and
+  // page, no switch between them. They were two halves of the Pay tab under
+  // one band (MESITA-3698/3729); Wallet was the bar's fourth tab from
+  // MESITA-3295 and sat under Pay's list from MESITA-3631. A Mesita Prepay checkout returns to
   // the place's House Card with ?prepay= (MESITA-3617), an added card to
   // /wallet?card=.
   wallet: "/wallet",
@@ -91,11 +91,10 @@ export const CONSUMER_ROUTES = {
   // NO ACTIVITY (Pato, 2026-11-14, MESITA-3855): its chips are Me's
   // Notifications, Reservations and Tickets pages.
   //
-  // SHARE IS A PAGE AGAIN, A BAR TAB (Pato, 2026-11-14, MESITA-3867: "i
-  // actually want a share page … just a button to share in different
-  // channels"): one card of channel rows. It was a bar button with no page
-  // for a day (MESITA-3855), which on a computer only copied the link.
-  // Me's Share cell opens it too ("share also here even if redundant").
+  // SHARE, A PAGE OPENED FROM WALLET (MESITA-3886: "in wallet include the
+  // button to share. super big button"): one card of channel rows
+  // (MESITA-3867), pushed with Back; it lights Wallet. It was the bar's Share
+  // tab from MESITA-3867 until Wallet took the slot.
   share: "/share",
   // Me is the hub: identity header + a grid of DestTiles and a Settings row, each a real
   // page under (shell)/me/<box> (MESITA-1789). The `/me/[tab]` catch-all
@@ -349,8 +348,8 @@ export function placeOpenPath(googlePlaceId: string): string {
 // frame (a type error) and lights no tab. Addresses that only redirect live
 // in `legacy` and next.config's table, never here.
 
-/** The bar's tabs: Home · Search · Pay · Share · Me (MESITA-3867). */
-export type ConsumerTab = "home" | "search" | "pay" | "share" | "me";
+/** The bar's tabs: Home · Search · Pay · Wallet · Me (MESITA-3886). */
+export type ConsumerTab = "home" | "search" | "pay" | "wallet" | "me";
 
 /** How a screen arrives: a bar `tab`; a `page` pushed over the screen it was
  *  opened from; a `panel` that slides over the page under it (an @modal
@@ -402,14 +401,12 @@ export const ROUTE_MAP = {
   payTab: row("/pay/tab/:tabId", "pay", "page", "pay", false),
   payJoin: row("/pay/join/:token", "pay", "door", "pay", false),
   payReceipt: row("/pay/receipt/:paymentId", "pay", "page", "pay", false),
-  // The Pay | Wallet switch's second half (MESITA-3729; a page pushed from
-  // Pay's header in MESITA-3726, a bar tab in MESITA-3722). It and its
-  // children light Pay.
-  wallet: row("/wallet", "pay", "tab", null),
-  walletPlace: row("/wallet/:placeId", "pay", "page", "wallet"),
-  walletGift: row("/wallet/gift/:token", "pay", "page", "wallet"),
-  // Share's page (MESITA-3867); Me's Share cell jumps here too.
-  share: row("/share", "share", "tab", null),
+  // Wallet, its own tab again (MESITA-3886); it and its children light it.
+  wallet: row("/wallet", "wallet", "tab", null),
+  walletPlace: row("/wallet/:placeId", "wallet", "page", "wallet"),
+  walletGift: row("/wallet/gift/:token", "wallet", "page", "wallet"),
+  // Share's page, pushed from Wallet's big button (MESITA-3886).
+  share: row("/share", "wallet", "page", "wallet"),
   me: row("/me", "me", "tab", null),
   meProfile: row("/me/profile", "me", "page", "me"),
   meInstagram: row("/me/instagram", "me", "page", "me"),
