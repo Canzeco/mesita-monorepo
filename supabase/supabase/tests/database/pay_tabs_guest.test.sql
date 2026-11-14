@@ -11,12 +11,15 @@
 -- normalised; another guest's payment of the same ticket here in 12 hours
 -- asks first (p_repeat_ok), the guest's own refuses; waiter tabs, other
 -- places and older payments never warn.
+-- MESITA-3843 — nothing is final until the waiter signs: a credits-only bill
+-- holds its credit; Reject, X and the ten-minute window release it; the
+-- signature spends it once; Cash Payments Cashback is Off or 3%.
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(86);
+select plan(102);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3707'), ('00000000-0000-4000-8000-0000000b3707');
 insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a3707'), ('00000000-0000-4000-8000-0000000b3707');
@@ -86,11 +89,11 @@ select pay_tab_open('00000000-0000-4000-8000-0000000a3707', '00000000-0000-4000-
 create temp table g1 on commit drop as
 select pay_tab_guest_pay('00000000-0000-4000-8000-0000000a3707', '00000000-0000-4000-8000-000000013707', 'MXN', false,
   repeat('1', 64), 5000, 5000, 0, 0, 0, 0, '00000000-0000-4000-8000-0000000e3701', null, 200) as r;
-select is((select r->>'status' from g1), 'paid', 'a credit-only guest payment is paid at once');
+select is((select r->>'status' from g1), 'paying', 'a credit-only guest payment waits for the waiter (MESITA-3843)');
 select is((select origin from pay_tabs where id = (select (r->>'tab_id')::uuid from g1)), 'guest', 'it is a guest tab');
 select is((select status from pay_tabs where id = (select (r->>'tab_id')::uuid from w1)), 'cancelled',
   'the guest''s own waiter tab still waiting for a bill is cancelled');
-select is(pg_temp.spendable(), 17000, 'the credit is spent: $170MX left');
+select is(pg_temp.spendable(), 17000, 'the credit is held: $170MX spendable');
 
 -- The same tap again (a lost answer): the same tab, no second spend, new QR.
 select is(
@@ -113,6 +116,10 @@ select is(
   (select r->>'tab_id' from g1), 'the refusal names the open payment');
 select is((pay_tab_verify((select (r->>'tab_id')::uuid from g1), '00000000-0000-4000-8000-000000013707', repeat('a', 64))->>'cashback_cents')::int,
   0, 'the waiter signs the credit-only tap 1: credits earn nothing');
+select is((select count(*)::int from wallet_entries e join wallet_payments w on w.id = e.payment_id
+            where w.tab_id = (select (r->>'tab_id')::uuid from g1) and e.kind = 'spend' and e.amount_cents = -5000),
+  1, 'the signature spends the held $50MX once (MESITA-3843)');
+select is(pg_temp.spendable(), 17000, 'and the balance is the same: held became spent');
 
 -- A refused tap leaves nothing.
 select throws_like(
@@ -246,9 +253,9 @@ select is((select status from pay_tabs where token_hash = repeat('9', 64)), 'exp
   'a cash-only tab nobody verified closes expired, with no cashback');
 select is(pay_tab_verify((select id from pay_tabs where token_hash = repeat('9', 64)), '00000000-0000-4000-8000-000000013707', repeat('a', 64))->>'code',
   'expired', 'Verify after the close answers expired');
-select is((select status from pay_tabs where token_hash = repeat('f', 64)), 'paid',
-  'a credit + cash tab nobody verified closes paid: the declared credit is spent');
-select is(pg_temp.spendable('00000000-0000-4000-8000-0000000b3707'), 18000, 'guest B''s $40MX is spent, not given back');
+select ok((select status = 'expired' and end_reason = 'expired' from pay_tabs where token_hash = repeat('f', 64)),
+  'a credit + cash tab nobody verified closes expired (MESITA-3843)');
+select is(pg_temp.spendable('00000000-0000-4000-8000-0000000b3707'), 22000, 'guest B''s $40MX is released, never spent unsigned');
 select is((select coalesce(sum(cashback_cents), 0)::int from wallet_payments where tab_id = (select (r->>'tab_id')::uuid from g5)),
   0, 'and earns no cashback');
 select is(pg_temp.spendable(), 7000, 'closing guest A''s cash-only tab moves no credit');
@@ -390,6 +397,65 @@ select lives_ok(
       repeat('e', 63) || '3', 1000, 0, 1000, 0, 0, 0, gen_random_uuid(), null, 200, now() + interval '13 hours',
       p_ticket => 'A123')$$,
   '13 hours later the ticket no longer warns');
+
+
+-- ━━━ MESITA-3843: Reject, X and the ten-minute window release everything ━━━━
+select ok(not has_function_privilege('authenticated', 'public.pay_tab_reject(uuid, uuid, text, timestamptz)', 'EXECUTE')
+          and not has_function_privilege('anon', 'public.pay_tab_reject(uuid, uuid, text, timestamptz)', 'EXECUTE'),
+  'client roles cannot reject');
+select ok(pg_get_constraintdef((select oid from pg_constraint where conname = 'place_payment_settings_cash_cashback_bps_check')) like '%300%',
+  'Cash Payments Cashback is Off or 3%');
+
+-- Guest D holds $220MX Available at the probe place.
+insert into auth.users (id) values ('00000000-0000-4000-8000-0000000d3843');
+insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000d3843');
+insert into public.wallet_purchases (id, consumer_id, place_id, amount_cents, currency, status, stripe_account_id,
+                                     voucher, bonus_cents, application_fee_cents, stripe_checkout_session_id)
+values ('00000000-0000-4000-8000-0000000e3843', '00000000-0000-4000-8000-0000000d3843',
+        '00000000-0000-4000-8000-000000013707', 20000, 'mxn', 'open', 'acct_test_3707',
+        'voucher_200', 2000, 1000, 'cs_test_3843');
+do $$ begin
+  perform wallet_credit_purchase('00000000-0000-4000-8000-0000000e3843', 'pi_test_3843', now() - interval '1 minute');
+end $$;
+
+create temp table h1 on commit drop as
+select pay_tab_guest_pay('00000000-0000-4000-8000-0000000d3843', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+  repeat('c', 63) || '1', 3000, 3000, 0, 0, 0, 0, gen_random_uuid(), null, 0, p_window => interval '10 minutes') as r;
+select is(pg_temp.spendable('00000000-0000-4000-8000-0000000d3843'), 19000, 'a credits-only bill holds its $30MX');
+select ok((select expires_at <= now() + interval '10 minutes' from pay_tabs where id = (select (r->>'tab_id')::uuid from h1)),
+  'the waiter has ten minutes');
+select is(pay_tab_reject((select (r->>'tab_id')::uuid from h1), '00000000-0000-4000-8000-000000023707', repeat('a', 64))->>'code',
+  'forbidden', 'another place''s staff cannot reject');
+select is(pay_tab_reject((select (r->>'tab_id')::uuid from h1), '00000000-0000-4000-8000-000000013707', repeat('a', 64))->>'outcome',
+  'rejected', 'the waiter rejects');
+select ok((select status = 'cancelled' and end_reason = 'rejected' from pay_tabs where id = (select (r->>'tab_id')::uuid from h1)),
+  'a rejected bill ends cancelled, end_reason rejected');
+select is(pg_temp.spendable('00000000-0000-4000-8000-0000000d3843'), 22000, 'Reject releases the held credit');
+select is(pay_tab_reject((select (r->>'tab_id')::uuid from h1), '00000000-0000-4000-8000-000000013707', repeat('a', 64))->>'outcome',
+  'already_rejected', 'a second Reject moves nothing');
+select is(pay_tab_verify((select (r->>'tab_id')::uuid from h1), '00000000-0000-4000-8000-000000013707', repeat('a', 64))->>'code',
+  'cancelled', 'a rejected bill cannot be signed');
+
+create temp table h2 on commit drop as
+select pay_tab_guest_pay('00000000-0000-4000-8000-0000000d3843', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+  repeat('c', 63) || '2', 3000, 3000, 0, 0, 0, 0, gen_random_uuid(), null, 0, p_window => interval '10 minutes') as r;
+select is(pay_tab_change((select (r->>'tab_id')::uuid from h2), '00000000-0000-4000-8000-0000000d3843', 'cancel')->>'outcome',
+  'cancelled', 'the guest''s X cancels');
+select ok((select end_reason = 'cancelled' from pay_tabs where id = (select (r->>'tab_id')::uuid from h2))
+          and pg_temp.spendable('00000000-0000-4000-8000-0000000d3843') = 22000,
+  'X records why and releases the credit');
+
+create temp table h3 on commit drop as
+select pay_tab_guest_pay('00000000-0000-4000-8000-0000000d3843', '00000000-0000-4000-8000-000000013707', 'MXN', false,
+  repeat('c', 63) || '3', 3000, 3000, 0, 0, 0, 0, gen_random_uuid(), null, 0, p_window => interval '10 minutes') as r;
+select is(pay_tab_verify((select (r->>'tab_id')::uuid from h3), '00000000-0000-4000-8000-000000013707', repeat('a', 64),
+          null, now() + interval '11 minutes')->>'code',
+  'expired', 'a signature after ten minutes is refused');
+update pay_tabs set expires_at = now() - interval '1 minute' where id = (select (r->>'tab_id')::uuid from h3);
+do $$ begin perform pay_tabs_close_guest(); end $$;
+select ok((select status = 'expired' and end_reason = 'expired' from pay_tabs where id = (select (r->>'tab_id')::uuid from h3))
+          and pg_temp.spendable('00000000-0000-4000-8000-0000000d3843') = 22000,
+  'expiry releases the credit, spends nothing');
 
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
             where n.nspname = 'public' and p.proname = 'pay_tab_guest_pay'),

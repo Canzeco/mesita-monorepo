@@ -31,7 +31,7 @@ select is(
   false, 'Mesita Pay defaults Off');
 
 select lives_ok(
-  $$update public.place_payment_settings set house_credits = true, cash_payments = true, cash_cashback_bps = 200
+  $$update public.place_payment_settings set house_credits = true, cash_payments = true, cash_cashback_bps = 300
      where place_id = '00000000-0000-4000-8000-000000013599'$$,
   'House Credits and Cash Payments do not need Stripe');
 

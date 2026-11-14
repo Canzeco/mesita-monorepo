@@ -71,6 +71,19 @@ serveJson("business-web-refund-payment", async (req) => {
     return json({ ok: false, code: "not_configured", error: "This row belongs to the other Stripe mode" }, 409);
   }
 
+  // MESITA-3843: a guest's bill the waiter signed is final in Mesita.
+  if (kind === "payment") {
+    const { data: link } = await admin.from("wallet_payments").select("tab_id").eq("id", id).maybeSingle();
+    const tabId = (link as { tab_id: string | null } | null)?.tab_id ?? null;
+    if (tabId) {
+      const { data: tab } = await admin.from("pay_tabs").select("origin, verified_at").eq("id", tabId).maybeSingle();
+      const t = tab as { origin: string; verified_at: string | null } | null;
+      if (t?.origin === "guest" && t.verified_at) {
+        return json({ ok: false, code: "final_payment", error: "Signed payments can't be undone." }, 409);
+      }
+    }
+  }
+
   const deps = { admin, stripe: key ? stripeClient(key) : null, actor: user.id };
   // An outside bill (MESITA-3545) never needs Stripe: its tip was paid at the table.
   const needsStripe = kind === "purchase" || paymentNeedsStripe(row as PaymentRow);
