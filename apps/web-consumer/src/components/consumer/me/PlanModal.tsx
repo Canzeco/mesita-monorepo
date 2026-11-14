@@ -11,6 +11,7 @@
 //   │ Max 2 reservations a month     │
 //   ├ Pro                $1 a month ┤
 //   │ Max 10 reservations a month    │
+//   │ MCP for ChatGPT or Claude Soon │
 //   └────────────────────────────────┘
 //   [ Upgrade to Pro · $1 a month ]     Free
 //   Pro renews Dec 14 · Cancel Pro      paid Pro
@@ -79,6 +80,14 @@ function PlanRow({
         <span className="text-muted-foreground type-label block">
           {words.perk}
         </span>
+        {words.soonPerk && (
+          <span className="text-muted-foreground type-label block">
+            {words.soonPerk}
+            <span className="bg-muted text-muted-foreground type-meta ml-1.5 rounded-full px-1.5 py-0.5 align-middle font-semibold">
+              Soon
+            </span>
+          </span>
+        )}
       </div>
     </div>
   );

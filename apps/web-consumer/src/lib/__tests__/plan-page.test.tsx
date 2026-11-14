@@ -11,14 +11,14 @@ vi.mock("next/navigation", () => ({
 const text = (html: string) => html.replace(/<[^>]*>/g, " ");
 
 // Plan is sold (MESITA-3870, Pato: "make it 2 dollar per month"): the one
-// price on the page is Pro's $2 a month, and nothing is sold before the
+// price on the page is Pro's $1 a month (MESITA-3881), and nothing is sold before the
 // server says which plan the guest is on (MVP test rule: money).
 describe("Me › Plan (MESITA-3870)", () => {
   const html = renderToStaticMarkup(<PlanModal />);
 
-  it("prices Pro at $2 a month and offers no Upgrade before the plan is known", () => {
-    expect(text(html).match(/\$\s?\d+(\.\d+)?/g)).toEqual(["$2"]);
-    expect(text(html)).toContain("$2 a month");
+  it("prices Pro at $1 a month and offers no Upgrade before the plan is known", () => {
+    expect(text(html).match(/\$\s?\d+(\.\d+)?/g)).toEqual(["$1"]);
+    expect(text(html)).toContain("$1 a month");
     expect(text(html)).not.toMatch(/MX\$/);
     // The header's back arrow is the only button until the read lands.
     expect(html.match(/<button\b/g) ?? []).toHaveLength(1);
