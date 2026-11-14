@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronRight, Copy } from "lucide-react";
+import { Button } from "./button";
 import { cn } from "./cn";
 import { FOCUS_RING_CLASS, TOUCH_TARGET_CLASS } from "./classes";
 import { Switch as UiSwitch } from "./ui/switch";
@@ -147,5 +148,28 @@ export function Collapsible({
       </summary>
       <div className="mt-4">{children}</div>
     </details>
+  );
+}
+
+/** Copies an id; a ghost sm Button that says Copied for a moment. */
+export function CopyIdButton({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      tone="ghost"
+      size="sm"
+      icon={copied ? <Check aria-hidden className="h-3.5 w-3.5" /> : <Copy aria-hidden className="h-3.5 w-3.5" />}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(id);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1200);
+        } catch {
+          /* clipboard unavailable — ignore */
+        }
+      }}
+    >
+      {copied ? "Copied" : "Copy"}
+    </Button>
   );
 }

@@ -30,7 +30,7 @@ export function SectionCard({
 }) {
   const danger = tone === "danger";
   return (
-    <Card id={id} className={cn(danger && "border-destructive/40 bg-destructive/5", className)}>
+    <Card id={id} danger={danger} className={className}>
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className={cn("flex items-center gap-2", danger && "text-destructive")}>

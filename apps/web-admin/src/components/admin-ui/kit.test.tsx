@@ -9,7 +9,7 @@ import {
   runConfirm,
   type ConfirmEvent,
   type ConfirmState,
-} from "./dialog";
+} from "./confirm-core";
 import { SaveBar } from "./save";
 
 // MESITA-3948 kit pins. MVP test rule: these guard data loss and destructive

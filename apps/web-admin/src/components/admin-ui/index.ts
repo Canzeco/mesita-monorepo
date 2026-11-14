@@ -11,16 +11,16 @@ export {
   TextAreaField,
   SelectField,
   NumberField,
-  PhoneField,
   ReadField,
 } from "./field";
+export { PhoneField } from "./phone";
 export { Chip, type ChipTone } from "./chip";
 export { Notice, type NoticeTone } from "./notice";
 export { Table, THead, TBody, Tr, Th, Td } from "./table";
 export { Spinner, Skeleton, EmptyState, Soon } from "./states";
 export { ConfirmDialog } from "./dialog";
 export { SaveBar } from "./save";
-export { Switch, SwitchRow, ChoicePill, Collapsible } from "./controls";
+export { Switch, SwitchRow, ChoicePill, Collapsible, CopyIdButton } from "./controls";
 export {
   FOCUS_RING_CLASS,
   FOCUS_RING_ON_DARK_CLASS,

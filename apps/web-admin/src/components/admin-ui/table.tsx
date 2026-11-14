@@ -29,7 +29,7 @@ export function Th({
   className,
   ...rest
 }: { numeric?: boolean; sticky?: boolean } & React.ComponentProps<"th">) {
-  return <TableHead className={cn(numeric && "text-right", sticky && STICKY_COL_HEAD, className)} {...rest} />;
+  return <TableHead className={cn(numeric ? "text-right" : "text-left", sticky && STICKY_COL_HEAD, className)} {...rest} />;
 }
 
 export function Td({

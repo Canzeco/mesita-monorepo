@@ -5,7 +5,7 @@ import { Button as KitButton, type ButtonSize, type ButtonTone } from "./button"
 import { SectionCard as KitSectionCard } from "./card";
 import { Chip } from "./chip";
 import { cn } from "./cn";
-import { INPUT_CLASS } from "./ui/input";
+import { INPUT_FRAME_CLASS } from "./ui/input";
 import { Switch as KitSwitch } from "./controls";
 import {
   FieldWell,
@@ -167,7 +167,7 @@ function QueryCapRow({
           if (Number.isNaN(raw)) return;
           rung.onChange(Math.max(min, Math.min(cap, Math.round(raw))));
         }}
-        className={cn(INPUT_CLASS, "w-16 shrink-0 px-2 text-right tabular-nums sm:w-20")}
+        className={cn(INPUT_FRAME_CLASS, "w-16 shrink-0 px-2 text-right tabular-nums sm:w-20")}
       />
     </label>
   );
