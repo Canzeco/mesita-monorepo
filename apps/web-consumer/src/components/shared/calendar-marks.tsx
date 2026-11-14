@@ -84,7 +84,7 @@ export function CalendarMark({ kind, size = 20 }: { kind: CalendarKind; size?: n
 export function CalendarMarksRow({ size = 20 }: { size?: number }) {
   const order: CalendarKind[] = ["google", "apple", "outlook"];
   return (
-    <span className="flex items-center gap-1" aria-hidden>
+    <span className="flex items-center gap-1.5" aria-hidden>
       {order.map((kind) => (
         <CalendarMark key={kind} kind={kind} size={size} />
       ))}
