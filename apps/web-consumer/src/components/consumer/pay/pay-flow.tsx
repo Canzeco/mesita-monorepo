@@ -34,8 +34,8 @@ export const NOT_PAID_REASON: Record<string, string> = {
   cancelled: "You cancelled this bill.",
 };
 
-/** The X at the top left, beside the title in the header (MESITA-3880):
- *  cancels the bill (or, before one exists, leaves). */
+/** The X at the top left, beside the title in the header (MESITA-3880).
+ *  It closes and keeps the ticket; cancelling is its own button (MESITA-3908). */
 export function CloseX({ onClick, label = "Cancel", light = false }: { onClick: () => void; label?: string; light?: boolean }) {
   return (
     <button
@@ -60,11 +60,14 @@ export function PlaceHero({
   place,
   off,
   onChoose,
+  onCancel,
   compact = false,
 }: {
   place: PayPlace;
   off: boolean;
   onChoose: () => void;
+  /** "Cancel ticket" at the top right, once something is typed (MESITA-3908). */
+  onCancel?: () => void;
   compact?: boolean;
 }) {
   return (
@@ -77,6 +80,16 @@ export function PlaceHero({
         <span className="absolute top-3 left-3 rounded-full bg-white px-3 py-1 text-sm font-semibold text-neutral-900" data-pay-off>
           Off
         </span>
+      ) : null}
+      {onCancel ? (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="absolute top-2 right-2 flex h-11 items-center rounded-full bg-black/40 px-4 text-sm font-semibold text-white hover:bg-black/55"
+          data-pay-cancel-ticket
+        >
+          Cancel ticket
+        </button>
       ) : null}
       <button
         type="button"
@@ -94,14 +107,25 @@ export function PlaceHero({
   );
 }
 
-/** The top of every step after Bill: the place's photo and name. */
-export function PlaceBar({ place }: { place: PayPlace }) {
+/** The top of every step after Bill: the place's photo and name, and
+ *  "Cancel ticket" on the right (MESITA-3908: the X only closes). */
+export function PlaceBar({ place, onCancel }: { place: PayPlace; onCancel?: () => void }) {
   return (
     <div className="flex h-11 shrink-0 items-center gap-3">
       <span className="bg-muted h-9 w-9 shrink-0 overflow-hidden rounded-full" aria-hidden>
         {place.photo ? <SizedImg src={place.photo} size="thumb" alt="" className="h-full w-full object-cover" /> : null}
       </span>
       <span className="min-w-0 flex-1 truncate text-base font-semibold">{place.name ?? "A Mesita place"}</span>
+      {onCancel ? (
+        <button
+          type="button"
+          onClick={onCancel}
+          className={cn("hover:bg-muted -mr-2 flex h-11 shrink-0 items-center rounded-full px-3 text-sm font-semibold", BAD)}
+          data-pay-cancel-ticket
+        >
+          Cancel ticket
+        </button>
+      ) : null}
     </div>
   );
 }

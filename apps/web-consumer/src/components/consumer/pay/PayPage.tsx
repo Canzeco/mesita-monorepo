@@ -22,7 +22,7 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot, requestUserLocation } from "@/lib/use-user-location";
 import { forgetGuestTab, PlacePhoto, readGuestTabIds } from "./pay-common";
 import { usePayPlaces } from "./use-pay-places";
-import { pendingTicketPlace } from "./GuestPayScreen";
+import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
 import { TicketsShortcut } from "./TicketsShortcut";
 
@@ -177,27 +177,20 @@ export function PayPage() {
     };
   }, []);
 
-  // OPEN (MESITA-3861, "14. Payments Flow Guest-Lead"): one open bill
-  // anywhere opens exactly where it was left; otherwise the Pay tab starts
-  // with the place the guest is at (the nearest, within AT_PLACE_M), unless
-  // they came here to choose another (?pick=1, the name on Open).
+  // OPEN (MESITA-3861, "14. Payments Flow Guest-Lead"): with no ticket open,
+  // the Pay tab starts with the place the guest is at (the nearest, within
+  // AT_PLACE_M), unless they came here to choose another (?pick=1). A ticket
+  // left open is never a redirect (MESITA-3908, Pato: "one thing is closing
+  // and other thing is cancelling"): its card leads the page instead.
+  const pending = usePendingTicket();
+  const hasPending = pending !== null;
   useEffect(() => {
-    if (!openTabs) return;
-    if (openTabs.length > 0) {
-      navigateTo(router, payTabPath(openTabs[0].tab_id), { replace: true });
-      return;
-    }
-    // MESITA-3879: a ticket in progress opens where it was left; no other place.
-    const pending = pendingTicketPlace();
-    if (pending) {
-      navigateTo(router, payPlacePath(pending), { replace: true });
-      return;
-    }
+    if (!openTabs || openTabs.length > 0 || hasPending) return;
     if (loc.state !== "on" || !places || places.length === 0) return;
     if (new URLSearchParams(window.location.search).has("pick")) return;
     const near = places.filter((p) => p.distance_m !== null).sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0))[0];
     if (near && (near.distance_m ?? Infinity) <= AT_PLACE_M) navigateTo(router, payPlacePath(near.place_id), { replace: true });
-  }, [openTabs, loc, places, router]);
+  }, [openTabs, hasPending, loc, places, router]);
 
   function askLocation() {
     setLoc({ state: "asking" });
@@ -222,7 +215,7 @@ export function PayPage() {
         title="Pay"
         action={<TicketsShortcut />}
         bar={
-          openTabs && openTabs.length === 0 ? (
+          openTabs && openTabs.length === 0 && !pending ? (
             <SearchBar
               query={query}
               showClear={query.length > 0}
@@ -249,6 +242,27 @@ export function PayPage() {
               />
             ))}
             <p className="text-muted-foreground text-center text-sm">Get this payment signed or close it before paying again.</p>
+          </div>
+        ) : pending ? (
+          // MESITA-3908: a ticket being filled in, closed but not cancelled.
+          <div className="flex flex-col" data-pay-open-only>
+            <button
+              type="button"
+              onClick={() => navigateTo(router, payPlacePath(pending.placeId), { motion: "push" })}
+              className="mb-4 flex items-center gap-3 rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-left"
+              data-pay-pending-ticket
+            >
+              {(() => {
+                const p = places?.find((x) => x.place_id === pending.placeId) ?? null;
+                return p ? <PlacePhoto place={p} className="h-12 w-12" /> : <span className="bg-muted h-12 w-12 shrink-0 rounded-full" aria-hidden />;
+              })()}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-base font-semibold">{pending.name ?? "A Mesita place"}</span>
+                <span className="text-sm text-amber-800">Ticket in progress</span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
+            </button>
+            <p className="text-muted-foreground text-center text-sm">Pay or cancel this ticket before starting another.</p>
           </div>
         ) : places ? (
           <PlaceList
