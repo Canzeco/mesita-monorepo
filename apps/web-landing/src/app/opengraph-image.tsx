@@ -38,7 +38,7 @@ export default function OpengraphImage() {
         </div>
       </div>
       <div style={{ fontSize: 30, opacity: 0.9 }}>
-        Six products for guests · thirteen for restaurants · launching in Monterrey
+        Six products for guests · fourteen for restaurants · launching in Monterrey
       </div>
     </div>,
     size,
