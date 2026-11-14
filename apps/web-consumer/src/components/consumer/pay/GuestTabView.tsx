@@ -12,7 +12,7 @@ import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { clearGuestDraft, reopenGuestDraft } from "./GuestPayScreen";
-import { BAD, CloseX, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, RowsCard, StepsBar, WAIT } from "./pay-flow";
+import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, RowsCard, StepsBar, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
@@ -40,6 +40,7 @@ export function GuestTabView({
   getSupabase,
   onPayAgain,
   onDone,
+  registerClose,
 }: {
   tab: GuestTab;
   /** The place's photo, from the Pay list (null while it loads). */
@@ -48,6 +49,8 @@ export function GuestTabView({
   /** Back to the bill at this place, everything typed. */
   onPayAgain: (placeId: string) => void;
   onDone: () => void;
+  /** The header's X (MESITA-3880): on Sign it asks to cancel the bill. */
+  registerClose?: (close: (() => void) | null) => void;
 }) {
   const [tab, setTab] = useState(first);
   const [qr, setQr] = useState<string | null>(() => readGuestQr(first.tab_id));
@@ -111,6 +114,14 @@ export function GuestTabView({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done, tab.tab_id]);
+
+  // Sign only: the header's X asks to cancel; the other states keep Back.
+  const signing = !done && !confirming;
+  useEffect(() => {
+    if (!registerClose) return;
+    registerClose(signing ? () => setConfirmCancel(true) : null);
+    return () => registerClose(null);
+  }, [registerClose, signing]);
 
   useEffect(() => {
     if (!done) return;
@@ -258,10 +269,7 @@ export function GuestTabView({
   const countdown = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
-      <div className="flex shrink-0 items-center gap-3">
-        <h2 className="font-display min-w-0 flex-1 truncate text-xl font-semibold">{placeName}</h2>
-        <CloseX onClick={() => setConfirmCancel(true)} label="Cancel this bill" />
-      </div>
+      <h2 className="font-display flex h-11 shrink-0 items-center truncate text-xl font-semibold">Show this QR to your waiter</h2>
       <StepsBar at={3} className="mt-1" />
       <p className="mt-2 flex shrink-0 justify-center">
         <span className="border-border flex items-center gap-2 rounded-full border px-3 py-1 text-base font-semibold tabular-nums [&>svg]:h-5 [&>svg]:w-5">

@@ -34,7 +34,8 @@ export const NOT_PAID_REASON: Record<string, string> = {
   cancelled: "You cancelled this bill.",
 };
 
-/** The X in the corner: cancels the bill (or, before one exists, leaves). */
+/** The X at the top left, beside the title in the header (MESITA-3880):
+ *  cancels the bill (or, before one exists, leaves). */
 export function CloseX({ onClick, label = "Cancel", light = false }: { onClick: () => void; label?: string; light?: boolean }) {
   return (
     <button
@@ -59,13 +60,11 @@ export function PlaceHero({
   place,
   off,
   onChoose,
-  onClose,
   compact = false,
 }: {
   place: PayPlace;
   off: boolean;
   onChoose: () => void;
-  onClose: () => void;
   compact?: boolean;
 }) {
   return (
@@ -79,9 +78,6 @@ export function PlaceHero({
           Off
         </span>
       ) : null}
-      <span className="absolute top-2 right-2">
-        <CloseX onClick={onClose} label="Close" light />
-      </span>
       <button
         type="button"
         onClick={onChoose}
@@ -98,15 +94,14 @@ export function PlaceHero({
   );
 }
 
-/** The top of every step after Bill: the place's photo and name, the X. */
-export function PlaceBar({ place, onClose }: { place: PayPlace; onClose: () => void }) {
+/** The top of every step after Bill: the place's photo and name. */
+export function PlaceBar({ place }: { place: PayPlace }) {
   return (
     <div className="flex h-11 shrink-0 items-center gap-3">
       <span className="bg-muted h-9 w-9 shrink-0 overflow-hidden rounded-full" aria-hidden>
         {place.photo ? <SizedImg src={place.photo} size="thumb" alt="" className="h-full w-full object-cover" /> : null}
       </span>
       <span className="min-w-0 flex-1 truncate text-base font-semibold">{place.name ?? "A Mesita place"}</span>
-      <CloseX onClick={onClose} />
     </div>
   );
 }

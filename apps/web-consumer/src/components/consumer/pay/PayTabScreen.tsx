@@ -8,6 +8,7 @@ import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
 import { GuestPayScreen } from "./GuestPayScreen";
+import { CloseX } from "./pay-flow";
 import { PayFormSheet } from "./PayForm";
 import { writeOpenTabId } from "./pay-common";
 import { TabView, type TabStart } from "./TabView";
@@ -48,9 +49,23 @@ export function PayTabScreen({ start }: { start: TabStart }) {
   const back = () => {
     if (!stepBack.current?.()) leave();
   };
+  // MESITA-3880: the guest's X sits top left, beside "Pay", in Back's place.
+  const close = useRef<(() => void) | null>(null);
+  const [hasClose, setHasClose] = useState(false);
+  const registerClose = useCallback((fn: (() => void) | null) => {
+    close.current = fn;
+    setHasClose(fn !== null);
+  }, []);
 
   return (
-    <Screen title="Pay" onBack={back} noBack={start.kind === "place"} flush paper>
+    <Screen
+      title="Pay"
+      onBack={back}
+      noBack={start.kind === "place"}
+      lead={hasClose ? <CloseX onClick={() => close.current?.()} label="Cancel this ticket" /> : undefined}
+      flush
+      paper
+    >
       {/* MESITA-3739: white, no tab bar, and a fixed height chain down to
           each step's flexible part (keypad rows, the QR), so nothing scrolls. */}
       <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -65,6 +80,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
             onOpenPlace={(id) => navigateTo(router, payPlacePath(id), { replace: true })}
             onChoosePlace={() => navigateTo(router, `${CONSUMER_ROUTES.pay}?pick=1`, { replace: true })}
             registerBack={registerBack}
+            registerClose={registerClose}
           />
         ) : (
         <TabView
@@ -80,6 +96,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
           onPayAgain={(placeId) => navigateTo(router, payPlacePath(placeId), { replace: true })}
           placeFor={(id) => places?.find((p) => p.place_id === id) ?? null}
           registerBack={registerBack}
+          registerClose={registerClose}
         />
         )}
       </div>
