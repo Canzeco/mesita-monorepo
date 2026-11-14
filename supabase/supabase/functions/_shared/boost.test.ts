@@ -351,7 +351,7 @@ Deno.test("premier: a renewal receipt goes to the guest's email only when there 
     periodId: "per",
     backingId: "b",
     placeId: "p",
-    label: "Premier 2X renewal",
+    label: "Mesita Pro renewal",
   };
   const withEmail = renewalChargeParams({ ...base, receiptEmail: "g@x.com" });
   assertEquals([withEmail.receipt_email, withEmail.off_session, withEmail.confirm], ["g@x.com", true, true]);
