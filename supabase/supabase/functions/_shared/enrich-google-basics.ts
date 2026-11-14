@@ -78,7 +78,7 @@ type GoogleDetails = {
   nationalPhoneNumber?: string;
   internationalPhoneNumber?: string;
   formattedAddress?: string;
-  addressComponents?: { types?: string[]; longText?: string }[];
+  addressComponents?: GoogleAddressPart[];
   location?: { latitude?: number; longitude?: number };
   rating?: number;
   userRatingCount?: number;
@@ -162,6 +162,9 @@ export type GoogleBasics = {
   google_tags: string[];
 };
 
+/** One Google address component, as Places (New) returns it. */
+export type GoogleAddressPart = { types?: string[]; longText?: string; shortText?: string };
+
 export type GoogleBasicsResult =
   // `primaryType` is the raw Google Places (New) primary type (e.g.
   // "cocktail_bar"). Returned alongside `basics` — NOT inside it — because it's
@@ -191,6 +194,9 @@ export type GoogleBasicsResult =
     /** Google's own "takes reservations": true, false, or null when Google
      *  does not say. The Create door's first word on Reserve (MESITA-3623). */
     googleReservable?: boolean | null;
+    /** Google's address components verbatim: Enrich's Details stores them in
+     *  google_address and its Links step reads the city and country off them. */
+    addressComponents: GoogleAddressPart[];
   }
   | { ok: false; code: string; error: string; status: number };
 
@@ -339,6 +345,7 @@ export async function fetchGoogleBasics(
     googleReservable: typeof (details as Record<string, unknown>).reservable === "boolean"
       ? (details as Record<string, unknown>).reservable as boolean
       : null,
+    addressComponents: details.addressComponents ?? [],
     basics: {
       google_place_id: placeIdSpine,
       // google_name is a CACHED OBSERVATION of Google's display name, not an

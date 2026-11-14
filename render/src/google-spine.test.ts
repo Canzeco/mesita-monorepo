@@ -1,135 +1,63 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
-import { photoUris, profileFromGoogle } from "./google-spine.ts";
+import { fetchGoogleDetails, googleDescription, googleFacts } from "./google-spine.ts";
 
-const PLACE = {
-  id: "ChIJ-test",
-  displayName: { text: "Casa Luminar" },
-  formattedAddress: "Av. Ámsterdam 1, CDMX",
-  location: { latitude: 19.4, longitude: -99.1 },
-  internationalPhoneNumber: "+52 55 0000 0000",
-  editorialSummary: { text: "Cocina de mercado en la Condesa." },
-  addressComponents: [{ types: ["locality"], longText: "Ciudad de México" }],
-  rating: 4.6,
-  userRatingCount: 120,
-  businessStatus: "OPERATIONAL",
-  websiteUri: "https://example.com",
-  priceLevel: "PRICE_LEVEL_EXPENSIVE",
-  regularOpeningHours: {
-    weekdayDescriptions: ["Monday: 9:00 AM – 6:00 PM"],
-    periods: [{ open: { day: 1, hour: 9, minute: 0 }, close: { day: 1, hour: 18, minute: 0 } }],
-  },
-  reviews: [{
-    authorAttribution: { displayName: "Ana" },
-    rating: 5,
-    text: { text: "Muy bueno" },
-    relativePublishTimeDescription: "hace una semana",
-  }],
+const PATCH = {
+  google_name: "Casa Luminar",
+  address: "Av. Ámsterdam 1, CDMX",
+  google_address: { addressComponents: [{ types: ["locality", "political"], longText: "Ciudad de México" }] },
+  phone: "+52 55 0000 0000",
+  website_url: "https://example.com",
+  google_stars_overall: 4.6,
+  pitch: "Cocina de mercado en la Condesa.",
+  story: "A longer generated story.",
 };
 
-test("a complete Google place becomes a finished profile without a database key", () => {
-  const got = profileFromGoogle(PLACE, "ChIJ-test");
-  assert.equal(got.ok, true);
-  if (!got.ok) return;
-  assert.equal(got.description, "Cocina de mercado en la Condesa.");
-  assert.equal(got.patch.google_name, "Casa Luminar");
-  assert.equal(got.patch.phone, "+52 55 0000 0000");
-  assert.equal(got.patch.city, undefined);
-  assert.equal(got.patch.zone, undefined);
-  assert.equal(got.patch.address, "Av. Ámsterdam 1, CDMX");
-  assert.equal(got.patch.lat, 19.4);
-  assert.equal(got.patch.lng, -99.1);
-  assert.deepEqual(got.patch.google_address, {
-    formattedAddress: "Av. Ámsterdam 1, CDMX",
-    location: { latitude: 19.4, longitude: -99.1 },
-    addressComponents: [{ types: ["locality"], longText: "Ciudad de México" }],
-  });
-  assert.equal(got.patch.google_found, true);
-  assert.equal(got.patch.website_url, "https://example.com/");
-  assert.equal(got.patch.price_level, 3);
-  assert.deepEqual(got.patch.hours, { monday: [{ open: "09:00", close: "18:00" }] });
-  assert.equal(got.patch.closes_at, "18:00");
-  assert.equal("google_reviews" in got.patch, false);
-  assert.equal(got.patch.pitch, "Cocina de mercado en la Condesa.");
-  assert.equal("google_place_id" in got.patch, false);
-  assert.equal("content_state" in got.patch, false);
+test("Render never calls Google Places itself: Details is Update's step (MESITA-3844)", () => {
+  for (const file of readdirSync(new URL(".", import.meta.url))) {
+    if (!file.endsWith(".ts") || file.endsWith(".test.ts")) continue;
+    const src = readFileSync(new URL(`./${file}`, import.meta.url), "utf8");
+    assert.equal(src.includes("places.googleapis.com"), false, file);
+  }
 });
 
-test("profileFromGoogle does not call the description model", () => {
-  const src = readFileSync(new URL("./google-spine.ts", import.meta.url), "utf8");
-  const fn = src.slice(
-    src.indexOf("export function profileFromGoogle"),
-    src.indexOf("export async function fetchTimezone"),
-  );
-  assert.equal(fn.includes("describeFromFacts"), false);
-  assert.equal(fn.includes("openai"), false);
-  assert.equal(fn.includes("formattedAddress.split"), false);
+test("the description falls back editorial first, then generative", () => {
+  assert.equal(googleDescription(PATCH), "Cocina de mercado en la Condesa.");
+  assert.equal(googleDescription({ ...PATCH, pitch: null }), "A longer generated story.");
+  assert.equal(googleDescription({ pitch: " ", story: null }), null);
 });
 
-test("a Google summary longer than 2000 characters is cut inside it, never mid-word (MESITA-2641, MESITA-2989)", () => {
-  const got = profileFromGoogle({
-    ...PLACE,
-    editorialSummary: { text: "A".repeat(2400) },
-    generativeSummary: { overview: { text: "B".repeat(2500) } },
-  }, "ChIJ-test");
-  assert.equal(got.ok, true);
-  if (!got.ok) return;
-  // No sentence and no space to cut at: 1999 characters and an ellipsis.
-  assert.equal(got.description?.length, 2000);
-  assert.equal(got.description, `${"A".repeat(1999)}…`);
-  assert.equal(got.patch.pitch, `${"A".repeat(1999)}…`);
-  assert.equal(got.patch.story, `${"B".repeat(1999)}…`);
+test("the facts name what Google said and nothing else", () => {
+  const facts = googleFacts(PATCH, "Cocina de mercado en la Condesa.");
+  assert.match(facts, /^Name: Casa Luminar$/m);
+  assert.match(facts, /^locality: Ciudad de México$/m);
+  assert.match(facts, /^Phone: \+52 55 0000 0000$/m);
+  assert.match(facts, /^Google rating: 4.6$/m);
+  assert.match(facts, /^Google summary: Cocina/m);
 });
 
-test("a 600-character Google summary is kept whole: it is the write's fallback Presentation (MESITA-2989)", () => {
-  const text = "Una taquería de barrio. ".repeat(25).trim();
-  const got = profileFromGoogle({ ...PLACE, editorialSummary: { text } }, "ChIJ-test");
-  assert.equal(got.ok, true);
-  if (!got.ok) return;
-  assert.equal(got.patch.pitch, text);
-});
+test("fetchGoogleDetails returns the shared step's answer and throws on a refusal", async () => {
+  process.env.SUPABASE_URL = "https://db.example";
+  process.env.ENRICH_WRITE_KEY = "k";
+  let asked: unknown = null;
+  const ok = (async (_url: string, init: RequestInit) => {
+    asked = JSON.parse(String(init.body));
+    return new Response(JSON.stringify({
+      ok: true,
+      patch: PATCH,
+      businessStatus: "OPERATIONAL",
+      primaryType: "restaurant",
+      photoUrls: ["https://lh3.example/1"],
+      countryCode: "MX",
+    }));
+  }) as unknown as typeof fetch;
+  const got = await fetchGoogleDetails("ChIJ-test", 8, ok);
+  assert.deepEqual(asked, { googlePlaceId: "ChIJ-test", maxPhotos: 8 });
+  assert.equal(got.countryCode, "MX");
+  assert.deepEqual(got.photoUrls, ["https://lh3.example/1"]);
 
-test("a long summary is cut at its last full sentence (MESITA-2641)", () => {
-  const text = `${"A fine taco place. ".repeat(110)}Ideal for meals with family or friends.`;
-  const got = profileFromGoogle({ ...PLACE, editorialSummary: { text } }, "ChIJ-test");
-  assert.equal(got.ok, true);
-  if (!got.ok) return;
-  assert.ok((got.description ?? "").length <= 2000);
-  assert.ok((got.description ?? "").endsWith("A fine taco place."));
-});
-
-test("photo links are https only, ten at most", () => {
-  const bodies = [
-    { photoUri: "https://lh3.googleusercontent.com/a" },
-    { photoUri: "http://insecure.example/a" },
-    { photoUri: "" },
-    ...Array.from({ length: 12 }, (_, i) => ({ photoUri: `https://lh3.googleusercontent.com/${i}` })),
-  ];
-  const urls = photoUris(bodies);
-  assert.equal(urls.length, 10);
-  assert.equal(urls[0], "https://lh3.googleusercontent.com/a");
-  assert.equal(photoUris(bodies, 2).length, 2);
-});
-
-test("Google's Instagram link is the Instagram field, not the website", () => {
-  const got = profileFromGoogle({
-    ...PLACE,
-    websiteUri: "https://www.instagram.com/casaluminar/",
-    priceLevel: "PRICE_LEVEL_UNSPECIFIED",
-    reviews: [{ rating: Number.NaN, text: { text: "Bien" } }],
-  }, "ChIJ-test");
-  assert.equal(got.ok, true);
-  if (!got.ok) return;
-  assert.equal(got.patch.instagram_url, "https://www.instagram.com/casaluminar");
-  assert.equal("instagram_found" in got.patch, false);
-  assert.equal("website_url" in got.patch, false);
-  assert.equal("price_level" in got.patch, false);
-  assert.equal("google_reviews" in got.patch, false);
-});
-
-test("a place without a name, coordinates, or address writes nothing", () => {
-  assert.equal(profileFromGoogle({ ...PLACE, displayName: { text: "" } }, "x").ok, false);
-  assert.equal(profileFromGoogle({ ...PLACE, location: {} }, "x").ok, false);
-  assert.equal(profileFromGoogle({ ...PLACE, formattedAddress: "  " }, "x").ok, false);
+  const refused = (async () =>
+    new Response(JSON.stringify({ ok: false, error: "Place has no address on Google." }), { status: 422 })) as unknown as typeof fetch;
+  await assert.rejects(fetchGoogleDetails("x", 1, refused), /no address/);
 });

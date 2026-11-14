@@ -28,8 +28,8 @@
 //   supabase-edgefunc-start-agent-enrich
 //   supabase-edgefunc-start-smoke-enrich
 //   supabase-edgefunc-sync-reservationist
-// enricher-edgefunc-write-place and enricher-edgefunc-sync-sources are not on
-// it: Render calls them with ENRICH_WRITE_KEY on verify_jwt = false, so this
+// enricher-edgefunc-write-place, enricher-edgefunc-sync-sources and
+// enricher-edgefunc-google-details are not on it: Render calls them with ENRICH_WRITE_KEY on verify_jwt = false, so this
 // role check must never guard them (see the invariant below).
 //
 // Wire protocol:

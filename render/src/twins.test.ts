@@ -4,17 +4,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { priceLevelFromGoogle } from "./channels.ts";
 import { vectorLiteral } from "./embedding.ts";
 import { capPresentation, PRESENTATION_MAX } from "./google-spine.ts";
-import { closesAtFromHours, type GooglePeriod, weeklyHoursFromPeriods } from "./hours.ts";
 import { defaultImageKnobs } from "./images.ts";
 import { resolverInput } from "./links.ts";
 
 type Fixture = {
-  hours: { periods: GooglePeriod[] | null; expected: unknown }[];
-  closesAt: { lines: string[]; expected: string | null }[];
-  priceLevel: { value: string | null; range: Parameters<typeof priceLevelFromGoogle>[1] | null; expected: number | null }[];
   vectorLiteral: { values: number[]; expected: string }[];
   imagePrompts: { analysis: string; sorting: string };
   resolverInput: { place: Parameters<typeof resolverInput>[0]; candidates: Parameters<typeof resolverInput>[1]; expected: string }[];
@@ -30,22 +25,6 @@ const fixture = JSON.parse(
 
 test("twin: resolverInput matches _shared/enrich-channel-discovery.ts", () => {
   for (const c of fixture.resolverInput) assert.equal(resolverInput(c.place, c.candidates), c.expected);
-});
-
-test("twin: weeklyHoursFromPeriods matches _shared/enrich-google-hours.ts", () => {
-  for (const c of fixture.hours) {
-    assert.deepEqual(weeklyHoursFromPeriods(c.periods ?? undefined), c.expected, JSON.stringify(c.periods));
-  }
-});
-
-test("twin: closesAtFromHours matches _shared/enrich-google-hours.ts", () => {
-  for (const c of fixture.closesAt) assert.equal(closesAtFromHours(c.lines), c.expected, JSON.stringify(c.lines));
-});
-
-test("twin: priceLevelFromGoogle matches _shared/enrich-google-basics-normalizers.ts", () => {
-  for (const c of fixture.priceLevel) {
-    assert.equal(priceLevelFromGoogle(c.value ?? undefined, c.range ?? undefined), c.expected, JSON.stringify(c));
-  }
 });
 
 test("twin: vectorLiteral matches _shared/embeddings-vector.ts", () => {

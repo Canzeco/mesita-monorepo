@@ -1,10 +1,8 @@
 import {
   describeFromFacts,
-  fetchGooglePhotoUrls,
-  fetchGooglePlace,
-  fetchTimezone,
-  profileFromGoogle,
-  type GooglePlace,
+  fetchGoogleDetails,
+  googleDescription,
+  googleFacts,
 } from "./google-spine.ts";
 import { embedSummary, embeddingFields, writtenSubject } from "./embedding.ts";
 import {
@@ -85,7 +83,7 @@ export type StepRun = { step: string; ms: number; produced: string };
 export type ClosedListing = { closed: true };
 
 /** Liveness, step 1's subprocess: read off the same Place Details response. */
-export function isPermanentlyClosed(details: { businessStatus?: string }): boolean {
+export function isPermanentlyClosed(details: { businessStatus?: string | null }): boolean {
   return details.businessStatus?.trim().toUpperCase() === "CLOSED_PERMANENTLY";
 }
 
@@ -111,8 +109,8 @@ export async function buildEnrichment(
   if (!job.placeId?.trim() || !googlePlaceId) {
     throw new Error("Enrichment needs a place id and a Google place id.");
   }
-  const googleKey = process.env.GMP_KEY?.trim() ?? "";
-  if (!googleKey) throw new Error("Render is missing GMP_KEY");
+  const knobs = job.knobs ?? {};
+  const images = imageKnobs(knobs);
 
   const ran: StepRun[] = [];
   const timed = async <T>(step: string, work: () => Promise<T>, produced: (value: T) => string): Promise<T> => {
@@ -121,20 +119,18 @@ export async function buildEnrichment(
     ran.push({ step, ms: Date.now() - started, produced: produced(value) });
     return value;
   };
-  const details = await timed("details", () => fetchGooglePlace(googlePlaceId, googleKey), (d) =>
+  // Step 1 is Update's own Google step (MESITA-3844), asked for every photo
+  // the Images step may rank.
+  const details = await timed("details", () => fetchGoogleDetails(googlePlaceId, images.gatherGoogleImages), (d) =>
     isPermanentlyClosed(d) ? "closed" : "ok");
   if (isPermanentlyClosed(details)) return { closed: true };
-  const spine = profileFromGoogle(details, googlePlaceId);
-  if (!spine.ok) throw new Error(spine.error);
-  const lat = spine.patch.lat;
-  const lng = spine.patch.lng;
-  if (typeof lat === "number" && typeof lng === "number") {
-    const timezone = await fetchTimezone(lat, lng, googleKey);
-    if (timezone) spine.patch.timezone = timezone;
-  }
+  const spine = {
+    patch: { ...details.patch },
+    description: googleDescription(details.patch),
+    facts: googleFacts(details.patch, googleDescription(details.patch)),
+  };
   const name = typeof spine.patch.google_name === "string" ? spine.patch.google_name : "";
-  const city = addressPart(details, ["locality", "administrative_area_level_2"])?.longText?.trim() || null;
-  const knobs = job.knobs ?? {};
+  const city = stringField(spine.patch.city);
   const counts = linkCounts({
     website_url: knobs.discoverWebsiteN,
     instagram_url: knobs.discoverInstagramN,
@@ -153,7 +149,7 @@ export async function buildEnrichment(
   const discovered = await timed("links", () => discoverLinks({
     name,
     city,
-    country: addressPart(details, ["country"])?.shortText?.trim() || null,
+    country: details.countryCode,
     category: details.primaryType ?? null,
     google: Object.fromEntries(LINK_FIELDS.map((field) => [field, stringField(spine.patch[field])])),
     // Every link is looked for again; one the Resolver keeps replaces the saved one.
@@ -179,7 +175,6 @@ export async function buildEnrichment(
   }));
 
   const openaiKey = process.env.OPENAI_KEY?.trim() ?? "";
-  const images = imageKnobs(knobs);
   const photos = await timed("images", async () => {
     const posts = await fetchInstagramPosts({
       instagramUrl: accounts.instagramUrl,
@@ -187,7 +182,7 @@ export async function buildEnrichment(
       apifyKey: process.env.APIFY_KEY,
     });
     return rankGallery({
-      google: await fetchGooglePhotoUrls(details.photos, googleKey, images.gatherGoogleImages),
+      google: details.photoUrls.slice(0, images.gatherGoogleImages),
       instagram: rankPostsByLikes(posts),
       knobs: images,
       openaiKey,
@@ -250,15 +245,6 @@ function imageKnobs(knobs: EnrichmentKnobs): ImageKnobs {
 
 function countOr(value: number | undefined, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-// Google's address parts, in the same order _shared/enrich-google-basics.ts reads them.
-function addressPart(details: GooglePlace, types: string[]) {
-  for (const type of types) {
-    const part = details.addressComponents?.find((row) => row.types?.includes(type));
-    if (part) return part;
-  }
-  return null;
 }
 
 function stringField(value: unknown): string | null {

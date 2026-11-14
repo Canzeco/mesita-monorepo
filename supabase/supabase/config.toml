@@ -552,6 +552,10 @@ verify_jwt = true
 [functions.enricher-edgefunc-sync-sources]
 verify_jwt = false
 
+# Enrichment's Details step: Update's Google fetch, returned and not written (MESITA-3844).
+[functions.enricher-edgefunc-google-details]
+verify_jwt = false
+
 # Configurations › Atlas. Read-only taxonomy lists.
 [functions.admin-web-get-families]
 verify_jwt = true

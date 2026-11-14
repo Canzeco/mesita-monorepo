@@ -1,8 +1,9 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1";
 import {
   assertGoogleUpdatePatchSafe,
-  googleBasicsToUpdatePatch,
+  googleDetailsPatch,
   galleryTakesGoogleHero,
+  googleWriteRule,
 } from "./admin-google-place-update.ts";
 import type { GoogleBasics } from "./enrich-google-basics.ts";
 
@@ -46,8 +47,8 @@ function sampleBasics(): GoogleBasics {
   };
 }
 
-Deno.test("googleBasicsToUpdatePatch never carries the gallery", () => {
-  const patch = googleBasicsToUpdatePatch({
+Deno.test("googleDetailsPatch never carries the gallery", () => {
+  const patch = googleDetailsPatch({
     basics: sampleBasics(),
     businessStatus: "OPERATIONAL",
     googlePrimaryType: "restaurant",
@@ -60,7 +61,7 @@ Deno.test("googleBasicsToUpdatePatch never carries the gallery", () => {
 });
 
 Deno.test("a refetch never overwrites the inferred categories or families (MESITA-2827)", () => {
-  const patch = googleBasicsToUpdatePatch({
+  const patch = googleDetailsPatch({
     basics: sampleBasics(),
     businessStatus: null,
     googlePrimaryType: "restaurant",
@@ -85,4 +86,27 @@ Deno.test("Update takes Google's hero only while the gallery is at most one phot
   assertEquals(galleryTakesGoogleHero(["https://a.example/1.jpg", " "]), true);
   // An enriched gallery is never overwritten.
   assertEquals(galleryTakesGoogleHero(["https://a.example/1.jpg", "https://a.example/2.jpg"]), false);
+});
+
+Deno.test("the Details patch leaves the review list to the Reviews step (MESITA-3844)", () => {
+  const patch = googleDetailsPatch({
+    basics: { ...sampleBasics(), google_reviews: [{ author: "a", rating: 5, quote: "q", date: "d" }] },
+    businessStatus: null,
+    googlePrimaryType: null,
+    googleTypes: [],
+    now: NOW,
+  });
+  assertEquals("google_reviews" in patch, false);
+  assertEquals(patch.google_found, true);
+});
+
+Deno.test("Update's write rule: a pin is kept and an empty never blanks a filled field (MESITA-3844)", () => {
+  const sources = { pins: { phone: { source: "business", confidence: 1, pinnedUntil: "2027-01-01T00:00:00.000Z" } } };
+  const { patch, pinned } = googleWriteRule(
+    { phone: "+52 55 0000 0000", instagram_url: null, website_url: "", hours: [], google_name: "Test" },
+    sources,
+    new Date(NOW),
+  );
+  assertEquals(patch, { google_name: "Test" });
+  assertEquals(pinned, ["phone"]);
 });

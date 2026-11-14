@@ -1,4 +1,6 @@
-// Admin Update (MESITA-2737): refresh Google factuals. The one gallery
+// Admin Update (MESITA-2737): refresh Google factuals — the Details step run
+// by itself (MESITA-3844: Enrich's step 1 is this same body, through
+// enricher-edgefunc-google-details). The one gallery
 // (`photos`, MESITA-2794) takes Google's current hero only while it holds at
 // most one photo: one photo means Create wrote it and Enrich never ran, so it
 // is still Google's. A longer gallery is Enrich's and Update never touches it.
@@ -6,7 +8,9 @@
 
 import { readOperatorFields } from "./operator-fields.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { fetchGoogleBasics, type GoogleBasics } from "./enrich-google-basics.ts";
+import { fetchGoogleBasics, type GoogleAddressPart, type GoogleBasics } from "./enrich-google-basics.ts";
+import { activeFieldPins, readFieldPins, stripPinnedColumns } from "./enrich-corrections.ts";
+import { capPresentation } from "./presentation-cap.ts";
 import { mirrorPlacePhotos } from "./store-place-images.ts";
 import { writePlace } from "./place-doc.ts";
 import { googleTypesPrimaryFirst } from "./google-table-b.ts";
@@ -50,33 +54,44 @@ export function galleryTakesGoogleHero(photos: unknown): boolean {
 }
 
 /**
- * Build the place_profiles patch from a Google basics fetch (before pins).
+ * The Google Details step's patch — one body for Update and for Enrich's step 1
+ * (MESITA-3844: Enrich's Render task fetches it through
+ * enricher-edgefunc-google-details instead of mapping Google itself).
  * The gallery is never in it: `galleryTakesGoogleHero` decides that separately.
  * Google's own types land in google_source_types, primary first; the trigger
  * turns them into the Google categories (MESITA-2836) and the view into the
  * families (MESITA-2834), so a refetch refreshes all three through one column.
+ * Google's five reviews are not in it either: the review list is the Reviews
+ * step's (Apify, 100 newest), and Google's five would replace it.
  */
-export function googleBasicsToUpdatePatch(input: {
+export function googleDetailsPatch(input: {
   basics: GoogleBasics;
   businessStatus: string | null;
   googlePrimaryType: string | null;
   googleTypes: string[];
+  addressComponents?: GoogleAddressPart[];
   now: string;
 }): Record<string, unknown> {
   const googleTypes = googleTypesPrimaryFirst(input.googlePrimaryType, input.googleTypes);
   const patch: Record<string, unknown> = {
     google_name: input.basics.google_name,
+    google_found: true,
     price_level: input.basics.price_level,
     lat: input.basics.lat,
     lng: input.basics.lng,
     address: input.basics.address,
+    google_address: {
+      formattedAddress: input.basics.address,
+      location: { latitude: input.basics.lat, longitude: input.basics.lng },
+      addressComponents: input.addressComponents ?? [],
+    },
     city: input.basics.city,
     timezone: input.basics.timezone,
     closes_at: input.basics.closes_at,
     hours: input.basics.hours,
     phone: input.basics.phone,
-    pitch: input.basics.pitch,
-    story: input.basics.story,
+    pitch: cappedOrNull(input.basics.pitch),
+    story: cappedOrNull(input.basics.story),
     website_url: input.basics.website_url,
     instagram_url: input.basics.instagram_url,
     facebook_url: input.basics.facebook_url,
@@ -91,7 +106,6 @@ export function googleBasicsToUpdatePatch(input: {
     google_maps_url: input.basics.google_maps_url,
     google_stars_overall: input.basics.google_stars_overall,
     google_review_count: input.basics.google_review_count,
-    google_reviews: input.basics.google_reviews,
     google_tags: input.basics.google_tags,
     google_source_types: googleTypes,
   };
@@ -102,6 +116,74 @@ export function googleBasicsToUpdatePatch(input: {
   }
   assertGoogleUpdatePatchSafe(patch);
   return patch;
+}
+
+function cappedOrNull(text: string | null): string | null {
+  const capped = capPresentation(text ?? "");
+  return capped ? capped : null;
+}
+
+/**
+ * The one write rule, Update's as much as Enrich's (MESITA-3844): an empty
+ * value (null, blank, an empty list) never blanks a filled column, and a field
+ * a person pinned (90 days, enrich-corrections.ts) is kept. Enrich applies the
+ * same two halves in Render's commitPatch and enricher-edgefunc-write-place.
+ */
+export function googleWriteRule(
+  patch: Record<string, unknown>,
+  enrichmentSources: unknown,
+  now = new Date(),
+): { patch: Record<string, unknown>; pinned: string[] } {
+  const filled: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(patch)) {
+    if (value == null) continue;
+    if (typeof value === "string" && value.trim() === "") continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    filled[key] = value;
+  }
+  const kept = stripPinnedColumns(filled, activeFieldPins(readFieldPins(enrichmentSources), now), now);
+  return { patch: kept.update, pinned: kept.skipped };
+}
+
+export type GoogleDetailsStep =
+  | { ok: false; status: number; error: string; code?: string }
+  | {
+    ok: true;
+    patch: Record<string, unknown>;
+    businessStatus: string | null;
+    primaryType: string | null;
+    /** Google's photo URLs, best-first, at most `maxPhotos`. */
+    photoUrls: string[];
+    /** Google's ISO country code ("MX"), for the Links step's search. */
+    countryCode: string | null;
+  };
+
+/** Step 1, Details: one Place Details call mapped to the patch. Writes nothing. */
+export async function runGoogleDetailsStep(
+  googlePlaceId: string,
+  key: string,
+  opts: { maxPhotos: number; now?: string },
+): Promise<GoogleDetailsStep> {
+  const google = await fetchGoogleBasics(googlePlaceId, key, { maxPhotos: opts.maxPhotos });
+  if (!google.ok) {
+    return { ok: false, status: google.status, code: google.code, error: google.error };
+  }
+  const country = google.addressComponents.find((part) => part.types?.includes("country"));
+  return {
+    ok: true,
+    patch: googleDetailsPatch({
+      basics: google.basics,
+      businessStatus: google.businessStatus,
+      googlePrimaryType: google.primaryType,
+      googleTypes: google.googleTypes,
+      addressComponents: google.addressComponents,
+      now: opts.now ?? new Date().toISOString(),
+    }),
+    businessStatus: google.businessStatus,
+    primaryType: google.primaryType,
+    photoUrls: google.basics.photos,
+    countryCode: country?.shortText?.trim() || null,
+  };
 }
 
 export type GooglePlaceUpdateResult =
@@ -160,7 +242,8 @@ export async function runGooglePlaceUpdate(
     return { ok: false, status: 503, code: "no_key", error: "Google Places is not configured." };
   }
 
-  const google = await fetchGoogleBasics(googlePlaceId, key);
+  // Update needs one photo at most: Google's hero, for a gallery still Create's.
+  const google = await runGoogleDetailsStep(googlePlaceId, key, { maxPhotos: 1, now });
   if (!google.ok) {
     return { ok: false, status: google.status, code: google.code, error: google.error };
   }
@@ -168,20 +251,13 @@ export async function runGooglePlaceUpdate(
   // Mirror Google's hero only when the gallery will take it.
   // A gallery the place saved (MESITA-3513) is never replaced by Google's hero.
   const ownedGallery = readOperatorFields(profile.enrichment_sources).includes("photos");
-  const hero = !ownedGallery && galleryTakesGoogleHero(profile.photos) ? google.basics.photos.slice(0, 1) : [];
+  const hero = !ownedGallery && galleryTakesGoogleHero(profile.photos) ? google.photoUrls.slice(0, 1) : [];
   const mirrored = hero.length > 0
     ? await mirrorPlacePhotos(admin, opts.supabaseUrl, hero)
     : [];
 
-  // d3a: Google Update is not blocked by enrichment correction pins.
-  const patch = googleBasicsToUpdatePatch({
-    basics: google.basics,
-    businessStatus: google.businessStatus,
-    googlePrimaryType: google.primaryType,
-    googleTypes: google.googleTypes,
-    now,
-  });
-  const pinned: string[] = [];
+  // The same write rule as Enrich (MESITA-3844): pins kept, empties dropped.
+  const { patch, pinned } = googleWriteRule(google.patch, profile.enrichment_sources, new Date(now));
   if (mirrored.length > 0) patch.photos = [mirrored[0].publicUrl];
 
   const priorSync = profile.source_sync && typeof profile.source_sync === "object"
