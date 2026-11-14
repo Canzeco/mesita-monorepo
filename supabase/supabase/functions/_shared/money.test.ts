@@ -2,7 +2,7 @@
 // down. Money, so pinned.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { bps, MESITA_FEE_BPS_PAYMENT, MESITA_FEE_BPS_VOUCHER, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, vouchersUpToPct, voucherPriceCents } from "./money.ts";
+import { bps, MESITA_FEE_BPS_PAYMENT, MESITA_FEE_BPS_VOUCHER, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, vouchersUpToPct, voucherPriceCents, VOUCHER_PRICE_CENTS, VOUCHER_CURRENCY_LIST } from "./money.ts";
 
 Deno.test("bps rounds down to the cent", () => {
   assertEquals(bps(999_99, 500), 4999);
@@ -24,6 +24,14 @@ Deno.test("the catalog's bonuses and fees, in centavos", () => {
   assertEquals(voucherPriceCents("voucher_200", "usd"), 10_00);
   assertEquals(voucherPriceCents("voucher_1000", "usd"), 100_00);
   assertEquals(voucherPriceCents("voucher_200", "eur"), null);
+  // MESITA-3919: every selling currency is on the ten-currency list at the same Small, Big = 10×.
+  for (const cur of Object.keys(VOUCHER_PRICE_CENTS)) {
+    const row = VOUCHER_CURRENCY_LIST.find((r) => r.code === cur.toUpperCase());
+    assertEquals(row?.small, (voucherPriceCents("voucher_200", cur) ?? 0) / 100);
+    assertEquals(voucherPriceCents("voucher_1000", cur), (voucherPriceCents("voucher_200", cur) ?? 0) * 10);
+  }
+  assertEquals(VOUCHER_CURRENCY_LIST.length, 10);
+  for (const r of VOUCHER_CURRENCY_LIST) assertEquals(String(r.small)[0], "1");
   assertEquals(voucherBonusCents("voucher_1000"), 200_00);
   assertEquals(voucherBonusCents("voucher_5000"), 1_500_00);
   assertEquals(voucherBonusCents("voucher_welcome"), 100_00);
