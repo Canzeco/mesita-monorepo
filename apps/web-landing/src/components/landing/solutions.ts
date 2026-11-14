@@ -1,8 +1,9 @@
-// The eleven product solutions, as 🦚 Main §§ 3–4 names them: six for the
-// guest, five for the place. Digital Payments, Credit Prepayments and Credit
-// Rewards are shared by both sides and struck through on Main (not built), so
-// they carry `soon` and the page tags them instead of hiding them. Order is
-// Main's order; rename a product on Main first, then here.
+// The product solutions. Guests: six, as 🦚 Main § 3 names them; Digital
+// Payments, Credit Prepayments and Credit Rewards are not built, so they carry
+// `soon` and the page tags them instead of hiding them. Restaurants: every
+// product on Business › All (web-business places/[id]/all), same names, same
+// copy, same order: three current, ten Soon (MESITA-3845, Pato: "List all this
+// in the Solutions for Restaurants"). Rename a product there first, then here.
 
 export type Solution = {
   name: string;
@@ -45,26 +46,65 @@ export const GUEST_SOLUTIONS: Solution[] = [
 
 export const PLACE_SOLUTIONS: Solution[] = [
   {
-    name: "Mesita Profile",
-    body: "Your page already exists, built by AI from your Google listing and other public sources. Claim it to control photos, hours, channels and the presentation guests read. Free forever.",
+    name: "Profile",
+    body: "What guests read about your place: basics, hours, location and links, and what they say on Google, Instagram and Facebook. Edit it here and preview it the way guests see it.",
   },
   {
     name: "Premier",
-    body: "The one paid mark in Mesita. Subscribe at 2X or 5X and your score multiplies in every Discovery search, always marked Ad. It orders, never excludes. Cancel any month.",
+    body: "Rank higher on Home and the Map, marked as an ad. See your level here and how it works.",
   },
   {
-    name: "Digital Payments",
-    body: "Accept card, Apple Pay and Google Pay on your own Stripe account, opened in minutes. Funds settle to you and you are the merchant of record.",
+    name: "Payments",
+    body: "House Credits, Cash Payments, App Payments, their Cashback-as-Credits, App Prepayments and the Stripe Account, and which of them are on at your place.",
+  },
+  {
+    name: "Smart Menu",
+    body: "Your interactive menu, built by AI from a photo, file or website, approved by you and hosted on Mesita. Guests open it from a QR code or link with no account, ask its AI questions, and order and pay directly, at your place or from anywhere.",
     soon: true,
   },
   {
-    name: "Credit Prepayments",
-    body: "Sell your meals before they are eaten. Set the bonus, let guests buy, gift and send credit that spends only with you, and get the money the day it is bought.",
+    name: "Express Website",
+    body: "A website on your own domain, made from your Mesita profile with the same menu, hours and photos. Change it by asking, with ordering and reservation buttons already connected.",
     soon: true,
   },
   {
-    name: "Credit Rewards",
-    body: "Fund a percent back on every payment, paid as credit at your place, never cash. You set the rate and the cap; the credit brings the guest back.",
+    name: "Mesita Capital",
+    body: "Cash upfront, by selling an agreed amount of future credit at your restaurant to Mesita at a discount. Mesita gives that credit to guests, who redeem it over time, so the funding brings visits with it.",
+    soon: true,
+  },
+  {
+    name: "Marketing Agent",
+    body: "Connects to Google and Meta. Uses Higgsfield to turn your profile data and guests' Instagram Stories, with their permission, into AI content made to go viral. Create your content, post it to your feed and boost it with ads on every channel, all from one place.",
+    soon: true,
+  },
+  {
+    name: "Answering Agent",
+    body: "Agents connected to all your channels, including phone, WhatsApp and text, that know your business: hours, menu and bookings. They turn questions into orders and bookings, so your staff get structured information instead of scattered calls and messages.",
+    soon: true,
+  },
+  {
+    name: "Orders Management",
+    body: "One queue for every order, labeled by source: Mesita members, your website and agents, and Uber Eats, Rappi and DiDi Food. Manage status, prep time, cancellations and sold-out items, and see the day's delivery sales.",
+    soon: true,
+  },
+  {
+    name: "Reservations Management",
+    body: "One calendar for every booking, labeled by source: Mesita members, your website and agents, and outside booking systems, synced so tables aren't double-booked. Manage availability, confirmations, reminders, changes and cancellations, with every booking tied to its guest.",
+    soon: true,
+  },
+  {
+    name: "Mesita CRM",
+    body: "One record per guest, built from every booking, order, visit and redemption, with history, notes, tags and preferences so staff recognize who's at the door. Message guests on WhatsApp, SMS and email from that record, with every message logged.",
+    soon: true,
+  },
+  {
+    name: "Mesita Terminal",
+    body: "A card device connected to the Mesita bill. Guests tap or insert their card at the counter or table, staff see the result on the right ticket, and online and in-person payments reconcile in one place.",
+    soon: true,
+  },
+  {
+    name: "Mesita POS",
+    body: "Take orders, track the kitchen and close bills on a point of sale connected to your Smart Menu. Counter, table and online sales share the same guest, rewards and payment records.",
     soon: true,
   },
 ];
