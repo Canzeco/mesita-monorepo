@@ -13,7 +13,7 @@ export default async function LogsPage() {
   return (
     <ConfigPageLayout
       title="Logs"
-      description="Headline counters and a recent activity feed. Enrichment workflow lines stay available for deep debugging."
+      description="A recent activity feed. Enrichment workflow lines stay available for deep debugging."
     >
       <LogsClient initialLogs={initialLogs} initialSummary={initialSummary} />
     </ConfigPageLayout>

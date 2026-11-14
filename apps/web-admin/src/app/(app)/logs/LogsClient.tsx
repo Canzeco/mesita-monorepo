@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, RefreshCw } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
-import { ActivityCounterGrid } from "@/components/activity/ActivityCounterGrid";
 import { ActivityFeedList } from "@/components/activity/ActivityFeedList";
 import { Button } from "@/components/admin-ui/config";
 import { formatAbsoluteUtc } from "@/lib/format";
@@ -122,17 +121,6 @@ export function LogsClient({
       </div>
 
       {summaryError ? <ErrorNote message={summaryError} /> : null}
-      {summary ? (
-        <section className="border-border bg-card overflow-hidden rounded-2xl border p-4">
-          <ActivityCounterGrid
-            windowDays={summary.windowDays}
-            guestOpens={summary.guestOpens}
-            guestSocial={summary.guestSocial}
-            operatorVerbs={summary.operatorVerbs}
-          />
-        </section>
-      ) : null}
-
       <section className="border-border bg-card overflow-hidden rounded-2xl border">
         <div className="border-border/60 text-muted-foreground flex items-center justify-between border-b px-4 py-3 type-meta">
           <span className="font-semibold text-foreground">Recent activity</span>

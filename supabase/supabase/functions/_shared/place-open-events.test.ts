@@ -1,32 +1,6 @@
 // The Google-only open ledger (MESITA-2323).
 import { assertEquals } from "jsr:@std/assert@1";
-import { recordPlaceOpen, summarizePlaceOpens } from "./place-open-events.ts";
-
-Deno.test("summary: outcomes, distinct places, profile rate, repeated places first", () => {
-  const s = summarizePlaceOpens([
-    { google_place_id: "a", outcome: "created", place_id: "p-a" },
-    { google_place_id: "a", outcome: "existing", place_id: "p-a" },
-    { google_place_id: "a", outcome: "existing", place_id: "p-a" },
-    { google_place_id: "b", outcome: "refused", place_id: null },
-    { google_place_id: "b", outcome: "created", place_id: "p-b" },
-    { google_place_id: "c", outcome: "failed", place_id: null },
-  ]);
-  assertEquals(s.opens, 6);
-  assertEquals(s.byOutcome, { existing: 2, created: 2, refused: 1, failed: 1 });
-  assertEquals(s.places, 3);
-  assertEquals(s.profileRate, 4 / 6);
-  assertEquals(s.repeated, [
-    { googlePlaceId: "a", opens: 3, created: true, placeId: "p-a" },
-    { googlePlaceId: "b", opens: 2, created: true, placeId: "p-b" },
-  ]);
-});
-
-Deno.test("summary: no rows is all zeros, not NaN", () => {
-  const s = summarizePlaceOpens([]);
-  assertEquals(s.opens, 0);
-  assertEquals(s.profileRate, 0);
-  assertEquals(s.repeated, []);
-});
+import { recordPlaceOpen } from "./place-open-events.ts";
 
 Deno.test("record: a ledger error never throws into the open", async () => {
   const calls: unknown[] = [];

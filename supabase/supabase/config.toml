@@ -608,11 +608,7 @@ verify_jwt = true
 [functions.admin-web-get-apify-usage]
 verify_jwt = true
 
-# Google-only opens and how they ended (MESITA-2323). Super-admin only.
-[functions.admin-web-list-place-opens]
-verify_jwt = true
-
-# Activity counters, breakdowns, and feed (MESITA-2745). Super-admin only.
+# Logs' Recent activity feed (MESITA-2745; counters gone, MESITA-3848). Super-admin only.
 [functions.admin-web-get-activity-summary]
 verify_jwt = true
 

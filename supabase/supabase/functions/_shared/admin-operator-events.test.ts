@@ -1,47 +1,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   mergeActivityFeed,
-  summarizeOperatorVerbs,
-  type AdminOperatorEventRow,
 } from "./admin-operator-events.ts";
-
-Deno.test("summarizeOperatorVerbs groups by verb and outcome", () => {
-  const rows: AdminOperatorEventRow[] = [
-    {
-      id: 1,
-      verb: "create",
-      outcome: "succeeded",
-      place_id: "a",
-      source: "admin-web-create-place",
-      detail: {},
-      created_at: "2026-10-01T00:00:00Z",
-    },
-    {
-      id: 2,
-      verb: "enrich",
-      outcome: "succeeded",
-      place_id: null,
-      source: "admin-web-enrich-place",
-      detail: { count: 3 },
-      created_at: "2026-10-02T00:00:00Z",
-    },
-    {
-      id: 3,
-      verb: "create",
-      outcome: "failed",
-      place_id: null,
-      source: "admin-web-create-place",
-      detail: { code: "quota" },
-      created_at: "2026-10-03T00:00:00Z",
-    },
-  ];
-  assertEquals(summarizeOperatorVerbs(rows), {
-    create: { succeeded: 1, failed: 1 },
-    update: { succeeded: 0, failed: 0 },
-    enrich: { succeeded: 1, failed: 0 },
-    edit: { succeeded: 0, failed: 0 },
-  });
-});
 
 Deno.test("mergeActivityFeed sorts newest first and caps", () => {
   const feed = mergeActivityFeed(
