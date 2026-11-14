@@ -270,7 +270,7 @@ export function GuestTabView({
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
       <h2 className="font-display flex h-11 shrink-0 items-center truncate text-xl font-semibold">Show this QR to your waiter</h2>
-      <StepsBar at={3} className="mt-1" />
+      <StepsBar at={4} className="mt-1" />
       <p className="mt-2 flex shrink-0 justify-center">
         <span className="border-border flex items-center gap-2 rounded-full border px-3 py-1 text-base font-semibold tabular-nums [&>svg]:h-5 [&>svg]:w-5">
           {wayIcon}

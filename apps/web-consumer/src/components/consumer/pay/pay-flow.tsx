@@ -138,15 +138,16 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
   );
 }
 
-/** The four steps (MESITA-3878): Open is where the flow starts and the
- *  Receipt where it ends, so neither is a segment. */
-export const PAY_FLOW_STEPS = ["Bill", "Method", "Pay", "Sign"] as const;
+/** The five steps (MESITA-3878; Tip its own since MESITA-3896): Open is
+ *  where the flow starts and the Receipt where it ends, so neither is a
+ *  segment. */
+export const PAY_FLOW_STEPS = ["Bill", "Tip", "Method", "Pay", "Sign"] as const;
 
-/** The progress at the top: four labeled segments. Done = ink, current = ink
+/** The progress at the top: one labeled segment per step. Done = ink, current = ink
  *  with its label bold, ahead = grey; `paid` turns them all green. */
 export function StepsBar({ at, paid = false, className }: { at: number; paid?: boolean; className?: string }) {
   return (
-    <ol className={cn("grid shrink-0 grid-cols-4 gap-1.5", className)} aria-label={`Step ${at + 1} of 4: ${PAY_FLOW_STEPS[at]}`} data-pay-steps>
+    <ol className={cn("grid shrink-0 grid-cols-5 gap-1.5", className)} aria-label={`Step ${at + 1} of ${PAY_FLOW_STEPS.length}: ${PAY_FLOW_STEPS[at]}`} data-pay-steps>
       {PAY_FLOW_STEPS.map((name, i) => (
         <li key={name} className="flex flex-col gap-1" aria-current={i === at ? "step" : undefined}>
           <span className={cn("h-1.5 rounded-full", paid ? "bg-green-700" : i <= at ? "bg-foreground" : "bg-border")} aria-hidden />
