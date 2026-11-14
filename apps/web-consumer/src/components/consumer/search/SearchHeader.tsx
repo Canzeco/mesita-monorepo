@@ -219,8 +219,6 @@ export function SearchHeader({
         onClose={() => setSheetOpen(false)}
         applied={filters.familyKeys}
         onApply={setMapFamilies}
-        // No explanation line (MESITA-3897, Pato: "delete the stupid obvious
-        // explanation here").
       />
     </div>
   );

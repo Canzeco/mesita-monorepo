@@ -34,15 +34,12 @@ export function FamilyFilterSheet({
   onClose,
   applied,
   onApply,
-  note,
 }: {
   open: boolean;
   onClose: () => void;
   /** The families applied now; the draft starts from them. */
   applied: readonly FamilyKey[];
   onApply: (families: FamilyKey[]) => void;
-  /** The line under the title: what the picks change. */
-  note: string;
 }) {
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Filters">
@@ -52,7 +49,6 @@ export function FamilyFilterSheet({
           onClose={onClose}
           applied={applied}
           onApply={onApply}
-          note={note}
         />
       ) : null}
     </LocalSheet>
@@ -63,12 +59,10 @@ function FamilyFilterBody({
   onClose,
   applied,
   onApply,
-  note,
 }: {
   onClose: () => void;
   applied: readonly FamilyKey[];
   onApply: (families: FamilyKey[]) => void;
-  note: string;
 }) {
   const [draft, setDraft] = useState<FamilyKey[]>([...applied]);
   const picked = new Set(draft);
@@ -98,7 +92,8 @@ function FamilyFilterBody({
             Clear
           </button>
         </div>
-        <p className="text-muted-foreground mt-1 text-sm">{note}</p>
+        {/* No explanation line under the title (MESITA-3897, Pato: "delete
+            the stupid obvious explanation here"). */}
         <div
           role="group"
           aria-label="Families"
