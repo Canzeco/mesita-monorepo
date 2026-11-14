@@ -25,6 +25,8 @@ import type { ToolName } from "./tools.ts";
 
 export type { FleetAgent, FleetAgentKey, FleetWorkflow } from "./graph.ts";
 export { TOOL_NAMES, toolConfigs, type ToolName } from "./tools.ts";
+import { TOOL_NAMES, toolConfigs } from "./tools.ts";
+import { FLEET_TESTS } from "./tests.ts";
 
 export const FLEET: FleetAgent[] = [A1, A2, A3, A4];
 
@@ -77,6 +79,32 @@ export function agentConversationConfig(agent: FleetAgent, toolIds: string[]): R
  */
 export async function agentHash(prompt: string, firstMessage: string): Promise<string> {
   const bytes = new TextEncoder().encode(JSON.stringify({ prompt, firstMessage }));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * One hash over everything the sync pushes (MESITA-3968): prompts, first
+ * messages, settings, tools (with placeholder secrets), knowledge, workflows
+ * and tests. The sync's mode "version" answers it from the DEPLOYED code;
+ * GitHub (agents-deploy.yml) computes it from main and waits until they are
+ * equal before syncing, so it never pushes the previous deploy's agents.
+ */
+export async function specHash(): Promise<string> {
+  const toolIds = new Map(TOOL_NAMES.map((n) => [n, `tool:${n}`]));
+  const spec = {
+    kb: KB_VERSION,
+    agents: FLEET.map((a) => ({
+      key: a.key,
+      name: a.name,
+      config: agentConversationConfig(a, a.toolNames.map((n) => `tool:${n}`)),
+      knowledge: knowledgeFor(a),
+    })),
+    workflows: fleetWorkflows(toolIds),
+    tools: toolConfigs("SUPABASE_URL", "ANON_KEY", "TOOL_SECRET"),
+    tests: FLEET_TESTS,
+  };
+  const bytes = new TextEncoder().encode(JSON.stringify(spec));
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }

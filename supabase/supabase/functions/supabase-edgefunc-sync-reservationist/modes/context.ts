@@ -21,6 +21,7 @@ export const MODE_NAMES = [
   "tests",
   "run_tests",
   "test_results",
+  "version",
 ] as const;
 export type Mode = typeof MODE_NAMES[number];
 

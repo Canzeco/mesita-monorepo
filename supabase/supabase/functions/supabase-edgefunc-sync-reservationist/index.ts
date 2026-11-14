@@ -30,6 +30,8 @@
 //              invocation id per agent.
 //   test_results  { invocation_ids } read back: passed / failed / pending and
 //              the evaluator's reason.
+//   version    The spec hash of the deployed code (agents-deploy.yml waits
+//              until it equals main's before syncing).
 //   knowledge  Push knowledgeFor(agent) as ONE KB text doc PER AGENT
 //              (a1-kb-v7 …); each agent ends with exactly that doc attached
 //              on Main (usage_mode=prompt). Docs are renamed in place.
@@ -76,6 +78,7 @@ import { knowledge } from "./modes/knowledge.ts";
 import { inspect } from "./modes/inspect.ts";
 import { fleet } from "./modes/fleet.ts";
 import { runTests, testResults, tests } from "./modes/tests.ts";
+import { version } from "./modes/version.ts";
 
 // Each mode names the context stage it needs; the handler loads exactly that.
 type ModeEntry =
@@ -98,6 +101,8 @@ const MODES: Record<Mode, ModeEntry> = {
   tests: { stage: "base", run: tests },
   run_tests: { stage: "workspace", run: runTests },
   test_results: { stage: "base", run: testResults },
+  // The deployed code's spec hash; GitHub waits on it (MESITA-3968).
+  version: { stage: "base", run: version },
 };
 
 // The tool secret + agent state — read live so a SQL rotation propagates on
