@@ -99,7 +99,7 @@ export const PLACE_SOLUTIONS: Solution[] = [
   },
   {
     name: "Mesita Terminal",
-    body: "A card device connected to the Mesita bill. Guests tap or insert their card at the counter or table, staff see the result on the right ticket, and online and in-person payments reconcile in one place.",
+    body: "A card device connected to the Mesita bill. Guests tap or insert their card at the counter or table, staff see the result on the right bill, and online and in-person payments reconcile in one place.",
     soon: true,
   },
   {
