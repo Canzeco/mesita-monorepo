@@ -53,8 +53,8 @@ describe("Vouchers tab", () => {
     const html = render(OFFER, () => {});
     // A row for sale carries a selector; one Buy at the foot (MESITA-3487).
     expect(html).toContain('aria-label="Choose the Small voucher');
-    expect(html).toContain('aria-label="Choose the Medium voucher');
-    expect(html).toContain('aria-label="Choose the Big voucher'); // test mode: buyable, the server decides at the tap (MESITA-3342)
+    expect(html).toContain('aria-label="Choose the Big voucher'); // the MX$1,000 one since MESITA-3834
+    expect(html).not.toContain("MX$5,000 voucher"); // off sale and off the page (MESITA-3834)
     expect(html).not.toContain('aria-label="Choose the Welcome voucher');
     expect(html).toContain("You had yours here");
     // An older read: switches on, no `sell`: nothing for sale.
@@ -82,7 +82,7 @@ describe("Vouchers tab", () => {
     expect(pesos(120000, "mxn")).toBe("$1,200.00MX");
     expect(pesos(1050, "mxn")).toBe("$10.50MX");
     expect(render(OFFER)).toContain("Pay $1,000.00MX, Get $1,200.00MX");
-    expect(render(OFFER)).toContain("+30%");
+    expect(render(OFFER)).toContain("+20%");
   });
 });
 

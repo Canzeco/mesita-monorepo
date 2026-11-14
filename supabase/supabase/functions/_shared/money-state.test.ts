@@ -28,10 +28,10 @@ const allOn: MoneySettings = {
 const can = { charges_enabled: true };
 const cannot = { charges_enabled: false };
 
-Deno.test("a switch on with charges_enabled sells; Story is parked (MESITA-3831, VIP back in MESITA-3833)", () => {
+Deno.test("a switch on with charges_enabled sells; Story and MX$5,000 are off sale (MESITA-3831, MESITA-3834)", () => {
   const s = moneyState(allOn, can, null);
-  assertEquals(s.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_vip"]);
-  assertEquals(s.unavailable, { voucher_story: "not_yet" });
+  assertEquals(s.sell, ["voucher_200", "voucher_1000", "voucher_welcome", "voucher_vip"]);
+  assertEquals(s.unavailable, { voucher_5000: "not_yet", voucher_story: "not_yet" });
   assertEquals(s.cashback, true);
 });
 
@@ -39,7 +39,7 @@ Deno.test("Mesita Prepayments Off (MESITA-3597) sells no voucher, whatever the v
   const s = moneyState({ ...allOn, prepayments: false }, can, null);
   assertEquals(s.sell, []);
   assertEquals(s.unavailable.voucher_200, "off");
-  assertEquals(moneyState({ ...allOn, prepayments: true }, can, null).sell.length, 5);
+  assertEquals(moneyState({ ...allOn, prepayments: true }, can, null).sell.length, 4);
 });
 
 Deno.test("a switch on without charges_enabled sells nothing and says the account is missing", () => {
@@ -62,7 +62,7 @@ Deno.test("Pay by phone off (MESITA-3396) drops card pay and cashback, never the
   assertEquals(moneyState(noCards, can, { spendable_cents: 100 }).pay, "credit");
   assertEquals(moneyState(noCards, can, null).pay, "none");
   assertEquals(moneyState(noCards, can, null).cashback, false);
-  assertEquals(moneyState(noCards, can, null).sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_vip"]);
+  assertEquals(moneyState(noCards, can, null).sell, ["voucher_200", "voucher_1000", "voucher_welcome", "voucher_vip"]);
   // Absent reads on: a reader from before the column is unchanged.
   assertEquals(moneyState(allOn, can, { spendable_cents: 100 }).pay, "both");
 });
@@ -118,8 +118,9 @@ Deno.test("the green mark (MESITA-3408): on when a guest can pay the bill by car
   assertEquals(moneyState({ ...off, house_credits: true, voucher_200: true, pay_cards: false }, can, null).mesita_pay, true);
   // Pay by phone off and nothing selling: off.
   assertEquals(moneyState({ ...off, house_credits: true, card_cashback_bps: 500, pay_cards: false }, can, null).mesita_pay, false);
-  // MX$5,000 and VIP sell since MESITA-3550, so they light it.
-  assertEquals(moneyState({ ...off, house_credits: true, pay_cards: false, voucher_5000: true }, can, null).mesita_pay, true);
+  // MX$5,000 is off sale (MESITA-3834): its switch alone sells nothing, no mark.
+  assertEquals(moneyState({ ...off, house_credits: true, pay_cards: false, voucher_5000: true }, can, null).mesita_pay, false);
+  assertEquals(moneyState({ ...off, house_credits: true, pay_cards: false, voucher_vip: true }, can, null).mesita_pay, true);
   // Story is parked (MESITA-3831): its switch alone sells nothing, no mark.
   assertEquals(moneyState({ ...off, house_credits: true, pay_cards: false, voucher_story: true }, can, null).mesita_pay, false);
   // No account: no mark.

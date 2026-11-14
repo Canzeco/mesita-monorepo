@@ -47,9 +47,9 @@ const GREEN = "bg-green-400 text-neutral-950";
 // and the three sized slides are gone from the banner. Every banner (the
 // Places rows, Search's strip) reads the same words; `short` = `lead`.
 const OFFER_SLIDES: OfferSlide[] = [
-  { key: "voucher_welcome", lead: "Welcome", pill: "+30%", short: "Welcome", spoken: "Welcome prepay, 30% bonus", section: "special", tone: "bg-[#2563EB] text-white", bonus: 30 },
+  { key: "voucher_welcome", lead: "Welcome", pill: "+50%", short: "Welcome", spoken: "Welcome prepay, 50% bonus", section: "special", tone: "bg-[#2563EB] text-white", bonus: 50 },
   { key: "voucher_story", lead: "Story", pill: "+30%", short: "Story", spoken: "Story prepay, 30% bonus", section: "special", tone: "bg-[#E1306C] text-white", bonus: 30 },
-  { key: "voucher_vip", lead: "VIP", pill: "+30%", short: "VIP", spoken: "VIP prepay, 30% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950", bonus: 30 },
+  { key: "voucher_vip", lead: "VIP", pill: "+50%", short: "VIP", spoken: "VIP prepay, 50% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950", bonus: 50 },
   // The pill is filled in from the place's own card rate (offerSlides).
   { key: "cashback", lead: "Pay", pill: "Back", short: "Pay", spoken: "Mesita Pay cashback", section: "payment", tone: GREEN },
   // The best standard voucher on sale (offerSlides picks it).

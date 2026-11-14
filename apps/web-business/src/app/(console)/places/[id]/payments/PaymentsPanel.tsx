@@ -86,14 +86,14 @@ type Product = { key: PaymentKey; name: string; line: string; value: string; ton
 
 const STANDARD: Product[] = [
   { key: "voucher_200", name: "Small Voucher", line: "Guest pays $200.00MX, gets $220.00MX of credit.", value: "+10%", tone: "bg-emerald-100 text-emerald-700" },
-  { key: "voucher_1000", name: "Medium Voucher", line: "Guest pays $1,000.00MX, gets $1,200.00MX of credit.", value: "+20%", tone: "bg-emerald-100 text-emerald-700" },
-  { key: "voucher_5000", name: "Big Voucher", line: "Guest pays $5,000.00MX, gets $6,500.00MX of credit.", value: "+30%", tone: "bg-emerald-100 text-emerald-700" },
+  { key: "voucher_1000", name: "Big Voucher", line: "Guest pays $1,000.00MX, gets $1,200.00MX of credit.", value: "+20%", tone: "bg-emerald-100 text-emerald-700" },
+  { key: "voucher_5000", name: "MX$5,000 Voucher", line: "Guest pays $5,000.00MX, gets $6,500.00MX of credit.", value: "+30%", tone: "bg-emerald-100 text-emerald-700" },
 ];
 
 const SPECIAL: Product[] = [
   { key: "voucher_welcome", name: "Welcome Voucher", line: "Guest pays $100.00MX, gets $150.00MX of credit. One per guest at your place.", value: "+50%", tone: "bg-sky-100 text-sky-700" },
   { key: "voucher_story", name: "Story Voucher", line: "Guest pays $100.00MX, gets $130.00MX of credit after posting an Instagram story at your place.", value: "+30%", tone: "bg-pink-100 text-pink-700" },
-  { key: "voucher_vip", name: "VIP Voucher", line: "Guest pays $100.00MX, gets $130.00MX of credit. VIP guests only.", value: "+30%", tone: "bg-violet-100 text-violet-700" },
+  { key: "voucher_vip", name: "VIP Voucher", line: "Guest pays $50.00MX, gets $75.00MX of credit. VIP guests only.", value: "+50%", tone: "bg-violet-100 text-violet-700" },
 ];
 
 /** What a card payment costs the place (MESITA-3461; the 5% fee is billed apart). */
@@ -557,9 +557,11 @@ export function PaymentsPanel({
             blocked: !settings.house_credits ? needsHouseCredits : !settings.prepayments ? needsPrepayments : undefined,
             stripe: true,
           })}
-          {/* Story and VIP are parked (MESITA-3831): off sale and off this
-              list, money-state's NOT_YET_SELLABLE. */}
-          {[...STANDARD, ...SPECIAL].filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key]).map(voucherRow)}
+          {/* Welcome, Small, Big, VIP (MESITA-3834); the MX$5,000 voucher
+              and Story are off sale, money-state's NOT_YET_SELLABLE. */}
+          {[...SPECIAL.slice(0, 1), ...STANDARD, ...SPECIAL.slice(1)]
+            .filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key])
+            .map(voucherRow)}
         </ul>
       </Card>
       {/* THE WAITER CODE IS ITS OWN SECTION, LAST (Pato, 2026-11-13,
