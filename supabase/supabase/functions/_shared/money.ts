@@ -79,17 +79,16 @@ export type VoucherEntry = {
  *  made but are off sale (money-state's NOT_YET_SELLABLE). WELCOME AND VIP
  *  ARE MX$100 +100% (Pato, MESITA-3835: "Welcome Voucher: $100 MX. 100%
  *  Bonus ... VIP Voucher: $100 MX. 100% Bonus."): pay MX$100, get MX$200.
- *  THE WAIT IS 30 MINUTES (Pato, MESITA-3835: "Update all the money
- *  landing. In 30 minutes, not 1 hr"): every voucher's credit, and every
- *  cashback (the wallet SQL), turns Available 30 minutes after the charge;
- *  Story still at once. */
+ *  THE WAIT STAYS ONE HOUR for every voucher but Story (Pato, MESITA-3835:
+ *  "they should actually land 1hr after payment"; 30 minutes was asked and
+ *  taken back before merge). */
 export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
-  voucher_200: { price_cents: 200_00, bonus_bps: 1000, kind: "open", available_after_sec: 1800 },
-  voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: 1800 },
-  voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: 1800 },
-  voucher_welcome: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 1800 },
+  voucher_200: { price_cents: 200_00, bonus_bps: 1000, kind: "open", available_after_sec: 3600 },
+  voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: 3600 },
+  voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: 3600 },
+  voucher_welcome: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 3600 },
   voucher_story: { price_cents: 100_00, bonus_bps: 3000, kind: "earned", available_after_sec: 0 },
-  voucher_vip: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 1800 },
+  voucher_vip: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 3600 },
 };
 
 export function voucherBonusCents(key: MoneyVoucherKey): number {

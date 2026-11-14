@@ -356,9 +356,11 @@ function noMx(v: string): string {
 
 function readyIn(key: MoneyVoucherKey): string {
   if (key === "voucher_story") return "after story";
-  // Every voucher but Story waits 30 minutes (MESITA-3835); Welcome and VIP
-  // said "instantly" while the catalog held them an hour.
-  return "in 30 min";
+  // Every voucher but Story waits an hour (MESITA-3323); Welcome and VIP
+  // said "instantly" while the catalog held them an hour (fixed MESITA-3835,
+  // Pato: "don't land instantly ... they should actually land 1hr after
+  // payment").
+  return "in 1 hr";
 }
 
 /** The lines every prepayment (i) ends with (MESITA-3498, Pato: "credits are
@@ -390,11 +392,11 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string
     case "voucher_200":
     case "voucher_1000":
     case "voucher_5000":
-      return [deal, "Your credits are ready 30 minutes after you buy.", "Buy as many as you like.", ...facts];
+      return [deal, "Your credits are ready 1 hour after you buy.", "Buy as many as you like.", ...facts];
     case "voucher_welcome":
       return [
         deal,
-        "Your credits are ready 30 minutes after you buy.",
+        "Your credits are ready 1 hour after you buy.",
         "One per place. Every other place on Mesita has its own Welcome for you.",
         ...facts,
       ];
@@ -413,7 +415,7 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string
       return [
         deal,
         "Only for Mesita's VIP Class. VIP guests are added by hand: models, modeling agencies, creators and others places want to see. Not VIP? You can't buy this one.",
-        "Your credits are ready 30 minutes after you buy. One per visit.",
+        "Your credits are ready 1 hour after you buy. One per visit.",
         ...facts,
       ];
   }
@@ -544,7 +546,7 @@ export type VoucherOffer = {
   bonus: string;
   pay: string;
   get: string;
-  /** "in 30 min" or "after story". */
+  /** "in 1 hr" or "after story". */
   ready: string;
   /** This guest can buy it now. */
   buyable: boolean;
@@ -826,8 +828,8 @@ export function VouchersPane({
                     `Pay the place directly: cash or their card terminal, and get ${cashPct ?? "the place's cash cashback"} of the bill back as credits at this place.`,
                     "Show your QR to the waiter. They type the bill and the tip, you choose cash, and they tap Received when they get your money.",
                     creditPct
-                      ? "It counts on the cash part of the bill, never on the tip. It is ready in 30 minutes."
-                      : "It counts on the bill, never on the tip or on credits you spend. It is ready in 30 minutes.",
+                      ? "It counts on the cash part of the bill, never on the tip. It is ready in 1 hour."
+                      : "It counts on the bill, never on the tip or on credits you spend. It is ready in 1 hour.",
                   ]}
                 />
               </span>
@@ -857,7 +859,7 @@ export function VouchersPane({
                   status={creditPct ? { ok: true, text: `${creditPct} back on the part you pay with credits.` } : { ok: false, text: "Not at this place yet" }}
                   text={[
                     `Pay your bill here with the credits you hold, and get ${creditPct ?? "the place's credits cashback"} of that part back as credits at this place.`,
-                    "It counts on the part of the bill you pay with credits, never on the tip. On a bill the waiter signs, it lands once they sign. It is ready in 30 minutes.",
+                    "It counts on the part of the bill you pay with credits, never on the tip. On a bill the waiter signs, it lands once they sign. It is ready in 1 hour.",
                   ]}
                 />
               </span>

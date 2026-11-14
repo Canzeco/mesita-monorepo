@@ -52,9 +52,9 @@ Deno.test("every switched-on voucher sells but Story and MX$5,000, off sale (MES
   assertEquals(o.cashback, true);
   assertEquals(o.mesita_pay, true);
   assertEquals("pay_cards" in o.vouchers || "cashback" in o.vouchers, false);
-  assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 1800 });
+  assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 });
   // Every voucher waits an hour except Story (MESITA-3323).
-  assertEquals(o.catalog.voucher_welcome.available_after_sec, 1800);
+  assertEquals(o.catalog.voucher_welcome.available_after_sec, 3600);
   assertEquals(o.catalog.voucher_story.available_after_sec, 0);
 });
 

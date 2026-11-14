@@ -173,10 +173,10 @@ select is(
 );
 
 select ok(
-  (select available_at between paid_at + interval '29 minutes' and paid_at + interval '31 minutes'
+  (select available_at between paid_at + interval '59 minutes' and paid_at + interval '61 minutes'
      from public.wallet_entries e join public.wallet_payments p on p.id = e.payment_id
     where e.kind = 'cashback' and p.id = (select (r ->> 'payment_id')::uuid from hold)),
-  'the cashback lands 30 minutes after paid_at (MESITA-3835)'
+  'the cashback lands one hour after paid_at'
 );
 
 select is(

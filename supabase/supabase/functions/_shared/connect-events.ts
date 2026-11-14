@@ -507,12 +507,12 @@ async function voucherIntent(
   return { status: 200, body: { ok: true, purchase_id: row.id, outcome: "released" } };
 }
 
-/** A voucher's credit turns Available 30 minutes after the charge
- *  (MESITA-3835; the catalog's rule for every voucher but Story, at once —
- *  here the charge time is the event's). */
+/** A voucher's credit turns Available an hour after the charge (the catalog's
+ *  rule for every open voucher; Story at once is a catalog detail the read
+ *  path applies — here the charge time is the event's). */
 function availableAtFromSession(session: Record<string, unknown>, createdSec?: number): string | null {
   const meta = (session.metadata ?? {}) as Record<string, unknown>;
   if (meta.voucher === "voucher_story") return null;
   const base = (createdSec ?? Math.floor(Date.now() / 1000)) * 1000;
-  return new Date(base + 1800 * 1000).toISOString();
+  return new Date(base + 3600 * 1000).toISOString();
 }

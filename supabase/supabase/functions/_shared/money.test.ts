@@ -25,10 +25,10 @@ Deno.test("the catalog's bonuses and fees, in centavos", () => {
   assertEquals(voucherBonusCents("voucher_vip"), 100_00);
   assertEquals(VOUCHER_CATALOG.voucher_vip.price_cents, 100_00);
   assertEquals(voucherFeeCents("voucher_200"), 10_00);
-  assertEquals(VOUCHER_CATALOG.voucher_200.available_after_sec, 1800);
+  assertEquals(VOUCHER_CATALOG.voucher_200.available_after_sec, 3600);
   // Every voucher waits an hour except Story (MESITA-3323).
-  assertEquals(VOUCHER_CATALOG.voucher_welcome.available_after_sec, 1800);
-  assertEquals(VOUCHER_CATALOG.voucher_vip.available_after_sec, 1800);
+  assertEquals(VOUCHER_CATALOG.voucher_welcome.available_after_sec, 3600);
+  assertEquals(VOUCHER_CATALOG.voucher_vip.available_after_sec, 3600);
   assertEquals(VOUCHER_CATALOG.voucher_story.available_after_sec, 0);
 });
 

@@ -37,8 +37,8 @@ export type OpenPurchase = {
   stripe_payment_intent_id?: string | null;
 };
 
-/** When a voucher paid now turns Available: 30 minutes after the charge
- *  (MESITA-3835), Story at once (the catalog's available_after_sec, MESITA-3323). */
+/** When a voucher paid now turns Available: open vouchers an hour after the
+ *  charge, Story at once (the catalog's available_after_sec, MESITA-3323). */
 export function availableAtFor(voucher: string | null | undefined, nowMs: number): string | null {
   const line = voucher ? VOUCHER_CATALOG[voucher as MoneyVoucherKey] : undefined;
   if (!line || line.available_after_sec <= 0) return null;
