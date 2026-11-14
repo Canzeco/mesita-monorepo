@@ -24,7 +24,7 @@ import { useWallet } from "./use-wallet";
 // MESITA-3617), so the new credit shows on its own card. On white, like the
 // Wallet it opens from (MESITA-3747).
 //
-// ONE READ PAINTS THE PAGE (MESITA-3868): the Wallet. Add Credits is a link to
+// ONE READ PAINTS THE PAGE (MESITA-3868): the Wallet. Buy Credits is a link to
 // the place's Offers page (MESITA-3883), so this page asks nothing else.
 
 export function WalletPlaceScreen({ placeId }: { placeId: string }) {

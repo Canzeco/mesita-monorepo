@@ -79,7 +79,7 @@ function noopSubscribe() {
   return () => {};
 }
 
-/** The ask came from a House Card's Add Credits (MESITA-3883): closing the
+/** The ask came from a House Card's Buy Credits (MESITA-3883): closing the
  *  Offers page goes back there, not down to the profile. */
 function readFromWallet(): boolean {
   return new URLSearchParams(window.location.search).get("from") === "wallet";

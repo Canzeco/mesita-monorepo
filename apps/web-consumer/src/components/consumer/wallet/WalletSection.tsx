@@ -43,7 +43,7 @@ import {
 // Credits Payment Methods is one white card of rows exactly like Money
 // Payment Methods: waiting Story rows, then a CreditsRow per place (its
 // House Card on tap), "Find a place" when there is none. No black band,
-// transactions or Fund | Gift here any more: Add Credits, Gift Credits, Go
+// transactions or Fund | Gift here any more: Buy Credits, Send Gift, Go
 // to Pay and the history are on the House Card page (PlaceCredit). The
 // notes below are the history.
 //
@@ -108,7 +108,7 @@ import {
 //
 // FUND AND GIFT ON EACH CREDITS CARD (Pato, 2026-11-11, MESITA-3724: "add
 // quick button in credits to Fund and Gift buttons to each Credits Card"):
-// Fund opens the place's credit purchase (the House Card's "Add Credits",
+// Fund opens the place's credit purchase (the House Card's "Buy Credits",
 // `?rewards=prepayment` on the place); Gift opens the House Card's "Send to a
 // friend" sheet here, greyed out while nothing can be sent (spendable $0,
 // or sending off). A place gone from Mesita gets neither.
