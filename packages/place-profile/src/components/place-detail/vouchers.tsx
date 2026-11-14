@@ -669,7 +669,7 @@ export function VouchersPane({
       <section ref={prepaymentRef} className="flex flex-col gap-2" aria-labelledby="rewards-prepayment" data-promos="prepayment">
         <SectionTitle
           id="rewards-prepayment"
-          title="App Prepayments"
+          title="Prepayments"
         />
         <ul className="border-border divide-border divide-y rounded-2xl border" data-voucher-catalog>
           {products.map((p) => {
