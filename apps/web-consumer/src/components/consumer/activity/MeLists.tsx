@@ -56,6 +56,7 @@ import {
   apiGetWallet,
   ENTRY_LABEL,
   money,
+  WALLET_CACHE_KEY,
   type Wallet,
   type WalletEntry,
 } from "@/lib/api/wallet";
@@ -604,7 +605,7 @@ export function TicketsPage() {
 
   // The keys Activity used, so CreditEntry's read stays shared.
   const wallet = useCachedQuery<Wallet>(
-    "activity-wallet",
+    WALLET_CACHE_KEY,
     () => apiGetWallet(getSupabase()),
     { ttl: TTL },
   );
