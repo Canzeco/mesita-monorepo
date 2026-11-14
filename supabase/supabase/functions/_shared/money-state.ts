@@ -92,14 +92,20 @@ export type VoucherReason =
    *  bought one here for every visit (a paid bill with a card part). */
   | "needs_visit";
 
-/** Vouchers in the catalog that no wave sells yet, and why. Empty since
- *  MESITA-3550: every voucher sells where its owner switches it on (the
- *  owner's switch is the owner's yes; the admin pause still stops all).
- *  Story's and VIP's gates are the guest's own, checked by the buy EF:
- *  Story a linked Instagram above STORY_MIN_FOLLOWERS (MESITA-3507), VIP the
- *  VIP class (MESITA-3550), and both sell one each new visit (MESITA-3463).
- *  Kept so a later voucher can wait for its wave with one line. */
-export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
+/** Vouchers in the catalog that are not on sale, and why. STORY AND VIP ARE
+ *  PARKED (Pato, 2026-11-13, MESITA-3831: "remove story and vip for the
+ *  moment from this too"; both are out of the MVP until their return can be
+ *  shown to an owner). Neither sells, whatever the owner's stored switch
+ *  says; Business › Payments and the guest's Offers page list neither (both
+ *  filter on this record). Nothing else is removed: the switches, the
+ *  catalog, Story's Instagram gate (MESITA-3507), VIP's class gate
+ *  (MESITA-3550) and one-each-new-visit (MESITA-3463) stay, and vouchers
+ *  already bought keep working. Emptying this record brings both back.
+ *  It was empty from MESITA-3550 until now. */
+export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {
+  voucher_story: "not_yet",
+  voucher_vip: "not_yet",
+};
 
 /** Story is for guests whose linked Instagram has MORE than this many
  *  followers (MESITA-3507, Pato: "only available for users that have more
