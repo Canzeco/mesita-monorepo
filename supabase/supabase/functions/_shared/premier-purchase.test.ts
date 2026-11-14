@@ -113,7 +113,7 @@ Deno.test("notice: only when the place already runs at or above the tier", () =>
   assertEquals(refillNotice({ result: "ok", level: 0, name: null, already: false, until }, 1), undefined);
   assertEquals(
     refillNotice({ result: "ok", level: 2, name: null, already: true, until }, 2),
-    "This place is already Premier 5X; your Upgrade keeps it Premier 5X until Dec 3",
+    "This place already has Mesita Max; your Upgrade keeps Mesita Max until Dec 3",
   );
   assertEquals(refillNotice({ result: "refused", code: "paid_higher", level: 2, name: null, already: true, until }, 1), undefined);
 });
@@ -123,7 +123,7 @@ Deno.test("purchaseLine: one guest line per status", () => {
   assertEquals(purchaseLine({ status: "open", tier: 1, ends_at: null }), "Waiting for payment");
   assertEquals(purchaseLine({ status: "expired", tier: 1, ends_at: null }), "Checkout expired, nothing charged");
   assertEquals(purchaseLine({ status: "paid", tier: 1, ends_at: null }), "Paid — the Upgrade is being added");
-  assertEquals(purchaseLine({ status: "granted", tier: 2, ends_at: at }), "Added: Premier 5X until Dec 3");
+  assertEquals(purchaseLine({ status: "granted", tier: 2, ends_at: at }), "Added: Mesita Max until Dec 3");
   assertEquals(purchaseLine({ status: "refunded", tier: 1, ends_at: null }), "Refunded");
   assertEquals(purchaseLine({ status: "refund_needed", tier: 1, ends_at: null }), "Paid — we will refund you");
 });

@@ -76,15 +76,24 @@ export const CHECKOUT_TTL_SEC = 31 * 60;
 /** A charge still unknown after this long is cancelled and declined. */
 export const CHARGING_GIVE_UP_MS = 24 * 3600_000;
 
-/** The Stripe product line's name (MESITA-2925). The wire tiers keep their
- *  stored `boost_*` keys. */
+/** The Stripe product line's name: the plan, never its multiplier (Pato,
+ *  MESITA-3916: "also the name of the stripe products"; "Premier 2X/5X" from
+ *  MESITA-2925 until then). The wire tiers keep their stored `boost_*` keys,
+ *  and the 2 and 5 live on in PREMIER_FACTOR below. */
 export const PREMIER_LABEL: Record<BoostTier, string> = {
-  boost_2x: "Premier 2X",
-  boost_5x: "Premier 5X",
+  boost_2x: "Mesita Pro",
+  boost_5x: "Mesita Max",
+};
+/** What each plan gives, in the guest's words (MESITA-3906/3910). */
+export const PREMIER_PERK: Record<BoostTier, string> = {
+  boost_2x: "High visibility boost",
+  boost_5x: "Max visibility boost",
 };
 
 /** The Premier factor a place's `boost_tier` (0..2) earns in the Area
- *  score. Literal: the tier names promise the number. */
+ *  score. The 2 and the 5 are Discovery's anchors: every other ranking knob
+ *  was tuned against them (Pato, MESITA-3916), so renaming what guests read
+ *  never touches them. */
 export const PREMIER_FACTOR: Record<0 | 1 | 2, number> = { 0: 1, 1: 2, 2: 5 };
 
 export type TierRank = 1 | 2;
@@ -570,7 +579,7 @@ export function pledgeCheckoutParams(args: {
       price_data: {
         currency: PREMIER_CURRENCY,
         unit_amount: args.quote.charge_cents,
-        product_data: { name: `${PREMIER_LABEL[args.tier]} · ${args.placeName}`.slice(0, 250) },
+        product_data: { name: `${PREMIER_LABEL[args.tier]} · ${PREMIER_PERK[args.tier]} · ${args.placeName}`.slice(0, 250) },
       },
     }],
     payment_intent_data: {

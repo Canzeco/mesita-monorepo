@@ -29,8 +29,11 @@ export type RefillTier = 1 | 2;
 export const REFILL_PACK_DAYS = 365;
 export const REFILL_PACK_CENTS: Record<RefillTier, number> = { 1: 100_00, 2: 1000_00 };
 
-/** The level guests read (MESITA-3174): Pro is Premier 2X, Max Premier 5X. */
-export const refillLabel = (tier: number): string => (tier === 2 ? "Premier 5X" : "Premier 2X");
+/** The plan guests read (MESITA-3916, "Premier 2X/5X" until then): tier 1 is
+ *  Mesita Pro, tier 2 Mesita Max. */
+export const refillLabel = (tier: number): string => (tier === 2 ? "Mesita Max" : "Mesita Pro");
+/** What the plan gives, in the guest's words (MESITA-3906). */
+export const refillPerk = (tier: number): string => (tier === 2 ? "Max visibility boost" : "High visibility boost");
 
 export type RefillStart = { placeId: string; tier: RefillTier; returnUrl: string };
 
@@ -76,7 +79,7 @@ export function shortDay(iso: string): string {
  *  pack's tier: buying keeps it there longer, it does not lift it. */
 export function refillNotice(check: RefillCheck, tier: RefillTier): string | undefined {
   if (check.result !== "ok" || !check.already) return undefined;
-  return `This place is already ${refillLabel(check.level)}; your Upgrade keeps it ${refillLabel(tier)} until ${shortDay(check.until)}`;
+  return `This place already has ${refillLabel(check.level)}; your Upgrade keeps ${refillLabel(tier)} until ${shortDay(check.until)}`;
 }
 
 /** What a refusal means, in the guest's words. */
@@ -122,7 +125,7 @@ export function refillCheckoutParams(args: {
       price_data: {
         currency: PREMIER_CURRENCY,
         unit_amount: REFILL_PACK_CENTS[args.tier],
-        product_data: { name: `Upgrade · ${refillLabel(args.tier)} · ${REFILL_PACK_DAYS} days · ${args.placeName}`.slice(0, 250) },
+        product_data: { name: `Upgrade · ${refillLabel(args.tier)} · ${refillPerk(args.tier)} · one year · ${args.placeName}`.slice(0, 250) },
       },
     }],
     payment_intent_data: { metadata },
