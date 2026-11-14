@@ -5,6 +5,8 @@
 
 import type { ToolId, ToolName } from "./tools.ts";
 
+/** a4 (places inbound) merged into a3 (MESITA-3974); the key stays so its
+ *  old agents_config row is still typed. */
 export type FleetAgentKey = "a1" | "a2" | "a3" | "a4";
 
 /** One agent, whole: everything ElevenLabs holds for it comes from here. */

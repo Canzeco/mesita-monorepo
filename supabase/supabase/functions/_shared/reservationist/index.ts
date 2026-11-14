@@ -2,12 +2,14 @@
 //
 //   a1 (es-mx) · outbound to places   books, moves or cancels a table
 //   a2 (es-mx) · outbound to guests   what the place said, reminders
-//   a3 (es-mx) · inbound from guests  their reservations, cancel
-//   a4 (es-mx) · inbound from places  their book, find by name, cancel
+//   a3 (es-mx) · inbound              anyone calling Mesita's one number:
+//                                     the caller id says place, guest or
+//                                     both, and the workflow branches
+//   (a4, the places' inbound agent, merged into a3: MESITA-3974)
 //
 // One file per thing: facts.ts (what every agent knows), closing.ts (how to
 // hang up), settings.ts (voice, LLM, ASR, turn), tools.ts (the nine webhook
-// tools), graph.ts (workflow blocks), a1..a4.ts (each agent whole).
+// tools), graph.ts (workflow blocks), a1..a3.ts (each agent whole).
 //
 // supabase-edgefunc-sync-reservationist makes ElevenLabs match this on every
 // run: mode "fleet" pushes prompt, first message, settings and tools and
@@ -17,7 +19,6 @@
 import { A1 } from "./a1.ts";
 import { A2 } from "./a2.ts";
 import { A3 } from "./a3.ts";
-import { A4 } from "./a4.ts";
 import { FACTS } from "./facts.ts";
 import type { FleetAgent, FleetAgentKey, FleetWorkflow } from "./graph.ts";
 import { ASR, BUILT_IN_TOOLS, CONVERSATION, LANGUAGE, LANGUAGE_PRESETS, LLM, TTS, TURN, TURN_OUTBOUND } from "./settings.ts";
@@ -28,10 +29,10 @@ export { TOOL_NAMES, toolConfigs, type ToolName } from "./tools.ts";
 import { TOOL_NAMES, toolConfigs } from "./tools.ts";
 import { FLEET_TESTS } from "./tests.ts";
 
-export const FLEET: FleetAgent[] = [A1, A2, A3, A4];
+export const FLEET: FleetAgent[] = [A1, A2, A3];
 
-/** Knowledge content version — rides in every doc name (a1-kb-v8 …). */
-export const KB_VERSION = 8;
+/** Knowledge content version — rides in every doc name (a1-kb-v9 …). */
+export const KB_VERSION = 9;
 
 export function kbDocName(key: FleetAgentKey): string {
   return `${key}-kb-v${KB_VERSION}`;

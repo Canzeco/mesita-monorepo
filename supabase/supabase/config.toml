@@ -711,15 +711,13 @@ verify_jwt = true
 verify_jwt = true
 [functions.eleven-a3-cancel-reservation]
 verify_jwt = true
-[functions.eleven-a3-verify-caller]
-verify_jwt = true
 [functions.eleven-a4-cancel-reservation]
 verify_jwt = true
 [functions.eleven-a4-find-reservation]
 verify_jwt = true
-[functions.eleven-a4-verify-caller]
-verify_jwt = true
 [functions.eleven-agent-get-reservation]
+verify_jwt = true
+[functions.eleven-inbound-identify-caller]
 verify_jwt = true
 
 # MESITA-3618: how a reservation call ends. ElevenLabs' post-call webhook

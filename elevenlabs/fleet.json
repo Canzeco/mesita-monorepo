@@ -1,7 +1,7 @@
 {
   "generated": "by `deno task sync-elevenlabs` from supabase/supabase/functions/_shared/reservationist/ — never edit",
-  "spec_hash": "bb9974b537282845fdc3981fc64c6ca888636ec3cf3f1f89f482f1bf8f1d34e3",
-  "knowledge_version": 8,
+  "spec_hash": "d966e4ff6a20001904363052d89bde47a403bdeeedef8690731923ab56b75d96",
+  "knowledge_version": 9,
   "deploy": ".github/workflows/agents-deploy.yml on every merge to main (supabase/scripts/sync-agents.sh)",
   "agents": [
     {
@@ -27,7 +27,7 @@
         "farewell_wrong",
         "end_node"
       ],
-      "knowledge_doc": "a1-kb-v8",
+      "knowledge_doc": "a1-kb-v9",
       "tests": [
         "mesita · a1 · books and confirms once",
         "mesita · a1 · never accepts another hour",
@@ -56,7 +56,7 @@
         "farewell_cancel",
         "end_node"
       ],
-      "knowledge_doc": "a2-kb-v8",
+      "knowledge_doc": "a2-kb-v9",
       "tests": [
         "mesita · a2 · identity first, options once",
         "mesita · a2 · tells a stranger nothing"
@@ -64,63 +64,45 @@
     },
     {
       "key": "a3",
-      "name": "eleven-a3 (es-mx) · consumer inbound",
+      "name": "eleven-a3 (es-mx) · inbound",
       "direction": "the guest calls Mesita",
-      "first_message": "¡Hola! Le atiende Mesita, asistente de reservaciones. ¿En qué le puedo ayudar?",
+      "first_message": "¡Hola! Le atiende Mesita. ¿En qué le puedo ayudar?",
       "tools": [
-        "a3_verify_caller",
+        "inbound_identify_caller",
         "a3_cancel_reservation",
+        "a4_find_reservation",
+        "a4_cancel_reservation",
         "get_reservation"
       ],
       "workflow_steps": [
         "start_node",
-        "verify",
+        "identify",
         "triage",
-        "inform",
-        "confirm_cancel",
-        "do_cancel",
-        "cancel_done",
-        "redirect_app",
-        "deny",
+        "place_upcoming",
+        "place_find",
+        "place_found",
+        "place_confirm_cancel",
+        "place_do_cancel",
+        "place_cancel_done",
+        "place_redirect",
+        "guest_inform",
+        "guest_confirm_cancel",
+        "guest_do_cancel",
+        "guest_cancel_done",
+        "guest_redirect",
+        "unknown",
         "code_lookup",
         "code_info",
         "end_node"
       ],
-      "knowledge_doc": "a3-kb-v8",
+      "knowledge_doc": "a3-kb-v9",
       "tests": [
         "mesita · a3 · guest cancels with one confirmation",
+        "mesita · a3 · place cancels by the guest's name",
+        "mesita · a3 · a number that is a place and a guest",
         "mesita · a3 · spoof: cannot touch another guest's table",
-        "mesita · a3 · spoof: unknown number asks by name"
-      ]
-    },
-    {
-      "key": "a4",
-      "name": "eleven-a4 (es-mx) · business inbound",
-      "direction": "the place calls Mesita",
-      "first_message": "¡Hola! Le atiende Mesita, línea para restaurantes. ¿En qué le puedo ayudar?",
-      "tools": [
-        "a4_verify_caller",
-        "a4_find_reservation",
-        "a4_cancel_reservation"
-      ],
-      "workflow_steps": [
-        "start_node",
-        "verify",
-        "triage",
-        "upcoming",
-        "find",
-        "found",
-        "confirm_cancel",
-        "do_cancel",
-        "cancel_done",
-        "redirect",
-        "deny",
-        "end_node"
-      ],
-      "knowledge_doc": "a4-kb-v8",
-      "tests": [
-        "mesita · a4 · place cancels by the guest's name",
-        "mesita · a4 · spoof: cannot touch another place's table"
+        "mesita · a3 · spoof: unknown number asks by name",
+        "mesita · a3 · spoof: cannot touch another place's table"
       ]
     }
   ],
@@ -128,9 +110,8 @@
     "a1_report_outcome",
     "a2_confirm_reservation",
     "a2_cancel_reservation",
-    "a3_verify_caller",
+    "inbound_identify_caller",
     "a3_cancel_reservation",
-    "a4_verify_caller",
     "a4_find_reservation",
     "a4_cancel_reservation",
     "get_reservation"

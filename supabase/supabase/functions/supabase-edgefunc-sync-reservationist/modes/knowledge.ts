@@ -13,7 +13,7 @@ const LEGACY_DOC_NAME = "mesita-reservationist-context (es-mx)";
 
 export async function knowledge(ctx: WorkspaceCtx): Promise<Response> {
   const { key, mode, agentsConfig, configuredAgents, saveAgentsConfig } = ctx;
-  // Each agent's KB page ends with EXACTLY one doc, named a1-kb-v8 … (the
+  // Each agent's KB page ends with EXACTLY one doc, named a1-kb-v9 … (the
   // name says owner + content version). Saved ids are renamed in place.
   const savedDocIds = (agentsConfig.knowledgeDocIds ?? {}) as Record<
     string,

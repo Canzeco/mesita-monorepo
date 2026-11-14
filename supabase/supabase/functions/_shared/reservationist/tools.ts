@@ -13,9 +13,8 @@ export const TOOL_NAMES = [
   "a1_report_outcome",
   "a2_confirm_reservation",
   "a2_cancel_reservation",
-  "a3_verify_caller",
+  "inbound_identify_caller",
   "a3_cancel_reservation",
-  "a4_verify_caller",
   "a4_find_reservation",
   "a4_cancel_reservation",
   "get_reservation",
@@ -106,11 +105,11 @@ const SPECS: ToolSpec[] = [
     }),
   },
   {
-    name: "a3_verify_caller",
-    ef: "eleven-a3-verify-caller",
+    name: "inbound_identify_caller",
+    ef: "eleven-inbound-identify-caller",
     description:
-      "Primer paso: verifica al comensal por el número desde el que llama y regresa su nombre de cuenta y sus reservaciones recientes (lugar, fecha, hora, personas, estado, a nombre de quién y código). No pidas ningún dato antes.",
-    schema: body("Verificación por número del llamante.", ["caller_phone"], { caller_phone: CALLER_PHONE }),
+      "Primer paso de toda llamada entrante: reconoce quién llama por el número desde el que llama. Regresa kind: place (un lugar, con sus notas y sus reservaciones próximas), guest (un comensal, con su nombre y sus reservaciones), o both (el número es de un lugar y de un comensal). Si el número no es de nadie, falla. No pidas ningún dato antes.",
+    schema: body("Reconocer al llamante por su número.", ["caller_phone"], { caller_phone: CALLER_PHONE }),
   },
   {
     name: "a3_cancel_reservation",
@@ -123,13 +122,7 @@ const SPECS: ToolSpec[] = [
       reason: REASON,
     }),
   },
-  {
-    name: "a4_verify_caller",
-    ef: "eleven-a4-verify-caller",
-    description:
-      "Primer paso: verifica que el número desde el que llaman sea la línea de un lugar en Mesita y regresa el lugar con sus reservaciones próximas (a nombre de quién, fecha, hora, personas, estado, código). No pidas ningún dato antes.",
-    schema: body("Verificación por número del lugar.", ["caller_phone"], { caller_phone: CALLER_PHONE }),
-  },
+
   {
     name: "a4_find_reservation",
     ef: "eleven-a4-find-reservation",

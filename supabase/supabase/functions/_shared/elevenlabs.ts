@@ -82,16 +82,23 @@ export function reservationAgentId(): string {
   return Deno.env.get("ELEVENLABS_AGENT_ID")?.trim() || DEFAULT_AGENT_ID;
 }
 
-/** The place-facing line — a1 dials places from it, a4 answers places on it. */
+/** Mesita's one reservations number (MESITA-3974): a1 dials places and a2
+ *  dials guests from it, and the inbound agent (a3) answers it, so whoever
+ *  Mesita called can call back and be recognised by their number. */
 export function reservationFromNumber(): string {
   return Deno.env.get("ELEVENLABS_FROM_NUMBER")?.trim() || DEFAULT_FROM_NUMBER;
 }
 
-/** The guest-facing line — a2 dials guests from it, a3 answers guests on it.
- *  Falls back to the business line until the number exists. */
+/** The number Mesita dials guests from: the same one number (MESITA-3974). */
 export function consumerFromNumber(): string {
-  return Deno.env.get("ELEVENLABS_CONSUMER_FROM_NUMBER")?.trim() ||
-    reservationFromNumber();
+  return reservationFromNumber();
+}
+
+/** The old guest-facing line, if it was ever set. Nothing dials from it; it
+ *  stays bound to the inbound agent so a guest who saved it can still call. */
+export function legacyGuestLine(): string | null {
+  const v = Deno.env.get("ELEVENLABS_CONSUMER_FROM_NUMBER")?.trim() ?? "";
+  return v && v !== reservationFromNumber() ? v : null;
 }
 
 export function elHeaders(key: string): HeadersInit {

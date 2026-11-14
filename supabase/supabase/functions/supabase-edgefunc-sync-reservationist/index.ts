@@ -33,7 +33,7 @@
 //   version    The spec hash of the deployed code (agents-deploy.yml waits
 //              until it equals main's before syncing).
 //   knowledge  Push knowledgeFor(agent) as ONE KB text doc PER AGENT
-//              (a1-kb-v8 …); each agent ends with exactly that doc attached
+//              (a1-kb-v9 …); each agent ends with exactly that doc attached
 //              on Main (usage_mode=prompt). Docs are renamed in place.
 //
 // THE REPO WINS. Everything the agents say and how they sound lives in
