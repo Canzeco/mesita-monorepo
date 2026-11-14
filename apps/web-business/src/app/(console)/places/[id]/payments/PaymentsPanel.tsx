@@ -145,7 +145,7 @@ const QUIET_PILL_CLASS = "bg-muted text-foreground hover:bg-muted/70 hover:opaci
 function accountCopy(a: PaymentAccount): { line: string; button: string | null; open: boolean } {
   switch (a.state) {
     case "none":
-      return { line: "Your own account, where App Payments and Mesita Prepayments land. Not needed for House Credits or cash.", button: "Connect Stripe", open: false };
+      return { line: "Your own account, where App Payments and App Prepayments land. Not needed for House Credits or cash.", button: "Connect Stripe", open: false };
     case "onboarding":
       return { line: "Setup not finished.", button: "Continue setup", open: false };
     case "restricted":
@@ -252,7 +252,7 @@ export function PaymentsPanel({
   const needsStripe = step("Connect the Stripe Account first.", "#stripe-account");
   const needsCode = step("Set the waiter code first.", "#waiter-code");
   const needsCash = step("Turn Cash Payments on first.", "#cash-payments");
-  const needsPrepayments = step("Turn Mesita Prepayments on first.", "#mesita-prepayments");
+  const needsPrepayments = step("Turn App Prepayments on first.", "#mesita-prepayments");
 
   // The to-do strip (MESITA-3602, Pato: "a sequential horizontal to-do list to
   // fully enable Payments"): four steps in order, each a link to its row; the
@@ -458,6 +458,39 @@ export function PaymentsPanel({
           })}
         </ul>
       </Card>
+      {/* FIVE SECTIONS, APP FIRST (Pato, 2026-11-13, MESITA-3838): App
+          Payments, Cash Payments, Credits Payments, App Prepayments, Waiter
+          Code; each payment section is its switch, then its
+          Cashback-as-Credits. */}
+      <Card className={SECTION}>
+        <h2 className={HEAD}>App Payments</h2>
+        <ul className="divide-border divide-y">
+          {switchRow({
+            key: "pay_cards",
+            id: "mesita-payments",
+            name: "App Payments",
+            line: "Guests pay the bill by card inside the app.",
+            icon: DeviceMobileIcon,
+            tone: "bg-sky-100 text-sky-700",
+            stripe: true,
+            note: settings.pay_cards
+              ? fee.hold
+                  ? "Off until Mesita's invoice is paid."
+                  : !CARD_BILL_PAY_LIVE
+                    ? ARRIVES_SOON
+                    : PER_100
+              : "Guests still pay from credit here.",
+          })}
+          {rateRow({
+            key: "card_cashback_bps",
+            name: "App Payments Cashback-as-Credits",
+            line: "Back as credit here on the card part of the bill. Never on the tip.",
+            blocked: !settings.house_credits ? needsHouseCredits : undefined,
+            stripe: true,
+            note: settings.card_cashback_bps !== null && !state.cashback && settings.house_credits ? "Starts once App Payments takes cards." : null,
+          })}
+        </ul>
+      </Card>
       <Card className={SECTION}>
         <h2 className={HEAD}>Cash Payments</h2>
         <ul className="divide-border divide-y">
@@ -493,45 +526,28 @@ export function PaymentsPanel({
             <p className="font-semibold whitespace-nowrap">Always on</p>
             <span />
           </li>
-          {/* No cashback on credit (MESITA-3836). */}
+          {/* NO CASHBACK ON CREDIT, SHOWN FOR SYMMETRY (Pato, MESITA-3838:
+              "NONE. NOT CONFIGURABLE. BUT LEAVE THE SHIT IN BUSIENSS CONSOLE
+              FOR THE SAKE OF SYMMETRY"): the row every payment section has,
+              fixed at None, no switch. */}
+          <li className={MARK_ROW} data-place-state="credit_cashback_bps">
+            {mark(CoinsIcon, false, "bg-amber-100 text-amber-700")}
+            <div className="min-w-0">
+              <p className="font-medium">Cashback-as-Credits</p>
+              <p className="text-muted-foreground">Credit spent here earns no cashback: it was already a reward.</p>
+            </div>
+            <p className="text-muted-foreground font-semibold whitespace-nowrap">None</p>
+            <span />
+          </li>
         </ul>
       </Card>
       <Card className={SECTION}>
-        <h2 className={HEAD}>App Payments</h2>
-        <ul className="divide-border divide-y">
-          {switchRow({
-            key: "pay_cards",
-            id: "mesita-payments",
-            name: "App Payments",
-            line: "Guests pay the bill by card inside the app.",
-            icon: DeviceMobileIcon,
-            tone: "bg-sky-100 text-sky-700",
-            stripe: true,
-            note: settings.pay_cards
-              ? fee.hold
-                  ? "Off until Mesita's invoice is paid."
-                  : !CARD_BILL_PAY_LIVE
-                    ? ARRIVES_SOON
-                    : PER_100
-              : "Guests still pay from credit here.",
-          })}
-          {rateRow({
-            key: "card_cashback_bps",
-            name: "App Payments Cashback-as-Credits",
-            line: "Back as credit here on the card part of the bill. Never on the tip.",
-            blocked: !settings.house_credits ? needsHouseCredits : undefined,
-            stripe: true,
-            note: settings.card_cashback_bps !== null && !state.cashback && settings.house_credits ? "Starts once App Payments takes cards." : null,
-          })}
-        </ul>
-      </Card>
-      <Card className={SECTION}>
-        <h2 className={HEAD}>Mesita Prepayments</h2>
+        <h2 className={HEAD}>App Prepayments</h2>
         <ul className="divide-border divide-y" data-place-state="vouchers">
           {switchRow({
             key: "prepayments",
             id: "mesita-prepayments",
-            name: "Mesita Prepayments",
+            name: "App Prepayments",
             line: "Guests pay ahead by card and get extra credit. Several vouchers add up in one wallet and pay one bill together.",
             icon: TicketIcon,
             tone: "bg-emerald-100 text-emerald-700",

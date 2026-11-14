@@ -183,7 +183,7 @@ export const PLACE_STATE_ROWS = [
   { key: "cashPaymentsCashback", label: "Cash Payments Cashback-as-Credits" },
   { key: "mesitaPayments", label: "App Payments" },
   { key: "mesitaPaymentsCashback", label: "App Payments Cashback-as-Credits" },
-  { key: "mesitaPrepayments", label: "Mesita Prepayments" },
+  { key: "mesitaPrepayments", label: "App Prepayments" },
 ] as const;
 
 export type PlaceStateKey = (typeof PLACE_STATE_ROWS)[number]["key"];

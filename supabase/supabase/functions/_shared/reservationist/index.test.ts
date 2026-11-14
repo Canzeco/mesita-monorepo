@@ -59,7 +59,7 @@ Deno.test("knowledgeFor: the money facts, the typed name and the switch; never '
         "Mesita sí maneja dinero",
         "Créditos de la casa",
         "App Payments",
-        "Mesita Prepayments",
+        "App Prepayments",
         "código que le da el mesero",
         "2% en efectivo y 5% con tarjeta",
         "personas (de 1 a 10), nombre y apellido",
