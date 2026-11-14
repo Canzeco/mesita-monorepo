@@ -318,6 +318,10 @@ export type TabRow = {
   origin?: "waiter" | "guest";
   verified_at?: string | null;
   verified_key_hash?: string | null;
+  /** MESITA-3843: why a guest bill ended unpaid (cancelled, rejected,
+   *  expired, capture_failed), and a capture in progress at the signature. */
+  end_reason?: string | null;
+  signing_at?: string | null;
 };
 
 export type TabPartRow = {
@@ -345,7 +349,7 @@ export type TabPartRow = {
 };
 
 export const TAB_COLUMNS =
-  "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, created_at, parent_tab_id, split_at, split_ways, origin, verified_at, verified_key_hash";
+  "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, created_at, parent_tab_id, split_at, split_ways, origin, verified_at, verified_key_hash, end_reason, signing_at";
 const PART_COLUMNS =
   "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, cashback_cents, paid_at, proof_token, created_at, cashback_bps, outside_cashback_bps, credit_cashback_bps, credit_cashback_cents, held_at";
 /** The guest's list reads only what a status needs (MESITA-3688): never
@@ -597,6 +601,10 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
     // MESITA-3707: a guest tab ends with the waiter's Verify.
     origin: t.origin ?? "waiter",
     verified_at: t.verified_at ?? null,
+    // MESITA-3861: Not paid says why; Confirming shows while the card is
+    // being charged at the signature.
+    end_reason: t.end_reason ?? null,
+    signing: !!t.signing_at,
   };
 }
 

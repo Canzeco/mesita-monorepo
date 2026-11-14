@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CONSUMER_ROUTES, payPlacePath, payReceiptPath, payTabPath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import { locationSnapshot } from "@/lib/use-user-location";
 import { GuestPayScreen } from "./GuestPayScreen";
 import { PayFormSheet } from "./PayForm";
 import { writeOpenTabId } from "./pay-common";
@@ -30,7 +31,12 @@ export function PayTabScreen({ start }: { start: TabStart }) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   // The places that take the waiter's code (and the form's place).
-  const { places, failed, refresh } = usePayPlaces(null);
+  // A fix already in hand gives the distance on Open (MESITA-3861); none is asked here.
+  const [at] = useState(() => {
+    const c = typeof window === "undefined" ? null : locationSnapshot().coords;
+    return c ? { lat: Math.round(c.lat * 1000) / 1000, lng: Math.round(c.lng * 1000) / 1000 } : null;
+  });
+  const { places, failed, refresh } = usePayPlaces(at);
   const [formPlaceId, setFormPlaceId] = useState<string | null>(null);
   const formPlace = formPlaceId && places ? places.find((p) => p.place_id === formPlaceId) ?? null : null;
   const leave = () => goBack(router);
@@ -56,7 +62,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
             placesFailed={failed}
             getSupabase={getSupabase}
             onPaid={(id) => navigateTo(router, payTabPath(id), { replace: true })}
-            onBack={leave}
+            onChoosePlace={() => navigateTo(router, `${CONSUMER_ROUTES.pay}?pick=1`, { replace: true })}
             registerBack={registerBack}
           />
         ) : (
@@ -71,7 +77,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
           onWaiterCode={setFormPlaceId}
           onDone={leave}
           onPayAgain={(placeId) => navigateTo(router, payPlacePath(placeId), { replace: true })}
-          onEnded={() => navigateTo(router, CONSUMER_ROUTES.pay, { replace: true })}
+          placeFor={(id) => places?.find((p) => p.place_id === id) ?? null}
           registerBack={registerBack}
         />
         )}

@@ -57,6 +57,9 @@ const LOCATION_DECIMALS = 3;
 /** "Not now" on the location card holds for this browser session. */
 const LOCATION_NOT_NOW_KEY = "mesita.pay.location-not-now";
 
+/** The guest is at a place this close (MESITA-3861): Pay starts there. */
+const AT_PLACE_M = 150;
+
 /** Places listed before "Show all" (MESITA-3720). */
 const PLACES_SHOWN = 5;
 
@@ -172,6 +175,22 @@ export function PayPage() {
       cancelled = true;
     };
   }, []);
+
+  // OPEN (MESITA-3861, "14. Payments Flow Guest-Lead"): one open bill
+  // anywhere opens exactly where it was left; otherwise the Pay tab starts
+  // with the place the guest is at (the nearest, within AT_PLACE_M), unless
+  // they came here to choose another (?pick=1, the name on Open).
+  useEffect(() => {
+    if (!openTabs) return;
+    if (openTabs.length > 0) {
+      navigateTo(router, payTabPath(openTabs[0].tab_id), { replace: true });
+      return;
+    }
+    if (loc.state !== "on" || !places || places.length === 0) return;
+    if (new URLSearchParams(window.location.search).has("pick")) return;
+    const near = places.filter((p) => p.distance_m !== null).sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0))[0];
+    if (near && (near.distance_m ?? Infinity) <= AT_PLACE_M) navigateTo(router, payPlacePath(near.place_id), { replace: true });
+  }, [openTabs, loc, places, router]);
 
   function askLocation() {
     setLoc({ state: "asking" });
