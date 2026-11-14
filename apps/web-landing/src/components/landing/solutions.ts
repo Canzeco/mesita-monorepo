@@ -2,7 +2,7 @@
 // Payments, Credit Prepayments and Credit Rewards are not built, so they carry
 // `soon` and the page tags them instead of hiding them. Restaurants: every
 // product on Business › All (web-business places/[id]/all), same names, same
-// copy, same order: three current, ten Soon (MESITA-3845, Pato: "List all this
+// copy, same order: four current, ten Soon (MESITA-3845, Pato: "List all this
 // in the Solutions for Restaurants"). Rename a product there first, then here.
 
 export type Solution = {
@@ -56,6 +56,10 @@ export const PLACE_SOLUTIONS: Solution[] = [
   {
     name: "Payments",
     body: "House Credits, Cash Payments, App Payments, their Cashback-as-Credits, App Prepayments and the Stripe Account, and which of them are on at your place.",
+  },
+  {
+    name: "Reservations",
+    body: "Whether guests can ask for a table at your place. When they do, Mesita's Reservationist calls you with the date, time and party size.",
   },
   {
     name: "Smart Menu",

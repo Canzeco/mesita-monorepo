@@ -23,7 +23,7 @@ export const metadata = { title: "All" };
 // ... mention current and future and divide"; a catalog since MESITA-3237, was
 // Soon, MESITA-3197). A current tile is a Capabilities row of the rail, same name
 // and icon, and opens its page; Views stays out as Operations (Pato,
-// MESITA-3243). A future tile is copy only: no links, forms, dates or sign-up,
+// MESITA-3243); Reservations joined Current with the rail (MESITA-3853). A future tile is copy only: no links, forms, dates or sign-up,
 // so it has no hover. One card of rows on a phone; tiles from `sm`, four across
 // only from `2xl`, where "Reservations Management" still fits one line.
 const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
@@ -38,6 +38,10 @@ const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
   {
     tab: "payments",
     line: "House Credits, Cash Payments, App Payments, their Cashback-as-Credits, App Prepayments and the Stripe Account, and which of them are on at your place.",
+  },
+  {
+    tab: "reservations",
+    line: "Whether guests can ask for a table at your place. When they do, Mesita's Reservationist calls you with the date, time and party size.",
   },
 ];
 
