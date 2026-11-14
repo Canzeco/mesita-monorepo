@@ -278,7 +278,10 @@ export function isPlaceReservePath(pathname: string): boolean {
 /** A Mesita row id (a place, a bill, a payment): the money routes take
  *  nothing else in their id segment. */
 export function isRouteId(id: string | null | undefined): id is string {
-  return typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  return (
+    typeof id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+  );
 }
 
 /** Pay at a place: the door that opens (or reuses) the guest's bill there. */
@@ -303,7 +306,10 @@ export function visitPath(tabId: string): string {
 
 /** One credit movement's page (MESITA-3782): the entry is its kind and
  *  its time, which together name it on the guest's balance at the place. */
-export function creditEntryPath(placeId: string, e: { kind: string; at: string }): string {
+export function creditEntryPath(
+  placeId: string,
+  e: { kind: string; at: string },
+): string {
   return `${CONSUMER_ROUTES.credit.prefix}${placeId}/${e.kind}.${Date.parse(e.at)}`;
 }
 
@@ -414,6 +420,8 @@ export const ROUTE_MAP = {
   // Activity's chips as Me's pages (MESITA-3855).
   meNotifications: row("/me/notifications", "me", "page", "me"),
   meReservations: row("/me/reservations", "me", "page", "me"),
+  // Reservations' Past half (MESITA-3888): the same page, its chip picked.
+  meReservationsPast: row("/me/reservations/past", "me", "page", "me"),
   meTickets: row("/me/tickets", "me", "page", "me"),
   // One kind of ticket, /me/tickets/<kind>: the same page, chip picked.
   meTicketsKind: row("/me/tickets/:kind", "me", "page", "me"),
