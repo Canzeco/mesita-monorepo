@@ -28,7 +28,7 @@ export const DEFAULT_IMAGE_SORTING_PROMPT =
 // Two tiers since MESITA-2126. A legacy "high" (same gpt-4o as "standard") is
 // mapped explicitly: the generic fallback below is the cheap default, so an
 // unmapped "high" would silently downgrade the place to gpt-4o-mini.
-const QUALITY = new Set(["economy", "standard"]);
+const QUALITY = new Set(["efficient", "economy", "standard"]);
 const PERPLEXITY = new Set([
   "fast-search",
   "pro-search",

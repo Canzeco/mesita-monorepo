@@ -12,6 +12,7 @@ import { vectorLiteral } from "./embeddings-vector.ts";
 import { capPresentation } from "./presentation-cap.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { buildResolverInput } from "./enrich-channel-discovery.ts";
+import { openaiParams } from "./openai-params.ts";
 
 /** Fixture text is [chunk, times] pairs, so a 2,300-character case stays one line. */
 const build = (parts: [string, number][]) => parts.map(([s, n]) => s.repeat(n)).join("");
@@ -51,5 +52,11 @@ Deno.test("twin: capPresentation and its ceiling match the Render fixture", () =
   for (const c of fixture.presentation.cases) {
     const text = build(c.text as [string, number][]);
     assertEquals(capPresentation(text), build(c.expected as [string, number][]), c.note);
+  }
+});
+
+Deno.test("twin: openaiParams shapes each model's call as Render does (MESITA-3945)", () => {
+  for (const c of fixture.openaiParams) {
+    assertEquals(openaiParams(c.model, { temperature: c.temperature, maxTokens: c.maxTokens }), c.expected, c.model);
   }
 });

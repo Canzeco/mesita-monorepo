@@ -7,6 +7,7 @@
 // describe keeps the order too.
 
 import { APIFY_USD, charge, openaiUsd } from "./cost.ts";
+import { openaiParams } from "./openai-params.ts";
 
 const GALLERY_CAP = 10;
 const GOOGLE_CAP = 10;
@@ -244,8 +245,7 @@ async function describeOne(
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: knobs.visionModel,
-        temperature: 0,
-        max_tokens: 200,
+        ...openaiParams(knobs.visionModel, { temperature: 0, maxTokens: 200 }),
         messages: [{
           role: "user",
           content: [
@@ -279,7 +279,7 @@ async function rankPhotos(
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: knobs.sortModel,
-      temperature: 0,
+      ...openaiParams(knobs.sortModel, { temperature: 0 }),
       messages: [{
         role: "user",
         content:

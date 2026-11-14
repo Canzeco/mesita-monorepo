@@ -7,10 +7,13 @@
 // (supabase/functions/_shared/enrich-config.ts); a test on each side
 // (_shared/enrich-tiers.test.ts, lib/synthesis-quality.test.ts) fails if the two
 // drift, because each package's CI only runs when its own folder changes.
-export const SYNTHESIS_QUALITIES = ["economy", "standard"] as const;
+// "efficient" (MESITA-3945): gpt-6-luna, OpenAI's cheap replacement for
+// gpt-4o-mini and gpt-4o (both shut down 2027-01-14), cheaper than either.
+export const SYNTHESIS_QUALITIES = ["efficient", "economy", "standard"] as const;
 export type SynthesisQuality = (typeof SYNTHESIS_QUALITIES)[number];
 
 export const ENRICHER_TIER_MODELS: Record<SynthesisQuality, string> = {
+  efficient: "gpt-6-luna",
   economy: "gpt-4o-mini",
   standard: "gpt-4o",
 };
@@ -18,5 +21,6 @@ export const ENRICHER_TIER_MODELS: Record<SynthesisQuality, string> = {
 /** A stored tier, read leniently: the retired "high" is "standard"; anything else unknown is "economy". */
 export function normalizeTier(q: unknown): SynthesisQuality {
   if (q === "high" || q === "standard") return "standard";
+  if (q === "efficient") return "efficient";
   return "economy";
 }
