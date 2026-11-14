@@ -9,18 +9,16 @@
 // drift, because each package's CI only runs when its own folder changes.
 // "efficient" (MESITA-3945): gpt-6-luna, OpenAI's cheap replacement for
 // gpt-4o-mini and gpt-4o (both shut down 2027-01-14), cheaper than either.
-export const SYNTHESIS_QUALITIES = ["efficient", "economy", "standard"] as const;
+// One tier since MESITA-3966: economy (gpt-4o-mini) and standard (gpt-4o) are
+// gone. A stored retired tier reads as efficient.
+export const SYNTHESIS_QUALITIES = ["efficient"] as const;
 export type SynthesisQuality = (typeof SYNTHESIS_QUALITIES)[number];
 
 export const ENRICHER_TIER_MODELS: Record<SynthesisQuality, string> = {
   efficient: "gpt-6-luna",
-  economy: "gpt-4o-mini",
-  standard: "gpt-4o",
 };
 
-/** A stored tier, read leniently: the retired "high" is "standard"; anything else unknown is the default "efficient" (MESITA-3959). */
-export function normalizeTier(q: unknown): SynthesisQuality {
-  if (q === "high" || q === "standard") return "standard";
-  if (q === "economy") return "economy";
+/** A stored tier, read leniently: every value is the one tier, efficient. */
+export function normalizeTier(_q: unknown): SynthesisQuality {
   return "efficient";
 }

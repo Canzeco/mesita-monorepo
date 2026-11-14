@@ -8,8 +8,8 @@ import {
 import type { CrenupSettings } from "./crenup-guards";
 
 const base = {
-  quality: "economy" as const,
-  imageModel: "economy" as const,
+  quality: "efficient" as const,
+  imageModel: "efficient" as const,
   gCollect: 5,
   igCollect: 10,
   gAnalyze: 5,
@@ -24,15 +24,9 @@ const base = {
 };
 
 describe("computeEnrichmentCost", () => {
-  it("standard synthesis costs more than economy and stays finite", () => {
-    const economy = computeEnrichmentCost(base);
-    const standard = computeEnrichmentCost({ ...base, quality: "standard" });
-    expect(standard.perPlace).toBeGreaterThan(economy.perPlace);
-    for (const n of [
-      economy.perPlace,
-      economy.perPlaceSecs,
-      standard.perPlace,
-    ]) {
+  it("stays finite on the one tier (MESITA-3966)", () => {
+    const c = computeEnrichmentCost(base);
+    for (const n of [c.perPlace, c.perPlaceSecs]) {
       expect(Number.isFinite(n)).toBe(true);
     }
   });
@@ -85,8 +79,8 @@ const settings: CrenupSettings = {
   analyzeInstagramImages: 10,
   imageAnalysisPrompt: "",
   imageSortingPrompt: "",
-  synthesisQuality: "economy",
-  visionQuality: "economy",
+  synthesisQuality: "efficient",
+  visionQuality: "efficient",
   perplexityPreset: "pro-search",
   discoverWebsiteN: 5,
   discoverInstagramN: 5,
@@ -113,7 +107,7 @@ describe("instance estimates", () => {
       "Google profile",
       "Google photos",
       "Timezone",
-      "Presentation synthesis — economy",
+      "Presentation synthesis — efficient",
       "Category → tags",
       "Persist data + images",
     ]);

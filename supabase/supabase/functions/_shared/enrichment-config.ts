@@ -28,7 +28,7 @@ export const DEFAULT_IMAGE_SORTING_PROMPT =
 // Two tiers since MESITA-2126. A legacy "high" (same gpt-4o as "standard") is
 // mapped explicitly: the generic fallback below is the cheap default, so an
 // unmapped "high" would silently downgrade the place to gpt-4o-mini.
-const QUALITY = new Set(["efficient", "economy", "standard"]);
+const QUALITY = new Set(["efficient"]);
 const PERPLEXITY = new Set([
   "fast-search",
   "pro-search",
@@ -140,8 +140,9 @@ function intIn(v: unknown, min: number, max: number, fallback: number): number {
   return n;
 }
 
+// MESITA-3966: one tier. A legacy economy / standard / high is not an error, it
+// reads as the fallback (efficient).
 function quality(v: unknown, fallback: string): string {
-  if (v === "high") return "standard";
   return typeof v === "string" && QUALITY.has(v) ? v : fallback;
 }
 

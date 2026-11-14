@@ -3,17 +3,15 @@ import {
   changedEnricherFields,
   coerceModelsConfig,
   DEFAULT_MODELS_CONFIG,
-  nextRadioIndex,
   runSave,
-  tierChoice,
   withMemo,
   type EnricherModelSettings,
   type ModelsConfig,
 } from "./types";
 
 const ENRICHER: EnricherModelSettings = {
-  synthesisQuality: "economy",
-  visionQuality: "economy",
+  synthesisQuality: "efficient",
+  visionQuality: "efficient",
   perplexityPreset: "pro-search",
 };
 
@@ -69,57 +67,12 @@ describe("changedEnricherFields", () => {
       changedEnricherFields(ENRICHER, { ...ENRICHER, perplexityPreset: "deep-research" }),
     ).toEqual({ perplexityPreset: "deep-research" });
   });
-
-  it("never re-sends an untouched tier (a stored high arrives as standard on both sides)", () => {
-    const saved = { ...ENRICHER, synthesisQuality: "standard" as const };
-    expect(
-      changedEnricherFields(saved, { ...saved, perplexityPreset: "fast-search" }),
-    ).toEqual({ perplexityPreset: "fast-search" });
-  });
-});
-
-describe("tierChoice", () => {
-  it("names writing's three models with their price per place", () => {
-    expect(tierChoice("writing")).toEqual({
-      kind: "choice",
-      options: [
-        { tier: "efficient", label: "gpt-6-luna · ~$0.0015 per place" },
-        { tier: "economy", label: "gpt-4o-mini · ~$0.002 per place" },
-        { tier: "standard", label: "gpt-4o · ~$0.028 per place" },
-      ],
-    });
-  });
-
-  it("names photos' three models with their price per photo, whatever the chat model is", () => {
-    const c = tierChoice("photos");
-    expect(c.kind === "choice" && c.options.map((o) => o.label)).toEqual([
-      "gpt-6-luna · ~$0.0007 per photo",
-      "gpt-4o-mini · ~$0.001 per photo",
-      "gpt-4o · ~$0.008 per photo",
-    ]);
-  });
-});
-
-describe("nextRadioIndex", () => {
-  it("moves and wraps with the arrow keys", () => {
-    expect(nextRadioIndex("ArrowRight", 0, 2)).toBe(1);
-    expect(nextRadioIndex("ArrowRight", 1, 2)).toBe(0);
-    expect(nextRadioIndex("ArrowLeft", 0, 2)).toBe(1);
-    expect(nextRadioIndex("ArrowDown", 0, 2)).toBe(1);
-    expect(nextRadioIndex("ArrowUp", 1, 2)).toBe(0);
-  });
-  it("jumps with Home/End and ignores other keys", () => {
-    expect(nextRadioIndex("Home", 1, 2)).toBe(0);
-    expect(nextRadioIndex("End", 0, 2)).toBe(1);
-    expect(nextRadioIndex("Enter", 0, 2)).toBeNull();
-    expect(nextRadioIndex("ArrowRight", 0, 0)).toBeNull();
-  });
 });
 
 describe("runSave", () => {
   const savedModels = coerceModelsConfig(null);
-  const nextModels: ModelsConfig = withMemo(savedModels, { model: "gpt-4o" });
-  const nextEnricher: EnricherModelSettings = { ...ENRICHER, visionQuality: "standard" };
+  const nextModels: ModelsConfig = withMemo(savedModels, { model: "gpt-5.6-luna" });
+  const nextEnricher: EnricherModelSettings = { ...ENRICHER, perplexityPreset: "deep-research" };
 
   it("saves nothing when nothing changed", async () => {
     const updateModels = vi.fn();
@@ -141,8 +94,8 @@ describe("runSave", () => {
         updateEnricher: async (patch) => ({ ok: true, data: { ...ENRICHER, ...patch } }),
       },
     );
-    expect(out.savedModels.memo.model).toBe("gpt-4o");
-    expect(out.savedEnricher.visionQuality).toBe("standard");
+    expect(out.savedModels.memo.model).toBe("gpt-5.6-luna");
+    expect(out.savedEnricher.perplexityPreset).toBe("deep-research");
     expect(out.modelsError ?? out.enricherError).toBeNull();
   });
 
@@ -155,11 +108,11 @@ describe("runSave", () => {
       { savedModels, nextModels, savedEnricher: ENRICHER, nextEnricher },
       { updateModels: async () => ({ ok: false, error: "boom" }), updateEnricher },
     );
-    expect(updateEnricher).toHaveBeenCalledWith({ visionQuality: "standard" });
+    expect(updateEnricher).toHaveBeenCalledWith({ perplexityPreset: "deep-research" });
     expect(out.modelsError).toBe("boom");
     expect(out.savedModels).toBe(savedModels);
     expect(out.enricherSaved).toBe(true);
-    expect(out.savedEnricher.visionQuality).toBe("standard");
+    expect(out.savedEnricher.perplexityPreset).toBe("deep-research");
   });
 
   it("keeps the models baseline when only the Enricher half fails", async () => {
@@ -171,7 +124,7 @@ describe("runSave", () => {
       },
     );
     expect(out.modelsSaved).toBe(true);
-    expect(out.savedModels.memo.model).toBe("gpt-4o");
+    expect(out.savedModels.memo.model).toBe("gpt-5.6-luna");
     expect(out.enricherError).toBe("nope");
     expect(out.savedEnricher).toBe(ENRICHER);
   });

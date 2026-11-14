@@ -12,8 +12,8 @@ import { ModelsConfigClient } from "./ModelsConfigClient";
 import { coerceModelsConfig, type EnricherModelSettings } from "./types";
 
 const ENRICHER: EnricherModelSettings = {
-  synthesisQuality: "economy",
-  visionQuality: "standard",
+  synthesisQuality: "efficient",
+  visionQuality: "efficient",
   perplexityPreset: "pro-search",
 };
 
@@ -41,12 +41,11 @@ describe("Models page (MESITA-2126)", () => {
     expect(html).toContain("Memo, the chat on Home › Chat.");
   });
 
-  it("names each tier by model and price, three choices per tier row", () => {
-    expect(html).toContain("gpt-4o-mini · ~$0.002 per place");
-    expect(html).toContain("gpt-4o · ~$0.028 per place");
-    expect(html).toContain("gpt-4o · ~$0.008 per photo");
+  it("names the one Enricher model with its price, no choice (MESITA-3966)", () => {
     expect(html).toContain("gpt-6-luna · ~$0.0015 per place");
-    expect(radiosIn(html)).toBe(6);
+    expect(html).toContain("gpt-6-luna · ~$0.0007 per photo");
+    expect(html).not.toContain("gpt-4o");
+    expect(radiosIn(html)).toBe(0);
   });
 
   it("shows the fixed models read-only", () => {

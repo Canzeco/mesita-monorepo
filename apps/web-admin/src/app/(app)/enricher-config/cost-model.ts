@@ -37,12 +37,8 @@ export const COST_RATES = {
   firecrawlSearchPerField: 0.001, // one channel-discovery search (~1–2 credits)
   perplexityAgent: 0.01, // Perplexity Agent call: web search $0.005 + sonar tokens
   visionEfficient: 0.0007, // gpt-6-luna vision, one image (estimated from $0.10/$0.50 per 1M)
-  visionEconomy: 0.001, // gpt-4o-mini vision, one image (detail:low)
-  visionStandard: 0.008, // gpt-4o vision, one image
-  sort: 0.001, // gpt-4o-mini text sort / short judge
+  sort: 0.001, // gpt-6-luna text sort / short judge
   synthEfficient: 0.0015, // gpt-6-luna synthesis, reasoning none (estimated)
-  synthEconomy: 0.002, // gpt-4o-mini synthesis (1,500-char Presentation)
-  synthStandard: 0.028, // gpt-4o synthesis (standard)
 } as const;
 
 // The five link-discovery channels, in config order. Each channel with a
@@ -68,12 +64,8 @@ const TIME_RATES = {
   apifyInstagram: 25, // Apify IG profile + posts run
   apifyFacebook: 15, // Apify FB run
   visionEfficient: 1.0, // gpt-6-luna vision / image (estimated)
-  visionEconomy: 1.0, // gpt-4o-mini vision / image
-  visionStandard: 1.8, // gpt-4o vision / image
   sort: 3, // text sort
   synthEfficient: 6, // gpt-6-luna synthesis (estimated)
-  synthEconomy: 6, // gpt-4o-mini synthesis
-  synthStandard: 12, // gpt-4o synthesis
 } as const;
 
 // Vision describes every analyzed image CONCURRENTLY (the enricher fires the
@@ -160,7 +152,7 @@ export type CostEstimate = {
 // not a numbering: never renumber these to make them one-to-one.
 export function computeEnrichmentCost({
   quality,
-  imageModel,
+  imageModel: _imageModel,
   gCollect,
   igCollect,
   gAnalyze,
@@ -171,14 +163,13 @@ export function computeEnrichmentCost({
   serp = true,
   synth = true,
 }: CostParams): CostEstimate {
-  const tier = (q: string, eff: number, eco: number, std: number) =>
-    q === "efficient" ? eff : q === "economy" ? eco : std;
-  const synthCost = tier(quality, COST_RATES.synthEfficient, COST_RATES.synthEconomy, COST_RATES.synthStandard);
-  const synthSecs = tier(quality, TIME_RATES.synthEfficient, TIME_RATES.synthEconomy, TIME_RATES.synthStandard);
+  // One tier since MESITA-3966 (efficient, gpt-6-luna).
+  const synthCost = COST_RATES.synthEfficient;
+  const synthSecs = TIME_RATES.synthEfficient;
   const visionImgs = gAnalyze + igAnalyze;
   const visionActive = visionImgs > 0;
-  const visionCostPer = tier(imageModel, COST_RATES.visionEfficient, COST_RATES.visionEconomy, COST_RATES.visionStandard);
-  const visionSecsPer = tier(imageModel, TIME_RATES.visionEfficient, TIME_RATES.visionEconomy, TIME_RATES.visionStandard);
+  const visionCostPer = COST_RATES.visionEfficient;
+  const visionSecsPer = TIME_RATES.visionEfficient;
   const visionRounds = Math.ceil(visionImgs / VISION_CONCURRENCY);
 
   const googlePhotoCost = COST_RATES.googlePhoto * gCollect;

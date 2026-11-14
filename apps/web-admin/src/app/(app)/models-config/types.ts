@@ -62,7 +62,6 @@ export type ModelsConfig = {
 //   gpt-6-luna $0.10 / $0.50 · gpt-4o-mini $0.15 / $0.60
 //   gpt-5.6-luna $0.20 / $1.20 · gpt-5.4-nano $0.20 / $1.25
 export const OPENAI_CHAT_MODELS = [
-  "gpt-4o-mini",
   "gpt-6-luna",
   "gpt-5.6-luna",
   "gpt-5.4-nano",
@@ -123,67 +122,15 @@ export function changedEnricherFields(
   return patch;
 }
 
-// What each tier costs, from Creation's cost model (one rate card, not two).
-const TIER_PRICE: Record<"writing" | "photos", Record<SynthesisQuality, string>> = {
-  writing: {
-    efficient: `~$${COST_RATES.synthEfficient} per place`,
-    economy: `~$${COST_RATES.synthEconomy} per place`,
-    standard: `~$${COST_RATES.synthStandard} per place`,
-  },
-  photos: {
-    efficient: `~$${COST_RATES.visionEfficient} per photo`,
-    economy: `~$${COST_RATES.visionEconomy} per photo`,
-    standard: `~$${COST_RATES.visionStandard} per photo`,
-  },
+// What the one tier costs, from Creation's cost model (one rate card, not two).
+const TIER_PRICE: Record<"writing" | "photos", string> = {
+  writing: `~$${COST_RATES.synthEfficient} per place`,
+  photos: `~$${COST_RATES.visionEfficient} per photo`,
 };
 
-export type TierChoice =
-  | { kind: "choice"; options: { tier: SynthesisQuality; label: string }[] }
-  | { kind: "same"; model: string };
-
-/**
- * The options a tier row offers (efficient, economy, standard; MESITA-3945),
- * named by the model each one runs. Both rows run ENRICHER_TIER_MODELS, the
- * backend's QUALITY_MODEL (enrich-start.ts sends Render visionModelFor(tier)).
- * If tiers would run the same model there is nothing to choose, so the row
- * says so instead.
- */
-export function tierChoice(
-  row: "writing" | "photos",
-): TierChoice {
-  const efficientModel = ENRICHER_TIER_MODELS.efficient;
-  const economyModel = ENRICHER_TIER_MODELS.economy;
-  const standardModel = ENRICHER_TIER_MODELS.standard;
-  const economyLabel = `${economyModel} · ${TIER_PRICE[row].economy}`;
-  const all: { tier: SynthesisQuality; model: string; label: string }[] = [
-    { tier: "efficient", model: efficientModel, label: `${efficientModel} · ${TIER_PRICE[row].efficient}` },
-    { tier: "economy", model: economyModel, label: economyLabel },
-    { tier: "standard", model: standardModel, label: `${standardModel} · ${TIER_PRICE[row].standard}` },
-  ];
-  // Two tiers running one model are one choice: keep the first of each model.
-  const seen = new Set<string>();
-  const options = all.filter((o) => (seen.has(o.model) ? false : (seen.add(o.model), true)));
-  if (options.length === 1) return { kind: "same", model: options[0].model };
-  return { kind: "choice", options: options.map(({ tier, label }) => ({ tier, label })) };
-}
-
-/** Roving-focus step for a radiogroup: the option index a key moves to, or null. */
-export function nextRadioIndex(key: string, i: number, n: number): number | null {
-  if (n <= 0) return null;
-  switch (key) {
-    case "ArrowRight":
-    case "ArrowDown":
-      return (i + 1) % n;
-    case "ArrowLeft":
-    case "ArrowUp":
-      return (i - 1 + n) % n;
-    case "Home":
-      return 0;
-    case "End":
-      return n - 1;
-    default:
-      return null;
-  }
+/** The model a tier row runs and what it costs (one tier since MESITA-3966). */
+export function tierLabel(row: "writing" | "photos"): string {
+  return `${ENRICHER_TIER_MODELS.efficient} · ${TIER_PRICE[row]}`;
 }
 
 type Saved<T> = { ok: true; data: T } | { ok: false; error: string };

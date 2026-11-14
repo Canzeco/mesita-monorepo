@@ -1,19 +1,17 @@
 "use client";
 
-import { useId, useRef, useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { Cpu } from "lucide-react";
-import { Button, Notice, SectionCard, SelectField } from "@/components/admin-ui";
+import { Notice, SectionCard, SelectField } from "@/components/admin-ui";
 import { SaveRow } from "@/components/admin-ui/config";
-import type { SynthesisQuality } from "@/lib/synthesis-quality";
 import { updateEnricherModelSettings, updateModelsConfig } from "./actions";
 import {
   ENRICHER_PERPLEXITY_PRESETS,
   OPENAI_CHAT_MODELS,
   changedEnricherFields,
   memoDirty,
-  nextRadioIndex,
   runSave,
-  tierChoice,
+  tierLabel,
   withMemo,
   type EnricherModelSettings,
   type ModelsConfig,
@@ -65,64 +63,6 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 
 function Unavailable() {
   return <span className="text-muted-foreground text-sm">{UNAVAILABLE}</span>;
-}
-
-/** A two-option model choice: a radiogroup with roving focus (Left/Right). */
-function ModelChoice({
-  id,
-  value,
-  options,
-  disabled,
-  onChange,
-}: {
-  id: string;
-  value: SynthesisQuality;
-  options: { tier: SynthesisQuality; label: string }[];
-  disabled: boolean;
-  onChange: (tier: SynthesisQuality) => void;
-}) {
-  const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  const current = Math.max(
-    0,
-    options.findIndex((o) => o.tier === value),
-  );
-  return (
-    <div
-      id={id}
-      role="radiogroup"
-      aria-labelledby={`${id}-label`}
-      className="flex flex-col gap-1"
-    >
-      {options.map((o, i) => {
-        const checked = o.tier === value;
-        return (
-          <Button
-            key={o.tier}
-            tone={checked ? "primary" : "secondary"}
-            size="sm"
-            className="w-full"
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
-            role="radio"
-            aria-checked={checked}
-            tabIndex={i === current ? 0 : -1}
-            disabled={disabled}
-            onClick={() => onChange(o.tier)}
-            onKeyDown={(e) => {
-              const next = nextRadioIndex(e.key, i, options.length);
-              if (next === null) return;
-              e.preventDefault();
-              onChange(options[next].tier);
-              refs.current[next]?.focus();
-            }}
-          >
-            {o.label}
-          </Button>
-        );
-      })}
-    </div>
-  );
 }
 
 export function ModelsConfigClient({
@@ -205,31 +145,15 @@ export function ModelsConfigClient({
         ]
       : OPENAI_CHAT_MODELS.map((m) => ({ value: m, label: m }));
 
-  const tierRow = (
-    row: "writing" | "photos",
-    id: string,
-    value: SynthesisQuality,
-    onChange: (t: SynthesisQuality) => void,
-  ) => {
-    if (!cfg) return <Unavailable />;
-    const choice = tierChoice(row);
-    if (choice.kind === "same") {
-      return (
-        <p id={id} className="text-muted-foreground text-sm">
-          Both options run {choice.model}.
-        </p>
-      );
-    }
-    return (
-      <ModelChoice
-        id={id}
-        value={value}
-        options={choice.options}
-        disabled={busy}
-        onChange={onChange}
-      />
+  // One tier since MESITA-3966: the row names the model it runs, nothing to pick.
+  const tierRow = (row: "writing" | "photos", id: string) =>
+    cfg ? (
+      <p id={id} className="text-sm">
+        {tierLabel(row)}
+      </p>
+    ) : (
+      <Unavailable />
     );
-  };
 
   const id = (k: string) => `${ids}-${k}`;
 
@@ -282,23 +206,14 @@ export function ModelsConfigClient({
             label="Enricher writing"
             usedBy="Writes each place's description and ranks its photos."
           >
-            {enricher
-              ? tierRow("writing", id("writing"), enricher.synthesisQuality, (t) =>
-                  patchEnricher({ synthesisQuality: t }),
-                )
-              : <Unavailable />}
+            {enricher ? tierRow("writing", id("writing")) : <Unavailable />}
           </JobRow>
           <JobRow
             id={id("photos")}
             label="Enricher photos"
             usedBy="Reads each photo while a place is enriched."
-            note="The cheaper option uses the sorting model."
           >
-            {enricher
-              ? tierRow("photos", id("photos"), enricher.visionQuality, (t) =>
-                  patchEnricher({ visionQuality: t }),
-                )
-              : <Unavailable />}
+            {enricher ? tierRow("photos", id("photos")) : <Unavailable />}
           </JobRow>
           <JobRow
             id={id("search")}
