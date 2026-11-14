@@ -8,7 +8,6 @@ import { ANALYTICS_PARENT } from "@/app/(app)/analytics/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { LOGS_PARENT } from "@/app/(app)/logs/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
-import { GUESTS_PARENT } from "@/app/(app)/guests/nav";
 import { FEEDBACK_PARENT } from "@/app/(app)/feedback/nav";
 import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
 import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
@@ -51,14 +50,13 @@ const ACCOUNT_NAV: NavItem = { href: "/account", label: "Account", Icon: UserCir
 // names stay `admin-config` / `admin-web-*` — a rename stops at the
 // label. Then widest scope: the backend itself, then the places Mesita
 // lists — MANY at once, then ONE (Pato, MESITA-2084: "Multiple Places /
-// Single Place"). Guests sits right after Admins (MESITA-2550): both rows
-// are people. Single Place is the one-place sibling of the bulk tool,
-// not the per-place editor MESITA-1588 deleted. Premier closes the group
+// Single Place"). Guests was deleted (MESITA-3846). Single Place is the
+// one-place sibling of the bulk tool, not the per-place editor MESITA-1588
+// deleted. Premier closes the group
 // (MESITA-3011): every place's paid visibility at once. Not Configurations;
 // nothing here is a policy blob. Money left the rail (MESITA-3842).
 export const MANAGE_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admins", Icon: ShieldCheckIcon },
-  GUESTS_PARENT,
   DB_PARENT,
   MULTIPLE_PLACES_PARENT,
   SINGLE_PLACE_PARENT,
