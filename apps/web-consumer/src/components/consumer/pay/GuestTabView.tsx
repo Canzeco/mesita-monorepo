@@ -213,7 +213,15 @@ export function GuestTabView({
         >
           Start again
         </Button>
-        <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-2 shrink-0")} onClick={onDone}>
+        <button
+          type="button"
+          className={cn(QUIET_BUTTON_CLASS, "mt-2 shrink-0")}
+          onClick={() => {
+            // Closing a bill that didn't go through ends its ticket (MESITA-3879).
+            clearGuestDraft(tab.place.id);
+            onDone();
+          }}
+        >
           Close
         </button>
       </div>

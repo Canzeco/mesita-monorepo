@@ -6,10 +6,11 @@ import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiAddCard, apiListCards, brandLabel, CARD_REFUSAL, CARD_RETURN_PARAM, type SavedCard } from "@/lib/api/cards";
-import { apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
+import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
+import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { acceptCardsAnswer, type CardsLoad, cardsFailure, loadedCards, pickCard } from "@/lib/pay-cards";
 import { payDraftExpired } from "@/lib/pay-draft";
@@ -37,8 +38,15 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-com
 //   4B Cash   "Give MX$X to the waiter", then "I gave the cash".
 //
 // Paying opens the bill (/pay/tab/<id>, GuestTabView: Sign, Confirming,
-// Receipt, Not paid). The X in the corner leaves for Open with everything
-// typed kept; the header's back arrow steps back. Every rule and peso is the
+// Receipt, Not paid). The header's back arrow steps back.
+//
+// ONE TICKET AT A TIME (MESITA-3879, Pato: "imagine someone closes the app
+// while in one step in between ... you first need to enter the ticket and
+// resolve it before anything"): the draft lives in localStorage with one
+// pending pointer once an amount is typed. While it's pending, /pay and
+// every other place's Pay open it where it was left; the X (or the place
+// name) asks "Cancel this ticket?" and clears it. A bill already open on the
+// server comes first. Drafts still expire 30 minutes after their last change. Every rule and peso is the
 // server's; this screen proposes.
 
 type Stage = "bill" | "method" | "pay";
@@ -60,11 +68,13 @@ type Draft = {
 };
 
 const DRAFT_KEY = (placeId: string) => `mesita.pay.guest-lead.${placeId}`;
+/** The place whose ticket is in progress (MESITA-3879). */
+const PENDING_KEY = "mesita.pay.pending-ticket";
 
 function readDraft(placeId: string): Draft | null {
   if (typeof window === "undefined") return null;
   try {
-    const d = JSON.parse(window.sessionStorage.getItem(DRAFT_KEY(placeId)) ?? "null") as Draft | null;
+    const d = JSON.parse(window.localStorage.getItem(DRAFT_KEY(placeId)) ?? "null") as Draft | null;
     if (!d || typeof d.amount !== "string" || typeof d.savedAt !== "number") return null;
     if (payDraftExpired(d.savedAt, Date.now())) return null;
     return d;
@@ -76,14 +86,33 @@ function readDraft(placeId: string): Draft | null {
 /** Saves the draft, stamped now; null removes it. */
 function writeDraft(placeId: string, d: Omit<Draft, "savedAt"> | null) {
   try {
-    if (d) window.sessionStorage.setItem(DRAFT_KEY(placeId), JSON.stringify({ ...d }));
-    else window.sessionStorage.removeItem(DRAFT_KEY(placeId));
+    if (d) window.localStorage.setItem(DRAFT_KEY(placeId), JSON.stringify({ ...d, savedAt: Date.now() }));
+    else window.localStorage.removeItem(DRAFT_KEY(placeId));
+    // A ticket is pending once an amount is typed.
+    const pending = window.localStorage.getItem(PENDING_KEY);
+    if (d && d.amount !== "") window.localStorage.setItem(PENDING_KEY, placeId);
+    else if (pending === placeId) window.localStorage.removeItem(PENDING_KEY);
   } catch {
     // The bill starts empty next time; nothing breaks.
   }
 }
 
-/** The receipt clears what was typed at this place. */
+/** The place with a ticket in progress (an amount typed, not expired), or null. */
+export function pendingTicketPlace(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const placeId = window.localStorage.getItem(PENDING_KEY);
+    if (!placeId) return null;
+    const d = readDraft(placeId);
+    if (d && d.amount !== "") return placeId;
+    window.localStorage.removeItem(PENDING_KEY);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** The receipt (or Close on Not paid) clears what was typed at this place. */
 export function clearGuestDraft(placeId: string) {
   if (typeof window !== "undefined") writeDraft(placeId, null);
 }
@@ -101,6 +130,7 @@ export function GuestPayScreen({
   getSupabase,
   onPaid,
   onChoosePlace,
+  onOpenPlace,
   registerBack,
 }: {
   placeId: string;
@@ -111,6 +141,8 @@ export function GuestPayScreen({
   onPaid: (tabId: string) => void;
   /** Open: the search to choose another place. */
   onChoosePlace: () => void;
+  /** Another place's ticket is pending: open it there (MESITA-3879). */
+  onOpenPlace: (placeId: string) => void;
   /** The header's back arrow asks this first: true when it handled it. */
   registerBack?: (back: (() => boolean) | null) => void;
 }) {
@@ -136,6 +168,28 @@ export function GuestPayScreen({
   const [error, setError] = useState<string | null>(null);
   const [notPaid, setNotPaid] = useState<string | null>(null);
   const requestId = useRef<string | null>(null);
+  const [cancelAsk, setCancelAsk] = useState(false);
+
+  // ONE TICKET AT A TIME (MESITA-3879): another place's ticket in progress,
+  // or a bill already open on the server, opens instead of this place.
+  useEffect(() => {
+    const other = pendingTicketPlace();
+    if (other && other !== placeId) {
+      onOpenPlace(other);
+      return;
+    }
+    let cancelled = false;
+    void apiListVisits(getSupabase())
+      .then((r) => {
+        const open = pickOpenGuestPayment(r.visits, Date.now());
+        if (!cancelled && open) onPaid(open.tab_id);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placeId]);
   const root = useRef<HTMLDivElement | null>(null);
 
   const cards = loadedCards(cardsLoad);
@@ -144,6 +198,12 @@ export function GuestPayScreen({
   const spendable = Math.max(place?.available_cents ?? 0, 0);
   const off = !!place && !cardOk && !cashOk && spendable === 0;
   const m = (c: number) => money(c, place?.currency ?? "mxn");
+  // The X and the place name: with a ticket in progress, cancel it first.
+  const leave = () => {
+    if (busy || addingCard) return;
+    if (amount !== "") setCancelAsk(true);
+    else onChoosePlace();
+  };
 
   // The saved cards, when the place takes cards (and again on Retry).
   useEffect(() => {
@@ -311,6 +371,28 @@ export function GuestPayScreen({
   const frame = (body: React.ReactNode, data: string) => (
     <div ref={root} tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none" onKeyDown={onKeyDown} data-guest-pay={data}>
       {body}
+      <LocalDialog open={cancelAsk} onClose={() => setCancelAsk(false)} ariaLabel="Cancel this ticket">
+        <div className="p-5" data-guest-cancel-ticket>
+          <p className="text-base font-semibold">Cancel this ticket?</p>
+          <p className="text-muted-foreground mt-1 text-sm">What you typed is cleared. Nothing was charged.</p>
+          <div className="mt-4 flex gap-2">
+            <Button
+              type="button"
+              className="min-h-12 flex-1 text-base font-semibold"
+              onClick={() => {
+                setCancelAsk(false);
+                clearGuestDraft(placeId);
+                onChoosePlace();
+              }}
+            >
+              Cancel ticket
+            </Button>
+            <button type="button" className={cn(QUIET_BUTTON_CLASS, "flex-1")} onClick={() => setCancelAsk(false)}>
+              Keep it
+            </button>
+          </div>
+        </div>
+      </LocalDialog>
     </div>
   );
   const status = error ? (
@@ -324,7 +406,7 @@ export function GuestPayScreen({
   if (notPaid) {
     return frame(
       <>
-        <PlaceBar place={place} onClose={onChoosePlace} />
+        <PlaceBar place={place} onClose={leave} />
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
           <XCircle className={cn("h-14 w-14", BAD)} aria-hidden />
           <h2 className="font-display mt-4 text-xl font-semibold">Not paid</h2>
@@ -362,7 +444,7 @@ export function GuestPayScreen({
   if (stage === "bill" && typing) {
     return frame(
       <>
-        <PlaceHero place={place} off={false} onChoose={onChoosePlace} onClose={onChoosePlace} />
+        <PlaceHero place={place} off={false} onChoose={leave} onClose={leave} />
         <StepsBar at={0} className="mt-3" />
         <div className="mt-4 flex shrink-0 items-center justify-center gap-2">
           <ReceiptText className="text-muted-foreground h-5 w-5" aria-hidden />
@@ -389,7 +471,7 @@ export function GuestPayScreen({
     const toSign = dueCents === 0;
     return frame(
       <>
-        <PlaceBar place={place} onClose={onChoosePlace} />
+        <PlaceBar place={place} onClose={leave} />
         <StepsBar at={0} className="mt-1" />
         <button
           type="button"
@@ -495,7 +577,7 @@ export function GuestPayScreen({
   if (stage === "method") {
     return frame(
       <>
-        <PlaceBar place={place} onClose={onChoosePlace} />
+        <PlaceBar place={place} onClose={leave} />
         <StepsBar at={1} className="mt-1" />
         <BackStep to="Bill" onClick={() => !busy && setStage("bill")} />
         <p className="mt-2 shrink-0 text-center">
@@ -550,7 +632,7 @@ export function GuestPayScreen({
     const cardsUnknown = cards === null;
     return frame(
       <>
-        <PlaceBar place={place} onClose={onChoosePlace} />
+        <PlaceBar place={place} onClose={leave} />
         <StepsBar at={2} className="mt-1" />
         <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
@@ -643,7 +725,7 @@ export function GuestPayScreen({
   // 4B CASH PAY: give the cash, then the QR.
   return frame(
     <>
-      <PlaceBar place={place} onClose={onChoosePlace} />
+      <PlaceBar place={place} onClose={leave} />
       <StepsBar at={2} className="mt-1" />
       <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
