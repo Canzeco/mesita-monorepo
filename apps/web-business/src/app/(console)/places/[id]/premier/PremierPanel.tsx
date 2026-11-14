@@ -56,8 +56,13 @@ const REFUSED: Record<string, string> = {
   interval_retired: "Plans are yearly only now. Reload the page and choose again.",
 };
 
+/** "99 USD", "999 USD", "41.23 USD": the code after the number and never a
+ *  "$", which reads as pesos in Mexico (Pato, MESITA-3919: "mention the actual
+ *  price"). Whole dollars drop the cents. */
 function usd(cents: number): string {
-  return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const whole = cents % 100 === 0;
+  const n = (cents / 100).toLocaleString("en-US", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 });
+  return `${n} USD`;
 }
 
 // One grid for every row, so the columns line up. Stacked first (name and

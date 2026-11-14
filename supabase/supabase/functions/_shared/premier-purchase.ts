@@ -12,22 +12,23 @@
 // and supabase-cron-sync-premier sweeps what nobody came back for.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { CHECKOUT_TTL_SEC, PREMIER_CURRENCY } from "./boost.ts";
+import { CHECKOUT_TTL_SEC, PREMIER_CURRENCY, usdText } from "./boost.ts";
 import { readCheckoutSession } from "./checkout-session.ts";
 import { isUuid } from "./place-id.ts";
 import { isAllowedReturnUrl, type StripeCall } from "./stripe.ts";
 
 export type RefillTier = 1 | 2;
 
-/** One pack per tier: one year (Pato, MESITA-3386: "Upgrade plan must be one
- *  year. $100 USD. $1000 USD. Not three months"; 90 days at $30 / $300 from
- *  MESITA-3203 until then). The yearly-only Subscription is $99 / $999
- *  (MESITA-3285, boost.ts), so a pack never undercuts subscribing.
+/** One pack per tier: one year at the plan's own price, 99 USD and 999 USD
+ *  (Pato, MESITA-3919: "please mention 99 and 999 usd"; 100 / 1,000 USD from
+ *  MESITA-3386, 90 days at 30 / 300 from MESITA-3203 before that). The
+ *  yearly-only Subscription is the same 99 / 999 (MESITA-3285, boost.ts), so a
+ *  pack never undercuts subscribing.
  *  A purchase keeps the days it stored when it opened. A price change is a
  *  PR. The 366-day queue cap in premier_refill_check means one pack at a
  *  time per place. */
 export const REFILL_PACK_DAYS = 365;
-export const REFILL_PACK_CENTS: Record<RefillTier, number> = { 1: 100_00, 2: 1000_00 };
+export const REFILL_PACK_CENTS: Record<RefillTier, number> = { 1: 99_00, 2: 999_00 };
 
 /** The plan guests read (MESITA-3916, "Premier 2X/5X" until then): tier 1 is
  *  Mesita Pro, tier 2 Mesita Max. */
@@ -125,7 +126,7 @@ export function refillCheckoutParams(args: {
       price_data: {
         currency: PREMIER_CURRENCY,
         unit_amount: REFILL_PACK_CENTS[args.tier],
-        product_data: { name: `Upgrade · ${refillLabel(args.tier)} · ${refillPerk(args.tier)} · one year · ${args.placeName}`.slice(0, 250) },
+        product_data: { name: `Upgrade · ${refillLabel(args.tier)} · ${refillPerk(args.tier)} · ${usdText(REFILL_PACK_CENTS[args.tier])} for one year · ${args.placeName}`.slice(0, 250) },
       },
     }],
     payment_intent_data: { metadata },

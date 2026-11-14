@@ -146,6 +146,18 @@ export function money(cents: number): string {
   return USD.format(Math.round(cents) / 100);
 }
 
+/** A plan's price: "99 USD", "999 USD". The code after the number and never
+ *  a "$", which reads as pesos in Mexico (Pato, MESITA-3919: "mention the
+ *  actual price"). Whole dollars drop the cents. */
+export function usd(cents: number): string {
+  const whole = cents % 100 === 0;
+  const n = (cents / 100).toLocaleString("en-US", {
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
+  });
+  return `${n} USD`;
+}
+
 /** "Nov 14". */
 export function shortDate(iso: string | null): string {
   if (!iso) return "soon";

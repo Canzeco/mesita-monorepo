@@ -8,8 +8,8 @@ import {
   apiStartRefill,
   suitePlanName,
   BOOST_TIERS,
-  money,
   shortDate,
+  usd,
   START_REFUSED,
   type PlaceBoost,
   type RefillDays,
@@ -146,7 +146,7 @@ export function BoostPane({
           <div className="min-w-0 flex-1 text-sm">
             <p className="font-semibold">{suitePlanName(0)}</p>
             <p className="text-muted-foreground">{VISIBILITY[0]}</p>
-            <p className="font-semibold tabular-nums">$0 USD</p>
+            <p className="font-semibold tabular-nums">0 USD</p>
           </div>
           {level === 0 ? (
             <span
@@ -174,7 +174,7 @@ export function BoostPane({
                 <p className="text-muted-foreground">{VISIBILITY[t.rank]}, Premier red tag</p>
                 <p className="font-semibold tabular-nums">
                   {p ? (
-                    `${money(p.price_cents)} USD for one year`
+                    `${usd(p.price_cents)} for one year`
                   ) : (
                     <span className="bg-muted inline-block h-3.5 w-24 rounded align-middle" />
                   )}
@@ -185,7 +185,7 @@ export function BoostPane({
                 type="button"
                 onClick={() => void start(t.rank)}
                 disabled={loading || !p || off || starting !== null || !boost?.signed_in}
-                aria-label={p ? `Buy one year of ${name}, ${VISIBILITY[t.rank]}, for ${money(p.price_cents)} USD` : undefined}
+                aria-label={p ? `Buy one year of ${name}, ${VISIBILITY[t.rank]}, for ${usd(p.price_cents)}` : undefined}
                 className={cn(
                   PRIMARY_BUTTON_CLASS,
                   SLOT_CLASS,

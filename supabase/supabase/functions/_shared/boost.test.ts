@@ -321,6 +321,7 @@ Deno.test("premier: pays-now Checkout holds the card (manual capture) and saves 
   assertEquals(at(pay, "payment_intent_data", "capture_method"), "manual");
   assertEquals(at(pay, "payment_intent_data", "setup_future_usage"), "off_session");
   assertEquals(at(pay, "line_items", 0, "price_data", "unit_amount"), 9900);
+  assertEquals(String(at(pay, "line_items", 0, "price_data", "product_data", "name")).includes("99 USD a year"), true);
   assertEquals(at(pay, "line_items", 0, "price_data", "recurring"), undefined);
   assertEquals(pay.success_url, "https://mesita.ai/web/place/x?tab=premier&boost={CHECKOUT_SESSION_ID}");
   assertEquals(pay.expires_at, 1000 + 31 * 60);
