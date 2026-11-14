@@ -202,7 +202,9 @@ function creditsLine(card: WalletCardModel, gone: boolean): string {
   // purchase lands on its own clock; the House Card shows each one's time.
   if (card.pending_cents > 0) return "Pending";
   if (card.available_cents > 0) return "Available";
-  return "No credits yet";
+  // Nothing on it says the amount, never "No credits yet" (Pato, MESITA-3901:
+  // "not mention no credits yet. mention $0MX").
+  return money(0, card.currency);
 }
 
 /** A place's Credits Card (MESITA-3741): a row like a saved card's. The
