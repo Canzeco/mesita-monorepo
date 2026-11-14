@@ -11,6 +11,7 @@ import {
   CalendarCheck,
   Gift,
   LifeBuoy,
+  Send,
   UtensilsCrossed,
   BadgeDollarSign,
   type LucideIcon,
@@ -42,9 +43,15 @@ const INTRO: Record<IntroKind, { Icon: LucideIcon; title: string; text: string }
     title: "Credit you prepaid at a place",
     text: "Buy credit at a place, often with a bonus, and spend it there later with Pay. It pays the bill, never the tip.",
   },
-  gifts: {
+  // Gifts In and Gifts Out (MESITA-3941).
+  "gifts-in": {
     Icon: Gift,
-    title: "Credit you sent or got",
+    title: "Credit a friend sent you",
+    text: "A friend sends you credit they hold at a place with a link. Once you take it, you spend it there with Pay.",
+  },
+  "gifts-out": {
+    Icon: Send,
+    title: "Credit you sent a friend",
     text: "Send credit you hold at a place to a friend with a link. They spend it there. A link nobody opens can be taken back.",
   },
   refunds: {
