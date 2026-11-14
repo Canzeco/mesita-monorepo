@@ -280,7 +280,14 @@ export function isDashboardPairRefusal(message: string): boolean {
   return m.includes("stripe_dashboard") || m.includes("liable") || m.includes("collect fees");
 }
 
-export const CONNECT_COUNTRIES = ["MX", "US"] as const;
+/** Where a place's Stripe account can live (MESITA-3923): the countries of
+ *  the ten voucher currencies Stripe takes accounts in. Colombia, Chile and
+ *  Peru are not among them yet: a place there runs House Credits and cash,
+ *  never cards. */
+export const CONNECT_COUNTRIES = [
+  "MX", "US", "CA", "GB", "BR", "JP",
+  "AT", "BE", "HR", "CY", "EE", "FI", "FR", "DE", "GR", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PT", "SK", "SI", "ES",
+] as const;
 export type ConnectCountry = (typeof CONNECT_COUNTRIES)[number];
 export function isConnectCountry(v: unknown): v is ConnectCountry {
   return typeof v === "string" && (CONNECT_COUNTRIES as readonly string[]).includes(v);

@@ -9,7 +9,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { moneyText } from "./pay.ts";
-import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, currencyForCountry, voucherPriceCents } from "./money.ts";
+import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, currencyForCountry, voucherPriceCents, toStripeAmount } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
@@ -364,7 +364,7 @@ export function voucherCheckoutParams(args: {
       quantity: 1,
       price_data: {
         currency: args.currency,
-        unit_amount: line.price_cents,
+        unit_amount: toStripeAmount(line.price_cents, args.currency),
         product_data: {
           name: `${voucherName(args.voucher, args.currency)} · ${args.placeName}`.slice(0, 250),
           description: `${moneyText(line.credit_cents, args.currency)} of credit at ${args.placeName}`.slice(0, 250),

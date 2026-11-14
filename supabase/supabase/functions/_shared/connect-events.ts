@@ -35,6 +35,7 @@ import { purchasesByPaymentIntent, purchaseStore, spreadGone } from "./purchase-
 import { cancelReleasedHolds, releasePayment, settlePaidPayment } from "./settle-payment.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 import { type StripeCall } from "./stripe.ts";
+import { fromStripeAmount } from "./money.ts";
 import { errorMessage } from "./errors.ts";
 
 export const SIGNATURE_TOLERANCE_SEC = 300;
@@ -276,8 +277,10 @@ function idOfField(v: unknown): string | null {
 /** What the ledger must count as gone from a charge: Stripe's cumulative
  *  amount_refunded plus what lost disputes took, never past the charge. */
 function goneCents(charge: Record<string, unknown>, refunded: number, lost: number): number {
-  const total = refunded + lost;
-  return typeof charge.amount === "number" ? Math.min(charge.amount, total) : total;
+  // Stripe's whole yen back to the ledger's hundredths (MESITA-3923).
+  const cur = typeof charge.currency === "string" ? charge.currency : null;
+  const total = fromStripeAmount(refunded + lost, cur);
+  return typeof charge.amount === "number" ? Math.min(fromStripeAmount(charge.amount, cur), total) : total;
 }
 
 /** The refund RPC for a ledger row; an error or a refusal throws, so the

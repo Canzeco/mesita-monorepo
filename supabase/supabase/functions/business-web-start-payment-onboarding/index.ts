@@ -49,12 +49,15 @@ serveJson("business-web-start-payment-onboarding", async (req) => {
   const placeRes = await readVoucherPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const placeRow = placeRes.place;
-  const country = bodyRes.body.country ?? countryForCurrency(placeRow?.currency);
+  // The place's own country when it uses that currency (EUR spans twenty).
+  const { data: placeCountry, error: countryErr } = await admin.rpc("place_country", { p_place_id: placeId });
+  if (countryErr) return json({ ok: false, error: `place_country: ${countryErr.message}` }, 500);
+  const country = bodyRes.body.country ?? countryForCurrency(placeRow?.currency, typeof placeCountry === "string" ? placeCountry : null);
   if (typeof returnUrl !== "string" || !isAllowedReturnUrl(returnUrl)) {
     return json({ ok: false, error: "return_url is not a Mesita address" }, 400);
   }
   // Permanent on the account Stripe is about to create, so checked first.
-  if (!isConnectCountry(country)) return json({ ok: false, code: "invalid", error: "country must be MX or US" }, 400);
+  if (!isConnectCountry(country)) return json({ ok: false, code: "invalid", error: "Stripe doesn't take accounts in this place's country yet" }, 400);
 
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;

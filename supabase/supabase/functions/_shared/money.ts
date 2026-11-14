@@ -39,21 +39,50 @@ export const OUTSIDE_CASHBACK_DAILY_CEILING_CENTS = 50_000;
  *  places.currency, set from its country (MESITA-3913). */
 export const MONEY_CURRENCY = "mxn";
 
-/** Stripe's minimum for a direct charge, per currency [estimated MX$10,
- *  confirm on MESITA-3280; US$0.50 is Stripe's own floor]. */
-export const MIN_CHARGE_CENTS: Record<string, number> = { mxn: 10_00, usd: 50 };
+/** Stripe's minimum for a direct charge, per currency, in the ledger's
+ *  hundredths [MX$10 estimated, confirm on MESITA-3280; the rest are
+ *  Stripe's own floors, roughly half a US dollar]. */
+export const MIN_CHARGE_CENTS: Record<string, number> = {
+  mxn: 10_00, usd: 50, cad: 50, eur: 50, gbp: 30, brl: 50, jpy: 50_00, cop: 2_000_00, clp: 500_00, pen: 2_00,
+};
 
-/** A country's currency (MESITA-3913), lowercase as the ledger stores it:
- *  the Stripe account's country, or the place's. TWIN of
- *  public.currency_for_country. */
-const COUNTRY_CURRENCY: Record<string, string> = { MX: "mxn", US: "usd" };
+/** EVERY LEDGER AMOUNT IS IN HUNDREDTHS (MESITA-3923), even for a currency
+ *  with no cents: ¥1,000 is 100000 here, so every screen formats the same.
+ *  Stripe wants yen and Chilean pesos in whole units, so the amount is
+ *  converted only at the Stripe boundary, both ways. */
+const ZERO_DECIMAL = new Set(["jpy", "clp"]);
+export function isZeroDecimal(currency: string | null | undefined): boolean {
+  return ZERO_DECIMAL.has((currency ?? "").toLowerCase());
+}
+/** A ledger amount as Stripe's `amount` (whole units for yen, rounded). */
+export function toStripeAmount(cents: number, currency: string | null | undefined): number {
+  return isZeroDecimal(currency) ? Math.round(cents / 100) : Math.round(cents);
+}
+/** Stripe's `amount` back in the ledger's hundredths. */
+export function fromStripeAmount(amount: number, currency: string | null | undefined): number {
+  return isZeroDecimal(currency) ? amount * 100 : amount;
+}
+
+/** A country's currency (MESITA-3913, all ten since MESITA-3923),
+ *  lowercase as the ledger stores it. TWIN of public.currency_for_country. */
+export const EUROZONE = ["AT", "BE", "HR", "CY", "EE", "FI", "FR", "DE", "GR", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PT", "SK", "SI", "ES"] as const;
+const COUNTRY_CURRENCY: Record<string, string> = {
+  MX: "mxn", US: "usd", CA: "cad", GB: "gbp", BR: "brl", CO: "cop", CL: "clp", PE: "pen", JP: "jpy",
+  ...Object.fromEntries(EUROZONE.map((c) => [c, "eur"])),
+};
 export function currencyForCountry(country: string | null | undefined): string | null {
   return country ? COUNTRY_CURRENCY[country.toUpperCase()] ?? null : null;
 }
 
-/** The Stripe Connect country for a place's currency (MESITA-3913). */
-export function countryForCurrency(currency: string | null | undefined): string {
-  return (currency ?? "").toLowerCase() === "usd" ? "US" : "MX";
+/** The Stripe Connect country for a place: its own country when it uses
+ *  this currency, else the currency's home (EUR: Spain). */
+const CURRENCY_HOME: Record<string, string> = {
+  mxn: "MX", usd: "US", cad: "CA", gbp: "GB", brl: "BR", cop: "CO", clp: "CL", pen: "PE", jpy: "JP", eur: "ES",
+};
+export function countryForCurrency(currency: string | null | undefined, placeCountry?: string | null): string {
+  const cur = (currency ?? "").toLowerCase();
+  if (placeCountry && currencyForCountry(placeCountry) === cur) return placeCountry.toUpperCase();
+  return CURRENCY_HOME[cur] ?? "MX";
 }
 
 /** The most one credit-only payment may ask for (MESITA-3304), MX$100,000
@@ -111,17 +140,15 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
  *  (places.currency, MESITA-3913); a currency missing here sells none. The
  *  bonus and the wait are the catalog's, the same everywhere. The Small
  *  voucher's key stays voucher_200 (a renamed key resets live config). */
-export const VOUCHER_PRICE_CENTS: Record<string, Record<MoneyVoucherKey, number>> = {
-  mxn: { voucher_200: 100_00, voucher_1000: 1_000_00, voucher_5000: 5_000_00, voucher_welcome: 100_00, voucher_story: 100_00, voucher_vip: 100_00 },
-  usd: { voucher_200: 10_00, voucher_1000: 100_00, voucher_5000: 500_00, voucher_welcome: 10_00, voucher_story: 10_00, voucher_vip: 10_00 },
-};
+export const VOUCHER_PRICE_CENTS: Record<string, Record<MoneyVoucherKey, number>> = {};
+// Filled from VOUCHER_CURRENCY_LIST below (MESITA-3923: all ten sell): Small
+// as listed, Big 10×, Biggest 50×, Welcome · Story · VIP at the Small price.
 
 /** THE TEN CURRENCIES (Pato, 2026-11-14, MESITA-3919: "make a list of all
  *  the currencies"): Small starts with 1, near half an inexpensive meal for
  *  one in that country; Big is 10× Small; Welcome, Story and VIP cost the
- *  Small price. Amounts in whole units (¥1,000, not cents). Only the
- *  currencies in VOUCHER_PRICE_CENTS sell; the rest wait for Stripe Connect
- *  in that country (and JPY and CLP for whole-unit charges). */
+ *  Small price. Amounts in whole units (¥1,000, not cents). All ten sell
+ *  (MESITA-3923), each only at places whose currency it is. */
 export const VOUCHER_CURRENCY_LIST: readonly { code: string; country: string; small: number }[] = [
   { code: "MXN", country: "Mexico", small: 100 },
   { code: "USD", country: "United States", small: 10 },
@@ -134,6 +161,12 @@ export const VOUCHER_CURRENCY_LIST: readonly { code: string; country: string; sm
   { code: "PEN", country: "Peru", small: 10 },
   { code: "JPY", country: "Japan", small: 1_000 },
 ];
+for (const r of VOUCHER_CURRENCY_LIST) {
+  const s = r.small * 100;
+  VOUCHER_PRICE_CENTS[r.code.toLowerCase()] = {
+    voucher_200: s, voucher_1000: s * 10, voucher_5000: s * 50, voucher_welcome: s, voucher_story: s, voucher_vip: s,
+  };
+}
 
 /** The voucher's price in this currency, null where vouchers aren't sold. */
 export function voucherPriceCents(key: MoneyVoucherKey, currency: string = MONEY_CURRENCY): number | null {

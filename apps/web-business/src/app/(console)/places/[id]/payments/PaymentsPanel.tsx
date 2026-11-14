@@ -94,10 +94,19 @@ type Product = { key: PaymentKey; name: string; line: string; value: string; ton
 // PRICED IN THE PLACE'S CURRENCY (MESITA-3914, Pato: "100 MX 10% · 1000 MX
 // 20% · 10 USD 10% · 100 USD 20% ... all small must start with 1 and big be
 // 10X that"). TWIN of VOUCHER_PRICE_CENTS in _shared/money.ts.
-const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = {
-  MXN: { voucher_200: 100_00, voucher_1000: 1_000_00, voucher_5000: 5_000_00, voucher_welcome: 100_00, voucher_story: 100_00, voucher_vip: 100_00 },
-  USD: { voucher_200: 10_00, voucher_1000: 100_00, voucher_5000: 500_00, voucher_welcome: 10_00, voucher_story: 10_00, voucher_vip: 10_00 },
+// The Small price per currency, in whole units (MESITA-3923, all ten); Big
+// 10×, Biggest 50×, Welcome · Story · VIP at the Small price. TWIN of
+// VOUCHER_CURRENCY_LIST in _shared/money.ts.
+const SMALL: Record<string, number> = {
+  MXN: 100, USD: 10, CAD: 10, EUR: 10, GBP: 10, BRL: 10, COP: 10_000, CLP: 1_000, PEN: 10, JPY: 1_000,
 };
+const TIMES: Record<VoucherKey, number> = { voucher_200: 1, voucher_1000: 10, voucher_5000: 50, voucher_welcome: 1, voucher_story: 1, voucher_vip: 1 };
+const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = Object.fromEntries(
+  Object.entries(SMALL).map(([c, small]) => [
+    c,
+    Object.fromEntries(Object.entries(TIMES).map(([k, n]) => [k, small * 100 * n])) as Record<VoucherKey, number>,
+  ]),
+);
 
 /** A voucher row before its price: the bonus in bps and what follows the deal. */
 type VoucherSeed = Omit<Product, "line" | "key"> & { key: VoucherKey; bps: number; tail?: string };
@@ -130,8 +139,11 @@ function voucherProducts(currency: string): Product[] {
 const per100 = (currency: string) =>
   `Per ${moneyLabel(100_00, currency)} by card: Stripe's card fee + ${moneyLabel(5_00, currency)} to Mesita.`;
 
-/** The currency's name, for the Credits Currency row (MESITA-3913). */
-const CURRENCY_NAME: Record<string, string> = { MXN: "Mexican peso", USD: "US dollar" };
+/** The currency's name in the plural, for the Credits Currency row (MESITA-3913). */
+const CURRENCY_NAME: Record<string, string> = {
+  MXN: "Mexican pesos", USD: "US dollars", CAD: "Canadian dollars", EUR: "euros", GBP: "pounds sterling",
+  BRL: "Brazilian reais", COP: "Colombian pesos", CLP: "Chilean pesos", PEN: "Peruvian soles", JPY: "Japanese yen",
+};
 const ARRIVES_SOON = "Card payment of the bill arrives soon.";
 
 /** The waiter's charge (MESITA-3306) and the staff list (MESITA-3462). */
@@ -171,7 +183,10 @@ const STAGE_LABEL: Record<StripeStage, string> = {
   restricted: "Restricted",
 };
 
-const COUNTRY: Record<string, string> = { MX: "Mexico", US: "United States" };
+const COUNTRY: Record<string, string> = {
+  MX: "Mexico", US: "United States", CA: "Canada", GB: "United Kingdom", BR: "Brazil", JP: "Japan",
+  ES: "Spain", FR: "France", DE: "Germany", IT: "Italy", NL: "Netherlands", PT: "Portugal", IE: "Ireland", BE: "Belgium", AT: "Austria",
+};
 
 /** The quiet grey pill (Cancel in the Agreement dialog). */
 const QUIET_PILL_CLASS = "bg-muted text-foreground hover:bg-muted/70 hover:opacity-100";
@@ -582,7 +597,7 @@ export function PaymentsPanel({
             <div className="min-w-0">
               <p className="font-medium">Credits Currency</p>
               <p className="text-muted-foreground">
-                Every credit here is in {CURRENCY_NAME[currency] ? `${CURRENCY_NAME[currency]}s` : currency}. Set by your place&apos;s country; it can&apos;t be changed. A guest paying with a card in another currency is converted by their bank.
+                Every credit here is in {CURRENCY_NAME[currency] ?? currency}. From your place&apos;s country, fixed when you sign the House Credits Agreement; it can&apos;t be changed. A guest paying with a card in another currency is converted by their bank.
               </p>
             </div>
             <p className="font-semibold whitespace-nowrap">{currency}</p>
@@ -655,6 +670,10 @@ export function PaymentsPanel({
               House Credits Agreement
             </h2>
             <p className="text-muted-foreground mt-2">{contract.text ?? "The full agreement will be added before launch."}</p>
+            {/* MESITA-3923: the currency is agreed here, and fixed by the signature. */}
+            <p className="mt-2 font-medium" data-agreement-currency>
+              Your House Credits run in {currency} ({CURRENCY_NAME[currency] ?? currency}). Signing fixes it.
+            </p>
             <div className="mt-6 flex justify-end gap-2">
               <button type="button" className={cn(PILL_BUTTON_CLASS, QUIET_PILL_CLASS)} disabled={busy === "contract"} onClick={() => setAgreeing(false)}>
                 Cancel

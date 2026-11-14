@@ -18,7 +18,7 @@
 // then the RPC's insufficient and taken.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { bps, MESITA_FEE_BPS_PAYMENT, MIN_CHARGE_CENTS } from "./money.ts";
+import { bps, MESITA_FEE_BPS_PAYMENT, MIN_CHARGE_CENTS, toStripeAmount } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
 import { moneyState } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings } from "./payments.ts";
@@ -128,7 +128,7 @@ export function cardCheckoutParams(args: {
     quantity: 1,
     price_data: {
       currency: args.currency,
-      unit_amount: args.cardCents,
+      unit_amount: toStripeAmount(args.cardCents, args.currency),
       product_data: { name: `Payment · ${args.placeName}`.slice(0, 250) },
     },
   }];
@@ -137,7 +137,7 @@ export function cardCheckoutParams(args: {
       quantity: 1,
       price_data: {
         currency: args.currency,
-        unit_amount: args.tipCents,
+        unit_amount: toStripeAmount(args.tipCents, args.currency),
         product_data: { name: `Tip · ${args.placeName}`.slice(0, 250) },
       },
     });

@@ -33,8 +33,9 @@ export function moneyLabel(cents: number, currency: string): string {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: code,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      // Yen and Chilean pesos have no cents (MESITA-3923).
+      minimumFractionDigits: code === "JPY" || code === "CLP" ? 0 : 2,
+      maximumFractionDigits: code === "JPY" || code === "CLP" ? 0 : 2,
     }).format(c / 100).replace(/^(-?)MX\$(.*)$/, "$1$$$2MX");
   } catch {
     return `${(c / 100).toFixed(2)} ${code}`;

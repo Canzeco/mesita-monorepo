@@ -29,7 +29,7 @@
 // caller prefix is Stripe's (Rules §2), so Mesita polls (the Premier shape).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { currencyForCountry, MIN_CHARGE_CENTS, MONEY_CURRENCY } from "./money.ts";
+import { currencyForCountry, MIN_CHARGE_CENTS, MONEY_CURRENCY, toStripeAmount } from "./money.ts";
 import { readVoucherPlace } from "./wallet.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
 import { errorMessage } from "./errors.ts";
@@ -105,7 +105,7 @@ export function feeItemParams(args: { rowId: string; customer: string; invoice: 
   return {
     customer: args.customer,
     invoice: args.invoice,
-    amount: args.amountCents,
+    amount: toStripeAmount(args.amountCents, args.currency),
     currency: args.currency,
     description: "Mesita fee: 5% of card payments and vouchers",
     metadata: { mesita_kind: "place_fee", fee_invoice_id: args.rowId },
