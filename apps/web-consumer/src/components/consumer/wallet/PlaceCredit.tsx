@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, Gift, Plus, QrCode } from "lucide-react";
+import { ChevronRight, CreditCard, Gift, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { SizedImg } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -330,7 +330,7 @@ export function PlaceCredit({
             className={empty ? ACTION_FILLED : ACTION}
             data-house-card-fund
           >
-            <Plus className="h-5 w-5" aria-hidden />
+            <CreditCard className="h-5 w-5" aria-hidden />
             Buy Credits
           </PushLink>
           {gift ? (

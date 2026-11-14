@@ -1,4 +1,4 @@
-import { Gift, Inbox, Share2 } from "lucide-react";
+import { Gift, HandCoins, Share2 } from "lucide-react";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -55,7 +55,7 @@ export function WalletShareGift({ onRedeem }: { onRedeem?: () => void }) {
         className={REDEEM}
         data-wallet-redeem
       >
-        <Inbox className={GLYPH} strokeWidth={2.25} aria-hidden />
+        <HandCoins className={GLYPH} strokeWidth={2.25} aria-hidden />
         Redeem Credits
       </button>
     </div>
