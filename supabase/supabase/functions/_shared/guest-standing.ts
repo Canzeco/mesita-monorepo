@@ -168,15 +168,15 @@ export function readStandingBody(
     return { ok: false, status: 400, code: "invalid_consumer", error: "consumerId must be a guest's id" };
   }
   const patch: StandingPatch = {};
-  // MESITA-3850: Class is automatic (a verified Instagram with more than
-  // 5,000 followers), so no operator sets it.
+  // MESITA-3850: Class is automatic (a verified Instagram with 5,000
+  // followers or more, MESITA-3864), so no operator sets it.
   if ("guestClass" in b) {
     return {
       ok: false,
       status: 400,
       code: "class_automatic",
       error:
-        "Class is automatic: VIP is a verified Instagram with more than 5,000 followers. Send plan, the note, the partner, the last day or the cap.",
+        "Class is automatic: VIP is a verified Instagram with 5,000 followers or more. Send plan, the note, the partner, the last day or the cap.",
     };
   }
   if ("plan" in b) {
