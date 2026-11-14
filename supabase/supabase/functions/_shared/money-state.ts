@@ -92,19 +92,17 @@ export type VoucherReason =
    *  bought one here for every visit (a paid bill with a card part). */
   | "needs_visit";
 
-/** Vouchers in the catalog that are not on sale, and why. STORY AND VIP ARE
- *  PARKED (Pato, 2026-11-13, MESITA-3831: "remove story and vip for the
- *  moment from this too"; both are out of the MVP until their return can be
- *  shown to an owner). Neither sells, whatever the owner's stored switch
- *  says; Business › Payments and the guest's Offers page list neither (both
- *  filter on this record). Nothing else is removed: the switches, the
- *  catalog, Story's Instagram gate (MESITA-3507), VIP's class gate
- *  (MESITA-3550) and one-each-new-visit (MESITA-3463) stay, and vouchers
- *  already bought keep working. Emptying this record brings both back.
- *  It was empty from MESITA-3550 until now. */
+/** Vouchers in the catalog that are not on sale, and why. STORY IS PARKED
+ *  (Pato, 2026-11-13, MESITA-3831: "remove story and vip for the moment";
+ *  VIP came back the same night, MESITA-3833: "Return VIP Class"). Story
+ *  does not sell, whatever the owner's stored switch says; Business ›
+ *  Payments and the guest's Offers page do not list it (both filter on this
+ *  record). Nothing else is removed: its switch, the catalog, its Instagram
+ *  gate (MESITA-3507) and one-each-new-visit (MESITA-3463) stay, and Story
+ *  vouchers already bought keep working. Emptying this record brings it
+ *  back. It was empty from MESITA-3550 until MESITA-3831. */
 export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {
   voucher_story: "not_yet",
-  voucher_vip: "not_yet",
 };
 
 /** Story is for guests whose linked Instagram has MORE than this many

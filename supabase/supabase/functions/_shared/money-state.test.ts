@@ -28,10 +28,10 @@ const allOn: MoneySettings = {
 const can = { charges_enabled: true };
 const cannot = { charges_enabled: false };
 
-Deno.test("a switch on with charges_enabled sells; Story and VIP are parked (MESITA-3831)", () => {
+Deno.test("a switch on with charges_enabled sells; Story is parked (MESITA-3831, VIP back in MESITA-3833)", () => {
   const s = moneyState(allOn, can, null);
-  assertEquals(s.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome"]);
-  assertEquals(s.unavailable, { voucher_story: "not_yet", voucher_vip: "not_yet" });
+  assertEquals(s.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_vip"]);
+  assertEquals(s.unavailable, { voucher_story: "not_yet" });
   assertEquals(s.cashback, true);
 });
 
@@ -39,7 +39,7 @@ Deno.test("Mesita Prepayments Off (MESITA-3597) sells no voucher, whatever the v
   const s = moneyState({ ...allOn, prepayments: false }, can, null);
   assertEquals(s.sell, []);
   assertEquals(s.unavailable.voucher_200, "off");
-  assertEquals(moneyState({ ...allOn, prepayments: true }, can, null).sell.length, 4);
+  assertEquals(moneyState({ ...allOn, prepayments: true }, can, null).sell.length, 5);
 });
 
 Deno.test("a switch on without charges_enabled sells nothing and says the account is missing", () => {
@@ -62,7 +62,7 @@ Deno.test("Pay by phone off (MESITA-3396) drops card pay and cashback, never the
   assertEquals(moneyState(noCards, can, { spendable_cents: 100 }).pay, "credit");
   assertEquals(moneyState(noCards, can, null).pay, "none");
   assertEquals(moneyState(noCards, can, null).cashback, false);
-  assertEquals(moneyState(noCards, can, null).sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome"]);
+  assertEquals(moneyState(noCards, can, null).sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_vip"]);
   // Absent reads on: a reader from before the column is unchanged.
   assertEquals(moneyState(allOn, can, { spendable_cents: 100 }).pay, "both");
 });
