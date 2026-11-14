@@ -1,0 +1,54 @@
+name: agents deploy
+
+# The ElevenLabs reservation agents are config-as-code in
+# supabase/supabase/functions/_shared/reservationist/ (MESITA-3968, Pato: "have
+# all the configuration of eleven labs in a repo to just deploy"). The
+# Supabase integration deploys the sync function a few minutes after a push
+# to main; this waits for that deploy (supabase/scripts/sync-agents.sh
+# compares spec hashes), then pushes the agents and runs their
+# simulated-call tests. A sync failure fails the job; a failed test is a
+# warning in the job summary.
+#
+# REQUIRES repo secret SUPABASE_ACCESS_TOKEN (already set for supabase deploy).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/supabase/functions/_shared/reservationist/**"
+      - "supabase/supabase/functions/supabase-edgefunc-sync-reservationist/**"
+      - "supabase/scripts/sync-agents.sh"
+      - ".github/workflows/agents-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: agents-deploy
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: sync ElevenLabs agents
+    # The job holds the access token, so it never runs a branch's script.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.9.1
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@d239d1052f6f024a8d746d7e5aeddead63b9cb53 # v3.1.0
+        with:
+          version: 2.100.0
+
+      - name: Wait for the deploy, sync, test
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase/scripts/sync-agents.sh
