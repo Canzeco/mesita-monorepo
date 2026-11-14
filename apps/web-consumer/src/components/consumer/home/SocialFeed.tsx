@@ -107,6 +107,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { toGuestClass } from "@/lib/guest-standing";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -664,6 +665,7 @@ function PersonCard({
                 label: cardInstagramLabel(person),
                 connected: Boolean(person.handle),
               }}
+              guestClass={toGuestClass(person.guestClass)}
             />
           ) : history ? (
             // A link to a member who is gone (deleted, or the event is).
@@ -678,7 +680,10 @@ function PersonCard({
             // own shape, empty.
             <div className="flex flex-col items-center gap-3" aria-busy>
               <Skeleton className="h-24 w-24 rounded-full" />
-              <Skeleton className="h-11 w-full rounded-full" />
+              <div className="flex w-full gap-3">
+                <Skeleton className="h-11 flex-1 rounded-full" />
+                <Skeleton className="h-11 flex-1 rounded-full" />
+              </div>
               <Skeleton className="h-11 w-full rounded-full" />
             </div>
           )}

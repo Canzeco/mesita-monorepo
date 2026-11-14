@@ -43,10 +43,10 @@ const ACCOUNT: AccountRow = {
 
 const base = { settings: ALL_ON, account: ACCOUNT, livemode: false, currency: "mxn", paused: false, balance: null, welcomeUsed: false };
 
-Deno.test("every switched-on voucher sells but the parked Story and VIP (MESITA-3831)", () => {
+Deno.test("every switched-on voucher sells but the parked Story (MESITA-3831; VIP back in MESITA-3833)", () => {
   const o = offerFrom(base);
-  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome"]);
-  assertEquals(o.unavailable, { voucher_story: "not_yet", voucher_vip: "not_yet" });
+  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_vip"]);
+  assertEquals(o.unavailable, { voucher_story: "not_yet" });
   assertEquals(o.test_mode, true);
   assertEquals(o.charges_enabled, true);
   assertEquals(o.cashback, true);
@@ -70,7 +70,7 @@ Deno.test("paused stops every sale; Welcome once; an account from the other univ
   assertEquals(offerFrom({ ...base, paused: true }).sell, []);
   assertEquals(offerFrom({ ...base, paused: true }).unavailable.voucher_200, "paused");
   const used = offerFrom({ ...base, welcomeUsed: true });
-  assertEquals(used.sell, ["voucher_200", "voucher_1000", "voucher_5000"]);
+  assertEquals(used.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_vip"]);
   assertEquals(used.unavailable.voucher_welcome, "used");
   const live = offerFrom({ ...base, livemode: true });
   assertEquals(live.sell, []);
@@ -83,12 +83,12 @@ Deno.test("paused stops every sale; Welcome once; an account from the other univ
 
 // Story's one-each-new-visit rule (MESITA-3463) is unreachable while Story is
 // parked; the parked reason wins and the buy door refuses it.
-Deno.test("Story and VIP are parked (MESITA-3831): not_yet, whatever the visit count, and the buy door refuses both", () => {
+Deno.test("Story is parked (MESITA-3831): not_yet, whatever the visit count, and the buy door refuses it; VIP sells (MESITA-3833)", () => {
   const o = offerFrom({ ...base, perVisitUsed: { voucher_story: true } });
-  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome"]);
+  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_vip"]);
   assertEquals(o.unavailable.voucher_story, "not_yet");
   assertEquals(buyRefusal(o, "voucher_story", ACCOUNT)?.code, "not_yet");
-  assertEquals(buyRefusal(o, "voucher_vip", ACCOUNT)?.code, "not_yet");
+  assertEquals(buyRefusal(o, "voucher_vip", ACCOUNT), null);
 });
 
 Deno.test("buyRefusal: codes for every closed door, null for an open one", () => {
