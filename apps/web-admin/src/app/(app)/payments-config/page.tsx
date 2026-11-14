@@ -108,7 +108,7 @@ export default async function PaymentsConfigPage() {
           <SectionCard
             icon={<CoinsIcon className="h-5 w-5" aria-hidden />}
             title="Currencies"
-            subtitle="Four currencies: MXN, USD, CAD and EUR, each only at places whose currency it is (fixed when the place signs the House Credits Agreement). Small starts with 1; Big is 10× Small; Welcome, Story and VIP cost the Small price."
+            subtitle="Seven currencies: MXN, USD, CAD, EUR, GBP, BRL and JPY, each only at places whose currency it is (fixed when the place signs the House Credits Agreement). Small +10% starts with 1; Big +20% is 10× Small; Welcome, Story and VIP cost the Small price."
           >
             <div className="-mx-4 overflow-x-auto sm:mx-0">
               <table className="w-full min-w-[640px] text-sm" data-admin-voucher-currencies>
