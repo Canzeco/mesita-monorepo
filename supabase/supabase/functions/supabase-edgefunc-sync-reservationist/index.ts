@@ -25,7 +25,7 @@
 //              number". Idempotent: imports what is missing, re-binds what is
 //              pointed at the wrong agent, leaves correct rows untouched.
 //   knowledge  Push knowledgeFor(agent) as ONE KB text doc PER AGENT
-//              (a1-kb-v6 …); each agent ends with exactly that doc attached
+//              (a1-kb-v7 …); each agent ends with exactly that doc attached
 //              on Main (usage_mode=prompt). Docs are renamed in place.
 //
 // THE REPO WINS. Everything the agents say and how they sound lives in

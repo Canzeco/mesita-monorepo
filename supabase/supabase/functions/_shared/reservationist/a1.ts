@@ -2,7 +2,8 @@
 //
 // Call variables: venue_name, guest_name (the name typed on the reservation),
 // party_size, reservation_date, reservation_time, special_requests (the
-// guest's notes), reference_code, run_id, call_context
+// guest's notes), venue_notes (place notes: what earlier calls taught about
+// this place, MESITA-3955; may be empty), reference_code, run_id, call_context
 // (booking | modification | cancellation | offer_release),
 // modification_of_date/_time, venue_alternatives (offer_release only).
 // `venue_*` and "cancelled_by_venue" are wire keys the engine sends; they
@@ -46,6 +47,7 @@ const BOOK = [
   `- "offer_release": no pides mesa. Antes el restaurante ofreció opciones para {{guest_name}} ({{venue_alternatives}}) y le pediste que las apartara; el comensal no tomó ninguna. Avisa que ya pueden liberarlas (si piden número, el código de Mesita es {{reference_code}}). A un buzón déjalo grabado igual. Agradece, despídete, cuelga con end_call y toma la rama de aviso de cancelación.`,
   `Si piden un número de confirmación, el código de Mesita es {{reference_code}}. Si piden un teléfono de contacto, di que Mesita es el contacto y que pueden llamar de vuelta a este mismo número; no des el del comensal.`,
   `Si {{special_requests}} no está vacío, menciónalo una sola vez cuando ya haya disponibilidad.`,
+  `Lo que Mesita ya sabe de este restaurante por llamadas anteriores: «{{venue_notes}}». Si no está vacío, úsalo: no vuelvas a preguntar lo que ahí ya dice (por ejemplo, si tienen terraza) y sigue lo que indique para llegar con quien reserva. Si el restaurante dice hoy algo distinto, vale lo de hoy.`,
   `Si no pueden tal cual, pregunta qué opciones cercanas tienen y apúntalas cortas y textuales; no aceptes ninguna, Mesita se las propone al comensal.`,
   `Quédate en la conversación hasta que pase una de estas cosas: confirmaron · ofrecieron opciones · no hay lugar · nunca llegaste con alguien que reserve · no es este restaurante. Entonces toma la rama, sin despedirte todavía: el flujo registra el resultado.`,
 ].join("\n");
@@ -61,6 +63,7 @@ export const A1: FleetAgent = {
     `- Pides la mesa a nombre del nombre y apellido escritos en la reservación, con el día, la hora, las personas y las notas del comensal.`,
     `- También mueves una reservación ya confirmada a otra hora, avisas que el comensal cancela, o avisas que ya pueden liberar las opciones que ofrecieron si el comensal no tomó ninguna.`,
     `- Registras el resultado: confirmada, otras opciones, no hay lugar, nadie que reserve, o número equivocado.`,
+    `- Antes de cada llamada recibes las notas de Mesita sobre ese restaurante (lo aprendido en llamadas anteriores): no repites preguntas que las notas ya contestan.`,
     `- Nunca das el teléfono del comensal; si el lugar necesita algo, llama a Mesita a este mismo número.`,
   ],
   workflow: (tool) => {

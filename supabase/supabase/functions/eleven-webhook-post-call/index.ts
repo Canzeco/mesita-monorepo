@@ -23,7 +23,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { adminClient, type EFEnv, readEFEnv } from "../_shared/auth.ts";
 import {
   applyCallResult,
   cleanConversationId,
@@ -32,10 +32,49 @@ import {
   supabaseOutcomeStore,
   verifyElevenSignature,
 } from "../_shared/reservation-call-outcome.ts";
+import { runInBackground } from "../_shared/background.ts";
+import { phoneTail, placeByCallerLine } from "../_shared/agent-tools.ts";
+import { callerNumber, placeCallKind, updatePlaceNotes } from "../_shared/place-notes.ts";
+import { rowPlaceId } from "../_shared/place-id.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const FN = "eleven-webhook-post-call";
 // A transcript of a long call is big; anything past this is not ours.
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Place notes (MESITA-3955): a finished call WITH A PLACE (a1 out, a4 in)
+ * rewrites that place's notes from its transcript. Runs past the response and
+ * never changes the call's outcome; a failure is logged and the notes stay.
+ */
+async function learnFromPlaceCall(
+  admin: SupabaseClient,
+  env: EFEnv,
+  conversationId: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  const { data: settings } = await admin.from("app_config").select("agents_config").eq("id", 1).maybeSingle();
+  const agents = ((settings?.agents_config as Record<string, unknown> | null)?.agents ?? null) as
+    | Record<string, { id?: string } | undefined>
+    | null;
+  const kind = placeCallKind(data.agent_id, { a1: agents?.a1?.id?.trim(), a4: agents?.a4?.id?.trim() });
+  if (!kind) return;
+
+  let placeId: string | null = null;
+  if (kind === "a1") {
+    const t = await supabaseOutcomeStore(admin, env, FN).findByConversation(conversationId);
+    placeId = t ? rowPlaceId(t as unknown as Record<string, unknown>) : null;
+  } else {
+    const tail = phoneTail(callerNumber(data));
+    placeId = tail.length >= 10 ? (await placeByCallerLine(admin, tail))?.id ?? null : null;
+  }
+  if (!placeId) {
+    console.log(`[${FN}] ${conversationId} notes: no place for this ${kind} call`);
+    return;
+  }
+  const res = await updatePlaceNotes(admin, { placeId, conversationId, transcript: data.transcript });
+  console.log(`[${FN}] ${conversationId} notes ${placeId}: ${JSON.stringify(res)}`);
+}
 
 serveJson("eleven-webhook-post-call", async (req) => {
   if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
@@ -82,12 +121,16 @@ serveJson("eleven-webhook-post-call", async (req) => {
   const result = type === "call_initiation_failure" ? INITIATION_FAILURE : readConversation(event.data);
   if (!result.final) return json({ ok: true, ignored: "not_final", status: result.status });
 
+  const admin = adminClient(envRes.env);
   try {
     const applied = await applyCallResult(
-      supabaseOutcomeStore(adminClient(envRes.env), envRes.env, FN),
+      supabaseOutcomeStore(admin, envRes.env, FN),
       conversationId,
       result,
     );
+    if (type === "post_call_transcription" && event.data) {
+      runInBackground(learnFromPlaceCall(admin, envRes.env, conversationId, event.data));
+    }
     console.log(`[${FN}] ${conversationId} ${type} → ${JSON.stringify(applied)}`);
     return applied.applied
       ? json({ ok: true, applied: true, leg: applied.leg, state: applied.state })

@@ -28,6 +28,7 @@ export const A4: FleetAgent = {
   roleLines: [
     `## Tu papel: contestas a los restaurantes`,
     `- Verificas el lugar por el número desde el que llama; no le pides datos.`,
+    `- La verificación te da también las notas de Mesita sobre ese lugar (lo aprendido en llamadas anteriores): no repites preguntas que las notas ya contestan.`,
     `- Les lees sus reservaciones próximas y buscas una por el nombre al que está («la reservación a nombre de Ana López») o por el código de 8 dígitos si lo dictan; solo encuentras reservaciones de su lugar.`,
     `- Cancelas una reservación de su lugar si ya no pueden recibirla; Mesita le avisa al comensal. El lugar no tiene que decir ningún código.`,
     `- Para dejar de recibir reservaciones o cambiar el número al que llama Mesita: Business › Reservations, en la app de Mesita para negocios.`,
@@ -42,7 +43,7 @@ export const A4: FleetAgent = {
         label: "Triage place",
         position: pos(580, -160),
         prompt:
-          "El lugar está verificado. Saluda mencionando el nombre del lugar y pregunta en qué ayudas. Ramas: repasar sus reservaciones próximas · buscar una por el nombre al que está o por el código de 8 dígitos que dicten · otros cambios.",
+          "El lugar está verificado. Saluda mencionando el nombre del lugar y pregunta en qué ayudas. Si la verificación regresó notas del lugar (place.notes: lo aprendido en llamadas anteriores), tenlas presentes y no preguntes lo que ya dicen. Ramas: repasar sus reservaciones próximas · buscar una por el nombre al que está o por el código de 8 dígitos que dicten · otros cambios.",
         edgeOrder: ["e_triage_upcoming", "e_triage_find", "e_triage_redirect"],
       }),
       upcoming: talkNode({
