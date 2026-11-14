@@ -97,8 +97,7 @@ export type HubTile = {
  *  Reservations / Gift · Tickets / Settings). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
-  // member number is on /me/profile, with its copy button; the tile only
-  // names the page (MESITA-2607).
+  // tile only names the page (MESITA-2607).
   {
     Icon: UserRound,
     title: "Profile",

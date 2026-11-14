@@ -51,7 +51,11 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // balance and its /credits, /inbox/credits and /new-visit/wallet
   // spellings, the Order tab, and the public gift landing. Each is ONE
   // hop. Deepest sources first so the intent survives a `:param` rewrite.
-  { source: "/new-visit/wallet/:path*", destination: "/wallet", permanent: true },
+  {
+    source: "/new-visit/wallet/:path*",
+    destination: "/wallet",
+    permanent: true,
+  },
   { source: "/new-visit", destination: "/pay", permanent: true },
   // The old Wallet tab's children and its other spellings land on the
   // Wallet, Pay's second half (MESITA-3698; on /pay from MESITA-3631).
@@ -90,7 +94,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: "/me/settings",
     permanent: true,
   },
-  // The Passport (MESITA-2043). The member number lives on Profile.
+  // The Passport (MESITA-2043).
   { source: "/me/passport", destination: "/me/profile", permanent: true },
   // Support (MESITA-2169). Terms and privacy live on Settings.
   { source: "/me/help", destination: "/me/settings", permanent: true },
@@ -99,7 +103,11 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/me/transactions", destination: ticketsHref(), permanent: true },
   // MESITA-3771: MCP is a perk on Plan; Refunds is Tickets' chip (MESITA-3855).
   { source: "/me/connector", destination: "/me/plan", permanent: true },
-  { source: "/me/refunds", destination: ticketsHref("refunds"), permanent: true },
+  {
+    source: "/me/refunds",
+    destination: ticketsHref("refunds"),
+    permanent: true,
+  },
   // NO /activity ADDRESS REDIRECTS ANYWHERE (Pato, 2026-11-14, MESITA-3862:
   // "KILL THIS ATIVITY LINK"). Activity folded into Me (MESITA-3855); its
   // own addresses are gone, not forwarded. Never add one back here.

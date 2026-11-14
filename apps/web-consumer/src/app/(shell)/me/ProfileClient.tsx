@@ -35,9 +35,9 @@ import { useUnseenNotifications } from "@/components/consumer/use-unseen-notific
 // (Plan, MESITA-3855). Sheets over this hub stacked history as overlays.
 // DestTiles Link to /me/<box>.
 //
-// THERE IS NO PASSPORT (Pato, MESITA-2043: "we don't have passports"). The
-// one thing the Passport printed that nothing else did was the member number,
-// and that lives on Profile now; /me/passport 308s to /me/profile.
+// THERE IS NO PASSPORT (Pato, MESITA-2043: "we don't have passports");
+// /me/passport 308s to /me/profile. Its member number moved to Profile, then
+// left the guest app (MESITA-3874).
 //
 // NO TILE PRINTS A GUEST FACT (Pato, MESITA-2607: "in the boxes below don't
 // display anything of info of the user ... don't display info

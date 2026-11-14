@@ -1,13 +1,12 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Copy } from "lucide-react";
+import { Camera } from "lucide-react";
 import {
   BirthdayPicker,
   BirthdayPickerSkeleton,
   Skeleton,
-  SkeletonLine,
   Spinner,
 } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -50,26 +49,20 @@ import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 //
 // ONE SCREEN, NO SCROLL (MESITA-3101, Pato: "make it smaller … not
 // scrollable"). Save sits in MeScreen's right header slot, not in a row
-// under the fields (it was under the tab bar on a phone); the photo and the
-// member number share the first row; the names share one row; Sex is a
+// under the fields (it was under the tab bar on a phone); the photo is the
+// first row; the names share one row; Sex is a
 // two-button switch; Birthday is BirthdayPicker's compact row. The caption
 // and the photo's file hint are gone (a bad file still toasts, and the hint's
 // "max 2 MB" was the bucket's cap on the shrunk file, not the picker's).
 //
-// THE MEMBER NUMBER LIVES HERE (MESITA-2043, Pato: "we don't have
-// passports"). `consumers.code` printed in exactly one place — the Passport —
-// and it is the string staff and support look a guest up by, because a name
-// can match several people and the number never does. It copies in place;
-// null is a real state (`generate_consumer_code()` assigns on first profile
-// read), so it reads "Pending" and offers nothing to copy.
+// NO MEMBER NUMBER (MESITA-3874, Pato: "nobody gives a fuck about the
+// member number. remove that"). `consumers.code` stays in the database for
+// staff and support; no guest screen prints it.
 
 // THE FORM'S FIXED WORDS, ONCE (MESITA-2701). The form and its loading
 // skeleton both print them, so they wrap where each other's do (Pato,
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes").
-
-/** The member-number card's label, over the number. */
-const MEMBER_NUMBER_LABEL = "Member number";
 
 /** Sex's two choices, in the switch's order. */
 const SEX_OPTIONS = [
@@ -109,19 +102,8 @@ const PHOTO_BOX_CLASS = "h-16 w-16 shrink-0 rounded-full";
 const CAMERA_BADGE_BOX_CLASS =
   "border-paper absolute -right-0.5 -bottom-0.5 h-7 w-7 rounded-full border-2";
 
-/** The number: the row title's 14px semibold, tabular (MESITA-2983). */
-const MEMBER_NUMBER_CLASS =
-  "block truncate text-sm font-semibold tracking-wide tabular-nums";
-
-/** The 44px copy button beside the number. */
-const COPY_BUTTON_BOX_CLASS = "h-11 w-11 shrink-0 rounded-xl";
-
-/** The photo and the member-number card, side by side. */
+/** The photo's row. */
 const TOP_ROW_CLASS = "flex items-center gap-4";
-
-/** The member-number card: one white row beside the photo. */
-const MEMBER_CARD_CLASS =
-  "bg-card border-border flex min-w-0 flex-1 items-center gap-1 rounded-xl border py-1 pr-1 pl-3";
 
 /** The fields' column, 20px under the top row, 12px apart. */
 const FIELDS_CLASS = "mt-5 flex flex-col gap-3";
@@ -177,40 +159,16 @@ function FieldLabel({ children, id }: { children: string; id?: string }) {
   );
 }
 
-/** The member-number card beside the photo: its label over the number, the
- *  copy button on the right. The form passes the number and the button; the
- *  skeleton passes a bar on the number's line and the button's box. */
-function MemberNumberCard({
-  number,
-  action,
-}: {
-  number: ReactNode;
-  action: ReactNode;
-}) {
-  return (
-    <div className={MEMBER_CARD_CLASS}>
-      <div className="min-w-0 flex-1 py-1">
-        <span className="text-muted-foreground type-label block">
-          {MEMBER_NUMBER_LABEL}
-        </span>
-        {number}
-      </div>
-      {action}
-    </div>
-  );
-}
-
 /**
  * The form before the profile lands, block for block (Pato, MESITA-2701:
  * "the placeholders must be similar to the page you are loading, like the
  * sizes"; "for example in profile the current placeholders are not
  * similar").
  *
- * The fixed words are drawn as themselves — the member-number label, the
- * field labels — from the form's own components and constants, so they wrap
- * exactly as the form's do; what the read brings (photo, number, values) and
+ * The fixed words are drawn as themselves — the field labels — from the form's own components and constants, so they wrap
+ * exactly as the form's do; what the read brings (photo, values) and
  * every control is a block at its box: Save's box in the header, the 64px
- * photo with the camera badge on its corner, the 44px copy button, the two
+ * photo with the camera badge on its corner, the two
  * name fields as their own empty controls (FIELD_SKELETON_CLASS), Sex's
  * switch with its words hidden, BirthdayPicker's compact skeleton.
  * /me/profile/loading.tsx draws this same one.
@@ -223,10 +181,6 @@ export function EditProfileSkeleton() {
           <Skeleton className={PHOTO_BOX_CLASS} />
           <Skeleton className={CAMERA_BADGE_BOX_CLASS} />
         </div>
-        <MemberNumberCard
-          number={<SkeletonLine className={MEMBER_NUMBER_CLASS} bar="w-24" />}
-          action={<Skeleton className={COPY_BUTTON_BOX_CLASS} />}
-        />
       </div>
 
       <div className={FIELDS_CLASS} aria-hidden>
@@ -301,17 +255,6 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   // opened from), with Me as the landing for a cold open (MESITA-3644).
   function goBack() {
     leave(router);
-  }
-
-  const code = profile.code ?? null;
-  async function copyCode() {
-    if (!code) return;
-    try {
-      await navigator.clipboard.writeText(code);
-      toast.success("Member number copied");
-    } catch {
-      toast("Couldn't copy — select the number manually");
-    }
   }
 
   async function onPhotoPicked(file: File | undefined) {
@@ -451,34 +394,6 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
             <Camera className="h-3.5 w-3.5" />
           </span>
         </button>
-
-        <MemberNumberCard
-          number={
-            <span
-              className={cn(
-                MEMBER_NUMBER_CLASS,
-                code ? "text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {code ?? "Pending"}
-            </span>
-          }
-          action={
-            code ? (
-              <button
-                type="button"
-                onClick={() => void copyCode()}
-                aria-label="Copy member number"
-                className={cn(
-                  COPY_BUTTON_BOX_CLASS,
-                  "text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition",
-                )}
-              >
-                <Copy className="h-4 w-4" />
-              </button>
-            ) : null
-          }
-        />
       </div>
 
       <div className={FIELDS_CLASS}>
