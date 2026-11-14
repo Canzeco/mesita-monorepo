@@ -10,15 +10,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-
-/** 32 random bytes, base64url: 43 characters, unguessable. */
-function newToken(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(
-    /\//g,
-    "_",
-  ).replace(/=+$/, "");
-}
+import { newLinkToken } from "../_shared/link-token.ts";
 
 serveJson("consumer-web-get-calendar-link", async (req) => {
   const ctx = await requireConsumerRequest(req, {
@@ -39,7 +31,7 @@ serveJson("consumer-web-get-calendar-link", async (req) => {
     token = data?.token ?? null;
   }
   if (!token) {
-    token = newToken();
+    token = newLinkToken();
     const { error } = await admin
       .from("consumer_calendar_feeds")
       .upsert({

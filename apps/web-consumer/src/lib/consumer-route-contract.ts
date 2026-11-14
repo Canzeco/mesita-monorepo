@@ -128,6 +128,8 @@ export const CONSUMER_ROUTES = {
     // "MCP" before.
     integrations: "/me/integrations",
     integrationsCalendar: "/me/integrations/calendar",
+    // The connector for Claude and ChatGPT (MESITA-3971).
+    integrationsMcp: "/me/integrations/mcp",
     // Me's Favorites page left for Activity (MESITA-3688) and then Home's
     // Saved row (MESITA-3723); its address is in `legacy`.
     // Me › Visits (MESITA-3264) left with the discount product (MESITA-3299);
@@ -434,6 +436,7 @@ export const ROUTE_MAP = {
   // Integrations (MESITA-3954); Calendar is also Reservations' header icon.
   meIntegrations: row("/me/integrations", "me", "page", "me"),
   meIntegrationsCalendar: row("/me/integrations/calendar", "me", "page", "meIntegrations"),
+  meIntegrationsMcp: row("/me/integrations/mcp", "me", "page", "meIntegrations"),
 } as const satisfies Record<string, RouteRow>;
 
 export type RouteId = keyof typeof ROUTE_MAP;
