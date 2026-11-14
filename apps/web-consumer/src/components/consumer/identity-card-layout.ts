@@ -22,26 +22,23 @@ export const IDENTITY_RING_CLASS = "bg-border shrink-0 rounded-full p-[1.5px]";
 export const IDENTITY_PHOTO_CLASS =
   "relative block h-16 w-16 overflow-hidden rounded-full";
 
-/** The boxes' grid: one column, two from 360px, where a half box is wide
- *  enough for "Pro Plan" (MESITA-2614). */
-export const IDENTITY_GRID_CLASS =
-  "grid w-full min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-2";
+/** The boxes' grid: one column, a box a row (MESITA-3830; it was two
+ *  columns from 360px while Class and Plan shared a row, MESITA-2614). */
+export const IDENTITY_GRID_CLASS = "grid w-full min-w-0 grid-cols-1 gap-2";
 
 /** One box of the card (MESITA-2596, MESITA-2599): 36px tall, 14px text, the
  *  full width of its grid cell. */
 export const IDENTITY_CHIP_CLASS =
   "border-border text-foreground relative flex h-9 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold";
 
-/** The boxes in reading order (Pato, MESITA-2621: "put profile pic, name,
- *  class plan, instagram"): name, Class · Plan as a pair, Instagram. */
-export const IDENTITY_BOXES = ["name", "class", "plan", "instagram"] as const;
+/** The boxes in reading order: name, then Instagram. Class and Plan left
+ *  the card in MESITA-3830 (Pato: "Remove Regular Class and Free Plan from
+ *  the header. just leave them in the bottom"). */
+export const IDENTITY_BOXES = ["name", "instagram"] as const;
 export type IdentityBox = (typeof IDENTITY_BOXES)[number];
 
-/** Name and Instagram take the whole row; Class and Plan share one
- *  (MESITA-2614). */
+/** Each box takes the whole row. */
 export const IDENTITY_BOX_SPAN: Record<IdentityBox, string> = {
   name: "col-span-full",
-  class: "",
-  plan: "",
   instagram: "col-span-full",
 };

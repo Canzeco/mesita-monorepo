@@ -2,15 +2,9 @@
 
 import { Fragment, type ReactNode } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { CreditCard, Crown, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
-import {
-  CLASS_LABEL,
-  PLAN_LABEL,
-  type GuestClass,
-  type GuestPlan,
-} from "@/lib/guest-standing";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import {
@@ -32,52 +26,27 @@ import {
 // MESITA-2594). Never the phone: it is private and
 // lives in Settings.
 //
-// CENTRED, FOUR BOXES IN THREE ROWS (Pato, MESITA-2595/2596 made them four
-// boxes, name · instagram · class · plan; MESITA-2614: "try a different grid
-// for this ... i just don't like it", and he picked "A · Pairs" from a board
-// of four):
+// CENTRED, TWO BOXES (Pato, MESITA-3830: "Remove Regular Class and Free
+// Plan from the header. just leave them in the bottom"):
 //
 //                  (64px photo)
 //   ( 👤 Diego                                 )
-//   ( ♛ VIP Class       ) ( ▭ Pro Plan         )
-//   ( ◎ @diego · 1.2K followers                )
+//   ( ◎ @diego (~1.2K followers)               )
 //
-// THE PAIR SITS BETWEEN THE TWO WIDE BOXES (Pato, MESITA-2621: "for more
-// clarity put profile pic, name, class plan, instagram. because if there is
-// a larger thing in between maybe that stuff doesn't get confused"): name
-// and Instagram never stack as two look-alike full-width pills. MESITA-2614
-// had Instagram second and the pair last.
+// Class and Plan were a pair of half boxes between the two (MESITA-2595,
+// MESITA-2614, MESITA-2621). They are off the card, on Me and on Social's
+// person card alike: Me keeps them as the Class and Plan tiles on its grid,
+// which open /me/class and /me/plan.
 //
 // Name and Instagram keep the full width: they are the two strings that get
-// long. Class and Plan share a row, Class left, the same order as the Class ·
-// Plan tile pair below on Me. The column is the full width of the card (no
-// cap), so on Me each half box is exactly one tile column (167px at 375px)
-// and "Pro Plan" fits. UNDER 360px THE PAIR STACKS: a half box would be
-// 140px at 320px and ellipsize, so there the four boxes are four rows again.
-// Social's person card is this component and gets the same grid.
-//
-// 36px tall (MESITA-2599:
-// "make the boxes a bit shorter"; 40px before), and ONE
-// text style, 14px semibold, in every box (Pato, MESITA-2599: "standardize
-// the size of those letters inside the four boxes"); the defaults (Regular,
-// Free) look exactly like the rest: same size, weight and ink (Pato:
-// "standardize the font here"). Only VIP (filled) and Pro (ink border)
-// stand out.
-// Nothing truncates but the name and the Instagram label. No chevrons
+// long. 36px tall (MESITA-2599) and ONE text style, 14px semibold, in both
+// boxes. Nothing truncates but the name and the Instagram label. No chevrons
 // (Pato, MESITA-2604: "remove the > … just name … it looks really dirty"):
 // a door on Me is still a link, it just does not draw an arrow.
-//
-// CLASS AND PLAN ARE TWO THINGS (MESITA-2553). Class is partnership status:
-// Regular or VIP, through a partner, never sold; VIP filled, Regular muted,
-// the Crown names it. Plan is the subscription, Free or Pro, under a
-// card icon (never the gem, MESITA-2551); Pro outlined, Free muted.
-// Plan is back on the card (MESITA-2595 reverses MESITA-2576). On Me both
-// are doors — Class opens its explainer, Plan opens /me/plan; on Social both
-// are facts.
 
 // THE BOXES' GEOMETRY IS identity-card-layout.ts's: the ring, the photo, the
-// grid, the 36px box and the row order (MESITA-2614: a whole row for name
-// and Instagram, half a row each for Class and Plan). Me's loading skeleton
+// grid, the 36px box and the row order (a whole row each for name and
+// Instagram). Me's loading skeleton
 // reads the same module, so it is this card's boxes, empty (Pato,
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes").
@@ -114,107 +83,6 @@ function InstagramBadge({ connected = true }: { connected?: boolean }) {
       aria-hidden
     >
       <Instagram className="h-3 w-3 text-white" aria-hidden />
-    </span>
-  );
-}
-
-/** VIP's crown is white in a gold circle, the Instagram badge's shape
- *  (MESITA-2693); Regular's is the plain ink crown, no colour (Pato,
- *  MESITA-2695: "if regular … show crown without color. Else show crown
- *  with color if vip"). */
-function ClassBadge({ vip }: { vip: boolean }) {
-  if (!vip)
-    return (
-      <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-    );
-  return (
-    <span
-      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500"
-      aria-hidden
-    >
-      <Crown className="h-3 w-3 text-white" strokeWidth={2.5} aria-hidden />
-    </span>
-  );
-}
-
-/** The Class chip: a button on Me (opens the explainer), a fact on Social. */
-function ClassChip({
-  guestClass,
-  onPress,
-}: {
-  guestClass: GuestClass;
-  onPress?: () => void;
-}) {
-  const vip = guestClass === "vip";
-  const label = CLASS_LABEL[guestClass];
-  // Value then key, no colon (Pato, MESITA-2691: "Free Plan or Regular
-  // Class but not plan: free not class: regular").
-  const text = `${label} Class`;
-  const className = cn(
-    CHIP_CLASS,
-    IDENTITY_BOX_SPAN.class,
-    vip ? "bg-foreground text-paper border-transparent" : "",
-    onPress && cn(TAP_TARGET_CLASS, "transition", !vip && "hover:bg-muted"),
-  );
-  const body = (
-    <>
-      <ClassBadge vip={vip} />
-      <span className="truncate">{text}</span>
-    </>
-  );
-  const aria = text;
-  return onPress ? (
-    <button
-      type="button"
-      onClick={onPress}
-      aria-label={aria}
-      className={className}
-      data-identity-class={guestClass}
-    >
-      {body}
-    </button>
-  ) : (
-    <span
-      aria-label={aria}
-      className={className}
-      data-identity-class={guestClass}
-    >
-      {body}
-    </span>
-  );
-}
-
-/** The Plan chip: a link on Me (opens /me/plan), a fact on Social. */
-function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
-  const premium = plan === "premium";
-  const label = PLAN_LABEL[plan];
-  // Value then key, as on Class (MESITA-2691).
-  const text = `${label} Plan`;
-  const className = cn(
-    CHIP_CLASS,
-    IDENTITY_BOX_SPAN.plan,
-    premium && "border-foreground",
-    href && cn(TAP_TARGET_CLASS, "hover:bg-muted transition"),
-  );
-  const body = (
-    <>
-      <CreditCard className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      <span className="truncate">{text}</span>
-    </>
-  );
-  const aria = text;
-  return href ? (
-    <PushLink
-      href={href}
-      aria-label={aria}
-      className={className}
-      data-identity-plan={plan}
-    >
-      {body}
-    </PushLink>
-  ) : (
-    <span aria-label={aria} className={className} data-identity-plan={plan}>
-      {body}
     </span>
   );
 }
@@ -287,34 +155,18 @@ export function IdentityCard({
   name,
   avatarUrl,
   instagram,
-  guestClass,
-  onClassPress,
-  plan,
-  planHref,
   nameHref,
 }: {
   name: string;
   avatarUrl: string | null;
   instagram: IdentityInstagram | null;
-  /** Null hides the chip: never a guessed "Regular". */
-  guestClass: GuestClass | null;
-  /** Me only: the Class chip opens its explainer. */
-  onClassPress?: () => void;
-  /** Null hides the chip: never a guessed "Free". */
-  plan: GuestPlan | null;
-  /** Me only: the Plan chip opens the Plan page. */
-  planHref?: string;
   /** Me only: the name box opens Me › Profile. */
   nameHref?: string;
 }) {
   // Every box, keyed as identity-card-layout.ts orders them; a null one
-  // (no Class, no Plan, no Instagram) is simply not drawn.
+  // (no Instagram) is simply not drawn.
   const boxes: Record<IdentityBox, ReactNode> = {
     name: <NameBox name={name} href={nameHref} />,
-    class: guestClass && (
-      <ClassChip guestClass={guestClass} onPress={onClassPress} />
-    ),
-    plan: plan && <PlanChip plan={plan} href={planHref} />,
     instagram: instagram && <InstagramBox instagram={instagram} />,
   };
   return (
@@ -334,10 +186,7 @@ export function IdentityCard({
         </span>
       </span>
 
-      {/* Three rows: name, then Class · Plan as a pair, then Instagram; one
-          column under 360px (MESITA-2614, reordered MESITA-2621). */}
-      {/* Three rows: name, then Class · Plan as a pair, then Instagram; one
-          column under 360px (MESITA-2614, reordered MESITA-2621). */}
+      {/* Two rows: name, then Instagram (MESITA-3830). */}
       <div className={IDENTITY_GRID_CLASS} data-identity-chips>
         {IDENTITY_BOXES.map((box) => (
           <Fragment key={box}>{boxes[box]}</Fragment>
