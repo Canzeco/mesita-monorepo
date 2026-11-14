@@ -11,8 +11,9 @@
 //   Available                                  its state, coloured
 //
 //   WHAT THIS IS     one paragraph for its kind
-//   DETAILS          type · amount · bonus · total credit · date · state
-//                    (pending: when it turns available) · purchase number
+//   DETAILS          type · bonus · total credit · refunded on · purchase
+//                    number (the amount, date and state are the header's:
+//                    MESITA-3865 took their repeats out)
 //   AT THIS PLACE    available · pending · spendable now
 //   Open the House Card · Pay here · Gift credit
 //
@@ -160,11 +161,8 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
 
         <Section title="Details">
           <Line label="Type" value={entryLabel(e)} />
-          <Line label="Amount" value={m(amount)} />
           {bonus ? <Line label="Bonus" value={`+${m(bonus.amount_cents)}`} /> : null}
           {bonus ? <Line label="Total credit" value={m(amount + bonus.amount_cents)} strong /> : null}
-          <Line label="Date" value={when(e.at)} />
-          <Line label="State" value={state} />
           {refund ? <Line label="Refunded on" value={when(refund.at)} /> : null}
           {e.purchase_id ? <Line label="Purchase number" value={e.purchase_id.slice(0, 8).toUpperCase()} /> : null}
           {wallet.data.test_mode ? <Line label="Test payment" value="No real money" /> : null}

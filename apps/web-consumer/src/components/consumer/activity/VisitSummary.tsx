@@ -3,28 +3,33 @@
 // A VISIT'S FULL STATEMENT, /me/tickets/visit/<tabId> (MESITA-3770 made it one
 // page apart from the live pay screens; MESITA-3780, Pato: "in visits mention
 // the select pay methods and everything. be fucking detailed"). Opened from
-// Me › Tickets › Visits for a bill that is paid, expired or cancelled; an open
-// bill still opens /pay/tab/<id>. Every state draws the same sections, top
-// to bottom:
+// Me › Tickets for a bill that is paid, expired or cancelled; an open bill
+// still opens /pay/tab/<id>.
 //
-//   Taquería Orinoco                      the place
-//   Opened Wed, Nov 11 · 22:34            when
+// ONE RECEIPT (MESITA-3865, Pato: "better design for the fucking tickets both
+// externally and internally"). It was six equal cards with the total written
+// four times; now the amount is the one large thing and one card answers
+// "what was the bill, how did I pay, what came back":
+//
+//   Taquería Orinoco  ›                   the place, a link to it
+//   Wed, Nov 11 · 22:34                   when
 //   $230.00MX                             the total, large
 //   Paid · 22:51                          the state, coloured
 //
-//   THE BILL          Bill · Tip (the waiter's suggestion when it differs) ·
-//                     Total · who typed it
-//   HOW YOU PAID      Credits · Card · Cash: each its amount, bill + tip, and
-//   (HOW YOU CHOSE    its state (Paid · 22:51, Charging, Failed, Not charged,
-//    TO PAY)          Received by the waiter); a paid part opens its receipt
-//   CASHBACK          per method, its rate; granted, or what the waiter's
-//                     signature would earn; credits and tips never earn
+//   RECEIPT           Bill · Tip (the waiter's suggestion when it differs) ·
+//                     Total, then Credits · Card · Cash: each its amount, its
+//                     bill + tip, and its state (a paid part opens its
+//                     receipt), then Cashback: per method with its rate, what
+//                     the waiter's signature would earn, and the total
 //   SPLIT             a share or a split table: the table's bill, ways, your
 //                     share, paid, left
-//   TIMELINE          opened, billed, each payment started / paid / failed,
-//                     paid, signed, expired or cancelled
-//   DETAILS           waiter, ticket, visit number, test mode
-//   Open the place · Pay here again
+//   DETAILS           who typed the bill, waiter, ticket, visit number, test
+//                     mode, and the Timeline, closed until tapped
+//   Pay here again (filled) · Open the place
+//
+// A visit nothing was paid on (expired, cancelled) says "Nothing was
+// charged." and draws no payment or cashback lines: a page of "Not charged"
+// said one fact many times.
 //
 // No green full screen, no live clock, no steps: those are for the waiter at
 // the table. One read of consumer-web-get-tab; older reads without the part
@@ -32,7 +37,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Banknote, ChevronRight, CreditCard, UtensilsCrossed, WalletCards } from "lucide-react";
+import { Banknote, ChevronDown, ChevronRight, CreditCard, UtensilsCrossed, WalletCards } from "lucide-react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { PushLink } from "@/components/consumer/nav/PushLink";
@@ -330,11 +335,21 @@ function Statement({ tab }: { tab: GuestTab }) {
   const suggested = tab.tip_suggested_cents;
   const opened = tab.created_at ?? tab.billed_at ?? tab.updated_at;
 
+  // Nothing was paid and the bill is closed: no payment or cashback lines.
+  const unpaid = !paid && !open;
+  const typedBy = guestTab ? "You" : (tab.waiter_name ?? "The waiter");
+
   return (
     <div className="flex flex-col gap-6 pb-4" data-visit-summary>
       <header>
-        <h1 className="text-lg font-semibold">{placeName}</h1>
-        <p className="text-muted-foreground mt-0.5 text-sm tabular-nums">Opened {when(opened)}</p>
+        <PushLink
+          href={placePath(tab.place.id)}
+          className="-mx-1 inline-flex max-w-full items-center gap-1 rounded-md px-1 text-lg font-semibold"
+        >
+          <span className="truncate">{placeName}</span>
+          <ChevronRight className="text-muted-foreground/60 h-4 w-4 shrink-0" aria-hidden />
+        </PushLink>
+        <p className="text-muted-foreground mt-0.5 text-sm tabular-nums">{when(tab.paid_at ?? opened)}</p>
         <p
           className={cn(
             "font-display mt-4 text-4xl font-semibold tracking-tight tabular-nums",
@@ -346,61 +361,61 @@ function Statement({ tab }: { tab: GuestTab }) {
         <p className={cn("mt-1 text-sm font-semibold", state[1])}>{state[0]}</p>
       </header>
 
-      {tab.bill_cents != null ? (
-        <Section title="The bill">
-          <Line label="Bill" value={m(tab.bill_cents)} />
-          <Line
-            label="Tip"
-            sub={suggested > 0 && suggested !== tip ? `The waiter suggested ${m(suggested)}` : null}
-            value={tip > 0 ? m(tip) : chosen > 0 ? "No tip" : suggested > 0 ? `${m(suggested)} suggested` : "—"}
-          />
-          <Line label="Total" value={m(tab.bill_cents + tip)} strong />
-          <Line
-            label="Typed by"
-            value={guestTab ? "You" : tab.waiter_name ?? "The waiter"}
-          />
+      {tab.bill_cents != null || !unpaid ? (
+        <Section title={unpaid ? "The bill" : "Receipt"}>
+          {tab.bill_cents != null ? (
+            <>
+              <Line label="Bill" value={m(tab.bill_cents)} />
+              <Line
+                label="Tip"
+                sub={suggested > 0 && suggested !== tip ? `The waiter suggested ${m(suggested)}` : null}
+                value={tip > 0 ? m(tip) : chosen > 0 ? "No tip" : suggested > 0 ? `${m(suggested)} suggested` : "—"}
+              />
+              <Line label="Total" value={m(tab.bill_cents + tip)} strong />
+            </>
+          ) : null}
+          {unpaid ? (
+            <Line label="Nothing was charged" />
+          ) : methods.length > 0 ? (
+            methods
+          ) : (
+            <Line label="No payment method chosen yet" />
+          )}
+          {!unpaid && showCashback ? (
+            <>
+              {card > 0 ? (
+                <Line
+                  label="Cashback on the card"
+                  sub={`${pct(cardBps)} of ${m(tab.card_bill_cents)} bill`}
+                  value={cardBack > 0 ? `+${m(cardBack)}` : null}
+                  state={cardBack > 0 ? "Granted" : paid ? "Not granted" : "Not earned"}
+                  tone={cardBack > 0 ? "green" : "grey"}
+                />
+              ) : null}
+              {cash > 0 ? (
+                <Line
+                  label="Cashback on the cash"
+                  sub={`${pct(cashBps)} of ${m(tab.cash_bill_cents)} bill`}
+                  value={cashBack > 0 ? `+${m(cashBack)}` : null}
+                  state={cashBack > 0 ? "Granted" : paid ? "Not granted" : "Not earned"}
+                  tone={cashBack > 0 ? "green" : "grey"}
+                />
+              ) : null}
+              {onSign > 0 ? (
+                <Line label="Cashback when the waiter signs" value={`+${m(onSign)}`} state="Pending" tone="ink" />
+              ) : null}
+              <Line
+                label="Total cashback"
+                sub="As credit at this place · credits and tips never earn"
+                value={`+${m(tab.cashback_cents)}`}
+                strong
+              />
+            </>
+          ) : null}
         </Section>
-      ) : null}
-
-      <Section title={paid ? "How you paid" : "How you chose to pay"}>
-        {methods.length > 0 ? (
-          methods
-        ) : (
-          <Line label="No payment method was chosen" sub={open ? null : "Nothing was charged"} />
-        )}
-      </Section>
-
-      {showCashback ? (
-        <Section title="Cashback">
-          {card > 0 ? (
-            <Line
-              label="On the card"
-              sub={`${pct(cardBps)} of ${m(tab.card_bill_cents)} bill`}
-              value={cardBack > 0 ? `+${m(cardBack)}` : null}
-              state={cardBack > 0 ? "Granted" : paid ? "Not granted" : "Not earned"}
-              tone={cardBack > 0 ? "green" : "grey"}
-            />
-          ) : null}
-          {cash > 0 ? (
-            <Line
-              label="On the cash"
-              sub={`${pct(cashBps)} of ${m(tab.cash_bill_cents)} bill`}
-              value={cashBack > 0 ? `+${m(cashBack)}` : null}
-              state={cashBack > 0 ? "Granted" : paid ? "Not granted" : "Not earned"}
-              tone={cashBack > 0 ? "green" : "grey"}
-            />
-          ) : null}
-          {onSign > 0 ? (
-            <Line label="When the waiter signs" value={`+${m(onSign)}`} state="Pending" tone="ink" />
-          ) : null}
-          <Line
-            label="Total cashback"
-            sub="As credit at this place · credits and tips never earn"
-            value={`+${m(tab.cashback_cents)}`}
-            strong
-          />
-        </Section>
-      ) : null}
+      ) : (
+        <p className="text-muted-foreground text-sm">Nothing was charged.</p>
+      )}
 
       {tab.table ? (
         <Section title="Split with friends">
@@ -412,33 +427,43 @@ function Statement({ tab }: { tab: GuestTab }) {
         </Section>
       ) : null}
 
-      {events.length > 0 ? (
-        <Section title="Timeline">
-          {events.map(([at, label, value], i) => (
-            <Line key={`${at}-${label}-${i}`} label={label} sub={when(at)} value={value ?? null} />
-          ))}
-        </Section>
-      ) : null}
-
       <Section title="Details">
+        {tab.bill_cents != null ? <Line label="Bill typed by" value={typedBy} /> : null}
         {tab.waiter_name ? <Line label="Waiter" value={tab.waiter_name} /> : null}
         {tab.ticket ? <Line label="Ticket" value={`#${tab.ticket}`} /> : null}
         <Line label="Visit number" value={tab.tab_id.slice(0, 8).toUpperCase()} />
         {tab.test_mode ? <Line label="Test payment" sub="No real money moved" /> : null}
+        {events.length > 0 ? (
+          // Closed until tapped: the receipt above already says the outcome.
+          <details className="group">
+            <summary className="hover:bg-muted/40 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 transition [&::-webkit-details-marker]:hidden">
+              <span className="text-muted-foreground text-sm">Timeline</span>
+              <ChevronDown
+                className="text-muted-foreground/60 h-4 w-4 shrink-0 transition group-open:rotate-180"
+                aria-hidden
+              />
+            </summary>
+            <div className="divide-border border-border divide-y border-t">
+              {events.map(([at, label, value], i) => (
+                <Line key={`${at}-${label}-${i}`} label={label} sub={when(at)} value={value ?? null} />
+              ))}
+            </div>
+          </details>
+        ) : null}
       </Section>
 
       <div className="flex gap-2">
+        <Link
+          href={payPlacePath(tab.place.id)}
+          className="bg-foreground text-background flex h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold transition hover:opacity-90"
+        >
+          Pay here again
+        </Link>
         <Link
           href={placePath(tab.place.id)}
           className="border-border bg-card hover:bg-muted/60 flex h-11 flex-1 items-center justify-center rounded-full border text-sm font-semibold transition"
         >
           Open the place
-        </Link>
-        <Link
-          href={payPlacePath(tab.place.id)}
-          className="border-border bg-card hover:bg-muted/60 flex h-11 flex-1 items-center justify-center rounded-full border text-sm font-semibold transition"
-        >
-          Pay here again
         </Link>
       </div>
     </div>
@@ -454,9 +479,8 @@ export function VisitSummarySkeleton() {
         <Skeleton className="mt-4 h-10 w-44" />
         <Skeleton className="mt-2 h-4 w-24" />
       </div>
+      <Skeleton className="h-72 w-full rounded-2xl" />
       <Skeleton className="h-44 w-full rounded-2xl" />
-      <Skeleton className="h-36 w-full rounded-2xl" />
-      <Skeleton className="h-48 w-full rounded-2xl" />
     </div>
   );
 }

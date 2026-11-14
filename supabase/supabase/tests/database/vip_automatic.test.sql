@@ -1,24 +1,27 @@
--- MESITA-3850 — VIP is automatic: a verified Instagram with more than 5,000
--- followers, and nothing else. The class follows the count both ways, no
+-- MESITA-3850 — VIP is automatic: a verified Instagram with 5,000 followers
+-- or more (MESITA-3864), and nothing else. The class follows the count both ways, no
 -- one can write it, and the manual doors are closed.
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(12);
+select plan(13);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3850'),
   ('00000000-0000-4000-8000-0000000b3850'),
   ('00000000-0000-4000-8000-0000000c3850'),
-  ('00000000-0000-4000-8000-0000000d3850');
+  ('00000000-0000-4000-8000-0000000d3850'),
+  ('00000000-0000-4000-8000-0000000e3850');
 insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count) values
   ('00000000-0000-4000-8000-0000000a3850', null, null, null),
-  ('00000000-0000-4000-8000-0000000b3850', 'probe_3850_b', now(), 5000),
-  ('00000000-0000-4000-8000-0000000c3850', 'probe_3850_c', now(), 5001);
+  ('00000000-0000-4000-8000-0000000b3850', 'probe_3850_b', now(), 4999),
+  ('00000000-0000-4000-8000-0000000c3850', 'probe_3850_c', now(), 5000);
 insert into public.consumers (id, instagram_followers_count) values
   ('00000000-0000-4000-8000-0000000d3850', 90000);
+insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, appear_anonymous) values
+  ('00000000-0000-4000-8000-0000000e3850', 'probe_3850_e', now(), 5000, true);
 
 select is(
   (select attgenerated::text from pg_attribute
@@ -36,19 +39,25 @@ select is(
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000b3850'),
   'regular',
-  'exactly 5,000 followers is Regular (more than 5,000 is the bar)'
+  '4,999 followers is Regular'
 );
 
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000c3850'),
   'vip',
-  '5,001 followers on a verified Instagram is VIP'
+  'exactly 5,000 followers on a verified Instagram is VIP (MESITA-3864)'
 );
 
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000d3850'),
   'regular',
   'a count without a verified Instagram is Regular'
+);
+
+select is(
+  (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000e3850'),
+  'vip',
+  'Public profile off does not matter (MESITA-3864)'
 );
 
 update public.consumers set instagram_followers_count = 4000

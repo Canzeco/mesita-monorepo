@@ -15,6 +15,11 @@
 // A money row puts its amount on the right over its state; any other row
 // puts its time under the place and only the state on the right. The state
 // is coloured text, never a pill. No red: red is the Premier seal's.
+//
+// A QUIET ROW (MESITA-3865): a ticket nothing was paid on, or a table that
+// never happened, writes its place in grey and fades its photo. The words
+// keep their full contrast; the row is never faded whole. An open bill's row
+// carries its one button under it, in the same card.
 
 import { ChevronRight } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
@@ -39,6 +44,8 @@ export type ActivityItem = {
   /** Cancelled, declined, expired: drawn quieter. */
   dim?: boolean;
   href?: string;
+  /** The one thing to do about it, a filled button under the row. */
+  action?: { label: string; href: string };
 };
 
 const TONE: Record<StatusTone, string> = {
@@ -67,7 +74,10 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
         <img
           src={t.photo}
           alt=""
-          className="h-10 w-10 shrink-0 self-start rounded-full object-cover"
+          className={cn(
+            "h-10 w-10 shrink-0 self-start rounded-full object-cover",
+            t.dim && "opacity-60",
+          )}
         />
       ) : (
         <span
@@ -81,10 +91,15 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
             {t.label}
           </span>
         ) : null}
-        <span className="block truncate text-base font-semibold">
+        <span
+          className={cn(
+            "block truncate text-base font-semibold",
+            t.dim && "text-muted-foreground",
+          )}
+        >
           {t.place}
         </span>
-        {!t.money ? (
+        {!t.money && t.big ? (
           <span className="mt-0.5 block truncate text-sm tabular-nums">
             {t.big}
           </span>
@@ -115,23 +130,32 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
       ) : null}
     </>
   );
-  const cls = cn(
-    "flex items-center gap-3 px-4 py-3.5",
-    t.dim && "opacity-60",
-  );
+  const cls = "flex items-center gap-3 px-4 py-3.5";
   return (
     <li>
       {t.href ? (
         <PushLink
           href={t.href}
           className={cn(cls, "hover:bg-muted/40 active:bg-muted/60 transition")}
-          aria-label={[t.place, t.status.label, t.big].filter(Boolean).join(", ")}
+          aria-label={[t.place, t.status.label, t.big, t.line]
+            .filter(Boolean)
+            .join(", ")}
         >
           {body}
         </PushLink>
       ) : (
         <div className={cls}>{body}</div>
       )}
+      {t.action ? (
+        <div className="px-4 pb-3.5">
+          <PushLink
+            href={t.action.href}
+            className="bg-foreground text-background flex h-11 items-center justify-center rounded-full text-sm font-semibold transition hover:opacity-90"
+          >
+            {t.action.label}
+          </PushLink>
+        </div>
+      ) : null}
     </li>
   );
 }

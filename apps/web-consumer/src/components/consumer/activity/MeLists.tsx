@@ -10,8 +10,11 @@
 //                       the next confirmed reservation within a day above
 //                       it as a "Next up" ticket
 //   /me/reservations    Upcoming, then Past
-//   /me/tickets         every ticket, newest first, open bills on top; one
-//                       chip per kind narrows it, /me/tickets/<kind>:
+//   /me/tickets         every ticket under the day it happened, newest
+//                       first; a bill still open sits above them in its own
+//                       "Open now" card with its button (MESITA-3865). One
+//                       chip per kind that holds tickets narrows the list,
+//                       /me/tickets/<kind>:
 //     Visits    the guest's tabs (consumer-web-list-visits) AND the
 //               payments. A payment that paid a tab is written on that
 //               Visit's card (one meal, one ticket); any other payment is
@@ -108,11 +111,32 @@ const RESERVATIONS_PAGE = 100;
 const TTL = 2 * 60 * 1000;
 const DAY_MS = 86_400_000;
 
-/** "Nov 10": the date on a money ticket's line. */
-function onDay(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
+/** "21:42": the time a money ticket's line starts with. Its day is the
+ *  heading it sits under (MESITA-3865: three payments on one day read alike
+ *  with a date alone). */
+function clock(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/** A day's key in the guest's own clock, for grouping. */
+function dayKey(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+/** A day group's heading: Today, Yesterday, else "Wed, Nov 11" (with the
+ *  year once it is not this one). */
+function dayTitle(iso: string, nowMs: number): string {
+  const ms = Date.parse(iso);
+  if (dayKey(ms) === dayKey(nowMs)) return "Today";
+  if (dayKey(ms) === dayKey(nowMs - DAY_MS)) return "Yesterday";
+  const d = new Date(ms);
+  return d.toLocaleDateString("en-US", {
+    weekday: "short",
     month: "short",
     day: "numeric",
+    year: d.getFullYear() === new Date(nowMs).getFullYear() ? undefined : "numeric",
   });
 }
 
@@ -179,30 +203,38 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
       v.status === "waiting_bill" ||
       v.status === "billed" ||
       v.status === "paying";
+    // Nothing was paid: the bill is a grey fact on the line, never an amount
+    // on the right beside money that moved (MESITA-3865).
+    const unpaid = v.status === "expired" || v.status === "cancelled";
+    const at = v.paid_at ?? v.created_at;
+    const total =
+      v.bill_cents != null ? money(v.bill_cents + v.tip_cents, v.currency) : null;
+    // An open bill is the live pay screen; a finished one is its one-page
+    // summary (MESITA-3770: "the live workflow and the output must be
+    // different").
+    const href = open ? payTabPath(v.tab_id) : visitPath(v.tab_id);
     return {
       key: `v-${v.tab_id}`,
       type: "visits",
-      at: v.paid_at ?? v.created_at,
+      at,
       upcoming: open,
       place: v.place.name ?? "A Mesita place",
       photo: v.place.photo_url,
       status: { label, tone },
-      big:
-        v.bill_cents != null
-          ? money(v.bill_cents + v.tip_cents, v.currency)
-          : "Waiting for the bill",
-      money: v.bill_cents != null,
+      big: unpaid ? "" : (total ?? "Waiting for the bill"),
+      money: !unpaid && total != null,
       line: join(
+        open ? `Started ${clock(v.created_at)}` : clock(at),
+        unpaid && total && `${total} bill`,
+        ...v.part_payment_ids.map((id) => notes.get(id)),
         v.waiter_name,
         v.ticket && `Ticket ${v.ticket}`,
-        ...v.part_payment_ids.map((id) => notes.get(id)),
-        onDay(v.created_at),
       ),
-      dim: v.status === "expired" || v.status === "cancelled",
-      // An open bill is the live pay screen; a finished one is its one-page
-      // summary (MESITA-3770: "the live workflow and the output must be
-      // different").
-      href: open ? payTabPath(v.tab_id) : visitPath(v.tab_id),
+      dim: unpaid,
+      href,
+      action: open
+        ? { label: total ? "Continue paying" : "Open", href }
+        : undefined,
     };
   });
 }
@@ -270,9 +302,9 @@ function walletRows(w: Wallet): Row[] {
           big: money(e.amount_cents, cur),
           money: true,
           line: join(
+            clock(e.at),
             ENTRY_LABEL[e.kind] ?? e.kind,
             bonus && `+${money(bonus.amount_cents, cur)} bonus`,
-            onDay(e.at),
           ),
           href: creditEntryPath(b.place_id, e),
         });
@@ -291,7 +323,7 @@ function walletRows(w: Wallet): Row[] {
           status: { label: "Refunded", tone: "grey" },
           big: money(Math.abs(e.amount_cents), cur),
           money: true,
-          line: join("Purchase refunded", onDay(e.at)),
+          line: join(clock(e.at), "Purchase refunded"),
           href: creditEntryPath(b.place_id, e),
         });
         return;
@@ -308,7 +340,7 @@ function walletRows(w: Wallet): Row[] {
           status: { label: gift[0], tone: gift[1] },
           big: money(Math.abs(e.amount_cents), cur),
           money: true,
-          line: join(onDay(e.at), e.pending && "pending"),
+          line: join(clock(e.at), e.pending && "pending"),
           href: creditEntryPath(b.place_id, e),
         });
       }
@@ -329,7 +361,7 @@ function walletRows(w: Wallet): Row[] {
           : { label: "Available", tone: "green" },
         big: money(e.amount_cents, cur),
           money: true,
-        line: join("Bonus", onDay(e.at)),
+        line: join(clock(e.at), "Bonus"),
         href: creditEntryPath(b.place_id, e),
       });
     }
@@ -353,8 +385,8 @@ function walletRows(w: Wallet): Row[] {
       big: money(s.credit_cents, s.currency),
           money: true,
       line: join(
+        s.paid_at && clock(s.paid_at),
         "Story voucher · waiting for your post",
-        s.paid_at && onDay(s.paid_at),
       ),
       href: walletPlacePath(s.place_id),
     });
@@ -374,7 +406,7 @@ function walletRows(w: Wallet): Row[] {
       status: { label: "Not taken", tone: "ink" },
       big: money(l.amount_cents, l.currency),
           money: true,
-      line: join("Link sent", onDay(l.created_at)),
+      line: join(clock(l.created_at), "Link sent"),
       href: walletPlacePath(l.place_id),
     });
   }
@@ -424,10 +456,10 @@ function paymentRow(
     big,
     money: true,
     line: join(
+      clock(at),
       cash ? "Cash" : spend.length ? "Credits" : null,
       spend.length && back ? `+${money(back, cur)} cashback` : null,
       refund.length > 0 && `${money(Math.abs(sum(refund)), cur)} refunded`,
-      onDay(at),
       g.some((e) => e.pending) && "pending",
     ),
     href,
@@ -588,6 +620,7 @@ export function ReservationsPage() {
           failed={!!reservations.error}
           retry={reservations.reload}
           note={null}
+          foot={null}
         />
       </div>
     </Screen>
@@ -672,16 +705,37 @@ export function TicketsPage() {
     return parts.flatMap((p) => p ?? []);
   };
 
+  // THE CHIPS (MESITA-3865): All, then each kind that holds a ticket. A kind
+  // whose source answered with nothing is not drawn (the one being looked at
+  // stays, to say it is empty), and with one kind or none there is no rail:
+  // All would only repeat it. A kind wears its count; All does not, since it
+  // repeated the first chip's.
   const counts: Partial<Record<TicketKind | "all", string>> = {};
+  const hidden = new Set<TicketKind | "all">();
   for (const c of CHIPS) {
+    if (c.kind === "all") continue;
     const rows = rowsOf(c.kind);
-    if (!ready(c.kind) || failed(c.kind) || !rows || !rows.length) continue;
+    if (!ready(c.kind) || failed(c.kind) || !rows) continue;
+    if (!rows.length) {
+      if (c.kind !== kind) hidden.add(c.kind);
+      continue;
+    }
     // Payments missing: no number on a list they belong to.
-    if ((c.kind === "visits" || c.kind === "all") && wallet.error) continue;
-    const capped =
-      (c.kind === "visits" || c.kind === "all") && visits.data?.truncated;
-    counts[c.kind] = capped ? `${rows.length}+` : String(rows.length);
+    if (c.kind === "visits" && wallet.error) continue;
+    counts[c.kind] =
+      c.kind === "visits" && visits.data?.truncated
+        ? `${rows.length}+`
+        : String(rows.length);
   }
+  const chips = CHIPS.filter((c) => !hidden.has(c.kind));
+  const rail = chips.length > 2 || kind !== "all";
+
+  // The visits read is capped: say so under the list, not as a "+" alone.
+  const shown = byKind.visits?.length ?? 0;
+  const foot =
+    (kind === "visits" || kind === "all") && visits.data?.truncated && shown > 0
+      ? `Showing your latest ${shown} visits.`
+      : null;
 
   const note =
     (kind === "visits" || kind === "all") && !!wallet.error
@@ -702,17 +756,25 @@ export function TicketsPage() {
   return (
     <Screen title="Tickets">
       <div className="flex flex-col gap-4">
-        <KindRail kind={kind} onPick={pick} counts={counts} />
+        {rail ? (
+          <KindRail chips={chips} kind={kind} onPick={pick} counts={counts} />
+        ) : null}
         {/* Each kind says what it holds first (MESITA-3782); All lists them. */}
         {kind !== "all" ? <ChipIntro type={kind} /> : null}
-        <TicketList
-          type={kind}
-          rows={rowsOf(kind)}
-          ready={ready(kind)}
-          failed={failed(kind)}
-          retry={retry}
-          note={note}
-        />
+        <div
+          role={rail ? "tabpanel" : undefined}
+          aria-label={rail ? `${kind === "all" ? "All" : kind} tickets` : undefined}
+        >
+          <TicketList
+            type={kind}
+            rows={rowsOf(kind)}
+            ready={ready(kind)}
+            failed={failed(kind)}
+            retry={retry}
+            note={note}
+            foot={foot}
+          />
+        </div>
       </div>
     </Screen>
   );
@@ -725,6 +787,7 @@ function TicketList({
   failed,
   retry,
   note,
+  foot,
 }: {
   type: ListType | "all";
   rows: Row[] | null;
@@ -732,7 +795,10 @@ function TicketList({
   failed: boolean;
   retry: () => void;
   note: string | null;
+  foot: string | null;
 }) {
+  // The clock "Today" and "Yesterday" are judged by: read once.
+  const [nowMs] = useState(() => Date.now());
   const Icon = ICON[type];
   if (!ready) return <ActivityRowsSkeleton />;
   if (failed || !rows) {
@@ -776,27 +842,50 @@ function TicketList({
         </ActivityRows>
       </section>
     ) : null;
-  // Only Reservations and Visits (and All, which holds Visits) have tickets
-  // still ahead.
-  const twoGroups =
-    type === "reservations" || type === "visits" || type === "all";
+  const lead = note ? (
+    <p className="text-muted-foreground mb-3 text-xs">{note}</p>
+  ) : null;
+
+  // RESERVATIONS: Upcoming, then Past. One group, no heading (MESITA-3778): a
+  // lone "Past" or "Upcoming" only repeated what every row said.
+  if (type === "reservations") {
+    return (
+      <div>
+        {lead}
+        {upcoming.length > 0 && past.length > 0 ? (
+          <>
+            {group("Upcoming", upcoming, true)}
+            {group("Past", past, false)}
+          </>
+        ) : (
+          group(null, upcoming.length > 0 ? upcoming : past, true)
+        )}
+      </div>
+    );
+  }
+
+  // TICKETS (MESITA-3865): a bill still open is not "upcoming", it is now, so
+  // it leads in its own card with its button; everything else sits under the
+  // day it happened, newest day first.
+  const days: Array<{ title: string; list: Row[] }> = [];
+  for (const r of past) {
+    const title = r.at ? dayTitle(r.at, nowMs) : "Earlier";
+    const last = days[days.length - 1];
+    if (last && last.title === title) last.list.push(r);
+    else days.push({ title, list: [r] });
+  }
   return (
     <div>
-      {note ? (
-        <p className="text-muted-foreground mb-3 text-xs">{note}</p>
+      {lead}
+      {group("Open now", upcoming, true)}
+      {days.map((d, i) => (
+        <div key={d.title}>
+          {group(d.title, d.list, i === 0 && upcoming.length === 0)}
+        </div>
+      ))}
+      {foot ? (
+        <p className="text-muted-foreground mt-4 text-center text-sm">{foot}</p>
       ) : null}
-      {twoGroups && upcoming.length > 0 && past.length > 0 ? (
-        <>
-          {group("Upcoming", upcoming, true)}
-          {group("Past", past, false)}
-        </>
-      ) : twoGroups && upcoming.length > 0 ? (
-        // One group, no heading (MESITA-3778): a lone "Past" or "Upcoming"
-        // only repeated what every row said.
-        group(null, upcoming, true)
-      ) : (
-        group(null, past, true)
-      )}
     </div>
   );
 }
@@ -804,10 +893,12 @@ function TicketList({
 /** The chips: the chosen one in view on arrival and on Back, without
  *  animation; the right edge fades so the rail reads as scrollable. */
 function KindRail({
+  chips,
   kind,
   onPick,
   counts,
 }: {
+  chips: typeof CHIPS;
   kind: TicketKind | "all";
   onPick: (k: TicketKind | "all") => void;
   counts: Partial<Record<TicketKind | "all", string>>;
@@ -828,7 +919,7 @@ function KindRail({
         aria-label="Kinds of ticket"
         data-ticket-kinds
       >
-        {CHIPS.map(({ kind: key, label, Icon }) => {
+        {chips.map(({ kind: key, label, Icon }) => {
           const on = kind === key;
           const n = counts[key];
           return (
