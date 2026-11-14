@@ -177,7 +177,7 @@ export const FLEET_TESTS: FleetTest[] = [
     scenario:
       "Eres Ana López y contestas tu celular con «¿Bueno?». Cuando te pregunten si eres Ana López dices que sí. Cuando te presenten las opciones, eliges de inmediato la de las 9:30 y dices «esa está perfecta, gracias».",
     conditions: [
-      "El agente pregunta si habla con Ana López ANTES de mencionar el restaurante, la fecha, la hora o que hay una reservación.",
+      "Antes de que Ana diga que sí es ella, el agente no menciona Gran Central, la fecha, la hora ni que existe una reservación (decir que llama de Mesita sí se vale).",
       "El agente presenta las opciones del restaurante una sola vez.",
       "Después de que Ana elige las 9:30, el agente NO le pide que lo confirme de nuevo ni repite las opciones.",
     ],

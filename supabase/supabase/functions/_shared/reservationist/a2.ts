@@ -25,6 +25,7 @@ const TALK = [
   `- "counter_offer": {{venue_name}} no pudo el {{reservation_date}} a las {{reservation_time}} y ofreció: {{venue_alternatives}}. Preséntalas tal cual.`,
   `- "reminder": la mesa en {{venue_name}} ya está confirmada para el {{reservation_date}} a las {{reservation_time}}. Recuérdale los datos.`,
   `- "cancelled_by_venue": {{venue_name}} tuvo que cancelar la reservación del {{reservation_date}} a las {{reservation_time}}. Díselo con tacto, discúlpate de parte de Mesita y dile que desde la app puede reservar en otro lugar. Despídete, cuelga con end_call y toma la rama de aviso de cancelación del restaurante.`,
+  `Cuando el comensal ya decidió, no lo confirmes ni te despidas: toma la rama en ese momento; el paso de cierre se lo dice una sola vez.`,
   `El comensal puede aceptar, elegir una opción, proponer otra fecha u hora (conviértela con {{system__time_utc}} como referencia), o cancelar: toma la rama que toque sin colgar. Si contesta otra persona o un buzón, toma su rama. El código {{reference_code}} solo si lo pide.`,
 ].join("\n");
 
@@ -74,7 +75,7 @@ export const A2: FleetAgent = {
         label: "Close (registered)",
         position: pos(1300, -180),
         prompt:
-          "Quedó registrado. Di solo lo que regresó la herramienta: si confirmed_on_the_spot=true, la mesa ya quedó confirmada porque tomó una opción que el restaurante había ofrecido; si parked=true, su petición quedó anotada y Mesita le confirma por la app; si pidió otra fecha u hora, Mesita llama al restaurante y le confirma en cuanto quede. Despídete corto y cuelga con end_call.",
+          "Quedó registrado. En una sola frase y sin repetir lo que ya dijiste, di lo que regresó la herramienta: si confirmed_on_the_spot=true, la mesa ya quedó confirmada porque tomó una opción que el restaurante había ofrecido; si parked=true, su petición quedó anotada y Mesita le confirma por la app; si pidió otra fecha u hora, Mesita llama al restaurante y le confirma en cuanto quede. Despídete corto y cuelga con end_call.",
         edgeOrder: ["e_fdone_end"],
       }),
       farewell_cancel: talkNode({
