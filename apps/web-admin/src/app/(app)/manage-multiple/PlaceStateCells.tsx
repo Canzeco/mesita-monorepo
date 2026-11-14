@@ -4,29 +4,17 @@
 // Search table (Manage Multiple) and the Find table (Manage Single) so the
 // two pages print the same twelve states the same way Business › Admin's
 // Place States card does. Chips are the card's words: Owned · Free · Paid
-// up · Connected · On · Signed · 5% … A chip that is on reads green; off is
-// plain grey (an Off switch is a choice, not a defect); "?" is a failed read.
+// up · Connected · On · Signed · 5% … A chip that is on reads success; off is
+// neutral (an Off switch is a choice, not a defect); "?" is a failed read.
 
+import { Chip } from "@/components/admin-ui";
 import { PLACE_STATE_ROWS } from "@mesita/place-profile/lib/place-states";
 import type { PlaceHit } from "./actions";
 import { placeStateChips } from "./place-state-cells";
 
 export function PlaceStatePill({ on, chip }: { on: boolean; chip: string }) {
-  return (
-    <span
-      className={
-        "inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold whitespace-nowrap " +
-        (chip === "?"
-          ? "text-muted-foreground bg-muted"
-          : on
-            ? "bg-green-500/10 text-green-700"
-            : "text-muted-foreground bg-muted")
-      }
-      title={chip === "?" ? "Couldn't read this state" : undefined}
-    >
-      {chip}
-    </span>
-  );
+  if (chip === "?") return <Chip title="Couldn't read this state">?</Chip>;
+  return <Chip tone={on ? "success" : "neutral"}>{chip}</Chip>;
 }
 
 export function PlaceStateHeads({ className, edgeClassName = "" }: { className: string; edgeClassName?: string }) {

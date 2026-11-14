@@ -6,7 +6,7 @@
 // estimates live on Configurations › Creation and Updation.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SectionCard, type Tint } from "@/components/admin-ui/manage";
+import { SectionCard } from "@/components/admin-ui";
 import { SearchTab } from "./SearchTab";
 import { MesitaSearchTab } from "./MesitaSearchTab";
 import { WriteBox } from "./WriteBox";
@@ -19,21 +19,18 @@ function Step({
   id,
   title,
   blurb,
-  tint,
   children,
 }: {
   n: number;
   id?: string;
   title: string;
   blurb?: string;
-  tint: Tint;
   children: React.ReactNode;
 }) {
   // scroll-mt clears the sticky PipelineNav — one ~53px row at every width.
   return (
     <div id={id} className="scroll-mt-20">
       <SectionCard
-        tint={tint}
         title={title}
         subtitle={blurb}
         icon={
@@ -136,7 +133,6 @@ export function MultiplePlacesClient() {
       <Step
         n={STEP["google-search"].n}
         id="google-search"
-        tint="sky"
         title={STEP["google-search"].label}
         blurb="One query per line, or Google Place IDs. Country optional."
       >
@@ -146,7 +142,6 @@ export function MultiplePlacesClient() {
       <Step
         n={STEP["mesita-search"].n}
         id="mesita-search"
-        tint="violet"
         title={STEP["mesita-search"].label}
         blurb="Every place on Mesita, 50 a page. Read-only."
       >
@@ -159,21 +154,19 @@ export function MultiplePlacesClient() {
       <Step
         n={STEP.create.n}
         id="create"
-        tint="emerald"
         title={STEP.create.label}
         blurb="Mints each Google Place ID as a Mesita place. One already on Mesita is skipped."
       >
         {box("create")}
       </Step>
 
-      <Step n={STEP.edit.n} id="edit" tint="amber" title={STEP.edit.label}>
+      <Step n={STEP.edit.n} id="edit" title={STEP.edit.label}>
         {box("edit")}
       </Step>
 
       <Step
         n={STEP.delete.n}
         id="delete"
-        tint="rose"
         title={STEP.delete.label}
         blurb="Archives each place. No Undo in this console."
       >

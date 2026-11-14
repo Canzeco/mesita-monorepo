@@ -1,4 +1,4 @@
-import { ConfigPageLayout } from "@/components/ConfigPageLayout";
+import { ConfigPageLayout } from "@/components/admin-ui";
 import { getApifyUsage } from "./actions";
 import { ApifyUsagePanel } from "./ApifyUsagePanel";
 import { BillingTestClient } from "./BillingTestClient";

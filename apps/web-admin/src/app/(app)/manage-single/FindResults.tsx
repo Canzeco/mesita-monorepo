@@ -15,7 +15,7 @@
 // one line beneath the address.
 
 import { Fragment, useState } from "react";
-import { AlertTriangle, ExternalLink, Loader2, Plus } from "lucide-react";
+import { AlertTriangle, ExternalLink, Plus } from "lucide-react";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { factOn } from "@/app/(app)/manage-multiple/mesita-search-facts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
@@ -30,10 +30,16 @@ import {
   STATE_FACT_FALSE_TONE,
 } from "@/lib/state-vocabulary";
 import {
+  Button,
+  Chip,
   FOCUS_RING_CLASS,
-  PILL_BUTTON_CLASS,
-  TOUCH_TARGET_CLASS,
-} from "@/lib/ui-classes";
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+} from "@/components/admin-ui";
 import {
   FIND_PAGE_ROWS,
   WORD_RANK_COLUMNS,
@@ -44,12 +50,11 @@ import { googleMapsPlaceHref } from "./single-place-lookup";
 
 export type RowNote = { state: BatchRowState; text: string };
 
-const HEAD_ROW =
-  "text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase";
-const ROW_DIVIDERS =
-  "[&>td]:border-border/60 [&>td]:border-t [&>th]:border-border/60 [&>th]:border-t";
 /** The thin line between column groups. */
 const GROUP_EDGE = "border-border border-l";
+/** The kit's head and cell look, for the Place States columns, which
+ *  PlaceStateHeads/PlaceStateCells draw as their own th/td. */
+const STATE_HEAD = "text-muted-foreground h-10 px-3 text-left align-middle type-label font-semibold whitespace-nowrap";
 /** On and Place stay put from `sm`. This table is wider than the pane at
  *  every breakpoint, so the shared sticky classes (which let go at `sm`)
  *  would unpin the name. On is a fixed 9rem and hides below `sm`; Place
@@ -63,9 +68,8 @@ const PIN_HELD_CELL = `hidden sticky left-0 w-36 min-w-36 max-w-36 sm:table-cell
 const PIN_PLACE_CELL = `sticky left-0 sm:left-36 ${PIN_CELL_BG}`;
 
 /** The table's card: bled to the pane's edges on a phone, a rounded card
- *  from 640px. SinglePlaceClient's CatalogueSkeleton stands in the same one
- *  while the catalogue loads. */
-export const FIND_TABLE_FRAME =
+ *  from 640px. */
+const FIND_TABLE_FRAME =
   "border-border bg-card -mx-5 mt-5 overflow-hidden border-y sm:mx-0 sm:rounded-2xl sm:border";
 
 export const rowNameId = (i: number) => `find-row-name-${i}`;
@@ -160,167 +164,134 @@ export function FindResults({
   return (
     <>
       <div className={FIND_TABLE_FRAME}>
-        <div className="overflow-x-auto">
-          <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
-            <caption className="sr-only">
+        <Table>
+          <caption className="sr-only">
+            {ranks
+              ? `Places matching “${query}”, with their states, and where Google ranked them`
+              : "Every place on Mesita, with its states"}
+          </caption>
+          <THead>
+            <Tr>
+              <Th scope="col" className={PIN_HELD_HEAD}>
+                On
+              </Th>
+              <Th scope="col" className={PIN_PLACE_HEAD}>
+                Place
+              </Th>
+              {GENERAL_STATE_FACTS.map((f) => (
+                <Fragment key={f.key}>
+                  <Th scope="col">{f.label}</Th>
+                  {f.key === "enriched" ? <Th scope="col">Premier</Th> : null}
+                </Fragment>
+              ))}
+              {/* Place States (Main §10, MESITA-3595): what the business
+                  decides, the same twelve Business › Admin prints. */}
+              <PlaceStateHeads className={STATE_HEAD} edgeClassName={GROUP_EDGE} />
+              {QUICK_STATS.map((q, i) => (
+                <Th key={q.key} scope="col" numeric className={i === 0 ? GROUP_EDGE : undefined}>
+                  {q.label}
+                </Th>
+              ))}
               {ranks
-                ? `Places matching “${query}”, with their states, and where Google ranked them`
-                : "Every place on Mesita, with its states"}
-            </caption>
-            <thead>
-              <tr className={HEAD_ROW}>
-                <th
-                                    scope="col"
-                  className={`px-3 py-3 text-center align-bottom font-semibold ${PIN_HELD_HEAD}`}
-                >
-                  On
-                </th>
-                <th
-                                    scope="col"
-                  className={`px-4 py-3 align-bottom font-semibold ${PIN_PLACE_HEAD}`}
-                >
-                  Place
-                </th>
-                {GENERAL_STATE_FACTS.map((f) => (
-                  <Fragment key={f.key}>
-                    <th scope="col" className="px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap">
-                      {f.label}
-                    </th>
-                    {f.key === "enriched" ? (
-                      <th scope="col" className="px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap">
-                        Premier
-                      </th>
-                    ) : null}
-                  </Fragment>
-                ))}
-                {/* Place States (Main §10, MESITA-3595): what the business
-                    decides, the same twelve Business › Admin prints. */}
-                <PlaceStateHeads
-                  className="px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap"
-                  edgeClassName={GROUP_EDGE}
+                ? WORD_RANK_COLUMNS.map((s, i) => (
+                    <Th
+                      key={s.key}
+                      scope="col"
+                      className={"hidden sm:table-cell " + (i === 0 ? GROUP_EDGE : "")}
+                    >
+                      {s.label}
+                      {failed.has(s.key) ? (
+                        <span title={`${s.long} failed`} className="text-destructive ml-1 inline-flex align-[-2px]">
+                          <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                          <span className="sr-only">{s.long} failed</span>
+                        </span>
+                      ) : null}
+                    </Th>
+                  ))
+                : null}
+              <Th scope="col">
+                <span className="sr-only">Action</span>
+              </Th>
+            </Tr>
+          </THead>
+          <TBody>
+            {shown.map((row, i) => (
+              <Tr key={row.key}>
+                <Td className={PIN_HELD_CELL}>
+                  <HeldCell row={row} />
+                </Td>
+                <Th scope="row" className={`max-w-[60vw] sm:max-w-[280px] ${PIN_PLACE_CELL}`}>
+                  <span className="mb-1 inline-flex sm:hidden">
+                    <HeldCell row={row} />
+                  </span>
+                  <NameCell
+                    row={row}
+                    id={rowNameId(first + i)}
+                    disabled={disabled}
+                    onOpen={onOpen}
+                    onOpenGoogle={onOpenGoogle}
+                  />
+                  {row.address ? (
+                    <span className="text-muted-foreground block truncate type-label font-normal">
+                      {row.address}
+                    </span>
+                  ) : null}
+                  {ranks ? <PhoneSources row={row} /> : null}
+                </Th>
+                <ProfileCells
+                  row={row}
+                  enrichingNow={enrichPhase(row, startingIds, enrichingIds) !== "idle"}
                 />
-                {QUICK_STATS.map((q, i) => (
-                  <th
-                    key={q.key}
-                    scope="col"
-                    className={
-                      "px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap " +
-                      (i === 0 ? GROUP_EDGE : "")
-                    }
-                  >
-                    {q.label}
-                  </th>
-                ))}
                 {ranks
                   ? WORD_RANK_COLUMNS.map((s, i) => (
-                      <th
+                      <Td
                         key={s.key}
-                                                scope="col"
-                        className={
-                          "hidden px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap sm:table-cell " +
-                          (i === 0 ? GROUP_EDGE : "")
-                        }
+                        className={"hidden whitespace-nowrap sm:table-cell " + (i === 0 ? GROUP_EDGE : "")}
                       >
-                        {s.label}
-                        {failed.has(s.key) ? (
-                          <span title={`${s.long} failed`} className="text-destructive ml-1 inline-flex align-[-2px]">
-                            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                            <span className="sr-only">{s.long} failed</span>
-                          </span>
-                        ) : null}
-                      </th>
+                        <SourceCell
+                          rank={row.ranks[s.key]}
+                          source={s.long}
+                          failed={failed.has(s.key)}
+                        />
+                      </Td>
                     ))
                   : null}
-                <th scope="col" className="px-4 py-3">
-                  <span className="sr-only">Action</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((row, i) => (
-                <tr key={row.key} className={ROW_DIVIDERS}>
-                  <td className={`px-3 py-3 text-center align-top ${PIN_HELD_CELL}`}>
-                    <HeldCell row={row} />
-                  </td>
-                  <th
-                    scope="row"
-                    className={`max-w-[60vw] px-4 py-3 text-left align-top font-normal sm:max-w-[280px] ${PIN_PLACE_CELL}`}
-                  >
-                    <span className="mb-1 inline-flex sm:hidden">
-                      <HeldCell row={row} />
-                    </span>
-                    <NameCell
-                      row={row}
-                      id={rowNameId(first + i)}
-                      disabled={disabled}
-                      onOpen={onOpen}
-                      onOpenGoogle={onOpenGoogle}
-                    />
-                    {row.address ? (
-                      <span className="text-muted-foreground block truncate type-label">
-                        {row.address}
-                      </span>
-                    ) : null}
-                    {ranks ? <PhoneSources row={row} /> : null}
-                  </th>
-                  <ProfileCells
+                <Td className="text-right">
+                  <ActionCell
                     row={row}
-                    enrichingNow={enrichPhase(row, startingIds, enrichingIds) !== "idle"}
+                    note={row.googleId ? notes[row.googleId] : undefined}
+                    phase={enrichPhase(row, startingIds, enrichingIds)}
+                    enrichError={row.mesitaId ? enrichErrors[row.mesitaId] : undefined}
+                    disabled={disabled}
+                    onOpen={onOpen}
+                    onAdd={onAdd}
+                    onEnrich={onEnrich}
                   />
-                  {ranks
-                    ? WORD_RANK_COLUMNS.map((s, i) => (
-                        <td
-                          key={s.key}
-                          className={
-                            "hidden px-3 py-3 text-center align-top sm:table-cell " +
-                            (i === 0 ? GROUP_EDGE : "")
-                          }
-                        >
-                          <SourceCell
-                            rank={row.ranks[s.key]}
-                            source={s.long}
-                            failed={failed.has(s.key)}
-                          />
-                        </td>
-                      ))
-                    : null}
-                  <td className="px-4 py-3 text-right align-top">
-                    <ActionCell
-                      row={row}
-                      note={row.googleId ? notes[row.googleId] : undefined}
-                      phase={enrichPhase(row, startingIds, enrichingIds)}
-                      enrichError={row.mesitaId ? enrichErrors[row.mesitaId] : undefined}
-                      disabled={disabled}
-                      onOpen={onOpen}
-                      onAdd={onAdd}
-                      onEnrich={onEnrich}
-                    />
-                  </td>
-                </tr>
-              ))}
-              {pages > 1 ? (
-                <tr className={ROW_DIVIDERS}>
-                  <td colSpan={colSpan} className="px-4 py-2">
-                    <Pager
-                      page={page}
-                      pages={pages}
-                      first={first}
-                      count={shown.length}
-                      total={rows.length}
-                      onPage={(next) => {
-                        setPageIndex(next);
-                        // The new page's first row takes focus once it exists.
-                        requestAnimationFrame(() =>
-                          document.getElementById(rowNameId(next * FIND_PAGE_ROWS))?.focus(),
-                        );
-                      }}
-                    />
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+                </Td>
+              </Tr>
+            ))}
+            {pages > 1 ? (
+              <Tr>
+                <Td colSpan={colSpan}>
+                  <Pager
+                    page={page}
+                    pages={pages}
+                    first={first}
+                    count={shown.length}
+                    total={rows.length}
+                    onPage={(next) => {
+                      setPageIndex(next);
+                      // The new page's first row takes focus once it exists.
+                      requestAnimationFrame(() =>
+                        document.getElementById(rowNameId(next * FIND_PAGE_ROWS))?.focus(),
+                      );
+                    }}
+                  />
+                </Td>
+              </Tr>
+            ) : null}
+          </TBody>
+        </Table>
       </div>
       <NoteLines notes={result.notes} />
     </>
@@ -343,28 +314,17 @@ function Pager({
   total: number;
   onPage: (page: number) => void;
 }) {
-  const button = `text-muted-foreground hover:text-foreground disabled:text-muted-foreground/40 type-label font-semibold transition disabled:cursor-not-allowed ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
   return (
     <nav aria-label="Pages" className="flex items-center gap-4">
-      <button
-        type="button"
-        disabled={page === 0}
-        onClick={() => onPage(page - 1)}
-        className={button}
-      >
+      <Button tone="ghost" size="sm" disabled={page === 0} onClick={() => onPage(page - 1)}>
         Previous
-      </button>
+      </Button>
       <span className="text-muted-foreground type-label tabular-nums">
         {first + 1}–{first + count} of {total}
       </span>
-      <button
-        type="button"
-        disabled={page >= pages - 1}
-        onClick={() => onPage(page + 1)}
-        className={button}
-      >
+      <Button tone="ghost" size="sm" disabled={page >= pages - 1} onClick={() => onPage(page + 1)}>
         Next
-      </button>
+      </Button>
     </nav>
   );
 }
@@ -372,18 +332,7 @@ function Pager({
 /** First column. Green when Mesita holds the place; muted when it is
  *  Google only. Google is not a failure, so it is not rose. */
 function HeldCell({ row }: { row: FindRow }) {
-  if (row.held) {
-    return (
-      <span className="inline-flex items-center justify-center rounded-full bg-green-500/10 px-2 py-0.5 type-label font-semibold whitespace-nowrap text-green-700">
-        Mesita
-      </span>
-    );
-  }
-  return (
-    <span className="text-muted-foreground bg-muted inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold whitespace-nowrap">
-      Google only
-    </span>
-  );
+  return row.held ? <Chip tone="success">Mesita</Chip> : <Chip>Google only</Chip>;
 }
 
 /** A row this page just created is Mesita's now, whatever the sources said. */
@@ -391,6 +340,10 @@ function withAdd(row: FindRow, added: ReadonlyMap<string, string>): FindRow {
   const id = row.googleId ? added.get(row.googleId) : undefined;
   return id ? { ...row, held: true, mesitaId: id } : row;
 }
+
+/** A name that is a button, not a link (no id yet, or Create on open):
+ *  the kit's quiet button, pulled back to the column's edge. */
+const NAME_BUTTON = "-ml-3 max-w-full";
 
 function NameCell({
   row,
@@ -418,30 +371,32 @@ function NameCell({
   if (row.held) {
     // Held per Text Search's join, id unknown: opening takes the identity lookup.
     return (
-      <button
+      <Button
         id={id}
-        type="button"
+        tone="ghost"
+        size="sm"
         disabled={disabled}
         onClick={() => onOpen(row)}
-        className={`${name} max-w-full text-left disabled:opacity-60`}
+        className={NAME_BUTTON}
       >
-        {row.name}
-      </button>
+        <span className="min-w-0 truncate">{row.name}</span>
+      </Button>
     );
   }
   if (row.googleId && onOpenGoogle) {
     // Create on open (MESITA-2298): the name mints the place and opens it.
     return (
-      <button
+      <Button
         id={id}
-        type="button"
+        tone="ghost"
+        size="sm"
         disabled={disabled}
         onClick={() => onOpenGoogle(row)}
         aria-label={`Open ${row.name} on Mesita`}
-        className={`${name} max-w-full text-left disabled:opacity-60`}
+        className={NAME_BUTTON}
       >
-        {row.name}
-      </button>
+        <span className="min-w-0 truncate">{row.name}</span>
+      </Button>
     );
   }
   if (row.googleId) {
@@ -460,7 +415,7 @@ function NameCell({
     );
   }
   return (
-    <span id={id} tabIndex={-1} className="block truncate font-medium">
+    <span id={id} tabIndex={-1} className="text-foreground block truncate font-medium">
       {row.name}
     </span>
   );
@@ -497,7 +452,8 @@ function SourceCell({
   );
 }
 
-const CELL = "px-3 py-3 text-center align-top whitespace-nowrap";
+/** Place States cells: the kit's cell look (PlaceStateCells draws its own td). */
+const STATE_CELL = "px-3 py-2.5 align-middle whitespace-nowrap";
 
 function ProfileCells({ row, enrichingNow }: { row: FindRow; enrichingNow: boolean }) {
   const hit = row.placeHit;
@@ -505,7 +461,7 @@ function ProfileCells({ row, enrichingNow }: { row: FindRow; enrichingNow: boole
     <>
       {GENERAL_STATE_FACTS.map((f) => (
         <Fragment key={f.key}>
-          <td className={CELL}>
+          <Td className="whitespace-nowrap">
             {f.key === "enriching" && enrichingNow ? (
               <StatePill
                 on={true}
@@ -523,9 +479,9 @@ function ProfileCells({ row, enrichingNow }: { row: FindRow; enrichingNow: boole
             ) : (
               <Miss label={f.label} />
             )}
-          </td>
+          </Td>
           {f.key === "enriched" ? (
-            <td className={CELL}>
+            <Td className="whitespace-nowrap">
               {hit ? (
                 <PremierPill tier={hit.boost_tier} />
               ) : row.held ? (
@@ -533,18 +489,18 @@ function ProfileCells({ row, enrichingNow }: { row: FindRow; enrichingNow: boole
               ) : (
                 <Miss label="Premier" />
               )}
-            </td>
+            </Td>
           ) : null}
         </Fragment>
       ))}
       <PlaceStateCells
         hit={hit}
-        className={CELL}
+        className={STATE_CELL}
         edgeClassName={GROUP_EDGE}
         empty={(label) => (row.held ? <StatePill on="unknown" /> : <Miss label={label} />)}
       />
       {QUICK_STATS.map((q, i) => (
-        <td key={q.key} className={`${CELL} tabular-nums ${i === 0 ? GROUP_EDGE : ""}`}>
+        <Td key={q.key} numeric className={`whitespace-nowrap ${i === 0 ? GROUP_EDGE : ""}`}>
           {hit ? (
             <StatCount value={hit[q.key]} label={q.label} />
           ) : row.held ? (
@@ -552,7 +508,7 @@ function ProfileCells({ row, enrichingNow }: { row: FindRow; enrichingNow: boole
           ) : (
             <Miss label={q.label} />
           )}
-        </td>
+        </Td>
       ))}
     </>
   );
@@ -571,16 +527,7 @@ const QUICK_STATS = [
 function PremierPill({ tier }: { tier: number | null | undefined }) {
   const chip = premierTierChip(tier);
   if (chip === "?") return <StatePill on="unknown" />;
-  return (
-    <span
-      className={
-        "inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold " +
-        (tier ? "bg-green-500/10 text-green-700" : "text-muted-foreground bg-muted")
-      }
-    >
-      {chip}
-    </span>
-  );
+  return <Chip tone={tier ? "success" : "neutral"}>{chip}</Chip>;
 }
 
 function StatCount({ value, label }: { value: number | null | undefined; label: string }) {
@@ -610,7 +557,7 @@ function PhoneSources({ row }: { row: FindRow }) {
   );
   if (parts.length === 0) return null;
   return (
-    <span className="text-muted-foreground mt-1 block type-label tabular-nums sm:hidden">
+    <span className="text-muted-foreground mt-1 block type-label font-normal tabular-nums sm:hidden">
       {parts.join(" · ")}
     </span>
   );
@@ -641,55 +588,45 @@ function ActionCell({
       {row.held ? (
         /* decision: Pato (2026-10-17, MESITA-2320) — Open · Enrich on one line, one pill style. */
         <span className="inline-flex flex-nowrap items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => onOpen(row)}
-            disabled={disabled}
-            aria-label={`Open ${row.name}`}
-            className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
-          >
+          <Button tone="secondary" size="sm" onClick={() => onOpen(row)} disabled={disabled} aria-label={`Open ${row.name}`}>
             Open
-          </button>
+          </Button>
           {row.mesitaId ? (
             phase === "idle" ? (
-              <button
-                type="button"
+              <Button
+                tone="secondary"
+                size="sm"
                 onClick={() => onEnrich?.(row)}
                 disabled={disabled}
                 aria-label={`Enrich ${row.name}`}
-                className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
               >
                 Enrich
-              </button>
+              </Button>
             ) : (
-              <button
-                type="button"
-                disabled
+              <Button
+                tone="secondary"
+                size="sm"
+                pending
                 aria-busy="true"
                 aria-label={phase === "starting" ? `Starting ${row.name}` : `Enriching ${row.name}`}
-                className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
               >
-                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                 {phase === "starting" ? "Starting…" : "Enriching"}
-              </button>
+              </Button>
             )
           ) : null}
         </span>
       ) : row.googleId ? (
-        <button
-          type="button"
+        <Button
+          tone="secondary"
+          size="sm"
           onClick={() => onAdd(row)}
-          disabled={disabled || adding}
+          disabled={disabled}
+          pending={adding}
+          icon={<Plus className="h-3 w-3" aria-hidden="true" />}
           aria-label={`Create ${row.name} on Mesita`}
-          className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
         >
-          {adding ? (
-            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-          ) : (
-            <Plus className="h-3 w-3" aria-hidden="true" />
-          )}
           {adding ? "Creating…" : "Create"}
-        </button>
+        </Button>
       ) : null}
       <span aria-live="polite" className="max-w-56">
         {phase === "idle" && enrichError ? (

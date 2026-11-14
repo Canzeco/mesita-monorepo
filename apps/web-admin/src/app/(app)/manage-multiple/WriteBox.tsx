@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import { Loader2, Play } from "lucide-react";
+import { Play } from "lucide-react";
+import { Button } from "@/components/admin-ui";
 import {
   createPlacesFromGooglePlaceIds,
   enrichPlacesAll,
@@ -248,9 +249,7 @@ export function WriteBox({
           {groups.map((group) => (
             <div key={group.label ?? "only"} role={labelled ? "group" : undefined} aria-label={group.label ?? undefined}>
               {labelled ? (
-                <p className="text-muted-foreground type-label mb-2 font-semibold tracking-[0.12em] uppercase">
-                  {group.label}
-                </p>
+                <p className="type-eyebrow mb-2">{group.label}</p>
               ) : null}
               <div className="flex flex-wrap items-start gap-3">
                 {group.actions.map((action) => (
@@ -263,7 +262,7 @@ export function WriteBox({
                       onClick={() => void run(action)}
                     />
                     {BUTTONS[action].meta ? (
-                      <span className="text-muted-foreground px-1 text-xs">
+                      <span className="text-muted-foreground type-meta px-1">
                         {BUTTONS[action].meta}
                       </span>
                     ) : null}
@@ -279,13 +278,9 @@ export function WriteBox({
               <span className="text-muted-foreground text-xs tabular-nums">{summary}</span>
             ) : null}
             {failed > 0 && !running ? (
-              <button
-                type="button"
-                onClick={() => copyIds("error")}
-                className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"
-              >
+              <Button tone="ghost" size="sm" onClick={() => copyIds("error")}>
                 Copy failed IDs
-              </button>
+              </Button>
             ) : null}
           </div>
         ) : null}
@@ -305,7 +300,7 @@ function ResultList({
   results: Record<string, Row>;
 }) {
   return (
-    <div className="border-border bg-card mt-3 overflow-hidden rounded-2xl border">
+    <div className="border-border bg-card mt-3 overflow-hidden rounded-xl border">
       <ul className="divide-border/60 divide-y">
         {placeIds.map((id) => {
           const r = results[id];
@@ -337,9 +332,11 @@ function ResultList({
 }
 
 // Primary = the box's main action: Create, or Fast Update in Mesita Edit
-// (free, the everyday refresh). Destructive marks Delete, the one action that
-// cannot be undone from this console. Everything else is an outline pill, so
-// the paid and visibility writes never read as the default click.
+// (free, the everyday refresh). Danger marks Delete, the one action that
+// cannot be undone from this console. Everything else is secondary, so the
+// paid and visibility writes never read as the default click.
+const BUTTON_TONE = { primary: "primary", secondary: "secondary", destructive: "danger" } as const;
+
 function ActionButton({
   label,
   variant,
@@ -353,21 +350,16 @@ function ActionButton({
   disabled: boolean;
   onClick: () => void;
 }) {
-  const className =
-    variant === "primary"
-      ? "bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
-      : variant === "destructive"
-        ? "border-destructive/40 text-destructive hover:bg-destructive/5 inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition disabled:opacity-50"
-        : "border-border hover:border-foreground/40 inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition disabled:opacity-50";
   return (
-    <button type="button" onClick={onClick} disabled={disabled} className={className}>
-      {busy ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <Play className="h-3.5 w-3.5" />
-      )}
+    <Button
+      tone={BUTTON_TONE[variant]}
+      pending={busy}
+      disabled={disabled}
+      icon={<Play aria-hidden className="h-3.5 w-3.5" />}
+      onClick={onClick}
+    >
       {label}
-    </button>
+    </Button>
   );
 }
 

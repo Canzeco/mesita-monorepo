@@ -18,15 +18,18 @@ export function Spinner({ label }: { label?: string }) {
 export function Skeleton({
   variant = "cards",
   count = 2,
+  label,
   className,
 }: {
   variant?: "cards" | "table";
   count?: number;
+  /** Accessible name for what is loading. */
+  label?: string;
   className?: string;
 }) {
   if (variant === "table") {
     return (
-      <div className={cn(CARD_CLASS, "flex flex-col gap-3", className)} aria-busy>
+      <div className={cn(CARD_CLASS, "flex flex-col gap-3", className)} aria-busy aria-label={label}>
         <Bone className="h-4 w-40" />
         {Array.from({ length: 6 }, (_, i) => (
           <Bone key={i} className="h-8 w-full" />
@@ -35,7 +38,7 @@ export function Skeleton({
     );
   }
   return (
-    <div className={cn("flex flex-col gap-6 sm:gap-8", className)} aria-busy>
+    <div className={cn("flex flex-col gap-6 sm:gap-8", className)} aria-busy aria-label={label}>
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className={cn(CARD_CLASS, "flex flex-col gap-3")}>
           <Bone className="h-4 w-40" />

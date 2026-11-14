@@ -1,4 +1,4 @@
-import { ConfigPageLayout } from "@/components/ConfigPageLayout";
+import { ConfigPageLayout } from "@/components/admin-ui";
 import type { ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { getDiscoveryConfig } from "./actions";
 import { DEFAULT_CONFIG, type DiscoveryConfig } from "./catalog";

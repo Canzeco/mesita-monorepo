@@ -1,4 +1,4 @@
-import { PageContainer, PageHeader } from "@/components/PageContainer";
+import { PageContainer, PageHeader } from "@/components/admin-ui";
 import { getAtlasSettings } from "../enricher-config/actions";
 import { getDiscoveryConfig } from "../filters-config/actions";
 import { DEFAULT_NAME_ADMIN } from "../filters-config/catalog";

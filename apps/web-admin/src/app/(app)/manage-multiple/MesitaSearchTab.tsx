@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, Library, Loader2, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, Library, Send } from "lucide-react";
 
 import { listPlacesBatch, type PlaceHit } from "./actions";
 import { MAX_GOOGLE_PLACE_IDS } from "./google-place-ids";
-import { ChoicePill } from "@/components/admin-ui/config";
+import { Button, ChoicePill, EmptyState, Notice, SelectField } from "@/components/admin-ui";
 import type { Row } from "./mesita-search-facts";
 import { STATE_FILTER_COLUMNS, stateValueOf } from "./place-state-cells";
 import { MesitaSearchResults } from "./MesitaSearchResults";
@@ -156,51 +156,38 @@ export function MesitaSearchTab({
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
+        <Button
           onClick={() => void load(false)}
-          disabled={loading}
-          className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
+          pending={loading}
+          icon={<Library aria-hidden className="h-3.5 w-3.5" />}
         >
-          {loading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Library className="h-3.5 w-3.5" />
-          )}
           {loading ? `Loading… ${places.length} places` : "All places"}
-        </button>
+        </Button>
         {summary && !loading ? (
           <span className="text-muted-foreground text-xs tabular-nums">{summary}</span>
         ) : null}
         {stale && !loading ? (
-          <button
-            type="button"
-            onClick={() => void load(false)}
-            className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"
-          >
+          <Button tone="ghost" size="sm" onClick={() => void load(false)}>
             States changed. Reload
-          </button>
+          </Button>
         ) : null}
       </div>
 
       {stopped && !loading ? (
-        <div className="border-destructive/40 bg-destructive/5 text-destructive mt-6 flex flex-wrap items-start gap-3 rounded-2xl border p-4 text-sm">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <p className="min-w-0 flex-1">
-            Loaded {places.length}; stopped: {stopped}.
-          </p>
-          <button
-            type="button"
-            onClick={() => void load(true)}
-            className="font-medium underline underline-offset-2"
-          >
-            Retry
-          </button>
-        </div>
+        <Notice className="mt-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="min-w-0 flex-1">
+              Loaded {places.length}; stopped: {stopped}.
+            </p>
+            <Button tone="secondary" size="sm" onClick={() => void load(true)}>
+              Retry
+            </Button>
+          </div>
+        </Notice>
       ) : null}
 
       {complete && rows && rows.length === 0 ? (
-        <p className="text-muted-foreground mt-6 text-sm">No places to show.</p>
+        <EmptyState className="mt-6">No places to show.</EmptyState>
       ) : null}
 
       {complete && rows && rows.length > 0 ? (
@@ -211,21 +198,20 @@ export function MesitaSearchTab({
         >
           <label
             htmlFor="mesita-search-state"
-            className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase"
+            className="text-muted-foreground type-eyebrow"
           >
             State
           </label>
-          <select
+          <SelectField
             id="mesita-search-state"
             value={column.key}
-            onChange={(e) => {
-              setStateKey(e.target.value);
+            onChange={(v) => {
+              setStateKey(v);
               setStateValue(null);
               setPage(1);
               setSentUpTo(0);
               setSendNote(null);
             }}
-            className="border-border bg-background h-9 rounded-full border px-3 text-sm"
           >
             {(["Profile", "Place"] as const).map((group) => (
               <optgroup key={group} label={`${group} States`}>
@@ -236,7 +222,7 @@ export function MesitaSearchTab({
                 ))}
               </optgroup>
             ))}
-          </select>
+          </SelectField>
           <ChoicePill
             active={stateValue === null}
             onClick={() => {
@@ -267,23 +253,18 @@ export function MesitaSearchTab({
 
       {complete && rows && rows.length > 0 ? (
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
+          <Button
+            tone="secondary"
             onClick={() => send(0)}
             disabled={shownIds.length === 0}
-            className="border-border hover:border-foreground/40 inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition disabled:opacity-50"
+            icon={<Send aria-hidden className="h-3.5 w-3.5" />}
           >
-            <Send className="h-3.5 w-3.5" />
             Use these {sendCount} IDs
-          </button>
+          </Button>
           {sentUpTo > 0 && sentUpTo < shownIds.length ? (
-            <button
-              type="button"
-              onClick={() => send(sentUpTo)}
-              className="border-border hover:border-foreground/40 inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition"
-            >
+            <Button tone="secondary" onClick={() => send(sentUpTo)}>
               Send next {Math.min(MAX_GOOGLE_PLACE_IDS, shownIds.length - sentUpTo)}
-            </button>
+            </Button>
           ) : null}
           <span className="text-muted-foreground text-xs tabular-nums">
             {sendNote ??
@@ -294,9 +275,9 @@ export function MesitaSearchTab({
       ) : null}
 
       {complete && rows && rows.length > 0 && shown.length === 0 ? (
-        <p className="text-muted-foreground mt-6 text-sm">
+        <EmptyState className="mt-6">
           No places match {column.label} {stateValue}.
-        </p>
+        </EmptyState>
       ) : null}
 
       {shown.length > 0 ? (
@@ -309,24 +290,24 @@ export function MesitaSearchTab({
               {view.from}–{view.to} of {view.total}
               {complete ? "" : ` (${places.length} loaded)`}
             </span>
-            <button
-              type="button"
+            <Button
+              tone="secondary"
+              size="icon"
               aria-label="Previous page"
               onClick={() => setPage(view.page - 1)}
               disabled={view.page <= 1}
-              className="border-border hover:border-foreground/40 inline-flex h-9 w-9 items-center justify-center rounded-full border disabled:opacity-40"
             >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
+              <ChevronLeft aria-hidden className="h-4 w-4" />
+            </Button>
+            <Button
+              tone="secondary"
+              size="icon"
               aria-label="Next page"
               onClick={() => setPage(view.page + 1)}
               disabled={view.page >= view.pages}
-              className="border-border hover:border-foreground/40 inline-flex h-9 w-9 items-center justify-center rounded-full border disabled:opacity-40"
             >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+              <ChevronRight aria-hidden className="h-4 w-4" />
+            </Button>
           </div>
           <MesitaSearchResults rows={view.rows} />
         </>

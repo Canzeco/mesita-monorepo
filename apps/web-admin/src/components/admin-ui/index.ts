@@ -14,6 +14,8 @@ export {
   ReadField,
 } from "./field";
 export { PhoneField } from "./phone";
+export { RegionField } from "./region";
+export { FileField } from "./file";
 export { Chip, type ChipTone } from "./chip";
 export { Notice, type NoticeTone } from "./notice";
 export { Table, THead, TBody, Tr, Th, Td } from "./table";

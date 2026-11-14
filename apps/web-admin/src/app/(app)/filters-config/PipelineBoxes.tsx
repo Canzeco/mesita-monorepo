@@ -10,11 +10,8 @@
 // (the Selected boost retired with Selected, MESITA-2925).
 
 import { LayoutGrid, MapPin, ScanSearch, Search } from "lucide-react";
-import {
-  NumberField,
-  SaveRow,
-  Switch,
-} from "@/components/admin-ui/config";
+import { NumberField, SwitchRow } from "@/components/admin-ui";
+import { SaveRow } from "@/components/admin-ui/config";
 import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { formatShortDate } from "@/lib/format";
 import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "./actions";
@@ -43,7 +40,6 @@ import {
 } from "./catalog";
 import { PipelineBox } from "./PipelineBox";
 
-const ICON = "h-5 w-5";
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /** What each box's Save writes (actions.ts `DiscoverySlice`). Exported so
@@ -97,29 +93,10 @@ function Save({ editor, dirty, slices }: { editor: Editor; dirty: boolean; slice
   );
 }
 
-function SwitchRow({
-  label,
-  on,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  on: boolean;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
-      <span className="text-sm font-medium">{label}</span>
-      <Switch on={on} pending={disabled} label={label} onClick={onClick} />
-    </div>
-  );
-}
-
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-semibold">{title}</p>
+      <p className="text-muted-foreground type-eyebrow">{title}</p>
       {children}
     </div>
   );
@@ -141,7 +118,7 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
       id="s-name-admin"
       pipeline="name"
       title="Admin & Business Searchbar Pipeline"
-      icon={<ScanSearch className={ICON} />}
+      icon={<ScanSearch />}
       callers={["Admin Single Place › Find", "Business › Places"]}
       summary="Find a place by its name in Admin › Single Place, and when an owner claims their place. Google answers; admin sees Google's own order."
       explanation={
@@ -188,9 +165,9 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
         />
         <SwitchRow
           label="Show results on an empty query"
-          on={a.emptyQuery}
-          disabled={off}
-          onClick={() => patch({ emptyQuery: !a.emptyQuery })}
+          checked={a.emptyQuery}
+          pending={off}
+          onCheckedChange={(emptyQuery) => patch({ emptyQuery })}
         />
       </div>
       <p className="text-muted-foreground type-meta">
@@ -228,7 +205,7 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
       id="s-name"
       pipeline="name"
       title="Consumer Searchbar Pipeline"
-      icon={<Search className={ICON} />}
+      icon={<Search />}
       callers={["The guest's Search bar"]}
       summary="The guest types a place's name; Google Autocomplete and Text Search answer together. Google places under the Minimum Popularity sort last; nothing is removed."
       explanation={
@@ -280,9 +257,9 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
         />
         <SwitchRow
           label="Show Locations"
-          on={cfg.name.locations}
-          disabled={off}
-          onClick={() => name({ locations: !cfg.name.locations })}
+          checked={cfg.name.locations}
+          pending={off}
+          onCheckedChange={(locations) => name({ locations })}
         />
         <NumberField
           label="Minimum Popularity"
@@ -334,7 +311,7 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
       id="s-map"
       pipeline="map"
       title="Consumer Map Pipeline"
-      icon={<MapPin className={ICON} />}
+      icon={<MapPin />}
       summary="Pins on the Search map: every Mesita place inside the visible circle, the most popular first. Distance decides who is on the map, never the order."
       explanation={
         <>
@@ -463,7 +440,7 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
       id="s-catalog"
       pipeline="catalog"
       title="Consumer Catalog Pipeline"
-      icon={<LayoutGrid className={ICON} />}
+      icon={<LayoutGrid />}
       summary="Home's Places: every Mesita place, ranked by how close and how popular it is. A far place is never cut, only lowered."
       explanation={
         <>

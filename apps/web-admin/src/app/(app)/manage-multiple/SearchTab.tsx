@@ -2,9 +2,16 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ListPlus, Loader2, Search } from "lucide-react";
+import { ListPlus, Search } from "lucide-react";
 
-import { CldrRegionInput } from "@/components/CldrRegionInput";
+import {
+  Button,
+  ChoicePill,
+  Notice,
+  RegionField,
+  SectionCard,
+  TextAreaField,
+} from "@/components/admin-ui";
 import { PlacesMap } from "@/components/PlacesMap";
 import type { SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 
@@ -141,99 +148,71 @@ export function SearchTab({
           e.preventDefault();
           void runSearch();
         }}
+        className="flex flex-col gap-3"
       >
-        <div className="border-border/60 bg-muted/60 focus-within:border-ring/60 focus-within:ring-ring/10 rounded-xl border transition focus-within:ring-4">
-          <div className="flex items-start gap-2 px-3 pt-2">
-            <Search className="text-muted-foreground mt-2.5 h-4 w-4 shrink-0" aria-hidden />
-            <textarea
-              value={bar}
-              onChange={(e) => setBar(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                  e.preventDefault();
-                  void runSearch();
-                }
-              }}
-              placeholder="One query per line, or Google Place IDs"
-              aria-label="Google search, one query per line"
-              spellCheck={false}
-              rows={4}
-              className="placeholder:text-muted-foreground/50 min-h-16 max-h-64 min-w-0 flex-1 resize-y bg-transparent py-2 text-sm leading-relaxed outline-none"
-            />
-            <button
-              type="submit"
-              disabled={running || unitCount === 0 || overLimit}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 mt-1.5 inline-flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-semibold disabled:opacity-50"
+        <TextAreaField
+          label="Google search"
+          value={bar}
+          onChange={setBar}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+              e.preventDefault();
+              void runSearch();
+            }
+          }}
+          placeholder="One query per line, or Google Place IDs"
+          aria-label="Google search, one query per line"
+          spellCheck={false}
+          rows={4}
+        />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-muted-foreground text-xs">
+            {queries.length} {queries.length === 1 ? "query" : "queries"}
+            {parsed.placeIds.length > 0
+              ? ` · ${parsed.placeIds.length} Place ID${parsed.placeIds.length === 1 ? "" : "s"}`
+              : ""}
+            {overLimit ? ` · over the ${MAX_QUERIES} max` : ""}
+            {unitCount > 0 ? ` · ~${estimatedApiCalls} Google API calls` : ""}
+            {" · "}
+            <Link
+              href={DISCOVERY_MAP_HREF}
+              className="text-foreground underline-offset-2 hover:underline"
             >
-              {running ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-              {running ? "Searching…" : "Search"}
-            </button>
-          </div>
-          <div className="border-border text-muted-foreground flex flex-wrap items-center justify-between gap-3 border-t px-4 py-2 text-xs">
-            <span>
-              {queries.length} {queries.length === 1 ? "query" : "queries"}
-              {parsed.placeIds.length > 0
-                ? ` · ${parsed.placeIds.length} Place ID${parsed.placeIds.length === 1 ? "" : "s"}`
-                : ""}
-              {overLimit ? ` · over the ${MAX_QUERIES} max` : ""}
-              {unitCount > 0 ? ` · ~${estimatedApiCalls} Google API calls` : ""}
-              {" · "}
-              <Link
-                href={DISCOVERY_MAP_HREF}
-                className="text-foreground underline-offset-2 hover:underline"
-              >
-                Discovery › place rules
-              </Link>
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              <div
-                role="group"
-                aria-label="Results per query"
-                className="inline-flex h-8 items-center gap-0.5 rounded-lg border border-border bg-background p-0.5"
-              >
-                {RESULTS_OPTIONS.map((o) => {
-                  const selected = o.value === maxResults;
-                  return (
-                    <button
-                      key={o.value}
-                      type="button"
-                      disabled={running}
-                      aria-pressed={selected}
-                      onClick={() => setMaxResults(o.value)}
-                      className={
-                        "inline-flex h-7 min-w-8 items-center justify-center rounded-md px-2 text-xs font-medium tabular-nums disabled:opacity-50 " +
-                        (selected
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground")
-                      }
-                    >
-                      {o.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <CldrRegionInput
-                value={regionCode}
-                onChange={setRegionCode}
-                disabled={running}
-              />
+              Discovery › place rules
+            </Link>
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div role="group" aria-label="Results per query" className="flex flex-wrap items-center gap-1.5">
+              {RESULTS_OPTIONS.map((o) => (
+                <ChoicePill
+                  key={o.value}
+                  active={o.value === maxResults}
+                  disabled={running}
+                  onClick={() => setMaxResults(o.value)}
+                >
+                  {o.label}
+                </ChoicePill>
+              ))}
             </div>
+            <RegionField value={regionCode} onChange={setRegionCode} disabled={running} />
+            <Button
+              type="submit"
+              size="field"
+              pending={running}
+              disabled={unitCount === 0 || overLimit}
+              icon={<Search aria-hidden className="h-4 w-4" />}
+            >
+              {running ? "Searching…" : "Search"}
+            </Button>
           </div>
         </div>
       </form>
 
       {error && (
-        <div className="border-destructive/40 bg-destructive/5 text-destructive mt-8 flex items-start gap-3 rounded-2xl border p-4 text-sm">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div>
-            <p className="font-medium">Search failed</p>
-            <p className="mt-1 opacity-90">{error}</p>
-          </div>
-        </div>
+        <Notice className="mt-8">
+          <p>Search failed</p>
+          <p className="mt-1 font-normal">{error}</p>
+        </Notice>
       )}
 
       {result && (
@@ -246,24 +225,23 @@ export function SearchTab({
           />
 
           {onSendIds && allPlaceIds.length > 0 && (
-            <button
-              type="button"
+            <Button
+              tone="secondary"
+              icon={<ListPlus aria-hidden className="h-4 w-4" />}
               onClick={() => onSendIds(allPlaceIds)}
-              className="border-border bg-card hover:border-foreground inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium"
             >
-              <ListPlus className="h-4 w-4" />
               Send {allPlaceIds.length}{" "}
               {allPlaceIds.length === 1 ? "ID" : "IDs"} to the boxes below
-            </button>
+            </Button>
           )}
 
           {failedQueries.length > 0 && (
-            <section className="border-destructive/40 bg-destructive/5 text-destructive rounded-2xl border p-4 text-sm">
-              <p className="font-medium">
+            <Notice>
+              <p>
                 {failedQueries.length}{" "}
                 {failedQueries.length === 1 ? "query" : "queries"} failed
               </p>
-              <ul className="mt-2 space-y-1 opacity-90">
+              <ul className="mt-2 space-y-1 font-normal">
                 {failedQueries.map((q) => (
                   <li key={q.query} className="text-xs">
                     <span className="font-mono font-medium">“{q.query}”</span>{" "}
@@ -271,26 +249,20 @@ export function SearchTab({
                   </li>
                 ))}
               </ul>
-            </section>
+            </Notice>
           )}
 
           {result.mesitaLookupError && (
-            <section className="border-amber-500/40 bg-amber-500/5 flex items-start gap-3 rounded-2xl border p-4 text-sm text-amber-700 dark:text-amber-300">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <div>
-                <p className="font-medium">
-                  Couldn&apos;t check which places are already in Mesita
-                </p>
-                <p className="mt-1 opacity-90">{result.mesitaLookupError}</p>
-              </div>
-            </section>
+            <Notice tone="warning">
+              <p>Couldn&apos;t check which places are already in Mesita</p>
+              <p className="mt-1 font-normal">{result.mesitaLookupError}</p>
+            </Notice>
           )}
 
           <PlacesMap places={result.uniquePlaces} />
 
-          <section>
-            <h2 className="text-foreground type-eyebrow">By query</h2>
-            <ul className="border-border bg-card divide-border mt-3 divide-y rounded-2xl border">
+          <SectionCard title="By query">
+            <ul className="divide-border mt-3 divide-y">
               {result.queries.map((q) => (
                 <QueryRow
                   key={q.query}
@@ -300,7 +272,7 @@ export function SearchTab({
                 />
               ))}
             </ul>
-          </section>
+          </SectionCard>
         </div>
       )}
     </div>

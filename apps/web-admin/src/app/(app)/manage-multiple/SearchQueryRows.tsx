@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, CheckCircle2, ChevronRight, Copy, Star } from "lucide-react";
 
 import { DISCOVERY_MAP_HREF } from "@/app/(app)/filters-config/nav";
+import { Button, Chip, FOCUS_RING_CLASS, Notice } from "@/components/admin-ui";
 import { formatShortDate } from "@/lib/format";
 import type { PlaceLite, QueryResult } from "@/lib/places-types";
 
@@ -18,7 +19,7 @@ function RatingBadge({ place }: { place: PlaceLite }) {
   }
   return (
     <span className="text-muted-foreground inline-flex items-center gap-1 type-label">
-      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+      <Star aria-hidden className="text-warning h-3 w-3 fill-current" />
       <span className="text-foreground/80 font-medium tabular-nums">
         {place.rating === null ? "—" : place.rating.toFixed(1)}
       </span>
@@ -48,11 +49,11 @@ export function QueryRow({
   const copyKey = `q:${q.query}`;
   return (
     <li>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="hover:bg-muted/40 flex w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl px-4 py-3 text-left transition"
-        aria-expanded={open}
+      {/* A native disclosure: the summary is the row, the body mounts only
+          while open. */}
+      <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary
+        className={`hover:bg-muted/40 flex w-full cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-2 rounded-xl px-4 py-3 text-left transition [&::-webkit-details-marker]:hidden ${FOCUS_RING_CLASS}`}
       >
         <ChevronRight
           className={
@@ -68,35 +69,27 @@ export function QueryRow({
             search read as "…" and the row said nothing about itself. */}
         <span className="flex w-full flex-wrap items-center gap-2 pl-7 sm:w-auto sm:pl-0">
           {mesitaHits > 0 && !q.error && (
-            <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium">
-              <CheckCircle2 className="h-3 w-3" />
+            <Chip tone="success">
+              <CheckCircle2 aria-hidden className="h-3 w-3" />
               {mesitaHits} in Mesita
-            </span>
+            </Chip>
           )}
-          {filteredOut > 0 && !q.error && (
-            <span className="text-muted-foreground bg-muted/60 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums">
-              {filteredOut} filtered
-            </span>
-          )}
+          {filteredOut > 0 && !q.error && <Chip>{filteredOut} filtered</Chip>}
           {q.error ? (
-            <span className="text-destructive bg-destructive/10 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium">
-              error
-            </span>
+            <Chip tone="danger">error</Chip>
           ) : (
-            <span className="text-foreground/70 bg-muted shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums">
+            <Chip>
               {q.places.length}
               {q.truncated ? "+" : ""}{" "}
               {q.places.length === 1 ? "result" : "results"}
-            </span>
+            </Chip>
           )}
         </span>
-      </button>
+      </summary>
       {open && (
         <div className="px-4 pb-4">
           {q.error ? (
-            <p className="text-destructive bg-destructive/5 rounded-xl p-3 text-xs">
-              {q.error}
-            </p>
+            <Notice>{q.error}</Notice>
           ) : !hasResults ? (
             <p className="text-muted-foreground bg-muted/40 rounded-xl p-3 text-xs">
               {q.rawCount > 0 ? (
@@ -133,22 +126,24 @@ export function QueryRow({
                 ) : (
                   <span />
                 )}
-                <button
-                  type="button"
+                <Button
+                  tone="ghost"
+                  size="sm"
                   onClick={() =>
                     onCopy(q.places.map((p) => p.id).join("\n"), copyKey)
                   }
-                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs font-medium transition"
+                  icon={
+                    copied === copyKey ? (
+                      <Check aria-hidden className="h-3.5 w-3.5" />
+                    ) : (
+                      <Copy aria-hidden className="h-3.5 w-3.5" />
+                    )
+                  }
                 >
-                  {copied === copyKey ? (
-                    <Check className="h-3.5 w-3.5" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
                   {copied === copyKey
                     ? "Copied"
                     : `Copy ${q.places.length} ID${q.places.length === 1 ? "" : "s"}`}
-                </button>
+                </Button>
               </div>
               <ul className="border-border divide-border bg-background divide-y rounded-xl border">
                 {q.places.map((p) => (
@@ -162,10 +157,10 @@ export function QueryRow({
                           {p.displayName || "(no name)"}
                         </span>
                         {p.existsInMesita && (
-                          <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 type-meta type-eyebrow">
-                            <CheckCircle2 className="h-3 w-3" />
+                          <Chip tone="success" className="shrink-0">
+                            <CheckCircle2 aria-hidden className="h-3 w-3" />
                             In Mesita
-                          </span>
+                          </Chip>
                         )}
                       </p>
                       <p className="text-muted-foreground truncate">
@@ -202,7 +197,7 @@ export function QueryRow({
                         )}
                       </div>
                     </div>
-                    <code className="text-muted-foreground bg-muted/40 max-w-full truncate rounded-lg px-2 py-1 font-mono">
+                    <code className="text-muted-foreground bg-muted/40 max-w-full truncate rounded-xl px-2 py-1 font-mono">
                       {p.id}
                     </code>
                   </li>
@@ -212,6 +207,7 @@ export function QueryRow({
           )}
         </div>
       )}
+      </details>
     </li>
   );
 }
