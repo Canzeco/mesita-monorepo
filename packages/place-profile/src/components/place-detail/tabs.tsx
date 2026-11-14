@@ -30,6 +30,9 @@ import { cn } from "../../lib/format";
 // discount product left, and Rewards from MESITA-3201 before that. The paid tier was
 // the fourth tab (MESITA-2861, called Premier, then Business); it is the host's
 // Upgrade sheet now, off the Upgrade tile.
+// MENU IS LAST WHILE IT IS SOON (Pato, MESITA-3983: "Move menu to the last.
+// i know its weird, but since its in soon, to the last. Overview Reviews
+// Social Menu"): the three live screens first, the Soon screen after them.
 export type PlaceTab = "place" | "reviews" | "products" | "social";
 
 export type PlaceTabDef = {
@@ -40,9 +43,9 @@ export type PlaceTabDef = {
 
 const CORE_TABS = [
   { key: "place", label: "Overview" },
-  { key: "products", label: "Menu", soon: true },
   { key: "reviews", label: "Reviews" },
   { key: "social", label: "Social" },
+  { key: "products", label: "Menu", soon: true },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
 export function placeTabs(): readonly PlaceTabDef[] {
