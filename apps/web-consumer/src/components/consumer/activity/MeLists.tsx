@@ -33,9 +33,7 @@ import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
   CalendarCheck,
-  CalendarClock,
   Gift,
-  History,
   HandCoins,
   Ticket,
   UtensilsCrossed,
@@ -619,15 +617,30 @@ export function NotificationsPage() {
  *  /me/reservations/past is Past. */
 type ReservationHalf = "upcoming" | "past";
 
-const RESERVATION_CHIPS: ReadonlyArray<RailChip<ReservationHalf>> = [
-  { kind: "upcoming", label: "Upcoming", Icon: CalendarClock },
-  { kind: "past", label: "Past", Icon: History },
+const RESERVATION_TABS: ReadonlyArray<{
+  kind: ReservationHalf;
+  label: string;
+}> = [
+  { kind: "upcoming", label: "Upcoming" },
+  { kind: "past", label: "Past" },
 ];
 
-/** An empty Past is a fact, not an invitation to book. */
-const EMPTY_PAST = {
-  title: "No past reservations",
-  text: "A table you had or cancelled lands here.",
+/** Each half's empty words: an empty Past is a fact, not an invitation to
+ *  book; an empty Upcoming keeps "Find a place" (MESITA-3889: it read "No
+ *  reservations yet" beside four past ones). */
+const EMPTY_HALF: Record<
+  ReservationHalf,
+  { title: string; text: string; action?: { label: string; href: string } }
+> = {
+  upcoming: {
+    title: "No upcoming reservations",
+    text: "Book a table from any place's page and it lands here.",
+    action: { label: "Find a place", href: CONSUMER_ROUTES.home },
+  },
+  past: {
+    title: "No past reservations",
+    text: "A table you had or cancelled lands here.",
+  },
 };
 
 export function ReservationsPage() {
@@ -641,14 +654,6 @@ export function ReservationsPage() {
     () => (reservations.rows ? ordered(reservations.rows) : null),
     [reservations.rows],
   );
-  const counts: Partial<Record<ReservationHalf, string>> = halves
-    ? {
-        upcoming: halves.upcoming.length
-          ? String(halves.upcoming.length)
-          : undefined,
-        past: halves.past.length ? String(halves.past.length) : undefined,
-      }
-    : {};
   const pick = (k: ReservationHalf) =>
     window.history.replaceState(
       null,
@@ -657,34 +662,56 @@ export function ReservationsPage() {
         ? `${CONSUMER_ROUTES.mePages.reservations}/past`
         : CONSUMER_ROUTES.mePages.reservations,
     );
+  // HOME'S STRIP (MESITA-3889, Pato: "the upcoming and past must have the
+  // same format as the places and social menu from catalog, blue underline
+  // btw"): two equal tabs edge to edge under the header, white with a
+  // hairline, the chosen one bold over a full-width BLUE bar (the family
+  // column's blue-600; Home's own bar stays ink, MESITA-3687). No intro card
+  // ("don't mention that stupid description").
   return (
     <Screen title="Reservations">
       <div className="flex flex-col gap-4">
-        <ChipIntro type="reservations" />
-        <KindRail
-          chips={RESERVATION_CHIPS}
-          kind={half}
-          onPick={pick}
-          counts={counts}
-          label="Upcoming or past reservations"
-        />
-        <div
-          role="tabpanel"
-          aria-label={
-            half === "past" ? "Past reservations" : "Upcoming reservations"
-          }
+        <nav
+          aria-label="Upcoming or past reservations"
+          className="border-border bg-card -mx-5 -mt-5 flex shrink-0 border-b"
+          data-reservation-tabs
         >
-          <TicketList
-            type="reservations"
-            rows={halves ? halves[half] : null}
-            ready={!reservations.loading}
-            failed={!!reservations.error}
-            retry={reservations.reload}
-            note={null}
-            foot={null}
-            empty={half === "past" ? EMPTY_PAST : undefined}
-          />
-        </div>
+          {RESERVATION_TABS.map((t) => {
+            const on = half === t.kind;
+            return (
+              <button
+                key={t.kind}
+                type="button"
+                aria-current={on ? "page" : undefined}
+                onClick={() => pick(t.kind)}
+                className={cn(
+                  "relative flex-1 px-1 py-3 text-center text-sm whitespace-nowrap transition",
+                  on
+                    ? "text-foreground font-semibold"
+                    : "text-muted-foreground",
+                )}
+              >
+                {on ? (
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-600"
+                  />
+                ) : null}
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
+        <TicketList
+          type="reservations"
+          rows={halves ? halves[half] : null}
+          ready={!reservations.loading}
+          failed={!!reservations.error}
+          retry={reservations.reload}
+          note={null}
+          foot={null}
+          empty={EMPTY_HALF[half]}
+        />
       </div>
     </Screen>
   );
@@ -866,8 +893,13 @@ function TicketList({
   retry: () => void;
   note: string | null;
   foot: string | null;
-  /** Words for an empty list other than the type's own (Past, MESITA-3888). */
-  empty?: { title: string; text: string };
+  /** Words for an empty list other than the type's own (Reservations'
+   *  halves, MESITA-3888/3889). */
+  empty?: {
+    title: string;
+    text: string;
+    action?: { label: string; href: string };
+  };
 }) {
   // The clock "Today" and "Yesterday" are judged by: read once.
   const [nowMs] = useState(() => Date.now());
@@ -885,7 +917,12 @@ function TicketList({
   }
   if (rows.length === 0) {
     return empty ? (
-      <EmptyState icon={Icon} title={empty.title} description={empty.text} />
+      <EmptyState
+        icon={Icon}
+        title={empty.title}
+        description={empty.text}
+        action={empty.action}
+      />
     ) : (
       <EmptyState
         icon={Icon}
