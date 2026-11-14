@@ -11,6 +11,7 @@ import { mirrorPlacePhotos } from "./store-place-images.ts";
 import { writePlace } from "./place-doc.ts";
 import { googleTypesPrimaryFirst } from "./google-table-b.ts";
 import { googlePlacesKeyOrNull } from "./google-places.ts";
+import { activeFieldPins, readFieldPins, stripPinnedColumns } from "./enrich-corrections.ts";
 
 const BUSINESS_STATES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
 
@@ -52,6 +53,8 @@ export function galleryTakesGoogleHero(photos: unknown): boolean {
 /**
  * Build the place_profiles patch from a Google basics fetch (before pins).
  * The gallery is never in it: `galleryTakesGoogleHero` decides that separately.
+ * Nor is Google's five-review list: the review list is Enrich's and Update
+ * Reviews' (Apify, 100 newest), and Google's five would replace it (MESITA-3844).
  * Google's own types land in google_source_types, primary first; the trigger
  * turns them into the Google categories (MESITA-2836) and the view into the
  * families (MESITA-2834), so a refetch refreshes all three through one column.
@@ -91,7 +94,6 @@ export function googleBasicsToUpdatePatch(input: {
     google_maps_url: input.basics.google_maps_url,
     google_stars_overall: input.basics.google_stars_overall,
     google_review_count: input.basics.google_review_count,
-    google_reviews: input.basics.google_reviews,
     google_tags: input.basics.google_tags,
     google_source_types: googleTypes,
   };
@@ -102,6 +104,28 @@ export function googleBasicsToUpdatePatch(input: {
   }
   assertGoogleUpdatePatchSafe(patch);
   return patch;
+}
+
+/**
+ * Update's write rule (MESITA-3844), the same rule Enrich keeps in its own
+ * backend: an empty value (null, blank, an empty list) never blanks a filled
+ * column — a Google listing with no Instagram must not wipe the one Enrich
+ * found — and a field a person pinned (enrich-corrections.ts, 90 days) is kept.
+ */
+export function keepFilledAndPinned(
+  patch: Record<string, unknown>,
+  enrichmentSources: unknown,
+  now = new Date(),
+): { patch: Record<string, unknown>; pinned: string[] } {
+  const filled: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(patch)) {
+    if (value == null) continue;
+    if (typeof value === "string" && value.trim() === "") continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    filled[key] = value;
+  }
+  const kept = stripPinnedColumns(filled, activeFieldPins(readFieldPins(enrichmentSources), now), now);
+  return { patch: kept.update, pinned: kept.skipped };
 }
 
 export type GooglePlaceUpdateResult =
@@ -160,7 +184,8 @@ export async function runGooglePlaceUpdate(
     return { ok: false, status: 503, code: "no_key", error: "Google Places is not configured." };
   }
 
-  const google = await fetchGoogleBasics(googlePlaceId, key);
+  // Update uses one photo at most: Google's hero, for a gallery still Create's.
+  const google = await fetchGoogleBasics(googlePlaceId, key, { maxPhotos: 1 });
   if (!google.ok) {
     return { ok: false, status: google.status, code: google.code, error: google.error };
   }
@@ -173,15 +198,17 @@ export async function runGooglePlaceUpdate(
     ? await mirrorPlacePhotos(admin, opts.supabaseUrl, hero)
     : [];
 
-  // d3a: Google Update is not blocked by enrichment correction pins.
-  const patch = googleBasicsToUpdatePatch({
-    basics: google.basics,
-    businessStatus: google.businessStatus,
-    googlePrimaryType: google.primaryType,
-    googleTypes: google.googleTypes,
-    now,
-  });
-  const pinned: string[] = [];
+  const { patch, pinned } = keepFilledAndPinned(
+    googleBasicsToUpdatePatch({
+      basics: google.basics,
+      businessStatus: google.businessStatus,
+      googlePrimaryType: google.primaryType,
+      googleTypes: google.googleTypes,
+      now,
+    }),
+    profile.enrichment_sources,
+    new Date(now),
+  );
   if (mirrored.length > 0) patch.photos = [mirrored[0].publicUrl];
 
   const priorSync = profile.source_sync && typeof profile.source_sync === "object"
