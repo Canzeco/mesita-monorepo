@@ -30,21 +30,18 @@ function render(money: PlaceMoney | undefined, onBuyVoucher?: () => void): strin
 }
 
 describe("Vouchers tab", () => {
-  it("locks VIP for a Regular guest and Story without a linked Instagram, even in test mode (MESITA-3502)", () => {
-    const pane = (guest: { vip: boolean; instagramLinked: boolean }) =>
-      renderToStaticMarkup(
-        <VouchersPane
-          place={{ money: OFFER, name: "Probe", photos: [] } as unknown as PlaceDetail}
-          actions={{ onBuyVoucher: () => {}, guest }}
-        />,
-      );
-    const regular = pane({ vip: false, instagramLinked: false });
-    expect(regular).not.toContain('aria-label="Choose the VIP voucher');
-    expect(regular).not.toContain('aria-label="Choose the Story voucher');
-    expect(regular).toContain("data-voucher-locked"); // the lock says it; the line keeps the deal (MESITA-3516)
-    const vip = pane({ vip: true, instagramLinked: true });
-    expect(vip).toContain('aria-label="Choose the VIP voucher');
-    expect(vip).toContain('aria-label="Choose the Story voucher');
+  // Story and VIP are parked (MESITA-3831): off sale, so off the page, for
+  // every guest. Their locks (MESITA-3502) come back with them.
+  it("lists neither Story nor VIP, even for a VIP guest with Instagram linked (MESITA-3831)", () => {
+    const html = renderToStaticMarkup(
+      <VouchersPane
+        place={{ money: OFFER, name: "Probe", photos: [] } as unknown as PlaceDetail}
+        actions={{ onBuyVoucher: () => {}, guest: { vip: true, instagramLinked: true } }}
+      />,
+    );
+    expect(html).not.toContain("VIP voucher");
+    expect(html).not.toContain("Story voucher");
+    expect(html).toContain('aria-label="Choose the Small voucher');
   });
 
   it("shows no test notice on the Offers page, test mode or not (MESITA-3454, Pato's call for now)", () => {

@@ -10,7 +10,7 @@ import { cn, firstInitial } from "../../lib/format";
 import {
   PLACE_META_CLASS,
 } from "../../lib/ui";
-import { moneyState, type MoneyVoucherKey, STORY_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
+import { moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, STORY_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 import { SizedImg } from "../SizedPhoto";
 
@@ -550,13 +550,20 @@ export type VoucherOffer = {
   why: string | null;
 };
 
-/** The six vouchers in the Offers page's order, Small · Medium · Big ·
- *  Welcome · Story · VIP (MESITA-3484). */
+/** The vouchers a guest is shown: every product but the parked ones
+ *  (MESITA-3831: Story and VIP are off sale and off the page, money-state's
+ *  NOT_YET_SELLABLE). */
+function listedProducts(): Product[] {
+  return [...STANDARD, ...SPECIAL].filter((p) => !NOT_YET_SELLABLE[p.key]);
+}
+
+/** The vouchers in the Offers page's order, Small · Medium · Big · Welcome
+ *  (MESITA-3484; Story and VIP are parked, MESITA-3831). */
 export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions["guest"]): VoucherOffer[] {
   const { unavailable, dim, guestLock, buyable } = offerRules(money, guest);
   const catalog = money?.catalog ?? {};
   const currency = money?.currency ?? "mxn";
-  return [...STANDARD, ...SPECIAL].map((p) => {
+  return listedProducts().map((p) => {
     const line = catalog[p.key];
     const can = buyable(p.key);
     const status = offerStatus(p.key, can, guestLock(p.key), unavailable[p.key]);
@@ -629,7 +636,7 @@ export function VouchersPane({
 
   // SIZES FIRST (MESITA-3484, Pato: "Small Bonus, Mid Bonus, Big Bonus /
   // Welcome Bonus, Story Bonus, VIP Bonus").
-  const products = [...STANDARD, ...SPECIAL];
+  const products = listedProducts();
   const chosen = picked && !loading && buyable(picked) ? products.find((p) => p.key === picked) ?? null : null;
   // SHORTER ROWS, SYMMETRIC NAMES (MESITA-3490, Pato: "make the items a bit
   // shorter"; "Mesita Payments Cashback ... External Pay Cashback").

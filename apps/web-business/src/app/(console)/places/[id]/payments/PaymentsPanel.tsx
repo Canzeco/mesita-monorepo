@@ -38,7 +38,7 @@
 // these; the server refuses anyone else and repeats each rule.
 
 import { useState } from "react";
-import { CARD_BILL_PAY_LIVE, moneyState, TestBand, type VoucherReason } from "@mesita/place-profile";
+import { CARD_BILL_PAY_LIVE, moneyState, NOT_YET_SELLABLE, TestBand, type VoucherReason } from "@mesita/place-profile";
 import type { Icon } from "@phosphor-icons/react";
 import {
   ArrowSquareOutIcon,
@@ -557,7 +557,9 @@ export function PaymentsPanel({
             blocked: !settings.house_credits ? needsHouseCredits : !settings.prepayments ? needsPrepayments : undefined,
             stripe: true,
           })}
-          {[...STANDARD, ...SPECIAL].map(voucherRow)}
+          {/* Story and VIP are parked (MESITA-3831): off sale and off this
+              list, money-state's NOT_YET_SELLABLE. */}
+          {[...STANDARD, ...SPECIAL].filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key]).map(voucherRow)}
         </ul>
       </Card>
       {/* THE WAITER CODE IS ITS OWN SECTION, LAST (Pato, 2026-11-13,
