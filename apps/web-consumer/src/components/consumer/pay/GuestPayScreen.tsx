@@ -17,7 +17,7 @@ import { type PadKey, paySplit, pressKey, readTip } from "@/lib/pay-keypad";
 import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
-import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PlaceBar, PlaceHero, RowsCard } from "./pay-flow";
+import { BackStep, BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PlaceBar, PlaceHero, RowsCard, StepsBar } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
 // THE GUEST PAYS (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
@@ -363,6 +363,7 @@ export function GuestPayScreen({
     return frame(
       <>
         <PlaceHero place={place} off={false} onChoose={onChoosePlace} onClose={onChoosePlace} />
+        <StepsBar at={0} className="mt-3" />
         <div className="mt-4 flex shrink-0 items-center justify-center gap-2">
           <ReceiptText className="text-muted-foreground h-5 w-5" aria-hidden />
           <span className="text-muted-foreground text-sm">The amount on the paper bill</span>
@@ -389,6 +390,7 @@ export function GuestPayScreen({
     return frame(
       <>
         <PlaceBar place={place} onClose={onChoosePlace} />
+        <StepsBar at={0} className="mt-1" />
         <button
           type="button"
           onClick={() => setTyping(true)}
@@ -494,6 +496,8 @@ export function GuestPayScreen({
     return frame(
       <>
         <PlaceBar place={place} onClose={onChoosePlace} />
+        <StepsBar at={1} className="mt-1" />
+        <BackStep to="Bill" onClick={() => !busy && setStage("bill")} />
         <p className="mt-2 shrink-0 text-center">
           <span className="text-muted-foreground block text-sm">{leftCents === 0 ? "Tip to pay" : "Left to pay"}</span>
           <span className="block text-[2.5rem] leading-tight font-semibold tabular-nums">{m(dueCents)}</span>
@@ -547,6 +551,8 @@ export function GuestPayScreen({
     return frame(
       <>
         <PlaceBar place={place} onClose={onChoosePlace} />
+        <StepsBar at={2} className="mt-1" />
+        <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
           {cardsUnknown ? (
             cardsLoad.state === "failed" ? (
@@ -638,6 +644,8 @@ export function GuestPayScreen({
   return frame(
     <>
       <PlaceBar place={place} onClose={onChoosePlace} />
+      <StepsBar at={2} className="mt-1" />
+      <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
         <span className="flex h-28 w-28 items-center justify-center rounded-full bg-green-400 text-neutral-950" aria-hidden>
           <Banknote className="h-14 w-14" />

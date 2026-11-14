@@ -40,6 +40,7 @@ export function Screen({
   flush = false,
   action,
   onBack,
+  noBack = false,
   paper = false,
   scrolls = false,
 }: {
@@ -52,6 +53,9 @@ export function Screen({
   action?: React.ReactNode;
   /** Replace Back (a screen that must close something first). */
   onBack?: () => void;
+  /** No Back button (MESITA-3878: the guest's Pay steps step back with a
+   *  named button of their own and leave with their X). */
+  noBack?: boolean;
   /** White ground and header instead of the grey (the pay screens). */
   paper?: boolean;
   /** A paper screen that is meant to scroll: no overflow watch. */
@@ -73,6 +77,9 @@ export function Screen({
   return (
     <div className={cn("flex h-full min-h-0 flex-1 flex-col", paper && "bg-card")}>
       <header className={cn("border-border sticky top-0 z-20 grid shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 border-b px-3 py-2 backdrop-blur-xl", paper ? "bg-card/90" : "bg-background/90")}>
+        {noBack ? (
+          <span className="h-11 w-11" aria-hidden />
+        ) : (
         <button
           type="button"
           onClick={onBack ?? back}
@@ -81,6 +88,7 @@ export function Screen({
         >
           <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
         </button>
+        )}
         <h1 className="font-display min-w-0 truncate text-center text-xl font-semibold tracking-tight">
           {title}
         </h1>

@@ -1,7 +1,7 @@
 "use client";
 
 import { SizedImg } from "@mesita/place-profile";
-import { MapPin, X } from "lucide-react";
+import { ChevronLeft, MapPin, X } from "lucide-react";
 import type { PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 
@@ -140,5 +140,39 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
     <div className={cn("border-border divide-border flex flex-col divide-y overflow-hidden rounded-2xl border text-base", className)}>
       {children}
     </div>
+  );
+}
+
+/** The four steps (MESITA-3878): Open is where the flow starts and the
+ *  Receipt where it ends, so neither is a segment. */
+export const PAY_FLOW_STEPS = ["Bill", "Method", "Pay", "Sign"] as const;
+
+/** The progress at the top: four labeled segments. Done = ink, current = ink
+ *  with its label bold, ahead = grey; `paid` turns them all green. */
+export function StepsBar({ at, paid = false, className }: { at: number; paid?: boolean; className?: string }) {
+  return (
+    <ol className={cn("grid shrink-0 grid-cols-4 gap-1.5", className)} aria-label={`Step ${at + 1} of 4: ${PAY_FLOW_STEPS[at]}`} data-pay-steps>
+      {PAY_FLOW_STEPS.map((name, i) => (
+        <li key={name} className="flex flex-col gap-1" aria-current={i === at ? "step" : undefined}>
+          <span className={cn("h-1.5 rounded-full", paid ? "bg-green-700" : i <= at ? "bg-foreground" : "bg-border")} aria-hidden />
+          <span className={cn("text-sm", i === at ? "text-foreground font-semibold" : i < at ? "text-foreground" : "text-muted-foreground")}>{name}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** One step back, named: "‹ Bill" (MESITA-3878). Leaving is the X. */
+export function BackStep({ to, onClick }: { to: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-foreground hover:bg-muted -ml-2 flex h-11 shrink-0 items-center gap-1 self-start rounded-full pr-3 pl-1 text-base font-semibold"
+      data-pay-back
+    >
+      <ChevronLeft className="h-5 w-5" aria-hidden />
+      {to}
+    </button>
   );
 }
