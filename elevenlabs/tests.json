@@ -153,7 +153,7 @@
     "label": "identity first, options once",
     "scenario": "Eres Ana López y contestas tu celular con «¿Bueno?». Cuando te pregunten si eres Ana López dices que sí. Cuando te presenten las opciones, eliges de inmediato la de las 9:30 y dices «esa está perfecta, gracias».",
     "conditions": [
-      "Antes de que Ana diga que sí es ella, el agente no menciona Gran Central, la fecha, la hora ni que existe una reservación (decir que llama de Mesita sí se vale).",
+      "Orden de los hechos: primero el agente pregunta si habla con Ana López; solo DESPUÉS de que Ana responde que sí es ella, el agente menciona Gran Central, la fecha y la hora. Mencionarlos después de su sí es correcto; decir que llama de Mesita antes también es correcto. Solo falla si el agente dice Gran Central, la fecha o la hora antes del sí de Ana.",
       "El agente presenta las opciones del restaurante una sola vez.",
       "Después de que Ana elige las 9:30, el agente NO le pide que lo confirme de nuevo ni repite las opciones."
     ],
