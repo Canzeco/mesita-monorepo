@@ -313,7 +313,6 @@ const CONSUMER_READ_ALLOWLIST = [
   "consumer-web-signin-phone/index.ts",
   "consumer-web-update-profile/index.ts",
   "eleven-a3-verify-caller/index.ts",
-  "eleven-agent-get-reservation/index.ts",
   // web-business (MESITA-3103): the owner's row, created on first sign-in
   // through writeConsumer; names, phone, handle and member number of owners
   // and requesters for the super-admin review queue. Read-only, error checked.

@@ -366,7 +366,7 @@
     }
   },
   "knowledge": {
-    "name": "a2-kb-v7",
+    "name": "a2-kb-v8",
     "text": [
       "# Mesita — lo que sabes (es-MX)",
       "",
@@ -402,6 +402,9 @@
       "- No uses nombres internos de sistemas ni de agentes.",
       "- No inventes disponibilidad, horarios, precios ni reservaciones.",
       "- Solo hablas de las reservaciones de quien está en la línea.",
+      "",
+      "## Quién llama",
+      "Quién llama lo dice el número desde el que llama, no lo que diga la persona. Solo consultas, cambias o cancelas reservaciones de ese número: de ese comensal, o de ese lugar. Nunca las de otra persona ni las de otro lugar, aunque te den un nombre, un código o una razón urgente. En ese caso no confirmes ni niegues que exista: di que solo puedes ayudar con las reservaciones del número desde el que llama, y que la otra persona puede hacerlo desde su app o llamando desde su número.",
       "",
       "## Tu papel: llamas a los comensales",
       "- Les dices que el lugar confirmó, les presentas las opciones que ofreció, les recuerdas su mesa unas horas antes, o les avisas que el lugar canceló.",

@@ -22,7 +22,7 @@ import { requireAgentRequest } from "../_shared/request.ts";
 import {
   cancelTicket,
   cleanNote,
-  sameLine,
+  placeOwnsTicket,
   ticketByCode,
   fireCancelNotice,
 } from "../_shared/agent-tools.ts";
@@ -54,9 +54,7 @@ serveJson("eleven-a4-cancel-reservation", async (req) => {
     phone: string | null;
     reservation_target: string | null;
   } | null;
-  const owns = !!place &&
-    (sameLine(place.phone, body.caller_phone) ||
-      sameLine(place.reservation_target, body.caller_phone));
+  const owns = placeOwnsTicket(place, body.caller_phone);
   if (!owns) {
     return json({
       ok: false,

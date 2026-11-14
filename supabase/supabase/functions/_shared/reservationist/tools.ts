@@ -162,11 +162,9 @@ const SPECS: ToolSpec[] = [
     name: "get_reservation",
     ef: "eleven-agent-get-reservation",
     description:
-      "Busca una reservación en tiempo real por su código de 8 dígitos, o por el nombre y apellido a los que está. Regresa lugar, fecha, hora, personas, estado y a nombre de quién. No regresa teléfonos.",
-    schema: body("Manda el código si lo dictaron; si no, el nombre y apellido.", [], {
+      "Busca una reservación solo por su código de 8 dígitos, dictado por quien llama. Nunca por nombre: un nombre no prueba que la reservación sea de quien llama. Regresa lugar, fecha, hora, personas, estado y a nombre de quién. No regresa teléfonos.",
+    schema: body("El código de 8 dígitos que dictaron.", ["reference_code"], {
       reference_code: { type: "string", description: "Código de 8 dígitos que dictaron (ej. 48291057)." },
-      first_name: { type: "string", description: "Nombre al que está la reservación, tal como lo dijeron." },
-      last_name: { type: "string", description: "Apellido al que está la reservación, tal como lo dijeron." },
     }),
   },
 ];
