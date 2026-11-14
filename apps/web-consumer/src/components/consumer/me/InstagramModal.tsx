@@ -282,12 +282,17 @@ export function InstagramModal() {
 
 /** The page's opening line (Pato, 2026-10-28: "mention connect your
  *  instagram to see other people's instagram"; the Why connect pitch is
- *  gone). Shared with the route's fallback (InstagramSkeleton). */
+ *  gone). It names both conditions the server checks (seesHandles,
+ *  MESITA-2594): a connected Instagram AND Public profile on, the default;
+ *  anyone else sees the first three letters (Pato, MESITA-3884: "you need
+ *  to both have public account (default) and connect your instagram").
+ *  Shared with the route's fallback (InstagramSkeleton). */
 export function InstagramIntro() {
   return (
     <MeLead>
-      Connect your Instagram to see other members&apos; Instagram on their
-      profiles.
+      To see other members&apos; Instagram, connect yours and keep your
+      profile public, as it is by default. Until then, theirs shows only the
+      first three letters, like per***.
     </MeLead>
   );
 }
