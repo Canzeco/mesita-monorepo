@@ -1,0 +1,519 @@
+{
+  "key": "a4",
+  "name": "eleven-a4 (es-mx) · business inbound",
+  "direction": "the place calls Mesita",
+  "conversation_config": {
+    "agent": {
+      "first_message": "¡Hola! Le atiende Mesita, línea para restaurantes. ¿En qué le puedo ayudar?",
+      "language": "es",
+      "prompt": {
+        "llm": "claude-haiku-4-5",
+        "temperature": 0.5,
+        "max_tokens": -1,
+        "prompt": "Eres la línea de Mesita para restaurantes: te llama personal de un lugar. Hablas como una persona: español de México, de usted, breve y profesional. Solo hablas de las reservaciones del lugar verificado, solo con lo que regresan las herramientas, y nunca das el teléfono de un comensal: Mesita le avisa. El flujo te dice qué hacer en cada paso.\n\nCómo colgar: esta llamada la conduce un flujo por pasos. Usa end_call solo cuando el paso en el que estás lo diga, y siempre después de despedirte en una frase. Si ya tienes un resultado, no cuelgues: deja que el flujo avance al paso que lo registra. Mientras la otra persona hable, revise, negocie o pregunte, quédate. En el paso de cierre, despídete corto y cuelga sin esperar a que la otra persona cuelgue primero.\n\nCómo sonar natural: confirma cada dato una sola vez. Si la otra persona ya dijo que sí, o ya repitió el dato, dalo por bueno y avanza: nada de «¿me confirma?», «¿está seguro?» ni «solo para confirmar» por segunda vez. No hagas un resumen de todo antes de despedirte. No repitas lo que la otra persona acaba de decir. Di cada cosa una sola vez: no repitas información que ya diste (el nombre, la fecha, la hora, las personas, de dónde llamas). Solo la repites si la otra persona no entendió o te la vuelve a preguntar. Frases cortas, una pregunta a la vez. Si la otra persona te interrumpe, deja de hablar, escúchala y contesta a lo que dijo; no vuelvas a empezar la frase que estabas diciendo. Si la otra persona habla en inglés, sigue la llamada en inglés.",
+        "tool_ids": [
+          "tool:a4_verify_caller",
+          "tool:a4_find_reservation",
+          "tool:a4_cancel_reservation"
+        ],
+        "built_in_tools": {
+          "end_call": {
+            "name": "end_call",
+            "type": "system",
+            "description": "Cuelga la llamada. Úsala solo cuando el paso actual del flujo lo indique y ya te despediste.",
+            "params": {
+              "system_tool_type": "end_call"
+            },
+            "response_timeout_secs": 20
+          },
+          "language_detection": {
+            "name": "language_detection",
+            "type": "system",
+            "description": "",
+            "params": {
+              "system_tool_type": "language_detection"
+            },
+            "response_timeout_secs": 20
+          },
+          "voicemail_detection": {
+            "name": "voicemail_detection",
+            "type": "system",
+            "description": "Detecta que contestó un buzón de voz o una grabadora en lugar de una persona.",
+            "params": {
+              "system_tool_type": "voicemail_detection"
+            },
+            "response_timeout_secs": 20
+          }
+        }
+      }
+    },
+    "tts": {
+      "model_id": "eleven_flash_v2_5",
+      "voice_id": "x5O3bgPT2grYhry6qmWR",
+      "speed": 1,
+      "stability": 0.5,
+      "similarity_boost": 0.75,
+      "optimize_streaming_latency": 3,
+      "agent_output_audio_format": "pcm_16000"
+    },
+    "asr": {
+      "provider": "scribe_realtime",
+      "quality": "high",
+      "user_input_audio_format": "pcm_16000",
+      "keywords": []
+    },
+    "turn": {
+      "mode": "turn",
+      "turn_model": "turn_v3",
+      "turn_timeout": 7,
+      "turn_eagerness": "normal",
+      "silence_end_call_timeout": -1
+    },
+    "conversation": {
+      "max_duration_seconds": 600,
+      "client_events": [
+        "audio",
+        "interruption",
+        "agent_response",
+        "user_transcript",
+        "agent_response_correction",
+        "agent_tool_response"
+      ]
+    },
+    "language_presets": {
+      "en": {
+        "overrides": {
+          "agent": {
+            "language": "en"
+          }
+        }
+      }
+    }
+  },
+  "workflow": {
+    "prevent_subagent_loops": true,
+    "nodes": {
+      "start_node": {
+        "type": "start",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "edge_order": [
+          "e_start_verify"
+        ]
+      },
+      "verify": {
+        "type": "tool",
+        "position": {
+          "x": 280,
+          "y": 0
+        },
+        "tools": [
+          {
+            "tool_id": "tool:a4_verify_caller"
+          }
+        ],
+        "edge_order": [
+          "e_verify_ok",
+          "e_verify_fail"
+        ]
+      },
+      "triage": {
+        "type": "override_agent",
+        "label": "Triage place",
+        "position": {
+          "x": 580,
+          "y": -160
+        },
+        "additional_prompt": "El lugar está verificado. Saluda mencionando el nombre del lugar y pregunta en qué ayudas. Si la verificación regresó notas del lugar (place.notes: lo aprendido en llamadas anteriores), tenlas presentes y no preguntes lo que ya dicen. Ramas: repasar sus reservaciones próximas · buscar una por el nombre al que está o por el código de 8 dígitos que dicten · otros cambios.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_triage_upcoming",
+          "e_triage_find",
+          "e_triage_redirect"
+        ]
+      },
+      "upcoming": {
+        "type": "override_agent",
+        "label": "Read upcoming",
+        "position": {
+          "x": 920,
+          "y": -400
+        },
+        "additional_prompt": "Léeles las reservaciones próximas de su lugar que regresó la verificación: a nombre de quién, fecha, hora, personas y estado — breve. Si quieren cancelar una, toma esa rama. Resuelto, despídete.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_upcoming_cancel",
+          "e_upcoming_end"
+        ]
+      },
+      "find": {
+        "type": "tool",
+        "position": {
+          "x": 920,
+          "y": -160
+        },
+        "tools": [
+          {
+            "tool_id": "tool:a4_find_reservation"
+          }
+        ],
+        "edge_order": [
+          "e_find_found"
+        ]
+      },
+      "found": {
+        "type": "override_agent",
+        "label": "Present matches",
+        "position": {
+          "x": 1240,
+          "y": -160
+        },
+        "additional_prompt": "Presenta lo que encontró la búsqueda: a nombre de quién, fecha, hora, personas y estado. Si no hubo coincidencias, dilo y ofrece buscar otro nombre. Si quieren cancelar una, toma esa rama; si solo era consulta, despídete.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_found_cancel",
+          "e_found_end"
+        ]
+      },
+      "confirm_cancel": {
+        "type": "override_agent",
+        "label": "Confirm cancellation",
+        "position": {
+          "x": 1560,
+          "y": -160
+        },
+        "additional_prompt": "Confirma una vez cuál cancelan (a nombre de quién, fecha y hora); el código lo tomas tú de los resultados. Solo con un sí claro toma la rama de cancelar.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_cc_do"
+        ]
+      },
+      "do_cancel": {
+        "type": "tool",
+        "position": {
+          "x": 1880,
+          "y": -160
+        },
+        "tools": [
+          {
+            "tool_id": "tool:a4_cancel_reservation"
+          }
+        ],
+        "edge_order": [
+          "e_do_done"
+        ]
+      },
+      "cancel_done": {
+        "type": "override_agent",
+        "label": "Cancelled — close",
+        "position": {
+          "x": 2200,
+          "y": -160
+        },
+        "additional_prompt": "La cancelación quedó registrada y Mesita le avisa al comensal. Confírmalo en una frase, ofrece algo más y, resuelto, despídete y cuelga con end_call.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_done_end"
+        ]
+      },
+      "redirect": {
+        "type": "override_agent",
+        "label": "Redirect to Business",
+        "position": {
+          "x": 920,
+          "y": 240
+        },
+        "additional_prompt": "Si quieren dejar de recibir reservaciones o cambiar el número al que llama Mesita, se hace en Business › Reservations, en la app de Mesita para negocios. Mover la hora de una reservación no se hace por esta línea: pueden cancelarla aquí, o responder cuando Mesita los llame. Despídete y cuelga con end_call.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_redirect_end"
+        ]
+      },
+      "deny": {
+        "type": "override_agent",
+        "label": "Unknown place line",
+        "position": {
+          "x": 580,
+          "y": 300
+        },
+        "additional_prompt": "El número no es la línea de ningún lugar en Mesita (verified=false). Díselo y pídeles llamar desde el teléfono del lugar o desde su teléfono de Reservaciones. No des ninguna información de reservaciones.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_deny_end"
+        ]
+      },
+      "end_node": {
+        "type": "end",
+        "position": {
+          "x": 2520,
+          "y": 0
+        },
+        "edge_order": []
+      }
+    },
+    "edges": {
+      "e_start_verify": {
+        "source": "start_node",
+        "target": "verify",
+        "forward_condition": {
+          "type": "unconditional"
+        }
+      },
+      "e_verify_ok": {
+        "source": "verify",
+        "target": "triage",
+        "forward_condition": {
+          "type": "result",
+          "successful": true,
+          "label": "success"
+        }
+      },
+      "e_verify_fail": {
+        "source": "verify",
+        "target": "deny",
+        "forward_condition": {
+          "type": "result",
+          "successful": false,
+          "label": "failure"
+        }
+      },
+      "e_triage_upcoming": {
+        "source": "triage",
+        "target": "upcoming",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Quieren repasar las reservaciones próximas de su lugar.",
+          "label": "upcoming"
+        },
+        "backward_condition": {
+          "type": "unconditional",
+          "label": "otra gestión"
+        }
+      },
+      "e_triage_find": {
+        "source": "triage",
+        "target": "find",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Buscan una reservación por el nombre al que está o dictan su código de Mesita de 8 dígitos.",
+          "label": "find"
+        },
+        "backward_condition": {
+          "type": "result",
+          "successful": false,
+          "label": "failure"
+        }
+      },
+      "e_triage_redirect": {
+        "source": "triage",
+        "target": "redirect",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Piden otra cosa: dejar de recibir reservaciones, cambiar el número, mover una hora, u otros datos del lugar.",
+          "label": "redirect"
+        }
+      },
+      "e_upcoming_cancel": {
+        "source": "upcoming",
+        "target": "confirm_cancel",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Quieren cancelar una de esas reservaciones.",
+          "label": "cancel"
+        }
+      },
+      "e_upcoming_end": {
+        "source": "upcoming",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Resuelto y despedido.",
+          "label": "done"
+        }
+      },
+      "e_find_found": {
+        "source": "find",
+        "target": "found",
+        "forward_condition": {
+          "type": "result",
+          "successful": true,
+          "label": "success"
+        },
+        "backward_condition": {
+          "type": "unconditional",
+          "label": "buscar otro nombre"
+        }
+      },
+      "e_found_cancel": {
+        "source": "found",
+        "target": "confirm_cancel",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Quieren cancelar esa reservación: el lugar ya no puede recibirla.",
+          "label": "cancel"
+        },
+        "backward_condition": {
+          "type": "unconditional",
+          "label": "buscar otra u otra gestión"
+        }
+      },
+      "e_found_end": {
+        "source": "found",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Solo era consulta; resuelto y despedido.",
+          "label": "done"
+        }
+      },
+      "e_cc_do": {
+        "source": "confirm_cancel",
+        "target": "do_cancel",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Confirmaron la cancelación de esa reservación.",
+          "label": "confirmed"
+        },
+        "backward_condition": {
+          "type": "result",
+          "successful": false,
+          "label": "failure"
+        }
+      },
+      "e_do_done": {
+        "source": "do_cancel",
+        "target": "cancel_done",
+        "forward_condition": {
+          "type": "result",
+          "successful": true,
+          "label": "success"
+        }
+      },
+      "e_done_end": {
+        "source": "cancel_done",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Resuelto y despedido.",
+          "label": "done"
+        }
+      },
+      "e_redirect_end": {
+        "source": "redirect",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Ya los orientaste y te despediste.",
+          "label": "done"
+        }
+      },
+      "e_deny_end": {
+        "source": "deny",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Ya explicaste que el número no está registrado y te despediste.",
+          "label": "done"
+        }
+      }
+    }
+  },
+  "knowledge": {
+    "name": "a4-kb-v7",
+    "text": [
+      "# Mesita — lo que sabes (es-MX)",
+      "",
+      "## Qué es Mesita",
+      "Mesita es una app para descubrir restaurantes, cafés y bares de la ciudad, reservar mesa y pagar. Mesita reserva por teléfono con agentes de voz: tú eres uno de ellos.",
+      "",
+      "## El dinero",
+      "Mesita sí maneja dinero, siempre dentro de la app:",
+      "- Créditos de la casa: saldo que el comensal tiene en un lugar, en su Wallet. Solo existen donde el lugar los tiene encendidos.",
+      "- App Payments: el comensal paga la cuenta del lugar desde la app.",
+      "- App Prepayments: vouchers del lugar que el comensal compra por adelantado.",
+      "- Pago en efectivo: el comensal paga en efectivo y lo registra en la app con el código que le da el mesero.",
+      "- Cashback: el comensal recibe créditos por pagar con Mesita, 2% en efectivo y 5% con tarjeta.",
+      "Por teléfono no cobras, no reembolsas y no das saldos ni montos: todo eso se ve en la app, en Wallet o en Pay.",
+      "",
+      "## Una reservación",
+      "El comensal la pide desde la app con: día, hora, personas (de 1 a 10), nombre y apellido, y notas.",
+      "La mesa queda a nombre del nombre y apellido escritos en la reservación. Ese es el nombre que se usa para reservar y para buscarla.",
+      "Cada reservación tiene un código de 8 dígitos. Es secundario: nadie tiene que saberlo, tú lo tomas de las herramientas.",
+      "",
+      "## Cómo se reserva",
+      "- Cada lugar tiene un interruptor de Reservaciones (encendido o apagado) y un teléfono de Reservaciones; el dueño los cambia en Business › Reservations.",
+      "- Mesita llama al teléfono de Reservaciones del lugar; si el dueño no puso uno, al número de Google del lugar.",
+      "- Si el lugar ofrece otras opciones, Mesita se las propone al comensal. Si toma una, queda confirmada sin volver a llamar al lugar; si pide otra hora, Mesita vuelve a llamar al lugar (a lo más dos veces); si no responde a tiempo, Mesita le avisa al lugar que ya puede liberarlas.",
+      "- Fases que ve el comensal: creada, reservando, confirmada, pasada, cancelada, no se pudo.",
+      "",
+      "## Quién habla con quién",
+      "El comensal y el lugar no se llaman entre sí: Mesita lleva los recados en los dos sentidos. Nunca des el teléfono del comensal a un lugar ni el de un lugar a otra persona; Mesita es el contacto.",
+      "",
+      "## Cómo hablar",
+      "- Español de México, de usted, natural y breve.",
+      "- Di \"reservación\".",
+      "- No uses nombres internos de sistemas ni de agentes.",
+      "- No inventes disponibilidad, horarios, precios ni reservaciones.",
+      "- Solo hablas de las reservaciones de quien está en la línea.",
+      "",
+      "## Tu papel: contestas a los restaurantes",
+      "- Verificas el lugar por el número desde el que llama; no le pides datos.",
+      "- La verificación te da también las notas de Mesita sobre ese lugar (lo aprendido en llamadas anteriores): no repites preguntas que las notas ya contestan.",
+      "- Les lees sus reservaciones próximas y buscas una por el nombre al que está («la reservación a nombre de Ana López») o por el código de 8 dígitos si lo dictan; solo encuentras reservaciones de su lugar.",
+      "- Cancelas una reservación de su lugar si ya no pueden recibirla; Mesita le avisa al comensal. El lugar no tiene que decir ningún código.",
+      "- Para dejar de recibir reservaciones o cambiar el número al que llama Mesita: Business › Reservations, en la app de Mesita para negocios.",
+      "- Nunca das el teléfono de un comensal."
+    ]
+  }
+}

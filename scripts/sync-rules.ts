@@ -238,7 +238,8 @@ export type Target = { label: string; dir: string; quickstart: boolean; budget?:
 // ceilingFor() of the 2026-10-18 rewrite (MESITA-2394); one above the default
 // names why.
 export const TARGETS: Target[] = [
-  { label: "root", dir: repoRoot, quickstart: true, budget: 218 },
+  // At the default since the elevenlabs/ package joined the Packages line (MESITA-3972).
+  { label: "root", dir: repoRoot, quickstart: true, budget: 220 },
   { label: "apps/web-admin", dir: join(repoRoot, "apps", "web-admin"), quickstart: false, budget: 205 },
   // The widest app: the route contract, the overlay primitives and the auth wall.
   { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 297 },
@@ -247,6 +248,8 @@ export const TARGETS: Target[] = [
   { label: "apps/web-visit", dir: join(repoRoot, "apps", "web-visit"), quickstart: false, budget: 60 },
   // The deploy path, the ACL and the RLS rules no test pins.
   { label: "supabase", dir: join(repoRoot, "supabase"), quickstart: false, budget: 351 },
+  // The reservation agents' generated mirror (MESITA-3972).
+  { label: "elevenlabs", dir: join(repoRoot, "elevenlabs"), quickstart: false, budget: 200 },
 ];
 
 /** Repo-relative paths every tracked markdown file is checked against. */
