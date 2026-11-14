@@ -6,12 +6,12 @@ import { PlaceTabBar, placeTabs } from "@mesita/place-profile";
 // The vote panel and its copy are gone (MESITA-2642: views enrich a place,
 // no guest votes); only the section strip's pins remain here.
 describe("section strip", () => {
-  it("is the four sections for every place, Social the fourth, Rewards a sheet and Enrich never a tab (MESITA-2332, MESITA-3412, MESITA-3417)", () => {
+  it("is the four sections for every place, Menu last while Soon (MESITA-3983), Rewards a sheet and Enrich never a tab (MESITA-2332, MESITA-3412, MESITA-3417)", () => {
     expect(placeTabs().map((t) => t.label)).toEqual([
       "Overview",
-      "Menu",
       "Reviews",
       "Social",
+      "Menu",
     ]);
     expect(placeTabs().filter((t) => t.soon).map((t) => t.label)).toEqual([
       "Menu",
