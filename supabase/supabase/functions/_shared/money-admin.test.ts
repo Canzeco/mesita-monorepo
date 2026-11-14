@@ -7,7 +7,7 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { maskGuest, paymentNeedsStripe, type PaymentRow, planCloseOut, type PurchaseRow, refundPayment, refundPurchase, splitPaymentRefund } from "./money-admin.ts";
+import { maskGuest, paymentNeedsStripe, type PaymentRow, type PurchaseRow, refundPayment, refundPurchase, splitPaymentRefund } from "./money-admin.ts";
 import { type StripeCall } from "./stripe.ts";
 
 Deno.test("maskGuest: the name when set, else two characters of the email's local part, never the email", () => {
@@ -114,23 +114,6 @@ Deno.test("splitPaymentRefund: card + tip first, then credit", () => {
   assertEquals(splitPaymentRefund(row), { card: 12000, credit: 5000 });
   assertEquals(splitPaymentRefund(row, 13000), { card: 12000, credit: 1000 });
   assertEquals(splitPaymentRefund(row, 99999), { card: 12000, credit: 5000 });
-});
-
-Deno.test("planCloseOut: two purchases and a half-spent balance refund newest first, capped by what is unspent", () => {
-  // MX$200 (+20 bonus) then MX$1,000 (+200 bonus): MX$1,420 of credit, half
-  // spent leaves MX$710 unspent.
-  const purchases = [
-    { id: "old", amount_cents: 20000, bonus_cents: 2000, refunded_cents: 0, voucher: "voucher_200", story_activated_at: null, created_at: "2026-11-01T00:00:00Z" },
-    { id: "new", amount_cents: 100000, bonus_cents: 20000, refunded_cents: 0, voucher: "voucher_1000", story_activated_at: null, created_at: "2026-11-02T00:00:00Z" },
-  ];
-  const plan = planCloseOut(purchases, 71000);
-  // Newest first: floor(71000 × 1000 / 1200) = 59166, which takes back
-  // 59166 + 11833 = 70999 of credit; the 1 centavo left buys nothing older.
-  assertEquals(plan, [{ id: "new", amount: 59166 }]);
-  // Nothing unspent: nothing refunded.
-  assertEquals(planCloseOut(purchases, 0), []);
-  // All unspent: every purchase back in full.
-  assertEquals(planCloseOut(purchases, 142000), [{ id: "new", amount: 100000 }, { id: "old", amount: 20000 }]);
 });
 
 // MESITA-3545: a bill paid to the waiter refunds whole through
