@@ -17,7 +17,7 @@ describe("the place code on Payments", () => {
     expect(PANEL).toContain("/charge/${encodeURIComponent(placeId)}");
   });
 
-  it("never gates House Credits or Mesita Payments on the place code", () => {
+  it("never gates House Credits or App Payments on the place code", () => {
     const hc = PANEL.slice(PANEL.indexOf('key: "house_credits"'), PANEL.indexOf('key: "cash_payments"'));
     const mp = PANEL.slice(PANEL.indexOf('key: "pay_cards"'), PANEL.indexOf('key: "card_cashback_bps"'));
     expect(hc).not.toMatch(/codeSet/);

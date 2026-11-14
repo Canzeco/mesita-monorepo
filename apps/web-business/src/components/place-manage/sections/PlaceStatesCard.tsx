@@ -28,7 +28,7 @@ import { moneyPlaceStates, ownedChip, ownedState, type StripeState } from "./pla
 type Read<T> = T | null | undefined; // undefined = reading, null = failed
 
 const STRIPE_DETAIL: Record<StripeState, string> = {
-  None: "No Stripe account yet. Mesita Payments and Prepayments need one.",
+  None: "No Stripe account yet. App Payments and Prepayments need one.",
   Onboarding: "Account started; the owner hasn't finished Stripe's form.",
   "In review": "Form done; Stripe is verifying the account.",
   Connected: "Takes cards and pays out to the bank.",
@@ -155,16 +155,16 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
           detail="Back as House Credits on the cash bill the waiter marks Received. Needs House Credits and Cash Payments."
         />
         <StateRow
-          name="Mesita Payments"
+          name="App Payments"
           on={m.mesitaPayments.on}
           chip={money(m.mesitaPayments.chip)}
           detail="Guests pay the bill by card in the app. Needs the Stripe Account taking cards and no unpaid Mesita invoice."
         />
         <StateRow
-          name="Mesita Payments Cashback-as-Credits"
+          name="App Payments Cashback-as-Credits"
           on={m.mesitaPaymentsCashback.on}
           chip={money(m.mesitaPaymentsCashback.chip)}
-          detail="Back as House Credits on the card part of a bill. Needs House Credits and Mesita Payments."
+          detail="Back as House Credits on the card part of a bill. Needs House Credits and App Payments."
         />
         <StateRow
           name="Mesita Prepayments"

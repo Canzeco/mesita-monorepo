@@ -99,7 +99,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
             {TEST_BAND_TEXT}
           </p>
         ) : null}
-        <h1>Mesita Payments</h1>
+        <h1>App Payments</h1>
         <p className="proof-place">{list.place.name ?? "A Mesita place"} · last 12 hours</p>
         {reconnecting ? (
           <p className="proof-status" role="status">
@@ -108,7 +108,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
         ) : null}
         {list.payments.length === 0 ? (
           <p className="payments-empty" data-payments-empty>
-            No Mesita Payments in the last 12 hours
+            No App Payments in the last 12 hours
           </p>
         ) : (
           <ul className={reconnecting ? "payments stale" : "payments"} aria-live="polite">
@@ -137,7 +137,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
 
   return (
     <main className="proof" data-payments-state="form">
-      <h1>Mesita Payments</h1>
+      <h1>App Payments</h1>
       <p>Type the waiter code to see this place&apos;s payments of the last 12 hours.</p>
       <form
         onSubmit={(e) => {

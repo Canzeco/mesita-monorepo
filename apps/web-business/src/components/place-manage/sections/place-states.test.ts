@@ -53,7 +53,7 @@ describe("place states", () => {
     expect(stripeState(acct())).toBe("Connected");
   });
 
-  it("turns Mesita Payments and its cashback off on an unpaid fee invoice", () => {
+  it("turns App Payments and its cashback off on an unpaid fee invoice", () => {
     const on = moneyPlaceStates({ ...base, account: acct(), settings: settings() });
     expect([on.mesitaPayments.chip, on.mesitaPaymentsCashback.chip, on.billing.chip]).toEqual(["On", "5%", "Paid up"]);
     const held = moneyPlaceStates({ ...base, feeHold: true, account: acct(), settings: settings() });

@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 // form sheet any of them can open.
 
 export const NETWORK_FAILURE = "Couldn't reach Mesita. Tap again.";
-export const NOT_TAKING = "This place isn't taking Mesita Payments right now";
+export const NOT_TAKING = "This place isn't taking App Payments right now";
 
 export const FIELD_CLASS =
   "border-border bg-background text-foreground placeholder:text-muted-foreground h-12 w-full rounded-xl border px-3 text-base outline-none focus:border-foreground";

@@ -42,7 +42,7 @@ import { MONEY_VOUCHER_KEYS } from "../_shared/money-state.ts";
 import { isPaymentKey, isRateKey, isValidCashbackBps, needsStripe, readAccount, readContract, readSettings, stripeStateOf } from "../_shared/payments.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
-const NEEDS_STRIPE = { ok: false, code: "needs_stripe", error: "Connect the Stripe Account first: Mesita Payments, its cashback and Mesita Prepayments need an account that takes cards." };
+const NEEDS_STRIPE = { ok: false, code: "needs_stripe", error: "Connect the Stripe Account first: App Payments, its cashback and Mesita Prepayments need an account that takes cards." };
 
 serveJson("business-web-set-payment", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -64,18 +64,18 @@ serveJson("business-web-set-payment", async (req) => {
   }
   if (isRateKey(key) && bps !== null && !isValidCashbackBps(key, bps)) {
     const line: Record<string, string> = {
-      card_cashback_bps: "Mesita Payments Cashback is Off or 5%.",
-      cash_cashback_bps: "Cash Payments Cashback is Off or 2%.",
+      card_cashback_bps: "App Payments Cashback is Off or 5%.",
+      cash_cashback_bps: "Cash Payments Cashback is Off or 3%.",
       credit_cashback_bps: "Credits Payments Cashback is Off or 2%.",
       prepay_cashback_bps: "Mesita Prepayments Cashback is Off or 5%.",
     };
     return json({ ok: false, code: "invalid", error: line[key] }, 400);
   }
 
-  // ONE CASHBACK (Pato, MESITA-3836): only Mesita Payments Cashback is
-  // offered; the cash, credit and voucher cashbacks can go off, never on.
-  if ((key === "cash_cashback_bps" || key === "credit_cashback_bps" || key === "prepay_cashback_bps") && bps !== null) {
-    return json({ ok: false, code: "not_offered", error: "Only Mesita Payments gives cashback." }, 409);
+  // NO CASHBACK ON CREDIT OR VOUCHERS (Pato, MESITA-3836): those can go
+  // off, never on. Cash earns again since MESITA-3837, at 3%.
+  if ((key === "credit_cashback_bps" || key === "prepay_cashback_bps") && bps !== null) {
+    return json({ ok: false, code: "not_offered", error: "Only App Payments and Cash Payments give cashback." }, 409);
   }
 
   const access = await requirePlaceAccess(admin, user, placeId);

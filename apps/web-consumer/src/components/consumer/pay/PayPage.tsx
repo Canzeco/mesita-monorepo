@@ -282,7 +282,7 @@ function PlaceList({
         <div className="border-border bg-card mb-3 rounded-2xl border px-4 py-4">
           <p className="flex items-center gap-2 text-base font-semibold">
             <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-            See places near you that take Mesita Payments
+            See places near you that take App Payments
           </p>
           <div className="mt-3 flex gap-2">
             <Button className="min-h-11 flex-1 font-semibold" onClick={onUseLocation}>
@@ -304,7 +304,7 @@ function PlaceList({
       ) : places.length === 0 ? (
         <EmptyState
           icon={MapPin}
-          title={loc.state === "on" ? "No place near you takes Mesita Payments" : "Turn on location to see places near you that take Mesita Payments"}
+          title={loc.state === "on" ? "No place near you takes App Payments" : "Turn on location to see places near you that take App Payments"}
           description=""
         />
       ) : (
