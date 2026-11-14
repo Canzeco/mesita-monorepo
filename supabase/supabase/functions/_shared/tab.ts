@@ -608,6 +608,12 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
   };
 }
 
+/** The cashback rate stamped on the live card part, 0 without one. */
+function cardPartBps(parts: TabPartRow[]): number {
+  const card = parts.find((p) => p.part === "card" && p.status !== "expired" && p.status !== "failed");
+  return Math.max(0, card?.cashback_bps ?? 0);
+}
+
 /** What the waiter's screen reads: never who the guest is. */
 export function staffTabView(
   t: TabRow,
@@ -624,7 +630,8 @@ export function staffTabView(
     ticket: t.ticket,
     waiter_name: t.waiter_name,
     billed: t.staff_key_hash !== null && t.bill_cents !== null,
-    ...tabMoney(t, parts, extra.cashBackBps),
+    // MESITA-3910: the card part earns at the rate stamped on its row.
+    ...tabMoney(t, parts, extra.cashBackBps, cardPartBps(parts)),
     paid_at: t.paid_at,
     expires_at: t.expires_at,
     updated_at: t.updated_at,

@@ -6,7 +6,7 @@ import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { listPayments, rejectTab, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
 import { signRequest } from "@/lib/sign-gate";
 import { CodeBoxes } from "./CodeBoxes";
-import { BanknoteIcon, CheckIcon, HandCoinsIcon, SmartphoneIcon, UserIcon, WalletIcon, XIcon } from "./icons";
+import { BanknoteIcon, CheckIcon, CoinsIcon, HandCoinsIcon, SmartphoneIcon, UserIcon, WalletIcon, XIcon } from "./icons";
 
 // THE WAITER'S SCREEN (MESITA-3857, Pato's "14. Payments Flow Guest-Lead"
 // §5): the waiter scans the guest's QR and checks the bill against the real
@@ -205,6 +205,8 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   if (card > 0) lines.push({ key: "card", icon: <SmartphoneIcon className="pay-icon" />, label: `${money(tab.card_bill_cents)} by card` });
   if (cash > 0) lines.push({ key: "cash", icon: <BanknoteIcon className="pay-icon" />, label: `${money(tab.cash_bill_cents)} cash received` });
   if (tip > 0) lines.push({ key: "tip", icon: <HandCoinsIcon className="pay-icon" />, label: `${money(tip)} tip` });
+  // MESITA-3910: what the guest gets back, as a detail (Pato: "maybe also mention the cashback").
+  if (tab.cashback_cents > 0) lines.push({ key: "cashback", icon: <CoinsIcon className="pay-icon" />, label: `+${money(tab.cashback_cents)} cashback for the guest` });
 
   return (
     <main className="proof verify" data-tab-state="verify">
