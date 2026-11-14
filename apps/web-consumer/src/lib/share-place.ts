@@ -49,8 +49,10 @@ function placeShareUrl(idOrSlug: string): string {
   return new URL(path, window.location.origin).toString();
 }
 
-/** The pre-Clipboard-API copy: a hidden textarea and `execCommand`. */
-function copyWithTextarea(text: string): boolean {
+/** The pre-Clipboard-API copy: a hidden textarea and `execCommand`.
+ *  Synchronous, so it works inside a tap that is about to leave the page
+ *  (Share's Instagram row, MESITA-3867). */
+export function copyWithTextarea(text: string): boolean {
   if (typeof document === "undefined") return false;
   if (typeof document.execCommand !== "function") return false;
   const area = document.createElement("textarea");

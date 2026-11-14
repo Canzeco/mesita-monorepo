@@ -88,6 +88,7 @@ function liveAddresses(): Set<string> {
     CONSUMER_ROUTES.wallet,
     `${CONSUMER_ROUTES.walletPlace.prefix}:id`,
     `${CONSUMER_ROUTES.walletGift.prefix}:token`,
+    CONSUMER_ROUTES.share,
     CONSUMER_ROUTES.me,
     // Each kind of ticket is its own path (MESITA-3855).
     ...TICKET_KINDS.map(ticketsHref),
@@ -130,7 +131,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       wallet: "/wallet",
       walletPlace: { prefix: "/wallet/" },
       walletGift: { prefix: "/wallet/gift/" },
-      // No Activity tab and no Share page (MESITA-3855): both in `legacy`.
+      // No Activity tab (MESITA-3855). Share is a page again (MESITA-3867).
+      share: "/share",
       // The Me hub and its boxes, each a route. NO diamond / diamondInvite /
       // settingsMetrics / visits — those are redirect sources in `legacy`
       // below.
@@ -217,8 +219,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meSaved: "/me/saved",
         // Me's Favorites page (MESITA-2565 → MESITA-3688).
         meFavorites: "/me/favorites",
-        // Share's page (MESITA-3855). No /activity: killed (MESITA-3862).
-        share: "/share",
+        // No /activity: killed (MESITA-3862). No /share: live (MESITA-3867).
         savedReservationPrefix: "/saved/reservation/",
         savedPlacePrefix: "/saved/place/",
       },
@@ -443,8 +444,6 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/me/transactions", destination: "/me/tickets", permanent: true },
       { source: "/me/connector", destination: "/me/plan", permanent: true },
       { source: "/me/refunds", destination: "/me/tickets/refunds", permanent: true },
-      // Share is a bar button (MESITA-3855): its page lands on Home.
-      { source: "/share", destination: "/home/places", permanent: true },
       { source: "/invite", destination: "/me", permanent: true },
       // The retired Home hub's leaves (2026-09-01), and bare /home since each
       // tab got its own address (MESITA-2597). /home itself was live

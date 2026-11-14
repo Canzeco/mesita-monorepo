@@ -46,7 +46,7 @@ import {
 
 const PROTECTED_PREFIXES: string[] = [
   // Every first segment a shell screen lives under: /home, /search, /place,
-  // /reservation, /pay, /wallet, /activity, /me, /share. Read from the route
+  // /reservation, /pay, /wallet, /me, /share. Read from the route
   // map (MESITA-3646), so a new screen is walled the day it lands.
   ...shellRoots(),
   // RETIRED, still walled: middleware runs before next.config's 308, so

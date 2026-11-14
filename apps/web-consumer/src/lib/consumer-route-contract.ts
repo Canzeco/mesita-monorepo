@@ -3,9 +3,8 @@
 // middleware's sign-in wall and route handlers read these, never a typed
 // path, so they cannot drift into stringly-typed mismatches (MESITA-3642).
 //
-// The live app is the bar (Home · Search · Pay · Activity · Me), the place
-// screen, reservations, Share (a Me tile), and the money objects under Pay
-// and Wallet. ROUTE_MAP below says, once, how each screen opens, which tab
+// The live app is the bar (Home · Search · Pay · Share · Me), the place
+// screen, reservations, and the money objects under Pay and Wallet. ROUTE_MAP below says, once, how each screen opens, which tab
 // it lights, where the bar shows and where Back lands (MESITA-3646).
 // Every address that shipped and no longer renders a page lives only in
 // `legacy` below and 308s to the nearest live page.
@@ -89,11 +88,15 @@ export const CONSUMER_ROUTES = {
   wallet: "/wallet",
   walletPlace: { prefix: "/wallet/" },
   walletGift: { prefix: "/wallet/gift/" },
-  // NO ACTIVITY AND NO SHARE PAGE (Pato, 2026-11-14, MESITA-3855: "Home
-  // Search Pay Share Me … SHARE IS JUST A QUICK BUTTON TO SHARE WITH
-  // FRIENDS. NOTHING ELSE"). Activity's chips are Me's Notifications,
-  // Reservations and Tickets pages; Share is a bar button that opens the
-  // phone's share sheet, no page. Both addresses are in `legacy`.
+  // NO ACTIVITY (Pato, 2026-11-14, MESITA-3855): its chips are Me's
+  // Notifications, Reservations and Tickets pages.
+  //
+  // SHARE IS A PAGE AGAIN, A BAR TAB (Pato, 2026-11-14, MESITA-3867: "i
+  // actually want a share page … just a button to share in different
+  // channels"): one card of channel rows. It was a bar button with no page
+  // for a day (MESITA-3855), which on a computer only copied the link.
+  // Me's Share cell opens it too ("share also here even if redundant").
+  share: "/share",
   // Me is the hub: identity header + a grid of DestTiles and a Settings row, each a real
   // page under (shell)/me/<box> (MESITA-1789). The `/me/[tab]` catch-all
   // 308s any other one-segment address onto the hub.
@@ -244,9 +247,7 @@ export const CONSUMER_ROUTES = {
     meFavorites: "/me/favorites",
     // NO /activity HERE (MESITA-3862): the Activity tab's addresses are
     // gone, not redirected (Pato: "KILL THIS ATIVITY LINK").
-    // Share's page (MESITA-2566), until Share became a bar button
-    // (MESITA-3855). It lands on Home.
-    share: "/share",
+    // NO /share HERE: it is a live tab again (MESITA-3867).
     // Place detail briefly had a dual path under /saved (Favorites-era).
     // Canonical is /place/[id]; this redirects there (MESITA-899).
     savedPlacePrefix: "/saved/place/",
@@ -342,9 +343,8 @@ export function placeOpenPath(googlePlaceId: string): string {
 // frame (a type error) and lights no tab. Addresses that only redirect live
 // in `legacy` and next.config's table, never here.
 
-/** The bar's tabs that are screens. Share sits on the bar too, between Pay
- *  and Me, but is a button: no screen lights it (MESITA-3855). */
-export type ConsumerTab = "home" | "search" | "pay" | "me";
+/** The bar's tabs: Home · Search · Pay · Share · Me (MESITA-3867). */
+export type ConsumerTab = "home" | "search" | "pay" | "share" | "me";
 
 /** How a screen arrives: a bar `tab`; a `page` pushed over the screen it was
  *  opened from; a `panel` that slides over the page under it (an @modal
@@ -402,6 +402,8 @@ export const ROUTE_MAP = {
   wallet: row("/wallet", "pay", "tab", null),
   walletPlace: row("/wallet/:placeId", "pay", "page", "wallet"),
   walletGift: row("/wallet/gift/:token", "pay", "page", "wallet"),
+  // Share's page (MESITA-3867); Me's Share cell jumps here too.
+  share: row("/share", "share", "tab", null),
   me: row("/me", "me", "tab", null),
   meProfile: row("/me/profile", "me", "page", "me"),
   meInstagram: row("/me/instagram", "me", "page", "me"),

@@ -6,6 +6,7 @@ import {
   CreditCard,
   Crown,
   Settings as SettingsIcon,
+  Share2,
   Ticket,
   UserRound,
   Gift,
@@ -64,15 +65,17 @@ import { DestGrid, type DestShape } from "./profile-sections";
 //   Favorites · Transactions / Cards · Refunds / Connector · Share /
 //   Settings (full width)
 //
-// NINE SINCE MESITA-3855 (Pato, 2026-11-14: "Home Search Pay Share Me";
-// "Profile Instagram / Class Plan(Soon) / Notifications, Reservations /
-// Gift, Share / Tickets, Settings"): Activity left the bar, so its
-// Notifications, Reservations and Tickets are Me's pages; Share went to the
-// bar as a button, so Settings closes the grid alone at the left:
+// NINE SINCE MESITA-3855 (Pato, 2026-11-14: "Home Search Pay Share Me"):
+// Activity left the bar, so its Notifications, Reservations and Tickets are
+// Me's pages; Share went to the bar, so Settings closed the grid alone.
+//
+// TEN SINCE MESITA-3867 (Pato, 2026-11-14: "share also here even if
+// redundant i don't care"): a Share cell beside Settings, a jump to the bar's
+// Share tab (/share), so every row is full:
 //
 //   Profile · Instagram / Class · Plan (Soon) /
 //   Notifications · Reservations / Gift · Tickets /
-//   Settings
+//   Share · Settings
 //
 // route-structure T8 pins them.
 //
@@ -90,11 +93,13 @@ export type HubTile = {
   href: string;
   /** Opens nothing yet: a Soon pill, no link (Plan, MESITA-3855). */
   soon?: boolean;
+  /** A bar tab, not a Me page: a plain jump, no slide (Share, MESITA-3867). */
+  jump?: boolean;
 };
 
-/** The grid cells, in reading order; Settings is the last (nine with it
- *  since MESITA-3855: Profile · Instagram / Class · Plan / Notifications ·
- *  Reservations / Gift · Tickets / Settings). */
+/** The grid cells, in reading order; Settings is the last (ten with it
+ *  since MESITA-3867: Profile · Instagram / Class · Plan / Notifications ·
+ *  Reservations / Gift · Tickets / Share · Settings). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // member number is on /me/profile, with its copy button; the tile only
@@ -160,6 +165,14 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Every transaction",
     href: CONSUMER_ROUTES.mePages.tickets,
   },
+  // SHARE (MESITA-3867): the bar's Share tab, here too. It lights Share.
+  {
+    Icon: Share2,
+    title: "Share",
+    summary: "Tell a friend",
+    href: CONSUMER_ROUTES.share,
+    jump: true,
+  },
 ];
 
 /** The last cell: Settings closes the grid (MESITA-2562); a full-width row
@@ -194,8 +207,7 @@ export function MeHubFrame({
             {ME_HUB_GRID.map((cell) => (
               <Fragment key={cell.href}>{tile(cell, "cell")}</Fragment>
             ))}
-            {/* SETTINGS AT THE LEFT, NOTHING AT THE RIGHT (MESITA-3527, Pato:
-                "if it's uneven the number of items, then asymmetry is okay"). */}
+            {/* SETTINGS CLOSES THE GRID, beside Share (MESITA-3867). */}
             {tile(ME_HUB_SETTINGS, "cell")}
           </DestGrid>
         </div>
