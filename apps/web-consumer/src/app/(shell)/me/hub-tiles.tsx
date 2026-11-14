@@ -8,8 +8,8 @@ import {
   Settings as SettingsIcon,
   Ticket,
   UserRound,
-  Gift,
   Plug,
+  Share2,
   type LucideIcon,
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -89,6 +89,12 @@ import { DestGrid, type DestShape } from "./profile-sections";
 // Then Tickets before Gift (MESITA-3885), and the boxes show their state:
 // see DestTile's TileState and ProfileClient.
 //
+// SHARE REPLACES GIFT (MESITA-3940, Pato: "here add share instead of gift"):
+//
+//   Profile · Instagram / Class · Plan /
+//   Notifications · Reservations / Tickets · Share /
+//   MCP (Soon) · Settings
+//
 // route-structure T8 pins them.
 //
 // NO TILE PRINTS A GUEST FACT (Pato, MESITA-2607: "in the boxes below don't
@@ -109,7 +115,8 @@ export type HubTile = {
 
 /** The grid cells, in reading order; Settings is the last (ten with it
  *  since MESITA-3880: Profile · Instagram / Class · Plan / Notifications ·
- *  Reservations / Tickets · Gift / MCP · Settings). */
+ *  Reservations / Tickets · Share / MCP · Settings; Share for Gift since
+ *  MESITA-3940). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // tile only names the page (MESITA-2607).
@@ -167,12 +174,15 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Every transaction",
     href: CONSUMER_ROUTES.mePages.tickets,
   },
-  // GIFT (MESITA-3771): gift credit you hold at a place to a friend.
+  // SHARE REPLACES GIFT (Pato, 2026-11-14, MESITA-3940: "here add share
+  // instead of gift"): the cell opens /share, the channel-rows page Wallet
+  // opens too (MESITA-3886). /me/gift stays a live address; gifting credit
+  // lives on a place's House Card in Wallet.
   {
-    Icon: Gift,
-    title: "Gift",
-    summary: "Send credit to a friend",
-    href: CONSUMER_ROUTES.mePages.gift,
+    Icon: Share2,
+    title: "Share",
+    summary: "Tell a friend",
+    href: CONSUMER_ROUTES.share,
   },
   // MCP IS SOON (Pato, 2026-11-14, MESITA-3867: "add MCP here with soon,
   // before settings"): ChatGPT or Claude reading your Mesita. The cell opens

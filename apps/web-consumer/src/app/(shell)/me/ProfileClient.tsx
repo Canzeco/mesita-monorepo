@@ -27,7 +27,7 @@ import {
 //   2              Profile · Instagram
 //   2              Class · Plan (Soon)
 //   2              Notifications · Reservations
-//   2              Tickets · Gift (MESITA-3885)
+//   2              Tickets · Share (MESITA-3885; Share for Gift, MESITA-3940)
 //   1              Settings
 //
 // THE CELLS LIVE IN hub-tiles.tsx, rows and words, with the scroller they sit
