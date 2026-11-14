@@ -10,10 +10,9 @@ import {
 
 // Landing page — mesita.ai, written to 🦚 Main (MESITA-3106).
 //
-// Main's eleven product solutions, and no more: six for the guest, five for
-// the place. The three money products (Digital Payments, Credit Prepayments,
-// Credit Rewards) are on both sides and not built yet, so their rows say
-// Soon. The list itself lives in `components/landing/solutions.ts`.
+// Six guest solutions (🦚 Main § 3) and thirteen Solutions for Restaurants
+// (Business › All, MESITA-3845). Rows not built yet say Soon. The lists live
+// in `components/landing/solutions.ts`.
 //
 // Composition stays flat: one function per section, top to bottom.
 //
@@ -21,7 +20,7 @@ import {
 //   2. <Hero />    The promise, one place card with a chip from each side
 //   3. <Guests />  Six guest products, one card of rows   (#guests)
 //   4. <How />     Mesita never needs a place to sign up  (#how)
-//   5. <Places />  Five place products, one card of rows  (#places)
+//   5. <Places />  Thirteen restaurant solutions, one card of rows (#places)
 //   6. <Close />   One door per side
 //   7. <Footer />
 

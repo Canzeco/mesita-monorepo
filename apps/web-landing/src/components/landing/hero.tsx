@@ -63,8 +63,8 @@ function Hero() {
           <p className="text-muted-foreground text-sm">
             <span className="text-foreground font-medium">Six products</span>{" "}
             for guests ·{" "}
-            <span className="text-foreground font-medium">five</span> for places
-            · one catalog under both
+            <span className="text-foreground font-medium">thirteen</span> for
+            restaurants · one catalog under both
           </p>
         </div>
 
