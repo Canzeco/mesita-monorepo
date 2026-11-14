@@ -97,7 +97,7 @@ export type VoucherEntry = {
  *  "they should actually land 1hr after payment"; 30 minutes was asked and
  *  taken back before merge). */
 export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
-  voucher_200: { price_cents: 200_00, bonus_bps: 1000, kind: "open", available_after_sec: 3600 },
+  voucher_200: { price_cents: 100_00, bonus_bps: 1000, kind: "open", available_after_sec: 3600 },
   voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: 3600 },
   voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: 3600 },
   voucher_welcome: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 3600 },
@@ -105,13 +105,28 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   voucher_vip: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 3600 },
 };
 
-export function voucherBonusCents(key: MoneyVoucherKey): number {
-  const v = VOUCHER_CATALOG[key];
-  return bps(v.price_cents, v.bonus_bps);
+/** VOUCHERS IN TWO CURRENCIES (Pato, 2026-11-14, MESITA-3914: "100 MX
+ *  10% · 1000 MX 20% · 10 USD 10% · 100 USD 20% ... all small must start
+ *  with 1 and big be 10X that"). Each place sells in its own currency
+ *  (places.currency, MESITA-3913); a currency missing here sells none. The
+ *  bonus and the wait are the catalog's, the same everywhere. The Small
+ *  voucher's key stays voucher_200 (a renamed key resets live config). */
+export const VOUCHER_PRICE_CENTS: Record<string, Record<MoneyVoucherKey, number>> = {
+  mxn: { voucher_200: 100_00, voucher_1000: 1_000_00, voucher_5000: 5_000_00, voucher_welcome: 100_00, voucher_story: 100_00, voucher_vip: 100_00 },
+  usd: { voucher_200: 10_00, voucher_1000: 100_00, voucher_5000: 500_00, voucher_welcome: 10_00, voucher_story: 10_00, voucher_vip: 10_00 },
+};
+
+/** The voucher's price in this currency, null where vouchers aren't sold. */
+export function voucherPriceCents(key: MoneyVoucherKey, currency: string = MONEY_CURRENCY): number | null {
+  return VOUCHER_PRICE_CENTS[currency.toLowerCase()]?.[key] ?? null;
 }
 
-export function voucherFeeCents(key: MoneyVoucherKey): number {
-  return bps(VOUCHER_CATALOG[key].price_cents, MESITA_FEE_BPS_VOUCHER);
+export function voucherBonusCents(key: MoneyVoucherKey, currency: string = MONEY_CURRENCY): number {
+  return bps(voucherPriceCents(key, currency) ?? 0, VOUCHER_CATALOG[key].bonus_bps);
+}
+
+export function voucherFeeCents(key: MoneyVoucherKey, currency: string = MONEY_CURRENCY): number {
+  return bps(voucherPriceCents(key, currency) ?? 0, MESITA_FEE_BPS_VOUCHER);
 }
 
 /** The best bonus among the vouchers a place sells now, as a whole percent

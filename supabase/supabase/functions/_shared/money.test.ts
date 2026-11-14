@@ -2,7 +2,7 @@
 // down. Money, so pinned.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { bps, MESITA_FEE_BPS_PAYMENT, MESITA_FEE_BPS_VOUCHER, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, vouchersUpToPct } from "./money.ts";
+import { bps, MESITA_FEE_BPS_PAYMENT, MESITA_FEE_BPS_VOUCHER, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, vouchersUpToPct, voucherPriceCents } from "./money.ts";
 
 Deno.test("bps rounds down to the cent", () => {
   assertEquals(bps(999_99, 500), 4999);
@@ -17,14 +17,20 @@ Deno.test("the fee rates are 5% each", () => {
 });
 
 Deno.test("the catalog's bonuses and fees, in centavos", () => {
-  assertEquals(voucherBonusCents("voucher_200"), 20_00);
+  // MESITA-3914: Small is MX$100 +10%, US$10 +10%; Big MX$1,000 / US$100 +20%.
+  assertEquals(voucherBonusCents("voucher_200"), 10_00);
+  assertEquals(voucherBonusCents("voucher_200", "usd"), 1_00);
+  assertEquals(voucherBonusCents("voucher_1000", "usd"), 20_00);
+  assertEquals(voucherPriceCents("voucher_200", "usd"), 10_00);
+  assertEquals(voucherPriceCents("voucher_1000", "usd"), 100_00);
+  assertEquals(voucherPriceCents("voucher_200", "eur"), null);
   assertEquals(voucherBonusCents("voucher_1000"), 200_00);
   assertEquals(voucherBonusCents("voucher_5000"), 1_500_00);
   assertEquals(voucherBonusCents("voucher_welcome"), 100_00);
   // Welcome and VIP are MX$100 +100% (MESITA-3835): MX$100 bonus.
   assertEquals(voucherBonusCents("voucher_vip"), 100_00);
   assertEquals(VOUCHER_CATALOG.voucher_vip.price_cents, 100_00);
-  assertEquals(voucherFeeCents("voucher_200"), 10_00);
+  assertEquals(voucherFeeCents("voucher_200"), 5_00);
   assertEquals(VOUCHER_CATALOG.voucher_200.available_after_sec, 3600);
   // Every voucher waits an hour except Story (MESITA-3323).
   assertEquals(VOUCHER_CATALOG.voucher_welcome.available_after_sec, 3600);
