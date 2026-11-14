@@ -8,7 +8,7 @@ import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
 
 // Sign-in opens on a photo, not a form (MESITA-3650). The first screen is
-// the cover, the wordmark, one line and ONE button, "Continue with phone"
+// the cover, the wordmark, one line and ONE button, "Continue with phone number"
 // (MESITA-3920, undoing MESITA-3751's Sign up + Log in: both opened the same
 // form, and a tester read two buttons on the bottom edge as "scroll for
 // more"). The block sits lifted off the bottom, with a line under the button
@@ -41,7 +41,7 @@ export function CoverAuthLayout({
 }) {
   // false is the cover; true is the sign-in sheet.
   const [open, setOpen] = useState(false);
-  const sheetTitle = title ?? "Continue with phone";
+  const sheetTitle = title ?? "Continue with phone number";
   const sheetSubtitle = subtitle ?? "We'll text you a code.";
 
   return (
@@ -99,7 +99,7 @@ export function CoverAuthLayout({
               className="group flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-white text-lg font-semibold text-black shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition hover:bg-white/90 active:scale-[0.98]"
             >
               <Smartphone className="h-5 w-5" aria-hidden />
-              Continue with phone
+              Continue with phone number
               <ArrowRight
                 className="h-5 w-5 transition-transform group-hover:translate-x-0.5"
                 aria-hidden
