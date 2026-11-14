@@ -33,6 +33,8 @@ const SETTINGS: CrenupSettings = {
   createOnOpenConsumer: true,
   createOnOpenAdmin: false,
   consumerCreatesPerDay: 1000,
+  updateEveryViews: 10,
+  reviewsUpdateEveryViews: 50,
 };
 
 describe("Creation › Create asks the two Create-on-open questions (MESITA-2298)", () => {

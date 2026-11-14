@@ -32,6 +32,10 @@ export type CrenupSettings = {
   createOnOpenAdmin: boolean;
   /** Places one guest may create per rolling 24 h (MESITA-2376). */
   consumerCreatesPerDay: number;
+  /** Update Google every N views; 0 off (MESITA-2997). On Uprich since MESITA-3924. */
+  updateEveryViews: number;
+  /** Update Reviews every N views; 0 off (MESITA-3159). */
+  reviewsUpdateEveryViews: number;
 };
 
 const clampN = (v: number, lo: number, hi: number) =>

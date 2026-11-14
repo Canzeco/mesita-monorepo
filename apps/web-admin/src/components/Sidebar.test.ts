@@ -8,13 +8,12 @@ const APP = join(__dirname, "..", "app", "(app)");
 
 // Models, then Atlas, then the MESITA-2083 order.
 describe("Configurations rail", () => {
-  it("is exactly Models · Atlas · Creating · Enriching · Updating · Discovery · Reservations · Payments", () => {
+  it("is exactly Models · Atlas · Creating · Uprich · Discovery · Reservations · Payments", () => {
     expect(CONFIGURATIONS_NAV.map((i) => i.label)).toEqual([
       "Models",
       "Atlas",
       "Creating",
-      "Enriching",
-      "Updating",
+      "Uprich",
       "Discovery",
       "Reservations",
       "Payments",
@@ -28,7 +27,7 @@ describe("Configurations rail", () => {
     for (const a of hrefs)
       for (const b of hrefs)
         if (a !== b) expect(b.startsWith(`${a}/`), `${a} lights on ${b}`).toBe(false);
-    for (const href of ["/enricher-config/creation", "/enricher-config/enrichment", "/families"])
+    for (const href of ["/enricher-config/creation", "/enricher-config/uprich", "/families"])
       expect(existsSync(join(APP, ...href.split("/").filter(Boolean), "page.tsx")), href).toBe(true);
   });
 });
