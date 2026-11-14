@@ -17,10 +17,10 @@ export type VoucherPriceRow = {
 
 export type CurrencyRow = { code: string; country: string; small: number; big: number; selling: boolean };
 
-export type VoucherPrices = { currencies: string[]; fee_bps: number; vouchers: VoucherPriceRow[]; currency_list: CurrencyRow[] };
+export type VoucherPrices = { currencies: string[]; fee_bps: number; vouchers: VoucherPriceRow[]; currency_list: CurrencyRow[]; unsupported: { region: string; why: string }[] };
 
 export async function getVoucherPrices(): Promise<ActionResult<VoucherPrices>> {
   const r = await efInvoke<VoucherPrices>("admin-web-get-voucher-prices", {});
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, currencies: r.data.currencies ?? [], fee_bps: r.data.fee_bps ?? 0, vouchers: r.data.vouchers ?? [], currency_list: r.data.currency_list ?? [] };
+  return { ok: true, currencies: r.data.currencies ?? [], fee_bps: r.data.fee_bps ?? 0, vouchers: r.data.vouchers ?? [], currency_list: r.data.currency_list ?? [], unsupported: r.data.unsupported ?? [] };
 }
