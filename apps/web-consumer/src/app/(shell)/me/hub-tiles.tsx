@@ -186,13 +186,13 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   },
   // INTEGRATIONS (Pato, 2026-11-14, MESITA-3954: "Rename MCP for
   // integrations and make a list of integrations, and one integration is the
-  // MCP"): the cell opens /me/integrations — Calendar only since MESITA-3976
-  // (MCP is a Soon perk on Plan's Pro card). It read
+  // MCP"): the cell opens /me/integrations — Calendar, and MCP Soon since
+  // MESITA-3976 (Soon on Plan's Pro card too). It read
   // "MCP" (Soon, MESITA-3867) before.
   {
     Icon: Plug,
     title: "Integrations",
-    summary: "Your calendar",
+    summary: "Calendar and MCP",
     href: CONSUMER_ROUTES.mePages.integrations,
   },
 ];
