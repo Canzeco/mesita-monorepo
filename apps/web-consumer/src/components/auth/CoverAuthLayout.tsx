@@ -6,13 +6,12 @@ import { Outfit } from "next/font/google";
 import { X } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
-import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 
 // Sign-in opens on a photo, not a form (MESITA-3650). The first screen is
 // the cover, the wordmark, one line and two buttons, Sign up and Log in
 // (MESITA-3751: "two different buttons… for clarity for the user"). Both
-// open the same sign-in options (the caller's children: Google, phone or
-// email, MESITA-3777) as a sheet
+// open the same sign-in form (the caller's children: the phone code, the
+// only way in since MESITA-3875) as a sheet
 // over the photo; only the sheet's title says which door was taken. The X
 // lowers it back to the cover.
 //
@@ -30,8 +29,6 @@ export function CoverAuthLayout({
   subtitle,
   children,
   footer,
-  openWith,
-  notice,
 }: {
   headline: string;
   /** Overrides both doors' sheet titles (the Pay QR door names its place). */
@@ -40,13 +37,9 @@ export function CoverAuthLayout({
   subtitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  /** Opens on this door's sheet instead of the cover (a failed Google return). */
-  openWith?: "signup" | "login";
-  /** One line above the options, e.g. why Google sent the guest back. */
-  notice?: string;
 }) {
   // Which door is open: null is the cover.
-  const [door, setDoor] = useState<"signup" | "login" | null>(openWith ?? null);
+  const [door, setDoor] = useState<"signup" | "login" | null>(null);
   const open = door !== null;
   const sheetTitle =
     title ?? (door === "login" ? "Log in" : "Create your account");
@@ -84,7 +77,9 @@ export function CoverAuthLayout({
       >
         <span className="flex items-center gap-2 self-start text-white select-none">
           <MesitaMark className="h-8 w-8" />
-          <span className={`${wordmarkFont.className} text-[28px] leading-none tracking-[-0.03em]`}>
+          <span
+            className={`${wordmarkFont.className} text-[28px] leading-none tracking-[-0.03em]`}
+          >
             Mesita
           </span>
         </span>
@@ -140,13 +135,18 @@ export function CoverAuthLayout({
           open ? "translate-y-0" : "translate-y-full",
         )}
       >
-        <div aria-hidden className="bg-border mx-auto mb-4 h-1 w-10 rounded-full" />
+        <div
+          aria-hidden
+          className="bg-border mx-auto mb-4 h-1 w-10 rounded-full"
+        />
         <header className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h2 className="font-display text-3xl leading-tight font-semibold tracking-[-0.02em]">
               {sheetTitle}
             </h2>
-            <p className="text-muted-foreground mt-1 text-base leading-snug">{sheetSubtitle}</p>
+            <p className="text-muted-foreground mt-1 text-base leading-snug">
+              {sheetSubtitle}
+            </p>
           </div>
           <button
             type="button"
@@ -157,10 +157,11 @@ export function CoverAuthLayout({
             <X className="h-4 w-4" />
           </button>
         </header>
-        {notice && <p className={cn(ERROR_BOX_CLASS, "mb-4")}>{notice}</p>}
         {children}
         {footer && (
-          <p className="text-muted-foreground type-body mt-6 text-center">{footer}</p>
+          <p className="text-muted-foreground type-body mt-6 text-center">
+            {footer}
+          </p>
         )}
       </section>
     </div>

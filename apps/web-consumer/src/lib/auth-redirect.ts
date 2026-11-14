@@ -30,7 +30,10 @@ export function consumerAuthDestination(raw: string | undefined): string {
  * who opens a shared place link, signs in, and onboards used to be dumped
  * on /home/swipe with no idea what they'd clicked.
  */
-export function withNext(route: string, raw: string | undefined | null): string {
+export function withNext(
+  route: string,
+  raw: string | undefined | null,
+): string {
   const target = safeNextPath(raw);
   return target ? `${route}?next=${encodeURIComponent(target)}` : route;
 }
@@ -48,7 +51,9 @@ const PAY_PLACE_NEXT = [
  * `/pay?place=<id>` (or its door, `/pay/<id>`), the place id, so sign-in
  * can say "Sign in to pay at <name>". Anything else, null.
  */
-export function payPlaceFromNext(raw: string | undefined | null): string | null {
+export function payPlaceFromNext(
+  raw: string | undefined | null,
+): string | null {
   const target = safeNextPath(raw);
   if (!target) return null;
   for (const re of PAY_PLACE_NEXT) {
@@ -56,21 +61,4 @@ export function payPlaceFromNext(raw: string | undefined | null): string | null 
     if (match) return match[1].toLowerCase();
   }
   return null;
-}
-
-/**
- * Continue with Google (MESITA-3777): where Google hands the guest back.
- * The raw `next` rides along so a Pay QR or shared link survives the round
- * trip; an unsafe one is dropped here, before it ever reaches Google.
- */
-export function oauthCallbackPath(raw: string | undefined | null): string {
-  return withNext("/auth/callback", raw);
-}
-
-/** The sign-in page with the "Google didn't finish" flag, keeping `next`. */
-export function oauthFailedPath(raw: string | undefined | null): string {
-  const target = safeNextPath(raw);
-  return target
-    ? `/?error=oauth_failed&next=${encodeURIComponent(target)}`
-    : "/?error=oauth_failed";
 }
