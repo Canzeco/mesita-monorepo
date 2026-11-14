@@ -164,8 +164,14 @@ export type MapScore = {
   distancePenalty?: number;
 };
 
+/** A Map dot (MESITA-3980): a ranked place past the pins, where it is and
+ *  nothing else — "zoom in here", never a card. */
+export type MapDot = { id: string; lat: number; lng: number };
+
 type ViewportPlaces = {
   places: Place[];
+  /** Places n+1…m of this view (MESITA-3980): small dots, no card. */
+  dots: MapDot[];
   /** The circle the server gated on (km): the screen's, else the
    *  operator's (MESITA-2504). */
   radiusKm?: number;
@@ -196,6 +202,21 @@ export type MapBounds = {
  * load). `google: true` is web Search saying it CAN render a Google-only
  * stub, and the EF refuses a call without it (MESITA-2337).
  */
+/** The EF's `dots`, kept only where id, lat and lng are real: an EF that
+ *  predates them (or a bad row) draws no dot rather than one at 0,0. */
+function readMapDots(raw: unknown): MapDot[] {
+  if (!Array.isArray(raw)) return [];
+  const out: MapDot[] = [];
+  for (const d of raw) {
+    if (!d || typeof d !== "object") continue;
+    const { id, lat, lng } = d as Record<string, unknown>;
+    if (typeof id !== "string" || typeof lat !== "number" || typeof lng !== "number") continue;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    out.push({ id, lat, lng });
+  }
+  return out;
+}
+
 export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
@@ -204,6 +225,7 @@ export async function apiFetchNearbyCatalog(
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];
+    dots?: unknown;
     radiusKm?: number;
     reloadMinKm?: number;
     reloadMinSec?: number;
@@ -218,6 +240,7 @@ export async function apiFetchNearbyCatalog(
   });
   return {
     places: (data.places ?? []).map(stripInsecurePhotos),
+    dots: readMapDots(data.dots),
     radiusKm:
       typeof data.radiusKm === "number" && Number.isFinite(data.radiusKm)
         ? data.radiusKm

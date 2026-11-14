@@ -30,7 +30,9 @@
 // page (`selectMapPool`, the Catalog's two passes from MESITA-2921), then
 // reads only the kept places' cards, so a wide ring never ranks an
 // id-ordered 1000-row slice.
-// The Map shows the top `map.placesShown`. The family chip gates; the guest
+// The Map shows the top `map.placesShown` as cards; the ranked places after
+// them, up to `map.dotsShown` in all, come back as `dots` — id, lat, lng,
+// no card read — the small "zoom in here" marks (MESITA-3980). The family chip gates; the guest
 // picks no mode, so `prefer` is ignored. R has no ceiling (MESITA-2918):
 // however far out the guest zooms, the search is the ring they see. No
 // bounds falls back to the centre inside `NO_SCREEN_RADIUS_KM` (15 km; the
@@ -242,6 +244,7 @@ serveJson("consumer-web-list-places", async (req) => {
     ...area.summary,
     lastId: area.summary.scanCapped ? area.lastId : undefined,
     returned: places.length,
+    dots: area.dots.length,
   }));
   // The Search card's promo strip (MESITA-3327): `vouchers_up_to_pct` per
   // row, two batched reads for the page, as list-catalog does (MESITA-3312).
@@ -267,6 +270,8 @@ serveJson("consumer-web-list-places", async (req) => {
       }) as CardRow[],
       ),
     ),
+    // Places n+1…m of this view: where they are, nothing else (MESITA-3980).
+    dots: area.dots,
     radiusKm,
     // The Map's reload throttle (MESITA-2444) plus min screen move (MESITA-2732);
     // the dead km/sec pair is not sent.

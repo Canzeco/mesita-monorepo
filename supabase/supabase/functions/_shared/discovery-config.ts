@@ -159,6 +159,16 @@ export type MapConfig = {
    */
   placesShown: number;
   /**
+   * THE MAP'S DOTS (Pato, MESITA-3980: "only first n places are loaded into
+   * carousel but all the small dots are already in the map"): how many of
+   * the ranked places the map marks in all. The top `placesShown` are full
+   * pins with cards; the places after them, up to this many, are small dots
+   * — a mark that says "zoom in here", no card, no label.
+   * `MAP_DOTS_SHOWN_MIN`..`MAX`, whole, default 200; at or under
+   * `placesShown` there are no dots.
+   */
+  dotsShown: number;
+  /**
    * THE CATALOG'S PAGE SIZE (MESITA-2909): Home draws the ranked catalog
    * this many places at a time. `CATALOG_PAGE_SIZE_MIN`..`MAX`, whole,
    * default 20. It replaced `catalogPlacesShown` (MESITA-2727), a cut.
@@ -280,6 +290,10 @@ export const NO_SCREEN_RADIUS_KM = 15;
 export const MAP_PLACES_SHOWN_MIN = 1;
 export const MAP_PLACES_SHOWN_MAX = 200;
 export const MAP_PLACES_SHOWN_DEFAULT = 50;
+/** `map.dotsShown` bounds (MESITA-3980). */
+export const MAP_DOTS_SHOWN_MIN = 0;
+export const MAP_DOTS_SHOWN_MAX = 1000;
+export const MAP_DOTS_SHOWN_DEFAULT = 200;
 /** `map.catalogPageSize` bounds (MESITA-2909). */
 export const CATALOG_PAGE_SIZE_MIN = 5;
 export const CATALOG_PAGE_SIZE_MAX = 100;
@@ -309,6 +323,7 @@ export const DEFAULT_MAP: MapConfig = {
   reloadMinViewportPct: MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT,
   popularityRoot: POPULARITY_ROOT_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
+  dotsShown: MAP_DOTS_SHOWN_DEFAULT,
   catalogPageSize: CATALOG_PAGE_SIZE_DEFAULT,
 };
 
@@ -530,6 +545,9 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     ) / 100,
     placesShown: Math.round(
       num(r.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
+    ),
+    dotsShown: Math.round(
+      num(r.dotsShown, DEFAULT_MAP.dotsShown, MAP_DOTS_SHOWN_MIN, MAP_DOTS_SHOWN_MAX),
     ),
     catalogPageSize: Math.round(
       num(r.catalogPageSize, DEFAULT_MAP.catalogPageSize, CATALOG_PAGE_SIZE_MIN, CATALOG_PAGE_SIZE_MAX),

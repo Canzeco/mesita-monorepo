@@ -430,6 +430,24 @@ Deno.test("the Map keeps its top map.placesShown; the Catalog keeps all and send
   assertEquals(catalogPageSize({}), 20);
 });
 
+Deno.test("the Map's dots are ranks placesShown+1..dotsShown, bare coordinates; none on the Catalog or at dotsShown <= placesShown (MESITA-3980)", async () => {
+  const rows = Array.from({ length: 80 }, (_, i) => mrow(`m${String(i).padStart(2, "0")}`, { google_review_count: 10 + i }));
+  const run = async (surface: "map" | "catalog", map: Partial<DiscoveryConfig["map"]>) => {
+    const { d } = deps({ mesitaRows: rows, surface, radiusKm: surface === "map" ? 50 : null });
+    d.cfg = { ...d.cfg, map: { ...d.cfg.map, ...map } };
+    return await selectAreaPool(d);
+  };
+  const out = await run("map", { placesShown: 5, dotsShown: 12 });
+  assertEquals(ids(out.places), ["m79", "m78", "m77", "m76", "m75"]);
+  assertEquals(out.dots.map((d) => d.id), ["m74", "m73", "m72", "m71", "m70", "m69", "m68"]);
+  assertEquals(Object.keys(out.dots[0]).sort(), ["id", "lat", "lng"]);
+  assertEquals((await run("map", { placesShown: 20, dotsShown: 20 })).dots, []);
+  assertEquals((await run("map", { placesShown: 20, dotsShown: 0 })).dots, []);
+  // Fewer places than marks: every place past the pins is a dot.
+  assertEquals((await run("map", { placesShown: 20, dotsShown: 200 })).dots.length, 60);
+  assertEquals((await run("catalog", { placesShown: 5, dotsShown: 12 })).dots, []);
+});
+
 // ── MESITA-3086: a Popularity root per surface ───────────────────────────
 
 Deno.test("the Map reads map.popularityRoot, the Catalog params.popularity.root; on the Map the root only moves Premier against plain", async () => {
