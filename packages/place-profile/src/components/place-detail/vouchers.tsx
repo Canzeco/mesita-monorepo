@@ -119,7 +119,7 @@ const STANDARD: Product[] = [
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $130.00MX.", limit: "One per place.", bonus: "30% bonus", short: "Welcome Bonus", brief: "One per place" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $150.00MX.", limit: "One per place.", bonus: "50% bonus", short: "Welcome Bonus", brief: "One per place" },
   { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $130.00MX.", limit: "One per day.", bonus: "30% bonus", short: "Story Bonus", brief: "Post a story · 1/day" },
   { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $130.00MX.", when: "VIP guests only.", limit: "One per day.", bonus: "30% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
 ];

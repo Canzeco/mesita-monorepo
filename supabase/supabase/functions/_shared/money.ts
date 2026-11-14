@@ -69,12 +69,13 @@ export type VoucherEntry = {
  *  voucher's credit turns Available one hour after the charge except Story,
  *  ready at once (Pato, MESITA-3323: "Prepayments must be one [hour] before
  *  the bill. All but the Instagram one"; Welcome and VIP were instant from
- *  MESITA-3302 until then). */
+ *  MESITA-3302 until then). WELCOME IS +50% (Pato, 2026-11-13, MESITA-3832:
+ *  "set Welcome as 50% Bonus"; +30% until then): pay MX$100, get MX$150. */
 export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   voucher_200: { price_cents: 200_00, bonus_bps: 1000, kind: "open", available_after_sec: 3600 },
   voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: 3600 },
   voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: 3600 },
-  voucher_welcome: { price_cents: 100_00, bonus_bps: 3000, kind: "earned", available_after_sec: 3600 },
+  voucher_welcome: { price_cents: 100_00, bonus_bps: 5000, kind: "earned", available_after_sec: 3600 },
   voucher_story: { price_cents: 100_00, bonus_bps: 3000, kind: "earned", available_after_sec: 0 },
   voucher_vip: { price_cents: 100_00, bonus_bps: 3000, kind: "earned", available_after_sec: 3600 },
 };

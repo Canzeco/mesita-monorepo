@@ -20,7 +20,7 @@ Deno.test("the catalog's bonuses and fees, in centavos", () => {
   assertEquals(voucherBonusCents("voucher_200"), 20_00);
   assertEquals(voucherBonusCents("voucher_1000"), 200_00);
   assertEquals(voucherBonusCents("voucher_5000"), 1_500_00);
-  assertEquals(voucherBonusCents("voucher_welcome"), 30_00);
+  assertEquals(voucherBonusCents("voucher_welcome"), 50_00);
   assertEquals(voucherFeeCents("voucher_200"), 10_00);
   assertEquals(VOUCHER_CATALOG.voucher_200.available_after_sec, 3600);
   // Every voucher waits an hour except Story (MESITA-3323).
@@ -33,5 +33,5 @@ Deno.test("the Home tile's line is the best bonus among what the place sells (ME
   assertEquals(vouchersUpToPct([]), null);
   assertEquals(vouchersUpToPct(["voucher_200"]), 10);
   assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000"]), 20);
-  assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000", "voucher_welcome"]), 30);
+  assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000", "voucher_welcome"]), 50);
 });
