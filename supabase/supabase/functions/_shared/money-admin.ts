@@ -7,7 +7,6 @@
 //                    the place's connected account.
 //   refundPayment    one payment: its card part (card + tip) through Stripe
 //                    first, then its credit part given back as credit.
-//   planCloseOut     what a place's close-out refunds per purchase.
 //
 // Every Stripe refund starts as a wallet_refund_attempts row whose id is the
 // Idempotency-Key, carries Stripe-Account, and returns Mesita's fee with the
@@ -268,37 +267,4 @@ export async function refundPayment(deps: RefundDeps, row: PaymentRow, amount?: 
     status = (res.status as string) ?? status;
   }
   return { ok: true, card_refunded_cents: card, credit_refunded_cents: credit, status };
-}
-
-// ── Close-out ─────────────────────────────────────────────────────────────
-
-export type CloseOutPurchase = Pick<
-  PurchaseRow,
-  "id" | "amount_cents" | "bonus_cents" | "refunded_cents" | "voucher" | "story_activated_at" | "created_at"
->;
-
-/** One guest's purchases at the place, newest first: each refunds
- *  min(cash not yet refunded, floor(remaining × amount / (amount + bonus)))
- *  and the remaining unspent credit drops by what that refund takes back
- *  (its principal plus the bonus's share), stopping at 0. A Story voucher
- *  staff never activated gave no credit, so its cash comes back whole and
- *  spends none of the remaining. Pure. */
-export function planCloseOut(purchases: CloseOutPurchase[], unspentCents: number): { id: string; amount: number }[] {
-  const out: { id: string; amount: number }[] = [];
-  let remaining = Math.max(0, unspentCents);
-  const sorted = [...purchases].sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
-  for (const p of sorted) {
-    const cash = p.amount_cents - p.refunded_cents;
-    if (cash <= 0) continue;
-    if (p.voucher === "voucher_story" && !p.story_activated_at) {
-      out.push({ id: p.id, amount: cash });
-      continue;
-    }
-    if (remaining <= 0) continue;
-    const amount = Math.min(cash, Math.floor((remaining * p.amount_cents) / (p.amount_cents + p.bonus_cents)));
-    if (amount <= 0) continue;
-    out.push({ id: p.id, amount });
-    remaining -= amount + Math.floor((p.bonus_cents * amount) / p.amount_cents);
-  }
-  return out;
 }
