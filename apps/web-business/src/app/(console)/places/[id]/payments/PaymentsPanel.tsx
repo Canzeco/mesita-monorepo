@@ -45,7 +45,10 @@ import {
   CaretRightIcon,
   CheckIcon,
   CoinsIcon,
+  ConfettiIcon,
+  CrownIcon,
   DeviceMobileIcon,
+  InstagramLogoIcon,
   MoneyIcon,
   PiggyBankIcon,
   SignatureIcon,
@@ -82,18 +85,21 @@ const BLOCKED = "text-xs text-amber-800 dark:text-amber-300";
 const SECTION = "flex flex-col p-0 sm:p-0";
 
 /** A voucher: its bonus in its own colour (MESITA-3298) and one objective line. */
-type Product = { key: PaymentKey; name: string; line: string; value: string; tone: string };
+/** A voucher: its bonus, one objective line, and the Offers page's face
+ *  (Pato, MESITA-3839: "change the colors and icons of the prepayments"):
+ *  the guest and the owner see the same colour and mark. */
+type Product = { key: PaymentKey; name: string; line: string; value: string; tone: string; icon: Icon };
 
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "Small Voucher", line: "Guest pays $200.00MX, gets $220.00MX of credit.", value: "+10%", tone: "bg-emerald-100 text-emerald-700" },
-  { key: "voucher_1000", name: "Big Voucher", line: "Guest pays $1,000.00MX, gets $1,200.00MX of credit.", value: "+20%", tone: "bg-emerald-100 text-emerald-700" },
-  { key: "voucher_5000", name: "MX$5,000 Voucher", line: "Guest pays $5,000.00MX, gets $6,500.00MX of credit.", value: "+30%", tone: "bg-emerald-100 text-emerald-700" },
+  { key: "voucher_200", name: "Small Voucher", line: "Guest pays $200.00MX, gets $220.00MX of credit.", value: "+10%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
+  { key: "voucher_1000", name: "Big Voucher", line: "Guest pays $1,000.00MX, gets $1,200.00MX of credit.", value: "+20%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
+  { key: "voucher_5000", name: "MX$5,000 Voucher", line: "Guest pays $5,000.00MX, gets $6,500.00MX of credit.", value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome Voucher", line: "Guest pays $100.00MX, gets $200.00MX of credit. One per guest at your place.", value: "+100%", tone: "bg-sky-100 text-sky-700" },
-  { key: "voucher_story", name: "Story Voucher", line: "Guest pays $100.00MX, gets $130.00MX of credit after posting an Instagram story at your place.", value: "+30%", tone: "bg-pink-100 text-pink-700" },
-  { key: "voucher_vip", name: "VIP Voucher", line: "Guest pays $100.00MX, gets $200.00MX of credit. VIP guests only.", value: "+100%", tone: "bg-violet-100 text-violet-700" },
+  { key: "voucher_welcome", name: "Welcome Voucher", line: "Guest pays $100.00MX, gets $200.00MX of credit. One per guest at your place.", value: "+100%", tone: "bg-blue-100 text-blue-700", icon: ConfettiIcon },
+  { key: "voucher_story", name: "Story Voucher", line: "Guest pays $100.00MX, gets $130.00MX of credit after posting an Instagram story at your place.", value: "+30%", tone: "bg-pink-100 text-pink-700", icon: InstagramLogoIcon },
+  { key: "voucher_vip", name: "VIP Voucher", line: "Guest pays $100.00MX, gets $200.00MX of credit. VIP guests only.", value: "+100%", tone: "bg-amber-100 text-amber-700", icon: CrownIcon },
 ];
 
 /** What a card payment costs the place (MESITA-3461; the 5% fee is billed apart). */
@@ -326,7 +332,7 @@ export function PaymentsPanel({
     );
   };
 
-  const voucherRow = ({ key, name, line, value, tone }: Product) => {
+  const voucherRow = ({ key, name, line, value, tone, icon }: Product) => {
     const on = settings[key] && takesCards;
     const reason = isVoucherKey(key) ? state.unavailable[key] : undefined;
     const blocked = !takesCards ? needsStripe : !on && !settings.house_credits ? needsHouseCredits : null;
@@ -339,7 +345,7 @@ export function PaymentsPanel({
       : null;
     return (
       <li key={key} className={MARK_ROW} data-place-state={key}>
-        {mark(TicketIcon, on, tone)}
+        {mark(icon, on, tone)}
         <div className="min-w-0">
           <p className="font-medium">{name}</p>
           <p className="text-muted-foreground">{line}</p>
