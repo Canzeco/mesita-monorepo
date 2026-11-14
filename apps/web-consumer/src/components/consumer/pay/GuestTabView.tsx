@@ -12,7 +12,7 @@ import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { clearGuestDraft, reopenGuestDraft } from "./GuestPayScreen";
-import { BAD, CloseX, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, RowsCard, WAIT } from "./pay-flow";
+import { BAD, CloseX, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, RowsCard, StepsBar, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
@@ -250,10 +250,11 @@ export function GuestTabView({
   const countdown = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
-      <div className="flex shrink-0 items-center justify-end">
+      <div className="flex shrink-0 items-center gap-3">
+        <h2 className="font-display min-w-0 flex-1 truncate text-xl font-semibold">{placeName}</h2>
         <CloseX onClick={() => setConfirmCancel(true)} label="Cancel this bill" />
       </div>
-      <h2 className="font-display -mt-2 truncate text-center text-xl font-semibold">{placeName}</h2>
+      <StepsBar at={3} className="mt-1" />
       <p className="mt-2 flex shrink-0 justify-center">
         <span className="border-border flex items-center gap-2 rounded-full border px-3 py-1 text-base font-semibold tabular-nums [&>svg]:h-5 [&>svg]:w-5">
           {wayIcon}

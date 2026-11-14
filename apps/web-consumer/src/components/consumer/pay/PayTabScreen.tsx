@@ -50,7 +50,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
   };
 
   return (
-    <Screen title="Pay" onBack={back} flush paper>
+    <Screen title="Pay" onBack={back} noBack={start.kind === "place"} flush paper>
       {/* MESITA-3739: white, no tab bar, and a fixed height chain down to
           each step's flexible part (keypad rows, the QR), so nothing scrolls. */}
       <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
