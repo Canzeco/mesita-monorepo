@@ -924,7 +924,7 @@ export function VouchersPane({
                 text={[
                   `Pay the place directly: cash or their card terminal, and get ${cashPct ?? "the place's cash cashback"} of the bill back as credits at this place.`,
                   "Show your QR to the waiter. They type the bill and the tip, you choose cash, and they tap Received when they get your money.",
-                  "It counts on the bill, never on the tip or on credits you spend. It is ready in 1 hour.",
+                  "It counts on the bill, never on the tip or on credits you spend. You can spend it at once.",
                 ]}
               />
               {SLOT}

@@ -184,7 +184,7 @@ select pay_tab_guest_pay('00000000-0000-4000-8000-0000000a3707', '00000000-0000-
   repeat('7', 64), 5000, 3000, 2000, 0, 0, 0, '00000000-0000-4000-8000-0000000e3705', null, 200) as r;
 select is(pay_tab_change((select (r->>'tab_id')::uuid from g3), '00000000-0000-4000-8000-0000000a3707', 'cancel')->>'outcome',
   'cancelled', 'the guest cancels before anything moved');
-select is(pg_temp.spendable(), 7000, 'and the held credit is free again');
+select is(pg_temp.spendable(), 7100, 'and the held credit is free again (plus tap 2''s $1MX cashback, Available at once since MESITA-3909)');
 
 -- Tap 4: by card (the card row stays opening, as before the PaymentIntent).
 create temp table g4 on commit drop as
@@ -258,7 +258,7 @@ select ok((select status = 'expired' and end_reason = 'expired' from pay_tabs wh
 select is(pg_temp.spendable('00000000-0000-4000-8000-0000000b3707'), 22000, 'guest B''s $40MX is released, never spent unsigned');
 select is((select coalesce(sum(cashback_cents), 0)::int from wallet_payments where tab_id = (select (r->>'tab_id')::uuid from g5)),
   0, 'and earns no cashback');
-select is(pg_temp.spendable(), 7000, 'closing guest A''s cash-only tab moves no credit');
+select is(pg_temp.spendable(), 8100, 'closing guest A''s cash-only tab moves no credit');
 
 -- ━━━ MESITA-3772: the guest closes ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

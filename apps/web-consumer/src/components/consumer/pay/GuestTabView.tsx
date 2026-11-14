@@ -177,11 +177,8 @@ export function GuestTabView({
           {back > 0 ? (
             <div className={cn("mt-4 flex shrink-0 items-center gap-3 rounded-2xl px-4 py-3 font-semibold", GOOD, GOOD_TINT)} data-guest-cashback>
               <Coins className="h-5 w-5 shrink-0" aria-hidden />
+              {/* Available at once (MESITA-3909). */}
               <span className="flex-1">+{m(back)} back here</span>
-              <span className="flex items-center gap-1 text-sm">
-                <Clock className="h-4 w-4" aria-hidden />
-                in 1 hr
-              </span>
             </div>
           ) : (
             <div className="border-border text-muted-foreground mt-4 flex shrink-0 items-center gap-3 rounded-2xl border px-4 py-3" data-guest-cashback>
