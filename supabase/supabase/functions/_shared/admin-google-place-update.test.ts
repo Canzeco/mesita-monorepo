@@ -3,6 +3,7 @@ import {
   assertGoogleUpdatePatchSafe,
   googleBasicsToUpdatePatch,
   galleryTakesGoogleHero,
+  keepFilledAndPinned,
 } from "./admin-google-place-update.ts";
 import type { GoogleBasics } from "./enrich-google-basics.ts";
 
@@ -85,4 +86,26 @@ Deno.test("Update takes Google's hero only while the gallery is at most one phot
   assertEquals(galleryTakesGoogleHero(["https://a.example/1.jpg", " "]), true);
   // An enriched gallery is never overwritten.
   assertEquals(galleryTakesGoogleHero(["https://a.example/1.jpg", "https://a.example/2.jpg"]), false);
+});
+
+Deno.test("Update never writes the review list: it is Enrich's and Update Reviews' (MESITA-3844)", () => {
+  const patch = googleBasicsToUpdatePatch({
+    basics: { ...sampleBasics(), google_reviews: [{ author: "a", rating: 5, quote: "q", date: "d" }] },
+    businessStatus: null,
+    googlePrimaryType: null,
+    googleTypes: [],
+    now: NOW,
+  });
+  assertEquals("google_reviews" in patch, false);
+});
+
+Deno.test("Update keeps a pinned field and never blanks a filled one (MESITA-3844)", () => {
+  const sources = { pins: { phone: { source: "business", confidence: 1, pinnedUntil: "2027-01-01T00:00:00.000Z" } } };
+  const { patch, pinned } = keepFilledAndPinned(
+    { phone: "+52 55 0000 0000", instagram_url: null, website_url: " ", google_tags: [], google_name: "Test" },
+    sources,
+    new Date(NOW),
+  );
+  assertEquals(patch, { google_name: "Test" });
+  assertEquals(pinned, ["phone"]);
 });
