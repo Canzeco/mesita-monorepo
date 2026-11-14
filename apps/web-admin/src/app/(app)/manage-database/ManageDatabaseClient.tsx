@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Store, UserX } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 import { Button, TextField } from "@/components/admin-ui/config";
 import { continueStoragePurge, resetDatabase } from "./actions";
@@ -26,7 +26,61 @@ export function ManageDatabaseClient() {
         description="Database-wide operator actions. Handle with care — these run against the live singleton backend. Super-admins only."
       />
       <ResetCard />
+      <SoonCard
+        icon={UserX}
+        title="Delete consumer"
+        line="Remove one guest and everything that is theirs, without resetting the rest."
+      />
+      <SoonCard
+        icon={Store}
+        title="Delete place"
+        line="Remove one place and everything that hangs off it, without resetting the rest."
+      />
     </PageContainer>
+  );
+}
+
+// Delete consumer and Delete place are Soon on purpose, and stay Soon until
+// the far future (Pato, 2026-11-14: put them as soon, no Linear issue). Each
+// one is a cascade across most of the schema: a consumer owns visits, saves,
+// views, reservations, credits, payments and a Stripe customer; a place owns
+// its profile, photos and menus in storage, ownership, Premier, Stripe Connect
+// account, charges, vouchers and every guest row that points at it. Doing that
+// right means a new EF per verb, a money-safe RPC (no partial deletes: money
+// rows are append-only), pgTAP for every table it touches, storage purges like
+// Reset's, ef-caller-acl and dropped-table guards, and CI pipeline work to
+// test it on a live-shaped database. Far too much for what the buttons buy
+// today; Reset database above covers the operator's need. The buttons render,
+// disabled, so the page says what is coming. Wire nothing to them.
+function SoonCard({
+  icon: Icon,
+  title,
+  line,
+}: {
+  icon: typeof UserX;
+  title: string;
+  line: string;
+}) {
+  return (
+    <section className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-4 sm:p-6">
+      <div className="flex items-center gap-3">
+        <span className="bg-muted text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full">
+          <Icon className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            {title}
+            <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 type-label font-medium">
+              Soon
+            </span>
+          </h2>
+          <p className="text-muted-foreground text-sm">{line}</p>
+        </div>
+      </div>
+      <Button tone="danger" disabled>
+        Soon
+      </Button>
+    </section>
   );
 }
 
