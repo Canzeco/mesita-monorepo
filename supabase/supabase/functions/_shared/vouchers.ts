@@ -491,17 +491,30 @@ export function voucherName(k: MoneyVoucherKey, currency: string = MONEY_CURRENC
 
 export type PurchaseRow = { id: string; status: string; stripe_checkout_session_id: string | null };
 
-/** The test-mode cap on a place's outstanding credit across every guest
- *  (MESITA-3305 rule 15, d5a): MX$20,000. One global constant, no lock. */
-export const PLACE_CAP_CENTS = 20_000_00;
-
-/** Would this buy push the place past the cap? Pure. Live mode has no cap.
- *  A basket (MESITA-3841) counts every unit's credit. */
-export function overPlaceCap(outstandingCents: number, voucher: MoneyVoucherKey | readonly MoneyVoucherKey[], livemode: boolean, currency: string = MONEY_CURRENCY): boolean {
-  if (livemode) return false;
+/** Would this buy push the place past its Credits Limit (MESITA-3947)? Pure.
+ *  `limitCents` is place_credit_limit: the place's own limit, else its
+ *  currency's default (Admin › Payments › Credits Limit). It binds in both
+ *  universes; it replaced the MX$20,000 test-mode cap of MESITA-3305. A
+ *  null limit (no default for the currency) refuses: fail closed. A basket
+ *  (MESITA-3841) counts every unit's credit, bonus included. */
+export function overCreditLimit(
+  outstandingCents: number,
+  voucher: MoneyVoucherKey | readonly MoneyVoucherKey[],
+  limitCents: number | null,
+  currency: string = MONEY_CURRENCY,
+): boolean {
+  if (limitCents === null) return true;
   const keys: readonly MoneyVoucherKey[] = typeof voucher === "string" ? [voucher] : voucher;
   const lines = catalogLines(currency);
-  return outstandingCents + keys.reduce((sum, k) => sum + lines[k].credit_cents, 0) > PLACE_CAP_CENTS;
+  return outstandingCents + keys.reduce((sum, k) => sum + lines[k].credit_cents, 0) > limitCents;
+}
+
+/** The place's Credits Limit in cents, null when neither its own nor its
+ *  currency's default exists. */
+export async function readPlaceCreditLimit(admin: SupabaseClient, placeId: string): Promise<number | null> {
+  const { data, error } = await admin.rpc("place_credit_limit", { p_place_id: placeId });
+  if (error) throw new Error(`place_credit_limit: ${error.message}`);
+  return data === null || data === undefined ? null : Number(data);
 }
 
 /** The place's outstanding credit, Available plus Pending, every guest. */
@@ -511,14 +524,14 @@ export async function readPlaceOutstanding(admin: SupabaseClient, placeId: strin
   return typeof data === "number" ? data : Number(data ?? 0);
 }
 
-/** The cap, then one `opening` row under the guest's request_id; the
+/** The Credits Limit, then one `opening` row under the guest's request_id; the
  *  Checkout path and the saved-card path (MESITA-3552) both start here.
  *  `duplicate`: the request_id (or Welcome's once-per-guest index) already
  *  has a row; the caller resumes it.
  *
  *  A basket (MESITA-3841): `followers` are the other voucher units, one row
  *  each, written right after the lead with basket_lead_id and no
- *  request_id (a retry finds them by the lead). The cap counts them all. A
+ *  request_id (a retry finds them by the lead). The limit counts them all. A
  *  follower the database refuses fails the lead too: all or nothing. */
 export async function openPurchaseRow(
   admin: SupabaseClient,
@@ -536,10 +549,15 @@ export async function openPurchaseRow(
   const lines = catalogLines(args.currency);
   const line = lines[args.voucher];
   const followers = args.followers ?? [];
-  // The test-mode cap (rule 15): read once, no lock.
-  const outstanding = await readPlaceOutstanding(admin, args.place.id, args.currency, args.livemode);
-  if (overPlaceCap(outstanding, [args.voucher, ...followers], args.livemode, args.currency)) {
-    return { ok: false, status: 409, code: "place_cap", error: "This place has reached its test-mode credit cap" };
+  // The Credits Limit (MESITA-3947): read once, no lock. Two taps at
+  // once can each pass it by one basket; the limit is a safety margin, not
+  // an exact ceiling.
+  const [outstanding, limit] = await Promise.all([
+    readPlaceOutstanding(admin, args.place.id, args.currency, args.livemode),
+    readPlaceCreditLimit(admin, args.place.id),
+  ]);
+  if (overCreditLimit(outstanding, [args.voucher, ...followers], limit, args.currency)) {
+    return { ok: false, status: 409, code: "place_cap", error: "This place can't take more credit for now. Try again later." };
   }
   const { data: row, error: insertErr } = await admin
     .from("wallet_purchases")

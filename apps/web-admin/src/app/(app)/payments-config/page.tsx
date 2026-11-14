@@ -1,4 +1,5 @@
-import { CoinsIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
+import { CaretRightIcon, CoinsIcon, GaugeIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 import { SectionCard } from "@/components/admin-ui/config";
@@ -48,7 +49,22 @@ export default async function PaymentsConfigPage() {
   return (
     <PageContainer>
       <PageHeader title="Payments" description="How guests pay ahead. Read-only: these numbers change only in code." />
-      <div className="mt-6 sm:mt-8">
+      {/* MESITA-3947: the one editable part of Payments, on its own page. */}
+      <Link
+        href="/payments-config/credits-limit"
+        className="border-border bg-card hover:bg-muted mt-6 flex items-center gap-3 rounded-2xl border p-4 sm:mt-8 sm:p-6"
+        data-admin-credits-limit-link
+      >
+        <GaugeIcon className="h-5 w-5 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="font-display block text-base font-semibold tracking-tight">Credits Limit</span>
+          <span className="text-muted-foreground block text-sm">
+            The most credit each place may owe its guests: a default per currency, a place&apos;s own limit, and who is close to it.
+          </span>
+        </span>
+        <CaretRightIcon className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+      </Link>
+      <div className="mt-6">
         <SectionCard
           icon={<TicketIcon className="h-5 w-5" aria-hidden />}
           title="Vouchers"

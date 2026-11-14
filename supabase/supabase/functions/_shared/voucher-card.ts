@@ -10,7 +10,7 @@
 //   1. the EF checks the card is on the caller's own customer (ownCard) and
 //      runs every voucher gate the Checkout path runs;
 //   2. openPurchaseRow opens ONE `opening` row under the tap's request_id
-//      (the test-mode cap first, as Checkout);
+//      (the Credits Limit first, as Checkout);
 //   3. the card is cloned to the place's account;
 //   4. the PaymentIntent is created there UNCONFIRMED (card only, the
 //      Checkout's metadata: mesita_kind wallet_voucher, purchase_id, …) and

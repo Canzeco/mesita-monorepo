@@ -36,8 +36,8 @@
 //   not_available | not_yet | needs_card_payments | needs_instagram |
 //   few_followers (Story: 1,000 Instagram followers or fewer, MESITA-3507) |
 //   not_vip (VIP: the guest is not of the VIP class, MESITA-3550) |
-//   welcome_used | below_minimum | place_cap (MESITA-3305: the test-mode
-//   cap on a place's outstanding credit) | in_progress (+url: a second
+//   welcome_used | below_minimum | place_cap (MESITA-3947: the buy would
+//   take the place's outstanding credit past its Credits Limit) | in_progress (+url: a second
 //   Welcome buy while the first one's Checkout is open) · 502 checkout_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

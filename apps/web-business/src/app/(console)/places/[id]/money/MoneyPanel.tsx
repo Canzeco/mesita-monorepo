@@ -4,7 +4,7 @@
 // Payments by MESITA-3596, Pato: "that box of MONEY goes into operations
 // money, not in payments. in payments its just to configure"): one card of
 // four rows (Money received · Mesita's fee · Credit outstanding · Tips), the
-// fee rates and the test-mode cap in one grey note under it, then the Log:
+// fee rates in one grey note under it, then the Log:
 // what each guest paid, newest first, 50 at a time, Older for more. No date
 // inputs (MESITA-3596). The owner and Mesita staff only (the server answers
 // editors 403). Who paid is
@@ -35,7 +35,6 @@ const NOTE = "text-muted-foreground text-xs";
 
 /** Shown under the totals, never in the TestBand. */
 export const FEE_NOTE = "Mesita's fee: 5% on vouchers, 5% on card payments.";
-export const CAP_NOTE = "In test mode a place holds at most $20,000.00MX of guests' credit.";
 
 const KIND: Record<string, string> = {
   voucher_200: "Small Voucher",
@@ -181,7 +180,6 @@ export function MoneyPanel({ placeId, initial }: { placeId: string; initial: Pla
         </ul>
         <p className={`${NOTE} px-5 pb-4 sm:px-6`} data-fee-note>
           {FEE_NOTE}
-          {money_.test_mode ? ` ${CAP_NOTE}` : ""}
         </p>
         {share && share.total > 0 ? (
           <p className={`${NOTE} px-5 pb-4 sm:px-6`} data-received-share>
