@@ -13,7 +13,9 @@ import {
 // ONE CAPABILITY (Pato, 2026-11-14, MESITA-3870: "2 Reservations per month is
 // Free. 10 Reservations per month if Pro. thats it. and make it 2 dollar per
 // month ... only that capability for the moment nothing else"): each plan is
-// its reservations a month and its price. The MCP perk left with it.
+// its reservations a month and its price. The MCP perk left with it, and
+// came back on Pro as a Soon line (MESITA-3881, Pato: "mention MCP also but
+// with soon"): it opens nothing and changes no price.
 
 export type PlanRowWords = {
   title: string;
@@ -21,6 +23,8 @@ export type PlanRowWords = {
   price: string;
   /** The one capability. */
   perk: string;
+  /** A perk not built yet, under the capability with a Soon pill. */
+  soonPerk?: string;
 };
 
 /** "$2" for whole dollars, "$2.50" otherwise. */
@@ -36,11 +40,12 @@ export const PLAN_ROWS: Record<GuestPlan, PlanRowWords> = {
   free: {
     title: "Free",
     price: "Free",
-    perk: `${FREE_RESERVATIONS_PER_MONTH} reservations a month`,
+    perk: `Max ${FREE_RESERVATIONS_PER_MONTH} reservations a month`,
   },
   premium: {
     title: "Pro",
     price: PRO_PRICE_LINE,
-    perk: `${PRO_RESERVATIONS_PER_MONTH} reservations a month`,
+    perk: `Max ${PRO_RESERVATIONS_PER_MONTH} reservations a month`,
+    soonPerk: "MCP for ChatGPT or Claude",
   },
 };

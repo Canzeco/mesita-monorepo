@@ -4,13 +4,16 @@
 // Plan again. 2 Reservations per month is Free. 10 Reservations per month if
 // Pro. thats it. and make it 2 dollar per month. Easy peasy."):
 //
+// Then $1 and "Max" (MESITA-3881, Pato: "charge 1 dollars, not 2 dollars"):
+//
 //   This month: 1 of 2 reservations
 //   ┌ Free   Current            Free ┐
-//   │ 2 reservations a month         │
-//   ├ Pro                $2 a month ┤
-//   │ 10 reservations a month        │
+//   │ Max 2 reservations a month     │
+//   ├ Pro                $1 a month ┤
+//   │ Max 10 reservations a month    │
+//   │ MCP for ChatGPT or Claude Soon │
 //   └────────────────────────────────┘
-//   [ Upgrade to Pro · $2 a month ]     Free
+//   [ Upgrade to Pro · $1 a month ]     Free
 //   Pro renews Dec 14 · Cancel Pro      paid Pro
 //   Pro ends Dec 14 · [ Keep Pro ]      cancelled Pro
 //
@@ -77,6 +80,14 @@ function PlanRow({
         <span className="text-muted-foreground type-label block">
           {words.perk}
         </span>
+        {words.soonPerk && (
+          <span className="text-muted-foreground type-label block">
+            {words.soonPerk}
+            <span className="bg-muted text-muted-foreground type-meta ml-1.5 rounded-full px-1.5 py-0.5 align-middle font-semibold">
+              Soon
+            </span>
+          </span>
+        )}
       </div>
     </div>
   );

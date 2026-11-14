@@ -19,9 +19,10 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { StripeCall } from "./stripe.ts";
 
-/** Pro's price: $2.00 a month. web-consumer's plan-perks.ts prints the same
+/** Pro's price: $1.00 a month (MESITA-3881, Pato: "charge 1 dollars, not 2
+ *  dollars"; $2.00 under MESITA-3870). web-consumer's plan-perks.ts prints the same
  *  number; reservation-cap.test.ts pins the two together. */
-export const PRO_PRICE_CENTS = 200;
+export const PRO_PRICE_CENTS = 100;
 export const PRO_CURRENCY = "usd";
 
 /** The consumers columns this module reads. */
