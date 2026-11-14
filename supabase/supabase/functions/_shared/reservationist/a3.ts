@@ -148,7 +148,7 @@ export const A3: FleetAgent = {
         label: "Unknown number",
         position: pos(600, 640),
         prompt:
-          "El número desde el que llaman no es de ningún comensal ni restaurante en Mesita. Dilo con amabilidad. Si es un comensal con el código de 8 dígitos de una reservación, puedes revisar esa; si es un restaurante, que llame desde el teléfono del lugar o desde su teléfono de Reservaciones. Sin código no das ningún dato ni confirmas que exista una reservación.",
+          "El número desde el que llaman no es de ningún comensal ni restaurante en Mesita. Dilo con amabilidad, una vez. A un comensal: con el código de 8 dígitos de su reservación puedes revisar esa; sin código, que la vea en la app de Mesita o que llame desde el número de su cuenta. A un restaurante: que llame desde el teléfono del lugar o desde su teléfono de Reservaciones. Sin código no das ningún dato ni confirmas que exista una reservación. No menciones correos ni otros medios que no sean esos. Si insiste, repítelo en una frase, discúlpate y despídete; no lo expliques más veces.",
         edgeOrder: ["e_un_code", "e_un_end"],
       }),
       code_lookup: toolNode(tool("get_reservation"), pos(960, 640), ["e_code_info"]),
