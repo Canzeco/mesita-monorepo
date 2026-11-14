@@ -520,28 +520,6 @@ export async function updatePlaceGoogle(placeId: string): Promise<Result<{ updat
   return { ok: true, data: { updatedAt: r.data.updatedAt ?? null } };
 }
 
-/** One line of an Upgrade run (business-web-boost-place, MESITA-3180). */
-export type BoostLine = {
-  result: "ok" | "refused" | "unknown";
-  code?: string;
-  replayed?: boolean;
-  ends_at_2x?: string | null;
-  ends_at_5x?: string | null;
-  ended_days?: number;
-};
-
-/** Upgrade this place (staff): Premier 2X (tier 1) or 5X (tier 2) for `days`,
- *  given by Mesita, or end Mesita's Upgrade. One Google Place ID, one line. */
-export async function boostPlace(
-  googlePlaceId: string,
-  run: { action: "refill"; tier: 1 | 2; days: number; requestId: string } | { action: "end_mesita_days" },
-): Promise<Result<BoostLine>> {
-  const r = await efInvoke<{ lines?: BoostLine[] }>("business-web-boost-place", { ...run, googlePlaceIds: [googlePlaceId] });
-  if (!r.ok) return { ok: false, error: r.error, code: r.code };
-  const line = r.data.lines?.[0];
-  return line ? { ok: true, data: line } : { ok: false, error: "No answer. Try again." };
-}
-
 // ── Per-place Enricher inspector (admin-only) ────────────────────────────
 // The place's enrichment state, for the Admin tab. Super-admin gated EF.
 

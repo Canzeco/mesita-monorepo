@@ -14,9 +14,9 @@
 //                   every N views, far less often
 //   Enable/Disable  guest visibility, places.state (business-web-set-place-listed);
 //                   Disable is confirmed
-//   Upgrade         Premier 2X or 5X for N days, given by Mesita, or End
-//                   Mesita's Upgrade (business-web-boost-place, MESITA-3180);
-//                   the place ranks at the higher of its plan and an Upgrade
+//
+// No Upgrade row: Mesita gives no Premier (MESITA-3937, Pato: "They do need
+// to pay"). Premier comes from the place's plan or a guest's bought Upgrade.
 //
 // The states these change are drawn read-only in Profile States, Reviews
 // States and Enrichment.
@@ -24,14 +24,14 @@
 import { useState } from "react";
 import { LightningIcon } from "@phosphor-icons/react/dist/ssr";
 import { Loader2 } from "lucide-react";
-import { boostPlace, enrichPlace, reloadPlaceReviews, setPlaceListed, updatePlaceGoogle, type AdminPlace, type BoostLine } from "../actions";
+import { enrichPlace, reloadPlaceReviews, setPlaceListed, updatePlaceGoogle, type AdminPlace } from "../actions";
 import { isEnriching, listedFromState } from "../place-header-state";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 import { ConfirmDialog, SectionCard } from "@/components/ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { cn } from "@/lib/utils";
 
-type Key = "enrich" | "google" | "reviews" | "enable" | "disable" | "boost" | "end";
+type Key = "enrich" | "google" | "reviews" | "enable" | "disable";
 type Note = { key: Key; ok: boolean; text: string };
 
 const BUTTON =
@@ -39,46 +39,20 @@ const BUTTON =
 const PRIMARY = `${BUTTON} bg-foreground text-paper hover:opacity-90`;
 const QUIET = `${BUTTON} border-border border hover:bg-muted`;
 
-const BOOST_REFUSED: Record<string, string> = {
-  not_found: "Not on Mesita.",
-  archived: "Archived: not boosted.",
-  unlisted: "Disabled: enable it first.",
-  paid_higher: "Its paid plan is already higher.",
-  cap_reached: "Over a year of Upgrades is queued.",
-};
-
-/** What an Upgrade line says: the level and until when, or why it was refused. */
-function boostText(line: BoostLine, ended: boolean): Note["text"] {
-  if (line.result === "refused") return BOOST_REFUSED[line.code ?? ""] ?? line.code ?? "Refused.";
-  if (line.result !== "ok") return "No answer. Try again.";
-  const day = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null);
-  const ends = [day(line.ends_at_5x) ? `5X until ${day(line.ends_at_5x)}` : null, day(line.ends_at_2x) ? `2X until ${day(line.ends_at_2x)}` : null]
-    .filter(Boolean)
-    .join(" · ");
-  if (ended) return `Ended ${line.ended_days ?? 0} day${line.ended_days === 1 ? "" : "s"} of Mesita Upgrade.${ends ? ` ${ends} left.` : ""}`;
-  return `${line.replayed ? "Already added. " : "Upgraded. "}${ends}`.trim();
-}
-
 function Row({
   name,
   detail,
   note,
-  stacked = false,
   children,
 }: {
   name: string;
   detail: string;
   note: Note | null;
-  /** Controls under the text instead of beside it (Upgrade's four, MESITA-3180). */
-  stacked?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div
-      className={cn(
-        "border-border/60 flex gap-4 border-b py-3.5 first:pt-0 last:border-b-0 last:pb-0",
-        stacked ? "flex-col gap-3" : "items-start justify-between",
-      )}
+      className="border-border/60 flex items-start justify-between gap-4 border-b py-3.5 first:pt-0 last:border-b-0 last:pb-0"
     >
       <div className="min-w-0">
         <span className="text-foreground/90 type-body font-medium">{name}</span>
@@ -89,7 +63,7 @@ function Row({
           </p>
         ) : null}
       </div>
-      <div className={cn("flex gap-2", stacked ? "flex-wrap" : "shrink-0")}>{children}</div>
+      <div className="flex shrink-0 gap-2">{children}</div>
     </div>
   );
 }
@@ -99,10 +73,6 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
   const [busy, setBusy] = useState<Key | null>(null);
   const [note, setNote] = useState<Note | null>(null);
   const [confirmDisable, setConfirmDisable] = useState(false);
-  const [tier, setTier] = useState<1 | 2>(1);
-  const [daysText, setDaysText] = useState("30");
-  const days = Number(daysText);
-  const daysOk = Number.isInteger(days) && days >= 1 && days <= 366;
 
   const listed = listedFromState(place.state);
   const enriching = isEnriching({ content_state: typeof place.content_state === "string" ? place.content_state : null, last_enriched_at: null });
@@ -125,22 +95,6 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
     ) : (
       idle
     );
-
-  function boost(ended: boolean) {
-    if (!hasGoogle) return;
-    const key: Key = ended ? "end" : "boost";
-    if (ended && !window.confirm("End the Upgrade Mesita gave this place? Bought Upgrades stay.")) return;
-    setBusy(key);
-    setNote(null);
-    void boostPlace(
-      place.google_place_id as string,
-      ended ? { action: "end_mesita_days" } : { action: "refill", tier, days, requestId: crypto.randomUUID() },
-    ).then((r) => {
-      setBusy(null);
-      if (!r.ok) return setNote({ key, ok: false, text: r.error });
-      setNote({ key, ok: r.data.result === "ok", text: boostText(r.data, ended) });
-    });
-  }
 
   function setListed(next: boolean) {
     const key: Key = next ? "enable" : "disable";
@@ -169,52 +123,6 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
             className={PRIMARY}
           >
             {enriching ? "Enriching…" : label("enrich", "Enrich", "Starting…")}
-          </button>
-        </Row>
-        <Row
-          name="Upgrade"
-          detail="Premier 2X or 5X for a number of days, given by Mesita, never a plan. The place ranks at the higher of its plan and an Upgrade."
-          note={noteFor("boost") ?? noteFor("end")}
-          stacked
-        >
-          <div className="border-border inline-flex h-9 shrink-0 rounded-full border p-0.5" role="radiogroup" aria-label="Premier">
-            {([1, 2] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                role="radio"
-                aria-checked={tier === t}
-                disabled={busy !== null}
-                onClick={() => setTier(t)}
-                className={cn(
-                  "rounded-full px-3 text-xs font-semibold disabled:opacity-40",
-                  tier === t ? "bg-foreground text-paper" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t === 1 ? "2X" : "5X"}
-              </button>
-            ))}
-          </div>
-          <label className="sr-only" htmlFor="boost-days">
-            Days
-          </label>
-          <input
-            id="boost-days"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={366}
-            value={daysText}
-            disabled={busy !== null}
-            onChange={(e) => setDaysText(e.target.value)}
-            aria-invalid={!daysOk}
-            className="border-border bg-background h-9 w-16 shrink-0 rounded-full border px-3 text-center text-xs tabular-nums outline-none disabled:opacity-40"
-          />
-          <button type="button" disabled={busy !== null || !hasGoogle || !daysOk} onClick={() => boost(false)} className={QUIET}>
-            {label("boost", "Upgrade", "Upgrading…")}
-          </button>
-          <button type="button" disabled={busy !== null || !hasGoogle} onClick={() => boost(true)} className={QUIET}>
-            {label("end", "End", "Ending…")}
           </button>
         </Row>
         <Row
