@@ -11,8 +11,6 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
-import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { HouseCardSkeleton, PlaceCredit } from "./PlaceCredit";
 import { useWallet } from "./use-wallet";
 
@@ -26,12 +24,8 @@ import { useWallet } from "./use-wallet";
 // MESITA-3617), so the new credit shows on its own card. On white, like the
 // Wallet it opens from (MESITA-3747).
 //
-// ONE READ PAINTS THE PAGE (MESITA-3868): the Wallet. The place's vouchers
-// (list-vouchers) are asked beside it, in the background, for the Buy Credits
-// sheet; the page no longer draws anything from them, so it no longer waits
-// for them. A card payment that succeeded or is processing reads the Wallet
-// again (usePlaceVouchers' onPaid), so the new pending row is there when the
-// pay sheet closes.
+// ONE READ PAINTS THE PAGE (MESITA-3868): the Wallet. Add Credits is a link to
+// the place's Offers page (MESITA-3883), so this page asks nothing else.
 
 export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   const router = useRouter();
@@ -52,22 +46,6 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   const { wallet, failed, credits, reread, confirming } = useWallet();
   const row = credits?.find((r) => r.placeId === placeId) ?? null;
   const back = useCallback(() => goBack(router), [router]);
-  // THE PLACE'S VOUCHERS, BEHIND BUY CREDITS (MESITA-3868; a list on the page
-  // from MESITA-3822 until then): asked when the page opens, for the sheet.
-  // Buy opens the same pay sheet as the place's Offers, here on the card.
-  const vouchers = usePlaceVouchers(placeId, { onPaid: reread });
-  const loadVouchers = vouchers.load;
-  useEffect(() => {
-    void loadVouchers();
-  }, [loadVouchers]);
-  const profile = useConsumerProfile().data;
-  const guest = profile
-    ? {
-        vip: profile.guest_class === "vip",
-        instagramLinked: Boolean(profile.instagram_handle),
-        instagramFollowers: profile.instagram_followers_count ?? null,
-      }
-    : undefined;
 
   // No House Card here: the Wallet is the nearest true screen. Not while a
   // purchase here is still confirming: a first one brings the card with it
@@ -117,15 +95,6 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
             onReread={reread}
             onRemove={removeHouseCard}
             startGift={startGift}
-            vouchers={{
-              money: vouchers.money,
-              loading: vouchers.loading,
-              failed: vouchers.failed,
-              onRetry: vouchers.load,
-              guest,
-              buying: vouchers.buying,
-              onBuy: vouchers.buy,
-            }}
           />
         ) : failed ? (
           <EmptyState
@@ -138,7 +107,6 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
           <HouseCardSkeleton />
         )}
       </div>
-      {vouchers.sheet}
     </Screen>
   );
 }

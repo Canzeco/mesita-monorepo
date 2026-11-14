@@ -26,7 +26,7 @@ import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
 import { useBrowserSupabase, useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
-import { navigateTo } from "@/lib/navigate";
+import { goBack, navigateTo } from "@/lib/navigate";
 import { CONSUMER_ROUTES, payPlacePath, placeReservePath, reservationPath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { apiListReservations, type EFReservationRow } from "@/lib/api/reservations";
 import { statusLabel, whenLine } from "@/lib/reservation-when";
@@ -79,6 +79,12 @@ function noopSubscribe() {
   return () => {};
 }
 
+/** The ask came from a House Card's Add Credits (MESITA-3883): closing the
+ *  Offers page goes back there, not down to the profile. */
+function readFromWallet(): boolean {
+  return new URLSearchParams(window.location.search).get("from") === "wallet";
+}
+
 function readRewardsAsk(): RewardsSection | null {
   const v = new URLSearchParams(window.location.search).get("rewards");
   return v === "prepayment" || v === "payment" || v === "special" ? v : null;
@@ -107,6 +113,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   // MESITA-3439, its slides since MESITA-3467)
   // opens the sheet on arrival, once: closing it drops the ask.
   const askedRewards = useSyncExternalStore(noopSubscribe, readRewardsAsk, () => null);
+  const fromWallet = useSyncExternalStore(noopSubscribe, readFromWallet, () => false);
   const [askDismissed, setAskDismissed] = useState(false);
   const rewardsShown = rewards ?? (askDismissed ? null : askedRewards);
   // When the Upgrade tile or ⋯ › Upgrade last asked for the Upgrade sheet (ms).
@@ -273,6 +280,10 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         actions={actions}
         section={rewardsShown}
         onClose={() => {
+          if (fromWallet && rewards == null && !askDismissed && askedRewards != null) {
+            goBack(router, walletPlacePath(place.id));
+            return;
+          }
           setRewards(null);
           setAskDismissed(true);
         }}
