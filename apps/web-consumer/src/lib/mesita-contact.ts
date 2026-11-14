@@ -9,8 +9,11 @@
 // mesita-contact.test.ts fails the build if one comes back.
 
 export const MESITA_SUPPORT_EMAIL = "support@mesita.ai";
-/** The place's ownership box (Pato, MESITA-3203: "don't mention support call it Hello"). */
-export const MESITA_HELLO_EMAIL = "hello@mesita.ai";
+/** The place's ownership box: a phone, not an email (Pato, MESITA-3906: "don't
+ *  write but a phone number to contact Mesita"). A PLACEHOLDER until Pato gives
+ *  the real line ("random fake number for the moment"): change both here. */
+export const MESITA_PHONE = "+52 000 000 0000";
+export const MESITA_PHONE_TEL = "tel:+520000000000";
 export const MESITA_PRIVACY_EMAIL = "privacy@mesita.ai";
 export const MESITA_INSTAGRAM_URL = "https://instagram.com/mesita.ai";
 export const MESITA_INSTAGRAM_HANDLE = "@mesita.ai";
