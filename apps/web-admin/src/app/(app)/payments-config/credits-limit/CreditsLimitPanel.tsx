@@ -4,7 +4,20 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CoinsIcon, GaugeIcon } from "@phosphor-icons/react";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
-import { Button, SectionCard } from "@/components/admin-ui/config";
+import {
+  Button,
+  Chip,
+  EmptyState,
+  Notice,
+  SectionCard,
+  TBody,
+  THead,
+  Table,
+  Td,
+  TextField,
+  Th,
+  Tr,
+} from "@/components/admin-ui";
 import { businessPlaceHref } from "@/lib/business-url";
 import { saveDefaultLimit, savePlaceLimit, type LimitDefault, type LimitPlace } from "./actions";
 
@@ -58,7 +71,7 @@ function LimitEditor({
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center justify-end gap-2">
         <span className="text-muted-foreground text-xs">{currency}</span>
-        <input
+        <TextField
           type="text"
           inputMode="numeric"
           autoComplete="off"
@@ -66,11 +79,11 @@ function LimitEditor({
           value={draft}
           placeholder={placeholder}
           aria-label={`Limit in ${currency}`}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={setDraft}
           onKeyDown={(e) => {
             if (e.key === "Enter" && dirty && parsed !== null) run(() => onSave(parsed));
           }}
-          className="border-border bg-card focus:border-foreground h-9 w-36 rounded-lg border px-3 text-right text-sm tabular-nums outline-none"
+          className="w-36"
         />
         <Button size="sm" pending={pending} disabled={!dirty} onClick={() => parsed !== null && run(() => onSave(parsed))}>
           Save
@@ -81,11 +94,7 @@ function LimitEditor({
           </Button>
         ) : null}
       </div>
-      {error ? (
-        <span className="text-destructive text-xs" role="alert">
-          {error}
-        </span>
-      ) : null}
+      {error ? <Notice>{error}</Notice> : null}
     </div>
   );
 }
@@ -114,44 +123,44 @@ export function CreditsLimitPanel({
   return (
     <div className="flex flex-col gap-6">
       <SectionCard
-        icon={<GaugeIcon className="h-5 w-5" aria-hidden />}
+        icon={<GaugeIcon aria-hidden />}
         title="Places"
         subtitle={`Every place holding credit or with House Credits on, most used first. Outstanding is Available plus Pending, every guest, plus unclaimed gifts. ${WATCH_PCT}% and over is highlighted.${testMode ? " Test mode: these are test-mode balances." : ""}`}
-        state={
+        right={
           watched > 0 ? (
-            <span className="bg-destructive/10 text-destructive rounded-full px-3 py-1 text-xs font-semibold" data-credits-watch>
+            <Chip tone="danger" data-credits-watch>
               {watched} at {WATCH_PCT}%+
-            </span>
+            </Chip>
           ) : null
         }
       >
         {rows.length === 0 ? (
-          <p className="text-muted-foreground mt-4 text-sm">No place holds credit or has House Credits on yet.</p>
+          <EmptyState className="mt-4">No place holds credit or has House Credits on yet.</EmptyState>
         ) : (
-          <div className="-mx-4 mt-4 overflow-x-auto sm:mx-0">
-            <table className="w-full min-w-[760px] text-sm" data-admin-credits-limit>
-              <thead>
-                <tr className="text-muted-foreground border-border border-b text-left">
-                  <th className="px-4 py-2 font-medium sm:pl-0">Place</th>
-                  <th className="px-4 py-2 font-medium">Currency</th>
-                  <th className="px-4 py-2 text-right font-medium">Outstanding</th>
-                  <th className="px-4 py-2 text-right font-medium">Used</th>
-                  <th className="px-4 py-2 text-right font-medium sm:pr-0">Limit</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="mt-4">
+            <Table className="min-w-[760px]" data-admin-credits-limit>
+              <THead>
+                <Tr>
+                  <Th>Place</Th>
+                  <Th>Currency</Th>
+                  <Th numeric>Outstanding</Th>
+                  <Th numeric>Used</Th>
+                  <Th numeric>Limit</Th>
+                </Tr>
+              </THead>
+              <TBody>
                 {rows.map((r) => {
                   const hot = r.pct >= WATCH_PCT;
                   const href = businessPlaceHref(r.place_id, "admin");
                   const fallback = defaultFor.get(r.currency);
                   return (
-                    <tr
+                    <Tr
                       key={r.place_id}
-                      className={"border-border border-b last:border-0 " + (hot ? "bg-destructive/5" : "")}
+                      className={hot ? "bg-destructive/5" : undefined}
                       data-place={r.place_id}
                       data-hot={hot || undefined}
                     >
-                      <td className="px-4 py-3 sm:pl-0">
+                      <Td>
                         {href ? (
                           <a href={href} className="font-semibold hover:underline">
                             {r.place_name ?? r.place_id}
@@ -160,15 +169,15 @@ export function CreditsLimitPanel({
                           <span className="font-semibold">{r.place_name ?? r.place_id}</span>
                         )}
                         {!r.house_credits ? <span className="text-muted-foreground block text-xs">House Credits off</span> : null}
-                      </td>
-                      <td className="text-muted-foreground px-4 py-3">{r.currency}</td>
-                      <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+                      </Td>
+                      <Td className="text-muted-foreground">{r.currency}</Td>
+                      <Td numeric className="whitespace-nowrap">
                         {moneyLabel(r.outstanding_cents, r.currency)}
-                      </td>
-                      <td className={"px-4 py-3 text-right tabular-nums whitespace-nowrap " + (hot ? "text-destructive font-semibold" : "")}>
+                      </Td>
+                      <Td numeric className={hot ? "text-destructive font-semibold whitespace-nowrap" : "whitespace-nowrap"}>
                         {pctText(r.pct)}
-                      </td>
-                      <td className="px-4 py-3 sm:pr-0">
+                      </Td>
+                      <Td>
                         <LimitEditor
                           key={`${r.override_cents}`}
                           cents={r.override_cents}
@@ -177,48 +186,48 @@ export function CreditsLimitPanel({
                           onSave={async (c) => after(await savePlaceLimit(r.place_id, c))}
                           onClear={async () => after(await savePlaceLimit(r.place_id, null))}
                         />
-                      </td>
-                    </tr>
+                      </Td>
+                    </Tr>
                   );
                 })}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           </div>
         )}
       </SectionCard>
 
       <SectionCard
-        icon={<CoinsIcon className="h-5 w-5" aria-hidden />}
+        icon={<CoinsIcon aria-hidden />}
         title="Defaults"
         subtitle="The limit for every place in that currency, unless the place has its own. Whole units. A lower limit never touches credit already owed; it only refuses the next voucher buy that would pass it."
       >
-        <div className="-mx-4 mt-4 overflow-x-auto sm:mx-0">
-          <table className="w-full min-w-[480px] text-sm" data-admin-credits-defaults>
-            <thead>
-              <tr className="text-muted-foreground border-border border-b text-left">
-                <th className="px-4 py-2 font-medium sm:pl-0">Currency</th>
-                <th className="px-4 py-2 text-right font-medium sm:pr-0">Default limit</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="mt-4">
+          <Table className="min-w-[480px]" data-admin-credits-defaults>
+            <THead>
+              <Tr>
+                <Th>Currency</Th>
+                <Th numeric>Default limit</Th>
+              </Tr>
+            </THead>
+            <TBody>
               {defaults.map((d) => (
-                <tr key={d.currency} className="border-border border-b last:border-0" data-currency={d.currency}>
-                  <td className="px-4 py-3 font-semibold sm:pl-0">
+                <Tr key={d.currency} data-currency={d.currency}>
+                  <Td className="font-semibold">
                     {d.currency}
                     <span className="text-muted-foreground block text-xs font-normal">{moneyLabel(d.limit_cents, d.currency)}</span>
-                  </td>
-                  <td className="px-4 py-3 sm:pr-0">
+                  </Td>
+                  <Td>
                     <LimitEditor
                       key={d.limit_cents}
                       cents={d.limit_cents}
                       currency={d.currency}
                       onSave={async (c) => after(await saveDefaultLimit(d.currency, c))}
                     />
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         </div>
       </SectionCard>
     </div>

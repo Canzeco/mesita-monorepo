@@ -12,7 +12,7 @@ export function AppFeedbackRow({ feedback }: { feedback: AdminAppFeedback }) {
   return (
     <li className="border-border flex flex-col gap-1 border-t py-3 first:border-t-0 first:pt-0">
       <p className="text-sm leading-relaxed break-words whitespace-pre-line">{feedback.note}</p>
-      <span className="text-muted-foreground text-xs">
+      <span className="text-muted-foreground type-meta">
         {who} · {formatAbsoluteUtc(feedback.created_at)}
       </span>
     </li>

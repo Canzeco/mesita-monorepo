@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
 import { AdminWordmark, Sidebar } from "@/components/Sidebar";
+import { Button, DRAWER_SURFACE_CLASS } from "@/components/admin-ui";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -82,7 +83,7 @@ export function AppShell({ children }: AppShellProps) {
           className={
             // w-60 matches the expanded rail — at w-64 the rail underfilled the
             // panel and the close button floated off its edge.
-            "relative h-full w-60 max-w-[85vw] shadow-elev transition-transform duration-200 ease-out " +
+            `relative h-full w-60 max-w-[85vw] ${DRAWER_SURFACE_CLASS} transition-transform duration-200 ease-out ` +
             (open ? "translate-x-0" : "-translate-x-full")
           }
           role="dialog"
@@ -90,14 +91,15 @@ export function AppShell({ children }: AppShellProps) {
         >
           <Sidebar onNavigate={close} />
           {open && (
-            <button
-              type="button"
+            <Button
+              tone="secondary"
+              size="icon"
               onClick={close}
               aria-label="Close menu"
-              className="border-border bg-card text-muted-foreground hover:text-foreground absolute top-3 -right-12 flex h-9 w-9 items-center justify-center rounded-full border shadow-card transition"
+              className="absolute top-3 -right-12"
             >
               <X className="h-4 w-4" />
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -105,16 +107,17 @@ export function AppShell({ children }: AppShellProps) {
       <div className="flex min-w-0 min-h-0 flex-1 flex-col">
         {/* Mobile / tablet topbar — hidden lg+ */}
         <header className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/75 sticky top-0 z-30 flex shrink-0 items-center gap-3 border-b px-4 py-2.5 backdrop-blur lg:hidden">
-          <button
+          <Button
             ref={hamburgerRef}
-            type="button"
+            tone="secondary"
+            size="icon"
             onClick={() => setOpen(true)}
             aria-label="Open menu"
             aria-expanded={open}
-            className="border-border text-foreground hover:bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition"
+            className="shrink-0"
           >
             <Menu className="h-4 w-4" />
-          </button>
+          </Button>
           <Link href={MULTIPLE_PLACES_PARENT.href} title="Mesita Admin" className="min-w-0 truncate">
             <AdminWordmark />
           </Link>

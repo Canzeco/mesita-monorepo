@@ -3,7 +3,7 @@
 
 > Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only; Notion Docs › Apps describes every page.
 
-- **Light theme, semantic tokens.** New UI takes its chrome from `src/components/admin-ui/`, never a route-local shim. Design map: Notion Docs › Design.
+- **One kit, no exceptions.** Every page takes its chrome from `@/components/admin-ui` only (light theme, semantic tokens); `pnpm lint` fails anything else. Design map: Notion Docs › Design §C.
 - **Edge Functions:** `admin-web-*` only, through the `Result`-style helper in `src/lib/supabase-ef.ts`.
 - **Config pages** seed on the server, edit in a client form and save through their section's EF; Save waits on `loadError` (`admin-ui/use-config-editor.test.tsx`). A control that saves but changes nothing says so beside itself: `KnobState` reads Enforced, Fallback or Not wired.
 - **Labels:** a label never repeats its section heading, and renaming a label never renames its route, config blob or EF.

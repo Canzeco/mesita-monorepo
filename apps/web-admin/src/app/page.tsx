@@ -3,7 +3,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
-import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { Notice, OVERLAY_SURFACE_CLASS } from "@/components/admin-ui";
 
 // Root of the admin subdomain. Strong routing contract:
 //
@@ -34,7 +34,7 @@ export default async function AdminRootPage({
 
   return (
     <main className="bg-hero flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="border-border bg-card shadow-elev flex w-full max-w-md flex-col gap-6 rounded-2xl border p-6 sm:p-8">
+      <div className={`${OVERLAY_SURFACE_CLASS} flex w-full max-w-md flex-col gap-6 p-6 sm:p-8`}>
         <div className="flex flex-col gap-3">
           <MesitaLogo className="h-7 w-auto" />
           <div>
@@ -43,7 +43,7 @@ export default async function AdminRootPage({
               Sign in with your Google account.
             </p>
           </div>
-          {errorMessage ? <p className={`${ERROR_BOX_CLASS} leading-relaxed`}>{errorMessage}</p> : null}
+          {errorMessage ? <Notice>{errorMessage}</Notice> : null}
         </div>
         <GoogleSignInButton />
       </div>

@@ -5,8 +5,8 @@ import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRo
 // The one table: scrolls inside its card on a phone; numbers right-aligned
 // and tabular; hover only on clickable rows; `sticky` pins the identity column.
 
-export function Table({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <UiTable className={className}>{children}</UiTable>;
+export function Table({ className, ...rest }: React.ComponentProps<"table">) {
+  return <UiTable className={className} {...rest} />;
 }
 
 export function THead({ children }: { children: React.ReactNode }) {

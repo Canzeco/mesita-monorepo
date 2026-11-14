@@ -19,18 +19,18 @@ import {
   Zap,
 } from "lucide-react";
 import {
+  Chip,
   Collapsible,
   NumberField,
   SectionCard,
   TextAreaField,
-} from "@/components/admin-ui/config";
+} from "@/components/admin-ui";
 import type { CrenupPrompt } from "./actions";
 import {
   Fields,
   FlowEstimate,
   KnobElsewhere,
   PromptDisclosure,
-  Tag,
 } from "./blocks";
 import type { CostEstimate } from "./cost-model";
 import type { CrenupSettings } from "./crenup-guards";
@@ -47,9 +47,9 @@ import { ImageFunnel } from "./ImageFunnel";
 const MAX_DISCOVERY_CANDIDATES = 10;
 
 const ICON: Record<UpdationLevelId, React.ReactNode> = {
-  "fast-update": <Zap className="text-secondary h-4 w-4" />,
-  "deep-update": <RefreshCw className="text-secondary h-4 w-4" />,
-  "deep-enrich": <Layers className="text-secondary h-4 w-4" />,
+  "fast-update": <Zap />,
+  "deep-update": <RefreshCw />,
+  "deep-enrich": <Layers />,
 };
 
 const SECTION_ID: Record<UpdationLevelId, string> = {
@@ -127,11 +127,11 @@ function LevelCard({
         icon={ICON[level.id]}
         title={level.title}
         subtitle={level.purpose}
-        state={
-          <div className="flex flex-wrap gap-1.5">
-            <Tag tone="solid">{level.runsOn}</Tag>
-            <Tag>{level.cost}</Tag>
-          </div>
+        right={
+          <>
+            <Chip>{level.runsOn}</Chip>
+            <Chip>{level.cost}</Chip>
+          </>
         }
       >
         {level.refreshes.length > 0 && (
@@ -139,7 +139,7 @@ function LevelCard({
             <Label>Refreshes</Label>
             <div className="flex flex-wrap gap-1.5">
               {level.refreshes.map((r) => (
-                <Tag key={r}>{r}</Tag>
+                <Chip key={r}>{r}</Chip>
               ))}
             </div>
             {level.neverTouches && (
@@ -339,12 +339,16 @@ export function UpdationView({
             <Collapsible summary="Analysis and sorting prompts">
               <div className="grid gap-4 lg:grid-cols-2">
                 <TextAreaField
+                  well
+                  maxLength={4000}
                   label="Analysis prompt"
                   value={settings.imageAnalysisPrompt}
                   onChange={(v) => patch({ imageAnalysisPrompt: v })}
                   disabled={off}
                 />
                 <TextAreaField
+                  well
+                  maxLength={4000}
                   label="Sorting prompt"
                   value={settings.imageSortingPrompt}
                   onChange={(v) => patch({ imageSortingPrompt: v })}

@@ -2,35 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { ShieldCheck, Trash2, UserPlus } from "lucide-react";
-import { ErrorNote } from "@/components/ErrorNote";
-import { Button, SectionCard, TextField } from "@/components/admin-ui/config";
+import { Button, Notice, SectionCard, TextField } from "@/components/admin-ui";
 import { grantAdmin, revokeAdmin, type AdminRow } from "./actions";
-import { PageContainer, PageHeader } from "@/components/PageContainer";
 
+// The Admins card; the page chrome lives in page.tsx.
 export function AdminConfigClient({
-  initialAdmins,
-  self,
-  loadError,
-}: {
-  initialAdmins: AdminRow[];
-  self: string | null;
-  loadError: string | null;
-}) {
-  return (
-    <PageContainer className="flex flex-col gap-6 sm:gap-8">
-      <PageHeader
-        title="Admins"
-        description="Manage who has admin access. Super-admins only."
-      />
-
-      <AdminsCard initialAdmins={initialAdmins} self={self} loadError={loadError} />
-    </PageContainer>
-  );
-}
-
-// ─── Admins ──────────────────────────────────────────────────────────────
-
-function AdminsCard({
   initialAdmins,
   self,
   loadError,
@@ -90,10 +66,10 @@ function AdminsCard({
 
   return (
     <SectionCard
-      icon={<ShieldCheck className="text-muted-foreground h-4 w-4" />}
+      icon={<ShieldCheck />}
       title="Admins"
       subtitle="Everyone on the super-admin allowlist. Add or remove by email — the account doesn't need to exist yet."
-      state={
+      right={
         <span className="text-muted-foreground text-xs tabular-nums">
           {admins.length}
         </span>
@@ -130,7 +106,7 @@ function AdminsCard({
         </Button>
       </div>
 
-      {error && <ErrorNote message={error} />}
+      {error && <Notice className="mt-4">{error}</Notice>}
 
       <ul className="border-border divide-border/60 mt-5 divide-y overflow-hidden rounded-xl border">
         {admins.length === 0 && (
@@ -162,7 +138,7 @@ function AdminsCard({
                 )}
               </div>
               <Button
-                tone="danger"
+                tone="danger-ghost"
                 size="icon"
                 pending={busy}
                 disabled={isSelf || onlyOne || removing}
@@ -185,5 +161,3 @@ function AdminsCard({
     </SectionCard>
   );
 }
-
-

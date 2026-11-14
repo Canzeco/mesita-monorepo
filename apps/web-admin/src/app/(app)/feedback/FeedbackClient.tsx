@@ -1,5 +1,4 @@
-import { SECTION_CARD_CLASS } from "@/components/admin-ui/manage";
-import { PageContainer, PageHeader } from "@/components/PageContainer";
+import { EmptyState, Notice, SectionCard } from "@/components/admin-ui";
 import type { AdminAppFeedback, AdminPlaceReport } from "@/components/reports/types";
 import { AppFeedbackRow } from "@/components/reports/AppFeedbackRow";
 import { ReportRow } from "@/components/reports/ReportRow";
@@ -38,33 +37,28 @@ export function FeedbackClient({
   const errors = [loadError, appLoadError].filter((e): e is string => e !== null);
 
   return (
-    <PageContainer className="flex flex-col gap-6 sm:gap-8">
-      <PageHeader title="Feedback" description="Everything guests send, newest first." />
-      <section className={SECTION_CARD_CLASS}>
-        {errors.map((e) => (
-          <p key={e} role="alert" className="text-destructive mb-3 text-sm">
-            Couldn&apos;t load feedback: {e}
-          </p>
-        ))}
-        {items.length === 0 ? (
-          errors.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No feedback yet.</p>
-          ) : null
-        ) : (
-          <ul className="flex flex-col">
-            {items.map((item) =>
-              item.kind === "report" ? (
-                <ReportRow key={`r-${item.report.id}`} report={item.report} showPlace />
-              ) : (
-                <AppFeedbackRow key={`a-${item.feedback.id}`} feedback={item.feedback} />
-              ),
-            )}
-          </ul>
-        )}
-        {capped || appCapped ? (
-          <p className="text-muted-foreground mt-3 text-xs">Showing the latest 500 of each kind.</p>
-        ) : null}
-      </section>
-    </PageContainer>
+    <SectionCard title="All feedback">
+      {errors.map((e) => (
+        <Notice key={e} className="mt-4">
+          Couldn&apos;t load feedback: {e}
+        </Notice>
+      ))}
+      {items.length === 0 ? (
+        errors.length === 0 ? <EmptyState>No feedback yet.</EmptyState> : null
+      ) : (
+        <ul className="mt-4 flex flex-col">
+          {items.map((item) =>
+            item.kind === "report" ? (
+              <ReportRow key={`r-${item.report.id}`} report={item.report} showPlace />
+            ) : (
+              <AppFeedbackRow key={`a-${item.feedback.id}`} feedback={item.feedback} />
+            ),
+          )}
+        </ul>
+      )}
+      {capped || appCapped ? (
+        <p className="text-muted-foreground mt-3 type-meta">Showing the latest 500 of each kind.</p>
+      ) : null}
+    </SectionCard>
   );
 }

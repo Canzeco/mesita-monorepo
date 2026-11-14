@@ -1,4 +1,4 @@
-import { PageContainer, PageHeader } from "@/components/PageContainer";
+import { ConfigPageLayout, Notice } from "@/components/admin-ui";
 import { getCreditsLimit } from "./actions";
 import { CreditsLimitPanel } from "./CreditsLimitPanel";
 
@@ -12,20 +12,15 @@ export const dynamic = "force-dynamic";
 export default async function CreditsLimitPage() {
   const res = await getCreditsLimit();
   return (
-    <PageContainer>
-      <PageHeader
-        title="Credits Limit"
-        description="The most credit a place may owe its guests at once. A voucher buy that would pass it is refused; cashback still lands."
-      />
-      <div className="mt-6 sm:mt-8">
-        {res.ok ? (
-          <CreditsLimitPanel testMode={res.test_mode} defaults={res.defaults} places={res.places} />
-        ) : (
-          <p className="text-destructive text-sm" role="alert">
-            Couldn&apos;t load the Credits Limit: {res.error}
-          </p>
-        )}
-      </div>
-    </PageContainer>
+    <ConfigPageLayout
+      title="Credits Limit"
+      description="The most credit a place may owe its guests at once. A voucher buy that would pass it is refused; cashback still lands."
+    >
+      {res.ok ? (
+        <CreditsLimitPanel testMode={res.test_mode} defaults={res.defaults} places={res.places} />
+      ) : (
+        <Notice>Couldn&apos;t load the Credits Limit: {res.error}</Notice>
+      )}
+    </ConfigPageLayout>
   );
 }

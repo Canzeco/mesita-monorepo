@@ -1,8 +1,19 @@
 import Link from "next/link";
 import { CaretRightIcon, CoinsIcon, GaugeIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
-import { PageContainer, PageHeader } from "@/components/PageContainer";
-import { SectionCard } from "@/components/admin-ui/config";
+import {
+  FOCUS_RING_CLASS,
+  Notice,
+  PageContainer,
+  PageHeader,
+  SectionCard,
+  TBody,
+  THead,
+  Table,
+  Td,
+  Th,
+  Tr,
+} from "@/components/admin-ui";
 import { getVoucherPrices, type VoucherPriceRow } from "./actions";
 
 // ADMIN › PAYMENTS (Pato, 2026-11-14, MESITA-3918: "create a new page in
@@ -47,26 +58,23 @@ export default async function PaymentsConfigPage() {
     ? [...res.vouchers].sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key))
     : [];
   return (
-    <PageContainer>
+    <PageContainer className="flex flex-col gap-6 sm:gap-8">
       <PageHeader title="Payments" description="How guests pay ahead. Read-only: these numbers change only in code." />
       {/* MESITA-3947: the one editable part of Payments, on its own page. */}
       <Link
         href="/payments-config/credits-limit"
-        className="border-border bg-card hover:bg-muted mt-6 flex items-center gap-3 rounded-2xl border p-4 sm:mt-8 sm:p-6"
+        className={`group block rounded-2xl ${FOCUS_RING_CLASS}`}
         data-admin-credits-limit-link
       >
-        <GaugeIcon className="h-5 w-5 shrink-0" aria-hidden />
-        <span className="min-w-0 flex-1">
-          <span className="font-display block text-base font-semibold tracking-tight">Credits Limit</span>
-          <span className="text-muted-foreground block text-sm">
-            The most credit each place may owe its guests: a default per currency, a place&apos;s own limit, and who is close to it.
-          </span>
-        </span>
-        <CaretRightIcon className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
-      </Link>
-      <div className="mt-6">
         <SectionCard
-          icon={<TicketIcon className="h-5 w-5" aria-hidden />}
+          icon={<GaugeIcon aria-hidden />}
+          title="Credits Limit"
+          subtitle="The most credit each place may owe its guests: a default per currency, a place's own limit, and who is close to it."
+          right={<CaretRightIcon className="text-muted-foreground group-hover:text-foreground h-4 w-4" aria-hidden />}
+        />
+      </Link>
+      <SectionCard
+          icon={<TicketIcon aria-hidden />}
           title="Vouchers"
           subtitle={
             res.ok
@@ -75,90 +83,86 @@ export default async function PaymentsConfigPage() {
           }
         >
           {res.ok ? (
-            <div className="-mx-4 overflow-x-auto sm:mx-0">
-              <table className="w-full min-w-[640px] text-sm" data-admin-voucher-prices>
-                <thead>
-                  <tr className="text-muted-foreground border-border border-b text-left">
-                    <th className="px-4 py-2 font-medium sm:pl-0">Voucher</th>
-                    <th className="px-4 py-2 font-medium">Bonus</th>
+            <div className="mt-4">
+              <Table className="min-w-[640px]" data-admin-voucher-prices>
+                <THead>
+                  <Tr>
+                    <Th>Voucher</Th>
+                    <Th>Bonus</Th>
                     {res.currencies.map((c) => (
-                      <th key={c} className="px-4 py-2 text-right font-medium">
+                      <Th key={c} numeric>
                         {c} · pays → gets
-                      </th>
+                      </Th>
                     ))}
-                    <th className="px-4 py-2 font-medium">Ready</th>
-                    <th className="px-4 py-2 font-medium">Who</th>
-                    <th className="px-4 py-2 font-medium sm:pr-0">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
+                    <Th>Ready</Th>
+                    <Th>Who</Th>
+                    <Th>Status</Th>
+                  </Tr>
+                </THead>
+                <TBody>
                   {rows.map((v) => (
-                    <tr key={v.key} className="border-border border-b last:border-0" data-voucher={v.key}>
-                      <td className="px-4 py-3 font-semibold sm:pl-0">{NAME[v.key] ?? v.key}</td>
-                      <td className="px-4 py-3 tabular-nums">+{v.bonus_bps / 100}%</td>
+                    <Tr key={v.key} data-voucher={v.key}>
+                      <Td className="font-semibold">{NAME[v.key] ?? v.key}</Td>
+                      <Td className="tabular-nums">+{v.bonus_bps / 100}%</Td>
                       {res.currencies.map((c) => {
                         const p = v.prices[c];
                         return (
-                          <td key={c} className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+                          <Td key={c} numeric className="whitespace-nowrap">
                             {p ? `${moneyLabel(p.price_cents, c)} → ${moneyLabel(p.credit_cents, c)}` : "—"}
-                          </td>
+                          </Td>
                         );
                       })}
-                      <td className="px-4 py-3 whitespace-nowrap">{wait(v.available_after_sec)}</td>
-                      <td className="text-muted-foreground px-4 py-3">{WHO[v.key] ?? ""}</td>
-                      <td className="px-4 py-3 whitespace-nowrap sm:pr-0">{v.on_sale ? "On sale" : "Off sale"}</td>
-                    </tr>
+                      <Td className="whitespace-nowrap">{wait(v.available_after_sec)}</Td>
+                      <Td className="text-muted-foreground">{WHO[v.key] ?? ""}</Td>
+                      <Td className="whitespace-nowrap">{v.on_sale ? "On sale" : "Off sale"}</Td>
+                    </Tr>
                   ))}
-                </tbody>
-              </table>
+                </TBody>
+              </Table>
             </div>
           ) : (
-            <p className="text-destructive text-sm" role="alert">
-              Couldn&apos;t load the voucher catalog: {res.error}
-            </p>
+            <Notice className="mt-4">Couldn&apos;t load the voucher catalog: {res.error}</Notice>
           )}
-        </SectionCard>
-      </div>
+      </SectionCard>
       {res.ok && res.currency_list.length > 0 ? (
-        <div className="mt-6">
           <SectionCard
-            icon={<CoinsIcon className="h-5 w-5" aria-hidden />}
+            icon={<CoinsIcon aria-hidden />}
             title="Currencies"
             subtitle="Three countries at launch: Mexico, the United States and Canada, each in its own currency (fixed when the place signs the House Credits Agreement). Small +10% starts with 1; Big +20% is 10× Small; Welcome, Story and VIP cost the Small price."
           >
-            <div className="-mx-4 overflow-x-auto sm:mx-0">
-              <table className="w-full min-w-[640px] text-sm" data-admin-voucher-currencies>
-                <thead>
-                  <tr className="text-muted-foreground border-border border-b text-left">
-                    <th className="px-4 py-2 font-medium sm:pl-0">Currency</th>
-                    <th className="px-4 py-2 font-medium">Country</th>
-                    <th className="px-4 py-2 text-right font-medium">Small · +10%</th>
-                    <th className="px-4 py-2 text-right font-medium">Big · +20%</th>
-                    <th className="px-4 py-2 text-right font-medium">Welcome · VIP · +100%</th>
-                    <th className="px-4 py-2 font-medium sm:pr-0">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <div className="mt-4">
+              <Table className="min-w-[640px]" data-admin-voucher-currencies>
+                <THead>
+                  <Tr>
+                    <Th>Currency</Th>
+                    <Th>Country</Th>
+                    <Th numeric>Small · +10%</Th>
+                    <Th numeric>Big · +20%</Th>
+                    <Th numeric>Welcome · VIP · +100%</Th>
+                    <Th>Status</Th>
+                  </Tr>
+                </THead>
+                <TBody>
                   {res.currency_list.map((c) => (
-                    <tr key={c.code} className="border-border border-b last:border-0" data-currency={c.code}>
-                      <td className="px-4 py-3 font-semibold sm:pl-0">{c.code}</td>
-                      <td className="text-muted-foreground px-4 py-3">{c.country}</td>
-                      <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+                    <Tr key={c.code} data-currency={c.code}>
+                      <Td className="font-semibold">{c.code}</Td>
+                      <Td className="text-muted-foreground">{c.country}</Td>
+                      <Td numeric className="whitespace-nowrap">
                         {whole(c.small, c.code)} → {whole(c.small * 1.1, c.code)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+                      </Td>
+                      <Td numeric className="whitespace-nowrap">
                         {whole(c.big, c.code)} → {whole(c.big * 1.2, c.code)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+                      </Td>
+                      <Td numeric className="whitespace-nowrap">
                         {whole(c.small, c.code)} → {whole(c.small * 2, c.code)}
-                      </td>
-                      <td className={c.selling ? "px-4 py-3 font-semibold whitespace-nowrap sm:pr-0" : "text-muted-foreground px-4 py-3 whitespace-nowrap sm:pr-0"}>
+                      </Td>
+                      <Td className={c.selling ? "font-semibold whitespace-nowrap" : "text-muted-foreground whitespace-nowrap"}>
                         {c.selling ? "Selling" : "Not yet"}
-                      </td>
-                    </tr>
+                      </Td>
+                    </Tr>
                   ))}
-                </tbody>
-              </table>
+                </TBody>
+              </Table>
             </div>
             {res.unsupported.length > 0 ? (
               <div className="mt-4" data-admin-unsupported>
@@ -174,7 +178,6 @@ export default async function PaymentsConfigPage() {
               </div>
             ) : null}
           </SectionCard>
-        </div>
       ) : null}
     </PageContainer>
   );

@@ -8,10 +8,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
+  Chip,
   NumberField,
+  SaveBar,
   SectionCard,
-  Switch,
-} from "@/components/admin-ui/config";
+  SwitchRow,
+} from "@/components/admin-ui";
 import { chipsFor } from "./crenup-steps";
 import {
   computeCreateCost,
@@ -27,9 +29,7 @@ import {
   Fields,
   FlowEstimate,
   FlowPanel,
-  Tag,
 } from "./blocks";
-import { CrenupSaveBar } from "./CrenupSaveBar";
 import { SectionStrip, type CrenupView } from "./SectionStrip";
 import { clampFunnel, savePayload, type CrenupSettings } from "./crenup-guards";
 import { MODELS_PARENT } from "../models-config/nav";
@@ -45,31 +45,6 @@ const CREATE_BOX_HREF = "/manage-multiple#create";
 // on Discovery › Map. Creation had a third module, Verification, until
 // MESITA-2106: the MVP has no business app, so nobody proves ownership.
 
-
-/** One Create-on-open switch (MESITA-2298): the label, the hint, the toggle. */
-function CreateOnOpenRow({
-  label,
-  hint,
-  on,
-  pending,
-  onToggle,
-}: {
-  label: string;
-  hint: string;
-  on: boolean;
-  pending: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <div className="border-border bg-card flex items-center justify-between gap-4 rounded-xl border px-3 py-2.5">
-      <div className="min-w-0">
-        <p className="text-sm font-medium leading-snug">{label}</p>
-        <p className="text-muted-foreground mt-0.5 type-meta">{hint}</p>
-      </div>
-      <Switch on={on} pending={pending} onClick={onToggle} label={label} />
-    </div>
-  );
-}
 
 export function CrenupClient({
   view,
@@ -141,13 +116,13 @@ export function CrenupClient({
     <>
       <SectionStrip view={view} />
 
-      {/* pb-24 keeps the last module clear of the sticky CrenupSaveBar. */}
+      {/* pb-24 keeps the last module clear of the sticky SaveBar. */}
       <div className="flex flex-col gap-4 pb-24">
         {view === "creation" && (
         <>
         <div id="s-models" className="scroll-mt-16">
           <SectionCard
-            icon={<Gauge className="text-secondary h-4 w-4" />}
+            icon={<Gauge />}
             title="Models"
           >
             <p className="text-muted-foreground mt-4 text-sm">
@@ -164,10 +139,10 @@ export function CrenupClient({
 
         <div id="s-create" className="scroll-mt-16">
           <SectionCard
-            icon={<Sparkles className="text-secondary h-4 w-4" />}
+            icon={<Sparkles />}
             title="Create"
             subtitle="One function. It awaits steps 0, 1, 7 and 8."
-            state={<Tag>$ · one Google call</Tag>}
+            right={<Chip>$ · one Google call</Chip>}
           >
             <FlowPanel
               facts={[
@@ -226,23 +201,19 @@ export function CrenupClient({
                   creates its Mesita Place if none exists. Each app has its own
                   switch.
                 </p>
-                <CreateOnOpenRow
+                <SwitchRow
                   label="Create the profile on open · consumer app"
                   hint="A guest opens a Google-only place from Map, the Feed, or Word."
-                  on={settings.createOnOpenConsumer}
+                  checked={settings.createOnOpenConsumer}
                   pending={pending}
-                  onToggle={() =>
-                    patch({ createOnOpenConsumer: !settings.createOnOpenConsumer })
-                  }
+                  onCheckedChange={(next) => patch({ createOnOpenConsumer: next })}
                 />
-                <CreateOnOpenRow
+                <SwitchRow
                   label="Create the profile on open · admin app"
                   hint="An admin opens a Google-only row from Single Place › Find."
-                  on={settings.createOnOpenAdmin}
+                  checked={settings.createOnOpenAdmin}
                   pending={pending}
-                  onToggle={() =>
-                    patch({ createOnOpenAdmin: !settings.createOnOpenAdmin })
-                  }
+                  onCheckedChange={(next) => patch({ createOnOpenAdmin: next })}
                 />
                 <Fields>
                   <NumberField
@@ -290,12 +261,12 @@ export function CrenupClient({
         )}
       </div>
 
-      <CrenupSaveBar
-        blocked={blocked}
+      <SaveBar
+        loadError={blocked}
         dirty={dirty}
         ok={ok}
         pending={pending}
-        settingsStamp={settingsStamp}
+        lastChanged={settingsStamp}
         error={error}
         onDiscard={discard}
         onSave={save}

@@ -1,4 +1,4 @@
-import { ConfigPageLayout } from "@/components/ConfigPageLayout";
+import { ConfigPageLayout } from "@/components/admin-ui";
 
 // Models — the AI model behind each job (MESITA-2126 remake of MESITA-1788).
 export default function ModelsConfigLayout({

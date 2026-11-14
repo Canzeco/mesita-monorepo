@@ -15,7 +15,7 @@
 // overwrite the live singleton (MESITA-737).
 
 import { useMemo, useState } from "react";
-import { ErrorNote } from "@/components/ErrorNote";
+import { Notice } from "@/components/admin-ui";
 import { SaveRow } from "@/components/admin-ui/config";
 import { useConfigEditor } from "@/components/admin-ui/use-config-editor";
 import { getReservationsConfig, updateReservationsConfig } from "./actions";
@@ -73,7 +73,7 @@ export function ReservationsConfigClient({
         onClick={save}
         loadError={loadBlocked ? (error ?? "Failed to load Reservations config") : null}
       />
-      {error && <ErrorNote message={error} />}
+      {error && <Notice className="mt-4">{error}</Notice>}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Chip, SearchField, SectionCard } from "@/components/admin-ui";
 import type { FamiliesMap, FamilyRow, GoogleCategoryRow, TagRow } from "./highlight";
 
 export type TagGroup = {
@@ -40,29 +41,26 @@ export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
   const tagGroups = useMemo(() => groupTags(map.tags, tagQuery), [map.tags, tagQuery]);
 
   return (
-    <>
+    <div className="flex flex-col gap-4">
       <FamiliesList families={map.families} />
-      <section className="border-border bg-card mt-4 rounded-2xl border">
-        <div className="border-border border-b p-4">
-          <h2 className="font-display text-sm font-semibold tracking-tight">
-            Google categories
-            <span className="text-muted-foreground ml-2 font-normal">
-              {map.enabledCategories.length + map.disabledCategories.length}
-            </span>
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">
+      <SectionCard
+        title="Google categories"
+        right={<Count n={map.enabledCategories.length + map.disabledCategories.length} />}
+        subtitle={
+          <>
             Google&apos;s canonical list. A place whose main Google category is not
             enabled gets no Mesita Families, so it never shows to a guest.
-          </p>
-          <input
-            value={categoryQuery}
-            onChange={(e) => setCategoryQuery(e.target.value)}
-            placeholder="Search"
-            aria-label="Search Google categories"
-            className="border-border bg-background focus:border-foreground mt-3 h-9 w-full rounded-lg border px-3 text-sm outline-none"
-          />
-        </div>
-        <div className="grid gap-4 p-4 lg:grid-cols-2">
+          </>
+        }
+      >
+        <SearchField
+          value={categoryQuery}
+          onChange={setCategoryQuery}
+          placeholder="Search"
+          aria-label="Search Google categories"
+          className="mt-4"
+        />
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <CategoryList
             title="Enabled on Mesita"
             rows={map.enabledCategories}
@@ -74,43 +72,40 @@ export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
             query={categoryQuery}
           />
         </div>
-      </section>
+      </SectionCard>
       <TagsList
         groups={tagGroups}
         count={map.tags.length}
         query={tagQuery}
         onQuery={setTagQuery}
       />
-    </>
+    </div>
   );
+}
+
+/** A section's row count, muted, in the card's right slot. */
+function Count({ n }: { n: number }) {
+  return <span className="text-muted-foreground text-sm tabular-nums">{n}</span>;
 }
 
 function FamiliesList({ families }: { families: FamilyRow[] }) {
   return (
-    <section className="border-border bg-card mt-8 rounded-2xl border">
-      <div className="border-border border-b p-4">
-        <h2 className="font-display text-sm font-semibold tracking-tight">
-          Mesita Families
-          <span className="text-muted-foreground ml-2 font-normal">{families.length}</span>
-        </h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          The list the Description step picks from: one to five per place, inferred on
-          Create and every Enrich.
-        </p>
-      </div>
-      <ul className="flex flex-wrap gap-2 p-4">
+    <SectionCard
+      title="Mesita Families"
+      right={<Count n={families.length} />}
+      subtitle="The list the Description step picks from: one to five per place, inferred on Create and every Enrich."
+    >
+      <ul className="mt-4 flex flex-wrap gap-2">
         {families.map((family) => (
-          <li
-            key={family.slug}
-            className="border-border bg-background rounded-full border px-3 py-1 text-sm"
-            title={family.slug}
-          >
-            {family.emoji ? `${family.emoji} ` : ""}
-            {family.label}
+          <li key={family.slug}>
+            <Chip title={family.slug}>
+              {family.emoji ? `${family.emoji} ` : ""}
+              {family.label}
+            </Chip>
           </li>
         ))}
       </ul>
-    </section>
+    </SectionCard>
   );
 }
 
@@ -161,24 +156,19 @@ function TagsList({
   onQuery: (value: string) => void;
 }) {
   return (
-    <section className="border-border bg-card mt-4 rounded-2xl border">
-      <div className="border-border border-b p-4">
-        <h2 className="font-display text-sm font-semibold tracking-tight">
-          Mesita Tags
-          <span className="text-muted-foreground ml-2 font-normal">{count}</span>
-        </h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          The full catalog. Nothing here is selected or saved.
-        </p>
-        <input
-          value={query}
-          onChange={(e) => onQuery(e.target.value)}
-          placeholder="Search"
-          aria-label="Search Mesita Tags"
-          className="border-border bg-background focus:border-foreground mt-3 h-9 w-full rounded-lg border px-3 text-sm outline-none"
-        />
-      </div>
-      <div className="max-h-[32rem] space-y-4 overflow-y-auto p-4">
+    <SectionCard
+      title="Mesita Tags"
+      right={<Count n={count} />}
+      subtitle="The full catalog. Nothing here is selected or saved."
+    >
+      <SearchField
+        value={query}
+        onChange={onQuery}
+        placeholder="Search"
+        aria-label="Search Mesita Tags"
+        className="mt-4"
+      />
+      <div className="mt-4 max-h-[32rem] space-y-4 overflow-y-auto">
         {groups.length === 0 ? (
           <p className="text-muted-foreground text-sm">No matching tags.</p>
         ) : (
@@ -189,11 +179,8 @@ function TagsList({
               </h3>
               <ul className="mt-2 flex flex-wrap gap-2">
                 {group.rows.map((row) => (
-                  <li
-                    key={row.slug}
-                    className="border-border bg-background rounded-full border px-3 py-1 text-sm"
-                  >
-                    {row.label}
+                  <li key={row.slug}>
+                    <Chip>{row.label}</Chip>
                   </li>
                 ))}
               </ul>
@@ -201,6 +188,6 @@ function TagsList({
           ))
         )}
       </div>
-    </section>
+    </SectionCard>
   );
 }

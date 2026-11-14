@@ -1,4 +1,4 @@
-import { ConfigPageLayout } from "@/components/ConfigPageLayout";
+import { ConfigPageLayout } from "@/components/admin-ui";
 import { getActivitySummary } from "@/lib/activity-summary";
 import { listLogs } from "./actions";
 import { LogsClient } from "./LogsClient";
