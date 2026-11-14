@@ -1,36 +1,28 @@
 "use client";
 
-// /activity — THE BAR'S ACTIVITY TAB (MESITA-3769, Pato: "add the activity
-// page again — Home Search Pay Activity Me"; a page under Me with Back for a
-// day, MESITA-3717). Me's tiles still open its chips.
+// ME'S THREE LISTS (Pato, 2026-11-14, MESITA-3855: "We are going to remove
+// Activity too … Notifications, Reservations … Tickets includes the list of
+// all the transactions: there are 4 types of tickets"). They were the bar's
+// Activity tab and its chips (MESITA-3631, MESITA-3697, MESITA-3769) until
+// Activity left the bar; each is a page under Me now, wearing Screen:
 //
-// Six chips: five since MESITA-3697 (Pato: "Favorites, Reservations,
-// Visits(has payments inside), Vouchers(Prepayments), Gifts"), in his order,
-// then Notifications (MESITA-3716, Pato: "add notifications subpage to
-// this"). The list is lib/activity-types.ts; the chosen one is in the address
-// (`?type=`), so Me's tiles, Back and a shared link land on it; a bare
-// /activity is Notifications (MESITA-3769). FAVORITES LEFT (Pato, 2026-11-11, MESITA-3723:
-// "remove favorites from activity"): the hearts are Home's Saved row
-// (MESITA-3718), and the old Favorites addresses land on Home:
-//
-//   Reservations   tickets: Upcoming, then Past
-//   Visits         tickets: the guest's tabs (consumer-web-list-visits) AND
-//                  the payments. A payment that paid a tab is written on
-//                  that Visit's card (one meal, one ticket); any other
-//                  payment is its own ticket here
-//   Vouchers       tickets: credits bought, Story vouchers waiting, refunds
-//                  (the Prepayments chip, renamed)
-//   Gifts          tickets: credit sent, received, taken back, links not taken
-//   Notifications  events: NotificationsList under day headings, with the
-//                  next confirmed reservation in 24 h above it as a "Next
-//                  up" ticket
-//
-// Payments and Prepayments left the bar (MESITA-3697); their old `?type=`
-// lands on Visits and Vouchers (RETIRED_ACTIVITY_TYPES).
+//   /me/notifications   events: NotificationsList under day headings, with
+//                       the next confirmed reservation within a day above
+//                       it as a "Next up" ticket
+//   /me/reservations    Upcoming, then Past
+//   /me/tickets         every ticket, newest first, open bills on top; one
+//                       chip per kind narrows it, /me/tickets/<kind>:
+//     Visits    the guest's tabs (consumer-web-list-visits) AND the
+//               payments. A payment that paid a tab is written on that
+//               Visit's card (one meal, one ticket); any other payment is
+//               its own ticket
+//     Vouchers  credits bought, bonuses, Story vouchers waiting
+//     Gifts     credit sent, received, taken back, links not taken
+//     Refunds   purchases refunded (under Vouchers until MESITA-3855)
 //
 // Every source loads on mount and fails on its own; a chip's count shows only
-// once its sources answered. This page never computes a balance: it lists
-// and formats what the server sent.
+// once its sources answered. Nothing here computes a balance: it lists and
+// formats what the server sent.
 
 import {
   useEffect,
@@ -38,11 +30,18 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
-import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
-import { useUnseenNotifications } from "@/components/consumer/use-unseen-notifications";
+import {
+  BadgeDollarSign,
+  CalendarCheck,
+  Gift,
+  HandCoins,
+  Ticket,
+  UtensilsCrossed,
+  type LucideIcon,
+} from "lucide-react";
+import { Screen } from "@/components/consumer/nav/Screen";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -70,17 +69,16 @@ import {
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
 import {
-  activityHref,
-  activityTypeOf,
-  type ActivityType,
-} from "@/lib/activity-types";
+  isTicketKind,
+  TICKET_KINDS,
+  ticketsHref,
+  type TicketKind,
+} from "@/lib/ticket-kinds";
 import { reportError } from "@/lib/report-error";
 import { stateMeta } from "@/lib/reservation-state";
 import { toReservationItem } from "@/lib/reservations-adapter";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useCachedQuery } from "@/lib/use-cached-query";
-import { ACTIVITY_CHIPS } from "./activity-chips";
-import { RefundsPanel } from "./RefundsPanel";
 import { ChipIntro } from "./ChipIntro";
 import {
   type ActivityItem,
@@ -90,12 +88,13 @@ import {
   type StatusTone,
 } from "./ActivityRow";
 
-type TicketType = Exclude<ActivityType, "notifications" | "refunds">;
+/** A list of tickets: Reservations, or one kind of ticket. */
+type ListType = "reservations" | TicketKind;
 
 /** One ticket and where it sorts: Upcoming soonest first, then Past newest
  *  first. */
 type Row = ActivityItem & {
-  type: TicketType;
+  type: ListType;
   at: string | null;
   upcoming: boolean;
   paymentId?: string | null;
@@ -279,10 +278,11 @@ function walletRows(w: Wallet): Row[] {
         return;
       }
       if (e.kind === "reversal") {
-        // A purchase refunded (no payment id).
+        // A purchase refunded (no payment id): a Refund ticket (MESITA-3855;
+        // it sat under Vouchers until then).
         out.push({
           key: `rv-${b.place_id}-${e.at}-${i}`,
-          type: "vouchers",
+          type: "refunds",
           at: e.at,
           upcoming: false,
           place,
@@ -442,48 +442,10 @@ function ordered(rows: Row[]): { upcoming: Row[]; past: Row[] } {
   return { upcoming, past };
 }
 
-// ─── The page ───────────────────────────────────────────────────────────────
+// ─── The reads ──────────────────────────────────────────────────────────────
 
-const EMPTY: Record<
-  TicketType,
-  { title: string; text: string; action: { label: string; href: string } }
-> = {
-  reservations: {
-    title: "No reservations yet",
-    text: "Book a table from any place's page and it lands here.",
-    action: { label: "Find a place", href: CONSUMER_ROUTES.home },
-  },
-  visits: {
-    title: "No visits yet",
-    text: "Pay a bill with Mesita at the table and its full statement lands here.",
-    action: { label: "Pay", href: CONSUMER_ROUTES.pay },
-  },
-  vouchers: {
-    title: "No vouchers yet",
-    text: "Open a place that sells credit and buy some from its Vouchers tab.",
-    action: { label: "Find a place", href: CONSUMER_ROUTES.search },
-  },
-  gifts: {
-    title: "No gifts yet",
-    text: "Credit you send to a friend, or a friend sends you, lands here.",
-    action: { label: "Gift credit", href: CONSUMER_ROUTES.mePages.gift },
-  },
-};
-
-const SOURCE_NAME: Record<TicketType, string> = {
-  reservations: "reservations",
-  visits: "visits",
-  vouchers: "vouchers",
-  gifts: "gifts",
-};
-
-export function ActivityPage() {
-  // THE CHIP IS THE PATH (MESITA-3811): /activity/<chip>, bare /activity is
-  // Notifications. The pages turn retired or unknown names away on the server.
-  const pathname = usePathname() ?? CONSUMER_ROUTES.activity;
-  const type = activityTypeOf(pathname.split("/")[2]);
+function useReservations() {
   const getSupabase = useLazyBrowserSupabase();
-
   const reservations = useCachedQuery<ReservationsRead>(
     RESERVATIONS_KEY,
     async () => {
@@ -507,6 +469,140 @@ export function ActivityPage() {
     },
     { ttl: TTL },
   );
+  useEffect(() => {
+    if (reservations.error)
+      reportError("me reservations failed", reservations.error);
+  }, [reservations.error]);
+  // The clock the page judges "upcoming" and "within a day" by: read once.
+  const [nowMs] = useState(() => Date.now());
+  const rows = useMemo(
+    () =>
+      reservations.data
+        ? reservationRows(reservations.data.rows, nowMs)
+        : null,
+    [reservations.data, nowMs],
+  );
+  return { ...reservations, rows, nowMs };
+}
+
+// ─── The pages ──────────────────────────────────────────────────────────────
+
+const EMPTY: Record<
+  ListType | "all",
+  { title: string; text: string; action?: { label: string; href: string } }
+> = {
+  reservations: {
+    title: "No reservations yet",
+    text: "Book a table from any place's page and it lands here.",
+    action: { label: "Find a place", href: CONSUMER_ROUTES.home },
+  },
+  all: {
+    title: "No tickets yet",
+    text: "Every visit, voucher, gift and refund lands here.",
+    action: { label: "Pay", href: CONSUMER_ROUTES.pay },
+  },
+  visits: {
+    title: "No visits yet",
+    text: "Pay a bill with Mesita at the table and its full statement lands here.",
+    action: { label: "Pay", href: CONSUMER_ROUTES.pay },
+  },
+  vouchers: {
+    title: "No vouchers yet",
+    text: "Open a place that sells credit and buy some from its Vouchers tab.",
+    action: { label: "Find a place", href: CONSUMER_ROUTES.search },
+  },
+  gifts: {
+    title: "No gifts yet",
+    text: "Credit you send to a friend, or a friend sends you, lands here.",
+    action: { label: "Gift credit", href: CONSUMER_ROUTES.mePages.gift },
+  },
+  // Refunds' words since MESITA-3771, kept (MESITA-3782).
+  refunds: {
+    title: "No refunds",
+    text: "Any refund Mesita gives you shows up here, with the place and the amount.",
+  },
+};
+
+/** The Tickets chips, in Pato's order (MESITA-3855): All, then the four
+ *  kinds. */
+const CHIPS: ReadonlyArray<{
+  kind: TicketKind | "all";
+  label: string;
+  Icon: LucideIcon;
+}> = [
+  { kind: "all", label: "All", Icon: Ticket },
+  { kind: "visits", label: "Visits", Icon: UtensilsCrossed },
+  { kind: "vouchers", label: "Vouchers", Icon: BadgeDollarSign },
+  { kind: "gifts", label: "Gifts", Icon: Gift },
+  { kind: "refunds", label: "Refunds", Icon: HandCoins },
+];
+
+const ICON: Record<ListType | "all", LucideIcon> = {
+  reservations: CalendarCheck,
+  all: Ticket,
+  visits: UtensilsCrossed,
+  vouchers: BadgeDollarSign,
+  gifts: Gift,
+  refunds: HandCoins,
+};
+
+/** /me/notifications: what Mesita told you, the next table on top. */
+export function NotificationsPage() {
+  const reservations = useReservations();
+  const nextUp =
+    (reservations.rows
+      ? ordered(reservations.rows).upcoming.find(
+          (r) =>
+            r.status.label === stateMeta("confirmed").label &&
+            r.at &&
+            Date.parse(r.at) - reservations.nowMs < DAY_MS,
+        )
+      : null) ?? null;
+  return (
+    <Screen title="Notifications">
+      <div className="flex flex-col gap-4">
+        <ChipIntro type="notifications" />
+        {nextUp ? (
+          <ActivityRows>
+            <ActivityRow t={{ ...nextUp, label: "Next up" }} />
+          </ActivityRows>
+        ) : null}
+        <NotificationsList quietEmpty={!!nextUp} />
+      </div>
+    </Screen>
+  );
+}
+
+/** /me/reservations: Upcoming, then Past. */
+export function ReservationsPage() {
+  const reservations = useReservations();
+  return (
+    <Screen title="Reservations">
+      <div className="flex flex-col gap-4">
+        <ChipIntro type="reservations" />
+        <TicketList
+          type="reservations"
+          rows={reservations.rows}
+          ready={!reservations.loading}
+          failed={!!reservations.error}
+          retry={reservations.reload}
+          note={null}
+        />
+      </div>
+    </Screen>
+  );
+}
+
+/** /me/tickets and /me/tickets/<kind>: every transaction, one chip per kind. */
+export function TicketsPage() {
+  // THE CHIP IS THE PATH (as Activity's was, MESITA-3811): /me/tickets/<kind>;
+  // bare /me/tickets is All. The kind page turns unknown names away.
+  const pathname = usePathname() ?? CONSUMER_ROUTES.mePages.tickets;
+  const seg = pathname.split("/")[3];
+  const kind: TicketKind | "all" = isTicketKind(seg) ? seg : "all";
+  const getSupabase = useLazyBrowserSupabase();
+
+  // The keys Activity used, so CreditEntry's read stays shared.
   const wallet = useCachedQuery<Wallet>(
     "activity-wallet",
     () => apiGetWallet(getSupabase()),
@@ -517,37 +613,27 @@ export function ActivityPage() {
     () => apiListVisits(getSupabase()),
     { ttl: TTL },
   );
-
   useEffect(() => {
-    for (const [what, err] of [
-      ["visits", visits.error],
-      ["wallet", wallet.error],
-      ["reservations", reservations.error],
-    ] as const) {
-      if (err) reportError(`activity ${what} failed`, err);
-    }
-  }, [visits.error, wallet.error, reservations.error]);
+    if (visits.error) reportError("me tickets visits failed", visits.error);
+    if (wallet.error) reportError("me tickets wallet failed", wallet.error);
+  }, [visits.error, wallet.error]);
 
-  const unseen = useUnseenNotifications();
-
-  // The clock the page judges "upcoming" and "within a day" by: read once.
-  const [nowMs] = useState(() => Date.now());
-
-  const byType = useMemo(() => {
+  const byKind = useMemo(() => {
     const visitIds = new Set(
       (visits.data?.visits ?? []).flatMap((v) => v.part_payment_ids),
     );
-    const money = wallet.data ? walletRows(wallet.data) : null;
-    const payments = money ? money.filter((r) => r.type === "visits") : [];
+    const moneyRows = wallet.data ? walletRows(wallet.data) : null;
+    const payments = moneyRows
+      ? moneyRows.filter((r) => r.type === "visits")
+      : [];
     const notes = new Map(
       payments.flatMap((r) =>
         r.paymentId && r.payNote ? [[r.paymentId, r.payNote] as const] : [],
       ),
     );
+    const of = (k: TicketKind) =>
+      moneyRows ? moneyRows.filter((r) => r.type === k) : null;
     return {
-      reservations: reservations.data
-        ? reservationRows(reservations.data.rows, nowMs)
-        : null,
       // One meal, one ticket: a payment that paid a tab is written on its
       // Visit; every other payment is a ticket of its own beside them.
       visits: visits.data
@@ -558,119 +644,80 @@ export function ActivityPage() {
             ),
           ]
         : null,
-      vouchers: money ? money.filter((r) => r.type === "vouchers") : null,
-      gifts: money ? money.filter((r) => r.type === "gifts") : null,
-    } satisfies Record<TicketType, Row[] | null>;
-  }, [reservations.data, visits.data, wallet.data, nowMs]);
+      vouchers: of("vouchers"),
+      gifts: of("gifts"),
+      refunds: of("refunds"),
+    } satisfies Record<TicketKind, Row[] | null>;
+  }, [visits.data, wallet.data]);
 
-  // A source has answered, either way.
-  const settled = {
-    reservations: !reservations.loading,
-    visits: !visits.loading,
-    wallet: !wallet.loading,
-  };
+  const walletReady = !wallet.loading;
   // Visits waits for the wallet too, so its payments never pop in late.
-  const ready: Record<TicketType, boolean> = {
-    reservations: settled.reservations,
-    visits: settled.visits && settled.wallet,
-    vouchers: settled.wallet,
-    gifts: settled.wallet,
+  const ready = (k: TicketKind | "all") =>
+    k === "visits" || k === "all" ? !visits.loading && walletReady : walletReady;
+  const failed = (k: TicketKind | "all") =>
+    k === "visits"
+      ? !!visits.error
+      : k === "all"
+        ? !!visits.error && !!wallet.error
+        : !!wallet.error;
+  const retry = () => {
+    if (visits.error) visits.reload();
+    if (wallet.error) wallet.reload();
   };
-  const failed: Record<TicketType, boolean> = {
-    reservations: !!reservations.error,
-    visits: !!visits.error,
-    vouchers: !!wallet.error,
-    gifts: !!wallet.error,
-  };
-  const retry: Record<TicketType, () => void> = {
-    reservations: reservations.reload,
-    visits: () => {
-      visits.reload();
-      if (wallet.error) wallet.reload();
-    },
-    vouchers: wallet.reload,
-    gifts: wallet.reload,
+  const rowsOf = (k: TicketKind | "all"): Row[] | null => {
+    if (k !== "all") return byKind[k];
+    const parts = TICKET_KINDS.map((t) => byKind[t]);
+    if (parts.every((p) => p === null)) return null;
+    return parts.flatMap((p) => p ?? []);
   };
 
-  const counts: Partial<Record<ActivityType, string>> = {};
-  for (const t of Object.keys(byType) as TicketType[]) {
-    const rows = byType[t];
-    if (!ready[t] || failed[t] || !rows) continue;
-    if (t === "visits" && wallet.error) continue; // payments missing: no number
+  const counts: Partial<Record<TicketKind | "all", string>> = {};
+  for (const c of CHIPS) {
+    const rows = rowsOf(c.kind);
+    if (!ready(c.kind) || failed(c.kind) || !rows || !rows.length) continue;
+    // Payments missing: no number on a list they belong to.
+    if ((c.kind === "visits" || c.kind === "all") && wallet.error) continue;
     const capped =
-      (t === "visits" && visits.data?.truncated) ||
-      (t === "reservations" && reservations.data?.full);
-    if (rows.length)
-      counts[t] = capped ? `${rows.length}+` : String(rows.length);
+      (c.kind === "visits" || c.kind === "all") && visits.data?.truncated;
+    counts[c.kind] = capped ? `${rows.length}+` : String(rows.length);
   }
 
-  // The confirmed reservation that comes next, within a day: "Next up" above
-  // the notifications.
-  const nextUp =
-    (byType.reservations
-      ? ordered(byType.reservations).upcoming.find(
-          (r) =>
-            r.status.label === stateMeta("confirmed").label &&
-            r.at &&
-            Date.parse(r.at) - nowMs < DAY_MS,
-        )
-      : null) ?? null;
+  const note =
+    (kind === "visits" || kind === "all") && !!wallet.error
+      ? "Couldn't load your payments. Visits shows your tables only."
+      : kind === "all" && !!visits.error
+        ? "Couldn't load your visits. Showing the rest."
+        : null;
 
   // A chip tap rewrites the address in place: no navigation, so no loading
   // frame between chips; Next keeps usePathname in step (MESITA-3811).
-  const pick = (t: ActivityType) =>
-    window.history.replaceState(null, "", activityHref(t));
+  const pick = (k: TicketKind | "all") =>
+    window.history.replaceState(
+      null,
+      "",
+      k === "all" ? ticketsHref() : ticketsHref(k),
+    );
 
   return (
-    <ActivityFrame
-      rail={
-        <TypeRail
-          type={type}
-          onPick={pick}
-          counts={counts}
-          // Still unseen only until the Notifications list draws its rows.
-          dot={unseen ? "notifications" : null}
+    <Screen title="Tickets">
+      <div className="flex flex-col gap-4">
+        <KindRail kind={kind} onPick={pick} counts={counts} />
+        {/* Each kind says what it holds first (MESITA-3782); All lists them. */}
+        {kind !== "all" ? <ChipIntro type={kind} /> : null}
+        <TicketList
+          type={kind}
+          rows={rowsOf(kind)}
+          ready={ready(kind)}
+          failed={failed(kind)}
+          retry={retry}
+          note={note}
         />
-      }
-    >
-      {type === "notifications" ? (
-        <div className="flex flex-col gap-4">
-          <ChipIntro type="notifications" />
-          {nextUp ? (
-            <ActivityRows>
-              <ActivityRow t={{ ...nextUp, label: "Next up" }} />
-            </ActivityRows>
-          ) : null}
-          <NotificationsList quietEmpty={!!nextUp} />
-        </div>
-      ) : type === "refunds" ? (
-        <div className="flex flex-col gap-4">
-          <ChipIntro type="refunds" />
-          <RefundsPanel />
-        </div>
-      ) : (
-        // Each chip says what it holds first (MESITA-3782).
-        <div className="flex flex-col gap-4">
-          <ChipIntro type={type} />
-          <Tickets
-            type={type}
-            rows={byType[type]}
-            ready={ready[type]}
-            failed={failed[type]}
-            retry={retry[type]}
-            note={
-              type === "visits" && !!wallet.error
-                ? "Couldn't load your payments. Visits shows your tables only."
-                : null
-            }
-          />
-        </div>
-      )}
-    </ActivityFrame>
+      </div>
+    </Screen>
   );
 }
 
-function Tickets({
+function TicketList({
   type,
   rows,
   ready,
@@ -678,20 +725,20 @@ function Tickets({
   retry,
   note,
 }: {
-  type: TicketType;
+  type: ListType | "all";
   rows: Row[] | null;
   ready: boolean;
   failed: boolean;
   retry: () => void;
   note: string | null;
 }) {
-  const chip = ACTIVITY_CHIPS.find((c) => c.type === type)!;
+  const Icon = ICON[type];
   if (!ready) return <ActivityRowsSkeleton />;
   if (failed || !rows) {
     return (
       <EmptyState
-        icon={chip.Icon}
-        title={`Couldn't load your ${SOURCE_NAME[type]}`}
+        icon={Icon}
+        title={`Couldn't load your ${type === "all" ? "tickets" : type}`}
         description="Check your connection and try again."
         action={{ label: "Try again", onClick: retry }}
       />
@@ -700,7 +747,7 @@ function Tickets({
   if (rows.length === 0) {
     return (
       <EmptyState
-        icon={chip.Icon}
+        icon={Icon}
         title={EMPTY[type].title}
         description={EMPTY[type].text}
         action={EMPTY[type].action}
@@ -728,10 +775,12 @@ function Tickets({
         </ActivityRows>
       </section>
     ) : null;
-  // Only Reservations and Visits have tickets still ahead.
-  const twoGroups = type === "reservations" || type === "visits";
+  // Only Reservations and Visits (and All, which holds Visits) have tickets
+  // still ahead.
+  const twoGroups =
+    type === "reservations" || type === "visits" || type === "all";
   return (
-    <>
+    <div>
       {note ? (
         <p className="text-muted-foreground mb-3 text-xs">{note}</p>
       ) : null}
@@ -747,23 +796,20 @@ function Tickets({
       ) : (
         group(null, past, true)
       )}
-    </>
+    </div>
   );
 }
 
 /** The chips: the chosen one in view on arrival and on Back, without
  *  animation; the right edge fades so the rail reads as scrollable. */
-function TypeRail({
-  type,
+function KindRail({
+  kind,
   onPick,
   counts,
-  dot,
 }: {
-  type: ActivityType;
-  onPick: (t: ActivityType) => void;
-  counts: Partial<Record<ActivityType, string>>;
-  /** The chip that wears the red dot (MESITA-3717), if any. */
-  dot: ActivityType | null;
+  kind: TicketKind | "all";
+  onPick: (k: TicketKind | "all") => void;
+  counts: Partial<Record<TicketKind | "all", string>>;
 }) {
   const chosen = useRef<HTMLButtonElement | null>(null);
   useLayoutEffect(() => {
@@ -772,17 +818,17 @@ function TypeRail({
       inline: "nearest",
       behavior: "instant" as ScrollBehavior,
     });
-  }, [type]);
+  }, [kind]);
   return (
-    <div className="relative -mx-4 mt-3">
+    <div className="relative -mx-4">
       <div
         className="scrollbar-hide flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pr-8"
         role="tablist"
-        aria-label="Kinds of activity"
-        data-activity-types
+        aria-label="Kinds of ticket"
+        data-ticket-kinds
       >
-        {ACTIVITY_CHIPS.map(({ type: key, label, Icon }) => {
-          const on = type === key;
+        {CHIPS.map(({ kind: key, label, Icon }) => {
+          const on = kind === key;
           const n = counts[key];
           return (
             <button
@@ -811,60 +857,47 @@ function TypeRail({
                   {n}
                 </span>
               ) : null}
-              {dot === key ? (
-                <span
-                  className="bg-destructive h-2 w-2 rounded-full"
-                  data-unseen-dot
-                >
-                  <span className="sr-only">New</span>
-                </span>
-              ) : null}
             </button>
           );
         })}
       </div>
       <span
-        className="from-card pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l to-transparent"
+        className="from-background pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l to-transparent"
         aria-hidden
       />
     </div>
   );
 }
 
-/** The tab's frame: the white header bar Pay wears (MESITA-3534), the title
- *  and the chips held at the top, then the page. The loading frame draws the
- *  same shape (MESITA-2701). */
-export function ActivityFrame({
-  rail,
-  children,
+// ─── The loading frames (MESITA-2701) ──────────────────────────────────────
+
+/** A list page's frame while its read is out: the title in place, the list
+ *  in bones; Tickets also draws its chips' bones. */
+export function MeListSkeleton({
+  title,
+  rail = false,
 }: {
-  rail?: ReactNode;
-  children: ReactNode;
+  title: string;
+  rail?: boolean;
 }) {
   return (
-    <KeptScroll className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
-      <header className="border-border bg-card sticky top-0 z-10 -mx-4 border-b px-4 pt-5 pb-3">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          Activity
-        </h1>
-        {rail ?? <RailSkeleton />}
-      </header>
-      <div className="mt-5">{children}</div>
-    </KeptScroll>
+    <Screen title={title}>
+      <div className="flex flex-col gap-4">
+        {rail ? (
+          <div className="flex gap-2 overflow-hidden" aria-hidden>
+            {["w-20", "w-28", "w-32", "w-24", "w-28"].map((w, i) => (
+              <Skeleton
+                key={i}
+                className={cn("h-11 shrink-0 rounded-full", w)}
+              />
+            ))}
+          </div>
+        ) : null}
+        <ActivityRowsSkeleton />
+        <p role="status" className="sr-only">
+          Loading {title.toLowerCase()}
+        </p>
+      </div>
+    </Screen>
   );
-}
-
-function RailSkeleton() {
-  return (
-    <div className="mt-3 flex gap-2 overflow-hidden" aria-hidden>
-      {["w-36", "w-28", "w-36", "w-24", "w-32", "w-36"].map((w, i) => (
-        <Skeleton key={i} className={cn("h-11 shrink-0 rounded-full", w)} />
-      ))}
-    </div>
-  );
-}
-
-/** The list's bones: one card of rows (MESITA-3770). */
-export function TicketsSkeleton() {
-  return <ActivityRowsSkeleton />;
 }

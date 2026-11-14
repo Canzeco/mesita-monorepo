@@ -12,10 +12,8 @@ import PlanLoading from "./me/plan/loading";
 import ProfileLoading from "./me/profile/loading";
 import SettingsLoading from "./me/settings/(page)/loading";
 import ContactLoading from "./me/settings/contact/loading";
-import ActivityLoading from "./activity/loading";
 import PayLoading from "./pay/loading";
 import WalletLoading from "./wallet/loading";
-import ShareLoading from "./share/loading";
 import GiftLoading from "./me/gift/loading";
 import FeedbackLoading from "./me/settings/feedback/loading";
 import ReservationPageLoading from "./reservation/[id]/loading";
@@ -25,8 +23,11 @@ import PlaceReserveLoading from "./place/[id]/reserve/loading";
 import PayPlaceLoading from "./pay/[placeId]/loading";
 import PayTabLoading from "./pay/tab/[tabId]/loading";
 import PayReceiptLoading from "./pay/receipt/[paymentId]/loading";
-import VisitLoading from "./activity/visit/[tabId]/loading";
-import CreditLoading from "./activity/credit/[placeId]/[entry]/loading";
+import VisitLoading from "./me/tickets/visit/[tabId]/loading";
+import CreditLoading from "./me/tickets/credit/[placeId]/[entry]/loading";
+import NotificationsLoading from "./me/notifications/loading";
+import ReservationsLoading from "./me/reservations/loading";
+import TicketsLoading from "./me/tickets/loading";
 
 // One frame per screen in the route map (MESITA-3646): a screen without one
 // is a type error, never a blank card.
@@ -52,17 +53,18 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   wallet: () => <WalletLoading />,
   walletPlace: () => <WalletPlaceLoading />,
   walletGift: () => <WalletGiftLoading />,
-  activity: () => <ActivityLoading />,
-  activityChip: () => <ActivityLoading />,
   visit: () => <VisitLoading />,
   credit: () => <CreditLoading />,
-  share: () => <ShareLoading />,
   me: () => <MeLoading />,
   meProfile: () => <ProfileLoading />,
   meInstagram: () => <InstagramLoading />,
   mePlan: () => <PlanLoading />,
   meClass: () => <ClassLoading />,
   meGift: () => <GiftLoading />,
+  meNotifications: () => <NotificationsLoading />,
+  meReservations: () => <ReservationsLoading />,
+  meTickets: () => <TicketsLoading />,
+  meTicketsKind: () => <TicketsLoading />,
   meSettings: () => <SettingsLoading />,
   meSettingsContact: () => <ContactLoading />,
   meSettingsFeedback: () => <FeedbackLoading />,

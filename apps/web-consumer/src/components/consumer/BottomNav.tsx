@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { Inbox, QrCode, Search, User } from "lucide-react";
+import { QrCode, Search, Share2, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -25,38 +25,35 @@ import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 import { useUnseenNotifications } from "./use-unseen-notifications";
+import { APP_SHARE_URL, SHARE_BODY, SHARE_MESSAGE } from "@/lib/share-app";
+import { shareOrCopy } from "@/lib/share-place";
 
-// FIVE tabs, in this order (Pato, 2026-11-11, MESITA-3769: "in fact, add
-// the activity page again — Home Search Pay Activity Me"):
+// FIVE SLOTS, in this order (Pato, 2026-11-14, MESITA-3855: "Home Search
+// Pay Share Me. EASY PEASY. SHARE IS JUST A QUICK BUTTON TO SHARE WITH
+// FRIENDS. NOTHING ELSE. NO REWARD MECHANISMS. JUST THE WORD OF MOUTH"):
 //
-//   Home · Search · Pay · Activity · Me
+//   Home · Search · Pay · Share · Me
 //
-// It was four for a day (MESITA-3726: "cuatro pestañas, Home, Search, Pay y
-// Me … Activity van dentro de Me"). Wallet held a fifth tab for an hour
-// (MESITA-3722). Before that it was four too (MESITA-3717, Pato: "Make activity
-// hidden. Move it to profile. not in bottom menu."; then, on splitting Pay
-// and Wallet into two tabs, "better do keep pay and wallet in the same
-// page"). Activity held the fourth tab from MESITA-3631 (2026-11-09), Wallet
-// from MESITA-3295 until its rails moved under Pay. It was four from
-// MESITA-2076 ("BOTTOM BAR MUST ONLY BE. Home. Search. Pay(Soon). Me.";
-// MESITA-2518 added Bookings, MESITA-2521 renamed it Saved; MESITA-2561
-// moved Saved under Me and made the fourth a Share tab, MESITA-2566 gave it
-// its own page):
+// SHARE IS A BUTTON, NOT A TAB: a tap opens the phone's share sheet with
+// the message and mesita.ai (lib/share-app.ts), or copies them and says so
+// where there is no sheet. It never lights and never navigates. It was this
+// button once before (MESITA-2561), a page from MESITA-2566, Me's tile from
+// MESITA-2871.
 //
-//   ACTIVITY WEARS A RED DOT while a notification is newer than the last one
-//   this device showed (MESITA-3717, Pato: "if there is an event not viewed
-//   yet, put red bubble"; on Me until MESITA-3769 put Activity back on the
-//   bar). Opening Activity › Notifications clears it.
+// ACTIVITY LEFT THE BAR (MESITA-3855, Pato: "We are going to remove Activity
+// too"): its chips are Me's Notifications, Reservations and Tickets pages. It
+// held the fourth tab from MESITA-3769 (and MESITA-3631 before), a page
+// under Me for a day between (MESITA-3717/3726).
+//
+//   ME WEARS A RED DOT while a notification is newer than the last one this
+//   device showed (MESITA-3717, Pato: "if there is an event not viewed yet,
+//   put red bubble"; on Activity from MESITA-3769 until MESITA-3855). Opening
+//   Me › Notifications clears it.
 //
 //   PAY OWNS THE MONEY (MESITA-3726): it lights on every address under /pay
 //   (/pay/<placeId>, /pay/tab/<id>, /pay/receipt/<id>) and on the Wallet,
 //   a page pushed from Pay's header (/wallet, /wallet/<placeId>,
 //   /wallet/gift/<token>), so a bill or a House Card keeps Pay lit.
-//
-//   SHARE IS OFF THE BAR FOR NOW (Pato, MESITA-2871: "for the moment remove
-//   the share from here"). Its page, /share, stays live and unlinked;
-//   restoring the tab is one ITEMS entry (Share2, CONSUMER_ROUTES.share)
-//   plus BAR_HREFS in (shell)/layout.tsx.
 //
 // THE ME TAB WEARS THE GUEST'S PICTURE (Pato, MESITA-3077: "add profile
 // picture to me instead", after first asking for it at Home's and Search's
@@ -77,7 +74,7 @@ type Item = {
   label: string;
   /** The tab this item is. Which screens light it is ROUTE_MAP's `tab`
    *  (lib/consumer-route-contract.ts, MESITA-3646): a place lights Home, a
-   *  House Card Pay, a reservation Activity, Share Me. */
+   *  House Card Pay, a reservation or a ticket Me. */
   tab: ConsumerTab;
 };
 
@@ -105,19 +102,28 @@ const ITEMS: Item[] = [
     tab: "pay",
   },
   {
-    href: CONSUMER_ROUTES.activity,
-    // An inbox, where everything that happened lands (Pato, MESITA-3679).
-    Icon: Inbox,
-    label: "Activity",
-    tab: "activity",
-  },
-  {
     href: CONSUMER_ROUTES.me,
     Icon: User,
     label: "Me",
     tab: "me",
   },
 ];
+
+/** Share's slot sits after this many tabs: Home · Search · Pay · Share · Me. */
+const SHARE_AFTER = 3;
+
+/** Share the app: the sheet, or a copy and a toast. Called from the tap
+ *  itself, or Safari refuses the sheet. */
+function shareApp(): void {
+  void shareOrCopy(
+    { title: "Mesita", text: SHARE_MESSAGE, url: APP_SHARE_URL },
+    {
+      text: SHARE_BODY,
+      copied: "Link copied",
+      failed: "Couldn't share Mesita",
+    },
+  );
+}
 
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
@@ -156,7 +162,7 @@ export function BottomNav() {
       )}
     >
       <div className="flex items-end justify-around">
-        {ITEMS.map((item) => {
+        {ITEMS.map((item, index) => {
           const { Icon, label } = item;
           const active = pending
             ? pending === item.href
@@ -195,7 +201,7 @@ export function BottomNav() {
                     strokeWidth={active ? 2.25 : 1.75}
                   />
                 )}
-                {item.tab === "activity" && unseen ? (
+                {item.tab === "me" && unseen ? (
                   <span
                     className="bg-destructive ring-card absolute top-0 right-0 h-2.5 w-2.5 rounded-full ring-2"
                     data-unseen-dot
@@ -230,7 +236,7 @@ export function BottomNav() {
             pushedByPointer.current = false;
             if (here) event.preventDefault();
           };
-          return (
+          const link = (
             <Link
               key={item.href}
               href={item.href}
@@ -241,6 +247,32 @@ export function BottomNav() {
               {body}
             </Link>
           );
+          if (index !== SHARE_AFTER - 1) return link;
+          return [
+            link,
+            <button
+              key="share"
+              type="button"
+              onClick={() => {
+                shareApp();
+                window.setTimeout(
+                  () =>
+                    trackEvent(getSupabase(), "nav_tab_tap", { tab: "Share" }),
+                  0,
+                );
+              }}
+              className={cn(
+                "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
+                "text-muted-foreground hover:text-foreground",
+              )}
+              data-share-app
+            >
+              <span className="relative flex h-8 w-8 items-center justify-center rounded-full">
+                <Share2 className="h-5 w-5" strokeWidth={1.75} />
+              </span>
+              <span className="w-full truncate text-center">Share</span>
+            </button>,
+          ];
         })}
       </div>
       <div className="bg-foreground/20 mx-auto mt-1.5 mb-1 h-1 w-32 rounded-full" />

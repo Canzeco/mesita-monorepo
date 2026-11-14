@@ -26,6 +26,7 @@ export default function MeLoading() {
           shape={shape}
           title={cell.title}
           summary={cell.summary}
+          soon={cell.soon}
         />
       )}
     >

@@ -12,25 +12,28 @@ import {
 import { DestTile } from "./profile-sections";
 import { MeHubFrame } from "./hub-tiles";
 import { IdentityBar } from "./IdentityBar";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { useUnseenNotifications } from "@/components/consumer/use-unseen-notifications";
 
-// The Me surface — the identity header, then ten cells in Pato's order
-// (MESITA-2562; Support left for Settings, MESITA-2169):
+// The Me surface — the identity header, then nine cells in Pato's order
+// (MESITA-3855):
 //
 //   header         identity + Instagram; the bar IS a door (MESITA-1652)
 //   2              Profile · Instagram
-//   2              Class · Plan
+//   2              Class · Plan (Soon)
 //   2              Notifications · Reservations
-//   2              Favorites · Connector
-//   2              Share · Settings (Share left the bar, MESITA-2871; back on Me, MESITA-2887)
+//   2              Gift · Tickets
+//   1              Settings
 //
 // THE CELLS LIVE IN hub-tiles.tsx, rows and words, with the scroller they sit
 // in: (hub)/loading.tsx draws the same rows while this page loads (Pato,
 // MESITA-2701: "the placeholders must be similar to the page you are
-// loading, like the sizes"). TEN CELLS, AND THAT IS THE WHOLE PAGE.
+// loading, like the sizes"). NINE CELLS, AND THAT IS THE WHOLE PAGE.
 // route-structure T8 pins them.
 //
-// EVERY CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub stacked
-// history as overlays. DestTiles Link to /me/<box>.
+// EVERY CELL IS A ROUTE (Pato, MESITA-1789), or Soon and opens nothing
+// (Plan, MESITA-3855). Sheets over this hub stacked history as overlays.
+// DestTiles Link to /me/<box>.
 //
 // THERE IS NO PASSPORT (Pato, MESITA-2043: "we don't have passports"). The
 // one thing the Passport printed that nothing else did was the member number,
@@ -48,6 +51,7 @@ export function ProfileClient() {
   // The row the shell already read (MESITA-3014): Me paints the guest's name
   // and photo on its first frame, and revalidates in the background.
   const { data: profile, loading } = useConsumerProfile();
+  const unseen = useUnseenNotifications();
 
   // THE CONTEXT IS SEEDED SERVER-SIDE AND THE PROFILE IS FETCHED HERE, so the
   // handle can land in either place first. The context wins when it has one —
@@ -96,6 +100,9 @@ export function ProfileClient() {
           title={cell.title}
           summary={cell.summary}
           href={cell.href}
+          soon={cell.soon}
+          // The bar's red dot, on the door that clears it (MESITA-3855).
+          dot={cell.href === CONSUMER_ROUTES.mePages.notifications && unseen}
         />
       )}
     />

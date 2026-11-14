@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { ACTIVITY_TYPES, activityHref } from "@/lib/activity-types";
+import { TICKET_KINDS, ticketsHref } from "@/lib/ticket-kinds";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -88,11 +88,11 @@ function liveAddresses(): Set<string> {
     CONSUMER_ROUTES.wallet,
     `${CONSUMER_ROUTES.walletPlace.prefix}:id`,
     `${CONSUMER_ROUTES.walletGift.prefix}:token`,
-    CONSUMER_ROUTES.activity,
-    // Each Activity chip is its own path (MESITA-3811).
-    ...ACTIVITY_TYPES.map(activityHref),
-    CONSUMER_ROUTES.share,
     CONSUMER_ROUTES.me,
+    // Each kind of ticket is its own path (MESITA-3855).
+    ...TICKET_KINDS.map(ticketsHref),
+    `${CONSUMER_ROUTES.visit.prefix}:id`,
+    `${CONSUMER_ROUTES.credit.prefix}:id/:id`,
     ...Object.values(CONSUMER_ROUTES.mePages),
     `${CONSUMER_ROUTES.place.prefix}:id`,
     `${CONSUMER_ROUTES.reservation.prefix}:id`,
@@ -123,16 +123,14 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // A friend's share of a split bill (MESITA-3695).
       payJoin: { prefix: "/pay/join/" },
       payReceipt: { prefix: "/pay/receipt/" },
-      visit: { prefix: "/activity/visit/" },
-      credit: { prefix: "/activity/credit/" },
+      // Under Me › Tickets (MESITA-3855).
+      visit: { prefix: "/me/tickets/visit/" },
+      credit: { prefix: "/me/tickets/credit/" },
       // Pay's second half (MESITA-3698).
       wallet: "/wallet",
       walletPlace: { prefix: "/wallet/" },
       walletGift: { prefix: "/wallet/gift/" },
-      // The Activity tab: every money line (MESITA-3631).
-      activity: "/activity",
-      // Share's page, Me's Share tile (MESITA-2566, MESITA-2871).
-      share: "/share",
+      // No Activity tab and no Share page (MESITA-3855): both in `legacy`.
       // The Me hub and its boxes, each a route. NO diamond / diamondInvite /
       // settingsMetrics / visits — those are redirect sources in `legacy`
       // below.
@@ -143,6 +141,10 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         plan: "/me/plan",
         class: "/me/class",
         gift: "/me/gift",
+        // Activity's chips as Me's pages (MESITA-3855).
+        notifications: "/me/notifications",
+        reservations: "/me/reservations",
+        tickets: "/me/tickets",
         settings: "/me/settings",
         settingsContact: "/me/settings/contact",
         settingsFeedback: "/me/settings/feedback",
@@ -213,10 +215,14 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         savedReservations: "/saved/reservations",
         saved: "/saved",
         meSaved: "/me/saved",
-        // Me's own pages until each became an Activity chip (MESITA-3688).
-        meNotifications: "/me/notifications",
+        // Me's Favorites page (MESITA-2565 → MESITA-3688).
         meFavorites: "/me/favorites",
-        meReservations: "/me/reservations",
+        // The Activity tab and its pages, and Share's page (MESITA-3855).
+        activity: "/activity",
+        activityChipPrefix: "/activity/",
+        activityVisitPrefix: "/activity/visit/",
+        activityCreditPrefix: "/activity/credit/",
+        share: "/share",
         savedReservationPrefix: "/saved/reservation/",
         savedPlacePrefix: "/saved/place/",
       },
@@ -275,7 +281,9 @@ describe("the legacy block and the redirect table are one set", () => {
     const legacy = Object.values(CONSUMER_ROUTES.legacy) as string[];
     // Addresses that predate the contract's legacy block and are pinned by
     // value in the table test below rather than by key.
-    const ALIASES = ["/explore", "/home/", "/subscribe", "/inbox", "/saved/"];
+    // `/activity` stands for its chips, each named in the table pin below
+    // (MESITA-3855).
+    const ALIASES = ["/explore", "/home/", "/subscribe", "/inbox", "/saved/", "/activity"];
     const spokenFor = (source: string) => {
       const exact = source.replace(/\/:[A-Za-z]+\*?$/, "/");
       if (legacy.includes(source)) return true;
@@ -438,9 +446,46 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       { source: "/me/passport", destination: "/me/profile", permanent: true },
       { source: "/me/help", destination: "/me/settings", permanent: true },
-      { source: "/me/transactions", destination: "/activity", permanent: true },
+      { source: "/me/transactions", destination: "/me/tickets", permanent: true },
       { source: "/me/connector", destination: "/me/plan", permanent: true },
-      { source: "/me/refunds", destination: "/activity/refunds", permanent: true },
+      { source: "/me/refunds", destination: "/me/tickets/refunds", permanent: true },
+      // Activity left the bar for Me (MESITA-3855): a held ?type= first, then
+      // the chip's own path, each in one hop.
+      ...(
+        [
+          ["notifications", "/me/notifications"],
+          ["reservations", "/me/reservations"],
+          ["visits", "/me/tickets/visits"],
+          ["payments", "/me/tickets/visits"],
+          ["vouchers", "/me/tickets/vouchers"],
+          ["prepayments", "/me/tickets/vouchers"],
+          ["gifts", "/me/tickets/gifts"],
+          ["refunds", "/me/tickets/refunds"],
+          ["favorites", "/home/places"],
+        ] as const
+      ).flatMap(([chip, destination]) => [
+        {
+          source: "/activity",
+          has: [{ type: "query", key: "type", value: chip }],
+          destination,
+          permanent: true,
+        },
+        { source: `/activity/${chip}`, destination, permanent: true },
+      ]),
+      {
+        source: "/activity/visit/:tabId",
+        destination: "/me/tickets/visit/:tabId",
+        permanent: true,
+      },
+      {
+        source: "/activity/credit/:placeId/:entry",
+        destination: "/me/tickets/credit/:placeId/:entry",
+        permanent: true,
+      },
+      { source: "/activity", destination: "/me/notifications", permanent: true },
+      { source: "/activity/:path*", destination: "/me/tickets", permanent: true },
+      // Share is a bar button (MESITA-3855): its page lands on Home.
+      { source: "/share", destination: "/home/places", permanent: true },
       { source: "/invite", destination: "/me", permanent: true },
       // The retired Home hub's leaves (2026-09-01), and bare /home since each
       // tab got its own address (MESITA-2597). /home itself was live
@@ -516,24 +561,24 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       { source: "/places", destination: "/home/places", permanent: true },
       // Every old Favorites, Reservations and Notifications address lands on
-      // its Activity chip in one hop (MESITA-3688). A held ?tab=reservations
+      // its Me page in one hop (MESITA-3688, MESITA-3855). A held ?tab=reservations
       // on the Favorites addresses lands on Reservations, matched first.
       {
         source: "/saved",
         has: [{ type: "query", key: "tab", value: "reservations" }],
-        destination: "/activity/reservations",
+        destination: "/me/reservations",
         permanent: true,
       },
       {
         source: "/me/saved",
         has: [{ type: "query", key: "tab", value: "reservations" }],
-        destination: "/activity/reservations",
+        destination: "/me/reservations",
         permanent: true,
       },
       {
         source: "/me/favorites",
         has: [{ type: "query", key: "tab", value: "reservations" }],
-        destination: "/activity/reservations",
+        destination: "/me/reservations",
         permanent: true,
       },
       // Favorites left Activity (MESITA-3723): Home's Saved row has them.
@@ -541,23 +586,18 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/me/saved", destination: "/home/places", permanent: true },
       { source: "/me/favorites", destination: "/home/places", permanent: true },
       {
-        source: "/me/reservations",
-        destination: "/activity/reservations",
-        permanent: true,
-      },
-      {
         source: "/reservations",
-        destination: "/activity/reservations",
+        destination: "/me/reservations",
         permanent: true,
       },
       {
         source: "/bookings",
-        destination: "/activity/reservations",
+        destination: "/me/reservations",
         permanent: true,
       },
       {
         source: "/saved/reservations",
-        destination: "/activity/reservations",
+        destination: "/me/reservations",
         permanent: true,
       },
       {
@@ -573,17 +613,12 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/profile", destination: "/me/profile", permanent: true },
       {
         source: "/notifications",
-        destination: "/activity/notifications",
+        destination: "/me/notifications",
         permanent: true,
       },
-      {
-        source: "/me/notifications",
-        destination: "/activity/notifications",
-        permanent: true,
-      },
-      // /inbox is the Activity tab again (MESITA-3688; Me since MESITA-1626).
+      // /inbox is Me › Notifications (MESITA-3855; Activity from MESITA-3688).
       // /inbox/credits and /inbox/orders sit ABOVE this and point at Pay.
-      { source: "/inbox/:path*", destination: "/activity", permanent: true },
+      { source: "/inbox/:path*", destination: "/me/notifications", permanent: true },
     ]);
   });
 
@@ -599,7 +634,6 @@ describe("middleware auth wall (shouldGate)", () => {
     // `next`, like every other personal surface.
     "/pay",
     "/wallet",
-    "/activity",
     // Gated although it only 308s to /pay: middleware runs before the
     // redirect, so the signed-out `next` keeps what the guest asked for.
     "/wallet/buy",
