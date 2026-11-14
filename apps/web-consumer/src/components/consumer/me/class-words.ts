@@ -10,28 +10,45 @@
 //
 // CLASS IS NOT PLAN (see ClassSheet): nothing here names a plan, a price or
 // a buy. CLASS IS AUTOMATIC (Pato, MESITA-3850: "more than 5K followers. you
-// are VIP. easy peasy"): nothing here joins or leaves one.
+// are VIP. easy peasy"; 5,000 or more since MESITA-3864): nothing here joins
+// or leaves one.
 
 export type ClassRowWords = {
   title: string;
   subtitle: string;
-  /** A class nobody can be in yet: a Soon tag beside the title. */
-  soon?: boolean;
 };
 
-/** The one line over the card: what a class is for, in plain words (Pato,
- *  MESITA-3100: "clearer explanation"). */
-export const CLASS_LEAD =
-  "Your class comes from your Instagram. It updates on its own when your followers change.";
+/** The VIP bar (MESITA-3864): 5,000 verified followers or more. The server
+ *  owns the rule (consumers.guest_class is generated); this is only for the
+ *  progress line and must equal it. */
+export const VIP_FOLLOWERS = 5000;
+
+/** The status card's words (MESITA-3873). */
+export const CLASS_STATUS = {
+  title: { regular: "Regular Class", vip: "VIP Class" },
+  noInstagram: "Connect your Instagram. At 5,000 followers you're VIP.",
+  toGo: (n: string) => `${n} more followers to VIP`,
+  countUnknown: "Sync your followers to see how close you are to VIP.",
+  vip: "You get the VIP voucher where a place offers it.",
+  unknown: "Couldn't load your class.",
+  connect: { label: "Connect Instagram", sub: "Takes a minute" },
+  sync: "Sync your followers",
+  progressLabel: "Followers toward VIP",
+} as const;
+
+export const CLASS_LIST_TITLE = "The two classes";
+
+/** "You" beside the guest's own class in the list. */
+export const CLASS_MINE = "You";
 
 export const CLASS_ROWS = {
   regular: {
-    title: "Regular Class",
-    subtitle: "Everyone on Mesita. You get the standard vouchers.",
+    title: "Regular",
+    subtitle: "Everyone on Mesita. The standard vouchers.",
   },
   vip: {
-    title: "VIP Class",
+    title: "VIP",
     subtitle:
-      "5,000 or more followers on your connected Instagram. You also get the VIP voucher where a place offers it. You can't buy it.",
+      "5,000 or more followers on Instagram. Adds the VIP voucher where a place offers it. Never sold.",
   },
 } as const satisfies Record<"regular" | "vip", ClassRowWords>;
