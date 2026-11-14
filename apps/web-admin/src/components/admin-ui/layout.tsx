@@ -44,7 +44,7 @@ export function PageHeader({
   );
 }
 
-/** Template (a): a config page — container, header, then the cards with the page gap. */
+/** Template (a): a config page — container, header, then the cards. */
 export function ConfigPageLayout({
   title,
   description,
@@ -57,7 +57,8 @@ export function ConfigPageLayout({
   return (
     <PageContainer>
       <PageHeader title={title} description={description} />
-      <div className="mt-6 flex flex-col gap-6 sm:mt-8 sm:gap-8">{children}</div>
+      {/* The body sets its own gap: its first child can be a zero-height sticky strip (Crenup). */}
+      <div className="mt-6 sm:mt-8">{children}</div>
     </PageContainer>
   );
 }
