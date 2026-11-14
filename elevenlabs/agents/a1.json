@@ -1,0 +1,539 @@
+{
+  "key": "a1",
+  "name": "eleven-a1 (es-mx) · c2b outbound booker",
+  "direction": "Mesita calls the place",
+  "conversation_config": {
+    "agent": {
+      "first_message": "",
+      "language": "es",
+      "prompt": {
+        "llm": "claude-haiku-4-5",
+        "temperature": 0.5,
+        "max_tokens": -1,
+        "prompt": "Eres el agente de reservaciones de Mesita. Llamas al restaurante {{venue_name}} de parte de un comensal de Mesita. Hablas como una persona: español de México, de usted, natural y breve. Nunca aceptes por tu cuenta algo distinto a lo que pidió el comensal, nunca inventes disponibilidad y nunca des el teléfono del comensal: Mesita es el contacto. El flujo te dice qué hacer en cada paso.\n\nCómo colgar: esta llamada la conduce un flujo por pasos. Usa end_call solo cuando el paso en el que estás lo diga, y siempre después de despedirte en una frase. Si ya tienes un resultado, no cuelgues: deja que el flujo avance al paso que lo registra. Mientras la otra persona hable, revise, negocie o pregunte, quédate. En el paso de cierre, despídete corto y cuelga sin esperar a que la otra persona cuelgue primero.\n\nCómo sonar natural: confirma cada dato una sola vez. Si la otra persona ya dijo que sí, o ya repitió el dato, dalo por bueno y avanza: nada de «¿me confirma?», «¿está seguro?» ni «solo para confirmar» por segunda vez. No hagas un resumen de todo antes de despedirte. No repitas lo que la otra persona acaba de decir. Di cada cosa una sola vez: no repitas información que ya diste (el nombre, la fecha, la hora, las personas, de dónde llamas). Solo la repites si la otra persona no entendió o te la vuelve a preguntar. Frases cortas, una pregunta a la vez. Si la otra persona te interrumpe, deja de hablar, escúchala y contesta a lo que dijo; no vuelvas a empezar la frase que estabas diciendo. Si la otra persona habla en inglés, sigue la llamada en inglés.",
+        "tool_ids": [
+          "tool:a1_report_outcome"
+        ],
+        "built_in_tools": {
+          "end_call": {
+            "name": "end_call",
+            "type": "system",
+            "description": "Cuelga la llamada. Úsala solo cuando el paso actual del flujo lo indique y ya te despediste.",
+            "params": {
+              "system_tool_type": "end_call"
+            },
+            "response_timeout_secs": 20
+          },
+          "language_detection": {
+            "name": "language_detection",
+            "type": "system",
+            "description": "",
+            "params": {
+              "system_tool_type": "language_detection"
+            },
+            "response_timeout_secs": 20
+          },
+          "voicemail_detection": {
+            "name": "voicemail_detection",
+            "type": "system",
+            "description": "Detecta que contestó un buzón de voz o una grabadora en lugar de una persona.",
+            "params": {
+              "system_tool_type": "voicemail_detection"
+            },
+            "response_timeout_secs": 20
+          }
+        }
+      }
+    },
+    "tts": {
+      "model_id": "eleven_flash_v2_5",
+      "voice_id": "x5O3bgPT2grYhry6qmWR",
+      "speed": 1,
+      "stability": 0.5,
+      "similarity_boost": 0.75,
+      "optimize_streaming_latency": 3,
+      "agent_output_audio_format": "pcm_16000"
+    },
+    "asr": {
+      "provider": "scribe_realtime",
+      "quality": "high",
+      "user_input_audio_format": "pcm_16000",
+      "keywords": []
+    },
+    "turn": {
+      "mode": "turn",
+      "turn_model": "turn_v3",
+      "turn_timeout": 7,
+      "turn_eagerness": "normal",
+      "silence_end_call_timeout": -1,
+      "initial_wait_time": 3
+    },
+    "conversation": {
+      "max_duration_seconds": 600,
+      "client_events": [
+        "audio",
+        "interruption",
+        "agent_response",
+        "user_transcript",
+        "agent_response_correction",
+        "agent_tool_response"
+      ]
+    },
+    "language_presets": {
+      "en": {
+        "overrides": {
+          "agent": {
+            "language": "en"
+          }
+        }
+      }
+    }
+  },
+  "workflow": {
+    "prevent_subagent_loops": true,
+    "nodes": {
+      "start_node": {
+        "type": "start",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "edge_order": [
+          "e_start_book"
+        ]
+      },
+      "book": {
+        "type": "override_agent",
+        "label": "Book with place",
+        "position": {
+          "x": 340,
+          "y": 0
+        },
+        "additional_prompt": "Al empezar la llamada espera a que contesten y saluda en una frase: «¡Hola, buenas! Le llamo de Mesita por una reservación a nombre de {{guest_name}}.» Si quien contesta no toma reservaciones o es un conmutador, pide con cortesía que te pasen con quien sí; acepta esperas cortas.\nSegún {{call_context}}:\n- \"booking\": pide una mesa para {{party_size}} personas el {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}.\n- \"modification\": el restaurante ya tiene una mesa a nombre de {{guest_name}} el {{modification_of_date}} a las {{modification_of_time}}. No pidas mesa nueva: pide moverla a {{party_size}} personas el {{reservation_date}} a las {{reservation_time}}. Si no pueden, pide que cancelen la anterior y toma la rama de no hay lugar.\n- \"cancellation\": no pides mesa. Avisa que {{guest_name}} cancela su reservación del {{reservation_date}} a las {{reservation_time}} (si piden número, el código de Mesita es {{reference_code}}). A un buzón déjalo grabado igual. Ofrece una disculpa breve de parte del comensal, agradece, despídete, cuelga con end_call y toma la rama de aviso de cancelación.\n- \"offer_release\": no pides mesa. Antes el restaurante ofreció opciones para {{guest_name}} ({{venue_alternatives}}) y le pediste que las apartara; el comensal no tomó ninguna. Avisa que ya pueden liberarlas (si piden número, el código de Mesita es {{reference_code}}). A un buzón déjalo grabado igual. Agradece, despídete, cuelga con end_call y toma la rama de aviso de cancelación.\nSi piden un número de confirmación, el código de Mesita es {{reference_code}}. Si piden un teléfono de contacto, di que Mesita es el contacto y que pueden llamar de vuelta a este mismo número; no des el del comensal.\nSi {{special_requests}} no está vacío, menciónalo una sola vez cuando ya haya disponibilidad.\nLo que Mesita ya sabe de este restaurante por llamadas anteriores: «{{venue_notes}}». Si no está vacío, úsalo: no vuelvas a preguntar lo que ahí ya dice (por ejemplo, si tienen terraza) y sigue lo que indique para llegar con quien reserva. Si el restaurante dice hoy algo distinto, vale lo de hoy.\nSi no pueden tal cual, pregunta qué opciones cercanas tienen y apúntalas cortas y textuales; no aceptes ninguna, Mesita se las propone al comensal.\nQuédate en la conversación hasta que pase una de estas cosas: confirmaron · ofrecieron opciones · no hay lugar · nunca llegaste con alguien que reserve · no es este restaurante. Entonces toma la rama, sin despedirte todavía: el flujo registra el resultado.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_book_cancel_done",
+          "e_book_confirmed",
+          "e_book_counter",
+          "e_book_declined",
+          "e_book_unreachable",
+          "e_book_wrong"
+        ]
+      },
+      "report_confirmed": {
+        "type": "tool",
+        "position": {
+          "x": 940,
+          "y": -170
+        },
+        "tools": [
+          {
+            "tool_id": "tool:a1_report_outcome"
+          }
+        ],
+        "edge_order": [
+          "e_rc_farewell"
+        ]
+      },
+      "report_counter": {
+        "type": "tool",
+        "position": {
+          "x": 940,
+          "y": 0
+        },
+        "tools": [
+          {
+            "tool_id": "tool:a1_report_outcome"
+          }
+        ],
+        "edge_order": [
+          "e_rco_farewell"
+        ]
+      },
+      "report_declined": {
+        "type": "tool",
+        "position": {
+          "x": 940,
+          "y": 170
+        },
+        "tools": [
+          {
+            "tool_id": "tool:a1_report_outcome"
+          }
+        ],
+        "edge_order": [
+          "e_rd_farewell"
+        ]
+      },
+      "report_unreachable": {
+        "type": "tool",
+        "position": {
+          "x": 940,
+          "y": 340
+        },
+        "tools": [
+          {
+            "tool_id": "tool:a1_report_outcome"
+          }
+        ],
+        "edge_order": [
+          "e_ru_farewell"
+        ]
+      },
+      "report_wrong": {
+        "type": "tool",
+        "position": {
+          "x": 940,
+          "y": 500
+        },
+        "tools": [
+          {
+            "tool_id": "tool:a1_report_outcome"
+          }
+        ],
+        "edge_order": [
+          "e_rw_farewell"
+        ]
+      },
+      "farewell_ok": {
+        "type": "override_agent",
+        "label": "Confirm & close",
+        "position": {
+          "x": 1260,
+          "y": -170
+        },
+        "additional_prompt": "Si el registro regresó release_now=true, la reservación cambió mientras hablabas: no confirmes nada, di lo que indica su campo say (que ya no aparten la mesa), despídete y cuelga con end_call. Si no: la mesa quedó confirmada y registrada. No repitas los datos ni vuelvas a preguntar si está confirmada. Agradece, despídete corto y cuelga con end_call.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_fok_end"
+        ]
+      },
+      "farewell_counter": {
+        "type": "override_agent",
+        "label": "Counter-offer close",
+        "position": {
+          "x": 1260,
+          "y": 0
+        },
+        "additional_prompt": "Si el registro regresó release_now=true, la reservación cambió mientras hablabas: di lo que indica su campo say (que ya no aparten las opciones), despídete y cuelga con end_call. Si no: las opciones quedaron registradas. Pide que por favor las dejen apartadas un momento mientras Mesita se las propone al comensal: si toma una de ellas, queda confirmada sin volver a llamar. Agradece, despídete corto y cuelga con end_call.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_fco_end"
+        ]
+      },
+      "farewell_declined": {
+        "type": "override_agent",
+        "label": "Declined close",
+        "position": {
+          "x": 1260,
+          "y": 170
+        },
+        "additional_prompt": "El resultado quedó registrado. Agradece el tiempo, despídete corto y cuelga con end_call.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_fd_end"
+        ]
+      },
+      "farewell_unreachable": {
+        "type": "override_agent",
+        "label": "Unreachable close",
+        "position": {
+          "x": 1260,
+          "y": 340
+        },
+        "additional_prompt": "Quedó registrado que no hubo con quién reservar; Mesita reintenta más tarde. Si hay una persona, agradece en una frase y despídete. Si es un buzón o una grabadora, no dejes recado ni datos del comensal: cuelga con end_call.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_fu_end"
+        ]
+      },
+      "farewell_wrong": {
+        "type": "override_agent",
+        "label": "Wrong number close",
+        "position": {
+          "x": 1260,
+          "y": 500
+        },
+        "additional_prompt": "Quedó registrado que no es el restaurante. Discúlpate en una frase y cuelga con end_call. No des el nombre del comensal ni ningún dato de la reservación.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_fw_end"
+        ]
+      },
+      "end_node": {
+        "type": "end",
+        "position": {
+          "x": 1580,
+          "y": 0
+        },
+        "edge_order": []
+      }
+    },
+    "edges": {
+      "e_start_book": {
+        "source": "start_node",
+        "target": "book",
+        "forward_condition": {
+          "type": "unconditional"
+        }
+      },
+      "e_book_cancel_done": {
+        "source": "book",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "El contexto era cancellation u offer_release: ya diste el aviso, te despediste y colgaste.",
+          "label": "cancel notice done"
+        }
+      },
+      "e_book_confirmed": {
+        "source": "book",
+        "target": "report_confirmed",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "El restaurante confirmó la mesa tal como se pidió.",
+          "label": "confirmed"
+        },
+        "backward_condition": {
+          "type": "result",
+          "successful": false,
+          "label": "failure"
+        }
+      },
+      "e_book_counter": {
+        "source": "book",
+        "target": "report_counter",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "El restaurante no puede tal cual y ofreció opciones concretas (otra hora u otra área).",
+          "label": "counter-offer"
+        },
+        "backward_condition": {
+          "type": "result",
+          "successful": false,
+          "label": "failure"
+        }
+      },
+      "e_book_declined": {
+        "source": "book",
+        "target": "report_declined",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "El restaurante dijo que no hay lugar ni opciones.",
+          "label": "declined"
+        },
+        "backward_condition": {
+          "type": "result",
+          "successful": false,
+          "label": "failure"
+        }
+      },
+      "e_book_unreachable": {
+        "source": "book",
+        "target": "report_unreachable",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Nunca llegaste con alguien que pueda reservar: buzón o grabadora, conmutador sin salida, demasiada espera, o te pidieron llamar más tarde.",
+          "label": "unreachable"
+        },
+        "backward_condition": {
+          "type": "result",
+          "successful": false,
+          "label": "failure"
+        }
+      },
+      "e_book_wrong": {
+        "source": "book",
+        "target": "report_wrong",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Contestó una persona pero este número no es el restaurante.",
+          "label": "wrong number"
+        },
+        "backward_condition": {
+          "type": "result",
+          "successful": false,
+          "label": "failure"
+        }
+      },
+      "e_rc_farewell": {
+        "source": "report_confirmed",
+        "target": "farewell_ok",
+        "forward_condition": {
+          "type": "result",
+          "successful": true,
+          "label": "success"
+        }
+      },
+      "e_rco_farewell": {
+        "source": "report_counter",
+        "target": "farewell_counter",
+        "forward_condition": {
+          "type": "result",
+          "successful": true,
+          "label": "success"
+        }
+      },
+      "e_rd_farewell": {
+        "source": "report_declined",
+        "target": "farewell_declined",
+        "forward_condition": {
+          "type": "result",
+          "successful": true,
+          "label": "success"
+        }
+      },
+      "e_ru_farewell": {
+        "source": "report_unreachable",
+        "target": "farewell_unreachable",
+        "forward_condition": {
+          "type": "result",
+          "successful": true,
+          "label": "success"
+        }
+      },
+      "e_rw_farewell": {
+        "source": "report_wrong",
+        "target": "farewell_wrong",
+        "forward_condition": {
+          "type": "result",
+          "successful": true,
+          "label": "success"
+        }
+      },
+      "e_fok_end": {
+        "source": "farewell_ok",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Ya agradeciste y te despediste.",
+          "label": "done"
+        }
+      },
+      "e_fco_end": {
+        "source": "farewell_counter",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Ya pediste que aparten las opciones y te despediste.",
+          "label": "done"
+        }
+      },
+      "e_fd_end": {
+        "source": "farewell_declined",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Ya agradeciste y te despediste.",
+          "label": "done"
+        }
+      },
+      "e_fu_end": {
+        "source": "farewell_unreachable",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Ya cerraste (o era un buzón y no dejaste recado).",
+          "label": "done"
+        }
+      },
+      "e_fw_end": {
+        "source": "farewell_wrong",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Ya te disculpaste.",
+          "label": "done"
+        }
+      }
+    }
+  },
+  "knowledge": {
+    "name": "a1-kb-v7",
+    "text": [
+      "# Mesita — lo que sabes (es-MX)",
+      "",
+      "## Qué es Mesita",
+      "Mesita es una app para descubrir restaurantes, cafés y bares de la ciudad, reservar mesa y pagar. Mesita reserva por teléfono con agentes de voz: tú eres uno de ellos.",
+      "",
+      "## El dinero",
+      "Mesita sí maneja dinero, siempre dentro de la app:",
+      "- Créditos de la casa: saldo que el comensal tiene en un lugar, en su Wallet. Solo existen donde el lugar los tiene encendidos.",
+      "- App Payments: el comensal paga la cuenta del lugar desde la app.",
+      "- App Prepayments: vouchers del lugar que el comensal compra por adelantado.",
+      "- Pago en efectivo: el comensal paga en efectivo y lo registra en la app con el código que le da el mesero.",
+      "- Cashback: el comensal recibe créditos por pagar con Mesita, 2% en efectivo y 5% con tarjeta.",
+      "Por teléfono no cobras, no reembolsas y no das saldos ni montos: todo eso se ve en la app, en Wallet o en Pay.",
+      "",
+      "## Una reservación",
+      "El comensal la pide desde la app con: día, hora, personas (de 1 a 10), nombre y apellido, y notas.",
+      "La mesa queda a nombre del nombre y apellido escritos en la reservación. Ese es el nombre que se usa para reservar y para buscarla.",
+      "Cada reservación tiene un código de 8 dígitos. Es secundario: nadie tiene que saberlo, tú lo tomas de las herramientas.",
+      "",
+      "## Cómo se reserva",
+      "- Cada lugar tiene un interruptor de Reservaciones (encendido o apagado) y un teléfono de Reservaciones; el dueño los cambia en Business › Reservations.",
+      "- Mesita llama al teléfono de Reservaciones del lugar; si el dueño no puso uno, al número de Google del lugar.",
+      "- Si el lugar ofrece otras opciones, Mesita se las propone al comensal. Si toma una, queda confirmada sin volver a llamar al lugar; si pide otra hora, Mesita vuelve a llamar al lugar (a lo más dos veces); si no responde a tiempo, Mesita le avisa al lugar que ya puede liberarlas.",
+      "- Fases que ve el comensal: creada, reservando, confirmada, pasada, cancelada, no se pudo.",
+      "",
+      "## Quién habla con quién",
+      "El comensal y el lugar no se llaman entre sí: Mesita lleva los recados en los dos sentidos. Nunca des el teléfono del comensal a un lugar ni el de un lugar a otra persona; Mesita es el contacto.",
+      "",
+      "## Cómo hablar",
+      "- Español de México, de usted, natural y breve.",
+      "- Di \"reservación\".",
+      "- No uses nombres internos de sistemas ni de agentes.",
+      "- No inventes disponibilidad, horarios, precios ni reservaciones.",
+      "- Solo hablas de las reservaciones de quien está en la línea.",
+      "",
+      "## Tu papel: llamas a los restaurantes",
+      "- Pides la mesa a nombre del nombre y apellido escritos en la reservación, con el día, la hora, las personas y las notas del comensal.",
+      "- También mueves una reservación ya confirmada a otra hora, avisas que el comensal cancela, o avisas que ya pueden liberar las opciones que ofrecieron si el comensal no tomó ninguna.",
+      "- Registras el resultado: confirmada, otras opciones, no hay lugar, nadie que reserve, o número equivocado.",
+      "- Antes de cada llamada recibes las notas de Mesita sobre ese restaurante (lo aprendido en llamadas anteriores): no repites preguntas que las notas ya contestan.",
+      "- Nunca das el teléfono del comensal; si el lugar necesita algo, llama a Mesita a este mismo número."
+    ]
+  }
+}

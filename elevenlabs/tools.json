@@ -1,0 +1,391 @@
+[
+  {
+    "name": "a1_report_outcome",
+    "config": {
+      "type": "webhook",
+      "name": "a1_report_outcome",
+      "description": "Registra el resultado de esta llamada con el restaurante, una sola vez, antes de despedirte. declined: el restaurante te dijo que no hay lugar. unreachable: nunca llegaste con alguien que pueda reservar (buzón, conmutador sin salida, «llame más tarde»); Mesita reintenta. wrong_number: contestaron y no es este restaurante.",
+      "response_timeout_secs": 15,
+      "interruption_mode": "allow",
+      "api_schema": {
+        "url": "SUPABASE_URL/functions/v1/eleven-a1-report-outcome",
+        "method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer ANON_KEY",
+          "x-agent-secret": "TOOL_SECRET",
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "description": "Resultado de la llamada con el restaurante.",
+          "required": [
+            "reference_code",
+            "verdict"
+          ],
+          "properties": {
+            "reference_code": {
+              "type": "string",
+              "dynamic_variable": "reference_code"
+            },
+            "run_id": {
+              "type": "string",
+              "dynamic_variable": "run_id"
+            },
+            "verdict": {
+              "type": "string",
+              "description": "confirmed (aceptaron tal cual) · counter_offer (ofrecieron otras opciones) · declined (no hay lugar) · unreachable (nadie que reserve) · wrong_number (no es este restaurante).",
+              "enum": [
+                "confirmed",
+                "counter_offer",
+                "declined",
+                "unreachable",
+                "wrong_number"
+              ]
+            },
+            "alternatives": {
+              "type": "array",
+              "description": "Solo con counter_offer: cada opción que ofreció el restaurante, por separado (máx. 5). «A las 9:30 en la terraza» es time 21:30 y note «en la terraza».",
+              "items": {
+                "type": "object",
+                "description": "Una opción concreta que ofreció el restaurante.",
+                "required": [
+                  "time"
+                ],
+                "properties": {
+                  "time": {
+                    "type": "string",
+                    "description": "Hora en 24 horas HH:mm (las 9:30 de la noche es 21:30)."
+                  },
+                  "date": {
+                    "type": "string",
+                    "description": "Solo si es para otro día: AAAA-MM-DD."
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "Lo demás de esa opción, corto y textual: «en la terraza», «solo barra»."
+                  }
+                }
+              }
+            },
+            "note": {
+              "type": "string",
+              "description": "Nota breve opcional sobre la llamada."
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "a2_confirm_reservation",
+    "config": {
+      "type": "webhook",
+      "name": "a2_confirm_reservation",
+      "description": "Registra la respuesta del comensal. Sin cambios: acepta tal cual. Con new_date y/o new_time: eligió una opción del restaurante o propuso otra fecha u hora. Si regresa confirmed_on_the_spot=true la mesa ya quedó confirmada; si regresa parked=true, Mesita le confirma por la app.",
+      "response_timeout_secs": 15,
+      "interruption_mode": "allow",
+      "api_schema": {
+        "url": "SUPABASE_URL/functions/v1/eleven-a2-confirm-reservation",
+        "method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer ANON_KEY",
+          "x-agent-secret": "TOOL_SECRET",
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "description": "Confirmación o cambio pedido por el comensal.",
+          "required": [
+            "reference_code"
+          ],
+          "properties": {
+            "reference_code": {
+              "type": "string",
+              "dynamic_variable": "reference_code"
+            },
+            "run_id": {
+              "type": "string",
+              "dynamic_variable": "run_id"
+            },
+            "new_date": {
+              "type": "string",
+              "description": "Solo si cambia la fecha: AAAA-MM-DD."
+            },
+            "new_time": {
+              "type": "string",
+              "description": "Solo si cambia la hora: HH:mm de 24 horas."
+            },
+            "note": {
+              "type": "string",
+              "description": "Nota breve opcional."
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "a2_cancel_reservation",
+    "config": {
+      "type": "webhook",
+      "name": "a2_cancel_reservation",
+      "description": "Cancela la reservación porque el comensal ya no la quiere.",
+      "response_timeout_secs": 15,
+      "interruption_mode": "allow",
+      "api_schema": {
+        "url": "SUPABASE_URL/functions/v1/eleven-a2-cancel-reservation",
+        "method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer ANON_KEY",
+          "x-agent-secret": "TOOL_SECRET",
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "description": "Cancelación pedida por el comensal.",
+          "required": [
+            "reference_code"
+          ],
+          "properties": {
+            "reference_code": {
+              "type": "string",
+              "dynamic_variable": "reference_code"
+            },
+            "run_id": {
+              "type": "string",
+              "dynamic_variable": "run_id"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Motivo breve, en sus palabras."
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "a3_verify_caller",
+    "config": {
+      "type": "webhook",
+      "name": "a3_verify_caller",
+      "description": "Primer paso: verifica al comensal por el número desde el que llama y regresa su nombre de cuenta y sus reservaciones recientes (lugar, fecha, hora, personas, estado, a nombre de quién y código). No pidas ningún dato antes.",
+      "response_timeout_secs": 15,
+      "interruption_mode": "allow",
+      "api_schema": {
+        "url": "SUPABASE_URL/functions/v1/eleven-a3-verify-caller",
+        "method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer ANON_KEY",
+          "x-agent-secret": "TOOL_SECRET",
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "description": "Verificación por número del llamante.",
+          "required": [
+            "caller_phone"
+          ],
+          "properties": {
+            "caller_phone": {
+              "type": "string",
+              "dynamic_variable": "system__caller_id"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "a3_cancel_reservation",
+    "config": {
+      "type": "webhook",
+      "name": "a3_cancel_reservation",
+      "description": "Cancela una reservación del comensal verificado. Ubícala por lugar y fecha en la conversación y toma su código de las reservaciones de la verificación; el comensal no tiene que decir ningún código.",
+      "response_timeout_secs": 15,
+      "interruption_mode": "allow",
+      "api_schema": {
+        "url": "SUPABASE_URL/functions/v1/eleven-a3-cancel-reservation",
+        "method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer ANON_KEY",
+          "x-agent-secret": "TOOL_SECRET",
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "description": "Cancelación de una reservación propia.",
+          "required": [
+            "caller_phone",
+            "reference_code"
+          ],
+          "properties": {
+            "caller_phone": {
+              "type": "string",
+              "dynamic_variable": "system__caller_id"
+            },
+            "reference_code": {
+              "type": "string",
+              "description": "El código de 8 dígitos de esa reservación, tomado de las reservaciones que regresó la verificación o la búsqueda. No se lo pidas a quien llama."
+            },
+            "reason": {
+              "type": "string",
+              "description": "Motivo breve, en sus palabras."
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "a4_verify_caller",
+    "config": {
+      "type": "webhook",
+      "name": "a4_verify_caller",
+      "description": "Primer paso: verifica que el número desde el que llaman sea la línea de un lugar en Mesita y regresa el lugar con sus reservaciones próximas (a nombre de quién, fecha, hora, personas, estado, código). No pidas ningún dato antes.",
+      "response_timeout_secs": 15,
+      "interruption_mode": "allow",
+      "api_schema": {
+        "url": "SUPABASE_URL/functions/v1/eleven-a4-verify-caller",
+        "method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer ANON_KEY",
+          "x-agent-secret": "TOOL_SECRET",
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "description": "Verificación por número del lugar.",
+          "required": [
+            "caller_phone"
+          ],
+          "properties": {
+            "caller_phone": {
+              "type": "string",
+              "dynamic_variable": "system__caller_id"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "a4_find_reservation",
+    "config": {
+      "type": "webhook",
+      "name": "a4_find_reservation",
+      "description": "Busca reservaciones del lugar verificado por el nombre al que están («la reservación a nombre de Ana López») o por el código de 8 dígitos si lo dictan. Solo encuentra reservaciones de este lugar. Regresa las coincidencias con su código para usarlo en otras herramientas.",
+      "response_timeout_secs": 15,
+      "interruption_mode": "allow",
+      "api_schema": {
+        "url": "SUPABASE_URL/functions/v1/eleven-a4-find-reservation",
+        "method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer ANON_KEY",
+          "x-agent-secret": "TOOL_SECRET",
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "description": "Búsqueda por nombre o código dentro del lugar del llamante.",
+          "required": [
+            "caller_phone"
+          ],
+          "properties": {
+            "caller_phone": {
+              "type": "string",
+              "dynamic_variable": "system__caller_id"
+            },
+            "guest_name": {
+              "type": "string",
+              "description": "El nombre al que está la reservación, tal como lo dijeron (nombre y/o apellido)."
+            },
+            "reference_code": {
+              "type": "string",
+              "description": "Solo si dictaron un código de Mesita: sus 8 dígitos (ej. 48291057)."
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "a4_cancel_reservation",
+    "config": {
+      "type": "webhook",
+      "name": "a4_cancel_reservation",
+      "description": "Cancela una reservación del lugar verificado porque ya no pueden recibirla. Toma su código de las reservaciones que regresó la verificación o la búsqueda; el lugar no tiene que decir ningún código. Mesita le avisa al comensal.",
+      "response_timeout_secs": 15,
+      "interruption_mode": "allow",
+      "api_schema": {
+        "url": "SUPABASE_URL/functions/v1/eleven-a4-cancel-reservation",
+        "method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer ANON_KEY",
+          "x-agent-secret": "TOOL_SECRET",
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "description": "Cancelación desde el lugar.",
+          "required": [
+            "caller_phone",
+            "reference_code"
+          ],
+          "properties": {
+            "caller_phone": {
+              "type": "string",
+              "dynamic_variable": "system__caller_id"
+            },
+            "reference_code": {
+              "type": "string",
+              "description": "El código de 8 dígitos de esa reservación, tomado de las reservaciones que regresó la verificación o la búsqueda. No se lo pidas a quien llama."
+            },
+            "reason": {
+              "type": "string",
+              "description": "Motivo breve del lugar."
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "get_reservation",
+    "config": {
+      "type": "webhook",
+      "name": "get_reservation",
+      "description": "Busca una reservación en tiempo real por su código de 8 dígitos, o por el nombre y apellido a los que está. Regresa lugar, fecha, hora, personas, estado y a nombre de quién. No regresa teléfonos.",
+      "response_timeout_secs": 15,
+      "interruption_mode": "allow",
+      "api_schema": {
+        "url": "SUPABASE_URL/functions/v1/eleven-agent-get-reservation",
+        "method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer ANON_KEY",
+          "x-agent-secret": "TOOL_SECRET",
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "description": "Manda el código si lo dictaron; si no, el nombre y apellido.",
+          "required": [],
+          "properties": {
+            "reference_code": {
+              "type": "string",
+              "description": "Código de 8 dígitos que dictaron (ej. 48291057)."
+            },
+            "first_name": {
+              "type": "string",
+              "description": "Nombre al que está la reservación, tal como lo dijeron."
+            },
+            "last_name": {
+              "type": "string",
+              "description": "Apellido al que está la reservación, tal como lo dijeron."
+            }
+          }
+        }
+      }
+    }
+  }
+]
