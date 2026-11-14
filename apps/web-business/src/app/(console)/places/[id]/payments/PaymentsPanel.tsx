@@ -14,9 +14,9 @@
 //   own Cashback-as-Credits:)
 //   Main Configuration · the Stripe Account row and its button, then the
 //     House Credits Agreement and the House Credits switch it unlocks;
-//   Cash Payments · Cash Payments, then its Cashback-as-Credits (None, MESITA-3928);
+//   Cash Payments · Cash Payments, then its Cashback-as-Credits (Off or 3%, MESITA-3944);
 //   Credits Payments · Credits Payments (Always on), then its Cashback-as-
-//     Credits (Off or 2%, on the credit part);
+//     Credits (Off or 2%, on the credit part; a switch again, MESITA-3944);
 //   Mesita Payments · Mesita Payments, then its Cashback-as-Credits (Off or 5%);
 //   Mesita Prepayments · Mesita Prepayments, its Cashback-as-Credits (Off or
 //     5% of a voucher's price), then one row per voucher;
@@ -300,6 +300,7 @@ export function PaymentsPanel({
   const needsStripe = step("Connect the Stripe Account first.", "#stripe-account");
   const needsCode = step("Set the waiter code first.", "#waiter-code");
   const needsPrepayments = step("Turn App Prepayments on first.", "#mesita-prepayments");
+  const needsCash = step("Turn Cash Payments on first.", "#cash-payments");
 
   // The to-do strip (MESITA-3602, Pato: "a sequential horizontal to-do list to
   // fully enable Payments"): four steps in order, each a link to its row; the
@@ -550,17 +551,14 @@ export function PaymentsPanel({
             tone: "bg-lime-100 text-lime-700",
             blocked: codeSet ? undefined : needsCode,
           })}
-          {/* NO CASHBACK ON CASH (Pato, MESITA-3928: "Cash Payments: 0% Fee.
-              0% Back to user"): fixed at None, like Credits Payments. */}
-          <li className={MARK_ROW} data-place-state="cash_cashback_bps">
-            {mark(CoinsIcon, false, "bg-amber-100 text-amber-700")}
-            <div className="min-w-0">
-              <p className="font-medium">Cashback-as-Credits</p>
-              <p className="text-muted-foreground">Cash carries no Mesita fee, so it earns no cashback. Paying in the app earns 5%.</p>
-            </div>
-            <p className="text-muted-foreground font-semibold whitespace-nowrap">None</p>
-            <span />
-          </li>
+          {/* OFF OR 3% (Pato, 2026-11-14, MESITA-3944: "CASHBACK AS CREDITS
+              FOR CASH PAYMENTS IS FUCKING OFF OR 3"); None under MESITA-3928. */}
+          {rateRow({
+            key: "cash_cashback_bps",
+            name: "Cash Payments Cashback-as-Credits",
+            line: "Back as credit here on the bill, once your waiter taps Received. Never on the tip.",
+            blocked: !settings.house_credits ? needsHouseCredits : !settings.cash_payments ? needsCash : undefined,
+          })}
         </ul>
       </Card>
       {/* CREDITS PAYMENTS, ITS OWN SECTION WITH ITS CASHBACK (MESITA-3827,
@@ -577,19 +575,15 @@ export function PaymentsPanel({
             <p className="font-semibold whitespace-nowrap">Always on</p>
             <span />
           </li>
-          {/* NO CASHBACK ON CREDIT, SHOWN FOR SYMMETRY (Pato, MESITA-3838:
-              "NONE. NOT CONFIGURABLE. BUT LEAVE THE SHIT IN BUSIENSS CONSOLE
-              FOR THE SAKE OF SYMMETRY"): the row every payment section has,
-              fixed at None, no switch. */}
-          <li className={MARK_ROW} data-place-state="credit_cashback_bps">
-            {mark(CoinsIcon, false, "bg-amber-100 text-amber-700")}
-            <div className="min-w-0">
-              <p className="font-medium">Cashback-as-Credits</p>
-              <p className="text-muted-foreground">Credit spent here earns no cashback: it was already a reward.</p>
-            </div>
-            <p className="text-muted-foreground font-semibold whitespace-nowrap">None</p>
-            <span />
-          </li>
+          {/* OFF OR 2% (Pato, 2026-11-14, MESITA-3944: "Credits Payments:
+              OFF or 2%. Cash Payments: OFF or 3%. App Payments: OFF or 5%");
+              fixed at None under MESITA-3838. */}
+          {rateRow({
+            key: "credit_cashback_bps",
+            name: "Credits Payments Cashback-as-Credits",
+            line: "Back as credit here on the credit part of the bill. Never on the tip.",
+            blocked: !settings.house_credits ? needsHouseCredits : undefined,
+          })}
           {/* CREDITS CURRENCY (Pato, 2026-11-14, MESITA-3913: "one house
               credits card, one currency ... cannot be changed as in inferred
               based on the location of the place"): read-only. */}

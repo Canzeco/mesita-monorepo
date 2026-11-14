@@ -76,9 +76,11 @@ serveJson("business-web-set-payment", async (req) => {
   // "App Payments: 5% Fee. 5% Back to user. Cash Payments: 0% Fee. 0% Back
   // to user. App Prepayment. 5% Fee. 5% Back to user."): credit and cash can
   // go off, never on. Cash earned 3% under MESITA-3837; vouchers earn again.
-  if ((key === "credit_cashback_bps" || key === "cash_cashback_bps") && bps !== null) {
-    return json({ ok: false, code: "not_offered", error: "Only App Payments and App Prepayments give cashback." }, 409);
-  }
+  // CASH IS OFF OR 3% AGAIN (Pato, 2026-11-14, MESITA-3944: "CASHBACK AS
+  // CREDITS FOR CASH PAYMENTS IS FUCKING OFF OR 3"): the place's choice,
+  // paid when the waiter taps Received. Credit is Off or 2% again (Pato,
+  // same issue: "Credits Payments: OFF or 2%. Cash Payments: OFF or 3%. App
+  // Payments: OFF or 5%"). Every way to pay gives cashback again.
 
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;
@@ -121,7 +123,7 @@ serveJson("business-web-set-payment", async (req) => {
     }
     patch[key] = on;
   } else {
-    if ((key === "credit_cashback_bps" || key === "prepay_cashback_bps") && bps !== null && !current.house_credits) {
+    if ((key === "credit_cashback_bps" || key === "prepay_cashback_bps" || key === "cash_cashback_bps") && bps !== null && !current.house_credits) {
       return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
     }
     if (key === "prepay_cashback_bps" && bps !== null && !current.prepayments) {
