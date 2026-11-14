@@ -35,13 +35,12 @@ import { PayHeader } from "./PayHeader";
 // (PayTabScreen, MESITA-3564). The bill and the receipt have their own
 // addresses (MESITA-3614): /pay/tab/<id> and /pay/receipt/<id>.
 //
-// PAY | WALLET (Pato, 2026-11-11, MESITA-3729: "divide into Pay and Wallet.
-// no header"): this page is the Pay half of the switch at the top (PayHeader),
-// then the payment in progress and the places (the nearest
-// PLACES_SHOWN, then "Show all"). Wallet (/wallet) is the other half; a
-// Wallet button on a "Pay" header opened it in MESITA-3726, a bar tab in
-// MESITA-3722. MESITA-3720 had drawn the Wallet under
-// these places on one page, and MESITA-3721 put the credits on the rows.
+// ONLY PAY (Pato, 2026-11-14, MESITA-3886: "separate pay and wallet again.
+// only pay and only wallet"): the title band at the top (PayHeader), then the
+// payment in progress and the places (the nearest PLACES_SHOWN, then "Show
+// all"). Wallet is its own bar tab again (/wallet). From MESITA-3729 until
+// this the band was a Pay | Wallet switch; MESITA-3720 had drawn the Wallet
+// under these places on one page, and MESITA-3721 put the credits on the rows.
 //
 // ONE OPEN PAYMENT (Pato, 2026-11-11, MESITA-3772: "you can only have one
 // ticket opened at a time ... in the pay page just display the button to go
@@ -219,7 +218,7 @@ export function PayPage() {
   return (
     <KeptScroll className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
       <PayHeader
-        tab="pay"
+        title="Pay"
         bar={
           openTabs && openTabs.length === 0 ? (
             <SearchBar

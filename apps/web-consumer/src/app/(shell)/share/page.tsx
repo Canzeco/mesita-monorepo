@@ -1,7 +1,7 @@
 import { SharePage } from "@/components/consumer/share/SharePage";
 
-// /share — the bar's Share tab (MESITA-3867): one card of channel rows. Me's
-// Share cell jumps here too. It reads nothing.
+// /share — opened from Wallet's big Share Mesita button (MESITA-3886): one
+// card of channel rows (MESITA-3867), with Back. It reads nothing.
 export default function Page() {
   return <SharePage />;
 }
