@@ -142,6 +142,9 @@ const RESERVATION_TICKET_READ_ALLOWLIST = [
   "_shared/reservation-owned.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-list-reservations/index.ts",
+  // The calendar feed (MESITA-3954): the token owner's upcoming tables, the
+  // same columns Upcoming lists minus notes and names. Error checked.
+  "consumer-web-get-calendar-feed/index.ts",
   // Me › Plan's "this month: N of cap" (MESITA-3870): a head-only count by
   // consumer_id, the same count create-reservation's cap runs. No place_id.
   "_shared/guest-plan.ts",

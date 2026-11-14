@@ -643,10 +643,11 @@ describe("T6 — Activity's chips are Me's pages (MESITA-3855)", () => {
 //
 // Me is a grid of ten cells (MESITA-3867; nine under MESITA-3855; eight under MESITA-3821, seven
 // under MESITA-3771, thirteen before that) (MESITA-1628, MESITA-3450,
-// MESITA-3465). Every cell is a live door except MCP (Soon, MESITA-3867).
+// MESITA-3465). Every cell is a live door (MCP's Soon cell became
+// Integrations, MESITA-3954).
 // Plan read Soon under MESITA-3855 and opens again since it is sold
 // (MESITA-3870).
-describe("T8 — Me's grid is eleven cells, MCP the one Soon", () => {
+describe("T8 — Me's grid is ten cells, every one a live door", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
@@ -679,23 +680,20 @@ describe("T8 — Me's grid is eleven cells, MCP the one Soon", () => {
       // Share replaces Gift (MESITA-3940: "here add share instead of
       // gift"); it opens /share.
       "Share",
-      // Back as a Soon cell (MESITA-3867: "add MCP here with soon").
-      "MCP",
+      // MCP's cell became Integrations (MESITA-3954): Calendar, MCP Soon.
+      "Integrations",
       "Settings",
     ]);
-    // MCP is the one Soon cell (MESITA-3867); Plan opens (MESITA-3870), and
-    // both point at a live page.
-    expect(cells().filter((c) => c.soon).map((c) => c.title)).toEqual(["MCP"]);
-    expect(existsSync(join(SHELL, "me", "plan", "page.tsx"))).toBe(true);
+    // No Soon cell since MESITA-3954: MCP is a Soon row on Integrations.
+    expect(cells().filter((c) => c.soon).map((c) => c.title)).toEqual([]);
+    expect(existsSync(join(SHELL, "me", "integrations", "page.tsx"))).toBe(true);
   });
 
   it("holds no money door and no Second Stage door", () => {
     for (const gone of [
       "Wallet",
       "Orders",
-      // MCP is back, as a Soon cell (MESITA-3867).
       "Refunds",
-      "Integrations",
       "Friends",
       "Diamond",
       // Cards was a Soon cell (MESITA-3465) until MESITA-3561: saved ways to

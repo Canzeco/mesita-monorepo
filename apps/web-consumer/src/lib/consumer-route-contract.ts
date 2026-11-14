@@ -124,6 +124,10 @@ export const CONSUMER_ROUTES = {
     settingsContact: "/me/settings/contact",
     // Feedback about the app itself, not a place (MESITA-3029).
     settingsFeedback: "/me/settings/feedback",
+    // Integrations (MESITA-3954): Calendar, and MCP Soon; Me's cell read
+    // "MCP" before.
+    integrations: "/me/integrations",
+    integrationsCalendar: "/me/integrations/calendar",
     // Me's Favorites page left for Activity (MESITA-3688) and then Home's
     // Saved row (MESITA-3723); its address is in `legacy`.
     // Me › Visits (MESITA-3264) left with the discount product (MESITA-3299);
@@ -427,6 +431,9 @@ export const ROUTE_MAP = {
   meSettings: row("/me/settings", "me", "page", "me"),
   meSettingsContact: row("/me/settings/contact", "me", "page", "meSettings"),
   meSettingsFeedback: row("/me/settings/feedback", "me", "page", "meSettings"),
+  // Integrations (MESITA-3954); Calendar is also Reservations' header icon.
+  meIntegrations: row("/me/integrations", "me", "page", "me"),
+  meIntegrationsCalendar: row("/me/integrations/calendar", "me", "page", "meIntegrations"),
 } as const satisfies Record<string, RouteRow>;
 
 export type RouteId = keyof typeof ROUTE_MAP;

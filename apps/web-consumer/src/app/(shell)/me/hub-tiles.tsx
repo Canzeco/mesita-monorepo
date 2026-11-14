@@ -115,7 +115,7 @@ export type HubTile = {
 
 /** The grid cells, in reading order; Settings is the last (ten with it
  *  since MESITA-3880: Profile · Instagram / Class · Plan / Notifications ·
- *  Reservations / Tickets · Share / MCP · Settings; Share for Gift since
+ *  Reservations / Tickets · Share / Integrations · Settings; Share for Gift since
  *  MESITA-3940). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
@@ -184,16 +184,15 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Tell a friend",
     href: CONSUMER_ROUTES.share,
   },
-  // MCP IS SOON (Pato, 2026-11-14, MESITA-3867: "add MCP here with soon,
-  // before settings"): ChatGPT or Claude reading your Mesita. The cell opens
-  // nothing yet; its old address, /me/connector, lands on Plan (the perk left
-  // Plan with MESITA-3870), so the Soon cell points at a page that exists.
+  // INTEGRATIONS (Pato, 2026-11-14, MESITA-3954: "Rename MCP for
+  // integrations and make a list of integrations, and one integration is the
+  // MCP"): the cell opens /me/integrations — Calendar, and MCP Soon. It read
+  // "MCP" (Soon, MESITA-3867) before.
   {
     Icon: Plug,
-    title: "MCP",
-    summary: "ChatGPT or Claude",
-    href: CONSUMER_ROUTES.mePages.plan,
-    soon: true,
+    title: "Integrations",
+    summary: "Calendar and more",
+    href: CONSUMER_ROUTES.mePages.integrations,
   },
 ];
 
@@ -229,7 +228,7 @@ export function MeHubFrame({
             {ME_HUB_GRID.map((cell) => (
               <Fragment key={cell.title}>{tile(cell, "cell")}</Fragment>
             ))}
-            {/* SETTINGS CLOSES THE GRID, beside MCP since MESITA-3880. */}
+            {/* SETTINGS CLOSES THE GRID, beside Integrations (MESITA-3954). */}
             {tile(ME_HUB_SETTINGS, "cell")}
           </DestGrid>
         </div>
