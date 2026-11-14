@@ -41,8 +41,7 @@ export const IDENTITY_BAR_BODY_CLASS =
   "relative flex flex-col items-center px-4 py-3";
 
 /** IdentityCard while the profile loads: the 64px photo in its 1.5px ring
- *  (67px), then the four 36px boxes in three rows — name, Class · Plan,
- *  Instagram — one column under 360px (MESITA-2614, MESITA-2621). Every
+ *  (67px), then the two 36px boxes, name and Instagram (MESITA-3830). Every
  *  class and the row order are the card's own (identity-card-layout.ts),
  *  so this is IdentityCard's boxes, empty (Pato, MESITA-2701: "the
  *  placeholders must be similar to the page you are loading, like the

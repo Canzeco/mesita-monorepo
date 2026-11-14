@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { ClassList, ClassSheet } from "@/components/consumer/me/ClassSheet";
 import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 
@@ -20,39 +19,8 @@ vi.mock("@/components/consumer/overlay/LocalOverlay", () => ({
 
 const text = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 
-// One fact per line under the photo: the name, Instagram + followers,
-// Class, Plan (Pato, MESITA-2595: "then class in one line / then plan in
-// other line"). Plan is back on the card (it left in MESITA-2576).
-describe("Class and Plan on the identity card", () => {
-  const card = (
-    guestClass: "regular" | "vip" | null,
-    door = false,
-    plan: "free" | "premium" | null = "free",
-  ) =>
-    renderToStaticMarkup(
-      <IdentityCard
-        name="Ana"
-        avatarUrl={null}
-        instagram={{ label: "ana••• · 1.2K followers" }}
-        guestClass={guestClass}
-        onClassPress={door ? () => {} : undefined}
-        plan={plan}
-        planHref={door ? "/me/plan" : undefined}
-      />,
-    );
-
-  it("hides Plan when it is unknown, never a guessed Free", () => {
-    const html = card("regular", false, null);
-    expect(html).not.toContain("data-identity-plan");
-    expect(text(html)).not.toMatch(/\bFree\b/);
-  });
-
-  it("hides Class when it is unknown, never a guessed Regular", () => {
-    const html = card(null);
-    expect(html).not.toContain("data-identity-class");
-    expect(text(html)).not.toMatch(/Regular/);
-  });
-
+// Class and Plan left the identity card in MESITA-3830; their readers stay.
+describe("Class and Plan values", () => {
   it("reads unknown or retired values as the plain default", () => {
     expect(toGuestPlan("pro")).toBe("free");
     expect(toGuestPlan(undefined)).toBe("free");

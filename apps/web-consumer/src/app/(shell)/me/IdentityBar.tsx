@@ -1,12 +1,8 @@
 "use client";
 
-import { useState } from "react";
-
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
-import { ClassSheet } from "@/components/consumer/me/ClassSheet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 import {
   IDENTITY_BAR_BODY_CLASS,
   IDENTITY_BAR_CLASS,
@@ -26,8 +22,12 @@ import {
 //                     (photo)
 //   ( 👤 name                                    )
 //   ( ◎ @handle (~1.2K followers)                )
-//   ( ♛ Regular Class   ) ( ▭ Free Plan         )   the pair (MESITA-2614)
 //   ─────── hairline ─────── full-width white bar; content on the 16px edge
+//
+// NO CLASS, NO PLAN (Pato, MESITA-3830: "Remove Regular Class and Free Plan
+// from the header. just leave them in the bottom"): they are the Class and
+// Plan tiles on the grid below, and the header's Class sheet went with its
+// chip.
 //
 // The card itself is IdentityCard, the same one Social shows for a member
 // (MESITA-2547). NO PHONE: it is private (Pato, MESITA-2547: "that is super
@@ -79,9 +79,6 @@ export function IdentityBar({
     profile?.full_name ||
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
-  const guestClass = profile ? toGuestClass(profile.guest_class) : null;
-  const plan = profile ? toGuestPlan(profile.plan) : null;
-  const [classOpen, setClassOpen] = useState(false);
 
   return (
     <header
@@ -95,8 +92,8 @@ export function IdentityBar({
       <div className={IDENTITY_BAR_BODY_CLASS} data-identity-app-bar>
         {loading ? (
           // The skeleton mirrors the DESTINATION (Docs › Design §D): the
-          // 64px photo in its real ring, then the name, the Class · Plan
-          // pair and Instagram (MESITA-2614, MESITA-2621). /me's loading.tsx
+          // 64px photo in its real ring, then the name and Instagram
+          // (MESITA-3830). /me's loading.tsx
           // draws the same one, so the route fallback and this hand over
           // without a jump (Pato, MESITA-2701: "the placeholders must be
           // similar to the page you are loading, like the sizes").
@@ -110,23 +107,12 @@ export function IdentityBar({
               connected: instagramConnected,
               href: CONSUMER_ROUTES.mePages.instagram,
             }}
-            // No profile (the read failed) hides Class and Plan: never a
-            // guessed "Regular" or "Free" (MESITA-2553). Both are doors on Me;
-            // Plan is back on the card (MESITA-2595).
-            guestClass={guestClass}
-            onClassPress={guestClass ? () => setClassOpen(true) : undefined}
-            plan={plan}
-            planHref={CONSUMER_ROUTES.mePages.plan}
             // The name box opens Me › Profile, where the name is edited
             // (MESITA-2596).
             nameHref={CONSUMER_ROUTES.mePages.profile}
           />
         )}
       </div>
-
-      {guestClass && (
-        <ClassSheet open={classOpen} onClose={() => setClassOpen(false)} />
-      )}
     </header>
   );
 }
