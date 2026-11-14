@@ -72,6 +72,12 @@ serveJson("business-web-set-payment", async (req) => {
     return json({ ok: false, code: "invalid", error: line[key] }, 400);
   }
 
+  // ONE CASHBACK (Pato, MESITA-3836): only Mesita Payments Cashback is
+  // offered; the cash, credit and voucher cashbacks can go off, never on.
+  if ((key === "cash_cashback_bps" || key === "credit_cashback_bps" || key === "prepay_cashback_bps") && bps !== null) {
+    return json({ ok: false, code: "not_offered", error: "Only Mesita Payments gives cashback." }, 409);
+  }
+
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;
   if (!canManage(access.role)) return ownerOnly();

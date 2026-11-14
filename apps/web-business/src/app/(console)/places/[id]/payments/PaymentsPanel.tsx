@@ -251,7 +251,6 @@ export function PaymentsPanel({
   const needsHouseCredits = step("Turn House Credits on first.", "#house-credits");
   const needsStripe = step("Connect the Stripe Account first.", "#stripe-account");
   const needsCode = step("Set the waiter code first.", "#waiter-code");
-  const needsCash = step("Turn Cash Payments on first.", "#cash-payments");
   const needsPrepayments = step("Turn Mesita Prepayments on first.", "#mesita-prepayments");
 
   // The to-do strip (MESITA-3602, Pato: "a sequential horizontal to-do list to
@@ -470,12 +469,7 @@ export function PaymentsPanel({
             tone: "bg-lime-100 text-lime-700",
             blocked: codeSet ? undefined : needsCode,
           })}
-          {rateRow({
-            key: "cash_cashback_bps",
-            name: "Cash Payments Cashback-as-Credits",
-            line: "Back as credit here on the bill, once your waiter taps Received. Never on the tip.",
-            blocked: !settings.house_credits ? needsHouseCredits : !settings.cash_payments ? needsCash : undefined,
-          })}
+          {/* No cashback on cash (MESITA-3836): one cashback, Mesita Payments'. */}
         </ul>
       </Card>
       {/* CREDITS PAYMENTS, ITS OWN SECTION WITH ITS CASHBACK (MESITA-3827,
@@ -492,12 +486,7 @@ export function PaymentsPanel({
             <p className="font-semibold whitespace-nowrap">Always on</p>
             <span />
           </li>
-          {rateRow({
-            key: "credit_cashback_bps",
-            name: "Credits Payments Cashback-as-Credits",
-            line: "Back as credit here on the part of the bill paid with credit. Never on the tip.",
-            blocked: !settings.house_credits ? needsHouseCredits : undefined,
-          })}
+          {/* No cashback on credit (MESITA-3836). */}
         </ul>
       </Card>
       <Card className={SECTION}>
@@ -549,14 +538,8 @@ export function PaymentsPanel({
                     : null
               : null,
           })}
-          {rateRow({
-            key: "prepay_cashback_bps",
-            name: "Mesita Prepayments Cashback-as-Credits",
-            // MESITA-3827 (Pato: "Yes, build all"): on a voucher's price, on top of its bonus.
-            line: "Back as credit here on a voucher's price, on top of its bonus. It comes back if the voucher is refunded.",
-            blocked: !settings.house_credits ? needsHouseCredits : !settings.prepayments ? needsPrepayments : undefined,
-            stripe: true,
-          })}
+          {/* No cashback on a voucher's price (MESITA-3836): the bonus is the
+              voucher's reward. */}
           {/* Welcome, Small, Big, VIP (MESITA-3834); the MX$5,000 voucher
               and Story are off sale, money-state's NOT_YET_SELLABLE. */}
           {[...SPECIAL.slice(0, 1), ...STANDARD, ...SPECIAL.slice(1)]
