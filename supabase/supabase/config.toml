@@ -303,6 +303,10 @@ verify_jwt = true
 [functions.admin-web-list-app-feedback]
 verify_jwt = true
 
+# Manage › Reservations (MESITA-3960): every reservation ticket, read-only.
+[functions.admin-web-list-reservations]
+verify_jwt = true
+
 # Premier (MESITA-3092; Boost MESITA-2789, Spotlight MESITA-1998): one Paid
 # subscription per place (its one ready pledge, sold by the Business app); a
 # declined renewal ends it. place_premier_periods holds the paid stretches;

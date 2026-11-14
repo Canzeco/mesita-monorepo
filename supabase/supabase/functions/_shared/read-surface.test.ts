@@ -142,6 +142,9 @@ const RESERVATION_TICKET_READ_ALLOWLIST = [
   "_shared/reservation-owned.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-list-reservations/index.ts",
+  // Manage › Reservations (MESITA-3960): every ticket, read-only, for the
+  // admin list; columns name place_id directly, error checked.
+  "admin-web-list-reservations/index.ts",
   // The calendar feed (MESITA-3954): the token owner's upcoming tables, the
   // same columns Upcoming lists minus notes and names. Error checked.
   "consumer-web-get-calendar-feed/index.ts",
@@ -293,6 +296,9 @@ const CONSUMER_READ_ALLOWLIST = [
   // Activity › Feedback › App feedback (MESITA-3029): the same first name and
   // member number for each guest who sent app feedback. Read-only.
   "admin-web-list-app-feedback/index.ts",
+  // Manage › Reservations (MESITA-3960): the same first name and member
+  // number for each guest who asked for a table. Read-only, error checked.
+  "admin-web-list-reservations/index.ts",
   "consumer-web-create-reservation/index.ts",
   // Me › Plan (MESITA-3870): the caller's OWN plan columns (PLAN_COLUMNS),
   // error checked. Writes go through the consumer_plan_sync RPC.
