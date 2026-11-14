@@ -184,6 +184,11 @@ export function toolConfigs(
       name: s.name,
       description: s.description,
       response_timeout_secs: 15,
+      // The person on the phone can always cut in (Pato: "i cannot
+      // interrupt him, it just continues talking"). Said out loud because a
+      // tool left on the older disable_interruptions would otherwise survive
+      // every sync.
+      interruption_mode: "allow",
       api_schema: {
         url: `${supabaseUrl}/functions/v1/${s.ef}`,
         method: "POST",
