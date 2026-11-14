@@ -1,11 +1,10 @@
-// MESITA-2126 — the Enricher has TWO quality tiers, and the admin Models page
-// names their models.
+// MESITA-3966 — the Enricher has ONE quality tier, efficient (gpt-6-luna), and
+// the admin Models page names its model.
 //
-// 1. A stored "high" (the retired third tier, same gpt-4o as "standard") must
-//    keep running gpt-4o after the read normalizer, never fall to the cheap
-//    default — that would silently downgrade every place.
-// 2. QUALITY_MODEL.economy stays the code-default enricher model, so the photos
-//    row's "cheaper option uses the sorting model" stays true by default.
+// 1. A stored retired tier (economy, standard, high) reads as efficient and
+//    runs gpt-6-luna; gpt-4o and gpt-4o-mini are gone (OpenAI shuts both down
+//    on 2027-01-14).
+// 2. QUALITY_MODEL.efficient is the code-default enricher model.
 // 3. The admin page copies the tier→model map as ENRICHER_TIER_MODELS; this
 //    pins the copy from this side (web-admin pins it from its side too, because
 //    each package's CI only runs when its own folder changes).
@@ -20,24 +19,18 @@ const ADMIN_TYPES = new URL(
   import.meta.url,
 );
 
-Deno.test("a stored high reads as standard and still runs gpt-4o", () => {
-  const cfg = normalizeEnrichmentConfig({
-    enrichSynthesisQuality: "high",
-    enrichVisionQuality: "high",
-  });
-  assertEquals(cfg.enrichSynthesisQuality, "standard");
-  assertEquals(cfg.enrichVisionQuality, "standard");
-  assertEquals(synthesisModelFor(cfg.enrichSynthesisQuality), "gpt-4o");
-  assertEquals(visionModelFor(cfg.enrichVisionQuality), "gpt-4o");
+Deno.test("every stored tier, retired or unknown, reads as efficient and runs gpt-6-luna", () => {
+  for (const q of ["economy", "standard", "high", "ultra"]) {
+    const cfg = normalizeEnrichmentConfig({ enrichSynthesisQuality: q, enrichVisionQuality: q });
+    assertEquals(cfg.enrichSynthesisQuality, "efficient");
+    assertEquals(cfg.enrichVisionQuality, "efficient");
+    assertEquals(synthesisModelFor(cfg.enrichSynthesisQuality), "gpt-6-luna");
+    assertEquals(visionModelFor(cfg.enrichVisionQuality), "gpt-6-luna");
+  }
 });
 
-Deno.test("an unknown tier falls back to the default efficient (MESITA-3959)", () => {
-  const cfg = normalizeEnrichmentConfig({ enrichSynthesisQuality: "ultra" });
-  assertEquals(cfg.enrichSynthesisQuality, "efficient");
-});
-
-Deno.test("three tiers (efficient since MESITA-3945), and efficient is the default enricher model (MESITA-3959)", () => {
-  assertEquals(Object.keys(QUALITY_MODEL).sort(), ["economy", "efficient", "standard"]);
+Deno.test("one tier, and it is the default enricher model", () => {
+  assertEquals(Object.keys(QUALITY_MODEL), ["efficient"]);
   assertEquals(QUALITY_MODEL.efficient, DEFAULT_MODELS_CONFIG.enricher.model);
 });
 
@@ -46,6 +39,6 @@ Deno.test("the admin Models page names the same model for each tier", async () =
   const block = src.match(/ENRICHER_TIER_MODELS[^=]*=\s*\{([\s\S]*?)\}/)?.[1];
   assert(block, "ENRICHER_TIER_MODELS not found in the admin lib/synthesis-quality.ts");
   const pairs = [...block.matchAll(/(\w+):\s*"([^"]+)"/g)].map((m) => [m[1], m[2]]);
-  assert(pairs.length >= 2, "parsed fewer than two tiers — the pin would pass vacuously");
+  assert(pairs.length >= 1, "parsed no tier — the pin would pass vacuously");
   assertEquals(Object.fromEntries(pairs), QUALITY_MODEL);
 });

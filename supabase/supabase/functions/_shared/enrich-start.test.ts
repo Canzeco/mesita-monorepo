@@ -52,8 +52,8 @@ Deno.test("the Enrichment page rides on the job, with the Scout and Resolver tex
       uber_eats_url: 3,
     },
     perplexityPreset: "pro-search",
-    visionQuality: "economy",
-    synthesisQuality: "standard",
+    visionQuality: "efficient",
+    synthesisQuality: "efficient",
     gatherGoogleImages: 10,
     gatherInstagramDepth: 10,
     analyzeGoogleImages: 10,
@@ -65,8 +65,8 @@ Deno.test("the Enrichment page rides on the job, with the Scout and Resolver tex
     imageSortingPrompt: "best room first",
   });
   assertEquals(knobs.discoverInstagramN, 7);
-  assertEquals(knobs.visionModel, "gpt-4o-mini");
-  assertEquals(knobs.sortModel, "gpt-4o");
+  assertEquals(knobs.visionModel, "gpt-6-luna");
+  assertEquals(knobs.sortModel, "gpt-6-luna");
   assertEquals(knobs.resolverInstructions, RESOLVER_INSTRUCTIONS);
   assertEquals(knobs.scoutInstructions, SCOUT_INSTRUCTIONS);
   assertEquals(knobs.imageAnalysisPrompt, "describe the room");

@@ -78,10 +78,11 @@ export const VISION_MODEL = DEFAULT_MODELS_CONFIG.enricher.model;
 // as 'standard' (enrichment-config.ts). Literals, not VISION_MODEL, because the
 // admin Models page pins its ENRICHER_TIER_MODELS copy to these strings from
 // both packages (enrich-tiers.test.ts here, lib/synthesis-quality.test.ts there).
+// One tier since MESITA-3966 (Pato: "remove them"): economy (gpt-4o-mini) and
+// standard (gpt-4o) are gone, both shut down by OpenAI on 2027-01-14. A stored
+// economy / standard / high reads as efficient (enrichment-config.ts).
 export const QUALITY_MODEL: Record<string, string> = {
   efficient: "gpt-6-luna",
-  economy: "gpt-4o-mini",
-  standard: "gpt-4o",
 };
 
 // Resolve the per-image vision model from the admin 'Image model' knob

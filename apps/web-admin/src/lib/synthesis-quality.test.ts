@@ -17,22 +17,15 @@ describe("ENRICHER_TIER_MODELS", () => {
     const block = src.match(/QUALITY_MODEL[^=]*=\s*\{([\s\S]*?)\}/)?.[1];
     expect(block, "QUALITY_MODEL not found in enrich-config.ts").toBeTruthy();
     const pairs = [...block!.matchAll(/(\w+):\s*"([^"]+)"/g)].map((m) => [m[1], m[2]]);
-    expect(pairs.length).toBeGreaterThanOrEqual(2);
+    expect(pairs.length).toBeGreaterThanOrEqual(1);
     expect(Object.fromEntries(pairs)).toEqual(ENRICHER_TIER_MODELS);
   });
 });
 
 describe("normalizeTier", () => {
-  it("keeps the three tiers", () => {
-    expect(normalizeTier("efficient")).toBe("efficient");
-    expect(normalizeTier("economy")).toBe("economy");
-    expect(normalizeTier("standard")).toBe("standard");
-  });
-  it("reads the retired high as standard, never as the cheap default", () => {
-    expect(normalizeTier("high")).toBe("standard");
-  });
-  it("falls back to the default efficient for anything unknown", () => {
-    expect(normalizeTier("ultra")).toBe("efficient");
-    expect(normalizeTier(undefined)).toBe("efficient");
+  it("reads every stored tier, retired ones included, as the one tier (MESITA-3966)", () => {
+    for (const q of ["efficient", "economy", "standard", "high", "ultra", undefined]) {
+      expect(normalizeTier(q)).toBe("efficient");
+    }
   });
 });
