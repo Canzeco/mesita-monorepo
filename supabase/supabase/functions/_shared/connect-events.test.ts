@@ -510,3 +510,77 @@ Deno.test("voucher pi: payment_failed is logged only", async () => {
   assertEquals(fake.rpcs, []);
   assertEquals(fake.ops.filter((o) => o.table === "wallet_purchases" && o.kind === "update").length, 0);
 });
+
+// ── A basket (MESITA-3841): several purchase rows on one PaymentIntent ─────
+
+const F1 = "00000000-0000-4000-8000-0000000d3841";
+const F2 = "00000000-0000-4000-8000-0000000e3841";
+
+/** The lead (Small, MX$200) and two followers (Small, then Big, MX$1,000):
+ *  MX$1,400 on pi_b. */
+function basketTable(op: FakeOp): FakeResult {
+  if (op.table === "wallet_purchases" && op.kind === "select") {
+    const base = { status: "paid", consumer_id: "c", place_id: PLACE, bonus_cents: 0, stripe_account_id: ACCT, stripe_checkout_session_id: null, stripe_payment_intent_id: "pi_b", created_at: "2026-11-14T00:00:00Z" };
+    const lead = { ...base, id: PURCHASE, voucher: "voucher_200", amount_cents: 20000, basket_lead_id: null };
+    const followers = [
+      { ...base, id: F1, voucher: "voucher_200", amount_cents: 20000, basket_lead_id: PURCHASE },
+      { ...base, id: F2, voucher: "voucher_1000", amount_cents: 100000, basket_lead_id: PURCHASE },
+    ];
+    if (op.filters.basket_lead_id === PURCHASE) return { data: followers };
+    if (op.single) return { data: lead };
+    return { data: [lead, ...followers] };
+  }
+  return accountTable(true)(op);
+}
+
+Deno.test("basket pi: succeeded credits the lead and every follower with the same PaymentIntent", async () => {
+  const fake = fakeAdmin({ table: basketTable, rpc: () => ({ data: { ok: true, outcome: "credited" } }) });
+  const r = await handleConnectEvent(
+    { admin: fake.client, stripe: noStripe, livemode: false },
+    event("payment_intent.succeeded", { id: "pi_b", metadata: { mesita_kind: "wallet_voucher", purchase_id: PURCHASE, voucher: "voucher_200", basket: "3" } }),
+  );
+  assertEquals(r.body, { ok: true, purchase_id: PURCHASE, outcome: "credited", basket: 3 });
+  const hour = new Date((1_800_000_000 + 3600) * 1000).toISOString();
+  assertEquals(fake.rpcs.map((x) => x.args), [PURCHASE, F1, F2].map((id) => ({ p_purchase_id: id, p_payment_intent: "pi_b", p_available_at: hour })));
+});
+
+Deno.test("basket pi: canceled releases the lead and every follower", async () => {
+  const fake = fakeAdmin({ table: basketTable });
+  const r = await handleConnectEvent(
+    { admin: fake.client, stripe: noStripe, livemode: false },
+    event("payment_intent.canceled", { id: "pi_b", metadata: { mesita_kind: "wallet_voucher", purchase_id: PURCHASE } }),
+  );
+  assertEquals(r.body.outcome, "released");
+  const released = fake.ops.filter((o) => o.table === "wallet_purchases" && o.kind === "update").map((o) => o.filters.id);
+  assertEquals(released, [PURCHASE, F1, F2]);
+  assertEquals(fake.rpcs, []);
+});
+
+Deno.test("basket refund: a full refund spreads Stripe's amount over every row, each its whole amount", async () => {
+  const fake = fakeAdmin({ table: basketTable, rpc: refundOk });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("charge.refunded", { id: "ch_b", payment_intent: "pi_b", amount: 140000, amount_refunded: 140000 }));
+  assertEquals(r.body.basket, 3);
+  assertEquals(fake.rpcs.map((x) => x.args), [
+    { p_purchase_id: PURCHASE, p_amount_refunded: 20000 },
+    { p_purchase_id: F1, p_amount_refunded: 20000 },
+    { p_purchase_id: F2, p_amount_refunded: 100000 },
+  ]);
+});
+
+Deno.test("basket refund: a partial refund fills the rows in order; a lost dispute spreads the same way", async () => {
+  const fake = fakeAdmin({ table: basketTable, rpc: refundOk });
+  await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("charge.refunded", { id: "ch_b", payment_intent: "pi_b", amount: 140000, amount_refunded: 30000 }));
+  assertEquals(fake.rpcs.map((x) => x.args), [
+    { p_purchase_id: PURCHASE, p_amount_refunded: 20000 },
+    { p_purchase_id: F1, p_amount_refunded: 10000 },
+  ]);
+
+  const lost = fakeAdmin({ table: basketTable, rpc: refundOk });
+  const stripe = disputeStripe({ id: "ch_b", amount: 140000, amount_refunded: 30000, payment_intent: "pi_b" });
+  await handleConnectEvent({ admin: lost.client, stripe, livemode: false }, event("charge.dispute.closed", dispute("lost", { charge: "ch_b", payment_intent: "pi_b", amount: 110000 })));
+  assertEquals(lost.rpcs.map((x) => x.args), [
+    { p_purchase_id: PURCHASE, p_amount_refunded: 20000, p_reason: "dispute_lost" },
+    { p_purchase_id: F1, p_amount_refunded: 20000, p_reason: "dispute_lost" },
+    { p_purchase_id: F2, p_amount_refunded: 100000, p_reason: "dispute_lost" },
+  ]);
+});

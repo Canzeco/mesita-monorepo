@@ -162,7 +162,10 @@ export type VoucherCardStep = {
   publishable_key?: string;
 };
 
-/** Buys one voucher on the place's own account. Without `card_pm_id` it
+/** Buys vouchers on the place's own account: one (`voucher`), or since
+ *  MESITA-3841 a basket (`items`, every voucher with its quantity) paid with
+ *  ONE charge, all or nothing; a basket of more than one voucher needs a
+ *  saved card (basket_needs_card). Without `card_pm_id` it
  *  opens Stripe Checkout (`url`); with a saved card's id it charges that
  *  card at once (`card`, MESITA-3552). The `request_id` is one per tap: a
  *  retry with the same id finds the same purchase, never a second charge,
@@ -170,7 +173,12 @@ export type VoucherCardStep = {
  *  arrive as EFError with a code from BUY_REFUSAL. */
 export async function apiBuyVoucher(
   client: SupabaseClient,
-  args: { place_id: string; voucher: VoucherKey; request_id: string; return_url: string; card_pm_id?: string | null },
+  args: {
+    place_id: string;
+    request_id: string;
+    return_url: string;
+    card_pm_id?: string | null;
+  } & ({ voucher: VoucherKey; items?: never } | { items: Array<{ voucher: VoucherKey; qty: number }>; voucher?: never }),
 ): Promise<{ url?: string; purchase_id: string; card?: VoucherCardStep }> {
   const { card_pm_id, ...rest } = args;
   return await invokeEF<{ url?: string; purchase_id: string; card?: VoucherCardStep }>(client, "consumer-web-buy-voucher", {
@@ -203,6 +211,8 @@ export const BUY_REFUSAL: Record<string, string> = {
   card_needs_auth: "This card needs a bank check we can't show. Try another card or Stripe's page.",
   card_failed: "Couldn't charge the card. Nothing was charged. Try again.",
   closed: "That purchase was cancelled. Tap Buy to start over.",
+  // A basket (MESITA-3841)
+  basket_needs_card: "Several vouchers pay with a saved card. Choose a card or add one.",
 };
 
 /** What a refused buy does (MESITA-3549). A refusal that carries the open

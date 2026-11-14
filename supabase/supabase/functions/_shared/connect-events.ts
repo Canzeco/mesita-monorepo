@@ -23,10 +23,15 @@
 //                     p_reason dispute_lost (MESITA-3460); created, won and
 //                     warning_closed log only
 //   every log line    carries event.id and event.account
+//   a basket          (MESITA-3841) several purchase rows on one PaymentIntent:
+//                     payment_intent.* credits or releases every row; what a
+//                     refund or a lost dispute took is spread over the rows
+//                     in order (spreadGone), each row's cumulative share to
+//                     the refund RPC; a single row reads exactly as before
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { snapshotFromStripe } from "./payments.ts";
-import { purchaseStore } from "./purchase-pi.ts";
+import { purchasesByPaymentIntent, purchaseStore, spreadGone } from "./purchase-pi.ts";
 import { releasePayment, settlePaidPayment } from "./settle-payment.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 import { type StripeCall } from "./stripe.ts";
@@ -223,10 +228,11 @@ async function resolveSession(admin: SupabaseClient, session: Record<string, unk
   return null;
 }
 
-/** The ledger row that owns a PaymentIntent: a purchase or a payment. */
+/** The ledger row that owns a PaymentIntent: a purchase (a basket's lead,
+ *  MESITA-3841) or a payment. */
 async function rowByPaymentIntent(admin: SupabaseClient, pi: string): Promise<LedgerRow | null> {
   const [p, y] = await Promise.all([
-    admin.from("wallet_purchases").select("id").eq("stripe_payment_intent_id", pi).maybeSingle(),
+    admin.from("wallet_purchases").select("id").eq("stripe_payment_intent_id", pi).is("basket_lead_id", null).maybeSingle(),
     admin.from("wallet_payments").select("id").eq("stripe_payment_intent_id", pi).maybeSingle(),
   ]);
   if (p.error) throw new Error(`purchases_read: ${p.error.message}`);
@@ -289,6 +295,31 @@ async function refundRow(
   const res = data as { ok?: boolean; outcome?: string; code?: string; status?: string } | null;
   if (!res?.ok) throw new Error(`${fn}: ${res?.code ?? "unknown"}`);
   return res;
+}
+
+/** What is gone from a charge, on its ledger rows. A payment or a single
+ *  purchase: one RPC, as always. A basket (MESITA-3841): the cumulative gone
+ *  amount spread over its rows in order, one RPC per row with a share. */
+async function refundGone(
+  admin: SupabaseClient,
+  row: LedgerRow,
+  pi: string,
+  gone: number,
+  reason?: "dispute_lost",
+): Promise<{ outcome?: string; status?: string; basket?: number }> {
+  if (row.kind === "purchase") {
+    const rows = await purchasesByPaymentIntent(admin, pi);
+    if (rows.length > 1) {
+      let status: string | undefined;
+      for (const share of spreadGone(rows, gone)) {
+        if (share.cents <= 0) continue;
+        const res = await refundRow(admin, { kind: "purchase", id: share.id }, share.cents, reason);
+        if (share.id === row.id || status === undefined) status = res.status;
+      }
+      return { outcome: "applied", status, basket: rows.length };
+    }
+  }
+  return await refundRow(admin, row, gone, reason);
 }
 
 /** The disputed amount Stripe has closed as lost on a charge (a charge
@@ -383,8 +414,11 @@ async function dispatch(
       const lost = obj.disputed === true && chargeId ? await lostDisputeCents(deps.stripe, event.account as string, chargeId) : 0;
       // The refund RPC also writes the refunded share of Mesita's fee
       // (MESITA-3461): a refunded part is never billed.
-      const res = await refundRow(admin, row, goneCents(obj, amountRefunded, lost));
-      return { status: 200, body: { ok: true, [`${row.kind}_id`]: row.id, outcome: res.outcome ?? "applied", status: res.status ?? null } };
+      const res = await refundGone(admin, row, pi, goneCents(obj, amountRefunded, lost));
+      return {
+        status: 200,
+        body: { ok: true, [`${row.kind}_id`]: row.id, outcome: res.outcome ?? "applied", status: res.status ?? null, ...(res.basket ? { basket: res.basket } : {}) },
+      };
     }
 
     case "charge.dispute.created":
@@ -411,8 +445,18 @@ async function dispatch(
         return ignored("dispute_unmatched");
       }
       const refunded = typeof charge.amount_refunded === "number" ? charge.amount_refunded : 0;
-      const res = await refundRow(admin, row, goneCents(charge, refunded, disputed), "dispute_lost");
-      return { status: 200, body: { ok: true, [`${row.kind}_id`]: row.id, outcome: res.outcome ?? "applied", status: res.status ?? null, reason: "dispute_lost" } };
+      const res = await refundGone(admin, row, pi as string, goneCents(charge, refunded, disputed), "dispute_lost");
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          [`${row.kind}_id`]: row.id,
+          outcome: res.outcome ?? "applied",
+          status: res.status ?? null,
+          reason: "dispute_lost",
+          ...(res.basket ? { basket: res.basket } : {}),
+        },
+      };
     }
 
     case "payment_intent.succeeded":
@@ -473,7 +517,8 @@ async function dispatch(
  *  session (bought with a saved card) is settled here. succeeded credits it
  *  (wallet_credit_purchase, replay-safe); canceled fails it; payment_failed
  *  is logged (the guest's own tap already released it, or the cron cancels
- *  it after ten minutes). */
+ *  it after ten minutes). A basket (MESITA-3841): the PI names the lead;
+ *  every row (the lead and its followers) is credited or released. */
 async function voucherIntent(
   admin: SupabaseClient,
   event: ConnectEvent,
@@ -485,7 +530,7 @@ async function voucherIntent(
   const store = purchaseStore(admin);
   let row = typeof meta.purchase_id === "string" && /^[0-9a-f-]{36}$/i.test(meta.purchase_id) ? await store.read(meta.purchase_id) : null;
   if (!row) {
-    const byPi = await admin.from("wallet_purchases").select("id").eq("stripe_payment_intent_id", piId).maybeSingle();
+    const byPi = await admin.from("wallet_purchases").select("id").eq("stripe_payment_intent_id", piId).is("basket_lead_id", null).maybeSingle();
     if (byPi.error) throw new Error(`purchases_read: ${byPi.error.message}`);
     if (byPi.data) row = await store.read((byPi.data as { id: string }).id);
   }
@@ -499,20 +544,24 @@ async function voucherIntent(
     console.log("[connect-events] voucher_pi_failed", tag, row.id, String(err.decline_code ?? err.code ?? ""));
     return { status: 200, body: { ok: true, purchase_id: row.id, outcome: "payment_failed_logged" } };
   }
+  const followers = await store.followers(row.id);
+  const basket = followers.length > 0 ? { basket: followers.length + 1 } : {};
   if (event.type === "payment_intent.succeeded") {
     const outcome = await store.credit(row.id, piId, availableAtFromSession(obj, event.created));
-    return { status: 200, body: { ok: true, purchase_id: row.id, outcome } };
+    for (const f of followers) await store.credit(f.id, piId, availableAtFromSession(obj, event.created, f.voucher));
+    return { status: 200, body: { ok: true, purchase_id: row.id, outcome, ...basket } };
   }
   await store.release(row.id, "pi_canceled");
-  return { status: 200, body: { ok: true, purchase_id: row.id, outcome: "released" } };
+  for (const f of followers) await store.release(f.id, "pi_canceled");
+  return { status: 200, body: { ok: true, purchase_id: row.id, outcome: "released", ...basket } };
 }
 
 /** A voucher's credit turns Available an hour after the charge (the catalog's
  *  rule for every open voucher; Story at once is a catalog detail the read
  *  path applies — here the charge time is the event's). */
-function availableAtFromSession(session: Record<string, unknown>, createdSec?: number): string | null {
+function availableAtFromSession(session: Record<string, unknown>, createdSec?: number, voucher?: string | null): string | null {
   const meta = (session.metadata ?? {}) as Record<string, unknown>;
-  if (meta.voucher === "voucher_story") return null;
+  if ((voucher !== undefined ? voucher : meta.voucher) === "voucher_story") return null;
   const base = (createdSec ?? Math.floor(Date.now() / 1000)) * 1000;
   return new Date(base + 3600 * 1000).toISOString();
 }

@@ -20,6 +20,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type StripeCall, StripeError } from "./stripe.ts";
 import { errorMessage } from "./errors.ts";
+import { purchasesByPaymentIntent, spreadGone } from "./purchase-pi.ts";
 
 // ── Masking ───────────────────────────────────────────────────────────────
 
@@ -147,8 +148,19 @@ async function rpcOk(admin: SupabaseClient, fn: string, args: Record<string, unk
   return res;
 }
 
-/** A voucher purchase: `amount` (default all that is left) back to the card. */
+/** A voucher purchase: `amount` (default all that is left) back to the card.
+ *
+ *  A purchase in a basket (MESITA-3841; several rows on one PaymentIntent)
+ *  refunds THE BASKET's charge: `amount` (default all that is left on the
+ *  whole basket) comes off the shared charge and the new cumulative total is
+ *  spread over the basket's rows in order, the Connect receiver's rule
+ *  (spreadGone), so the receiver's later delivery of the same refund is a
+ *  no-op and the two never count one peso twice. */
 export async function refundPurchase(deps: RefundDeps, row: PurchaseRow, amount?: number): Promise<RefundResult> {
+  if (row.stripe_payment_intent_id) {
+    const basket = await purchasesByPaymentIntent<PurchaseRow>(deps.admin, row.stripe_payment_intent_id, PURCHASE_COLUMNS);
+    if (basket.length > 1) return await refundBasket(deps, row, basket, amount);
+  }
   const left = row.amount_cents - row.refunded_cents;
   const want = Math.min(amount ?? left, left);
   if (!row.paid_at || want <= 0 || !row.stripe_payment_intent_id) {
@@ -164,6 +176,32 @@ export async function refundPurchase(deps: RefundDeps, row: PurchaseRow, amount?
   const total = row.refunded_cents + want;
   const res = await rpcOk(deps.admin, "wallet_refund_purchase", { p_purchase_id: row.id, p_amount_refunded: total });
   return { ok: true, card_refunded_cents: want, credit_refunded_cents: 0, status: (res.status as string) ?? null };
+}
+
+async function refundBasket(deps: RefundDeps, row: PurchaseRow, rows: PurchaseRow[], amount?: number): Promise<RefundResult> {
+  const total = rows.reduce((sum, r) => sum + r.amount_cents, 0);
+  const refunded = rows.reduce((sum, r) => sum + r.refunded_cents, 0);
+  const left = total - refunded;
+  const want = Math.min(amount ?? left, left);
+  if (!row.paid_at || want <= 0 || !row.stripe_payment_intent_id) {
+    return { ok: false, code: "nothing_to_refund", error: "Nothing left to refund on this purchase" };
+  }
+  const r = await stripeRefund(deps, { purchase_id: row.id }, {
+    paymentIntent: row.stripe_payment_intent_id,
+    account: row.stripe_account_id,
+    amount: want,
+    withFee: rows.some(withApplicationFee),
+  });
+  if (!r.ok) return { ok: false, code: "refund_failed", stripe_code: r.stripe_code, error: r.error };
+  let status: string | null = null;
+  for (const share of spreadGone(rows, refunded + want)) {
+    const before = rows.find((x) => x.id === share.id)!;
+    if (share.cents <= before.refunded_cents) continue;
+    const res = await rpcOk(deps.admin, "wallet_refund_purchase", { p_purchase_id: share.id, p_amount_refunded: share.cents });
+    if (share.id === row.id || status === null) status = (res.status as string) ?? status;
+  }
+  console.log("[money-admin] refund_basket", JSON.stringify({ purchase_id: row.id, rows: rows.length, refunded_cents: want }));
+  return { ok: true, card_refunded_cents: want, credit_refunded_cents: 0, status };
 }
 
 /** How a payment refund splits: the card part (card + tip) first, then the

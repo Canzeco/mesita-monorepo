@@ -33,32 +33,38 @@ function row(over: Partial<PurchaseCardRow> = {}): PurchaseCardRow {
   };
 }
 
-function fakeStore(initial: PurchaseCardRow) {
-  let current = { ...initial };
+/** The lead and (MESITA-3841) a basket's followers. A follower's log lines
+ *  carry its id after an @; the lead's read as before. */
+function fakeStore(initial: PurchaseCardRow, followers: PurchaseCardRow[] = []) {
+  const rows = new Map<string, PurchaseCardRow>([[initial.id, { ...initial }], ...followers.map((f) => [f.id, { ...f, basket_lead_id: initial.id }] as const)]);
   const log: string[] = [];
+  const tag = (id: string) => (id === initial.id ? "" : `@${id}`);
   const store: PurchaseStore = {
-    read: () => Promise.resolve({ ...current }),
-    openPi: (_id, pi) => {
+    read: (id) => Promise.resolve(rows.has(id) ? { ...rows.get(id)! } : null),
+    followers: (leadId) => Promise.resolve([...rows.values()].filter((r) => r.basket_lead_id === leadId).map((r) => ({ ...r }))),
+    openPi: (id, pi) => {
       log.push(`openPi:${pi}`);
-      if (current.status === "opening" && !current.stripe_payment_intent_id) {
-        current = { ...current, status: "open", stripe_payment_intent_id: pi };
-        return Promise.resolve(true);
+      const mine = [...rows.values()].filter((r) => r.id === id || r.basket_lead_id === id);
+      for (const r of mine) {
+        if (r.status === "opening" && !r.stripe_payment_intent_id) rows.set(r.id, { ...r, status: "open", stripe_payment_intent_id: pi });
       }
-      return Promise.resolve(current.stripe_payment_intent_id === pi);
+      return Promise.resolve(mine.every((r) => rows.get(r.id)!.stripe_payment_intent_id === pi));
     },
-    release: (_id, code) => {
-      log.push(`release:${code}`);
-      if (current.status === "opening" || current.status === "open") current = { ...current, status: "failed" };
+    release: (id, code) => {
+      log.push(`release${tag(id)}:${code}`);
+      const r = rows.get(id)!;
+      if (r.status === "opening" || r.status === "open") rows.set(id, { ...r, status: "failed" });
       return Promise.resolve();
     },
-    credit: (_id, pi, at) => {
-      log.push(`credit:${pi}:${at}`);
-      const already = current.status === "paid";
-      current = { ...current, status: "paid", stripe_payment_intent_id: pi };
+    credit: (id, pi, at) => {
+      log.push(`credit${tag(id)}:${pi}:${at}`);
+      const r = rows.get(id)!;
+      const already = r.status === "paid";
+      rows.set(id, { ...r, status: "paid", stripe_payment_intent_id: pi });
       return Promise.resolve(already ? "already_paid" : "credited");
     },
   };
-  return { store, log, now: () => current };
+  return { store, log, now: () => rows.get(initial.id)!, row: (id: string) => rows.get(id)! };
 }
 
 function fakeStripe(answer: (c: Call) => Record<string, unknown>) {
@@ -267,4 +273,94 @@ Deno.test("settle by PI: a PI whose metadata names another purchase is a mismatc
   const other = fakeStripe(() => ({ id: "pi_8", status: "succeeded", metadata: { purchase_id: "someone-else" } }));
   assertEquals(await settlePurchaseByPaymentIntent(s.store, other.stripe, { ...OPEN, stripe_payment_intent_id: "pi_8", created_at: new Date(NOW).toISOString() }, NOW), "mismatch");
   assertEquals(s.log, []);
+});
+
+// ── A basket (MESITA-3841): several rows, one PaymentIntent ────────────────
+
+const F1 = "33333333-3333-4333-8333-333333333333";
+const F2 = "44444444-4444-4444-8444-444444444444";
+/** 1× Big (the lead) + 2× Small: three rows. */
+function basket(status = "opening", pi: string | null = null) {
+  return fakeStore(row({ status, stripe_payment_intent_id: pi }), [
+    row({ id: F1, voucher: "voucher_200", amount_cents: 20000, bonus_cents: 2000, status, stripe_payment_intent_id: pi }),
+    row({ id: F2, voucher: "voucher_200", amount_cents: 20000, bonus_cents: 2000, status, stripe_payment_intent_id: pi }),
+  ]);
+}
+
+Deno.test("basket: three rows, ONE PaymentIntent for the sum, stored on every row; succeeded credits all three", async () => {
+  const s = basket();
+  const { stripe, calls } = fakeStripe((c) => {
+    if (c.path === "payment_methods") return { id: "pm_cloned" };
+    if (c.path === "payment_intents") return { id: "pi_b", status: "requires_confirmation" };
+    return { id: "pi_b", status: "succeeded" };
+  });
+  const res = await runVoucherCard(s.store, stripe, ARGS);
+  assert(res.ok);
+  assertEquals(res.purchase_id, PURCHASE);
+  assertEquals(calls.map((c) => c.path), ["payment_methods", "payment_intents", "payment_intents/pi_b/confirm"]);
+  const create = calls[1].params!;
+  assertEquals(create.amount, 140000);
+  const meta = create.metadata as Record<string, string>;
+  assertEquals(meta.purchase_id, PURCHASE);
+  assertEquals(meta.basket, "3");
+  assertEquals(meta.amount_cents, "140000");
+  assertEquals(meta.bonus_cents, "24000");
+  assertEquals(meta.basket_items, "voucher_1000x1,voucher_200x2");
+  const hour = new Date(NOW + 3600_000).toISOString();
+  assertEquals(s.log, ["openPi:pi_b", `credit:pi_b:${hour}`, `credit@${F1}:pi_b:${hour}`, `credit@${F2}:pi_b:${hour}`]);
+  assertEquals([s.row(PURCHASE), s.row(F1), s.row(F2)].map((r) => [r.status, r.stripe_payment_intent_id]), [
+    ["paid", "pi_b"],
+    ["paid", "pi_b"],
+    ["paid", "pi_b"],
+  ]);
+});
+
+Deno.test("basket: a decline releases all three rows; nothing is credited", async () => {
+  const s = basket();
+  const { stripe } = fakeStripe((c) => {
+    if (c.path === "payment_methods") return { id: "pm_cloned" };
+    if (c.path === "payment_intents") return { id: "pi_d", status: "requires_confirmation" };
+    if (c.path.endsWith("/confirm")) throw new StripeError(c.path, "card_error", "card_declined", 402, "declined");
+    if (c.path.endsWith("/cancel")) return { id: "pi_d", status: "canceled" };
+    return { id: "pi_d", status: "requires_payment_method", last_payment_error: { decline_code: "generic_decline" } };
+  });
+  const res = await runVoucherCard(s.store, stripe, ARGS);
+  assert(!res.ok);
+  assertEquals(res.code, "card_declined");
+  assertEquals(s.log.filter((l) => l.startsWith("credit")), []);
+  assertEquals([s.row(PURCHASE), s.row(F1), s.row(F2)].map((r) => r.status), ["failed", "failed", "failed"]);
+});
+
+Deno.test("basket: the same tap again on a canceled PI releases all three rows", async () => {
+  const s = basket("open", "pi_c");
+  const { stripe } = fakeStripe(() => ({ id: "pi_c", status: "canceled" }));
+  const res = await runVoucherCard(s.store, stripe, ARGS);
+  assert(!res.ok);
+  assertEquals(s.log, ["release:pi_canceled", `release@${F1}:pi_canceled`, `release@${F2}:pi_canceled`]);
+});
+
+Deno.test("basket: a follower the cron failed closes the whole basket before any Stripe call", async () => {
+  const s = fakeStore(row(), [row({ id: F1, voucher: "voucher_200", amount_cents: 20000, status: "failed" })]);
+  const none = fakeStripe(() => {
+    throw new Error("no stripe call expected");
+  });
+  const res = await runVoucherCard(s.store, none.stripe, ARGS);
+  assert(!res.ok);
+  assertEquals(res.code, "closed");
+  assertEquals(none.calls.length, 0);
+  assertEquals(s.row(PURCHASE).status, "failed");
+});
+
+Deno.test("settle by PI: a follower whose PI names its lead settles itself, never a mismatch", async () => {
+  const s = basket("open", "pi_s");
+  const ok = fakeStripe(() => ({ id: "pi_s", status: "succeeded", metadata: { mesita_kind: "wallet_voucher", purchase_id: PURCHASE, basket: "3" } }));
+  // The cron and the Wallet read pass no basket_lead_id: the row is read.
+  const follower = { id: F1, stripe_account_id: "acct_place", stripe_payment_intent_id: "pi_s", available_at: null, created_at: new Date(NOW).toISOString() };
+  assertEquals(await settlePurchaseByPaymentIntent(s.store, ok.stripe, follower, NOW), "credited");
+  assertEquals(s.log, [`credit@${F1}:pi_s:null`]);
+
+  const gone = basket("open", "pi_s");
+  const canceled = fakeStripe(() => ({ id: "pi_s", status: "canceled", metadata: { purchase_id: PURCHASE } }));
+  assertEquals(await settlePurchaseByPaymentIntent(gone.store, canceled.stripe, { ...follower, id: F2 }, NOW), "expired");
+  assertEquals(gone.log, [`release@${F2}:pi_canceled`]);
 });

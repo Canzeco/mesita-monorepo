@@ -13,7 +13,16 @@
 // place's account and charged there with a PaymentIntent, in one tap
 // (_shared/voucher-card.ts). Every gate below runs the same either way.
 //
+// MESITA-3841: a BASKET. `items: [{ voucher, qty }]` buys several vouchers
+// with ONE charge, all or nothing (the old `voucher` field is a basket of
+// one). Small and Big take qty 1..5; Welcome and VIP at most 1. Every gate
+// runs per voucher; the place cap counts the whole basket. One row per unit:
+// the lead under request_id, the others pointing to it (basket_lead_id). A
+// basket of more than one unit needs a saved card: Checkout stays one
+// voucher (409 basket_needs_card).
+//
 // Body: { place_id: uuid, voucher: voucher_200|voucher_1000|voucher_welcome|…,
+//         items?: [{ voucher, qty }] (in place of voucher),
 //         request_id: uuid (one per tap; a retry carries the same),
 //         return_url: the place page (a Mesita address),
 //         card_pm_id?: pm_… (a saved card) }
@@ -36,13 +45,24 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { readCustomer } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey } from "../_shared/money-state.ts";
 import { readAccount } from "../_shared/payments.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { isPaymentMethodId, ownCard } from "../_shared/tab-card.ts";
-import { openVoucherCard, readRequestRow, runVoucherCard } from "../_shared/voucher-card.ts";
+import { openVoucherCard, readFollowerVouchers, readRequestRow, runVoucherCard } from "../_shared/voucher-card.ts";
 import { purchaseStore } from "../_shared/purchase-pi.ts";
-import { buyRefusal, mexicoToday, openVoucherCheckout, readStoryGuest, readVipGuest, storyRefusal, vipRefusal, voucherOffer } from "../_shared/vouchers.ts";
+import {
+  basketUnits,
+  buyRefusal,
+  mexicoToday,
+  openVoucherCheckout,
+  parseBasket,
+  readStoryGuest,
+  readVipGuest,
+  sameUnits,
+  storyRefusal,
+  vipRefusal,
+  voucherOffer,
+} from "../_shared/vouchers.ts";
 import { isAllowedReturnUrl, paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-buy-voucher", async (req) => {
@@ -53,11 +73,15 @@ serveJson("consumer-web-buy-voucher", async (req) => {
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const { place_id: placeId, voucher, request_id: requestId, return_url: returnUrl, card_pm_id: cardPmId } = bodyRes.body;
+  const { place_id: placeId, request_id: requestId, return_url: returnUrl, card_pm_id: cardPmId } = bodyRes.body;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
-  if (typeof voucher !== "string" || !(MONEY_VOUCHER_KEYS as readonly string[]).includes(voucher)) {
-    return json({ ok: false, error: "voucher must be one of the catalog's keys" }, 400);
-  }
+  const basket = parseBasket(bodyRes.body);
+  if (!basket.ok) return json({ ok: false, error: basket.error }, 400);
+  // One row per unit, the lead first (Welcome leads when it is in it).
+  const units = basketUnits(basket.items);
+  const voucher = units[0];
+  const followers = units.slice(1);
+  const kinds = basket.items.map((i) => i.voucher);
   if (!isUuid(requestId)) return json({ ok: false, error: "request_id must be a uuid" }, 400);
   if (typeof returnUrl !== "string" || !isAllowedReturnUrl(returnUrl)) {
     return json({ ok: false, error: "return_url is not a Mesita address" }, 400);
@@ -65,6 +89,9 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   const withCard = cardPmId !== undefined && cardPmId !== null;
   if (withCard && !isPaymentMethodId(cardPmId)) {
     return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
+  }
+  if (!withCard && units.length > 1) {
+    return json({ ok: false, code: "basket_needs_card", error: "Several vouchers pay with a saved card" }, 409);
   }
 
   const placeRes = await readVoucherPlace(admin, placeId);
@@ -88,7 +115,10 @@ serveJson("consumer-web-buy-voucher", async (req) => {
       if (!customer || !(await ownCard(stripe, customer, cardPmId as string))) {
         return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
       }
-      if (replay.place_id !== placeId || replay.voucher !== voucher || replay.stripe_checkout_session_id) {
+      if (
+        replay.place_id !== placeId || replay.voucher !== voucher || replay.stripe_checkout_session_id ||
+        !sameUnits(await readFollowerVouchers(admin, replay.id), followers)
+      ) {
         return json({ ok: false, code: "in_progress", error: "Your purchase is already on its way." }, 409);
       }
       const res = await runVoucherCard(purchaseStore(admin), stripe, {
@@ -99,7 +129,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
         placeId,
         placeName: place.name ?? null,
         consumerId: userId,
-        voucher: voucher as MoneyVoucherKey,
+        voucher,
         publishableKey: paymentsPublishableKey(livemode),
         nowMs: Date.now(),
       });
@@ -109,17 +139,20 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   }
 
   const [offer, account] = await Promise.all([voucherOffer(admin, place, userId, livemode), readAccount(admin, placeId)]);
-  const refusal = buyRefusal(offer, voucher as MoneyVoucherKey, account);
-  if (refusal) return json({ ok: false, code: refusal.code, error: refusal.error }, refusal.status);
+  // Every voucher in the basket passes its own gates (MESITA-3841).
+  for (const k of kinds) {
+    const refusal = buyRefusal(offer, k, account);
+    if (refusal) return json({ ok: false, code: refusal.code, error: refusal.error }, refusal.status);
+  }
   if (!account) return json({ ok: false, code: "no_account", error: "This place has not connected payments yet" }, 409);
   // Story's own gate: the guest's Instagram above the follower floor (MESITA-3507).
-  if (voucher === "voucher_story") {
-    const story = storyRefusal(voucher, await readStoryGuest(admin, userId));
+  if (kinds.includes("voucher_story")) {
+    const story = storyRefusal("voucher_story", await readStoryGuest(admin, userId));
     if (story) return json({ ok: false, code: story.code, error: story.error }, story.status);
   }
   // VIP's own gate: the VIP class (MESITA-3550); one each visit is the offer's.
-  if (voucher === "voucher_vip") {
-    const vip = vipRefusal(voucher, await readVipGuest(admin, userId), mexicoToday(new Date()));
+  if (kinds.includes("voucher_vip")) {
+    const vip = vipRefusal("voucher_vip", await readVipGuest(admin, userId), mexicoToday(new Date()));
     if (vip) return json({ ok: false, code: vip.code, error: vip.error }, vip.status);
   }
 
@@ -139,7 +172,8 @@ serveJson("consumer-web-buy-voucher", async (req) => {
       consumerId: userId,
       place,
       account,
-      voucher: voucher as MoneyVoucherKey,
+      voucher,
+      followers,
       currency: offer.currency,
       requestId,
       livemode,
@@ -150,10 +184,10 @@ serveJson("consumer-web-buy-voucher", async (req) => {
     });
     if (!card.ok) {
       const detail = "detail" in card && card.detail ? card.detail : {};
-      console.log("[consumer-web-buy-voucher]", JSON.stringify({ outcome: card.code, place_id: placeId, voucher }));
+      console.log("[consumer-web-buy-voucher]", JSON.stringify({ outcome: card.code, place_id: placeId, voucher, units: units.length }));
       return json({ ok: false, code: card.code, error: card.error, ...detail }, card.status);
     }
-    console.log("[consumer-web-buy-voucher]", JSON.stringify({ outcome: card.card.status, place_id: placeId, voucher, purchase_id: card.purchase_id }));
+    console.log("[consumer-web-buy-voucher]", JSON.stringify({ outcome: card.card.status, place_id: placeId, voucher, units: units.length, purchase_id: card.purchase_id }));
     return json({ ok: true, purchase_id: card.purchase_id, card: card.card });
   }
 
@@ -162,7 +196,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
     email: user.email ?? null,
     place,
     account,
-    voucher: voucher as MoneyVoucherKey,
+    voucher,
     currency: offer.currency,
     requestId,
     returnUrl,

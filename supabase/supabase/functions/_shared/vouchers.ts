@@ -373,17 +373,98 @@ export function voucherCheckoutParams(args: {
 /** What a voucher's Stripe object carries, the Checkout's and the saved
  *  card's PaymentIntent alike (MESITA-3552): the receiver reads
  *  mesita_kind and purchase_id. */
-export function voucherMetadata(args: { purchaseId: string; placeId: string; consumerId: string; voucher: MoneyVoucherKey }): Record<string, string> {
-  const line = CATALOG_LINES[args.voucher];
-  return {
+export function voucherMetadata(args: {
+  purchaseId: string;
+  placeId: string;
+  consumerId: string;
+  voucher: MoneyVoucherKey;
+  /** A basket's other units (MESITA-3841): the amounts become the sums,
+   *  `basket` the unit count, `basket_items` what is in it. */
+  followers?: readonly MoneyVoucherKey[];
+}): Record<string, string> {
+  const units = [args.voucher, ...(args.followers ?? [])];
+  const meta: Record<string, string> = {
     mesita_kind: "wallet_voucher",
     purchase_id: args.purchaseId,
     place_id: args.placeId,
     consumer_id: args.consumerId,
     voucher: args.voucher,
-    amount_cents: String(line.price_cents),
-    bonus_cents: String(line.bonus_cents),
+    amount_cents: String(units.reduce((sum, k) => sum + CATALOG_LINES[k].price_cents, 0)),
+    bonus_cents: String(units.reduce((sum, k) => sum + CATALOG_LINES[k].bonus_cents, 0)),
   };
+  if (units.length > 1) {
+    meta.basket = String(units.length);
+    meta.basket_items = basketItems(units).map((i) => `${i.voucher}x${i.qty}`).join(",").slice(0, 500);
+  }
+  return meta;
+}
+
+// ── The basket (MESITA-3841) ───────────────────────────────────────────────
+
+/** One line of a basket as the client sends it. */
+export type BasketItem = { voucher: MoneyVoucherKey; qty: number };
+
+/** At most this many of one voucher in a basket (Small and Big). */
+export const BASKET_MAX_QTY = 5;
+/** Once per guest per place (Welcome) or one each visit (VIP): one unit. */
+export const BASKET_ONE_ONLY: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_welcome", "voucher_vip", "voucher_story"]);
+
+/** The request's basket: `items: [{voucher, qty}]`, or the old one-voucher
+ *  `voucher` as a basket of one. Known keys, whole qty 1..5, Welcome / VIP /
+ *  Story at most 1, no key twice. Pure. */
+export function parseBasket(body: { items?: unknown; voucher?: unknown }): { ok: true; items: BasketItem[] } | { ok: false; error: string } {
+  const isKey = (v: unknown): v is MoneyVoucherKey => typeof v === "string" && (MONEY_VOUCHER_KEYS as readonly string[]).includes(v);
+  if (body.items === undefined || body.items === null) {
+    if (!isKey(body.voucher)) return { ok: false, error: "voucher must be one of the catalog's keys" };
+    return { ok: true, items: [{ voucher: body.voucher, qty: 1 }] };
+  }
+  if (!Array.isArray(body.items) || body.items.length === 0 || body.items.length > MONEY_VOUCHER_KEYS.length) {
+    return { ok: false, error: "items must list one to six vouchers" };
+  }
+  const seen = new Set<string>();
+  const items: BasketItem[] = [];
+  for (const raw of body.items) {
+    const it = (raw ?? {}) as Record<string, unknown>;
+    if (!isKey(it.voucher)) return { ok: false, error: "each item's voucher must be one of the catalog's keys" };
+    if (seen.has(it.voucher)) return { ok: false, error: "each voucher appears once; use qty" };
+    seen.add(it.voucher);
+    const max = BASKET_ONE_ONLY.has(it.voucher) ? 1 : BASKET_MAX_QTY;
+    if (typeof it.qty !== "number" || !Number.isInteger(it.qty) || it.qty < 1 || it.qty > max) {
+      return { ok: false, error: `qty must be a whole number from 1 to ${max}` };
+    }
+    items.push({ voucher: it.voucher, qty: it.qty });
+  }
+  return { ok: true, items };
+}
+
+/** Catalog order, Welcome first: the lead is the first unit, so Welcome's
+ *  once-per-guest index answers on the lead's write exactly as a one-voucher
+ *  buy does. */
+const BASKET_ORDER: readonly MoneyVoucherKey[] = ["voucher_welcome", "voucher_vip", "voucher_story", "voucher_200", "voucher_1000", "voucher_5000"];
+
+/** The basket as voucher units, one per row to write: the lead first. Pure. */
+export function basketUnits(items: readonly BasketItem[]): MoneyVoucherKey[] {
+  const sorted = [...items].sort((a, b) => BASKET_ORDER.indexOf(a.voucher) - BASKET_ORDER.indexOf(b.voucher));
+  return sorted.flatMap((i) => Array.from({ length: i.qty }, () => i.voucher));
+}
+
+/** Units back to lines, in the basket's order. Pure. */
+export function basketItems(units: readonly MoneyVoucherKey[]): BasketItem[] {
+  const out: BasketItem[] = [];
+  for (const k of units) {
+    const last = out.find((i) => i.voucher === k);
+    if (last) last.qty += 1;
+    else out.push({ voucher: k, qty: 1 });
+  }
+  return out;
+}
+
+/** The same basket? Compares units as multisets. Pure. */
+export function sameUnits(a: readonly (string | null)[], b: readonly (string | null)[]): boolean {
+  if (a.length !== b.length) return false;
+  const x = [...a].map(String).sort();
+  const y = [...b].map(String).sort();
+  return x.every((v, i) => v === y[i]);
 }
 
 export function voucherName(k: MoneyVoucherKey): string {
@@ -408,10 +489,12 @@ export type PurchaseRow = { id: string; status: string; stripe_checkout_session_
  *  (MESITA-3305 rule 15, d5a): MX$20,000. One global constant, no lock. */
 export const PLACE_CAP_CENTS = 20_000_00;
 
-/** Would this buy push the place past the cap? Pure. Live mode has no cap. */
-export function overPlaceCap(outstandingCents: number, voucher: MoneyVoucherKey, livemode: boolean): boolean {
+/** Would this buy push the place past the cap? Pure. Live mode has no cap.
+ *  A basket (MESITA-3841) counts every unit's credit. */
+export function overPlaceCap(outstandingCents: number, voucher: MoneyVoucherKey | readonly MoneyVoucherKey[], livemode: boolean): boolean {
   if (livemode) return false;
-  return outstandingCents + CATALOG_LINES[voucher].credit_cents > PLACE_CAP_CENTS;
+  const keys: readonly MoneyVoucherKey[] = typeof voucher === "string" ? [voucher] : voucher;
+  return outstandingCents + keys.reduce((sum, k) => sum + CATALOG_LINES[k].credit_cents, 0) > PLACE_CAP_CENTS;
 }
 
 /** The place's outstanding credit, Available plus Pending, every guest. */
@@ -424,7 +507,12 @@ export async function readPlaceOutstanding(admin: SupabaseClient, placeId: strin
 /** The cap, then one `opening` row under the guest's request_id; the
  *  Checkout path and the saved-card path (MESITA-3552) both start here.
  *  `duplicate`: the request_id (or Welcome's once-per-guest index) already
- *  has a row; the caller resumes it. */
+ *  has a row; the caller resumes it.
+ *
+ *  A basket (MESITA-3841): `followers` are the other voucher units, one row
+ *  each, written right after the lead with basket_lead_id and no
+ *  request_id (a retry finds them by the lead). The cap counts them all. A
+ *  follower the database refuses fails the lead too: all or nothing. */
 export async function openPurchaseRow(
   admin: SupabaseClient,
   args: {
@@ -435,12 +523,14 @@ export async function openPurchaseRow(
     currency: string;
     requestId: string;
     livemode: boolean;
+    followers?: readonly MoneyVoucherKey[];
   },
 ): Promise<{ ok: true; duplicate: false; purchaseId: string } | { ok: true; duplicate: true } | BuyRefusal> {
   const line = CATALOG_LINES[args.voucher];
+  const followers = args.followers ?? [];
   // The test-mode cap (rule 15): read once, no lock.
   const outstanding = await readPlaceOutstanding(admin, args.place.id, args.currency, args.livemode);
-  if (overPlaceCap(outstanding, args.voucher, args.livemode)) {
+  if (overPlaceCap(outstanding, [args.voucher, ...followers], args.livemode)) {
     return { ok: false, status: 409, code: "place_cap", error: "This place has reached its test-mode credit cap" };
   }
   const { data: row, error: insertErr } = await admin
@@ -464,7 +554,32 @@ export async function openPurchaseRow(
     if (insertErr.code === "23505") return { ok: true, duplicate: true };
     throw new Error(`purchase_insert: ${insertErr.message}`);
   }
-  return { ok: true, duplicate: false, purchaseId: String((row as { id: string }).id) };
+  const purchaseId = String((row as { id: string }).id);
+  if (followers.length > 0) {
+    const { error: followErr } = await admin.from("wallet_purchases").insert(followers.map((k) => ({
+      consumer_id: args.consumerId,
+      place_id: args.place.id,
+      amount_cents: CATALOG_LINES[k].price_cents,
+      currency: args.currency,
+      status: "opening",
+      livemode: args.livemode,
+      stripe_account_id: args.account.stripe_account_id,
+      voucher: k,
+      bonus_cents: CATALOG_LINES[k].bonus_cents,
+      application_fee_cents: voucherFeeCents(k),
+      basket_lead_id: purchaseId,
+    })));
+    if (followErr) {
+      console.error("[vouchers] basket_write", JSON.stringify({ purchase_id: purchaseId, code: followErr.code, error: followErr.message }));
+      await admin.from("wallet_purchases")
+        .update({ status: "failed", stripe_error: "basket_write", updated_at: new Date().toISOString() })
+        .eq("id", purchaseId).eq("status", "opening");
+      // Welcome's once-per-guest index (another tap bought it meanwhile).
+      if (followErr.code === "23505") return { ok: false, status: 409, ...REFUSAL_FOR.used };
+      throw new Error(`basket_insert: ${followErr.message}`);
+    }
+  }
+  return { ok: true, duplicate: false, purchaseId };
 }
 
 /** The buy, after every refusal was checked: one `opening` row under the
