@@ -5,7 +5,6 @@ import { CalendarClock, Loader2, PhoneCall } from "lucide-react";
 
 import {
   buildDateOptions,
-  ClosedSlotNotice,
   firstOpenDate,
   ReservationDatePicker,
   ReservationPartyPicker,
@@ -48,9 +47,9 @@ const ALREADY_RESERVED_CODE = "already_reserved";
  * name to show. Deliberately narrower than PlaceDetail (which structurally
  * satisfies it).
  *
- * `hours_table` rides along when the caller has it — that's what turns the
- * slot grid hours-aware. Absent, the form uses the baseline window and nothing
- * is flagged closed.
+ * `hours_table` rides along when the caller has it: the form then offers only
+ * times inside those hours (MESITA-3951). Absent, it offers the baseline
+ * window.
  */
 export type ReservationFormPlace = {
   id: string;
@@ -107,7 +106,7 @@ export function ReservationForm({
   const supabase = useBrowserSupabase();
 
   // Null when the place has no usable hours — the grid falls back to the
-  // baseline window and nothing is flagged closed.
+  // baseline window.
   const hours = useMemo(
     () => parseHoursTable(place.hours_table),
     [place.hours_table],
@@ -307,12 +306,6 @@ export function ReservationForm({
         date={date}
         hours={hours}
         tz={tz}
-      />
-      <ClosedSlotNotice
-        date={date}
-        time={time}
-        hours={hours}
-        placeName={place.name}
       />
       <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
 
