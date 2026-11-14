@@ -647,7 +647,7 @@ describe("T8 — Me's grid is eleven cells, MCP the one Soon", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders eleven cells in Pato's order", () => {
+  it("renders ten cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -656,8 +656,8 @@ describe("T8 — Me's grid is eleven cells, MCP the one Soon", () => {
     // Reservations / Favorites Connector / Settings. PROFILE LEADS (Pato,
     // 2026-09-08): the header states the identity, so the first cell is the
     // one that edits it. Support is a group on Settings (MESITA-2169).
-    // MESITA-3855: Activity left the bar, its pages came to Me. MESITA-3867:
-    // Share is on the bar and here too, beside Settings.
+    // MESITA-3855: Activity left the bar, its pages came to Me. MESITA-3880:
+    // Share is on the bar only ("remove share button from here is redundant").
     expect(gridTitles()).toEqual([
       "Profile",
       "Instagram",
@@ -669,8 +669,6 @@ describe("T8 — Me's grid is eleven cells, MCP the one Soon", () => {
       "Gift",
       // Every transaction, four kinds (MESITA-3855).
       "Tickets",
-      // The bar's Share tab, here too (MESITA-3867).
-      "Share",
       // Back as a Soon cell (MESITA-3867: "add MCP here with soon").
       "MCP",
       "Settings",
