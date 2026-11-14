@@ -26,9 +26,9 @@ export type ModelsConfig = {
 type DefaultModels = Record<"enricher" | "embeddings" | "memo", { model: string }>;
 
 export const DEFAULT_MODELS_CONFIG: DefaultModels = {
-  enricher: { model: "gpt-4o-mini" },
+  enricher: { model: "gpt-6-luna" },
   embeddings: { model: "text-embedding-3-small" },
-  memo: { model: "gpt-4o-mini" },
+  memo: { model: "gpt-6-luna" },
 };
 
 function nonEmpty(s: unknown, fallback: string): string {

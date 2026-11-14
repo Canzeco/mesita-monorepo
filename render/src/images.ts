@@ -49,8 +49,8 @@ export function defaultImageKnobs(): ImageKnobs {
     visionEnabled: true,
     imageAnalysisPrompt: ANALYSIS_PROMPT,
     imageSortingPrompt: SORTING_PROMPT,
-    visionModel: "gpt-4o-mini",
-    sortModel: "gpt-4o-mini",
+    visionModel: "gpt-6-luna",
+    sortModel: "gpt-6-luna",
   };
 }
 

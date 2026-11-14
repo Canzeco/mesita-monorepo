@@ -184,7 +184,7 @@ const CASES: Record<string, SectionCase> = {
       const stored = row.models_config as Row;
       assertEquals(stored.v, 1);
       assertEquals(Object.keys(stored).sort(), ["embeddings", "enricher", "memo", "v"]);
-      assertEquals(stored.enricher, { model: "gpt-4o-mini" });
+      assertEquals(stored.enricher, { model: "gpt-6-luna" });
     },
     invalid: { config: "not an object" },
     refuse: { status: 400, contains: "config must be an object" },

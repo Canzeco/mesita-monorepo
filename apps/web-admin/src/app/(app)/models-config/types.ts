@@ -72,9 +72,9 @@ export const OPENAI_CHAT_MODELS = [
 // coerces a null/partial blob to them; the page never SHOWS them as live.
 export const DEFAULT_MODELS_CONFIG: ModelsConfig = {
   v: 1,
-  enricher: { model: "gpt-4o-mini" },
+  enricher: { model: "gpt-6-luna" },
   embeddings: { model: "text-embedding-3-small" },
-  memo: { model: "gpt-4o-mini" },
+  memo: { model: "gpt-6-luna" },
 };
 
 /** Merge a null / partial / untrusted blob into a complete, valid config. */
@@ -143,26 +143,18 @@ export type TierChoice =
 
 /**
  * The options a tier row offers (efficient, economy, standard; MESITA-3945),
- * named by the model each one runs.
- * Writing's cheaper tier is the pinned ENRICHER_TIER_MODELS constant; photos'
- * cheaper tier is the LIVE enricher.model, because the analysis cron swaps it
- * in for economy. If both options would run the same model there is nothing to
- * choose, and saying "cheaper" would be a lie — so the row says so instead.
+ * named by the model each one runs. Both rows run ENRICHER_TIER_MODELS, the
+ * backend's QUALITY_MODEL (enrich-start.ts sends Render visionModelFor(tier)).
+ * If tiers would run the same model there is nothing to choose, so the row
+ * says so instead.
  */
 export function tierChoice(
   row: "writing" | "photos",
-  enricherModel: string,
 ): TierChoice {
   const efficientModel = ENRICHER_TIER_MODELS.efficient;
-  const economyModel =
-    row === "photos" ? enricherModel : ENRICHER_TIER_MODELS.economy;
+  const economyModel = ENRICHER_TIER_MODELS.economy;
   const standardModel = ENRICHER_TIER_MODELS.standard;
-  // The rate card prices the default cheap model; a swapped-in sorting model
-  // gets no price rather than a borrowed one.
-  const economyLabel =
-    economyModel === ENRICHER_TIER_MODELS.economy
-      ? `${economyModel} · ${TIER_PRICE[row].economy}`
-      : economyModel;
+  const economyLabel = `${economyModel} · ${TIER_PRICE[row].economy}`;
   const all: { tier: SynthesisQuality; model: string; label: string }[] = [
     { tier: "efficient", model: efficientModel, label: `${efficientModel} · ${TIER_PRICE[row].efficient}` },
     { tier: "economy", model: economyModel, label: economyLabel },

@@ -80,8 +80,7 @@ describe("changedEnricherFields", () => {
 
 describe("tierChoice", () => {
   it("names writing's three models with their price per place", () => {
-    const c = tierChoice("writing", "gpt-4o-mini");
-    expect(c).toEqual({
+    expect(tierChoice("writing")).toEqual({
       kind: "choice",
       options: [
         { tier: "efficient", label: "gpt-6-luna · ~$0.0015 per place" },
@@ -91,23 +90,13 @@ describe("tierChoice", () => {
     });
   });
 
-  it("names photos' cheaper option after the live sorting model", () => {
-    const c = tierChoice("photos", "gpt-4o-mini");
+  it("names photos' three models with their price per photo, whatever the chat model is", () => {
+    const c = tierChoice("photos");
     expect(c.kind === "choice" && c.options.map((o) => o.label)).toEqual([
       "gpt-6-luna · ~$0.0007 per photo",
       "gpt-4o-mini · ~$0.001 per photo",
       "gpt-4o · ~$0.008 per photo",
     ]);
-  });
-
-  it("gives a swapped-in sorting model no borrowed price", () => {
-    const c = tierChoice("photos", "gpt-4.1-mini");
-    expect(c.kind === "choice" && c.options[1].label).toBe("gpt-4.1-mini");
-  });
-
-  it("offers each model once when two tiers run the same one", () => {
-    const c = tierChoice("photos", "gpt-4o");
-    expect(c.kind === "choice" && c.options.map((o) => o.tier)).toEqual(["efficient", "economy"]);
   });
 });
 

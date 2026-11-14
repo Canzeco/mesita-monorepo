@@ -217,7 +217,7 @@ export function ModelsConfigClient({
     onChange: (t: SynthesisQuality) => void,
   ) => {
     if (!cfg) return <Unavailable />;
-    const choice = tierChoice(row, cfg.enricher.model);
+    const choice = tierChoice(row);
     if (choice.kind === "same") {
       return (
         <p id={id} className="text-muted-foreground text-sm">

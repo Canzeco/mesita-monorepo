@@ -31,14 +31,14 @@ Deno.test("a stored high reads as standard and still runs gpt-4o", () => {
   assertEquals(visionModelFor(cfg.enrichVisionQuality), "gpt-4o");
 });
 
-Deno.test("an unknown tier still falls back to economy", () => {
+Deno.test("an unknown tier falls back to the default efficient (MESITA-3959)", () => {
   const cfg = normalizeEnrichmentConfig({ enrichSynthesisQuality: "ultra" });
-  assertEquals(cfg.enrichSynthesisQuality, "economy");
+  assertEquals(cfg.enrichSynthesisQuality, "efficient");
 });
 
-Deno.test("three tiers (efficient since MESITA-3945), and economy is the default enricher model", () => {
+Deno.test("three tiers (efficient since MESITA-3945), and efficient is the default enricher model (MESITA-3959)", () => {
   assertEquals(Object.keys(QUALITY_MODEL).sort(), ["economy", "efficient", "standard"]);
-  assertEquals(QUALITY_MODEL.economy, DEFAULT_MODELS_CONFIG.enricher.model);
+  assertEquals(QUALITY_MODEL.efficient, DEFAULT_MODELS_CONFIG.enricher.model);
 });
 
 Deno.test("the admin Models page names the same model for each tier", async () => {

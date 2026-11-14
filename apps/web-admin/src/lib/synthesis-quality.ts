@@ -18,9 +18,9 @@ export const ENRICHER_TIER_MODELS: Record<SynthesisQuality, string> = {
   standard: "gpt-4o",
 };
 
-/** A stored tier, read leniently: the retired "high" is "standard"; anything else unknown is "economy". */
+/** A stored tier, read leniently: the retired "high" is "standard"; anything else unknown is the default "efficient" (MESITA-3959). */
 export function normalizeTier(q: unknown): SynthesisQuality {
   if (q === "high" || q === "standard") return "standard";
-  if (q === "efficient") return "efficient";
-  return "economy";
+  if (q === "economy") return "economy";
+  return "efficient";
 }
