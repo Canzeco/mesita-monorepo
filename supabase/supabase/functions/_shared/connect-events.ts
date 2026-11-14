@@ -32,7 +32,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { snapshotFromStripe } from "./payments.ts";
 import { purchasesByPaymentIntent, purchaseStore, spreadGone } from "./purchase-pi.ts";
-import { releasePayment, settlePaidPayment } from "./settle-payment.ts";
+import { cancelReleasedHolds, releasePayment, settlePaidPayment } from "./settle-payment.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 import { type StripeCall } from "./stripe.ts";
 import { errorMessage } from "./errors.ts";
@@ -53,6 +53,8 @@ export const CONNECT_EVENT_TYPES = [
   "payment_intent.succeeded",
   "payment_intent.canceled",
   "payment_intent.payment_failed",
+  // MESITA-3856: a guest card held for the waiter (manual capture).
+  "payment_intent.amount_capturable_updated",
 ] as const;
 
 // ── The signature ──────────────────────────────────────────────────────────
@@ -457,6 +459,24 @@ async function dispatch(
           ...(res.basket ? { basket: res.basket } : {}),
         },
       };
+    }
+
+    case "payment_intent.amount_capturable_updated": {
+      // MESITA-3856: the bank held a guest's card. The bill decides: keep it
+      // for the waiter, or (the bill already ended) let it go.
+      const meta = (obj.metadata ?? {}) as Record<string, unknown>;
+      const piId = typeof obj.id === "string" ? obj.id : null;
+      if (meta.mesita_kind !== "wallet_payment" || !piId) return ignored("not_mesita");
+      const row = await paymentForIntent(admin, meta, piId);
+      if (!row) return ignored("unknown_payment");
+      const { data, error } = await admin.rpc("wallet_card_held", { p_payment_id: row.id });
+      if (error) throw new Error(`wallet_card_held: ${error.message}`);
+      const decision = (data as { decision?: string } | null)?.decision ?? "keep";
+      if (decision === "cancel") {
+        await releasePayment(admin, row.id, "failed", "hold_late");
+        await cancelReleasedHolds(admin, deps.stripe, null);
+      }
+      return { status: 200, body: { ok: true, payment_id: row.id, outcome: `held_${decision}` } };
     }
 
     case "payment_intent.succeeded":

@@ -13,7 +13,10 @@
 //
 // Body: { token: the tab's QR token, place_id: the staff token's place,
 //         staff_token, cash_received_cents? (empty = exactly what is owed) }
-// Response: { ok: true, outcome: verified | already_verified, verified_at,
+// MESITA-3856: a bill with a held card is captured first (pay_tab_begin_capture
+// → captureHeldCard); 202 confirming while Stripe has not answered, 409
+// capture_failed when the charge failed (nothing charged, the bill ends).
+// Response: { ok: true, outcome: verified | already_verified | confirming, verified_at,
 //             same_phone?, cash_received_cents?, cash_tip_cents?,
 //             cashback_cents? }
 //   400 bad_request | amount_required · 403 staff_code_needed | forbidden ·
@@ -27,6 +30,8 @@ import { isUuid } from "../_shared/place-id.ts";
 import { MAX_PAYMENT_INPUT_CENTS } from "../_shared/money.ts";
 import { readStaffToken, staffDeviceHash, supabaseStaffStore } from "../_shared/staff.ts";
 import { callTabRpc, isTabToken, readTabByToken, rpcRefusal } from "../_shared/tab.ts";
+import { captureHeldCard } from "../_shared/settle-payment.ts";
+import { paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("visit-web-verify-tab", async (req) => {
   const ctx = openRequest(req);
@@ -60,10 +65,34 @@ serveJson("visit-web-verify-tab", async (req) => {
       return json({ ok: false, code: "forbidden", error: "This payment is for another place." }, 403);
     }
 
+    const keyHash = await staffDeviceHash(info.jti);
+    // MESITA-3856: a held card is captured first; the capture's settle signs
+    // the bill. Anything Stripe has not answered yet reads Confirming.
+    const begin = await callTabRpc(admin, "pay_tab_begin_capture", { p_tab_id: tab.id, p_place_id: placeId, p_staff_key_hash: keyHash });
+    if (begin.ok !== true) {
+      const refusal = rpcRefusal(begin);
+      return json({ ok: false, code: refusal.code, error: refusal.error, ...refusal.detail }, refusal.status);
+    }
+    if (begin.outcome === "capture") {
+      const key = paymentsStripeKey();
+      if (!key) return json({ ok: false, code: "not_configured", error: "Card payments are off" }, 503);
+      const out = await captureHeldCard(admin, stripeClient(key), {
+        tabId: tab.id,
+        paymentId: String(begin.payment_id),
+        paymentIntent: String(begin.payment_intent),
+        account: String(begin.stripe_account_id),
+      });
+      console.log("[visit-web-verify-tab]", JSON.stringify({ outcome: `capture_${out}`, tab_id: tab.id, place_id: placeId }));
+      if (out === "failed") {
+        return json({ ok: false, code: "capture_failed", error: "The card charge failed. Nothing was charged." }, 409);
+      }
+      if (out === "confirming") return json({ ok: true, outcome: "confirming" }, 202);
+    }
+
     const r = await callTabRpc(admin, "pay_tab_verify", {
       p_tab_id: tab.id,
       p_place_id: placeId,
-      p_staff_key_hash: await staffDeviceHash(info.jti),
+      p_staff_key_hash: keyHash,
       p_received_cents: typeof received === "number" ? received : null,
     });
     if (r.ok !== true) {

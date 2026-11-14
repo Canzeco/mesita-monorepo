@@ -340,12 +340,14 @@ export type TabPartRow = {
    *  earned once written (cashback_cents stays the card or cash part). */
   credit_cashback_bps?: number;
   credit_cashback_cents?: number;
+  /** MESITA-3856: when Stripe held this card part for the waiter. */
+  held_at?: string | null;
 };
 
 export const TAB_COLUMNS =
   "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, created_at, parent_tab_id, split_at, split_ways, origin, verified_at, verified_key_hash";
 const PART_COLUMNS =
-  "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, cashback_cents, paid_at, proof_token, created_at, cashback_bps, outside_cashback_bps, credit_cashback_bps, credit_cashback_cents";
+  "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, cashback_cents, paid_at, proof_token, created_at, cashback_bps, outside_cashback_bps, credit_cashback_bps, credit_cashback_cents, held_at";
 /** The guest's list reads only what a status needs (MESITA-3688): never
  *  `proof_token`, which PART_COLUMNS carries. */
 export const LIST_PART_COLUMNS = "id, tab_id, status, paid_at";
@@ -577,6 +579,8 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
       tip_cents: p.tip_cents,
       cashback_cents: p.cashback_cents,
       cashback_bps: (p.part === "outside" ? p.outside_cashback_bps : p.cashback_bps) ?? null,
+      // MESITA-3856: a card held for the waiter, not still going through.
+      held_at: p.held_at ?? null,
     })),
     // MESITA-3780: the visit's timeline.
     created_at: t.created_at ?? null,
@@ -623,8 +627,9 @@ export function staffTabView(
     // is compared by the caller (never the hash itself).
     origin: t.origin ?? "waiter",
     verified_at: t.verified_at ?? null,
-    // MESITA-3708: Verify waits for a card still going through.
-    card_pending: parts.some((p) => p.part === "card" && (p.status === "opening" || p.status === "open")),
+    // MESITA-3708: Verify waits for a card still going through; a card held
+    // for the waiter (MESITA-3856) is ready to sign.
+    card_pending: parts.some((p) => p.part === "card" && (p.status === "opening" || p.status === "open") && !p.held_at),
   };
 }
 

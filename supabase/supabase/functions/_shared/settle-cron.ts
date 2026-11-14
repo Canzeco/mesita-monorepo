@@ -26,7 +26,7 @@
 //     MESITA-3293), best-effort: a failure is logged, never fails the tick
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { settlePayment } from "./settle-payment.ts";
+import { cancelReleasedHolds, settlePayment } from "./settle-payment.ts";
 import { availableAtFor, type OpenPurchase, settlePurchase } from "./wallet.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
 import { errorMessage } from "./errors.ts";
@@ -229,11 +229,18 @@ export async function runSettleTick(deps: TickDeps, cfg: SettleConfig): Promise<
   if (sweep.error) console.error("[settle-cron] place_charges_sweep", sweep.error.message);
   else swept = Number(sweep.data ?? 0);
 
-  // MESITA-3707: guest tabs past their three-hour Verify window close (cash
-  // nobody verified expires; credit declared with it is spent).
+  // MESITA-3707, MESITA-3843: guest tabs past their ten-minute window close
+  // (nothing unsigned is spent; held credit and cards are released).
   const closed = await deps.admin.rpc("pay_tabs_close_guest");
   if (closed.error) console.error("[settle-cron] pay_tabs_close_guest", closed.error.message);
   else if (Number(closed.data ?? 0) > 0) console.log("[settle-cron] guest_tabs_closed", JSON.stringify({ count: Number(closed.data) }));
+  // MESITA-3856: the Stripe hold of every card whose bill ended lets go.
+  try {
+    const holds = await cancelReleasedHolds(deps.admin, deps.stripe, null);
+    if (holds > 0) console.log("[settle-cron] holds_cancelled", JSON.stringify({ count: holds }));
+  } catch (err) {
+    console.error("[settle-cron] holds_cancel", errorMessage(err));
+  }
 
   // Pending credit that turned Available since the last ticks: one
   // notification per guest, place and ready time, never twice (the

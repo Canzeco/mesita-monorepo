@@ -63,6 +63,8 @@ export type GuestTab = {
     tip_cents?: number;
     cashback_cents?: number;
     cashback_bps?: number | null;
+    /** MESITA-3856: when the bank held this card for the waiter. */
+    held_at?: string | null;
   }>;
   /** MESITA-3780: the timeline. Older reads have none. */
   created_at?: string | null;

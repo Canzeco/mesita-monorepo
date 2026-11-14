@@ -41,11 +41,12 @@ export type EndTab = PayStripTab & Pick<GuestTab, "status">;
 /** The bottom button of the payment's page: "cancel" while nothing has moved
  *  (the credit comes back), "close" once money moved and the waiter has not
  *  signed (it ends now with no cashback), none once it is signed, over,
- *  refunded, being checked, or while a card is still going through. */
+ *  refunded, being checked, or while a card is still going through (a card
+ *  held for the waiter, MESITA-3856, can be cancelled). */
 export function endAction(tab: EndTab, nowMs: number): "cancel" | "close" | null {
   const top = payStrip(tab, nowMs);
   if (top.state !== "waiting") return null;
-  const cardPending = tab.parts.some((p) => p.part === "card" && (p.status === "open" || p.status === "opening"));
+  const cardPending = tab.parts.some((p) => p.part === "card" && (p.status === "open" || p.status === "opening") && !p.held_at);
   if (cardPending) return null;
   const moved = tab.status === "paid" || tab.parts.some((p) => !!p.paid_at);
   if (moved) return "close";
@@ -55,6 +56,6 @@ export function endAction(tab: EndTab, nowMs: number): "cancel" | "close" | null
 /** The Pay tab's card for an open payment: a card still going through, or
  *  waiting on the waiter (to take the cash, or to sign). */
 export function inProgressLabel(tab: Pick<GuestTab, "parts">): "Card going through" | "Waiting for the waiter" {
-  const cardGoing = tab.parts.some((p) => p.part === "card" && (p.status === "open" || p.status === "opening"));
+  const cardGoing = tab.parts.some((p) => p.part === "card" && (p.status === "open" || p.status === "opening") && !p.held_at);
   return cardGoing ? "Card going through" : "Waiting for the waiter";
 }
