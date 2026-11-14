@@ -3,17 +3,18 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Outfit } from "next/font/google";
-import { X } from "lucide-react";
+import { ArrowRight, Smartphone, X } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
 
 // Sign-in opens on a photo, not a form (MESITA-3650). The first screen is
-// the cover, the wordmark, one line and two buttons, Sign up and Log in
-// (MESITA-3751: "two different buttons… for clarity for the user"). Both
-// open the same sign-in form (the caller's children: the phone code, the
-// only way in since MESITA-3875) as a sheet
-// over the photo; only the sheet's title says which door was taken. The X
-// lowers it back to the cover.
+// the cover, the wordmark, one line and ONE button, "Continue with phone"
+// (MESITA-3920, undoing MESITA-3751's Sign up + Log in: both opened the same
+// form, and a tester read two buttons on the bottom edge as "scroll for
+// more"). The block sits lifted off the bottom, with a line under the button
+// that ends the screen. The button opens the sign-in form (the caller's
+// children: the phone code, the only way in since MESITA-3875) as a sheet
+// over the photo. The X lowers it back to the cover.
 //
 // It fills the MobileFrame card (flex-1, absolute layers), so it is the
 // same on a phone and in the desktop visualizer. The keyboard shrinks the
@@ -31,20 +32,17 @@ export function CoverAuthLayout({
   footer,
 }: {
   headline: string;
-  /** Overrides both doors' sheet titles (the Pay QR door names its place). */
+  /** Overrides the sheet title (the Pay QR door names its place). */
   title?: string;
-  /** Under the sheet title; defaults to the door's own line. */
+  /** Under the sheet title. */
   subtitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
-  // Which door is open: null is the cover.
-  const [door, setDoor] = useState<"signup" | "login" | null>(null);
-  const open = door !== null;
-  const sheetTitle =
-    title ?? (door === "login" ? "Log in" : "Create your account");
-  const sheetSubtitle =
-    subtitle ?? (door === "login" ? "Welcome back." : "It takes a minute.");
+  // false is the cover; true is the sign-in sheet.
+  const [open, setOpen] = useState(false);
+  const sheetTitle = title ?? "Continue with phone";
+  const sheetSubtitle = subtitle ?? "We'll text you a code.";
 
   return (
     <div className="relative flex-1 overflow-hidden bg-black text-white">
@@ -71,7 +69,7 @@ export function CoverAuthLayout({
       <div
         inert={open}
         className={cn(
-          "absolute inset-0 flex flex-col justify-between p-6 transition-opacity duration-300",
+          "absolute inset-0 flex flex-col justify-between p-6 pb-10 transition-opacity duration-300",
           open && "opacity-0",
         )}
       >
@@ -84,7 +82,7 @@ export function CoverAuthLayout({
           </span>
         </span>
 
-        <div className="flex flex-col gap-5">
+        <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col gap-6 duration-700">
           <div>
             <h1 className="font-display text-4xl leading-[1.05] font-semibold tracking-[-0.02em] text-balance">
               {headline}
@@ -93,24 +91,23 @@ export function CoverAuthLayout({
               Discovery, reservations, payments and rewards.
             </p>
           </div>
-          <div className="flex flex-col gap-3">
-            {/* Both doors read on the photo (MESITA-3795, Pato: "outside the
-                box it must be more visible"): Sign up solid white, Log in a
-                frosted fill with a bright edge, never a bare outline. */}
+          <div className="flex flex-col items-center gap-3">
+            {/* One solid white button reads on the photo (MESITA-3795). */}
             <button
               type="button"
-              onClick={() => setDoor("signup")}
-              className="flex h-14 w-full items-center justify-center rounded-2xl bg-white text-lg font-semibold text-black shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition active:scale-[0.98]"
+              onClick={() => setOpen(true)}
+              className="group flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-white text-lg font-semibold text-black shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition hover:bg-white/90 active:scale-[0.98]"
             >
-              Sign up
+              <Smartphone className="h-5 w-5" aria-hidden />
+              Continue with phone
+              <ArrowRight
+                className="h-5 w-5 transition-transform group-hover:translate-x-0.5"
+                aria-hidden
+              />
             </button>
-            <button
-              type="button"
-              onClick={() => setDoor("login")}
-              className="flex h-14 w-full items-center justify-center rounded-2xl border border-white/60 bg-white/20 text-lg font-semibold text-white backdrop-blur-md transition active:scale-[0.98]"
-            >
-              Log in
-            </button>
+            <p className="text-sm text-white/70">
+              New or returning, we text you a code.
+            </p>
           </div>
         </div>
       </div>
@@ -120,7 +117,7 @@ export function CoverAuthLayout({
         type="button"
         aria-label="Close"
         tabIndex={-1}
-        onClick={() => setDoor(null)}
+        onClick={() => setOpen(false)}
         className={cn(
           "absolute inset-0 bg-black/40 transition-opacity duration-300",
           open ? "opacity-100" : "pointer-events-none opacity-0",
@@ -150,7 +147,7 @@ export function CoverAuthLayout({
           </div>
           <button
             type="button"
-            onClick={() => setDoor(null)}
+            onClick={() => setOpen(false)}
             aria-label="Back to the cover"
             className="bg-muted text-muted-foreground hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition"
           >
