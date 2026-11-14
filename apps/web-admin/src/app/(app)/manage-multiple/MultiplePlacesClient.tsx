@@ -9,7 +9,6 @@ import { SectionCard, type Tint } from "@/components/admin-ui/manage";
 import { SearchTab } from "./SearchTab";
 import { MesitaSearchTab } from "./MesitaSearchTab";
 import { WriteBox } from "./WriteBox";
-import { RefillBox } from "./RefillBox";
 import { LEGACY_HASHES, PIPELINE_STEPS, WRITE_BOX_ACTIONS } from "./pipeline";
 import { PipelineNav } from "./PipelineNav";
 
@@ -129,9 +128,8 @@ export function MultiplePlacesClient({ premierNow }: { premierNow?: React.ReactN
         id={PIPELINE_STEPS[4].id}
         tint="amber"
         title={PIPELINE_STEPS[4].label}
-        blurb="Upgrade → Premier, Plan → Premier: a place ranks at the higher of the two. An Upgrade is Premier 2X or 5X for a number of days, given by Mesita, never a plan. 5X runs first, then 2X. A place paying for a higher plan is refused. End Mesita Upgrade ends only the Upgrade added here."
+        blurb="Who is Premier now. Premier is paid: the place's own plan, or an Upgrade a guest bought. Mesita gives none."
       >
-        <RefillBox id={PIPELINE_STEPS[4].id} text={sharedIds} onTextChange={setSharedIds} />
         {premierNow}
       </Step>
 

@@ -799,11 +799,6 @@ verify_jwt = true
 [functions.business-web-update-place-google]
 verify_jwt = true
 
-# MESITA-3180: Business › Admin › Special actions › Boost (staff only; the
-# same handler as admin-web-grant-place-premier).
-[functions.business-web-boost-place]
-verify_jwt = true
-
 # The place code (MESITA-3226; on Settings since MESITA-3299, when the discount
 # product of MESITA-3202 left: its Rewards, Visits, visit code and staff close
 # functions are gone).

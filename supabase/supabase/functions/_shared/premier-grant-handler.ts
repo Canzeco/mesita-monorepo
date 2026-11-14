@@ -1,13 +1,12 @@
-// Premier Refill from Manage Multiple › Refill (refill, end_mesita_days,
-// MESITA-3163) and removing one pledge — the body behind
-// admin-web-grant-place-premier. It opens with requireAdminRequest
-// (super_admins); the EF name is the caller. The batch actions take Google
-// Place IDs and dispatch before the placeId check.
+// Removing one pledge — the body behind admin-web-grant-place-premier. It
+// opens with requireAdminRequest (super_admins); the EF name is the caller.
+// Mesita's manual Upgrade (refill, end_mesita_days, MESITA-3163) is gone
+// (MESITA-3937): those actions answer 410, so Premier comes only from a
+// payment.
 
 import { json, readJson, readPlaceIdAlias } from "./http.ts";
 import { readPledge } from "./boost.ts";
 import { isUuid } from "./place-id.ts";
-import { parseRefillBody, resolveGooglePlaceIds, runRefill } from "./premier-refill.ts";
 import { requireAdminRequest } from "../_shared/request.ts";
 import { boostStripeKey, stripeClient } from "./stripe.ts";
 import { leavePledge } from "./boost-writes.ts";
@@ -15,31 +14,16 @@ import { leavePledge } from "./boost-writes.ts";
 export async function handleGrantPlacePremier(req: Request, source: string): Promise<Response> {
   const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
-  const { admin, user } = ctx;
+  const { admin } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
+  // Mesita gives no Premier (MESITA-3937, Pato: "Kill the manual Upgrade
+  // button. They do need to pay"): refill and end_mesita_days are gone.
   if (body.action === "refill" || body.action === "end_mesita_days") {
-    const parsed = parseRefillBody(body);
-    if ("code" in parsed) return json({ ok: false, code: parsed.code, error: parsed.error }, 400);
-    const requestId = parsed.action === "refill" ? parsed.requestId : crypto.randomUUID();
-    try {
-      const lines = await runRefill(parsed, {
-        resolve: (ids) => resolveGooglePlaceIds(admin, ids),
-        rpc: async (fn, args) => {
-          const { data, error } = await admin.rpc(fn, args);
-          return { data, error };
-        },
-        by: user.emailLower ?? user.id,
-        requestId,
-      });
-      return json({ ok: true, lines });
-    } catch (err) {
-      console.error(`[${source}] ${parsed.action}`, requestId, err);
-      return json({ ok: false, code: "refill_failed", error: "Couldn't run Upgrade. Retry unfinished resends it.", request_id: requestId }, 500);
-    }
+    return json({ ok: false, code: "manual_upgrade_removed", error: "Mesita no longer gives Upgrades. Premier is paid." }, 410);
   }
 
   const placeId = readPlaceIdAlias(body);
@@ -61,5 +45,5 @@ export async function handleGrantPlacePremier(req: Request, source: string): Pro
     }
   }
 
-  return json({ ok: false, error: "action must be refill, end_mesita_days or remove_pledge" }, 400);
+  return json({ ok: false, error: "action must be remove_pledge" }, 400);
 }

@@ -11,16 +11,16 @@
 // Facebook followers; Enable and Disable toggle guest visibility; Delete
 // archives (kept, gate answer 2026-11-02). The Edit box and its Manual
 // Premier buttons are gone (MESITA-3159; staff Premier left Business in
-// MESITA-3146). There is no Create + Enrich combo. Upgrade (was Refill, MESITA-3163) is
-// box 5, right after Enrich (MESITA-3188, Pato: "enrich, boost, update, update"):
-// Premier 2X or 5X for N days, or ends Mesita's; it also lists who is Premier now.
+// MESITA-3146). There is no Create + Enrich combo. Box 5, Premier, only lists
+// who is Premier now: Mesita gives no Upgrade (MESITA-3937, Pato: "They do need
+// to pay"; it was the Upgrade box, MESITA-3163/3188).
 
 export const PIPELINE_STEPS = [
   { n: 1, id: "google-search", label: "Google Search" },
   { n: 2, id: "mesita-search", label: "Mesita Search" },
   { n: 3, id: "create", label: "Create" },
   { n: 4, id: "enrich", label: "Enrich" },
-  { n: 5, id: "refill", label: "Upgrade" },
+  { n: 5, id: "premier", label: "Premier" },
   { n: 6, id: "google-update", label: "Fast Update" },
   { n: 7, id: "reviews-update", label: "Deep Update" },
   { n: 8, id: "enable", label: "Enable" },
