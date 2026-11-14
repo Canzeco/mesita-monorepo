@@ -1,7 +1,7 @@
 // Supabase Edge Function — consumer-web-start-premier-refill
 //
-// MESITA-3168: a signed-in guest buys a Premier Refill pack for a place (30
-// days of 2X for $10 or of 5X for $100, no owner check). The checks run
+// MESITA-3168: a signed-in guest buys an Upgrade pack for a place (one year
+// of Mesita Pro for 99 USD or of Mesita Max for 999 USD, MESITA-3919; no owner check). The checks run
 // first (premier_refill_check, the same refusals premier_add_days would
 // answer); then a purchase row and a Stripe Checkout `payment`, card only.
 // Nothing is granted here: the days land when consumer-web-get-premier-refill

@@ -90,6 +90,18 @@ export const PREMIER_PERK: Record<BoostTier, string> = {
   boost_5x: "Max visibility boost",
 };
 
+/** A price as Stripe's line names it: "99 USD", "999 USD", "41.23 USD". The
+ *  code after the number, never a "$", which reads as pesos in Mexico (Pato,
+ *  MESITA-3919: "mention the actual price in ... stripe"). */
+export function usdText(cents: number): string {
+  const whole = cents % 100 === 0;
+  const n = (cents / 100).toLocaleString("en-US", {
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
+  });
+  return `${n} USD`;
+}
+
 /** The Premier factor a place's `boost_tier` (0..2) earns in the Area
  *  score. The 2 and the 5 are Discovery's anchors: every other ranking knob
  *  was tuned against them (Pato, MESITA-3916), so renaming what guests read
@@ -579,7 +591,7 @@ export function pledgeCheckoutParams(args: {
       price_data: {
         currency: PREMIER_CURRENCY,
         unit_amount: args.quote.charge_cents,
-        product_data: { name: `${PREMIER_LABEL[args.tier]} · ${PREMIER_PERK[args.tier]} · ${args.placeName}`.slice(0, 250) },
+        product_data: { name: `${PREMIER_LABEL[args.tier]} · ${PREMIER_PERK[args.tier]} · ${usdText(args.quote.price_cents)} a year · ${args.placeName}`.slice(0, 250) },
       },
     }],
     payment_intent_data: {

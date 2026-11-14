@@ -81,9 +81,9 @@ const PAID_SESSION = {
   livemode: false,
 };
 
-Deno.test("packs: one year, 2X $100 and 5X $1,000, card only, USD", () => {
+Deno.test("packs: one year, Pro 99 USD and Max 999 USD, card only, named with the price", () => {
   assertEquals(REFILL_PACK_DAYS, 365);
-  assertEquals(REFILL_PACK_CENTS, { 1: 10000, 2: 100000 });
+  assertEquals(REFILL_PACK_CENTS, { 1: 9900, 2: 99900 });
   const p = refillCheckoutParams({
     customer: "cus_1",
     purchaseId: "u1",
@@ -93,10 +93,11 @@ Deno.test("packs: one year, 2X $100 and 5X $1,000, card only, USD", () => {
     placeName: "Bar",
     returnUrl: "https://mesita.ai/place/x",
     nowSec: 1000,
-  }) as Record<string, unknown> & { line_items: Array<{ price_data: { unit_amount: number; currency: string } }> };
+  }) as Record<string, unknown> & { line_items: Array<{ price_data: { unit_amount: number; currency: string; product_data: { name: string } } }> };
   assertEquals(p.mode, "payment");
   assertEquals(p.payment_method_types, ["card"]);
-  assertEquals(p.line_items[0].price_data.unit_amount, 10000);
+  assertEquals(p.line_items[0].price_data.unit_amount, 9900);
+  assertEquals(p.line_items[0].price_data.product_data.name.includes("99 USD for one year"), true);
   assertEquals(p.line_items[0].price_data.currency, "usd");
   assertEquals(p.success_url, "https://mesita.ai/place/x?refill={CHECKOUT_SESSION_ID}");
 });

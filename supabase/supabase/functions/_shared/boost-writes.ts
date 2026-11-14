@@ -31,6 +31,7 @@ import {
   staleChargeAction,
   TIER_BY_RANK,
   type TierRank,
+  usdText,
 } from "./boost.ts";
 
 /** The guest's Stripe customer for this mode, created once. Two tabs at once
@@ -522,7 +523,7 @@ export async function attemptRenewalCharge(
         backingId: pledge.id,
         placeId: period.place_id,
         // An unknown tier names no level (MESITA-3041: never the wrong one).
-        label: `${PREMIER_LABEL[TIER_BY_RANK[period.tier as TierRank]] ?? "Premier"} renewal`,
+        label: `${PREMIER_LABEL[TIER_BY_RANK[period.tier as TierRank]] ?? "Premier"} renewal · ${usdText(period.price_cents)} a year`,
       }),
       { idempotencyKey: chargeKey(period.id) },
     );
