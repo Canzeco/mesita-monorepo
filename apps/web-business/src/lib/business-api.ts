@@ -456,6 +456,9 @@ export type PlacePayments = {
   test_mode: boolean;
   account: PaymentAccount;
   settings: PaymentSettings;
+  /** MESITA-3913: the one currency of this place's House Credits, from its
+   *  country ("MXN", "USD"). Older servers lack it: MXN. */
+  currency: string;
   /** The House Credits Contract (MESITA-3589); older servers lack it. */
   contract?: HouseCreditsContract;
   /** Whether the place code is set: the waiter's charge needs it (MESITA-3306). */
@@ -481,6 +484,7 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
       test_mode: r.data.test_mode,
       account: r.data.account,
       settings: r.data.settings,
+      currency: typeof r.data.currency === "string" ? r.data.currency.toUpperCase() : "MXN",
       // MESITA-3599: dropped here, every reload read the signed agreement as "Not signed".
       contract: r.data.contract,
       code_set: r.data.code_set === true,

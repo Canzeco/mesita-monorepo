@@ -35,12 +35,26 @@ export const OUTSIDE_MAX_PER_DAY = 2;
  *  changing one is a migration plus this line. */
 export const OUTSIDE_CASHBACK_DAILY_CEILING_CENTS = 50_000;
 
-/** The one currency the ledger sells in today. */
+/** The fallback currency when a place's is unknown. Each place's own is
+ *  places.currency, set from its country (MESITA-3913). */
 export const MONEY_CURRENCY = "mxn";
 
 /** Stripe's minimum for a direct charge, per currency [estimated MX$10,
- *  confirm on MESITA-3280]. */
-export const MIN_CHARGE_CENTS: Record<string, number> = { mxn: 10_00 };
+ *  confirm on MESITA-3280; US$0.50 is Stripe's own floor]. */
+export const MIN_CHARGE_CENTS: Record<string, number> = { mxn: 10_00, usd: 50 };
+
+/** A country's currency (MESITA-3913), lowercase as the ledger stores it:
+ *  the Stripe account's country, or the place's. TWIN of
+ *  public.currency_for_country. */
+const COUNTRY_CURRENCY: Record<string, string> = { MX: "mxn", US: "usd" };
+export function currencyForCountry(country: string | null | undefined): string | null {
+  return country ? COUNTRY_CURRENCY[country.toUpperCase()] ?? null : null;
+}
+
+/** The Stripe Connect country for a place's currency (MESITA-3913). */
+export function countryForCurrency(currency: string | null | undefined): string {
+  return (currency ?? "").toLowerCase() === "usd" ? "US" : "MX";
+}
 
 /** The most one credit-only payment may ask for (MESITA-3304), MX$100,000
  *  [estimated]. An input guard against a typo, never a product limit: a

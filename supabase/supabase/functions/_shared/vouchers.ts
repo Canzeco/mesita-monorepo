@@ -8,7 +8,7 @@
 // a price for the client: the client shows what this answers.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents } from "./money.ts";
+import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, currencyForCountry } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
@@ -74,11 +74,8 @@ export const CATALOG_LINES: Record<MoneyVoucherKey, VoucherCatalogLine> = Object
 
 /** The connected account's currency, from its country: Stripe's default
  *  currency is not stored, and a MX account settles in pesos. */
-const COUNTRY_CURRENCY: Record<string, string> = { MX: "mxn", US: "usd" };
-
 export function accountCurrency(account: AccountRow | null): string | null {
-  const c = account?.account_country;
-  return c ? COUNTRY_CURRENCY[c] ?? null : null;
+  return currencyForCountry(account?.account_country);
 }
 
 export type OfferInput = {
