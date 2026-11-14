@@ -210,6 +210,12 @@ const EXTERNAL_FACE = "bg-violet-200 text-neutral-950";
 /** Credits Payment Cashback's face (MESITA-3827): light sky, a tint no other offer wears. */
 const CREDITS_FACE = "bg-sky-200 text-neutral-950";
 
+/** A row's fact (MESITA-3863). It wraps like any text, but "in 1 hr" stays
+ *  whole, so a narrow row never strands "hr" on a line of its own. */
+function Fact({ text }: { text: string }) {
+  return <span className="tabular-nums">{text.replace(/ in (\d+) hr\b/, " in\u00a0$1\u00a0hr")}</span>;
+}
+
 function SectionTitle({ id, title }: { id: string; title: string }) {
   return (
     <h3 id={id} className={OFFERS_TITLE_CLASS}>
@@ -696,12 +702,21 @@ export function VouchersPane({
   // SHORTER STILL (Pato, 2026-11-13, MESITA-3829: "make this smaller
   // somehow, i mean, shorter, its using tooo much space"): 36px chips, 6px
   // row padding, the fact on one line.
-  const ROW = "flex w-full items-center gap-3 px-4 py-1.5 text-left";
+  const ROW = "flex w-full items-center gap-2 px-3 py-1.5 text-left";
   // A BIT SMALLER (MESITA-3768, Pato: "make this a bit smaller, the text, just
   // a bit"): one small step each, titles 15px, fact lines 13px, chips 18px.
-  const CHIP = "flex h-9 w-14 shrink-0 items-center justify-center rounded-lg text-base font-extrabold tracking-tight tabular-nums";
-  const NAME = "flex items-center gap-1 text-[15px] font-semibold";
-  const FACT = "text-muted-foreground truncate text-[13px] leading-snug";
+  // ONE RUN OF TEXT (Pato, 2026-11-14, MESITA-3863: "Name of thing in Bold.
+  // and then description starting in the same line. then the i in other
+  // part ... vertically save space"; "enable two lines if the page is not
+  // wide enough"): the bold name (13px), then the fact in grey (12px), wrapping
+  // when narrow (two lines on a 390px phone, so 8px gaps and 12px row
+  // padding); the (i) in its own column at the right; chips 28px tall.
+  const CHIP = "flex h-7 w-12 shrink-0 items-center justify-center rounded-lg text-sm font-extrabold tracking-tight tabular-nums";
+  const LINE = "text-muted-foreground min-w-0 flex-1 text-xs leading-snug";
+  const NAME = "text-foreground text-[13px] font-semibold";
+  const ICON = "mr-1 inline h-4 w-4 align-[-0.15em]";
+  // Where a row has no tick box or lock, so every (i) sits in one column.
+  const SLOT = <span className="h-6 w-6 shrink-0" aria-hidden />;
 
   return (
     // A LIST (MESITA-3486, Pato: "make the things as a list, not as boxes"):
@@ -733,35 +748,33 @@ export function VouchersPane({
                 <span className={cn(CHIP, face.card)} aria-hidden>
                   +{p.bonus.replace(/ bonus$/, "")}
                 </span>
-                <span className="flex min-w-0 flex-1 flex-col">
+                <span className={LINE} aria-hidden>
                   <span className={NAME}>
-                    <span className="flex items-center gap-1" aria-hidden>
-                      {Mark ? <Mark className="h-4 w-4 shrink-0" strokeWidth={2.25} /> : null}
-                      {p.short}
-                    </span>
-                    <InfoButton
-                      title={p.short}
-                      text={offerInfo(p.key, pay, get, p.bonus.replace(/ bonus$/, ""), facts, prepayPct)}
-                      status={loading ? undefined : offerStatus(p.key, can, lock, reason)}
-                      action={
-                        loading
-                          ? undefined
-                          : can
-                            ? { label: "Choose this offer", onClick: () => pick(p.key) }
-                            : lock === "vip" && actions?.onJoinVip
-                              ? { label: "Request VIP", onClick: actions.onJoinVip }
-                              : lock === "instagram" && actions?.onLinkInstagram
-                                ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
-                                : undefined
-                      }
-                    />
-                  </span>
-                  <span className={cn(FACT, "tabular-nums")} aria-hidden>
-                    {opening
+                    {Mark ? <Mark className={ICON} strokeWidth={2.25} /> : null}
+                    {p.short}
+                  </span>{" "}
+                  <Fact
+                    text={opening
                       ? "Opening…"
                       : `Pay ${pay} · Get ${get} ${readyIn(p.key)}${prepayPct ? ` · +${prepayPct} back` : ""}`}
-                  </span>
+                  />
                 </span>
+                  <InfoButton
+                    title={p.short}
+                    text={offerInfo(p.key, pay, get, p.bonus.replace(/ bonus$/, ""), facts, prepayPct)}
+                    status={loading ? undefined : offerStatus(p.key, can, lock, reason)}
+                    action={
+                      loading
+                        ? undefined
+                        : can
+                          ? { label: "Choose this offer", onClick: () => pick(p.key) }
+                          : lock === "vip" && actions?.onJoinVip
+                            ? { label: "Request VIP", onClick: actions.onJoinVip }
+                            : lock === "instagram" && actions?.onLinkInstagram
+                              ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
+                              : undefined
+                    }
+                  />
               </>
             );
             return (
@@ -826,7 +839,7 @@ export function VouchersPane({
                     {inner}
                     {/* LOCKED, NOT A SELECTOR (MESITA-3495, Pato: "if not available show a
                         locked icon instead of the circle"). */}
-                    {loading ? null : (
+                    {loading ? SLOT : (
                       <span className="text-muted-foreground flex h-6 w-6 shrink-0 items-center justify-center" aria-hidden data-voucher-locked>
                         <Lock className="h-5 w-5" strokeWidth={2.25} />
                       </span>
@@ -851,36 +864,35 @@ export function VouchersPane({
             <span className={cn(CHIP, CASHBACK_FACE.card)} aria-hidden>
               {cardPct ? `+${cardPct}` : "Off"}
             </span>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className={NAME}>
+            <span className={LINE} aria-hidden>
                 {/* The phone, as Cash wears the banknote (Pato, MESITA-3835:
                     "add icon to Mesita Payments"). */}
-                <span className="flex items-center gap-1" aria-hidden>
-                  <Smartphone className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                  App Payment Cashback
-                </span>
-                <InfoButton
-                  title="App Payment Cashback"
-                  status={
-                    loading
-                      ? undefined
-                      : canPay || cashback
-                        ? { ok: true, text: cardPct ? `On at this place. ${cardPct} back on every bill.` : "Pay by card here; this place gives no cashback." }
-                        : { ok: false, text: cashbackTag }
-                  }
-                  action={canPay && actions?.onPay ? { label: "Pay bill", onClick: actions.onPay } : undefined}
-                  text={[
-                    `Pay your bill in the Mesita app and get ${cardPct ?? "the place's cashback"} of it back as credits at this place. Use them whenever you want.`,
-                    "Any amount, every visit. Each place sets its own rate.",
-                    creditPct
-                      ? "Tips never earn this cashback: it counts only on the part of the bill you pay with App Payments, without the tip."
-                      : "Neither prepaid credits nor tips earn cashback: it counts only on the part of the bill you pay with App Payments, without the tip.",
-                    "You can mix: part of the bill with credits, the rest with App Payments.",
-                  ]}
-                />
-              </span>
-              <span className={FACT} aria-hidden>{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
+              <span className={NAME}>
+                <Smartphone className={ICON} strokeWidth={2.25} />
+                App Payment Cashback
+              </span>{" "}
+              <Fact text={canPay || loading ? "Back in credits, any visit" : cashbackTag} />
             </span>
+              <InfoButton
+                title="App Payment Cashback"
+                status={
+                  loading
+                    ? undefined
+                    : canPay || cashback
+                      ? { ok: true, text: cardPct ? `On at this place. ${cardPct} back on every bill.` : "Pay by card here; this place gives no cashback." }
+                      : { ok: false, text: cashbackTag }
+                }
+                action={canPay && actions?.onPay ? { label: "Pay bill", onClick: actions.onPay } : undefined}
+                text={[
+                  `Pay your bill in the Mesita app and get ${cardPct ?? "the place's cashback"} of it back as credits at this place. Use them whenever you want.`,
+                  "Any amount, every visit. Each place sets its own rate.",
+                  creditPct
+                    ? "Tips never earn this cashback: it counts only on the part of the bill you pay with App Payments, without the tip."
+                    : "Neither prepaid credits nor tips earn cashback: it counts only on the part of the bill you pay with App Payments, without the tip.",
+                  "You can mix: part of the bill with credits, the rest with App Payments.",
+                ]}
+              />
+              {SLOT}
           </li>
           {/* CASH EARNS 3% (Pato, MESITA-3837: "what about 3% and 5%????";
               2% from MESITA-3547, off for an hour in MESITA-3836): cash or
@@ -892,24 +904,23 @@ export function VouchersPane({
             <span className={cn(CHIP, EXTERNAL_FACE)} aria-hidden>
               {outside ? `+${cashPct}` : "Off"}
             </span>
-            <span className="flex min-w-0 flex-1 flex-col">
+            <span className={LINE} aria-hidden>
               <span className={NAME}>
-                <span className="flex items-center gap-1" aria-hidden>
-                  <Banknote className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                  Cash Payment Cashback
-                </span>
-                <InfoButton
-                  title="Cash Payment Cashback"
-                  status={outside ? { ok: true, text: `${cashPct} back on bills you pay the waiter.` } : { ok: false, text: "Not at this place yet" }}
-                  text={[
-                    `Pay the place directly: cash or their card terminal, and get ${cashPct ?? "the place's cash cashback"} of the bill back as credits at this place.`,
-                    "Show your QR to the waiter. They type the bill and the tip, you choose cash, and they tap Received when they get your money.",
-                    "It counts on the bill, never on the tip or on credits you spend. It is ready in 1 hour.",
-                  ]}
-                />
-              </span>
-              <span className={FACT} aria-hidden>{outside ? "Back in credits, cash or their terminal" : "Not at this place yet"}</span>
+                <Banknote className={ICON} strokeWidth={2.25} />
+                Cash Payment Cashback
+              </span>{" "}
+              <Fact text={outside ? "Back in credits, cash or their terminal" : "Not at this place yet"} />
             </span>
+              <InfoButton
+                title="Cash Payment Cashback"
+                status={outside ? { ok: true, text: `${cashPct} back on bills you pay the waiter.` } : { ok: false, text: "Not at this place yet" }}
+                text={[
+                  `Pay the place directly: cash or their card terminal, and get ${cashPct ?? "the place's cash cashback"} of the bill back as credits at this place.`,
+                  "Show your QR to the waiter. They type the bill and the tip, you choose cash, and they tap Received when they get your money.",
+                  "It counts on the bill, never on the tip or on credits you spend. It is ready in 1 hour.",
+                ]}
+              />
+              {SLOT}
           </li>
         </ul>
       </section>
