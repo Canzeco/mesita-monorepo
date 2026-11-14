@@ -12,22 +12,23 @@ import { useEffect, useState } from "react";
 // place. Function hashes still work from Create/Enrich step chips.
 // Crenup is two pages since MESITA-2083 — Creation and Enrichment — and each
 // strip lists only its own page's modules. The first id is the gate.
-export type CrenupView = "creation" | "enrichment";
+export type CrenupView = "creation" | "uprich";
 
 const STRIP_LINKS: Record<CrenupView, { id: string; label: string }[]> = {
   creation: [
     { id: "s-models", label: "Models" },
     { id: "s-create", label: "Create" },
   ],
-  enrichment: [
+  uprich: [
     { id: "s-enrich", label: "Enrich" },
     { id: "s-functions", label: "Functions" },
+    { id: "s-update", label: "Update" },
   ],
 };
 
 const STRIP_TITLE: Record<CrenupView, string> = {
   creation: "Creating",
-  enrichment: "Enriching",
+  uprich: "Uprich",
 };
 
 export function SectionStrip({ view }: { view: CrenupView }) {

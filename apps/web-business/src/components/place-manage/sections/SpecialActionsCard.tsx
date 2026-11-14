@@ -7,7 +7,7 @@
 //   Enrich          the whole Enricher run (business-web-enrich-place)
 //   Update Google   Google's factuals and a lone hero, pins kept
 //                   (business-web-update-place-google); also runs by itself
-//                   every N views (admin › Updating)
+//                   every N views (admin › Uprich)
 //   Update Reviews  the Reviews Sync: Google stars, the Apify review list,
 //                   Instagram and Facebook followers
 //                   (business-web-reload-place-reviews, source "sync"); also

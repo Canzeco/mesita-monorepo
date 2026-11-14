@@ -46,7 +46,7 @@ import { CrenupSaveBar } from "./CrenupSaveBar";
 import { SectionStrip, type CrenupView } from "./SectionStrip";
 import { clampFunnel, type CrenupSettings } from "./crenup-guards";
 import { MODELS_PARENT } from "../models-config/nav";
-import { ENRICHMENT_PARENT } from "./nav";
+import { UPRICH_PARENT } from "./nav";
 
 /** The Create box on Multiple Places — where Create actually runs. */
 const CREATE_BOX_HREF = "/manage-multiple#create";
@@ -151,6 +151,8 @@ export function CrenupClient({
         createOnOpenConsumer: settings.createOnOpenConsumer,
         createOnOpenAdmin: settings.createOnOpenAdmin,
         consumerCreatesPerDay: settings.consumerCreatesPerDay,
+        updateEveryViews: settings.updateEveryViews,
+        reviewsUpdateEveryViews: settings.reviewsUpdateEveryViews,
       });
       if (r.ok) {
         setSavedSettings(settings);
@@ -236,8 +238,8 @@ export function CrenupClient({
                   ),
                 },
               ]}
-              // Functions lives on Enrichment, so Create's chips cross over.
-              steps={chipsFor("create", ENRICHMENT_PARENT.href)}
+              // Functions lives on Uprich, so Create's chips cross over.
+              steps={chipsFor("create", UPRICH_PARENT.href)}
               estimate={
                 <FlowEstimate
                   caption="Details + Description + Vectors. One place."
@@ -312,7 +314,7 @@ export function CrenupClient({
         </>
         )}
 
-        {view === "enrichment" && (
+        {view === "uprich" && (
         <>
         <div id="s-enrich" className="scroll-mt-16">
           <SectionCard
@@ -594,6 +596,60 @@ export function CrenupClient({
                   model re-embeds the catalog.
                 </NoKnobs>
               </FunctionModule>
+            </div>
+          </SectionCard>
+        </div>
+
+        <div id="s-update" className="scroll-mt-16">
+          <SectionCard
+            icon={<RefreshCw className="text-secondary h-4 w-4" />}
+            title="Update"
+            subtitle="Refreshes one part of a place now. Enrich's own steps, run by themselves."
+          >
+            <div className="text-muted-foreground mt-2 space-y-2 text-sm leading-relaxed">
+              <p>
+                <b className="text-foreground">Update Google</b> refreshes Google&apos;s facts. It
+                keeps a field a person corrected, never blanks a filled field, and never writes
+                the review list. While the gallery is one photo (Create&apos;s Google hero) it
+                takes Google&apos;s current hero; a longer gallery is Enrich&apos;s.
+              </p>
+              <p>
+                <b className="text-foreground">Update Reviews</b> refreshes Google&apos;s stars, up
+                to 100 Google reviews (Apify), and the Instagram and Facebook followers. Each run
+                is a paid scrape.
+              </p>
+              <p>
+                Both run by themselves on views (below), from Multiple Places, or per place from its
+                Admin page.
+              </p>
+            </div>
+            <div className="mt-4">
+              <Fields>
+                <NumberField
+                  label="Update Google every N views"
+                  value={settings.updateEveryViews}
+                  min={0}
+                  max={1000}
+                  onChange={(v) => patch({ updateEveryViews: v })}
+                  disabled={pending || !!blocked}
+                />
+                <NumberField
+                  label="Update Reviews every N views"
+                  value={settings.reviewsUpdateEveryViews}
+                  min={0}
+                  max={1000}
+                  onChange={(v) => patch({ reviewsUpdateEveryViews: v })}
+                  disabled={pending || !!blocked}
+                />
+              </Fields>
+              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                Each guest counts once per place, the same count as Enrich after N views. Google
+                refreshes at every multiple ({settings.updateEveryViews > 0
+                  ? `${settings.updateEveryViews}, ${settings.updateEveryViews * 2}…`
+                  : "off"}), reviews at theirs ({settings.reviewsUpdateEveryViews > 0
+                  ? `${settings.reviewsUpdateEveryViews}, ${settings.reviewsUpdateEveryViews * 2}…`
+                  : "off"}). Keep Reviews well above Google. 0 turns either off.
+              </p>
             </div>
           </SectionCard>
         </div>

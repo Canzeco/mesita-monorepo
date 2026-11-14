@@ -1,7 +1,7 @@
-import { CrenupPage } from "../crenup-page";
+import { permanentRedirect } from "next/navigation";
+import { UPRICH_PARENT } from "../nav";
 
-export const dynamic = "force-dynamic";
-
+// Enriching and Updating are one page, Uprich, since MESITA-3924.
 export default function Page() {
-  return <CrenupPage view="enrichment" />;
+  permanentRedirect(UPRICH_PARENT.href);
 }

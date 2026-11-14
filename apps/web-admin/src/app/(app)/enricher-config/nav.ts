@@ -1,4 +1,4 @@
-import { StackIcon, MapPinPlusIcon, ArrowsClockwiseIcon } from "@phosphor-icons/react/dist/ssr";
+import { StackIcon, MapPinPlusIcon } from "@phosphor-icons/react/dist/ssr";
 
 // Two sidebar entries since MESITA-2083 — "Creating" and "Enriching" (were
 // Creation and Enrichment until MESITA-2800, one -ing verb per row) — over
@@ -18,16 +18,15 @@ export const CREATION_PARENT = {
   Icon: MapPinPlusIcon,
 } as const;
 
-export const ENRICHMENT_PARENT = {
-  href: "/enricher-config/enrichment",
-  label: "Enriching",
+// Uprich (MESITA-3924, Pato: "create a page called Uprich ... include both
+// the admin configuration of Update and Enrich"): one page for Enrich,
+// Functions and Update, one Save. The buttons keep the verbs Enrich and
+// Update; the two backends stay separate (MESITA-3844). /enricher-config/
+// enrichment and /updating 308 here.
+export const UPRICH_PARENT = {
+  href: "/enricher-config/uprich",
+  label: "Uprich",
   Icon: StackIcon,
-} as const;
-
-export const UPDATING_PARENT = {
-  href: "/enricher-config/updating",
-  label: "Updating",
-  Icon: ArrowsClockwiseIcon,
 } as const;
 
 // Editing (MESITA-2796) is gone (MESITA-3162, Pato: "there is no editing

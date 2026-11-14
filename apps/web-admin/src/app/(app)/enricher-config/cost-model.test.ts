@@ -97,6 +97,8 @@ const settings: CrenupSettings = {
   createOnOpenConsumer: true,
   createOnOpenAdmin: true,
   consumerCreatesPerDay: 1000,
+  updateEveryViews: 10,
+  reviewsUpdateEveryViews: 50,
 };
 
 describe("instance estimates", () => {

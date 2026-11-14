@@ -13,8 +13,7 @@ import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
 import { FAMILIES_PARENT } from "@/app/(app)/families/nav";
 import {
   CREATION_PARENT,
-  ENRICHMENT_PARENT,
-  UPDATING_PARENT,
+  UPRICH_PARENT,
 } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
@@ -95,10 +94,9 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
   MODELS_PARENT,
   // Taxonomy. The switches write discovery_config. The lists do not.
   FAMILIES_PARENT,
-  // Crenup's two halves.
+  // Creating, then Uprich: Enrich and Update on one page (MESITA-3924).
   CREATION_PARENT,
-  ENRICHMENT_PARENT,
-  UPDATING_PARENT,
+  UPRICH_PARENT,
   // Discovery.
   FILTERS_PARENT,
   RESERVATIONS_PARENT,
