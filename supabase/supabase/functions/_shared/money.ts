@@ -116,6 +116,25 @@ export const VOUCHER_PRICE_CENTS: Record<string, Record<MoneyVoucherKey, number>
   usd: { voucher_200: 10_00, voucher_1000: 100_00, voucher_5000: 500_00, voucher_welcome: 10_00, voucher_story: 10_00, voucher_vip: 10_00 },
 };
 
+/** THE TEN CURRENCIES (Pato, 2026-11-14, MESITA-3919: "make a list of all
+ *  the currencies"): Small starts with 1, near half an inexpensive meal for
+ *  one in that country; Big is 10× Small; Welcome, Story and VIP cost the
+ *  Small price. Amounts in whole units (¥1,000, not cents). Only the
+ *  currencies in VOUCHER_PRICE_CENTS sell; the rest wait for Stripe Connect
+ *  in that country (and JPY and CLP for whole-unit charges). */
+export const VOUCHER_CURRENCY_LIST: readonly { code: string; country: string; small: number }[] = [
+  { code: "MXN", country: "Mexico", small: 100 },
+  { code: "USD", country: "United States", small: 10 },
+  { code: "CAD", country: "Canada", small: 10 },
+  { code: "EUR", country: "Eurozone", small: 10 },
+  { code: "GBP", country: "United Kingdom", small: 10 },
+  { code: "BRL", country: "Brazil", small: 10 },
+  { code: "COP", country: "Colombia", small: 10_000 },
+  { code: "CLP", country: "Chile", small: 1_000 },
+  { code: "PEN", country: "Peru", small: 10 },
+  { code: "JPY", country: "Japan", small: 1_000 },
+];
+
 /** The voucher's price in this currency, null where vouchers aren't sold. */
 export function voucherPriceCents(key: MoneyVoucherKey, currency: string = MONEY_CURRENCY): number | null {
   return VOUCHER_PRICE_CENTS[currency.toLowerCase()]?.[key] ?? null;

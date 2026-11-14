@@ -1,4 +1,4 @@
-import { TicketIcon } from "@phosphor-icons/react/dist/ssr";
+import { CoinsIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 import { SectionCard } from "@/components/admin-ui/config";
@@ -27,6 +27,15 @@ const WHO: Record<string, string> = {
   voucher_5000: "As many as they like",
   voucher_story: "Guests with 1,000+ Instagram followers, one per visit",
   voucher_vip: "VIP guests, one per visit",
+};
+
+/** "MX$100", "¥1,000": whole units in the currency's own symbol. */
+const whole = (amount: number, code: string) => {
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: code, maximumFractionDigits: 0 }).format(amount);
+  } catch {
+    return `${amount.toLocaleString("en-US")} ${code}`;
+  }
 };
 
 const wait = (sec: number) => (sec <= 0 ? "At once" : sec % 3600 === 0 ? `${sec / 3600} h` : `${Math.round(sec / 60)} min`);
@@ -94,6 +103,50 @@ export default async function PaymentsConfigPage() {
           )}
         </SectionCard>
       </div>
+      {res.ok && res.currency_list.length > 0 ? (
+        <div className="mt-6">
+          <SectionCard
+            icon={<CoinsIcon className="h-5 w-5" aria-hidden />}
+            title="Currencies"
+            subtitle="Ten currencies. Small starts with 1, near half an inexpensive meal for one there; Big is 10× Small; Welcome, Story and VIP cost the Small price. Only the selling ones are live: the rest wait for Stripe in that country."
+          >
+            <div className="-mx-4 overflow-x-auto sm:mx-0">
+              <table className="w-full min-w-[640px] text-sm" data-admin-voucher-currencies>
+                <thead>
+                  <tr className="text-muted-foreground border-border border-b text-left">
+                    <th className="px-4 py-2 font-medium sm:pl-0">Currency</th>
+                    <th className="px-4 py-2 font-medium">Country</th>
+                    <th className="px-4 py-2 text-right font-medium">Small · +10%</th>
+                    <th className="px-4 py-2 text-right font-medium">Big · +20%</th>
+                    <th className="px-4 py-2 text-right font-medium">Welcome · VIP · +100%</th>
+                    <th className="px-4 py-2 font-medium sm:pr-0">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {res.currency_list.map((c) => (
+                    <tr key={c.code} className="border-border border-b last:border-0" data-currency={c.code}>
+                      <td className="px-4 py-3 font-semibold sm:pl-0">{c.code}</td>
+                      <td className="text-muted-foreground px-4 py-3">{c.country}</td>
+                      <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+                        {whole(c.small, c.code)} → {whole(c.small * 1.1, c.code)}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+                        {whole(c.big, c.code)} → {whole(c.big * 1.2, c.code)}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+                        {whole(c.small, c.code)} → {whole(c.small * 2, c.code)}
+                      </td>
+                      <td className={c.selling ? "px-4 py-3 font-semibold whitespace-nowrap sm:pr-0" : "text-muted-foreground px-4 py-3 whitespace-nowrap sm:pr-0"}>
+                        {c.selling ? "Selling" : "Not yet"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </SectionCard>
+        </div>
+      ) : null}
     </PageContainer>
   );
 }
