@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronRight, Gift, Plus, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { SizedImg, voucherOffers, type PlaceActions, type PlaceMoney, type VoucherKey } from "@mesita/place-profile";
+import { SizedImg } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import {
@@ -38,8 +38,8 @@ import type { CreditRow } from "./use-wallet";
 //   [mini House Card]     half the column, centred (MESITA-3802): the
 //                         place's photo and name, the server's amount (a
 //                         muted $0 when nothing is spendable yet), "House Card"
-//   [Pay][Buy Credits][Gift]   one row IN the page, 64px, an icon over its
-//                         label. One is filled pink: Pay, or Buy Credits on
+//   [Pay][Add Credits][Gift]   one row IN the page, 64px, an icon over its
+//                         label. One is filled pink: Pay, or Add Credits on
 //                         an empty card. Gift follows giftAction (hidden,
 //                         dimmed with a reason, or open)
 //   (held-credit line)    only while an open payment holds credit
@@ -59,10 +59,15 @@ import type { CreditRow } from "./use-wallet";
 // the fuck is the list of Vouchers"); pending credit was its own "Pending
 // Vouchers" list over "Transactions History" (MESITA-3750).
 //
-// BUY CREDITS opens the place's vouchers in a sheet (BuyCreditsSheet): a tap
-// closes it and opens the pay sheet the place's Offers use. The offer is read
-// in the background when the page opens; the page itself paints from the
-// Wallet read alone.
+// ADD CREDITS (MESITA-3883, Pato: "redirect to the place profile prepay page,
+// not a quick [sheet] to open ... make it good"; "think if buy credits is the
+// right naming"): a link to the place's full-screen Offers page at
+// Prepayments, the one page with the (i) explanations, the basket and the
+// locks. Its back returns here (`from=wallet`), and a purchase returns here
+// from Stripe (MESITA-3617). Named Add, not Buy: it raises this card's
+// balance, like a wallet's "Add Money" (MESITA-3705's own word); the Buy
+// Credits sheet of MESITA-3868 is gone. The page paints from the Wallet read
+// alone.
 //
 // Rows come from lib/wallet-entries.ts: a voucher and its bonus are one row
 // (the only sum here, display only, both amounts the server's); a purchase
@@ -84,10 +89,6 @@ const TICK_MS = 30_000;
 const REREAD_SLACK_MS = 5_000;
 /** Settled rows before "Show all". */
 const HISTORY_FIRST = 10;
-/** How long the Buy Credits sheet shows skeletons before it says the offer
- *  could not load (the place screen's first-reads cap, MESITA-3803). */
-const OFFER_CAP_MS = 3_000;
-
 const ROW = "flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left";
 
 /** A waiting purchase's grey line: its own time. */
@@ -186,172 +187,6 @@ export function HouseCardSkeleton() {
   );
 }
 
-/** The House Card's vouchers: list-vouchers' offer and how its read went,
- *  the guest (for the VIP and Story locks), and the buy the place's Offers
- *  use. */
-export type HouseCardVouchers = {
-  money: PlaceMoney | null;
-  /** list-vouchers has not answered yet. */
-  loading: boolean;
-  /** The last list-vouchers failed. */
-  failed: boolean;
-  /** Ask list-vouchers again; resolves once it answered or failed. */
-  onRetry: () => Promise<void>;
-  guest?: PlaceActions["guest"];
-  buying: VoucherKey | null;
-  onBuy: (key: VoucherKey) => void;
-};
-
-/** The six vouchers as bare rows: the voucher's chip, its name, "Pay · Get".
- *  A row this guest can buy picks it; one they can't is dimmed and says why.
- *  The words and the rules are place-profile's (voucherOffers). */
-function VoucherRows({
-  offer,
-  guest,
-  busy,
-  onPick,
-}: {
-  offer: PlaceMoney;
-  guest?: PlaceActions["guest"];
-  busy: boolean;
-  onPick: (key: VoucherKey) => void;
-}) {
-  const offers = voucherOffers(offer, guest);
-  const row = "flex min-h-16 w-full items-center gap-3 py-2.5 text-left";
-  return (
-    <ul role="list" className="divide-border divide-y">
-      {offers.map((o) => {
-        const body = (
-          <>
-            <span
-              className={cn(
-                "flex h-10 w-[58px] shrink-0 items-center justify-center rounded-xl text-base font-extrabold tracking-tight tabular-nums",
-                o.chipClass,
-              )}
-              aria-hidden
-            >
-              {o.bonus}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-base font-semibold">{o.title}</span>
-              <span className="text-muted-foreground mt-0.5 block text-sm tabular-nums">
-                {o.buyable || !o.why ? `Pay ${o.pay} · Get ${o.get}` : o.why}
-              </span>
-            </span>
-            {o.buyable ? <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden /> : null}
-          </>
-        );
-        return (
-          <li key={o.key}>
-            {o.buyable ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => onPick(o.key)}
-                className={cn(row, "hover:bg-muted/60 transition disabled:opacity-60")}
-                aria-label={`${o.title}: pay ${o.pay}, get ${o.get}`}
-                data-house-card-voucher={o.key}
-              >
-                {body}
-              </button>
-            ) : (
-              <div className={cn(row, o.dimmed && "opacity-50")} data-house-card-voucher={o.key}>
-                {body}
-              </div>
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-/** BUY CREDITS (MESITA-3868): the place's vouchers in the app's one
- *  semi-modal. Four faces, in this order of precedence:
- *
- *    asking, inside the cap       skeleton rows
- *    failed, or the cap ran out   "Couldn't load the vouchers." + Try again
- *    answered with no offer       "This place isn't selling vouchers right now."
- *    an offer                     the rows
- *
- *  The sheet owns the cap (OFFER_CAP_MS from when it is open and unanswered)
- *  and its own "asking again" state, so Try again shows skeletons again; an
- *  answer that arrives after the cap replaces the line with the rows. State
- *  is set in callbacks only (Next 16 lint). A tap closes the sheet and hands
- *  the voucher to `onBuy`, whose pay sheet then opens. */
-function BuyCreditsSheet({ open, onClose, vouchers }: { open: boolean; onClose: () => void; vouchers: HouseCardVouchers }) {
-  const [retrying, setRetrying] = useState(false);
-  const [timedOut, setTimedOut] = useState(false);
-  const asking = vouchers.loading || retrying;
-
-  useEffect(() => {
-    if (!open || !asking) return;
-    const cap = setTimeout(() => setTimedOut(true), OFFER_CAP_MS);
-    return () => clearTimeout(cap);
-  }, [open, asking]);
-
-  const close = () => {
-    setTimedOut(false);
-    onClose();
-  };
-  const retry = () => {
-    setTimedOut(false);
-    setRetrying(true);
-    void vouchers.onRetry().finally(() => setRetrying(false));
-  };
-
-  const face = asking
-    ? timedOut ? "failed" : "asking"
-    : vouchers.failed ? "failed"
-    : vouchers.money ? "rows" : "none";
-
-  return (
-    <LocalSheet open={open} onClose={close} ariaLabel="Buy Credits">
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-8" data-house-card-buy={face}>
-        <h2 className="font-display text-xl font-semibold tracking-tight">Buy Credits</h2>
-        <div className="mt-2">
-          {face === "asking" ? (
-            <div className="divide-border divide-y" aria-busy>
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="flex min-h-16 items-center gap-3 py-2.5" aria-hidden>
-                  <Skeleton className="h-10 w-[58px] rounded-xl" />
-                  <span className="flex-1">
-                    <Skeleton className="h-4 w-36" />
-                    <Skeleton className="mt-1.5 h-3 w-44" />
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : face === "failed" ? (
-            <>
-              <p className="text-muted-foreground mt-2 text-sm" role="status">
-                Couldn&apos;t load the vouchers.
-              </p>
-              <button type="button" className={cn(SECONDARY, "mt-3 w-auto px-5")} onClick={retry}>
-                Try again
-              </button>
-            </>
-          ) : vouchers.money ? (
-            <VoucherRows
-              offer={vouchers.money}
-              guest={vouchers.guest}
-              busy={vouchers.buying !== null}
-              onPick={(key) => {
-                close();
-                vouchers.onBuy(key);
-              }}
-            />
-          ) : (
-            <p className="text-muted-foreground mt-2 text-sm" role="status">
-              This place isn&apos;t selling vouchers right now.
-            </p>
-          )}
-        </div>
-      </div>
-    </LocalSheet>
-  );
-}
-
 export function PlaceCredit({
   row,
   canSend,
@@ -361,7 +196,6 @@ export function PlaceCredit({
   onReread,
   onRemove,
   startGift = false,
-  vouchers,
 }: {
   row: CreditRow;
   /** Sending credit is open here (MESITA-3292). */
@@ -378,8 +212,6 @@ export function PlaceCredit({
   /** Open with Gift Credits showing (Me › Gift, MESITA-3771); only when
    *  sending is open here and there is credit to send. */
   startGift?: boolean;
-  /** The place's vouchers, behind Buy Credits (MESITA-3868). */
-  vouchers?: HouseCardVouchers;
 }) {
   const { card, balance } = row;
   const href = placeHref(row.placeSlug);
@@ -425,7 +257,6 @@ export function PlaceCredit({
   const [sending, setSending] = useState(
     () => startGift && canSend && (balance?.spendable_cents ?? 0) > 0,
   );
-  const [buyOpen, setBuyOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [method, setMethod] = useState<Method | null>(null);
@@ -437,7 +268,7 @@ export function PlaceCredit({
   const muted = card.available_cents <= 0;
   const amount = money(Math.max(0, card.available_cents), card.currency);
   // AN EMPTY CARD, one boolean: nothing spendable, nothing pending, no entry
-  // and no Story voucher waiting. It moves the pink to Buy Credits and shows
+  // and no Story voucher waiting. It moves the pink to Add Credits and shows
   // "No transactions yet"; a card with a Story voucher waiting is never
   // removable from here.
   const empty =
@@ -483,27 +314,24 @@ export function PlaceCredit({
       ) : (
         /* THE ACTIONS, IN THE PAGE (MESITA-3868): one row under the card that
            scrolls with it; the bar's Pay tab stays one tap away further down.
-           One filled button: Pay, or Buy Credits on an empty card. */
+           One filled button: Pay, or Add Credits on an empty card. */
         <div className="mt-5 flex gap-2" data-house-card-actions>
           <PushLink
             href={payPlacePath(row.placeId)}
-            className={empty && vouchers ? ACTION : ACTION_FILLED}
+            className={empty ? ACTION : ACTION_FILLED}
             data-house-card-pay
           >
             <QrCode className="h-5 w-5" aria-hidden />
             Pay
           </PushLink>
-          {vouchers ? (
-            <button
-              type="button"
-              className={empty ? ACTION_FILLED : ACTION}
-              onClick={() => setBuyOpen(true)}
-              data-house-card-fund
-            >
-              <Plus className="h-5 w-5" aria-hidden />
-              Buy Credits
-            </button>
-          ) : null}
+          <PushLink
+            href={`${href}?rewards=prepayment&from=wallet`}
+            className={empty ? ACTION_FILLED : ACTION}
+            data-house-card-fund
+          >
+            <Plus className="h-5 w-5" aria-hidden />
+            Add Credits
+          </PushLink>
           {gift ? (
             <button
               type="button"
@@ -589,7 +417,6 @@ export function PlaceCredit({
         </div>
       ) : null}
 
-      {vouchers && !gone ? <BuyCreditsSheet open={buyOpen} onClose={() => setBuyOpen(false)} vouchers={vouchers} /> : null}
       <SendCreditSheet
         open={sending}
         onClose={() => setSending(false)}
