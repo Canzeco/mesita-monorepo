@@ -7,10 +7,10 @@
 // Reservations' header calendar icon opens this page too.
 
 import { useState } from "react";
-import { ArrowUpRight, CalendarDays, RefreshCw } from "lucide-react";
+import { ArrowUpRight, RefreshCw } from "lucide-react";
+import { CalendarMark, type CalendarKind } from "@/components/shared/calendar-marks";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import {
-  IconChip,
   MeLead,
   RowDivider,
   SettingsActionRow,
@@ -32,12 +32,23 @@ import { errMsg } from "@/lib/utils";
 const KEY = "calendar-link";
 const ROW_CLASS = "hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition";
 
-function CalendarRow({ href, label, sub }: { href: string | null; label: string; sub: string }) {
+function CalendarRow({
+  kind,
+  href,
+  label,
+  sub,
+}: {
+  kind: CalendarKind;
+  href: string | null;
+  label: string;
+  sub: string;
+}) {
   const inner = (
     <>
-      <IconChip>
-        <CalendarDays className="h-[18px] w-[18px]" />
-      </IconChip>
+      {/* Each calendar's own mark (MESITA-3979), in the chip's 36px box. */}
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center" aria-hidden>
+        <CalendarMark kind={kind} size={32} />
+      </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">{label}</span>
         <span className="text-muted-foreground type-label block truncate">{sub}</span>
@@ -90,11 +101,11 @@ export function CalendarModal() {
       </MeLead>
       <div className="flex flex-col gap-6">
         <SettingsGroup title="Add to">
-          <CalendarRow href={subs?.google ?? null} label="Google Calendar" sub="Android or web" />
+          <CalendarRow kind="google" href={subs?.google ?? null} label="Google Calendar" sub="Android or web" />
           <RowDivider />
-          <CalendarRow href={subs?.apple ?? null} label="Apple Calendar" sub="iPhone or Mac" />
+          <CalendarRow kind="apple" href={subs?.apple ?? null} label="Apple Calendar" sub="iPhone or Mac" />
           <RowDivider />
-          <CalendarRow href={subs?.outlook ?? null} label="Outlook" sub="Microsoft" />
+          <CalendarRow kind="outlook" href={subs?.outlook ?? null} label="Outlook" sub="Microsoft" />
         </SettingsGroup>
         {/* Google, Apple and Outlook only (MESITA-3964, Pato: "No other
             calendar must be enabled"): no copy-the-link row for other apps. */}
