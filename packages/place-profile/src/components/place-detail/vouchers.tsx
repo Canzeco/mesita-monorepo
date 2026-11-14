@@ -480,14 +480,18 @@ export function OffersWalletPill({ place }: { place: PlaceDetail }) {
   // grey pill (the shape of the Tickets pill on Pay and Wallet), a round photo
   // and the amount in ink, muted when nothing is spendable. It was a mini
   // House Card in pink with a "House Card" caption (MESITA-3898).
+  // NOT A BUTTON, AND IT DOES NOT LOOK LIKE ONE (Pato, 2026-11-14,
+  // MESITA-3932: "don't make top right wallet clickable"): no grey pill — the
+  // back button beside it wears that — so the photo and the amount sit on the
+  // bar as plain words, with no tap target.
   const empty = available <= 0;
   return (
     <span
-      className="bg-muted text-foreground mr-1.5 flex h-10 shrink-0 items-center gap-2 rounded-full py-1 pr-3.5 pl-1.5"
+      className="text-foreground pointer-events-none mr-3 flex h-10 shrink-0 items-center gap-2 select-none"
       aria-label={spoken}
       data-place-credit
     >
-      <span className="bg-background h-7 w-7 shrink-0 overflow-hidden rounded-full" aria-hidden>
+      <span className="bg-muted h-7 w-7 shrink-0 overflow-hidden rounded-full" aria-hidden>
         {place.profilePhoto ? (
           <SizedImg src={place.profilePhoto} size="thumb" alt="" className="h-full w-full object-cover" />
         ) : (
