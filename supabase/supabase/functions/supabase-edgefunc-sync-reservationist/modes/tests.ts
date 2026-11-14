@@ -111,12 +111,29 @@ export async function runTests(ctx: WorkspaceCtx): Promise<Response> {
   return json({ ok: failed === 0, mode: ctx.mode, runs }, failed === 0 ? 200 : 502);
 }
 
+type Turn = { role?: string; message?: string | null };
 type RunRow = {
   test_name?: string;
   status?: string;
   condition_result?: { result?: string; rationale?: { summary?: string; messages?: string[] } | null } | null;
   metadata?: { test_name?: string } | null;
+  agent_responses?: Turn[] | null;
 };
+
+/** The evaluator's reasons, each one: the summary alone says only
+ *  "Evaluation failed". */
+function reasons(r: RunRow): string {
+  const rat = r.condition_result?.rationale;
+  return [rat?.summary, ...(rat?.messages ?? [])].filter((x) => !!x && x.trim()).join(" · ").slice(0, 1500);
+}
+
+/** The simulated call, one line per turn, so a failure can be read. */
+function callLines(r: RunRow): string[] {
+  return (r.agent_responses ?? [])
+    .filter((t) => typeof t?.message === "string" && t.message.trim())
+    .map((t) => `${t.role === "agent" ? "Agent" : "Caller"}: ${t.message!.trim()}`.slice(0, 300))
+    .slice(0, 30);
+}
 
 export async function testResults(ctx: BaseCtx): Promise<Response> {
   const raw = (ctx.body as { invocation_ids?: unknown }).invocation_ids;
@@ -133,7 +150,8 @@ export async function testResults(ctx: BaseCtx): Promise<Response> {
       test: r.metadata?.test_name ?? r.test_name ?? null,
       status: r.status ?? null,
       result: r.condition_result?.result ?? null,
-      why: (r.condition_result?.rationale?.summary ?? r.condition_result?.rationale?.messages?.join(" ") ?? "").slice(0, 600),
+      why: reasons(r),
+      ...(r.status === "failed" ? { call: callLines(r) } : {}),
     }));
     invocations.push({
       id,
