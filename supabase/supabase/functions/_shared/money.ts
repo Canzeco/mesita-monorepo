@@ -141,7 +141,7 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
  *  bonus and the wait are the catalog's, the same everywhere. The Small
  *  voucher's key stays voucher_200 (a renamed key resets live config). */
 export const VOUCHER_PRICE_CENTS: Record<string, Record<MoneyVoucherKey, number>> = {};
-// Filled from VOUCHER_CURRENCY_LIST below (MESITA-3923; the seven of MESITA-3936): Small
+// Filled from VOUCHER_CURRENCY_LIST below (MESITA-3923; the six of MESITA-3938): Small
 // as listed, Big 10×, Biggest 50×, Welcome · Story · VIP at the Small price.
 
 /** THE TEN CURRENCIES (Pato, 2026-11-14, MESITA-3919: "make a list of all
@@ -149,17 +149,16 @@ export const VOUCHER_PRICE_CENTS: Record<string, Record<MoneyVoucherKey, number>
  *  one in that country; Big is 10× Small; Welcome, Story and VIP cost the
  *  Small price. Amounts in whole units (¥1,000, not cents). All ten sell
  *  (MESITA-3923), each only at places whose currency it is. */
-// SEVEN SINCE MESITA-3936 (Pato: "MXN USD CAD EUR GBP BRL JPY ... small is
-// 10% and big is 20%"): every currency where Stripe opens a place's account.
-// COP, CLP and PEN have no Stripe accounts (Small would be COP 10,000 ·
-// CLP 1,000 · PEN 10).
+// SIX SINCE MESITA-3938 (Pato: "yes remove brazil"): every currency where
+// Stripe opens a place's account under Managed Risk (losses.payments =
+// stripe). Brazil is outside Managed Risk (Small would be BRL 10); COP, CLP
+// and PEN have no Stripe accounts (COP 10,000 · CLP 1,000 · PEN 10).
 export const VOUCHER_CURRENCY_LIST: readonly { code: string; country: string; small: number }[] = [
   { code: "MXN", country: "Mexico", small: 100 },
   { code: "USD", country: "United States", small: 10 },
   { code: "CAD", country: "Canada", small: 10 },
   { code: "EUR", country: "Eurozone", small: 10 },
   { code: "GBP", country: "United Kingdom", small: 10 },
-  { code: "BRL", country: "Brazil", small: 10 },
   { code: "JPY", country: "Japan", small: 1_000 },
 ];
 for (const r of VOUCHER_CURRENCY_LIST) {

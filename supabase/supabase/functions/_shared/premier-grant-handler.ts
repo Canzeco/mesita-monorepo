@@ -1,7 +1,7 @@
 // Removing one pledge — the body behind admin-web-grant-place-premier. It
 // opens with requireAdminRequest (super_admins); the EF name is the caller.
 // Mesita's manual Upgrade (refill, end_mesita_days, MESITA-3163) is gone
-// (MESITA-3937): those actions answer 410, so Premier comes only from a
+// (MESITA-3938): those actions answer 410, so Premier comes only from a
 // payment.
 
 import { json, readJson, readPlaceIdAlias } from "./http.ts";
@@ -20,7 +20,7 @@ export async function handleGrantPlacePremier(req: Request, source: string): Pro
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
-  // Mesita gives no Premier (MESITA-3937, Pato: "Kill the manual Upgrade
+  // Mesita gives no Premier (MESITA-3938, Pato: "Kill the manual Upgrade
   // button. They do need to pay"): refill and end_mesita_days are gone.
   if (body.action === "refill" || body.action === "end_mesita_days") {
     return json({ ok: false, code: "manual_upgrade_removed", error: "Mesita no longer gives Upgrades. Premier is paid." }, 410);

@@ -12,7 +12,7 @@
 // archives (kept, gate answer 2026-11-02). The Edit box and its Manual
 // Premier buttons are gone (MESITA-3159; staff Premier left Business in
 // MESITA-3146). There is no Create + Enrich combo. Box 5, Premier, only lists
-// who is Premier now: Mesita gives no Upgrade (MESITA-3937, Pato: "They do need
+// who is Premier now: Mesita gives no Upgrade (MESITA-3938, Pato: "They do need
 // to pay"; it was the Upgrade box, MESITA-3163/3188).
 
 export const PIPELINE_STEPS = [

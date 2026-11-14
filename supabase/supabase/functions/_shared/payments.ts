@@ -280,12 +280,12 @@ export function isDashboardPairRefusal(message: string): boolean {
   return m.includes("stripe_dashboard") || m.includes("liable") || m.includes("collect fees");
 }
 
-/** Where a place's Stripe account can live: the countries of the seven
- *  voucher currencies (MESITA-3936): Mexico, the US, Canada, the UK, Brazil,
- *  Japan and the euro countries. Anywhere else a place runs House Credits
- *  and cash, never cards. */
+/** Where a place's Stripe account can live: the countries of the six
+ *  voucher currencies that Stripe's Managed Risk covers (MESITA-3938):
+ *  Mexico, the US, Canada, the UK, Japan and the euro countries. Anywhere
+ *  else (Brazil included) a place runs House Credits and cash, never cards. */
 export const CONNECT_COUNTRIES = [
-  "MX", "US", "CA", "GB", "BR", "JP",
+  "MX", "US", "CA", "GB", "JP",
   "AT", "BE", "HR", "CY", "EE", "FI", "FR", "DE", "GR", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PT", "SK", "SI", "ES",
 ] as const;
 export type ConnectCountry = (typeof CONNECT_COUNTRIES)[number];

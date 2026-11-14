@@ -15,7 +15,7 @@
 //   Enable/Disable  guest visibility, places.state (business-web-set-place-listed);
 //                   Disable is confirmed
 //
-// No Upgrade row: Mesita gives no Premier (MESITA-3937, Pato: "They do need
+// No Upgrade row: Mesita gives no Premier (MESITA-3938, Pato: "They do need
 // to pay"). Premier comes from the place's plan or a guest's bought Upgrade.
 //
 // The states these change are drawn read-only in Profile States, Reviews
