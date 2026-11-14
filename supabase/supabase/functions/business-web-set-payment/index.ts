@@ -66,7 +66,7 @@ serveJson("business-web-set-payment", async (req) => {
     const line: Record<string, string> = {
       card_cashback_bps: "App Payments Cashback is Off or 5%.",
       cash_cashback_bps: "Cash Payments Cashback is Off or 3%.",
-      credit_cashback_bps: "Credits Payments Cashback is Off or 2%.",
+      credit_cashback_bps: "Credits Payments Cashback is Off or 5%.",
       prepay_cashback_bps: "App Prepayments Cashback is Off or 5%.",
     };
     return json({ ok: false, code: "invalid", error: line[key] }, 400);
@@ -76,9 +76,11 @@ serveJson("business-web-set-payment", async (req) => {
   // "App Payments: 5% Fee. 5% Back to user. Cash Payments: 0% Fee. 0% Back
   // to user. App Prepayment. 5% Fee. 5% Back to user."): credit and cash can
   // go off, never on. Cash earned 3% under MESITA-3837; vouchers earn again.
-  if ((key === "credit_cashback_bps" || key === "cash_cashback_bps") && bps !== null) {
-    return json({ ok: false, code: "not_offered", error: "Only App Payments and App Prepayments give cashback." }, 409);
-  }
+  // CASH IS OFF OR 3% AGAIN (Pato, 2026-11-14, MESITA-3944: "CASHBACK AS
+  // CREDITS FOR CASH PAYMENTS IS FUCKING OFF OR 3"): the place's choice,
+  // paid when the waiter taps Received. Credit is Off or 5% (Pato, same
+  // issue: "enable Cashback as Credits for Credits Payments ... 5% Recycle
+  // that shit"). Every way to pay gives cashback again.
 
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;
@@ -121,7 +123,7 @@ serveJson("business-web-set-payment", async (req) => {
     }
     patch[key] = on;
   } else {
-    if ((key === "credit_cashback_bps" || key === "prepay_cashback_bps") && bps !== null && !current.house_credits) {
+    if ((key === "credit_cashback_bps" || key === "prepay_cashback_bps" || key === "cash_cashback_bps") && bps !== null && !current.house_credits) {
       return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
     }
     if (key === "prepay_cashback_bps" && bps !== null && !current.prepayments) {
