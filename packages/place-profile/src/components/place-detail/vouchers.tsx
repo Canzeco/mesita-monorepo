@@ -484,21 +484,25 @@ export function OffersWalletPill({ place }: { place: PlaceDetail }) {
   // MESITA-3932: "don't make top right wallet clickable"): no grey pill — the
   // back button beside it wears that — so the photo and the amount sit on the
   // bar as plain words, with no tap target.
+  // IN A BLACK BOX (Pato, MESITA-3935: "must be inside a black box or
+  // something"): a rounded rectangle in ink, white amount (70% at zero) —
+  // not the back button's round grey pill, so it reads as a balance, still
+  // with pointer-events off.
   const empty = available <= 0;
   return (
     <span
-      className="text-foreground pointer-events-none mr-3 flex h-10 shrink-0 items-center gap-2 select-none"
+      className="bg-foreground pointer-events-none mr-1.5 flex h-10 shrink-0 items-center gap-2 rounded-[10px] py-1 pr-3 pl-1.5 text-white select-none"
       aria-label={spoken}
       data-place-credit
     >
-      <span className="bg-muted h-7 w-7 shrink-0 overflow-hidden rounded-full" aria-hidden>
+      <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-white/20" aria-hidden>
         {place.profilePhoto ? (
           <SizedImg src={place.profilePhoto} size="thumb" alt="" className="h-full w-full object-cover" />
         ) : (
           <span className="flex h-full w-full items-center justify-center text-xs font-semibold">{firstInitial(place.name)}</span>
         )}
       </span>
-      <span className={cn("text-[15px] font-semibold tabular-nums", empty && "text-muted-foreground")} aria-hidden>
+      <span className={cn("text-[15px] font-semibold tabular-nums", empty && "text-white/70")} aria-hidden>
         {pesos(available, currency)}
       </span>
     </span>
