@@ -24,6 +24,7 @@ import { forgetGuestTab, PlacePhoto, readGuestTabIds } from "./pay-common";
 import { usePayPlaces } from "./use-pay-places";
 import { pendingTicketPlace } from "./GuestPayScreen";
 import { PayHeader } from "./PayHeader";
+import { TicketsShortcut } from "./TicketsShortcut";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
@@ -219,6 +220,7 @@ export function PayPage() {
     <KeptScroll className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
       <PayHeader
         title="Pay"
+        action={<TicketsShortcut />}
         bar={
           openTabs && openTabs.length === 0 ? (
             <SearchBar
