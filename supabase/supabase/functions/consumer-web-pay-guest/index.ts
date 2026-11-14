@@ -11,7 +11,7 @@
 // for the waiter's Verify (visit-web-verify-tab), which writes the 2%; a card
 // part → charged inside the app as on the waiter's tab (_shared/tab-card.ts).
 // Every guest tab ends with the waiter scanning its QR and tapping Verify,
-// within three hours.
+// within ten minutes (MESITA-3843).
 //
 // Body: { place_id, bill_cents, credit_cents, cash_bill_cents,
 //         cash_tip_cents, card_bill_cents?, card_tip_cents?, card_pm_id?
@@ -130,6 +130,8 @@ serveJson("consumer-web-pay-guest", async (req) => {
       p_outside_cashback_bps: Math.max(0, cashMoney.cash_cashback_bps),
       p_ticket: pay.ticket,
       p_repeat_ok: pay.repeatOk,
+      // MESITA-3843: the waiter has ten minutes to sign.
+      p_window: "10 minutes",
       ...cardArgs,
     });
     if (r.ok !== true) {

@@ -440,6 +440,10 @@ verify_jwt = false
 [functions.visit-web-verify-tab]
 verify_jwt = false
 
+# MESITA-3843: the waiter's Reject of a guest's bill; the staff token is the gate.
+[functions.visit-web-reject-tab]
+verify_jwt = false
+
 # MESITA-3462: the staff list of a place's Mesita Payments. No sign-in on
 # visit.mesita.ai: the place code answers a 12-hour staff token (HMAC over
 # the place's current code hash), and the 15 s reads carry the token.

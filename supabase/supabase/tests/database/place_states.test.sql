@@ -65,12 +65,12 @@ select throws_ok(
   $$update public.place_payment_settings set card_cashback_bps = 700 where place_id = '00000000-0000-4000-8000-000000013589'$$,
   '23514', null, 'a card rate other than 5% is refused (MESITA-3596)');
 select throws_ok(
-  $$update public.place_payment_settings set cash_cashback_bps = 300 where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  '23514', null, 'a cash rate other than 2% is refused (MESITA-3596)');
+  $$update public.place_payment_settings set cash_cashback_bps = 200 where place_id = '00000000-0000-4000-8000-000000013589'$$,
+  '23514', null, 'a cash rate other than 3% is refused (MESITA-3837, MESITA-3843)');
 select lives_ok(
-  $$update public.place_payment_settings set card_cashback_bps = 500, cash_cashback_bps = 200
+  $$update public.place_payment_settings set card_cashback_bps = 500, cash_cashback_bps = 300
      where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  '5% card and 2% cash are taken');
+  '5% card and 3% cash are taken');
 select throws_ok(
   $$update public.place_payment_settings set cash_cashback_bps = 500 where place_id = '00000000-0000-4000-8000-000000013589'$$,
   '23514', null, 'cash is never 5%');
