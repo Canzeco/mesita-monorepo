@@ -219,7 +219,6 @@ export function SearchHeader({
         onClose={() => setSheetOpen(false)}
         applied={filters.familyKeys}
         onApply={setMapFamilies}
-        note="Pick as many families as you like. The map shows places in any of them."
       />
     </div>
   );
