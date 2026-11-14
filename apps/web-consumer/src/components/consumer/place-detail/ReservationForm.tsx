@@ -8,7 +8,9 @@ import {
   firstOpenDate,
   ReservationDatePicker,
   ReservationPartyPicker,
+  ReservationNotifyPicker,
   ReservationTimePicker,
+  type ReservationNotify,
 } from "@/components/consumer/reservation-pickers";
 import {
   apiCreateReservation,
@@ -124,6 +126,8 @@ export function ReservationForm({
   const [timeChoice, setTimeChoice] = useState<string | null>(null);
   const [party, setParty] = useState(DEFAULT_PARTY);
   const [notes, setNotes] = useState("");
+  // App only by default (MESITA-3961): a call is something the guest asks for.
+  const [notify, setNotify] = useState<ReservationNotify>("app");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -221,10 +225,11 @@ export function ReservationForm({
           reservedAt,
           partySize: party,
           notes,
+          guestNotify: notify,
           firstName,
           lastName,
           requestId: requestIdFor(
-            [place.id, reservedAt, party, notes.trim(), firstName.trim(), lastName.trim()].join("|"),
+            [place.id, reservedAt, party, notes.trim(), firstName.trim(), lastName.trim(), notify].join("|"),
           ),
         });
       }
@@ -352,6 +357,8 @@ export function ReservationForm({
           className="border-border bg-card focus:border-foreground/40 mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
         />
       </div>
+
+      {!rescheduling && <ReservationNotifyPicker value={notify} onChange={setNotify} />}
 
       {error && (
         <p className="type-body bg-destructive/10 text-destructive mt-3 rounded-xl px-3 py-2 font-medium">

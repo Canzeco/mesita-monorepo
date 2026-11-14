@@ -11,12 +11,13 @@
 // decision: a dictated code is looked up by a4_find_reservation within the
 // verified place, never by the global get_reservation (MESITA-3622).
 
-import { CLOSING } from "./closing.ts";
+import { CLOSING, NATURAL } from "./closing.ts";
 import { back, edge, END, type FleetAgent, llm, pos, RESULT_FAIL, RESULT_OK, START, talkNode, toolNode, UNCOND } from "./graph.ts";
 
 const PROMPT = [
   `Eres la línea de Mesita para restaurantes: te llama personal de un lugar. Hablas como una persona: español de México, de usted, breve y profesional. Solo hablas de las reservaciones del lugar verificado, solo con lo que regresan las herramientas, y nunca das el teléfono de un comensal: Mesita le avisa. El flujo te dice qué hacer en cada paso.`,
   CLOSING,
+  NATURAL,
 ].join("\n\n");
 
 export const A4: FleetAgent = {

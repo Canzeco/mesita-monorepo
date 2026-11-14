@@ -1,4 +1,4 @@
-import { Minus, Plus } from "lucide-react";
+import { Check, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   bookingWindowDays,
@@ -251,6 +251,73 @@ export function ReservationPartyPicker({
         >
           <Plus className="h-4 w-4" />
         </button>
+      </div>
+    </div>
+  );
+}
+
+/** How the guest hears back (MESITA-3961). The server stores it as
+ *  consumer_notify: "app" | "call". */
+export type ReservationNotify = "app" | "call";
+
+const NOTIFY_OPTIONS: Array<{ value: ReservationNotify; label: string; hint: string }> = [
+  { value: "app", label: "App notification", hint: "Every answer shows in the app." },
+  {
+    value: "call",
+    label: "App notification + call me",
+    hint: "Mesita also calls when the place needs your answer.",
+  },
+];
+
+/**
+ * Updates — one card of two rows. Pato, 2026-11-14: "the guest must select
+ * ... app notification or (app notification + call me)". A confirmed table is
+ * never a call; a call is only for a decision (other times, a cancellation).
+ */
+export function ReservationNotifyPicker({
+  value,
+  onChange,
+}: {
+  value: ReservationNotify;
+  onChange: (next: ReservationNotify) => void;
+}) {
+  return (
+    <div className="mt-4">
+      <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
+        Updates
+      </p>
+      <div
+        role="radiogroup"
+        aria-label="Updates"
+        className="border-border bg-card divide-border mt-2 divide-y rounded-2xl border"
+      >
+        {NOTIFY_OPTIONS.map((o) => {
+          const active = o.value === value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(o.value)}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="type-body block font-medium">{o.label}</span>
+                <span className="text-muted-foreground type-meta block">{o.hint}</span>
+              </span>
+              <span
+                aria-hidden
+                className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                  active ? "border-foreground bg-foreground text-background" : "border-border",
+                )}
+              >
+                {active && <Check className="h-3 w-3" />}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

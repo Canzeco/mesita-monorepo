@@ -576,6 +576,9 @@ function decideBooking(
   const appOnly = t.consumer_notify === "app";
   const nowIso = now.toISOString();
   if (verdict === "confirmed") {
+    // The guest is phoned only when a decision waits (MESITA-3961, Pato:
+    // "recall the guest when some important prompt to reserve is critical,
+    // else don't"). A confirmed table needs no answer: the app tells them.
     setResult("confirmed");
     return {
       patch: {
@@ -585,20 +588,17 @@ function decideBooking(
         state: "confirmed",
         confirmed_at: nowIso,
         callback_at: nowIso,
-        callback_next_attempt_at: appOnly ? null : nowIso,
-        callback_state: appOnly ? "skipped" : "scheduled",
-        // App-only: the in-app state IS the guest's acknowledgement.
-        ...(appOnly ? { consumer_confirmed_at: nowIso } : {}),
+        callback_next_attempt_at: null,
+        callback_state: "skipped",
+        // The in-app state IS the guest's acknowledgement.
+        consumer_confirmed_at: nowIso,
         outage_retries: 0,
         // A confirmed MODIFICATION moved the booking on this very call.
         modification_of: null,
         ...reminderParkPatch(zone, t.reserved_at ? new Date(t.reserved_at) : null, appOnly ? "app" : "call", now),
-        last_call_state: appOnly
-          ? `intent ${n}: place confirmed — guest prefers app-only; no call`
-          : `intent ${n}: place confirmed — calling the guest`,
+        last_call_state: `intent ${n}: place confirmed — the app tells the guest; no call`,
       },
       notify: "confirmed",
-      kickCallback: !appOnly,
     };
   }
   if (verdict === "counter_offer") {

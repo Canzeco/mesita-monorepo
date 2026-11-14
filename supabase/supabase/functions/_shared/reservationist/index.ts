@@ -20,7 +20,7 @@ import { A3 } from "./a3.ts";
 import { A4 } from "./a4.ts";
 import { FACTS } from "./facts.ts";
 import type { FleetAgent, FleetAgentKey, FleetWorkflow } from "./graph.ts";
-import { ASR, BUILT_IN_TOOLS, CONVERSATION, LANGUAGE, LLM, TTS, TURN } from "./settings.ts";
+import { ASR, BUILT_IN_TOOLS, CONVERSATION, LANGUAGE, LANGUAGE_PRESETS, LLM, TTS, TURN, TURN_OUTBOUND } from "./settings.ts";
 import type { ToolName } from "./tools.ts";
 
 export type { FleetAgent, FleetAgentKey, FleetWorkflow } from "./graph.ts";
@@ -63,8 +63,10 @@ export function agentConversationConfig(agent: FleetAgent, toolIds: string[]): R
     },
     tts: TTS,
     asr: ASR,
-    turn: TURN,
+    // No first message = a call Mesita places: wait for the other side first.
+    turn: agent.firstMessage === "" ? TURN_OUTBOUND : TURN,
     conversation: CONVERSATION,
+    language_presets: LANGUAGE_PRESETS,
   };
 }
 

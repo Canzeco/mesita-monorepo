@@ -37,6 +37,23 @@ export const TURN = {
   silence_end_call_timeout: -1,
 };
 
+/**
+ * Calls Mesita PLACES (a1, a2) open with no first message: the agent waits
+ * for the other side to speak ("¿Bueno?"), at most this many seconds, and
+ * only then greets (MESITA-3961, Pato: "the agent starts speaking like
+ * immediatly after the call starts, give him some seconds").
+ */
+export const TURN_OUTBOUND = { ...TURN, initial_wait_time: 3 };
+
+/**
+ * Languages an agent may switch to mid-call (MESITA-3961, Pato: "enable
+ * language swithcing"). The language_detection built-in below does the
+ * switch; Spanish stays the default.
+ */
+export const LANGUAGE_PRESETS: Record<string, unknown> = {
+  en: { overrides: { agent: { language: "en" } } },
+};
+
 export const CONVERSATION = {
   max_duration_seconds: 600,
   client_events: [
@@ -60,6 +77,13 @@ export const BUILT_IN_TOOLS: Record<string, unknown> = {
     description:
       "Cuelga la llamada. Úsala solo cuando el paso actual del flujo lo indique y ya te despediste.",
     params: { system_tool_type: "end_call" },
+    response_timeout_secs: 20,
+  },
+  language_detection: {
+    name: "language_detection",
+    type: "system",
+    description: "",
+    params: { system_tool_type: "language_detection" },
     response_timeout_secs: 20,
   },
   voicemail_detection: {
