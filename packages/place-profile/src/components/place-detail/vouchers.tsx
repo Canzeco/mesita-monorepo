@@ -464,7 +464,7 @@ function offerStatus(
 /** THE WALLET PILL (Pato, MESITA-3483, with inKind's "Load your wallet":
  *  "show the wallet on top ... profile picture of place joined to amount of
  *  credits and wallet icon"): the Offers page's top-bar right slot, where the
- *  three dots were. The place's small photo, a wallet mark and the guest's
+ *  three dots were. The place's small photo and the guest's
  *  available credits here (list-vouchers' balance; formatted, never added).
  *  It replaced the House Card strip (MESITA-3448..3454). */
 export function OffersWalletPill({ place }: { place: PlaceDetail }) {
@@ -473,29 +473,28 @@ export function OffersWalletPill({ place }: { place: PlaceDetail }) {
   const available = balance?.available_cents ?? 0;
   const pending = balance?.pending_cents ?? 0;
   const spoken = `Your credits here: ${pesos(available, currency)}${pending > 0 ? `, ${pesos(pending, currency)} pending` : ""}`;
-  // A MINI HOUSE CARD (Pato, 2026-11-14, MESITA-3898: "enhance the top ugly
-  // ass preview of the wallet"): the black pill became the same object the
-  // Wallet's House Card page draws (MESITA-3802), in miniature: its pink
-  // gradient and faint circle, the place's photo in a white ring, the amount
-  // (white at 70% when nothing is spendable) over "House Card".
+  // THE PLACE'S PHOTO AND THE AMOUNT, NOTHING ELSE (Pato, 2026-11-14,
+  // MESITA-3903: "DON'T CALL HOUSE CARD LIKE THAT. IT LOOKS LIKE SHIT. JUST
+  // THE PROFILE PHOTO OF THE PLACE AND THE AMOUNT. THATS IT"): the top bar's
+  // grey pill (the shape of the Tickets pill on Pay and Wallet), a round photo
+  // and the amount in ink, muted when nothing is spendable. It was a mini
+  // House Card in pink with a "House Card" caption (MESITA-3898).
   const empty = available <= 0;
   return (
     <span
-      className="relative mr-1.5 flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-[10px] bg-gradient-to-br from-[var(--brand-pink-500)] to-[var(--brand-pink-800)] py-1 pr-3 pl-1.5 text-white shadow-sm"
+      className="bg-muted text-foreground mr-1.5 flex h-10 shrink-0 items-center gap-2 rounded-full py-1 pr-3.5 pl-1.5"
       aria-label={spoken}
       data-place-credit
     >
-      <span className="pointer-events-none absolute -top-5 -right-3 h-10 w-10 rounded-full bg-white/10" aria-hidden />
-      <span className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-white/70 bg-white/20" aria-hidden>
+      <span className="bg-background h-7 w-7 shrink-0 overflow-hidden rounded-full" aria-hidden>
         {place.profilePhoto ? (
           <SizedImg src={place.profilePhoto} size="thumb" alt="" className="h-full w-full object-cover" />
         ) : (
           <span className="flex h-full w-full items-center justify-center text-xs font-semibold">{firstInitial(place.name)}</span>
         )}
       </span>
-      <span className="relative flex flex-col leading-none" aria-hidden>
-        <span className={cn("text-[15px] font-semibold tabular-nums", empty && "text-white/70")}>{pesos(available, currency)}</span>
-        <span className="mt-0.5 text-[9px] font-semibold tracking-[0.12em] text-white/80 uppercase">House Card</span>
+      <span className={cn("text-[15px] font-semibold tabular-nums", empty && "text-muted-foreground")} aria-hidden>
+        {pesos(available, currency)}
       </span>
     </span>
   );
