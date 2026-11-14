@@ -82,8 +82,8 @@ export function isRateKey(v: unknown): v is RateKey {
  *  2% and OFF or 5%"): Mesita Payments 5%, Cash Payments 2%. Off is null. */
 export const CASHBACK_BPS: Record<RateKey, number> = {
   card_cashback_bps: 500,
-  // 3% (Pato, MESITA-3837: "what about 3% and 5%????"): every cash payer
-  // still opens the app; paying in it stays the better deal.
+  // Not offered since MESITA-3928 (cash carries no Mesita fee, so no
+  // cashback); the rate stays for the column CHECK and older rows.
   cash_cashback_bps: 300,
   // MESITA-3827 (Pato: "add the option to give cashback with credits too").
   credit_cashback_bps: 200,

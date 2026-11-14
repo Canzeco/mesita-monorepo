@@ -14,7 +14,7 @@
 //   own Cashback-as-Credits:)
 //   Main Configuration · the Stripe Account row and its button, then the
 //     House Credits Agreement and the House Credits switch it unlocks;
-//   Cash Payments · Cash Payments, then its Cashback-as-Credits (Off or 2%);
+//   Cash Payments · Cash Payments, then its Cashback-as-Credits (None, MESITA-3928);
 //   Credits Payments · Credits Payments (Always on), then its Cashback-as-
 //     Credits (Off or 2%, on the credit part);
 //   Mesita Payments · Mesita Payments, then its Cashback-as-Credits (Off or 5%);
@@ -301,7 +301,6 @@ export function PaymentsPanel({
   const needsHouseCredits = step("Turn House Credits on first.", "#house-credits");
   const needsStripe = step("Connect the Stripe Account first.", "#stripe-account");
   const needsCode = step("Set the waiter code first.", "#waiter-code");
-  const needsCash = step("Turn Cash Payments on first.", "#cash-payments");
   const needsPrepayments = step("Turn App Prepayments on first.", "#mesita-prepayments");
 
   // The to-do strip (MESITA-3602, Pato: "a sequential horizontal to-do list to
@@ -553,13 +552,17 @@ export function PaymentsPanel({
             tone: "bg-lime-100 text-lime-700",
             blocked: codeSet ? undefined : needsCode,
           })}
-          {/* Cash earns 3% (MESITA-3837), the app 5%. */}
-          {rateRow({
-            key: "cash_cashback_bps",
-            name: "Cash Payments Cashback-as-Credits",
-            line: "Back as credit here on the bill, once your waiter taps Received. Never on the tip.",
-            blocked: !settings.house_credits ? needsHouseCredits : !settings.cash_payments ? needsCash : undefined,
-          })}
+          {/* NO CASHBACK ON CASH (Pato, MESITA-3928: "Cash Payments: 0% Fee.
+              0% Back to user"): fixed at None, like Credits Payments. */}
+          <li className={MARK_ROW} data-place-state="cash_cashback_bps">
+            {mark(CoinsIcon, false, "bg-amber-100 text-amber-700")}
+            <div className="min-w-0">
+              <p className="font-medium">Cashback-as-Credits</p>
+              <p className="text-muted-foreground">Cash carries no Mesita fee, so it earns no cashback. Paying in the app earns 5%.</p>
+            </div>
+            <p className="text-muted-foreground font-semibold whitespace-nowrap">None</p>
+            <span />
+          </li>
         </ul>
       </Card>
       {/* CREDITS PAYMENTS, ITS OWN SECTION WITH ITS CASHBACK (MESITA-3827,
@@ -625,8 +628,15 @@ export function PaymentsPanel({
                     : null
               : null,
           })}
-          {/* No cashback on a voucher's price (MESITA-3836): the bonus is the
-              voucher's reward. */}
+          {/* 5% BACK ON A VOUCHER (Pato, MESITA-3928: "App Prepayment. 5%
+              Fee. 5% Back to user"), off under MESITA-3836. */}
+          {rateRow({
+            key: "prepay_cashback_bps",
+            name: "App Prepayments Cashback-as-Credits",
+            line: "Back as credit here on a voucher's price, on top of its extra.",
+            blocked: !settings.house_credits ? needsHouseCredits : !settings.prepayments ? needsPrepayments : undefined,
+            stripe: true,
+          })}
           {/* Welcome, Small, Big, VIP (MESITA-3834); the MX$5,000 voucher
               and Story are off sale, money-state's NOT_YET_SELLABLE. */}
           {voucherProducts(currency)
