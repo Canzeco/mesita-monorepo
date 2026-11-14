@@ -216,9 +216,6 @@ const PROFILES_READ_ALLOWLIST = [
   // The place screen's one read, admin's and the Business app's (MESITA-3103).
   "_shared/place-overview.ts",
   "_shared/place-update-apply.ts", // the row read back on a Reset-only save (MESITA-2829); both save doors (MESITA-3103)
-  // Names only (google_place_id, name) for the repeated-open list (MESITA-2323).
-  "admin-web-list-place-opens/index.ts",
-  "admin-web-get-activity-summary/index.ts",
   "consumer-web-get-place/index.ts",
   "consumer-web-list-catalog/index.ts",
   "consumer-web-list-places/index.ts",

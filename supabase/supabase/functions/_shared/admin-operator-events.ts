@@ -57,31 +57,6 @@ export type AdminOperatorEventRow = {
   created_at: string;
 };
 
-export type OperatorVerbCounts = Record<
-  AdminOperatorVerb,
-  { succeeded: number; failed: number }
->;
-
-export function summarizeOperatorVerbs(
-  rows: readonly AdminOperatorEventRow[],
-): OperatorVerbCounts {
-  const counts: OperatorVerbCounts = {
-    create: { succeeded: 0, failed: 0 },
-    update: { succeeded: 0, failed: 0 },
-    enrich: { succeeded: 0, failed: 0 },
-    edit: { succeeded: 0, failed: 0 },
-  };
-  for (const row of rows) {
-    const verb = (ADMIN_OPERATOR_VERBS as readonly string[]).includes(row.verb)
-      ? (row.verb as AdminOperatorVerb)
-      : null;
-    if (!verb) continue;
-    const outcome = row.outcome === "failed" ? "failed" : "succeeded";
-    counts[verb][outcome] += 1;
-  }
-  return counts;
-}
-
 export type ActivityFeedItem = {
   id: string;
   at: string;

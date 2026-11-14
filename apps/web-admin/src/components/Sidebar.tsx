@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Icon } from "@phosphor-icons/react";
 import { ShieldCheckIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
-import { ANALYTICS_PARENT } from "@/app/(app)/analytics/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { LOGS_PARENT } from "@/app/(app)/logs/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
@@ -104,10 +103,11 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
   RESERVATIONS_PARENT,
 ];
 
-// Activity — platform observability (MESITA-2745): counters, feed, breakdowns.
+// Activity — platform observability (MESITA-2745): the feed and logs.
+// Analytics left (MESITA-3848, Pato: "Kill this analytics page").
 // Feedback closes it (Pato, MESITA-3034: "feedback goes into activity"): what
 // guests report from a place's three dots, a log like the other two.
-export const ACTIVITY_NAV: NavItem[] = [LOGS_PARENT, ANALYTICS_PARENT, FEEDBACK_PARENT];
+export const ACTIVITY_NAV: NavItem[] = [LOGS_PARENT, FEEDBACK_PARENT];
 
 // Testing — operator tools that probe live external systems (Billing only).
 const TESTING_NAV: NavItem[] = [BILLING_TEST_PARENT];

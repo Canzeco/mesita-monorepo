@@ -35,14 +35,14 @@ describe("Configurations rail", () => {
 // Pato, MESITA-2084, on the rail with Places highlighted: "Multiple Places /
 // Single Place". Many then one, after the two wider records.
 describe("Activity rail", () => {
-  it("is exactly Logs · Analytics · Feedback", () => {
-    expect(ACTIVITY_NAV.map((i) => i.label)).toEqual(["Logs", "Analytics", "Feedback"]);
+  it("is exactly Logs · Feedback", () => {
+    expect(ACTIVITY_NAV.map((i) => i.label)).toEqual(["Logs", "Feedback"]);
   });
 
   it("gives each row its own page", () => {
     const hrefs = ACTIVITY_NAV.map((i) => i.href);
     expect(new Set(hrefs).size).toBe(hrefs.length);
-    for (const href of ["/logs", "/analytics"])
+    for (const href of ["/logs", "/feedback"])
       expect(existsSync(join(APP, ...href.split("/").filter(Boolean), "page.tsx")), href).toBe(true);
   });
 });
