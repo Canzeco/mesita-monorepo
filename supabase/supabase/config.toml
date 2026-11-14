@@ -250,9 +250,6 @@ verify_jwt = true
 [functions.consumer-web-update-profile]
 verify_jwt = true
 
-[functions.consumer-web-join-class]
-verify_jwt = true
-
 [functions.consumer-web-delete-account]
 verify_jwt = true
 
@@ -632,7 +629,7 @@ verify_jwt = true
 verify_jwt = true
 
 # VIP invitation codes (MESITA-3540): issue one (shown once) or revoke an
-# unused one. A guest uses it once through consumer-web-join-class.
+# unused one. No guest can use one since MESITA-3850 (VIP is automatic).
 [functions.admin-web-save-vip-code]
 verify_jwt = true
 

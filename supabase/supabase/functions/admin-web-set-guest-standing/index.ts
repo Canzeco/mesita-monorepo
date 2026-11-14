@@ -1,23 +1,22 @@
 // Supabase Edge Function — admin-web-set-guest-standing
 //
-// Manage › Guests (MESITA-2550, MESITA-2553). Sets a guest's Class (regular or
-// VIP, through a partner; never sold) and Plan (free or premium), independently,
-// and the operator-only note on where a VIP came from, and for a VIP the
+// Manage › Guests (MESITA-2550, MESITA-2553; the page is gone since MESITA-3846).
+// Sets a guest's Plan (free or premium). Class is automatic since MESITA-3850
+// (a verified Instagram with more than 5,000 followers): a guestClass in the
+// body is 400 class_automatic. It also sets the operator-only note on where a VIP came from, and for a VIP the
 // partner it came through and its last day (MESITA-2556; recorded, never
 // enforced, and no rate rides on either). One call to the
-// admin_set_guest_standing RPC does the write: it stamps who set the class
-// and when only when the class actually changes, so two operators can never
-// record the wrong one. Super-admin only. It also sets one guest's monthly
+// admin_set_guest_standing RPC does the write. Super-admin only. It also sets one guest's monthly
 // reservation cap (MESITA-2555; null = the plan's cap, _shared/reservation-cap.ts)
 // through admin_set_guest_reservation_cap, written first so the standing RPC's
 // row comes back with it.
 //
 // Errors are { ok: false, code, error } with a stable code and the fix:
-//   400 stale_client · invalid_consumer · invalid_guest_class · invalid_plan ·
+//   400 stale_client · invalid_consumer · class_automatic · invalid_plan ·
 //       invalid_note · note_too_long · invalid_partner · invalid_vip_until ·
-//       vip_until_past · not_vip · unknown_partner · invalid_reservation_cap ·
+//       vip_until_past · unknown_partner · invalid_reservation_cap ·
 //       nothing_to_set
-//   404 guest_not_found · 409 account_closed · not_vip · 500 update_failed
+//   404 guest_not_found · 409 account_closed · 500 update_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -55,7 +54,7 @@ serveJson("admin-web-set-guest-standing", async (req) => {
   // nothing and returns the row.
   const written = await admin.rpc("admin_set_guest_standing", {
     p_consumer: consumerId,
-    p_guest_class: patch.guestClass ?? null,
+    p_guest_class: null, // automatic since MESITA-3850; the RPC refuses one
     p_plan: patch.plan ?? null,
     p_note: patch.guestClassNote ?? null,
     p_note_set: "guestClassNote" in patch,
@@ -67,13 +66,6 @@ serveJson("admin-web-set-guest-standing", async (req) => {
   });
   if (written.error?.code === "23503") {
     return json({ ok: false, code: "unknown_partner", error: "No such partner. Reload the page." }, 400);
-  }
-  if (written.error?.code === "23514" && /vip_fields/.test(written.error.message)) {
-    return json({
-      ok: false,
-      code: "not_vip",
-      error: "Only a VIP has a partner or a last day. Set the class to VIP first.",
-    }, 409);
   }
   if (written.error) {
     return json(
@@ -105,7 +97,6 @@ serveJson("admin-web-set-guest-standing", async (req) => {
 
   console.log("guest_standing_set", JSON.stringify({
     consumerId,
-    guestClass: patch.guestClass ?? null,
     plan: patch.plan ?? null,
     noteChanged: "guestClassNote" in patch,
     reservationCapOverride: "reservationCapOverride" in patch

@@ -660,13 +660,13 @@ select ok(
 
 -- MESITA-2553: Plan (free/pro) and Class (regular/vip), independent; plain by default.
 select ok(
-  (select column_default from information_schema.columns
+  (select generation_expression from information_schema.columns
     where table_schema = 'public' and table_name = 'consumers'
-      and column_name = 'guest_class') like '''regular''%'
+      and column_name = 'guest_class') like '%5000%'
     and (select column_default from information_schema.columns
     where table_schema = 'public' and table_name = 'consumers'
       and column_name = 'plan') like '''free''%',
-  'consumers.guest_class defaults to regular and consumers.plan to free (MESITA-2553)'
+  'consumers.guest_class follows the 5,000-follower rule (MESITA-3850) and consumers.plan defaults to free (MESITA-2553)'
 );
 
 select ok(
@@ -711,7 +711,7 @@ select ok(
   has_function_privilege('service_role', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE'),
-  'only the service role can set a guest''s Class and Plan (MESITA-2553)'
+  'only the service role can set a guest''s Plan (MESITA-2553; Class is automatic since MESITA-3850)'
 );
 
 select ok(
@@ -741,10 +741,10 @@ select ok(
 );
 
 select ok(
-  pg_get_constraintdef((select oid from pg_constraint
-    where conname = 'consumers_vip_fields_check'
-      and conrelid = 'public.consumers'::regclass)) like '%vip_partner_id IS NULL%vip_until IS NULL%',
-  'only a VIP holds a partner or an end date (MESITA-2556)'
+  not exists (select 1 from pg_constraint
+               where conname = 'consumers_vip_fields_check'
+                 and conrelid = 'public.consumers'::regclass),
+  'a guest who falls below the VIP bar may keep a recorded partner or end date (MESITA-3850 dropped MESITA-2556''s check)'
 );
 
 -- MESITA-2590: a member can appear as "A member"; the one visibility rule reads it.
