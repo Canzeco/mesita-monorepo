@@ -28,6 +28,7 @@ import CreditLoading from "./me/tickets/credit/[placeId]/[entry]/loading";
 import NotificationsLoading from "./me/notifications/loading";
 import ReservationsLoading from "./me/reservations/loading";
 import TicketsLoading from "./me/tickets/loading";
+import ShareLoading from "./share/loading";
 
 // One frame per screen in the route map (MESITA-3646): a screen without one
 // is a type error, never a blank card.
@@ -55,6 +56,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   walletGift: () => <WalletGiftLoading />,
   visit: () => <VisitLoading />,
   credit: () => <CreditLoading />,
+  share: () => <ShareLoading />,
   me: () => <MeLoading />,
   meProfile: () => <ProfileLoading />,
   meInstagram: () => <InstagramLoading />,

@@ -25,20 +25,16 @@ import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 import { useUnseenNotifications } from "./use-unseen-notifications";
-import { APP_SHARE_URL, SHARE_BODY, SHARE_MESSAGE } from "@/lib/share-app";
-import { shareOrCopy } from "@/lib/share-place";
 
-// FIVE SLOTS, in this order (Pato, 2026-11-14, MESITA-3855: "Home Search
-// Pay Share Me. EASY PEASY. SHARE IS JUST A QUICK BUTTON TO SHARE WITH
-// FRIENDS. NOTHING ELSE. NO REWARD MECHANISMS. JUST THE WORD OF MOUTH"):
+// FIVE TABS, in this order (Pato, 2026-11-14, MESITA-3855: "Home Search
+// Pay Share Me. EASY PEASY"):
 //
 //   Home · Search · Pay · Share · Me
 //
-// SHARE IS A BUTTON, NOT A TAB: a tap opens the phone's share sheet with
-// the message and mesita.ai (lib/share-app.ts), or copies them and says so
-// where there is no sheet. It never lights and never navigates. It was this
-// button once before (MESITA-2561), a page from MESITA-2566, Me's tile from
-// MESITA-2871.
+// SHARE IS A TAB AGAIN (MESITA-3867, Pato: "i actually want a share page"):
+// it opens /share, one card of channel rows, and lights there like any tab.
+// For a day it was a button that fired the share sheet and opened nothing
+// (MESITA-3855); before that a page (MESITA-2566) and Me's tile (MESITA-2871).
 //
 // ACTIVITY LEFT THE BAR (MESITA-3855, Pato: "We are going to remove Activity
 // too"): its chips are Me's Notifications, Reservations and Tickets pages. It
@@ -102,28 +98,18 @@ const ITEMS: Item[] = [
     tab: "pay",
   },
   {
+    href: CONSUMER_ROUTES.share,
+    Icon: Share2,
+    label: "Share",
+    tab: "share",
+  },
+  {
     href: CONSUMER_ROUTES.me,
     Icon: User,
     label: "Me",
     tab: "me",
   },
 ];
-
-/** Share's slot sits after this many tabs: Home · Search · Pay · Share · Me. */
-const SHARE_AFTER = 3;
-
-/** Share the app: the sheet, or a copy and a toast. Called from the tap
- *  itself, or Safari refuses the sheet. */
-function shareApp(): void {
-  void shareOrCopy(
-    { title: "Mesita", text: SHARE_MESSAGE, url: APP_SHARE_URL },
-    {
-      text: SHARE_BODY,
-      copied: "Link copied",
-      failed: "Couldn't share Mesita",
-    },
-  );
-}
 
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
@@ -162,7 +148,7 @@ export function BottomNav() {
       )}
     >
       <div className="flex items-end justify-around">
-        {ITEMS.map((item, index) => {
+        {ITEMS.map((item) => {
           const { Icon, label } = item;
           const active = pending
             ? pending === item.href
@@ -236,7 +222,7 @@ export function BottomNav() {
             pushedByPointer.current = false;
             if (here) event.preventDefault();
           };
-          const link = (
+          return (
             <Link
               key={item.href}
               href={item.href}
@@ -247,32 +233,6 @@ export function BottomNav() {
               {body}
             </Link>
           );
-          if (index !== SHARE_AFTER - 1) return link;
-          return [
-            link,
-            <button
-              key="share"
-              type="button"
-              onClick={() => {
-                shareApp();
-                window.setTimeout(
-                  () =>
-                    trackEvent(getSupabase(), "nav_tab_tap", { tab: "Share" }),
-                  0,
-                );
-              }}
-              className={cn(
-                "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
-                "text-muted-foreground hover:text-foreground",
-              )}
-              data-share-app
-            >
-              <span className="relative flex h-8 w-8 items-center justify-center rounded-full">
-                <Share2 className="h-5 w-5" strokeWidth={1.75} />
-              </span>
-              <span className="w-full truncate text-center">Share</span>
-            </button>,
-          ];
         })}
       </div>
       <div className="bg-foreground/20 mx-auto mt-1.5 mb-1 h-1 w-32 rounded-full" />

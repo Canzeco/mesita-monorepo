@@ -1,10 +1,10 @@
-// SHARING THE APP — the bar's Share button (Pato, 2026-11-14, MESITA-3855:
-// "SHARE IS JUST A QUICK BUTTON TO SHARE WITH FRIENDS. NOTHING ELSE. NO
-// REWARD MECHANISMS. JUST THE WORD OF MOUTH"). A tap opens the phone's share
-// sheet with the message and the link; with no sheet it copies them. It was
-// that button once before (MESITA-2561: "just a button to share the app with
-// friends. no credits. no nothing"), then a page of its own, /share
-// (MESITA-2566 → MESITA-3855).
+// SHARING THE APP — the /share page, a bar tab (Pato, 2026-11-14,
+// MESITA-3867: "i actually want a share page … just a button to share in
+// different channels … not really a weird card not something fancy"). One
+// card of rows: WhatsApp, Instagram, Messages, Copy link, More. Still "JUST
+// THE WORD OF MOUTH" (MESITA-3855): no reward, no counter. Share was a bar
+// button with no page for a day (MESITA-3855), and on a computer that only
+// copied; before that a page with a share card (MESITA-2566 → MESITA-3855).
 //
 // THE LINK IS THE APP'S FRONT DOOR AND NOTHING ELSE: the production address,
 // the sign-in page for a friend and Home for a member. No referral code, no
@@ -21,9 +21,28 @@ export const APP_SHARE_URL = "https://mesita.ai/";
 /** The one message the button sends. */
 export const SHARE_MESSAGE = "Stop asking me where to eat. Use this. 🙄";
 
-/** What a copy carries when there is no share sheet: the message, then the
- *  link. */
+/** What a channel row sends: the message, then the link. Copy link and
+ *  More's no-sheet fallback copy APP_SHARE_URL alone, so "Link copied" is
+ *  true. */
 export const SHARE_BODY = `${SHARE_MESSAGE} ${APP_SHARE_URL}`;
+
+/** The page's one line under its title. Never sent. */
+export const APP_SHARE_TEXT = "Send Mesita to a friend.";
+
+/** The channels that can be prefilled from the web with the message and
+ *  link. */
+export const SHARE_LINKS = (() => {
+  const body = encodeURIComponent(SHARE_BODY);
+  return {
+    sms: `sms:?&body=${body}`,
+    whatsapp: `https://wa.me/?text=${body}`,
+  } as const;
+})();
+
+// INSTAGRAM HAS NO WEB LINK THAT PREFILLS A MESSAGE. The row copies the
+// message and link, then the browser opens Instagram's inbox (the app, where
+// it is installed) for the guest to paste into a chat.
+export const INSTAGRAM_DM_URL = "https://www.instagram.com/direct/inbox/";
 
 /**
  * THE MESITA SHARE CARD (MESITA-2639): one image, the standard link-preview

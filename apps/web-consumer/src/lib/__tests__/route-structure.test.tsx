@@ -336,9 +336,8 @@ describe("T5 — exactly one tab lights per surface", () => {
     "/me/settings/metrics",
     // Me › Transactions is Me › Tickets (MESITA-3855).
     "/me/transactions",
-    // Share's page (MESITA-3855). /activity is killed, not redirected
-    // (MESITA-3862).
-    "/share",
+    // /activity is killed, not redirected (MESITA-3862); /share is a live
+    // tab again (MESITA-3867).
   ])("%s is a redirect source that resolves in one hop", async (address) => {
     const redirects = await nextConfig.redirects!();
     const hit = redirects.find((r) => matches(r.source, address));
@@ -401,14 +400,13 @@ describe("the bar is Home · Search · Pay · Me", () => {
     expect(labels).not.toContain("Activity");
   });
 
-  // Four <a> tabs and one <button>: Share opens the phone's share sheet and
-  // goes nowhere (MESITA-3855); Pay navigates like every other link.
-  it("draws four links and the Share button", async () => {
+  // Five <a> tabs and no button: Share is a tab again, /share (MESITA-3867;
+  // a share-sheet button for a day, MESITA-3855).
+  it("draws five links and no button", async () => {
     const html = await renderNav("/search");
-    expect(html.split("<a ").slice(1)).toHaveLength(4);
-    const buttons = html.split("<button").slice(1);
-    expect(buttons).toHaveLength(1);
-    expect(buttons[0]).toContain("data-share-app");
+    expect(html.split("<a ").slice(1)).toHaveLength(5);
+    expect(html).toContain(`href="${CONSUMER_ROUTES.share}"`);
+    expect(html.split("<button").slice(1)).toHaveLength(0);
   });
 
   it("does not stamp class into Me and does not add an Agents tab", async () => {
@@ -429,6 +427,7 @@ describe("the bar is Home · Search · Pay · Me", () => {
       CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
+      CONSUMER_ROUTES.share,
       CONSUMER_ROUTES.me,
     ]);
     const redirects = await nextConfig.redirects!();
@@ -634,12 +633,12 @@ describe("T6 — Activity's chips are Me's pages (MESITA-3855)", () => {
 
 // ── T8 — the destination grid holds only things that work ──────────────────
 //
-// Me is a grid of nine cells (MESITA-3855; eight under MESITA-3821, seven
+// Me is a grid of ten cells (MESITA-3867; nine under MESITA-3855; eight under MESITA-3821, seven
 // under MESITA-3771, thirteen before that) (MESITA-1628, MESITA-3450,
 // MESITA-3465). Every cell is a live door except Plan, which Pato asked to
 // read Soon (MESITA-3855: "Class Plan(Soon)"): its page lives in Settings
 // for now, so the Soon cell points at a page that exists.
-describe("T8 — Me's grid is nine cells, Plan the one Soon", () => {
+describe("T8 — Me's grid is eleven cells, Plan and MCP Soon", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
@@ -648,7 +647,7 @@ describe("T8 — Me's grid is nine cells, Plan the one Soon", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders nine cells in Pato's order", () => {
+  it("renders eleven cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -657,8 +656,8 @@ describe("T8 — Me's grid is nine cells, Plan the one Soon", () => {
     // Reservations / Favorites Connector / Settings. PROFILE LEADS (Pato,
     // 2026-09-08): the header states the identity, so the first cell is the
     // one that edits it. Support is a group on Settings (MESITA-2169).
-    // MESITA-3855: Activity left the bar, its pages came to Me; Share left
-    // Me for the bar, as a button.
+    // MESITA-3855: Activity left the bar, its pages came to Me. MESITA-3867:
+    // Share is on the bar and here too, beside Settings.
     expect(gridTitles()).toEqual([
       "Profile",
       "Instagram",
@@ -670,10 +669,18 @@ describe("T8 — Me's grid is nine cells, Plan the one Soon", () => {
       "Gift",
       // Every transaction, four kinds (MESITA-3855).
       "Tickets",
+      // The bar's Share tab, here too (MESITA-3867).
+      "Share",
+      // Back as a Soon cell (MESITA-3867: "add MCP here with soon").
+      "MCP",
       "Settings",
     ]);
-    // Plan is the one Soon cell, and its page is still live (Settings › Plan).
-    expect(cells().filter((c) => c.soon).map((c) => c.title)).toEqual(["Plan"]);
+    // Plan and MCP are the Soon cells, and both point at a live page
+    // (Settings › Plan; MCP is a Plan perk).
+    expect(cells().filter((c) => c.soon).map((c) => c.title)).toEqual([
+      "Plan",
+      "MCP",
+    ]);
     expect(existsSync(join(SHELL, "me", "plan", "page.tsx"))).toBe(true);
   });
 
@@ -681,7 +688,7 @@ describe("T8 — Me's grid is nine cells, Plan the one Soon", () => {
     for (const gone of [
       "Wallet",
       "Orders",
-      "MCP",
+      // MCP is back, as a Soon cell (MESITA-3867).
       "Refunds",
       "Integrations",
       "Friends",
@@ -705,11 +712,12 @@ describe("T8 — Me's grid is nine cells, Plan the one Soon", () => {
     // The four-up bought its width by dropping the summary line, which left
     // Activity as the only cells on Me that named a destination without
     // saying what was in it. A cell is an Icon, a title, a summary and an
-    // href, and Plan's `soon` (MESITA-3855) — no `compact`.
+    // href, and Plan's `soon` (MESITA-3855) and Share's `jump` (MESITA-3867)
+    // — no `compact`.
     for (const cell of cells()) {
       expect(
         Object.keys(cell)
-          .filter((k) => k !== "soon")
+          .filter((k) => k !== "soon" && k !== "jump")
           .sort(),
         cell.title,
       ).toEqual(["Icon", "href", "summary", "title"]);
@@ -826,7 +834,6 @@ describe("T7 — every former url still resolves after the move", () => {
     ["/me/saved", "/home/places"],
     ["/me/favorites", "/home/places"],
     ["/saved/reservations", "/me/reservations"],
-    ["/share", "/home/places"],
     ["/saved/reservation/:id", "/reservation/:id"],
     ["/saved/place/:id", "/place/:id"],
   ])(
@@ -905,6 +912,18 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     expect(redirects.find((r) => matches(r.source, address))).toBeUndefined();
   });
 
+  // No bar tab is the source of a redirect either: /share was one for a day
+  // (MESITA-3855 → MESITA-3867), and a redirect from a live tab hides it while
+  // every gate stays green.
+  it.each(
+    Object.values(ROUTE_MAP)
+      .filter((r) => r.kind === "tab")
+      .map((r) => r.pattern),
+  )("no redirect shadows the tab %s", async (address) => {
+    const redirects = await nextConfig.redirects!();
+    expect(redirects.find((r) => matches(r.source, address))).toBeUndefined();
+  });
+
   it("no Second Stage route tree exists", () => {
     for (const rel of [
       ["(shell)", "(visit)"],
@@ -913,9 +932,7 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
       // /wallet is the balances page and the bar's tab (MESITA-3295).
       ["(shell)", "visit"],
       ["(shell)", "order"],
-      // The referral deck, then Share's page (MESITA-2566): Share is a bar
-      // button since MESITA-3855.
-      ["(shell)", "share"],
+      // NOT ["(shell)", "share"]: Share's page is live again (MESITA-3867).
       ["(shell)", "me", "diamond"],
       ["(shell)", "me", "settings", "metrics"],
       ["gift"],

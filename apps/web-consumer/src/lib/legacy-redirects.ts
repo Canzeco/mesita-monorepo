@@ -111,9 +111,8 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // NO /activity ADDRESS REDIRECTS ANYWHERE (Pato, 2026-11-14, MESITA-3862:
   // "KILL THIS ATIVITY LINK"). Activity folded into Me (MESITA-3855); its
   // own addresses are gone, not forwarded. Never add one back here.
-  // SHARE IS A BAR BUTTON, NOT A PAGE (MESITA-3855): its old page lands on
-  // Home.
-  { source: "/share", destination: "/home/places", permanent: true },
+  // NO /share HERE: it is a live tab again (MESITA-3867); a redirect from it
+  // would shadow the page (route-structure pins that no tab is shadowed).
   { source: "/invite", destination: "/me", permanent: true },
   // The retired Home hub's leaves (2026-09-01). /home ITSELF went to Places
   // when each tab got its own address (MESITA-2597); /home/social is live

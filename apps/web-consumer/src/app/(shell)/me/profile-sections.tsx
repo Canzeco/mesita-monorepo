@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared";
 import { ICON_CHIP_CLASS } from "@/components/consumer/me/settings-rows";
@@ -120,6 +121,7 @@ export function DestTile({
   href,
   dot = false,
   soon = false,
+  jump = false,
 }: {
   shape: DestShape;
   Icon: LucideIcon;
@@ -132,6 +134,9 @@ export function DestTile({
   /** A red dot at the tile's corner: something new waits behind it (the
    *  Notifications tile, MESITA-3717). */
   dot?: boolean;
+  /** Opens a bar tab, not a Me page (Share, MESITA-3867): a plain jump that
+   *  lights that tab, never the drill-in slide. */
+  jump?: boolean;
 }) {
   if (soon) {
     return (
@@ -148,8 +153,9 @@ export function DestTile({
       </div>
     );
   }
+  const Door = jump ? Link : PushLink;
   return (
-    <PushLink
+    <Door
       href={href}
       // A grid cell shows its title only; its name says the summary too.
       aria-label={
@@ -175,7 +181,7 @@ export function DestTile({
           data-unseen-dot
         />
       ) : null}
-    </PushLink>
+    </Door>
   );
 }
 
