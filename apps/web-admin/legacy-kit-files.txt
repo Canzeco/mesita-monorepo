@@ -1,0 +1,34 @@
+# Files that broke the kit guard on Wave 1 merge day (MESITA-3948). It only shrinks.
+# Regenerate (from apps/web-admin, with the list emptied):
+#   pnpm exec eslint -f json src | jq -r '.[] | select(any(.messages[]; .message | startswith("[kit/"))) | .filePath' | sed "s|$PWD/||" | sort -u
+src/app/(app)/billing-test/ApifyUsagePanel.tsx
+src/app/(app)/billing-test/BillingTestClient.tsx
+src/app/(app)/brand/page.tsx
+src/app/(app)/enricher-config/ImageFunnel.tsx
+src/app/(app)/families/FamiliesExplorer.tsx
+src/app/(app)/filters-config/PipelineBox.tsx
+src/app/(app)/layout.tsx
+src/app/(app)/logs/LogsClient.tsx
+src/app/(app)/manage-database/ManageDatabaseClient.tsx
+src/app/(app)/manage-multiple/IdListField.tsx
+src/app/(app)/manage-multiple/MesitaSearchTab.tsx
+src/app/(app)/manage-multiple/PlaceFacts.tsx
+src/app/(app)/manage-multiple/PlaceStateCells.tsx
+src/app/(app)/manage-multiple/SearchQueryRows.tsx
+src/app/(app)/manage-multiple/SearchResultSummary.tsx
+src/app/(app)/manage-multiple/SearchTab.tsx
+src/app/(app)/manage-multiple/StateIcon.tsx
+src/app/(app)/manage-multiple/WriteBox.tsx
+src/app/(app)/manage-single/FindResults.tsx
+src/app/(app)/manage-single/SinglePlaceClient.tsx
+src/app/(app)/models-config/ModelsConfigClient.tsx
+src/app/(app)/payments-config/credits-limit/CreditsLimitPanel.tsx
+src/app/(app)/payments-config/page.tsx
+src/app/(app)/reservations-config/NeedsAttentionCard.tsx
+src/app/(app)/reservations-config/TestingCard.tsx
+src/app/(app)/reservations-config/knobs.tsx
+src/app/page.tsx
+src/components/AppShell.tsx
+src/components/CldrRegionInput.tsx
+src/components/PlacesMap.tsx
+src/components/auth/GoogleSignInButton.tsx

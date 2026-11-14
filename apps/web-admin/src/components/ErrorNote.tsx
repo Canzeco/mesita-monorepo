@@ -1,13 +1,6 @@
-import { AlertTriangle } from "lucide-react";
+import { Notice } from "@/components/admin-ui/notice";
 
-// Inline destructive notice — a hairline-bordered box with a warning glyph,
-// used across the admin console for form/section errors. Single source so the
-// former per-route copies can't drift apart.
+/** @deprecated use { Notice } from "@/components/admin-ui" (tone="error"). */
 export function ErrorNote({ message }: { message: string }) {
-  return (
-    <div className="border-destructive/40 bg-destructive/5 text-destructive mt-4 flex items-start gap-2 rounded-xl border p-3 text-xs">
-      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-      <p className="font-medium">{message}</p>
-    </div>
-  );
+  return <Notice className="mt-4">{message}</Notice>;
 }

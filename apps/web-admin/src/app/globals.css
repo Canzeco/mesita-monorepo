@@ -45,6 +45,16 @@
   );
   /* BRAND-TOKENS:END */
 
+  /* Status tones (MESITA-3948), admin-local, not in brand.json. Text in each
+     tone clears WCAG AA on its -subtle fill and on --card: success 5.17:1 and
+     5.66:1, warning 5.12:1 and 5.68:1. Info has no hue: it is muted. */
+  --success: oklch(0.5 0.12 155);
+  --success-foreground: var(--paper);
+  --success-subtle: oklch(0.965 0.03 155);
+  --warning: oklch(0.52 0.12 65);
+  --warning-foreground: var(--paper);
+  --warning-subtle: oklch(0.965 0.04 85);
+
   /* Mesita — pink-red brand accents on a near-neutral canvas. The canvas,
      borders, and body text carry only a whisper of the brand hue (chroma
      ≤0.012) so white cards read crisp and the pink stays an ACCENT — the
@@ -110,6 +120,12 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-subtle: var(--warning-subtle);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

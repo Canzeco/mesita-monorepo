@@ -25,7 +25,8 @@ import {
 } from "@/app/(app)/manage-multiple/actions";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
-import { BONE_CLASS, CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
+import { CopyIdButton, ReadField } from "@/components/admin-ui";
+import { BONE_CLASS, SectionCard } from "@/components/admin-ui/manage";
 import { businessPlaceHref } from "@/lib/business-url";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 import { GENERAL_STATE_FACTS } from "@/lib/state-vocabulary";
