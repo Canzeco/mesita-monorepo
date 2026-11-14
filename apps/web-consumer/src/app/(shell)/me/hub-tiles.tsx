@@ -10,6 +10,7 @@ import {
   Ticket,
   UserRound,
   Gift,
+  Plug,
   type LucideIcon,
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -69,13 +70,14 @@ import { DestGrid, type DestShape } from "./profile-sections";
 // Activity left the bar, so its Notifications, Reservations and Tickets are
 // Me's pages; Share went to the bar, so Settings closed the grid alone.
 //
-// TEN SINCE MESITA-3867 (Pato, 2026-11-14: "share also here even if
-// redundant i don't care"): a Share cell beside Settings, a jump to the bar's
-// Share tab (/share), so every row is full:
+// ELEVEN SINCE MESITA-3867 (Pato, 2026-11-14: "share also here even if
+// redundant i don't care"; then "add MCP here with soon, before settings"):
+// a Share cell, a jump to the bar's Share tab (/share), and MCP back as a
+// Soon cell (it left Me under MESITA-3771), then Settings alone at the left:
 //
 //   Profile · Instagram / Class · Plan (Soon) /
 //   Notifications · Reservations / Gift · Tickets /
-//   Share · Settings
+//   Share · MCP (Soon) / Settings
 //
 // route-structure T8 pins them.
 //
@@ -97,9 +99,9 @@ export type HubTile = {
   jump?: boolean;
 };
 
-/** The grid cells, in reading order; Settings is the last (ten with it
+/** The grid cells, in reading order; Settings is the last (eleven with it
  *  since MESITA-3867: Profile · Instagram / Class · Plan / Notifications ·
- *  Reservations / Gift · Tickets / Share · Settings). */
+ *  Reservations / Gift · Tickets / Share · MCP / Settings). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // member number is on /me/profile, with its copy button; the tile only
@@ -173,6 +175,17 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     href: CONSUMER_ROUTES.share,
     jump: true,
   },
+  // MCP IS SOON (Pato, 2026-11-14, MESITA-3867: "add MCP here with soon,
+  // before settings"): ChatGPT or Claude reading your Mesita. The cell opens
+  // nothing yet; its old address, /me/connector, lands on Plan, where MCP is
+  // a perk (MESITA-3771), so the Soon cell points at a page that exists.
+  {
+    Icon: Plug,
+    title: "MCP",
+    summary: "ChatGPT or Claude",
+    href: CONSUMER_ROUTES.mePages.plan,
+    soon: true,
+  },
 ];
 
 /** The last cell: Settings closes the grid (MESITA-2562); a full-width row
@@ -205,9 +218,11 @@ export function MeHubFrame({
         <div className="flex flex-col gap-2">
           <DestGrid>
             {ME_HUB_GRID.map((cell) => (
-              <Fragment key={cell.href}>{tile(cell, "cell")}</Fragment>
+              <Fragment key={cell.title}>{tile(cell, "cell")}</Fragment>
             ))}
-            {/* SETTINGS CLOSES THE GRID, beside Share (MESITA-3867). */}
+            {/* SETTINGS CLOSES THE GRID, alone at the left (MESITA-3867;
+                Pato, MESITA-3527: "if it's uneven the number of items, then
+                asymmetry is okay"). */}
             {tile(ME_HUB_SETTINGS, "cell")}
           </DestGrid>
         </div>

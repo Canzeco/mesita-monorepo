@@ -638,7 +638,7 @@ describe("T6 — Activity's chips are Me's pages (MESITA-3855)", () => {
 // MESITA-3465). Every cell is a live door except Plan, which Pato asked to
 // read Soon (MESITA-3855: "Class Plan(Soon)"): its page lives in Settings
 // for now, so the Soon cell points at a page that exists.
-describe("T8 — Me's grid is ten cells, Plan the one Soon", () => {
+describe("T8 — Me's grid is eleven cells, Plan and MCP Soon", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
@@ -647,7 +647,7 @@ describe("T8 — Me's grid is ten cells, Plan the one Soon", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders ten cells in Pato's order", () => {
+  it("renders eleven cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -671,10 +671,16 @@ describe("T8 — Me's grid is ten cells, Plan the one Soon", () => {
       "Tickets",
       // The bar's Share tab, here too (MESITA-3867).
       "Share",
+      // Back as a Soon cell (MESITA-3867: "add MCP here with soon").
+      "MCP",
       "Settings",
     ]);
-    // Plan is the one Soon cell, and its page is still live (Settings › Plan).
-    expect(cells().filter((c) => c.soon).map((c) => c.title)).toEqual(["Plan"]);
+    // Plan and MCP are the Soon cells, and both point at a live page
+    // (Settings › Plan; MCP is a Plan perk).
+    expect(cells().filter((c) => c.soon).map((c) => c.title)).toEqual([
+      "Plan",
+      "MCP",
+    ]);
     expect(existsSync(join(SHELL, "me", "plan", "page.tsx"))).toBe(true);
   });
 
@@ -682,7 +688,7 @@ describe("T8 — Me's grid is ten cells, Plan the one Soon", () => {
     for (const gone of [
       "Wallet",
       "Orders",
-      "MCP",
+      // MCP is back, as a Soon cell (MESITA-3867).
       "Refunds",
       "Integrations",
       "Friends",
