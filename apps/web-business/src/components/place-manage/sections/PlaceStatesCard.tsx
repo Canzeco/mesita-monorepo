@@ -167,10 +167,10 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
           detail="Back as House Credits on the card part of a bill. Needs House Credits and App Payments."
         />
         <StateRow
-          name="Mesita Prepayments"
+          name="App Prepayments"
           on={m.mesitaPrepayments.on}
           chip={money(m.mesitaPrepayments.chip)}
-          detail="Guests can buy prepaid vouchers here now. Needs the Mesita Prepayments switch, House Credits, a voucher switched on, the Stripe Account taking cards and no unpaid invoice."
+          detail="Guests can buy prepaid vouchers here now. Needs the App Prepayments switch, House Credits, a voucher switched on, the Stripe Account taking cards and no unpaid invoice."
         />
       </div>
     </SectionCard>

@@ -21,7 +21,7 @@ export const FACTS = [
   `Mesita sí maneja dinero, siempre dentro de la app:`,
   `- Créditos de la casa: saldo que el comensal tiene en un lugar, en su Wallet. Solo existen donde el lugar los tiene encendidos.`,
   `- App Payments: el comensal paga la cuenta del lugar desde la app.`,
-  `- Mesita Prepayments: vouchers del lugar que el comensal compra por adelantado.`,
+  `- App Prepayments: vouchers del lugar que el comensal compra por adelantado.`,
   `- Pago en efectivo: el comensal paga en efectivo y lo registra en la app con el código que le da el mesero.`,
   `- Cashback: el comensal recibe créditos por pagar con Mesita, 2% en efectivo y 5% con tarjeta.`,
   `Por teléfono no cobras, no reembolsas y no das saldos ni montos: todo eso se ve en la app, en Wallet o en Pay.`,

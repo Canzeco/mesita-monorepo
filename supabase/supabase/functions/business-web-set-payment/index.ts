@@ -42,7 +42,7 @@ import { MONEY_VOUCHER_KEYS } from "../_shared/money-state.ts";
 import { isPaymentKey, isRateKey, isValidCashbackBps, needsStripe, readAccount, readContract, readSettings, stripeStateOf } from "../_shared/payments.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
-const NEEDS_STRIPE = { ok: false, code: "needs_stripe", error: "Connect the Stripe Account first: App Payments, its cashback and Mesita Prepayments need an account that takes cards." };
+const NEEDS_STRIPE = { ok: false, code: "needs_stripe", error: "Connect the Stripe Account first: App Payments, its cashback and App Prepayments need an account that takes cards." };
 
 serveJson("business-web-set-payment", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -67,7 +67,7 @@ serveJson("business-web-set-payment", async (req) => {
       card_cashback_bps: "App Payments Cashback is Off or 5%.",
       cash_cashback_bps: "Cash Payments Cashback is Off or 3%.",
       credit_cashback_bps: "Credits Payments Cashback is Off or 2%.",
-      prepay_cashback_bps: "Mesita Prepayments Cashback is Off or 5%.",
+      prepay_cashback_bps: "App Prepayments Cashback is Off or 5%.",
     };
     return json({ ok: false, code: "invalid", error: line[key] }, 400);
   }
@@ -123,7 +123,7 @@ serveJson("business-web-set-payment", async (req) => {
       return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
     }
     if (key === "prepay_cashback_bps" && bps !== null && !current.prepayments) {
-      return json({ ok: false, code: "needs_prepayments", error: "Turn Mesita Prepayments on first." }, 409);
+      return json({ ok: false, code: "needs_prepayments", error: "Turn App Prepayments on first." }, 409);
     }
     patch[key] = bps;
   }
