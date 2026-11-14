@@ -82,6 +82,10 @@ export type GuestTab = {
    *  with the waiter's Verify. Older reads have none (a waiter tab). */
   origin?: "waiter" | "guest";
   verified_at?: string | null;
+  /** MESITA-3861: why a guest bill ended unpaid (cancelled, rejected,
+   *  expired, capture_failed), and the card being charged at the signature. */
+  end_reason?: string | null;
+  signing?: boolean;
 };
 
 /** A table friends are splitting (MESITA-3695). Shares are listed by id,
