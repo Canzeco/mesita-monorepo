@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgePercent, Banknote, CircleCheck, Crown, Info, Lock, PartyPopper, Wallet, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, CircleCheck, Crown, Info, Lock, PartyPopper, Smartphone, Ticket, Wallet, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
@@ -119,9 +119,9 @@ const STANDARD: Product[] = [
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $150.00MX.", limit: "One per place.", bonus: "50% bonus", short: "Welcome Bonus", brief: "One per place" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $200.00MX.", limit: "One per place.", bonus: "100% bonus", short: "Welcome Bonus", brief: "One per place" },
   { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $130.00MX.", limit: "One per day.", bonus: "30% bonus", short: "Story Bonus", brief: "Post a story · 1/day" },
-  { key: "voucher_vip", name: "VIP", line: "Pay $50.00MX, get $75.00MX.", when: "VIP guests only.", limit: "One per day.", bonus: "50% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
+  { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $200.00MX.", when: "VIP guests only.", limit: "One per day.", bonus: "100% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
 ];
 
 /** "$1,200.00MX" from cents: always two decimals (MESITA-3767). Formatting
@@ -189,7 +189,9 @@ type Face = {
 // card, a light tint per voucher, a black Buy. Solid since MESITA-3471.
 const LIGHT = { muted: "text-neutral-950/60", big: "", buy: "bg-neutral-950 text-white" };
 const FACES: Record<MoneyVoucherKey, Face> = (() => {
-  const green: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT };
+  // EVERY ROW WEARS A MARK (Pato, MESITA-3835: "either all with icons or
+  // none with icons"): the sized vouchers share the ticket.
+  const green: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT, Mark: Ticket };
   return {
     voucher_200: green,
     voucher_1000: green,
@@ -354,7 +356,11 @@ function noMx(v: string): string {
 
 function readyIn(key: MoneyVoucherKey): string {
   if (key === "voucher_story") return "after story";
-  return key === "voucher_200" || key === "voucher_1000" || key === "voucher_5000" ? "in 1 hr" : "instantly";
+  // Every voucher but Story waits an hour (MESITA-3323); Welcome and VIP
+  // said "instantly" while the catalog held them an hour (fixed MESITA-3835,
+  // Pato: "don't land instantly ... they should actually land 1hr after
+  // payment").
+  return "in 1 hr";
 }
 
 /** The lines every prepayment (i) ends with (MESITA-3498, Pato: "credits are
@@ -390,7 +396,7 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string
     case "voucher_welcome":
       return [
         deal,
-        "Your credits are ready instantly.",
+        "Your credits are ready 1 hour after you buy.",
         "One per place. Every other place on Mesita has its own Welcome for you.",
         ...facts,
       ];
@@ -409,7 +415,7 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string
       return [
         deal,
         "Only for Mesita's VIP Class. VIP guests are added by hand: models, modeling agencies, creators and others places want to see. Not VIP? You can't buy this one.",
-        "Your credits are ready instantly. One per visit.",
+        "Your credits are ready 1 hour after you buy. One per visit.",
         ...facts,
       ];
   }
@@ -540,7 +546,7 @@ export type VoucherOffer = {
   bonus: string;
   pay: string;
   get: string;
-  /** "in 1 hr", "instantly", "after story". */
+  /** "in 1 hr" or "after story". */
   ready: string;
   /** This guest can buy it now. */
   buyable: boolean;
@@ -770,7 +776,12 @@ export function VouchersPane({
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
               <span className={NAME}>
-                <span aria-hidden>Mesita Payment Cashback</span>
+                {/* The phone, as Cash wears the banknote (Pato, MESITA-3835:
+                    "add icon to Mesita Payments"). */}
+                <span className="flex items-center gap-1" aria-hidden>
+                  <Smartphone className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                  Mesita Payment Cashback
+                </span>
                 <InfoButton
                   title="Mesita Payment Cashback"
                   status={

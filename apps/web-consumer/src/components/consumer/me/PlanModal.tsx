@@ -1,80 +1,52 @@
 "use client";
 
-// Plan — the subscription, Free or Pro (MESITA-2134, MESITA-2167, MESITA-2553).
-// Opened from the Me › Plan tile and from the Plan chip on Me's card.
+// Me › Plan (/me/plan). PLAN IS SOON ON SCREEN (Pato, 2026-11-13,
+// MESITA-3835: "don't remove plan, but don't explain what it does, when you
+// open shit, you mention soon"): one line, then Free and Pro by name, each
+// tagged Soon. No perks, no Current pill, no price, no button. The stored plan
+// and the reservation caps it sets (Free 10, Pro 30, MESITA-2555) are
+// unchanged; only the page stopped explaining them. The perk words still live
+// in plan-words.ts for the way back. Class's page reads the same way
+// (MESITA-3099).
 //
-// PLAN IS NOT CLASS (Pato, MESITA-2553). Plan is what a guest pays for; Class
-// (Regular or VIP) comes through a partner and lives in its own sheet. This
-// page never names Class or VIP, and the Class sheet never names a plan.
-//
-// READ-ONLY. There is no checkout yet, so nothing is bought here. The guest's
-// own row wears a Current pill (MESITA-2983); while the plan is unknown (loading, or the read
-// failed) neither row claims it, and nothing assumes Free.
-//
-// NO PRICE. Each plan states the monthly reservation cap the server enforces
-// for it (FREE_/PRO_RESERVATIONS_PER_MONTH, MESITA-2555). Pro opens with
-// "Everything in Free", then its cap, then its unbuilt perks, each tagged
-// Soon. There is no checkout, so no price is shown. The words live in
-// plan-words.ts, which /me/plan's fallback reads too (MESITA-2701).
+// Plan copy never names Class, and Class copy never names a plan (MESITA-2553).
 
 import { CreditCard, Sparkles } from "lucide-react";
 
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import { PerkList } from "@/components/consumer/me/perk-list";
-import {
-  PLAN_ROWS,
-  type PlanRowWords,
-} from "@/components/consumer/me/plan-words";
-import type { GuestPlan } from "@/lib/guest-standing";
-import {
-  CurrentPill,
-  IconChip,
-  RowDivider,
-  SettingsGroup,
-} from "./settings-rows";
+import { PLAN_ROWS } from "@/components/consumer/me/plan-words";
+import { IconChip, MeLead, RowDivider, SettingsGroup } from "./settings-rows";
 
-function PlanRow({
-  title,
-  subtitle,
-  icon,
-  label,
-  items,
-  mine,
-}: PlanRowWords & {
-  icon: React.ReactNode;
-  mine: boolean;
-}) {
+function PlanRow({ title, icon }: { title: string; icon: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3 px-4 py-3" data-plan-row={title}>
+    <div className="flex items-center gap-3 px-4 py-3" data-plan-row={title}>
       <IconChip>{icon}</IconChip>
-      <div className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">
-          {title}
-          {mine && <CurrentPill data-plan-mine="" />}
+      <span className="text-sm font-semibold">
+        {title}
+        <span
+          className="bg-muted text-muted-foreground type-meta ml-1.5 rounded-full px-1.5 py-0.5 align-middle font-semibold"
+          data-plan-soon=""
+        >
+          Soon
         </span>
-        <span className="text-muted-foreground type-label block">
-          {subtitle}
-        </span>
-        <PerkList label={label} items={items} />
-      </div>
+      </span>
     </div>
   );
 }
 
-export function PlanModal({ plan }: { plan: GuestPlan | null }) {
+export function PlanModal() {
   return (
     <MeScreen title="Plan">
+      <MeLead>Coming soon.</MeLead>
       <SettingsGroup>
         <PlanRow
-          {...PLAN_ROWS.free}
+          title={PLAN_ROWS.free.title}
           icon={<CreditCard className="h-[18px] w-[18px]" />}
-          mine={plan === "free"}
         />
         <RowDivider />
         <PlanRow
-          {...PLAN_ROWS.premium}
+          title={PLAN_ROWS.premium.title}
           icon={<Sparkles className="h-[18px] w-[18px]" />}
-          mine={plan === "premium"}
         />
       </SettingsGroup>
     </MeScreen>

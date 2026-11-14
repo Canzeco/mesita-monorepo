@@ -20,10 +20,10 @@ Deno.test("the catalog's bonuses and fees, in centavos", () => {
   assertEquals(voucherBonusCents("voucher_200"), 20_00);
   assertEquals(voucherBonusCents("voucher_1000"), 200_00);
   assertEquals(voucherBonusCents("voucher_5000"), 1_500_00);
-  assertEquals(voucherBonusCents("voucher_welcome"), 50_00);
-  // VIP is MX$50 +50% (MESITA-3834): MX$25 bonus.
-  assertEquals(voucherBonusCents("voucher_vip"), 25_00);
-  assertEquals(VOUCHER_CATALOG.voucher_vip.price_cents, 50_00);
+  assertEquals(voucherBonusCents("voucher_welcome"), 100_00);
+  // Welcome and VIP are MX$100 +100% (MESITA-3835): MX$100 bonus.
+  assertEquals(voucherBonusCents("voucher_vip"), 100_00);
+  assertEquals(VOUCHER_CATALOG.voucher_vip.price_cents, 100_00);
   assertEquals(voucherFeeCents("voucher_200"), 10_00);
   assertEquals(VOUCHER_CATALOG.voucher_200.available_after_sec, 3600);
   // Every voucher waits an hour except Story (MESITA-3323).
@@ -36,5 +36,5 @@ Deno.test("the Home tile's line is the best bonus among what the place sells (ME
   assertEquals(vouchersUpToPct([]), null);
   assertEquals(vouchersUpToPct(["voucher_200"]), 10);
   assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000"]), 20);
-  assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000", "voucher_welcome"]), 50);
+  assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000", "voucher_welcome"]), 100);
 });

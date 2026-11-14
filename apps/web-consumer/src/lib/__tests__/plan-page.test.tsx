@@ -2,10 +2,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { PlanModal } from "@/components/consumer/me/PlanModal";
-import {
-  FREE_RESERVATIONS_PER_MONTH,
-  PRO_RESERVATIONS_PER_MONTH,
-} from "@/lib/plan-perks";
 
 // MeScreen calls useRouter(); the plan page itself needs no router.
 vi.mock("next/navigation", () => ({
@@ -13,88 +9,22 @@ vi.mock("next/navigation", () => ({
 }));
 
 const text = (html: string) => html.replace(/<[^>]*>/g, " ");
-// The visible line of every <li>, in order, without its Soon tag.
-const perks = (section: string) =>
-  // `<li(\s|>)`, not `<li`: lucide's CreditCard draws an svg <line>.
-  [...section.matchAll(/<li(?:\s[^>]*)?>(.*?)<\/li>/g)].map((m) =>
-    text(m[1])
-      .replace(/\bSoon\b/, "")
-      .replace(/\s+/g, " ")
-      .trim(),
-  );
-const soonCount = (section: string) =>
-  (section.match(/data-perk-soon/g) ?? []).length;
 
-const render = (plan: "free" | "premium" | null) => {
-  const html = renderToStaticMarkup(<PlanModal plan={plan} />);
-  // Free ends where Pro's row begins.
-  const free = html.slice(
-    html.indexOf('data-plan-row="Free"'),
-    html.indexOf('data-plan-row="Pro"'),
-  );
-  const premium = html.slice(html.indexOf('data-plan-row="Pro"'));
-  return { html, free, premium };
-};
+// Plan is Soon on screen (MESITA-3835): a guard on money words, the one rule
+// this page keeps (MVP test rule: money, never layout or copy).
+describe("Me › Plan (MESITA-3835)", () => {
+  const html = renderToStaticMarkup(<PlanModal />);
 
-describe("Me › Plan (MESITA-2167, MESITA-2553)", () => {
-  const { html, free, premium } = render(null);
-
-  it("lists exactly what Free gives, with the monthly reservation limit", () => {
-    expect(perks(free)).toEqual([
-      "Browse and save places",
-      "Mesita calls the place to book your table",
-      `${FREE_RESERVATIONS_PER_MONTH} reservations a month`,
-    ]);
-    expect(soonCount(free)).toBe(0);
-  });
-
-  it("gives Pro everything in Free, its own monthly cap, then its unbuilt perk tagged Soon", () => {
-    expect(perks(premium)).toEqual([
-      "Everything in Free",
-      `${PRO_RESERVATIONS_PER_MONTH} reservations a month`,
-      "MCP: find and book places from ChatGPT or Claude",
-    ]);
-    expect(soonCount(premium)).toBe(1);
-    expect(free).not.toMatch(/ChatGPT|AI assistant/);
-  });
-
-  it("marks only what is true today with a check", () => {
-    // Positive control first: if lucide ever renames the class, this fails
-    // loudly instead of a count passing for the wrong reason.
-    expect(free.match(/lucide-check/g)).toHaveLength(3);
-    expect(premium.match(/lucide-check/g)).toHaveLength(2);
-  });
-
-  it("states no price for Pro, and no number but its cap", () => {
-    const words = text(premium).replace(`${PRO_RESERVATIONS_PER_MONTH}`, "");
-    expect(words).not.toMatch(/\d/);
-    expect(words).not.toMatch(/\$|MX|price|per month|\/mo|\/yr|year/i);
+  it("states no price and sells nothing", () => {
+    expect(text(html)).not.toMatch(/\$\s?\d|MX\$|\bprice\b|per month/i);
+    // The header's back arrow is the only button (MeScreen).
+    expect(html.match(/<button\b/g) ?? []).toHaveLength(1);
+    expect(html).not.toMatch(/<(form|input)\b/);
   });
 
   it("never names Class, VIP, Premier, Premium or Diamond", () => {
     expect(text(html)).not.toMatch(
       /\b(Class|VIP|Regular|Premier|Premium|Diamond|Select)\b/,
     );
-  });
-
-  it("exposes each list as a named list", () => {
-    expect(html).toContain('aria-label="Included in Free"');
-    expect(html).toContain('aria-label="Included in Pro"');
-    expect(html.match(/<ul[^>]*role="list"/g)).toHaveLength(2);
-  });
-
-  it("claims no plan while it is unknown", () => {
-    expect(html).not.toContain("data-plan-mine");
-    expect(html).not.toContain(">Current<");
-  });
-
-  it("marks the guest's own plan, and only that one", () => {
-    const f = render("free");
-    expect(f.free).toContain("data-plan-mine");
-    expect(f.premium).not.toContain("data-plan-mine");
-    const p = render("premium");
-    expect(p.premium).toContain("data-plan-mine");
-    expect(p.free).not.toContain("data-plan-mine");
-    expect(p.free).toContain("The free plan.");
   });
 });
