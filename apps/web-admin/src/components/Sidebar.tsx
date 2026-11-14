@@ -10,6 +10,7 @@ import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { FEEDBACK_PARENT } from "@/app/(app)/feedback/nav";
 import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
 import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
+import { MANAGE_RESERVATIONS_PARENT } from "@/app/(app)/manage-reservations/nav";
 import { FAMILIES_PARENT } from "@/app/(app)/families/nav";
 import {
   CREATION_PARENT,
@@ -54,11 +55,14 @@ const ACCOUNT_NAV: NavItem = { href: "/account", label: "Account", Icon: UserCir
 // deleted. Premier closes the group
 // (MESITA-3011): every place's paid visibility at once. Not Configurations;
 // nothing here is a policy blob. Money left the rail (MESITA-3842).
+// Reservations closes the group (MESITA-3960): every reservation ticket, a
+// record; its policy stays on Configurations › Reservations.
 export const MANAGE_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admins", Icon: ShieldCheckIcon },
   DB_PARENT,
   MULTIPLE_PLACES_PARENT,
   SINGLE_PLACE_PARENT,
+  MANAGE_RESERVATIONS_PARENT,
 ];
 
 // Configurations — six rows. Models, then Atlas (the Mesita Families,
