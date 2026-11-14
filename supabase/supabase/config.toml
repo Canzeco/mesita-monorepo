@@ -315,6 +315,18 @@ verify_jwt = true
 [functions.consumer-web-get-premier-refill]
 verify_jwt = true
 
+# MESITA-3870: the guest Plan, sold — Pro $2/month by Stripe subscription
+# (_shared/guest-plan.ts). get = Me › Plan's read (and Checkout's return),
+# start = Upgrade (Checkout, or the renewal back on), cancel = stop renewing.
+[functions.consumer-web-get-plan]
+verify_jwt = true
+
+[functions.consumer-web-start-plan]
+verify_jwt = true
+
+[functions.consumer-web-cancel-plan]
+verify_jwt = true
+
 [functions.consumer-web-get-wallet]
 verify_jwt = true
 

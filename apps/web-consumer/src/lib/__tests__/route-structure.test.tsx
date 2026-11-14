@@ -635,10 +635,10 @@ describe("T6 — Activity's chips are Me's pages (MESITA-3855)", () => {
 //
 // Me is a grid of ten cells (MESITA-3867; nine under MESITA-3855; eight under MESITA-3821, seven
 // under MESITA-3771, thirteen before that) (MESITA-1628, MESITA-3450,
-// MESITA-3465). Every cell is a live door except Plan, which Pato asked to
-// read Soon (MESITA-3855: "Class Plan(Soon)"): its page lives in Settings
-// for now, so the Soon cell points at a page that exists.
-describe("T8 — Me's grid is eleven cells, Plan and MCP Soon", () => {
+// MESITA-3465). Every cell is a live door except MCP (Soon, MESITA-3867).
+// Plan read Soon under MESITA-3855 and opens again since it is sold
+// (MESITA-3870).
+describe("T8 — Me's grid is eleven cells, MCP the one Soon", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
@@ -675,12 +675,9 @@ describe("T8 — Me's grid is eleven cells, Plan and MCP Soon", () => {
       "MCP",
       "Settings",
     ]);
-    // Plan and MCP are the Soon cells, and both point at a live page
-    // (Settings › Plan; MCP is a Plan perk).
-    expect(cells().filter((c) => c.soon).map((c) => c.title)).toEqual([
-      "Plan",
-      "MCP",
-    ]);
+    // MCP is the one Soon cell (MESITA-3867); Plan opens (MESITA-3870), and
+    // both point at a live page.
+    expect(cells().filter((c) => c.soon).map((c) => c.title)).toEqual(["MCP"]);
     expect(existsSync(join(SHELL, "me", "plan", "page.tsx"))).toBe(true);
   });
 
