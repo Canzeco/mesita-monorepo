@@ -610,8 +610,7 @@ export function CrenupClient({
               <p>
                 <b className="text-foreground">Update Google</b> refreshes Google&apos;s facts. It
                 keeps a field a person corrected, never blanks a filled field, and never writes
-                the review list. While the gallery is one photo (Create&apos;s Google hero) it
-                takes Google&apos;s current hero; a longer gallery is Enrich&apos;s.
+                the review list or the photos: photos are Enrich&apos;s, or the owner&apos;s.
               </p>
               <p>
                 <b className="text-foreground">Update Reviews</b> refreshes Google&apos;s stars, up

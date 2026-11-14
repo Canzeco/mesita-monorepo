@@ -1,6 +1,5 @@
-// Update for one place (MESITA-2737): refresh its Google factuals, and the
-// gallery's hero only while the gallery is one photo (MESITA-2794). Respects
-// field pins; does not enqueue Enrich; audited via source_sync and an
+// Update for one place (MESITA-2737): refresh its Google factuals, never the
+// gallery (MESITA-3931). Respects field pins; does not enqueue Enrich; audited via source_sync and an
 // operator event. Super-admin only. The body of admin-web-update-place-google
 // and, from the Business app's Admin page, business-web-update-place-google
 // (MESITA-3157), as enrich-place-handler.ts is for Enrich.
@@ -46,14 +45,13 @@ export async function handleGooglePlaceUpdate(req: Request, source: string): Pro
     placeId,
     actorUserId: user.id,
     source,
-    detail: { heroRefreshed: result.heroRefreshed },
+    detail: { pinned: result.pinned },
   });
 
   return json({
     ok: true,
     placeId,
     updatedAt: result.updatedAt,
-    heroRefreshed: result.heroRefreshed,
     pinned: result.pinned,
     businessStatus: result.businessStatus,
   });

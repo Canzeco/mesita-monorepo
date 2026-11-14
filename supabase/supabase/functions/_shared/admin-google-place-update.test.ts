@@ -2,7 +2,6 @@ import { assertEquals, assertThrows } from "jsr:@std/assert@1";
 import {
   assertGoogleUpdatePatchSafe,
   googleBasicsToUpdatePatch,
-  galleryTakesGoogleHero,
   keepFilledAndPinned,
 } from "./admin-google-place-update.ts";
 import type { GoogleBasics } from "./enrich-google-basics.ts";
@@ -79,13 +78,11 @@ Deno.test("assertGoogleUpdatePatchSafe rejects the gallery", () => {
   assertThrows(() => assertGoogleUpdatePatchSafe({ photos: ["x"] }), Error, "photos");
 });
 
-Deno.test("Update takes Google's hero only while the gallery is at most one photo", () => {
-  assertEquals(galleryTakesGoogleHero([]), true);
-  assertEquals(galleryTakesGoogleHero(null), true);
-  assertEquals(galleryTakesGoogleHero(["https://a.example/1.jpg"]), true);
-  assertEquals(galleryTakesGoogleHero(["https://a.example/1.jpg", " "]), true);
-  // An enriched gallery is never overwritten.
-  assertEquals(galleryTakesGoogleHero(["https://a.example/1.jpg", "https://a.example/2.jpg"]), false);
+Deno.test("Update never touches the gallery (MESITA-3931)", () => {
+  const src = Deno.readTextFileSync(new URL("./admin-google-place-update.ts", import.meta.url));
+  assertEquals(src.includes("mirrorPlacePhotos"), false);
+  assertEquals(src.includes("patch.photos"), false);
+  assertEquals(src.includes("maxPhotos: 0"), true);
 });
 
 Deno.test("Update never writes the review list: it is Enrich's and Update Reviews' (MESITA-3844)", () => {

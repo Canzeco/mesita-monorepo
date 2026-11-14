@@ -1,13 +1,11 @@
-// Admin Update (MESITA-2737): refresh Google factuals. The one gallery
-// (`photos`, MESITA-2794) takes Google's current hero only while it holds at
-// most one photo: one photo means Create wrote it and Enrich never ran, so it
-// is still Google's. A longer gallery is Enrich's and Update never touches it.
+// Admin Update (MESITA-2737): refresh Google factuals. Update never touches
+// the gallery (MESITA-3931, Pato: "make update button to never update Google
+// place image"): photos are Enrich's on a place with no owner, the owner's on
+// an owned one. It fetches no Google photo and mirrors nothing.
 // Never writes Mesita editorial fields.
 
-import { readOperatorFields } from "./operator-fields.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { fetchGoogleBasics, type GoogleBasics } from "./enrich-google-basics.ts";
-import { mirrorPlacePhotos } from "./store-place-images.ts";
 import { writePlace } from "./place-doc.ts";
 import { googleTypesPrimaryFirst } from "./google-table-b.ts";
 import { googlePlacesKeyOrNull } from "./google-places.ts";
@@ -44,15 +42,9 @@ export function assertGoogleUpdatePatchSafe(patch: Record<string, unknown>): voi
   }
 }
 
-/** Update may rewrite the gallery only while it holds at most one photo. */
-export function galleryTakesGoogleHero(photos: unknown): boolean {
-  if (!Array.isArray(photos)) return true;
-  return photos.filter((url) => typeof url === "string" && url.trim() !== "").length <= 1;
-}
-
 /**
  * Build the place_profiles patch from a Google basics fetch (before pins).
- * The gallery is never in it: `galleryTakesGoogleHero` decides that separately.
+ * The gallery is never in it: Update writes no photos (MESITA-3931).
  * Nor is Google's five-review list: the review list is Enrich's and Update
  * Reviews' (Apify, 100 newest), and Google's five would replace it (MESITA-3844).
  * Google's own types land in google_source_types, primary first; the trigger
@@ -133,7 +125,6 @@ export type GooglePlaceUpdateResult =
   | {
     ok: true;
     updatedAt: string;
-    heroRefreshed: boolean;
     pinned: string[];
     businessStatus: string | null;
   };
@@ -151,7 +142,7 @@ export async function runGooglePlaceUpdate(
 
   const { data: profile, error: profileErr } = await admin
     .from("place_profiles")
-    .select("google_place_id, enrichment_sources, photos, source_sync")
+    .select("google_place_id, enrichment_sources, source_sync")
     .eq("id", placeId)
     .maybeSingle();
   if (profileErr) return { ok: false, status: 500, error: profileErr.message };
@@ -184,19 +175,11 @@ export async function runGooglePlaceUpdate(
     return { ok: false, status: 503, code: "no_key", error: "Google Places is not configured." };
   }
 
-  // Update uses one photo at most: Google's hero, for a gallery still Create's.
-  const google = await fetchGoogleBasics(googlePlaceId, key, { maxPhotos: 1 });
+  // No photos: Update never touches the gallery (MESITA-3931).
+  const google = await fetchGoogleBasics(googlePlaceId, key, { maxPhotos: 0 });
   if (!google.ok) {
     return { ok: false, status: google.status, code: google.code, error: google.error };
   }
-
-  // Mirror Google's hero only when the gallery will take it.
-  // A gallery the place saved (MESITA-3513) is never replaced by Google's hero.
-  const ownedGallery = readOperatorFields(profile.enrichment_sources).includes("photos");
-  const hero = !ownedGallery && galleryTakesGoogleHero(profile.photos) ? google.basics.photos.slice(0, 1) : [];
-  const mirrored = hero.length > 0
-    ? await mirrorPlacePhotos(admin, opts.supabaseUrl, hero)
-    : [];
 
   const { patch, pinned } = keepFilledAndPinned(
     googleBasicsToUpdatePatch({
@@ -209,7 +192,6 @@ export async function runGooglePlaceUpdate(
     profile.enrichment_sources,
     new Date(now),
   );
-  if (mirrored.length > 0) patch.photos = [mirrored[0].publicUrl];
 
   const priorSync = profile.source_sync && typeof profile.source_sync === "object"
     ? profile.source_sync as Record<string, unknown>
@@ -231,7 +213,6 @@ export async function runGooglePlaceUpdate(
   return {
     ok: true,
     updatedAt: now,
-    heroRefreshed: mirrored.length > 0,
     pinned,
     businessStatus: google.businessStatus,
   };

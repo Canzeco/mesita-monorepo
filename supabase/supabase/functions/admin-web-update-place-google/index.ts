@@ -1,7 +1,7 @@
 // Supabase Edge Function — admin-web-update-place-google (MESITA-2737)
 //
-// Super-admin only. Refreshes Google factuals for one place, and the gallery's
-// hero only while the gallery is one photo (MESITA-2794). Respects field pins,
+// Super-admin only. Refreshes Google factuals for one place, never its photos
+// (MESITA-3931). Respects field pins,
 // never blanks a filled field and never writes the review list (MESITA-3844).
 // Does not enqueue Enrich. Audited via source_sync.lastGoogleUpdateAt.
 //
