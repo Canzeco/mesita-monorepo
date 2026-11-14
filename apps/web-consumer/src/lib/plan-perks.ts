@@ -8,4 +8,4 @@
 // guest's own cap (Manage › Guests); the page states the plan's.
 export const FREE_RESERVATIONS_PER_MONTH = 2;
 export const PRO_RESERVATIONS_PER_MONTH = 10;
-export const PRO_PRICE_CENTS = 200;
+export const PRO_PRICE_CENTS = 100;

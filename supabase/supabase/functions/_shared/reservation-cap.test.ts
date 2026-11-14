@@ -55,7 +55,7 @@ Deno.test("Me › Plan builds that line from the constant, never a typed number"
   const words = await read("components/consumer/me/plan-words.ts");
   assert(
     words.includes('from "@/lib/plan-perks"') &&
-      words.includes("${FREE_RESERVATIONS_PER_MONTH} reservations a month"),
+      words.includes("Max ${FREE_RESERVATIONS_PER_MONTH} reservations a month"),
     "plan-words.ts must import FREE_RESERVATIONS_PER_MONTH and render it in the reservations line",
   );
   for (const rel of ["me/plan-words.ts", "me/PlanModal.tsx"]) {
@@ -106,7 +106,7 @@ Deno.test("Me › Plan's Pro number equals the Pro cap the server enforces", asy
   assertEquals(Number(m[1]), RESERVATION_CAP_BY_PLAN.premium);
   const words = await read("components/consumer/me/plan-words.ts");
   assert(
-    words.includes("${PRO_RESERVATIONS_PER_MONTH} reservations a month"),
+    words.includes("Max ${PRO_RESERVATIONS_PER_MONTH} reservations a month"),
     "plan-words.ts must render the Pro line from PRO_RESERVATIONS_PER_MONTH",
   );
 });
