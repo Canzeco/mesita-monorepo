@@ -32,6 +32,6 @@ export const CLASS_ROWS = {
   vip: {
     title: "VIP Class",
     subtitle:
-      "More than 5,000 followers on your connected Instagram. You also get the VIP voucher where a place offers it. You can't buy it.",
+      "5,000 or more followers on your connected Instagram. You also get the VIP voucher where a place offers it. You can't buy it.",
   },
 } as const satisfies Record<"regular" | "vip", ClassRowWords>;

@@ -137,7 +137,7 @@ Deno.test("set body: the fix is in the message", () => {
   const r = readStandingBody({ consumerId: ID, guestClass: "vip" });
   assertEquals(
     r.ok ? "" : r.error,
-    "Class is automatic: VIP is a verified Instagram with more than 5,000 followers. Send plan, the note, the partner, the last day or the cap.",
+    "Class is automatic: VIP is a verified Instagram with 5,000 followers or more. Send plan, the note, the partner, the last day or the cap.",
   );
   const n = readStandingBody({ consumerId: ID, guestClassNote: "y".repeat(312) });
   assertEquals(n.ok ? "" : n.error, "guestClassNote is 312 characters; the limit is 280");
