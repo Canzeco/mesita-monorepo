@@ -1,8 +1,9 @@
 "use client";
 
-// WHAT EACH ACTIVITY CHIP HOLDS, IN WORDS (MESITA-3782, Pato: "in refunds do
-// leave the explanations. that is important"): every chip (Notifications too since MESITA-3801)
-// opens with one card that says what lands there and how it works, in the
+// WHAT EACH LIST HOLDS, IN WORDS (MESITA-3782, Pato: "in refunds do leave
+// the explanations. that is important"): Me's Notifications and Reservations
+// pages and each Tickets chip (Activity's chips until MESITA-3855) open with
+// one card that says what lands there and how it works, in the
 // shape Refunds' "Your credit is protected" card has had since MESITA-3517.
 
 import {
@@ -15,9 +16,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { IconChip, SettingsGroup } from "@/components/consumer/me/settings-rows";
-import type { ActivityType } from "@/lib/activity-types";
+import type { TicketKind } from "@/lib/ticket-kinds";
 
-const INTRO: Record<ActivityType, { Icon: LucideIcon; title: string; text: string }> = {
+/** A list that opens with its card: a Me page or a kind of ticket. */
+export type IntroKind = TicketKind | "notifications" | "reservations";
+
+const INTRO: Record<IntroKind, { Icon: LucideIcon; title: string; text: string }> = {
   notifications: {
     Icon: Bell,
     title: "What Mesita told you",
@@ -50,7 +54,7 @@ const INTRO: Record<ActivityType, { Icon: LucideIcon; title: string; text: strin
   },
 };
 
-export function ChipIntro({ type }: { type: ActivityType }) {
+export function ChipIntro({ type }: { type: IntroKind }) {
   const { Icon, title, text } = INTRO[type];
   return (
     <SettingsGroup>

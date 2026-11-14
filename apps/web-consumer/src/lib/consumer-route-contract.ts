@@ -74,10 +74,11 @@ export const CONSUMER_ROUTES = {
   // A FINISHED VISIT, ONE PAGE (MESITA-3770, Pato: "the live workflow visit
   // tickets and the output ticket must be different"): what was paid, how,
   // and what came back. An open bill stays /pay/tab/<id>; /visit/ is a legacy address.
-  visit: { prefix: "/activity/visit/" },
+  // Under Me › Tickets since Activity left the bar (MESITA-3855).
+  visit: { prefix: "/me/tickets/visit/" },
   // ONE CREDIT MOVEMENT, ONE PAGE (MESITA-3782): a voucher, bonus, refund or
-  // gift row from Activity opens /activity/credit/<placeId>/<kind>.<ms>.
-  credit: { prefix: "/activity/credit/" },
+  // gift ticket opens /me/tickets/credit/<placeId>/<kind>.<ms> (MESITA-3855).
+  credit: { prefix: "/me/tickets/credit/" },
   // PAY · WALLET (Pato, 2026-11-11, MESITA-3698: "Divide Payments across
   // two sections: Pay and Wallet"): the bar's Pay tab has two halves, each
   // its own address, /pay and /wallet, under one band. Wallet was the bar's
@@ -88,15 +89,11 @@ export const CONSUMER_ROUTES = {
   wallet: "/wallet",
   walletPlace: { prefix: "/wallet/" },
   walletGift: { prefix: "/wallet/gift/" },
-  // ACTIVITY IS ON THE BAR AGAIN (MESITA-3769, Pato: "add the activity page
-  // again — Home Search Pay Activity Me"). It was a page under Me for a day
-  // (MESITA-3717/3726), the bar's tab from MESITA-3631, Me › Transactions
-  // before (MESITA-3465).
-  activity: "/activity",
-  // SHARE IS A PAGE: Me's Share tile (off the bar since MESITA-2871), the app's link and the ways to
-  // send it (MESITA-2566). It was the Second Stage referral deck, a legacy
-  // redirect to /me until this.
-  share: "/share",
+  // NO ACTIVITY AND NO SHARE PAGE (Pato, 2026-11-14, MESITA-3855: "Home
+  // Search Pay Share Me … SHARE IS JUST A QUICK BUTTON TO SHARE WITH
+  // FRIENDS. NOTHING ELSE"). Activity's chips are Me's Notifications,
+  // Reservations and Tickets pages; Share is a bar button that opens the
+  // phone's share sheet, no page. Both addresses are in `legacy`.
   // Me is the hub: identity header + a grid of DestTiles and a Settings row, each a real
   // page under (shell)/me/<box> (MESITA-1789). The `/me/[tab]` catch-all
   // 308s any other one-segment address onto the hub.
@@ -115,13 +112,18 @@ export const CONSUMER_ROUTES = {
     // GIFT (Pato, 2026-11-11, MESITA-3771): the places the guest holds credit
     // at; a tap opens that House Card with Gift Credits open.
     gift: "/me/gift",
+    // ACTIVITY'S CHIPS, AS ME'S PAGES (MESITA-3855): Notifications,
+    // Reservations, and Tickets — every visit, voucher, gift and refund,
+    // one chip per kind at /me/tickets/<kind> (lib/ticket-kinds.ts).
+    notifications: "/me/notifications",
+    reservations: "/me/reservations",
+    tickets: "/me/tickets",
     settings: "/me/settings",
     settingsContact: "/me/settings/contact",
     // Feedback about the app itself, not a place (MESITA-3029).
     settingsFeedback: "/me/settings/feedback",
-    // Me's Notifications, Favorites and Reservations pages left for
-    // Activity's chips (MESITA-3688, Pato: "instead of nesting them on Me
-    // just redirect to activity"); their addresses are in `legacy`.
+    // Me's Favorites page left for Activity (MESITA-3688) and then Home's
+    // Saved row (MESITA-3723); its address is in `legacy`.
     // Me › Visits (MESITA-3264) left with the discount product (MESITA-3299);
     // the `/me/[tab]` catch-all 308s its address onto the hub.
   },
@@ -197,9 +199,10 @@ export const CONSUMER_ROUTES = {
     payQr: "/pay/qr",
     ticketPrefix: "/ticket/",
     qr: "/qr",
-    // Me › Transactions became Activity (MESITA-3631; under Me, MESITA-3717).
+    // Me › Transactions became Activity (MESITA-3631), then Me › Tickets
+    // (MESITA-3855).
     meTransactions: "/me/transactions",
-    // MCP is a Pro perk on Plan and Refunds an Activity chip (MESITA-3771).
+    // MCP is a Pro perk on Plan (MESITA-3771); Refunds is Tickets' chip.
     meConnector: "/me/connector",
     meRefunds: "/me/refunds",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
@@ -236,11 +239,18 @@ export const CONSUMER_ROUTES = {
     // Me › Saved, Favorites | Reservations (MESITA-2561), until each became
     // its own page (MESITA-2565).
     meSaved: "/me/saved",
-    // Me's own Notifications, Favorites and Reservations pages
-    // (MESITA-2565), until each became an Activity chip (MESITA-3688).
-    meNotifications: "/me/notifications",
+    // Me's own Favorites page (MESITA-2565). Its Notifications and
+    // Reservations pages are live again (MESITA-3855).
     meFavorites: "/me/favorites",
-    meReservations: "/me/reservations",
+    // THE BAR'S ACTIVITY TAB (MESITA-3631, MESITA-3769) and its chips and
+    // pages, until MESITA-3855 folded it into Me. Each lands on its Me page.
+    activity: "/activity",
+    activityChipPrefix: "/activity/",
+    activityVisitPrefix: "/activity/visit/",
+    activityCreditPrefix: "/activity/credit/",
+    // Share's page (MESITA-2566), until Share became a bar button
+    // (MESITA-3855). It lands on Home.
+    share: "/share",
     // Place detail briefly had a dual path under /saved (Favorites-era).
     // Canonical is /place/[id]; this redirects there (MESITA-899).
     savedPlacePrefix: "/saved/place/",
@@ -336,7 +346,9 @@ export function placeOpenPath(googlePlaceId: string): string {
 // frame (a type error) and lights no tab. Addresses that only redirect live
 // in `legacy` and next.config's table, never here.
 
-export type ConsumerTab = "home" | "search" | "pay" | "activity" | "me";
+/** The bar's tabs that are screens. Share sits on the bar too, between Pay
+ *  and Me, but is a button: no screen lights it (MESITA-3855). */
+export type ConsumerTab = "home" | "search" | "pay" | "me";
 
 /** How a screen arrives: a bar `tab`; a `page` pushed over the screen it was
  *  opened from; a `panel` that slides over the page under it (an @modal
@@ -374,14 +386,13 @@ export const ROUTE_MAP = {
   place: row("/place/:id", "home", "panel", "home", false),
   placeOpen: row("/place/open/:gid", "home", "panel", "home", false),
   placeReserve: row("/place/:id/reserve", "home", "page", "place", false),
-  // A reservation is reached from a place and from Activity › Reservations;
-  // it lights Activity, whose list is where it lands back (MESITA-3688,
-  // MESITA-3769).
-  reservation: row("/reservation/:id", "activity", "panel", "activity"),
-  // A finished Visit, opened from Activity › Visits (MESITA-3770).
-  visit: row("/activity/visit/:tabId", "activity", "page", "activity"),
-  // A voucher, bonus, refund or gift, opened from Activity (MESITA-3782).
-  credit: row("/activity/credit/:placeId/:entry", "activity", "page", "activity"),
+  // A reservation is reached from a place and from Me › Reservations; it
+  // lights Me, whose list is where it lands back (MESITA-3855).
+  reservation: row("/reservation/:id", "me", "panel", "meReservations"),
+  // A finished Visit, opened from Me › Tickets (MESITA-3770, MESITA-3855).
+  visit: row("/me/tickets/visit/:tabId", "me", "page", "meTickets"),
+  // A voucher, bonus, refund or gift, opened from Tickets (MESITA-3782).
+  credit: row("/me/tickets/credit/:placeId/:entry", "me", "page", "meTickets"),
   pay: row("/pay", "pay", "tab", null),
   // The pay screens own the whole frame, as the place screen does: no bar,
   // the header's back is the way out, so every step fits (MESITA-3739).
@@ -395,18 +406,19 @@ export const ROUTE_MAP = {
   wallet: row("/wallet", "pay", "tab", null),
   walletPlace: row("/wallet/:placeId", "pay", "page", "wallet"),
   walletGift: row("/wallet/gift/:token", "pay", "page", "wallet"),
-  // The bar's Activity tab (MESITA-3769).
-  activity: row("/activity", "activity", "tab", null),
-  // One Activity chip, /activity/<chip> (MESITA-3811): the same tab.
-  activityChip: row("/activity/:type", "activity", "tab", null),
   me: row("/me", "me", "tab", null),
-  // Me's Share tile since Share left the bar (MESITA-2871).
-  share: row("/share", "me", "page", "me"),
   meProfile: row("/me/profile", "me", "page", "me"),
   meInstagram: row("/me/instagram", "me", "page", "me"),
-  mePlan: row("/me/plan", "me", "page", "me"),
+  // Opened from Settings since the Me cell went Soon (MESITA-3855).
+  mePlan: row("/me/plan", "me", "page", "meSettings"),
   meClass: row("/me/class", "me", "page", "me"),
   meGift: row("/me/gift", "me", "page", "me"),
+  // Activity's chips as Me's pages (MESITA-3855).
+  meNotifications: row("/me/notifications", "me", "page", "me"),
+  meReservations: row("/me/reservations", "me", "page", "me"),
+  meTickets: row("/me/tickets", "me", "page", "me"),
+  // One kind of ticket, /me/tickets/<kind>: the same page, chip picked.
+  meTicketsKind: row("/me/tickets/:kind", "me", "page", "me"),
   meSettings: row("/me/settings", "me", "page", "me"),
   meSettingsContact: row("/me/settings/contact", "me", "page", "meSettings"),
   meSettingsFeedback: row("/me/settings/feedback", "me", "page", "meSettings"),

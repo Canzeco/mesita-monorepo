@@ -1,17 +1,17 @@
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, type ReactNode } from "react";
 import {
+  Bell,
   CalendarCheck,
   CreditCard,
   Crown,
   Settings as SettingsIcon,
-  Share2,
+  Ticket,
   UserRound,
   Gift,
   type LucideIcon,
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
-import { activityHref } from "@/lib/activity-types";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, type DestShape } from "./profile-sections";
 
@@ -64,6 +64,16 @@ import { DestGrid, type DestShape } from "./profile-sections";
 //   Favorites · Transactions / Cards · Refunds / Connector · Share /
 //   Settings (full width)
 //
+// NINE SINCE MESITA-3855 (Pato, 2026-11-14: "Home Search Pay Share Me";
+// "Profile Instagram / Class Plan(Soon) / Notifications, Reservations /
+// Gift, Share / Tickets, Settings"): Activity left the bar, so its
+// Notifications, Reservations and Tickets are Me's pages; Share went to the
+// bar as a button, so Settings closes the grid alone at the left:
+//
+//   Profile · Instagram / Class · Plan (Soon) /
+//   Notifications · Reservations / Gift · Tickets /
+//   Settings
+//
 // route-structure T8 pins them.
 //
 // NO TILE PRINTS A GUEST FACT (Pato, MESITA-2607: "in the boxes below don't
@@ -71,19 +81,20 @@ import { DestGrid, type DestShape } from "./profile-sections";
 // preliminarily"). The header card holds the four facts; every summary is a
 // static description of what its page holds.
 
-/** One cell: a destination, a route to `/me/<box>` — or `/share`, the one
- *  page Me opens outside its own namespace (MESITA-2887). */
+/** One cell: a destination, a route to `/me/<box>`. */
 export type HubTile = {
   Icon: LucideIcon;
   title: string;
   /** THREE WORDS OR FEWER (profile-sections.tsx). */
   summary: string;
   href: string;
+  /** Opens nothing yet: a Soon pill, no link (Plan, MESITA-3855). */
+  soon?: boolean;
 };
 
-/** The grid cells, in reading order; Settings is the last (eight with it
- *  since MESITA-3821: Profile · Instagram / Class · Plan / Reservations ·
- *  Gift / Share · Settings). */
+/** The grid cells, in reading order; Settings is the last (nine with it
+ *  since MESITA-3855: Profile · Instagram / Class · Plan / Notifications ·
+ *  Reservations / Gift · Tickets / Settings). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // member number is on /me/profile, with its copy button; the tile only
@@ -111,30 +122,29 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Regular or VIP",
     href: CONSUMER_ROUTES.mePages.class,
   },
+  // PLAN IS SOON (Pato, 2026-11-14, MESITA-3855: "Move plan to settings for
+  // the moment … Class Plan(Soon)"): the cell holds its place and opens
+  // nothing; the page is Settings › Plan.
   {
     Icon: CreditCard,
     title: "Plan",
     summary: "Free or Pro",
     href: CONSUMER_ROUTES.mePages.plan,
+    soon: true,
   },
-  // NO ACTIVITY TILES (Pato, 2026-11-11, MESITA-3769: "REMOVE THEM FROM
-  // ME"): Activity is the bar's tab again, its chips live there. Each chip
-  // had a tile here from MESITA-3688.
-  // TRANSACTIONS BECAME ACTIVITY (MESITA-3631), a page under Me (MESITA-3717).
-  // CARDS LEFT (Pato, MESITA-3561: "remove cards from there. cards is
-  // already used in the wallet. its redundant"). /me/cards now redirects to the
-  // hub through the /me/[tab] catch-all.
-  // REFUNDS LEFT FOR ACTIVITY and MCP FOR PLAN (Pato, 2026-11-11,
-  // MESITA-3771: "Refunds also in Activity … Remove MCP box and put it
-  // inside plan but as a perk"). /me/refunds and /me/connector 308.
-  // A RESERVATIONS SHORTCUT (Pato, 2026-11-13, MESITA-3821: "keep a shortcut
-  // to Activity Reservations here, even if a bit redundant, its okey"): the
-  // one Activity chip with a door on Me, opening /activity/reservations.
+  // ACTIVITY'S CHIPS, AS ME'S PAGES (MESITA-3855). The Notifications cell
+  // wears the red dot the bar's Activity tab wore (MESITA-3717).
+  {
+    Icon: Bell,
+    title: "Notifications",
+    summary: "Bookings and updates",
+    href: CONSUMER_ROUTES.mePages.notifications,
+  },
   {
     Icon: CalendarCheck,
     title: "Reservations",
     summary: "Upcoming and past",
-    href: activityHref("reservations"),
+    href: CONSUMER_ROUTES.mePages.reservations,
   },
   // GIFT (MESITA-3771): gift credit you hold at a place to a friend.
   {
@@ -143,14 +153,12 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Send credit to a friend",
     href: CONSUMER_ROUTES.mePages.gift,
   },
-  // Share wears the three joined dots it wore on the bar (MESITA-2568,
-  // MESITA-2887); beside Settings since MESITA-3821 (Pato: "profile
-  // instagram / class plan / reservations gift / share settings").
+  // TICKETS: every transaction, four kinds — Visit, Voucher, Gift, Refund.
   {
-    Icon: Share2,
-    title: "Share",
-    summary: "Invite your friends",
-    href: CONSUMER_ROUTES.share,
+    Icon: Ticket,
+    title: "Tickets",
+    summary: "Every transaction",
+    href: CONSUMER_ROUTES.mePages.tickets,
   },
 ];
 

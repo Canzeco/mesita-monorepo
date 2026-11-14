@@ -1,7 +1,7 @@
 "use client";
 
 // The newest notification this guest has seen, on this device (MESITA-3717,
-// Pato: "if there is an event not viewed yet, put red bubble"). Activity ›
+// Pato: "if there is an event not viewed yet, put red bubble"). Me ›
 // Notifications marks it when its rows are on screen; the bar's Me tab, Me's
 // Notifications tile and the chip wear a red dot while a newer one exists.
 // One ISO time in localStorage, read through useSyncExternalStore like

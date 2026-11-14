@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { FileText, MessageSquare, MessageSquareHeart, ScrollText } from "lucide-react";
+import { CreditCard, FileText, MessageSquare, MessageSquareHeart, ScrollText } from "lucide-react";
 import { MESITA_PRIVACY_URL, MESITA_TERMS_URL } from "@/lib/mesita-contact";
 import { APP_VERSION } from "@/lib/app-version";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -34,7 +34,9 @@ import { cn } from "@/lib/utils";
 // Feedback sat under "Your account", Social and Session were one-row groups,
 // Sign out drew a different row, and Terms and Privacy showed raw URLs.
 //
-//   ACCOUNT   Phone (a fact) · Public profile (the switch)
+//   ACCOUNT   Phone (a fact) · Public profile (the switch) · Plan (a door;
+//             here "for the moment", Pato, MESITA-3855, while Me's Plan cell
+//             reads Soon)
 //   HELP      Contact · Send feedback
 //   LEGAL     Terms of use · Privacy policy (an arrow out: they leave the app)
 //   ────────  Sign out, its own card, one centred row
@@ -101,6 +103,14 @@ export function SettingsModal() {
           <PhoneRow />
           <RowDivider />
           <SocialNameRow />
+          <RowDivider />
+          <SettingsLinkRow
+            Icon={CreditCard}
+            tint="muted"
+            href={CONSUMER_ROUTES.mePages.plan}
+            label="Plan"
+            sub="Free or Pro"
+          />
         </>
       }
       help={

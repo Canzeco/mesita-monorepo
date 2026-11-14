@@ -18,7 +18,7 @@
 // BARE ONLY. The /web and /mob surface prefixes are retired (MESITA-3013):
 // SURFACE_PREFIX_REDIRECTS below sends each to its bare path in one 308, and
 // a prefixed retired address then takes a second hop through this table.
-import { activityHref } from "./activity-types";
+import { ticketsHref } from "./ticket-kinds";
 
 /** The slice of Next's redirect shape this table uses. `has` matches a held
  *  query (MESITA-3688: `?tab=reservations` on the Favorites addresses). */
@@ -94,11 +94,54 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/me/passport", destination: "/me/profile", permanent: true },
   // Support (MESITA-2169). Terms and privacy live on Settings.
   { source: "/me/help", destination: "/me/settings", permanent: true },
-  // Me › Transactions is Activity (MESITA-3631; under Me, MESITA-3717).
-  { source: "/me/transactions", destination: "/activity", permanent: true },
-  // MESITA-3771: MCP is a perk on Plan; Refunds is Activity's chip.
+  // Me › Transactions became Activity (MESITA-3631) and is Me › Tickets
+  // again (MESITA-3855).
+  { source: "/me/transactions", destination: ticketsHref(), permanent: true },
+  // MESITA-3771: MCP is a perk on Plan; Refunds is Tickets' chip (MESITA-3855).
   { source: "/me/connector", destination: "/me/plan", permanent: true },
-  { source: "/me/refunds", destination: activityHref("refunds"), permanent: true },
+  { source: "/me/refunds", destination: ticketsHref("refunds"), permanent: true },
+  // ACTIVITY LEFT THE BAR FOR ME (Pato, 2026-11-14, MESITA-3855): each chip
+  // lands on its Me page in one hop. A held `?type=` (the address before
+  // MESITA-3811) is matched first. Payments and Prepayments were Visits and
+  // Vouchers (MESITA-3697); Favorites is Home's Saved row (MESITA-3723).
+  ...(
+    [
+      ["notifications", "/me/notifications"],
+      ["reservations", "/me/reservations"],
+      ["visits", ticketsHref("visits")],
+      ["payments", ticketsHref("visits")],
+      ["vouchers", ticketsHref("vouchers")],
+      ["prepayments", ticketsHref("vouchers")],
+      ["gifts", ticketsHref("gifts")],
+      ["refunds", ticketsHref("refunds")],
+      ["favorites", "/home/places"],
+    ] as const
+  ).flatMap(([chip, destination]) => [
+    {
+      source: "/activity",
+      has: [{ type: "query" as const, key: "type", value: chip }],
+      destination,
+      permanent: true,
+    },
+    { source: `/activity/${chip}`, destination, permanent: true },
+  ]),
+  {
+    source: "/activity/visit/:tabId",
+    destination: "/me/tickets/visit/:tabId",
+    permanent: true,
+  },
+  {
+    source: "/activity/credit/:placeId/:entry",
+    destination: "/me/tickets/credit/:placeId/:entry",
+    permanent: true,
+  },
+  // Bare /activity opened Notifications (MESITA-3769); any other chip name
+  // lands on Tickets.
+  { source: "/activity", destination: "/me/notifications", permanent: true },
+  { source: "/activity/:path*", destination: ticketsHref(), permanent: true },
+  // SHARE IS A BAR BUTTON, NOT A PAGE (MESITA-3855): its old page lands on
+  // Home.
+  { source: "/share", destination: "/home/places", permanent: true },
   { source: "/invite", destination: "/me", permanent: true },
   // The retired Home hub's leaves (2026-09-01). /home ITSELF went to Places
   // when each tab got its own address (MESITA-2597); /home/social is live
@@ -172,7 +215,9 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // THE PLACES TEST TAB DIED (MESITA-2405).
   { source: "/places", destination: "/home/places", permanent: true },
   // EVERY OLD ADDRESS OF FAVORITES, RESERVATIONS AND NOTIFICATIONS LANDS ON
-  // ITS ACTIVITY CHIP IN ONE HOP (MESITA-3688). Me's own pages (MESITA-2565),
+  // ITS ME PAGE IN ONE HOP (Activity's chip from MESITA-3688, Me's page
+  // again since MESITA-3855; /me/reservations and /me/notifications are live
+  // pages, so they are not here). Me's own pages (MESITA-2565),
   // /saved (the bar's tab, MESITA-2521), /me/saved (Me's Saved,
   // MESITA-2561), the reservations list's top-level, Bookings and Saved
   // addresses. Next carries a held query across, so a held
@@ -181,7 +226,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   ...["/saved", "/me/saved", "/me/favorites"].map((source) => ({
     source,
     has: [{ type: "query" as const, key: "tab", value: "reservations" }],
-    destination: activityHref("reservations"),
+    destination: "/me/reservations",
     permanent: true,
   })),
   // Favorites left Activity (MESITA-3723): the hearts are Home's Saved row
@@ -190,23 +235,18 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/me/saved", destination: "/home/places", permanent: true },
   { source: "/me/favorites", destination: "/home/places", permanent: true },
   {
-    source: "/me/reservations",
-    destination: activityHref("reservations"),
-    permanent: true,
-  },
-  {
     source: "/reservations",
-    destination: activityHref("reservations"),
+    destination: "/me/reservations",
     permanent: true,
   },
   {
     source: "/bookings",
-    destination: activityHref("reservations"),
+    destination: "/me/reservations",
     permanent: true,
   },
   {
     source: "/saved/reservations",
-    destination: activityHref("reservations"),
+    destination: "/me/reservations",
     permanent: true,
   },
   {
@@ -218,20 +258,15 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/profile", destination: "/me/profile", permanent: true },
   {
     source: "/notifications",
-    destination: activityHref("notifications"),
+    destination: "/me/notifications",
     permanent: true,
   },
-  {
-    source: "/me/notifications",
-    destination: activityHref("notifications"),
-    permanent: true,
-  },
-  // /inbox was Activity's first address (MESITA-1626 sent it to Me); it is
-  // Activity again (MESITA-3688; under Me, MESITA-3717). /inbox/credits and
+  // /inbox was Activity's first address (MESITA-1626 sent it to Me); it was
+  // Activity again (MESITA-3688) and is Me › Notifications (MESITA-3855). /inbox/credits and
   // /inbox/orders sit ABOVE this and point at Pay: Next takes the first match.
   {
     source: "/inbox/:path*",
-    destination: "/activity",
+    destination: "/me/notifications",
     permanent: true,
   },
 ];

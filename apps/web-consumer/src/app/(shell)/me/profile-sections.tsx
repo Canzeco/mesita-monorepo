@@ -68,17 +68,22 @@ function TileText({
   shape,
   title,
   summary,
+  soon = false,
 }: {
   shape: DestShape;
   title: string;
   summary: string;
+  soon?: boolean;
 }) {
   if (shape === "cell") {
     // The title alone, centred and `truncate`d: a long one ends in "…" at
-    // 320px rather than pushing the grid.
+    // 320px rather than pushing the grid. A Soon cell says so beside it.
     return (
-      <span className="block min-w-0 flex-1 truncate text-sm font-bold tracking-tight">
-        {title}
+      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        <span className="block min-w-0 truncate text-sm font-bold tracking-tight">
+          {title}
+        </span>
+        {soon ? <SoonPill /> : null}
       </span>
     );
   }
@@ -95,7 +100,18 @@ function TileText({
   );
 }
 
-/** One cell: a DESTINATION, always a route Link to `/me/<box>`. */
+/** "Soon" beside a cell that opens nothing yet (Plan, MESITA-3855): the
+ *  pill Class's sheet wears (MESITA-3027). */
+function SoonPill() {
+  return (
+    <span className="bg-muted text-muted-foreground type-meta shrink-0 rounded-full px-1.5 py-0.5 font-semibold">
+      Soon
+    </span>
+  );
+}
+
+/** One cell: a DESTINATION, a route Link to `/me/<box>` — or, `soon`, the
+ *  same box that opens nothing yet (Plan, MESITA-3855: "Class Plan(Soon)"). */
 export function DestTile({
   shape,
   Icon,
@@ -103,6 +119,7 @@ export function DestTile({
   summary,
   href,
   dot = false,
+  soon = false,
 }: {
   shape: DestShape;
   Icon: LucideIcon;
@@ -110,10 +127,27 @@ export function DestTile({
   /** THREE WORDS OR FEWER — see the note above. */
   summary: string;
   href: string;
+  /** Opens nothing yet: no link, a Soon pill beside the title. */
+  soon?: boolean;
   /** A red dot at the tile's corner: something new waits behind it (the
    *  Notifications tile, MESITA-3717). */
   dot?: boolean;
 }) {
+  if (soon) {
+    return (
+      <div
+        aria-label={`${title}, soon`}
+        aria-disabled
+        className={TILE_FRAME[shape]}
+        data-dest-soon
+      >
+        <span className={DEST_CHIP} aria-hidden data-dest-chip>
+          <Icon className="h-[19px] w-[19px]" strokeWidth={2.1} />
+        </span>
+        <TileText shape={shape} title={title} summary={summary} soon />
+      </div>
+    );
+  }
   return (
     <PushLink
       href={href}
@@ -154,15 +188,17 @@ export function DestTileSkeleton({
   shape,
   title,
   summary,
+  soon = false,
 }: {
   shape: DestShape;
   title: string;
   summary: string;
+  soon?: boolean;
 }) {
   return (
     <div aria-hidden className={TILE_FRAME[shape]}>
       <Skeleton className={DEST_CHIP} />
-      <TileText shape={shape} title={title} summary={summary} />
+      <TileText shape={shape} title={title} summary={summary} soon={soon} />
     </div>
   );
 }

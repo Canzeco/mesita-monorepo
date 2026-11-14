@@ -1,6 +1,6 @@
 "use client";
 
-// ONE CREDIT MOVEMENT, ONE PAGE: /activity/credit/<placeId>/<kind>.<ms>
+// ONE CREDIT MOVEMENT, ONE PAGE: /me/tickets/credit/<placeId>/<kind>.<ms>
 // (MESITA-3782, Pato: "make UX/UI and tickets right like the related details
 // there"). A Vouchers or Gifts row opens it: a voucher or prepay bought, its
 // bonus, a bonus alone, a refunded purchase, credit sent, received or taken
@@ -16,8 +16,8 @@
 //   AT THIS PLACE    available · pending · spendable now
 //   Open the House Card · Pay here · Gift credit
 //
-// It reads the wallet Activity already holds (the same cached read); an entry
-// it cannot find any more says so and goes back to Activity.
+// It reads the wallet Tickets already holds (the same cached read); an entry
+// it cannot find any more says so and goes back to Tickets.
 
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -26,7 +26,7 @@ import { clockTime } from "@mesita/place-profile/lib/money";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { activityHref } from "@/lib/activity-types";
+import { ticketsHref } from "@/lib/ticket-kinds";
 import { apiGetWallet, entryLabel, money, type Wallet, type WalletEntry } from "@/lib/api/wallet";
 import { payPlacePath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -94,7 +94,7 @@ const BUTTON =
 
 export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: string }) {
   const getSupabase = useLazyBrowserSupabase();
-  // The same read and key Activity holds, so a tap from the list paints at once.
+  // The same read and key Tickets holds, so a tap from the list paints at once.
   const wallet = useCachedQuery<Wallet>("activity-wallet", () => apiGetWallet(getSupabase()), {
     ttl: 2 * 60 * 1000,
   });
@@ -121,7 +121,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           icon={BadgeDollarSign}
           title="This credit isn't here any more"
           description="It may have moved since the list loaded."
-          action={{ label: "Back to Activity", href: activityHref("vouchers") }}
+          action={{ label: "Back to Tickets", href: ticketsHref() }}
         />
       );
     }
