@@ -29,7 +29,7 @@ Deno.test("fleetWorkflows: one graph per agent, every edge wired to real nodes",
   }
 });
 
-Deno.test("fleetWorkflows: each agent's tool nodes use only its own tools, and all nine are used", () => {
+Deno.test("fleetWorkflows: each agent's tool nodes use only its own tools, and every tool is used", () => {
   const wfs = fleetWorkflows(ids());
   const used = new Set<string>();
   for (const agent of FLEET) {

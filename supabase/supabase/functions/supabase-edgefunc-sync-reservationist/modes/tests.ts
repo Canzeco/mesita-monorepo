@@ -23,7 +23,8 @@ function mockOverrides(t: FleetTest, toolIdByName: Map<string, string>): Record<
   const out: Record<string, unknown> = {};
   for (const [name, result] of Object.entries(t.mocks ?? {})) {
     const id = toolIdByName.get(name);
-    if (id && result) out[id] = [{ mock_result: result, parameter_conditions: [], is_error: false }];
+    const isError = (t.failing ?? []).includes(name as never);
+    if (id && result) out[id] = [{ mock_result: result, parameter_conditions: [], is_error: isError }];
   }
   return out;
 }

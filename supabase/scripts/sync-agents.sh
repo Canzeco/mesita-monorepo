@@ -6,7 +6,8 @@
 #   1. Hash what this checkout would push (specHash in _shared/reservationist).
 #   2. Wait until the DEPLOYED sync function answers the same hash: the
 #      Supabase integration deploys a few minutes after the push to main.
-#   3. Run the sync: fleet → knowledge → workflows → tests → inspect. Any
+#   3. Run the sync: fleet → phones → knowledge → workflows → tests →
+#      inspect (phones binds every line to the inbound agent). Any
 #      failure, or inspect not in sync, fails the script.
 #   4. Run the simulated-call tests and report them. A failed test is
 #      reported, never a failure of the script: the agents are deployed.
@@ -67,7 +68,7 @@ done
   echo "| Step | Result |"
   echo "|---|---|"
 } >>"$SUMMARY"
-for mode in fleet knowledge workflows tests inspect; do
+for mode in fleet phones knowledge workflows tests inspect; do
   out=$(call "{\"mode\":\"$mode\"}")
   ok=$(echo "$out" | jq -r '.ok // false' 2>/dev/null || echo false)
   if [ "$mode" = "inspect" ]; then

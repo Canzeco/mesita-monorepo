@@ -312,7 +312,7 @@ const CONSUMER_READ_ALLOWLIST = [
   "consumer-web-get-profile/index.ts",
   "consumer-web-signin-phone/index.ts",
   "consumer-web-update-profile/index.ts",
-  "eleven-a3-verify-caller/index.ts",
+  "eleven-inbound-identify-caller/index.ts",
   // web-business (MESITA-3103): the owner's row, created on first sign-in
   // through writeConsumer; names, phone, handle and member number of owners
   // and requesters for the super-admin review queue. Read-only, error checked.
@@ -408,7 +408,6 @@ const SWALLOWED_TODAY = [
   "_shared/place-slug.ts",
   "_shared/reservation-places.ts",
   "_shared/save-place.ts",
-  "eleven-a3-verify-caller/index.ts",
   "eleven-a4-cancel-reservation/index.ts",
   "eleven-agent-get-reservation/index.ts",
   "supabase-cron-retry-reservations/index.ts",

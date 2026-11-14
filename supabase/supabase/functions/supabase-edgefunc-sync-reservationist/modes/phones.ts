@@ -1,12 +1,12 @@
 // supabase-edgefunc-sync-reservationist · mode "phones".
 //
-// Import the two Twilio reservation lines and bind each to its inbound agent
-// (place line → a4, guest line → a3). Idempotent.
+// Import Mesita's reservations number (and the old guest line, if any) and
+// bind every line to the one inbound agent, a3 (MESITA-3974). Idempotent.
 
 import type { WorkspaceCtx } from "./context.ts";
 import { elFetch } from "../el-client.ts";
 import { json } from "../../_shared/http.ts";
-import { consumerFromNumber, reservationFromNumber } from "../../_shared/elevenlabs.ts";
+import { legacyGuestLine, reservationFromNumber } from "../../_shared/elevenlabs.ts";
 
 export async function phones(ctx: WorkspaceCtx): Promise<Response> {
   const { key, mode, configuredAgents } = ctx;
@@ -19,30 +19,16 @@ export async function phones(ctx: WorkspaceCtx): Promise<Response> {
     }, 503);
   }
 
+  // One inbound agent answers every line (MESITA-3974): Mesita's number,
+  // and the old guest line if it exists, so a saved number still works.
   const businessLine = reservationFromNumber();
-  const consumerLine = consumerFromNumber();
-  if (consumerLine === businessLine) {
-    return json({
-      ok: false,
-      error:
-        "ELEVENLABS_CONSUMER_FROM_NUMBER is unset, so both audiences resolve to " +
-        `${businessLine}. Set it before binding — a3 and a4 cannot share a line.`,
-    }, 400);
-  }
-
+  const legacyLine = legacyGuestLine();
+  const inboundId = configuredAgents.a3?.id?.trim() ?? "";
   const want = [
-    {
-      key: "a4",
-      e164: businessLine,
-      label: "Mesita Reservations (Businesses)",
-      agentId: configuredAgents.a4?.id?.trim() ?? "",
-    },
-    {
-      key: "a3",
-      e164: consumerLine,
-      label: "Mesita Reservations (Consumers)",
-      agentId: configuredAgents.a3?.id?.trim() ?? "",
-    },
+    { key: "a3", e164: businessLine, label: "Mesita Reservations", agentId: inboundId },
+    ...(legacyLine
+      ? [{ key: "a3", e164: legacyLine, label: "Mesita Reservations (old guest line)", agentId: inboundId }]
+      : []),
   ];
   const missingAgent = want.filter((w) => !w.agentId).map((w) => w.key);
   if (missingAgent.length > 0) {
@@ -123,7 +109,7 @@ export async function phones(ctx: WorkspaceCtx): Promise<Response> {
     ok: true,
     mode,
     business_line: businessLine,
-    consumer_line: consumerLine,
+    legacy_guest_line: legacyLine,
     actions,
     phone_numbers: after.ok ? after.body : null,
   });

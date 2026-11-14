@@ -58,9 +58,30 @@ Deno.test("a4 code lookup: only the verified caller's place", () => {
   assertEquals(ownTicket(null, "place-a"), null);
 });
 
-Deno.test("a4 never reaches the global get_reservation", async () => {
-  const { A4 } = await import("./reservationist/a4.ts");
-  assert(!A4.toolNames.includes("get_reservation"), "a4 looks codes up through a4_find_reservation");
+Deno.test("inbound: get_reservation is reached only from the unknown-number lane", async () => {
+  // A known place looks a code up through a4_find_reservation (its own book
+  // only); a known guest reads guest.tickets. The global code lookup is for a
+  // number that is nobody's (MESITA-3974).
+  const { A3 } = await import("./reservationist/a3.ts");
+  const wf = A3.workflow((n) => `tool_${n}`);
+  const lookups = Object.entries(wf.nodes).filter(([, n]) =>
+    n.type === "tool" && (n.tools as Array<{ tool_id: string }>)[0].tool_id === "tool_get_reservation"
+  ).map(([id]) => id);
+  assertEquals(lookups.length, 1);
+  const into = Object.values(wf.edges).filter((e) => e.target === lookups[0]).map((e) => e.source);
+  assertEquals(into, ["unknown"]);
+});
+
+Deno.test("inbound: the first step is the caller-id lookup, and an unknown number takes the unknown lane", async () => {
+  const { A3 } = await import("./reservationist/a3.ts");
+  const wf = A3.workflow((n) => `tool_${n}`);
+  const first = Object.values(wf.edges).find((e) => e.source === "start_node")!;
+  const tool = wf.nodes[first.target as string];
+  assertEquals((tool.tools as Array<{ tool_id: string }>)[0].tool_id, "tool_inbound_identify_caller");
+  const failure = Object.values(wf.edges).find((e) =>
+    e.source === first.target && (e.forward_condition as { successful?: boolean }).successful === false
+  );
+  assertEquals(failure?.target, "unknown");
 });
 
 // ── Spoofing (MESITA-3973) ──────────────────────────────────────────────────

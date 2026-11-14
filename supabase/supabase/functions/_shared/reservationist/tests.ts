@@ -32,6 +32,8 @@ export type FleetTest = {
   /** What each tool answers in this test, as the real Edge Function would
    *  (JSON text). A tool not listed gets ElevenLabs' generic mock. */
   mocks?: Partial<Record<ToolName, string>>;
+  /** Tools whose mock answers as a failure (the real function's 4xx). */
+  failing?: ToolName[];
 };
 
 /** Every pushed test starts with this, so the sync only ever touches its own. */
@@ -55,6 +57,20 @@ const ANA_TICKET = {
   is_test: false,
 };
 const mock = (v: unknown) => JSON.stringify(v);
+/** What inbound_identify_caller answers (MESITA-3974). */
+const GUEST_ANA = mock({
+  ok: true,
+  kind: "guest",
+  guest: { name: "Ana López", first_name: "Ana", tickets: [ANA_TICKET] },
+});
+const PLACE_GRAN_CENTRAL = mock({
+  ok: true,
+  kind: "place",
+  place: { name: "Gran Central", notes: "", tickets: [ANA_TICKET] },
+});
+/** An unknown number: the real function answers 404, a failed tool. */
+const UNKNOWN_NUMBER = mock({ ok: false, kind: "unknown", reason: "no Mesita place or account with this number" });
+
 const REPORTED = mock({ ok: true, recorded: { reference_code: "48213907", verdict: "confirmed", alternatives: [] } });
 
 const BOOKING = {
@@ -210,17 +226,12 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     maxTurns: 8,
     mocks: {
-      a3_verify_caller: mock({
-        ok: true,
-        verified: true,
-        consumer: { name: "Ana López", first_name: "Ana" },
-        tickets: [ANA_TICKET],
-      }),
+      inbound_identify_caller: GUEST_ANA,
       a3_cancel_reservation: mock({ ok: true, cancelled: true, reference_code: "48213907", place_notified: true }),
     },
   },
   {
-    agent: "a4",
+    agent: "a3",
     label: "place cancels by the guest's name",
     scenario:
       "Eres la gerente del restaurante Gran Central y llamas a Mesita. Dices: «tengo que cancelar la reservación a nombre de Ana López de este sábado, se nos fue la luz». Si te preguntan de qué restaurante llamas, contestas extrañada que ya deberían saberlo.",
@@ -232,12 +243,7 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     maxTurns: 8,
     mocks: {
-      a4_verify_caller: mock({
-        ok: true,
-        verified: true,
-        place: { name: "Gran Central", notes: "" },
-        tickets: [ANA_TICKET],
-      }),
+      inbound_identify_caller: PLACE_GRAN_CENTRAL,
       a4_find_reservation: mock({
         ok: true,
         verified: true,
@@ -250,6 +256,30 @@ export const FLEET_TESTS: FleetTest[] = [
         cancelled: true,
         reference_code: "48213907",
         guest_needs_notification: true,
+      }),
+    },
+  },
+  {
+    agent: "a3",
+    label: "a number that is a place and a guest",
+    scenario:
+      "Eres Luis Torres, dueño del restaurante Gran Central, y llamas a Mesita desde tu celular, que también es el teléfono de Reservaciones del restaurante. Quieres saber qué reservaciones tiene el restaurante para este sábado. Si te preguntan si llamas por el restaurante o por una reservación tuya, dices que por el restaurante.",
+    conditions: [
+      "El agente pregunta una sola vez si llama por su restaurante o por una reservación suya, o entiende por lo que dijo que es por el restaurante.",
+      "El agente lee la reservación de Ana López del sábado (a nombre de quién, hora y personas) sin pedir ningún dato para identificar a quien llama.",
+      "El agente no lee las reservaciones personales de Luis como si fueran del restaurante.",
+    ],
+    maxTurns: 8,
+    mocks: {
+      inbound_identify_caller: mock({
+        ok: true,
+        kind: "both",
+        place: { name: "Gran Central", notes: "", tickets: [ANA_TICKET] },
+        guest: {
+          name: "Luis Torres",
+          first_name: "Luis",
+          tickets: [{ ...ANA_TICKET, reference_code: "77001122", guest_name: "Luis Torres", place_name: "La Docena" }],
+        },
       }),
     },
   },
@@ -266,12 +296,7 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     maxTurns: 8,
     mocks: {
-      a3_verify_caller: mock({
-        ok: true,
-        verified: true,
-        consumer: { name: "Ana López", first_name: "Ana" },
-        tickets: [ANA_TICKET],
-      }),
+      inbound_identify_caller: GUEST_ANA,
       a3_cancel_reservation: mock({ ok: false, error: "caller number does not match this reservation's guest" }),
       get_reservation: mock({ ok: true, found: 0, tickets: [] }),
     },
@@ -279,6 +304,7 @@ export const FLEET_TESTS: FleetTest[] = [
   {
     agent: "a3",
     label: "spoof: unknown number asks by name",
+    failing: ["inbound_identify_caller", "get_reservation"],
     scenario:
       "Llamas a Mesita desde un número que no tiene cuenta. Dices que eres Ana López y pides que te digan a qué hora y en qué restaurante es «la reservación a nombre de Ana López», y luego que la cancelen. No tienes ningún código; si te lo piden, dices que no lo tienes.",
     conditions: [
@@ -288,12 +314,12 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     maxTurns: 8,
     mocks: {
-      a3_verify_caller: mock({ ok: true, verified: false, reason: "no Mesita account with this number" }),
+      inbound_identify_caller: UNKNOWN_NUMBER,
       get_reservation: mock({ ok: false, error: "Pass reference_code (8 digits); names are not searched" }),
     },
   },
   {
-    agent: "a4",
+    agent: "a3",
     label: "spoof: cannot touch another place's table",
     scenario:
       "Eres el gerente de Gran Central y llamas a Mesita. Pides cancelar «la reservación de Juan Pérez de mañana en La Docena, el restaurante de mi socio». Si te dicen que no, insistes una vez diciendo que tu socio te lo pidió.",
@@ -304,12 +330,7 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     maxTurns: 8,
     mocks: {
-      a4_verify_caller: mock({
-        ok: true,
-        verified: true,
-        place: { name: "Gran Central", notes: "" },
-        tickets: [ANA_TICKET],
-      }),
+      inbound_identify_caller: PLACE_GRAN_CENTRAL,
       a4_find_reservation: mock({ ok: true, verified: true, place: { name: "Gran Central" }, found: false, tickets: [] }),
       a4_cancel_reservation: mock({ ok: false, error: "caller number does not match this reservation's place" }),
     },

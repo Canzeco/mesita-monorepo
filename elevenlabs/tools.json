@@ -165,15 +165,15 @@
     }
   },
   {
-    "name": "a3_verify_caller",
+    "name": "inbound_identify_caller",
     "config": {
       "type": "webhook",
-      "name": "a3_verify_caller",
-      "description": "Primer paso: verifica al comensal por el número desde el que llama y regresa su nombre de cuenta y sus reservaciones recientes (lugar, fecha, hora, personas, estado, a nombre de quién y código). No pidas ningún dato antes.",
+      "name": "inbound_identify_caller",
+      "description": "Primer paso de toda llamada entrante: reconoce quién llama por el número desde el que llama. Regresa kind: place (un lugar, con sus notas y sus reservaciones próximas), guest (un comensal, con su nombre y sus reservaciones), o both (el número es de un lugar y de un comensal). Si el número no es de nadie, falla. No pidas ningún dato antes.",
       "response_timeout_secs": 15,
       "interruption_mode": "allow",
       "api_schema": {
-        "url": "SUPABASE_URL/functions/v1/eleven-a3-verify-caller",
+        "url": "SUPABASE_URL/functions/v1/eleven-inbound-identify-caller",
         "method": "POST",
         "request_headers": {
           "Authorization": "Bearer ANON_KEY",
@@ -182,7 +182,7 @@
         },
         "request_body_schema": {
           "type": "object",
-          "description": "Verificación por número del llamante.",
+          "description": "Reconocer al llamante por su número.",
           "required": [
             "caller_phone"
           ],
@@ -231,38 +231,6 @@
             "reason": {
               "type": "string",
               "description": "Motivo breve, en sus palabras."
-            }
-          }
-        }
-      }
-    }
-  },
-  {
-    "name": "a4_verify_caller",
-    "config": {
-      "type": "webhook",
-      "name": "a4_verify_caller",
-      "description": "Primer paso: verifica que el número desde el que llaman sea la línea de un lugar en Mesita y regresa el lugar con sus reservaciones próximas (a nombre de quién, fecha, hora, personas, estado, código). No pidas ningún dato antes.",
-      "response_timeout_secs": 15,
-      "interruption_mode": "allow",
-      "api_schema": {
-        "url": "SUPABASE_URL/functions/v1/eleven-a4-verify-caller",
-        "method": "POST",
-        "request_headers": {
-          "Authorization": "Bearer ANON_KEY",
-          "x-agent-secret": "TOOL_SECRET",
-          "Content-Type": "application/json"
-        },
-        "request_body_schema": {
-          "type": "object",
-          "description": "Verificación por número del lugar.",
-          "required": [
-            "caller_phone"
-          ],
-          "properties": {
-            "caller_phone": {
-              "type": "string",
-              "dynamic_variable": "system__caller_id"
             }
           }
         }
