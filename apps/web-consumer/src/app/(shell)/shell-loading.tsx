@@ -65,6 +65,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   meGift: () => <GiftLoading />,
   meNotifications: () => <NotificationsLoading />,
   meReservations: () => <ReservationsLoading />,
+  meReservationsPast: () => <ReservationsLoading />,
   meTickets: () => <TicketsLoading />,
   meTicketsKind: () => <TicketsLoading />,
   meSettings: () => <SettingsLoading />,
