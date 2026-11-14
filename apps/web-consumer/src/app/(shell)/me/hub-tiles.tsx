@@ -6,7 +6,6 @@ import {
   CreditCard,
   Crown,
   Settings as SettingsIcon,
-  Share2,
   Ticket,
   UserRound,
   Gift,
@@ -79,6 +78,14 @@ import { DestGrid, type DestShape } from "./profile-sections";
 //   Notifications · Reservations / Gift · Tickets /
 //   Share · MCP (Soon) / Settings
 //
+// TEN SINCE MESITA-3880 (Pato, 2026-11-14: "remove share button from here
+// is redundant"): the Share cell left, the bar's Share tab stays, and MCP
+// and Settings share the last row:
+//
+//   Profile · Instagram / Class · Plan /
+//   Notifications · Reservations / Gift · Tickets /
+//   MCP (Soon) · Settings
+//
 // route-structure T8 pins them.
 //
 // NO TILE PRINTS A GUEST FACT (Pato, MESITA-2607: "in the boxes below don't
@@ -95,13 +102,11 @@ export type HubTile = {
   href: string;
   /** Opens nothing yet: a Soon pill, no link (Plan, MESITA-3855). */
   soon?: boolean;
-  /** A bar tab, not a Me page: a plain jump, no slide (Share, MESITA-3867). */
-  jump?: boolean;
 };
 
-/** The grid cells, in reading order; Settings is the last (eleven with it
- *  since MESITA-3867: Profile · Instagram / Class · Plan / Notifications ·
- *  Reservations / Gift · Tickets / Share · MCP / Settings). */
+/** The grid cells, in reading order; Settings is the last (ten with it
+ *  since MESITA-3880: Profile · Instagram / Class · Plan / Notifications ·
+ *  Reservations / Gift · Tickets / MCP · Settings). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // tile only names the page (MESITA-2607).
@@ -165,14 +170,6 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Every transaction",
     href: CONSUMER_ROUTES.mePages.tickets,
   },
-  // SHARE (MESITA-3867): the bar's Share tab, here too. It lights Share.
-  {
-    Icon: Share2,
-    title: "Share",
-    summary: "Tell a friend",
-    href: CONSUMER_ROUTES.share,
-    jump: true,
-  },
   // MCP IS SOON (Pato, 2026-11-14, MESITA-3867: "add MCP here with soon,
   // before settings"): ChatGPT or Claude reading your Mesita. The cell opens
   // nothing yet; its old address, /me/connector, lands on Plan (the perk left
@@ -218,9 +215,7 @@ export function MeHubFrame({
             {ME_HUB_GRID.map((cell) => (
               <Fragment key={cell.title}>{tile(cell, "cell")}</Fragment>
             ))}
-            {/* SETTINGS CLOSES THE GRID, alone at the left (MESITA-3867;
-                Pato, MESITA-3527: "if it's uneven the number of items, then
-                asymmetry is okay"). */}
+            {/* SETTINGS CLOSES THE GRID, beside MCP since MESITA-3880. */}
             {tile(ME_HUB_SETTINGS, "cell")}
           </DestGrid>
         </div>

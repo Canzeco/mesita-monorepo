@@ -101,7 +101,6 @@ export function ProfileClient() {
           summary={cell.summary}
           href={cell.href}
           soon={cell.soon}
-          jump={cell.jump}
           // The bar's red dot, on the door that clears it (MESITA-3855).
           dot={cell.href === CONSUMER_ROUTES.mePages.notifications && unseen}
         />
