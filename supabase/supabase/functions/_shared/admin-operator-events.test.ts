@@ -1,7 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   mergeActivityFeed,
-  type AdminOperatorEventRow,
 } from "./admin-operator-events.ts";
 
 Deno.test("mergeActivityFeed sorts newest first and caps", () => {
