@@ -39,6 +39,16 @@ export async function inspect(ctx: WorkspaceCtx): Promise<Response> {
       .map((d) => ({ id: d.id, name: d.name }));
     const builtIn = (prompt.built_in_tools ?? {}) as Record<string, unknown>;
     const wf = readWorkflow(body);
+    // Read-back of how the call behaves: nothing here decides in_sync,
+    // it is what a person checks after changing settings.ts.
+    const cc = (body.conversation_config ?? {}) as Record<string, unknown>;
+    const liveSettings = {
+      first_message_empty: (typeof agent?.first_message === "string" ? agent.first_message : "") === "",
+      language: (agent as { language?: unknown } | undefined)?.language ?? null,
+      language_presets: Object.keys((cc.language_presets ?? {}) as Record<string, unknown>),
+      turn: cc.turn ?? null,
+      client_events: (cc.conversation as { client_events?: unknown } | undefined)?.client_events ?? null,
+    };
     const checks = {
       prompt_hash: liveHash === repoHash,
       tools: JSON.stringify(liveTools) === JSON.stringify(wantTools),
@@ -54,6 +64,7 @@ export async function inspect(ctx: WorkspaceCtx): Promise<Response> {
       tools: liveTools,
       knowledge_base: kb,
       built_in_tools: Object.keys(builtIn).filter((k) => builtIn[k]),
+      settings: liveSettings,
       workflow: summarizeWorkflow(wf),
       checks,
       in_sync: Object.values(checks).every(Boolean),
@@ -65,6 +76,14 @@ export async function inspect(ctx: WorkspaceCtx): Promise<Response> {
     in_sync: agents.every((a) => a.in_sync === true),
     agents,
     workspace_agents: listedAgents.map((a) => ({ id: a.agent_id, name: a.name })),
-    workspace_tools: toolRows.map((t) => ({ id: t.id, name: t.tool_config?.name })),
+    workspace_tools: toolRows.map((t) => {
+      const c = (t.tool_config ?? {}) as Record<string, unknown>;
+      return {
+        id: t.id,
+        name: t.tool_config?.name,
+        interruption_mode: c.interruption_mode ?? null,
+        disable_interruptions: c.disable_interruptions ?? null,
+      };
+    }),
   });
 }
