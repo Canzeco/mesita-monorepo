@@ -173,6 +173,7 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     when: formatReservationWhen(row.reserved_at, row.place?.timezone),
     reservedAt: row.reserved_at,
     placeTimezone: row.place?.timezone ?? null,
+    placeHours: row.place?.hours ?? null,
     partySize: row.party_size,
     state,
     stateNote: counterOffer

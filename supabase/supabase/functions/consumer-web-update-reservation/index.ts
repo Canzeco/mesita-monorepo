@@ -40,6 +40,11 @@ import {
   RESERVATIONS_OFF_MESSAGE,
   readReservable,
 } from "../_shared/place-reservable.ts";
+import {
+  PLACE_CLOSED_CODE,
+  PLACE_CLOSED_MESSAGE,
+  slotInHours,
+} from "../_shared/reservation-hours.ts";
 
 type Body = {
   reservation_id?: string;
@@ -122,6 +127,18 @@ serveJson("consumer-web-update-reservation", async (req) => {
   if (reservable.error) return json({ ok: false, error: reservable.error }, 500);
   if (!reservable.reservable) {
     return json({ ok: false, code: RESERVATIONS_OFF_CODE, error: RESERVATIONS_OFF_MESSAGE }, 409);
+  }
+
+  // ── A new time must be inside the place's hours (MESITA-3953) ───────────
+  // Only a time that moves is judged: a party-size change keeps a table the
+  // guest already holds.
+  if (
+    typeof patch.reserved_at === "string" &&
+    new Date(patch.reserved_at).getTime() !== new Date(row.reserved_at).getTime()
+  ) {
+    if (slotInHours(reservable.hours, reservable.zone, new Date(patch.reserved_at)) === false) {
+      return json({ ok: false, code: PLACE_CLOSED_CODE, error: PLACE_CLOSED_MESSAGE }, 409);
+    }
   }
 
   // ── Reschedule cap (abuse guard, eng-review 2026-08-04) ───────────────────

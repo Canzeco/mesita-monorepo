@@ -24,7 +24,7 @@
 // Note which side each column lives on, because the old embeds got that
 // wrong as well:
 //   place_profiles   → name, category, photos, address, price_level, lat, lng,
-//                      timezone
+//                      timezone, hours
 //   places → slug
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -45,6 +45,9 @@ export type PlaceSummary = {
   lng: number | null;
   /** The place's IANA zone (MESITA-3626) — every slot is its wall clock. */
   timezone: string;
+  /** The place's weekly hours (MESITA-3953): the Reschedule sheet offers only
+   *  times inside them. Null when the place has none. */
+  hours: unknown;
 };
 
 type RowWithPlace = {
@@ -73,7 +76,7 @@ export async function attachPlaces<T extends RowWithPlace>(
     const { data } = await admin
       .from("places")
       .select(
-        "id, slug, place:place_profiles(id, name, google_name, category, photos, address, price_level, lat, lng, timezone)",
+        "id, slug, place:place_profiles(id, name, google_name, category, photos, address, price_level, lat, lng, timezone, hours)",
       )
       .in("id", ids);
     type Row = {
@@ -91,6 +94,7 @@ export async function attachPlaces<T extends RowWithPlace>(
           lat: number | null;
           lng: number | null;
           timezone: string | null;
+          hours: unknown;
         }
         | null;
     };
@@ -108,6 +112,7 @@ export async function attachPlaces<T extends RowWithPlace>(
         lat: p.place?.lat ?? null,
         lng: p.place?.lng ?? null,
         timezone: placeZone(p.place),
+        hours: p.place?.hours ?? null,
       });
     }
   }

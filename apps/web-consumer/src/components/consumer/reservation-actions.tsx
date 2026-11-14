@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CalendarClock, Loader2, MapPin, XCircle } from "lucide-react";
 
@@ -21,7 +21,7 @@ import {
 } from "@/lib/api/reservations";
 import type { ReservationItem } from "@/lib/reservation-types";
 import { placeHref } from "@/lib/place-route";
-import { resolveSlot } from "@/lib/reservation-slots";
+import { resolveSlot, weeklyHoursFrom } from "@/lib/reservation-slots";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import {
@@ -63,7 +63,10 @@ export function ReservationActions({
   // the row would go stale — a dead "Today" pill and a last pill a day past the
   // one-month horizon.
   const tz = r.placeTimezone || null;
-  const dateOptions = buildDateOptions(null, tz);
+  // Only times inside the place's hours (MESITA-3953); a place with none
+  // offers the baseline window.
+  const hours = useMemo(() => weeklyHoursFrom(r.placeHours), [r.placeHours]);
+  const dateOptions = buildDateOptions(hours, tz);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -81,7 +84,7 @@ export function ReservationActions({
   const date =
     dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
     firstOpenDate(dateOptions);
-  const time = resolveSlot(date, timeChoice, null, tz);
+  const time = resolveSlot(date, timeChoice, hours, tz);
 
   const canReschedule = r.canReschedule ?? false;
   const canCancel = r.canCancel ?? false;
@@ -208,6 +211,7 @@ export function ReservationActions({
               value={time}
               onChange={setTimeChoice}
               date={date}
+              hours={hours}
               tz={tz}
             />
             <ReservationPartyPicker value={party} onChange={setParty} />

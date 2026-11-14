@@ -124,7 +124,36 @@ function parseHhmm(t: string | undefined): number | null {
   const mm = Number(m[2]);
   if (!Number.isFinite(hh) || !Number.isFinite(mm) || mm >= 60) return null;
   const min = hh * 60 + mm;
-  return min >= 0 && min < 1440 ? min : null;
+  // 24:00 is how a day-ending close is stored.
+  return min >= 0 && min <= 1440 ? min : null;
+}
+
+/**
+ * `WeeklyHours` from the raw `hours` a reservation's place carries (the
+ * server's jsonb, MESITA-3953). Null when no day holds a readable shift, which
+ * reads as "we don't know", never as "closed all week".
+ */
+export function weeklyHoursFrom(raw: unknown): WeeklyHours | null {
+  if (!raw || typeof raw !== "object") return null;
+  const out: WeeklyHours = {};
+  let found = 0;
+  for (const key of WEEK_KEYS) {
+    const list = (raw as Record<string, unknown>)[key];
+    if (!Array.isArray(list)) continue;
+    const ranges: HourRange[] = [];
+    for (const r of list) {
+      const open = (r as { open?: unknown } | null)?.open;
+      const close = (r as { close?: unknown } | null)?.close;
+      if (typeof open !== "string" || typeof close !== "string") continue;
+      if (parseHhmm(open) == null || parseHhmm(close) == null) continue;
+      ranges.push({ open, close });
+    }
+    if (ranges.length > 0) {
+      out[key] = ranges;
+      found += ranges.length;
+    }
+  }
+  return found > 0 ? out : null;
 }
 
 /**
