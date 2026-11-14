@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { ScreenStage } from "@/components/consumer/nav/ScreenStage";
 import { BottomNav } from "@/components/consumer/BottomNav";
+import { PendingTicketBanner } from "@/components/consumer/pay/PendingTicketBanner";
 import { PendingScreen } from "@/components/consumer/PendingScreen";
 import { ShellEntry } from "@/components/consumer/ShellEntry";
 import { ShellLoadingFor } from "./shell-loading";
@@ -208,6 +209,8 @@ export default async function ConsumerShellLayout({
               {modal}
             </div>
           </ScreenStage>
+          {/* A ticket left open, on every screen with the bar (MESITA-3906). */}
+          <PendingTicketBanner />
           <BottomNav />
         </div>
       </ConsumerIdentityProvider>
