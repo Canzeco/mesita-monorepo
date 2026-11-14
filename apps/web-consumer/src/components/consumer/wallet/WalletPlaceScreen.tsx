@@ -8,10 +8,10 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
 import { apiRemoveHouseCard } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { goBack, navigateTo } from "@/lib/navigate";
+import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { FIRST_READS_CAP_MS, usePlaceVouchers } from "@/components/consumer/member-place-actions";
+import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { HouseCardSkeleton, PlaceCredit } from "./PlaceCredit";
 import { useWallet } from "./use-wallet";
@@ -25,29 +25,41 @@ import { useWallet } from "./use-wallet";
 // voucher bought at the place comes back here from Stripe (?prepay=,
 // MESITA-3617), so the new credit shows on its own card. On white, like the
 // Wallet it opens from (MESITA-3747).
+//
+// ONE READ PAINTS THE PAGE (MESITA-3868): the Wallet. The place's vouchers
+// (list-vouchers) are asked beside it, in the background, for the Buy Credits
+// sheet; the page no longer draws anything from them, so it no longer waits
+// for them. A card payment that succeeded or is processing reads the Wallet
+// again (usePlaceVouchers' onPaid), so the new pending row is there when the
+// pay sheet closes.
 
 export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   const router = useRouter();
-  // Me › Gift opens a House Card with Gift Credits open (MESITA-3771).
-  const startGift = useSearchParams()?.get("gift") === "1";
+  // Me › Gift opens a House Card with Gift Credits open (MESITA-3771). The
+  // ask is read once and dropped from the address, so a return from Stripe
+  // (whose return address is this page's) does not open Gift again.
+  const params = useSearchParams();
+  const [startGift] = useState(() => params?.get("gift") === "1");
+  useEffect(() => {
+    if (!startGift) return;
+    // Only `gift` leaves: a Checkout return's `?prepay=` is useWallet's to read.
+    const rest = new URLSearchParams(window.location.search);
+    rest.delete("gift");
+    const q = rest.toString();
+    replaceAddress(`${window.location.pathname}${q ? `?${q}` : ""}`);
+  }, [startGift]);
   const getSupabase = useLazyBrowserSupabase();
   const { wallet, failed, credits, reread, confirming } = useWallet();
   const row = credits?.find((r) => r.placeId === placeId) ?? null;
   const back = useCallback(() => goBack(router), [router]);
-  // THE PLACE'S VOUCHERS ON ITS HOUSE CARD (MESITA-3822, Pato: "where the
-  // fuck is the list of Vouchers"): list-vouchers is asked when the page
-  // opens, beside the Wallet read, and the card paints once both answered
-  // (MESITA-3803's one paint), or after FIRST_READS_CAP_MS without it. Buy
-  // opens the same pay sheet as the place's Offers, here on the card.
-  const vouchers = usePlaceVouchers(placeId);
+  // THE PLACE'S VOUCHERS, BEHIND BUY CREDITS (MESITA-3868; a list on the page
+  // from MESITA-3822 until then): asked when the page opens, for the sheet.
+  // Buy opens the same pay sheet as the place's Offers, here on the card.
+  const vouchers = usePlaceVouchers(placeId, { onPaid: reread });
   const loadVouchers = vouchers.load;
-  const [capped, setCapped] = useState<string | null>(null);
   useEffect(() => {
-    const cap = setTimeout(() => setCapped(placeId), FIRST_READS_CAP_MS);
-    void loadVouchers().finally(() => clearTimeout(cap));
-    return () => clearTimeout(cap);
-  }, [loadVouchers, placeId]);
-  const vouchersSettled = !vouchers.loading || capped === placeId;
+    void loadVouchers();
+  }, [loadVouchers]);
   const profile = useConsumerProfile().data;
   const guest = profile
     ? {
@@ -88,21 +100,32 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   return (
     <Screen title={row?.card.name ?? "Wallet"} onBack={back} flush paper scrolls>
       <div className="flex flex-1 flex-col px-4 pt-5 pb-8">
-        {confirming ? (
+        {/* No card yet (a first purchase still confirming): the line sits over
+            the loading frame. With a card, PlaceCredit draws it over the list. */}
+        {confirming && !row ? (
           <p className="text-muted-foreground mb-3 text-sm" role="status">
             Confirming a payment…
           </p>
         ) : null}
-        {row && vouchersSettled ? (
+        {row ? (
           <PlaceCredit
             row={row}
             canSend={wallet?.can_send === true}
             sentLinks={sentLinks}
             stories={(wallet?.waiting_stories ?? []).filter((s) => s.place_id === row.placeId)}
+            confirming={confirming}
             onReread={reread}
             onRemove={removeHouseCard}
             startGift={startGift}
-            vouchers={{ money: vouchers.money, guest, buying: vouchers.buying, onBuy: vouchers.buy }}
+            vouchers={{
+              money: vouchers.money,
+              loading: vouchers.loading,
+              failed: vouchers.failed,
+              onRetry: vouchers.load,
+              guest,
+              buying: vouchers.buying,
+              onBuy: vouchers.buy,
+            }}
           />
         ) : failed ? (
           <EmptyState

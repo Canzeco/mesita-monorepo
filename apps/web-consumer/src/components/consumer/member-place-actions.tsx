@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { readCached, writeCached } from "@/lib/screen-cache";
-import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherBasketItem, VoucherKey } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
@@ -347,8 +347,16 @@ function usePlaceReservation(placeId: string): {
   return { row: found?.placeId === placeId ? found.row : null, load };
 }
 
-export function usePlaceVouchers(placeId: string): {
+export function usePlaceVouchers(
+  placeId: string,
+  /** `onPaid` runs when a card payment succeeded or is still processing, never
+   *  on a declined, abandoned or failed attempt: the House Card reads the
+   *  Wallet again from it (MESITA-3868). */
+  opts: { onPaid?: () => void } = {},
+): {
   money: PlaceMoney | null;
+  /** The last list-vouchers for this place failed (MESITA-3868). */
+  failed: boolean;
   /** This place's House Card is in the guest's Wallet (MESITA-3582). */
   inWallet: boolean | undefined;
   /** Pins it with $0; resolves true once it is in the Wallet. */
@@ -365,28 +373,36 @@ export function usePlaceVouchers(placeId: string): {
 } {
   const getSupabase = useLazyBrowserSupabase();
   const mesita = isMesitaPlaceId(placeId);
-  const [state, setState] = useState<{ placeId: string; money: PlaceMoney } | null>(null);
+  // ONE RESULT PER PLACE (MESITA-3868): the offer or none, and whether the
+  // read failed. Written in the promise callbacks only (Next 16 lint), and
+  // only by the latest request, so an older answer never lands last. An
+  // answer with no offer clears earlier rows; a failed read keeps them.
+  const [offer, setOffer] = useState<{ placeId: string; money: PlaceMoney | null; failed: boolean } | null>(null);
+  const request = useRef(0);
+  const onPaid = useRef(opts.onPaid);
+  useEffect(() => {
+    onPaid.current = opts.onPaid;
+  });
   const [card, setCard] = useState<{ placeId: string; inWallet: boolean } | null>(null);
   const [buying, setBuying] = useState<VoucherKey | null>(null);
   // The basket whose "how to pay" sheet is open, and the saved cards
   // (null while they load).
   const [choosing, setChoosing] = useState<VoucherBasketItem[] | null>(null);
   const [cards, setCards] = useState<SavedCard[] | null>(null);
-  // The place whose list-vouchers answered, either way; set only in the
-  // promise callbacks, never synchronously in an effect (Next 16 lint).
-  const [settled, setSettled] = useState<string | null>(null);
-
   const load = useCallback(async () => {
     if (!mesita) return;
+    const mine = ++request.current;
     await apiListVouchers(getSupabase(), placeId)
       .then(({ money, inWallet }) => {
-        if (money) setState({ placeId, money });
+        if (mine !== request.current) return;
+        setOffer({ placeId, money: money ?? null, failed: false });
         if (inWallet !== undefined) setCard({ placeId, inWallet });
       })
       .catch(() => {
-        // The place read's offer stays on screen.
-      })
-      .finally(() => setSettled(placeId));
+        if (mine !== request.current) return;
+        // The offer already on screen stays; the read is marked failed.
+        setOffer((prev) => ({ placeId, money: prev?.placeId === placeId ? prev.money : null, failed: true }));
+      });
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesita, placeId]);
@@ -480,6 +496,7 @@ export function usePlaceVouchers(placeId: string): {
         setChoosing(null);
         if (r.card?.status === "succeeded") toast.success(one ? "Voucher bought. The credit is in your Wallet." : "Vouchers bought. The credit is in your Wallet.");
         else if (r.card?.status === "processing") toast("Your bank is confirming the payment. The credit shows in your Wallet once it's through.");
+        if (r.card?.status === "succeeded" || r.card?.status === "processing") onPaid.current?.();
         else toast("The bank check wasn't finished. Nothing was charged.", { tone: "error" });
       } catch (err: unknown) {
         const action = err instanceof EFError ? buyRefusalAction(err.code, err.body) : buyRefusalAction(null, null);
@@ -505,7 +522,8 @@ export function usePlaceVouchers(placeId: string): {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const money = state?.placeId === placeId ? state.money : null;
+  const mine = offer?.placeId === placeId ? offer : null;
+  const money = mine?.money ?? null;
   const units = (choosing ?? []).reduce((n, i) => n + i.qty, 0);
   // The sheet's title is the server's prices, summed; never a guess.
   const lines = (choosing ?? []).map((i) => ({ line: money?.catalog[i.voucher], qty: i.qty }));
@@ -536,10 +554,11 @@ export function usePlaceVouchers(placeId: string): {
 
   return {
     money,
+    failed: mine?.failed === true,
     inWallet: card && card.placeId === placeId ? card.inWallet : undefined,
     addHouseCard,
     buying,
-    loading: mesita && settled !== placeId,
+    loading: mesita && mine === null,
     load,
     buy,
     sheet,
