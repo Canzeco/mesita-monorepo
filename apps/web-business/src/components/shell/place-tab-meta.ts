@@ -32,11 +32,12 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   payments: { label: "Payments", icon: CreditCardIcon, sub: "Choose how guests pay you and earn credit here. Money and payouts are on Operations › Money." },
   reservations: { label: "Reservations", icon: CalendarCheckIcon, sub: "Whether guests can ask for a table here." },
   // Every product, current and future (MESITA-3238; was Soon, MESITA-3197). The
-  // line is about Mesita, not the page (Pato, MESITA-3237).
+  // line is about Mesita, not the page (Pato, MESITA-3237); it leads with "the
+  // Shopify for independent restaurants" (Pato, MESITA-3866).
   all: {
     label: "All",
     icon: DotsThreeCircleIcon,
-    sub: "Mesita Suite is the marketing, payments and operations platform for independent restaurants.",
+    sub: "Mesita Suite is the Shopify for independent restaurants: one platform for marketing, payments and operations.",
   },
   settings: { label: "Settings", icon: GearIcon, sub: "Place and team." },
   admin: { label: "Admin", icon: ShieldCheckIcon, sub: "Mesita staff only." },
