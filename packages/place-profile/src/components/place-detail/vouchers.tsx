@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgePercent, Banknote, Check, CircleCheck, Crown, Info, Lock, Minus, PartyPopper, Plus, Smartphone, Ticket, Wallet, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, Check, CircleCheck, Crown, Info, Lock, Minus, PartyPopper, Plus, Smartphone, Ticket, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection, VoucherBasketItem } from "../../actions";
@@ -473,22 +473,29 @@ export function OffersWalletPill({ place }: { place: PlaceDetail }) {
   const available = balance?.available_cents ?? 0;
   const pending = balance?.pending_cents ?? 0;
   const spoken = `Your credits here: ${pesos(available, currency)}${pending > 0 ? `, ${pesos(pending, currency)} pending` : ""}`;
+  // A MINI HOUSE CARD (Pato, 2026-11-14, MESITA-3898: "enhance the top ugly
+  // ass preview of the wallet"): the black pill became the same object the
+  // Wallet's House Card page draws (MESITA-3802), in miniature: its pink
+  // gradient and faint circle, the place's photo in a white ring, the amount
+  // (white at 70% when nothing is spendable) over "House Card".
+  const empty = available <= 0;
   return (
     <span
-      className="mr-1.5 flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-neutral-950 pr-3 pl-1 text-white"
+      className="relative mr-1.5 flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-[10px] bg-gradient-to-br from-[var(--brand-pink-500)] to-[var(--brand-pink-800)] py-1 pr-3 pl-1.5 text-white shadow-sm"
       aria-label={spoken}
       data-place-credit
     >
-      <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-white/10 ring-2 ring-white" aria-hidden>
+      <span className="pointer-events-none absolute -top-5 -right-3 h-10 w-10 rounded-full bg-white/10" aria-hidden />
+      <span className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-white/70 bg-white/20" aria-hidden>
         {place.profilePhoto ? (
           <SizedImg src={place.profilePhoto} size="thumb" alt="" className="h-full w-full object-cover" />
         ) : (
           <span className="flex h-full w-full items-center justify-center text-xs font-semibold">{firstInitial(place.name)}</span>
         )}
       </span>
-      <Wallet className="h-4 w-4 shrink-0" aria-hidden />
-      <span className="text-sm font-bold tabular-nums" aria-hidden>
-        {pesos(available, currency)}
+      <span className="relative flex flex-col leading-none" aria-hidden>
+        <span className={cn("text-[15px] font-semibold tabular-nums", empty && "text-white/70")}>{pesos(available, currency)}</span>
+        <span className="mt-0.5 text-[9px] font-semibold tracking-[0.12em] text-white/80 uppercase">House Card</span>
       </span>
     </span>
   );
