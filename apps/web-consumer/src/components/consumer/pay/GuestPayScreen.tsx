@@ -42,8 +42,10 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-com
 // server's; this screen proposes.
 
 type Stage = "bill" | "method" | "pay";
-type Tip = 0 | 10 | 15 | "other" | null;
-const TIP_CHIPS = [0, 10, 15] as const;
+/** 10% · 15% · 20% · Other (MESITA-3876, Pato: "10 15 or 20. and other at
+ *  the end"); no tip is Other with 0 typed. */
+type Tip = 10 | 15 | 20 | "other" | null;
+const TIP_CHIPS = [10, 15, 20] as const;
 
 type Draft = {
   stage: Stage;
@@ -117,7 +119,8 @@ export function GuestPayScreen({
   const [stage, setStage] = useState<Stage>(draft?.stage ?? "bill");
   const [typing, setTyping] = useState(draft?.typing ?? true);
   const [amount, setAmount] = useState(draft?.amount ?? "");
-  const [tip, setTip] = useState<Tip>(draft?.tip ?? null);
+  // A draft from before MESITA-3876 may hold the retired 0 chip: no pick.
+  const [tip, setTip] = useState<Tip>(draft && (draft.tip === "other" || TIP_CHIPS.includes(draft.tip as 10)) ? draft.tip : null);
   const [other, setOther] = useState(draft?.other ?? "");
   const [useCredit, setUseCredit] = useState(draft?.useCredit ?? true);
   const [method, setMethod] = useState<PayWith | null>(draft?.method ?? null);
@@ -408,7 +411,7 @@ export function GuestPayScreen({
           <div className="flex gap-2">
             {TIP_CHIPS.map((p) => (
               <button key={p} type="button" className={tipChip(tip === p)} aria-pressed={tip === p} onClick={() => setTip(p)}>
-                {p === 0 ? "0" : `${p}%`}
+                {`${p}%`}
               </button>
             ))}
             <button
