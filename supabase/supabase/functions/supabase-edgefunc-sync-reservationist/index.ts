@@ -24,6 +24,12 @@
 //              single line one side always hears "no Mesita account with this
 //              number". Idempotent: imports what is missing, re-binds what is
 //              pointed at the wrong agent, leaves correct rows untouched.
+//   tests      Create or update the simulated-call tests of
+//              _shared/reservationist/tests.ts, matched by name.
+//   run_tests  Run each agent's tests ({ agent } for one); answers one
+//              invocation id per agent.
+//   test_results  { invocation_ids } read back: passed / failed / pending and
+//              the evaluator's reason.
 //   knowledge  Push knowledgeFor(agent) as ONE KB text doc PER AGENT
 //              (a1-kb-v7 …); each agent ends with exactly that doc attached
 //              on Main (usage_mode=prompt). Docs are renamed in place.
@@ -69,6 +75,7 @@ import { workflows } from "./modes/workflows.ts";
 import { knowledge } from "./modes/knowledge.ts";
 import { inspect } from "./modes/inspect.ts";
 import { fleet } from "./modes/fleet.ts";
+import { runTests, testResults, tests } from "./modes/tests.ts";
 
 // Each mode names the context stage it needs; the handler loads exactly that.
 type ModeEntry =
@@ -87,6 +94,10 @@ const MODES: Record<Mode, ModeEntry> = {
   calls: { stage: "base", run: calls },
   transcript: { stage: "base", run: transcript },
   phones: { stage: "workspace", run: phones },
+  // Simulated-call tests (MESITA-3967): the repo's tests pushed, run, read.
+  tests: { stage: "base", run: tests },
+  run_tests: { stage: "workspace", run: runTests },
+  test_results: { stage: "base", run: testResults },
 };
 
 // The tool secret + agent state — read live so a SQL rotation propagates on
