@@ -14,11 +14,14 @@ export const PLAN_NAME: Record<BoostTier, string> = {
   boost_2x: "Pro",
   boost_5x: "Max",
 };
-/** The visibility each plan gives, Free included: the plan's one perk. */
-export const FREE_VISIBILITY = "1X";
+/** The visibility each plan gives, Free included: the plan's one perk. In
+ *  words, not 1X · 2X · 5X (Pato, MESITA-3910: "match Business" with the guest
+ *  Upgrade sheet, MESITA-3906). Index = Premier level, 0 where every place starts. */
+export const LEVEL_VISIBILITY = ["Organic visibility", "High visibility boost", "Max visibility boost"] as const;
+export const FREE_VISIBILITY = LEVEL_VISIBILITY[0];
 export const PLAN_VISIBILITY: Record<BoostTier, string> = {
-  boost_2x: "2X",
-  boost_5x: "5X",
+  boost_2x: LEVEL_VISIBILITY[1],
+  boost_5x: LEVEL_VISIBILITY[2],
 };
 
 // ── The Premier status line (MESITA-3632; under the level in the one table, MESITA-3638) ──────────────────────────────────
