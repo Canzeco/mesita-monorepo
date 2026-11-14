@@ -18,7 +18,7 @@
 // same rule as a4 (MESITA-3615). The place calls back the line a1 dialed
 // from, which a4 answers.
 
-import { CLOSING } from "./closing.ts";
+import { CLOSING, NATURAL } from "./closing.ts";
 import {
   edge,
   END,
@@ -36,10 +36,11 @@ import {
 const PROMPT = [
   `Eres el agente de reservaciones de Mesita. Llamas al restaurante {{venue_name}} de parte de un comensal de Mesita. Hablas como una persona: español de México, de usted, natural y breve. Nunca aceptes por tu cuenta algo distinto a lo que pidió el comensal, nunca inventes disponibilidad y nunca des el teléfono del comensal: Mesita es el contacto. El flujo te dice qué hacer en cada paso.`,
   CLOSING,
+  NATURAL,
 ].join("\n\n");
 
 const BOOK = [
-  `Ya saludaste. Si quien contesta no toma reservaciones o es un conmutador, pide con cortesía que te pasen con quien sí; acepta esperas cortas.`,
+  `Al empezar la llamada espera a que contesten y saluda en una frase: «¡Hola, buenas! Le llamo de Mesita por una reservación a nombre de {{guest_name}}.» Si quien contesta no toma reservaciones o es un conmutador, pide con cortesía que te pasen con quien sí; acepta esperas cortas.`,
   `Según {{call_context}}:`,
   `- "booking": pide una mesa para {{party_size}} personas el {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}.`,
   `- "modification": el restaurante ya tiene una mesa a nombre de {{guest_name}} el {{modification_of_date}} a las {{modification_of_time}}. No pidas mesa nueva: pide moverla a {{party_size}} personas el {{reservation_date}} a las {{reservation_time}}. Si no pueden, pide que cancelen la anterior y toma la rama de no hay lugar.`,
@@ -55,7 +56,9 @@ const BOOK = [
 export const A1: FleetAgent = {
   key: "a1",
   name: "eleven-a1 (es-mx) · c2b outbound booker",
-  firstMessage: "¡Hola, buenas! Le llamo de Mesita por una reservación a nombre de {{guest_name}}.",
+  // Empty on purpose: a1 waits for the place to speak, then greets (the
+  // greeting is the first line of BOOK). See TURN_OUTBOUND.
+  firstMessage: "",
   prompt: PROMPT,
   toolNames: ["a1_report_outcome"],
   roleLines: [
@@ -95,7 +98,7 @@ export const A1: FleetAgent = {
         farewell_ok: farewell(
           "Confirm & close",
           -170,
-          "La mesa quedó confirmada y registrada. Lee de vuelta en una frase: nombre, personas, fecha y hora. Agradece, despídete corto y cuelga con end_call.",
+          "La mesa quedó confirmada y registrada. No repitas los datos ni vuelvas a preguntar si está confirmada. Agradece, despídete corto y cuelga con end_call.",
           "e_fok_end",
         ),
         farewell_counter: farewell(
@@ -161,7 +164,7 @@ export const A1: FleetAgent = {
         e_rd_farewell: edge("report_declined", "farewell_declined", RESULT_OK),
         e_ru_farewell: edge("report_unreachable", "farewell_unreachable", RESULT_OK),
         e_rw_farewell: edge("report_wrong", "farewell_wrong", RESULT_OK),
-        e_fok_end: edge("farewell_ok", "end_node", llm("Ya leíste los datos de vuelta y te despediste.", "done")),
+        e_fok_end: edge("farewell_ok", "end_node", llm("Ya agradeciste y te despediste.", "done")),
         e_fco_end: edge("farewell_counter", "end_node", llm("Ya pediste que aparten las opciones y te despediste.", "done")),
         e_fd_end: edge("farewell_declined", "end_node", llm("Ya agradeciste y te despediste.", "done")),
         e_fu_end: edge("farewell_unreachable", "end_node", llm("Ya cerraste (o era un buzón y no dejaste recado).", "done")),

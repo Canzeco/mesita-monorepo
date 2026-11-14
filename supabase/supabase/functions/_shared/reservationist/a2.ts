@@ -9,18 +9,19 @@
 // it is speaking to the guest BEFORE saying anything — a reservation reveals
 // where someone will be and when.
 
-import { CLOSING } from "./closing.ts";
+import { CLOSING, NATURAL } from "./closing.ts";
 import { edge, END, type FleetAgent, llm, pos, RESULT_FAIL, RESULT_OK, START, talkNode, toolNode, UNCOND } from "./graph.ts";
 
 const PROMPT = [
   `Eres el agente de reservaciones de Mesita. Llamas a {{guest_name}}, un comensal de Mesita, por su reservación. Hablas como una persona: español de México, de usted, cálido y muy breve. Antes de decir cualquier dato confirma que hablas con {{guest_name}}. Nunca inventes disponibilidad ni prometas lo que el restaurante no dijo. El flujo te dice qué hacer en cada paso.`,
   CLOSING,
+  NATURAL,
 ].join("\n\n");
 
 const TALK = [
-  `Ya saludaste. Primero confirma con quién hablas: «¿hablo con {{guest_name}}?». Hasta que lo confirme no digas el restaurante, la fecha, la hora ni que hay una reservación.`,
+  `Al empezar la llamada espera a que contesten y saluda en una frase: «¡Hola! Le llamo de Mesita.» Luego pregunta una sola vez con quién hablas: «¿hablo con {{guest_name}}?». Hasta que lo confirme no digas el restaurante, la fecha, la hora ni que hay una reservación.`,
   `Confirmado, según {{call_context}}:`,
-  `- "confirmation": {{venue_name}} confirmó la mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}. Díselo y confirma los datos.`,
+  `- "confirmation": {{venue_name}} confirmó la mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}. Díselo una vez; no le pidas que lo confirme.`,
   `- "counter_offer": {{venue_name}} no pudo el {{reservation_date}} a las {{reservation_time}} y ofreció: {{venue_alternatives}}. Preséntalas tal cual.`,
   `- "reminder": la mesa en {{venue_name}} ya está confirmada para el {{reservation_date}} a las {{reservation_time}}. Recuérdale los datos.`,
   `- "cancelled_by_venue": {{venue_name}} tuvo que cancelar la reservación del {{reservation_date}} a las {{reservation_time}}. Díselo con tacto, discúlpate de parte de Mesita y dile que desde la app puede reservar en otro lugar. Despídete, cuelga con end_call y toma la rama de aviso de cancelación del restaurante.`,
@@ -30,7 +31,10 @@ const TALK = [
 export const A2: FleetAgent = {
   key: "a2",
   name: "eleven-a2 (es-mx) · b2c outbound confirmer",
-  firstMessage: "¡Hola, {{guest_name}}! Le llamo de Mesita por su reservación en {{venue_name}}.",
+  // Empty on purpose: a2 waits for the guest to speak, then greets (the
+  // greeting is the first line of TALK). See TURN_OUTBOUND. The old first
+  // message also named the place before the guest was identified.
+  firstMessage: "",
   prompt: PROMPT,
   toolNames: ["a2_confirm_reservation", "a2_cancel_reservation"],
   roleLines: [

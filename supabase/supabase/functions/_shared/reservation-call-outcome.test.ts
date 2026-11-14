@@ -130,16 +130,16 @@ Deno.test("apply: a place's yes confirms once; a second delivery changes nothing
   assertEquals(first.applied, true);
   assertEquals(table.row.state, "confirmed");
   assertEquals(table.row.attempts_state, "answered");
-  assertEquals(table.row.callback_state, "scheduled"); // the guest call is due now
+  assertEquals(table.row.callback_state, "skipped"); // a confirmed table is told in the app, never by a call
   assertEquals(notified, ["confirmed"]);
-  assertEquals(kicked, ["t1"]);
+  assertEquals(kicked, []);
 
   const snapshot = structuredClone(table.row);
   const second = await applyCallResult(store, "conv_1", DONE_SUCCESS);
   assertEquals(second, { applied: false, reason: "not_awaiting" });
   assertEquals(table.row, snapshot);
   assertEquals(notified, ["confirmed"]);
-  assertEquals(kicked, ["t1"]);
+  assertEquals(kicked, []);
 });
 
 Deno.test("apply: a1's reported verdict wins over the analysis", async () => {

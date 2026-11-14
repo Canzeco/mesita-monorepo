@@ -5,12 +5,13 @@
 // one of theirs, or send them to the app for changes. Unverified lane: one
 // reservation by its 8-digit code, read-only.
 
-import { CLOSING } from "./closing.ts";
+import { CLOSING, NATURAL } from "./closing.ts";
 import { back, edge, END, type FleetAgent, llm, pos, RESULT_FAIL, RESULT_OK, START, talkNode, toolNode, UNCOND } from "./graph.ts";
 
 const PROMPT = [
   `Eres la línea de Mesita para comensales: alguien te está llamando. Hablas como una persona: español de México, de usted, natural y breve. Solo hablas de las reservaciones del número verificado y solo con lo que regresan las herramientas; nunca inventes reservaciones ni des datos de otras personas. El flujo te dice qué hacer en cada paso.`,
   CLOSING,
+  NATURAL,
 ].join("\n\n");
 
 export const A3: FleetAgent = {
