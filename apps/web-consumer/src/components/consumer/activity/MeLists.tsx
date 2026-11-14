@@ -194,16 +194,23 @@ const VISIT_PILL: Record<string, [string, StatusTone]> = {
 
 /** `notes`: each payment's few words by its id, written on the Visit it
  *  paid (MESITA-3697: the payment lives on its Visit's card). */
+/** A bill still open: the live pay screen, Tickets' "Open now" card, and
+ *  the red dot on Me's Tickets box (MESITA-3885). */
+export function isOpenVisit(v: Pick<GuestVisit, "status">): boolean {
+  return (
+    v.status === "waiting_bill" ||
+    v.status === "billed" ||
+    v.status === "paying"
+  );
+}
+
 function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
   return visits.map((v) => {
     const [label, tone] = VISIT_PILL[v.status] ?? [
       v.status,
       "grey" as StatusTone,
     ];
-    const open =
-      v.status === "waiting_bill" ||
-      v.status === "billed" ||
-      v.status === "paying";
+    const open = isOpenVisit(v);
     // Nothing was paid: the bill is a grey fact on the line, never an amount
     // on the right beside money that moved (MESITA-3865).
     const unpaid = v.status === "expired" || v.status === "cancelled";
@@ -478,7 +485,9 @@ function ordered(rows: Row[]): { upcoming: Row[]; past: Row[] } {
 
 // ─── The reads ──────────────────────────────────────────────────────────────
 
-function useReservations() {
+/** Me › Reservations' read, shared by key with Me's Reservations box
+ *  (MESITA-3885). */
+export function useReservations() {
   const getSupabase = useLazyBrowserSupabase();
   const reservations = useCachedQuery<ReservationsRead>(
     RESERVATIONS_KEY,
@@ -628,6 +637,17 @@ export function ReservationsPage() {
   );
 }
 
+/** The guest's visits, the read Tickets lists and Me's Tickets box reads
+ *  for an open bill (MESITA-3885); one key, so either warms the other. */
+export function useVisits() {
+  const getSupabase = useLazyBrowserSupabase();
+  return useCachedQuery(
+    "activity-visits",
+    () => apiListVisits(getSupabase()),
+    { ttl: TTL },
+  );
+}
+
 /** /me/tickets and /me/tickets/<kind>: every transaction, one chip per kind. */
 export function TicketsPage() {
   // THE CHIP IS THE PATH (as Activity's was, MESITA-3811): /me/tickets/<kind>;
@@ -643,11 +663,7 @@ export function TicketsPage() {
     () => apiGetWallet(getSupabase()),
     { ttl: TTL },
   );
-  const visits = useCachedQuery(
-    "activity-visits",
-    () => apiListVisits(getSupabase()),
-    { ttl: TTL },
-  );
+  const visits = useVisits();
   useEffect(() => {
     if (visits.error) reportError("me tickets visits failed", visits.error);
     if (wallet.error) reportError("me tickets wallet failed", wallet.error);
