@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 // `translate-y-*` also sets CSS `translate`, not `transform`, so
 // `transition-[transform,opacity]` would jump it into the margin and
 // then fade — a flash of the fake tabs (MESITA-1791). Fade opacity in
-// place. Function hashes still work from Create/Enrich step chips.
+// place. Creation's step chips land on Deep Enrich's step rows (f-<key>).
 // Crenup is two pages since MESITA-2083 — Creation and Enrichment — and each
 // strip lists only its own page's modules. The first id is the gate.
 export type CrenupView = "creation" | "uprich";
@@ -23,7 +23,6 @@ const STRIP_LINKS: Record<CrenupView, { id: string; label: string }[]> = {
     { id: "s-fast-update", label: "Fast Update" },
     { id: "s-deep-update", label: "Deep Update" },
     { id: "s-enrich", label: "Deep Enrich" },
-    { id: "s-functions", label: "Functions" },
   ],
 };
 

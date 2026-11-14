@@ -124,15 +124,13 @@ describe("instance estimates", () => {
     expect(e.perPlace).toBeGreaterThan(computeCreateCost(settings).perPlace);
   });
 
-  it("vision off and reviews 0 drop those Enrich lines", () => {
+  it("vision off drops image descriptions; reviews are a fixed 100 (MESITA-3939)", () => {
     const e = computeEnrichTickCost({
       ...settings,
       imageVisionEnabled: false,
       gatherReviews: 0,
     });
     expect(e.active.some((l) => l.label === "Image descriptions")).toBe(false);
-    expect(e.active.some((l) => l.label === "Google reviews + images")).toBe(
-      false,
-    );
+    expect(e.active.some((l) => l.label === "Google reviews + images")).toBe(true);
   });
 });
