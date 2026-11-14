@@ -28,7 +28,7 @@
 // once its sources answered. Nothing here computes a balance: it lists and
 // formats what the server sent.
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
@@ -41,7 +41,6 @@ import {
 } from "lucide-react";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
-import { Skeleton } from "@/components/shared/Skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { cn } from "@/lib/utils";
 import {
@@ -68,8 +67,6 @@ import {
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
 import {
-  isTicketKind,
-  TICKET_KINDS,
   ticketsHref,
   type TicketKind,
 } from "@/lib/ticket-kinds";
@@ -561,19 +558,22 @@ const EMPTY: Record<
   },
 };
 
-/** The Tickets chips, in Pato's order (MESITA-3855): All, then the four
- *  kinds. */
-const CHIPS: ReadonlyArray<{
-  kind: TicketKind | "all";
-  label: string;
-  Icon: LucideIcon;
-}> = [
-  { kind: "all", label: "All", Icon: Ticket },
-  { kind: "visits", label: "Visits", Icon: UtensilsCrossed },
-  { kind: "vouchers", label: "Vouchers", Icon: BadgeDollarSign },
-  { kind: "gifts", label: "Gifts", Icon: Gift },
-  { kind: "refunds", label: "Refunds", Icon: HandCoins },
+/** Tickets' tabs (MESITA-3893, Pato: "remove all. just Visits. Vouchers.
+ *  Gifts"). Refunds sit in Vouchers, as they did before MESITA-3855. */
+type TicketTab = "visits" | "vouchers" | "gifts";
+const TICKET_TABS: ReadonlyArray<{ kind: TicketTab; label: string }> = [
+  { kind: "visits", label: "Visits" },
+  { kind: "vouchers", label: "Vouchers" },
+  { kind: "gifts", label: "Gifts" },
 ];
+
+/** The tab a /me/tickets address shows: bare is Visits, refunds is
+ *  Vouchers (MESITA-3893). */
+function ticketTabOf(seg: string | undefined): TicketTab {
+  if (seg === "vouchers" || seg === "refunds") return "vouchers";
+  if (seg === "gifts") return "gifts";
+  return "visits";
+}
 
 const ICON: Record<ListType | "all", LucideIcon> = {
   reservations: CalendarCheck,
@@ -671,37 +671,12 @@ export function ReservationsPage() {
   return (
     <Screen title="Reservations">
       <div className="flex flex-col gap-4">
-        <nav
-          aria-label="Upcoming or past reservations"
-          className="border-border bg-card -mx-5 -mt-5 flex shrink-0 border-b"
-          data-reservation-tabs
-        >
-          {RESERVATION_TABS.map((t) => {
-            const on = half === t.kind;
-            return (
-              <button
-                key={t.kind}
-                type="button"
-                aria-current={on ? "page" : undefined}
-                onClick={() => pick(t.kind)}
-                className={cn(
-                  "relative flex-1 px-1 py-3 text-center text-sm whitespace-nowrap transition",
-                  on
-                    ? "text-foreground font-semibold"
-                    : "text-muted-foreground",
-                )}
-              >
-                {on ? (
-                  <span
-                    aria-hidden
-                    className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-600"
-                  />
-                ) : null}
-                {t.label}
-              </button>
-            );
-          })}
-        </nav>
+        <SubpageTabs
+          label="Upcoming or past reservations"
+          tabs={RESERVATION_TABS}
+          on={half}
+          onPick={pick}
+        />
         <TicketList
           type="reservations"
           rows={halves ? halves[half] : null}
@@ -728,11 +703,11 @@ export function useVisits() {
 
 /** /me/tickets and /me/tickets/<kind>: every transaction, one chip per kind. */
 export function TicketsPage() {
-  // THE CHIP IS THE PATH (as Activity's was, MESITA-3811): /me/tickets/<kind>;
-  // bare /me/tickets is All. The kind page turns unknown names away.
+  // THE TAB IS THE PATH (as Activity's chip was, MESITA-3811):
+  // /me/tickets is Visits, /me/tickets/<kind> the others (MESITA-3893). The
+  // kind page turns unknown names away.
   const pathname = usePathname() ?? CONSUMER_ROUTES.mePages.tickets;
-  const seg = pathname.split("/")[3];
-  const kind: TicketKind | "all" = isTicketKind(seg) ? seg : "all";
+  const kind = ticketTabOf(pathname.split("/")[3]);
   const getSupabase = useLazyBrowserSupabase();
 
   // The keys Activity used, so CreditEntry's read stays shared.
@@ -773,104 +748,65 @@ export function TicketsPage() {
             ),
           ]
         : null,
-      vouchers: of("vouchers"),
+      // Refunds sit with Vouchers (MESITA-3893).
+      vouchers: moneyRows
+        ? moneyRows.filter((r) => r.type === "vouchers" || r.type === "refunds")
+        : null,
       gifts: of("gifts"),
-      refunds: of("refunds"),
-    } satisfies Record<TicketKind, Row[] | null>;
+    } satisfies Record<TicketTab, Row[] | null>;
   }, [visits.data, wallet.data]);
 
   const walletReady = !wallet.loading;
   // Visits waits for the wallet too, so its payments never pop in late.
-  const ready = (k: TicketKind | "all") =>
-    k === "visits" || k === "all"
-      ? !visits.loading && walletReady
-      : walletReady;
-  const failed = (k: TicketKind | "all") =>
-    k === "visits"
-      ? !!visits.error
-      : k === "all"
-        ? !!visits.error && !!wallet.error
-        : !!wallet.error;
+  const ready =
+    kind === "visits" ? !visits.loading && walletReady : walletReady;
+  const failed = kind === "visits" ? !!visits.error : !!wallet.error;
   const retry = () => {
     if (visits.error) visits.reload();
     if (wallet.error) wallet.reload();
   };
-  const rowsOf = (k: TicketKind | "all"): Row[] | null => {
-    if (k !== "all") return byKind[k];
-    const parts = TICKET_KINDS.map((t) => byKind[t]);
-    if (parts.every((p) => p === null)) return null;
-    return parts.flatMap((p) => p ?? []);
-  };
-
-  // THE CHIPS ARE ALWAYS THERE (MESITA-3882, Pato: "put the top horizontal
-  // carousel menu to select the type of transaction. remember: visit voucher
-  // gift"): All · Visits · Vouchers · Gifts draw whether or not they hold a
-  // ticket, and an empty one says so under its chip. Refunds keeps
-  // MESITA-3865's rule: its chip shows only once it holds a refund (or while
-  // it is the one being looked at). A kind wears its count; All does not,
-  // since it repeated the first chip's.
-  const counts: Partial<Record<TicketKind | "all", string>> = {};
-  const hidden = new Set<TicketKind | "all">();
-  for (const c of CHIPS) {
-    if (c.kind === "all") continue;
-    const rows = rowsOf(c.kind);
-    if (!ready(c.kind) || failed(c.kind) || !rows) continue;
-    if (!rows.length) {
-      if (c.kind === "refunds" && c.kind !== kind) hidden.add(c.kind);
-      continue;
-    }
-    // Payments missing: no number on a list they belong to.
-    if (c.kind === "visits" && wallet.error) continue;
-    counts[c.kind] =
-      c.kind === "visits" && visits.data?.truncated
-        ? `${rows.length}+`
-        : String(rows.length);
-  }
-  const chips = CHIPS.filter((c) => !hidden.has(c.kind));
 
   // The visits read is capped: say so under the list, not as a "+" alone.
   const shown = byKind.visits?.length ?? 0;
   const foot =
-    (kind === "visits" || kind === "all") && visits.data?.truncated && shown > 0
+    kind === "visits" && visits.data?.truncated && shown > 0
       ? `Showing your latest ${shown} visits.`
       : null;
 
   const note =
-    (kind === "visits" || kind === "all") && !!wallet.error
+    kind === "visits" && !!wallet.error
       ? "Couldn't load your payments. Visits shows your tables only."
-      : kind === "all" && !!visits.error
-        ? "Couldn't load your visits. Showing the rest."
-        : null;
+      : null;
 
-  // A chip tap rewrites the address in place: no navigation, so no loading
-  // frame between chips; Next keeps usePathname in step (MESITA-3811).
-  const pick = (k: TicketKind | "all") =>
+  // A tab tap rewrites the address in place: no navigation, so no loading
+  // frame between tabs; Next keeps usePathname in step (MESITA-3811).
+  const pick = (k: TicketTab) =>
     window.history.replaceState(
       null,
       "",
-      k === "all" ? ticketsHref() : ticketsHref(k),
+      k === "visits" ? ticketsHref() : ticketsHref(k),
     );
 
+  // RESERVATIONS' STRIP (MESITA-3893, Pato: "This page must be similar to
+  // reservations header with blue subpages navbar"): no counts, no intro.
   return (
     <Screen title="Tickets">
       <div className="flex flex-col gap-4">
-        <KindRail chips={chips} kind={kind} onPick={pick} counts={counts} />
-        {/* Each kind says what it holds first (MESITA-3782); All lists them. */}
-        {kind !== "all" ? <ChipIntro type={kind} /> : null}
-        <div
-          role="tabpanel"
-          aria-label={`${kind === "all" ? "All" : kind} tickets`}
-        >
-          <TicketList
-            type={kind}
-            rows={rowsOf(kind)}
-            ready={ready(kind)}
-            failed={failed(kind)}
-            retry={retry}
-            note={note}
-            foot={foot}
-          />
-        </div>
+        <SubpageTabs
+          label="Kinds of ticket"
+          tabs={TICKET_TABS}
+          on={kind}
+          onPick={pick}
+        />
+        <TicketList
+          type={kind}
+          rows={byKind[kind]}
+          ready={ready}
+          failed={failed}
+          retry={retry}
+          note={note}
+          foot={foot}
+        />
       </div>
     </Screen>
   );
@@ -1001,109 +937,78 @@ function TicketList({
   );
 }
 
-/** One chip on a rail: Tickets' kinds, Reservations' halves (MESITA-3888). */
-type RailChip<K extends string> = { kind: K; label: string; Icon: LucideIcon };
-
-/** The chips: the chosen one in view on arrival and on Back, without
- *  animation; the right edge fades so the rail reads as scrollable. */
-function KindRail<K extends string>({
-  chips,
-  kind,
+/** A list page's subpages (MESITA-3889/3893): Home's Places | Social strip,
+ *  equal tabs edge to edge under the header, white with a hairline, the
+ *  chosen one bold over a full-width blue-600 bar (Pato: "blue subpages
+ *  navbar"). `on` null draws no bar (the loading frame). */
+function SubpageTabs<K extends string>({
+  label,
+  tabs,
+  on,
   onPick,
-  counts,
-  label = "Kinds of ticket",
 }: {
-  chips: ReadonlyArray<RailChip<K>>;
-  kind: K;
-  onPick: (k: K) => void;
-  counts: Partial<Record<K, string>>;
-  label?: string;
+  label: string;
+  tabs: ReadonlyArray<{ kind: K; label: string }>;
+  on: K | null;
+  onPick?: (k: K) => void;
 }) {
-  const chosen = useRef<HTMLButtonElement | null>(null);
-  useLayoutEffect(() => {
-    chosen.current?.scrollIntoView({
-      block: "nearest",
-      inline: "nearest",
-      behavior: "instant" as ScrollBehavior,
-    });
-  }, [kind]);
   return (
-    <div className="relative -mx-4">
-      <div
-        className="scrollbar-hide flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pr-8"
-        role="tablist"
-        aria-label={label}
-        data-ticket-kinds
-      >
-        {chips.map(({ kind: key, label, Icon }) => {
-          const on = kind === key;
-          const n = counts[key];
-          return (
-            <button
-              key={key}
-              ref={on ? chosen : undefined}
-              type="button"
-              role="tab"
-              aria-selected={on}
-              onClick={() => onPick(key)}
-              className={cn(
-                "flex h-11 shrink-0 snap-start items-center gap-1.5 rounded-full border px-3.5 text-sm font-semibold transition",
-                on
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-card text-foreground hover:bg-muted",
-              )}
-            >
-              <Icon className="h-4 w-4" aria-hidden />
-              {label}
-              {n ? (
-                <span
-                  className={cn(
-                    "tabular-nums",
-                    on ? "text-background/70" : "text-muted-foreground",
-                  )}
-                >
-                  {n}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-      <span
-        className="from-background pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l to-transparent"
-        aria-hidden
-      />
-    </div>
+    <nav
+      aria-label={label}
+      className="border-border bg-card -mx-5 -mt-5 flex shrink-0 border-b"
+      data-subpage-tabs
+    >
+      {tabs.map((t) => {
+        const chosen = on === t.kind;
+        return (
+          <button
+            key={t.kind}
+            type="button"
+            aria-current={chosen ? "page" : undefined}
+            onClick={onPick ? () => onPick(t.kind) : undefined}
+            disabled={!onPick}
+            className={cn(
+              "relative flex-1 px-1 py-3 text-center text-sm whitespace-nowrap transition",
+              chosen
+                ? "text-foreground font-semibold"
+                : "text-muted-foreground",
+            )}
+          >
+            {chosen ? (
+              <span
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-600"
+              />
+            ) : null}
+            {t.label}
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 
 // ─── The loading frames (MESITA-2701) ──────────────────────────────────────
 
-/** A list page's frame while its read is out: the title in place, the list
- *  in bones; Tickets also draws its chips' bones, Reservations its two
- *  (MESITA-3888). */
+/** A list page's frame while its read is out: the title in place, the
+ *  list in bones; Reservations and Tickets also draw their tab strip, its
+ *  words in place and no tab chosen (MESITA-3893). */
 export function MeListSkeleton({
   title,
-  rail = false,
+  tabs,
 }: {
   title: string;
-  /** Chip bones: true for Tickets' four, or a number. */
-  rail?: boolean | number;
+  tabs?: "reservations" | "tickets";
 }) {
   return (
     <Screen title={title}>
       <div className="flex flex-col gap-4">
-        {rail ? (
-          <div className="flex gap-2 overflow-hidden" aria-hidden>
-            {["w-20", "w-28", "w-32", "w-24"]
-              .slice(0, rail === true ? 4 : rail)
-              .map((w, i) => (
-                <Skeleton
-                  key={i}
-                  className={cn("h-11 shrink-0 rounded-full", w)}
-                />
-              ))}
-          </div>
+        {tabs ? (
+          <SubpageTabs
+            label={title}
+            tabs={tabs === "tickets" ? TICKET_TABS : RESERVATION_TABS}
+            on={null}
+          />
         ) : null}
         <ActivityRowsSkeleton />
         <p role="status" className="sr-only">
