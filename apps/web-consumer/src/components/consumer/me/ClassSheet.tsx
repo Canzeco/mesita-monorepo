@@ -14,18 +14,22 @@
 // (consumers.guest_class is a generated column). No button joins or leaves.
 //
 // THE GUEST'S OWN CLASS ON TOP (MESITA-3873, Pato: "display you current class
-// … and a shortcut to connect instagram"): a status card (crown, class, one
-// line, a bar to 5,000 while Regular and connected) with the Instagram door
-// under it, then the two classes with a You pill on the guest's own. A failed
-// profile read never guesses a class.
+// … and a shortcut to connect instagram"): a status card (class, one line, a
+// bar to 5,000 while Regular and connected) with the Instagram door under it,
+// then the two classes with a You pill on the guest's own. A failed profile
+// read never guesses a class.
+//
+// PLAN'S LAYOUT (MESITA-3905, /plan-design-review): the status card is left-
+// aligned with a small crown beside the class (the big centred disc went), and
+// Regular and VIP are two cards with check lists, VIP in a 2px ink border, as
+// Plan's Free and Pro are (MESITA-3899). No "The two classes" heading.
 
-import { Crown, UsersRound } from "lucide-react";
+import { Check, Crown } from "lucide-react";
 
 import { Instagram } from "@/components/shared/instagram-icon";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
-  CLASS_LIST_TITLE,
   CLASS_MINE,
   CLASS_ROWS,
   CLASS_STATUS,
@@ -38,12 +42,7 @@ import { toGuestClass, type GuestClass } from "@/lib/guest-standing";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { cn } from "@/lib/utils";
-import {
-  IconChip,
-  RowDivider,
-  SettingsGroup,
-  SettingsLinkRow,
-} from "./settings-rows";
+import { RowDivider, SettingsLinkRow } from "./settings-rows";
 
 const count = (n: number) => n.toLocaleString("en-US");
 
@@ -58,18 +57,18 @@ export type ClassStatus =
       followers: number | null;
     };
 
-/** The big crown: plain ink for Regular, white in gold for VIP (the identity
- *  card's ClassBadge, MESITA-2695). */
+/** The small crown beside the class: ink for Regular, white in gold for VIP
+ *  (the identity card's ClassBadge, MESITA-2695). */
 function StatusCrown({ vip }: { vip: boolean }) {
   return (
     <span
       className={cn(
-        "flex h-14 w-14 items-center justify-center rounded-full",
+        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
         vip ? "bg-amber-500 text-white" : "bg-muted text-foreground",
       )}
       aria-hidden
     >
-      <Crown className="h-7 w-7" strokeWidth={2} />
+      <Crown className="h-4 w-4" strokeWidth={2.2} />
     </span>
   );
 }
@@ -105,7 +104,7 @@ export function ClassStatusCard({ status }: { status: ClassStatus }) {
   if (status.kind === "loading") {
     return (
       <div
-        className="border-border bg-card h-[210px] animate-pulse rounded-2xl border"
+        className="border-border bg-card h-[180px] animate-pulse rounded-2xl border"
         aria-hidden
         data-class-status="loading"
       />
@@ -135,12 +134,14 @@ export function ClassStatusCard({ status }: { status: ClassStatus }) {
       className="border-border bg-card overflow-hidden rounded-2xl border"
       data-class-status={guestClass}
     >
-      <div className="flex flex-col items-center px-4 pt-5 pb-4 text-center">
-        <StatusCrown vip={vip} />
-        <h2 className="mt-3 text-xl leading-6 font-semibold">
-          {CLASS_STATUS.title[guestClass]}
-        </h2>
-        <p className="text-muted-foreground type-label mt-1">{line}</p>
+      <div className="px-4 pt-4 pb-4">
+        <div className="flex items-center gap-2">
+          <StatusCrown vip={vip} />
+          <h2 className="text-lg leading-6 font-semibold">
+            {CLASS_STATUS.title[guestClass]}
+          </h2>
+        </div>
+        <p className="text-muted-foreground type-label mt-1.5">{line}</p>
         {!vip && handle && followers !== null && (
           <FollowerProgress followers={followers} />
         )}
@@ -171,32 +172,43 @@ export function ClassStatusCard({ status }: { status: ClassStatus }) {
   );
 }
 
-function ClassRow({
+/** A class as a card (MESITA-3905): its name with the You pill, its perks
+ *  as checks; VIP in a 2px ink border, as Plan's Pro. */
+function ClassCard({
   title,
-  icon,
-  subtitle,
+  perks,
   mine,
-}: ClassRowWords & { icon: React.ReactNode; mine: boolean }) {
+  featured = false,
+}: ClassRowWords & { mine: boolean; featured?: boolean }) {
   return (
-    <div className="flex items-start gap-3 px-4 py-3" data-class-row={title}>
-      <IconChip>{icon}</IconChip>
-      <div className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">
-          {title}
-          {mine && (
-            <span
-              className="bg-foreground text-paper type-meta ml-1.5 rounded-full px-1.5 py-0.5 align-middle font-semibold"
-              data-class-mine=""
-            >
-              {CLASS_MINE}
-            </span>
-          )}
-        </span>
-        <span className="text-muted-foreground type-label block">
-          {subtitle}
-        </span>
-      </div>
-    </div>
+    <section
+      className={cn(
+        "bg-card rounded-2xl p-4",
+        featured ? "border-foreground border-2" : "border-border border",
+      )}
+      aria-label={title}
+      data-class-row={title}
+    >
+      <h3 className="text-base font-semibold">
+        {title}
+        {mine && (
+          <span
+            className="bg-foreground text-paper type-meta ml-1.5 rounded-full px-1.5 py-0.5 align-middle font-semibold"
+            data-class-mine=""
+          >
+            {CLASS_MINE}
+          </span>
+        )}
+      </h3>
+      <ul className="mt-3 flex flex-col gap-2 text-sm">
+        {perks.map((perk) => (
+          <li key={perk} className="flex items-center gap-2">
+            <Check className="h-4 w-4 shrink-0" aria-hidden />
+            {perk}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -220,21 +232,10 @@ export function useClassStatus(): ClassStatus {
 export function ClassBody({ status }: { status: ClassStatus }) {
   const mine = status.kind === "known" ? status.guestClass : null;
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-3">
       <ClassStatusCard status={status} />
-      <SettingsGroup title={CLASS_LIST_TITLE}>
-        <ClassRow
-          {...CLASS_ROWS.regular}
-          mine={mine === "regular"}
-          icon={<UsersRound className="h-[18px] w-[18px]" />}
-        />
-        <RowDivider />
-        <ClassRow
-          {...CLASS_ROWS.vip}
-          mine={mine === "vip"}
-          icon={<Crown className="h-[18px] w-[18px]" />}
-        />
-      </SettingsGroup>
+      <ClassCard {...CLASS_ROWS.regular} mine={mine === "regular"} />
+      <ClassCard {...CLASS_ROWS.vip} mine={mine === "vip"} featured />
     </div>
   );
 }

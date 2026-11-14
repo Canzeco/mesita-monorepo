@@ -13,9 +13,10 @@
 // are VIP. easy peasy"; 5,000 or more since MESITA-3864): nothing here joins
 // or leaves one.
 
+/** A class as a card (MESITA-3905): its name and what it brings, as checks. */
 export type ClassRowWords = {
   title: string;
-  subtitle: string;
+  perks: readonly string[];
 };
 
 /** The VIP bar (MESITA-3864): 5,000 verified followers or more. The server
@@ -36,19 +37,20 @@ export const CLASS_STATUS = {
   progressLabel: "Followers toward VIP",
 } as const;
 
-export const CLASS_LIST_TITLE = "The two classes";
-
 /** "You" beside the guest's own class in the list. */
 export const CLASS_MINE = "You";
 
 export const CLASS_ROWS = {
   regular: {
     title: "Regular",
-    subtitle: "Everyone on Mesita. The standard vouchers.",
+    perks: ["Everyone on Mesita", "The standard vouchers"],
   },
   vip: {
     title: "VIP",
-    subtitle:
-      "5,000 or more followers on Instagram. Adds the VIP voucher where a place offers it. Never sold.",
+    perks: [
+      "5,000 or more Instagram followers",
+      "The VIP voucher where a place offers it",
+      "Never sold",
+    ],
   },
 } as const satisfies Record<"regular" | "vip", ClassRowWords>;
