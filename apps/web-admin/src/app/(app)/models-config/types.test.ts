@@ -79,11 +79,12 @@ describe("changedEnricherFields", () => {
 });
 
 describe("tierChoice", () => {
-  it("names writing's two models with their price per place", () => {
+  it("names writing's three models with their price per place", () => {
     const c = tierChoice("writing", "gpt-4o-mini");
     expect(c).toEqual({
       kind: "choice",
       options: [
+        { tier: "efficient", label: "gpt-6-luna · ~$0.0015 per place" },
         { tier: "economy", label: "gpt-4o-mini · ~$0.002 per place" },
         { tier: "standard", label: "gpt-4o · ~$0.028 per place" },
       ],
@@ -93,6 +94,7 @@ describe("tierChoice", () => {
   it("names photos' cheaper option after the live sorting model", () => {
     const c = tierChoice("photos", "gpt-4o-mini");
     expect(c.kind === "choice" && c.options.map((o) => o.label)).toEqual([
+      "gpt-6-luna · ~$0.0007 per photo",
       "gpt-4o-mini · ~$0.001 per photo",
       "gpt-4o · ~$0.008 per photo",
     ]);
@@ -100,11 +102,12 @@ describe("tierChoice", () => {
 
   it("gives a swapped-in sorting model no borrowed price", () => {
     const c = tierChoice("photos", "gpt-4.1-mini");
-    expect(c.kind === "choice" && c.options[0].label).toBe("gpt-4.1-mini");
+    expect(c.kind === "choice" && c.options[1].label).toBe("gpt-4.1-mini");
   });
 
-  it("says there is no choice when both options run the same model", () => {
-    expect(tierChoice("photos", "gpt-4o")).toEqual({ kind: "same", model: "gpt-4o" });
+  it("offers each model once when two tiers run the same one", () => {
+    const c = tierChoice("photos", "gpt-4o");
+    expect(c.kind === "choice" && c.options.map((o) => o.tier)).toEqual(["efficient", "economy"]);
   });
 });
 

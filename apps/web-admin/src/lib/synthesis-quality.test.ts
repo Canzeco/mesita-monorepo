@@ -23,7 +23,8 @@ describe("ENRICHER_TIER_MODELS", () => {
 });
 
 describe("normalizeTier", () => {
-  it("keeps the two tiers", () => {
+  it("keeps the three tiers", () => {
+    expect(normalizeTier("efficient")).toBe("efficient");
     expect(normalizeTier("economy")).toBe("economy");
     expect(normalizeTier("standard")).toBe("standard");
   });

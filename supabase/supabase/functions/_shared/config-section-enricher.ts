@@ -78,7 +78,7 @@ type Body = {
 // Two tiers since MESITA-2126. "high" is still ACCEPTED on write and stored as
 // "standard" (same gpt-4o), so an admin build from before the change never 400s
 // during the deploy window.
-const QUALITY_VALUES = new Set(["economy", "standard", "high"]);
+const QUALITY_VALUES = new Set(["efficient", "economy", "standard", "high"]);
 const storedQuality = (q: string): string => (q === "high" ? "standard" : q);
 const PERPLEXITY_PRESETS = new Set([
   "fast-search",
@@ -204,7 +204,7 @@ export async function writeEnricherSection(
 
   if (body.synthesisQuality !== undefined) {
     if (typeof body.synthesisQuality !== "string" || !QUALITY_VALUES.has(body.synthesisQuality)) {
-      return jsonError("synthesisQuality must be economy or standard", 400);
+      return jsonError("synthesisQuality must be efficient, economy or standard", 400);
     }
     next.enrichSynthesisQuality = storedQuality(body.synthesisQuality);
     blobTouched = true;
@@ -212,7 +212,7 @@ export async function writeEnricherSection(
 
   if (body.visionQuality !== undefined) {
     if (typeof body.visionQuality !== "string" || !QUALITY_VALUES.has(body.visionQuality)) {
-      return jsonError("visionQuality must be economy or standard", 400);
+      return jsonError("visionQuality must be efficient, economy or standard", 400);
     }
     next.enrichVisionQuality = storedQuality(body.visionQuality);
     blobTouched = true;

@@ -602,5 +602,13 @@
       },
       "expected": "Review and select the official channels for the place \"Pujol\".\n\nCandidate URLs, each with its page title, description and origin when known:\nwebsite_url candidates:\n- https://pujol.com.mx\n\nReturn strict JSON. Each value is one URL from that field's list, or null. Never invent a URL."
     }
+  ],
+  "openaiParams": [
+    {"model": "gpt-4o-mini", "temperature": 0.2, "maxTokens": 200, "expected": {"temperature": 0.2, "max_tokens": 200}},
+    {"model": "gpt-4o", "temperature": 0, "expected": {"temperature": 0}},
+    {"model": "gpt-6-luna", "temperature": 0.7, "maxTokens": 200, "expected": {"reasoning_effort": "none", "max_completion_tokens": 200}},
+    {"model": "gpt-5.6-luna", "temperature": 0, "expected": {"reasoning_effort": "none"}},
+    {"model": "gpt-5.4-nano", "expected": {"reasoning_effort": "none"}},
+    {"model": "o3", "temperature": 0, "maxTokens": 50, "expected": {"reasoning_effort": "none", "max_completion_tokens": 50}}
   ]
 }

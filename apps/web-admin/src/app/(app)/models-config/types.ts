@@ -52,19 +52,20 @@ export type ModelsConfig = {
   memo: { model: string };
 };
 
-// OpenAI chat catalog for the Discovery chat model.
-// The gpt-5.6 family (Sol / Terra / Luna — GA 2026-07-09) is included; treat
-// those ids as PROVISIONAL until confirmed against platform.openai.com. Model is
-// stored as a free string, so a stored id off this list is shown as current
-// rather than silently replaced.
+// OpenAI chat catalog for the Discovery chat model. Model is stored as a free
+// string, so a stored id off this list is shown as current rather than
+// silently replaced.
+// MESITA-3945 (Pato: "super cheap … efficient"; developers.openai.com pricing
+// and deprecations, 2026-11-14): only cheap models, cheapest-first after the
+// current default. gpt-4o-mini and gpt-4o shut down 2027-01-14 (replacement
+// gpt-6-luna); gpt-5.4-nano on 2027-04-01. Per 1M tokens in / out:
+//   gpt-6-luna $0.10 / $0.50 · gpt-4o-mini $0.15 / $0.60
+//   gpt-5.6-luna $0.20 / $1.20 · gpt-5.4-nano $0.20 / $1.25
 export const OPENAI_CHAT_MODELS = [
   "gpt-4o-mini",
-  "gpt-4o",
-  "gpt-4.1-mini",
-  "gpt-4.1",
+  "gpt-6-luna",
   "gpt-5.6-luna",
-  "gpt-5.6-terra",
-  "gpt-5.6-sol",
+  "gpt-5.4-nano",
 ] as const;
 
 // Defaults — mirror the migration's app_config.models_config seed. The server
@@ -125,10 +126,12 @@ export function changedEnricherFields(
 // What each tier costs, from Creation's cost model (one rate card, not two).
 const TIER_PRICE: Record<"writing" | "photos", Record<SynthesisQuality, string>> = {
   writing: {
+    efficient: `~$${COST_RATES.synthEfficient} per place`,
     economy: `~$${COST_RATES.synthEconomy} per place`,
     standard: `~$${COST_RATES.synthStandard} per place`,
   },
   photos: {
+    efficient: `~$${COST_RATES.visionEfficient} per photo`,
     economy: `~$${COST_RATES.visionEconomy} per photo`,
     standard: `~$${COST_RATES.visionStandard} per photo`,
   },
@@ -139,7 +142,8 @@ export type TierChoice =
   | { kind: "same"; model: string };
 
 /**
- * The two options a tier row offers, named by the model each one runs.
+ * The options a tier row offers (efficient, economy, standard; MESITA-3945),
+ * named by the model each one runs.
  * Writing's cheaper tier is the pinned ENRICHER_TIER_MODELS constant; photos'
  * cheaper tier is the LIVE enricher.model, because the analysis cron swaps it
  * in for economy. If both options would run the same model there is nothing to
@@ -149,23 +153,26 @@ export function tierChoice(
   row: "writing" | "photos",
   enricherModel: string,
 ): TierChoice {
+  const efficientModel = ENRICHER_TIER_MODELS.efficient;
   const economyModel =
     row === "photos" ? enricherModel : ENRICHER_TIER_MODELS.economy;
   const standardModel = ENRICHER_TIER_MODELS.standard;
-  if (economyModel === standardModel) return { kind: "same", model: standardModel };
   // The rate card prices the default cheap model; a swapped-in sorting model
   // gets no price rather than a borrowed one.
   const economyLabel =
     economyModel === ENRICHER_TIER_MODELS.economy
       ? `${economyModel} · ${TIER_PRICE[row].economy}`
       : economyModel;
-  return {
-    kind: "choice",
-    options: [
-      { tier: "economy", label: economyLabel },
-      { tier: "standard", label: `${standardModel} · ${TIER_PRICE[row].standard}` },
-    ],
-  };
+  const all: { tier: SynthesisQuality; model: string; label: string }[] = [
+    { tier: "efficient", model: efficientModel, label: `${efficientModel} · ${TIER_PRICE[row].efficient}` },
+    { tier: "economy", model: economyModel, label: economyLabel },
+    { tier: "standard", model: standardModel, label: `${standardModel} · ${TIER_PRICE[row].standard}` },
+  ];
+  // Two tiers running one model are one choice: keep the first of each model.
+  const seen = new Set<string>();
+  const options = all.filter((o) => (seen.has(o.model) ? false : (seen.add(o.model), true)));
+  if (options.length === 1) return { kind: "same", model: options[0].model };
+  return { kind: "choice", options: options.map(({ tier, label }) => ({ tier, label })) };
 }
 
 /** Roving-focus step for a radiogroup: the option index a key moves to, or null. */

@@ -41,11 +41,12 @@ describe("Models page (MESITA-2126)", () => {
     expect(html).toContain("Memo, the chat on Home › Chat.");
   });
 
-  it("names each tier by model and price, two choices per tier row", () => {
+  it("names each tier by model and price, three choices per tier row", () => {
     expect(html).toContain("gpt-4o-mini · ~$0.002 per place");
     expect(html).toContain("gpt-4o · ~$0.028 per place");
     expect(html).toContain("gpt-4o · ~$0.008 per photo");
-    expect(radiosIn(html)).toBe(4);
+    expect(html).toContain("gpt-6-luna · ~$0.0015 per place");
+    expect(radiosIn(html)).toBe(6);
   });
 
   it("shows the fixed models read-only", () => {
@@ -72,14 +73,14 @@ describe("Models page (MESITA-2126)", () => {
     expect(off).toContain("gpt-4.5-preview (current, not in list)");
   });
 
-  it("says there is no photos choice when both options run the same model", () => {
+  it("offers each photos model once when two tiers run the same one", () => {
     const same = render({
       initialConfig: coerceModelsConfig({ enricher: { model: "gpt-4o" } }),
       initialEnricher: ENRICHER,
       loadError: null,
     });
-    expect(same).toContain("Both options run gpt-4o.");
-    expect(radiosIn(same)).toBe(2);
+    expect(same).not.toContain("Both options run");
+    expect(radiosIn(same)).toBe(5);
   });
 
   it("shows unavailable, never a default, when the load failed", () => {

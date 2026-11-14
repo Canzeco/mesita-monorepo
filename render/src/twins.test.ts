@@ -10,6 +10,7 @@ import { capPresentation, PRESENTATION_MAX } from "./google-spine.ts";
 import { closesAtFromHours, type GooglePeriod, weeklyHoursFromPeriods } from "./hours.ts";
 import { defaultImageKnobs } from "./images.ts";
 import { resolverInput } from "./links.ts";
+import { openaiParams } from "./openai-params.ts";
 
 type Fixture = {
   hours: { periods: GooglePeriod[] | null; expected: unknown }[];
@@ -18,6 +19,7 @@ type Fixture = {
   vectorLiteral: { values: number[]; expected: string }[];
   imagePrompts: { analysis: string; sorting: string };
   resolverInput: { place: Parameters<typeof resolverInput>[0]; candidates: Parameters<typeof resolverInput>[1]; expected: string }[];
+  openaiParams: { model: string; temperature?: number; maxTokens?: number; expected: Record<string, unknown> }[];
   presentation: { max: number; cases: { note: string; text: [string, number][]; expected: [string, number][] }[] };
 };
 
@@ -62,5 +64,11 @@ test("twin: capPresentation and PRESENTATION_MAX match _shared/presentation-cap.
   assert.equal(PRESENTATION_MAX, fixture.presentation.max);
   for (const c of fixture.presentation.cases) {
     assert.equal(capPresentation(build(c.text)), build(c.expected), c.note);
+  }
+});
+
+test("twin: openaiParams matches _shared/openai-params.ts (MESITA-3945)", () => {
+  for (const c of fixture.openaiParams) {
+    assert.deepEqual(openaiParams(c.model, { temperature: c.temperature, maxTokens: c.maxTokens }), c.expected, c.model);
   }
 });

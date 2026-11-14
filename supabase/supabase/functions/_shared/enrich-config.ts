@@ -9,6 +9,7 @@ import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 import { loadEnrichmentConfig } from "./enrichment-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { safeParseJson } from "./parse-utils.ts";
+import { openaiParams } from "./openai-params.ts";
 
 export const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -44,8 +45,7 @@ export async function openaiChat(opts: {
       },
       body: JSON.stringify({
         model: opts.model,
-        ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
-        ...(opts.maxTokens !== undefined ? { max_tokens: opts.maxTokens } : {}),
+        ...openaiParams(opts.model, { temperature: opts.temperature, maxTokens: opts.maxTokens }),
         ...(opts.json ? { response_format: { type: "json_object" } } : {}),
         messages: opts.messages,
       }),
@@ -79,6 +79,7 @@ export const VISION_MODEL = DEFAULT_MODELS_CONFIG.enricher.model;
 // admin Models page pins its ENRICHER_TIER_MODELS copy to these strings from
 // both packages (enrich-tiers.test.ts here, lib/synthesis-quality.test.ts there).
 export const QUALITY_MODEL: Record<string, string> = {
+  efficient: "gpt-6-luna",
   economy: "gpt-4o-mini",
   standard: "gpt-4o",
 };

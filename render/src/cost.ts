@@ -20,6 +20,10 @@ export const OPENAI_PER_MTOK: Record<string, { input: number; output: number }> 
   "gpt-4o": { input: 2.5, output: 10 },
   "gpt-4.1-mini": { input: 0.4, output: 1.6 },
   "gpt-4.1": { input: 2, output: 8 },
+  // Cheap new options (MESITA-3945, developers.openai.com pricing 2026-11-14).
+  "gpt-6-luna": { input: 0.1, output: 0.5 },
+  "gpt-5.6-luna": { input: 0.2, output: 1.2 },
+  "gpt-5.4-nano": { input: 0.2, output: 1.25 },
   "text-embedding-3-small": { input: 0.02, output: 0 },
 };
 /** A model missing from the table is charged at gpt-4o's rate: an

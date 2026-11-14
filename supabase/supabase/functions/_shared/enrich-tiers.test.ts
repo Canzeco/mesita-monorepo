@@ -36,8 +36,8 @@ Deno.test("an unknown tier still falls back to economy", () => {
   assertEquals(cfg.enrichSynthesisQuality, "economy");
 });
 
-Deno.test("two tiers, and economy is the default enricher model", () => {
-  assertEquals(Object.keys(QUALITY_MODEL).sort(), ["economy", "standard"]);
+Deno.test("three tiers (efficient since MESITA-3945), and economy is the default enricher model", () => {
+  assertEquals(Object.keys(QUALITY_MODEL).sort(), ["economy", "efficient", "standard"]);
   assertEquals(QUALITY_MODEL.economy, DEFAULT_MODELS_CONFIG.enricher.model);
 });
 
