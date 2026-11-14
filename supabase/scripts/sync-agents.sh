@@ -109,6 +109,8 @@ while :; do
   fi
   sleep 20
 done
+# Each failed test with its reason, in the log as well as the summary.
+printf '%s' "$res" | jq -r '.invocations[]?.runs[]? | select(.status == "failed") | "FAILED \(.test // "?"): \((.why // "") | .[0:600])"' || true
 passed=$(printf '%s' "$res" | jq '[.invocations[]?.passed // 0] | add // 0')
 failed=$(printf '%s' "$res" | jq '[.invocations[]?.failed // 0] | add // 0')
 echo "tests: $passed passed, $failed failed"
