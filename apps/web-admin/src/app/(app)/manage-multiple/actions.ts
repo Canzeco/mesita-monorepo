@@ -1,10 +1,10 @@
 "use server";
 
-import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 import { enrichmentView, isEnrichedPlace } from "@/lib/place-enriched";
 import { type ReviewFoundFlags, reviewFoundFlags } from "@/lib/review-found";
 import type { PlaceStatesFacts } from "./place-state-cells";
+import { enrichOutcomes, type EnrichOutcome } from "./enrich-outcome";
 
 // ════════════════════════════════════════════════════════════════════════
 // Places — a super-admin drives MANY places at once through the admin-* edge
@@ -209,17 +209,41 @@ export async function searchPlacesByGoogleIds(
 }
 
 /** The most batches one All places run asks for (2,000 places each). A
- *  run that stops here reads "N of total (capped)", never as complete. */
+ *  run that stops here reads "N of total (capped)", never as complete.
+ *  Mesita Search's loop stops at the same count. */
 const ALL_MAX_BATCHES = 50;
 
 type AllBatch = { places: RawPlaceHit[]; total?: number | null; next?: string | null };
 
 /**
- * Every place on Mesita — no paste, no query. Mesita Search's All places
- * button and Manage Single's empty search. The EF answers the catalog in
- * batches by id with a `next` cursor; this asks until `next` is null, so
- * the state filters cover every place (MESITA-3595). `total` rides beside
- * the rows, so a run that stops short can say so.
+ * One batch of the catalog (up to 2,000 places), by id after `after`.
+ * Mesita Search loops this from the browser so a failed batch keeps the
+ * rows already loaded and Retry resumes from the cursor (MESITA-3942).
+ * `next` is null once the catalog is done.
+ */
+export async function listPlacesBatch(
+  after?: string | null,
+): Promise<Result<{ places: PlaceHit[]; total: number | null; next: string | null }>> {
+  const body: { all: true; after?: string } = after ? { all: true, after } : { all: true };
+  const r = await efInvoke<AllBatch>("admin-web-search-places", body);
+  if (!r.ok) return { ok: false, error: r.error };
+  const next: string | null = typeof r.data.next === "string" ? r.data.next : null;
+  return {
+    ok: true,
+    data: {
+      places: (r.data.places ?? []).map(normalizePlaceHit),
+      total: typeof r.data.total === "number" ? r.data.total : null,
+      // An EF without `next` (older than this client) answers one batch.
+      next: next && next !== after ? next : null,
+    },
+  };
+}
+
+/**
+ * Every place on Mesita, sorted by name — Manage Single's empty search.
+ * Loops listPlacesBatch until `next` is null, so the state filters cover
+ * every place (MESITA-3595). `total` rides beside the rows, so a run that
+ * stops short can say so.
  */
 export async function listAllPlaces(): Promise<
   Result<{ places: PlaceHit[]; total: number }>
@@ -228,15 +252,12 @@ export async function listAllPlaces(): Promise<
   let total: number | null = null;
   let after: string | null = null;
   for (let batch = 0; batch < ALL_MAX_BATCHES; batch++) {
-    const body: { all: true; after?: string } = after ? { all: true, after } : { all: true };
-    const r = await efInvoke<AllBatch>("admin-web-search-places", body);
+    const r = await listPlacesBatch(after);
     if (!r.ok) return { ok: false, error: r.error };
-    places.push(...(r.data.places ?? []).map(normalizePlaceHit));
-    if (typeof r.data.total === "number") total = Math.max(total ?? 0, r.data.total);
-    const next: string | null = typeof r.data.next === "string" ? r.data.next : null;
-    // An EF without `next` (older than this client) answers one batch.
-    if (!next || next === after) break;
-    after = next;
+    places.push(...r.data.places);
+    if (r.data.total !== null) total = Math.max(total ?? 0, r.data.total);
+    if (!r.data.next) break;
+    after = r.data.next;
   }
   places.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
   return { ok: true, data: { places, total: total ?? places.length } };
@@ -283,19 +304,22 @@ export async function deletePlace(placeId: string): Promise<Result<true>> {
 // enrich multiple places once, and Render decides how many run at once.
 // The row reports the start, not the finish. There is one Enrich
 // (MESITA-2799): the whole pipeline, replacing what it finds.
-export async function enrichPlaces(placeIds: string[]): Promise<Result<true>> {
+export async function enrichPlaces(
+  placeIds: string[],
+): Promise<Result<{ skipped: string[] }>> {
   const ids = placeIds.map((id) => id.trim()).filter(Boolean);
   if (ids.length === 0) return { ok: false, error: "Missing placeId" };
-  const r = await efInvoke<{ enrichmentTriggered: boolean }>(
+  const r = await efInvoke<{ enrichmentTriggered: boolean; skipped?: string[] }>(
     "admin-web-enrich-place",
     ids.length === 1 ? { projectId: ids[0] } : { placeIds: ids },
   );
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: true };
+  return { ok: true, data: { skipped: Array.isArray(r.data.skipped) ? r.data.skipped : [] } };
 }
 
 export async function enrichPlace(placeId: string): Promise<Result<true>> {
-  return enrichPlaces([placeId]);
+  const r = await enrichPlaces([placeId]);
+  return r.ok ? { ok: true, data: true } : r;
 }
 
 // ── Update (Google factuals, never the photos, MESITA-3931) ──
@@ -504,11 +528,12 @@ export async function writePlaces(
   return Object.fromEntries(rows);
 }
 
-/** Start Enrich for every place: all chunks of ENRICH_CHUNK at once. Keyed
- *  by the Mesita place id; each id carries its own chunk's result. */
+/** Start Deep Enrich for every place: all chunks of ENRICH_CHUNK at once.
+ *  Keyed by the Mesita place id; a place the EF skipped (an owner, or a run
+ *  already holds it) reads "skipped", never "started". */
 export async function enrichPlacesAll(
   placeIds: string[],
-): Promise<Record<string, Result<true>>> {
+): Promise<Record<string, EnrichOutcome>> {
   const chunks: string[][] = [];
   for (let i = 0; i < placeIds.length; i += ENRICH_CHUNK) {
     chunks.push(placeIds.slice(i, i + ENRICH_CHUNK));
@@ -516,48 +541,10 @@ export async function enrichPlacesAll(
   const rows = await Promise.all(
     chunks.map(async (chunk) => {
       const r = await enrichPlaces(chunk).catch(
-        (err: unknown): Result<true> => ({ ok: false, error: thrown(err) }),
+        (err: unknown) => ({ ok: false as const, error: thrown(err) }),
       );
-      return chunk.map((id) => [id, r] as const);
+      return enrichOutcomes(chunk, r);
     }),
   );
   return Object.fromEntries(rows.flat());
-}
-
-
-// ─── Who is Premier, box 5 (MESITA-3011, MESITA-3188, MESITA-3938) ─────
-
-export type PremierRow = {
-  id: string;
-  name: string;
-  /** places.boost_tier: 0 none · 1 2X · 2 5X. */
-  tier: 0 | 1 | 2;
-  factor: number;
-  /** Manual Premier running now (MESITA-3091). Optional until every EF build sends it. */
-  manual?: { tier: number; ends_at: string; source: "admin" | "purchase"; granted_by: string | null } | null;
-  /** The paid period running now (`granted` is always false since MESITA-3091). */
-  period: { tier: number; ends_at: string; granted: boolean; granted_by: string | null } | null;
-  /** A renewal or upgrade charge is in flight at Stripe. */
-  charging: boolean;
-  /** 1 when the place's subscription (MESITA-3092: one per place) is not
-   *  paying the running period: its renewal is due. */
-  backups: number;
-  /** Pledges whose Checkout is open. */
-  waiting: number;
-  charged_30d_cents: number;
-};
-
-export type PremierList = {
-  stripe: "test" | "live" | "off";
-  totals: { premier_now: number; granted_now: number; pledges: number; charged_30d_cents: number };
-  places: PremierRow[];
-};
-
-export async function listPremier(): Promise<ActionResult<{ list: PremierList }>> {
-  const r = await efInvoke<PremierList>("admin-web-list-premier", {});
-  if (!r.ok) return { ok: false, error: r.error };
-  return {
-    ok: true,
-    list: { stripe: r.data.stripe, totals: r.data.totals, places: r.data.places ?? [] },
-  };
 }

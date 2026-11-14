@@ -1,10 +1,9 @@
-import { Suspense } from "react";
 import { MultiplePlacesClient } from "./MultiplePlacesClient";
-import { PremierNow } from "./PremierNow";
 
-// The whole tool, one page. Five boxes: two read, Create, Enrich and Update
-// write. Spend estimates are on Configurations › Creation and Enrichment —
-// this page does not price a run.
+// The whole tool, one page. Five boxes: Google Search and Mesita Search
+// read; Mesita Create, Mesita Edit and Mesita Delete write. Spend estimates
+// are on Configurations › Creation and Updation — this page does not price a
+// run.
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +12,5 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export default function ManageMultiplePlacesPage() {
-  return (
-    <MultiplePlacesClient
-      premierNow={
-        <Suspense fallback={null}>
-          <PremierNow />
-        </Suspense>
-      }
-    />
-  );
+  return <MultiplePlacesClient />;
 }
