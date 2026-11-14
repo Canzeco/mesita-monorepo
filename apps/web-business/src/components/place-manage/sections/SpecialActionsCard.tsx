@@ -5,7 +5,7 @@
 // staff run on one place, one row each, one button each:
 //
 //   Enrich          the whole Enricher run (business-web-enrich-place)
-//   Update Google   Google's factuals and a lone hero, pins kept
+//   Update Google   Google's factuals, never the photos, pins kept
 //                   (business-web-update-place-google); also runs by itself
 //                   every N views (admin › Uprich)
 //   Update Reviews  the Reviews Sync: Google stars, the Apify review list,
@@ -219,7 +219,7 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
         </Row>
         <Row
           name="Update Google"
-          detail="Google's facts and, while the gallery is one photo, its hero. Never touches Mesita's own name, text or categories. Keeps pinned fields. Also runs by itself every N views."
+          detail="Google's facts. Never touches the photos or Mesita's own name, text or categories. Keeps pinned fields. Also runs by itself every N views."
           note={noteFor("google")}
         >
           <button

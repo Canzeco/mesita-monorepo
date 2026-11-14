@@ -298,7 +298,7 @@ export async function enrichPlace(placeId: string): Promise<Result<true>> {
   return enrichPlaces([placeId]);
 }
 
-// ── Update (Google factuals; the hero while the gallery is one photo, MESITA-2794) ──
+// ── Update (Google factuals, never the photos, MESITA-3931) ──
 
 /** Update Reviews for one place (admin-web-update-place-reviews,
  *  MESITA-3159): Google stars, the Apify review list, Instagram and Facebook

@@ -140,7 +140,7 @@ export function MultiplePlacesClient({ premierNow }: { premierNow?: React.ReactN
         id={PIPELINE_STEPS[5].id}
         tint="sky"
         title={PIPELINE_STEPS[5].label}
-        blurb="Google facts, and the gallery's hero while the gallery is one photo. Never Mesita presentation. Also runs by itself every N views."
+        blurb="Google facts. Never the photos or Mesita presentation. Also runs by itself every N views."
       >
         <WriteBox
           id={PIPELINE_STEPS[5].id}

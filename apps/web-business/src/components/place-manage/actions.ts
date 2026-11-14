@@ -513,7 +513,7 @@ export async function enrichPlace(placeId: string): Promise<Result<true>> {
 }
 
 /** Update this place's Google data (business-web-update-place-google,
- *  MESITA-3157): factuals and a lone hero; respects pins; no Enrich. */
+ *  MESITA-3157): factuals, never the photos (MESITA-3931); respects pins; no Enrich. */
 export async function updatePlaceGoogle(placeId: string): Promise<Result<{ updatedAt: string | null }>> {
   const r = await efInvoke<{ updatedAt?: string }>("business-web-update-place-google", { placeId });
   if (!r.ok) return { ok: false, error: r.error, code: r.code };
