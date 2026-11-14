@@ -58,7 +58,7 @@ export const A3: FleetAgent = {
         position: pos(600, 0),
         prompt: [
           "El flujo ya reconoció el número (inbound_identify_caller). Según su kind:",
-          "- place: saluda al restaurante por su nombre (place.name) y pregunta en qué ayudas. Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.",
+          "- place: tú eres Mesita y quien llama es el restaurante. Salúdalo por su nombre, por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?»; nunca hables como si fueras el restaurante. Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.",
           "- guest: saluda al comensal por su nombre (guest.first_name) y pregunta en qué ayudas.",
           "- both: el número es de un restaurante y de un comensal. Pregunta una sola vez si llama por su restaurante o por una reservación suya.",
           "Luego toma la rama de lo que pidan, con las reservaciones de ese lado (las del lugar o las del comensal).",

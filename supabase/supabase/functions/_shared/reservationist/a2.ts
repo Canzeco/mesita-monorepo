@@ -19,7 +19,7 @@ const PROMPT = [
 ].join("\n\n");
 
 const TALK = [
-  `Al empezar la llamada espera a que contesten y saluda en una frase: «¡Hola! Le llamo de Mesita.» Luego pregunta una sola vez con quién hablas: «¿hablo con {{guest_name}}?». Hasta que lo confirme no digas el restaurante, la fecha, la hora ni que hay una reservación.`,
+  `La llamada ya está conectada con el comensal y el motivo ya está decidido ({{call_context}}): no lo preguntes ni lo anuncies. Lo primero que dices, en cuanto contesten, es exactamente: «¡Hola! Le llamo de Mesita. ¿Hablo con {{guest_name}}?» Nada antes de esa frase, y no vuelvas a preguntarlo si ya contestaron. Hasta que lo confirme no digas el restaurante, la fecha, la hora ni que hay una reservación.`,
   `Confirmado, según {{call_context}}:`,
   `- "confirmation": {{venue_name}} confirmó la mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}. Díselo una vez; no le pidas que lo confirme.`,
   `- "counter_offer": {{venue_name}} no pudo el {{reservation_date}} a las {{reservation_time}} y ofreció: {{venue_alternatives}}. Preséntalas tal cual.`,
