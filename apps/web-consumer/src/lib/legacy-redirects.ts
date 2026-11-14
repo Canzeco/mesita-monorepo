@@ -100,45 +100,9 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // MESITA-3771: MCP is a perk on Plan; Refunds is Tickets' chip (MESITA-3855).
   { source: "/me/connector", destination: "/me/plan", permanent: true },
   { source: "/me/refunds", destination: ticketsHref("refunds"), permanent: true },
-  // ACTIVITY LEFT THE BAR FOR ME (Pato, 2026-11-14, MESITA-3855): each chip
-  // lands on its Me page in one hop. A held `?type=` (the address before
-  // MESITA-3811) is matched first. Payments and Prepayments were Visits and
-  // Vouchers (MESITA-3697); Favorites is Home's Saved row (MESITA-3723).
-  ...(
-    [
-      ["notifications", "/me/notifications"],
-      ["reservations", "/me/reservations"],
-      ["visits", ticketsHref("visits")],
-      ["payments", ticketsHref("visits")],
-      ["vouchers", ticketsHref("vouchers")],
-      ["prepayments", ticketsHref("vouchers")],
-      ["gifts", ticketsHref("gifts")],
-      ["refunds", ticketsHref("refunds")],
-      ["favorites", "/home/places"],
-    ] as const
-  ).flatMap(([chip, destination]) => [
-    {
-      source: "/activity",
-      has: [{ type: "query" as const, key: "type", value: chip }],
-      destination,
-      permanent: true,
-    },
-    { source: `/activity/${chip}`, destination, permanent: true },
-  ]),
-  {
-    source: "/activity/visit/:tabId",
-    destination: "/me/tickets/visit/:tabId",
-    permanent: true,
-  },
-  {
-    source: "/activity/credit/:placeId/:entry",
-    destination: "/me/tickets/credit/:placeId/:entry",
-    permanent: true,
-  },
-  // Bare /activity opened Notifications (MESITA-3769); any other chip name
-  // lands on Tickets.
-  { source: "/activity", destination: "/me/notifications", permanent: true },
-  { source: "/activity/:path*", destination: ticketsHref(), permanent: true },
+  // NO /activity ADDRESS REDIRECTS ANYWHERE (Pato, 2026-11-14, MESITA-3862:
+  // "KILL THIS ATIVITY LINK"). Activity folded into Me (MESITA-3855); its
+  // own addresses are gone, not forwarded. Never add one back here.
   // SHARE IS A BAR BUTTON, NOT A PAGE (MESITA-3855): its old page lands on
   // Home.
   { source: "/share", destination: "/home/places", permanent: true },

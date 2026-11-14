@@ -217,11 +217,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meSaved: "/me/saved",
         // Me's Favorites page (MESITA-2565 → MESITA-3688).
         meFavorites: "/me/favorites",
-        // The Activity tab and its pages, and Share's page (MESITA-3855).
-        activity: "/activity",
-        activityChipPrefix: "/activity/",
-        activityVisitPrefix: "/activity/visit/",
-        activityCreditPrefix: "/activity/credit/",
+        // Share's page (MESITA-3855). No /activity: killed (MESITA-3862).
         share: "/share",
         savedReservationPrefix: "/saved/reservation/",
         savedPlacePrefix: "/saved/place/",
@@ -281,9 +277,7 @@ describe("the legacy block and the redirect table are one set", () => {
     const legacy = Object.values(CONSUMER_ROUTES.legacy) as string[];
     // Addresses that predate the contract's legacy block and are pinned by
     // value in the table test below rather than by key.
-    // `/activity` stands for its chips, each named in the table pin below
-    // (MESITA-3855).
-    const ALIASES = ["/explore", "/home/", "/subscribe", "/inbox", "/saved/", "/activity"];
+    const ALIASES = ["/explore", "/home/", "/subscribe", "/inbox", "/saved/"];
     const spokenFor = (source: string) => {
       const exact = source.replace(/\/:[A-Za-z]+\*?$/, "/");
       if (legacy.includes(source)) return true;
@@ -449,41 +443,6 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/me/transactions", destination: "/me/tickets", permanent: true },
       { source: "/me/connector", destination: "/me/plan", permanent: true },
       { source: "/me/refunds", destination: "/me/tickets/refunds", permanent: true },
-      // Activity left the bar for Me (MESITA-3855): a held ?type= first, then
-      // the chip's own path, each in one hop.
-      ...(
-        [
-          ["notifications", "/me/notifications"],
-          ["reservations", "/me/reservations"],
-          ["visits", "/me/tickets/visits"],
-          ["payments", "/me/tickets/visits"],
-          ["vouchers", "/me/tickets/vouchers"],
-          ["prepayments", "/me/tickets/vouchers"],
-          ["gifts", "/me/tickets/gifts"],
-          ["refunds", "/me/tickets/refunds"],
-          ["favorites", "/home/places"],
-        ] as const
-      ).flatMap(([chip, destination]) => [
-        {
-          source: "/activity",
-          has: [{ type: "query", key: "type", value: chip }],
-          destination,
-          permanent: true,
-        },
-        { source: `/activity/${chip}`, destination, permanent: true },
-      ]),
-      {
-        source: "/activity/visit/:tabId",
-        destination: "/me/tickets/visit/:tabId",
-        permanent: true,
-      },
-      {
-        source: "/activity/credit/:placeId/:entry",
-        destination: "/me/tickets/credit/:placeId/:entry",
-        permanent: true,
-      },
-      { source: "/activity", destination: "/me/notifications", permanent: true },
-      { source: "/activity/:path*", destination: "/me/tickets", permanent: true },
       // Share is a bar button (MESITA-3855): its page lands on Home.
       { source: "/share", destination: "/home/places", permanent: true },
       { source: "/invite", destination: "/me", permanent: true },
@@ -624,6 +583,23 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
 
   // The one redirect that carries logic stays a server page (not in
   // next.config): /me/[tab] → /me (+ query), the retired one-segment boxes.
+});
+
+// KILLED, NOT FORWARDED (Pato, 2026-11-14, MESITA-3862: "KILL THIS ATIVITY
+// LINK"): no redirect catches any /activity address.
+describe("/activity is gone", () => {
+  it("no redirect source catches an /activity address", async () => {
+    const table = await nextConfig.redirects!();
+    for (const address of [
+      "/activity",
+      "/activity/notifications",
+      "/activity/visit/t1",
+      "/activity/credit/p1/voucher.1",
+    ]) {
+      expect(firstRedirect(table, address), address).toBeUndefined();
+    }
+    expect(existsSync(join(SHELL, "activity"))).toBe(false);
+  });
 });
 
 describe("middleware auth wall (shouldGate)", () => {
