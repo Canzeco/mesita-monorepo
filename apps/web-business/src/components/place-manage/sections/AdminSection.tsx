@@ -51,7 +51,7 @@ export function AdminSection({ place, children }: { place: AdminPlace; children?
       <StateCard place={place} />
       {/* key remounts the reads when the operator switches places. */}
       <PlaceStatesCard key={`place-states-${place.id}`} place={place} />
-      {/* Enrich · Update Google · Update Reviews · Enable · Disable (MESITA-3159). */}
+      {/* Enrich · Fast Update · Deep Update · Enable · Disable (MESITA-3159, MESITA-3934). */}
       <SpecialActionsCard place={place} />
       <ReviewsStateCard place={place} />
       {/* key remounts the list when the operator switches places. */}

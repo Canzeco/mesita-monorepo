@@ -6,7 +6,8 @@ import type { CrenupView } from "./SectionStrip";
 import { type CrenupSettings } from "./crenup-guards";
 
 // How a place becomes a profile, as two pages (MESITA-2083):
-// Creating (Models · Create) and Uprich (Enrich · Functions · Update,
+// Creation (Models · Create) and Updation (Fast Update · Deep Update ·
+// Deep Enrich · Functions,
 // MESITA-3924). Search eligibility is Discovery › Map, not here.
 //
 // One GET, seeded server-side, for either page. A failed load blocks Save so
@@ -35,13 +36,16 @@ const SETTINGS_FALLBACK: CrenupSettings = {
   createOnOpenConsumer: true,
   createOnOpenAdmin: true,
   consumerCreatesPerDay: 1000,
+  updateFirstAfterViews: 10,
   updateEveryViews: 10,
+  reviewsUpdateFirstAfterViews: 50,
   reviewsUpdateEveryViews: 50,
+  enrichEveryViews: 300,
 };
 
 const TITLE: Record<CrenupView, string> = {
-  creation: "Creating",
-  uprich: "Uprich",
+  creation: "Creation",
+  uprich: "Updation",
 };
 
 export async function CrenupPage({ view }: { view: CrenupView }) {
@@ -78,8 +82,11 @@ export async function CrenupPage({ view }: { view: CrenupView }) {
               createOnOpenConsumer: settings.data.enrichCreateOnOpenConsumer !== false,
               createOnOpenAdmin: settings.data.enrichCreateOnOpenAdmin !== false,
               consumerCreatesPerDay: settings.data.enrichConsumerCreatesPerDay ?? 1000,
+              updateFirstAfterViews: settings.data.updateFirstAfterViews ?? 10,
               updateEveryViews: settings.data.updateEveryViews ?? 10,
+              reviewsUpdateFirstAfterViews: settings.data.reviewsUpdateFirstAfterViews ?? 50,
               reviewsUpdateEveryViews: settings.data.reviewsUpdateEveryViews ?? 50,
+              enrichEveryViews: settings.data.enrichEveryViews ?? 300,
             }
           : SETTINGS_FALLBACK
       }

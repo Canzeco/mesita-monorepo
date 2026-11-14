@@ -25,6 +25,7 @@ import { RESOLVER_INSTRUCTIONS } from "./enrich-channel-discovery.ts";
 import { loadEnrichConfig, visionModelFor, type EnrichConfig } from "./enrich-config.ts";
 import { buildScoutInput, SCOUT_INSTRUCTIONS } from "./enrich-serp.ts";
 import { writePlace } from "./place-doc.ts";
+import { isLiveManager } from "./place-access.ts";
 
 const WORKFLOW = "mesita-monorepo";
 const RENDER_TASK_RUNS = "https://api.render.com/v1/task-runs";
@@ -161,7 +162,20 @@ export function contentStateAfterRefusal(row: {
 
 export type EnrichStart =
   | { ok: true; task: string; started: string[]; skipped: string[] }
-  | { ok: false; status: number; error: string; blocked?: "enriching" };
+  | { ok: false; status: number; error: string; blocked?: "enriching" | "owned" };
+
+/** The answer when every place asked for has an owner (MESITA-3934). */
+export const OWNED_NOT_ENRICHED = "This place has an owner: Enrich runs only on places with no owner.";
+
+/** Places with a live owner (place_managers role owner). Enrich never runs on
+ *  them (Pato, MESITA-3934: "enrich must only run on not owned places"); the
+ *  owner's profile is theirs. Update still runs. */
+export function ownedPlaceIds(
+  rows: readonly { place_id: string; expires_at: string; revoked_at: string | null }[],
+  now: number = Date.now(),
+): Set<string> {
+  return new Set(rows.filter((row) => isLiveManager(row, now)).map((row) => row.place_id));
+}
 
 /** The answer when every place asked for is already enriching. */
 export const ALREADY_ENRICHING = "Already enriching.";
@@ -214,11 +228,24 @@ export async function startEnrichment(
     }
   }
 
+  const { data: owners, error: ownerErr } = await admin
+    .from("place_managers")
+    .select("place_id, expires_at, revoked_at")
+    .in("place_id", placeIds)
+    .eq("role", "owner")
+    .is("revoked_at", null);
+  if (ownerErr) return { ok: false, status: 500, error: `owners: ${ownerErr.message}` };
+  const owned = ownedPlaceIds((owners ?? []) as { place_id: string; expires_at: string; revoked_at: string | null }[]);
+  const unowned = placeIds.filter((id) => !owned.has(id));
+  if (unowned.length === 0) {
+    return { ok: false, status: 409, error: OWNED_NOT_ENRICHED, blocked: "owned" };
+  }
+
   const key = renderApiKey(opts.env ?? Deno.env);
   if (!key) return { ok: false, status: 500, error: "Server misconfigured" };
 
   const knobs = enrichmentKnobs(await loadEnrichConfig(admin));
-  const marked = await Promise.all(placeIds.map((id) =>
+  const marked = await Promise.all(unowned.map((id) =>
     writePlace(admin, {
       table: "places",
       mode: "update",
@@ -231,7 +258,9 @@ export async function startEnrichment(
   ));
   // A place this call did mark goes to Render even when another failed to mark:
   // leaving it out would strand it enriching.
-  const { started, skipped } = splitClaims(placeIds, marked.map((row) => row.ok && !!row.row));
+  const claims = splitClaims(unowned, marked.map((row) => row.ok && !!row.row));
+  const started = claims.started;
+  const skipped = [...claims.skipped, ...placeIds.filter((id) => owned.has(id))];
   const failed = marked.find((row) => !row.ok);
   if (failed && !failed.ok && started.length === 0) {
     return { ok: false, status: 500, error: `The place was not marked enriching: ${failed.error}` };

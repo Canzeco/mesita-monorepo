@@ -33,6 +33,7 @@ function fakeAdmin(state: { exists: boolean; enriching: boolean; updatedAt: stri
       update: () => ((q.op = "update"), b),
       in: (_c: string, ids: string[]) => ((q.ids = ids), b),
       eq: (c: string, v: string) => ((q.eqs[c] = v), b),
+      is: () => b,
       neq: (_c: string, v: string) => ((q.neq = v), b),
       maybeSingle: () => Promise.resolve(resolve()),
       single: () => Promise.resolve(resolve()),

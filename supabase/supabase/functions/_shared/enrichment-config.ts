@@ -56,8 +56,17 @@ export type EnrichmentConfig = {
   enrichDiscoverFacebookN: number;
   enrichDiscoverOpentableN: number;
   enrichDiscoverUbereatsN: number;
-  /** Consumer Requests: auto-enrich when request_count reaches this. */
+  /** Deep Enrich's FIRST AFTER N views: the first run starts when
+   *  request_count reaches this. */
   enrichRequestThreshold: number;
+  /**
+   * Deep Enrich THEN EVERY M VIEWS (MESITA-3934): after the first run, again
+   * each time the count is the first-after plus a multiple of M. Only on a
+   * place with no owner (enrich-start.ts). 0 = never again.
+   */
+  enrichEveryViews: number;
+  /** Fast Update's FIRST AFTER N views (MESITA-3934). 0 turns it off. */
+  updateFirstAfterViews: number;
   /**
    * UPDATE EVERY N VIEWS (MESITA-2997): the same view count runs Google
    * Update each time it lands on a multiple of N (10, 20, 30…), enriched or
@@ -71,6 +80,8 @@ export type EnrichmentConfig = {
    * is a paid Apify scrape. 0 turns it off.
    */
   reviewsUpdateEveryViews: number;
+  /** Deep Update's FIRST AFTER N views (MESITA-3934). 0 turns it off. */
+  reviewsUpdateFirstAfterViews: number;
   /**
    * CREATE ON OPEN (MESITA-2298): opening a Google-only result's full
    * profile is the one thing that mints a Mesita Place — one switch per app.
@@ -112,7 +123,10 @@ export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   enrichDiscoverOpentableN: 3,
   enrichDiscoverUbereatsN: 2,
   enrichRequestThreshold: 10, // MESITA-2653: Pato, "set it to 10"
+  enrichEveryViews: 300, // MESITA-3934: Deep Enrich again, a paid Render run
+  updateFirstAfterViews: 10,
   updateEveryViews: 10, // MESITA-2997: Pato, "every 10 visits"
+  reviewsUpdateFirstAfterViews: 50,
   reviewsUpdateEveryViews: 50, // MESITA-3159: rarer than Google Update (Apify cost)
   enrichCreateOnOpenConsumer: true,
   enrichCreateOnOpenAdmin: true,
@@ -171,8 +185,23 @@ export function normalizeEnrichmentConfig(raw: unknown): EnrichmentConfig {
     enrichDiscoverOpentableN: intIn(r.enrichDiscoverOpentableN, 0, 10, d.enrichDiscoverOpentableN),
     enrichDiscoverUbereatsN: intIn(r.enrichDiscoverUbereatsN, 0, 10, d.enrichDiscoverUbereatsN),
     enrichRequestThreshold: intIn(r.enrichRequestThreshold, 1, 100, d.enrichRequestThreshold),
+    enrichEveryViews: intIn(r.enrichEveryViews, 0, UPDATE_EVERY_VIEWS_MAX, d.enrichEveryViews),
     updateEveryViews: intIn(r.updateEveryViews, 0, UPDATE_EVERY_VIEWS_MAX, d.updateEveryViews),
     reviewsUpdateEveryViews: intIn(r.reviewsUpdateEveryViews, 0, UPDATE_EVERY_VIEWS_MAX, d.reviewsUpdateEveryViews),
+    // A blob saved before MESITA-3934 has no first-after: it starts at its own
+    // every-N, so the live schedule (N, 2N, 3N…) does not move on deploy.
+    updateFirstAfterViews: intIn(
+      r.updateFirstAfterViews,
+      0,
+      UPDATE_EVERY_VIEWS_MAX,
+      intIn(r.updateEveryViews, 0, UPDATE_EVERY_VIEWS_MAX, d.updateEveryViews),
+    ),
+    reviewsUpdateFirstAfterViews: intIn(
+      r.reviewsUpdateFirstAfterViews,
+      0,
+      UPDATE_EVERY_VIEWS_MAX,
+      intIn(r.reviewsUpdateEveryViews, 0, UPDATE_EVERY_VIEWS_MAX, d.reviewsUpdateEveryViews),
+    ),
     enrichCreateOnOpenConsumer: r.enrichCreateOnOpenConsumer !== false,
     enrichCreateOnOpenAdmin: r.enrichCreateOnOpenAdmin !== false,
     enrichConsumerCreatesPerDay: intIn(

@@ -14,18 +14,18 @@ import { StackIcon, MapPinPlusIcon } from "@phosphor-icons/react/dist/ssr";
 // data onto it. They were a wand and refresh arrows.
 export const CREATION_PARENT = {
   href: "/enricher-config/creation",
-  label: "Creating",
+  label: "Creation",
   Icon: MapPinPlusIcon,
 } as const;
 
-// Uprich (MESITA-3924, Pato: "create a page called Uprich ... include both
+// Updation (MESITA-3934; was Uprich, MESITA-3924, Pato: "create a page ... include both
 // the admin configuration of Update and Enrich"): one page for Enrich,
 // Functions and Update, one Save. The buttons keep the verbs Enrich and
 // Update; the two backends stay separate (MESITA-3844). /enricher-config/
 // enrichment and /updating 308 here.
 export const UPRICH_PARENT = {
   href: "/enricher-config/uprich",
-  label: "Uprich",
+  label: "Updation",
   Icon: StackIcon,
 } as const;
 

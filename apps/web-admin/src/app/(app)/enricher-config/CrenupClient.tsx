@@ -86,6 +86,58 @@ function CreateOnOpenRow({
   );
 }
 
+/** "First after N views, then every M views" (MESITA-3934), with the
+ *  schedule it makes, read from the same numbers the server uses. */
+function ViewCycle({
+  firstAfter,
+  every,
+  firstMin = 0,
+  firstMax = 1000,
+  onFirstAfter,
+  onEvery,
+  disabled,
+}: {
+  firstAfter: number;
+  every: number;
+  firstMin?: number;
+  firstMax?: number;
+  onFirstAfter: (v: number) => void;
+  onEvery: (v: number) => void;
+  disabled: boolean;
+}) {
+  const schedule = firstAfter < 1
+    ? "Off."
+    : every < 1
+      ? `Once, at view ${firstAfter}.`
+      : `At views ${firstAfter}, ${firstAfter + every}, ${firstAfter + every * 2}…`;
+  return (
+    <div className="mt-4">
+      <Fields>
+        <NumberField
+          icon={<Users className="text-muted-foreground h-4 w-4" />}
+          label="First after N views"
+          value={firstAfter}
+          min={firstMin}
+          max={firstMax}
+          onChange={onFirstAfter}
+          disabled={disabled}
+        />
+        <NumberField
+          label="Then every M views"
+          value={every}
+          min={0}
+          max={1000}
+          onChange={onEvery}
+          disabled={disabled}
+        />
+      </Fields>
+      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+        {schedule} Each guest counts once per place. 0 for every runs it once.
+      </p>
+    </div>
+  );
+}
+
 export function CrenupClient({
   view,
   initialSettings,
@@ -153,6 +205,9 @@ export function CrenupClient({
         consumerCreatesPerDay: settings.consumerCreatesPerDay,
         updateEveryViews: settings.updateEveryViews,
         reviewsUpdateEveryViews: settings.reviewsUpdateEveryViews,
+        updateFirstAfterViews: settings.updateFirstAfterViews,
+        reviewsUpdateFirstAfterViews: settings.reviewsUpdateFirstAfterViews,
+        enrichEveryViews: settings.enrichEveryViews,
       });
       if (r.ok) {
         setSavedSettings(settings);
@@ -238,7 +293,7 @@ export function CrenupClient({
                   ),
                 },
               ]}
-              // Functions lives on Uprich, so Create's chips cross over.
+              // Functions lives on Updation, so Create's chips cross over.
               steps={chipsFor("create", UPRICH_PARENT.href)}
               estimate={
                 <FlowEstimate
@@ -250,7 +305,7 @@ export function CrenupClient({
             <div className="mt-4">
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Create mints the ugly profile without queuing the Enricher.
-                Enrichment&apos;s &ldquo;Enrich after N views&rdquo; decides
+                Updation&apos;s Deep Enrich (first after N views) decides
                 when it runs by itself.
               </p>
               <div className="mt-4 flex flex-col gap-3">
@@ -316,11 +371,54 @@ export function CrenupClient({
 
         {view === "uprich" && (
         <>
+        <div id="s-fast-update" className="scroll-mt-16">
+          <SectionCard
+            icon={<RefreshCw className="text-secondary h-4 w-4" />}
+            title="Fast Update"
+            subtitle="Every place, owned or not. Google's facts only."
+            state={<Tag>$ · Google</Tag>}
+          >
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              Hours, phone, address, rating and review count, open or closed, Google&apos;s tags and
+              types. It keeps a field a person corrected, never blanks a filled field, and never
+              writes photos, reviews or Mesita&apos;s own text.
+            </p>
+            <ViewCycle
+              firstAfter={settings.updateFirstAfterViews}
+              every={settings.updateEveryViews}
+              onFirstAfter={(v) => patch({ updateFirstAfterViews: v })}
+              onEvery={(v) => patch({ updateEveryViews: v })}
+              disabled={pending || !!blocked}
+            />
+          </SectionCard>
+        </div>
+
+        <div id="s-deep-update" className="scroll-mt-16">
+          <SectionCard
+            icon={<RefreshCw className="text-secondary h-4 w-4" />}
+            title="Deep Update"
+            subtitle="Every place, owned or not. Reviews and followers."
+            state={<Tag>$ · Apify</Tag>}
+          >
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              Google&apos;s stars, up to 100 Google reviews, and the Instagram and Facebook
+              followers. Each run is a paid scrape, so keep it well above Fast Update.
+            </p>
+            <ViewCycle
+              firstAfter={settings.reviewsUpdateFirstAfterViews}
+              every={settings.reviewsUpdateEveryViews}
+              onFirstAfter={(v) => patch({ reviewsUpdateFirstAfterViews: v })}
+              onEvery={(v) => patch({ reviewsUpdateEveryViews: v })}
+              disabled={pending || !!blocked}
+            />
+          </SectionCard>
+        </div>
+
         <div id="s-enrich" className="scroll-mt-16">
           <SectionCard
             icon={<RefreshCw className="text-secondary h-4 w-4" />}
-            title="Enrich"
-            subtitle="One Render task per place. Enrich runs steps 1–8 and replaces what it finds."
+            title="Deep Enrich"
+            subtitle="Places with no owner only. One Render task per place: steps 1–8, research, links, photos, description."
             state={<Tag>$$ · Apify · Firecrawl · Perplexity</Tag>}
           >
             <FlowPanel
@@ -344,28 +442,18 @@ export function CrenupClient({
                 />
               }
             />
-            {/* AUTO-ENRICH LIVES HERE (Pato, MESITA-2653: "move the views
-                counter for autoenrichment here, not there … it must be in
-                admin Enrichment, and set it to 10"). It sat on Create's card
-                since MESITA-2642. */}
-            <div className="mt-4">
-              <Fields>
-                <NumberField
-                  icon={<Users className="text-muted-foreground h-4 w-4" />}
-                  label="Enrich after N views"
-                  value={settings.requestThreshold}
-                  min={1}
-                  max={100}
-                  onChange={(v) => patch({ requestThreshold: v })}
-                  disabled={pending}
-                />
-              </Fields>
-              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                A Created place enriches by itself once this many different
-                guests have opened its profile (each guest counts once). Admin
-                Enrich skips the wait.
-              </p>
-            </div>
+            {/* AUTO-ENRICH LIVES HERE (Pato, MESITA-2653), first after N views;
+                then every M views since MESITA-3934. A place with an owner is
+                never enriched. */}
+            <ViewCycle
+              firstAfter={settings.requestThreshold}
+              every={settings.enrichEveryViews}
+              firstMin={1}
+              firstMax={100}
+              onFirstAfter={(v) => patch({ requestThreshold: v })}
+              onEvery={(v) => patch({ enrichEveryViews: v })}
+              disabled={pending || !!blocked}
+            />
           </SectionCard>
         </div>
 
@@ -596,59 +684,6 @@ export function CrenupClient({
                   model re-embeds the catalog.
                 </NoKnobs>
               </FunctionModule>
-            </div>
-          </SectionCard>
-        </div>
-
-        <div id="s-update" className="scroll-mt-16">
-          <SectionCard
-            icon={<RefreshCw className="text-secondary h-4 w-4" />}
-            title="Update"
-            subtitle="Refreshes one part of a place now. Enrich's own steps, run by themselves."
-          >
-            <div className="text-muted-foreground mt-2 space-y-2 text-sm leading-relaxed">
-              <p>
-                <b className="text-foreground">Update Google</b> refreshes Google&apos;s facts. It
-                keeps a field a person corrected, never blanks a filled field, and never writes
-                the review list or the photos: photos are Enrich&apos;s, or the owner&apos;s.
-              </p>
-              <p>
-                <b className="text-foreground">Update Reviews</b> refreshes Google&apos;s stars, up
-                to 100 Google reviews (Apify), and the Instagram and Facebook followers. Each run
-                is a paid scrape.
-              </p>
-              <p>
-                Both run by themselves on views (below), from Multiple Places, or per place from its
-                Admin page.
-              </p>
-            </div>
-            <div className="mt-4">
-              <Fields>
-                <NumberField
-                  label="Update Google every N views"
-                  value={settings.updateEveryViews}
-                  min={0}
-                  max={1000}
-                  onChange={(v) => patch({ updateEveryViews: v })}
-                  disabled={pending || !!blocked}
-                />
-                <NumberField
-                  label="Update Reviews every N views"
-                  value={settings.reviewsUpdateEveryViews}
-                  min={0}
-                  max={1000}
-                  onChange={(v) => patch({ reviewsUpdateEveryViews: v })}
-                  disabled={pending || !!blocked}
-                />
-              </Fields>
-              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                Each guest counts once per place, the same count as Enrich after N views. Google
-                refreshes at every multiple ({settings.updateEveryViews > 0
-                  ? `${settings.updateEveryViews}, ${settings.updateEveryViews * 2}…`
-                  : "off"}), reviews at theirs ({settings.reviewsUpdateEveryViews > 0
-                  ? `${settings.reviewsUpdateEveryViews}, ${settings.reviewsUpdateEveryViews * 2}…`
-                  : "off"}). Keep Reviews well above Google. 0 turns either off.
-              </p>
             </div>
           </SectionCard>
         </div>

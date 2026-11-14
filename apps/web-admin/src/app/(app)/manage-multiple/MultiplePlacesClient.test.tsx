@@ -45,8 +45,8 @@ describe("Multiple Places renders six boxes (MESITA-2096, MESITA-2739)", () => {
   it("puts each write action in its own box (MESITA-3159: no Edit box)", () => {
     expect(buttons(box("create"))).toEqual(["Create"]);
     expect(buttons(box("enrich"))).toEqual(["Enrich"]);
-    expect(buttons(box("google-update"))).toEqual(["Update Google"]);
-    expect(buttons(box("reviews-update"))).toEqual(["Update Reviews"]);
+    expect(buttons(box("google-update"))).toEqual(["Fast Update"]);
+    expect(buttons(box("reviews-update"))).toEqual(["Deep Update"]);
     expect(buttons(box("enable"))).toEqual(["Enable"]);
     expect(buttons(box("disable"))).toEqual(["Disable"]);
     expect(buttons(box("delete"))).toEqual(["Delete"]);

@@ -34,7 +34,10 @@ Deno.test("normalizeEnrichmentConfig: live-shaped blob round-trips", () => {
     enrichDiscoverOpentableN: 3,
     enrichDiscoverUbereatsN: 3,
     enrichRequestThreshold: 5,
+    enrichEveryViews: 300,
+    updateFirstAfterViews: 20,
     updateEveryViews: 20,
+    reviewsUpdateFirstAfterViews: 50,
     reviewsUpdateEveryViews: 50,
     enrichCreateOnOpenConsumer: true,
     enrichCreateOnOpenAdmin: false,
@@ -113,4 +116,10 @@ Deno.test("normalizeEnrichmentConfig: extra keys are dropped", () => {
   assertEquals("leftoverScalar" in out, false);
   assertEquals("atlasPerRunCostCapUsd" in out, false);
   assertEquals(Object.keys(out).sort(), Object.keys(DEFAULT_ENRICHMENT_CONFIG).sort());
+});
+
+Deno.test("a blob saved before first-after keeps its live Update schedule (MESITA-3934)", () => {
+  const got = normalizeEnrichmentConfig({ updateEveryViews: 20, reviewsUpdateEveryViews: 80 });
+  assertEquals(got.updateFirstAfterViews, 20);
+  assertEquals(got.reviewsUpdateFirstAfterViews, 80);
 });

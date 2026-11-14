@@ -63,6 +63,11 @@ type AtlasConfigResponse = {
   updateEveryViews: number;
   /** Update Reviews every N views (MESITA-3159); 0 = off. */
   reviewsUpdateEveryViews: number;
+  /** First after N views (MESITA-3934). */
+  updateFirstAfterViews?: number;
+  reviewsUpdateFirstAfterViews?: number;
+  /** Deep Enrich then every M views; 0 = never again. */
+  enrichEveryViews?: number;
   enrichCreateOnOpenConsumer: boolean;
   enrichCreateOnOpenAdmin: boolean;
   enrichConsumerCreatesPerDay: number;
@@ -109,6 +114,9 @@ export async function updateAtlasConfig(patch: {
   requestThreshold?: number;
   updateEveryViews?: number;
   reviewsUpdateEveryViews?: number;
+  updateFirstAfterViews?: number;
+  reviewsUpdateFirstAfterViews?: number;
+  enrichEveryViews?: number;
   createOnOpenConsumer?: boolean;
   createOnOpenAdmin?: boolean;
   consumerCreatesPerDay?: number;
