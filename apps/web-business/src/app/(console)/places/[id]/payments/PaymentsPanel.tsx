@@ -16,7 +16,7 @@
 //     House Credits Agreement and the House Credits switch it unlocks;
 //   Cash Payments · Cash Payments, then its Cashback-as-Credits (Off or 3%, MESITA-3944);
 //   Credits Payments · Credits Payments (Always on), then its Cashback-as-
-//     Credits (Off or 5%, on the credit part; MESITA-3944);
+//     Credits (Off or 2%, on the credit part; a switch again, MESITA-3944);
 //   Mesita Payments · Mesita Payments, then its Cashback-as-Credits (Off or 5%);
 //   Mesita Prepayments · Mesita Prepayments, its Cashback-as-Credits (Off or
 //     5% of a voucher's price), then one row per voucher;
@@ -165,7 +165,7 @@ const CASHBACK_BPS: Record<PaymentRateKey, number> = {
   card_cashback_bps: 500,
   cash_cashback_bps: 300,
   // MESITA-3827: Credits Payments and Mesita Prepayments Cashback.
-  credit_cashback_bps: 500,
+  credit_cashback_bps: 200,
   prepay_cashback_bps: 500,
 };
 const pct = (bps: number) => `${bps / 100}%`;
@@ -575,9 +575,9 @@ export function PaymentsPanel({
             <p className="font-semibold whitespace-nowrap">Always on</p>
             <span />
           </li>
-          {/* OFF OR 5% (Pato, 2026-11-14, MESITA-3944: "enable Cashback as
-              Credits for Credits Payments ... 5% Recycle that shit"); fixed
-              at None under MESITA-3838. */}
+          {/* OFF OR 2% (Pato, 2026-11-14, MESITA-3944: "Credits Payments:
+              OFF or 2%. Cash Payments: OFF or 3%. App Payments: OFF or 5%");
+              fixed at None under MESITA-3838. */}
           {rateRow({
             key: "credit_cashback_bps",
             name: "Credits Payments Cashback-as-Credits",

@@ -66,7 +66,7 @@ serveJson("business-web-set-payment", async (req) => {
     const line: Record<string, string> = {
       card_cashback_bps: "App Payments Cashback is Off or 5%.",
       cash_cashback_bps: "Cash Payments Cashback is Off or 3%.",
-      credit_cashback_bps: "Credits Payments Cashback is Off or 5%.",
+      credit_cashback_bps: "Credits Payments Cashback is Off or 2%.",
       prepay_cashback_bps: "App Prepayments Cashback is Off or 5%.",
     };
     return json({ ok: false, code: "invalid", error: line[key] }, 400);
@@ -78,9 +78,9 @@ serveJson("business-web-set-payment", async (req) => {
   // go off, never on. Cash earned 3% under MESITA-3837; vouchers earn again.
   // CASH IS OFF OR 3% AGAIN (Pato, 2026-11-14, MESITA-3944: "CASHBACK AS
   // CREDITS FOR CASH PAYMENTS IS FUCKING OFF OR 3"): the place's choice,
-  // paid when the waiter taps Received. Credit is Off or 5% (Pato, same
-  // issue: "enable Cashback as Credits for Credits Payments ... 5% Recycle
-  // that shit"). Every way to pay gives cashback again.
+  // paid when the waiter taps Received. Credit is Off or 2% again (Pato,
+  // same issue: "Credits Payments: OFF or 2%. Cash Payments: OFF or 3%. App
+  // Payments: OFF or 5%"). Every way to pay gives cashback again.
 
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;

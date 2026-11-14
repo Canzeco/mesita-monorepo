@@ -86,8 +86,8 @@ export const CASHBACK_BPS: Record<RateKey, number> = {
   // choice again since MESITA-3944.
   cash_cashback_bps: 300,
   // MESITA-3827 (Pato: "add the option to give cashback with credits too");
-  // 5% since MESITA-3944 ("5% Recycle that shit"), 2% before.
-  credit_cashback_bps: 500,
+  // offered again since MESITA-3944 ("Credits Payments: OFF or 2%").
+  credit_cashback_bps: 200,
   prepay_cashback_bps: 500,
 };
 export function isValidCashbackBps(key: RateKey, v: unknown): v is number {

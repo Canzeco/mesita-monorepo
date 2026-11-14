@@ -1,5 +1,5 @@
 -- MESITA-3827 — Cashback-as-Credits on every way to pay. Credits Payments
--- Cashback is Off or 5% on the credit part (2% until MESITA-3944); Mesita Prepayments Cashback is
+-- Cashback is Off or 2% on the credit part; Mesita Prepayments Cashback is
 -- Off or 5% on a voucher's price (and needs Stripe). Rows stamp their rate
 -- when written. A payment's card and credit parts make ONE cashback entry,
 -- each part rounded down; a card refund never takes the credit part's share
@@ -47,7 +47,7 @@ end $$;
 
 select throws_ok(
   $$update public.place_payment_settings set credit_cashback_bps = 300 where place_id = '00000000-0000-4000-8000-000000013827'$$,
-  '23514', null, 'a credits rate other than 5% is refused');
+  '23514', null, 'a credits rate other than 2% is refused');
 select throws_ok(
   $$update public.place_payment_settings set prepay_cashback_bps = 400 where place_id = '00000000-0000-4000-8000-000000013827'$$,
   '23514', null, 'a prepayments rate other than 5% is refused');
@@ -55,13 +55,13 @@ select throws_ok(
   $$update public.place_payment_settings set prepay_cashback_bps = 500 where place_id = '00000000-0000-4000-8000-000000023827'$$,
   '23514', null, 'Prepayments Cashback On without a Stripe account is refused');
 select lives_ok(
-  $$update public.place_payment_settings set credit_cashback_bps = 500 where place_id = '00000000-0000-4000-8000-000000023827'$$,
+  $$update public.place_payment_settings set credit_cashback_bps = 200 where place_id = '00000000-0000-4000-8000-000000023827'$$,
   'Credits Payments Cashback needs no Stripe account');
 select lives_ok(
   $$update public.place_payment_settings
-       set credit_cashback_bps = 500, prepayments = true, voucher_200 = true, prepay_cashback_bps = 500
+       set credit_cashback_bps = 200, prepayments = true, voucher_200 = true, prepay_cashback_bps = 500
      where place_id = '00000000-0000-4000-8000-000000013827'$$,
-  'with Stripe: 5% on credits and 5% on prepayments turn on');
+  'with Stripe: 2% on credits and 5% on prepayments turn on');
 
 select is(
   (select cashback_bps || ':' || cashback_cents from public.wallet_purchases where id = '00000000-0000-4000-8000-0000000d3827'),
@@ -70,7 +70,7 @@ select is(
 
 -- ━━━ A direct credit payment ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
--- MX$10.99 from credit, p_cashback on: 5% is 54.95 → 54 centavos.
+-- MX$10.99 from credit, p_cashback on: 2% is 21.98 → 21 centavos.
 create temp table pay as
   select wallet_pay_credit('00000000-0000-4000-8000-0000000a3827', '00000000-0000-4000-8000-000000013827', 1099, 'MXN', false,
                            '00000000-0000-4000-8000-00000000b001', 'bbbbbbbbbbbbbbbbbbbbb1', null, true) as r;
@@ -78,13 +78,13 @@ create temp table pay as
 select is(
   (select credit_cashback_bps || ':' || credit_cashback_cents || ':' || cashback_cents
      from public.wallet_payments where id = (select (r ->> 'payment_id')::uuid from pay)),
-  '500:54:0',
-  'the credit row stamps 5% and keeps 54 centavos as its credit part''s cashback');
+  '200:21:0',
+  'the credit row stamps 2% and keeps 21 centavos as its credit part''s cashback');
 select is(
   (select count(*)::int || ':' || sum(amount_cents)::int || ':' || bool_and(available_at <= now())
      from public.wallet_entries where payment_id = (select (r ->> 'payment_id')::uuid from pay) and kind = 'cashback'),
-  '1:54:true',
-  'one cashback entry of 54, Available at once (MESITA-3909)');
+  '1:21:true',
+  'one cashback entry of 21, Available at once (MESITA-3909)');
 
 -- The same payment without p_cashback (an SQL caller): no cashback.
 create temp table quiet as
@@ -102,7 +102,7 @@ select is(
 
 -- ━━━ A card payment with a credit part ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
--- MX$20 from credit, MX$5 by card, 5% card cashback: card 25, credit 100.
+-- MX$20 from credit, MX$5 by card, 5% card cashback: card 25, credit 40.
 create temp table mixed as
   select wallet_hold_payment('00000000-0000-4000-8000-0000000a3827', '00000000-0000-4000-8000-000000013827', 2000, 500, 0,
                              'MXN', false, '00000000-0000-4000-8000-00000000b003', 'bbbbbbbbbbbbbbbbbbbbb3', null,
@@ -114,15 +114,15 @@ end $$;
 select is(
   (select cashback_cents || ':' || credit_cashback_cents from public.wallet_payments
     where id = (select (r ->> 'payment_id')::uuid from mixed)),
-  '25:100',
-  'settling keeps each part: card 25, credit 100');
+  '25:40',
+  'settling keeps each part: card 25, credit 40');
 select is(
   (select count(*)::int || ':' || sum(amount_cents)::int from public.wallet_entries
     where payment_id = (select (r ->> 'payment_id')::uuid from mixed) and kind = 'cashback'),
-  '1:125',
+  '1:65',
   'and writes ONE cashback entry of their sum');
 
--- A full card refund takes back the card's 25, never the credit's 100.
+-- A full card refund takes back the card's 25, never the credit's 40.
 do $$ begin
   perform wallet_refund_payment((select (r ->> 'payment_id')::uuid from mixed), 500);
 end $$;
@@ -132,7 +132,7 @@ select is(
   25,
   'a full card refund reverses only the card part''s 25');
 
--- Half the credit part back: 50 of its 100 comes back with it.
+-- Half the credit part back: 20 of its 40 comes back with it.
 insert into public.wallet_refund_attempts (id, payment_id, amount_cents, status)
 values ('00000000-0000-4000-8000-0000000e3827', (select (r ->> 'payment_id')::uuid from mixed), 1000, 'pending');
 select is(
@@ -142,8 +142,8 @@ select is(
 select is(
   (select -sum(amount_cents)::int from public.wallet_entries
     where payment_id = (select (r ->> 'payment_id')::uuid from mixed) and kind = 'reversal' and reason = 'credit_refund'),
-  50,
-  'and half the credit part''s cashback (50) is reversed, marked credit_refund');
+  20,
+  'and half the credit part''s cashback (20) is reversed, marked credit_refund');
 
 -- A further card refund call cannot count the credit reversal as its own.
 select is(
@@ -170,8 +170,8 @@ select is(
 update public.pay_tabs set verified_at = now(), verified_key_hash = repeat('b', 64) where id = '00000000-0000-4000-8000-0000000f3827';
 select is(
   public.pay_tab_card_cashback('00000000-0000-4000-8000-0000000f3827'),
-  150,
-  'the signature writes the credit part''s 5% (150)');
+  60,
+  'the signature writes the credit part''s 2% (60)');
 
 -- ━━━ A voucher with Prepayments Cashback ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
