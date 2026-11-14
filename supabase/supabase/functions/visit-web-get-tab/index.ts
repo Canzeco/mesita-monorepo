@@ -44,9 +44,18 @@ serveJson("visit-web-get-tab", async (req) => {
     if (!placeRes.ok) throw new Error(placeRes.error);
     const nowMs = Date.now();
     const table = tab.split_at ? tableView(tab, await readShares(admin, tab.id), nowMs) : null;
+    // MESITA-3857: the guest's photo on a guest bill, so the waiter knows
+    // whose bill it is; the read is the avatar only.
+    let guestPhoto: string | null = null;
+    if (tab.origin === "guest" && tab.consumer_id) {
+      const { data, error } = await admin.from("consumers").select("avatar_url").eq("id", tab.consumer_id).maybeSingle();
+      if (error) console.error("[visit-web-get-tab] avatar_read", JSON.stringify({ error: error.message }));
+      const url = (data as { avatar_url: string | null } | null)?.avatar_url ?? null;
+      guestPhoto = typeof url === "string" && url.startsWith("https://") ? url : null;
+    }
     return json({
       ok: true,
-      tab: staffTabView(tab, parts, { table, placeName: placeRes.place?.name ?? null, cashBackBps: moneyState({ ...settings, has_place_code: true }, null, null).cash_cashback_bps, nowMs }),
+      tab: staffTabView(tab, parts, { table, placeName: placeRes.place?.name ?? null, cashBackBps: moneyState({ ...settings, has_place_code: true }, null, null).cash_cashback_bps, nowMs, guestPhoto }),
     });
   } catch (err) {
     return failWithRequestId("visit-web-get-tab", "Couldn't read the tab. Try again.", err);

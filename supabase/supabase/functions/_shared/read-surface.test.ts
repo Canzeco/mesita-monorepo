@@ -304,6 +304,9 @@ const CONSUMER_READ_ALLOWLIST = [
   // and requesters for the super-admin review queue. Read-only, error checked.
   "_shared/business-request.ts",
   "_shared/place-access.ts",
+  // MESITA-3857: the waiter's screen shows the guest's photo on a guest bill;
+  // avatar_url only, never a name. Read-only, error logged.
+  "visit-web-get-tab/index.ts",
 ];
 
 Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist", async () => {

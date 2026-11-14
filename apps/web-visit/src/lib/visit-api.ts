@@ -289,6 +289,12 @@ export type TabRead = {
   verified_at?: string | null;
   /** A card part is still going through: Verify waits for it. */
   card_pending?: boolean;
+  /** MESITA-3857: why a guest bill ended unpaid (cancelled, rejected,
+   *  expired, capture_failed); the card being charged at the signature; the
+   *  guest's profile photo (never a name). */
+  end_reason?: string | null;
+  signing?: boolean;
+  guest_photo?: string | null;
 };
 
 export type TableRead = {
@@ -372,7 +378,8 @@ export async function cashTab(
  *  with the waiter code may verify (staff_code_needed otherwise). Empty
  *  cash_received means exactly what is owed; `short` answers missing_cents. */
 export type Verified = {
-  outcome: "verified" | "already_verified";
+  /** confirming: the card is being charged; the poll brings the answer. */
+  outcome: "verified" | "already_verified" | "confirming";
   verified_at: string | null;
   same_phone: boolean | null;
   cashback_cents: number;
@@ -384,7 +391,7 @@ export async function verifyTab(
   const { res, data } = await post("visit-web-verify-tab", args);
   if (data?.ok) {
     return {
-      outcome: data.outcome === "already_verified" ? "already_verified" : "verified",
+      outcome: data.outcome === "already_verified" ? "already_verified" : data.outcome === "confirming" ? "confirming" : "verified",
       verified_at: typeof data.verified_at === "string" ? data.verified_at : null,
       same_phone: typeof data.same_phone === "boolean" ? data.same_phone : null,
       cashback_cents: typeof data.cashback_cents === "number" ? data.cashback_cents : 0,
@@ -395,4 +402,15 @@ export async function verifyTab(
   // The label is "Sign": for this code the app shows its own sentence, not
   // the server's wording.
   return refusal.code === "verified" ? { ...refusal, error: SIGN.alreadySigned } : refusal;
+}
+
+/** MESITA-3857: the waiter's Reject of a guest's bill (the amount is wrong).
+ *  Nothing is charged, no credit is spent; a second Reject moves nothing. */
+export async function rejectTab(
+  args: { token: string; place_id: string; staff_token: string },
+): Promise<{ outcome: "rejected" | "already_rejected" } | TabRefusal | "failed"> {
+  const { res, data } = await post("visit-web-reject-tab", args);
+  if (data?.ok) return { outcome: data.outcome === "already_rejected" ? "already_rejected" : "rejected" };
+  if (!res || res.status >= 500 || !data) return "failed";
+  return tabRefusal(data, "Couldn't reject. Try again.");
 }

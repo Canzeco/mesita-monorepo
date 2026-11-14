@@ -1,61 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { clockTime, moneyLabel } from "@mesita/place-profile/lib/money";
-import { type ChecklistStep, payChecklist, verifyLabel } from "@mesita/place-profile/lib/pay-checklist";
-import { payStepLabel, SIGN } from "@mesita/place-profile/lib/pay-steps";
-import { listPayments, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
-import { type CashAnswer, signRequest } from "@/lib/sign-gate";
+import { SIGN } from "@mesita/place-profile/lib/pay-steps";
+import { listPayments, rejectTab, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
+import { signRequest } from "@/lib/sign-gate";
 import { CodeBoxes } from "./CodeBoxes";
+import { BanknoteIcon, CheckIcon, HandCoinsIcon, SmartphoneIcon, UserIcon, WalletIcon, XIcon } from "./icons";
 
-// The waiter's side of a guest's payment (MESITA-3708). The guest typed the
-// amount, chose how to pay and paid; the waiter scanned their QR and lands
-// here, on any phone, with nothing to type first (MESITA-3799). One screen,
-// no scroll on a 375x667 phone (MESITA-3818). Top to bottom: "Sign" with the
-// live clock beside it, the ticket when the payment carries one (MESITA-3796:
-// only waiter-billed tabs do), the amount before tip, the tip, one line of
-// how it was paid (the guest's checklist, compacted), then the signature:
-// when cash is owed one yes/no question ("Did you get X in cash?", never a
-// typed amount; No never signs), the waiter code in six boxes, and one
-// button that names the action. The code is typed for every signature: Sign trades it for a staff
-// token and signs with that; this page keeps neither the code nor the token
-// (MESITA-3734: there is no Staff QR). Labels say "Sign"; names in code and
-// on the wire keep "verify".
-
-/** A live clock: a screenshot of this page is visibly stale. */
-function useNow(): Date {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  return now;
-}
-
-/** The checklist's ways to pay on one line: "Card MX$300.00 ✓ · Cash
- *  MX$200.00 to collect". Amount and tip have their own lines; "Waiter
- *  signed" is the button. */
-function partsLine(steps: ChecklistStep[], money: (c: number) => string): string {
-  return steps
-    .filter((s) => s.key === "credit" || s.key === "card" || s.key === "cash")
-    .map((s) => {
-      const cents = money(s.cents ?? 0);
-      if (s.key === "card" && s.state === "waiting") return "Card still going through";
-      if (s.key === "cash" && s.state !== "done") return `Cash ${cents} to collect`;
-      return s.state === "done" ? `${s.label} ${cents} ✓` : `${s.label} ${cents}`;
-    })
-    // A part never breaks across lines; the line wraps between parts.
-    .map((part) => part.replace(/ /g, " "))
-    .join(" · ");
-}
+// THE WAITER'S SCREEN (MESITA-3857, Pato's "14. Payments Flow Guest-Lead"
+// §5): the waiter scans the guest's QR and checks the bill against the real
+// one. Top to bottom: the guest's photo (a person glyph when there is none;
+// never a name), the total in large type, the lines with the guest's icons
+// (Wallet credits; Smartphone "by card" or Banknote "cash received";
+// HandCoins tip), the waiter code (until MESITA-3858 signs waiters in), the
+// dark "Sign · final" with a Check and "Check the amount. Signed payments
+// can't be undone.", and the light "Reject" with an X. The signature is the
+// cash's confirmation: no yes/no question. Sign trades the code for a staff
+// token for this one signature; neither is kept. Then: Receipt (green),
+// Confirming (the card is being charged), Not charged (the charge failed),
+// or "This bill is no longer open" with why.
 
 function vibrate() {
   try {
     navigator.vibrate?.(120);
   } catch {
-    // Not every browser can; the green screen says it anyway.
+    // The green screen says it anyway.
   }
 }
+
+const NO_LONGER_OPEN: Record<string, string> = {
+  cancelled: "Cancelled by the guest.",
+  rejected: "Rejected.",
+  expired: "Expired.",
+};
 
 export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   token: string;
@@ -64,152 +42,195 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   reconnecting: React.ReactNode;
   onChanged: () => Promise<void>;
 }) {
-  const now = useNow();
-  const [cashAnswer, setCashAnswer] = useState<CashAnswer>(null);
   const [typedCode, setTypedCode] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"sign" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // This phone's own verify, so "already verified" can tell this phone from another.
-  const [mine, setMine] = useState<{ at: string; outcome: "verified" | "already_verified"; samePhone: boolean | null } | null>(null);
+  const [rejecting, setRejecting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [mine, setMine] = useState<{ at: string; again: boolean } | null>(null);
 
   const placeId = tab.place.id;
   const money = (c: number) => moneyLabel(c, tab.currency);
-  const owed = tab.cash_bill_cents + tab.cash_tip_cents;
-  const tip = tab.cash_tip_cents + tab.card_tip_cents;
-  const closed = tab.status === "expired" || tab.status === "cancelled";
+  const card = tab.card_bill_cents + tab.card_tip_cents;
+  const cash = tab.cash_bill_cents + tab.cash_tip_cents;
+  const tip = tab.card_tip_cents + tab.cash_tip_cents;
+  const total = tab.credit_cents + card + cash;
   const verifiedAt = mine?.at ?? tab.verified_at ?? null;
-  const request = signRequest({ owedCents: owed, cashAnswer, typedCode, cardPending: tab.card_pending === true });
-
-  const steps = payChecklist({
-    billCents: tab.bill_cents ?? 0,
-    creditCents: tab.credit_cents,
-    cardBillCents: tab.card_bill_cents,
-    cardTipCents: tab.card_tip_cents,
-    cashBillCents: tab.cash_bill_cents,
-    cashTipCents: tab.cash_tip_cents,
-    cardPending: tab.card_pending === true,
-    paid: tab.status === "paid",
-    verifiedAt,
-    closed,
-    side: "waiter",
-  });
+  const ended = tab.status === "expired" || tab.status === "cancelled";
+  // The signature confirms the cash: what is owed is what was received.
+  const request = signRequest({ owedCents: cash, cashAnswer: cash > 0 ? "yes" : null, typedCode, cardPending: tab.card_pending === true });
+  const placeName = tab.place.name ?? "A Mesita place";
 
   function refused(r: TabRefusal) {
     if (r.code === "staff_code_needed") return setError(SIGN.wrongWaiterCode);
-    if (r.code === "card_pending") return setError("Card still going through");
-    if (r.code === "expired") return setError(`This payment closed at ${clockTime(tab.expires_at)}.`);
-    if (r.code === "forbidden") return setError("This payment is for another place.");
+    if (r.code === "card_pending") return setError("The guest's card is still going through.");
+    if (r.code === "forbidden") return setError("This bill is for another place.");
     if (r.code === "gone") return setError("Scan the guest's screen again.");
     setError(r.error);
   }
 
-  // Sign: the waiter code buys a staff token for this one signature, then
-  // the token signs. Neither is kept; the code clears once the server answered.
+  /** The waiter code buys a staff token for this one tap; null on refusal. */
+  async function staffToken(): Promise<string | null> {
+    if (!request) return null;
+    const key = await listPayments({ place_id: placeId, place_code: request.place_code });
+    setTypedCode("");
+    if (key === "failed") {
+      setError(SIGN.tapSignAgain);
+      return null;
+    }
+    if ("kind" in key) {
+      const wait = key.retryAfterS ? ` ${SIGN.tryAgainInMin(Math.ceil(key.retryAfterS / 60))}` : "";
+      setError(key.kind === "staff_only" ? SIGN.wrongWaiterCode : `${key.error}${wait}`);
+      return null;
+    }
+    if (!key.staff_token) setError(SIGN.couldntSign);
+    return key.staff_token ?? null;
+  }
+
   async function sign() {
     if (busy || !request) return;
-    setBusy(true);
+    setBusy("sign");
     setError(null);
     try {
       const key = await listPayments({ place_id: placeId, place_code: request.place_code });
+      setTypedCode("");
       if (key === "failed") return setError(SIGN.tapSignAgain);
       if ("kind" in key) {
-        setTypedCode("");
         const wait = key.retryAfterS ? ` ${SIGN.tryAgainInMin(Math.ceil(key.retryAfterS / 60))}` : "";
         return setError(key.kind === "staff_only" ? SIGN.wrongWaiterCode : `${key.error}${wait}`);
       }
-      if (!key.staff_token) {
-        setTypedCode("");
-        return setError(SIGN.couldntSign);
-      }
+      if (!key.staff_token) return setError(SIGN.couldntSign);
       const r = await verifyTab({ token, place_id: placeId, staff_token: key.staff_token, cash_received_cents: request.cash_received_cents });
       if (r === "failed") return setError(SIGN.tapSignAgain);
-      setTypedCode("");
       if ("refused" in r) {
         refused(r);
-        if (r.code === "card_pending") setTimeout(() => void onChanged(), 2000);
-        else await onChanged();
+        await onChanged();
         return;
       }
-      setMine({ at: r.verified_at ?? new Date().toISOString(), outcome: r.outcome, samePhone: r.outcome === "verified" ? true : r.same_phone });
+      if (r.outcome === "confirming") {
+        setConfirming(true);
+        await onChanged();
+        return;
+      }
+      setMine({ at: r.verified_at ?? new Date().toISOString(), again: r.outcome === "already_verified" });
       if (r.outcome === "verified") vibrate();
       await onChanged();
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
-  // Verified: green; by this phone earlier: the warning tone; by another
-  // phone: red, which outranks green.
+  async function reject() {
+    if (busy || !request) return;
+    setBusy("reject");
+    setError(null);
+    try {
+      const staff = await staffToken();
+      if (!staff) return;
+      const r = await rejectTab({ token, place_id: placeId, staff_token: staff });
+      if (r === "failed") return setError("Couldn't reject. Tap again.");
+      if ("refused" in r) refused(r);
+      setRejecting(false);
+      await onChanged();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // RECEIPT: green.
   if (verifiedAt) {
-    const another = mine ? mine.samePhone === false : null;
-    if (another) {
-      return (
-        <main className="tab-paid tab-paid-alert" data-tab-state="verified-elsewhere" role="alert">
-          {band}
-          <span className="tab-paid-tick" aria-hidden>!</span>
-          <p className="tab-paid-title">{SIGN.signedElsewhereAt(clockTime(verifiedAt))}</p>
-          <p className="tab-paid-amount">{money(tab.bill_cents ?? 0)}</p>
-          <p className="tab-paid-line">Check with your team before the guest leaves.</p>
-          <p className="tab-paid-line">{tab.place.name ?? "A Mesita place"}</p>
-        </main>
-      );
-    }
-    const again = mine?.outcome === "already_verified";
     return (
-      <main className={again ? "tab-paid tab-paid-notice" : "tab-paid"} data-tab-state={again ? "already-verified" : "verified"}>
+      <main className="tab-paid" data-tab-state={mine?.again ? "already-verified" : "verified"}>
         {band}
-        <span className="tab-paid-tick" aria-hidden>✓</span>
+        <span className="tab-paid-tick" aria-hidden>
+          <CheckIcon className="pay-icon-xl" />
+        </span>
         <p className="tab-paid-title" role="status">
-          {again ? SIGN.alreadySignedAt(clockTime(verifiedAt)) : SIGN.signedAt(clockTime(verifiedAt))}
+          {mine?.again ? SIGN.alreadySignedAt(clockTime(verifiedAt)) : SIGN.signedAt(clockTime(verifiedAt))}
         </p>
-        <p className="tab-paid-amount">{money(tab.bill_cents ?? 0)}</p>
-        {tip > 0 ? <p className="tab-paid-line">+ {money(tip)} tip</p> : null}
-        <p className="tab-paid-line">{tab.place.name ?? "A Mesita place"}</p>
+        <p className="tab-paid-amount">{money(total)}</p>
+        {tip > 0 ? <p className="tab-paid-line">Includes {money(tip)} tip</p> : null}
+        <p className="tab-paid-line">{placeName}</p>
       </main>
     );
   }
 
-  if (closed) {
+  // NOT CHARGED: the card charge failed at the signature.
+  if (ended && tab.end_reason === "capture_failed") {
     return (
-      <main className="proof" data-tab-state={tab.status}>
+      <main className="proof pay-end" data-tab-state="not-charged">
         {band}
-        <p className="proof-status warn" role="alert">
-          {tab.status === "cancelled" ? "The guest cancelled this payment." : `This payment closed at ${clockTime(tab.expires_at)}.`}
-        </p>
-        <p className="proof-place">{tab.place.name ?? "A Mesita place"}</p>
+        <span className="pay-end-mark pay-bad" aria-hidden>
+          <XIcon className="pay-icon-xl" />
+        </span>
+        <h1>Not charged</h1>
+        <p className="proof-line">The card charge failed. Nothing was charged.</p>
+        <p className="proof-place">{placeName}</p>
       </main>
     );
   }
 
-  const alert = error ?? (cashAnswer === "no" ? SIGN.cashNotReceived : null);
-  const parts = partsLine(steps, money);
+  // NO LONGER OPEN.
+  if (ended) {
+    const why = NO_LONGER_OPEN[tab.end_reason ?? ""] ?? (tab.status === "expired" ? NO_LONGER_OPEN.expired : NO_LONGER_OPEN.cancelled);
+    return (
+      <main className="proof pay-end" data-tab-state={tab.status}>
+        {band}
+        <span className="pay-end-mark" aria-hidden>
+          <XIcon className="pay-icon-xl" />
+        </span>
+        <h1>This bill is no longer open</h1>
+        <p className="proof-line">{why}</p>
+        <p className="proof-place">{placeName}</p>
+      </main>
+    );
+  }
+
+  // CONFIRMING: the card is being charged.
+  if (confirming || tab.signing === true) {
+    return (
+      <main className="proof pay-end" data-tab-state="confirming">
+        {band}
+        {reconnecting}
+        <span className="pay-spinner" aria-hidden />
+        <h1 role="status">Confirming…</h1>
+        <p className="proof-place">{placeName}</p>
+      </main>
+    );
+  }
+
+  // TO SIGN.
+  const lines: Array<{ key: string; icon: React.ReactNode; label: string }> = [];
+  if (tab.credit_cents > 0) lines.push({ key: "credit", icon: <WalletIcon className="pay-icon" />, label: `${money(tab.credit_cents)} credits` });
+  if (card > 0) lines.push({ key: "card", icon: <SmartphoneIcon className="pay-icon" />, label: `${money(tab.card_bill_cents)} by card` });
+  if (cash > 0) lines.push({ key: "cash", icon: <BanknoteIcon className="pay-icon" />, label: `${money(tab.cash_bill_cents)} cash received` });
+  if (tip > 0) lines.push({ key: "tip", icon: <HandCoinsIcon className="pay-icon" />, label: `${money(tip)} tip` });
 
   return (
     <main className="proof verify" data-tab-state="verify">
       {band}
       {reconnecting}
-      <div className="verify-head">
-        <h1>{payStepLabel("sign", "waiter")}</h1>
-        <span className="verify-clock" aria-hidden>
-          {now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+      <div className="pay-guest">
+        <span className="pay-guest-photo" aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {tab.guest_photo ? <img src={tab.guest_photo} alt="" /> : <UserIcon className="pay-icon" />}
+        </span>
+        <span className="pay-guest-text">
+          <span className="pay-guest-title">Guest&apos;s bill</span>
+          <span className="pay-guest-place">{placeName}</span>
         </span>
       </div>
-      {/* The ticket only when the payment carries one (a waiter-billed tab;
-          MESITA-3776, MESITA-3796). */}
-      {tab.ticket ? (
-        <p className="verify-ticket" data-verify-ticket>
-          {`Ticket ${tab.ticket}`}
-        </p>
-      ) : null}
-      <p className="verify-amount" aria-label={`Amount before tip ${money(tab.bill_cents ?? 0)}`}>
-        {money(tab.bill_cents ?? 0)}
+      <p className="verify-amount" aria-label={`Total ${money(total)}`}>
+        {money(total)}
       </p>
-      <p className="verify-tip">{tip > 0 ? `+ ${money(tip)} tip` : "No tip"}</p>
-      {parts ? (
-        <p className="verify-parts" role="status">
-          {parts}
-        </p>
-      ) : null}
+      <ul className="pay-lines" aria-label="How the guest pays">
+        {lines.map((l) => (
+          <li key={l.key} data-pay-line={l.key}>
+            {l.icon}
+            <span>{l.label}</span>
+          </li>
+        ))}
+      </ul>
       <form
         className="verify-form"
         onSubmit={(e) => {
@@ -217,32 +238,43 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
           void sign();
         }}
       >
-        {owed > 0 ? (
-          <div className="cash-question" role="group" aria-labelledby="cash-question">
-            <p id="cash-question" className="cash-question-label">
-              {SIGN.cashQuestion(money(owed))}
-            </p>
+        <CodeBoxes value={typedCode} onChange={setTypedCode} />
+        {error ? (
+          <p className="proof-status warn" role="alert" aria-live="polite">
+            {error}
+          </p>
+        ) : null}
+        {rejecting ? (
+          <div className="pay-reject-confirm" role="group" aria-label="Reject this bill?">
+            <p className="proof-line">Reject this bill?</p>
             <div className="yes-no">
-              <button type="button" aria-pressed={cashAnswer === "yes"} onClick={() => setCashAnswer("yes")}>
-                {SIGN.cashYes}
+              <button type="button" disabled={!!busy || !request} onClick={() => void reject()}>
+                {busy === "reject" ? "Rejecting…" : "Yes, reject"}
               </button>
-              <button type="button" aria-pressed={cashAnswer === "no"} onClick={() => setCashAnswer("no")}>
-                {SIGN.cashNo}
+              <button type="button" className="quiet" onClick={() => setRejecting(false)}>
+                No
               </button>
             </div>
           </div>
-        ) : null}
-        <CodeBoxes value={typedCode} onChange={setTypedCode} />
-        {alert ? (
-          <p className="proof-status warn" role="alert" aria-live="polite">
-            {alert}
-          </p>
-        ) : null}
-        <button type="submit" className="verify-sign" disabled={busy || !request}>
-          {busy ? SIGN.signing : verifyLabel({ cashBillCents: owed, cashTipCents: 0 }, money)}
-        </button>
+        ) : (
+          <>
+            <button type="submit" className="verify-sign pay-with-icon" disabled={!!busy || !request}>
+              {busy === "sign" ? SIGN.signing : (
+                <>
+                  <CheckIcon className="pay-icon" />
+                  Sign · final
+                </>
+              )}
+            </button>
+            <p className="pay-final-line">Check the amount. Signed payments can&apos;t be undone.</p>
+            <button type="button" className="quiet pay-with-icon" disabled={!!busy || !request} onClick={() => setRejecting(true)}>
+              <XIcon className="pay-icon" />
+              Reject
+            </button>
+          </>
+        )}
+        {!request ? <p className="pay-final-line">Type the waiter code to sign or reject.</p> : null}
       </form>
-      <p className="proof-place">{tab.place.name ?? "A Mesita place"}</p>
     </main>
   );
 }
