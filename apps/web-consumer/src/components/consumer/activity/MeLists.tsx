@@ -561,10 +561,12 @@ const EMPTY: Record<
 /** Tickets' tabs (MESITA-3893, Pato: "remove all. just Visits. Vouchers.
  *  Gifts"). Refunds sit in Vouchers, as they did before MESITA-3855. */
 type TicketTab = "visits" | "vouchers" | "gifts";
-const TICKET_TABS: ReadonlyArray<{ kind: TicketTab; label: string }> = [
-  { kind: "visits", label: "Visits" },
-  { kind: "vouchers", label: "Vouchers" },
-  { kind: "gifts", label: "Gifts" },
+// AN ICON ON EACH (MESITA-3900, Pato: "add icons to the top menu here"):
+// the ones the page's empty states already wear.
+const TICKET_TABS: ReadonlyArray<{ kind: TicketTab; label: string; icon: LucideIcon }> = [
+  { kind: "visits", label: "Visits", icon: UtensilsCrossed },
+  { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
+  { kind: "gifts", label: "Gifts", icon: Gift },
 ];
 
 /** The tab a /me/tickets address shows: bare is Visits, refunds is
@@ -948,7 +950,7 @@ function SubpageTabs<K extends string>({
   onPick,
 }: {
   label: string;
-  tabs: ReadonlyArray<{ kind: K; label: string }>;
+  tabs: ReadonlyArray<{ kind: K; label: string; icon?: LucideIcon }>;
   on: K | null;
   onPick?: (k: K) => void;
 }) {
@@ -968,7 +970,7 @@ function SubpageTabs<K extends string>({
             onClick={onPick ? () => onPick(t.kind) : undefined}
             disabled={!onPick}
             className={cn(
-              "relative flex-1 px-1 py-3 text-center text-sm whitespace-nowrap transition",
+              "relative flex flex-1 items-center justify-center gap-1.5 px-1 py-3 text-sm whitespace-nowrap transition",
               chosen
                 ? "text-foreground font-semibold"
                 : "text-muted-foreground",
@@ -980,6 +982,7 @@ function SubpageTabs<K extends string>({
                 className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-600"
               />
             ) : null}
+            {t.icon ? <t.icon className="h-4 w-4 shrink-0" strokeWidth={chosen ? 2.25 : 2} aria-hidden /> : null}
             {t.label}
           </button>
         );
