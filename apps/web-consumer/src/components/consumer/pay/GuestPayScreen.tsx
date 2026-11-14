@@ -132,6 +132,7 @@ export function GuestPayScreen({
   onChoosePlace,
   onOpenPlace,
   registerBack,
+  registerClose,
 }: {
   placeId: string;
   places: PayPlace[] | null;
@@ -145,6 +146,8 @@ export function GuestPayScreen({
   onOpenPlace: (placeId: string) => void;
   /** The header's back arrow asks this first: true when it handled it. */
   registerBack?: (back: (() => boolean) | null) => void;
+  /** The header's X (MESITA-3880) runs this. */
+  registerClose?: (close: (() => void) | null) => void;
 }) {
   const place = places?.find((p) => p.place_id === placeId) ?? null;
   const [draft] = useState(() => readDraft(placeId));
@@ -265,6 +268,12 @@ export function GuestPayScreen({
   useEffect(() => {
     root.current?.focus({ preventScroll: true });
   }, [stage, typing, notPaid]);
+
+  // The header's X leaves (MESITA-3880), with the latest state each render.
+  useEffect(() => {
+    registerClose?.(leave);
+  });
+  useEffect(() => () => registerClose?.(null), [registerClose]);
 
   // The header's back arrow steps back; at the start it leaves.
   useEffect(() => {
@@ -406,7 +415,7 @@ export function GuestPayScreen({
   if (notPaid) {
     return frame(
       <>
-        <PlaceBar place={place} onClose={leave} />
+        <PlaceBar place={place} />
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
           <XCircle className={cn("h-14 w-14", BAD)} aria-hidden />
           <h2 className="font-display mt-4 text-xl font-semibold">Not paid</h2>
@@ -427,7 +436,7 @@ export function GuestPayScreen({
   if (off) {
     return frame(
       <>
-        <PlaceHero place={place} off onChoose={onChoosePlace} onClose={onChoosePlace} />
+        <PlaceHero place={place} off onChoose={onChoosePlace} />
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
           <p className="text-base font-semibold">This place doesn&apos;t take Mesita payments.</p>
           <p className="text-muted-foreground mt-1 text-sm">Pay the usual way, outside Mesita.</p>
@@ -444,7 +453,7 @@ export function GuestPayScreen({
   if (stage === "bill" && typing) {
     return frame(
       <>
-        <PlaceHero place={place} off={false} onChoose={leave} onClose={leave} />
+        <PlaceHero place={place} off={false} onChoose={leave} />
         <StepsBar at={0} className="mt-3" />
         <div className="mt-4 flex shrink-0 items-center justify-center gap-2">
           <ReceiptText className="text-muted-foreground h-5 w-5" aria-hidden />
@@ -471,7 +480,7 @@ export function GuestPayScreen({
     const toSign = dueCents === 0;
     return frame(
       <>
-        <PlaceBar place={place} onClose={leave} />
+        <PlaceBar place={place} />
         <StepsBar at={0} className="mt-1" />
         <button
           type="button"
@@ -577,7 +586,7 @@ export function GuestPayScreen({
   if (stage === "method") {
     return frame(
       <>
-        <PlaceBar place={place} onClose={leave} />
+        <PlaceBar place={place} />
         <StepsBar at={1} className="mt-1" />
         <BackStep to="Bill" onClick={() => !busy && setStage("bill")} />
         <p className="mt-2 shrink-0 text-center">
@@ -632,7 +641,7 @@ export function GuestPayScreen({
     const cardsUnknown = cards === null;
     return frame(
       <>
-        <PlaceBar place={place} onClose={leave} />
+        <PlaceBar place={place} />
         <StepsBar at={2} className="mt-1" />
         <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
@@ -725,7 +734,7 @@ export function GuestPayScreen({
   // 4B CASH PAY: give the cash, then the QR.
   return frame(
     <>
-      <PlaceBar place={place} onClose={leave} />
+      <PlaceBar place={place} />
       <StepsBar at={2} className="mt-1" />
       <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">

@@ -139,6 +139,7 @@ export function TabView({
   onPayAgain,
   placeFor,
   registerBack,
+  registerClose,
 }: {
   start: TabStart;
   getSupabase: () => Parameters<typeof apiGetTab>[0];
@@ -154,6 +155,8 @@ export function TabView({
   onDone: () => void;
   /** The header's back arrow asks this first (the billed steps step back). */
   registerBack?: (back: (() => boolean) | null) => void;
+  /** The header's X in place of Back (MESITA-3880, the guest's Sign). */
+  registerClose?: (close: (() => void) | null) => void;
 }) {
   const [tabId, setTabId] = useState<string | null>(start.kind === "tab" ? start.tabId : null);
   const [qr, setQr] = useState<string | null>(null);
@@ -420,6 +423,7 @@ export function TabView({
         getSupabase={getSupabase}
         onPayAgain={(placeId) => (onPayAgain ? onPayAgain(placeId) : onDone())}
         onDone={onDone}
+        registerClose={registerClose}
       />
     );
   }
