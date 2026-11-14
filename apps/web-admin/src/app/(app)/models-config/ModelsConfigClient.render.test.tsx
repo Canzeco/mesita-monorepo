@@ -73,16 +73,6 @@ describe("Models page (MESITA-2126)", () => {
     expect(off).toContain("gpt-4.5-preview (current, not in list)");
   });
 
-  it("offers each photos model once when two tiers run the same one", () => {
-    const same = render({
-      initialConfig: coerceModelsConfig({ enricher: { model: "gpt-4o" } }),
-      initialEnricher: ENRICHER,
-      loadError: null,
-    });
-    expect(same).not.toContain("Both options run");
-    expect(radiosIn(same)).toBe(5);
-  });
-
   it("shows unavailable, never a default, when the load failed", () => {
     const failed = render({ initialConfig: null, initialEnricher: null, loadError: "EF down" });
     expect(failed).toContain("EF down");

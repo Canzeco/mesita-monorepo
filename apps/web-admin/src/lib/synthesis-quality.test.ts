@@ -31,8 +31,8 @@ describe("normalizeTier", () => {
   it("reads the retired high as standard, never as the cheap default", () => {
     expect(normalizeTier("high")).toBe("standard");
   });
-  it("falls back to economy for anything unknown", () => {
-    expect(normalizeTier("ultra")).toBe("economy");
-    expect(normalizeTier(undefined)).toBe("economy");
+  it("falls back to the default efficient for anything unknown", () => {
+    expect(normalizeTier("ultra")).toBe("efficient");
+    expect(normalizeTier(undefined)).toBe("efficient");
   });
 });

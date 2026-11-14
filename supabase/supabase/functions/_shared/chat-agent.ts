@@ -27,6 +27,7 @@
 
 import { CATALOG_FAMILIES, CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";
 import { OPENAI_URL } from "./enrich-config.ts";
+import { openaiParams } from "./openai-params.ts";
 import { familyGate } from "./area-score.ts";
 import type { ChatTurn } from "./memo-openai-turn.ts";
 
@@ -281,7 +282,8 @@ export async function extractChatIntent(opts: {
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model,
-        temperature: 0,
+        // gpt-5+/gpt-6 reject temperature 0 (MESITA-3959): the helper drops it.
+        ...openaiParams(model, { temperature: 0 }),
         response_format: { type: "json_schema", json_schema: INTENT_SCHEMA },
         messages: [
           { role: "system", content: INTENT_INSTRUCTIONS },

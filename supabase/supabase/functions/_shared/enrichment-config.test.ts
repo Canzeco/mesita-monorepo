@@ -100,8 +100,8 @@ Deno.test("normalizeEnrichmentConfig: quality/preset enums reject unknown string
     enrichVisionQuality: "low",
     enrichPerplexityPreset: "sonar",
   });
-  assertEquals(out.enrichSynthesisQuality, "economy");
-  assertEquals(out.enrichVisionQuality, "economy");
+  assertEquals(out.enrichSynthesisQuality, "efficient");
+  assertEquals(out.enrichVisionQuality, "efficient");
   assertEquals(out.enrichPerplexityPreset, "pro-search");
 });
 

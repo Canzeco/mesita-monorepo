@@ -46,7 +46,7 @@ const PROFILE_SCHEMA = {
 
 // Resolve the synthesis model from the admin quality knob.
 export function synthesisModelFor(quality: string): string {
-  return QUALITY_MODEL[quality] ?? "gpt-4o-mini";
+  return QUALITY_MODEL[quality] ?? QUALITY_MODEL.efficient;
 }
 
 // Compile the place profile from gathered material. Returns the parsed profile

@@ -205,3 +205,16 @@ Deno.test("the Chat Agent module holds no database client and calls no source", 
     assertEquals(src.includes(banned), false, banned);
   }
 });
+
+Deno.test("extractChatIntent on gpt-6-luna sends no temperature (OpenAI 400s on 0, MESITA-3959)", async () => {
+  const sent: Record<string, unknown>[] = [];
+  const fetchImpl = ((_url: string, init?: RequestInit) => {
+    sent.push(JSON.parse(String(init?.body)));
+    return Promise.resolve(Response.json({
+      choices: [{ message: { content: JSON.stringify({ placeName: null, families: [], nearby: false, qualitative: null }) } }],
+    }));
+  }) as typeof fetch;
+  await extractChatIntent({ openaiKey: "k", model: "gpt-6-luna", query: "q", history: [], fetchImpl });
+  assertEquals("temperature" in sent[0], false);
+  assertEquals(sent[0].reasoning_effort, "none");
+});

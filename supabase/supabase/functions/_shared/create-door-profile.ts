@@ -130,7 +130,7 @@ export async function synthesizeDoorProfile(
   try {
     const res = await openaiChat({
       key: openaiKey,
-      model: models.enricherModel || "gpt-4o-mini",
+      model: models.enricherModel || "gpt-6-luna",
       temperature: 0.2,
       json: true,
       messages: [

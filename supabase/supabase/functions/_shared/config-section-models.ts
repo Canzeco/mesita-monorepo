@@ -43,9 +43,9 @@ import type { ConfigSection, SectionWriteContext } from "./config-section-base.t
 // Defaults — mirror the reshape migration so a partial or garbage body still
 // yields a complete, well-formed blob.
 const DEFAULT = {
-  enricher: { model: "gpt-4o-mini" },
+  enricher: { model: "gpt-6-luna" },
   embeddings: { model: "text-embedding-3-small" },
-  memo: { model: "gpt-4o-mini" },
+  memo: { model: "gpt-6-luna" },
 };
 
 function obj(v: unknown): Record<string, unknown> {
