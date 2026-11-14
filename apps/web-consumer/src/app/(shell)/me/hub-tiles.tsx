@@ -86,6 +86,9 @@ import { DestGrid, type DestShape } from "./profile-sections";
 //   Notifications · Reservations / Gift · Tickets /
 //   MCP (Soon) · Settings
 //
+// Then Tickets before Gift (MESITA-3885), and the boxes show their state:
+// see DestTile's TileState and ProfileClient.
+//
 // route-structure T8 pins them.
 //
 // NO TILE PRINTS A GUEST FACT (Pato, MESITA-2607: "in the boxes below don't
@@ -106,7 +109,7 @@ export type HubTile = {
 
 /** The grid cells, in reading order; Settings is the last (ten with it
  *  since MESITA-3880: Profile · Instagram / Class · Plan / Notifications ·
- *  Reservations / Gift · Tickets / MCP · Settings). */
+ *  Reservations / Tickets · Gift / MCP · Settings). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // tile only names the page (MESITA-2607).
@@ -156,19 +159,20 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Upcoming and past",
     href: CONSUMER_ROUTES.mePages.reservations,
   },
+  // TICKETS BEFORE GIFT (MESITA-3885, Pato: "tickets before gift").
+  // Every transaction, four kinds — Visit, Voucher, Gift, Refund.
+  {
+    Icon: Ticket,
+    title: "Tickets",
+    summary: "Every transaction",
+    href: CONSUMER_ROUTES.mePages.tickets,
+  },
   // GIFT (MESITA-3771): gift credit you hold at a place to a friend.
   {
     Icon: Gift,
     title: "Gift",
     summary: "Send credit to a friend",
     href: CONSUMER_ROUTES.mePages.gift,
-  },
-  // TICKETS: every transaction, four kinds — Visit, Voucher, Gift, Refund.
-  {
-    Icon: Ticket,
-    title: "Tickets",
-    summary: "Every transaction",
-    href: CONSUMER_ROUTES.mePages.tickets,
   },
   // MCP IS SOON (Pato, 2026-11-14, MESITA-3867: "add MCP here with soon,
   // before settings"): ChatGPT or Claude reading your Mesita. The cell opens

@@ -665,10 +665,11 @@ describe("T8 — Me's grid is eleven cells, MCP the one Soon", () => {
       "Plan",
       "Notifications",
       "Reservations",
+      // Every transaction, four kinds (MESITA-3855); before Gift since
+      // MESITA-3885 ("tickets before gift").
+      "Tickets",
       // Gift: credit held at a place, sent to a friend (MESITA-3771).
       "Gift",
-      // Every transaction, four kinds (MESITA-3855).
-      "Tickets",
       // Back as a Soon cell (MESITA-3867: "add MCP here with soon").
       "MCP",
       "Settings",

@@ -110,6 +110,25 @@ function SoonPill() {
   );
 }
 
+/** A box's state (MESITA-3885, Pato: "mention in the boxes the states too
+ *  ... the number of reservations or red bubbles"). A red dot means
+ *  something waits for the guest there; a number says how many. Both sit on
+ *  the box's right edge and fade in when their read lands; nothing (zero,
+ *  loading, a failed read) draws nothing. `label` is what a screen reader
+ *  hears after the title ("2 upcoming"). */
+export type TileState = {
+  count?: number;
+  /** Red for unread (Notifications), ink for a plain count. */
+  countTone?: "red" | "ink";
+  dot?: boolean;
+  label?: string;
+};
+
+/** A count past nine reads "9+", so the pill keeps one width. */
+function countText(n: number): string {
+  return n > 9 ? "9+" : String(n);
+}
+
 /** One cell: a DESTINATION, a route Link to `/me/<box>` — or, `soon`, the
  *  same box that opens nothing yet (Plan, MESITA-3855: "Class Plan(Soon)"). */
 export function DestTile({
@@ -120,6 +139,7 @@ export function DestTile({
   href,
   dot = false,
   soon = false,
+  state,
 }: {
   shape: DestShape;
   Icon: LucideIcon;
@@ -132,6 +152,8 @@ export function DestTile({
   /** A red dot at the tile's corner: something new waits behind it (the
    *  Notifications tile, MESITA-3717). */
   dot?: boolean;
+  /** The box's state on its right edge (MESITA-3885). */
+  state?: TileState;
 }) {
   if (soon) {
     return (
@@ -154,7 +176,7 @@ export function DestTile({
       // A grid cell shows its title only; its name says the summary too.
       aria-label={
         shape === "cell"
-          ? `${title}, ${summary}${dot ? ", new" : ""}`
+          ? `${title}, ${state?.label ?? summary}${dot ? ", new" : ""}`
           : undefined
       }
       className={cn(
@@ -168,10 +190,24 @@ export function DestTile({
         <Icon className="h-[19px] w-[19px]" strokeWidth={2.1} />
       </span>
       <TileText shape={shape} title={title} summary={summary} />
-      {dot ? (
+      {state?.count ? (
         <span
           aria-hidden
-          className="bg-destructive h-2.5 w-2.5 shrink-0 rounded-full"
+          className={cn(
+            "type-meta animate-in fade-in min-w-5 shrink-0 rounded-full px-1.5 py-0.5 text-center font-semibold tabular-nums duration-150",
+            state.countTone === "red"
+              ? "bg-destructive text-white"
+              : "bg-foreground text-paper",
+          )}
+          data-tile-count
+        >
+          {countText(state.count)}
+        </span>
+      ) : null}
+      {dot || state?.dot ? (
+        <span
+          aria-hidden
+          className="bg-destructive animate-in fade-in h-2.5 w-2.5 shrink-0 rounded-full duration-150"
           data-unseen-dot
         />
       ) : null}

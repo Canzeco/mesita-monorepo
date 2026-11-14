@@ -24,6 +24,13 @@ export function newestNotificationAt(
  *  read is the list's own (same key), so the bar and the list share it. A
  *  failed read shows no dot. */
 export function useUnseenNotifications(): boolean {
+  return useUnseenNotificationCount() > 0;
+}
+
+/** How many notifications this device has not shown yet: Me's Notifications
+ *  box prints it as a red count (MESITA-3885). Same read as the list's; a
+ *  failed or pending read counts 0, so nothing is drawn. */
+export function useUnseenNotificationCount(): number {
   const getSupabase = useLazyBrowserSupabase();
   const query = useCachedQuery(
     NOTIFICATIONS_KEY,
@@ -31,5 +38,10 @@ export function useUnseenNotifications(): boolean {
     { ttl: 2 * 60 * 1000 },
   );
   const seenAt = useNotificationsSeenAt();
-  return hasUnseen(newestNotificationAt(query.data), seenAt);
+  let n = 0;
+  for (const row of query.data ?? []) {
+    if (!NOTIFICATION_KINDS.has(row.kind)) continue;
+    if (hasUnseen(row.created_at, seenAt)) n += 1;
+  }
+  return n;
 }

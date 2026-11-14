@@ -9,11 +9,16 @@ import {
   instagramWithFollowers,
   type ConsumerFacts,
 } from "@/lib/consumer-identity";
-import { DestTile } from "./profile-sections";
+import { DestTile, type TileState } from "./profile-sections";
 import { MeHubFrame } from "./hub-tiles";
 import { IdentityBar } from "./IdentityBar";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { useUnseenNotifications } from "@/components/consumer/use-unseen-notifications";
+import { useUnseenNotificationCount } from "@/components/consumer/use-unseen-notifications";
+import {
+  isOpenVisit,
+  useReservations,
+  useVisits,
+} from "@/components/consumer/activity/MeLists";
 
 // The Me surface — the identity header, then nine cells in Pato's order
 // (MESITA-3855):
@@ -22,7 +27,7 @@ import { useUnseenNotifications } from "@/components/consumer/use-unseen-notific
 //   2              Profile · Instagram
 //   2              Class · Plan (Soon)
 //   2              Notifications · Reservations
-//   2              Gift · Tickets
+//   2              Tickets · Gift (MESITA-3885)
 //   1              Settings
 //
 // THE CELLS LIVE IN hub-tiles.tsx, rows and words, with the scroller they sit
@@ -45,13 +50,27 @@ import { useUnseenNotifications } from "@/components/consumer/use-unseen-notific
 // subtitle is a static description of what its page holds. Until MESITA-2607
 // Profile printed the member number, Instagram the handle, Class and Plan the
 // guest's values, each behind a loading skeleton.
+//
+// BUT THE BOXES SHOW THEIR STATE (MESITA-3885, Pato: "mention in the boxes the
+// states too ... the number of reservations or red bubbles"). Not facts, and
+// never a skeleton: a red dot where something waits for the guest, a number
+// for how many, on the box's right edge, fading in when its read lands.
+//   Notifications  red count of unseen
+//   Reservations   ink count of upcoming; a red dot too while a place's
+//                  other times wait for the guest's pick
+//   Tickets        red dot while a bill is open
+//   Profile        red dot while Last name is empty (reservations need it)
+// The reads are the ones Me's own pages make, by the same keys, so a box and
+// its page share one read.
 
 export function ProfileClient() {
   const identity = useConsumerIdentity();
   // The row the shell already read (MESITA-3014): Me paints the guest's name
   // and photo on its first frame, and revalidates in the background.
   const { data: profile, loading } = useConsumerProfile();
-  const unseen = useUnseenNotifications();
+  const unseen = useUnseenNotificationCount();
+  const reservations = useReservations();
+  const visits = useVisits();
 
   // THE CONTEXT IS SEEDED SERVER-SIDE AND THE PROFILE IS FETCHED HERE, so the
   // handle can land in either place first. The context wins when it has one —
@@ -82,6 +101,46 @@ export function ProfileClient() {
     }
   }, []);
 
+  // THE BOXES' STATES (MESITA-3885). A read not landed yet, or failed,
+  // leaves its box plain.
+  const upcoming = reservations.rows?.filter((r) => r.upcoming).length ?? 0;
+  const mustPick = (reservations.data?.rows ?? []).some(
+    (r) =>
+      r.state === "pending" &&
+      Array.isArray(r.alternatives) &&
+      r.alternatives.length > 0 &&
+      Date.parse(r.reserved_at) >= reservations.nowMs,
+  );
+  const billOpen = (visits.data?.visits ?? []).some(isOpenVisit);
+  const noLastName = !!profile && !profile.last_name?.trim();
+  const states: Record<string, TileState> = {
+    [CONSUMER_ROUTES.mePages.notifications]: {
+      count: unseen,
+      countTone: "red",
+      label: unseen ? `${unseen} new` : undefined,
+    },
+    [CONSUMER_ROUTES.mePages.reservations]: {
+      count: upcoming,
+      countTone: "ink",
+      dot: mustPick,
+      label:
+        [
+          upcoming ? `${upcoming} upcoming` : null,
+          mustPick ? "a place offered other times" : null,
+        ]
+          .filter(Boolean)
+          .join(", ") || undefined,
+    },
+    [CONSUMER_ROUTES.mePages.tickets]: {
+      dot: billOpen,
+      label: billOpen ? "a bill is open" : undefined,
+    },
+    [CONSUMER_ROUTES.mePages.profile]: {
+      dot: noLastName,
+      label: noLastName ? "add your last name" : undefined,
+    },
+  };
+
   return (
     <MeHubFrame
       bar={
@@ -101,8 +160,7 @@ export function ProfileClient() {
           summary={cell.summary}
           href={cell.href}
           soon={cell.soon}
-          // The bar's red dot, on the door that clears it (MESITA-3855).
-          dot={cell.href === CONSUMER_ROUTES.mePages.notifications && unseen}
+          state={states[cell.href]}
         />
       )}
     />
