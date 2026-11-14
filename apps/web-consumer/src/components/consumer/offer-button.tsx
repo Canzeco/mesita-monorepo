@@ -43,7 +43,9 @@ const GREEN = "bg-green-400 text-neutral-950";
 // show this: Welcome (+X%) · Story (+X%) · VIP (+X%) · Pay (+X% Back) ·
 // Prepay (+X%) ONLY SHOW THE HIGHEST STANDARD VOUCHER"): the three special
 // vouchers, then the card cashback as Pay, then ONE Prepay slide for the
-// best of the $200 / $1,000 / $5,000 vouchers on sale. Cash (MESITA-3671)
+// best of the $200 / $1,000 / $5,000 vouchers on sale. Pay reads "5% Back"
+// with no "+" (MESITA-3871, Pato: "the pay +5% Back is weird"); the bonus
+// pills keep theirs. Cash (MESITA-3671)
 // and the three sized slides are gone from the banner. Every banner (the
 // Places rows, Search's strip) reads the same words; `short` = `lead`.
 const OFFER_SLIDES: OfferSlide[] = [
@@ -81,7 +83,7 @@ export function offerSlides(place: Pick<Place, "offers">): OfferSlide[] {
   return OFFER_SLIDES.flatMap((s): OfferSlide[] => {
     if (s.key === "cashback")
       return offers.cashback && bps > 0
-        ? [{ ...s, pill: `+${bps / 100}% Back`, spoken: `Mesita Pay, ${bps / 100}% back` }]
+        ? [{ ...s, pill: `${bps / 100}% Back`, spoken: `Mesita Pay, ${bps / 100}% back` }]
         : [];
     if (s.key === "prepay")
       return best > 0
