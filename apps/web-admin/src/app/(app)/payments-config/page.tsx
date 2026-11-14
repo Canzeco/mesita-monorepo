@@ -108,7 +108,7 @@ export default async function PaymentsConfigPage() {
           <SectionCard
             icon={<CoinsIcon className="h-5 w-5" aria-hidden />}
             title="Currencies"
-            subtitle="Six currencies: MXN, USD, CAD, EUR, GBP and JPY, each only at places whose currency it is (fixed when the place signs the House Credits Agreement). Small +10% starts with 1; Big +20% is 10× Small; Welcome, Story and VIP cost the Small price."
+            subtitle="Three countries at launch: Mexico, the United States and Canada, each in its own currency (fixed when the place signs the House Credits Agreement). Small +10% starts with 1; Big +20% is 10× Small; Welcome, Story and VIP cost the Small price."
           >
             <div className="-mx-4 overflow-x-auto sm:mx-0">
               <table className="w-full min-w-[640px] text-sm" data-admin-voucher-currencies>
@@ -144,6 +144,19 @@ export default async function PaymentsConfigPage() {
                 </tbody>
               </table>
             </div>
+            {res.unsupported.length > 0 ? (
+              <div className="mt-4" data-admin-unsupported>
+                <p className="text-sm font-semibold">Not supported</p>
+                <ul className="text-muted-foreground mt-1 flex flex-col gap-1 text-sm">
+                  {res.unsupported.map((u) => (
+                    <li key={u.region}>
+                      <span className="text-foreground">{u.region}</span>: {u.why}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-muted-foreground mt-1 text-sm">Places there run House Credits and cash; no vouchers or cards.</p>
+              </div>
+            ) : null}
           </SectionCard>
         </div>
       ) : null}
