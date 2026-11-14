@@ -59,14 +59,14 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://mesita.ai"),
   title: {
-    default: "Mesita — every table in Monterrey",
+    default: "Mesita — restaurants, from your phone",
     template: "%s · Mesita",
   },
   description:
-    "Find a place, book a table, pay and earn credit back. Made in Monterrey.",
+    "Discover places, book a table, pay and earn credit back, all from your phone.",
   openGraph: {
-    title: "Mesita — every table in Monterrey",
-    description: "Find a place, book a table, pay and earn credit back.",
+    title: "Mesita — restaurants, from your phone",
+    description: "Discover places, book a table, pay and earn credit back.",
     siteName: "Mesita",
     locale: "en_US",
     type: "website",
@@ -74,7 +74,7 @@ export const metadata: Metadata = {
     // it; the Share tab shows the same file. A static image under public/,
     // (.jpg, under WhatsApp's 300 KB cap), so signed-out crawlers reach it past the proxy's matcher. Since
     // MESITA-3761 it is the sign-in cover: the terrace photo, the wordmark,
-    // "Every table in Monterrey" and the cover's line.
+    // "Every table in Monterrey" and the cover's line (the JPEG still carries those words; MESITA-3911 changed the live cover).
     images: [
       {
         url: SHARE_CARD.src,
@@ -86,8 +86,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mesita — every table in Monterrey",
-    description: "Find a place, book a table, pay and earn credit back.",
+    title: "Mesita — restaurants, from your phone",
+    description: "Discover places, book a table, pay and earn credit back.",
     images: [SHARE_CARD.src],
   },
 };
