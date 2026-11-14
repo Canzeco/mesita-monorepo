@@ -14,7 +14,7 @@ import {
   type SentLink,
   type WaitingStory,
 } from "@/lib/api/wallet";
-import { payPlacePath, payReceiptPath } from "@/lib/consumer-route-contract";
+import { creditEntryPath, payPlacePath, payReceiptPath } from "@/lib/consumer-route-contract";
 import { placeHref } from "@/lib/place-route";
 import { countdownLabel, nextAvailableMs, shouldReread } from "@/lib/wallet-countdown";
 import { type EntryGroup, groupKeys, splitEntries } from "@/lib/wallet-entries";
@@ -54,7 +54,8 @@ import type { CreditRow } from "./use-wallet";
 // Rows come from lib/wallet-entries.ts: a voucher and its bonus are one row
 // (the only sum here, display only, both amounts the server's); a purchase
 // refunded before it landed reads "Refunded" in History, never as money on
-// its way. Every other amount is the server's (consumer-web-get-wallet);
+// its way. A purchase, its refund, a lone bonus and a gift open their own
+// page, as a paid bill opens its receipt (MESITA-3753). Every other amount is the server's (consumer-web-get-wallet);
 // this screen formats, never adds.
 //
 // MESITA-3549: a pending row counts down to its own `available_at`, one 30 s
@@ -76,8 +77,30 @@ function timeLine(g: EntryGroup, now: number): string {
   return label.startsWith("in ") ? `Available ${label}` : label;
 }
 
+/** The rows with a page of their own besides a paid bill (MESITA-3753): a
+ *  purchase, its refund, a lone bonus, a gift. The kinds Me › Tickets opens. */
+const CREDIT_PAGE = new Set(["prepay", "voucher", "bonus", "gift_out", "gift_in", "gift_back"]);
+
+/** Where a row opens: a paid bill's receipt, a credit movement's page, or
+ *  nothing (cashback, a bill's refund: their bill's row is the receipt). */
+function entryHref(placeId: string, g: EntryGroup): string | null {
+  if (g.kind === "spend") return g.payment_id ? payReceiptPath(g.payment_id) : null;
+  if (CREDIT_PAGE.has(g.kind) || (g.kind === "reversal" && g.purchase_id)) return creditEntryPath(placeId, g);
+  return null;
+}
+
 /** A row: what happened, its grey line, how much. */
-function EntryRow({ group, currency, now }: { group: EntryGroup; currency: string; now: number }) {
+function EntryRow({
+  group,
+  placeId,
+  currency,
+  now,
+}: {
+  group: EntryGroup;
+  placeId: string;
+  currency: string;
+  now: number;
+}) {
   const when = group.refunded ? "Refunded" : group.pending ? timeLine(group, now) : entryDate(group.at);
   const line = group.bonus_cents ? `${when} · includes ${money(group.bonus_cents, currency)} bonus` : when;
   const body = (
@@ -93,8 +116,9 @@ function EntryRow({ group, currency, now }: { group: EntryGroup; currency: strin
     </>
   );
   const row = "flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left";
-  return group.kind === "spend" && group.payment_id ? (
-    <PushLink href={payReceiptPath(group.payment_id)} className={cn(row, "hover:bg-muted/60 transition")}>
+  const href = entryHref(placeId, group);
+  return href ? (
+    <PushLink href={href} className={cn(row, "hover:bg-muted/60 transition")} data-house-card-entry={group.kind}>
       {body}
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
     </PushLink>
@@ -328,7 +352,7 @@ export function PlaceCredit({
             <StoryRow key={st.purchase_id} story={st} onOpen={() => setMethod({ kind: "story", story: st })} />
           ))}
           {pending.map((g, i) => (
-            <EntryRow key={pendingKeys[i]} group={g} currency={card.currency} now={now} />
+            <EntryRow key={pendingKeys[i]} group={g} placeId={row.placeId} currency={card.currency} now={now} />
           ))}
         </WalletList>
       ) : null}
@@ -344,7 +368,7 @@ export function PlaceCredit({
         }
       >
         {shownHistory.map((g, i) => (
-          <EntryRow key={historyKeys[i]} group={g} currency={card.currency} now={now} />
+          <EntryRow key={historyKeys[i]} group={g} placeId={row.placeId} currency={card.currency} now={now} />
         ))}
         {!allHistory && history.length > HISTORY_FIRST ? (
           <button

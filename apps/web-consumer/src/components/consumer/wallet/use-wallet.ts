@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { apiGetWallet, type Wallet, type WalletBalance } from "@/lib/api/wallet";
+import { apiGetWallet, WALLET_CACHE_KEY, type Wallet, type WalletBalance } from "@/lib/api/wallet";
+import { writeCached } from "@/lib/screen-cache";
 import { walletPlacePath } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
@@ -110,6 +111,9 @@ export function useWallet({ withCards = false }: { withCards?: boolean } = {}): 
       .then((w) => {
         if (cancelled) return;
         setWallet(w);
+        // Kept for the pages a row opens (a credit movement, MESITA-3753): a
+        // voucher bought a moment ago is in this read, not in an older one.
+        writeCached(WALLET_CACHE_KEY, w);
         setFailed(false);
         if (session) sayOutcome(w);
         // Still confirming: ask once more after a moment.

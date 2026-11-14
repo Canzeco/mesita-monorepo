@@ -12,6 +12,12 @@ import { walletGiftPath } from "@/lib/consumer-route-contract";
 import { invokeEF } from "./_invoke";
 import type { SavedCard } from "./cards";
 
+/** The screen cache's key for the Wallet read (lib/screen-cache.ts): Me ›
+ *  Tickets, a credit movement's page and the House Card share one answer, so
+ *  a row tapped on any of them opens on what that screen just read
+ *  (MESITA-3753). */
+export const WALLET_CACHE_KEY = "activity-wallet";
+
 export type WalletEntry = {
   kind: string;
   amount_cents: number;

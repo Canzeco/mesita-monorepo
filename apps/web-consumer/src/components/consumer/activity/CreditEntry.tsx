@@ -16,6 +16,9 @@
 //   AT THIS PLACE    available · pending · spendable now
 //   Open the House Card · Pay here · Gift credit
 //
+// A House Card row opens it too (MESITA-3753), and a purchase with a refund
+// on it reads Refunded with the refund's date.
+//
 // It reads the wallet Tickets already holds (the same cached read); an entry
 // it cannot find any more says so and goes back to Tickets.
 
@@ -27,7 +30,7 @@ import { Screen } from "@/components/consumer/nav/Screen";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { ticketsHref } from "@/lib/ticket-kinds";
-import { apiGetWallet, entryLabel, money, type Wallet, type WalletEntry } from "@/lib/api/wallet";
+import { apiGetWallet, entryLabel, money, WALLET_CACHE_KEY, type Wallet, type WalletEntry } from "@/lib/api/wallet";
 import { payPlacePath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useCachedQuery } from "@/lib/use-cached-query";
@@ -39,10 +42,11 @@ const when = (iso: string) =>
 const BOUGHT = new Set(["prepay", "voucher"]);
 
 /** What a movement is, in words, at `place`. */
-function explain(e: WalletEntry, place: string): string {
+function explain(e: WalletEntry, place: string, refunded: boolean): string {
   switch (e.kind) {
     case "prepay":
     case "voucher":
+      if (refunded) return `You bought this credit at ${place} and it was refunded to the card you paid with. It is no longer in your balance there.`;
       return `You bought this credit at ${place}. Spend it there with Pay: it pays the bill, never the tip. If ${place} closes for good, Mesita refunds what you have left.`;
     case "bonus":
       return `Extra credit ${place} added when you bought credit. Spend it there like the rest of your credit.`;
@@ -61,9 +65,10 @@ function explain(e: WalletEntry, place: string): string {
   }
 }
 
-/** The state word and its colour. */
-function stateOf(e: WalletEntry): [string, string] {
-  if (e.kind === "reversal") return ["Refunded", "text-muted-foreground"];
+/** The state word and its colour. A purchase with a refund on it reads
+ *  Refunded, never as money on its way (MESITA-3753). */
+function stateOf(e: WalletEntry, refunded: boolean): [string, string] {
+  if (e.kind === "reversal" || refunded) return ["Refunded", "text-muted-foreground"];
   if (e.kind === "gift_out") return [e.pending ? "Sent · pending" : "Sent", "text-foreground"];
   if (e.kind === "gift_back") return ["Back in your balance", "text-green-700"];
   if (e.pending)
@@ -95,7 +100,7 @@ const BUTTON =
 export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: string }) {
   const getSupabase = useLazyBrowserSupabase();
   // The same read and key Tickets holds, so a tap from the list paints at once.
-  const wallet = useCachedQuery<Wallet>("activity-wallet", () => apiGetWallet(getSupabase()), {
+  const wallet = useCachedQuery<Wallet>(WALLET_CACHE_KEY, () => apiGetWallet(getSupabase()), {
     ttl: 2 * 60 * 1000,
   });
 
@@ -128,10 +133,15 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     const place = b.place?.name ?? "A Mesita place";
     const m = (c: number) => money(c, b.currency);
     const amount = Math.abs(e.amount_cents);
+    // The bonus written with this purchase: by its purchase when the read
+    // carries one, else by the same instant.
     const bonus = BOUGHT.has(e.kind)
-      ? b.entries.find((x) => x.kind === "bonus" && x.at === e.at)
+      ? b.entries.find((x) => x.kind === "bonus" && (e.purchase_id ? x.purchase_id === e.purchase_id : x.at === e.at))
       : undefined;
-    const [state, tone] = stateOf(e);
+    const refund = BOUGHT.has(e.kind) && e.purchase_id
+      ? b.entries.find((x) => x.kind === "reversal" && x.purchase_id === e.purchase_id)
+      : undefined;
+    const [state, tone] = stateOf(e, refund !== undefined);
     const canGift = wallet.data.can_send === true && b.spendable_cents > 0;
     return (
       <div className="flex flex-col gap-6 pb-4" data-credit-entry>
@@ -145,7 +155,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
         </header>
 
         <Section title="What this is">
-          <p className="px-4 py-3 text-sm leading-relaxed">{explain(e, place)}</p>
+          <p className="px-4 py-3 text-sm leading-relaxed">{explain(e, place, refund !== undefined)}</p>
         </Section>
 
         <Section title="Details">
@@ -155,6 +165,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           {bonus ? <Line label="Total credit" value={m(amount + bonus.amount_cents)} strong /> : null}
           <Line label="Date" value={when(e.at)} />
           <Line label="State" value={state} />
+          {refund ? <Line label="Refunded on" value={when(refund.at)} /> : null}
           {e.purchase_id ? <Line label="Purchase number" value={e.purchase_id.slice(0, 8).toUpperCase()} /> : null}
           {wallet.data.test_mode ? <Line label="Test payment" value="No real money" /> : null}
         </Section>
