@@ -612,7 +612,7 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
 export function staffTabView(
   t: TabRow,
   parts: TabPartRow[],
-  extra: { placeName: string | null; cashBackBps: number; nowMs: number; table?: TableView | null },
+  extra: { placeName: string | null; cashBackBps: number; nowMs: number; table?: TableView | null; guestPhoto?: string | null },
 ) {
   return {
     place: { id: t.place_id, name: extra.placeName },
@@ -638,6 +638,12 @@ export function staffTabView(
     // MESITA-3708: Verify waits for a card still going through; a card held
     // for the waiter (MESITA-3856) is ready to sign.
     card_pending: parts.some((p) => p.part === "card" && (p.status === "opening" || p.status === "open") && !p.held_at),
+    // MESITA-3857: why a guest bill ended (Not charged / no longer open), the
+    // card being charged at the signature (Confirming), and the guest's
+    // profile photo on a guest bill — a face to match, never a name.
+    end_reason: t.end_reason ?? null,
+    signing: !!t.signing_at,
+    guest_photo: extra.guestPhoto ?? null,
   };
 }
 
