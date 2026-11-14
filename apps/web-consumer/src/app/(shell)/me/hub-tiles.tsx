@@ -191,7 +191,7 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   {
     Icon: Plug,
     title: "Integrations",
-    summary: "Calendar and more",
+    summary: "Calendar and MCP",
     href: CONSUMER_ROUTES.mePages.integrations,
   },
 ];
