@@ -29,7 +29,7 @@
 // caller prefix is Stripe's (Rules §2), so Mesita polls (the Premier shape).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { MIN_CHARGE_CENTS, MONEY_CURRENCY } from "./money.ts";
+import { currencyForCountry, MIN_CHARGE_CENTS, MONEY_CURRENCY } from "./money.ts";
 import { readVoucherPlace } from "./wallet.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
 import { errorMessage } from "./errors.ts";
@@ -112,7 +112,7 @@ export function feeItemParams(args: { rowId: string; customer: string; invoice: 
   };
 }
 
-type AccountFeeRow = { place_id: string; livemode: boolean; fee_customer_id: string | null };
+type AccountFeeRow = { place_id: string; livemode: boolean; fee_customer_id: string | null; account_country?: string | null };
 
 /** The place owner's email, for the invoice; null when none. */
 async function ownerEmail(admin: SupabaseClient, placeId: string): Promise<string | null> {
@@ -214,17 +214,19 @@ export async function runFeeBillingTick(deps: FeeTickDeps): Promise<FeeTickRepor
   // 1 + 2. Claim and issue.
   const { data: accounts, error: accErr } = await admin
     .from("place_payment_accounts")
-    .select("place_id, livemode, fee_customer_id")
+    .select("place_id, livemode, fee_customer_id, account_country")
     .eq("livemode", livemode)
     .limit(limit);
   if (accErr) throw new Error(`place_payment_accounts: ${accErr.message}`);
   for (const account of (accounts ?? []) as AccountFeeRow[]) {
     try {
+      // MESITA-3913: Mesita's fee is invoiced in the place's own currency.
+      const currency = currencyForCountry(account.account_country) ?? MONEY_CURRENCY;
       const { data, error } = await admin.rpc("place_fee_claim", {
         p_place_id: account.place_id,
         p_livemode: livemode,
-        p_currency: MONEY_CURRENCY,
-        p_min_cents: FEE_MIN_CENTS,
+        p_currency: currency,
+        p_min_cents: MIN_CHARGE_CENTS[currency] ?? FEE_MIN_CENTS,
         p_threshold_cents: FEE_THRESHOLD_CENTS,
         p_period: `${FEE_PERIOD_DAYS} days`,
       });
@@ -238,7 +240,7 @@ export async function runFeeBillingTick(deps: FeeTickDeps): Promise<FeeTickRepor
         id: String(claim.invoice_id),
         place_id: account.place_id,
         amount_cents: Number(claim.amount_cents),
-        currency: String(claim.currency ?? MONEY_CURRENCY),
+        currency: String(claim.currency ?? currency),
       }, customer);
       if (status === "draft") report.failed++;
       else report.issued++;

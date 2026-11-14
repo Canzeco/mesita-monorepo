@@ -29,6 +29,7 @@ import { accountView, HOUSE_CREDITS_TERMS_TEXT, readAccount, readContract, readS
 import { FEE_INVOICE_COLUMNS, type FeeInvoiceRow, feeView } from "../_shared/fee-billing.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 import { errorMessage } from "../_shared/errors.ts";
+import { readVoucherPlace } from "../_shared/wallet.ts";
 
 serveJson("business-web-get-payments", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -55,6 +56,10 @@ serveJson("business-web-get-payments", async (req) => {
     }
   }
   const [settings, contract] = await Promise.all([readSettings(admin, placeId), readContract(admin, placeId)]);
+  // MESITA-3913: the one currency of this place's House Credits.
+  const placeRes = await readVoucherPlace(admin, placeId);
+  if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
+  const placeRow = placeRes.place;
   const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).maybeSingle();
   if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
   const { data: invoices, error: feeErr } = await admin
@@ -74,6 +79,7 @@ serveJson("business-web-get-payments", async (req) => {
     test_mode: !paymentsLivemode(),
     account: accountView(account),
     settings,
+    currency: String(placeRow?.currency ?? "MXN").toUpperCase(),
     contract: { ...contract, text: HOUSE_CREDITS_TERMS_TEXT },
     code_set: !!code,
     fee: feeView(hold, (invoices ?? []) as FeeInvoiceRow[], Date.now()),

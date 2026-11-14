@@ -47,6 +47,7 @@ import {
   CoinsIcon,
   ConfettiIcon,
   CrownIcon,
+  CurrencyCircleDollarIcon,
   DeviceMobileIcon,
   InstagramLogoIcon,
   MoneyIcon,
@@ -102,8 +103,13 @@ const SPECIAL: Product[] = [
   { key: "voucher_vip", name: "VIP Voucher", line: "Guest pays $100.00MX, gets $200.00MX of credit. VIP guests only.", value: "+100%", tone: "bg-amber-100 text-amber-700", icon: CrownIcon },
 ];
 
-/** What a card payment costs the place (MESITA-3461; the 5% fee is billed apart). */
-const PER_100 = "Per $100.00MX by card: Stripe's card fee + $5.00MX to Mesita.";
+/** What a card payment costs the place (MESITA-3461; the 5% fee is billed
+ *  apart), in the place's currency (MESITA-3913). */
+const per100 = (currency: string) =>
+  `Per ${moneyLabel(100_00, currency)} by card: Stripe's card fee + ${moneyLabel(5_00, currency)} to Mesita.`;
+
+/** The currency's name, for the Credits Currency row (MESITA-3913). */
+const CURRENCY_NAME: Record<string, string> = { MXN: "Mexican peso", USD: "US dollar" };
 const ARRIVES_SOON = "Card payment of the bill arrives soon.";
 
 /** The waiter's charge (MESITA-3306) and the staff list (MESITA-3462). */
@@ -181,6 +187,7 @@ export function PaymentsPanel({
   back: "return" | "refresh" | null;
 }) {
   const [settings, setSettings] = useState(initial.settings);
+  const currency = initial.currency ?? "MXN";
   const [contract, setContract] = useState<HouseCreditsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
   const [agreeing, setAgreeing] = useState(false);
   const [busy, setBusy] = useState<PaymentKey | PaymentRateKey | "stripe" | "contract" | null>(null);
@@ -456,7 +463,7 @@ export function PaymentsPanel({
             key: "house_credits",
             id: "house-credits",
             name: "House Credits",
-            line: "Guests earn and buy credit to spend here. It is your debt, always honoured.",
+            line: `Guests earn and buy credit to spend here. It is your debt, in ${currency}, always honoured.`,
             icon: PiggyBankIcon,
             tone: "bg-emerald-100 text-emerald-700",
             blocked: contract.signed ? undefined : needsContract,
@@ -484,7 +491,7 @@ export function PaymentsPanel({
                   ? "Off until Mesita's invoice is paid."
                   : !CARD_BILL_PAY_LIVE
                     ? ARRIVES_SOON
-                    : PER_100
+                    : per100(currency)
               : "Guests still pay from credit here.",
           })}
           {rateRow({
@@ -527,7 +534,7 @@ export function PaymentsPanel({
             {mark(WalletIcon, true, "bg-emerald-100 text-emerald-700")}
             <div className="min-w-0">
               <p className="font-medium">Credits Payments</p>
-              <p className="text-muted-foreground">Guests pay the bill with the credit they hold here. It is your debt, always honoured.</p>
+              <p className="text-muted-foreground">Guests pay the bill with the credit they hold here. It is your debt, in {currency}, always honoured.</p>
             </div>
             <p className="font-semibold whitespace-nowrap">Always on</p>
             <span />
@@ -543,6 +550,20 @@ export function PaymentsPanel({
               <p className="text-muted-foreground">Credit spent here earns no cashback: it was already a reward.</p>
             </div>
             <p className="text-muted-foreground font-semibold whitespace-nowrap">None</p>
+            <span />
+          </li>
+          {/* CREDITS CURRENCY (Pato, 2026-11-14, MESITA-3913: "one house
+              credits card, one currency ... cannot be changed as in inferred
+              based on the location of the place"): read-only. */}
+          <li id="credits-currency" className={MARK_ROW} data-place-state="credits_currency">
+            {mark(CurrencyCircleDollarIcon, true, "bg-emerald-100 text-emerald-700")}
+            <div className="min-w-0">
+              <p className="font-medium">Credits Currency</p>
+              <p className="text-muted-foreground">
+                Every credit here is in {CURRENCY_NAME[currency] ? `${CURRENCY_NAME[currency]}s` : currency}. Set by your place&apos;s country; it can&apos;t be changed. A guest paying with a card in another currency is converted by their bank.
+              </p>
+            </div>
+            <p className="font-semibold whitespace-nowrap">{currency}</p>
             <span />
           </li>
         </ul>

@@ -32,6 +32,8 @@ import {
 } from "../_shared/payments.ts";
 import { isAllowedReturnUrl, paymentsLivemode, paymentsStripeKey, stripeClient, StripeError } from "../_shared/stripe.ts";
 import { errorMessage } from "../_shared/errors.ts";
+import { readVoucherPlace } from "../_shared/wallet.ts";
+import { countryForCurrency } from "../_shared/money.ts";
 
 serveJson("business-web-start-payment-onboarding", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -41,8 +43,13 @@ serveJson("business-web-start-payment-onboarding", async (req) => {
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const { place_id: placeId, return_url: returnUrl } = bodyRes.body;
-  const country = bodyRes.body.country ?? "MX";
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
+  // MESITA-3913: the account's country follows the place's currency (one
+  // House Credits card, one currency), never a default.
+  const placeRes = await readVoucherPlace(admin, placeId);
+  if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
+  const placeRow = placeRes.place;
+  const country = bodyRes.body.country ?? countryForCurrency(placeRow?.currency);
   if (typeof returnUrl !== "string" || !isAllowedReturnUrl(returnUrl)) {
     return json({ ok: false, error: "return_url is not a Mesita address" }, 400);
   }

@@ -274,6 +274,12 @@ export function GuestTabView({
           {wayWords}
         </span>
       </p>
+      {/* MESITA-3913: what the signature earns, Available at once. */}
+      {(tab.cashback_on_sign_cents ?? 0) > 0 ? (
+        <p className={cn("mt-2 flex shrink-0 items-center justify-center gap-1.5 text-sm font-semibold", GOOD)} data-guest-sign-cashback>
+          <Coins className="h-4 w-4" aria-hidden />+{m(tab.cashback_on_sign_cents ?? 0)} back once the waiter signs
+        </p>
+      ) : null}
       <div className="mt-4 flex min-h-0 flex-1 items-center justify-center [container-type:size]">
         {qr ? (
           <div
