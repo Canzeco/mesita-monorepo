@@ -481,7 +481,7 @@ export function GuestPayScreen({
     return frame(
       <>
         <PlaceBar place={place} />
-        <StepsBar at={0} className="mt-1" />
+        <StepsBar at={1} className="mt-1" />
         <button
           type="button"
           onClick={() => setTyping(true)}
@@ -587,8 +587,8 @@ export function GuestPayScreen({
     return frame(
       <>
         <PlaceBar place={place} />
-        <StepsBar at={1} className="mt-1" />
-        <BackStep to="Bill" onClick={() => !busy && setStage("bill")} />
+        <StepsBar at={2} className="mt-1" />
+        <BackStep to="Tip" onClick={() => !busy && setStage("bill")} />
         <p className="mt-2 shrink-0 text-center">
           <span className="text-muted-foreground block text-sm">{leftCents === 0 ? "Tip to pay" : "Left to pay"}</span>
           <span className="block text-[2.5rem] leading-tight font-semibold tabular-nums">{m(dueCents)}</span>
@@ -642,7 +642,7 @@ export function GuestPayScreen({
     return frame(
       <>
         <PlaceBar place={place} />
-        <StepsBar at={2} className="mt-1" />
+        <StepsBar at={3} className="mt-1" />
         <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
           {cardsUnknown ? (
@@ -735,7 +735,7 @@ export function GuestPayScreen({
   return frame(
     <>
       <PlaceBar place={place} />
-      <StepsBar at={2} className="mt-1" />
+      <StepsBar at={3} className="mt-1" />
       <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
         <span className="flex h-28 w-28 items-center justify-center rounded-full bg-green-400 text-neutral-950" aria-hidden>
