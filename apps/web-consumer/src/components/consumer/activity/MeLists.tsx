@@ -28,18 +28,14 @@
 // once its sources answered. Nothing here computes a balance: it lists and
 // formats what the server sent.
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
   CalendarCheck,
+  CalendarClock,
   Gift,
+  History,
   HandCoins,
   Ticket,
   UtensilsCrossed,
@@ -137,7 +133,8 @@ function dayTitle(iso: string, nowMs: number): string {
     weekday: "short",
     month: "short",
     day: "numeric",
-    year: d.getFullYear() === new Date(nowMs).getFullYear() ? undefined : "numeric",
+    year:
+      d.getFullYear() === new Date(nowMs).getFullYear() ? undefined : "numeric",
   });
 }
 
@@ -216,7 +213,9 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
     const unpaid = v.status === "expired" || v.status === "cancelled";
     const at = v.paid_at ?? v.created_at;
     const total =
-      v.bill_cents != null ? money(v.bill_cents + v.tip_cents, v.currency) : null;
+      v.bill_cents != null
+        ? money(v.bill_cents + v.tip_cents, v.currency)
+        : null;
     // An open bill is the live pay screen; a finished one is its one-page
     // summary (MESITA-3770: "the live workflow and the output must be
     // different").
@@ -368,7 +367,7 @@ function walletRows(w: Wallet): Row[] {
           ? { label: "Pending", tone: "ink" }
           : { label: "Available", tone: "green" },
         big: money(e.amount_cents, cur),
-          money: true,
+        money: true,
         line: join(clock(e.at), "Bonus"),
         href: creditEntryPath(b.place_id, e),
       });
@@ -391,7 +390,7 @@ function walletRows(w: Wallet): Row[] {
       photo: s.place?.photo ?? null,
       status: { label: "Waiting", tone: "ink" },
       big: money(s.credit_cents, s.currency),
-          money: true,
+      money: true,
       line: join(
         s.paid_at && clock(s.paid_at),
         "Story voucher · waiting for your post",
@@ -413,7 +412,7 @@ function walletRows(w: Wallet): Row[] {
       photo: p?.photo ?? null,
       status: { label: "Not taken", tone: "ink" },
       big: money(l.amount_cents, l.currency),
-          money: true,
+      money: true,
       line: join(clock(l.created_at), "Link sent"),
       href: walletPlacePath(l.place_id),
     });
@@ -520,9 +519,7 @@ export function useReservations() {
   const [nowMs] = useState(() => Date.now());
   const rows = useMemo(
     () =>
-      reservations.data
-        ? reservationRows(reservations.data.rows, nowMs)
-        : null,
+      reservations.data ? reservationRows(reservations.data.rows, nowMs) : null,
     [reservations.data, nowMs],
   );
   return { ...reservations, rows, nowMs };
@@ -617,21 +614,77 @@ export function NotificationsPage() {
 }
 
 /** /me/reservations: Upcoming, then Past. */
+/** Reservations' two halves (MESITA-3888, Pato: "Reservation divide by
+ *  Upcoming and Past, two subpages"): /me/reservations is Upcoming,
+ *  /me/reservations/past is Past. */
+type ReservationHalf = "upcoming" | "past";
+
+const RESERVATION_CHIPS: ReadonlyArray<RailChip<ReservationHalf>> = [
+  { kind: "upcoming", label: "Upcoming", Icon: CalendarClock },
+  { kind: "past", label: "Past", Icon: History },
+];
+
+/** An empty Past is a fact, not an invitation to book. */
+const EMPTY_PAST = {
+  title: "No past reservations",
+  text: "A table you had or cancelled lands here.",
+};
+
 export function ReservationsPage() {
   const reservations = useReservations();
+  // THE CHIP IS THE PATH, as Tickets' is (MESITA-3811).
+  const pathname = usePathname() ?? CONSUMER_ROUTES.mePages.reservations;
+  const half: ReservationHalf = pathname.endsWith("/past")
+    ? "past"
+    : "upcoming";
+  const halves = useMemo(
+    () => (reservations.rows ? ordered(reservations.rows) : null),
+    [reservations.rows],
+  );
+  const counts: Partial<Record<ReservationHalf, string>> = halves
+    ? {
+        upcoming: halves.upcoming.length
+          ? String(halves.upcoming.length)
+          : undefined,
+        past: halves.past.length ? String(halves.past.length) : undefined,
+      }
+    : {};
+  const pick = (k: ReservationHalf) =>
+    window.history.replaceState(
+      null,
+      "",
+      k === "past"
+        ? `${CONSUMER_ROUTES.mePages.reservations}/past`
+        : CONSUMER_ROUTES.mePages.reservations,
+    );
   return (
     <Screen title="Reservations">
       <div className="flex flex-col gap-4">
         <ChipIntro type="reservations" />
-        <TicketList
-          type="reservations"
-          rows={reservations.rows}
-          ready={!reservations.loading}
-          failed={!!reservations.error}
-          retry={reservations.reload}
-          note={null}
-          foot={null}
+        <KindRail
+          chips={RESERVATION_CHIPS}
+          kind={half}
+          onPick={pick}
+          counts={counts}
+          label="Upcoming or past reservations"
         />
+        <div
+          role="tabpanel"
+          aria-label={
+            half === "past" ? "Past reservations" : "Upcoming reservations"
+          }
+        >
+          <TicketList
+            type="reservations"
+            rows={halves ? halves[half] : null}
+            ready={!reservations.loading}
+            failed={!!reservations.error}
+            retry={reservations.reload}
+            note={null}
+            foot={null}
+            empty={half === "past" ? EMPTY_PAST : undefined}
+          />
+        </div>
       </div>
     </Screen>
   );
@@ -641,11 +694,9 @@ export function ReservationsPage() {
  *  for an open bill (MESITA-3885); one key, so either warms the other. */
 export function useVisits() {
   const getSupabase = useLazyBrowserSupabase();
-  return useCachedQuery(
-    "activity-visits",
-    () => apiListVisits(getSupabase()),
-    { ttl: TTL },
-  );
+  return useCachedQuery("activity-visits", () => apiListVisits(getSupabase()), {
+    ttl: TTL,
+  });
 }
 
 /** /me/tickets and /me/tickets/<kind>: every transaction, one chip per kind. */
@@ -704,7 +755,9 @@ export function TicketsPage() {
   const walletReady = !wallet.loading;
   // Visits waits for the wallet too, so its payments never pop in late.
   const ready = (k: TicketKind | "all") =>
-    k === "visits" || k === "all" ? !visits.loading && walletReady : walletReady;
+    k === "visits" || k === "all"
+      ? !visits.loading && walletReady
+      : walletReady;
   const failed = (k: TicketKind | "all") =>
     k === "visits"
       ? !!visits.error
@@ -804,6 +857,7 @@ function TicketList({
   retry,
   note,
   foot,
+  empty,
 }: {
   type: ListType | "all";
   rows: Row[] | null;
@@ -812,6 +866,8 @@ function TicketList({
   retry: () => void;
   note: string | null;
   foot: string | null;
+  /** Words for an empty list other than the type's own (Past, MESITA-3888). */
+  empty?: { title: string; text: string };
 }) {
   // The clock "Today" and "Yesterday" are judged by: read once.
   const [nowMs] = useState(() => Date.now());
@@ -828,7 +884,9 @@ function TicketList({
     );
   }
   if (rows.length === 0) {
-    return (
+    return empty ? (
+      <EmptyState icon={Icon} title={empty.title} description={empty.text} />
+    ) : (
       <EmptyState
         icon={Icon}
         title={EMPTY[type].title}
@@ -906,18 +964,23 @@ function TicketList({
   );
 }
 
+/** One chip on a rail: Tickets' kinds, Reservations' halves (MESITA-3888). */
+type RailChip<K extends string> = { kind: K; label: string; Icon: LucideIcon };
+
 /** The chips: the chosen one in view on arrival and on Back, without
  *  animation; the right edge fades so the rail reads as scrollable. */
-function KindRail({
+function KindRail<K extends string>({
   chips,
   kind,
   onPick,
   counts,
+  label = "Kinds of ticket",
 }: {
-  chips: typeof CHIPS;
-  kind: TicketKind | "all";
-  onPick: (k: TicketKind | "all") => void;
-  counts: Partial<Record<TicketKind | "all", string>>;
+  chips: ReadonlyArray<RailChip<K>>;
+  kind: K;
+  onPick: (k: K) => void;
+  counts: Partial<Record<K, string>>;
+  label?: string;
 }) {
   const chosen = useRef<HTMLButtonElement | null>(null);
   useLayoutEffect(() => {
@@ -932,7 +995,7 @@ function KindRail({
       <div
         className="scrollbar-hide flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 pr-8"
         role="tablist"
-        aria-label="Kinds of ticket"
+        aria-label={label}
         data-ticket-kinds
       >
         {chips.map(({ kind: key, label, Icon }) => {
@@ -980,25 +1043,29 @@ function KindRail({
 // ─── The loading frames (MESITA-2701) ──────────────────────────────────────
 
 /** A list page's frame while its read is out: the title in place, the list
- *  in bones; Tickets also draws its chips' bones. */
+ *  in bones; Tickets also draws its chips' bones, Reservations its two
+ *  (MESITA-3888). */
 export function MeListSkeleton({
   title,
   rail = false,
 }: {
   title: string;
-  rail?: boolean;
+  /** Chip bones: true for Tickets' four, or a number. */
+  rail?: boolean | number;
 }) {
   return (
     <Screen title={title}>
       <div className="flex flex-col gap-4">
         {rail ? (
           <div className="flex gap-2 overflow-hidden" aria-hidden>
-            {["w-20", "w-28", "w-32", "w-24"].map((w, i) => (
-              <Skeleton
-                key={i}
-                className={cn("h-11 shrink-0 rounded-full", w)}
-              />
-            ))}
+            {["w-20", "w-28", "w-32", "w-24"]
+              .slice(0, rail === true ? 4 : rail)
+              .map((w, i) => (
+                <Skeleton
+                  key={i}
+                  className={cn("h-11 shrink-0 rounded-full", w)}
+                />
+              ))}
           </div>
         ) : null}
         <ActivityRowsSkeleton />
