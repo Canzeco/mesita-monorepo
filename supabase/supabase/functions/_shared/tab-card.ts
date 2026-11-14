@@ -29,7 +29,7 @@
 // replay-safe RPCs.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { MIN_CHARGE_CENTS } from "./money.ts";
+import { MIN_CHARGE_CENTS, toStripeAmount } from "./money.ts";
 import { moneyState } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings } from "./payments.ts";
 import { cardRefusal } from "./pay-card.ts";
@@ -244,7 +244,7 @@ export async function runTabCard(
       tip_cents: String(row.tip_cents),
     };
     pi = await stripe("POST", "payment_intents", {
-      amount: row.card_cents + row.tip_cents,
+      amount: toStripeAmount(row.card_cents + row.tip_cents, args.currency),
       currency: args.currency,
       payment_method: String(cloned.id),
       payment_method_types: ["card"],

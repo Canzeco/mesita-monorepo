@@ -21,6 +21,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
+import { readVoucherPlace } from "../_shared/wallet.ts";
 import { HOUSE_CREDITS_TERMS_TEXT, HOUSE_CREDITS_TERMS_VERSION, readContract, sha256Hex } from "../_shared/payments.ts";
 
 serveJson("business-web-sign-house-credits-contract", async (req) => {
@@ -40,8 +41,15 @@ serveJson("business-web-sign-house-credits-contract", async (req) => {
   const existing = await readContract(admin, placeId);
   if (existing.signed) return json({ ok: true, outcome: "already_signed", contract: existing });
 
+  // MESITA-3923: the place's House Credits currency is agreed here, and the
+  // signature locks it (place_currency_open).
+  const placeRes = await readVoucherPlace(admin, placeId);
+  if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
+  const currency = String(placeRes.place?.currency ?? "MXN").toUpperCase();
+
   const { error } = await admin.from("house_credits_contracts").insert({
     place_id: placeId,
+    currency,
     signed_by: user.id,
     signed_by_email: user.email ?? null,
     signer_role: access.role === "superadmin" ? "superadmin" : "owner",

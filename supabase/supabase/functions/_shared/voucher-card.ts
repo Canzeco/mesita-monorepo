@@ -37,6 +37,7 @@
 // wallet_voucher), the cron and the Wallet read all settle by PI; ten
 // minutes unfinished → cancel first, then release.
 
+import { toStripeAmount } from "./money.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { MoneyVoucherKey } from "./money-state.ts";
 import type { AccountRow } from "./payments.ts";
@@ -183,7 +184,7 @@ export async function runVoucherCard(
       idempotencyKey: `vouchercard-clone:${row.id}`,
     });
     pi = await stripe("POST", "payment_intents", {
-      amount,
+      amount: toStripeAmount(amount, args.currency),
       currency: args.currency,
       payment_method: String(cloned.id),
       payment_method_types: ["card"],

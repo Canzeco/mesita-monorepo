@@ -1,3 +1,4 @@
+import { toStripeAmount } from "./money.ts";
 import { type StripeCall } from "./stripe.ts";
 // A one-off Checkout `payment` and what Stripe says about it — shared by the
 // Wallet (wallet_purchases, MESITA-3097, on the place's connected account
@@ -28,7 +29,7 @@ export function classifySession(
   if (meta[idKey] !== purchaseId) return { kind: "mismatch" };
   if (
     expect && (
-      session.amount_total !== expect.amountCents ||
+      session.amount_total !== toStripeAmount(expect.amountCents, expect.currency) ||
       String(session.currency ?? "").toLowerCase() !== expect.currency ||
       session.livemode !== expect.livemode
     )

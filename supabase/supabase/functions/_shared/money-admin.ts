@@ -19,6 +19,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type StripeCall, StripeError } from "./stripe.ts";
 import { errorMessage } from "./errors.ts";
+import { toStripeAmount } from "./money.ts";
 import { purchasesByPaymentIntent, spreadGone } from "./purchase-pi.ts";
 
 // ── Masking ───────────────────────────────────────────────────────────────
@@ -74,13 +75,14 @@ export type PaymentRow = {
   status: string;
   paid_at: string | null;
   livemode: boolean;
+  currency?: string | null;
   /** The part paid outside Mesita (MESITA-3545); its tip was paid at the
    *  table, never on Stripe. */
   outside_cents?: number;
 };
 
 export const PAYMENT_COLUMNS =
-  "id, consumer_id, place_id, credit_cents, card_cents, tip_cents, refunded_cents, credit_refunded_cents, application_fee_cents, fee_collected, stripe_account_id, stripe_payment_intent_id, status, paid_at, livemode, outside_cents";
+  "id, consumer_id, place_id, credit_cents, card_cents, tip_cents, refunded_cents, credit_refunded_cents, application_fee_cents, fee_collected, stripe_account_id, stripe_payment_intent_id, status, paid_at, livemode, outside_cents, currency";
 
 /** Whether refunding this payment needs Stripe: a card part (card + tip)
  *  not all back yet. An outside bill never does: its tip was paid at the
@@ -103,7 +105,7 @@ export function withApplicationFee(row: { application_fee_cents: number; fee_col
 async function stripeRefund(
   deps: RefundDeps,
   target: { purchase_id?: string; payment_id?: string },
-  args: { paymentIntent: string; account: string; amount: number; withFee: boolean },
+  args: { paymentIntent: string; account: string; amount: number; withFee: boolean; currency?: string | null },
 ): Promise<{ ok: true } | { ok: false; stripe_code: string; error: string }> {
   const { data, error } = await deps.admin
     .from("wallet_refund_attempts")
@@ -118,7 +120,7 @@ async function stripeRefund(
       "refunds",
       {
         payment_intent: args.paymentIntent,
-        amount: args.amount,
+        amount: toStripeAmount(args.amount, args.currency),
         ...(args.withFee ? { refund_application_fee: true } : {}),
         metadata: { attempt_id: attemptId },
       },
@@ -170,6 +172,7 @@ export async function refundPurchase(deps: RefundDeps, row: PurchaseRow, amount?
     account: row.stripe_account_id,
     amount: want,
     withFee: withApplicationFee(row),
+    currency: row.currency,
   });
   if (!r.ok) return { ok: false, code: "refund_failed", stripe_code: r.stripe_code, error: r.error };
   const total = row.refunded_cents + want;
@@ -190,6 +193,7 @@ async function refundBasket(deps: RefundDeps, row: PurchaseRow, rows: PurchaseRo
     account: row.stripe_account_id,
     amount: want,
     withFee: rows.some(withApplicationFee),
+    currency: row.currency,
   });
   if (!r.ok) return { ok: false, code: "refund_failed", stripe_code: r.stripe_code, error: r.error };
   let status: string | null = null;
@@ -250,6 +254,7 @@ export async function refundPayment(deps: RefundDeps, row: PaymentRow, amount?: 
       account: row.stripe_account_id,
       amount: card,
       withFee: withApplicationFee(row),
+      currency: row.currency,
     });
     if (!r.ok) return { ok: false, code: "refund_failed", stripe_code: r.stripe_code, error: r.error };
     const total = row.refunded_cents + card;

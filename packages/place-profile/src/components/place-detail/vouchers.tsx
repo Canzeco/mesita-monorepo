@@ -134,8 +134,9 @@ export function pesos(cents: number, currency: string): string {
       style: "currency",
       currency: code,
       currencyDisplay: "narrowSymbol",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      // Yen and Chilean pesos have no cents (MESITA-3923).
+      minimumFractionDigits: code === "JPY" || code === "CLP" ? 0 : 2,
+      maximumFractionDigits: code === "JPY" || code === "CLP" ? 0 : 2,
     }).format(c / 100).replace(/^(-?)\$(.*)$/, code === "MXN" ? "$1$$$2MX" : "$1$$$2");
   } catch {
     return `${(c / 100).toFixed(2)} ${code}`;
