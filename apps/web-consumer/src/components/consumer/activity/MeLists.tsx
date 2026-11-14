@@ -34,6 +34,7 @@ import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
   CalendarCheck,
+  CalendarPlus,
   Gift,
   HandCoins,
   Send,
@@ -41,6 +42,7 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -690,7 +692,21 @@ export function ReservationsPage() {
   // column's blue-600; Home's own bar stays ink, MESITA-3687). No intro card
   // ("don't mention that stupid description").
   return (
-    <Screen title="Reservations">
+    <Screen
+      title="Reservations"
+      // CALENDAR, TOP RIGHT (Pato, 2026-11-14, MESITA-3954: "top right put
+      // the Google Calendar icon or something"): opens Integrations ›
+      // Calendar, the feed Google, Apple and Outlook subscribe to.
+      action={
+        <PushLink
+          href={CONSUMER_ROUTES.mePages.integrationsCalendar}
+          aria-label="Add to your calendar"
+          className="bg-card text-foreground border-border hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition active:scale-[0.98]"
+        >
+          <CalendarPlus className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+        </PushLink>
+      }
+    >
       <div className="flex flex-col gap-4">
         <SubpageTabs
           label="Upcoming or past reservations"
