@@ -217,10 +217,6 @@ verify_jwt = false
 [functions.consumer-web-get-calendar-feed]
 verify_jwt = false
 
-# MESITA-3971: Mesita's MCP server for Claude and ChatGPT. Public: the
-# assistants' servers carry no session; the token in the path is the key.
-[functions.consumer-web-mcp]
-verify_jwt = false
 
 # MESITA-3405: "Call me with the code" on phone sign-in. Public: the guest has
 # no session yet; it only repeats a code Auth already texted to that number.
@@ -540,9 +536,6 @@ verify_jwt = true
 [functions.consumer-web-get-calendar-link]
 verify_jwt = true
 
-# MESITA-3971: Me › Integrations › MCP — the guest's private connector URL.
-[functions.consumer-web-get-mcp-link]
-verify_jwt = true
 
 [functions.consumer-web-cancel-reservation]
 verify_jwt = true

@@ -15,8 +15,9 @@ import {
 // month ... only that capability for the moment nothing else"): each plan is
 // its reservations a month and its price. The MCP perk left with it, and
 // came back on Pro as a Soon line (MESITA-3881, Pato: "mention MCP also but
-// with soon"). It left again when MCP shipped for every guest on Me ›
-// Integrations (MESITA-3971): a working feature is not a Soon perk.
+// with soon"). MCP shipped on Me › Integrations for an hour (MESITA-3971)
+// and came back here as Soon (MESITA-3976, Pato: "I don't really want an MCP
+// rn. just leave it as soon in the pro plan").
 
 export type PlanRowWords = {
   title: string;
@@ -49,5 +50,6 @@ export const PLAN_ROWS: Record<GuestPlan, PlanRowWords> = {
     title: "Pro",
     price: PRO_PRICE_LINE,
     perk: `Max ${PRO_RESERVATIONS_PER_MONTH} reservations a month`,
+    soonPerk: "MCP for ChatGPT or Claude",
   },
 };

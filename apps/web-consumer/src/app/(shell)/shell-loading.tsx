@@ -31,7 +31,6 @@ import TicketsLoading from "./me/tickets/loading";
 import ShareLoading from "./share/loading";
 import IntegrationsLoading from "./me/integrations/loading";
 import CalendarLoading from "./me/integrations/calendar/loading";
-import McpLoading from "./me/integrations/mcp/loading";
 
 // One frame per screen in the route map (MESITA-3646): a screen without one
 // is a type error, never a blank card.
@@ -76,7 +75,6 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   meSettingsFeedback: () => <FeedbackLoading />,
   meIntegrations: () => <IntegrationsLoading />,
   meIntegrationsCalendar: () => <CalendarLoading />,
-  meIntegrationsMcp: () => <McpLoading />,
 };
 
 // THE PLACEHOLDER IS THE LOADING SCREEN, NEVER A SPINNER (Pato, MESITA-2840:
