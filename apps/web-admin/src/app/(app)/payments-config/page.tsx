@@ -108,7 +108,7 @@ export default async function PaymentsConfigPage() {
           <SectionCard
             icon={<CoinsIcon className="h-5 w-5" aria-hidden />}
             title="Currencies"
-            subtitle="Ten currencies, all selling, each only at places whose currency it is (fixed when the place signs the House Credits Agreement). Small starts with 1, near half an inexpensive meal for one there; Big is 10× Small; Welcome, Story and VIP cost the Small price. Card payments need Stripe in the place's country: not yet in Colombia, Chile or Peru."
+            subtitle="Four currencies: MXN, USD, CAD and EUR, each only at places whose currency it is (fixed when the place signs the House Credits Agreement). Small starts with 1; Big is 10× Small; Welcome, Story and VIP cost the Small price."
           >
             <div className="-mx-4 overflow-x-auto sm:mx-0">
               <table className="w-full min-w-[640px] text-sm" data-admin-voucher-currencies>

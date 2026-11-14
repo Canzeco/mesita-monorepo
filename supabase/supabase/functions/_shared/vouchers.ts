@@ -257,7 +257,7 @@ export const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string
 /** Why a voucher cannot be bought right now, or null when it can. */
 export function buyRefusal(offer: VoucherOffer, voucher: MoneyVoucherKey, account: AccountRow | null): BuyRefusal | null {
   if (voucherPriceCents(voucher, offer.currency) === null) {
-    return { ok: false, status: 409, code: "currency_mismatch", error: "Vouchers are sold in Mexican pesos and US dollars only" };
+    return { ok: false, status: 409, code: "currency_mismatch", error: "Vouchers aren't sold in this place's currency" };
   }
   const acctCurrency = accountCurrency(account);
   if (offer.charges_enabled && acctCurrency && acctCurrency !== offer.currency) {
