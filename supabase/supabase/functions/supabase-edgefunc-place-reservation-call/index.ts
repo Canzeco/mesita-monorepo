@@ -94,6 +94,7 @@ import { PLACE_ZONE_COLUMNS, placeZone } from "../_shared/local-time.ts";
 import { type GuestNameParts, ticketGuestName } from "../_shared/reservation-guest-name.ts";
 import { endAtDeadEnd } from "../_shared/reservation-dead-end.ts";
 import { dialNumber } from "../_shared/place-reservable.ts";
+import { loadPlaceNotes, notesForCall } from "../_shared/place-notes.ts";
 import { runCallbackRetry, runCancelNotice, runIntents, runReminder } from "./legs.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
@@ -693,6 +694,7 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
     dateEs: esDate(r.reserved_at, placeTz),
     timeEs: esTime(r.reserved_at, placeTz),
     specialRequests: (r.notes ?? "").trim(),
+    placeNotes: placeId ? notesForCall(await loadPlaceNotes(admin, placeId)) : "",
     runId,
     modificationOf: modificationOfIso
       ? { dateEs: esDate(modificationOfIso, placeTz), timeEs: esTime(modificationOfIso, placeTz) }

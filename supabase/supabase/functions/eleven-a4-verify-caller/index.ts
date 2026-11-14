@@ -3,8 +3,8 @@
 // Caller = eleven-a4: the business INBOUND line — a place phones Mesita to
 // ask about or change bookings. THE GATE for every a4 conversation: verifies
 // the caller by phone number against the place's lines (places.phone and the
-// reservation_target endpoint) and returns the place plus its upcoming
-// book, speakable:
+// reservation_target endpoint) and returns the place, its notes (what
+// earlier calls taught about it, MESITA-3955) and its upcoming book, speakable:
 //
 //   { caller_phone }
 //
@@ -23,6 +23,7 @@ import {
   ticketsOfPlace,
 } from "../_shared/agent-tools.ts";
 import { placeZone } from "../_shared/local-time.ts";
+import { loadPlaceNotes, notesForCall } from "../_shared/place-notes.ts";
 
 serveJson("eleven-a4-verify-caller", async (req) => {
   const ctx = await requireAgentRequest(req);
@@ -41,11 +42,13 @@ serveJson("eleven-a4-verify-caller", async (req) => {
   }
 
   const tickets = await ticketsOfPlace(admin, place.id, 8);
+  // Place notes (MESITA-3955): what earlier calls taught about this place.
+  const notes = notesForCall(await loadPlaceNotes(admin, place.id));
 
   return json({
     ok: true,
     verified: true,
-    place: { name: place.name ?? "(sin nombre)" },
+    place: { name: place.name ?? "(sin nombre)", notes },
     tickets: tickets.map((t) => speakable(t, place.name ?? "", placeZone(place))),
   });
 });

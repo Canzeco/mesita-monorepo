@@ -4,7 +4,7 @@
 // knowledge), synced to ElevenLabs; a call sends only these values. No
 // per-call prompt or first message rides along.
 //
-// `venue_name`, `venue_alternatives` and the call_context values
+// `venue_name`, `venue_notes`, `venue_alternatives` and the call_context values
 // "cancelled_by_venue" and "offer_release" are wire keys the agents' prompts
 // read; they change only together with _shared/reservationist/ and a sync.
 //
@@ -27,6 +27,9 @@ export type ReservationLegVars = {
   /** This engine run's generation token — bound to the tools' run_id so a
    * report from an orphaned call is ignored. */
   runId: string;
+  /** What Mesita has learned about how this place handles reservations
+   *  (place notes, MESITA-3955), one line, "" when nothing yet. */
+  placeNotes: string;
   /** Old slot when this run MOVES a confirmed booking (else null). */
   modificationOf?: { dateEs: string; timeEs: string } | null;
 };
@@ -54,6 +57,7 @@ export function legDynamicVariables(
     reservation_date: v.dateEs,
     reservation_time: v.timeEs,
     special_requests: v.specialRequests,
+    venue_notes: v.placeNotes,
     call_context: ctx.callContext,
     venue_alternatives: ctx.placeAlternatives ?? "",
     run_id: v.runId,
