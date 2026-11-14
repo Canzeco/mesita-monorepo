@@ -22,6 +22,7 @@ const ROW = "00000000-0000-4000-8000-0000000d3305";
 const T0 = Date.parse("2026-11-08T12:00:00Z");
 
 const ALL_ON: PaymentSettings = {
+  stripe_payments: true,
   pay_cards: true,
   prepayments: true,
   house_credits: true,

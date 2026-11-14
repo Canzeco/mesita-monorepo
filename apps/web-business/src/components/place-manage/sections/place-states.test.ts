@@ -17,6 +17,7 @@ const acct = (o: Partial<PaymentAccount> = {}): PaymentAccount => ({
   ...o,
 });
 const settings = (o: Partial<PaymentSettings> = {}): PaymentSettings => ({
+  stripe_payments: true,
   house_credits: true,
   cash_payments: true,
   card_cashback_bps: 500,

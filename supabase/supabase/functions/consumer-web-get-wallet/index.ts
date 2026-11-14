@@ -53,7 +53,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { chargesEnabledByPlace, listRowMoney, type PaymentKey, type RateKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
+import { cardsAccepted, chargesEnabledByPlace, listRowMoney, type PaymentKey, type RateKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { storyUrl } from "../_shared/proof.ts";
 import { readPins, withPins } from "../_shared/house-cards.ts";
@@ -226,7 +226,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   >;
   const settingsById = new Map(settingRows.map((r) => [r.place_id, r]));
   for (const r of settingRows) {
-    if (settingsFromRow(r).pay_cards) cardsOn.add(r.place_id);
+    if (cardsAccepted(settingsFromRow(r))) cardsOn.add(r.place_id);
   }
   // THE GREEN MARK (MESITA-3514): the list rows' rule, so a Wallet card
   // and a Home tile never disagree. A failed settings read reads as no row.

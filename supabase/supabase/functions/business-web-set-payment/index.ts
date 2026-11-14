@@ -67,7 +67,7 @@ serveJson("business-web-set-payment", async (req) => {
       card_cashback_bps: "App Payments Cashback is Off or 5%.",
       cash_cashback_bps: "Cash Payments Cashback is Off or 3%.",
       credit_cashback_bps: "Credits Payments Cashback is Off or 2%.",
-      prepay_cashback_bps: "App Prepayments Cashback is Off or 5%.",
+      prepay_cashback_bps: "App Prepayments Cashback is Off or 2%.",
     };
     return json({ ok: false, code: "invalid", error: line[key] }, 400);
   }

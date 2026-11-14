@@ -68,7 +68,7 @@ export function cardRefusal(args: {
   if (!a || a.livemode !== args.livemode || !a.charges_enabled) {
     return refuse(409, "This place isn't taking card payments yet", "no_account");
   }
-  if (args.settings.pay_cards === false) {
+  if (args.settings.pay_cards === false || args.settings.stripe_payments === false) {
     return refuse(409, "This place isn't taking card payments right now", "cards_off");
   }
   if (a.fee_hold === true) {

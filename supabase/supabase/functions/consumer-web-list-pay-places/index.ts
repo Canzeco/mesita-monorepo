@@ -29,7 +29,7 @@ import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { MIN_CHARGE_CENTS, MONEY_CURRENCY } from "../_shared/money.ts";
 import { moneyState } from "../_shared/money-state.ts";
-import { listRowMoney, type PaymentKey, type PaymentSettings, type RateKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
+import { cardsAccepted, listRowMoney, type PaymentKey, type PaymentSettings, type RateKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { PAID_RECENT_HOURS, type PayPlaceInput, payPlaces, readLocation } from "../_shared/pay-places.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
@@ -103,7 +103,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
     const s = settings.get(p.id) ?? settingsFromRow(null);
     const charges = charging.has(p.id);
     const active = p.state === "active";
-    const cardOk = charges && s.pay_cards && active;
+    const cardOk = charges && cardsAccepted(s) && active;
     // Cash Payments (MESITA-3589): the owner's switch and the place code.
     const cashState = moneyState({ ...s, has_place_code: coded.has(p.id) }, charges ? { charges_enabled: true } : null, null);
     const outsideOk = cashState.cash && active;

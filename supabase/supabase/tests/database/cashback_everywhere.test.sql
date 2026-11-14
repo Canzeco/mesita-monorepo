@@ -1,6 +1,6 @@
 -- MESITA-3827 — Cashback-as-Credits on every way to pay. Credits Payments
 -- Cashback is Off or 2% on the credit part; Mesita Prepayments Cashback is
--- Off or 5% on a voucher's price (and needs Stripe). Rows stamp their rate
+-- Off or 2% on a voucher's price (and needs Stripe). Rows stamp their rate
 -- when written. A payment's card and credit parts make ONE cashback entry,
 -- each part rounded down; a card refund never takes the credit part's share
 -- and a credit refund takes only its own; a voucher's cashback is written
@@ -50,18 +50,18 @@ select throws_ok(
   '23514', null, 'a credits rate other than 2% is refused');
 select throws_ok(
   $$update public.place_payment_settings set prepay_cashback_bps = 400 where place_id = '00000000-0000-4000-8000-000000013827'$$,
-  '23514', null, 'a prepayments rate other than 5% is refused');
+  '23514', null, 'a prepayments rate other than 2% is refused');
 select throws_ok(
-  $$update public.place_payment_settings set prepay_cashback_bps = 500 where place_id = '00000000-0000-4000-8000-000000023827'$$,
+  $$update public.place_payment_settings set prepay_cashback_bps = 200 where place_id = '00000000-0000-4000-8000-000000023827'$$,
   '23514', null, 'Prepayments Cashback On without a Stripe account is refused');
 select lives_ok(
   $$update public.place_payment_settings set credit_cashback_bps = 200 where place_id = '00000000-0000-4000-8000-000000023827'$$,
   'Credits Payments Cashback needs no Stripe account');
 select lives_ok(
   $$update public.place_payment_settings
-       set credit_cashback_bps = 200, prepayments = true, voucher_200 = true, prepay_cashback_bps = 500
+       set credit_cashback_bps = 200, prepayments = true, voucher_200 = true, prepay_cashback_bps = 200
      where place_id = '00000000-0000-4000-8000-000000013827'$$,
-  'with Stripe: 2% on credits and 5% on prepayments turn on');
+  'with Stripe: 2% on credits and 2% on prepayments turn on');
 
 select is(
   (select cashback_bps || ':' || cashback_cents from public.wallet_purchases where id = '00000000-0000-4000-8000-0000000d3827'),
@@ -182,8 +182,8 @@ values ('00000000-0000-4000-8000-0000000c3827', '00000000-0000-4000-8000-0000000
         'voucher_200', 2000, 1000, 'cs_test_3827b');
 select is(
   (select cashback_bps from public.wallet_purchases where id = '00000000-0000-4000-8000-0000000c3827'),
-  500,
-  'a voucher opened while Prepayments Cashback is on stamps 5%');
+  200,
+  'a voucher opened while Prepayments Cashback is on stamps 2% (5% until MESITA-3946)');
 
 do $$ begin
   perform wallet_credit_purchase('00000000-0000-4000-8000-0000000c3827', 'pi_test_3827b', now() + interval '1 hour');
@@ -192,22 +192,22 @@ end $$;
 select is(
   (select string_agg(kind || '=' || amount_cents, ',' order by kind) from public.wallet_entries
     where purchase_id = '00000000-0000-4000-8000-0000000c3827'),
-  'bonus=2000,cashback=1000,voucher=20000',
-  'the voucher writes its credit, its bonus and 5% of its price, once');
+  'bonus=2000,cashback=400,voucher=20000',
+  'the voucher writes its credit, its bonus and 2% of its price, once');
 select is(
   (select cashback_cents from public.wallet_purchases where id = '00000000-0000-4000-8000-0000000c3827'),
-  1000,
-  'and records the 1000 on the purchase');
+  400,
+  'and records the 400 on the purchase');
 select is(
   (select bool_and(available_at > now() + interval '59 minutes') from public.wallet_entries
     where purchase_id = '00000000-0000-4000-8000-0000000c3827' and kind = 'cashback'),
   true,
   'the cashback lands when the voucher''s credit lands');
 
--- Half the voucher refunded: 10000 + 1000 bonus + 500 cashback come back.
+-- Half the voucher refunded: 10000 + 1000 bonus + 200 cashback come back.
 select is(
   (wallet_refund_purchase('00000000-0000-4000-8000-0000000c3827', 10000) ->> 'reversed_cents')::int,
-  11500,
+  11200,
   'a half refund takes back half the price, half the bonus and half the cashback');
 
 select throws_ok(

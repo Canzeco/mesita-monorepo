@@ -52,6 +52,8 @@ export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
  *  from before it keeps working. The six voucher switches are Mesita
  *  Prepayments' sub-settings. */
 export type MoneySettings = {
+  /** MESITA-3946: Accept Stripe Payments; Off stops cards and vouchers. Absent reads ON. */
+  stripe_payments?: boolean;
   pay_cards?: boolean;
   prepayments?: boolean;
   house_credits?: boolean;
@@ -154,11 +156,13 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
   const billingDue = account?.fee_hold === true;
   // Mesita Payments (MESITA-3396) needs the account too. Absent means on.
   // An unpaid fee invoice (MESITA-3461) holds cards off without touching it.
-  const cards = charges && !billingDue && settings.pay_cards !== false;
+  // Accept Stripe Payments (MESITA-3946) is over both card products.
+  const stripe = settings.stripe_payments !== false;
+  const cards = charges && !billingDue && stripe && settings.pay_cards !== false;
   const houseCredits = settings.house_credits === true;
   const cash = settings.cash_payments === true && settings.has_place_code === true;
   // Mesita Prepayments (MESITA-3597). Absent means on, as pay_cards.
-  const prepayments = settings.prepayments !== false;
+  const prepayments = stripe && settings.prepayments !== false;
   const sell: MoneyVoucherKey[] = [];
   const unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
   for (const key of MONEY_VOUCHER_KEYS) {
