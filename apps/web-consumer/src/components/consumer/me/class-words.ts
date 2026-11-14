@@ -9,8 +9,8 @@
 // not the words.
 //
 // CLASS IS NOT PLAN (see ClassSheet): nothing here names a plan, a price or
-// a buy. CLASS IS SOON (Pato, MESITA-3099): both rows are tagged Soon and
-// nothing here joins or leaves one.
+// a buy. CLASS IS AUTOMATIC (Pato, MESITA-3850: "more than 5K followers. you
+// are VIP. easy peasy"): nothing here joins or leaves one.
 
 export type ClassRowWords = {
   title: string;
@@ -22,18 +22,16 @@ export type ClassRowWords = {
 /** The one line over the card: what a class is for, in plain words (Pato,
  *  MESITA-3100: "clearer explanation"). */
 export const CLASS_LEAD =
-  "Coming soon. There are two classes, and VIP members get the VIP voucher where a place offers it.";
+  "Your class comes from your Instagram. It updates on its own when your followers change.";
 
 export const CLASS_ROWS = {
   regular: {
     title: "Regular Class",
     subtitle: "Everyone on Mesita. You get the standard vouchers.",
-    soon: true,
   },
   vip: {
     title: "VIP Class",
     subtitle:
-      "Invite only, through our partners like modeling agencies and creators. The VIP voucher too. You can't buy it.",
-    soon: true,
+      "More than 5,000 followers on your connected Instagram. You also get the VIP voucher where a place offers it. You can't buy it.",
   },
 } as const satisfies Record<"regular" | "vip", ClassRowWords>;

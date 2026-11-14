@@ -5,16 +5,16 @@
 // (Me's header), and the /me/class page behind Me's Class tile (MESITA-2562,
 // ClassModal). On Social the chip is a plain fact and opens nothing.
 //
-// CLASS IS NOT PLAN. VIP comes through Mesita's partners (agencies, creator
-// partnerships); it is never bought and never an upgrade. This sheet never
-// names a plan, and the Plan page never names Class or VIP. The rows' words
-// live in class-words.ts, which /me/class' fallback reads too (MESITA-2701).
+// CLASS IS NOT PLAN. VIP is never bought and never an upgrade. This sheet
+// never names a plan, and the Plan page never names Class or VIP. The rows'
+// words live in class-words.ts, which /me/class' fallback reads too
+// (MESITA-2701).
 //
-// CLASS IS SOON (Pato, MESITA-3099: "not functional for the moment, just
-// leave it as Soon and briefly explain"): one line on what a class is for,
-// then both classes tagged Soon. No Current pill, no Become VIP group
-// (MESITA-3054's Instagram and invitation code), no Leave VIP. The join EF
-// (consumer-web-join-class) and its client calls stay for the way back.
+// CLASS IS AUTOMATIC (MESITA-3850): VIP is a verified Instagram with more
+// than 5,000 followers, computed by the database (consumers.guest_class is a
+// generated column). The sheet only explains the rule: no button, no code,
+// no join or leave (consumer-web-join-class is retired). The header's Class
+// chip shows the guest's own class.
 
 import { Crown, UsersRound } from "lucide-react";
 
@@ -61,7 +61,7 @@ function SoonPill() {
   );
 }
 
-/** What a class is for, then both classes, Soon. */
+/** What a class is for, then both classes. */
 export function ClassList() {
   return (
     <>

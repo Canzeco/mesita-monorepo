@@ -66,8 +66,10 @@ export type ConsumerDoc = {
   // place_activity_visible reads it.
   appear_anonymous: boolean;
   // Not here on purpose: plan, guest_class, the VIP audit columns
-  // (MESITA-2553) and the VIP's partner and last day (MESITA-2556). Their only writer is the admin_set_guest_standing RPC, so
-  // this door cannot touch them and rejects them as unknown fields.
+  // (MESITA-2553) and the VIP's partner and last day (MESITA-2556). guest_class
+  // is generated from the verified follower count (MESITA-3850); the rest are
+  // written only by the admin_set_guest_standing RPC, so this door cannot
+  // touch them and rejects them as unknown fields.
   created_at: string;
   deleted_at: string | null;
 };
@@ -428,33 +430,7 @@ export async function readSocialStanding(
   };
 }
 
-// ── Class joins — Me › Class (MESITA-2984, MESITA-3054) ──────────────────
-
-/** What consumer-web-join-class decides on: the caller's class, and their
- *  Instagram as stored at connect (never what the request says). */
-export type ClassJoinRow = {
-  guest_class: string | null;
-  guest_class_note: string | null;
-};
-
-/** The one read a join makes. `row: null` = no live account. */
-export async function readClassJoinRow(
-  admin: SupabaseClient,
-  consumerId: string,
-): Promise<
-  { ok: true; row: ClassJoinRow | null } | { ok: false; message: string }
-> {
-  const { data, error } = await admin
-    .from("consumers")
-    .select(
-      "guest_class, guest_class_note",
-    )
-    .eq("id", consumerId)
-    .is("deleted_at", null)
-    .maybeSingle();
-  if (error) return { ok: false, message: error.message };
-  return { ok: true, row: (data as ClassJoinRow | null) ?? null };
-}
+// ── Class — automatic since MESITA-3850 (a generated column; nothing writes it)
 
 /** The buying guest's class for the VIP voucher (MESITA-3550): the class and
  *  the last day it holds. `row: null` = no live account. */
@@ -501,66 +477,4 @@ export async function readGuestLabels(
     });
   }
   return { ok: true, guests };
-}
-
-/** What the one redeem answers (MESITA-3540). */
-export type VipRedeemOutcome =
-  | "joined"
-  | "already_vip"
-  | "invalid"
-  | "rate_limited"
-  | "consumer_not_found";
-
-const VIP_REDEEM_OUTCOMES: readonly string[] = [
-  "joined",
-  "already_vip",
-  "invalid",
-  "rate_limited",
-  "consumer_not_found",
-];
-
-/** A guest uses a VIP invitation code (MESITA-3540): consumer_redeem_vip_invitation
- *  locks the guest, applies the limit of 10 wrong codes an hour, uses the code
- *  once and makes the guest VIP in one transaction. `code` is twelve digits. */
-export async function redeemVipInvitation(
-  admin: SupabaseClient,
-  consumerId: string,
-  code: string,
-): Promise<{ ok: true; outcome: VipRedeemOutcome } | { ok: false; message: string }> {
-  const { data, error } = await admin.rpc("consumer_redeem_vip_invitation", {
-    p_consumer: consumerId,
-    p_code: code,
-  });
-  if (error) return { ok: false, message: error.message };
-  if (typeof data !== "string" || !VIP_REDEEM_OUTCOMES.includes(data)) {
-    return { ok: false, message: `unexpected redeem outcome: ${String(data)}` };
-  }
-  return { ok: true, outcome: data as VipRedeemOutcome };
-}
-
-/** The guest's own class change: a Regular joining VIP, or a VIP leaving it
- *  (MESITA-3054). The caller has read the row and knows the current class.
- *  The write is admin_set_guest_standing, guest_class's one writer, with no
- *  actor (the guest did it, no operator); `note` says how, already merged
- *  with any operator note. Going Regular clears the partner and last day (the
- *  RPC does it). */
-export async function writeOwnGuestClass(
-  admin: SupabaseClient,
-  consumerId: string,
-  guestClass: "vip" | "regular",
-  note: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  const { error: rpcErr } = await admin.rpc("admin_set_guest_standing", {
-    p_consumer: consumerId,
-    p_guest_class: guestClass,
-    p_plan: null,
-    p_note: note,
-    p_note_set: true,
-    p_partner: null,
-    p_partner_set: false,
-    p_vip_until: null,
-    p_vip_until_set: false,
-    p_actor: null,
-  });
-  return rpcErr ? { ok: false, message: rpcErr.message } : { ok: true };
 }

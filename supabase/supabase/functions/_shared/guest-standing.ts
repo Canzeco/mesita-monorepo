@@ -126,7 +126,6 @@ export function guestSearchFilter(q: unknown): string | null {
 }
 
 export type StandingPatch = {
-  guestClass?: ConsumerClass;
   plan?: ConsumerPlan;
   /** Present when the note is being set; null clears it. */
   guestClassNote?: string | null;
@@ -169,16 +168,16 @@ export function readStandingBody(
     return { ok: false, status: 400, code: "invalid_consumer", error: "consumerId must be a guest's id" };
   }
   const patch: StandingPatch = {};
+  // MESITA-3850: Class is automatic (a verified Instagram with more than
+  // 5,000 followers), so no operator sets it.
   if ("guestClass" in b) {
-    if (b.guestClass !== "regular" && b.guestClass !== "vip") {
-      return {
-        ok: false,
-        status: 400,
-        code: "invalid_guest_class",
-        error: `guestClass must be 'regular' or 'vip' (got '${String(b.guestClass)}')`,
-      };
-    }
-    patch.guestClass = b.guestClass;
+    return {
+      ok: false,
+      status: 400,
+      code: "class_automatic",
+      error:
+        "Class is automatic: VIP is a verified Instagram with more than 5,000 followers. Send plan, the note, the partner, the last day or the cap.",
+    };
   }
   if ("plan" in b) {
     if (b.plan !== "free" && b.plan !== "premium") {
@@ -253,25 +252,13 @@ export function readStandingBody(
     }
     patch.vipUntil = day;
   }
-  // A guest made Regular in this call cannot get a partner or a last day in it.
-  if (
-    patch.guestClass === "regular" &&
-    (patch.vipPartnerId != null || patch.vipUntil != null)
-  ) {
-    return {
-      ok: false,
-      status: 400,
-      code: "not_vip",
-      error: "Only a VIP has a partner or a last day. Set the class to VIP first.",
-    };
-  }
   if (Object.keys(patch).length === 0) {
     return {
       ok: false,
       status: 400,
       code: "nothing_to_set",
       error:
-        "Send guestClass, plan, guestClassNote, vipPartnerId, vipUntil, reservationCapOverride, or several together",
+        "Send plan, guestClassNote, vipPartnerId, vipUntil, reservationCapOverride, or several together",
     };
   }
   return { ok: true, consumerId, patch };

@@ -55,7 +55,7 @@ describe("Class on the identity card", () => {
 });
 
 describe("the Class sheet", () => {
-  // VIP is never bought, and Class is Soon (MESITA-3099): no button at all.
+  // VIP is never bought, and Class is automatic (MESITA-3850): no button at all.
   it("never names a plan, a price or a buy button", () => {
     const html = renderToStaticMarkup(<ClassSheet open onClose={() => {}} />);
     const words = text(html);
@@ -100,12 +100,12 @@ describe("Class and Plan labels", () => {
 });
 
 // Me's Class tile opens /me/class: the sheet's body in a page (MESITA-2562).
-// Class is Soon (MESITA-3099): both rows Soon, neither marked as the guest's.
+// Class is automatic (MESITA-3850): both rows live, neither marked as the guest's.
 describe("the Class page body", () => {
-  it("tags both classes Soon and marks neither", () => {
+  it("shows both classes, none Soon, and marks neither", () => {
     const html = renderToStaticMarkup(<ClassList />);
     expect(html.match(/data-class-row=/g)).toHaveLength(2);
-    expect(html.match(/data-class-soon/g)).toHaveLength(2);
+    expect(html).not.toContain("data-class-soon");
     expect(html).not.toContain("data-class-mine");
   });
 });
