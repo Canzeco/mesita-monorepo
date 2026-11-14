@@ -81,10 +81,10 @@ select is(
   '200:21:0',
   'the credit row stamps 2% and keeps 21 centavos as its credit part''s cashback');
 select is(
-  (select count(*)::int || ':' || sum(amount_cents)::int || ':' || bool_and(available_at > now() + interval '59 minutes')
+  (select count(*)::int || ':' || sum(amount_cents)::int || ':' || bool_and(available_at <= now())
      from public.wallet_entries where payment_id = (select (r ->> 'payment_id')::uuid from pay) and kind = 'cashback'),
   '1:21:true',
-  'one cashback entry of 21, Pending for the hour');
+  'one cashback entry of 21, Available at once (MESITA-3909)');
 
 -- The same payment without p_cashback (an SQL caller): no cashback.
 create temp table quiet as

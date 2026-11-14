@@ -1,7 +1,7 @@
 -- MESITA-3544 — Payments Flow v2, step 2: a bill paid outside Mesita. The
 -- credit part is held like a card part; the waiter's Received (one RPC, no
 -- Stripe) turns it into the spend and writes 2% of the outside part as the
--- same cashback entry kind, Pending one hour; the tip never earns; a second
+-- same cashback entry kind, Available at once (MESITA-3909); the tip never earns; a second
 -- Received writes nothing; an unconfirmed bill expires with nothing born and
 -- its hold released; the Stripe cron never takes an outside bill; every paid
 -- row names its confirmer; client roles run none of it.
@@ -123,15 +123,15 @@ select is(
 select is(
   (select row(available_cents, pending_cents, held_cents)::text
      from wallet_balance('00000000-0000-4000-8000-0000000a3544', '00000000-0000-4000-8000-000000013544', 'mxn', false)),
-  '(0,560,0)',
-  'the credit is spent, the hold released, the cashback Pending'
+  '(560,0,0)',
+  'the credit is spent, the hold released, the cashback Available at once (MESITA-3909)'
 );
 
 select is(
   (select available_cents from wallet_balance('00000000-0000-4000-8000-0000000a3544', '00000000-0000-4000-8000-000000013544',
                                               'mxn', false, now() + interval '61 minutes')),
   560,
-  'an hour later the cashback spends at the next visit'
+  'an hour later the cashback still spends at the next visit'
 );
 
 select is(

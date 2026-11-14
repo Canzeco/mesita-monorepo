@@ -10,7 +10,7 @@
 // confirms cash). Less than the cash bill part writes nothing and answers
 // short with what is missing; a shortfall within the tip comes off the tip.
 // Received spends the held credit and writes the cashback (2% of the cash
-// bill part when the place's Cashback switch was on), Pending one hour.
+// bill part when the place's Cashback switch was on), Available at once.
 // Idempotent: a second tap answers already_paid.
 //
 // Body: { token, staff_token | place_code, cash_received_cents?,

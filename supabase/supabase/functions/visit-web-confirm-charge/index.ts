@@ -7,7 +7,7 @@
 // same key the screen polls with, never the place code). Received is the
 // confirmer: wallet_confirm_outside marks the bill paid, spends the held
 // credit and writes the cashback (2% when the place's Cashback switch was
-// on when the bill opened), Pending one hour. Idempotent: a second tap
+// on when the bill opened), Available at once. Idempotent: a second tap
 // answers already. Nothing for staff after it (Rules §2).
 //
 // Body: { token: 22 base64url chars } (never the place code)

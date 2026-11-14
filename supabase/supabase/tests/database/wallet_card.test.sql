@@ -168,15 +168,15 @@ select is(
 select is(
   (select string_agg(kind || ':' || amount_cents || ':' || (available_at <= now())::text, ',' order by kind)
      from public.wallet_entries where payment_id = (select (r ->> 'payment_id')::uuid from hold)),
-  'cashback:25:false,spend:-2000:true',
-  'one spend entry Available at once and one cashback entry Pending'
+  'cashback:25:true,spend:-2000:true',
+  'the spend entry and the cashback entry are both Available at once (MESITA-3909)'
 );
 
 select ok(
-  (select available_at between paid_at + interval '59 minutes' and paid_at + interval '61 minutes'
+  (select available_at = paid_at
      from public.wallet_entries e join public.wallet_payments p on p.id = e.payment_id
     where e.kind = 'cashback' and p.id = (select (r ->> 'payment_id')::uuid from hold)),
-  'the cashback lands one hour after paid_at'
+  'the cashback lands at paid_at (MESITA-3909)'
 );
 
 select is(
