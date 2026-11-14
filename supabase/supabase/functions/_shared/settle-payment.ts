@@ -119,6 +119,7 @@ export async function settleByPaymentIntent(
   };
   const first = await decide(pi.status);
   if (first) return first;
+  if (pi.status === "requires_capture") return await settleHeld(admin, stripe, payment.id, piId, account, opts);
   if (pi.status === "processing" || nowMs - Date.parse(payment.created_at) < PI_TTL_MS) return "pending";
 
   let after: Record<string, unknown>;
@@ -130,4 +131,122 @@ export async function settleByPaymentIntent(
     after = await stripe("GET", path, undefined, { stripeAccount: account, signal: opts?.signal });
   }
   return (await decide(after.status)) ?? "pending";
+}
+
+// ── MESITA-3856: a guest card held until the waiter signs ──────────────────
+
+export type CaptureOutcome = "paid" | "failed" | "confirming";
+
+/** Captures a held card the waiter signed for. Stripe answers: succeeded →
+ *  the settle spends the credit and finishes the signature; a card error or
+ *  a hold Stripe already let go → the bill ends, nothing charged; anything
+ *  else (a timeout, a 5xx) → confirming, and the next read tries again with
+ *  the same idempotency key. */
+export async function captureHeldCard(
+  admin: Pick<SupabaseClient, "rpc">,
+  stripe: StripeCall,
+  hold: { tabId: string; paymentId: string; paymentIntent: string; account: string },
+  opts?: { signal?: AbortSignal },
+): Promise<CaptureOutcome> {
+  const path = `payment_intents/${encodeURIComponent(hold.paymentIntent)}`;
+  let pi: Record<string, unknown>;
+  try {
+    pi = await stripe("POST", `${path}/capture`, {}, {
+      stripeAccount: hold.account,
+      idempotencyKey: `tabcap:${hold.tabId}`,
+      signal: opts?.signal,
+    });
+  } catch (err) {
+    if (!(err instanceof StripeError) || (err.httpStatus !== 400 && err.httpStatus !== 402)) {
+      console.error("[pay-tab]", JSON.stringify({ tab_id: hold.tabId, to: "signing", reason: "capture_unanswered" }));
+      return "confirming";
+    }
+    try {
+      pi = await stripe("GET", path, undefined, { stripeAccount: hold.account, signal: opts?.signal });
+    } catch {
+      return "confirming";
+    }
+    if (pi.status !== "succeeded") {
+      await failCapture(admin, stripe, hold, err.code || "capture_failed");
+      return "failed";
+    }
+  }
+  if (pi.status === "succeeded") {
+    await settlePaidPayment(admin, hold.paymentId, hold.paymentIntent);
+    console.log("[pay-tab]", JSON.stringify({ tab_id: hold.tabId, from: "signing", to: "paid", reason: "captured" }));
+    return "paid";
+  }
+  if (pi.status === "processing" || pi.status === "requires_capture") return "confirming";
+  await failCapture(admin, stripe, hold, `pi_${String(pi.status)}`);
+  return "failed";
+}
+
+async function failCapture(
+  admin: Pick<SupabaseClient, "rpc">,
+  stripe: StripeCall,
+  hold: { tabId: string; paymentId: string; paymentIntent: string; account: string },
+  code: string,
+): Promise<void> {
+  const { error } = await admin.rpc("pay_tab_capture_failed", { p_tab_id: hold.tabId, p_error: code.slice(0, 64) });
+  if (error) throw new Error(`pay_tab_capture_failed: ${error.message}`);
+  console.log("[pay-tab]", JSON.stringify({ tab_id: hold.tabId, from: "signing", to: "cancelled", reason: "capture_failed", code }));
+  await cancelReleasedHolds(admin, stripe, hold.tabId);
+}
+
+/** A held PaymentIntent read by the cron, the webhook or the guest's poll:
+ *  the bill decides (wallet_card_held). keep → pending; capture → a
+ *  signature is in progress, finish it; cancel → the bill ended, let the
+ *  hold go and release the row. */
+async function settleHeld(
+  admin: Pick<SupabaseClient, "rpc">,
+  stripe: StripeCall,
+  paymentId: string,
+  piId: string,
+  account: string,
+  opts?: { signal?: AbortSignal },
+): Promise<PaymentSettleOutcome> {
+  const { data, error } = await admin.rpc("wallet_card_held", { p_payment_id: paymentId });
+  if (error) throw new Error(`wallet_card_held: ${error.message}`);
+  const d = data as { ok?: boolean; decision?: string; tab_id?: string } | null;
+  if (!d?.ok) return "pending";
+  if (d.decision === "keep") return "pending";
+  if (d.decision === "capture" && d.tab_id) {
+    const out = await captureHeldCard(admin, stripe, { tabId: d.tab_id, paymentId, paymentIntent: piId, account }, opts);
+    return out === "paid" ? "paid" : out === "failed" ? "expired" : "pending";
+  }
+  await releasePayment(admin, paymentId, "failed", "hold_released");
+  await cancelReleasedHolds(admin, stripe, d.tab_id ?? null);
+  return "expired";
+}
+
+/** Cancels the Stripe hold of every card part whose bill ended unpaid (X,
+ *  Reject, expiry, a failed capture) and stamps it, so a hold never
+ *  outlives its bill by more than one cron tick. A Stripe error leaves the
+ *  row for the next call. */
+export async function cancelReleasedHolds(
+  admin: Pick<SupabaseClient, "rpc">,
+  stripe: StripeCall,
+  tabId: string | null,
+): Promise<number> {
+  const { data, error } = await admin.rpc("wallet_released_holds", { p_tab_id: tabId, p_limit: 50 });
+  if (error) throw new Error(`wallet_released_holds: ${error.message}`);
+  let n = 0;
+  for (const r of (data ?? []) as Array<{ id: string; stripe_payment_intent_id: string; stripe_account_id: string }>) {
+    try {
+      await stripe("POST", `payment_intents/${encodeURIComponent(r.stripe_payment_intent_id)}/cancel`, {}, {
+        stripeAccount: r.stripe_account_id,
+        idempotencyKey: `tabcancel:${r.id}`,
+      });
+    } catch (err) {
+      // Already cancelled (or captured, which the row would show) answers 400.
+      if (!(err instanceof StripeError) || err.httpStatus !== 400) {
+        console.error("[pay-tab] hold_cancel_failed", JSON.stringify({ payment_id: r.id }));
+        continue;
+      }
+    }
+    const done = await admin.rpc("wallet_hold_cancelled", { p_payment_id: r.id });
+    if (done.error) throw new Error(`wallet_hold_cancelled: ${done.error.message}`);
+    n++;
+  }
+  return n;
 }

@@ -24,6 +24,8 @@ import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { callTabRpc, rpcRefusal } from "../_shared/tab.ts";
+import { cancelReleasedHolds } from "../_shared/settle-payment.ts";
+import { paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-cancel-tab", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });
@@ -48,6 +50,13 @@ serveJson("consumer-web-cancel-tab", async (req) => {
       return json({ ok: false, code: refusal.code, error: refusal.error, ...refusal.detail }, refusal.status);
     }
     console.log("[consumer-web-cancel-tab]", JSON.stringify({ outcome: r.outcome, tab_id: tabId }));
+    // MESITA-3856: a held card lets go now (the cron is the backstop).
+    const key = paymentsStripeKey();
+    if (key) {
+      await cancelReleasedHolds(admin, stripeClient(key), tabId).catch((err) =>
+        console.error("[consumer-web-cancel-tab] hold_cancel", String(err))
+      );
+    }
     return json({ ok: true, outcome: r.outcome, bill_version: r.bill_version ?? null });
   } catch (err) {
     return failWithRequestId("consumer-web-cancel-tab", "Couldn't cancel. Try again.", err);

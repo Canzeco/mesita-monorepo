@@ -18,6 +18,8 @@ import { openRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readStaffToken, staffDeviceHash, supabaseStaffStore } from "../_shared/staff.ts";
 import { callTabRpc, isTabToken, readTabByToken, rpcRefusal } from "../_shared/tab.ts";
+import { cancelReleasedHolds } from "../_shared/settle-payment.ts";
+import { paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("visit-web-reject-tab", async (req) => {
   const ctx = openRequest(req);
@@ -58,6 +60,13 @@ serveJson("visit-web-reject-tab", async (req) => {
     }
     // [pay-tab]: never a token or the device id in a log line.
     console.log("[pay-tab]", JSON.stringify({ tab_id: tab.id, place_id: placeId, to: "cancelled", reason: "rejected", outcome: r.outcome }));
+    // MESITA-3856: a held card lets go now (the cron is the backstop).
+    const key = paymentsStripeKey();
+    if (key) {
+      await cancelReleasedHolds(admin, stripeClient(key), tab.id).catch((err) =>
+        console.error("[visit-web-reject-tab] hold_cancel", String(err))
+      );
+    }
     return json({ ok: true, outcome: r.outcome });
   } catch (err) {
     return failWithRequestId("visit-web-reject-tab", "Couldn't reject. Try again.", err);

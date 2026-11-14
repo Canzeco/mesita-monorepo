@@ -152,7 +152,8 @@ export function GuestTabView({
   const card = tab.card_bill_cents + tab.card_tip_cents;
   const tip = tab.cash_tip_cents + tab.card_tip_cents;
   const total = tab.credit_cents + cash + card;
-  const cardPending = tab.parts.some((p) => p.part === "card" && (p.status === "open" || p.status === "opening"));
+  // MESITA-3856: a card held for the waiter is ready, not pending.
+  const cardPending = tab.parts.some((p) => p.part === "card" && (p.status === "open" || p.status === "opening") && !p.held_at);
   const anyPaid = tab.parts.some((p) => p.paid_at);
   // Cancel while nothing moved, Close once money moved unsigned (lib/pay-open.ts).
   const ending = endAction(tab, now);

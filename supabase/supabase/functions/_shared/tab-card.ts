@@ -85,6 +85,8 @@ export async function ownCard(stripe: StripeCall, customer: string | null, pmId:
 /** What the guest's screen does next with a card part. */
 export type CardStep =
   | { status: "succeeded"; payment_intent_id: string }
+  // MESITA-3856: held for the waiter; captured when they sign.
+  | { status: "held"; payment_intent_id: string }
   | { status: "processing"; payment_intent_id: string }
   | {
     status: "requires_action";
@@ -104,9 +106,10 @@ export type CardRow = {
   card_cents: number;
   tip_cents: number;
   created_at: string;
+  held_at?: string | null;
 };
 
-const CARD_ROW_COLUMNS = "id, status, stripe_account_id, stripe_payment_intent_id, card_cents, tip_cents, created_at";
+const CARD_ROW_COLUMNS = "id, status, stripe_account_id, stripe_payment_intent_id, card_cents, tip_cents, created_at, held_at";
 
 export async function readCardRow(admin: SupabaseClient, paymentId: string): Promise<CardRow | null> {
   const { data, error } = await admin.from("wallet_payments").select(CARD_ROW_COLUMNS).eq("id", paymentId).maybeSingle();
@@ -147,6 +150,17 @@ async function stepOf(
       return { ok: true, step: { status: "succeeded", payment_intent_id: piId } };
     case "processing":
       return { ok: true, step: { status: "processing", payment_intent_id: piId } };
+    case "requires_capture": {
+      // MESITA-3856: the bank held it; the bill's ten minutes start now.
+      const { data, error } = await admin.rpc("wallet_card_held", { p_payment_id: row.id });
+      if (error) throw new Error(`wallet_card_held: ${error.message}`);
+      if ((data as { decision?: string } | null)?.decision === "cancel") {
+        await cancelQuietly(stripe, row.account, piId, row.id);
+        await releasePayment(admin, row.id, "failed", "hold_late");
+        return refuse(409, "closed", "That payment was cancelled. Tap again to start over.");
+      }
+      return { ok: true, step: { status: "held", payment_intent_id: piId } };
+    }
     case "requires_action":
     case "requires_confirmation": {
       const secret = typeof pi.client_secret === "string" ? pi.client_secret : null;
@@ -193,6 +207,8 @@ export async function runTabCard(
     consumerId: string;
     tabId: string;
     publishableKey: string | null;
+    /** MESITA-3856: a guest tab's card is held (manual capture) until the waiter signs. */
+    hold?: boolean;
   },
 ): Promise<{ ok: true; step: CardStep } | TabRefusal> {
   const row = await readCardRow(admin, args.paymentId);
@@ -232,6 +248,7 @@ export async function runTabCard(
       currency: args.currency,
       payment_method: String(cloned.id),
       payment_method_types: ["card"],
+      ...(args.hold ? { capture_method: "manual" } : {}),
       description: `Mesita · ${(args.placeName ?? "place").slice(0, 200)}`,
       metadata,
     }, { stripeAccount: account, idempotencyKey: `tabcard-pi:${row.id}` });
@@ -283,7 +300,8 @@ export async function pollTabCard(
 ): Promise<{ step: CardStep | null; refusal: TabRefusal | null }> {
   if (row.status !== "open" || !row.stripe_payment_intent_id || !row.stripe_account_id) return { step: null, refusal: null };
   try {
-    if (nowMs - Date.parse(row.created_at) >= PI_TTL_MS) {
+    // MESITA-3856: a held card lives as long as its bill, not PI_TTL_MS.
+    if (row.held_at || nowMs - Date.parse(row.created_at) >= PI_TTL_MS) {
       await settleByPaymentIntent(admin, stripe, {
         id: row.id,
         stripe_checkout_session_id: null,

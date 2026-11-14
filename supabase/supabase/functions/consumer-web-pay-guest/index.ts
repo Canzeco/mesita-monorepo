@@ -157,6 +157,8 @@ serveJson("consumer-web-pay-guest", async (req) => {
         consumerId: userId,
         tabId,
         publishableKey: paymentsPublishableKey(livemode),
+        // MESITA-3856: held until the waiter signs.
+        hold: true,
       });
       if (!res.ok) {
         console.log("[consumer-web-pay-guest]", JSON.stringify({ outcome: res.code, tab_id: tabId, card_payment_id: cardPaymentId }));
