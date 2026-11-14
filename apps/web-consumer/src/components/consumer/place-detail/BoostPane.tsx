@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PremierRosette } from "@mesita/place-profile";
-import { BadgeCheck, ChevronRight, Loader2, Mail, Rocket } from "lucide-react";
+import { BadgeCheck, ChevronRight, Loader2, Phone, Rocket } from "lucide-react";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiStartRefill,
@@ -17,7 +17,7 @@ import {
   type TierRank,
 } from "@/lib/api/boost";
 import { businessClaimHref } from "@/lib/business-url";
-import { MESITA_HELLO_EMAIL } from "@/lib/mesita-contact";
+import { MESITA_PHONE, MESITA_PHONE_TEL } from "@/lib/mesita-contact";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -49,8 +49,14 @@ import { cn, errMsg } from "@/lib/utils";
 // rosette on red for Pro and Max), the name, the perk line, and the price in
 // bold, since the price is what a guest decides on; the button at the right.
 
-/** A Premier level as visibility: 0 is where every place starts. */
-const VISIBILITY: Record<number, string> = { 0: "1X", 1: "2X", 2: "5X" };
+/** A Premier level as visibility, in words a guest gets at once (Pato,
+ *  MESITA-3906: "Free: organic visibility, Pro: High visibility boost, Max: Max
+ *  visibility boost", in place of 1X · 2X · 5X). 0 is where every place starts. */
+const VISIBILITY: Record<number, string> = {
+  0: "Organic visibility",
+  1: "High visibility boost",
+  2: "Max visibility boost",
+};
 
 const BOX_CLASS = "border-border bg-card overflow-hidden rounded-xl border";
 const ROW_CLASS = "flex items-center gap-3 p-3";
@@ -138,7 +144,7 @@ export function BoostPane({
           <PlanFace rank={0} />
           <div className="min-w-0 flex-1 text-sm">
             <p className="font-semibold">{suitePlanName(0)}</p>
-            <p className="text-muted-foreground">{VISIBILITY[0]} visibility</p>
+            <p className="text-muted-foreground">{VISIBILITY[0]}</p>
             <p className="font-semibold tabular-nums">$0 USD</p>
           </div>
           {level === 0 ? (
@@ -164,7 +170,7 @@ export function BoostPane({
                 <p className="font-semibold">{name}</p>
                 {/* Words alone (MESITA-3374): the face already wears the
                     rosette, so the line does not repeat it. */}
-                <p className="text-muted-foreground">{VISIBILITY[t.rank]} visibility, Premier red tag</p>
+                <p className="text-muted-foreground">{VISIBILITY[t.rank]}, Premier red tag</p>
                 <p className="font-semibold tabular-nums">
                   {p ? (
                     `${money(p.price_cents)} USD for one year`
@@ -178,7 +184,7 @@ export function BoostPane({
                 type="button"
                 onClick={() => void start(t.rank)}
                 disabled={loading || !p || off || starting !== null || !boost?.signed_in}
-                aria-label={p ? `Buy one year of ${name}, ${VISIBILITY[t.rank]} visibility, for ${money(p.price_cents)} USD` : undefined}
+                aria-label={p ? `Buy one year of ${name}, ${VISIBILITY[t.rank]}, for ${money(p.price_cents)} USD` : undefined}
                 className={cn(
                   PRIMARY_BUTTON_CLASS,
                   SLOT_CLASS,
@@ -237,12 +243,12 @@ function OwnerBox({
   owner: NonNullable<PlaceBoost["owner"]>;
 }) {
   const other = owner === "other";
-  const Icon = other ? Mail : ChevronRight;
+  const Icon = other ? Phone : ChevronRight;
   return (
     <a
       href={
         other
-          ? `mailto:${MESITA_HELLO_EMAIL}?subject=${encodeURIComponent(`Ownership of ${place.name}`)}`
+          ? MESITA_PHONE_TEL
           : businessClaimHref(place.id)
       }
       {...(other ? {} : { target: "_blank", rel: "noopener" })}
@@ -258,7 +264,7 @@ function OwnerBox({
         </span>
         <span className="text-muted-foreground block">
           {other
-            ? `Think that's wrong? Write to ${MESITA_HELLO_EMAIL}`
+            ? `Think that's wrong? Call Mesita at ${MESITA_PHONE}`
             : owner === "you"
               ? "Open it in Mesita Business."
               : "Claim it in Mesita Business to edit its page, reviews and plan."}
