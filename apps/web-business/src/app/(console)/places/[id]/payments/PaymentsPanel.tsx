@@ -94,10 +94,10 @@ type Product = { key: PaymentKey; name: string; line: string; value: string; ton
 // PRICED IN THE PLACE'S CURRENCY (MESITA-3914, Pato: "100 MX 10% · 1000 MX
 // 20% · 10 USD 10% · 100 USD 20% ... all small must start with 1 and big be
 // 10X that"). TWIN of VOUCHER_PRICE_CENTS in _shared/money.ts.
-// The Small price per currency, in whole units (MESITA-3936: the seven); Big
+// The Small price per currency, in whole units (MESITA-3938: the six); Big
 // 10×, Biggest 50×, Welcome · Story · VIP at the Small price. TWIN of
 // VOUCHER_CURRENCY_LIST in _shared/money.ts.
-const SMALL: Record<string, number> = { MXN: 100, USD: 10, CAD: 10, EUR: 10, GBP: 10, BRL: 10, JPY: 1_000 };
+const SMALL: Record<string, number> = { MXN: 100, USD: 10, CAD: 10, EUR: 10, GBP: 10, JPY: 1_000 };
 const TIMES: Record<VoucherKey, number> = { voucher_200: 1, voucher_1000: 10, voucher_5000: 50, voucher_welcome: 1, voucher_story: 1, voucher_vip: 1 };
 const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = Object.fromEntries(
   Object.entries(SMALL).map(([c, small]) => [
