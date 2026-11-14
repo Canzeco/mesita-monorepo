@@ -160,20 +160,16 @@ export async function readPlaceBalance(
   return row ?? { available_cents: 0, pending_cents: 0, held_cents: 0, spendable_cents: 0 };
 }
 
-/** Welcome is once per guest per place, and only before any Mesita payment
- *  there: a Welcome purchase that is not expired or failed, or a paid
- *  payment, both count. */
+/** Welcome is once per guest per place, at any visit (MESITA-3854, Pato: "if
+ *  you forget to use the Welcome, you are fucked"): only a Welcome purchase
+ *  that is not expired or failed spends it; a paid bill here no longer does.
+ *  wallet_purchases_welcome_once_idx enforces the same rule where buys race. */
 export async function readWelcomeUsed(admin: SupabaseClient, consumerId: string | null, placeId: string): Promise<boolean> {
   if (!consumerId) return false;
-  const [p, w] = await Promise.all([
-    admin.from("wallet_purchases").select("id").eq("consumer_id", consumerId).eq("place_id", placeId)
-      .eq("voucher", "voucher_welcome").not("status", "in", "(expired,failed)").limit(1),
-    admin.from("wallet_payments").select("id").eq("consumer_id", consumerId).eq("place_id", placeId)
-      .in("status", ["paid", "refunded", "partly_refunded", "needs_review"]).limit(1),
-  ]);
-  if (p.error) throw new Error(`wallet_purchases: ${p.error.message}`);
-  if (w.error) throw new Error(`wallet_payments: ${w.error.message}`);
-  return (p.data ?? []).length > 0 || (w.data ?? []).length > 0;
+  const { data, error } = await admin.from("wallet_purchases").select("id").eq("consumer_id", consumerId).eq("place_id", placeId)
+    .eq("voucher", "voucher_welcome").not("status", "in", "(expired,failed)").limit(1);
+  if (error) throw new Error(`wallet_purchases: ${error.message}`);
+  return (data ?? []).length > 0;
 }
 
 /** Story and VIP, one each new visit (MESITA-3463): each is spent when the
