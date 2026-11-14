@@ -30,7 +30,7 @@ export type PaymentSettleOutcome = "paid" | "already_paid" | "pending" | "expire
 
 type SettleAnswer = { ok?: boolean; outcome?: string; code?: string } | null;
 
-/** Stripe said paid: the hold becomes the spend, cashback lands in an hour.
+/** Stripe said paid: the hold becomes the spend, cashback lands in 30 minutes.
  *  Idempotent through the RPC. */
 export async function settlePaidPayment(admin: Pick<SupabaseClient, "rpc">, paymentId: string, paymentIntent: string | null): Promise<PaymentSettleOutcome> {
   const { data, error } = await admin.rpc("wallet_settle_payment", { p_payment_id: paymentId, p_payment_intent: paymentIntent });

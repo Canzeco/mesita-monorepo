@@ -124,7 +124,7 @@ Deno.test("voucher card: clone, create unconfirmed, store, confirm — keyed by 
   });
   assertEquals(calls[2].params, { use_stripe_sdk: true });
   // Stored before confirmed; credited once with the voucher's hour.
-  assertEquals(s.log, ["openPi:pi_1", `credit:pi_1:${new Date(NOW + 3600_000).toISOString()}`]);
+  assertEquals(s.log, ["openPi:pi_1", `credit:pi_1:${new Date(NOW + 1800_000).toISOString()}`]);
 });
 
 Deno.test("voucher card: a decline cancels the PI and fails the row; nothing is credited", async () => {

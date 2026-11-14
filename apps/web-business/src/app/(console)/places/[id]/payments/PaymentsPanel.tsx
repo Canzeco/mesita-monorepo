@@ -91,9 +91,9 @@ const STANDARD: Product[] = [
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome Voucher", line: "Guest pays $100.00MX, gets $150.00MX of credit. One per guest at your place.", value: "+50%", tone: "bg-sky-100 text-sky-700" },
+  { key: "voucher_welcome", name: "Welcome Voucher", line: "Guest pays $100.00MX, gets $200.00MX of credit. One per guest at your place.", value: "+100%", tone: "bg-sky-100 text-sky-700" },
   { key: "voucher_story", name: "Story Voucher", line: "Guest pays $100.00MX, gets $130.00MX of credit after posting an Instagram story at your place.", value: "+30%", tone: "bg-pink-100 text-pink-700" },
-  { key: "voucher_vip", name: "VIP Voucher", line: "Guest pays $50.00MX, gets $75.00MX of credit. VIP guests only.", value: "+50%", tone: "bg-violet-100 text-violet-700" },
+  { key: "voucher_vip", name: "VIP Voucher", line: "Guest pays $100.00MX, gets $200.00MX of credit. VIP guests only.", value: "+100%", tone: "bg-violet-100 text-violet-700" },
 ];
 
 /** What a card payment costs the place (MESITA-3461; the 5% fee is billed apart). */

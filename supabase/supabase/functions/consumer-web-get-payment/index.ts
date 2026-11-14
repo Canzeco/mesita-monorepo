@@ -25,8 +25,8 @@
 //             url?: string | null, expires_at?: string | null, test_mode }
 // MESITA-3545: also outside_cents and expires_at (a bill being paid to the
 // waiter waits for Received until then), and cashback_available_at, when
-// the cashback entry lands Available (the proof reads "+$6MX back · ready in
-// 1 hour"), null with no cashback.
+// the cashback entry lands Available (30 minutes after the bill since
+// MESITA-3835), null with no cashback.
 //
 //   401 sign_in · 404 gone (not theirs)
 
