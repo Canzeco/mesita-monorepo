@@ -98,7 +98,7 @@ const MODES: Record<Mode, ModeEntry> = {
   transcript: { stage: "base", run: transcript },
   phones: { stage: "workspace", run: phones },
   // Simulated-call tests (MESITA-3967): the repo's tests pushed, run, read.
-  tests: { stage: "base", run: tests },
+  tests: { stage: "workspace", run: tests },
   run_tests: { stage: "workspace", run: runTests },
   test_results: { stage: "base", run: testResults },
   // The deployed code's spec hash; GitHub waits on it (MESITA-3968).
