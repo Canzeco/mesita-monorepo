@@ -5,20 +5,37 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { IdentityCard } from "@/components/consumer/IdentityCard";
-import { ClassList, ClassSheet } from "@/components/consumer/me/ClassSheet";
+import {
+  ClassBody,
+  ClassList,
+  ClassSheet,
+} from "@/components/consumer/me/ClassSheet";
 import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ back() {}, replace() {} }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ back() {}, replace() {} }),
+}));
 
 // The sheet portals into the page; here it renders in place.
 vi.mock("@/components/consumer/overlay/LocalOverlay", () => ({
-  LocalSheet: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
-    open ? <div data-sheet>{children}</div> : null,
-  LocalDialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
-    open ? <div data-dialog>{children}</div> : null,
+  LocalSheet: ({
+    open,
+    children,
+  }: {
+    open: boolean;
+    children: React.ReactNode;
+  }) => (open ? <div data-sheet>{children}</div> : null),
+  LocalDialog: ({
+    open,
+    children,
+  }: {
+    open: boolean;
+    children: React.ReactNode;
+  }) => (open ? <div data-dialog>{children}</div> : null),
 }));
 
-const text = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+const text = (html: string) =>
+  html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 
 // Class is back on the card beside the name (MESITA-3833); Plan is not
 // (MESITA-3830).
@@ -59,7 +76,9 @@ describe("the Class sheet", () => {
   it("never names a plan, a price or a buy button", () => {
     const html = renderToStaticMarkup(<ClassSheet open onClose={() => {}} />);
     const words = text(html);
-    expect(words).not.toMatch(/\b(Free|Premier|Premium|Pro|Diamond|Select|Upgrade|Buy)\b/);
+    expect(words).not.toMatch(
+      /\b(Free|Premier|Premium|Pro|Diamond|Select|Upgrade|Buy)\b/,
+    );
     expect(words).not.toMatch(/\$\s?\d|\d+\s?%\s?off/i);
     expect(html).not.toMatch(/<(button|input|form)\b/);
   });
@@ -68,7 +87,8 @@ describe("the Class sheet", () => {
 // Label guard: the files that name Class or Plan never state an undecided
 // number.
 describe("Class and Plan labels", () => {
-  const read = (...p: string[]) => readFileSync(join(__dirname, "../..", ...p), "utf8");
+  const read = (...p: string[]) =>
+    readFileSync(join(__dirname, "../..", ...p), "utf8");
   const PLAN = read("components", "consumer", "me", "PlanModal.tsx");
   const CLASS = read("components", "consumer", "me", "ClassSheet.tsx");
   const FILES = {
@@ -100,9 +120,10 @@ describe("Class and Plan labels", () => {
 });
 
 // Me's Class tile opens /me/class: the sheet's body in a page (MESITA-2562).
-// Class is automatic (MESITA-3850): both rows live, neither marked as the guest's.
+// Class is automatic (MESITA-3850); the guest's own class sits on top
+// (MESITA-3873). Before the profile is read, neither class is marked.
 describe("the Class page body", () => {
-  it("shows both classes, none Soon, and marks neither", () => {
+  it("shows both classes and marks neither before the profile is read", () => {
     const html = renderToStaticMarkup(<ClassList />);
     expect(html.match(/data-class-row=/g)).toHaveLength(2);
     expect(html).not.toContain("data-class-soon");
@@ -110,3 +131,13 @@ describe("the Class page body", () => {
   });
 });
 
+// A failed profile read never guesses a class (MESITA-3873).
+describe("the Class status card", () => {
+  it("states no class when the profile read failed", () => {
+    const html = renderToStaticMarkup(
+      <ClassBody status={{ kind: "unknown" }} />,
+    );
+    expect(html).not.toMatch(/Regular Class|VIP Class/);
+    expect(html).not.toContain("data-class-mine");
+  });
+});
