@@ -113,7 +113,7 @@ type Product = {
 // of the thing should be Welcome, Story, VIP, Standard, Medium Standard,
 // Large Standard"): the deal line carries the amounts.
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "Small", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
+  { key: "voucher_200", name: "Small", line: "Pay $100.00MX, get $110.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
   { key: "voucher_1000", name: "Big", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Big Bonus", brief: "As many as you like" },
   { key: "voucher_5000", name: "MX$5,000", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "MX$5,000 Bonus", brief: "As many as you like" },
 ];

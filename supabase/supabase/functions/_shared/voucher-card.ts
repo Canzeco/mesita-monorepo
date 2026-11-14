@@ -187,12 +187,13 @@ export async function runVoucherCard(
       currency: args.currency,
       payment_method: String(cloned.id),
       payment_method_types: ["card"],
-      description: `${all.length > 1 ? `${all.length} vouchers` : voucherName(args.voucher)} · ${(args.placeName ?? "Mesita place")}`.slice(0, 250),
+      description: `${all.length > 1 ? `${all.length} vouchers` : voucherName(args.voucher, args.currency)} · ${(args.placeName ?? "Mesita place")}`.slice(0, 250),
       metadata: voucherMetadata({
         purchaseId: row.id,
         placeId: args.placeId,
         consumerId: args.consumerId,
         voucher: args.voucher,
+        currency: args.currency,
         ...(followerKeys.length > 0 ? { followers: followerKeys } : {}),
       }),
     }, { stripeAccount: account, idempotencyKey: `vouchercard-pi:${row.id}` });

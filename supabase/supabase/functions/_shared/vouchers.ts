@@ -8,7 +8,8 @@
 // a price for the client: the client shows what this answers.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, currencyForCountry } from "./money.ts";
+import { moneyText } from "./pay.ts";
+import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, currencyForCountry, voucherPriceCents } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
@@ -63,14 +64,25 @@ export type VoucherOffer = {
   paused: boolean;
 };
 
-export const CATALOG_LINES: Record<MoneyVoucherKey, VoucherCatalogLine> = Object.fromEntries(
-  MONEY_VOUCHER_KEYS.map((k) => [k, {
-    price_cents: VOUCHER_CATALOG[k].price_cents,
-    bonus_cents: voucherBonusCents(k),
-    credit_cents: VOUCHER_CATALOG[k].price_cents + voucherBonusCents(k),
-    available_after_sec: VOUCHER_CATALOG[k].available_after_sec,
-  }]),
-) as Record<MoneyVoucherKey, VoucherCatalogLine>;
+/** The catalog in one currency (MESITA-3914); a currency without voucher
+ *  prices gets the pesos' lines, and buyRefusal refuses every buy there. */
+export function catalogLines(currency: string = MONEY_CURRENCY): Record<MoneyVoucherKey, VoucherCatalogLine> {
+  const cur = voucherPriceCents("voucher_200", currency) === null ? MONEY_CURRENCY : currency;
+  return Object.fromEntries(
+    MONEY_VOUCHER_KEYS.map((k) => {
+      const price = voucherPriceCents(k, cur) ?? 0;
+      return [k, {
+        price_cents: price,
+        bonus_cents: voucherBonusCents(k, cur),
+        credit_cents: price + voucherBonusCents(k, cur),
+        available_after_sec: VOUCHER_CATALOG[k].available_after_sec,
+      }];
+    }),
+  ) as Record<MoneyVoucherKey, VoucherCatalogLine>;
+}
+
+/** The pesos' catalog (the default currency). */
+export const CATALOG_LINES = catalogLines(MONEY_CURRENCY);
 
 /** The connected account's currency, from its country: Stripe's default
  *  currency is not stored, and a MX account settles in pesos. */
@@ -130,7 +142,7 @@ export function offerFrom(i: OfferInput): VoucherOffer {
     vouchers,
     sell,
     unavailable,
-    catalog: CATALOG_LINES,
+    catalog: catalogLines(i.currency),
     balance: i.balance,
     paused: i.paused,
   };
@@ -244,8 +256,8 @@ export const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string
 
 /** Why a voucher cannot be bought right now, or null when it can. */
 export function buyRefusal(offer: VoucherOffer, voucher: MoneyVoucherKey, account: AccountRow | null): BuyRefusal | null {
-  if (offer.currency !== MONEY_CURRENCY) {
-    return { ok: false, status: 409, code: "currency_mismatch", error: "Vouchers are sold in Mexican pesos only" };
+  if (voucherPriceCents(voucher, offer.currency) === null) {
+    return { ok: false, status: 409, code: "currency_mismatch", error: "Vouchers are sold in Mexican pesos and US dollars only" };
   }
   const acctCurrency = accountCurrency(account);
   if (offer.charges_enabled && acctCurrency && acctCurrency !== offer.currency) {
@@ -256,7 +268,7 @@ export function buyRefusal(offer: VoucherOffer, voucher: MoneyVoucherKey, accoun
     return { ok: false, status: 409, ...REFUSAL_FOR[reason] };
   }
   const min = MIN_CHARGE_CENTS[offer.currency] ?? 0;
-  if (CATALOG_LINES[voucher].price_cents < min) {
+  if (catalogLines(offer.currency)[voucher].price_cents < min) {
     return { ok: false, status: 409, code: "below_minimum", error: "This amount is below Stripe's minimum charge" };
   }
   return null;
@@ -335,7 +347,7 @@ export function voucherCheckoutParams(args: {
   returnUrl: string;
   nowSec: number;
 }): Record<string, unknown> {
-  const line = CATALOG_LINES[args.voucher];
+  const line = catalogLines(args.currency)[args.voucher];
   const origin = new URL(args.returnUrl).origin;
   const metadata = voucherMetadata(args);
   return {
@@ -354,8 +366,8 @@ export function voucherCheckoutParams(args: {
         currency: args.currency,
         unit_amount: line.price_cents,
         product_data: {
-          name: `${voucherName(args.voucher)} · ${args.placeName}`.slice(0, 250),
-          description: `${pesos(line.credit_cents)} of credit at ${args.placeName}`.slice(0, 250),
+          name: `${voucherName(args.voucher, args.currency)} · ${args.placeName}`.slice(0, 250),
+          description: `${moneyText(line.credit_cents, args.currency)} of credit at ${args.placeName}`.slice(0, 250),
         },
       },
     }],
@@ -374,16 +386,19 @@ export function voucherMetadata(args: {
   /** A basket's other units (MESITA-3841): the amounts become the sums,
    *  `basket` the unit count, `basket_items` what is in it. */
   followers?: readonly MoneyVoucherKey[];
+  /** The place's currency (MESITA-3914); pesos when left out. */
+  currency?: string;
 }): Record<string, string> {
   const units = [args.voucher, ...(args.followers ?? [])];
+  const lines = catalogLines(args.currency);
   const meta: Record<string, string> = {
     mesita_kind: "wallet_voucher",
     purchase_id: args.purchaseId,
     place_id: args.placeId,
     consumer_id: args.consumerId,
     voucher: args.voucher,
-    amount_cents: String(units.reduce((sum, k) => sum + CATALOG_LINES[k].price_cents, 0)),
-    bonus_cents: String(units.reduce((sum, k) => sum + CATALOG_LINES[k].bonus_cents, 0)),
+    amount_cents: String(units.reduce((sum, k) => sum + lines[k].price_cents, 0)),
+    bonus_cents: String(units.reduce((sum, k) => sum + lines[k].bonus_cents, 0)),
   };
   if (units.length > 1) {
     meta.basket = String(units.length);
@@ -460,20 +475,18 @@ export function sameUnits(a: readonly (string | null)[], b: readonly (string | n
   return x.every((v, i) => v === y[i]);
 }
 
-export function voucherName(k: MoneyVoucherKey): string {
+/** "$100.00MX voucher" / "$10.00 voucher" for the open ones, in the
+ *  place's currency (MESITA-3914); the earned ones by name. */
+export function voucherName(k: MoneyVoucherKey, currency: string = MONEY_CURRENCY): string {
   switch (k) {
-    case "voucher_200": return "$200.00MX voucher";
-    case "voucher_1000": return "$1,000.00MX voucher";
-    case "voucher_5000": return "$5,000.00MX voucher";
+    case "voucher_200":
+    case "voucher_1000":
+    case "voucher_5000":
+      return `${moneyText(catalogLines(currency)[k].price_cents, currency)} voucher`;
     case "voucher_welcome": return "Welcome voucher";
     case "voucher_story": return "Story voucher";
     case "voucher_vip": return "VIP voucher";
   }
-}
-
-/** "$1,300.00MX": always two decimals (MESITA-3767). */
-function pesos(cents: number): string {
-  return `$${(Math.round(cents) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}MX`;
 }
 
 export type PurchaseRow = { id: string; status: string; stripe_checkout_session_id: string | null };
@@ -484,10 +497,11 @@ export const PLACE_CAP_CENTS = 20_000_00;
 
 /** Would this buy push the place past the cap? Pure. Live mode has no cap.
  *  A basket (MESITA-3841) counts every unit's credit. */
-export function overPlaceCap(outstandingCents: number, voucher: MoneyVoucherKey | readonly MoneyVoucherKey[], livemode: boolean): boolean {
+export function overPlaceCap(outstandingCents: number, voucher: MoneyVoucherKey | readonly MoneyVoucherKey[], livemode: boolean, currency: string = MONEY_CURRENCY): boolean {
   if (livemode) return false;
   const keys: readonly MoneyVoucherKey[] = typeof voucher === "string" ? [voucher] : voucher;
-  return outstandingCents + keys.reduce((sum, k) => sum + CATALOG_LINES[k].credit_cents, 0) > PLACE_CAP_CENTS;
+  const lines = catalogLines(currency);
+  return outstandingCents + keys.reduce((sum, k) => sum + lines[k].credit_cents, 0) > PLACE_CAP_CENTS;
 }
 
 /** The place's outstanding credit, Available plus Pending, every guest. */
@@ -519,11 +533,12 @@ export async function openPurchaseRow(
     followers?: readonly MoneyVoucherKey[];
   },
 ): Promise<{ ok: true; duplicate: false; purchaseId: string } | { ok: true; duplicate: true } | BuyRefusal> {
-  const line = CATALOG_LINES[args.voucher];
+  const lines = catalogLines(args.currency);
+  const line = lines[args.voucher];
   const followers = args.followers ?? [];
   // The test-mode cap (rule 15): read once, no lock.
   const outstanding = await readPlaceOutstanding(admin, args.place.id, args.currency, args.livemode);
-  if (overPlaceCap(outstanding, [args.voucher, ...followers], args.livemode)) {
+  if (overPlaceCap(outstanding, [args.voucher, ...followers], args.livemode, args.currency)) {
     return { ok: false, status: 409, code: "place_cap", error: "This place has reached its test-mode credit cap" };
   }
   const { data: row, error: insertErr } = await admin
@@ -538,7 +553,7 @@ export async function openPurchaseRow(
       stripe_account_id: args.account.stripe_account_id,
       voucher: args.voucher,
       bonus_cents: line.bonus_cents,
-      application_fee_cents: voucherFeeCents(args.voucher),
+      application_fee_cents: voucherFeeCents(args.voucher, args.currency),
       request_id: args.requestId,
     })
     .select("id")
@@ -552,14 +567,14 @@ export async function openPurchaseRow(
     const { error: followErr } = await admin.from("wallet_purchases").insert(followers.map((k) => ({
       consumer_id: args.consumerId,
       place_id: args.place.id,
-      amount_cents: CATALOG_LINES[k].price_cents,
+      amount_cents: lines[k].price_cents,
       currency: args.currency,
       status: "opening",
       livemode: args.livemode,
       stripe_account_id: args.account.stripe_account_id,
       voucher: k,
-      bonus_cents: CATALOG_LINES[k].bonus_cents,
-      application_fee_cents: voucherFeeCents(k),
+      bonus_cents: lines[k].bonus_cents,
+      application_fee_cents: voucherFeeCents(k, args.currency),
       basket_lead_id: purchaseId,
     })));
     if (followErr) {

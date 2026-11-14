@@ -67,7 +67,7 @@ Deno.test("every switched-on voucher sells but Story and MX$5,000, off sale (MES
   assertEquals(o.cashback, true);
   assertEquals(o.mesita_pay, true);
   assertEquals("pay_cards" in o.vouchers || "cashback" in o.vouchers, false);
-  assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 });
+  assertEquals(o.catalog.voucher_200, { price_cents: 10000, bonus_cents: 1000, credit_cents: 11000, available_after_sec: 3600 });
   // Every voucher waits an hour except Story (MESITA-3323).
   assertEquals(o.catalog.voucher_welcome.available_after_sec, 3600);
   assertEquals(o.catalog.voucher_story.available_after_sec, 0);
@@ -144,12 +144,12 @@ Deno.test("the Checkout: payment mode, the fee as application fee, the row id in
   assertEquals(p.expires_at, 1_000_000 + 31 * 60);
   const items = p.line_items as Array<{ quantity: number; price_data: { currency: string; unit_amount: number } }>;
   assertEquals(items.length, 1);
-  assertEquals(items[0].price_data.unit_amount, 20000);
+  assertEquals(items[0].price_data.unit_amount, 10000);
   assertEquals(items[0].price_data.currency, "mxn");
   // d5a (MESITA-3461): no application fee; the row stores the fee to bill.
   const pid = p.payment_intent_data as { application_fee_amount?: number; metadata: Record<string, string> };
   assertEquals("application_fee_amount" in pid, false);
-  assertEquals(voucherFeeCents("voucher_200"), Math.floor((20000 * MESITA_FEE_BPS_VOUCHER) / 10000));
+  assertEquals(voucherFeeCents("voucher_200"), Math.floor((10000 * MESITA_FEE_BPS_VOUCHER) / 10000));
   assertEquals(pid.metadata.purchase_id, ROW);
   assertEquals((p.metadata as Record<string, string>).mesita_kind, "wallet_voucher");
   assertEquals((p.metadata as Record<string, string>).voucher, "voucher_200");
@@ -245,8 +245,8 @@ Deno.test("a buy: one opening row under the request_id, one Checkout on the acco
   assertEquals(row.status, "opening");
   assertEquals(row.request_id, REQUEST);
   assertEquals(row.stripe_account_id, "acct_place");
-  assertEquals(row.amount_cents, 20000);
-  assertEquals(row.bonus_cents, 2000);
+  assertEquals(row.amount_cents, 10000);
+  assertEquals(row.bonus_cents, 1000);
   assertEquals(row.application_fee_cents, voucherFeeCents("voucher_200"));
   assertEquals(row.voucher, "voucher_200");
   assertEquals(row.livemode, false);
@@ -301,16 +301,16 @@ Deno.test("any other insert error is thrown, so the EF answers 500 and nothing r
 // ── MESITA-3305: the test-mode cap and a second Welcome buy ─────────────────
 
 Deno.test("place_cap: a buy that would push the place past MX$20,000 of outstanding credit is refused in test mode, never live", async () => {
-  // MX$19,790 outstanding + MX$220 of credit from a MX$200 voucher = MX$20,010.
-  const fake = fakeAdmin({ outstanding: 19_790_00 });
+  // MX$19,900 outstanding + MX$110 of credit from a MX$100 voucher = MX$20,010.
+  const fake = fakeAdmin({ outstanding: 19_900_00 });
   const stripe: StripeCall = () => Promise.reject(new Error("never called"));
   const r = await openVoucherCheckout(fake.admin, stripe, BUY);
   assertEquals(r.ok, false);
   assertEquals((r as { code: string }).code, "place_cap");
   assertEquals(fake.inserts.length, 0);
-  assertEquals(overPlaceCap(19_790_00, "voucher_200", false), true);
-  assertEquals(overPlaceCap(19_780_00, "voucher_200", false), false);
-  assertEquals(overPlaceCap(19_790_00, "voucher_200", true), false);
+  assertEquals(overPlaceCap(19_900_00, "voucher_200", false), true);
+  assertEquals(overPlaceCap(19_890_00, "voucher_200", false), false);
+  assertEquals(overPlaceCap(19_900_00, "voucher_200", true), false);
   assertEquals(PLACE_CAP_CENTS, 20_000_00);
 });
 
@@ -404,10 +404,10 @@ Deno.test("basketUnits: one unit per row, Welcome leads; sameUnits compares bask
 });
 
 Deno.test("the place cap counts the whole basket's credit", () => {
-  // 2× Small (MX$220 credit each) + Big (MX$1,200): MX$1,640.
+  // 2× Small (MX$110 credit each) + Big (MX$1,200): MX$1,420.
   const basket = ["voucher_200", "voucher_200", "voucher_1000"] as const;
-  assertEquals(overPlaceCap(PLACE_CAP_CENTS - 1_640_00, basket, false), false);
-  assertEquals(overPlaceCap(PLACE_CAP_CENTS - 1_639_00, basket, false), true);
+  assertEquals(overPlaceCap(PLACE_CAP_CENTS - 1_420_00, basket, false), false);
+  assertEquals(overPlaceCap(PLACE_CAP_CENTS - 1_419_00, basket, false), true);
   assertEquals(overPlaceCap(PLACE_CAP_CENTS, basket, true), false);
 });
 
@@ -419,13 +419,13 @@ Deno.test("a basket's rows: the lead under the request_id, one follower row per 
   assertEquals(fake.inserts[0].request_id, REQUEST);
   const followers = fake.inserts[1] as unknown as Array<Record<string, unknown>>;
   assertEquals(followers.map((f) => [f.voucher, f.amount_cents, f.bonus_cents, f.basket_lead_id, f.status, "request_id" in f]), [
-    ["voucher_200", 20000, 2000, ROW, "opening", false],
+    ["voucher_200", 10000, 1000, ROW, "opening", false],
     ["voucher_1000", 100000, 20000, ROW, "opening", false],
   ]);
 });
 
 Deno.test("a basket the cap refuses writes no row; a follower the database refuses fails the lead (all or nothing)", async () => {
-  const capped = fakeAdmin({ outstanding: PLACE_CAP_CENTS - 300_00 });
+  const capped = fakeAdmin({ outstanding: PLACE_CAP_CENTS - 200_00 });
   const r = await openPurchaseRow(capped.admin, { ...BUY, followers: ["voucher_200"] });
   assertEquals(r.ok === false && r.code, "place_cap");
   assertEquals(capped.inserts.length, 0);
@@ -443,13 +443,13 @@ Deno.test("a basket's metadata names the lead and carries the sums; a single vou
     place_id: PLACE,
     consumer_id: GUEST,
     voucher: "voucher_200",
-    amount_cents: "20000",
-    bonus_cents: "2000",
+    amount_cents: "10000",
+    bonus_cents: "1000",
   });
   const many = voucherMetadata({ purchaseId: ROW, placeId: PLACE, consumerId: GUEST, voucher: "voucher_200", followers: ["voucher_200", "voucher_1000"] });
   assertEquals(many.purchase_id, ROW);
-  assertEquals(many.amount_cents, "140000");
-  assertEquals(many.bonus_cents, "24000");
+  assertEquals(many.amount_cents, "120000");
+  assertEquals(many.bonus_cents, "22000");
   assertEquals(many.basket, "3");
   assertEquals(many.basket_items, "voucher_200x2,voucher_1000x1");
 });

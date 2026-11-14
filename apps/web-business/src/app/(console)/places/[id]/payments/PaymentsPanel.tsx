@@ -91,17 +91,39 @@ const SECTION = "flex flex-col p-0 sm:p-0";
  *  the guest and the owner see the same colour and mark. */
 type Product = { key: PaymentKey; name: string; line: string; value: string; tone: string; icon: Icon };
 
-const STANDARD: Product[] = [
-  { key: "voucher_200", name: "Small Voucher", line: "Guest pays $200.00MX, gets $220.00MX of credit.", value: "+10%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
-  { key: "voucher_1000", name: "Big Voucher", line: "Guest pays $1,000.00MX, gets $1,200.00MX of credit.", value: "+20%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
-  { key: "voucher_5000", name: "MX$5,000 Voucher", line: "Guest pays $5,000.00MX, gets $6,500.00MX of credit.", value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
+// PRICED IN THE PLACE'S CURRENCY (MESITA-3914, Pato: "100 MX 10% · 1000 MX
+// 20% · 10 USD 10% · 100 USD 20% ... all small must start with 1 and big be
+// 10X that"). TWIN of VOUCHER_PRICE_CENTS in _shared/money.ts.
+const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = {
+  MXN: { voucher_200: 100_00, voucher_1000: 1_000_00, voucher_5000: 5_000_00, voucher_welcome: 100_00, voucher_story: 100_00, voucher_vip: 100_00 },
+  USD: { voucher_200: 10_00, voucher_1000: 100_00, voucher_5000: 500_00, voucher_welcome: 10_00, voucher_story: 10_00, voucher_vip: 10_00 },
+};
+
+/** A voucher row before its price: the bonus in bps and what follows the deal. */
+type VoucherSeed = Omit<Product, "line" | "key"> & { key: VoucherKey; bps: number; tail?: string };
+
+const STANDARD: VoucherSeed[] = [
+  { key: "voucher_200", name: "Small Voucher", bps: 1000, value: "+10%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
+  { key: "voucher_1000", name: "Big Voucher", bps: 2000, value: "+20%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
+  { key: "voucher_5000", name: "Biggest Voucher", bps: 3000, value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
 ];
 
-const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome Voucher", line: "Guest pays $100.00MX, gets $200.00MX of credit. One per guest at your place.", value: "+100%", tone: "bg-blue-100 text-blue-700", icon: ConfettiIcon },
-  { key: "voucher_story", name: "Story Voucher", line: "Guest pays $100.00MX, gets $130.00MX of credit after posting an Instagram story at your place.", value: "+30%", tone: "bg-pink-100 text-pink-700", icon: InstagramLogoIcon },
-  { key: "voucher_vip", name: "VIP Voucher", line: "Guest pays $100.00MX, gets $200.00MX of credit. VIP guests only.", value: "+100%", tone: "bg-amber-100 text-amber-700", icon: CrownIcon },
+const SPECIAL: VoucherSeed[] = [
+  { key: "voucher_welcome", name: "Welcome Voucher", bps: 10000, tail: "One per guest at your place.", value: "+100%", tone: "bg-blue-100 text-blue-700", icon: ConfettiIcon },
+  { key: "voucher_story", name: "Story Voucher", bps: 3000, tail: "After posting an Instagram story at your place.", value: "+30%", tone: "bg-pink-100 text-pink-700", icon: InstagramLogoIcon },
+  { key: "voucher_vip", name: "VIP Voucher", bps: 10000, tail: "VIP guests only.", value: "+100%", tone: "bg-amber-100 text-amber-700", icon: CrownIcon },
 ];
+
+/** The voucher rows in the place's currency; none where vouchers aren't sold. */
+function voucherProducts(currency: string): Product[] {
+  const prices = VOUCHER_PRICE[currency];
+  if (!prices) return [];
+  return [...SPECIAL.slice(0, 1), ...STANDARD, ...SPECIAL.slice(1)].map(({ bps, tail, ...p }) => {
+    const price = prices[p.key];
+    const credit = price + Math.floor((price * bps) / 10000);
+    return { ...p, line: `Guest pays ${moneyLabel(price, currency)}, gets ${moneyLabel(credit, currency)} of credit.${tail ? ` ${tail}` : ""}` };
+  });
+}
 
 /** What a card payment costs the place (MESITA-3461; the 5% fee is billed
  *  apart), in the place's currency (MESITA-3913). */
@@ -592,7 +614,7 @@ export function PaymentsPanel({
               voucher's reward. */}
           {/* Welcome, Small, Big, VIP (MESITA-3834); the MX$5,000 voucher
               and Story are off sale, money-state's NOT_YET_SELLABLE. */}
-          {[...SPECIAL.slice(0, 1), ...STANDARD, ...SPECIAL.slice(1)]
+          {voucherProducts(currency)
             .filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key])
             .map(voucherRow)}
         </ul>

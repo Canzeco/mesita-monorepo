@@ -282,8 +282,8 @@ const F2 = "44444444-4444-4444-8444-444444444444";
 /** 1× Big (the lead) + 2× Small: three rows. */
 function basket(status = "opening", pi: string | null = null) {
   return fakeStore(row({ status, stripe_payment_intent_id: pi }), [
-    row({ id: F1, voucher: "voucher_200", amount_cents: 20000, bonus_cents: 2000, status, stripe_payment_intent_id: pi }),
-    row({ id: F2, voucher: "voucher_200", amount_cents: 20000, bonus_cents: 2000, status, stripe_payment_intent_id: pi }),
+    row({ id: F1, voucher: "voucher_200", amount_cents: 10000, bonus_cents: 1000, status, stripe_payment_intent_id: pi }),
+    row({ id: F2, voucher: "voucher_200", amount_cents: 10000, bonus_cents: 1000, status, stripe_payment_intent_id: pi }),
   ]);
 }
 
@@ -299,12 +299,12 @@ Deno.test("basket: three rows, ONE PaymentIntent for the sum, stored on every ro
   assertEquals(res.purchase_id, PURCHASE);
   assertEquals(calls.map((c) => c.path), ["payment_methods", "payment_intents", "payment_intents/pi_b/confirm"]);
   const create = calls[1].params!;
-  assertEquals(create.amount, 140000);
+  assertEquals(create.amount, 120000);
   const meta = create.metadata as Record<string, string>;
   assertEquals(meta.purchase_id, PURCHASE);
   assertEquals(meta.basket, "3");
-  assertEquals(meta.amount_cents, "140000");
-  assertEquals(meta.bonus_cents, "24000");
+  assertEquals(meta.amount_cents, "120000");
+  assertEquals(meta.bonus_cents, "22000");
   assertEquals(meta.basket_items, "voucher_1000x1,voucher_200x2");
   const hour = new Date(NOW + 3600_000).toISOString();
   assertEquals(s.log, ["openPi:pi_b", `credit:pi_b:${hour}`, `credit@${F1}:pi_b:${hour}`, `credit@${F2}:pi_b:${hour}`]);
