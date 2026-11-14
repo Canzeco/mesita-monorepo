@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { BadgePercent, Banknote, Check, CircleCheck, Crown, Info, Lock, Minus, PartyPopper, Plus, Smartphone, Ticket, Wallet, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, Check, Crown, Lock, Minus, PartyPopper, Plus, Smartphone, Ticket, Wallet, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection, VoucherBasketItem } from "../../actions";
@@ -218,129 +217,44 @@ function SectionTitle({ id, title }: { id: string; title: string }) {
   );
 }
 
-/** AN (i) ON EACH OFFER (MESITA-3493, Pato: "add one i button for each
- *  offer"), opening a SMALL MODAL, NOT A DROPDOWN (MESITA-3488): a centred
- *  card over a dimmed page with the offer's own explanation and Got it; a tap
- *  outside or Escape closes it. It opens in a portal on the body, above the
- *  sheet and out of any dimmed row; it sits inside a row's label, so every click
- *  in it is stopped and its default prevented: reading never picks the row. */
-/** The (i)'s status strip and its one action (MESITA-3502, Pato: "below show
- *  the state ... and maybe also an action like request upgrade besides the
- *  Got it button"). */
+/** THE DESCRIPTION ON THE PAGE (Pato, 2026-11-14, MESITA-3849: "write the
+ *  descriptions of each voucher and payment in this page, text smaller"): the
+ *  (i) pop-up (MESITA-3493) is gone; each row prints its own lines under it in
+ *  12px, and a locked row its status and its one action (MESITA-3502). */
 type InfoStatus = { ok: boolean; text: string };
 type InfoAction = { label: string; onClick: () => void };
 
-function InfoButton({
-  title,
-  text,
-  status,
-  action,
-}: {
-  title: string;
-  text: string[];
-  status?: InfoStatus;
-  action?: InfoAction;
-}) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-  // ON THE PHONE, NOT THE PAGE (MESITA-3524, Pato: "modal must be ON THE
-  // PHONE emulator screen, not on the terminals"): the popup portals into the
-  // app card when there is one (the consumer app's #mesita-app-card), else the
-  // body (admin's preview).
-  const host = typeof document !== "undefined" ? document.getElementById("mesita-app-card") : null;
-  const stop = (e: { preventDefault(): void; stopPropagation(): void }) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
+const NOTES = "text-muted-foreground flex flex-col gap-0.5 text-xs leading-snug font-normal";
+
+function OfferNotes({ text, status, action }: { text: string[]; status?: InfoStatus; action?: InfoAction }) {
   return (
-    <span className="inline-flex" onClick={stop}>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-haspopup="dialog"
-        aria-label={`How ${title} works`}
-        className="text-muted-foreground hover:text-foreground relative flex h-6 w-6 items-center justify-center rounded-full after:absolute after:-inset-2"
-        data-offer-info
-      >
-        <Info className="h-5 w-5" aria-hidden />
-      </button>
-      {open && typeof document !== "undefined" ? createPortal(
-        <span
-          className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-6")}
-          onClick={() => setOpen(false)}
-          data-offers-note
+    <span className={cn(NOTES, "mt-0.5")} data-offer-notes>
+      {text.map((t) => (
+        <span key={t} className="block">
+          {t}
+        </span>
+      ))}
+      {status && !status.ok ? (
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 font-semibold text-amber-800" data-offer-status="locked">
+          <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          {status.text}
+        </span>
+      ) : null}
+      {action ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            // Inside a row's label: acting never toggles the row.
+            e.preventDefault();
+            e.stopPropagation();
+            action.onClick();
+          }}
+          className="text-foreground self-start font-semibold underline underline-offset-2"
+          data-offer-action
         >
-          <span
-            role="dialog"
-            aria-modal="true"
-            aria-label={`How ${title} works`}
-            className="bg-card flex max-h-[85vh] w-full max-w-sm cursor-auto flex-col gap-3 rounded-2xl p-5 text-left shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span className="text-foreground text-lg font-semibold">{title}</span>
-            {/* SHORT PARAGRAPHS (MESITA-3497, Pato: "use multiple paragraphs"). */}
-            <span className="text-muted-foreground flex flex-col gap-3 overflow-y-auto text-base leading-snug font-normal">
-              {text.map((t) => (
-                <span key={t} className="block">
-                  {t}
-                </span>
-              ))}
-            </span>
-            {status ? (
-              <span
-                className={cn(
-                  "mt-1 flex items-start gap-2.5 rounded-xl px-3 py-2.5",
-                  status.ok ? "bg-green-50 text-green-900" : "bg-amber-50 text-amber-900",
-                )}
-                data-offer-status={status.ok ? "ok" : "locked"}
-              >
-                {status.ok ? (
-                  <CircleCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-                ) : (
-                  <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-                )}
-                <span className="flex flex-col">
-                  <span className="text-[11px] font-semibold tracking-wide uppercase opacity-70">Your status</span>
-                  <span className="text-sm leading-snug font-semibold">{status.text}</span>
-                </span>
-              </span>
-            ) : null}
-            <span className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                autoFocus
-                className={cn(
-                  "h-11 rounded-xl text-sm font-semibold hover:opacity-90",
-                  action ? "bg-muted text-foreground w-28 shrink-0" : "bg-foreground text-paper flex-1",
-                )}
-              >
-                Got it
-              </button>
-              {action ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpen(false);
-                    action.onClick();
-                  }}
-                  className="bg-foreground text-paper h-11 flex-1 rounded-xl text-sm font-semibold hover:opacity-90"
-                  data-offer-action
-                >
-                  {action.label}
-                </button>
-              ) : null}
-            </span>
-          </span>
-        </span>,
-        host ?? document.body,
-      )
-      : null}
+          {action.label}
+        </button>
+      ) : null}
     </span>
   );
 }
@@ -391,47 +305,29 @@ const CREDIT_FACTS = [
   "Neither prepaid credits nor tips earn cashback: the part of a bill you pay with credits, and any tip, get none back.",
 ];
 
-/** What each offer's (i) says, one short paragraph per idea (MESITA-3492,
- *  split by MESITA-3497, rewritten clearer by MESITA-3498), with the row's
- *  own Pay and Get. */
-function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string, facts: string[], prepayPct: string | null): string[] {
-  // MESITA-3827: Mesita Prepayments Cashback on the price, on top of the bonus.
-  const deal = `Pay ${pay}, get ${get} in credits at this place. That's ${bonus} extra.`
-    + (prepayPct ? ` Plus ${prepayPct} of the price back as credits when your credits land.` : "");
+/** Each voucher's own lines (MESITA-3492, 3497, 3498), under its row
+ *  (MESITA-3849). The deal and the wait sit on the row's fact line; the lines
+ *  every voucher shares print once under the list. */
+function offerInfo(key: MoneyVoucherKey): string[] {
   switch (key) {
     case "voucher_200":
     case "voucher_1000":
     case "voucher_5000":
-      return [deal, "Your credits are ready 1 hour after you buy.", "Buy as many as you like.", ...facts];
+      return ["Buy as many as you like."];
     case "voucher_welcome":
-      return [
-        deal,
-        "Your credits are ready 1 hour after you buy.",
-        "One per place. Every other place on Mesita has its own Welcome for you.",
-        ...facts,
-      ];
+      return ["One per place. Every other place on Mesita has its own Welcome for you."];
     case "voucher_story":
+      // TWO STEPS AND A FLOOR (MESITA-3506).
       return [
-        deal,
-        // TWO STEPS AND A FLOOR (MESITA-3506, Pato: "first buy it, then ...
-        // activate it by posting an instagram story tagging the place";
-        // "only available for users that have more than 1000 followers").
         "Only for guests with more than 1,000 Instagram followers.",
-        "It takes two steps. 1. Buy it here. 2. Activate it: post an Instagram story at the place, tag the place, and show the story to the staff.",
-        "One per visit.",
-        ...facts,
+        "Buy it here, then post an Instagram story at the place, tag the place, and show it to the staff. One per visit.",
       ];
     case "voucher_vip":
-      return [
-        deal,
-        "Only for Mesita's VIP Class. VIP guests are added by hand: models, modeling agencies, creators and others places want to see. Not VIP? You can't buy this one.",
-        "Your credits are ready 1 hour after you buy. One per visit.",
-        ...facts,
-      ];
+      return ["Only for Mesita's VIP Class, added by hand: models, agencies, creators and others places want to see. One per visit."];
   }
 }
 
-/** The (i)'s "Your status" line for a prepayment offer (MESITA-3502). */
+/** A prepayment row's status line for a prepayment offer (MESITA-3502). */
 function offerStatus(
   key: MoneyVoucherKey,
   can: boolean,
@@ -652,7 +548,6 @@ export function VouchersPane({
   // in or out of one basket, Small and Big with a quantity; Buy pays it all
   // with one charge.
   const [picked, setPicked] = useState<Partial<Record<MoneyVoucherKey, number>>>({});
-  const pick = (key: MoneyVoucherKey) => setPicked((b) => (b[key] ? b : { ...b, [key]: 1 }));
   const toggle = (key: MoneyVoucherKey) =>
     setPicked((b) => {
       const next = { ...b };
@@ -737,28 +632,25 @@ export function VouchersPane({
                       {Mark ? <Mark className="h-4 w-4 shrink-0" strokeWidth={2.25} /> : null}
                       {p.short}
                     </span>
-                    <InfoButton
-                      title={p.short}
-                      text={offerInfo(p.key, pay, get, p.bonus.replace(/ bonus$/, ""), facts, prepayPct)}
-                      status={loading ? undefined : offerStatus(p.key, can, lock, reason)}
-                      action={
-                        loading
-                          ? undefined
-                          : can
-                            ? { label: "Choose this offer", onClick: () => pick(p.key) }
-                            : lock === "vip" && actions?.onJoinVip
-                              ? { label: "Request VIP", onClick: actions.onJoinVip }
-                              : lock === "instagram" && actions?.onLinkInstagram
-                                ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
-                                : undefined
-                      }
-                    />
                   </span>
                   <span className={cn(FACT, "tabular-nums")} aria-hidden>
                     {opening
                       ? "Opening…"
                       : `Pay ${pay} · Get ${get} ${readyIn(p.key)}${prepayPct ? ` · +${prepayPct} back` : ""}`}
                   </span>
+                  <OfferNotes
+                    text={offerInfo(p.key)}
+                    status={loading ? undefined : offerStatus(p.key, can, lock, reason)}
+                    action={
+                      loading || can
+                        ? undefined
+                        : lock === "vip" && actions?.onJoinVip
+                          ? { label: "Request VIP", onClick: actions.onJoinVip }
+                          : lock === "instagram" && actions?.onLinkInstagram
+                            ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
+                            : undefined
+                    }
+                  />
                 </span>
               </>
             );
@@ -835,6 +727,14 @@ export function VouchersPane({
             );
           })}
         </ul>
+        {/* WHAT EVERY VOUCHER SHARES, ONCE (MESITA-3849; MESITA-3505, 3498, 3496). */}
+        <span className={cn(NOTES, "px-1")} data-offer-facts>
+          {facts.map((t) => (
+            <span key={t} className="block">
+              {t}
+            </span>
+          ))}
+        </span>
       </section>
       <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
         <SectionTitle
@@ -857,27 +757,18 @@ export function VouchersPane({
                   <Smartphone className="h-4 w-4 shrink-0" strokeWidth={2.25} />
                   App Payment Cashback
                 </span>
-                <InfoButton
-                  title="App Payment Cashback"
-                  status={
-                    loading
-                      ? undefined
-                      : canPay || cashback
-                        ? { ok: true, text: cardPct ? `On at this place. ${cardPct} back on every bill.` : "Pay by card here; this place gives no cashback." }
-                        : { ok: false, text: cashbackTag }
-                  }
-                  action={canPay && actions?.onPay ? { label: "Pay bill", onClick: actions.onPay } : undefined}
-                  text={[
-                    `Pay your bill in the Mesita app and get ${cardPct ?? "the place's cashback"} of it back as credits at this place. Use them whenever you want.`,
-                    "Any amount, every visit. Each place sets its own rate.",
-                    creditPct
-                      ? "Tips never earn this cashback: it counts only on the part of the bill you pay with App Payments, without the tip."
-                      : "Neither prepaid credits nor tips earn cashback: it counts only on the part of the bill you pay with App Payments, without the tip.",
-                    "You can mix: part of the bill with credits, the rest with App Payments.",
-                  ]}
-                />
               </span>
               <span className={FACT} aria-hidden>{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
+              <OfferNotes
+                action={canPay && actions?.onPay ? { label: "Pay bill", onClick: actions.onPay } : undefined}
+                text={[
+                  `Pay your bill in the Mesita app and get ${cardPct ?? "the place's cashback"} of it back as credits at this place. Any amount, every visit.`,
+                  creditPct
+                    ? "Tips never earn it: it counts only on the part you pay with App Payments."
+                    : "Credits and tips never earn it: it counts only on the part you pay with App Payments.",
+                  "You can mix: part of the bill with credits, the rest with App Payments.",
+                ]}
+              />
             </span>
           </li>
           {/* CASH EARNS 3% (Pato, MESITA-3837: "what about 3% and 5%????";
@@ -896,17 +787,16 @@ export function VouchersPane({
                   <Banknote className="h-4 w-4 shrink-0" strokeWidth={2.25} />
                   Cash Payment Cashback
                 </span>
-                <InfoButton
-                  title="Cash Payment Cashback"
-                  status={outside ? { ok: true, text: `${cashPct} back on bills you pay the waiter.` } : { ok: false, text: "Not at this place yet" }}
-                  text={[
-                    `Pay the place directly: cash or their card terminal, and get ${cashPct ?? "the place's cash cashback"} of the bill back as credits at this place.`,
-                    "Show your QR to the waiter. They type the bill and the tip, you choose cash, and they tap Received when they get your money.",
-                    "It counts on the bill, never on the tip or on credits you spend. It is ready in 1 hour.",
-                  ]}
-                />
               </span>
               <span className={FACT} aria-hidden>{outside ? "Back in credits, cash or their terminal" : "Not at this place yet"}</span>
+              {outside ? (
+                <OfferNotes
+                  text={[
+                    `Pay the place directly, cash or their card terminal, and get ${cashPct} of the bill back as credits here.`,
+                    "Show your QR to the waiter: they type the bill and the tip, and tap Received when they get your money. Never on the tip or on credits. Ready in 1 hour.",
+                  ]}
+                />
+              ) : null}
             </span>
           </li>
         </ul>
