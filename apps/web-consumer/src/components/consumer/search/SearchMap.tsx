@@ -16,7 +16,7 @@ import {
   useApiLoadingStatus,
   useMap,
 } from "@vis.gl/react-google-maps";
-import type { Place } from "@/lib/api/places";
+import type { MapDot, Place } from "@/lib/api/places";
 import {
   MONTERREY_CENTER,
   MAP_DEFAULT_ZOOM,
@@ -27,6 +27,8 @@ import {
   MAP_USER_LOCATION_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
   MAP_PREMIER_PLACE_PIN_RADIUS,
+  MAP_DOT_SIZE,
+  mapDotIcon,
   mapPinIcon,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
@@ -47,6 +49,7 @@ import {
 import { SearchMapPinLabels } from "./SearchMapPinLabels";
 import {
   pinFillColor,
+  pinToneColor,
   pinStrokeColor,
   pinStrokeWeight,
   placePinTone,
@@ -96,6 +99,22 @@ function placeIcon(tone: PinTone, held: boolean) {
   );
 }
 
+/** The dot (MESITA-3980): a plain place's grey, ringed white so it reads
+ *  on the light basemap, sized like the pins once Maps can size it. */
+function dotIcon() {
+  const raw = mapDotIcon(pinToneColor("mesita"), "#ffffff");
+  const maps = (globalThis as { google?: { maps?: Partial<MapsCtor> } }).google
+    ?.maps;
+  if (typeof maps?.Size !== "function" || typeof maps.Point !== "function") {
+    return raw;
+  }
+  return {
+    url: raw.url,
+    scaledSize: new maps.Size(MAP_DOT_SIZE, MAP_DOT_SIZE),
+    anchor: new maps.Point(MAP_DOT_SIZE / 2, MAP_DOT_SIZE / 2),
+  };
+}
+
 function userIcon() {
   return mapsPinIcon(
     MAP_USER_LOCATION_PIN_COLOR,
@@ -141,6 +160,7 @@ function readViewportBox(map: MapInstance): ViewportBox | null {
 export function SearchMap({
   apiKey,
   places,
+  dots = [],
   userLocation,
   selectedId,
   pins,
@@ -155,6 +175,8 @@ export function SearchMap({
 }: {
   apiKey: string;
   places: Place[];
+  /** Places n+1…m of this view (MESITA-3980): small, no label, no tap. */
+  dots?: MapDot[];
   userLocation: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
@@ -205,6 +227,7 @@ export function SearchMap({
       <APIProvider apiKey={apiKey} libraries={["places"]}>
         <SearchMapCanvas
           places={places}
+          dots={dots}
           userLocation={userLocation}
           selectedId={selectedId}
           pins={pins}
@@ -322,6 +345,7 @@ function hasCoords(
 
 function SearchMapCanvas({
   places,
+  dots,
   userLocation,
   selectedId,
   pins,
@@ -335,6 +359,7 @@ function SearchMapCanvas({
   onLiveViewport,
 }: {
   places: Place[];
+  dots: MapDot[];
   userLocation: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
@@ -376,6 +401,20 @@ function SearchMapCanvas({
       }
       onTilesLoaded={onReady}
     >
+      {/* THE DOTS (Pato, MESITA-3980: "little dots means that there is
+          something but i need to make zoom to load them"): under every pin,
+          optimized (Maps draws them on one canvas), never a tap, never a
+          label. Zooming in reloads the map and the top ones become pins. */}
+      {dots.map((dot) => (
+        <Marker
+          key={`dot:${dot.id}`}
+          position={{ lat: dot.lat, lng: dot.lng }}
+          icon={dotIcon()}
+          clickable={false}
+          zIndex={-1}
+          cursor={MAP_PIN_CURSOR}
+        />
+      ))}
       {userLocation && (
         <Marker
           position={userLocation}

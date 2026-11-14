@@ -5,7 +5,8 @@
 //   Map (the Search tab)   (point, screen radius)
 //     every ready Mesita row in the circle's box (scoring columns, walked by
 //     id) → gates → Popularity × s → the top `map.placesShown` BY RANK,
-//     then their cards (MESITA-2950)
+//     then their cards (MESITA-2950); the places after them up to
+//     `map.dotsShown` in all come back as bare dots (MESITA-3980)
 //   Catalog (Home)         (point or nothing, NO radius)
 //     every ready Mesita row (scoring columns, walked by id) → gates →
 //     Proximity × Popularity × s → the best 1000 BY RANK, then their cards;
@@ -224,6 +225,31 @@ function roundedKm(location: AreaLocation, lat: unknown, lng: unknown): number |
 
 /** `map.placesShown` when a caller's cfg predates it. */
 const AREA_PLACES_SHOWN_FALLBACK = 50;
+
+/** A Map dot (MESITA-3980): a ranked place past `map.placesShown`, up to
+ *  `map.dotsShown` in all. Where it is and nothing else: no card is read
+ *  for it, so a dot says "zoom in here" and never opens. */
+export type MapDot = { id: string; lat: number; lng: number };
+
+/** The Map's dots out of its ranked list: ranks `shown`..`dotsShown`, and
+ *  only the ones with real coordinates. */
+function mapDots(
+  ranked: ReadonlyArray<{ item: { place: Record<string, unknown> & { id: string } } }>,
+  shown: number,
+  dotsShown: number | undefined,
+): MapDot[] {
+  const total = typeof dotsShown === "number" && Number.isFinite(dotsShown) ? dotsShown : 0;
+  if (total <= shown) return [];
+  const dots: MapDot[] = [];
+  for (const { item } of ranked.slice(Math.max(0, shown), total)) {
+    const lat = Number(item.place.lat);
+    const lng = Number(item.place.lng);
+    if (item.place.lat == null || item.place.lng == null) continue;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    dots.push({ id: String(item.place.id), lat, lng });
+  }
+  return dots;
+}
 /** `map.catalogPageSize` when a caller's cfg predates it. */
 const CATALOG_PAGE_SIZE_FALLBACK = 20;
 
@@ -234,7 +260,7 @@ const CATALOG_PAGE_SIZE_FALLBACK = 20;
  */
 export function selectAreaPool<T extends PoolRow>(
   deps: AreaPoolDeps<T>,
-): Promise<{ places: AreaPoolPlace[]; summary: AreaPoolSummary }> {
+): Promise<{ places: AreaPoolPlace[]; summary: AreaPoolSummary; dots: MapDot[] }> {
   const catalog = deps.surface === "catalog";
   const ctx: AreaContext = {
     location: deps.location,
@@ -269,7 +295,8 @@ export function selectAreaPool<T extends PoolRow>(
     placesShown: catalog ? null : shown,
     pageSize: catalog ? catalogPageSize(deps.cfg.map) : null,
   };
-  return Promise.resolve({ places, summary });
+  const dots = catalog ? [] : mapDots(ranked, shown, deps.cfg.map.dotsShown);
+  return Promise.resolve({ places, summary, dots });
 }
 
 /** The Catalog's page size: the operator's `map.catalogPageSize`. */
@@ -471,6 +498,8 @@ type RankedPool = {
   places: AreaPoolPlace[];
   summary: CatalogPoolSummary;
   lastId: string | null;
+  /** The Map's dots (MESITA-3980); empty on the Catalog. */
+  dots: MapDot[];
 };
 
 /** Both passes: walk, rank with `selectAreaPool`, keep `keepMax`, read the
@@ -516,6 +545,7 @@ async function selectRankedPool<T extends PoolRow>(
       missing: kept.length - places.length,
     },
     lastId: walk.lastId,
+    dots: ranked.dots,
   };
 }
 

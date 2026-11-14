@@ -22,6 +22,8 @@ import {
   EXPONENT_MIN,
   HALF_KM_MAX,
   HALF_KM_MIN,
+  MAP_DOTS_SHOWN_MAX,
+  MAP_DOTS_SHOWN_MIN,
   MAP_PLACES_SHOWN_MAX,
   MAP_PLACES_SHOWN_MIN,
   MAP_RELOAD_IDLE_SEC_MAX,
@@ -349,6 +351,14 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
             disabled={off}
             onChange={(placesShown) => map({ placesShown })}
           />
+          <NumberField
+            label="Most marks shown (pins + dots)"
+            value={cfg.map.dotsShown}
+            min={MAP_DOTS_SHOWN_MIN}
+            max={MAP_DOTS_SHOWN_MAX}
+            disabled={off}
+            onChange={(dotsShown) => map({ dotsShown })}
+          />
         </div>
         <p className="text-muted-foreground type-meta">
           Popularity root: sets how much a Premier plan outweighs reviews on
@@ -363,8 +373,11 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
         <p className="text-muted-foreground type-meta">
           The Map searches the screen radius (the distance from the cross to
           the nearest edge of the visible map); with no screen yet it uses
-          15 km. It shows at most Most pins shown, best first.{" "}
-          {MAP_PLACES_SHOWN_MIN}–{MAP_PLACES_SHOWN_MAX}.
+          15 km. The best Most pins shown are full pins with a card in the
+          carousel; the places after them, up to Most marks shown in all, are
+          small dots with no card that say &ldquo;zoom in here&rdquo;. At or under Most
+          pins shown there are no dots. Pins {MAP_PLACES_SHOWN_MIN}–
+          {MAP_PLACES_SHOWN_MAX}; marks {MAP_DOTS_SHOWN_MIN}–{MAP_DOTS_SHOWN_MAX}.
         </p>
       </Group>
       <Group title="Reload">

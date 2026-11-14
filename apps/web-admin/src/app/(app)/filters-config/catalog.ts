@@ -118,6 +118,10 @@ export const POPULARITY_ROOT_MAX = 1;
 export const MAP_PLACES_SHOWN_MIN = 1;
 export const MAP_PLACES_SHOWN_MAX = 200;
 const MAP_PLACES_SHOWN_DEFAULT = 50;
+/** Mirrors MAP_DOTS_SHOWN_* in _shared/discovery-config.ts (MESITA-3980). */
+export const MAP_DOTS_SHOWN_MIN = 0;
+export const MAP_DOTS_SHOWN_MAX = 1000;
+const MAP_DOTS_SHOWN_DEFAULT = 200;
 /** Mirrors CATALOG_PAGE_SIZE_* in _shared/discovery-config.ts (MESITA-2909). */
 export const CATALOG_PAGE_SIZE_MIN = 5;
 export const CATALOG_PAGE_SIZE_MAX = 100;
@@ -154,6 +158,9 @@ export type MapConfig = {
   // `proximityWeight` / `popularityWeight` retired (MESITA-2722).
   /** The Map's most pins, 1..200, default 50 (MESITA-2713, MESITA-2909). */
   placesShown: number;
+  /** The Map's marks in all, 0..1000, default 200 (MESITA-3980): the top
+   *  `placesShown` are pins with cards, the rest up to this many small dots. */
+  dotsShown: number;
   /** Home's Catalog page size, 5..100, default 20 (MESITA-2909; it
    *  replaced `catalogPlacesShown`). */
   catalogPageSize: number;
@@ -181,6 +188,7 @@ export const DEFAULT_MAP: MapConfig = {
   reloadMinViewportPct: MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT,
   popularityRoot: 0.33,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
+  dotsShown: MAP_DOTS_SHOWN_DEFAULT,
   catalogPageSize: CATALOG_PAGE_SIZE_DEFAULT,
 };
 
@@ -399,6 +407,9 @@ function coerceMap(raw: unknown): MapConfig {
       ) / 100,
     placesShown: Math.round(
       num(m.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
+    ),
+    dotsShown: Math.round(
+      num(m.dotsShown, DEFAULT_MAP.dotsShown, MAP_DOTS_SHOWN_MIN, MAP_DOTS_SHOWN_MAX),
     ),
     catalogPageSize: Math.round(
       num(m.catalogPageSize, DEFAULT_MAP.catalogPageSize, CATALOG_PAGE_SIZE_MIN, CATALOG_PAGE_SIZE_MAX),

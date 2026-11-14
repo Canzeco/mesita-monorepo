@@ -124,6 +124,25 @@ export function mapPinSvg(
   );
 }
 
+/** A Map dot (MESITA-3980): a place past the pins, drawn small — "there is
+ *  something here, zoom in". Not a hit target, so the pad is the disk. */
+export const MAP_DOT_RADIUS = 2.5;
+export const MAP_DOT_SIZE = 8;
+
+export function mapDotIcon(fillColor: string, strokeColor: string) {
+  const size = MAP_DOT_SIZE;
+  const mid = size / 2;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
+    `<circle cx="${mid}" cy="${mid}" r="${MAP_DOT_RADIUS}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1"/>` +
+    `</svg>`;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: { width: size, height: size },
+    anchor: { x: mid, y: mid },
+  };
+}
+
 export function mapPinIcon(
   fillColor: string,
   strokeColor: string,

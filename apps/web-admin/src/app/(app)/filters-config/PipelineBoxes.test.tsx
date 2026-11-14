@@ -98,11 +98,12 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327, MESITA-3828)", 
     // move + Catalog: the half distance, the distance exponent, the
     // Popularity root (MESITA-3083) and the page size (MESITA-2909; the
     // Selected boost retired, MESITA-2925). Typed numbers, no spinner
-    // (MESITA-2733).
+    // (MESITA-2733). Map's Most marks shown (pins + dots) is the 15th
+    // (MESITA-3980).
     const html = page();
-    expect(html.match(/type="text"/g)?.length).toBe(14);
+    expect(html.match(/type="text"/g)?.length).toBe(15);
     expect(html.match(/inputMode="decimal"/g)?.length).toBe(8);
-    expect(html.match(/inputMode="numeric"/g)?.length).toBe(6);
+    expect(html.match(/inputMode="numeric"/g)?.length).toBe(7);
     expect(html).not.toContain('type="number"');
     expect(html).not.toContain("step=");
     expect(html).not.toContain("Distance penalty");

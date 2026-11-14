@@ -70,7 +70,7 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import type { Place } from "@/lib/api/places";
+import type { MapDot, Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
 import {
   apiResolveLocationAnchor,
@@ -214,6 +214,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const locationError = useUserLocationError();
   const locate = useLocateUser();
   const [places, setPlaces] = useState<Place[]>([]);
+  // Places n+1…m of the last load (MESITA-3980): small dots on the map,
+  // never in the rail.
+  const [dots, setDots] = useState<MapDot[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(() => Boolean(apiKey));
   const [cameraCenter, setCameraCenter] = useState<{
@@ -315,6 +318,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       : null;
     return prependAnchorPlace(nearby, anchorRow);
   }, [nearby, anchor, createdPlaces, distanceCenter]);
+  // A dot never doubles a pin: the bar's anchored pick can be one of the
+  // dots, and then it is card ONE and a pin (MESITA-3980).
+  const mapDots = useMemo(() => {
+    if (dots.length === 0) return dots;
+    const pinned = new Set(catalog.map((p) => p.id));
+    return dots.filter((d) => !pinned.has(d.id));
+  }, [dots, catalog]);
   // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
   // land, and on a bare list it lands nowhere.
   //
@@ -520,6 +530,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         );
         setCameraCenter(nextCenter);
         setPlaces(result.places);
+        setDots(result.dots);
         setLoadCoords({
           cross: lastBoxRef.current ? viewportSight(lastBoxRef.current) : null,
           you: locationRef.current,
@@ -1201,6 +1212,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         <SearchMap
           apiKey={apiKey}
           places={catalog}
+          dots={mapDots}
           userLocation={userLocation}
           selectedId={railSelectedId}
           pins={searchPins}
