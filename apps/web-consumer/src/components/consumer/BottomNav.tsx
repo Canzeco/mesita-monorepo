@@ -151,21 +151,25 @@ export function BottomNav() {
           const active = pending
             ? pending === item.href
             : tabFor(pathname) === item.tab;
+          // THE LIT TAB IS UNMISTAKABLE (Pato, MESITA-3921: "the bottom menu
+          // selected item must have a way more contrast. its too weak"): a
+          // solid ink circle with a paper icon, a semibold ink label and a
+          // 4px bar on top. It wore a 10% tint and a 20% ring until then.
           const className = cn(
-            "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
+            "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 transition",
             active
-              ? "text-primary"
-              : "text-muted-foreground hover:text-foreground",
+              ? "text-foreground font-semibold"
+              : "text-muted-foreground hover:text-foreground font-medium",
           );
           const body = (
             <>
               {active && (
-                <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full" />
+                <span className="bg-primary absolute -top-2 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full" />
               )}
               <span
                 className={cn(
                   "relative flex h-8 w-8 items-center justify-center rounded-full transition",
-                  active && "bg-primary/10 ring-primary/20 ring-1",
+                  active && "bg-primary text-primary-foreground",
                 )}
               >
                 {item.href === CONSUMER_ROUTES.me && avatarUrl ? (
@@ -175,7 +179,7 @@ export function BottomNav() {
                     alt=""
                     className={cn(
                       "h-6 w-6 rounded-full object-cover",
-                      active && "ring-primary ring-2",
+                      active && "ring-primary-foreground ring-2",
                     )}
                     data-me-tab-avatar
                   />
