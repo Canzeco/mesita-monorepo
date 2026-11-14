@@ -8,6 +8,7 @@
 // (`sourcesFeedingSignal`), never typed here; a source whose rows keep their
 // own order feeds none (MESITA-2338).
 
+import { Chip, Collapsible, SectionCard } from "@/components/admin-ui";
 import { KnobState } from "@/components/admin-ui/config";
 import {
   DISCOVERY_FIELD_LABELS,
@@ -31,10 +32,8 @@ const pipelineLabel = (key: DiscoveryPipelineKey) =>
 
 function Part({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="border-border flex flex-col gap-3 border-t px-4 py-4 sm:px-6">
-      <p className="text-muted-foreground type-meta font-semibold tracking-wide uppercase">
-        {label}
-      </p>
+    <div className="border-border mt-4 flex flex-col gap-3 border-t pt-4">
+      <p className="text-muted-foreground type-eyebrow">{label}</p>
       {children}
     </div>
   );
@@ -51,18 +50,6 @@ export function rankedBy(pipeline: DiscoveryPipelineKey): string {
   const parts = p.signals.map((k) => signalByKey(k).label);
   if (p.factors.length > 0) parts.push("Premier");
   return parts.join(" × ");
-}
-
-function Chip({ children, muted }: { children: React.ReactNode; muted?: boolean }) {
-  return (
-    <span
-      className={`border-border inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-        muted ? "text-muted-foreground" : "bg-background text-foreground"
-      }`}
-    >
-      {children}
-    </span>
-  );
 }
 
 function RecipeCell({ label, children }: { label: string; children: React.ReactNode }) {
@@ -113,54 +100,26 @@ export function PipelineBox({
     // Soon (MESITA-2345): the title, one line and the chip. Its controls are
     // deleted from the markup, not hidden (the ConfigSoon rule).
     return (
-      <section
+      <SectionCard
         id={id}
-        aria-labelledby={`${id}-title`}
-        className="border-border bg-card scroll-mt-16 overflow-hidden rounded-2xl border border-dashed"
+        icon={icon}
+        title={title}
+        right={<Chip>Soon</Chip>}
+        className="scroll-mt-16"
       >
-        <div className="flex items-center gap-3 px-4 py-4 sm:px-6">
-          <span
-            aria-hidden
-            className="bg-muted/60 text-muted-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-          >
-            {icon}
-          </span>
-          <div className="min-w-0">
-            <h2 id={`${id}-title`} className="font-display text-lg font-semibold tracking-tight">
-              {title}{" "}
-              <span className="bg-muted text-muted-foreground ml-1 rounded-full px-2 py-0.5 align-middle type-meta font-bold tracking-wider uppercase">
-                Soon
-              </span>
-            </h2>
-            <div className="text-muted-foreground type-meta">{explanation}</div>
-          </div>
-        </div>
-      </section>
+        <div className="text-muted-foreground mt-1 type-meta">{explanation}</div>
+      </SectionCard>
     );
   }
   return (
-    <section
+    <SectionCard
       id={id}
-      aria-labelledby={`${id}-title`}
-      className="border-border bg-card scroll-mt-16 overflow-hidden rounded-2xl border"
+      icon={icon}
+      title={title}
+      subtitle={`Run by ${(callers ?? p.callers).join(" · ")}`}
+      className="scroll-mt-16"
     >
-      <div className="flex flex-col gap-4 px-4 py-5 sm:px-6">
-        <div className="flex items-start gap-3">
-          <span
-            aria-hidden
-            className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-          >
-            {icon}
-          </span>
-          <div className="min-w-0">
-            <h2 id={`${id}-title`} className="font-display text-lg font-semibold tracking-tight">
-              {title}
-            </h2>
-            <p className="text-muted-foreground type-meta">
-              Run by {(callers ?? p.callers).join(" · ")}
-            </p>
-          </div>
-        </div>
+      <div className="mt-4 flex flex-col gap-4">
         {summary ? <p className="text-foreground max-w-3xl text-sm leading-relaxed">{summary}</p> : null}
         <div className="border-border bg-muted/30 grid gap-4 rounded-xl border p-4 sm:grid-cols-3">
           <RecipeCell label="Reads from">
@@ -170,7 +129,7 @@ export function PipelineBox({
           </RecipeCell>
           <RecipeCell label="Keeps only">
             {p.gates.length === 0 ? (
-              <Chip muted>Open places of Mesita&apos;s types</Chip>
+              <Chip>Open places of Mesita&apos;s types</Chip>
             ) : (
               p.gates.map((key) => <Chip key={key}>{gateByKey(key).label}</Chip>)
             )}
@@ -183,16 +142,9 @@ export function PipelineBox({
 
       <Part label="Settings">{children}</Part>
 
-      {save ? <div className="border-border bg-muted/30 border-t px-4 pb-4 sm:px-6">{save}</div> : null}
+      {save ? <div>{save}</div> : null}
 
-      <details className="border-border group border-t">
-        <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium sm:px-6 [&::-webkit-details-marker]:hidden">
-          How it works
-          <span aria-hidden className="text-muted-foreground transition-transform group-open:rotate-90">
-            ›
-          </span>
-        </summary>
-
+      <Collapsible summary="How it works">
         <Part label="Explanation">
           <div className="text-foreground max-w-3xl text-sm leading-relaxed">{explanation}</div>
         </Part>
@@ -301,8 +253,8 @@ export function PipelineBox({
         <Part label="Scoring">
           <p className="text-sm">{scoring ?? p.scoring}</p>
         </Part>
-      </details>
-    </section>
+      </Collapsible>
+    </SectionCard>
   );
 }
 
@@ -321,41 +273,34 @@ export function DiscoveryOverview({
   }[];
 }) {
   return (
-    <nav aria-label="Discovery pipelines" className="border-border bg-card overflow-hidden rounded-2xl border">
-      <ul className="divide-border divide-y">
-        {rows.map((r) => (
-          <li key={r.href}>
-            <a
-              href={r.href}
-              className="hover:bg-muted/40 flex items-center gap-3 px-4 py-3 sm:px-6"
-            >
-              <span
-                aria-hidden
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                  r.soon ? "bg-muted/60 text-muted-foreground" : "bg-muted text-foreground"
-                }`}
-              >
-                {r.icon}
-              </span>
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-semibold">
-                  {r.title}
-                  {r.soon ? (
-                    <span className="bg-muted text-muted-foreground ml-2 rounded-full px-2 py-0.5 align-middle type-meta font-bold tracking-wider uppercase">
-                      Soon
-                    </span>
-                  ) : null}
+    <SectionCard title="Pipelines">
+      <nav aria-label="Discovery pipelines" className="-mx-4 mt-3 -mb-4 sm:-mx-6 sm:-mb-6">
+        <ul className="divide-border divide-y">
+          {rows.map((r) => (
+            <li key={r.href}>
+              <a href={r.href} className="hover:bg-muted/40 flex items-center gap-3 px-4 py-3 sm:px-6">
+                <span
+                  aria-hidden
+                  className="bg-muted text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                >
+                  {r.icon}
                 </span>
-                <span className="text-muted-foreground truncate type-meta">{r.who}</span>
-              </span>
-              <span className="text-muted-foreground hidden shrink-0 text-sm sm:block">{r.ranked}</span>
-              <span aria-hidden className="text-muted-foreground shrink-0">
-                ›
-              </span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm font-semibold">
+                    {r.title}
+                    {r.soon ? <Chip className="ml-2 align-middle">Soon</Chip> : null}
+                  </span>
+                  <span className="text-muted-foreground truncate type-meta">{r.who}</span>
+                </span>
+                <span className="text-muted-foreground hidden shrink-0 text-sm sm:block">{r.ranked}</span>
+                <span aria-hidden className="text-muted-foreground shrink-0">
+                  ›
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </SectionCard>
   );
 }

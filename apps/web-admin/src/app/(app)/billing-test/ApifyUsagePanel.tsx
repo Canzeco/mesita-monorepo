@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Bug, RefreshCw } from "lucide-react";
-import { ErrorNote } from "@/components/ErrorNote";
-import { Button, ChoicePill, SectionCard } from "@/components/admin-ui/config";
+import { Button, ChoicePill, Notice, SectionCard, Stat } from "@/components/admin-ui";
 import type { ActionResult } from "@/lib/action-result";
 import { getApifyUsage } from "./actions";
 import { APIFY_WINDOWS, type ApifyScraper, type ApifyUsage, type ApifyWindow } from "./apify-usage";
@@ -16,21 +15,9 @@ const secs = (v: number | null) =>
 
 function rateTone(rate: number | null): string {
   if (rate === null) return "text-muted-foreground";
-  if (rate >= 0.95) return "text-emerald-700";
-  if (rate >= 0.8) return "text-amber-700";
+  if (rate >= 0.95) return "text-success";
+  if (rate >= 0.8) return "text-warning";
   return "text-destructive";
-}
-
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="border-border/60 bg-muted/30 rounded-xl border p-3">
-      <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-        {label}
-      </p>
-      <p className="font-display mt-1 text-lg font-semibold tabular-nums">{value}</p>
-      {hint ? <p className="text-muted-foreground type-meta mt-0.5">{hint}</p> : null}
-    </div>
-  );
 }
 
 function DailyBars({ daily }: { daily: ApifyUsage["month"]["daily"] }) {
@@ -38,7 +25,7 @@ function DailyBars({ daily }: { daily: ApifyUsage["month"]["daily"] }) {
   const max = Math.max(...daily.map((d) => d.spendUsd), 0.0001);
   return (
     <div>
-      <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
+      <p className="text-muted-foreground type-eyebrow">
         Spend per day, this billing cycle
       </p>
       <div className="mt-2 flex h-20 items-end gap-0.5">
@@ -62,7 +49,7 @@ function DailyBars({ daily }: { daily: ApifyUsage["month"]["daily"] }) {
 function ScraperCard({ s }: { s: ApifyScraper }) {
   const problems = s.failed + s.timedOut + s.aborted;
   return (
-    <div className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
+    <div className="border-border flex flex-col gap-3 rounded-xl border p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-display truncate text-sm font-semibold tracking-tight">{s.label}</h3>
@@ -80,9 +67,9 @@ function ScraperCard({ s }: { s: ApifyScraper }) {
         <Stat label="Avg time" value={secs(s.avgDurationSec)} />
       </div>
       <div className="text-muted-foreground type-meta flex flex-wrap gap-x-3 gap-y-1">
-        <span className="text-emerald-700">{s.succeeded} succeeded</span>
+        <span className="text-success">{s.succeeded} succeeded</span>
         <span className={s.failed ? "text-destructive" : undefined}>{s.failed} failed</span>
-        <span className={s.timedOut ? "text-amber-700" : undefined}>{s.timedOut} timed out</span>
+        <span className={s.timedOut ? "text-warning" : undefined}>{s.timedOut} timed out</span>
         <span>{s.aborted} aborted</span>
       </div>
       <div className="text-muted-foreground type-meta flex flex-wrap gap-x-3 gap-y-1">
@@ -121,10 +108,10 @@ export function ApifyUsagePanel({ initial }: { initial: ActionResult<{ usage: Ap
 
   return (
     <SectionCard
-      icon={<Bug className="h-4 w-4" />}
+      icon={<Bug />}
       title="Apify"
       subtitle="Every scraper Mesita runs on Apify, read from Apify's own run list: what it cost and how often it worked. It counts the Supabase and the Render callers alike. Google images come from Google Places, not Apify, so they have no row here."
-      state={
+      right={
         <Button
           tone="secondary"
           size="sm"
@@ -137,7 +124,7 @@ export function ApifyUsagePanel({ initial }: { initial: ActionResult<{ usage: Ap
       }
     >
       <div className="mt-4 flex flex-col gap-4">
-        {error ? <ErrorNote message={error} /> : null}
+        {error ? <Notice tone="error">{error}</Notice> : null}
 
         {m ? (
           <div className="grid gap-2 sm:grid-cols-3">

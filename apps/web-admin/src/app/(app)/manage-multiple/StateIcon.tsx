@@ -13,13 +13,13 @@ export type BatchRowState =
  *  and refused: a Premier run left the place unchanged on purpose (MESITA-3090). */
 export function StateIcon({ state }: { state: BatchRowState }) {
   if (state === "ok")
-    return <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />;
+    return <CheckCircle2 className="text-success h-4 w-4 shrink-0" />;
   if (state === "existed")
-    return <CircleDot className="h-4 w-4 shrink-0 text-sky-600" />;
+    return <CircleDot className="text-muted-foreground h-4 w-4 shrink-0" />;
   if (state === "enriching")
-    return <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />;
+    return <Sparkles className="text-warning h-4 w-4 shrink-0" />;
   if (state === "refused")
-    return <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />;
+    return <AlertTriangle className="text-warning h-4 w-4 shrink-0" />;
   if (state === "error")
     return <XCircle className="text-destructive h-4 w-4 shrink-0" />;
   if (state === "running")

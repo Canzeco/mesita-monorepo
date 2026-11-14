@@ -9,6 +9,7 @@ import {
   useMap,
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
+import { SectionCard } from "@/components/admin-ui";
 import type { PlaceLite } from "@/lib/places-types";
 
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
@@ -47,44 +48,36 @@ export function PlacesMap({ places }: { places: PlaceLite[] }) {
 
   if (!GOOGLE_MAPS_KEY) {
     return (
-      <section className="border-border bg-card text-muted-foreground rounded-2xl border p-5 text-sm">
-        <p className="font-medium text-foreground">Map unavailable</p>
-        <p className="mt-1">
-          NEXT_PUBLIC_GMP_KEY isn&apos;t set on this
-          deployment.
-        </p>
-      </section>
+      <SectionCard
+        title="Map unavailable"
+        subtitle="NEXT_PUBLIC_GMP_KEY isn't set on this deployment."
+      />
     );
   }
 
   if (mappable.length === 0) {
     return (
-      <section className="border-border bg-card text-muted-foreground rounded-2xl border p-5 text-sm">
-        <p className="font-medium text-foreground">No mappable results</p>
-        <p className="mt-1">
-          None of the returned places included coordinates.
-        </p>
-      </section>
+      <SectionCard
+        title="No mappable results"
+        subtitle="None of the returned places included coordinates."
+      />
     );
   }
 
   return (
-    <section className="border-border bg-card shadow-elev overflow-hidden rounded-2xl border">
-      <div className="border-border flex items-center justify-between gap-3 border-b px-5 py-3">
-        <div className="flex items-center gap-2">
-          <MapPin className="text-secondary h-4 w-4" />
-          <h2 className="text-foreground type-eyebrow">
-            Map
-          </h2>
-        </div>
+    <SectionCard
+      icon={<MapPin />}
+      title="Map"
+      right={
         <p className="text-muted-foreground text-xs">
           {mappable.length} {mappable.length === 1 ? "marker" : "markers"}
           {missing > 0 && <> · {missing} without coordinates</>}
         </p>
-      </div>
+      }
+    >
       {/* Shorter on a phone: 440px of map inside a ~700px viewport left no
           room for the results it belongs to. */}
-      <div className="h-72 w-full sm:h-[440px]">
+      <div className="border-border mt-4 h-72 w-full overflow-hidden rounded-xl border sm:h-[440px]">
         <APIProvider apiKey={GOOGLE_MAPS_KEY}>
           <Map
             defaultCenter={MAP_DEFAULT_CENTER}
@@ -104,7 +97,7 @@ export function PlacesMap({ places }: { places: PlaceLite[] }) {
           </Map>
         </APIProvider>
       </div>
-    </section>
+    </SectionCard>
   );
 }
 

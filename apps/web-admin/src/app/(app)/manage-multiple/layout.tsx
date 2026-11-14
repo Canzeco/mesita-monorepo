@@ -1,4 +1,4 @@
-import { PageContainer, PageHeader } from "@/components/PageContainer";
+import { PageContainer, PageHeader } from "@/components/admin-ui";
 
 // Manage › Multiple Places — one flat page: Google Search · Mesita Search ·
 // Create · Enrich · Update, over a pasted list. The one-place sibling is
@@ -13,12 +13,13 @@ export default function ManageMultipleLayout({
   children: React.ReactNode;
 }) {
   return (
-    <PageContainer className="pb-16 sm:pb-24">
+    <PageContainer>
       <PageHeader
         title="Multiple Places"
         description="Many places at once. Google Search and Mesita Search look them up; Create, Enrich and Edit write them. The rail jumps to each; one place at a time is Single Place."
       />
-      <div className="mt-6 sm:mt-8">{children}</div>
+      {/* pb tops the container's own pb-10/sm:pb-14 up to 64/96px; the kit's cn has no merge. */}
+      <div className="mt-6 pb-6 sm:mt-8 sm:pb-10">{children}</div>
     </PageContainer>
   );
 }

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, Store, UserX } from "lucide-react";
-import { PageContainer, PageHeader } from "@/components/PageContainer";
-import { Button, TextField } from "@/components/admin-ui/config";
+import { AlertTriangle, Loader2, Store, UserX } from "lucide-react";
+import { Button, Chip, ConfirmDialog, Notice, SectionCard, TextField } from "@/components/admin-ui";
 import { continueStoragePurge, resetDatabase } from "./actions";
 
-// Manage Database — database-wide operator actions. Today: reset the
+// Manage Database — database-wide operator actions. The page chrome
+// (container + header) lives in page.tsx; this renders the cards. Today: reset the
 // environment (moved here from Admins 2026-07-26). Super-admins only.
 
 // Must match the EF's CONFIRM_PHRASE.
@@ -20,11 +20,7 @@ const MAX_PURGE_PASSES = 60;
 
 export function ManageDatabaseClient() {
   return (
-    <PageContainer className="flex flex-col gap-6 sm:gap-8">
-      <PageHeader
-        title="Database"
-        description="Database-wide operator actions. Handle with care — these run against the live singleton backend. Super-admins only."
-      />
+    <>
       <ResetCard />
       <SoonCard
         icon={UserX}
@@ -36,7 +32,7 @@ export function ManageDatabaseClient() {
         title="Delete place"
         line="Remove one place and everything that hangs off it, without resetting the rest."
       />
-    </PageContainer>
+    </>
   );
 }
 
@@ -62,25 +58,13 @@ function SoonCard({
   line: string;
 }) {
   return (
-    <section className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-4 sm:p-6">
-      <div className="flex items-center gap-3">
-        <span className="bg-muted text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full">
-          <Icon className="h-5 w-5" />
-        </span>
-        <div>
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            {title}
-            <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 type-label font-medium">
-              Soon
-            </span>
-          </h2>
-          <p className="text-muted-foreground text-sm">{line}</p>
-        </div>
+    <SectionCard icon={<Icon />} title={title} subtitle={line} right={<Chip>Soon</Chip>}>
+      <div className="mt-4">
+        <Button tone="danger" disabled>
+          Soon
+        </Button>
       </div>
-      <Button tone="danger" disabled>
-        Soon
-      </Button>
-    </section>
+    </SectionCard>
   );
 }
 
@@ -133,6 +117,8 @@ function ResetCard() {
   // Set once a reset committed but files are still there: the card then
   // offers "Finish clearing files" instead of another full reset.
   const [filesPending, setFilesPending] = useState(false);
+  // The typed phrase arms the button; the dialog is the last step before the wipe.
+  const [askReset, setAskReset] = useState(false);
 
   const armed = confirm === CONFIRM_PHRASE;
 
@@ -241,92 +227,87 @@ function ResetCard() {
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-red-200 bg-red-50/50 p-4 sm:p-6">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
-          <AlertTriangle className="h-5 w-5" />
-        </span>
-        <div>
-          <h2 className="text-lg font-semibold text-red-700">Reset database</h2>
-          <p className="text-muted-foreground text-sm">
-            Irreversible. Wipes operational data — admin configs stay.
+    <SectionCard
+      tone="danger"
+      icon={<AlertTriangle />}
+      title="Reset database"
+      subtitle="Irreversible. Wipes operational data — admin configs stay."
+    >
+      <div className="mt-4 flex flex-col gap-4">
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          Permanently empties every operational table — places, reservations,
+          consumers, enrichment — deletes every stored image and menu file, and
+          removes every auth account that isn&apos;t an admin.{" "}
+          <strong>Preserved:</strong> admin allowlist, every admin console
+          config, and the category / tag / family vocabularies. This cannot be
+          undone.
+        </p>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-foreground text-sm font-medium">
+            Type{" "}
+            <span className="text-destructive font-mono font-semibold">
+              {CONFIRM_PHRASE}
+            </span>{" "}
+            to confirm
+          </span>
+          <TextField
+            value={confirm}
+            onChange={setConfirm}
+            placeholder={CONFIRM_PHRASE}
+            autoComplete="off"
+            spellCheck={false}
+            className="font-mono"
+          />
+        </label>
+
+        {filesPending ? (
+          <Button
+            tone="danger"
+            pending={busy}
+            disabled={!armed}
+            onClick={onFinishFiles}
+          >
+            {busy ? "Clearing files…" : "Finish clearing files"}
+          </Button>
+        ) : (
+          <Button
+            tone="danger"
+            pending={busy}
+            disabled={!armed}
+            onClick={() => setAskReset(true)}
+          >
+            {busy ? "Resetting…" : "Reset database"}
+          </Button>
+        )}
+
+        {progress && (
+          <p className="text-muted-foreground bg-muted inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            {progress}
           </p>
-        </div>
+        )}
+        {result && <Notice tone="success">{result}</Notice>}
+        {stripeLeft.length > 0 && (
+          <p className="text-muted-foreground bg-muted rounded-xl px-3 py-2 text-sm break-all">
+            Left in Stripe (test mode), safe to delete there: {stripeLeft.join(", ")}
+          </p>
+        )}
+        {warning && <Notice tone="warning">{warning}</Notice>}
+        {error && <Notice tone="error">{error}</Notice>}
       </div>
-
-      <p className="text-muted-foreground text-sm leading-relaxed">
-        Permanently empties every operational table — places, reservations,
-        consumers, enrichment — deletes every stored image and menu file, and
-        removes every auth account that isn&apos;t an admin.{" "}
-        <strong>Preserved:</strong> admin allowlist, every admin console
-        config, and the category / tag / family vocabularies. This cannot be
-        undone.
-      </p>
-
-      <label className="flex flex-col gap-1.5">
-        <span className="text-foreground text-sm font-medium">
-          Type{" "}
-          <span className="rounded bg-red-100 px-1.5 py-0.5 font-mono text-red-700">
-            {CONFIRM_PHRASE}
-          </span>{" "}
-          to confirm
-        </span>
-        <TextField
-          value={confirm}
-          onChange={setConfirm}
-          placeholder={CONFIRM_PHRASE}
-          autoComplete="off"
-          spellCheck={false}
-          className="font-mono focus:border-red-400 focus:ring-2 focus:ring-red-200"
-        />
-      </label>
-
-      {filesPending ? (
-        <Button
-          tone="danger"
-          pending={busy}
-          disabled={!armed}
-          onClick={onFinishFiles}
-        >
-          {busy ? "Clearing files…" : "Finish clearing files"}
-        </Button>
-      ) : (
-        <Button
-          tone="danger"
-          pending={busy}
-          disabled={!armed}
-          onClick={onReset}
-        >
-          {busy ? "Resetting…" : "Reset database"}
-        </Button>
-      )}
-
-      {progress && (
-        <p className="text-muted-foreground bg-muted inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm">
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-          {progress}
-        </p>
-      )}
-      {result && (
-        <p className="inline-flex items-center gap-1.5 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          {result}
-        </p>
-      )}
-      {stripeLeft.length > 0 && (
-        <p className="text-muted-foreground bg-muted rounded-xl px-3 py-2 text-sm break-all">
-          Left in Stripe (test mode), safe to delete there: {stripeLeft.join(", ")}
-        </p>
-      )}
-      {warning && (
-        <p className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          {warning}
-        </p>
-      )}
-      {error && (
-        <p className="rounded-xl bg-red-100 px-3 py-2 text-sm text-red-700">{error}</p>
-      )}
-    </section>
+      <ConfirmDialog
+        open={askReset}
+        danger
+        title="Reset database?"
+        body="Every operational table is emptied, every stored file is deleted and every non-admin account is removed. This cannot be undone."
+        confirmLabel="Reset database"
+        onCancel={() => setAskReset(false)}
+        onConfirm={() => {
+          setAskReset(false);
+          return onReset();
+        }}
+      />
+    </SectionCard>
   );
 }

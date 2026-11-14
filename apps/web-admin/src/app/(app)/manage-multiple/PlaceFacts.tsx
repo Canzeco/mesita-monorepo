@@ -4,8 +4,10 @@
 // table (one row per place) and Single Place (one place, one card) so the
 // same fact can never read green on one page and grey on the other.
 
-// falseTone comes from the fact vocabulary (STATE_FACT_FALSE_TONE): rose for
-// a pending debt, plain grey for a fact that is merely not true. The taxonomy
+import { Chip, type ChipTone } from "@/components/admin-ui";
+
+// falseTone comes from the fact vocabulary (STATE_FACT_FALSE_TONE): warning for
+// a pending debt, plain neutral for a fact that is merely not true. The taxonomy
 // lives in state-vocabulary.ts, so neither page can pick its own.
 export function StatePill({
   on,
@@ -14,38 +16,23 @@ export function StatePill({
 }: {
   on: boolean | "unknown";
   falseTone?: "pending" | "neutral";
-  /** For a fact where `true` is the problem (Disabled): rose when true,
-   *  green when false. */
+  /** For a fact where `true` is the problem (Disabled): warning when true,
+   *  success when false. */
   badWhenTrue?: boolean;
 }) {
   // "?" is its own rendering, not a shade of no: the row is saying it does not
-  // know, and a grey "no" would read as an answer.
+  // know, and a neutral "no" would read as an answer.
   if (on === "unknown") {
-    return (
-      <span
-        title="This payload does not carry that fact"
-        className="text-muted-foreground bg-muted inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold"
-      >
-        ?
-      </span>
-    );
+    return <Chip title="This payload does not carry that fact">?</Chip>;
   }
-  return (
-    <span
-      className={
-        "inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold " +
-        (badWhenTrue
-          ? on
-            ? "bg-rose-500/10 text-rose-700"
-            : "bg-green-500/10 text-green-700"
-          : on
-            ? "bg-green-500/10 text-green-700"
-            : falseTone === "neutral"
-              ? "text-muted-foreground bg-muted"
-              : "bg-rose-500/10 text-rose-700")
-      }
-    >
-      {on ? "yes" : "no"}
-    </span>
-  );
+  const tone: ChipTone = badWhenTrue
+    ? on
+      ? "warning"
+      : "success"
+    : on
+      ? "success"
+      : falseTone === "neutral"
+        ? "neutral"
+        : "warning";
+  return <Chip tone={tone}>{on ? "yes" : "no"}</Chip>;
 }

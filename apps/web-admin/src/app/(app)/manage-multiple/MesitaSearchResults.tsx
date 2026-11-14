@@ -10,7 +10,7 @@ import {
   REVIEW_STATE_FACTS,
   STATE_FACT_FALSE_TONE,
 } from "@/lib/state-vocabulary";
-import { STICKY_COL_CELL, STICKY_COL_HEAD } from "@/lib/ui-classes";
+import { STICKY_COL_CELL, STICKY_COL_HEAD } from "@/components/admin-ui";
 import { factOn, type Row } from "./mesita-search-facts";
 import { StatePill } from "./PlaceFacts";
 import { PlaceStateCells, PlaceStateHeads, PlaceStatePill } from "./PlaceStateCells";

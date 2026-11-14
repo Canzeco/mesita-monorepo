@@ -15,7 +15,7 @@
 // Reviews stay a separate reload.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Building, ExternalLink, Loader2, Play, Search } from "lucide-react";
+import { Building, ExternalLink, Play, Search } from "lucide-react";
 import {
   createPlaceFromGooglePlaceId,
   enrichPlace,
@@ -25,20 +25,18 @@ import {
 } from "@/app/(app)/manage-multiple/actions";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
-import { CopyIdButton, ReadField } from "@/components/admin-ui";
-import { BONE_CLASS, SectionCard } from "@/components/admin-ui/manage";
+import {
+  Button,
+  CopyIdButton,
+  Notice,
+  ReadField,
+  SectionCard,
+  Skeleton,
+  TextField,
+} from "@/components/admin-ui";
 import { businessPlaceHref } from "@/lib/business-url";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
-import { GENERAL_STATE_FACTS } from "@/lib/state-vocabulary";
-import { PLACE_STATE_ROWS } from "@mesita/place-profile/lib/place-states";
 
-// The skeleton's state columns: the yes/no Profile States, Premier, then the
-// twelve Place States (MESITA-3595), as FindResults draws them.
-const SKELETON_STATES = [
-  ...GENERAL_STATE_FACTS.map((f) => f.key),
-  "premier",
-  ...PLACE_STATE_ROWS.map((r) => r.key),
-];
 import {
   catalogueList,
   mergeFindResults,
@@ -53,7 +51,7 @@ import {
   searchTextSource,
 } from "./find-sources";
 import { DEFAULT_NAME_ADMIN, type NameAdminConfig } from "../filters-config/catalog";
-import { FIND_TABLE_FRAME, FindResults, type RowNote } from "./FindResults";
+import { FindResults, type RowNote } from "./FindResults";
 import { classifyLookup, googleMapsPlaceHref } from "./single-place-lookup";
 
 export type View =
@@ -366,10 +364,9 @@ export function SinglePlaceClient({
   return (
     <div className="flex flex-col gap-5">
       <SectionCard
-        tint="sky"
         title="Find"
         subtitle="The list is every place Mesita holds. Press Enter to search. A name asks Google. A Google Place ID opens or creates."
-        icon={<Search className="h-4 w-4" />}
+        icon={<Search />}
       >
         <form
           className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center"
@@ -378,38 +375,33 @@ export function SinglePlaceClient({
             void find();
           }}
         >
-          <input
+          <TextField
             id="single-place-lookup"
             aria-label="Google Place ID or place name"
             value={text}
             disabled={isBusy}
-            onChange={(e) => setText(e.target.value)}
+            onChange={setText}
             placeholder="ChIJ… or a place name"
             autoComplete="off"
-            className="border-border bg-background focus:border-foreground h-10 w-full rounded-xl border px-3 text-sm outline-none disabled:opacity-50"
+            className="w-full"
           />
-          <button
+          <Button
             type="submit"
+            pending={busy === "find"}
             disabled={isBusy}
-            className="bg-foreground text-background inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
+            icon={<Search className="h-3.5 w-3.5" />}
           >
-            {busy === "find" ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Search className="h-3.5 w-3.5" />
-            )}
             {busy === "find" ? "Finding…" : "Find"}
-          </button>
+          </Button>
         </form>
 
         {error ? (
-          <div className="border-destructive/40 bg-destructive/5 text-destructive mt-4 flex items-start gap-3 rounded-2xl border p-4 text-sm">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>{error}</p>
-          </div>
+          <Notice tone="error" className="mt-4">
+            {error}
+          </Notice>
         ) : null}
 
-        {view == null ? <CatalogueSkeleton /> : null}
+        {view == null ? <Skeleton variant="table" label="Loading Mesita places" className="mt-4" /> : null}
 
         {view?.kind === "matches" ? (
           <FindResults
@@ -444,68 +436,6 @@ export function SinglePlaceClient({
   );
 }
 
-/** The catalogue while it loads, laid out as FindResults lays it out (Pato,
- *  MESITA-2701: "the placeholders must be similar to the page you are
- *  loading, like the sizes"): the same card (FIND_TABLE_FRAME), bled to the
- *  edges on a phone,
- *  its 11px head band, then rows of the Place cell (the 14px name over the
- *  11px address) and every state pill. From 640px the 9rem On column
- *  leads each row; under that its pill sits above the name. The table runs
- *  wider than the pane, so the row end (the action) is off screen here as
- *  it is there. It was three grey bars. */
-function CatalogueSkeleton() {
-  const held = "hidden w-36 shrink-0 justify-center px-3 py-3 sm:flex";
-  const place = "w-[60vw] shrink-0 px-4 py-3 sm:w-[280px]";
-  const state = "flex w-24 shrink-0 justify-center px-3 py-3";
-  return (
-    <div
-      aria-busy="true"
-      aria-label="Loading Mesita places"
-      className={FIND_TABLE_FRAME}
-    >
-      <div aria-hidden className="bg-muted/30 type-label flex">
-        <div className={held}>
-          <div className="flex h-[1lh] items-center">
-            <div className={`${BONE_CLASS} h-2.5 w-5`} />
-          </div>
-        </div>
-        <div className={place}>
-          <div className="flex h-[1lh] items-center">
-            <div className={`${BONE_CLASS} h-2.5 w-10`} />
-          </div>
-        </div>
-        {SKELETON_STATES.map((k) => (
-          <div key={k} className={state}>
-            <div className="flex h-[1lh] items-center">
-              <div className={`${BONE_CLASS} h-2.5 w-14`} />
-            </div>
-          </div>
-        ))}
-      </div>
-      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-        <div key={i} aria-hidden className="border-border/60 flex border-t">
-          <div className={held}>
-            <div className={`${BONE_CLASS} h-5 w-14 rounded-full`} />
-          </div>
-          <div className={place}>
-            <div className={`${BONE_CLASS} mb-1 h-5 w-14 rounded-full sm:hidden`} />
-            <div className="flex h-5 items-center">
-              <div className={`${BONE_CLASS} h-3.5 w-40 max-w-full`} />
-            </div>
-            <div className="type-label flex h-[1lh] items-center">
-              <div className={`${BONE_CLASS} h-2.5 w-52 max-w-full`} />
-            </div>
-          </div>
-          {SKELETON_STATES.map((k) => (
-            <div key={k} className={state}>
-              <div className={`${BONE_CLASS} h-5 w-8 rounded-full`} />
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /** One Place-ID lookup on Google, through the same route Google Search
  *  uses, so an ID Mesita does not hold still gets a name before Create. */
@@ -546,20 +476,18 @@ export function AbsentCard({
   const g = view.google;
   return (
     <SectionCard
-      tint="violet"
       title={g?.displayName ?? "Not on Mesita"}
       subtitle={g?.formattedAddress ?? "Mesita holds no place with this Google Place ID."}
-      icon={<Building className="h-4 w-4" />}
-      action={
-        <button
-          type="button"
+      icon={<Building />}
+      right={
+        <Button
           onClick={onCreate}
           disabled={disabled}
-          className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
+          pending={busy}
+          icon={<Play className="h-3.5 w-3.5" />}
         >
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
           Create
-        </button>
+        </Button>
       }
     >
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
