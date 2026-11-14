@@ -19,11 +19,21 @@ Deno.test("maskGuest: the name when set, else two characters of the email's loca
 
 type Call = { fn: string; args: Record<string, unknown> };
 
-function fakeAdmin(calls: Call[]): SupabaseClient {
+/** `basket`: the rows a PaymentIntent pays (MESITA-3841); [] reads as a
+ *  single purchase. */
+function fakeAdmin(calls: Call[], basket: PurchaseRow[] = []): SupabaseClient {
   let n = 0;
   return {
     from(table: string) {
       return {
+        select() {
+          const chain = {
+            eq: () => chain,
+            order: () => chain,
+            then: (ok: (v: { data: unknown; error: null }) => unknown) => Promise.resolve({ data: basket, error: null }).then(ok),
+          };
+          return chain;
+        },
         insert(row: Record<string, unknown>) {
           calls.push({ fn: `insert:${table}`, args: row });
           const id = `att-${++n}`;
@@ -147,4 +157,44 @@ Deno.test("refundPayment: an outside bill goes to wallet_refund_outside, never S
   assertEquals(calls[0].args, { p_payment_id: "py-2" });
   const done = await refundPayment({ admin: fakeAdmin([]), stripe, actor: "op" }, { ...row, status: "refunded" });
   assertEquals(done.ok, false);
+});
+
+// ── A basket (MESITA-3841): several rows on one PaymentIntent ──────────────
+
+const BASKET: PurchaseRow[] = [
+  { ...PURCHASE, id: "lead", fee_collected: "invoice" },
+  { ...PURCHASE, id: "f-1", fee_collected: "invoice" },
+  { ...PURCHASE, id: "f-2", amount_cents: 100000, bonus_cents: 20000, voucher: "voucher_1000", fee_collected: "invoice" },
+];
+
+Deno.test("refundPurchase on a basket row refunds the whole basket's charge once, spread over its rows in order", async () => {
+  const calls: Call[] = [];
+  const seen: Record<string, unknown>[] = [];
+  const stripe: StripeCall = (_m, _p, params) => {
+    seen.push(params ?? {});
+    return Promise.resolve({ id: "re_b" });
+  };
+  const r = await refundPurchase({ admin: fakeAdmin(calls, BASKET), stripe, actor: "op" }, BASKET[1]);
+  assertEquals(r.ok && r.card_refunded_cents, 140000);
+  assertEquals(seen.length, 1);
+  assertEquals(seen[0].payment_intent, "pi_1");
+  assertEquals(seen[0].amount, 140000);
+  assertEquals(calls.filter((c) => c.fn === "wallet_refund_purchase").map((c) => c.args), [
+    { p_purchase_id: "lead", p_amount_refunded: 20000 },
+    { p_purchase_id: "f-1", p_amount_refunded: 20000 },
+    { p_purchase_id: "f-2", p_amount_refunded: 100000 },
+  ]);
+});
+
+Deno.test("refundPurchase on a basket: a partial amount fills the rows in order, after what was already refunded", async () => {
+  const calls: Call[] = [];
+  const stripe: StripeCall = () => Promise.resolve({ id: "re_p" });
+  // MX$100 already back on the lead; MX$250 more.
+  const rows = [{ ...BASKET[0], refunded_cents: 10000 }, BASKET[1], BASKET[2]];
+  const r = await refundPurchase({ admin: fakeAdmin(calls, rows), stripe, actor: "op" }, rows[2], 25000);
+  assertEquals(r.ok && r.card_refunded_cents, 25000);
+  assertEquals(calls.filter((c) => c.fn === "wallet_refund_purchase").map((c) => c.args), [
+    { p_purchase_id: "lead", p_amount_refunded: 20000 },
+    { p_purchase_id: "f-1", p_amount_refunded: 15000 },
+  ]);
 });

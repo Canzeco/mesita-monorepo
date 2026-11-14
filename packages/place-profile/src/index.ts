@@ -34,6 +34,7 @@ export type {
   RewardsSection,
   PlaceCreatingView,
   PlaceMenuItem,
+  VoucherBasketItem,
 } from "./actions";
 export type { PlaceBalance, PlaceDetail, PlaceMoney, PlaceScore, VoucherCatalogLine, VoucherKey } from "./place-detail";
 export { VOUCHER_KEYS } from "./place-detail";

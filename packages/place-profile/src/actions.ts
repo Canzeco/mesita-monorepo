@@ -4,6 +4,9 @@ import type { PlaceDetail, VoucherKey } from "./place-detail";
 
 export type PlaceMenuItem = PlaceDetail["products"]["menu"][number];
 
+/** One line of the Offers page's basket (MESITA-3841): a voucher and how many. */
+export type VoucherBasketItem = { voucher: VoucherKey; qty: number };
+
 /** The profile is on screen before Mesita holds it — a Google-only card the
  *  guest opened (MESITA-2307). While the create runs a Creating fact leads
  *  the facts row (MESITA-2679); a refusal says why at the top of Overview. */
@@ -34,10 +37,12 @@ export type PlaceActions = {
   onBoost?: () => void;
   onOpenMenu?: (menu: PlaceMenuItem) => void;
   onOpenLink?: (url: string) => void;
-  /** The Rewards sheet's Buy (MESITA-3303; a tab until MESITA-3412): opens Stripe Checkout on the
-   *  place's account. Absent, the button is inert (admin's preview). */
-  onBuyVoucher?: (key: VoucherKey) => void;
-  /** The voucher whose Checkout is opening; its button reads Opening…. */
+  /** The Rewards sheet's Buy (MESITA-3303; a tab until MESITA-3412): pays
+   *  the guest's selection on the place's account. Since MESITA-3841 a
+   *  basket: every voucher picked with its quantity, one charge for all.
+   *  Absent, the button is inert (admin's preview). */
+  onBuyVoucher?: (items: VoucherBasketItem[]) => void;
+  /** A voucher of the basket being paid; while set the button reads Opening…. */
   buyingVoucher?: VoucherKey | null;
   /** The Rewards sheet opened: the host refreshes `place.money` (the offer and
    *  the guest's credit) from consumer-web-list-vouchers. */

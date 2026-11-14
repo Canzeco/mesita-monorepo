@@ -6,7 +6,22 @@ import { assertEquals, assertRejects } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, VOUCHER_CATALOG, voucherFeeCents } from "./money.ts";
 import type { AccountRow, PaymentSettings } from "./payments.ts";
-import { buyRefusal, CATALOG_LINES, storyRefusal, vipRefusal, offerFrom, openVoucherCheckout, overPlaceCap, PLACE_CAP_CENTS, voucherCheckoutParams } from "./vouchers.ts";
+import {
+  basketUnits,
+  buyRefusal,
+  CATALOG_LINES,
+  offerFrom,
+  openPurchaseRow,
+  openVoucherCheckout,
+  overPlaceCap,
+  parseBasket,
+  PLACE_CAP_CENTS,
+  sameUnits,
+  storyRefusal,
+  vipRefusal,
+  voucherCheckoutParams,
+  voucherMetadata,
+} from "./vouchers.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
 
 const PLACE = "00000000-0000-4000-8000-0000000a3303";
@@ -150,7 +165,13 @@ type Fake = {
 
 /** A wallet_purchases table of one insert and its updates; the place's
  *  outstanding credit (MESITA-3305's cap) answers `outstanding`, 0 by default. */
-function fakeAdmin(opts: { insertError?: { code: string; message: string }; existing?: Record<string, unknown> | null; outstanding?: number }): Fake {
+function fakeAdmin(opts: {
+  insertError?: { code: string; message: string };
+  /** A basket's follower insert (MESITA-3841). */
+  followerError?: { code: string; message: string };
+  existing?: Record<string, unknown> | null;
+  outstanding?: number;
+}): Fake {
   const inserts: Fake["inserts"] = [];
   const updates: Fake["updates"] = [];
   const admin = {
@@ -163,6 +184,7 @@ function fakeAdmin(opts: { insertError?: { code: string; message: string }; exis
       return {
         insert: (row: Record<string, unknown>) => {
           inserts.push(row);
+          if (Array.isArray(row)) return Promise.resolve({ error: opts.followerError ?? null });
           return {
             select: () => ({
               single: () => Promise.resolve(opts.insertError ? { data: null, error: opts.insertError } : { data: { id: ROW }, error: null }),
@@ -355,4 +377,79 @@ Deno.test("vipRefusal: VIP needs the VIP class, not past vip_until; other vouche
   // vip_until is the last day VIP holds.
   assertEquals(vipRefusal("voucher_vip", { ...vip, vip_until: today }, today), null);
   assertEquals(vipRefusal("voucher_vip", { ...vip, vip_until: "2026-11-08" }, today)?.code, "not_vip");
+});
+
+// ── The basket (MESITA-3841) ───────────────────────────────────────────────
+
+Deno.test("parseBasket: the old voucher field is a basket of one; items need known keys, qty 1..5, one Welcome / VIP, no key twice", () => {
+  assertEquals(parseBasket({ voucher: "voucher_200" }), { ok: true, items: [{ voucher: "voucher_200", qty: 1 }] });
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 2 }, { voucher: "voucher_1000", qty: 1 }] }).ok, true);
+  assertEquals(parseBasket({ voucher: "bogus" }).ok, false);
+  assertEquals(parseBasket({ items: [] }).ok, false);
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 6 }] }).ok, false);
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 0 }] }).ok, false);
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 1.5 }] }).ok, false);
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_welcome", qty: 2 }] }).ok, false);
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_vip", qty: 2 }] }).ok, false);
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 1 }, { voucher: "voucher_200", qty: 1 }] }).ok, false);
+  assertEquals(parseBasket({ items: [{ voucher: "nope", qty: 1 }] }).ok, false);
+});
+
+Deno.test("basketUnits: one unit per row, Welcome leads; sameUnits compares baskets as multisets", () => {
+  const units = basketUnits([{ voucher: "voucher_200", qty: 2 }, { voucher: "voucher_welcome", qty: 1 }, { voucher: "voucher_1000", qty: 1 }]);
+  assertEquals(units, ["voucher_welcome", "voucher_200", "voucher_200", "voucher_1000"]);
+  assertEquals(sameUnits(["voucher_200", "voucher_1000"], ["voucher_1000", "voucher_200"]), true);
+  assertEquals(sameUnits(["voucher_200"], ["voucher_200", "voucher_200"]), false);
+  assertEquals(sameUnits([], []), true);
+});
+
+Deno.test("the place cap counts the whole basket's credit", () => {
+  // 2× Small (MX$220 credit each) + Big (MX$1,200): MX$1,640.
+  const basket = ["voucher_200", "voucher_200", "voucher_1000"] as const;
+  assertEquals(overPlaceCap(PLACE_CAP_CENTS - 1_640_00, basket, false), false);
+  assertEquals(overPlaceCap(PLACE_CAP_CENTS - 1_639_00, basket, false), true);
+  assertEquals(overPlaceCap(PLACE_CAP_CENTS, basket, true), false);
+});
+
+Deno.test("a basket's rows: the lead under the request_id, one follower row per other unit pointing to it, no request_id", async () => {
+  const fake = fakeAdmin({});
+  const r = await openPurchaseRow(fake.admin, { ...BUY, followers: ["voucher_200", "voucher_1000"] });
+  assertEquals(r, { ok: true, duplicate: false, purchaseId: ROW });
+  assertEquals(fake.inserts.length, 2);
+  assertEquals(fake.inserts[0].request_id, REQUEST);
+  const followers = fake.inserts[1] as unknown as Array<Record<string, unknown>>;
+  assertEquals(followers.map((f) => [f.voucher, f.amount_cents, f.bonus_cents, f.basket_lead_id, f.status, "request_id" in f]), [
+    ["voucher_200", 20000, 2000, ROW, "opening", false],
+    ["voucher_1000", 100000, 20000, ROW, "opening", false],
+  ]);
+});
+
+Deno.test("a basket the cap refuses writes no row; a follower the database refuses fails the lead (all or nothing)", async () => {
+  const capped = fakeAdmin({ outstanding: PLACE_CAP_CENTS - 300_00 });
+  const r = await openPurchaseRow(capped.admin, { ...BUY, followers: ["voucher_200"] });
+  assertEquals(r.ok === false && r.code, "place_cap");
+  assertEquals(capped.inserts.length, 0);
+
+  const broken = fakeAdmin({ followerError: { code: "XX000", message: "boom" } });
+  await assertRejects(() => openPurchaseRow(broken.admin, { ...BUY, followers: ["voucher_200"] }), Error, "basket_insert");
+  assertEquals(broken.updates.map((u) => [u.patch.status, u.patch.stripe_error, u.eq]), [["failed", "basket_write", { id: ROW, status: "opening" }]]);
+});
+
+Deno.test("a basket's metadata names the lead and carries the sums; a single voucher's is unchanged", () => {
+  const one = voucherMetadata({ purchaseId: ROW, placeId: PLACE, consumerId: GUEST, voucher: "voucher_200" });
+  assertEquals(one, {
+    mesita_kind: "wallet_voucher",
+    purchase_id: ROW,
+    place_id: PLACE,
+    consumer_id: GUEST,
+    voucher: "voucher_200",
+    amount_cents: "20000",
+    bonus_cents: "2000",
+  });
+  const many = voucherMetadata({ purchaseId: ROW, placeId: PLACE, consumerId: GUEST, voucher: "voucher_200", followers: ["voucher_200", "voucher_1000"] });
+  assertEquals(many.purchase_id, ROW);
+  assertEquals(many.amount_cents, "140000");
+  assertEquals(many.bonus_cents, "24000");
+  assertEquals(many.basket, "3");
+  assertEquals(many.basket_items, "voucher_200x2,voucher_1000x1");
 });

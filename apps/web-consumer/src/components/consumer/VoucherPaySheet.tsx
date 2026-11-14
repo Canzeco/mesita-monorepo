@@ -8,7 +8,8 @@ import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 // small sheet: each saved card is one tap that charges it on the place's own
 // account (no Stripe page); "Stripe's page" is the Checkout as before; "Add
 // a card" saves one on Stripe's page and comes back here. Every amount and
-// every refusal is the server's.
+// every refusal is the server's. A basket of several vouchers (MESITA-3841)
+// is one charge on a saved card: Stripe's page is not offered for it.
 
 const ROW =
   "border-border bg-card hover:bg-muted flex min-h-14 w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition disabled:opacity-50";
@@ -20,6 +21,7 @@ export function VoucherPaySheet({
   title,
   cards,
   busy,
+  checkoutAllowed = true,
   onCard,
   onCheckout,
   onAddCard,
@@ -31,6 +33,8 @@ export function VoucherPaySheet({
   /** null while the saved cards load. */
   cards: SavedCard[] | null;
   busy: boolean;
+  /** False for a basket of several vouchers: saved cards only (MESITA-3841). */
+  checkoutAllowed?: boolean;
   onCard: (card: SavedCard) => void;
   onCheckout: () => void;
   onAddCard: () => void;
@@ -57,9 +61,13 @@ export function VoucherPaySheet({
               </button>
             ))
           )}
-          <button type="button" className={QUIET} disabled={busy} onClick={onCheckout}>
-            Pay on Stripe&apos;s page
-          </button>
+          {checkoutAllowed ? (
+            <button type="button" className={QUIET} disabled={busy} onClick={onCheckout}>
+              Pay on Stripe&apos;s page
+            </button>
+          ) : (
+            <p className="text-muted-foreground px-1 text-xs">Several vouchers are one charge on a saved card.</p>
+          )}
           <button type="button" className={QUIET} disabled={busy} onClick={onAddCard}>
             Add a card
           </button>

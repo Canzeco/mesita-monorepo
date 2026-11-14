@@ -26,6 +26,12 @@
 // makes one clone, one PI and one confirm. A new tap after a failure is a new
 // request_id and a new row.
 //
+// A basket (MESITA-3841) is the same machinery on several rows: the lead (the
+// tap's request_id, metadata.purchase_id) and its followers, ONE clone, ONE
+// PaymentIntent for the sum, stored on every row at once (openPi); a
+// succeeded PI credits every row, a decline or a cancel releases every row.
+// All or nothing: Stripe charges the sum once or not at all.
+//
 // Settlement afterwards (a 3-D Secure check finished in the browser) is
 // purchase-pi.ts's: the receiver (payment_intent.* with mesita_kind
 // wallet_voucher), the cron and the Wallet read all settle by PI; ten
@@ -36,7 +42,7 @@ import type { MoneyVoucherKey } from "./money-state.ts";
 import type { AccountRow } from "./payments.ts";
 import { type PurchaseStore, purchaseStore } from "./purchase-pi.ts";
 import { type CardStep } from "./tab-card.ts";
-import { type BuyRefusal, openPurchaseRow, REFUSAL_FOR, voucherMetadata, voucherName } from "./vouchers.ts";
+import { type BuyRefusal, openPurchaseRow, REFUSAL_FOR, sameUnits, voucherMetadata, voucherName } from "./vouchers.ts";
 import { availableAtFor, type VoucherPlace } from "./wallet.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
 
@@ -70,19 +76,26 @@ async function cancelQuietly(stripe: StripeCall, account: string, piId: string, 
   }
 }
 
-/** A PaymentIntent's state as the guest's next step. Credits a succeeded
- *  one; fails the row of one that can no longer pay. */
+/** The rows one tap pays: the lead, then a basket's followers (MESITA-3841). */
+type Units = { id: string; account: string; rows: Array<{ id: string; availableAt: string | null }> };
+
+async function releaseAll(store: PurchaseStore, row: Units, code: string): Promise<void> {
+  for (const r of row.rows) await store.release(r.id, code);
+}
+
+/** A PaymentIntent's state as the guest's next step. Credits every row of a
+ *  succeeded one; fails every row of one that can no longer pay. */
 async function stepOf(
   store: PurchaseStore,
   stripe: StripeCall,
-  row: { id: string; account: string; availableAt: string | null },
+  row: Units,
   pi: Record<string, unknown>,
   publishableKey: string | null,
 ): Promise<{ ok: true; step: CardStep } | CardBuyRefusal> {
   const piId = String(pi.id);
   switch (pi.status) {
     case "succeeded":
-      await store.credit(row.id, piId, row.availableAt);
+      for (const r of row.rows) await store.credit(r.id, piId, r.availableAt);
       return { ok: true, step: { status: "succeeded", payment_intent_id: piId } };
     case "processing":
       return { ok: true, step: { status: "processing", payment_intent_id: piId } };
@@ -92,7 +105,7 @@ async function stepOf(
       if (!publishableKey || !secret) {
         // The bank asks for a check the app cannot show: nothing was charged.
         await cancelQuietly(stripe, row.account, piId, row.id);
-        await store.release(row.id, "needs_auth_unavailable");
+        await releaseAll(store, row, "needs_auth_unavailable");
         return refuse(409, "card_needs_auth", "This card needs a bank check we can't show yet. Try another card or pay on Stripe's page.");
       }
       return {
@@ -101,14 +114,14 @@ async function stepOf(
       };
     }
     case "canceled":
-      await store.release(row.id, "pi_canceled");
+      await releaseAll(store, row, "pi_canceled");
       return refuse(409, "card_declined", "The card payment was cancelled. Try again.");
     default: {
       // requires_payment_method: declined (or a failed 3-D Secure).
       const last = (pi.last_payment_error ?? {}) as Record<string, unknown>;
       const decline = String(last.decline_code ?? last.code ?? "declined").slice(0, 64);
       await cancelQuietly(stripe, row.account, piId, row.id);
-      await store.release(row.id, `card_declined:${decline}`);
+      await releaseAll(store, row, `card_declined:${decline}`);
       return refuse(409, "card_declined", "Your card was declined. Try another card.", { decline_code: decline });
     }
   }
@@ -136,19 +149,32 @@ export async function runVoucherCard(
   const row = await store.read(args.purchaseId);
   if (!row || !row.stripe_account_id) throw new Error("purchase_row_missing");
   const account = row.stripe_account_id;
-  const ref = { id: row.id, account, availableAt: availableAtFor(args.voucher, args.nowMs) };
+  const followers = await store.followers(row.id);
+  const all = [row, ...followers];
+  const ref: Units = {
+    id: row.id,
+    account,
+    rows: all.map((r) => ({ id: r.id, availableAt: availableAtFor(r.voucher ?? args.voucher, args.nowMs) })),
+  };
   const done = (step: CardStep): CardBuyOk => ({ ok: true, purchase_id: row.id, card: step });
   const closed = () => refuse(409, "closed", "That purchase was cancelled. Tap again to start over.");
 
   if (row.stripe_payment_intent_id) {
     // The same tap again: read where its PI stands.
-    if (PAID.has(row.status)) return done({ status: "succeeded", payment_intent_id: row.stripe_payment_intent_id });
-    if (row.status !== "open") return closed();
+    if (all.every((r) => PAID.has(r.status))) return done({ status: "succeeded", payment_intent_id: row.stripe_payment_intent_id });
+    if (row.status !== "open" && !PAID.has(row.status)) return closed();
     const pi = await stripe("GET", `payment_intents/${encodeURIComponent(row.stripe_payment_intent_id)}`, undefined, { stripeAccount: account });
     const r = await stepOf(store, stripe, ref, pi, args.publishableKey);
     return r.ok ? done(r.step) : r;
   }
   if (row.status !== "opening" || row.stripe_checkout_session_id) return closed();
+  if (followers.some((f) => f.status !== "opening")) {
+    // A follower the cron already failed: the basket is all or nothing.
+    await releaseAll(store, ref, "basket_closed");
+    return closed();
+  }
+  const amount = all.reduce((sum, r) => sum + r.amount_cents, 0);
+  const followerKeys = followers.map((f) => f.voucher as MoneyVoucherKey);
 
   let pi: Record<string, unknown>;
   try {
@@ -157,18 +183,24 @@ export async function runVoucherCard(
       idempotencyKey: `vouchercard-clone:${row.id}`,
     });
     pi = await stripe("POST", "payment_intents", {
-      amount: row.amount_cents,
+      amount,
       currency: args.currency,
       payment_method: String(cloned.id),
       payment_method_types: ["card"],
-      description: `${voucherName(args.voucher)} · ${(args.placeName ?? "Mesita place")}`.slice(0, 250),
-      metadata: voucherMetadata({ purchaseId: row.id, placeId: args.placeId, consumerId: args.consumerId, voucher: args.voucher }),
+      description: `${all.length > 1 ? `${all.length} vouchers` : voucherName(args.voucher)} · ${(args.placeName ?? "Mesita place")}`.slice(0, 250),
+      metadata: voucherMetadata({
+        purchaseId: row.id,
+        placeId: args.placeId,
+        consumerId: args.consumerId,
+        voucher: args.voucher,
+        ...(followerKeys.length > 0 ? { followers: followerKeys } : {}),
+      }),
     }, { stripeAccount: account, idempotencyKey: `vouchercard-pi:${row.id}` });
   } catch (err) {
     if (inFlight(err)) return refuse(409, "in_progress", "Your purchase is already on its way.");
     const code = stripeCode(err);
     console.error("[voucher-card] start_failed", JSON.stringify({ purchase_id: row.id, code }));
-    await store.release(row.id, code);
+    await releaseAll(store, ref, code);
     return refuse(502, "card_failed", "Couldn't start the card payment. Try again.", { stripe_code: code });
   }
   const piId = String(pi.id);
@@ -176,7 +208,7 @@ export async function runVoucherCard(
   if (!(await store.openPi(row.id, piId))) {
     // Nobody could credit a PI the row does not name: cancel it, release.
     await cancelQuietly(stripe, account, piId, row.id);
-    await store.release(row.id, "pi_write");
+    await releaseAll(store, ref, "pi_write");
     return refuse(502, "card_failed", "Couldn't start the card payment. Try again.");
   }
 
@@ -215,8 +247,17 @@ export async function readRequestRow(
   return (data as { id: string; voucher: string | null; place_id: string; currency: string; status: string; stripe_checkout_session_id: string | null } | null) ?? null;
 }
 
+/** The vouchers a basket lead's followers hold (MESITA-3841), to tell the
+ *  same tap's basket from another one under the same request_id. */
+export async function readFollowerVouchers(admin: SupabaseClient, leadId: string): Promise<Array<string | null>> {
+  const { data, error } = await admin.from("wallet_purchases").select("voucher").eq("basket_lead_id", leadId);
+  if (error) throw new Error(`purchase_followers: ${error.message}`);
+  return ((data ?? []) as Array<{ voucher: string | null }>).map((r) => r.voucher);
+}
+
 /** The whole saved-card buy after every gate passed: the row (or the same
- *  tap's row again), then runVoucherCard. */
+ *  tap's row again), then runVoucherCard. A basket (MESITA-3841): `voucher`
+ *  is the lead's unit and `followers` the rest. */
 export async function openVoucherCard(
   admin: SupabaseClient,
   stripe: StripeCall,
@@ -232,6 +273,7 @@ export async function openVoucherCard(
     platformPm: string;
     publishableKey: string | null;
     nowMs: number;
+    followers?: readonly MoneyVoucherKey[];
   },
 ): Promise<CardBuyOk | CardBuyRefusal | BuyRefusal> {
   const opened = await openPurchaseRow(admin, args);
@@ -250,6 +292,9 @@ export async function openVoucherCard(
       return { ok: false, status: 409, ...REFUSAL_FOR.used };
     }
     if (row.stripe_checkout_session_id || row.voucher !== args.voucher || row.place_id !== args.place.id) {
+      return refuse(409, "in_progress", "Your purchase is already on its way.");
+    }
+    if (!sameUnits(await readFollowerVouchers(admin, row.id), args.followers ?? [])) {
       return refuse(409, "in_progress", "Your purchase is already on its way.");
     }
     purchaseId = row.id;

@@ -85,6 +85,8 @@ export const MONEY_CODES = [
   "needs_visit",
   // VIP (MESITA-3550): the guest is not of the VIP class
   "not_vip",
+  // A basket of several vouchers (MESITA-3841) pays with a saved card only
+  "basket_needs_card",
 ] as const;
 
 export type MoneyCode = (typeof MONEY_CODES)[number];

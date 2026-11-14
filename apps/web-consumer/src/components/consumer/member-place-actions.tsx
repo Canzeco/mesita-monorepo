@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { readCached, writeCached } from "@/lib/screen-cache";
 import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import type { PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherKey } from "@mesita/place-profile";
+import type { PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherBasketItem, VoucherKey } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
 import { apiAddHouseCard, apiBuyVoucher, apiListVouchers, BUY_REFUSAL, buyRefusalAction, money as moneyLabel } from "@/lib/api/wallet";
@@ -353,12 +353,14 @@ export function usePlaceVouchers(placeId: string): {
   inWallet: boolean | undefined;
   /** Pins it with $0; resolves true once it is in the Wallet. */
   addHouseCard: () => Promise<boolean>;
+  /** The basket's lead voucher while it is being paid. */
   buying: VoucherKey | null;
   /** The first list-vouchers for this place has not answered (MESITA-3388). */
   loading: boolean;
   /** Reads the offer and the credit; resolves once it answered or failed. */
   load: () => Promise<void>;
-  buy: (key: VoucherKey) => void;
+  /** One voucher, or the Offers page's basket (MESITA-3841). */
+  buy: (what: VoucherKey | VoucherBasketItem[]) => void;
   sheet: ReactNode;
 } {
   const getSupabase = useLazyBrowserSupabase();
@@ -366,9 +368,9 @@ export function usePlaceVouchers(placeId: string): {
   const [state, setState] = useState<{ placeId: string; money: PlaceMoney } | null>(null);
   const [card, setCard] = useState<{ placeId: string; inWallet: boolean } | null>(null);
   const [buying, setBuying] = useState<VoucherKey | null>(null);
-  // The voucher whose "how to pay" sheet is open, and the saved cards
+  // The basket whose "how to pay" sheet is open, and the saved cards
   // (null while they load).
-  const [choosing, setChoosing] = useState<VoucherKey | null>(null);
+  const [choosing, setChoosing] = useState<VoucherBasketItem[] | null>(null);
   const [cards, setCards] = useState<SavedCard[] | null>(null);
   // The place whose list-vouchers answered, either way; set only in the
   // promise callbacks, never synchronously in an effect (Next 16 lint).
@@ -406,9 +408,11 @@ export function usePlaceVouchers(placeId: string): {
   );
 
   const buy = useCallback(
-    (key: VoucherKey) => {
+    (what: VoucherKey | VoucherBasketItem[]) => {
       if (!mesita) return;
-      setChoosing(key);
+      const items = typeof what === "string" ? [{ voucher: what, qty: 1 }] : what.filter((i) => i.qty > 0);
+      if (items.length === 0) return;
+      setChoosing(items);
       setCards(null);
       void apiListCards(getSupabase())
         .then((r) => setCards(r.cards))
@@ -422,6 +426,7 @@ export function usePlaceVouchers(placeId: string): {
 
   const checkout = useCallback(
     (key: VoucherKey) => {
+      // Stripe's page is one voucher (MESITA-3841: a basket needs a saved card).
       setBuying(key);
       void apiBuyVoucher(getSupabase(), {
         place_id: placeId,
@@ -451,15 +456,18 @@ export function usePlaceVouchers(placeId: string): {
   );
 
   const payWithCard = useCallback(
-    async (key: VoucherKey, card: SavedCard) => {
-      setBuying(key);
+    async (items: VoucherBasketItem[], card: SavedCard) => {
+      setBuying(items[0].voucher);
+      // One voucher reads exactly as before; a basket sends its lines, one
+      // charge for all (MESITA-3841). The same request_id after a bank check.
+      const one = items.length === 1 && items[0].qty === 1;
       const args = {
         place_id: placeId,
-        voucher: key,
+        ...(one ? { voucher: items[0].voucher } : { items }),
         request_id: crypto.randomUUID(),
         return_url: window.location.href,
         card_pm_id: card.id,
-      };
+      } as Parameters<typeof apiBuyVoucher>[1];
       try {
         let r = await apiBuyVoucher(getSupabase(), args);
         if (r.card?.status === "requires_action") {
@@ -470,7 +478,7 @@ export function usePlaceVouchers(placeId: string): {
           r = await apiBuyVoucher(getSupabase(), args);
         }
         setChoosing(null);
-        if (r.card?.status === "succeeded") toast.success("Voucher bought. The credit is in your Wallet.");
+        if (r.card?.status === "succeeded") toast.success(one ? "Voucher bought. The credit is in your Wallet." : "Vouchers bought. The credit is in your Wallet.");
         else if (r.card?.status === "processing") toast("Your bank is confirming the payment. The credit shows in your Wallet once it's through.");
         else toast("The bank check wasn't finished. Nothing was charged.", { tone: "error" });
       } catch (err: unknown) {
@@ -498,18 +506,28 @@ export function usePlaceVouchers(placeId: string): {
   }, []);
 
   const money = state?.placeId === placeId ? state.money : null;
-  const line = choosing ? money?.catalog[choosing] : undefined;
+  const units = (choosing ?? []).reduce((n, i) => n + i.qty, 0);
+  // The sheet's title is the server's prices, summed; never a guess.
+  const lines = (choosing ?? []).map((i) => ({ line: money?.catalog[i.voucher], qty: i.qty }));
+  const total = money && lines.length > 0 && lines.every((l) => l.line)
+    ? lines.reduce((sum, l) => sum + l.line!.price_cents * l.qty, 0)
+    : null;
   const sheet = (
     <VoucherPaySheet
       open={choosing !== null}
-      title={line && money ? `${moneyLabel(line.price_cents, money.currency)} voucher` : "Voucher"}
+      title={
+        total !== null && money
+          ? units > 1 ? `${units} vouchers · ${moneyLabel(total, money.currency)}` : `${moneyLabel(total, money.currency)} voucher`
+          : units > 1 ? `${units} vouchers` : "Voucher"
+      }
       cards={cards}
       busy={buying !== null}
+      checkoutAllowed={units === 1}
       onCard={(card) => {
         if (choosing) void payWithCard(choosing, card);
       }}
       onCheckout={() => {
-        if (choosing) checkout(choosing);
+        if (choosing && units === 1) checkout(choosing[0].voucher);
       }}
       onAddCard={addCard}
       onClose={() => setChoosing(null)}

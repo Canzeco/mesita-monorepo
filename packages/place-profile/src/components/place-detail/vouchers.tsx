@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgePercent, Banknote, CircleCheck, Crown, Info, Lock, PartyPopper, Smartphone, Ticket, Wallet, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, Check, CircleCheck, Crown, Info, Lock, Minus, PartyPopper, Plus, Smartphone, Ticket, Wallet, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
-import type { PlaceActions, RewardsSection } from "../../actions";
+import type { PlaceActions, RewardsSection, VoucherBasketItem } from "../../actions";
 import { cn, firstInitial } from "../../lib/format";
 import {
   PLACE_META_CLASS,
@@ -354,6 +354,16 @@ function noMx(v: string): string {
   return v.replace(/MX$/, "");
 }
 
+/** SELECT SEVERAL (MESITA-3841, Pato: "ENABLE TO SELECT MULTIPLE Vouchers";
+ *  "One charge, basket"): the money vouchers take a quantity, up to the
+ *  server's limit (consumer-web-buy-voucher, 1..5); Welcome and VIP are one
+ *  each, the server's rule too. */
+const BASKET_MAX_QTY = 5;
+const QTY_VOUCHERS: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_200", "voucher_1000", "voucher_5000"]);
+function maxQty(key: MoneyVoucherKey): number {
+  return QTY_VOUCHERS.has(key) ? BASKET_MAX_QTY : 1;
+}
+
 function readyIn(key: MoneyVoucherKey): string {
   if (key === "voucher_story") return "after story";
   // Every voucher but Story waits an hour (MESITA-3323); Welcome and VIP
@@ -638,13 +648,44 @@ export function VouchersPane({
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;
   // SELECT, THEN BUY (MESITA-3487, Pato: "you select then you click Buy.
-  // selector at the right").
-  const [picked, setPicked] = useState<MoneyVoucherKey | null>(null);
+  // selector at the right"). SEVERAL AT ONCE (MESITA-3841): each row toggles
+  // in or out of one basket, Small and Big with a quantity; Buy pays it all
+  // with one charge.
+  const [picked, setPicked] = useState<Partial<Record<MoneyVoucherKey, number>>>({});
+  const pick = (key: MoneyVoucherKey) => setPicked((b) => (b[key] ? b : { ...b, [key]: 1 }));
+  const toggle = (key: MoneyVoucherKey) =>
+    setPicked((b) => {
+      const next = { ...b };
+      if (next[key]) delete next[key];
+      else next[key] = 1;
+      return next;
+    });
+  const step = (key: MoneyVoucherKey, by: number) =>
+    setPicked((b) => {
+      const qty = Math.min(maxQty(key), (b[key] ?? 0) + by);
+      const next = { ...b };
+      if (qty <= 0) delete next[key];
+      else next[key] = qty;
+      return next;
+    });
 
   // SIZES FIRST (MESITA-3484, Pato: "Small Bonus, Mid Bonus, Big Bonus /
   // Welcome Bonus, Story Bonus, VIP Bonus").
   const products = listedProducts();
-  const chosen = picked && !loading && buyable(picked) ? products.find((p) => p.key === picked) ?? null : null;
+  const chosen = loading ? [] : products.filter((p) => (picked[p.key] ?? 0) > 0 && buyable(p.key)).map((p) => ({ product: p, qty: Math.min(picked[p.key] ?? 0, maxQty(p.key)) }));
+  const items: VoucherBasketItem[] = chosen.map((c) => ({ voucher: c.product.key, qty: c.qty }));
+  const units = chosen.reduce((n, c) => n + c.qty, 0);
+  // The button's sums: the server's catalog lines, never a guess. A read
+  // without them names the one voucher as before.
+  const lines = chosen.map((c) => ({ ...c, line: catalog[c.product.key] }));
+  const summed = lines.length > 0 && lines.every((l) => l.line)
+    ? {
+      pay: pesos(lines.reduce((sum, l) => sum + l.line!.price_cents * l.qty, 0), currency),
+      get: pesos(lines.reduce((sum, l) => sum + l.line!.credit_cents * l.qty, 0), currency),
+    }
+    : lines.length === 1 && units === 1
+      ? { pay: priceValue(lines[0].product, undefined, currency), get: creditValue(lines[0].product, undefined, currency) }
+      : null;
   // SHORTER ROWS, SYMMETRIC NAMES (MESITA-3490, Pato: "make the items a bit
   // shorter"; "Mesita Payments Cashback ... External Pay Cashback").
   // RENAMED (Pato, 2026-11-12, MESITA-3815: "Mesita Payment Cashback / back
@@ -681,8 +722,9 @@ export function VouchersPane({
             const can = !loading && buyable(p.key);
             const face = FACES[p.key];
             const Mark = face.Mark;
-            const opening = actions?.buyingVoucher === p.key;
-            const on = chosen?.key === p.key;
+            const opening = buying && (picked[p.key] ?? 0) > 0;
+            const qty = can ? picked[p.key] ?? 0 : 0;
+            const on = qty > 0;
             const lock = guestLock(p.key);
             const inner = (
               <>
@@ -703,7 +745,7 @@ export function VouchersPane({
                         loading
                           ? undefined
                           : can
-                            ? { label: "Choose this offer", onClick: () => setPicked(p.key) }
+                            ? { label: "Choose this offer", onClick: () => pick(p.key) }
                             : lock === "vip" && actions?.onJoinVip
                               ? { label: "Request VIP", onClick: actions.onJoinVip }
                               : lock === "instagram" && actions?.onLinkInstagram
@@ -725,23 +767,56 @@ export function VouchersPane({
                 {can ? (
                   <label className={cn(ROW, "hover:bg-muted/50 cursor-pointer")}>
                     <input
-                      type="radio"
+                      type="checkbox"
                       name="voucher"
                       value={p.key}
                       checked={on}
-                      onChange={() => setPicked(p.key)}
+                      onChange={() => toggle(p.key)}
                       aria-label={`Choose the ${p.name} voucher, ${deal}`}
                       className="sr-only"
                     />
                     {inner}
+                    {/* HOW MANY (MESITA-3841): Small and Big, once picked. The
+                        buttons are interactive content, so a tap on them never
+                        toggles the row. */}
+                    {on && maxQty(p.key) > 1 ? (
+                      <span className="flex shrink-0 items-center gap-1" data-voucher-qty={qty}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            step(p.key, -1);
+                          }}
+                          disabled={buying}
+                          aria-label={`One ${p.name} voucher less`}
+                          className="border-border flex h-6 w-6 items-center justify-center rounded-full border disabled:opacity-40"
+                        >
+                          <Minus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                        </button>
+                        <span className="w-4 text-center text-[15px] font-semibold tabular-nums" aria-live="polite">{qty}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            step(p.key, 1);
+                          }}
+                          disabled={buying || qty >= maxQty(p.key)}
+                          aria-label={`One more ${p.name} voucher`}
+                          className="border-border flex h-6 w-6 items-center justify-center rounded-full border disabled:opacity-40"
+                        >
+                          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                        </button>
+                      </span>
+                    ) : null}
+                    {/* A TICK BOX, NOT A RADIO (MESITA-3841): several rows can be on. */}
                     <span
                       className={cn(
-                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
-                        on ? "border-foreground" : "border-border",
+                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2",
+                        on ? "border-foreground bg-foreground text-paper" : "border-border",
                       )}
                       aria-hidden
                     >
-                      {on ? <span className="bg-foreground h-3 w-3 rounded-full" /> : null}
+                      {on ? <Check className="h-4 w-4" strokeWidth={3} /> : null}
                     </span>
                   </label>
                 ) : (
@@ -836,21 +911,30 @@ export function VouchersPane({
           </li>
         </ul>
       </section>
-      {/* ONE BUY AT THE FOOT (MESITA-3487): pick a row, then Buy. No Pay bill
-          here (MESITA-3486). */}
+      {/* ONE BUY AT THE FOOT (MESITA-3487): pick rows, then Buy. No Pay bill
+          here (MESITA-3486). The sums of the basket, one charge
+          (MESITA-3841). */}
       <div className="bg-card border-border sticky bottom-0 -mx-4 mt-auto -mb-4 border-t px-4 py-3" data-promos="checkout">
         <button
           type="button"
-          onClick={chosen && live ? () => actions?.onBuyVoucher?.(chosen.key) : undefined}
-          disabled={!chosen || !live || buying}
-          aria-label={chosen ? `Buy the ${chosen.name} voucher` : "Select an offer to buy"}
+          onClick={items.length > 0 && live ? () => actions?.onBuyVoucher?.(items) : undefined}
+          disabled={items.length === 0 || !live || buying}
+          aria-label={
+            items.length === 0
+              ? "Select an offer to buy"
+              : units === 1
+                ? `Buy the ${chosen[0].product.name} voucher`
+                : `Buy ${units} vouchers`
+          }
           className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold hover:opacity-90 disabled:opacity-40"
-          data-voucher-buy={chosen?.key}
+          data-voucher-buy={items.length > 0 ? items.map((i) => (i.qty > 1 ? `${i.voucher}x${i.qty}` : i.voucher)).join(",") : undefined}
         >
-          {chosen
-            ? actions?.buyingVoucher === chosen.key
+          {items.length > 0
+            ? buying
               ? "Opening…"
-              : `Pay ${noMx(priceValue(chosen, catalog[chosen.key], currency))}, Get ${noMx(creditValue(chosen, catalog[chosen.key], currency))} ${readyIn(chosen.key)}`
+              : summed
+                ? `Pay ${noMx(summed.pay)}, Get ${noMx(summed.get)} ${readyIn(chosen[0].product.key)}`
+                : `Buy ${units} vouchers`
             : "Select an offer"}
         </button>
       </div>
