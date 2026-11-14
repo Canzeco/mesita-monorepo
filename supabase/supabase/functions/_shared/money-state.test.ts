@@ -73,7 +73,7 @@ Deno.test("credit is the place's debt (MESITA-3408): every switch off, no accoun
   assertEquals(moneyState(everythingOff, can, { spendable_cents: 100 }).pay, "credit");
 });
 
-Deno.test("card cashback (MESITA-3589): the place's own rate, needs House Credits and Mesita Payments with a charging account", () => {
+Deno.test("card cashback (MESITA-3589): the place's own rate, needs House Credits and App Payments with a charging account", () => {
   const on = { ...off, house_credits: true, card_cashback_bps: 700 };
   assertEquals(moneyState(on, can, null).card_cashback_bps, 700);
   assertEquals(moneyState(on, can, null).cashback, true);

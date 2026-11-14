@@ -119,7 +119,7 @@ const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
 /** Each cashback's one rate (Main §10, MESITA-3596): Off or this. The server takes nothing else. */
 const CASHBACK_BPS: Record<PaymentRateKey, number> = {
   card_cashback_bps: 500,
-  cash_cashback_bps: 200,
+  cash_cashback_bps: 300,
   // MESITA-3827: Credits Payments and Mesita Prepayments Cashback.
   credit_cashback_bps: 200,
   prepay_cashback_bps: 500,
@@ -145,7 +145,7 @@ const QUIET_PILL_CLASS = "bg-muted text-foreground hover:bg-muted/70 hover:opaci
 function accountCopy(a: PaymentAccount): { line: string; button: string | null; open: boolean } {
   switch (a.state) {
     case "none":
-      return { line: "Your own account, where Mesita Payments and Mesita Prepayments land. Not needed for House Credits or cash.", button: "Connect Stripe", open: false };
+      return { line: "Your own account, where App Payments and Mesita Prepayments land. Not needed for House Credits or cash.", button: "Connect Stripe", open: false };
     case "onboarding":
       return { line: "Setup not finished.", button: "Continue setup", open: false };
     case "restricted":
@@ -251,6 +251,7 @@ export function PaymentsPanel({
   const needsHouseCredits = step("Turn House Credits on first.", "#house-credits");
   const needsStripe = step("Connect the Stripe Account first.", "#stripe-account");
   const needsCode = step("Set the waiter code first.", "#waiter-code");
+  const needsCash = step("Turn Cash Payments on first.", "#cash-payments");
   const needsPrepayments = step("Turn Mesita Prepayments on first.", "#mesita-prepayments");
 
   // The to-do strip (MESITA-3602, Pato: "a sequential horizontal to-do list to
@@ -469,7 +470,13 @@ export function PaymentsPanel({
             tone: "bg-lime-100 text-lime-700",
             blocked: codeSet ? undefined : needsCode,
           })}
-          {/* No cashback on cash (MESITA-3836): one cashback, Mesita Payments'. */}
+          {/* Cash earns 3% (MESITA-3837), the app 5%. */}
+          {rateRow({
+            key: "cash_cashback_bps",
+            name: "Cash Payments Cashback-as-Credits",
+            line: "Back as credit here on the bill, once your waiter taps Received. Never on the tip.",
+            blocked: !settings.house_credits ? needsHouseCredits : !settings.cash_payments ? needsCash : undefined,
+          })}
         </ul>
       </Card>
       {/* CREDITS PAYMENTS, ITS OWN SECTION WITH ITS CASHBACK (MESITA-3827,
@@ -490,12 +497,12 @@ export function PaymentsPanel({
         </ul>
       </Card>
       <Card className={SECTION}>
-        <h2 className={HEAD}>Mesita Payments</h2>
+        <h2 className={HEAD}>App Payments</h2>
         <ul className="divide-border divide-y">
           {switchRow({
             key: "pay_cards",
             id: "mesita-payments",
-            name: "Mesita Payments",
+            name: "App Payments",
             line: "Guests pay the bill by card inside the app.",
             icon: DeviceMobileIcon,
             tone: "bg-sky-100 text-sky-700",
@@ -510,11 +517,11 @@ export function PaymentsPanel({
           })}
           {rateRow({
             key: "card_cashback_bps",
-            name: "Mesita Payments Cashback-as-Credits",
+            name: "App Payments Cashback-as-Credits",
             line: "Back as credit here on the card part of the bill. Never on the tip.",
             blocked: !settings.house_credits ? needsHouseCredits : undefined,
             stripe: true,
-            note: settings.card_cashback_bps !== null && !state.cashback && settings.house_credits ? "Starts once Mesita Payments takes cards." : null,
+            note: settings.card_cashback_bps !== null && !state.cashback && settings.house_credits ? "Starts once App Payments takes cards." : null,
           })}
         </ul>
       </Card>

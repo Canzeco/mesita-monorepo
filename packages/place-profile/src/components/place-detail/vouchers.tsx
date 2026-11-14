@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgePercent, CircleCheck, Crown, Info, Lock, PartyPopper, Smartphone, Ticket, Wallet, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, CircleCheck, Crown, Info, Lock, PartyPopper, Smartphone, Ticket, Wallet, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
@@ -376,7 +376,7 @@ const CREDIT_FACTS = [
   // MESITA-3505, Pato: "you can fund your wallet with multiple vouchers and
   // then pay the bill with it ... everywhere, that is super important".
   "Buy as many vouchers as you want: their credits add up in one wallet, and you can pay one bill with all of them.",
-  "Spend your credits on your bill here whenever you want, in the Mesita app. You don't have to cover the whole bill with them: pay part with credits and the rest with Mesita Payments or directly to the place.",
+  "Spend your credits on your bill here whenever you want, in the Mesita app. You don't have to cover the whole bill with them: pay part with credits and the rest with App Payments or directly to the place.",
   "Credits only work at this place. You can send them to a friend.",
   "Neither prepaid credits nor tips earn cashback: the part of a bill you pay with credits, and any tip, get none back.",
 ];
@@ -764,12 +764,12 @@ export function VouchersPane({
       <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
         <SectionTitle
           id="rewards-payment"
-          title="Mesita Payments"
+          title="Payments"
         />
         <ul className="border-border divide-border divide-y rounded-2xl border" data-cashback>
           <li
             className={cn(ROW, !loading && !cashback && dim && "opacity-50")}
-            aria-label={`Mesita Payment Cashback: pay the bill here with Mesita, ${cardPct ?? "cashback"} comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
+            aria-label={`App Payment Cashback: pay the bill here with Mesita, ${cardPct ?? "cashback"} comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
           >
             <span className={cn(CHIP, CASHBACK_FACE.card)} aria-hidden>
               {cardPct ? `+${cardPct}` : "Off"}
@@ -780,10 +780,10 @@ export function VouchersPane({
                     "add icon to Mesita Payments"). */}
                 <span className="flex items-center gap-1" aria-hidden>
                   <Smartphone className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                  Mesita Payment Cashback
+                  App Payment Cashback
                 </span>
                 <InfoButton
-                  title="Mesita Payment Cashback"
+                  title="App Payment Cashback"
                   status={
                     loading
                       ? undefined
@@ -796,17 +796,44 @@ export function VouchersPane({
                     `Pay your bill in the Mesita app and get ${cardPct ?? "the place's cashback"} of it back as credits at this place. Use them whenever you want.`,
                     "Any amount, every visit. Each place sets its own rate.",
                     creditPct
-                      ? "Tips never earn this cashback: it counts only on the part of the bill you pay with Mesita Payments, without the tip."
-                      : "Neither prepaid credits nor tips earn cashback: it counts only on the part of the bill you pay with Mesita Payments, without the tip.",
-                    "You can mix: part of the bill with credits, the rest with Mesita Payments.",
+                      ? "Tips never earn this cashback: it counts only on the part of the bill you pay with App Payments, without the tip."
+                      : "Neither prepaid credits nor tips earn cashback: it counts only on the part of the bill you pay with App Payments, without the tip.",
+                    "You can mix: part of the bill with credits, the rest with App Payments.",
                   ]}
                 />
               </span>
               <span className={FACT} aria-hidden>{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
             </span>
           </li>
-          {/* ONE CASHBACK (Pato, MESITA-3836: "Mesita Prepayments (4), Mesita
-              Payments (1)"): the cash and credits cashback rows are gone. */}
+          {/* CASH EARNS 3% (Pato, MESITA-3837: "what about 3% and 5%????";
+              2% from MESITA-3547, off for an hour in MESITA-3836): cash or
+              the place's terminal, confirmed by the waiter's Received. */}
+          <li
+            className={cn(ROW, !outside && dim && "opacity-50")}
+            aria-label={`Cash Payment Cashback: pay the place directly, by cash or their terminal, with the waiter's code. ${outside ? `${cashPct} comes back as credits.` : "Not at this place yet."}`}
+          >
+            <span className={cn(CHIP, EXTERNAL_FACE)} aria-hidden>
+              {outside ? `+${cashPct}` : "Off"}
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className={NAME}>
+                <span className="flex items-center gap-1" aria-hidden>
+                  <Banknote className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                  Cash Payment Cashback
+                </span>
+                <InfoButton
+                  title="Cash Payment Cashback"
+                  status={outside ? { ok: true, text: `${cashPct} back on bills you pay the waiter.` } : { ok: false, text: "Not at this place yet" }}
+                  text={[
+                    `Pay the place directly: cash or their card terminal, and get ${cashPct ?? "the place's cash cashback"} of the bill back as credits at this place.`,
+                    "Show your QR to the waiter. They type the bill and the tip, you choose cash, and they tap Received when they get your money.",
+                    "It counts on the bill, never on the tip or on credits you spend. It is ready in 1 hour.",
+                  ]}
+                />
+              </span>
+              <span className={FACT} aria-hidden>{outside ? "Back in credits, cash or their terminal" : "Not at this place yet"}</span>
+            </span>
+          </li>
         </ul>
       </section>
       {/* ONE BUY AT THE FOOT (MESITA-3487): pick a row, then Buy. No Pay bill

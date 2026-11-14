@@ -95,7 +95,7 @@ export function feeInvoiceParams(args: { rowId: string; placeId: string; custome
     days_until_due: FEE_DAYS_UNTIL_DUE,
     auto_advance: true,
     pending_invoice_items_behavior: "exclude",
-    description: "Mesita's 5% fee on Mesita Payments and Mesita Prepayments.",
+    description: "Mesita's 5% fee on App Payments and Mesita Prepayments.",
     metadata: { mesita_kind: "place_fee", fee_invoice_id: args.rowId, place_id: args.placeId },
   };
 }
