@@ -75,9 +75,23 @@ serveJson("eleven-a1-report-outcome", async (req) => {
   }
   const ticket = await ticketByCode(admin, body.reference_code);
   if (!ticket) return json({ ok: false, error: "reservation not found for that reference_code" }, 404);
-  // Stale-run guard: a call from an orphaned run writes nothing.
+  // Stale-run guard: a call from an orphaned run writes nothing. But when the
+  // place just said yes or offered times, it is now holding something for a
+  // guest who cancelled or rescheduled while a1 was on the phone (MESITA-3962):
+  // a1 is still talking to the place, so it tells them on this same call.
   const stale = staleRunReply(body, ticket);
-  if (stale) return stale;
+  if (stale) {
+    if (verdict !== "confirmed" && verdict !== "counter_offer") return stale;
+    return json({
+      ok: true,
+      stale_run: true,
+      ignored: true,
+      release_now: true,
+      say: ticket.state === "cancelled"
+        ? "El comensal acaba de cancelar desde la app. Dígale al restaurante, con una disculpa, que ya no aparte la mesa ni las opciones."
+        : "El comensal acaba de cambiar su solicitud desde la app. Dígale al restaurante, con una disculpa, que no aparte esta mesa ni las opciones; Mesita vuelve a llamar con los nuevos datos.",
+    });
+  }
 
   // Structured {time,date?,note?} entries — see _shared/reservation-alternatives.ts.
   // Storing prose made every guest pick look like a brand-new proposal and cost

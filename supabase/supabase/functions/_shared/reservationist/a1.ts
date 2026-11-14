@@ -98,13 +98,13 @@ export const A1: FleetAgent = {
         farewell_ok: farewell(
           "Confirm & close",
           -170,
-          "La mesa quedó confirmada y registrada. No repitas los datos ni vuelvas a preguntar si está confirmada. Agradece, despídete corto y cuelga con end_call.",
+          "Si el registro regresó release_now=true, la reservación cambió mientras hablabas: no confirmes nada, di lo que indica su campo say (que ya no aparten la mesa), despídete y cuelga con end_call. Si no: la mesa quedó confirmada y registrada. No repitas los datos ni vuelvas a preguntar si está confirmada. Agradece, despídete corto y cuelga con end_call.",
           "e_fok_end",
         ),
         farewell_counter: farewell(
           "Counter-offer close",
           0,
-          "Las opciones quedaron registradas. Pide que por favor las dejen apartadas un momento mientras Mesita se las propone al comensal: si toma una de ellas, queda confirmada sin volver a llamar. Agradece, despídete corto y cuelga con end_call.",
+          "Si el registro regresó release_now=true, la reservación cambió mientras hablabas: di lo que indica su campo say (que ya no aparten las opciones), despídete y cuelga con end_call. Si no: las opciones quedaron registradas. Pide que por favor las dejen apartadas un momento mientras Mesita se las propone al comensal: si toma una de ellas, queda confirmada sin volver a llamar. Agradece, despídete corto y cuelga con end_call.",
           "e_fco_end",
         ),
         farewell_declined: farewell(

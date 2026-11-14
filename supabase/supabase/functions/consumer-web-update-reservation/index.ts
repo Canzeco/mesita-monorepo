@@ -177,18 +177,20 @@ serveJson("consumer-web-update-reservation", async (req) => {
     confirmed_at: null,
     negotiation_rounds: 0,
     attempts: [],
-    // 'idle' is this column's NOT NULL default — null is rejected outright
-    // ("null value in column attempts_state violates not-null constraint").
-    // Reset means back to the DEFAULT, not to nothing; same as callback_state.
-    attempts_state: "idle",
+    // Queued like a new reservation (MESITA-3962): `scheduled` and due now,
+    // so the minute cron places the call if the kick below is lost. It used
+    // to reset to `idle`, which the cron never wakes: a lost kick left the
+    // guest on "Booking" until the table's time had passed.
+    attempts_state: "scheduled",
+    next_attempt_at: new Date().toISOString(),
     callback_state: "none",
     callback_attempts: 0,
     callback_next_attempt_at: null,
     callback_conversation_id: null,
     callback_at: null,
     ...REMINDER_CLEAR,
-    // next_attempt_at is cleared by freshPlaceRound: a stale parked retry
-    // would otherwise ring the place on top of the call fired below.
+    // freshPlaceRound clears any stale parked retry; next_attempt_at above
+    // is this run's own.
     last_conversation_id: null,
     last_called_at: null,
     last_call_state: "rescheduled by the guest — calling the place again",
