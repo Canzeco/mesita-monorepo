@@ -1,12 +1,9 @@
-import { AlertTriangle, Minus, Plus } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   bookingWindowDays,
   buildSlots,
-  hoursLabelForDate,
   isDateSpent,
-  slotState,
-  weekdayName,
   type ReservationSlot,
   type WeeklyHours,
 } from "@/lib/reservation-slots";
@@ -52,9 +49,8 @@ type DateOption = {
  * The row spans today → BOOKING_HORIZON_MONTHS ahead and takes no count: the
  * one-month cap is not a caller's choice.
  *
- * `hours` only widens the day: a place open past midnight has slots the
- * baseline window doesn't cover, so a day is "spent" only when none of ITS
- * slots are left. Omit it and the answer is the baseline window's.
+ * `hours` decides the day (MESITA-3951): with them, a day the place is closed
+ * has no slots and is dead. Omit them and the answer is the baseline window's.
  */
 export function buildDateOptions(
   hours?: WeeklyHours | null,
@@ -69,8 +65,8 @@ export function buildDateOptions(
       weekday: i === 0 ? "Today" : i === 1 ? "Tom." : DAY_NAMES[weekday],
       day,
       month: MONTH_NAMES[month],
-      // Late at night today has nothing left. The pill stays in the row and
-      // goes dead — hiding it would shift every other pill sideways.
+      // A closed day, or late at night today, has nothing left. The pill stays
+      // in the row and goes dead — hiding it would shift every other pill.
       disabled: isDateSpent(iso, hours, tz),
     });
   }
@@ -107,7 +103,7 @@ export function ReservationDatePicker({
               onClick={() => onChange(d.iso)}
               disabled={d.disabled}
               aria-disabled={d.disabled}
-              title={d.disabled ? "No times left on this day" : undefined}
+              title={d.disabled ? "No times on this day" : undefined}
               className={cn(
                 "flex w-14 shrink-0 flex-col items-center rounded-2xl border py-2 transition",
                 d.disabled
@@ -135,9 +131,8 @@ export function ReservationDatePicker({
  * bottom). Slots behind the place's clock render muted + unclickable; they
  * stay in the strip so the layout never jumps.
  *
- * Slots the place's hours don't cover stay TAPPABLE and render dashed/amber:
- * hours are scraped and often wrong, and Mesita books by phone, so the guest
- * decides — the sheet warns via ClosedSlotNotice.
+ * Only times inside the place's hours are listed (MESITA-3951); a place with
+ * no hours lists the baseline window.
  */
 export function ReservationTimePicker({
   value,
@@ -193,7 +188,6 @@ function TimeSlotButton({
   }
   const past = date ? isSlotPast(date, slot.time, tz) : false;
   const active = slot.time === value && !past;
-  const closed = slot.state === "closed";
   return (
     <button
       type="button"
@@ -203,9 +197,7 @@ function TimeSlotButton({
       title={
         past
           ? "This time has already passed"
-          : closed
-            ? "The place looks closed at this time — you can still request it"
-            : slot.afterMidnight
+          : slot.afterMidnight
               ? "After midnight"
               : undefined
       }
@@ -215,50 +207,11 @@ function TimeSlotButton({
           ? "border-border bg-muted/40 text-muted-foreground cursor-not-allowed opacity-45"
           : active
             ? "border-foreground bg-foreground text-background"
-            : closed
-              ? "border-border bg-card text-muted-foreground hover:text-foreground border-dashed"
-              : "border-border bg-card text-foreground",
+            : "border-border bg-card text-foreground",
       )}
     >
       {slot.time}
     </button>
-  );
-}
-
-/**
- * "They look closed then — request anyway?" Inline, non-blocking, and only when
- * we actually hold hours for the place: an un-enriched place has no opinion and
- * must stay silent.
- */
-export function ClosedSlotNotice({
-  date,
-  time,
-  hours,
-  placeName,
-}: {
-  date: string;
-  time: string | null;
-  hours?: WeeklyHours | null;
-  placeName: string;
-}) {
-  if (!time || !date || !hours) return null;
-  if (slotState(date, time, hours) !== "closed") return null;
-  const dayHours = hoursLabelForDate(date, hours);
-
-  return (
-    <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-border bg-muted p-3">
-      <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-muted-foreground" />
-      <p className="type-body leading-snug text-foreground">
-        <span className="font-semibold">
-          {placeName} looks closed at {time} on {weekdayName(date)}.
-        </span>{" "}
-        {dayHours
-          ? `Our hours say ${dayHours}.`
-          : "Our hours show them closed all day."}{" "}
-        You can still request it — Mesita will tell you what the place says when
-        we call.
-      </p>
-    </div>
   );
 }
 
