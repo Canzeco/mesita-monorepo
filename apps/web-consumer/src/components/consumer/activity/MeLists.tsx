@@ -12,9 +12,10 @@
 //   /me/reservations    Upcoming, then Past
 //   /me/tickets         every ticket under the day it happened, newest
 //                       first; a bill still open sits above them in its own
-//                       "Open now" card with its button (MESITA-3865). One
-//                       chip per kind that holds tickets narrows the list,
-//                       /me/tickets/<kind>:
+//                       "Open now" card with its button (MESITA-3865). The
+//                       chips All · Visits · Vouchers · Gifts are always
+//                       there (MESITA-3882), Refunds once it holds one; a
+//                       chip narrows the list, /me/tickets/<kind>:
 //     Visits    the guest's tabs (consumer-web-list-visits) AND the
 //               payments. A payment that paid a tab is written on that
 //               Visit's card (one meal, one ticket); any other payment is
@@ -705,11 +706,13 @@ export function TicketsPage() {
     return parts.flatMap((p) => p ?? []);
   };
 
-  // THE CHIPS (MESITA-3865): All, then each kind that holds a ticket. A kind
-  // whose source answered with nothing is not drawn (the one being looked at
-  // stays, to say it is empty), and with one kind or none there is no rail:
-  // All would only repeat it. A kind wears its count; All does not, since it
-  // repeated the first chip's.
+  // THE CHIPS ARE ALWAYS THERE (MESITA-3882, Pato: "put the top horizontal
+  // carousel menu to select the type of transaction. remember: visit voucher
+  // gift"): All · Visits · Vouchers · Gifts draw whether or not they hold a
+  // ticket, and an empty one says so under its chip. Refunds keeps
+  // MESITA-3865's rule: its chip shows only once it holds a refund (or while
+  // it is the one being looked at). A kind wears its count; All does not,
+  // since it repeated the first chip's.
   const counts: Partial<Record<TicketKind | "all", string>> = {};
   const hidden = new Set<TicketKind | "all">();
   for (const c of CHIPS) {
@@ -717,7 +720,7 @@ export function TicketsPage() {
     const rows = rowsOf(c.kind);
     if (!ready(c.kind) || failed(c.kind) || !rows) continue;
     if (!rows.length) {
-      if (c.kind !== kind) hidden.add(c.kind);
+      if (c.kind === "refunds" && c.kind !== kind) hidden.add(c.kind);
       continue;
     }
     // Payments missing: no number on a list they belong to.
@@ -728,7 +731,6 @@ export function TicketsPage() {
         : String(rows.length);
   }
   const chips = CHIPS.filter((c) => !hidden.has(c.kind));
-  const rail = chips.length > 2 || kind !== "all";
 
   // The visits read is capped: say so under the list, not as a "+" alone.
   const shown = byKind.visits?.length ?? 0;
@@ -756,14 +758,12 @@ export function TicketsPage() {
   return (
     <Screen title="Tickets">
       <div className="flex flex-col gap-4">
-        {rail ? (
-          <KindRail chips={chips} kind={kind} onPick={pick} counts={counts} />
-        ) : null}
+        <KindRail chips={chips} kind={kind} onPick={pick} counts={counts} />
         {/* Each kind says what it holds first (MESITA-3782); All lists them. */}
         {kind !== "all" ? <ChipIntro type={kind} /> : null}
         <div
-          role={rail ? "tabpanel" : undefined}
-          aria-label={rail ? `${kind === "all" ? "All" : kind} tickets` : undefined}
+          role="tabpanel"
+          aria-label={`${kind === "all" ? "All" : kind} tickets`}
         >
           <TicketList
             type={kind}
@@ -977,7 +977,7 @@ export function MeListSkeleton({
       <div className="flex flex-col gap-4">
         {rail ? (
           <div className="flex gap-2 overflow-hidden" aria-hidden>
-            {["w-20", "w-28", "w-32", "w-24", "w-28"].map((w, i) => (
+            {["w-20", "w-28", "w-32", "w-24"].map((w, i) => (
               <Skeleton
                 key={i}
                 className={cn("h-11 shrink-0 rounded-full", w)}
