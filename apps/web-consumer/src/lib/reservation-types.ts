@@ -32,6 +32,9 @@ export type ReservationItem = {
   reservedAt?: string;
   /** The place's IANA zone (MESITA-3626): every slot is its wall clock. */
   placeTimezone?: string | null;
+  /** The place's weekly hours, raw (MESITA-3953): the Reschedule sheet
+   *  offers only times inside them. */
+  placeHours?: unknown;
   notes?: string;
   /** Live + still ahead of us → the guest can still call it off / move it. */
   canCancel?: boolean;

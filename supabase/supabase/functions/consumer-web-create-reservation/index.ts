@@ -39,6 +39,11 @@ import {
 } from "../_shared/reservation-create.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
 import { DEFAULT_ZONE, zoneMonthStart } from "../_shared/local-time.ts";
+import {
+  PLACE_CLOSED_CODE,
+  PLACE_CLOSED_MESSAGE,
+  slotInHours,
+} from "../_shared/reservation-hours.ts";
 import { fromPlaceIdRow } from "../_shared/place-id.ts";
 import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
 import { isPlaceProfileReady } from "../_shared/place-state.ts";
@@ -205,6 +210,12 @@ serveJson("consumer-web-create-reservation", async (req) => {
       code: RESERVATIONS_OFF_CODE,
       error: RESERVATIONS_OFF_MESSAGE,
     }, 409);
+  }
+
+  // ── The time must be inside the place's hours (MESITA-3953) ────────────
+  // The form offers only those times; a stale tab or a direct call doesn't.
+  if (slotInHours(reservable.hours, reservable.zone, reservedAt) === false) {
+    return json({ ok: false, code: PLACE_CLOSED_CODE, error: PLACE_CLOSED_MESSAGE }, 409);
   }
 
   const { data: consumerRow, error: consumerErr } = await admin

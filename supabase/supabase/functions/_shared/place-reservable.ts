@@ -15,6 +15,7 @@
 // sees the tile. The clients print `error` for any code they don't branch on.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { PLACE_ZONE_COLUMNS, placeZone } from "./local-time.ts";
 
 export const RESERVATIONS_OFF_CODE = "reservations_off";
 
@@ -68,16 +69,25 @@ export function dialNumber(input: {
   return phone ? { number: phone, via: "Google phone" } : { number: "", via: "place has no number" };
 }
 
-/** Reads the place and answers isReservable; `error` on a failed read. */
+/**
+ * Reads the place and answers isReservable; `error` on a failed read. The same
+ * read carries the place's `hours` and `zone`, so the doors can judge the
+ * requested time (_shared/reservation-hours.ts, MESITA-3953) without a second
+ * query.
+ */
 export async function readReservable(
   admin: SupabaseClient,
   placeId: string,
-): Promise<{ reservable: boolean; error: string | null }> {
+): Promise<{ reservable: boolean; error: string | null; hours: unknown; zone: string }> {
   const { data, error } = await admin
     .from("place_profiles")
-    .select(RESERVABLE_COLUMNS)
+    .select(`${RESERVABLE_COLUMNS}, hours, ${PLACE_ZONE_COLUMNS}`)
     .eq("id", placeId)
     .maybeSingle();
-  if (error) return { reservable: false, error: error.message };
-  return { reservable: isReservable(data as ReservableRow | null), error: null };
+  const row = (data ?? null) as
+    | (ReservableRow & { hours?: unknown; timezone?: unknown; lng?: unknown })
+    | null;
+  const zone = placeZone(row);
+  if (error) return { reservable: false, error: error.message, hours: null, zone };
+  return { reservable: isReservable(row), error: null, hours: row?.hours ?? null, zone };
 }
