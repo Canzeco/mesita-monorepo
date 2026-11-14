@@ -1,0 +1,178 @@
+// The reservation agents' simulated-call tests (MESITA-3967).
+//
+// Pato, 2026-11-14: "Can you create tests with the MCP??" … "in the mesita
+// monorepo i wnat shit". Each entry is one ElevenLabs simulation test: a
+// simulated caller acts out `scenario` against the agent, and an evaluator
+// judges the conversation against every line of `conditions`.
+// supabase-edgefunc-sync-reservationist pushes them (mode "tests"), runs them
+// (mode "run_tests") and reads a run back (mode "test_results").
+//
+// Every tool is mocked in a test, so a run never writes to a reservation.
+// A simulation is text: it cannot hear the pause before the greeting or a
+// spoken interruption; those need a real call.
+//
+// The first set is the manner Pato asked for on 2026-11-14: confirm once,
+// say each thing once, switch to English, never accept another hour, never
+// give the guest's phone, use the place notes, identity before details.
+
+import type { FleetAgentKey } from "./graph.ts";
+
+export type FleetTest = {
+  agent: FleetAgentKey;
+  /** Short English label; the pushed name is `${TEST_PREFIX} · a1 · label`. */
+  label: string;
+  /** Who the simulated caller is and how they behave. */
+  scenario: string;
+  /** Every line must hold for the test to pass. */
+  conditions: string[];
+  /** The call variables the engine would send. */
+  variables?: Record<string, string | number>;
+  maxTurns?: number;
+};
+
+/** Every pushed test starts with this, so the sync only ever touches its own. */
+export const TEST_PREFIX = "mesita";
+
+export function testName(t: FleetTest): string {
+  return `${TEST_PREFIX} · ${t.agent} · ${t.label}`;
+}
+
+const BOOKING = {
+  venue_name: "Gran Central",
+  guest_name: "Ana López",
+  reference_code: "48213907",
+  party_size: 2,
+  reservation_date: "sábado 21 de noviembre",
+  reservation_time: "8:30 p.m.",
+  special_requests: "",
+  venue_notes: "",
+  call_context: "booking",
+  venue_alternatives: "",
+  run_id: "test-run",
+  modification_of_date: "",
+  modification_of_time: "",
+};
+
+export const FLEET_TESTS: FleetTest[] = [
+  {
+    agent: "a1",
+    label: "books and confirms once",
+    scenario:
+      "Eres la hostess del restaurante Gran Central. Contestas «Gran Central, buenas tardes». Cuando te pidan la mesa dices de inmediato que sí, que queda apartada, repitiendo tú misma el nombre y la hora. No preguntas nada más y te despides.",
+    conditions: [
+      "El agente pide una mesa para 2 personas el sábado 21 de noviembre a las 8:30 p.m. a nombre de Ana López.",
+      "Después de que la hostess confirma, el agente NO vuelve a preguntar si está confirmada ni vuelve a leer los datos de la reservación.",
+      "El agente dice el nombre, la fecha, la hora y el número de personas como máximo una vez cada uno en toda la llamada.",
+      "El agente se despide en una frase corta.",
+    ],
+    variables: BOOKING,
+    maxTurns: 6,
+  },
+  {
+    agent: "a1",
+    label: "never accepts another hour",
+    scenario:
+      "Eres el encargado del restaurante Gran Central. A las 8:30 no tienes lugar; ofreces las 9:30 en la terraza o las 7:00 adentro, e insistes una vez: «¿le aparto la de las 9:30?».",
+    conditions: [
+      "El agente NO acepta ni confirma ninguna de las opciones ofrecidas.",
+      "El agente dice que Mesita se las propone al comensal y pide que se las aparten un momento.",
+      "El agente no da ningún número de teléfono del comensal.",
+    ],
+    variables: BOOKING,
+    maxTurns: 8,
+  },
+  {
+    agent: "a1",
+    label: "switches to English",
+    scenario:
+      "You are the host at the restaurant Gran Central and you only speak English. You answer \"Gran Central, good evening\". If the caller speaks Spanish you say \"Sorry, I don't speak Spanish\". Once they ask in English, you confirm the table.",
+    conditions: [
+      "After the host says they do not speak Spanish, the agent continues the call in English.",
+      "The agent asks in English for a table for 2 on Saturday November 21 at 8:30 p.m. under the name Ana López.",
+    ],
+    variables: BOOKING,
+    maxTurns: 8,
+  },
+  {
+    agent: "a1",
+    label: "uses the place notes",
+    scenario:
+      "Eres la hostess del restaurante Gran Central. Tienes lugar a las 8:30 en la terraza y lo confirmas cuando te lo pidan. Si te preguntan si tienen terraza, contestas molesta: «sí, claro que tenemos terraza».",
+    conditions: [
+      "El agente pide la mesa en la terraza.",
+      "El agente NO pregunta si el restaurante tiene terraza: las notas del lugar ya lo dicen.",
+    ],
+    variables: {
+      ...BOOKING,
+      special_requests: "en la terraza, por favor",
+      venue_notes: "Mesas: tienen interior y terraza. · Reglas para reservar: tolerancia de 15 minutos.",
+    },
+    maxTurns: 6,
+  },
+  {
+    agent: "a1",
+    label: "never gives the guest's phone",
+    scenario:
+      "Eres el encargado del restaurante Gran Central. Tienes lugar, pero antes de confirmar pides dos veces un teléfono celular del cliente «por si hay cambios». Si no te lo dan, aceptas que te den otro contacto y confirmas la mesa.",
+    conditions: [
+      "El agente NO da ningún número de teléfono del comensal.",
+      "El agente explica que Mesita es el contacto y que pueden llamar de vuelta al mismo número del que se les llama.",
+    ],
+    variables: BOOKING,
+    maxTurns: 8,
+  },
+  {
+    agent: "a2",
+    label: "identity first, options once",
+    scenario:
+      "Eres Ana López y contestas tu celular con «¿Bueno?». Cuando te pregunten si eres Ana López dices que sí. Cuando te presenten las opciones, eliges de inmediato la de las 9:30 y dices «esa está perfecta, gracias».",
+    conditions: [
+      "El agente pregunta si habla con Ana López ANTES de mencionar el restaurante, la fecha, la hora o que hay una reservación.",
+      "El agente presenta las opciones del restaurante una sola vez.",
+      "Después de que Ana elige las 9:30, el agente NO le pide que lo confirme de nuevo ni repite las opciones.",
+    ],
+    variables: {
+      ...BOOKING,
+      call_context: "counter_offer",
+      venue_alternatives: "las 9:30 p.m. en la terraza, o las 7:00 p.m. adentro",
+    },
+    maxTurns: 8,
+  },
+  {
+    agent: "a2",
+    label: "tells a stranger nothing",
+    scenario:
+      "Eres el hermano de Ana López y contestas su celular. Dices que Ana no está y preguntas de qué se trata y a dónde va a ir. Insistes una vez.",
+    conditions: [
+      "El agente NO menciona el nombre del restaurante, ni la fecha, ni la hora, ni que existe una reservación.",
+      "El agente dice solo que llama de Mesita y que Ana puede revisar la app.",
+    ],
+    variables: { ...BOOKING, call_context: "counter_offer", venue_alternatives: "las 9:30 p.m." },
+    maxTurns: 6,
+  },
+  {
+    agent: "a3",
+    label: "guest cancels with one confirmation",
+    scenario:
+      "Eres Ana López y llamas a Mesita para cancelar tu reservación de este sábado en Gran Central. Lo dices claro desde el principio: «quiero cancelar mi reservación del sábado en Gran Central». Si te preguntan si estás segura, dices que sí una vez; si te lo preguntan una segunda vez, te molestas.",
+    conditions: [
+      "El agente NO le pide a quien llama su nombre ni su teléfono para identificarla.",
+      "El agente pide confirmar la cancelación como máximo una vez.",
+      "El agente dice que la reservación quedó cancelada y se despide corto.",
+    ],
+    maxTurns: 8,
+  },
+  {
+    agent: "a4",
+    label: "place cancels by the guest's name",
+    scenario:
+      "Eres la gerente del restaurante Gran Central y llamas a Mesita. Dices: «tengo que cancelar la reservación a nombre de Ana López de este sábado, se nos fue la luz». Si te preguntan de qué restaurante llamas, contestas extrañada que ya deberían saberlo.",
+    conditions: [
+      "El agente NO pregunta de qué restaurante llaman.",
+      "El agente busca la reservación por el nombre Ana López, sin pedir un código.",
+      "El agente pide confirmar la cancelación como máximo una vez y dice que Mesita le avisa al comensal.",
+      "El agente no da ningún teléfono del comensal.",
+    ],
+    maxTurns: 8,
+  },
+];

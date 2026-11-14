@@ -18,6 +18,9 @@ export const MODE_NAMES = [
   "calls",
   "transcript",
   "phones",
+  "tests",
+  "run_tests",
+  "test_results",
 ] as const;
 export type Mode = typeof MODE_NAMES[number];
 
@@ -25,6 +28,10 @@ export type ModeBody = {
   mode?: unknown;
   conversation_id?: unknown;
   limit?: unknown;
+  /** run_tests: run one agent's tests only ("a1" … "a4"). */
+  agent?: unknown;
+  /** test_results: the invocation ids run_tests answered. */
+  invocation_ids?: unknown;
 };
 
 export type BaseCtx = {
