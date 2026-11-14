@@ -29,8 +29,15 @@ fns="$here/../supabase/functions"
 want=$(cd "$fns" && deno eval --quiet 'import { specHash } from "./_shared/reservationist/index.ts"; console.log(await specHash())')
 echo "main spec: $want"
 
-key=$(supabase projects api-keys --project-ref "$PROJECT_REF" -o json \
-  | jq -r '[.[] | select(.name == "service_role")][0].api_key // empty')
+# The management API answers a passing 502 now and then: try a few times.
+key=""
+for attempt in 1 2 3 4 5; do
+  key=$(supabase projects api-keys --project-ref "$PROJECT_REF" -o json 2>/dev/null \
+    | jq -r '[.[] | select(.name == "service_role")][0].api_key // empty' 2>/dev/null || true)
+  [ -n "$key" ] && break
+  echo "service key not read (try $attempt); retrying"
+  sleep $((attempt * 10))
+done
 if [ -z "$key" ]; then
   echo "::error::no service_role key for $PROJECT_REF"
   exit 1
@@ -70,14 +77,14 @@ done
 } >>"$SUMMARY"
 for mode in fleet phones knowledge workflows tests inspect; do
   out=$(call "{\"mode\":\"$mode\"}")
-  ok=$(echo "$out" | jq -r '.ok // false' 2>/dev/null || echo false)
+  ok=$(printf '%s' "$out" | jq -r '.ok // false' 2>/dev/null || echo false)
   if [ "$mode" = "inspect" ]; then
-    ok=$(echo "$out" | jq -r '.in_sync // false' 2>/dev/null || echo false)
+    ok=$(printf '%s' "$out" | jq -r '.in_sync // false' 2>/dev/null || echo false)
   fi
   echo "| $mode | $([ "$ok" = "true" ] && echo ok || echo FAILED) |" >>"$SUMMARY"
   if [ "$ok" != "true" ]; then
     echo "::error::sync mode $mode failed"
-    echo "$out" | head -c 3000
+    printf '%s' "$out" | head -c 3000
     echo
     exit 1
   fi
@@ -86,15 +93,15 @@ done
 
 # ── 4. Simulated-call tests ─────────────────────────────────────────────────
 runs=$(call '{"mode":"run_tests"}')
-ids=$(echo "$runs" | jq -c '[.runs[]? | select(.invocation_id) | .invocation_id]')
+ids=$(printf '%s' "$runs" | jq -c '[.runs[]? | select(.invocation_id) | .invocation_id]')
 if [ "$ids" = "[]" ] || [ -z "$ids" ]; then
-  echo "::warning::the tests did not start: $(echo "$runs" | head -c 600)"
+  echo "::warning::the tests did not start: $(printf '%s' "$runs" | head -c 600)"
   exit 0
 fi
 deadline=$((SECONDS + TEST_WAIT_SECS))
 while :; do
   res=$(call "{\"mode\":\"test_results\",\"invocation_ids\":$ids}")
-  pending=$(echo "$res" | jq '[.invocations[]?.pending // 0] | add // 0')
+  pending=$(printf '%s' "$res" | jq '[.invocations[]?.pending // 0] | add // 0')
   [ "$pending" = "0" ] && break
   if [ "$SECONDS" -ge "$deadline" ]; then
     echo "::warning::$pending test(s) still running after ${TEST_WAIT_SECS}s"
@@ -102,8 +109,8 @@ while :; do
   fi
   sleep 20
 done
-passed=$(echo "$res" | jq '[.invocations[]?.passed // 0] | add // 0')
-failed=$(echo "$res" | jq '[.invocations[]?.failed // 0] | add // 0')
+passed=$(printf '%s' "$res" | jq '[.invocations[]?.passed // 0] | add // 0')
+failed=$(printf '%s' "$res" | jq '[.invocations[]?.failed // 0] | add // 0')
 echo "tests: $passed passed, $failed failed"
 {
   echo
@@ -111,8 +118,13 @@ echo "tests: $passed passed, $failed failed"
   echo
   echo "| Test | Result | Why |"
   echo "|---|---|---|"
-  echo "$res" | jq -r '.invocations[]?.runs[]? | "| \(.test // "?") | \(.status // "?") | \((.why // "") | gsub("\\|"; "/") | gsub("\n"; " ")) |"'
+  printf '%s' "$res" | jq -r '.invocations[]?.runs[]? | "| \(.test // "?") | \(.status // "?") | \((.why // "") | gsub("\\|"; "/") | gsub("\n"; " ")) |"'
 } >>"$SUMMARY"
-if [ "$failed" != "0" ]; then
+# ElevenLabs stops a simulation it has no credits for; that is no verdict.
+nocredit=$(printf '%s' "$res" | jq '[.invocations[]?.runs[]? | select((.why // "") | test("Insufficient credits"; "i"))] | length')
+if [ "$nocredit" != "0" ]; then
+  echo "::warning::$nocredit simulated call(s) were stopped by ElevenLabs for insufficient credits: not a verdict on the agents. Top up the ElevenLabs credits and re-run this workflow."
+  printf '\n**%s simulated call(s) were stopped by ElevenLabs for insufficient credits: not a verdict on the agents.**\n' "$nocredit" >>"$SUMMARY"
+elif [ "$failed" != "0" ]; then
   echo "::warning::$failed simulated-call test(s) failed; see the job summary"
 fi
