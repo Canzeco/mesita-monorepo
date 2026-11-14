@@ -56,10 +56,10 @@ describe("Creation › Create asks the two Create-on-open questions (MESITA-2298
     expect(html).toContain("A guest opens a Google-only place from Map, the Feed, or Word.");
     expect(html).toContain("An admin opens a Google-only row from Single Place › Find.");
     expect(html).toMatch(
-      /aria-pressed="true"[^>]*aria-label="Create the profile on open · consumer app"/,
+      /aria-checked="true"[^>]*aria-label="Create the profile on open · consumer app"/,
     );
     expect(html).toMatch(
-      /aria-pressed="false"[^>]*aria-label="Create the profile on open · admin app"/,
+      /aria-checked="false"[^>]*aria-label="Create the profile on open · admin app"/,
     );
     // Opening a list, a pin or a card never creates; the full profile does.
     expect(html).toContain("Opening the full profile");
