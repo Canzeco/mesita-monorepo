@@ -9,11 +9,11 @@
 //   This month: 1 of 2 reservations
 //   ┌ Free   Current            Free ┐
 //   │ Max 2 reservations a month     │
-//   ├ Pro                $1 a month ┤
+//   ├ Pro            $1 USD a month ┤
 //   │ Max 10 reservations a month    │
 //   │ MCP for ChatGPT or Claude Soon │
 //   └────────────────────────────────┘
-//   [ Upgrade to Pro · $1 a month ]     Free
+//   [ Upgrade to Pro · $1 USD a month ] Free
 //   Pro renews Dec 14 · Cancel Pro      paid Pro
 //   Pro ends Dec 14 · [ Keep Pro ]      cancelled Pro
 //
