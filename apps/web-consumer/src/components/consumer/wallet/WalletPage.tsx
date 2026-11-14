@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { PayHeader } from "../pay/PayHeader";
 import { WalletSection } from "./WalletSection";
@@ -14,11 +16,18 @@ import { TicketsShortcut } from "../pay/TicketsShortcut";
 // friend's credit sheet over it. From MESITA-3729 until this it was the
 // second half of a Pay | Wallet switch and lit Pay.
 export function WalletPage({ giftToken = null }: { giftToken?: string | null }) {
+  // Redeem Credits, at the top, opens the code sheet WalletSection draws
+  // (MESITA-3894).
+  const [redeeming, setRedeeming] = useState(false);
   return (
     <KeptScroll className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
       <PayHeader title="Wallet" action={<TicketsShortcut />} />
-      <WalletShareGift />
-      <WalletSection giftToken={giftToken} />
+      <WalletShareGift onRedeem={() => setRedeeming(true)} />
+      <WalletSection
+        giftToken={giftToken}
+        redeeming={redeeming}
+        onRedeemClose={() => setRedeeming(false)}
+      />
     </KeptScroll>
   );
 }

@@ -2,7 +2,7 @@
 
 import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { ChevronRight, Gift, Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { PlaceMarks, SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -83,22 +83,6 @@ export function WalletList({
         </ul>
       )}
     </section>
-  );
-}
-
-/** A gift code a friend sent: a row in the Credits list (MESITA-3744; a
- *  loose "Have a gift code?" link under it until then). */
-export function GiftCodeRow({ onOpen }: { onOpen: () => void }) {
-  return (
-    <button type="button" onClick={onOpen} className={ROW} data-redeem-code-open>
-      {/* Yellow, its own colour beside Cash green and Story pink (Pato,
-          MESITA-3814: "add a bit of color to the gift code"). */}
-      <span className={cn(CHIP, "bg-yellow-300 text-neutral-950")} aria-hidden>
-        <Gift className="h-4 w-4" />
-      </span>
-      <RowText title="Gift code" line="Redeem a code a friend sent you" />
-      <Chevron />
-    </button>
   );
 }
 

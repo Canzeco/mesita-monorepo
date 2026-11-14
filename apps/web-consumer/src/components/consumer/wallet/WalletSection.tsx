@@ -20,7 +20,6 @@ import {
   CreditsRow,
   EmptyCreditsRow,
   AddRow,
-  GiftCodeRow,
   SavedCardRow,
   StoryRow,
   WalletBodySkeleton,
@@ -141,7 +140,17 @@ function decodeAll(urls: string[], ms: number): Promise<void> {
   return Promise.race([Promise.all(each).then(() => undefined), new Promise<void>((r) => setTimeout(r, ms))]);
 }
 
-export function WalletSection({ giftToken = null }: { giftToken?: string | null }) {
+export function WalletSection({
+  giftToken = null,
+  redeeming,
+  onRedeemClose,
+}: {
+  giftToken?: string | null;
+  /** The Redeem a code sheet is open: Redeem Credits, at the page's top
+   *  (MESITA-3894; the Credits list's "Gift code" row until then). */
+  redeeming: boolean;
+  onRedeemClose: () => void;
+}) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
@@ -152,8 +161,6 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
   // Wallet has read; closing it leaves its address for the Wallet's.
   const [gift, setGift] = useState(giftToken);
-  // A friend's 12-digit gift code typed in (MESITA-3737).
-  const [redeeming, setRedeeming] = useState(false);
   const closeGift = useCallback(() => {
     setGift(null);
     navigateTo(router, CONSUMER_ROUTES.wallet, { replace: true });
@@ -291,15 +298,14 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
         {creditsState === "rows" ? (
           <AddRow line="A place's Credits Card" ariaLabel="Add a Credits Card" href={CONSUMER_ROUTES.search} />
         ) : null}
-        {creditsState === "rows" || creditsState === "empty" ? <GiftCodeRow onOpen={() => setRedeeming(true)} /> : null}
       </WalletList>
 
       <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
       <RedeemCodeSheet
         open={redeeming}
-        onClose={() => setRedeeming(false)}
+        onClose={onRedeemClose}
         onClaimed={() => {
-          setRedeeming(false);
+          onRedeemClose();
           reread();
         }}
       />
