@@ -4,7 +4,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 16px;
+  padding: 12px;
   box-sizing: border-box;
   background: #ffffff;
   color: #171717;
@@ -24,7 +24,7 @@ p {
 
 ul {
   list-style: none;
-  margin: 16px 0 0;
+  margin: 12px 0 0;
   padding: 0;
   border-top: 1px solid #e5e5e5;
   text-align: left;
@@ -116,8 +116,8 @@ button.quiet {
 
 .test-band {
   align-self: stretch;
-  margin: 0 0 16px;
-  padding: 10px 12px;
+  margin: 0 0 8px;
+  padding: 6px 12px;
   border-radius: 12px;
   background: #fde68a;
   color: #713f12;
@@ -142,8 +142,8 @@ button.quiet {
 }
 
 .proof-amount {
-  margin: 24px 0 0;
-  font-size: 56px;
+  margin: 12px 0 0;
+  font-size: 44px;
   font-weight: 700;
   line-height: 1.1;
   color: #171717;
@@ -162,7 +162,7 @@ button.quiet {
 }
 
 .proof-place {
-  margin: 16px 0 0;
+  margin: 8px 0 0;
   font-size: 14px;
   color: #525252;
 }
@@ -186,8 +186,8 @@ button.quiet {
 /* ── The waiter's charge (MESITA-3306) ─────────────────────────────────── */
 
 .charge-code {
-  margin: 16px 0 0;
-  font-size: 88px;
+  margin: 8px 0 0;
+  font-size: 72px;
   font-weight: 800;
   letter-spacing: 0.12em;
   /* the trailing letter-spacing, mirrored, keeps the digits centred */
@@ -205,13 +205,13 @@ button.quiet {
 .charge-tick {
   display: grid;
   place-items: center;
-  width: 96px;
-  height: 96px;
+  width: 72px;
+  height: 72px;
   margin-top: 24px;
   border-radius: 999px;
   background: #16a34a;
   color: #ffffff;
-  font-size: 56px;
+  font-size: 44px;
   font-weight: 800;
   animation: charge-tick-in 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
 }
@@ -240,7 +240,7 @@ button.quiet {
 }
 
 .payments li {
-  padding: 10px 0;
+  padding: 6px 0;
 }
 
 /* Two failed reads: the list greys under "Reconnecting". */
@@ -309,26 +309,26 @@ button.quiet {
 .tab-paid-tick {
   display: grid;
   place-items: center;
-  width: 96px;
-  height: 96px;
+  width: 72px;
+  height: 72px;
   border-radius: 999px;
   background: #ffffff;
   color: #15803d;
-  font-size: 56px;
+  font-size: 44px;
   font-weight: 800;
   animation: charge-tick-in 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
 }
 
 .tab-paid-title {
-  margin: 24px 0 0;
-  font-size: 32px;
+  margin: 12px 0 0;
+  font-size: 28px;
   font-weight: 800;
   color: #ffffff;
 }
 
 .tab-paid-amount {
   margin: 8px 0 0;
-  font-size: 56px;
+  font-size: 44px;
   font-weight: 700;
   line-height: 1.1;
   color: #ffffff;
@@ -351,7 +351,7 @@ button.quiet {
 /* MESITA-3695: a split bill's shares on the waiter's screen. */
 .split-shares {
   align-self: stretch;
-  margin: 16px 0 0;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
   border-top: 1px solid #e5e5e5;
@@ -362,7 +362,7 @@ button.quiet {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 56px;
+  min-height: 48px;
   border-bottom: 1px solid #e5e5e5;
   font-size: 16px;
   text-align: left;
@@ -453,7 +453,7 @@ button.quiet {
 }
 
 .verify-sign {
-  height: 56px;
+  height: 48px;
   margin-top: 12px;
 }
 
@@ -499,7 +499,7 @@ button.quiet {
 
 /* The waiter code: six boxes, one digit each (MESITA-3818). */
 .code-boxes {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .code-boxes-label {
@@ -517,8 +517,8 @@ button.quiet {
 }
 
 .code-box {
-  width: 48px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   box-sizing: border-box;
   border: 1px solid #d4d4d4;
@@ -526,7 +526,7 @@ button.quiet {
   background: #ffffff;
   color: #171717;
   font: inherit;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -555,11 +555,11 @@ button.quiet {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .code-pad-key {
-  height: 52px;
+  height: 46px;
   border: 0;
   border-radius: 14px;
   background: #f5f5f5;
@@ -613,15 +613,15 @@ button.quiet {
   align-self: stretch;
   align-items: center;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 0;
   text-align: left;
 }
 
 .pay-guest-photo {
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 999px;
@@ -658,7 +658,7 @@ button.quiet {
 /* The lines, one card of rows, each with the guest's icon. */
 .pay-lines {
   align-self: stretch;
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
   border: 1px solid #e5e5e5;
@@ -670,9 +670,9 @@ button.quiet {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 48px;
-  padding: 0 16px;
-  font-size: 18px;
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 16px;
   font-weight: 600;
   color: #171717;
   text-align: left;
@@ -691,8 +691,26 @@ button.quiet {
 }
 
 button.quiet.pay-with-icon {
-  margin-top: 8px;
+  margin-top: 0;
   min-height: 48px;
+}
+
+/* Reject a third, Sign two thirds, one row (MESITA-4103). */
+.verify-actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.verify-actions button {
+  margin: 0;
+}
+
+/* The total on the guest row's right (MESITA-4103). */
+.pay-guest .verify-amount {
+  margin: 0 0 0 auto;
+  font-size: 32px;
 }
 
 .pay-final-line {

@@ -221,10 +221,12 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
           <span className="pay-guest-title">Guest&apos;s bill</span>
           <span className="pay-guest-place">{placeName}</span>
         </span>
+        {/* The total on the row's right (MESITA-4103, Pato: "optimize a lot
+            the vertical space in the visit subdomain"). */}
+        <p className="verify-amount" aria-label={`Total ${money(total)}`}>
+          {money(total)}
+        </p>
       </div>
-      <p className="verify-amount" aria-label={`Total ${money(total)}`}>
-        {money(total)}
-      </p>
       <ul className="pay-lines" aria-label="How the guest pays">
         {lines.map((l) => (
           <li key={l.key} data-pay-line={l.key}>
@@ -259,7 +261,13 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
             </div>
           </div>
         ) : (
-          <>
+          // One row: Reject a third, Sign two thirds. "Sign · final" says
+          // it can't be undone; the pad says a code is needed.
+          <div className="verify-actions">
+            <button type="button" className="quiet pay-with-icon" disabled={!!busy || !request} onClick={() => setRejecting(true)}>
+              <XIcon className="pay-icon" />
+              Reject
+            </button>
             <button type="submit" className="verify-sign pay-with-icon" disabled={!!busy || !request}>
               {busy === "sign" ? SIGN.signing : (
                 <>
@@ -268,14 +276,8 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
                 </>
               )}
             </button>
-            <p className="pay-final-line">Check the amount. Signed payments can&apos;t be undone.</p>
-            <button type="button" className="quiet pay-with-icon" disabled={!!busy || !request} onClick={() => setRejecting(true)}>
-              <XIcon className="pay-icon" />
-              Reject
-            </button>
-          </>
+          </div>
         )}
-        {!request ? <p className="pay-final-line">Type the waiter code to sign or reject.</p> : null}
       </form>
     </main>
   );
