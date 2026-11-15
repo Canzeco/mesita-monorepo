@@ -15,6 +15,9 @@ describe("tabSplit", () => {
       cash_due_cents: 102000,
       card_due_cents: 0,
       cashback_cents: 1800,
+      cash_back_cents: 1800,
+      card_back_cents: 0,
+      credit_back_cents: 0,
       card_tip_alone: false,
     });
   });

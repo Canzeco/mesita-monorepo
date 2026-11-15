@@ -330,6 +330,10 @@ export function tabSplit(args: {
   cash_due_cents: number;
   card_due_cents: number;
   cashback_cents: number;
+  /** cashback_cents by part (MESITA-4100: Pay › Method shows each). */
+  cash_back_cents: number;
+  card_back_cents: number;
+  credit_back_cents: number;
   card_tip_alone: boolean;
 } {
   const bill = Math.max(0, Math.round(args.billCents));
@@ -342,6 +346,9 @@ export function tabSplit(args: {
   const cashBill = rest - cardBill;
   const cardTip = args.tipWith === "card" ? tip : 0;
   const cashTip = tip - cardTip;
+  const cashBack = Math.floor((cashBill * Math.max(0, args.cashBackBps)) / 10_000);
+  const cardBack = Math.floor((cardBill * Math.max(0, args.cardBackBps ?? 0)) / 10_000);
+  const creditBack = Math.floor((credit * Math.max(0, args.creditBackBps ?? 0)) / 10_000);
   return {
     credit_cents: credit,
     cash_bill_cents: cashBill,
@@ -351,10 +358,10 @@ export function tabSplit(args: {
     total_cents: bill + tip,
     cash_due_cents: cashBill + cashTip,
     card_due_cents: cardBill + cardTip,
-    cashback_cents:
-      Math.floor((cashBill * Math.max(0, args.cashBackBps)) / 10_000) +
-      Math.floor((cardBill * Math.max(0, args.cardBackBps ?? 0)) / 10_000) +
-      Math.floor((credit * Math.max(0, args.creditBackBps ?? 0)) / 10_000),
+    cashback_cents: cashBack + cardBack + creditBack,
+    cash_back_cents: cashBack,
+    card_back_cents: cardBack,
+    credit_back_cents: creditBack,
     card_tip_alone: cardTip > 0 && cardBill === 0 && credit === 0,
   };
 }
