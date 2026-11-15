@@ -9,13 +9,14 @@
 // THREE SEPARATE CONTROLS on row one (Pato, MESITA-3009: "return to the
 // three buttons: location at the left, searchbar, ask ai at the right, all
 // separated"; MESITA-2999 had put Ask AI and locate inside one long bar):
-// the 40px locate disc, the 40px search bar, and Ask AI, a 40px disc with
-// the AI mark and no words (MESITA-3991; a labelled pill from MESITA-3010). Under them the 32px chip row, opening with a white icon-only Filters disc (MESITA-3006). Two heights (MESITA-2996, reverses MESITA-2445).
+// the 40px locate disc, the 40px search bar, and the 40px white Ask AI pill:
+// the sparkle mark and the words (MESITA-4007; MESITA-3991 had made it a
+// mark-only disc; a labelled pill from MESITA-3010). Under them the 32px chip row, opening with a white icon-only Filters disc (MESITA-3006). Two heights (MESITA-2996, reverses MESITA-2445).
 //
 // The border stays as `border-transparent` so keyboard focus can darken it
 // without the control shifting a pixel.
 //
-//   ┌ (⌖) [ ⚲ Search places…        ] (✦) ┐ ← HEADER_BAND: HEADER_DISC · BAR (SearchBar) · HEADER_DISC
+//   ┌ (⌖) [ ⚲ Search places…   ] (✦ Ask AI) ┐ ← HEADER_BAND: HEADER_DISC · BAR (SearchBar) · HEADER_PILL
 //   └────────────────────────────────────────┘
 //   (≡) (☆ Top) (○ Coffee) …   over the map    ← CHIP_DISC · CHIP + CHIP_ON / CHIP_OFF
 //
@@ -49,8 +50,8 @@ export const BAR = `${IN_BAND} focus-within:border-foreground flex h-10 min-w-0 
  *  MESITA-3006, under the chips in MESITA-3005). */
 export const HEADER_DISC = `${IN_BAND} hover:bg-border flex h-10 w-10 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
-/** A labelled 40px pill in the band (Pay's Tickets shortcut). Ask AI wore it
- *  until MESITA-3991 made it a HEADER_DISC with the AI mark only. */
+/** A labelled 40px pill in the band: Ask AI (the sparkle and its words,
+ *  MESITA-4007) and Pay's Tickets shortcut. */
 export const HEADER_PILL = `${IN_BAND} hover:bg-border flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 ${HEADER_TEXT} whitespace-nowrap outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
 /** The Filters disc at the chip row's left: a chip's 32px, round, icon
