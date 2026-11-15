@@ -6,7 +6,7 @@ import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
-import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiAddCard, apiListCards, brandLabel, CARD_REFUSAL, CARD_RETURN_PARAM, type SavedCard } from "@/lib/api/cards";
 import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
@@ -210,7 +210,6 @@ export function GuestPayScreen({
   const [error, setError] = useState<string | null>(null);
   const [notPaid, setNotPaid] = useState<string | null>(null);
   const requestId = useRef<string | null>(null);
-  const [cancelAsk, setCancelAsk] = useState(false);
 
   // ONE TICKET AT A TIME (MESITA-3879, MESITA-3908): another place's ticket
   // in progress, or a bill open on the server at another place, blocks this
@@ -264,7 +263,15 @@ export function GuestPayScreen({
     if (busy || addingCard) return;
     onChoosePlace();
   };
-  const askCancel = amount !== "" && !busy && !addingCard ? () => setCancelAsk(true) : undefined;
+  // Cancel bill clears what was typed and closes at once (MESITA-4018, Pato:
+  // "cancel bill must close"): nothing was sent, so nothing is asked.
+  const askCancel =
+    amount !== "" && !busy && !addingCard
+      ? () => {
+          clearGuestDraft(placeId);
+          onChoosePlace();
+        }
+      : undefined;
 
   // The saved cards, when the place takes cards (and again on Retry).
   useEffect(() => {
@@ -473,28 +480,6 @@ export function GuestPayScreen({
   const frame = (body: React.ReactNode, data: string) => (
     <div ref={root} tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none" onKeyDown={onKeyDown} data-guest-pay={data}>
       {body}
-      <LocalDialog open={cancelAsk} onClose={() => setCancelAsk(false)} ariaLabel="Cancel this bill">
-        <div className="p-5" data-guest-cancel-ticket>
-          <p className="text-base font-semibold">Cancel this bill?</p>
-          <p className="text-muted-foreground mt-1 text-sm">What you typed is cleared. Nothing was charged.</p>
-          <div className="mt-4 flex gap-2">
-            <Button
-              type="button"
-              className="min-h-12 flex-1 text-base font-semibold"
-              onClick={() => {
-                setCancelAsk(false);
-                clearGuestDraft(placeId);
-                onChoosePlace();
-              }}
-            >
-              Cancel bill
-            </Button>
-            <button type="button" className={cn(QUIET_BUTTON_CLASS, "flex-1")} onClick={() => setCancelAsk(false)}>
-              Keep it
-            </button>
-          </div>
-        </div>
-      </LocalDialog>
     </div>
   );
   const status = error ? (
