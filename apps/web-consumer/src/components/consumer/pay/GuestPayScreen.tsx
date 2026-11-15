@@ -539,7 +539,19 @@ export function GuestPayScreen({
             row, "Bill" and the typed amount on its right (MESITA-4082, no
             big display), then the keypad. A short phone shrinks the keys
             instead of scrolling. */}
-        <div className="flex min-h-0 flex-1 flex-col py-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 py-4">
+          {/* THE ASK (MESITA-4104, Pato: "just for the first step, make this
+              clearer ... say how much was your bill ... maybe even use an
+              icon"): one row under the step bar, the Bill step only. */}
+          <PaySection className="flex items-center gap-3 px-4 py-3" data-bill-ask>
+            <span className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden>
+              <ReceiptText className="h-5 w-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-base font-semibold">How much was your bill?</span>
+              <span className="text-muted-foreground block text-sm">Type the total on your ticket.</span>
+            </span>
+          </PaySection>
           <PaySection
             title="Bill"
             action={<AmountInline text={amount} currency={place.currency} label="Bill" />}
