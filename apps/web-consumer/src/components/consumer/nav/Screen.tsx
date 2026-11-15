@@ -22,6 +22,9 @@ import { cn } from "@/lib/utils";
 // payJoin, payReceipt; MESITA-3739), which own the whole frame like the
 // place screen does.
 //
+// WHITE EVERYWHERE (MESITA-4115, Pato: "remember the white background and
+// standardization"): every pushed page, header and footer included, sits on
+// white; `paper` now only switches on the overflow watch below.
 // PAPER (MESITA-3739, Pato: "white background. that looks like shit"): the
 // pay screens sit on white, header included, not on the grey ground. Off a
 // production build a paper screen also flags its own overflow
@@ -88,7 +91,7 @@ export function Screen({
   );
 
   return (
-    <div className={cn("flex h-full min-h-0 flex-1 flex-col", paper && "bg-card")}>
+    <div className="bg-card flex h-full min-h-0 flex-1 flex-col">
       <ScreenHeader
         title={title}
         onBack={onBack ?? back}
@@ -96,7 +99,6 @@ export function Screen({
         lead={lead}
         titleMark={titleMark}
         action={action}
-        paper={paper}
       />
 
       <div
@@ -109,7 +111,7 @@ export function Screen({
         {children}
       </div>
       {footer ? (
-        <div className={cn("border-border shrink-0 border-t px-5 py-3", paper ? "bg-card" : "bg-background")}>
+        <div className="border-border bg-card shrink-0 border-t px-5 py-3">
           {footer}
         </div>
       ) : null}
@@ -134,7 +136,6 @@ export function ScreenHeader({
   lead,
   titleMark,
   action,
-  paper = false,
 }: {
   title: string;
   onBack: () => void;
@@ -142,10 +143,9 @@ export function ScreenHeader({
   lead?: React.ReactNode;
   titleMark?: React.ReactNode;
   action?: React.ReactNode;
-  paper?: boolean;
 }) {
   return (
-    <header className={cn("border-border sticky top-0 z-20 grid shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 border-b px-3 py-2 backdrop-blur-xl", paper ? "bg-card/90" : "bg-background/90")}>
+    <header className={cn("border-border sticky top-0 z-20 grid shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 border-b px-3 py-2 backdrop-blur-xl bg-card")}>
       {lead ? (
         <span className="flex">{lead}</span>
       ) : noBack ? (

@@ -152,7 +152,7 @@ export function ReservationActions({
           className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition"
         >
           <span className="flex items-center gap-3">
-            <span className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-full">
+            <span className="bg-muted text-foreground flex h-9 w-9 items-center justify-center rounded-full">
               <CalendarClock className="h-4 w-4" />
             </span>
             <span className="text-sm font-semibold">Reschedule</span>
@@ -170,10 +170,17 @@ export function ReservationActions({
             setError(null);
             setConfirmOpen(true);
           }}
-          className="border-border bg-card hover:bg-muted text-foreground/80 flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition"
+          className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition"
         >
-          <XCircle className="h-4 w-4" />
-          Cancel reservation
+          {/* The same row as View place and Reschedule (MESITA-4115, Pato:
+              "cancel reservation and reschedule must have same format"). */}
+          <span className="flex items-center gap-3">
+            <span className="bg-muted text-foreground flex h-9 w-9 items-center justify-center rounded-full">
+              <XCircle className="h-4 w-4" />
+            </span>
+            <span className="text-sm font-semibold">Cancel reservation</span>
+          </span>
+          <span className="text-muted-foreground text-xs">We tell the place</span>
         </button>
       )}
 
