@@ -89,24 +89,23 @@ export function PendingTicketBanner() {
       : null;
   if (!href) return null;
   const name = (bill ? bill.name : localName) || null;
-  const what = bill ? "Waiting for signature" : "Bill in progress";
+  const what = bill ? "Waiting for the waiter's signature" : "Bill in progress";
 
   return (
     <Link
       href={href}
-      className="flex shrink-0 items-center gap-2.5 border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-amber-900"
+      className="flex shrink-0 items-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
       data-pending-ticket
     >
-      {/* ONE LINE (Pato, 2026-11-15, MESITA-4087: "optimize vertical
-          space"): ~37px, the place after a "·", cut first when it doesn't
-          fit; it was two lines, ~60px. */}
+      {/* A WARNING BANNER, TWO LINES (Pato, 2026-11-15, MESITA-4088: "top
+          ticket can and must be taller like the warning ticket"): ~64px,
+          the state bold over the place's name. MESITA-4087 had cut it to
+          one ~37px line for a few hours. */}
       <ReceiptText className="h-5 w-5 shrink-0" aria-hidden />
-      <span className="flex min-w-0 flex-1 items-baseline gap-1.5 whitespace-nowrap">
-        <span className="shrink-0 text-base font-semibold">{what}</span>
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-base font-semibold">{what}</span>
         {name ? (
-          <span className="min-w-0 truncate text-sm text-amber-800">
-            · {name}
-          </span>
+          <span className="truncate text-sm text-amber-800">{name}</span>
         ) : null}
       </span>
       <span className="flex shrink-0 items-center text-base font-semibold">
