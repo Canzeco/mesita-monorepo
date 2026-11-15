@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, ChevronRight, Lock, Plus, ReceiptText, Smartphone, Wallet, XCircle } from "lucide-react";
+import { Banknote, Check, ChevronRight, Lock, Plus, ReceiptText, Smartphone, XCircle } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
@@ -34,6 +34,7 @@ import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { CardBrandChip, cardFace } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountInline, AmountKeypad } from "./AmountKeypad";
+import { CreditsCardChip, CreditsPill } from "@/components/consumer/wallet/WalletLists";
 import { BAD, GOOD, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, RowsCard, StepBody, StepFooter } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
@@ -647,14 +648,17 @@ export function GuestPayScreen({
                 role="switch"
                 aria-checked={creditOn}
                 onClick={() => setUseCredit((u) => !u)}
-                className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left"
+                className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left"
+                aria-label={`Credits, ${m(spendable)}`}
                 data-guest-credits
               >
-                <Wallet className="h-5 w-5 shrink-0" aria-hidden />
-                <span className="min-w-0 flex-1 truncate text-base">
-                  <span className="font-semibold">Credits</span>
-                  <span className="text-muted-foreground"> · {m(spendable)}</span>
+                {/* The place's Credits Card, as on the Wallet (MESITA-4085):
+                    its image, "Credits", the balance in the black pill. */}
+                <span className={LEAD_SLOT}>
+                  <CreditsCardChip photo={place.photo} name={place.name} eager />
                 </span>
+                <span className="min-w-0 flex-1 truncate text-base font-semibold">Credits</span>
+                <CreditsPill>{m(spendable)}</CreditsPill>
                 <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
                   <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full shadow transition-all", creditOn ? "left-[18px]" : "left-0.5")} />
                 </span>
@@ -856,6 +860,11 @@ function backAsCredits(bps: number) {
 /** A row for App or Cash in the How you pay panel (MESITA-4072; a bordered
  *  tile with a thick border when chosen until then): the ring on the right
  *  fills when chosen; grey with one line why when the place can't take it. */
+/** Method's rows share one leading slot (MESITA-4085), as wide as the
+ *  Credits Card image, each mark at its left edge: the marks start on one
+ *  edge and the words on another. */
+const LEAD_SLOT = "flex w-[3.2rem] shrink-0 items-center";
+
 function MethodTile({
   on,
   off,
@@ -892,8 +901,10 @@ function MethodTile({
       )}
       data-guest-method={title.toLowerCase()}
     >
-      <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full [&>svg]:h-5 [&>svg]:w-5", off ? "bg-muted" : tone)} aria-hidden>
-        {icon}
+      <span className={LEAD_SLOT}>
+        <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full [&>svg]:h-5 [&>svg]:w-5", off ? "bg-muted" : tone)} aria-hidden>
+          {icon}
+        </span>
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-base font-semibold">{title}</span>
