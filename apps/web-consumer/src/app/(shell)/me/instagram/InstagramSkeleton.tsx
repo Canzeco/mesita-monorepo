@@ -3,7 +3,6 @@
 import {
   ConnectCardSkeleton,
   ConnectedAccount,
-  InstagramIntro,
 } from "@/components/consumer/me/InstagramModal";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { SettingsGroup } from "@/components/consumer/me/settings-rows";
@@ -36,7 +35,6 @@ export function InstagramSkeleton() {
 
   return (
     <MeScreen title="Instagram">
-      <InstagramIntro />
 
       <div className="flex flex-col gap-6">
         {connected ? <ConnectedAccount pending /> : <ConnectCardSkeleton />}

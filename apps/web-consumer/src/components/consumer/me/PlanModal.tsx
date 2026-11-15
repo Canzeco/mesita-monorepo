@@ -62,16 +62,15 @@ function PlanCard({
 }: {
   words: PlanRowWords;
   current: boolean;
-  /** Pro: the 2px ink border and the large price. */
+  /** Pro: the large price. */
   featured?: boolean;
   children?: React.ReactNode;
 }) {
   return (
     <section
-      className={cn(
-        "bg-card rounded-2xl p-4",
-        featured ? "border-foreground border-2" : "border-border border",
-      )}
+      // FLAT ON WHITE (MESITA-4000, Pato: "flat like lists"): a hairline
+      // above, no rounded box; Pro is told apart by its large price.
+      className="border-border border-t py-4"
       aria-label={words.title}
       data-plan-row={words.title}
     >
@@ -137,7 +136,7 @@ function UsageCard({ view }: { view: GuestPlanView | null }) {
   const ratio = view && cap > 0 ? Math.min(used / cap, 1) : full ? 1 : 0;
   return (
     <section
-      className="bg-card border-border rounded-2xl border p-4"
+      className="py-4"
       aria-label="This month"
       data-plan-usage
     >

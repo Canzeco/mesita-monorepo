@@ -11,7 +11,6 @@ import { ArrowUpRight, RefreshCw } from "lucide-react";
 import { CalendarMark, type CalendarKind } from "@/components/shared/calendar-marks";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import {
-  MeLead,
   RowDivider,
   SettingsActionRow,
   SettingsGroup,
@@ -95,10 +94,6 @@ export function CalendarModal() {
 
   return (
     <MeScreen title="Calendar">
-      <MeLead>
-        Your reservations show up in your calendar and stay up to date. Cancelled tables
-        come off on their own.
-      </MeLead>
       <div className="flex flex-col gap-6">
         <SettingsGroup title="Add to">
           <CalendarRow kind="google" href={subs?.google ?? null} label="Google Calendar" sub="Android or web" />

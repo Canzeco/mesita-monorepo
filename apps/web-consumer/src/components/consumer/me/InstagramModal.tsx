@@ -28,7 +28,6 @@ import { Button } from "@/components/ui/button";
 import {
   IconChip,
   ME_BUTTON_CLASS,
-  MeLead,
   RowDivider,
   SettingsActionRow,
   SettingsGroup,
@@ -233,7 +232,6 @@ export function InstagramModal() {
 
   return (
     <MeScreen title="Instagram">
-      <InstagramIntro />
 
       <div className="flex flex-col gap-6">
         {connected && (
@@ -280,22 +278,6 @@ export function InstagramModal() {
   );
 }
 
-/** The page's opening line (Pato, 2026-10-28: "mention connect your
- *  instagram to see other people's instagram"; the Why connect pitch is
- *  gone). It names both conditions the server checks (seesHandles,
- *  MESITA-2594): a connected Instagram AND Public profile on, the default;
- *  anyone else sees the first three letters (Pato, MESITA-3884: "you need
- *  to both have public account (default) and connect your instagram").
- *  Shared with the route's fallback (InstagramSkeleton). */
-export function InstagramIntro() {
-  return (
-    <MeLead>
-      To see other members&apos; Instagram, connect yours and keep your
-      profile public, as it is by default. Until then, theirs shows only the
-      first three letters, like per***.
-    </MeLead>
-  );
-}
 
 /** A connected guest's account card under its eyebrow (MESITA-3060): the
  *  account row, then Sync | Change account and one live line. It reads the

@@ -8,7 +8,10 @@ import { cn } from "@/lib/utils";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 
 // Presentational building blocks for the Me page and its Settings modal —
-// grouped, rounded, icon-led rows in the app's premium light-theme language.
+// icon-led rows, FLAT ON WHITE since MESITA-4000 (Pato: "standardize design
+// on all the me subpages … white background, not gray"; answered "flat like
+// lists"): a group is an eyebrow over full-width rows split by hairlines,
+// with no rounded box around them.
 // Extracted from the old ProfileClient so the modular Me boxes and the
 // Settings modal render identical row chrome.
 
@@ -30,22 +33,15 @@ export function SettingsGroup({
   return (
     <section className="flex flex-col gap-2">
       {title && <SectionEyebrow>{title}</SectionEyebrow>}
-      <div className="border-border bg-card overflow-hidden rounded-2xl border">
-        {children}
-      </div>
+      {/* -mx-4: the rows' own 16px padding lines their text up with the
+          page's 20px edge, and their hover runs nearly edge to edge. */}
+      <div className="-mx-4">{children}</div>
     </section>
   );
 }
 
 export function RowDivider() {
   return <div className="border-border/60 border-t" />;
-}
-
-/** The page's one opening line under the header, where it says something
- *  (Contact's reply time, Instagram's follower bar, Profile's caption). No
- *  icon disc: the header already names the page (MESITA-2983). */
-export function MeLead({ children }: { children: ReactNode }) {
-  return <p className="text-muted-foreground type-label mb-5">{children}</p>;
 }
 
 /** Marks the guest's own Class or Plan row, beside its title (MESITA-2983);
