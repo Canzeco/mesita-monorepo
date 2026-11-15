@@ -195,7 +195,8 @@ function CardPortal({ children }: { children: React.ReactNode }) {
 export const SEMI_MODAL_PANEL_CLASS =
   "border-border bg-popover shadow-elev relative flex h-[88%] max-h-[88%] min-h-0 flex-col overflow-hidden rounded-t-3xl border-t";
 
-const FULL_SCREEN_PANEL_CLASS = "bg-popover relative flex h-full min-h-0 flex-col overflow-hidden";
+const FULL_SCREEN_PANEL_CLASS =
+  "bg-popover relative flex h-full min-h-0 flex-col overflow-hidden";
 
 export function LocalSheet({
   open,
@@ -279,6 +280,7 @@ export function LocalDialog({
   ariaLabel,
   instant = false,
   scroll = false,
+  fit = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -292,6 +294,10 @@ export function LocalDialog({
    *  by its content, so its top never moves with it (MESITA-2965). Off for
    *  every other dialog. */
   scroll?: boolean;
+  /** Sized by its content up to the overlay's height, then its child
+   *  scrolls: the panel is a column capped at the overlay (Search's
+   *  Filters, MESITA-4038). */
+  fit?: boolean;
 }) {
   const presence = useLocalPresence(open);
   const mounted = instant ? open : presence.mounted;
@@ -333,6 +339,7 @@ export function LocalDialog({
           className={cn(
             "border-border bg-popover shadow-elev relative w-full max-w-sm overflow-hidden rounded-3xl border outline-none",
             scroll && "flex h-full min-h-0 flex-col",
+            fit && "flex max-h-full min-h-0 flex-col",
             !instant &&
               "transition-[opacity,transform] duration-300 motion-reduce:transition-none",
             !instant && OVERLAY_EASE,
