@@ -96,3 +96,26 @@ Deno.test("fleetWorkflows: no unconditional way back into a tool node (MESITA-40
     }
   }
 });
+
+Deno.test("a3 place lane: a found table is cancelled only on a yes after the read-back; two searches at most (MESITA-4079)", () => {
+  // A cancel before the place answers the read-back loses another guest's
+  // table when the answer is "no, esa no" (data loss), and a third search
+  // keeps a place on the line asking the same thing.
+  const wf = fleetWorkflows(ids()).a3;
+  const intoCancel = Object.entries(wf.edges).filter(([, e]) => e.target === "place_do_cancel");
+  for (const [id, e] of intoCancel) {
+    const fwd = e.forward_condition as { type: string; condition?: string };
+    assertEquals(fwd.type, "llm", `a3.${id}: the cancel is not gated by the place's answer`);
+    assert(/POSTERIOR/.test(fwd.condition ?? ""), `a3.${id}: the cancel does not wait for an answer after the question`);
+  }
+  const finds = Object.entries(wf.nodes).filter(([, n]) =>
+    n.type === "tool" && (n.tools as Array<{ tool_id: string }>)[0].tool_id === "tool_a4_find_reservation"
+  ).map(([id]) => id);
+  assertEquals(finds.sort(), ["place_find", "place_find_again"]);
+  const reachesFind = (from: string) =>
+    Object.values(wf.edges).some((e) =>
+      (e.source === from && finds.includes(e.target as string)) ||
+      (e.target === from && finds.includes(e.source as string) && e.backward_condition)
+    );
+  assert(!reachesFind("place_found_again"), "a3: the second search's node can search a third time");
+});

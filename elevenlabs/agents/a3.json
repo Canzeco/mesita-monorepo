@@ -226,7 +226,7 @@
           "x": 1280,
           "y": -320
         },
-        "additional_prompt": "La búsqueda regresa las más parecidas, la mejor primero. Léeles la primera para confirmar que es esa: a nombre de quién, fecha, hora y personas, en una frase («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si dicen que no y hay otra, lee la siguiente. Si no hubo coincidencias, dilo una vez y pide otro dato (otro nombre, el día o la hora); no confirmes ni niegues reservaciones de otros lugares. Si quieren cancelar una (o ya lo pidieron al llamar), toma la rama de cancelar; no vuelvas a buscar la misma. Si solo era consulta, despídete.",
+        "additional_prompt": "La búsqueda regresa las más parecidas, la mejor primero. Lee la primera UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo»).\nDespués de leerla, CALLA y ESPERA su respuesta. Nunca canceles antes de oír su sí a esa lectura: lo que dijeron antes de que la leyeras (por ejemplo «hay que cancelar») no cuenta. Su sí («sí», «esa», «sí, cancélala») confirma a la vez que es esa y la cancelación: no vuelvas a preguntar.\nSi dicen que no y hay otra, lee la siguiente igual, una vez. No confirmes ni niegues reservaciones de otros lugares. Si solo era consulta, contesta lo que pregunten con lo que regresó la búsqueda y despídete.\nSi dicen que no y no queda otra, o la búsqueda no encontró nada, dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.",
         "entry_behavior": "generate_immediately",
         "conversation_config": {
           "agent": {
@@ -237,7 +237,44 @@
         },
         "edge_order": [
           "e_pfd_cancel",
+          "e_pfd_again",
           "e_pfd_end"
+        ]
+      },
+      "place_find_again": {
+        "type": "tool",
+        "position": {
+          "x": 1600,
+          "y": -160
+        },
+        "tools": [
+          {
+            "tool_id": "tool:a4_find_reservation"
+          }
+        ],
+        "edge_order": [
+          "e_pfa_found"
+        ]
+      },
+      "place_found_again": {
+        "type": "override_agent",
+        "label": "Place · second search",
+        "position": {
+          "x": 1920,
+          "y": -160
+        },
+        "additional_prompt": "La búsqueda regresa las más parecidas, la mejor primero. Lee la primera UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo»).\nDespués de leerla, CALLA y ESPERA su respuesta. Nunca canceles antes de oír su sí a esa lectura: lo que dijeron antes de que la leyeras (por ejemplo «hay que cancelar») no cuenta. Su sí («sí», «esa», «sí, cancélala») confirma a la vez que es esa y la cancelación: no vuelvas a preguntar.\nSi dicen que no y hay otra, lee la siguiente igual, una vez. No confirmes ni niegues reservaciones de otros lugares. Si solo era consulta, contesta lo que pregunten con lo que regresó la búsqueda y despídete.\nEsta fue la segunda y última búsqueda. Si tampoco encontró nada, o dicen que no y no queda otra: no pidas más datos ni preguntes si el nombre está bien. Di en una frase que no la encuentras y que pueden revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar; despídete y cuelga con end_call.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_pfa_cancel",
+          "e_pfa_end"
         ]
       },
       "place_confirm_cancel": {
@@ -247,7 +284,7 @@
           "x": 1600,
           "y": -400
         },
-        "additional_prompt": "Si ya confirmaron cuál es y pidieron cancelarla, no vuelvas a preguntar: toma la rama de cancelar. Si no, confirma una sola vez cuál cancelan (a nombre de quién, fecha y hora). El código lo tomas tú de los resultados. Solo con un sí claro toma la rama de cancelar.",
+        "additional_prompt": "Pregunta una sola vez cuál cancelan, con los datos de la lista que leíste: a nombre de quién, fecha y hora («¿Cancelo la de Ana López del sábado a las 8:30?»). El código lo tomas tú de las reservaciones. Luego CALLA y ESPERA: solo con un sí claro a esa pregunta se cancela.",
         "entry_behavior": "generate_immediately",
         "conversation_config": {
           "agent": {
@@ -625,24 +662,29 @@
           "type": "result",
           "successful": true,
           "label": "success"
-        },
-        "backward_condition": {
-          "type": "llm",
-          "condition": "Dieron OTRO dato (otro nombre, día, hora, personas o código), distinto de lo que ya se buscó.",
-          "label": "search again"
         }
       },
       "e_pfd_cancel": {
         "source": "place_found",
-        "target": "place_confirm_cancel",
+        "target": "place_do_cancel",
         "forward_condition": {
           "type": "llm",
-          "condition": "Quieren cancelar esa reservación: el lugar ya no puede recibirla.",
-          "label": "cancel"
+          "condition": "Ya leíste una reservación encontrada y, en un turno POSTERIOR a esa lectura, quien llama respondió que sí es esa (un sí claro: «sí», «esa», «sí, cancélala») y quiere cancelarla (lo pidió antes o ahora). Si todavía no ha respondido a tu lectura, NO: espera. Lo que dijo antes de la lectura no cuenta como ese sí.",
+          "label": "yes to the read-back"
         },
         "backward_condition": {
-          "type": "unconditional",
-          "label": "buscar otra u otra gestión"
+          "type": "result",
+          "successful": false,
+          "label": "failure"
+        }
+      },
+      "e_pfd_again": {
+        "source": "place_found",
+        "target": "place_find_again",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "La búsqueda no encontró nada, o dijeron que no a las que leíste y no queda otra, y ya dieron OTRO dato (otro nombre, día, hora, personas o código), distinto de lo que ya se buscó.",
+          "label": "search again"
         }
       },
       "e_pfd_end": {
@@ -654,12 +696,44 @@
           "label": "done"
         }
       },
+      "e_pfa_found": {
+        "source": "place_find_again",
+        "target": "place_found_again",
+        "forward_condition": {
+          "type": "result",
+          "successful": true,
+          "label": "success"
+        }
+      },
+      "e_pfa_cancel": {
+        "source": "place_found_again",
+        "target": "place_do_cancel",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Ya leíste una reservación encontrada y, en un turno POSTERIOR a esa lectura, quien llama respondió que sí es esa (un sí claro: «sí», «esa», «sí, cancélala») y quiere cancelarla (lo pidió antes o ahora). Si todavía no ha respondido a tu lectura, NO: espera. Lo que dijo antes de la lectura no cuenta como ese sí.",
+          "label": "yes to the read-back"
+        },
+        "backward_condition": {
+          "type": "result",
+          "successful": false,
+          "label": "failure"
+        }
+      },
+      "e_pfa_end": {
+        "source": "place_found_again",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Resuelto, o dijiste que no la encuentras; ya te despediste.",
+          "label": "done"
+        }
+      },
       "e_pcc_do": {
         "source": "place_confirm_cancel",
         "target": "place_do_cancel",
         "forward_condition": {
           "type": "llm",
-          "condition": "Confirmaron la cancelación de esa reservación.",
+          "condition": "Ya preguntaste cuál cancelan y, en un turno POSTERIOR a tu pregunta, respondieron que sí con claridad. Si todavía no responden a tu pregunta, NO: espera.",
           "label": "confirmed"
         },
         "backward_condition": {
