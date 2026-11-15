@@ -227,7 +227,9 @@ export function PayPage() {
         }
       />
 
-      <div className="mt-5 flex flex-col">
+      {/* A bill in progress is the whole page: centred in the space under
+          the band (MESITA-4021). */}
+      <div className={cn("mt-5 flex flex-col", ((openTabs?.length ?? 0) > 0 || (openTabs?.length === 0 && pending)) && "flex-1 justify-center pb-16")}>
         {openTabs === null ? (
           <ListSkeleton />
         ) : openTabs.length > 0 ? (
@@ -262,7 +264,7 @@ export function PayPage() {
               </span>
               <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
             </button>
-            <p className="text-muted-foreground text-center text-sm">Pay or cancel this bill before starting another.</p>
+            <p className="text-muted-foreground text-center text-sm">Finish this bill before starting another.</p>
           </div>
         ) : places ? (
           <PlaceList

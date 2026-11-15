@@ -264,15 +264,6 @@ export function GuestPayScreen({
     if (busy || addingCard) return;
     onChoosePlace();
   };
-  // Cancel bill clears what was typed and closes at once (MESITA-4018, Pato:
-  // "cancel bill must close"): nothing was sent, so nothing is asked.
-  const askCancel =
-    amount !== "" && !busy && !addingCard
-      ? () => {
-          clearGuestDraft(placeId);
-          onChoosePlace();
-        }
-      : undefined;
 
   // The saved cards, when the place takes cards (and again on Retry).
   useEffect(() => {
@@ -494,7 +485,7 @@ export function GuestPayScreen({
   if (notPaid) {
     return frame(
       <>
-        <PlaceBar place={place} onCancel={askCancel} />
+        <PlaceBar place={place} />
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
           <XCircle className={cn("h-14 w-14", BAD)} aria-hidden />
           <h2 className="font-display mt-4 text-xl font-semibold">Not paid</h2>
@@ -532,7 +523,7 @@ export function GuestPayScreen({
   if (stage === "bill" && typing) {
     return frame(
       <>
-        <PlaceHero place={place} off={false} onChoose={leave} onCancel={askCancel} />
+        <PlaceHero place={place} off={false} onChoose={leave} />
         <StepsBar at={0} className="mt-3" />
         <div className="mt-4 flex shrink-0 items-center justify-center gap-2">
           <ReceiptText className="text-muted-foreground h-5 w-5" aria-hidden />
@@ -559,7 +550,7 @@ export function GuestPayScreen({
     const toSign = dueCents === 0;
     return frame(
       <>
-        <PlaceBar place={place} onCancel={askCancel} />
+        <PlaceBar place={place} />
         <StepsBar at={1} onStep={goToStep} className="mt-1" />
         <BackStep to="Bill" onClick={() => goToStep(0)} />
         <button
@@ -666,7 +657,7 @@ export function GuestPayScreen({
   if (stage === "method") {
     return frame(
       <>
-        <PlaceBar place={place} onCancel={askCancel} />
+        <PlaceBar place={place} />
         <StepsBar at={2} onStep={goToStep} className="mt-1" />
         <BackStep to="Tip" onClick={() => !busy && setStage("bill")} />
         <p className="mt-2 shrink-0 text-center">
@@ -721,7 +712,7 @@ export function GuestPayScreen({
     const cardsUnknown = cards === null;
     return frame(
       <>
-        <PlaceBar place={place} onCancel={askCancel} />
+        <PlaceBar place={place} />
         <StepsBar at={3} onStep={goToStep} className="mt-1" />
         <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
@@ -814,7 +805,7 @@ export function GuestPayScreen({
   // 4B CASH PAY: give the cash, then the QR.
   return frame(
     <>
-      <PlaceBar place={place} onCancel={askCancel} />
+      <PlaceBar place={place} />
       <StepsBar at={3} onStep={goToStep} className="mt-1" />
       <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
