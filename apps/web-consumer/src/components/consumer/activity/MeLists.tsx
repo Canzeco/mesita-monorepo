@@ -596,8 +596,9 @@ function TicketList({
 
 /** A list page's subpages (MESITA-3889/3893): Home's Places | Social strip,
  *  equal tabs edge to edge under the header, white with a hairline, the
- *  chosen one bold over a full-width blue-600 bar (Pato: "blue subpages
- *  navbar"). `on` null draws no bar (the loading frame). */
+ *  chosen one bold ink over a short 32px ink line, Home's since MESITA-4039
+ *  (MESITA-4040; a full-width blue-600 bar before, Pato: "blue subpages
+ *  navbar"). `on` null draws no line (the loading frame). */
 function SubpageTabs<K extends string>({
   label,
   tabs,
@@ -634,7 +635,9 @@ function SubpageTabs<K extends string>({
             {chosen ? (
               <span
                 aria-hidden
-                className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-600"
+                // Home's short ink line, never blue (MESITA-4040, after
+                // MESITA-4039).
+                className="bg-foreground absolute bottom-0 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full"
               />
             ) : null}
             {t.icon ? <t.icon className="h-4 w-4 shrink-0" strokeWidth={chosen ? 2.25 : 2} aria-hidden /> : null}
