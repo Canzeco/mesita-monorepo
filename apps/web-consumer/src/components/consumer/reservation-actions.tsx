@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
+import { PANEL_CLASS } from "@/components/shared/Panel";
 import { CalendarClock, Loader2, MapPin, XCircle } from "lucide-react";
 
 import {
@@ -30,7 +31,10 @@ import {
   SHEET_TITLE_CLASS,
 } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
-import { placeDateTime, placeInstantIso } from "@mesita/place-profile/lib/place-time";
+import {
+  placeDateTime,
+  placeInstantIso,
+} from "@mesita/place-profile/lib/place-time";
 
 // Action cluster for reservation detail. The two that MOVE the reservation —
 // reschedule and cancel — are live: each hits its consumer-web-* EF, and a
@@ -74,8 +78,12 @@ export function ReservationActions({
   const [error, setError] = useState<string | null>(null);
 
   // Seeded from the current booking so "just move it an hour" is two taps.
-  const [dateChoice, setDateChoice] = useState(() => localDate(r.reservedAt, tz));
-  const [timeChoice, setTimeChoice] = useState(() => localTime(r.reservedAt, tz));
+  const [dateChoice, setDateChoice] = useState(() =>
+    localDate(r.reservedAt, tz),
+  );
+  const [timeChoice, setTimeChoice] = useState(() =>
+    localTime(r.reservedAt, tz),
+  );
   const [party, setParty] = useState(r.partySize);
 
   // Derived, never stored: the seeded slot can already be behind the place's
@@ -126,10 +134,13 @@ export function ReservationActions({
   }
 
   return (
-    <section className="flex flex-col gap-2">
+    <section
+      className={cn(PANEL_CLASS, "divide-border flex flex-col divide-y")}
+      data-reservation-actions
+    >
       <PushLink
         href={placeHref(r.projectId)}
-        className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition"
+        className="hover:bg-muted flex items-center justify-between gap-3 px-4 py-3 transition"
       >
         <span className="flex items-center gap-3">
           <span className="bg-muted text-foreground flex h-9 w-9 items-center justify-center rounded-full">
@@ -149,7 +160,7 @@ export function ReservationActions({
             setError(null);
             setSheetOpen(true);
           }}
-          className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition"
+          className="hover:bg-muted flex items-center justify-between gap-3 px-4 py-3 text-left transition"
         >
           <span className="flex items-center gap-3">
             <span className="bg-muted text-foreground flex h-9 w-9 items-center justify-center rounded-full">
@@ -170,7 +181,7 @@ export function ReservationActions({
             setError(null);
             setConfirmOpen(true);
           }}
-          className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition"
+          className="hover:bg-muted flex items-center justify-between gap-3 px-4 py-3 text-left transition"
         >
           {/* The same row as View place and Reschedule (MESITA-4115, Pato:
               "cancel reservation and reschedule must have same format"). */}
@@ -180,7 +191,9 @@ export function ReservationActions({
             </span>
             <span className="text-sm font-semibold">Cancel reservation</span>
           </span>
-          <span className="text-muted-foreground text-xs">We tell the place</span>
+          <span className="text-muted-foreground text-xs">
+            We tell the place
+          </span>
         </button>
       )}
 
@@ -265,7 +278,7 @@ export function ReservationActions({
               type="button"
               onClick={submitCancel}
               disabled={busy}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-semibold text-white transition active:scale-[0.99] disabled:opacity-60"
+              className="bg-foreground inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-white transition active:scale-[0.99] disabled:opacity-60"
             >
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
               {busy ? "Cancelling…" : "Yes, cancel it"}

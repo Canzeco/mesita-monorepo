@@ -1,5 +1,6 @@
 "use client";
 
+import { PANEL_CLASS } from "@/components/shared/Panel";
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { goBack } from "@/lib/navigate";
@@ -75,8 +76,9 @@ export function ReservationBodySkeleton() {
   return (
     <div className="flex flex-col gap-4 px-5 pt-5 pb-8">
       <span className="sr-only">Loading reservation</span>
-      {/* TicketHeader's bones (MESITA-4097): photo, place, day, time, state. */}
-      <div aria-hidden>
+      {/* The three panels (MESITA-4115): the ticket, its progress, its
+          actions. TicketHeader's bones: photo, place, day, time, state. */}
+      <div aria-hidden className={cn(PANEL_CLASS, "p-4")}>
         <div className="flex items-center gap-3">
           <Skeleton className="h-12 w-12 rounded-full" />
           <div className="flex-1">
@@ -88,28 +90,25 @@ export function ReservationBodySkeleton() {
         <Skeleton className="mt-2 h-4 w-20" />
       </div>
 
-      {/* The reference line. */}
-      <div aria-hidden className="-mt-1 flex h-5 items-center px-1">
-        <Skeleton className="h-3.5 w-36" />
-      </div>
-
-      <div aria-hidden className="flex items-center gap-1.5">
-        {RESERVATION_FLOW.map((step) => (
-          <div key={step} className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <Skeleton className="h-1 rounded-full" />
-            <div className="type-label flex h-[1lh] items-center">
-              <Skeleton className="h-2.5 w-3/4" />
+      <div aria-hidden className={cn(PANEL_CLASS, "flex flex-col gap-3 p-4")}>
+        <div className="flex h-5 items-center">
+          <Skeleton className="h-3.5 w-36" />
+        </div>
+        <div className="flex items-center gap-1.5">
+          {RESERVATION_FLOW.map((step) => (
+            <div key={step} className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <Skeleton className="h-1 rounded-full" />
+              <div className="type-label flex h-[1lh] items-center">
+                <Skeleton className="h-2.5 w-3/4" />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      <div aria-hidden className="flex flex-col gap-2">
-        {["w-20", "w-24"].map((w) => (
-          <div
-            key={w}
-            className="border-border bg-card flex items-center justify-between gap-3 rounded-2xl border px-4 py-3"
-          >
+      <div aria-hidden className={cn(PANEL_CLASS, "divide-border flex flex-col divide-y")}>
+        {["w-20", "w-24", "w-32"].map((w) => (
+          <div key={w} className="flex items-center justify-between gap-3 px-4 py-3">
             <span className="flex items-center gap-3">
               <Skeleton className="h-9 w-9 rounded-full" />
               <Skeleton className={cn("h-3.5", w)} />
@@ -117,19 +116,13 @@ export function ReservationBodySkeleton() {
             <Skeleton className="h-3 w-24" />
           </div>
         ))}
-        <div className="border-border bg-card flex items-center justify-center rounded-2xl border px-4 py-3">
-          <div className="flex h-5 items-center">
-            <Skeleton className="h-3.5 w-36" />
-          </div>
-        </div>
       </div>
     </div>
   );
 }
 
 /** The intercepted reservation: the real ReservationDetailModalShell (live
- *  Back, "Reservation", the share square waiting for the name) around the
- *  body silhouette, the same frame the fetch draws while it waits. */
+ *  Back, "Reservation") around the body silhouette, the same frame the fetch draws while it waits. */
 export function ReservationSlideOverSkeleton() {
   return (
     <ReservationDetailModalShell placeName={null}>
