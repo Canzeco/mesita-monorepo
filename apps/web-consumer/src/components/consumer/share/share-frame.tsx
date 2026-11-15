@@ -2,7 +2,7 @@ import { ArrowUpRight } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import { IconChip } from "@/components/consumer/me/settings-rows";
+import { IconChip, SettingsGroup } from "@/components/consumer/me/settings-rows";
 import {
   CHANNEL_MARKS,
   type ShareChannel,
@@ -97,11 +97,11 @@ export const SHARE_ROWS: readonly ShareRowSpec[] = [
   },
 ];
 
-/** A row's box: 56px tall at least, the whole row the target. Hover only
+/** A row's box: Integrations' row, the whole row the target. Hover only
  *  where there is hover (Tailwind's `hover:`), lighter than the chip. */
 export function shareRowClass(spec: ShareRowSpec): string {
   return cn(
-    "border-border/60 flex min-h-14 w-full items-center gap-3 border-t px-5 py-2.5 text-left transition first:border-t-0",
+    "border-border/60 flex w-full items-center gap-3 border-t px-4 py-3 text-left transition first:border-t-0",
     "hover:bg-muted/50 active:bg-muted/50 focus-visible:ring-foreground/25 outline-none focus-visible:ring-2 focus-visible:ring-inset",
     spec.touchOnly && "hidden pointer-coarse:flex",
   );
@@ -140,12 +140,14 @@ export function ShareFrame({
   children?: ReactNode;
 }) {
   return (
-    // THE ME STANDARD (MESITA-4019, Pato: "i say all the me subpages
-    // standardized"; MESITA-4000): white, no opening line, the channel rows
-    // full width split by hairlines, no rounded box.
-    <MeScreen title="Share Mesita" flush>
-      <div className="flex flex-col pt-2 pb-8" data-share-page>
-        {rows}
+    // THE BOX DESIGN (MESITA-4091, Pato 2026-11-15: "this must follow the
+    // box design too", with Me › Integrations as the model): the channel rows
+    // in one bordered panel (SettingsGroup) at the page's inset, split by
+    // hairlines, the rows Integrations' 16px x 12px. They ran full width with
+    // no box under MESITA-4019.
+    <MeScreen title="Share Mesita">
+      <div className="flex flex-col pb-8" data-share-page>
+        <SettingsGroup>{rows}</SettingsGroup>
         {children}
       </div>
     </MeScreen>
