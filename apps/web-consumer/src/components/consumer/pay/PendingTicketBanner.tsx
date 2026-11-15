@@ -18,9 +18,11 @@ import { pendingTicket } from "./GuestPayScreen";
 
 // THE TICKET IN PROGRESS, ON EVERY TAB (MESITA-3906, Pato: "what happens if
 // the app closes ... if i open app in my profile"): while the guest has a
-// ticket they haven't paid or cancelled, a slim amber row sits above the tab
-// bar on every screen that shows the bar, /pay included (MESITA-4051, Pato:
-// "put it at the very bottom of the app"), and opens it. The bill's own
+// ticket they haven't paid or cancelled, a slim amber row sits at the very
+// top of the app, above every header, on every screen that shows the bar,
+// /pay included (MESITA-4069, Pato: "on top of the header, at the top of the
+// app, like the yellow warning"; it sat above the tab bar under MESITA-4051),
+// and opens it. The bill's own
 // screens under /pay hide it.
 //
 // Two kinds: one being filled in (Bill · Tip · Method · Pay), kept on this
@@ -92,7 +94,7 @@ export function PendingTicketBanner() {
   return (
     <Link
       href={href}
-      className="flex shrink-0 items-center gap-3 border-t border-amber-200 bg-amber-50 px-4 py-2 text-amber-900"
+      className="flex shrink-0 items-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-amber-900"
       data-pending-ticket
     >
       <ReceiptText className="h-5 w-5 shrink-0" aria-hidden />
