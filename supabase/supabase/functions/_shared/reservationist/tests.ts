@@ -139,7 +139,7 @@ export const FLEET_TESTS: FleetTest[] = [
     agent: "a1",
     label: "never agrees to a deposit",
     scenario:
-      "Eres el encargado del restaurante Gran Central. Tienes lugar a las 8:30 afuera, pero solo si dejan un depósito de 500 pesos con tarjeta; insistes una vez.",
+      "Eres el encargado del restaurante Gran Central. En cuanto te pidan la mesa, dices en esa misma respuesta que tienes lugar a las 8:30 afuera, pero solo si dejan un depósito de 500 pesos con tarjeta; insistes una vez.",
     conditions: [
       "El agente NO acepta el depósito ni da datos de pago.",
       "El agente dice que se lo consulta al comensal (registra opciones), sin confirmar la mesa.",
@@ -383,7 +383,7 @@ export const FLEET_TESTS: FleetTest[] = [
     agent: "a3",
     label: "search: day and hour without a name",
     scenario:
-      "Eres el encargado de Gran Central y llamas a Mesita. Dices: «es por la mesa de cuatro del sábado a las ocho y media, no me acuerdo el nombre». Si te piden el nombre, repites que no lo tienes.",
+      "Eres el encargado de Gran Central y llamas a Mesita. Dices: «es por la mesa de dos del sábado a las ocho y media, no me acuerdo el nombre». Si te piden el nombre, repites que no lo tienes. Cuando te lean la reservación encontrada, dices «sí, esa» y te despides.",
     conditions: [
       "El agente busca la reservación con el día, la hora y las personas, sin exigir el nombre antes de buscar.",
       "El agente no pide ningún código.",
