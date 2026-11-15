@@ -121,6 +121,9 @@ export const CONSUMER_ROUTES = {
   // must be own page, not a fucking ugly ass modal"), pushed from Wallet's
   // Redeem Credits button. It was a legacy address 308ing to /wallet.
   walletRedeem: "/wallet/redeem",
+  // ADD A CARD, ITS OWN PAGE (MESITA-4092, Pato: "OWN SUBPAGES IS CLEANER"),
+  // pushed from Wallet's Add a card row; it was an 88% sheet.
+  walletAddCard: "/wallet/cards/new",
   // NO ACTIVITY (Pato, 2026-11-14, MESITA-3855): its chips are Me's
   // Notifications, Reservations and Tickets pages.
   //
@@ -462,6 +465,7 @@ export const ROUTE_MAP = {
   walletPlace: row("/wallet/place/:placeId", "wallet", "page", "wallet"),
   walletGift: row("/wallet/gift/:token", "wallet", "page", "wallet"),
   walletRedeem: row("/wallet/redeem", "wallet", "page", "wallet"),
+  walletAddCard: row("/wallet/cards/new", "wallet", "page", "wallet"),
   // Share's page, pushed from Wallet's big button (MESITA-3886).
   share: row("/share", "wallet", "page", "wallet"),
   me: row("/me", "me", "tab", null),

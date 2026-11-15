@@ -137,6 +137,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       walletGift: { prefix: "/wallet/gift/" },
       // Redeem a friend's code, its own page (MESITA-4020).
       walletRedeem: "/wallet/redeem",
+      // Add a card, its own page (MESITA-4092).
+      walletAddCard: "/wallet/cards/new",
       // No Activity tab (MESITA-3855). Share is a page again (MESITA-3867).
       share: "/share",
       // The Me hub and its boxes, each a route. NO diamond / diamondInvite /

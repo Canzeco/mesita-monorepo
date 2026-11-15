@@ -890,12 +890,15 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     expect(childDirs(join(pay, "receipt"))).toEqual(["[paymentId]"]);
   });
 
-  it("(shell)/wallet holds a place's House Card, the gift link and Redeem, and nothing else", () => {
+  it("(shell)/wallet holds a place's House Card, the gift link, Redeem and Add a card, and nothing else", () => {
     const wallet = join(SHELL, "wallet");
     expect(existsSync(join(wallet, "page.tsx"))).toBe(true);
     // Redeem a code is its own page since MESITA-4020.
-    expect(childDirs(wallet)).toEqual(["gift", "place", "redeem"]);
+    // Add a card is its own page since MESITA-4092.
+    expect(childDirs(wallet)).toEqual(["cards", "gift", "place", "redeem"]);
     expect(existsSync(join(wallet, "redeem", "page.tsx"))).toBe(true);
+    expect(childDirs(join(wallet, "cards"))).toEqual(["new"]);
+    expect(existsSync(join(wallet, "cards", "new", "page.tsx"))).toBe(true);
     expect(childDirs(join(wallet, "gift"))).toEqual(["[token]"]);
     expect(childDirs(join(wallet, "place"))).toEqual(["[placeId]"]);
   });
@@ -909,6 +912,7 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     "/wallet/place/00000000-0000-4000-8000-000000000001",
     "/wallet/gift/abc",
     "/wallet/redeem",
+    "/wallet/cards/new",
     // One segment under each tab that is a word, never an id: the bare-id
     // forward (MESITA-4013) must leave it alone.
     "/pay/bill",

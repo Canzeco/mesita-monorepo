@@ -1,6 +1,5 @@
 "use client";
 
-import { AddCardSheet } from "@/components/consumer/AddCardSheet";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
@@ -152,7 +151,6 @@ export function WalletSection({
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
   const [method, setMethod] = useState<Method | null>(null);
   const [explainAdd, setExplainAdd] = useState(false);
-  const [adding, setAdding] = useState(false);
   // The saved-card failure toast fires at most once per mount.
   const cardsToasted = useRef(false);
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
@@ -194,8 +192,8 @@ export function WalletSection({
   }, [wallet, photoKey, painted]);
   const ready = painted || (failed && !wallet);
 
-  // Add a card in the app (MESITA-4065: no Stripe page).
-  const addCard = useCallback(() => setAdding(true), []);
+  // Add a card in the app (MESITA-4065: no Stripe page), on its own page
+  // since MESITA-4092 (/wallet/cards/new).
 
   const removeCard = useCallback(
     async (card: SavedCard) => {
@@ -227,16 +225,6 @@ export function WalletSection({
 
   return (
     <div className="flex flex-col" data-wallet>
-      <AddCardSheet
-        open={adding}
-        onClose={() => setAdding(false)}
-        knownCardIds={cards.map((c) => c.id)}
-        onSaved={() => {
-          setAdding(false);
-          toast.success("Card saved.");
-          reread();
-        }}
-      />
       {wallet?.settling ? (
         <p className="text-muted-foreground mt-4 text-sm" role="status">
           Confirming a payment…
@@ -251,7 +239,7 @@ export function WalletSection({
             leaves once three cards are saved (MESITA-3749); Credits Cards
             have no limit. */}
         {cards.length < MAX_SAVED_CARDS ? (
-          <AddRow line="Add a card" ariaLabel="Add a payment card" onClick={addCard} disabled={adding} busy={false} />
+          <AddRow line="Add a card" ariaLabel="Add a payment card" href={CONSUMER_ROUTES.walletAddCard} />
         ) : null}
       </WalletPanelList>
 
