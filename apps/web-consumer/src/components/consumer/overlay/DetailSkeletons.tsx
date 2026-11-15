@@ -66,35 +66,27 @@ export function PlaceSlideOverSkeleton() {
 
 // ── Reservation ──────────────────────────────────────────────────────────
 
-/** ReservationDetailBody (MESITA-3649): the hero card (a 5:2 photo, the
- *  name and its pill, the time large and "Table for N"), the reference
+/** ReservationDetailBody (MESITA-4097): the ticket header (photo, place,
+ *  day and table size, the time large, the state), the reference
  *  line, the four-step stepper, then View place, Reschedule and Cancel. The
  *  route's loading.tsx draws it, and so does reservation-detail-fetch while
  *  the row is fetched, so the two placeholders are one. */
 export function ReservationBodySkeleton() {
   return (
-    <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
+    <div className="flex flex-col gap-4 px-5 pt-5 pb-8">
       <span className="sr-only">Loading reservation</span>
-      <section
-        aria-hidden
-        className="border-border bg-card overflow-hidden rounded-2xl border"
-      >
-        <Skeleton className="aspect-[5/2] w-full rounded-none" />
-        <div className="px-4 pt-3 pb-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex h-6 items-center">
-              <Skeleton className="h-4 w-40 max-w-full" />
-            </div>
-            <Skeleton className="type-label h-[calc(1lh_+_6px)] w-20 shrink-0 rounded-full" />
-          </div>
-          <div className="font-display mt-3 flex h-[1lh] items-center text-2xl leading-tight">
-            <Skeleton className="h-6 w-52 max-w-full" />
-          </div>
-          <div className="mt-1 flex h-6 items-center">
-            <Skeleton className="h-4 w-24" />
+      {/* TicketHeader's bones (MESITA-4097): photo, place, day, time, state. */}
+      <div aria-hidden>
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="flex-1">
+            <Skeleton className="h-6 w-48 max-w-full" />
+            <Skeleton className="mt-2 h-4 w-36" />
           </div>
         </div>
-      </section>
+        <Skeleton className="mt-4 h-10 w-36" />
+        <Skeleton className="mt-2 h-4 w-20" />
+      </div>
 
       {/* The reference line. */}
       <div aria-hidden className="-mt-1 flex h-5 items-center px-1">

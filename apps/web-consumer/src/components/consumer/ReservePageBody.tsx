@@ -1,8 +1,9 @@
 "use client";
 
+import { ScreenHeader } from "@/components/consumer/nav/Screen";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 import {
@@ -19,7 +20,6 @@ import { toReservationItem } from "@/lib/reservations-adapter";
 import { statusLabel, whenLine } from "@/lib/reservation-when";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { isAwaitingPlace, usePollWhile } from "@/lib/use-poll-while";
-import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, guestNoun } from "@/lib/utils";
 
 /** Confirmed wears the green; Booking… and Created grey; the rest plain. */
@@ -124,19 +124,10 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
 
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
-      <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-10">
-        <div className="mb-4 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Back"
-            className="bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95"
-          >
-            <ArrowLeft className="h-5 w-5" strokeWidth={2.25} />
-          </button>
-          <p className="truncate text-base font-semibold">{place.name}</p>
-        </div>
-        <h1 className={cn(SHEET_TITLE_CLASS, "text-2xl")}>Reserve a table</h1>
+      {/* The one page header (MESITA-4097): square Back, the title. */}
+      <ScreenHeader title="Reserve a table" onBack={onBack} />
+      <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-10">
+        <p className="truncate text-lg font-semibold">{place.name}</p>
 
         {mine.length > 0 && (
           <>

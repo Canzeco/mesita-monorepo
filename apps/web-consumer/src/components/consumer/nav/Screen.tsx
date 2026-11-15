@@ -89,33 +89,15 @@ export function Screen({
 
   return (
     <div className={cn("flex h-full min-h-0 flex-1 flex-col", paper && "bg-card")}>
-      <header className={cn("border-border sticky top-0 z-20 grid shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 border-b px-3 py-2 backdrop-blur-xl", paper ? "bg-card/90" : "bg-background/90")}>
-        {lead ? (
-          <span className="flex">{lead}</span>
-        ) : noBack ? (
-          <span className="h-11 w-11" aria-hidden />
-        ) : (
-        <button
-          type="button"
-          onClick={onBack ?? back}
-          aria-label="Back"
-          className="bg-card text-foreground border-border hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition active:scale-[0.98]"
-        >
-          <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-        </button>
-        )}
-        {titleMark ? (
-          <h1 className="font-display flex min-w-0 items-center justify-center gap-2 text-xl font-semibold tracking-tight">
-            {titleMark}
-            <span className="min-w-0 truncate">{title}</span>
-          </h1>
-        ) : (
-          <h1 className="font-display min-w-0 truncate text-center text-xl font-semibold tracking-tight">
-            {title}
-          </h1>
-        )}
-        <div className="flex min-h-11 justify-end">{action}</div>
-      </header>
+      <ScreenHeader
+        title={title}
+        onBack={onBack ?? back}
+        noBack={noBack}
+        lead={lead}
+        titleMark={titleMark}
+        action={action}
+        paper={paper}
+      />
 
       <div
         ref={setBody}
@@ -132,6 +114,59 @@ export function Screen({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** The square every header button wears: Back, and a right-hand action
+ *  such as Share (MESITA-4097). */
+export const HEADER_BUTTON_CLASS =
+  "bg-card text-foreground border-border hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition active:scale-[0.98] disabled:opacity-50";
+
+/** THE ONE PAGE HEADER (MESITA-4097, Pato: "use the same header ...
+ *  standardize design across app"). Screen draws it, and so does the
+ *  slide-over panel a reservation opens in, so a pushed page and a panel
+ *  read the same: square Back, the title in the display face, the action
+ *  square, a hairline under it. */
+export function ScreenHeader({
+  title,
+  onBack,
+  noBack = false,
+  lead,
+  titleMark,
+  action,
+  paper = false,
+}: {
+  title: string;
+  onBack: () => void;
+  noBack?: boolean;
+  lead?: React.ReactNode;
+  titleMark?: React.ReactNode;
+  action?: React.ReactNode;
+  paper?: boolean;
+}) {
+  return (
+    <header className={cn("border-border sticky top-0 z-20 grid shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 border-b px-3 py-2 backdrop-blur-xl", paper ? "bg-card/90" : "bg-background/90")}>
+      {lead ? (
+        <span className="flex">{lead}</span>
+      ) : noBack ? (
+        <span className="h-11 w-11" aria-hidden />
+      ) : (
+        <button type="button" onClick={onBack} aria-label="Back" className={HEADER_BUTTON_CLASS}>
+          <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+        </button>
+      )}
+      {titleMark ? (
+        <h1 className="font-display flex min-w-0 items-center justify-center gap-2 text-xl font-semibold tracking-tight">
+          {titleMark}
+          <span className="min-w-0 truncate">{title}</span>
+        </h1>
+      ) : (
+        <h1 className="font-display min-w-0 truncate text-center text-xl font-semibold tracking-tight">
+          {title}
+        </h1>
+      )}
+      <div className="flex min-h-11 justify-end">{action}</div>
+    </header>
   );
 }
 

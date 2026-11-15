@@ -1,6 +1,5 @@
 "use client";
 
-import { SizedImage } from "@mesita/place-profile";
 import { Copy } from "lucide-react";
 import { useState } from "react";
 
@@ -8,6 +7,8 @@ import type { ReservationItem } from "@/lib/reservation-types";
 import { cn, errMsg } from "@/lib/utils";
 import { RESERVATION_FLOW, stateMeta } from "@/lib/reservation-state";
 import { ReservationActions } from "@/components/consumer/reservation-actions";
+import { TicketHeader } from "@/components/consumer/activity/TicketParts";
+import { placeHref } from "@/lib/place-route";
 import { apiAnswerReservationChange, apiConfirmReservation } from "@/lib/api/reservations";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
@@ -17,13 +18,13 @@ import { toast } from "@/lib/toast";
 // purpose — the booking's lifecycle, its metadata, and the actions that can
 // move it. No full place detail (that lives on /place/[id]).
 
-// THE TIME IS THE HEADLINE (Pato, MESITA-3649: "THIS UI LOOKS LIKE SHIT";
-// decided: the state once, the time first, no form table). One card holds
-// a short photo, the place and its state pill, then the time large and the
-// table's size under it. The state is said once, by the pill: no struck-out
-// name, no STATE row, no note that only restates it. The reference is one
-// quiet line under the card, copied on a tap. The When · Party · State ·
-// Reference table of uppercase labels it replaced read like a form.
+// THE TICKET'S OWN HEADER (MESITA-4097, Pato: "use the same header for
+// reservation tickets ... standardize design across app"): a reservation is
+// a ticket like a visit, so it opens with TicketHeader, the one every ticket
+// page wears: the place photo with the calendar badge, the place (a link to
+// it), the table's size, the time large (where a visit puts its amount) and
+// the state once, coloured. It replaced MESITA-3649's photo card. The
+// reference is one quiet line under it, copied on a tap.
 
 // The happy path as a stepper: created → booking → confirmed → passed. A
 // reservation that exited the path (cancelled / failed) shows the banner
@@ -83,6 +84,10 @@ export function ReservationDetailBody({
   const showAck =
     r.state === "confirmed" && !r.guestConfirmedAt && r.guestNotify === "app";
   const reference = r.referenceCode ?? null;
+  // "Sun Nov 15 · 2:00 PM": the time is the large line, the day goes under
+  // the place with the table's size.
+  const day = r.when.split(" · ");
+  const time = day.length > 1 ? day.pop() : null;
   async function copyReference() {
     if (!reference) return;
     try {
@@ -125,43 +130,18 @@ export function ReservationDetailBody({
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
-      <section className="border-border bg-card overflow-hidden rounded-2xl border">
-        <div className="bg-muted relative aspect-[5/2] w-full">
-          {r.placePhoto ? (
-            <SizedImage
-              src={r.placePhoto}
-              size="full"
-              alt={r.placeName}
-              fill
-              sizes="(max-width: 640px) 100vw, 480px"
-              className={cn("object-cover", meta.spent && "opacity-60")}
-            />
-          ) : null}
-        </div>
-        <div className="px-4 pt-3 pb-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="min-w-0 truncate text-base font-semibold">{r.placeName}</p>
-            <span
-              className={cn(
-                "type-label inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-0.5 font-semibold",
-                meta.pillClass,
-              )}
-            >
-              {meta.label}
-            </span>
-          </div>
-          <h1
-            className={cn(
-              "font-display mt-3 text-2xl leading-tight font-semibold tracking-tight tabular-nums",
-              meta.spent && "text-muted-foreground",
-            )}
-          >
-            {r.when}
-          </h1>
-          <p className="text-muted-foreground mt-1 text-base">Table for {r.partySize}</p>
-        </div>
-      </section>
+    <div className="flex flex-col gap-4 px-5 pt-5 pb-8">
+      <TicketHeader
+        kind="reservation"
+        photo={r.placePhoto}
+        place={r.placeName}
+        placeHref={placeHref(r.projectId)}
+        when={[...day, `Table for ${r.partySize}`].join(" · ")}
+        amount={time ?? r.when}
+        state={meta.label}
+        tone={r.state === "confirmed" ? "green" : meta.spent ? "grey" : "ink"}
+        dim={meta.spent}
+      />
 
       {reference ? (
         <button
