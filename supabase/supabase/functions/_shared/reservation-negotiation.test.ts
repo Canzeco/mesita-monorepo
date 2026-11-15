@@ -253,7 +253,9 @@ Deno.test("late result from round 1 is ignored once round 2 is claimed", async (
   assert(stale);
   assertEquals((await stale.json()).stale_run, true);
 
-  // Round 2's own call still lands.
+  // Round 2's own call still lands. Only a1's spoken report confirms
+  // (MESITA-3958): a1 reported "confirmed" mid-call.
+  m.table.row.reported_verdict = "confirmed";
   const own = await applyCallResult(m.store, "conv_2a", DONE_SUCCESS);
   assertEquals(own.applied, true);
   assertEquals(m.table.row.state, "confirmed");

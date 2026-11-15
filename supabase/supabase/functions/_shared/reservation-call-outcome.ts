@@ -53,6 +53,10 @@ import { timingSafeEqual } from "./timing-safe-equal.ts";
  *  a timestamp older than 30 minutes. */
 export const SIGNATURE_TOLERANCE_SEC = 30 * 60;
 
+/** Minutes the guest has to pick one of the place's times in the app before
+ *  a2 phones them once (MESITA-3958). */
+export const COUNTER_OFFER_CALL_DELAY_MIN = 15;
+
 export type SignatureVerdict = { ok: true } | { ok: false; code: "bad_signature" | "stale_event" };
 
 export function parseElevenSignature(header: string | null): { t: number; v0: string[] } | null {
@@ -480,9 +484,10 @@ function decideBooking(
 
   if (!reported && r.final && !r.answered) {
     setResult("no_answer");
-    if (n < planned) {
+    const next = n < planned ? nextAttemptAt(place?.hours ?? null, zone, now) : null;
+    // Never ring the place at or after the table's time (MESITA-3958).
+    if (next && beforeTable(next.at, t.reserved_at)) {
       // The place's own hours decide when we try again; the cron wakes it.
-      const next = nextAttemptAt(place?.hours ?? null, zone, now);
       return {
         patch: {
           attempts,
@@ -524,11 +529,10 @@ function decideBooking(
     };
   }
 
-  // Answered. a1's explicit report outranks the analysis.
-  const analyzed = r.status === "done"
-    ? (r.callSuccessful === "success" ? "confirmed" : r.callSuccessful === "failure" ? "declined" : "unknown")
-    : "unknown";
-  const verdict = reported ?? analyzed;
+  // Answered. Only a1's spoken, reported answer decides (MESITA-3958, Pato:
+  // "should the agent really call back the human???"): the platform's
+  // call_successful guess never confirms or declines a table.
+  const verdict = reported ?? "unknown";
 
   if (verdict === "wrong_number") {
     setResult("wrong_number");
@@ -548,8 +552,8 @@ function decideBooking(
   }
   if (verdict === "unreachable") {
     setResult("unreachable");
-    if (n < planned) {
-      const next = nextAttemptAt(place?.hours ?? null, zone, now);
+    const next = n < planned ? nextAttemptAt(place?.hours ?? null, zone, now) : null;
+    if (next && beforeTable(next.at, t.reserved_at)) {
       return {
         patch: {
           attempts,
@@ -616,14 +620,18 @@ function decideBooking(
         attempts_state: "answered",
         next_attempt_at: null,
         callback_at: nowIso,
-        callback_next_attempt_at: appOnly ? null : nowIso,
+        // The guest picks in the app first; a2 phones only if nothing came
+        // in COUNTER_OFFER_CALL_DELAY_MIN (MESITA-3958). A pick in the app
+        // clears this (reservation-confirm.ts), so no call goes out.
+        callback_next_attempt_at: appOnly ? null : new Date(now.getTime() + COUNTER_OFFER_CALL_DELAY_MIN * 60_000).toISOString(),
         callback_state: appOnly ? "skipped" : "scheduled",
         last_call_state: appOnly
           ? `intent ${n}: place counter-offer — guest prefers app-only; no call`
-          : `intent ${n}: place counter-offer — calling the guest`,
+          : `intent ${n}: place counter-offer — the guest picks in the app; a2 calls in ${COUNTER_OFFER_CALL_DELAY_MIN} min if not`,
       },
       notify: "counter_offer",
-      kickCallback: !appOnly,
+      // No kick: the minute cron rings a2 when the wait runs out.
+      kickCallback: false,
     };
   }
   if (verdict === "declined") {
@@ -653,6 +661,13 @@ function decideBooking(
     },
     notify: "unresolved",
   };
+}
+
+/** A retry is worth placing only before the table's time. */
+export function beforeTable(at: Date, reservedAt: string | null | undefined): boolean {
+  if (!reservedAt) return true;
+  const table = new Date(reservedAt).getTime();
+  return Number.isNaN(table) || at.getTime() < table;
 }
 
 // ── The door ───────────────────────────────────────────────────────────────
