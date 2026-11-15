@@ -8,13 +8,58 @@ import { cn } from "@/lib/utils";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 
 // Presentational building blocks for the Me page and its Settings modal —
-// icon-led rows, FLAT ON WHITE since MESITA-4000 (Pato: "standardize design
-// on all the me subpages … white background, not gray"; answered "flat like
-// lists"): a group is an eyebrow over full-width rows split by hairlines,
-// with no rounded box around them.
-// Extracted from the old ProfileClient so the modular Me boxes and the
-// Settings modal render identical row chrome.
+// icon-led rows. Extracted from the old ProfileClient so the modular Me
+// boxes and the Settings modal render identical row chrome.
+//
+// SECTIONS IN BOXES (MESITA-4052, Pato 2026-11-15: "do put sections into
+// boxes, specially in modular configuration pages"): a group is Wallet's
+// 16px heading over one rounded white box of rows split by hairlines
+// (SectionBox, the Wallet list's box). MESITA-4000 had made them flat on
+// white, an eyebrow over full-width rows; the place screen's sheets keep
+// that flat form (`flat`), since a sheet is already its own card.
 
+/** The box every Me section draws: Wallet's list box (WalletLists.tsx). The
+ *  rows inside carry their own 16px padding; the box adds none. */
+export const SECTION_BOX_CLASS =
+  "border-border bg-card overflow-hidden rounded-2xl border";
+
+/** A section's heading: Wallet's list heading, 16px display (decision 1A),
+ *  never the small uppercase eyebrow. */
+export function SectionHeading({ children }: { children: ReactNode }) {
+  return (
+    <h2 className="font-display text-base font-semibold tracking-tight">
+      {children}
+    </h2>
+  );
+}
+
+/** One section: an optional heading (with an optional control on its
+ *  right), then one box. */
+export function SectionBox({
+  title,
+  action,
+  className,
+  children,
+}: {
+  title?: ReactNode;
+  action?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-2">
+      {(title || action) && (
+        <div className="flex min-h-6 items-center justify-between gap-3">
+          {title ? <SectionHeading>{title}</SectionHeading> : <span />}
+          {action}
+        </div>
+      )}
+      <div className={cn(SECTION_BOX_CLASS, className)}>{children}</div>
+    </section>
+  );
+}
+
+/** The small uppercase label, for the flat sheet groups only. */
 export function SectionEyebrow({ children }: { children: ReactNode }) {
   return (
     <p className="text-foreground/60 type-meta font-semibold tracking-[0.14em] uppercase">
@@ -25,16 +70,20 @@ export function SectionEyebrow({ children }: { children: ReactNode }) {
 
 export function SettingsGroup({
   title,
+  flat = false,
   children,
 }: {
   title?: string;
+  /** The place screen's sheets: rows flat on the sheet, no box. */
+  flat?: boolean;
   children: ReactNode;
 }) {
+  if (!flat) return <SectionBox title={title}>{children}</SectionBox>;
   return (
     <section className="flex flex-col gap-2">
       {title && <SectionEyebrow>{title}</SectionEyebrow>}
       {/* -mx-4: the rows' own 16px padding lines their text up with the
-          page's 20px edge, and their hover runs nearly edge to edge. */}
+          sheet's edge, and their hover runs nearly edge to edge. */}
       <div className="-mx-4">{children}</div>
     </section>
   );

@@ -19,10 +19,10 @@
 // then the two classes with a You pill on the guest's own. A failed profile
 // read never guesses a class.
 //
-// PLAN'S LAYOUT (MESITA-3905, /plan-design-review): the status card is left-
-// aligned with a small crown beside the class (the big centred disc went), and
-// Regular and VIP are two cards with check lists, VIP in a 2px ink border, as
-// Plan's Free and Pro are (MESITA-3899). No "The two classes" heading.
+// PLAN'S LAYOUT (MESITA-3905, /plan-design-review): a small crown beside the
+// class (the big centred disc went), each class with its perks as checks.
+// IN BOXES SINCE MESITA-4052 (Pato: "put sections into boxes"): "Your class"
+// (status, perks, the Instagram door) over "Other class".
 
 import { Check, Crown } from "lucide-react";
 
@@ -42,7 +42,7 @@ import { toGuestClass, type GuestClass } from "@/lib/guest-standing";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { cn } from "@/lib/utils";
-import { RowDivider, SettingsLinkRow } from "./settings-rows";
+import { RowDivider, SectionBox, SettingsLinkRow } from "./settings-rows";
 
 const count = (n: number) => n.toLocaleString("en-US");
 
@@ -99,28 +99,80 @@ function FollowerProgress({ followers }: { followers: number }) {
   );
 }
 
-/** The guest's own class on top, with the Instagram door under it. */
-export function ClassStatusCard({ status }: { status: ClassStatus }) {
+/** The Instagram door under the guest's own class. */
+function InstagramDoor({ handle, vip, followers }: { handle: string | null; vip: boolean; followers: number | null }) {
+  return handle ? (
+    <SettingsLinkRow
+      Icon={Instagram}
+      tint="instagram"
+      href={CONSUMER_ROUTES.mePages.instagram}
+      label={`@${handle}`}
+      sub={
+        vip && followers !== null
+          ? `${followersLabel(followers)} · Sync`
+          : CLASS_STATUS.sync
+      }
+    />
+  ) : (
+    <SettingsLinkRow
+      Icon={Instagram}
+      tint="instagram"
+      href={CONSUMER_ROUTES.mePages.instagram}
+      label={CLASS_STATUS.connect.label}
+      sub={CLASS_STATUS.connect.sub}
+    />
+  );
+}
+
+/** The status before the profile lands, or when its read failed: never a
+ *  guessed class. */
+function ClassStatusPlaceholder({ status }: { status: { kind: "loading" } | { kind: "unknown" } }) {
   if (status.kind === "loading") {
     return (
       <div
-        className="bg-muted h-[180px] animate-pulse rounded-xl"
+        className="bg-muted h-[180px] animate-pulse rounded-2xl"
         aria-hidden
         data-class-status="loading"
       />
     );
   }
-  if (status.kind === "unknown") {
-    return (
-      <div
-        className="border-border bg-card text-muted-foreground type-label rounded-2xl border px-4 py-5 text-center"
-        data-class-status="unknown"
-      >
-        {CLASS_STATUS.unknown}
-      </div>
-    );
-  }
-  const { guestClass, handle, followers } = status;
+  return (
+    <div
+      className="border-border bg-card text-muted-foreground type-label rounded-2xl border px-4 py-5 text-center"
+      data-class-status="unknown"
+    >
+      {CLASS_STATUS.unknown}
+    </div>
+  );
+}
+
+/** A class's perks as checks. */
+function Perks({ perks }: { perks: readonly string[] }) {
+  return (
+    <ul className="mt-3 flex flex-col gap-2 text-sm">
+      {perks.map((perk) => (
+        <li key={perk} className="flex items-center gap-2">
+          <Check className="h-4 w-4 shrink-0" aria-hidden />
+          {perk}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** A class inside its box: its name, its perks. */
+function ClassCard({ title, perks }: ClassRowWords) {
+  return (
+    <div className="p-4" aria-label={title} data-class-row={title}>
+      <h3 className="text-base font-semibold">{title}</h3>
+      <Perks perks={perks} />
+    </div>
+  );
+}
+
+/** The guest's own class (decision 1D): the crown, the class with its
+ *  Current pill, where they stand, the bar to 5,000, its perks. */
+function MyClassCard({ guestClass, handle, followers }: { guestClass: GuestClass; handle: string | null; followers: number | null }) {
   const vip = guestClass === "vip";
   const line = vip
     ? CLASS_STATUS.vip
@@ -129,84 +181,27 @@ export function ClassStatusCard({ status }: { status: ClassStatus }) {
       : followers === null
         ? CLASS_STATUS.countUnknown
         : CLASS_STATUS.toGo(count(Math.max(VIP_FOLLOWERS - followers, 0)));
+  const words = CLASS_ROWS[guestClass];
   return (
-    <section
-      // Flat on white (MESITA-4000): no rounded box.
-      data-class-status={guestClass}
-    >
-      <div className="pb-4">
-        <div className="flex items-center gap-2">
-          <StatusCrown vip={vip} />
-          <h2 className="text-lg leading-6 font-semibold">
-            {CLASS_STATUS.title[guestClass]}
-          </h2>
-        </div>
-        <p className="text-muted-foreground type-label mt-1.5">{line}</p>
-        {!vip && handle && followers !== null && (
-          <FollowerProgress followers={followers} />
-        )}
-      </div>
-      <RowDivider />
-      {handle ? (
-        <SettingsLinkRow
-          Icon={Instagram}
-          tint="instagram"
-          href={CONSUMER_ROUTES.mePages.instagram}
-          label={`@${handle}`}
-          sub={
-            vip && followers !== null
-              ? `${followersLabel(followers)} · Sync`
-              : CLASS_STATUS.sync
-          }
-        />
-      ) : (
-        <SettingsLinkRow
-          Icon={Instagram}
-          tint="instagram"
-          href={CONSUMER_ROUTES.mePages.instagram}
-          label={CLASS_STATUS.connect.label}
-          sub={CLASS_STATUS.connect.sub}
-        />
-      )}
-    </section>
-  );
-}
-
-/** A class as a card (MESITA-3905): its name with the You pill, its perks
- *  as checks; VIP in a 2px ink border, as Plan's Pro. */
-function ClassCard({
-  title,
-  perks,
-  mine,
-}: ClassRowWords & { mine: boolean; featured?: boolean }) {
-  return (
-    <section
-      // FLAT ON WHITE (MESITA-4000, Pato: "flat like lists"): a hairline
-      // above, no rounded box; Pro is told apart by its large price.
-      className="border-border border-t py-4"
-      aria-label={title}
-      data-class-row={title}
-    >
-      <h3 className="text-base font-semibold">
-        {title}
-        {mine && (
+    <div className="p-4" aria-label={words.title} data-class-row={words.title} data-class-status={guestClass}>
+      <div className="flex items-center gap-2">
+        <StatusCrown vip={vip} />
+        <h3 className="text-base font-semibold">
+          {CLASS_STATUS.title[guestClass]}
           <span
             className="bg-foreground text-paper type-meta ml-1.5 rounded-full px-1.5 py-0.5 align-middle font-semibold"
             data-class-mine=""
           >
             {CLASS_MINE}
           </span>
-        )}
-      </h3>
-      <ul className="mt-3 flex flex-col gap-2 text-sm">
-        {perks.map((perk) => (
-          <li key={perk} className="flex items-center gap-2">
-            <Check className="h-4 w-4 shrink-0" aria-hidden />
-            {perk}
-          </li>
-        ))}
-      </ul>
-    </section>
+        </h3>
+      </div>
+      <p className="text-muted-foreground type-label mt-1.5">{line}</p>
+      {!vip && handle && followers !== null && (
+        <FollowerProgress followers={followers} />
+      )}
+      <Perks perks={words.perks} />
+    </div>
   );
 }
 
@@ -226,14 +221,36 @@ export function useClassStatus(): ClassStatus {
   return error ? { kind: "unknown" } : { kind: "loading" };
 }
 
-/** The guest's class on top, then both classes. */
+/** CURRENT CLASS FIRST, IN BOXES (MESITA-4052, decision 1D): the guest's
+ *  own class is the first box, wearing its Current pill, with where they
+ *  stand and the Instagram door inside it; the other class is the box under
+ *  it. Before the profile is read (or when the read failed) neither class is
+ *  marked: the status placeholder, then both classes in one box. */
 export function ClassBody({ status }: { status: ClassStatus }) {
-  const mine = status.kind === "known" ? status.guestClass : null;
+  if (status.kind !== "known") {
+    return (
+      <div className="flex flex-col gap-6">
+        <ClassStatusPlaceholder status={status} />
+        <SectionBox title="Classes">
+          <ClassCard {...CLASS_ROWS.regular} />
+          <RowDivider />
+          <ClassCard {...CLASS_ROWS.vip} />
+        </SectionBox>
+      </div>
+    );
+  }
+  const mine = status.guestClass;
+  const other = mine === "vip" ? "regular" : "vip";
   return (
-    <div className="flex flex-col gap-3">
-      <ClassStatusCard status={status} />
-      <ClassCard {...CLASS_ROWS.regular} mine={mine === "regular"} />
-      <ClassCard {...CLASS_ROWS.vip} mine={mine === "vip"} featured />
+    <div className="flex flex-col gap-6">
+      <SectionBox title="Your class">
+        <MyClassCard guestClass={mine} handle={status.handle} followers={status.followers} />
+        <RowDivider />
+        <InstagramDoor handle={status.handle} vip={mine === "vip"} followers={status.followers} />
+      </SectionBox>
+      <SectionBox title="Other class">
+        <ClassCard {...CLASS_ROWS[other]} />
+      </SectionBox>
     </div>
   );
 }

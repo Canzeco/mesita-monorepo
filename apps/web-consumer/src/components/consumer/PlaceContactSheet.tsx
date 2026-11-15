@@ -123,7 +123,7 @@ export function PlaceContactSheet({
 
         <div className="mt-5">
           {rows.length > 0 ? (
-            <SettingsGroup>
+            <SettingsGroup flat>
               {rows.map((row, i) => (
                 <Fragment key={row.key}>
                   {i > 0 && <RowDivider />}

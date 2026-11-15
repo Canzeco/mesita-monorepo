@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Camera } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, Check } from "lucide-react";
 import {
   BirthdayPicker,
   BirthdayPickerSkeleton,
@@ -12,7 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { DefaultAvatar, SizedImage } from "@mesita/place-profile";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import { ME_BUTTON_CLASS } from "@/components/consumer/me/settings-rows";
+import {
+  ME_BUTTON_CLASS,
+  SectionBox,
+} from "@/components/consumer/me/settings-rows";
 import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
@@ -22,7 +24,6 @@ import {
   uploadConsumerAvatar,
   validateAvatarFile,
 } from "@/lib/avatar-upload";
-import { goBack as leave } from "@/lib/navigate";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS, INPUT_CLASS } from "@/lib/ui-classes";
@@ -44,16 +45,20 @@ import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 // full_name from them, and that's the name reservations are booked under.
 //
 // Photo upload (MESITA-953) is immediate on pick: Storage → EF avatar_url
-// patch. Name/sex/birthday still save via the Save button in the header;
-// the back arrow is Cancel, and a successful Save pops history back to /me.
+// patch. Name/sex/birthday save via Save; the back arrow is Cancel.
 //
-// ONE SCREEN, NO SCROLL (MESITA-3101, Pato: "make it smaller … not
-// scrollable"). Save sits in MeScreen's right header slot, not in a row
-// under the fields (it was under the tab bar on a phone); the photo is the
-// first row; the names share one row; Sex is a
-// two-button switch; Birthday is BirthdayPicker's compact row. The caption
-// and the photo's file hint are gone (a bad file still toasts, and the hint's
-// "max 2 MB" was the bucket's cap on the shrunk file, not the picker's).
+// PHOTO AND NAME ABOVE, FIELDS IN A BOX, SAVE IN A FOOTER BAND (MESITA-4052,
+// Pato 2026-11-15: "put sections into boxes … the button module or section
+// must also have a hr line dividing stuff from white land"). The 96px photo
+// and the full name lead the page, centred, outside any box (decision 1C);
+// names, sex and birthday sit in one Details box; Save is a full-width
+// button in MeScreen's footer band under a hairline, never in the header
+// (it sat there from MESITA-3101). Its states (decision 2C): grey and off
+// until a field changes, black with a change, "Saving…" with a spinner,
+// "Saved" for 2 seconds (the page stays; it popped back to Me until
+// MESITA-4052), and a failed save prints its error above the button and
+// keeps every edit. The names share one row; Sex is a two-button switch;
+// Birthday is BirthdayPicker's compact row.
 //
 // NO MEMBER NUMBER (MESITA-3874, Pato: "nobody gives a fuck about the
 // member number. remove that"). `consumers.code` stays in the database for
@@ -95,18 +100,22 @@ const FIELD_SKELETON_CLASS = cn(
 // THE FORM'S BOXES, ONCE (MESITA-2701): each string below is the box the
 // form draws and the box its skeleton pulses.
 
-/** The 64px photo. */
-const PHOTO_BOX_CLASS = "h-16 w-16 shrink-0 rounded-full";
+/** The 96px photo. */
+const PHOTO_BOX_CLASS = "h-24 w-24 shrink-0 rounded-full";
 
-/** The camera badge on the photo's corner: 28px, a 2px paper rim. */
+/** The camera badge on the photo's corner: 32px, a 2px paper rim. */
 const CAMERA_BADGE_BOX_CLASS =
-  "border-paper absolute -right-0.5 -bottom-0.5 h-7 w-7 rounded-full border-2";
+  "border-paper absolute right-0 bottom-0 h-8 w-8 rounded-full border-2";
 
-/** The photo's row. */
-const TOP_ROW_CLASS = "flex items-center gap-4";
+/** The photo and the name, centred above the box. */
+const TOP_ROW_CLASS = "flex flex-col items-center gap-3";
 
-/** The fields' column, 20px under the top row, 12px apart. */
-const FIELDS_CLASS = "mt-5 flex flex-col gap-3";
+/** The name under the photo: one 18px line. */
+const NAME_CLASS = "font-display min-h-7 max-w-full truncate text-lg font-semibold tracking-tight";
+
+/** The fields' column inside the Details box, 24px under the name. */
+const FIELDS_CLASS = "flex flex-col gap-3 p-4";
+const DETAILS_CLASS = "mt-6";
 
 /** First and Last name on one row. */
 const NAME_ROW_CLASS = "grid grid-cols-2 gap-3";
@@ -117,9 +126,15 @@ const SEX_SWITCH_CLASS =
 const SEX_OPTION_CLASS =
   "rounded-md py-1.5 text-sm font-medium transition active:scale-[0.98]";
 
-/** Save in the header: the Me button, sized to its word. */
-const SAVE_BUTTON_CLASS = cn(ME_BUTTON_CLASS, "px-4");
-const SAVE_BOX_CLASS = "h-11 w-[68px] rounded-xl";
+/** Save in the footer band: the Me button, full width; off it is grey. */
+const SAVE_BUTTON_CLASS = cn(
+  ME_BUTTON_CLASS,
+  "w-full disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100",
+);
+const SAVE_BOX_CLASS = "h-11 w-full rounded-xl";
+
+/** How long "Saved" stays on the button. */
+const SAVED_MS = 2000;
 
 export function EditProfileSheet() {
   // The kept row (MESITA-3014): the form paints at once when the shell has
@@ -175,14 +190,19 @@ function FieldLabel({ children, id }: { children: string; id?: string }) {
  */
 export function EditProfileSkeleton() {
   return (
-    <MeScreen title="Profile" action={<Skeleton className={SAVE_BOX_CLASS} />}>
+    <MeScreen title="Profile" footer={<Skeleton className={SAVE_BOX_CLASS} />}>
       <div className={TOP_ROW_CLASS}>
         <div className="relative">
           <Skeleton className={PHOTO_BOX_CLASS} />
           <Skeleton className={CAMERA_BADGE_BOX_CLASS} />
         </div>
+        <span className={cn(NAME_CLASS, "flex items-center")}>
+          <Skeleton className="h-4 w-32 rounded" />
+        </span>
       </div>
 
+      <div className={DETAILS_CLASS}>
+      <SectionBox title="Details">
       <div className={FIELDS_CLASS} aria-hidden>
         <div className={NAME_ROW_CLASS}>
           {[FIELD_LABEL.firstName, FIELD_LABEL.lastName].map((label) => (
@@ -220,6 +240,8 @@ export function EditProfileSkeleton() {
           <BirthdayPickerSkeleton compact />
         </div>
       </div>
+      </SectionBox>
+      </div>
 
       <p role="status" className="sr-only">
         Loading your details
@@ -229,7 +251,6 @@ export function EditProfileSkeleton() {
 }
 
 function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
-  const router = useRouter();
   const supabase = useBrowserSupabase();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [firstName, setFirstName] = useState(profile.first_name ?? "");
@@ -240,6 +261,8 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   const [sex, setSex] = useState(profile.sex ?? "");
   const [birthday, setBirthday] = useState(profile.birthday ?? "");
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -251,11 +274,12 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
     sex !== (profile.sex ?? "") ||
     birthday !== (profile.birthday ?? "");
 
-  // Saved: slide away to the screen under (Me, or wherever Profile was
-  // opened from), with Me as the landing for a cold open (MESITA-3644).
-  function goBack() {
-    leave(router);
-  }
+  // "Saved" reads for 2 seconds, then the button goes back to grey Save.
+  useEffect(() => {
+    if (!saved) return;
+    const t = window.setTimeout(() => setSaved(false), SAVED_MS);
+    return () => window.clearTimeout(t);
+  }, [saved]);
 
   async function onPhotoPicked(file: File | undefined) {
     if (!file || uploadingPhoto) return;
@@ -292,14 +316,15 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   async function save() {
     if (!dirty || saving) return;
     if (!firstName.trim() || !lastName.trim()) {
-      toast("First and last name are both required.");
+      setSaveError("First and last name are both required.");
       return;
     }
     const age = ageFromBirthday(birthday);
     if (age !== null && age < MIN_SIGNUP_AGE) {
-      toast(`You must be at least ${MIN_SIGNUP_AGE} to use Mesita.`);
+      setSaveError(`You must be at least ${MIN_SIGNUP_AGE} to use Mesita.`);
       return;
     }
+    setSaveError(null);
     setSaving(true);
     try {
       await apiUpdateConsumerProfile(supabase, {
@@ -308,10 +333,9 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
         ...(sex === "male" || sex === "female" ? { sex } : {}),
         birthday,
       });
-      toast("Profile updated.");
-      goBack();
+      setSaved(true);
     } catch (e) {
-      toast(errMsg(e, "Couldn't save your profile."));
+      setSaveError(errMsg(e, "Couldn't save your profile."));
     } finally {
       setSaving(false);
     }
@@ -320,19 +344,26 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   return (
     <MeScreen
       title="Profile"
-      action={
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => void save()}
-          disabled={!dirty || saving || uploadingPhoto}
-          className={SAVE_BUTTON_CLASS}
-        >
-          {saving && (
-            <Spinner size="sm" className="border-white/40 border-t-white" />
+      footer={
+        <>
+          {saveError && (
+            <p role="alert" className="text-destructive mb-2 text-sm">
+              {saveError}
+            </p>
           )}
-          {saving ? "Saving…" : "Save"}
-        </Button>
+          <Button
+            type="button"
+            onClick={() => void save()}
+            disabled={!dirty || saving || uploadingPhoto}
+            className={SAVE_BUTTON_CLASS}
+          >
+            {saving && (
+              <Spinner size="sm" className="border-white/40 border-t-white" />
+            )}
+            {saved && !dirty && <Check className="h-4 w-4" aria-hidden />}
+            {saving ? "Saving…" : saved && !dirty ? "Saved" : "Save"}
+          </Button>
+        </>
       }
     >
       <div className={TOP_ROW_CLASS}>
@@ -357,7 +388,7 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
         >
           <span
             className={cn(
-              "bg-pink-gradient shadow-rest flex p-[2.5px]",
+              "bg-pink-gradient flex p-[2.5px]",
               PHOTO_BOX_CLASS,
             )}
           >
@@ -368,7 +399,7 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
                   size="thumb"
                   alt="Profile photo"
                   fill
-                  sizes="64px"
+                  sizes="96px"
                   className="object-cover"
                   unoptimized={Boolean(previewUrl)}
                 />
@@ -388,14 +419,20 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
           <span
             className={cn(
               CAMERA_BADGE_BOX_CLASS,
-              "bg-foreground text-paper shadow-rest flex items-center justify-center transition group-active:scale-95",
+              "bg-foreground text-paper flex items-center justify-center transition group-active:scale-95",
             )}
           >
-            <Camera className="h-3.5 w-3.5" />
+            <Camera className="h-4 w-4" />
           </span>
         </button>
+        <p className={NAME_CLASS}>
+          {[firstName.trim(), lastName.trim()].filter(Boolean).join(" ") ||
+            "Your name"}
+        </p>
       </div>
 
+      <div className={DETAILS_CLASS}>
+      <SectionBox title="Details">
       <div className={FIELDS_CLASS}>
         <div className={NAME_ROW_CLASS}>
           <SheetField
@@ -448,6 +485,8 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
           <FieldLabel>{FIELD_LABEL.birthday}</FieldLabel>
           <BirthdayPicker value={birthday} onChange={setBirthday} compact />
         </label>
+      </div>
+      </SectionBox>
       </div>
     </MeScreen>
   );

@@ -106,7 +106,7 @@ export function PlaceMoreSheet({
       ariaLabel={`More for ${place.name}`}
     >
       <div className={SHEET_BODY_CLASS}>
-        <SettingsGroup>
+        <SettingsGroup flat>
           {rows.map((r, i) => (
             <Fragment key={r.key}>
               {i > 0 && <RowDivider />}
