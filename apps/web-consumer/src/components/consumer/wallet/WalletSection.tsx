@@ -23,7 +23,7 @@ import {
   SavedCardRow,
   StoryRow,
   WalletBodySkeleton,
-  WalletList,
+  WalletPanelList,
 } from "./WalletLists";
 
 // ONE READ, ONE PAINT (Pato, 2026-11-12, MESITA-3814: "first load the
@@ -244,12 +244,12 @@ export function WalletSection({
   return (
     <div className="flex flex-col" data-wallet>
       {wallet?.settling ? (
-        <p className="text-muted-foreground mt-5 text-sm" role="status">
+        <p className="text-muted-foreground mt-4 text-sm" role="status">
           Confirming a payment…
         </p>
       ) : null}
 
-      <WalletList title="Money Payment Methods">
+      <WalletPanelList title="Money Payment Methods">
         {cards.map((c) => <SavedCardRow key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
         <CashRow />
         {/* Add is the list's last row (MESITA-3744), and reads "Add" in both
@@ -259,9 +259,9 @@ export function WalletSection({
         {cards.length < MAX_SAVED_CARDS ? (
           <AddRow line="A debit or credit card" ariaLabel="Add a payment card" onClick={() => void addCard()} disabled={adding} busy={adding} />
         ) : null}
-      </WalletList>
+      </WalletPanelList>
 
-      <WalletList
+      <WalletPanelList
         title="Credits Payment Methods"
         fallback={
           creditsState === "failed" ? (
@@ -292,7 +292,7 @@ export function WalletSection({
         {creditsState === "rows" ? (
           <AddRow line="A place's Credits Card" ariaLabel="Add a Credits Card" href={CONSUMER_ROUTES.search} />
         ) : null}
-      </WalletList>
+      </WalletPanelList>
 
       <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
       <GiftClaimSheet

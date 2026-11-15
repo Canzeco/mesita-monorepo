@@ -2,6 +2,7 @@ import { CreditCard, Gift, HandCoins, Share2 } from "lucide-react";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { WalletPanel } from "./WalletLists";
 
 // WALLET'S THREE DOORS (Pato, 2026-11-14, MESITA-3894: "Share Mesita / Send
 // Credits (Gift) / Redeem Credits (the redeem button at the bottom is
@@ -51,7 +52,7 @@ const GLYPH = "h-4 w-4 shrink-0";
 /** The row: four links, the same in the loading frame. */
 export function WalletShareGift() {
   return (
-    <div className="mt-5 grid grid-cols-4 gap-2" data-wallet-share-gift>
+    <WalletPanel className="grid grid-cols-4 gap-2 p-4" data-wallet-share-gift>
       <PushLink
         href={CONSUMER_ROUTES.search}
         className={CREDITS}
@@ -87,6 +88,6 @@ export function WalletShareGift() {
         <Share2 className={GLYPH} strokeWidth={2.25} aria-hidden />
         Share Mesita
       </PushLink>
-    </div>
+    </WalletPanel>
   );
 }
