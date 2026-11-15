@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ChevronRight, Plus } from "lucide-react";
 import { PlaceMarks, SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
-import { Instagram } from "@/components/shared/instagram-icon";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 import { money, type WaitingStory } from "@/lib/api/wallet";
@@ -261,7 +260,9 @@ export function EmptyCreditsRow({ href }: { href: string }) {
   );
 }
 
-/** A Story voucher waiting for staff (MESITA-3507): its tap shows the QR. */
+/** A Story voucher waiting for staff (MESITA-3507): its tap shows the QR.
+ *  The House Card's plain row (MESITA-3869): title, grey line, muted amount,
+ *  chevron; no chip of its own. */
 export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () => void }) {
   const name = story.place?.name ?? "A Mesita place";
   return (
@@ -272,11 +273,11 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
       className={ROW}
       data-wallet-story
     >
-      <span className={cn(CHIP, "bg-pink-200 text-neutral-950")} aria-hidden>
-        <Instagram className="h-4 w-4" />
-      </span>
       <RowText title={name} line="Story voucher · show the QR" />
-      <span className="shrink-0 text-lg font-semibold tabular-nums">{money(story.credit_cents, story.currency)}</span>
+      <span className="text-muted-foreground shrink-0 text-base font-semibold tabular-nums">
+        +{money(story.credit_cents, story.currency)}
+      </span>
+      <Chevron />
     </button>
   );
 }
