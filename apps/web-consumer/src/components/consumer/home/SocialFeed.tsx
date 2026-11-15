@@ -63,7 +63,9 @@
 //
 // ONE WHITE BAND (Pato, MESITA-2540: "make a fucking normal box. maybe the
 // reload button somewhere else but centralized"): the pane is light grey and
-// the rows sit in one white band, EDGE TO EDGE with only a top and bottom
+// the rows sit in one white band (the pane itself is white since
+// MESITA-4070, Pato: "that gray refresh looks like shit ... try white
+// background"; the band keeps its hairlines), EDGE TO EDGE with only a top and bottom
 // hairline, never side borders or a rounded card (MESITA-2542: "don't add
 // lateral borders, its literally an infiite scrolloing"). Above it, NO
 // BUTTON: one quiet centred line, "Updated just now · Refresh", the word
@@ -1091,7 +1093,7 @@ function SkeletonRow() {
  *  14px sentence and the 12px quiet line 2px under it, the 44px photo. */
 function FeedSkeleton() {
   return (
-    <div className="bg-background flex-1 pb-6" data-social-loading aria-busy>
+    <div className="bg-card flex-1 pb-6" data-social-loading aria-busy>
       <div className="flex items-center justify-center pt-1 pb-1">
         <div className="flex h-10 items-center">
           <Skeleton className="h-3 w-36" />
@@ -1390,7 +1392,7 @@ function SocialFeedBody() {
   return (
     <div
       ref={rootRef}
-      className="bg-background flex-1 pb-6"
+      className="bg-card flex-1 pb-6"
       onTouchStart={(e) => {
         const el = scroller();
         pullStart.current =
