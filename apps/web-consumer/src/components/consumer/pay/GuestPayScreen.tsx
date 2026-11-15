@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiListCards, brandLabel, type SavedCard } from "@/lib/api/cards";
-import { AddCardSheet } from "@/components/consumer/AddCardSheet";
+import { useAddCardPage } from "@/lib/added-card";
 import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { money, type PayPlace } from "@/lib/api/wallet";
@@ -156,7 +156,6 @@ export function GuestPayScreen({
   const [cardsAttempt, setCardsAttempt] = useState(0);
   const latestCardsAttempt = useRef(0);
   const [busy, setBusy] = useState(false);
-  const [addingCard, setAddingCard] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notPaid, setNotPaid] = useState<string | null>(null);
   const requestId = useRef<string | null>(null);
@@ -201,7 +200,7 @@ export function GuestPayScreen({
   // The X closes and keeps the ticket (MESITA-3908): Pay shows it, the
   // tabs show the banner. Cancelling is its own button.
   const leave = () => {
-    if (busy || addingCard) return;
+    if (busy) return;
     onChoosePlace();
   };
 
@@ -282,7 +281,7 @@ export function GuestPayScreen({
   // this (MESITA-4061). True when it handled it; false on the keypad, where
   // the header goes back in history and the draft stays.
   function backOneStep(): boolean {
-    if (busy || addingCard || outcomeUnknown) return true;
+    if (busy || outcomeUnknown) return true;
     if (notPaid) {
       setNotPaid(null);
       return true;
@@ -301,10 +300,17 @@ export function GuestPayScreen({
 
   // Add a card in the app (MESITA-4065: no Stripe page): the card sheet; the
   // saved card becomes the bill's card.
+  // Its own page since MESITA-4101 (/wallet/cards/new): back here, the saved
+  // card becomes the bill's card. The draft survives the trip.
+  const openAddCard = useAddCardPage((id) => {
+    setCardId(id);
+    setCardsLoad({ state: "loading" });
+    setCardsAttempt((n) => n + 1);
+  });
   function addCard() {
     setError(null);
     setCardsSheet(false);
-    setAddingCard(true);
+    openAddCard();
   }
 
   /** Opens the bill: credits only, the card held, or the cash given. */
@@ -444,7 +450,7 @@ export function GuestPayScreen({
       {error}
     </p>
   ) : null;
-  const held = busy || addingCard;
+  const held = busy;
   // Cancel bill (MESITA-4051, Pato: "two buttons, left is red, next is next
   // step"): every step before the QR ends in it. It throws the draft away
   // here (nothing is held or charged yet) and goes back to Pay. Not while a
@@ -662,17 +668,6 @@ export function GuestPayScreen({
             </RowsCard>
           </div>
         </LocalSheet>
-        <AddCardSheet
-          open={addingCard}
-          onClose={() => setAddingCard(false)}
-          knownCardIds={(cards ?? []).map((c) => c.id)}
-          onSaved={(id) => {
-            setAddingCard(false);
-            setCardId(id);
-            setCardsLoad({ state: "loading" });
-            setCardsAttempt((n) => n + 1);
-          }}
-        />
     </>
   );
 
@@ -787,7 +782,7 @@ export function GuestPayScreen({
                       <button
                         type="button"
                         onClick={() => addCard()}
-                        disabled={addingCard}
+                        disabled={busy}
                         className="bg-foreground text-paper flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition hover:opacity-90"
                         data-guest-add-card
                       >
@@ -904,7 +899,7 @@ export function GuestPayScreen({
               <button
                 type="button"
                 onClick={() => addCard()}
-                disabled={addingCard}
+                disabled={busy}
                 className="border-muted-foreground/40 text-muted-foreground flex h-36 w-56 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed"
                 data-guest-add-card
               >
