@@ -49,13 +49,12 @@ import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { useCachedQuery } from "@/lib/use-cached-query";
 import { cn } from "@/lib/utils";
-import { GIFT_TONE, GiftFace, giftSentence } from "./GiftTickets";
+import { GIFT_TONE, GiftFaces, giftSentence } from "./GiftTickets";
 import { TicketLine, TicketSkeleton, TicketTimeline, type TicketStep } from "./TicketParts";
 
 const when = (iso: string) =>
   `${new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · ${clockTime(iso)}`;
 
-const BIG = "h-16 w-16 text-xl";
 const FILLED =
   "bg-foreground text-background flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition hover:opacity-90 disabled:opacity-60";
 const OUTLINE =
@@ -82,15 +81,7 @@ function GiftHero({ g }: { g: GiftTicket }) {
   return (
     <Panel className="mt-4 flex flex-col items-center p-4 text-center" data-gift-page={g.status}>
       <div className="flex items-center gap-3" aria-hidden>
-        <span className="relative flex shrink-0 items-center">
-          <GiftFace person={g.sender} size={BIG} />
-          <span className="-ml-4">
-            <GiftFace person={g.recipient} size={BIG} />
-          </span>
-          <span className="bg-foreground text-background ring-card absolute -right-1 -bottom-1 flex h-6 w-6 items-center justify-center rounded-full ring-2">
-            <Gift className="h-3.5 w-3.5" strokeWidth={2.25} />
-          </span>
-        </span>
+        <GiftFaces g={g} size="page" />
         {g.place?.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={g.place.photo} alt="" className="bg-muted h-16 w-16 shrink-0 rounded-2xl object-cover" />
