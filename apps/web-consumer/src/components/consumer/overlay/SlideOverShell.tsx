@@ -1,8 +1,8 @@
 "use client";
 
+import { ScreenHeader } from "@/components/consumer/nav/Screen";
 import { createContext, useContext } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   OVERLAY_BACKDROP_CLASS,
@@ -106,28 +106,10 @@ export function SlideOverHeader({
   title,
   actions,
 }: {
-  title: React.ReactNode;
+  title: string;
   actions?: React.ReactNode;
 }) {
   const close = useSlideOverClose();
-  return (
-    <header className="bg-card z-20 flex shrink-0 items-center gap-2 px-3 py-3">
-      <button
-        type="button"
-        onClick={close}
-        aria-label="Back"
-        className="bg-card text-foreground border-border hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition"
-      >
-        <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
-      </button>
-      <div className="font-display flex min-w-0 flex-1 items-center justify-center text-sm font-semibold">
-        {typeof title === "string" ? (
-          <span className="truncate">{title}</span>
-        ) : (
-          title
-        )}
-      </div>
-      {actions ?? <span className="h-11 w-11 shrink-0" />}
-    </header>
-  );
+  // The same header a pushed page wears (MESITA-4097): one header app-wide.
+  return <ScreenHeader title={title} onBack={close} action={actions} />;
 }

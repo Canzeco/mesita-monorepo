@@ -2,6 +2,7 @@
 
 import { Share2 } from "lucide-react";
 import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
+import { HEADER_BUTTON_CLASS } from "@/components/consumer/nav/Screen";
 import { shareOrCopy } from "@/lib/share-place";
 
 // Content chrome for the intercepted /reservation/[id] route. The sliding
@@ -50,9 +51,9 @@ export function ReservationDetailModalShell({
             onClick={onShare}
             disabled={placeName == null}
             aria-label="Share"
-            className="border-border bg-card text-foreground hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition"
+            className={HEADER_BUTTON_CLASS}
           >
-            <Share2 className="h-4 w-4" />
+            <Share2 className="h-5 w-5" aria-hidden />
           </button>
         }
       />
