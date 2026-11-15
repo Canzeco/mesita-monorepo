@@ -6,6 +6,8 @@ import { QRCodeSVG } from "qrcode.react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 import { money, type WaitingStory } from "@/lib/api/wallet";
+import { cardFace } from "@/components/shared/card-brand-marks";
+import { cn } from "@/lib/utils";
 import { SECONDARY } from "./wallet-buttons";
 
 // A PAYMENT METHOD, FULL SCREEN (Pato, MESITA-3533): a saved card or a
@@ -56,14 +58,14 @@ export function MethodSheet({
  *  A card a Premier plan renews with says so and offers no Remove. */
 function CardBody({ card, onRemove }: { card: SavedCard; onRemove?: (card: SavedCard) => Promise<void> }) {
   const [busy, setBusy] = useState(false);
-  const brand = brandLabel(card.brand);
+  const face = cardFace(card.brand, brandLabel(card.brand));
   return (
     <>
-      <div className="flex aspect-[1.586/1] w-full flex-col justify-between rounded-2xl bg-neutral-900 p-5 text-white">
-        <span className="text-base font-semibold">{brand}</span>
+      <div className={cn("flex aspect-[1.586/1] w-full flex-col justify-between rounded-2xl p-5", face.className)} style={face.style}>
+        {face.mark}
         <div>
           <p className="text-xl font-semibold tabular-nums">•••• {card.last4}</p>
-          <p className="mt-0.5 text-sm text-white/70 tabular-nums">Expires {expiryLabel(card)}</p>
+          <p className="mt-0.5 text-sm tabular-nums opacity-70">Expires {expiryLabel(card)}</p>
         </div>
       </div>
       <div className="mt-4 flex flex-col gap-3 text-sm leading-relaxed">

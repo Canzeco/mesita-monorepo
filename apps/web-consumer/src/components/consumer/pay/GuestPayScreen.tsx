@@ -18,6 +18,7 @@ import { type PadKey, paySplit, pressKey, readTip } from "@/lib/pay-keypad";
 import { payPlacePath } from "@/lib/consumer-route-contract";
 import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
+import { CardBrandChip, cardFace } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
 import { BackStep, BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PlaceBar, PlaceHero, RowsCard, StepsBar } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
@@ -755,6 +756,7 @@ export function GuestPayScreen({
   // 4A APP PAY: the saved card, "Pay MX$X", held now.
   if (way === "card") {
     const card = cards?.find((c) => c.id === chosenCard) ?? null;
+    const guestFace = card ? cardFace(card.brand, brandLabel(card.brand)) : null;
     const cardsUnknown = cards === null;
     return frame(
       <>
@@ -777,11 +779,12 @@ export function GuestPayScreen({
             <button
               type="button"
               onClick={() => setCardsSheet(true)}
-              className="bg-foreground flex h-28 w-48 flex-col justify-between rounded-2xl p-4 text-left text-white"
+              className={cn("flex h-28 w-48 flex-col justify-between rounded-2xl p-4 text-left", guestFace?.className)}
+              style={guestFace?.style}
               aria-label={`${brandLabel(card.brand)} ending ${card.last4}. Change card`}
               data-guest-card
             >
-              <span className="text-base font-semibold">{brandLabel(card.brand)}</span>
+              {guestFace?.mark}
               <span className="text-base font-semibold tracking-widest tabular-nums">•••• {card.last4}</span>
             </button>
           ) : (
@@ -828,8 +831,11 @@ export function GuestPayScreen({
                     setCardsSheet(false);
                   }}
                 >
-                  <span className="text-base font-semibold">
-                    {brandLabel(c.brand)} •••• {c.last4}
+                  <span className="flex min-w-0 items-center gap-3">
+                    <CardBrandChip brand={c.brand} last4={c.last4} />
+                    <span className="truncate text-base font-semibold">
+                      {brandLabel(c.brand)} •••• {c.last4}
+                    </span>
                   </span>
                   {c.id === chosenCard ? <Check className="h-5 w-5" aria-hidden /> : null}
                 </button>

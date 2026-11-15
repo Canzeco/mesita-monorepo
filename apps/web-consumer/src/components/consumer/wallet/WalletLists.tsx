@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronRight, Plus } from "lucide-react";
 import { PlaceMarks, SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
+import { CardBrandChip } from "@/components/shared/card-brand-marks";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 import { money, type WaitingStory } from "@/lib/api/wallet";
@@ -138,12 +139,10 @@ export function CashChip() {
   );
 }
 
-export function SavedCardChip({ last4 }: { last4: string }) {
-  return (
-    <span className={cn(CHIP, "bg-neutral-900 text-[0.625rem] font-semibold text-white tabular-nums")} aria-hidden>
-      {last4}
-    </span>
-  );
+/** A saved card's chip: its brand's mark on the brand's colour, or black
+ *  with the last four (MESITA-4057, CardBrandChip). */
+export function SavedCardChip({ brand, last4 }: { brand: string; last4: string }) {
+  return <CardBrandChip brand={brand} last4={last4} />;
 }
 
 export function AddChip() {
@@ -186,7 +185,7 @@ export function SavedCardRow({ card, onOpen }: { card: SavedCard; onOpen: () => 
       className={ROW}
       data-wallet-method="saved-card"
     >
-      <SavedCardChip last4={card.last4} />
+      <SavedCardChip brand={card.brand} last4={card.last4} />
       <RowText title={`${brand} •••• ${card.last4}`} line={`Expires ${expiryLabel(card)}`} />
       <Chevron />
     </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard } from "lucide-react";
+import { CardBrandChip } from "@/components/shared/card-brand-marks";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 
@@ -51,7 +51,7 @@ export function VoucherPaySheet({
           ) : (
             cards.map((c) => (
               <button key={c.id} type="button" className={ROW} disabled={busy} onClick={() => onCard(c)}>
-                <CreditCard className="h-5 w-5 shrink-0" aria-hidden />
+                <CardBrandChip brand={c.brand} last4={c.last4} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">
                     {brandLabel(c.brand)} •••• {c.last4}
