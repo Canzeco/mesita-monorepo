@@ -94,7 +94,7 @@ function FamilyFilterBody({
       <div
         role="group"
         aria-label="Families"
-        className="scrollbar-hide -m-1 flex min-h-0 flex-wrap gap-2 overflow-y-auto p-1"
+        className="scrollbar-thin-dark -m-1 flex min-h-0 flex-wrap gap-2 overflow-y-auto p-1"
         data-search-filter-families
       >
         {FILTERABLE_PLACE_FAMILIES.map((family) => {

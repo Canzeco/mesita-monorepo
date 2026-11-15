@@ -61,7 +61,7 @@ export function RewardsSheet({
         onBack={onClose}
       />
       </div>
-      <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4">
+      <div className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4">
         {/* THE BALANCE, ABOVE THE OFFERS (Pato, 2026-11-15, MESITA-4060:
             "remove that wallet of there because it looks like a button. just
             at the top of products maybe display the current balance ...

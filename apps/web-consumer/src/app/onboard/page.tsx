@@ -91,7 +91,7 @@ export default async function ConsumerOnboardPage({
 
   return (
     <MobileFrame>
-      <div className="flex flex-1 flex-col overflow-y-auto px-6 pt-8 pb-8">
+      <div className="scrollbar-thin-dark flex flex-1 flex-col overflow-y-auto px-6 pt-8 pb-8">
         {/* `OnboardForm` owns the page headline and the three fields. This file
             owns the frame and the exits: identity + "Not you?" under the
             button — still reachable for the wrong account, without competing

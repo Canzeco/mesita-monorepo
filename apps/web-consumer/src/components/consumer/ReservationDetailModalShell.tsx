@@ -57,7 +57,7 @@ export function ReservationDetailModalShell({
         }
       />
       {/* `min-h-0` is load-bearing — see PlaceDetailModalShell. */}
-      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto">{children}</div>
     </>
   );
 }

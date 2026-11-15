@@ -264,7 +264,7 @@ export function PlaceProfileSkeleton({
   return (
     <div className="bg-background relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <PlaceTopBarSkeleton onBack={onBack} />
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto">
         <PlaceDetailBodySkeleton creating={creating} />
       </div>
     </div>

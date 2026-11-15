@@ -124,7 +124,7 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
 
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-10">
+      <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-10">
         <div className="mb-4 flex items-center gap-3">
           <button
             type="button"

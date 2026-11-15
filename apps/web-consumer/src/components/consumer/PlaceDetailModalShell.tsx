@@ -53,7 +53,7 @@ export function PlaceDetailModalShell({
           background in Overview, boxes white"): the slide-over panel is
           paper, so the scroller paints bg-background like the direct link's
           PlaceProfile; Overview's cards stay white on it. */}
-      <div className="bg-background min-h-0 flex-1 overflow-y-auto">
+      <div className="scrollbar-thin-dark bg-background min-h-0 flex-1 overflow-y-auto">
         {children}
       </div>
     </>

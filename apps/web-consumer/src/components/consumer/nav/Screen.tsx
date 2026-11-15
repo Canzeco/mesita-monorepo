@@ -120,7 +120,7 @@ export function Screen({
       <div
         ref={setBody}
         className={cn(
-          "scrollbar-hide min-h-0 flex-1 overflow-y-auto",
+          "scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto",
           flush ? "flex flex-col" : "px-5 py-5",
         )}
       >

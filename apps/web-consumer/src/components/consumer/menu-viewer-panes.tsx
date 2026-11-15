@@ -16,7 +16,7 @@ export function ImagePane({
   onError: () => void;
 }) {
   return (
-    <div className="absolute inset-0 overflow-auto overscroll-contain">
+    <div className="scrollbar-thin-dark absolute inset-0 overflow-auto overscroll-contain">
       <div
         className="flex min-h-full min-w-full items-center justify-center p-4"
         style={{

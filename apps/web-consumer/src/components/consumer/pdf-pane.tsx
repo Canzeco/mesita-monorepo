@@ -113,7 +113,7 @@ export function PdfPane({
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="absolute inset-0 overflow-auto overscroll-contain"
+        className="scrollbar-thin-dark absolute inset-0 overflow-auto overscroll-contain"
       >
         {doc && renderWidth > 0 ? (
           <div

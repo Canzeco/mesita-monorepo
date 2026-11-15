@@ -642,14 +642,15 @@ function PersonCard({
       {/* ONE SCROLLER UNDER THE BAR (Pato, MESITA-2845: "make this UI
           easier to scroll"): the identity boxes scroll away with the
           history, Instagram's profile, and the Views/Likes strip sticks
-          under the bar once it gets there (MESITA-3061). No scrollbar, and
+          under the bar once it gets there (MESITA-3061). The thin bar shows
+          (MESITA-4081: scrolling must be obvious), and
           a fling at either end stays in the card. */}
       <div
         ref={scrollRef}
         onScroll={(e) => {
           cardMemoryOf(key).scrollTop = e.currentTarget.scrollTop;
         }}
-        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+        className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
         data-social-person-card
       >
         {/* NO PADDING ON THE SCROLLER (MESITA-3064): a sticky child stops at

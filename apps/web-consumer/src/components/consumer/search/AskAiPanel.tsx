@@ -148,7 +148,7 @@ export function AskAiPanel({
       {/* Thread */}
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3"
+        className="scrollbar-thin-dark min-h-0 flex-1 space-y-2 overflow-y-auto p-3"
       >
         {messages.map((m) => {
           const isUser = m.role === "user";
