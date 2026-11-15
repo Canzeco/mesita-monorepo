@@ -30,7 +30,7 @@ const PROMPT = [
 
 export const A3: FleetAgent = {
   key: "a3",
-  name: "eleven-a3 (es-mx) · inbound",
+  name: "eleven-a3 (es-mx) · inbound · guests and restaurants",
   firstMessage: "¡Hola! Le atiende Mesita. ¿En qué le puedo ayudar?",
   prompt: PROMPT,
   toolNames: [

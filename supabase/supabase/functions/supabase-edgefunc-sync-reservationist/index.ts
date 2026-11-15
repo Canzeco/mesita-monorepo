@@ -12,7 +12,9 @@
 //              (prompt hash, tools, knowledge doc, end_call, workflow).
 //   fleet      upsert the 9 tools, then push every agent's prompt, first
 //              message, tools and settings; store ids + hash in agents_config.
-//   prune      delete non-fleet agents (fleet tools are managed by fleet mode
+//   prune      delete agents that left the fleet (a key agents_config names
+//              that FLEET no longer has) and drop their key; nothing else
+//              is touched (fleet tools are managed by fleet mode
 //              and never deleted here).
 //   workflows  Commit AgentWorkflowRequestModel for a1–a4 from fleetWorkflows()
 //              onto each agent's Main branch (?branch_id + version_description).

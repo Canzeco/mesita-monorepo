@@ -1,6 +1,6 @@
 {
   "key": "a3",
-  "name": "eleven-a3 (es-mx) · inbound",
+  "name": "eleven-a3 (es-mx) · inbound · guests and restaurants",
   "direction": "the guest calls Mesita",
   "conversation_config": {
     "agent": {

@@ -1,6 +1,6 @@
 {
   "generated": "by `deno task sync-elevenlabs` from supabase/supabase/functions/_shared/reservationist/ — never edit",
-  "spec_hash": "31784e2b37750d2fa32d69cd4ba8c3940c0757261ffacad94ef9bd56899f5d03",
+  "spec_hash": "3abcbf6c5733369ad748cd0c3e3e762f91a4c393d67495215ff5e6509355cc02",
   "knowledge_version": 9,
   "deploy": ".github/workflows/agents-deploy.yml on every merge to main (supabase/scripts/sync-agents.sh)",
   "agents": [
@@ -64,7 +64,7 @@
     },
     {
       "key": "a3",
-      "name": "eleven-a3 (es-mx) · inbound",
+      "name": "eleven-a3 (es-mx) · inbound · guests and restaurants",
       "direction": "the guest calls Mesita",
       "first_message": "¡Hola! Le atiende Mesita. ¿En qué le puedo ayudar?",
       "tools": [
