@@ -24,7 +24,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // green's family. 52px (was 64px), the glyph 16px over a 13px label, so three
 // still fit a 320px phone.
 const BUTTON =
-  "type-body flex h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 font-semibold whitespace-nowrap text-white transition hover:opacity-90 active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
+  "type-body flex h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-center leading-tight font-semibold text-white transition hover:opacity-90 active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
 
 const SHARE = `${BUTTON} bg-[var(--brand-pink-600)] focus-visible:ring-[var(--brand-pink-300)]`;
 // The three Credits buttons share one colour, the app's own black primary
@@ -35,14 +35,15 @@ const CREDITS = `${BUTTON.replace("text-white", "text-paper")} bg-foreground foc
 const GLYPH = "h-4 w-4 shrink-0";
 
 // BUY CREDITS (Pato, 2026-11-15, MESITA-4031: "add a buy credits button in
-// wallet"): the fourth door, so the row is a 2x2 grid of equal buttons (four
-// in one row do not fit a 320px phone). Credits are bought at one place, so it
+// wallet"): the fourth door. The row is ONE row of four equal buttons (MESITA-4034,
+// Pato: "not 2 and 2 but 4 in same row"; MESITA-4032 had made it a 2x2 grid):
+// the label may wrap to two lines under its icon so four fit a phone. Credits are bought at one place, so it
 // opens Search, the same way as "Add a Credits Card" below; the place's
 // Buy Credits then runs the purchase.
-/** The grid: four links, the same in the loading frame. */
+/** The row: four links, the same in the loading frame. */
 export function WalletShareGift() {
   return (
-    <div className="mt-5 grid grid-cols-2 gap-2" data-wallet-share-gift>
+    <div className="mt-5 grid grid-cols-4 gap-2" data-wallet-share-gift>
       <PushLink
         href={CONSUMER_ROUTES.search}
         className={CREDITS}
