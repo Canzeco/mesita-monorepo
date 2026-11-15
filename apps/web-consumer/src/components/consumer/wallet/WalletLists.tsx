@@ -7,7 +7,7 @@ import { PlaceMarks, SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
 import { CardBrandChip } from "@/components/shared/card-brand-marks";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
+import { brandLabel, expiryLabel, isExpired, type SavedCard } from "@/lib/api/cards";
 import { money, type WaitingStory } from "@/lib/api/wallet";
 import { cardAmount } from "@/lib/wallet-card";
 import { cn } from "@/lib/utils";
@@ -46,10 +46,14 @@ import { type WalletCardModel, walletCardLabel } from "./WalletCard";
 
 /** The chip: a payment card in miniature, 1.586:1. */
 const CHIP = "flex h-8 w-[3.2rem] shrink-0 items-center justify-center overflow-hidden rounded-md";
-// 56px (MESITA-4087, Pato: "optimize vertical space"): min-h-14, 8px over
-// and under, the two lines in tight leading; it was 64-70px.
+// ONE LINE, 48px (MESITA-4087, Pato 2026-11-15: "optimize vertical space";
+// "maybe don't mention the number nor pay at the place nor that kind of
+// stuff, and the expires you can maybe put at the right or even don't put
+// it"): a row is its chip and its name, no second line; a saved card reads
+// its brand alone (the last four live in its sheet), Cash reads "Cash".
+// Two lines and 64-70px before.
 const ROW =
-  "hover:bg-muted/60 flex min-h-14 w-full items-center gap-3.5 px-4 py-2 text-left transition";
+  "hover:bg-muted/60 flex min-h-12 w-full items-center gap-3.5 px-4 py-2 text-left transition";
 const DIVIDER = "bg-border ml-[4.75rem] h-px";
 
 /** A section of rows in a panel (the app's one Panel, components/shared;
@@ -86,8 +90,9 @@ export function WalletPanelList({
   );
 }
 
-/** The last row of a list: a dashed chip with a +, "Add" and what it adds
- *  (MESITA-3744). A link with `href`, else a button. */
+/** The last row of a list: a dashed chip with a +, then one line, "Add a
+ *  card" (MESITA-3744; one line since MESITA-4087). A link with `href`,
+ *  else a button. */
 export function AddRow({
   line,
   ariaLabel,
@@ -107,7 +112,7 @@ export function AddRow({
   const inner = (
     <>
       <AddChip />
-      <RowText title={busy ? "Opening…" : "Add"} line={line} />
+      <RowText title={busy ? "Opening…" : line} />
     </>
   );
   return href ? (
@@ -124,7 +129,7 @@ export function AddRow({
 function RowText({ title, line }: { title: ReactNode; line?: ReactNode }) {
   return (
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-base leading-tight font-semibold">{title}</span>
+      <span className="block truncate text-base font-semibold">{title}</span>
       {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{line}</span> : null}
     </span>
   );
@@ -169,12 +174,13 @@ export function CashRow() {
   return (
     <div className={cn(ROW, "hover:bg-transparent")} data-wallet-method="cash">
       <CashChip />
-      <RowText title="Cash" line="Pay at the place" />
+      <RowText title="Cash" />
     </div>
   );
 }
 
-/** A saved card (MESITA-3523): brand, last four, expiry. Opens its sheet. */
+/** A saved card (MESITA-3523): its brand, "Expired" on the right only when
+ *  it is (MESITA-4087). Opens its sheet, which shows the last four. */
 export function SavedCardRow({ card, onOpen }: { card: SavedCard; onOpen: () => void }) {
   const brand = brandLabel(card.brand);
   return (
@@ -186,7 +192,10 @@ export function SavedCardRow({ card, onOpen }: { card: SavedCard; onOpen: () => 
       data-wallet-method="saved-card"
     >
       <SavedCardChip brand={card.brand} last4={card.last4} />
-      <RowText title={`${brand} •••• ${card.last4}`} line={`Expires ${expiryLabel(card)}`} />
+      <RowText title={brand} />
+      {isExpired(card) ? (
+        <span className="text-muted-foreground shrink-0 text-sm">Expired</span>
+      ) : null}
       <Chevron />
     </button>
   );
@@ -259,7 +268,7 @@ export function EmptyCreditsRow({ href }: { href: string }) {
   return (
     <Link href={href} className={ROW} data-wallet-empty-credits>
       <span className={cn(CHIP, "border-muted-foreground/40 border-2 border-dashed")} aria-hidden />
-      <RowText title="Find a place" line="Credits Cards hold money you prepay at one place" />
+      <RowText title="Find a place" />
       <Chevron />
     </Link>
   );
@@ -278,7 +287,7 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
       className={ROW}
       data-wallet-story
     >
-      <RowText title={name} line="Story voucher · show the QR" />
+      <RowText title={`Story voucher · ${name}`} />
       <span className="text-muted-foreground shrink-0 text-base font-semibold tabular-nums">
         +{money(story.credit_cents, story.currency)}
       </span>
@@ -303,7 +312,7 @@ export function WalletBodySkeleton() {
   );
 }
 
-/** Loading rows inside a list: the chip and two lines. */
+/** Loading rows inside a list: the chip and one line. */
 export function RowsSkeleton({ count = 2 }: { count?: number }) {
   return (
     <>
@@ -312,7 +321,6 @@ export function RowsSkeleton({ count = 2 }: { count?: number }) {
           <Skeleton className={CHIP} />
           <span className="flex-1">
             <Skeleton className="h-4 w-36" />
-            <Skeleton className="mt-1.5 h-3 w-24" />
           </span>
         </div>
       ))}
