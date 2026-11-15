@@ -26,15 +26,19 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 const BUTTON =
   "type-body flex h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-center leading-tight font-semibold text-white transition hover:opacity-90 active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
 
-const SHARE = `${BUTTON} bg-[var(--brand-pink-600)] focus-visible:ring-[var(--brand-pink-300)]`;
+// SOFT TINTS (MESITA-4054, Pato: "USE BETTER COLOR FOR THE TOP BUTTONS";
+// option A of a three-way mock): Buy stays the one solid black button; the
+// gift doors and Share are light tints with their own ink and a 1px inset
+// ring, so they read as calm secondaries.
+const SHARE = `${BUTTON.replace("text-white", "text-pink-700")} bg-pink-50 ring-1 ring-inset ring-pink-200 focus-visible:ring-pink-400`;
 // The three Credits buttons share one colour, the app's own black primary
 // (MESITA-4032, Pato: "Credits of one color, share of other color"); Share
 // Mesita keeps the brand pink.
 const CREDITS = `${BUTTON.replace("text-white", "text-paper")} bg-foreground focus-visible:ring-neutral-400`;
 // THREE COLOURS AGAIN (MESITA-4045, Pato: "Buy Credits one color, Send and
-// Claim other color, Share other color"): Buy black, the two gift doors the
-// app's green (the green its Taken and Paid words wear), Share pink.
-const GIFT = `${BUTTON} bg-green-700 focus-visible:ring-green-300`;
+// Claim other color, Share other color"): Buy black, the two gift doors green, Share pink;
+// as soft tints since MESITA-4054.
+const GIFT = `${BUTTON.replace("text-white", "text-emerald-800")} bg-emerald-50 ring-1 ring-inset ring-emerald-200 focus-visible:ring-emerald-400`;
 
 const GLYPH = "h-4 w-4 shrink-0";
 
@@ -75,7 +79,11 @@ export function WalletShareGift() {
         <HandCoins className={GLYPH} strokeWidth={2.25} aria-hidden />
         Claim Gift
       </PushLink>
-      <PushLink href={CONSUMER_ROUTES.share} className={SHARE} data-wallet-share>
+      <PushLink
+        href={CONSUMER_ROUTES.share}
+        className={SHARE}
+        data-wallet-share
+      >
         <Share2 className={GLYPH} strokeWidth={2.25} aria-hidden />
         Share Mesita
       </PushLink>
