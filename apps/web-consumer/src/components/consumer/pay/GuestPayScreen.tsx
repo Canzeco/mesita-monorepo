@@ -859,55 +859,59 @@ export function GuestPayScreen({
     return frame(
       <>
         {top(3, backArrow)}
-        <StepBody>
-          <PaySection title="Card">
-            <div className="flex flex-col items-center p-4 pt-3">
-              {cardsUnknown ? (
-                cardsLoad.state === "failed" ? (
-                  <button type="button" className="text-base font-semibold underline" onClick={() => {
-                    setCardsLoad({ state: "loading" });
-                    setCardsAttempt((n) => n + 1);
-                  }}>
-                    Couldn&apos;t load your cards. Retry
-                  </button>
-                ) : (
-                  <Skeleton className="h-28 w-48 rounded-2xl" />
-                )
-              ) : card ? (
-                <button
-                  type="button"
-                  onClick={() => setCardsSheet(true)}
-                  className={cn("flex h-28 w-48 flex-col justify-between rounded-2xl p-4 text-left", guestFace?.className)}
+        {/* ONE CENTRED CHARGE (MESITA-4100, Pato: "the pay step must be a
+            simple pay button centered with the selected card, like charge X
+            to this card"): the card is picked on Method, so here it is the
+            card, the amount and one line on when it is charged. No CVC: a
+            saved card is charged by Stripe without it; a bank that wants its
+            own check asks in its window when Pay is tapped (runBankCheck). */}
+        <StepBody className="flex-1">
+          <PaySection className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-10 text-center" data-guest-card-pay>
+            {cardsUnknown ? (
+              cardsLoad.state === "failed" ? (
+                <button type="button" className="text-base font-semibold underline" onClick={() => {
+                  setCardsLoad({ state: "loading" });
+                  setCardsAttempt((n) => n + 1);
+                }}>
+                  Couldn&apos;t load your cards. Retry
+                </button>
+              ) : (
+                <Skeleton className="h-36 w-56 rounded-2xl" />
+              )
+            ) : card ? (
+              <>
+                <span className="flex flex-col items-center gap-1">
+                  <span className="text-muted-foreground text-lg font-semibold">Charge</span>
+                  <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
+                  <span className="text-muted-foreground text-lg">to this card</span>
+                </span>
+                <span
+                  className={cn("flex h-36 w-56 flex-col justify-between rounded-2xl p-5 text-left shadow-md", guestFace?.className)}
                   style={guestFace?.style}
-                  aria-label={`${brandLabel(card.brand)} ending ${card.last4}. Change card`}
+                  role="img"
+                  aria-label={`${brandLabel(card.brand)} ending ${card.last4}`}
                   data-guest-card
                 >
                   {guestFace?.mark}
-                  <span className="text-base font-semibold tracking-widest tabular-nums">•••• {card.last4}</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => addCard()}
-                  disabled={addingCard}
-                  className="border-muted-foreground/40 text-muted-foreground flex h-28 w-48 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed"
-                  data-guest-add-card
-                >
-                  <Plus className="h-6 w-6" aria-hidden />
-                  <span className="text-base font-semibold">{"Add a card"}</span>
-                </button>
-              )}
-              {cards && cards.length > 1 ? (
-                <button type="button" className="text-muted-foreground mt-2 flex h-11 items-center gap-1 text-sm font-semibold" onClick={() => setCardsSheet(true)}>
-                  Change card
-                  <ChevronRight className="h-4 w-4" aria-hidden />
-                </button>
-              ) : null}
-              <p className="text-muted-foreground mt-2 flex items-center justify-center gap-2 text-sm">
-                <Lock className="h-4 w-4" aria-hidden />
-                Held now, charged when the waiter signs.
-              </p>
-            </div>
+                  <span className="text-lg font-semibold tracking-widest tabular-nums">•••• {card.last4}</span>
+                </span>
+                <p className="text-muted-foreground flex max-w-xs items-center justify-center gap-2 text-sm">
+                  <Lock className="h-4 w-4 shrink-0" aria-hidden />
+                  Held now, charged when the waiter signs.
+                </p>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => addCard()}
+                disabled={addingCard}
+                className="border-muted-foreground/40 text-muted-foreground flex h-36 w-56 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed"
+                data-guest-add-card
+              >
+                <Plus className="h-6 w-6" aria-hidden />
+                <span className="text-base font-semibold">Add a card</span>
+              </button>
+            )}
           </PaySection>
         </StepBody>
         {status}
