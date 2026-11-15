@@ -6,12 +6,13 @@
 
 export const LANGUAGE = "es";
 
-// claude-haiku-5-5 (MESITA-4022): ~10x cheaper per minute than haiku-4-5, same
-// family. The workflow is shaped for a small model: every webhook fires from
-// its own tool node, the caller's lane is picked by a tool result, and no talk
-// node asks the model to choose among more than six branches.
+// claude-haiku-4-5. haiku-5-5 (10x cheaper) was tried 2026-11-14 and failed
+// 3 of 13 simulated calls, every time at a tool node whose inputs the model
+// fills (MESITA-4026); reliability is the product. The workflow stays shaped
+// for a small model: webhooks fire only from tool nodes and the caller's lane
+// is picked by a tool result, never by the LLM (MESITA-4022).
 export const LLM = {
-  llm: "claude-haiku-5-5",
+  llm: "claude-haiku-4-5",
   temperature: 0.5,
   max_tokens: -1,
 };
