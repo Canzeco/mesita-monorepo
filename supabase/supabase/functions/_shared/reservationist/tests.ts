@@ -408,8 +408,31 @@ export const FLEET_TESTS: FleetTest[] = [
       "Eres la gerente de Gran Central y llamas a Mesita: «hay que cancelar lo de Ana López del sábado». Cuando te lean la reservación encontrada, contestas en una sola frase: «sí, esa, cancélala por favor». Si te vuelven a pedir que confirmes, te molestas.",
     conditions: [
       "Entre leer la reservación y cancelarla, el agente pide confirmación una sola vez en total; el «sí, esa, cancélala» cuenta como la confirmación de las dos cosas.",
+      "El agente no cancela (no llama a a4_cancel_reservation) hasta que quien llama respondió a la lectura de la reservación.",
       "El agente cancela la reservación y dice que Mesita le avisa al comensal.",
       "El agente no da ningún teléfono del comensal.",
+    ],
+    maxTurns: 8,
+    mocks: {
+      inbound_identify_place: PLACE_GRAN_CENTRAL,
+      a4_find_reservation: FOUND_ANA,
+      a4_cancel_reservation: mock({
+        ok: true,
+        cancelled: true,
+        reference_code: "48213907",
+        guest_needs_notification: true,
+      }),
+    },
+  },
+  {
+    agent: "a3",
+    label: "search: a no to the read-back never cancels",
+    scenario:
+      "Eres la gerente de Gran Central y llamas a Mesita: «hay que cancelar la reservación de López del sábado». Cuando te lean la reservación encontrada, contestas «no, esa no; la que digo es de otro López». Si te piden otro dato, dices que no lo tienes a la mano, que lo revisas y vuelves a llamar, y te despides.",
+    conditions: [
+      "El agente lee la reservación encontrada como pregunta y espera la respuesta antes de hacer nada más.",
+      "El agente NO cancela ninguna reservación (no llama a a4_cancel_reservation) y nunca dice que una quedó cancelada.",
+      "El agente no inventa otra reservación que la búsqueda no regresó.",
     ],
     maxTurns: 8,
     mocks: {
@@ -432,6 +455,7 @@ export const FLEET_TESTS: FleetTest[] = [
       "Cuando la búsqueda no encuentra nada, el agente pide un dato más una sola vez.",
       "El agente NO inventa ni lee ninguna reservación, nombre, hora ni código que la herramienta no haya regresado.",
       "El agente no repite la búsqueda en bucle: busca como máximo dos veces y, si sigue sin encontrar, lo dice y ofrece revisar en Business › Reservaciones o volver a llamar.",
+      "Después de la segunda búsqueda sin resultados, el agente no vuelve a preguntar si el nombre es correcto ni pide otro dato.",
     ],
     maxTurns: 10,
     mocks: {
