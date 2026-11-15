@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared";
 import { ICON_CHIP_CLASS } from "@/components/consumer/me/settings-rows";
+import { CountBubble } from "@/components/consumer/CountBubble";
 import { cn } from "@/lib/utils";
 
 // ─── The destination grid (MESITA-1628) ────────────────────────────────────
@@ -111,23 +112,16 @@ function SoonPill() {
 }
 
 /** A box's state (MESITA-3885, Pato: "mention in the boxes the states too
- *  ... the number of reservations or red bubbles"). A red dot means
- *  something waits for the guest there; a number says how many. Both sit on
- *  the box's right edge and fade in when their read lands; nothing (zero,
- *  loading, a failed read) draws nothing. `label` is what a screen reader
- *  hears after the title ("2 upcoming"). */
+ *  ... the number of reservations or red bubbles"): one CountBubble on the
+ *  box's right edge, the same size on every box (MESITA-3996), fading in
+ *  when its read lands; zero, loading or a failed read draws nothing.
+ *  `label` is what a screen reader hears after the title ("2 upcoming"). */
 export type TileState = {
   count?: number;
-  /** Red for unread (Notifications), ink for a plain count. */
+  /** Red when something waits for the guest, ink for a plain count. */
   countTone?: "red" | "ink";
-  dot?: boolean;
   label?: string;
 };
-
-/** A count past nine reads "9+", so the pill keeps one width. */
-function countText(n: number): string {
-  return n > 9 ? "9+" : String(n);
-}
 
 /** One cell: a DESTINATION, a route Link to `/me/<box>` — or, `soon`, the
  *  same box that opens nothing yet (Plan, MESITA-3855: "Class Plan(Soon)"). */
@@ -137,7 +131,6 @@ export function DestTile({
   title,
   summary,
   href,
-  dot = false,
   soon = false,
   state,
 }: {
@@ -149,9 +142,6 @@ export function DestTile({
   href: string;
   /** Opens nothing yet: no link, a Soon pill beside the title. */
   soon?: boolean;
-  /** A red dot at the tile's corner: something new waits behind it (the
-   *  Notifications tile, MESITA-3717). */
-  dot?: boolean;
   /** The box's state on its right edge (MESITA-3885). */
   state?: TileState;
 }) {
@@ -176,7 +166,7 @@ export function DestTile({
       // A grid cell shows its title only; its name says the summary too.
       aria-label={
         shape === "cell"
-          ? `${title}, ${state?.label ?? summary}${dot ? ", new" : ""}`
+          ? `${title}, ${state?.label ?? summary}`
           : undefined
       }
       className={cn(
@@ -191,25 +181,7 @@ export function DestTile({
       </span>
       <TileText shape={shape} title={title} summary={summary} />
       {state?.count ? (
-        <span
-          aria-hidden
-          className={cn(
-            "type-meta animate-in fade-in min-w-5 shrink-0 rounded-full px-1.5 py-0.5 text-center font-semibold tabular-nums duration-150",
-            state.countTone === "red"
-              ? "bg-destructive text-white"
-              : "bg-foreground text-paper",
-          )}
-          data-tile-count
-        >
-          {countText(state.count)}
-        </span>
-      ) : null}
-      {dot || state?.dot ? (
-        <span
-          aria-hidden
-          className="bg-destructive animate-in fade-in h-2.5 w-2.5 shrink-0 rounded-full duration-150"
-          data-unseen-dot
-        />
+        <CountBubble count={state.count} tone={state.countTone} />
       ) : null}
     </PushLink>
   );
