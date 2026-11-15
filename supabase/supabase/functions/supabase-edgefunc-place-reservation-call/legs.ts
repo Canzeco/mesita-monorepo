@@ -407,7 +407,7 @@ export async function runCancelNotice(input: {
   reservationId: string;
   runId: string;
   key: string;
-  kind: "place_cancel" | "guest_cancel";
+  kind: "place_cancel" | "guest_cancel" | "change_declined";
   attemptsDone: number;
   outageRetries: number;
   toNumber: string;
@@ -421,14 +421,17 @@ export async function runCancelNotice(input: {
   guestNotify: "call" | "app";
   /** Place side only: "offer_release" frees the options the place held
    *  for an offer nobody took (MESITA-3630); else "cancellation". */
-  placeContext?: "cancellation" | "offer_release";
+  placeContext?: "cancellation" | "offer_release" | "change_declined";
   /** The offers, spoken — for "offer_release". */
   alternativesText?: string;
 }): Promise<void> {
   const { admin, reservationId } = input;
   const record = (patch: Record<string, unknown>) =>
     guardedRecord(admin, reservationId, input.runId, patch);
-  const isPlaceSide = input.kind === "place_cancel";
+  // change_declined is place-side too: a1 tells the place the guest kept the
+  // original table (MESITA-4073), paced like a release.
+  const isPlaceSide = input.kind !== "guest_cancel";
+  const paceKind = isPlaceSide ? "place_cancel" : "guest_cancel";
   const who = isPlaceSide ? "place" : "guest";
   // guest_cancel wire kind = tell the GUEST the place cancelled (leg 6).
   if (!isPlaceSide && input.guestNotify === "app") {
@@ -442,7 +445,7 @@ export async function runCancelNotice(input: {
   const n = input.attemptsDone + 1;
   const reservedAt = input.reservedAtIso ? new Date(input.reservedAtIso) : null;
   const park = async (failNote: string) => {
-    const next = noticeNextAt(input.kind, n, input.placeHours, input.placeTz, reservedAt);
+    const next = noticeNextAt(paceKind, n, input.placeHours, input.placeTz, reservedAt);
     if (next) {
       await record({
         notice_attempts: n,

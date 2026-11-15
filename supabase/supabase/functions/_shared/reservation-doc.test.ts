@@ -294,7 +294,7 @@ Deno.test("validateReservationPatch: every closed-set column keeps its exact err
     ["callback_state", false, "callback_state must be one of none, scheduled, ringing, calling, answered, failed, skipped"],
     ["notice_state", false, "notice_state must be one of none, pending, scheduled, running, done, failed, skipped"],
     ["reminder_state", false, "reminder_state must be one of idle, scheduled, ringing, calling, answered, failed, skipped"],
-    ["notice_kind", true, "notice_kind must be null or one of place_cancel, guest_cancel"],
+    ["notice_kind", true, "notice_kind must be null or one of place_cancel, guest_cancel, change_declined"],
     ["cancelled_by", true, "cancelled_by must be null or one of consumer, business, agent"],
     ["consumer_notify", false, "consumer_notify must be one of call, app"],
     ["reported_verdict", true, "reported_verdict must be null or one of confirmed, counter_offer, declined, unreachable, wrong_number"],

@@ -9,6 +9,10 @@
 //   { reservation_id: uuid }
 //   { reservation_id: uuid, new_date?: "YYYY-MM-DD", new_time?: "HH:mm" }
 //     — when date/time provided, must match a place alternative (matchesOffer)
+//   { reservation_id: uuid, change: "accept" | "decline" }
+//     — the guest's answer to a change the place asked for on a3's line
+//       (MESITA-4073, _shared/reservation-change.ts): accept moves the table
+//       on the spot; decline keeps the original and a1 tells the place.
 //
 // Deploy: supabase functions deploy consumer-web-confirm-reservation
 
@@ -19,7 +23,7 @@ import {
   matchesOffer,
   normalizeAlternatives,
 } from "../_shared/reservation-alternatives.ts";
-import { placeLocalDate } from "../_shared/agent-tools.ts";
+import { fireCancelNotice, placeLocalDate } from "../_shared/agent-tools.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
 import {
   onTheSpotConfirmPatch,
@@ -27,17 +31,19 @@ import {
   resolveRequestedSlot,
 } from "../_shared/reservation-confirm.ts";
 import { readOwnedTicket } from "../_shared/reservation-owned.ts";
+import { acceptChangePatch, changeIsOpen, keepOriginalPatch } from "../_shared/reservation-change.ts";
 
 type Body = {
   reservation_id?: string;
   new_date?: string;
   new_time?: string;
+  change?: string;
 };
 
 serveJson("consumer-web-confirm-reservation", async (req) => {
   const ctx = await requireConsumerRequest(req);
   if (ctx instanceof Response) return ctx;
-  const { admin, user } = ctx;
+  const { admin, env, user } = ctx;
   const consumerId = user.id;
 
   const bodyRes = await readJson<Body>(req);
@@ -58,11 +64,17 @@ serveJson("consumer-web-confirm-reservation", async (req) => {
     is_test: boolean;
     place_id: string;
     consumer_notify: string | null;
+    party_size: number;
+    notice_state: string | null;
+    change_state: string | null;
+    change_reserved_at: string | null;
+    change_party_size: number | null;
+    change_expires_at: string | null;
   }>(
     admin,
     body.reservation_id,
     consumerId,
-    "id, state, reserved_at, alternatives, consumer_confirmed_at, consumer_id, is_test, place_id, consumer_notify",
+    "id, state, reserved_at, alternatives, consumer_confirmed_at, consumer_id, is_test, place_id, consumer_notify, party_size, notice_state, change_state, change_reserved_at, change_party_size, change_expires_at",
     { excludeTest: true },
   );
   if (loadErr) return json({ ok: false, error: loadErr }, 500);
@@ -71,6 +83,42 @@ serveJson("consumer-web-confirm-reservation", async (req) => {
   }
   if (ticket.state === "cancelled") {
     return json({ ok: false, error: "this reservation is cancelled" }, 409);
+  }
+
+  // The guest answers the place's own change (MESITA-4073).
+  if (body.change !== undefined) {
+    if (body.change !== "accept" && body.change !== "decline") {
+      return json({ ok: false, error: 'change must be "accept" or "decline"' }, 400);
+    }
+    const now = new Date();
+    if (!changeIsOpen(ticket, now)) {
+      return json({ ok: false, code: "change_not_open", error: "There is no change waiting for your answer." }, 409);
+    }
+    const accept = body.change === "accept";
+    const notify: "call" | "app" = ticket.consumer_notify === "app" ? "app" : "call";
+    const patch = accept
+      ? acceptChangePatch(ticket, await placeZoneOf(admin, ticket.place_id), notify, now)
+      : keepOriginalPatch("declined", ticket.notice_state, now);
+    // Compare-and-swap on the open proposal: a double tap, or the cron
+    // expiring it meanwhile, finds no row and answers 409.
+    const write = await writeReservation(admin, {
+      mode: "update",
+      id: ticket.id,
+      match: { consumer_id: consumerId, state: "confirmed", change_state: "proposed" },
+      patch,
+      select: "id",
+    });
+    if (!write.ok) {
+      if (write.code === "PGRST116") {
+        return json({ ok: false, code: "change_not_open", error: "There is no change waiting for your answer." }, 409);
+      }
+      return json({ ok: false, error: write.error }, 500);
+    }
+    // A decline owes the place one call: the original table stands.
+    if (!accept && patch.notice_kind === "change_declined") {
+      await fireCancelNotice(env, "consumer-web-confirm-reservation", ticket.id);
+    }
+    return json({ ok: true, change: accept ? "accepted" : "declined", changed: accept });
   }
 
   const wantsChange = body.new_date !== undefined || body.new_time !== undefined;

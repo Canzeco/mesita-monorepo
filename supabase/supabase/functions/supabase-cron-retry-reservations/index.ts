@@ -16,6 +16,10 @@
 //                  guest notification (_shared/reservation-negotiation.ts,
 //                  MESITA-3630). Before expiry, so an offer is never buried
 //                  without telling the place.
+//   0b · changes   a change the place asked for (MESITA-4073) that the
+//                  guest never answered by change_expires_at → 'expired':
+//                  the original table stands and a1 tells the place (a
+//                  change_declined notice, woken in step 4 this same run).
 //   1 · expiry     pending 4 h past reserved_at → 'unresolved' (no call),
 //                  and the guest is told (Me › Notifications, MESITA-3619).
 //                  `passed` stays DERIVED in the app; confirmed rows are
@@ -61,6 +65,7 @@ import {
   releaseUnansweredOffer,
 } from "../_shared/reservation-negotiation.ts";
 import { placeZone } from "../_shared/local-time.ts";
+import { keepOriginalPatch } from "../_shared/reservation-change.ts";
 
 import { fetchConversation, resolveElevenLabsKey } from "../_shared/elevenlabs.ts";
 import {
@@ -139,6 +144,24 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
       failed.push({ id: row.id, intent: "offer_release", error: e instanceof Error ? e.message : String(e) });
     }
   }
+
+  // ── 0b · Changes nobody answered: keep the table, tell the place ──────────
+  // A confirmed table with no notice owed gets the change_declined notice;
+  // any other open proposal past its deadline just closes.
+  const { data: changeRows } = await admin
+    .from("reservation_tickets")
+    .update(validated(keepOriginalPatch("expired", "none", new Date(nowIso))))
+    .eq("change_state", "proposed")
+    .eq("state", "confirmed")
+    .lte("change_expires_at", nowIso)
+    .not("notice_state", "in", "(pending,scheduled,running)")
+    .select("id");
+  const { data: changeClosedRows } = await admin
+    .from("reservation_tickets")
+    .update(validated(keepOriginalPatch("expired", "running", new Date(nowIso))))
+    .eq("change_state", "proposed")
+    .lte("change_expires_at", nowIso)
+    .select("id");
 
   // ── 1 · Expiry: bury stuck pending tickets FIRST ───────────────────────────
   const { data: expRows } = await admin
@@ -303,7 +326,7 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
   const { data: ntRows } = await admin
     .from("reservation_tickets")
     .select("id")
-    .in("notice_kind", ["place_cancel", "guest_cancel"])
+    .in("notice_kind", ["place_cancel", "guest_cancel", "change_declined"])
     .or(`notice_state.eq.pending,and(notice_state.eq.scheduled,notice_next_at.lte.${nowIso})`)
     .limit(limit);
   const notices = { due: (ntRows ?? []).length, woken: 0 };
@@ -329,6 +352,7 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
   return json({
     ok: true,
     offers_released: offersReleased,
+    changes_expired: (changeRows ?? []).length + (changeClosedRows ?? []).length,
     expired: (expRows ?? []).length,
     moot_notices: (mootRows ?? []).length,
     moot_reminders: (mootReminderRows ?? []).length,

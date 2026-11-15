@@ -18,6 +18,7 @@ export const TOOL_NAMES = [
   "a3_cancel_reservation",
   "a4_find_reservation",
   "a4_cancel_reservation",
+  "a4_change_reservation",
   "get_reservation",
 ] as const;
 export type ToolName = typeof TOOL_NAMES[number];
@@ -185,6 +186,29 @@ const SPECS: ToolSpec[] = [
       caller_phone: CALLER_PHONE,
       reference_code: REFERENCE_CODE_FROM_RESULTS,
       reason: { type: "string", description: "Motivo breve del lugar." },
+    }),
+  },
+  {
+    name: "a4_change_reservation",
+    ef: "eleven-a4-change-reservation",
+    description:
+      "Le propone al comensal un cambio que pide el lugar verificado en una de sus reservaciones confirmadas: otra hora (y, si la dicen, otro día) y/o otro número de personas. No cambia nada todavía: el comensal acepta o rechaza en la app; si no acepta, la reservación sigue como estaba y Mesita le avisa al lugar. Toma el código de las reservaciones que regresó la búsqueda.",
+    schema: body("Cambio que pide el lugar.", ["caller_phone", "reference_code"], {
+      caller_phone: CALLER_PHONE,
+      reference_code: REFERENCE_CODE_FROM_RESULTS,
+      new_time: {
+        type: "string",
+        description: "La nueva hora en formato HH:mm de 24 horas, en la hora del lugar («las nueve de la noche» = 21:00). Vacío si la hora no cambia.",
+      },
+      new_date: {
+        type: "string",
+        description: "El nuevo día en formato YYYY-MM-DD, solo si cambia el día. Vacío si es el mismo día de la reservación.",
+      },
+      new_party_size: {
+        type: "integer",
+        description: "El nuevo número de personas (1 a 10), solo si cambia. Omítelo si no cambia.",
+      },
+      reason: { type: "string", description: "Motivo breve del lugar, en sus palabras." },
     }),
   },
   {

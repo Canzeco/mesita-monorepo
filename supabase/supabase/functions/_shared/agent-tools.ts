@@ -104,6 +104,8 @@ export type CallerPlace = {
   reservation_target: string | null;
   timezone?: string | null;
   lng?: number | null;
+  /** The thumbnail of a Me › Notifications row a place's call writes (MESITA-4073). */
+  photos?: unknown;
 };
 
 /**
@@ -117,7 +119,7 @@ export async function placeByCallerLine(
 ): Promise<CallerPlace | null> {
   const { data: candidates } = await admin
     .from("place_profiles")
-    .select(`id, name, phone, reservation_target, ${PLACE_ZONE_COLUMNS}`)
+    .select(`id, name, phone, reservation_target, photos, ${PLACE_ZONE_COLUMNS}`)
     .or(`phone.ilike.%${tail}%,reservation_target.ilike.%${tail}%`)
     .limit(10);
   const matches = ((candidates ?? []) as CallerPlace[]).filter((p) =>

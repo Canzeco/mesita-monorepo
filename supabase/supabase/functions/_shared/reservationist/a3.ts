@@ -8,7 +8,8 @@
 // inbound_identify_place, and on its failure inbound_identify_guest, then
 // the unknown lane:
 //   place   their upcoming book · find one by the name it is under · cancel
-//           one · Business › Reservations for the rest
+//           one · propose a new time or party size for one (the guest
+//           answers in the app) · Business › Reservations for the rest
 //   guest   their reservations · cancel one · the app for changes
 //   both    lands in the place lanes; if they call about their own
 //           reservation, one edge hops to the guest lanes
@@ -29,6 +30,10 @@
 // cancel edge fired on the "hay que cancelar" said before the reading. Now a
 // found table goes straight to the cancel tool only on a yes said AFTER the
 // read-back; that one yes covers both "it's that one" and "cancel it".
+// decision: a place may ask to change a confirmed table's time and/or party
+// size (MESITA-4073). a3 proposes it (a4_change_reservation); nothing moves
+// until the guest accepts in the app. A decline or no answer keeps the
+// original table and a1 calls the place to say so.
 // decision: two searches at most (MESITA-4079). The second runs in its own
 // node, which has no way to search again, so a second empty result ends the
 // errand: say so, point to Business › Reservations or a call back.
@@ -45,7 +50,9 @@ const PROMPT = [
 /** How a found table is read back and when it may be cancelled (MESITA-4079). */
 const READ_BACK = [
   "La búsqueda regresa las más parecidas, la mejor primero. Lee la primera UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo»).",
+  "Si llaman para cambiarle la hora o el número de personas: tras su sí, si aún no dijeron la nueva hora o cuántas personas, pregúntalo una vez. No repitas la lectura.",
   "Después de leerla, CALLA y ESPERA su respuesta. Nunca canceles antes de oír su sí a esa lectura: lo que dijeron antes de que la leyeras (por ejemplo «hay que cancelar») no cuenta. Su sí («sí», «esa», «sí, cancélala») confirma a la vez que es esa y la cancelación: no vuelvas a preguntar.",
+  "Si el cambio no se pudo registrar, el flujo te lleva a otro paso; no lo intentes de nuevo aquí.",
   "Si dicen que no y hay otra, lee la siguiente igual, una vez. No confirmes ni niegues reservaciones de otros lugares. Si solo era consulta, contesta lo que pregunten con lo que regresó la búsqueda y despídete.",
 ].join("\n");
 
@@ -53,6 +60,13 @@ const READ_BACK = [
 const YES_TO_READ_BACK = llm(
   "Ya leíste una reservación encontrada y, en un turno POSTERIOR a esa lectura, quien llama respondió que sí es esa (un sí claro: «sí», «esa», «sí, cancélala») y quiere cancelarla (lo pidió antes o ahora). Si todavía no ha respondido a tu lectura, NO: espera. Lo que dijo antes de la lectura no cuenta como ese sí.",
   "yes to the read-back",
+);
+
+/** The only way into the change tool: the place confirmed the table after
+ *  the read-back and said what to change it to (MESITA-4073). */
+const CHANGE_ASKED = llm(
+  "Ya leíste una reservación encontrada y, en un turno POSTERIOR a esa lectura, quien llama confirmó que es esa, quiere cambiarle la hora (o el día) y/o el número de personas, y ya dijo el nuevo valor (la nueva hora o cuántas personas). Si todavía falta el nuevo valor o no ha respondido a tu lectura, NO.",
+  "change asked",
 );
 
 export const A3: FleetAgent = {
@@ -66,13 +80,14 @@ export const A3: FleetAgent = {
     "a3_cancel_reservation",
     "a4_find_reservation",
     "a4_cancel_reservation",
+    "a4_change_reservation",
     "get_reservation",
   ],
   roleLines: [
     `## Tu papel: contestas la línea de Mesita`,
     `- Te llaman comensales y restaurantes al mismo número. Sabes quién es por el número desde el que llama; no le pides datos para saberlo.`,
     `- A un comensal: le lees sus reservaciones y cancelas una suya si lo pide; cambiar día, hora, personas o lugar se hace en la app de Mesita.`,
-    `- A un restaurante: le lees sus reservaciones próximas, buscas una con lo que te digan (el nombre al que está, aunque se oiga mal, el día, la hora, las personas, o el código si lo dictan) y cancelas una suya si ya no puede recibirla; Mesita le avisa al comensal. Dejar de recibir reservaciones o cambiar el número al que llama Mesita se hace en Business › Reservations.`,
+    `- A un restaurante: le lees sus reservaciones próximas, buscas una con lo que te digan (el nombre al que está, aunque se oiga mal, el día, la hora, las personas, o el código si lo dictan) y cancelas una suya si ya no puede recibirla; Mesita le avisa al comensal. Si el restaurante quiere cambiar la hora o el número de personas de una reservación confirmada, se lo propones al comensal: él acepta o no en la app; si no acepta, la reservación sigue como estaba y Mesita le avisa al restaurante. Dejar de recibir reservaciones o cambiar el número al que llama Mesita se hace en Business › Reservations.`,
     `- Si el número no es de nadie en Mesita, solo puedes leer una reservación por su código de 8 dígitos.`,
     `- Nunca das el teléfono de un comensal.`,
   ],
@@ -89,7 +104,8 @@ export const A3: FleetAgent = {
           "Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú eres Mesita; nunca hables como si fueras el restaurante.",
           "Salúdalo por su nombre (place.name), por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?». Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.",
           "Si el resultado también trae guest (el número es de un restaurante y de un comensal) y no queda claro, pregunta una sola vez si llama por su restaurante o por una reservación suya.",
-          "Luego toma la rama de lo que pidan. Para cancelar o revisar UNA reservación (por el nombre al que está, el día, la hora, las personas o su código), primero se busca: toma la rama de búsqueda; no respondas sin buscar.",
+          "Luego toma la rama de lo que pidan. Para cancelar, cambiar o revisar UNA reservación (por el nombre al que está, el día, la hora, las personas o su código), primero se busca: toma la rama de búsqueda; no respondas sin buscar.",
+          "En este paso no leas ni confirmes ninguna reservación, aunque la veas en el resultado: se lee una sola vez, después de la búsqueda.",
         ].join("\n"),
         edgeOrder: ["e_tp_upcoming", "e_tp_find", "e_tp_redirect", "e_tp_own"],
       }),
@@ -119,7 +135,7 @@ export const A3: FleetAgent = {
           READ_BACK,
           "Si dicen que no y no queda otra, o la búsqueda no encontró nada, dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.",
         ].join("\n"),
-        edgeOrder: ["e_pfd_cancel", "e_pfd_again", "e_pfd_end"],
+        edgeOrder: ["e_pfd_cancel", "e_pfd_change", "e_pfd_again", "e_pfd_end"],
       }),
       place_find_again: toolNode(tool("a4_find_reservation"), pos(1600, -160), ["e_pfa_found"]),
       place_found_again: talkNode({
@@ -129,7 +145,22 @@ export const A3: FleetAgent = {
           READ_BACK,
           "Esta fue la segunda y última búsqueda. Si tampoco encontró nada, o dicen que no y no queda otra: no pidas más datos ni preguntes si el nombre está bien. Di en una frase que no la encuentras y que pueden revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar; despídete y cuelga con end_call.",
         ].join("\n"),
-        edgeOrder: ["e_pfa_cancel", "e_pfa_end"],
+        edgeOrder: ["e_pfa_cancel", "e_pfa_change", "e_pfa_end"],
+      }),
+      place_do_change: toolNode(tool("a4_change_reservation"), pos(2240, -240), ["e_pdch_done", "e_pdch_fail"]),
+      place_change_done: talkNode({
+        label: "Place · change proposed",
+        position: pos(2560, -240),
+        prompt:
+          "El cambio quedó propuesto. Dilo en una frase, con lo que regresó la herramienta: Mesita le pide al comensal en la app el cambio (la nueva hora o personas); si acepta, queda así; si no acepta, la reservación sigue como estaba y Mesita les llama para avisarles. Mientras tanto la reservación sigue como estaba. Si no necesitan nada más, despídete y cuelga con end_call.",
+        edgeOrder: ["e_pchd_end"],
+      }),
+      place_change_failed: talkNode({
+        label: "Place · change not possible",
+        position: pos(2560, -80),
+        prompt:
+          "El cambio no se pudo proponer. Explica en una frase por qué, según el error de la herramienta: too_late = ya no da tiempo de preguntarle al comensal antes de la mesa; not_confirmed = la reservación aún no está confirmada (respondan cuando Mesita los llame); too_soon = la hora nueva ya pasó o es en menos de media hora; nothing_to_change = es igual a la que ya tiene. Ofrece una sola vez dejarla como está o cancelarla; para cancelar, pide un sí claro. No intentes el cambio de nuevo.",
+        edgeOrder: ["e_pchf_cancel", "e_pchf_end"],
       }),
       place_confirm_cancel: talkNode({
         label: "Place · confirm cancellation",
@@ -150,7 +181,7 @@ export const A3: FleetAgent = {
         label: "Place · Business › Reservations",
         position: pos(960, -160),
         prompt:
-          "Dejar de recibir reservaciones o cambiar el número al que llama Mesita se hace en Business › Reservations, en la app de Mesita para negocios. Mover la hora de una reservación no se hace por esta línea: pueden cancelarla aquí, o responder cuando Mesita los llame. Dilo una vez, despídete y cuelga con end_call.",
+          "Dejar de recibir reservaciones o cambiar el número al que llama Mesita se hace en Business › Reservations, en la app de Mesita para negocios. Dilo una vez, despídete y cuelga con end_call.",
         edgeOrder: ["e_pr_end"],
       }),
 
@@ -201,7 +232,7 @@ export const A3: FleetAgent = {
           "Di solo lo que regresó la búsqueda por código: lugar, fecha, hora, personas y estado de esa reservación. Para cambiarla o cancelarla: la app de Mesita, o llamar desde el número de su cuenta. No busques por nombre. Resuelto, despídete y cuelga con end_call.",
         edgeOrder: ["e_ci_end"],
       }),
-      end_node: END(2560),
+      end_node: END(2880),
     },
     edges: {
       e_start_identify: edge("start_node", "identify_place", UNCOND),
@@ -220,7 +251,7 @@ export const A3: FleetAgent = {
         "triage_place",
         "place_find",
         llm(
-          "Hablan de UNA reservación concreta — para cancelarla, revisarla o confirmarla — por el nombre al que está, el día, la hora, las personas o un código de 8 dígitos. Cancelar empieza aquí: primero se busca.",
+          "Hablan de UNA reservación concreta — para cancelarla, cambiarle la hora o las personas, revisarla o confirmarla — por el nombre al que está, el día, la hora, las personas o un código de 8 dígitos. Cancelar o cambiar empieza aquí: primero se busca.",
           "find or cancel one",
         ),
         RESULT_FAIL,
@@ -228,7 +259,7 @@ export const A3: FleetAgent = {
       e_tp_redirect: edge(
         "triage_place",
         "place_redirect",
-        llm("Piden otra cosa: dejar de recibir reservaciones, cambiar el número, mover una hora, u otros datos del lugar.", "redirect"),
+        llm("Piden otra cosa: dejar de recibir reservaciones, cambiar el número de teléfono, u otros datos del lugar.", "redirect"),
       ),
       e_tp_own: edge(
         "triage_place",
@@ -269,9 +300,11 @@ export const A3: FleetAgent = {
           "search again",
         ),
       ),
+      e_pfd_change: edge("place_found", "place_do_change", CHANGE_ASKED),
       e_pfd_end: edge("place_found", "end_node", llm("Solo era consulta; resuelto y despedido.", "done")),
       e_pfa_found: edge("place_find_again", "place_found_again", RESULT_OK),
       e_pfa_cancel: edge("place_found_again", "place_do_cancel", YES_TO_READ_BACK, RESULT_FAIL),
+      e_pfa_change: edge("place_found_again", "place_do_change", CHANGE_ASKED),
       e_pfa_end: edge("place_found_again", "end_node", llm("Resuelto, o dijiste que no la encuentras; ya te despediste.", "done")),
       e_pcc_do: edge(
         "place_confirm_cancel",
@@ -282,6 +315,18 @@ export const A3: FleetAgent = {
         ),
         RESULT_FAIL,
       ),
+      e_pdch_done: edge("place_do_change", "place_change_done", RESULT_OK),
+      e_pdch_fail: edge("place_do_change", "place_change_failed", RESULT_FAIL),
+      e_pchd_end: edge("place_change_done", "end_node", llm("Resuelto y despedido.", "done")),
+      e_pchf_cancel: edge(
+        "place_change_failed",
+        "place_do_cancel",
+        llm(
+          "Ofreciste cancelarla y, en un turno POSTERIOR a esa oferta, quien llama respondió con un sí claro a cancelar esa reservación. Si todavía no responde, NO.",
+          "cancel instead",
+        ),
+      ),
+      e_pchf_end: edge("place_change_failed", "end_node", llm("La dejan como está; resuelto y despedido.", "done")),
       e_pdc_done: edge("place_do_cancel", "place_cancel_done", RESULT_OK),
       e_pcd_end: edge("place_cancel_done", "end_node", llm("Resuelto y despedido.", "done")),
       e_pr_end: edge("place_redirect", "end_node", llm("Ya los orientaste y te despediste.", "done")),

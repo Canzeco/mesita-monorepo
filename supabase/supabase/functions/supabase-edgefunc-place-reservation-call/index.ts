@@ -93,6 +93,7 @@ import { esDate, esTime } from "../_shared/es-speak.ts";
 import { PLACE_ZONE_COLUMNS, placeZone } from "../_shared/local-time.ts";
 import { type GuestNameParts, ticketGuestName } from "../_shared/reservation-guest-name.ts";
 import { endAtDeadEnd } from "../_shared/reservation-dead-end.ts";
+import { changeToSpeech } from "../_shared/reservation-change.ts";
 import { dialNumber } from "../_shared/place-reservable.ts";
 import { loadPlaceNotes, notesForCall } from "../_shared/place-notes.ts";
 import { runCallbackRetry, runCancelNotice, runIntents, runReminder } from "./legs.ts";
@@ -129,6 +130,9 @@ type TicketRow = {
   attempts: unknown;
   alternatives: unknown;
   reported_verdict: string | null;
+  /** A change the place asked for and the guest did not take (MESITA-4073). */
+  change_reserved_at: string | null;
+  change_party_size: number | null;
 };
 
 /** Everything the handler resolved before an intent claims its ticket. */
@@ -176,8 +180,11 @@ async function launchCancelNotice(ctx: LaunchCtx): Promise<Response> {
     modificationOfIso,
     legVars,
   } = ctx;
-  const kind = r.notice_kind as "place_cancel" | "guest_cancel";
-  const toNumber = kind === "place_cancel" ? businessNumber : consumerNumber;
+  const kind = r.notice_kind as "place_cancel" | "guest_cancel" | "change_declined";
+  // change_declined tells the PLACE the guest kept the original table
+  // (MESITA-4073); only guest_cancel rings the guest.
+  const placeSide = kind !== "guest_cancel";
+  const toNumber = placeSide ? businessNumber : consumerNumber;
   if (!toNumber) {
     await writeReservation(admin, {
       mode: "update",
@@ -237,7 +244,7 @@ async function launchCancelNotice(ctx: LaunchCtx): Promise<Response> {
       attemptsDone: typeof r.notice_attempts === "number" ? r.notice_attempts : 0,
       outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
       toNumber,
-      agentId: kind === "place_cancel" ? bookerAgentId : confirmerAgentId,
+      agentId: placeSide ? bookerAgentId : confirmerAgentId,
       legVars: noticeLegVars,
       placeHours: place?.hours ?? null,
       placeTz,
@@ -245,8 +252,13 @@ async function launchCancelNotice(ctx: LaunchCtx): Promise<Response> {
       projectId: placeId,
       placeCallCap: cfg.limits.placeCallsPerPlacePerDay,
       guestNotify,
-      placeContext: offerRelease ? "offer_release" : "cancellation",
-      alternativesText: offerRelease ? alternativesToSpeech(normalizeAlternatives(r.alternatives)) : "",
+      placeContext: kind === "change_declined" ? "change_declined" : offerRelease ? "offer_release" : "cancellation",
+      // The change the guest did not take rides venue_alternatives, spoken.
+      alternativesText: kind === "change_declined"
+        ? changeToSpeech(r, placeTz)
+        : offerRelease
+        ? alternativesToSpeech(normalizeAlternatives(r.alternatives))
+        : "",
     }),
   );
   return json({ ok: true, started: true, intent, reservation_id: reservationId });
@@ -536,7 +548,7 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, consumer_id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, reported_verdict, guest_first_name, guest_last_name, time_window_minutes, seating, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, consumer_id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, reported_verdict, guest_first_name, guest_last_name, time_window_minutes, seating, change_reserved_at, change_party_size, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -558,11 +570,19 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
     // normal case, and a failed MODIFICATION leaves the ticket unreachable/
     // unresolved while the place still holds the OLD slot. A live ticket
     // never owes one.
-    if (r.state === "pending" || r.state === "confirmed") {
-      return json({ ok: true, skipped: `reservation is ${r.state} — no notice while live` });
-    }
-    if (r.notice_kind !== "place_cancel" && r.notice_kind !== "guest_cancel") {
-      return json({ ok: true, skipped: "no cancellation notice owed" });
+    if (r.notice_kind === "change_declined") {
+      // The one notice about a LIVE table: the guest kept the original
+      // (MESITA-4073). Gone if the table is no longer confirmed.
+      if (r.state !== "confirmed") {
+        return json({ ok: true, skipped: `reservation is ${r.state} — the kept-table notice is moot` });
+      }
+    } else {
+      if (r.state === "pending" || r.state === "confirmed") {
+        return json({ ok: true, skipped: `reservation is ${r.state} — no notice while live` });
+      }
+      if (r.notice_kind !== "place_cancel" && r.notice_kind !== "guest_cancel") {
+        return json({ ok: true, skipped: "no cancellation notice owed" });
+      }
     }
   } else if (intent === "reminder") {
     if (r.state !== "confirmed") {
@@ -636,7 +656,7 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
     place,
   });
   const dialsPlace = intent === "book" ||
-    (intent === "cancel_notice" && r.notice_kind === "place_cancel");
+    (intent === "cancel_notice" && (r.notice_kind === "place_cancel" || r.notice_kind === "change_declined"));
   if (!businessNumber && dialsPlace) {
     // Only a place-dialing errand dies on a missing place number — and a
     // cancel notice must never corrupt attempts_state (it's 'cancelled').

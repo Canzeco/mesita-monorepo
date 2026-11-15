@@ -159,6 +159,19 @@ export const FLEET_TESTS: FleetTest[] = [
   },
   {
     agent: "a1",
+    label: "tells the place the guest kept the original table",
+    scenario:
+      "Eres la hostess del restaurante Gran Central. Contestas «Gran Central, buenas noches». Escuchas el aviso y preguntas una vez: «¿entonces siguen viniendo a las ocho y media, para dos?». Luego te despides.",
+    conditions: [
+      "El agente NO pide una mesa nueva.",
+      "El agente avisa que Ana López no aceptó el cambio a las 9:00 p.m. y que la reservación sigue como estaba: 2 personas, sábado 21 de noviembre a las 8:30 p.m.",
+      "El agente no da ningún número de teléfono del comensal.",
+    ],
+    variables: { ...BOOKING, call_context: "change_declined", venue_alternatives: "las 9:00 p.m." },
+    maxTurns: 6,
+  },
+  {
+    agent: "a1",
     label: "books and confirms once",
     scenario:
       "Eres la hostess del restaurante Gran Central. Contestas «Gran Central, buenas tardes». Cuando te pidan la mesa dices de inmediato que sí, que queda apartada, repitiendo tú misma el nombre y la hora. No preguntas nada más y te despides.",
@@ -412,7 +425,7 @@ export const FLEET_TESTS: FleetTest[] = [
       "El agente cancela la reservación y dice que Mesita le avisa al comensal.",
       "El agente no da ningún teléfono del comensal.",
     ],
-    maxTurns: 8,
+    maxTurns: 10,
     mocks: {
       inbound_identify_place: PLACE_GRAN_CENTRAL,
       a4_find_reservation: FOUND_ANA,
@@ -475,6 +488,57 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     maxTurns: 8,
     mocks: { inbound_identify_place: PLACE_GRAN_CENTRAL, a4_find_reservation: FOUND_ANA },
+  },
+  // ── A place asks to change a table (MESITA-4073) ──
+  {
+    agent: "a3",
+    label: "change: the place moves a table to another hour",
+    scenario:
+      "Eres la gerente de Gran Central y llamas a Mesita: «la reservación de Ana López del sábado, ¿la podemos pasar a las nueve? A las ocho y media no vamos a tener mesa». Cuando te lean la reservación encontrada, dices «sí, esa». Si te preguntan algo más, contestas que solo eso.",
+    conditions: [
+      "El agente busca la reservación y la lee una sola vez para confirmar que es esa, antes de proponer el cambio.",
+      "El agente propone el cambio a las 9:00 p.m. (a4_change_reservation) sin cancelar la reservación.",
+      "El agente dice que el comensal acepta o no en la app y que, si no acepta, la reservación sigue como estaba y Mesita les avisa.",
+      "El agente no da ningún teléfono del comensal.",
+    ],
+    maxTurns: 10,
+    mocks: {
+      inbound_identify_place: PLACE_GRAN_CENTRAL,
+      a4_find_reservation: FOUND_ANA,
+      a4_change_reservation: mock({
+        ok: true,
+        proposed: true,
+        reference_code: "48213907",
+        new_date_es: "sábado 21 de noviembre",
+        new_time_es: "9:00 p.m.",
+        new_party_size: null,
+        guest_answers_in_app: true,
+        if_declined: "the original table stands and Mesita calls the place to say so",
+      }),
+    },
+  },
+  {
+    agent: "a3",
+    label: "change: too late to ask the guest",
+    scenario:
+      "Eres el encargado de Gran Central y llamas a Mesita: «la de Ana López de hoy, ¿la pueden pasar a cuatro personas?». Cuando te lean la reservación encontrada, dices «sí, esa». Si te dicen que ya no se puede cambiar y te ofrecen dejarla o cancelarla, dices «déjala así» y te despides.",
+    conditions: [
+      "El agente explica en una frase que ya no da tiempo de preguntarle al comensal.",
+      "El agente NO cancela la reservación y no vuelve a intentar el cambio.",
+      "El agente no dice que el cambio quedó hecho.",
+    ],
+    maxTurns: 10,
+    failing: ["a4_change_reservation"],
+    mocks: {
+      inbound_identify_place: PLACE_GRAN_CENTRAL,
+      a4_find_reservation: FOUND_ANA,
+      a4_change_reservation: mock({
+        ok: false,
+        code: "too_late",
+        error: "too close to the table's time to ask the guest; keep it or cancel it",
+      }),
+      a4_cancel_reservation: mock({ ok: true, cancelled: true, reference_code: "48213907", guest_needs_notification: true }),
+    },
   },
   // ── Spoofing (MESITA-3973): who calls is the caller id, never a claim ──
   {
