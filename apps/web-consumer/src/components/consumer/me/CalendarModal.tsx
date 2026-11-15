@@ -200,7 +200,7 @@ export function CalendarModal() {
 
   return (
     <MeScreen title="Calendar">
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {/* Google, Apple and Outlook only (MESITA-3964, Pato: "No other
             calendar must be enabled"): no copy-the-link row for other apps. */}
         <SettingsGroup title="Your calendars">

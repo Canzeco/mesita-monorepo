@@ -30,7 +30,7 @@ import { placeHref } from "@/lib/place-route";
 import { shareOrCopy } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { WalletPanel } from "./WalletLists";
+import { Panel } from "@/components/shared/Panel";
 
 // SENDING CREDIT TO A FRIEND (MESITA-3292; Pato, 2026-11-06: "word of mouth
 // with value attached … same place only"). A guest sends some of their
@@ -213,7 +213,7 @@ export function SentLinks({ links, currency, onChanged }: { links: SentLink[]; c
 
   return (
     // A panel of its own on the House Card page (MESITA-4064).
-    <WalletPanel title="Waiting for a friend">
+    <Panel className="mt-4" title="Waiting for a friend">
       <ul className="divide-border mt-1 divide-y pb-1" data-sent-links>
         {links.map((l) => (
           <li key={l.gift_id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
@@ -232,7 +232,7 @@ export function SentLinks({ links, currency, onChanged }: { links: SentLink[]; c
           </li>
         ))}
       </ul>
-    </WalletPanel>
+    </Panel>
   );
 }
 

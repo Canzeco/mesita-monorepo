@@ -62,8 +62,8 @@ import {
   CurrentPill,
   ME_BUTTON_CLASS,
   RowDivider,
-  SectionBox,
 } from "./settings-rows";
+import { Panel } from "@/components/shared/Panel";
 
 /** One plan as a card (MESITA-3899): its name with the Current pill, its
  *  price, its perks as a check list, then `children` (Pro's action). */
@@ -348,26 +348,26 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
   return (
     <MeScreen title="Plan" footer={footerButton}>
       {plan ? (
-        <div className="flex flex-col gap-6">
-          <SectionBox title="Your plan">
+        <div className="flex flex-col gap-4">
+          <Panel title="Your plan">
             {plan === "free" ? free : pro}
             <RowDivider />
             <UsageCard view={view} />
-          </SectionBox>
-          <SectionBox title="Other plan">
+          </Panel>
+          <Panel title="Other plan">
             {plan === "free" ? pro : free}
-          </SectionBox>
+          </Panel>
         </div>
       ) : (
-        <div className="flex flex-col gap-6">
-          <SectionBox title="This month">
+        <div className="flex flex-col gap-4">
+          <Panel title="This month">
             <UsageCard view={view} />
-          </SectionBox>
-          <SectionBox title="Plans">
+          </Panel>
+          <Panel title="Plans">
             {free}
             <RowDivider />
             {pro}
-          </SectionBox>
+          </Panel>
         </div>
       )}
 

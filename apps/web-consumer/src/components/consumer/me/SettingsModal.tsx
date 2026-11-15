@@ -69,7 +69,7 @@ export function SettingsFrame({
 }) {
   return (
     <MeScreen title="Settings">
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         <SettingsGroup title="Account">{account}</SettingsGroup>
         <SettingsGroup title="Help">{help}</SettingsGroup>
         <SettingsGroup title="Legal">{legal}</SettingsGroup>

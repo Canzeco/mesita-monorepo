@@ -24,6 +24,7 @@
 import { ChevronRight } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared/Skeleton";
+import { PANEL_CLASS, Panel } from "@/components/shared/Panel";
 import { KIND_WORD } from "@/lib/ticket-rows";
 import { timeAgo } from "@/lib/time-ago";
 import { KindBadge } from "./KindBadge";
@@ -84,23 +85,34 @@ const TONE: Record<StatusTone, string> = {
   grey: "text-muted-foreground",
 };
 
-/** The box every Me list sits in: Wallet's list box (WalletLists.tsx),
- *  a hairline between rows (Pato, 2026-11-14: "maybe add gray lines to
- *  separate events"). */
-export const LIST_BOX_CLASS =
-  "border-border bg-card divide-border overflow-hidden rounded-2xl border divide-y";
+/** The box every Me list sits in: the app's one Panel (components/shared,
+ *  MESITA-4071), a hairline between rows (Pato, 2026-11-14: "maybe add gray
+ *  lines to separate events"). */
+export const LIST_BOX_CLASS = `${PANEL_CLASS} divide-border divide-y`;
 
-/** A list's rows IN ONE BOX (MESITA-4053, Pato 2026-11-15: "put sections
- *  into boxes"; decision 1B, like Wallet's lists): the page margin around
- *  it, the rows' own 16px inside. MESITA-4000 had run them full width on
- *  white to the screen's edges. */
+/** A list's rows IN ONE PANEL (MESITA-4053, Pato 2026-11-15: "put sections
+ *  into boxes"): the page margin around it, the rows' own 16px inside.
+ *  A titled list wears its heading INSIDE the panel (MESITA-4071, Wallet's
+ *  style), the rows stepping 4px under it. MESITA-4000 had run them full
+ *  width on white to the screen's edges. */
 export function ActivityRows({
+  title,
   children,
   ...data
 }: {
+  title?: string;
   children: React.ReactNode;
   [key: `data-${string}`]: boolean | string | undefined;
 }) {
+  if (title) {
+    return (
+      <Panel title={title}>
+        <ul className="divide-border mt-1 divide-y" data-activity {...data}>
+          {children}
+        </ul>
+      </Panel>
+    );
+  }
   return (
     <ul className={LIST_BOX_CLASS} data-activity {...data}>
       {children}
