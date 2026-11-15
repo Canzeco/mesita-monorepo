@@ -625,6 +625,57 @@ export function GuestPayScreen({
     );
   }
 
+  // The bill's card, picked on Method (MESITA-4100) and shown again on Pay.
+  const card = cards?.find((c) => c.id === chosenCard) ?? null;
+  const cardsUnknown = cards === null;
+  const cardSheets = (
+    <>
+        <LocalSheet open={cardsSheet} onClose={() => setCardsSheet(false)} ariaLabel="Your cards">
+          <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
+            <p className="pt-2 pb-3 text-lg font-semibold">Your cards</p>
+            <RowsCard>
+              {(cards ?? []).map((c: SavedCard) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="flex min-h-14 items-center justify-between gap-3 px-4 text-left"
+                  onClick={() => {
+                    setCardId(c.id);
+                    setCardsSheet(false);
+                  }}
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <CardBrandChip brand={c.brand} last4={c.last4} />
+                    <span className="truncate text-base font-semibold">
+                      {brandLabel(c.brand)} •••• {c.last4}
+                    </span>
+                  </span>
+                  {c.id === chosenCard ? <Check className="h-5 w-5" aria-hidden /> : null}
+                </button>
+              ))}
+              {(cards ?? []).length < 3 ? (
+                <button type="button" className="flex min-h-14 items-center gap-3 px-4 text-left text-base font-semibold" onClick={() => addCard()}>
+                  <Plus className="h-5 w-5" aria-hidden />
+                  Add a card
+                </button>
+              ) : null}
+            </RowsCard>
+          </div>
+        </LocalSheet>
+        <AddCardSheet
+          open={addingCard}
+          onClose={() => setAddingCard(false)}
+          knownCardIds={(cards ?? []).map((c) => c.id)}
+          onSaved={(id) => {
+            setAddingCard(false);
+            setCardId(id);
+            setCardsLoad({ state: "loading" });
+            setCardsAttempt((n) => n + 1);
+          }}
+        />
+    </>
+  );
+
   // 3 METHOD: App or Cash for everything that's left.
   if (stage === "method") {
     // Credits cover the bill and there is no tip: nothing is left for a
@@ -651,7 +702,7 @@ export function GuestPayScreen({
     };
     return frame(
       <>
-        {top(2, backArrow, creditsOnly ? undefined : { onClick: toPay, disabled: !way || held })}
+        {top(2, backArrow, creditsOnly ? undefined : { onClick: toPay, disabled: !way || held || (way === "card" && !card) })}
         {/* ONE PANEL (MESITA-4077): credits, App and Cash, then what is left
             to pay. Each way says what it earns; nothing else repeats it. */}
         <StepBody>
@@ -695,6 +746,57 @@ export function GuestPayScreen({
                   back={backLine("card")}
                   onPick={() => setMethod("card")}
                 />
+                {/* THE CARD, PICKED HERE (MESITA-4100, Pato: "the card must be
+                    selected in the method step, and if no card, offer button
+                    to add card"): under Pay in the app while it is chosen. */}
+                {way === "card" ? (
+                  <div className="flex min-h-14 items-center gap-3 px-4 py-3" data-guest-method-card>
+                    <span className={LEAD_SLOT} aria-hidden />
+                    {cardsUnknown ? (
+                      cardsLoad.state === "failed" ? (
+                        <button
+                          type="button"
+                          className="text-sm font-semibold underline"
+                          onClick={() => {
+                            setCardsLoad({ state: "loading" });
+                            setCardsAttempt((n) => n + 1);
+                          }}
+                        >
+                          Couldn&apos;t load your cards. Retry
+                        </button>
+                      ) : (
+                        <Skeleton className="h-10 w-48 rounded-xl" />
+                      )
+                    ) : card ? (
+                      <button
+                        type="button"
+                        onClick={() => setCardsSheet(true)}
+                        className="border-border hover:bg-muted/60 flex min-w-0 flex-1 items-center gap-3 rounded-xl border px-3 py-2 text-left transition"
+                        aria-label={`${brandLabel(card.brand)} ending ${card.last4}. Change card`}
+                      >
+                        <CardBrandChip brand={card.brand} last4={card.last4} />
+                        <span className="min-w-0 flex-1 truncate text-base font-semibold">
+                          {brandLabel(card.brand)} •••• {card.last4}
+                        </span>
+                        <span className="text-muted-foreground flex shrink-0 items-center text-sm font-semibold">
+                          Change
+                          <ChevronRight className="h-4 w-4" aria-hidden />
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => addCard()}
+                        disabled={addingCard}
+                        className="bg-foreground text-paper flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition hover:opacity-90"
+                        data-guest-add-card
+                      >
+                        <Plus className="h-4 w-4" aria-hidden />
+                        Add a card to pay in the app
+                      </button>
+                    )}
+                  </div>
+                ) : null}
                 <MethodTile
                   on={way === "cash"}
                   off={cashWhy}
@@ -741,9 +843,10 @@ export function GuestPayScreen({
           primary={
             creditsOnly
               ? { label: "Pay with credits", busy, disabled: held, onClick: () => void openBill(null) }
-              : { label: "Next", busy, disabled: !way || held, onClick: toPay }
+              : { label: "Next", busy, disabled: !way || held || (way === "card" && !card), onClick: toPay }
           }
         />
+        {cardSheets}
       </>,
       "method",
     );
@@ -752,9 +855,7 @@ export function GuestPayScreen({
   // 4A APP PAY: the saved card, "Pay MX$X", held now. Pay moves money and
   // "Add a card" leaves the app: neither is offered as ›.
   if (way === "card") {
-    const card = cards?.find((c) => c.id === chosenCard) ?? null;
     const guestFace = card ? cardFace(card.brand, brandLabel(card.brand)) : null;
-    const cardsUnknown = cards === null;
     return frame(
       <>
         {top(3, backArrow)}
@@ -820,49 +921,7 @@ export function GuestPayScreen({
           }
         />
 
-        <LocalSheet open={cardsSheet} onClose={() => setCardsSheet(false)} ariaLabel="Your cards">
-          <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-            <p className="pt-2 pb-3 text-lg font-semibold">Your cards</p>
-            <RowsCard>
-              {(cards ?? []).map((c: SavedCard) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  className="flex min-h-14 items-center justify-between gap-3 px-4 text-left"
-                  onClick={() => {
-                    setCardId(c.id);
-                    setCardsSheet(false);
-                  }}
-                >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <CardBrandChip brand={c.brand} last4={c.last4} />
-                    <span className="truncate text-base font-semibold">
-                      {brandLabel(c.brand)} •••• {c.last4}
-                    </span>
-                  </span>
-                  {c.id === chosenCard ? <Check className="h-5 w-5" aria-hidden /> : null}
-                </button>
-              ))}
-              {(cards ?? []).length < 3 ? (
-                <button type="button" className="flex min-h-14 items-center gap-3 px-4 text-left text-base font-semibold" onClick={() => addCard()}>
-                  <Plus className="h-5 w-5" aria-hidden />
-                  Add a card
-                </button>
-              ) : null}
-            </RowsCard>
-          </div>
-        </LocalSheet>
-        <AddCardSheet
-          open={addingCard}
-          onClose={() => setAddingCard(false)}
-          knownCardIds={(cards ?? []).map((c) => c.id)}
-          onSaved={(id) => {
-            setAddingCard(false);
-            setCardId(id);
-            setCardsLoad({ state: "loading" });
-            setCardsAttempt((n) => n + 1);
-          }}
-        />
+        {cardSheets}
       </>,
       "app",
     );
