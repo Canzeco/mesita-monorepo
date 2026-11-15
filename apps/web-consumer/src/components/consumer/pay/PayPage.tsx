@@ -3,17 +3,21 @@
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ChevronRight, MapPin, QrCode } from "lucide-react";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
 import { apiGetTab, apiListVisits, type GuestTab } from "@/lib/api/tab";
-import { type PayPlace } from "@/lib/api/wallet";
+import { money, type PayPlace } from "@/lib/api/wallet";
+import { readDraft } from "@/lib/guest-pay-draft";
+import { readAmount } from "@mesita/place-profile/lib/money";
 import { cn } from "@/lib/utils";
-import { payPlacePath } from "@/lib/consumer-route-contract";
+import { payBillPath, payPlacePath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -45,8 +49,11 @@ import { TicketsShortcut } from "./TicketsShortcut";
 // ticket opened at a time ... in the pay page just display the button to go
 // the ticket"): while the guest has a payment of their own open (found on
 // the server, so from any device, and on this device's list), the Pay half
-// shows one line; no search bar, no places. The payment's own row is the
-// amber band above the tab bar (MESITA-4051), the same on every tab.
+// shows that bill; no search bar, no places. Since MESITA-4086 (Pato: "if I
+// am in the pay page, then actually show the payment ticket not in the
+// header but in the center") it is one panel at the top of the page
+// (OpenBillPanel): the place, the amounts, its state and Continue; the amber
+// band (PendingTicketBanner) shows on every other tab, never on /pay.
 //
 // The location is asked once, after a priming card ("See Mesita Payments
 // places near you"), rounded to 3 decimals and sent only to the list read.
@@ -258,26 +265,13 @@ export function PayPage() {
         }
       />
 
-      {/* A bill in progress (MESITA-4051, Pato: "put it at the very bottom
-          of the app"): its row is the amber band above the tab bar
-          (PendingTicketBanner), as on every tab; the page says one line. */}
-      <div
-        className={cn(
-          "mt-5 flex flex-col",
-          openTabs !== null &&
-            (openTabs.length > 0 || pending) &&
-            "flex-1 justify-center pb-16",
-        )}
-      >
+      {/* A bill in progress: the bill itself, one panel at the top
+          (MESITA-4086); no amber band on this page. */}
+      <div className="mt-5 flex flex-col">
         {openTabs === null ? (
           <ListSkeleton />
         ) : openTabs.length > 0 || pending ? (
-          <p
-            className="text-muted-foreground text-center text-sm"
-            data-pay-open-only
-          >
-            Finish this bill before starting another.
-          </p>
+          <OpenBillPanel tab={openTabs[0] ?? null} pending={pending} places={places} />
         ) : places ? (
           <PlaceList
             places={places}
@@ -465,6 +459,67 @@ function ListSkeleton() {
   return (
     <div aria-busy>
       <RowsSkeleton />
+    </div>
+  );
+}
+
+/** The open bill on /pay (MESITA-4086): one panel, the place's photo and
+ *  name, the bill (with tip and total once known), its state, then one
+ *  black Continue to the same address the amber band opens. A bill sent to
+ *  the waiter wins over one still being filled in on this phone, as in the
+ *  band. Read from what Pay already holds: no new call. */
+function OpenBillPanel({
+  tab,
+  pending,
+  places,
+}: {
+  tab: GuestTab | null;
+  pending: { placeId: string; name: string | null } | null;
+  places: PayPlace[] | null;
+}) {
+  const placeId = tab ? tab.place.id : (pending?.placeId ?? "");
+  const listed = places?.find((p) => p.place_id === placeId);
+  const name = (tab ? tab.place.name : pending?.name) ?? listed?.name ?? null;
+  const href = tab ? payBillPath(tab.tab_id) : payPlacePath(placeId);
+  const what = tab ? "Waiting for the waiter's signature" : "Bill in progress";
+  const draft = tab ? null : readDraft(placeId);
+  const currency = tab?.currency ?? listed?.currency ?? "mxn";
+  const bill = tab ? tab.bill_cents : draft ? readAmount(draft.amount) : null;
+  const tip = tab ? tab.card_tip_cents + tab.cash_tip_cents : null;
+  return (
+    <Panel data-pay-open-bill>
+      <div className="flex items-center gap-3 px-4 pt-4">
+        <PlacePhoto place={{ photo: listed?.photo ?? null, name }} className="h-11 w-11" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-base font-semibold">{name ?? "Your bill"}</span>
+          <span className="text-muted-foreground block truncate text-sm">{what}</span>
+        </span>
+      </div>
+      {bill ? (
+        <div className="divide-border border-border mt-4 divide-y border-t text-base">
+          <BillRow label="Bill" value={money(bill, currency)} />
+          {tip ? (
+            <>
+              <BillRow label="Tip" value={money(tip, currency)} />
+              <BillRow label="Total" value={money(bill + tip, currency)} strong />
+            </>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="p-4">
+        <Button asChild size="lg" className="min-h-12 w-full text-base font-semibold">
+          <Link href={href}>Continue</Link>
+        </Button>
+      </div>
+    </Panel>
+  );
+}
+
+function BillRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className={cn("flex min-h-11 items-center justify-between gap-3 px-4", strong && "font-semibold")}>
+      <span>{label}</span>
+      <span className="tabular-nums">{value}</span>
     </div>
   );
 }
