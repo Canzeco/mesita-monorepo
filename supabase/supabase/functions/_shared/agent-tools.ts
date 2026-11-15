@@ -172,7 +172,7 @@ export function accentTolerantPattern(term: string): string {
 // ── Ticket reads ─────────────────────────────────────────────────────────────
 
 const TICKET_SELECT =
-  "id, run_id, reference_code, reserved_at, party_size, state, notes, is_test, place_id, consumer_id, reported_verdict, alternatives, consumer_confirmed_at, negotiation_rounds, guest_first_name, guest_last_name, consumer:consumers(full_name, first_name, last_name, phone)";
+  "id, run_id, reference_code, reserved_at, party_size, state, notes, is_test, place_id, consumer_id, reported_verdict, alternatives, consumer_confirmed_at, negotiation_rounds, guest_first_name, guest_last_name, time_window_minutes, consumer:consumers(full_name, first_name, last_name, phone)";
 
 export type TicketRow = {
   run_id: string | null;
@@ -192,6 +192,8 @@ export type TicketRow = {
   negotiation_rounds: number;
   guest_first_name?: string | null;
   guest_last_name?: string | null;
+  /** MESITA-3957: minutes either side a1 may take alone. */
+  time_window_minutes?: number | null;
   consumer: {
     full_name: string | null;
     first_name: string | null;

@@ -43,7 +43,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireAgentRequest } from "../_shared/request.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { cleanNote, staleRunReply, ticketByCode } from "../_shared/agent-tools.ts";
+import { cleanNote, placeNames, staleRunReply, ticketByCode } from "../_shared/agent-tools.ts";
 import { normalizeAlternatives } from "../_shared/reservation-alternatives.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
 import { loadEnrichmentTriggers, subprocessesFor } from "../_shared/enrich-triggers.ts";
@@ -51,7 +51,7 @@ import { refetchGoogleAfterWrongNumber } from "../_shared/google-refetch.ts";
 import { runInBackground } from "../_shared/background.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import { judgeReportedTime } from "../_shared/reservation-legs.ts";
-import { PLACE_ZONE_COLUMNS, placeZone } from "../_shared/local-time.ts";
+import { DEFAULT_ZONE } from "../_shared/local-time.ts";
 
 const VERDICTS = [
   "confirmed",
@@ -114,21 +114,12 @@ serveJson("eleven-a1-report-outcome", async (req) => {
   let reportedTime: string | null = null;
   const confirmedTime = typeof body.confirmed_time === "string" ? body.confirmed_time.trim() : "";
   if (verdict === "confirmed" && confirmedTime) {
-    const { data: tw } = await admin
-      .from("reservation_tickets")
-      .select("time_window_minutes")
-      .eq("id", ticket.id)
-      .maybeSingle();
-    const { data: place } = await admin
-      .from("place_profiles")
-      .select(PLACE_ZONE_COLUMNS)
-      .eq("id", ticket.place_id)
-      .maybeSingle();
+    const zone = (await placeNames(admin, [ticket.place_id])).get(ticket.place_id)?.zone ?? DEFAULT_ZONE;
     const judged = judgeReportedTime(
       ticket.reserved_at,
-      (tw as { time_window_minutes?: unknown } | null)?.time_window_minutes,
+      ticket.time_window_minutes,
       confirmedTime,
-      placeZone(place as { timezone?: unknown; lng?: unknown } | null),
+      zone,
     );
     if (judged.kind === "outside") {
       return json({
