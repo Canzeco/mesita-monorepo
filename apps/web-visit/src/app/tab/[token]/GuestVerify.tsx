@@ -250,7 +250,20 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
         ) : null}
         {rejecting ? (
           <div className="pay-reject-confirm" role="group" aria-label="Reject this bill?">
-            <p className="proof-line">Reject this bill?</p>
+            <p className="proof-line pay-reject-title">Reject this bill?</p>
+            {/* What rejecting does to the money (MESITA-4105, Pato: "if cash
+                mention to return money ... if digital, say you already
+                received the payment ... the guest is not going to receive
+                his cashback"). */}
+            {cash > 0 ? (
+              <p className="pay-final-line">Give the guest back the {money(cash)} cash.</p>
+            ) : null}
+            {tab.credit_cents + card > 0 ? (
+              <p className="pay-final-line">
+                The guest already paid {money(tab.credit_cents + card)} with Mesita. Rejecting returns it to them
+                {tab.cashback_cents > 0 ? `, and they lose their ${money(tab.cashback_cents)} cashback` : ""}.
+              </p>
+            ) : null}
             <div className="yes-no">
               <button type="button" disabled={!!busy || !request} onClick={() => void reject()}>
                 {busy === "reject" ? "Rejecting…" : "Yes, reject"}
