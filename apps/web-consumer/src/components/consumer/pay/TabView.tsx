@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { brandLabel } from "@/lib/api/cards";
-import { AddCardSheet } from "@/components/consumer/AddCardSheet";
+import { useAddCardPage } from "@/lib/added-card";
 import {
   apiCancelTab,
   apiGetTab,
@@ -756,7 +756,12 @@ function SplitScreen({
   const [pmPick, setPmPick] = useState<string | null>(null);
   const [cardSheet, setCardSheet] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [adding, setAdding] = useState(false);
+  // Add a card: its own page since MESITA-4101; back here it is this
+  // bill's card.
+  const openAddCard = useAddCardPage((id) => {
+    setPmPick(id);
+    onCardSaved();
+  });
   const attempt = useRef<{ key: string; id: string } | null>(null);
   const m = (c: number) => money(c, tab.currency);
 
@@ -798,14 +803,14 @@ function SplitScreen({
   useEffect(() => {
     if (!registerBack) return;
     registerBack(() => {
-      if (busy || adding) return true;
+      if (busy) return true;
       const i = SPLIT_STEPS.indexOf(step);
       if (i <= 0) return false;
       setStep(SPLIT_STEPS[i - 1]);
       return true;
     });
     return () => registerBack(null);
-  }, [registerBack, step, busy, adding]);
+  }, [registerBack, step, busy]);
 
   async function pay() {
     if (!canPay) return;
@@ -847,7 +852,7 @@ function SplitScreen({
    *  page) and it becomes this bill's card. */
   function addCard() {
     setCardSheet(false);
-    setAdding(true);
+    openAddCard();
   }
 
   const cardSub = cards === null ? "…" : cards.length === 0 ? "Add one" : `•••• ${(card ?? cards[0]).last4}`;
@@ -988,7 +993,7 @@ function SplitScreen({
                 <button
                   type="button"
                   className="border-border flex h-12 w-full items-center gap-3 rounded-2xl border px-4 text-left disabled:opacity-60"
-                  disabled={adding}
+                  disabled={busy}
                   onClick={() => addCard()}
                 >
                   <CreditCard className="h-5 w-5" aria-hidden />
@@ -1092,7 +1097,7 @@ function SplitScreen({
             <button
               type="button"
               className="border-border text-muted-foreground hover:text-foreground flex h-12 w-full items-center border-t px-4 text-sm font-semibold"
-              disabled={adding}
+              disabled={busy}
               onClick={() => addCard()}
             >
               {"Add another card"}
@@ -1100,16 +1105,6 @@ function SplitScreen({
           </div>
         </div>
       </LocalSheet>
-      <AddCardSheet
-        open={adding}
-        onClose={() => setAdding(false)}
-        knownCardIds={(cards ?? []).map((c) => c.id)}
-        onSaved={(id) => {
-          setAdding(false);
-          setPmPick(id);
-          onCardSaved();
-        }}
-      />
     </div>
   );
 }

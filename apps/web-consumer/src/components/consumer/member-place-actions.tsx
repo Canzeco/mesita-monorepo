@@ -11,7 +11,7 @@ import { EFError } from "@/lib/api/_invoke";
 import { apiAddHouseCard, apiBuyVoucher, apiListVouchers, BUY_REFUSAL, buyRefusalAction, isDefinitiveRefusal } from "@/lib/api/wallet";
 import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { runBankCheck } from "@/lib/api/tab";
-import { AddCardSheet } from "@/components/consumer/AddCardSheet";
+import { useAddCardPage } from "@/lib/added-card";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { RewardsSheet } from "@/components/consumer/RewardsSheet";
 import { PlaceSocialList } from "@/components/consumer/PlaceSocialList";
@@ -476,10 +476,9 @@ export function usePlaceVouchers(
   // you need to first add the card"). The guest's saved cards are read with
   // the offer; the page draws them under the vouchers and its one Pay
   // charges the selected card. No second sheet, no Stripe page: a guest with
-  // no card adds one in AddCardSheet first.
+  // no card adds one on the Add a card page first (MESITA-4101).
   const [payCards, setPayCards] = useState<PayCards | undefined>(undefined);
   const [payCardId, setPayCardId] = useState<string | null>(null);
-  const [addingCard, setAddingCard] = useState(false);
   const userKey = useRef<string | null>(null);
   const cardsRequest = useRef(0);
   const loadCards = useCallback(async () => {
@@ -507,6 +506,12 @@ export function usePlaceVouchers(
   }, [mesita]);
 
   const selectCard = useCallback((id: string) => setPayCardId(id), []);
+  const openAddCard = useAddCardPage((id) => {
+    setPayCardId(id);
+    writeLastCard(userKey.current, id);
+    toast.success("Card saved. Tap Pay to buy.");
+    void loadCards();
+  });
 
   // ONE request_id PER BASKET AND CARD (MESITA-4065): kept across every retry
   // after an unknown outcome (no answer, a 5xx, card_failed), so the server
@@ -520,7 +525,7 @@ export function usePlaceVouchers(
       const items = what.filter((i) => i.qty > 0);
       if (items.length === 0) return;
       if (!cardId) {
-        setAddingCard(true);
+        openAddCard();
         return;
       }
       const key = `${cardId}|${items.map((i) => `${i.voucher}x${i.qty}`).join(",")}`;
@@ -563,7 +568,7 @@ export function usePlaceVouchers(
         if (isDefinitiveRefusal(status, code)) pending.current = null;
         else if (pending.current) pending.current.unknown += 1;
         const action = buyRefusalAction(code);
-        if (action.kind === "add_card") setAddingCard(true);
+        if (action.kind === "add_card") openAddCard();
         if (action.kind === "reload_cards") void loadCards();
         const line = !isDefinitiveRefusal(status, code) && pending.current && pending.current.unknown >= 3 ? BUY_REFUSAL.unconfirmed : action.line;
         toast(line, { tone: "error" });
@@ -580,20 +585,10 @@ export function usePlaceVouchers(
 
   const mine = offer?.placeId === placeId ? offer : null;
   const money = mine?.money ?? null;
-  const sheet = (
-    <AddCardSheet
-      open={addingCard}
-      onClose={() => setAddingCard(false)}
-      knownCardIds={payCards?.state === "ready" ? payCards.cards.map((c) => c.id) : []}
-      onSaved={(id) => {
-        setAddingCard(false);
-        setPayCardId(id);
-        writeLastCard(userKey.current, id);
-        toast.success("Card saved. Tap Pay to buy.");
-        void loadCards();
-      }}
-    />
-  );
+  // Add a card: its own page since MESITA-4101 (/wallet/cards/new); back
+  // here the new card is the selected one. The basket is not kept, so the
+  // guest taps Pay again.
+  const sheet = null;
 
   return {
     money,
@@ -607,7 +602,7 @@ export function usePlaceVouchers(
     payCards,
     payCardId,
     selectCard,
-    addCard: () => setAddingCard(true),
+    addCard: () => openAddCard(),
     loadCards,
     sheet,
   };

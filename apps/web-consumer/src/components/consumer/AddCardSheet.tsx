@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Stripe, StripeElements } from "@stripe/stripe-js";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiListCards, apiStartCardSetup, CARD_REFUSAL } from "@/lib/api/cards";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -10,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 // ADD A CARD INSIDE THE APP (MESITA-4065, Pato: "there should not really be
 // stripe checkout … yes but only as api … you need to first add the card").
-// One sheet, used by the Offers page, the Wallet and the Pay flow: the server
+// One form, used by the Offers page, the Wallet and the Pay flow: the server
 // opens a SetupIntent on the guest's platform customer, Stripe's Payment
 // Element (cards only, in Stripe's iframe: Mesita never sees the number)
 // takes the card, and confirmSetup runs the bank check inline. Nothing is
@@ -24,10 +23,9 @@ import { cn } from "@/lib/utils";
 //
 // TWO FRAMES, ONE FORM (MESITA-4092, Pato: "ADD CARD MUST HAVE ITS OWN
 // SUBPAGE ... OWN SUBPAGES IS CLEANER"): useAddCard is the form's whole
-// behaviour, AddCardFields and SaveCardButton its parts. Wallet's Add a card
-// pushes /wallet/cards/new (AddCardPage); this sheet stays only for the
-// callers in the middle of a purchase (the Offers page's Buy, Pay's Method
-// step, the member tab view), whose unsaved state a push would drop.
+// behaviour, AddCardFields and SaveCardButton its parts, drawn only by
+// /wallet/cards/new (AddCardPage). Every caller pushes that page; the 88%
+// sheet is gone since MESITA-4101 (lib/added-card.ts hands the card back).
 
 /** Stripe's purple, the one pay accent (MESITA-4065). */
 export const PAY_ACCENT = "#635BFF";
@@ -238,38 +236,3 @@ export function SaveCardButton({ form, className }: { form: AddCard; className?:
 
 export const CARD_KEPT_LINE = "Your card is kept by Stripe. Mesita never sees the number.";
 export const CARD_SAVED_LINE = "Mesita saves this card for your future purchases. Remove it any time in Wallet.";
-
-export function AddCardSheet({
-  open,
-  onClose,
-  onSaved,
-  knownCardIds,
-}: {
-  open: boolean;
-  onClose: () => void;
-  /** The new card's payment method id. */
-  onSaved: (paymentMethodId: string) => void;
-  /** The cards on screen before the sheet opened: an unknown outcome is
-   *  resolved by listing them again and looking for a new one. */
-  knownCardIds: readonly string[];
-}) {
-  const form = useAddCard({ active: open, onSaved, knownCardIds });
-  const close = () => {
-    form.reset();
-    onClose();
-  };
-  const saving = form.phase.kind === "saving";
-  return (
-    <LocalSheet open={open} onClose={saving ? () => {} : close} ariaLabel="Add a card">
-      <div className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-6">
-        <h2 className="text-foreground text-lg font-semibold">Add a card</h2>
-        <p className="text-muted-foreground mt-1 text-sm">{CARD_KEPT_LINE}</p>
-        <div className="mt-5">
-          <AddCardFields form={form} />
-        </div>
-        <SaveCardButton form={form} className="mt-6" />
-        <p className="text-muted-foreground mt-3 text-center text-xs">{CARD_SAVED_LINE}</p>
-      </div>
-    </LocalSheet>
-  );
-}
