@@ -46,7 +46,7 @@ import {
 } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CalendarMarksRow } from "@/components/shared/calendar-marks";
-import { Screen } from "@/components/consumer/nav/Screen";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { cn } from "@/lib/utils";
@@ -82,7 +82,6 @@ import { stateMeta } from "@/lib/reservation-state";
 import { toReservationItem } from "@/lib/reservations-adapter";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useCachedQuery } from "@/lib/use-cached-query";
-import { ChipIntro } from "./ChipIntro";
 import {
   type ActivityItem,
   ActivityRow,
@@ -109,36 +108,6 @@ type Row = ActivityItem & {
 const RESERVATIONS_PAGE = 100;
 const TTL = 2 * 60 * 1000;
 const DAY_MS = 86_400_000;
-
-/** "21:42": the time a money ticket's line starts with. Its day is the
- *  heading it sits under (MESITA-3865: three payments on one day read alike
- *  with a date alone). */
-function clock(iso: string): string {
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-/** A day's key in the guest's own clock, for grouping. */
-function dayKey(ms: number): string {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-}
-
-/** A day group's heading: Today, Yesterday, else "Wed, Nov 11" (with the
- *  year once it is not this one). */
-function dayTitle(iso: string, nowMs: number): string {
-  const ms = Date.parse(iso);
-  if (dayKey(ms) === dayKey(nowMs)) return "Today";
-  if (dayKey(ms) === dayKey(nowMs - DAY_MS)) return "Yesterday";
-  const d = new Date(ms);
-  return d.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year:
-      d.getFullYear() === new Date(nowMs).getFullYear() ? undefined : "numeric",
-  });
-}
 
 const join = (...parts: Array<string | null | false | undefined>) =>
   parts.filter(Boolean).join(" · ");
@@ -238,7 +207,7 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
       big: total ?? "Waiting for the bill",
       money: total != null,
       line: join(
-        open ? `Started ${clock(v.created_at)}` : clock(at),
+        open && "Started",
         ...v.part_payment_ids.map((id) => notes.get(id)),
         v.waiter_name,
         v.ticket && `Ticket ${v.ticket}`,
@@ -319,7 +288,6 @@ function walletRows(w: Wallet): Row[] {
           big: money(e.amount_cents, cur),
           money: true,
           line: join(
-            clock(e.at),
             ENTRY_LABEL[e.kind] ?? e.kind,
             bonus && `+${money(bonus.amount_cents, cur)} bonus`,
           ),
@@ -340,7 +308,7 @@ function walletRows(w: Wallet): Row[] {
           status: { label: "Refunded", tone: "grey" },
           big: money(Math.abs(e.amount_cents), cur),
           money: true,
-          line: join(clock(e.at), "Purchase refunded"),
+          line: "Purchase refunded",
           href: creditEntryPath(b.place_id, e),
         });
         return;
@@ -357,7 +325,7 @@ function walletRows(w: Wallet): Row[] {
           status: { label: gift[0], tone: gift[1] },
           big: money(Math.abs(e.amount_cents), cur),
           money: true,
-          line: join(clock(e.at), e.pending && "pending"),
+          line: join(e.pending && "pending"),
           href: creditEntryPath(b.place_id, e),
         });
       }
@@ -378,7 +346,7 @@ function walletRows(w: Wallet): Row[] {
           : { label: "Available", tone: "green" },
         big: money(e.amount_cents, cur),
         money: true,
-        line: join(clock(e.at), "Bonus"),
+        line: "Bonus",
         href: creditEntryPath(b.place_id, e),
       });
     }
@@ -401,10 +369,7 @@ function walletRows(w: Wallet): Row[] {
       status: { label: "Waiting", tone: "ink" },
       big: money(s.credit_cents, s.currency),
       money: true,
-      line: join(
-        s.paid_at && clock(s.paid_at),
-        "Story voucher · waiting for your post",
-      ),
+      line: "Story voucher · waiting for your post",
       href: walletPlacePath(s.place_id),
     });
   }
@@ -423,7 +388,7 @@ function walletRows(w: Wallet): Row[] {
       status: { label: "Not taken", tone: "ink" },
       big: money(l.amount_cents, l.currency),
       money: true,
-      line: join(clock(l.created_at), "Link sent"),
+      line: "Link sent",
       href: walletPlacePath(l.place_id),
     });
   }
@@ -473,7 +438,6 @@ function paymentRow(
     big,
     money: true,
     line: join(
-      clock(at),
       cash ? "Cash" : spend.length ? "Credits" : null,
       spend.length && back ? `+${money(back, cur)} cashback` : null,
       refund.length > 0 && `${money(Math.abs(sum(refund)), cur)} refunded`,
@@ -539,42 +503,35 @@ export function useReservations() {
 
 const EMPTY: Record<
   ListType | "all",
-  { title: string; text: string; action?: { label: string; href: string } }
+  { title: string; action?: { label: string; href: string } }
 > = {
   reservations: {
     title: "No reservations yet",
-    text: "Book a table from any place's page and it lands here.",
     action: { label: "Find a place", href: CONSUMER_ROUTES.home },
   },
   all: {
     title: "No tickets yet",
-    text: "Every visit, voucher, gift and refund lands here.",
     action: { label: "Pay", href: CONSUMER_ROUTES.pay },
   },
   visits: {
     title: "No visits yet",
-    text: "Pay a bill with Mesita at the table and its full statement lands here.",
     action: { label: "Pay", href: CONSUMER_ROUTES.pay },
   },
   vouchers: {
     title: "No vouchers yet",
-    text: "Open a place that sells credit and buy some from its Vouchers tab.",
     action: { label: "Find a place", href: CONSUMER_ROUTES.search },
   },
   // Gifts-In and Gifts-Out (MESITA-3941).
   "gifts-in": {
     title: "No gifts received",
-    text: "Credit a friend sends you lands here once you take it.",
   },
   "gifts-out": {
     title: "No gifts sent",
-    text: "Credit you send to a friend lands here, with links nobody took yet.",
     action: { label: "Gift credit", href: CONSUMER_ROUTES.mePages.gift },
   },
   // Refunds' words since MESITA-3771, kept (MESITA-3782).
   refunds: {
     title: "No refunds",
-    text: "Any refund Mesita gives you shows up here, with the place and the amount.",
   },
 };
 
@@ -626,9 +583,8 @@ export function NotificationsPage() {
         )
       : null) ?? null;
   return (
-    <Screen title="Notifications">
+    <MeScreen title="Notifications">
       <div className="flex flex-col gap-4">
-        <ChipIntro type="notifications" />
         {nextUp ? (
           <ActivityRows>
             <ActivityRow t={{ ...nextUp, label: "Next up" }} />
@@ -636,7 +592,7 @@ export function NotificationsPage() {
         ) : null}
         <NotificationsList quietEmpty={!!nextUp} />
       </div>
-    </Screen>
+    </MeScreen>
   );
 }
 
@@ -659,16 +615,14 @@ const RESERVATION_TABS: ReadonlyArray<{
  *  reservations yet" beside four past ones). */
 const EMPTY_HALF: Record<
   ReservationHalf,
-  { title: string; text: string; action?: { label: string; href: string } }
+  { title: string; action?: { label: string; href: string } }
 > = {
   upcoming: {
     title: "No upcoming reservations",
-    text: "Book a table from any place's page and it lands here.",
     action: { label: "Find a place", href: CONSUMER_ROUTES.home },
   },
   past: {
     title: "No past reservations",
-    text: "A table you had or cancelled lands here.",
   },
 };
 
@@ -698,7 +652,7 @@ export function ReservationsPage() {
   // column's blue-600; Home's own bar stays ink, MESITA-3687). No intro card
   // ("don't mention that stupid description").
   return (
-    <Screen
+    <MeScreen
       title="Reservations"
       // CALENDAR, TOP RIGHT (Pato, 2026-11-14, MESITA-3954: "top right put
       // the Google Calendar icon or something"): opens Integrations ›
@@ -734,7 +688,7 @@ export function ReservationsPage() {
           empty={EMPTY_HALF[half]}
         />
       </div>
-    </Screen>
+    </MeScreen>
   );
 }
 
@@ -836,7 +790,7 @@ export function TicketsPage() {
   // scroll menu with icons"; option A of the board): Reservations' blue
   // strip (MESITA-3893) squeezed five tabs into a phone. No counts, no intro.
   return (
-    <Screen title="Tickets">
+    <MeScreen title="Tickets">
       <div className="flex flex-col gap-4">
         <TicketPills on={kind} onPick={pick} />
         <TicketList
@@ -849,7 +803,7 @@ export function TicketsPage() {
           foot={foot}
         />
       </div>
-    </Screen>
+    </MeScreen>
   );
 }
 
@@ -874,12 +828,9 @@ function TicketList({
    *  halves, MESITA-3888/3889). */
   empty?: {
     title: string;
-    text: string;
     action?: { label: string; href: string };
   };
 }) {
-  // The clock "Today" and "Yesterday" are judged by: read once.
-  const [nowMs] = useState(() => Date.now());
   const Icon = ICON[type];
   if (!ready) return <ActivityRowsSkeleton />;
   if (failed || !rows) {
@@ -897,14 +848,12 @@ function TicketList({
       <EmptyState
         icon={Icon}
         title={empty.title}
-        description={empty.text}
         action={empty.action}
       />
     ) : (
       <EmptyState
         icon={Icon}
         title={EMPTY[type].title}
-        description={EMPTY[type].text}
         action={EMPTY[type].action}
       />
     );
@@ -921,9 +870,13 @@ function TicketList({
             <ActivityRow
               key={r.key}
               t={
-                type === "reservations" && r.key === upcoming[0]?.key
-                  ? { ...r, label: "Next up" }
-                  : r
+                type === "reservations"
+                  ? r.key === upcoming[0]?.key
+                    ? { ...r, label: "Next up" }
+                    : r
+                  : // A ticket ends its line with how long ago it happened
+                    // (MESITA-4000), in place of the day heading it sat under.
+                    { ...r, when: r.at }
               }
             />
           ))}
@@ -934,43 +887,26 @@ function TicketList({
     <p className="text-muted-foreground mb-3 text-xs">{note}</p>
   ) : null;
 
-  // RESERVATIONS: Upcoming, then Past. One group, no heading (MESITA-3778): a
-  // lone "Past" or "Upcoming" only repeated what every row said.
+  // ONE FLAT LIST (MESITA-4000, Pato: "why the fuck you separate tickets
+  // by dates … just a list"): no Upcoming/Past or day headings. Reservations
+  // run upcoming soonest first, then past newest first, in one list.
   if (type === "reservations") {
     return (
       <div>
         {lead}
-        {upcoming.length > 0 && past.length > 0 ? (
-          <>
-            {group("Upcoming", upcoming, true)}
-            {group("Past", past, false)}
-          </>
-        ) : (
-          group(null, upcoming.length > 0 ? upcoming : past, true)
-        )}
+        {group(null, [...upcoming, ...past], true)}
       </div>
     );
   }
 
-  // TICKETS (MESITA-3865): a bill still open is not "upcoming", it is now, so
-  // it leads in its own card with its button; everything else sits under the
-  // day it happened, newest day first.
-  const days: Array<{ title: string; list: Row[] }> = [];
-  for (const r of past) {
-    const title = r.at ? dayTitle(r.at, nowMs) : "Earlier";
-    const last = days[days.length - 1];
-    if (last && last.title === title) last.list.push(r);
-    else days.push({ title, list: [r] });
-  }
+  // TICKETS: a bill still open leads under "Open now" with its button
+  // (MESITA-3865); everything else is one list, newest first, each row
+  // ending with how long ago it happened.
   return (
     <div>
       {lead}
       {group("Open now", upcoming, true)}
-      {days.map((d, i) => (
-        <div key={d.title}>
-          {group(d.title, d.list, i === 0 && upcoming.length === 0)}
-        </div>
-      ))}
+      {group(null, past, upcoming.length === 0)}
       {foot ? (
         <p className="text-muted-foreground mt-4 text-center text-sm">{foot}</p>
       ) : null}
@@ -1096,7 +1032,7 @@ export function MeListSkeleton({
   tabs?: "reservations" | "tickets";
 }) {
   return (
-    <Screen title={title}>
+    <MeScreen title={title}>
       <div className="flex flex-col gap-4">
         {tabs === "tickets" ? (
           <TicketPills on={null} />
@@ -1108,6 +1044,6 @@ export function MeListSkeleton({
           Loading {title.toLowerCase()}
         </p>
       </div>
-    </Screen>
+    </MeScreen>
   );
 }

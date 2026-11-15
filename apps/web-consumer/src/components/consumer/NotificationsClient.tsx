@@ -66,7 +66,6 @@ export function NotificationsList({
   const error = query.error ? "Couldn't load notifications." : null;
 
   const visible = rows.filter((n) => NOTIFICATION_KINDS.has(n.kind));
-  const days = byDay(visible);
 
   // The rows are on screen: the red dot on Me goes out (MESITA-3717).
   const newest = newestNotificationAt(query.data);
@@ -90,18 +89,13 @@ export function NotificationsList({
         <SkeletonRows />
       ) : visible.length > 0 ? (
         <>
-          {days.map(([day, list]) => (
-            <section key={day}>
-              <h2 className="text-muted-foreground type-eyebrow">{day}</h2>
-              <div className="mt-2">
-                <ActivityRows>
-                  {list.map((n) => (
-                    <NotificationRow key={n.id} n={n} />
-                  ))}
-                </ActivityRows>
-              </div>
-            </section>
-          ))}
+          {/* ONE FLAT LIST (MESITA-4000): newest first, no day headings;
+              each row ends with how long ago it happened. */}
+          <ActivityRows>
+            {visible.map((n) => (
+              <NotificationRow key={n.id} n={n} />
+            ))}
+          </ActivityRows>
           {rows.length >= NOTIFICATIONS_PAGE ? (
             <p className="text-muted-foreground text-center text-xs">
               Older notifications aren&apos;t shown
@@ -114,7 +108,6 @@ export function NotificationsList({
         <EmptyState
           icon={Bell}
           title="Nothing new yet"
-          description="When a place answers your booking or your credit turns available, it shows up here."
           action={{ label: "Find a place", href: CONSUMER_ROUTES.home }}
         />
       )}
@@ -125,31 +118,3 @@ export function NotificationsList({
 /** How many rows one read brings (fetchConsumerNotifications' default). */
 const NOTIFICATIONS_PAGE = 40;
 
-/** Rows grouped under their day, newest first: "Today", "Yesterday", then
- *  "Mon Nov 9", in the device's time zone. */
-function byDay(
-  rows: ConsumerNotification[],
-): Array<[string, ConsumerNotification[]]> {
-  const out: Array<[string, ConsumerNotification[]]> = [];
-  const today = new Date();
-  const yesterday = new Date(Date.now() - 86_400_000);
-  const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
-  for (const n of rows) {
-    const d = new Date(n.created_at);
-    const day = same(d, today)
-      ? "Today"
-      : same(d, yesterday)
-        ? "Yesterday"
-        : d
-            .toLocaleDateString("en-US", {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-            })
-            .replace(",", "");
-    const last = out[out.length - 1];
-    if (last && last[0] === day) last[1].push(n);
-    else out.push([day, [n]]);
-  }
-  return out;
-}

@@ -20,9 +20,6 @@ export function GiftModal() {
   const giftable = credits?.filter((r) => (r.balance?.spendable_cents ?? 0) > 0) ?? null;
   return (
     <MeScreen title="Gift">
-      <p className="text-muted-foreground px-1 text-sm">
-        Send credit you hold at a place to a friend. Pick the place.
-      </p>
       {giftable === null && failed ? (
         <EmptyState
           icon={Gift}
@@ -38,7 +35,6 @@ export function GiftModal() {
         <EmptyState
           icon={Gift}
           title="Nothing to gift yet"
-          description="Buy credit at a place, then gift it from here."
           action={{ label: "Find a place", href: CONSUMER_ROUTES.search }}
         />
       ) : (
