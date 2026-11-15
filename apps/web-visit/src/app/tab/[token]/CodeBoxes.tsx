@@ -21,7 +21,7 @@ export function CodeBoxes({ value, onChange }: { value: string; onChange: (code:
 
   return (
     <div
-      className="code-boxes"
+      className="code-boxes verify-box"
       role="group"
       aria-labelledby="waiter-code-label"
       tabIndex={0}
