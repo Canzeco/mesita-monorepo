@@ -38,3 +38,17 @@ export function backspaceCode(code: string, index: number): { code: string; focu
   digits[index - 1] = "";
   return { code: join(digits), focus: index - 1 };
 }
+
+/** A key of the in-page pad (MESITA-4103): a digit goes into the first empty
+ *  box, ⌫ clears the last filled one. The phone keyboard never opens. */
+export type PadKey = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "back";
+
+export function padPress(code: string, key: PadKey): string {
+  const digits = codeDigits(code);
+  if (key === "back") {
+    const last = digits.map((d) => d !== "").lastIndexOf(true);
+    return last < 0 ? code : backspaceCode(code, last).code;
+  }
+  const next = digits.indexOf("");
+  return next < 0 ? code : fillCode(code, next, key).code;
+}
