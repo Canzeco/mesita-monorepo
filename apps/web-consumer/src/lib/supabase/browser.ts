@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
@@ -35,8 +35,11 @@ export function useBrowserSupabase() {
  */
 export function useLazyBrowserSupabase(): () => SupabaseClient<Database> {
   const ref = useRef<SupabaseClient<Database> | null>(null);
-  return () => {
+  // MESITA-4023: one getter for the component's life. A new closure each
+  // render re-ran every effect that lists it (exhaustive-deps demands it),
+  // so each answer's setState fetched again: list-visits every ~0.5s.
+  return useCallback(() => {
     if (!ref.current) ref.current = createBrowserSupabase();
     return ref.current;
-  };
+  }, []);
 }
