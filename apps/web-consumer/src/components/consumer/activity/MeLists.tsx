@@ -43,8 +43,6 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
-import { PushLink } from "@/components/consumer/nav/PushLink";
-import { CalendarMarksRow } from "@/components/shared/calendar-marks";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -332,21 +330,9 @@ export function ReservationsPage() {
   return (
     <MeScreen
       title="Reservations"
-      // CALENDAR, TOP RIGHT (Pato, 2026-11-14, MESITA-3954: "top right put
-      // the Google Calendar icon or something"): opens Integrations ›
-      // Calendar, the feed Google, Apple and Outlook subscribe to.
-      action={
-        <PushLink
-          href={CONSUMER_ROUTES.mePages.integrationsCalendar}
-          aria-label="Add to your calendar"
-          // THE CALENDARS' OWN MARKS (MESITA-3979, Pato: "add the Icons of
-          // Google Calendar and his friends, that sad icon looks too sad").
-          className="bg-card border-border hover:bg-muted flex h-11 shrink-0 items-center justify-center rounded-xl border px-2.5 transition active:scale-[0.98]"
-        >
-          {/* 28px app tiles since MESITA-3990 (one tile for every icon). */}
-          <CalendarMarksRow size={28} />
-        </PushLink>
-      }
+      // NO CALENDAR MARKS UP HERE (MESITA-4042, Pato: "remove the ugly ass
+      // icons of those calendars at the top right"); MESITA-3954 had put a
+      // button to Integrations › Calendar here. Me › Integrations keeps it.
     >
       <div className="flex flex-col gap-4">
         <SubpageTabs
