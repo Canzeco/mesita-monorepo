@@ -24,7 +24,8 @@ import {
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
-import { useUnseenNotifications } from "./use-unseen-notifications";
+import { CountBubble } from "./CountBubble";
+import { useUnseenNotificationCount } from "./use-unseen-notifications";
 
 // FIVE TABS, in this order (Pato, 2026-11-14, MESITA-3886: "separate pay
 // and wallet again. only pay and only wallet"):
@@ -112,7 +113,7 @@ const ITEMS: Item[] = [
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
   const avatarUrl = useConsumerProfile().data?.avatar_url ?? null;
-  const unseen = useUnseenNotifications();
+  const unseen = useUnseenNotificationCount();
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   // EACH TAB IS A PLAIN LINK WITH NEXT'S OWN PREFETCH (MESITA-3013). The app
@@ -189,12 +190,12 @@ export function BottomNav() {
                     strokeWidth={active ? 2.25 : 1.75}
                   />
                 )}
+                {/* THE SAME BUBBLE AS ME'S BOXES (MESITA-3996): 20px, the
+                    unseen count in it; a 10px dot until then. */}
                 {item.tab === "me" && unseen ? (
-                  <span
-                    className="bg-destructive ring-card absolute top-0 right-0 h-2.5 w-2.5 rounded-full ring-2"
-                    data-unseen-dot
-                  >
-                    <span className="sr-only">New notifications</span>
+                  <span className="absolute -top-1.5 -right-3" data-unseen-dot>
+                    <CountBubble count={unseen} className="ring-card ring-2" />
+                    <span className="sr-only">{unseen} new notifications</span>
                   </span>
                 ) : null}
               </span>

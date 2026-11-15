@@ -53,13 +53,15 @@ import {
 //
 // BUT THE BOXES SHOW THEIR STATE (MESITA-3885, Pato: "mention in the boxes the
 // states too ... the number of reservations or red bubbles"). Not facts, and
-// never a skeleton: a red dot where something waits for the guest, a number
-// for how many, on the box's right edge, fading in when its read lands.
+// never a skeleton: one bubble with a number on the box's right edge, the
+// same size on every box (MESITA-3996: "ALL BUBBLES MUST BE THE SAME SIZE"),
+// fading in when its read lands. Red where something waits for the guest:
 //   Notifications  red count of unseen
-//   Reservations   ink count of upcoming; a red dot too while a place's
-//                  other times wait for the guest's pick
-//   Tickets        red dot while a bill is open
-//   Profile        red dot while Last name is empty (reservations need it)
+//   Reservations   red count of those whose place offered other times and
+//                  wait for the guest's pick; else ink count of upcoming
+//   Tickets        red count of open bills
+//   Profile        red 1 while Last name is empty (reservations need it)
+// Until MESITA-3996 Tickets, Profile and a pick waiting wore a 10px dot.
 // The reads are the ones Me's own pages make, by the same keys, so a box and
 // its page share one read.
 
@@ -104,14 +106,14 @@ export function ProfileClient() {
   // THE BOXES' STATES (MESITA-3885). A read not landed yet, or failed,
   // leaves its box plain.
   const upcoming = reservations.rows?.filter((r) => r.upcoming).length ?? 0;
-  const mustPick = (reservations.data?.rows ?? []).some(
+  const mustPick = (reservations.data?.rows ?? []).filter(
     (r) =>
       r.state === "pending" &&
       Array.isArray(r.alternatives) &&
       r.alternatives.length > 0 &&
       Date.parse(r.reserved_at) >= reservations.nowMs,
-  );
-  const billOpen = (visits.data?.visits ?? []).some(isOpenVisit);
+  ).length;
+  const billsOpen = (visits.data?.visits ?? []).filter(isOpenVisit).length;
   const noLastName = !!profile && !profile.last_name?.trim();
   const states: Record<string, TileState> = {
     [CONSUMER_ROUTES.mePages.notifications]: {
@@ -119,24 +121,26 @@ export function ProfileClient() {
       countTone: "red",
       label: unseen ? `${unseen} new` : undefined,
     },
-    [CONSUMER_ROUTES.mePages.reservations]: {
-      count: upcoming,
-      countTone: "ink",
-      dot: mustPick,
-      label:
-        [
-          upcoming ? `${upcoming} upcoming` : null,
-          mustPick ? "a place offered other times" : null,
-        ]
-          .filter(Boolean)
-          .join(", ") || undefined,
-    },
+    // One bubble per box: a pick waiting outranks the plain count.
+    [CONSUMER_ROUTES.mePages.reservations]: mustPick
+      ? {
+          count: mustPick,
+          countTone: "red",
+          label: `${mustPick} waiting for your pick`,
+        }
+      : {
+          count: upcoming,
+          countTone: "ink",
+          label: upcoming ? `${upcoming} upcoming` : undefined,
+        },
     [CONSUMER_ROUTES.mePages.tickets]: {
-      dot: billOpen,
-      label: billOpen ? "a bill is open" : undefined,
+      count: billsOpen,
+      countTone: "red",
+      label: billsOpen ? `${billsOpen} open` : undefined,
     },
     [CONSUMER_ROUTES.mePages.profile]: {
-      dot: noLastName,
+      count: noLastName ? 1 : 0,
+      countTone: "red",
       label: noLastName ? "add your last name" : undefined,
     },
   };
