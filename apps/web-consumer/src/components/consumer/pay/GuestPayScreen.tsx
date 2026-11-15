@@ -129,6 +129,21 @@ function writeDraft(placeId: string, d: Omit<Draft, "savedAt"> | null) {
 }
 
 /** The place with a ticket in progress (an amount typed, not expired), or null. */
+
+const STILL_WORKING = "Still working. Tap again to try again.";
+const CALL_LIMIT_MS = 25_000;
+class SlowCall extends Error {}
+
+/** A hung payment call frees the screen after 25 s. Tapping again resends the
+ *  same request id, so it never pays twice. */
+function withinLimit<T>(call: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const limit = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new SlowCall()), CALL_LIMIT_MS);
+  });
+  return Promise.race([call, limit]).finally(() => clearTimeout(timer));
+}
+
 export function pendingTicketPlace(): string | null {
   if (typeof window === "undefined") return null;
   try {
@@ -393,7 +408,7 @@ export function GuestPayScreen({
     const card = w === "card" ? leftCents : 0;
     const cash = w === "cash" ? leftCents : 0;
     try {
-      const r = await apiPayGuest(getSupabase(), {
+      const r = await withinLimit(apiPayGuest(getSupabase(), {
         place_id: placeId,
         bill_cents: billCents,
         request_id: requestId.current,
@@ -403,7 +418,7 @@ export function GuestPayScreen({
         cash_bill_cents: cash,
         cash_tip_cents: w === "cash" ? tipCents : 0,
         card_pm_id: w === "card" ? chosenCard : null,
-      });
+      }));
       rememberGuestTab(r.tab_id, r.qr_url);
       writeLastTip(placeId, tip);
       // Start again comes back to the bill with everything typed.
@@ -421,6 +436,10 @@ export function GuestPayScreen({
       setBusy(false);
       if (code && NOT_PAID_REASON[code]) {
         setNotPaid(NOT_PAID_REASON[code]);
+        return;
+      }
+      if (e instanceof SlowCall) {
+        setError(STILL_WORKING);
         return;
       }
       setError((code && TAB_REFUSAL[code]) || (e instanceof EFError && (e.status ?? 500) < 500 && e.message) || NETWORK_FAILURE);
