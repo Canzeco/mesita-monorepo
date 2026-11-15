@@ -27,10 +27,10 @@ const BUTTON =
   "type-body flex h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 font-semibold whitespace-nowrap text-white transition hover:opacity-90 active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
 
 const SHARE = `${BUTTON} bg-[var(--brand-pink-600)] focus-visible:ring-[var(--brand-pink-300)]`;
-const SEND = `${BUTTON} bg-blue-600 focus-visible:ring-blue-300`;
-const REDEEM = `${BUTTON} bg-emerald-600 focus-visible:ring-emerald-300`;
-// The app's own black primary (no new colour).
-const BUY = `${BUTTON.replace("text-white", "text-paper")} bg-foreground focus-visible:ring-neutral-400`;
+// The three Credits buttons share one colour, the app's own black primary
+// (MESITA-4032, Pato: "Credits of one color, share of other color"); Share
+// Mesita keeps the brand pink.
+const CREDITS = `${BUTTON.replace("text-white", "text-paper")} bg-foreground focus-visible:ring-neutral-400`;
 
 const GLYPH = "h-4 w-4 shrink-0";
 
@@ -43,13 +43,17 @@ const GLYPH = "h-4 w-4 shrink-0";
 export function WalletShareGift() {
   return (
     <div className="mt-5 grid grid-cols-2 gap-2" data-wallet-share-gift>
-      <PushLink href={CONSUMER_ROUTES.share} className={SHARE} data-wallet-share>
-        <Share2 className={GLYPH} strokeWidth={2.25} aria-hidden />
-        Share Mesita
+      <PushLink
+        href={CONSUMER_ROUTES.search}
+        className={CREDITS}
+        data-wallet-buy
+      >
+        <CreditCard className={GLYPH} strokeWidth={2.25} aria-hidden />
+        Buy Credits
       </PushLink>
       <PushLink
         href={CONSUMER_ROUTES.mePages.gift}
-        className={SEND}
+        className={CREDITS}
         data-wallet-send
       >
         <Gift className={GLYPH} strokeWidth={2.25} aria-hidden />
@@ -58,19 +62,15 @@ export function WalletShareGift() {
       {/* Its own page since MESITA-4020; it opened a sheet until then. */}
       <PushLink
         href={CONSUMER_ROUTES.walletRedeem}
-        className={REDEEM}
+        className={CREDITS}
         data-wallet-redeem
       >
         <HandCoins className={GLYPH} strokeWidth={2.25} aria-hidden />
         Redeem Credits
       </PushLink>
-      <PushLink
-        href={CONSUMER_ROUTES.search}
-        className={BUY}
-        data-wallet-buy
-      >
-        <CreditCard className={GLYPH} strokeWidth={2.25} aria-hidden />
-        Buy Credits
+      <PushLink href={CONSUMER_ROUTES.share} className={SHARE} data-wallet-share>
+        <Share2 className={GLYPH} strokeWidth={2.25} aria-hidden />
+        Share Mesita
       </PushLink>
     </div>
   );
