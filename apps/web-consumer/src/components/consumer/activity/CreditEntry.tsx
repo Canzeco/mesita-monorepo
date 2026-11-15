@@ -1,78 +1,103 @@
 "use client";
 
 // ONE CREDIT MOVEMENT, ONE PAGE: /me/tickets/credit/<placeId>/<kind>.<ms>
-// (MESITA-3782, Pato: "make UX/UI and tickets right like the related details
-// there"). A Vouchers or Gifts row opens it: a voucher or prepay bought, its
-// bonus, a bonus alone, a refunded purchase, credit sent, received or taken
-// back. Top to bottom:
+// (MESITA-3782, Tickets 4/10 MESITA-4004). A Vouchers, Gifts or Refunds row
+// opens it, built from TicketParts like the Visit page:
 //
-//   Taquería Orinoco · Tue, Nov 10 · 20:14     the place, when
-//   $500.00MX                                  the amount, large
-//   Available                                  its state, coloured
+//   TicketHeader     photo + badge, the place, when, "+$500.00MX", its state
+//                    (Available, Pending · available <date>, Refunded <date>)
+//   YOUR CREDIT      Bought · Bonus · Cashback · Total credit (a gift or a
+//                    refund: its Type)
+//   AT <PLACE>       Available · Pending · You can spend now
+//   Pay here (filled, when spendable) · Open the House Card (outline)
+//   Gift credit      a quiet text link, when sending is allowed
 //
-//   DETAILS          type · bonus · total credit · refunded on · purchase
-//                    number (the amount, date and state are the header's:
-//                    MESITA-3865 took their repeats out)
-//   AT THIS PLACE    available · pending · spendable now
-//   Open the House Card · Pay here · Gift credit
-//
-// A House Card row opens it too (MESITA-3753), and a purchase with a refund
-// on it reads Refunded with the refund's date.
-//
-// It reads the wallet Tickets already holds (the same cached read); an entry
-// it cannot find any more says so and goes back to Tickets.
+// A refunded purchase reads Refunded <date> and links to its Refund ticket by
+// purchase_id; the purchase number has a copy button. It reads the wallet
+// Tickets already holds (the same cached read); an entry it cannot find any
+// more says so and goes back to Tickets.
 
-import type { ReactNode } from "react";
 import Link from "next/link";
-import { BadgeDollarSign } from "lucide-react";
+import { BadgeDollarSign, Copy } from "lucide-react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { TicketSkeleton } from "./TicketParts";
+import type { TicketRowKind } from "./ActivityRow";
+import {
+  TestModeNote,
+  TicketActions,
+  TicketCard,
+  TicketHeader,
+  TicketLine,
+  TicketSkeleton,
+  type TicketTone,
+} from "./TicketParts";
 import { ticketsHref } from "@/lib/ticket-kinds";
-import { apiGetWallet, entryLabel, money, WALLET_CACHE_KEY, type Wallet, type WalletEntry } from "@/lib/api/wallet";
-import { payPlacePath, walletPlacePath } from "@/lib/consumer-route-contract";
+import {
+  apiGetWallet,
+  entryDate,
+  entryLabel,
+  money,
+  WALLET_CACHE_KEY,
+  type Wallet,
+  type WalletEntry,
+} from "@/lib/api/wallet";
+import { creditEntryPath, payPlacePath, placePath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import { toast } from "@/lib/toast";
 import { useCachedQuery } from "@/lib/use-cached-query";
-import { cn } from "@/lib/utils";
 
 const when = (iso: string) =>
   `${new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · ${clockTime(iso)}`;
 
 const BOUGHT = new Set(["prepay", "voucher"]);
 
-/** The state word and its colour. A purchase with a refund on it reads
- *  Refunded, never as money on its way (MESITA-3753). */
-function stateOf(e: WalletEntry, refunded: boolean): [string, string] {
-  if (e.kind === "reversal" || refunded) return ["Refunded", "text-muted-foreground"];
-  if (e.kind === "gift_out") return [e.pending ? "Sent · pending" : "Sent", "text-foreground"];
-  if (e.kind === "gift_back") return ["Back in your balance", "text-green-700"];
+/** The header's kind badge for an entry. */
+function badgeOf(e: WalletEntry): TicketRowKind {
+  switch (e.kind) {
+    case "bonus":
+    case "gift_in":
+    case "gift_out":
+    case "gift_back":
+      return e.kind;
+    case "reversal":
+    case "refund":
+      return "refund";
+    default:
+      return "voucher";
+  }
+}
+
+/** The state word and its tone. A purchase with a refund on it reads
+ *  Refunded <date>, never as money on its way (MESITA-3753). */
+function stateOf(e: WalletEntry, refund: WalletEntry | undefined): [string, TicketTone] {
+  if (e.kind === "reversal") return [`Refunded ${entryDate(e.at)}`, "grey"];
+  if (refund) return [`Refunded ${entryDate(refund.at)}`, "grey"];
+  if (e.kind === "gift_out") return [e.pending ? "Sent · pending" : "Sent", "ink"];
+  if (e.kind === "gift_back") return ["Back in your balance", "green"];
   if (e.pending)
-    return [e.available_at ? `Pending · available ${when(e.available_at)}` : "Pending", "text-foreground"];
-  return [e.kind === "gift_in" ? "Received · available" : "Available", "text-green-700"];
+    return [e.available_at ? `Pending · available ${entryDate(e.available_at)}` : "Pending", "ink"];
+  return [e.kind === "gift_in" ? "Received · available" : "Available", "green"];
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+/** The purchase number's copy button: the full id goes to the clipboard. */
+function CopyPurchaseId({ id }: { id: string }) {
   return (
-    <section aria-label={title}>
-      <h2 className="text-muted-foreground type-eyebrow mb-2">{title}</h2>
-      {/* FLAT ON WHITE (MESITA-4000): lines split by hairlines, no box. */}
-      <div className="divide-border divide-y">{children}</div>
-    </section>
+    <button
+      type="button"
+      aria-label="Copy the purchase number"
+      className="text-muted-foreground hover:bg-muted/60 -mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition"
+      onClick={() => {
+        void navigator.clipboard
+          .writeText(id)
+          .then(() => toast("Copied"))
+          .catch(() => toast.error("Couldn't copy"));
+      }}
+    >
+      <Copy className="h-4 w-4" aria-hidden />
+    </button>
   );
 }
-
-function Line({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 py-3">
-      <span className={cn("text-sm", strong ? "font-semibold" : "text-muted-foreground")}>{label}</span>
-      <span className={cn("text-right text-base tabular-nums", strong ? "font-semibold" : "font-medium")}>{value}</span>
-    </div>
-  );
-}
-
-const BUTTON =
-  "border-border bg-card hover:bg-muted/60 flex h-11 flex-1 items-center justify-center rounded-full border text-sm font-semibold transition";
 
 export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: string }) {
   const getSupabase = useLazyBrowserSupabase();
@@ -96,7 +121,11 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     }
     const b = wallet.data.balances.find((x) => x.place_id === placeId);
     const [kind, ms] = entryKey.split(".");
-    const e = b?.entries.find((x) => x.kind === kind && String(Date.parse(x.at)) === ms);
+    // By kind and instant; when several share them (a purchase's reversals),
+    // the largest amount is the page's entry (MESITA-4004).
+    const e = b?.entries
+      .filter((x) => x.kind === kind && String(Date.parse(x.at)) === ms)
+      .sort((x, y) => Math.abs(y.amount_cents) - Math.abs(x.amount_cents))[0];
     if (!b || !e) {
       return (
         <EmptyState
@@ -110,57 +139,105 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     const place = b.place?.name ?? "A Mesita place";
     const m = (c: number) => money(c, b.currency);
     const amount = Math.abs(e.amount_cents);
+    const bought = BOUGHT.has(e.kind);
     // The bonus written with this purchase: by its purchase when the read
     // carries one, else by the same instant.
-    const bonus = BOUGHT.has(e.kind)
+    const bonus = bought
       ? b.entries.find((x) => x.kind === "bonus" && (e.purchase_id ? x.purchase_id === e.purchase_id : x.at === e.at))
       : undefined;
-    const refund = BOUGHT.has(e.kind) && e.purchase_id
-      ? b.entries.find((x) => x.kind === "reversal" && x.purchase_id === e.purchase_id)
+    // The cashback this purchase earned (a cashback with its purchase id and
+    // no payment id, MESITA-4003).
+    const cashback =
+      bought && e.purchase_id
+        ? b.entries
+            .filter((x) => x.kind === "cashback" && !x.payment_id && x.purchase_id === e.purchase_id)
+            .reduce((n, x) => n + x.amount_cents, 0)
+        : 0;
+    // The refund of this purchase: its largest reversal.
+    const refund = bought && e.purchase_id
+      ? b.entries
+          .filter((x) => x.kind === "reversal" && x.purchase_id === e.purchase_id)
+          .sort((x, y) => Math.abs(y.amount_cents) - Math.abs(x.amount_cents))[0]
       : undefined;
-    const [state, tone] = stateOf(e, refund !== undefined);
+    const [state, tone] = stateOf(e, refund);
+    const out = e.kind === "gift_out" || e.kind === "reversal";
     const canGift = wallet.data.can_send === true && b.spendable_cents > 0;
+    const houseCard = { label: "Open the House Card", href: walletPlacePath(placeId) };
     return (
       <div className="flex flex-col gap-6 pb-4" data-credit-entry>
-        <header>
-          <h1 className="text-lg font-semibold">{place}</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm tabular-nums">{when(e.at)}</p>
-          <p className="font-display mt-4 text-4xl font-semibold tracking-tight tabular-nums">
-            {e.kind === "gift_out" || e.kind === "reversal" ? `−${m(amount)}` : m(amount)}
-          </p>
-          <p className={cn("mt-1 text-sm font-semibold", tone)}>{state}</p>
-        </header>
+        <TicketHeader
+          kind={badgeOf(e)}
+          photo={b.place?.photo ?? null}
+          place={place}
+          placeHref={b.place?.id ? placePath(b.place.id) : undefined}
+          when={when(e.at)}
+          amount={out ? `−${m(amount)}` : bought || e.kind === "bonus" || e.kind === "gift_in" ? `+${m(amount)}` : m(amount)}
+          state={state}
+          tone={tone}
+          dim={e.kind === "reversal" || refund !== undefined}
+        />
+        {wallet.data.test_mode ? <TestModeNote /> : null}
 
-        <Section title="Details">
-          <Line label="Type" value={entryLabel(e)} />
-          {bonus ? <Line label="Bonus" value={`+${m(bonus.amount_cents)}`} /> : null}
-          {bonus ? <Line label="Total credit" value={m(amount + bonus.amount_cents)} strong /> : null}
-          {refund ? <Line label="Refunded on" value={when(refund.at)} /> : null}
-          {e.purchase_id ? <Line label="Purchase number" value={e.purchase_id.slice(0, 8).toUpperCase()} /> : null}
-          {wallet.data.test_mode ? <Line label="Test payment" value="No real money" /> : null}
-        </Section>
+        {bought ? (
+          <TicketCard title="Your credit">
+            <TicketLine label="Bought" value={m(amount)} />
+            {bonus ? <TicketLine label="Bonus" value={`+${m(bonus.amount_cents)}`} /> : null}
+            {cashback > 0 ? <TicketLine label="Cashback" value={`+${m(cashback)}`} /> : null}
+            {bonus || cashback > 0 ? (
+              <TicketLine label="Total credit" value={m(amount + (bonus?.amount_cents ?? 0) + cashback)} strong />
+            ) : null}
+          </TicketCard>
+        ) : (
+          <TicketCard title="Details">
+            <TicketLine label="Type" value={entryLabel(e)} />
+          </TicketCard>
+        )}
 
-        <Section title={`At ${place}`}>
-          <Line label="Available" value={m(b.available_cents)} />
-          {b.pending_cents > 0 ? <Line label="Pending" value={m(b.pending_cents)} /> : null}
-          <Line label="You can spend now" value={m(b.spendable_cents)} strong />
-        </Section>
+        {refund ? (
+          <TicketCard title="Refund">
+            <TicketLine
+              label="Refund ticket"
+              sub={when(refund.at)}
+              value={m(Math.abs(refund.amount_cents))}
+              href={creditEntryPath(placeId, refund)}
+            />
+          </TicketCard>
+        ) : null}
 
-        <div className="flex flex-wrap gap-2">
-          <Link href={walletPlacePath(placeId)} className={BUTTON}>
-            Open the House Card
+        <TicketCard title={`At ${place}`}>
+          <TicketLine label="Available" value={m(b.available_cents)} />
+          {b.pending_cents > 0 ? <TicketLine label="Pending" value={m(b.pending_cents)} /> : null}
+          <TicketLine label="You can spend now" value={m(b.spendable_cents)} strong />
+        </TicketCard>
+
+        {e.purchase_id ? (
+          <TicketCard title="Purchase">
+            <TicketLine
+              label="Purchase number"
+              value={e.purchase_id.slice(0, 8).toUpperCase()}
+              trailing={<CopyPurchaseId id={e.purchase_id} />}
+            />
+          </TicketCard>
+        ) : null}
+
+        {b.spendable_cents > 0 ? (
+          <TicketActions primary={{ label: "Pay here", href: payPlacePath(placeId) }} secondary={houseCard} />
+        ) : (
+          <Link
+            href={houseCard.href}
+            className="border-border bg-card hover:bg-muted/60 flex h-11 items-center justify-center rounded-full border text-sm font-semibold transition"
+          >
+            {houseCard.label}
           </Link>
-          {b.spendable_cents > 0 ? (
-            <Link href={payPlacePath(placeId)} className={BUTTON}>
-              Pay here
-            </Link>
-          ) : null}
-          {canGift ? (
-            <Link href={`${walletPlacePath(placeId)}?gift=1`} className={BUTTON}>
-              Gift credit
-            </Link>
-          ) : null}
-        </div>
+        )}
+        {canGift ? (
+          <Link
+            href={`${walletPlacePath(placeId)}?gift=1`}
+            className="text-muted-foreground hover:text-foreground -mt-2 self-center py-2 text-sm font-medium underline-offset-4 transition hover:underline"
+          >
+            Gift credit
+          </Link>
+        ) : null}
       </div>
     );
   })();
