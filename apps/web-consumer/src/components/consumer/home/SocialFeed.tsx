@@ -50,16 +50,19 @@
 // rows): only the server's rows, and with none, the empty state.
 //
 // A NOTIFICATION STREAM (Pato, MESITA-2535: "feel like a notificartions
-// stream but it might also be readable … add an easy refreh button"): a
-// header row says how fresh the list is beside a refresh, and the list
-// stays on screen while it does. After the first load, an event the pane
-// has not shown before glows in a light grey that fades out (FRESH_MS), the
-// way a new notification lands.
+// stream but it might also be readable"): the list stays on screen while it
+// reads again. After the first load, an event the pane has not shown before
+// glows in a light grey that fades out (FRESH_MS), the way a new
+// notification lands.
 //
-// LEVEL 1 (MESITA-2536): scrolled down when events arrive → an ink "↑ N
-// new" pill sticks to the top of the pane and takes you up; on touch, pull
-// the list down from the top to refresh. (The Social tab's "new" dot went
-// with MESITA-4044.)
+// NEW EVENTS WAIT BEHIND THE PILL (MESITA-4083, Pato picked A of a mock):
+// the 30-second re-read never lays rows in by itself, at the top or not;
+// what it found waits behind the ink "↑ N new" pill, sticky at the top of
+// the pane (MESITA-2536), and a tap lays them in and goes to the top.
+// Opening Social, a moved location and pulling the list down from the top
+// (touch) lay a read straight in. No other refresh control: the "Updated
+// just now · Refresh" line is gone. (The Social tab's "new" dot went with
+// MESITA-4044.)
 //
 // ONE WHITE BAND (Pato, MESITA-2540: "make a fucking normal box. maybe the
 // reload button somewhere else but centralized"): the pane is light grey and
@@ -67,11 +70,8 @@
 // MESITA-4070, Pato: "that gray refresh looks like shit ... try white
 // background"; the band keeps its hairlines), EDGE TO EDGE with only a top and bottom
 // hairline, never side borders or a rounded card (MESITA-2542: "don't add
-// lateral borders, its literally an infiite scrolloing"). Above it, NO
-// BUTTON: one quiet centred line, "Updated just now · Refresh", the word
-// Refresh the tap target (Pato, MESITA-2543: "that refresh looks vibecoded
-// as fuck", A of a board of four). Pull to refresh and the live refresh do
-// the rest.
+// lateral borders, its literally an infiite scrolloing"). Nothing above
+// it (MESITA-4083 removed MESITA-2543's "Updated just now · Refresh").
 //
 // TWO TARGETS PER ROW, never both (Pato, MESITA-2542: "you can click the
 // profile or you can click the palce, but not both. if i click a profile,
@@ -312,17 +312,6 @@ function Thumb({ place }: { place: Place }) {
       )}
     </span>
   );
-}
-
-/** The quiet line above the list (MESITA-2543): how long ago it loaded
- *  ("Updated just now", "Updated 3m ago"). */
-export function feedStatus(updatedAt: number | null, now: number): string {
-  if (updatedAt == null) return "Updated just now";
-  const ago = shortAgo(
-    new Date(updatedAt).toISOString(),
-    Math.max(now, updatedAt),
-  );
-  return ago === "now" ? "Updated just now" : `Updated ${ago} ago`;
 }
 
 /** One event's identity across refreshes: who, what, where, when. */
@@ -1087,18 +1076,11 @@ function SkeletonRow() {
 
 /** Loading is the feed it waits for, block for block (Pato, MESITA-2701:
  *  "the placeholders must be similar to the page you are loading, like the
- *  sizes"): the grey pane with its pb-6; the "Updated … · Refresh" line, 48px
- *  (pt-1 and pb-1 around Refresh's 40px tap row); then the same white band
- *  as the list (MESITA-2542), each row px-4 py-3 around the 44px face, the
+ *  sizes"): the pane with its pb-6, then the same white band as the list (MESITA-2542), each row px-4 py-3 around the 44px face, the
  *  14px sentence and the 12px quiet line 2px under it, the 44px photo. */
 function FeedSkeleton() {
   return (
     <div className="bg-card flex-1 pb-6" data-social-loading aria-busy>
-      <div className="flex items-center justify-center pt-1 pb-1">
-        <div className="flex h-10 items-center">
-          <Skeleton className="h-3 w-36" />
-        </div>
-      </div>
       <div className="divide-border border-border bg-card divide-y border-y">
         {Array.from({ length: SKELETON_ROWS }, (_, i) => (
           <SkeletonRow key={i} />
@@ -1135,13 +1117,9 @@ function SocialFeedBody() {
       ? { status: "ready", items: lastFeed.items, next: lastFeed.next }
       : { status: "loading" },
   );
-  // Bumped by Try again and the refresh button: the effect refetches.
+  // Bumped by Try again and pull to refresh: the effect refetches.
   const [attempt, setAttempt] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  // When the list last loaded, and the clock the "Updated …" line reads
-  // against (ticked by the live interval, never read during render).
-  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
-  const [now, setNow] = useState(0);
   // The events already shown (null before the first load, which glows
   // nothing) and the ones that just arrived.
   const seenRef = useRef<Set<string> | null>(
@@ -1149,10 +1127,10 @@ function SocialFeedBody() {
   );
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const freshTimer = useRef<number | undefined>(undefined);
-  // Level 1 (MESITA-2536): the pane's scroller, whether it is at the top,
-  // the events that arrived while it was not, and the pull's distance.
+  // The pane, and what the live re-read found and holds behind the pill
+  // (MESITA-4083): the page and how many of its events are new.
   const rootRef = useRef<HTMLDivElement>(null);
-  const atTopRef = useRef(true);
+  const heldRef = useRef<ActivityFeedPage | null>(null);
   const [pendingNew, setPendingNew] = useState(0);
   // The person card is the address (MESITA-3026).
   const router = useRouter();
@@ -1177,43 +1155,53 @@ function SocialFeedBody() {
     setGaveUp(false);
     setAttempt((n) => n + 1);
   };
+  /** Lays a read in: its events are shown, the new ones glow. */
+  const show = (page: ActivityFeedPage) => {
+    const keys = page.items.map(eventKey);
+    const seen = seenRef.current;
+    const arrived = seen ? keys.filter((k) => !seen.has(k)) : [];
+    seenRef.current = new Set([...(seen ?? []), ...keys]);
+    heldRef.current = null;
+    setPendingNew(0);
+    if (arrived.length > 0) {
+      setFresh(new Set(arrived));
+      window.clearTimeout(freshTimer.current);
+      freshTimer.current = window.setTimeout(
+        () => setFresh(new Set()),
+        FRESH_MS,
+      );
+    }
+    // Read now, not at the ask: a page may have landed since. Another
+    // location's rows are never kept.
+    const merged = mergeNewestPage(
+      lastFeed?.fromKey === fromKey ? lastFeed : null,
+      page,
+    );
+    lastFeed = { ...merged, fromKey };
+    setState({ status: "ready", ...merged });
+  };
 
   useEffect(() => {
     let cancelled = false;
-    const load = () =>
+    // live: the 30-second re-read, which holds new events behind the pill
+    // (MESITA-4083); the first read of the effect lays its page in.
+    const load = (live: boolean) =>
       apiListActivityFeed(
         supabase,
         from ? { lat: from.lat, lng: from.lng } : null,
       )
         .then((page) => {
           if (cancelled) return;
-          const { items } = page;
-          const keys = items.map(eventKey);
           const seen = seenRef.current;
-          const arrived = seen ? keys.filter((k) => !seen.has(k)) : [];
-          seenRef.current = new Set([...(seen ?? []), ...keys]);
-          if (arrived.length > 0 && !atTopRef.current) {
-            setPendingNew((n) => n + arrived.length);
+          const arrived = seen
+            ? page.items.filter((it) => !seen.has(eventKey(it))).length
+            : 0;
+          if (live && arrived > 0) {
+            heldRef.current = page;
+            setPendingNew(arrived);
+          } else if (!live || heldRef.current == null) {
+            show(page);
           }
-          if (arrived.length > 0) {
-            setFresh(new Set(arrived));
-            window.clearTimeout(freshTimer.current);
-            freshTimer.current = window.setTimeout(
-              () => setFresh(new Set()),
-              FRESH_MS,
-            );
-          }
-          const at = Date.now();
-          setUpdatedAt(at);
-          setNow(at);
-          // Read now, not at the ask: a page may have landed since. Another
-          // location's rows are never kept.
-          const merged = mergeNewestPage(
-            lastFeed?.fromKey === fromKey ? lastFeed : null,
-            page,
-          );
-          lastFeed = { ...merged, fromKey };
-          setState({ status: "ready", ...merged });
           setRefreshing(false);
         })
         .catch((err) => {
@@ -1230,11 +1218,10 @@ function SocialFeedBody() {
                 },
           );
         });
-    load();
+    load(false);
     // Live: ask again while the tab is in view (MESITA-2532).
     const timer = window.setInterval(() => {
-      setNow(Date.now());
-      if (document.visibilityState === "visible") load();
+      if (document.visibilityState === "visible") load(true);
     }, LIVE_MS);
     return () => {
       cancelled = true;
@@ -1303,20 +1290,6 @@ function SocialFeedBody() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [next, moreRound, gaveUp, fromKey, supabase]);
-
-  // Scrolled to the top by hand: the pill has nothing left to say.
-  const ready = state.status === "ready";
-  useEffect(() => {
-    const el = rootRef.current?.closest<HTMLElement>("[data-home-scroller]");
-    if (!el) return;
-    const onScroll = () => {
-      const top = el.scrollTop <= 8;
-      atTopRef.current = top;
-      if (top) setPendingNew(0);
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [ready]);
 
   const openPerson = (it: ActivityFeedItem) => {
     setPushedCard(cardKey(it));
@@ -1414,8 +1387,8 @@ function SocialFeedBody() {
           <button
             type="button"
             onClick={() => {
-              scroller()?.scrollTo({ top: 0, behavior: "smooth" });
-              setPendingNew(0);
+              if (heldRef.current) show(heldRef.current);
+              scroller()?.scrollTo({ top: 0 });
             }}
             className="bg-foreground text-paper shadow-elev flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold"
             data-social-new-pill
@@ -1440,28 +1413,6 @@ function SocialFeedBody() {
           }}
         />
       </div>
-      <p
-        className="text-muted-foreground flex items-center justify-center gap-1 pt-1 pb-1 text-xs"
-        data-social-status
-        aria-live="polite"
-      >
-        {refreshing ? (
-          <span className="py-3">Refreshing…</span>
-        ) : (
-          <>
-            <span>{feedStatus(updatedAt, now)}</span>
-            <span aria-hidden>·</span>
-            <button
-              type="button"
-              onClick={refresh}
-              className="text-foreground focus-visible:ring-ring rounded-sm py-3 font-semibold outline-none focus-visible:ring-2"
-              data-social-refresh
-            >
-              Refresh
-            </button>
-          </>
-        )}
-      </p>
       <ul
         role="list"
         aria-label="Social"
