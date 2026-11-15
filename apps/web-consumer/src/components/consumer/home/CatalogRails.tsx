@@ -97,8 +97,9 @@ const SocialFeed = dynamic(
   },
 );
 
-const BAR_BLUE = "before:bg-blue-600";
-// SAVED'S BAR IS RED, the heart's colour (Pato, MESITA-3718: "for saved
+// NO BLUE BAR (Pato, 2026-11-15, MESITA-4037: "remove blue from selected
+// family is not required anymore"): the white band alone marks a chosen
+// family. SAVED'S BAR IS RED, the heart's colour (Pato, MESITA-3718: "for saved
 // instead of blue selector use red. its the only exception").
 const BAR_RED = "before:bg-red-600";
 // ONE ROW, CLOSED OR OPEN (Pato, MESITA-3800: "it must be vertically
@@ -110,7 +111,8 @@ const BAR_RED = "before:bg-red-600";
 // lighter ink band (bg-card/15) with the blue bar (red for Saved) in both.
 // THE CHOSEN ROW IS WHITE (Pato, MESITA-4015: "selected menu item must be
 // white, not dark. white with blue / red stuff at the left"): a solid card
-// band with ink text, the 4px blue bar (red for Saved) at its left.
+// band with ink text, the 4px blue bar (red for Saved) at its left; the
+// blue bar left with MESITA-4037, Saved keeps its red one.
 // ALMOST INK (Pato, MESITA-3813: "not that dark, but almost"): 85% ink
 // with 15% card, solid, from the tokens.
 const RAIL_SURFACE = "bg-[color-mix(in_oklab,var(--foreground)_85%,var(--card))] text-card";
@@ -555,7 +557,7 @@ export function CatalogRails() {
           className={cn(
             RAIL_ROW,
             on
-              ? cn(RAIL_ROW_ON, c.key === SAVED_CHIP ? BAR_RED : BAR_BLUE)
+              ? cn(RAIL_ROW_ON, c.key === SAVED_CHIP && BAR_RED)
               : "hover:bg-card/10",
             on && open && "font-semibold",
           )}
