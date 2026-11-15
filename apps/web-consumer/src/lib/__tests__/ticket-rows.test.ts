@@ -165,6 +165,23 @@ describe("every other kind lands on its tab with its kind", () => {
     expect(wait.status).toEqual({ label: "Pending", tone: "ink" });
   });
 
+  it("gifts out: Sent −, pending, taken back + green, a link nobody took", () => {
+    const sent = only(walletRows(wallet([e("gift_out", -20000)])));
+    expect([sent.sign, sent.status]).toEqual(["−", { label: "Sent", tone: "ink" }]);
+    const wait = only(walletRows(wallet([e("gift_out", -20000, { pending: true })])));
+    expect(wait.status).toEqual({ label: "Sent · pending", tone: "ink" });
+    const back = only(walletRows(wallet([e("gift_back", 20000)])));
+    expect([back.sign, back.status]).toEqual(["+", { label: "Back in your balance", tone: "green" }]);
+    const link = only(
+      walletRows(
+        wallet([], {
+          sent_links: [{ gift_id: "g1", place_id: "x", amount_cents: 1000, currency: "MXN", created_at: AT }],
+        } as unknown as Partial<Wallet>),
+      ),
+    );
+    expect([link.sign, link.status.label, link.line]).toEqual(["−", "Not taken", "Link sent"]);
+  });
+
   it("a Story voucher waiting and a link nobody took", () => {
     const rows = walletRows(
       wallet([], {

@@ -185,7 +185,7 @@ const GIFT_PILL: Record<
 > = {
   gift_out: ["Sent", "ink", "gifts-out"],
   gift_in: ["Received", "green", "gifts-in"],
-  gift_back: ["Taken back", "ink", "gifts-out"],
+  gift_back: ["Back in your balance", "green", "gifts-out"],
 };
 const BOUGHT_KINDS = new Set(["prepay", "voucher"]);
 const sum = (es: WalletEntry[]) => es.reduce((n, e) => n + e.amount_cents, 0);
@@ -308,7 +308,9 @@ export function walletRows(w: Wallet): Row[] {
           kind: e.kind as TicketRowKind,
           // A gift received reads +$X, From a friend; Pending in ink until
           // it lands (MESITA-4005).
-          ...(e.kind === "gift_in" ? { sign: "+" as const } : {}),
+          // Sent reads −$X; taken back reads +$X, Back in your balance
+          // (MESITA-4008).
+          sign: e.kind === "gift_out" ? ("−" as const) : ("+" as const),
           at: e.at,
           upcoming: false,
           place,
@@ -316,13 +318,13 @@ export function walletRows(w: Wallet): Row[] {
           status:
             e.kind === "gift_in" && e.pending
               ? { label: "Pending", tone: "ink" }
-              : { label: gift[0], tone: gift[1] },
+              : e.kind === "gift_out" && e.pending
+                ? { label: "Sent · pending", tone: "ink" }
+                : { label: gift[0], tone: gift[1] },
           big: money(Math.abs(e.amount_cents), cur),
           money: true,
           line:
-            e.kind === "gift_in"
-              ? "From a friend"
-              : join(e.pending && "pending"),
+            e.kind === "gift_in" ? "From a friend" : "",
           href: creditEntryPath(b.place_id, e),
         });
       }
@@ -383,6 +385,7 @@ export function walletRows(w: Wallet): Row[] {
       key: `gl-${l.gift_id}`,
       type: "gifts-out",
       kind: "gift_link",
+      sign: "−",
       at: l.created_at,
       upcoming: false,
       place: p?.name ?? "A Mesita place",
