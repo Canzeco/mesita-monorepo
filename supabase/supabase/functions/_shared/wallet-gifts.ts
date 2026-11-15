@@ -32,8 +32,10 @@ export type PersonRow = {
   appear_anonymous: boolean | null;
 };
 
-/** The guest's own ledger line for a gift: its House Card entry page. */
-export type GiftEntryRow = { gift_id: string; kind: string; created_at: string };
+/** The guest's own ledger line for a gift: its House Card entry page.
+ *  `available_at` is when a received gift's credit turns Available
+ *  (MESITA-4066: "Taken · ready in 1 hr"). */
+export type GiftEntryRow = { gift_id: string; kind: string; created_at: string; available_at?: string | null };
 
 export type GiftPerson = { name: string; photo: string | null; you: boolean };
 
@@ -51,8 +53,10 @@ export type GiftTicket = {
   taken_back_at: string | null;
   sender: GiftPerson;
   recipient: GiftPerson | null;
-  /** The guest's ledger line for it (its entry page), null when none. */
-  entry: { kind: string; at: string } | null;
+  /** The guest's ledger line for it (its entry page), null when none.
+   *  `available_at`: when that line's credit turns Available (a received
+   *  gift's hold), null when it has none (MESITA-4066). */
+  entry: { kind: string; at: string; available_at: string | null } | null;
 };
 
 const STATUSES = new Set(["open", "claimed", "taken_back"]);
@@ -104,7 +108,7 @@ export function giftTickets(
         taken_back_at: g.taken_back_at,
         sender: giftPerson(g.sender_id, viewerId, byId),
         recipient: g.recipient_id ? giftPerson(g.recipient_id, viewerId, byId) : null,
-        entry: e ? { kind: e.kind, at: e.created_at } : null,
+        entry: e ? { kind: e.kind, at: e.created_at, available_at: e.available_at ?? null } : null,
       };
     });
 }

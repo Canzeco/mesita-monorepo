@@ -23,7 +23,7 @@
 //             balances: [{ place: { id, slug, name, photo, boost_tier, mesita_pay } | null, place_id, currency,
 //                          balance_cents, available_cents, pending_cents,
 //                          spendable_cents, last_at, card_ok, pinned,
-//                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, confirmed_by, purchase_id }] }],
+//                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, confirmed_by, purchase_id, gift_id }] }],
 //   available_at (MESITA-3549) rides a pending entry: when it turns
 //   Available. Null on an Available entry.
 //   confirmed_by (MESITA-3554) rides a cashback entry with a payment:
@@ -129,7 +129,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // ── Balances ───────────────────────────────────────────────────────────
   const { data: rows, error: entriesErr } = await admin
     .from("wallet_entries")
-    .select("place_id, kind, amount_cents, currency, created_at, available_at, payment_id, purchase_id")
+    .select("place_id, kind, amount_cents, currency, created_at, available_at, payment_id, purchase_id, gift_id")
     .eq("consumer_id", userId)
     .eq("livemode", livemode)
     .order("created_at", { ascending: false })
@@ -214,7 +214,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
     ? [{ data: [], error: null }, { data: [], error: null }]
     : await Promise.all([
       admin.from("consumers").select("id, first_name, avatar_url, appear_anonymous").in("id", giftPeopleIds(gifts)),
-      admin.from("wallet_entries").select("gift_id, kind, created_at").eq("consumer_id", userId).in("gift_id", giftIds),
+      admin.from("wallet_entries").select("gift_id, kind, created_at, available_at").eq("consumer_id", userId).in("gift_id", giftIds),
     ]);
   if (peopleRes.error) console.error(`[consumer-web-get-wallet] gift people read: ${peopleRes.error.message}`);
   if (giftEntriesRes.error) console.error(`[consumer-web-get-wallet] gift entries read: ${giftEntriesRes.error.message}`);
