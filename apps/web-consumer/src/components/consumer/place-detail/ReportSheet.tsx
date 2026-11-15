@@ -104,7 +104,7 @@ function ReportForm({
         Why are you reporting this place?
       </p>
       <div className="mt-2" role="radiogroup" aria-label="Reason">
-        <SettingsGroup>
+        <SettingsGroup flat>
           {PLACE_REPORT_REASONS.map((r, i) => {
             const picked = reason === r.key;
             return (

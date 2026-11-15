@@ -44,6 +44,7 @@ export function Screen({
   lead,
   paper = false,
   scrolls = false,
+  footer,
 }: {
   title: string;
   children: React.ReactNode;
@@ -64,6 +65,10 @@ export function Screen({
   paper?: boolean;
   /** A paper screen that is meant to scroll: no overflow watch. */
   scrolls?: boolean;
+  /** The page's main button, in a white band under a hairline below the
+   *  scroller, above the tab bar (MESITA-4052, Pato: "the button module or
+   *  section must also have a hr line dividing stuff from white land"). */
+  footer?: React.ReactNode;
 }) {
   const router = useRouter();
   const back = useCallback(() => goBack(router), [router]);
@@ -110,6 +115,11 @@ export function Screen({
       >
         {children}
       </div>
+      {footer ? (
+        <div className={cn("border-border shrink-0 border-t px-5 py-3", paper ? "bg-card" : "bg-background")}>
+          {footer}
+        </div>
+      ) : null}
     </div>
   );
 }

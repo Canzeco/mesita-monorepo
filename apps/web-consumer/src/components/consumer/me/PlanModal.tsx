@@ -22,6 +22,14 @@
 //   ┃ Ends Dec 14 · [ Keep Pro ]      ┃  cancelled Pro
 //   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 //
+// IN BOXES SINCE MESITA-4052 (Pato 2026-11-15: "put sections into boxes …
+// the button module or section must also have a hr line dividing stuff from
+// white land"; decision 1D): the guest's CURRENT plan is the first box, with
+// its Current pill and this month's usage inside it; the other plan is the
+// box under it. Upgrade to Pro and Keep Pro sit in MeScreen's footer band
+// under a hairline; Renews · Cancel Pro stays in Pro's box. Before the read
+// both plans sit in one box, under the usage box, nothing marked.
+//
 // One capability, nothing else (Pato: "only that capability for the moment").
 // The server decides it all (consumer-web-get-plan, -start-plan,
 // -cancel-plan; supabase/functions/_shared/guest-plan.ts): Upgrade opens
@@ -50,7 +58,12 @@ import {
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { ERROR_BOX_CLASS, INFO_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
-import { CurrentPill, ME_BUTTON_CLASS } from "./settings-rows";
+import {
+  CurrentPill,
+  ME_BUTTON_CLASS,
+  RowDivider,
+  SectionBox,
+} from "./settings-rows";
 
 /** One plan as a card (MESITA-3899): its name with the Current pill, its
  *  price, its perks as a check list, then `children` (Pro's action). */
@@ -68,9 +81,8 @@ function PlanCard({
 }) {
   return (
     <section
-      // FLAT ON WHITE (MESITA-4000, Pato: "flat like lists"): a hairline
-      // above, no rounded box; Pro is told apart by its large price.
-      className="border-border border-t py-4"
+      // Inside its box (MESITA-4052); Pro is told apart by its large price.
+      className="p-4"
       aria-label={words.title}
       data-plan-row={words.title}
     >
@@ -136,7 +148,7 @@ function UsageCard({ view }: { view: GuestPlanView | null }) {
   const ratio = view && cap > 0 ? Math.min(used / cap, 1) : full ? 1 : 0;
   return (
     <section
-      className="py-4"
+      className="p-4"
       aria-label="This month"
       data-plan-usage
     >
@@ -276,21 +288,11 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
   const plan = view?.plan ?? null;
   const paidPro = plan === "premium" && !view?.granted;
 
-  // PRO'S ACTION LIVES IN ITS CARD (MESITA-3899). An operator's grant
-  // (granted) has none: nothing to buy, nothing to cancel.
-  const proAction =
-    plan === "free" ? (
-      <Button
-        size="lg"
-        className={cn(ME_BUTTON_CLASS, "w-full")}
-        onClick={upgrade}
-        disabled={busy}
-        data-plan-upgrade=""
-      >
-        {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-        Upgrade to Pro
-      </Button>
-    ) : paidPro && view && !view.cancel_at_period_end ? (
+  // PRO'S LINE LIVES IN ITS BOX; ITS BUTTON IN THE FOOTER BAND (MESITA-4052).
+  // An operator's grant (granted) has neither: nothing to buy, nothing to
+  // cancel.
+  const proLine =
+    paidPro && view && !view.cancel_at_period_end ? (
       <p className="text-muted-foreground type-label">
         Renews {day(view.paid_until)} ·{" "}
         <button
@@ -304,36 +306,70 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
         </button>
       </p>
     ) : paidPro && view?.cancel_at_period_end ? (
-      <div className="flex flex-col gap-3">
-        <p className="text-muted-foreground type-label">
-          Ends {day(view.paid_until)}, then you&apos;re on Free.
-        </p>
-        <Button
-          size="lg"
-          className={cn(ME_BUTTON_CLASS, "w-full")}
-          onClick={upgrade}
-          disabled={busy}
-          data-plan-keep=""
-        >
-          {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-          Keep Pro
-        </Button>
-      </div>
+      <p className="text-muted-foreground type-label">
+        Ends {day(view.paid_until)}, then you&apos;re on Free.
+      </p>
     ) : null;
 
+  const footerButton =
+    plan === "free" ? (
+      <Button
+        size="lg"
+        className={cn(ME_BUTTON_CLASS, "w-full")}
+        onClick={upgrade}
+        disabled={busy}
+        data-plan-upgrade=""
+      >
+        {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+        Upgrade to Pro
+      </Button>
+    ) : paidPro && view?.cancel_at_period_end ? (
+      <Button
+        size="lg"
+        className={cn(ME_BUTTON_CLASS, "w-full")}
+        onClick={upgrade}
+        disabled={busy}
+        data-plan-keep=""
+      >
+        {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+        Keep Pro
+      </Button>
+    ) : null;
+
+  const free = (
+    <PlanCard words={PLAN_ROWS.free} current={plan === "free"} />
+  );
+  const pro = (
+    <PlanCard words={PLAN_ROWS.premium} current={plan === "premium"} featured>
+      {proLine}
+    </PlanCard>
+  );
+
   return (
-    <MeScreen title="Plan">
-      <div className="flex flex-col gap-3">
-        <UsageCard view={view} />
-        <PlanCard words={PLAN_ROWS.free} current={plan === "free"} />
-        <PlanCard
-          words={PLAN_ROWS.premium}
-          current={plan === "premium"}
-          featured
-        >
-          {proAction}
-        </PlanCard>
-      </div>
+    <MeScreen title="Plan" footer={footerButton}>
+      {plan ? (
+        <div className="flex flex-col gap-6">
+          <SectionBox title="Your plan">
+            {plan === "free" ? free : pro}
+            <RowDivider />
+            <UsageCard view={view} />
+          </SectionBox>
+          <SectionBox title="Other plan">
+            {plan === "free" ? pro : free}
+          </SectionBox>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-6">
+          <SectionBox title="This month">
+            <UsageCard view={view} />
+          </SectionBox>
+          <SectionBox title="Plans">
+            {free}
+            <RowDivider />
+            {pro}
+          </SectionBox>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-col gap-3" aria-live="polite">
         {failed && (

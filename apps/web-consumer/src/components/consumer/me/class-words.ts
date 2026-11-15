@@ -37,8 +37,8 @@ export const CLASS_STATUS = {
   progressLabel: "Followers toward VIP",
 } as const;
 
-/** "You" beside the guest's own class in the list. */
-export const CLASS_MINE = "You";
+/** The pill beside the guest's own class: Plan's Current pill (MESITA-4052). */
+export const CLASS_MINE = "Current";
 
 export const CLASS_ROWS = {
   regular: {
