@@ -6,12 +6,17 @@
 // ({{system__caller_id}}), never what the caller says. One lookup in places
 // (their phone or Reservations phone) and guests (consumers.phone):
 //
-//   { caller_phone }  →  { kind: "place" | "guest" | "both", place?, guest? }
+//   { caller_phone, expect? }  →  { kind: "place" | "guest" | "both", place?, guest? }
 //
 //   place  the place, its notes (MESITA-3955) and its upcoming book
 //   guest  the account holder and their newest reservations
 //   both   one number is a place's line AND a guest's account: the agent asks
 //          which one they call about
+// `expect` (MESITA-4022) lets the graph, not the LLM, pick the lane: the
+// workflow calls this twice as two tools with a constant expect —
+// inbound_identify_place ("place": 404 unless the number is a place's line)
+// and, on that failure, inbound_identify_guest ("guest": 404 unless it is a
+// guest's account). Without expect, any match answers 200.
 // An unknown number answers 404, so the workflow's failure edge takes the
 // unknown lane (the old verify functions answered 200 for an unknown caller,
 // so that lane never ran).
@@ -43,7 +48,8 @@ serveJson("eleven-inbound-identify-caller", async (req) => {
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 
-  const body = await readJsonOr<{ caller_phone?: unknown }>(req, {});
+  const body = await readJsonOr<{ caller_phone?: unknown; expect?: unknown }>(req, {});
+  const expect = body.expect === "place" || body.expect === "guest" ? body.expect : null;
   const tail = phoneTail(body.caller_phone);
   if (tail.length < 10) {
     return json({ ok: false, kind: "unknown", reason: "caller number unavailable" }, 404);
@@ -85,6 +91,12 @@ serveJson("eleven-inbound-identify-caller", async (req) => {
 
   if (!place && !guest) {
     return json({ ok: false, kind: "unknown", reason: "no Mesita place or account with this number" }, 404);
+  }
+  if (expect === "place" && !place) {
+    return json({ ok: false, kind: "guest", reason: "this number is not a Mesita place's line" }, 404);
+  }
+  if (expect === "guest" && !guest) {
+    return json({ ok: false, kind: "place", reason: "this number is not a Mesita account" }, 404);
   }
   const kind = place && guest ? "both" : place ? "place" : "guest";
   return json({ ok: true, kind, ...(place ? { place } : {}), ...(guest ? { guest } : {}) });

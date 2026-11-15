@@ -1,4 +1,4 @@
-// The nine webhook tools the four agents call, one Edge Function each
+// The webhook tools the four agents call, one Edge Function each
 // (caller family eleven-a1-* … eleven-a4-*, plus the shared
 // eleven-agent-get-reservation). Every tool is a plain HTTPS webhook: the anon
 // key passes the gateway, x-agent-secret is the app lock.
@@ -13,7 +13,8 @@ export const TOOL_NAMES = [
   "a1_report_outcome",
   "a2_confirm_reservation",
   "a2_cancel_reservation",
-  "inbound_identify_caller",
+  "inbound_identify_place",
+  "inbound_identify_guest",
   "a3_cancel_reservation",
   "a4_find_reservation",
   "a4_cancel_reservation",
@@ -104,12 +105,28 @@ const SPECS: ToolSpec[] = [
       reason: REASON,
     }),
   },
+  // One Edge Function, two tools: each sends a constant `expect`, so the
+  // tool RESULT (not the LLM) routes a place to the place lanes and a guest to
+  // the guest lanes (MESITA-4022). The workflow calls place first, then guest.
   {
-    name: "inbound_identify_caller",
+    name: "inbound_identify_place",
     ef: "eleven-inbound-identify-caller",
     description:
-      "Primer paso de toda llamada entrante: reconoce quién llama por el número desde el que llama. Regresa kind: place (un lugar, con sus notas y sus reservaciones próximas), guest (un comensal, con su nombre y sus reservaciones), o both (el número es de un lugar y de un comensal). Si el número no es de nadie, falla. No pidas ningún dato antes.",
-    schema: body("Reconocer al llamante por su número.", ["caller_phone"], { caller_phone: CALLER_PHONE }),
+      "Primer paso de toda llamada entrante: reconoce si el número desde el que llaman es de un lugar en Mesita. Regresa el lugar, sus notas y sus reservaciones próximas (y, si el número también es de un comensal, sus datos). Si no es de un lugar, falla. No pidas ningún dato antes.",
+    schema: body("Reconocer un lugar por el número que llama.", ["caller_phone", "expect"], {
+      caller_phone: CALLER_PHONE,
+      expect: { type: "string", constant_value: "place" },
+    }),
+  },
+  {
+    name: "inbound_identify_guest",
+    ef: "eleven-inbound-identify-caller",
+    description:
+      "Reconoce si el número desde el que llaman es de un comensal en Mesita. Regresa su nombre y sus reservaciones. Si el número no es de nadie, falla. No pidas ningún dato antes.",
+    schema: body("Reconocer un comensal por el número que llama.", ["caller_phone", "expect"], {
+      caller_phone: CALLER_PHONE,
+      expect: { type: "string", constant_value: "guest" },
+    }),
   },
   {
     name: "a3_cancel_reservation",

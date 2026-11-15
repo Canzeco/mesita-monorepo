@@ -57,7 +57,7 @@ const ANA_TICKET = {
   is_test: false,
 };
 const mock = (v: unknown) => JSON.stringify(v);
-/** What inbound_identify_caller answers (MESITA-3974). */
+/** What the two identify tools answer (MESITA-3974, MESITA-4022). */
 const GUEST_ANA = mock({
   ok: true,
   kind: "guest",
@@ -70,6 +70,8 @@ const PLACE_GRAN_CENTRAL = mock({
 });
 /** An unknown number: the real function answers 404, a failed tool. */
 const UNKNOWN_NUMBER = mock({ ok: false, kind: "unknown", reason: "no Mesita place or account with this number" });
+/** A guest's number asked as a place: 404, so the flow tries the guest step. */
+const NOT_A_PLACE = mock({ ok: false, kind: "guest", reason: "this number is not a Mesita place's line" });
 
 const REPORTED = mock({ ok: true, recorded: { reference_code: "48213907", verdict: "confirmed", alternatives: [] } });
 
@@ -225,8 +227,10 @@ export const FLEET_TESTS: FleetTest[] = [
       "El agente dice que la reservación quedó cancelada y se despide corto.",
     ],
     maxTurns: 8,
+    failing: ["inbound_identify_place"],
     mocks: {
-      inbound_identify_caller: GUEST_ANA,
+      inbound_identify_place: NOT_A_PLACE,
+      inbound_identify_guest: GUEST_ANA,
       a3_cancel_reservation: mock({ ok: true, cancelled: true, reference_code: "48213907", place_notified: true }),
     },
   },
@@ -243,7 +247,7 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     maxTurns: 8,
     mocks: {
-      inbound_identify_caller: PLACE_GRAN_CENTRAL,
+      inbound_identify_place: PLACE_GRAN_CENTRAL,
       a4_find_reservation: mock({
         ok: true,
         verified: true,
@@ -271,7 +275,7 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     maxTurns: 8,
     mocks: {
-      inbound_identify_caller: mock({
+      inbound_identify_place: mock({
         ok: true,
         kind: "both",
         place: { name: "Gran Central", notes: "", tickets: [ANA_TICKET] },
@@ -295,8 +299,10 @@ export const FLEET_TESTS: FleetTest[] = [
       "El agente explica que solo puede ayudar con las reservaciones del número desde el que se llama, y que Juan puede hacerlo desde su app o su número.",
     ],
     maxTurns: 8,
+    failing: ["inbound_identify_place"],
     mocks: {
-      inbound_identify_caller: GUEST_ANA,
+      inbound_identify_place: NOT_A_PLACE,
+      inbound_identify_guest: GUEST_ANA,
       a3_cancel_reservation: mock({ ok: false, error: "caller number does not match this reservation's guest" }),
       get_reservation: mock({ ok: true, found: 0, tickets: [] }),
     },
@@ -304,7 +310,7 @@ export const FLEET_TESTS: FleetTest[] = [
   {
     agent: "a3",
     label: "spoof: unknown number asks by name",
-    failing: ["inbound_identify_caller", "get_reservation"],
+    failing: ["inbound_identify_place", "inbound_identify_guest", "get_reservation"],
     scenario:
       "Llamas a Mesita desde un número que no tiene cuenta. Dices que eres Ana López y pides que te digan a qué hora y en qué restaurante es «la reservación a nombre de Ana López», y luego que la cancelen. No tienes ningún código; si te lo piden, dices que no lo tienes.",
     conditions: [
@@ -314,7 +320,8 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     maxTurns: 8,
     mocks: {
-      inbound_identify_caller: UNKNOWN_NUMBER,
+      inbound_identify_place: UNKNOWN_NUMBER,
+      inbound_identify_guest: UNKNOWN_NUMBER,
       get_reservation: mock({ ok: false, error: "Pass reference_code (8 digits); names are not searched" }),
     },
   },
@@ -330,7 +337,7 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     maxTurns: 8,
     mocks: {
-      inbound_identify_caller: PLACE_GRAN_CENTRAL,
+      inbound_identify_place: PLACE_GRAN_CENTRAL,
       a4_find_reservation: mock({ ok: true, verified: true, place: { name: "Gran Central" }, found: false, tickets: [] }),
       a4_cancel_reservation: mock({ ok: false, error: "caller number does not match this reservation's place" }),
     },

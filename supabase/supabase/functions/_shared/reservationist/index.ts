@@ -8,7 +8,7 @@
 //   (a4, the places' inbound agent, merged into a3: MESITA-3974)
 //
 // One file per thing: facts.ts (what every agent knows), closing.ts (how to
-// hang up), settings.ts (voice, LLM, ASR, turn), tools.ts (the nine webhook
+// hang up), settings.ts (voice, LLM, ASR, turn), tools.ts (the webhook
 // tools), graph.ts (workflow blocks), a1..a3.ts (each agent whole).
 //
 // supabase-edgefunc-sync-reservationist makes ElevenLabs match this on every

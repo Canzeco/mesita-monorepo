@@ -165,11 +165,11 @@
     }
   },
   {
-    "name": "inbound_identify_caller",
+    "name": "inbound_identify_place",
     "config": {
       "type": "webhook",
-      "name": "inbound_identify_caller",
-      "description": "Primer paso de toda llamada entrante: reconoce quién llama por el número desde el que llama. Regresa kind: place (un lugar, con sus notas y sus reservaciones próximas), guest (un comensal, con su nombre y sus reservaciones), o both (el número es de un lugar y de un comensal). Si el número no es de nadie, falla. No pidas ningún dato antes.",
+      "name": "inbound_identify_place",
+      "description": "Primer paso de toda llamada entrante: reconoce si el número desde el que llaman es de un lugar en Mesita. Regresa el lugar, sus notas y sus reservaciones próximas (y, si el número también es de un comensal, sus datos). Si no es de un lugar, falla. No pidas ningún dato antes.",
       "response_timeout_secs": 15,
       "interruption_mode": "allow",
       "api_schema": {
@@ -182,14 +182,56 @@
         },
         "request_body_schema": {
           "type": "object",
-          "description": "Reconocer al llamante por su número.",
+          "description": "Reconocer un lugar por el número que llama.",
           "required": [
-            "caller_phone"
+            "caller_phone",
+            "expect"
           ],
           "properties": {
             "caller_phone": {
               "type": "string",
               "dynamic_variable": "system__caller_id"
+            },
+            "expect": {
+              "type": "string",
+              "constant_value": "place"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "inbound_identify_guest",
+    "config": {
+      "type": "webhook",
+      "name": "inbound_identify_guest",
+      "description": "Reconoce si el número desde el que llaman es de un comensal en Mesita. Regresa su nombre y sus reservaciones. Si el número no es de nadie, falla. No pidas ningún dato antes.",
+      "response_timeout_secs": 15,
+      "interruption_mode": "allow",
+      "api_schema": {
+        "url": "SUPABASE_URL/functions/v1/eleven-inbound-identify-caller",
+        "method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer ANON_KEY",
+          "x-agent-secret": "TOOL_SECRET",
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "description": "Reconocer un comensal por el número que llama.",
+          "required": [
+            "caller_phone",
+            "expect"
+          ],
+          "properties": {
+            "caller_phone": {
+              "type": "string",
+              "dynamic_variable": "system__caller_id"
+            },
+            "expect": {
+              "type": "string",
+              "constant_value": "guest"
             }
           }
         }
