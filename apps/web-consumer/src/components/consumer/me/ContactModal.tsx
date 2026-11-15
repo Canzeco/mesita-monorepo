@@ -11,7 +11,6 @@ import {
 } from "@/lib/mesita-contact";
 import {
   IconChip,
-  MeLead,
   RowDivider,
   SettingsGroup,
 } from "@/components/consumer/me/settings-rows";
@@ -37,7 +36,6 @@ export function ContactFrame({
 }) {
   return (
     <MeScreen title="Contact">
-      <MeLead>We usually reply within a day.</MeLead>
       <SettingsGroup>{rows}</SettingsGroup>
       {children}
     </MeScreen>

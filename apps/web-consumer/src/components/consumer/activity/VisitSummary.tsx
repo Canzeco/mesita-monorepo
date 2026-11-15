@@ -39,7 +39,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Banknote, ChevronDown, ChevronRight, CreditCard, UtensilsCrossed, WalletCards } from "lucide-react";
 import { clockTime } from "@mesita/place-profile/lib/money";
-import { Screen } from "@/components/consumer/nav/Screen";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -82,7 +82,7 @@ export function VisitSummary({ tabId }: { tabId: string }) {
   }, [getSupabase, tabId, attempt]);
 
   return (
-    <Screen title="Visit">
+    <MeScreen title="Visit">
       {tab ? (
         <Statement tab={tab} />
       ) : failed ? (
@@ -101,7 +101,7 @@ export function VisitSummary({ tabId }: { tabId: string }) {
       ) : (
         <VisitSummarySkeleton />
       )}
-    </Screen>
+    </MeScreen>
   );
 }
 
@@ -111,9 +111,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section aria-label={title}>
       <h2 className="text-muted-foreground type-eyebrow mb-2">{title}</h2>
-      <div className="bg-card border-border divide-border divide-y overflow-hidden rounded-2xl border">
-        {children}
-      </div>
+      {/* FLAT ON WHITE (MESITA-4000): lines split by hairlines, no box. */}
+      <div className="divide-border divide-y">{children}</div>
     </section>
   );
 }
@@ -170,7 +169,7 @@ function Line({
       {href ? <ChevronRight className="text-muted-foreground/60 h-4 w-4 shrink-0" aria-hidden /> : null}
     </>
   );
-  const cls = "flex items-center gap-3 px-4 py-3";
+  const cls = "flex items-center gap-3 py-3";
   return href ? (
     <PushLink href={href} className={cn(cls, "hover:bg-muted/40 transition")}>
       {body}
@@ -406,7 +405,6 @@ function Statement({ tab }: { tab: GuestTab }) {
               ) : null}
               <Line
                 label="Total cashback"
-                sub="As credit at this place · credits and tips never earn"
                 value={`+${m(tab.cashback_cents)}`}
                 strong
               />
@@ -436,7 +434,7 @@ function Statement({ tab }: { tab: GuestTab }) {
         {events.length > 0 ? (
           // Closed until tapped: the receipt above already says the outcome.
           <details className="group">
-            <summary className="hover:bg-muted/40 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 transition [&::-webkit-details-marker]:hidden">
+            <summary className="hover:bg-muted/40 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-3 transition [&::-webkit-details-marker]:hidden">
               <span className="text-muted-foreground text-sm">Timeline</span>
               <ChevronDown
                 className="text-muted-foreground/60 h-4 w-4 shrink-0 transition group-open:rotate-180"

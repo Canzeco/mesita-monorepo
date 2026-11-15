@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import { MeLead } from "@/components/consumer/me/settings-rows";
 import { EFError } from "@/lib/api/_invoke";
 import { APP_FEEDBACK_NOTE_MAX, apiSendFeedback } from "@/lib/api/feedback";
 import { goBack } from "@/lib/navigate";
@@ -22,12 +21,10 @@ import { cn, errMsg } from "@/lib/utils";
 //
 // THE FRAME IS FeedbackFrame, AND THE FALLBACK WEARS IT (MESITA-2701).
 
-const LEAD = "Something you like, something broken, something missing. We read every one.";
 
 export function FeedbackFrame({ children }: { children: ReactNode }) {
   return (
     <MeScreen title="Send feedback">
-      <MeLead>{LEAD}</MeLead>
       {children}
     </MeScreen>
   );

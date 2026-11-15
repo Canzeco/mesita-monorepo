@@ -104,7 +104,7 @@ export function ClassStatusCard({ status }: { status: ClassStatus }) {
   if (status.kind === "loading") {
     return (
       <div
-        className="border-border bg-card h-[180px] animate-pulse rounded-2xl border"
+        className="bg-muted h-[180px] animate-pulse rounded-xl"
         aria-hidden
         data-class-status="loading"
       />
@@ -131,10 +131,10 @@ export function ClassStatusCard({ status }: { status: ClassStatus }) {
         : CLASS_STATUS.toGo(count(Math.max(VIP_FOLLOWERS - followers, 0)));
   return (
     <section
-      className="border-border bg-card overflow-hidden rounded-2xl border"
+      // Flat on white (MESITA-4000): no rounded box.
       data-class-status={guestClass}
     >
-      <div className="px-4 pt-4 pb-4">
+      <div className="pb-4">
         <div className="flex items-center gap-2">
           <StatusCrown vip={vip} />
           <h2 className="text-lg leading-6 font-semibold">
@@ -178,14 +178,12 @@ function ClassCard({
   title,
   perks,
   mine,
-  featured = false,
 }: ClassRowWords & { mine: boolean; featured?: boolean }) {
   return (
     <section
-      className={cn(
-        "bg-card rounded-2xl p-4",
-        featured ? "border-foreground border-2" : "border-border border",
-      )}
+      // FLAT ON WHITE (MESITA-4000, Pato: "flat like lists"): a hairline
+      // above, no rounded box; Pro is told apart by its large price.
+      className="border-border border-t py-4"
       aria-label={title}
       data-class-row={title}
     >

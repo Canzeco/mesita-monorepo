@@ -10,7 +10,6 @@
 //   $500.00MX                                  the amount, large
 //   Available                                  its state, coloured
 //
-//   WHAT THIS IS     one paragraph for its kind
 //   DETAILS          type · bonus · total credit · refunded on · purchase
 //                    number (the amount, date and state are the header's:
 //                    MESITA-3865 took their repeats out)
@@ -27,7 +26,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { BadgeDollarSign } from "lucide-react";
 import { clockTime } from "@mesita/place-profile/lib/money";
-import { Screen } from "@/components/consumer/nav/Screen";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { ticketsHref } from "@/lib/ticket-kinds";
@@ -41,30 +40,6 @@ const when = (iso: string) =>
   `${new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · ${clockTime(iso)}`;
 
 const BOUGHT = new Set(["prepay", "voucher"]);
-
-/** What a movement is, in words, at `place`. */
-function explain(e: WalletEntry, place: string, refunded: boolean): string {
-  switch (e.kind) {
-    case "prepay":
-    case "voucher":
-      if (refunded) return `You bought this credit at ${place} and it was refunded to the card you paid with. It is no longer in your balance there.`;
-      return `You bought this credit at ${place}. Spend it there with Pay: it pays the bill, never the tip. If ${place} closes for good, Mesita refunds what you have left.`;
-    case "bonus":
-      return `Extra credit ${place} added when you bought credit. Spend it there like the rest of your credit.`;
-    case "reversal":
-      return e.purchase_id
-        ? `This purchase was refunded to the card you paid with. The credit it gave you left your balance at ${place}.`
-        : `Cashback from a refunded bill was taken back from your balance at ${place}.`;
-    case "gift_out":
-      return `You sent this credit to a friend with a link. It left your balance at ${place} and is theirs to spend there.`;
-    case "gift_in":
-      return `A friend sent you this credit. Spend it at ${place} with Pay, like credit you bought.`;
-    case "gift_back":
-      return `You took back a gift link nobody opened. The credit is back in your balance at ${place}.`;
-    default:
-      return `A movement of your credit at ${place}.`;
-  }
-}
 
 /** The state word and its colour. A purchase with a refund on it reads
  *  Refunded, never as money on its way (MESITA-3753). */
@@ -81,14 +56,15 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section aria-label={title}>
       <h2 className="text-muted-foreground type-eyebrow mb-2">{title}</h2>
-      <div className="bg-card border-border divide-border divide-y overflow-hidden rounded-2xl border">{children}</div>
+      {/* FLAT ON WHITE (MESITA-4000): lines split by hairlines, no box. */}
+      <div className="divide-border divide-y">{children}</div>
     </section>
   );
 }
 
 function Line({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 px-4 py-3">
+    <div className="flex items-baseline justify-between gap-3 py-3">
       <span className={cn("text-sm", strong ? "font-semibold" : "text-muted-foreground")}>{label}</span>
       <span className={cn("text-right text-base tabular-nums", strong ? "font-semibold" : "font-medium")}>{value}</span>
     </div>
@@ -155,10 +131,6 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           <p className={cn("mt-1 text-sm font-semibold", tone)}>{state}</p>
         </header>
 
-        <Section title="What this is">
-          <p className="px-4 py-3 text-sm leading-relaxed">{explain(e, place, refund !== undefined)}</p>
-        </Section>
-
         <Section title="Details">
           <Line label="Type" value={entryLabel(e)} />
           {bonus ? <Line label="Bonus" value={`+${m(bonus.amount_cents)}`} /> : null}
@@ -193,7 +165,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     );
   })();
 
-  return <Screen title="Credit">{body}</Screen>;
+  return <MeScreen title="Credit">{body}</MeScreen>;
 }
 
 export function CreditEntrySkeleton() {

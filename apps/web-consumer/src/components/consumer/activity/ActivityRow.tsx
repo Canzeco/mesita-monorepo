@@ -24,6 +24,7 @@
 import { ChevronRight } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared/Skeleton";
+import { timeAgo } from "@/lib/time-ago";
 import { cn } from "@/lib/utils";
 
 export type StatusTone = "green" | "ink" | "grey";
@@ -39,6 +40,9 @@ export type ActivityItem = {
   money?: boolean;
   /** The facts under it, joined with middle dots. */
   line: string;
+  /** When it happened: "2h", "3d" or "Nov 10" ends the line (MESITA-4000;
+   *  rows no longer sit under day headings). */
+  when?: string | null;
   /** Over the place name: "Next up" on the reservation that comes next. */
   label?: string;
   /** Cancelled, declined, expired: drawn quieter. */
@@ -54,13 +58,13 @@ const TONE: Record<StatusTone, string> = {
   grey: "text-muted-foreground",
 };
 
-/** The white card a group's rows sit in. */
+/** A list's rows, FULL WIDTH ON WHITE (MESITA-4000, Pato: "just a list …
+ *  and occupy full width", the Instagram way): no card, no border, the rows
+ *  run to the screen's edges (out of Screen's 20px body padding). They sat
+ *  in one white card per day group until then. */
 export function ActivityRows({ children }: { children: React.ReactNode }) {
   return (
-    <ul
-      className="bg-card border-border divide-border divide-y overflow-hidden rounded-2xl border"
-      data-activity
-    >
+    <ul className="-mx-5" data-activity>
       {children}
     </ul>
   );
@@ -104,9 +108,9 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
             {t.big}
           </span>
         ) : null}
-        {t.line ? (
+        {t.line || t.when ? (
           <span className="text-muted-foreground mt-0.5 block truncate text-sm tabular-nums">
-            {t.line}
+            {[t.line, t.when ? timeAgo(t.when) : ""].filter(Boolean).join(" · ")}
           </span>
         ) : null}
       </span>
@@ -135,7 +139,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
       ) : null}
     </>
   );
-  const cls = "flex items-center gap-3 px-4 py-3.5";
+  const cls = "flex items-center gap-3 px-5 py-3";
   return (
     <li>
       {t.href ? (
@@ -152,7 +156,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
         <div className={cls}>{body}</div>
       )}
       {t.action ? (
-        <div className="px-4 pb-3.5">
+        <div className="px-5 pb-3">
           <PushLink
             href={t.action.href}
             className="bg-foreground text-background flex h-11 items-center justify-center rounded-full text-sm font-semibold transition hover:opacity-90"
@@ -165,15 +169,12 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
   );
 }
 
-/** Three rows' bones, in their card. */
+/** Three rows' bones, full width like the rows. */
 export function ActivityRowsSkeleton() {
   return (
-    <div
-      className="bg-card border-border divide-border divide-y overflow-hidden rounded-2xl border"
-      aria-busy
-    >
+    <div className="-mx-5" aria-busy>
       {[0, 1, 2].map((i) => (
-        <div key={i} className="flex items-center gap-3 px-4 py-3.5" aria-hidden>
+        <div key={i} className="flex items-center gap-3 px-5 py-3" aria-hidden>
           <Skeleton className="h-10 w-10 rounded-full" />
           <div className="flex-1">
             <Skeleton className="h-4 w-40" />
