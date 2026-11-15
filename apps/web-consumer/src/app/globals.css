@@ -330,6 +330,24 @@
   }
 }
 
+/* AN EMPTY PAGE CENTRES ITS EMPTY STATE IN THE BODY (MESITA-4099, Pato:
+   "always, in all the app, when empty page ... it must be vertically aligned
+   in the body"). EmptyState centres itself in a flex column, but most pages
+   wrap their list in plain blocks, so it sat at the top. Every vertical
+   scroller wears .scrollbar-thin-dark (MESITA-4081), so while one holds an
+   empty state, it and every wrapper down to it become growing flex columns.
+   A page with content is untouched: the rule only matches while an empty
+   state is in the tree. */
+.scrollbar-thin-dark:has([data-empty-state]),
+.scrollbar-thin-dark :has([data-empty-state]) {
+  display: flex;
+  flex-direction: column;
+}
+.scrollbar-thin-dark :has([data-empty-state]),
+.scrollbar-thin-dark [data-empty-state] {
+  flex: 1 0 auto;
+}
+
 /* The type roles. Generated from src/lib/type-roles.ts — edit there first.
    Named `type-*`, never `text-*`: tailwind-merge classifies an unrecognized
    `text-<word>` as a text COLOUR and silently drops it, so a `text-eyebrow`

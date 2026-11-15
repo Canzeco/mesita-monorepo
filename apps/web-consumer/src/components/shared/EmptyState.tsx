@@ -27,6 +27,9 @@ import { cn } from "@/lib/utils";
 // No dashed decorative box: the design map's rule is "cards only when interactive", and
 // a zero state isn't. Tinted icon circle + display title + muted copy + one CTA
 // is the whole vocabulary.
+// CENTRED ON EVERY PAGE (MESITA-4099): `data-empty-state` lets globals.css
+// turn every wrapper between the page's scroller and this into a growing flex
+// column, so a page's wrappers need not know about it.
 // AIR ON BOTH SIDES (MESITA-3801): `py-10`, never only a bottom pad. With no
 // top padding, anywhere it isn't centred in a full-height box it sat flush on
 // whatever was above it (Activity's chip strip, Pato: "fix this horrific
@@ -37,6 +40,7 @@ export function EmptyState({
   description,
   action,
   className,
+  inline = false,
 }: {
   icon: LucideIcon;
   title: string;
@@ -44,9 +48,13 @@ export function EmptyState({
   /** Primary next step. Omit only when there genuinely isn't one. */
   action?: { label: string; href?: string; onClick?: () => void };
   className?: string;
+  /** Inside a panel among other content: keep its own height, don't take
+   *  over the page (the Wallet's Credits panel fallback). */
+  inline?: boolean;
 }) {
   return (
     <div
+      data-empty-state={inline ? undefined : ""}
       className={cn(
         "flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-center",
         className,
