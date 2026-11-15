@@ -37,6 +37,11 @@
 // decision: two searches at most (MESITA-4079). The second runs in its own
 // node, which has no way to search again, so a second empty result ends the
 // errand: say so, point to Business › Reservations or a call back.
+// decision: the place's triage never answers about one table (MESITA-4089).
+// Simulated calls showed it reading a table straight from the caller check,
+// asking the name before searching, offering the code, and telling a place
+// that only the guest can change a table — so the search and the change
+// never ran. Now its only words about one table are «Déjeme buscarla.»
 
 import { CLOSING, NATURAL } from "./closing.ts";
 import { back, edge, END, type FleetAgent, llm, pos, RESULT_FAIL, RESULT_OK, START, talkNode, toolNode, UNCOND } from "./graph.ts";
@@ -49,7 +54,7 @@ const PROMPT = [
 
 /** How a found table is read back and when it may be cancelled (MESITA-4079). */
 const READ_BACK = [
-  "La búsqueda regresa las más parecidas, la mejor primero. Lee la primera UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo»).",
+  "La búsqueda regresa las más parecidas, la mejor primero. Lee la primera UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo y Mesita le avisa al comensal»).",
   "Si llaman para cambiarle la hora o el número de personas: tras su sí, si aún no dijeron la nueva hora o cuántas personas, pregúntalo una vez. No repitas la lectura.",
   "Después de leerla, CALLA y ESPERA su respuesta. Nunca canceles antes de oír su sí a esa lectura: lo que dijeron antes de que la leyeras (por ejemplo «hay que cancelar») no cuenta. Su sí («sí», «esa», «sí, cancélala») confirma a la vez que es esa y la cancelación: no vuelvas a preguntar.",
   "Si el cambio no se pudo registrar, el flujo te lleva a otro paso; no lo intentes de nuevo aquí.",
@@ -104,8 +109,10 @@ export const A3: FleetAgent = {
           "Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú eres Mesita; nunca hables como si fueras el restaurante.",
           "Salúdalo por su nombre (place.name), por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?». Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.",
           "Si el resultado también trae guest (el número es de un restaurante y de un comensal) y no queda claro, pregunta una sola vez si llama por su restaurante o por una reservación suya.",
-          "Luego toma la rama de lo que pidan. Para cancelar, cambiar o revisar UNA reservación (por el nombre al que está, el día, la hora, las personas o su código), primero se busca: toma la rama de búsqueda; no respondas sin buscar.",
-          "En este paso no leas ni confirmes ninguna reservación, aunque la veas en el resultado: se lee una sola vez, después de la búsqueda.",
+          "Luego toma la rama de lo que pidan.",
+          "Si hablan de UNA reservación (para cancelarla, cambiarle la hora o las personas, revisarla o confirmarla), con el dato que sea (un nombre o apellido, el día, la hora, las personas o un código), di solo «Déjeme buscarla.» y toma la rama de búsqueda. Busca con lo que ya dijeron: no pidas el nombre, el día ni ningún otro dato antes de buscar, no menciones el código, no expliques nada.",
+          "En este paso nunca leas, confirmes ni niegues una reservación, aunque la veas en el resultado: se lee una sola vez, después de la búsqueda.",
+          "Un restaurante sí puede pedir cambiar la hora o las personas de una reservación: primero se busca y después se le propone al comensal. Nunca le digas que solo el comensal puede cambiarla.",
         ].join("\n"),
         edgeOrder: ["e_tp_upcoming", "e_tp_find", "e_tp_redirect", "e_tp_own"],
       }),
@@ -142,8 +149,9 @@ export const A3: FleetAgent = {
         label: "Place · second search",
         position: pos(1920, -160),
         prompt: [
+          "Esta fue la segunda y última búsqueda. Si tampoco encontró nada (found es false), o dicen que no y no queda otra, di exactamente: «No la encuentro. Puede revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar.» Nada más: no preguntes si el nombre o la fecha están bien, no pidas otro dato ni sugieras otro día u otro nombre. Despídete en una frase y cuelga con end_call.",
+          "Si sí encontró algo:",
           READ_BACK,
-          "Esta fue la segunda y última búsqueda. Si tampoco encontró nada, o dicen que no y no queda otra: no pidas más datos ni preguntes si el nombre está bien. Di en una frase que no la encuentras y que pueden revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar; despídete y cuelga con end_call.",
         ].join("\n"),
         edgeOrder: ["e_pfa_cancel", "e_pfa_change", "e_pfa_end"],
       }),
@@ -251,7 +259,7 @@ export const A3: FleetAgent = {
         "triage_place",
         "place_find",
         llm(
-          "Hablan de UNA reservación concreta — para cancelarla, cambiarle la hora o las personas, revisarla o confirmarla — por el nombre al que está, el día, la hora, las personas o un código de 8 dígitos. Cancelar o cambiar empieza aquí: primero se busca.",
+          "Quien llama mencionó UNA reservación concreta con cualquier dato (un nombre o apellido, el día, la hora, las personas o un código de 8 dígitos), para lo que sea: cancelarla, cambiarle la hora o las personas, revisarla o confirmarla. Basta un dato; no esperes a tener más.",
           "find or cancel one",
         ),
         RESULT_FAIL,
