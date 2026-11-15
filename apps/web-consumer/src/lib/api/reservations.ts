@@ -146,6 +146,10 @@ export type EFReservationRow = {
    *  with the guest's profile name (MESITA-3609). */
   guest_first_name?: string | null;
   guest_last_name?: string | null;
+  /** What the place set and a1 accepted for the guest on a confirmed table:
+   *  a table time limit, a tolerance (MESITA-4076). In the place's words,
+   *  usually Spanish. Older EFs omit it. */
+  confirmed_terms?: string | null;
   place: {
     id: string;
     slug: string | null;
