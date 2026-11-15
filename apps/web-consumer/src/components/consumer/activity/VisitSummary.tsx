@@ -6,25 +6,22 @@
 // Me › Tickets for a bill that is paid, expired or cancelled; an open bill
 // still opens /pay/bill/<id>.
 //
-// ONE RECEIPT (MESITA-3865, Pato: "better design for the fucking tickets both
-// externally and internally"). It was six equal cards with the total written
-// four times; now the amount is the one large thing and one card answers
-// "what was the bill, how did I pay, what came back":
+// ONE RECEIPT (MESITA-3865), built from TicketParts (MESITA-4002) so every
+// ticket page wears the same header, cards and buttons:
 //
-//   Taquería Orinoco  ›                   the place, a link to it
-//   Wed, Nov 11 · 22:34                   when
+//   (photo+badge) Taquería Orinoco  ›     the place, a link to it
+//                 Wed, Nov 11 · 22:34     when
 //   $230.00MX                             the total, large
 //   Paid · 22:51                          the state, coloured
 //
-//   RECEIPT           Bill · Tip (the waiter's suggestion when it differs) ·
-//                     Total, then Credits · Card · Cash: each its amount, its
-//                     bill + tip, and its state (a paid part opens its
-//                     receipt), then Cashback: per method with its rate, what
-//                     the waiter's signature would earn, and the total
-//   SPLIT             a share or a split table: the table's bill, ways, your
-//                     share, paid, left
-//   DETAILS           who typed the bill, waiter, ticket, visit number, test
-//                     mode, and the Timeline, closed until tapped
+//   RECEIPT           Bill · Tip · Total
+//   PAID WITH         one line per method: its bill + tip and its amount; a
+//                     state only when it is not simply Paid ("Didn't go
+//                     through" is ink, never red); a paid part opens its receipt
+//   CASHBACK          only when earned or pending
+//   SPLIT             a share or a split table (S16)
+//   DETAILS           who typed the bill, waiter, ticket, the visit number
+//                     with a copy button, and the Timeline, closed until tapped
 //   Pay here again (filled) · Open the place
 //
 // A visit nothing was paid on (expired, cancelled) says "Nothing was
@@ -36,18 +33,26 @@
 // amounts fall back to the tab's own split.
 
 import { useEffect, useState, type ReactNode } from "react";
-import Link from "next/link";
-import { Banknote, ChevronDown, ChevronRight, CreditCard, UtensilsCrossed, WalletCards } from "lucide-react";
+import { Banknote, Copy, CreditCard, UtensilsCrossed, WalletCards } from "lucide-react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import { PushLink } from "@/components/consumer/nav/PushLink";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Skeleton } from "@/components/shared/Skeleton";
-import { apiGetTab, type GuestTab } from "@/lib/api/tab";
+import { apiGetTab, type GuestTab, type GuestVisit } from "@/lib/api/tab";
 import { money } from "@/lib/api/wallet";
 import { payPlacePath, payReceiptPath, placePath } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
-import { cn } from "@/lib/utils";
+import { readCached } from "@/lib/screen-cache";
+import { toast } from "@/lib/toast";
+import {
+  TestModeNote,
+  TicketActions,
+  TicketCard,
+  TicketHeader,
+  TicketLine,
+  TicketSkeleton,
+  TicketTimeline,
+  type TicketTone,
+} from "./TicketParts";
 
 type Part = GuestTab["parts"][number];
 
@@ -99,7 +104,7 @@ export function VisitSummary({ tabId }: { tabId: string }) {
           }}
         />
       ) : (
-        <VisitSummarySkeleton />
+        <TicketSkeleton />
       )}
     </MeScreen>
   );
@@ -107,84 +112,13 @@ export function VisitSummary({ tabId }: { tabId: string }) {
 
 // ─── Pieces ─────────────────────────────────────────────────────────────────
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section aria-label={title}>
-      <h2 className="text-muted-foreground type-eyebrow mb-2">{title}</h2>
-      {/* FLAT ON WHITE (MESITA-4000): lines split by hairlines, no box. */}
-      <div className="divide-border divide-y">{children}</div>
-    </section>
-  );
-}
-
-/** One line of a section: the label (and a quiet line under it) on the left,
- *  the value (and its state under it) on the right. With `href`, a link. */
-function Line({
-  label,
-  sub,
-  value,
-  state,
-  tone = "ink",
-  icon,
-  href,
-  strong = false,
-}: {
-  label: string;
-  sub?: string | null;
-  value?: string | null;
-  state?: string | null;
-  tone?: "green" | "ink" | "grey" | "red";
-  icon?: ReactNode;
-  href?: string;
-  strong?: boolean;
-}) {
-  const body = (
-    <>
-      {icon ? (
-        <span className="bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full" aria-hidden>
-          {icon}
-        </span>
-      ) : null}
-      <span className="min-w-0 flex-1">
-        <span className={cn("block text-sm", strong ? "font-semibold" : "text-muted-foreground")}>{label}</span>
-        {sub ? <span className="text-muted-foreground mt-0.5 block text-xs tabular-nums">{sub}</span> : null}
-      </span>
-      <span className="flex shrink-0 flex-col items-end text-right">
-        {value ? (
-          <span className={cn("text-base tabular-nums", strong ? "font-semibold" : "font-medium")}>{value}</span>
-        ) : null}
-        {state ? (
-          <span
-            className={cn(
-              "mt-0.5 text-xs font-medium",
-              tone === "green" && "text-green-700",
-              tone === "grey" && "text-muted-foreground",
-              tone === "red" && "text-destructive",
-            )}
-          >
-            {state}
-          </span>
-        ) : null}
-      </span>
-      {href ? <ChevronRight className="text-muted-foreground/60 h-4 w-4 shrink-0" aria-hidden /> : null}
-    </>
-  );
-  const cls = "flex items-center gap-3 py-3";
-  return href ? (
-    <PushLink href={href} className={cn(cls, "hover:bg-muted/40 transition")}>
-      {body}
-    </PushLink>
-  ) : (
-    <div className={cls}>{body}</div>
-  );
-}
-
-/** A part's state in words, and its tone. */
-function partState(p: Part | undefined, guestTab: boolean): [string, "green" | "ink" | "grey" | "red"] {
+/** A part's state in words, and its tone; null when it is simply Paid (the
+ *  header already says so). Nothing reads red (S22). */
+function partState(p: Part | undefined, guestTab: boolean, tabPaid: boolean): [string | null, TicketTone] {
   if (!p) return ["Not charged", "grey"];
   switch (p.status) {
     case "paid":
-      return [p.paid_at ? `Paid · ${clockTime(p.paid_at)}` : "Paid", "green"];
+      return [tabPaid ? null : p.paid_at ? `Paid · ${clockTime(p.paid_at)}` : "Paid", "ink"];
     case "partly_refunded":
       return ["Partly refunded", "ink"];
     case "refunded":
@@ -195,12 +129,31 @@ function partState(p: Part | undefined, guestTab: boolean): [string, "green" | "
         ? ["Charging", "ink"]
         : [guestTab ? "Waiting for the waiter" : "Waiting for the cash", "ink"];
     case "failed":
-      return ["Failed", "red"];
+      return ["Didn't go through", "ink"];
     case "expired":
       return ["Not charged", "grey"];
     default:
       return [p.status, "grey"];
   }
+}
+
+/** The visit number's copy button: the full id goes to the clipboard. */
+function CopyVisitId({ id }: { id: string }) {
+  return (
+    <button
+      type="button"
+      aria-label="Copy the visit number"
+      className="text-muted-foreground hover:bg-muted/60 -mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition"
+      onClick={() => {
+        void navigator.clipboard
+          .writeText(id)
+          .then(() => toast("Copied"))
+          .catch(() => toast.error("Couldn't copy"));
+      }}
+    >
+      <Copy className="h-4 w-4" aria-hidden />
+    </button>
+  );
 }
 
 const PART_NAME: Record<string, string> = { card: "Card", outside: "Cash" };
@@ -225,30 +178,30 @@ function Statement({ tab }: { tab: GuestTab }) {
   const cardPart = latest("card");
   const cashPart = latest("outside");
 
-  const state: [string, string] = paid
+  const state: [string, TicketTone] = paid
     ? guestTab && !tab.verified_at
-      ? ["Paid · waiting for the waiter's signature", "text-foreground"]
-      : [tab.paid_at ? `Paid · ${clockTime(tab.paid_at)}` : "Paid", "text-green-700"]
+      ? ["Paid · waiting for the waiter's signature", "ink"]
+      : [tab.paid_at ? `Paid · ${clockTime(tab.paid_at)}` : "Paid", "green"]
     : tab.status === "expired"
-      ? ["Expired · nothing was paid", "text-muted-foreground"]
+      ? ["Expired · nothing was paid", "grey"]
       : tab.status === "cancelled"
-        ? ["Cancelled · nothing was paid", "text-muted-foreground"]
+        ? ["Cancelled · nothing was paid", "grey"]
         : tab.status === "paying"
-          ? ["Paying", "text-foreground"]
+          ? ["Paying", "ink"]
           : tab.status === "billed"
-            ? ["Billed · not paid yet", "text-foreground"]
-            : ["Waiting for the bill", "text-foreground"];
+            ? ["Billed · not paid yet", "ink"]
+            : ["Waiting for the bill", "ink"];
 
   // ── How it was (or would have been) paid ──
-  const creditState: [string, "green" | "ink" | "grey"] = paid
-    ? ["Used", "green"]
+  const creditState: [string | null, TicketTone] = paid
+    ? [null, "ink"]
     : open
       ? ["Held for this bill", "ink"]
       : ["Not used", "grey"];
   const methods: ReactNode[] = [];
   if (tab.credit_cents > 0) {
     methods.push(
-      <Line
+      <TicketLine
         key="credit"
         icon={<WalletCards className="h-4 w-4" />}
         label="Credits"
@@ -261,9 +214,9 @@ function Statement({ tab }: { tab: GuestTab }) {
     );
   }
   if (card > 0 || cardPart) {
-    const [s, tone] = partState(cardPart, guestTab);
+    const [s, tone] = partState(cardPart, guestTab, paid);
     methods.push(
-      <Line
+      <TicketLine
         key="card"
         icon={<CreditCard className="h-4 w-4" />}
         label="Card"
@@ -277,16 +230,13 @@ function Statement({ tab }: { tab: GuestTab }) {
     );
   }
   if (cash > 0 || cashPart) {
-    let [s, tone] = partState(cashPart, guestTab);
-    if (tab.cash_received_cents != null) {
-      s = `Received by the waiter · ${m(tab.cash_received_cents)}`;
-      tone = "green";
-    } else if (!cashPart && !open) {
+    let [s, tone] = partState(cashPart, guestTab, paid);
+    if (!cashPart && !open) {
       s = "Not paid";
       tone = "grey";
     }
     methods.push(
-      <Line
+      <TicketLine
         key="cash"
         icon={<Banknote className="h-4 w-4" />}
         label="Cash"
@@ -300,13 +250,13 @@ function Statement({ tab }: { tab: GuestTab }) {
     );
   }
 
-  // ── Cashback, per method ──
+  // ── Cashback: its own section only when earned or pending ──
   const cardBps = cardPart?.cashback_bps ?? tab.rates.card_back_bps;
   const cashBps = cashPart?.cashback_bps ?? tab.rates.cash_back_bps;
   const cardBack = cardPart?.cashback_cents ?? 0;
   const cashBack = cashPart?.cashback_cents ?? 0;
   const onSign = tab.cashback_on_sign_cents ?? 0;
-  const showCashback = tab.cashback_cents > 0 || onSign > 0 || (card > 0 && cardBps > 0) || (cash > 0 && cashBps > 0);
+  const showCashback = tab.cashback_cents > 0 || onSign > 0;
 
   // ── Timeline ──
   const events: Array<[string, string, string?]> = [];
@@ -338,147 +288,100 @@ function Statement({ tab }: { tab: GuestTab }) {
   const unpaid = !paid && !open;
   const typedBy = guestTab ? "You" : (tab.waiter_name ?? "The waiter");
 
+  const photo =
+    readCached<{ visits: GuestVisit[] }>("activity-visits")?.visits.find((v) => v.place.id === tab.place.id)?.place
+      .photo_url ?? null;
+  const showReceipt = tab.bill_cents != null || !unpaid;
+
   return (
     <div className="flex flex-col gap-6 pb-4" data-visit-summary>
-      <header>
-        <PushLink
-          href={placePath(tab.place.id)}
-          className="-mx-1 inline-flex max-w-full items-center gap-1 rounded-md px-1 text-lg font-semibold"
-        >
-          <span className="truncate">{placeName}</span>
-          <ChevronRight className="text-muted-foreground/60 h-4 w-4 shrink-0" aria-hidden />
-        </PushLink>
-        <p className="text-muted-foreground mt-0.5 text-sm tabular-nums">{when(tab.paid_at ?? opened)}</p>
-        <p
-          className={cn(
-            "font-display mt-4 text-4xl font-semibold tracking-tight tabular-nums",
-            !paid && "text-muted-foreground",
-          )}
-        >
-          {tab.bill_cents == null && chosen === 0 ? "No bill" : m(total)}
-        </p>
-        <p className={cn("mt-1 text-sm font-semibold", state[1])}>{state[0]}</p>
-      </header>
+      <TicketHeader
+        kind="visit"
+        photo={photo}
+        place={placeName}
+        placeHref={placePath(tab.place.id)}
+        when={when(tab.paid_at ?? opened)}
+        amount={tab.bill_cents == null && chosen === 0 ? "No bill" : m(total)}
+        state={state[0]}
+        tone={state[1]}
+        dim={!paid}
+      />
+      {tab.test_mode ? <TestModeNote /> : null}
 
-      {tab.bill_cents != null || !unpaid ? (
-        <Section title={unpaid ? "The bill" : "Receipt"}>
+      {showReceipt ? (
+        <>
           {tab.bill_cents != null ? (
-            <>
-              <Line label="Bill" value={m(tab.bill_cents)} />
-              <Line
+            <TicketCard title={unpaid ? "The bill" : "Receipt"}>
+              <TicketLine label="Bill" value={m(tab.bill_cents)} />
+              <TicketLine
                 label="Tip"
                 sub={suggested > 0 && suggested !== tip ? `The waiter suggested ${m(suggested)}` : null}
                 value={tip > 0 ? m(tip) : chosen > 0 ? "No tip" : suggested > 0 ? `${m(suggested)} suggested` : "—"}
               />
-              <Line label="Total" value={m(tab.bill_cents + tip)} strong />
-            </>
+              <TicketLine label="Total" value={m(tab.bill_cents + tip)} strong />
+            </TicketCard>
           ) : null}
-          {unpaid ? (
-            <Line label="Nothing was charged" />
-          ) : methods.length > 0 ? (
-            methods
-          ) : (
-            <Line label="No payment method chosen yet" />
-          )}
+          {!unpaid ? (
+            <TicketCard title="Paid with">
+              {methods.length > 0 ? methods : <TicketLine label="No payment method chosen yet" />}
+            </TicketCard>
+          ) : null}
           {!unpaid && showCashback ? (
-            <>
-              {card > 0 ? (
-                <Line
-                  label="Cashback on the card"
+            <TicketCard title="Cashback">
+              {cardBack > 0 ? (
+                <TicketLine
+                  label="On the card"
                   sub={`${pct(cardBps)} of ${m(tab.card_bill_cents)} bill`}
-                  value={cardBack > 0 ? `+${m(cardBack)}` : null}
-                  state={cardBack > 0 ? "Granted" : paid ? "Not granted" : "Not earned"}
-                  tone={cardBack > 0 ? "green" : "grey"}
+                  value={`+${m(cardBack)}`}
                 />
               ) : null}
-              {cash > 0 ? (
-                <Line
-                  label="Cashback on the cash"
+              {cashBack > 0 ? (
+                <TicketLine
+                  label="On the cash"
                   sub={`${pct(cashBps)} of ${m(tab.cash_bill_cents)} bill`}
-                  value={cashBack > 0 ? `+${m(cashBack)}` : null}
-                  state={cashBack > 0 ? "Granted" : paid ? "Not granted" : "Not earned"}
-                  tone={cashBack > 0 ? "green" : "grey"}
+                  value={`+${m(cashBack)}`}
                 />
               ) : null}
               {onSign > 0 ? (
-                <Line label="Cashback when the waiter signs" value={`+${m(onSign)}`} state="Pending" tone="ink" />
+                <TicketLine label="When the waiter signs" value={`+${m(onSign)}`} state="Pending" />
               ) : null}
-              <Line
-                label="Total cashback"
-                value={`+${m(tab.cashback_cents)}`}
-                strong
-              />
-            </>
+              <TicketLine label="Total cashback" value={`+${m(tab.cashback_cents)}`} strong />
+            </TicketCard>
           ) : null}
-        </Section>
+        </>
       ) : (
         <p className="text-muted-foreground text-sm">Nothing was charged.</p>
       )}
 
       {tab.table ? (
-        <Section title="Split with friends">
-          <Line label="Table bill" value={m(tab.table.bill_cents)} />
-          <Line label="Split" value={tab.table.ways ? `${tab.table.ways} ways` : `${tab.table.shares.length} shares`} />
-          {tab.bill_cents != null ? <Line label="Your share" value={m(tab.bill_cents)} strong /> : null}
-          <Line label="Paid at the table" value={m(tab.table.paid_cents)} />
-          <Line label="Left" value={m(tab.table.left_cents)} />
-        </Section>
+        <TicketCard title="Split with friends">
+          <TicketLine label="Table bill" value={m(tab.table.bill_cents)} />
+          <TicketLine
+            label="Split"
+            value={tab.table.ways ? `${tab.table.ways} ways` : `${tab.table.shares.length} shares`}
+          />
+          {tab.bill_cents != null ? <TicketLine label="Your share" value={m(tab.bill_cents)} strong /> : null}
+          <TicketLine label="Paid at the table" value={m(tab.table.paid_cents)} />
+          <TicketLine label="Left" value={m(tab.table.left_cents)} />
+        </TicketCard>
       ) : null}
 
-      <Section title="Details">
-        {tab.bill_cents != null ? <Line label="Bill typed by" value={typedBy} /> : null}
-        {tab.waiter_name ? <Line label="Waiter" value={tab.waiter_name} /> : null}
-        {tab.ticket ? <Line label="Ticket" value={`#${tab.ticket}`} /> : null}
-        <Line label="Visit number" value={tab.tab_id.slice(0, 8).toUpperCase()} />
-        {tab.test_mode ? <Line label="Test payment" sub="No real money moved" /> : null}
-        {events.length > 0 ? (
-          // Closed until tapped: the receipt above already says the outcome.
-          <details className="group">
-            <summary className="hover:bg-muted/40 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-3 transition [&::-webkit-details-marker]:hidden">
-              <span className="text-muted-foreground text-sm">Timeline</span>
-              <ChevronDown
-                className="text-muted-foreground/60 h-4 w-4 shrink-0 transition group-open:rotate-180"
-                aria-hidden
-              />
-            </summary>
-            <div className="divide-border border-border divide-y border-t">
-              {events.map(([at, label, value], i) => (
-                <Line key={`${at}-${label}-${i}`} label={label} sub={when(at)} value={value ?? null} />
-              ))}
-            </div>
-          </details>
-        ) : null}
-      </Section>
+      <TicketCard title="Details">
+        {tab.bill_cents != null ? <TicketLine label="Bill typed by" value={typedBy} /> : null}
+        {tab.waiter_name ? <TicketLine label="Waiter" value={tab.waiter_name} /> : null}
+        {tab.ticket ? <TicketLine label="Ticket" value={`#${tab.ticket}`} /> : null}
+        <TicketLine
+          label="Visit number"
+          value={tab.tab_id.slice(0, 8).toUpperCase()}
+          trailing={<CopyVisitId id={tab.tab_id} />}
+        />
+        <TicketTimeline steps={events.map(([at, label, value]) => ({ label, when: when(at), value }))} />
+      </TicketCard>
 
-      <div className="flex gap-2">
-        <Link
-          href={payPlacePath(tab.place.id)}
-          className="bg-foreground text-background flex h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold transition hover:opacity-90"
-        >
-          Pay here again
-        </Link>
-        <Link
-          href={placePath(tab.place.id)}
-          className="border-border bg-card hover:bg-muted/60 flex h-11 flex-1 items-center justify-center rounded-full border text-sm font-semibold transition"
-        >
-          Open the place
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-export function VisitSummarySkeleton() {
-  return (
-    <div className="flex flex-col gap-6" aria-busy>
-      <div>
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="mt-2 h-4 w-40" />
-        <Skeleton className="mt-4 h-10 w-44" />
-        <Skeleton className="mt-2 h-4 w-24" />
-      </div>
-      <Skeleton className="h-72 w-full rounded-2xl" />
-      <Skeleton className="h-44 w-full rounded-2xl" />
+      <TicketActions
+        primary={{ label: "Pay here again", href: payPlacePath(tab.place.id) }}
+        secondary={{ label: "Open the place", href: placePath(tab.place.id) }}
+      />
     </div>
   );
 }
