@@ -28,7 +28,7 @@ import { BadgeDollarSign } from "lucide-react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Skeleton } from "@/components/shared/Skeleton";
+import { TicketSkeleton } from "./TicketParts";
 import { ticketsHref } from "@/lib/ticket-kinds";
 import { apiGetWallet, entryLabel, money, WALLET_CACHE_KEY, type Wallet, type WalletEntry } from "@/lib/api/wallet";
 import { payPlacePath, walletPlacePath } from "@/lib/consumer-route-contract";
@@ -91,7 +91,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           action={{ label: "Try again", onClick: () => wallet.reload() }}
         />
       ) : (
-        <CreditEntrySkeleton />
+        <TicketSkeleton />
       );
     }
     const b = wallet.data.balances.find((x) => x.place_id === placeId);
@@ -166,19 +166,4 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
   })();
 
   return <MeScreen title="Credit">{body}</MeScreen>;
-}
-
-export function CreditEntrySkeleton() {
-  return (
-    <div className="flex flex-col gap-6" aria-busy>
-      <div>
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="mt-2 h-4 w-36" />
-        <Skeleton className="mt-4 h-10 w-40" />
-        <Skeleton className="mt-2 h-4 w-24" />
-      </div>
-      <Skeleton className="h-24 w-full rounded-2xl" />
-      <Skeleton className="h-48 w-full rounded-2xl" />
-    </div>
-  );
 }
