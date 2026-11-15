@@ -523,9 +523,7 @@ function PayForm({
                 note={
                   !place.card_ok
                     ? "This place takes credit only"
-                    : place.cashback_bps > 0
-                    ? `Card, Apple Pay or Google Pay · ${place.cashback_bps / 100}% back as credit here`
-                    : "Card, Apple Pay or Google Pay"
+                    : `Card, Apple Pay or Google Pay · ${(place.cashback_bps ?? 0) / 100}% back as credits here`
                 }
                 checked={billWith === "card"}
                 disabled={!place.card_ok}
