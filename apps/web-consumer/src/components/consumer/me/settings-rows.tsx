@@ -6,58 +6,18 @@ import { PushLink } from "@/components/consumer/nav/PushLink";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
+import { Panel } from "@/components/shared/Panel";
 
 // Presentational building blocks for the Me page and its Settings modal —
 // icon-led rows. Extracted from the old ProfileClient so the modular Me
 // boxes and the Settings modal render identical row chrome.
 //
-// SECTIONS IN BOXES (MESITA-4052, Pato 2026-11-15: "do put sections into
-// boxes, specially in modular configuration pages"): a group is Wallet's
-// 16px heading over one rounded white box of rows split by hairlines
-// (SectionBox, the Wallet list's box). MESITA-4000 had made them flat on
-// white, an eyebrow over full-width rows; the place screen's sheets keep
-// that flat form (`flat`), since a sheet is already its own card.
-
-/** The box every Me section draws: Wallet's list box (WalletLists.tsx). The
- *  rows inside carry their own 16px padding; the box adds none. */
-export const SECTION_BOX_CLASS =
-  "border-border bg-card overflow-hidden rounded-2xl border";
-
-/** A section's heading: Wallet's list heading, 16px display (decision 1A),
- *  never the small uppercase eyebrow. */
-export function SectionHeading({ children }: { children: ReactNode }) {
-  return (
-    <h2 className="font-display text-base font-semibold tracking-tight">
-      {children}
-    </h2>
-  );
-}
-
-/** One section: an optional heading (with an optional control on its
- *  right), then one box. */
-export function SectionBox({
-  title,
-  action,
-  className,
-  children,
-}: {
-  title?: ReactNode;
-  action?: ReactNode;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      {(title || action) && (
-        <div className="flex min-h-6 items-center justify-between gap-3">
-          {title ? <SectionHeading>{title}</SectionHeading> : <span />}
-          {action}
-        </div>
-      )}
-      <div className={cn(SECTION_BOX_CLASS, className)}>{children}</div>
-    </section>
-  );
-}
+// SECTIONS IN PANELS (MESITA-4071, Pato 2026-11-15, picking Wallet's of the
+// two box styles): a group is the app's one Panel (components/shared/Panel),
+// its 16px heading INSIDE the bordered white box, the rows under it split by
+// hairlines. MESITA-4052's SectionBox (the heading above the box) is retired.
+// The place screen's sheets keep the flat form (`flat`), since a sheet is
+// already its own card.
 
 /** The small uppercase label, for the flat sheet groups only. */
 export function SectionEyebrow({ children }: { children: ReactNode }) {
@@ -78,7 +38,15 @@ export function SettingsGroup({
   flat?: boolean;
   children: ReactNode;
 }) {
-  if (!flat) return <SectionBox title={title}>{children}</SectionBox>;
+  if (!flat) {
+    return (
+      <Panel title={title}>
+        {/* Under a heading the rows step 4px down and leave 4px under the
+            last, so the heading's 16px inset is the rows' too (Wallet's). */}
+        <div className={title ? "mt-1 pb-1" : undefined}>{children}</div>
+      </Panel>
+    );
+  }
   return (
     <section className="flex flex-col gap-2">
       {title && <SectionEyebrow>{title}</SectionEyebrow>}

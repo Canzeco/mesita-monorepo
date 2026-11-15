@@ -11,7 +11,7 @@ import { Gift } from "lucide-react";
 
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { CreditsRow, RowsSkeleton, WalletList } from "@/components/consumer/wallet/WalletLists";
+import { CreditsRow, RowsSkeleton, WalletPanelList } from "@/components/consumer/wallet/WalletLists";
 import { useWallet } from "@/components/consumer/wallet/use-wallet";
 import { CONSUMER_ROUTES, walletPlacePath } from "@/lib/consumer-route-contract";
 
@@ -28,9 +28,9 @@ export function GiftModal() {
           action={{ label: "Try again", onClick: reread }}
         />
       ) : giftable === null ? (
-        <WalletList title="Your credit">
+        <WalletPanelList title="Your credit">
           <RowsSkeleton count={2} />
-        </WalletList>
+        </WalletPanelList>
       ) : giftable.length === 0 ? (
         <EmptyState
           icon={Gift}
@@ -38,7 +38,7 @@ export function GiftModal() {
           action={{ label: "Find a place", href: CONSUMER_ROUTES.search }}
         />
       ) : (
-        <WalletList title="Your credit">
+        <WalletPanelList title="Your credit">
           {giftable.map((r, i) => (
             <CreditsRow
               key={r.placeId}
@@ -47,7 +47,7 @@ export function GiftModal() {
               eager={i < 4}
             />
           ))}
-        </WalletList>
+        </WalletPanelList>
       )}
     </MeScreen>
   );

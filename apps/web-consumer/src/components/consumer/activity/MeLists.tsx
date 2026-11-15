@@ -506,14 +506,9 @@ function TicketList({
   const { upcoming, past } = ordered(rows);
   const group = (title: string | null, list: Row[], first: boolean) =>
     list.length ? (
-      <section className={cn(!first && "mt-6")}>
-        {title ? (
-          // Wallet's 16px heading (MESITA-4052's SectionBox), not an eyebrow.
-          <h2 className="font-display mb-2 text-base font-semibold tracking-tight">
-            {title}
-          </h2>
-        ) : null}
-        <ActivityRows>
+      <section className={cn(!first && "mt-4")}>
+        {/* A heading sits INSIDE the list's panel (MESITA-4071). */}
+        <ActivityRows title={title ?? undefined}>
           {list.map((r) => (
             <ActivityRow
               key={r.key}

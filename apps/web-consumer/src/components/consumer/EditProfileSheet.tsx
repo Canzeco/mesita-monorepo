@@ -11,10 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { DefaultAvatar, SizedImage } from "@mesita/place-profile";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import {
-  ME_BUTTON_CLASS,
-  SectionBox,
-} from "@/components/consumer/me/settings-rows";
+import { ME_BUTTON_CLASS } from "@/components/consumer/me/settings-rows";
+import { Panel } from "@/components/shared/Panel";
 import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
@@ -115,7 +113,7 @@ const NAME_CLASS = "font-display min-h-7 max-w-full truncate text-lg font-semibo
 
 /** The fields' column inside the Details box, 24px under the name. */
 const FIELDS_CLASS = "flex flex-col gap-3 p-4";
-const DETAILS_CLASS = "mt-6";
+const DETAILS_CLASS = "mt-4";
 
 /** First and Last name on one row. */
 const NAME_ROW_CLASS = "grid grid-cols-2 gap-3";
@@ -202,7 +200,7 @@ export function EditProfileSkeleton() {
       </div>
 
       <div className={DETAILS_CLASS}>
-      <SectionBox title="Details">
+      <Panel title="Details">
       <div className={FIELDS_CLASS} aria-hidden>
         <div className={NAME_ROW_CLASS}>
           {[FIELD_LABEL.firstName, FIELD_LABEL.lastName].map((label) => (
@@ -240,7 +238,7 @@ export function EditProfileSkeleton() {
           <BirthdayPickerSkeleton compact />
         </div>
       </div>
-      </SectionBox>
+      </Panel>
       </div>
 
       <p role="status" className="sr-only">
@@ -432,7 +430,7 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
       </div>
 
       <div className={DETAILS_CLASS}>
-      <SectionBox title="Details">
+      <Panel title="Details">
       <div className={FIELDS_CLASS}>
         <div className={NAME_ROW_CLASS}>
           <SheetField
@@ -486,7 +484,7 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
           <BirthdayPicker value={birthday} onChange={setBirthday} compact />
         </label>
       </div>
-      </SectionBox>
+      </Panel>
       </div>
     </MeScreen>
   );

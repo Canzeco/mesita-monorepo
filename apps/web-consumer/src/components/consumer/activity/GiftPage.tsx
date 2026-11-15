@@ -4,7 +4,7 @@
 // 2026-11-15: "Like this guy sent money and if nobody has taken then
 // waiting. Or if someone has claimed then like show"). A Gifts row opens it,
 // and a gift line's credit page forwards here. Each section is a bordered
-// panel, as on the House Card page (WalletPanel, MESITA-4064):
+// panel, as on the House Card page (the shared Panel, MESITA-4064):
 //
 //   (Pato)(Ana)🎁 [place]     the Gifts row's picture, 64px
 //   You sent $3.00MX          the sentence
@@ -28,7 +28,7 @@ import { clockTime } from "@mesita/place-profile/lib/money";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
-import { WalletPanel } from "@/components/consumer/wallet/WalletLists";
+import { Panel } from "@/components/shared/Panel";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
 import {
@@ -80,7 +80,7 @@ function GiftHero({ g }: { g: GiftTicket }) {
   const state = giftState(g);
   const place = g.place?.name ?? "A Mesita place";
   return (
-    <WalletPanel className="flex flex-col items-center p-4 text-center" data-gift-page={g.status}>
+    <Panel className="mt-4 flex flex-col items-center p-4 text-center" data-gift-page={g.status}>
       <div className="flex items-center gap-3" aria-hidden>
         <span className="relative flex shrink-0 items-center">
           <GiftFace person={g.sender} size={BIG} />
@@ -107,7 +107,7 @@ function GiftHero({ g }: { g: GiftTicket }) {
         <span className="truncate">{place}</span>
         <ChevronRight className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
       </PushLink>
-    </WalletPanel>
+    </Panel>
   );
 }
 
@@ -204,16 +204,16 @@ export function GiftPage({ giftId }: { giftId: string }) {
     return (
       <div className="flex flex-col pb-4">
         <GiftHero g={g} />
-        <WalletPanel className="px-4">
+        <Panel className="mt-4 px-4">
           <TicketTimeline steps={stepsOf(g)} open />
-        </WalletPanel>
-        <WalletPanel title="Details">
+        </Panel>
+        <Panel className="mt-4" title="Details">
           <div className="divide-border divide-y px-4 pb-1">
             <TicketLine label="From" value={nameOf(g.sender, "Someone")} />
             <TicketLine label="To" value={nameOf(g.recipient, g.status === "open" ? "Nobody yet" : "Nobody")} />
             <TicketLine label="Amount" value={money(g.amount_cents, g.currency)} strong />
           </div>
-        </WalletPanel>
+        </Panel>
         {g.role === "sender" && g.status === "open" ? (
           <TakeBack g={g} onDone={reread} />
         ) : g.role === "recipient" && g.status === "claimed" ? (

@@ -233,7 +233,7 @@ export function InstagramModal() {
   return (
     <MeScreen title="Instagram">
 
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {connected && (
           <ConnectedAccount
             busy={action !== "idle" || changeBusy}

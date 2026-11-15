@@ -36,7 +36,7 @@ export function InstagramSkeleton() {
   return (
     <MeScreen title="Instagram">
 
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {connected ? <ConnectedAccount pending /> : <ConnectCardSkeleton />}
 
         <SettingsGroup title="Photo">

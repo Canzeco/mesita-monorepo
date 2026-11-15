@@ -21,7 +21,8 @@ import { type EntryGroup, groupKeys, splitEntries } from "@/lib/wallet-entries";
 import { cn } from "@/lib/utils";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { SendCreditSheet, SentLinks } from "./SendCredit";
-import { WalletPanel, WalletPanelList } from "./WalletLists";
+import { Panel } from "@/components/shared/Panel";
+import { WalletPanelList } from "./WalletLists";
 import { ACTION, ACTION_FILLED, PRIMARY, SECONDARY } from "./wallet-buttons";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
 import { toast } from "@/lib/toast";
@@ -187,18 +188,18 @@ export function PlacePhotoMark({ photo, name }: { photo: string | null; name: st
 export function HouseCardSkeleton() {
   return (
     <div className="flex flex-col" aria-hidden>
-      <WalletPanel className="p-4">
+      <Panel className="mt-4 p-4">
         <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
         <div className="mt-4 flex gap-2">
           <Skeleton className="h-16 flex-1 rounded-xl" />
           <Skeleton className="h-16 flex-1 rounded-xl" />
           <Skeleton className="h-16 flex-1 rounded-xl" />
         </div>
-      </WalletPanel>
-      <WalletPanel className="p-4">
+      </Panel>
+      <Panel className="mt-4 p-4">
         <Skeleton className="h-5 w-28 rounded-md" />
         <Skeleton className="mt-3 h-48 w-full rounded-xl" />
-      </WalletPanel>
+      </Panel>
     </div>
   );
 }
@@ -298,8 +299,8 @@ export function PlaceCredit({
       {/* EACH SECTION A PANEL (Pato, 2026-11-15, MESITA-4064: "each section
           in body must be in a box or something for more clarity. make a
           cleaner UI"): the card and what it can do, Transactions, Waiting
-          for a friend, each one WalletPanel (MESITA-4063's), 16px apart. */}
-      <WalletPanel className="p-4" data-house-card-panel>
+          for a friend, each one Panel (MESITA-4063's, shared since MESITA-4071), 16px apart. */}
+      <Panel className="mt-4 p-4" data-house-card-panel>
       {/* THE MINI HOUSE CARD (MESITA-3802, Pato: "instead of that ugly pink
           box display mini House Card, not occupying full width of screen,
           only 50% of screen. card must display amount of credits, name, and
@@ -372,7 +373,7 @@ export function PlaceCredit({
           Some credit is held by an open payment. It returns when that payment finishes or expires.
         </p>
       ) : null}
-      </WalletPanel>
+      </Panel>
       {confirming ? (
         <p className="text-muted-foreground mt-4 text-sm" role="status" data-house-card-confirming>
           Confirming a payment…

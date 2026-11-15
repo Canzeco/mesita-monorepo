@@ -42,7 +42,8 @@ import { toGuestClass, type GuestClass } from "@/lib/guest-standing";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { cn } from "@/lib/utils";
-import { RowDivider, SectionBox, SettingsLinkRow } from "./settings-rows";
+import { Panel } from "@/components/shared/Panel";
+import { RowDivider, SettingsLinkRow } from "./settings-rows";
 
 const count = (n: number) => n.toLocaleString("en-US");
 
@@ -229,28 +230,28 @@ export function useClassStatus(): ClassStatus {
 export function ClassBody({ status }: { status: ClassStatus }) {
   if (status.kind !== "known") {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         <ClassStatusPlaceholder status={status} />
-        <SectionBox title="Classes">
+        <Panel title="Classes">
           <ClassCard {...CLASS_ROWS.regular} />
           <RowDivider />
           <ClassCard {...CLASS_ROWS.vip} />
-        </SectionBox>
+        </Panel>
       </div>
     );
   }
   const mine = status.guestClass;
   const other = mine === "vip" ? "regular" : "vip";
   return (
-    <div className="flex flex-col gap-6">
-      <SectionBox title="Your class">
+    <div className="flex flex-col gap-4">
+      <Panel title="Your class">
         <MyClassCard guestClass={mine} handle={status.handle} followers={status.followers} />
         <RowDivider />
         <InstagramDoor handle={status.handle} vip={mine === "vip"} followers={status.followers} />
-      </SectionBox>
-      <SectionBox title="Other class">
+      </Panel>
+      <Panel title="Other class">
         <ClassCard {...CLASS_ROWS[other]} />
-      </SectionBox>
+      </Panel>
     </div>
   );
 }
