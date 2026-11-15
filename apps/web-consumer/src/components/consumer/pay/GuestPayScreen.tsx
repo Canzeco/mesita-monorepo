@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, ChevronRight, Coins, HandCoins, Lock, Plus, ReceiptText, Smartphone, Wallet, XCircle } from "lucide-react";
+import { Banknote, Check, ChevronRight, Lock, Plus, ReceiptText, Smartphone, Wallet, XCircle } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
@@ -34,7 +34,7 @@ import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { CardBrandChip, cardFace } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
-import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, RowsCard, StepBody, StepFooter } from "./pay-flow";
+import { BAD, GOOD, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, RowsCard, StepBody, StepFooter } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
 // THE GUEST PAYS (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
@@ -249,11 +249,8 @@ export function GuestPayScreen({
       ? paySplit({ place, billCents, tipCents, spendableCents: spendable, useCredit: creditOn, restWith: w, tipWith: w, cardId: chosenCard })
       : null;
   const cashbackFor = (w: PayWith) => splitFor(w)?.cashback_cents ?? 0;
-  // The Bill's Coins line before a way is chosen: the better of the two.
-  const billCashback = way ? cashbackFor(way) : Math.max(appOn ? cashbackFor("card") : 0, cashOn ? cashbackFor("cash") : 0);
   // Each way's rate, from the server (MESITA-4058: always shown, 0% too).
   const rateFor = (w: PayWith) => (w === "card" ? (place?.cashback_bps ?? 0) : (place?.outside_bps ?? 0));
-  const billRate = way ? rateFor(way) : Math.max(appOn ? rateFor("card") : 0, cashOn ? rateFor("cash") : 0);
 
   // Every change is saved, so the X and "Add a card" come back to it.
   useEffect(() => {
@@ -356,9 +353,9 @@ export function GuestPayScreen({
     return (
       <div className="flex min-h-0 flex-1 flex-col" data-guest-pay="blocked">
         <StepBody>
-          <PaySection className="flex flex-col items-center p-6 text-center">
-            <ReceiptText className="h-12 w-12 text-amber-700" aria-hidden />
-            <h2 className="font-display mt-4 text-xl font-semibold">Finish this bill first</h2>
+          <PaySection className="flex flex-col items-center p-4 text-center">
+            <ReceiptText className="h-10 w-10 text-amber-700" aria-hidden />
+            <h2 className="font-display mt-2 text-xl font-semibold">Finish this bill first</h2>
             <p className="mt-2 text-base">You have a bill open{blocked.name ? ` at ${blocked.name}` : ""}.</p>
             <p className="text-muted-foreground mt-1 text-sm">Pay it or cancel it before starting another.</p>
           </PaySection>
@@ -470,9 +467,9 @@ export function GuestPayScreen({
       <>
         <PayTop place={place} />
         <StepBody>
-          <PaySection className="flex flex-col items-center p-6 text-center">
-            <XCircle className={cn("h-14 w-14", BAD)} aria-hidden />
-            <h2 className="font-display mt-4 text-xl font-semibold">Not paid</h2>
+          <PaySection className="flex flex-col items-center p-4 text-center">
+            <XCircle className={cn("h-10 w-10", BAD)} aria-hidden />
+            <h2 className="font-display mt-2 text-xl font-semibold">Not paid</h2>
             <p className="mt-2 text-base">{notPaid}</p>
             <p className="text-muted-foreground mt-1 text-sm">Nothing was charged</p>
           </PaySection>
@@ -502,7 +499,7 @@ export function GuestPayScreen({
       <>
         <PlaceHero place={place} off onChoose={onChoosePlace} />
         <StepBody>
-          <PaySection className="p-6 text-center">
+          <PaySection className="p-4 text-center">
             <p className="text-base font-semibold">This place doesn&apos;t take Mesita payments.</p>
             <p className="text-muted-foreground mt-1 text-sm">Pay the usual way, outside Mesita.</p>
           </PaySection>
@@ -523,18 +520,14 @@ export function GuestPayScreen({
     return frame(
       <>
         {top(0, undefined, { onClick: toTip, disabled: billCents <= 0 })}
-        {/* The bill's panel (MESITA-4072): its heading, the line, the amount
-            and the keypad, taking the room between the top panel and the
-            footer so a short phone shrinks the keys instead of scrolling. */}
+        {/* The bill's panel (MESITA-4072), at the top (MESITA-4077): its
+            heading, the amount and the keypad, no caption. A short phone
+            shrinks the keys instead of scrolling. */}
         <div className="flex min-h-0 flex-1 flex-col py-4">
-          <PaySection title="Bill" className="flex min-h-0 flex-1 shrink flex-col">
-            <div className="flex min-h-0 flex-1 flex-col justify-center px-4 pb-2">
-              <div className="flex shrink-0 items-center justify-center gap-2">
-                <ReceiptText className="text-muted-foreground h-5 w-5" aria-hidden />
-                <span className="text-muted-foreground text-sm">The amount on the paper bill</span>
-              </div>
+          <PaySection title="Bill" className="flex min-h-0 shrink flex-col">
+            <div className="flex min-h-0 shrink flex-col px-4 pb-2">
               <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mt-1 shrink-0" />
-              <div className="mt-4 flex min-h-44 max-h-64 flex-1 flex-col">
+              <div className="mt-2 flex h-64 min-h-44 shrink flex-col">
                 <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
               </div>
             </div>
@@ -560,25 +553,11 @@ export function GuestPayScreen({
     return frame(
       <>
         {top(1, backArrow, { onClick: tipNext, disabled: !tipOk || billCents <= 0 || held })}
-        <StepBody className="items-stretch">
-          <PaySection>
-            <button
-              type="button"
-              onClick={() => setTyping(true)}
-              className="flex w-full flex-col items-center p-4"
-              aria-label={`Bill ${m(billCents)}. Change it`}
-              data-guest-bill-amount
-            >
-              <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
-                <ReceiptText className="h-4 w-4" aria-hidden />
-                Bill
-              </span>
-              <span className="text-[2.5rem] leading-tight font-semibold tabular-nums">{m(billCents)}</span>
-            </button>
-          </PaySection>
-
-          <PaySection title="Tip for the staff">
-            <div className="flex gap-2 p-4 pt-3" role="group" aria-label="Tip for the staff">
+        {/* ONE PANEL (MESITA-4077): the tip choices, then Bill · Tip · Total.
+            The Bill row opens the keypad again; what it earns is on Method. */}
+        <StepBody>
+          <PaySection title="Tip" className="text-base">
+            <div className="flex gap-2 px-4 pt-3 pb-4" role="group" aria-label="Tip">
               {TIP_CHIPS.map((p) => (
                 <button key={p} type="button" className={tipChip(tip === p)} aria-pressed={tip === p} onClick={() => setTip(p)}>
                   {`${p}%`}
@@ -596,13 +575,13 @@ export function GuestPayScreen({
                 {tip === "other" ? m(tipCents) : "Other"}
               </button>
             </div>
-          </PaySection>
-
-          <PaySection className="divide-border divide-y text-base">
-            <MoneyRow label="Bill" value={m(billCents)} />
-            <MoneyRow label="Tip" value={tipOk ? m(tipCents) : "Choose a tip"} />
-            <MoneyRow label="Total" value={m(billCents + tipCents)} strong />
-            <CashbackRow cents={billCashback} bps={billRate} m={m} />
+            <div className="divide-border border-border divide-y border-t">
+              <button type="button" onClick={() => setTyping(true)} className="hover:bg-muted/60 block w-full text-left transition" aria-label={`Bill ${m(billCents)}. Change it`} data-guest-bill-amount>
+                <MoneyRow label="Bill" value={m(billCents)} />
+              </button>
+              <MoneyRow label="Tip" value={tipOk ? m(tipCents) : "—"} />
+              <MoneyRow label="Total" value={m(billCents + tipCents)} strong />
+            </div>
           </PaySection>
         </StepBody>
         {status}
@@ -610,10 +589,7 @@ export function GuestPayScreen({
 
         <LocalSheet open={tipSheet} onClose={() => setTipSheet(false)} ariaLabel="Another tip">
           <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-            <p className="flex items-center gap-2 pt-2 text-lg font-semibold">
-              <HandCoins className="h-5 w-5" aria-hidden />
-              Tip for the staff
-            </p>
+            <p className="pt-2 text-lg font-semibold">Tip</p>
             <AmountDisplay text={otherTyping} currency={place.currency} label="Tip" className="mt-4 shrink-0" />
             <AmountKeypad text={otherTyping} onKey={(k) => setOtherTyping((t) => pressKey(t, k))} />
             <Button
@@ -642,21 +618,11 @@ export function GuestPayScreen({
     // way, so the button opens the bill (credits are spent). It is money,
     // so › is not offered.
     const creditsOnly = dueCents === 0;
-    const cashbackLine = (
-      <p
-        className={cn("flex items-center justify-center gap-2 text-base font-semibold", way && cashbackFor(way) > 0 ? GOOD : "text-muted-foreground", creditsOnly && "mt-2")}
-        data-guest-cashback
-      >
-        <Coins className="h-5 w-5" aria-hidden />
-        {way
-          ? cashbackFor(way) > 0
-            ? `+${m(cashbackFor(way))} · ${backAsCredits(rateFor(way))}`
-            : backAsCredits(rateFor(way))
-          : creditsOnly
-          ? "Paid in full with credits"
-          : "Choose how to pay"}
-      </p>
-    );
+    // What each way earns, on its row (MESITA-4077: said once, muted when 0).
+    const backLine = (w: PayWith) => {
+      const c = cashbackFor(w);
+      return { text: c > 0 ? `+${m(c)} back as credits` : backAsCredits(rateFor(w)), good: c > 0 };
+    };
     const toPay = () => {
       if (way) {
         setMethod(way);
@@ -666,37 +632,32 @@ export function GuestPayScreen({
     return frame(
       <>
         {top(2, backArrow, creditsOnly ? undefined : { onClick: toPay, disabled: !way || held })}
-        <StepBody className="items-stretch">
-          {spendable > 0 ? (
-            <PaySection>
+        {/* ONE PANEL (MESITA-4077): credits, App and Cash, then what is left
+            to pay. Each way says what it earns; nothing else repeats it. */}
+        <StepBody>
+          <PaySection title="How you pay" className="text-base">
+            <div className="divide-border mt-1 divide-y">
+            {spendable > 0 ? (
               <button
                 type="button"
                 role="switch"
                 aria-checked={creditOn}
                 onClick={() => setUseCredit((u) => !u)}
-                className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left"
+                className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left"
                 data-guest-credits
               >
                 <Wallet className="h-5 w-5 shrink-0" aria-hidden />
                 <span className="min-w-0 flex-1 truncate text-base">
-                  <span className="font-semibold">Use my credits</span>
-                  <span className="text-muted-foreground"> · {m(spendable)} available</span>
+                  <span className="font-semibold">Credits</span>
+                  <span className="text-muted-foreground"> · {m(spendable)}</span>
                 </span>
                 <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
                   <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full shadow transition-all", creditOn ? "left-[18px]" : "left-0.5")} />
                 </span>
               </button>
-            </PaySection>
-          ) : null}
-          <PaySection className="p-4 text-center">
-            <span className="text-muted-foreground block text-sm">{leftCents === 0 ? "Tip to pay" : "Left to pay"}</span>
-            <span className="block text-[2.5rem] leading-tight font-semibold tabular-nums">{m(dueCents)}</span>
-            {creditOn ? <span className="text-muted-foreground block text-sm tabular-nums">{`${m(creditCents)} paid with credits`}</span> : null}
-            {creditsOnly ? cashbackLine : null}
-          </PaySection>
-          {creditsOnly ? null : (
-            <PaySection title="How you pay">
-              <div className="divide-border mt-1 flex flex-col divide-y" role="radiogroup" aria-label="How you pay">
+            ) : null}
+            {creditsOnly ? null : (
+              <div className="divide-border flex flex-col divide-y" role="radiogroup" aria-label="How you pay">
                 <MethodTile
                   on={way === "card"}
                   off={appWhy}
@@ -704,7 +665,7 @@ export function GuestPayScreen({
                   tone="bg-pink-gradient text-white"
                   title="App"
                   line="Card"
-                  bps={rateFor("card")}
+                  back={backLine("card")}
                   onPick={() => setMethod("card")}
                 />
                 <MethodTile
@@ -713,14 +674,16 @@ export function GuestPayScreen({
                   icon={<Banknote />}
                   tone="bg-green-400 text-neutral-950"
                   title="Cash"
-                  line="Cash or their terminal"
-                  bps={rateFor("cash")}
+                  line="Cash or terminal"
+                  back={backLine("cash")}
                   onPick={() => setMethod("cash")}
                 />
               </div>
-              <div className="border-border border-t px-4 py-3">{cashbackLine}</div>
-            </PaySection>
-          )}
+            )}
+            {creditOn ? <MoneyRow label="Credits" value={`−${m(creditCents)}`} /> : null}
+            <MoneyRow label={leftCents === 0 ? "Tip to pay" : "Left to pay"} value={m(dueCents)} strong />
+            </div>
+          </PaySection>
         </StepBody>
         {status}
         <StepFooter
@@ -790,7 +753,7 @@ export function GuestPayScreen({
                   <ChevronRight className="h-4 w-4" aria-hidden />
                 </button>
               ) : null}
-              <p className="text-muted-foreground mt-3 flex items-center justify-center gap-2 text-sm">
+              <p className="text-muted-foreground mt-2 flex items-center justify-center gap-2 text-sm">
                 <Lock className="h-4 w-4" aria-hidden />
                 Held now, charged when the waiter signs.
               </p>
@@ -862,13 +825,15 @@ export function GuestPayScreen({
     <>
       {top(3, backArrow)}
       <StepBody>
-        <PaySection className="flex flex-col items-center p-6 text-center">
-          <span className="flex h-28 w-28 items-center justify-center rounded-full bg-green-400 text-neutral-950" aria-hidden>
-            <Banknote className="h-14 w-14" />
+        {/* MESITA-4077: the amount once, in the sentence. */}
+        <PaySection className="flex items-center gap-4 p-4 text-left">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-400 text-neutral-950" aria-hidden>
+            <Banknote className="h-6 w-6" />
           </span>
-          <p className="mt-6 text-[2.5rem] leading-tight font-semibold tabular-nums">{m(dueCents)}</p>
-          <h2 className="font-display mt-1 text-xl font-semibold">Give {m(dueCents)} to the waiter</h2>
-          <p className="text-muted-foreground mt-1 text-sm">Then show them the QR</p>
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-semibold">Give {m(dueCents)} to the waiter</span>
+            <span className="text-muted-foreground block text-sm">Then show them the QR</span>
+          </span>
         </PaySection>
       </StepBody>
       {status}
@@ -884,21 +849,6 @@ function backAsCredits(bps: number) {
   return `${bps / 100}% back as credits`;
 }
 
-/** The summary's last row: the green Coins line, or the muted 0% one. */
-function CashbackRow({ cents, bps, m }: { cents: number; bps: number; m: (c: number) => string }) {
-  return cents > 0 ? (
-    <div className={cn("flex min-h-11 items-center gap-3 px-4 font-semibold", GOOD, GOOD_TINT)} data-guest-cashback>
-      <Coins className="h-5 w-5 shrink-0" aria-hidden />
-      <span className="flex-1">+{m(cents)} back as credits</span>
-    </div>
-  ) : (
-    <div className="text-muted-foreground flex min-h-11 items-center gap-3 px-4" data-guest-cashback>
-      <Coins className="h-5 w-5 shrink-0" aria-hidden />
-      <span className="flex-1">{backAsCredits(bps)}</span>
-    </div>
-  );
-}
-
 /** A row for App or Cash in the How you pay panel (MESITA-4072; a bordered
  *  tile with a thick border when chosen until then): the ring on the right
  *  fills when chosen; grey with one line why when the place can't take it. */
@@ -909,7 +859,7 @@ function MethodTile({
   tone,
   title,
   line,
-  bps,
+  back,
   onPick,
 }: {
   on: boolean;
@@ -920,8 +870,9 @@ function MethodTile({
   tone: string;
   title: string;
   line: string;
-  /** The way's cashback rate; 0 shows as a muted "0% back as credits". */
-  bps: number;
+  /** What the way earns: "+MX$5.75 back as credits" (green), or the muted
+   *  "0% back as credits" (MESITA-4058: always said). */
+  back: { text: string; good: boolean };
   onPick: () => void;
 }) {
   return (
@@ -932,22 +883,18 @@ function MethodTile({
       aria-disabled={!!off}
       onClick={() => !off && onPick()}
       className={cn(
-        "flex min-h-20 w-full items-center gap-4 px-4 py-3 text-left transition",
+        "flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition",
         off ? "text-muted-foreground" : "hover:bg-muted/60",
       )}
       data-guest-method={title.toLowerCase()}
     >
-      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full [&>svg]:h-6 [&>svg]:w-6", off ? "bg-muted" : tone)} aria-hidden>
+      <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full [&>svg]:h-5 [&>svg]:w-5", off ? "bg-muted" : tone)} aria-hidden>
         {icon}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-base font-semibold">{title}</span>
-        <span className="text-muted-foreground block text-sm">{off ?? line}</span>
-        {!off ? (
-          <span className={cn("mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap", bps > 0 ? [GOOD, GOOD_TINT] : "bg-muted text-muted-foreground")}>
-            {backAsCredits(bps)}
-          </span>
-        ) : null}
+        <span className="text-muted-foreground block truncate text-sm">{off ?? line}</span>
+        {!off ? <span className={cn("block truncate text-sm", back.good ? cn(GOOD, "font-semibold") : "text-muted-foreground")}>{back.text}</span> : null}
       </span>
       {/* The choice is the ring on the right (MESITA-4072: a row in the How
           you pay panel, never a bordered tile inside it). */}
