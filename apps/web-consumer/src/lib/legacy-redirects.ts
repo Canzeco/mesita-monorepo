@@ -143,10 +143,16 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: ticketsHref("refunds"),
     permanent: true,
   },
-  // Gifts split into Gifts-In and Gifts-Out (MESITA-3941).
+  // Gifts split into Gifts-In and Gifts-Out (MESITA-3941) and are one
+  // Gifts list again (MESITA-4036): /me/tickets/gifts is live.
   {
-    source: "/me/tickets/gifts",
-    destination: ticketsHref("gifts-in"),
+    source: "/me/tickets/gifts-in",
+    destination: ticketsHref("gifts"),
+    permanent: true,
+  },
+  {
+    source: "/me/tickets/gifts-out",
+    destination: ticketsHref("gifts"),
     permanent: true,
   },
   // NO /activity ADDRESS REDIRECTS ANYWHERE (Pato, 2026-11-14, MESITA-3862:

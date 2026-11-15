@@ -177,16 +177,9 @@ export function visitRows(
 
 // ─── The wallet: payments, vouchers, gifts ───────────────────────────────
 
-// IN OR OUT (MESITA-3941): every gift entry lands on one side. Received is
-// In; Sent and Taken back (the sender undid a link nobody claimed) are Out.
-const GIFT_PILL: Record<
-  string,
-  [string, StatusTone, "gifts-in" | "gifts-out"]
-> = {
-  gift_out: ["Sent", "ink", "gifts-out"],
-  gift_in: ["Received", "green", "gifts-in"],
-  gift_back: ["Back in your balance", "green", "gifts-out"],
-};
+// GIFTS ARE THEIR OWN LIST (MESITA-4036): a gift entry is never a row here;
+// Tickets' Gifts list draws the server's gifts, sender to receiver.
+const GIFT_KINDS = new Set(["gift_out", "gift_in", "gift_back"]);
 const BOUGHT_KINDS = new Set(["prepay", "voucher"]);
 const sum = (es: WalletEntry[]) => es.reduce((n, e) => n + e.amount_cents, 0);
 
@@ -314,34 +307,7 @@ export function walletRows(w: Wallet): Row[] {
         });
         return;
       }
-      const gift = GIFT_PILL[e.kind];
-      if (gift) {
-        out.push({
-          key: `g-${b.place_id}-${e.at}-${i}`,
-          type: gift[2],
-          kind: e.kind as TicketRowKind,
-          // A gift received reads +$X, From a friend; Pending in ink until
-          // it lands (MESITA-4005).
-          // Sent reads −$X; taken back reads +$X, Back in your balance
-          // (MESITA-4008).
-          sign: e.kind === "gift_out" ? ("−" as const) : ("+" as const),
-          at: e.at,
-          upcoming: false,
-          place,
-          photo,
-          status:
-            e.kind === "gift_in" && e.pending
-              ? { label: "Pending", tone: "ink" }
-              : e.kind === "gift_out" && e.pending
-                ? { label: "Sent · pending", tone: "ink" }
-                : { label: gift[0], tone: gift[1] },
-          big: money(Math.abs(e.amount_cents), cur),
-          money: true,
-          line:
-            e.kind === "gift_in" ? "From a friend" : "",
-          href: creditEntryPath(b.place_id, e),
-        });
-      }
+      if (GIFT_KINDS.has(e.kind)) return;
     });
 
     // A bonus with no purchase beside it is its own prepayment ticket.
@@ -391,26 +357,6 @@ export function walletRows(w: Wallet): Row[] {
     });
   }
 
-  // A credit link sent that nobody took yet (MESITA-3292).
-  const places = new Map(w.balances.map((b) => [b.place_id, b.place]));
-  for (const l of w.sent_links ?? []) {
-    const p = places.get(l.place_id);
-    out.push({
-      key: `gl-${l.gift_id}`,
-      type: "gifts-out",
-      kind: "gift_link",
-      sign: "−",
-      at: l.created_at,
-      upcoming: false,
-      place: p?.name ?? "A Mesita place",
-      photo: p?.photo ?? null,
-      status: { label: "Not taken", tone: "ink" },
-      big: money(l.amount_cents, l.currency),
-      money: true,
-      line: "Link sent",
-      href: walletPlacePath(l.place_id),
-    });
-  }
   return out;
 }
 

@@ -13,11 +13,14 @@
 // is one or the other. In: credit a friend sent you. Out: credit you sent,
 // a link you took back, a link nobody took yet. The old /me/tickets/gifts
 // address lands on Gifts-In (legacy-redirects.ts).
+//
+// ONE GIFTS LIST AGAIN (Pato, 2026-11-15, MESITA-4036: "Unify gifts events in
+// and out. Only one view of gift events. Left side is sender and right side
+// is receiver"): /me/tickets/gifts; /gifts-in and /gifts-out forward there.
 export const TICKET_KINDS = [
   "visits",
   "vouchers",
-  "gifts-in",
-  "gifts-out",
+  "gifts",
   "refunds",
 ] as const;
 

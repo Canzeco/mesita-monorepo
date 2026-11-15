@@ -94,6 +94,9 @@ export type Wallet = {
   /** Credit links the guest sent that nobody took yet (MESITA-3292): the
    *  amount is already off their balance; they can take it back. */
   sent_links?: SentLink[];
+  /** Every gift the guest sent or received, newest first (MESITA-4036):
+   *  Tickets' one Gifts list. Absent from an older server: reads as none. */
+  gifts?: GiftTicket[];
   /** Sending credit is open here (MESITA-3292): always in test mode; live
    *  once the lawyer answers. Absent reads as no. */
   can_send?: boolean;
@@ -578,6 +581,29 @@ export function entryLabel(e: Pick<WalletEntry, "kind" | "purchase_id" | "paymen
 // ── Sending credit to a friend (MESITA-3292) ────────────────────────────────
 
 /** A link the guest sent that nobody took yet. */
+/** One side of a gift (MESITA-4036): a first name and a photo (none when
+ *  their Public profile is off); `you` is the guest reading it. */
+export type GiftPerson = { name: string; photo: string | null; you: boolean };
+
+/** A gift sent or received (MESITA-4036, the server's _shared/wallet-gifts.ts):
+ *  open = nobody took it yet, claimed = a friend took it, taken_back = the
+ *  sender took it back first. The recipient is null until someone takes it. */
+export type GiftTicket = {
+  gift_id: string;
+  place_id: string;
+  place: WalletBalance["place"];
+  amount_cents: number;
+  currency: string;
+  status: "open" | "claimed" | "taken_back";
+  role: "sender" | "recipient";
+  created_at: string;
+  claimed_at: string | null;
+  taken_back_at: string | null;
+  sender: GiftPerson;
+  recipient: GiftPerson | null;
+  entry: { kind: string; at: string } | null;
+};
+
 export type SentLink = { gift_id: string; place_id: string; amount_cents: number; currency: string; created_at: string };
 
 /** The link a friend opens: this app's own Wallet with the key,
