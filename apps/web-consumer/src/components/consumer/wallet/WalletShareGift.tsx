@@ -1,4 +1,4 @@
-import { Gift, HandCoins, Share2 } from "lucide-react";
+import { CreditCard, Gift, HandCoins, Share2 } from "lucide-react";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -29,13 +29,20 @@ const BUTTON =
 const SHARE = `${BUTTON} bg-[var(--brand-pink-600)] focus-visible:ring-[var(--brand-pink-300)]`;
 const SEND = `${BUTTON} bg-blue-600 focus-visible:ring-blue-300`;
 const REDEEM = `${BUTTON} bg-emerald-600 focus-visible:ring-emerald-300`;
+// The app's own black primary (no new colour).
+const BUY = `${BUTTON.replace("text-white", "text-paper")} bg-foreground focus-visible:ring-neutral-400`;
 
 const GLYPH = "h-4 w-4 shrink-0";
 
-/** The row: three links, the same in the loading frame. */
+// BUY CREDITS (Pato, 2026-11-15, MESITA-4031: "add a buy credits button in
+// wallet"): the fourth door, so the row is a 2x2 grid of equal buttons (four
+// in one row do not fit a 320px phone). Credits are bought at one place, so it
+// opens Search, the same way as "Add a Credits Card" below; the place's
+// Buy Credits then runs the purchase.
+/** The grid: four links, the same in the loading frame. */
 export function WalletShareGift() {
   return (
-    <div className="mt-5 flex gap-2" data-wallet-share-gift>
+    <div className="mt-5 grid grid-cols-2 gap-2" data-wallet-share-gift>
       <PushLink href={CONSUMER_ROUTES.share} className={SHARE} data-wallet-share>
         <Share2 className={GLYPH} strokeWidth={2.25} aria-hidden />
         Share Mesita
@@ -56,6 +63,14 @@ export function WalletShareGift() {
       >
         <HandCoins className={GLYPH} strokeWidth={2.25} aria-hidden />
         Redeem Credits
+      </PushLink>
+      <PushLink
+        href={CONSUMER_ROUTES.search}
+        className={BUY}
+        data-wallet-buy
+      >
+        <CreditCard className={GLYPH} strokeWidth={2.25} aria-hidden />
+        Buy Credits
       </PushLink>
     </div>
   );
