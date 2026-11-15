@@ -144,13 +144,22 @@ const SPECS: ToolSpec[] = [
     name: "a4_find_reservation",
     ef: "eleven-a4-find-reservation",
     description:
-      "Busca reservaciones del lugar verificado por el nombre al que están («la reservación a nombre de Ana López») o por el código de 8 dígitos si lo dictan. Solo encuentra reservaciones de este lugar. Regresa las coincidencias con su código para usarlo en otras herramientas.",
-    schema: body("Búsqueda por nombre o código dentro del lugar del llamante.", ["caller_phone"], {
+      "Busca una reservación del lugar verificado con lo que digan: el nombre al que está (aunque se haya oído mal), el día, la hora y/o las personas — pasa todo lo que tengas, aunque sea un solo dato. Si dictan un código de 8 dígitos, pásalo. Solo encuentra reservaciones de este lugar. Regresa las más parecidas, la mejor primero, con su código para usarlo en otras herramientas.",
+    schema: body("Búsqueda tolerante dentro del lugar del llamante.", ["caller_phone"], {
       caller_phone: CALLER_PHONE,
       guest_name: {
         type: "string",
         description: "El nombre al que está la reservación, tal como lo dijeron (nombre y/o apellido).",
       },
+      date: {
+        type: "string",
+        description: "El día que dijeron: AAAA-MM-DD, o tal cual «hoy», «mañana», «pasado mañana» o el día de la semana («viernes»).",
+      },
+      time: {
+        type: "string",
+        description: "La hora que dijeron, en 24 h si la sabes (20:30) o tal cual («8», «8:30 pm»).",
+      },
+      party_size: { type: "integer", description: "Cuántas personas dijeron." },
       reference_code: {
         type: "string",
         description: "Solo si dictaron un código de Mesita: sus 8 dígitos (ej. 48291057).",

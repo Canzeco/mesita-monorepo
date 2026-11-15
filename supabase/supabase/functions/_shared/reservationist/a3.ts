@@ -16,6 +16,9 @@
 // The old a3 (guests) and a4 (places) were two agents on two lines; one line
 // can answer with only one agent, so a callback to the wrong line failed.
 //
+// decision: a place's lookup is forgiving (MESITA-3956): name (misheard is
+// fine), day, hour and party size each weigh in, best match first, read back
+// once to confirm (_shared/reservation-search.ts).
 // decision: lookups go by the name typed on the reservation (MESITA-3615); a
 // dictated code is looked up by a4_find_reservation within the caller's place,
 // never by the global get_reservation (MESITA-3622).
@@ -48,7 +51,7 @@ export const A3: FleetAgent = {
     `## Tu papel: contestas la línea de Mesita`,
     `- Te llaman comensales y restaurantes al mismo número. Sabes quién es por el número desde el que llama; no le pides datos para saberlo.`,
     `- A un comensal: le lees sus reservaciones y cancelas una suya si lo pide; cambiar día, hora, personas o lugar se hace en la app de Mesita.`,
-    `- A un restaurante: le lees sus reservaciones próximas, buscas una por el nombre al que está (o por el código si lo dictan) y cancelas una suya si ya no puede recibirla; Mesita le avisa al comensal. Dejar de recibir reservaciones o cambiar el número al que llama Mesita se hace en Business › Reservations.`,
+    `- A un restaurante: le lees sus reservaciones próximas, buscas una con lo que te digan (el nombre al que está, aunque se oiga mal, el día, la hora, las personas, o el código si lo dictan) y cancelas una suya si ya no puede recibirla; Mesita le avisa al comensal. Dejar de recibir reservaciones o cambiar el número al que llama Mesita se hace en Business › Reservations.`,
     `- Si el número no es de nadie en Mesita, solo puedes leer una reservación por su código de 8 dígitos.`,
     `- Nunca das el teléfono de un comensal.`,
   ],
@@ -65,7 +68,7 @@ export const A3: FleetAgent = {
           "Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú eres Mesita; nunca hables como si fueras el restaurante.",
           "Salúdalo por su nombre (place.name), por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?». Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.",
           "Si el resultado también trae guest (el número es de un restaurante y de un comensal) y no queda claro, pregunta una sola vez si llama por su restaurante o por una reservación suya.",
-          "Luego toma la rama de lo que pidan. Para cancelar o revisar UNA reservación (por el nombre al que está o por su código), primero se busca: toma la rama de búsqueda; no respondas sin buscar.",
+          "Luego toma la rama de lo que pidan. Para cancelar o revisar UNA reservación (por el nombre al que está, el día, la hora, las personas o su código), primero se busca: toma la rama de búsqueda; no respondas sin buscar.",
         ].join("\n"),
         edgeOrder: ["e_tp_upcoming", "e_tp_find", "e_tp_redirect", "e_tp_own"],
       }),
@@ -92,14 +95,14 @@ export const A3: FleetAgent = {
         label: "Place · present matches",
         position: pos(1280, -320),
         prompt:
-          "Presenta lo que encontró la búsqueda: a nombre de quién, fecha, hora, personas y estado. Si no hubo coincidencias, dilo una vez y ofrece buscar otro nombre; no confirmes ni niegues reservaciones de otros lugares. Si quieren cancelar una (o ya lo pidieron al llamar), toma la rama de cancelar; no vuelvas a buscar la misma. Si solo era consulta, despídete.",
+          "La búsqueda regresa las más parecidas, la mejor primero. Léeles la primera para confirmar que es esa: a nombre de quién, fecha, hora y personas, en una frase («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si dicen que no y hay otra, lee la siguiente. Si no hubo coincidencias, dilo una vez y pide otro dato (otro nombre, el día o la hora); no confirmes ni niegues reservaciones de otros lugares. Si quieren cancelar una (o ya lo pidieron al llamar), toma la rama de cancelar; no vuelvas a buscar la misma. Si solo era consulta, despídete.",
         edgeOrder: ["e_pfd_cancel", "e_pfd_end"],
       }),
       place_confirm_cancel: talkNode({
         label: "Place · confirm cancellation",
         position: pos(1600, -400),
         prompt:
-          "Confirma una sola vez cuál cancelan (a nombre de quién, fecha y hora); el código lo tomas tú de los resultados. Solo con un sí claro toma la rama de cancelar.",
+          "Si ya confirmaron cuál es y pidieron cancelarla, no vuelvas a preguntar: toma la rama de cancelar. Si no, confirma una sola vez cuál cancelan (a nombre de quién, fecha y hora). El código lo tomas tú de los resultados. Solo con un sí claro toma la rama de cancelar.",
         edgeOrder: ["e_pcc_do"],
       }),
       place_do_cancel: toolNode(tool("a4_cancel_reservation"), pos(1920, -400), ["e_pdc_done"]),
@@ -184,7 +187,7 @@ export const A3: FleetAgent = {
         "triage_place",
         "place_find",
         llm(
-          "Hablan de UNA reservación concreta — para cancelarla, revisarla o confirmarla — por el nombre al que está o por un código de 8 dígitos. Cancelar empieza aquí: primero se busca.",
+          "Hablan de UNA reservación concreta — para cancelarla, revisarla o confirmarla — por el nombre al que está, el día, la hora, las personas o un código de 8 dígitos. Cancelar empieza aquí: primero se busca.",
           "find or cancel one",
         ),
         RESULT_FAIL,
@@ -227,7 +230,7 @@ export const A3: FleetAgent = {
         "place_find",
         "place_found",
         RESULT_OK,
-        llm("Dieron OTRO nombre u otro código, distinto del que ya se buscó.", "search another name"),
+        llm("Dieron OTRO dato (otro nombre, día, hora, personas o código), distinto de lo que ya se buscó.", "search again"),
       ),
       e_pfd_cancel: edge(
         "place_found",
