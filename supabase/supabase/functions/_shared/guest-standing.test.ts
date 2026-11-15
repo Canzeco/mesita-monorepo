@@ -31,7 +31,7 @@ Deno.test("guest row: name falls back, the handle shows only when proved, plain 
       guestClassSetByEmail: null,
       guestClassNote: null,
       reservationCapOverride: null,
-      planReservationCap: 2,
+      planReservationCap: 3,
       vipPartnerId: null,
       vipUntil: null,
       createdAt: "2026-10-21T00:00:00Z",
@@ -92,7 +92,7 @@ Deno.test("guest row: the reservation cap override and the plan's cap (MESITA-25
   const pro = toGuestRow({ id: ID, plan: "premium", reservation_cap_override: 50 });
   assertEquals([pro.reservationCapOverride, pro.planReservationCap], [50, 10]);
   const odd = toGuestRow({ id: ID, plan: "free", reservation_cap_override: "50" });
-  assertEquals([odd.reservationCapOverride, odd.planReservationCap], [null, 2]);
+  assertEquals([odd.reservationCapOverride, odd.planReservationCap], [null, 3]);
 });
 
 /** The code a refused body comes back with. */
