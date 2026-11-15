@@ -36,7 +36,7 @@ function PlaceRowSkeleton() {
 /** Places 3.0 while its pool loads: four rows, about a screen of them. */
 export function RowFallback() {
   return (
-    <div className="pb-6" aria-busy>
+    <div aria-busy>
       <ul aria-hidden className={ROW_LIST}>
         {Array.from({ length: 4 }, (_, i) => (
           <PlaceRowSkeleton key={i} />
