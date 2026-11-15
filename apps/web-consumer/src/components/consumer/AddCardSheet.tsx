@@ -85,7 +85,9 @@ export function AddCardSheet({
             },
           },
         });
-        const element = elements.create("payment", { layout: "tabs" });
+        // Cards only (MESITA-4093): Link would add its own "Bank" tab
+        // (US banks) and email/phone boxes even on a cards-only SetupIntent.
+        const element = elements.create("payment", { layout: "tabs", wallets: { link: "never" } });
         if (!mountRef.current) return;
         element.mount(mountRef.current);
         element.on("change", () => setInlineError(null));
