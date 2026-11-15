@@ -6,9 +6,9 @@
 // Activity tab and its chips (MESITA-3631, MESITA-3697, MESITA-3769) until
 // Activity left the bar; each is a page under Me now, wearing Screen:
 //
-//   /me/notifications   events: NotificationsList under day headings, with
-//                       the next confirmed reservation within a day above
-//                       it as a "Next up" ticket
+//   /me/notifications   events: NotificationsList, one size of row; the
+//                       big "Next up" ticket above it left in MESITA-4053
+//                       (a booking row's View opens the reservation)
 //   /me/reservations    Upcoming, then Past
 //   /me/tickets         every ticket under the day it happened, newest
 //                       first; a waiter's bill still open sits above them in
@@ -82,7 +82,6 @@ import {
 /** Each reservations read brings at most this many (the EF's cap). */
 const RESERVATIONS_PAGE = 100;
 const TTL = 2 * 60 * 1000;
-const DAY_MS = 86_400_000;
 
 // ─── Reservations ───────────────────────────────────────────────────────────
 
@@ -244,28 +243,14 @@ const ICON: Record<ListType | "all", LucideIcon> = {
   refunds: HandCoins,
 };
 
-/** /me/notifications: what Mesita told you, the next table on top. */
+/** /me/notifications: what Mesita told you, every row one size (MESITA-4053,
+ *  Pato 2026-11-15: "don't put a normal notification like that big one …
+ *  keep standard size notifications with view button"). The "Next up"
+ *  reservation card that led the page stays on Reservations only. */
 export function NotificationsPage() {
-  const reservations = useReservations();
-  const nextUp =
-    (reservations.rows
-      ? ordered(reservations.rows).upcoming.find(
-          (r) =>
-            r.status.label === stateMeta("confirmed").label &&
-            r.at &&
-            Date.parse(r.at) - reservations.nowMs < DAY_MS,
-        )
-      : null) ?? null;
   return (
     <MeScreen title="Notifications">
-      <div className="flex flex-col gap-4">
-        {nextUp ? (
-          <ActivityRows>
-            <ActivityRow t={{ ...nextUp, label: "Next up" }} />
-          </ActivityRows>
-        ) : null}
-        <NotificationsList quietEmpty={!!nextUp} />
-      </div>
+      <NotificationsList />
     </MeScreen>
   );
 }
@@ -523,7 +508,10 @@ function TicketList({
     list.length ? (
       <section className={cn(!first && "mt-6")}>
         {title ? (
-          <h2 className="text-muted-foreground type-eyebrow mb-2">{title}</h2>
+          // Wallet's 16px heading (MESITA-4052's SectionBox), not an eyebrow.
+          <h2 className="font-display mb-2 text-base font-semibold tracking-tight">
+            {title}
+          </h2>
         ) : null}
         <ActivityRows>
           {list.map((r) => (

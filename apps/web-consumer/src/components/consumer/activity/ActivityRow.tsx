@@ -84,15 +84,25 @@ const TONE: Record<StatusTone, string> = {
   grey: "text-muted-foreground",
 };
 
-/** A list's rows, FULL WIDTH ON WHITE (MESITA-4000, Pato: "just a list …
- *  and occupy full width", the Instagram way): no card, no border, the rows
- *  run to the screen's edges (out of Screen's 20px body padding). They sat
- *  in one white card per day group until then. */
-export function ActivityRows({ children }: { children: React.ReactNode }) {
+/** The box every Me list sits in: Wallet's list box (WalletLists.tsx),
+ *  a hairline between rows (Pato, 2026-11-14: "maybe add gray lines to
+ *  separate events"). */
+export const LIST_BOX_CLASS =
+  "border-border bg-card divide-border overflow-hidden rounded-2xl border divide-y";
+
+/** A list's rows IN ONE BOX (MESITA-4053, Pato 2026-11-15: "put sections
+ *  into boxes"; decision 1B, like Wallet's lists): the page margin around
+ *  it, the rows' own 16px inside. MESITA-4000 had run them full width on
+ *  white to the screen's edges. */
+export function ActivityRows({
+  children,
+  ...data
+}: {
+  children: React.ReactNode;
+  [key: `data-${string}`]: boolean | string | undefined;
+}) {
   return (
-    // GREY LINES BETWEEN EVENTS (Pato, 2026-11-14: "maybe add gray lines to
-    // separate events"): a hairline under each row, full width.
-    <ul className="divide-border -mx-5 divide-y" data-activity>
+    <ul className={LIST_BOX_CLASS} data-activity {...data}>
       {children}
     </ul>
   );
@@ -177,7 +187,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
       ) : null}
     </>
   );
-  const cls = "flex items-center gap-3 px-5 py-3";
+  const cls = "flex items-center gap-3 px-4 py-3";
   return (
     <li>
       {t.href ? (
@@ -201,7 +211,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
         <div className={cls}>{body}</div>
       )}
       {t.action ? (
-        <div className="px-5 pb-3">
+        <div className="px-4 pb-3">
           <PushLink
             href={t.action.href}
             className="bg-foreground text-background flex h-11 items-center justify-center rounded-full text-sm font-semibold transition hover:opacity-90"
@@ -214,12 +224,12 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
   );
 }
 
-/** Three rows' bones, full width like the rows. */
+/** Three rows' bones, INSIDE the list box (decision 2A). */
 export function ActivityRowsSkeleton() {
   return (
-    <div className="-mx-5" aria-busy>
+    <div className={LIST_BOX_CLASS} aria-busy>
       {[0, 1, 2].map((i) => (
-        <div key={i} className="flex items-center gap-3 px-5 py-3" aria-hidden>
+        <div key={i} className="flex items-center gap-3 px-4 py-3" aria-hidden>
           <Skeleton className="h-10 w-10 rounded-full" />
           <div className="flex-1">
             <Skeleton className="h-4 w-40" />

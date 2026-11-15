@@ -1,7 +1,12 @@
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import type { ConsumerNotification } from "@/lib/api/notifications";
 import { money } from "@/lib/api/wallet";
-import { CONSUMER_ROUTES, isRouteId, walletPlacePath } from "@/lib/consumer-route-contract";
+import {
+  CONSUMER_ROUTES,
+  isRouteId,
+  reservationPath,
+  walletPlacePath,
+} from "@/lib/consumer-route-contract";
 import { timeAgo } from "@/lib/time-ago";
 import { cn } from "@/lib/utils";
 
@@ -71,7 +76,7 @@ function outcomeSentence(outcome: string | null): string {
  *  notification for references"): the place's round photo, then one
  *  sentence with the place in bold and how long ago in grey at its end
  *  ("Taquería Orinoco confirmed your table. 2h"), then a small grey button
- *  when the row leads somewhere. Full width on white, no card, no day
+ *  when the row leads somewhere. In the list box since MESITA-4053; no day
  *  heading. A credit row opens that place's House Card, where the credit now
  *  reads Available (the Wallet when it names no place). It was an Activity
  *  row with the time on the right until MESITA-4000. */
@@ -83,11 +88,17 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
   const sentence = credit
     ? `· ${creditReadyLabel(n.payload)}.`
     : outcomeSentence(payloadString(n.payload, "outcome"));
+  // A booking row opens its reservation (MESITA-4053, decision 2B: the
+  // "Next up" card left Notifications, so "confirmed your table" carries
+  // View, as the ready-to-spend rows do).
+  const reservationId = payloadString(n.payload, "reservation_id");
   const href = credit
     ? isRouteId(placeId)
       ? walletPlacePath(placeId)
       : CONSUMER_ROUTES.wallet
-    : undefined;
+    : isRouteId(reservationId)
+      ? reservationPath(reservationId)
+      : undefined;
   const when = timeAgo(n.created_at);
   const body = (
     <>
@@ -108,7 +119,7 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
       ) : null}
     </>
   );
-  const cls = "flex items-center gap-3 px-5 py-2.5";
+  const cls = "flex items-center gap-3 px-4 py-2.5";
   return (
     <li>
       {href ? (
