@@ -54,19 +54,12 @@ import {
   type EFReservationRow,
 } from "@/lib/api/reservations";
 import { apiListVisits } from "@/lib/api/tab";
-import {
-  apiGetWallet,
-  WALLET_CACHE_KEY,
-  type Wallet,
-} from "@/lib/api/wallet";
+import { apiGetWallet, WALLET_CACHE_KEY, type Wallet } from "@/lib/api/wallet";
 import {
   CONSUMER_ROUTES,
   reservationPath,
 } from "@/lib/consumer-route-contract";
-import {
-  ticketsHref,
-  type TicketKind,
-} from "@/lib/ticket-kinds";
+import { ticketsHref, type TicketKind } from "@/lib/ticket-kinds";
 import { reportError } from "@/lib/report-error";
 import { stateMeta } from "@/lib/reservation-state";
 import { toReservationItem } from "@/lib/reservations-adapter";
@@ -222,7 +215,11 @@ type TicketTab = "visits" | "vouchers" | "gifts" | "refunds";
 // the ones the page's empty states already wear. Gifts became Gifts-In and
 // Gifts-Out (MESITA-3941), hyphenated (MESITA-3949, Pato: "use \"-\""), and
 // one Gifts again (MESITA-4036).
-const TICKET_TABS: ReadonlyArray<{ kind: TicketTab; label: string; icon: LucideIcon }> = [
+const TICKET_TABS: ReadonlyArray<{
+  kind: TicketTab;
+  label: string;
+  icon: LucideIcon;
+}> = [
   { kind: "visits", label: "Visits", icon: UtensilsCrossed },
   { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
   { kind: "gifts", label: "Gifts", icon: Gift },
@@ -233,7 +230,8 @@ const TICKET_TABS: ReadonlyArray<{ kind: TicketTab; label: string; icon: LucideI
 function ticketTabOf(seg: string | undefined): TicketTab {
   if (seg === "vouchers") return "vouchers";
   if (seg === "refunds") return "refunds";
-  if (seg === "gifts" || seg === "gifts-in" || seg === "gifts-out") return "gifts";
+  if (seg === "gifts" || seg === "gifts-in" || seg === "gifts-out")
+    return "gifts";
   return "visits";
 }
 
@@ -511,11 +509,7 @@ function TicketList({
   }
   if (rows.length === 0) {
     return empty ? (
-      <EmptyState
-        icon={Icon}
-        title={empty.title}
-        action={empty.action}
-      />
+      <EmptyState icon={Icon} title={empty.title} action={empty.action} />
     ) : (
       <EmptyState
         icon={Icon}
@@ -623,7 +617,13 @@ function SubpageTabs<K extends string>({
                 className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-600"
               />
             ) : null}
-            {t.icon ? <t.icon className="h-4 w-4 shrink-0" strokeWidth={chosen ? 2.25 : 2} aria-hidden /> : null}
+            {t.icon ? (
+              <t.icon
+                className="h-4 w-4 shrink-0"
+                strokeWidth={chosen ? 2.25 : 2}
+                aria-hidden
+              />
+            ) : null}
             {t.label}
           </button>
         );
@@ -653,7 +653,7 @@ function TicketPills({
     <nav
       ref={rail}
       aria-label="Kinds of ticket"
-      className="scrollbar-hide -mx-5 flex shrink-0 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain scroll-px-5 px-5"
+      className="scrollbar-hide -mx-5 flex shrink-0 scroll-px-5 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-5"
       data-ticket-pills
     >
       {TICKET_TABS.map((t) => {
