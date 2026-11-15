@@ -8,7 +8,6 @@ import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
 import { GuestPayScreen } from "./GuestPayScreen";
-import { CloseX } from "./pay-flow";
 import { PayFormSheet } from "./PayForm";
 import { writeOpenTabId } from "./pay-common";
 import { TabView, type TabStart } from "./TabView";
@@ -60,10 +59,10 @@ export function PayTabScreen({ start }: { start: TabStart }) {
   return (
     <Screen
       title="Pay"
-      onBack={back}
-      // MESITA-3997: always the X, loading included, so the header never
-      // swaps; with no step's own close it is Back.
-      lead={<CloseX onClick={() => (hasClose ? close.current?.() : back())} label="Close" />}
+      // MESITA-4068 (Pato: "header on its own < pay"): the header's boxed ‹
+      // leaves, keeping the draft, as the X did (MESITA-3880); the step nav's
+      // own ‹ steps back. With no step's own close it is Back.
+      onBack={() => (hasClose ? close.current?.() : back())}
       flush
       paper
     >
