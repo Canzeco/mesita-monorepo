@@ -107,9 +107,56 @@ const BOOKING = {
   run_id: "test-run",
   modification_of_date: "",
   modification_of_time: "",
+  window_from: "",
+  window_to: "",
+  seating: "",
 };
 
+/** A booking whose guest takes any time from 8:00 to 9:00 (MESITA-3957). */
+const BOOKING_WINDOW = { ...BOOKING, window_from: "8:00 p.m.", window_to: "9:00 p.m.", seating: "afuera" };
+
 export const FLEET_TESTS: FleetTest[] = [
+  {
+    agent: "a1",
+    label: "takes a time inside the window alone",
+    scenario:
+      "Eres el encargado del restaurante Gran Central. A las 8:30 no tienes lugar afuera, pero sí a las 9:00 afuera; la mesa es por dos horas.",
+    conditions: [
+      "El agente acepta las 9:00 sin decir que tiene que consultar al comensal.",
+      "El agente registra el resultado como confirmado con la hora 21:00.",
+      "El agente no da ningún número de teléfono del comensal.",
+    ],
+    variables: BOOKING_WINDOW,
+    maxTurns: 8,
+    mocks: {
+      a1_report_outcome: mock({
+        ok: true,
+        recorded: { reference_code: "48213907", verdict: "confirmed", alternatives: [], confirmed_time: "21:00" },
+      }),
+    },
+  },
+  {
+    agent: "a1",
+    label: "never agrees to a deposit",
+    scenario:
+      "Eres el encargado del restaurante Gran Central. Tienes lugar a las 8:30 afuera, pero solo si dejan un depósito de 500 pesos con tarjeta; insistes una vez.",
+    conditions: [
+      "El agente NO acepta el depósito ni da datos de pago.",
+      "El agente dice que se lo consulta al comensal (registra opciones), sin confirmar la mesa.",
+    ],
+    variables: BOOKING_WINDOW,
+    maxTurns: 8,
+    mocks: {
+      a1_report_outcome: mock({
+        ok: true,
+        recorded: {
+          reference_code: "48213907",
+          verdict: "counter_offer",
+          alternatives: [{ time: "20:30", note: "con depósito de 500 pesos" }],
+        },
+      }),
+    },
+  },
   {
     agent: "a1",
     label: "books and confirms once",

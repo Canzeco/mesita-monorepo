@@ -59,7 +59,7 @@ const SPECS: ToolSpec[] = [
       verdict: {
         type: "string",
         description:
-          "confirmed (aceptaron tal cual) · counter_offer (ofrecieron otras opciones) · declined (no hay lugar) · unreachable (nadie que reserve) · wrong_number (no es este restaurante).",
+          "confirmed (aceptaron tal cual o a una hora dentro del rango) · counter_offer (ofrecieron otras opciones) · declined (no hay lugar) · unreachable (nadie que reserve) · wrong_number (no es este restaurante).",
         enum: ["confirmed", "counter_offer", "declined", "unreachable", "wrong_number"],
       },
       // Structured, not prose: the guest's later pick is compared against
@@ -80,6 +80,16 @@ const SPECS: ToolSpec[] = [
         },
       },
       note: { type: "string", description: "Nota breve opcional sobre la llamada." },
+      confirmed_time: {
+        type: "string",
+        description:
+          "Solo con confirmed y si confirmaron otra hora dentro del rango que aceptó el comensal: la hora en 24 horas HH:mm. Vacío si confirmaron la hora pedida.",
+      },
+      terms: {
+        type: "string",
+        description:
+          "Solo con confirmed: condiciones que aceptaste, cortas («la mesa es por 2 horas», «tolerancia de 15 minutos»). Vacío si no hubo.",
+      },
     }),
   },
   {

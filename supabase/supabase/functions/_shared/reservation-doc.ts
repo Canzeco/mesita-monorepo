@@ -238,7 +238,25 @@ export type ReservationDoc = {
   /** The Reserve request that made this ticket (MESITA-3619); a retried
    *  create with the same id returns this ticket. Null on older tickets. */
   request_id: string | null;
+  /** How far from reserved_at a1 may take a time without asking (MESITA-3957):
+   *  0 exact · 30 · 60 minutes either side. */
+  time_window_minutes: TimeWindowMinutes;
+  /** Where the guest wants to sit (MESITA-3957). */
+  seating: Seating;
+  /** The time a1 got inside the window, reported mid-call; the confirmed
+   *  outcome moves reserved_at to it. Null = the asked time. */
+  reported_time: string | null;
+  /** What the place set and a1 accepted for the guest: a table time limit, a
+   *  tolerance rule (MESITA-3957). Shown to the guest. */
+  confirmed_terms: string | null;
 };
+
+export const TIME_WINDOW_VALUES = [0, 30, 60] as const;
+export type TimeWindowMinutes = typeof TIME_WINDOW_VALUES[number];
+/** decision: 30 minutes either side (MESITA-3957, Pato's call). */
+export const DEFAULT_TIME_WINDOW: TimeWindowMinutes = 30;
+export const SEATING_VALUES = ["any", "inside", "outside", "bar"] as const;
+export type Seating = typeof SEATING_VALUES[number];
 
 // Every field a patch may touch — everything except `id` (server-generated,
 // gen_random_uuid() default) and `created_at` (server-stamped, never
@@ -298,6 +316,10 @@ export const RESERVATION_PATCH_KEYS = [
   "guest_first_name",
   "guest_last_name",
   "request_id",
+  "time_window_minutes",
+  "seating",
+  "reported_time",
+  "confirmed_terms",
 ] as const satisfies readonly (keyof Omit<ReservationDoc, "id" | "created_at">)[];
 
 // Compile-time exhaustiveness check the other direction — same discipline
@@ -394,6 +416,7 @@ const CLOSED_SET_FIELDS: ReadonlyArray<
   ["cancelled_by", CANCELLED_BY_VALUES, true],
   ["consumer_notify", CONSUMER_NOTIFY_VALUES, false],
   ["reported_verdict", REPORTED_VERDICT_VALUES, true],
+  ["seating", new Set<string>(SEATING_VALUES), false],
 ];
 const REFERENCE_CODE_RE = /^\d{8}$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -481,6 +504,7 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
       "claimed_at",
       "modification_of",
       "reminder_at",
+      "reported_time",
     ] as const
   ) {
     if (!(key in raw)) continue;
@@ -489,6 +513,13 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
       return { ok: false, error: `${key} must be an ISO timestamp string or null` };
     }
     patch[key] = v;
+  }
+  if ("time_window_minutes" in raw) {
+    const v = raw.time_window_minutes;
+    if (!(TIME_WINDOW_VALUES as readonly unknown[]).includes(v)) {
+      return { ok: false, error: `time_window_minutes must be one of ${TIME_WINDOW_VALUES.join(", ")}` };
+    }
+    patch.time_window_minutes = v as TimeWindowMinutes;
   }
   if ("party_size" in raw) {
     const v = raw.party_size;
@@ -518,6 +549,7 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
       "run_id",
       "guest_first_name",
       "guest_last_name",
+      "confirmed_terms",
     ] as const
   ) {
     if (!(key in raw)) continue;

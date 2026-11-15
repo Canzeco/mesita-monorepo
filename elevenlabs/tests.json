@@ -1,5 +1,70 @@
 [
   {
+    "name": "mesita · a1 · takes a time inside the window alone",
+    "agent": "a1",
+    "label": "takes a time inside the window alone",
+    "scenario": "Eres el encargado del restaurante Gran Central. A las 8:30 no tienes lugar afuera, pero sí a las 9:00 afuera; la mesa es por dos horas.",
+    "conditions": [
+      "El agente acepta las 9:00 sin decir que tiene que consultar al comensal.",
+      "El agente registra el resultado como confirmado con la hora 21:00.",
+      "El agente no da ningún número de teléfono del comensal."
+    ],
+    "variables": {
+      "venue_name": "Gran Central",
+      "guest_name": "Ana López",
+      "reference_code": "48213907",
+      "party_size": 2,
+      "reservation_date": "sábado 21 de noviembre",
+      "reservation_time": "8:30 p.m.",
+      "special_requests": "",
+      "venue_notes": "",
+      "call_context": "booking",
+      "venue_alternatives": "",
+      "run_id": "test-run",
+      "modification_of_date": "",
+      "modification_of_time": "",
+      "window_from": "8:00 p.m.",
+      "window_to": "9:00 p.m.",
+      "seating": "afuera"
+    },
+    "maxTurns": 8,
+    "mocks": {
+      "a1_report_outcome": "{\"ok\":true,\"recorded\":{\"reference_code\":\"48213907\",\"verdict\":\"confirmed\",\"alternatives\":[],\"confirmed_time\":\"21:00\"}}"
+    }
+  },
+  {
+    "name": "mesita · a1 · never agrees to a deposit",
+    "agent": "a1",
+    "label": "never agrees to a deposit",
+    "scenario": "Eres el encargado del restaurante Gran Central. Tienes lugar a las 8:30 afuera, pero solo si dejan un depósito de 500 pesos con tarjeta; insistes una vez.",
+    "conditions": [
+      "El agente NO acepta el depósito ni da datos de pago.",
+      "El agente dice que se lo consulta al comensal (registra opciones), sin confirmar la mesa."
+    ],
+    "variables": {
+      "venue_name": "Gran Central",
+      "guest_name": "Ana López",
+      "reference_code": "48213907",
+      "party_size": 2,
+      "reservation_date": "sábado 21 de noviembre",
+      "reservation_time": "8:30 p.m.",
+      "special_requests": "",
+      "venue_notes": "",
+      "call_context": "booking",
+      "venue_alternatives": "",
+      "run_id": "test-run",
+      "modification_of_date": "",
+      "modification_of_time": "",
+      "window_from": "8:00 p.m.",
+      "window_to": "9:00 p.m.",
+      "seating": "afuera"
+    },
+    "maxTurns": 8,
+    "mocks": {
+      "a1_report_outcome": "{\"ok\":true,\"recorded\":{\"reference_code\":\"48213907\",\"verdict\":\"counter_offer\",\"alternatives\":[{\"time\":\"20:30\",\"note\":\"con depósito de 500 pesos\"}]}}"
+    }
+  },
+  {
     "name": "mesita · a1 · books and confirms once",
     "agent": "a1",
     "label": "books and confirms once",
@@ -23,7 +88,10 @@
       "venue_alternatives": "",
       "run_id": "test-run",
       "modification_of_date": "",
-      "modification_of_time": ""
+      "modification_of_time": "",
+      "window_from": "",
+      "window_to": "",
+      "seating": ""
     },
     "maxTurns": 6,
     "mocks": {
@@ -53,7 +121,10 @@
       "venue_alternatives": "",
       "run_id": "test-run",
       "modification_of_date": "",
-      "modification_of_time": ""
+      "modification_of_time": "",
+      "window_from": "",
+      "window_to": "",
+      "seating": ""
     },
     "maxTurns": 8,
     "mocks": {
@@ -82,7 +153,10 @@
       "venue_alternatives": "",
       "run_id": "test-run",
       "modification_of_date": "",
-      "modification_of_time": ""
+      "modification_of_time": "",
+      "window_from": "",
+      "window_to": "",
+      "seating": ""
     },
     "maxTurns": 8,
     "mocks": {
@@ -111,7 +185,10 @@
       "venue_alternatives": "",
       "run_id": "test-run",
       "modification_of_date": "",
-      "modification_of_time": ""
+      "modification_of_time": "",
+      "window_from": "",
+      "window_to": "",
+      "seating": ""
     },
     "maxTurns": 6,
     "mocks": {
@@ -140,7 +217,10 @@
       "venue_alternatives": "",
       "run_id": "test-run",
       "modification_of_date": "",
-      "modification_of_time": ""
+      "modification_of_time": "",
+      "window_from": "",
+      "window_to": "",
+      "seating": ""
     },
     "maxTurns": 8,
     "mocks": {
@@ -170,7 +250,10 @@
       "venue_alternatives": "las 9:30 p.m. en la terraza, o las 7:00 p.m. adentro",
       "run_id": "test-run",
       "modification_of_date": "",
-      "modification_of_time": ""
+      "modification_of_time": "",
+      "window_from": "",
+      "window_to": "",
+      "seating": ""
     },
     "maxTurns": 8,
     "mocks": {
@@ -199,7 +282,10 @@
       "venue_alternatives": "las 9:30 p.m.",
       "run_id": "test-run",
       "modification_of_date": "",
-      "modification_of_time": ""
+      "modification_of_time": "",
+      "window_from": "",
+      "window_to": "",
+      "seating": ""
     },
     "maxTurns": 6
   },

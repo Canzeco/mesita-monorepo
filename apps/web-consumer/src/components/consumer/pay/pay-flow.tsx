@@ -167,16 +167,15 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
  *  segment. */
 export const PAY_FLOW_STEPS = ["Bill", "Tip", "Method", "Pay", "Sign"] as const;
 
-/** A step's body (MESITA-4061, Pato: "all the things of the body must be
- *  vertically aligned, not only horizontally"): one group, centred both ways
- *  in the space between the step nav and the footer. `my-auto` (never
- *  justify-center) so a group taller than the screen scrolls from its top
- *  instead of being clipped; the footer never moves. Its panels sit 16px
- *  apart (MESITA-4072). */
+/** A step's body: its panels stacked FROM THE TOP, 16px apart, the empty
+ *  room below them (MESITA-4077, Pato: "why is the bill box so separated
+ *  from the steps box. optimize vertical space a lot"; MESITA-4061 had
+ *  centred the group both ways). Scrolls when taller than the screen; the
+ *  footer never moves. */
 export function StepBody({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className="-mx-4 flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
-      <div className={cn("my-auto flex w-full flex-col items-center gap-4 py-4 text-center", className)}>{children}</div>
+      <div className={cn("flex w-full flex-col items-stretch gap-4 py-4 text-center", className)}>{children}</div>
     </div>
   );
 }

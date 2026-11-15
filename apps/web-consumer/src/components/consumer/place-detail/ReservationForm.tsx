@@ -9,6 +9,11 @@ import {
   ReservationDatePicker,
   ReservationPartyPicker,
   ReservationNotifyPicker,
+  ReservationSeatingPicker,
+  ReservationWindowPicker,
+  DEFAULT_TIME_WINDOW,
+  type ReservationSeating,
+  type ReservationTimeWindow,
   ReservationTimePicker,
   type ReservationNotify,
 } from "@/components/consumer/reservation-pickers";
@@ -128,6 +133,8 @@ export function ReservationForm({
   const [notes, setNotes] = useState("");
   // App only by default (MESITA-3961): a call is something the guest asks for.
   const [notify, setNotify] = useState<ReservationNotify>("app");
+  const [timeWindow, setTimeWindow] = useState<ReservationTimeWindow>(DEFAULT_TIME_WINDOW);
+  const [seating, setSeating] = useState<ReservationSeating>("any");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -228,8 +235,10 @@ export function ReservationForm({
           guestNotify: notify,
           firstName,
           lastName,
+          timeWindowMinutes: timeWindow,
+          seating,
           requestId: requestIdFor(
-            [place.id, reservedAt, party, notes.trim(), firstName.trim(), lastName.trim(), notify].join("|"),
+            [place.id, reservedAt, party, notes.trim(), firstName.trim(), lastName.trim(), notify, timeWindow, seating].join("|"),
           ),
         });
       }
@@ -343,6 +352,9 @@ export function ReservationForm({
           </div>
         </div>
       )}
+
+      {!rescheduling && <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} />}
+      {!rescheduling && <ReservationSeatingPicker value={seating} onChange={setSeating} />}
 
       <div className="mt-4">
         <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">

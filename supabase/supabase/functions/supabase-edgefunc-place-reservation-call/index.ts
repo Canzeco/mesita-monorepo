@@ -80,7 +80,7 @@ import {
 } from "../_shared/reservations-config.ts";
 import { reservationAgentId, resolveElevenLabsKey } from "../_shared/elevenlabs.ts";
 import { alternativesToSpeech, normalizeAlternatives } from "../_shared/reservation-alternatives.ts";
-import type { ReservationLegVars } from "../_shared/reservation-legs.ts";
+import { type ReservationLegVars, seatingEs, windowEdges } from "../_shared/reservation-legs.ts";
 import {
   type ReservationAttempt,
   type ReservationPatch,
@@ -434,6 +434,8 @@ async function launchBook(ctx: LaunchCtx): Promise<Response> {
     // A stale verdict from a previous negotiation round must never be read
     // as this run's outcome — and a new errand starts a fresh guest ladder.
     reported_verdict: null,
+    reported_time: null,
+    confirmed_terms: null,
     // 'running' spans dialing AND the placed call; the id is set only once
     // this run's call is placed (reservation-call-outcome.ts joins on it).
     last_conversation_id: null,
@@ -534,7 +536,7 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, consumer_id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, reported_verdict, guest_first_name, guest_last_name, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, consumer_id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, reported_verdict, guest_first_name, guest_last_name, time_window_minutes, seating, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -699,6 +701,13 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
     modificationOf: modificationOfIso
       ? { dateEs: esDate(modificationOfIso, placeTz), timeEs: esTime(modificationOfIso, placeTz) }
       : null,
+    // MESITA-3957: what a1 may take alone. A move or a guest's own pick asks
+    // the exact time (the guest already chose it).
+    ...(() => {
+      const edges = modificationOfIso ? null : windowEdges(r.reserved_at, r.time_window_minutes);
+      return edges ? { windowFromEs: esTime(edges.from, placeTz), windowToEs: esTime(edges.to, placeTz) } : {};
+    })(),
+    seatingEs: seatingEs(r.seating),
   };
 
   return LAUNCH[intent]({

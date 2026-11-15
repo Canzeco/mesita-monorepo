@@ -58,6 +58,10 @@ export function apiCreateReservation(
     /** One uuid per Reserve request; a retry reuses it and gets the same
      *  ticket back (MESITA-3619). */
     requestId?: string;
+    /** MESITA-3957: minutes either side the agent may take alone. */
+    timeWindowMinutes?: 0 | 30 | 60;
+    /** MESITA-3957: where the guest wants to sit. */
+    seating?: "any" | "inside" | "outside" | "bar";
   },
 ): Promise<CreatedReservation> {
   const notes = args.notes?.trim();
@@ -74,6 +78,8 @@ export function apiCreateReservation(
         first_name: args.firstName.trim(),
         last_name: args.lastName.trim(),
         ...(args.requestId ? { request_id: args.requestId } : {}),
+        ...(args.timeWindowMinutes !== undefined ? { time_window_minutes: args.timeWindowMinutes } : {}),
+        ...(args.seating ? { seating: args.seating } : {}),
       },
       "Couldn't create the reservation",
     ),

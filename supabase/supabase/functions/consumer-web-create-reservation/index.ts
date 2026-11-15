@@ -6,7 +6,9 @@
 // Body:
 //   { project_id: uuid, reserved_at: iso8601, party_size: int, notes?: string,
 //     consumer_notify?: "call" | "app",  // default "call" (MESITA-787)
-//     request_id?: uuid }                 // one per Reserve request (MESITA-3619)
+//     request_id?: uuid,                  // one per Reserve request (MESITA-3619)
+//     time_window_minutes?: 0|30|60,      // default 30 (MESITA-3957)
+//     seating?: "any"|"inside"|"outside"|"bar" }  // default any
 //
 // Response:
 //   { ok: true, reservation: {…}, call_triggered, replayed? }
@@ -37,7 +39,14 @@ import {
   guardCreate,
   readRequestId,
 } from "../_shared/reservation-create.ts";
-import { writeReservation } from "../_shared/reservation-doc.ts";
+import {
+  DEFAULT_TIME_WINDOW,
+  type Seating,
+  SEATING_VALUES,
+  TIME_WINDOW_VALUES,
+  type TimeWindowMinutes,
+  writeReservation,
+} from "../_shared/reservation-doc.ts";
 import { DEFAULT_ZONE, zoneMonthStart } from "../_shared/local-time.ts";
 import {
   PLACE_CLOSED_CODE,
@@ -71,10 +80,14 @@ type Body = {
   last_name?: string;
   consumer_notify?: string;
   request_id?: string;
+  /** MESITA-3957: 0 · 30 · 60; older clients omit it and get the default. */
+  time_window_minutes?: number;
+  /** MESITA-3957: any · inside · outside · bar. */
+  seating?: string;
 };
 
 const TICKET_COLUMNS =
-  "id, reference_code, reserved_at, party_size, state, notes, consumer_notify, created_at, place_id";
+  "id, reference_code, reserved_at, party_size, state, notes, consumer_notify, created_at, place_id, time_window_minutes, seating";
 
 serveJson("consumer-web-create-reservation", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -111,6 +124,16 @@ serveJson("consumer-web-create-reservation", async (req) => {
     return json({ ok: false, error: `party_size must be 1..${MAX_PARTY}` }, 400);
   }
   const guestNotify = body.consumer_notify === "app" ? "app" : "call";
+  const timeWindow = body.time_window_minutes === undefined || body.time_window_minutes === null
+    ? DEFAULT_TIME_WINDOW
+    : body.time_window_minutes;
+  if (!(TIME_WINDOW_VALUES as readonly unknown[]).includes(timeWindow)) {
+    return json({ ok: false, error: `time_window_minutes must be one of ${TIME_WINDOW_VALUES.join(", ")}` }, 400);
+  }
+  const seating = body.seating === undefined || body.seating === null ? "any" : body.seating;
+  if (!(SEATING_VALUES as readonly unknown[]).includes(seating)) {
+    return json({ ok: false, error: `seating must be one of ${SEATING_VALUES.join(", ")}` }, 400);
+  }
   const requestId = readRequestId(body.request_id);
   const reservedAtIso = reservedAt.toISOString();
 
@@ -337,6 +360,8 @@ serveJson("consumer-web-create-reservation", async (req) => {
         guest_first_name: firstName,
         guest_last_name: lastName,
         request_id: requestId,
+        time_window_minutes: timeWindow as TimeWindowMinutes,
+        seating: seating as Seating,
         ...createdTicketSchedule(),
       },
       select: TICKET_COLUMNS,

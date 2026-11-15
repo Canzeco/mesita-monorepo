@@ -32,7 +32,7 @@ import { FLEET_TESTS } from "./tests.ts";
 export const FLEET: FleetAgent[] = [A1, A2, A3];
 
 /** Knowledge content version — rides in every doc name (a1-kb-v9 …). */
-export const KB_VERSION = 10;
+export const KB_VERSION = 11;
 
 export function kbDocName(key: FleetAgentKey): string {
   return `${key}-kb-v${KB_VERSION}`;

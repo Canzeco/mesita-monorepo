@@ -10,11 +10,19 @@ import { cn } from "@/lib/utils";
 // (MESITA-4052/4053), the heading above its box, is retired. Panels stack
 // 16px apart; the caller spaces them (Wallet's `mt-4`, Me's `gap-4`).
 
-export const PANEL_CLASS = "border-border bg-card overflow-hidden rounded-2xl border";
+// shrink-0 (MESITA-4078): in a flex-column scroller a panel must never be
+// squeezed when something above it (the bill band) takes height; it was,
+// and the Wallet's four buttons were cut by the panel's border.
+export const PANEL_CLASS =
+  "border-border bg-card shrink-0 overflow-hidden rounded-2xl border";
 
 /** A section's heading, inside its panel: 16px display, never an eyebrow. */
 export function PanelHeading({ children }: { children: ReactNode }) {
-  return <h2 className="font-display text-base font-semibold tracking-tight">{children}</h2>;
+  return (
+    <h2 className="font-display text-base font-semibold tracking-tight">
+      {children}
+    </h2>
+  );
 }
 
 /** One section: the heading (with an optional control on its right) in its
@@ -33,7 +41,11 @@ export function Panel({
   [key: `data-${string}`]: string | boolean | undefined;
 }) {
   return (
-    <section className={cn(PANEL_CLASS, className)} aria-label={title} {...data}>
+    <section
+      className={cn(PANEL_CLASS, className)}
+      aria-label={title}
+      {...data}
+    >
       {title || action ? (
         <div className="flex min-h-6 items-center justify-between gap-3 px-4 pt-4">
           {title ? <PanelHeading>{title}</PanelHeading> : <span />}
