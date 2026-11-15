@@ -17,12 +17,13 @@
 // its own copy of RESERVATION_LIMIT_MESSAGE; change the two together.
 
 /** Reservations a month, by stored plan value. */
-// Free 2, Pro 10 (Pato, 2026-11-14, MESITA-3870: "2 Reservations per month is
+// Free 3, Pro 10 (Pato, 2026-11-15, MESITA-4030: "Increase reservation per month
+// from 2 to 3", reservation TICKETS; was 2 under MESITA-3870: "2 Reservations per month is
 // Free. 10 Reservations per month if Pro."). Pro is paid ($2/month,
 // _shared/guest-plan.ts); the caller passes the plan that applies NOW
 // (effectivePlan), not the stored column.
 export const RESERVATION_CAP_BY_PLAN = {
-  free: 2,
+  free: 3,
   premium: 10,
 } as const;
 

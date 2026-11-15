@@ -144,7 +144,7 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     href: CONSUMER_ROUTES.mePages.class,
   },
   // PLAN IS SOLD AGAIN (Pato, 2026-11-14, MESITA-3870: "Add the Plan
-  // again"): the cell opens /me/plan — Free 2 reservations a month, Pro 10
+  // again"): the cell opens /me/plan — Free 3 reservation tickets a month, Pro 10
   // at $2 a month. It read Soon under MESITA-3855.
   {
     Icon: CreditCard,
