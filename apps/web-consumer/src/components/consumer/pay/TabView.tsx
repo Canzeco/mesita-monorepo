@@ -8,7 +8,8 @@ import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
-import { apiAddCard, brandLabel, CARD_REFUSAL } from "@/lib/api/cards";
+import { brandLabel } from "@/lib/api/cards";
+import { AddCardSheet } from "@/components/consumer/AddCardSheet";
 import {
   apiCancelTab,
   apiGetTab,
@@ -25,7 +26,6 @@ import {
   type TabRead,
 } from "@/lib/api/tab";
 import { money, type PayPlace } from "@/lib/api/wallet";
-import { payBillPath } from "@/lib/consumer-route-contract";
 import { toast } from "@/lib/toast";
 import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
@@ -490,6 +490,11 @@ export function TabView({
           getSupabase={getSupabase}
           reconnecting={reconnecting}
           onTapped={readNow}
+          onCardSaved={() => {
+            // The next read lists the cards again, the new one included.
+            cardsAsked.current = false;
+            readNow();
+          }}
           onCardStep={(step) => void bankCheck(step)}
           onCancel={() => void cancel("cancel")}
           busyCancel={busy}
@@ -713,6 +718,7 @@ function SplitScreen({
   getSupabase,
   reconnecting,
   onTapped,
+  onCardSaved,
   onCardStep,
   onCancel,
   busyCancel,
@@ -726,6 +732,8 @@ function SplitScreen({
   getSupabase: () => Parameters<typeof apiPayTab>[0];
   reconnecting: boolean;
   onTapped: () => void;
+  /** A card was saved in the app's card sheet (MESITA-4065). */
+  onCardSaved: () => void;
   onCardStep: (step: TabCardStep) => void;
   onCancel: () => void;
   busyCancel: boolean;
@@ -835,17 +843,11 @@ function SplitScreen({
     }
   }
 
-  /** No saved card: Stripe's page saves one and comes back to this bill. */
-  async function addCard() {
+  /** No saved card: the app's card sheet saves one (MESITA-4065: no Stripe
+   *  page) and it becomes this bill's card. */
+  function addCard() {
+    setCardSheet(false);
     setAdding(true);
-    try {
-      const back = `${window.location.origin}${payBillPath(tab.tab_id)}`;
-      const { url } = await apiAddCard(getSupabase(), back);
-      window.location.assign(url);
-    } catch (e) {
-      toast(e instanceof EFError && e.code ? (CARD_REFUSAL[e.code] ?? e.message) : NETWORK_FAILURE, { tone: "error" });
-      setAdding(false);
-    }
   }
 
   const cardSub = cards === null ? "…" : cards.length === 0 ? "Add one" : `•••• ${(card ?? cards[0]).last4}`;
@@ -987,10 +989,10 @@ function SplitScreen({
                   type="button"
                   className="border-border flex h-12 w-full items-center gap-3 rounded-2xl border px-4 text-left disabled:opacity-60"
                   disabled={adding}
-                  onClick={() => void addCard()}
+                  onClick={() => addCard()}
                 >
                   <CreditCard className="h-5 w-5" aria-hidden />
-                  <span className="text-base font-semibold">{adding ? "Opening…" : "Add a card"}</span>
+                  <span className="text-base font-semibold">{"Add a card"}</span>
                 </button>
               ) : (
                 <button
@@ -1091,13 +1093,23 @@ function SplitScreen({
               type="button"
               className="border-border text-muted-foreground hover:text-foreground flex h-12 w-full items-center border-t px-4 text-sm font-semibold"
               disabled={adding}
-              onClick={() => void addCard()}
+              onClick={() => addCard()}
             >
-              {adding ? "Opening…" : "Add another card"}
+              {"Add another card"}
             </button>
           </div>
         </div>
       </LocalSheet>
+      <AddCardSheet
+        open={adding}
+        onClose={() => setAdding(false)}
+        knownCardIds={(cards ?? []).map((c) => c.id)}
+        onSaved={(id) => {
+          setAdding(false);
+          setPmPick(id);
+          onCardSaved();
+        }}
+      />
     </div>
   );
 }

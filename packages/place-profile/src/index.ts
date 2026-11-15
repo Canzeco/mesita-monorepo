@@ -29,6 +29,7 @@ export {
   PlaceTopBarSkeleton,
 } from "./components/place-detail/skeleton";
 export { VouchersPane, voucherOffers, type VoucherOffer } from "./components/place-detail/vouchers";
+export { cardExpiry, isCardExpired, MAX_PAY_CARDS, pickPayCard, type PayCard, type PayCards } from "./pay-cards";
 export type {
   PlaceActions,
   RewardsSection,

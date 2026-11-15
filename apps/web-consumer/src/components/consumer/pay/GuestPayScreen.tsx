@@ -8,7 +8,8 @@ import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
-import { apiAddCard, apiListCards, brandLabel, CARD_REFUSAL, CARD_RETURN_PARAM, type SavedCard } from "@/lib/api/cards";
+import { apiListCards, brandLabel, type SavedCard } from "@/lib/api/cards";
+import { AddCardSheet } from "@/components/consumer/AddCardSheet";
 import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { money, type PayPlace } from "@/lib/api/wallet";
@@ -289,18 +290,12 @@ export function GuestPayScreen({
   });
   useEffect(() => () => registerBack?.(null), [registerBack]);
 
-  async function addCard() {
-    setAddingCard(true);
+  // Add a card in the app (MESITA-4065: no Stripe page): the card sheet; the
+  // saved card becomes the bill's card.
+  function addCard() {
     setError(null);
-    try {
-      const back = `${window.location.origin}${payPlacePath(placeId)}?${CARD_RETURN_PARAM}=1`;
-      const { url } = await apiAddCard(getSupabase(), back);
-      window.location.assign(url);
-    } catch (e) {
-      const code = e instanceof EFError ? e.code : null;
-      setError((code && code !== "checkout_failed" && CARD_REFUSAL[code]) || "Couldn't open the card page. Try again.");
-      setAddingCard(false);
-    }
+    setCardsSheet(false);
+    setAddingCard(true);
   }
 
   /** Opens the bill: credits only, the card held, or the cash given. */
@@ -730,13 +725,13 @@ export function GuestPayScreen({
           ) : (
             <button
               type="button"
-              onClick={() => void addCard()}
+              onClick={() => addCard()}
               disabled={addingCard}
               className="border-muted-foreground/40 text-muted-foreground flex h-28 w-48 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed"
               data-guest-add-card
             >
               <Plus className="h-6 w-6" aria-hidden />
-              <span className="text-base font-semibold">{addingCard ? "Opening…" : "Add a card"}</span>
+              <span className="text-base font-semibold">{"Add a card"}</span>
             </button>
           )}
           {cards && cards.length > 1 ? (
@@ -757,7 +752,7 @@ export function GuestPayScreen({
           primary={
             card
               ? { label: `Pay ${m(dueCents)}`, busy, disabled: held, onClick: () => void openBill("card") }
-              : { label: addingCard ? "Opening…" : "Add a card", busy, disabled: cardsUnknown || held, onClick: () => void addCard() }
+              : { label: "Add a card", busy, disabled: cardsUnknown || held, onClick: () => addCard() }
           }
         />
 
@@ -785,7 +780,7 @@ export function GuestPayScreen({
                 </button>
               ))}
               {(cards ?? []).length < 3 ? (
-                <button type="button" className="flex min-h-14 items-center gap-3 px-4 text-left text-base font-semibold" onClick={() => void addCard()}>
+                <button type="button" className="flex min-h-14 items-center gap-3 px-4 text-left text-base font-semibold" onClick={() => addCard()}>
                   <Plus className="h-5 w-5" aria-hidden />
                   Add a card
                 </button>
@@ -793,6 +788,17 @@ export function GuestPayScreen({
             </RowsCard>
           </div>
         </LocalSheet>
+        <AddCardSheet
+          open={addingCard}
+          onClose={() => setAddingCard(false)}
+          knownCardIds={(cards ?? []).map((c) => c.id)}
+          onSaved={(id) => {
+            setAddingCard(false);
+            setCardId(id);
+            setCardsLoad({ state: "loading" });
+            setCardsAttempt((n) => n + 1);
+          }}
+        />
       </>,
       "app",
     );

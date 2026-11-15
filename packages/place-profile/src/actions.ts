@@ -1,6 +1,7 @@
 import type { MouseEvent, ReactNode } from "react";
 
 import type { PlaceDetail, VoucherKey } from "./place-detail";
+import type { PayCards } from "./pay-cards";
 
 export type PlaceMenuItem = PlaceDetail["products"]["menu"][number];
 
@@ -37,13 +38,25 @@ export type PlaceActions = {
   onBoost?: () => void;
   onOpenMenu?: (menu: PlaceMenuItem) => void;
   onOpenLink?: (url: string) => void;
-  /** The Rewards sheet's Buy (MESITA-3303; a tab until MESITA-3412): pays
-   *  the guest's selection on the place's account. Since MESITA-3841 a
-   *  basket: every voucher picked with its quantity, one charge for all.
-   *  Absent, the button is inert (admin's preview). */
-  onBuyVoucher?: (items: VoucherBasketItem[]) => void;
-  /** A voucher of the basket being paid; while set the button reads Opening…. */
+  /** The Offers page's Pay (MESITA-3303; a basket since MESITA-3841; in the
+   *  page since MESITA-4065): pays the guest's selection with the card the
+   *  page drew as selected, one charge for all, on the place's account. No
+   *  second sheet. `cardId` null: no usable card, the host opens its card
+   *  sheet. Absent, the button is inert (admin's preview). */
+  onBuyVoucher?: (items: VoucherBasketItem[], cardId: string | null) => void;
+  /** A voucher of the basket being paid; while set the button reads Paying…
+   *  and the card rows and steppers are locked. */
   buyingVoucher?: VoucherKey | null;
+  /** The guest's saved cards for the Offers page's "Pay with" (MESITA-4065).
+   *  Absent: signed out or a host with no cards; no "Pay with" is drawn. */
+  payCards?: PayCards;
+  /** The card a Pay charges (the host remembers the last one used). */
+  payCardId?: string | null;
+  onSelectPayCard?: (id: string) => void;
+  /** "Add a card": the host's in-app card sheet (no Stripe page). */
+  onAddPayCard?: () => void;
+  /** Retry after the card list failed to load. */
+  onRetryPayCards?: () => void;
   /** The Rewards sheet opened: the host refreshes `place.money` (the offer and
    *  the guest's credit) from consumer-web-list-vouchers. */
   onLoadVouchers?: () => void;

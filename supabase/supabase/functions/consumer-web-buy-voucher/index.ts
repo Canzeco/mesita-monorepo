@@ -17,9 +17,7 @@
 // with ONE charge, all or nothing (the old `voucher` field is a basket of
 // one). Small and Big take qty 1..5; Welcome and VIP at most 1. Every gate
 // runs per voucher; the place cap counts the whole basket. One row per unit:
-// the lead under request_id, the others pointing to it (basket_lead_id). A
-// basket of more than one unit needs a saved card: Checkout stays one
-// voucher (409 basket_needs_card).
+// the lead under request_id, the others pointing to it (basket_lead_id).
 //
 // MESITA-4065: a SAVED CARD IS REQUIRED. The Stripe Checkout branch is gone:
 // the Offers page is the checkout (pick vouchers, pick a card, Pay) and a
