@@ -114,6 +114,33 @@ describe("visit rows", () => {
   });
 });
 
+describe("voucher rows (MESITA-4003)", () => {
+  it("a purchase reads plus and folds its cashback into the row", () => {
+    const r = only(
+      walletRows(wallet([e("prepay", 50000, { purchase_id: "u1" }), e("cashback", 2500, { purchase_id: "u1" })])),
+    );
+    expect(r.kind).toBe("voucher");
+    expect(r.sign).toBe("+");
+    expect(r.cashbackCents).toBe(2500);
+  });
+
+  it("a cashback with no voucher beside it stays a row of its own", () => {
+    expect(walletRows(wallet([e("cashback", 2500, { purchase_id: "u9" })]))).toHaveLength(1);
+  });
+
+  it("a bonus and a Story voucher read plus; the Story line says post", () => {
+    const rows = walletRows(
+      wallet([e("bonus", 5000)], {
+        waiting_stories: [
+          { purchase_id: "s1", place_id: "x", place: null, credit_cents: 1000, currency: "MXN", paid_at: AT },
+        ],
+      } as unknown as Partial<Wallet>),
+    );
+    expect(rows.map((r) => r.sign)).toEqual(["+", "+"]);
+    expect(rows[1]!.line).toBe("Story voucher · post your Story");
+  });
+});
+
 describe("every other kind lands on its tab with its kind", () => {
   const cases: Array<[string, WalletEntry, Row["type"], string]> = [
     ["a purchase", e("prepay", 50000), "vouchers", "voucher"],
