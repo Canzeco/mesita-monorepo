@@ -13,13 +13,15 @@ import { TicketsShortcut } from "../pay/TicketsShortcut";
 // pay with (WalletSection). It draws /wallet/gift/<token> too, with the
 // friend's credit sheet over it. From MESITA-3729 until this it was the
 // second half of a Pay | Wallet switch and lit Pay.
+// A THIN DARK SCROLLBAR (MESITA-4080, Pato: "add a scrolling bar here thin"):
+// Home's 3px bar, so a long Wallet shows it scrolls.
 export function WalletPage({
   giftToken = null,
 }: {
   giftToken?: string | null;
 }) {
   return (
-    <KeptScroll className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8 *:shrink-0">
+    <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8 *:shrink-0">
       <PayHeader title="Wallet" action={<TicketsShortcut />} />
       <WalletShareGift />
       <WalletSection giftToken={giftToken} />
