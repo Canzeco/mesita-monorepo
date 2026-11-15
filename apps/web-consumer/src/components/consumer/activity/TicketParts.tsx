@@ -168,10 +168,10 @@ export function TicketLine({
 export type TicketStep = { label: string; when: string; value?: string | null };
 
 /** Every step of the ticket, oldest first, closed until tapped. */
-export function TicketTimeline({ steps }: { steps: TicketStep[] }) {
+export function TicketTimeline({ steps, open = false }: { steps: TicketStep[]; open?: boolean }) {
   if (steps.length === 0) return null;
   return (
-    <details className="group">
+    <details className="group" open={open}>
       <summary className="hover:bg-muted/40 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-3 transition [&::-webkit-details-marker]:hidden">
         <span className="text-muted-foreground text-sm">Timeline</span>
         <ChevronDown

@@ -95,6 +95,7 @@ function liveAddresses(): Set<string> {
     ...TICKET_KINDS.map(ticketsHref),
     `${CONSUMER_ROUTES.visit.prefix}:id`,
     `${CONSUMER_ROUTES.credit.prefix}:id/:id`,
+    `${CONSUMER_ROUTES.gift.prefix}:id`,
     ...Object.values(CONSUMER_ROUTES.mePages),
     `${CONSUMER_ROUTES.place.prefix}:id`,
     `${CONSUMER_ROUTES.placeGoogle.prefix}:id`,
@@ -129,6 +130,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // Under Me › Tickets (MESITA-3855).
       visit: { prefix: "/me/tickets/visits/" },
       credit: { prefix: "/me/tickets/credit/" },
+      gift: { prefix: "/me/tickets/gift/" },
       // Pay's second half (MESITA-3698).
       wallet: "/wallet",
       walletPlace: { prefix: "/wallet/place/" },
