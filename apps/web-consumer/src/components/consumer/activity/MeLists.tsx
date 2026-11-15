@@ -705,8 +705,8 @@ export function ReservationsPage() {
           // Google Calendar and his friends, that sad icon looks too sad").
           className="bg-card border-border hover:bg-muted flex h-11 shrink-0 items-center justify-center rounded-xl border px-2.5 transition active:scale-[0.98]"
         >
-          {/* 26px since MESITA-3984 (Pato: "make the buttons more visible"). */}
-          <CalendarMarksRow size={26} />
+          {/* 28px app tiles since MESITA-3990 (one tile for every icon). */}
+          <CalendarMarksRow size={28} />
         </PushLink>
       }
     >
