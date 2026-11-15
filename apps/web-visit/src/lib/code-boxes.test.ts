@@ -1,6 +1,6 @@
 // Auth-adjacent (MESITA-3818): the six waiter-code boxes feed sign-gate.
 import { describe, expect, it } from "vitest";
-import { backspaceCode, codeDigits, fillCode } from "./code-boxes";
+import { backspaceCode, codeDigits, fillCode, padPress } from "./code-boxes";
 import { waiterCode } from "./sign-gate";
 
 describe("the waiter code boxes", () => {
@@ -26,5 +26,20 @@ describe("the waiter code boxes", () => {
     expect(codeDigits(gapped)).toEqual(["1", "2", "", "4", "5", "6"]);
     expect(waiterCode(gapped)).toBeNull();
     expect(waiterCode(fillCode(gapped, 2, "3").code)).toBe("123456");
+  });
+
+  // MESITA-4103: the in-page pad.
+  it("the pad types into the first empty box and stops at six", () => {
+    let code = "";
+    for (const k of ["1", "2", "3", "4", "5", "6", "7"] as const) code = padPress(code, k);
+    expect(code).toBe("123456");
+    expect(waiterCode(code)).toBe("123456");
+    expect(padPress("12 4", "3")).toBe("1234");
+  });
+
+  it("the pad's ⌫ clears the last filled box", () => {
+    expect(padPress("123", "back")).toBe("12");
+    expect(padPress("", "back")).toBe("");
+    expect(padPress("12 4", "back")).toBe("12");
   });
 });
