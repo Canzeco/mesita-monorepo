@@ -28,7 +28,6 @@ import {
   MAP_USER_LOCATION_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
   MAP_PREMIER_PLACE_PIN_RADIUS,
-  MAP_SELECTED_PIN_RADIUS,
   MAP_DOT_RADIUS,
   MAP_DOT_SIZE,
   MAP_PREMIER_DOT_RADIUS,
@@ -89,15 +88,12 @@ function mapsPinIcon(
   };
 }
 
-/** `held` is the tapped pin (purple and the largest, MESITA-2488,
- *  MESITA-3998). A Premier pin is red and a little larger (MESITA-2925). */
+/** `held` is the tapped pin (purple, the plain pin's size, MESITA-2488,
+ *  MESITA-4014). A Premier pin is red and a little larger (MESITA-2925). */
 function placeIcon(tone: PinTone, held: boolean) {
   const weight = pinStrokeWeight(held);
-  const radius = held
-    ? MAP_SELECTED_PIN_RADIUS
-    : tone === "premier"
-      ? MAP_PREMIER_PLACE_PIN_RADIUS
-      : undefined;
+  const radius =
+    tone === "premier" && !held ? MAP_PREMIER_PLACE_PIN_RADIUS : undefined;
   return mapsPinIcon(
     pinFillColor(tone, held),
     pinStrokeColor(held),
@@ -124,6 +120,28 @@ function dotIcon(premier: boolean) {
     scaledSize: new maps.Size(MAP_DOT_SIZE, MAP_DOT_SIZE),
     anchor: new maps.Point(MAP_DOT_SIZE / 2, MAP_DOT_SIZE / 2),
   };
+}
+
+/**
+ * THE STACK (Pato, MESITA-4014: "purple > blue > black > dots … and
+ * remember red"): purple (the selected pin) over the blue you-are-here dot,
+ * over red Premier pins, over black pins, over red dots, over black dots.
+ * No black circle ever covers the blue or the purple. Every marker is drawn
+ * unoptimized so Maps honours one z order across all of them (an optimized
+ * marker sits on its own canvas layer, outside the order).
+ */
+const Z = {
+  dot: 1,
+  premierDot: 2,
+  pin: 10,
+  premierPin: 11,
+  you: 100,
+  selected: 200,
+} as const;
+
+function pinZ(tone: PinTone, held: boolean): number {
+  if (held) return Z.selected;
+  return tone === "premier" ? Z.premierPin : Z.pin;
 }
 
 function userIcon() {
@@ -413,16 +431,16 @@ function SearchMapCanvas({
       onTilesLoaded={onReady}
     >
       {/* THE DOTS (Pato, MESITA-3980: "little dots means that there is
-          something but i need to make zoom to load them"): under every pin,
-          optimized (Maps draws them on one canvas), never a tap, never a
-          label. Zooming in reloads the map and the top ones become pins. */}
+          something but i need to make zoom to load them"): under every pin
+          (THE STACK), never a tap, never a label. Zooming in reloads the map and the top ones become pins. */}
       {dots.map((dot) => (
         <Marker
           key={`dot:${dot.id}`}
           position={{ lat: dot.lat, lng: dot.lng }}
           icon={dotIcon(dot.premier)}
           clickable={false}
-          zIndex={-1}
+          zIndex={dot.premier ? Z.premierDot : Z.dot}
+          optimized={false}
           cursor={MAP_PIN_CURSOR}
         />
       ))}
@@ -432,6 +450,8 @@ function SearchMapCanvas({
           title="You're here"
           icon={userIcon()}
           clickable={false}
+          zIndex={Z.you}
+          optimized={false}
           cursor={MAP_PIN_CURSOR}
         />
       )}
@@ -442,7 +462,7 @@ function SearchMapCanvas({
               position={{ lat: pin.lat, lng: pin.lng }}
               title={pin.title}
               icon={placeIcon(pin.tone, pin.id === selectedId)}
-              zIndex={pin.id === selectedId ? 10 : 0}
+              zIndex={pinZ(pin.tone, pin.id === selectedId)}
               optimized={false}
               cursor={MAP_PIN_CURSOR}
               onClick={() => onSelectPin?.(pin)}
@@ -454,7 +474,7 @@ function SearchMapCanvas({
               position={{ lat: place.lat, lng: place.lng }}
               title={place.name}
               icon={placeIcon(placePinTone(place), place.id === selectedId)}
-              zIndex={place.id === selectedId ? 10 : 0}
+              zIndex={pinZ(placePinTone(place), place.id === selectedId)}
               optimized={false}
               cursor={MAP_PIN_CURSOR}
               // Select (ink pin + rail) · fly there · open — the page counts.
