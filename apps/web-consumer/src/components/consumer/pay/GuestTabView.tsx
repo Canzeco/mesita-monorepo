@@ -157,7 +157,7 @@ export function GuestTabView({
     const backBps = card > 0 ? tab.rates.card_back_bps : cash > 0 ? tab.rates.cash_back_bps : 0;
     return (
       <div className="-mx-4 -mt-4 flex min-h-0 flex-1 flex-col" data-guest-tab="receipt">
-        <div className="flex shrink-0 flex-col items-center bg-green-700 px-4 pt-8 pb-6 text-white">
+        <div className="flex shrink-0 flex-col items-center bg-green-700 px-4 pt-6 pb-4 text-white">
           <CircleCheck className="h-14 w-14" aria-hidden />
           <h2 className="font-display mt-3 text-xl font-semibold">Paid</h2>
           <p className="text-sm text-white/85">{clockTime(tab.verified_at ?? tab.paid_at ?? tab.updated_at)}</p>
@@ -210,9 +210,9 @@ export function GuestTabView({
       <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="not-paid">
         <PayTop place={place} name={tab.place.name} />
         <StepBody>
-          <PaySection className="flex flex-col items-center p-6 text-center">
-            <XCircle className={cn("h-14 w-14", BAD)} aria-hidden />
-            <h2 className="font-display mt-4 text-xl font-semibold">Not paid</h2>
+          <PaySection className="flex flex-col items-center p-4 text-center">
+            <XCircle className={cn("h-10 w-10", BAD)} aria-hidden />
+            <h2 className="font-display mt-2 text-xl font-semibold">Not paid</h2>
             <p className="mt-2 text-base">{reason}</p>
             <p className="text-muted-foreground mt-1 max-w-xs text-sm">
               {cash > 0 ? "Nothing was charged in Mesita. If you gave cash, settle it with the waiter." : "Nothing was charged"}
@@ -250,10 +250,10 @@ export function GuestTabView({
       <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="confirming">
         <PayTop place={place} name={tab.place.name} />
         <StepBody>
-          <PaySection className="flex flex-col items-center p-6 text-center" data-guest-confirming>
+          <PaySection className="flex flex-col items-center p-4 text-center" data-guest-confirming>
             <div role="status" className="flex flex-col items-center">
-              <Loader2 className="h-14 w-14 animate-spin motion-reduce:animate-none" aria-hidden />
-              <h2 className="font-display mt-4 text-xl font-semibold">Confirming…</h2>
+              <Loader2 className="h-10 w-10 animate-spin motion-reduce:animate-none" aria-hidden />
+              <h2 className="font-display mt-2 text-xl font-semibold">Confirming…</h2>
             </div>
           </PaySection>
         </StepBody>
