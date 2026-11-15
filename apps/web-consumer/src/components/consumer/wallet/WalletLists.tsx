@@ -221,13 +221,7 @@ export function CreditsRow({
   const line = creditsLine(gone);
   const inner = (
     <>
-      <span className={cn(CHIP, "bg-neutral-950 text-sm font-semibold text-white")} aria-hidden>
-        {card.photo ? (
-          <SizedImg src={card.photo} size="thumb" alt="" loading={eager ? "eager" : "lazy"} className="h-full w-full object-cover" />
-        ) : (
-          firstInitial(card.name)
-        )}
-      </span>
+      <CreditsCardChip photo={card.photo} name={card.name} eager={eager} />
       <span className="min-w-0 flex-1">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-base font-semibold">{card.name}</span>
@@ -235,9 +229,7 @@ export function CreditsRow({
         </span>
         {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm">{line}</span> : null}
       </span>
-      <span className="bg-foreground text-paper shrink-0 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums">
-        {money(amount.cents, card.currency)}
-      </span>
+      <CreditsPill>{money(amount.cents, card.currency)}</CreditsPill>
     </>
   );
   return href ? (
@@ -249,6 +241,28 @@ export function CreditsRow({
     <div role="group" aria-label={walletCardLabel(card)} className={cn(ROW, "hover:bg-transparent")} data-wallet-method="credits">
       {inner}
     </div>
+  );
+}
+
+/** A Credits Card's image (MESITA-3741): the place's photo as a small
+ *  landscape card, or its initial on black. Also Pay › Method's Credits row
+ *  (MESITA-4085, Pato: "show the wallet icon in the credits here too"). */
+export function CreditsCardChip({ photo, name, eager = false }: { photo: string | null; name: string | null; eager?: boolean }) {
+  return (
+    <span className={cn(CHIP, "bg-neutral-950 text-sm font-semibold text-white")} aria-hidden>
+      {photo ? (
+        <SizedImg src={photo} size="thumb" alt="" loading={eager ? "eager" : "lazy"} className="h-full w-full object-cover" />
+      ) : (
+        firstInitial(name ?? "M")
+      )}
+    </span>
+  );
+}
+
+/** A credits balance in its black pill (MESITA-4050), here and on Pay. */
+export function CreditsPill({ children }: { children: ReactNode }) {
+  return (
+    <span className="bg-foreground text-paper shrink-0 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums">{children}</span>
   );
 }
 
