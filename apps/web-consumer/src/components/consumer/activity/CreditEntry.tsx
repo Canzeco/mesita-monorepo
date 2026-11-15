@@ -17,6 +17,12 @@
 // friend sent you credit at <place>." (the wallet read carries no sender), the
 // place's balance, and Pay here (filled) alone.
 //
+// A gift sent or taken back (MESITA-4009, Tickets 8/10): the header with the
+// signed amount and state, one line saying what happened, a Timeline (Sent,
+// then Taken back when it was), the place's balance, and Open the House Card
+// (filled) alone. The wallet read carries no gift id, so a take-back is paired
+// to the nearest earlier send of the same amount at the place.
+//
 // A refunded purchase reads Refunded <date> and links to its Refund ticket by
 // purchase_id; the purchase number has a copy button. It reads the wallet
 // Tickets already holds (the same cached read); an entry it cannot find any
@@ -35,6 +41,7 @@ import {
   TicketHeader,
   TicketLine,
   TicketSkeleton,
+  TicketTimeline,
   type TicketTone,
 } from "./TicketParts";
 import { ticketsHref } from "@/lib/ticket-kinds";
@@ -87,6 +94,31 @@ function stateOf(e: WalletEntry, refund: WalletEntry | undefined): [string, Tick
   if (e.pending)
     return [e.available_at ? `Pending · available ${entryDate(e.available_at)}` : "Pending", "ink"];
   return ["Available", "green"];
+}
+
+/** A gift's send and its take-back, paired by amount and order: each
+ *  take-back belongs to the nearest earlier send of the same amount that no
+ *  other take-back has claimed. */
+function giftPair(
+  entries: WalletEntry[],
+  e: WalletEntry,
+): { sent: WalletEntry | undefined; back: WalletEntry | undefined } {
+  const amount = Math.abs(e.amount_cents);
+  const same = entries
+    .filter((x) => (x.kind === "gift_out" || x.kind === "gift_back") && Math.abs(x.amount_cents) === amount)
+    .sort((x, y) => Date.parse(x.at) - Date.parse(y.at));
+  const open: WalletEntry[] = [];
+  const pairs = new Map<WalletEntry, WalletEntry>();
+  for (const x of same) {
+    if (x.kind === "gift_out") open.push(x);
+    else {
+      const o = open.pop();
+      if (o) pairs.set(o, x);
+    }
+  }
+  if (e.kind === "gift_out") return { sent: e, back: pairs.get(e) };
+  for (const [o, b] of pairs) if (b === e) return { sent: o, back: e };
+  return { sent: undefined, back: e };
 }
 
 /** The purchase number's copy button: the full id goes to the clipboard. */
@@ -173,6 +205,9 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     const canGift = wallet.data.can_send === true && b.spendable_cents > 0;
     const houseCard = { label: "Open the House Card", href: walletPlacePath(placeId) };
     const received = e.kind === "gift_in";
+    const given = e.kind === "gift_out" || e.kind === "gift_back";
+    const pair = given ? giftPair(b.entries, e) : null;
+    const tookBack = pair?.back !== undefined;
     return (
       <div className="flex flex-col gap-6 pb-4" data-credit-entry>
         <TicketHeader
@@ -190,6 +225,20 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
 
         {received ? (
           <p className="text-sm">A friend sent you credit at {place}.</p>
+        ) : given ? (
+          <>
+            <p className="text-sm">
+              {tookBack
+                ? `You sent ${m(amount)} to a friend and took it back. It is in your balance at ${place}.`
+                : `You sent ${m(amount)} of your credit at ${place} to a friend.`}
+            </p>
+            <TicketTimeline
+              steps={[
+                ...(pair?.sent ? [{ label: "Sent", when: when(pair.sent.at), value: `−${m(amount)}` }] : []),
+                ...(pair?.back ? [{ label: "Taken back", when: when(pair.back.at), value: `+${m(amount)}` }] : []),
+              ]}
+            />
+          </>
         ) : bought ? (
           <TicketCard title="Your credit">
             <TicketLine label="Bought" value={m(amount)} />
@@ -232,7 +281,9 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           </TicketCard>
         ) : null}
 
-        {b.spendable_cents > 0 ? (
+        {given ? (
+          <TicketActions primary={houseCard} />
+        ) : b.spendable_cents > 0 ? (
           <TicketActions
             primary={{ label: "Pay here", href: payPlacePath(placeId) }}
             secondary={received ? undefined : houseCard}
