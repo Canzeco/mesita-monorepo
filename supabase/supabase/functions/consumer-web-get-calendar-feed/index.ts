@@ -9,6 +9,11 @@
 //
 // GET ?token=<token>  →  text/calendar
 //
+// Every read stamps the link's last_read_at: a calendar that has read its
+// link is "connected" in Me › Calendar (MESITA-4041). A link switched off
+// there serves an empty calendar, so Mesita's tables leave that calendar on
+// its next sync.
+//
 // Lists what Me › Reservations' Upcoming lists: pending and confirmed tables
 // whose slot hasn't passed, never operator test tickets. Each is a 2-hour
 // event in UTC; the calendar shows it in the reader's own zone.
@@ -40,7 +45,7 @@ serveJson("consumer-web-get-calendar-feed", async (req) => {
 
   const { data: feed, error: feedError } = await admin
     .from("consumer_calendar_feeds")
-    .select("consumer_id")
+    .select("consumer_id, calendar, off")
     .eq("token", token)
     .maybeSingle();
   if (feedError) {
@@ -48,6 +53,16 @@ serveJson("consumer-web-get-calendar-feed", async (req) => {
     return text("Try again later", 500);
   }
   if (!feed) return text("Not found", 404);
+
+  // Connected = this calendar read its link. A failed stamp never fails the
+  // read: the calendar still gets its tables.
+  const { error: stampError } = await admin
+    .from("consumer_calendar_feeds")
+    .update({ last_read_at: new Date().toISOString() })
+    .eq("token", token);
+  if (stampError) console.error("[consumer-web-get-calendar-feed] stamp:", stampError.message);
+
+  if (feed.off) return calendarResponse(req, buildCalendar("Mesita reservations", []));
 
   const cutoff = new Date(Date.now() - PASSED_GRACE_MS).toISOString();
   const { data, error } = await admin
@@ -85,7 +100,10 @@ serveJson("consumer-web-get-calendar-feed", async (req) => {
     });
   }
 
-  const body = buildCalendar("Mesita reservations", events);
+  return calendarResponse(req, buildCalendar("Mesita reservations", events));
+});
+
+function calendarResponse(req: Request, body: string): Response {
   return new Response(req.method === "HEAD" ? null : body, {
     status: 200,
     headers: {
@@ -94,4 +112,4 @@ serveJson("consumer-web-get-calendar-feed", async (req) => {
       "Cache-Control": "private, max-age=900",
     },
   });
-});
+}
