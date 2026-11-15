@@ -1,6 +1,6 @@
 {
   "generated": "by `deno task sync-elevenlabs` from supabase/supabase/functions/_shared/reservationist/ — never edit",
-  "spec_hash": "a28c27a3d77b417ec7e4315133efc97c2954a9ac260035b63b3782e26524a4a3",
+  "spec_hash": "7249b489d9227d36e49973488d7c4697958ae332fdeb0246600adf74d03ff818",
   "knowledge_version": 9,
   "deploy": ".github/workflows/agents-deploy.yml on every merge to main (supabase/scripts/sync-agents.sh)",
   "agents": [

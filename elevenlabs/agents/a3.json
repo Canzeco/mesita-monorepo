@@ -226,7 +226,7 @@
           "x": 1280,
           "y": -320
         },
-        "additional_prompt": "Presenta lo que encontró la búsqueda: a nombre de quién, fecha, hora, personas y estado. Si no hubo coincidencias, dilo una vez y ofrece buscar otro nombre; no confirmes ni niegues reservaciones de otros lugares. Si quieren cancelar una, toma esa rama; si solo era consulta, despídete.",
+        "additional_prompt": "Presenta lo que encontró la búsqueda: a nombre de quién, fecha, hora, personas y estado. Si no hubo coincidencias, dilo una vez y ofrece buscar otro nombre; no confirmes ni niegues reservaciones de otros lugares. Si quieren cancelar una (o ya lo pidieron al llamar), toma la rama de cancelar; no vuelvas a buscar la misma. Si solo era consulta, despídete.",
         "entry_behavior": "generate_immediately",
         "conversation_config": {
           "agent": {
@@ -627,8 +627,9 @@
           "label": "success"
         },
         "backward_condition": {
-          "type": "unconditional",
-          "label": "buscar otro nombre"
+          "type": "llm",
+          "condition": "Dieron OTRO nombre u otro código, distinto del que ya se buscó.",
+          "label": "search another name"
         }
       },
       "e_pfd_cancel": {
