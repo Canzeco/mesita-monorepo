@@ -129,14 +129,15 @@ describe("pin tones — premier > mesita > google", () => {
     expect(pinFillColor("premier")).toBe(MAP_PREMIER_PIN_COLOR);
     expect(pinFillColor("mesita")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinFillColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
-    // Held (tapped): purple fill, thicker white ring, whatever the tone was.
+    // Held (tapped): purple fill, the same white ring, whatever the tone was.
     expect(pinFillColor("premier", true)).toBe(MAP_SELECTED_PIN_COLOR);
     expect(pinFillColor("google", true)).toBe(MAP_SELECTED_PIN_COLOR);
     expect(MAP_SELECTED_PIN_COLOR).not.toBe(MAP_PREMIER_PIN_COLOR);
     expect(MAP_SELECTED_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinStrokeColor(false)).toBe("#ffffff");
     expect(pinStrokeColor(true)).toBe("#ffffff");
-    expect(pinStrokeWeight(true)).toBeGreaterThan(pinStrokeWeight(false));
+    // One ring weight everywhere (MESITA-3998): no thicker selected ring.
+    expect(pinStrokeWeight(true)).toBe(pinStrokeWeight(false));
     expect(
       mapPinSvg(
         MAP_GOOGLE_PIN_COLOR,
