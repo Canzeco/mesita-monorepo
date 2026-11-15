@@ -759,3 +759,10 @@ button.quiet.pay-with-icon {
     animation-duration: 3s;
   }
 }
+
+/* The reject confirmation's question (MESITA-4105). */
+.pay-reject-title {
+  margin: 0;
+  font-weight: 600;
+  color: #171717;
+}
