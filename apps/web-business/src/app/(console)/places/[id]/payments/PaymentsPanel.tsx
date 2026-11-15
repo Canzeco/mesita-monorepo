@@ -2,7 +2,7 @@
 
 // Payments (MESITA-3296; the Place states of Main §10 since MESITA-3589).
 // SINCE MESITA-3946 THE PAGE IS THREE CARDS, then Vouchers and Waiter Code:
-//   Stripe Account   · the account (small Open Stripe button) · Accept Stripe Payments
+//   Stripe Account   · the account (a LARGE Open Stripe button, MESITA-4024: Pato, "must be far larger") · Accept Stripe Payments
 //   Credits Account  · Credits Agreement · Credits Balance (read-only) · Accept
 //                      Credits Payments (House Credits: on once signed, then locked)
 //   Payments & Cashbacks · one row per way to pay, Accept | Cashback-as-Credits:
@@ -509,12 +509,12 @@ export function PaymentsPanel({
             {copy.button ? (
               <button
                 type="button"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#635BFF] px-4 py-2 text-sm font-semibold whitespace-nowrap text-white transition hover:bg-[#5249e6] disabled:opacity-60"
+                className="inline-flex min-h-14 shrink-0 items-center justify-center gap-2.5 rounded-full bg-[#635BFF] px-9 py-4 text-lg font-semibold whitespace-nowrap text-white transition hover:bg-[#5249e6] disabled:opacity-60"
                 disabled={pending}
                 onClick={() => void stripe()}
               >
                 {busy === "stripe" ? "Opening…" : copy.button}
-                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={16} weight="bold" aria-hidden /> : null}
+                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={22} weight="bold" aria-hidden /> : null}
               </button>
             ) : (
               <span />
