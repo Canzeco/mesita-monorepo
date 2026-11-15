@@ -928,7 +928,9 @@ export function GuestPayScreen({
           cancelDisabled={cancelLocked}
           primary={
             card
-              ? { label: `Pay ${m(dueCents)}`, busy, disabled: held, onClick: () => void openBill("card") }
+              ? // "Pay in one click" (MESITA-4106, Pato: "the button must say
+                // pay in one click"); the amount is the body's headline.
+                { label: "Pay in one click", busy, disabled: held, onClick: () => void openBill("card") }
               : { label: "Add a card", busy, disabled: cardsUnknown || held, onClick: () => addCard() }
           }
         />
