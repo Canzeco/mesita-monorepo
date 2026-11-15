@@ -2,11 +2,11 @@
 
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgePercent, Banknote, Check, CircleCheck, CreditCard, Crown, Info, Lock, Minus, PartyPopper, Plus, Smartphone, Ticket, type LucideIcon } from "lucide-react";
+import { Check, CircleCheck, CreditCard, Crown, Info, Lock, Minus, PartyPopper, Plus, Ticket, type LucideIcon } from "lucide-react";
 import { cardExpiry, isCardExpired, MAX_PAY_CARDS, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
-import type { PlaceActions, RewardsSection, VoucherBasketItem } from "../../actions";
+import type { PlaceActions, VoucherBasketItem } from "../../actions";
 import { cn } from "../../lib/format";
 import {
   PLACE_META_CLASS,
@@ -38,18 +38,14 @@ import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 // case. THE STANDARD THREE SHARE ONE MARK AND ONE COLOUR, the
 // wallet on emerald (MESITA-3326, Pato: "the standard deals/promos must
 // have the same icon and the same color. the deals that have different
-// colors are welcome and story VIP"); the specials keep their own. The
-// cashback in Payment promos is the same kind of card, so the two boxes
-// read as one module (Pato: "symmetry and modularity"). Under the title, one
+// colors are welcome and story VIP"); the specials keep their own. Under the title, one
 // line says the credit is ready an hour after the purchase, Story's at
 // once (the catalog's available_after_sec, MESITA-3302; Pato, MESITA-3323:
 // "must be 1 hour before paying the bill ... All but the Instagram one").
-// TWO CARDS, PROMOS (Pato, MESITA-3322: "call the section up Prepayments
-// Deals: Bonus 10% or whatever. Payments Deals: Cashback"; MESITA-3323:
-// "maybe Promos is the best"): "Prepayment promos" is the catalog,
-// "Payment promos" is the standard 5% cashback, one row drawn the same way,
-// its one line the plain fact (Pato: "write cashback ... clearer"). Nothing
-// scrolls sideways.
+// PREPAYMENTS ONLY (Pato, 2026-11-15, MESITA-4062: "remove payments from the
+// prepayments page. it is confusing. just leave prepayments offerings
+// there"): the Payments card (App and Cash Payment Cashback) is gone; the
+// rates live on the Pay tile and the Pay screens. Nothing scrolls sideways.
 //
 // Every row is always there, so the tab never reads as empty and never
 // pretends: a voucher this place sells is lit and carries Buy (MESITA-3303),
@@ -76,15 +72,10 @@ import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 // limit small under it, and the bonus as a green pill on the right. ONE Buy
 // under the card buys the chosen row; the first row for sale starts chosen.
 // The coloured product faces of MESITA-3347 went: the screen is the list.
-// The cashback is the same card with one row and its Pay under it (Pato:
-// "say go or pay ... maybe change button from side").
 
 //
-// TWO SECTIONS OF OFFERS (Pato, MESITA-3446: "list all the offers better ...
-// Payment Offers: the cashback offer. Prepayment Offers: horizontal carrousel
-// of vouchers"): Payment Offers is one card, the green % mark and "5%
-// Cashback" over the plain fact, Pay bill under it. Prepayment Offers is the
-// six vouchers as cards that swipe sideways (snap), specials first; each card
+// PREPAYMENT OFFERS (MESITA-3446): the vouchers as cards that swipe
+// sideways (snap), specials first; each card
 // is the name and its bonus pill, Pay over Get with Get big in green, the
 // limit, and its own Buy. The radio list and its one Buy went. A voucher not
 // for sale keeps its card, dimmed outside test mode, its tag where Buy goes.
@@ -204,14 +195,6 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
     voucher_vip: { card: "bg-amber-200 text-neutral-950", ...LIGHT, Mark: Crown },
   };
 })();
-
-/** Mesita Payments' face: the vouchers' light green (MESITA-3480). */
-const CASHBACK_FACE: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT, Mark: BadgePercent };
-/** EXTERNAL PAY'S OWN FACE (Pato, MESITA-3787: "external cash payment must be
- *  from other color"): light violet, a tint no other offer wears. */
-const EXTERNAL_FACE = "bg-violet-200 text-neutral-950";
-/** Credits Payment Cashback's face (MESITA-3827): light sky, a tint no other offer wears. */
-const CREDITS_FACE = "bg-sky-200 text-neutral-950";
 
 /** A row's fact (MESITA-3863). It wraps like any text, but "in 1 hr" stays
  *  whole, so a narrow row never strands "hr" on a line of its own. */
@@ -464,9 +447,8 @@ function offerStatus(
   return { ok: false, text: `${tag(reason)}.` };
 }
 
-/** The Rewards page (MESITA-3412: the host's sheet off Prepay and Pay; it
- *  was the fourth tab). `focus` scrolls its scroller to that section once, on
- *  open: Pay's section is first, so only Prepay moves. */
+/** The Offers page (MESITA-3412: the host's sheet off Prepay; it was the
+ *  fourth tab). Prepayments only since MESITA-4062. */
 type GuestLock = "vip" | "instagram" | "followers" | null;
 
 /** Who may buy what, once for every list of the six vouchers (VouchersPane,
@@ -474,8 +456,7 @@ type GuestLock = "vip" | "instagram" | "followers" | null;
 function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
   // A Google-only card or an older read has no money: every switch reads off.
   // Only `unavailable` is valid from this local call: the read strips
-  // `pay_cards`, so its cashback and mesita_pay are not the server's. The
-  // cashback row reads the server's word, `money.cashback` (MESITA-3408).
+  // `pay_cards`, so its cashback and mesita_pay are not the server's.
   const state = moneyState(
     {
       // House Credits as the server says; an older read without it is
@@ -580,28 +561,14 @@ export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions[
 export function VouchersPane({
   place,
   actions,
-  focus = "payment",
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
-  focus?: RewardsSection;
 }) {
   const onLoad = actions?.onLoadVouchers;
   useEffect(() => {
     onLoad?.();
   }, [onLoad]);
-  const prepaymentRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (focus === "payment") return;
-    // "special" and "prepayment" open the one catalog (MESITA-3472).
-    const el = prepaymentRef.current;
-    // The nearest scroller only: scrollIntoView would also move the app
-    // card behind the sheet, whose overflow is hidden but still scrollable.
-    let box = el?.parentElement ?? null;
-    while (box && !/(auto|scroll)/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
-    if (!el || !box) return;
-    box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top;
-  }, [focus]);
 
   const money = place.money;
   // The host is still asking list-vouchers and the place read carried no
@@ -610,19 +577,10 @@ export function VouchersPane({
   const { unavailable, dim, guestLock, buyable } = offerRules(money, actions?.guest);
   const catalog = money?.catalog ?? {};
   const currency = money?.currency ?? "mxn";
-  const cashback = money?.cashback === true;
-  // The place's own rates (MESITA-3589); 0 when Off or on an older read.
-  const cardPct = money?.card_cashback_bps ? `${money.card_cashback_bps / 100}%` : null;
-  const cashPct = money?.cash_cashback_bps ? `${money.cash_cashback_bps / 100}%` : null;
   // MESITA-3827: Credits Payment Cashback and Mesita Prepayments Cashback; 0 when Off.
   const creditPct = money?.credit_cashback_bps ? `${money.credit_cashback_bps / 100}%` : null;
   const prepayPct = money?.prepay_cashback_bps ? `${money.prepay_cashback_bps / 100}%` : null;
   const facts = creditFacts(creditPct);
-  const outside = money?.outside_cashback === true && cashPct !== null;
-  const cashbackTag = cashback ? "Available here" : "Not at this place yet";
-  // Pay shows where the 5% comes back, or in test mode (MESITA-3397): a live
-  // Pay at a place without cashback promised 5% that never comes.
-  const canPay = Boolean(actions?.onPay) && (cashback || !dim);
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;
   // THE CHECKOUT IS THE PAGE (MESITA-4065, Pato: "you simply select the item
@@ -724,11 +682,11 @@ export function VouchersPane({
 
   return (
     // A LIST (MESITA-3486, Pato: "make the things as a list, not as boxes"):
-    // two cards of rows, each led by its big number. A prepayment row you can
+    // one card of rows, each led by its big number. A prepayment row you can
     // buy carries a selector at its right; the one Buy sits at the foot
     // (MESITA-3487). No Pay bill here.
     <div className="bg-card -mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
-      <section ref={prepaymentRef} className="flex flex-col gap-2" aria-labelledby="rewards-prepayment" data-promos="prepayment">
+      <section className="flex flex-col gap-2" aria-labelledby="rewards-prepayment" data-promos="prepayment">
         <SectionTitle
           id="rewards-prepayment"
           title="Prepayments"
@@ -866,79 +824,6 @@ export function VouchersPane({
           onRetry={actions?.onRetryPayCards}
         />
       ) : null}
-      <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
-        <SectionTitle
-          id="rewards-payment"
-          title="Payments"
-        />
-        <ul className="border-border divide-border divide-y rounded-2xl border" data-cashback>
-          <li
-            className={cn(ROW, !loading && !cashback && dim && "opacity-50")}
-            aria-label={`App Payment Cashback: pay the bill here with Mesita, ${cardPct ?? "cashback"} comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
-          >
-            <span className={cn(CHIP, CASHBACK_FACE.card)} aria-hidden>
-              {cardPct ? `+${cardPct}` : "Off"}
-            </span>
-            <span className={LINE} aria-hidden>
-                {/* The phone, as Cash wears the banknote (Pato, MESITA-3835:
-                    "add icon to Mesita Payments"). */}
-              <span className={NAME}>
-                <Smartphone className={ICON} strokeWidth={2.25} />
-                App Payment Cashback
-              </span>{" "}
-              <Fact text={canPay || loading ? "Back in credits, any visit" : cashbackTag} />
-            </span>
-              <InfoButton
-                title="App Payment Cashback"
-                status={
-                  loading
-                    ? undefined
-                    : canPay || cashback
-                      ? { ok: true, text: cardPct ? `On at this place. ${cardPct} back on every bill.` : "Pay by card here; this place gives no cashback." }
-                      : { ok: false, text: cashbackTag }
-                }
-                action={canPay && actions?.onPay ? { label: "Pay bill", onClick: actions.onPay } : undefined}
-                text={[
-                  `Pay your bill in the Mesita app and get ${cardPct ?? "the place's cashback"} of it back as credits at this place. Use them whenever you want.`,
-                  "Any amount, every visit. Each place sets its own rate.",
-                  creditPct
-                    ? "Tips never earn this cashback: it counts only on the part of the bill you pay with App Payments, without the tip."
-                    : "Neither prepaid credits nor tips earn cashback: it counts only on the part of the bill you pay with App Payments, without the tip.",
-                  "You can mix: part of the bill with credits, the rest with App Payments.",
-                ]}
-              />
-              {SLOT}
-          </li>
-          {/* CASH EARNS 3% (Pato, MESITA-3837: "what about 3% and 5%????";
-              2% from MESITA-3547, off for an hour in MESITA-3836): cash or
-              the place's terminal, confirmed by the waiter's Received. */}
-          <li
-            className={cn(ROW, !outside && dim && "opacity-50")}
-            aria-label={`Cash Payment Cashback: pay the place directly, by cash or their terminal, with the waiter's code. ${outside ? `${cashPct} comes back as credits.` : "Not at this place yet."}`}
-          >
-            <span className={cn(CHIP, EXTERNAL_FACE)} aria-hidden>
-              {outside ? `+${cashPct}` : "Off"}
-            </span>
-            <span className={LINE} aria-hidden>
-              <span className={NAME}>
-                <Banknote className={ICON} strokeWidth={2.25} />
-                Cash Payment Cashback
-              </span>{" "}
-              <Fact text={outside ? "Back in credits, cash or their terminal" : "Not at this place yet"} />
-            </span>
-              <InfoButton
-                title="Cash Payment Cashback"
-                status={outside ? { ok: true, text: `${cashPct} back on bills you pay the waiter.` } : { ok: false, text: "Not at this place yet" }}
-                text={[
-                  `Pay the place directly: cash or their card terminal, and get ${cashPct ?? "the place's cash cashback"} of the bill back as credits at this place.`,
-                  "Show your QR to the waiter. They type the bill and the tip, you choose cash, and they tap Received when they get your money.",
-                  "It counts on the bill, never on the tip or on credits you spend. You can spend it at once.",
-                ]}
-              />
-              {SLOT}
-          </li>
-        </ul>
-      </section>
       {/* ONE PAY AT THE FOOT (MESITA-3487; MESITA-4065): the card it charges
           is named above it, so nobody pays with a card they cannot see;
           purple, Stripe's colour (Pato: "maybe the stripe button purple"). */}

@@ -308,15 +308,14 @@ export function MesitaActions({
 }) {
   // PREPAY AND PAY OPEN REWARDS (Pato, MESITA-3412: "Rewards modal opens when
   // you click either prepay or pay, but covering almost full screen"): the
-  // Rewards tab left the strip and became the host's sheet. Prepay lands on
-  // Pre-Payment Rewards, Pay on Payment Rewards. With no host callback
-  // (admin's Preview) both stay the inert green tile. Always drawn: the tab
-  // that hid them (MESITA-3398) is gone.
+  // Rewards tab left the strip and became the host's sheet. Prepay opens it;
+  // Pay goes to the bill (onPay) since the sheet lost its Payments card
+  // (MESITA-4062). With no host callback (admin's Preview) both stay the
+  // inert green tile. Always drawn: the tab that hid them (MESITA-3398) is gone.
   const onOpenRewards = actions?.onOpenRewards;
   const onReserve = actions?.onReserve;
   const row = mesitaRowState(place, actions?.vouchersLoading === true, actions?.houseCardInWallet === true);
-  const open = (section: "payment" | "prepayment") =>
-    onOpenRewards ? () => onOpenRewards(section) : undefined;
+  const openPrepay = onOpenRewards ? () => onOpenRewards("prepayment") : undefined;
   const tone = (t: MesitaTileState) => (t.works ? "green" : "off");
   // What the screen reader hears after the label: the pill ("20% Bonus",
   // "Off"), or "loading" while the first read is out.
@@ -354,7 +353,7 @@ export function MesitaActions({
       {/* PREPAY (the ticket since MESITA-3574): green with the best bonus among
           the vouchers this place sells now, never a typed "30% Bonus". Opens
           the Offers page when it works, the Off sheet when it doesn't. */}
-      <MesitaTile Icon={Ticket} label="Prepay" amount={said(row.prepay)} badge={row.prepay.pill} tone={tone(row.prepay)} onClick={tap("prepay", row.prepay, open("prepayment"))} />
+      <MesitaTile Icon={Ticket} label="Prepay" amount={said(row.prepay)} badge={row.prepay.pill} tone={tone(row.prepay)} onClick={tap("prepay", row.prepay, openPrepay)} />
       {/* WALLET (MESITA-3574, Wallet again in MESITA-3577): green with the
           guest's Available credit here, "Off" when none (MESITA-3581, never
           "$0MX"). Opens the Wallet at this place's credit. Prepay comes first,
