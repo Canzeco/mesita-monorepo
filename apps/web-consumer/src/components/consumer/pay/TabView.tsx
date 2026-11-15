@@ -29,6 +29,7 @@ import { payBillPath } from "@/lib/consumer-route-contract";
 import { toast } from "@/lib/toast";
 import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
+import { CardBrandChip } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
 import { GuestPayLoading } from "./GuestPayScreen";
 import { GuestTabView } from "./GuestTabView";
@@ -998,7 +999,7 @@ function SplitScreen({
                   onClick={() => setCardSheet(true)}
                 >
                   <span className="flex min-w-0 items-center gap-3">
-                    <CreditCard className="h-5 w-5 shrink-0" aria-hidden />
+                    {card ? <CardBrandChip brand={card.brand} last4={card.last4} /> : <CreditCard className="h-5 w-5 shrink-0" aria-hidden />}
                     <span className="min-w-0 truncate text-base">
                       {card ? `${brandLabel(card.brand)} •••• ${card.last4}` : "Pick a card"}
                     </span>
@@ -1077,8 +1078,11 @@ function SplitScreen({
                 }}
                 className={cn("flex h-12 w-full items-center justify-between gap-3 px-4 text-left", i > 0 && "border-border border-t")}
               >
-                <span className="text-base">
-                  <span className="font-semibold">{brandLabel(c.brand)}</span> •••• {c.last4}
+                <span className="flex min-w-0 items-center gap-3 text-base">
+                  <CardBrandChip brand={c.brand} last4={c.last4} />
+                  <span className="truncate">
+                    <span className="font-semibold">{brandLabel(c.brand)}</span> •••• {c.last4}
+                  </span>
                 </span>
                 <span className={cn("h-5 w-5 shrink-0 rounded-full border-2", card?.id === c.id ? "border-foreground bg-foreground" : "border-border")} aria-hidden />
               </button>
