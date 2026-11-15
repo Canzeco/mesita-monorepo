@@ -21,7 +21,7 @@ export function CodeBoxes({ value, onChange }: { value: string; onChange: (code:
 
   return (
     <div
-      className="code-boxes"
+      className="code-boxes verify-box"
       role="group"
       aria-labelledby="waiter-code-label"
       tabIndex={0}
@@ -44,7 +44,8 @@ export function CodeBoxes({ value, onChange }: { value: string; onChange: (code:
       <div className="code-boxes-row" aria-live="polite" aria-label={`${digits.filter(Boolean).length} of ${CODE_LENGTH} digits typed`}>
         {digits.map((d, i) => (
           <span key={i} className={`code-box${i === next ? " code-box-next" : ""}`} aria-hidden>
-            {d ? "•" : ""}
+            {/* The digit itself, never a dot (MESITA-4108, Pato: "don't hide the pin"). */}
+            {d}
           </span>
         ))}
       </div>

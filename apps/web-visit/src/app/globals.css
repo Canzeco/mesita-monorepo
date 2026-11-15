@@ -530,7 +530,6 @@ button.quiet {
   font-weight: 700;
   text-align: center;
   font-variant-numeric: tabular-nums;
-  -webkit-text-security: disc;
 }
 
 .code-box {
@@ -707,6 +706,19 @@ button.quiet.pay-with-icon {
   margin: 0;
 }
 
+/* Reject in red, as tall as Sign · final (MESITA-4108); "Yes, reject" too. */
+button.verify-reject {
+  height: 48px;
+  background: #dc2626;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+button.verify-reject:disabled {
+  opacity: 0.5;
+}
+
 /* The total on the guest row's right (MESITA-4103). */
 .pay-guest .verify-amount {
   margin: 0 0 0 auto;
@@ -765,4 +777,77 @@ button.quiet.pay-with-icon {
   margin: 0;
   font-weight: 600;
   color: #171717;
+}
+
+
+/* ── MODULAR, IN BOXES (MESITA-4108, Pato: "make a cleaner design ... modular
+   in boxes. optimize vertical space") ─────────────────────────────────────
+   Two boxes, the same border, radius and 12px inset: the bill, then the
+   waiter code with its pad. Rows 40px, keys 44px, 8px between boxes. */
+.verify-box {
+  align-self: stretch;
+  margin-top: 8px;
+  border: 1px solid #e5e5e5;
+  border-radius: 16px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.verify-box .pay-guest {
+  padding: 10px 12px;
+}
+
+.verify-box .pay-guest .verify-amount {
+  font-size: 26px;
+}
+
+.verify-box .pay-lines {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid #e5e5e5;
+  border-radius: 0;
+}
+
+.verify-box .pay-lines li {
+  padding: 0 12px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.pay-line-label {
+  flex: 1;
+  min-width: 0;
+  color: #525252;
+}
+
+.pay-line-value {
+  font-weight: 600;
+  color: #171717;
+}
+
+.pay-line-good .pay-line-value,
+.pay-line-good .pay-icon {
+  color: #15803d;
+}
+
+.code-boxes.verify-box {
+  padding: 12px;
+}
+
+.code-boxes.verify-box .code-boxes-row {
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.code-boxes.verify-box .code-box {
+  flex: 1;
+  width: auto;
+  max-width: 52px;
+  height: 44px;
+}
+
+.code-boxes.verify-box .code-pad-key {
+  height: 44px;
+  border-radius: 12px;
+  font-size: 20px;
 }

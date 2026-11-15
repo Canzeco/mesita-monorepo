@@ -15,7 +15,8 @@ import { BanknoteIcon, CheckIcon, CoinsIcon, HandCoinsIcon, SmartphoneIcon, User
 // (Wallet credits; Smartphone "by card" or Banknote "cash received";
 // HandCoins tip), the waiter code (until MESITA-3858 signs waiters in), the
 // dark "Sign · final" with a Check and "Check the amount. Signed payments
-// can't be undone.", and the light "Reject" with an X. The signature is the
+// can't be undone.", and the red "Reject" with an X, as tall as Sign
+// (MESITA-4108, Pato: "reject button must be red same height as black"). The signature is the
 // cash's confirmation: no yes/no question. Sign trades the code for a staff
 // token for this one signature; neither is kept. Then: Receipt (green),
 // Confirming (the card is being charged), Not charged (the charge failed),
@@ -200,18 +201,24 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   }
 
   // TO SIGN.
-  const lines: Array<{ key: string; icon: React.ReactNode; label: string }> = [];
-  if (tab.credit_cents > 0) lines.push({ key: "credit", icon: <WalletIcon className="pay-icon" />, label: `${money(tab.credit_cents)} credits` });
-  if (card > 0) lines.push({ key: "card", icon: <SmartphoneIcon className="pay-icon" />, label: `${money(tab.card_bill_cents)} by card` });
-  if (cash > 0) lines.push({ key: "cash", icon: <BanknoteIcon className="pay-icon" />, label: `${money(tab.cash_bill_cents)} cash received` });
-  if (tip > 0) lines.push({ key: "tip", icon: <HandCoinsIcon className="pay-icon" />, label: `${money(tip)} tip` });
+  // Each line: the word on the left, the amount on the right (MESITA-4108).
+  const lines: Array<{ key: string; icon: React.ReactNode; label: string; value: string; good?: boolean }> = [];
+  if (tab.credit_cents > 0) lines.push({ key: "credit", icon: <WalletIcon className="pay-icon" />, label: "Credits", value: money(tab.credit_cents) });
+  if (card > 0) lines.push({ key: "card", icon: <SmartphoneIcon className="pay-icon" />, label: "By card", value: money(tab.card_bill_cents) });
+  if (cash > 0) lines.push({ key: "cash", icon: <BanknoteIcon className="pay-icon" />, label: "Cash received", value: money(tab.cash_bill_cents) });
+  if (tip > 0) lines.push({ key: "tip", icon: <HandCoinsIcon className="pay-icon" />, label: "Tip", value: money(tip) });
   // MESITA-3910: what the guest gets back, as a detail (Pato: "maybe also mention the cashback").
-  if (tab.cashback_cents > 0) lines.push({ key: "cashback", icon: <CoinsIcon className="pay-icon" />, label: `+${money(tab.cashback_cents)} cashback for the guest` });
+  if (tab.cashback_cents > 0) lines.push({ key: "cashback", icon: <CoinsIcon className="pay-icon" />, label: "Guest's cashback", value: `+${money(tab.cashback_cents)}`, good: true });
 
   return (
     <main className="proof verify" data-tab-state="verify">
       {band}
       {reconnecting}
+      {/* MODULAR, IN BOXES (MESITA-4108, Pato: "make a cleaner design ...
+          modular in boxes. optimize vertical space"): box one is the bill
+          (who, where, total, then each line word-left amount-right); box two
+          is the waiter code and its pad; then Reject and Sign. */}
+      <section className="verify-box" aria-label="The guest's bill">
       <div className="pay-guest">
         <span className="pay-guest-photo" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -229,12 +236,14 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
       </div>
       <ul className="pay-lines" aria-label="How the guest pays">
         {lines.map((l) => (
-          <li key={l.key} data-pay-line={l.key}>
+          <li key={l.key} data-pay-line={l.key} className={l.good ? "pay-line-good" : undefined}>
             {l.icon}
-            <span>{l.label}</span>
+            <span className="pay-line-label">{l.label}</span>
+            <span className="pay-line-value">{l.value}</span>
           </li>
         ))}
       </ul>
+      </section>
       <form
         className="verify-form"
         onSubmit={(e) => {
@@ -265,7 +274,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
               </p>
             ) : null}
             <div className="yes-no">
-              <button type="button" disabled={!!busy || !request} onClick={() => void reject()}>
+              <button type="button" className="verify-reject" disabled={!!busy || !request} onClick={() => void reject()}>
                 {busy === "reject" ? "Rejecting…" : "Yes, reject"}
               </button>
               <button type="button" className="quiet" onClick={() => setRejecting(false)}>
@@ -277,7 +286,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
           // One row: Reject a third, Sign two thirds. "Sign · final" says
           // it can't be undone; the pad says a code is needed.
           <div className="verify-actions">
-            <button type="button" className="quiet pay-with-icon" disabled={!!busy || !request} onClick={() => setRejecting(true)}>
+            <button type="button" className="verify-reject pay-with-icon" disabled={!!busy || !request} onClick={() => setRejecting(true)}>
               <XIcon className="pay-icon" />
               Reject
             </button>
