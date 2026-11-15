@@ -3,13 +3,13 @@
 import {
   CalendarCheck,
   ChevronRight,
+  CreditCard,
   Heart,
   Map as MapIcon,
   Phone,
   QrCode,
   Rocket,
   Share2,
-  Ticket,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -350,10 +350,10 @@ export function MesitaActions({
         onClick={tap("reserve", row.reserve, onReserve)}
         ariaLabel={row.reserve.works ? "Reserve a table" : "Reserve, off: this place doesn't offer reservations"}
       />
-      {/* PREPAY (the ticket since MESITA-3574): green with the best bonus among
+      {/* PREPAY (MESITA-3574): Buy Credits' card, not a ticket, since MESITA-4098 (credits for many visits, not one bill); green with the best bonus among
           the vouchers this place sells now, never a typed "30% Bonus". Opens
           the Offers page when it works, the Off sheet when it doesn't. */}
-      <MesitaTile Icon={Ticket} label="Prepay" amount={said(row.prepay)} badge={row.prepay.pill} tone={tone(row.prepay)} onClick={tap("prepay", row.prepay, openPrepay)} />
+      <MesitaTile Icon={CreditCard} label="Prepay" amount={said(row.prepay)} badge={row.prepay.pill} tone={tone(row.prepay)} onClick={tap("prepay", row.prepay, openPrepay)} />
       {/* WALLET (MESITA-3574, Wallet again in MESITA-3577): green with the
           guest's Available credit here, "Off" when none (MESITA-3581, never
           "$0MX"). Opens the Wallet at this place's credit. Prepay comes first,
