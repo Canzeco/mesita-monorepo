@@ -343,11 +343,25 @@ export function GuestTabView({
       <LocalDialog open={confirmCancel} onClose={() => setConfirmCancel(false)} ariaLabel="Cancel this bill">
         <div className="p-5">
           <p className="text-base font-semibold">Cancel this bill?</p>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {card > 0 ? "The card hold is released. " : ""}
-            {tab.credit_cents > 0 ? "No credits are spent. " : ""}
-            Nothing is paid.
-          </p>
+          {/* WHAT COMES BACK, PART BY PART (MESITA-4106, Pato: "mention that
+              you can get your credits back, but that if you paid with money
+              ... your money is gone"). Cancel (consumer-web-cancel-tab mode
+              "cancel") spends no credit and releases the card hold; cash
+              already in the waiter's hand is outside Mesita, the one loss. */}
+          <ul className="mt-2 flex flex-col gap-1.5 text-sm" data-guest-cancel-parts>
+            {tab.credit_cents > 0 ? (
+              <li className="text-muted-foreground">Your {m(tab.credit_cents)} of credits stay in your Wallet.</li>
+            ) : null}
+            {card > 0 ? (
+              <li className="text-muted-foreground">Your card is not charged: the {m(card)} hold is released.</li>
+            ) : null}
+            {cash > 0 ? (
+              <li className="text-destructive font-semibold">
+                Cash you already gave the waiter ({m(cash)}) is not returned by Mesita. Ask the place for it.
+              </li>
+            ) : null}
+            {tab.credit_cents === 0 && card === 0 && cash === 0 ? <li className="text-muted-foreground">Nothing is paid.</li> : null}
+          </ul>
           <div className="mt-4 flex gap-2">
             <Button className="min-h-12 flex-1 text-base font-semibold" disabled={busy} onClick={() => void cancel()}>
               {busy ? "Cancelling…" : "Cancel bill"}

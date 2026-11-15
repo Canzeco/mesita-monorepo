@@ -431,7 +431,8 @@ export function GuestPayScreen({
       <LocalDialog open={confirmCancel} onClose={() => setConfirmCancel(false)} ariaLabel="Cancel this bill">
         <div className="p-5">
           <p className="text-base font-semibold">Cancel this bill?</p>
-          <p className="text-muted-foreground mt-1 text-sm">Nothing is paid.</p>
+          {/* Before the bill opens nothing has moved (MESITA-4106). */}
+          <p className="text-muted-foreground mt-1 text-sm">Nothing is paid. Your credits stay in your Wallet.</p>
           <div className="mt-4 flex gap-2">
             <Button className="min-h-12 flex-1 text-base font-semibold" disabled={cancelLocked} onClick={cancelBill}>
               Cancel bill
