@@ -122,7 +122,7 @@ export function pinStrokeColor(held: boolean): string {
   return held ? MAP_SELECTED_PIN_STROKE_COLOR : MAP_PIN_STROKE_COLOR;
 }
 
-/** A held pin draws its (white) ring thicker; the disk never grows. */
+/** One ring weight for every pin, held or not (MESITA-3998). */
 export function pinStrokeWeight(held: boolean): number {
   return held ? MAP_SELECTED_PIN_STROKE_WEIGHT : MAP_PIN_STROKE_WEIGHT;
 }
