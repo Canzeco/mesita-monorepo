@@ -123,7 +123,25 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
-  const vouchers = usePlaceVouchers(place.id);
+  // A PAID VOUCHER ENDS ON THE HOUSE CARD (Pato, MESITA-4055: "don't
+  // redirect to prepay, maybe redirect to wallet … and don't leave that
+  // open"). A saved card's payment that succeeded or is processing closes
+  // the Offers page, drops ?rewards and ?from so Back never reopens it, and
+  // opens this place's House Card, where Stripe's page already lands
+  // (MESITA-3617). Asked from the House Card, it goes back there.
+  const vouchers = usePlaceVouchers(place.id, {
+    onPaid: () => {
+      setRewards(null);
+      setAskDismissed(true);
+      const params = new URLSearchParams(window.location.search);
+      params.delete("rewards");
+      params.delete("from");
+      const q = params.toString();
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
+      if (fromWallet) goBack(router, walletPlacePath(place.id));
+      else navigateTo(router, walletPlacePath(place.id), { motion: "drill" });
+    },
+  });
   const reservation = usePlaceReservation(place.id);
   const live = reservation.row;
   // ONE READ, ONE PAINT (Pato, MESITA-3803: "call those two functions in
