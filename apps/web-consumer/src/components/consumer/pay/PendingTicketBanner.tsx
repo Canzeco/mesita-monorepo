@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, ReceiptText } from "lucide-react";
 import { apiListVisits } from "@/lib/api/tab";
-import { barShowsOn, CONSUMER_ROUTES, isAtRoute, payPlacePath, payTabPath } from "@/lib/consumer-route-contract";
+import { barShowsOn, CONSUMER_ROUTES, isAtRoute, payPlacePath, payBillPath } from "@/lib/consumer-route-contract";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { pendingTicket } from "./GuestPayScreen";
@@ -63,7 +63,7 @@ export function PendingTicketBanner() {
 
   if (onPay || !barShowsOn(pathname)) return null;
   const [placeId, localName] = local ? local.split("\n") : [];
-  const href = bill ? payTabPath(bill.tabId) : placeId ? payPlacePath(placeId) : null;
+  const href = bill ? payBillPath(bill.tabId) : placeId ? payPlacePath(placeId) : null;
   if (!href) return null;
   const name = (bill ? bill.name : localName) || null;
   const what = bill ? "Waiting for the waiter's signature" : "Bill in progress";

@@ -17,7 +17,7 @@ import { SlideOverShell } from "@/components/consumer/overlay/SlideOverShell";
 // navigation's request), so the open lands in one step (MESITA-2848).
 export default async function ModalLoading() {
   const id = routeFor((await headers()).get("x-pathname") ?? "");
-  if (id === "placeOpen") {
+  if (id === "placeGoogle") {
     return (
       <SlideOverShell>
         <GeneratingPlaceScreen variant="modal" />

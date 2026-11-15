@@ -49,7 +49,10 @@ function matches(source: string, address: string): boolean {
         ? "(?:/[^/]+)*"
         : /^:[A-Za-z]+$/.test(seg)
           ? "/[^/]+"
-          : `/${seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+          : /^:[A-Za-z]+\(.+\)$/.test(seg)
+            ? // `:name(regex)`: one segment that must match the group.
+              `/(?:${seg.slice(seg.indexOf("(") + 1, -1)})`
+            : `/${seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
     )
     .join("");
   return new RegExp(`^${re}$`).test(address);
@@ -80,7 +83,7 @@ function liveAddresses(): Set<string> {
     CONSUMER_ROUTES.homeSocial,
     CONSUMER_ROUTES.pay,
     `${CONSUMER_ROUTES.payPlace.prefix}:id`,
-    `${CONSUMER_ROUTES.payTab.prefix}:id`,
+    `${CONSUMER_ROUTES.payBill.prefix}:id`,
     `${CONSUMER_ROUTES.payJoin.prefix}:token`,
     `${CONSUMER_ROUTES.payReceipt.prefix}:id`,
     CONSUMER_ROUTES.wallet,
@@ -94,6 +97,7 @@ function liveAddresses(): Set<string> {
     `${CONSUMER_ROUTES.credit.prefix}:id/:id`,
     ...Object.values(CONSUMER_ROUTES.mePages),
     `${CONSUMER_ROUTES.place.prefix}:id`,
+    `${CONSUMER_ROUTES.placeGoogle.prefix}:id`,
     `${CONSUMER_ROUTES.reservation.prefix}:id`,
   ]);
 }
@@ -113,12 +117,12 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       home: "/home/places",
       homeSocial: "/home/social",
       place: { prefix: "/place/" },
-      placeOpen: { prefix: "/place/open/" },
+      placeGoogle: { prefix: "/place/google/" },
       reservation: { prefix: "/reservation/" },
       // The Pay tab; each money object has its address under it (MESITA-3614).
       pay: "/pay",
-      payPlace: { prefix: "/pay/" },
-      payTab: { prefix: "/pay/tab/" },
+      payPlace: { prefix: "/pay/place/" },
+      payBill: { prefix: "/pay/bill/" },
       // A friend's share of a split bill (MESITA-3695).
       payJoin: { prefix: "/pay/join/" },
       payReceipt: { prefix: "/pay/receipt/" },
@@ -127,7 +131,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       credit: { prefix: "/me/tickets/credit/" },
       // Pay's second half (MESITA-3698).
       wallet: "/wallet",
-      walletPlace: { prefix: "/wallet/" },
+      walletPlace: { prefix: "/wallet/place/" },
       walletGift: { prefix: "/wallet/gift/" },
       // No Activity tab (MESITA-3855). Share is a page again (MESITA-3867).
       share: "/share",
@@ -193,6 +197,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         payQr: "/pay/qr",
         ticketPrefix: "/ticket/",
         qr: "/qr",
+        // The bill and the Google place before MESITA-4013.
+        payTabPrefix: "/pay/tab/",
+        placeOpenPrefix: "/place/open/",
         // Me's Second Stage boxes. All land on `me` (Metrics on Settings,
         // the Passport on Profile).
         meClassInvite: "/me/class/invite",
@@ -280,7 +287,12 @@ describe("the legacy block and the redirect table are one set", () => {
     // Addresses that predate the contract's legacy block and are pinned by
     // value in the table test below rather than by key.
     const ALIASES = ["/explore", "/home/", "/subscribe", "/inbox", "/saved/"];
+    // The two bare place ids renamed by MESITA-4013 (/pay/<placeId>,
+    // /wallet/<placeId>): a `:param(regex)` that takes a Mesita id only, so
+    // they have no prefix the legacy block could name.
+    const BARE_PLACE_IDS = ["/pay/:placeId(", "/wallet/:placeId("];
     const spokenFor = (source: string) => {
+      if (BARE_PLACE_IDS.some((b) => source.startsWith(b))) return true;
       const exact = source.replace(/\/:[A-Za-z]+\*?$/, "/");
       if (legacy.includes(source)) return true;
       if (source.includes(":") && legacy.includes(exact)) return true;
@@ -385,7 +397,27 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
 describe("next.config redirects (static legacy → canonical, 308)", () => {
   it("pins the full redirect table", async () => {
     const redirects = LEGACY_REDIRECTS;
+    // A Mesita row id: all the bare-id forwards take (MESITA-4013).
+    const rowId =
+      "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
     expect(redirects).toEqual([
+      // The addresses renamed to the product's words (MESITA-4013).
+      { source: "/pay/tab/:id", destination: "/pay/bill/:id", permanent: true },
+      {
+        source: "/place/open/:gid",
+        destination: "/place/google/:gid",
+        permanent: true,
+      },
+      {
+        source: `/pay/:placeId(${rowId})`,
+        destination: "/pay/place/:placeId",
+        permanent: true,
+      },
+      {
+        source: `/wallet/:placeId(${rowId})`,
+        destination: "/wallet/place/:placeId",
+        permanent: true,
+      },
       // Explore era (pre-Home). Straight to the Discover default.
       { source: "/explore", destination: "/home/places", permanent: true },
       {

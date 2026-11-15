@@ -8,7 +8,7 @@ import { PlaceRowCard } from "@/components/consumer/home/PlaceRowCard";
 
 // NO PASSIVE CREATION (MESITA-2298 req 5, MESITA-2302). A Mesita Place is
 // minted only when a guest explicitly opens a Google-only result's profile:
-// the tap goes to /place/open/<gid> at once and THAT screen's client effect
+// the tap goes to /place/google/<gid> at once and THAT screen's client effect
 // awaits `getOrCreateGooglePlace`, one deduped get-or-create per Google Place
 // ID. Loading, rendering, scrolling, prefetching or selecting a pin or a card
 // writes nothing. These pins keep every passive path free of the create call
@@ -170,8 +170,8 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
       "components/consumer/search/SearchMap.tsx",
       "app/(shell)/place/[id]/page.tsx",
       "app/(shell)/@modal/(.)place/[id]/page.tsx",
-      "app/(shell)/place/open/[gid]/page.tsx",
-      "app/(shell)/@modal/(.)place/open/[gid]/page.tsx",
+      "app/(shell)/place/google/[gid]/page.tsx",
+      "app/(shell)/@modal/(.)place/google/[gid]/page.tsx",
       "app/(shell)/(discovery)/home/layout.tsx",
       "app/(shell)/(discovery)/home/places/page.tsx",
       "components/consumer/home/PlaceRowCard.tsx",

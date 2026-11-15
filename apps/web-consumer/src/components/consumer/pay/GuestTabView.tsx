@@ -16,7 +16,7 @@ import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, RowsCard, StepsBar, WA
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
-// /pay/tab/<id>, after App Pay, "I gave the cash" or credits alone:
+// /pay/bill/<id>, after App Pay, "I gave the cash" or credits alone:
 //
 //   5 Sign        mostly a large QR, the place's name above it, a chip with
 //                 the way it's paid, an amber Clock counting down the ten

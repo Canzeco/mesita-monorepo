@@ -4,7 +4,7 @@
 // page apart from the live pay screens; MESITA-3780, Pato: "in visits mention
 // the select pay methods and everything. be fucking detailed"). Opened from
 // Me › Tickets for a bill that is paid, expired or cancelled; an open bill
-// still opens /pay/tab/<id>.
+// still opens /pay/bill/<id>.
 //
 // ONE RECEIPT (MESITA-3865, Pato: "better design for the fucking tickets both
 // externally and internally"). It was six equal cards with the total written

@@ -15,6 +15,7 @@ import { money, type PayPlace } from "@/lib/api/wallet";
 import { acceptCardsAnswer, type CardsLoad, cardsFailure, loadedCards, pickCard } from "@/lib/pay-cards";
 import { payDraftExpired } from "@/lib/pay-draft";
 import { type PadKey, paySplit, pressKey, readTip } from "@/lib/pay-keypad";
+import { payPlacePath } from "@/lib/consumer-route-contract";
 import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
@@ -22,7 +23,7 @@ import { BackStep, BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PlaceBar, Pl
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
 // THE GUEST PAYS (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
-// /pay/<placeId>, one screen a step:
+// /pay/place/<placeId>, one screen a step:
 //
 //   1 Open    the place large across the top (photo, name, MapPin and the
 //             distance); tapping the name opens the search; Off says why.
@@ -37,7 +38,7 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-com
 //             the waiter signs.
 //   4B Cash   "Give MX$X to the waiter", then "I gave the cash".
 //
-// Paying opens the bill (/pay/tab/<id>, GuestTabView: Sign, Confirming,
+// Paying opens the bill (/pay/bill/<id>, GuestTabView: Sign, Confirming,
 // Receipt, Not paid). The header's back arrow steps back.
 //
 // ONE TICKET AT A TIME (MESITA-3879, Pato: "imagine someone closes the app
@@ -278,7 +279,7 @@ export function GuestPayScreen({
       .catch((err: unknown) => {
         if (!acceptCardsAnswer(attempt, latestCardsAttempt.current)) return;
         const failed = cardsFailure(err);
-        if (failed.state === "signed_out") window.location.assign(clearSessionHref(`/pay/${placeId}`));
+        if (failed.state === "signed_out") window.location.assign(clearSessionHref(payPlacePath(placeId)));
         setCardsLoad(failed);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -357,7 +358,7 @@ export function GuestPayScreen({
     setAddingCard(true);
     setError(null);
     try {
-      const back = `${window.location.origin}/pay/${placeId}?${CARD_RETURN_PARAM}=1`;
+      const back = `${window.location.origin}${payPlacePath(placeId)}?${CARD_RETURN_PARAM}=1`;
       const { url } = await apiAddCard(getSupabase(), back);
       window.location.assign(url);
     } catch (e) {

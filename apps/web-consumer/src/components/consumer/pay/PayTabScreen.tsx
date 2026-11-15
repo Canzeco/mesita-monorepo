@@ -3,7 +3,7 @@
 import { Screen } from "@/components/consumer/nav/Screen";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CONSUMER_ROUTES, payPlacePath, payReceiptPath, payTabPath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payPlacePath, payReceiptPath, payBillPath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
@@ -17,11 +17,11 @@ import { usePayPlaces } from "./use-pay-places";
 // THE BILL AT THE TABLE (MESITA-3564, TabView.tsx), at two addresses
 // (MESITA-3614):
 //
-//   /pay/<placeId>   the door: opens (or reuses) the guest's bill there, then
+//   /pay/place/<placeId>   the door: opens (or reuses) the guest's bill there, then
 //                    rewrites the address to the bill's own. The table QR's
 //                    /pay?place=, the place screen's Pay and the Wallet's
 //                    "Pay here" all come through it.
-//   /pay/tab/<id>    the bill itself; a reload shows the same bill.
+//   /pay/bill/<id>    the bill itself; a reload shows the same bill.
 //
 // Back and Done land where the guest came from (goBack), or on the Pay list
 // when the bill was opened from outside the app. "Waiter gave you a code?"
@@ -77,7 +77,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
             places={places}
             placesFailed={failed}
             getSupabase={getSupabase}
-            onPaid={(id) => navigateTo(router, payTabPath(id), { replace: true })}
+            onPaid={(id) => navigateTo(router, payBillPath(id), { replace: true })}
             onOpenPlace={(id) => navigateTo(router, payPlacePath(id), { replace: true })}
             onChoosePlace={() => navigateTo(router, `${CONSUMER_ROUTES.pay}?pick=1`, { replace: true })}
             registerBack={registerBack}
@@ -90,7 +90,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
           canUseCode={(placeId) => places?.some((p) => p.place_id === placeId) ?? false}
           onTabId={(id) => {
             writeOpenTabId(id);
-            replaceAddress(payTabPath(id));
+            replaceAddress(payBillPath(id));
           }}
           onWaiterCode={setFormPlaceId}
           onDone={leave}

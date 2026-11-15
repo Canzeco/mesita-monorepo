@@ -10,7 +10,7 @@ import { SECONDARY } from "./wallet-buttons";
 
 // A PAYMENT METHOD, FULL SCREEN (Pato, MESITA-3533): a saved card or a
 // Story waiting for staff, opened from a Wallet rail. A place's credit is a
-// page of its own, /wallet/<placeId> (PlaceCredit.tsx, MESITA-3614).
+// page of its own, /wallet/place/<placeId> (PlaceCredit.tsx, MESITA-3614).
 
 export type Method =
   | { kind: "card"; card: SavedCard }

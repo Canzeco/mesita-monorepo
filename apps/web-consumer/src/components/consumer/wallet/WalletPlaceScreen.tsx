@@ -14,7 +14,7 @@ import { toast } from "@/lib/toast";
 import { HouseCardSkeleton, PlaceCredit } from "./PlaceCredit";
 import { useWallet } from "./use-wallet";
 
-// /wallet/<placeId> — a place's House Card, full screen (MESITA-3533's
+// /wallet/place/<placeId> — a place's House Card, full screen (MESITA-3533's
 // sheet as a page, MESITA-3614). Reached from its card on the Wallet's
 // Credits rail and straight from the place screen's Wallet tile, so the
 // tile no longer lands on the Wallet and then pops a sheet. Back lands where

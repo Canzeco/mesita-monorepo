@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 //
 // FULL PAGE, NOT A SHEET (Pato, 2026-09-12): the screen owns the body, the
 // shell owns the bar, and the route map says where the bar shows. It stays
-// on every pushed page except the four pay screens (payPlace, payTab,
+// on every pushed page except the four pay screens (payPlace, payBill,
 // payJoin, payReceipt; MESITA-3739), which own the whole frame like the
 // place screen does.
 //

@@ -11,9 +11,11 @@
 // never renders and typecheck, build and the whole vitest suite stay green.
 // Nothing here may name /home/places, /home/social, /pay, /wallet, /search,
 // /search/chat, /me or any live /me/<box>. Pay and Wallet have live children
-// (/pay/<placeId>, /pay/tab/<id>, /pay/receipt/<id>, /wallet/<placeId>,
-// /wallet/gift/<token>, MESITA-3614), so their old children are listed by
-// name, never as a `:param` that would swallow a live one.
+// (/pay/place/<placeId>, /pay/bill/<id>, /pay/receipt/<id>,
+// /wallet/place/<placeId>, /wallet/gift/<token>), so their old children are
+// listed by name, never as a `:param` that would swallow a live one. The
+// one `:param` under each (a bare place id, MESITA-4013) matches a Mesita id
+// and nothing else.
 //
 // BARE ONLY. The /web and /mob surface prefixes are retired (MESITA-3013):
 // SURFACE_PREFIX_REDIRECTS below sends each to its bare path in one 308, and
@@ -29,7 +31,35 @@ export type Redirect = {
   has?: Array<{ type: "query"; key: string; value: string }>;
 };
 
+/** A Mesita row id, as a path-to-regexp group: the only thing a bare
+ *  `/pay/<x>` or `/wallet/<x>` forward may take for a place. */
+const ROW_ID =
+  "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
+
 export const LEGACY_REDIRECTS: Redirect[] = [
+  // THE ADDRESSES SAY THE PRODUCT'S WORDS (MESITA-4013). The bill was
+  // /pay/tab/<id> ("tab" is the bar's word); a Google place opened at
+  // /place/open/<gid>; pay-at-a-place and a House Card were a bare place id
+  // beside fixed words. Sent links, an open tab on an old build and the
+  // voucher checkout's return (`_shared/vouchers.ts` still sends Stripe back
+  // to /wallet/<placeId>?prepay=) all arrive on the old shapes; Next carries
+  // the query across.
+  { source: "/pay/tab/:id", destination: "/pay/bill/:id", permanent: true },
+  {
+    source: "/place/open/:gid",
+    destination: "/place/google/:gid",
+    permanent: true,
+  },
+  {
+    source: `/pay/:placeId(${ROW_ID})`,
+    destination: "/pay/place/:placeId",
+    permanent: true,
+  },
+  {
+    source: `/wallet/:placeId(${ROW_ID})`,
+    destination: "/wallet/place/:placeId",
+    permanent: true,
+  },
   // Explore era (pre-Home). Straight to the Discover default.
   { source: "/explore", destination: "/home/places", permanent: true },
   {

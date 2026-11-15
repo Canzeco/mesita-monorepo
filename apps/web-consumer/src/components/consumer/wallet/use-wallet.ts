@@ -12,7 +12,7 @@ import type { WalletCardModel } from "./WalletCard";
 // cards ride this same read and the page draws once.
 //
 // THE WALLET'S MONEY, read once for both Wallet screens (MESITA-3614): the
-// rails at /wallet and a place's House Card at /wallet/<placeId>. Money
+// rails at /wallet and a place's House Card at /wallet/place/<placeId>. Money
 // comes from consumer-web-get-wallet only; nothing here adds anything up
 // (MESITA-3098).
 //
