@@ -321,6 +321,10 @@ const CONSUMER_READ_ALLOWLIST = [
   // MESITA-3857: the waiter's screen shows the guest's photo on a guest bill;
   // avatar_url only, never a name. Read-only, error logged.
   "visit-web-get-tab/index.ts",
+  // Tickets › Gifts (MESITA-4036): the first name and photo of each friend a
+  // gift went to or came from (appear_anonymous hides the photo). Read-only,
+  // error logged.
+  "consumer-web-get-wallet/index.ts",
 ];
 
 Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist", async () => {
