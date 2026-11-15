@@ -79,14 +79,40 @@ function wordFit(spoken: string, booked: string): number {
   return sim >= 0.6 ? sim * 0.9 : 0;
 }
 
+/**
+ * The words of a name without how people address it (MESITA-4075): "a nombre
+ * de", señor/señora/señorita (sr, sra, srta), don/doña, familia, joven, and an
+ * article right before one of them ("la señora López" → "lopez"). A lone "de"
+ * stays: it is part of surnames like "de la Cruz".
+ */
+export function nameWords(s: string): string[] {
+  return plainName(s)
+    .replace(/(^|\s)a nombre de(?=\s|$)/g, " ")
+    .replace(/(^|\s)(?:(?:el|la|los|las)\s+)?(?:senor|senora|senorita|sr|sra|srta|don|dona|familia|joven)(?=\s|$)/g, " ")
+    .split(" ")
+    .filter(Boolean);
+}
+
+/** Each spoken word's fit to its best word of the booked name. */
+function wordFits(spoken: string, booked: string): number[] {
+  const said = nameWords(spoken);
+  const words = nameWords(booked);
+  if (said.length === 0 || words.length === 0) return [];
+  return said.map((s) => Math.max(...words.map((w) => wordFit(s, w))));
+}
+
 /** 0..1: every spoken word against its best word of the booked name, averaged. */
 export function nameFit(spoken: string, booked: string): number {
-  const said = plainName(spoken).split(" ").filter(Boolean);
-  const words = plainName(booked).split(" ").filter(Boolean);
-  if (said.length === 0 || words.length === 0) return 0;
-  const fits = said.map((s) => Math.max(...words.map((w) => wordFit(s, w))));
-  return fits.reduce((a, b) => a + b, 0) / fits.length;
+  const fits = wordFits(spoken, booked);
+  return fits.length ? fits.reduce((a, b) => a + b, 0) / fits.length : 0;
 }
+
+/**
+ * Below this best single-word fit the spoken name is someone else's, and the
+ * ticket is never offered, however well the day, hour and party agree
+ * (MESITA-4075: "Roberto Méndez" must not find Ana López's table).
+ */
+export const NAME_GATE = 0.5;
 
 // ── Day and hour ─────────────────────────────────────────────────────────────
 
@@ -154,7 +180,8 @@ export function rankTickets<T extends SearchableTicket>(
   now: Date,
   limit = 3,
 ): RankedTicket<T>[] {
-  const name = clues.name?.trim() ?? "";
+  // A name of only "la señora" is no name.
+  const name = nameWords(clues.name ?? "").length ? clues.name!.trim() : "";
   const day = clues.date ? resolveDay(clues.date, now, zone) : null;
   const mins = clues.time ? resolveMinutes(clues.time) : [];
   const party = Number.isInteger(clues.party_size) && clues.party_size! > 0 ? clues.party_size! : null;
@@ -166,9 +193,14 @@ export function rankTickets<T extends SearchableTicket>(
   if (party) possible += W.party;
   if (possible === 0) return [];
 
-  const ranked = tickets.map((t) => {
+  const ranked = tickets.flatMap((t) => {
     let got = 0;
-    if (name) got += W.name * nameFit(name, ticketGuestName(t, ""));
+    if (name) {
+      const fits = wordFits(name, ticketGuestName(t, ""));
+      // A name was given and no word of it fits: someone else's table.
+      if (!fits.length || Math.max(...fits) < NAME_GATE) return [];
+      got += W.name * fits.reduce((a, b) => a + b, 0) / fits.length;
+    }
     const at = new Date(t.reserved_at);
     if (day) {
       const gap = Math.abs(Date.parse(`${zoneDay(at, zone)}T12:00:00Z`) - Date.parse(`${day}T12:00:00Z`)) / 86_400_000;
@@ -184,7 +216,7 @@ export function rankTickets<T extends SearchableTicket>(
       got += W.party * (off === 0 ? 1 : off === 1 ? 0.5 : 0);
     }
     const score = got / possible - (t.state === "cancelled" ? 0.01 : 0);
-    return { ticket: t, score: Math.round(score * 1000) / 1000 };
+    return [{ ticket: t, score: Math.round(score * 1000) / 1000 }];
   });
 
   return ranked
