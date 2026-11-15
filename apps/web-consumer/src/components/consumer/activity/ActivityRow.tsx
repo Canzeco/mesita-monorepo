@@ -24,10 +24,27 @@
 import { ChevronRight } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared/Skeleton";
+import { KIND_WORD } from "@/lib/ticket-rows";
 import { timeAgo } from "@/lib/time-ago";
+import { KindBadge } from "./KindBadge";
 import { cn } from "@/lib/utils";
 
 export type StatusTone = "green" | "ink" | "grey";
+
+/** What a row is (MESITA-4001): its badge and the first word its name says. */
+export type TicketRowKind =
+  | "visit"
+  | "payment"
+  | "voucher"
+  | "bonus"
+  | "story"
+  | "gift_in"
+  | "gift_out"
+  | "gift_back"
+  | "gift_link"
+  | "refund"
+  | "reversal"
+  | "reservation";
 
 export type ActivityItem = {
   key: string;
@@ -47,6 +64,15 @@ export type ActivityItem = {
   label?: string;
   /** Cancelled, declined, expired: drawn quieter. */
   dim?: boolean;
+  /** Its kind: the badge on the photo and the name's first word. */
+  kind?: TicketRowKind;
+  /** What happened to the guest's credit (MESITA-4001): "+" came in (green),
+   *  "−" went out; none for card or cash money. Drawn before `big`. */
+  sign?: "+" | "−" | null;
+  /** Cashback this ticket earned, in cents, and its words ("+$3.00
+   *  cashback"), green under the state. */
+  cashbackCents?: number | null;
+  cashback?: string | null;
   href?: string;
   /** The one thing to do about it, a filled button under the row. */
   action?: { label: string; href: string };
@@ -64,31 +90,34 @@ const TONE: Record<StatusTone, string> = {
  *  in one white card per day group until then. */
 export function ActivityRows({ children }: { children: React.ReactNode }) {
   return (
-    <ul className="-mx-5" data-activity>
+    // GREY LINES BETWEEN EVENTS (Pato, 2026-11-14: "maybe add gray lines to
+    // separate events"): a hairline under each row, full width.
+    <ul className="divide-border -mx-5 divide-y" data-activity>
       {children}
     </ul>
   );
 }
 
 export function ActivityRow({ t }: { t: ActivityItem }) {
+  const amount = t.money && t.sign ? `${t.sign}${t.big}` : t.big;
   const body = (
     <>
-      {t.photo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={t.photo}
-          alt=""
-          className={cn(
-            "h-10 w-10 shrink-0 self-start rounded-full object-cover",
-            t.dim && "opacity-50 grayscale",
-          )}
-        />
-      ) : (
-        <span
-          className="bg-muted h-10 w-10 shrink-0 self-start rounded-full"
-          aria-hidden
-        />
-      )}
+      <span className="relative h-10 w-10 shrink-0 self-start">
+        {t.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={t.photo}
+            alt=""
+            className={cn(
+              "h-10 w-10 rounded-full object-cover",
+              t.dim && "opacity-50 grayscale",
+            )}
+          />
+        ) : (
+          <span className="bg-muted block h-10 w-10 rounded-full" aria-hidden />
+        )}
+        {t.kind ? <KindBadge kind={t.kind} /> : null}
+      </span>
       <span className="min-w-0 flex-1">
         {t.label ? (
           <span className="block text-xs font-semibold text-green-700">
@@ -119,15 +148,24 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
           <span
             className={cn(
               "text-base tabular-nums",
-              t.dim ? "text-muted-foreground font-medium" : "font-semibold",
+              t.dim
+                ? "text-muted-foreground font-medium"
+                : t.sign === "+"
+                  ? "font-semibold text-green-700"
+                  : "font-semibold",
             )}
           >
-            {t.big}
+            {amount}
           </span>
         ) : null}
         {t.status.label ? (
           <span className={cn("text-sm font-medium", TONE[t.status.tone])}>
             {t.status.label}
+          </span>
+        ) : null}
+        {t.cashback ? (
+          <span className="text-xs font-medium text-green-700 tabular-nums">
+            {t.cashback}
           </span>
         ) : null}
       </span>
@@ -146,7 +184,14 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
         <PushLink
           href={t.href}
           className={cn(cls, "hover:bg-muted/40 active:bg-muted/60 transition")}
-          aria-label={[t.place, t.status.label, t.big, t.line]
+          aria-label={[
+            t.kind && KIND_WORD[t.kind],
+            t.place,
+            t.status.label,
+            t.money ? amount : t.big,
+            t.cashback,
+            t.line,
+          ]
             .filter(Boolean)
             .join(", ")}
         >

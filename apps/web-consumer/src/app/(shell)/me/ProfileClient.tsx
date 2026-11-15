@@ -15,11 +15,10 @@ import { IdentityBar } from "./IdentityBar";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useUnseenNotificationCount } from "@/components/consumer/use-unseen-notifications";
 import {
-  isOpenVisit,
-  isTicketVisit,
   useReservations,
   useVisits,
 } from "@/components/consumer/activity/MeLists";
+import { isOpenVisit, isTicketVisit } from "@/lib/ticket-rows";
 
 // The Me surface — the identity header, then nine cells in Pato's order
 // (MESITA-3855):
