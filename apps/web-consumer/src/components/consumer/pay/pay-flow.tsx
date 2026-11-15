@@ -1,9 +1,11 @@
 "use client";
 
 import { SizedImg } from "@mesita/place-profile";
-import { ChevronLeft, MapPin, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { PayPlace } from "@/lib/api/wallet";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/shared/Spinner";
 import { goBack } from "@/lib/navigate";
 import { cn } from "@/lib/utils";
 
@@ -103,16 +105,27 @@ export function PlaceHero({
   );
 }
 
-/** The top of every step after Bill: the place's photo and name. Cancel
- *  bill lives only under the QR, once a bill exists (MESITA-4021). */
-export function PlaceBar({ place }: { place: PayPlace }) {
-  return (
-    <div className="flex h-11 shrink-0 items-center gap-3">
+/** The top of every step, Bill to Sign (MESITA-4061: the keypad step too):
+ *  the place's photo and name. With `onChoose` the name is a button (a grey
+ *  chevron says so) to choose another place, keeping the draft; Sign's is
+ *  plain. Cancel bill is the footer's (MESITA-4051). */
+export function PlaceBar({ place, name, onChoose }: { place: PayPlace | null; name?: string | null; onChoose?: () => void }) {
+  const label = place?.name ?? name ?? "A Mesita place";
+  const row = (
+    <>
       <span className="bg-muted h-9 w-9 shrink-0 overflow-hidden rounded-full" aria-hidden>
-        {place.photo ? <SizedImg src={place.photo} size="thumb" alt="" className="h-full w-full object-cover" /> : null}
+        {place?.photo ? <SizedImg src={place.photo} size="thumb" alt="" className="h-full w-full object-cover" /> : null}
       </span>
-      <span className="min-w-0 flex-1 truncate text-base font-semibold">{place.name ?? "A Mesita place"}</span>
-    </div>
+      <span className="min-w-0 truncate text-base font-semibold">{label}</span>
+      {onChoose ? <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden /> : null}
+    </>
+  );
+  return onChoose ? (
+    <button type="button" onClick={onChoose} className="flex h-11 min-w-0 shrink-0 items-center gap-3 self-start text-left" aria-label={`${label}. Choose another place`}>
+      {row}
+    </button>
+  ) : (
+    <div className="flex h-11 shrink-0 items-center gap-3">{row}</div>
   );
 }
 
@@ -153,61 +166,105 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
  *  segment. */
 export const PAY_FLOW_STEPS = ["Bill", "Tip", "Method", "Pay", "Sign"] as const;
 
-/** The progress at the top: one labeled segment per step. Done = ink,
- *  current = ink with its label bold, ahead = grey; `paid` turns them all
- *  green. With `onStep`, a done step is a button back to it (MESITA-3906). */
-export function StepsBar({
-  at,
-  paid = false,
-  onStep,
-  className,
-}: {
-  at: number;
-  paid?: boolean;
-  onStep?: (step: number) => void;
-  className?: string;
-}) {
+/** A step's body (MESITA-4061, Pato: "all the things of the body must be
+ *  vertically aligned, not only horizontally"): one group, centred both ways
+ *  in the space between the step nav and the footer. `my-auto` (never
+ *  justify-center) so a group taller than the screen scrolls from its top
+ *  instead of being clipped; the footer never moves. */
+export function StepBody({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <ol className={cn("grid shrink-0 grid-cols-5 gap-1.5", className)} aria-label={`Step ${at + 1} of ${PAY_FLOW_STEPS.length}: ${PAY_FLOW_STEPS[at]}`} data-pay-steps>
-      {PAY_FLOW_STEPS.map((name, i) => {
-        const body = (
-          <>
-            <span className={cn("h-1.5 w-full rounded-full", paid ? "bg-green-700" : i <= at ? "bg-foreground" : "bg-border")} aria-hidden />
-            <span className={cn("text-sm", i === at ? "text-foreground font-semibold" : i < at ? "text-foreground" : "text-muted-foreground")}>{name}</span>
-          </>
-        );
-        return (
-          <li key={name} aria-current={i === at ? "step" : undefined}>
-            {onStep && i < at && !paid ? (
-              <button
-                type="button"
-                onClick={() => onStep(i)}
-                className="flex min-h-11 w-full flex-col items-start gap-1 text-left"
-                aria-label={`Back to ${name}`}
-              >
-                {body}
-              </button>
-            ) : (
-              <span className="flex min-h-11 flex-col gap-1">{body}</span>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+    <div className="-mx-4 flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+      <div className={cn("my-auto flex w-full flex-col items-center py-4 text-center", className)}>{children}</div>
+    </div>
   );
 }
 
-/** One step back, named: "‹ Bill" (MESITA-3878). Leaving is the X. */
-export function BackStep({ to, onClick }: { to: string; onClick: () => void }) {
+/** The step nav (MESITA-4061, Pato: "steps with arrows to nav across them
+ *  < >"): ‹ one step back, "Tip · 2 of 5", › the footer's Next. An arrow
+ *  that cannot act is hidden (its 44px slot kept, gone from the screen
+ *  reader); › exists only where the footer's button is a plain Next, never
+ *  where it moves money or leaves the app. Under it, five thin segments,
+ *  done and current ink. A pure view: the screen owns the back logic. */
+export function StepNav({
+  at,
+  onBack,
+  next,
+}: {
+  at: number;
+  onBack?: () => void;
+  next?: { onClick: () => void; disabled: boolean };
+}) {
+  const name = PAY_FLOW_STEPS[at];
+  const arrow = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent";
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="text-foreground hover:bg-muted -ml-2 flex h-11 shrink-0 items-center gap-1 self-start rounded-full pr-3 pl-1 text-base font-semibold"
-      data-pay-back
-    >
-      <ChevronLeft className="h-5 w-5" aria-hidden />
-      {to}
-    </button>
+    <div className="shrink-0" data-pay-steps>
+      <div className="flex h-11 items-center">
+        <button
+          type="button"
+          onClick={onBack}
+          className={cn(arrow, !onBack && "invisible")}
+          aria-label={at > 0 ? `Back to ${PAY_FLOW_STEPS[at - 1]}` : "Back"}
+          tabIndex={onBack ? undefined : -1}
+          data-pay-back
+        >
+          <ChevronLeft className="h-6 w-6" aria-hidden />
+        </button>
+        <p className="min-w-0 flex-1 truncate text-center text-base">
+          <span className="font-semibold">{name}</span>
+          <span className="text-muted-foreground">{` · ${at + 1} of ${PAY_FLOW_STEPS.length}`}</span>
+        </p>
+        <button
+          type="button"
+          onClick={next?.onClick}
+          disabled={next?.disabled}
+          className={cn(arrow, !next && "invisible")}
+          aria-label={at < PAY_FLOW_STEPS.length - 1 ? `Next: ${PAY_FLOW_STEPS[at + 1]}` : "Next"}
+          tabIndex={next ? undefined : -1}
+          data-pay-next
+        >
+          <ChevronRight className="h-6 w-6" aria-hidden />
+        </button>
+      </div>
+      <ol className="mt-1 grid grid-cols-5 gap-1.5" aria-label={`Step ${at + 1} of ${PAY_FLOW_STEPS.length}: ${name}`}>
+        {PAY_FLOW_STEPS.map((step, i) => (
+          <li key={step} aria-current={i === at ? "step" : undefined} className={cn("h-1 rounded-full", i <= at ? "bg-foreground" : "bg-border")} />
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/** The bottom row, pinned under a full-width hairline: the red Cancel bill
+ *  (MESITA-4051) a quarter, the step's one dark button three quarters
+ *  (MESITA-4058, Pato: "maybe 25% and 75% for black button"). With no
+ *  primary (Sign: the waiter acts, not the guest) Cancel bill fills the row. */
+export function StepFooter({
+  primary,
+  onCancel,
+  cancelDisabled,
+}: {
+  primary?: { label: React.ReactNode; onClick: () => void; disabled: boolean; busy: boolean };
+  onCancel: () => void;
+  cancelDisabled: boolean;
+}) {
+  return (
+    <div className={cn("border-border -mx-4 mt-3 grid shrink-0 gap-3 border-t px-4 pt-3", primary && "grid-cols-[1fr_3fr]")}>
+      <Button
+        type="button"
+        size="lg"
+        variant="danger"
+        className="min-h-12 w-full px-1 text-sm leading-tight font-semibold whitespace-normal"
+        disabled={cancelDisabled}
+        onClick={onCancel}
+        data-guest-cancel-bill
+      >
+        Cancel bill
+      </Button>
+      {primary ? (
+        <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={primary.disabled} onClick={primary.onClick}>
+          {primary.busy ? <Spinner size="sm" label="Working" /> : primary.label}
+        </Button>
+      ) : null}
+    </div>
   );
 }
