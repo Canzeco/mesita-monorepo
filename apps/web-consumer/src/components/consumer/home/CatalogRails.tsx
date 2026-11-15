@@ -466,18 +466,18 @@ export function CatalogRails() {
             }}
             className={cn(
               "relative flex-1 px-1 py-3 text-center text-sm whitespace-nowrap transition",
-              // The word stays ink (MESITA-3687); only the bar is blue
-              // (MESITA-3892).
+              // The word is ink and bold (MESITA-3687, MESITA-4039).
               on ? "text-foreground font-semibold" : "text-muted-foreground",
             )}
           >
             {on ? (
               <span
                 aria-hidden
-                // BLUE BAR (MESITA-3892, Pato: "Yes, blue too", matching
-                // Reservations' Upcoming | Past, MESITA-3889; ink under
-                // MESITA-3687).
-                className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-600"
+                // A SHORT INK LINE, THE BOTTOM BAR'S (Pato, 2026-11-15,
+                // MESITA-4039: "must not have that ugly ass blue ... not the
+                // whole selection and keep it black, akin the bottom menu"):
+                // 32px under the word, not a full-width blue bar (MESITA-3892).
+                className="bg-foreground absolute bottom-0 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full"
               />
             ) : null}
             <span className="relative inline-block">
