@@ -2,7 +2,7 @@
 
 // Payments (MESITA-3296; the Place states of Main §10 since MESITA-3589).
 // SINCE MESITA-3946 THE PAGE IS THREE CARDS, then Vouchers and Waiter Code:
-//   Stripe Account   · the account (small Open Stripe button) · Accept Stripe Payments
+//   Stripe Account   · the account (a LARGE Open Stripe button, MESITA-4024: Pato, "must be far larger") · Accept Stripe Payments
 //   Credits Account  · Credits Agreement · Credits Balance (read-only) · Accept
 //                      Credits Payments (House Credits: on once signed, then locked)
 //   Payments & Cashbacks · one row per way to pay, Accept | Cashback-as-Credits:
@@ -13,8 +13,8 @@
 // table QR (the guest shows the QR). One list again (MESITA-3600, Pato on the
 // card grid: "make the list UI again. that looks like shit and its
 // confusing"): the test pill, an unpaid fee banner (MESITA-3461), the
-// numbered to-do strip (Agreement → House Credits → Waiter code → Stripe
-// Account, MESITA-3602), then section cards of rows, each row a mark, a title and one line, its value and
+// numbered to-do strip (MESITA-3602; removed by MESITA-4024, Pato: "remove the
+// stupid progress bar on top"), then section cards of rows, each row a mark, a title and one line, its value and
 // its control:
 //   (MESITA-3827, Pato: "Main Configuration · Cash Payments · Credits
 //   Payments · Mesita Payments · Mesita Prepayments", each way to pay with its
@@ -49,8 +49,6 @@ import { CARD_BILL_PAY_LIVE, moneyState, NOT_YET_SELLABLE, TestBand, type Vouche
 import type { Icon } from "@phosphor-icons/react";
 import {
   ArrowSquareOutIcon,
-  CaretRightIcon,
-  CheckIcon,
   ConfettiIcon,
   CrownIcon,
   CreditCardIcon,
@@ -315,17 +313,6 @@ export function PaymentsPanel({
   const needsStripePayments = step("Turn Accept Stripe Payments on first.", "#accept-stripe-payments");
   const balance = initial.credits_balance ?? null;
 
-  // The to-do strip (MESITA-3602, Pato: "a sequential horizontal to-do list to
-  // fully enable Payments"): four steps in order, each a link to its row; the
-  // first not done is the next one, highlighted.
-  const steps = [
-    { name: "Agreement", done: contract.signed, href: "#house-credits-agreement" },
-    { name: "House Credits", done: settings.house_credits, href: "#house-credits" },
-    { name: "Waiter code", done: codeSet, href: "#waiter-code" },
-    { name: "Stripe Account", done: takesCards, href: "#stripe-account" },
-  ];
-  const next = steps.findIndex((s) => !s.done);
-
   /** A row's one line under its title: the missing step if blocked, else its note. */
   const under = (blocked: React.ReactNode, note: React.ReactNode) =>
     blocked ? <p className={BLOCKED}>{blocked}</p> : note ? <p className={NOTE}>{note}</p> : null;
@@ -460,33 +447,6 @@ export function PaymentsPanel({
           ) : null}
         </p>
       ) : null}
-      <ol className="flex flex-wrap items-center gap-2 text-sm" aria-label="To fully enable Payments" data-setup-steps>
-        {steps.map((s, n) => (
-          <li key={s.href} className="flex items-center gap-2">
-            {n > 0 ? <CaretRightIcon size={14} weight="bold" className="text-muted-foreground shrink-0" aria-hidden /> : null}
-            <a
-              href={s.href}
-              aria-current={n === next ? "step" : undefined}
-              className={cn(
-                "flex items-center gap-2 rounded-full border py-1.5 pr-3.5 pl-1.5 font-medium whitespace-nowrap transition-colors",
-                n === next ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:bg-muted",
-                s.done && "text-muted-foreground",
-              )}
-            >
-              <span
-                className={cn(
-                  "grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold tabular-nums",
-                  s.done ? "bg-emerald-500 text-white" : n === next ? "bg-background text-foreground" : "bg-muted text-muted-foreground",
-                )}
-              >
-                {s.done ? <CheckIcon size={13} weight="bold" aria-hidden /> : n + 1}
-              </span>
-              {s.name}
-              <span className="sr-only">{s.done ? ": done" : n === next ? ": next" : ": to do"}</span>
-            </a>
-          </li>
-        ))}
-      </ol>
       {/* THREE CARDS (Pato, 2026-11-14, MESITA-3946, on the mock: "yes, ies
           okey. build the fucking business app there"): Stripe Account ·
           Credits Account · Payments & Cashbacks, then Vouchers. Each way to
@@ -509,12 +469,12 @@ export function PaymentsPanel({
             {copy.button ? (
               <button
                 type="button"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#635BFF] px-4 py-2 text-sm font-semibold whitespace-nowrap text-white transition hover:bg-[#5249e6] disabled:opacity-60"
+                className="inline-flex min-h-14 shrink-0 items-center justify-center gap-2.5 rounded-full bg-[#635BFF] px-9 py-4 text-lg font-semibold whitespace-nowrap text-white transition hover:bg-[#5249e6] disabled:opacity-60"
                 disabled={pending}
                 onClick={() => void stripe()}
               >
                 {busy === "stripe" ? "Opening…" : copy.button}
-                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={16} weight="bold" aria-hidden /> : null}
+                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={22} weight="bold" aria-hidden /> : null}
               </button>
             ) : (
               <span />
