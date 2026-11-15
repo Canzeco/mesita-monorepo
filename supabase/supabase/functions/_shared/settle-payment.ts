@@ -26,6 +26,12 @@ export type OpenPayment = {
  *  credit it held. */
 export const PI_TTL_MS = 10 * 60_000;
 
+/** How long the waiter has to sign a guest's bill (MESITA-4048, Pato: "not
+ *  10mins to sign but 60 mins"; ten minutes since MESITA-3843). Passed as
+ *  p_window to pay_tab_guest_pay (the bill opens) and to wallet_card_held (a
+ *  card hold lands), whose SQL default is still '10 minutes'. */
+export const SIGN_WINDOW = "60 minutes";
+
 export type PaymentSettleOutcome = "paid" | "already_paid" | "pending" | "expired" | "mismatch" | "late_completion";
 
 type SettleAnswer = { ok?: boolean; outcome?: string; code?: string } | null;
@@ -205,7 +211,7 @@ async function settleHeld(
   account: string,
   opts?: { signal?: AbortSignal },
 ): Promise<PaymentSettleOutcome> {
-  const { data, error } = await admin.rpc("wallet_card_held", { p_payment_id: paymentId });
+  const { data, error } = await admin.rpc("wallet_card_held", { p_payment_id: paymentId, p_window: SIGN_WINDOW });
   if (error) throw new Error(`wallet_card_held: ${error.message}`);
   const d = data as { ok?: boolean; decision?: string; tab_id?: string } | null;
   if (!d?.ok) return "pending";

@@ -31,7 +31,7 @@ export const NOT_PAID_REASON: Record<string, string> = {
   card_needs_auth: "Your bank didn't approve it.",
   rejected: "The waiter rejected this bill.",
   capture_failed: "The card charge failed.",
-  expired: "Ten minutes passed without a signature.",
+  expired: "An hour passed without a signature.",
   hold_released: "Your bank released the card hold.",
   cancelled: "You cancelled this bill.",
 };

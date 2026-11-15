@@ -32,7 +32,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { snapshotFromStripe } from "./payments.ts";
 import { purchasesByPaymentIntent, purchaseStore, spreadGone } from "./purchase-pi.ts";
-import { cancelReleasedHolds, releasePayment, settlePaidPayment } from "./settle-payment.ts";
+import { cancelReleasedHolds, releasePayment, settlePaidPayment, SIGN_WINDOW } from "./settle-payment.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 import { type StripeCall } from "./stripe.ts";
 import { fromStripeAmount } from "./money.ts";
@@ -472,7 +472,7 @@ async function dispatch(
       if (meta.mesita_kind !== "wallet_payment" || !piId) return ignored("not_mesita");
       const row = await paymentForIntent(admin, meta, piId);
       if (!row) return ignored("unknown_payment");
-      const { data, error } = await admin.rpc("wallet_card_held", { p_payment_id: row.id });
+      const { data, error } = await admin.rpc("wallet_card_held", { p_payment_id: row.id, p_window: SIGN_WINDOW });
       if (error) throw new Error(`wallet_card_held: ${error.message}`);
       const decision = (data as { decision?: string } | null)?.decision ?? "keep";
       if (decision === "cancel") {

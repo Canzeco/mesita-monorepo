@@ -33,7 +33,7 @@ import { MIN_CHARGE_CENTS, toStripeAmount } from "./money.ts";
 import { moneyState } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings } from "./payments.ts";
 import { cardRefusal } from "./pay-card.ts";
-import { PI_TTL_MS, releasePayment, settleByPaymentIntent, settlePaidPayment } from "./settle-payment.ts";
+import { PI_TTL_MS, releasePayment, settleByPaymentIntent, settlePaidPayment, SIGN_WINDOW } from "./settle-payment.ts";
 import { refuse, type TabRefusal } from "./tab.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
 
@@ -151,8 +151,8 @@ async function stepOf(
     case "processing":
       return { ok: true, step: { status: "processing", payment_intent_id: piId } };
     case "requires_capture": {
-      // MESITA-3856: the bank held it; the bill's ten minutes start now.
-      const { data, error } = await admin.rpc("wallet_card_held", { p_payment_id: row.id });
+      // MESITA-3856: the bank held it; the bill's signing window starts now.
+      const { data, error } = await admin.rpc("wallet_card_held", { p_payment_id: row.id, p_window: SIGN_WINDOW });
       if (error) throw new Error(`wallet_card_held: ${error.message}`);
       if ((data as { decision?: string } | null)?.decision === "cancel") {
         await cancelQuietly(stripe, row.account, piId, row.id);
