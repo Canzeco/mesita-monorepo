@@ -76,6 +76,24 @@ type Draft = {
 type Blocked = { kind: "draft"; placeId: string; name: string | null } | { kind: "bill"; tabId: string; name: string | null };
 
 const DRAFT_KEY = (placeId: string) => `mesita.pay.guest-lead.${placeId}`;
+/** The last tip chip sent at this place (MESITA-3713); it survives the draft. */
+const LAST_TIP_KEY = (placeId: string) => `mesita.pay.last-tip.${placeId}`;
+function readLastTip(placeId: string): Tip {
+  try {
+    const n = Number(window.localStorage.getItem(LAST_TIP_KEY(placeId)));
+    return (TIP_CHIPS as readonly number[]).includes(n) ? (n as Tip) : null;
+  } catch {
+    return null;
+  }
+}
+function writeLastTip(placeId: string, tip: Tip) {
+  if (typeof tip !== "number") return;
+  try {
+    window.localStorage.setItem(LAST_TIP_KEY(placeId), String(tip));
+  } catch {
+    /* storage can be blocked */
+  }
+}
 /** The place whose ticket is in progress (MESITA-3879). */
 const PENDING_KEY = "mesita.pay.pending-ticket";
 /** The pending ticket's place name, for the banner on the tabs (MESITA-3906). */
@@ -195,7 +213,7 @@ export function GuestPayScreen({
   const [typing, setTyping] = useState(draft?.typing ?? true);
   const [amount, setAmount] = useState(draft?.amount ?? "");
   // A draft from before MESITA-3876 may hold the retired 0 chip: no pick.
-  const [tip, setTip] = useState<Tip>(draft && (draft.tip === "other" || TIP_CHIPS.includes(draft.tip as 10)) ? draft.tip : null);
+  const [tip, setTip] = useState<Tip>(draft && (draft.tip === "other" || TIP_CHIPS.includes(draft.tip as 10)) ? draft.tip : readLastTip(placeId));
   const [other, setOther] = useState(draft?.other ?? "");
   const [useCredit, setUseCredit] = useState(draft?.useCredit ?? true);
   const [method, setMethod] = useState<PayWith | null>(draft?.method ?? null);
@@ -387,6 +405,7 @@ export function GuestPayScreen({
         card_pm_id: w === "card" ? chosenCard : null,
       });
       rememberGuestTab(r.tab_id, r.qr_url);
+      writeLastTip(placeId, tip);
       // Start again comes back to the bill with everything typed.
       writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, cardId, sentTabId: r.tab_id });
       if (r.card?.status === "requires_action") await runBankCheck(r.card);
