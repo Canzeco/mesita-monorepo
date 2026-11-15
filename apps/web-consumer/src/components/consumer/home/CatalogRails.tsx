@@ -464,22 +464,26 @@ export function CatalogRails() {
                 trackEvent(supabase, "home_mode_view", { mode: t.label });
             }}
             className={cn(
-              "relative flex-1 px-1 py-3 text-center text-sm whitespace-nowrap transition",
-              // The word is ink and bold (MESITA-3687, MESITA-4039).
-              on ? "text-foreground font-semibold" : "text-muted-foreground",
+              // 16px, the app's body step (MESITA-4046, Pato: "looks so
+              // fucking small the selected place … make it bigger"); 14px
+              // before. The chosen word is bold ink, the other regular grey.
+              "flex flex-1 justify-center px-1 text-base whitespace-nowrap transition",
+              on ? "text-foreground font-bold" : "text-muted-foreground",
             )}
           >
-            {on ? (
-              <span
-                aria-hidden
-                // A SHORT INK LINE, THE BOTTOM BAR'S (Pato, 2026-11-15,
-                // MESITA-4039: "must not have that ugly ass blue ... not the
-                // whole selection and keep it black, akin the bottom menu"):
-                // 32px under the word, not a full-width blue bar (MESITA-3892).
-                className="bg-foreground absolute bottom-0 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full"
-              />
-            ) : null}
-            {t.label}
+            <span className="relative py-3">
+              {t.label}
+              {on ? (
+                <span
+                  aria-hidden
+                  // AN INK LINE AS WIDE AS THE WORD, 3px, on the strip's
+                  // bottom hairline (MESITA-4046; MESITA-4039's 32px line
+                  // under a 14px word read too timid). Still black, never
+                  // the whole half (MESITA-3892's full-width blue bar).
+                  className="bg-foreground absolute inset-x-0 bottom-0 h-[3px] rounded-full"
+                />
+              ) : null}
+            </span>
           </Link>
         );
       })}
