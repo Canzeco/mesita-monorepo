@@ -200,8 +200,29 @@ export function walletRows(w: Wallet): Row[] {
     const byPayment = new Map<string, WalletEntry[]>();
     const bonuses = b.entries.filter((e) => e.kind === "bonus");
     const usedBonus = new Set<WalletEntry>();
+    // A voucher's cashback (a `cashback` with a purchase id and no payment
+    // id) folds into its voucher row as "+$X cashback" (MESITA-4003); with
+    // no voucher row to take it, it stays a row of its own.
+    const boughtIds = new Set(
+      b.entries
+        .filter((e) => BOUGHT_KINDS.has(e.kind) && e.purchase_id)
+        .map((e) => e.purchase_id as string),
+    );
+    const voucherBack = new Map<string, number>();
+    const folds = (e: WalletEntry) =>
+      e.kind === "cashback" &&
+      !e.payment_id &&
+      !!e.purchase_id &&
+      boughtIds.has(e.purchase_id);
+    for (const e of b.entries)
+      if (folds(e))
+        voucherBack.set(
+          e.purchase_id!,
+          (voucherBack.get(e.purchase_id!) ?? 0) + e.amount_cents,
+        );
 
     b.entries.forEach((e, i) => {
+      if (folds(e)) return;
       if (
         e.payment_id &&
         (e.kind === "spend" ||
@@ -235,10 +256,14 @@ export function walletRows(w: Wallet): Row[] {
         const bonus = bonuses.find((x) => !usedBonus.has(x) && x.at === e.at);
         if (bonus) usedBonus.add(bonus);
         const pending = e.pending || !!bonus?.pending;
+        const back = e.purchase_id ? (voucherBack.get(e.purchase_id) ?? 0) : 0;
         out.push({
           key: `b-${b.place_id}-${e.at}-${i}`,
           type: "vouchers",
           kind: "voucher",
+          sign: "+",
+          cashbackCents: back > 0 ? back : null,
+          cashback: back > 0 ? `+${money(back, cur)} cashback` : null,
           at: e.at,
           upcoming: false,
           place,
@@ -301,6 +326,7 @@ export function walletRows(w: Wallet): Row[] {
         key: `bo-${b.place_id}-${e.at}-${i}`,
         type: "vouchers",
         kind: "bonus",
+        sign: "+",
         at: e.at,
         upcoming: false,
         place,
@@ -327,6 +353,7 @@ export function walletRows(w: Wallet): Row[] {
       key: `s-${s.purchase_id}`,
       type: "vouchers",
       kind: "story",
+      sign: "+",
       at: s.paid_at,
       upcoming: false,
       place: s.place?.name ?? "A Mesita place",
@@ -334,7 +361,7 @@ export function walletRows(w: Wallet): Row[] {
       status: { label: "Waiting", tone: "ink" },
       big: money(s.credit_cents, s.currency),
       money: true,
-      line: "Story voucher · waiting for your post",
+      line: "Story voucher · post your Story",
       href: walletPlacePath(s.place_id),
     });
   }
