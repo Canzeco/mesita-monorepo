@@ -12,6 +12,11 @@
 //   Pay here (filled, when spendable) · Open the House Card (outline)
 //   Gift credit      a quiet text link, when sending is allowed
 //
+// A gift received (MESITA-4006, Tickets 6/10) is shorter: the header reads
+// Received (green) or "Pending · Available on <date>" (ink), one line "A
+// friend sent you credit at <place>." (the wallet read carries no sender), the
+// place's balance, and Pay here (filled) alone.
+//
 // A refunded purchase reads Refunded <date> and links to its Refund ticket by
 // purchase_id; the purchase number has a copy button. It reads the wallet
 // Tickets already holds (the same cached read); an entry it cannot find any
@@ -75,9 +80,13 @@ function stateOf(e: WalletEntry, refund: WalletEntry | undefined): [string, Tick
   if (refund) return [`Refunded ${entryDate(refund.at)}`, "grey"];
   if (e.kind === "gift_out") return [e.pending ? "Sent · pending" : "Sent", "ink"];
   if (e.kind === "gift_back") return ["Back in your balance", "green"];
+  if (e.kind === "gift_in")
+    return e.pending
+      ? [e.available_at ? `Pending · Available on ${entryDate(e.available_at)}` : "Pending", "ink"]
+      : ["Received", "green"];
   if (e.pending)
     return [e.available_at ? `Pending · available ${entryDate(e.available_at)}` : "Pending", "ink"];
-  return [e.kind === "gift_in" ? "Received · available" : "Available", "green"];
+  return ["Available", "green"];
 }
 
 /** The purchase number's copy button: the full id goes to the clipboard. */
@@ -163,6 +172,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     const out = e.kind === "gift_out" || e.kind === "reversal";
     const canGift = wallet.data.can_send === true && b.spendable_cents > 0;
     const houseCard = { label: "Open the House Card", href: walletPlacePath(placeId) };
+    const received = e.kind === "gift_in";
     return (
       <div className="flex flex-col gap-6 pb-4" data-credit-entry>
         <TicketHeader
@@ -178,7 +188,9 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
         />
         {wallet.data.test_mode ? <TestModeNote /> : null}
 
-        {bought ? (
+        {received ? (
+          <p className="text-sm">A friend sent you credit at {place}.</p>
+        ) : bought ? (
           <TicketCard title="Your credit">
             <TicketLine label="Bought" value={m(amount)} />
             {bonus ? <TicketLine label="Bonus" value={`+${m(bonus.amount_cents)}`} /> : null}
@@ -221,7 +233,10 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
         ) : null}
 
         {b.spendable_cents > 0 ? (
-          <TicketActions primary={{ label: "Pay here", href: payPlacePath(placeId) }} secondary={houseCard} />
+          <TicketActions
+            primary={{ label: "Pay here", href: payPlacePath(placeId) }}
+            secondary={received ? undefined : houseCard}
+          />
         ) : (
           <Link
             href={houseCard.href}
