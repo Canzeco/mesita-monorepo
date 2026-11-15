@@ -229,7 +229,7 @@ const AREA_PLACES_SHOWN_FALLBACK = 50;
 /** A Map dot (MESITA-3980): a ranked place past `map.placesShown`, up to
  *  `map.dotsShown` in all. Where it is and nothing else: no card is read
  *  for it, so a dot says "zoom in here" and never opens. */
-export type MapDot = { id: string; lat: number; lng: number };
+export type MapDot = { id: string; lat: number; lng: number; premier: boolean };
 
 /** The Map's dots out of its ranked list: ranks `shown`..`dotsShown`, and
  *  only the ones with real coordinates. */
@@ -246,7 +246,9 @@ function mapDots(
     const lng = Number(item.place.lng);
     if (item.place.lat == null || item.place.lng == null) continue;
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-    dots.push({ id: String(item.place.id), lat, lng });
+    // A paid tier paints the dot red, as it does a pin (MESITA-3992).
+    const tier = Number(item.place.boost_tier);
+    dots.push({ id: String(item.place.id), lat, lng, premier: Number.isFinite(tier) && tier > 0 });
   }
   return dots;
 }

@@ -24,6 +24,7 @@ import {
   MAP_MINIMAL_STYLES,
   MAP_PIN_CURSOR,
   MAP_PIN_HIT_SIZE,
+  MAP_PIN_STROKE_COLOR,
   MAP_USER_LOCATION_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
   MAP_PREMIER_PLACE_PIN_RADIUS,
@@ -99,10 +100,13 @@ function placeIcon(tone: PinTone, held: boolean) {
   );
 }
 
-/** The dot (MESITA-3980): a plain place's grey, ringed white so it reads
- *  on the light basemap, sized like the pins once Maps can size it. */
-function dotIcon() {
-  const raw = mapDotIcon(pinToneColor("mesita"), "#ffffff");
+/** The dot (MESITA-3980): the pin's own colour — black, or red for
+ *  Premier (MESITA-3992) — ringed white so it reads on the basemap. */
+function dotIcon(premier: boolean) {
+  const raw = mapDotIcon(
+    pinToneColor(premier ? "premier" : "mesita"),
+    MAP_PIN_STROKE_COLOR,
+  );
   const maps = (globalThis as { google?: { maps?: Partial<MapsCtor> } }).google
     ?.maps;
   if (typeof maps?.Size !== "function" || typeof maps.Point !== "function") {
@@ -409,7 +413,7 @@ function SearchMapCanvas({
         <Marker
           key={`dot:${dot.id}`}
           position={{ lat: dot.lat, lng: dot.lng }}
-          icon={dotIcon()}
+          icon={dotIcon(dot.premier)}
           clickable={false}
           zIndex={-1}
           cursor={MAP_PIN_CURSOR}

@@ -115,26 +115,26 @@ describe("pin tones — premier > mesita > google", () => {
     ).toBe("mesita");
   });
 
-  it("uses red for Mesita Premier and gray for everything else (MESITA-2316)", () => {
+  it("uses red for Mesita Premier and black for everything else (MESITA-2316, MESITA-3992)", () => {
     expect(pinToneColor("premier")).toBe(MAP_PREMIER_PIN_COLOR);
-    // A Mesita place that is not Premier is gray like a Google row.
+    // A Mesita place that is not Premier is black like a Google row.
     expect(pinToneColor("mesita")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinToneColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(MAP_PREMIER_PIN_COLOR).toBe("#ff2357");
-    expect(MAP_GOOGLE_PIN_COLOR).toBe("#a3a3a3");
+    expect(MAP_GOOGLE_PIN_COLOR).toBe("#111111");
     expect(MAP_PREMIER_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
   });
 
-  it("rings every place pin dark; a held pin CHANGES colour (MESITA-2488)", () => {
+  it("rings every place pin white; a held pin CHANGES colour (MESITA-2488, MESITA-3992)", () => {
     expect(pinFillColor("premier")).toBe(MAP_PREMIER_PIN_COLOR);
     expect(pinFillColor("mesita")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinFillColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
-    // Held (tapped): ink fill, white ring, whatever the tone was.
+    // Held (tapped): purple fill, thicker white ring, whatever the tone was.
     expect(pinFillColor("premier", true)).toBe(MAP_SELECTED_PIN_COLOR);
     expect(pinFillColor("google", true)).toBe(MAP_SELECTED_PIN_COLOR);
     expect(MAP_SELECTED_PIN_COLOR).not.toBe(MAP_PREMIER_PIN_COLOR);
     expect(MAP_SELECTED_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
-    expect(pinStrokeColor(false)).toBe("#111111");
+    expect(pinStrokeColor(false)).toBe("#ffffff");
     expect(pinStrokeColor(true)).toBe("#ffffff");
     expect(pinStrokeWeight(true)).toBeGreaterThan(pinStrokeWeight(false));
     expect(
