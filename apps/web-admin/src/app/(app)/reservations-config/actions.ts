@@ -55,3 +55,27 @@ export async function updateReservationsConfig(
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };
 }
+
+// ─── Call cost (MESITA-4043) ───────────────────────────────────────────────
+
+export type CallCost = {
+  days: number;
+  plan: string | null;
+  truncated: boolean;
+  calls: number;
+  minutes: number;
+  credits: number;
+  creditsPerMinute: number | null;
+  avgCallSeconds: number | null;
+  usdPerCredit: number | null;
+  usdPerMinute: number | null;
+  priceSource: "invoice" | "list" | null;
+};
+
+/** What a minute of a reservation call costs on ElevenLabs, from the
+ *  agents' real calls of the last `days` (admin-web-get-call-cost). */
+export async function getCallCost(days = 30): Promise<ActionResult<{ cost: CallCost }>> {
+  const r = await efInvoke<CallCost>("admin-web-get-call-cost", { days });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, cost: r.data };
+}
