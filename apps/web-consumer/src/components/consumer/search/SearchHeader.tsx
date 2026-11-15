@@ -45,7 +45,8 @@
 
 import { useState, type ReactNode } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Cpu, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
+import { AiSparkle } from "./AiSparkle";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import {
   clearMapFamilies,
@@ -65,7 +66,7 @@ import {
   HEADER_BAND,
   HEADER_ICON,
   HEADER_ICON_STROKE,
-  HEADER_DISC,
+  HEADER_PILL,
   DISC_BADGE,
 } from "./header-classes";
 
@@ -112,19 +113,17 @@ export function SearchHeader({
       >
         {locate}
         <div className={cn(BAR, "min-w-0 flex-1")}>{bar}</div>
-        {/* Ask AI is a mark, not a label (Pato, MESITA-3991: "don't mention
-            ask ai, just some logo"): the locate disc's twin, its name left
-            to screen readers. A chip (Pato, MESITA-3995: "use a chip or
-            something that better symbolizes ai"): the square Cpu, since the
-            brain-circuit blurred at this size (MESITA-3999: "looks like a
-            fart"); the sparkle before that. */}
+        {/* Ask AI is the sparkle AND the words (Pato, MESITA-4007: "keep the
+            Ask AI word but with the icon"): the white pill again, as before
+            MESITA-3991's mark-only disc; the brain-circuit and chip marks
+            (MESITA-3995, MESITA-3999) are gone. */}
         <PushLink
           href={CONSUMER_ROUTES.searchChat}
-          className={HEADER_DISC}
-          aria-label="Ask AI"
+          className={HEADER_PILL}
           data-search-ask-ai
         >
-          <Cpu className="h-5 w-5" strokeWidth={2} aria-hidden />
+          <AiSparkle className={HEADER_ICON} />
+          <span>Ask AI</span>
         </PushLink>
       </div>
       <div className="relative" data-search-chip-band>
