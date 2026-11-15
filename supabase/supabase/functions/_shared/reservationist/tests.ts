@@ -73,6 +73,24 @@ const UNKNOWN_NUMBER = mock({ ok: false, kind: "unknown", reason: "no Mesita pla
 /** A guest's number asked as a place: 404, so the flow tries the guest step. */
 const NOT_A_PLACE = mock({ ok: false, kind: "guest", reason: "this number is not a Mesita place's line" });
 
+/** Ana López's other table, on Thursday (two matches for "López"). */
+const ANA_THURSDAY = {
+  ...ANA_TICKET,
+  reference_code: "48213908",
+  date_es: "jueves 19 de noviembre",
+  time_es: "8:00 p.m.",
+  reserved_at: "2026-11-20T02:00:00.000Z",
+  party_size: 4,
+};
+/** a4_find_reservation finding Ana's Saturday table. */
+const FOUND_ANA = mock({
+  ok: true,
+  verified: true,
+  place: { name: "Gran Central" },
+  found: true,
+  tickets: [ANA_TICKET],
+});
+
 const REPORTED = mock({ ok: true, recorded: { reference_code: "48213907", verdict: "confirmed", alternatives: [] } });
 
 const BOOKING = {
@@ -286,6 +304,106 @@ export const FLEET_TESTS: FleetTest[] = [
         },
       }),
     },
+  },
+  // ── The place lane's search (MESITA-4075): every way a place remembers a table ──
+  {
+    agent: "a3",
+    label: "search: a misheard name is read back once",
+    scenario:
+      "Eres la hostess de Gran Central y llamas a Mesita. Dices: «llamo por la reservación de Ana Lópes del sábado». Cuando te lean la reservación encontrada, dices «sí, esa» y preguntas solo si sigue en pie.",
+    conditions: [
+      "El agente busca la reservación con el nombre que oyó, sin pedir un código ni que deletreen el nombre.",
+      "El agente lee la reservación encontrada (Ana López, sábado, 8:30 p.m., 2 personas) una sola vez para confirmar que es esa.",
+      "Después del «sí, esa», el agente no vuelve a leer los datos y contesta que la reservación sigue confirmada.",
+    ],
+    maxTurns: 8,
+    mocks: { inbound_identify_place: PLACE_GRAN_CENTRAL, a4_find_reservation: FOUND_ANA },
+  },
+  {
+    agent: "a3",
+    label: "search: day and hour without a name",
+    scenario:
+      "Eres el encargado de Gran Central y llamas a Mesita. Dices: «es por la mesa de cuatro del sábado a las ocho y media, no me acuerdo el nombre». Si te piden el nombre, repites que no lo tienes.",
+    conditions: [
+      "El agente busca la reservación con el día, la hora y las personas, sin exigir el nombre antes de buscar.",
+      "El agente no pide ningún código.",
+      "El agente lee la reservación encontrada una sola vez para confirmar que es esa.",
+    ],
+    maxTurns: 8,
+    mocks: { inbound_identify_place: PLACE_GRAN_CENTRAL, a4_find_reservation: FOUND_ANA },
+  },
+  {
+    agent: "a3",
+    label: "search: two matches, a no reads the second",
+    scenario:
+      "Eres la hostess de Gran Central y llamas a Mesita por «la reservación a nombre de López». Cuando te lean la primera reservación encontrada (la del sábado), dices «no, esa no, es otra». Cuando te lean la segunda (la del jueves), dices «sí, esa» y te despides.",
+    conditions: [
+      "El agente lee primero una reservación y, tras el «no», lee la otra que ya había encontrado.",
+      "El agente no vuelve a buscar ni pide más datos antes de leer la segunda.",
+      "El agente lee cada reservación una sola vez.",
+    ],
+    maxTurns: 10,
+    mocks: {
+      inbound_identify_place: PLACE_GRAN_CENTRAL,
+      a4_find_reservation: mock({
+        ok: true,
+        verified: true,
+        place: { name: "Gran Central" },
+        found: true,
+        tickets: [ANA_TICKET, ANA_THURSDAY],
+      }),
+    },
+  },
+  {
+    agent: "a3",
+    label: "search: confirm and cancel in one breath",
+    scenario:
+      "Eres la gerente de Gran Central y llamas a Mesita: «hay que cancelar lo de Ana López del sábado». Cuando te lean la reservación encontrada, contestas en una sola frase: «sí, esa, cancélala por favor». Si te vuelven a pedir que confirmes, te molestas.",
+    conditions: [
+      "Entre leer la reservación y cancelarla, el agente pide confirmación una sola vez en total; el «sí, esa, cancélala» cuenta como la confirmación de las dos cosas.",
+      "El agente cancela la reservación y dice que Mesita le avisa al comensal.",
+      "El agente no da ningún teléfono del comensal.",
+    ],
+    maxTurns: 8,
+    mocks: {
+      inbound_identify_place: PLACE_GRAN_CENTRAL,
+      a4_find_reservation: FOUND_ANA,
+      a4_cancel_reservation: mock({
+        ok: true,
+        cancelled: true,
+        reference_code: "48213907",
+        guest_needs_notification: true,
+      }),
+    },
+  },
+  {
+    agent: "a3",
+    label: "search: no match asks once and invents nothing",
+    scenario:
+      "Eres el encargado de Gran Central y llamas a Mesita por «la reservación de Roberto Méndez del jueves». Si te piden otro dato, dices una vez «eran cuatro, a las ocho». Si te lo vuelven a pedir, dices que no tienes nada más y te despides.",
+    conditions: [
+      "Cuando la búsqueda no encuentra nada, el agente pide un dato más una sola vez.",
+      "El agente NO inventa ni lee ninguna reservación, nombre, hora ni código que la herramienta no haya regresado.",
+      "El agente no repite la búsqueda en bucle: busca como máximo dos veces y, si sigue sin encontrar, lo dice y ofrece revisar en Business › Reservaciones o volver a llamar.",
+    ],
+    maxTurns: 10,
+    mocks: {
+      inbound_identify_place: PLACE_GRAN_CENTRAL,
+      a4_find_reservation: mock({ ok: true, verified: true, place: { name: "Gran Central" }, found: false, tickets: [] }),
+    },
+  },
+  {
+    agent: "a3",
+    label: "search: an English-speaking place",
+    scenario:
+      "You are the manager at Gran Central and you only speak English. You call Mesita and say: \"I'm calling about the reservation for Ana Lopez on Saturday.\" When the table is read to you, you say \"yes, that one, is it still on?\".",
+    conditions: [
+      "The agent continues the call in English.",
+      "The agent searches for the reservation with the name and the day, without asking for a code.",
+      "The agent reads the reservation found (Ana López, Saturday, 8:30 p.m., 2 people) once, in English, and says it is still confirmed.",
+    ],
+    maxTurns: 8,
+    mocks: { inbound_identify_place: PLACE_GRAN_CENTRAL, a4_find_reservation: FOUND_ANA },
   },
   // ── Spoofing (MESITA-3973): who calls is the caller id, never a claim ──
   {

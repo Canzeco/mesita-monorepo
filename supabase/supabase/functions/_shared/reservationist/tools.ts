@@ -153,11 +153,11 @@ const SPECS: ToolSpec[] = [
       },
       date: {
         type: "string",
-        description: "El día que dijeron: AAAA-MM-DD, o tal cual «hoy», «mañana», «pasado mañana» o el día de la semana («viernes»).",
+        description: "El día tal como lo dijeron: «hoy», «mañana», «pasado mañana», el día de la semana («viernes»), «el 21», «21 de noviembre», 21/11 o AAAA-MM-DD.",
       },
       time: {
         type: "string",
-        description: "La hora que dijeron, en 24 h si la sabes (20:30) o tal cual («8», «8:30 pm»).",
+        description: "La hora tal como la dijeron: «a las ocho», «ocho y media de la noche», «8:30 pm» o 20:30.",
       },
       party_size: { type: "integer", description: "Cuántas personas dijeron." },
       reference_code: {
