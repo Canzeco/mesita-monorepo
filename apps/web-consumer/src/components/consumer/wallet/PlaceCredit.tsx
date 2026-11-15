@@ -45,13 +45,16 @@ import type { CreditRow } from "./use-wallet";
 //                         giftAction (hidden, dimmed with a reason, or open)
 //   (held-credit line)    only while an open payment holds credit
 //   (Confirming a payment…)  only while the server is still confirming one
-//   Transactions          ONE list: Story vouchers waiting for staff ("Not
+//   Vouchers to activate  Story vouchers waiting for staff, only when any
+//                         (MESITA-4116)
+//   Transactions          ONE list: (until MESITA-4116 Story vouchers waiting for staff, "Not
 //                         activated · show the QR to staff"), then purchases
 //                         not Available yet, soonest first ("Pending ·
 //                         available in 25 min"), then every settled in and
 //                         out, newest first; 10 settled rows, then Show all
 //   Waiting for a friend  links nobody took yet
-//   View place · Remove from Wallet   two quiet links, last
+//   View place            a grey pill under the card (MESITA-4116)
+//   Remove from Wallet    one quiet link, last
 //
 // History of the three things this undid, each Pato's own ask at the time:
 // the actions were a bar fixed at the bottom (MESITA-3790, "the buttons fixed
@@ -316,6 +319,19 @@ export function PlaceCredit({
         </p>
         <p className="type-eyebrow relative text-white/80" aria-hidden>House Card</p>
       </div>
+      {/* VIEW PLACE AT THE TOP (MESITA-4116, Pato: "add the view place as a
+          button at the top, not at the bottom hidden"): a quiet grey pill
+          under the card, the outbound-link style. */}
+      {gone ? null : (
+        <PushLink
+          href={href}
+          className="bg-muted text-foreground hover:bg-border mx-auto mt-3 flex h-9 items-center gap-1 rounded-full px-4 text-sm font-semibold transition"
+          data-house-card-place
+        >
+          View place
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </PushLink>
+      )}
       {gone ? (
         <p className="text-muted-foreground mt-4 text-sm" data-house-card-gone>
           Your credit here stays yours; ask Mesita support to use it.
@@ -370,6 +386,18 @@ export function PlaceCredit({
         </p>
       ) : null}
 
+      {/* VOUCHERS TO ACTIVATE (MESITA-4116, Pato: "also add a list of
+          vouchers pending to activate if it's the case"): Story vouchers
+          waiting for staff get their own panel over Transactions, only when
+          there are any. */}
+      {stories.length > 0 ? (
+        <WalletPanelList title="Vouchers to activate">
+          {stories.map((st) => (
+            <StoryEntryRow key={st.purchase_id} story={st} onOpen={() => setMethod({ kind: "story", story: st })} />
+          ))}
+        </WalletPanelList>
+      ) : null}
+
       <WalletPanelList
         title="Transactions"
         fallback={
@@ -378,9 +406,6 @@ export function PlaceCredit({
           </p>
         }
       >
-        {stories.map((st) => (
-          <StoryEntryRow key={st.purchase_id} story={st} onOpen={() => setMethod({ kind: "story", story: st })} />
-        ))}
         {pending.map((g, i) => (
           <EntryRow key={`w-${pendingKeys[i]}`} group={g} placeId={row.placeId} currency={card.currency} now={now} waiting />
         ))}
@@ -401,22 +426,11 @@ export function PlaceCredit({
 
       <SentLinks links={sentLinks} currency={card.currency} onChanged={changed} />
 
-      {/* TWO QUIET LINKS, LAST: the place's profile (a place gone from Mesita
-          has no page) and Remove from Wallet (MESITA-3605: only a card the
+      {/* ONE QUIET LINK, LAST: Remove from Wallet (MESITA-3605: only a card the
           guest pinned that holds nothing and has no history; one short
           confirm, then the server checks the money again, 409 has_credit). */}
-      {!gone || removable ? (
+      {removable ? (
         <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2">
-          {gone ? null : (
-            <PushLink
-              href={href}
-              className="text-muted-foreground hover:text-foreground flex min-h-11 items-center gap-0.5 px-3 text-sm transition"
-              data-house-card-place
-            >
-              View place
-              <ChevronRight className="h-4 w-4" aria-hidden />
-            </PushLink>
-          )}
           {removable ? (
             <button
               type="button"

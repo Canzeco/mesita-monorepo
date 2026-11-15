@@ -170,13 +170,16 @@ export function PlainChip({ children }: { children: ReactNode }) {
 
 const Chevron = () => <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />;
 
-/** Cash: nothing to open (MESITA-3584's green with the black $ coin). */
-export function CashRow() {
+/** Cash (MESITA-3584's green with the black $ coin). Opens its page
+ *  (MESITA-4116, Pato: "in the cash option also include >"): what paying
+ *  outside the app means and the credits back it gives. */
+export function CashRow({ onOpen }: { onOpen: () => void }) {
   return (
-    <div className={cn(ROW, "hover:bg-transparent")} data-wallet-method="cash">
+    <button type="button" onClick={onOpen} className={ROW} data-wallet-method="cash">
       <CashChip />
       <RowText title="Cash" line="Pay at the place, outside the app" />
-    </div>
+      <Chevron />
+    </button>
   );
 }
 
