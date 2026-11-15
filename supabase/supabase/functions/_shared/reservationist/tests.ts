@@ -396,7 +396,7 @@ export const FLEET_TESTS: FleetTest[] = [
     agent: "a3",
     label: "search: an English-speaking place",
     scenario:
-      "You are the manager at Gran Central and you only speak English. You call Mesita and say: \"I'm calling about the reservation for Ana Lopez on Saturday.\" When the table is read to you, you say \"yes, that one, is it still on?\".",
+      "You are the host at Gran Central and you only speak English. You call Mesita and say: \"I'm calling about the reservation for Ana Lopez on Saturday.\" When the table is read to you, you say \"yes, that one, is it still on?\".",
     conditions: [
       "The agent continues the call in English.",
       "The agent searches for the reservation with the name and the day, without asking for a code.",
