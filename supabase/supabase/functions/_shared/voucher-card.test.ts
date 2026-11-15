@@ -8,7 +8,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { type PurchaseCardRow, type PurchaseStore, settlePurchaseByPaymentIntent } from "./purchase-pi.ts";
 import { ownCard } from "./tab-card.ts";
-import { runVoucherCard } from "./voucher-card.ts";
+import { runVoucherCard, voucherBuyGate } from "./voucher-card.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
 
 type Call = { method: string; path: string; params?: Record<string, unknown>; opts?: Record<string, unknown> };
@@ -363,4 +363,27 @@ Deno.test("settle by PI: a follower whose PI names its lead settles itself, neve
   const canceled = fakeStripe(() => ({ id: "pi_s", status: "canceled", metadata: { purchase_id: PURCHASE } }));
   assertEquals(await settlePurchaseByPaymentIntent(gone.store, canceled.stripe, { ...follower, id: F2 }, NOW), "expired");
   assertEquals(gone.log, [`release@${F2}:pi_canceled`]);
+});
+
+// MESITA-4065: no Stripe page. A buy without a saved card is refused before
+// any row or Stripe call; an old bundle's return_url changes nothing.
+Deno.test("voucherBuyGate: no card answers 409 card_required", () => {
+  for (const body of [{}, { card_pm_id: null }, { card_pm_id: "" }, { return_url: "https://mesita.ai/place/x" }]) {
+    const r = voucherBuyGate(body);
+    assertEquals(r.ok, false);
+    if (!r.ok) {
+      assertEquals(r.status, 409);
+      assertEquals(r.code, "card_required");
+    }
+  }
+});
+
+Deno.test("voucherBuyGate: a malformed card id is not the guest's card", () => {
+  const r = voucherBuyGate({ card_pm_id: "tok_visa" });
+  assertEquals(r.ok, false);
+  if (!r.ok) assertEquals(r.code, "card_not_found");
+});
+
+Deno.test("voucherBuyGate: a saved card passes, return_url ignored", () => {
+  assertEquals(voucherBuyGate({ card_pm_id: "pm_1AbCdEfGh", return_url: "https://mesita.ai/x" }), { ok: true, cardPmId: "pm_1AbCdEfGh" });
 });

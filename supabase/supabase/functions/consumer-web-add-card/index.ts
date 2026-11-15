@@ -1,25 +1,30 @@
 // Supabase Edge Function — consumer-web-add-card
 //
-// MESITA-3523: Add on the Wallet's Money rail. Opens a Stripe Checkout in
-// `setup` mode on the guest's platform customer (created once, shared with
-// Premier: premier_customers). Stripe's page types the card; on success it
-// returns to `return_url` with `?card=<session id>` and the card is already
-// on the customer, so the next list shows it. Nothing is charged.
-// Cards live in the PAYMENTS mode (PAYMENTS_STRIPE_MODE, MESITA-3573), the
-// mode a bill's card part reads them in (_shared/tab-card.ts); list and
-// remove follow it. Premier's own refill keeps STRIPE_MODE.
+// MESITA-3523, in-app since MESITA-4065: Add a card. Creates a SetupIntent on
+// the guest's platform customer (created once, shared with Premier:
+// premier_customers) and answers its client secret; the app confirms it with
+// Stripe's Payment Element inside its own sheet (no Stripe page; Mesita never
+// sees the number). Nothing is charged. Cards live in the PAYMENTS mode
+// (PAYMENTS_STRIPE_MODE, MESITA-3573), the mode a bill's card part and a
+// voucher buy read them in; list and remove follow it. Premier's own refill
+// keeps STRIPE_MODE.
 //
-// Body: { return_url: string }
-// Response: { ok: true, url, test_mode }
-//   400 (return_url not a Mesita address) · 401 sign_in ·
-//   409 too_many (+max) · 503 (Stripe not configured) · 502 checkout_failed
+// Body: {} (an old bundle's `return_url` is refused: 400 update_app)
+// Response: { ok: true, client_secret, publishable_key, setup_intent_id, test_mode }
+// Refusals (stable `code`):
+//   400 update_app — an old app bundle asked for Stripe's page: reload Mesita
+//   401 sign_in
+//   409 too_many (+max) — three cards saved: remove one in Wallet
+//   502 setup_failed (+ref) — Stripe did not create the SetupIntent: retry, up to 2
+//   503 payments_unavailable — Stripe keys missing for this mode
+// The client secret is never logged.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { cardSetupParams, listCards, MAX_CARDS } from "../_shared/cards.ts";
+import { addCardCheck, cardSetupIntentParams, listCards } from "../_shared/cards.ts";
 import { errorMessage } from "../_shared/errors.ts";
-import { isAllowedReturnUrl, paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
+import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 import { ensureCustomer } from "../_shared/boost-writes.ts";
 
 serveJson("consumer-web-add-card", async (req) => {
@@ -28,33 +33,31 @@ serveJson("consumer-web-add-card", async (req) => {
   const { admin, user } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const returnUrl = bodyRes.body.return_url;
-  if (typeof returnUrl !== "string" || !isAllowedReturnUrl(returnUrl)) {
-    return json({ ok: false, error: "return_url is not a Mesita address" }, 400);
+  if ("return_url" in bodyRes.body) {
+    return json({ ok: false, code: "update_app", error: "Reload Mesita to add a card." }, 400);
   }
 
-  const key = paymentsStripeKey();
-  if (!key) return json({ ok: false, error: "Cards are not available right now" }, 503);
-  const userId = user.id;
   const livemode = paymentsLivemode();
+  const key = paymentsStripeKey();
+  const publishableKey = paymentsPublishableKey(livemode);
+  if (!key || !publishableKey) {
+    return json({ ok: false, code: "payments_unavailable", error: "Cards are not available right now" }, 503);
+  }
+  const userId = user.id;
   const stripe = stripeClient(key);
   try {
     const customer = await ensureCustomer(admin, stripe, userId, user.email ?? null, livemode);
-    const cards = await listCards(stripe, customer, new Set());
-    if (cards.length >= MAX_CARDS) {
-      return json({ ok: false, code: "too_many", max: MAX_CARDS, error: `You can save up to ${MAX_CARDS} cards` }, 409);
-    }
-    const session = await stripe(
-      "POST",
-      "checkout/sessions",
-      cardSetupParams({ customer, consumerId: userId, returnUrl, nowSec: Math.floor(Date.now() / 1000) }),
-    );
-    const url = typeof session.url === "string" ? session.url : null;
-    if (!url) throw new Error("checkout: no url");
-    console.log("[consumer-web-add-card]", JSON.stringify({ outcome: "opened", livemode }));
-    return json({ ok: true, url, test_mode: !livemode });
+    const check = addCardCheck((await listCards(stripe, customer, new Set())).length);
+    if (!check.ok) return json(check, check.status);
+    const si = await stripe("POST", "setup_intents", cardSetupIntentParams({ customer, consumerId: userId }));
+    const secret = typeof si.client_secret === "string" ? si.client_secret : null;
+    const id = typeof si.id === "string" ? si.id : null;
+    if (!secret || !id) throw new Error("setup_intent: no client_secret");
+    console.log("[consumer-web-add-card]", JSON.stringify({ outcome: "setup_intent", setup_intent_id: id, livemode }));
+    return json({ ok: true, client_secret: secret, publishable_key: publishableKey, setup_intent_id: id, test_mode: !livemode });
   } catch (err) {
-    console.error("[consumer-web-add-card]", JSON.stringify({ error: errorMessage(err) }));
-    return json({ ok: false, code: "checkout_failed", error: "Couldn't open the card page. Try again." }, 502);
+    const ref = crypto.randomUUID();
+    console.error("[consumer-web-add-card]", JSON.stringify({ outcome: "setup_failed", ref, error: errorMessage(err) }));
+    return json({ ok: false, code: "setup_failed", ref, error: "Couldn't open the card form. Try again." }, 502);
   }
 });

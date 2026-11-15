@@ -9,16 +9,14 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { moneyText } from "./pay.ts";
-import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, currencyForCountry, voucherPriceCents, toStripeAmount } from "./money.ts";
+import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, currencyForCountry, voucherPriceCents } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
 import { readMoneyConfig } from "./money-config.ts";
 import { readInstagramSyncState, readVipStanding } from "./consumer-doc.ts";
-import { readVoucherPlace, type VoucherPlace, WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
+import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount } from "./visits.ts";
-import { type StripeCall, StripeError } from "./stripe.ts";
-import { errorMessage } from "./errors.ts";
 
 export type PlaceBalance = { available_cents: number; pending_cents: number; held_cents: number; spendable_cents: number };
 
@@ -332,51 +330,8 @@ export async function readVipGuest(admin: SupabaseClient, consumerId: string): P
   return res.row;
 }
 
-/** Stripe Checkout on the connected account. The ledger row id rides in
- *  metadata and client_reference_id so the receiver (W2b) finds it even
- *  before the session id is stored; no application fee (MESITA-3461); no
- *  platform customer (premier_customers stays Premier's). */
-export function voucherCheckoutParams(args: {
-  purchaseId: string;
-  placeId: string;
-  consumerId: string;
-  email: string | null;
-  voucher: MoneyVoucherKey;
-  currency: string;
-  placeName: string;
-  returnUrl: string;
-  nowSec: number;
-}): Record<string, unknown> {
-  const line = catalogLines(args.currency)[args.voucher];
-  const origin = new URL(args.returnUrl).origin;
-  const metadata = voucherMetadata(args);
-  return {
-    mode: "payment",
-    client_reference_id: args.purchaseId,
-    ...(args.email ? { customer_email: args.email } : {}),
-    // Back on the place's own House Card, /wallet/place/<placeId> (MESITA-3617),
-    // never the Wallet's rails: the guest bought credit at one place.
-    success_url: `${origin}/wallet/place/${args.placeId}?prepay={CHECKOUT_SESSION_ID}`,
-    cancel_url: args.returnUrl,
-    expires_at: args.nowSec + WALLET_CHECKOUT_TTL_SEC,
-    metadata,
-    line_items: [{
-      quantity: 1,
-      price_data: {
-        currency: args.currency,
-        unit_amount: toStripeAmount(line.price_cents, args.currency),
-        product_data: {
-          name: `${voucherName(args.voucher, args.currency)} · ${args.placeName}`.slice(0, 250),
-          description: `${moneyText(line.credit_cents, args.currency)} of credit at ${args.placeName}`.slice(0, 250),
-        },
-      },
-    }],
-    payment_intent_data: { metadata },
-  };
-}
-
-/** What a voucher's Stripe object carries, the Checkout's and the saved
- *  card's PaymentIntent alike (MESITA-3552): the receiver reads
+/** What a voucher's Stripe object carries: the saved card's PaymentIntent
+ *  (MESITA-3552; the Checkout went with MESITA-4065): the receiver reads
  *  mesita_kind and purchase_id. */
 export function voucherMetadata(args: {
   purchaseId: string;
@@ -606,129 +561,6 @@ export async function openPurchaseRow(
     }
   }
   return { ok: true, duplicate: false, purchaseId };
-}
-
-/** The buy, after every refusal was checked: one `opening` row under the
- *  guest's request_id, one Checkout on the connected account keyed by the
- *  row id, then the row reads `open` with its session. A Stripe refusal
- *  marks the row `failed` and answers 502 checkout_failed. A repeated
- *  request_id finds its row: an open session's url again, or a refusal. */
-export async function openVoucherCheckout(
-  admin: SupabaseClient,
-  stripe: StripeCall,
-  args: {
-    consumerId: string;
-    email: string | null;
-    place: VoucherPlace;
-    account: AccountRow;
-    voucher: MoneyVoucherKey;
-    currency: string;
-    requestId: string;
-    returnUrl: string;
-    livemode: boolean;
-    nowSec: number;
-  },
-): Promise<BuyOk | BuyRefusal> {
-  const opened = await openPurchaseRow(admin, args);
-  if (!opened.ok) return opened;
-  if (opened.duplicate) {
-    return await resumeRequest(admin, stripe, {
-      consumerId: args.consumerId,
-      requestId: args.requestId,
-      account: args.account,
-      place: args.place,
-      voucher: args.voucher,
-    });
-  }
-  const purchaseId = opened.purchaseId;
-
-  let session: Record<string, unknown>;
-  try {
-    session = await stripe(
-      "POST",
-      "checkout/sessions",
-      voucherCheckoutParams({
-        purchaseId,
-        placeId: args.place.id,
-        consumerId: args.consumerId,
-        email: args.email,
-        voucher: args.voucher,
-        currency: args.currency,
-        placeName: String(args.place.name ?? "Mesita place"),
-        returnUrl: args.returnUrl,
-        nowSec: args.nowSec,
-      }),
-      { idempotencyKey: purchaseId, stripeAccount: args.account.stripe_account_id },
-    );
-  } catch (err) {
-    const code = err instanceof StripeError ? err.code || err.type || "stripe_error" : "stripe_unreachable";
-    console.error("[vouchers] checkout_failed", JSON.stringify({ purchase_id: purchaseId, code, message: errorMessage(err) }));
-    await admin.from("wallet_purchases")
-      .update({ status: "failed", stripe_error: code, updated_at: new Date().toISOString() })
-      .eq("id", purchaseId).eq("status", "opening");
-    return { ok: false, status: 502, code: "checkout_failed", error: `Stripe refused the checkout: ${code}` };
-  }
-
-  const sessionId = String(session.id ?? "");
-  const url = String(session.url ?? "");
-  const { error: openErr } = await admin.from("wallet_purchases")
-    .update({ status: "open", stripe_checkout_session_id: sessionId, updated_at: new Date().toISOString() })
-    .eq("id", purchaseId).eq("status", "opening");
-  if (openErr) {
-    // The session exists but the row cannot name it: nobody could credit it,
-    // so it is closed on Stripe and the guest is asked again.
-    console.error("[vouchers] session_write", JSON.stringify({ purchase_id: purchaseId, error: openErr.message }));
-    try {
-      await stripe("POST", `checkout/sessions/${encodeURIComponent(sessionId)}/expire`, undefined, { stripeAccount: args.account.stripe_account_id });
-    } catch (err) {
-      console.error("[vouchers] expire_failed", JSON.stringify({ purchase_id: purchaseId, error: String(err) }));
-    }
-    await admin.from("wallet_purchases")
-      .update({ status: "failed", stripe_error: "session_write", updated_at: new Date().toISOString() })
-      .eq("id", purchaseId).eq("status", "opening");
-    return { ok: false, status: 502, code: "checkout_failed", error: "Couldn't open checkout. Try again." };
-  }
-  return { ok: true, url, purchase_id: purchaseId };
-}
-
-/** The same request_id again: the row it made, and its open session if any.
- *  A second Welcome buy while the first one's Checkout is open (another
- *  request_id, the once-per-guest index refused it) answers in_progress
- *  with that session's url, never a 500 (MESITA-3305 rule 16). */
-async function resumeRequest(
-  admin: SupabaseClient,
-  stripe: StripeCall,
-  args: { consumerId: string; requestId: string; account: AccountRow; place: VoucherPlace; voucher: MoneyVoucherKey },
-): Promise<BuyOk | BuyRefusal> {
-  const { data, error } = await admin.from("wallet_purchases")
-    .select("id, status, stripe_checkout_session_id")
-    .eq("consumer_id", args.consumerId).eq("request_id", args.requestId)
-    .maybeSingle();
-  if (error) throw new Error(`purchase_read: ${error.message}`);
-  let row = data as PurchaseRow | null;
-  let inProgress = false;
-  if (!row && args.voucher === "voucher_welcome") {
-    const { data: w, error: wErr } = await admin.from("wallet_purchases")
-      .select("id, status, stripe_checkout_session_id")
-      .eq("consumer_id", args.consumerId).eq("place_id", args.place.id)
-      .eq("voucher", "voucher_welcome").in("status", ["opening", "open"])
-      .maybeSingle();
-    if (wErr) throw new Error(`welcome_read: ${wErr.message}`);
-    row = (w as PurchaseRow | null) ?? null;
-    inProgress = row !== null;
-    if (!row) return { ok: false, status: 409, ...REFUSAL_FOR.used };
-  }
-  if (row && row.status === "open" && row.stripe_checkout_session_id) {
-    const session = await stripe("GET", `checkout/sessions/${encodeURIComponent(row.stripe_checkout_session_id)}`, undefined, {
-      stripeAccount: args.account.stripe_account_id,
-    });
-    if (session.status === "open" && typeof session.url === "string") {
-      if (inProgress) return { ok: false, status: 409, code: "in_progress", error: "Your Welcome voucher's checkout is still open", url: session.url };
-      return { ok: true, url: session.url, purchase_id: row.id };
-    }
-  }
-  if (inProgress) return { ok: false, status: 409, code: "in_progress", error: "Your Welcome voucher's checkout is still open" };
-  return { ok: false, status: 409, code: "checkout_failed", error: "That checkout is no longer open. Start again." };
 }
 
 export { MESITA_FEE_BPS_VOUCHER, readVoucherPlace };
