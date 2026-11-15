@@ -115,17 +115,16 @@ export const MAP_MINIMAL_STYLES = [
 // (blue). r=7 (Pato, MESITA-2757: "make the dots a bit smaller"; was 10)
 // — the 44px pad keeps it tappable, and a cluster still shows the map.
 // Every pin wears the same thin white ring (MESITA-3992, MESITA-3998); the
-// selected pin is purple and larger (r 10).
+// selected pin is purple at the same r 7 (MESITA-4014).
 // The visible circle sits in a 44px pad so the hit box is a finger, not
 // the painted disk. Cursor stays default — never the pointing hand.
 export const MAP_PLACE_PIN_RADIUS = 7;
 /** Mesita Premier (MESITA-2925; Selected's from gate d4a): a slightly
  *  larger disk on the map. */
 export const MAP_PREMIER_PLACE_PIN_RADIUS = 9;
-/** The selected (purple) pin is the largest mark on the map, whatever its
- *  tone (Pato, MESITA-3998: "make the selected place pin a bit bigger");
- *  until then a held pin only drew its ring thicker (MESITA-2482). */
-export const MAP_SELECTED_PIN_RADIUS = 10;
+// The selected (purple) pin is the plain pin's size, like the blue dot
+// (Pato, MESITA-4014: "purple and blue and black same size"; MESITA-3998
+// drew it at r 10): it reads by colour alone.
 export const MAP_PIN_HIT_SIZE = 44;
 export const MAP_PIN_CURSOR = "default";
 export const MAP_PIN_STROKE_WEIGHT = 1.25;
@@ -225,7 +224,7 @@ export const MAP_USER_LOCATION_PIN_COLOR = "#007aff";
 
 // Every place pin rings WHITE, so a black disk reads on the map (it rang
 // dark on grey, MESITA-2482). A SELECTED pin changes colour (Pato,
-// MESITA-2488; purple since MESITA-3992): purple fill, larger, the same
+// MESITA-2488; purple since MESITA-3992): purple fill, same size, the same
 // white ring, so it reads against both the red and the black. The blue you-are-here dot
 // keeps a white ring (iOS).
 export const MAP_SELECTED_PIN_COLOR = "#7c3aed";
