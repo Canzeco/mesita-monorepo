@@ -11,8 +11,6 @@ import {
 } from "@/lib/api/notifications";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { markNotificationsSeen } from "@/lib/notifications-seen";
-import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
 import {
   NotificationRow,
   NOTIFICATION_KINDS,
@@ -46,13 +44,8 @@ function SkeletonRows() {
  *  "notifications are events"), Activity's Notifications chip (off the bar
  *  under MESITA-3697, back with MESITA-3716). Newest first under day
  *  headings (Today, Yesterday, then the date); each row is the row it always
- *  was. `quietEmpty`: a "Next up" ticket stands above, so an empty list is
- *  one muted line, not a second empty state. */
-export function NotificationsList({
-  quietEmpty = false,
-}: {
-  quietEmpty?: boolean;
-}) {
+ *  was, in the list box (MESITA-4053). */
+export function NotificationsList() {
   // Kept for two minutes and refreshed by every reservation write
   // (MESITA-3014): a return to this list paints its rows, not skeletons.
   const getSupabase = useLazyBrowserSupabase();
@@ -79,10 +72,15 @@ export function NotificationsList({
     <div className="flex flex-col gap-5">
       {/* NO IN-BODY TITLE (Pato, 2026-09-05: "don't say here your recent
           moves. it looks NOT clean. be direct"). */}
-      {error ? (
-        <p className={cn(ERROR_BOX_CLASS, "rounded-xl text-sm")}>
-          {error}
-        </p>
+      {/* A failed read is the centred empty state with Try again, no box
+          (MESITA-4053, decision 2A, as Tickets and Wallet do). */}
+      {error && !loading && visible.length === 0 ? (
+        <EmptyState
+          icon={Bell}
+          title={error}
+          description="Check your connection and try again."
+          action={{ label: "Try again", onClick: query.reload }}
+        />
       ) : null}
 
       {loading ? (
@@ -102,9 +100,7 @@ export function NotificationsList({
             </p>
           ) : null}
         </>
-      ) : error ? null : quietEmpty ? (
-        <p className="text-muted-foreground text-sm">Nothing new yet.</p>
-      ) : (
+      ) : error ? null : (
         <EmptyState
           icon={Bell}
           title="Nothing new yet"
