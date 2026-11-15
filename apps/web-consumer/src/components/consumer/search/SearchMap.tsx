@@ -28,7 +28,9 @@ import {
   MAP_USER_LOCATION_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
   MAP_PREMIER_PLACE_PIN_RADIUS,
+  MAP_DOT_RADIUS,
   MAP_DOT_SIZE,
+  MAP_PREMIER_DOT_RADIUS,
   mapDotIcon,
   mapPinIcon,
 } from "@/lib/map-defaults";
@@ -106,6 +108,7 @@ function dotIcon(premier: boolean) {
   const raw = mapDotIcon(
     pinToneColor(premier ? "premier" : "mesita"),
     MAP_PIN_STROKE_COLOR,
+    premier ? MAP_PREMIER_DOT_RADIUS : MAP_DOT_RADIUS,
   );
   const maps = (globalThis as { google?: { maps?: Partial<MapsCtor> } }).google
     ?.maps;

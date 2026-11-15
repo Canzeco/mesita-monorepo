@@ -147,15 +147,23 @@ export function mapPinSvg(
 
 /** A Map dot (MESITA-3980): a place past the pins, drawn small — "there is
  *  something here, zoom in". Not a hit target, so the pad is the disk. */
-export const MAP_DOT_RADIUS = 4.5;
+// A black dot is r 3.5, between the first 2.5 and MESITA-3992's 4.5 (Pato,
+// MESITA-3994: "make the black dots a bit smaller, and in between from past
+// and current"); a red Premier dot keeps 4.5, as a Premier pin is larger.
+export const MAP_DOT_RADIUS = 3.5;
+export const MAP_PREMIER_DOT_RADIUS = 4.5;
 export const MAP_DOT_SIZE = 12;
 
-export function mapDotIcon(fillColor: string, strokeColor: string) {
+export function mapDotIcon(
+  fillColor: string,
+  strokeColor: string,
+  radius: number = MAP_DOT_RADIUS,
+) {
   const size = MAP_DOT_SIZE;
   const mid = size / 2;
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
-    `<circle cx="${mid}" cy="${mid}" r="${MAP_DOT_RADIUS}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1"/>` +
+    `<circle cx="${mid}" cy="${mid}" r="${radius}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1"/>` +
     `</svg>`;
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
