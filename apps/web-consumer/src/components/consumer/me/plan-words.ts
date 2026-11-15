@@ -44,12 +44,12 @@ export const PLAN_ROWS: Record<GuestPlan, PlanRowWords> = {
   free: {
     title: "Free",
     price: "Free",
-    perk: `Max ${FREE_RESERVATIONS_PER_MONTH} reservations a month`,
+    perk: `Max ${FREE_RESERVATIONS_PER_MONTH} reservation tickets a month`,
   },
   premium: {
     title: "Pro",
     price: PRO_PRICE_LINE,
-    perk: `Max ${PRO_RESERVATIONS_PER_MONTH} reservations a month`,
+    perk: `Max ${PRO_RESERVATIONS_PER_MONTH} reservation tickets a month`,
     soonPerk: "MCP for ChatGPT or Claude",
   },
 };

@@ -55,7 +55,7 @@ Deno.test("Me › Plan builds that line from the constant, never a typed number"
   const words = await read("components/consumer/me/plan-words.ts");
   assert(
     words.includes('from "@/lib/plan-perks"') &&
-      words.includes("Max ${FREE_RESERVATIONS_PER_MONTH} reservations a month"),
+      words.includes("Max ${FREE_RESERVATIONS_PER_MONTH} reservation tickets a month"),
     "plan-words.ts must import FREE_RESERVATIONS_PER_MONTH and render it in the reservations line",
   );
   for (const rel of ["me/plan-words.ts", "me/PlanModal.tsx"]) {
@@ -69,11 +69,11 @@ Deno.test("Me › Plan builds that line from the constant, never a typed number"
 
 // ── The cap lookup (MESITA-2555): it gates every reservation a guest makes. ──
 
-Deno.test("the cap is the plan's: Free 2, Pro (stored 'premium') 10, anything else Free", () => {
-  assertEquals(monthlyReservationCap({ plan: "free" }), 2);
+Deno.test("the cap is the plan's: Free 3, Pro (stored 'premium') 10, anything else Free", () => {
+  assertEquals(monthlyReservationCap({ plan: "free" }), 3);
   assertEquals(monthlyReservationCap({ plan: "premium" }), 10);
-  assertEquals(monthlyReservationCap({ plan: "pro" }), 2);
-  assertEquals(monthlyReservationCap({}), 2);
+  assertEquals(monthlyReservationCap({ plan: "pro" }), 3);
+  assertEquals(monthlyReservationCap({}), 3);
   assertEquals(monthlyReservationCap(null), MONTHLY_RESERVATION_CAP);
   assertEquals(RESERVATION_CAP_BY_PLAN.free, MONTHLY_RESERVATION_CAP);
   assert(RESERVATION_CAP_BY_PLAN.premium > RESERVATION_CAP_BY_PLAN.free, "Pro must allow more than Free");
@@ -88,7 +88,7 @@ Deno.test("an operator's override wins over the plan, both ways, and 0 blocks", 
 
 Deno.test("a malformed override is ignored, never a bigger cap", () => {
   for (const bad of [-1, 1001, 2.5, "50", Number.NaN, Infinity]) {
-    assertEquals(monthlyReservationCap({ plan: "free", reservation_cap_override: bad }), 2);
+    assertEquals(monthlyReservationCap({ plan: "free", reservation_cap_override: bad }), 3);
     assertEquals(readCapOverride(bad), null);
   }
   assertEquals(readCapOverride(RESERVATION_CAP_OVERRIDE_MAX), RESERVATION_CAP_OVERRIDE_MAX);
@@ -106,7 +106,7 @@ Deno.test("Me › Plan's Pro number equals the Pro cap the server enforces", asy
   assertEquals(Number(m[1]), RESERVATION_CAP_BY_PLAN.premium);
   const words = await read("components/consumer/me/plan-words.ts");
   assert(
-    words.includes("Max ${PRO_RESERVATIONS_PER_MONTH} reservations a month"),
+    words.includes("Max ${PRO_RESERVATIONS_PER_MONTH} reservation tickets a month"),
     "plan-words.ts must render the Pro line from PRO_RESERVATIONS_PER_MONTH",
   );
 });

@@ -12,10 +12,10 @@
 //   │ Resets Dec 1                   │
 //   └────────────────────────────────┘
 //   ┌ Free  Current             Free ┐
-//   │ ✓ Max 2 reservations a month   │
+//   │ ✓ Max 3 reservation tickets a month │
 //   └────────────────────────────────┘
 //   ┏ Pro            $1 USD a month ┓   2px ink border
-//   ┃ ✓ Max 10 reservations a month  ┃
+//   ┃ ✓ Max 10 reservation tickets a month ┃
 //   ┃ ✓ MCP for ChatGPT or Claude Soon┃
 //   ┃ [ Upgrade to Pro ]              ┃  Free guests
 //   ┃ Renews Dec 14 · Cancel Pro      ┃  paid Pro
