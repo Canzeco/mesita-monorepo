@@ -123,7 +123,12 @@ export async function runTests(ctx: WorkspaceCtx): Promise<Response> {
   return json({ ok: failed === 0, mode: ctx.mode, runs }, failed === 0 ? 200 : 502);
 }
 
-type Turn = { role?: string; message?: string | null };
+type Turn = {
+  role?: string;
+  message?: string | null;
+  tool_calls?: Array<{ tool_name?: string; params_as_json?: string }> | null;
+  tool_results?: Array<{ tool_name?: string; result_value?: string; is_error?: boolean }> | null;
+};
 type RunRow = {
   test_name?: string;
   status?: string;
@@ -139,18 +144,36 @@ function reasons(r: RunRow): string {
   return [rat?.summary, ...(rat?.messages ?? [])].filter((x) => !!x && x.trim()).join(" · ").slice(0, 1500);
 }
 
-/** The simulated call, one line per turn, so a failure can be read. */
+/** The simulated call, one line per turn, with every tool the agent fired
+ *  and what it answered — a stall at a tool node is otherwise invisible
+ *  (MESITA-4027). */
 function callLines(r: RunRow): string[] {
-  return (r.agent_responses ?? [])
-    .filter((t) => typeof t?.message === "string" && t.message.trim())
-    .map((t) => `${t.role === "agent" ? "Agent" : "Caller"}: ${t.message!.trim()}`.slice(0, 300))
-    .slice(0, 30);
+  const lines: string[] = [];
+  for (const t of r.agent_responses ?? []) {
+    for (const c of t?.tool_calls ?? []) {
+      lines.push(`TOOL→ ${c.tool_name ?? "?"}(${(c.params_as_json ?? "").slice(0, 200)})`);
+    }
+    for (const res of t?.tool_results ?? []) {
+      lines.push(`TOOL← ${res.tool_name ?? "?"}${res.is_error ? " ERROR" : ""}: ${(res.result_value ?? "").slice(0, 200)}`);
+    }
+    if (typeof t?.message === "string" && t.message.trim()) {
+      lines.push(`${t.role === "agent" ? "Agent" : "Caller"}: ${t.message.trim()}`.slice(0, 300));
+    }
+  }
+  return lines.slice(0, 40);
+}
+
+/** With { raw: true }, a failed run also carries its turns as ElevenLabs
+ *  returned them (truncated) — for what callLines does not show. */
+function rawTurns(r: RunRow): string {
+  return JSON.stringify(r.agent_responses ?? []).slice(0, 6000);
 }
 
 export async function testResults(ctx: BaseCtx): Promise<Response> {
   const raw = (ctx.body as { invocation_ids?: unknown }).invocation_ids;
   const ids = Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(x)) : [];
   if (ids.length === 0) return json({ ok: false, error: "invocation_ids: string[] required" }, 400);
+  const wantRaw = (ctx.body as { raw?: unknown }).raw === true;
   const invocations: Array<Record<string, unknown>> = [];
   for (const id of ids.slice(0, 10)) {
     const res = await elFetch(ctx.key, `/v1/convai/test-invocations/${encodeURIComponent(id)}`);
@@ -164,6 +187,7 @@ export async function testResults(ctx: BaseCtx): Promise<Response> {
       result: r.condition_result?.result ?? null,
       why: reasons(r),
       ...(r.status === "failed" ? { call: callLines(r) } : {}),
+      ...(r.status === "failed" && wantRaw ? { raw: rawTurns(r) } : {}),
     }));
     invocations.push({
       id,
