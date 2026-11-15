@@ -173,7 +173,7 @@ describe("member preview edges", () => {
     // No Soon pill in the strip (MESITA-2631); the screen says it.
     expect(html.slice(html.indexOf('aria-label="Place sections"'), html.indexOf("</nav>"))).not.toContain("Soon");
     const soon = renderToStaticMarkup(<SoonScreen />);
-    expect(soon).toContain("Menus are coming to Mesita");
+    expect(soon).toContain("Smart menus are coming to Mesita");
   });
 
   it("renders no outbound href when links and callbacks are absent", () => {
