@@ -2,6 +2,7 @@
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { useState } from "react";
+import type { RewardsSection } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
 import { CARD_BUTTON_BOX } from "@/components/consumer/place-card";
@@ -14,7 +15,8 @@ import { useOfferBeat, useReducedMotion } from "@/components/consumer/offer-beat
  *  in this order: Pay first (any guest, any visit), then the three sizes,
  *  Story, VIP, Welcome (MESITA-3475). The figures are the Rewards sheet's catalog
  *  (packages/place-profile vouchers.tsx STANDARD and SPECIAL); a change there
- *  changes here. Each slide opens the Rewards sheet at its own section. */
+ *  changes here. Each slide opens the Offers sheet at its own section; Pay
+ *  opens the plain profile (MESITA-4062). */
 export type OfferSlide = {
   key: string;
   /** The words before the ink pill. */
@@ -25,7 +27,8 @@ export type OfferSlide = {
   short: string;
   /** Read aloud in the button's label. */
   spoken: string;
-  section: "payment" | "prepayment" | "special";
+  /** null = the plain profile, no sheet (Pay, MESITA-4062). */
+  section: RewardsSection | null;
   /** The box's colour and ink while this slide shows (MESITA-3475). */
   tone: string;
   /** A voucher's bonus in percent; the list band reads the best one
@@ -53,7 +56,7 @@ const OFFER_SLIDES: OfferSlide[] = [
   { key: "voucher_story", lead: "Story", pill: "+30%", short: "Story", spoken: "Story prepay, 30% bonus", section: "special", tone: "bg-[#E1306C] text-white", bonus: 30 },
   { key: "voucher_vip", lead: "VIP", pill: "+100%", short: "VIP", spoken: "VIP prepay, 100% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950", bonus: 100 },
   // The pill is filled in from the place's own card rate (offerSlides).
-  { key: "cashback", lead: "Pay", pill: "Back", short: "Pay", spoken: "Mesita Pay cashback", section: "payment", tone: GREEN },
+  { key: "cashback", lead: "Pay", pill: "Back", short: "Pay", spoken: "Mesita Pay cashback", section: null, tone: GREEN },
   // The best standard voucher on sale (offerSlides picks it).
   { key: "prepay", lead: "Prepay", pill: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
 ];
@@ -151,7 +154,7 @@ const OFFER_BOX =
 /** THE OFFER BUTTON (MESITA-3439's green Bonus button, rotating since
  *  MESITA-3467): full width under Save and Share, the place screen's Link
  *  green, 12px semibold as Save and Share (MESITA-3442), a 44px hit area.
- *  The slide on screen when the finger lands picks the Rewards section, and
+ *  The slide on screen when the finger lands picks the Offers section, and
  *  the button holds that slide while a finger or keyboard focus is on it. */
 export function OfferButton({
   href,
@@ -178,8 +181,11 @@ export function OfferButton({
     <PushLink
       // EVERY SLIDE OPENS THE PROFILE WITH ITS OFFERS (Pato, MESITA-3797:
       // "if i click the offer, that opens profile and then offers too
-      // directly"): Pay too, at its Payment section; it went to /pay before.
-      href={`${href}?rewards=${slide.section}`}
+      // directly"). PAY OPENS THE PLAIN PROFILE (Pato, 2026-11-15, MESITA-4062:
+      // "remove payments from the prepayments page"): the Offers sheet has no
+      // cashback card now, and the Pay tile there shows the rate. It is where
+      // tapping the card goes too; Pato can flip it to /pay from the preview.
+      href={slide.section ? `${href}?rewards=${slide.section}` : href}
       aria-label={offersLabel(name, slides)}
       onPointerDown={hold}
       onFocus={hold}

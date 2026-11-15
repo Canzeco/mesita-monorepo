@@ -88,7 +88,8 @@ function readFromWallet(): boolean {
 
 function readRewardsAsk(): RewardsSection | null {
   const v = new URLSearchParams(window.location.search).get("rewards");
-  return v === "prepayment" || v === "payment" || v === "special" ? v : null;
+  // "payment" is ignored on purpose: the Payments card left Offers (MESITA-4062).
+  return v === "prepayment" || v === "special" ? v : null;
 }
 
 export function useMemberPlaceActions(place: PlaceDetail): {
@@ -108,9 +109,9 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [contactOpen, setContactOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  // Prepay and Pay open the Rewards sheet at their section (MESITA-3412).
+  // Prepay opens the Offers sheet (MESITA-3412).
   const [rewards, setRewards] = useState<RewardsSection | null>(null);
-  // ?rewards=prepayment|payment|special (the Home tile's offer button,
+  // ?rewards=prepayment|special (the Home tile's offer button,
   // MESITA-3439, its slides since MESITA-3467)
   // opens the sheet on arrival, once: closing it drops the ask.
   const askedRewards = useSyncExternalStore(noopSubscribe, readRewardsAsk, () => null);

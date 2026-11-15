@@ -67,11 +67,11 @@ export type PlaceActions = {
    *  drawn by the host; called only while the tab is open. Absent (admin's
    *  Preview, a Google-only card), the tab shows an empty screen. */
   renderSocial?: () => ReactNode;
-  /** Prepay and Pay (MESITA-3412): open the host's Rewards sheet at that
-   *  section. Absent, both tiles are inert (admin's preview). */
+  /** Prepay (MESITA-3412): open the host's Offers sheet. Absent, the tile is
+   *  inert (admin's preview). */
   onOpenRewards?: (section: RewardsSection) => void;
-  /** The Cashback card's Pay (MESITA-3352): opens the host's Pay page.
-   *  Absent, the card draws no button (admin's preview). */
+  /** The Pay tile (MESITA-3352): opens the host's Pay page. Absent, the
+   *  tile is inert (admin's preview). */
   onPay?: () => void;
   /** The pinned row's Wallet tile (MESITA-3574): opens the host's Wallet at
    *  this place's credit. Absent (admin's preview, business), the tile is
@@ -109,7 +109,8 @@ export function inertButtonProps(live: boolean): {
   };
 }
 
-/** The sections of the Rewards page (MESITA-3412): Pay opens at
- *  `payment`, Prepay at `prepayment`; the Home offer button's Welcome, Story
- *  and VIP slides open at `special` (MESITA-3467). */
-export type RewardsSection = "payment" | "prepayment" | "special";
+/** Why the Offers sheet opened (MESITA-3412): Prepay and the Wallet at
+ *  `prepayment`, the Home offer button's Welcome, Story and VIP slides at
+ *  `special` (MESITA-3467). Both show the same one section; "payment" went
+ *  with the Payments card (MESITA-4062). */
+export type RewardsSection = "prepayment" | "special";
