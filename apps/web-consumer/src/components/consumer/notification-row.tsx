@@ -63,6 +63,8 @@ function outcomeSentence(outcome: string | null): string {
       return "couldn't take your table.";
     case "counter_offer":
       return "offered another time.";
+    case "change_proposed":
+      return "asked to change your table.";
     case "unreachable":
       return "didn't answer when we called.";
     case "unresolved":

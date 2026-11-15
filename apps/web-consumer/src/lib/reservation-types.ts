@@ -44,4 +44,13 @@ export type ReservationItem = {
   guestConfirmedAt?: string | null;
   /** Place counter-offers the guest can accept in-app. */
   alternatives?: ReservationAlternative[];
+  /** A change the place asked for that waits on the guest (MESITA-4073):
+   *  the new time and/or size, already formatted. */
+  pendingChange?: {
+    /** The new time on the place's clock; absent when the time stays. */
+    when?: string;
+    /** The new party size; absent when the size stays. */
+    partySize?: number;
+    note?: string;
+  };
 };

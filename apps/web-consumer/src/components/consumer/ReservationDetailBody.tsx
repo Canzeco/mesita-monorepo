@@ -8,7 +8,7 @@ import type { ReservationItem } from "@/lib/reservation-types";
 import { cn, errMsg } from "@/lib/utils";
 import { RESERVATION_FLOW, stateMeta } from "@/lib/reservation-state";
 import { ReservationActions } from "@/components/consumer/reservation-actions";
-import { apiConfirmReservation } from "@/lib/api/reservations";
+import { apiAnswerReservationChange, apiConfirmReservation } from "@/lib/api/reservations";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 
@@ -90,6 +90,21 @@ export function ReservationDetailBody({
       toast.success("Reference copied.");
     } catch {
       toast.error("Couldn't copy. The reference is " + reference + ".");
+    }
+  }
+
+  const change = r.pendingChange;
+  async function answerChange(accept: boolean) {
+    setConfirmBusy(true);
+    setConfirmError(null);
+    try {
+      await apiAnswerReservationChange(supabase, { reservationId: r.id, accept });
+      toast.success(accept ? "Change accepted." : "You kept your table. Mesita tells the place.");
+      onChanged?.();
+    } catch (e) {
+      setConfirmError(errMsg(e, "Couldn't answer"));
+    } finally {
+      setConfirmBusy(false);
     }
   }
 
@@ -201,6 +216,52 @@ export function ReservationDetailBody({
               </button>
             );
           })}
+          {confirmError && (
+            <p className="text-xs font-medium text-destructive">{confirmError}</p>
+          )}
+        </section>
+      )}
+
+      {change && (
+        <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
+          <p className="type-body font-semibold">The place asks to change your table</p>
+          <div className="flex flex-col gap-1 text-sm">
+            {change.when ? (
+              <p>
+                <span className="text-muted-foreground">Time </span>
+                <span className="tabular-nums">{r.when}</span>
+                {" → "}
+                <span className="font-semibold tabular-nums">{change.when}</span>
+              </p>
+            ) : null}
+            {change.partySize ? (
+              <p>
+                <span className="text-muted-foreground">Table for </span>
+                {r.partySize}
+                {" → "}
+                <span className="font-semibold">{change.partySize}</span>
+              </p>
+            ) : null}
+            {change.note ? <p className="text-muted-foreground">“{change.note}”</p> : null}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={confirmBusy}
+              onClick={() => void answerChange(true)}
+              className="bg-primary text-primary-foreground inline-flex h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold disabled:opacity-60"
+            >
+              Accept
+            </button>
+            <button
+              type="button"
+              disabled={confirmBusy}
+              onClick={() => void answerChange(false)}
+              className="border-border hover:bg-muted inline-flex h-11 flex-1 items-center justify-center rounded-full border text-sm font-semibold disabled:opacity-60"
+            >
+              Decline
+            </button>
+          </div>
           {confirmError && (
             <p className="text-xs font-medium text-destructive">{confirmError}</p>
           )}

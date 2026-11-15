@@ -109,6 +109,22 @@ export function apiConfirmReservation(
   );
 }
 
+/** Accept or decline the change the place asked for (MESITA-4073). A
+ *  decline keeps the original table and Mesita tells the place. */
+export function apiAnswerReservationChange(
+  client: SupabaseClient,
+  args: { reservationId: string; accept: boolean },
+): Promise<{ change: "accepted" | "declined" }> {
+  return afterWrite(
+    invokeEF<{ change: "accepted" | "declined" }>(
+      client,
+      "consumer-web-confirm-reservation",
+      { reservation_id: args.reservationId, change: args.accept ? "accept" : "decline" },
+      args.accept ? "Couldn't accept the change" : "Couldn't decline the change",
+    ),
+  );
+}
+
 // Which slice of the caller's bookings to list. "upcoming" = pending |
 // confirmed; "past" = the terminal states; "all" leaves it unfiltered.
 type ReservationScope = "upcoming" | "past" | "all";
@@ -150,6 +166,13 @@ export type EFReservationRow = {
    *  a table time limit, a tolerance (MESITA-4076). In the place's words,
    *  usually Spanish. Older EFs omit it. */
   confirmed_terms?: string | null;
+  /** A change the place asked for on Mesita's line (MESITA-4073): the table
+   *  keeps its own time and size until the guest accepts. */
+  change_state?: "none" | "proposed" | "accepted" | "declined" | "expired" | null;
+  change_reserved_at?: string | null;
+  change_party_size?: number | null;
+  change_note?: string | null;
+  change_expires_at?: string | null;
   place: {
     id: string;
     slug: string | null;

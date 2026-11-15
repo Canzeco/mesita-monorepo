@@ -166,6 +166,23 @@ function normalizeClientAlternatives(
   return out.length ? out : undefined;
 }
 
+/** The place's proposed change, while the guest can still answer it. */
+function pendingChangeOf(row: EFReservationRow): ReservationItem["pendingChange"] {
+  if (row.state !== "confirmed" || row.change_state !== "proposed") return undefined;
+  const exp = row.change_expires_at ? new Date(row.change_expires_at).getTime() : NaN;
+  if (!Number.isFinite(exp) || exp <= Date.now()) return undefined;
+  const when = row.change_reserved_at
+    ? formatReservationWhen(row.change_reserved_at, row.place?.timezone)
+    : "";
+  const size = row.change_party_size ?? undefined;
+  if (!when && !size) return undefined;
+  return {
+    ...(when ? { when } : {}),
+    ...(size ? { partySize: size } : {}),
+    ...(row.change_note ? { note: row.change_note } : {}),
+  };
+}
+
 export function toReservationItem(row: EFReservationRow): ReservationItem {
   const state = reservationPhase(row);
   // A reservation is still yours to move while it's live and ahead of us.
@@ -174,6 +191,7 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
   const alternatives = normalizeClientAlternatives(row.alternatives);
   const counterOffer =
     row.state === "pending" && (alternatives?.length ?? 0) > 0;
+  const pendingChange = pendingChangeOf(row);
   return {
     id: row.id,
     projectId: row.place?.id ?? "",
@@ -187,6 +205,8 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     state,
     stateNote: counterOffer
       ? "The place offered other times — pick one below, or reschedule."
+      : pendingChange
+      ? "The place asked to change your table. Until you answer, it stays as it is."
       : noteFor(state, row),
     // The 8-digit code the agents speak on calls — the guest's handle on the booking.
     referenceCode: row.reference_code ?? undefined,
@@ -196,5 +216,6 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     guestNotify: row.consumer_notify === "app" ? "app" : "call",
     guestConfirmedAt: row.consumer_confirmed_at ?? null,
     alternatives,
+    pendingChange,
   };
 }
