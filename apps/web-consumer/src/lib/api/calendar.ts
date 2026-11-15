@@ -1,20 +1,33 @@
-// Me › Integrations › Calendar (MESITA-3954): the guest's private calendar
-// feed link, and the three calendars' own "subscribe" addresses for it.
+// Me › Integrations › Calendar (MESITA-3954, MESITA-4041): one private feed
+// link per calendar, whether each is connected, and each calendar's own
+// "subscribe" address for its link.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { CalendarKind } from "@/components/shared/calendar-marks";
 import { invokeEF } from "./_invoke";
 
-/** The https feed address; `reset` makes a new one and kills the old. */
-export async function apiGetCalendarLink(
+export type { CalendarKind };
+
+export type CalendarFeed = {
+  /** The https feed address for this calendar alone. */
+  url: string;
+  /** When this calendar last read its link; null = never, so not connected. */
+  last_read_at: string | null;
+  /** Off: the link serves an empty calendar, so Mesita's tables leave it. */
+  on: boolean;
+};
+
+export type CalendarFeeds = Record<CalendarKind, CalendarFeed>;
+
+/** The three links, made on first ask. `reset` replaces all three; `set`
+ *  switches one calendar on or off. */
+export async function apiGetCalendarFeeds(
   client: SupabaseClient,
-  reset = false,
-): Promise<string> {
-  const res = await invokeEF<{ url: string }>(
-    client,
-    "consumer-web-get-calendar-link",
-    reset ? { reset: true } : {},
-  );
-  return res.url;
+  opts: { reset?: boolean; set?: { calendar: CalendarKind; on: boolean } } = {},
+): Promise<CalendarFeeds> {
+  const body = opts.reset ? { reset: true } : opts.set ? { calendar: opts.set.calendar, on: opts.set.on } : {};
+  const res = await invokeEF<{ calendars: CalendarFeeds }>(client, "consumer-web-get-calendar-link", body);
+  return res.calendars;
 }
 
 /** webcal:// is "subscribe", not "download", to Apple Calendar and Google. */
@@ -22,11 +35,11 @@ export function webcalUrl(https: string): string {
   return https.replace(/^https?:\/\//, "webcal://");
 }
 
-/** Each calendar's own add-by-URL door for the feed. */
-export function calendarSubscribeLinks(https: string) {
-  return {
-    google: `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcalUrl(https))}`,
-    apple: webcalUrl(https),
-    outlook: `https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(https)}&name=${encodeURIComponent("Mesita reservations")}`,
-  };
+/** A calendar's own add-by-URL door for its link. */
+export function subscribeUrl(kind: CalendarKind, https: string): string {
+  if (kind === "google") {
+    return `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcalUrl(https))}`;
+  }
+  if (kind === "apple") return webcalUrl(https);
+  return `https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(https)}&name=${encodeURIComponent("Mesita reservations")}`;
 }
