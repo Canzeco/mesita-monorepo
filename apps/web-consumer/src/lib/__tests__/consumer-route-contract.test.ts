@@ -106,7 +106,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // /discover. See the legacy block below for the /discover/search entry
       // that replaced it as a redirect source.
       search: "/search",
-      // Ask AI: a sheet over Search when opened from it (MESITA-2475).
+      // Ask AI: its own page under Search (MESITA-3991).
       searchChat: "/search/chat",
       // HOME IS TWO TABS, EACH AN ADDRESS (Pato, MESITA-2597). Bare /home,
       // /discover and /discover/places are in the legacy block now.
@@ -330,7 +330,6 @@ describe("path helpers", () => {
 
 describe("isModalContractPath (intercepted detail overlays)", () => {
   const modal = [
-    "/search/chat", // Ask AI's sheet over Search (MESITA-2475)
     "/place/abc",
     "/saved/place/abc", // legacy — redirects, but still intercepts first
     "/reservation/r1",
@@ -345,6 +344,7 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/discover/places",
     "/discover/social",
     "/search",
+    "/search/chat", // Ask AI, its own page (MESITA-3991)
     "/search/chat/x",
     "/pay",
     "/reservations",

@@ -44,7 +44,7 @@
 // drawn at all (MESITA-2487).
 
 import { useState, type ReactNode } from "react";
-import Link from "next/link";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { SlidersHorizontal, Sparkles } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import {
@@ -112,7 +112,7 @@ export function SearchHeader({
       >
         {locate}
         <div className={cn(BAR, "min-w-0 flex-1")}>{bar}</div>
-        <Link
+        <PushLink
           href={CONSUMER_ROUTES.searchChat}
           className={HEADER_PILL}
           data-search-ask-ai
@@ -123,7 +123,7 @@ export function SearchHeader({
             aria-hidden
           />
           <span>Ask AI</span>
-        </Link>
+        </PushLink>
       </div>
       <div className="relative" data-search-chip-band>
         {chipsHidden ? null : (

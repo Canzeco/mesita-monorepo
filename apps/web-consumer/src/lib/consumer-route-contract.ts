@@ -361,7 +361,7 @@ export type ConsumerTab = "home" | "search" | "pay" | "wallet" | "me";
  *  opened from; a `panel` that slides over the page under it (an @modal
  *  intercept with a full-page twin); a `sheet` that rises over it; a `door`
  *  that only forwards to another screen. */
-export type RouteKind = "tab" | "page" | "panel" | "sheet" | "door";
+export type RouteKind = "tab" | "page" | "panel" | "door";
 
 type RouteRow = {
   /** Segments; `:name` takes any one segment. */
@@ -389,7 +389,9 @@ export const ROUTE_MAP = {
   home: row("/home/places", "home", "tab", null),
   homeSocial: row("/home/social", "home", "tab", null),
   search: row("/search", "search", "tab", null),
-  searchChat: row("/search/chat", "search", "sheet", "search"),
+  // Ask AI is its own pushed page, never a sheet over Search (Pato,
+  // MESITA-3991: "it must have own route and page, not mid modal").
+  searchChat: row("/search/chat", "search", "page", "search"),
   place: row("/place/:id", "home", "panel", "home", false),
   placeOpen: row("/place/open/:gid", "home", "panel", "home", false),
   placeReserve: row("/place/:id/reserve", "home", "page", "place", false),
@@ -512,16 +514,16 @@ export function shellRoots(): string[] {
  * Does this path paint inside a routed modal shell? A `panel` or `sheet` row
  * of ROUTE_MAP (MESITA-3646).
  *
- * SlideOverShell and RouteSheetShell open with
+ * SlideOverShell opens with
  * `if (!isModalContractPath(pathname)) return null`, so an @modal intercept
- * whose row is not a panel or sheet renders BLANK. The route-map tests hold
- * every intercept to a panel or sheet row, and only those rows to one.
+ * whose row is not a panel renders BLANK. The route-map tests hold
+ * every intercept to a panel row, and only those rows to one.
  */
 export function isModalContractPath(pathname: string): boolean {
   const id = routeFor(pathname);
   if (id) {
     const kind = ROUTE_MAP[id].kind;
-    return kind === "panel" || kind === "sheet";
+    return kind === "panel";
   }
   // Two retired addresses still 308 through a panel route (T2).
   return (
