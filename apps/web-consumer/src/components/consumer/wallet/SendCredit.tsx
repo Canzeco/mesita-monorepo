@@ -2,9 +2,11 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Gift } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { Screen } from "@/components/consumer/nav/Screen";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiClaimGift,
@@ -19,7 +21,11 @@ import {
   type GiftLook,
   money,
   type SentLink,
+  WALLET_CACHE_KEY,
 } from "@/lib/api/wallet";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { goBack } from "@/lib/navigate";
+import { invalidateCached } from "@/lib/screen-cache";
 import { placeHref } from "@/lib/place-route";
 import { shareOrCopy } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -304,20 +310,19 @@ export function GiftClaimSheet({ token, onClose, onClaimed }: { token: string | 
   );
 }
 
-/** A friend's gift code typed in the Wallet (MESITA-3737): 12 digits, the
- *  same one-time credit as the link. */
-export function RedeemCodeSheet({ open, onClose, onClaimed }: { open: boolean; onClose: () => void; onClaimed: () => void }) {
+/** A friend's gift code, typed on ITS OWN PAGE (MESITA-4020, Pato: "redeem
+ *  credits must be own page, not a fucking ugly ass modal"): /wallet/redeem,
+ *  pushed from Wallet's Redeem Credits button, on white like every pushed
+ *  page. 12 digits, the same one-time credit as the link (MESITA-3737). On
+ *  success it toasts what came in, drops the kept wallet read so the Wallet
+ *  reads afresh, and goes back. It was a sheet over the Wallet until then. */
+export function RedeemCodePage() {
   const getSupabase = useLazyBrowserSupabase();
+  const router = useRouter();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const digits = code.replace(/\D/g, "").slice(0, 12);
-
-  function close() {
-    setCode("");
-    setError(null);
-    onClose();
-  }
 
   async function redeem() {
     if (digits.length !== 12) {
@@ -329,31 +334,36 @@ export function RedeemCodeSheet({ open, onClose, onClaimed }: { open: boolean; o
     try {
       const r = await apiRedeemGiftCode(getSupabase(), digits);
       toast.success(`${money(r.amount_cents, r.currency)} of credit is yours.`);
-      setCode("");
-      onClaimed();
+      invalidateCached(WALLET_CACHE_KEY);
+      goBack(router, CONSUMER_ROUTES.wallet);
     } catch (err) {
       if (err instanceof EFError && err.code === "gone") setError("That code isn't right. Check the 12 digits.");
       else setError(refusal(err, "Couldn't take the credit. Try again."));
-    } finally {
       setBusy(false);
     }
   }
 
   return (
-    <LocalSheet open={open} onClose={close} ariaLabel="Redeem a gift code">
-      <div className="flex flex-col px-4 pt-5 pb-8" data-redeem-code>
-        <h2 className="text-xl font-semibold">Redeem a gift code</h2>
-        <p className="text-muted-foreground mt-1 text-sm">Type the 12 digits a friend gave you.</p>
+    <Screen title="Redeem credits" paper>
+      <form
+        className="flex flex-col pt-6"
+        data-redeem-code
+        onSubmit={(e) => {
+          e.preventDefault();
+          void redeem();
+        }}
+      >
         <input
           inputMode="numeric"
-          autoComplete="off"
+          autoComplete="one-time-code"
+          autoFocus
           placeholder="0000 0000 0000"
           value={formatGiftCode(digits)}
           onChange={(e) => {
             setCode(e.target.value);
             setError(null);
           }}
-          className="border-foreground placeholder:text-muted-foreground/50 mx-auto mt-6 w-64 border-b-2 bg-transparent pb-2 text-center font-mono text-2xl font-semibold tabular-nums outline-none"
+          className="border-foreground placeholder:text-muted-foreground/50 mx-auto w-72 max-w-full border-b-2 bg-transparent pb-2 text-center font-mono text-3xl font-semibold tabular-nums outline-none"
           aria-label="Gift code"
         />
         {error ? (
@@ -361,10 +371,10 @@ export function RedeemCodeSheet({ open, onClose, onClaimed }: { open: boolean; o
             {error}
           </p>
         ) : null}
-        <button type="button" className={`${PRIMARY} mt-6`} disabled={busy} onClick={() => void redeem()}>
+        <button type="submit" className={`${PRIMARY} mt-8`} disabled={busy || digits.length !== 12}>
           {busy ? "Redeeming…" : "Redeem"}
         </button>
-      </div>
-    </LocalSheet>
+      </form>
+    </Screen>
   );
 }

@@ -32,9 +32,8 @@ const REDEEM = `${BUTTON} bg-emerald-600 focus-visible:ring-emerald-300`;
 
 const GLYPH = "h-4 w-4 shrink-0";
 
-/** The row. `onRedeem` opens the code sheet; without it (the loading frame)
- *  Redeem Credits draws but does nothing yet. */
-export function WalletShareGift({ onRedeem }: { onRedeem?: () => void }) {
+/** The row: three links, the same in the loading frame. */
+export function WalletShareGift() {
   return (
     <div className="mt-5 flex gap-2" data-wallet-share-gift>
       <PushLink href={CONSUMER_ROUTES.share} className={SHARE} data-wallet-share>
@@ -49,15 +48,15 @@ export function WalletShareGift({ onRedeem }: { onRedeem?: () => void }) {
         <Gift className={GLYPH} strokeWidth={2.25} aria-hidden />
         Send Credits
       </PushLink>
-      <button
-        type="button"
-        onClick={onRedeem}
+      {/* Its own page since MESITA-4020; it opened a sheet until then. */}
+      <PushLink
+        href={CONSUMER_ROUTES.walletRedeem}
         className={REDEEM}
         data-wallet-redeem
       >
         <HandCoins className={GLYPH} strokeWidth={2.25} aria-hidden />
         Redeem Credits
-      </button>
+      </PushLink>
     </div>
   );
 }

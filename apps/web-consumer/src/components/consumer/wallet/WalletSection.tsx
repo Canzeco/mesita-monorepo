@@ -13,7 +13,7 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { placeHref } from "@/lib/place-route";
 import { type Method, MethodSheet } from "./MethodSheet";
-import { GiftClaimSheet, RedeemCodeSheet } from "./SendCredit";
+import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
 import {
   CashRow,
@@ -142,14 +142,8 @@ function decodeAll(urls: string[], ms: number): Promise<void> {
 
 export function WalletSection({
   giftToken = null,
-  redeeming,
-  onRedeemClose,
 }: {
   giftToken?: string | null;
-  /** The Redeem a code sheet is open: Redeem Credits, at the page's top
-   *  (MESITA-3894; the Credits list's "Gift code" row until then). */
-  redeeming: boolean;
-  onRedeemClose: () => void;
 }) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
@@ -301,14 +295,6 @@ export function WalletSection({
       </WalletList>
 
       <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
-      <RedeemCodeSheet
-        open={redeeming}
-        onClose={onRedeemClose}
-        onClaimed={() => {
-          onRedeemClose();
-          reread();
-        }}
-      />
       <GiftClaimSheet
         token={wallet || failed ? gift : null}
         onClose={closeGift}
