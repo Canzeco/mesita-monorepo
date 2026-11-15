@@ -322,3 +322,96 @@ export function ReservationNotifyPicker({
     </div>
   );
 }
+
+// ── Time flexibility and seating (MESITA-3957) ─────────────────────────────
+// What the agent may decide alone on the call: a time inside the window and
+// where to sit. Anything else goes back to the guest.
+
+export type ReservationTimeWindow = 0 | 30 | 60;
+/** decision: 30 minutes either side by default (MESITA-3957, Pato's call). */
+export const DEFAULT_TIME_WINDOW: ReservationTimeWindow = 30;
+export type ReservationSeating = "any" | "inside" | "outside" | "bar";
+
+const WINDOW_OPTIONS: { value: ReservationTimeWindow; label: string }[] = [
+  { value: 0, label: "Exact" },
+  { value: 30, label: "± 30 min" },
+  { value: 60, label: "± 1 hour" },
+];
+
+const SEATING_OPTIONS: { value: ReservationSeating; label: string }[] = [
+  { value: "any", label: "No preference" },
+  { value: "inside", label: "Inside" },
+  { value: "outside", label: "Outside" },
+  { value: "bar", label: "Bar" },
+];
+
+function ChoicePills<T extends string | number>({
+  title,
+  hint,
+  options,
+  value,
+  onChange,
+}: {
+  title: string;
+  hint: string;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (next: T) => void;
+}) {
+  return (
+    <div className="mt-4">
+      <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">{title}</p>
+      <div role="radiogroup" aria-label={title} className="mt-2 flex flex-wrap gap-2">
+        {options.map((o) => {
+          const active = o.value === value;
+          return (
+            <button
+              key={String(o.value)}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(o.value)}
+              className={cn(
+                "h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition",
+                active ? "border-foreground bg-foreground text-background" : "border-border bg-card text-foreground",
+              )}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+      {hint && <p className="text-muted-foreground type-meta mt-2">{hint}</p>}
+    </div>
+  );
+}
+
+export function ReservationWindowPicker({
+  value,
+  onChange,
+}: {
+  value: ReservationTimeWindow;
+  onChange: (next: ReservationTimeWindow) => void;
+}) {
+  return (
+    <ChoicePills
+      title="Time flexibility"
+      hint="We take a time inside this range without asking you; anything else, we ask."
+      options={WINDOW_OPTIONS}
+      value={value}
+      onChange={onChange}
+    />
+  );
+}
+
+export function ReservationSeatingPicker({
+  value,
+  onChange,
+}: {
+  value: ReservationSeating;
+  onChange: (next: ReservationSeating) => void;
+}) {
+  return (
+    <ChoicePills title="Seating" hint="" options={SEATING_OPTIONS} value={value} onChange={onChange} />
+  );
+}
