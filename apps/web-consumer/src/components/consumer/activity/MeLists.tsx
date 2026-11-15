@@ -43,8 +43,6 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
-import { PushLink } from "@/components/consumer/nav/PushLink";
-import { CalendarMarksRow } from "@/components/shared/calendar-marks";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -56,19 +54,12 @@ import {
   type EFReservationRow,
 } from "@/lib/api/reservations";
 import { apiListVisits } from "@/lib/api/tab";
-import {
-  apiGetWallet,
-  WALLET_CACHE_KEY,
-  type Wallet,
-} from "@/lib/api/wallet";
+import { apiGetWallet, WALLET_CACHE_KEY, type Wallet } from "@/lib/api/wallet";
 import {
   CONSUMER_ROUTES,
   reservationPath,
 } from "@/lib/consumer-route-contract";
-import {
-  ticketsHref,
-  type TicketKind,
-} from "@/lib/ticket-kinds";
+import { ticketsHref, type TicketKind } from "@/lib/ticket-kinds";
 import { reportError } from "@/lib/report-error";
 import { stateMeta } from "@/lib/reservation-state";
 import { toReservationItem } from "@/lib/reservations-adapter";
@@ -224,7 +215,11 @@ type TicketTab = "visits" | "vouchers" | "gifts" | "refunds";
 // the ones the page's empty states already wear. Gifts became Gifts-In and
 // Gifts-Out (MESITA-3941), hyphenated (MESITA-3949, Pato: "use \"-\""), and
 // one Gifts again (MESITA-4036).
-const TICKET_TABS: ReadonlyArray<{ kind: TicketTab; label: string; icon: LucideIcon }> = [
+const TICKET_TABS: ReadonlyArray<{
+  kind: TicketTab;
+  label: string;
+  icon: LucideIcon;
+}> = [
   { kind: "visits", label: "Visits", icon: UtensilsCrossed },
   { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
   { kind: "gifts", label: "Gifts", icon: Gift },
@@ -235,7 +230,8 @@ const TICKET_TABS: ReadonlyArray<{ kind: TicketTab; label: string; icon: LucideI
 function ticketTabOf(seg: string | undefined): TicketTab {
   if (seg === "vouchers") return "vouchers";
   if (seg === "refunds") return "refunds";
-  if (seg === "gifts" || seg === "gifts-in" || seg === "gifts-out") return "gifts";
+  if (seg === "gifts" || seg === "gifts-in" || seg === "gifts-out")
+    return "gifts";
   return "visits";
 }
 
@@ -332,21 +328,9 @@ export function ReservationsPage() {
   return (
     <MeScreen
       title="Reservations"
-      // CALENDAR, TOP RIGHT (Pato, 2026-11-14, MESITA-3954: "top right put
-      // the Google Calendar icon or something"): opens Integrations ›
-      // Calendar, the feed Google, Apple and Outlook subscribe to.
-      action={
-        <PushLink
-          href={CONSUMER_ROUTES.mePages.integrationsCalendar}
-          aria-label="Add to your calendar"
-          // THE CALENDARS' OWN MARKS (MESITA-3979, Pato: "add the Icons of
-          // Google Calendar and his friends, that sad icon looks too sad").
-          className="bg-card border-border hover:bg-muted flex h-11 shrink-0 items-center justify-center rounded-xl border px-2.5 transition active:scale-[0.98]"
-        >
-          {/* 28px app tiles since MESITA-3990 (one tile for every icon). */}
-          <CalendarMarksRow size={28} />
-        </PushLink>
-      }
+      // NO CALENDAR MARKS UP HERE (MESITA-4042, Pato: "remove the ugly ass
+      // icons of those calendars at the top right"); MESITA-3954 had put a
+      // button to Integrations › Calendar here. Me › Integrations keeps it.
     >
       <div className="flex flex-col gap-4">
         <SubpageTabs
@@ -525,11 +509,7 @@ function TicketList({
   }
   if (rows.length === 0) {
     return empty ? (
-      <EmptyState
-        icon={Icon}
-        title={empty.title}
-        action={empty.action}
-      />
+      <EmptyState icon={Icon} title={empty.title} action={empty.action} />
     ) : (
       <EmptyState
         icon={Icon}
@@ -640,7 +620,13 @@ function SubpageTabs<K extends string>({
                 className="bg-foreground absolute bottom-0 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full"
               />
             ) : null}
-            {t.icon ? <t.icon className="h-4 w-4 shrink-0" strokeWidth={chosen ? 2.25 : 2} aria-hidden /> : null}
+            {t.icon ? (
+              <t.icon
+                className="h-4 w-4 shrink-0"
+                strokeWidth={chosen ? 2.25 : 2}
+                aria-hidden
+              />
+            ) : null}
             {t.label}
           </button>
         );
@@ -670,7 +656,7 @@ function TicketPills({
     <nav
       ref={rail}
       aria-label="Kinds of ticket"
-      className="scrollbar-hide -mx-5 flex shrink-0 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain scroll-px-5 px-5"
+      className="scrollbar-hide -mx-5 flex shrink-0 scroll-px-5 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-5"
       data-ticket-pills
     >
       {TICKET_TABS.map((t) => {
