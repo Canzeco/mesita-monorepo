@@ -6,7 +6,7 @@ import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiListCards, brandLabel, type SavedCard } from "@/lib/api/cards";
 import { AddCardSheet } from "@/components/consumer/AddCardSheet";
@@ -48,12 +48,13 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-com
 //   1 Bill    the amount and a large keypad under ReceiptText (Off: the
 //             place large across the top, saying why).
 //   2 Tip     the tip chips (10%,
-//             15%, Other) with HandCoins, the Wallet switch "Use my credits"
-//             (on by default; credits never pay the tip) and the summary
-//             card: Bill, Credits, Left to pay, Tip, Total, and the green
-//             Coins line. Nothing left to pay and no tip: straight to Sign.
-//   3 Method  App or Cash, one way for everything that's left; the chosen
-//             tile has a thick border; the Coins line follows the choice.
+//             15%, Other) with HandCoins and the summary card: Bill, Tip,
+//             Total, and the Coins line.
+//   3 Method  the Wallet switch "Use my credits" (MESITA-4068: asked here,
+//             not on Tip; on by default; credits never pay the tip), what is
+//             left, then App or Cash, one way for all of it; the chosen tile
+//             has a thick border; the Coins line follows the choice. Credits
+//             cover everything and no tip: "Pay with credits" opens the bill.
 //   4A App    the saved card and "Pay MX$X": the card is held, charged when
 //             the waiter signs.
 //   4B Cash   "Give MX$X to the waiter", then "I gave the cash".
@@ -159,6 +160,8 @@ export function GuestPayScreen({
   // server. Until that same request id answers, Cancel bill and ‹ are locked
   // and nothing mints a new id (MESITA-4061).
   const [outcomeUnknown, setOutcomeUnknown] = useState(false);
+  // Cancel bill asks first (MESITA-4068, Pato: "ask confirmation to cancel bill").
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   // ONE TICKET AT A TIME (MESITA-3879, MESITA-3908): another place's ticket
   // in progress, or a bill open on the server at another place, blocks this
@@ -411,6 +414,20 @@ export function GuestPayScreen({
   const frame = (body: React.ReactNode, data: string) => (
     <div ref={root} tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none" onKeyDown={onKeyDown} data-guest-pay={data}>
       {body}
+      <LocalDialog open={confirmCancel} onClose={() => setConfirmCancel(false)} ariaLabel="Cancel this bill">
+        <div className="p-5">
+          <p className="text-base font-semibold">Cancel this bill?</p>
+          <p className="text-muted-foreground mt-1 text-sm">Nothing is paid.</p>
+          <div className="mt-4 flex gap-2">
+            <Button className="min-h-12 flex-1 text-base font-semibold" disabled={cancelLocked} onClick={cancelBill}>
+              Cancel bill
+            </Button>
+            <button type="button" className={cn(QUIET_BUTTON_CLASS, "flex-1")} onClick={() => setConfirmCancel(false)}>
+              Keep it
+            </button>
+          </div>
+        </div>
+      </LocalDialog>
     </div>
   );
   // Under the body, over the footer; cleared on every step change.
@@ -427,8 +444,12 @@ export function GuestPayScreen({
   // and the card held; the X still leaves, keeping the draft, and Pay finds
   // the open bill on the way back in.
   const cancelLocked = held || outcomeUnknown;
+  const askCancel = () => {
+    if (!cancelLocked) setConfirmCancel(true);
+  };
   const cancelBill = () => {
     if (cancelLocked) return;
+    setConfirmCancel(false);
     clearGuestDraft(placeId);
     onChoosePlace();
   };
@@ -456,7 +477,7 @@ export function GuestPayScreen({
           <p className="text-muted-foreground mt-1 text-sm">Nothing was charged</p>
         </div>
         <StepFooter
-          onCancel={cancelBill}
+          onCancel={askCancel}
           cancelDisabled={cancelLocked}
           primary={{
             label: "Start again",
@@ -510,7 +531,7 @@ export function GuestPayScreen({
           </div>
         </div>
         {status}
-        <StepFooter onCancel={cancelBill} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: billCents <= 0 || held, onClick: toTip }} />
+        <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: billCents <= 0 || held, onClick: toTip }} />
       </>,
       "bill",
     );
@@ -525,13 +546,10 @@ export function GuestPayScreen({
   // 2 TIP: the bill, the tip chips, credits, the summary card.
   if (stage === "bill") {
     const tipOk = tip !== null;
-    // Nothing left to pay: this Next opens the bill (credits are spent), so
-    // it is money, and › is not offered.
-    const toSign = dueCents === 0;
-    const tipNext = () => (toSign ? void openBill(null) : setStage("method"));
+    const tipNext = () => setStage("method");
     return frame(
       <>
-        {top(1, backArrow, toSign ? undefined : { onClick: () => setStage("method"), disabled: !tipOk || billCents <= 0 || held })}
+        {top(1, backArrow, { onClick: tipNext, disabled: !tipOk || billCents <= 0 || held })}
         <StepBody className="items-stretch">
           <button
             type="button"
@@ -572,37 +590,16 @@ export function GuestPayScreen({
             </div>
           </div>
 
-          {spendable > 0 ? (
-            <button
-              type="button"
-              role="switch"
-              aria-checked={creditOn}
-              onClick={() => setUseCredit((u) => !u)}
-              className="mt-4 flex min-h-12 w-full shrink-0 items-center gap-3 text-left"
-              data-guest-credits
-            >
-              <Wallet className="h-5 w-5 shrink-0" aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-base">
-                <span className="font-semibold">Use my credits</span>
-                <span className="text-muted-foreground"> · {m(spendable)} available</span>
-              </span>
-              <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
-                <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full shadow transition-all", creditOn ? "left-[18px]" : "left-0.5")} />
-              </span>
-            </button>
-          ) : null}
 
           <RowsCard className="mt-4 shrink-0 text-left">
             <MoneyRow label="Bill" value={m(billCents)} />
-            {creditOn ? <MoneyRow label="Credits" value={`−${m(creditCents)}`} /> : null}
-            <MoneyRow label="Left to pay" value={m(leftCents)} />
             <MoneyRow label="Tip" value={tipOk ? m(tipCents) : "Choose a tip"} />
-            <MoneyRow label="Total" value={m(dueCents)} strong />
+            <MoneyRow label="Total" value={m(billCents + tipCents)} strong />
             <CashbackRow cents={billCashback} bps={billRate} m={m} />
           </RowsCard>
         </StepBody>
         {status}
-        <StepFooter onCancel={cancelBill} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: !tipOk || billCents <= 0 || held, onClick: tipNext }} />
+        <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: !tipOk || billCents <= 0 || held, onClick: tipNext }} />
 
         <LocalSheet open={tipSheet} onClose={() => setTipSheet(false)} ariaLabel="Another tip">
           <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
@@ -634,6 +631,10 @@ export function GuestPayScreen({
 
   // 3 METHOD: App or Cash for everything that's left.
   if (stage === "method") {
+    // Credits cover the bill and there is no tip: nothing is left for a
+    // way, so the button opens the bill (credits are spent). It is money,
+    // so › is not offered.
+    const creditsOnly = dueCents === 0;
     const toPay = () => {
       if (way) {
         setMethod(way);
@@ -642,12 +643,33 @@ export function GuestPayScreen({
     };
     return frame(
       <>
-        {top(2, backArrow, { onClick: toPay, disabled: !way || held })}
+        {top(2, backArrow, creditsOnly ? undefined : { onClick: toPay, disabled: !way || held })}
         <StepBody className="items-stretch">
+          {spendable > 0 ? (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={creditOn}
+              onClick={() => setUseCredit((u) => !u)}
+              className="mb-4 flex min-h-12 w-full shrink-0 items-center gap-3 text-left"
+              data-guest-credits
+            >
+              <Wallet className="h-5 w-5 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-base">
+                <span className="font-semibold">Use my credits</span>
+                <span className="text-muted-foreground"> · {m(spendable)} available</span>
+              </span>
+              <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
+                <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full shadow transition-all", creditOn ? "left-[18px]" : "left-0.5")} />
+              </span>
+            </button>
+          ) : null}
           <p className="shrink-0 text-center">
             <span className="text-muted-foreground block text-sm">{leftCents === 0 ? "Tip to pay" : "Left to pay"}</span>
             <span className="block text-[2.5rem] leading-tight font-semibold tabular-nums">{m(dueCents)}</span>
+            {creditOn ? <span className="text-muted-foreground block text-sm tabular-nums">{`${m(creditCents)} paid with credits`}</span> : null}
           </p>
+          {creditsOnly ? null : (
           <div className="mt-4 flex shrink-0 flex-col gap-3 text-left" role="radiogroup" aria-label="How you pay">
             <MethodTile
               on={way === "card"}
@@ -670,6 +692,7 @@ export function GuestPayScreen({
               onPick={() => setMethod("cash")}
             />
           </div>
+          )}
           <p
             className={cn("mt-4 flex shrink-0 items-center justify-center gap-2 text-base font-semibold", way && cashbackFor(way) > 0 ? GOOD : "text-muted-foreground")}
             data-guest-cashback
@@ -679,11 +702,21 @@ export function GuestPayScreen({
               ? cashbackFor(way) > 0
                 ? `+${m(cashbackFor(way))} · ${backAsCredits(rateFor(way))}`
                 : backAsCredits(rateFor(way))
+              : creditsOnly
+              ? "Paid in full with credits"
               : "Choose how to pay"}
           </p>
         </StepBody>
         {status}
-        <StepFooter onCancel={cancelBill} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: !way || held, onClick: toPay }} />
+        <StepFooter
+          onCancel={askCancel}
+          cancelDisabled={cancelLocked}
+          primary={
+            creditsOnly
+              ? { label: "Pay with credits", busy, disabled: held, onClick: () => void openBill(null) }
+              : { label: "Next", busy, disabled: !way || held, onClick: toPay }
+          }
+        />
       </>,
       "method",
     );
@@ -747,7 +780,7 @@ export function GuestPayScreen({
         </StepBody>
         {status}
         <StepFooter
-          onCancel={cancelBill}
+          onCancel={askCancel}
           cancelDisabled={cancelLocked}
           primary={
             card
@@ -818,7 +851,7 @@ export function GuestPayScreen({
         <p className="text-muted-foreground mt-1 text-sm">Then show them the QR</p>
       </StepBody>
       {status}
-      <StepFooter onCancel={cancelBill} cancelDisabled={cancelLocked} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
+      <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
     </>,
     "cash",
   );

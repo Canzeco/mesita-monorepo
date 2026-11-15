@@ -197,7 +197,11 @@ export function StepNav({
   const name = PAY_FLOW_STEPS[at];
   const arrow = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent";
   return (
-    <div className="shrink-0" data-pay-steps>
+    // MESITA-4068 (Pato: "modular design, in boxes"): the step nav is its own
+    // box between two inset hairlines (the page's padding, never full width),
+    // apart from the place above and the body below; only the header's and
+    // the footer's lines run edge to edge.
+    <div className="border-border mt-2 shrink-0 border-y py-2" data-pay-steps>
       <div className="flex h-11 items-center">
         <button
           type="button"
