@@ -62,8 +62,8 @@ const OFFER_SLIDES: OfferSlide[] = [
  *  slide shows the highest one the place sells. */
 const STANDARD_BONUS: Record<string, number> = {
   voucher_200: 10,
-  voucher_1000: 20,
-  voucher_5000: 30,
+  voucher_1000: 30,
+  voucher_5000: 20,
 };
 
 /** The place's slides, in the fixed order; none = no button. */
