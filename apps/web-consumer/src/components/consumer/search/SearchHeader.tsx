@@ -45,8 +45,7 @@
 
 import { useState, type ReactNode } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { SlidersHorizontal } from "lucide-react";
-import { AiSparkle } from "./AiSparkle";
+import { BrainCircuit, SlidersHorizontal } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import {
   clearMapFamilies,
@@ -115,14 +114,16 @@ export function SearchHeader({
         <div className={cn(BAR, "min-w-0 flex-1")}>{bar}</div>
         {/* Ask AI is a mark, not a label (Pato, MESITA-3991: "don't mention
             ask ai, just some logo"): the locate disc's twin, its name left
-            to screen readers. */}
+            to screen readers. A brain drawn as circuitry (Pato,
+            MESITA-3995: "use a chip or something that better symbolizes ai
+            or a brain"); it was the sparkle. */}
         <PushLink
           href={CONSUMER_ROUTES.searchChat}
           className={HEADER_DISC}
           aria-label="Ask AI"
           data-search-ask-ai
         >
-          <AiSparkle className="h-5 w-5" />
+          <BrainCircuit className="h-5 w-5" strokeWidth={2} aria-hidden />
         </PushLink>
       </div>
       <div className="relative" data-search-chip-band>
