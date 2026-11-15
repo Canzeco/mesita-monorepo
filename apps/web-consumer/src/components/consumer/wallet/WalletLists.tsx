@@ -46,8 +46,10 @@ import { type WalletCardModel, walletCardLabel } from "./WalletCard";
 
 /** The chip: a payment card in miniature, 1.586:1. */
 const CHIP = "flex h-8 w-[3.2rem] shrink-0 items-center justify-center overflow-hidden rounded-md";
+// 56px (MESITA-4087, Pato: "optimize vertical space"): min-h-14, 8px over
+// and under, the two lines in tight leading; it was 64-70px.
 const ROW =
-  "hover:bg-muted/60 flex min-h-16 w-full items-center gap-3.5 px-4 py-3 text-left transition";
+  "hover:bg-muted/60 flex min-h-14 w-full items-center gap-3.5 px-4 py-2 text-left transition";
 const DIVIDER = "bg-border ml-[4.75rem] h-px";
 
 /** A section of rows in a panel (the app's one Panel, components/shared;
@@ -122,8 +124,8 @@ export function AddRow({
 function RowText({ title, line }: { title: ReactNode; line?: ReactNode }) {
   return (
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-base font-semibold">{title}</span>
-      {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm">{line}</span> : null}
+      <span className="block truncate text-base leading-tight font-semibold">{title}</span>
+      {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{line}</span> : null}
     </span>
   );
 }
@@ -230,10 +232,10 @@ export function CreditsRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-base font-semibold">{card.name}</span>
+          <span className="truncate text-base leading-tight font-semibold">{card.name}</span>
           <PlaceMarks tier={card.tier} ad={false} />
         </span>
-        {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm">{line}</span> : null}
+        {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{line}</span> : null}
       </span>
       <span className="bg-foreground text-paper shrink-0 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums">
         {money(amount.cents, card.currency)}

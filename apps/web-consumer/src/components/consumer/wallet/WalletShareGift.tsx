@@ -24,8 +24,10 @@ import { Panel } from "@/components/shared/Panel";
 // ink, from the app's own set: brand pink, the selector blue, the Cash
 // green's family. 52px (was 64px), the glyph 16px over a 13px label, so three
 // still fit a 320px phone.
+// 52px (MESITA-4087, Pato: "make everything shorter in this page"): it was
+// 64px; the 16px glyph over a label that may take two tight lines still fits.
 const BUTTON =
-  "type-body flex h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-center leading-tight font-semibold text-white transition hover:opacity-90 active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
+  "type-body flex h-13 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-center leading-tight font-semibold text-white transition hover:opacity-90 active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
 
 // SOFT TINTS (MESITA-4054, Pato: "USE BETTER COLOR FOR THE TOP BUTTONS";
 // option A of a three-way mock): Buy stays the one solid black button; the
