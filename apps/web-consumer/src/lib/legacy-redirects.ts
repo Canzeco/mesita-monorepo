@@ -96,7 +96,6 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // The old Wallet tab's children and its other spellings land on the
   // Wallet, Pay's second half (MESITA-3698; on /pay from MESITA-3631).
   { source: "/wallet/balance/:id", destination: "/wallet", permanent: true },
-  { source: "/wallet/buy", destination: "/wallet", permanent: true },
   { source: "/wallet/gift", destination: "/wallet", permanent: true },
   { source: "/credits", destination: "/wallet", permanent: true },
   { source: "/inbox/credits", destination: "/wallet", permanent: true },

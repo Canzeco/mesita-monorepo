@@ -71,6 +71,7 @@ import {
   payPlacePath,
   placePath,
   walletPlacePath,
+  walletSendPath,
 } from "@/lib/consumer-route-contract";
 import { giftOfEntry } from "@/lib/gift-ticket";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -359,7 +360,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
         )}
         {canGift ? (
           <Link
-            href={`${walletPlacePath(placeId)}?gift=1`}
+            href={walletSendPath(placeId)}
             className="text-muted-foreground hover:text-foreground -mt-2 self-center py-2 text-sm font-medium underline-offset-4 transition hover:underline"
           >
             Gift credit

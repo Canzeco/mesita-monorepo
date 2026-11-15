@@ -28,15 +28,18 @@ import { DOOR_BUY, DOOR_GIFT, DOOR_GLYPH, DOOR_PINK, DOOR_ROW } from "./wallet-b
 // BUY CREDITS (Pato, 2026-11-15, MESITA-4031: "add a buy credits button in
 // wallet"): the fourth door. The row is ONE row of four equal buttons (MESITA-4034,
 // Pato: "not 2 and 2 but 4 in same row"; MESITA-4032 had made it a 2x2 grid):
-// the label may wrap to two lines under its icon so four fit a phone. Credits are bought at one place, so it
-// opens Search, the same way as "Add a Credits Card" below; the place's
-// Buy Credits then runs the purchase.
+// the label may wrap to two lines under its icon so four fit a phone.
+// PICK A PLACE FIRST (MESITA-4096, Pato: "buy credits and send credits must
+// actually display a list of places to select the action"): Buy Credits opens
+// /wallet/buy (the places that sell credits, a row opens its prepay page);
+// Send Gift opens /wallet/send (the House Cards, a row opens its send page).
+// Claim Gift stays the one code page: a code works at any place.
 /** The row: four links, the same in the loading frame. */
 export function WalletShareGift() {
   return (
     <Panel className={`mt-4 p-4 ${DOOR_ROW}`} data-wallet-share-gift>
       <PushLink
-        href={CONSUMER_ROUTES.search}
+        href={CONSUMER_ROUTES.walletBuy}
         className={DOOR_BUY}
         data-wallet-buy
       >
@@ -44,7 +47,7 @@ export function WalletShareGift() {
         Buy Credits
       </PushLink>
       <PushLink
-        href={CONSUMER_ROUTES.mePages.gift}
+        href={CONSUMER_ROUTES.walletSend}
         className={DOOR_GIFT}
         data-wallet-send
       >

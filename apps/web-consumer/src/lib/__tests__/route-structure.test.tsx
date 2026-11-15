@@ -327,8 +327,8 @@ describe("T5 — exactly one tab lights per surface", () => {
   it.each([
     "/new-visit",
     "/visit/t1",
-    // The old Wallet tab's children land on Pay (MESITA-3631).
-    "/wallet/buy",
+    // The old Wallet tab's children land on Pay (MESITA-3631). /wallet/buy
+    // is a live page again (MESITA-4096).
     "/wallet/balance/bal_1",
     "/credits",
     "/order",
@@ -895,7 +895,11 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     expect(existsSync(join(wallet, "page.tsx"))).toBe(true);
     // Redeem a code is its own page since MESITA-4020.
     // Add a card is its own page since MESITA-4092.
-    expect(childDirs(wallet)).toEqual(["cards", "gift", "place", "redeem"]);
+    // Buy Credits and Send Gift lists, a House Card's send page (MESITA-4096).
+    expect(childDirs(wallet)).toEqual(["buy", "cards", "gift", "place", "redeem", "send"]);
+    expect(existsSync(join(wallet, "buy", "page.tsx"))).toBe(true);
+    expect(existsSync(join(wallet, "send", "page.tsx"))).toBe(true);
+    expect(existsSync(join(wallet, "place", "[placeId]", "send", "page.tsx"))).toBe(true);
     expect(existsSync(join(wallet, "redeem", "page.tsx"))).toBe(true);
     expect(childDirs(join(wallet, "cards"))).toEqual(["new"]);
     expect(existsSync(join(wallet, "cards", "new", "page.tsx"))).toBe(true);
@@ -913,6 +917,9 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     "/wallet/gift/abc",
     "/wallet/redeem",
     "/wallet/cards/new",
+    "/wallet/buy",
+    "/wallet/send",
+    "/wallet/place/00000000-0000-4000-8000-000000000001/send",
     // One segment under each tab that is a word, never an id: the bare-id
     // forward (MESITA-4013) must leave it alone.
     "/pay/bill",
