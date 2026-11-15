@@ -181,6 +181,12 @@ export default async function ConsumerShellLayout({
         profile={profile}
       >
         <div className="relative flex flex-1 flex-col overflow-hidden">
+          {/* A ticket left open, on every screen with the bar (MESITA-3906),
+              at the very top of the app above every header (MESITA-4069,
+              Pato: "this message must go on top of the header, at the top
+              of the app, like the yellow warning"; above the tab bar under
+              MESITA-4051). */}
+          <PendingTicketBanner />
           {/* Body + modal host only: the @modal slot must not sit above
               BottomNav. An `inset-0` host as a sibling after the tab bar
               covered its hit targets even with pointer-events-none on the
@@ -209,8 +215,6 @@ export default async function ConsumerShellLayout({
               {modal}
             </div>
           </ScreenStage>
-          {/* A ticket left open, on every screen with the bar (MESITA-3906). */}
-          <PendingTicketBanner />
           <BottomNav />
         </div>
       </ConsumerIdentityProvider>
