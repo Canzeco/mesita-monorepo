@@ -199,7 +199,7 @@ const EMPTY: Record<
   // One Gifts list (MESITA-4036); GiftTickets draws its own empty state.
   gifts: {
     title: "No gifts yet",
-    action: { label: "Send Credits", href: CONSUMER_ROUTES.mePages.gift },
+    action: { label: "Send Gift", href: CONSUMER_ROUTES.mePages.gift },
   },
   // Refunds' words since MESITA-3771, kept (MESITA-3782).
   refunds: {

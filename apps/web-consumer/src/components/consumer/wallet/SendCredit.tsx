@@ -344,7 +344,7 @@ export function RedeemCodePage() {
   }
 
   return (
-    <Screen title="Redeem credits" paper>
+    <Screen title="Claim gift" paper>
       <form
         className="flex flex-col pt-6"
         data-redeem-code

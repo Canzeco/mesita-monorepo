@@ -31,6 +31,10 @@ const SHARE = `${BUTTON} bg-[var(--brand-pink-600)] focus-visible:ring-[var(--br
 // (MESITA-4032, Pato: "Credits of one color, share of other color"); Share
 // Mesita keeps the brand pink.
 const CREDITS = `${BUTTON.replace("text-white", "text-paper")} bg-foreground focus-visible:ring-neutral-400`;
+// THREE COLOURS AGAIN (MESITA-4045, Pato: "Buy Credits one color, Send and
+// Claim other color, Share other color"): Buy black, the two gift doors the
+// app's green (the green its Taken and Paid words wear), Share pink.
+const GIFT = `${BUTTON} bg-green-700 focus-visible:ring-green-300`;
 
 const GLYPH = "h-4 w-4 shrink-0";
 
@@ -54,20 +58,22 @@ export function WalletShareGift() {
       </PushLink>
       <PushLink
         href={CONSUMER_ROUTES.mePages.gift}
-        className={CREDITS}
+        className={GIFT}
         data-wallet-send
       >
         <Gift className={GLYPH} strokeWidth={2.25} aria-hidden />
-        Send Credits
+        Send Gift
       </PushLink>
-      {/* Its own page since MESITA-4020; it opened a sheet until then. */}
+      {/* Its own page since MESITA-4020; it opened a sheet until then.
+          Claim Gift, not Redeem Credits (MESITA-4045, Pato: "less
+          transactional than redeem credits"). */}
       <PushLink
         href={CONSUMER_ROUTES.walletRedeem}
-        className={CREDITS}
+        className={GIFT}
         data-wallet-redeem
       >
         <HandCoins className={GLYPH} strokeWidth={2.25} aria-hidden />
-        Redeem Credits
+        Claim Gift
       </PushLink>
       <PushLink href={CONSUMER_ROUTES.share} className={SHARE} data-wallet-share>
         <Share2 className={GLYPH} strokeWidth={2.25} aria-hidden />
