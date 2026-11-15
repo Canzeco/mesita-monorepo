@@ -16,8 +16,10 @@ export const MAP_USER_ZOOM = 14;
 // clearer"; "less words in the map … keep them but mention less"): land is
 // near-white (it was warm paper), water a clean light blue, parks a clear
 // mint, roads white edged in a light grey line so they still read on white
-// land. Street names show on highways only — local and arterial names are
-// off — and the city and area names stay, in a lighter grey.
+// land. Local street names are off; highway and arterial names show (Pato,
+// MESITA-4017: "mention a bit more the names of the streets … just a bit
+// more, minimum"; MESITA-3992 had them on highways only), and the city and
+// area names stay, in a lighter grey.
 export const MAP_MINIMAL_STYLES = [
   {
     featureType: "landscape",
@@ -93,11 +95,6 @@ export const MAP_MINIMAL_STYLES = [
   },
   {
     featureType: "road.local",
-    elementType: "labels",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "road.arterial",
     elementType: "labels",
     stylers: [{ visibility: "off" }],
   },

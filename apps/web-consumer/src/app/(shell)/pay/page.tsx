@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { PayPage } from "@/components/consumer/pay/PayPage";
-import { CONSUMER_ROUTES, isRouteId, payPlacePath, payReceiptPath, payTabPath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, isRouteId, payPlacePath, payReceiptPath, payBillPath } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export default async function Page({ searchParams }: { searchParams: Search }) {
     redirect(`${payReceiptPath(payment)}${checkout ? `?checkout=${encodeURIComponent(checkout)}` : ""}`);
   }
   const tab = one(sp.tab);
-  if (isRouteId(tab)) redirect(payTabPath(tab));
+  if (isRouteId(tab)) redirect(payBillPath(tab));
   const place = one(sp.place);
   if (isRouteId(place)) redirect(payPlacePath(place));
   const card = one(sp.card);

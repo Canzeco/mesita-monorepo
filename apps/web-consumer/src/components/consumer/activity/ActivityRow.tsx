@@ -90,7 +90,9 @@ const TONE: Record<StatusTone, string> = {
  *  in one white card per day group until then. */
 export function ActivityRows({ children }: { children: React.ReactNode }) {
   return (
-    <ul className="-mx-5" data-activity>
+    // GREY LINES BETWEEN EVENTS (Pato, 2026-11-14: "maybe add gray lines to
+    // separate events"): a hairline under each row, full width.
+    <ul className="divide-border -mx-5 divide-y" data-activity>
       {children}
     </ul>
   );

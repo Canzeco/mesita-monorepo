@@ -95,7 +95,10 @@ function matches(source: string, address: string): boolean {
         ? "(?:/[^/]+)*"
         : /^:[A-Za-z]+$/.test(seg)
           ? "/[^/]+"
-          : `/${seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+          : /^:[A-Za-z]+\(.+\)$/.test(seg)
+            ? // `:name(regex)`: one segment that must match the group.
+              `/(?:${seg.slice(seg.indexOf("(") + 1, -1)})`
+            : `/${seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
     )
     .join("");
   return new RegExp(`^${re}$`).test(address);
@@ -284,8 +287,8 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/search", "Search"],
     // Pay and every money address under it light Pay (MESITA-3614).
     ["/pay", "Pay"],
-    ["/pay/p1", "Pay"],
-    ["/pay/tab/t1", "Pay"],
+    ["/pay/place/p1", "Pay"],
+    ["/pay/bill/t1", "Pay"],
     ["/pay/receipt/r1", "Pay"],
     // The Wallet is its own tab again (MESITA-3886), with its House Cards,
     // gift links and the Share page it opens.
@@ -865,8 +868,9 @@ describe("T7 — every former url still resolves after the move", () => {
 // ── T9 — the money tree, and the Second Stage trees are gone ───────────────
 //
 // Pay and Wallet hold exactly these addresses (MESITA-3614: every money
-// object under the tab that owns it): /pay/<placeId>, /pay/tab/<id>,
-// /pay/receipt/<id>, /wallet/<placeId> and /wallet/gift/<token>. The Second
+// object under the tab that owns it): /pay/place/<placeId>, /pay/bill/<id>,
+// /pay/join/<token>, /pay/receipt/<id>, /wallet/place/<placeId> and
+// /wallet/gift/<token> (the words since MESITA-4013). The Second
 // Stage route trees are deleted, not emptied. A change that grows either
 // tab another child or brings a tree back has to edit these lines to do it,
 // which is the review moment.
@@ -879,30 +883,54 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
   it("(shell)/pay holds the door, the bill, a friend's share door and the receipt, and nothing else", () => {
     const pay = join(SHELL, "pay");
     expect(existsSync(join(pay, "page.tsx"))).toBe(true);
-    expect(childDirs(pay)).toEqual(["[placeId]", "join", "receipt", "tab"]);
+    expect(childDirs(pay)).toEqual(["bill", "join", "place", "receipt"]);
     expect(childDirs(join(pay, "join"))).toEqual(["[token]"]);
-    expect(childDirs(join(pay, "tab"))).toEqual(["[tabId]"]);
+    expect(childDirs(join(pay, "bill"))).toEqual(["[billId]"]);
+    expect(childDirs(join(pay, "place"))).toEqual(["[placeId]"]);
     expect(childDirs(join(pay, "receipt"))).toEqual(["[paymentId]"]);
   });
 
   it("(shell)/wallet holds a place's House Card and the gift link, and nothing else", () => {
     const wallet = join(SHELL, "wallet");
     expect(existsSync(join(wallet, "page.tsx"))).toBe(true);
-    expect(childDirs(wallet)).toEqual(["[placeId]", "gift"]);
+    expect(childDirs(wallet)).toEqual(["gift", "place"]);
     expect(childDirs(join(wallet, "gift"))).toEqual(["[token]"]);
+    expect(childDirs(join(wallet, "place"))).toEqual(["[placeId]"]);
   });
 
   // A redirect whose source matches a live money address shadows it: the
   // page never renders and every gate stays green.
   it.each([
-    "/pay/00000000-0000-4000-8000-000000000001",
-    "/pay/tab/00000000-0000-4000-8000-000000000001",
+    "/pay/place/00000000-0000-4000-8000-000000000001",
+    "/pay/bill/00000000-0000-4000-8000-000000000001",
     "/pay/receipt/00000000-0000-4000-8000-000000000001",
-    "/wallet/00000000-0000-4000-8000-000000000001",
+    "/wallet/place/00000000-0000-4000-8000-000000000001",
     "/wallet/gift/abc",
+    // One segment under each tab that is a word, never an id: the bare-id
+    // forward (MESITA-4013) must leave it alone.
+    "/pay/bill",
+    "/pay/place",
+    "/pay/join",
+    "/pay/receipt",
+    "/wallet/place",
   ])("no redirect shadows %s", async (address) => {
     const redirects = await nextConfig.redirects!();
     expect(redirects.find((r) => matches(r.source, address))).toBeUndefined();
+  });
+
+  // The addresses before MESITA-4013 still land, in one hop: a sent link, a
+  // tab left open on an old build, and the voucher checkout's Stripe return
+  // (/wallet/<placeId>?prepay=, built by _shared/vouchers.ts).
+  it.each([
+    ["/pay/tab/00000000-0000-4000-8000-000000000001", "/pay/bill/:id"],
+    ["/pay/00000000-0000-4000-8000-000000000001", "/pay/place/:placeId"],
+    ["/wallet/00000000-0000-4000-8000-000000000001", "/wallet/place/:placeId"],
+    ["/place/open/ChIJ123", "/place/google/:gid"],
+  ])("%s forwards to %s", async (address, destination) => {
+    const redirects = await nextConfig.redirects!();
+    expect(redirects.find((r) => matches(r.source, address))?.destination).toBe(
+      destination,
+    );
   });
 
   // No bar tab is the source of a redirect either: /share was one for a day
@@ -1008,9 +1036,9 @@ describe("the route map", () => {
     const sample = (pattern: string) => pattern.replace(/:[a-zA-Z]+/g, "x1");
     for (const id of ids)
       expect(routeFor(sample(ROUTE_MAP[id].pattern)), id).toBe(id);
-    expect(routeFor("/place/open/g1")).toBe("placeOpen");
+    expect(routeFor("/place/google/g1")).toBe("placeGoogle");
     expect(routeFor("/place/p1/reserve")).toBe("placeReserve");
-    expect(routeFor("/pay/tab/t1")).toBe("payTab");
+    expect(routeFor("/pay/bill/t1")).toBe("payBill");
     expect(routeFor("/wallet/gift/t1")).toBe("walletGift");
     expect(routeFor("/me/old-box")).toBeNull();
     expect(tabFor("/me/old-box")).toBe("me");

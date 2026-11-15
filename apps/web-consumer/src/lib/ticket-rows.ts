@@ -8,7 +8,7 @@ import { ENTRY_LABEL, money, type Wallet, type WalletEntry } from "@/lib/api/wal
 import type { GuestVisit } from "@/lib/api/tab";
 import {
   payReceiptPath,
-  payTabPath,
+  payBillPath,
   creditEntryPath,
   visitPath,
   walletPlacePath,
@@ -145,7 +145,7 @@ export function visitRows(
     // An open bill is the live pay screen; a finished one is its one-page
     // summary (MESITA-3770: "the live workflow and the output must be
     // different").
-    const href = open ? payTabPath(v.tab_id) : visitPath(v.tab_id);
+    const href = open ? payBillPath(v.tab_id) : visitPath(v.tab_id);
     const f = visitFacts(v.part_payment_ids, facts);
     return {
       key: `v-${v.tab_id}`,

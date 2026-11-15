@@ -17,11 +17,11 @@ import WalletLoading from "./wallet/loading";
 import GiftLoading from "./me/gift/loading";
 import FeedbackLoading from "./me/settings/feedback/loading";
 import ReservationPageLoading from "./reservation/[id]/loading";
-import WalletPlaceLoading from "./wallet/[placeId]/loading";
+import WalletPlaceLoading from "./wallet/place/[placeId]/loading";
 import WalletGiftLoading from "./wallet/gift/[token]/loading";
 import PlaceReserveLoading from "./place/[id]/reserve/loading";
-import PayPlaceLoading from "./pay/[placeId]/loading";
-import PayTabLoading from "./pay/tab/[tabId]/loading";
+import PayPlaceLoading from "./pay/place/[placeId]/loading";
+import PayTabLoading from "./pay/bill/[billId]/loading";
 import PayReceiptLoading from "./pay/receipt/[paymentId]/loading";
 import VisitLoading from "./me/tickets/visit/[tabId]/loading";
 import CreditLoading from "./me/tickets/credit/[placeId]/[entry]/loading";
@@ -40,7 +40,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   search: () => <SearchLoading />,
   searchChat: () => <SearchChatLoading />,
   place: () => <PlacePageSkeleton />,
-  placeOpen: () => (
+  placeGoogle: () => (
     <div className="flex h-full min-h-0 flex-col">
       <GeneratingPlaceScreen variant="page" />
     </div>
@@ -49,7 +49,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   reservation: () => <ReservationPageLoading />,
   pay: () => <PayLoading />,
   payPlace: () => <PayPlaceLoading />,
-  payTab: () => <PayTabLoading />,
+  payBill: () => <PayTabLoading />,
   payJoin: () => <PayTabLoading />,
   payReceipt: () => <PayReceiptLoading />,
   // The Wallet, pushed from Pay (MESITA-3726).

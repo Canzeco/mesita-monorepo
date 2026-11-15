@@ -25,7 +25,7 @@ import {
   type TabRead,
 } from "@/lib/api/tab";
 import { money, type PayPlace } from "@/lib/api/wallet";
-import { payTabPath } from "@/lib/consumer-route-contract";
+import { payBillPath } from "@/lib/consumer-route-contract";
 import { toast } from "@/lib/toast";
 import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
@@ -149,7 +149,7 @@ export function TabView({
   onPayAgain?: (placeId: string) => void;
   /** MESITA-3861: the place's row in the Pay list (its photo), if loaded. */
   placeFor?: (placeId: string) => PayPlace | null;
-  /** The tab's id, for its address /pay/tab/<id> (a reload shows the same tab). */
+  /** The tab's id, for its address /pay/bill/<id> (a reload shows the same tab). */
   onTabId: (tabId: string) => void;
   onWaiterCode: (placeId: string) => void;
   onDone: () => void;
@@ -222,7 +222,7 @@ export function TabView({
       });
   }
 
-  // Boot: a picked place opens its tab; a reloaded /pay/tab/<id> reads it and,
+  // Boot: a picked place opens its tab; a reloaded /pay/bill/<id> reads it and,
   // while it still waits for the bill, opens again for a fresh QR (the QR's
   // secret is never stored on the device).
   useEffect(() => {
@@ -838,7 +838,7 @@ function SplitScreen({
   async function addCard() {
     setAdding(true);
     try {
-      const back = `${window.location.origin}${payTabPath(tab.tab_id)}`;
+      const back = `${window.location.origin}${payBillPath(tab.tab_id)}`;
       const { url } = await apiAddCard(getSupabase(), back);
       window.location.assign(url);
     } catch (e) {

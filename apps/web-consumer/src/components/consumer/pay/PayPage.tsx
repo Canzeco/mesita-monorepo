@@ -15,7 +15,7 @@ import { clockTime } from "@mesita/place-profile/lib/money";
 import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
-import { payPlacePath, payTabPath } from "@/lib/consumer-route-contract";
+import { payPlacePath, payBillPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { inProgressLabel, pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -32,9 +32,9 @@ import { TicketsShortcut } from "./TicketsShortcut";
 // MESITA-3725: "searchbar must always be visible"; MESITA-3719 had hidden it
 // behind a magnifier up to six places), and rows of
 // profile photo, name, address and distance, led by the guest's open bill.
-// A row is a door: /pay/<placeId> opens that place's bill at the table
+// A row is a door: /pay/place/<placeId> opens that place's bill at the table
 // (PayTabScreen, MESITA-3564). The bill and the receipt have their own
-// addresses (MESITA-3614): /pay/tab/<id> and /pay/receipt/<id>.
+// addresses (MESITA-3614): /pay/bill/<id> and /pay/receipt/<id>.
 //
 // ONLY PAY (Pato, 2026-11-14, MESITA-3886: "separate pay and wallet again.
 // only pay and only wallet"): the title band at the top (PayHeader), then the
@@ -238,7 +238,7 @@ export function PayPage() {
                 key={t.tab_id}
                 tab={t}
                 place={places?.find((p) => p.place_id === t.place.id) ?? null}
-                onOpen={() => navigateTo(router, payTabPath(t.tab_id), { motion: "push" })}
+                onOpen={() => navigateTo(router, payBillPath(t.tab_id), { motion: "push" })}
               />
             ))}
             <p className="text-muted-foreground text-center text-sm">Get this payment signed or close it before paying again.</p>

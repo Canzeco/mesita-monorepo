@@ -1,4 +1,4 @@
-// THE PAY DRAFT (MESITA-3759). What the guest typed at /pay/<placeId> is kept
+// THE PAY DRAFT (MESITA-3759). What the guest typed at /pay/place/<placeId> is kept
 // in the tab's session storage, so "Add a card" (which leaves the app) and a
 // reload come back with the amounts kept. These are the pure rules for
 // reading it back, React-free so they are tested on their own:

@@ -10,7 +10,7 @@ export const SECONDARY =
 // buttons in the page, an icon over a one-line label, 64px, so "Buy Credits"
 // stays on one line on a 320px phone. One of them is filled in the brand's
 // pink (MESITA-3802's colour, now on a single button); the others are
-// neutral. Only /wallet/<placeId> wears them.
+// neutral. Only /wallet/place/<placeId> wears them.
 export const ACTION =
   "border-border bg-card text-foreground hover:bg-muted flex h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold whitespace-nowrap transition active:scale-[0.99]";
 export const ACTION_FILLED =

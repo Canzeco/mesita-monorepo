@@ -27,7 +27,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { apiCreateProject } from "@/lib/api/place-search";
 import { rememberCreatedPlace } from "@/lib/created-places";
 import { placeHref } from "@/lib/place-route";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { placeGooglePath } from "@/lib/consumer-route-contract";
 import { type PendingPlaceCard, stashPendingPlace } from "@/lib/pending-place";
 import { useOpenPlaceHref } from "@/lib/use-open-place-href";
 
@@ -45,7 +45,7 @@ export function googlePlaceIdOf(place: GoogleOnlyPlace): string | null {
 /** The opening screen for a Google Place ID; the name rides along for the header. */
 export function googleOpenHref(gid: string, name: string): string {
   const q = name.trim() ? `?name=${encodeURIComponent(name.trim())}` : "";
-  return `${CONSUMER_ROUTES.place.prefix}open/${encodeURIComponent(gid)}${q}`;
+  return `${placeGooglePath(gid)}${q}`;
 }
 
 export function useOpenGooglePlace(): (place: GoogleOnlyPlace) => void {

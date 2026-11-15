@@ -6,7 +6,7 @@ import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
-import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiAddCard, apiListCards, brandLabel, CARD_REFUSAL, CARD_RETURN_PARAM, type SavedCard } from "@/lib/api/cards";
 import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
@@ -15,6 +15,7 @@ import { money, type PayPlace } from "@/lib/api/wallet";
 import { acceptCardsAnswer, type CardsLoad, cardsFailure, loadedCards, pickCard } from "@/lib/pay-cards";
 import { payDraftExpired } from "@/lib/pay-draft";
 import { type PadKey, paySplit, pressKey, readTip } from "@/lib/pay-keypad";
+import { payPlacePath } from "@/lib/consumer-route-contract";
 import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
@@ -22,7 +23,7 @@ import { BackStep, BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PlaceBar, Pl
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
 // THE GUEST PAYS (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
-// /pay/<placeId>, one screen a step:
+// /pay/place/<placeId>, one screen a step:
 //
 //   1 Open    the place large across the top (photo, name, MapPin and the
 //             distance); tapping the name opens the search; Off says why.
@@ -37,7 +38,7 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-com
 //             the waiter signs.
 //   4B Cash   "Give MX$X to the waiter", then "I gave the cash".
 //
-// Paying opens the bill (/pay/tab/<id>, GuestTabView: Sign, Confirming,
+// Paying opens the bill (/pay/bill/<id>, GuestTabView: Sign, Confirming,
 // Receipt, Not paid). The header's back arrow steps back.
 //
 // ONE TICKET AT A TIME (MESITA-3879, Pato: "imagine someone closes the app
@@ -210,7 +211,6 @@ export function GuestPayScreen({
   const [error, setError] = useState<string | null>(null);
   const [notPaid, setNotPaid] = useState<string | null>(null);
   const requestId = useRef<string | null>(null);
-  const [cancelAsk, setCancelAsk] = useState(false);
 
   // ONE TICKET AT A TIME (MESITA-3879, MESITA-3908): another place's ticket
   // in progress, or a bill open on the server at another place, blocks this
@@ -264,7 +264,15 @@ export function GuestPayScreen({
     if (busy || addingCard) return;
     onChoosePlace();
   };
-  const askCancel = amount !== "" && !busy && !addingCard ? () => setCancelAsk(true) : undefined;
+  // Cancel bill clears what was typed and closes at once (MESITA-4018, Pato:
+  // "cancel bill must close"): nothing was sent, so nothing is asked.
+  const askCancel =
+    amount !== "" && !busy && !addingCard
+      ? () => {
+          clearGuestDraft(placeId);
+          onChoosePlace();
+        }
+      : undefined;
 
   // The saved cards, when the place takes cards (and again on Retry).
   useEffect(() => {
@@ -278,7 +286,7 @@ export function GuestPayScreen({
       .catch((err: unknown) => {
         if (!acceptCardsAnswer(attempt, latestCardsAttempt.current)) return;
         const failed = cardsFailure(err);
-        if (failed.state === "signed_out") window.location.assign(clearSessionHref(`/pay/${placeId}`));
+        if (failed.state === "signed_out") window.location.assign(clearSessionHref(payPlacePath(placeId)));
         setCardsLoad(failed);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -357,7 +365,7 @@ export function GuestPayScreen({
     setAddingCard(true);
     setError(null);
     try {
-      const back = `${window.location.origin}/pay/${placeId}?${CARD_RETURN_PARAM}=1`;
+      const back = `${window.location.origin}${payPlacePath(placeId)}?${CARD_RETURN_PARAM}=1`;
       const { url } = await apiAddCard(getSupabase(), back);
       window.location.assign(url);
     } catch (e) {
@@ -473,28 +481,6 @@ export function GuestPayScreen({
   const frame = (body: React.ReactNode, data: string) => (
     <div ref={root} tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none" onKeyDown={onKeyDown} data-guest-pay={data}>
       {body}
-      <LocalDialog open={cancelAsk} onClose={() => setCancelAsk(false)} ariaLabel="Cancel this bill">
-        <div className="p-5" data-guest-cancel-ticket>
-          <p className="text-base font-semibold">Cancel this bill?</p>
-          <p className="text-muted-foreground mt-1 text-sm">What you typed is cleared. Nothing was charged.</p>
-          <div className="mt-4 flex gap-2">
-            <Button
-              type="button"
-              className="min-h-12 flex-1 text-base font-semibold"
-              onClick={() => {
-                setCancelAsk(false);
-                clearGuestDraft(placeId);
-                onChoosePlace();
-              }}
-            >
-              Cancel bill
-            </Button>
-            <button type="button" className={cn(QUIET_BUTTON_CLASS, "flex-1")} onClick={() => setCancelAsk(false)}>
-              Keep it
-            </button>
-          </div>
-        </div>
-      </LocalDialog>
     </div>
   );
   const status = error ? (

@@ -16,7 +16,7 @@ import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, RowsCard, StepsBar, WA
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
-// /pay/tab/<id>, after App Pay, "I gave the cash" or credits alone:
+// /pay/bill/<id>, after App Pay, "I gave the cash" or credits alone:
 //
 //   5 Sign        mostly a large QR, the place's name above it, a chip with
 //                 the way it's paid, an amber Clock counting down the ten
@@ -135,8 +135,9 @@ export function GuestTabView({
     try {
       await apiCancelTab(getSupabase(), tab.tab_id, "cancel");
       forgetGuestTab(tab.tab_id);
-      reopenGuestDraft(tab.place.id);
-      onPayAgain(tab.place.id);
+      // Cancelling closes (MESITA-4018): what was typed goes too.
+      clearGuestDraft(tab.place.id);
+      onDone();
     } catch (e) {
       const code = e instanceof EFError ? e.code : null;
       setError((code && TAB_REFUSAL[code]) || NETWORK_FAILURE);
@@ -323,7 +324,7 @@ export function GuestTabView({
           <p className="text-muted-foreground mt-1 text-sm">
             {card > 0 ? "The card hold is released. " : ""}
             {tab.credit_cents > 0 ? "No credits are spent. " : ""}
-            Everything you typed stays.
+            Nothing is paid.
           </p>
           <div className="mt-4 flex gap-2">
             <Button className="min-h-12 flex-1 text-base font-semibold" disabled={busy} onClick={() => void cancel()}>

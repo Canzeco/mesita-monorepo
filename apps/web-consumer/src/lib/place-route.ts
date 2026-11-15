@@ -19,6 +19,9 @@ const RESERVED_PLACE_SEGMENTS = new Set([
   "saved",
   "place",
   "places",
+  // /place/google/<gid> and, before it, /place/open/<gid> (MESITA-4013).
+  "google",
+  "open",
 ]);
 
 export function toCanonicalPlaceHrefOrNull(idOrSlug: string): string | null {

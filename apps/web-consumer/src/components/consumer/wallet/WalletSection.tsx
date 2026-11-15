@@ -95,7 +95,7 @@ import {
 // places, with the page's band switched off (`testBand`).
 // Wallet was its own bar tab from MESITA-3295, then sat under Pay's list
 // (MESITA-3631) until this. A place's card is a link to its House Card,
-// /wallet/<placeId> (MESITA-3614); a saved card or a waiting Story opens its
+// /wallet/place/<placeId> (MESITA-3614); a saved card or a waiting Story opens its
 // sheet here. The money is useWallet's (consumer-web-get-wallet).
 //
 // ADD A CREDITS CARD (Pato, MESITA-3705: "add Credits Card. not add credits
