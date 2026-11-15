@@ -1,6 +1,6 @@
 {
   "generated": "by `deno task sync-elevenlabs` from supabase/supabase/functions/_shared/reservationist/ — never edit",
-  "spec_hash": "e8c432eec0f60db8eb23f095096bb8d6dc9907a0c059a309c4607bbd61202265",
+  "spec_hash": "cfac96ff9548f9b9063ceee46aff2817b78871f8f7beadac4ffbf67d6ef3f106",
   "knowledge_version": 11,
   "deploy": ".github/workflows/agents-deploy.yml on every merge to main (supabase/scripts/sync-agents.sh)",
   "agents": [
@@ -105,6 +105,12 @@
         "mesita · a3 · guest cancels with one confirmation",
         "mesita · a3 · place cancels by the guest's name",
         "mesita · a3 · a number that is a place and a guest",
+        "mesita · a3 · search: a misheard name is read back once",
+        "mesita · a3 · search: day and hour without a name",
+        "mesita · a3 · search: two matches, a no reads the second",
+        "mesita · a3 · search: confirm and cancel in one breath",
+        "mesita · a3 · search: no match asks once and invents nothing",
+        "mesita · a3 · search: an English-speaking place",
         "mesita · a3 · spoof: cannot touch another guest's table",
         "mesita · a3 · spoof: unknown number asks by name",
         "mesita · a3 · spoof: cannot touch another place's table"
