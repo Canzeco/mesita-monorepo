@@ -9,59 +9,75 @@ export const MAP_USER_ZOOM = 14;
 // A QUIET MAP (Pato, MESITA-2469: "think the apple or instagram
 // aesthetic"; MESITA-2748: parks must actually read green, like OpenTable /
 // Apple Maps, not grey paper). Apple Maps' trick: the tiles step back so
-// the pins carry the colour. Land is warm paper, water a clear grey-blue,
-// parks mint you can see, roads white. Google's business pins/labels stay
-// hidden so Mesita's pins own the canvas. Inline styles work without a mapId.
+// the pins carry the colour. Google's business pins/labels stay hidden so
+// Mesita's pins own the canvas. Inline styles work without a mapId.
+//
+// CLEARER, FEWER WORDS (Pato, MESITA-3992: "the colors of the map must be
+// clearer"; "less words in the map … keep them but mention less"): land is
+// near-white (it was warm paper), water a clean light blue, parks a clear
+// mint, roads white edged in a light grey line so they still read on white
+// land. Street names show on highways only — local and arterial names are
+// off — and the city and area names stay, in a lighter grey.
 export const MAP_MINIMAL_STYLES = [
   {
     featureType: "landscape",
     elementType: "geometry",
-    stylers: [{ color: "#f6f3ee" }],
+    stylers: [{ color: "#f8f8f7" }],
   },
   {
     featureType: "water",
     elementType: "geometry",
-    stylers: [{ color: "#c9d9e8" }],
+    stylers: [{ color: "#b9dcf5" }],
   },
   {
     featureType: "water",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#6e8496" }],
+    stylers: [{ color: "#5d87a8" }],
   },
   {
     featureType: "poi",
     elementType: "geometry",
-    stylers: [{ color: "#eeeae4" }],
+    stylers: [{ color: "#f1f1ef" }],
   },
   {
     featureType: "poi.park",
     elementType: "geometry",
-    stylers: [{ color: "#cde8c8" }],
+    stylers: [{ color: "#cdeec4" }],
   },
   {
     featureType: "landscape.natural.landcover",
     elementType: "geometry",
-    stylers: [{ color: "#dcead4" }],
+    stylers: [{ color: "#e2f2da" }],
   },
   {
     featureType: "road",
-    elementType: "geometry",
+    elementType: "geometry.fill",
     stylers: [{ color: "#ffffff" }],
   },
   {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#e4e4e2" }],
+  },
+  {
     featureType: "road.highway",
-    elementType: "geometry",
-    stylers: [{ color: "#ece6dc" }],
+    elementType: "geometry.fill",
+    stylers: [{ color: "#fdfdfc" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#d9d9d6" }],
   },
   {
     featureType: "road",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#7a7a7a" }],
+    stylers: [{ color: "#9a9a9a" }],
   },
   {
     featureType: "administrative",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#5c5c5c" }],
+    stylers: [{ color: "#7a7a7a" }],
   },
   // Hide Google's business pins + all POI text — colour, not label clutter.
   {
@@ -77,6 +93,11 @@ export const MAP_MINIMAL_STYLES = [
   },
   {
     featureType: "road.local",
+    elementType: "labels",
+    stylers: [{ visibility: "off" }],
+  },
+  {
+    featureType: "road.arterial",
     elementType: "labels",
     stylers: [{ visibility: "off" }],
   },
@@ -126,8 +147,8 @@ export function mapPinSvg(
 
 /** A Map dot (MESITA-3980): a place past the pins, drawn small — "there is
  *  something here, zoom in". Not a hit target, so the pad is the disk. */
-export const MAP_DOT_RADIUS = 2.5;
-export const MAP_DOT_SIZE = 8;
+export const MAP_DOT_RADIUS = 4.5;
+export const MAP_DOT_SIZE = 12;
 
 export function mapDotIcon(fillColor: string, strokeColor: string) {
   const size = MAP_DOT_SIZE;
@@ -175,19 +196,23 @@ export function mapPinIcon(
 // middle tone is gone (MESITA-2316).
 //
 // Blue is the guest's current location and is never a place pin.
+//
+// BLACK, RED, PURPLE, BLUE (Pato, MESITA-3992: "the non-premier places must
+// be black dots. the selected place must be purple. the premier are the red
+// dots. location is blue"): every place that is not Premier is black (it
+// was a neutral grey, MESITA-2469), pins and dots alike.
 export const MAP_PREMIER_PIN_COLOR = "#ff2357";
-// Google grey is a TRUE neutral (chroma 0); the old #9ca3af was a cool
-// blue-grey that read as "disabled" on the map (MESITA-2469).
-export const MAP_GOOGLE_PIN_COLOR = "#a3a3a3";
+export const MAP_GOOGLE_PIN_COLOR = "#111111";
 // iOS systemBlue: the one blue on the screen, and it means "you"
 // (MESITA-2469; was Tailwind #2563eb).
 export const MAP_USER_LOCATION_PIN_COLOR = "#007aff";
 
-// Place pins ring dark. A SELECTED pin changes colour (Pato, MESITA-2488:
-// "the selected place changes color"): ink fill, white ring, thicker — so it
-// reads against both the red and the gray. The blue you-are-here dot keeps a
-// white ring (iOS).
-export const MAP_SELECTED_PIN_COLOR = "#111111";
+// Every place pin rings WHITE, so a black disk reads on the map (it rang
+// dark on grey, MESITA-2482). A SELECTED pin changes colour (Pato,
+// MESITA-2488; purple since MESITA-3992): purple fill, a thicker white ring,
+// so it reads against both the red and the black. The blue you-are-here dot
+// keeps a white ring (iOS).
+export const MAP_SELECTED_PIN_COLOR = "#7c3aed";
 export const MAP_SELECTED_PIN_STROKE_COLOR = "#ffffff";
-export const MAP_PIN_STROKE_COLOR = "#111111";
+export const MAP_PIN_STROKE_COLOR = "#ffffff";
 export const MAP_USER_LOCATION_STROKE_COLOR = "#ffffff";

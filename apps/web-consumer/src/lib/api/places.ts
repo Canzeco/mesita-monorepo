@@ -166,7 +166,7 @@ export type MapScore = {
 
 /** A Map dot (MESITA-3980): a ranked place past the pins, where it is and
  *  nothing else — "zoom in here", never a card. */
-export type MapDot = { id: string; lat: number; lng: number };
+export type MapDot = { id: string; lat: number; lng: number; premier: boolean };
 
 type ViewportPlaces = {
   places: Place[];
@@ -209,10 +209,10 @@ function readMapDots(raw: unknown): MapDot[] {
   const out: MapDot[] = [];
   for (const d of raw) {
     if (!d || typeof d !== "object") continue;
-    const { id, lat, lng } = d as Record<string, unknown>;
+    const { id, lat, lng, premier } = d as Record<string, unknown>;
     if (typeof id !== "string" || typeof lat !== "number" || typeof lng !== "number") continue;
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-    out.push({ id, lat, lng });
+    out.push({ id, lat, lng, premier: premier === true });
   }
   return out;
 }

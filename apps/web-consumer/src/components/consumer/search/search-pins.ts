@@ -58,7 +58,7 @@ export function catalogPlaceOnMesita(place: {
 
 const TONE_COLORS: Record<PinTone, string> = {
   premier: MAP_PREMIER_PIN_COLOR,
-  // A Mesita place that is not Premier is gray like a Google row.
+  // A Mesita place that is not Premier is black like a Google row (MESITA-3992).
   mesita: MAP_GOOGLE_PIN_COLOR,
   google: MAP_GOOGLE_PIN_COLOR,
 };

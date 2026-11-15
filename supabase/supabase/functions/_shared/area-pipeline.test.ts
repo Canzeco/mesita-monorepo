@@ -440,12 +440,28 @@ Deno.test("the Map's dots are ranks placesShown+1..dotsShown, bare coordinates; 
   const out = await run("map", { placesShown: 5, dotsShown: 12 });
   assertEquals(ids(out.places), ["m79", "m78", "m77", "m76", "m75"]);
   assertEquals(out.dots.map((d) => d.id), ["m74", "m73", "m72", "m71", "m70", "m69", "m68"]);
-  assertEquals(Object.keys(out.dots[0]).sort(), ["id", "lat", "lng"]);
+  assertEquals(Object.keys(out.dots[0]).sort(), ["id", "lat", "lng", "premier"]);
+  assertEquals(out.dots[0].premier, false);
   assertEquals((await run("map", { placesShown: 20, dotsShown: 20 })).dots, []);
   assertEquals((await run("map", { placesShown: 20, dotsShown: 0 })).dots, []);
   // Fewer places than marks: every place past the pins is a dot.
   assertEquals((await run("map", { placesShown: 20, dotsShown: 200 })).dots.length, 60);
   assertEquals((await run("catalog", { placesShown: 5, dotsShown: 12 })).dots, []);
+});
+
+Deno.test("a Premier place past the pins is a red dot: the dot carries premier (MESITA-3992)", async () => {
+  // No reviews: Popularity 0, so ×2 still ranks it last, past the pins.
+  const rows = [
+    ...Array.from({ length: 6 }, (_, i) => mrow(`m${i}`, { google_review_count: 50 + i })),
+    mrow("paid", { google_review_count: 0, google_stars_overall: 0, boost_tier: 1 }),
+  ];
+  const { d } = deps({ mesitaRows: rows, surface: "map", radiusKm: 50 });
+  d.cfg = { ...d.cfg, map: { ...d.cfg.map, placesShown: 2, dotsShown: 100 } };
+  const out = await selectAreaPool(d);
+  const paid = out.dots.find((x) => x.id === "paid");
+  assert(paid, "the paid place is a dot");
+  assertEquals(paid.premier, true);
+  assertEquals(out.dots.filter((x) => x.premier).map((x) => x.id), ["paid"]);
 });
 
 // ── MESITA-3086: a Popularity root per surface ───────────────────────────
