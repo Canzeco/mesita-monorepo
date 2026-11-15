@@ -33,9 +33,9 @@ import {
 // profile surface printed it while nothing collected it. It also owns
 // ONBOARD_FIELDS — the field list the gate checks and the form renders.
 //
-// LAST NAME IS STILL NOT HERE, and that is not "not required". It is asked by
-// the Reserve page at the moment the guest can see why: the place books the
-// table under their full name.
+// LAST NAME IS HERE TOO (Pato, MESITA-4090): first and last name side by side,
+// both required, the same pair Me › Profile edits. The place books tables
+// under the full name.
 //
 // ONE SCREEN (MESITA-2746): first name, birthday and sex together. A
 // returning half-finished profile prefills what is already stored; one
@@ -62,6 +62,7 @@ import {
 
 export type OnboardInitialValues = {
   firstName: string;
+  lastName: string;
   birthday: string;
   sex: string;
 };
@@ -71,6 +72,10 @@ export type OnboardInitialValues = {
  *  the screen rather than a 36px chip in a 2x2. */
 const SEX_CHIP_CLASS =
   "flex h-11 flex-1 items-center justify-center rounded-full border text-sm font-semibold transition";
+
+/** A field's label from ONBOARD_FIELDS, by key, so the order can change. */
+const FIELD = (key: (typeof ONBOARD_FIELDS)[number]["key"]) =>
+  ONBOARD_FIELDS.find((f) => f.key === key)?.label ?? "";
 
 const FIELD_LABEL_CLASS =
   "text-muted-foreground type-label mb-1 block font-medium";
@@ -89,6 +94,7 @@ export function OnboardForm({
   // render — including this component's unit test — never touches env vars.
   const getSupabase = useLazyBrowserSupabase();
   const [firstName, setFirstName] = useState(initial?.firstName ?? "");
+  const [lastName, setLastName] = useState(initial?.lastName ?? "");
   const [birthday, setBirthday] = useState(initial?.birthday ?? "");
   const [sex, setSex] = useState<ConsumerSex | "">(() =>
     isConsumerSex(initial?.sex) ? initial.sex : "",
@@ -102,7 +108,9 @@ export function OnboardForm({
   const birthdayField = ONBOARD_FIELDS.find((f) => f.key === "birthday");
 
   const ready =
-    Boolean(firstName.trim()) && Boolean(birthday) && isConsumerSex(sex);
+    Boolean(firstName.trim()) &&
+    Boolean(lastName.trim()) &&
+    Boolean(birthday) && isConsumerSex(sex);
 
   /** Arrow keys move between the options and select as they go, which is what
    *  the radio pattern specifies — and with two options Left and Right are the
@@ -135,7 +143,9 @@ export function OnboardForm({
 
     const fd = new FormData(e.currentTarget);
     const first = ((fd.get("first_name") as string | null) ?? firstName).trim();
+    const last = ((fd.get("last_name") as string | null) ?? lastName).trim();
     if (!first) return setError("Tell us your first name.");
+    if (!last) return setError("Tell us your last name.");
     if (!birthday) return setError("Add your birthday.");
     const age = ageFromBirthday(birthday);
     if (age === null || age < MIN_SIGNUP_AGE) {
@@ -151,11 +161,13 @@ export function OnboardForm({
     }
 
     setFirstName(first);
+    setLastName(last);
     setLoading(true);
     void (async () => {
       try {
         await apiUpdateConsumerProfile(getSupabase(), {
           first_name: first,
+          last_name: last,
           birthday,
           sex,
         });
@@ -192,27 +204,47 @@ export function OnboardForm({
       <p className="text-muted-foreground mt-2 text-sm">{ONBOARD_PAGE_DEK}</p>
 
       <div className="mt-8 flex flex-col gap-6">
-        <div>
-          <label htmlFor="onboard-first-name" className={FIELD_LABEL_CLASS}>
-            {ONBOARD_FIELDS[0].label}
-          </label>
-          <input
-            id="onboard-first-name"
-            name="first_name"
-            className={INPUT_CLASS}
-            value={firstName}
-            onChange={(e) => {
-              setFirstName(e.target.value);
-              setError(null);
-            }}
-            maxLength={60}
-            autoComplete="given-name"
-            required
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="min-w-0">
+            <label htmlFor="onboard-first-name" className={FIELD_LABEL_CLASS}>
+              {FIELD("first_name")}
+            </label>
+            <input
+              id="onboard-first-name"
+              name="first_name"
+              className={INPUT_CLASS}
+              value={firstName}
+              onChange={(e) => {
+                setFirstName(e.target.value);
+                setError(null);
+              }}
+              maxLength={60}
+              autoComplete="given-name"
+              required
+            />
+          </div>
+          <div className="min-w-0">
+            <label htmlFor="onboard-last-name" className={FIELD_LABEL_CLASS}>
+              {FIELD("last_name")}
+            </label>
+            <input
+              id="onboard-last-name"
+              name="last_name"
+              className={INPUT_CLASS}
+              value={lastName}
+              onChange={(e) => {
+                setLastName(e.target.value);
+                setError(null);
+              }}
+              maxLength={60}
+              autoComplete="family-name"
+              required
+            />
+          </div>
         </div>
 
         <div>
-          <span className={FIELD_LABEL_CLASS}>{ONBOARD_FIELDS[1].label}</span>
+          <span className={FIELD_LABEL_CLASS}>{FIELD("birthday")}</span>
           <BirthdayPicker
             value={birthday}
             onChange={(v) => {
@@ -228,7 +260,7 @@ export function OnboardForm({
         </div>
 
         <div>
-          <span className={FIELD_LABEL_CLASS}>{ONBOARD_FIELDS[2].label}</span>
+          <span className={FIELD_LABEL_CLASS}>{FIELD("sex")}</span>
           <div role="radiogroup" aria-label="Sex" onKeyDown={onSexKeyDown}>
             <div className="flex gap-2">
               {CONSUMER_SEXES.map(({ value, label }, i) => {

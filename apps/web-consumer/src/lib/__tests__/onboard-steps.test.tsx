@@ -24,10 +24,11 @@ import {
 
 function markup(initial?: {
   firstName: string;
+  lastName?: string;
   birthday: string;
   sex: string;
 }) {
-  return renderToStaticMarkup(<OnboardForm initial={initial} />);
+  return renderToStaticMarkup(<OnboardForm initial={initial && { lastName: "", ...initial }} />);
 }
 
 describe("the onboarding form renders all fields on one screen", () => {

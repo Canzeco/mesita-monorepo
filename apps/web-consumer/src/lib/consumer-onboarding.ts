@@ -2,13 +2,15 @@
 // different questions (MESITA-1806).
 //
 // `consumerCanBrowse` is what /onboard collects before the app opens at all:
-// first name (the app greets you by it), birthday (MIN_SIGNUP_AGE is a ToS
-// floor, and an age gate is only worth anything at account creation), and sex
-// (MESITA-1829).
+// first AND last name (Pato, MESITA-4090: "first and last name must be
+// mandatory when onboarding, not only first name"), birthday (MIN_SIGNUP_AGE
+// is a ToS floor, and an age gate is only worth anything at account
+// creation), and sex (MESITA-1829). A profile without a last name is sent
+// back to /onboard once to add it (4 of 6 live rows when this shipped).
 //
-// The booking gate adds the last name, asked at the one moment it is
-// load-bearing: placing a reservation. consumer-web-create-reservation
-// enforces it; `consumerNeedsLastName` is how the booking form asks. The
+// The booking gate still checks the last name too, as a backstop:
+// consumer-web-create-reservation enforces it; `consumerNeedsLastName` is how
+// the booking form asks. The
 // place books the table under the guest's full name and the host system keys
 // on "last name + party size", and
 // when the restaurant calls back, eleven-agent-get-reservation finds the
@@ -74,19 +76,22 @@ export function consumerCanBrowse(
   profile: OnboardableProfile | null | undefined,
 ): boolean {
   return Boolean(
-    profile?.first_name && profile?.birthday && isConsumerSex(profile?.sex),
+    profile?.first_name?.trim() &&
+      profile?.last_name?.trim() &&
+      profile?.birthday &&
+      isConsumerSex(profile?.sex),
   );
 }
 
-// ONE SCREEN, THREE FIELDS (MESITA-2746). The gate's field list and the form's
+// ONE SCREEN, FOUR FIELDS (MESITA-2746; last name since MESITA-4090). The gate's field list and the form's
 // field list are the same list, in the same order, declared once here. A
 // partial profile prefills whatever is already stored; the guest fills the
 // gaps and submits once. `consumer-web-update-profile` accepts any subset of
 // keys, so a half-finished row can still be completed in one write.
 export const ONBOARD_PAGE_HEADLINE = "Almost there.";
-export const ONBOARD_PAGE_DEK = "Three quick details and you're in.";
+export const ONBOARD_PAGE_DEK = "A few quick details and you're in.";
 
-type OnboardFieldKey = "first_name" | "birthday" | "sex";
+type OnboardFieldKey = "first_name" | "last_name" | "birthday" | "sex";
 
 type OnboardField = {
   readonly key: OnboardFieldKey;
@@ -97,6 +102,7 @@ type OnboardField = {
 
 export const ONBOARD_FIELDS: readonly OnboardField[] = [
   { key: "first_name", label: "First name", hint: null },
+  { key: "last_name", label: "Last name", hint: null },
   {
     key: "birthday",
     label: "Birthday",

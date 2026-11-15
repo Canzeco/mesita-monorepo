@@ -55,7 +55,7 @@ export function providersOf(appMetadata: Record<string, unknown> | null): string
 }
 
 export function isOnboarded(row: SigninRow | null): boolean {
-  return !!row?.first_name && !!row?.birthday && (row?.sex === "male" || row?.sex === "female");
+  return !!row?.first_name?.trim() && !!row?.last_name?.trim() && !!row?.birthday && (row?.sex === "male" || row?.sex === "female");
 }
 
 export async function handleSignin(user: SigninUser, deps: SigninDeps): Promise<SigninReply> {

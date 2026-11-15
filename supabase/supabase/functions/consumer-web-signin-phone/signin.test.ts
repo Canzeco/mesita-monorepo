@@ -12,7 +12,7 @@ const ROW: SigninRow = {
   code: "1234-5678",
   full_name: null,
   first_name: "Ana",
-  last_name: null,
+  last_name: "Ruiz",
   phone: "+528112345678",
   birthday: "1990-01-01",
   sex: "female",
@@ -111,6 +111,15 @@ Deno.test("a closed account answers 410 account_deleted", async () => {
 Deno.test("an unfinished profile is not onboarded", async () => {
   const res = await handleSignin(GOOGLE, deps({ ...ROW, birthday: null }));
   assertEquals(res.body.onboarded, false);
+});
+
+// MESITA-4090: onboarding asks the last name too, so a first-name-only row is
+// sent back to /onboard to finish it.
+Deno.test("a profile without a last name is not onboarded", async () => {
+  const res = await handleSignin(GOOGLE, deps({ ...ROW, last_name: null }));
+  assertEquals(res.body.onboarded, false);
+  const blank = await handleSignin(GOOGLE, deps({ ...ROW, last_name: "  " }));
+  assertEquals(blank.body.onboarded, false);
 });
 
 Deno.test("the sign-in log names the providers, never the email or phone", async () => {
