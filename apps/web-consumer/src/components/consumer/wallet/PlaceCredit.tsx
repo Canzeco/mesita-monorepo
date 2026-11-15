@@ -21,7 +21,7 @@ import { type EntryGroup, groupKeys, splitEntries } from "@/lib/wallet-entries";
 import { cn } from "@/lib/utils";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { SendCreditSheet, SentLinks } from "./SendCredit";
-import { WalletList } from "./WalletLists";
+import { WalletPanel, WalletPanelList } from "./WalletLists";
 import { ACTION, ACTION_FILLED, PRIMARY, SECONDARY } from "./wallet-buttons";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
 import { toast } from "@/lib/toast";
@@ -172,18 +172,33 @@ function StoryEntryRow({ story, onOpen }: { story: WaitingStory; onOpen: () => v
   );
 }
 
-/** The page loading: the mini House Card, the three actions, the list. */
+/** The place's round photo beside the page's title (Pato, 2026-11-15,
+ *  MESITA-4064: "when a house card is selected, show profile picture on
+ *  header"): the card's own photo, 32px; its initial without one. */
+export function PlacePhotoMark({ photo, name }: { photo: string | null; name: string }) {
+  return (
+    <span className="bg-muted flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-semibold" aria-hidden>
+      {photo ? <SizedImg src={photo} size="thumb" alt="" className="h-full w-full object-cover" /> : (name ?? "?").trim().charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
+/** The page loading: the card's panel, then the Transactions panel. */
 export function HouseCardSkeleton() {
   return (
     <div className="flex flex-col" aria-hidden>
-      <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
-      <div className="mt-5 flex gap-2">
-        <Skeleton className="h-16 flex-1 rounded-xl" />
-        <Skeleton className="h-16 flex-1 rounded-xl" />
-        <Skeleton className="h-16 flex-1 rounded-xl" />
-      </div>
-      <Skeleton className="mt-5 h-5 w-28 rounded-md" />
-      <Skeleton className="mt-2 h-64 w-full rounded-2xl" />
+      <WalletPanel className="p-4">
+        <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
+        <div className="mt-4 flex gap-2">
+          <Skeleton className="h-16 flex-1 rounded-xl" />
+          <Skeleton className="h-16 flex-1 rounded-xl" />
+          <Skeleton className="h-16 flex-1 rounded-xl" />
+        </div>
+      </WalletPanel>
+      <WalletPanel className="p-4">
+        <Skeleton className="h-5 w-28 rounded-md" />
+        <Skeleton className="mt-3 h-48 w-full rounded-xl" />
+      </WalletPanel>
     </div>
   );
 }
@@ -280,6 +295,11 @@ export function PlaceCredit({
   const historyKeys = groupKeys(shownHistory);
   return (
     <>
+      {/* EACH SECTION A PANEL (Pato, 2026-11-15, MESITA-4064: "each section
+          in body must be in a box or something for more clarity. make a
+          cleaner UI"): the card and what it can do, Transactions, Waiting
+          for a friend, each one WalletPanel (MESITA-4063's), 16px apart. */}
+      <WalletPanel className="p-4" data-house-card-panel>
       {/* THE MINI HOUSE CARD (MESITA-3802, Pato: "instead of that ugly pink
           box display mini House Card, not occupying full width of screen,
           only 50% of screen. card must display amount of credits, name, and
@@ -309,14 +329,14 @@ export function PlaceCredit({
         <p className="type-eyebrow relative text-white/80" aria-hidden>House Card</p>
       </div>
       {gone ? (
-        <p className="text-muted-foreground mt-5 text-sm" data-house-card-gone>
+        <p className="text-muted-foreground mt-4 text-sm" data-house-card-gone>
           Your credit here stays yours; ask Mesita support to use it.
         </p>
       ) : (
         /* THE ACTIONS, IN THE PAGE (MESITA-3868): one row under the card that
            scrolls with it; the bar's Pay tab stays one tap away further down.
            One filled button: Go to Pay, or Buy Credits on an empty card. */
-        <div className="mt-5 flex gap-2" data-house-card-actions>
+        <div className="mt-4 flex gap-2" data-house-card-actions>
           <PushLink
             href={payPlacePath(row.placeId)}
             className={empty ? ACTION : ACTION_FILLED}
@@ -348,20 +368,21 @@ export function PlaceCredit({
         </div>
       )}
       {held ? (
-        <p className="text-muted-foreground mt-5 text-sm" data-house-card-held>
+        <p className="text-muted-foreground mt-4 text-sm" data-house-card-held>
           Some credit is held by an open payment. It returns when that payment finishes or expires.
         </p>
       ) : null}
+      </WalletPanel>
       {confirming ? (
-        <p className="text-muted-foreground mt-5 -mb-2 text-sm" role="status" data-house-card-confirming>
+        <p className="text-muted-foreground mt-4 text-sm" role="status" data-house-card-confirming>
           Confirming a payment…
         </p>
       ) : null}
 
-      <WalletList
+      <WalletPanelList
         title="Transactions"
         fallback={
-          <p className="border-border bg-card text-muted-foreground rounded-2xl border px-4 py-4 text-sm" data-house-card-history-empty>
+          <p className="text-muted-foreground text-sm" data-house-card-history-empty>
             No transactions yet
           </p>
         }
@@ -385,7 +406,7 @@ export function PlaceCredit({
             Show all
           </button>
         ) : null}
-      </WalletList>
+      </WalletPanelList>
 
       <SentLinks links={sentLinks} currency={card.currency} onChanged={changed} />
 

@@ -42,6 +42,7 @@ export function Screen({
   onBack,
   noBack = false,
   lead,
+  titleMark,
   paper = false,
   scrolls = false,
   footer,
@@ -61,6 +62,9 @@ export function Screen({
   /** The header's left control in place of Back (MESITA-3880: the Pay
    *  steps' X, beside the title). */
   lead?: React.ReactNode;
+  /** A small picture left of the title, centred with it (a House Card's
+   *  place photo, MESITA-4064). */
+  titleMark?: React.ReactNode;
   /** White ground and header instead of the grey (the pay screens). */
   paper?: boolean;
   /** A paper screen that is meant to scroll: no overflow watch. */
@@ -100,9 +104,16 @@ export function Screen({
           <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
         </button>
         )}
-        <h1 className="font-display min-w-0 truncate text-center text-xl font-semibold tracking-tight">
-          {title}
-        </h1>
+        {titleMark ? (
+          <h1 className="font-display flex min-w-0 items-center justify-center gap-2 text-xl font-semibold tracking-tight">
+            {titleMark}
+            <span className="min-w-0 truncate">{title}</span>
+          </h1>
+        ) : (
+          <h1 className="font-display min-w-0 truncate text-center text-xl font-semibold tracking-tight">
+            {title}
+          </h1>
+        )}
         <div className="flex min-h-11 justify-end">{action}</div>
       </header>
 

@@ -11,7 +11,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { HouseCardSkeleton, PlaceCredit } from "./PlaceCredit";
+import { HouseCardSkeleton, PlaceCredit, PlacePhotoMark } from "./PlaceCredit";
 import { useWallet } from "./use-wallet";
 
 // /wallet/place/<placeId> — a place's House Card, full screen (MESITA-3533's
@@ -76,12 +76,20 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
     : [];
 
   return (
-    <Screen title={row?.card.name ?? "Wallet"} onBack={back} flush paper scrolls>
-      <div className="flex flex-1 flex-col px-4 pt-5 pb-8">
+    <Screen
+      title={row?.card.name ?? "Wallet"}
+      titleMark={row ? <PlacePhotoMark photo={row.card.photo} name={row.card.name} /> : undefined}
+      onBack={back}
+      flush
+      paper
+      scrolls
+    >
+      {/* The panels carry their own 16px top margin (MESITA-4064). */}
+      <div className="flex flex-1 flex-col px-4 pb-8">
         {/* No card yet (a first purchase still confirming): the line sits over
             the loading frame. With a card, PlaceCredit draws it over the list. */}
         {confirming && !row ? (
-          <p className="text-muted-foreground mb-3 text-sm" role="status">
+          <p className="text-muted-foreground mt-4 text-sm" role="status">
             Confirming a payment…
           </p>
         ) : null}
