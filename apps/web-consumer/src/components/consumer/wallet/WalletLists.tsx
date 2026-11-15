@@ -193,18 +193,12 @@ export function SavedCardRow({ card, onOpen }: { card: SavedCard; onOpen: () => 
   );
 }
 
-/** The quiet line under a Credits Card's name; none at $0, where the pill
- *  already says it (MESITA-4050). */
-function creditsLine(card: WalletCardModel, gone: boolean): string | null {
-  if (gone) return "Ask Mesita support to use it";
-  if (card.available_cents > 0 && card.pending_cents > 0) return `${money(card.pending_cents, card.currency)} pending`;
-  // No time here (MESITA-3750, Pato: "don't display time there"): each
-  // purchase lands on its own clock; the House Card shows each one's time.
-  if (card.pending_cents > 0) return "Pending";
-  if (card.available_cents > 0) return "Available";
-  // Nothing on it: the pill reads $0, never "No credits yet" (Pato,
-  // MESITA-3901: "not mention no credits yet. mention $0MX").
-  return null;
+/** The quiet line under a Credits Card's name: only a gone place's. The
+ *  row never says Pending or Available (MESITA-4059, Pato: "don't mention
+ *  the pending state in credits card"); the pill says the amount and the
+ *  House Card says when pending credit lands. */
+function creditsLine(gone: boolean): string | null {
+  return gone ? "Ask Mesita support to use it" : null;
 }
 
 /** A place's Credits Card (MESITA-3741): a row like a saved card's. The
@@ -226,7 +220,7 @@ export function CreditsRow({
   eager?: boolean;
 }) {
   const amount = cardAmount(card);
-  const line = creditsLine(card, gone);
+  const line = creditsLine(gone);
   return (
     <Link href={href} aria-label={walletCardLabel(card)} className={ROW} data-wallet-method="credits">
       <span className={cn(CHIP, "bg-neutral-950 text-sm font-semibold text-white")} aria-hidden>
