@@ -108,13 +108,16 @@ const BAR_RED = "before:bg-red-600";
 // MESITA-3812: "make the sidebar menu dark, really dark"): the ink token
 // (bg-foreground, never a raw colour), names in text-card, the chosen row a
 // lighter ink band (bg-card/15) with the blue bar (red for Saved) in both.
+// THE CHOSEN ROW IS WHITE (Pato, MESITA-4015: "selected menu item must be
+// white, not dark. white with blue / red stuff at the left"): a solid card
+// band with ink text, the 4px blue bar (red for Saved) at its left.
 // ALMOST INK (Pato, MESITA-3813: "not that dark, but almost"): 85% ink
 // with 15% card, solid, from the tokens.
 const RAIL_SURFACE = "bg-[color-mix(in_oklab,var(--foreground)_85%,var(--card))] text-card";
 const RAIL_ROW =
   "text-card relative flex h-11 w-full shrink-0 items-center text-left transition";
 const RAIL_ROW_ON =
-  "bg-card/15 before:absolute before:inset-y-0 before:left-0 before:w-1";
+  "bg-card text-foreground before:absolute before:inset-y-0 before:left-0 before:w-1";
 const RAIL_EMOJI =
   "flex w-12 shrink-0 justify-center text-xl leading-none";
 
