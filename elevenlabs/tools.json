@@ -381,6 +381,59 @@
     }
   },
   {
+    "name": "a4_change_reservation",
+    "config": {
+      "type": "webhook",
+      "name": "a4_change_reservation",
+      "description": "Le propone al comensal un cambio que pide el lugar verificado en una de sus reservaciones confirmadas: otra hora (y, si la dicen, otro día) y/o otro número de personas. No cambia nada todavía: el comensal acepta o rechaza en la app; si no acepta, la reservación sigue como estaba y Mesita le avisa al lugar. Toma el código de las reservaciones que regresó la búsqueda.",
+      "response_timeout_secs": 15,
+      "interruption_mode": "allow",
+      "api_schema": {
+        "url": "SUPABASE_URL/functions/v1/eleven-a4-change-reservation",
+        "method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer ANON_KEY",
+          "x-agent-secret": "TOOL_SECRET",
+          "Content-Type": "application/json"
+        },
+        "request_body_schema": {
+          "type": "object",
+          "description": "Cambio que pide el lugar.",
+          "required": [
+            "caller_phone",
+            "reference_code"
+          ],
+          "properties": {
+            "caller_phone": {
+              "type": "string",
+              "dynamic_variable": "system__caller_id"
+            },
+            "reference_code": {
+              "type": "string",
+              "description": "El código de 8 dígitos de esa reservación, tomado de las reservaciones que regresó la verificación o la búsqueda. No se lo pidas a quien llama."
+            },
+            "new_time": {
+              "type": "string",
+              "description": "La nueva hora en formato HH:mm de 24 horas, en la hora del lugar («las nueve de la noche» = 21:00). Vacío si la hora no cambia."
+            },
+            "new_date": {
+              "type": "string",
+              "description": "El nuevo día en formato YYYY-MM-DD, solo si cambia el día. Vacío si es el mismo día de la reservación."
+            },
+            "new_party_size": {
+              "type": "integer",
+              "description": "El nuevo número de personas (1 a 10), solo si cambia. Omítelo si no cambia."
+            },
+            "reason": {
+              "type": "string",
+              "description": "Motivo breve del lugar, en sus palabras."
+            }
+          }
+        }
+      }
+    }
+  },
+  {
     "name": "get_reservation",
     "config": {
       "type": "webhook",

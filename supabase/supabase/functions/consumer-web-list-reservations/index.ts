@@ -92,7 +92,9 @@ serveJson("consumer-web-list-reservations", async (req) => {
       // tolerance a1 accepted for the guest, shown on a confirmed table.
       // reserved_at is the booked time: a confirmed outcome moves it to the
       // time a1 took inside the guest's window (MESITA-3957).
-      "id, reserved_at, party_size, state, reference_code, notes, confirmed_at, cancelled_at, created_at, place_id, attempts_state, next_attempt_at, call_attempts, consumer_notify, consumer_confirmed_at, alternatives, guest_first_name, guest_last_name, confirmed_terms",
+      // change_* is a change the place asked for, which
+      // the guest accepts or declines on the reservation page (MESITA-4073).
+      "id, reserved_at, party_size, state, reference_code, notes, confirmed_at, cancelled_at, created_at, place_id, attempts_state, next_attempt_at, call_attempts, consumer_notify, consumer_confirmed_at, alternatives, guest_first_name, guest_last_name, confirmed_terms, change_state, change_reserved_at, change_party_size, change_note, change_expires_at",
     )
     .eq("consumer_id", consumerId)
     // Operator test tickets (is_test) reference real consumers — never surface

@@ -15,6 +15,8 @@
 //   unreachable      nobody who books was reached after every attempt
 //   unresolved       the call ended without a verdict, or the line was wrong
 //   place_cancelled  the place called Mesita to cancel (eleven-a4)
+//   change_proposed  the place asked to change the time or party size; the
+//                    guest accepts or declines in the app (MESITA-4073)
 //
 // Best-effort: the row is a courtesy copy of state reservation_tickets
 // already holds, so a failed insert is logged and swallowed — it never fails
@@ -38,7 +40,8 @@ export type ReservationOutcome =
   | "declined"
   | "unreachable"
   | "unresolved"
-  | "place_cancelled";
+  | "place_cancelled"
+  | "change_proposed";
 
 export type ReservationNotice = {
   consumerId: string;

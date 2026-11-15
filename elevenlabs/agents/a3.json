@@ -17,6 +17,7 @@
           "tool:a3_cancel_reservation",
           "tool:a4_find_reservation",
           "tool:a4_cancel_reservation",
+          "tool:a4_change_reservation",
           "tool:get_reservation"
         ],
         "built_in_tools": {
@@ -145,7 +146,7 @@
           "x": 600,
           "y": -320
         },
-        "additional_prompt": "Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú eres Mesita; nunca hables como si fueras el restaurante.\nSalúdalo por su nombre (place.name), por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?». Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.\nSi el resultado también trae guest (el número es de un restaurante y de un comensal) y no queda claro, pregunta una sola vez si llama por su restaurante o por una reservación suya.\nLuego toma la rama de lo que pidan. Para cancelar o revisar UNA reservación (por el nombre al que está, el día, la hora, las personas o su código), primero se busca: toma la rama de búsqueda; no respondas sin buscar.",
+        "additional_prompt": "Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú eres Mesita; nunca hables como si fueras el restaurante.\nSalúdalo por su nombre (place.name), por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?». Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.\nSi el resultado también trae guest (el número es de un restaurante y de un comensal) y no queda claro, pregunta una sola vez si llama por su restaurante o por una reservación suya.\nLuego toma la rama de lo que pidan. Para cancelar, cambiar o revisar UNA reservación (por el nombre al que está, el día, la hora, las personas o su código), primero se busca: toma la rama de búsqueda; no respondas sin buscar.\nEn este paso no leas ni confirmes ninguna reservación, aunque la veas en el resultado: se lee una sola vez, después de la búsqueda.",
         "entry_behavior": "generate_immediately",
         "conversation_config": {
           "agent": {
@@ -226,7 +227,7 @@
           "x": 1280,
           "y": -320
         },
-        "additional_prompt": "La búsqueda regresa las más parecidas, la mejor primero. Lee la primera UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo»).\nDespués de leerla, CALLA y ESPERA su respuesta. Nunca canceles antes de oír su sí a esa lectura: lo que dijeron antes de que la leyeras (por ejemplo «hay que cancelar») no cuenta. Su sí («sí», «esa», «sí, cancélala») confirma a la vez que es esa y la cancelación: no vuelvas a preguntar.\nSi dicen que no y hay otra, lee la siguiente igual, una vez. No confirmes ni niegues reservaciones de otros lugares. Si solo era consulta, contesta lo que pregunten con lo que regresó la búsqueda y despídete.\nSi dicen que no y no queda otra, o la búsqueda no encontró nada, dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.",
+        "additional_prompt": "La búsqueda regresa las más parecidas, la mejor primero. Lee la primera UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo»).\nSi llaman para cambiarle la hora o el número de personas: tras su sí, si aún no dijeron la nueva hora o cuántas personas, pregúntalo una vez. No repitas la lectura.\nDespués de leerla, CALLA y ESPERA su respuesta. Nunca canceles antes de oír su sí a esa lectura: lo que dijeron antes de que la leyeras (por ejemplo «hay que cancelar») no cuenta. Su sí («sí», «esa», «sí, cancélala») confirma a la vez que es esa y la cancelación: no vuelvas a preguntar.\nSi el cambio no se pudo registrar, el flujo te lleva a otro paso; no lo intentes de nuevo aquí.\nSi dicen que no y hay otra, lee la siguiente igual, una vez. No confirmes ni niegues reservaciones de otros lugares. Si solo era consulta, contesta lo que pregunten con lo que regresó la búsqueda y despídete.\nSi dicen que no y no queda otra, o la búsqueda no encontró nada, dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.",
         "entry_behavior": "generate_immediately",
         "conversation_config": {
           "agent": {
@@ -237,6 +238,7 @@
         },
         "edge_order": [
           "e_pfd_cancel",
+          "e_pfd_change",
           "e_pfd_again",
           "e_pfd_end"
         ]
@@ -263,7 +265,7 @@
           "x": 1920,
           "y": -160
         },
-        "additional_prompt": "La búsqueda regresa las más parecidas, la mejor primero. Lee la primera UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo»).\nDespués de leerla, CALLA y ESPERA su respuesta. Nunca canceles antes de oír su sí a esa lectura: lo que dijeron antes de que la leyeras (por ejemplo «hay que cancelar») no cuenta. Su sí («sí», «esa», «sí, cancélala») confirma a la vez que es esa y la cancelación: no vuelvas a preguntar.\nSi dicen que no y hay otra, lee la siguiente igual, una vez. No confirmes ni niegues reservaciones de otros lugares. Si solo era consulta, contesta lo que pregunten con lo que regresó la búsqueda y despídete.\nEsta fue la segunda y última búsqueda. Si tampoco encontró nada, o dicen que no y no queda otra: no pidas más datos ni preguntes si el nombre está bien. Di en una frase que no la encuentras y que pueden revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar; despídete y cuelga con end_call.",
+        "additional_prompt": "La búsqueda regresa las más parecidas, la mejor primero. Lee la primera UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo»).\nSi llaman para cambiarle la hora o el número de personas: tras su sí, si aún no dijeron la nueva hora o cuántas personas, pregúntalo una vez. No repitas la lectura.\nDespués de leerla, CALLA y ESPERA su respuesta. Nunca canceles antes de oír su sí a esa lectura: lo que dijeron antes de que la leyeras (por ejemplo «hay que cancelar») no cuenta. Su sí («sí», «esa», «sí, cancélala») confirma a la vez que es esa y la cancelación: no vuelvas a preguntar.\nSi el cambio no se pudo registrar, el flujo te lleva a otro paso; no lo intentes de nuevo aquí.\nSi dicen que no y hay otra, lee la siguiente igual, una vez. No confirmes ni niegues reservaciones de otros lugares. Si solo era consulta, contesta lo que pregunten con lo que regresó la búsqueda y despídete.\nEsta fue la segunda y última búsqueda. Si tampoco encontró nada, o dicen que no y no queda otra: no pidas más datos ni preguntes si el nombre está bien. Di en una frase que no la encuentras y que pueden revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar; despídete y cuelga con end_call.",
         "entry_behavior": "generate_immediately",
         "conversation_config": {
           "agent": {
@@ -274,7 +276,65 @@
         },
         "edge_order": [
           "e_pfa_cancel",
+          "e_pfa_change",
           "e_pfa_end"
+        ]
+      },
+      "place_do_change": {
+        "type": "tool",
+        "position": {
+          "x": 2240,
+          "y": -240
+        },
+        "tools": [
+          {
+            "tool_id": "tool:a4_change_reservation"
+          }
+        ],
+        "edge_order": [
+          "e_pdch_done",
+          "e_pdch_fail"
+        ]
+      },
+      "place_change_done": {
+        "type": "override_agent",
+        "label": "Place · change proposed",
+        "position": {
+          "x": 2560,
+          "y": -240
+        },
+        "additional_prompt": "El cambio quedó propuesto. Dilo en una frase, con lo que regresó la herramienta: Mesita le pide al comensal en la app el cambio (la nueva hora o personas); si acepta, queda así; si no acepta, la reservación sigue como estaba y Mesita les llama para avisarles. Mientras tanto la reservación sigue como estaba. Si no necesitan nada más, despídete y cuelga con end_call.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_pchd_end"
+        ]
+      },
+      "place_change_failed": {
+        "type": "override_agent",
+        "label": "Place · change not possible",
+        "position": {
+          "x": 2560,
+          "y": -80
+        },
+        "additional_prompt": "El cambio no se pudo proponer. Explica en una frase por qué, según el error de la herramienta: too_late = ya no da tiempo de preguntarle al comensal antes de la mesa; not_confirmed = la reservación aún no está confirmada (respondan cuando Mesita los llame); too_soon = la hora nueva ya pasó o es en menos de media hora; nothing_to_change = es igual a la que ya tiene. Ofrece una sola vez dejarla como está o cancelarla; para cancelar, pide un sí claro. No intentes el cambio de nuevo.",
+        "entry_behavior": "generate_immediately",
+        "conversation_config": {
+          "agent": {
+            "prompt": {
+              "tool_ids": []
+            }
+          }
+        },
+        "edge_order": [
+          "e_pchf_cancel",
+          "e_pchf_end"
         ]
       },
       "place_confirm_cancel": {
@@ -339,7 +399,7 @@
           "x": 960,
           "y": -160
         },
-        "additional_prompt": "Dejar de recibir reservaciones o cambiar el número al que llama Mesita se hace en Business › Reservations, en la app de Mesita para negocios. Mover la hora de una reservación no se hace por esta línea: pueden cancelarla aquí, o responder cuando Mesita los llame. Dilo una vez, despídete y cuelga con end_call.",
+        "additional_prompt": "Dejar de recibir reservaciones o cambiar el número al que llama Mesita se hace en Business › Reservations, en la app de Mesita para negocios. Dilo una vez, despídete y cuelga con end_call.",
         "entry_behavior": "generate_immediately",
         "conversation_config": {
           "agent": {
@@ -507,7 +567,7 @@
       "end_node": {
         "type": "end",
         "position": {
-          "x": 2560,
+          "x": 2880,
           "y": 0
         },
         "edge_order": []
@@ -575,7 +635,7 @@
         "target": "place_find",
         "forward_condition": {
           "type": "llm",
-          "condition": "Hablan de UNA reservación concreta — para cancelarla, revisarla o confirmarla — por el nombre al que está, el día, la hora, las personas o un código de 8 dígitos. Cancelar empieza aquí: primero se busca.",
+          "condition": "Hablan de UNA reservación concreta — para cancelarla, cambiarle la hora o las personas, revisarla o confirmarla — por el nombre al que está, el día, la hora, las personas o un código de 8 dígitos. Cancelar o cambiar empieza aquí: primero se busca.",
           "label": "find or cancel one"
         },
         "backward_condition": {
@@ -589,7 +649,7 @@
         "target": "place_redirect",
         "forward_condition": {
           "type": "llm",
-          "condition": "Piden otra cosa: dejar de recibir reservaciones, cambiar el número, mover una hora, u otros datos del lugar.",
+          "condition": "Piden otra cosa: dejar de recibir reservaciones, cambiar el número de teléfono, u otros datos del lugar.",
           "label": "redirect"
         }
       },
@@ -687,6 +747,15 @@
           "label": "search again"
         }
       },
+      "e_pfd_change": {
+        "source": "place_found",
+        "target": "place_do_change",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Ya leíste una reservación encontrada y, en un turno POSTERIOR a esa lectura, quien llama confirmó que es esa, quiere cambiarle la hora (o el día) y/o el número de personas, y ya dijo el nuevo valor (la nueva hora o cuántas personas). Si todavía falta el nuevo valor o no ha respondido a tu lectura, NO.",
+          "label": "change asked"
+        }
+      },
       "e_pfd_end": {
         "source": "place_found",
         "target": "end_node",
@@ -719,6 +788,15 @@
           "label": "failure"
         }
       },
+      "e_pfa_change": {
+        "source": "place_found_again",
+        "target": "place_do_change",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Ya leíste una reservación encontrada y, en un turno POSTERIOR a esa lectura, quien llama confirmó que es esa, quiere cambiarle la hora (o el día) y/o el número de personas, y ya dijo el nuevo valor (la nueva hora o cuántas personas). Si todavía falta el nuevo valor o no ha respondido a tu lectura, NO.",
+          "label": "change asked"
+        }
+      },
       "e_pfa_end": {
         "source": "place_found_again",
         "target": "end_node",
@@ -740,6 +818,51 @@
           "type": "result",
           "successful": false,
           "label": "failure"
+        }
+      },
+      "e_pdch_done": {
+        "source": "place_do_change",
+        "target": "place_change_done",
+        "forward_condition": {
+          "type": "result",
+          "successful": true,
+          "label": "success"
+        }
+      },
+      "e_pdch_fail": {
+        "source": "place_do_change",
+        "target": "place_change_failed",
+        "forward_condition": {
+          "type": "result",
+          "successful": false,
+          "label": "failure"
+        }
+      },
+      "e_pchd_end": {
+        "source": "place_change_done",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Resuelto y despedido.",
+          "label": "done"
+        }
+      },
+      "e_pchf_cancel": {
+        "source": "place_change_failed",
+        "target": "place_do_cancel",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "Ofreciste cancelarla y, en un turno POSTERIOR a esa oferta, quien llama respondió con un sí claro a cancelar esa reservación. Si todavía no responde, NO.",
+          "label": "cancel instead"
+        }
+      },
+      "e_pchf_end": {
+        "source": "place_change_failed",
+        "target": "end_node",
+        "forward_condition": {
+          "type": "llm",
+          "condition": "La dejan como está; resuelto y despedido.",
+          "label": "done"
         }
       },
       "e_pdc_done": {
@@ -872,7 +995,7 @@
     }
   },
   "knowledge": {
-    "name": "a3-kb-v11",
+    "name": "a3-kb-v12",
     "text": [
       "# Mesita — lo que sabes (es-MX)",
       "",
@@ -915,7 +1038,7 @@
       "## Tu papel: contestas la línea de Mesita",
       "- Te llaman comensales y restaurantes al mismo número. Sabes quién es por el número desde el que llama; no le pides datos para saberlo.",
       "- A un comensal: le lees sus reservaciones y cancelas una suya si lo pide; cambiar día, hora, personas o lugar se hace en la app de Mesita.",
-      "- A un restaurante: le lees sus reservaciones próximas, buscas una con lo que te digan (el nombre al que está, aunque se oiga mal, el día, la hora, las personas, o el código si lo dictan) y cancelas una suya si ya no puede recibirla; Mesita le avisa al comensal. Dejar de recibir reservaciones o cambiar el número al que llama Mesita se hace en Business › Reservations.",
+      "- A un restaurante: le lees sus reservaciones próximas, buscas una con lo que te digan (el nombre al que está, aunque se oiga mal, el día, la hora, las personas, o el código si lo dictan) y cancelas una suya si ya no puede recibirla; Mesita le avisa al comensal. Si el restaurante quiere cambiar la hora o el número de personas de una reservación confirmada, se lo propones al comensal: él acepta o no en la app; si no acepta, la reservación sigue como estaba y Mesita le avisa al restaurante. Dejar de recibir reservaciones o cambiar el número al que llama Mesita se hace en Business › Reservations.",
       "- Si el número no es de nadie en Mesita, solo puedes leer una reservación por su código de 8 dígitos.",
       "- Nunca das el teléfono de un comensal."
     ]

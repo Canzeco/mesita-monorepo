@@ -150,7 +150,13 @@ export type NoticeState =
   | "failed"
   | "skipped";
 
-export type NoticeKind = "place_cancel" | "guest_cancel";
+/** place_cancel: a1 releases the place's table · guest_cancel: a2 tells the
+ *  guest the place cancelled · change_declined: a1 tells the place the guest
+ *  kept the original table (MESITA-4073). */
+export type NoticeKind = "place_cancel" | "guest_cancel" | "change_declined";
+
+/** A change the place asked for on a3's line (MESITA-4073). */
+export type ChangeState = "none" | "proposed" | "accepted" | "declined" | "expired";
 
 export type ReminderState =
   | "idle"
@@ -249,6 +255,15 @@ export type ReservationDoc = {
   /** What the place set and a1 accepted for the guest: a table time limit, a
    *  tolerance rule (MESITA-3957). Shown to the guest. */
   confirmed_terms: string | null;
+  /** A place's proposed change of time and/or party size (MESITA-4073):
+   *  the table keeps its own until the guest accepts in the app. */
+  change_state: ChangeState;
+  change_reserved_at: string | null;
+  change_party_size: number | null;
+  change_note: string | null;
+  change_proposed_at: string | null;
+  change_expires_at: string | null;
+  change_answered_at: string | null;
 };
 
 export const TIME_WINDOW_VALUES = [0, 30, 60] as const;
@@ -320,6 +335,13 @@ export const RESERVATION_PATCH_KEYS = [
   "seating",
   "reported_time",
   "confirmed_terms",
+  "change_state",
+  "change_reserved_at",
+  "change_party_size",
+  "change_note",
+  "change_proposed_at",
+  "change_expires_at",
+  "change_answered_at",
 ] as const satisfies readonly (keyof Omit<ReservationDoc, "id" | "created_at">)[];
 
 // Compile-time exhaustiveness check the other direction — same discipline
@@ -391,7 +413,8 @@ const NOTICE_STATE_VALUES = new Set<string>([
   "failed",
   "skipped",
 ]);
-const NOTICE_KIND_VALUES = new Set<string>(["place_cancel", "guest_cancel"]);
+const NOTICE_KIND_VALUES = new Set<string>(["place_cancel", "guest_cancel", "change_declined"]);
+const CHANGE_STATE_VALUES = new Set<string>(["none", "proposed", "accepted", "declined", "expired"]);
 const REMINDER_STATE_VALUES = new Set<string>([
   "idle",
   "scheduled",
@@ -417,6 +440,7 @@ const CLOSED_SET_FIELDS: ReadonlyArray<
   ["consumer_notify", CONSUMER_NOTIFY_VALUES, false],
   ["reported_verdict", REPORTED_VERDICT_VALUES, true],
   ["seating", new Set<string>(SEATING_VALUES), false],
+  ["change_state", CHANGE_STATE_VALUES, false],
 ];
 const REFERENCE_CODE_RE = /^\d{8}$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -505,6 +529,10 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
       "modification_of",
       "reminder_at",
       "reported_time",
+      "change_reserved_at",
+      "change_proposed_at",
+      "change_expires_at",
+      "change_answered_at",
     ] as const
   ) {
     if (!(key in raw)) continue;
@@ -528,6 +556,13 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
     }
     patch.party_size = v;
   }
+  if ("change_party_size" in raw) {
+    const v = raw.change_party_size;
+    if (v !== null && (typeof v !== "number" || !Number.isInteger(v) || v < 1 || v > 10)) {
+      return { ok: false, error: "change_party_size must be a whole number from 1 to 10, or null" };
+    }
+    patch.change_party_size = v;
+  }
   if ("state" in raw) {
     const v = raw.state;
     if (typeof v !== "string" || !STATE_VALUES.has(v)) {
@@ -550,6 +585,7 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
       "guest_first_name",
       "guest_last_name",
       "confirmed_terms",
+      "change_note",
     ] as const
   ) {
     if (!(key in raw)) continue;

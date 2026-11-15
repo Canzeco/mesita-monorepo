@@ -711,6 +711,8 @@ verify_jwt = true
 verify_jwt = true
 [functions.eleven-a4-cancel-reservation]
 verify_jwt = true
+[functions.eleven-a4-change-reservation]
+verify_jwt = true
 [functions.eleven-a4-find-reservation]
 verify_jwt = true
 [functions.eleven-agent-get-reservation]

@@ -48,6 +48,8 @@ export type LegCallContext =
   | "modification"
   | "cancellation"
   | "offer_release"
+  /** a1 tells the place the guest kept the original table (MESITA-4073). */
+  | "change_declined"
   | "confirmation"
   | "counter_offer"
   | "reminder"

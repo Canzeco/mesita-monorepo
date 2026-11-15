@@ -4,8 +4,9 @@
 // party_size, reservation_date, reservation_time, special_requests (the
 // guest's notes), venue_notes (place notes: what earlier calls taught about
 // this place, MESITA-3955; may be empty), reference_code, run_id, call_context
-// (booking | modification | cancellation | offer_release),
-// modification_of_date/_time, venue_alternatives (offer_release only),
+// (booking | modification | cancellation | offer_release | change_declined),
+// modification_of_date/_time, venue_alternatives (offer_release: the
+// options; change_declined: the change the place asked for, MESITA-4073),
 // window_from/window_to (the guest's time window, MESITA-3957; empty = exact)
 // and seating ("adentro" · "afuera" · "en la barra"; empty = no preference).
 // `venue_*` and "cancelled_by_venue" are wire keys the engine sends; they
@@ -48,6 +49,7 @@ const BOOK = [
   `- "modification": el restaurante ya tiene una mesa a nombre de {{guest_name}} el {{modification_of_date}} a las {{modification_of_time}}. No pidas mesa nueva: pide moverla a {{party_size}} personas el {{reservation_date}} a las {{reservation_time}}. Si no pueden, pide que cancelen la anterior y toma la rama de no hay lugar.`,
   `- "cancellation": no pides mesa. Avisa que {{guest_name}} cancela su reservación del {{reservation_date}} a las {{reservation_time}} (si piden número, el código de Mesita es {{reference_code}}). A un buzón déjalo grabado igual. Ofrece una disculpa breve de parte del comensal, agradece, despídete, cuelga con end_call y toma la rama de aviso de cancelación.`,
   `- "offer_release": no pides mesa. Antes el restaurante ofreció opciones para {{guest_name}} ({{venue_alternatives}}) y le pediste que las apartara; el comensal no tomó ninguna. Avisa que ya pueden liberarlas (si piden número, el código de Mesita es {{reference_code}}). A un buzón déjalo grabado igual. Agradece, despídete, cuelga con end_call y toma la rama de aviso de cancelación.`,
+  `- "change_declined": no pides mesa. Antes el restaurante le pidió a Mesita cambiar la reservación de {{guest_name}} a {{venue_alternatives}}; el comensal no aceptó el cambio (o no contestó a tiempo). Avisa que la reservación sigue como estaba: {{party_size}} personas el {{reservation_date}} a las {{reservation_time}} (si piden número, el código de Mesita es {{reference_code}}). Si dicen que así no pueden recibirla, di que pueden cancelarla llamando a Mesita a este mismo número y Mesita le avisa al comensal; tú no la cancelas. A un buzón déjalo grabado igual. Agradece, despídete, cuelga con end_call y toma la rama de aviso de cancelación.`,
   `Si piden un número de confirmación, el código de Mesita es {{reference_code}}. Si piden un teléfono de contacto, di que Mesita es el contacto y que pueden llamar de vuelta a este mismo número; no des el del comensal.`,
   `Las notas del comensal se dicen una sola vez, al pedir la mesa.`,
   `Lo que Mesita ya sabe de este restaurante por llamadas anteriores: «{{venue_notes}}». Si no está vacío, úsalo: no vuelvas a preguntar lo que ahí ya dice (por ejemplo, si tienen terraza) y sigue lo que indique para llegar con quien reserva. Si el restaurante dice hoy algo distinto, vale lo de hoy.`,
@@ -140,7 +142,7 @@ export const A1: FleetAgent = {
         e_book_cancel_done: edge(
           "book",
           "end_node",
-          llm("El contexto era cancellation u offer_release: ya diste el aviso, te despediste y colgaste.", "cancel notice done"),
+          llm("El contexto era cancellation, offer_release o change_declined: ya diste el aviso, te despediste y colgaste.", "cancel notice done"),
         ),
         e_book_confirmed: edge("book", "report_confirmed", llm("El restaurante confirmó la mesa tal como se pidió, o a una hora dentro del rango que aceptó el comensal.", "confirmed"), RESULT_FAIL),
         e_book_counter: edge(

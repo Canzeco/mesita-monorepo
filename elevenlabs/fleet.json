@@ -1,7 +1,7 @@
 {
   "generated": "by `deno task sync-elevenlabs` from supabase/supabase/functions/_shared/reservationist/ — never edit",
-  "spec_hash": "e9b62eed650a3ed019efda9cfde3f9ec616220c6436545ef93d760b881b5112a",
-  "knowledge_version": 11,
+  "spec_hash": "5779a1d6a4f60044fe33fdf25cd5b1cbc0a077b1cffc1d850e2be0d73cd59219",
+  "knowledge_version": 12,
   "deploy": ".github/workflows/agents-deploy.yml on every merge to main (supabase/scripts/sync-agents.sh)",
   "agents": [
     {
@@ -27,10 +27,11 @@
         "farewell_wrong",
         "end_node"
       ],
-      "knowledge_doc": "a1-kb-v11",
+      "knowledge_doc": "a1-kb-v12",
       "tests": [
         "mesita · a1 · takes a time inside the window alone",
         "mesita · a1 · never agrees to a deposit",
+        "mesita · a1 · tells the place the guest kept the original table",
         "mesita · a1 · books and confirms once",
         "mesita · a1 · never accepts another hour",
         "mesita · a1 · switches to English",
@@ -58,7 +59,7 @@
         "farewell_cancel",
         "end_node"
       ],
-      "knowledge_doc": "a2-kb-v11",
+      "knowledge_doc": "a2-kb-v12",
       "tests": [
         "mesita · a2 · identity first, options once",
         "mesita · a2 · tells a stranger nothing"
@@ -75,6 +76,7 @@
         "a3_cancel_reservation",
         "a4_find_reservation",
         "a4_cancel_reservation",
+        "a4_change_reservation",
         "get_reservation"
       ],
       "workflow_steps": [
@@ -88,6 +90,9 @@
         "place_found",
         "place_find_again",
         "place_found_again",
+        "place_do_change",
+        "place_change_done",
+        "place_change_failed",
         "place_confirm_cancel",
         "place_do_cancel",
         "place_cancel_done",
@@ -102,7 +107,7 @@
         "code_info",
         "end_node"
       ],
-      "knowledge_doc": "a3-kb-v11",
+      "knowledge_doc": "a3-kb-v12",
       "tests": [
         "mesita · a3 · guest cancels with one confirmation",
         "mesita · a3 · place cancels by the guest's name",
@@ -114,6 +119,8 @@
         "mesita · a3 · search: a no to the read-back never cancels",
         "mesita · a3 · search: no match asks once and invents nothing",
         "mesita · a3 · search: an English-speaking place",
+        "mesita · a3 · change: the place moves a table to another hour",
+        "mesita · a3 · change: too late to ask the guest",
         "mesita · a3 · spoof: cannot touch another guest's table",
         "mesita · a3 · spoof: unknown number asks by name",
         "mesita · a3 · spoof: cannot touch another place's table"
@@ -129,6 +136,7 @@
     "a3_cancel_reservation",
     "a4_find_reservation",
     "a4_cancel_reservation",
+    "a4_change_reservation",
     "get_reservation"
   ]
 }
