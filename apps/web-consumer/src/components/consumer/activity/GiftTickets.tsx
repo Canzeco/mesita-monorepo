@@ -159,7 +159,7 @@ export function GiftTickets({ gifts }: { gifts: GiftTicket[] }) {
       <EmptyState
         icon={Gift}
         title="No gifts yet"
-        action={{ label: "Send Credits", href: CONSUMER_ROUTES.mePages.gift }}
+        action={{ label: "Send Gift", href: CONSUMER_ROUTES.mePages.gift }}
       />
     );
   }
