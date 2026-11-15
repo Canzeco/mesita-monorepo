@@ -22,8 +22,10 @@ import { pendingTicket } from "./GuestPayScreen";
 // top of the app, above every header, on every screen that shows the bar,
 // /pay included (MESITA-4069, Pato: "on top of the header, at the top of the
 // app, like the yellow warning"; it sat above the tab bar under MESITA-4051),
-// and opens it. The bill's own
-// screens under /pay hide it.
+// and opens it. Nothing under /pay shows it: the bill's own screens, and
+// /pay itself, which draws the bill as a panel in the page (MESITA-4086,
+// Pato: "if I am in the pay page, then actually show the payment ticket
+// not in the header but in the center").
 //
 // Two kinds: one being filled in (Bill · Tip · Method · Pay), kept on this
 // phone (GuestPayScreen's draft, 30 minutes), and a bill already sent and
@@ -52,10 +54,8 @@ export function usePendingTicket(): {
 
 export function PendingTicketBanner() {
   const pathname = usePathname() ?? "/";
-  // Pay's list shows it; the screens of the bill itself don't.
-  const onPay =
-    isAtRoute(pathname, CONSUMER_ROUTES.pay) &&
-    pathname !== CONSUMER_ROUTES.pay;
+  // /pay draws it in the page (OpenBillPanel); the bill's screens are it.
+  const onPay = isAtRoute(pathname, CONSUMER_ROUTES.pay);
   const getSupabase = useLazyBrowserSupabase();
   // Read on every render, so a route change sees what Pay just wrote.
   const local = useSyncExternalStore(subscribe, localSnapshot, () => "");
