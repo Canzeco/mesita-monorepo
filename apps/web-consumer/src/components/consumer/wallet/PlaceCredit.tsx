@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, CreditCard, Gift, QrCode } from "lucide-react";
+import { ChevronRight, CreditCard, Gift, HandCoins, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { SizedImg } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -14,7 +14,7 @@ import {
   type SentLink,
   type WaitingStory,
 } from "@/lib/api/wallet";
-import { creditEntryPath, payPlacePath, payReceiptPath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, creditEntryPath, payPlacePath, payReceiptPath } from "@/lib/consumer-route-contract";
 import { placeHref } from "@/lib/place-route";
 import { countdownLabel, nextAvailableMs, shouldReread } from "@/lib/wallet-countdown";
 import { type EntryGroup, groupKeys, splitEntries } from "@/lib/wallet-entries";
@@ -23,7 +23,7 @@ import { type Method, MethodSheet } from "./MethodSheet";
 import { SendCreditSheet, SentLinks } from "./SendCredit";
 import { Panel } from "@/components/shared/Panel";
 import { WalletPanelList } from "./WalletLists";
-import { ACTION, ACTION_FILLED, PRIMARY, SECONDARY } from "./wallet-buttons";
+import { DOOR_BUY, DOOR_GIFT, DOOR_GLYPH, DOOR_PINK, DOOR_ROW, PRIMARY, SECONDARY } from "./wallet-buttons";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
 import { toast } from "@/lib/toast";
 import type { CreditRow } from "./use-wallet";
@@ -39,11 +39,10 @@ import type { CreditRow } from "./use-wallet";
 //   [mini House Card]     half the column, centred (MESITA-3802): the
 //                         place's photo and name, the server's amount (a
 //                         muted $0 when nothing is spendable yet), "House Card"
-//   [Go to Pay][Buy Credits][Send Gift]   one row IN the page, 64px, an
-//                         icon over its label (labels MESITA-3902, Pato: "ADD
-//                         CREDITS SOUNDS LIKE SHIT"). One is filled pink: Go
-//                         to Pay, or Buy Credits on an empty card. Gift follows giftAction (hidden,
-//                         dimmed with a reason, or open)
+//   [Buy Credits][Send Gift][Claim Gift][Go to Pay]   Wallet's four doors
+//                         (MESITA-4095), 52px, icon over label; Go to Pay
+//                         sits where Wallet has Share Mesita. Gift follows
+//                         giftAction (hidden, dimmed with a reason, or open)
 //   (held-credit line)    only while an open payment holds credit
 //   (Confirming a payment…)  only while the server is still confirming one
 //   Transactions          ONE list: Story vouchers waiting for staff ("Not
@@ -284,12 +283,7 @@ export function PlaceCredit({
   // before the purchase it refunds lands).
   const muted = card.available_cents <= 0;
   const amount = money(Math.max(0, card.available_cents), card.currency);
-  // AN EMPTY CARD, one boolean: nothing spendable, nothing pending, no entry
-  // and no Story voucher waiting. It moves the pink to Buy Credits and shows
-  // "No transactions yet"; a card with a Story voucher waiting is never
-  // removable from here.
-  const empty =
-    card.available_cents <= 0 && card.pending_cents <= 0 && (entries?.length ?? 0) === 0 && stories.length === 0;
+  // A card with a Story voucher waiting is never removable from here.
   const removable = onRemove !== undefined && stories.length === 0 && canRemoveHouseCard(balance);
   const pendingKeys = groupKeys(pending);
   const shownHistory = allHistory ? history : history.slice(0, HISTORY_FIRST);
@@ -335,37 +329,34 @@ export function PlaceCredit({
         </p>
       ) : (
         /* THE ACTIONS, IN THE PAGE (MESITA-3868): one row under the card that
-           scrolls with it; the bar's Pay tab stays one tap away further down.
-           One filled button: Go to Pay, or Buy Credits on an empty card. */
-        <div className="mt-4 flex gap-2" data-house-card-actions>
-          <PushLink
-            href={payPlacePath(row.placeId)}
-            className={empty ? ACTION : ACTION_FILLED}
-            data-house-card-pay
-          >
-            <QrCode className="h-5 w-5" aria-hidden />
-            Go to Pay
-          </PushLink>
-          <PushLink
-            href={`${href}?rewards=prepayment&from=wallet`}
-            className={empty ? ACTION_FILLED : ACTION}
-            data-house-card-fund
-          >
-            <CreditCard className="h-5 w-5" aria-hidden />
+           scrolls with it. Wallet's four doors since MESITA-4095 (Pato: "the
+           same 4 buttons, the same sizes, but instead of saying share mesita,
+           mention go to pay"): Buy · Send Gift · Claim Gift · Go to Pay. */
+        <div className={`mt-4 ${DOOR_ROW}`} data-house-card-actions>
+          <PushLink href={`${href}?rewards=prepayment&from=wallet`} className={DOOR_BUY} data-house-card-fund>
+            <CreditCard className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
             Buy Credits
           </PushLink>
           {gift ? (
             <button
               type="button"
-              className={cn(ACTION, gift !== "open" && "opacity-50")}
+              className={cn(DOOR_GIFT, gift !== "open" && "opacity-50")}
               onClick={() => (gift === "open" ? setSending(true) : toast(gift.blocked))}
               aria-label={gift === "open" ? "Send Gift" : `Send Gift: ${gift.blocked}`}
               data-send-credit-open
             >
-              <Gift className="h-5 w-5" aria-hidden />
+              <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
               Send Gift
             </button>
           ) : null}
+          <PushLink href={CONSUMER_ROUTES.walletRedeem} className={DOOR_GIFT} data-house-card-claim>
+            <HandCoins className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+            Claim Gift
+          </PushLink>
+          <PushLink href={payPlacePath(row.placeId)} className={DOOR_PINK} data-house-card-pay>
+            <QrCode className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+            Go to Pay
+          </PushLink>
         </div>
       )}
       {held ? (
