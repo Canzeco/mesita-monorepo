@@ -233,7 +233,7 @@ export function WalletSection({
 
       <WalletPanelList title="Money Payment Methods">
         {cards.map((c) => <SavedCardRow key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
-        <CashRow />
+        <CashRow onOpen={() => setMethod({ kind: "cash" })} />
         {/* Add is the list's last row (MESITA-3744), and reads "Add" in both
             lists (Pato, MESITA-3740: "add and add, keep the symmetry"). It
             leaves once three cards are saved (MESITA-3749); Credits Cards

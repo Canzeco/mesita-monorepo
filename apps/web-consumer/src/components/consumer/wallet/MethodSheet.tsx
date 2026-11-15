@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { Banknote, ChevronLeft, Coins, QrCode } from "lucide-react";
+import { PANEL_CLASS, PanelHeading } from "@/components/shared/Panel";
 import { QRCodeSVG } from "qrcode.react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
@@ -16,7 +17,8 @@ import { SECONDARY } from "./wallet-buttons";
 
 export type Method =
   | { kind: "card"; card: SavedCard }
-  | { kind: "story"; story: WaitingStory };
+  | { kind: "story"; story: WaitingStory }
+  | { kind: "cash" };
 
 export function MethodSheet({
   method,
@@ -28,7 +30,9 @@ export function MethodSheet({
   /** Remove a saved card (MESITA-3523); resolves once the server answered. */
   onRemoveCard?: (card: SavedCard) => Promise<void>;
 }) {
-  const title = method?.kind === "story"
+  const title = method?.kind === "cash"
+      ? "Cash"
+      : method?.kind === "story"
       ? "Story voucher"
       : method?.kind === "card"
         ? `${brandLabel(method.card.brand)} •••• ${method.card.last4}`
@@ -49,6 +53,7 @@ export function MethodSheet({
       <div className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-8">
         {method?.kind === "card" ? <CardBody card={method.card} onRemove={onRemoveCard} /> : null}
         {method?.kind === "story" ? <StoryBody story={method.story} /> : null}
+        {method?.kind === "cash" ? <CashBody /> : null}
       </div>
     </LocalSheet>
   );
@@ -99,6 +104,73 @@ function StoryBody({ story }: { story: WaitingStory }) {
         the place, tag it, and show the story and this QR to the staff.
       </p>
       <QRCodeSVG value={story.url} size={224} marginSize={0} aria-label="Story voucher activation code" />
+    </div>
+  );
+}
+
+/** Cash (MESITA-4116, Pato: "explain that you pay with cash or terminal ...
+ *  outside of the Mesita app ... it generally gives less credits back than
+ *  if you pay with Mesita App ... mesita pay is 5% and outside (cash) is
+ *  3%"). Nothing to remove: Cash is always there. The rates are the most a
+ *  place gives; each place turns either one on or off. */
+function CashBody() {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex aspect-[1.586/1] w-full flex-col justify-between rounded-2xl bg-green-400 p-5 text-neutral-950">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-950 text-2xl font-bold text-green-400" aria-hidden>
+          $
+        </span>
+        <p className="text-xl font-semibold">Cash</p>
+      </div>
+      <p className="text-base leading-relaxed">
+        Pay at the place with cash or its card terminal, outside the Mesita app.
+      </p>
+      <section className={cn(PANEL_CLASS, "divide-border flex flex-col divide-y")} aria-label="Credits back">
+        <div className="flex items-center gap-2 px-4 pt-4 pb-3">
+          <Coins className="h-5 w-5" aria-hidden />
+          <PanelHeading>Credits back</PanelHeading>
+        </div>
+        <CashbackLine icon={<QrCode className="h-5 w-5" />} title="Mesita Pay" line="Pay in the app" rate="5%" best />
+        <CashbackLine icon={<Banknote className="h-5 w-5" />} title="Cash or terminal" line="Pay outside the app" rate="3%" />
+      </section>
+      <p className="text-muted-foreground text-sm leading-relaxed">
+        Paying in the app gives you more back. Each place sets its own: Mesita Pay 5% or off, cash 3% or off. Its
+        page shows what it gives.
+      </p>
+    </div>
+  );
+}
+
+function CashbackLine({
+  icon,
+  title,
+  line,
+  rate,
+  best = false,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  line: string;
+  rate: string;
+  best?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <span className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden>
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-semibold">{title}</span>
+        <span className="text-muted-foreground block text-sm">{line}</span>
+      </span>
+      <span
+        className={cn(
+          "shrink-0 rounded-full px-3 py-1 text-base font-bold tabular-nums",
+          best ? "bg-green-400 text-neutral-950" : "bg-muted text-foreground",
+        )}
+      >
+        {rate} back
+      </span>
     </div>
   );
 }
