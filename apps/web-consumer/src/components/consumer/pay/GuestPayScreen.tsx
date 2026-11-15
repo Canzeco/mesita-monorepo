@@ -45,7 +45,7 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-com
 // resolve it before anything"): the draft lives in localStorage with one
 // pending pointer once an amount is typed. While it's pending, /pay and
 // every other place's Pay open it where it was left; the X (or the place
-// name) asks "Cancel this ticket?" and clears it. A bill already open on the
+// name) asks "Cancel this bill?" and clears it. A bill already open on the
 // server comes first. Drafts still expire 30 minutes after their last change. Every rule and peso is the
 // server's; this screen proposes.
 
@@ -64,6 +64,10 @@ type Draft = {
   useCredit: boolean;
   method: PayWith | null;
   cardId: string | null;
+  /** The bill this draft became (MESITA-3997): while it is set, every way
+   *  back in (the place's Pay, a reload, the X and back) opens that bill's
+   *  QR, never the Bill step again. Cancel bill and Start again clear it. */
+  sentTabId?: string | null;
   savedAt: number;
 };
 
@@ -139,7 +143,7 @@ export function clearGuestDraft(placeId: string) {
 /** "Start again" lands on the bill, everything typed, keypad down. */
 export function reopenGuestDraft(placeId: string) {
   const d = readDraft(placeId);
-  if (d) writeDraft(placeId, { ...d, stage: "bill", typing: false });
+  if (d) writeDraft(placeId, { ...d, stage: "bill", typing: false, sentTabId: null });
 }
 
 export function GuestPayScreen({
@@ -180,6 +184,12 @@ export function GuestPayScreen({
     }
   }, [placeName]);
   const [draft] = useState(() => readDraft(placeId));
+  // A bill already sent from this draft: straight to its QR (MESITA-3997).
+  const sentTabId = draft?.sentTabId ?? null;
+  useEffect(() => {
+    if (sentTabId) onPaid(sentTabId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sentTabId]);
   const [stage, setStage] = useState<Stage>(draft?.stage ?? "bill");
   const [typing, setTyping] = useState(draft?.typing ?? true);
   const [amount, setAmount] = useState(draft?.amount ?? "");
@@ -204,7 +214,7 @@ export function GuestPayScreen({
 
   // ONE TICKET AT A TIME (MESITA-3879, MESITA-3908): another place's ticket
   // in progress, or a bill open on the server at another place, blocks this
-  // one with "Finish this ticket first"; nothing redirects. A bill open here
+  // one with "Finish this bill first"; nothing redirects. A bill open here
   // opens.
   const [blocked, setBlocked] = useState<Blocked | null>(() => {
     const other = pendingTicket();
@@ -309,9 +319,10 @@ export function GuestPayScreen({
 
   // Every change is saved, so the X and "Add a card" come back to it.
   useEffect(() => {
+    if (sentTabId) return;
     requestId.current = null;
     writeDraft(placeId, { stage, typing, amount, tip, other, useCredit, method, cardId });
-  }, [placeId, stage, typing, amount, tip, other, useCredit, method, cardId]);
+  }, [sentTabId, placeId, stage, typing, amount, tip, other, useCredit, method, cardId]);
 
   useEffect(() => {
     root.current?.focus({ preventScroll: true });
@@ -378,7 +389,7 @@ export function GuestPayScreen({
       });
       rememberGuestTab(r.tab_id, r.qr_url);
       // Start again comes back to the bill with everything typed.
-      writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, cardId });
+      writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, cardId, sentTabId: r.tab_id });
       if (r.card?.status === "requires_action") await runBankCheck(r.card);
       onPaid(r.tab_id);
     } catch (e) {
@@ -398,13 +409,15 @@ export function GuestPayScreen({
     }
   }
 
+  if (sentTabId) return <GuestPayLoading />;
+
   if (blocked) {
     return (
       <div className="flex min-h-0 flex-1 flex-col" data-guest-pay="blocked">
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
           <ReceiptText className="h-12 w-12 text-amber-700" aria-hidden />
-          <h2 className="font-display mt-4 text-xl font-semibold">Finish this ticket first</h2>
-          <p className="mt-2 text-base">You have a ticket open{blocked.name ? ` at ${blocked.name}` : ""}.</p>
+          <h2 className="font-display mt-4 text-xl font-semibold">Finish this bill first</h2>
+          <p className="mt-2 text-base">You have a bill open{blocked.name ? ` at ${blocked.name}` : ""}.</p>
           <p className="text-muted-foreground mt-1 text-sm">Pay it or cancel it before starting another.</p>
         </div>
         <Button
@@ -412,7 +425,7 @@ export function GuestPayScreen({
           className="min-h-12 w-full shrink-0 text-base font-semibold"
           onClick={() => (blocked.kind === "bill" ? onPaid(blocked.tabId) : onOpenPlace(blocked.placeId))}
         >
-          Go to ticket
+          Go to bill
         </Button>
         {blocked.kind === "draft" ? (
           <button
@@ -423,7 +436,7 @@ export function GuestPayScreen({
               setBlocked(null);
             }}
           >
-            Cancel that ticket
+            Cancel that bill
           </button>
         ) : null}
       </div>
@@ -460,9 +473,9 @@ export function GuestPayScreen({
   const frame = (body: React.ReactNode, data: string) => (
     <div ref={root} tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none" onKeyDown={onKeyDown} data-guest-pay={data}>
       {body}
-      <LocalDialog open={cancelAsk} onClose={() => setCancelAsk(false)} ariaLabel="Cancel this ticket">
+      <LocalDialog open={cancelAsk} onClose={() => setCancelAsk(false)} ariaLabel="Cancel this bill">
         <div className="p-5" data-guest-cancel-ticket>
-          <p className="text-base font-semibold">Cancel this ticket?</p>
+          <p className="text-base font-semibold">Cancel this bill?</p>
           <p className="text-muted-foreground mt-1 text-sm">What you typed is cleared. Nothing was charged.</p>
           <div className="mt-4 flex gap-2">
             <Button
@@ -474,7 +487,7 @@ export function GuestPayScreen({
                 onChoosePlace();
               }}
             >
-              Cancel ticket
+              Cancel bill
             </Button>
             <button type="button" className={cn(QUIET_BUTTON_CLASS, "flex-1")} onClick={() => setCancelAsk(false)}>
               Keep it
@@ -923,14 +936,13 @@ function MethodTile({
 }
 
 /** The bill in bones while the place loads (also the pay pages' loading). */
+/** Every Pay loading state (MESITA-3997, Pato: "the loading should not look
+ *  like that"): the screen's own header stays, and one small spinner sits in
+ *  the middle. No grey bones. */
 export function GuestPayLoading() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col" data-guest-pay="loading" aria-busy>
-      <Skeleton className="h-36 w-full rounded-2xl" />
-      <Skeleton className="mt-5 h-12 w-1/2 self-center" />
-      <div className="min-h-0 flex-1" />
-      <Skeleton className="h-60 w-full rounded-2xl" />
-      <Skeleton className="mt-3 h-12 w-full rounded-2xl" />
+    <div className="flex min-h-0 flex-1 items-center justify-center" data-guest-pay="loading" aria-busy>
+      <Spinner size="md" label="Loading your bill" />
     </div>
   );
 }

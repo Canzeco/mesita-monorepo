@@ -2,7 +2,9 @@
 
 import { SizedImg } from "@mesita/place-profile";
 import { ChevronLeft, MapPin, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { PayPlace } from "@/lib/api/wallet";
+import { goBack } from "@/lib/navigate";
 import { cn } from "@/lib/utils";
 
 // THE GUEST-LEAD PAY FLOW'S SHARED PIECES (MESITA-3861, Pato's "14. Payments
@@ -53,6 +55,13 @@ export function CloseX({ onClick, label = "Cancel", light = false }: { onClick: 
   );
 }
 
+/** The X while a bill loads (MESITA-3997): the same X the loaded steps
+ *  show, so the header never swaps a boxed Back for it. It just leaves. */
+export function PayLeaveX() {
+  const router = useRouter();
+  return <CloseX onClick={() => goBack(router)} label="Close" />;
+}
+
 /** OPEN: the place the guest is at, large across the top: its photo, its
  *  name, a MapPin and the distance. Tapping the name opens the search. Off
  *  greys the photo and says so. */
@@ -88,7 +97,7 @@ export function PlaceHero({
           className="absolute top-2 right-2 flex h-11 items-center rounded-full bg-black/40 px-4 text-sm font-semibold text-white hover:bg-black/55"
           data-pay-cancel-ticket
         >
-          Cancel ticket
+          Cancel bill
         </button>
       ) : null}
       <button
@@ -123,7 +132,7 @@ export function PlaceBar({ place, onCancel }: { place: PayPlace; onCancel?: () =
           className={cn("hover:bg-muted -mr-2 flex h-11 shrink-0 items-center rounded-full px-3 text-sm font-semibold", BAD)}
           data-pay-cancel-ticket
         >
-          Cancel ticket
+          Cancel bill
         </button>
       ) : null}
     </div>

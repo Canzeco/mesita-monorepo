@@ -16,6 +16,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useUnseenNotificationCount } from "@/components/consumer/use-unseen-notifications";
 import {
   isOpenVisit,
+  isTicketVisit,
   useReservations,
   useVisits,
 } from "@/components/consumer/activity/MeLists";
@@ -113,7 +114,8 @@ export function ProfileClient() {
       r.alternatives.length > 0 &&
       Date.parse(r.reserved_at) >= reservations.nowMs,
   ).length;
-  const billsOpen = (visits.data?.visits ?? []).filter(isOpenVisit).length;
+  // Only a bill Tickets shows (MESITA-3997): the guest's own lives on Pay.
+  const billsOpen = (visits.data?.visits ?? []).filter((v) => isOpenVisit(v) && isTicketVisit(v)).length;
   const noLastName = !!profile && !profile.last_name?.trim();
   const states: Record<string, TileState> = {
     [CONSUMER_ROUTES.mePages.notifications]: {

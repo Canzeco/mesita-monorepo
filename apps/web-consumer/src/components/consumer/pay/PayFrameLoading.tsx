@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/shared";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { GuestPayLoading } from "./GuestPayScreen";
 import { PayHeader } from "./PayHeader";
+import { PayLeaveX } from "./pay-flow";
 import { WalletShareGift } from "@/components/consumer/wallet/WalletShareGift";
 import { TicketsShortcut } from "./TicketsShortcut";
 import { WalletBodySkeleton } from "../wallet/WalletLists";
@@ -9,7 +10,7 @@ import { WalletBodySkeleton } from "../wallet/WalletLists";
 /** A Pay screen's frame while it loads: the title in place, the body in
  *  bones (Pato, MESITA-2701: "the placeholders must be similar to the page
  *  you are loading"). Every Pay address draws it (MESITA-3614). */
-export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | "proof" }) {
+export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | "bill" | "proof" }) {
   if (body === "list") {
     // /pay: the band (title and search bar, MESITA-3886) and the places.
     return (
@@ -33,9 +34,10 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
     );
   }
   // A bill or a receipt: the pushed page's own frame (Screen, MESITA-3647),
-  // white and in the step's own shape (MESITA-3739), so nothing jumps.
+  // white, its header as itself and one spinner (MESITA-3997). A bill wears
+  // the steps' X; a receipt its Back.
   return (
-    <Screen title="Pay" flush paper>
+    <Screen title="Pay" flush paper lead={body === "bill" ? <PayLeaveX /> : undefined}>
       <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <GuestPayLoading />
       </div>
