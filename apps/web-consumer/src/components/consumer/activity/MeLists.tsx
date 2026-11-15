@@ -576,9 +576,10 @@ function TicketList({
 
 /** A list page's subpages (MESITA-3889/3893): Home's Places | Social strip,
  *  equal tabs edge to edge under the header, white with a hairline, the
- *  chosen one bold ink over a short 32px ink line, Home's since MESITA-4039
- *  (MESITA-4040; a full-width blue-600 bar before, Pato: "blue subpages
- *  navbar"). `on` null draws no line (the loading frame). */
+ *  chosen one bold ink over a 3px ink line as wide as its word, Home's since
+ *  MESITA-4046 (MESITA-4047; a short 32px line in MESITA-4040, a full-width
+ *  blue-600 bar before, Pato: "blue subpages navbar"). `on` null draws no
+ *  line (the loading frame). */
 function SubpageTabs<K extends string>({
   label,
   tabs,
@@ -606,28 +607,30 @@ function SubpageTabs<K extends string>({
             onClick={onPick ? () => onPick(t.kind) : undefined}
             disabled={!onPick}
             className={cn(
-              "relative flex flex-1 items-center justify-center gap-1.5 px-1 py-3 text-sm whitespace-nowrap transition",
-              chosen
-                ? "text-foreground font-semibold"
-                : "text-muted-foreground",
+              // Home's strip, size for size (MESITA-4047 after MESITA-4046):
+              // 16px, the chosen word bold ink, the rest regular grey.
+              "flex flex-1 justify-center px-1 text-base whitespace-nowrap transition",
+              chosen ? "text-foreground font-bold" : "text-muted-foreground",
             )}
           >
-            {chosen ? (
-              <span
-                aria-hidden
-                // Home's short ink line, never blue (MESITA-4040, after
-                // MESITA-4039).
-                className="bg-foreground absolute bottom-0 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full"
-              />
-            ) : null}
-            {t.icon ? (
-              <t.icon
-                className="h-4 w-4 shrink-0"
-                strokeWidth={chosen ? 2.25 : 2}
-                aria-hidden
-              />
-            ) : null}
-            {t.label}
+            <span className="relative flex items-center gap-1.5 py-3">
+              {t.icon ? (
+                <t.icon
+                  className="h-[18px] w-[18px] shrink-0"
+                  strokeWidth={chosen ? 2.5 : 2}
+                  aria-hidden
+                />
+              ) : null}
+              {t.label}
+              {chosen ? (
+                <span
+                  aria-hidden
+                  // Home's ink line: 3px, as wide as the icon and word, on
+                  // the strip's bottom hairline. Never blue.
+                  className="bg-foreground absolute inset-x-0 bottom-0 h-[3px] rounded-full"
+                />
+              ) : null}
+            </span>
           </button>
         );
       })}
