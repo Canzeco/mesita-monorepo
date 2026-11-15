@@ -38,6 +38,9 @@ const buttonVariants = cva(
         // Add a variant here (never overload this one) if a future primary
         // action needs a different fill.
         primary: "bg-pink-gradient",
+        // The red "throw this away" action beside a primary (MESITA-4051:
+        // the pay flow's Cancel bill).
+        danger: "bg-red-600 hover:bg-red-700",
       },
       size: {
         // Standalone hero CTA — 404, empty states: content-width pill.
