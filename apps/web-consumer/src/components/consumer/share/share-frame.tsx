@@ -1,13 +1,12 @@
 import { ArrowUpRight } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Screen } from "@/components/consumer/nav/Screen";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { IconChip } from "@/components/consumer/me/settings-rows";
 import {
   CHANNEL_MARKS,
   type ShareChannel,
 } from "@/components/consumer/share/channel-icons";
-import { APP_SHARE_TEXT } from "@/lib/share-app";
 import { cn } from "@/lib/utils";
 
 // /SHARE (Pato, 2026-11-14, MESITA-3867: "design the /share page … keep it
@@ -102,7 +101,7 @@ export const SHARE_ROWS: readonly ShareRowSpec[] = [
  *  where there is hover (Tailwind's `hover:`), lighter than the chip. */
 export function shareRowClass(spec: ShareRowSpec): string {
   return cn(
-    "border-border/60 flex min-h-14 w-full items-center gap-3 border-t px-4 py-2.5 text-left transition first:border-t-0",
+    "border-border/60 flex min-h-14 w-full items-center gap-3 border-t px-5 py-2.5 text-left transition first:border-t-0",
     "hover:bg-muted/50 active:bg-muted/50 focus-visible:ring-foreground/25 outline-none focus-visible:ring-2 focus-visible:ring-inset",
     spec.touchOnly && "hidden pointer-coarse:flex",
   );
@@ -131,8 +130,8 @@ export function ShareRowBody({ spec }: { spec: ShareRowSpec }) {
   );
 }
 
-/** The page: the pushed page's header with Back, the line, then the one
- *  card of rows. `children` follow (the fallback's status). */
+/** The page: the pushed page's header with Back, then the channel rows.
+ *  `children` follow (the fallback's status). */
 export function ShareFrame({
   rows,
   children,
@@ -141,14 +140,14 @@ export function ShareFrame({
   children?: ReactNode;
 }) {
   return (
-    <Screen title="Share Mesita" flush>
-      <div className="flex flex-col px-4 pt-4 pb-8" data-share-page>
-        <p className="text-muted-foreground type-body mb-4">{APP_SHARE_TEXT}</p>
-        <div className="border-border bg-card overflow-hidden rounded-2xl border">
-          {rows}
-        </div>
+    // THE ME STANDARD (MESITA-4019, Pato: "i say all the me subpages
+    // standardized"; MESITA-4000): white, no opening line, the channel rows
+    // full width split by hairlines, no rounded box.
+    <MeScreen title="Share Mesita" flush>
+      <div className="flex flex-col pt-2 pb-8" data-share-page>
+        {rows}
         {children}
       </div>
-    </Screen>
+    </MeScreen>
   );
 }

@@ -26,9 +26,6 @@ export const SHARE_MESSAGE = "Stop asking me where to eat. Use this. 🙄";
  *  true. */
 export const SHARE_BODY = `${SHARE_MESSAGE} ${APP_SHARE_URL}`;
 
-/** The page's one line under its title. Never sent. */
-export const APP_SHARE_TEXT = "Send Mesita to a friend.";
-
 /** The channels that can be prefilled from the web with the message and
  *  link. */
 export const SHARE_LINKS = (() => {
