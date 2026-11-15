@@ -44,8 +44,9 @@
 // drawn at all (MESITA-2487).
 
 import { useState, type ReactNode } from "react";
-import Link from "next/link";
-import { SlidersHorizontal, Sparkles } from "lucide-react";
+import { PushLink } from "@/components/consumer/nav/PushLink";
+import { SlidersHorizontal } from "lucide-react";
+import { AiSparkle } from "./AiSparkle";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import {
   clearMapFamilies,
@@ -65,7 +66,7 @@ import {
   HEADER_BAND,
   HEADER_ICON,
   HEADER_ICON_STROKE,
-  HEADER_PILL,
+  HEADER_DISC,
   DISC_BADGE,
 } from "./header-classes";
 
@@ -112,18 +113,17 @@ export function SearchHeader({
       >
         {locate}
         <div className={cn(BAR, "min-w-0 flex-1")}>{bar}</div>
-        <Link
+        {/* Ask AI is a mark, not a label (Pato, MESITA-3991: "don't mention
+            ask ai, just some logo"): the locate disc's twin, its name left
+            to screen readers. */}
+        <PushLink
           href={CONSUMER_ROUTES.searchChat}
-          className={HEADER_PILL}
+          className={HEADER_DISC}
+          aria-label="Ask AI"
           data-search-ask-ai
         >
-          <Sparkles
-            className={HEADER_ICON}
-            strokeWidth={HEADER_ICON_STROKE}
-            aria-hidden
-          />
-          <span>Ask AI</span>
-        </Link>
+          <AiSparkle className="h-5 w-5" />
+        </PushLink>
       </div>
       <div className="relative" data-search-chip-band>
         {chipsHidden ? null : (

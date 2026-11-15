@@ -6,11 +6,9 @@ import {
 } from "@/components/consumer/overlay/DetailSkeletons";
 import { routeFor } from "@/lib/consumer-route-contract";
 import { GeneratingPlaceScreen } from "@/components/consumer/GeneratingPlace";
-import { RouteSheetShell } from "@/components/consumer/overlay/RouteSheetShell";
 import { SlideOverShell } from "@/components/consumer/overlay/SlideOverShell";
-import AskAiSheetPage from "./(.)search/chat/page";
 
-// Slot-level fallback: the first frame a place, reservation or Ask AI open
+// Slot-level fallback: the first frame a place or reservation open
 // paints, before the modal segment's own layout and loading arrive. It was a
 // dim scrim with a spinner, so every open went spinner → skeleton (Pato,
 // MESITA-2840: "why spinning and then placeholder, don't do that"). It now
@@ -38,13 +36,6 @@ export default async function ModalLoading() {
       <SlideOverShell>
         <ReservationSlideOverSkeleton />
       </SlideOverShell>
-    );
-  }
-  if (id === "searchChat") {
-    return (
-      <RouteSheetShell ariaLabel="Ask AI">
-        <AskAiSheetPage />
-      </RouteSheetShell>
     );
   }
   return null;

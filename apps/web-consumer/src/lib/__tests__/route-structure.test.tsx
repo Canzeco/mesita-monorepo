@@ -466,8 +466,8 @@ describe("T5b — Home's header and Search's header", () => {
 
   // Search's header links Ask AI; its order is UI layout, not pinned (MVP
   // test rule, MESITA-2999).
-  // Ask AI lands on /search/chat: from Search, a sheet over the map
-  // (MESITA-2475); cold-loaded, the Soon page with a way back.
+  // Ask AI lands on /search/chat, always its own page with a way back,
+  // never a sheet over Search (MESITA-3991).
   it("Search's header links Ask AI, and Ask AI is a real Soon page", () => {
     const header = readFileSync(
       join(COMPONENTS, "search", "SearchHeader.tsx"),
@@ -482,22 +482,12 @@ describe("T5b — Home's header and Search's header", () => {
       join(SHELL, "(discovery)", "search", "chat", "page.tsx"),
       "utf8",
     );
-    // One body for the page and the sheet (MESITA-3648); the page wears the
-    // pushed-page frame, whose Back lands on Search (MESITA-3647).
+    // The page wears the pushed-page frame, whose Back lands on Search
+    // (MESITA-3647); no @modal intercept turns it into a sheet (MESITA-3991).
     expect(chat).toContain("<AskAiSoon");
     expect(chat).toContain("<Screen");
     expect(chat).not.toMatch(/<AskAiTab/);
-    const sheet = readFileSync(
-      join(SHELL, "@modal", "(.)search", "chat", "layout.tsx"),
-      "utf8",
-    );
-    expect(sheet).toContain("<RouteSheetShell");
-    const sheetPage = readFileSync(
-      join(SHELL, "@modal", "(.)search", "chat", "page.tsx"),
-      "utf8",
-    );
-    expect(sheetPage).toContain("<RouteSheetHeader");
-    expect(sheetPage).toContain("<AskAiSoon");
+    expect(existsSync(join(SHELL, "@modal", "(.)search"))).toBe(false);
   });
 
   // Home is two tabs, each an address (Pato, MESITA-2597: "we should have
@@ -1003,14 +993,14 @@ describe("the route map", () => {
     }
   });
 
-  it("gives every panel and sheet an @modal intercept, and nothing else one", () => {
+  it("gives every panel an @modal intercept, and nothing else one", () => {
     const intercepts = allPages()
       .filter((p) => p.includes("@modal/(.)"))
       .map((p) => toPattern(pageUrl(p.replace("(.)", ""))));
     for (const id of ids) {
       const kind = ROUTE_MAP[id].kind;
       const has = intercepts.some((u) => sameShape(ROUTE_MAP[id].pattern, u));
-      expect(has, id).toBe(kind === "panel" || kind === "sheet");
+      expect(has, id).toBe(kind === "panel");
     }
   });
 
