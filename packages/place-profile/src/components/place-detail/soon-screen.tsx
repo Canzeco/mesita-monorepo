@@ -11,13 +11,14 @@ import { PlaceEmptyScreen } from "./empty-screen";
 // ABOUT MESITA, NEVER THE PLACE (Pato, MESITA-3415: "mention more not like
 // this place doesn't have a menu. but mention that mesita will launch menu
 // for the next version"): it read "The menu is coming soon / This place's
-// menu lands here shortly." until then.
+// menu lands here shortly." until then. "Smart menus" since MESITA-3989
+// (Pato: "we are adding smart menus").
 export function SoonScreen() {
   return (
     <PlaceEmptyScreen
       icon={BookOpen}
-      title="Menus are coming to Mesita"
-      line="We're adding menus in the next version of Mesita."
+      title="Smart menus are coming to Mesita"
+      line="We're adding smart menus in the next version of Mesita."
     />
   );
 }
