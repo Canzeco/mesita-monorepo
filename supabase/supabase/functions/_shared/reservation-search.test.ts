@@ -157,8 +157,8 @@ Deno.test("search: Ana vs Juana stays partial and never outranks an exact Ana", 
   assert(fit > 0 && fit < 1, `partial, got ${fit}`);
   const r = rankTickets(twins, { name: "Ana Ruiz", date: "sábado", time: "ocho y media" }, ZONE, NOW);
   assertEquals(r[0].ticket.id, "anaruiz");
-  const juana = r.find((x) => x.ticket.id === "juana");
-  assert(!juana || juana.score < r[0].score);
+  // Juana fits the hour better, yet only comes after the exact Ana.
+  assertEquals(r.map((x) => x.ticket.id).indexOf("juana"), 1);
   // Same day and hour for both: the exact Ana still wins.
   const same = [twins[2], { ...twins[3], reserved_at: twins[2].reserved_at }];
   assertEquals(rankTickets(same, { name: "Ana", date: "sábado", time: "20:30" }, ZONE, NOW)[0].ticket.id, "anaruiz");
