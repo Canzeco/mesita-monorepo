@@ -29,7 +29,7 @@
 // once its sources answered. Nothing here computes a balance: it lists and
 // formats what the server sent.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
@@ -207,8 +207,9 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
       "grey" as StatusTone,
     ];
     const open = isOpenVisit(v);
-    // Nothing was paid: the bill is a grey fact on the line, never an amount
-    // on the right beside money that moved (MESITA-3865).
+    // Nothing was paid: the bill still sits on the right where every amount
+    // sits, but grey, so the paid rows stand out (MESITA-3993; MESITA-3865
+    // wrote it on the grey line, so the amount jumped sides row to row).
     const unpaid = v.status === "expired" || v.status === "cancelled";
     const at = v.paid_at ?? v.created_at;
     const total =
@@ -227,11 +228,10 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
       place: v.place.name ?? "A Mesita place",
       photo: v.place.photo_url,
       status: { label, tone },
-      big: unpaid ? "" : (total ?? "Waiting for the bill"),
-      money: !unpaid && total != null,
+      big: unpaid ? (total ?? "") : (total ?? "Waiting for the bill"),
+      money: total != null,
       line: join(
         open ? `Started ${clock(v.created_at)}` : clock(at),
-        unpaid && total && `${total} bill`,
         ...v.part_payment_ids.map((id) => notes.get(id)),
         v.waiter_name,
         v.ticket && `Ticket ${v.ticket}`,
@@ -826,17 +826,13 @@ export function TicketsPage() {
       k === "visits" ? ticketsHref() : ticketsHref(k),
     );
 
-  // RESERVATIONS' STRIP (MESITA-3893, Pato: "This page must be similar to
-  // reservations header with blue subpages navbar"): no counts, no intro.
+  // A SCROLLING ROW OF ICON PILLS (MESITA-3993, Pato: "make a horizontal
+  // scroll menu with icons"; option A of the board): Reservations' blue
+  // strip (MESITA-3893) squeezed five tabs into a phone. No counts, no intro.
   return (
     <Screen title="Tickets">
       <div className="flex flex-col gap-4">
-        <SubpageTabs
-          label="Kinds of ticket"
-          tabs={TICKET_TABS}
-          on={kind}
-          onPick={pick}
-        />
+        <TicketPills on={kind} onPick={pick} />
         <TicketList
           type={kind}
           rows={byKind[kind]}
@@ -1019,10 +1015,60 @@ function SubpageTabs<K extends string>({
                 className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-600"
               />
             ) : null}
-            {/* FIVE FIT A PHONE (MESITA-3949): under 480px a tab is ~75px,
-                too narrow for an icon and "Gifts-Out", so the word stays and
-                the icon goes. */}
-            {t.icon ? <t.icon className="hidden h-4 w-4 shrink-0 min-[480px]:block" strokeWidth={chosen ? 2.25 : 2} aria-hidden /> : null}
+            {t.icon ? <t.icon className="h-4 w-4 shrink-0" strokeWidth={chosen ? 2.25 : 2} aria-hidden /> : null}
+            {t.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** Tickets' kinds as a row of pills that scrolls sideways (MESITA-3993):
+ *  icon and word on each, the chosen one solid ink, the rest white with a
+ *  hairline. It runs to the screen's edges so the last pill peeks in and
+ *  says the row scrolls; a pick slides its pill into view. `on` null is the
+ *  loading frame: words in place, none chosen. */
+function TicketPills({
+  on,
+  onPick,
+}: {
+  on: TicketTab | null;
+  onPick?: (k: TicketTab) => void;
+}) {
+  const rail = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const pill = rail.current?.querySelector<HTMLElement>("[aria-current]");
+    pill?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [on]);
+  return (
+    <nav
+      ref={rail}
+      aria-label="Kinds of ticket"
+      className="scrollbar-hide -mx-5 flex shrink-0 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain scroll-px-5 px-5"
+      data-ticket-pills
+    >
+      {TICKET_TABS.map((t) => {
+        const chosen = on === t.kind;
+        return (
+          <button
+            key={t.kind}
+            type="button"
+            aria-current={chosen ? "page" : undefined}
+            onClick={onPick ? () => onPick(t.kind) : undefined}
+            disabled={!onPick}
+            className={cn(
+              "flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm whitespace-nowrap transition",
+              chosen
+                ? "border-foreground bg-foreground text-background font-semibold"
+                : "border-border bg-card text-foreground/80 hover:bg-muted/40 font-medium",
+            )}
+          >
+            <t.icon
+              className="h-4 w-4 shrink-0"
+              strokeWidth={chosen ? 2.25 : 2}
+              aria-hidden
+            />
             {t.label}
           </button>
         );
@@ -1046,12 +1092,10 @@ export function MeListSkeleton({
   return (
     <Screen title={title}>
       <div className="flex flex-col gap-4">
-        {tabs ? (
-          <SubpageTabs
-            label={title}
-            tabs={tabs === "tickets" ? TICKET_TABS : RESERVATION_TABS}
-            on={null}
-          />
+        {tabs === "tickets" ? (
+          <TicketPills on={null} />
+        ) : tabs ? (
+          <SubpageTabs label={title} tabs={RESERVATION_TABS} on={null} />
         ) : null}
         <ActivityRowsSkeleton />
         <p role="status" className="sr-only">

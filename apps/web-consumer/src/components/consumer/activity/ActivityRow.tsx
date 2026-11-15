@@ -76,7 +76,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
           alt=""
           className={cn(
             "h-10 w-10 shrink-0 self-start rounded-full object-cover",
-            t.dim && "opacity-60",
+            t.dim && "opacity-50 grayscale",
           )}
         />
       ) : (
@@ -112,7 +112,12 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
       </span>
       <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
         {t.money ? (
-          <span className="text-base font-semibold tabular-nums">
+          <span
+            className={cn(
+              "text-base tabular-nums",
+              t.dim ? "text-muted-foreground font-medium" : "font-semibold",
+            )}
+          >
             {t.big}
           </span>
         ) : null}
