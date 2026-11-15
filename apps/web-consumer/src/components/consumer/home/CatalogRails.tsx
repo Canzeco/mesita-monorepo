@@ -85,7 +85,6 @@ import { RowFallback } from "./DiscoverFallback";
 import { ROW_LIST } from "./place-grid-classes";
 import { PlaceRowCard } from "./PlaceRowCard";
 import { useActiveLocation } from "@/lib/active-location";
-import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
 
 // Social is the second tab, and a big one: it loads when that tab first
@@ -443,8 +442,8 @@ export function CatalogRails() {
   // its hairline the only line; the word's underline marks the tab (Pato,
   // MESITA-2537: "making the header white and the second header also light.
   // and the lateral bark darker"; MESITA-2530/2531 had a grey of its own).
-  // The Social tab wears a dot while a newer event waits (MESITA-2536).
-  const socialHasNew = useSocialHasNew(tab !== "social");
+  // No "new" dot on Social (MESITA-4044, Pato: "of course there are always
+  // new events"): MESITA-2536's dot and its one-minute poll are gone.
   const tabs = (
     <nav
       aria-label="Home"
@@ -480,19 +479,7 @@ export function CatalogRails() {
                 className="bg-foreground absolute bottom-0 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full"
               />
             ) : null}
-            <span className="relative inline-block">
-              {t.label}
-              {t.key === "social" && socialHasNew ? (
-                <>
-                  <span
-                    aria-hidden
-                    className="bg-foreground absolute top-0.5 -right-3 h-2 w-2 rounded-full"
-                    data-home-social-dot
-                  />
-                  <span className="sr-only"> · new activity</span>
-                </>
-              ) : null}
-            </span>
+            {t.label}
           </Link>
         );
       })}
