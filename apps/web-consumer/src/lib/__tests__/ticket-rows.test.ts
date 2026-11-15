@@ -158,6 +158,13 @@ describe("every other kind lands on its tab with its kind", () => {
     });
   }
 
+  it("a gift received reads +, From a friend; Pending in ink while it lands", () => {
+    const got = only(walletRows(wallet([e("gift_in", 20000)])));
+    expect([got.sign, got.line, got.status]).toEqual(["+", "From a friend", { label: "Received", tone: "green" }]);
+    const wait = only(walletRows(wallet([e("gift_in", 20000, { pending: true })])));
+    expect(wait.status).toEqual({ label: "Pending", tone: "ink" });
+  });
+
   it("a Story voucher waiting and a link nobody took", () => {
     const rows = walletRows(
       wallet([], {

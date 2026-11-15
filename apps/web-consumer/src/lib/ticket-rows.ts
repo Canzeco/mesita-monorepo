@@ -306,14 +306,23 @@ export function walletRows(w: Wallet): Row[] {
           key: `g-${b.place_id}-${e.at}-${i}`,
           type: gift[2],
           kind: e.kind as TicketRowKind,
+          // A gift received reads +$X, From a friend; Pending in ink until
+          // it lands (MESITA-4005).
+          ...(e.kind === "gift_in" ? { sign: "+" as const } : {}),
           at: e.at,
           upcoming: false,
           place,
           photo,
-          status: { label: gift[0], tone: gift[1] },
+          status:
+            e.kind === "gift_in" && e.pending
+              ? { label: "Pending", tone: "ink" }
+              : { label: gift[0], tone: gift[1] },
           big: money(Math.abs(e.amount_cents), cur),
           money: true,
-          line: join(e.pending && "pending"),
+          line:
+            e.kind === "gift_in"
+              ? "From a friend"
+              : join(e.pending && "pending"),
           href: creditEntryPath(b.place_id, e),
         });
       }
