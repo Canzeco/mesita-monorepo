@@ -160,7 +160,7 @@ export function AddCardSheet({
   const saving = phase.kind === "saving";
   return (
     <LocalSheet open={open} onClose={saving ? () => {} : close} ariaLabel="Add a card">
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-6">
+      <div className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-6">
         <h2 className="text-foreground text-lg font-semibold">Add a card</h2>
         <p className="text-muted-foreground mt-1 text-sm">Your card is kept by Stripe. Mesita never sees the number.</p>
         <div className="mt-5 min-h-[180px]" aria-busy={phase.kind === "loading"}>

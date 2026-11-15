@@ -174,7 +174,7 @@ export const PAY_FLOW_STEPS = ["Bill", "Tip", "Method", "Pay", "Sign"] as const;
  *  footer never moves. */
 export function StepBody({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className="-mx-4 flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+    <div className="scrollbar-thin-dark -mx-4 flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
       <div className={cn("flex w-full flex-col items-stretch gap-4 py-4 text-center", className)}>{children}</div>
     </div>
   );

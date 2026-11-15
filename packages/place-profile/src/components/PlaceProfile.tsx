@@ -51,7 +51,7 @@ export function PlaceProfile({
         onMore={actions?.onMore}
       />
       <div
-        className="min-h-0 flex-1 overflow-y-auto"
+        className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto"
         tabIndex={scrollLabel ? 0 : undefined}
         aria-label={scrollLabel}
       >

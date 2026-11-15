@@ -46,7 +46,7 @@ export function MethodSheet({
         </button>
         <h2 className="min-w-0 truncate text-base font-semibold">{title}</h2>
       </div>
-      <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-8">
+      <div className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-8">
         {method?.kind === "card" ? <CardBody card={method.card} onRemove={onRemoveCard} /> : null}
         {method?.kind === "story" ? <StoryBody story={method.story} /> : null}
       </div>

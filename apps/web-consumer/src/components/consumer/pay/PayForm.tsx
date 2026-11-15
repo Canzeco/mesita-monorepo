@@ -356,7 +356,7 @@ function PayForm({
         ))}
       </div>
 
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-4">
+      <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-4">
         <div className="flex items-center gap-3">
           <PlacePhoto place={place} className="h-11 w-11" />
           <span className="min-w-0">

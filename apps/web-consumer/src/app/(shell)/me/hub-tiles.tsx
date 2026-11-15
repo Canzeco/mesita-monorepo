@@ -223,7 +223,7 @@ export function MeHubFrame({
   return (
     <div className="flex h-full flex-col">
       {bar}
-      <KeptScroll className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-3 pb-8">
+      <KeptScroll className="scrollbar-thin-dark flex-1 overflow-y-auto px-4 pt-3 pb-8">
         <div className="flex flex-col gap-2">
           <DestGrid>
             {ME_HUB_GRID.map((cell) => (

@@ -626,7 +626,7 @@ function ShareLine({ tab, children }: { tab: GuestTab; children: React.ReactNode
         </span>
       </button>
       <LocalSheet open={open} onClose={() => setOpen(false)} ariaLabel="Split bill">
-        <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-4">{children}</div>
+        <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-4">{children}</div>
       </LocalSheet>
     </>
   );
@@ -1067,7 +1067,7 @@ function SplitScreen({
       <LocalSheet open={cardSheet} onClose={() => setCardSheet(false)} ariaLabel="Your cards">
         <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
           <p className="pt-2 pb-3 text-lg font-semibold">Your cards</p>
-          <div className="border-border scrollbar-hide min-h-0 overflow-y-auto rounded-2xl border" role="radiogroup" aria-label="Card">
+          <div className="border-border scrollbar-thin-dark min-h-0 overflow-y-auto rounded-2xl border" role="radiogroup" aria-label="Card">
             {(cards ?? []).map((c, i) => (
               <button
                 key={c.id}

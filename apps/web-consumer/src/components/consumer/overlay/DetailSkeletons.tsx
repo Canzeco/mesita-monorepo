@@ -57,7 +57,7 @@ export function PlaceSlideOverSkeleton() {
   return (
     <>
       <PlaceTopBarSkeleton onBack={close} />
-      <div className="bg-background min-h-0 flex-1 overflow-y-auto">
+      <div className="scrollbar-thin-dark bg-background min-h-0 flex-1 overflow-y-auto">
         <PlaceDetailBodySkeleton />
       </div>
     </>

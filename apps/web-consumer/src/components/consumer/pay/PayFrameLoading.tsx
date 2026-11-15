@@ -13,7 +13,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
   if (body === "list") {
     // /pay: the band (title and search bar, MESITA-3886) and the places.
     return (
-      <div className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
+      <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
         <PayHeader title="Pay" action={<TicketsShortcut />} bar={<span className="text-muted-foreground text-sm font-semibold">Search a place</span>} />
         <Skeleton className="mt-5 h-56 w-full rounded-2xl" />
       </div>
@@ -25,7 +25,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
     // (MESITA-3814: the rows' shape, the same one the page shows while its one
     // read runs), so nothing jumps.
     return (
-      <div className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
+      <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
         <PayHeader title="Wallet" action={<TicketsShortcut />} />
         <WalletShareGift />
         <WalletBodySkeleton />

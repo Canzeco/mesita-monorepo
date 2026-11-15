@@ -558,7 +558,7 @@ function PinSearch() {
         <ul
           role="list"
           aria-label="Matches"
-          className="bg-card shadow-elev divide-border mt-2 max-h-[30vh] divide-y overflow-y-auto rounded-2xl"
+          className="scrollbar-thin-dark bg-card shadow-elev divide-border mt-2 max-h-[30vh] divide-y overflow-y-auto rounded-2xl"
           data-pin-picker-results
         >
           {results.map((r) => (

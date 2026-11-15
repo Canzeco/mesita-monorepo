@@ -128,7 +128,7 @@ export function CoverAuthLayout({
         inert={!open}
         aria-hidden={!open}
         className={cn(
-          "bg-card text-foreground absolute inset-x-0 bottom-0 max-h-[90%] overflow-y-auto rounded-t-[28px] px-6 pt-3 pb-8 shadow-2xl transition-transform duration-300 ease-out",
+          "scrollbar-thin-dark bg-card text-foreground absolute inset-x-0 bottom-0 max-h-[90%] overflow-y-auto rounded-t-[28px] px-6 pt-3 pb-8 shadow-2xl transition-transform duration-300 ease-out",
           open ? "translate-y-0" : "translate-y-full",
         )}
       >

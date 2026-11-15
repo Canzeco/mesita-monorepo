@@ -58,7 +58,7 @@ export function SearchResultsPanel({
   // there is a lid with nothing under it.
   return (
     <div className="flex min-h-0 flex-col overflow-hidden">
-      <div className="min-h-0 overflow-y-auto p-3">
+      <div className="scrollbar-thin-dark min-h-0 overflow-y-auto p-3">
         {searching && predictions.length === 0 && (
           <div className="text-muted-foreground flex items-center justify-center gap-2 py-4 text-xs">
             <Spinner size="sm" label="Searching" />

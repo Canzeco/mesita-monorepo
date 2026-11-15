@@ -241,7 +241,7 @@ export function PayPage() {
   }
 
   return (
-    <KeptScroll className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
+    <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
       <PayHeader
         title="Pay"
         action={<TicketsShortcut />}
