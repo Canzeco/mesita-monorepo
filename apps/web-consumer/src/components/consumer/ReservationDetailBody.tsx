@@ -8,8 +8,12 @@ import { cn, errMsg } from "@/lib/utils";
 import { RESERVATION_FLOW, stateMeta } from "@/lib/reservation-state";
 import { ReservationActions } from "@/components/consumer/reservation-actions";
 import { TicketHeader } from "@/components/consumer/activity/TicketParts";
+import { PANEL_CLASS } from "@/components/shared/Panel";
 import { placeHref } from "@/lib/place-route";
-import { apiAnswerReservationChange, apiConfirmReservation } from "@/lib/api/reservations";
+import {
+  apiAnswerReservationChange,
+  apiConfirmReservation,
+} from "@/lib/api/reservations";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 
@@ -103,8 +107,15 @@ export function ReservationDetailBody({
     setConfirmBusy(true);
     setConfirmError(null);
     try {
-      await apiAnswerReservationChange(supabase, { reservationId: r.id, accept });
-      toast.success(accept ? "Change accepted." : "You kept your table. Mesita tells the place.");
+      await apiAnswerReservationChange(supabase, {
+        reservationId: r.id,
+        accept,
+      });
+      toast.success(
+        accept
+          ? "Change accepted."
+          : "You kept your table. Mesita tells the place.",
+      );
       onChanged?.();
     } catch (e) {
       setConfirmError(errMsg(e, "Couldn't answer"));
@@ -131,31 +142,39 @@ export function ReservationDetailBody({
 
   return (
     <div className="flex flex-col gap-4 px-5 pt-5 pb-8">
-      <TicketHeader
-        kind="reservation"
-        photo={r.placePhoto}
-        place={r.placeName}
-        placeHref={placeHref(r.projectId)}
-        when={[...day, `Table for ${r.partySize}`].join(" · ")}
-        amount={time ?? r.when}
-        state={meta.label}
-        tone={r.state === "confirmed" ? "green" : meta.spent ? "grey" : "ink"}
-        dim={meta.spent}
-      />
+      {/* Modular (MESITA-4115, Pato: "remember modular design ... inside
+          boxes"): the ticket, its progress and its actions are three panels. */}
+      <section className={cn(PANEL_CLASS, "p-4")}>
+        <TicketHeader
+          kind="reservation"
+          photo={r.placePhoto}
+          place={r.placeName}
+          placeHref={placeHref(r.projectId)}
+          when={[...day, `Table for ${r.partySize}`].join(" · ")}
+          amount={time ?? r.when}
+          state={meta.label}
+          tone={r.state === "confirmed" ? "green" : meta.spent ? "grey" : "ink"}
+          dim={meta.spent}
+        />
+      </section>
 
-      {reference ? (
-        <button
-          type="button"
-          onClick={() => void copyReference()}
-          aria-label={`Copy reference ${reference}`}
-          className="text-muted-foreground hover:text-foreground -mt-1 flex items-center gap-1.5 self-start px-1 text-sm tabular-nums transition"
-        >
-          Reference {reference}
-          <Copy className="h-3.5 w-3.5" aria-hidden />
-        </button>
+      {reference || RESERVATION_FLOW.includes(r.state) ? (
+        <section className={cn(PANEL_CLASS, "flex flex-col gap-3 p-4")}>
+          {reference ? (
+            <button
+              type="button"
+              onClick={() => void copyReference()}
+              aria-label={`Copy reference ${reference}`}
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 self-start text-sm tabular-nums transition"
+            >
+              Reference {reference}
+              <Copy className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          ) : null}
+
+          <LifecycleStepper state={r.state} />
+        </section>
       ) : null}
-
-      <LifecycleStepper state={r.state} />
 
       {banner && (
         <p
@@ -164,7 +183,7 @@ export function ReservationDetailBody({
             r.state === "booking" ||
               r.state === "created" ||
               r.state === "failed"
-              ? "bg-muted text-foreground ring-1 ring-foreground"
+              ? "bg-muted text-foreground ring-foreground ring-1"
               : "bg-muted text-muted-foreground",
           )}
         >
@@ -197,21 +216,27 @@ export function ReservationDetailBody({
             );
           })}
           {confirmError && (
-            <p className="text-xs font-medium text-destructive">{confirmError}</p>
+            <p className="text-destructive text-xs font-medium">
+              {confirmError}
+            </p>
           )}
         </section>
       )}
 
       {change && (
         <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
-          <p className="type-body font-semibold">The place asks to change your table</p>
+          <p className="type-body font-semibold">
+            The place asks to change your table
+          </p>
           <div className="flex flex-col gap-1 text-sm">
             {change.when ? (
               <p>
                 <span className="text-muted-foreground">Time </span>
                 <span className="tabular-nums">{r.when}</span>
                 {" → "}
-                <span className="font-semibold tabular-nums">{change.when}</span>
+                <span className="font-semibold tabular-nums">
+                  {change.when}
+                </span>
               </p>
             ) : null}
             {change.partySize ? (
@@ -222,7 +247,9 @@ export function ReservationDetailBody({
                 <span className="font-semibold">{change.partySize}</span>
               </p>
             ) : null}
-            {change.note ? <p className="text-muted-foreground">“{change.note}”</p> : null}
+            {change.note ? (
+              <p className="text-muted-foreground">“{change.note}”</p>
+            ) : null}
           </div>
           <div className="flex gap-2">
             <button
@@ -243,7 +270,9 @@ export function ReservationDetailBody({
             </button>
           </div>
           {confirmError && (
-            <p className="text-xs font-medium text-destructive">{confirmError}</p>
+            <p className="text-destructive text-xs font-medium">
+              {confirmError}
+            </p>
           )}
         </section>
       )}
