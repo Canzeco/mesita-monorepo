@@ -88,6 +88,15 @@ function noteFor(
       // running / answered / null-with-attempts → actively working the reservation.
       return "Mesita is on the phone with the place — you'll see the answer here.";
     }
+    case "confirmed": {
+      // The terms a1 accepted for the guest (MESITA-4076): a table time
+      // limit, a tolerance. Said in the place's words, as a1 recorded them.
+      // The time itself is the headline: reserved_at is the booked time,
+      // moved by the confirmed outcome when a1 took another time inside the
+      // guest's window (MESITA-3957). No terms → no note (MESITA-3649).
+      const terms = (row.confirmed_terms ?? "").trim().replace(/[.\s]+$/, "");
+      return terms ? `The place's terms: ${terms}.` : undefined;
+    }
     // A note never restates the pill (MESITA-3649): passed and cancelled
     // say nothing more.
     case "passed":
