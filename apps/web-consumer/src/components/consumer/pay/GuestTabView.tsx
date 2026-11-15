@@ -153,6 +153,8 @@ export function GuestTabView({
   // 6 RECEIPT.
   if (signed) {
     const back = tab.cashback_cents;
+    // The rate the bill earned (MESITA-4058: 0% is said, not hidden).
+    const backBps = card > 0 ? tab.rates.card_back_bps : cash > 0 ? tab.rates.cash_back_bps : 0;
     return (
       <div className="-mx-4 -mt-4 flex min-h-0 flex-1 flex-col" data-guest-tab="receipt">
         <div className="flex shrink-0 flex-col items-center bg-green-700 px-4 pt-8 pb-6 text-white">
@@ -179,12 +181,12 @@ export function GuestTabView({
             <div className={cn("mt-4 flex shrink-0 items-center gap-3 rounded-2xl px-4 py-3 font-semibold", GOOD, GOOD_TINT)} data-guest-cashback>
               <Coins className="h-5 w-5 shrink-0" aria-hidden />
               {/* Available at once (MESITA-3909). */}
-              <span className="flex-1">+{m(back)} back here</span>
+              <span className="flex-1">+{m(back)} back as credits here</span>
             </div>
           ) : (
             <div className="border-border text-muted-foreground mt-4 flex shrink-0 items-center gap-3 rounded-2xl border px-4 py-3" data-guest-cashback>
               <Coins className="h-5 w-5 shrink-0" aria-hidden />
-              <span>{card + cash === 0 ? "No cashback on credits" : "No cashback"}</span>
+              <span>{backBps / 100}% back as credits</span>
             </div>
           )}
           <div className="min-h-0 flex-1" aria-hidden />
@@ -278,7 +280,7 @@ export function GuestTabView({
       {/* MESITA-3913: what the signature earns, Available at once. */}
       {(tab.cashback_on_sign_cents ?? 0) > 0 ? (
         <p className={cn("mt-2 flex shrink-0 items-center justify-center gap-1.5 text-sm font-semibold", GOOD)} data-guest-sign-cashback>
-          <Coins className="h-4 w-4" aria-hidden />+{m(tab.cashback_on_sign_cents ?? 0)} back once the waiter signs
+          <Coins className="h-4 w-4" aria-hidden />+{m(tab.cashback_on_sign_cents ?? 0)} back as credits once the waiter signs
         </p>
       ) : null}
       <div className="mt-4 flex min-h-0 flex-1 items-center justify-center [container-type:size]">

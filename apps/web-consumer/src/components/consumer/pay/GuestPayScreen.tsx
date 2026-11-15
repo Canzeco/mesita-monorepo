@@ -348,6 +348,9 @@ export function GuestPayScreen({
   const cashbackFor = (w: PayWith) => splitFor(w)?.cashback_cents ?? 0;
   // The Bill's Coins line before a way is chosen: the better of the two.
   const billCashback = way ? cashbackFor(way) : Math.max(appOn ? cashbackFor("card") : 0, cashOn ? cashbackFor("cash") : 0);
+  // Each way's rate, from the server (MESITA-4058: always shown, 0% too).
+  const rateFor = (w: PayWith) => (w === "card" ? (place?.cashback_bps ?? 0) : (place?.outside_bps ?? 0));
+  const billRate = way ? rateFor(way) : Math.max(appOn ? rateFor("card") : 0, cashOn ? rateFor("cash") : 0);
 
   // Every change is saved, so the X and "Add a card" come back to it.
   useEffect(() => {
@@ -664,7 +667,7 @@ export function GuestPayScreen({
           <MoneyRow label="Left to pay" value={m(leftCents)} />
           <MoneyRow label="Tip" value={tipOk ? m(tipCents) : "Choose a tip"} />
           <MoneyRow label="Total" value={m(dueCents)} strong />
-          <CashbackRow cents={billCashback} m={m} />
+          <CashbackRow cents={billCashback} bps={billRate} m={m} />
         </RowsCard>
 
         <div className="min-h-0 flex-1" aria-hidden />
@@ -718,7 +721,7 @@ export function GuestPayScreen({
             tone="bg-pink-gradient text-white"
             title="App"
             line="Card"
-            back={(place.cashback_bps ?? 0) > 0 ? `${place.cashback_bps / 100}% back` : null}
+            bps={rateFor("card")}
             onPick={() => setMethod("card")}
           />
           <MethodTile
@@ -728,7 +731,7 @@ export function GuestPayScreen({
             tone="bg-green-400 text-neutral-950"
             title="Cash"
             line="Cash or their terminal"
-            back={(place.outside_bps ?? 0) > 0 ? `${(place.outside_bps ?? 0) / 100}% back` : null}
+            bps={rateFor("cash")}
             onPick={() => setMethod("cash")}
           />
         </div>
@@ -737,7 +740,11 @@ export function GuestPayScreen({
           data-guest-cashback
         >
           <Coins className="h-5 w-5" aria-hidden />
-          {way ? (cashbackFor(way) > 0 ? `+${m(cashbackFor(way))} back` : "No cashback") : "Choose how to pay"}
+          {way
+            ? cashbackFor(way) > 0
+              ? `+${m(cashbackFor(way))} · ${backAsCredits(rateFor(way))}`
+              : backAsCredits(rateFor(way))
+            : "Choose how to pay"}
         </p>
         <div className="min-h-0 flex-1" aria-hidden />
         {status}
@@ -869,8 +876,15 @@ export function GuestPayScreen({
   );
 }
 
-/** The bottom row, pinned: the red Cancel bill on the left (MESITA-4051),
- *  the step's one dark button on the right, equal halves. */
+/** "5% back as credits", "0% back as credits" (MESITA-4058, Pato: "if no
+ *  cashback still mention 0% back and always mention the back as credits"). */
+function backAsCredits(bps: number) {
+  return `${bps / 100}% back as credits`;
+}
+
+/** The bottom row, pinned under a full-width hairline: the red Cancel bill
+ *  (MESITA-4051) a quarter, the step's one dark button three quarters
+ *  (MESITA-4058, Pato: "maybe 25% and 75% for black button"). */
 function BigButton({
   children,
   onClick,
@@ -887,12 +901,12 @@ function BigButton({
   disabled?: boolean;
 }) {
   return (
-    <div className="mt-3 grid shrink-0 grid-cols-2 gap-3">
+    <div className="border-border -mx-4 mt-3 grid shrink-0 grid-cols-[1fr_3fr] gap-3 border-t px-4 pt-3">
       <Button
         type="button"
         size="lg"
         variant="danger"
-        className="min-h-12 w-full text-base font-semibold"
+        className="min-h-12 w-full px-1 text-sm leading-tight font-semibold whitespace-normal"
         disabled={held}
         onClick={onCancel}
         data-guest-cancel-bill
@@ -906,17 +920,17 @@ function BigButton({
   );
 }
 
-/** The summary's last row: the green Coins line, or "No cashback". */
-function CashbackRow({ cents, m }: { cents: number; m: (c: number) => string }) {
+/** The summary's last row: the green Coins line, or the muted 0% one. */
+function CashbackRow({ cents, bps, m }: { cents: number; bps: number; m: (c: number) => string }) {
   return cents > 0 ? (
     <div className={cn("flex min-h-11 items-center gap-3 px-4 font-semibold", GOOD, GOOD_TINT)} data-guest-cashback>
       <Coins className="h-5 w-5 shrink-0" aria-hidden />
-      <span className="flex-1">+{m(cents)} back</span>
+      <span className="flex-1">+{m(cents)} back as credits</span>
     </div>
   ) : (
     <div className="text-muted-foreground flex min-h-11 items-center gap-3 px-4" data-guest-cashback>
       <Coins className="h-5 w-5 shrink-0" aria-hidden />
-      <span className="flex-1">No cashback</span>
+      <span className="flex-1">{backAsCredits(bps)}</span>
     </div>
   );
 }
@@ -930,7 +944,7 @@ function MethodTile({
   tone,
   title,
   line,
-  back,
+  bps,
   onPick,
 }: {
   on: boolean;
@@ -941,7 +955,8 @@ function MethodTile({
   tone: string;
   title: string;
   line: string;
-  back: string | null;
+  /** The way's cashback rate; 0 shows as a muted "0% back as credits". */
+  bps: number;
   onPick: () => void;
 }) {
   return (
@@ -964,7 +979,11 @@ function MethodTile({
         <span className="block text-base font-semibold">{title}</span>
         <span className="text-muted-foreground block text-sm">{off ?? line}</span>
       </span>
-      {!off && back ? <span className={cn("shrink-0 rounded-full px-3 py-1 text-sm font-semibold", GOOD, GOOD_TINT)}>{back}</span> : null}
+      {!off ? (
+        <span className={cn("shrink-0 rounded-full px-3 py-1 text-sm font-semibold whitespace-nowrap", bps > 0 ? [GOOD, GOOD_TINT] : "bg-muted text-muted-foreground")}>
+          {backAsCredits(bps)}
+        </span>
+      ) : null}
       {on ? (
         <span className="bg-foreground text-background absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full" aria-hidden>
           <Check className="h-4 w-4" />
