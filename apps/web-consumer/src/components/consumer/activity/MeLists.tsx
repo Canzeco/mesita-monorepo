@@ -11,8 +11,11 @@
 //                       it as a "Next up" ticket
 //   /me/reservations    Upcoming, then Past
 //   /me/tickets         every ticket under the day it happened, newest
-//                       first; a bill still open sits above them in its own
-//                       "Open now" card with its button (MESITA-3865). The
+//                       first; a waiter's bill still open sits above them in
+//                       its own "Open now" card with its button (MESITA-3865).
+//                       A ticket is money that moved (MESITA-3997): a bill
+//                       cancelled or expired is never one, and the guest's
+//                       own bill waiting for its signature lives on Pay. The
 //                       chips All · Visits · Vouchers · Gifts are always
 //                       there (MESITA-3882), Refunds once it holds one; a
 //                       chip narrows the list, /me/tickets/<kind>:
@@ -184,8 +187,6 @@ const VISIT_PILL: Record<string, [string, StatusTone]> = {
   billed: ["Billed", "ink"],
   paying: ["Paying", "ink"],
   paid: ["Paid", "green"],
-  expired: ["Expired", "grey"],
-  cancelled: ["Cancelled", "grey"],
 };
 
 /** `notes`: each payment's few words by its id, written on the Visit it
@@ -200,17 +201,23 @@ export function isOpenVisit(v: Pick<GuestVisit, "status">): boolean {
   );
 }
 
+/** A visit is a ticket once money moved (MESITA-3997, Pato: "after payment
+ *  process, else don't create the ticket"): paid, and signed when the guest
+ *  paid it themselves. A waiter's bill still open stays too: nothing else
+ *  reaches it. A cancelled or expired bill, and the guest's own bill waiting
+ *  for the signature (Pay and the amber row hold it), are not tickets. */
+export function isTicketVisit(v: Pick<GuestVisit, "status" | "origin" | "verified_at">): boolean {
+  if (v.status === "paid") return v.origin !== "guest" || !!v.verified_at;
+  return isOpenVisit(v) && v.origin !== "guest";
+}
+
 function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
-  return visits.map((v) => {
+  return visits.filter(isTicketVisit).map((v) => {
     const [label, tone] = VISIT_PILL[v.status] ?? [
       v.status,
       "grey" as StatusTone,
     ];
     const open = isOpenVisit(v);
-    // Nothing was paid: the bill still sits on the right where every amount
-    // sits, but grey, so the paid rows stand out (MESITA-3993; MESITA-3865
-    // wrote it on the grey line, so the amount jumped sides row to row).
-    const unpaid = v.status === "expired" || v.status === "cancelled";
     const at = v.paid_at ?? v.created_at;
     const total =
       v.bill_cents != null
@@ -228,7 +235,7 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
       place: v.place.name ?? "A Mesita place",
       photo: v.place.photo_url,
       status: { label, tone },
-      big: unpaid ? (total ?? "") : (total ?? "Waiting for the bill"),
+      big: total ?? "Waiting for the bill",
       money: total != null,
       line: join(
         open ? `Started ${clock(v.created_at)}` : clock(at),
@@ -236,7 +243,6 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
         v.waiter_name,
         v.ticket && `Ticket ${v.ticket}`,
       ),
-      dim: unpaid,
       href,
       action: open
         ? { label: total ? "Continue paying" : "Open", href }

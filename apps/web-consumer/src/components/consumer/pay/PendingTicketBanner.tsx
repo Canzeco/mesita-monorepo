@@ -66,7 +66,7 @@ export function PendingTicketBanner() {
   const href = bill ? payTabPath(bill.tabId) : placeId ? payPlacePath(placeId) : null;
   if (!href) return null;
   const name = (bill ? bill.name : localName) || null;
-  const what = bill ? "Waiting for the waiter's signature" : "Ticket in progress";
+  const what = bill ? "Waiting for the waiter's signature" : "Bill in progress";
 
   return (
     <Link

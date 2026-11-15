@@ -258,11 +258,11 @@ export function PayPage() {
               })()}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-base font-semibold">{pending.name ?? "A Mesita place"}</span>
-                <span className="text-sm text-amber-800">Ticket in progress</span>
+                <span className="text-sm text-amber-800">Bill in progress</span>
               </span>
               <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
             </button>
-            <p className="text-muted-foreground text-center text-sm">Pay or cancel this ticket before starting another.</p>
+            <p className="text-muted-foreground text-center text-sm">Pay or cancel this bill before starting another.</p>
           </div>
         ) : places ? (
           <PlaceList

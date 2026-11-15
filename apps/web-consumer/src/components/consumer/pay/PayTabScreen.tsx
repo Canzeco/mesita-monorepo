@@ -61,8 +61,9 @@ export function PayTabScreen({ start }: { start: TabStart }) {
     <Screen
       title="Pay"
       onBack={back}
-      noBack={start.kind === "place"}
-      lead={hasClose ? <CloseX onClick={() => close.current?.()} label="Close" /> : undefined}
+      // MESITA-3997: always the X, loading included, so the header never
+      // swaps; with no step's own close it is Back.
+      lead={<CloseX onClick={() => (hasClose ? close.current?.() : back())} label="Close" />}
       flush
       paper
     >

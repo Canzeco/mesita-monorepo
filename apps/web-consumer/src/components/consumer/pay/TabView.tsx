@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { Banknote, CheckCircle2, ChevronRight, CreditCard, Users } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { clockTime } from "@mesita/place-profile/lib/money";
-import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -31,6 +30,7 @@ import { toast } from "@/lib/toast";
 import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
+import { GuestPayLoading } from "./GuestPayScreen";
 import { GuestTabView } from "./GuestTabView";
 import { LiveClock } from "./LiveClock";
 import { ShareCard, SplitButton } from "./SplitWithFriends";
@@ -458,12 +458,7 @@ export function TabView({
   if (!tab) {
     return (
       <Shell>
-        <div className="flex min-h-0 flex-1 flex-col items-center" aria-busy>
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="mt-3 h-8 w-56" />
-          <Skeleton className="mt-4 h-40 w-40 rounded-xl" />
-          <Skeleton className="mt-4 h-4 w-32" />
-        </div>
+        <GuestPayLoading />
       </Shell>
     );
   }
