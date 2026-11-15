@@ -70,6 +70,7 @@ export default async function ConsumerOnboardPage({
       // A Google sign-in brings a name (MESITA-3777): its first word fills an
       // empty first name; the guest can change it.
       firstName: profile.first_name ?? profile.full_name ?? googleFirstName(user) ?? "",
+      lastName: profile.last_name ?? googleLastName(user) ?? "",
       birthday: profile.birthday ?? "",
       sex: profile.sex ?? "",
     };
@@ -109,6 +110,13 @@ export default async function ConsumerOnboardPage({
       </div>
     </MobileFrame>
   );
+}
+
+/** Everything after the first word of the Google name, if any. */
+function googleLastName(user: { user_metadata?: Record<string, unknown> }): string | null {
+  const meta = user.user_metadata ?? {};
+  const name = typeof meta.full_name === "string" ? meta.full_name : typeof meta.name === "string" ? meta.name : "";
+  return name.trim().split(/\s+/).slice(1).join(" ") || null;
 }
 
 /** The first word of the name Google gave this account, if any. */

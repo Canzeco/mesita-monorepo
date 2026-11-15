@@ -33,13 +33,13 @@ const complete = {
 };
 
 describe("consumerCanBrowse — the signup gate", () => {
-  it("passes only when first name, birthday AND sex are all present", () => {
+  it("passes only when first name, last name, birthday AND sex are all present", () => {
     expect(consumerCanBrowse(complete)).toBe(true);
   });
 
   // Each field gets its own case, so a predicate that silently stops checking
   // one of them fails here rather than passing on the strength of the others.
-  it.each(["first_name", "birthday", "sex"] as const)(
+  it.each(["first_name", "last_name", "birthday", "sex"] as const)(
     "fails when %s is missing",
     (field) => {
       expect(consumerCanBrowse({ ...complete, [field]: null })).toBe(false);
@@ -47,8 +47,10 @@ describe("consumerCanBrowse — the signup gate", () => {
     },
   );
 
-  it("does not require the last name — that is the reservation's gate", () => {
-    expect(consumerCanBrowse({ ...complete, last_name: null })).toBe(true);
+  // MESITA-4090: a blank last name is no last name.
+  it("fails on a whitespace-only name", () => {
+    expect(consumerCanBrowse({ ...complete, last_name: "  " })).toBe(false);
+    expect(consumerCanBrowse({ ...complete, first_name: "  " })).toBe(false);
   });
 
   it("rejects a sex value the DB constraint would not store", () => {
@@ -76,14 +78,15 @@ describe("consumerCanBrowse — the signup gate", () => {
   });
 });
 
-describe("the three onboarding fields (MESITA-2746)", () => {
-  it("asks first name, then birthday, then sex — the gate's own order", () => {
+describe("the four onboarding fields (MESITA-2746, MESITA-4090)", () => {
+  it("asks first name, last name, then birthday, then sex — the gate's own order", () => {
     expect(ONBOARD_FIELDS.map((s) => s.key)).toEqual([
       "first_name",
+      "last_name",
       "birthday",
       "sex",
     ]);
-    expect(ONBOARD_FIELDS).toHaveLength(3);
+    expect(ONBOARD_FIELDS).toHaveLength(4);
   });
 
   it("gives every field a label", () => {
@@ -91,7 +94,8 @@ describe("the three onboarding fields (MESITA-2746)", () => {
   });
 
   it("interpolates the age floor instead of printing a literal", () => {
-    const hint = ONBOARD_FIELDS[1].hint ?? "";
+    const hint =
+      ONBOARD_FIELDS.find((f) => f.key === "birthday")?.hint ?? "";
     expect(hint).toContain(String(MIN_SIGNUP_AGE));
     expect(hint).not.toContain("13");
   });
@@ -107,14 +111,14 @@ describe("the gate's other copies", () => {
       "supabase/supabase/functions/consumer-web-signin-phone/signin.ts",
       "export function isOnboarded",
     ],
-  ])("%s checks first_name, birthday and sex", (_name, path, anchor) => {
+  ])("%s checks first_name, last_name, birthday and sex", (_name, path, anchor) => {
     const source = read(path);
     const at = source.indexOf(anchor);
     expect(at, `${anchor} not found in ${path}`).toBeGreaterThan(-1);
     // Just the predicate body, so a mention in a nearby comment cannot make
     // this pass on its own.
     const body = source.slice(at, at + 400);
-    for (const field of ["first_name", "birthday", "sex"]) {
+    for (const field of ["first_name", "last_name", "birthday", "sex"]) {
       expect(body, `${path} stopped checking ${field}`).toContain(field);
     }
   });
