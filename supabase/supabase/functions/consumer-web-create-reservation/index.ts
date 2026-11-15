@@ -65,6 +65,7 @@ import {
   monthlyReservationCap,
   RESERVATION_LIMIT_CODE,
   RESERVATION_LIMIT_MESSAGE,
+  UNCOUNTED_STATES_FILTER,
 } from "../_shared/reservation-cap.ts";
 import { effectivePlan, needsRefresh, PLAN_COLUMNS, type PlanRow, syncPlan } from "../_shared/guest-plan.ts";
 import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/stripe.ts";
@@ -318,7 +319,7 @@ serveJson("consumer-web-create-reservation", async (req) => {
       .eq("consumer_id", consumerId)
       .eq("is_test", false)
       .gte("created_at", monthStart.toISOString())
-      .neq("state", "cancelled");
+      .not("state", "in", UNCOUNTED_STATES_FILTER);
     if (countErr) return json({ ok: false, error: countErr.message }, 500);
     if ((count ?? 0) >= cap) {
       return json(

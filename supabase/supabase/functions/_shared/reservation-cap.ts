@@ -59,3 +59,9 @@ export function monthlyReservationCap(
 ): number {
   return readCapOverride(guest?.reservation_cap_override) ?? planReservationCap(guest?.plan);
 }
+
+/** States that never count toward the monthly cap (MESITA-3958): the guest
+ *  cancelled, or Mesita could not book the table. */
+export const UNCOUNTED_STATES = ["cancelled", "declined", "unreachable", "unresolved"] as const;
+/** PostgREST `not in` list for UNCOUNTED_STATES. */
+export const UNCOUNTED_STATES_FILTER = `(${UNCOUNTED_STATES.join(",")})`;

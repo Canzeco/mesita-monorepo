@@ -16,6 +16,7 @@
 // consumers.plan = 'premium' with no subscription is an operator's grant
 // (Manage › Guests): it never lapses here.
 
+import { UNCOUNTED_STATES_FILTER } from "./reservation-cap.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { StripeCall } from "./stripe.ts";
 
@@ -212,7 +213,7 @@ export async function reservationsThisMonth(
     .eq("consumer_id", consumerId)
     .eq("is_test", false)
     .gte("created_at", monthStartIso)
-    .neq("state", "cancelled");
+    .not("state", "in", UNCOUNTED_STATES_FILTER);
   if (error) throw new Error(`reservations_count: ${error.message}`);
   return count ?? 0;
 }
