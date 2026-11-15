@@ -17,6 +17,7 @@ import type { TicketKind } from "@/lib/ticket-kinds";
 import type {
   ActivityItem,
   StatusTone,
+  TicketRowKind,
 } from "@/components/consumer/activity/ActivityRow";
 
 /** A list of tickets: Reservations, or one kind of ticket. */
@@ -29,8 +30,37 @@ export type Row = ActivityItem & {
   at: string | null;
   upcoming: boolean;
   paymentId?: string | null;
-  /** A payment's facts in a few words, for the Visit card it paid. */
-  payNote?: string | null;
+  /** A payment's money in cents, for the Visit it paid (MESITA-4001). */
+  payFacts?: PayFacts | null;
+};
+
+/** What one payment moved in the guest's credit, in cents (all positive):
+ *  credits spent, cashback earned, cashback taken back when the bill was
+ *  refunded (a `reversal`), credit given back (a `refund`). */
+export type PayFacts = {
+  currency: string;
+  credits: number;
+  cashback: number;
+  takenBack: number;
+  givenBack: number;
+};
+
+/** THE KIND WORD (MESITA-4001): what a row is, said first to a screen
+ *  reader ("Visit, Taquería Orinoco, …") and drawn as the badge on its
+ *  photo (KindBadge). */
+export const KIND_WORD: Record<TicketRowKind, string> = {
+  visit: "Visit",
+  payment: "Payment",
+  voucher: "Credit bought",
+  bonus: "Bonus",
+  story: "Story voucher",
+  gift_in: "Gift received",
+  gift_out: "Gift sent",
+  gift_back: "Gift taken back",
+  gift_link: "Gift link",
+  refund: "Refund",
+  reversal: "Refund",
+  reservation: "Reservation",
 };
 
 export const join = (...parts: Array<string | null | false | undefined>) =>
@@ -67,7 +97,40 @@ export function isTicketVisit(v: Pick<GuestVisit, "status" | "origin" | "verifie
   return isOpenVisit(v) && v.origin !== "guest";
 }
 
-export function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
+/** The money a visit's payments moved, summed over its parts. */
+function visitFacts(
+  ids: string[],
+  facts: Map<string, PayFacts>,
+): PayFacts | null {
+  const list = ids.map((id) => facts.get(id)).filter((f): f is PayFacts => !!f);
+  if (list.length === 0) return null;
+  return {
+    currency: list[0].currency,
+    credits: list.reduce((n, f) => n + f.credits, 0),
+    cashback: list.reduce((n, f) => n + f.cashback, 0),
+    takenBack: list.reduce((n, f) => n + f.takenBack, 0),
+    givenBack: list.reduce((n, f) => n + f.givenBack, 0),
+  };
+}
+
+/** The refunds folded into a payment, as words on its line (MESITA-4001):
+ *  "Cashback taken back · −$X", "Credit given back · +$X". */
+function foldedNotes(f: PayFacts | null): Array<string | null> {
+  if (!f) return [];
+  return [
+    f.takenBack > 0 ? `Cashback taken back · −${money(f.takenBack, f.currency)}` : null,
+    f.givenBack > 0 ? `Credit given back · +${money(f.givenBack, f.currency)}` : null,
+  ];
+}
+
+/** A visit's row: the bill with no sign (card or cash money, not credit),
+ *  its state, the cashback it earned as green words under the state, and
+ *  the waiter on its grey line (MESITA-4001). `facts`: each payment's money
+ *  by its id, from the wallet (a payment lives on its Visit, MESITA-3697). */
+export function visitRows(
+  visits: GuestVisit[],
+  facts: Map<string, PayFacts>,
+): Row[] {
   return visits.filter(isTicketVisit).map((v) => {
     const [label, tone] = VISIT_PILL[v.status] ?? [
       v.status,
@@ -83,9 +146,14 @@ export function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row
     // summary (MESITA-3770: "the live workflow and the output must be
     // different").
     const href = open ? payTabPath(v.tab_id) : visitPath(v.tab_id);
+    const f = visitFacts(v.part_payment_ids, facts);
     return {
       key: `v-${v.tab_id}`,
       type: "visits",
+      kind: "visit",
+      sign: null,
+      cashbackCents: f && f.cashback > 0 ? f.cashback : null,
+      cashback: f && f.cashback > 0 ? `+${money(f.cashback, f.currency)} cashback` : null,
       at,
       upcoming: open,
       place: v.place.name ?? "A Mesita place",
@@ -95,9 +163,9 @@ export function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row
       money: total != null,
       line: join(
         open && "Started",
-        ...v.part_payment_ids.map((id) => notes.get(id)),
         v.waiter_name,
         v.ticket && `Ticket ${v.ticket}`,
+        ...foldedNotes(f),
       ),
       href,
       action: open
@@ -136,7 +204,12 @@ export function walletRows(w: Wallet): Row[] {
     b.entries.forEach((e, i) => {
       if (
         e.payment_id &&
-        (e.kind === "spend" || e.kind === "cashback" || e.kind === "reversal")
+        (e.kind === "spend" ||
+          e.kind === "cashback" ||
+          e.kind === "reversal" ||
+          // Credit given back on a payment folds into it (MESITA-4001); the
+          // CHECK gives every `refund` entry a payment id.
+          e.kind === "refund")
       ) {
         const g = byPayment.get(e.payment_id) ?? [];
         g.push(e);
@@ -165,6 +238,7 @@ export function walletRows(w: Wallet): Row[] {
         out.push({
           key: `b-${b.place_id}-${e.at}-${i}`,
           type: "vouchers",
+          kind: "voucher",
           at: e.at,
           upcoming: false,
           place,
@@ -188,6 +262,7 @@ export function walletRows(w: Wallet): Row[] {
         out.push({
           key: `rv-${b.place_id}-${e.at}-${i}`,
           type: "refunds",
+          kind: "refund",
           at: e.at,
           upcoming: false,
           place,
@@ -205,6 +280,7 @@ export function walletRows(w: Wallet): Row[] {
         out.push({
           key: `g-${b.place_id}-${e.at}-${i}`,
           type: gift[2],
+          kind: e.kind as TicketRowKind,
           at: e.at,
           upcoming: false,
           place,
@@ -224,6 +300,7 @@ export function walletRows(w: Wallet): Row[] {
       out.push({
         key: `bo-${b.place_id}-${e.at}-${i}`,
         type: "vouchers",
+        kind: "bonus",
         at: e.at,
         upcoming: false,
         place,
@@ -249,6 +326,7 @@ export function walletRows(w: Wallet): Row[] {
     out.push({
       key: `s-${s.purchase_id}`,
       type: "vouchers",
+      kind: "story",
       at: s.paid_at,
       upcoming: false,
       place: s.place?.name ?? "A Mesita place",
@@ -268,6 +346,7 @@ export function walletRows(w: Wallet): Row[] {
     out.push({
       key: `gl-${l.gift_id}`,
       type: "gifts-out",
+      kind: "gift_link",
       at: l.created_at,
       upcoming: false,
       place: p?.name ?? "A Mesita place",
@@ -282,9 +361,11 @@ export function walletRows(w: Wallet): Row[] {
   return out;
 }
 
-/** One payment: the credits it used is the big fact; with none, the cashback
- *  it earned; with neither, "Paid in cash". A refund on it is a field and
- *  the state. */
+/** One payment that paid no Visit (MESITA-4001): credits spent read
+ *  "−$X" (credit went out), cashback alone "+$X" (credit came in), cash or
+ *  card with neither has no sign. Cashback earned beside credits spent shows
+ *  as green words under the state; refunds folded into it are words on its
+ *  line, and it reads Refunded once any was. */
 export function paymentRow(
   key: string,
   place: string,
@@ -294,40 +375,46 @@ export function paymentRow(
   paymentId: string | null,
   href: string,
 ): Row {
-  const spend = g.filter((e) => e.kind === "spend");
-  const cashback = g.filter((e) => e.kind === "cashback");
-  const refund = g.filter((e) => e.kind === "reversal");
+  const total = (kind: string) =>
+    Math.abs(sum(g.filter((e) => e.kind === kind)));
+  const facts: PayFacts = {
+    currency: cur,
+    credits: total("spend"),
+    cashback: total("cashback"),
+    takenBack: total("reversal"),
+    givenBack: total("refund"),
+  };
   const at = g.map((e) => e.at).sort()[0]!;
-  const cash = cashback.some((e) => e.confirmed_by === "waiter");
-  const back = sum(cashback);
-  const big = spend.length
-    ? money(Math.abs(sum(spend)), cur)
-    : back
-      ? `+${money(back, cur)} cashback`
-      : "Paid in cash";
+  const cash = g.some((e) => e.kind === "cashback" && e.confirmed_by === "waiter");
+  const refunded = facts.takenBack > 0 || facts.givenBack > 0;
+  const spent = facts.credits > 0;
+  const backOnly = !spent && facts.cashback > 0;
   return {
     key,
     type: "visits",
+    kind: "payment",
+    sign: spent ? "−" : backOnly ? "+" : null,
     paymentId,
-    payNote:
-      join(
-        spend.length > 0 && `${money(Math.abs(sum(spend)), cur)} in credits`,
-        back ? `+${money(back, cur)} cashback` : null,
-        refund.length > 0 && `${money(Math.abs(sum(refund)), cur)} refunded`,
-      ) || null,
+    payFacts: facts,
     at,
     upcoming: false,
     place,
     photo,
-    status: refund.length
+    status: refunded
       ? { label: "Refunded", tone: "grey" }
       : { label: "Paid", tone: "green" },
-    big,
+    big: spent
+      ? money(facts.credits, cur)
+      : backOnly
+        ? money(facts.cashback, cur)
+        : "Paid in cash",
     money: true,
+    cashbackCents: spent && facts.cashback > 0 ? facts.cashback : null,
+    cashback:
+      spent && facts.cashback > 0 ? `+${money(facts.cashback, cur)} cashback` : null,
     line: join(
-      cash ? "Cash" : spend.length ? "Credits" : null,
-      spend.length && back ? `+${money(back, cur)} cashback` : null,
-      refund.length > 0 && `${money(Math.abs(sum(refund)), cur)} refunded`,
+      cash ? "Cash" : spent ? "Credits" : backOnly ? "Cashback" : null,
+      ...foldedNotes(facts),
       g.some((e) => e.pending) && "pending",
     ),
     href,

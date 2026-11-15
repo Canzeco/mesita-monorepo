@@ -112,6 +112,7 @@ function reservationRows(rows: EFReservationRow[], nowMs: number): Row[] {
     return {
       key: `r-${row.id}`,
       type: "reservations",
+      kind: "reservation",
       at,
       upcoming,
       place: item.placeName,
@@ -413,9 +414,9 @@ export function TicketsPage() {
     const payments = moneyRows
       ? moneyRows.filter((r) => r.type === "visits")
       : [];
-    const notes = new Map(
+    const facts = new Map(
       payments.flatMap((r) =>
-        r.paymentId && r.payNote ? [[r.paymentId, r.payNote] as const] : [],
+        r.paymentId && r.payFacts ? [[r.paymentId, r.payFacts] as const] : [],
       ),
     );
     const of = (k: TicketKind) =>
@@ -425,7 +426,7 @@ export function TicketsPage() {
       // Visit; every other payment is a ticket of its own beside them.
       visits: visits.data
         ? [
-            ...visitRows(visits.data.visits, notes),
+            ...visitRows(visits.data.visits, facts),
             ...payments.filter(
               (r) => !(r.paymentId && visitIds.has(r.paymentId)),
             ),
