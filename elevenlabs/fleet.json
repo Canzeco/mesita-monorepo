@@ -1,7 +1,7 @@
 {
   "generated": "by `deno task sync-elevenlabs` from supabase/supabase/functions/_shared/reservationist/ — never edit",
-  "spec_hash": "be8fd6794066031868a801817190d01625f5150d965709e41072b61f44158eda",
-  "knowledge_version": 9,
+  "spec_hash": "47cf9bb3f14e97b2b306e2465587227c8a1e72f074e24517348dcc5b63bbed24",
+  "knowledge_version": 10,
   "deploy": ".github/workflows/agents-deploy.yml on every merge to main (supabase/scripts/sync-agents.sh)",
   "agents": [
     {
@@ -27,7 +27,7 @@
         "farewell_wrong",
         "end_node"
       ],
-      "knowledge_doc": "a1-kb-v9",
+      "knowledge_doc": "a1-kb-v10",
       "tests": [
         "mesita · a1 · books and confirms once",
         "mesita · a1 · never accepts another hour",
@@ -56,7 +56,7 @@
         "farewell_cancel",
         "end_node"
       ],
-      "knowledge_doc": "a2-kb-v9",
+      "knowledge_doc": "a2-kb-v10",
       "tests": [
         "mesita · a2 · identity first, options once",
         "mesita · a2 · tells a stranger nothing"
@@ -98,7 +98,7 @@
         "code_info",
         "end_node"
       ],
-      "knowledge_doc": "a3-kb-v9",
+      "knowledge_doc": "a3-kb-v10",
       "tests": [
         "mesita · a3 · guest cancels with one confirmation",
         "mesita · a3 · place cancels by the guest's name",
