@@ -686,7 +686,7 @@ export function CatalogRails() {
   // PLACES' ROWS (MESITA-3662, Places since MESITA-3789): the ranked
   // places, one row each, drawn as PlaceRowCard.
   const rows = (list: readonly Place[], label: string, paged: boolean) => (
-    <div className="pb-6">
+    <div>
       <ul role="list" aria-label={label} className={ROW_LIST}>
         {list.map((place, i) => (
           <PlaceRowCard
