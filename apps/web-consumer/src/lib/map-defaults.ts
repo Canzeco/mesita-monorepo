@@ -122,6 +122,10 @@ export const MAP_PLACE_PIN_RADIUS = 7;
 /** Mesita Premier (MESITA-2925; Selected's from gate d4a): a slightly
  *  larger disk on the map. */
 export const MAP_PREMIER_PLACE_PIN_RADIUS = 9;
+/** The selected (purple) pin is the largest mark on the map, whatever its
+ *  tone (Pato, MESITA-3998: "make the selected place pin a bit bigger");
+ *  until then a held pin only drew its ring thicker (MESITA-2482). */
+export const MAP_SELECTED_PIN_RADIUS = 10;
 export const MAP_PIN_HIT_SIZE = 44;
 export const MAP_PIN_CURSOR = "default";
 export const MAP_PIN_STROKE_WEIGHT = 1.25;
