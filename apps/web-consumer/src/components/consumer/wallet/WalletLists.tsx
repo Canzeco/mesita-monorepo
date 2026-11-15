@@ -49,9 +49,9 @@ const CHIP = "flex h-8 w-[3.2rem] shrink-0 items-center justify-center overflow-
 // ONE LINE, 48px (MESITA-4087, Pato 2026-11-15: "optimize vertical space";
 // "maybe don't mention the number nor pay at the place nor that kind of
 // stuff, and the expires you can maybe put at the right or even don't put
-// it"): a row is its chip and its name, no second line; a saved card reads
-// its brand alone (the last four live in its sheet), Cash reads "Cash".
-// Two lines and 64-70px before.
+// it"): a row is its chip and its name, no expiry. Two rows keep a quiet
+// second line (MESITA-4091): a saved card's "Ends in 4242", and Cash's "Pay
+// at the place, outside the app" (Pato: "just for them to understand").
 const ROW =
   "hover:bg-muted/60 flex min-h-12 w-full items-center gap-3.5 px-4 py-2 text-left transition";
 const DIVIDER = "bg-border ml-[4.75rem] h-px";
@@ -129,7 +129,7 @@ export function AddRow({
 function RowText({ title, line }: { title: ReactNode; line?: ReactNode }) {
   return (
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-base font-semibold">{title}</span>
+      <span className="block truncate text-base leading-tight font-semibold">{title}</span>
       {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{line}</span> : null}
     </span>
   );
@@ -174,13 +174,14 @@ export function CashRow() {
   return (
     <div className={cn(ROW, "hover:bg-transparent")} data-wallet-method="cash">
       <CashChip />
-      <RowText title="Cash" />
+      <RowText title="Cash" line="Pay at the place, outside the app" />
     </div>
   );
 }
 
-/** A saved card (MESITA-3523): its brand, "Expired" on the right only when
- *  it is (MESITA-4087). Opens its sheet, which shows the last four. */
+/** A saved card (MESITA-3523): its brand over "Ends in 4242" (MESITA-4091,
+ *  Pato: "just don't mention with it expired, you can just mention it ends
+ *  in abcd"), "Expired" on the right only when it is. Opens its sheet. */
 export function SavedCardRow({ card, onOpen }: { card: SavedCard; onOpen: () => void }) {
   const brand = brandLabel(card.brand);
   return (
@@ -192,7 +193,7 @@ export function SavedCardRow({ card, onOpen }: { card: SavedCard; onOpen: () => 
       data-wallet-method="saved-card"
     >
       <SavedCardChip brand={card.brand} last4={card.last4} />
-      <RowText title={brand} />
+      <RowText title={brand} line={`Ends in ${card.last4}`} />
       {isExpired(card) ? (
         <span className="text-muted-foreground shrink-0 text-sm">Expired</span>
       ) : null}

@@ -13,12 +13,14 @@ import { cn } from "@/lib/utils";
 // (Search's Ask AI pill), so it reads as a control, not a fourth button next
 // to Share and Gift. Reads nothing: the page and its loading frame draw it.
 // 36px here, not the band pill's 40 (MESITA-4087: the shorter title band);
-// Search keeps its 40px pill.
+// Search keeps its 40px pill. INK since MESITA-4091 (Pato: "tickets button
+// in pay and in wallet must be dark in order to make it visible"): the
+// black of Continue, white words and icon.
 export function TicketsShortcut() {
   return (
     <PushLink
       href={CONSUMER_ROUTES.mePages.tickets}
-      className={cn(HEADER_PILL, "h-9 px-3")}
+      className={cn(HEADER_PILL, "bg-foreground text-paper hover:bg-foreground/90 h-9 border-transparent px-3")}
       data-tickets-shortcut
     >
       <Ticket className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />

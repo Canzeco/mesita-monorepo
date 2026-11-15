@@ -12,9 +12,9 @@ import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
-import { apiGetTab, apiListVisits, type GuestTab } from "@/lib/api/tab";
+import { apiCancelTab, apiGetTab, apiListVisits, type GuestTab, TAB_REFUSAL } from "@/lib/api/tab";
 import { money, type PayPlace } from "@/lib/api/wallet";
-import { readDraft } from "@/lib/guest-pay-draft";
+import { clearGuestDraft, readDraft } from "@/lib/guest-pay-draft";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { cn } from "@/lib/utils";
 import { payBillPath, payPlacePath } from "@/lib/consumer-route-contract";
@@ -22,7 +22,8 @@ import { navigateTo } from "@/lib/navigate";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot, requestUserLocation } from "@/lib/use-user-location";
-import { forgetGuestTab, PlacePhoto, readGuestTabIds } from "./pay-common";
+import { forgetGuestTab, NETWORK_FAILURE, PlacePhoto, QUIET_BUTTON_CLASS, readGuestTabIds } from "./pay-common";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { usePayPlaces } from "./use-pay-places";
 import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
@@ -271,7 +272,15 @@ export function PayPage() {
         {openTabs === null ? (
           <ListSkeleton />
         ) : openTabs.length > 0 || pending ? (
-          <OpenBillPanel tab={openTabs[0] ?? null} pending={pending} places={places} />
+          <OpenBillPanel
+            tab={openTabs[0] ?? null}
+            pending={pending}
+            places={places}
+            onCancelled={(tabId) =>
+              // A copy either way: the re-render re-reads the pending draft.
+              setOpenTabs((t) => (t ? t.filter((x) => x.tab_id !== tabId) : t))
+            }
+          />
         ) : places ? (
           <PlaceList
             places={places}
@@ -467,16 +476,31 @@ function ListSkeleton() {
  *  name, the bill (with tip and total once known), its state, then one
  *  black Continue to the same address the amber band opens. A bill sent to
  *  the waiter wins over one still being filled in on this phone, as in the
- *  band. Read from what Pay already holds: no new call. */
+ *  band. Read from what Pay already holds: no new call.
+ *
+ *  AMBER, AND IT WARNS (Pato, 2026-11-15, MESITA-4091: "if i leaved something
+ *  open, write it yellow and mention that must be completed or canceled
+ *  before creating other ticket"): the band's amber, the line "Finish or
+ *  cancel this bill before you start a new one.", and a quiet Cancel bill
+ *  under Continue. It asks first, like every Cancel bill (MESITA-4068); a
+ *  draft is thrown away on this phone, a sent bill goes through the guest's
+ *  own cancel (consumer-web-cancel-tab, as on the bill's page). */
 function OpenBillPanel({
   tab,
   pending,
   places,
+  onCancelled,
 }: {
   tab: GuestTab | null;
   pending: { placeId: string; name: string | null } | null;
   places: PayPlace[] | null;
+  /** The bill is gone: Pay shows its places again. `null` for a draft. */
+  onCancelled: (tabId: string | null) => void;
 }) {
+  const getSupabase = useLazyBrowserSupabase();
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const placeId = tab ? tab.place.id : (pending?.placeId ?? "");
   const listed = places?.find((p) => p.place_id === placeId);
   const name = (tab ? tab.place.name : pending?.name) ?? listed?.name ?? null;
@@ -486,17 +510,43 @@ function OpenBillPanel({
   const currency = tab?.currency ?? listed?.currency ?? "mxn";
   const bill = tab ? tab.bill_cents : draft ? readAmount(draft.amount) : null;
   const tip = tab ? tab.card_tip_cents + tab.cash_tip_cents : null;
+
+  async function cancel() {
+    if (busy) return;
+    setError(null);
+    if (!tab) {
+      clearGuestDraft(placeId);
+      setConfirm(false);
+      onCancelled(null);
+      return;
+    }
+    setBusy(true);
+    try {
+      await apiCancelTab(getSupabase(), tab.tab_id, "cancel");
+      forgetGuestTab(tab.tab_id);
+      clearGuestDraft(tab.place.id);
+      setConfirm(false);
+      onCancelled(tab.tab_id);
+    } catch (e) {
+      const code = e instanceof EFError ? e.code : null;
+      setError((code && TAB_REFUSAL[code]) || NETWORK_FAILURE);
+      setConfirm(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <Panel data-pay-open-bill>
+    <Panel className="border-amber-200 bg-amber-50 text-amber-900" data-pay-open-bill>
       <div className="flex items-center gap-3 px-4 pt-4">
         <PlacePhoto place={{ photo: listed?.photo ?? null, name }} className="h-11 w-11" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-base font-semibold">{name ?? "Your bill"}</span>
-          <span className="text-muted-foreground block truncate text-sm">{what}</span>
+          <span className="block truncate text-sm text-amber-800">{what}</span>
         </span>
       </div>
       {bill ? (
-        <div className="divide-border border-border mt-4 divide-y border-t text-base">
+        <div className="mt-4 divide-y divide-amber-200 border-t border-amber-200 text-base">
           <BillRow label="Bill" value={money(bill, currency)} />
           {tip ? (
             <>
@@ -506,11 +556,42 @@ function OpenBillPanel({
           ) : null}
         </div>
       ) : null}
-      <div className="p-4">
+      <p className={cn("px-4 text-sm text-amber-900", bill ? "pt-1" : "pt-4")} data-pay-open-bill-warning>
+        Finish or cancel this bill before you start a new one.
+      </p>
+      {error ? (
+        <p role="alert" className="px-4 pt-2 text-sm font-semibold text-red-700">
+          {error}
+        </p>
+      ) : null}
+      <div className="flex flex-col gap-1 p-4">
         <Button asChild size="lg" className="min-h-12 w-full text-base font-semibold">
           <Link href={href}>Continue</Link>
         </Button>
+        <button
+          type="button"
+          onClick={() => setConfirm(true)}
+          disabled={busy}
+          className="flex h-11 w-full items-center justify-center text-sm font-semibold text-amber-900 disabled:opacity-60"
+          data-pay-open-bill-cancel
+        >
+          Cancel bill
+        </button>
       </div>
+      <LocalDialog open={confirm} onClose={() => setConfirm(false)} ariaLabel="Cancel this bill">
+        <div className="p-5">
+          <p className="text-base font-semibold">Cancel this bill?</p>
+          <p className="text-muted-foreground mt-1 text-sm">Nothing is paid.</p>
+          <div className="mt-4 flex gap-2">
+            <Button className="min-h-12 flex-1 text-base font-semibold" disabled={busy} onClick={() => void cancel()}>
+              {busy ? "Cancelling…" : "Cancel bill"}
+            </Button>
+            <button type="button" className={cn(QUIET_BUTTON_CLASS, "flex-1")} onClick={() => setConfirm(false)}>
+              Keep it
+            </button>
+          </div>
+        </div>
+      </LocalDialog>
     </Panel>
   );
 }
