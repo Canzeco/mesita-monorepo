@@ -34,7 +34,7 @@ import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { CardBrandChip, cardFace } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
-import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PlaceBar, PlaceHero, RowsCard, StepBody, StepFooter, StepNav } from "./pay-flow";
+import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, RowsCard, StepBody, StepFooter } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
 // THE GUEST PAYS (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
@@ -355,12 +355,14 @@ export function GuestPayScreen({
   if (blocked) {
     return (
       <div className="flex min-h-0 flex-1 flex-col" data-guest-pay="blocked">
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
-          <ReceiptText className="h-12 w-12 text-amber-700" aria-hidden />
-          <h2 className="font-display mt-4 text-xl font-semibold">Finish this bill first</h2>
-          <p className="mt-2 text-base">You have a bill open{blocked.name ? ` at ${blocked.name}` : ""}.</p>
-          <p className="text-muted-foreground mt-1 text-sm">Pay it or cancel it before starting another.</p>
-        </div>
+        <StepBody>
+          <PaySection className="flex flex-col items-center p-6 text-center">
+            <ReceiptText className="h-12 w-12 text-amber-700" aria-hidden />
+            <h2 className="font-display mt-4 text-xl font-semibold">Finish this bill first</h2>
+            <p className="mt-2 text-base">You have a bill open{blocked.name ? ` at ${blocked.name}` : ""}.</p>
+            <p className="text-muted-foreground mt-1 text-sm">Pay it or cancel it before starting another.</p>
+          </PaySection>
+        </StepBody>
         <Button
           type="button"
           className="min-h-12 w-full shrink-0 text-base font-semibold"
@@ -459,23 +461,22 @@ export function GuestPayScreen({
   // the footer's button is a plain Next.
   const backArrow = held || outcomeUnknown ? undefined : () => void backOneStep();
   const top = (at: number, onBack: (() => void) | undefined, next?: { onClick: () => void; disabled: boolean }) => (
-    <>
-      <PlaceBar place={place} onChoose={leave} />
-      <StepNav at={at} onBack={onBack} next={next} />
-    </>
+    <PayTop place={place} onChoose={leave} step={{ at, onBack, next }} />
   );
 
   // NOT PAID (before the bill opened: the card was refused).
   if (notPaid) {
     return frame(
       <>
-        <PlaceBar place={place} />
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
-          <XCircle className={cn("h-14 w-14", BAD)} aria-hidden />
-          <h2 className="font-display mt-4 text-xl font-semibold">Not paid</h2>
-          <p className="mt-2 text-base">{notPaid}</p>
-          <p className="text-muted-foreground mt-1 text-sm">Nothing was charged</p>
-        </div>
+        <PayTop place={place} />
+        <StepBody>
+          <PaySection className="flex flex-col items-center p-6 text-center">
+            <XCircle className={cn("h-14 w-14", BAD)} aria-hidden />
+            <h2 className="font-display mt-4 text-xl font-semibold">Not paid</h2>
+            <p className="mt-2 text-base">{notPaid}</p>
+            <p className="text-muted-foreground mt-1 text-sm">Nothing was charged</p>
+          </PaySection>
+        </StepBody>
         <StepFooter
           onCancel={askCancel}
           cancelDisabled={cancelLocked}
@@ -500,10 +501,12 @@ export function GuestPayScreen({
     return frame(
       <>
         <PlaceHero place={place} off onChoose={onChoosePlace} />
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
-          <p className="text-base font-semibold">This place doesn&apos;t take Mesita payments.</p>
-          <p className="text-muted-foreground mt-1 text-sm">Pay the usual way, outside Mesita.</p>
-        </div>
+        <StepBody>
+          <PaySection className="p-6 text-center">
+            <p className="text-base font-semibold">This place doesn&apos;t take Mesita payments.</p>
+            <p className="text-muted-foreground mt-1 text-sm">Pay the usual way, outside Mesita.</p>
+          </PaySection>
+        </StepBody>
         <button type="button" className={QUIET_BUTTON_CLASS} onClick={onChoosePlace}>
           Choose another place
         </button>
@@ -520,15 +523,22 @@ export function GuestPayScreen({
     return frame(
       <>
         {top(0, undefined, { onClick: toTip, disabled: billCents <= 0 })}
-        <div className="flex min-h-0 flex-1 flex-col justify-center py-4">
-          <div className="flex shrink-0 items-center justify-center gap-2">
-            <ReceiptText className="text-muted-foreground h-5 w-5" aria-hidden />
-            <span className="text-muted-foreground text-sm">The amount on the paper bill</span>
-          </div>
-          <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mt-1 shrink-0" />
-          <div className="mt-4 flex min-h-44 max-h-64 flex-1 flex-col">
-            <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
-          </div>
+        {/* The bill's panel (MESITA-4072): its heading, the line, the amount
+            and the keypad, taking the room between the top panel and the
+            footer so a short phone shrinks the keys instead of scrolling. */}
+        <div className="flex min-h-0 flex-1 flex-col py-4">
+          <PaySection title="Bill" className="flex min-h-0 flex-1 shrink flex-col">
+            <div className="flex min-h-0 flex-1 flex-col justify-center px-4 pb-2">
+              <div className="flex shrink-0 items-center justify-center gap-2">
+                <ReceiptText className="text-muted-foreground h-5 w-5" aria-hidden />
+                <span className="text-muted-foreground text-sm">The amount on the paper bill</span>
+              </div>
+              <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mt-1 shrink-0" />
+              <div className="mt-4 flex min-h-44 max-h-64 flex-1 flex-col">
+                <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
+              </div>
+            </div>
+          </PaySection>
         </div>
         {status}
         <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: billCents <= 0 || held, onClick: toTip }} />
@@ -551,26 +561,24 @@ export function GuestPayScreen({
       <>
         {top(1, backArrow, { onClick: tipNext, disabled: !tipOk || billCents <= 0 || held })}
         <StepBody className="items-stretch">
-          <button
-            type="button"
-            onClick={() => setTyping(true)}
-            className="flex shrink-0 flex-col items-center"
-            aria-label={`Bill ${m(billCents)}. Change it`}
-            data-guest-bill-amount
-          >
-            <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
-              <ReceiptText className="h-4 w-4" aria-hidden />
-              Bill
-            </span>
-            <span className="text-[2.5rem] leading-tight font-semibold tabular-nums">{m(billCents)}</span>
-          </button>
+          <PaySection>
+            <button
+              type="button"
+              onClick={() => setTyping(true)}
+              className="flex w-full flex-col items-center p-4"
+              aria-label={`Bill ${m(billCents)}. Change it`}
+              data-guest-bill-amount
+            >
+              <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
+                <ReceiptText className="h-4 w-4" aria-hidden />
+                Bill
+              </span>
+              <span className="text-[2.5rem] leading-tight font-semibold tabular-nums">{m(billCents)}</span>
+            </button>
+          </PaySection>
 
-          <div className="mt-4 shrink-0 text-left" role="group" aria-label="Tip for the staff">
-            <p className="mb-2 flex items-center gap-2 text-base font-semibold">
-              <HandCoins className="h-5 w-5" aria-hidden />
-              Tip for the staff
-            </p>
-            <div className="flex gap-2">
+          <PaySection title="Tip for the staff">
+            <div className="flex gap-2 p-4 pt-3" role="group" aria-label="Tip for the staff">
               {TIP_CHIPS.map((p) => (
                 <button key={p} type="button" className={tipChip(tip === p)} aria-pressed={tip === p} onClick={() => setTip(p)}>
                   {`${p}%`}
@@ -588,15 +596,14 @@ export function GuestPayScreen({
                 {tip === "other" ? m(tipCents) : "Other"}
               </button>
             </div>
-          </div>
+          </PaySection>
 
-
-          <RowsCard className="mt-4 shrink-0 text-left">
+          <PaySection className="divide-border divide-y text-base">
             <MoneyRow label="Bill" value={m(billCents)} />
             <MoneyRow label="Tip" value={tipOk ? m(tipCents) : "Choose a tip"} />
             <MoneyRow label="Total" value={m(billCents + tipCents)} strong />
             <CashbackRow cents={billCashback} bps={billRate} m={m} />
-          </RowsCard>
+          </PaySection>
         </StepBody>
         {status}
         <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: !tipOk || billCents <= 0 || held, onClick: tipNext }} />
@@ -635,6 +642,21 @@ export function GuestPayScreen({
     // way, so the button opens the bill (credits are spent). It is money,
     // so › is not offered.
     const creditsOnly = dueCents === 0;
+    const cashbackLine = (
+      <p
+        className={cn("flex items-center justify-center gap-2 text-base font-semibold", way && cashbackFor(way) > 0 ? GOOD : "text-muted-foreground", creditsOnly && "mt-2")}
+        data-guest-cashback
+      >
+        <Coins className="h-5 w-5" aria-hidden />
+        {way
+          ? cashbackFor(way) > 0
+            ? `+${m(cashbackFor(way))} · ${backAsCredits(rateFor(way))}`
+            : backAsCredits(rateFor(way))
+          : creditsOnly
+          ? "Paid in full with credits"
+          : "Choose how to pay"}
+      </p>
+    );
     const toPay = () => {
       if (way) {
         setMethod(way);
@@ -646,66 +668,59 @@ export function GuestPayScreen({
         {top(2, backArrow, creditsOnly ? undefined : { onClick: toPay, disabled: !way || held })}
         <StepBody className="items-stretch">
           {spendable > 0 ? (
-            <button
-              type="button"
-              role="switch"
-              aria-checked={creditOn}
-              onClick={() => setUseCredit((u) => !u)}
-              className="mb-4 flex min-h-12 w-full shrink-0 items-center gap-3 text-left"
-              data-guest-credits
-            >
-              <Wallet className="h-5 w-5 shrink-0" aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-base">
-                <span className="font-semibold">Use my credits</span>
-                <span className="text-muted-foreground"> · {m(spendable)} available</span>
-              </span>
-              <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
-                <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full shadow transition-all", creditOn ? "left-[18px]" : "left-0.5")} />
-              </span>
-            </button>
+            <PaySection>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={creditOn}
+                onClick={() => setUseCredit((u) => !u)}
+                className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left"
+                data-guest-credits
+              >
+                <Wallet className="h-5 w-5 shrink-0" aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-base">
+                  <span className="font-semibold">Use my credits</span>
+                  <span className="text-muted-foreground"> · {m(spendable)} available</span>
+                </span>
+                <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
+                  <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full shadow transition-all", creditOn ? "left-[18px]" : "left-0.5")} />
+                </span>
+              </button>
+            </PaySection>
           ) : null}
-          <p className="shrink-0 text-center">
+          <PaySection className="p-4 text-center">
             <span className="text-muted-foreground block text-sm">{leftCents === 0 ? "Tip to pay" : "Left to pay"}</span>
             <span className="block text-[2.5rem] leading-tight font-semibold tabular-nums">{m(dueCents)}</span>
             {creditOn ? <span className="text-muted-foreground block text-sm tabular-nums">{`${m(creditCents)} paid with credits`}</span> : null}
-          </p>
+            {creditsOnly ? cashbackLine : null}
+          </PaySection>
           {creditsOnly ? null : (
-          <div className="mt-4 flex shrink-0 flex-col gap-3 text-left" role="radiogroup" aria-label="How you pay">
-            <MethodTile
-              on={way === "card"}
-              off={appWhy}
-              icon={<Smartphone />}
-              tone="bg-pink-gradient text-white"
-              title="App"
-              line="Card"
-              bps={rateFor("card")}
-              onPick={() => setMethod("card")}
-            />
-            <MethodTile
-              on={way === "cash"}
-              off={cashWhy}
-              icon={<Banknote />}
-              tone="bg-green-400 text-neutral-950"
-              title="Cash"
-              line="Cash or their terminal"
-              bps={rateFor("cash")}
-              onPick={() => setMethod("cash")}
-            />
-          </div>
+            <PaySection title="How you pay">
+              <div className="divide-border mt-1 flex flex-col divide-y" role="radiogroup" aria-label="How you pay">
+                <MethodTile
+                  on={way === "card"}
+                  off={appWhy}
+                  icon={<Smartphone />}
+                  tone="bg-pink-gradient text-white"
+                  title="App"
+                  line="Card"
+                  bps={rateFor("card")}
+                  onPick={() => setMethod("card")}
+                />
+                <MethodTile
+                  on={way === "cash"}
+                  off={cashWhy}
+                  icon={<Banknote />}
+                  tone="bg-green-400 text-neutral-950"
+                  title="Cash"
+                  line="Cash or their terminal"
+                  bps={rateFor("cash")}
+                  onPick={() => setMethod("cash")}
+                />
+              </div>
+              <div className="border-border border-t px-4 py-3">{cashbackLine}</div>
+            </PaySection>
           )}
-          <p
-            className={cn("mt-4 flex shrink-0 items-center justify-center gap-2 text-base font-semibold", way && cashbackFor(way) > 0 ? GOOD : "text-muted-foreground")}
-            data-guest-cashback
-          >
-            <Coins className="h-5 w-5" aria-hidden />
-            {way
-              ? cashbackFor(way) > 0
-                ? `+${m(cashbackFor(way))} · ${backAsCredits(rateFor(way))}`
-                : backAsCredits(rateFor(way))
-              : creditsOnly
-              ? "Paid in full with credits"
-              : "Choose how to pay"}
-          </p>
         </StepBody>
         {status}
         <StepFooter
@@ -732,51 +747,55 @@ export function GuestPayScreen({
       <>
         {top(3, backArrow)}
         <StepBody>
-          {cardsUnknown ? (
-            cardsLoad.state === "failed" ? (
-              <button type="button" className="text-base font-semibold underline" onClick={() => {
-                setCardsLoad({ state: "loading" });
-                setCardsAttempt((n) => n + 1);
-              }}>
-                Couldn&apos;t load your cards. Retry
-              </button>
-            ) : (
-              <Skeleton className="h-28 w-48 rounded-2xl" />
-            )
-          ) : card ? (
-            <button
-              type="button"
-              onClick={() => setCardsSheet(true)}
-              className={cn("flex h-28 w-48 flex-col justify-between rounded-2xl p-4 text-left", guestFace?.className)}
-              style={guestFace?.style}
-              aria-label={`${brandLabel(card.brand)} ending ${card.last4}. Change card`}
-              data-guest-card
-            >
-              {guestFace?.mark}
-              <span className="text-base font-semibold tracking-widest tabular-nums">•••• {card.last4}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => addCard()}
-              disabled={addingCard}
-              className="border-muted-foreground/40 text-muted-foreground flex h-28 w-48 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed"
-              data-guest-add-card
-            >
-              <Plus className="h-6 w-6" aria-hidden />
-              <span className="text-base font-semibold">{"Add a card"}</span>
-            </button>
-          )}
-          {cards && cards.length > 1 ? (
-            <button type="button" className="text-muted-foreground mt-2 flex h-11 items-center gap-1 text-sm font-semibold" onClick={() => setCardsSheet(true)}>
-              Change card
-              <ChevronRight className="h-4 w-4" aria-hidden />
-            </button>
-          ) : null}
-          <p className="text-muted-foreground mt-4 flex items-center justify-center gap-2 text-sm">
-            <Lock className="h-4 w-4" aria-hidden />
-            Held now, charged when the waiter signs.
-          </p>
+          <PaySection title="Card">
+            <div className="flex flex-col items-center p-4 pt-3">
+              {cardsUnknown ? (
+                cardsLoad.state === "failed" ? (
+                  <button type="button" className="text-base font-semibold underline" onClick={() => {
+                    setCardsLoad({ state: "loading" });
+                    setCardsAttempt((n) => n + 1);
+                  }}>
+                    Couldn&apos;t load your cards. Retry
+                  </button>
+                ) : (
+                  <Skeleton className="h-28 w-48 rounded-2xl" />
+                )
+              ) : card ? (
+                <button
+                  type="button"
+                  onClick={() => setCardsSheet(true)}
+                  className={cn("flex h-28 w-48 flex-col justify-between rounded-2xl p-4 text-left", guestFace?.className)}
+                  style={guestFace?.style}
+                  aria-label={`${brandLabel(card.brand)} ending ${card.last4}. Change card`}
+                  data-guest-card
+                >
+                  {guestFace?.mark}
+                  <span className="text-base font-semibold tracking-widest tabular-nums">•••• {card.last4}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => addCard()}
+                  disabled={addingCard}
+                  className="border-muted-foreground/40 text-muted-foreground flex h-28 w-48 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed"
+                  data-guest-add-card
+                >
+                  <Plus className="h-6 w-6" aria-hidden />
+                  <span className="text-base font-semibold">{"Add a card"}</span>
+                </button>
+              )}
+              {cards && cards.length > 1 ? (
+                <button type="button" className="text-muted-foreground mt-2 flex h-11 items-center gap-1 text-sm font-semibold" onClick={() => setCardsSheet(true)}>
+                  Change card
+                  <ChevronRight className="h-4 w-4" aria-hidden />
+                </button>
+              ) : null}
+              <p className="text-muted-foreground mt-3 flex items-center justify-center gap-2 text-sm">
+                <Lock className="h-4 w-4" aria-hidden />
+                Held now, charged when the waiter signs.
+              </p>
+            </div>
+          </PaySection>
         </StepBody>
         {status}
         <StepFooter
@@ -843,12 +862,14 @@ export function GuestPayScreen({
     <>
       {top(3, backArrow)}
       <StepBody>
-        <span className="flex h-28 w-28 items-center justify-center rounded-full bg-green-400 text-neutral-950" aria-hidden>
-          <Banknote className="h-14 w-14" />
-        </span>
-        <p className="mt-6 text-[2.5rem] leading-tight font-semibold tabular-nums">{m(dueCents)}</p>
-        <h2 className="font-display mt-1 text-xl font-semibold">Give {m(dueCents)} to the waiter</h2>
-        <p className="text-muted-foreground mt-1 text-sm">Then show them the QR</p>
+        <PaySection className="flex flex-col items-center p-6 text-center">
+          <span className="flex h-28 w-28 items-center justify-center rounded-full bg-green-400 text-neutral-950" aria-hidden>
+            <Banknote className="h-14 w-14" />
+          </span>
+          <p className="mt-6 text-[2.5rem] leading-tight font-semibold tabular-nums">{m(dueCents)}</p>
+          <h2 className="font-display mt-1 text-xl font-semibold">Give {m(dueCents)} to the waiter</h2>
+          <p className="text-muted-foreground mt-1 text-sm">Then show them the QR</p>
+        </PaySection>
       </StepBody>
       {status}
       <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
@@ -878,8 +899,9 @@ function CashbackRow({ cents, bps, m }: { cents: number; bps: number; m: (c: num
   );
 }
 
-/** A large tile for App or Cash: thick border when chosen, grey with one
- *  line why when the place can't take it. */
+/** A row for App or Cash in the How you pay panel (MESITA-4072; a bordered
+ *  tile with a thick border when chosen until then): the ring on the right
+ *  fills when chosen; grey with one line why when the place can't take it. */
 function MethodTile({
   on,
   off,
@@ -910,26 +932,34 @@ function MethodTile({
       aria-disabled={!!off}
       onClick={() => !off && onPick()}
       className={cn(
-        "relative flex min-h-24 w-full items-center gap-4 rounded-2xl px-4 py-3 text-left transition",
-        off ? "bg-muted border-border text-muted-foreground border" : on ? "border-foreground border-[3px]" : "border-border hover:bg-muted/60 border",
+        "flex min-h-20 w-full items-center gap-4 px-4 py-3 text-left transition",
+        off ? "text-muted-foreground" : "hover:bg-muted/60",
       )}
       data-guest-method={title.toLowerCase()}
     >
-      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full [&>svg]:h-6 [&>svg]:w-6", off ? "bg-card" : tone)} aria-hidden>
+      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full [&>svg]:h-6 [&>svg]:w-6", off ? "bg-muted" : tone)} aria-hidden>
         {icon}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-base font-semibold">{title}</span>
         <span className="text-muted-foreground block text-sm">{off ?? line}</span>
+        {!off ? (
+          <span className={cn("mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap", bps > 0 ? [GOOD, GOOD_TINT] : "bg-muted text-muted-foreground")}>
+            {backAsCredits(bps)}
+          </span>
+        ) : null}
       </span>
+      {/* The choice is the ring on the right (MESITA-4072: a row in the How
+          you pay panel, never a bordered tile inside it). */}
       {!off ? (
-        <span className={cn("shrink-0 rounded-full px-3 py-1 text-sm font-semibold whitespace-nowrap", bps > 0 ? [GOOD, GOOD_TINT] : "bg-muted text-muted-foreground")}>
-          {backAsCredits(bps)}
-        </span>
-      ) : null}
-      {on ? (
-        <span className="bg-foreground text-background absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full" aria-hidden>
-          <Check className="h-4 w-4" />
+        <span
+          className={cn(
+            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+            on ? "bg-foreground text-background" : "border-border border-2",
+          )}
+          aria-hidden
+        >
+          {on ? <Check className="h-4 w-4" /> : null}
         </span>
       ) : null}
     </button>

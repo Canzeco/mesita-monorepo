@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, MapPin, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { PayPlace } from "@/lib/api/wallet";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/shared/Panel";
 import { Spinner } from "@/components/shared/Spinner";
 import { goBack } from "@/lib/navigate";
 import { cn } from "@/lib/utils";
@@ -170,11 +171,12 @@ export const PAY_FLOW_STEPS = ["Bill", "Tip", "Method", "Pay", "Sign"] as const;
  *  vertically aligned, not only horizontally"): one group, centred both ways
  *  in the space between the step nav and the footer. `my-auto` (never
  *  justify-center) so a group taller than the screen scrolls from its top
- *  instead of being clipped; the footer never moves. */
+ *  instead of being clipped; the footer never moves. Its panels sit 16px
+ *  apart (MESITA-4072). */
 export function StepBody({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className="-mx-4 flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
-      <div className={cn("my-auto flex w-full flex-col items-center py-4 text-center", className)}>{children}</div>
+      <div className={cn("my-auto flex w-full flex-col items-center gap-4 py-4 text-center", className)}>{children}</div>
     </div>
   );
 }
@@ -197,11 +199,11 @@ export function StepNav({
   const name = PAY_FLOW_STEPS[at];
   const arrow = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent";
   return (
-    // MESITA-4068 (Pato: "modular design, in boxes"): the step nav is its own
-    // box between two inset hairlines (the page's padding, never full width),
-    // apart from the place above and the body below; only the header's and
-    // the footer's lines run edge to edge.
-    <div className="border-border mt-2 shrink-0 border-y py-2" data-pay-steps>
+    // MESITA-4072 (Pato: "this payment workflow, all steps, maybe in boxes
+    // too"): the step nav is the bottom half of the top panel (PayTop), under
+    // a hairline from the place. MESITA-4068 drew it between two inset
+    // hairlines on the page.
+    <div className="border-border border-t px-2 py-2" data-pay-steps>
       <div className="flex h-11 items-center">
         <button
           type="button"
@@ -235,6 +237,49 @@ export function StepNav({
         ))}
       </ol>
     </div>
+  );
+}
+
+/** THE TOP PANEL (MESITA-4072): the place and, on a step, the step nav,
+ *  one shared Panel across the top of every guest Pay screen. */
+export function PayTop({
+  place,
+  name,
+  onChoose,
+  step,
+}: {
+  place: PayPlace | null;
+  name?: string | null;
+  onChoose?: () => void;
+  step?: { at: number; onBack?: () => void; next?: { onClick: () => void; disabled: boolean } };
+}) {
+  return (
+    <Panel className="shrink-0" data-pay-top>
+      <div className="flex px-4 py-1.5">
+        <PlaceBar place={place} name={name} onChoose={onChoose} />
+      </div>
+      {step ? <StepNav at={step.at} onBack={step.onBack} next={step.next} /> : null}
+    </Panel>
+  );
+}
+
+/** A step's section (MESITA-4072): the shared Panel, left-aligned inside
+ *  the centred step body, full width. */
+export function PaySection({
+  title,
+  className,
+  children,
+  ...data
+}: {
+  title?: string;
+  className?: string;
+  children?: React.ReactNode;
+  [key: `data-${string}`]: string | boolean | undefined;
+}) {
+  return (
+    <Panel title={title} className={cn("w-full shrink-0 text-left", className)} {...data}>
+      {children}
+    </Panel>
   );
 }
 

@@ -12,7 +12,7 @@ import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
-import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PlaceBar, RowsCard, StepBody, StepFooter, StepNav, WAIT } from "./pay-flow";
+import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PaySection, PayTop, StepBody, StepFooter, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
@@ -163,32 +163,34 @@ export function GuestTabView({
           <p className="text-sm text-white/85">{clockTime(tab.verified_at ?? tab.paid_at ?? tab.updated_at)}</p>
         </div>
         <div className="flex min-h-0 flex-1 flex-col px-4 pt-4">
-          <div className="flex shrink-0 items-center gap-3">
-            <span className="bg-muted h-10 w-10 shrink-0 overflow-hidden rounded-full" aria-hidden>
-              {place?.photo ? <SizedImg src={place.photo} size="thumb" alt="" className="h-full w-full object-cover" /> : null}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-base font-semibold">{placeName}</span>
-          </div>
-          <RowsCard className="mt-4 shrink-0">
+          {/* One panel (MESITA-4072): the place, the money rows, and what the
+              bill earned as its last row, hairlines between. */}
+          <PaySection className="divide-border divide-y text-base">
+            <div className="flex items-center gap-3 px-4 py-3">
+              <span className="bg-muted h-10 w-10 shrink-0 overflow-hidden rounded-full" aria-hidden>
+                {place?.photo ? <SizedImg src={place.photo} size="thumb" alt="" className="h-full w-full object-cover" /> : null}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-base font-semibold">{placeName}</span>
+            </div>
             {tab.credit_cents > 0 ? <MoneyRow icon={<Wallet />} label="Credits" value={m(tab.credit_cents)} /> : null}
             {tab.card_bill_cents > 0 ? <MoneyRow icon={<Smartphone />} label="Card" value={m(tab.card_bill_cents)} /> : null}
             {tab.cash_bill_cents > 0 ? <MoneyRow icon={<Banknote />} label="Cash" value={m(tab.cash_bill_cents)} /> : null}
             {tip > 0 ? <MoneyRow icon={<HandCoins />} label="Tip" value={m(tip)} /> : null}
             <MoneyRow label="Total" value={m(total)} strong />
             <MoneyRow label="Signed by staff" value="" />
-          </RowsCard>
-          {back > 0 ? (
-            <div className={cn("mt-4 flex shrink-0 items-center gap-3 rounded-2xl px-4 py-3 font-semibold", GOOD, GOOD_TINT)} data-guest-cashback>
-              <Coins className="h-5 w-5 shrink-0" aria-hidden />
-              {/* Available at once (MESITA-3909). */}
-              <span className="flex-1">+{m(back)} back as credits here</span>
-            </div>
-          ) : (
-            <div className="border-border text-muted-foreground mt-4 flex shrink-0 items-center gap-3 rounded-2xl border px-4 py-3" data-guest-cashback>
-              <Coins className="h-5 w-5 shrink-0" aria-hidden />
-              <span>{backBps / 100}% back as credits</span>
-            </div>
-          )}
+            {back > 0 ? (
+              <div className={cn("flex min-h-11 items-center gap-3 px-4 py-3 font-semibold", GOOD, GOOD_TINT)} data-guest-cashback>
+                <Coins className="h-5 w-5 shrink-0" aria-hidden />
+                {/* Available at once (MESITA-3909). */}
+                <span className="flex-1">+{m(back)} back as credits here</span>
+              </div>
+            ) : (
+              <div className="text-muted-foreground flex min-h-11 items-center gap-3 px-4 py-3" data-guest-cashback>
+                <Coins className="h-5 w-5 shrink-0" aria-hidden />
+                <span>{backBps / 100}% back as credits</span>
+              </div>
+            )}
+          </PaySection>
           <div className="min-h-0 flex-1" aria-hidden />
           <Button size="lg" className="mt-3 mb-4 min-h-12 w-full shrink-0 text-base font-semibold" onClick={onDone}>
             Done
@@ -206,14 +208,17 @@ export function GuestTabView({
       (tab.status === "expired" ? NOT_PAID_REASON.expired : cardFailed ? NOT_PAID_REASON.card_declined : NOT_PAID_REASON.cancelled);
     return (
       <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="not-paid">
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
-          <XCircle className={cn("h-14 w-14", BAD)} aria-hidden />
-          <h2 className="font-display mt-4 text-xl font-semibold">Not paid</h2>
-          <p className="mt-2 text-base">{reason}</p>
-          <p className="text-muted-foreground mt-1 max-w-xs text-sm">
-            {cash > 0 ? "Nothing was charged in Mesita. If you gave cash, settle it with the waiter." : "Nothing was charged"}
-          </p>
-        </div>
+        <PayTop place={place} name={tab.place.name} />
+        <StepBody>
+          <PaySection className="flex flex-col items-center p-6 text-center">
+            <XCircle className={cn("h-14 w-14", BAD)} aria-hidden />
+            <h2 className="font-display mt-4 text-xl font-semibold">Not paid</h2>
+            <p className="mt-2 text-base">{reason}</p>
+            <p className="text-muted-foreground mt-1 max-w-xs text-sm">
+              {cash > 0 ? "Nothing was charged in Mesita. If you gave cash, settle it with the waiter." : "Nothing was charged"}
+            </p>
+          </PaySection>
+        </StepBody>
         <Button
           size="lg"
           className="min-h-12 w-full shrink-0 text-base font-semibold"
@@ -243,10 +248,15 @@ export function GuestTabView({
   if (confirming) {
     return (
       <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="confirming">
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center" role="status">
-          <Loader2 className="h-14 w-14 animate-spin motion-reduce:animate-none" aria-hidden />
-          <h2 className="font-display mt-4 text-xl font-semibold">Confirming…</h2>
-        </div>
+        <PayTop place={place} name={tab.place.name} />
+        <StepBody>
+          <PaySection className="flex flex-col items-center p-6 text-center" data-guest-confirming>
+            <div role="status" className="flex flex-col items-center">
+              <Loader2 className="h-14 w-14 animate-spin motion-reduce:animate-none" aria-hidden />
+              <h2 className="font-display mt-4 text-xl font-semibold">Confirming…</h2>
+            </div>
+          </PaySection>
+        </StepBody>
         {cardAction ? (
           <Button
             size="lg"
@@ -271,12 +281,15 @@ export function GuestTabView({
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
       {/* MESITA-4061: the same frame as every guest step. The bill is open,
           so neither arrow acts: going back is Cancel bill, the footer. */}
-      <PlaceBar place={place} name={tab.place.name} />
-      <StepNav at={4} />
+      <PayTop place={place} name={tab.place.name} step={{ at: 4 }} />
       {/* Pato: "I don't want the [cash pill] at the top, but close to the
           QR, also the timer": one group, centred both ways. */}
-      <StepBody className="gap-4">
-        <h2 className="text-base font-semibold">Show this QR to your waiter</h2>
+      <StepBody>
+        {/* One panel (MESITA-4072): the heading inside, then the way, the QR,
+            the timer, centred. The QR's white square wears no border of its
+            own: never a box in a box. */}
+        <PaySection title="Show this QR to your waiter" className="flex flex-col">
+        <div className="flex flex-col items-center gap-4 p-4 pt-3 text-center">
         <div className="flex flex-col items-center gap-2">
           <span className="border-border flex items-center gap-2 rounded-full border px-3 py-1 text-base font-semibold tabular-nums [&>svg]:h-5 [&>svg]:w-5">
             {wayIcon}
@@ -293,7 +306,7 @@ export function GuestTabView({
             screen has left after the frame and the rest of the group (about
             480px), so the timer stays in view next to it; never under 160px. */}
         <div
-          className="border-border flex aspect-square shrink-0 items-center justify-center rounded-2xl border bg-white p-3"
+          className="flex aspect-square shrink-0 items-center justify-center rounded-2xl bg-white"
           style={{ width: "max(160px, min(100%, 280px, calc(100dvh - 480px)))" }}
         >
           {qr ? (
@@ -320,6 +333,8 @@ export function GuestTabView({
             Open as waiter (test)
           </a>
         ) : null}
+        </div>
+        </PaySection>
       </StepBody>
       <StepFooter onCancel={() => setConfirmCancel(true)} cancelDisabled={busy} />
 
