@@ -3,12 +3,15 @@
 // Pato, 2026-11-14: "A3 AND A4 DON'T MAKE SENSE BECAUSE HOW THE FUCK DOES THE
 // AGENT KNOWS WHO IS CALLING". It knows by the caller id: the first step,
 // inbound_identify_caller, looks the number up in places and guests (never
-// what the caller says) and the workflow branches:
+// what the caller says) and the workflow branches. Since MESITA-4022 the
+// branch is two tool steps, so the model never decides who is calling:
+// inbound_identify_place, and on its failure inbound_identify_guest, then
+// the unknown lane:
 //   place   their upcoming book · find one by the name it is under · cancel
 //           one · Business › Reservations for the rest
 //   guest   their reservations · cancel one · the app for changes
-//   both    asks once whether they call about their restaurant or their own
-//           reservation, then takes that lane
+//   both    lands in the place lanes; if they call about their own
+//           reservation, one edge hops to the guest lanes
 //   unknown (the lookup fails) one reservation by its 8-digit code, read-only
 // The old a3 (guests) and a4 (places) were two agents on two lines; one line
 // can answer with only one agent, so a callback to the wrong line failed.
@@ -34,7 +37,8 @@ export const A3: FleetAgent = {
   firstMessage: "¡Hola! Le atiende Mesita. ¿En qué le puedo ayudar?",
   prompt: PROMPT,
   toolNames: [
-    "inbound_identify_caller",
+    "inbound_identify_place",
+    "inbound_identify_guest",
     "a3_cancel_reservation",
     "a4_find_reservation",
     "a4_cancel_reservation",
@@ -52,25 +56,27 @@ export const A3: FleetAgent = {
     prevent_subagent_loops: true,
     nodes: {
       start_node: START("e_start_identify"),
-      identify: toolNode(tool("inbound_identify_caller"), pos(280, 0), ["e_id_known", "e_id_unknown"]),
-      triage: talkNode({
-        label: "Who is calling",
-        position: pos(600, 0),
+      identify_place: toolNode(tool("inbound_identify_place"), pos(280, 0), ["e_idp_place", "e_idp_not"]),
+      identify_guest: toolNode(tool("inbound_identify_guest"), pos(280, 320), ["e_idg_guest", "e_idg_unknown"]),
+      triage_place: talkNode({
+        label: "A place is calling",
+        position: pos(600, -320),
         prompt: [
-          "El flujo ya reconoció el número (inbound_identify_caller). Según su kind:",
-          "- place: tú eres Mesita y quien llama es el restaurante. Salúdalo por su nombre, por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?»; nunca hables como si fueras el restaurante. Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.",
-          "- guest: saluda al comensal por su nombre (guest.first_name) y pregunta en qué ayudas.",
-          "- both: el número es de un restaurante y de un comensal. Pregunta una sola vez si llama por su restaurante o por una reservación suya.",
-          "Luego toma la rama de lo que pidan, con las reservaciones de ese lado (las del lugar o las del comensal).",
+          "Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú eres Mesita; nunca hables como si fueras el restaurante.",
+          "Salúdalo por su nombre (place.name), por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?». Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.",
+          "Si el resultado también trae guest (el número es de un restaurante y de un comensal) y no queda claro, pregunta una sola vez si llama por su restaurante o por una reservación suya.",
+          "Luego toma la rama de lo que pidan.",
         ].join("\n"),
-        edgeOrder: [
-          "e_tr_place_upcoming",
-          "e_tr_place_find",
-          "e_tr_place_redirect",
-          "e_tr_guest_inform",
-          "e_tr_guest_cancel",
-          "e_tr_guest_redirect",
-        ],
+        edgeOrder: ["e_tp_upcoming", "e_tp_find", "e_tp_redirect", "e_tp_own"],
+      }),
+      triage_guest: talkNode({
+        label: "A guest is calling",
+        position: pos(600, 320),
+        prompt: [
+          "Llama un comensal: el flujo lo reconoció por su número. Sus datos y sus reservaciones están en guest del resultado.",
+          "Si aún no lo saludaste, salúdalo por su nombre (guest.first_name) y pregunta en qué ayudas. Luego toma la rama de lo que pida.",
+        ].join("\n"),
+        edgeOrder: ["e_tg_inform", "e_tg_cancel", "e_tg_redirect"],
       }),
 
       // ── Place lane ────────────────────────────────────────────────────────
@@ -162,43 +168,51 @@ export const A3: FleetAgent = {
       end_node: END(2560),
     },
     edges: {
-      e_start_identify: edge("start_node", "identify", UNCOND),
-      e_id_known: edge("identify", "triage", RESULT_OK),
-      e_id_unknown: edge("identify", "unknown", RESULT_FAIL),
+      e_start_identify: edge("start_node", "identify_place", UNCOND),
+      e_idp_place: edge("identify_place", "triage_place", RESULT_OK),
+      e_idp_not: edge("identify_place", "identify_guest", RESULT_FAIL),
+      e_idg_guest: edge("identify_guest", "triage_guest", RESULT_OK),
+      e_idg_unknown: edge("identify_guest", "unknown", RESULT_FAIL),
 
-      e_tr_place_upcoming: edge(
-        "triage",
+      e_tp_upcoming: edge(
+        "triage_place",
         "place_upcoming",
-        llm("Llama un restaurante (kind place, o both y dijo que por su restaurante) y quiere repasar sus reservaciones próximas.", "place upcoming"),
+        llm("Quieren repasar las reservaciones próximas de su restaurante.", "upcoming"),
         back("otra gestión"),
       ),
-      e_tr_place_find: edge(
-        "triage",
+      e_tp_find: edge(
+        "triage_place",
         "place_find",
-        llm("Llama un restaurante y busca una reservación por el nombre al que está, o dicta un código de 8 dígitos.", "place find"),
+        llm("Buscan una reservación por el nombre al que está, o dictan un código de 8 dígitos.", "find"),
         RESULT_FAIL,
       ),
-      e_tr_place_redirect: edge(
-        "triage",
+      e_tp_redirect: edge(
+        "triage_place",
         "place_redirect",
-        llm("Llama un restaurante y pide otra cosa: dejar de recibir reservaciones, cambiar el número, mover una hora, u otros datos del lugar.", "place redirect"),
+        llm("Piden otra cosa: dejar de recibir reservaciones, cambiar el número, mover una hora, u otros datos del lugar.", "redirect"),
       ),
-      e_tr_guest_inform: edge(
-        "triage",
+      e_tp_own: edge(
+        "triage_place",
+        "triage_guest",
+        llm("El resultado también trae guest y quien llama dijo que es por una reservación suya, no del restaurante.", "own reservation"),
+      ),
+
+      e_tg_inform: edge(
+        "triage_guest",
         "guest_inform",
-        llm("Llama un comensal (kind guest, o both y dijo que por una reservación suya) y quiere saber de sus reservaciones.", "guest inform"),
+        llm("Quiere saber de sus reservaciones.", "inform"),
         back("tiene otra gestión"),
       ),
-      e_tr_guest_cancel: edge(
-        "triage",
+      e_tg_cancel: edge(
+        "triage_guest",
         "guest_confirm_cancel",
-        llm("Llama un comensal y quiere cancelar una de sus reservaciones.", "guest cancel"),
+        llm("Quiere cancelar una de sus reservaciones.", "cancel"),
         back("ya no quiere cancelar"),
       ),
-      e_tr_guest_redirect: edge(
-        "triage",
+      e_tg_redirect: edge(
+        "triage_guest",
         "guest_redirect",
-        llm("Llama un comensal y quiere cambiar día, hora, personas o lugar, u otra gestión que no es cancelar.", "guest redirect"),
+        llm("Quiere cambiar día, hora, personas o lugar, u otra gestión que no es cancelar.", "redirect"),
       ),
 
       e_pu_cancel: edge("place_upcoming", "place_confirm_cancel", llm("Quieren cancelar una de esas reservaciones.", "cancel")),

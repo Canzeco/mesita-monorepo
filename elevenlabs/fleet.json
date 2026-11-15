@@ -1,6 +1,6 @@
 {
   "generated": "by `deno task sync-elevenlabs` from supabase/supabase/functions/_shared/reservationist/ — never edit",
-  "spec_hash": "3abcbf6c5733369ad748cd0c3e3e762f91a4c393d67495215ff5e6509355cc02",
+  "spec_hash": "82fceeb9901c53e73da3f35a71862b313010b78767adde42ead9ccaa121fcba6",
   "knowledge_version": 9,
   "deploy": ".github/workflows/agents-deploy.yml on every merge to main (supabase/scripts/sync-agents.sh)",
   "agents": [
@@ -68,7 +68,8 @@
       "direction": "the guest calls Mesita",
       "first_message": "¡Hola! Le atiende Mesita. ¿En qué le puedo ayudar?",
       "tools": [
-        "inbound_identify_caller",
+        "inbound_identify_place",
+        "inbound_identify_guest",
         "a3_cancel_reservation",
         "a4_find_reservation",
         "a4_cancel_reservation",
@@ -76,8 +77,10 @@
       ],
       "workflow_steps": [
         "start_node",
-        "identify",
-        "triage",
+        "identify_place",
+        "identify_guest",
+        "triage_place",
+        "triage_guest",
         "place_upcoming",
         "place_find",
         "place_found",
@@ -110,7 +113,8 @@
     "a1_report_outcome",
     "a2_confirm_reservation",
     "a2_cancel_reservation",
-    "inbound_identify_caller",
+    "inbound_identify_place",
+    "inbound_identify_guest",
     "a3_cancel_reservation",
     "a4_find_reservation",
     "a4_cancel_reservation",

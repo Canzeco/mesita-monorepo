@@ -10,7 +10,7 @@
 //
 //   inspect    read-only: each agent read back and compared with the repo
 //              (prompt hash, tools, knowledge doc, end_call, workflow).
-//   fleet      upsert the 9 tools, then push every agent's prompt, first
+//   fleet      upsert the tools, then push every agent's prompt, first
 //              message, tools and settings; store ids + hash in agents_config.
 //   prune      delete agents that left the fleet (a key agents_config names
 //              that FLEET no longer has) and drop their key; nothing else

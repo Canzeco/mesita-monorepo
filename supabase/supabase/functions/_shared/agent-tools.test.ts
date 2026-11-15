@@ -72,16 +72,24 @@ Deno.test("inbound: get_reservation is reached only from the unknown-number lane
   assertEquals(into, ["unknown"]);
 });
 
-Deno.test("inbound: the first step is the caller-id lookup, and an unknown number takes the unknown lane", async () => {
+Deno.test("inbound: tool results, not the LLM, route place → guest → unknown (MESITA-4022)", async () => {
+  // A small model never decides who is calling: place lookup first, guest
+  // lookup on its failure, the unknown lane on both failing.
   const { A3 } = await import("./reservationist/a3.ts");
   const wf = A3.workflow((n) => `tool_${n}`);
-  const first = Object.values(wf.edges).find((e) => e.source === "start_node")!;
-  const tool = wf.nodes[first.target as string];
-  assertEquals((tool.tools as Array<{ tool_id: string }>)[0].tool_id, "tool_inbound_identify_caller");
-  const failure = Object.values(wf.edges).find((e) =>
-    e.source === first.target && (e.forward_condition as { successful?: boolean }).successful === false
-  );
-  assertEquals(failure?.target, "unknown");
+  const toolOf = (id: string) => (wf.nodes[id].tools as Array<{ tool_id: string }>)[0].tool_id;
+  const next = (src: string, ok: boolean) =>
+    Object.values(wf.edges).find((e) =>
+      e.source === src && (e.forward_condition as { type: string; successful?: boolean }).type === "result" &&
+      (e.forward_condition as { successful?: boolean }).successful === ok
+    )?.target as string;
+  const first = Object.values(wf.edges).find((e) => e.source === "start_node")!.target as string;
+  assertEquals(toolOf(first), "tool_inbound_identify_place");
+  assertEquals(next(first, true), "triage_place");
+  const second = next(first, false);
+  assertEquals(toolOf(second), "tool_inbound_identify_guest");
+  assertEquals(next(second, true), "triage_guest");
+  assertEquals(next(second, false), "unknown");
 });
 
 // ── Spoofing (MESITA-3973) ──────────────────────────────────────────────────
