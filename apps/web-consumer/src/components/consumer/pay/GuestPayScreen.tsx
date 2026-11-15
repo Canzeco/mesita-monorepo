@@ -13,22 +13,40 @@ import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } f
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { acceptCardsAnswer, type CardsLoad, cardsFailure, loadedCards, pickCard } from "@/lib/pay-cards";
-import { payDraftExpired } from "@/lib/pay-draft";
+import {
+  clearGuestDraft,
+  outcomeUnknownAfter,
+  pendingTicket,
+  PENDING_NAME_KEY,
+  readDraft,
+  readLastTip,
+  requestIdAfterEdit,
+  type Tip,
+  TIP_CHIPS,
+  type Stage,
+  writeDraft,
+  writeLastTip,
+} from "@/lib/guest-pay-draft";
 import { type PadKey, paySplit, pressKey, readTip } from "@/lib/pay-keypad";
 import { payPlacePath } from "@/lib/consumer-route-contract";
 import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { CardBrandChip, cardFace } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
-import { BackStep, BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PlaceBar, PlaceHero, RowsCard, StepsBar } from "./pay-flow";
+import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PlaceBar, PlaceHero, RowsCard, StepBody, StepFooter, StepNav } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
 // THE GUEST PAYS (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
-// /pay/place/<placeId>, one screen a step:
+// /pay/place/<placeId>, one screen a step. Every step wears one frame
+// (MESITA-4061, Pato: "X Pay / Profile Name of place / steps with arrows to
+// nav across them < > / the actual body free of nav buttons / cancel button
+// and next step button"): the header's X · Pay, the place row (tapping the
+// name chooses another place), the step nav ‹ "Tip · 2 of 5" ›, one body
+// group centred both ways, then Cancel bill and the step's button.
 //
-//   1 Open    the place large across the top (photo, name, MapPin and the
-//             distance); tapping the name opens the search; Off says why.
-//   2 Bill    a large keypad under ReceiptText; then the tip chips (0, 10%,
+//   1 Bill    the amount and a large keypad under ReceiptText (Off: the
+//             place large across the top, saying why).
+//   2 Tip     the tip chips (10%,
 //             15%, Other) with HandCoins, the Wallet switch "Use my credits"
 //             (on by default; credits never pay the tip) and the summary
 //             card: Bill, Credits, Left to pay, Tip, Total, and the green
@@ -47,89 +65,12 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-com
 // resolve it before anything"): the draft lives in localStorage with one
 // pending pointer once an amount is typed. While it's pending, /pay and
 // every other place's Pay open it where it was left; the X (or the place
-// name) asks "Cancel this bill?" and clears it. A bill already open on the
+// name) leaves and keeps it, Cancel bill throws it away. A bill already open on the
 // server comes first. Drafts still expire 30 minutes after their last change. Every rule and peso is the
 // server's; this screen proposes.
 
-type Stage = "bill" | "method" | "pay";
-/** 10% · 15% · 20% · Other (MESITA-3876, Pato: "10 15 or 20. and other at
- *  the end"); no tip is Other with 0 typed. */
-type Tip = 10 | 15 | 20 | "other" | null;
-const TIP_CHIPS = [10, 15, 20] as const;
-
-type Draft = {
-  stage: Stage;
-  typing: boolean;
-  amount: string;
-  tip: Tip;
-  other: string;
-  useCredit: boolean;
-  method: PayWith | null;
-  cardId: string | null;
-  /** The bill this draft became (MESITA-3997): while it is set, every way
-   *  back in (the place's Pay, a reload, the X and back) opens that bill's
-   *  QR, never the Bill step again. Cancel bill and Start again clear it. */
-  sentTabId?: string | null;
-  savedAt: number;
-};
-
 /** What blocks a new ticket here (MESITA-3908). */
 type Blocked = { kind: "draft"; placeId: string; name: string | null } | { kind: "bill"; tabId: string; name: string | null };
-
-const DRAFT_KEY = (placeId: string) => `mesita.pay.guest-lead.${placeId}`;
-/** The last tip chip sent at this place (MESITA-3713); it survives the draft. */
-const LAST_TIP_KEY = (placeId: string) => `mesita.pay.last-tip.${placeId}`;
-function readLastTip(placeId: string): Tip {
-  try {
-    const n = Number(window.localStorage.getItem(LAST_TIP_KEY(placeId)));
-    return (TIP_CHIPS as readonly number[]).includes(n) ? (n as Tip) : null;
-  } catch {
-    return null;
-  }
-}
-function writeLastTip(placeId: string, tip: Tip) {
-  if (typeof tip !== "number") return;
-  try {
-    window.localStorage.setItem(LAST_TIP_KEY(placeId), String(tip));
-  } catch {
-    /* storage can be blocked */
-  }
-}
-/** The place whose ticket is in progress (MESITA-3879). */
-const PENDING_KEY = "mesita.pay.pending-ticket";
-/** The pending ticket's place name, for the banner on the tabs (MESITA-3906). */
-const PENDING_NAME_KEY = "mesita.pay.pending-ticket-name";
-
-function readDraft(placeId: string): Draft | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const d = JSON.parse(window.localStorage.getItem(DRAFT_KEY(placeId)) ?? "null") as Draft | null;
-    if (!d || typeof d.amount !== "string" || typeof d.savedAt !== "number") return null;
-    if (payDraftExpired(d.savedAt, Date.now())) return null;
-    return d;
-  } catch {
-    return null;
-  }
-}
-
-/** Saves the draft, stamped now; null removes it. */
-function writeDraft(placeId: string, d: Omit<Draft, "savedAt"> | null) {
-  try {
-    if (d) window.localStorage.setItem(DRAFT_KEY(placeId), JSON.stringify({ ...d, savedAt: Date.now() }));
-    else window.localStorage.removeItem(DRAFT_KEY(placeId));
-    // A ticket is pending once an amount is typed.
-    const pending = window.localStorage.getItem(PENDING_KEY);
-    if (d && d.amount !== "") window.localStorage.setItem(PENDING_KEY, placeId);
-    else if (pending === placeId) {
-      window.localStorage.removeItem(PENDING_KEY);
-      window.localStorage.removeItem(PENDING_NAME_KEY);
-    }
-  } catch {
-    // The bill starts empty next time; nothing breaks.
-  }
-}
-
-/** The place with a ticket in progress (an amount typed, not expired), or null. */
 
 const STILL_WORKING = "Still working. Tap again to try again.";
 const CALL_LIMIT_MS = 25_000;
@@ -145,41 +86,9 @@ function withinLimit<T>(call: Promise<T>): Promise<T> {
   return Promise.race([call, limit]).finally(() => clearTimeout(timer));
 }
 
-export function pendingTicketPlace(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const placeId = window.localStorage.getItem(PENDING_KEY);
-    if (!placeId) return null;
-    const d = readDraft(placeId);
-    if (d && d.amount !== "") return placeId;
-    window.localStorage.removeItem(PENDING_KEY);
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/** The ticket in progress and its place's name (null when not known yet). */
-export function pendingTicket(): { placeId: string; name: string | null } | null {
-  const placeId = pendingTicketPlace();
-  if (!placeId) return null;
-  try {
-    return { placeId, name: window.localStorage.getItem(PENDING_NAME_KEY) };
-  } catch {
-    return { placeId, name: null };
-  }
-}
-
-/** The receipt (or Close on Not paid) clears what was typed at this place. */
-export function clearGuestDraft(placeId: string) {
-  if (typeof window !== "undefined") writeDraft(placeId, null);
-}
-
-/** "Start again" lands on the bill, everything typed, keypad down. */
-export function reopenGuestDraft(placeId: string) {
-  const d = readDraft(placeId);
-  if (d) writeDraft(placeId, { ...d, stage: "bill", typing: false, sentTabId: null });
-}
+// The draft helpers live in lib/guest-pay-draft (MESITA-4061); these are
+// the names the other pay screens import from here.
+export { clearGuestDraft, pendingTicket, pendingTicketPlace, reopenGuestDraft } from "@/lib/guest-pay-draft";
 
 export function GuestPayScreen({
   placeId,
@@ -245,6 +154,10 @@ export function GuestPayScreen({
   const [error, setError] = useState<string | null>(null);
   const [notPaid, setNotPaid] = useState<string | null>(null);
   const requestId = useRef<string | null>(null);
+  // A pay call timed out or lost the network: the bill may be open on the
+  // server. Until that same request id answers, Cancel bill and ‹ are locked
+  // and nothing mints a new id (MESITA-4061).
+  const [outcomeUnknown, setOutcomeUnknown] = useState(false);
 
   // ONE TICKET AT A TIME (MESITA-3879, MESITA-3908): another place's ticket
   // in progress, or a bill open on the server at another place, blocks this
@@ -277,21 +190,6 @@ export function GuestPayScreen({
   const spendable = Math.max(place?.available_cents ?? 0, 0);
   const off = !!place && !cardOk && !cashOk && spendable === 0;
   const m = (c: number) => money(c, place?.currency ?? "mxn");
-  // The X and the place name: with a ticket in progress, cancel it first.
-  // Any done step of the bar is one tap back (MESITA-3906): 0 Bill (the
-  // keypad), 1 Tip, 2 Method. Everything typed stays.
-  const goToStep = (step: number) => {
-    if (busy || addingCard) return;
-    setError(null);
-    if (step === 0) {
-      setStage("bill");
-      setTyping(true);
-    } else if (step === 1) {
-      setStage("bill");
-      setTyping(false);
-    } else if (step === 2) setStage("method");
-  };
-
   // The X closes and keeps the ticket (MESITA-3908): Pay shows it, the
   // tabs show the banner. Cancelling is its own button.
   const leave = () => {
@@ -356,9 +254,9 @@ export function GuestPayScreen({
   // Every change is saved, so the X and "Add a card" come back to it.
   useEffect(() => {
     if (sentTabId) return;
-    requestId.current = null;
+    requestId.current = requestIdAfterEdit(requestId.current, outcomeUnknown);
     writeDraft(placeId, { stage, typing, amount, tip, other, useCredit, method, cardId });
-  }, [sentTabId, placeId, stage, typing, amount, tip, other, useCredit, method, cardId]);
+  }, [sentTabId, placeId, stage, typing, amount, tip, other, useCredit, method, cardId, outcomeUnknown]);
 
   useEffect(() => {
     root.current?.focus({ preventScroll: true });
@@ -370,24 +268,26 @@ export function GuestPayScreen({
   });
   useEffect(() => () => registerClose?.(null), [registerClose]);
 
-  // The header's back arrow steps back; at the start it leaves.
-  useEffect(() => {
-    if (!registerBack) return;
-    registerBack(() => {
-      if (busy || addingCard) return true;
-      if (notPaid) {
-        setNotPaid(null);
-        return true;
-      }
-      if (stage === "pay") setStage(dueCents > 0 ? "method" : "bill");
-      else if (stage === "method") setStage("bill");
-      else if (!typing) setTyping(true);
-      else return false;
-      setError(null);
+  // One step back: the header's back arrow, the hardware back and ‹ all run
+  // this (MESITA-4061). True when it handled it; false on the keypad, where
+  // the header goes back in history and the draft stays.
+  function backOneStep(): boolean {
+    if (busy || addingCard || outcomeUnknown) return true;
+    if (notPaid) {
+      setNotPaid(null);
       return true;
-    });
-    return () => registerBack(null);
-  }, [registerBack, busy, addingCard, notPaid, stage, typing, dueCents]);
+    }
+    if (stage === "pay") setStage(dueCents > 0 ? "method" : "bill");
+    else if (stage === "method") setStage("bill");
+    else if (!typing) setTyping(true);
+    else return false;
+    setError(null);
+    return true;
+  }
+  useEffect(() => {
+    registerBack?.(backOneStep);
+  });
+  useEffect(() => () => registerBack?.(null), [registerBack]);
 
   async function addCard() {
     setAddingCard(true);
@@ -427,11 +327,13 @@ export function GuestPayScreen({
       writeLastTip(placeId, tip);
       // Start again comes back to the bill with everything typed.
       writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, cardId, sentTabId: r.tab_id });
+      setOutcomeUnknown(false);
       if (r.card?.status === "requires_action") await runBankCheck(r.card);
       onPaid(r.tab_id);
     } catch (e) {
       const code = e instanceof EFError ? e.code : null;
       if (code) requestId.current = null;
+      setOutcomeUnknown(outcomeUnknownAfter(code));
       const openId = code === "too_many_open" && e instanceof EFError ? e.body?.open_tab_id : null;
       if (typeof openId === "string" && openId) {
         onPaid(openId);
@@ -516,6 +418,7 @@ export function GuestPayScreen({
       {body}
     </div>
   );
+  // Under the body, over the footer; cleared on every step change.
   const status = error ? (
     <p className="text-destructive shrink-0 pt-2 text-center text-sm" role="alert">
       {error}
@@ -524,12 +427,27 @@ export function GuestPayScreen({
   const held = busy || addingCard;
   // Cancel bill (MESITA-4051, Pato: "two buttons, left is red, next is next
   // step"): every step before the QR ends in it. It throws the draft away
-  // here (nothing is held or charged yet) and goes back to Pay.
+  // here (nothing is held or charged yet) and goes back to Pay. Not while a
+  // pay call's outcome is unknown (MESITA-4061): the bill may already be open
+  // and the card held; the X still leaves, keeping the draft, and Pay finds
+  // the open bill on the way back in.
+  const cancelLocked = held || outcomeUnknown;
   const cancelBill = () => {
-    if (held) return;
+    if (cancelLocked) return;
     clearGuestDraft(placeId);
     onChoosePlace();
   };
+  // The top of every step (MESITA-4061, Pato: "X Pay / Profile Name of place
+  // / steps with arrows to nav across them < >"): the place, then the step
+  // nav. ‹ is the same step back as the header's back arrow; › only where
+  // the footer's button is a plain Next.
+  const backArrow = held || outcomeUnknown ? undefined : () => void backOneStep();
+  const top = (at: number, onBack: (() => void) | undefined, next?: { onClick: () => void; disabled: boolean }) => (
+    <>
+      <PlaceBar place={place} onChoose={leave} />
+      <StepNav at={at} onBack={onBack} next={next} />
+    </>
+  );
 
   // NOT PAID (before the bill opened: the card was refused).
   if (notPaid) {
@@ -542,11 +460,20 @@ export function GuestPayScreen({
           <p className="mt-2 text-base">{notPaid}</p>
           <p className="text-muted-foreground mt-1 text-sm">Nothing was charged</p>
         </div>
-        <BigButton busy={busy} held={held} onCancel={cancelBill} onClick={() => {
-          setNotPaid(null);
-          setStage("bill");
-          setTyping(false);
-        }}>Start again</BigButton>
+        <StepFooter
+          onCancel={cancelBill}
+          cancelDisabled={cancelLocked}
+          primary={{
+            label: "Start again",
+            busy,
+            disabled: held,
+            onClick: () => {
+              setNotPaid(null);
+              setStage("bill");
+              setTyping(false);
+            },
+          }}
+        />
       </>,
       "not-paid",
     );
@@ -569,20 +496,26 @@ export function GuestPayScreen({
     );
   }
 
-  // 1 OPEN + 2 BILL, TYPING: the place across the top, the keypad.
+  // 1 OPEN + 2 BILL, TYPING: the amount and the keypad, together in the
+  // middle. The keypad takes the room there is, between 11rem and 16rem, so
+  // a short phone (or an error line) shrinks it instead of scrolling.
   if (stage === "bill" && typing) {
+    const toTip = () => billCents > 0 && setTyping(false);
     return frame(
       <>
-        <PlaceHero place={place} off={false} onChoose={leave} />
-        <StepsBar at={0} className="mt-3" />
-        <div className="mt-4 flex shrink-0 items-center justify-center gap-2">
-          <ReceiptText className="text-muted-foreground h-5 w-5" aria-hidden />
-          <span className="text-muted-foreground text-sm">The amount on the paper bill</span>
+        {top(0, undefined, { onClick: toTip, disabled: billCents <= 0 })}
+        <div className="flex min-h-0 flex-1 flex-col justify-center py-4">
+          <div className="flex shrink-0 items-center justify-center gap-2">
+            <ReceiptText className="text-muted-foreground h-5 w-5" aria-hidden />
+            <span className="text-muted-foreground text-sm">The amount on the paper bill</span>
+          </div>
+          <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mt-1 shrink-0" />
+          <div className="mt-4 flex min-h-44 max-h-64 flex-1 flex-col">
+            <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
+          </div>
         </div>
-        <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mt-1 shrink-0" />
-        <div className="min-h-0 flex-1" aria-hidden />
-        <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
-        <BigButton busy={busy} held={held} onCancel={cancelBill} disabled={billCents <= 0} onClick={() => setTyping(false)}>Next</BigButton>
+        {status}
+        <StepFooter onCancel={cancelBill} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: billCents <= 0 || held, onClick: toTip }} />
       </>,
       "bill",
     );
@@ -594,86 +527,87 @@ export function GuestPayScreen({
       on ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:bg-muted",
     );
 
-  // 2 BILL, REVIEW: tip, credits, the summary card.
+  // 2 TIP: the bill, the tip chips, credits, the summary card.
   if (stage === "bill") {
     const tipOk = tip !== null;
+    // Nothing left to pay: this Next opens the bill (credits are spent), so
+    // it is money, and › is not offered.
     const toSign = dueCents === 0;
+    const tipNext = () => (toSign ? void openBill(null) : setStage("method"));
     return frame(
       <>
-        <PlaceBar place={place} />
-        <StepsBar at={1} onStep={goToStep} className="mt-1" />
-        <BackStep to="Bill" onClick={() => goToStep(0)} />
-        <button
-          type="button"
-          onClick={() => setTyping(true)}
-          className="mt-2 flex shrink-0 flex-col items-center"
-          aria-label={`Bill ${m(billCents)}. Change it`}
-          data-guest-bill-amount
-        >
-          <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
-            <ReceiptText className="h-4 w-4" aria-hidden />
-            Bill
-          </span>
-          <span className="text-[2.5rem] leading-tight font-semibold tabular-nums">{m(billCents)}</span>
-        </button>
-
-        <div className="mt-4 shrink-0" role="group" aria-label="Tip for the staff">
-          <p className="mb-2 flex items-center gap-2 text-base font-semibold">
-            <HandCoins className="h-5 w-5" aria-hidden />
-            Tip for the staff
-          </p>
-          <div className="flex gap-2">
-            {TIP_CHIPS.map((p) => (
-              <button key={p} type="button" className={tipChip(tip === p)} aria-pressed={tip === p} onClick={() => setTip(p)}>
-                {`${p}%`}
-              </button>
-            ))}
-            <button
-              type="button"
-              className={tipChip(tip === "other")}
-              aria-pressed={tip === "other"}
-              onClick={() => {
-                setOtherTyping(other);
-                setTipSheet(true);
-              }}
-            >
-              {tip === "other" ? m(tipCents) : "Other"}
-            </button>
-          </div>
-        </div>
-
-        {spendable > 0 ? (
+        {top(1, backArrow, toSign ? undefined : { onClick: () => setStage("method"), disabled: !tipOk || billCents <= 0 || held })}
+        <StepBody className="items-stretch">
           <button
             type="button"
-            role="switch"
-            aria-checked={creditOn}
-            onClick={() => setUseCredit((u) => !u)}
-            className="mt-4 flex min-h-12 w-full shrink-0 items-center gap-3 text-left"
-            data-guest-credits
+            onClick={() => setTyping(true)}
+            className="flex shrink-0 flex-col items-center"
+            aria-label={`Bill ${m(billCents)}. Change it`}
+            data-guest-bill-amount
           >
-            <Wallet className="h-5 w-5 shrink-0" aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-base">
-              <span className="font-semibold">Use my credits</span>
-              <span className="text-muted-foreground"> · {m(spendable)} available</span>
+            <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
+              <ReceiptText className="h-4 w-4" aria-hidden />
+              Bill
             </span>
-            <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
-              <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full shadow transition-all", creditOn ? "left-[18px]" : "left-0.5")} />
-            </span>
+            <span className="text-[2.5rem] leading-tight font-semibold tabular-nums">{m(billCents)}</span>
           </button>
-        ) : null}
 
-        <RowsCard className="mt-4 shrink-0">
-          <MoneyRow label="Bill" value={m(billCents)} />
-          {creditOn ? <MoneyRow label="Credits" value={`−${m(creditCents)}`} /> : null}
-          <MoneyRow label="Left to pay" value={m(leftCents)} />
-          <MoneyRow label="Tip" value={tipOk ? m(tipCents) : "Choose a tip"} />
-          <MoneyRow label="Total" value={m(dueCents)} strong />
-          <CashbackRow cents={billCashback} bps={billRate} m={m} />
-        </RowsCard>
+          <div className="mt-4 shrink-0 text-left" role="group" aria-label="Tip for the staff">
+            <p className="mb-2 flex items-center gap-2 text-base font-semibold">
+              <HandCoins className="h-5 w-5" aria-hidden />
+              Tip for the staff
+            </p>
+            <div className="flex gap-2">
+              {TIP_CHIPS.map((p) => (
+                <button key={p} type="button" className={tipChip(tip === p)} aria-pressed={tip === p} onClick={() => setTip(p)}>
+                  {`${p}%`}
+                </button>
+              ))}
+              <button
+                type="button"
+                className={tipChip(tip === "other")}
+                aria-pressed={tip === "other"}
+                onClick={() => {
+                  setOtherTyping(other);
+                  setTipSheet(true);
+                }}
+              >
+                {tip === "other" ? m(tipCents) : "Other"}
+              </button>
+            </div>
+          </div>
 
-        <div className="min-h-0 flex-1" aria-hidden />
+          {spendable > 0 ? (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={creditOn}
+              onClick={() => setUseCredit((u) => !u)}
+              className="mt-4 flex min-h-12 w-full shrink-0 items-center gap-3 text-left"
+              data-guest-credits
+            >
+              <Wallet className="h-5 w-5 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-base">
+                <span className="font-semibold">Use my credits</span>
+                <span className="text-muted-foreground"> · {m(spendable)} available</span>
+              </span>
+              <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
+                <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full shadow transition-all", creditOn ? "left-[18px]" : "left-0.5")} />
+              </span>
+            </button>
+          ) : null}
+
+          <RowsCard className="mt-4 shrink-0 text-left">
+            <MoneyRow label="Bill" value={m(billCents)} />
+            {creditOn ? <MoneyRow label="Credits" value={`−${m(creditCents)}`} /> : null}
+            <MoneyRow label="Left to pay" value={m(leftCents)} />
+            <MoneyRow label="Tip" value={tipOk ? m(tipCents) : "Choose a tip"} />
+            <MoneyRow label="Total" value={m(dueCents)} strong />
+            <CashbackRow cents={billCashback} bps={billRate} m={m} />
+          </RowsCard>
+        </StepBody>
         {status}
-        <BigButton busy={busy} held={held} onCancel={cancelBill} disabled={!tipOk || billCents <= 0} onClick={() => (toSign ? void openBill(null) : setStage("method"))}>Next</BigButton>
+        <StepFooter onCancel={cancelBill} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: !tipOk || billCents <= 0 || held, onClick: tipNext }} />
 
         <LocalSheet open={tipSheet} onClose={() => setTipSheet(false)} ariaLabel="Another tip">
           <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
@@ -705,72 +639,71 @@ export function GuestPayScreen({
 
   // 3 METHOD: App or Cash for everything that's left.
   if (stage === "method") {
+    const toPay = () => {
+      if (way) {
+        setMethod(way);
+        setStage("pay");
+      }
+    };
     return frame(
       <>
-        <PlaceBar place={place} />
-        <StepsBar at={2} onStep={goToStep} className="mt-1" />
-        <BackStep to="Tip" onClick={() => !busy && setStage("bill")} />
-        <p className="mt-2 shrink-0 text-center">
-          <span className="text-muted-foreground block text-sm">{leftCents === 0 ? "Tip to pay" : "Left to pay"}</span>
-          <span className="block text-[2.5rem] leading-tight font-semibold tabular-nums">{m(dueCents)}</span>
-        </p>
-        <div className="mt-4 flex shrink-0 flex-col gap-3" role="radiogroup" aria-label="How you pay">
-          <MethodTile
-            on={way === "card"}
-            off={appWhy}
-            icon={<Smartphone />}
-            tone="bg-pink-gradient text-white"
-            title="App"
-            line="Card"
-            bps={rateFor("card")}
-            onPick={() => setMethod("card")}
-          />
-          <MethodTile
-            on={way === "cash"}
-            off={cashWhy}
-            icon={<Banknote />}
-            tone="bg-green-400 text-neutral-950"
-            title="Cash"
-            line="Cash or their terminal"
-            bps={rateFor("cash")}
-            onPick={() => setMethod("cash")}
-          />
-        </div>
-        <p
-          className={cn("mt-4 flex shrink-0 items-center justify-center gap-2 text-base font-semibold", way && cashbackFor(way) > 0 ? GOOD : "text-muted-foreground")}
-          data-guest-cashback
-        >
-          <Coins className="h-5 w-5" aria-hidden />
-          {way
-            ? cashbackFor(way) > 0
-              ? `+${m(cashbackFor(way))} · ${backAsCredits(rateFor(way))}`
-              : backAsCredits(rateFor(way))
-            : "Choose how to pay"}
-        </p>
-        <div className="min-h-0 flex-1" aria-hidden />
+        {top(2, backArrow, { onClick: toPay, disabled: !way || held })}
+        <StepBody className="items-stretch">
+          <p className="shrink-0 text-center">
+            <span className="text-muted-foreground block text-sm">{leftCents === 0 ? "Tip to pay" : "Left to pay"}</span>
+            <span className="block text-[2.5rem] leading-tight font-semibold tabular-nums">{m(dueCents)}</span>
+          </p>
+          <div className="mt-4 flex shrink-0 flex-col gap-3 text-left" role="radiogroup" aria-label="How you pay">
+            <MethodTile
+              on={way === "card"}
+              off={appWhy}
+              icon={<Smartphone />}
+              tone="bg-pink-gradient text-white"
+              title="App"
+              line="Card"
+              bps={rateFor("card")}
+              onPick={() => setMethod("card")}
+            />
+            <MethodTile
+              on={way === "cash"}
+              off={cashWhy}
+              icon={<Banknote />}
+              tone="bg-green-400 text-neutral-950"
+              title="Cash"
+              line="Cash or their terminal"
+              bps={rateFor("cash")}
+              onPick={() => setMethod("cash")}
+            />
+          </div>
+          <p
+            className={cn("mt-4 flex shrink-0 items-center justify-center gap-2 text-base font-semibold", way && cashbackFor(way) > 0 ? GOOD : "text-muted-foreground")}
+            data-guest-cashback
+          >
+            <Coins className="h-5 w-5" aria-hidden />
+            {way
+              ? cashbackFor(way) > 0
+                ? `+${m(cashbackFor(way))} · ${backAsCredits(rateFor(way))}`
+                : backAsCredits(rateFor(way))
+              : "Choose how to pay"}
+          </p>
+        </StepBody>
         {status}
-        <BigButton busy={busy} held={held} onCancel={cancelBill} disabled={!way} onClick={() => {
-            if (way) {
-              setMethod(way);
-              setStage("pay");
-            }
-          }}>Next</BigButton>
+        <StepFooter onCancel={cancelBill} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: !way || held, onClick: toPay }} />
       </>,
       "method",
     );
   }
 
-  // 4A APP PAY: the saved card, "Pay MX$X", held now.
+  // 4A APP PAY: the saved card, "Pay MX$X", held now. Pay moves money and
+  // "Add a card" leaves the app: neither is offered as ›.
   if (way === "card") {
     const card = cards?.find((c) => c.id === chosenCard) ?? null;
     const guestFace = card ? cardFace(card.brand, brandLabel(card.brand)) : null;
     const cardsUnknown = cards === null;
     return frame(
       <>
-        <PlaceBar place={place} />
-        <StepsBar at={3} onStep={goToStep} className="mt-1" />
-        <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
+        {top(3, backArrow)}
+        <StepBody>
           {cardsUnknown ? (
             cardsLoad.state === "failed" ? (
               <button type="button" className="text-base font-semibold underline" onClick={() => {
@@ -812,17 +745,21 @@ export function GuestPayScreen({
               <ChevronRight className="h-4 w-4" aria-hidden />
             </button>
           ) : null}
-        </div>
-        <p className="text-muted-foreground flex shrink-0 items-center justify-center gap-2 text-sm">
-          <Lock className="h-4 w-4" aria-hidden />
-          Held now, charged when the waiter signs.
-        </p>
+          <p className="text-muted-foreground mt-4 flex items-center justify-center gap-2 text-sm">
+            <Lock className="h-4 w-4" aria-hidden />
+            Held now, charged when the waiter signs.
+          </p>
+        </StepBody>
         {status}
-        {card ? (
-          <BigButton busy={busy} held={held} onCancel={cancelBill} onClick={() => void openBill("card")}>{`Pay ${m(dueCents)}`}</BigButton>
-        ) : (
-          <BigButton busy={busy} held={held} onCancel={cancelBill} disabled={cardsUnknown} onClick={() => void addCard()}>{addingCard ? "Opening…" : "Add a card"}</BigButton>
-        )}
+        <StepFooter
+          onCancel={cancelBill}
+          cancelDisabled={cancelLocked}
+          primary={
+            card
+              ? { label: `Pay ${m(dueCents)}`, busy, disabled: held, onClick: () => void openBill("card") }
+              : { label: addingCard ? "Opening…" : "Add a card", busy, disabled: cardsUnknown || held, onClick: () => void addCard() }
+          }
+        />
 
         <LocalSheet open={cardsSheet} onClose={() => setCardsSheet(false)} ariaLabel="Your cards">
           <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
@@ -861,22 +798,21 @@ export function GuestPayScreen({
     );
   }
 
-  // 4B CASH PAY: give the cash, then the QR.
+  // 4B CASH PAY: give the cash, then the QR. The bubble, the amount and the
+  // words sit together in the middle.
   return frame(
     <>
-      <PlaceBar place={place} />
-      <StepsBar at={3} onStep={goToStep} className="mt-1" />
-      <BackStep to="Method" onClick={() => !busy && !addingCard && setStage("method")} />
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
+      {top(3, backArrow)}
+      <StepBody>
         <span className="flex h-28 w-28 items-center justify-center rounded-full bg-green-400 text-neutral-950" aria-hidden>
           <Banknote className="h-14 w-14" />
         </span>
         <p className="mt-6 text-[2.5rem] leading-tight font-semibold tabular-nums">{m(dueCents)}</p>
         <h2 className="font-display mt-1 text-xl font-semibold">Give {m(dueCents)} to the waiter</h2>
         <p className="text-muted-foreground mt-1 text-sm">Then show them the QR</p>
-      </div>
+      </StepBody>
       {status}
-      <BigButton busy={busy} held={held} onCancel={cancelBill} onClick={() => void openBill("cash")}>I gave the cash</BigButton>
+      <StepFooter onCancel={cancelBill} cancelDisabled={cancelLocked} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
     </>,
     "cash",
   );
@@ -886,44 +822,6 @@ export function GuestPayScreen({
  *  cashback still mention 0% back and always mention the back as credits"). */
 function backAsCredits(bps: number) {
   return `${bps / 100}% back as credits`;
-}
-
-/** The bottom row, pinned under a full-width hairline: the red Cancel bill
- *  (MESITA-4051) a quarter, the step's one dark button three quarters
- *  (MESITA-4058, Pato: "maybe 25% and 75% for black button"). */
-function BigButton({
-  children,
-  onClick,
-  onCancel,
-  busy,
-  held,
-  disabled = false,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  onCancel: () => void;
-  busy: boolean;
-  held: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="border-border -mx-4 mt-3 grid shrink-0 grid-cols-[1fr_3fr] gap-3 border-t px-4 pt-3">
-      <Button
-        type="button"
-        size="lg"
-        variant="danger"
-        className="min-h-12 w-full px-1 text-sm leading-tight font-semibold whitespace-normal"
-        disabled={held}
-        onClick={onCancel}
-        data-guest-cancel-bill
-      >
-        Cancel bill
-      </Button>
-      <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={disabled || held} onClick={onClick}>
-        {busy ? <Spinner size="sm" label="Working" /> : children}
-      </Button>
-    </div>
-  );
 }
 
 /** The summary's last row: the green Coins line, or the muted 0% one. */

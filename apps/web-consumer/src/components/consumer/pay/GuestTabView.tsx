@@ -11,8 +11,8 @@ import { EFError } from "@/lib/api/_invoke";
 import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type TabCardStep } from "@/lib/api/tab";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
-import { clearGuestDraft, reopenGuestDraft } from "./GuestPayScreen";
-import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, RowsCard, StepsBar, WAIT } from "./pay-flow";
+import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
+import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PlaceBar, RowsCard, StepBody, StepFooter, StepNav, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
@@ -269,56 +269,59 @@ export function GuestTabView({
   const countdown = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
-      <h2 className="font-display flex h-11 shrink-0 items-center truncate text-xl font-semibold">Show this QR to your waiter</h2>
-      <StepsBar at={4} className="mt-1" />
-      <p className="mt-2 flex shrink-0 justify-center">
-        <span className="border-border flex items-center gap-2 rounded-full border px-3 py-1 text-base font-semibold tabular-nums [&>svg]:h-5 [&>svg]:w-5">
-          {wayIcon}
-          {wayWords}
-        </span>
-      </p>
-      {/* MESITA-3913: what the signature earns, Available at once. */}
-      {(tab.cashback_on_sign_cents ?? 0) > 0 ? (
-        <p className={cn("mt-2 flex shrink-0 items-center justify-center gap-1.5 text-sm font-semibold", GOOD)} data-guest-sign-cashback>
-          <Coins className="h-4 w-4" aria-hidden />+{m(tab.cashback_on_sign_cents ?? 0)} back as credits once the waiter signs
-        </p>
-      ) : null}
-      <div className="mt-4 flex min-h-0 flex-1 items-center justify-center [container-type:size]">
-        {qr ? (
-          <div
-            className="border-border rounded-2xl border bg-white p-3"
-            style={{ width: "max(160px, min(100cqh, 100cqw, 320px))", height: "max(160px, min(100cqh, 100cqw, 320px))" }}
-          >
-            <QRCodeSVG value={qr} size={320} marginSize={0} style={{ width: "100%", height: "100%" }} title="Your bill's QR for the waiter" />
-          </div>
-        ) : (
-          <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" aria-label="Loading the QR" />
-        )}
-      </div>
-      <p className={cn("mt-4 flex shrink-0 items-center justify-center gap-2 text-base font-semibold tabular-nums", WAIT)} role="timer" aria-live="off">
-        <Clock className="h-5 w-5" aria-hidden />
-        {countdown}
-        <span className="text-muted-foreground font-normal">to sign</span>
-      </p>
-      <p className="text-muted-foreground mt-1 shrink-0 text-center text-sm">Once the waiter signs, this payment is final.</p>
-      {error ? (
-        <p className="text-destructive mt-1 shrink-0 text-center text-sm" role="alert">
-          {error}
-        </p>
-      ) : null}
-      <button
-        type="button"
-        onClick={() => setConfirmCancel(true)}
-        className={cn("mx-auto flex h-11 shrink-0 items-center px-3 text-sm font-semibold", BAD)}
-        data-guest-cancel-bill
-      >
-        Cancel bill
-      </button>
-      {tab.test_mode && qr ? (
-        <a href={qr} target="_blank" rel="noopener noreferrer" className="text-muted-foreground mx-auto flex h-9 shrink-0 items-center text-xs font-semibold underline" data-open-as-waiter>
-          Open as waiter (test)
-        </a>
-      ) : null}
+      {/* MESITA-4061: the same frame as every guest step. The bill is open,
+          so neither arrow acts: going back is Cancel bill, the footer. */}
+      <PlaceBar place={place} name={tab.place.name} />
+      <StepNav at={4} />
+      {/* Pato: "I don't want the [cash pill] at the top, but close to the
+          QR, also the timer": one group, centred both ways. */}
+      <StepBody className="gap-4">
+        <h2 className="text-base font-semibold">Show this QR to your waiter</h2>
+        <div className="flex flex-col items-center gap-2">
+          <span className="border-border flex items-center gap-2 rounded-full border px-3 py-1 text-base font-semibold tabular-nums [&>svg]:h-5 [&>svg]:w-5">
+            {wayIcon}
+            {wayWords}
+          </span>
+          {/* MESITA-3913: what the signature earns, Available at once. */}
+          {(tab.cashback_on_sign_cents ?? 0) > 0 ? (
+            <p className={cn("flex items-center justify-center gap-1.5 text-sm font-semibold", GOOD)} data-guest-sign-cashback>
+              <Coins className="h-4 w-4" aria-hidden />+{m(tab.cashback_on_sign_cents ?? 0)} back as credits once the waiter signs
+            </p>
+          ) : null}
+        </div>
+        {/* The white box: up to 280px, and on a short phone only what the
+            screen has left after the frame and the rest of the group (about
+            480px), so the timer stays in view next to it; never under 160px. */}
+        <div
+          className="border-border flex aspect-square shrink-0 items-center justify-center rounded-2xl border bg-white p-3"
+          style={{ width: "max(160px, min(100%, 280px, calc(100dvh - 480px)))" }}
+        >
+          {qr ? (
+            <QRCodeSVG value={qr} size={280} marginSize={0} style={{ width: "100%", height: "100%" }} title="Your bill's QR for the waiter" />
+          ) : (
+            <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" aria-label="Loading the QR" />
+          )}
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          <p className={cn("flex items-center justify-center gap-2 text-base font-semibold tabular-nums", WAIT)} role="timer" aria-live="off">
+            <Clock className="h-5 w-5" aria-hidden />
+            {countdown}
+            <span className="text-muted-foreground font-normal">to sign</span>
+          </p>
+          <p className="text-muted-foreground text-sm">Once the waiter signs, this payment is final.</p>
+          {error ? (
+            <p className="text-destructive text-sm" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+        {tab.test_mode && qr ? (
+          <a href={qr} target="_blank" rel="noopener noreferrer" className="text-muted-foreground flex h-9 items-center text-xs font-semibold underline" data-open-as-waiter>
+            Open as waiter (test)
+          </a>
+        ) : null}
+      </StepBody>
+      <StepFooter onCancel={() => setConfirmCancel(true)} cancelDisabled={busy} />
 
       <LocalDialog open={confirmCancel} onClose={() => setConfirmCancel(false)} ariaLabel="Cancel this bill">
         <div className="p-5">
