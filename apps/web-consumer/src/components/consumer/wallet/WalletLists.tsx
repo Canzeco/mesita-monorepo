@@ -212,16 +212,17 @@ export function CreditsRow({
   eager = false,
 }: {
   card: WalletCardModel;
-  /** Its House Card page. */
-  href: string;
+  /** Its House Card page. Absent on a page that IS this place's (the
+   *  Offers page's balance, MESITA-4060): a plain row, no chevron. */
+  href?: string;
   /** The place left Mesita; the money stays. */
   gone?: boolean;
   eager?: boolean;
 }) {
   const amount = cardAmount(card);
   const line = creditsLine(gone);
-  return (
-    <Link href={href} aria-label={walletCardLabel(card)} className={ROW} data-wallet-method="credits">
+  const inner = (
+    <>
       <span className={cn(CHIP, "bg-neutral-950 text-sm font-semibold text-white")} aria-hidden>
         {card.photo ? (
           <SizedImg src={card.photo} size="thumb" alt="" loading={eager ? "eager" : "lazy"} className="h-full w-full object-cover" />
@@ -239,8 +240,17 @@ export function CreditsRow({
       <span className="bg-foreground text-paper shrink-0 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums">
         {money(amount.cents, card.currency)}
       </span>
+    </>
+  );
+  return href ? (
+    <Link href={href} aria-label={walletCardLabel(card)} className={ROW} data-wallet-method="credits">
+      {inner}
       <Chevron />
     </Link>
+  ) : (
+    <div role="group" aria-label={walletCardLabel(card)} className={cn(ROW, "hover:bg-transparent")} data-wallet-method="credits">
+      {inner}
+    </div>
   );
 }
 

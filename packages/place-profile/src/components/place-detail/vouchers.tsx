@@ -6,13 +6,12 @@ import { BadgePercent, Banknote, Check, CircleCheck, Crown, Info, Lock, Minus, P
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection, VoucherBasketItem } from "../../actions";
-import { cn, firstInitial } from "../../lib/format";
+import { cn } from "../../lib/format";
 import {
   PLACE_META_CLASS,
 } from "../../lib/ui";
 import { moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, STORY_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
-import { SizedImg } from "../SizedPhoto";
 
 // THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
 // MESITA-3309: "Make the Vouchers graphics. It must look like 6 digital
@@ -462,53 +461,6 @@ function offerStatus(
   // MESITA-3463: a visit is a paid bill here with a card part.
   if (reason === "needs_visit") return { ok: false, text: "One per visit. Pay a bill here by card to buy another." };
   return { ok: false, text: `${tag(reason)}.` };
-}
-
-/** THE WALLET PILL (Pato, MESITA-3483, with inKind's "Load your wallet":
- *  "show the wallet on top ... profile picture of place joined to amount of
- *  credits and wallet icon"): the Offers page's top-bar right slot, where the
- *  three dots were. The place's small photo and the guest's
- *  available credits here (list-vouchers' balance; formatted, never added).
- *  It replaced the House Card strip (MESITA-3448..3454). */
-export function OffersWalletPill({ place }: { place: PlaceDetail }) {
-  const balance = place.money?.balance ?? null;
-  const currency = place.money?.currency ?? "mxn";
-  const available = balance?.available_cents ?? 0;
-  const pending = balance?.pending_cents ?? 0;
-  const spoken = `Your credits here: ${pesos(available, currency)}${pending > 0 ? `, ${pesos(pending, currency)} pending` : ""}`;
-  // THE PLACE'S PHOTO AND THE AMOUNT, NOTHING ELSE (Pato, 2026-11-14,
-  // MESITA-3903: "DON'T CALL HOUSE CARD LIKE THAT. IT LOOKS LIKE SHIT. JUST
-  // THE PROFILE PHOTO OF THE PLACE AND THE AMOUNT. THATS IT"): the top bar's
-  // grey pill (the shape of the Tickets pill on Pay and Wallet), a round photo
-  // and the amount in ink, muted when nothing is spendable. It was a mini
-  // House Card in pink with a "House Card" caption (MESITA-3898).
-  // NOT A BUTTON, AND IT DOES NOT LOOK LIKE ONE (Pato, 2026-11-14,
-  // MESITA-3932: "don't make top right wallet clickable"): no grey pill — the
-  // back button beside it wears that — so the photo and the amount sit on the
-  // bar as plain words, with no tap target.
-  // IN A BLACK BOX (Pato, MESITA-3935: "must be inside a black box or
-  // something"): a rounded rectangle in ink, white amount (70% at zero) —
-  // not the back button's round grey pill, so it reads as a balance, still
-  // with pointer-events off.
-  const empty = available <= 0;
-  return (
-    <span
-      className="bg-foreground pointer-events-none mr-1.5 flex h-10 shrink-0 items-center gap-2 rounded-[10px] py-1 pr-3 pl-1.5 text-white select-none"
-      aria-label={spoken}
-      data-place-credit
-    >
-      <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-white/20" aria-hidden>
-        {place.profilePhoto ? (
-          <SizedImg src={place.profilePhoto} size="thumb" alt="" className="h-full w-full object-cover" />
-        ) : (
-          <span className="flex h-full w-full items-center justify-center text-xs font-semibold">{firstInitial(place.name)}</span>
-        )}
-      </span>
-      <span className={cn("text-[15px] font-semibold tabular-nums", empty && "text-white/70")} aria-hidden>
-        {pesos(available, currency)}
-      </span>
-    </span>
-  );
 }
 
 /** The Rewards page (MESITA-3412: the host's sheet off Prepay and Pay; it
