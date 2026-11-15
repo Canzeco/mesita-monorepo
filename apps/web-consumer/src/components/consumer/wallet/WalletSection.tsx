@@ -13,6 +13,7 @@ import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { placeHref } from "@/lib/place-route";
+import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
@@ -150,6 +151,7 @@ export function WalletSection({
   const getSupabase = useLazyBrowserSupabase();
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
   const [method, setMethod] = useState<Method | null>(null);
+  const [explainAdd, setExplainAdd] = useState(false);
   const [adding, setAdding] = useState(false);
   // The saved-card failure toast fires at most once per mount.
   const cardsToasted = useRef(false);
@@ -282,10 +284,12 @@ export function WalletSection({
             ))
           : null}
         {creditsState === "rows" ? (
-          <AddRow line="Add a Credits Card" ariaLabel="Add a Credits Card" href={CONSUMER_ROUTES.search} />
+          <AddRow line="Add a Credits Card" ariaLabel="Add a Credits Card" onClick={() => setExplainAdd(true)} />
         ) : null}
       </WalletPanelList>
 
+      {/* Add a Credits Card explains, never navigates (MESITA-4088). */}
+      <AddCreditsCardDialog open={explainAdd} onClose={() => setExplainAdd(false)} />
       <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
       <GiftClaimSheet
         token={wallet || failed ? gift : null}
