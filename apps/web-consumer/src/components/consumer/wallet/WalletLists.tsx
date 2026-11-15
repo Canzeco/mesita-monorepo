@@ -2,6 +2,7 @@
 
 import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { ChevronRight, Plus } from "lucide-react";
 import { PlaceMarks, SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
@@ -116,9 +117,9 @@ export function AddRow({
     </>
   );
   return href ? (
-    <Link href={href} aria-label={ariaLabel} className={ROW} data-wallet-add>
+    <PushLink href={href} aria-label={ariaLabel} className={ROW} data-wallet-add>
       {inner}
-    </Link>
+    </PushLink>
   ) : (
     <button type="button" onClick={onClick} disabled={disabled} aria-label={ariaLabel} className={cn(ROW, "disabled:opacity-60")} data-wallet-add>
       {inner}
