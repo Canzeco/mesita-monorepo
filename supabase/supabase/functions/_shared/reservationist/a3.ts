@@ -92,7 +92,7 @@ export const A3: FleetAgent = {
         label: "Place · present matches",
         position: pos(1280, -320),
         prompt:
-          "Presenta lo que encontró la búsqueda: a nombre de quién, fecha, hora, personas y estado. Si no hubo coincidencias, dilo una vez y ofrece buscar otro nombre; no confirmes ni niegues reservaciones de otros lugares. Si quieren cancelar una, toma esa rama; si solo era consulta, despídete.",
+          "Presenta lo que encontró la búsqueda: a nombre de quién, fecha, hora, personas y estado. Si no hubo coincidencias, dilo una vez y ofrece buscar otro nombre; no confirmes ni niegues reservaciones de otros lugares. Si quieren cancelar una (o ya lo pidieron al llamar), toma la rama de cancelar; no vuelvas a buscar la misma. Si solo era consulta, despídete.",
         edgeOrder: ["e_pfd_cancel", "e_pfd_end"],
       }),
       place_confirm_cancel: talkNode({
@@ -220,7 +220,15 @@ export const A3: FleetAgent = {
 
       e_pu_cancel: edge("place_upcoming", "place_confirm_cancel", llm("Quieren cancelar una de esas reservaciones.", "cancel")),
       e_pu_end: edge("place_upcoming", "end_node", llm("Resuelto y despedido.", "done")),
-      e_pf_found: edge("place_find", "place_found", RESULT_OK, back("buscar otro nombre")),
+      // The way back re-runs the search, so it is a condition, never
+      // unconditional: an always-open way back looped the call to death
+      // (MESITA-4029).
+      e_pf_found: edge(
+        "place_find",
+        "place_found",
+        RESULT_OK,
+        llm("Dieron OTRO nombre u otro código, distinto del que ya se buscó.", "search another name"),
+      ),
       e_pfd_cancel: edge(
         "place_found",
         "place_confirm_cancel",

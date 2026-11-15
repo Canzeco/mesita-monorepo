@@ -83,3 +83,16 @@ Deno.test("prompts: no agent speaks of tickets or gives the guest's phone", () =
     assert(!spoken.includes("{{guest_phone}}"), `${agent.key}: hands out the guest's phone`);
   }
 });
+
+Deno.test("fleetWorkflows: no unconditional way back into a tool node (MESITA-4029)", () => {
+  // Going back along an edge whose source is a tool node re-runs that
+  // webhook. Always open, the model can take it on every turn: a3's place
+  // search re-ran ~20 times in 60s and the call never spoke again.
+  for (const [key, wf] of Object.entries(fleetWorkflows(ids()))) {
+    for (const [id, e] of Object.entries(wf.edges)) {
+      if (wf.nodes[e.source as string].type !== "tool" || !e.backward_condition) continue;
+      const back = e.backward_condition as { type: string };
+      assert(back.type !== "unconditional", `${key}.${id}: unconditional way back into tool node ${e.source}`);
+    }
+  }
+});
