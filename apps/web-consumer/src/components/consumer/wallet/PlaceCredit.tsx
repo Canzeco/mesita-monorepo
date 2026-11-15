@@ -14,13 +14,13 @@ import {
   type SentLink,
   type WaitingStory,
 } from "@/lib/api/wallet";
-import { CONSUMER_ROUTES, creditEntryPath, payPlacePath, payReceiptPath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, creditEntryPath, payPlacePath, payReceiptPath, walletSendPath } from "@/lib/consumer-route-contract";
 import { placeHref } from "@/lib/place-route";
 import { countdownLabel, nextAvailableMs, shouldReread } from "@/lib/wallet-countdown";
 import { type EntryGroup, groupKeys, splitEntries } from "@/lib/wallet-entries";
 import { cn } from "@/lib/utils";
 import { type Method, MethodSheet } from "./MethodSheet";
-import { SendCreditSheet, SentLinks } from "./SendCredit";
+import { SentLinks } from "./SendCredit";
 import { Panel } from "@/components/shared/Panel";
 import { WalletPanelList } from "./WalletLists";
 import { DOOR_BUY, DOOR_GIFT, DOOR_GLYPH, DOOR_PINK, DOOR_ROW, PRIMARY, SECONDARY } from "./wallet-buttons";
@@ -211,7 +211,6 @@ export function PlaceCredit({
   confirming = false,
   onReread,
   onRemove,
-  startGift = false,
 }: {
   row: CreditRow;
   /** Sending credit is open here (MESITA-3292). */
@@ -225,9 +224,6 @@ export function PlaceCredit({
   confirming?: boolean;
   onReread?: () => void;
   onRemove?: (placeId: string) => Promise<void>;
-  /** Open with Gift Credits showing (Me › Gift, MESITA-3771); only when
-   *  sending is open here and there is credit to send. */
-  startGift?: boolean;
 }) {
   const { card, balance } = row;
   const href = placeHref(row.placeSlug);
@@ -270,9 +266,6 @@ export function PlaceCredit({
     onReread();
   }, [now, stuckAt, onReread]);
 
-  const [sending, setSending] = useState(
-    () => startGift && canSend && (balance?.spendable_cents ?? 0) > 0,
-  );
   const [removeOpen, setRemoveOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [method, setMethod] = useState<Method | null>(null);
@@ -337,12 +330,18 @@ export function PlaceCredit({
             <CreditCard className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
             Buy Credits
           </PushLink>
-          {gift ? (
+          {/* Send Gift is its own page (MESITA-4096); it was a sheet here. */}
+          {gift === "open" ? (
+            <PushLink href={walletSendPath(row.placeId)} className={DOOR_GIFT} data-send-credit-open>
+              <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+              Send Gift
+            </PushLink>
+          ) : gift ? (
             <button
               type="button"
-              className={cn(DOOR_GIFT, gift !== "open" && "opacity-50")}
-              onClick={() => (gift === "open" ? setSending(true) : toast(gift.blocked))}
-              aria-label={gift === "open" ? "Send Gift" : `Send Gift: ${gift.blocked}`}
+              className={cn(DOOR_GIFT, "opacity-50")}
+              onClick={() => toast(gift.blocked)}
+              aria-label={`Send Gift: ${gift.blocked}`}
               data-send-credit-open
             >
               <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
@@ -431,15 +430,6 @@ export function PlaceCredit({
         </div>
       ) : null}
 
-      <SendCreditSheet
-        open={sending}
-        onClose={() => setSending(false)}
-        onSent={changed}
-        placeId={row.placeId}
-        placeName={card.name}
-        currency={card.currency}
-        spendableCents={spendable}
-      />
       <MethodSheet method={method} onClose={() => setMethod(null)} />
       {removable ? (
         <LocalSheet open={removeOpen} onClose={() => (removing ? undefined : setRemoveOpen(false))} ariaLabel="Remove this House Card">

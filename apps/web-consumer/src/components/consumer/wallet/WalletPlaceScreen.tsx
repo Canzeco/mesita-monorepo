@@ -1,14 +1,14 @@
 "use client";
 
 import { Screen } from "@/components/consumer/nav/Screen";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
 import { apiRemoveHouseCard } from "@/lib/api/wallet";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
+import { CONSUMER_ROUTES, walletSendPath } from "@/lib/consumer-route-contract";
+import { goBack, navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { HouseCardSkeleton, PlaceCredit, PlacePhotoMark } from "./PlaceCredit";
@@ -29,19 +29,14 @@ import { useWallet } from "./use-wallet";
 
 export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   const router = useRouter();
-  // Me › Gift opens a House Card with Gift Credits open (MESITA-3771). The
-  // ask is read once and dropped from the address, so a return from Stripe
-  // (whose return address is this page's) does not open Gift again.
+  // An old `?gift=1` link (Me › Gift and a ticket's Gift credit, MESITA-3771)
+  // opened the send sheet here; the send page is its own address now
+  // (MESITA-4096), so the address forwards there in one hop.
   const params = useSearchParams();
-  const [startGift] = useState(() => params?.get("gift") === "1");
+  const startGift = params?.get("gift") === "1";
   useEffect(() => {
-    if (!startGift) return;
-    // Only `gift` leaves: a Checkout return's `?prepay=` is useWallet's to read.
-    const rest = new URLSearchParams(window.location.search);
-    rest.delete("gift");
-    const q = rest.toString();
-    replaceAddress(`${window.location.pathname}${q ? `?${q}` : ""}`);
-  }, [startGift]);
+    if (startGift) navigateTo(router, walletSendPath(placeId), { replace: true });
+  }, [startGift, router, placeId]);
   const getSupabase = useLazyBrowserSupabase();
   const { wallet, failed, credits, reread, confirming } = useWallet();
   const row = credits?.find((r) => r.placeId === placeId) ?? null;
@@ -102,7 +97,6 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
             confirming={confirming}
             onReread={reread}
             onRemove={removeHouseCard}
-            startGift={startGift}
           />
         ) : failed ? (
           <EmptyState

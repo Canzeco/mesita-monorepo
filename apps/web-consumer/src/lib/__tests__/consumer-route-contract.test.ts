@@ -139,6 +139,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       walletRedeem: "/wallet/redeem",
       // Add a card, its own page (MESITA-4092).
       walletAddCard: "/wallet/cards/new",
+      // Buy Credits and Send Gift pick a place first (MESITA-4096).
+      walletBuy: "/wallet/buy",
+      walletSend: "/wallet/send",
       // No Activity tab (MESITA-3855). Share is a page again (MESITA-3867).
       share: "/share",
       // The Me hub and its boxes, each a route. NO diamond / diamondInvite /
@@ -187,7 +190,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         newVisitWallet: "/new-visit/wallet",
         visitPrefix: "/visit/",
         walletBalancePrefix: "/wallet/balance/",
-        walletBuy: "/wallet/buy",
         walletGiftTab: "/wallet/gift",
         credits: "/credits",
         inboxCredits: "/inbox/credits",
@@ -457,7 +459,6 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         destination: "/wallet",
         permanent: true,
       },
-      { source: "/wallet/buy", destination: "/wallet", permanent: true },
       { source: "/wallet/gift", destination: "/wallet", permanent: true },
       { source: "/credits", destination: "/wallet", permanent: true },
       { source: "/inbox/credits", destination: "/wallet", permanent: true },
@@ -679,8 +680,7 @@ describe("middleware auth wall (shouldGate)", () => {
     // `next`, like every other personal surface.
     "/pay",
     "/wallet",
-    // Gated although it only 308s to /pay: middleware runs before the
-    // redirect, so the signed-out `next` keeps what the guest asked for.
+    // Buy Credits' place list (MESITA-4096); it was a legacy 308 to /wallet.
     "/wallet/buy",
     "/reservations",
     "/reservation/r1",

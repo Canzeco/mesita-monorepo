@@ -124,6 +124,13 @@ export const CONSUMER_ROUTES = {
   // ADD A CARD, ITS OWN PAGE (MESITA-4092, Pato: "OWN SUBPAGES IS CLEANER"),
   // pushed from Wallet's Add a card row; it was an 88% sheet.
   walletAddCard: "/wallet/cards/new",
+  // BUY CREDITS AND SEND GIFT PICK A PLACE FIRST (MESITA-4096, Pato: "buy
+  // credits and send credits must actually display a list of places to select
+  // the action ... like a shortcut instead of going to the card subpage"):
+  // Wallet's two buttons push these lists. Buy's row opens the place's Offers
+  // at Prepayments; Send's row opens /wallet/place/<id>/send (walletSendPath).
+  walletBuy: "/wallet/buy",
+  walletSend: "/wallet/send",
   // NO ACTIVITY (Pato, 2026-11-14, MESITA-3855): its chips are Me's
   // Notifications, Reservations and Tickets pages.
   //
@@ -221,8 +228,8 @@ export const CONSUMER_ROUTES = {
     newVisitWallet: "/new-visit/wallet",
     visitPrefix: "/visit/",
     walletBalancePrefix: "/wallet/balance/",
-    // The old Wallet tab's one-segment children, by name.
-    walletBuy: "/wallet/buy",
+    // The old Wallet tab's one-segment children, by name. /wallet/buy is a
+    // live page again since MESITA-4096 (Buy Credits' place list).
     walletGiftTab: "/wallet/gift",
     credits: "/credits",
     inboxCredits: "/inbox/credits",
@@ -377,6 +384,11 @@ export function walletPlacePath(placeId: string): string {
   return `${CONSUMER_ROUTES.walletPlace.prefix}${placeId}`;
 }
 
+/** A House Card's Send Gift page: the amount, then the link (MESITA-4096). */
+export function walletSendPath(placeId: string): string {
+  return `${walletPlacePath(placeId)}/send`;
+}
+
 /** A friend's credit link (shared outside the app: keep its shape). */
 export function walletGiftPath(token: string): string {
   return `${CONSUMER_ROUTES.walletGift.prefix}${encodeURIComponent(token)}`;
@@ -466,6 +478,11 @@ export const ROUTE_MAP = {
   walletGift: row("/wallet/gift/:token", "wallet", "page", "wallet"),
   walletRedeem: row("/wallet/redeem", "wallet", "page", "wallet"),
   walletAddCard: row("/wallet/cards/new", "wallet", "page", "wallet"),
+  // Wallet's Buy Credits and Send Gift lists, and a House Card's send page,
+  // which was a sheet over it (MESITA-4096).
+  walletBuy: row("/wallet/buy", "wallet", "page", "wallet"),
+  walletSend: row("/wallet/send", "wallet", "page", "wallet"),
+  walletPlaceSend: row("/wallet/place/:placeId/send", "wallet", "page", "walletPlace"),
   // Share's page, pushed from Wallet's big button (MESITA-3886).
   share: row("/share", "wallet", "page", "wallet"),
   me: row("/me", "me", "tab", null),

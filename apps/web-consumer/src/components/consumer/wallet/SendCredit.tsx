@@ -23,14 +23,18 @@ import {
   type SentLink,
   WALLET_CACHE_KEY,
 } from "@/lib/api/wallet";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { goBack } from "@/lib/navigate";
+import { CONSUMER_ROUTES, walletPlacePath } from "@/lib/consumer-route-contract";
+import { goBack, navigateTo } from "@/lib/navigate";
 import { invalidateCached } from "@/lib/screen-cache";
 import { placeHref } from "@/lib/place-route";
 import { shareOrCopy } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { Panel } from "@/components/shared/Panel";
+import { Skeleton } from "@/components/shared/Skeleton";
+import { GIFT_PENDING } from "@/lib/wallet-card";
+import { useWallet } from "./use-wallet";
+import { prepayHref } from "./WalletPickers";
 
 // SENDING CREDIT TO A FRIEND (MESITA-3292; Pato, 2026-11-06: "word of mouth
 // with value attached … same place only"). A guest sends some of their
@@ -53,38 +57,53 @@ function refusal(err: unknown, fallback: string, currency = "mxn"): string {
   return fallback;
 }
 
-/** The sender's form: an amount, Send, then the link to share once. */
-export function SendCreditSheet({
-  open,
-  onClose,
-  onSent,
-  placeId,
-  placeName,
-  currency,
-  spendableCents,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onSent: () => void;
-  placeId: string;
-  placeName: string;
-  currency: string;
-  spendableCents: number;
-}) {
+/** /wallet/place/<placeId>/send — the sender's page (MESITA-4096; it was a
+ *  sheet over the House Card): an amount, Send, then the link to share once.
+ *  Not enough to send here (nothing spendable, more typed than spendable, or
+ *  the server's `insufficient`): a Buy Credits button to the place's prepay
+ *  page (Pato: "if not enough money, add shortcut button to redirect to
+ *  prepay"). */
+export function SendCreditPage({ placeId }: { placeId: string }) {
   const getSupabase = useLazyBrowserSupabase();
+  const router = useRouter();
+  const { wallet, credits, reread } = useWallet();
+  const row = credits?.find((r) => r.placeId === placeId) ?? null;
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [short, setShort] = useState(false);
   const [link, setLink] = useState<{ url: string; code: string | null; cents: number } | null>(null);
   // One request id per amount: a retry after a lost answer replays, never sends twice.
   const attempt = useRef<{ id: string; cents: number } | null>(null);
 
-  function close() {
-    setAmount("");
-    setError(null);
-    setLink(null);
-    attempt.current = null;
-    onClose();
+  // No House Card here: the send list is the nearest true screen.
+  useEffect(() => {
+    if (credits && !row) navigateTo(router, CONSUMER_ROUTES.walletSend, { replace: true });
+  }, [credits, row, router]);
+
+  if (!row || !wallet) {
+    return (
+      <Screen title="Send Gift" paper>
+        <div className="flex flex-col items-center pt-6" aria-busy>
+          <Skeleton className="h-5 w-56 max-w-full" />
+          <Skeleton className="mt-6 h-12 w-60 max-w-full" />
+          <Skeleton className="mt-8 h-12 w-full rounded-xl" />
+        </div>
+      </Screen>
+    );
+  }
+
+  const placeName = row.card.name;
+  const currency = row.card.currency;
+  const spendableCents = row.balance.spendable_cents ?? 0;
+  const gone = row.balance.place === null;
+  const buy = gone ? null : prepayHref(row.placeSlug);
+  const canSend = wallet.can_send === true && !gone;
+  const typed = readAmount(amount);
+  const over = typed !== null && typed > spendableCents;
+
+  function done() {
+    goBack(router, walletPlacePath(placeId));
   }
 
   async function send() {
@@ -96,18 +115,21 @@ export function SendCreditSheet({
     if (!attempt.current || attempt.current.cents !== cents) attempt.current = { id: crypto.randomUUID(), cents };
     setBusy(true);
     setError(null);
+    setShort(false);
     try {
       const r = await apiSendCredit(getSupabase(), { place_id: placeId, amount_cents: cents, request_id: attempt.current.id });
       attempt.current = null;
-      onSent();
+      invalidateCached(WALLET_CACHE_KEY);
+      reread();
       if (r.token) setLink({ url: giftLink(r.token), code: r.code, cents: r.amount_cents });
       else {
         // A replay: the link went out on the first answer, which was lost.
         toast("Sent. If you lost the link, take it back and send again.");
-        close();
+        done();
       }
     } catch (err) {
       if (err instanceof EFError && err.code) attempt.current = null;
+      setShort(err instanceof EFError && err.code === "insufficient");
       setError(refusal(err, "Couldn't send. Try again.", currency));
     } finally {
       setBusy(false);
@@ -115,8 +137,8 @@ export function SendCreditSheet({
   }
 
   return (
-    <LocalSheet open={open} onClose={close} ariaLabel="Send credit to a friend">
-      <div className="flex flex-col px-4 pt-5 pb-8" data-send-credit>
+    <Screen title="Send Gift" paper>
+      <div className="flex flex-col pt-4" data-send-credit>
         {link ? (
           <>
             <h2 className="text-xl font-semibold">Share your link</h2>
@@ -145,15 +167,30 @@ export function SendCreditSheet({
               >
                 Share link
               </button>
-              <button type="button" className={SECONDARY} onClick={close}>
+              <button type="button" className={SECONDARY} onClick={done}>
                 Done
               </button>
             </div>
           </>
+        ) : !canSend ? (
+          <p className="text-muted-foreground pt-2 text-center text-sm">
+            {gone ? "This place left Mesita, so its credit can't be sent." : "Sending credit isn't open yet."}
+          </p>
+        ) : spendableCents <= 0 ? (
+          /* Nothing to send yet: say why, and the way to get some. */
+          <>
+            <p className="text-muted-foreground pt-2 text-center text-sm" data-send-credit-empty>
+              {row.card.pending_cents > 0 ? GIFT_PENDING : `No credit at ${placeName} to send yet.`}
+            </p>
+            {buy ? (
+              <Link href={buy} className={`${PRIMARY} mt-6`} data-send-credit-buy>
+                Buy Credits
+              </Link>
+            ) : null}
+          </>
         ) : (
           <>
-            <h2 className="text-xl font-semibold">Send credit to a friend</h2>
-            <p className="text-muted-foreground mt-1 text-sm">
+            <p className="text-muted-foreground text-center text-sm">
               At {placeName} only · up to {money(spendableCents, currency)}
             </p>
             <label className="border-foreground mx-auto mt-6 flex w-60 items-baseline justify-center gap-1.5 border-b-2 pb-2" htmlFor="send-amount">
@@ -162,32 +199,39 @@ export function SendCreditSheet({
                 id="send-amount"
                 inputMode="decimal"
                 autoComplete="off"
+                autoFocus
                 placeholder="0"
                 value={amount}
                 onChange={(e) => {
                   setAmount(e.target.value);
                   setError(null);
+                  setShort(false);
                 }}
                 className="placeholder:text-muted-foreground/50 w-36 min-w-0 bg-transparent text-4xl font-semibold tabular-nums outline-none"
                 aria-label="Amount to send"
               />
               <span className="text-muted-foreground text-base font-semibold">{currency.toUpperCase()}</span>
             </label>
-            {error ? (
+            {error || over ? (
               <p className="text-destructive mt-3 text-center text-sm" role="alert">
-                {error}
+                {error ?? `You can send up to ${money(spendableCents, currency)} here.`}
               </p>
             ) : null}
-            <button type="button" className={`${PRIMARY} mt-6`} disabled={busy} onClick={() => void send()}>
+            <button type="button" className={`${PRIMARY} mt-6`} disabled={busy || over} onClick={() => void send()}>
               {busy ? "Sending…" : "Send"}
             </button>
+            {(over || short) && buy ? (
+              <Link href={buy} className={`${SECONDARY} mt-2`} data-send-credit-buy>
+                Buy Credits
+              </Link>
+            ) : null}
             <p className="text-muted-foreground mt-3 text-center text-xs">
               It leaves your balance now. You get a link and a code to share.
             </p>
           </>
         )}
       </div>
-    </LocalSheet>
+    </Screen>
   );
 }
 
