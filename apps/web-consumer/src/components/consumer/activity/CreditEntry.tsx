@@ -23,6 +23,12 @@
 // (filled) alone. The wallet read carries no gift id, so a take-back is paired
 // to the nearest earlier send of the same amount at the place.
 //
+// A Refund page (MESITA-4011, Tickets 10/10): the header with the amount and no
+// sign, Refunded, "Refunded to the card you paid with.", a Timeline (Bought,
+// Refunded), the refund's lines (cashback taken back when any, the original
+// purchase as a link only when its purchase_id finds it, the purchase number
+// with copy) and Open the House Card (outline) alone. Found by purchase_id.
+//
 // A refunded purchase reads Refunded <date> and links to its Refund ticket by
 // purchase_id; the purchase number has a copy button. It reads the wallet
 // Tickets already holds (the same cached read); an entry it cannot find any
@@ -180,6 +186,69 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     const place = b.place?.name ?? "A Mesita place";
     const m = (c: number) => money(c, b.currency);
     const amount = Math.abs(e.amount_cents);
+
+    // A refunded purchase (MESITA-4011, Tickets 10/10): found by its
+    // purchase_id, its largest reversal the page's entry, so two reversals at
+    // one instant never swap pages. The money went back to the card: no sign.
+    if (e.kind === "reversal" && e.purchase_id && !e.payment_id) {
+      const pid = e.purchase_id;
+      const reversals = b.entries
+        .filter((x) => x.kind === "reversal" && !x.payment_id && x.purchase_id === pid)
+        .sort((x, y) => Math.abs(y.amount_cents) - Math.abs(x.amount_cents));
+      const refund = reversals[0] ?? e;
+      const refunded = reversals.reduce((n, x) => n + Math.abs(x.amount_cents), 0) || amount;
+      const original = b.entries.find((x) => BOUGHT.has(x.kind) && x.purchase_id === pid);
+      const takenBack = b.entries
+        .filter((x) => x.kind === "cashback" && !x.payment_id && x.purchase_id === pid)
+        .reduce((n, x) => n + x.amount_cents, 0);
+      return (
+        <div className="flex flex-col gap-6 pb-4" data-credit-entry>
+          <TicketHeader
+            kind="refund"
+            photo={b.place?.photo ?? null}
+            place={place}
+            placeHref={b.place?.id ? placePath(b.place.id) : undefined}
+            when={when(refund.at)}
+            amount={m(refunded)}
+            state="Refunded"
+            tone="grey"
+          />
+          {wallet.data.test_mode ? <TestModeNote /> : null}
+          <p className="text-sm">Refunded to the card you paid with.</p>
+          <TicketTimeline
+            steps={[
+              ...(original ? [{ label: "Bought", when: when(original.at), value: m(Math.abs(original.amount_cents)) }] : []),
+              { label: "Refunded", when: when(refund.at), value: m(refunded) },
+            ]}
+          />
+          <TicketCard title="Refund">
+            <TicketLine label="Refunded amount" value={m(refunded)} />
+            {takenBack > 0 ? <TicketLine label="Cashback taken back" value={`−${m(takenBack)}`} /> : null}
+            <TicketLine label="Refunded on" value={entryDate(refund.at)} />
+            {original ? (
+              <TicketLine
+                label="Original purchase"
+                sub={when(original.at)}
+                value={m(Math.abs(original.amount_cents))}
+                href={creditEntryPath(placeId, original)}
+              />
+            ) : null}
+            <TicketLine
+              label="Purchase number"
+              value={pid.slice(0, 8).toUpperCase()}
+              trailing={<CopyPurchaseId id={pid} />}
+            />
+          </TicketCard>
+          <Link
+            href={walletPlacePath(placeId)}
+            className="border-border bg-card hover:bg-muted/60 flex h-11 items-center justify-center rounded-full border text-sm font-semibold transition"
+          >
+            Open the House Card
+          </Link>
+        </div>
+      );
+    }
+
     const bought = BOUGHT.has(e.kind);
     // The bonus written with this purchase: by its purchase when the read
     // carries one, else by the same instant.
