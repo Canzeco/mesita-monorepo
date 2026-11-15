@@ -4,7 +4,7 @@
 // table's join QR (/pay/join/<token> in the app) and takes a share: the
 // equal part of the bill, never more than what is left unclaimed. A guest who
 // already holds a share of this table gets it back. The app then opens the
-// share (/pay/tab/<share_tab_id>), where it can change the amount and pays
+// share (/pay/bill/<share_tab_id>), where it can change the amount and pays
 // it like any bill.
 //
 // Body: { join_token: 22 base64url chars }

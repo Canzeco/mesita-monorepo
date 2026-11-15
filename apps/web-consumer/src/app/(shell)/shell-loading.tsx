@@ -24,7 +24,7 @@ import PlaceReserveLoading from "./place/[id]/reserve/loading";
 import PayPlaceLoading from "./pay/place/[placeId]/loading";
 import PayTabLoading from "./pay/bill/[billId]/loading";
 import PayReceiptLoading from "./pay/receipt/[paymentId]/loading";
-import VisitLoading from "./me/tickets/visit/[tabId]/loading";
+import VisitLoading from "./me/tickets/visits/[visitId]/loading";
 import CreditLoading from "./me/tickets/credit/[placeId]/[entry]/loading";
 import NotificationsLoading from "./me/notifications/loading";
 import ReservationsLoading from "./me/reservations/loading";

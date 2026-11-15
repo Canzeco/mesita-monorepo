@@ -354,9 +354,9 @@ export function voucherCheckoutParams(args: {
     mode: "payment",
     client_reference_id: args.purchaseId,
     ...(args.email ? { customer_email: args.email } : {}),
-    // Back on the place's own House Card, /wallet/<placeId> (MESITA-3617),
+    // Back on the place's own House Card, /wallet/place/<placeId> (MESITA-3617),
     // never the Wallet's rails: the guest bought credit at one place.
-    success_url: `${origin}/wallet/${args.placeId}?prepay={CHECKOUT_SESSION_ID}`,
+    success_url: `${origin}/wallet/place/${args.placeId}?prepay={CHECKOUT_SESSION_ID}`,
     cancel_url: args.returnUrl,
     expires_at: args.nowSec + WALLET_CHECKOUT_TTL_SEC,
     metadata,

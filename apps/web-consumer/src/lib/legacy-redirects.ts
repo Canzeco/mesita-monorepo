@@ -41,8 +41,8 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // /pay/tab/<id> ("tab" is the bar's word); a Google place opened at
   // /place/open/<gid>; pay-at-a-place and a House Card were a bare place id
   // beside fixed words. Sent links, an open tab on an old build and the
-  // voucher checkout's return (`_shared/vouchers.ts` still sends Stripe back
-  // to /wallet/<placeId>?prepay=) all arrive on the old shapes; Next carries
+  // voucher checkout's return (the voucher checkout's return, until
+  // MESITA-4016) all arrive on the old shapes; Next carries
   // the query across.
   { source: "/pay/tab/:id", destination: "/pay/bill/:id", permanent: true },
   {
@@ -58,6 +58,12 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   {
     source: `/wallet/:placeId(${ROW_ID})`,
     destination: "/wallet/place/:placeId",
+    permanent: true,
+  },
+  // A finished Visit's detail sits beside its chip (MESITA-4016).
+  {
+    source: "/me/tickets/visit/:visitId",
+    destination: "/me/tickets/visits/:visitId",
     permanent: true,
   },
   // Explore era (pre-Home). Straight to the Discover default.
