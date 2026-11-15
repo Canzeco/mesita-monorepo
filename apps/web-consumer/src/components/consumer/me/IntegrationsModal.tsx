@@ -19,7 +19,7 @@ import { CalendarMarksRow } from "@/components/shared/calendar-marks";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 const ROW_CLASS = "flex w-full items-center gap-3 px-4 py-3 text-left";
-const MARK_SIZE = 24;
+const MARK_SIZE = 28;
 
 function RowBody({ icon, title, sub, marks }: { icon: ReactNode; title: ReactNode; sub: string; marks: ReactNode }) {
   return (
