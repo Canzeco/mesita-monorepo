@@ -14,6 +14,7 @@ import {
   AUDIT_TIMEOUT_MS,
   auditLine,
   boot,
+  buildOutputOf,
   classifyLanded,
   type Cloud,
   cloudFromEnv,
@@ -280,6 +281,8 @@ Deno.test("decide keeps the shared checkout, the cwd, active, locked, unclean an
   assertEquals(decide({ ...base, landed: { kind: "unlanded" } }, ctx).reason, "unlanded");
   assertEquals(decide({ ...base, landed: { kind: "ahead", pr: 1, by: 1 } }, ctx).reason, "residue (ahead of its merged PR)");
   assertEquals(decide({ ...base, landed: null }, ctx).reason, "landed unknown");
+  assertEquals(decide(base, { ...ctx, busy: ["/r/.claude/worktrees/a/apps/web"] }).reason, "in use (a process works there)");
+  assertEquals(decide(base, { ...ctx, busy: ["/r/.claude/worktrees/ab"] }).decision, "remove", "a sibling's process is not this one's");
 });
 
 // ── add (ISOLATE) ───────────────────────────────────────────────────────────
@@ -1221,4 +1224,108 @@ Deno.test("sweep: a platform folder at the fleet root is never an orphan; a stra
   assertStringIncludes(flagged, "ORPHAN: worktrees/codex/ghost");
   assertStringIncludes(res.json, `"path":"worktrees/straggler"`, "a registered worktree at the fleet root stays in the table");
   assert(await Deno.stat(platformDirOf(f.main, "claude-code")), "the empty platform folder survives");
+});
+
+// ── Disk (MESITA-4067) ──────────────────────────────────────────────────────
+
+const HAS_LSOF = (await defaultRunner("bash", ["-c", "command -v lsof"])).code === 0;
+
+/** The fixture's main ignores build output the way the repo does, on origin/main too. */
+async function ignoreBuildOutput(f: Fixture) {
+  await commitFile(f.main, ".gitignore", ".env.local\n.claude/worktrees/\nnode_modules/\n.next/\n", "ignore build output");
+  await git(f.main, "push", "-q", "origin", "main");
+}
+
+/** apps/web/node_modules and apps/web/.next, each with one file. */
+async function fakeBuild(path: string) {
+  await write(join(path, "apps/web/node_modules/pkg/index.js"), "x\n");
+  await write(join(path, "apps/web/.next/cache.bin"), "x\n");
+}
+
+async function present(p: string): Promise<boolean> {
+  try {
+    await Deno.lstat(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+Deno.test("buildOutputOf lists only present, gitignored directories that hold no tracked file", async () => {
+  const f = await makeFixture();
+  await ignoreBuildOutput(f);
+  await fakeBuild(f.main);
+  await write(join(f.main, "packages/lib/node_modules/keep.js"), "tracked\n");
+  await git(f.main, "add", "-f", "packages/lib/node_modules/keep.js");
+  await git(f.main, "commit", "-q", "--no-verify", "-m", "a tracked node_modules");
+  await write(join(f.main, "render/node_modules/x.js"), "x\n");
+  assertEquals((await buildOutputOf(makeEnv(f), f.main)).sort(), ["apps/web/.next", "apps/web/node_modules", "render/node_modules"]);
+});
+
+Deno.test({
+  name: "boot reclaims locally: drops a landed unclaimed workspace's build output, removes it once inactive, and never touches a claim, unlanded work or a checkout a process stands in",
+  ignore: !HAS_LSOF,
+  fn: async () => {
+    const f = await makeFixture();
+    await ignoreBuildOutput(f);
+    const landed = await rawWorktree(f, "landed", "claude/landed");
+    f.prsByOid.set(landed.tip, [{ number: 5, merged: true, headRefOid: landed.tip }]);
+    await fakeBuild(landed.path);
+    const busy = await rawWorktree(f, "busy", "claude/busy");
+    f.prsByOid.set(busy.tip, [{ number: 6, merged: true, headRefOid: busy.tip }]);
+    await fakeBuild(busy.path);
+    const unlanded = await rawWorktree(f, "unlanded", "claude/unlanded");
+    await fakeBuild(unlanded.path);
+    await add(makeEnv(f), { id: "MESITA-30", slug: "claimed" });
+    const claimed = await Deno.realPath(join(platformDirOf(f.main, "claude-code"), "MESITA-30-claimed"));
+    await fakeBuild(claimed);
+    const sleeper = new Deno.Command("bash", { args: ["-c", "sleep 60"], cwd: busy.path, stdout: "null", stderr: "null" }).spawn();
+    try {
+      // Off (--no-sweep, CI): only says what a sweep would free.
+      const off = (await boot(makeEnv(f, { now: later(48) }), { reclaim: false, why: "off (--no-sweep)" })).join("\n");
+      assertStringIncludes(off, "SWEEPABLE: 1 worktree(s)");
+      assertStringIncludes(off, "reclaim off (--no-sweep)");
+      assertStringIncludes(off, "disk: fleet");
+      assert(await present(landed.path) && await present(join(landed.path, "apps/web/node_modules")), "off changes nothing");
+
+      // Within the lease: the landed, unclaimed checkout stays and loses its build output; nothing else is touched.
+      const active = (await boot(makeEnv(f), { reclaim: true })).join("\n");
+      assertStringIncludes(active, "reclaim: dropped build output in worktrees/landed: apps/web/node_modules, apps/web/.next");
+      assert(await present(landed.path), "an active checkout stays");
+      assert(!(await present(join(landed.path, "apps/web/node_modules"))) && !(await present(join(landed.path, "apps/web/.next"))));
+      assert(await present(join(landed.path, "landed.txt")), "source stays");
+      for (const p of [busy.path, unlanded.path, claimed]) assert(await present(join(p, "apps/web/node_modules")), `${p} keeps its build output`);
+
+      // Past the lease: the landed checkout goes with a backup ref; the claim, the unlanded work and the busy checkout stay.
+      const idle = (await boot(makeEnv(f, { now: later(48) }), { reclaim: true })).join("\n");
+      assertStringIncludes(idle, "reclaim: removed worktrees/landed (landed #5");
+      assertStringIncludes(idle, "deleted branch claude/landed (backup refs/swept/");
+      assertStringIncludes(idle, "keep: in use (a process works there)");
+      assertStringIncludes(idle, "sweepable by hand: worktrees/claude-code/MESITA-30-claimed (MESITA-30: claimed, no work yet)");
+      assert(!(await present(landed.path)));
+      for (const p of [busy.path, unlanded.path, claimed]) assert(await present(join(p, "apps/web/node_modules")), `${p} untouched`);
+    } finally {
+      sleeper.kill();
+      await sleeper.status;
+    }
+  },
+});
+
+Deno.test("leave and remove drop a landed workspace's build output", async () => {
+  const f = await makeFixture();
+  await ignoreBuildOutput(f);
+  const env = makeEnv(f);
+  await add(env, { id: "MESITA-40", slug: "forty" });
+  const path = await Deno.realPath(join(platformDirOf(f.main, "claude-code"), "MESITA-40-forty"));
+  const tip = await commitFile(path, "a.txt", "a\n", "work");
+  await fakeBuild(path);
+  f.prsByOid.set(tip, [{ number: 40, merged: true, headRefOid: tip }]);
+  const left = (await leave(env, "MESITA-40")).join("\n");
+  assertStringIncludes(left, "dropped build output in worktrees/claude-code/MESITA-40-forty: apps/web/node_modules, apps/web/.next");
+  assert(await present(join(path, "a.txt")) && !(await present(join(path, "apps/web/node_modules"))), "leave keeps the checkout, not its build output");
+  await fakeBuild(path);
+  const removed = (await remove(env, "MESITA-40")).join("\n");
+  assertStringIncludes(removed, "removed worktrees/claude-code/MESITA-40-forty");
+  assertStringIncludes(removed, "dropped build output in worktrees/claude-code/MESITA-40-forty");
+  assert(!(await present(path)));
 });

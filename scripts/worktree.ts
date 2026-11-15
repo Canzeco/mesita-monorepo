@@ -1,13 +1,15 @@
 // scripts/worktree.ts — the fleet tool behind Rules I-3, I-4, I-6, I-9 and I-10.
 //
-//   deno task boot                                   where am I, the shared-checkout checks, the last pipeline audit, the fleet, the origin claims (every host's pushed branches), my claim line, my resumable workspaces
+//   deno task boot [--no-sweep]                      where am I, the shared-checkout checks, the last pipeline audit, the fleet, the origin claims (every host's pushed branches), my claim line, my resumable workspaces;
+//                                                    locally it also reclaims disk (landed, clean, inactive, unclaimed workspaces go; landed ones drop their build output) and prints the fleet's disk use
 //   deno task worktree add MESITA-<id> [slug] [--platform <token>] [--footprint <paths>] [--adopt <path>]
 //   deno task worktree preflight [path]              may this checkout receive writes? the verdict scripts/preflight.sh gives every hook
 //   deno task worktree pr [--docs <value>]           adopt or open the PR for this workspace; the body carries Closes MESITA-<id> and a Docs: line
 //                                                    (--docs notion:<id>[,…] | none:<why> | handoff:notion:<id>; default: the notion ids in the claim's footprint)
-//   deno task worktree remove MESITA-<id>            from a lobby: unlock, remove, back the branch up under refs/swept/, delete it
-//   deno task worktree leave MESITA-<id>             a launch worktree after its issue landed: unlock, clear the claim, keep the checkout and branch
-//   deno task worktree sweep [--apply]               dry-run by default; --apply removes proven-landed, clean, inactive workspaces and deletes landed origin branches past the lease
+//   deno task worktree remove MESITA-<id>            from a lobby: drop its build output, unlock, remove, back the branch up under refs/swept/, delete it
+//   deno task worktree leave MESITA-<id>             a launch worktree after its issue landed: unlock, clear the claim, drop its build output, keep the checkout and branch
+//   deno task worktree sweep [--apply]               dry-run by default; --apply removes proven-landed, clean, inactive workspaces, drops the build output of landed unclaimed
+//                                                    ones it keeps, and deletes landed origin branches past the lease
 //   deno task worktree repair-lobby                  the shared checkout holds no work of its own (I-4), idempotent
 //
 // `add` never makes a second workspace for an issue that has one: it resumes the live one
@@ -60,6 +62,7 @@ export type Env = {
   cloud: Cloud | null;
   platform?: string | null; // MESITA_PLATFORM as declared by the interface; the default for add without --platform
   clipboard?: boolean; // boot copies the claim line with pbcopy when not false; tests pass false
+  ci?: boolean; // CI=true: boot never reclaims disk there
 };
 
 export type Row = {
@@ -89,6 +92,7 @@ export type Fleet = {
   clean: boolean | null;
   activity: Date | null;
   lock: { ours: boolean; issue: string | null; since: Date | null };
+  claim?: string | null; // the live claim (`mesita.issue`), never the id a branch name carries
   decision: "remove" | "keep";
   reason: string;
 };
@@ -290,12 +294,13 @@ export function describeLanded(l: Landed | null): string {
 
 export function decide(
   f: Omit<Fleet, "decision" | "reason">,
-  ctx: { cwd: string; main: string; now: Date; leaseMs?: number },
+  ctx: { cwd: string; main: string; now: Date; leaseMs?: number; busy?: string[] | null },
 ): { decision: "remove" | "keep"; reason: string } {
   const lease = ctx.leaseMs ?? LEASE_MS;
   const keep = (reason: string) => ({ decision: "keep" as const, reason });
   if (f.row.path === ctx.main) return keep("shared checkout");
   if (ctx.cwd === f.row.path || ctx.cwd.startsWith(f.row.path + "/")) return keep("own cwd");
+  if (isBusy(f.row.path, ctx.busy)) return keep("in use (a process works there)");
   if (f.row.prunable) return keep("prunable entry");
   if (f.landed === null) return keep("landed unknown");
   if (!isLanded(f.landed)) return keep(f.landed.kind === "ahead" ? "residue (ahead of its merged PR)" : "unlanded");
@@ -528,15 +533,16 @@ export async function classifyLanded(env: Env, main: string, tip: string, branch
 
 // ── Fleet inspection ────────────────────────────────────────────────────────
 
-export async function inspect(env: Env, main: string, rows: Row[], opts: { landed: boolean }): Promise<Fleet[]> {
+export async function inspect(env: Env, main: string, rows: Row[], opts: { landed: boolean; busy?: string[] | null }): Promise<Fleet[]> {
   const cwd = await realpath(env.cwd);
   const out: Fleet[] = [];
   for (const row of rows) {
     const isMain = row.path === main;
-    let issue: string | null = null, host: string | null = null, landed: Landed | null = null, clean: boolean | null = null, activity: Date | null = null;
+    let issue: string | null = null, claim: string | null = null, host: string | null = null, landed: Landed | null = null, clean: boolean | null = null, activity: Date | null = null;
     const lock = parseLock(row.lockReason);
     if (!row.prunable && !row.bare) {
-      issue = await worktreeConfig(env, row.path, "mesita.issue") ?? issueFromBranch(row.branch);
+      claim = await worktreeConfig(env, row.path, "mesita.issue");
+      issue = claim ?? issueFromBranch(row.branch);
       host = await worktreeConfig(env, row.path, "mesita.host");
       clean = await isClean(env, row.path);
       let tipDate: Date | null = null;
@@ -547,8 +553,8 @@ export async function inspect(env: Env, main: string, rows: Row[], opts: { lande
       }
       activity = await lastActivity(env, row.path, lock.since, tipDate);
     }
-    const base = { row, issue, host, landed, clean, activity, lock };
-    out.push({ ...base, ...decide(base, { cwd, main, now: env.now() }) });
+    const base = { row, issue, host, landed, clean, activity, lock, claim };
+    out.push({ ...base, ...decide(base, { cwd, main, now: env.now(), busy: opts.busy }) });
   }
   return out;
 }
@@ -922,6 +928,224 @@ export async function pr(env: Env, opts: { docs?: string } = {}): Promise<string
   return [`opened ${created.stdout.trim()} on ${branch}; body carries Closes ${issue} and ${docsLine}`];
 }
 
+// ── Disk (MESITA-4067): build output, sizes, the processes that hold a checkout ──
+//
+// A checkout's source is ~23 MB; its weight is gitignored build output, which git calls clean:
+// node_modules per pnpm root (every app and every package is its own root), render's npm
+// node_modules, and .next per app. Only a directory that exists, is gitignored and holds no
+// tracked file is build output; nothing else is ever deleted here.
+
+export const BUILD_ROOTS = ["apps", "packages"]; // one install root per child
+export const BUILD_DIRS = ["node_modules", ".next", ".turbo"];
+export const BUILD_SINGLES = ["node_modules", "render/node_modules"];
+export const DU_BUDGET_MS = 4000; // boot's whole disk measure; past it, the rest is "unmeasured"
+export const BUSY_TIMEOUT_MS = 3000;
+
+export function formatKb(kb: number): string {
+  if (kb >= 1024 * 1024) return `${(kb / 1024 / 1024).toFixed(1)} GB`;
+  if (kb >= 1024) return `${Math.round(kb / 1024)} MB`;
+  return `${kb} KB`;
+}
+
+async function isRealDir(p: string): Promise<boolean> {
+  try {
+    return (await Deno.lstat(p)).isDirectory; // a symlink is never followed
+  } catch {
+    return false;
+  }
+}
+
+/** The build-output directories a checkout holds, relative to it: present, gitignored, no tracked file inside. */
+export async function buildOutputOf(env: Env, path: string): Promise<string[]> {
+  const rel = [...BUILD_SINGLES];
+  for (const root of BUILD_ROOTS) {
+    try {
+      for await (const e of Deno.readDir(join(path, root))) {
+        if (e.isDirectory) for (const d of BUILD_DIRS) rel.push(`${root}/${e.name}/${d}`);
+      }
+    } catch { /* no such root */ }
+  }
+  const present: string[] = [];
+  for (const r of rel) if (await isRealDir(join(path, r))) present.push(r);
+  if (!present.length) return [];
+  // The trailing slash makes git judge each path as the directory it is (`/.next/` patterns).
+  const ign = await git(env, path, "check-ignore", ...present.map((r) => `${r}/`));
+  const ignored = new Set(ign.stdout.split("\n").map((l) => l.trim().replace(/\/$/, "")).filter(Boolean));
+  const out: string[] = [];
+  for (const r of present) {
+    if (!ignored.has(r)) continue;
+    const tracked = await git(env, path, "ls-files", "--", r);
+    if (tracked.code === 0 && tracked.stdout.trim() === "") out.push(r);
+  }
+  return out;
+}
+
+/** `du -sk` over paths, summed; null when it timed out or measured nothing. */
+export async function sizeKb(env: Env, paths: string[], timeoutMs: number): Promise<number | null> {
+  if (!paths.length) return 0;
+  if (timeoutMs <= 0) return null;
+  const r = await env.runner("bash", ["-c", 'du -sk "$@" 2>/dev/null', "_", ...paths], { timeoutMs });
+  if (r.code === TIMEOUT_CODE || !r.stdout.trim()) return null;
+  let sum = 0;
+  for (const l of r.stdout.split("\n")) {
+    const n = parseInt(l, 10);
+    if (!isNaN(n)) sum += n;
+  }
+  return sum;
+}
+
+/** Measures, and with apply deletes, a checkout's build output. Callers decide whether the checkout may lose it. */
+export async function dropBuildOutput(env: Env, path: string, opts: { apply: boolean }): Promise<{ dirs: string[]; kb: number | null }> {
+  const dirs = await buildOutputOf(env, path);
+  if (!dirs.length) return { dirs, kb: 0 };
+  const kb = await sizeKb(env, dirs.map((d) => join(path, d)), DU_BUDGET_MS);
+  if (opts.apply) {
+    for (const d of dirs) {
+      try {
+        await Deno.remove(join(path, d), { recursive: true });
+      } catch { /* vanished or held; the next sweep tries again */ }
+    }
+  }
+  return { dirs, kb };
+}
+
+function droppedLine(main: string, path: string, d: { dirs: string[]; kb: number | null }, verb: string): string {
+  return `${verb} build output in ${showPath(main, path)}: ${d.dirs.join(", ")}${d.kb ? ` (${formatKb(d.kb)})` : ""}`;
+}
+
+/**
+ * Every process's working directory (lsof), so a checkout an open session or shell stands in is
+ * never removed or emptied: git activity alone cannot see a session that only reads. Null when
+ * the list cannot be had (no lsof, a timeout, an empty answer — the asking shell always has one).
+ */
+export async function busyPaths(env: Env): Promise<string[] | null> {
+  const r = await env.runner("bash", ["-c", "command -v lsof >/dev/null 2>&1 || exit 127; lsof -a -d cwd -Fn 2>/dev/null; exit 0"], { timeoutMs: BUSY_TIMEOUT_MS });
+  if (r.code !== 0) return null;
+  const paths = r.stdout.split("\n").filter((l) => l.startsWith("n/")).map((l) => l.slice(1));
+  return paths.length ? paths : null;
+}
+
+export function isBusy(path: string, busy: string[] | null | undefined): boolean {
+  return Boolean(busy?.some((p) => p === path || p.startsWith(path + "/")));
+}
+
+/** Boot's own reclaim is stricter than a hand sweep: a workspace a live claim names goes only once that claim's work merged. */
+export function autoRemovable(f: Fleet): boolean {
+  if (f.decision !== "remove") return false;
+  if (f.claim && !(f.landed && isLanded(f.landed) && f.landed.kind !== "on-main")) return false;
+  return true;
+}
+
+/**
+ * A workspace that stays but may lose its build output: its work merged through a PR (on-main is
+ * only "no work yet"), clean, unlocked, unclaimed, not the caller's cwd, no process inside it.
+ */
+export function trimmable(f: Fleet, ctx: { main: string; cwd: string; busy: string[] | null }): boolean {
+  if (f.decision !== "keep" || f.row.path === ctx.main || f.row.prunable || f.row.bare || f.row.locked || f.claim) return false;
+  if (ctx.cwd === f.row.path || ctx.cwd.startsWith(f.row.path + "/") || isBusy(f.row.path, ctx.busy)) return false;
+  return f.clean === true && f.landed !== null && isLanded(f.landed) && f.landed.kind !== "on-main";
+}
+
+/** Sizes per checkout, one `du` each, within one budget for all of them: the rest stays null (unmeasured). */
+export async function fleetSizes(env: Env, paths: string[], budgetMs: number = DU_BUDGET_MS): Promise<Map<string, number | null>> {
+  const sizes = new Map<string, number | null>();
+  const deadline = Date.now() + budgetMs;
+  for (const p of paths) sizes.set(p, await sizeKb(env, [p], deadline - Date.now()));
+  return sizes;
+}
+
+async function freeKb(env: Env, path: string): Promise<number | null> {
+  const r = await env.runner("bash", ["-c", 'df -Pk "$1" | tail -1', "_", path], { timeoutMs: 2000 });
+  const n = parseInt(r.stdout.trim().split(/\s+/)[3] ?? "", 10);
+  return r.code === 0 && !isNaN(n) ? n : null;
+}
+
+/** Boot's disk line: the fleet's size (fleet folder and the desktop app's launch folder apart), the heaviest checkout, free space. */
+export function diskLine(main: string, sizes: Map<string, number | null>, free: number | null, budgetMs: number = DU_BUDGET_MS): string {
+  const groups = new Map<string, { kb: number; n: number }>();
+  let total = 0, unmeasured = 0, heaviest: [string, number] | null = null;
+  for (const [p, kb] of sizes) {
+    const shown = showPath(main, p);
+    const g = shown.startsWith(`${FLEET_DIR}/`) ? `${FLEET_DIR}/` : shown.startsWith(`${LAUNCH_DIR}/`) ? `${LAUNCH_DIR}/` : "elsewhere";
+    const cur = groups.get(g) ?? { kb: 0, n: 0 };
+    cur.n++;
+    if (kb === null) unmeasured++;
+    else {
+      cur.kb += kb;
+      total += kb;
+      if (!heaviest || kb > heaviest[1]) heaviest = [shown, kb];
+    }
+    groups.set(g, cur);
+  }
+  const parts = [...groups].map(([g, v]) => `${g} ${formatKb(v.kb)} (${v.n})`).join(", ");
+  let line = `disk: fleet ${unmeasured ? "≥ " : ""}${formatKb(total)} in ${sizes.size} worktree(s)${parts ? ` — ${parts}` : ""}`;
+  if (heaviest) line += `; heaviest ${heaviest[0]} ${formatKb(heaviest[1])}`;
+  if (unmeasured) line += `; ${unmeasured} unmeasured (du stopped after ${budgetMs / 1000} s)`;
+  if (free !== null) line += `; ${formatKb(free)} free on this disk`;
+  return line;
+}
+
+/**
+ * Boot's reclaim (I-10): with apply, removes what autoRemovable allows and drops the build output
+ * of what trimmable allows; without it, says loudly what a sweep would free. Never runs without
+ * the process list: an open session must not lose its checkout.
+ */
+export async function reclaim(
+  env: Env,
+  main: string,
+  cwd: string,
+  fleet: Fleet[],
+  busy: string[] | null,
+  opts: { apply: boolean; why?: string },
+): Promise<string[]> {
+  const lines: string[] = [];
+  const now = env.now();
+  const checkouts = fleet.filter((f) => f.row.path !== main && !f.row.prunable && !f.row.bare);
+  const sizes = await fleetSizes(env, checkouts.map((f) => f.row.path));
+  const removable = fleet.filter(autoRemovable);
+  const trims = fleet.filter((f) => trimmable(f, { main, cwd, busy }));
+  const byHand = fleet.filter((f) => f.decision === "remove" && !autoRemovable(f));
+  const apply = opts.apply && busy !== null;
+  const why = !opts.apply ? opts.why ?? "off" : "off: no process list (lsof), so an open session could not be protected";
+  let freed = 0;
+  if (!apply) {
+    const kb = removable.reduce((s, f) => s + (sizes.get(f.row.path) ?? 0), 0);
+    if (removable.length || trims.length) {
+      lines.push(`SWEEPABLE: ${removable.length} worktree(s) (${formatKb(kb)})${trims.length ? ` and the build output of ${trims.length} more` : ""} — reclaim ${why} — deno task worktree sweep --apply from the shared checkout frees it`);
+    } else lines.push(`sweepable: 0 (reclaim ${why})`);
+  } else {
+    for (const f of removable) {
+      const shown = showPath(main, f.row.path);
+      if (f.row.locked) await git(env, main, "worktree", "unlock", f.row.path);
+      const rm = await git(env, main, "worktree", "remove", f.row.path);
+      if (rm.code !== 0) {
+        lines.push(`reclaim: kept ${shown}: ${rm.stderr.trim().split("\n")[0]}`);
+        continue;
+      }
+      const kb = sizes.get(f.row.path) ?? null;
+      if (kb) freed += kb;
+      sizes.delete(f.row.path);
+      lines.push(`reclaim: removed ${shown} (${f.reason}${kb ? `, ${formatKb(kb)}` : ""})`);
+      if (f.row.branch) lines.push(`reclaim: ${await backupAndDelete(env, main, f.row.branch, f.row.head, now)}`);
+    }
+    for (const f of trims) {
+      const d = await dropBuildOutput(env, f.row.path, { apply: true });
+      if (!d.dirs.length) continue;
+      if (d.kb) {
+        freed += d.kb;
+        const before = sizes.get(f.row.path);
+        if (before != null) sizes.set(f.row.path, Math.max(0, before - d.kb));
+      }
+      lines.push(`reclaim: ${droppedLine(main, f.row.path, d, "dropped")}`);
+    }
+    const rule = "a landed, clean, unclaimed workspace goes after 24 h idle, and one that stays loses its build output (I-10)";
+    lines.push(removable.length || trims.length ? `reclaim: freed ${formatKb(freed)} — ${rule}; deno task boot --no-sweep skips it` : `reclaim: nothing to free — ${rule}`);
+  }
+  if (byHand.length) lines.push(`sweepable by hand: ${byHand.map((f) => `${showPath(main, f.row.path)} (${f.claim}: claimed, no work yet)`).join(", ")} — deno task worktree sweep --apply, or takeover: (I-6)`);
+  lines.push(diskLine(main, sizes, await freeKb(env, main)));
+  return lines;
+}
+
 // ── remove (LEAVE) ──────────────────────────────────────────────────────────
 
 async function backupAndDelete(env: Env, main: string, branch: string, tip: string, now: Date): Promise<string> {
@@ -968,10 +1192,13 @@ export async function remove(env: Env, id: string): Promise<string[]> {
   const { landed } = await classifyLanded(env, main, row.head, row.branch);
   if (!isLanded(landed)) throw new WtError("UNLANDED", `${row.branch ?? row.head.slice(0, 9)} is ${describeLanded(landed)}`, "only landed work is removed", "ship it, or file a handoff: comment and keep it", "I-10");
   if (!(await isClean(env, row.path))) throw new WtError("UNCLEAN", showPath(main, row.path), "the workspace has edits or an operation in progress", "commit, stash or abort, then rerun", "I-10");
+  // Landed and clean: its build output goes first, so the disk comes back even if git cannot remove the checkout.
+  const dropped = await dropBuildOutput(env, row.path, { apply: true });
   if (row.locked) await git(env, main, "worktree", "unlock", row.path);
   const rm = await git(env, main, "worktree", "remove", row.path);
   if (rm.code !== 0) throw new WtError("GIT FAILED", "git worktree remove", rm.stderr.trim(), "close programs holding files there and rerun", "I-9");
   const out = [`removed ${showPath(main, row.path)}`];
+  if (dropped.dirs.length) out.push(droppedLine(main, row.path, dropped, "dropped"));
   if (row.branch) out.push(await backupAndDelete(env, main, row.branch, row.head, env.now()));
   return out;
 }
@@ -1001,7 +1228,11 @@ export async function leave(env: Env, id: string): Promise<string[]> {
   if (!(await isClean(env, row.path))) throw new WtError("UNCLEAN", showPath(main, row.path), "the workspace has edits or an operation in progress", "commit, stash or abort, then rerun", "I-10");
   if (row.locked) await git(env, main, "worktree", "unlock", row.path);
   await clearClaim(env, row.path);
-  return [`left ${showPath(main, row.path)}: a lobby again on ${row.branch ?? "(detached)"} (${describeLanded(landed)}); the checkout and branch stay`];
+  const out = [`left ${showPath(main, row.path)}: a lobby again on ${row.branch ?? "(detached)"} (${describeLanded(landed)}); the checkout and branch stay`];
+  // The checkout stays; its landed build output does not (reinstall for the next issue).
+  const dropped = await dropBuildOutput(env, row.path, { apply: true });
+  if (dropped.dirs.length) out.push(droppedLine(main, row.path, dropped, "dropped"));
+  return out;
 }
 
 // ── sweep ───────────────────────────────────────────────────────────────────
@@ -1053,7 +1284,8 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
     await git(env, main, "worktree", "prune");
     registered = await listFleet(env, main);
   }
-  const fleet = await inspect(env, main, registered, { landed: true });
+  const busy = await busyPaths(env);
+  const fleet = await inspect(env, main, registered, { landed: true, busy });
   const now = env.now();
   lines.push(table(main, fleet, now));
   for (const f of fleet) {
@@ -1070,6 +1302,13 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
     }
     lines.push(`removed ${showPath(main, f.row.path)} (${f.reason})`);
     if (f.row.branch) lines.push(await backupAndDelete(env, main, f.row.branch, f.row.head, now));
+  }
+  // Kept, but landed through a PR and unclaimed: the checkout stays, its build output goes.
+  const cwd = await realpath(env.cwd);
+  for (const f of fleet) {
+    if (!trimmable(f, { main, cwd, busy })) continue;
+    const d = await dropBuildOutput(env, f.row.path, { apply: opts.apply });
+    if (d.dirs.length) lines.push(droppedLine(main, f.row.path, d, opts.apply ? "dropped" : "would drop"));
   }
   // Loose branches: local heads no worktree checks out. Landed ones are deleted with a
   // backup ref; ahead, unlanded and backup/* branches stay and are reported.
@@ -1104,7 +1343,7 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
     const expired = await expireSwept(env, main, now);
     if (expired) lines.push(`expired ${expired} refs/swept/ backup(s) older than 30 days`);
   } else {
-    lines.push("dry run: nothing changed; rerun with --apply to remove what is marked remove or delete");
+    lines.push("dry run: nothing changed; rerun with --apply to remove what is marked remove or delete, and drop what would drop");
   }
   return { lines, fleet, json: toJson(main, fleet, sweepCounts(origin, now)), loose, origin };
 }
@@ -1278,7 +1517,8 @@ export async function auditLine(env: Env, cwd: string): Promise<string> {
   }
 }
 
-export async function boot(env: Env): Promise<string[]> {
+/** `reclaim`: free disk as the fleet allows (the CLI turns it on locally, off with --no-sweep or in CI); off, boot only reports. */
+export async function boot(env: Env, opts: { reclaim?: boolean; why?: string } = {}): Promise<string[]> {
   const { main, rows } = await mainWorktree(env);
   const cwd = await realpath(env.cwd);
   const lines: string[] = [];
@@ -1325,12 +1565,12 @@ export async function boot(env: Env): Promise<string[]> {
   lines.push(`gate: ${await installHook(env, main)}`);
   lines.push(`preflight: ${(await preflight(env, cwd)).line}`);
   lines.push(await auditLine(env, main));
-  const fleet = await inspect(env, main, await listFleet(env, main), { landed: true });
+  const busy = await busyPaths(env);
+  const fleet = await inspect(env, main, await listFleet(env, main), { landed: true, busy });
   lines.push(table(main, fleet, env.now()));
   const mine = fleet.filter((f) => f.issue && f.host === env.host && f.row.path !== main);
   lines.push(mine.length ? `resumable on this host: ${mine.map((f) => `${f.issue} at ${showPath(main, f.row.path)} (deno task worktree add ${f.issue} resumes it)`).join("; ")}` : "resumable on this host: none");
-  const sweepable = fleet.filter((f) => f.decision === "remove").length;
-  lines.push(`sweepable: ${sweepable} (deno task worktree sweep --apply from the shared checkout)`);
+  for (const l of await reclaim(env, main, cwd, fleet, busy, { apply: opts.reclaim === true, why: opts.why })) lines.push(l);
   const origin = await originClaims(env, main, rows, { landed: true });
   lines.push(originTable(origin, env.now()));
   const claims = origin.filter((c) => c.issue).length;
@@ -1393,9 +1633,11 @@ export async function main(argv: string[], env: Env): Promise<number> {
   const [cmd, ...rest] = argv;
   try {
     switch (cmd) {
-      case "boot":
-        for (const l of await boot(env)) env.log(l);
+      case "boot": {
+        const off = rest.includes("--no-sweep") ? "off (--no-sweep)" : env.ci ? "off (CI)" : null;
+        for (const l of await boot(env, { reclaim: off === null, why: off ?? undefined })) env.log(l);
         return 0;
+      }
       case "add": {
         const positional = rest.filter((a, i) => !a.startsWith("--") && !(i > 0 && rest[i - 1].startsWith("--")));
         for (const l of await add(env, { id: positional[0] ?? "", slug: positional[1], platform: flag(rest, "--platform"), footprint: flag(rest, "--footprint"), adopt: flag(rest, "--adopt") })) env.log(l);
@@ -1428,7 +1670,7 @@ export async function main(argv: string[], env: Env): Promise<number> {
         return 0;
       }
       default:
-        env.log("usage: worktree.ts boot | add MESITA-<id> [slug] [--platform t] [--footprint p] [--adopt path] | preflight [path] | pr [--docs v] | remove MESITA-<id> | leave MESITA-<id> | sweep [--apply] | repair-lobby");
+        env.log("usage: worktree.ts boot [--no-sweep] | add MESITA-<id> [slug] [--platform t] [--footprint p] [--adopt path] | preflight [path] | pr [--docs v] | remove MESITA-<id> | leave MESITA-<id> | sweep [--apply] | repair-lobby");
         return 2;
     }
   } catch (e) {
@@ -1462,6 +1704,7 @@ if (import.meta.main) {
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     cloud: cloudFromEnv(getEnv),
     platform: declaredPlatform(getEnv),
+    ci: getEnv("CI") === "true",
   };
   Deno.exit(await main(Deno.args, env));
 }
