@@ -518,6 +518,14 @@ export function GuestPayScreen({
     </p>
   ) : null;
   const held = busy || addingCard;
+  // Cancel bill (MESITA-4051, Pato: "two buttons, left is red, next is next
+  // step"): every step before the QR ends in it. It throws the draft away
+  // here (nothing is held or charged yet) and goes back to Pay.
+  const cancelBill = () => {
+    if (held) return;
+    clearGuestDraft(placeId);
+    onChoosePlace();
+  };
 
   // NOT PAID (before the bill opened: the card was refused).
   if (notPaid) {
@@ -530,7 +538,7 @@ export function GuestPayScreen({
           <p className="mt-2 text-base">{notPaid}</p>
           <p className="text-muted-foreground mt-1 text-sm">Nothing was charged</p>
         </div>
-        <BigButton busy={busy} held={held} onClick={() => {
+        <BigButton busy={busy} held={held} onCancel={cancelBill} onClick={() => {
           setNotPaid(null);
           setStage("bill");
           setTyping(false);
@@ -570,7 +578,7 @@ export function GuestPayScreen({
         <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mt-1 shrink-0" />
         <div className="min-h-0 flex-1" aria-hidden />
         <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
-        <BigButton busy={busy} held={held} disabled={billCents <= 0} onClick={() => setTyping(false)}>Next</BigButton>
+        <BigButton busy={busy} held={held} onCancel={cancelBill} disabled={billCents <= 0} onClick={() => setTyping(false)}>Next</BigButton>
       </>,
       "bill",
     );
@@ -661,7 +669,7 @@ export function GuestPayScreen({
 
         <div className="min-h-0 flex-1" aria-hidden />
         {status}
-        <BigButton busy={busy} held={held} disabled={!tipOk || billCents <= 0} onClick={() => (toSign ? void openBill(null) : setStage("method"))}>Next</BigButton>
+        <BigButton busy={busy} held={held} onCancel={cancelBill} disabled={!tipOk || billCents <= 0} onClick={() => (toSign ? void openBill(null) : setStage("method"))}>Next</BigButton>
 
         <LocalSheet open={tipSheet} onClose={() => setTipSheet(false)} ariaLabel="Another tip">
           <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
@@ -733,7 +741,7 @@ export function GuestPayScreen({
         </p>
         <div className="min-h-0 flex-1" aria-hidden />
         {status}
-        <BigButton busy={busy} held={held} disabled={!way} onClick={() => {
+        <BigButton busy={busy} held={held} onCancel={cancelBill} disabled={!way} onClick={() => {
             if (way) {
               setMethod(way);
               setStage("pay");
@@ -801,9 +809,9 @@ export function GuestPayScreen({
         </p>
         {status}
         {card ? (
-          <BigButton busy={busy} held={held} onClick={() => void openBill("card")}>{`Pay ${m(dueCents)}`}</BigButton>
+          <BigButton busy={busy} held={held} onCancel={cancelBill} onClick={() => void openBill("card")}>{`Pay ${m(dueCents)}`}</BigButton>
         ) : (
-          <BigButton busy={busy} held={held} disabled={cardsUnknown} onClick={() => void addCard()}>{addingCard ? "Opening…" : "Add a card"}</BigButton>
+          <BigButton busy={busy} held={held} onCancel={cancelBill} disabled={cardsUnknown} onClick={() => void addCard()}>{addingCard ? "Opening…" : "Add a card"}</BigButton>
         )}
 
         <LocalSheet open={cardsSheet} onClose={() => setCardsSheet(false)} ariaLabel="Your cards">
@@ -855,30 +863,46 @@ export function GuestPayScreen({
         <p className="text-muted-foreground mt-1 text-sm">Then show them the QR</p>
       </div>
       {status}
-      <BigButton busy={busy} held={held} onClick={() => void openBill("cash")}>I gave the cash</BigButton>
+      <BigButton busy={busy} held={held} onCancel={cancelBill} onClick={() => void openBill("cash")}>I gave the cash</BigButton>
     </>,
     "cash",
   );
 }
 
-/** The one dark button, pinned at the bottom. */
+/** The bottom row, pinned: the red Cancel bill on the left (MESITA-4051),
+ *  the step's one dark button on the right, equal halves. */
 function BigButton({
   children,
   onClick,
+  onCancel,
   busy,
   held,
   disabled = false,
 }: {
   children: React.ReactNode;
   onClick: () => void;
+  onCancel: () => void;
   busy: boolean;
   held: boolean;
   disabled?: boolean;
 }) {
   return (
-    <Button type="button" size="lg" className="mt-3 min-h-12 w-full shrink-0 text-base font-semibold" disabled={disabled || held} onClick={onClick}>
-      {busy ? <Spinner size="sm" label="Working" /> : children}
-    </Button>
+    <div className="mt-3 grid shrink-0 grid-cols-2 gap-3">
+      <Button
+        type="button"
+        size="lg"
+        variant="danger"
+        className="min-h-12 w-full text-base font-semibold"
+        disabled={held}
+        onClick={onCancel}
+        data-guest-cancel-bill
+      >
+        Cancel bill
+      </Button>
+      <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={disabled || held} onClick={onClick}>
+        {busy ? <Spinner size="sm" label="Working" /> : children}
+      </Button>
+    </div>
   );
 }
 

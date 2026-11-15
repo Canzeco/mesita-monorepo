@@ -3,7 +3,7 @@
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, ChevronRight, CreditCard, MapPin, QrCode, Wallet } from "lucide-react";
+import { ChevronRight, MapPin, QrCode } from "lucide-react";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -11,13 +11,11 @@ import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
 import { apiGetTab, apiListVisits, type GuestTab } from "@/lib/api/tab";
-import { clockTime } from "@mesita/place-profile/lib/money";
-import { SIGN } from "@mesita/place-profile/lib/pay-steps";
-import { money, type PayPlace } from "@/lib/api/wallet";
+import { type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
-import { payPlacePath, payBillPath } from "@/lib/consumer-route-contract";
+import { payPlacePath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
-import { inProgressLabel, pickOpenGuestPayment } from "@/lib/pay-open";
+import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot, requestUserLocation } from "@/lib/use-user-location";
 import { forgetGuestTab, PlacePhoto, readGuestTabIds } from "./pay-common";
@@ -47,7 +45,8 @@ import { TicketsShortcut } from "./TicketsShortcut";
 // ticket opened at a time ... in the pay page just display the button to go
 // the ticket"): while the guest has a payment of their own open (found on
 // the server, so from any device, and on this device's list), the Pay half
-// shows only that payment's card and one line; no search bar, no places.
+// shows one line; no search bar, no places. The payment's own row is the
+// amber band above the tab bar (MESITA-4051), the same on every tab.
 //
 // The location is asked once, after a priming card ("See Mesita Payments
 // places near you"), rounded to 3 decimals and sent only to the list read.
@@ -64,11 +63,14 @@ const AT_PLACE_M = 150;
 /** Places listed before "Show all" (MESITA-3720). */
 const PLACES_SHOWN = 5;
 
-const round = (v: number) => Math.round(v * 10 ** LOCATION_DECIMALS) / 10 ** LOCATION_DECIMALS;
+const round = (v: number) =>
+  Math.round(v * 10 ** LOCATION_DECIMALS) / 10 ** LOCATION_DECIMALS;
 
 /** "350 m" / "2.4 km". */
 function distanceText(m: number): string {
-  return m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(1)} km`;
+  return m < 1000
+    ? `${Math.max(10, Math.round(m / 10) * 10)} m`
+    : `${(m / 1000).toFixed(1)} km`;
 }
 
 type Loc =
@@ -91,7 +93,9 @@ export function PayPage() {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   const [loc, setLoc] = useState<Loc>({ state: "unknown" });
-  const { places, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
+  const { places, failed, refresh } = usePayPlaces(
+    loc.state === "on" ? loc.at : null,
+  );
   // null while the open payment is still being looked for.
   const [openTabs, setOpenTabs] = useState<GuestTab[] | null>(null);
   // The band's search bar filters the list below (MESITA-3738).
@@ -108,13 +112,19 @@ export function PayPage() {
       .then((r) => pickOpenGuestPayment(r.visits, Date.now())?.tab_id ?? null)
       .catch(() => null)
       .then((serverId) => {
-        const ids = serverId ? [serverId, ...local.filter((x) => x !== serverId)] : local;
+        const ids = serverId
+          ? [serverId, ...local.filter((x) => x !== serverId)]
+          : local;
         return Promise.all(
           ids.map((id) =>
             apiGetTab(getSupabase(), id)
               .then((r) => r.tab)
               .catch((e) => {
-                if (e instanceof EFError && (e.status === 404 || e.status === 403)) forgetGuestTab(id);
+                if (
+                  e instanceof EFError &&
+                  (e.status === 404 || e.status === 403)
+                )
+                  forgetGuestTab(id);
                 return null;
               }),
           ),
@@ -125,7 +135,10 @@ export function PayPage() {
         const now = Date.now();
         const live = tabs.filter((t): t is GuestTab => {
           if (!t) return false;
-          const open = !t.verified_at && Date.parse(t.expires_at) > now && (t.status === "paying" || t.status === "paid");
+          const open =
+            !t.verified_at &&
+            Date.parse(t.expires_at) > now &&
+            (t.status === "paying" || t.status === "paid");
           if (!open) forgetGuestTab(t.tab_id);
           return open;
         });
@@ -146,16 +159,27 @@ export function PayPage() {
       setLoc({ state: "asking" });
       void requestUserLocation().then((c) => {
         if (cancelled) return;
-        if (c) setLoc({ state: "on", at: { lat: round(c.lat), lng: round(c.lng) } });
-        else setLoc({ state: locationSnapshot().error === "denied" ? "blocked" : "off" });
+        if (c)
+          setLoc({ state: "on", at: { lat: round(c.lat), lng: round(c.lng) } });
+        else
+          setLoc({
+            state: locationSnapshot().error === "denied" ? "blocked" : "off",
+          });
       });
     };
     if (have) {
       // Deferred a tick: no state is set inside the effect's own body.
       void Promise.resolve().then(() => {
-        if (!cancelled) setLoc({ state: "on", at: { lat: round(have.lat), lng: round(have.lng) } });
+        if (!cancelled)
+          setLoc({
+            state: "on",
+            at: { lat: round(have.lat), lng: round(have.lng) },
+          });
       });
-    } else if (typeof navigator !== "undefined" && navigator.permissions?.query) {
+    } else if (
+      typeof navigator !== "undefined" &&
+      navigator.permissions?.query
+    ) {
       void navigator.permissions
         .query({ name: "geolocation" as PermissionName })
         .then((s) => {
@@ -188,15 +212,22 @@ export function PayPage() {
     if (!openTabs || openTabs.length > 0 || hasPending) return;
     if (loc.state !== "on" || !places || places.length === 0) return;
     if (new URLSearchParams(window.location.search).has("pick")) return;
-    const near = places.filter((p) => p.distance_m !== null).sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0))[0];
-    if (near && (near.distance_m ?? Infinity) <= AT_PLACE_M) navigateTo(router, payPlacePath(near.place_id), { replace: true });
+    const near = places
+      .filter((p) => p.distance_m !== null)
+      .sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0))[0];
+    if (near && (near.distance_m ?? Infinity) <= AT_PLACE_M)
+      navigateTo(router, payPlacePath(near.place_id), { replace: true });
   }, [openTabs, hasPending, loc, places, router]);
 
   function askLocation() {
     setLoc({ state: "asking" });
     void requestUserLocation().then((c) => {
-      if (c) setLoc({ state: "on", at: { lat: round(c.lat), lng: round(c.lng) } });
-      else setLoc({ state: locationSnapshot().error === "denied" ? "blocked" : "off" });
+      if (c)
+        setLoc({ state: "on", at: { lat: round(c.lat), lng: round(c.lng) } });
+      else
+        setLoc({
+          state: locationSnapshot().error === "denied" ? "blocked" : "off",
+        });
     });
   }
 
@@ -227,51 +258,34 @@ export function PayPage() {
         }
       />
 
-      {/* A bill in progress is the whole page: centred in the space under
-          the band (MESITA-4021). */}
-      <div className={cn("mt-5 flex flex-col", ((openTabs?.length ?? 0) > 0 || (openTabs?.length === 0 && pending)) && "flex-1 justify-center pb-16")}>
+      {/* A bill in progress (MESITA-4051, Pato: "put it at the very bottom
+          of the app"): its row is the amber band above the tab bar
+          (PendingTicketBanner), as on every tab; the page says one line. */}
+      <div
+        className={cn(
+          "mt-5 flex flex-col",
+          openTabs !== null &&
+            (openTabs.length > 0 || pending) &&
+            "flex-1 justify-center pb-16",
+        )}
+      >
         {openTabs === null ? (
           <ListSkeleton />
-        ) : openTabs.length > 0 ? (
-          // MESITA-3772: one open payment at a time, and nothing else to pick.
-          <div className="flex flex-col" data-pay-open-only>
-            {openTabs.map((t) => (
-              <InProgressCard
-                key={t.tab_id}
-                tab={t}
-                place={places?.find((p) => p.place_id === t.place.id) ?? null}
-                onOpen={() => navigateTo(router, payBillPath(t.tab_id), { motion: "push" })}
-              />
-            ))}
-            <p className="text-muted-foreground text-center text-sm">Get this payment signed or close it before paying again.</p>
-          </div>
-        ) : pending ? (
-          // MESITA-3908: a ticket being filled in, closed but not cancelled.
-          <div className="flex flex-col" data-pay-open-only>
-            <button
-              type="button"
-              onClick={() => navigateTo(router, payPlacePath(pending.placeId), { motion: "push" })}
-              className="mb-4 flex items-center gap-3 rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-left"
-              data-pay-pending-ticket
-            >
-              {(() => {
-                const p = places?.find((x) => x.place_id === pending.placeId) ?? null;
-                return p ? <PlacePhoto place={p} className="h-12 w-12" /> : <span className="bg-muted h-12 w-12 shrink-0 rounded-full" aria-hidden />;
-              })()}
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-base font-semibold">{pending.name ?? "A Mesita place"}</span>
-                <span className="text-sm text-amber-800">Bill in progress</span>
-              </span>
-              <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
-            </button>
-            <p className="text-muted-foreground text-center text-sm">Finish this bill before starting another.</p>
-          </div>
+        ) : openTabs.length > 0 || pending ? (
+          <p
+            className="text-muted-foreground text-center text-sm"
+            data-pay-open-only
+          >
+            Finish this bill before starting another.
+          </p>
         ) : places ? (
           <PlaceList
             places={places}
             query={query}
             loc={loc}
-            onPick={(id) => navigateTo(router, payPlacePath(id), { motion: "push" })}
+            onPick={(id) =>
+              navigateTo(router, payPlacePath(id), { motion: "push" })
+            }
             onUseLocation={askLocation}
             onNotNow={notNow}
           />
@@ -292,9 +306,11 @@ export function PayPage() {
 
 /** Lower case, no accents: "Cafe" finds "Café". */
 function fold(v: string): string {
-  return v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return v
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
-
 
 function PlaceList({
   places,
@@ -314,7 +330,9 @@ function PlaceList({
 }) {
   const q = fold(query.trim());
   const [showAll, setShowAll] = useState(false);
-  const matches = q ? places.filter((p) => fold(p.name ?? "").includes(q)) : places;
+  const matches = q
+    ? places.filter((p) => fold(p.name ?? "").includes(q))
+    : places;
   // The nearest PLACES_SHOWN, so the Wallet below is never far (MESITA-3720);
   // a search always lists every match.
   const shown = q || showAll ? matches : matches.slice(0, PLACES_SHOWN);
@@ -328,17 +346,25 @@ function PlaceList({
             See places near you that take App Payments
           </p>
           <div className="mt-3 flex gap-2">
-            <Button className="min-h-11 flex-1 font-semibold" onClick={onUseLocation}>
+            <Button
+              className="min-h-11 flex-1 font-semibold"
+              onClick={onUseLocation}
+            >
               Use my location
             </Button>
-            <button type="button" className="border-border bg-card hover:bg-muted min-h-11 flex-1 rounded-xl border px-4 text-sm font-semibold transition" onClick={onNotNow}>
+            <button
+              type="button"
+              className="border-border bg-card hover:bg-muted min-h-11 flex-1 rounded-xl border px-4 text-sm font-semibold transition"
+              onClick={onNotNow}
+            >
               Not now
             </button>
           </div>
         </div>
       ) : loc.state === "blocked" ? (
         <p className="text-muted-foreground mb-3 text-sm">
-          Location is off for mesita.ai. Turn it on in your browser&apos;s site settings.
+          Location is off for mesita.ai. Turn it on in your browser&apos;s site
+          settings.
         </p>
       ) : null}
 
@@ -347,15 +373,24 @@ function PlaceList({
       ) : places.length === 0 ? (
         <EmptyState
           icon={MapPin}
-          title={loc.state === "on" ? "No place near you takes App Payments" : "Turn on location to see places near you that take App Payments"}
+          title={
+            loc.state === "on"
+              ? "No place near you takes App Payments"
+              : "Turn on location to see places near you that take App Payments"
+          }
           description=""
         />
       ) : (
         <>
           {shown.length === 0 ? (
-            <p className="text-muted-foreground px-1 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
+            <p className="text-muted-foreground px-1 text-sm">
+              No place matches &ldquo;{query.trim()}&rdquo;
+            </p>
           ) : (
-            <div className="border-border bg-card overflow-hidden rounded-2xl border" data-pay-places>
+            <div
+              className="border-border bg-card overflow-hidden rounded-2xl border"
+              data-pay-places
+            >
               {shown.map((p, i) => (
                 <Fragment key={p.place_id}>
                   {i > 0 && <div className="bg-border ml-[4.5rem] h-px" />}
@@ -366,11 +401,19 @@ function PlaceList({
                   >
                     <PlacePhoto place={p} className="h-12 w-12" />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-base font-semibold">{p.name ?? "A Mesita place"}</span>
-                      {p.address ? <span className="text-muted-foreground mt-0.5 block truncate text-sm">{p.address}</span> : null}
+                      <span className="block truncate text-base font-semibold">
+                        {p.name ?? "A Mesita place"}
+                      </span>
+                      {p.address ? (
+                        <span className="text-muted-foreground mt-0.5 block truncate text-sm">
+                          {p.address}
+                        </span>
+                      ) : null}
                     </span>
                     <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-sm tabular-nums">
-                      {p.distance_m !== null ? distanceText(p.distance_m) : null}
+                      {p.distance_m !== null
+                        ? distanceText(p.distance_m)
+                        : null}
                       <ChevronRight className="h-4 w-4" aria-hidden />
                     </span>
                   </button>
@@ -398,7 +441,10 @@ function PlaceList({
 
 function RowsSkeleton() {
   return (
-    <div className="border-border bg-card overflow-hidden rounded-2xl border" aria-busy>
+    <div
+      className="border-border bg-card overflow-hidden rounded-2xl border"
+      aria-busy
+    >
       {[0, 1, 2].map((i) => (
         <Fragment key={i}>
           {i > 0 && <RowDivider />}
@@ -420,70 +466,5 @@ function ListSkeleton() {
     <div aria-busy>
       <RowsSkeleton />
     </div>
-  );
-}
-
-/** A payment still in progress leads the tab (MESITA-3719): the place, its
- *  state in words, the amount, how it is paid, one button, and the time the
- *  waiter must verify by. Waiting is amber, as on the QR screen it opens. */
-function InProgressCard({ tab, place, onOpen }: { tab: GuestTab; place: PayPlace | null; onOpen: () => void }) {
-  const m = (c: number) => money(c, tab.currency);
-  const cash = tab.cash_bill_cents + tab.cash_tip_cents;
-  const card = tab.card_bill_cents + tab.card_tip_cents;
-  const total = tab.credit_cents + cash + card;
-  // From the parts, as the payment's own page reads them: a cash payment
-  // that waits for the waiter is never "Card going through".
-  const status = inProgressLabel(tab);
-  const cardGoing = status === "Card going through";
-  const name = tab.place.name ?? "A Mesita place";
-  const ways: Array<{ key: string; icon: React.ReactNode; label: string }> = [];
-  if (tab.credit_cents > 0) ways.push({ key: "credit", icon: <Wallet />, label: `Credit · ${m(tab.credit_cents)}` });
-  if (card > 0) ways.push({ key: "card", icon: <CreditCard />, label: `Card · ${m(card)}` });
-  if (cash > 0) ways.push({ key: "cash", icon: <Banknote />, label: `Cash to the waiter · ${m(cash)}` });
-  return (
-    <section
-      aria-label={`Payment in progress at ${name}, ${m(total)}, ${status.toLowerCase()}`}
-      className={cn(
-        "mb-4 flex flex-col gap-3 rounded-2xl border-2 p-4",
-        cardGoing ? "border-border bg-card" : "border-amber-400 bg-amber-50",
-      )}
-      data-pay-in-progress
-    >
-      <div className="flex items-center gap-3">
-        {place ? <PlacePhoto place={place} className="h-12 w-12" /> : <span className="bg-muted h-12 w-12 shrink-0 rounded-full" aria-hidden />}
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-base font-semibold">{name}</span>
-          <span
-            className={cn(
-              "bg-card mt-1 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold",
-              cardGoing ? "border-border text-muted-foreground" : "border-amber-400 text-amber-800",
-            )}
-          >
-            <span className={cn("h-1.5 w-1.5 rounded-full", cardGoing ? "bg-muted-foreground" : "bg-amber-600")} aria-hidden />
-            {status}
-          </span>
-        </span>
-        <span className="shrink-0 text-2xl font-semibold tabular-nums">{m(total)}</span>
-      </div>
-      {ways.map((w) => (
-        <span key={w.key} className="flex items-center gap-2.5 text-sm">
-          <span className="bg-card flex h-8 w-8 shrink-0 items-center justify-center rounded-lg [&>svg]:h-[18px] [&>svg]:w-[18px]" aria-hidden>
-            {w.icon}
-          </span>
-          {w.label}
-        </span>
-      ))}
-      <Button type="button" size="lg" className="min-h-12 w-full gap-2 text-base font-semibold" onClick={onOpen}>
-        {cardGoing ? (
-          "Open"
-        ) : (
-          <>
-            <QrCode className="h-5 w-5" aria-hidden />
-            Show QR to the waiter
-          </>
-        )}
-      </Button>
-      {!cardGoing ? <p className="text-muted-foreground text-center text-xs">{SIGN.showWaiterBy(clockTime(tab.expires_at))}</p> : null}
-    </section>
   );
 }
