@@ -4,7 +4,7 @@
 // asserted, so the time zone cannot change a result.
 import { describe, expect, it } from "vitest";
 import type { GuestVisit } from "@/lib/api/tab";
-import type { Wallet, WalletEntry } from "@/lib/api/wallet";
+import { money, type Wallet, type WalletEntry } from "@/lib/api/wallet";
 import { KIND_WORD, visitRows, walletRows, type Row } from "@/lib/ticket-rows";
 
 const AT = "2026-11-14T12:00:00.000Z";
@@ -157,6 +157,20 @@ describe("every other kind lands on its tab with its kind", () => {
       expect(r.kind).toBe(kind);
     });
   }
+
+  it("a purchase refund is one row per purchase: Back to your card, no sign, cashback taken back", () => {
+    const rows = walletRows(
+      wallet([
+        e("prepay", 50000, { purchase_id: "u1" }),
+        e("cashback", 2500, { purchase_id: "u1" }),
+        e("reversal", -30000, { purchase_id: "u1" }),
+        e("reversal", -20000, { purchase_id: "u1" }),
+      ]),
+    ).filter((r) => r.type === "refunds");
+    expect(rows).toHaveLength(1);
+    expect([rows[0]!.line, rows[0]!.sign, rows[0]!.cashback]).toEqual(["Back to your card", undefined, expect.stringContaining("−")]);
+    expect(rows[0]!.big).toBe(money(50000, "MXN"));
+  });
 
   it("a gift received reads +, From a friend; Pending in ink while it lands", () => {
     const got = only(walletRows(wallet([e("gift_in", 20000)])));

@@ -209,6 +209,7 @@ export function walletRows(w: Wallet): Row[] {
         .map((e) => e.purchase_id as string),
     );
     const voucherBack = new Map<string, number>();
+    const refundSeen = new Set<string>();
     const folds = (e: WalletEntry) =>
       e.kind === "cashback" &&
       !e.payment_id &&
@@ -282,20 +283,33 @@ export function walletRows(w: Wallet): Row[] {
         return;
       }
       if (e.kind === "reversal") {
-        // A purchase refunded (no payment id): a Refund ticket (MESITA-3855;
-        // it sat under Vouchers until then).
+        // A purchase refunded (no payment id): one Refund ticket per purchase
+        // (MESITA-3855, MESITA-4010). Its money goes back to the card, so no
+        // sign; the cashback that purchase earned is taken back on the same
+        // row as "−$X cashback".
+        const pid = e.purchase_id;
+        if (pid) {
+          if (refundSeen.has(pid)) return;
+          refundSeen.add(pid);
+        }
+        const all = pid
+          ? b.entries.filter((x) => x.kind === "reversal" && !x.payment_id && x.purchase_id === pid)
+          : [e];
+        const taken = pid ? (voucherBack.get(pid) ?? 0) : 0;
         out.push({
           key: `rv-${b.place_id}-${e.at}-${i}`,
           type: "refunds",
           kind: "refund",
+          cashbackCents: taken > 0 ? taken : null,
+          cashback: taken > 0 ? `−${money(taken, cur)} cashback` : null,
           at: e.at,
           upcoming: false,
           place,
           photo,
           status: { label: "Refunded", tone: "grey" },
-          big: money(Math.abs(e.amount_cents), cur),
+          big: money(Math.abs(sum(all)), cur),
           money: true,
-          line: "Purchase refunded",
+          line: "Back to your card",
           href: creditEntryPath(b.place_id, e),
         });
         return;
