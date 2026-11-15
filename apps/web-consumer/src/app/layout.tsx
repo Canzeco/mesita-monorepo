@@ -8,6 +8,7 @@ import { ErrorNotifier } from "@/components/consumer/ErrorNotifier";
 import { CallLog } from "@/components/consumer/CallLog";
 import { RouteBadge } from "@/components/consumer/RouteBadge";
 import { ViewportLock } from "@/components/consumer/ViewportLock";
+import { OverlayScrollbars } from "@/components/shared/OverlayScrollbars";
 import { SHARE_CARD } from "@/lib/share-app";
 
 const inter = Inter({
@@ -122,6 +123,8 @@ export default async function RootLayout({
             viewport meta for pinch, but it does honour a refused
             gesturestart. See the viewport export above. */}
         <ViewportLock />
+        {/* Scrollbars that float over the content (MESITA-4109). */}
+        <OverlayScrollbars />
         {/* Self-refresh an open session when a newer production build ships,
             so merged changes actually appear without a manual hard reload. */}
         <DeploymentWatcher />
