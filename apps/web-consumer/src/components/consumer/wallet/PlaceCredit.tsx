@@ -27,7 +27,7 @@ import { cardAmount, giftAction } from "@/lib/wallet-card";
 import { toast } from "@/lib/toast";
 import type { CreditRow } from "./use-wallet";
 
-// A PLACE'S HOUSE CARD, /wallet/<placeId> (MESITA-3741). Since MESITA-3868
+// A PLACE'S HOUSE CARD, /wallet/place/<placeId> (MESITA-3741). Since MESITA-3868
 // (Pato, 2026-11-14, over a screenshot: "the buttons there floting feels
 // weird ... the voycher catalog there feels weird. maybe a button to add
 // funds opens that catalog, not directly ... on top of transactions mention

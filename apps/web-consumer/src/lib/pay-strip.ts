@@ -2,7 +2,7 @@ import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import type { GuestTab } from "@/lib/api/tab";
 
 // THE TOP OF THE GUEST'S PAYMENT PAGE (MESITA-3759): one pure function maps
-// a guest payment to what /pay/tab/<id> shows above the QR, for every state
+// a guest payment to what /pay/bill/<id> shows above the QR, for every state
 // the money can be in. No React here; GuestTabView draws what this says.
 //
 //   state      strip      heading (the h2)   band (the money's one line)

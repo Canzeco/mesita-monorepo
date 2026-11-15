@@ -8,6 +8,27 @@
 // it lights, where the bar shows and where Back lands (MESITA-3646).
 // Every address that shipped and no longer renders a page lives only in
 // `legacy` below and 308s to the nearest live page.
+//
+// THE WORDS (MESITA-4013). An address is written in these and no others:
+//
+//   tab     one of the bar's five: Home · Search · Pay · Wallet · Me. Never
+//           the bill: `tab` is that thing's wire name only (pay_tabs, the
+//           EF bodies, `tabId` in props).
+//   page    a screen pushed over the one it was opened from; it has Back.
+//   panel   a screen that slides over the page under it (a place, a
+//           reservation): an @modal intercept with a full-page twin.
+//   door    an address that only forwards to a screen (/pay/place/<id>).
+//   chip    a filter of one page with its own address (/me/tickets/refunds,
+//           /me/reservations/past). It swaps in place, never a new screen.
+//   bill    what the guest is paying at the table, open: /pay/bill/<id>.
+//   ticket  a finished money movement, under Me › Tickets.
+//
+// THE ADDRESS SAYS WHAT THE THING IS; `parent` in ROUTE_MAP says where Back
+// lands. They need not match (/share lands on Wallet), so a screen that
+// moves between tabs keeps its address. An id never sits beside fixed words:
+// it follows the noun that says what it identifies (/pay/place/<placeId>,
+// /place/google/<gid>), so no id can ever be read as a word or a word as an
+// id. `/place/<id>` is the one bare id: the place is the app's subject.
 
 export const CONSUMER_ROUTES = {
   onboard: "/onboard",
@@ -15,10 +36,8 @@ export const CONSUMER_ROUTES = {
   // the one search bar + Filters. `/discover/search` and `/discover/map` are
   // redirect SOURCES for the bookmarks those addresses shipped under.
   search: "/search",
-  // ASK AI (Pato, MESITA-2401; Soon, MESITA-2168). Opened from Search it
-  // floats as a sheet over the map — an @modal intercept, so Search stays
-  // painted under it (Pato, MESITA-2475: "like a modal"); a cold load renders
-  // the full page. /discover/chat 308s here.
+  // ASK AI (Pato, MESITA-2401; Soon, MESITA-2168): its own pushed page,
+  // never a sheet over Search (MESITA-3991). /discover/chat 308s here.
   searchChat: "/search/chat",
   // HOME — two tabs, each its own address (Pato, MESITA-2597: "we should
   // have home/places and home/social"): Places, the catalog, is where every
@@ -34,9 +53,10 @@ export const CONSUMER_ROUTES = {
   place: {
     prefix: "/place/",
   },
-  // A Google place with no Mesita row yet: generated on open.
-  placeOpen: {
-    prefix: "/place/open/",
+  // A Google place with no Mesita row yet, by its Google id: generated on
+  // open. /place/open/<gid> until MESITA-4013 (the segment names the id).
+  placeGoogle: {
+    prefix: "/place/google/",
   },
   // The singular reservation DETAIL; the list is Me › Reservations.
   reservation: {
@@ -48,17 +68,20 @@ export const CONSUMER_ROUTES = {
   // is a door that opens the object:
   //
   //   /pay                       the places you can pay at (the tab)
-  //   /pay/<placeId>             pay at that place: opens your bill there and
-  //                              becomes /pay/tab/<id> (the table QR's door)
-  //   /pay/tab/<tabId>           the bill at the table (MESITA-3564)
+  //   /pay/place/<placeId>       pay at that place: opens your bill there and
+  //                              becomes /pay/bill/<id> (the table QR's door)
+  //   /pay/bill/<billId>         the bill at the table (MESITA-3564)
   //   /pay/join/<token>          a friend's share of a split bill
   //                              (MESITA-3695): takes the share, becomes
-  //                              /pay/tab/<shareId>
+  //                              /pay/bill/<shareId>
   //   /pay/receipt/<paymentId>   a paid bill's proof (MESITA-3459)
-  //   /wallet                    the Wallet, the Pay | Wallet switch's
-  //                              second half (MESITA-3729)
-  //   /wallet/<placeId>          a place's House Card, full screen (MESITA-3533)
+  //   /wallet                    the Wallet tab (MESITA-3886)
+  //   /wallet/place/<placeId>    a place's House Card, full screen (MESITA-3533)
   //   /wallet/gift/<token>       a friend's credit link (MESITA-3292)
+  //
+  // The bill was /pay/tab/<id>, and the two place addresses were a bare id
+  // (/pay/<placeId>, /wallet/<placeId>) until MESITA-4013; each old shape
+  // 308s to its new one in one hop (legacy-redirects.ts).
   //
   // Each was a query string read and then dropped (/pay?place=, ?tab=,
   // ?payment=; /wallet?place=, ?gift=), so a place's Wallet tile landed on
@@ -66,13 +89,13 @@ export const CONSUMER_ROUTES = {
   // Pay. Those shapes still arrive (printed table QRs, Stripe returns, sent
   // links): /pay and /wallet's server pages forward each one in one hop.
   pay: "/pay",
-  payPlace: { prefix: "/pay/" },
-  payTab: { prefix: "/pay/tab/" },
+  payPlace: { prefix: "/pay/place/" },
+  payBill: { prefix: "/pay/bill/" },
   payJoin: { prefix: "/pay/join/" },
   payReceipt: { prefix: "/pay/receipt/" },
   // A FINISHED VISIT, ONE PAGE (MESITA-3770, Pato: "the live workflow visit
   // tickets and the output ticket must be different"): what was paid, how,
-  // and what came back. An open bill stays /pay/tab/<id>; /visit/ is a legacy address.
+  // and what came back. An open bill stays /pay/bill/<id>; /visit/ is a legacy address.
   // Under Me › Tickets since Activity left the bar (MESITA-3855).
   visit: { prefix: "/me/tickets/visit/" },
   // ONE CREDIT MOVEMENT, ONE PAGE (MESITA-3782): a voucher, bonus, refund or
@@ -86,7 +109,7 @@ export const CONSUMER_ROUTES = {
   // the place's House Card with ?prepay= (MESITA-3617), an added card to
   // /wallet?card=.
   wallet: "/wallet",
-  walletPlace: { prefix: "/wallet/" },
+  walletPlace: { prefix: "/wallet/place/" },
   walletGift: { prefix: "/wallet/gift/" },
   // NO ACTIVITY (Pato, 2026-11-14, MESITA-3855): its chips are Me's
   // Notifications, Reservations and Tickets pages.
@@ -185,8 +208,7 @@ export const CONSUMER_ROUTES = {
     newVisitWallet: "/new-visit/wallet",
     visitPrefix: "/visit/",
     walletBalancePrefix: "/wallet/balance/",
-    // The old Wallet tab's one-segment children. Literal, never `/wallet/:tab`:
-    // /wallet/<placeId> is a live page (MESITA-3614).
+    // The old Wallet tab's one-segment children, by name.
     walletBuy: "/wallet/buy",
     walletGiftTab: "/wallet/gift",
     walletRedeem: "/wallet/redeem",
@@ -199,12 +221,18 @@ export const CONSUMER_ROUTES = {
     rewardsTicketPrefix: "/rewards/ticket/",
     payTicketPrefix: "/pay/ticket/",
     payTicketsPrefix: "/pay/tickets/",
-    // The Visit-era section row under Pay. Literal, never `/pay/:tab`:
-    // /pay/<placeId> is a live page (MESITA-3614).
+    // The Visit-era section row under Pay, by name.
     payWallet: "/pay/wallet",
     payQr: "/pay/qr",
     ticketPrefix: "/ticket/",
     qr: "/qr",
+    // The four addresses renamed to the product's words (MESITA-4013): the
+    // bill was /pay/tab/<id>; a Google place opened at /place/open/<gid>.
+    // The two bare place ids (/pay/<placeId>, /wallet/<placeId>) have no
+    // prefix to name here; their redirects match a Mesita id only, so no
+    // live word under /pay or /wallet is ever taken for one.
+    payTabPrefix: "/pay/tab/",
+    placeOpenPrefix: "/place/open/",
     // Me › Transactions became Activity (MESITA-3631), then Me › Tickets
     // (MESITA-3855).
     meTransactions: "/me/transactions",
@@ -294,9 +322,9 @@ export function payPlacePath(placeId: string): string {
   return `${CONSUMER_ROUTES.payPlace.prefix}${placeId}`;
 }
 
-/** The bill at the table. */
-export function payTabPath(tabId: string): string {
-  return `${CONSUMER_ROUTES.payTab.prefix}${tabId}`;
+/** The bill at the table. The id is the wire's tab id. */
+export function payBillPath(tabId: string): string {
+  return `${CONSUMER_ROUTES.payBill.prefix}${tabId}`;
 }
 
 /** A friend's door to their share of a split bill (MESITA-3695). */
@@ -339,16 +367,16 @@ export function reservationPath(id: string): string {
 
 /** Open a Google-only place by its Google id: the generating screen, which
  *  becomes the place's own address once it exists. */
-export function placeOpenPath(googlePlaceId: string): string {
-  return `${CONSUMER_ROUTES.placeOpen.prefix}${encodeURIComponent(googlePlaceId)}`;
+export function placeGooglePath(googlePlaceId: string): string {
+  return `${CONSUMER_ROUTES.placeGoogle.prefix}${encodeURIComponent(googlePlaceId)}`;
 }
 
 // ─── THE ROUTE MAP (MESITA-3646) ───────────────────────────────────────────
 //
 // One row per live screen inside the shell, and the ONLY place that says
 // which bar tab a screen lights, whether the bar shows on it, how it opens
-// (a tab, a pushed page, a panel over the page, a sheet, a door that
-// forwards) and which screen is under it when there is no history to go
+// (a tab, a pushed page, a panel over the page, a door that forwards) and
+// which screen is under it when there is no history to go
 // Back to. The bar, the panels' stale-slot guard, the loading frames, the
 // edge auth wall and Back all read it; a screen missing here has no loading
 // frame (a type error) and lights no tab. Addresses that only redirect live
@@ -359,8 +387,8 @@ export type ConsumerTab = "home" | "search" | "pay" | "wallet" | "me";
 
 /** How a screen arrives: a bar `tab`; a `page` pushed over the screen it was
  *  opened from; a `panel` that slides over the page under it (an @modal
- *  intercept with a full-page twin); a `sheet` that rises over it; a `door`
- *  that only forwards to another screen. */
+ *  intercept with a full-page twin); a `door` that only forwards to another
+ *  screen. A sheet that rises over a page is not a route. */
 export type RouteKind = "tab" | "page" | "panel" | "door";
 
 type RouteRow = {
@@ -393,7 +421,7 @@ export const ROUTE_MAP = {
   // MESITA-3991: "it must have own route and page, not mid modal").
   searchChat: row("/search/chat", "search", "page", "search"),
   place: row("/place/:id", "home", "panel", "home", false),
-  placeOpen: row("/place/open/:gid", "home", "panel", "home", false),
+  placeGoogle: row("/place/google/:gid", "home", "panel", "home", false),
   placeReserve: row("/place/:id/reserve", "home", "page", "place", false),
   // A reservation is reached from a place and from Me › Reservations; it
   // lights Me, whose list is where it lands back (MESITA-3855).
@@ -405,13 +433,13 @@ export const ROUTE_MAP = {
   pay: row("/pay", "pay", "tab", null),
   // The pay screens own the whole frame, as the place screen does: no bar,
   // the header's back is the way out, so every step fits (MESITA-3739).
-  payPlace: row("/pay/:placeId", "pay", "door", "pay", false),
-  payTab: row("/pay/tab/:tabId", "pay", "page", "pay", false),
+  payPlace: row("/pay/place/:placeId", "pay", "door", "pay", false),
+  payBill: row("/pay/bill/:billId", "pay", "page", "pay", false),
   payJoin: row("/pay/join/:token", "pay", "door", "pay", false),
   payReceipt: row("/pay/receipt/:paymentId", "pay", "page", "pay", false),
   // Wallet, its own tab again (MESITA-3886); it and its children light it.
   wallet: row("/wallet", "wallet", "tab", null),
-  walletPlace: row("/wallet/:placeId", "wallet", "page", "wallet"),
+  walletPlace: row("/wallet/place/:placeId", "wallet", "page", "wallet"),
   walletGift: row("/wallet/gift/:token", "wallet", "page", "wallet"),
   // Share's page, pushed from Wallet's big button (MESITA-3886).
   share: row("/share", "wallet", "page", "wallet"),
@@ -451,7 +479,7 @@ const COMPILED = (Object.keys(ROUTE_MAP) as RouteId[]).map((id) => {
 });
 
 /** The screen a pathname shows, or null (a redirect, an unknown address).
- *  A fixed segment beats a `:param` (/place/open/x is not /place/:id). */
+ *  A fixed segment beats a `:param` (/place/google/x is not /place/:id). */
 export function routeFor(pathname: string): RouteId | null {
   const parts = pathname.split(/[?#]/)[0]!.split("/").filter(Boolean);
   let best: { id: RouteId; fixed: number } | null = null;
@@ -511,8 +539,8 @@ export function shellRoots(): string[] {
 }
 
 /**
- * Does this path paint inside a routed modal shell? A `panel` or `sheet` row
- * of ROUTE_MAP (MESITA-3646).
+ * Does this path paint inside a routed modal shell? A `panel` row of
+ * ROUTE_MAP (MESITA-3646).
  *
  * SlideOverShell opens with
  * `if (!isModalContractPath(pathname)) return null`, so an @modal intercept

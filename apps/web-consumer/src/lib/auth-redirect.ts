@@ -39,16 +39,18 @@ export function withNext(
 }
 
 const UUID = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";
-/** The table QR's two shapes: the printed /pay?place=<id>, and the door it
- *  forwards to, /pay/<id> (MESITA-3614). */
+/** The table QR's shapes: the printed /pay?place=<id>, the door it forwards
+ *  to, /pay/place/<id>, and that door's address before MESITA-4013,
+ *  /pay/<id>. */
 const PAY_PLACE_NEXT = [
   new RegExp(`^/pay\\?(?:.*&)?place=${UUID}(?:&|$)`, "i"),
+  new RegExp(`^/pay/place/${UUID}(?:[/?#]|$)`, "i"),
   new RegExp(`^/pay/${UUID}(?:[/?#]|$)`, "i"),
 ];
 
 /**
  * The Pay QR door (MESITA-3526): when the guest's `?next=` is a table QR's
- * `/pay?place=<id>` (or its door, `/pay/<id>`), the place id, so sign-in
+ * `/pay?place=<id>` (or its door, `/pay/place/<id>`), the place id, so sign-in
  * can say "Sign in to pay at <name>". Anything else, null.
  */
 export function payPlaceFromNext(

@@ -46,7 +46,7 @@ import { useUnseenNotificationCount } from "./use-unseen-notifications";
 //   put red bubble"; on Activity from MESITA-3769 until MESITA-3855). Opening
 //   Me › Notifications clears it.
 //
-//   PAY LIGHTS ON EVERY ADDRESS UNDER /pay (/pay/<placeId>, /pay/tab/<id>,
+//   PAY LIGHTS ON EVERY ADDRESS UNDER /pay (/pay/place/<placeId>, /pay/bill/<id>,
 //   /pay/receipt/<id>); WALLET ON /wallet, its House Cards and gift links,
 //   and /share (MESITA-3886).
 //

@@ -11,9 +11,9 @@ const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
 describe("opening a Google place", () => {
   it("routes to the opening screen with the name for its header", () => {
     expect(googleOpenHref("ChIJ123", "Doña Tota")).toBe(
-      "/place/open/ChIJ123?name=Do%C3%B1a%20Tota",
+      "/place/google/ChIJ123?name=Do%C3%B1a%20Tota",
     );
-    expect(googleOpenHref("ChIJ123", " ")).toBe("/place/open/ChIJ123");
+    expect(googleOpenHref("ChIJ123", " ")).toBe("/place/google/ChIJ123");
   });
 
   it("navigates on the tap and never creates there", () => {
@@ -32,8 +32,8 @@ describe("opening a Google place", () => {
     expect(screen).toContain("useEffect(");
     expect(screen).toContain("getOrCreateGooglePlace(");
     for (const page of [
-      "app/(shell)/place/open/[gid]/page.tsx",
-      "app/(shell)/@modal/(.)place/open/[gid]/page.tsx",
+      "app/(shell)/place/google/[gid]/page.tsx",
+      "app/(shell)/@modal/(.)place/google/[gid]/page.tsx",
     ]) {
       expect(existsSync(join(SRC, page)), page).toBe(true);
       expect(read(page)).not.toContain("apiCreateProject");

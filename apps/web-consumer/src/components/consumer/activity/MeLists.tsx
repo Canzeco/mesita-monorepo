@@ -67,7 +67,7 @@ import {
 import {
   CONSUMER_ROUTES,
   payReceiptPath,
-  payTabPath,
+  payBillPath,
   creditEntryPath,
   reservationPath,
   visitPath,
@@ -226,7 +226,7 @@ function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
     // An open bill is the live pay screen; a finished one is its one-page
     // summary (MESITA-3770: "the live workflow and the output must be
     // different").
-    const href = open ? payTabPath(v.tab_id) : visitPath(v.tab_id);
+    const href = open ? payBillPath(v.tab_id) : visitPath(v.tab_id);
     return {
       key: `v-${v.tab_id}`,
       type: "visits",

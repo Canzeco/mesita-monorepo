@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 // /pay/join/<token> — a friend's door to a split bill (MESITA-3695): the
 // table's join QR. Takes the guest's share (consumer-web-join-tab) and
-// becomes /pay/tab/<shareId>. Signed-out guests meet the shell's sign-in
+// becomes /pay/bill/<shareId>. Signed-out guests meet the shell's sign-in
 // wall first and come back here.
 export default async function Page({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

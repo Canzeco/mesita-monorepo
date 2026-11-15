@@ -210,7 +210,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onLoadVouchers: vouchers.load,
     vouchersLoading: vouchers.loading,
     // Pay (the pinned row's tile and the Cashback card's, MESITA-3352): this
-    // place's bill, /pay/<placeId> (MESITA-3614), the one door every "pay
+    // place's bill, /pay/place/<placeId> (MESITA-3614), the one door every "pay
     // here" uses; the sheet closes on the way out.
     onPay: () => {
       setRewards(null);
@@ -218,7 +218,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       navigateTo(router, payPlacePath(place.id), { motion: "drill" });
     },
     // The pinned row's Wallet tile (MESITA-3574): this place's House Card,
-    // /wallet/<placeId> (MESITA-3614); its pill reads the list-vouchers
+    // /wallet/place/<placeId> (MESITA-3614); its pill reads the list-vouchers
     // balance below.
     onOpenWallet: () => navigateTo(router, walletPlacePath(place.id), { motion: "drill" }),
     // The Wallet tile's Off sheet (MESITA-3583): "Add card to Wallet" pins
