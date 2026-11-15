@@ -101,3 +101,32 @@ export function AmountDisplay({
     </div>
   );
 }
+
+/** The typed amount on the right of its panel's heading (MESITA-4082,
+ *  Pato: "make at the right of bill mention how much was the bill"): one
+ *  step over the 16px heading, semibold ink, tabular, in the app's money
+ *  format with the untyped cents a muted ghost (amountShown), "$0.00MX"
+ *  muted until a digit. It replaced the 40px display on the Bill step, so
+ *  the keypad sits right under the heading row. The screen reader hears it
+ *  once the guest stops typing, as AmountDisplay does. */
+export function AmountInline({ text, currency, label }: { text: string; currency: string; label: string }) {
+  const [spoken, setSpoken] = useState(text);
+  useEffect(() => {
+    const t = window.setTimeout(() => setSpoken(text), 500);
+    return () => window.clearTimeout(t);
+  }, [text]);
+  const shown = amountShown(text, currency);
+  return (
+    <span className="min-w-0 text-lg leading-6 font-semibold whitespace-nowrap tabular-nums" data-pay-amount>
+      <span aria-hidden>
+        <span className={cn(text === "" && "text-muted-foreground")}>{shown.prefix}</span>
+        {shown.body}
+        <span className="text-muted-foreground">{shown.ghost}</span>
+        <span className={cn(text === "" && "text-muted-foreground")}>{shown.suffix}</span>
+      </span>
+      <span role="status" className="sr-only">
+        {`${label}, ${spoken === "" ? "0" : spoken} ${currency.toUpperCase()}`}
+      </span>
+    </span>
+  );
+}
