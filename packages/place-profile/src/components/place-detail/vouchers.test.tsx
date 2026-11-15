@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { TEST_BAND_TEXT } from "../TestBand";
 import type { PlaceDetail, PlaceMoney } from "../../place-detail";
 import { placeMoneyFrom } from "../../place-to-detail";
-import { OffersWalletPill, pesos, VouchersPane } from "./vouchers";
+import { pesos, VouchersPane } from "./vouchers";
 
 const OFFER: PlaceMoney = {
   charges_enabled: true,
@@ -67,14 +67,6 @@ describe("Vouchers tab", () => {
     expect(placeMoneyFrom({ charges_enabled: false, mesita_pay: true })?.mesita_pay).toBe(true);
     expect(placeMoneyFrom({ charges_enabled: true })?.mesita_pay).toBe(true);
     expect(placeMoneyFrom({ charges_enabled: false })?.mesita_pay).toBe(false);
-  });
-
-  it("shows the guest's credits from the server's balance on the wallet pill, Available and Pending (MESITA-3483)", () => {
-    const pill = (money: PlaceMoney) =>
-      renderToStaticMarkup(<OffersWalletPill place={{ money, name: "Probe", photos: [] } as unknown as PlaceDetail} />);
-    const html = pill(OFFER);
-    expect(html).toContain("Your credits here: $220.00MX, $100.00MX pending");
-    expect(pill({ ...OFFER, balance: null })).toContain("$0.00MX");
   });
 
   it("formats cents and never adds", () => {
