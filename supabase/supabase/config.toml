@@ -649,6 +649,11 @@ verify_jwt = true
 [functions.admin-web-get-apify-usage]
 verify_jwt = true
 
+# What a minute of a reservation call costs on ElevenLabs, from the agents'
+# real calls and the plan (MESITA-4043). Super-admin only, read-only.
+[functions.admin-web-get-call-cost]
+verify_jwt = true
+
 # Logs' Recent activity feed (MESITA-2745; counters gone, MESITA-3848). Super-admin only.
 [functions.admin-web-get-activity-summary]
 verify_jwt = true
