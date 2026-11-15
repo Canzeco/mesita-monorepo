@@ -133,6 +133,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       wallet: "/wallet",
       walletPlace: { prefix: "/wallet/place/" },
       walletGift: { prefix: "/wallet/gift/" },
+      // Redeem a friend's code, its own page (MESITA-4020).
+      walletRedeem: "/wallet/redeem",
       // No Activity tab (MESITA-3855). Share is a page again (MESITA-3867).
       share: "/share",
       // The Me hub and its boxes, each a route. NO diamond / diamondInvite /
@@ -183,7 +185,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         walletBalancePrefix: "/wallet/balance/",
         walletBuy: "/wallet/buy",
         walletGiftTab: "/wallet/gift",
-        walletRedeem: "/wallet/redeem",
         credits: "/credits",
         inboxCredits: "/inbox/credits",
         order: "/order",
@@ -447,7 +448,6 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       { source: "/wallet/buy", destination: "/wallet", permanent: true },
       { source: "/wallet/gift", destination: "/wallet", permanent: true },
-      { source: "/wallet/redeem", destination: "/wallet", permanent: true },
       { source: "/credits", destination: "/wallet", permanent: true },
       { source: "/inbox/credits", destination: "/wallet", permanent: true },
       { source: "/inbox/orders", destination: "/pay", permanent: true },

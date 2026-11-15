@@ -19,6 +19,7 @@ import FeedbackLoading from "./me/settings/feedback/loading";
 import ReservationPageLoading from "./reservation/[id]/loading";
 import WalletPlaceLoading from "./wallet/place/[placeId]/loading";
 import WalletGiftLoading from "./wallet/gift/[token]/loading";
+import WalletRedeemLoading from "./wallet/redeem/loading";
 import PlaceReserveLoading from "./place/[id]/reserve/loading";
 import PayPlaceLoading from "./pay/place/[placeId]/loading";
 import PayTabLoading from "./pay/bill/[billId]/loading";
@@ -56,6 +57,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   wallet: () => <WalletLoading />,
   walletPlace: () => <WalletPlaceLoading />,
   walletGift: () => <WalletGiftLoading />,
+  walletRedeem: () => <WalletRedeemLoading />,
   visit: () => <VisitLoading />,
   credit: () => <CreditLoading />,
   share: () => <ShareLoading />,

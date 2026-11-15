@@ -92,7 +92,6 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/wallet/balance/:id", destination: "/wallet", permanent: true },
   { source: "/wallet/buy", destination: "/wallet", permanent: true },
   { source: "/wallet/gift", destination: "/wallet", permanent: true },
-  { source: "/wallet/redeem", destination: "/wallet", permanent: true },
   { source: "/credits", destination: "/wallet", permanent: true },
   { source: "/inbox/credits", destination: "/wallet", permanent: true },
   { source: "/inbox/orders", destination: "/pay", permanent: true },

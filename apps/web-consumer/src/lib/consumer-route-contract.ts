@@ -111,6 +111,10 @@ export const CONSUMER_ROUTES = {
   wallet: "/wallet",
   walletPlace: { prefix: "/wallet/place/" },
   walletGift: { prefix: "/wallet/gift/" },
+  // REDEEM A FRIEND'S CODE, ITS OWN PAGE (MESITA-4020, Pato: "redeem credits
+  // must be own page, not a fucking ugly ass modal"), pushed from Wallet's
+  // Redeem Credits button. It was a legacy address 308ing to /wallet.
+  walletRedeem: "/wallet/redeem",
   // NO ACTIVITY (Pato, 2026-11-14, MESITA-3855): its chips are Me's
   // Notifications, Reservations and Tickets pages.
   //
@@ -211,7 +215,6 @@ export const CONSUMER_ROUTES = {
     // The old Wallet tab's one-segment children, by name.
     walletBuy: "/wallet/buy",
     walletGiftTab: "/wallet/gift",
-    walletRedeem: "/wallet/redeem",
     credits: "/credits",
     inboxCredits: "/inbox/credits",
     order: "/order",
@@ -441,6 +444,7 @@ export const ROUTE_MAP = {
   wallet: row("/wallet", "wallet", "tab", null),
   walletPlace: row("/wallet/place/:placeId", "wallet", "page", "wallet"),
   walletGift: row("/wallet/gift/:token", "wallet", "page", "wallet"),
+  walletRedeem: row("/wallet/redeem", "wallet", "page", "wallet"),
   // Share's page, pushed from Wallet's big button (MESITA-3886).
   share: row("/share", "wallet", "page", "wallet"),
   me: row("/me", "me", "tab", null),
