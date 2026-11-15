@@ -145,7 +145,7 @@
           "x": 600,
           "y": -320
         },
-        "additional_prompt": "Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú eres Mesita; nunca hables como si fueras el restaurante.\nSalúdalo por su nombre (place.name), por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?». Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.\nSi el resultado también trae guest (el número es de un restaurante y de un comensal) y no queda claro, pregunta una sola vez si llama por su restaurante o por una reservación suya.\nLuego toma la rama de lo que pidan.",
+        "additional_prompt": "Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú eres Mesita; nunca hables como si fueras el restaurante.\nSalúdalo por su nombre (place.name), por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?». Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.\nSi el resultado también trae guest (el número es de un restaurante y de un comensal) y no queda claro, pregunta una sola vez si llama por su restaurante o por una reservación suya.\nLuego toma la rama de lo que pidan. Para cancelar o revisar UNA reservación (por el nombre al que está o por su código), primero se busca: toma la rama de búsqueda; no respondas sin buscar.",
         "entry_behavior": "generate_immediately",
         "conversation_config": {
           "agent": {
@@ -538,8 +538,8 @@
         "target": "place_find",
         "forward_condition": {
           "type": "llm",
-          "condition": "Buscan una reservación por el nombre al que está, o dictan un código de 8 dígitos.",
-          "label": "find"
+          "condition": "Hablan de UNA reservación concreta — para cancelarla, revisarla o confirmarla — por el nombre al que está o por un código de 8 dígitos. Cancelar empieza aquí: primero se busca.",
+          "label": "find or cancel one"
         },
         "backward_condition": {
           "type": "result",

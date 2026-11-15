@@ -65,7 +65,7 @@ export const A3: FleetAgent = {
           "Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú eres Mesita; nunca hables como si fueras el restaurante.",
           "Salúdalo por su nombre (place.name), por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?». Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.",
           "Si el resultado también trae guest (el número es de un restaurante y de un comensal) y no queda claro, pregunta una sola vez si llama por su restaurante o por una reservación suya.",
-          "Luego toma la rama de lo que pidan.",
+          "Luego toma la rama de lo que pidan. Para cancelar o revisar UNA reservación (por el nombre al que está o por su código), primero se busca: toma la rama de búsqueda; no respondas sin buscar.",
         ].join("\n"),
         edgeOrder: ["e_tp_upcoming", "e_tp_find", "e_tp_redirect", "e_tp_own"],
       }),
@@ -183,7 +183,10 @@ export const A3: FleetAgent = {
       e_tp_find: edge(
         "triage_place",
         "place_find",
-        llm("Buscan una reservación por el nombre al que está, o dictan un código de 8 dígitos.", "find"),
+        llm(
+          "Hablan de UNA reservación concreta — para cancelarla, revisarla o confirmarla — por el nombre al que está o por un código de 8 dígitos. Cancelar empieza aquí: primero se busca.",
+          "find or cancel one",
+        ),
         RESULT_FAIL,
       ),
       e_tp_redirect: edge(
