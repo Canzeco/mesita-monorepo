@@ -248,6 +248,7 @@ export function WalletSection({
         fallback={
           creditsState === "failed" ? (
             <EmptyState
+              inline
               icon={WalletIcon}
               title="Couldn't load Wallet"
               description="Check your connection and try again."
