@@ -124,11 +124,14 @@ export type VoucherEntry = {
  *  Bonus ... VIP Voucher: $100 MX. 100% Bonus."): pay MX$100, get MX$200.
  *  THE WAIT STAYS ONE HOUR for every voucher but Story (Pato, MESITA-3835:
  *  "they should actually land 1hr after payment"; 30 minutes was asked and
- *  taken back before merge). */
+ *  taken back before merge). THREE SIZES (Pato, 2026-11-15, MESITA-4056:
+ *  "$200MX +10% Small · $500MX +20% Medium · $1000MX +30% Big"): Small is
+ *  2× the currency's base, Medium 5× and back on sale under the old
+ *  voucher_5000 key (never bought), Big 10× at +30%. */
 export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
-  voucher_200: { price_cents: 100_00, bonus_bps: 1000, kind: "open", available_after_sec: 3600 },
-  voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: 3600 },
-  voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: 3600 },
+  voucher_200: { price_cents: 200_00, bonus_bps: 1000, kind: "open", available_after_sec: 3600 },
+  voucher_1000: { price_cents: 1_000_00, bonus_bps: 3000, kind: "open", available_after_sec: 3600 },
+  voucher_5000: { price_cents: 500_00, bonus_bps: 2000, kind: "open", available_after_sec: 3600 },
   voucher_welcome: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 3600 },
   voucher_story: { price_cents: 100_00, bonus_bps: 3000, kind: "earned", available_after_sec: 0 },
   voucher_vip: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 3600 },
@@ -142,7 +145,8 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
  *  voucher's key stays voucher_200 (a renamed key resets live config). */
 export const VOUCHER_PRICE_CENTS: Record<string, Record<MoneyVoucherKey, number>> = {};
 // Filled from VOUCHER_CURRENCY_LIST below (MESITA-3923; the three of MESITA-3943): Small
-// as listed, Big 10×, Biggest 50×, Welcome · Story · VIP at the Small price.
+// 2× the base, Medium (voucher_5000) 5×, Big 10×, Welcome · Story · VIP at the
+// base (MESITA-4056).
 
 /** THE TEN CURRENCIES (Pato, 2026-11-14, MESITA-3919: "make a list of all
  *  the currencies"): Small starts with 1, near half an inexpensive meal for
@@ -169,7 +173,7 @@ export const UNSUPPORTED_COUNTRIES: readonly { region: string; why: string }[] =
 for (const r of VOUCHER_CURRENCY_LIST) {
   const s = r.small * 100;
   VOUCHER_PRICE_CENTS[r.code.toLowerCase()] = {
-    voucher_200: s, voucher_1000: s * 10, voucher_5000: s * 50, voucher_welcome: s, voucher_story: s, voucher_vip: s,
+    voucher_200: s * 2, voucher_1000: s * 10, voucher_5000: s * 5, voucher_welcome: s, voucher_story: s, voucher_vip: s,
   };
 }
 

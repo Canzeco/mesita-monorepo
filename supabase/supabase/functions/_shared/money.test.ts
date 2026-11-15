@@ -17,23 +17,31 @@ Deno.test("the fee rates are 5% each", () => {
 });
 
 Deno.test("the catalog's bonuses and fees, in centavos", () => {
-  // MESITA-3914: Small is MX$100 +10%, US$10 +10%; Big MX$1,000 / US$100 +20%.
-  assertEquals(voucherBonusCents("voucher_200"), 10_00);
-  assertEquals(voucherBonusCents("voucher_200", "usd"), 1_00);
-  assertEquals(voucherBonusCents("voucher_1000", "usd"), 20_00);
-  assertEquals(voucherPriceCents("voucher_200", "usd"), 10_00);
+  // MESITA-4056: Small MX$200 / US$20 +10%; Medium MX$500 / US$50 +20%;
+  // Big MX$1,000 / US$100 +30%.
+  assertEquals(voucherPriceCents("voucher_200"), 200_00);
+  assertEquals(voucherBonusCents("voucher_200"), 20_00);
+  assertEquals(voucherPriceCents("voucher_5000"), 500_00);
+  assertEquals(voucherBonusCents("voucher_5000"), 100_00);
+  assertEquals(voucherPriceCents("voucher_1000"), 1_000_00);
+  assertEquals(voucherBonusCents("voucher_1000"), 300_00);
+  assertEquals(voucherBonusCents("voucher_200", "usd"), 2_00);
+  assertEquals(voucherBonusCents("voucher_1000", "usd"), 30_00);
+  assertEquals(voucherPriceCents("voucher_200", "usd"), 20_00);
+  assertEquals(voucherPriceCents("voucher_5000", "usd"), 50_00);
   assertEquals(voucherPriceCents("voucher_1000", "usd"), 100_00);
   // MESITA-3943: three sell — MXN, USD, CAD.
-  assertEquals(voucherPriceCents("voucher_200", "cad"), 10_00);
+  assertEquals(voucherPriceCents("voucher_200", "cad"), 20_00);
   assertEquals(voucherPriceCents("voucher_1000", "cad"), 100_00);
   assertEquals(voucherPriceCents("voucher_200", "eur"), null);
   assertEquals(voucherPriceCents("voucher_200", "jpy"), null);
   assertEquals(Object.keys(VOUCHER_PRICE_CENTS).sort(), ["cad", "mxn", "usd"]);
-  // MESITA-3919: every selling currency is on the ten-currency list at the same Small, Big = 10×.
+  // MESITA-3919: every selling currency is on the list; Small 2×, Big 10× its base (MESITA-4056).
   for (const cur of Object.keys(VOUCHER_PRICE_CENTS)) {
     const row = VOUCHER_CURRENCY_LIST.find((r) => r.code === cur.toUpperCase());
-    assertEquals(row?.small, (voucherPriceCents("voucher_200", cur) ?? 0) / 100);
-    assertEquals(voucherPriceCents("voucher_1000", cur), (voucherPriceCents("voucher_200", cur) ?? 0) * 10);
+    assertEquals((row?.small ?? 0) * 2, (voucherPriceCents("voucher_200", cur) ?? 0) / 100);
+    assertEquals(voucherPriceCents("voucher_1000", cur), (row?.small ?? 0) * 100 * 10);
+    assertEquals(voucherPriceCents("voucher_5000", cur), (row?.small ?? 0) * 100 * 5);
   }
   assertEquals(VOUCHER_CURRENCY_LIST.length, 3);
 });
@@ -52,13 +60,13 @@ Deno.test("Stripe gets yen and Chilean pesos in whole units; the ledger keeps hu
   assertEquals(countryForCurrency("eur", "MX"), "ES");
   assertEquals(countryForCurrency("cad"), "CA");
   for (const r of VOUCHER_CURRENCY_LIST) assertEquals(String(r.small)[0], "1");
-  assertEquals(voucherBonusCents("voucher_1000"), 200_00);
-  assertEquals(voucherBonusCents("voucher_5000"), 1_500_00);
+  assertEquals(voucherBonusCents("voucher_1000"), 300_00);
+  assertEquals(voucherBonusCents("voucher_5000"), 100_00);
   assertEquals(voucherBonusCents("voucher_welcome"), 100_00);
   // Welcome and VIP are MX$100 +100% (MESITA-3835): MX$100 bonus.
   assertEquals(voucherBonusCents("voucher_vip"), 100_00);
   assertEquals(VOUCHER_CATALOG.voucher_vip.price_cents, 100_00);
-  assertEquals(voucherFeeCents("voucher_200"), 5_00);
+  assertEquals(voucherFeeCents("voucher_200"), 10_00);
   assertEquals(VOUCHER_CATALOG.voucher_200.available_after_sec, 3600);
   // Every voucher waits an hour except Story (MESITA-3323).
   assertEquals(VOUCHER_CATALOG.voucher_welcome.available_after_sec, 3600);
@@ -69,6 +77,7 @@ Deno.test("Stripe gets yen and Chilean pesos in whole units; the ledger keeps hu
 Deno.test("the Home tile's line is the best bonus among what the place sells (MESITA-3312)", () => {
   assertEquals(vouchersUpToPct([]), null);
   assertEquals(vouchersUpToPct(["voucher_200"]), 10);
-  assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000"]), 20);
+  assertEquals(vouchersUpToPct(["voucher_200", "voucher_5000"]), 20);
+  assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000"]), 30);
   assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000", "voucher_welcome"]), 100);
 });

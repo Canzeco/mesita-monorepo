@@ -113,9 +113,11 @@ type Product = {
 // of the thing should be Welcome, Story, VIP, Standard, Medium Standard,
 // Large Standard"): the deal line carries the amounts.
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "Small", line: "Pay $100.00MX, get $110.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Big", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Big Bonus", brief: "As many as you like" },
-  { key: "voucher_5000", name: "MX$5,000", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "MX$5,000 Bonus", brief: "As many as you like" },
+  // SMALL · MEDIUM · BIG (Pato, 2026-11-15, MESITA-4056): MX$200 +10%,
+  // MX$500 +20% (the voucher_5000 key), MX$1,000 +30%.
+  { key: "voucher_200", name: "Small", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
+  { key: "voucher_5000", name: "Medium", line: "Pay $500.00MX, get $600.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Bonus", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Big", line: "Pay $1,000.00MX, get $1,300.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Bonus", brief: "As many as you like" },
 ];
 
 const SPECIAL: Product[] = [
@@ -590,14 +592,14 @@ export type VoucherOffer = {
 };
 
 /** The vouchers a guest is shown: every product but the parked ones
- *  (MESITA-3831, MESITA-3834: Story and the MX$5,000 voucher are off sale and
+ *  (MESITA-3831: Story is off sale and
  *  off the page, money-state's NOT_YET_SELLABLE). */
 function listedProducts(): Product[] {
-  // Welcome, Small, Big, VIP (Pato, MESITA-3834: "KEEP IT LIKE THIS").
+  // Welcome, Small, Medium, Big, VIP (MESITA-4056; Medium was off MESITA-3834).
   return [...SPECIAL.slice(0, 1), ...STANDARD, ...SPECIAL.slice(1)].filter((p) => !NOT_YET_SELLABLE[p.key]);
 }
 
-/** The vouchers in the Offers page's order, Welcome · Small · Big · VIP
+/** The vouchers in the Offers page's order, Welcome · Small · Medium · Big · VIP
  *  (MESITA-3834). */
 export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions["guest"]): VoucherOffer[] {
   const { unavailable, dim, guestLock, buyable } = offerRules(money, guest);

@@ -102,11 +102,11 @@ type Product = { key: PaymentKey; name: string; line: string; value: string; ton
 // PRICED IN THE PLACE'S CURRENCY (MESITA-3914, Pato: "100 MX 10% · 1000 MX
 // 20% · 10 USD 10% · 100 USD 20% ... all small must start with 1 and big be
 // 10X that"). TWIN of VOUCHER_PRICE_CENTS in _shared/money.ts.
-// The Small price per currency, in whole units (MESITA-3943: the three); Big
-// 10×, Biggest 50×, Welcome · Story · VIP at the Small price. TWIN of
+// The base price per currency, in whole units (MESITA-3943: the three); Small
+// 2×, Medium 5×, Big 10× (MESITA-4056), Welcome · Story · VIP at the base. TWIN of
 // VOUCHER_CURRENCY_LIST in _shared/money.ts.
 const SMALL: Record<string, number> = { MXN: 100, USD: 10, CAD: 10 };
-const TIMES: Record<VoucherKey, number> = { voucher_200: 1, voucher_1000: 10, voucher_5000: 50, voucher_welcome: 1, voucher_story: 1, voucher_vip: 1 };
+const TIMES: Record<VoucherKey, number> = { voucher_200: 2, voucher_1000: 10, voucher_5000: 5, voucher_welcome: 1, voucher_story: 1, voucher_vip: 1 };
 const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = Object.fromEntries(
   Object.entries(SMALL).map(([c, small]) => [
     c,
@@ -119,8 +119,8 @@ type VoucherSeed = Omit<Product, "line" | "key"> & { key: VoucherKey; bps: numbe
 
 const STANDARD: VoucherSeed[] = [
   { key: "voucher_200", name: "Small Voucher", bps: 1000, value: "+10%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
-  { key: "voucher_1000", name: "Big Voucher", bps: 2000, value: "+20%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
-  { key: "voucher_5000", name: "Biggest Voucher", bps: 3000, value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
+  { key: "voucher_5000", name: "Medium Voucher", bps: 2000, value: "+20%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
+  { key: "voucher_1000", name: "Big Voucher", bps: 3000, value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
 ];
 
 const SPECIAL: VoucherSeed[] = [
@@ -601,8 +601,8 @@ export function PaymentsPanel({
       <Card className={SECTION}>
         <h2 className={HEAD}>Vouchers</h2>
         <ul className="divide-border divide-y" data-place-state="vouchers">
-          {/* Welcome, Small, Big, VIP (MESITA-3834); the MX$5,000 voucher
-              and Story are off sale, money-state's NOT_YET_SELLABLE. */}
+          {/* Welcome, Small, Medium, Big, VIP (MESITA-4056); Story is off
+              sale, money-state's NOT_YET_SELLABLE. */}
           {voucherProducts(currency)
             .filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key])
             .map(voucherRow)}

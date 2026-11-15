@@ -103,9 +103,10 @@ export type VoucherReason =
  *  shit just like this ... KEEP IT LIKE THIS": four vouchers, Welcome · Small
  *  · Big · VIP, Big being the MX$1,000 one). Nothing else is removed: the
  *  switches, the catalog lines and Story's gates stay, and vouchers already
- *  bought keep working. Deleting a line brings that voucher back. */
+ *  bought keep working. Deleting a line brings that voucher back. MEDIUM IS
+ *  BACK (Pato, 2026-11-15, MESITA-4056): voucher_5000 is the MX$500 +20%
+ *  Medium voucher, on sale again. */
 export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {
-  voucher_5000: "not_yet",
   voucher_story: "not_yet",
 };
 
