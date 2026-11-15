@@ -163,10 +163,17 @@ function callLines(r: RunRow): string[] {
   return lines.slice(0, 40);
 }
 
-/** With { raw: true }, a failed run also carries its turns as ElevenLabs
- *  returned them (truncated) — for what callLines does not show. */
-function rawTurns(r: RunRow): string {
-  return JSON.stringify(r.agent_responses ?? []).slice(0, 6000);
+/** With { raw: true }, a failed run also carries the END of its turns as
+ *  ElevenLabs returned them — a stall is at the end (MESITA-4028) — and
+ *  every workflow step: an edge taken (edge → node) or a tool a node fired. */
+function rawTurns(r: RunRow): { steps: string[]; tail: string } {
+  const text = JSON.stringify(r.agent_responses ?? []);
+  const steps: string[] = [];
+  const re = /\\?"edge_id\\?":\\?"([^"\\]+)\\?",\\?"target_node_id\\?":\\?"([^"\\]+)|\\?"tool_name\\?":\\?"([^"\\]+)/g;
+  for (const m of text.matchAll(re)) {
+    steps.push(m[1] ? `${m[1]} → ${m[2]}` : `tool ${m[3]}`);
+  }
+  return { steps: steps.slice(-80), tail: text.slice(-12000) };
 }
 
 export async function testResults(ctx: BaseCtx): Promise<Response> {
