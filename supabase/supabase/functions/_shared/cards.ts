@@ -6,15 +6,16 @@
 // card sits on the same customer). Charges are direct charges on each
 // place's connected account (Docs › Credits, MESITA-3280 answer 6), so a
 // card saved here is cloned to a place's account before it pays there; that
-// step is its own issue. Add is a Stripe Checkout in `setup` mode (Stripe's
-// page types the card; Mesita never sees the number). The list and the
-// remove read Stripe itself: no card row is stored in Postgres.
+// step is its own issue. Add is a SetupIntent the app confirms with Stripe's
+// Payment Element inside its own sheet (MESITA-4065: no Stripe page; Mesita
+// never sees the number). The list and the remove read Stripe itself: no
+// card row is stored in Postgres.
 //
 // A card a live Premier pledge renews with is "in use": it lists, and
 // remove refuses it (the payer changes it on the Premier screen).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { CHECKOUT_TTL_SEC, readCustomer } from "./boost.ts";
+import { readCustomer } from "./boost.ts";
 import { errorMessage } from "./errors.ts";
 import { paymentsStripeKey, type StripeCall, StripeError, stripeClient } from "./stripe.ts";
 
@@ -35,9 +36,6 @@ export const MAX_CARDS = 3;
  *  more before the limit (ten, until MESITA-3749) still sees, pays with and
  *  removes every one. */
 const LIST_LIMIT = 10;
-
-/** The query param the Checkout's return carries. */
-export const CARD_RETURN_PARAM = "card";
 
 export function cardOf(pm: Record<string, unknown>, inUse: ReadonlySet<string>): SavedCard | null {
   const id = typeof pm.id === "string" ? pm.id : null;
@@ -103,26 +101,23 @@ export async function readSavedCards(admin: SupabaseClient, consumerId: string, 
   }
 }
 
-/** The Checkout that saves one card on the guest's platform customer. The
- *  return carries `?card=<session id>` so the page says what happened. */
-export function cardSetupParams(args: {
-  customer: string;
-  consumerId: string;
-  returnUrl: string;
-  nowSec: number;
-}): Record<string, unknown> {
-  const sep = args.returnUrl.includes("?") ? "&" : "?";
-  const metadata = { mesita_kind: "wallet_card", consumer_id: args.consumerId };
+/** Whether one more card may be saved (MESITA-3749: three). The app checks
+ *  this before it asks for a SetupIntent; the add-card EF answers 409
+ *  `too_many` from the same rule. */
+export function addCardCheck(saved: number): { ok: true } | { ok: false; status: 409; code: "too_many"; max: number; error: string } {
+  if (saved >= MAX_CARDS) return { ok: false, status: 409, code: "too_many", max: MAX_CARDS, error: `You can save up to ${MAX_CARDS} cards` };
+  return { ok: true };
+}
+
+/** The SetupIntent that saves one card on the guest's platform customer
+ *  (MESITA-4065). `off_session`: the card is later copied to a place's
+ *  account and charged there without the guest present. Cards only. */
+export function cardSetupIntentParams(args: { customer: string; consumerId: string }): Record<string, unknown> {
   return {
-    mode: "setup",
     customer: args.customer,
+    usage: "off_session",
     payment_method_types: ["card"],
-    client_reference_id: args.consumerId,
-    success_url: `${args.returnUrl}${sep}${CARD_RETURN_PARAM}={CHECKOUT_SESSION_ID}`,
-    cancel_url: args.returnUrl,
-    expires_at: args.nowSec + CHECKOUT_TTL_SEC,
-    metadata,
-    setup_intent_data: { metadata },
+    metadata: { mesita_kind: "wallet_card", consumer_id: args.consumerId },
   };
 }
 

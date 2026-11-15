@@ -4,13 +4,14 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { readCached, writeCached } from "@/lib/screen-cache";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import type { PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherBasketItem, VoucherKey } from "@mesita/place-profile";
+import type { PayCard, PayCards, PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherBasketItem, VoucherKey } from "@mesita/place-profile";
+import { pickPayCard } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
-import { apiAddHouseCard, apiBuyVoucher, apiListVouchers, BUY_REFUSAL, buyRefusalAction, money as moneyLabel } from "@/lib/api/wallet";
-import { apiAddCard, apiListCards, CARD_REFUSAL, type SavedCard } from "@/lib/api/cards";
+import { apiAddHouseCard, apiBuyVoucher, apiListVouchers, BUY_REFUSAL, buyRefusalAction, isDefinitiveRefusal } from "@/lib/api/wallet";
+import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { runBankCheck } from "@/lib/api/tab";
-import { VoucherPaySheet } from "@/components/consumer/VoucherPaySheet";
+import { AddCardSheet } from "@/components/consumer/AddCardSheet";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { RewardsSheet } from "@/components/consumer/RewardsSheet";
 import { PlaceSocialList } from "@/components/consumer/PlaceSocialList";
@@ -154,6 +155,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   // button popping in under it. A stuck read gives up the wait after
   // FIRST_READS_CAP_MS. State is set in callbacks only (Next 16 lint).
   const loadVouchers = vouchers.load;
+  const loadCards = vouchers.loadCards;
   const loadReservation = reservation.load;
   const [readFor, setReadFor] = useState<string | null>(null);
   useEffect(() => {
@@ -171,6 +173,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       clearTimeout(cap);
     };
   }, [loadVouchers, loadReservation, place.id]);
+  // The saved cards for the Offers page's "Pay with" (MESITA-4065): read
+  // beside the first reads, never holding the profile's first paint.
+  useEffect(() => {
+    void loadCards();
+  }, [loadCards]);
   // A Google-only card has neither read: it paints at once.
   const ready = !isMesitaPlaceId(place.id) || readFor === place.id;
   // Stripe Checkout's return asks for the sheet too: it is open while the
@@ -225,6 +232,12 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // the offer and the credit.
     onBuyVoucher: vouchers.buy,
     buyingVoucher: vouchers.buying,
+    // The checkout in the page (MESITA-4065): the saved cards and their pick.
+    ...(vouchers.payCards ? { payCards: vouchers.payCards } : {}),
+    payCardId: vouchers.payCardId,
+    onSelectPayCard: vouchers.selectCard,
+    onAddPayCard: vouchers.addCard,
+    onRetryPayCards: () => void vouchers.loadCards(),
     onLoadVouchers: vouchers.load,
     vouchersLoading: vouchers.loading,
     // Pay (the pinned row's tile and the Cashback card's, MESITA-3352): this
@@ -396,8 +409,17 @@ export function usePlaceVouchers(
   loading: boolean;
   /** Reads the offer and the credit; resolves once it answered or failed. */
   load: () => Promise<void>;
-  /** One voucher, or the Offers page's basket (MESITA-3841). */
-  buy: (what: VoucherKey | VoucherBasketItem[]) => void;
+  /** The Offers page's basket (MESITA-3841) paid with the card it drew
+   *  (MESITA-4065); no card opens the card sheet. */
+  buy: (items: VoucherBasketItem[], cardId: string | null) => void;
+  /** The guest's saved cards; undefined signed out or off Mesita. */
+  payCards: PayCards | undefined;
+  payCardId: string | null;
+  selectCard: (id: string) => void;
+  /** Opens the in-app card sheet. */
+  addCard: () => void;
+  /** Reads the cards; resolves once it answered or failed. */
+  loadCards: () => Promise<void>;
   sheet: ReactNode;
 } {
   const getSupabase = useLazyBrowserSupabase();
@@ -414,10 +436,6 @@ export function usePlaceVouchers(
   });
   const [card, setCard] = useState<{ placeId: string; inWallet: boolean } | null>(null);
   const [buying, setBuying] = useState<VoucherKey | null>(null);
-  // The basket whose "how to pay" sheet is open, and the saved cards
-  // (null while they load).
-  const [choosing, setChoosing] = useState<VoucherBasketItem[] | null>(null);
-  const [cards, setCards] = useState<SavedCard[] | null>(null);
   const load = useCallback(async () => {
     if (!mesita) return;
     const mine = ++request.current;
@@ -452,132 +470,127 @@ export function usePlaceVouchers(
     [mesita, placeId],
   );
 
+  // THE CHECKOUT IS THE OFFERS PAGE (MESITA-4065, Pato: "you simply select
+  // the item and select the payment method and click the button to pay …
+  // you need to first add the card"). The guest's saved cards are read with
+  // the offer; the page draws them under the vouchers and its one Pay
+  // charges the selected card. No second sheet, no Stripe page: a guest with
+  // no card adds one in AddCardSheet first.
+  const [payCards, setPayCards] = useState<PayCards | undefined>(undefined);
+  const [payCardId, setPayCardId] = useState<string | null>(null);
+  const [addingCard, setAddingCard] = useState(false);
+  const userKey = useRef<string | null>(null);
+  const cardsRequest = useRef(0);
+  const loadCards = useCallback(async () => {
+    if (!mesita) return;
+    const mine = ++cardsRequest.current;
+    // State is set after an await only (Next 16 lint: no setState in an effect body).
+    await Promise.resolve();
+    if (mine !== cardsRequest.current) return;
+    setPayCards((prev) => (prev?.state === "ready" ? prev : { state: "loading" }));
+    try {
+      const supabase = getSupabase();
+      const [{ cards }, session] = await Promise.all([apiListCards(supabase), supabase.auth.getSession()]);
+      if (mine !== cardsRequest.current) return;
+      userKey.current = session.data.session?.user.id ?? null;
+      const list: PayCard[] = cards.map((c) => ({ id: c.id, label: brandLabel(c.brand), last4: c.last4, exp_month: c.exp_month, exp_year: c.exp_year }));
+      setPayCards({ state: "ready", cards: list });
+      setPayCardId((prev) => (prev && list.some((c) => c.id === prev) ? prev : pickPayCard(list, readLastCard(userKey.current))));
+    } catch (err) {
+      if (mine !== cardsRequest.current) return;
+      // Signed out: no "Pay with"; Pay opens the card sheet, which says why.
+      setPayCards(err instanceof EFError && err.code === "sign_in" ? undefined : { state: "error" });
+    }
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mesita]);
+
+  const selectCard = useCallback((id: string) => setPayCardId(id), []);
+
+  // ONE request_id PER BASKET AND CARD (MESITA-4065): kept across every retry
+  // after an unknown outcome (no answer, a 5xx, card_failed), so the server
+  // finds the same purchase and never charges twice; dropped on a definitive
+  // answer. Three unknown outcomes in a row stop with "check Wallet".
+  const pending = useRef<{ key: string; requestId: string; unknown: number } | null>(null);
+
   const buy = useCallback(
-    (what: VoucherKey | VoucherBasketItem[]) => {
+    async (what: VoucherBasketItem[], cardId: string | null) => {
       if (!mesita) return;
-      const items = typeof what === "string" ? [{ voucher: what, qty: 1 }] : what.filter((i) => i.qty > 0);
+      const items = what.filter((i) => i.qty > 0);
       if (items.length === 0) return;
-      setChoosing(items);
-      setCards(null);
-      void apiListCards(getSupabase())
-        .then((r) => setCards(r.cards))
-        // No list: Stripe's page and Add a card still work.
-        .catch(() => setCards([]));
-    },
-    // getSupabase is a stable lazy getter (MESITA-3207).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mesita],
-  );
-
-  const checkout = useCallback(
-    (key: VoucherKey) => {
-      // Stripe's page is one voucher (MESITA-3841: a basket needs a saved card).
-      setBuying(key);
-      void apiBuyVoucher(getSupabase(), {
-        place_id: placeId,
-        voucher: key,
-        request_id: crypto.randomUUID(),
-        return_url: window.location.href,
-      })
-        .then((r) => {
-          if (r.url) window.location.assign(r.url);
-        })
-        .catch((err: unknown) => {
-          // MESITA-3549: an open Checkout resumes; place_cap keeps the offer.
-          const action = err instanceof EFError ? buyRefusalAction(err.code, err.body) : buyRefusalAction(null, null);
-          if (action.kind === "open") {
-            window.location.assign(action.url);
-            return;
-          }
-          setBuying(null);
-          setChoosing(null);
-          toast(action.line, { tone: "error" });
-          if (action.reload) load();
-        });
-    },
-    // getSupabase is a stable lazy getter (MESITA-3207).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [placeId, load],
-  );
-
-  const payWithCard = useCallback(
-    async (items: VoucherBasketItem[], card: SavedCard) => {
+      if (!cardId) {
+        setAddingCard(true);
+        return;
+      }
+      const key = `${cardId}|${items.map((i) => `${i.voucher}x${i.qty}`).join(",")}`;
+      if (pending.current?.key !== key) pending.current = { key, requestId: crypto.randomUUID(), unknown: 0 };
+      if (pending.current.unknown >= 3) {
+        toast(BUY_REFUSAL.unconfirmed, { tone: "error" });
+        return;
+      }
       setBuying(items[0].voucher);
       // One voucher reads exactly as before; a basket sends its lines, one
-      // charge for all (MESITA-3841). The same request_id after a bank check.
+      // charge for all (MESITA-3841).
       const one = items.length === 1 && items[0].qty === 1;
       const args = {
         place_id: placeId,
         ...(one ? { voucher: items[0].voucher } : { items }),
-        request_id: crypto.randomUUID(),
-        return_url: window.location.href,
-        card_pm_id: card.id,
+        request_id: pending.current.requestId,
+        card_pm_id: cardId,
       } as Parameters<typeof apiBuyVoucher>[1];
       try {
         let r = await apiBuyVoucher(getSupabase(), args);
-        if (r.card?.status === "requires_action") {
+        if (r.card.status === "requires_action") {
           if ((await runBankCheck(r.card)) === "unavailable") {
             toast("Couldn't open the bank check. Try again.", { tone: "error" });
           }
-          // The same tap again: how the card payment ended.
+          // The same purchase again: how the card payment ended.
           r = await apiBuyVoucher(getSupabase(), args);
         }
-        setChoosing(null);
-        if (r.card?.status === "succeeded") toast.success(one ? "Voucher bought. The credit is in your Wallet." : "Vouchers bought. The credit is in your Wallet.");
-        else if (r.card?.status === "processing") toast("Your bank is confirming the payment. The credit shows in your Wallet once it's through.");
-        if (r.card?.status === "succeeded" || r.card?.status === "processing") onPaid.current?.();
-        else toast("The bank check wasn't finished. Nothing was charged.", { tone: "error" });
+        if (r.card.status === "succeeded" || r.card.status === "processing") {
+          pending.current = null;
+          writeLastCard(userKey.current, cardId);
+          if (r.card.status === "succeeded") toast.success(one ? "Voucher bought. The credit is in your Wallet." : "Vouchers bought. The credit is in your Wallet.");
+          else toast("Your bank is confirming the payment. The credit shows in your Wallet once it's through.");
+          onPaid.current?.();
+        } else {
+          toast("Your bank didn't confirm the payment.", { tone: "error" });
+        }
       } catch (err: unknown) {
-        const action = err instanceof EFError ? buyRefusalAction(err.code, err.body) : buyRefusalAction(null, null);
-        setChoosing(null);
-        toast(action.kind === "say" ? action.line : BUY_REFUSAL.in_progress, { tone: "error" });
+        const code = err instanceof EFError ? err.code : null;
+        const status = err instanceof EFError ? err.status : null;
+        if (isDefinitiveRefusal(status, code)) pending.current = null;
+        else if (pending.current) pending.current.unknown += 1;
+        const action = buyRefusalAction(code);
+        if (action.kind === "add_card") setAddingCard(true);
+        if (action.kind === "reload_cards") void loadCards();
+        const line = !isDefinitiveRefusal(status, code) && pending.current && pending.current.unknown >= 3 ? BUY_REFUSAL.unconfirmed : action.line;
+        toast(line, { tone: "error" });
+        if (action.kind === "say" && action.reload) void load();
       } finally {
         setBuying(null);
-        load();
+        void load();
       }
     },
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [placeId, load],
+    [mesita, placeId, load, loadCards],
   );
-
-  const addCard = useCallback(() => {
-    void apiAddCard(getSupabase(), window.location.href)
-      .then(({ url }) => window.location.assign(url))
-      .catch((err: unknown) => {
-        toast((err instanceof EFError && err.code && CARD_REFUSAL[err.code]) || CARD_REFUSAL.checkout_failed, { tone: "error" });
-      });
-    // getSupabase is a stable lazy getter (MESITA-3207).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const mine = offer?.placeId === placeId ? offer : null;
   const money = mine?.money ?? null;
-  const units = (choosing ?? []).reduce((n, i) => n + i.qty, 0);
-  // The sheet's title is the server's prices, summed; never a guess.
-  const lines = (choosing ?? []).map((i) => ({ line: money?.catalog[i.voucher], qty: i.qty }));
-  const total = money && lines.length > 0 && lines.every((l) => l.line)
-    ? lines.reduce((sum, l) => sum + l.line!.price_cents * l.qty, 0)
-    : null;
   const sheet = (
-    <VoucherPaySheet
-      open={choosing !== null}
-      title={
-        total !== null && money
-          ? units > 1 ? `${units} vouchers · ${moneyLabel(total, money.currency)}` : `${moneyLabel(total, money.currency)} voucher`
-          : units > 1 ? `${units} vouchers` : "Voucher"
-      }
-      cards={cards}
-      busy={buying !== null}
-      checkoutAllowed={units === 1}
-      onCard={(card) => {
-        if (choosing) void payWithCard(choosing, card);
+    <AddCardSheet
+      open={addingCard}
+      onClose={() => setAddingCard(false)}
+      knownCardIds={payCards?.state === "ready" ? payCards.cards.map((c) => c.id) : []}
+      onSaved={(id) => {
+        setAddingCard(false);
+        setPayCardId(id);
+        writeLastCard(userKey.current, id);
+        toast.success("Card saved. Tap Pay to buy.");
+        void loadCards();
       }}
-      onCheckout={() => {
-        if (choosing && units === 1) checkout(choosing[0].voucher);
-      }}
-      onAddCard={addCard}
-      onClose={() => setChoosing(null)}
     />
   );
 
@@ -589,9 +602,34 @@ export function usePlaceVouchers(
     buying,
     loading: mesita && mine === null,
     load,
-    buy,
+    buy: (items, cardId) => void buy(items, cardId),
+    payCards,
+    payCardId,
+    selectCard,
+    addCard: () => setAddingCard(true),
+    loadCards,
     sheet,
   };
+}
+
+/** The last card the guest paid with, per user on this device (MESITA-4065).
+ *  Storage can throw (private mode): then nothing is remembered. */
+const LAST_CARD_KEY = "mesita.pay.last-card.";
+function readLastCard(user: string | null): string | null {
+  if (!user) return null;
+  try {
+    return window.localStorage.getItem(LAST_CARD_KEY + user);
+  } catch {
+    return null;
+  }
+}
+function writeLastCard(user: string | null, cardId: string): void {
+  if (!user) return;
+  try {
+    window.localStorage.setItem(LAST_CARD_KEY + user, cardId);
+  } catch {
+    // nothing remembered
+  }
 }
 
 // Premier (MESITA-3168): the place's level and the guest's Refill packs.

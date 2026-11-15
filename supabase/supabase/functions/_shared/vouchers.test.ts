@@ -1,10 +1,10 @@
 // MESITA-3303 — the money rules of selling a voucher: who can buy what, why
-// not, what the Checkout on the connected account carries, and that a
-// refused Checkout leaves a `failed` row and never a dangling `opening` one.
+// not, and the `opening` row a buy writes (the Checkout went with MESITA-4065;
+// the saved-card charge is voucher-card.test.ts).
 
 import { assertEquals, assertRejects } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, VOUCHER_CATALOG, voucherFeeCents } from "./money.ts";
+import { MIN_CHARGE_CENTS, VOUCHER_CATALOG, voucherFeeCents } from "./money.ts";
 import type { AccountRow, PaymentSettings } from "./payments.ts";
 import {
   basketUnits,
@@ -12,16 +12,13 @@ import {
   CATALOG_LINES,
   offerFrom,
   openPurchaseRow,
-  openVoucherCheckout,
   overCreditLimit,
   parseBasket,
   sameUnits,
   storyRefusal,
   vipRefusal,
-  voucherCheckoutParams,
   voucherMetadata,
 } from "./vouchers.ts";
-import { type StripeCall, StripeError } from "./stripe.ts";
 
 const PLACE = "00000000-0000-4000-8000-0000000a3303";
 const GUEST = "00000000-0000-4000-8000-0000000b3303";
@@ -124,40 +121,6 @@ Deno.test("buyRefusal: codes for every closed door, null for an open one", () =>
   for (const k of o.sell) assertEquals(CATALOG_LINES[k].price_cents >= MIN_CHARGE_CENTS.mxn, true);
 });
 
-Deno.test("the Checkout: payment mode, the fee as application fee, the row id in metadata and client_reference_id, success to the Wallet", () => {
-  const p = voucherCheckoutParams({
-    purchaseId: ROW,
-    placeId: PLACE,
-    consumerId: GUEST,
-    email: "guest@example.com",
-    voucher: "voucher_200",
-    currency: "mxn",
-    placeName: "Strana",
-    returnUrl: "https://mesita.ai/place/strana",
-    nowSec: 1_000_000,
-  });
-  assertEquals(p.mode, "payment");
-  assertEquals(p.client_reference_id, ROW);
-  assertEquals(p.customer_email, "guest@example.com");
-  // The place's House Card, never the Wallet's rails (MESITA-3617).
-  assertEquals(p.success_url, `https://mesita.ai/wallet/place/${PLACE}?prepay={CHECKOUT_SESSION_ID}`);
-  assertEquals(p.cancel_url, "https://mesita.ai/place/strana");
-  assertEquals(p.expires_at, 1_000_000 + 31 * 60);
-  const items = p.line_items as Array<{ quantity: number; price_data: { currency: string; unit_amount: number } }>;
-  assertEquals(items.length, 1);
-  assertEquals(items[0].price_data.unit_amount, 20000);
-  assertEquals(items[0].price_data.currency, "mxn");
-  // d5a (MESITA-3461): no application fee; the row stores the fee to bill.
-  const pid = p.payment_intent_data as { application_fee_amount?: number; metadata: Record<string, string> };
-  assertEquals("application_fee_amount" in pid, false);
-  assertEquals(voucherFeeCents("voucher_200"), Math.floor((20000 * MESITA_FEE_BPS_VOUCHER) / 10000));
-  assertEquals(pid.metadata.purchase_id, ROW);
-  assertEquals((p.metadata as Record<string, string>).mesita_kind, "wallet_voucher");
-  assertEquals((p.metadata as Record<string, string>).voucher, "voucher_200");
-  // No platform customer: the charge is the place's.
-  assertEquals("customer" in p, false);
-});
-
 type Fake = {
   admin: SupabaseClient;
   inserts: Array<Record<string, unknown>>;
@@ -238,15 +201,10 @@ const BUY = {
   nowSec: 1_000_000,
 };
 
-Deno.test("a buy: one opening row under the request_id, one Checkout on the account keyed by the row, then open with its session", async () => {
+Deno.test("a buy opens one `opening` row under the request_id with the price, bonus, fee and account", async () => {
   const fake = fakeAdmin({});
-  const calls: Array<{ method: string; path: string; opts?: Record<string, unknown> }> = [];
-  const stripe: StripeCall = (method, path, _params, opts) => {
-    calls.push({ method, path, opts: opts as Record<string, unknown> });
-    return Promise.resolve({ id: "cs_1", url: "https://checkout.stripe.com/c/cs_1" });
-  };
-  const r = await openVoucherCheckout(fake.admin, stripe, BUY);
-  assertEquals(r, { ok: true, url: "https://checkout.stripe.com/c/cs_1", purchase_id: ROW });
+  const r = await openPurchaseRow(fake.admin, BUY);
+  assertEquals(r, { ok: true, duplicate: false, purchaseId: ROW });
   assertEquals(fake.inserts.length, 1);
   const row = fake.inserts[0];
   assertEquals(row.status, "opening");
@@ -257,52 +215,11 @@ Deno.test("a buy: one opening row under the request_id, one Checkout on the acco
   assertEquals(row.application_fee_cents, voucherFeeCents("voucher_200"));
   assertEquals(row.voucher, "voucher_200");
   assertEquals(row.livemode, false);
-  assertEquals(calls, [{ method: "POST", path: "checkout/sessions", opts: { idempotencyKey: ROW, stripeAccount: "acct_place" } }]);
-  assertEquals(fake.updates.length, 1);
-  assertEquals(fake.updates[0].patch.status, "open");
-  assertEquals(fake.updates[0].patch.stripe_checkout_session_id, "cs_1");
-  assertEquals(fake.updates[0].eq, { id: ROW, status: "opening" });
-});
-
-Deno.test("Stripe refuses: the row reads failed with the code, the guest gets 502 checkout_failed", async () => {
-  const fake = fakeAdmin({});
-  const stripe: StripeCall = () => Promise.reject(new StripeError("checkout/sessions", "invalid_request_error", "account_invalid", 400, "no"));
-  const r = await openVoucherCheckout(fake.admin, stripe, BUY);
-  assertEquals(r, { ok: false, status: 502, code: "checkout_failed", error: "Stripe refused the checkout: account_invalid" });
-  assertEquals(fake.updates.length, 1);
-  assertEquals(fake.updates[0].patch.status, "failed");
-  assertEquals(fake.updates[0].patch.stripe_error, "account_invalid");
-  assertEquals(fake.updates[0].eq, { id: ROW, status: "opening" });
-});
-
-Deno.test("the same request_id again: the open session's url, never a second charge", async () => {
-  const fake = fakeAdmin({
-    insertError: { code: "23505", message: "duplicate" },
-    existing: { id: ROW, status: "open", stripe_checkout_session_id: "cs_1" },
-  });
-  const calls: string[] = [];
-  const stripe: StripeCall = (method, path) => {
-    calls.push(`${method} ${path}`);
-    return Promise.resolve({ id: "cs_1", status: "open", url: "https://checkout.stripe.com/c/cs_1" });
-  };
-  const r = await openVoucherCheckout(fake.admin, stripe, BUY);
-  assertEquals(r, { ok: true, url: "https://checkout.stripe.com/c/cs_1", purchase_id: ROW });
-  assertEquals(calls, ["GET checkout/sessions/cs_1"]);
-  assertEquals(fake.updates.length, 0);
-});
-
-Deno.test("the same request_id on a closed row is a refusal, not a new row", async () => {
-  const fake = fakeAdmin({ insertError: { code: "23505", message: "duplicate" }, existing: { id: ROW, status: "failed", stripe_checkout_session_id: null } });
-  const stripe: StripeCall = () => Promise.reject(new Error("never called"));
-  const r = await openVoucherCheckout(fake.admin, stripe, BUY);
-  assertEquals(r.ok, false);
-  assertEquals((r as { code: string }).code, "checkout_failed");
 });
 
 Deno.test("any other insert error is thrown, so the EF answers 500 and nothing reaches Stripe", async () => {
   const fake = fakeAdmin({ insertError: { code: "42501", message: "denied" } });
-  const stripe: StripeCall = () => Promise.reject(new Error("never called"));
-  await assertRejects(() => openVoucherCheckout(fake.admin, stripe, BUY), Error, "purchase_insert");
+  await assertRejects(() => openPurchaseRow(fake.admin, BUY), Error, "purchase_insert");
 });
 
 // ── MESITA-3947: the Credits Limit; MESITA-3305: a second Welcome buy ─────────────────
@@ -311,8 +228,7 @@ Deno.test("place_cap: a buy that would take the place past its Credits Limit is 
   // MX$99,900 outstanding + MX$220 of credit from a MX$200 Small = MX$100,120.
   for (const livemode of [false, true]) {
     const fake = fakeAdmin({ outstanding: 99_900_00 });
-    const stripe: StripeCall = () => Promise.reject(new Error("never called"));
-    const r = await openVoucherCheckout(fake.admin, stripe, { ...BUY, livemode });
+    const r = await openPurchaseRow(fake.admin, { ...BUY, livemode });
     assertEquals(r.ok === false && r.code, "place_cap");
     assertEquals(fake.inserts.length, 0);
   }
@@ -337,38 +253,6 @@ Deno.test("Credits Limit: landing exactly on the limit sells; a place's own limi
   // USD: US$20 Small gives US$22 of credit against US$10,000.
   assertEquals(overCreditLimit(10_000_00 - 22_00, "voucher_200", 10_000_00, "usd"), false);
   assertEquals(overCreditLimit(10_000_00 - 21_00, "voucher_200", 10_000_00, "usd"), true);
-});
-
-Deno.test("a second Welcome buy while the first one's Checkout is open answers in_progress with that url, never a 500", async () => {
-  const fake = fakeAdmin({ insertError: { code: "23505", message: "welcome once" }, existing: null });
-  // The request_id read finds nothing; the Welcome read finds the open row.
-  let reads = 0;
-  const admin = {
-    rpc: fake.admin.rpc,
-    from: (table: string) => {
-      assertEquals(table, "wallet_purchases");
-      return {
-        insert: (fake.admin.from(table) as unknown as { insert: unknown }).insert,
-        select: () => {
-          const chain = {
-            eq: () => chain,
-            in: () => chain,
-            maybeSingle: () => {
-              reads++;
-              return Promise.resolve({ data: reads === 1 ? null : { id: ROW, status: "open", stripe_checkout_session_id: "cs_w" }, error: null });
-            },
-          };
-          return chain;
-        },
-      };
-    },
-  } as unknown as SupabaseClient;
-  const stripe: StripeCall = (_m, path) => {
-    assertEquals(path, "checkout/sessions/cs_w");
-    return Promise.resolve({ status: "open", url: "https://checkout.stripe.com/c/w" });
-  };
-  const r = await openVoucherCheckout(admin, stripe, { ...BUY, voucher: "voucher_welcome", requestId: "00000000-0000-4000-8000-0000000e3303" });
-  assertEquals(r, { ok: false, status: 409, code: "in_progress", error: "Your Welcome voucher's checkout is still open", url: "https://checkout.stripe.com/c/w" });
 });
 
 Deno.test("the mark (MESITA-3408) is taken before Welcome-used and the pause, so it matches the list rows", () => {

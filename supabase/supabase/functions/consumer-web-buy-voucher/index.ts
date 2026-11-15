@@ -17,28 +17,33 @@
 // with ONE charge, all or nothing (the old `voucher` field is a basket of
 // one). Small and Big take qty 1..5; Welcome and VIP at most 1. Every gate
 // runs per voucher; the place cap counts the whole basket. One row per unit:
-// the lead under request_id, the others pointing to it (basket_lead_id). A
-// basket of more than one unit needs a saved card: Checkout stays one
-// voucher (409 basket_needs_card).
+// the lead under request_id, the others pointing to it (basket_lead_id).
+//
+// MESITA-4065: a SAVED CARD IS REQUIRED. The Stripe Checkout branch is gone:
+// the Offers page is the checkout (pick vouchers, pick a card, Pay) and a
+// guest with no card adds one in the app first. Without `card_pm_id` the
+// answer is 409 card_required; an old bundle's `return_url` is ignored.
+// Validation order: body shape (400 bad_body + field), then the card gate
+// (voucherBuyGate), then the place and voucher gates. A replay of the same
+// request_id never opens a second PaymentIntent.
 //
 // Body: { place_id: uuid, voucher: voucher_200|voucher_1000|voucher_welcome|…,
 //         items?: [{ voucher, qty }] (in place of voucher),
-//         request_id: uuid (one per tap; a retry carries the same),
-//         return_url: the place page (a Mesita address),
-//         card_pm_id?: pm_… (a saved card) }
-// Response: { ok: true, url, purchase_id }
-//   with card_pm_id: { ok: true, purchase_id, card: { status: succeeded |
-//   processing | requires_action, payment_intent_id, client_secret?,
-//   stripe_account?, publishable_key? } }
-//   404 card_not_found (not the guest's saved card) · 409 card_declined
-//   (+decline_code) | card_needs_auth | closed · 502 card_failed
-//   401 sign_in · 404 place · 409 no_account | currency_mismatch | paused |
-//   not_available | not_yet | needs_card_payments | needs_instagram |
-//   few_followers (Story: 1,000 Instagram followers or fewer, MESITA-3507) |
-//   not_vip (VIP: the guest is not of the VIP class, MESITA-3550) |
-//   welcome_used | below_minimum | place_cap (MESITA-3947: the buy would
-//   take the place's outstanding credit past its Credits Limit) | in_progress (+url: a second
-//   Welcome buy while the first one's Checkout is open) · 502 checkout_failed
+//         request_id: uuid (one per basket and card; every retry after an
+//           unknown outcome carries the same),
+//         card_pm_id: pm_… (a card saved on the guest's own customer) }
+// Response: { ok: true, purchase_id, card: { status: succeeded | processing |
+//   requires_action, payment_intent_id, client_secret?, stripe_account?,
+//   publishable_key? } }
+// Refusals (stable `code`):
+//   400 bad_body (+field) · 401 sign_in · 409 card_required (add a card in the app)
+//   404 card_not_found (not the guest's saved card: list the cards again)
+//   409 card_declined (+decline_code) | card_needs_auth | closed | in_progress
+//   404 place · 409 no_account | currency_mismatch | paused | not_available |
+//   not_yet | needs_card_payments | needs_instagram | few_followers (Story) |
+//   not_vip (VIP) | welcome_used | below_minimum | place_cap (MESITA-3947)
+//   502 card_failed | stripe_unreachable · 503 payments not configured
+// The client secret of a bank check is returned, never logged.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -47,14 +52,13 @@ import { readCustomer } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readAccount } from "../_shared/payments.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
-import { isPaymentMethodId, ownCard } from "../_shared/tab-card.ts";
-import { openVoucherCard, readFollowerVouchers, readRequestRow, runVoucherCard } from "../_shared/voucher-card.ts";
+import { ownCard } from "../_shared/tab-card.ts";
+import { openVoucherCard, readFollowerVouchers, readRequestRow, runVoucherCard, voucherBuyGate } from "../_shared/voucher-card.ts";
 import { purchaseStore } from "../_shared/purchase-pi.ts";
 import {
   basketUnits,
   buyRefusal,
   mexicoToday,
-  openVoucherCheckout,
   parseBasket,
   readStoryGuest,
   readVipGuest,
@@ -63,7 +67,7 @@ import {
   vipRefusal,
   voucherOffer,
 } from "../_shared/vouchers.ts";
-import { isAllowedReturnUrl, paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
+import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-buy-voucher", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -73,26 +77,20 @@ serveJson("consumer-web-buy-voucher", async (req) => {
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const { place_id: placeId, request_id: requestId, return_url: returnUrl, card_pm_id: cardPmId } = bodyRes.body;
-  if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
+  const { place_id: placeId, request_id: requestId } = bodyRes.body;
+  if (!isUuid(placeId)) return json({ ok: false, code: "bad_body", field: "place_id", error: "place_id must be a Mesita place id" }, 400);
   const basket = parseBasket(bodyRes.body);
-  if (!basket.ok) return json({ ok: false, error: basket.error }, 400);
+  if (!basket.ok) return json({ ok: false, code: "bad_body", field: "items", error: basket.error }, 400);
   // One row per unit, the lead first (Welcome leads when it is in it).
   const units = basketUnits(basket.items);
   const voucher = units[0];
   const followers = units.slice(1);
   const kinds = basket.items.map((i) => i.voucher);
-  if (!isUuid(requestId)) return json({ ok: false, error: "request_id must be a uuid" }, 400);
-  if (typeof returnUrl !== "string" || !isAllowedReturnUrl(returnUrl)) {
-    return json({ ok: false, error: "return_url is not a Mesita address" }, 400);
-  }
-  const withCard = cardPmId !== undefined && cardPmId !== null;
-  if (withCard && !isPaymentMethodId(cardPmId)) {
-    return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
-  }
-  if (!withCard && units.length > 1) {
-    return json({ ok: false, code: "basket_needs_card", error: "Several vouchers pay with a saved card" }, 409);
-  }
+  if (!isUuid(requestId)) return json({ ok: false, code: "bad_body", field: "request_id", error: "request_id must be a uuid" }, 400);
+  // A saved card is required (MESITA-4065): there is no Stripe page.
+  const gate = voucherBuyGate(bodyRes.body);
+  if (!gate.ok) return json({ ok: false, code: gate.code, error: gate.error }, gate.status);
+  const cardPmId = gate.cardPmId;
 
   const placeRes = await readVoucherPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
@@ -105,14 +103,14 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   // a bank check, or after a lost answer): the gates ran when its row was
   // opened, and they would now count that very row (Welcome used, one per
   // visit), so it only reads where its PaymentIntent stands.
-  if (withCard) {
+  {
     const replay = await readRequestRow(admin, userId, requestId);
     if (replay) {
       const key = paymentsStripeKey();
       if (!key) return json({ ok: false, error: "Payments are not available right now" }, 503);
       const stripe = stripeClient(key);
       const customer = await readCustomer(admin, userId, livemode);
-      if (!customer || !(await ownCard(stripe, customer, cardPmId as string))) {
+      if (!customer || !(await ownCard(stripe, customer, cardPmId))) {
         return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
       }
       if (
@@ -124,7 +122,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
       const res = await runVoucherCard(purchaseStore(admin), stripe, {
         purchaseId: replay.id,
         customer,
-        platformPm: cardPmId as string,
+        platformPm: cardPmId,
         currency: replay.currency,
         placeId,
         placeName: place.name ?? null,
@@ -161,11 +159,11 @@ serveJson("consumer-web-buy-voucher", async (req) => {
 
   const stripe = stripeClient(key);
 
-  if (withCard) {
+  {
     // A saved card: it must be on this guest's own customer, never an id
     // the browser made up.
     const customer = await readCustomer(admin, userId, livemode);
-    if (!customer || !(await ownCard(stripe, customer, cardPmId as string))) {
+    if (!customer || !(await ownCard(stripe, customer, cardPmId))) {
       return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
     }
     const card = await openVoucherCard(admin, stripe, {
@@ -178,7 +176,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
       requestId,
       livemode,
       customer,
-      platformPm: cardPmId as string,
+      platformPm: cardPmId,
       publishableKey: paymentsPublishableKey(livemode),
       nowMs: Date.now(),
     });
@@ -190,19 +188,4 @@ serveJson("consumer-web-buy-voucher", async (req) => {
     console.log("[consumer-web-buy-voucher]", JSON.stringify({ outcome: card.card.status, place_id: placeId, voucher, units: units.length, purchase_id: card.purchase_id }));
     return json({ ok: true, purchase_id: card.purchase_id, card: card.card });
   }
-
-  const res = await openVoucherCheckout(admin, stripe, {
-    consumerId: userId,
-    email: user.email ?? null,
-    place,
-    account,
-    voucher,
-    currency: offer.currency,
-    requestId,
-    returnUrl,
-    livemode,
-    nowSec: Math.floor(Date.now() / 1000),
-  });
-  if (!res.ok) return json({ ok: false, code: res.code, error: res.error, ...(res.url ? { url: res.url } : {}) }, res.status);
-  return json({ ok: true, url: res.url, purchase_id: res.purchase_id });
 });

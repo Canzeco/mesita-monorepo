@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgePercent, Banknote, Check, CircleCheck, Crown, Info, Lock, Minus, PartyPopper, Plus, Smartphone, Ticket, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, Check, CircleCheck, CreditCard, Crown, Info, Lock, Minus, PartyPopper, Plus, Smartphone, Ticket, type LucideIcon } from "lucide-react";
+import { cardExpiry, isCardExpired, MAX_PAY_CARDS, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection, VoucherBasketItem } from "../../actions";
@@ -624,6 +625,14 @@ export function VouchersPane({
   const canPay = Boolean(actions?.onPay) && (cashback || !dim);
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;
+  // THE CHECKOUT IS THE PAGE (MESITA-4065, Pato: "you simply select the item
+  // and select the payment method and click the button to pay"): the saved
+  // cards sit under the offers, the one purple Pay charges the selected card.
+  const payCards: PayCards | undefined = actions?.payCards;
+  const readyCards = payCards?.state === "ready" ? payCards.cards : null;
+  const payCardId = actions?.payCardId ?? null;
+  const payCard = readyCards?.find((c) => c.id === payCardId && !isCardExpired(c)) ?? null;
+  const payWithRef = useRef<HTMLElement>(null);
   // SELECT, THEN BUY (MESITA-3487, Pato: "you select then you click Buy.
   // selector at the right"). SEVERAL AT ONCE (MESITA-3841): each row toggles
   // in or out of one basket, Small and Big with a quantity; Buy pays it all
@@ -649,6 +658,7 @@ export function VouchersPane({
   // SIZES FIRST (MESITA-3484, Pato: "Small Bonus, Mid Bonus, Big Bonus /
   // Welcome Bonus, Story Bonus, VIP Bonus").
   const products = listedProducts();
+  const anyBuyable = !loading && products.some((p) => buyable(p.key));
   const chosen = loading ? [] : products.filter((p) => (picked[p.key] ?? 0) > 0 && buyable(p.key)).map((p) => ({ product: p, qty: Math.min(picked[p.key] ?? 0, maxQty(p.key)) }));
   const items: VoucherBasketItem[] = chosen.map((c) => ({ voucher: c.product.key, qty: c.qty }));
   const units = chosen.reduce((n, c) => n + c.qty, 0);
@@ -687,6 +697,30 @@ export function VouchersPane({
   const ICON = "mr-1 inline h-4 w-4 align-[-0.15em]";
   // Where a row has no tick box or lock, so every (i) sits in one column.
   const SLOT = <span className="h-6 w-6 shrink-0" aria-hidden />;
+
+  // The foot's one button (MESITA-4065). Nothing picked: "Select an offer".
+  // Cards still loading or failed: Pay waits (never a flash of "Add a card").
+  // No usable card: "Add a card to pay" opens the host's card sheet. Else Pay.
+  const payText = summed
+    ? `Pay ${noMx(summed.pay)}, Get ${noMx(summed.get)} ${readyIn(chosen[0]?.product.key ?? "voucher_200")}`
+    : `Pay for ${units} vouchers`;
+  const needsCard = readyCards !== null && payCard === null;
+  const footText = items.length === 0 ? "Select an offer" : buying ? "Paying…" : needsCard ? "Add a card to pay" : payText;
+  const footLabel = items.length === 0
+    ? "Select an offer to buy"
+    : needsCard
+      ? "Add a card to pay"
+      : units === 1
+        ? `Pay for the ${chosen[0].product.name} voucher`
+        : `Pay for ${units} vouchers`;
+  const cardsPending = payCards !== undefined && payCards.state !== "ready";
+  const footDisabled = items.length === 0 || !live || buying || cardsPending;
+  const footAction = items.length > 0 && live
+    ? () => {
+      if (needsCard) actions?.onAddPayCard?.();
+      else actions?.onBuyVoucher?.(items, payCard?.id ?? null);
+    }
+    : undefined;
 
   return (
     // A LIST (MESITA-3486, Pato: "make the things as a list, not as boxes"):
@@ -821,6 +855,17 @@ export function VouchersPane({
           })}
         </ul>
       </section>
+      {payCards && anyBuyable ? (
+        <PayWith
+          sectionRef={payWithRef}
+          cards={payCards}
+          selected={payCardId}
+          locked={buying}
+          onSelect={actions?.onSelectPayCard}
+          onAdd={actions?.onAddPayCard}
+          onRetry={actions?.onRetryPayCards}
+        />
+      ) : null}
       <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
         <SectionTitle
           id="rewards-payment"
@@ -894,33 +939,123 @@ export function VouchersPane({
           </li>
         </ul>
       </section>
-      {/* ONE BUY AT THE FOOT (MESITA-3487): pick rows, then Buy. No Pay bill
-          here (MESITA-3486). The sums of the basket, one charge
-          (MESITA-3841). */}
+      {/* ONE PAY AT THE FOOT (MESITA-3487; MESITA-4065): the card it charges
+          is named above it, so nobody pays with a card they cannot see;
+          purple, Stripe's colour (Pato: "maybe the stripe button purple"). */}
       <div className="bg-card border-border sticky bottom-0 -mx-4 mt-auto -mb-4 border-t px-4 py-3" data-promos="checkout">
+        {payCard && items.length > 0 ? (
+          <p className="text-muted-foreground mb-2 flex items-center justify-between text-sm" data-pay-card-line>
+            <span className="text-foreground truncate font-medium">
+              {payCard.label} •••• {payCard.last4}
+            </span>
+            <button
+              type="button"
+              className="text-foreground shrink-0 font-semibold underline underline-offset-2"
+              onClick={() => payWithRef.current?.scrollIntoView({ block: "center", behavior: "smooth" })}
+            >
+              Change
+            </button>
+          </p>
+        ) : null}
         <button
           type="button"
-          onClick={items.length > 0 && live ? () => actions?.onBuyVoucher?.(items) : undefined}
-          disabled={items.length === 0 || !live || buying}
-          aria-label={
-            items.length === 0
-              ? "Select an offer to buy"
-              : units === 1
-                ? `Buy the ${chosen[0].product.name} voucher`
-                : `Buy ${units} vouchers`
-          }
-          className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold hover:opacity-90 disabled:opacity-40"
+          onClick={footAction}
+          disabled={footDisabled}
+          aria-label={footLabel}
+          className="flex h-12 w-full items-center justify-center rounded-xl bg-[#635BFF] text-base font-semibold text-white hover:opacity-90 disabled:bg-muted disabled:text-muted-foreground"
           data-voucher-buy={items.length > 0 ? items.map((i) => (i.qty > 1 ? `${i.voucher}x${i.qty}` : i.voucher)).join(",") : undefined}
         >
-          {items.length > 0
-            ? buying
-              ? "Opening…"
-              : summed
-                ? `Pay ${noMx(summed.pay)}, Get ${noMx(summed.get)} ${readyIn(chosen[0].product.key)}`
-                : `Buy ${units} vouchers`
-            : "Select an offer"}
+          {footText}
         </button>
       </div>
     </div>
+  );
+}
+
+/** "Pay with" (MESITA-4065): the guest's saved cards as one card of radio
+ *  rows under the offers, then "Add a card". Expired cards are listed but
+ *  cannot be picked; at three cards Add stays, disabled, and says why. */
+function PayWith({
+  sectionRef,
+  cards,
+  selected,
+  locked,
+  onSelect,
+  onAdd,
+  onRetry,
+}: {
+  sectionRef: RefObject<HTMLElement | null>;
+  cards: PayCards;
+  selected: string | null;
+  locked: boolean;
+  onSelect?: (id: string) => void;
+  onAdd?: () => void;
+  onRetry?: () => void;
+}) {
+  const ROW = "flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left disabled:opacity-50";
+  const full = cards.state === "ready" && cards.cards.length >= MAX_PAY_CARDS;
+  return (
+    <section ref={sectionRef} className="flex flex-col gap-2" aria-labelledby="rewards-pay-with" data-promos="pay-with">
+      <SectionTitle id="rewards-pay-with" title="Pay with" />
+      <div className="border-border divide-border divide-y rounded-2xl border">
+        {cards.state === "loading" ? (
+          <div className={ROW} aria-busy>
+            <span className="bg-muted h-5 w-5 animate-pulse rounded" aria-hidden />
+            <span className="bg-muted h-4 flex-1 animate-pulse rounded" aria-hidden />
+          </div>
+        ) : null}
+        {cards.state === "error" ? (
+          <div className={ROW} role="alert">
+            <span className="text-foreground flex-1 text-sm">Couldn&apos;t load your cards</span>
+            <button type="button" onClick={onRetry} className="text-foreground text-sm font-semibold underline underline-offset-2">
+              Retry
+            </button>
+          </div>
+        ) : null}
+        {cards.state === "ready" ? (
+          <div role="radiogroup" aria-label="Pay with" className="divide-border divide-y">
+            {cards.cards.map((c) => {
+              const expired = isCardExpired(c);
+              const on = c.id === selected && !expired;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  disabled={locked || expired}
+                  onClick={() => onSelect?.(c.id)}
+                  className={ROW}
+                  data-pay-card={c.id}
+                >
+                  <CreditCard className="text-foreground h-5 w-5 shrink-0" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="text-foreground block truncate text-[15px] font-semibold">
+                      {c.label} •••• {c.last4}
+                    </span>
+                    <span className="text-muted-foreground block text-[13px]">{expired ? "Expired" : `Expires ${cardExpiry(c)}`}</span>
+                  </span>
+                  <span
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${on ? "border-foreground" : "border-border"}`}
+                    aria-hidden
+                  >
+                    {on ? <span className="bg-foreground h-3 w-3 rounded-full" /> : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        {cards.state !== "error" ? (
+          <button type="button" onClick={onAdd} disabled={locked || full || cards.state === "loading"} className={ROW} data-pay-add-card>
+            <Plus className="text-foreground h-5 w-5 shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className="text-foreground block text-[15px] font-semibold">Add a card</span>
+              {full ? <span className="text-muted-foreground block text-[13px]">Up to 3 cards. Remove one in Wallet.</span> : null}
+            </span>
+          </button>
+        ) : null}
+      </div>
+    </section>
   );
 }

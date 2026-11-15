@@ -42,13 +42,30 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { MoneyVoucherKey } from "./money-state.ts";
 import type { AccountRow } from "./payments.ts";
 import { type PurchaseStore, purchaseStore } from "./purchase-pi.ts";
-import { type CardStep } from "./tab-card.ts";
+import { type CardStep, isPaymentMethodId } from "./tab-card.ts";
 import { type BuyRefusal, openPurchaseRow, REFUSAL_FOR, sameUnits, voucherMetadata, voucherName } from "./vouchers.ts";
 import { availableAtFor, type VoucherPlace } from "./wallet.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
 
 export type CardBuyRefusal = { ok: false; status: number; code: string; error: string; detail?: Record<string, unknown> };
 export type CardBuyOk = { ok: true; purchase_id: string; card: CardStep };
+
+/** The card gate of a voucher buy (MESITA-4065: no Stripe page, a saved card
+ *  is required). Runs after the body shape and before any place, voucher or
+ *  row work, so a refusal writes nothing. An old bundle's `return_url` is
+ *  ignored; a malformed card id reads as a card that is not the guest's. */
+export function voucherBuyGate(
+  body: Record<string, unknown>,
+): { ok: true; cardPmId: string } | { ok: false; status: 404 | 409; code: "card_required" | "card_not_found"; error: string } {
+  const pm = body.card_pm_id;
+  if (pm === undefined || pm === null || pm === "") {
+    return { ok: false, status: 409, code: "card_required", error: "Add a card to buy credit." };
+  }
+  if (!isPaymentMethodId(pm)) {
+    return { ok: false, status: 404, code: "card_not_found", error: "That card is not saved on your account" };
+  }
+  return { ok: true, cardPmId: pm };
+}
 
 function refuse(status: number, code: string, error: string, detail?: Record<string, unknown>): CardBuyRefusal {
   return { ok: false, status, code, error, ...(detail ? { detail } : {}) };

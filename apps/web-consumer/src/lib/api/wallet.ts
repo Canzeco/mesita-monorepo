@@ -171,29 +171,22 @@ export type VoucherCardStep = {
   publishable_key?: string;
 };
 
-/** Buys vouchers on the place's own account: one (`voucher`), or since
- *  MESITA-3841 a basket (`items`, every voucher with its quantity) paid with
- *  ONE charge, all or nothing; a basket of more than one voucher needs a
- *  saved card (basket_needs_card). Without `card_pm_id` it
- *  opens Stripe Checkout (`url`); with a saved card's id it charges that
- *  card at once (`card`, MESITA-3552). The `request_id` is one per tap: a
- *  retry with the same id finds the same purchase, never a second charge,
- *  and after a bank check it answers how the card payment ended. Refusals
- *  arrive as EFError with a code from BUY_REFUSAL. */
+/** Buys vouchers at a place with a SAVED CARD (MESITA-3552; required since
+ *  MESITA-4065, there is no Stripe page). MESITA-3841 a basket (`items`,
+ *  every voucher with its quantity) paid with ONE charge, all or nothing.
+ *  The `request_id` is one per basket and card: every retry after an unknown
+ *  outcome carries the same, so the server finds the same purchase and never
+ *  charges twice; after a bank check it answers how the card payment ended.
+ *  Refusals arrive as EFError with a code from BUY_REFUSAL. */
 export async function apiBuyVoucher(
   client: SupabaseClient,
   args: {
     place_id: string;
     request_id: string;
-    return_url: string;
-    card_pm_id?: string | null;
+    card_pm_id: string;
   } & ({ voucher: VoucherKey; items?: never } | { items: Array<{ voucher: VoucherKey; qty: number }>; voucher?: never }),
-): Promise<{ url?: string; purchase_id: string; card?: VoucherCardStep }> {
-  const { card_pm_id, ...rest } = args;
-  return await invokeEF<{ url?: string; purchase_id: string; card?: VoucherCardStep }>(client, "consumer-web-buy-voucher", {
-    ...rest,
-    ...(card_pm_id ? { card_pm_id } : {}),
-  });
+): Promise<{ purchase_id: string; card: VoucherCardStep }> {
+  return await invokeEF<{ purchase_id: string; card: VoucherCardStep }>(client, "consumer-web-buy-voucher", args);
 }
 
 /** What the guest reads when the buy is refused, by the server's code. */
@@ -212,31 +205,43 @@ export const BUY_REFUSAL: Record<string, string> = {
   needs_visit: "One per visit. Pay a bill here by card to buy another.",
   below_minimum: "This amount is below the card minimum.",
   place_cap: "This place can't take more credit for now. Try again later.",
-  in_progress: "Your checkout for this voucher is still open.",
-  checkout_failed: "Couldn't open checkout. Try again.",
-  // A saved card (MESITA-3552)
-  card_not_found: "That card isn't saved on your account anymore. Choose another.",
+  in_progress: "Your purchase is already on its way.",
+  // A saved card (MESITA-3552; required since MESITA-4065)
+  card_required: "Add a card to buy credit.",
+  card_not_found: "That card was removed. Choose another card.",
   card_declined: "Your card was declined. Nothing was charged. Try another card.",
-  card_needs_auth: "This card needs a bank check we can't show. Try another card or Stripe's page.",
+  card_needs_auth: "This card needs a bank check we can't show. Try another card.",
   card_failed: "Couldn't charge the card. Nothing was charged. Try again.",
-  closed: "That purchase was cancelled. Tap Buy to start over.",
-  // A basket (MESITA-3841)
-  basket_needs_card: "Several vouchers pay with a saved card. Choose a card or add one.",
+  stripe_unreachable: "We couldn't reach the bank. Try again.",
+  // Retries after an unknown outcome ran out (MESITA-4065).
+  unconfirmed: "We couldn't confirm the payment. Check Wallet before trying again.",
+  failed: "Couldn't complete the purchase. Try again.",
+  closed: "That purchase was cancelled. Tap Pay to start over.",
 };
 
-/** What a refused buy does (MESITA-3549). A refusal that carries the open
- *  Checkout's `url` (in_progress) resumes it; place_cap only says its line
- *  (the offer has not changed); anything else says its line and reloads the
- *  offer, which may have changed under the guest. Never computes money. */
+/** What a refused buy does (MESITA-3549; MESITA-4065). card_required opens
+ *  the card sheet; card_not_found lists the cards again and asks for another;
+ *  place_cap only says its line (the offer has not changed); anything else
+ *  says its line and reloads the offer. Never computes money. */
 export type BuyRefusalAction =
-  | { kind: "open"; url: string }
+  | { kind: "add_card"; line: string }
+  | { kind: "reload_cards"; line: string }
   | { kind: "say"; line: string; reload: boolean };
 
-export function buyRefusalAction(code: string | null, body: Record<string, unknown> | null): BuyRefusalAction {
-  const url = body && typeof body.url === "string" && body.url.startsWith("https://") ? body.url : null;
-  if (url) return { kind: "open", url };
-  const line = (code && BUY_REFUSAL[code]) || BUY_REFUSAL.checkout_failed;
+export function buyRefusalAction(code: string | null): BuyRefusalAction {
+  if (code === "card_required") return { kind: "add_card", line: BUY_REFUSAL.card_required };
+  if (code === "card_not_found") return { kind: "reload_cards", line: BUY_REFUSAL.card_not_found };
+  const line = (code && BUY_REFUSAL[code]) || BUY_REFUSAL.failed;
   return { kind: "say", line, reload: code !== "place_cap" };
+}
+
+/** Whether a refusal is definitive (MESITA-4065): a 4xx is the server's
+ *  answer, so the next tap starts a new request_id; anything else (no
+ *  answer, 5xx, card_failed, stripe_unreachable) may have charged, so the
+ *  retry carries the same one. */
+export function isDefinitiveRefusal(status: number | null, code: string | null): boolean {
+  if (code === "card_failed" || code === "stripe_unreachable") return false;
+  return status !== null && status >= 400 && status < 500;
 }
 
 /** "$500.00MX" / "$25.00" — always two decimals (MESITA-3767). One formatter with the

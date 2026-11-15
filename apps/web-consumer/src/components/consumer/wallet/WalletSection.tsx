@@ -1,12 +1,13 @@
 "use client";
 
+import { AddCardSheet } from "@/components/consumer/AddCardSheet";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
 import { photoUrl } from "@mesita/place-profile";
-import { apiAddCard, apiRemoveCard, CARD_REFUSAL, CARD_RETURN_PARAM, MAX_SAVED_CARDS, type SavedCard } from "@/lib/api/cards";
+import { apiRemoveCard, CARD_REFUSAL, MAX_SAVED_CARDS, type SavedCard } from "@/lib/api/cards";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -160,16 +161,6 @@ export function WalletSection({
     navigateTo(router, CONSUMER_ROUTES.wallet, { replace: true });
   }, [router]);
 
-  // Stripe's return from saving a card (`?card=`): say so, drop the param.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (!params.has(CARD_RETURN_PARAM)) return;
-    params.delete(CARD_RETURN_PARAM);
-    const q = params.toString();
-    window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
-    toast.success("Card saved.");
-  }, []);
-
   // Saved cards come with the Wallet's read; null means Stripe failed.
   const cards: SavedCard[] = wallet?.cards ?? [];
   const cardsFailed = wallet !== null && wallet.cards === null;
@@ -201,17 +192,8 @@ export function WalletSection({
   }, [wallet, photoKey, painted]);
   const ready = painted || (failed && !wallet);
 
-  const addCard = useCallback(async () => {
-    if (adding) return;
-    setAdding(true);
-    try {
-      const { url } = await apiAddCard(getSupabase(), `${window.location.origin}${CONSUMER_ROUTES.wallet}`);
-      window.location.assign(url);
-    } catch (err) {
-      toast.error(cardRefusal(err));
-      setAdding(false);
-    }
-  }, [adding, getSupabase]);
+  // Add a card in the app (MESITA-4065: no Stripe page).
+  const addCard = useCallback(() => setAdding(true), []);
 
   const removeCard = useCallback(
     async (card: SavedCard) => {
@@ -243,6 +225,16 @@ export function WalletSection({
 
   return (
     <div className="flex flex-col" data-wallet>
+      <AddCardSheet
+        open={adding}
+        onClose={() => setAdding(false)}
+        knownCardIds={cards.map((c) => c.id)}
+        onSaved={() => {
+          setAdding(false);
+          toast.success("Card saved.");
+          reread();
+        }}
+      />
       {wallet?.settling ? (
         <p className="text-muted-foreground mt-4 text-sm" role="status">
           Confirming a payment…
@@ -257,7 +249,7 @@ export function WalletSection({
             leaves once three cards are saved (MESITA-3749); Credits Cards
             have no limit. */}
         {cards.length < MAX_SAVED_CARDS ? (
-          <AddRow line="A debit or credit card" ariaLabel="Add a payment card" onClick={() => void addCard()} disabled={adding} busy={adding} />
+          <AddRow line="A debit or credit card" ariaLabel="Add a payment card" onClick={addCard} disabled={adding} busy={false} />
         ) : null}
       </WalletPanelList>
 
