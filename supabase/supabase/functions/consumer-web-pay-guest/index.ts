@@ -11,7 +11,7 @@
 // for the waiter's Verify (visit-web-verify-tab), which writes the 2%; a card
 // part → charged inside the app as on the waiter's tab (_shared/tab-card.ts).
 // Every guest tab ends with the waiter scanning its QR and tapping Verify,
-// within ten minutes (MESITA-3843).
+// within an hour (MESITA-3843, MESITA-4048).
 //
 // Body: { place_id, bill_cents, credit_cents, cash_bill_cents,
 //         cash_tip_cents, card_bill_cents?, card_tip_cents?, card_pm_id?
@@ -49,7 +49,7 @@ import { moneyState } from "../_shared/money-state.ts";
 import { readCustomer } from "../_shared/boost.ts";
 import { bps, MESITA_FEE_BPS_PAYMENT, MONEY_CURRENCY } from "../_shared/money.ts";
 import { cardRefusal } from "../_shared/pay-card.ts";
-import { PI_TTL_MS } from "../_shared/settle-payment.ts";
+import { PI_TTL_MS, SIGN_WINDOW } from "../_shared/settle-payment.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { mintProofToken } from "../_shared/proof.ts";
 import { callTabRpc, hashTabToken, mintTabToken, readGuestPayBody, rpcRefusal, tabUrl } from "../_shared/tab.ts";
@@ -130,8 +130,8 @@ serveJson("consumer-web-pay-guest", async (req) => {
       p_outside_cashback_bps: Math.max(0, cashMoney.cash_cashback_bps),
       p_ticket: pay.ticket,
       p_repeat_ok: pay.repeatOk,
-      // MESITA-3843: the waiter has ten minutes to sign.
-      p_window: "10 minutes",
+      // The waiter has an hour to sign (MESITA-4048; ten minutes, MESITA-3843).
+      p_window: SIGN_WINDOW,
       ...cardArgs,
     });
     if (r.ok !== true) {
