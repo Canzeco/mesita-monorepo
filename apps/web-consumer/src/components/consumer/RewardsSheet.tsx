@@ -27,9 +27,9 @@ function offersCard(place: PlaceDetail): WalletCardModel {
 // THE REWARDS SHEET (Pato, MESITA-3412: "Rewards modal opens when you click
 // either prepay or pay, but covering almost full screen"): the place's
 // Rewards page, once the fourth tab, in the house semi-modal (88%, the same
-// shape as Contact, Reserve and Upgrade). Prepay opens it at Pre-Payment
-// Rewards, Pay at Payment Rewards. The pane undoes a 16px body inset, so the
-// scroller supplies it.
+// shape as Contact, Reserve and Upgrade). Prepay opens it; since MESITA-4062
+// it holds the Prepayments card only. The pane undoes a 16px body inset, so
+// the scroller supplies it.
 export function RewardsSheet({
   place,
   actions,
@@ -38,7 +38,7 @@ export function RewardsSheet({
 }: {
   place: PlaceDetail;
   actions: PlaceActions;
-  /** The section to open at; null = closed. */
+  /** Why it opened; null = closed. */
   section: RewardsSection | null;
   onClose: () => void;
 }) {
@@ -73,7 +73,7 @@ export function RewardsSheet({
           <CreditsRow card={offersCard(place)} />
         </div>
         <div className="flex flex-1 shrink-0 flex-col pt-4">
-          {drawn != null ? <VouchersPane place={place} actions={actions} focus={drawn} /> : null}
+          {drawn != null ? <VouchersPane place={place} actions={actions} /> : null}
         </div>
       </div>
     </LocalSheet>
