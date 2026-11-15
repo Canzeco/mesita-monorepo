@@ -49,9 +49,78 @@ const ROW =
   "hover:bg-muted/60 flex min-h-16 w-full items-center gap-3.5 px-4 py-3 text-left transition";
 const DIVIDER = "bg-border ml-[4.75rem] h-px";
 
+/** THE PANEL (Pato, 2026-11-15, MESITA-4063: "put each of the three
+ *  sections inside a box with borders, to make it modular and divided and
+ *  clearer"): one bordered white box per section, its heading INSIDE, 16px
+ *  in from every edge, 16px between panels. /wallet's three sections and the
+ *  House Card page's sections are each one. Rows inside run edge to edge
+ *  (their own 16px padding lines their text up with the heading), split by
+ *  hairlines: never a box in a box. Me's SectionBox keeps its heading above
+ *  its box; a panel holds its heading. */
+export const PANEL = "border-border bg-card mt-4 overflow-hidden rounded-2xl border";
+
+export function WalletPanel({
+  title,
+  action,
+  className,
+  children,
+  ...data
+}: {
+  title?: string;
+  action?: ReactNode;
+  className?: string;
+  children?: ReactNode;
+  [key: `data-${string}`]: string | boolean | undefined;
+}) {
+  return (
+    <section className={cn(PANEL, className)} aria-label={title} {...data}>
+      {title || action ? (
+        <div className="flex min-h-6 items-center justify-between gap-3 px-4 pt-4">
+          {title ? <h2 className="font-display text-base font-semibold tracking-tight">{title}</h2> : <span />}
+          {action}
+        </div>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
+/** A section of rows in a panel: its heading, the rows split by hairlines
+ *  inside it. `fallback` replaces the rows when there are none (the Wallet's
+ *  error state sits right under its heading). */
+export function WalletPanelList({
+  title,
+  action,
+  fallback,
+  children,
+}: {
+  title: string;
+  action?: ReactNode;
+  fallback?: ReactNode;
+  children?: ReactNode;
+}) {
+  const rows = Children.toArray(children).filter(Boolean);
+  return (
+    <WalletPanel title={title} action={action}>
+      {rows.length === 0 && fallback ? (
+        <div className="p-4 pt-2">{fallback}</div>
+      ) : (
+        <ul role="list" className="mt-1 pb-1">
+          {rows.map((row, i) => (
+            <Fragment key={i}>
+              {i > 0 ? <li aria-hidden className={DIVIDER} /> : null}
+              <li>{row}</li>
+            </Fragment>
+          ))}
+        </ul>
+      )}
+    </WalletPanel>
+  );
+}
+
 /** A heading (with an optional button on its right) over one white card of
- *  rows, a hairline between rows. `fallback` replaces the card when there
- *  are no rows (the Wallet's error state sits right under its heading). */
+ *  rows, a hairline between rows: Me › Gift and the House Card page's list.
+ *  `fallback` replaces the card when there are no rows. */
 export function WalletList({
   title,
   action,
@@ -293,12 +362,12 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
 export function WalletBodySkeleton() {
   return (
     <div aria-busy>
-      <WalletList title="Money Payment Methods">
+      <WalletPanelList title="Money Payment Methods">
         <RowsSkeleton count={2} />
-      </WalletList>
-      <WalletList title="Credits Payment Methods">
+      </WalletPanelList>
+      <WalletPanelList title="Credits Payment Methods">
         <RowsSkeleton count={2} />
-      </WalletList>
+      </WalletPanelList>
     </div>
   );
 }
