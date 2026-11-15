@@ -15,7 +15,8 @@ import { BanknoteIcon, CheckIcon, CoinsIcon, HandCoinsIcon, SmartphoneIcon, User
 // (Wallet credits; Smartphone "by card" or Banknote "cash received";
 // HandCoins tip), the waiter code (until MESITA-3858 signs waiters in), the
 // dark "Sign · final" with a Check and "Check the amount. Signed payments
-// can't be undone.", and the light "Reject" with an X. The signature is the
+// can't be undone.", and the red "Reject" with an X, as tall as Sign
+// (MESITA-4108, Pato: "reject button must be red same height as black"). The signature is the
 // cash's confirmation: no yes/no question. Sign trades the code for a staff
 // token for this one signature; neither is kept. Then: Receipt (green),
 // Confirming (the card is being charged), Not charged (the charge failed),
@@ -265,7 +266,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
               </p>
             ) : null}
             <div className="yes-no">
-              <button type="button" disabled={!!busy || !request} onClick={() => void reject()}>
+              <button type="button" className="verify-reject" disabled={!!busy || !request} onClick={() => void reject()}>
                 {busy === "reject" ? "Rejecting…" : "Yes, reject"}
               </button>
               <button type="button" className="quiet" onClick={() => setRejecting(false)}>
@@ -277,7 +278,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
           // One row: Reject a third, Sign two thirds. "Sign · final" says
           // it can't be undone; the pad says a code is needed.
           <div className="verify-actions">
-            <button type="button" className="quiet pay-with-icon" disabled={!!busy || !request} onClick={() => setRejecting(true)}>
+            <button type="button" className="verify-reject pay-with-icon" disabled={!!busy || !request} onClick={() => setRejecting(true)}>
               <XIcon className="pay-icon" />
               Reject
             </button>

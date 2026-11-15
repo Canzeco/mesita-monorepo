@@ -707,6 +707,19 @@ button.quiet.pay-with-icon {
   margin: 0;
 }
 
+/* Reject in red, as tall as Sign · final (MESITA-4108); "Yes, reject" too. */
+button.verify-reject {
+  height: 48px;
+  background: #dc2626;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+button.verify-reject:disabled {
+  opacity: 0.5;
+}
+
 /* The total on the guest row's right (MESITA-4103). */
 .pay-guest .verify-amount {
   margin: 0 0 0 auto;
