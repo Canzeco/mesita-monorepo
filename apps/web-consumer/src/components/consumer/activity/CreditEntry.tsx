@@ -17,11 +17,14 @@
 // friend sent you credit at <place>." (the wallet read carries no sender), the
 // place's balance, and Pay here (filled) alone.
 //
-// A gift sent or taken back (MESITA-4009, Tickets 8/10): the header with the
-// signed amount and state, one line saying what happened, a Timeline (Sent,
-// then Taken back when it was), the place's balance, and Open the House Card
-// (filled) alone. The wallet read carries no gift id, so a take-back is paired
-// to the nearest earlier send of the same amount at the place.
+// A gift line forwards to its gift's own page (MESITA-4066): the read now
+// carries each gift line's gift_id, and a gift_out / gift_in / gift_back
+// whose gift is in the wallet's `gifts` replaces this page with
+// /me/tickets/gift/<giftId> (lib/gift-ticket.ts giftOfEntry). Until then a
+// sent gift's take-back was paired to a send by amount and order, which could
+// swap two same-amount gifts; that pairing is gone. A gift line with no gift
+// in the read (past its cap, or an older server) keeps the short page below:
+// the header, one line, the place's balance, Open the House Card.
 //
 // A Refund page (MESITA-4011, Tickets 10/10): the header with the amount and no
 // sign, Refunded, "Refunded to the card you paid with.", a Timeline (Bought,
@@ -34,7 +37,9 @@
 // Tickets already holds (the same cached read); an entry it cannot find any
 // more says so and goes back to Tickets.
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BadgeDollarSign, Copy } from "lucide-react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -60,7 +65,14 @@ import {
   type Wallet,
   type WalletEntry,
 } from "@/lib/api/wallet";
-import { creditEntryPath, payPlacePath, placePath, walletPlacePath } from "@/lib/consumer-route-contract";
+import {
+  creditEntryPath,
+  giftTicketPath,
+  payPlacePath,
+  placePath,
+  walletPlacePath,
+} from "@/lib/consumer-route-contract";
+import { giftOfEntry } from "@/lib/gift-ticket";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { useCachedQuery } from "@/lib/use-cached-query";
@@ -69,6 +81,17 @@ const when = (iso: string) =>
   `${new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · ${clockTime(iso)}`;
 
 const BOUGHT = new Set(["prepay", "voucher"]);
+
+/** The page's entry: by kind and instant; when several share them (a
+ *  purchase's reversals), the largest amount (MESITA-4004). */
+function findEntry(wallet: Wallet, placeId: string, entryKey: string) {
+  const b = wallet.balances.find((x) => x.place_id === placeId);
+  const [kind, ms] = entryKey.split(".");
+  const e = b?.entries
+    .filter((x) => x.kind === kind && String(Date.parse(x.at)) === ms)
+    .sort((x, y) => Math.abs(y.amount_cents) - Math.abs(x.amount_cents))[0];
+  return { b, e };
+}
 
 /** The header's kind badge for an entry. */
 function badgeOf(e: WalletEntry): TicketRowKind {
@@ -102,31 +125,6 @@ function stateOf(e: WalletEntry, refund: WalletEntry | undefined): [string, Tick
   return ["Available", "green"];
 }
 
-/** A gift's send and its take-back, paired by amount and order: each
- *  take-back belongs to the nearest earlier send of the same amount that no
- *  other take-back has claimed. */
-function giftPair(
-  entries: WalletEntry[],
-  e: WalletEntry,
-): { sent: WalletEntry | undefined; back: WalletEntry | undefined } {
-  const amount = Math.abs(e.amount_cents);
-  const same = entries
-    .filter((x) => (x.kind === "gift_out" || x.kind === "gift_back") && Math.abs(x.amount_cents) === amount)
-    .sort((x, y) => Date.parse(x.at) - Date.parse(y.at));
-  const open: WalletEntry[] = [];
-  const pairs = new Map<WalletEntry, WalletEntry>();
-  for (const x of same) {
-    if (x.kind === "gift_out") open.push(x);
-    else {
-      const o = open.pop();
-      if (o) pairs.set(o, x);
-    }
-  }
-  if (e.kind === "gift_out") return { sent: e, back: pairs.get(e) };
-  for (const [o, b] of pairs) if (b === e) return { sent: o, back: e };
-  return { sent: undefined, back: e };
-}
-
 /** The purchase number's copy button: the full id goes to the clipboard. */
 function CopyPurchaseId({ id }: { id: string }) {
   return (
@@ -153,7 +151,17 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     ttl: 2 * 60 * 1000,
   });
 
+  // A gift line whose gift the read holds is that gift's page (MESITA-4066).
+  const router = useRouter();
+  const found = wallet.data ? findEntry(wallet.data, placeId, entryKey).e : undefined;
+  const gift = wallet.data && found ? giftOfEntry(wallet.data, found) : null;
+  const forward = gift ? giftTicketPath(gift.gift_id) : null;
+  useEffect(() => {
+    if (forward) router.replace(forward);
+  }, [forward, router]);
+
   const body = (() => {
+    if (forward) return <TicketSkeleton />;
     if (!wallet.data) {
       return wallet.error ? (
         <EmptyState
@@ -166,13 +174,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
         <TicketSkeleton />
       );
     }
-    const b = wallet.data.balances.find((x) => x.place_id === placeId);
-    const [kind, ms] = entryKey.split(".");
-    // By kind and instant; when several share them (a purchase's reversals),
-    // the largest amount is the page's entry (MESITA-4004).
-    const e = b?.entries
-      .filter((x) => x.kind === kind && String(Date.parse(x.at)) === ms)
-      .sort((x, y) => Math.abs(y.amount_cents) - Math.abs(x.amount_cents))[0];
+    const { b, e } = findEntry(wallet.data, placeId, entryKey);
     if (!b || !e) {
       return (
         <EmptyState
@@ -275,8 +277,6 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     const houseCard = { label: "Open the House Card", href: walletPlacePath(placeId) };
     const received = e.kind === "gift_in";
     const given = e.kind === "gift_out" || e.kind === "gift_back";
-    const pair = given ? giftPair(b.entries, e) : null;
-    const tookBack = pair?.back !== undefined;
     return (
       <div className="flex flex-col gap-6 pb-4" data-credit-entry>
         <TicketHeader
@@ -295,19 +295,11 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
         {received ? (
           <p className="text-sm">A friend sent you credit at {place}.</p>
         ) : given ? (
-          <>
-            <p className="text-sm">
-              {tookBack
-                ? `You sent ${m(amount)} to a friend and took it back. It is in your balance at ${place}.`
-                : `You sent ${m(amount)} of your credit at ${place} to a friend.`}
-            </p>
-            <TicketTimeline
-              steps={[
-                ...(pair?.sent ? [{ label: "Sent", when: when(pair.sent.at), value: `−${m(amount)}` }] : []),
-                ...(pair?.back ? [{ label: "Taken back", when: when(pair.back.at), value: `+${m(amount)}` }] : []),
-              ]}
-            />
-          </>
+          <p className="text-sm">
+            {e.kind === "gift_back"
+              ? `You took back ${m(amount)} you had sent. It is in your balance at ${place}.`
+              : `You sent ${m(amount)} of your credit at ${place} to a friend.`}
+          </p>
         ) : bought ? (
           <TicketCard title="Your credit">
             <TicketLine label="Bought" value={m(amount)} />

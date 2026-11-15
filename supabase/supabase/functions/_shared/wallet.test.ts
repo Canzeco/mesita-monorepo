@@ -81,6 +81,14 @@ Deno.test("balancesOf: an entry's purchase_id comes through; null when the row h
   assertEquals(b[0].entries.map((e) => e.purchase_id), ["p1", null]);
 });
 
+Deno.test("balancesOf: a gift line carries its gift_id; every other line null (MESITA-4066)", () => {
+  const b = balancesOf([
+    { place_id: "a", kind: "gift_out", amount_cents: -300, currency: "mxn", created_at: "2026-11-15T10:00:00Z", gift_id: "g1" },
+    { place_id: "a", kind: "voucher", amount_cents: 10000, currency: "mxn", created_at: "2026-11-07T10:00:00Z", purchase_id: "p1" },
+  ], Date.parse("2026-11-15T12:00:00Z"));
+  assertEquals(b[0].entries.map((e) => e.gift_id), ["g1", null]);
+});
+
 Deno.test("settleAll: a Stripe that never answers is cut by the budget; the read goes on and names what is still open", async () => {
   // Three open purchases. The first credits; the second hangs until the
   // budget aborts its fetch; the third is never asked. The RPC runs only for

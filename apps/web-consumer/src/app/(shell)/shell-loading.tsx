@@ -26,6 +26,7 @@ import PayTabLoading from "./pay/bill/[billId]/loading";
 import PayReceiptLoading from "./pay/receipt/[paymentId]/loading";
 import VisitLoading from "./me/tickets/visits/[visitId]/loading";
 import CreditLoading from "./me/tickets/credit/[placeId]/[entry]/loading";
+import GiftTicketLoading from "./me/tickets/gift/[giftId]/loading";
 import NotificationsLoading from "./me/notifications/loading";
 import ReservationsLoading from "./me/reservations/loading";
 import TicketsLoading from "./me/tickets/loading";
@@ -60,6 +61,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   walletRedeem: () => <WalletRedeemLoading />,
   visit: () => <VisitLoading />,
   credit: () => <CreditLoading />,
+  gift: () => <GiftTicketLoading />,
   share: () => <ShareLoading />,
   me: () => <MeLoading />,
   meProfile: () => <ProfileLoading />,

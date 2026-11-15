@@ -170,6 +170,9 @@ export type Entry = {
   /** The purchase a voucher, prepay, bonus or purchase reversal belongs to
    *  (MESITA-3750): the House Card shows a voucher and its bonus as one row. */
   purchase_id?: string | null;
+  /** The gift a gift_out, gift_in or gift_back belongs to (MESITA-4066): the
+   *  entry page finds its gift by it, never by amount. */
+  gift_id?: string | null;
 };
 
 export type Balance = {
@@ -196,6 +199,8 @@ export type Balance = {
     confirmed_by: "credit" | "stripe" | "waiter" | null;
     /** The purchase behind the entry (MESITA-3750); null on payment and gift rows. */
     purchase_id: string | null;
+    /** The gift behind a gift line (MESITA-4066); null on every other row. */
+    gift_id: string | null;
   }>;
 };
 
@@ -244,6 +249,7 @@ export function balancesOf(
       payment_id: e.payment_id ?? null,
       confirmed_by: e.kind === "cashback" && e.payment_id ? e.confirmed_by ?? null : null,
       purchase_id: e.purchase_id ?? null,
+      gift_id: e.gift_id ?? null,
     });
   }
   const out = [...byKey.values()];

@@ -36,6 +36,9 @@ export type WalletEntry = {
    *  (MESITA-3750); null on payment and gift rows; absent from a server
    *  before MESITA-3750. */
   purchase_id?: string | null;
+  /** The gift behind a gift_out, gift_in or gift_back (MESITA-4066): the
+   *  entry page forwards to that gift's page. Absent before MESITA-4066. */
+  gift_id?: string | null;
 };
 
 export type WalletBalance = {
@@ -606,7 +609,9 @@ export type GiftTicket = {
   taken_back_at: string | null;
   sender: GiftPerson;
   recipient: GiftPerson | null;
-  entry: { kind: string; at: string } | null;
+  /** `available_at`: when a received gift's credit turns Available
+   *  (MESITA-4066); absent from a server before it. */
+  entry: { kind: string; at: string; available_at?: string | null } | null;
 };
 
 export type SentLink = { gift_id: string; place_id: string; amount_cents: number; currency: string; created_at: string };

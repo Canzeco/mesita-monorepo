@@ -72,7 +72,18 @@ Deno.test("the entry is my latest ledger line for the gift", () => {
     ],
     ME,
   );
-  assertEquals(t.entry, { kind: "gift_back", at: "2026-11-15T12:00:00Z" });
+  assertEquals(t.entry, { kind: "gift_back", at: "2026-11-15T12:00:00Z", available_at: null });
+});
+
+Deno.test("a received gift's entry says when its credit turns Available (MESITA-4066)", () => {
+  const [t] = giftTickets(
+    [row({ sender_id: "ana", recipient_id: ME, status: "claimed", claimed_at: "2026-11-15T12:00:00Z" })],
+    people,
+    [{ gift_id: "g1", kind: "gift_in", created_at: "2026-11-15T12:00:00Z", available_at: "2026-11-15T13:00:00Z" }],
+    ME,
+  );
+  assertEquals(t.role, "recipient");
+  assertEquals(t.entry, { kind: "gift_in", at: "2026-11-15T12:00:00Z", available_at: "2026-11-15T13:00:00Z" });
 });
 
 Deno.test("people ids are each sender and receiver once", () => {

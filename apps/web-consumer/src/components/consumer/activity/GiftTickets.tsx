@@ -17,43 +17,50 @@
 // the time on the right. No arrow, no struck amount, no motion beyond the tap highlight. The
 // rows sit in Tickets' list box (ActivityRows). MESITA-4036's row drew
 // sender → receiver with a big amount over an arrow. The row opens the
-// guest's own entry for it (the Gift sent / Gift received page), else the
-// place's House Card.
+// gift's own page, /me/tickets/gift/<giftId> (MESITA-4066), which draws this
+// picture larger; a receiver's credit still on hold reads "Taken · ready in
+// 1 hr" (lib/gift-ticket.ts).
 
 import { Gift } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { money, type GiftPerson, type GiftTicket } from "@/lib/api/wallet";
-import {
-  CONSUMER_ROUTES,
-  creditEntryPath,
-  walletPlacePath,
-} from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, giftTicketPath } from "@/lib/consumer-route-contract";
+import { giftState } from "@/lib/gift-ticket";
 import { timeAgo } from "@/lib/time-ago";
 import { cn } from "@/lib/utils";
 import { ActivityRows } from "./ActivityRow";
 
-const STATE: Record<GiftTicket["status"], { label: string; tone: string }> = {
-  open: { label: "Waiting for a friend", tone: "text-foreground" },
-  claimed: { label: "Taken", tone: "text-green-700" },
-  taken_back: { label: "Taken back", tone: "text-muted-foreground" },
-};
+export const GIFT_TONE = {
+  green: "text-green-700",
+  ink: "text-foreground",
+  grey: "text-muted-foreground",
+} as const;
 
 /** When the gift last moved: taken, taken back, or sent. */
-function movedAt(g: GiftTicket): string {
+export function movedAt(g: GiftTicket): string {
   return g.claimed_at ?? g.taken_back_at ?? g.created_at;
 }
 
-const FACE = "h-10 w-10 rounded-full ring-2 ring-card";
+const FACE = "rounded-full ring-2 ring-card";
 
-function Face({ person }: { person: GiftPerson | null }) {
+/** A person's round photo, their initial, or a dashed "?" while nobody took
+ *  the gift. `size` is its box: 40px in the row, 64px on the gift page. */
+export function GiftFace({
+  person,
+  size = "h-10 w-10 text-sm",
+}: {
+  person: GiftPerson | null;
+  size?: string;
+}) {
   if (!person) {
     return (
       <span
         aria-hidden
         className={cn(
           FACE,
-          "border-border bg-card text-muted-foreground flex items-center justify-center border-2 border-dashed text-sm",
+          size,
+          "border-border bg-card text-muted-foreground flex items-center justify-center border-2 border-dashed",
         )}
       >
         ?
@@ -63,13 +70,14 @@ function Face({ person }: { person: GiftPerson | null }) {
   return person.photo ? (
     // A friend's own photo; plain img, as the bar's own avatar.
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={person.photo} alt="" className={cn(FACE, "bg-muted object-cover")} />
+    <img src={person.photo} alt="" className={cn(FACE, size, "bg-muted object-cover")} />
   ) : (
     <span
       aria-hidden
       className={cn(
         FACE,
-        "bg-muted text-foreground flex items-center justify-center text-sm font-semibold",
+        size,
+        "bg-muted text-foreground flex items-center justify-center font-semibold",
       )}
     >
       {person.name.trim().charAt(0).toUpperCase() || "?"}
@@ -78,7 +86,7 @@ function Face({ person }: { person: GiftPerson | null }) {
 }
 
 /** "You sent $3.00MX", "Ana sent you $150.00MX", "Ana sent $20.00MX". */
-function sentence(g: GiftTicket): string {
+export function giftSentence(g: GiftTicket): string {
   const amount = money(g.amount_cents, g.currency);
   if (g.sender.you) return `You sent ${amount}`;
   if (g.recipient?.you) return `${g.sender.name} sent you ${amount}`;
@@ -86,27 +94,24 @@ function sentence(g: GiftTicket): string {
 }
 
 export function GiftTicketRow({ g }: { g: GiftTicket }) {
-  const state = STATE[g.status];
+  const state = giftState(g);
   const place = g.place?.name ?? "A Mesita place";
-  const href = g.entry
-    ? creditEntryPath(g.place_id, g.entry)
-    : walletPlacePath(g.place_id);
   const who = (p: GiftPerson | null, none: string) =>
     p ? (p.you ? "you" : p.name) : none;
-  const words = sentence(g);
+  const words = giftSentence(g);
   return (
     <li>
       <PushLink
-        href={href}
+        href={giftTicketPath(g.gift_id)}
         aria-label={`Gift, ${money(g.amount_cents, g.currency)} at ${place}, from ${who(g.sender, "someone")} to ${who(g.recipient, "nobody yet")}, ${state.label}`}
         className="hover:bg-muted/40 active:bg-muted/60 flex items-center gap-3 px-4 py-3 transition"
         data-gift-ticket={g.status}
       >
         {/* The two people, overlapping, with the gift bubble on them. */}
         <span className="relative flex shrink-0 items-center" aria-hidden>
-          <Face person={g.sender} />
+          <GiftFace person={g.sender} />
           <span className="-ml-3">
-            <Face person={g.recipient} />
+            <GiftFace person={g.recipient} />
           </span>
           <span className="bg-foreground text-background ring-card absolute -right-1 -bottom-1 flex h-[18px] w-[18px] items-center justify-center rounded-full ring-2">
             <Gift className="h-[11px] w-[11px]" strokeWidth={2.25} />
@@ -130,7 +135,7 @@ export function GiftTicketRow({ g }: { g: GiftTicket }) {
               at 375px (the sentence and the place on one line wrapped), and
               a long place name truncates before the state does. */}
           <span className="mt-0.5 block truncate text-sm">
-            <span className={cn("font-medium", state.tone)}>{state.label}</span>
+            <span className={cn("font-medium", GIFT_TONE[state.tone])}>{state.label}</span>
             <span className="text-muted-foreground"> · {place}</span>
           </span>
         </span>
