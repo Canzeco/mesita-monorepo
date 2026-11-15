@@ -249,7 +249,7 @@ export function WalletSection({
             leaves once three cards are saved (MESITA-3749); Credits Cards
             have no limit. */}
         {cards.length < MAX_SAVED_CARDS ? (
-          <AddRow line="A debit or credit card" ariaLabel="Add a payment card" onClick={addCard} disabled={adding} busy={false} />
+          <AddRow line="Add a card" ariaLabel="Add a payment card" onClick={addCard} disabled={adding} busy={false} />
         ) : null}
       </WalletPanelList>
 
@@ -282,7 +282,7 @@ export function WalletSection({
             ))
           : null}
         {creditsState === "rows" ? (
-          <AddRow line="A place's Credits Card" ariaLabel="Add a Credits Card" href={CONSUMER_ROUTES.search} />
+          <AddRow line="Add a Credits Card" ariaLabel="Add a Credits Card" href={CONSUMER_ROUTES.search} />
         ) : null}
       </WalletPanelList>
 
