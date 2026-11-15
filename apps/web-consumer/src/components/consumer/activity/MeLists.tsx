@@ -639,6 +639,8 @@ function SubpageTabs<K extends string>({
 }
 
 /** Tickets' kinds as a row of pills that scrolls sideways (MESITA-3993):
+ *  A full-width hairline under the row divides it from the list (MESITA-4049,
+ *  Pato: "PUT A LINE DIVIDING CAROUSEL MENU FROM EVENTS").
  *  icon and word on each, the chosen one solid ink, the rest white with a
  *  hairline. It runs to the screen's edges so the last pill peeks in and
  *  says the row scrolls; a pick slides its pill into view. `on` null is the
@@ -659,7 +661,7 @@ function TicketPills({
     <nav
       ref={rail}
       aria-label="Kinds of ticket"
-      className="scrollbar-hide -mx-5 flex shrink-0 scroll-px-5 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-5"
+      className="scrollbar-hide border-border -mx-5 flex shrink-0 scroll-px-5 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain border-b px-5 pb-4"
       data-ticket-pills
     >
       {TICKET_TABS.map((t) => {
