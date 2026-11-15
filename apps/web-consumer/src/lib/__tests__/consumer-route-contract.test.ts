@@ -127,7 +127,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       payJoin: { prefix: "/pay/join/" },
       payReceipt: { prefix: "/pay/receipt/" },
       // Under Me › Tickets (MESITA-3855).
-      visit: { prefix: "/me/tickets/visit/" },
+      visit: { prefix: "/me/tickets/visits/" },
       credit: { prefix: "/me/tickets/credit/" },
       // Pay's second half (MESITA-3698).
       wallet: "/wallet",
@@ -201,6 +201,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         // The bill and the Google place before MESITA-4013.
         payTabPrefix: "/pay/tab/",
         placeOpenPrefix: "/place/open/",
+        meTicketsVisitPrefix: "/me/tickets/visit/",
         // Me's Second Stage boxes. All land on `me` (Metrics on Settings,
         // the Passport on Profile).
         meClassInvite: "/me/class/invite",
@@ -417,6 +418,11 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       {
         source: `/wallet/:placeId(${rowId})`,
         destination: "/wallet/place/:placeId",
+        permanent: true,
+      },
+      {
+        source: "/me/tickets/visit/:visitId",
+        destination: "/me/tickets/visits/:visitId",
         permanent: true,
       },
       // Explore era (pre-Home). Straight to the Discover default.

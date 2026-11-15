@@ -300,7 +300,7 @@ describe("T5 — exactly one tab lights per surface", () => {
     // a ticket light Me.
     ["/me/notifications", "Me"],
     ["/me/tickets/vouchers", "Me"],
-    ["/me/tickets/visit/t1", "Me"],
+    ["/me/tickets/visits/t1", "Me"],
     ["/reservation/r1", "Me"],
     ["/me", "Me"],
   ];
@@ -1059,7 +1059,7 @@ describe("the route map", () => {
   it("lands a cold Back on the parent, with the parent's params filled", () => {
     expect(parentHref("/place/p1/reserve")).toBe("/place/p1");
     expect(parentHref("/reservation/r1")).toBe("/me/reservations");
-    expect(parentHref("/me/tickets/visit/t1")).toBe("/me/tickets");
+    expect(parentHref("/me/tickets/visits/t1")).toBe("/me/tickets");
     expect(parentHref("/me/plan")).toBe("/me/settings");
     expect(parentHref("/me/settings/contact")).toBe("/me/settings");
     expect(parentHref("/pay/receipt/x")).toBe("/pay");

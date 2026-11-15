@@ -1,6 +1,6 @@
 "use client";
 
-// A VISIT'S FULL STATEMENT, /me/tickets/visit/<tabId> (MESITA-3770 made it one
+// A VISIT'S FULL STATEMENT, /me/tickets/visits/<visitId> (MESITA-3770 made it one
 // page apart from the live pay screens; MESITA-3780, Pato: "in visits mention
 // the select pay methods and everything. be fucking detailed"). Opened from
 // Me › Tickets for a bill that is paid, expired or cancelled; an open bill

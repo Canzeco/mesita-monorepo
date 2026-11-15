@@ -96,10 +96,12 @@ export const CONSUMER_ROUTES = {
   // A FINISHED VISIT, ONE PAGE (MESITA-3770, Pato: "the live workflow visit
   // tickets and the output ticket must be different"): what was paid, how,
   // and what came back. An open bill stays /pay/bill/<id>; /visit/ is a legacy address.
-  // Under Me › Tickets since Activity left the bar (MESITA-3855).
-  visit: { prefix: "/me/tickets/visit/" },
+  // Under Me › Tickets since Activity left the bar (MESITA-3855); /visits/<visitId>
+  // beside the /visits chip since MESITA-4016 (was /visit/<tabId>, 308s).
+  visit: { prefix: "/me/tickets/visits/" },
   // ONE CREDIT MOVEMENT, ONE PAGE (MESITA-3782): a voucher, bonus, refund or
   // gift ticket opens /me/tickets/credit/<placeId>/<kind>.<ms> (MESITA-3855).
+  // One noun on purpose (MESITA-4016): bonus and cashback have no chip.
   credit: { prefix: "/me/tickets/credit/" },
   // PAY AND WALLET, TWO TABS (Pato, 2026-11-14, MESITA-3886: "separate pay
   // and wallet again. only pay and only wallet"): each its own bar tab and
@@ -236,6 +238,8 @@ export const CONSUMER_ROUTES = {
     // live word under /pay or /wallet is ever taken for one.
     payTabPrefix: "/pay/tab/",
     placeOpenPrefix: "/place/open/",
+    // A finished Visit's detail beside its chip (MESITA-4016).
+    meTicketsVisitPrefix: "/me/tickets/visit/",
     // Me › Transactions became Activity (MESITA-3631), then Me › Tickets
     // (MESITA-3855).
     meTransactions: "/me/transactions",
@@ -430,7 +434,7 @@ export const ROUTE_MAP = {
   // lights Me, whose list is where it lands back (MESITA-3855).
   reservation: row("/reservation/:id", "me", "panel", "meReservations"),
   // A finished Visit, opened from Me › Tickets (MESITA-3770, MESITA-3855).
-  visit: row("/me/tickets/visit/:tabId", "me", "page", "meTickets"),
+  visit: row("/me/tickets/visits/:visitId", "me", "page", "meTickets"),
   // A voucher, bonus, refund or gift, opened from Tickets (MESITA-3782).
   credit: row("/me/tickets/credit/:placeId/:entry", "me", "page", "meTickets"),
   pay: row("/pay", "pay", "tab", null),
