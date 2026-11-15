@@ -10,7 +10,13 @@
 //                              // IVR dead-end, "call back later"  → RETRYABLE
 //            | "wrong_number", // the line is not this place           → TERMINAL
 //     alternatives?: string[],   // speakable options: "afuera a las 10"
-//     note?: string }
+//     note?: string,
+//     confirmed_time?: "HH:mm",  // MESITA-3957: confirmed at another time
+//                                // inside the guest's window
+//     terms?: string }           // a table time limit or tolerance a1 accepted
+//
+// A confirmed_time outside the guest's window answers 422: a1 must not take
+// it alone, so it reports counter_offer instead and the guest decides.
 //
 // unreachable vs declined matters: declined is the place SAYING NO (terminal,
 // real signal); unreachable is us never getting to ask (worth another attempt).
@@ -44,6 +50,8 @@ import { loadEnrichmentTriggers, subprocessesFor } from "../_shared/enrich-trigg
 import { refetchGoogleAfterWrongNumber } from "../_shared/google-refetch.ts";
 import { runInBackground } from "../_shared/background.ts";
 import { errorMessage } from "../_shared/errors.ts";
+import { judgeReportedTime } from "../_shared/reservation-legs.ts";
+import { PLACE_ZONE_COLUMNS, placeZone } from "../_shared/local-time.ts";
 
 const VERDICTS = [
   "confirmed",
@@ -64,6 +72,8 @@ serveJson("eleven-a1-report-outcome", async (req) => {
     alternatives?: unknown;
     note?: unknown;
     run_id?: unknown;
+    confirmed_time?: unknown;
+    terms?: unknown;
   }>(req, {});
 
   const verdict = typeof body.verdict === "string" ? body.verdict.trim() : "";
@@ -99,6 +109,42 @@ serveJson("eleven-a1-report-outcome", async (req) => {
   // form, so an agent build that hasn't picked up the new schema keeps working.
   const alternatives = normalizeAlternatives(body.alternatives).slice(0, 5);
 
+  // MESITA-3957: a time other than the asked one is a1's to take only inside
+  // the guest's window.
+  let reportedTime: string | null = null;
+  const confirmedTime = typeof body.confirmed_time === "string" ? body.confirmed_time.trim() : "";
+  if (verdict === "confirmed" && confirmedTime) {
+    const { data: tw } = await admin
+      .from("reservation_tickets")
+      .select("time_window_minutes")
+      .eq("id", ticket.id)
+      .maybeSingle();
+    const { data: place } = await admin
+      .from("place_profiles")
+      .select(PLACE_ZONE_COLUMNS)
+      .eq("id", ticket.place_id)
+      .maybeSingle();
+    const judged = judgeReportedTime(
+      ticket.reserved_at,
+      (tw as { time_window_minutes?: unknown } | null)?.time_window_minutes,
+      confirmedTime,
+      placeZone(place as { timezone?: unknown; lng?: unknown } | null),
+    );
+    if (judged.kind === "outside") {
+      return json({
+        ok: false,
+        error: "outside_window",
+        say:
+          "Esa hora queda fuera de lo que el comensal aceptó. No la confirmes: regístrala como counter_offer con esa opción; el comensal decide.",
+      }, 422);
+    }
+    if (judged.kind === "invalid") {
+      return json({ ok: false, error: "confirmed_time must be HH:mm (24 h)" }, 400);
+    }
+    if (judged.kind === "inside") reportedTime = judged.iso;
+  }
+  const terms = verdict === "confirmed" ? cleanNote(body.terms).slice(0, 300) : "";
+
   const write = await writeReservation(admin, {
     mode: "update",
     id: ticket.id,
@@ -111,6 +157,8 @@ serveJson("eleven-a1-report-outcome", async (req) => {
         | "wrong_number",
       alternatives,
       outcome_note: cleanNote(body.note) || null,
+      reported_time: reportedTime,
+      confirmed_terms: terms || null,
     },
   });
   if (!write.ok) return json({ ok: false, error: write.error }, 500);
@@ -119,7 +167,10 @@ serveJson("eleven-a1-report-outcome", async (req) => {
     runInBackground(emitOnReservationFailed(admin, ticket.project_id));
   }
 
-  return json({ ok: true, recorded: { reference_code: ticket.reference_code, verdict, alternatives } });
+  return json({
+    ok: true,
+    recorded: { reference_code: ticket.reference_code, verdict, alternatives, confirmed_time: reportedTime ? confirmedTime : null },
+  });
 });
 
 // Best-effort — never lets an enrichment-side failure fail the outcome report

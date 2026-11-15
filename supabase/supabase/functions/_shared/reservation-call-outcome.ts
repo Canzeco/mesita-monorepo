@@ -181,7 +181,7 @@ export const AWAITING: Record<Leg, { conv: string; field: string; state: string 
 };
 
 export const OUTCOME_TICKET_COLUMNS =
-  "id, consumer_id, reference_code, reserved_at, state, place_id, run_id, claimed_at, attempts, call_attempts, attempts_planned, attempts_state, last_conversation_id, callback_state, callback_conversation_id, callback_attempts, notice_kind, notice_state, notice_attempts, notice_conversation_id, reminder_state, reminder_conversation_id, outage_retries, modification_of, consumer_notify, reported_verdict, outcome_note";
+  "id, consumer_id, reference_code, reserved_at, state, place_id, run_id, claimed_at, attempts, call_attempts, attempts_planned, attempts_state, last_conversation_id, callback_state, callback_conversation_id, callback_attempts, notice_kind, notice_state, notice_attempts, notice_conversation_id, reminder_state, reminder_conversation_id, outage_retries, modification_of, consumer_notify, reported_verdict, outcome_note, reported_time";
 
 export type OutcomeTicket = {
   id: string;
@@ -211,6 +211,8 @@ export type OutcomeTicket = {
   consumer_notify: string | null;
   reported_verdict: string | null;
   outcome_note: string | null;
+  /** MESITA-3957: the time a1 took inside the guest's window, or null. */
+  reported_time?: string | null;
 };
 
 export type OutcomePlace = {
@@ -580,8 +582,11 @@ function decideBooking(
     // "recall the guest when some important prompt to reserve is critical,
     // else don't"). A confirmed table needs no answer: the app tells them.
     setResult("confirmed");
+    // MESITA-3957: a time a1 took inside the guest's window becomes the table.
+    const tableAt = t.reported_time ?? t.reserved_at;
     return {
       patch: {
+        ...(t.reported_time ? { reserved_at: t.reported_time, reported_time: null } : {}),
         attempts,
         attempts_state: "answered",
         next_attempt_at: null,
@@ -595,7 +600,7 @@ function decideBooking(
         outage_retries: 0,
         // A confirmed MODIFICATION moved the booking on this very call.
         modification_of: null,
-        ...reminderParkPatch(zone, t.reserved_at ? new Date(t.reserved_at) : null, appOnly ? "app" : "call", now),
+        ...reminderParkPatch(zone, tableAt ? new Date(tableAt) : null, appOnly ? "app" : "call", now),
         last_call_state: `intent ${n}: place confirmed — the app tells the guest; no call`,
       },
       notify: "confirmed",
