@@ -58,9 +58,8 @@
 //
 // LEVEL 1 (MESITA-2536): scrolled down when events arrive → an ink "↑ N
 // new" pill sticks to the top of the pane and takes you up; on touch, pull
-// the list down from the top to refresh; what is on screen is marked seen
-// (lib/social-seen.ts) so Home's Social tab can wear a dot for anything
-// newer.
+// the list down from the top to refresh. (The Social tab's "new" dot went
+// with MESITA-4044.)
 //
 // ONE WHITE BAND (Pato, MESITA-2540: "make a fucking normal box. maybe the
 // reload button somewhere else but centralized"): the pane is light grey and
@@ -123,7 +122,6 @@ import {
   type MemberHistoryItem,
 } from "@/lib/api/activity";
 import type { Place } from "@/lib/api/places";
-import { markSocialSeen } from "@/lib/social-seen";
 import { useActiveLocation } from "@/lib/active-location";
 import { useUserLocation } from "@/lib/use-user-location";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -1195,8 +1193,6 @@ function SocialFeedBody() {
           if (arrived.length > 0 && !atTopRef.current) {
             setPendingNew((n) => n + arrived.length);
           }
-          // What is on screen is seen; the tab's dot waits for anything newer.
-          markSocialSeen(items[0]?.at);
           if (arrived.length > 0) {
             setFresh(new Set(arrived));
             window.clearTimeout(freshTimer.current);

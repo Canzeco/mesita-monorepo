@@ -2,8 +2,7 @@
 
 import { NOTIFICATIONS_KEY } from "@/lib/api/reservations";
 import { fetchConsumerNotifications } from "@/lib/api/notifications";
-import { useNotificationsSeenAt } from "@/lib/notifications-seen";
-import { hasUnseen } from "@/lib/social-seen";
+import { hasUnseen, useNotificationsSeenAt } from "@/lib/notifications-seen";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useCachedQuery } from "@/lib/use-cached-query";
 import { NOTIFICATION_KINDS } from "./notification-row";

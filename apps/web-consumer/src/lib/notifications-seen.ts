@@ -4,12 +4,24 @@
 // Pato: "if there is an event not viewed yet, put red bubble"). Me ›
 // Notifications marks it when its rows are on screen; the bar's Me tab, Me's
 // Notifications tile and the chip wear a red dot while a newer one exists.
-// One ISO time in localStorage, read through useSyncExternalStore like
-// lib/social-seen.ts (the server snapshot is null: no hydration mismatch).
+// One ISO time in localStorage, read through useSyncExternalStore (the
+// server snapshot is null: no hydration mismatch).
 // `consumer_notifications` has no read column, so "seen" is per device.
 
 import { useSyncExternalStore } from "react";
-import { hasUnseen } from "./social-seen";
+
+/** Is `newestAt` later than what the guest has seen? Nothing seen yet and an
+ *  event exists: yes. No event: no. */
+export function hasUnseen(
+  newestAt: string | null,
+  seenAt: string | null,
+): boolean {
+  if (!newestAt) return false;
+  const n = Date.parse(newestAt);
+  if (!Number.isFinite(n)) return false;
+  const s = seenAt ? Date.parse(seenAt) : Number.NaN;
+  return !Number.isFinite(s) || n > s;
+}
 
 const KEY = "mesita:notifications-seen-at";
 const listeners = new Set<() => void>();
