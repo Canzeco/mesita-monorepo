@@ -33,7 +33,7 @@ import { payPlacePath } from "@/lib/consumer-route-contract";
 import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { CardBrandChip, cardFace } from "@/components/shared/card-brand-marks";
-import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
+import { AmountDisplay, AmountInline, AmountKeypad } from "./AmountKeypad";
 import { BAD, GOOD, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, RowsCard, StepBody, StepFooter } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
@@ -520,13 +520,17 @@ export function GuestPayScreen({
     return frame(
       <>
         {top(0, undefined, { onClick: toTip, disabled: billCents <= 0 })}
-        {/* The bill's panel (MESITA-4072), at the top (MESITA-4077): its
-            heading, the amount and the keypad, no caption. A short phone
-            shrinks the keys instead of scrolling. */}
+        {/* The bill's panel (MESITA-4072), at the top (MESITA-4077): one
+            row, "Bill" and the typed amount on its right (MESITA-4082, no
+            big display), then the keypad. A short phone shrinks the keys
+            instead of scrolling. */}
         <div className="flex min-h-0 flex-1 flex-col py-4">
-          <PaySection title="Bill" className="flex min-h-0 shrink flex-col">
+          <PaySection
+            title="Bill"
+            action={<AmountInline text={amount} currency={place.currency} label="Bill" />}
+            className="flex min-h-0 shrink flex-col"
+          >
             <div className="flex min-h-0 shrink flex-col px-4 pb-2">
-              <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mt-1 shrink-0" />
               <div className="mt-2 flex h-64 min-h-44 shrink flex-col">
                 <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
               </div>

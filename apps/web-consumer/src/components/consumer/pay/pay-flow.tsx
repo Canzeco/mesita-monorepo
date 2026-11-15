@@ -266,17 +266,20 @@ export function PayTop({
  *  the centred step body, full width. */
 export function PaySection({
   title,
+  action,
   className,
   children,
   ...data
 }: {
   title?: string;
+  /** On the heading's right (MESITA-4082: the Bill step's typed amount). */
+  action?: React.ReactNode;
   className?: string;
   children?: React.ReactNode;
   [key: `data-${string}`]: string | boolean | undefined;
 }) {
   return (
-    <Panel title={title} className={cn("w-full shrink-0 text-left", className)} {...data}>
+    <Panel title={title} action={action} className={cn("w-full shrink-0 text-left", className)} {...data}>
       {children}
     </Panel>
   );
