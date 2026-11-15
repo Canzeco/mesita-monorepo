@@ -613,12 +613,12 @@ describe("T6 — Activity's chips are Me's pages (MESITA-3855)", () => {
   });
 
   it("Tickets has four kinds: Visits · Vouchers · Gifts · Refunds (MESITA-3855)", () => {
-    // Gifts split into Gifts-In and Gifts-Out (MESITA-3941).
+    // Gifts split into Gifts-In and Gifts-Out (MESITA-3941), one list
+    // again (MESITA-4036).
     expect([...TICKET_KINDS]).toEqual([
       "visits",
       "vouchers",
-      "gifts-in",
-      "gifts-out",
+      "gifts",
       "refunds",
     ]);
   });

@@ -44,6 +44,10 @@
 //             sent_links (MESITA-3292): [{ gift_id, place_id, amount_cents,
 //               currency, created_at }]: credit links the guest sent that
 //               nobody took yet (already off their balance; take-back-able),
+//             gifts (MESITA-4036): every gift the guest sent or received,
+//               newest first, _shared/wallet-gifts.ts's GiftTicket + place:
+//               status open|claimed|taken_back, role, sender and recipient
+//               ({ name, photo, you }; recipient null until taken), entry,
 //             can_send (MESITA-3292): sending credit is open in this
 //               universe (always in test; live once money_config.sending_live),
 //             outcome?: "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none",
@@ -68,6 +72,7 @@ import {
   type SettleOutcome,
 } from "../_shared/wallet.ts";
 import { readSavedCards } from "../_shared/cards.ts";
+import { type GiftEntryRow, giftPeopleIds, type GiftRow, giftTickets, type PersonRow } from "../_shared/wallet-gifts.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 /** How long one read waits on Stripe for every open purchase together. */
@@ -185,25 +190,44 @@ serveJson("consumer-web-get-wallet", async (req) => {
     currency: string; paid_at: string | null; story_token: string;
   }>;
 
-  // OPEN CREDIT LINKS (MESITA-3292): sent, not yet taken. Their gift_out
-  // already took the credit off the balances above.
+  // EVERY GIFT SENT OR RECEIVED (MESITA-4036): Tickets' one Gifts list,
+  // sender on the left, receiver on the right. The open ones the guest sent
+  // are also the credit links (MESITA-3292), whose gift_out already took the
+  // credit off the balances above.
   const [{ data: giftRows, error: giftErr }, moneyConfig] = await Promise.all([
     admin
       .from("wallet_gifts")
-      .select("id, place_id, amount_cents, currency, created_at")
-      .eq("sender_id", userId)
+      .select("id, sender_id, recipient_id, place_id, amount_cents, currency, status, created_at, claimed_at, taken_back_at")
+      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
       .eq("livemode", livemode)
-      .eq("status", "open")
       .order("created_at", { ascending: false })
-      .limit(50),
+      .limit(100),
     readMoneyConfig(admin),
   ]);
   if (giftErr) return json({ ok: false, error: `gifts: ${giftErr.message}` }, 500);
-  const sentLinks = (giftRows ?? []) as Array<{
-    id: string; place_id: string; amount_cents: number; currency: string; created_at: string;
-  }>;
+  const gifts = (giftRows ?? []) as GiftRow[];
+  const sentLinks = gifts.filter((g) => g.sender_id === userId && g.status === "open").slice(0, 50);
+  // The people and the guest's own ledger lines behind them. A failed read
+  // only blanks names and entry links; the money is unaffected.
+  const giftIds = gifts.map((g) => g.id);
+  const [peopleRes, giftEntriesRes] = giftIds.length === 0
+    ? [{ data: [], error: null }, { data: [], error: null }]
+    : await Promise.all([
+      admin.from("consumers").select("id, first_name, avatar_url, appear_anonymous").in("id", giftPeopleIds(gifts)),
+      admin.from("wallet_entries").select("gift_id, kind, created_at").eq("consumer_id", userId).in("gift_id", giftIds),
+    ]);
+  if (peopleRes.error) console.error(`[consumer-web-get-wallet] gift people read: ${peopleRes.error.message}`);
+  if (giftEntriesRes.error) console.error(`[consumer-web-get-wallet] gift entries read: ${giftEntriesRes.error.message}`);
+  const giftList = giftTickets(
+    gifts,
+    ((peopleRes.error ? [] : peopleRes.data) ?? []) as PersonRow[],
+    ((giftEntriesRes.error ? [] : giftEntriesRes.data) ?? []) as GiftEntryRow[],
+    userId,
+  );
 
-  const ids = [...new Set([...balances.map((b) => b.place_id), ...stories.map((s) => s.place_id)])];
+  const ids = [
+    ...new Set([...balances.map((b) => b.place_id), ...stories.map((s) => s.place_id), ...gifts.map((g) => g.place_id)]),
+  ];
   // card_ok (MESITA-3305): the place's account can charge in this universe
   // and the owner's Cards switch is on, so the Pay tab may offer a card
   // part there. A failed read reads as no card; the server is the last word
@@ -263,6 +287,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
       currency: g.currency,
       created_at: g.created_at,
     })),
+    gifts: giftList.map((g) => ({ ...g, place: places.get(g.place_id) ?? null })),
     can_send: sendingOn(moneyConfig, livemode),
     ...(outcome === undefined ? {} : { outcome }),
     ...(settling.length > 0 ? { settling: true, pending_purchases: settling } : {}),

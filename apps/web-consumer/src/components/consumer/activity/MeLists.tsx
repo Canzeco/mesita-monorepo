@@ -24,8 +24,8 @@
 //               Visit's card (one meal, one ticket); any other payment is
 //               its own ticket
 //     Vouchers  credits bought, bonuses, Story vouchers waiting
-//     Gifts-In  credit received (MESITA-3941)
-//     Gifts-Out credit sent, taken back, links not taken (MESITA-3941)
+//     Gifts     every gift sent or received, sender → receiver
+//               (GiftTickets, MESITA-4036; Gifts-In and Gifts-Out before)
 //     Refunds   purchases refunded; its own tab again since MESITA-3949
 //
 // Every source loads on mount and fails on its own; a chip's count shows only
@@ -39,7 +39,6 @@ import {
   CalendarCheck,
   Gift,
   HandCoins,
-  Send,
   Ticket,
   UtensilsCrossed,
   type LucideIcon,
@@ -49,6 +48,7 @@ import { CalendarMarksRow } from "@/components/shared/calendar-marks";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { GiftTickets } from "./GiftTickets";
 import { cn } from "@/lib/utils";
 import {
   apiListReservations,
@@ -205,13 +205,10 @@ const EMPTY: Record<
     title: "No vouchers yet",
     action: { label: "Find a place", href: CONSUMER_ROUTES.search },
   },
-  // Gifts-In and Gifts-Out (MESITA-3941).
-  "gifts-in": {
-    title: "No gifts received",
-  },
-  "gifts-out": {
-    title: "No gifts sent",
-    action: { label: "Gift credit", href: CONSUMER_ROUTES.mePages.gift },
+  // One Gifts list (MESITA-4036); GiftTickets draws its own empty state.
+  gifts: {
+    title: "No gifts yet",
+    action: { label: "Send Credits", href: CONSUMER_ROUTES.mePages.gift },
   },
   // Refunds' words since MESITA-3771, kept (MESITA-3782).
   refunds: {
@@ -222,25 +219,23 @@ const EMPTY: Record<
 /** Tickets' tabs (MESITA-3893, Pato: "remove all. just Visits. Vouchers.
  *  Gifts"). REFUNDS IS ITS OWN TAB AGAIN (MESITA-3949, Pato: "add Refunds
  *  here ... Refunds is important in tickets"), last. */
-type TicketTab = "visits" | "vouchers" | "gifts-in" | "gifts-out" | "refunds";
+type TicketTab = "visits" | "vouchers" | "gifts" | "refunds";
 // AN ICON ON EACH (MESITA-3900, Pato: "add icons to the top menu here"):
 // the ones the page's empty states already wear. Gifts became Gifts-In and
-// Gifts-Out (MESITA-3941), hyphenated (MESITA-3949, Pato: "use \"-\"").
+// Gifts-Out (MESITA-3941), hyphenated (MESITA-3949, Pato: "use \"-\""), and
+// one Gifts again (MESITA-4036).
 const TICKET_TABS: ReadonlyArray<{ kind: TicketTab; label: string; icon: LucideIcon }> = [
   { kind: "visits", label: "Visits", icon: UtensilsCrossed },
   { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
-  { kind: "gifts-in", label: "Gifts-In", icon: Gift },
-  { kind: "gifts-out", label: "Gifts-Out", icon: Send },
+  { kind: "gifts", label: "Gifts", icon: Gift },
   { kind: "refunds", label: "Refunds", icon: HandCoins },
 ];
 
-/** The tab a /me/tickets address shows: bare is Visits; the old /gifts is
- *  Gifts-In. */
+/** The tab a /me/tickets address shows: bare is Visits. */
 function ticketTabOf(seg: string | undefined): TicketTab {
   if (seg === "vouchers") return "vouchers";
   if (seg === "refunds") return "refunds";
-  if (seg === "gifts-in" || seg === "gifts") return "gifts-in";
-  if (seg === "gifts-out") return "gifts-out";
+  if (seg === "gifts" || seg === "gifts-in" || seg === "gifts-out") return "gifts";
   return "visits";
 }
 
@@ -249,8 +244,7 @@ const ICON: Record<ListType | "all", LucideIcon> = {
   all: Ticket,
   visits: UtensilsCrossed,
   vouchers: BadgeDollarSign,
-  "gifts-in": Gift,
-  "gifts-out": Send,
+  gifts: Gift,
   refunds: HandCoins,
 };
 
@@ -433,10 +427,8 @@ export function TicketsPage() {
           ]
         : null,
       vouchers: of("vouchers"),
-      "gifts-in": of("gifts-in"),
-      "gifts-out": of("gifts-out"),
       refunds: of("refunds"),
-    } satisfies Record<TicketTab, Row[] | null>;
+    } satisfies Record<Exclude<TicketTab, "gifts">, Row[] | null>;
   }, [visits.data, wallet.data]);
 
   const walletReady = !wallet.loading;
@@ -477,15 +469,19 @@ export function TicketsPage() {
     <MeScreen title="Tickets">
       <div className="flex flex-col gap-4">
         <TicketPills on={kind} onPick={pick} />
-        <TicketList
-          type={kind}
-          rows={byKind[kind]}
-          ready={ready}
-          failed={failed}
-          retry={retry}
-          note={note}
-          foot={foot}
-        />
+        {kind === "gifts" && ready && !failed && wallet.data ? (
+          <GiftTickets gifts={wallet.data.gifts ?? []} />
+        ) : (
+          <TicketList
+            type={kind}
+            rows={kind === "gifts" ? null : byKind[kind]}
+            ready={ready}
+            failed={failed}
+            retry={retry}
+            note={note}
+            foot={foot}
+          />
+        )}
       </div>
     </MeScreen>
   );

@@ -145,9 +145,6 @@ describe("every other kind lands on its tab with its kind", () => {
   const cases: Array<[string, WalletEntry, Row["type"], string]> = [
     ["a purchase", e("prepay", 50000), "vouchers", "voucher"],
     ["a bonus alone", e("bonus", 5000), "vouchers", "bonus"],
-    ["a gift received", e("gift_in", 20000), "gifts-in", "gift_in"],
-    ["a gift sent", e("gift_out", -20000), "gifts-out", "gift_out"],
-    ["a gift taken back", e("gift_back", 20000), "gifts-out", "gift_back"],
     ["a purchase refund", e("reversal", -50000, { purchase_id: "u1" }), "refunds", "refund"],
   ];
   for (const [name, entry, tab, kind] of cases) {
@@ -172,31 +169,16 @@ describe("every other kind lands on its tab with its kind", () => {
     expect(rows[0]!.big).toBe(money(50000, "MXN"));
   });
 
-  it("a gift received reads +, From a friend; Pending in ink while it lands", () => {
-    const got = only(walletRows(wallet([e("gift_in", 20000)])));
-    expect([got.sign, got.line, got.status]).toEqual(["+", "From a friend", { label: "Received", tone: "green" }]);
-    const wait = only(walletRows(wallet([e("gift_in", 20000, { pending: true })])));
-    expect(wait.status).toEqual({ label: "Pending", tone: "ink" });
-  });
-
-  it("gifts out: Sent −, pending, taken back + green, a link nobody took", () => {
-    const sent = only(walletRows(wallet([e("gift_out", -20000)])));
-    expect([sent.sign, sent.status]).toEqual(["−", { label: "Sent", tone: "ink" }]);
-    const wait = only(walletRows(wallet([e("gift_out", -20000, { pending: true })])));
-    expect(wait.status).toEqual({ label: "Sent · pending", tone: "ink" });
-    const back = only(walletRows(wallet([e("gift_back", 20000)])));
-    expect([back.sign, back.status]).toEqual(["+", { label: "Back in your balance", tone: "green" }]);
-    const link = only(
-      walletRows(
-        wallet([], {
-          sent_links: [{ gift_id: "g1", place_id: "x", amount_cents: 1000, currency: "MXN", created_at: AT }],
-        } as unknown as Partial<Wallet>),
-      ),
+  it("a gift is never a ticket row: Tickets' Gifts list draws it (MESITA-4036)", () => {
+    const rows = walletRows(
+      wallet([e("gift_in", 20000), e("gift_out", -20000), e("gift_back", 20000)], {
+        sent_links: [{ gift_id: "g1", place_id: "x", amount_cents: 1000, currency: "MXN", created_at: AT }],
+      } as unknown as Partial<Wallet>),
     );
-    expect([link.sign, link.status.label, link.line]).toEqual(["−", "Not taken", "Link sent"]);
+    expect(rows.filter((r) => String(r.kind).startsWith("gift"))).toEqual([]);
   });
 
-  it("a Story voucher waiting and a link nobody took", () => {
+  it("a Story voucher waiting; a link nobody took is not a row", () => {
     const rows = walletRows(
       wallet([], {
         waiting_stories: [
@@ -205,9 +187,6 @@ describe("every other kind lands on its tab with its kind", () => {
         sent_links: [{ gift_id: "g1", place_id: "x", amount_cents: 1000, currency: "MXN", created_at: AT }],
       } as unknown as Partial<Wallet>),
     );
-    expect(rows.map((r) => [r.type, r.kind])).toEqual([
-      ["vouchers", "story"],
-      ["gifts-out", "gift_link"],
-    ]);
+    expect(rows.map((r) => [r.type, r.kind])).toEqual([["vouchers", "story"]]);
   });
 });
