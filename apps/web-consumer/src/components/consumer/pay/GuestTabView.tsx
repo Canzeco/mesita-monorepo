@@ -282,57 +282,59 @@ export function GuestTabView({
       {/* MESITA-4061: the same frame as every guest step. The bill is open,
           so neither arrow acts: going back is Cancel bill, the footer. */}
       <PayTop place={place} name={tab.place.name} step={{ at: 4 }} />
-      {/* Pato: "I don't want the [cash pill] at the top, but close to the
-          QR, also the timer": one group, centred both ways. */}
-      <StepBody>
-        {/* One panel (MESITA-4072): the heading inside, then the way, the QR,
-            the timer, centred. The QR's white square wears no border of its
-            own: never a box in a box. */}
-        <PaySection title="Show this QR to your waiter" className="flex flex-col">
-        <div className="flex flex-col items-center gap-4 p-4 pt-3 text-center">
-        <div className="flex flex-col items-center gap-2">
-          <span className="border-border flex items-center gap-2 rounded-full border px-3 py-1 text-base font-semibold tabular-nums [&>svg]:h-5 [&>svg]:w-5">
-            {wayIcon}
-            {wayWords}
-          </span>
+      {/* FITS THE SCREEN, NEVER SCROLLS (MESITA-4102, Pato: "optimize
+          vertical space ... i should not be scrolling here"). The body, the
+          panel and the QR's slot are one column that fills the height left;
+          the QR takes what remains (up to 280px) instead of guessing the
+          frame's height. The way sits on the heading's right, and the timer
+          and the "final" note share one line. */}
+      <StepBody className="min-h-0 flex-1">
+        {/* One panel (MESITA-4072): the heading inside, then the QR and the
+            timer, centred. The QR's white square wears no border of its own:
+            never a box in a box. */}
+        <PaySection
+          title="Show your waiter"
+          action={
+            <span className="border-border flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-sm font-semibold tabular-nums [&>svg]:h-4 [&>svg]:w-4">
+              {wayIcon}
+              {wayWords}
+            </span>
+          }
+          className="flex min-h-0 flex-1 flex-col"
+        >
+        <div className="flex min-h-0 flex-1 flex-col items-center gap-2 p-4 pt-3 text-center">
           {/* MESITA-3913: what the signature earns, Available at once. */}
           {(tab.cashback_on_sign_cents ?? 0) > 0 ? (
-            <p className={cn("flex items-center justify-center gap-1.5 text-sm font-semibold", GOOD)} data-guest-sign-cashback>
+            <p className={cn("flex shrink-0 items-center justify-center gap-1.5 text-sm font-semibold", GOOD)} data-guest-sign-cashback>
               <Coins className="h-4 w-4" aria-hidden />+{m(tab.cashback_on_sign_cents ?? 0)} back as credits once the waiter signs
             </p>
           ) : null}
-        </div>
-        {/* The white box: up to 280px, and on a short phone only what the
-            screen has left after the frame and the rest of the group (about
-            480px), so the timer stays in view next to it; never under 160px. */}
-        <div
-          className="flex aspect-square shrink-0 items-center justify-center rounded-2xl bg-white"
-          style={{ width: "max(160px, min(100%, 280px, calc(100dvh - 480px)))" }}
-        >
-          {qr ? (
-            <QRCodeSVG value={qr} size={280} marginSize={0} style={{ width: "100%", height: "100%" }} title="Your bill's QR for the waiter" />
-          ) : (
-            <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" aria-label="Loading the QR" />
-          )}
-        </div>
-        <div className="flex flex-col items-center gap-1">
-          <p className={cn("flex items-center justify-center gap-2 text-base font-semibold tabular-nums", WAIT)} role="timer" aria-live="off">
-            <Clock className="h-5 w-5" aria-hidden />
-            {countdown}
-            <span className="text-muted-foreground font-normal">to sign</span>
+          {/* The QR's slot takes the height left; the square is as tall as
+              the slot allows, never over 280px, never under 140px. */}
+          <div className="flex min-h-[140px] w-full flex-1 items-center justify-center">
+            <div className="flex aspect-square h-full max-h-[280px] max-w-full items-center justify-center rounded-2xl bg-white">
+              {qr ? (
+                <QRCodeSVG value={qr} size={280} marginSize={0} style={{ width: "100%", height: "100%" }} title="Your bill's QR for the waiter" />
+              ) : (
+                <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" aria-label="Loading the QR" />
+              )}
+            </div>
+          </div>
+          <p className="flex shrink-0 flex-wrap items-center justify-center gap-x-1.5 text-sm tabular-nums" role="timer" aria-live="off">
+            <Clock className={cn("h-4 w-4", WAIT)} aria-hidden />
+            <span className={cn("text-base font-semibold", WAIT)}>{countdown}</span>
+            <span className="text-muted-foreground">to sign · then it&apos;s final</span>
           </p>
-          <p className="text-muted-foreground text-sm">Once the waiter signs, this payment is final.</p>
           {error ? (
-            <p className="text-destructive text-sm" role="alert">
+            <p className="text-destructive shrink-0 text-sm" role="alert">
               {error}
             </p>
           ) : null}
-        </div>
-        {tab.test_mode && qr ? (
-          <a href={qr} target="_blank" rel="noopener noreferrer" className="text-muted-foreground flex h-9 items-center text-xs font-semibold underline" data-open-as-waiter>
-            Open as waiter (test)
-          </a>
-        ) : null}
+          {tab.test_mode && qr ? (
+            <a href={qr} target="_blank" rel="noopener noreferrer" className="text-muted-foreground flex h-6 shrink-0 items-center text-xs font-semibold underline" data-open-as-waiter>
+              Open as waiter (test)
+            </a>
+          ) : null}
         </div>
         </PaySection>
       </StepBody>
