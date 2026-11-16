@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, Coins, Lock, Plus, ReceiptText, Smartphone, XCircle } from "lucide-react";
+import { Banknote, Check, Coins, Lock, Plus, ReceiptText, XCircle } from "lucide-react";
+import { MesitaMark } from "@/components/brand/MesitaMark";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
@@ -35,7 +36,7 @@ import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { CardBrandChip, cardFace } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
-import { CASH_GREEN, CreditsCardChip, CreditsPill } from "@/components/consumer/wallet/WalletLists";
+import { CreditsCardChip, CreditsPill } from "@/components/consumer/wallet/WalletLists";
 import { BAD, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, StepBody, StepFooter } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
@@ -256,8 +257,10 @@ export function GuestPayScreen({
   const appOn = !appWhy;
   const cashOn = !cashWhy;
   // The way the bill goes: the guest's pick if it can, else the only one.
-  const way: PayWith | null =
-    method === "card" && appOn ? "card" : method === "cash" && cashOn ? "cash" : appOn && !cashOn ? "card" : cashOn && !appOn ? "cash" : null;
+  // Mesita App is preselected wherever the place takes cards and the guest
+  // has not picked cash (MESITA-4123); a way the place refuses falls to the
+  // other one.
+  const way: PayWith | null = method === "cash" && cashOn ? "cash" : appOn ? "card" : cashOn ? "cash" : null;
   const chosenCard = pickCard(cards, cardId, refusedCardId);
   const creditsOnly = dueCents === 0;
   // The step shown (MESITA-4117): a stored or live stage that stopped making
@@ -744,14 +747,17 @@ export function GuestPayScreen({
             ) : null}
             {creditsOnly ? null : (
               <div className="divide-border flex flex-col divide-y" role="radiogroup" aria-label="How you pay">
+                {/* MESITA APP (MESITA-4123, Pato: "keep the pay with app like
+                    really beautiful, Mesita App or whatever"): the Mesita mark
+                    on the brand pink, always; the choice is the ring. */}
                 <MethodTile
                   on={way === "card"}
                   off={appWhy}
-                  icon={<Smartphone />}
-                  tone="bg-pink-gradient text-white"
+                  icon={<MesitaMark className="!h-6 !w-6" />}
+                  tone="bg-pink-gradient text-white shadow-sm"
                   id="app"
-                  title="Pay in the app"
-                  line="With your card, here in Mesita"
+                  title="Mesita App"
+                  line="Pay in the app with your card"
                   back={backLine("card")}
                   onPick={() => setMethod("card")}
                 />
@@ -759,7 +765,8 @@ export function GuestPayScreen({
                   on={way === "cash"}
                   off={cashWhy}
                   icon={<Banknote />}
-                  tone={CASH_GREEN}
+                  // The quieter way: grey until picked, then ink.
+                  tone={way === "cash" ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}
                   id="cash"
                   title="Pay outside the app"
                   line="Cash or the place's card terminal"
