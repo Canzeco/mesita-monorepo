@@ -12,13 +12,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
 import { mesitaRowState } from "../../lib/mesita-row";
+import { reserveTimes } from "../../lib/reserve-times";
 import { OfferTrack, offersLabel, useOfferSlide, type OfferSlide } from "./offer-slides";
 import { OffTileSheet, type OffTile } from "./OffTileSheet";
 import { PLACE_PILL_CLASS } from "../../lib/ui";
@@ -28,7 +29,7 @@ import { buildDirectionsUrl } from "../../lib/maps-link";
 // TWO ROWS OF TILES (Pato's sketches, MESITA-3419 then MESITA-4151):
 //
 //   [ Save ] [ Maps ] [ Contact ] [ Share ] [ Upgrade ]   black, glyph over label (MESITA-3581)
-//   [   Reserve   ] [        Offers         ]           pinned, 2/5 · 3/5 (MESITA-4156)
+//   [     Reserve      ] [       Offers        ]          pinned, halves (MESITA-4159)
 //
 // ROW 2 IS TWO BUTTONS (Pato, MESITA-4151: "showing the wallet balance there
 // and the pay button is not really relevant ... pay is already in the bottom
@@ -70,13 +71,13 @@ export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
  *  glyph-over-label before that. */
 export const PROFILE_TILE_BOX_CLASS =
   "flex h-13 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
-/** Row 2, pinned: Reserve two fifths, Offers three (Pato, MESITA-4156:
- *  "reserve reserve offers offers offers"), on the five-tile grid above so
- *  the edges line up; halves in MESITA-4151, quarters from MESITA-3574. */
-export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-5 gap-2";
+/** Row 2, pinned: Reserve and Offers, a half each (Pato, MESITA-4159:
+ *  "reservations 2.5 and offers 2.5"); two fifths and three in MESITA-4156,
+ *  halves in MESITA-4151, quarters from MESITA-3574. */
+export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-2 gap-2";
 /** Reserve's and Offers' spans in that row. */
-export const PROFILE_RESERVE_SPAN_CLASS = "col-span-2";
-export const PROFILE_OFFERS_SPAN_CLASS = "col-span-3";
+export const PROFILE_RESERVE_SPAN_CLASS = "col-span-1";
+export const PROFILE_OFFERS_SPAN_CLASS = "col-span-1";
 
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
@@ -271,24 +272,23 @@ export function MesitaActions({
       {offOpen ? (
         <OffTileSheet tile={offOpen} line={offOpen === "offers" ? row.offers.note : undefined} onClose={() => setOffOpen(null)} />
       ) : null}
-      <button
-        type="button"
-        {...(row.reserve.works
-          ? onReserve
-            ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
-            : inertButtonProps(false)
-          : { onClick: () => setOffOpen("reserve"), "aria-haspopup": "dialog" as const })}
-        aria-label={row.reserve.works ? "Reserve a table" : "Reserve, off: this place doesn't offer reservations"}
-        className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_RESERVE_SPAN_CLASS, RESERVE_TONE, "flex-row gap-1.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]")}
-      >
-        <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
-        <span className="truncate">Reserve</span>
-        {row.reserve.works ? null : (
+      {row.reserve.works ? (
+        <ReserveTile place={place} onReserve={onReserve} />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOffOpen("reserve")}
+          aria-haspopup="dialog"
+          aria-label="Reserve, off: this place doesn't offer reservations"
+          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_RESERVE_SPAN_CLASS, RESERVE_TONE, "flex-row gap-1.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]")}
+        >
+          <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
+          <span className="truncate">Reserve</span>
           <span className={cn(PLACE_PILL_CLASS, "bg-paper text-foreground")} aria-hidden>
             Off
           </span>
-        )}
-      </button>
+        </button>
+      )}
       {row.offers.works ? (
         <OffersTile name={place.name} slides={row.offers.slides} open={openSlide} />
       ) : (
@@ -307,6 +307,68 @@ export function MesitaActions({
     </div>
     {actions?.reservation ? <ReservationButton r={actions.reservation} /> : null}
     </div>
+  );
+}
+
+/** The clock the Reserve box reads, in ten-minute steps: the server render
+ *  and the first client render read null (no times), so they match; the
+ *  times appear once the page runs, and move on as the hour passes. */
+const TEN_MIN = 600_000;
+function subscribeTenMin(listener: () => void) {
+  const id = setInterval(listener, TEN_MIN);
+  return () => clearInterval(id);
+}
+function useTenMinuteClock(): number | null {
+  return useSyncExternalStore(subscribeTenMin, () => Math.floor(Date.now() / TEN_MIN), () => null);
+}
+
+/** THE RESERVE BOX (Pato, 2026-11-16, MESITA-4159: "do the same with
+ *  reservations, show ... hours to reserve ... it must be open at that time
+ *  and ... a relevant time where people usually reserve"): OpenTable red,
+ *  the glyph over "Reserve" at the left, a black box at the right rotating
+ *  times worth asking for (lib/reserve-times.ts) on the Offers beat. They
+ *  are times to ask for, not free tables: the agent still phones the place. */
+function ReserveTile({ place, onReserve }: { place: PlaceDetail; onReserve?: () => void }) {
+  const clock = useTenMinuteClock();
+  const slides = useMemo<OfferSlide[]>(
+    () =>
+      clock === null
+        ? []
+        : reserveTimes(place, clock * TEN_MIN).map((t) => ({
+            key: `${t.day}-${t.time}`,
+            lead: "",
+            pill: "",
+            short: "",
+            spoken: `${t.day} ${t.time}`,
+            section: null,
+            tone: "",
+            lines: [t.day, t.time] as [string, string],
+          })),
+    [clock, place],
+  );
+  const live = useOfferSlide(slides);
+  return (
+    <button
+      type="button"
+      {...(onReserve ? { onClick: onReserve, "aria-haspopup": "dialog" as const } : inertButtonProps(false))}
+      aria-label={slides.length > 0 ? `Reserve a table: ask for ${slides.map((s) => s.spoken).join(", ")}` : "Reserve a table"}
+      className={cn(
+        PROFILE_MESITA_TILE_BOX_CLASS,
+        PROFILE_RESERVE_SPAN_CLASS,
+        RESERVE_TONE,
+        "flex-row gap-2 py-1 pr-1 pl-2.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]",
+      )}
+    >
+      <span className="flex shrink-0 flex-col items-center gap-1">
+        <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
+        <span>Reserve</span>
+      </span>
+      {slides.length > 0 ? (
+        <span className="bg-foreground text-paper block h-full min-w-0 flex-1 rounded-md font-bold">
+          <OfferTrack slides={slides} index={live.index} previous={live.previous} />
+        </span>
+      ) : null}
+    </button>
   );
 }
 
