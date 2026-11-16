@@ -90,8 +90,8 @@ describe("member preview edges", () => {
     // Directions routes to the place (lib/maps-link.ts).
     expect(html).toContain("google.com/maps/dir/?api=1&amp;destination=");
     // Row 2 is Reserve · Offers (MESITA-4151). With no money read (this
-    // preview) no offer is promised: Offers is Off, never a typed "+30%".
-    expect(html).toContain('aria-label="Offers, Off"');
+    // preview) no offer is promised: Offers is None, never a typed "+30%".
+    expect(html).toContain('aria-label="Offers, None"');
     expect(html).not.toContain("30% Bonus");
     // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
     expect(html).not.toContain("backdrop-blur");
