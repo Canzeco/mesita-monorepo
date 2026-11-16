@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Banknote, ChevronLeft, CreditCard, QrCode } from "lucide-react";
-import { CASH_GREEN } from "./WalletLists";
 import { PANEL_CLASS, PanelHeading } from "@/components/shared/Panel";
 import { QRCodeSVG } from "qrcode.react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -113,7 +112,8 @@ function StoryBody({ story }: { story: WaitingStory }) {
  *  a card ... just mention like pay with cash, or pay in their terminal ...
  *  redesign this page from scratch"). No card face: two panels and a line.
  *  How you pay: cash, or the place's terminal, both outside the app. Credits
- *  back: Mesita Pay 5% (Mesita's green) against cash 3% (cash's own green).
+ *  back: Mesita Pay 5% (the one green on the page) against cash 3%; every
+ *  icon disc is grey (MESITA-4129, Pato: "why all fucking green").
  *  The rates are the most a place gives; each place turns either on or off. */
 function CashBody() {
   return (
@@ -124,13 +124,13 @@ function CashBody() {
         </div>
         <CashbackLine
           icon={<Banknote className="h-5 w-5" />}
-          tone={CASH_GREEN}
+          tone="bg-muted text-foreground"
           title="Pay with cash"
           line="Hand it to the waiter"
         />
         <CashbackLine
           icon={<CreditCard className="h-5 w-5" />}
-          tone={CASH_GREEN}
+          tone="bg-muted text-foreground"
           title="Pay at their terminal"
           line="The place's card machine"
         />
@@ -148,7 +148,7 @@ function CashBody() {
         />
         <CashbackLine
           icon={<Banknote className="h-5 w-5" />}
-          tone={CASH_GREEN}
+          tone="bg-muted text-foreground"
           title="Cash or terminal"
           line="Outside the app"
           rate={{ text: "3% back", className: "bg-muted text-foreground" }}
