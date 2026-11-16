@@ -68,7 +68,6 @@ function day(iso: string): string {
   });
 }
 const when = (iso: string) => `${day(iso)} · ${clockTime(iso)}`;
-const pct = (bps: number) => `${(bps / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
 
 export function VisitSummary({ tabId }: { tabId: string }) {
   const getSupabase = useLazyBrowserSupabase();
@@ -255,12 +254,6 @@ function Statement({ tab }: { tab: GuestTab }) {
   }
 
   // ── Cashback: its own section only when earned or pending ──
-  const cardBps = cardPart?.cashback_bps ?? tab.rates.card_back_bps;
-  const cashBps = cashPart?.cashback_bps ?? tab.rates.cash_back_bps;
-  const cardBack = cardPart?.cashback_cents ?? 0;
-  const cashBack = cashPart?.cashback_cents ?? 0;
-  const onSign = tab.cashback_on_sign_cents ?? 0;
-  const showCashback = tab.cashback_cents > 0 || onSign > 0;
 
   // ── Timeline ──
   const events: Array<[string, string, string?]> = [];
@@ -328,28 +321,6 @@ function Statement({ tab }: { tab: GuestTab }) {
           {!unpaid ? (
             <TicketPanel title="Paid with">
               {methods.length > 0 ? methods : <TicketLine label="No payment method chosen yet" />}
-            </TicketPanel>
-          ) : null}
-          {!unpaid && showCashback ? (
-            <TicketPanel title="Cashback">
-              {cardBack > 0 ? (
-                <TicketLine
-                  label="On the card"
-                  sub={`${pct(cardBps)} of ${m(tab.card_bill_cents)} bill`}
-                  value={`+${m(cardBack)}`}
-                />
-              ) : null}
-              {cashBack > 0 ? (
-                <TicketLine
-                  label="On the cash"
-                  sub={`${pct(cashBps)} of ${m(tab.cash_bill_cents)} bill`}
-                  value={`+${m(cashBack)}`}
-                />
-              ) : null}
-              {onSign > 0 ? (
-                <TicketLine label="When the waiter signs" value={`+${m(onSign)}`} state="Pending" />
-              ) : null}
-              <TicketLine label="Total cashback" value={`+${m(tab.cashback_cents)}`} strong />
             </TicketPanel>
           ) : null}
         </>

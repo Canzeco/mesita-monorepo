@@ -185,11 +185,6 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
             {t.status.label}
           </span>
         ) : null}
-        {t.cashback ? (
-          <span className="text-xs font-medium text-green-700 tabular-nums">
-            {t.cashback}
-          </span>
-        ) : null}
       </span>
       {t.href ? (
         <ChevronRight
@@ -211,7 +206,6 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
             t.place,
             t.status.label,
             t.money ? amount : t.big,
-            t.cashback,
             t.line,
           ]
             .filter(Boolean)

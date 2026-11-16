@@ -212,7 +212,6 @@ export default function ChargePage({ params }: { params: Promise<{ place: string
       status = `Received · ${clockTime(screen.paidAt)}`;
       big = moneyLabel(collected, c.currency);
       // The guest's cashback at the place's own rate (MESITA-3589), when known.
-      if ((screen.cashbackCents ?? 0) > 0) lines.push({ text: `${moneyLabel(screen.cashbackCents ?? 0, c.currency)} back to the guest` });
     } else {
       const paid = r?.paid_cents ?? c.amount_cents;
       status = `Paid · ${clockTime(screen.paidAt)}`;

@@ -231,7 +231,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           />
           <TicketPanel title="Refund">
             <TicketLine label="Refunded amount" value={m(refunded)} />
-            {takenBack > 0 ? <TicketLine label="Cashback taken back" value={`−${m(takenBack)}`} /> : null}
+            {takenBack > 0 ? <TicketLine label="Credit taken back" value={`−${m(takenBack)}`} /> : null}
             <TicketLine label="Refunded on" value={entryDate(refund.at)} />
             {original ? (
               <TicketLine
@@ -310,7 +310,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           <TicketPanel title="Your credit">
             <TicketLine label="Bought" value={m(amount)} />
             {bonus ? <TicketLine label="Bonus" value={`+${m(bonus.amount_cents)}`} /> : null}
-            {cashback > 0 ? <TicketLine label="Cashback" value={`+${m(cashback)}`} /> : null}
+            {cashback > 0 ? <TicketLine label="Extra credit" value={`+${m(cashback)}`} /> : null}
             {bonus || cashback > 0 ? (
               <TicketLine label="Total credit" value={m(amount + (bonus?.amount_cents ?? 0) + cashback)} strong />
             ) : null}

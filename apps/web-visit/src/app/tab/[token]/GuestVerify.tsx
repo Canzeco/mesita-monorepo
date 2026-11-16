@@ -6,7 +6,7 @@ import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { listPayments, rejectTab, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
 import { signRequest } from "@/lib/sign-gate";
 import { CodeBoxes } from "./CodeBoxes";
-import { BanknoteIcon, CheckIcon, CoinsIcon, HandCoinsIcon, SmartphoneIcon, UserIcon, WalletIcon, XIcon } from "./icons";
+import { BanknoteIcon, CheckIcon, HandCoinsIcon, SmartphoneIcon, UserIcon, WalletIcon, XIcon } from "./icons";
 
 // THE WAITER'S SCREEN (MESITA-3857, Pato's "14. Payments Flow Guest-Lead"
 // §5): the waiter scans the guest's QR and checks the bill against the real
@@ -209,7 +209,6 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   if (cash > 0) lines.push({ key: "cash", icon: <BanknoteIcon className="pay-icon" />, label: "Cash received", value: money(tab.cash_bill_cents) });
   if (tip > 0) lines.push({ key: "tip", icon: <HandCoinsIcon className="pay-icon" />, label: "Tip", value: money(tip) });
   // MESITA-3910: what the guest gets back, as a detail (Pato: "maybe also mention the cashback").
-  if (tab.cashback_cents > 0) lines.push({ key: "cashback", icon: <CoinsIcon className="pay-icon" />, label: "Guest's cashback", value: `+${money(tab.cashback_cents)}`, good: true });
 
   return (
     <main className="proof verify" data-tab-state="verify">
@@ -271,7 +270,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
             {tab.credit_cents + card > 0 ? (
               <p className="pay-final-line">
                 The guest already paid {money(tab.credit_cents + card)} with Mesita. Rejecting returns it to them
-                {tab.cashback_cents > 0 ? `, and they lose their ${money(tab.cashback_cents)} cashback` : ""}.
+                .
               </p>
             ) : null}
             <div className="yes-no">

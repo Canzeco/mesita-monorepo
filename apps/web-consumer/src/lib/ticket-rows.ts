@@ -118,7 +118,7 @@ function visitFacts(
 function foldedNotes(f: PayFacts | null): Array<string | null> {
   if (!f) return [];
   return [
-    f.takenBack > 0 ? `Cashback taken back · −${money(f.takenBack, f.currency)}` : null,
+    f.takenBack > 0 ? `Credit taken back · −${money(f.takenBack, f.currency)}` : null,
     f.givenBack > 0 ? `Credit given back · +${money(f.givenBack, f.currency)}` : null,
   ];
 }
@@ -412,7 +412,7 @@ export function paymentRow(
     cashback:
       spent && facts.cashback > 0 ? `+${money(facts.cashback, cur)} cashback` : null,
     line: join(
-      cash ? "Cash" : spent ? "Credits" : backOnly ? "Cashback" : null,
+      cash ? "Cash" : spent ? "Credits" : backOnly ? "Credit" : null,
       ...foldedNotes(facts),
       g.some((e) => e.pending) && "pending",
     ),

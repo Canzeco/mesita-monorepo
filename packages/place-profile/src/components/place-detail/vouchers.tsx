@@ -369,9 +369,6 @@ function readyIn(key: MoneyVoucherKey): string {
 /** The lines every prepayment (i) ends with (MESITA-3498, Pato: "credits are
  *  transferable to friends too"; "you don't need to prepay all the bill").
  *  No cashback line since MESITA-4191 ("No cashbacks"). */
-function creditFacts(_creditPct: string | null): string[] {
-  return CREDIT_FACTS;
-}
 const CREDIT_FACTS = [
   // MESITA-3505, Pato: "you can fund your wallet with multiple vouchers and
   // then pay the bill with it ... everywhere, that is super important".
@@ -383,10 +380,9 @@ const CREDIT_FACTS = [
 /** What each offer's (i) says, one short paragraph per idea (MESITA-3492,
  *  split by MESITA-3497, rewritten clearer by MESITA-3498), with the row's
  *  own Pay and Get. */
-function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string, facts: string[], prepayPct: string | null): string[] {
-  // MESITA-3827: Mesita Prepayments Cashback on the price, on top of the bonus.
+function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string, facts: string[]): string[] {
   const deal = `Pay ${pay}, get ${get} in credits at this place. That's ${bonus} extra.`
-    + (prepayPct ? ` Plus ${prepayPct} of the price back as credits when your credits land.` : "");
+;
   switch (key) {
     case "voucher_200":
     case "voucher_1000":
@@ -585,22 +581,7 @@ export function VouchersPane({
   const { unavailable, dim, guestLock, buyable } = offerRules(money, actions?.guest);
   const catalog = money?.catalog ?? {};
   const currency = money?.currency ?? "mxn";
-  // MESITA-3827: Credits Payment Cashback and Mesita Prepayments Cashback; 0 when Off.
-  const creditPct = money?.credit_cashback_bps ? `${money.credit_cashback_bps / 100}%` : null;
-  const prepayPct = money?.prepay_cashback_bps ? `${money.prepay_cashback_bps / 100}%` : null;
-  const facts = creditFacts(creditPct);
-  // Credits Back's rates (MESITA-4173): App Pay is the place's card
-  // cashback, Cash Pay its cash bill cashback; a rate that is off hides its row.
-  const cashbackPct = money?.cashback && money.card_cashback_bps ? `${money.card_cashback_bps / 100}%` : null;
-  const cashPct = money?.cash_cashback_bps ? `${money.cash_cashback_bps / 100}%` : null;
-  const creditsBack = [
-    ...(cashbackPct
-      ? [{ key: "app", name: "App Pay", pct: cashbackPct, Mark: Smartphone, fact: `Pay your bill in Mesita · ${cashbackPct} back` }]
-      : []),
-    ...(cashPct
-      ? [{ key: "cash", name: "Cash Pay", pct: cashPct, Mark: Banknote, fact: `Pay the waiter in cash · ${cashPct} back` }]
-      : []),
-  ];
+  const facts = CREDIT_FACTS;
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;
   // THE CHECKOUT IS THE PAGE (MESITA-4065, Pato: "you simply select the item
@@ -740,7 +721,7 @@ export function VouchersPane({
                   </span>
                   <InfoButton
                     title={p.short}
-                    text={offerInfo(p.key, pay, get, p.bonus.replace(/ bonus$/, ""), facts, prepayPct)}
+                    text={offerInfo(p.key, pay, get, p.bonus.replace(/ bonus$/, ""), facts)}
                     status={loading ? undefined : offerStatus(p.key, can, lock, reason)}
                     action={
                       loading
@@ -759,7 +740,7 @@ export function VouchersPane({
                   <Fact
                     text={opening
                       ? "Opening…"
-                      : `Pay ${whole(pay)} · Get ${whole(get)} ${readyIn(p.key)}${prepayPct ? ` · +${prepayPct} back` : ""}`}
+                      : `Pay ${whole(pay)} · Get ${whole(get)} ${readyIn(p.key)}`}
                   />
                 </span>
               </span>
@@ -815,40 +796,6 @@ export function VouchersPane({
       </section>
         );
       })}
-      {/* CREDITS BACK (Pato, MESITA-4173: "Credits Back · App Pay · Cash
-          Pay"): the place's two bill cashbacks, each a row that opens Pay.
-          Not in the basket. One Cashback row (App Pay only) from MESITA-4154. */}
-      {creditsBack.length > 0 ? (
-        <section className="flex flex-col gap-2" aria-labelledby="rewards-credits-back" data-promos="credits-back">
-          <SectionTitle id="rewards-credits-back" title="Credits Back" />
-          <ul className="border-border divide-border divide-y rounded-2xl border">
-            {creditsBack.map((c) => (
-              <li key={c.key} data-credits-back={c.key}>
-                <button
-                  type="button"
-                  {...(actions?.onPay ? { onClick: actions.onPay } : { disabled: true })}
-                  aria-label={`${c.name}: ${c.pct} back in credits`}
-                  className={cn(ROW, "hover:bg-muted/50 first:rounded-t-2xl last:rounded-b-2xl")}
-                >
-                  {/* The mark where the tick box sits, the rate chip at the right
-                      like the vouchers' bonus (MESITA-4186). */}
-                  <span className="text-foreground flex h-6 w-6 shrink-0 items-center justify-center" aria-hidden>
-                    <c.Mark className="h-5 w-5" strokeWidth={2.25} />
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
-                    <span className={NAME}>{c.name}</span>
-                    <span className={LINE}>{c.fact.replace(/ · .*$/, "")}</span>
-                  </span>
-                  <span className={cn(CHIP, "bg-green-400 text-neutral-950")} aria-hidden>
-                    {c.pct}
-                  </span>
-                  <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
       {/* ONE PAY AT THE FOOT (MESITA-3487; MESITA-4065): the card it charges
           is named above it (MESITA-4150: the only place it is named), so nobody
           pays with a card they cannot see;

@@ -1005,9 +1005,6 @@ function SplitScreen({
                 <span>{m(split.total_cents)}</span>
               </div>
             </div>
-            {split.cashback_cents > 0 ? (
-              <p className="mt-2 shrink-0 truncate text-sm font-semibold text-green-700">You get {m(split.cashback_cents)} back as credit here</p>
-            ) : null}
             {card && usesCard ? (
               <p className="text-muted-foreground mt-1 shrink-0 truncate text-sm tabular-nums">
                 {m(split.card_due_cents)} on your {brandLabel(card.brand)} •••• {card.last4}
@@ -1198,9 +1195,6 @@ function PaidScreen({ tab, onDone }: { tab: GuestTab; onDone: () => void }) {
       ) : null}
       {how ? <p className="mt-0.5 text-sm text-white/80 tabular-nums">{how}</p> : null}
       <p className="mt-4 text-base font-semibold">{tab.place.name ?? "A Mesita place"}</p>
-      {tab.cashback_cents > 0 ? (
-        <p className="mt-1 text-base">You get {m(tab.cashback_cents)} back as credit here</p>
-      ) : null}
       {tab.ticket ? <p className="mt-1 text-sm text-white/80">Ticket {tab.ticket}</p> : null}
       <LiveClock />
       <button

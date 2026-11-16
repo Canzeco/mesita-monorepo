@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Banknote, CircleCheck, Clock, Coins, Gift, HandCoins, Loader2, PenLine, Smartphone, Wallet, XCircle } from "lucide-react";
+import { Banknote, CircleCheck, Clock, Gift, HandCoins, Loader2, PenLine, Smartphone, Wallet, XCircle } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { useWakeLock } from "@/lib/use-wake-lock";
 import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
-import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PaySection, PayTop, StepBody, StepFooter, WAIT } from "./pay-flow";
+import { BAD, GOOD, MoneyRow, NOT_PAID_REASON, PaySection, PayTop, StepBody, StepFooter, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
 import { STEP, skippedFromParts, startAgainStage } from "@/lib/guest-pay-stages";
 
@@ -215,13 +215,6 @@ export function GuestTabView({
               label="Signed by staff"
               value={<CircleCheck className={cn("h-5 w-5", GOOD)} aria-label="Signed" />}
             />
-            {back > 0 ? (
-              <div className={cn("flex min-h-11 items-center gap-3 px-4 py-3 font-semibold", GOOD, GOOD_TINT)} data-guest-cashback>
-                <Coins className="h-5 w-5 shrink-0" aria-hidden />
-                {/* Available at once (MESITA-3909). */}
-                <span className="flex-1">+{m(back)} back as credits here</span>
-              </div>
-            ) : null}
           </PaySection>
         </StepBody>
         {/* The footer, always in reach: with cashback, Send a gift beside
@@ -407,12 +400,6 @@ export function GuestTabView({
                   {m(w.cents)} {w.part}
                 </span>
               ))}
-            </p>
-          ) : null}
-          {/* MESITA-3913: what the signature earns, Available at once. */}
-          {(tab.cashback_on_sign_cents ?? 0) > 0 ? (
-            <p className={cn("flex shrink-0 items-center justify-center gap-1.5 text-sm font-semibold", GOOD)} data-guest-sign-cashback>
-              <Coins className="h-4 w-4 shrink-0" aria-hidden />+{m(tab.cashback_on_sign_cents ?? 0)} back as credits once signed
             </p>
           ) : null}
           {/* The last line, honest about the end (MESITA-4130, Pato: "not

@@ -562,7 +562,8 @@ export const ENTRY_LABEL: Record<string, string> = {
   prepay: "Prepaid",
   voucher: "Voucher",
   bonus: "Bonus",
-  cashback: "Cashback",
+  // Credit from the retired cashback (MESITA-4191): said plainly.
+  cashback: "Credit",
   spend: "Paid",
   reversal: "Refund",
   // Credit given back on a payment (MESITA-3750: it showed the raw word).
@@ -580,7 +581,7 @@ export const ENTRY_LABEL: Record<string, string> = {
 export function entryLabel(e: Pick<WalletEntry, "kind" | "purchase_id" | "payment_id">): string {
   if (e.kind === "reversal") {
     if (e.purchase_id) return "Purchase refunded";
-    if (e.payment_id) return "Cashback taken back";
+    if (e.payment_id) return "Credit taken back";
     return "Refund";
   }
   return ENTRY_LABEL[e.kind] ?? e.kind;
