@@ -1,16 +1,13 @@
 import { useState } from "react";
 import {
   CalendarDays,
-  CalendarX2,
   Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   CircleCheck,
-  Clock,
   Minus,
   Plus,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -116,7 +113,7 @@ export function ReservationSection({
   className?: string;
 }) {
   return (
-    <section className={cn("mt-7", className)}>
+    <section className={cn("mt-5", className)}>
       <div className="flex min-h-11 items-center justify-between gap-3">
         <h2 className="font-sans text-base font-semibold tracking-normal">{title}</h2>
         {aside}
@@ -175,7 +172,7 @@ export function ReservationDatePicker({
               disabled={d.disabled}
               className={cn(
                 CHOICE,
-                "flex h-16 min-w-0 flex-col items-center justify-center gap-0.5",
+                "flex h-14 min-w-0 flex-col items-center justify-center gap-0.5",
                 d.disabled ? CHOICE_DEAD : active ? CHOICE_ON : CHOICE_OFF,
               )}
             >
@@ -239,11 +236,11 @@ export function ReservationTimePicker({
       {groups.length === 0 ? (
         <p className="text-muted-foreground type-body">No times left on this day. Pick another date.</p>
       ) : (
-        <div role="radiogroup" aria-label="Time" className="flex flex-col gap-3">
+        <div role="radiogroup" aria-label="Time" className="flex flex-col gap-2">
           {groups.map((g) => (
             <div key={g.label}>
-              <p className="text-muted-foreground type-body mb-1.5 font-medium">{g.label}</p>
-              <div className="grid grid-cols-4 gap-2">
+              <p className="text-muted-foreground type-body mb-1 font-medium">{g.label}</p>
+              <div className="grid grid-cols-4 gap-1.5">
                 {g.slots.map((slot) => {
                   const active = slot.time === value;
                   return (
@@ -253,7 +250,7 @@ export function ReservationTimePicker({
                       role="radio"
                       aria-checked={active}
                       onClick={() => onChange(slot.time)}
-                      className={cn(CHOICE, "h-11 text-base", active ? CHOICE_ON : CHOICE_OFF)}
+                      className={cn(CHOICE, "h-10 text-base", active ? CHOICE_ON : CHOICE_OFF)}
                     >
                       {slot.time}
                     </button>
@@ -325,7 +322,7 @@ export function ReservationField({
       <span className="text-muted-foreground type-body mb-1.5 block font-medium">{label}</span>
       <input
         {...input}
-        className="border-foreground/20 bg-card focus:border-foreground h-12 w-full rounded-xl border px-3.5 text-base outline-none"
+        className="border-foreground/20 bg-card focus:border-foreground h-11 w-full rounded-xl border px-3.5 text-base outline-none"
       />
     </label>
   );
@@ -422,11 +419,11 @@ export type ReservationFallback = "offer" | "offer_call" | "cancel";
 export const FALLBACK_CANCEL_LIVE = false;
 
 const FALLBACK_OPTIONS: Array<{ value: ReservationFallback; label: string; hint: string }> = [
-  { value: "offer", label: "Show me other times", hint: "Their times arrive in the app. You pick one." },
+  { value: "offer", label: "Show me other times", hint: "They arrive in the app; you pick one." },
   {
     value: "offer_call",
     label: "Show me other times and call me",
-    hint: "If you haven't picked in 15 minutes, Mesita calls you.",
+    hint: "No pick in 15 minutes? Mesita calls you.",
   },
   { value: "cancel", label: "Don't book anything", hint: "We tell you in the app. Nothing is booked." },
 ];
@@ -458,7 +455,7 @@ export function ReservationFallbackPicker({
               role="radio"
               aria-checked={active}
               onClick={() => onChange(o.value)}
-              className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left"
+              className="flex min-h-12 w-full items-center gap-3 px-4 py-2.5 text-left"
             >
               <span
                 aria-hidden
@@ -512,7 +509,7 @@ export function ReservationSeatingPicker({
               role="radio"
               aria-checked={active}
               onClick={() => onChange(o.value)}
-              className={cn(CHOICE, "h-11 text-sm", active ? CHOICE_ON : CHOICE_OFF)}
+              className={cn(CHOICE, "h-10 text-sm", active ? CHOICE_ON : CHOICE_OFF)}
             >
               {o.label}
             </button>
@@ -523,20 +520,18 @@ export function ReservationSeatingPicker({
   );
 }
 
-// ── The steps (MESITA-4172) ────────────────────────────────────────────────
+// ── The steps (MESITA-4172, two since MESITA-4174) ─────────────────────────
 // Pato: "write at the top the steps of the reservation in a progress bar,
-// kinda like the Pay view … make it not scrollable but in steps". The bar is
-// Pay's StepNav (pay-flow.tsx) in look: ‹ "Time · 2 of 5" › with the step's
-// icon, thin segments under it, done and current ink.
+// kinda like the Pay view … make it not scrollable but in steps", then over
+// five: "less fucking steps". Two: When, then Details. The bar is Pay's
+// StepNav (pay-flow.tsx) in look: ‹ "When · 1 of 2" › with the step's icon,
+// thin segments under it, done and current ink.
 
-export type ReserveStep = "date" | "time" | "people" | "backup" | "review";
+export type ReserveStep = "when" | "details";
 
 const STEP_META: Record<ReserveStep, { name: string; icon: LucideIcon }> = {
-  date: { name: "Date", icon: CalendarDays },
-  time: { name: "Time", icon: Clock },
-  people: { name: "People", icon: Users },
-  backup: { name: "Backup", icon: CalendarX2 },
-  review: { name: "Review", icon: CircleCheck },
+  when: { name: "When", icon: CalendarDays },
+  details: { name: "Details", icon: CircleCheck },
 };
 
 export function ReserveStepNav({
@@ -598,25 +593,3 @@ export function ReserveStepNav({
     </div>
   );
 }
-
-/** One row of the Review card: what was chosen, tap to change it. */
-export function ReviewRow({ label, value, onEdit }: { label: string; value: string; onEdit?: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onEdit}
-      disabled={!onEdit}
-      className="flex min-h-12 w-full items-center gap-3 px-4 py-2.5 text-left"
-    >
-      <span className="text-muted-foreground type-body w-20 shrink-0 font-medium">{label}</span>
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{value}</span>
-      {onEdit && <span className="text-muted-foreground type-body shrink-0 underline underline-offset-2">Change</span>}
-    </button>
-  );
-}
-
-export const FALLBACK_LABEL: Record<ReservationFallback, string> = {
-  offer: "Show me other times",
-  offer_call: "Other times and call me",
-  cancel: "Don't book anything",
-};

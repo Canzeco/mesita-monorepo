@@ -18,8 +18,6 @@ import {
   type ReservationTimeWindow,
   ReservationTimePicker,
   ReserveStepNav,
-  ReviewRow,
-  FALLBACK_LABEL,
   windowRange,
   type ReserveStep,
 } from "@/components/consumer/reservation-pickers";
@@ -332,32 +330,25 @@ export function ReservationForm({
     );
   }
 
-  // THE STEPS (MESITA-4172). A reschedule moves a table already booked
-  // under a name with its backup chosen, so it skips Backup.
-  const steps: ReserveStep[] = rescheduling
-    ? ["date", "time", "people", "review"]
-    : ["date", "time", "people", "backup", "review"];
+  // THE STEPS (MESITA-4174, Pato: "less fucking steps"): When, then
+  // Details. Each fits a phone screen; the Reserve button says the summary.
+  const steps: ReserveStep[] = ["when", "details"];
   const at = Math.min(stepAt, steps.length - 1);
   const step = steps[at];
   const last = at === steps.length - 1;
-  const goTo = (s: ReserveStep) => setStepAt(Math.max(0, steps.indexOf(s)));
-  // Next waits for what the step needs: the duplicate answered, a time.
-  const nextBlocked =
-    (step === "date" && (checking || awaitingChoice)) || (step === "time" && !time);
+  // Next waits for the duplicate answered and a time.
+  const nextBlocked = checking || awaitingChoice || !time;
   const next = () => {
     if (!nextBlocked && !last) setStepAt(at + 1);
   };
-  const nextLabel =
-    step === "date" && checking
-      ? "Checking your reservations…"
-      : step === "date" && awaitingChoice
-        ? "Choose an option above"
-        : step === "time" && !time
-          ? "No times left"
-          : "Next";
+  const nextLabel = checking
+    ? "Checking your reservations…"
+    : awaitingChoice
+      ? "Choose an option above"
+      : !time
+        ? "No times left"
+        : `Next · ${whenLabel}`;
   const range = windowRange(time, timeWindow);
-  const flexLabel =
-    timeWindow === 0 ? "exact" : timeWindow === 30 ? "± 30 min" : "± 1 hour";
 
   return (
     <div className="-mx-5 flex min-h-0 flex-1 flex-col">
@@ -370,8 +361,8 @@ export function ReservationForm({
 
       {/* One step a screen, nothing to scroll on a phone; the body scrolls
           only if a very short screen cannot hold it. */}
-      <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-4 [&>section:first-child]:mt-0 [&>*:first-child>section:first-child]:mt-0">
-        {step === "date" && (
+      <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-4 [&>section:first-child]:mt-0">
+        {step === "when" && (
           <>
             {intro}
             {existing && (
@@ -385,38 +376,19 @@ export function ReservationForm({
               />
             )}
             <ReservationDatePicker options={dateOptions} value={date} onChange={setDateChoice} />
+            <ReservationTimePicker value={time} onChange={setTimeChoice} date={date} hours={hours} tz={tz} />
+            <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
           </>
         )}
 
-        {step === "time" && (
-          <ReservationTimePicker value={time} onChange={setTimeChoice} date={date} hours={hours} tz={tz}>
-            {!rescheduling && time && (
+        {step === "details" && (
+          <div className="flex flex-col gap-4 [&>section]:mt-0 [&>div:first-child]:mt-0">
+            {!rescheduling && (
               <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
             )}
-          </ReservationTimePicker>
-        )}
-
-        {step === "people" && <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />}
-
-        {step === "backup" && (
-          <ReservationFallbackPicker value={fallback} onChange={setFallback} range={range} />
-        )}
-
-        {step === "review" && (
-          <div className="flex flex-col gap-5">
-            <div className="border-foreground/20 divide-foreground/10 divide-y rounded-xl border">
-              <ReviewRow label="Date" value={dayLabel || "—"} onEdit={() => goTo("date")} />
-              <ReviewRow
-                label="Time"
-                value={time ? (rescheduling ? time : `${time} · ${flexLabel}`) : "—"}
-                onEdit={() => goTo("time")}
-              />
-              <ReviewRow label="People" value={`${party} ${guestNoun(party)}`} onEdit={() => goTo("people")} />
-              {!rescheduling && (
-                <ReviewRow label="Backup" value={FALLBACK_LABEL[fallback]} onEdit={() => goTo("backup")} />
-              )}
-            </div>
-
+            {!rescheduling && (
+              <ReservationFallbackPicker value={fallback} onChange={setFallback} range={range} />
+            )}
             {!rescheduling && (
               <div className="grid grid-cols-2 gap-2">
                 <ReservationField
@@ -437,9 +409,7 @@ export function ReservationForm({
                 />
               </div>
             )}
-
             {!rescheduling && <ReservationSeatingPicker value={seating} onChange={setSeating} />}
-
             <ReservationField
               label="Notes (optional)"
               value={notes}
