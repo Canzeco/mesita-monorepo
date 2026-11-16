@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect } from "react";
 import { SizedImg } from "@mesita/place-profile";
-import { ChevronLeft, ChevronRight, CreditCard, HandCoins, Lock, MapPin, PenLine, ReceiptText, Store, Wallet, X, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, HandCoins, Lock, MapPin, PenLine, ReceiptText, Wallet, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { PayPlace } from "@/lib/api/wallet";
 import { Button } from "@/components/ui/button";
@@ -170,14 +170,27 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
  *  Pay when credits cover everything (lib/guest-pay-stages.ts). */
 export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Method", "Card", "Pay", "Sign"] as const;
 
-/** Each step's icon beside its name in the step nav (MESITA-4125, Pato:
- *  "use icons in the current steps for more clarity"). */
-const PAY_STEP_ICONS: Record<(typeof PAY_FLOW_STEPS)[number], LucideIcon> = {
-  Pick: Store,
+/** WHAT THE BAR SHOWS: FIVE (MESITA-4129, Pato: "don't mention all steps
+ *  to make it look shorter ... better five steps: (Pick hidden) Bill, Tip,
+ *  Method, Pay (Card hidden), Sign"). The seven steps stay the flow; Pick
+ *  reads Bill and Card reads Pay. */
+const SHOWN_STEPS = ["Bill", "Tip", "Method", "Pay", "Sign"] as const;
+const SHOWN_AT: Record<(typeof PAY_FLOW_STEPS)[number], number> = {
+  Pick: 0,
+  Bill: 0,
+  Tip: 1,
+  Method: 2,
+  Card: 3,
+  Pay: 3,
+  Sign: 4,
+};
+
+/** Each shown step's icon beside its name (MESITA-4125, Pato: "use icons in
+ *  the current steps for more clarity"). */
+const SHOWN_ICONS: Record<(typeof SHOWN_STEPS)[number], LucideIcon> = {
   Bill: ReceiptText,
   Tip: HandCoins,
   Method: Wallet,
-  Card: CreditCard,
   Pay: Lock,
   Sign: PenLine,
 };
@@ -215,8 +228,9 @@ export function StepNav({
    *  name the step they really reach (MESITA-4117). */
   skipped?: readonly number[];
 }) {
-  const name = PAY_FLOW_STEPS[at];
-  const StepIcon = PAY_STEP_ICONS[name];
+  const shownAt = SHOWN_AT[PAY_FLOW_STEPS[at]];
+  const name = SHOWN_STEPS[shownAt];
+  const StepIcon = SHOWN_ICONS[name];
   // The neighbours an arrow really reaches, past skipped steps.
   let prev = at - 1;
   while (prev > 0 && skipped.includes(prev)) prev -= 1;
@@ -244,7 +258,7 @@ export function StepNav({
         <p className="flex min-w-0 flex-1 items-center justify-center gap-1.5 truncate text-base">
           <StepIcon className="h-5 w-5 shrink-0" aria-hidden />
           <span className="font-semibold">{name}</span>
-          <span className="text-muted-foreground">{` · ${at + 1} of ${PAY_FLOW_STEPS.length}`}</span>
+          <span className="text-muted-foreground">{` · ${shownAt + 1} of ${SHOWN_STEPS.length}`}</span>
         </p>
         <button
           type="button"
@@ -258,17 +272,13 @@ export function StepNav({
           <ChevronRight className="h-6 w-6" aria-hidden />
         </button>
       </div>
-      {/* Segments only, one text line above (MESITA-4117): done and current
-          ink, not yet grey, skipped a dashed hairline on nothing. */}
-      <ol className="mt-1 grid grid-cols-7 gap-1.5" aria-label={`Step ${at + 1} of ${PAY_FLOW_STEPS.length}: ${name}`}>
-        {PAY_FLOW_STEPS.map((step, i) => (
+      {/* Five segments (MESITA-4129): done and current ink, not yet grey. */}
+      <ol className="mt-1 grid grid-cols-5 gap-1.5" aria-label={`Step ${shownAt + 1} of ${SHOWN_STEPS.length}: ${name}`}>
+        {SHOWN_STEPS.map((step, i) => (
           <li
             key={step}
-            aria-current={i === at ? "step" : undefined}
-            className={cn(
-              "h-1 rounded-full",
-              skipped.includes(i) && i !== at ? "border-border border border-dashed bg-transparent" : i <= at ? "bg-foreground" : "bg-border",
-            )}
+            aria-current={i === shownAt ? "step" : undefined}
+            className={cn("h-1 rounded-full", i <= shownAt ? "bg-foreground" : "bg-border")}
           />
         ))}
       </ol>
