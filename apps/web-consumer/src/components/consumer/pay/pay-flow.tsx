@@ -344,6 +344,25 @@ export function StepFooter({
   onCancel: () => void;
   cancelDisabled: boolean;
 }) {
+  // NO PRIMARY, SMALL CANCEL (MESITA-4126, Pato: "make the red button
+  // smaller ... that looks like close the bill, not like cancel it"): while
+  // the guest waits for the waiter (Sign) Cancel bill is a small centred
+  // outlined red button, never the full-width red bar.
+  if (!primary) {
+    return (
+      <div className="border-border -mx-4 mt-3 flex shrink-0 justify-center border-t px-4 pt-3">
+        <button
+          type="button"
+          className="border-destructive/40 text-destructive hover:bg-destructive/5 h-11 rounded-xl border bg-card px-5 text-sm font-semibold transition disabled:opacity-50"
+          disabled={cancelDisabled}
+          onClick={onCancel}
+          data-guest-cancel-bill
+        >
+          Cancel bill
+        </button>
+      </div>
+    );
+  }
   return (
     <div className={cn("border-border -mx-4 mt-3 grid shrink-0 gap-3 border-t px-4 pt-3", primary && "grid-cols-[1fr_3fr]")}>
       <Button
