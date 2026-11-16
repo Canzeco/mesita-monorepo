@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Banknote, ChevronLeft, Coins, QrCode } from "lucide-react";
+import { Banknote, ChevronLeft, CreditCard, QrCode } from "lucide-react";
+import { CASH_GREEN } from "./WalletLists";
 import { PANEL_CLASS, PanelHeading } from "@/components/shared/Panel";
 import { QRCodeSVG } from "qrcode.react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -108,34 +109,53 @@ function StoryBody({ story }: { story: WaitingStory }) {
   );
 }
 
-/** Cash (MESITA-4116, Pato: "explain that you pay with cash or terminal ...
- *  outside of the Mesita app ... it generally gives less credits back than
- *  if you pay with Mesita App ... mesita pay is 5% and outside (cash) is
- *  3%"). Nothing to remove: Cash is always there. The rates are the most a
- *  place gives; each place turns either one on or off. */
+/** Cash (MESITA-4116; redesigned MESITA-4125, Pato: "don't make cash look as
+ *  a card ... just mention like pay with cash, or pay in their terminal ...
+ *  redesign this page from scratch"). No card face: two panels and a line.
+ *  How you pay: cash, or the place's terminal, both outside the app. Credits
+ *  back: Mesita Pay 5% (Mesita's green) against cash 3% (cash's own green).
+ *  The rates are the most a place gives; each place turns either on or off. */
 function CashBody() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex aspect-[1.586/1] w-full flex-col justify-between rounded-2xl bg-green-400 p-5 text-neutral-950">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-950 text-2xl font-bold text-green-400" aria-hidden>
-          $
-        </span>
-        <p className="text-xl font-semibold">Cash</p>
-      </div>
-      <p className="text-base leading-relaxed">
-        Pay at the place with cash or its card terminal, outside the Mesita app.
-      </p>
+      <section className={cn(PANEL_CLASS, "divide-border flex flex-col divide-y")} aria-label="How you pay">
+        <div className="px-4 pt-4 pb-3">
+          <PanelHeading>How you pay</PanelHeading>
+        </div>
+        <CashbackLine
+          icon={<Banknote className="h-5 w-5" />}
+          tone={CASH_GREEN}
+          title="Pay with cash"
+          line="Hand it to the waiter"
+        />
+        <CashbackLine
+          icon={<CreditCard className="h-5 w-5" />}
+          tone={CASH_GREEN}
+          title="Pay at their terminal"
+          line="The place's card machine"
+        />
+      </section>
       <section className={cn(PANEL_CLASS, "divide-border flex flex-col divide-y")} aria-label="Credits back">
-        <div className="flex items-center gap-2 px-4 pt-4 pb-3">
-          <Coins className="h-5 w-5" aria-hidden />
+        <div className="px-4 pt-4 pb-3">
           <PanelHeading>Credits back</PanelHeading>
         </div>
-        <CashbackLine icon={<QrCode className="h-5 w-5" />} title="Mesita Pay" line="Pay in the app" rate="5%" best />
-        <CashbackLine icon={<Banknote className="h-5 w-5" />} title="Cash or terminal" line="Pay outside the app" rate="3%" />
+        <CashbackLine
+          icon={<QrCode className="h-5 w-5" />}
+          tone="bg-foreground text-white"
+          title="Mesita Pay"
+          line="In the app"
+          rate={{ text: "5% back", className: "bg-green-400 text-neutral-950" }}
+        />
+        <CashbackLine
+          icon={<Banknote className="h-5 w-5" />}
+          tone={CASH_GREEN}
+          title="Cash or terminal"
+          line="Outside the app"
+          rate={{ text: "3% back", className: "bg-muted text-foreground" }}
+        />
       </section>
-      <p className="text-muted-foreground text-sm leading-relaxed">
-        Paying in the app gives you more back. Each place sets its own: Mesita Pay 5% or off, cash 3% or off. Its
-        page shows what it gives.
+      <p className="text-muted-foreground px-1 text-sm leading-relaxed">
+        Each place sets its own: Mesita Pay 5% or off, cash 3% or off.
       </p>
     </div>
   );
@@ -143,34 +163,31 @@ function CashBody() {
 
 function CashbackLine({
   icon,
+  tone,
   title,
   line,
   rate,
-  best = false,
 }: {
   icon: React.ReactNode;
+  tone: string;
   title: string;
   line: string;
-  rate: string;
-  best?: boolean;
+  rate?: { text: string; className: string };
 }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3">
-      <span className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden>
+      <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full", tone)} aria-hidden>
         {icon}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-base font-semibold">{title}</span>
         <span className="text-muted-foreground block text-sm">{line}</span>
       </span>
-      <span
-        className={cn(
-          "shrink-0 rounded-full px-3 py-1 text-base font-bold tabular-nums",
-          best ? "bg-green-400 text-neutral-950" : "bg-muted text-foreground",
-        )}
-      >
-        {rate} back
-      </span>
+      {rate ? (
+        <span className={cn("shrink-0 rounded-full px-3 py-1 text-base font-bold tabular-nums", rate.className)}>
+          {rate.text}
+        </span>
+      ) : null}
     </div>
   );
 }
