@@ -14,7 +14,7 @@ export default async function CreditsLimitPage() {
   return (
     <ConfigPageLayout
       title="Credits Limit"
-      description="The most credit a place may owe its guests at once. A voucher buy that would pass it is refused; cashback still lands."
+      description="The most credit a place may owe its guests at once. A voucher buy that would pass it is refused."
     >
       {res.ok ? (
         <CreditsLimitPanel testMode={res.test_mode} defaults={res.defaults} places={res.places} />

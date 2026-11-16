@@ -43,7 +43,7 @@ export const PLACE_SOLUTIONS: Solution[] = [
   },
   {
     name: "Payments",
-    body: "House Credits, Cash Payments, App Payments, their Cashback-as-Credits, App Prepayments and the Stripe Account, and which of them are on at your place.",
+    body: "House Credits, Cash Payments, App Payments, App Prepayments and the Stripe Account, and which of them are on at your place.",
   },
   {
     name: "Reservations",

@@ -830,7 +830,6 @@ function SplitScreen({
 
   const cardSub = cards === null ? "…" : cards.length === 0 ? "Add one" : `•••• ${(card ?? cards[0]).last4}`;
   // MESITA-4058: every way says its rate as credits, 0% included.
-  const backBps = (bps: number) => ` · ${bps / 100}% back as credits`;
   const status = step === "pay" && belowMinimum
     ? `A card needs at least ${m(tab.rates.card_minimum_cents)}. Pay this part another way.`
     : step === "pay" && tip > 0 && cardOn && !tipCardOk
@@ -935,8 +934,8 @@ function SplitScreen({
                   <span className="font-semibold tabular-nums">{m(rest)}</span>
                 </p>
                 <div className="mt-1 grid grid-cols-2 gap-2">
-                  <Chip on={effBillWith === "cash"} onClick={() => setBillWith("cash")} title="Cash" sub={`To the waiter${backBps(tab.rates.cash_back_bps)}`} compact />
-                  <Chip on={effBillWith === "card"} onClick={() => setBillWith("card")} title="Card" sub={`${cardSub}${backBps(tab.rates.card_back_bps)}`} compact />
+                  <Chip on={effBillWith === "cash"} onClick={() => setBillWith("cash")} title="Cash" sub="To the waiter" compact />
+                  <Chip on={effBillWith === "card"} onClick={() => setBillWith("card")} title="Card" sub={cardSub} compact />
                 </div>
               </div>
             ) : (
@@ -1006,9 +1005,6 @@ function SplitScreen({
                 <span>{m(split.total_cents)}</span>
               </div>
             </div>
-            {split.cashback_cents > 0 ? (
-              <p className="mt-2 shrink-0 truncate text-sm font-semibold text-green-700">You get {m(split.cashback_cents)} back as credit here</p>
-            ) : null}
             {card && usesCard ? (
               <p className="text-muted-foreground mt-1 shrink-0 truncate text-sm tabular-nums">
                 {m(split.card_due_cents)} on your {brandLabel(card.brand)} •••• {card.last4}
@@ -1199,9 +1195,6 @@ function PaidScreen({ tab, onDone }: { tab: GuestTab; onDone: () => void }) {
       ) : null}
       {how ? <p className="mt-0.5 text-sm text-white/80 tabular-nums">{how}</p> : null}
       <p className="mt-4 text-base font-semibold">{tab.place.name ?? "A Mesita place"}</p>
-      {tab.cashback_cents > 0 ? (
-        <p className="mt-1 text-base">You get {m(tab.cashback_cents)} back as credit here</p>
-      ) : null}
       {tab.ticket ? <p className="mt-1 text-sm text-white/80">Ticket {tab.ticket}</p> : null}
       <LiveClock />
       <button

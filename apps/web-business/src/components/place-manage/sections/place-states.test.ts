@@ -54,17 +54,16 @@ describe("place states", () => {
     expect(stripeState(acct())).toBe("Connected");
   });
 
-  it("turns App Payments and its cashback off on an unpaid fee invoice", () => {
+  it("turns App Payments off on an unpaid fee invoice", () => {
     const on = moneyPlaceStates({ ...base, account: acct(), settings: settings() });
-    expect([on.mesitaPayments.chip, on.mesitaPaymentsCashback.chip, on.billing.chip]).toEqual(["On", "5%", "Paid up"]);
+    expect([on.mesitaPayments.chip, on.billing.chip]).toEqual(["On", "Paid up"]);
     const held = moneyPlaceStates({ ...base, feeHold: true, account: acct(), settings: settings() });
-    expect([held.mesitaPayments.chip, held.mesitaPaymentsCashback.chip, held.billing.chip]).toEqual(["Off", "Off", "Past due"]);
+    expect([held.mesitaPayments.chip, held.billing.chip]).toEqual(["Off", "Past due"]);
   });
 
-  it("gives the cash rate only with House Credits, Cash Payments and the waiter's code, no Stripe needed", () => {
-    expect(moneyPlaceStates({ ...base, account: null, settings: settings() }).cashPaymentsCashback.chip).toBe("Off");
+  it("takes cash with Cash Payments and the waiter's code, no Stripe needed", () => {
     const cash = moneyPlaceStates({ ...base, codeSet: true, account: null, settings: settings() });
-    expect([cash.cashPayments.chip, cash.cashPaymentsCashback.chip, cash.mesitaPayments.chip]).toEqual(["On", "2%", "Off"]);
+    expect([cash.cashPayments.chip, cash.mesitaPayments.chip]).toEqual(["On", "Off"]);
   });
 
   it("sells prepayments only with House Credits, a voucher on and Stripe taking cards", () => {
@@ -74,10 +73,10 @@ describe("place states", () => {
     expect(moneyPlaceStates({ ...base, account: acct(), settings: settings({ voucher_200: false }) }).mesitaPrepayments.chip).toBe("Off");
   });
 
-  it("reads the place's own rates and House Credits (MESITA-3589)", () => {
-    const m = moneyPlaceStates({ ...base, codeSet: true, account: acct(), settings: settings({ card_cashback_bps: 700, cash_cashback_bps: 300 }) });
-    expect([m.mesitaPaymentsCashback.chip, m.cashPaymentsCashback.chip, m.houseCredits.chip, m.houseCreditsContract.chip]).toEqual(["7%", "3%", "On", "Signed"]);
+  it("reads House Credits and its contract", () => {
+    const m = moneyPlaceStates({ ...base, codeSet: true, account: acct(), settings: settings() });
+    expect([m.houseCredits.chip, m.houseCreditsContract.chip]).toEqual(["On", "Signed"]);
     const off = moneyPlaceStates({ ...base, codeSet: true, account: acct(), settings: settings({ house_credits: false, voucher_200: false }) });
-    expect([off.mesitaPaymentsCashback.chip, off.cashPaymentsCashback.chip, off.houseCredits.chip]).toEqual(["Off", "Off", "Off"]);
+    expect(off.houseCredits.chip).toBe("Off");
   });
 });

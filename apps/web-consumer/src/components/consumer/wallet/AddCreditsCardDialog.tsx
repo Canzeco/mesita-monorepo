@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, Gift, HandCoins, X, type LucideIcon } from "lucide-react";
+import { CreditCard, Gift, X, type LucideIcon } from "lucide-react";
 
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { PushLink } from "@/components/consumer/nav/PushLink";
@@ -24,11 +24,6 @@ const WAYS: { icon: LucideIcon; title: string; line: string }[] = [
     icon: Gift,
     title: "Get a gift",
     line: "A friend sends you credits for a place.",
-  },
-  {
-    icon: HandCoins,
-    title: "Earn cashback",
-    line: "Pay with the app and get part of it back.",
   },
 ];
 

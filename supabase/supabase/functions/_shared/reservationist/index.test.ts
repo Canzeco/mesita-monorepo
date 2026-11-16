@@ -51,7 +51,7 @@ Deno.test("fleetWorkflows: a missing workspace tool refuses to build", () => {
   assertThrows(() => fleetWorkflows(m), Error, "workspace missing tool a4_find_reservation");
 });
 
-Deno.test("knowledgeFor: the money facts, the typed name and the switch; never 'ticket' or 'nunca toca el dinero'", () => {
+Deno.test("knowledgeFor: the money facts, the typed name and the switch; never 'ticket', 'nunca toca el dinero' or cashback", () => {
   for (const agent of FLEET) {
     const kb = knowledgeFor(agent);
     for (
@@ -61,7 +61,6 @@ Deno.test("knowledgeFor: the money facts, the typed name and the switch; never '
         "App Payments",
         "App Prepayments",
         "código que le da el mesero",
-        "2% en efectivo y 5% con tarjeta",
         "personas (de 1 a 10), nombre y apellido",
         "La mesa queda a nombre del nombre y apellido escritos en la reservación",
         "interruptor de Reservaciones",
@@ -72,6 +71,7 @@ Deno.test("knowledgeFor: the money facts, the typed name and the switch; never '
     assert(kb.includes(agent.roleLines[0]), `${agent.key}: knowledge lacks its role`);
     assert(!/ticket/i.test(kb), `${agent.key}: knowledge says "ticket"`);
     assert(!/nunca toca el dinero/i.test(kb), `${agent.key}: knowledge says Mesita never touches money`);
+    assert(!/cashback/i.test(kb), `${agent.key}: knowledge still promises cashback (MESITA-4191)`);
   }
 });
 

@@ -124,7 +124,7 @@ describe("groupKeys", () => {
 describe("entryLabel", () => {
   it("reads a reversal from what it carries", () => {
     expect(entryLabel({ kind: "reversal", purchase_id: "p", payment_id: null })).toBe("Purchase refunded");
-    expect(entryLabel({ kind: "reversal", purchase_id: null, payment_id: "pay" })).toBe("Cashback taken back");
+    expect(entryLabel({ kind: "reversal", purchase_id: null, payment_id: "pay" })).toBe("Credit taken back");
     expect(entryLabel({ kind: "reversal", purchase_id: null, payment_id: null })).toBe("Refund");
   });
 

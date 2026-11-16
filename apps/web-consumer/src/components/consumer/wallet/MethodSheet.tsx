@@ -111,8 +111,8 @@ function StoryBody({ story }: { story: WaitingStory }) {
 /** Cash (MESITA-4116; redesigned MESITA-4125, Pato: "don't make cash look as
  *  a card ... just mention like pay with cash, or pay in their terminal ...
  *  redesign this page from scratch"). No card face: two panels and a line.
- *  How you pay: cash, or the place's terminal, both outside the app. Credits
- *  back: Mesita Pay 5% (the one green on the page) against cash 3%; every
+ *  How you pay: cash, or the place's terminal, both outside the app. No
+ *  cashback since MESITA-4191; every
  *  icon disc is grey (MESITA-4129, Pato: "why all fucking green").
  *  The rates are the most a place gives; each place turns either on or off. */
 function CashBody() {
@@ -121,41 +121,37 @@ function CashBody() {
     // say in description Cash or terminal outside of Mesita App ... don't
     // overexplain"): one panel, two rows, no footnote.
     <div className="flex flex-col gap-4">
-      <section className={cn(PANEL_CLASS, "divide-border flex flex-col divide-y")} aria-label="Credits back">
+      <section className={cn(PANEL_CLASS, "divide-border flex flex-col divide-y")} aria-label="Ways to pay">
         <div className="px-4 pt-4 pb-3">
-          <PanelHeading>Credits back</PanelHeading>
+          <PanelHeading>Ways to pay</PanelHeading>
         </div>
-        <CashbackLine
+        <WayLine
           icon={<QrCode className="h-5 w-5" />}
           tone="bg-foreground text-white"
           title="Mesita Pay"
           line="In the Mesita app"
-          rate={{ text: "5% back", className: "bg-green-400 text-neutral-950" }}
         />
-        <CashbackLine
+        <WayLine
           icon={<Banknote className="h-5 w-5" />}
           tone="bg-muted text-foreground"
           title="Cash or terminal"
           line="Outside the Mesita app"
-          rate={{ text: "3% back", className: "bg-muted text-foreground" }}
         />
       </section>
     </div>
   );
 }
 
-function CashbackLine({
+function WayLine({
   icon,
   tone,
   title,
   line,
-  rate,
 }: {
   icon: React.ReactNode;
   tone: string;
   title: string;
   line: string;
-  rate?: { text: string; className: string };
 }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3">
@@ -166,11 +162,6 @@ function CashbackLine({
         <span className="block text-base font-semibold">{title}</span>
         <span className="text-muted-foreground block text-sm">{line}</span>
       </span>
-      {rate ? (
-        <span className={cn("shrink-0 rounded-full px-3 py-1 text-base font-bold tabular-nums", rate.className)}>
-          {rate.text}
-        </span>
-      ) : null}
     </div>
   );
 }

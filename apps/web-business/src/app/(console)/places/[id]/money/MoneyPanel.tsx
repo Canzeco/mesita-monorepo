@@ -160,7 +160,6 @@ export function MoneyPanel({ placeId, initial }: { placeId: string; initial: Pla
     { label: "Tips", value: money(money_.tips_cents), line: "Tips paid by card. Yours in full; no fee. Cash tips stay with your staff and are not counted." },
   ];
   const share = money_.received_share;
-  const ceiling = money_.outside_cashback_ceiling_cents ?? 0;
   const bills = billsOf(money_.rows);
 
   return (
@@ -186,11 +185,6 @@ export function MoneyPanel({ placeId, initial }: { placeId: string; initial: Pla
             {share.received} of {share.total} waiter&apos;s bills ended in Received (paid in cash).
           </p>
         ) : null}
-        {ceiling > 0 && (money_.outside_cashback_today_cents ?? 0) > 0 ? (
-          <p className={`${NOTE} px-5 pb-4 sm:px-6`} data-outside-cap>
-            Cashback on cash bills in the last 24 hours: {money(money_.outside_cashback_today_cents ?? 0)} of {money(ceiling)} a day.
-          </p>
-        ) : null}
       </Card>
 
       <Card className="flex min-w-0 flex-col p-0 sm:p-0">
@@ -208,8 +202,6 @@ export function MoneyPanel({ placeId, initial }: { placeId: string; initial: Pla
               const outside = (r.outside_cents ?? 0) > 0 || r.part === "outside";
               const bill = bills.get(r.tab_id ?? r.id);
               const rest = bill && bill.first === r.id ? bill.bill - bill.onMesita : 0;
-              const fullBack = outside ? Math.floor(((r.outside_cents ?? 0) * (r.outside_cashback_bps ?? 0)) / 10000) : 0;
-              const cut = fullBack > 0 && (r.cashback_cents ?? 0) < fullBack && r.status !== "refunded";
               return (
               <li key={r.id} className={`${ROW} flex-wrap`}>
                 <p className="w-28 shrink-0 font-semibold tabular-nums">{money(r.amount_cents)}</p>
@@ -244,13 +236,6 @@ export function MoneyPanel({ placeId, initial }: { placeId: string; initial: Pla
                 {bill && bill.first === r.id && rest !== 0 ? (
                   <p className={`${NOTE} w-full tabular-nums`} data-bill-line>
                     Bill {money(bill.bill)} · on Mesita {money(bill.onMesita)} · rest at the table {money(rest)}
-                  </p>
-                ) : null}
-                {cut ? (
-                  <p className={`${NOTE} w-full`} data-cashback-cut>
-                    {(r.cashback_cents ?? 0) > 0
-                      ? `Cashback cut to ${money(r.cashback_cents ?? 0)} (of ${money(fullBack)}): the daily limit for cash bills was reached.`
-                      : `No cashback: the daily limit for cash bills was reached.`}
                   </p>
                 ) : null}
               </li>

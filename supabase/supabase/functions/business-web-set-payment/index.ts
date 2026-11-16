@@ -42,7 +42,7 @@ import { MONEY_VOUCHER_KEYS } from "../_shared/money-state.ts";
 import { isPaymentKey, isRateKey, isValidCashbackBps, needsStripe, readAccount, readContract, readSettings, stripeStateOf } from "../_shared/payments.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
-const NEEDS_STRIPE = { ok: false, code: "needs_stripe", error: "Connect the Stripe Account first: App Payments, its cashback and App Prepayments need an account that takes cards." };
+const NEEDS_STRIPE = { ok: false, code: "needs_stripe", error: "Connect the Stripe Account first: App Payments and App Prepayments need an account that takes cards." };
 
 serveJson("business-web-set-payment", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -61,6 +61,13 @@ serveJson("business-web-set-payment", async (req) => {
   }
   if (isPaymentKey(key) && typeof enabled !== "boolean") {
     return json({ ok: false, code: "invalid", error: "enabled must be true or false" }, 400);
+  }
+  // NO CASHBACKS (Pato, 2026-11-16, MESITA-4191: "I want to remove
+  // Cashbacks. It complicates shit a lot. No cashbacks."): a rate key may
+  // only turn Off. Every rate is null since the migration, so no payment or
+  // voucher mints cashback; credit guests already earned stays spendable.
+  if (isRateKey(key) && bps !== null) {
+    return json({ ok: false, code: "cashback_gone", error: "Cashback is gone from Mesita. Reload to see the new settings." }, 400);
   }
   if (isRateKey(key) && bps !== null && !isValidCashbackBps(key, bps)) {
     const line: Record<string, string> = {
