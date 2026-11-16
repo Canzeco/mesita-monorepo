@@ -27,7 +27,7 @@ export type ReservationsConfig = {
    * so we never ring a real business during testing (reserve from the consumer
    * app to test end-to-end).
    */
-  testCall: { enabled: boolean; number: string };
+  testCall: { enabled: boolean; number: string; target: TestCallTarget };
   /**
    * TESTING ONLY. While on, the consumer reservation EF skips the
    * monthly reservation cap (_shared/reservation-cap.ts) for EVERY consumer,
@@ -82,7 +82,40 @@ const LIMITS_SEED = {
 // this one number for EVERY reservation instead of any real place. Fully editable
 // from the admin page — this is only what the page (and a fresh/reset config row)
 // starts from. Ships ON so a missing config can never fall through to a real place.
-const TEST_CALL_SEED = { enabled: true, number: "+524445499597" };
+const TEST_CALL_SEED = {
+  enabled: true,
+  number: "+524445499597",
+  target: "number" as TestCallTarget,
+};
+
+/**
+ * Who a1 rings for the place while testing (MESITA-4149): the test line, or the
+ * phone of the guest who made the reservation (each tester plays the
+ * restaurant on their own phone). Mirror of TestCallTarget in
+ * supabase/functions/_shared/reservations-config.ts.
+ */
+export type TestCallTarget = "number" | "guest";
+
+/** The three call modes the Testing card offers; production = test mode off. */
+export type CallMode = "number" | "guest" | "production";
+
+export function callMode(t: ReservationsConfig["testCall"]): CallMode {
+  return !t.enabled ? "production" : t.target;
+}
+
+export function withCallMode(
+  t: ReservationsConfig["testCall"],
+  mode: CallMode,
+): ReservationsConfig["testCall"] {
+  return mode === "production"
+    ? { ...t, enabled: false }
+    : { ...t, enabled: true, target: mode };
+}
+
+/** The Test number field is required only when calls go to it. */
+export function testNumberInvalid(t: ReservationsConfig["testCall"]): boolean {
+  return callMode(t) === "number" && !looksLikePhone(t.number);
+}
 
 export const DEFAULT_CONFIG: ReservationsConfig = {
   testCall: { ...TEST_CALL_SEED },
@@ -107,7 +140,8 @@ export function looksLikePhone(v: string): boolean {
  * testCall.consumerNumber) are not read.
  */
 export function coerceConfig(raw: unknown): ReservationsConfig {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return DEFAULT_CONFIG;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw))
+    return DEFAULT_CONFIG;
   const c = raw as Record<string, unknown>;
 
   const testRaw =
@@ -117,8 +151,15 @@ export function coerceConfig(raw: unknown): ReservationsConfig {
 
   return {
     testCall: {
-      enabled: typeof testRaw.enabled === "boolean" ? testRaw.enabled : TEST_CALL_SEED.enabled,
-      number: typeof testRaw.number === "string" ? testRaw.number.trim() : TEST_CALL_SEED.number,
+      enabled:
+        typeof testRaw.enabled === "boolean"
+          ? testRaw.enabled
+          : TEST_CALL_SEED.enabled,
+      number:
+        typeof testRaw.number === "string"
+          ? testRaw.number.trim()
+          : TEST_CALL_SEED.number,
+      target: testRaw.target === "guest" ? "guest" : "number",
     },
     unlimitedReservations: c.unlimitedReservations === true,
     limits: coerceLimits(c.limits),
@@ -127,18 +168,22 @@ export function coerceConfig(raw: unknown): ReservationsConfig {
 }
 
 function coerceReminder(raw: unknown): ReservationsConfig["reminder"] {
-  const r = raw && typeof raw === "object" && !Array.isArray(raw)
-    ? (raw as Record<string, unknown>)
-    : {};
+  const r =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
   return { enabled: r.enabled === true };
 }
 
 function coerceLimits(raw: unknown): ReservationsConfig["limits"] {
-  const l = raw && typeof raw === "object" && !Array.isArray(raw)
-    ? (raw as Record<string, unknown>)
-    : {};
+  const l =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
   const posInt = (v: unknown, seed: number) =>
-    typeof v === "number" && Number.isFinite(v) && v >= 1 ? Math.trunc(v) : seed;
+    typeof v === "number" && Number.isFinite(v) && v >= 1
+      ? Math.trunc(v)
+      : seed;
   return {
     reschedulesPerTicketPerDay: posInt(
       l.reschedulesPerTicketPerDay,
