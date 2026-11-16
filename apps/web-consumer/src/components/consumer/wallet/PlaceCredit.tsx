@@ -192,10 +192,13 @@ export function HouseCardSkeleton() {
     <div className="flex flex-col" aria-hidden>
       <Panel className="mt-4 p-4">
         <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
-        <div className="mt-4 flex gap-2">
-          <Skeleton className="h-16 flex-1 rounded-xl" />
-          <Skeleton className="h-16 flex-1 rounded-xl" />
-          <Skeleton className="h-16 flex-1 rounded-xl" />
+        {/* View place under the card, then the four doors (MESITA-4119:
+            the page has four, Buy · Send · Claim · Go to Pay, at 52px). */}
+        <Skeleton className="mx-auto mt-3 h-9 w-28 rounded-full" />
+        <div className={`mt-4 ${DOOR_ROW}`}>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-13 rounded-xl" />
+          ))}
         </div>
       </Panel>
       <Panel className="mt-4 p-4">

@@ -451,7 +451,8 @@ function RowsSkeleton() {
       {[0, 1, 2].map((i) => (
         <Fragment key={i}>
           {i > 0 && <RowDivider />}
-          <div className="flex min-h-14 items-center gap-3 px-4 py-3">
+          <div className="flex min-h-[4.75rem] items-center gap-3 px-4 py-3">
+            <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
             <div className="flex-1">
               <Skeleton className="h-4 w-40" />
               <Skeleton className="mt-1.5 h-3 w-24" />
@@ -464,7 +465,8 @@ function RowsSkeleton() {
   );
 }
 
-function ListSkeleton() {
+/** The places list in bones; /pay's loading.tsx draws it too (MESITA-4119). */
+export function ListSkeleton() {
   return (
     <div aria-busy>
       <RowsSkeleton />

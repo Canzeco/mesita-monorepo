@@ -1,7 +1,7 @@
-import { Skeleton } from "@/components/shared";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { GuestPayLoading } from "./GuestPayScreen";
 import { PayHeader } from "./PayHeader";
+import { ListSkeleton } from "./PayPage";
 import { WalletShareGift } from "@/components/consumer/wallet/WalletShareGift";
 import { TicketsShortcut } from "./TicketsShortcut";
 import { WalletBodySkeleton } from "../wallet/WalletLists";
@@ -15,7 +15,9 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
         <PayHeader title="Pay" action={<TicketsShortcut />} bar={<span className="text-muted-foreground text-sm font-semibold">Search a place</span>} />
-        <Skeleton className="mt-5 h-56 w-full rounded-2xl" />
+        <div className="mt-5">
+          <ListSkeleton />
+        </div>
       </div>
     );
   }
