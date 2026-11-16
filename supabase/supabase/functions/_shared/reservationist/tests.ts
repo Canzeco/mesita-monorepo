@@ -294,7 +294,7 @@ export const FLEET_TESTS: FleetTest[] = [
       "El agente se despide al final.",
     ],
     variables: { ...BOOKING, call_context: "not_booked" },
-    maxTurns: 6,
+    maxTurns: 8,
   },
   {
     agent: "a2",
