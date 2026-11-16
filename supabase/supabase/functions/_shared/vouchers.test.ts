@@ -313,10 +313,10 @@ Deno.test("basketUnits: one unit per row, Welcome leads; sameUnits compares bask
 });
 
 Deno.test("the Credits Limit counts the whole basket's credit", () => {
-  // 2× Small (MX$220 credit each) + Big (MX$1,300): MX$1,740.
+  // 2× Small (MX$220 credit each) + Medium (MX$1,200): MX$1,640.
   const basket = ["voucher_200", "voucher_200", "voucher_1000"] as const;
-  assertEquals(overCreditLimit(LIMIT - 1_740_00, basket, LIMIT), false);
-  assertEquals(overCreditLimit(LIMIT - 1_739_00, basket, LIMIT), true);
+  assertEquals(overCreditLimit(LIMIT - 1_640_00, basket, LIMIT), false);
+  assertEquals(overCreditLimit(LIMIT - 1_639_00, basket, LIMIT), true);
 });
 
 Deno.test("a basket's rows: the lead under the request_id, one follower row per other unit pointing to it, no request_id", async () => {
@@ -328,7 +328,7 @@ Deno.test("a basket's rows: the lead under the request_id, one follower row per 
   const followers = fake.inserts[1] as unknown as Array<Record<string, unknown>>;
   assertEquals(followers.map((f) => [f.voucher, f.amount_cents, f.bonus_cents, f.basket_lead_id, f.status, "request_id" in f]), [
     ["voucher_200", 20000, 2000, ROW, "opening", false],
-    ["voucher_1000", 100000, 30000, ROW, "opening", false],
+    ["voucher_1000", 100000, 20000, ROW, "opening", false],
   ]);
 });
 
@@ -357,7 +357,7 @@ Deno.test("a basket's metadata names the lead and carries the sums; a single vou
   const many = voucherMetadata({ purchaseId: ROW, placeId: PLACE, consumerId: GUEST, voucher: "voucher_200", followers: ["voucher_200", "voucher_1000"] });
   assertEquals(many.purchase_id, ROW);
   assertEquals(many.amount_cents, "140000");
-  assertEquals(many.bonus_cents, "34000");
+  assertEquals(many.bonus_cents, "24000");
   assertEquals(many.basket, "3");
   assertEquals(many.basket_items, "voucher_200x2,voucher_1000x1");
 });

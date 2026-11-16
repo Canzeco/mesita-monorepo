@@ -46,11 +46,11 @@ const OFFER_SLIDES: OfferSlide[] = [
 ];
 
 /** The standard vouchers' bonuses: the server's catalog (supabase
- *  _shared/money.ts VOUCHER_CATALOG: Small +10%, Big +30%, Medium +20%). */
+ *  _shared/money.ts VOUCHER_CATALOG: Small +10%, Medium +20%, Big +30%; MESITA-4152). */
 const STANDARD_BONUS: Record<string, number> = {
   voucher_200: 10,
-  voucher_1000: 30,
-  voucher_5000: 20,
+  voucher_1000: 20,
+  voucher_5000: 30,
 };
 
 /** The place's slides, in the fixed order; none = nothing to show. */
