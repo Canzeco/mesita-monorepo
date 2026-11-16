@@ -19,11 +19,10 @@ export default async function MoneyPage({ params }: { params: Promise<{ id: stri
   return (
     <OperationsPage
       placeId={id}
-      chartLine="Every payment, voucher and cashback."
+      chartLine="Every payment and voucher."
       rows={[
         { name: "Payments", line: "Guests who paid here by card or credit." },
         { name: "Vouchers", line: "Vouchers guests bought here." },
-        { name: "Cashback", line: "Credit guests earned here." },
       ]}
       logLine="Every movement, newest first."
       empty="Nothing yet. It starts when a guest pays here with Mesita."

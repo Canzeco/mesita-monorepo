@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, Coins, Lock, Plus, ReceiptText, XCircle } from "lucide-react";
+import { Banknote, Check, Lock, Plus, ReceiptText, XCircle } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -30,7 +30,7 @@ import {
   writeDraft,
   writeLastTip,
 } from "@/lib/guest-pay-draft";
-import { type PadKey, paySplit, pressKey, readTip } from "@/lib/pay-keypad";
+import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 import { payPlacePath } from "@/lib/consumer-route-contract";
 import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
@@ -267,18 +267,6 @@ export function GuestPayScreen({
   // sense goes back to Method, or to Card when no card can be charged. Pure,
   // so nothing sets state while rendering.
   const shown = guardStage({ stage, method, way, dueCents, cardMissing: cards !== null && !chosenCard });
-  const splitFor = (w: PayWith) =>
-    place
-      ? paySplit({ place, billCents, tipCents, spendableCents: spendable, useCredit: creditOn, restWith: w, tipWith: w, cardId: chosenCard })
-      : null;
-  const cashbackFor = (w: PayWith) => splitFor(w)?.cashback_cents ?? 0;
-  // What the way's own part earns, the credit part apart (MESITA-4100).
-  const wayBackFor = (w: PayWith) => {
-    const sp = splitFor(w);
-    return (w === "card" ? sp?.card_back_cents : sp?.cash_back_cents) ?? 0;
-  };
-  // Each way's rate, from the server (MESITA-4058: always shown, 0% too).
-  const rateFor = (w: PayWith) => (w === "card" ? (place?.cashback_bps ?? 0) : (place?.outside_bps ?? 0));
 
   // Every change is saved, so the X and "Add a card" come back to it.
   useEffect(() => {
@@ -682,27 +670,12 @@ export function GuestPayScreen({
     setCardsLoad({ state: "loading" });
     setCardsAttempt((n) => n + 1);
   };
-  // What this payment earns, one wording at zero (MESITA-4117, Pato: "IF NO
-  // CASHBACK MENTION (0% Back)").
-  const backText = (cents: number) => (cents > 0 ? `+${m(cents)} back as credits` : "0% back");
 
   // 3 METHOD: App or Cash for everything that's left.
   if (shown === "method") {
     // Credits cover the bill and the tip: nothing is left for a way, so the
     // button opens the bill (credits are spent). It is money, so › is not
     // offered.
-    // What each way earns, in a box on its row (MESITA-4100, Pato: "THE
-    // CASHBACK AMOUNT IS SUPER IMPORTANT ... IN A BOX WITH COLOR"): green
-    // with the amount when it earns, grey "0% back" when it does not.
-    // Credits earn too where the place gives it (MESITA-3827): their own box.
-    const backBox = (bps: number, cents: number) => {
-      const rate = `${bps / 100}% back`;
-      return { text: cents > 0 ? `${rate} · +${m(cents)}` : rate, good: cents > 0 };
-    };
-    const backLine = (w: PayWith) => backBox(rateFor(w), wayBackFor(w));
-    const creditBack = backBox(place.credit_bps ?? 0, splitFor(way ?? "card")?.credit_back_cents ?? 0);
-    // Everything this payment earns: the way's part plus the credit part.
-    const chosenBack = cashbackFor(way ?? "card");
     // Next: Card for the card way, Pay for cash (MESITA-4117).
     const toNext = () => {
       if (way) {
@@ -737,7 +710,6 @@ export function GuestPayScreen({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-base font-semibold">Credits</span>
-                  <BackBox back={creditBack} />
                 </span>
                 <CreditsPill>{m(spendable)}</CreditsPill>
                 <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
@@ -758,7 +730,6 @@ export function GuestPayScreen({
                   id="app"
                   title="Mesita App"
                   line="Pay in the app with your card"
-                  back={backLine("card")}
                   onPick={() => setMethod("card")}
                 />
                 <MethodTile
@@ -770,7 +741,6 @@ export function GuestPayScreen({
                   id="cash"
                   title="Pay outside the app"
                   line="Cash or the place's card terminal"
-                  back={backLine("cash")}
                   onPick={() => setMethod("cash")}
                 />
               </div>
@@ -778,27 +748,6 @@ export function GuestPayScreen({
             {creditOn ? <MoneyRow label="Credits" value={`−${m(creditCents)}`} /> : null}
             <MoneyRow label={leftCents === 0 ? "Tip to pay" : "Left to pay"} value={m(dueCents)} strong />
             </div>
-            {/* YOU GET BACK (MESITA-4100): the chosen way's cashback, the
-                panel's one loud number, green above $0 and grey at $0. */}
-            {way || creditsOnly ? (
-              <div
-                className={cn(
-                  "mx-4 mb-4 flex items-center gap-3 rounded-xl px-4 py-3 ring-1 ring-inset",
-                  chosenBack > 0 ? "bg-emerald-50 text-emerald-900 ring-emerald-200" : "bg-muted text-muted-foreground ring-border",
-                )}
-                role="status"
-                data-guest-cashback
-              >
-                <Coins className="h-6 w-6 shrink-0" aria-hidden />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-base font-semibold">You get back</span>
-                  <span className={cn("block truncate text-sm", chosenBack > 0 ? "text-emerald-800" : "text-muted-foreground")}>
-                    As credits at {place.name}
-                  </span>
-                </span>
-                <span className="shrink-0 text-2xl font-semibold tabular-nums">{chosenBack > 0 ? `+${m(chosenBack)}` : "0% back"}</span>
-              </div>
-            ) : null}
           </PaySection>
         </StepBody>
         {status}
@@ -924,18 +873,6 @@ export function GuestPayScreen({
   // 6A APP PAY: the card picked on Card, "Pay in one click", held now. Pay
   // moves money: › is not offered. Only stage "pay" reaches here.
   const paySkipped = skippedSegments({ way, creditsOnly });
-  const backLine = (
-    <p
-      className={cn(
-        "inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-sm font-semibold ring-1 ring-inset",
-        cashbackFor(way ?? "card") > 0 ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-muted text-muted-foreground ring-border",
-      )}
-      data-guest-pay-back
-    >
-      <Coins className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      {backText(cashbackFor(way ?? "card"))}
-    </p>
-  );
   if (way === "card") {
     // After a refusal the body keeps the refused card (the one the line is
     // about); the next card is picked on Card.
@@ -991,7 +928,6 @@ export function GuestPayScreen({
                   {guestFace?.mark}
                   <span className="text-lg font-semibold tracking-widest tabular-nums">•••• {shownCard.last4}</span>
                 </span>
-                {backLine}
                 <p className="text-muted-foreground flex max-w-xs items-center justify-center gap-2 text-sm">
                   <Lock className="h-4 w-4 shrink-0" aria-hidden />
                   Held now, charged when the waiter signs.
@@ -1045,7 +981,6 @@ export function GuestPayScreen({
             <span className="text-muted-foreground text-lg font-semibold">Give the waiter</span>
             <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
           </span>
-          {backLine}
           <span className="text-muted-foreground max-w-xs text-lg leading-snug">Then show them your QR so they confirm it.</span>
         </PaySection>
       </StepBody>
@@ -1053,24 +988,6 @@ export function GuestPayScreen({
       <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
     </>,
     "cash",
-  );
-}
-
-/** A row's cashback as a box (MESITA-4100, Pato: "THE CASHBACK AMOUNT IS
- *  SUPER IMPORTANT ... IN A BOX WITH COLOR"): green with the amount when the
- *  part earns, grey "0% back" when it does not (never "no back"). */
-function BackBox({ back }: { back: { text: string; good: boolean } }) {
-  return (
-    <span
-      className={cn(
-        "mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg px-2 py-0.5 text-sm font-semibold ring-1 ring-inset",
-        back.good ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-muted text-muted-foreground ring-border",
-      )}
-      data-guest-back
-    >
-      <Coins className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      <span className="truncate">{back.text}</span>
-    </span>
   );
 }
 
@@ -1090,7 +1007,6 @@ function MethodTile({
   tone,
   title,
   line,
-  back,
   onPick,
 }: {
   /** The test hook: "app" or "cash". */
@@ -1103,9 +1019,6 @@ function MethodTile({
   tone: string;
   title: string;
   line: string;
-  /** What the way earns, a box (MESITA-4100): "5% back · +MX$5.75" in green,
-   *  or a grey "0% back" (MESITA-4058: always said). */
-  back: { text: string; good: boolean };
   onPick: () => void;
 }) {
   return (
@@ -1129,7 +1042,6 @@ function MethodTile({
       <span className="min-w-0 flex-1">
         <span className="block text-base font-semibold">{title}</span>
         <span className="text-muted-foreground block truncate text-sm">{off ?? line}</span>
-        {!off ? <BackBox back={back} /> : null}
       </span>
       {/* The choice is the ring on the right (MESITA-4072: a row in the How
           you pay panel, never a bordered tile inside it). */}

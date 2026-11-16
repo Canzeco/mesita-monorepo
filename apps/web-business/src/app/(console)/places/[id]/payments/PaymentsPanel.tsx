@@ -5,8 +5,8 @@
 //   Stripe Account   · the account (a LARGE Open Stripe button, MESITA-4024: Pato, "must be far larger") · Accept Stripe Payments
 //   Credits Account  · Credits Agreement · Credits Balance (read-only) · Accept
 //                      Credits Payments (House Credits: on once signed, then locked)
-//   Payments & Cashbacks · one row per way to pay, Accept | Cashback-as-Credits:
-//                      Cash Off/3% · App Off/5% · Credits (always) Off/2% · Prepayments Off/2%
+//   Payments         · one row per way to pay, Accept only: Cash · App · Credits
+//                      (always) · Prepayments. No cashback since MESITA-4191.
 // The history below is how it got here.
 // Configuration only (MESITA-3596, Pato: "in payments its just to configure"):
 // the owner's money and its log live on Operations › Money, and there is no
@@ -72,11 +72,9 @@ import {
   type HouseCreditsContract,
   type PaymentAccount,
   type PaymentKey,
-  type PaymentRateKey,
   type PlacePayments,
   type StripeStage,
   setPlacePayment,
-  setPlacePaymentRate,
   signHouseCreditsContract,
   startPaymentOnboarding,
 } from "@/lib/business-api";
@@ -84,10 +82,11 @@ import { WaiterCodeRow } from "./WaiterCode";
 
 /** One row: mark · title and line · value · control; the line wraps, the rest hold. */
 const MARK_ROW = "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-4 px-5 py-3 text-sm sm:px-6";
-/** A way to pay (MESITA-3946): mark · title and line · Accept · Cashback-as-Credits.
- *  On a phone the two controls drop under the words, side by side. */
+/** A way to pay (MESITA-3946): mark · title and line · Accept. No
+ *  Cashback-as-Credits column since MESITA-4191 ("No cashbacks").
+ *  On a phone the control drops under the words. */
 const PAIR_ROW =
-  "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-5 py-3 text-sm sm:grid-cols-[auto_minmax(0,1fr)_9.5rem_11rem] sm:px-6";
+  "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-5 py-3 text-sm sm:grid-cols-[auto_minmax(0,1fr)_9.5rem] sm:px-6";
 const HEAD = "px-5 pt-4 pb-2 font-semibold sm:px-6";
 const NOTE = "text-muted-foreground text-xs";
 const BLOCKED = "text-xs text-amber-800 dark:text-amber-300";
@@ -168,17 +167,6 @@ const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
   needs_instagram: "On sale once the Instagram connection is on.",
 };
 
-/** Each cashback's one rate (Main §10, MESITA-3596): Off or this. The server takes nothing else. */
-const CASHBACK_BPS: Record<PaymentRateKey, number> = {
-  card_cashback_bps: 500,
-  cash_cashback_bps: 300,
-  // MESITA-3827: Credits Payments and Mesita Prepayments Cashback.
-  credit_cashback_bps: 200,
-  // 2% since MESITA-3946 (Pato: "prepayments is 2% or off, not 5%").
-  prepay_cashback_bps: 200,
-};
-const pct = (bps: number) => `${bps / 100}%`;
-
 /** The Stripe Account's seven values, in the owner's words. */
 const STAGE_LABEL: Record<StripeStage, string> = {
   none: "Not connected",
@@ -234,7 +222,7 @@ export function PaymentsPanel({
   const currency = initial.currency ?? "MXN";
   const [contract, setContract] = useState<HouseCreditsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
   const [agreeing, setAgreeing] = useState(false);
-  const [busy, setBusy] = useState<PaymentKey | PaymentRateKey | "stripe" | "contract" | null>(null);
+  const [busy, setBusy] = useState<PaymentKey | "stripe" | "contract" | null>(null);
   const [error, setError] = useState<string | null>(back === "refresh" ? "The Stripe setup link expired. Open it again." : null);
   const { account, can_edit: canEdit, test_mode: testMode, code_set: codeSetAtLoad, fee } = initial;
   // The Waiter code row sets it here, so Cash Payments unlocks without a reload.
@@ -245,7 +233,7 @@ export function PaymentsPanel({
   const ready = account.state === "ready";
   const stage: StripeStage = account.stage ?? (ready ? "connected" : account.state === "none" ? "none" : "onboarding");
   const pending = !canEdit || busy !== null;
-  // Mesita Payments, its cashback, Mesita Prepayments and every voucher need
+  // Mesita Payments, Mesita Prepayments and every voucher need
   // the Stripe Account to take cards in the server's mode (MESITA-3599; the
   // set EF and SQL refuse otherwise): until then they read Off and cannot be
   // switched.
@@ -257,15 +245,6 @@ export function PaymentsPanel({
     setBusy(key);
     setError(null);
     const r = await setPlacePayment(placeId, key, enabled);
-    setBusy(null);
-    if (!r.ok) return setError(r.error);
-    setSettings(r.data);
-  }
-
-  async function rate(key: PaymentRateKey, bps: number | null) {
-    setBusy(key);
-    setError(null);
-    const r = await setPlacePaymentRate(placeId, key, bps);
     setBusy(null);
     if (!r.ok) return setError(r.error);
     setSettings(r.data);
@@ -309,7 +288,6 @@ export function PaymentsPanel({
   const needsStripe = step("Connect the Stripe Account first.", "#stripe-account");
   const needsCode = step("Set the waiter code first.", "#waiter-code");
   const needsPrepayments = step("Turn App Prepayments on first.", "#mesita-prepayments");
-  const needsCash = step("Turn Cash Payments on first.", "#cash-payments");
   const needsStripePayments = step("Turn Accept Stripe Payments on first.", "#accept-stripe-payments");
   const balance = initial.credits_balance ?? null;
 
@@ -348,8 +326,8 @@ export function PaymentsPanel({
     );
   };
 
-  /** One way to pay (MESITA-3946): its Accept control and its Cashback-as-Credits
-   *  side by side. Accept "always" is Credits Payments (always on, no switch). */
+  /** One way to pay (MESITA-3946): its Accept control. Accept "always" is
+   *  Credits Payments (always on, no switch). */
   const pairRow = (args: {
     id: string;
     name: string;
@@ -357,7 +335,6 @@ export function PaymentsPanel({
     icon: Icon;
     tone: string;
     accept: "always" | { key: PaymentKey; stripe?: boolean; blocked?: React.ReactNode };
-    cashback: { key: PaymentRateKey; stripe?: boolean; blocked?: React.ReactNode };
   }) => {
     const a = args.accept;
     const aGated = a !== "always" && a.stripe === true && !takesCards;
@@ -365,13 +342,7 @@ export function PaymentsPanel({
     const aStripeOff = a !== "always" && a.stripe === true && !settings.stripe_payments;
     const aOn = a === "always" ? true : settings[a.key] && !aGated && !aStripeOff;
     const aBlocked = a === "always" ? undefined : aGated ? needsStripe : aStripeOff ? needsStripePayments : !aOn ? a.blocked : undefined;
-    const c = args.cashback;
-    const cGated = c.stripe === true && !takesCards;
-    const value = cGated ? null : settings[c.key];
-    const cOn = value !== null;
-    const cBlocked = cGated ? needsStripe : !settings.house_credits ? needsHouseCredits : !cOn ? c.blocked : undefined;
-    const fixed = pct(CASHBACK_BPS[c.key]);
-    const blocked = aBlocked ?? cBlocked;
+    const blocked = aBlocked;
     return (
       <li key={args.id} id={args.id} className={PAIR_ROW} data-place-state={a === "always" ? "credits_payments" : a.key}>
         {mark(args.icon, aOn, args.tone)}
@@ -390,16 +361,6 @@ export function PaymentsPanel({
           ) : (
             <Switch on={aOn} pending={pending || !!aBlocked} onClick={() => void flip(a.key, !aOn)} label={`${args.name}: ${aOn ? "on" : "off"}`} />
           )}
-        </div>
-        <div className="col-start-2 flex items-center gap-3 sm:col-start-4 sm:justify-end" data-place-state={c.key}>
-          <span className="text-muted-foreground text-xs sm:hidden">Cashback</span>
-          <p className={cn("font-semibold whitespace-nowrap tabular-nums", (!cOn || cBlocked) && "text-muted-foreground")}>{cOn ? pct(value) : `Off · ${fixed}`}</p>
-          <Switch
-            on={cOn}
-            pending={pending || cGated || (!cOn && !!cBlocked)}
-            onClick={() => void rate(c.key, cOn ? null : CASHBACK_BPS[c.key])}
-            label={`${args.name} Cashback-as-Credits: ${cOn ? fixed : "off"}`}
-          />
         </div>
       </li>
     );
@@ -449,9 +410,9 @@ export function PaymentsPanel({
       ) : null}
       {/* THREE CARDS (Pato, 2026-11-14, MESITA-3946, on the mock: "yes, ies
           okey. build the fucking business app there"): Stripe Account ·
-          Credits Account · Payments & Cashbacks, then Vouchers. Each way to
-          pay is ONE row with two controls, Accept and Cashback-as-Credits,
-          so the cashback is a column, not four repeated rows. */}
+          Credits Account · Payments, then Vouchers. Each way to pay is ONE
+          row with its Accept control; the Cashback-as-Credits column left
+          with MESITA-4191 ("No cashbacks"). */}
       <Card className={SECTION}>
         <h2 className={HEAD}>Stripe Account</h2>
         <ul className="divide-border divide-y">
@@ -547,12 +508,11 @@ export function PaymentsPanel({
         </ul>
       </Card>
       <Card className={SECTION}>
-        <h2 className={HEAD}>Payments &amp; Cashbacks</h2>
+        <h2 className={HEAD}>Payments</h2>
         <div className={cn(PAIR_ROW, "hidden min-h-0 py-1 sm:grid")} aria-hidden>
           <span />
           <span />
           <p className="text-muted-foreground text-right text-xs font-semibold">Accept</p>
-          <p className="text-muted-foreground text-right text-xs font-semibold">Cashback-as-Credits</p>
         </div>
         <ul className="divide-border divide-y">
           {pairRow({
@@ -562,7 +522,6 @@ export function PaymentsPanel({
             icon: MoneyIcon,
             tone: "bg-lime-100 text-lime-700",
             accept: { key: "cash_payments", blocked: codeSet ? undefined : needsCode },
-            cashback: { key: "cash_cashback_bps", blocked: !settings.cash_payments ? needsCash : undefined },
           })}
           {pairRow({
             id: "mesita-payments",
@@ -571,7 +530,6 @@ export function PaymentsPanel({
             icon: DeviceMobileIcon,
             tone: "bg-sky-100 text-sky-700",
             accept: { key: "pay_cards", stripe: true },
-            cashback: { key: "card_cashback_bps", stripe: true },
           })}
           {pairRow({
             id: "credits-payments",
@@ -580,7 +538,6 @@ export function PaymentsPanel({
             icon: WalletIcon,
             tone: "bg-emerald-100 text-emerald-700",
             accept: "always",
-            cashback: { key: "credit_cashback_bps" },
           })}
           {pairRow({
             id: "mesita-prepayments",
@@ -590,11 +547,10 @@ export function PaymentsPanel({
                 ? "Off until Mesita's invoice is paid."
                 : settings.prepayments && state.sell.length === 0
                   ? "Switch on at least one voucher below to sell."
-                  : `Vouchers by card in the app; the cashback is on a voucher's price, on top of its extra. ${per100(currency)}`,
+                  : `Vouchers by card in the app. ${per100(currency)}`,
             icon: TicketIcon,
             tone: "bg-teal-100 text-teal-700",
             accept: { key: "prepayments", stripe: true },
-            cashback: { key: "prepay_cashback_bps", stripe: true, blocked: !settings.prepayments ? needsPrepayments : undefined },
           })}
         </ul>
       </Card>

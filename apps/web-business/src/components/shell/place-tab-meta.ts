@@ -26,7 +26,7 @@ import type { PlaceTab } from "@/lib/routes";
 export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: string }> = {
   views: { label: "Views", icon: EyeIcon, sub: "Who saw your place online." },
   visits: { label: "Visits", icon: FootprintsIcon, sub: "Who came and paid with Mesita." },
-  money: { label: "Money", icon: MoneyIcon, sub: "Every payment, voucher and cashback at your place." },
+  money: { label: "Money", icon: MoneyIcon, sub: "Every payment and voucher at your place." },
   profile: { label: "Profile", icon: StorefrontIcon, sub: "What guests read about your place." },
   premier: { label: "Premier", icon: MegaphoneIcon, sub: "Rank higher on Home and the Map. Marked as an ad." },
   payments: { label: "Payments", icon: CreditCardIcon, sub: "Choose how guests pay you and earn credit here. Money and payouts are on Operations › Money." },

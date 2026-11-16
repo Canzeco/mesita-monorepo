@@ -830,7 +830,6 @@ function SplitScreen({
 
   const cardSub = cards === null ? "…" : cards.length === 0 ? "Add one" : `•••• ${(card ?? cards[0]).last4}`;
   // MESITA-4058: every way says its rate as credits, 0% included.
-  const backBps = (bps: number) => ` · ${bps / 100}% back as credits`;
   const status = step === "pay" && belowMinimum
     ? `A card needs at least ${m(tab.rates.card_minimum_cents)}. Pay this part another way.`
     : step === "pay" && tip > 0 && cardOn && !tipCardOk
@@ -935,8 +934,8 @@ function SplitScreen({
                   <span className="font-semibold tabular-nums">{m(rest)}</span>
                 </p>
                 <div className="mt-1 grid grid-cols-2 gap-2">
-                  <Chip on={effBillWith === "cash"} onClick={() => setBillWith("cash")} title="Cash" sub={`To the waiter${backBps(tab.rates.cash_back_bps)}`} compact />
-                  <Chip on={effBillWith === "card"} onClick={() => setBillWith("card")} title="Card" sub={`${cardSub}${backBps(tab.rates.card_back_bps)}`} compact />
+                  <Chip on={effBillWith === "cash"} onClick={() => setBillWith("cash")} title="Cash" sub="To the waiter" compact />
+                  <Chip on={effBillWith === "card"} onClick={() => setBillWith("card")} title="Card" sub={cardSub} compact />
                 </div>
               </div>
             ) : (

@@ -68,9 +68,7 @@ export function placeStateChips(hit: PlaceHit): Record<PlaceStateKey, PlaceState
     houseCreditsContract: money(m.houseCreditsContract),
     houseCredits: money(m.houseCredits),
     cashPayments: money(m.cashPayments),
-    cashPaymentsCashback: money(m.cashPaymentsCashback),
     mesitaPayments: money(m.mesitaPayments),
-    mesitaPaymentsCashback: money(m.mesitaPaymentsCashback),
     mesitaPrepayments: money(m.mesitaPrepayments),
   };
 }

@@ -184,8 +184,6 @@ export function GuestTabView({
   // related to that card").
   if (signed) {
     const back = tab.cashback_cents;
-    // The rate the bill earned (MESITA-4058: 0% is said, not hidden).
-    const backBps = card > 0 ? tab.rates.card_back_bps : cash > 0 ? tab.rates.cash_back_bps : 0;
     return (
       <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="receipt">
         <PayTop place={place} name={tab.place.name} step={{ at: STEP.receipt, skipped: skippedFromParts(tab.parts) }} />
@@ -223,12 +221,7 @@ export function GuestTabView({
                 {/* Available at once (MESITA-3909). */}
                 <span className="flex-1">+{m(back)} back as credits here</span>
               </div>
-            ) : (
-              <div className="text-muted-foreground flex min-h-11 items-center gap-3 px-4 py-3" data-guest-cashback>
-                <Coins className="h-5 w-5 shrink-0" aria-hidden />
-                <span>{backBps / 100}% back as credits</span>
-              </div>
-            )}
+            ) : null}
           </PaySection>
         </StepBody>
         {/* The footer, always in reach: with cashback, Send a gift beside

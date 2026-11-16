@@ -98,9 +98,7 @@ export type MoneyPlaceStates = {
   houseCreditsContract: PlaceStateValue;
   houseCredits: PlaceStateValue;
   cashPayments: PlaceStateValue;
-  cashPaymentsCashback: PlaceStateValue;
   mesitaPayments: PlaceStateValue;
-  mesitaPaymentsCashback: PlaceStateValue;
   mesitaPrepayments: PlaceStateValue;
 };
 
@@ -127,15 +125,9 @@ export function moneyPlaceStates(i: PlaceStatesInput): MoneyPlaceStates {
     houseCredits: onOff(s?.house_credits === true),
     // Cash Payments: the owner's switch and the waiter's code (MESITA-3589).
     cashPayments: onOff(money?.cash === true),
-    cashPaymentsCashback: money && money.cash_cashback_bps > 0
-      ? { on: true, chip: `${money.cash_cashback_bps / 100}%` }
-      : { on: false, chip: "Off" },
     // Mesita Payments: a guest can pay the bill by card in the app now
     // (the Mesita Payments switch, the account taking cards, no fee hold).
     mesitaPayments: onOff(money?.pay === "card"),
-    mesitaPaymentsCashback: money && money.card_cashback_bps > 0
-      ? { on: true, chip: `${money.card_cashback_bps / 100}%` }
-      : { on: false, chip: "Off" },
     mesitaPrepayments: onOff((money?.sell.length ?? 0) > 0),
   };
 }
@@ -180,9 +172,7 @@ export const PLACE_STATE_ROWS = [
   { key: "houseCreditsContract", label: "House Credits Contract" },
   { key: "houseCredits", label: "House Credits" },
   { key: "cashPayments", label: "Cash Payments" },
-  { key: "cashPaymentsCashback", label: "Cash Payments Cashback-as-Credits" },
   { key: "mesitaPayments", label: "App Payments" },
-  { key: "mesitaPaymentsCashback", label: "App Payments Cashback-as-Credits" },
   { key: "mesitaPrepayments", label: "App Prepayments" },
 ] as const;
 

@@ -24,18 +24,18 @@ describe("offerSlides", () => {
   it("shows nothing for a place that runs nothing", () => {
     expect(offerSlides(null)).toEqual([]);
     expect(offerSlides({ cashback: false, sell: [] })).toEqual([]);
-    // Cashback on but no rate in the answer: no guessed number.
-    expect(offerSlides({ cashback: true, sell: [] })).toEqual([]);
+    // No cashback slide, even from a stale answer that still carries a rate (MESITA-4191).
+    expect(offerSlides({ cashback: true, card_cashback_bps: 500, sell: [] })).toEqual([]);
   });
 
-  it("orders Welcome, Story, VIP, Pay, Prepay and shows only the best standard bonus", () => {
+  it("orders Welcome, Story, VIP, Prepay, shows only the best standard bonus, and never a cashback (MESITA-4191)", () => {
     const slides = offerSlides({
       cashback: true,
       card_cashback_bps: 700,
       sell: ["voucher_200", "voucher_5000", "voucher_vip", "voucher_welcome"],
     });
-    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Welcome +100%", "VIP +100%", "Pay 7% Back", "Prepay +30%"]);
-    expect(slides.map((s) => s.section)).toEqual(["special", "special", null, "prepayment"]);
+    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Welcome +100%", "VIP +100%", "Prepay +30%"]);
+    expect(slides.map((s) => s.section)).toEqual(["special", "special", "prepayment"]);
   });
 });
 
@@ -47,7 +47,7 @@ describe("mesitaRowState", () => {
   });
 
   it("works with one slide, and says paused while Mesita pauses sales", () => {
-    expect(mesitaRowState({ money: { ...BASE, cashback: true, card_cashback_bps: 500 } }).offers.works).toBe(true);
+    expect(mesitaRowState({ money: { ...BASE, sell: ["voucher_200"] } }).offers.works).toBe(true);
     const paused = mesitaRowState({ money: { ...BASE, unavailable: { voucher_200: "paused" } } });
     expect(paused.offers).toMatchObject({ works: false, note: PREPAY_PAUSED });
   });

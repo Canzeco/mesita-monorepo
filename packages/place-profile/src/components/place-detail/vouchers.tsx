@@ -367,13 +367,10 @@ function readyIn(key: MoneyVoucherKey): string {
 }
 
 /** The lines every prepayment (i) ends with (MESITA-3498, Pato: "credits are
- *  transferable to friends too"; "you don't need to prepay all the bill";
- *  MESITA-3496: prepaid credits earn no cashback). */
-function creditFacts(creditPct: string | null): string[] {
-  return [...CREDIT_FACTS.slice(0, -1), creditPct
-    // MESITA-3827: where the place pays Credits Payment Cashback, the credit part earns it.
-    ? `Tips never earn cashback. The part of a bill you pay with credits gets ${creditPct} back here.`
-    : CREDIT_FACTS[CREDIT_FACTS.length - 1]];
+ *  transferable to friends too"; "you don't need to prepay all the bill").
+ *  No cashback line since MESITA-4191 ("No cashbacks"). */
+function creditFacts(_creditPct: string | null): string[] {
+  return CREDIT_FACTS;
 }
 const CREDIT_FACTS = [
   // MESITA-3505, Pato: "you can fund your wallet with multiple vouchers and
@@ -381,7 +378,6 @@ const CREDIT_FACTS = [
   "Buy as many vouchers as you want: their credits add up in one wallet, and you can pay one bill with all of them.",
   "Spend your credits on your bill here whenever you want, in the Mesita app. You don't have to cover the whole bill with them: pay part with credits and the rest with App Payments or directly to the place.",
   "Credits only work at this place. You can send them to a friend.",
-  "Neither prepaid credits nor tips earn cashback: the part of a bill you pay with credits, and any tip, get none back.",
 ];
 
 /** What each offer's (i) says, one short paragraph per idea (MESITA-3492,

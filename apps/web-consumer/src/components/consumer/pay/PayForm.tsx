@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ArrowLeft, CreditCard, Wallet as WalletIcon, X } from "lucide-react";
-import { cashbackFor, paySplit } from "@mesita/place-profile";
+import { paySplit } from "@mesita/place-profile";
 import { amountText, readAmount } from "@mesita/place-profile/lib/money";
 import { readTip } from "@/lib/pay-keypad";
 import { Spinner } from "@/components/shared/Spinner";
@@ -192,7 +192,6 @@ function PayForm({
     });
   const card = split?.kind === "card" ? split : null;
   const total = card ? card.credit_cents + card.card_cents + card.tip_cents : (cents ?? 0);
-  const earn = card ? cashbackFor(card.card_cents, place.cashback_bps) : 0;
   const m = (c: number) => money(c, place.currency);
 
   const amountBad = amount.trim() !== "" && cents === null;
@@ -523,7 +522,7 @@ function PayForm({
                 note={
                   !place.card_ok
                     ? "This place takes credit only"
-                    : `Card, Apple Pay or Google Pay · ${(place.cashback_bps ?? 0) / 100}% back as credits here`
+                    : "Card, Apple Pay or Google Pay"
                 }
                 checked={billWith === "card"}
                 disabled={!place.card_ok}
@@ -570,9 +569,6 @@ function PayForm({
             ) : null}
             <div className="bg-border h-px" />
             <p className="flex justify-between text-base font-semibold"><span>Total</span><span>{m(total)}</span></p>
-            {earn > 0 ? (
-              <p className="text-muted-foreground flex justify-between"><span>You get back as credit here</span><span>{m(earn)}</span></p>
-            ) : null}
           </div>
         ) : null}
       </div>
