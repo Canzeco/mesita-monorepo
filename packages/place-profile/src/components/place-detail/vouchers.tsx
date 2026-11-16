@@ -515,15 +515,24 @@ export type VoucherOffer = {
   why: string | null;
 };
 
-/** The Offers page's voucher list: ONE GROUP, "Prepaid Vouchers" (Pato,
- *  MESITA-4173: "Prepaid Vouchers ... Welcome, VIP"); Special Vouchers and
- *  Bonus Vouchers from MESITA-4154. The host still opens it by
+/** The Offers page's voucher list: TWO PANELS BY THE RULE (Pato,
+ *  2026-11-16, MESITA-4198: "Prepaid Bonuses ... Instant Vouchers ... or what
+ *  is the best design"): Special Bonuses, the ones a guest unlocks (Welcome
+ *  once per place, Story per visit, VIP while it is parked), then Anytime
+ *  Bonuses, the three sizes, as many as you like. Not "instant": every
+ *  voucher lands in 1 hr. One "Prepaid Vouchers" group from MESITA-4173,
+ *  Special and Bonus Vouchers in MESITA-4154. The host still opens it by
  *  `?rewards=prepayment` or `?rewards=special`. */
-const GROUPS: { id: "prepayment"; title: string; keys: ReadonlySet<MoneyVoucherKey> }[] = [
+const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<MoneyVoucherKey> }[] = [
+  {
+    id: "special",
+    title: "Special Bonuses",
+    keys: new Set(["voucher_welcome", "voucher_story", "voucher_vip"]),
+  },
   {
     id: "prepayment",
-    title: "Prepaid Vouchers",
-    keys: new Set(["voucher_welcome", "voucher_story", "voucher_vip", "voucher_200", "voucher_1000", "voucher_5000"]),
+    title: "Anytime Bonuses",
+    keys: new Set(["voucher_200", "voucher_1000", "voucher_5000"]),
   },
 ];
 
@@ -683,10 +692,10 @@ export function VouchersPane({
     // prepaid vouchers"): the body is the page background, the vouchers one
     // white panel on it, as the Reserve page's sections. White from MESITA-3486.
     <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
-      {/* TWO GROUPS (Pato, 2026-11-16, MESITA-4173): Prepaid Vouchers
-          (Welcome · VIP · Small · Medium · Big), then Credits Back. Special
-          and Bonus Vouchers in MESITA-4154; one "Prepayments"
-          list before. The vouchers share one basket and the one Pay at the foot. */}
+      {/* TWO PANELS (Pato, 2026-11-16, MESITA-4198): Special Bonuses
+          (Welcome · Story), then Anytime Bonuses (Small · Medium · Big). One
+          "Prepaid Vouchers" panel in MESITA-4173. Both panels share one basket
+          and the one Pay at the foot. */}
       {GROUPS.map((g) => {
         const list = products.filter((p) => g.keys.has(p.key));
         if (list.length === 0) return null;
