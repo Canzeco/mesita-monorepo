@@ -107,8 +107,18 @@ function OfferWords({ slide, short = false, className }: { slide: OfferSlide; sh
     <span className={cn("absolute inset-0 flex items-center justify-center gap-1.5", className)}>
       {/* A slide with no lead is the whole offer in the black tag (the place
           screen's Offers box, MESITA-4157). */}
-      {slide.lead ? <span className="truncate">{short ? slide.short : slide.lead}</span> : null}
-      <span className={cn(OFFER_PILL, !slide.lead && "truncate")}>{slide.pill}</span>
+      {slide.lines ? (
+        // Two lines, the place screen's black box (MESITA-4158).
+        <span className="flex min-w-0 flex-col items-center leading-tight">
+          <span className="max-w-full truncate">{slide.lines[0]}</span>
+          <span className="max-w-full truncate">{slide.lines[1]}</span>
+        </span>
+      ) : (
+        <>
+          {slide.lead ? <span className="truncate">{short ? slide.short : slide.lead}</span> : null}
+          <span className={cn(OFFER_PILL, !slide.lead && "truncate")}>{slide.pill}</span>
+        </>
+      )}
     </span>
   );
 }

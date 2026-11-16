@@ -347,15 +347,17 @@ function OffersTile({
         // box with black tag inside with white text"; "it must say offers and
         // display an icon"): the tag glyph and "Offers" on top, the offer
         // moving below in a black tag. Black from MESITA-4155.
-        "gap-0.5 bg-green-400 px-2 text-xs font-semibold text-neutral-950 hover:opacity-90 active:scale-[0.99]",
+        // "Offers" AT THE LEFT, THE OFFER IN A TALLER BLACK BOX AT THE RIGHT,
+        // TWO LINES (Pato, MESITA-4158).
+        "flex-row gap-2 bg-green-400 py-1 pr-1 pl-2.5 text-xs font-semibold text-neutral-950 hover:opacity-90 active:scale-[0.99]",
       )}
       data-tile-bonus
     >
-      <span className="flex min-w-0 items-center gap-1">
+      <span className="flex shrink-0 flex-col items-center gap-1">
         <Tag className={MESITA_TILE_ICON} strokeWidth={2.25} />
-        <span className="truncate">Offers</span>
+        <span>Offers</span>
       </span>
-      <span className="block h-5 w-full">
+      <span className="bg-foreground text-paper block h-full min-w-0 flex-1 rounded-md font-bold">
         <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} />
       </span>
     </button>
