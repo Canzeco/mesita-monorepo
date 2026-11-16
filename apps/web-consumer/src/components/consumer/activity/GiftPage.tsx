@@ -4,7 +4,9 @@
 // 2026-11-15: "Like this guy sent money and if nobody has taken then
 // waiting. Or if someone has claimed then like show"). A Gifts row opens it,
 // and a gift line's credit page forwards here. Each section is a bordered
-// panel, as on the House Card page (the shared Panel, MESITA-4064):
+// panel, as on the House Card page (the shared Panel, MESITA-4064). Since
+// MESITA-4118 it is the standard every ticket follows: its top box and panels
+// are TicketParts' TicketHero, TicketPanel and TimelinePanel.
 //
 //   (Pato)(Ana)🎁 [place]     the Gifts row's picture, 64px
 //   You sent $3.00MX          the sentence
@@ -23,12 +25,11 @@
 // key), found by its id; one it cannot find says so and goes back to Gifts.
 
 import { useState } from "react";
-import { ChevronRight, Gift, Loader2 } from "lucide-react";
+import { Gift, Loader2 } from "lucide-react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
-import { Panel } from "@/components/shared/Panel";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
 import {
@@ -48,9 +49,17 @@ import { ticketsHref } from "@/lib/ticket-kinds";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { useCachedQuery } from "@/lib/use-cached-query";
-import { cn } from "@/lib/utils";
-import { GIFT_TONE, GiftFaces, giftSentence } from "./GiftTickets";
-import { TicketLine, TicketSkeleton, TicketTimeline, type TicketStep } from "./TicketParts";
+import { GiftFaces, giftSentence } from "./GiftTickets";
+import {
+  PlaceMark,
+  TicketHero,
+  TicketLine,
+  TicketPage,
+  TicketPanel,
+  TicketSkeleton,
+  TimelinePanel,
+  type TicketStep,
+} from "./TicketParts";
 
 const when = (iso: string) =>
   `${new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · ${clockTime(iso)}`;
@@ -77,28 +86,21 @@ function stepsOf(g: GiftTicket): TicketStep[] {
 
 function GiftHero({ g }: { g: GiftTicket }) {
   const state = giftState(g);
-  const place = g.place?.name ?? "A Mesita place";
   return (
-    <Panel className="mt-4 flex flex-col items-center p-4 text-center" data-gift-page={g.status}>
-      <div className="flex items-center gap-3" aria-hidden>
-        <GiftFaces g={g} size="page" />
-        {g.place?.photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={g.place.photo} alt="" className="bg-muted h-16 w-16 shrink-0 rounded-2xl object-cover" />
-        ) : (
-          <span className="bg-muted h-16 w-16 shrink-0 rounded-2xl" />
-        )}
-      </div>
-      <h1 className="mt-4 text-lg font-semibold tabular-nums">{giftSentence(g)}</h1>
-      <p className={cn("mt-1 text-sm font-semibold", GIFT_TONE[state.tone])}>{state.label}</p>
-      <PushLink
-        href={walletPlacePath(g.place_id)}
-        className="text-muted-foreground hover:text-foreground mt-1 inline-flex max-w-full items-center gap-1 text-sm transition"
-      >
-        <span className="truncate">{place}</span>
-        <ChevronRight className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-      </PushLink>
-    </Panel>
+    <TicketHero
+      data-gift-page={g.status}
+      marks={
+        <>
+          <GiftFaces g={g} size="page" />
+          <PlaceMark photo={g.place?.photo} />
+        </>
+      }
+      headline={giftSentence(g)}
+      state={state.label}
+      tone={state.tone}
+      place={g.place?.name ?? "A Mesita place"}
+      placeHref={walletPlacePath(g.place_id)}
+    />
   );
 }
 
@@ -134,7 +136,7 @@ function TakeBack({ g, onDone }: { g: GiftTicket; onDone: () => void }) {
 
   return (
     <>
-      <button type="button" className={cn(FILLED, "mt-4")} onClick={() => setOpen(true)}>
+      <button type="button" className={FILLED} onClick={() => setOpen(true)}>
         Take back
       </button>
       <LocalDialog open={open} onClose={() => (busy ? undefined : setOpen(false))} ariaLabel="Take back this gift">
@@ -193,26 +195,22 @@ export function GiftPage({ giftId }: { giftId: string }) {
     // Asks again and keeps this page painted until the answer lands.
     const reread = () => wallet.reload();
     return (
-      <div className="flex flex-col pb-4">
+      <TicketPage>
         <GiftHero g={g} />
-        <Panel className="mt-4 px-4">
-          <TicketTimeline steps={stepsOf(g)} open />
-        </Panel>
-        <Panel className="mt-4" title="Details">
-          <div className="divide-border divide-y px-4 pb-1">
-            <TicketLine label="From" value={nameOf(g.sender, "Someone")} />
-            <TicketLine label="To" value={nameOf(g.recipient, g.status === "open" ? "Nobody yet" : "Nobody")} />
-            <TicketLine label="Amount" value={money(g.amount_cents, g.currency)} strong />
-          </div>
-        </Panel>
+        <TimelinePanel steps={stepsOf(g)} open />
+        <TicketPanel title="Details">
+          <TicketLine label="From" value={nameOf(g.sender, "Someone")} />
+          <TicketLine label="To" value={nameOf(g.recipient, g.status === "open" ? "Nobody yet" : "Nobody")} />
+          <TicketLine label="Amount" value={money(g.amount_cents, g.currency)} strong />
+        </TicketPanel>
         {g.role === "sender" && g.status === "open" ? (
           <TakeBack g={g} onDone={reread} />
         ) : g.role === "recipient" && g.status === "claimed" ? (
-          <PushLink href={walletPlacePath(g.place_id)} className={cn(FILLED, "mt-4")}>
+          <PushLink href={walletPlacePath(g.place_id)} className={FILLED}>
             Open the House Card
           </PushLink>
         ) : null}
-      </div>
+      </TicketPage>
     );
   })();
 

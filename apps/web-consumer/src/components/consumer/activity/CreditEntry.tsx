@@ -2,13 +2,18 @@
 
 // ONE CREDIT MOVEMENT, ONE PAGE: /me/tickets/credit/<placeId>/<kind>.<ms>
 // (MESITA-3782, Tickets 4/10 MESITA-4004). A Vouchers, Gifts or Refunds row
-// opens it, built from TicketParts like the Visit page:
+// opens it, built from TicketParts like the Visit page. In boxes since
+// MESITA-4118 (the Gift ticket's shape): a centred top box, then each
+// section its own panel:
 //
-//   TicketHeader     photo + badge, the place, when, "+$500.00MX", its state
-//                    (Available, Pending · available <date>, Refunded <date>)
-//   YOUR CREDIT      Bought · Bonus · Cashback · Total credit (a gift or a
+//   TicketHero       photo + badge, "+$500.00MX", its state (Available,
+//                    Pending · available <date>, Refunded <date>), the place,
+//                    when, the Test chip
+//   Your credit      Bought · Bonus · Cashback · Total credit (a gift or a
 //                    refund: its Type)
-//   AT <PLACE>       Available · Pending · You can spend now
+//   Refund           the Refund ticket, when this purchase was refunded
+//   At <place>       Available · Pending · You can spend now
+//   Purchase         the purchase number with copy
 //   Pay here (filled, when spendable) · Open the House Card (outline)
 //   Gift credit      a quiet text link, when sending is allowed
 //
@@ -26,9 +31,9 @@
 // in the read (past its cap, or an older server) keeps the short page below:
 // the header, one line, the place's balance, Open the House Card.
 //
-// A Refund page (MESITA-4011, Tickets 10/10): the header with the amount and no
-// sign, Refunded, "Refunded to the card you paid with.", a Timeline (Bought,
-// Refunded), the refund's lines (cashback taken back when any, the original
+// A Refund page (MESITA-4011, Tickets 10/10): the top box with the amount and
+// no sign, Refunded, "Refunded to the card you paid with.", a Timeline box
+// (Bought, Refunded), the Refund box (cashback taken back when any, the original
 // purchase as a link only when its purchase_id finds it, the purchase number
 // with copy) and Open the House Card (outline) alone. Found by purchase_id.
 //
@@ -46,13 +51,14 @@ import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { EmptyState } from "@/components/shared/EmptyState";
 import type { TicketRowKind } from "./ActivityRow";
 import {
-  TestModeNote,
+  PlaceMark,
   TicketActions,
-  TicketCard,
-  TicketHeader,
+  TicketHero,
   TicketLine,
+  TicketPage,
+  TicketPanel,
   TicketSkeleton,
-  TicketTimeline,
+  TimelinePanel,
   type TicketTone,
 } from "./TicketParts";
 import { ticketsHref } from "@/lib/ticket-kinds";
@@ -205,26 +211,25 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
         .filter((x) => x.kind === "cashback" && !x.payment_id && x.purchase_id === pid)
         .reduce((n, x) => n + x.amount_cents, 0);
       return (
-        <div className="flex flex-col gap-6 pb-4" data-credit-entry>
-          <TicketHeader
-            kind="refund"
-            photo={b.place?.photo ?? null}
+        <TicketPage data-credit-entry>
+          <TicketHero
+            marks={<PlaceMark photo={b.place?.photo} kind="refund" />}
+            headline={m(refunded)}
+            state="Refunded"
+            tone="grey"
             place={place}
             placeHref={b.place?.id ? placePath(b.place.id) : undefined}
             when={when(refund.at)}
-            amount={m(refunded)}
-            state="Refunded"
-            tone="grey"
+            note="Refunded to the card you paid with."
+            test={wallet.data.test_mode}
           />
-          {wallet.data.test_mode ? <TestModeNote /> : null}
-          <p className="text-sm">Refunded to the card you paid with.</p>
-          <TicketTimeline
+          <TimelinePanel
             steps={[
               ...(original ? [{ label: "Bought", when: when(original.at), value: m(Math.abs(original.amount_cents)) }] : []),
               { label: "Refunded", when: when(refund.at), value: m(refunded) },
             ]}
           />
-          <TicketCard title="Refund">
+          <TicketPanel title="Refund">
             <TicketLine label="Refunded amount" value={m(refunded)} />
             {takenBack > 0 ? <TicketLine label="Cashback taken back" value={`−${m(takenBack)}`} /> : null}
             <TicketLine label="Refunded on" value={entryDate(refund.at)} />
@@ -241,14 +246,14 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
               value={pid.slice(0, 8).toUpperCase()}
               trailing={<CopyPurchaseId id={pid} />}
             />
-          </TicketCard>
+          </TicketPanel>
           <Link
             href={walletPlacePath(placeId)}
             className="border-border bg-card hover:bg-muted/60 flex h-11 items-center justify-center rounded-full border text-sm font-semibold transition"
           >
             Open the House Card
           </Link>
-        </div>
+        </TicketPage>
       );
     }
 
@@ -279,68 +284,68 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     const received = e.kind === "gift_in";
     const given = e.kind === "gift_out" || e.kind === "gift_back";
     return (
-      <div className="flex flex-col gap-6 pb-4" data-credit-entry>
-        <TicketHeader
-          kind={badgeOf(e)}
-          photo={b.place?.photo ?? null}
+      <TicketPage data-credit-entry>
+        <TicketHero
+          marks={<PlaceMark photo={b.place?.photo} kind={badgeOf(e)} />}
+          headline={out ? `−${m(amount)}` : bought || e.kind === "bonus" || e.kind === "gift_in" ? `+${m(amount)}` : m(amount)}
+          state={state}
+          tone={tone}
           place={place}
           placeHref={b.place?.id ? placePath(b.place.id) : undefined}
           when={when(e.at)}
-          amount={out ? `−${m(amount)}` : bought || e.kind === "bonus" || e.kind === "gift_in" ? `+${m(amount)}` : m(amount)}
-          state={state}
-          tone={tone}
+          note={
+            received
+              ? `A friend sent you credit at ${place}.`
+              : given
+                ? e.kind === "gift_back"
+                  ? `You took back ${m(amount)} you had sent. It is in your balance at ${place}.`
+                  : `You sent ${m(amount)} of your credit at ${place} to a friend.`
+                : null
+          }
+          test={wallet.data.test_mode}
           dim={e.kind === "reversal" || refund !== undefined}
         />
-        {wallet.data.test_mode ? <TestModeNote /> : null}
 
-        {received ? (
-          <p className="text-sm">A friend sent you credit at {place}.</p>
-        ) : given ? (
-          <p className="text-sm">
-            {e.kind === "gift_back"
-              ? `You took back ${m(amount)} you had sent. It is in your balance at ${place}.`
-              : `You sent ${m(amount)} of your credit at ${place} to a friend.`}
-          </p>
-        ) : bought ? (
-          <TicketCard title="Your credit">
+        {received || given ? null : bought ? (
+          <TicketPanel title="Your credit">
             <TicketLine label="Bought" value={m(amount)} />
             {bonus ? <TicketLine label="Bonus" value={`+${m(bonus.amount_cents)}`} /> : null}
             {cashback > 0 ? <TicketLine label="Cashback" value={`+${m(cashback)}`} /> : null}
             {bonus || cashback > 0 ? (
               <TicketLine label="Total credit" value={m(amount + (bonus?.amount_cents ?? 0) + cashback)} strong />
             ) : null}
-          </TicketCard>
+          </TicketPanel>
         ) : (
-          <TicketCard title="Details">
+          <TicketPanel title="Details">
             <TicketLine label="Type" value={entryLabel(e)} />
-          </TicketCard>
+          </TicketPanel>
         )}
 
         {refund ? (
-          <TicketCard title="Refund">
+          <TicketPanel title="Refund">
             <TicketLine
               label="Refund ticket"
               sub={when(refund.at)}
               value={m(Math.abs(refund.amount_cents))}
               href={creditEntryPath(placeId, refund)}
             />
-          </TicketCard>
+          </TicketPanel>
         ) : null}
 
-        <TicketCard title={`At ${place}`}>
+        <TicketPanel title={`At ${place}`}>
           <TicketLine label="Available" value={m(b.available_cents)} />
           {b.pending_cents > 0 ? <TicketLine label="Pending" value={m(b.pending_cents)} /> : null}
           <TicketLine label="You can spend now" value={m(b.spendable_cents)} strong />
-        </TicketCard>
+        </TicketPanel>
 
         {e.purchase_id ? (
-          <TicketCard title="Purchase">
+          <TicketPanel title="Purchase">
             <TicketLine
               label="Purchase number"
               value={e.purchase_id.slice(0, 8).toUpperCase()}
               trailing={<CopyPurchaseId id={e.purchase_id} />}
             />
-          </TicketCard>
+          </TicketPanel>
         ) : null}
 
         {given ? (
@@ -366,7 +371,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
             Gift credit
           </Link>
         ) : null}
-      </div>
+      </TicketPage>
     );
   })();
 

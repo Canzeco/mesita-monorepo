@@ -2,26 +2,37 @@
 
 // THE TICKET'S PARTS (MESITA-4002, Tickets redesign 2/10, Pato 2026-11-14:
 // "THE UI OF ALL THE TICKETS … MUST ENHANCE"). One page of ticket furniture
-// that every ticket page wears, so a visit, a voucher and a gift read as one
-// family: the same header, the same flat cards, the same lines, the same two
-// buttons. Used by the Visit page now; the credit pages move over after it.
+// that every ticket page wears, so a visit, a credit, a refund and a gift
+// read as one family.
 //
-//   TicketHeader     48px place photo with the kind's badge, the place (a link
-//                    to it), when, the amount large, the state coloured
-//   TicketCard       an eyebrow over hairline lines on white, no box (D7)
+// IN BOXES (MESITA-4118, Pato 2026-11-15: "make these tickets modular. use
+// boxes … check the GIFT ticket. its beautiful. the other tickets must follow
+// same standard"). The Gift page (MESITA-4066) set the shape; every ticket
+// page now draws it from these parts, never a copy:
+//
+//   TicketPage       the column: boxes 16px apart
+//   TicketHero       the top box, centred: the marks, the headline (the
+//                    amount or the gift's sentence), the state coloured, the
+//                    place (a link), when, a note, the Test chip
+//   PlaceMark        the 64px place photo, with the kind's badge or without
+//   TicketPanel      a titled box of lines (the shared Panel, MESITA-4071)
+//   TimelinePanel    the Timeline in its own box
 //   TicketLine       label (+ a quiet line) left, value (+ state) right
-//   TicketTimeline   every step, closed until tapped
-//   TicketActions    one filled button, one outline
+//   TicketActions    one filled button, one outline, under the boxes
 //   TestModeNote     the "Test · no real money" chip
-//   TicketSkeleton   the header's bones, the loading frame of every ticket
+//   TicketSkeleton   the boxes' bones, the loading frame of every ticket
 //
-// Colour is for the header's state alone: a line's state is ink or grey, and
+// TicketHeader is the older flat header, still worn inside the Reservation
+// ticket's own top panel (MESITA-4115).
+//
+// Colour is for the state alone: a line's state is ink or grey, and
 // nothing reads red (a failed card part says "Didn't go through" in ink).
 
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
+import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { cn } from "@/lib/utils";
 import type { TicketRowKind } from "./ActivityRow";
@@ -100,13 +111,107 @@ export function TicketHeader({
   );
 }
 
-/** A section: its eyebrow over lines split by hairlines, flat on white. */
-export function TicketCard({ title, children }: { title: string; children: ReactNode }) {
+/** The ticket's column: its boxes, 16px apart. */
+export function TicketPage({
+  children,
+  ...data
+}: {
+  children: ReactNode;
+  [key: `data-${string}`]: string | boolean | undefined;
+}) {
   return (
-    <section aria-label={title}>
-      <h2 className="text-muted-foreground type-eyebrow mb-2">{title}</h2>
-      <div className="divide-border divide-y">{children}</div>
-    </section>
+    <div className="flex flex-col gap-4 pt-4 pb-4" {...data}>
+      {children}
+    </div>
+  );
+}
+
+/** The place's 64px photo (a muted square without one), with the kind's
+ *  badge in its corner when given. */
+export function PlaceMark({ photo, kind }: { photo?: string | null; kind?: TicketRowKind }) {
+  return (
+    <span className="relative h-16 w-16 shrink-0" aria-hidden>
+      {photo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photo} alt="" className="bg-muted h-16 w-16 rounded-2xl object-cover" />
+      ) : (
+        <span className="bg-muted block h-16 w-16 rounded-2xl" />
+      )}
+      {kind ? <KindBadge kind={kind} /> : null}
+    </span>
+  );
+}
+
+/** The ticket's top box, centred: the marks, the headline, the state in its
+ *  tone, the place (a link with `placeHref`), when, a note, the Test chip. */
+export function TicketHero({
+  marks,
+  headline,
+  state,
+  tone = "ink",
+  place,
+  placeHref,
+  when,
+  note,
+  test = false,
+  dim = false,
+  ...data
+}: {
+  marks: ReactNode;
+  /** The amount or the sentence, already written. */
+  headline: string;
+  state: string;
+  tone?: TicketTone;
+  place: string;
+  placeHref?: string;
+  when?: string;
+  /** One quiet sentence under the place ("Refunded to the card you paid with."). */
+  note?: ReactNode;
+  test?: boolean;
+  /** The headline in grey: nothing was paid. */
+  dim?: boolean;
+  [key: `data-${string}`]: string | boolean | undefined;
+}) {
+  const name = <span className="truncate">{place}</span>;
+  return (
+    <Panel className="flex flex-col items-center p-4 text-center" {...data}>
+      <div className="flex items-center gap-3">{marks}</div>
+      <h1 className={cn("mt-4 text-lg font-semibold tabular-nums", dim && "text-muted-foreground")}>{headline}</h1>
+      <p className={cn("mt-1 text-sm font-semibold", TONE[tone])}>{state}</p>
+      {placeHref ? (
+        <PushLink
+          href={placeHref}
+          className="text-muted-foreground hover:text-foreground mt-1 inline-flex max-w-full items-center gap-1 text-sm transition"
+        >
+          {name}
+          <ChevronRight className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+        </PushLink>
+      ) : (
+        <p className="text-muted-foreground mt-1 flex max-w-full text-sm">{name}</p>
+      )}
+      {when ? <p className="text-muted-foreground mt-0.5 text-sm tabular-nums">{when}</p> : null}
+      {note ? <p className="mt-3 text-sm">{note}</p> : null}
+      {test ? <TestModeNote className="mt-3 self-center" /> : null}
+    </Panel>
+  );
+}
+
+/** A section in its own box: the title inside, then lines split by hairlines. */
+export function TicketPanel({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Panel title={title}>
+      <div className="divide-border divide-y px-4 pb-1">{children}</div>
+    </Panel>
+  );
+}
+
+/** The Timeline in its own box; nothing when there are no steps. */
+export function TimelinePanel({ steps, open = false }: { steps: TicketStep[]; open?: boolean }) {
+  if (steps.length === 0) return null;
+  return (
+    <Panel className="px-4">
+      <TicketTimeline steps={steps} open={open} />
+    </Panel>
   );
 }
 
@@ -216,28 +321,28 @@ export function TicketActions({
   );
 }
 
-export function TestModeNote() {
+export function TestModeNote({ className }: { className?: string }) {
   return (
-    <span className="bg-muted text-muted-foreground inline-flex self-start rounded-full px-2.5 py-1 text-xs font-medium">
+    <span
+      className={cn(
+        "bg-muted text-muted-foreground inline-flex self-start rounded-full px-2.5 py-1 text-xs font-medium",
+        className,
+      )}
+    >
       Test · no real money
     </span>
   );
 }
 
-/** The loading frame of every ticket page: the header's bones, then two cards. */
+/** The loading frame of every ticket page: the top box's bones, then two boxes. */
 export function TicketSkeleton() {
   return (
-    <div className="flex flex-col gap-6" aria-busy>
-      <div>
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-12 w-12 rounded-full" />
-          <div className="flex-1">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="mt-2 h-4 w-36" />
-          </div>
-        </div>
-        <Skeleton className="mt-4 h-10 w-44" />
+    <div className="flex flex-col gap-4 pt-4 pb-4" aria-busy>
+      <div className="border-border bg-card flex flex-col items-center rounded-2xl border p-4">
+        <Skeleton className="h-16 w-16 rounded-2xl" />
+        <Skeleton className="mt-4 h-6 w-40" />
         <Skeleton className="mt-2 h-4 w-24" />
+        <Skeleton className="mt-2 h-4 w-32" />
       </div>
       <Skeleton className="h-40 w-full rounded-2xl" />
       <Skeleton className="h-32 w-full rounded-2xl" />

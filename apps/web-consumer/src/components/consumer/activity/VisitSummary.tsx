@@ -7,21 +7,24 @@
 // still opens /pay/bill/<id>.
 //
 // ONE RECEIPT (MESITA-3865), built from TicketParts (MESITA-4002) so every
-// ticket page wears the same header, cards and buttons:
+// ticket page wears the same boxes and buttons. In boxes since MESITA-4118,
+// the Gift ticket's shape: a centred top box, then each section its own panel.
 //
-//   (photo+badge) Taquería Orinoco  ›     the place, a link to it
-//                 Wed, Nov 11 · 22:34     when
-//   $230.00MX                             the total, large
+//   [photo+badge]                         the top box:
+//   $230.00MX                             the total
 //   Paid · 22:51                          the state, coloured
+//   Taquería Orinoco ›                    the place, a link to it
+//   Wed, Nov 11 · 22:34                   when; the Test chip
 //
-//   RECEIPT           Bill · Tip · Total
-//   PAID WITH         one line per method: its bill + tip and its amount; a
+//   Receipt           Bill · Tip · Total
+//   Paid with         one line per method: its bill + tip and its amount; a
 //                     state only when it is not simply Paid ("Didn't go
 //                     through" is ink, never red); a paid part opens its receipt
-//   CASHBACK          only when earned or pending
-//   SPLIT             a share or a split table (S16)
-//   DETAILS           who typed the bill, waiter, ticket, the visit number
-//                     with a copy button, and the Timeline, closed until tapped
+//   Cashback          only when earned or pending
+//   Split             a share or a split table (S16)
+//   Details           who typed the bill, waiter, ticket, the visit number
+//                     with a copy button
+//   Timeline          its own box, closed until tapped
 //   Pay here again (filled) · Open the place
 //
 // A visit nothing was paid on (expired, cancelled) says "Nothing was
@@ -44,13 +47,14 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { readCached } from "@/lib/screen-cache";
 import { toast } from "@/lib/toast";
 import {
-  TestModeNote,
+  PlaceMark,
   TicketActions,
-  TicketCard,
-  TicketHeader,
+  TicketHero,
   TicketLine,
+  TicketPage,
+  TicketPanel,
   TicketSkeleton,
-  TicketTimeline,
+  TimelinePanel,
   type TicketTone,
 } from "./TicketParts";
 
@@ -294,24 +298,24 @@ function Statement({ tab }: { tab: GuestTab }) {
   const showReceipt = tab.bill_cents != null || !unpaid;
 
   return (
-    <div className="flex flex-col gap-6 pb-4" data-visit-summary>
-      <TicketHeader
-        kind="visit"
-        photo={photo}
+    <TicketPage data-visit-summary>
+      <TicketHero
+        marks={<PlaceMark photo={photo} kind="visit" />}
+        headline={tab.bill_cents == null && chosen === 0 ? "No bill" : m(total)}
+        state={state[0]}
+        tone={state[1]}
         place={placeName}
         placeHref={placePath(tab.place.id)}
         when={when(tab.paid_at ?? opened)}
-        amount={tab.bill_cents == null && chosen === 0 ? "No bill" : m(total)}
-        state={state[0]}
-        tone={state[1]}
+        note={showReceipt ? null : "Nothing was charged."}
+        test={tab.test_mode}
         dim={!paid}
       />
-      {tab.test_mode ? <TestModeNote /> : null}
 
       {showReceipt ? (
         <>
           {tab.bill_cents != null ? (
-            <TicketCard title={unpaid ? "The bill" : "Receipt"}>
+            <TicketPanel title={unpaid ? "The bill" : "Receipt"}>
               <TicketLine label="Bill" value={m(tab.bill_cents)} />
               <TicketLine
                 label="Tip"
@@ -319,15 +323,15 @@ function Statement({ tab }: { tab: GuestTab }) {
                 value={tip > 0 ? m(tip) : chosen > 0 ? "No tip" : suggested > 0 ? `${m(suggested)} suggested` : "—"}
               />
               <TicketLine label="Total" value={m(tab.bill_cents + tip)} strong />
-            </TicketCard>
+            </TicketPanel>
           ) : null}
           {!unpaid ? (
-            <TicketCard title="Paid with">
+            <TicketPanel title="Paid with">
               {methods.length > 0 ? methods : <TicketLine label="No payment method chosen yet" />}
-            </TicketCard>
+            </TicketPanel>
           ) : null}
           {!unpaid && showCashback ? (
-            <TicketCard title="Cashback">
+            <TicketPanel title="Cashback">
               {cardBack > 0 ? (
                 <TicketLine
                   label="On the card"
@@ -346,15 +350,13 @@ function Statement({ tab }: { tab: GuestTab }) {
                 <TicketLine label="When the waiter signs" value={`+${m(onSign)}`} state="Pending" />
               ) : null}
               <TicketLine label="Total cashback" value={`+${m(tab.cashback_cents)}`} strong />
-            </TicketCard>
+            </TicketPanel>
           ) : null}
         </>
-      ) : (
-        <p className="text-muted-foreground text-sm">Nothing was charged.</p>
-      )}
+      ) : null}
 
       {tab.table ? (
-        <TicketCard title="Split with friends">
+        <TicketPanel title="Split with friends">
           <TicketLine label="Table bill" value={m(tab.table.bill_cents)} />
           <TicketLine
             label="Split"
@@ -363,10 +365,10 @@ function Statement({ tab }: { tab: GuestTab }) {
           {tab.bill_cents != null ? <TicketLine label="Your share" value={m(tab.bill_cents)} strong /> : null}
           <TicketLine label="Paid at the table" value={m(tab.table.paid_cents)} />
           <TicketLine label="Left" value={m(tab.table.left_cents)} />
-        </TicketCard>
+        </TicketPanel>
       ) : null}
 
-      <TicketCard title="Details">
+      <TicketPanel title="Details">
         {tab.bill_cents != null ? <TicketLine label="Bill typed by" value={typedBy} /> : null}
         {tab.waiter_name ? <TicketLine label="Waiter" value={tab.waiter_name} /> : null}
         {tab.ticket ? <TicketLine label="Ticket" value={`#${tab.ticket}`} /> : null}
@@ -375,13 +377,13 @@ function Statement({ tab }: { tab: GuestTab }) {
           value={tab.tab_id.slice(0, 8).toUpperCase()}
           trailing={<CopyVisitId id={tab.tab_id} />}
         />
-        <TicketTimeline steps={events.map(([at, label, value]) => ({ label, when: when(at), value }))} />
-      </TicketCard>
+      </TicketPanel>
+      <TimelinePanel steps={events.map(([at, label, value]) => ({ label, when: when(at), value }))} />
 
       <TicketActions
         primary={{ label: "Pay here again", href: payPlacePath(tab.place.id) }}
         secondary={{ label: "Open the place", href: placePath(tab.place.id) }}
       />
-    </div>
+    </TicketPage>
   );
 }
