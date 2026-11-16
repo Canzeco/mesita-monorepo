@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Banknote, CircleCheck, Clock, Coins, HandCoins, Loader2, Smartphone, Wallet, XCircle } from "lucide-react";
+import { Banknote, CircleCheck, Clock, Coins, Gift, HandCoins, Loader2, PenLine, Smartphone, Wallet, XCircle } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
 import { Button } from "@/components/ui/button";
+import { PushLink } from "@/components/consumer/nav/PushLink";
+import { walletSendPath } from "@/lib/consumer-route-contract";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type TabCardStep } from "@/lib/api/tab";
@@ -19,15 +21,16 @@ import { STEP, skippedFromParts } from "@/lib/guest-pay-stages";
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
 // /pay/bill/<id>, after App Pay, "I gave the cash" or credits alone:
 //
-//   5 Sign        mostly a large QR; the countdown on the heading's right;
+//   6 Sign        mostly a large QR; the countdown on the heading's right;
 //                 under the QR the bill's total with the way it's paid, what
 //                 the signature earns, and that an unsigned bill cancels
 //                 with nothing charged. Nothing is editable; Cancel bill goes back to the
 //                 bill with everything typed. The screen stays on.
 //   Confirming    a Loader and "Confirming…" while money moves (the bank's
 //                 check, the charge at the signature).
-//   6 Receipt     green: CircleCheck, the place, the time, the lines with
-//                 their icons, "Signed by staff", the green Coins card.
+//   7 Receipt     the step panel, a green Paid with the total, the lines
+//                 with their icons, "Signed by staff" ✓, the cashback; Send
+//                 a gift beside Done when the bill earned some.
 //   Not paid      a red XCircle, one line why, "Nothing was charged", Start
 //                 again (the bill with everything typed).
 //
@@ -172,20 +175,29 @@ export function GuestTabView({
     cash > 0 ? { key: "cash", icon: <Banknote aria-hidden />, cents: cash, alone: "cash", part: "cash" } : null,
   ].filter((w) => w !== null);
 
-  // 6 RECEIPT.
+  // 7 RECEIPT (MESITA-4135, Pato: "a better design when the tickets are gone
+  // and you receive your cashback ... keep the structure"). The same three
+  // parts as before, green Paid, one panel of rows, Done, now under the step
+  // panel ("Receipt · 7 of 7"): Paid carries the total, Signed by staff
+  // carries its check, and with cashback the footer offers Send a gift beside
+  // Done, the place's House Card send page ("receipt has a shortcut button to send gift
+  // related to that card").
   if (signed) {
     const back = tab.cashback_cents;
     // The rate the bill earned (MESITA-4058: 0% is said, not hidden).
     const backBps = card > 0 ? tab.rates.card_back_bps : cash > 0 ? tab.rates.cash_back_bps : 0;
     return (
-      <div className="-mx-4 -mt-4 flex min-h-0 flex-1 flex-col" data-guest-tab="receipt">
-        <div className="flex shrink-0 flex-col items-center bg-green-700 px-4 pt-6 pb-4 text-white">
-          <CircleCheck className="h-14 w-14" aria-hidden />
-          {/* No time once signed (MESITA-4133, Pato: "once you sign the
-              visit, that timer must be gone"). */}
-          <h2 className="font-display mt-3 text-xl font-semibold">Paid</h2>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col px-4 pt-4">
+      <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="receipt">
+        <PayTop place={place} name={tab.place.name} step={{ at: STEP.receipt, skipped: skippedFromParts(tab.parts) }} />
+        <StepBody className="min-h-0 flex-1">
+          {/* Paid, one green row with the total (it was a full-bleed band
+              140px tall; under the step panel the rows and the gift must
+              still fit a small phone). No time once signed (MESITA-4133). */}
+          <div className="flex shrink-0 items-center gap-3 rounded-2xl bg-green-700 px-4 py-3 text-left text-white" data-guest-paid>
+            <CircleCheck className="h-8 w-8 shrink-0" aria-hidden />
+            <h2 className="font-display flex-1 text-xl font-semibold">Paid</h2>
+            <p className="text-2xl font-semibold tabular-nums">{m(total)}</p>
+          </div>
           {/* One panel (MESITA-4072): the place, the money rows, and what the
               bill earned as its last row, hairlines between. */}
           <PaySection className="divide-border divide-y text-base">
@@ -200,7 +212,11 @@ export function GuestTabView({
             {tab.cash_bill_cents > 0 ? <MoneyRow icon={<Banknote />} label="Cash" value={m(tab.cash_bill_cents)} /> : null}
             {tip > 0 ? <MoneyRow icon={<HandCoins />} label="Tip" value={m(tip)} /> : null}
             <MoneyRow label="Total" value={m(total)} strong />
-            <MoneyRow label="Signed by staff" value="" />
+            <MoneyRow
+              icon={<PenLine />}
+              label="Signed by staff"
+              value={<CircleCheck className={cn("h-5 w-5", GOOD)} aria-label="Signed" />}
+            />
             {back > 0 ? (
               <div className={cn("flex min-h-11 items-center gap-3 px-4 py-3 font-semibold", GOOD, GOOD_TINT)} data-guest-cashback>
                 <Coins className="h-5 w-5 shrink-0" aria-hidden />
@@ -214,8 +230,23 @@ export function GuestTabView({
               </div>
             )}
           </PaySection>
-          <div className="min-h-0 flex-1" aria-hidden />
-          <Button size="lg" className="mt-3 mb-4 min-h-12 w-full shrink-0 text-base font-semibold" onClick={onDone}>
+        </StepBody>
+        {/* The footer, always in reach: with cashback, Send a gift beside
+            Done, the place's House Card send page (credits back are spendable
+            at once, MESITA-3909). Quiet, colour on the mark only (loud
+            buttons invite leaving). */}
+        <div className={cn("border-border -mx-4 mt-3 grid shrink-0 gap-3 border-t px-4 pt-3", back > 0 && "grid-cols-2")}>
+          {back > 0 ? (
+            <PushLink
+              href={walletSendPath(tab.place.id)}
+              className={cn(QUIET_BUTTON_CLASS, "flex items-center justify-center gap-2 rounded-xl")}
+              data-guest-send-gift
+            >
+              <Gift className={cn("h-5 w-5", GOOD)} aria-hidden />
+              Send a gift
+            </PushLink>
+          ) : null}
+          <Button size="lg" className="min-h-12 w-full text-base font-semibold" onClick={onDone}>
             Done
           </Button>
         </div>
