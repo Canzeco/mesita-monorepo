@@ -98,9 +98,12 @@ export type VoucherReason =
  *  switches, the catalog lines and Story's gates stay, and vouchers already
  *  bought keep working. Deleting a line brings that voucher back. MEDIUM IS
  *  BACK (Pato, 2026-11-15, MESITA-4056). Since MESITA-4152 Medium is
- *  voucher_1000 (MX$1,000 +20%) and Big voucher_5000 (MX$5,000 +30%). */
+ *  voucher_1000 (MX$1,000 +20%) and Big voucher_5000 (MX$5,000 +30%).
+ *  VIP IS PARKED AND STORY IS BACK (Pato, 2026-11-16, MESITA-4197: "Should
+ *  we really have VIP or only Story???" ... "hide VIP for the moment"): the
+ *  one-time offers are Welcome and Story. */
 export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {
-  voucher_story: "not_yet",
+  voucher_vip: "not_yet",
 };
 
 /** Story is for guests whose linked Instagram has MORE than this many
