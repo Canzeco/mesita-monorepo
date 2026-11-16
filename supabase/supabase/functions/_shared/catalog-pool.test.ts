@@ -113,14 +113,26 @@ function fakeRank(order: string[], opts: { fail?: boolean; read?: number } = {})
 function pool(
   rows: PoolRow[],
   order: string[],
-  opts: Parameters<typeof fakeRead>[1] & { pageSize?: number; failRank?: boolean } = {},
+  opts: Parameters<typeof fakeRead>[1] & {
+    pageSize?: number;
+    failRank?: boolean;
+    temperature?: number;
+    nearest?: boolean;
+  } = {},
 ) {
   const fake = fakeRead(rows, opts);
   const ranker = fakeRank(order, { fail: opts.failRank });
+  // The shuffle is off unless a test asks for it (MESITA-4153), so the
+  // fake rank's order is the order the pool keeps.
+  const cfg = {
+    ...DISCOVERY_DEFAULTS,
+    params: { ...DISCOVERY_DEFAULTS.params, shuffle: { temperature: opts.temperature ?? 0 } },
+  };
   const run = selectCatalogPool({
     rank: ranker.rank,
     read: fake.read,
-    cfg: DISCOVERY_DEFAULTS,
+    cfg,
+    nearest: opts.nearest,
     location: resolveAreaLocation(CENTER, null),
     families: [],
     cardColumns: CARDS,
@@ -191,6 +203,23 @@ Deno.test("catalog_rank's arguments are the engine's own knobs and constants", (
   assertEquals(args.p_nearest, true);
   const none = catalogRankArgs(DISCOVERY_DEFAULTS, resolveAreaLocation(null, null), [], false);
   assertEquals([none.p_lat, none.p_lng], [null, null]);
+  // MESITA-4153: the stars weight and the repeat penalty ride along;
+  // `nearest` (distance alone) gets no variety.
+  assertEquals(none.p_stars_power, DISCOVERY_DEFAULTS.params.popularity.starsPower);
+  assertEquals(none.p_repeat, DISCOVERY_DEFAULTS.params.variety.repeat);
+  assertEquals(args.p_repeat, 1);
+});
+
+Deno.test("the shuffle after the sort: same ids, a new order, never for nearest", async () => {
+  const rows = Array.from({ length: 60 }, (_, i) => row(i));
+  const order = rows.map((r) => r.id);
+  const hot = await pool(rows, order, { temperature: 5 }).run;
+  assertEquals([...hot.order].sort(), [...order].sort());
+  assert(hot.order.join() !== order.join(), "a temperature of 5 kept the sort exactly");
+  const near = await pool(rows, order, { temperature: 5, nearest: true }).run;
+  assertEquals(near.order, order);
+  const cold = await pool(rows, order, { temperature: 0 }).run;
+  assertEquals(cold.order, order);
 });
 
 Deno.test("a kept id pass 2 does not return is skipped and counted, never backfilled", async () => {

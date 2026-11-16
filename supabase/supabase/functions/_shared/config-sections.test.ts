@@ -147,7 +147,7 @@ const CASES: Record<string, SectionCase> = {
     refuse: {
       clamped: (saved) => {
         const c = saved.config as Row;
-        assertEquals((c.params as Row).popularity, { root: 0.1 });
+        assertEquals((c.params as Row).popularity, { root: 0.1, starsPower: 6 });
         assertEquals((c.params as Row).proximity, { halfKm: 100, exponent: 1 });
         assertEquals("modes" in (c.params as Row), false);
         assertEquals("balance" in c, false);

@@ -112,9 +112,14 @@ Deno.test("chat: Chat ranks like the Catalog, by the half distance (MESITA-2909)
     mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
     mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
   ];
+  // Stars weight off: this pins the half distance alone (MESITA-4153).
   const h = (halfKm: number) => ({
     ...selOpts,
-    params: { ...selOpts.params, proximity: { ...selOpts.params.proximity, halfKm } },
+    params: {
+      ...selOpts.params,
+      proximity: { ...selOpts.params.proximity, halfKm },
+      popularity: { ...selOpts.params.popularity, starsPower: 0 },
+    },
   });
   assertEquals(ids(rankMesitaPlaces(rows, h(0.5)))[0], "near-quiet");
   assertEquals(ids(rankMesitaPlaces(rows, h(50)))[0], "far-loved");
@@ -253,8 +258,19 @@ Deno.test("the Catalog: every place, no radius, Proximity × Popularity × the P
   const plain = mrow("plain", { selected: true, lat: 25.6702, google_stars_overall: 4.9, google_review_count: 9000 });
   // 330 km away: kept, only lowered.
   const far = mrow("far", { lat: 28.6, google_stars_overall: 4.9, google_review_count: 9000 });
+  // Stars weight off: this pins the Premier factor against reviews alone
+  // (MESITA-4153 has its own pins).
+  const cfg = {
+    ...DISCOVERY_DEFAULTS,
+    params: {
+      ...DISCOVERY_DEFAULTS.params,
+      popularity: { ...DISCOVERY_DEFAULTS.params.popularity, starsPower: 0 },
+    },
+  };
   const run = (tier: number) =>
-    selectAreaPool(deps({ surface: "catalog", radiusKm: null, mesitaRows: [{ ...premier, boost_tier: tier }, plain, far] }).d);
+    selectAreaPool(
+      deps({ surface: "catalog", radiusKm: null, cfg, mesitaRows: [{ ...premier, boost_tier: tier }, plain, far] }).d,
+    );
   const out = await run(2);
   const byId = Object.fromEntries(out.places.map((p) => [p.id, p.area]));
   assertEquals(ids(out.places).length, 3);

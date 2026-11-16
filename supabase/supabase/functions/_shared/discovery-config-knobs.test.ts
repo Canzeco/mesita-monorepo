@@ -72,7 +72,7 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
     params: { proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 }, popularity: { confidence: 60 } },
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
-  assertEquals(cfg.params, { proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33 } });
+  assertEquals(cfg.params, { proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } });
   assertEquals("catalog" in cfg, false);
 });
 
@@ -86,12 +86,12 @@ Deno.test("params clamp; the reach, the divisor, Selected and the weights table 
       balance: { proximity: 7 },
     },
   });
-  assertEquals(cfg.params, { proximity: { halfKm: 0.1, exponent: 1 }, popularity: { root: 0.1 } });
+  assertEquals(cfg.params, { proximity: { halfKm: 0.1, exponent: 1 }, popularity: { root: 0.1, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } });
   // The exponent and the root clamp at their own decimals (MESITA-3083); a
   // stored `halfReviews` drops.
   assertEquals(
-    normalizeDiscoveryConfig({ params: { proximity: { exponent: 9 }, popularity: { root: 0.3333 } } }).params,
-    { proximity: { halfKm: 1, exponent: 4 }, popularity: { root: 0.33 } },
+    normalizeDiscoveryConfig({ params: { proximity: { exponent: 9 }, popularity: { root: 0.3333, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } } }).params,
+    { proximity: { halfKm: 1, exponent: 4 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } },
   );
   assertEquals(normalizeDiscoveryConfig({ params: { proximity: { exponent: 0.04 } } }).params.proximity.exponent, 0.5);
   // One decimal, clamped to 100; a stored row with only the retired divisor

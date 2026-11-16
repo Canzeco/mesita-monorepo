@@ -11,6 +11,7 @@ import {
   PROXIMITY_HALF_KM_DEFAULT,
   proximityFromDistance,
   rootPopularity,
+  shuffleByRank,
 } from "./pipeline-signals.ts";
 
 const K = POPULARITY_HALF_REVIEWS_DEFAULT;
@@ -162,4 +163,27 @@ Deno.test("proximity: an unplaceable distance scores 0, never 1", () => {
   // The point itself is 1 whatever D is.
   assertEquals(proximityFromDistance(0, Number.NaN), 1);
   assertEquals(proximityFromDistance(0, 0), 1);
+});
+
+// ── MESITA-4153: stars weight and the shuffle after the sort ───────────────
+
+Deno.test("the stars weight lifts the better-rated place; 0 is today's Popularity", () => {
+  const a = { rating: 4.9, reviewCount: 1000 };
+  const b = { rating: 4.4, reviewCount: 1000 };
+  assertEquals(rootPopularity(a, 0.33, 0), rootPopularity(a, 0.33));
+  const ratio = rootPopularity(a, 0.33, 6) / rootPopularity(b, 0.33, 6);
+  assert(ratio > 1.9 && ratio < 2.1, `4.9★ vs 4.4★ at k 6 was ×${ratio}`);
+});
+
+Deno.test("shuffleByRank: temperature 0 keeps the sort, any temperature keeps every item", () => {
+  const order = Array.from({ length: 50 }, (_, i) => i);
+  assertEquals(shuffleByRank(order, 0), order);
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const out = shuffleByRank(order, 1, rnd);
+  assertEquals([...out].sort((x, y) => x - y), order);
+  // Low temperature: the head barely moves on average.
+  let moved = 0;
+  for (let t = 0; t < 200; t++) moved += shuffleByRank(order, 0.3, rnd).indexOf(0);
+  assert(moved / 200 < 2, `rank 1 drifted to ${moved / 200} on average at T 0.3`);
 });

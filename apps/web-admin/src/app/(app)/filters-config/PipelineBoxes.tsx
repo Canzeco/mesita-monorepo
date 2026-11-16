@@ -38,6 +38,12 @@ import {
   NAME_POPULARITY_FLOOR_MIN,
   POPULARITY_ROOT_MAX,
   POPULARITY_ROOT_MIN,
+  SHUFFLE_TEMPERATURE_MAX,
+  SHUFFLE_TEMPERATURE_MIN,
+  STARS_POWER_MAX,
+  STARS_POWER_MIN,
+  VARIETY_REPEAT_MAX,
+  VARIETY_REPEAT_MIN,
   type DiscoveryConfig,
 } from "./catalog";
 import { PipelineBox } from "./PipelineBox";
@@ -437,6 +443,14 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
     setOk(false);
     setCfg((c) => ({ ...c, params: { ...c.params, popularity: { ...c.params.popularity, ...p } } }));
   };
+  const variety = (repeat: number) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, params: { ...c.params, variety: { repeat } } }));
+  };
+  const shuffle = (temperature: number) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, params: { ...c.params, shuffle: { temperature } } }));
+  };
   const pageSize = (catalogPageSize: number) => {
     setOk(false);
     setCfg((c) => ({ ...c, map: { ...c.map, catalogPageSize } }));
@@ -445,6 +459,10 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
   const h = params.proximity.halfKm;
   const e = params.proximity.exponent;
   const root = params.popularity.root;
+  const k = params.popularity.starsPower;
+  const starsRatio = (a: number, b: number) => (Math.pow(a / b, k)).toFixed(1);
+  const r = params.variety.repeat;
+  const t = params.shuffle.temperature;
   const at = (k: number) => catalogProximity(k * h, h, e).toFixed(2);
   const revFor = (m: number) => timesFmt(planInReviews(m, root));
   const km = (d: number) => String(Math.round(d * 10) / 10);
@@ -454,7 +472,7 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
       pipeline="catalog"
       title="Consumer Catalog Pipeline"
       icon={<LayoutGrid />}
-      summary="Home's Places: every Mesita place, ranked by how close and how popular it is. A far place is never cut, only lowered."
+      summary="Home's Places: every Mesita place, ranked by how close, how popular and how well rated it is, mixed by kind, then lightly shuffled. A far place is never cut, only lowered."
       explanation={
         <>
           <p>
@@ -530,6 +548,59 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
           {revFor(5)}, and a ×2 plan or {revFor(2)} the reviews buys {km(h)} km
           from the guest&apos;s feet, a ×5 plan {km(h * Math.pow(4, 1 / e))} km.
           {" "}{POPULARITY_ROOT_MIN}–{POPULARITY_ROOT_MAX}.
+        </p>
+      </Group>
+      <Group title="Best places and variety">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <NumberField
+            label="Stars weight"
+            value={k}
+            min={STARS_POWER_MIN}
+            max={STARS_POWER_MAX}
+            decimals
+            disabled={off}
+            onChange={(starsPower) => popularityParam({ starsPower })}
+          />
+          <NumberField
+            label="Repeat penalty"
+            value={r}
+            min={VARIETY_REPEAT_MIN}
+            max={VARIETY_REPEAT_MAX}
+            decimals
+            disabled={off}
+            onChange={variety}
+          />
+          <NumberField
+            label="Temperature"
+            value={t}
+            min={SHUFFLE_TEMPERATURE_MIN}
+            max={SHUFFLE_TEMPERATURE_MAX}
+            decimals
+            disabled={off}
+            onChange={shuffle}
+          />
+        </div>
+        <p className="text-muted-foreground type-meta">
+          Stars weight: Popularity is multiplied by (stars ÷ 5)^weight, so the
+          best-rated places rise even when they are farther. At {k} a 4.9★
+          place beats a 4.4★ one ×{starsRatio(4.9, 4.4)} and a 4.0★ one ×
+          {starsRatio(4.9, 4.0)}. 0 turns it off. Home and Chat.{" "}
+          {STARS_POWER_MIN}–{STARS_POWER_MAX}.
+        </p>
+        <p className="text-muted-foreground type-meta">
+          Repeat penalty: each place has a kind, its rarest family (tacos,
+          sushi, coffee…). The second place of a kind is multiplied by {r},
+          the third by {Math.round(r * r * 100) / 100}, so Home mixes kinds
+          instead of showing one kind in a row. 1 turns it off. Home only.{" "}
+          {VARIETY_REPEAT_MIN}–{VARIETY_REPEAT_MAX}.
+        </p>
+        <p className="text-muted-foreground type-meta">
+          Temperature: after the sort, Home shuffles the list a little. 0 keeps
+          the sort exactly; 0.3 swaps neighbours and keeps the best near the
+          top; 1 is loose; 3 or more is almost random. A new shuffle every
+          time Home ranks again; the list stays put while the guest scrolls.
+          The Reward tab&apos;s nearest list is never shuffled.{" "}
+          {SHUFFLE_TEMPERATURE_MIN}–{SHUFFLE_TEMPERATURE_MAX}.
         </p>
       </Group>
       <Group title="Paging">

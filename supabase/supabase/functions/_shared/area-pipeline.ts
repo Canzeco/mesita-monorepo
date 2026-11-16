@@ -47,6 +47,10 @@ import {
   POPULARITY_ROOT_DEFAULT,
   PROXIMITY_EXPONENT_DEFAULT,
   PROXIMITY_HALF_KM_DEFAULT,
+  SHUFFLE_TEMPERATURE_DEFAULT,
+  shuffleByRank,
+  STARS_POWER_DEFAULT,
+  VARIETY_REPEAT_DEFAULT,
 } from "./pipeline-signals.ts";
 import { type DiscoveryConfig, NO_SCREEN_RADIUS_KM, type SignalParams } from "./discovery-config.ts";
 import { chunked, ID_CHUNK } from "./postgrest.ts";
@@ -67,15 +71,35 @@ export function areaSignalParams(
   params: SignalParams,
   map: { popularityRoot?: number },
   surface: AreaSurface,
-): Pick<AreaContext, "halfKm" | "exponent" | "popularityRoot"> {
+): Pick<AreaContext, "halfKm" | "exponent" | "popularityRoot" | "starsPower"> {
   const positive = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n > 0;
   const h = params.proximity?.halfKm;
   const e = params.proximity?.exponent;
   const root = surface === "map" ? map.popularityRoot : params.popularity?.root;
+  const k = params.popularity?.starsPower;
   return {
     halfKm: surface === "map" ? null : positive(h) ? h : PROXIMITY_HALF_KM_DEFAULT,
     exponent: positive(e) ? e : PROXIMITY_EXPONENT_DEFAULT,
     popularityRoot: positive(root) ? root : POPULARITY_ROOT_DEFAULT,
+    // The stars weight is the Catalog's and Chat's (MESITA-4153); the Map
+    // ranks by its own root alone.
+    starsPower: surface === "map"
+      ? 0
+      : typeof k === "number" && Number.isFinite(k) && k >= 0
+      ? k
+      : STARS_POWER_DEFAULT,
+  };
+}
+
+/** Home's variety and shuffle numbers (MESITA-4153): the repeat penalty
+ *  `catalog_rank` applies per kind, and the temperature of the shuffle
+ *  after the sort. Out-of-range or missing reads the default. */
+export function catalogMixParams(params: SignalParams): { repeat: number; temperature: number } {
+  const r = params.variety?.repeat;
+  const t = params.shuffle?.temperature;
+  return {
+    repeat: typeof r === "number" && Number.isFinite(r) && r > 0 && r <= 1 ? r : VARIETY_REPEAT_DEFAULT,
+    temperature: typeof t === "number" && Number.isFinite(t) && t >= 0 ? t : SHUFFLE_TEMPERATURE_DEFAULT,
   };
 }
 
@@ -579,6 +603,9 @@ export function catalogRankArgs(
     p_half_km: sig.halfKm,
     p_exponent: sig.exponent,
     p_root: sig.popularityRoot,
+    p_stars_power: sig.starsPower ?? 0,
+    // `nearest` is distance alone: no variety (MESITA-4153).
+    p_repeat: nearest ? 1 : catalogMixParams(cfg.params).repeat,
     p_premier_1: PREMIER_FACTOR[1],
     p_premier_2: PREMIER_FACTOR[2],
     p_families: [...families],
@@ -624,6 +651,8 @@ export async function selectCatalogPool<T extends PoolRow>(
     /** The first page's length: only these cards are read. */
     pageSize: number;
     nearest?: boolean;
+    /** The shuffle's random source; tests pin it. */
+    random?: () => number;
   },
 ): Promise<CatalogPool> {
   const { data, error } = await deps.rank(
@@ -631,7 +660,13 @@ export async function selectCatalogPool<T extends PoolRow>(
   );
   if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
   const answer = (data ?? {}) as { read?: unknown; ids?: unknown };
-  const order = Array.isArray(answer.ids) ? answer.ids.map(String) : [];
+  const ranked = Array.isArray(answer.ids) ? answer.ids.map(String) : [];
+  // The shuffle after the sort (MESITA-4153): fresh on every rank, held for
+  // the whole scroll because fills read this one `order`. `nearest` (the
+  // Reward tab) is never shuffled.
+  const order = deps.nearest === true
+    ? ranked
+    : shuffleByRank(ranked, catalogMixParams(deps.cfg.params).temperature, deps.random);
   const read = typeof answer.read === "number" ? answer.read : order.length;
   const kept = order.slice(0, Math.max(0, deps.pageSize));
   const filled = await selectCatalogFill({ ...deps, ids: kept });
