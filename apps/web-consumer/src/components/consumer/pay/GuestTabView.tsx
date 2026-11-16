@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Banknote, CircleCheck, Clock, Coins, HandCoins, Loader2, Smartphone, Wallet, XCircle } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
-import { clockTime } from "@mesita/place-profile/lib/money";
 import { Button } from "@/components/ui/button";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
@@ -160,8 +159,9 @@ export function GuestTabView({
       <div className="-mx-4 -mt-4 flex min-h-0 flex-1 flex-col" data-guest-tab="receipt">
         <div className="flex shrink-0 flex-col items-center bg-green-700 px-4 pt-6 pb-4 text-white">
           <CircleCheck className="h-14 w-14" aria-hidden />
+          {/* No time once signed (MESITA-4133, Pato: "once you sign the
+              visit, that timer must be gone"). */}
           <h2 className="font-display mt-3 text-xl font-semibold">Paid</h2>
-          <p className="text-sm text-white/85">{clockTime(tab.verified_at ?? tab.paid_at ?? tab.updated_at)}</p>
         </div>
         <div className="flex min-h-0 flex-1 flex-col px-4 pt-4">
           {/* One panel (MESITA-4072): the place, the money rows, and what the
