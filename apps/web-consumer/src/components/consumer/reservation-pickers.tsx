@@ -395,12 +395,10 @@ function NotifyRow({
   label,
   value,
   onChange,
-  callHint,
 }: {
   label: string;
   value: ReservationNotify;
   onChange: (next: ReservationNotify) => void;
-  callHint?: string;
 }) {
   const options: Array<{ value: ReservationNotify; label: string }> = [
     { value: "app", label: "App notification" },
@@ -429,7 +427,6 @@ function NotifyRow({
           );
         })}
       </div>
-      {callHint && value === "call" && <p className="text-muted-foreground type-body mt-1.5">{callHint}</p>}
     </div>
   );
 }
@@ -454,9 +451,6 @@ export function ReservationUpdatesPicker({
           label="If we can't book you"
           value={onReject}
           onChange={setReject}
-          // A plain "no" has no call script yet; a2 calls when the place
-          // offers other times (MESITA-4187, said plainly).
-          callHint="We call when the place offers other times."
         />
       </div>
     </ReservationSection>

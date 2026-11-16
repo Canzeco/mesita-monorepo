@@ -291,6 +291,37 @@
     }
   },
   {
+    "name": "mesita · a2 · not booked, said once",
+    "agent": "a2",
+    "label": "not booked, said once",
+    "scenario": "Eres Ana López y contestas tu celular con «¿Bueno?». Cuando te pregunten si eres Ana López dices que sí. Cuando te den la noticia, preguntas «¿y no me pueden conseguir otra hora?».",
+    "conditions": [
+      "El agente pregunta si habla con Ana López ANTES de mencionar Gran Central, la fecha o la hora.",
+      "El agente dice que Mesita no pudo conseguirle mesa en Gran Central para la fecha y hora de la reservación, una sola vez y sin culpar al restaurante.",
+      "Cuando Ana pide otra hora, el agente le dice que puede pedirla desde la app de Mesita; NO ofrece reservar él ni promete una hora.",
+      "El agente se despide y termina la llamada."
+    ],
+    "variables": {
+      "venue_name": "Gran Central",
+      "guest_name": "Ana López",
+      "reference_code": "48213907",
+      "party_size": 2,
+      "reservation_date": "sábado 21 de noviembre",
+      "reservation_time": "8:30 p.m.",
+      "special_requests": "",
+      "venue_notes": "",
+      "call_context": "not_booked",
+      "venue_alternatives": "",
+      "run_id": "test-run",
+      "modification_of_date": "",
+      "modification_of_time": "",
+      "window_from": "",
+      "window_to": "",
+      "seating": ""
+    },
+    "maxTurns": 6
+  },
+  {
     "name": "mesita · a2 · tells a stranger nothing",
     "agent": "a2",
     "label": "tells a stranger nothing",

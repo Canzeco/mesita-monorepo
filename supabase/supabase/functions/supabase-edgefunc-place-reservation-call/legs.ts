@@ -122,13 +122,16 @@ async function resolveLines(
 // within 30 min of the slot) and the retry cron re-fires this engine with
 // intent "callback_retry". Past the ladder the app is the fallback — never a
 // fourth ring.
+/** Why a2 rings the guest on leg 3 (not_booked: MESITA-4188). */
+export type GuestCallContext = "confirmation" | "counter_offer" | "not_booked";
+
 async function callGuest(input: {
   admin: SupabaseClient;
   reservationId: string;
   runId: string;
   key: string;
   phoneNumberId: string;
-  context: "confirmation" | "counter_offer";
+  context: GuestCallContext;
   alternativesText: string;
   consumerNumber: string;
   confirmerAgentId: string;
@@ -144,7 +147,11 @@ async function callGuest(input: {
   const { admin, reservationId } = input;
   const record = (patch: Record<string, unknown>) =>
     guardedRecord(admin, reservationId, input.runId, patch);
-  const label = input.context === "confirmation" ? "confirmed" : "counter-offer";
+  const label = input.context === "confirmation"
+    ? "confirmed"
+    : input.context === "not_booked"
+    ? "not booked"
+    : "counter-offer";
   if (input.guestNotify === "app") {
     await record({
       callback_state: "skipped",
@@ -242,7 +249,7 @@ export async function runCallbackRetry(input: {
   reservationId: string;
   runId: string;
   key: string;
-  context: "confirmation" | "counter_offer";
+  context: GuestCallContext;
   alternativesText: string;
   consumerNumber: string;
   confirmerAgentId: string;

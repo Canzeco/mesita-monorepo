@@ -96,7 +96,8 @@ import { endAtDeadEnd } from "../_shared/reservation-dead-end.ts";
 import { changeToSpeech } from "../_shared/reservation-change.ts";
 import { dialNumber } from "../_shared/place-reservable.ts";
 import { loadPlaceNotes, notesForCall } from "../_shared/place-notes.ts";
-import { runCallbackRetry, runCancelNotice, runIntents, runReminder } from "./legs.ts";
+import { type GuestCallContext, runCallbackRetry, runCancelNotice, runIntents, runReminder } from "./legs.ts";
+import { NOT_BOOKED_STATES } from "../_shared/reservation-call-outcome.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
 // re-ring the guest on a still-live verdict (leg 3) · "cancel_notice" = tell
@@ -130,6 +131,8 @@ type TicketRow = {
   attempts: unknown;
   alternatives: unknown;
   reported_verdict: string | null;
+  /** "When you're booked: App + call me" (MESITA-4187). */
+  confirm_notify?: string | null;
   /** A change the place asked for and the guest did not take (MESITA-4073). */
   change_reserved_at: string | null;
   change_party_size: number | null;
@@ -280,7 +283,18 @@ async function launchCallbackRetry(ctx: LaunchCtx): Promise<Response> {
     runId,
     legVars,
   } = ctx;
-  if (guestNotify === "app") {
+  // Why a2 rings (MESITA-4188): a confirmed table, a place's other times, or
+  // no table at all. Each reads the guest's own choice: "When you're booked"
+  // is confirm_notify (MESITA-4187); "If we can't book you" is consumer_notify.
+  const context: GuestCallContext = r.state === "confirmed"
+    ? "confirmation"
+    : NOT_BOOKED_STATES.includes(r.state)
+    ? "not_booked"
+    : "counter_offer";
+  const callNotify: "call" | "app" = context === "confirmation"
+    ? (r.confirm_notify === "call" ? "call" : "app")
+    : guestNotify;
+  if (callNotify === "app") {
     await writeReservation(admin, {
       mode: "update",
       id: reservationId,
@@ -322,7 +336,6 @@ async function launchCallbackRetry(ctx: LaunchCtx): Promise<Response> {
   if (!callbackClaim.ok || !callbackClaim.row) {
     return json({ ok: true, skipped: "callback already claimed" });
   }
-  const context = r.state === "confirmed" ? "confirmation" as const : "counter_offer" as const;
   runInBackground(
     runCallbackRetry({
       admin,
@@ -340,7 +353,7 @@ async function launchCallbackRetry(ctx: LaunchCtx): Promise<Response> {
       outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
       placeTz,
       reservedAtIso: r.reserved_at,
-      guestNotify,
+      guestNotify: callNotify,
     }),
   );
   return json({ ok: true, started: true, intent, reservation_id: reservationId });
@@ -548,7 +561,7 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, consumer_id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, reported_verdict, guest_first_name, guest_last_name, time_window_minutes, seating, change_reserved_at, change_party_size, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, consumer_id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, confirm_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, reported_verdict, guest_first_name, guest_last_name, time_window_minutes, seating, change_reserved_at, change_party_size, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -594,9 +607,11 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
   } else {
     // callback_retry: only a still-live verdict warrants re-ringing the guest.
     const confirmationDue = r.state === "confirmed" && !r.consumer_confirmed_at;
+    // MESITA-4188: no table, and the guest asked to hear it by phone.
+    const notBookedDue = NOT_BOOKED_STATES.includes(r.state) && r.consumer_notify === "call";
     const counterDue = r.state === "pending" &&
       (normalizeAlternatives(r.alternatives).length > 0 || r.reported_verdict === "counter_offer");
-    if (!confirmationDue && !counterDue) {
+    if (!confirmationDue && !counterDue && !notBookedDue) {
       return json({ ok: true, skipped: "callback no longer applicable" });
     }
   }
