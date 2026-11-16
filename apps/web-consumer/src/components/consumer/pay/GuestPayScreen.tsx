@@ -34,7 +34,7 @@ import { payPlacePath } from "@/lib/consumer-route-contract";
 import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { CardBrandChip, cardFace } from "@/components/shared/card-brand-marks";
-import { AmountDisplay, AmountInline, AmountKeypad } from "./AmountKeypad";
+import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
 import { CASH_GREEN, CreditsCardChip, CreditsPill } from "@/components/consumer/wallet/WalletLists";
 import { BAD, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, StepBody, StepFooter } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
@@ -566,12 +566,12 @@ export function GuestPayScreen({
               <span className="text-muted-foreground block text-sm">Type the total on your ticket.</span>
             </span>
           </PaySection>
-          <PaySection
-            title="Bill"
-            action={<AmountInline text={amount} currency={place.currency} label="Bill" />}
-            className="flex min-h-0 shrink flex-col"
-          >
+          {/* THE AMOUNT, BIG AND CENTRED (MESITA-4125, Pato: "the bill amount
+              must be bigger ... bigger and centralized"): AmountDisplay over
+              the keypad, undoing MESITA-4082's small amount on the right. */}
+          <PaySection title="Bill" className="flex min-h-0 shrink flex-col">
             <div className="flex min-h-0 shrink flex-col px-4 pb-2">
+              <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mt-1 shrink-0" />
               <div className="mt-2 flex h-64 min-h-44 shrink flex-col">
                 <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
               </div>

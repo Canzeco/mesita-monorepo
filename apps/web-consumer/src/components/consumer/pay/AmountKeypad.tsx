@@ -84,11 +84,11 @@ export function AmountDisplay({
   const shown = amountShown(text, currency);
   const em = Math.max(widthEm(shown.prefix + shown.body + shown.ghost + shown.suffix), 1);
   return (
-    <div className={cn("@container flex h-14 w-full min-w-0 items-center", className)} data-pay-amount>
+    <div className={cn("@container flex h-16 w-full min-w-0 items-center", className)} data-pay-amount>
       <div
         aria-hidden
         className="w-full text-center leading-none font-semibold whitespace-nowrap tabular-nums"
-        style={{ fontSize: `min(2.5rem, ${(100 / em).toFixed(2)}cqw)` }}
+        style={{ fontSize: `min(3rem, ${(100 / em).toFixed(2)}cqw)` }}
       >
         <span className={cn(text === "" && "text-muted-foreground")}>{shown.prefix}</span>
         {shown.body}
