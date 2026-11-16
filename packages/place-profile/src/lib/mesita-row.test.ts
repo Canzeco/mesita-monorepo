@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { PlaceMoney } from "../place-detail";
-import { offerSlides } from "./offers";
+import { offerDetailSlides, offerSlides } from "./offers";
 import { mesitaRowState, PREPAY_PAUSED } from "./mesita-row";
 
 const BASE: PlaceMoney = {
@@ -44,6 +44,27 @@ describe("mesitaRowState", () => {
     const s = mesitaRowState({ reservations_enabled: false, money: BASE });
     expect(s.reserve.works).toBe(false);
     expect(s.offers).toEqual({ works: false, loading: false, slides: [] });
+  });
+
+  it("says each offer whole, sizes first, then the specials, then cashback (MESITA-4155)", () => {
+    const line = (price: number, credit: number) => ({ price_cents: price, bonus_cents: credit - price, credit_cents: credit, available_after_sec: 3600 });
+    const slides = offerDetailSlides({
+      ...BASE,
+      cashback: true,
+      card_cashback_bps: 500,
+      sell: ["voucher_vip", "voucher_5000", "voucher_200", "voucher_welcome"],
+      catalog: { voucher_200: line(20000, 22000), voucher_5000: line(500000, 650000), voucher_welcome: line(10000, 20000), voucher_vip: line(10000, 20000) },
+    });
+    expect(slides.map((s) => s.lead)).toEqual([
+      "Prepay $200MX, Get $220MX",
+      "Prepay $5000MX, Get $6500MX",
+      "Prepay $100MX, Get $200MX",
+      "Prepay $100MX, Get $200MX",
+      "Pay with Mesita, Get 5% Back",
+    ]);
+    expect(slides.map((s) => s.section)).toEqual(["prepayment", "prepayment", "special", "special", null]);
+    // On sale but no catalog line: no guessed amount.
+    expect(offerDetailSlides({ ...BASE, sell: ["voucher_1000"] })).toEqual([]);
   });
 
   it("works with one slide, and says paused while Mesita pauses sales", () => {

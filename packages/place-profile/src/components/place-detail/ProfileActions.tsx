@@ -35,8 +35,9 @@ import { buildDirectionsUrl } from "../../lib/maps-link";
 // button must be moving ... just like the banner in home"). Reserve is the
 // black ink tile, always drawn (MESITA-3078): live where the place takes
 // bookings, an "Off" pill and the Off sheet where it doesn't. Offers is
-// Home's moving offer button (offer-slides.tsx, one copy): Welcome, Story,
-// VIP, Pay N% Back, Prepay +N%, each in its own colour, a slide every 2s.
+// a black tile whose words rotate through every offer the place sells, whole
+// (MESITA-4155): "Prepay $200MX, Get $220MX" for each voucher, sizes first,
+// then "Pay with Mesita, Get 5% Back"; a slide every 2s on Home's beat.
 // The slide under the finger is the door: a voucher opens the Offers page at
 // its section, Pay opens Pay. With no offer here it is the grey Off tile.
 // Four tiles (Reserve · Prepay · Wallet · Pay) from MESITA-3574 to 4150.
@@ -332,8 +333,9 @@ function OffersTile({
       onBlur={release}
       className={cn(
         PROFILE_MESITA_TILE_BOX_CLASS,
-        slide.tone,
-        "relative px-2 text-xs font-semibold transition-colors duration-300 hover:opacity-90 active:scale-[0.99]",
+        // BLACK, LIKE RESERVE (Pato, 2026-11-16, MESITA-4155: "payments
+        // inside a black box"); the words carry the offer.
+        "bg-foreground text-paper relative px-2 text-xs font-semibold hover:opacity-90 active:scale-[0.99]",
       )}
       data-tile-bonus
     >
