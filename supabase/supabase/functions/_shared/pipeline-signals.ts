@@ -102,6 +102,35 @@ export const POPULARITY_ROOT_DEFAULT = 0.33;
 export const POPULARITY_ROOT_MIN = 0.1;
 export const POPULARITY_ROOT_MAX = 1;
 
+/** THE STARS WEIGHT k (MESITA-4153): the operator's
+ *  `params.popularity.starsPower`, 0–12 at one decimal, default 6. The
+ *  Catalog's and Chat's Popularity is multiplied by (stars ÷ 5)^k, so the
+ *  best places rise (Pato, 2026-11-16: "finding the best places even if
+ *  those are a bit far"): at 6, 4.9★ beats 4.4★ ×1.9 and 4.0★ ×3.4. Under
+ *  the root alone 4.0★ vs 4.9★ was ×1.07. 0 = no stars weight. The Map
+ *  never reads it. */
+export const STARS_POWER_DEFAULT = 6;
+export const STARS_POWER_MIN = 0;
+export const STARS_POWER_MAX = 12;
+
+/** THE REPEAT PENALTY r (MESITA-4153): the operator's
+ *  `params.variety.repeat`, 0.1–1 at two decimals, default 0.6. Home's
+ *  Catalog gives each place a kind, its rarest family, and the n-th place
+ *  of a kind scores × r^(n − 1): the 2nd taquería × 0.6, the 3rd × 0.36.
+ *  1 = no penalty. Applied in SQL (`catalog_rank`). */
+export const VARIETY_REPEAT_DEFAULT = 0.6;
+export const VARIETY_REPEAT_MIN = 0.1;
+export const VARIETY_REPEAT_MAX = 1;
+
+/** THE TEMPERATURE T (MESITA-4153): the operator's
+ *  `params.shuffle.temperature`, 0–5 at two decimals, default 0.3. After
+ *  the sort Home's order is drawn again, each place weighted
+ *  1 ÷ rank^(1/T) (`shuffleByRank`). 0 = the sort exactly; 0.3 = neighbours
+ *  swap; 1 = loose; 3+ = nearly random. */
+export const SHUFFLE_TEMPERATURE_DEFAULT = 0.3;
+export const SHUFFLE_TEMPERATURE_MIN = 0;
+export const SHUFFLE_TEMPERATURE_MAX = 5;
+
 /**
  * THE MAP AND CATALOG SCORES' POPULARITY: (1 + reviews × stars)^root
  * (MESITA-3083; ln(1 + reviews × stars) from MESITA-2710 until then, whose
@@ -115,13 +144,42 @@ export const POPULARITY_ROOT_MAX = 1;
 export function rootPopularity(
   candidate: { rating?: number | null; reviewCount?: number | null },
   root: number = POPULARITY_ROOT_DEFAULT,
+  /** The stars weight k (MESITA-4153): × (stars ÷ 5)^k; 0 or absent = none. */
+  starsPower = 0,
 ): number {
   const r = candidate.rating;
   const n = candidate.reviewCount;
   if (typeof r !== "number" || typeof n !== "number") return 0;
   if (!Number.isFinite(r) || !Number.isFinite(n)) return 0;
   const a = Number.isFinite(root) && root > 0 ? root : POPULARITY_ROOT_DEFAULT;
-  return Math.pow(1 + Math.max(0, n) * Math.max(0, r), a);
+  const k = Number.isFinite(starsPower) && starsPower > 0 ? starsPower : 0;
+  const stars = k > 0 ? Math.pow(Math.max(0, r) / 5, k) : 1;
+  return Math.pow(1 + Math.max(0, n) * Math.max(0, r), a) * stars;
+}
+
+/**
+ * THE SHUFFLE AFTER THE SORT (MESITA-4153, Pato: "after all the sorting is
+ * done, pass that to a certain random sorting algorithm that you can
+ * control with a temperature"). Plackett–Luce on rank, by the Gumbel trick:
+ * the place at rank i (from 1) keys on −ln(i) ÷ T plus a Gumbel draw, and
+ * the list sorts by key. That is drawing without replacement with weight
+ * 1 ÷ i^(1/T). T ≤ 0 returns the order as it is. Never reads a score, so
+ * the sort alone decides who is near the top.
+ */
+export function shuffleByRank<T>(
+  order: readonly T[],
+  temperature: number,
+  random: () => number = Math.random,
+): T[] {
+  if (!(Number.isFinite(temperature) && temperature > 0) || order.length < 2) return [...order];
+  const gumbel = () => {
+    const u = Math.min(1 - 1e-12, Math.max(1e-12, random()));
+    return -Math.log(-Math.log(u));
+  };
+  return order
+    .map((item, i) => ({ item, key: -Math.log(i + 1) / temperature + gumbel() }))
+    .sort((a, b) => b.key - a.key)
+    .map((x) => x.item);
 }
 
 /** True when the place's Popularity is at or over the operator's floor

@@ -76,6 +76,10 @@ export type AreaContext = {
    *  `params.popularity.root` on the Catalog and Chat (MESITA-3086); absent
    *  = 0.33, the cube root. */
   popularityRoot?: number;
+  /** The stars weight k (MESITA-4153): Popularity × (stars ÷ 5)^k on the
+   *  Catalog and Chat (`params.popularity.starsPower`); absent or 0 = none,
+   *  the Map's case. */
+  starsPower?: number;
 };
 
 /** One candidate, normalized from whichever source produced it. */
@@ -155,16 +159,16 @@ export function premierFactor(c: Pick<AreaCandidate, "source" | "premierTier">):
 }
 
 /** Popularity, or null when the place has no rating or no review count. */
-function popularityOrNull(c: AreaCandidate, root?: number): number | null {
+function popularityOrNull(c: AreaCandidate, root?: number, starsPower?: number): number | null {
   const ok = (v: unknown) => typeof v === "number" && Number.isFinite(v);
   if (!ok(c.rating) || !ok(c.reviewCount)) return null;
-  return rootPopularity(c, root);
+  return rootPopularity(c, root, starsPower ?? 0);
 }
 
 /** The score without Proximity: Popularity × the Premier factor. The
  *  whole score with no location. */
-export function popularPart(c: AreaCandidate, root?: number): number {
-  return factor(popularityOrNull(c, root) ?? 0) * premierFactor(c);
+export function popularPart(c: AreaCandidate, root?: number, starsPower?: number): number {
+  return factor(popularityOrNull(c, root, starsPower) ?? 0) * premierFactor(c);
 }
 
 /** One candidate's breakdown — the wire's `area` object (MESITA-2379).
@@ -196,7 +200,7 @@ export type AreaScore = AreaDiagnostics & { distanceKm: number | null };
 
 export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const loc = ctx.location;
-  const pop = popularityOrNull(c, ctx.popularityRoot);
+  const pop = popularityOrNull(c, ctx.popularityRoot, ctx.starsPower);
   let km: number | null = null;
   if (loc.kind === "point" && typeof c.lat === "number" && typeof c.lng === "number") {
     const d = haversineKm(loc.anchor.lat, loc.anchor.lng, c.lat, c.lng);
@@ -212,7 +216,7 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
     ? proximity(c, loc.anchor, ctx.halfKm, ctx.exponent)
     : null;
   const sel = premierFactor(c);
-  const popPart = popularPart(c, ctx.popularityRoot);
+  const popPart = popularPart(c, ctx.popularityRoot, ctx.starsPower);
   const final = prox === null ? popPart : factor(prox) * popPart;
   const open = family === 1 && radius !== 0;
   return {

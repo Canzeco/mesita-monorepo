@@ -75,6 +75,15 @@ import {
   PROXIMITY_HALF_KM_DEFAULT,
   PROXIMITY_HALF_KM_MAX,
   PROXIMITY_HALF_KM_MIN,
+  SHUFFLE_TEMPERATURE_DEFAULT,
+  SHUFFLE_TEMPERATURE_MAX,
+  SHUFFLE_TEMPERATURE_MIN,
+  STARS_POWER_DEFAULT,
+  STARS_POWER_MAX,
+  STARS_POWER_MIN,
+  VARIETY_REPEAT_DEFAULT,
+  VARIETY_REPEAT_MAX,
+  VARIETY_REPEAT_MIN,
 } from "./pipeline-signals.ts";
 import { errorMessage } from "./errors.ts";
 import { PREMIER_TIERS, PREMIER_YEARLY_CENTS, type PremierPrices } from "./boost.ts";
@@ -91,8 +100,14 @@ export type SignalParams = {
   /** `halfKm`: Proximity is ½ at this many km (MESITA-2909); `exponent`:
    *  the curve's shape, 1 = the plain reciprocal (MESITA-3083). */
   proximity: { halfKm: number; exponent: number };
-  /** `root`: Popularity is (1 + reviews × stars)^root, 0.33 = the cube root. */
-  popularity: { root: number };
+  /** `root`: Popularity is (1 + reviews × stars)^root, 0.33 = the cube
+   *  root; `starsPower`: × (stars ÷ 5)^k on the Catalog and Chat
+   *  (MESITA-4153). */
+  popularity: { root: number; starsPower: number };
+  /** `repeat`: Home's n-th place of a kind × repeat^(n − 1) (MESITA-4153). */
+  variety: { repeat: number };
+  /** `temperature`: Home's shuffle after the sort; 0 = none (MESITA-4153). */
+  shuffle: { temperature: number };
 };
 
 /**
@@ -370,7 +385,9 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 /** The signal numbers. A blob with no `params` reads these. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   proximity: { halfKm: PROXIMITY_HALF_KM_DEFAULT, exponent: PROXIMITY_EXPONENT_DEFAULT },
-  popularity: { root: POPULARITY_ROOT_DEFAULT },
+  popularity: { root: POPULARITY_ROOT_DEFAULT, starsPower: STARS_POWER_DEFAULT },
+  variety: { repeat: VARIETY_REPEAT_DEFAULT },
+  shuffle: { temperature: SHUFFLE_TEMPERATURE_DEFAULT },
 };
 
 /** Legal ranges for the signal numbers. */
@@ -388,6 +405,21 @@ export const SIGNAL_PARAM_BOUNDS = {
   root: {
     min: POPULARITY_ROOT_MIN,
     max: POPULARITY_ROOT_MAX,
+    decimals: 2,
+  },
+  starsPower: {
+    min: STARS_POWER_MIN,
+    max: STARS_POWER_MAX,
+    decimals: 1,
+  },
+  repeat: {
+    min: VARIETY_REPEAT_MIN,
+    max: VARIETY_REPEAT_MAX,
+    decimals: 2,
+  },
+  temperature: {
+    min: SHUFFLE_TEMPERATURE_MIN,
+    max: SHUFFLE_TEMPERATURE_MAX,
     decimals: 2,
   },
 } as const;
@@ -584,6 +616,8 @@ export function normalizeSignalParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
+  const variety = (r.variety ?? {}) as Record<string, unknown>;
+  const shuffle = (r.shuffle ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
     proximity: {
@@ -603,6 +637,21 @@ export function normalizeSignalParams(raw: unknown): SignalParams {
         pop.root,
         d.popularity.root,
         SIGNAL_PARAM_BOUNDS.root,
+      ),
+      starsPower: boundedParam(
+        pop.starsPower,
+        d.popularity.starsPower,
+        SIGNAL_PARAM_BOUNDS.starsPower,
+      ),
+    },
+    variety: {
+      repeat: boundedParam(variety.repeat, d.variety.repeat, SIGNAL_PARAM_BOUNDS.repeat),
+    },
+    shuffle: {
+      temperature: boundedParam(
+        shuffle.temperature,
+        d.shuffle.temperature,
+        SIGNAL_PARAM_BOUNDS.temperature,
       ),
     },
   };

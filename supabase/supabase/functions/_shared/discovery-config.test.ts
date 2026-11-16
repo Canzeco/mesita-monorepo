@@ -199,6 +199,12 @@ Deno.test("the admin twin mirrors the signal params' bounds", () => {
   assertEquals(constant("EXPONENT_MAX"), SIGNAL_PARAM_BOUNDS.exponent.max);
   assertEquals(constant("POPULARITY_ROOT_MIN"), SIGNAL_PARAM_BOUNDS.root.min);
   assertEquals(constant("POPULARITY_ROOT_MAX"), SIGNAL_PARAM_BOUNDS.root.max);
+  assertEquals(constant("STARS_POWER_MIN"), SIGNAL_PARAM_BOUNDS.starsPower.min);
+  assertEquals(constant("STARS_POWER_MAX"), SIGNAL_PARAM_BOUNDS.starsPower.max);
+  assertEquals(constant("VARIETY_REPEAT_MIN"), SIGNAL_PARAM_BOUNDS.repeat.min);
+  assertEquals(constant("VARIETY_REPEAT_MAX"), SIGNAL_PARAM_BOUNDS.repeat.max);
+  assertEquals(constant("SHUFFLE_TEMPERATURE_MIN"), SIGNAL_PARAM_BOUNDS.temperature.min);
+  assertEquals(constant("SHUFFLE_TEMPERATURE_MAX"), SIGNAL_PARAM_BOUNDS.temperature.max);
 });
 
 // ── The normalizer, key by key ───────────────────────────────────────────────
@@ -265,7 +271,7 @@ Deno.test("the deck's param bags and numbers do not survive a normalize", () => 
   // (MESITA-2703) too. Popularity's half credit (`halfReviews`, read by
   // nothing) went with MESITA-3083; the half distance, the exponent and the
   // root arrive at their defaults.
-  assertEquals(cfg.params, { proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33 } });
+  assertEquals(cfg.params, { proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } });
 });
 
 // The tentative Social engine's box had no reader (MESITA-2144). A blob that

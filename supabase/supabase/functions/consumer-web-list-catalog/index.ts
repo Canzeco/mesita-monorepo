@@ -32,6 +32,13 @@
 // MESITA-3083). Live 1 km · 1 · 0.33: 8× the reviews = a ×2 plan = twice
 // as close. No point: Popularity × the factor.
 //
+// BEST PLACES, MORE KINDS, A LITTLE CHANCE (MESITA-4153, Pato: "in catalog
+// I always see the same places"): Popularity × (stars ÷ 5)^k
+// (`params.popularity.starsPower`); the n-th place of a kind (its rarest
+// family) × repeat^(n − 1) (`params.variety.repeat`), both in SQL; then
+// `order` is shuffled by `params.shuffle.temperature` (0 = the sort
+// exactly), once per rank. `nearest` gets neither variety nor shuffle.
+//
 // A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` pushes the
 // Family gate into the Mesita read. Without it the pool is every family's.
 //
