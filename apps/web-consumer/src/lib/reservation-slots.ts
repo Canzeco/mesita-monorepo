@@ -64,6 +64,10 @@ const STEP_MINUTES = 30;
  */
 const LAST_TABLE_MINUTES = 60;
 const MS_PER_DAY = 86_400_000;
+/** No table before 06:00 on the place's clock (MESITA-4185, Pato: "from 0 am
+ *  to 6 am just don't enable reservations nowhere"). Twin of the server's
+ *  NO_RESERVATIONS_BEFORE_MINUTE (_shared/reservation-hours.ts). */
+const NO_RESERVATIONS_BEFORE_MINUTE = 6 * 60;
 
 type DayKey = (typeof WEEK_KEYS)[number];
 
@@ -75,7 +79,8 @@ export type WeeklyHours = Partial<Record<DayKey, HourRange[]>>;
 
 export type ReservationSlot = {
   time: string;
-  /** Before 06:00 — belongs to this date, but reads as "last night". */
+  /** Before 06:00. Since MESITA-4185 never offered (no table 00:00–06:00);
+ *  kept so callers that still read it compile. */
   afterMidnight: boolean;
 };
 
@@ -243,7 +248,9 @@ export function buildSlots(
   } else {
     for (const t of BASELINE_SLOTS) minutes.add(slotMinutes(t));
   }
+  // 00:00–06:00 is never booked (MESITA-4185); the place's hours still show.
   return [...minutes]
+    .filter((m) => m >= NO_RESERVATIONS_BEFORE_MINUTE)
     .sort((a, b) => a - b)
     .map((m) => ({ time: toHhmm(m), afterMidnight: m < 6 * 60 }));
 }

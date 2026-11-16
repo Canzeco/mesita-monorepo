@@ -27,10 +27,14 @@ Deno.test("slotInHours: a closed day and the gap between shifts are refused", ()
   assertEquals(slotInHours(HOURS, ZONE, at("2026-11-17", "22:00")), true);
 });
 
-Deno.test("slotInHours: an overnight shift carries into the next day", () => {
+Deno.test("slotInHours: an overnight shift carries to midnight; 00:00–06:00 is never booked (MESITA-4185)", () => {
   assertEquals(slotInHours(HOURS, ZONE, at("2026-11-21", "23:30")), true);
-  assertEquals(slotInHours(HOURS, ZONE, at("2026-11-22", "01:00")), true);
-  assertEquals(slotInHours(HOURS, ZONE, at("2026-11-22", "01:30")), false);
+  // Saturday's shift runs to 02:00, but no table is booked after midnight.
+  assertEquals(slotInHours(HOURS, ZONE, at("2026-11-22", "00:00")), false);
+  assertEquals(slotInHours(HOURS, ZONE, at("2026-11-22", "01:00")), false);
+  const allDay = { sunday: [{ open: "00:00", close: "23:59" }] };
+  assertEquals(slotInHours(allDay, ZONE, at("2026-11-15", "05:30")), false);
+  assertEquals(slotInHours(allDay, ZONE, at("2026-11-15", "06:00")), true);
 });
 
 Deno.test("slotInHours: the place's zone decides, not UTC", () => {
@@ -40,8 +44,9 @@ Deno.test("slotInHours: the place's zone decides, not UTC", () => {
   assertEquals(slotInHours(HOURS, ZONE, cancun), true);
 });
 
-Deno.test("slotInHours: no usable hours never refuses", () => {
-  assertEquals(slotInHours(null, ZONE, at("2026-11-15", "03:00")), null);
-  assertEquals(slotInHours({}, ZONE, at("2026-11-15", "03:00")), null);
-  assertEquals(slotInHours({ sunday: [] }, ZONE, at("2026-11-15", "03:00")), null);
+Deno.test("slotInHours: no usable hours lets a daytime time through, never 00:00–06:00", () => {
+  assertEquals(slotInHours(null, ZONE, at("2026-11-15", "13:00")), null);
+  assertEquals(slotInHours({}, ZONE, at("2026-11-15", "13:00")), null);
+  assertEquals(slotInHours({ sunday: [] }, ZONE, at("2026-11-15", "13:00")), null);
+  assertEquals(slotInHours(null, ZONE, at("2026-11-15", "03:00")), false);
 });

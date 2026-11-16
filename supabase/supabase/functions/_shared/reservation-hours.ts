@@ -17,6 +17,12 @@ import { DAY_KEYS, localClock, toMinutes, type WeeklyHours } from "./local-time.
 /** The last table: the latest time taken is this long before closing. */
 export const LAST_TABLE_MINUTES = 60;
 
+/** No table before this minute of the place's day (MESITA-4185, Pato: "from
+ *  0 am to 6 am just don't enable reservations nowhere … leave it open and
+ *  respect Google's schedule, just not for reservations"). The hours still
+ *  show; only booking stops. */
+export const NO_RESERVATIONS_BEFORE_MINUTE = 6 * 60;
+
 export const PLACE_CLOSED_CODE = "place_closed";
 
 export const PLACE_CLOSED_MESSAGE =
@@ -24,10 +30,13 @@ export const PLACE_CLOSED_MESSAGE =
 
 /**
  *   true  — a shift takes a table at `at`
- *   false — the place has hours and none takes it
+ *   false — the place has hours and none takes it, or `at` is 00:00–06:00
  *   null  — no usable hours (or an unreadable clock): the caller lets it through
  */
 export function slotInHours(hours: unknown, zone: string | null, at: Date): boolean | null {
+  // 00:00–06:00 is never booked, whatever the hours say, hours or none.
+  const early = localClock(zone, at);
+  if (early && early.minutes < NO_RESERVATIONS_BEFORE_MINUTE) return false;
   if (!hours || typeof hours !== "object") return null;
   const week = hours as WeeklyHours;
   if (!DAY_KEYS.some((k) => Array.isArray(week[k]) && week[k].length > 0)) return null;
