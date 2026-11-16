@@ -20,14 +20,20 @@ describe("reserveTimes (MESITA-4176: every open half hour, next 24 hours)", () =
     expect(t).toHaveLength(10 + 7);
   });
 
-  it("counts a shift running past midnight and skips a closed day", () => {
+  it("never offers 00:00–08:00, even past midnight, and skips a closed day (MESITA-4185)", () => {
     const hours = week("13:00–03:00").map((r) => (r.day === "Tuesday" ? { ...r, range: "Closed" } : r));
     const t = reserveTimes({ hours_table: hours, timezone: "America/Mexico_City" }, MON_4PM).map(label);
-    // Monday's shift runs to 03:00 Tuesday: the last table is 02:00.
-    expect(t).toContain("Tomorrow 02:00");
-    expect(t).not.toContain("Tomorrow 02:30");
+    // Monday's shift runs to 03:00 Tuesday, but nobody books at 01:00.
+    expect(t.some((x) => x.startsWith("Tomorrow 0"))).toBe(false);
+    expect(t[t.length - 1]).toBe("Today 23:30");
     // Tuesday itself is closed.
     expect(t).not.toContain("Tomorrow 13:00");
+  });
+
+  it("starts at 08:00 for a place open all night", () => {
+    const t = reserveTimes({ hours_table: week("00:00–23:59"), timezone: "America/Mexico_City" }, MON_4PM).map(label);
+    expect(t).toContain("Tomorrow 08:00");
+    expect(t).not.toContain("Tomorrow 07:30");
   });
 
   it("reads unknown hours as tonight's dinner, never as closed", () => {
