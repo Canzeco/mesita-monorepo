@@ -185,7 +185,7 @@ export const AWAITING: Record<Leg, { conv: string; field: string; state: string 
 };
 
 export const OUTCOME_TICKET_COLUMNS =
-  "id, consumer_id, reference_code, reserved_at, state, place_id, run_id, claimed_at, attempts, call_attempts, attempts_planned, attempts_state, last_conversation_id, callback_state, callback_conversation_id, callback_attempts, notice_kind, notice_state, notice_attempts, notice_conversation_id, reminder_state, reminder_conversation_id, outage_retries, modification_of, consumer_notify, reported_verdict, outcome_note, reported_time";
+  "id, consumer_id, reference_code, reserved_at, state, place_id, run_id, claimed_at, attempts, call_attempts, attempts_planned, attempts_state, last_conversation_id, callback_state, callback_conversation_id, callback_attempts, notice_kind, notice_state, notice_attempts, notice_conversation_id, reminder_state, reminder_conversation_id, outage_retries, modification_of, consumer_notify, confirm_notify, reported_verdict, outcome_note, reported_time";
 
 export type OutcomeTicket = {
   id: string;
@@ -213,6 +213,8 @@ export type OutcomeTicket = {
   outage_retries: number | null;
   modification_of: string | null;
   consumer_notify: string | null;
+  /** "call": a2 phones the guest when the place confirms (MESITA-4187). */
+  confirm_notify?: string | null;
   reported_verdict: string | null;
   outcome_note: string | null;
   /** MESITA-3957: the time a1 took inside the guest's window, or null. */
@@ -582,9 +584,12 @@ function decideBooking(
   const appOnly = t.consumer_notify === "app";
   const nowIso = now.toISOString();
   if (verdict === "confirmed") {
-    // The guest is phoned only when a decision waits (MESITA-3961, Pato:
-    // "recall the guest when some important prompt to reserve is critical,
-    // else don't"). A confirmed table needs no answer: the app tells them.
+    // The app always tells the guest. A call comes only when they asked for
+    // one on Reserve (MESITA-4187, "On confirmation: app + call me"); the
+    // default stays MESITA-3961's: no call for a table that needs no answer.
+    // The call is a2's confirmation leg: due now, kicked at once; the guest's
+    // acknowledgement (consumer_confirmed_at) waits for that call.
+    const callOnConfirm = t.confirm_notify === "call";
     setResult("confirmed");
     // MESITA-3957: a time a1 took inside the guest's window becomes the table.
     const tableAt = t.reported_time ?? t.reserved_at;
@@ -597,17 +602,20 @@ function decideBooking(
         state: "confirmed",
         confirmed_at: nowIso,
         callback_at: nowIso,
-        callback_next_attempt_at: null,
-        callback_state: "skipped",
-        // The in-app state IS the guest's acknowledgement.
-        consumer_confirmed_at: nowIso,
+        callback_next_attempt_at: callOnConfirm ? nowIso : null,
+        callback_state: callOnConfirm ? "scheduled" : "skipped",
+        // App only: the in-app state IS the guest's acknowledgement.
+        ...(callOnConfirm ? {} : { consumer_confirmed_at: nowIso }),
         outage_retries: 0,
         // A confirmed MODIFICATION moved the booking on this very call.
         modification_of: null,
         ...reminderParkPatch(zone, tableAt ? new Date(tableAt) : null, appOnly ? "app" : "call", now),
-        last_call_state: `intent ${n}: place confirmed — the app tells the guest; no call`,
+        last_call_state: callOnConfirm
+          ? `intent ${n}: place confirmed — the app tells the guest; a2 calls (guest asked)`
+          : `intent ${n}: place confirmed — the app tells the guest; no call`,
       },
       notify: "confirmed",
+      kickCallback: callOnConfirm,
     };
   }
   if (verdict === "counter_offer") {

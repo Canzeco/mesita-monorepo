@@ -8,7 +8,8 @@
 //     consumer_notify?: "call" | "app",  // default "call" (MESITA-787)
 //     request_id?: uuid,                  // one per Reserve request (MESITA-3619)
 //     time_window_minutes?: 0|30|60,      // default 30 (MESITA-3957)
-//     seating?: "any"|"inside"|"outside"|"bar" }  // default any
+//     seating?: "any"|"inside"|"outside"|"bar",  // default any
+//     confirm_notify?: "app"|"call" }  // default app (MESITA-4187)
 //
 // Response:
 //   { ok: true, reservation: {…}, call_triggered, replayed? }
@@ -85,6 +86,7 @@ type Body = {
   time_window_minutes?: number;
   /** MESITA-3957: any · inside · outside · bar. */
   seating?: string;
+  confirm_notify?: string;
 };
 
 const TICKET_COLUMNS =
@@ -125,6 +127,8 @@ serveJson("consumer-web-create-reservation", async (req) => {
     return json({ ok: false, error: `party_size must be 1..${MAX_PARTY}` }, 400);
   }
   const guestNotify = body.consumer_notify === "app" ? "app" : "call";
+  // How a confirmed table reaches the guest (MESITA-4187): app unless asked.
+  const confirmNotify = body.confirm_notify === "call" ? "call" : "app";
   const timeWindow = body.time_window_minutes === undefined || body.time_window_minutes === null
     ? DEFAULT_TIME_WINDOW
     : body.time_window_minutes;
@@ -357,6 +361,7 @@ serveJson("consumer-web-create-reservation", async (req) => {
         party_size: partySize,
         notes: (body.notes ?? "").trim() || null,
         consumer_notify: guestNotify,
+        confirm_notify: confirmNotify,
         state: "pending",
         guest_first_name: firstName,
         guest_last_name: lastName,

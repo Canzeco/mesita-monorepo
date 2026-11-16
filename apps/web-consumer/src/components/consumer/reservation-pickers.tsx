@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   CalendarDays,
-  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -303,7 +302,7 @@ export function ReservationField({
       <span className="text-muted-foreground type-body mb-1.5 block font-medium">{label}</span>
       <input
         {...input}
-        className="border-foreground/20 bg-card focus:border-foreground h-11 w-full rounded-xl border px-3.5 text-base outline-none"
+        className="border-foreground/20 bg-card focus:border-foreground read-only:bg-muted read-only:text-muted-foreground h-11 w-full rounded-xl border px-3.5 text-base outline-none"
       />
     </label>
   );
@@ -375,54 +374,43 @@ export function ReservationWindowPicker({
         <p className="text-muted-foreground type-body mt-1.5">
           {value === 0
             ? `We ask for ${range} only.`
-            : `We book any time ${range} without asking you.`}
+            : `We try for ${time} first. If it's taken, we book ${range} without asking.`}
         </p>
       )}
     </ReservationSection>
   );
 }
 
-// ── If they can't seat you (MESITA-4166) ───────────────────────────────────
-// The guest decides, when they create the ticket, what happens when the place
-// has nothing inside the range. Pato: "add the param for the consumer when he
-// creates the ticket". A confirmed table is always just a notification.
-//   offer       their times arrive in the app (consumer_notify app)
-//   offer_call  same, and a2 calls once if no pick in 15 min (notify call)
-//   cancel      nothing is booked; one notification (if_unavailable cancel)
+// ── How the guest hears back (MESITA-4187) ─────────────────────────────────
+// Pato: "On Confirmation (app + call me) · On Rejection (app + call me)",
+// worded "if for some reason we cannot book you: app notification / app
+// notification + call me". The app always tells; "call" adds a2's call. No
+// timing promise: the place is only phoned while it is open.
 
-export type ReservationFallback = "offer" | "offer_call" | "cancel";
+export type ReservationNotify = "app" | "call";
 
-/** "Don't book anything" needs `if_unavailable` on the ticket and a1 obeying
- *  it. Until that backend lands, the choice is hidden: shown, it would be
- *  stored as "offer" and the guest would get times they said no to. The
- *  backend PR flips this. */
-export const FALLBACK_CANCEL_LIVE = false;
-
-const FALLBACK_OPTIONS: Array<{ value: ReservationFallback; label: string; hint: string }> = [
-  { value: "offer", label: "Show me other times", hint: "They arrive in the app; you pick one." },
-  {
-    value: "offer_call",
-    label: "Show me other times and call me",
-    hint: "No pick in 15 minutes? Mesita calls you.",
-  },
-  { value: "cancel", label: "Don't book anything", hint: "We tell you in the app. Nothing is booked." },
-];
-
-export function ReservationFallbackPicker({
+/** One "how do we tell you" row: its question, then App · App + call me as
+ *  the same segmented control How flexible? uses. */
+function NotifyRow({
+  label,
   value,
   onChange,
-  range,
+  callHint,
 }: {
-  value: ReservationFallback;
-  onChange: (next: ReservationFallback) => void;
-  /** "19:30–20:30" — the window the place could not meet. */
-  range: string | null;
+  label: string;
+  value: ReservationNotify;
+  onChange: (next: ReservationNotify) => void;
+  callHint?: string;
 }) {
-  const title = range ? `If they can't seat you ${range.includes("–") ? range : `at ${range}`}` : "If they can't seat you";
+  const options: Array<{ value: ReservationNotify; label: string }> = [
+    { value: "app", label: "App notification" },
+    { value: "call", label: "App + call me" },
+  ];
   return (
-    <ReservationSection title={title} flush>
-      <div role="radiogroup" aria-label="If they can't seat you" className="divide-border border-border divide-y border-t">
-        {FALLBACK_OPTIONS.filter((o) => o.value !== "cancel" || FALLBACK_CANCEL_LIVE).map((o) => {
+    <div>
+      <p className="type-body mb-1.5 font-semibold">{label}</p>
+      <div role="radiogroup" aria-label={label} className="border-foreground/20 grid grid-cols-2 gap-1 rounded-xl border p-1">
+        {options.map((o) => {
           const active = o.value === value;
           return (
             <button
@@ -431,65 +419,45 @@ export function ReservationFallbackPicker({
               role="radio"
               aria-checked={active}
               onClick={() => onChange(o.value)}
-              className="flex min-h-12 w-full items-center gap-3 px-4 py-2.5 text-left"
-            >
-              <span
-                aria-hidden
-                className={cn(
-                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                  active ? "border-foreground bg-foreground text-background" : "border-foreground/30",
-                )}
-              >
-                {active && <Check className="h-3 w-3" strokeWidth={3} />}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">{o.label}</span>
-                <span className="text-muted-foreground type-body block">{o.hint}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </ReservationSection>
-  );
-}
-
-// ── Seating (MESITA-3957) ──────────────────────────────────────────────────
-
-export type ReservationSeating = "any" | "inside" | "outside" | "bar";
-
-const SEATING_OPTIONS: { value: ReservationSeating; label: string }[] = [
-  { value: "any", label: "Any" },
-  { value: "inside", label: "Inside" },
-  { value: "outside", label: "Outside" },
-  { value: "bar", label: "Bar" },
-];
-
-export function ReservationSeatingPicker({
-  value,
-  onChange,
-}: {
-  value: ReservationSeating;
-  onChange: (next: ReservationSeating) => void;
-}) {
-  return (
-    <ReservationSection title="Seating">
-      <div role="radiogroup" aria-label="Seating" className="grid grid-cols-4 gap-2">
-        {SEATING_OPTIONS.map((o) => {
-          const active = o.value === value;
-          return (
-            <button
-              key={o.value}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              onClick={() => onChange(o.value)}
-              className={cn(CHOICE, "h-10 text-sm", active ? CHOICE_ON : CHOICE_OFF)}
+              className={cn(
+                "h-10 rounded-lg text-sm font-semibold transition",
+                active ? "bg-foreground text-background" : "text-foreground",
+              )}
             >
               {o.label}
             </button>
           );
         })}
+      </div>
+      {callHint && value === "call" && <p className="text-muted-foreground type-body mt-1.5">{callHint}</p>}
+    </div>
+  );
+}
+
+/** The Updates panel: when you're booked, and if we can't book you. */
+export function ReservationUpdatesPicker({
+  onConfirm,
+  onReject,
+  setConfirm,
+  setReject,
+}: {
+  onConfirm: ReservationNotify;
+  onReject: ReservationNotify;
+  setConfirm: (next: ReservationNotify) => void;
+  setReject: (next: ReservationNotify) => void;
+}) {
+  return (
+    <ReservationSection title="Updates">
+      <div className="flex flex-col gap-4">
+        <NotifyRow label="When you're booked" value={onConfirm} onChange={setConfirm} />
+        <NotifyRow
+          label="If we can't book you"
+          value={onReject}
+          onChange={setReject}
+          // A plain "no" has no call script yet; a2 calls when the place
+          // offers other times (MESITA-4187, said plainly).
+          callHint="We call when the place offers other times."
+        />
       </div>
     </ReservationSection>
   );
@@ -570,25 +538,3 @@ export function ReserveStepNav({
     </div>
   );
 }
-
-/** One row of the Preview panel: what was chosen, tap to change it. */
-export function PreviewRow({ label, value, onEdit }: { label: string; value: string; onEdit?: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onEdit}
-      disabled={!onEdit}
-      className="border-border flex min-h-12 w-full items-center gap-3 border-t px-4 py-2.5 text-left"
-    >
-      <span className="text-muted-foreground type-body w-20 shrink-0 font-medium">{label}</span>
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{value}</span>
-      {onEdit && <span className="text-muted-foreground type-body shrink-0 underline underline-offset-2">Change</span>}
-    </button>
-  );
-}
-
-export const FALLBACK_LABEL: Record<ReservationFallback, string> = {
-  offer: "Show me other times",
-  offer_call: "Other times and call me",
-  cancel: "Don't book anything",
-};

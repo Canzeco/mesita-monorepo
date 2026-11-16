@@ -142,6 +142,19 @@ Deno.test("apply: a place's yes confirms once; a second delivery changes nothing
   assertEquals(kicked, []);
 });
 
+Deno.test("apply: a guest who asked for a call on confirmation gets a2, kicked now (MESITA-4187)", async () => {
+  const { store, table, notified, kicked } = memoryStore(
+    placedBooking({ reported_verdict: "confirmed", confirm_notify: "call" }),
+  );
+  const first = await applyCallResult(store, "conv_1", DONE_SUCCESS);
+  assertEquals(first.applied, true);
+  assertEquals(table.row.state, "confirmed");
+  assertEquals(table.row.callback_state, "scheduled");
+  assertEquals(table.row.consumer_confirmed_at ?? null, null); // the call acknowledges it
+  assertEquals(notified, ["confirmed"]); // the app still tells them
+  assertEquals(kicked, ["t1"]);
+});
+
 Deno.test("apply: a1's reported verdict wins over the analysis", async () => {
   const { store, table, notified } = memoryStore(placedBooking({ reported_verdict: "declined" }));
   await applyCallResult(store, "conv_1", DONE_SUCCESS);
