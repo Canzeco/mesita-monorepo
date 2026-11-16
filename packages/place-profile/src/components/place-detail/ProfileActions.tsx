@@ -342,7 +342,8 @@ function useTenMinuteClock(): number | null {
  *  reservations, show ... hours to reserve ... it must be open at that time
  *  and ... a relevant time where people usually reserve"): OpenTable red,
  *  the glyph over "Reserve" at the left, a black box at the right rotating
- *  times worth asking for (lib/reserve-times.ts) on the Offers beat. They
+ *  every open half hour of the next 24 hours (lib/reserve-times.ts,
+ *  MESITA-4176) on the Offers beat. They
  *  are times to ask for, not free tables: the agent still phones the place. */
 function ReserveTile({ place, onReserve }: { place: PlaceDetail; onReserve?: () => void }) {
   const clock = useTenMinuteClock();
@@ -369,7 +370,11 @@ function ReserveTile({ place, onReserve }: { place: PlaceDetail; onReserve?: () 
     <button
       type="button"
       {...(onReserve ? { onClick: onReserve, "aria-haspopup": "dialog" as const } : inertButtonProps(false))}
-      aria-label={slides.length > 0 ? `Reserve a table: ask for ${slides.map((s) => s.spoken).join(", ")}` : "Reserve a table"}
+      aria-label={
+        slides.length > 0
+          ? `Reserve a table: ${slides.length} times in the next 24 hours, from ${slides[0].spoken}`
+          : "Reserve a table"
+      }
       className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE)}
     >
       <span className={ROW_LEAD}>

@@ -1,27 +1,25 @@
-// THE RESERVE BOX'S HOURS (Pato, 2026-11-16, MESITA-4159: "do the same with
-// reservations, show ... hours to reserve ... it must be open at that time
-// and it must be a relevant time where people usually reserve"). A few
-// times worth asking for, soonest first: the usual lunch and dinner times,
-// only while the place is open (the last table an hour before closing, as on
-// the Reserve page), at least an hour from now on the place's own clock,
-// today then the next days. They are times to ask for, not free tables: the
-// agent still phones the place.
+// THE RESERVE BOX'S HOURS (MESITA-4159; MESITA-4176, Pato: "for
+// reservations actually scroll across all the opening hours for the next 24
+// hours"). Every half hour from 30 minutes from now to 24 hours from now, on
+// the place's own clock, while the place is open: the last table an hour
+// before closing, as on the Reserve page, and yesterday's shift past
+// midnight counts (open until 3 AM offers 01:30). Times to ask for, not free
+// tables: the agent still phones the place.
 
 import type { PlaceDetail } from "../place-detail";
 import { placeOffsetMinutes } from "./place-time";
 
-/** When people book a table in Mexico: one lunch time, then dinner. */
-const USUAL_TIMES = ["14:30", "19:30", "20:00", "20:30", "21:00"];
 /** A place with no hours: the Reserve page's dinner window, these only. */
 const NO_HOURS_TIMES = ["19:30", "20:00", "20:30", "21:00"];
 /** The last table, before closing (the Reserve page's rule). */
 const LAST_TABLE_MINUTES = 60;
 /** The soonest time offered, from now. */
-const LEAD_MINUTES = 60;
-/** How many times the box rotates through. */
-const MAX_TIMES = 4;
+const LEAD_MINUTES = 30;
+/** How far ahead the box looks (MESITA-4176). */
+const WINDOW_MINUTES = 24 * 60;
+/** The Reserve page's slot step. */
+const STEP_MINUTES = 30;
 const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-const SHORT_DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export type ReserveTime = { day: string; time: string };
 
@@ -57,24 +55,32 @@ function weekly(table: PlaceDetail["hours_table"]): Map<string, Array<[number, n
   return found ? out : null;
 }
 
-/** Up to four times to ask for, soonest first, from `now`. */
+/** Every open half hour in the next 24 hours, soonest first, from `now`. */
 export function reserveTimes(place: Pick<PlaceDetail, "hours_table" | "timezone">, now: number = Date.now()): ReserveTime[] {
   const hours = weekly(place.hours_table);
   // The place's wall clock now: its day of the week and minute of the day.
   const local = new Date(now + placeOffsetMinutes(place.timezone, now) * 60_000);
   const today = local.getUTCDay();
   const nowMin = local.getUTCHours() * 60 + local.getUTCMinutes();
+  const noHours = new Set(NO_HOURS_TIMES.map((t) => minutes(t)!));
+  // Is the place taking a table at minute `mm` of the day `d` days from now?
+  const open = (d: number, mm: number): boolean => {
+    if (!hours) return noHours.has(mm);
+    const seat = (shifts: Array<[number, number]> | undefined, at: number) =>
+      (shifts ?? []).some(([o, c]) => at >= o && at <= c - LAST_TABLE_MINUTES);
+    // That day's shifts, or the day before's running past midnight.
+    return seat(hours.get(DAY_KEYS[(today + d) % 7]), mm) || seat(hours.get(DAY_KEYS[(today + d + 6) % 7]), mm + 1440);
+  };
   const out: ReserveTime[] = [];
-  for (let d = 0; d < 7 && out.length < MAX_TIMES; d++) {
-    const weekday = (today + d) % 7;
-    const shifts = hours ? hours.get(DAY_KEYS[weekday]) ?? [] : null;
-    for (const t of hours ? USUAL_TIMES : NO_HOURS_TIMES) {
-      const m = minutes(t)!;
-      if (d === 0 && m < nowMin + LEAD_MINUTES) continue;
-      if (shifts && !shifts.some(([o, c]) => m >= o && m <= c - LAST_TABLE_MINUTES)) continue;
-      out.push({ day: d === 0 ? "Today" : d === 1 ? "Tomorrow" : SHORT_DAY[weekday], time: t });
-      if (out.length >= MAX_TIMES) break;
-    }
+  const first = Math.ceil((nowMin + LEAD_MINUTES) / STEP_MINUTES) * STEP_MINUTES;
+  for (let m = first; m <= nowMin + WINDOW_MINUTES; m += STEP_MINUTES) {
+    const d = Math.floor(m / 1440);
+    const mm = m % 1440;
+    if (!open(d, mm)) continue;
+    out.push({
+      day: d === 0 ? "Today" : "Tomorrow",
+      time: `${String(Math.floor(mm / 60)).padStart(2, "0")}:${String(mm % 60).padStart(2, "0")}`,
+    });
   }
   return out;
 }
