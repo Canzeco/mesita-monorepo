@@ -28,6 +28,7 @@ import {
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { toast } from "@/lib/toast";
 import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
+import { useWakeLock } from "@/lib/use-wake-lock";
 import { cn } from "@/lib/utils";
 import { CardBrandChip } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
@@ -100,34 +101,6 @@ function useMinuteNow(): number {
     return () => clearInterval(t);
   }, []);
   return now;
-}
-
-/** Keeps the screen on while the QR waits to be scanned, where the browser can. */
-function useWakeLock(on: boolean) {
-  useEffect(() => {
-    if (!on || typeof navigator === "undefined" || !("wakeLock" in navigator)) return;
-    let lock: { release: () => Promise<void> } | null = null;
-    let cancelled = false;
-    const take = () => {
-      void (navigator as Navigator & { wakeLock: { request: (t: "screen") => Promise<{ release: () => Promise<void> }> } }).wakeLock
-        .request("screen")
-        .then((l) => {
-          if (cancelled) void l.release().catch(() => {});
-          else lock = l;
-        })
-        .catch(() => {});
-    };
-    take();
-    const onVisible = () => {
-      if (!document.hidden) take();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      cancelled = true;
-      document.removeEventListener("visibilitychange", onVisible);
-      if (lock) void lock.release().catch(() => {});
-    };
-  }, [on]);
 }
 
 export function TabView({

@@ -10,6 +10,7 @@ import { EFError } from "@/lib/api/_invoke";
 import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type TabCardStep } from "@/lib/api/tab";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
+import { useWakeLock } from "@/lib/use-wake-lock";
 import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
 import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PaySection, PayTop, StepBody, StepFooter, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
@@ -18,11 +19,11 @@ import { STEP, skippedFromParts } from "@/lib/guest-pay-stages";
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
 // /pay/bill/<id>, after App Pay, "I gave the cash" or credits alone:
 //
-//   5 Sign        mostly a large QR, the place's name above it, a chip with
-//                 the way it's paid, an amber Clock counting down the ten
-//                 minutes, and "Once the waiter signs, this payment is final."
-//                 Nothing is editable; the X cancels and goes back to the
-//                 bill with everything typed.
+//   5 Sign        mostly a large QR; the countdown on the heading's right;
+//                 under the QR the bill's total with the way it's paid, what
+//                 the signature earns, and that an unsigned bill cancels
+//                 with nothing charged. Nothing is editable; Cancel bill goes back to the
+//                 bill with everything typed. The screen stays on.
 //   Confirming    a Loader and "Confirming…" while money moves (the bank's
 //                 check, the charge at the signature).
 //   6 Receipt     green: CircleCheck, the place, the time, the lines with
@@ -60,6 +61,11 @@ export function GuestTabView({
   const [error, setError] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  // MESITA-4131: a QR that didn't come says so (it spun forever), and two
+  // failed reads in a row say "Reconnecting…", the table bill's words.
+  const [qrFailed, setQrFailed] = useState(false);
+  const [qrTry, setQrTry] = useState(0);
+  const [failedReads, setFailedReads] = useState(0);
 
   const m = (c: number) => money(c, tab.currency);
   const card = tab.card_bill_cents + tab.card_tip_cents;
@@ -81,16 +87,22 @@ export function GuestTabView({
     let cancelled = false;
     void apiGetTab(getSupabase(), tab.tab_id, { remint: true })
       .then((r) => {
-        if (cancelled || !r.qr_url) return;
+        if (cancelled) return;
+        if (!r.qr_url) {
+          setQrFailed(true);
+          return;
+        }
         rememberGuestTab(tab.tab_id, r.qr_url);
         setQr(r.qr_url);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setQrFailed(true);
+      });
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qr, done, tab.tab_id]);
+  }, [qr, done, tab.tab_id, qrTry]);
 
   // The poll: every two seconds while the bill is open and the page shows.
   useEffect(() => {
@@ -102,11 +114,14 @@ export function GuestTabView({
       void apiGetTab(getSupabase(), tab.tab_id)
         .then((r) => {
           if (!alive) return;
+          setFailedReads(0);
           setTab(r.tab);
           setCardAction(r.card_action ?? null);
           if (r.card_error) setCardError(r.card_error.code);
         })
-        .catch(() => {});
+        .catch(() => {
+          if (alive) setFailedReads((n) => n + 1);
+        });
     }, POLL_MS);
     return () => {
       alive = false;
@@ -117,6 +132,8 @@ export function GuestTabView({
 
   // Sign only: the header's X asks to cancel; the other states keep Back.
   const signing = !done && !confirming;
+  // The phone must not lock while the guest waits for the waiter (MESITA-4131).
+  useWakeLock(signing);
   useEffect(() => {
     if (!registerClose) return;
     registerClose(signing ? onDone : null);
@@ -147,8 +164,13 @@ export function GuestTabView({
   }
 
   const placeName = tab.place.name ?? "A Mesita place";
-  const wayIcon = card > 0 ? <Smartphone /> : cash > 0 ? <Banknote /> : <Wallet />;
-  const wayWords = card > 0 ? `${m(card)} by card` : cash > 0 ? `${m(cash)} cash` : `${m(tab.credit_cents)} credits`;
+  // Every way this bill is paid (MESITA-4131): Sign named the card part alone,
+  // so a bill split with credits or cash showed less than the bill.
+  const ways = [
+    tab.credit_cents > 0 ? { key: "credits", icon: <Wallet aria-hidden />, cents: tab.credit_cents, alone: "credits", part: "credits" } : null,
+    card > 0 ? { key: "card", icon: <Smartphone aria-hidden />, cents: card, alone: "by card", part: "card" } : null,
+    cash > 0 ? { key: "cash", icon: <Banknote aria-hidden />, cents: cash, alone: "cash", part: "cash" } : null,
+  ].filter((w) => w !== null);
 
   // 6 RECEIPT.
   if (signed) {
@@ -278,6 +300,10 @@ export function GuestTabView({
   // 5 SIGN.
   const secs = Math.max(0, Math.ceil(leftMs / 1000));
   const countdown = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+  // Amber only when the time is nearly out: it read as an alarm with most of
+  // an hour left (MESITA-4131).
+  const closing = secs <= 120;
+  const reconnecting = failedReads >= 2;
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
       {/* MESITA-4061: the same frame as every guest step. The bill is open,
@@ -286,48 +312,93 @@ export function GuestTabView({
       {/* FITS THE SCREEN, NEVER SCROLLS (MESITA-4102, Pato: "optimize
           vertical space ... i should not be scrolling here"). The body, the
           panel and the QR's slot are one column that fills the height left;
-          the QR takes what remains (up to 280px) instead of guessing the
-          frame's height. The way sits on the heading's right, and the timer
-          and the "final" note share one line. */}
+          the QR takes what remains (up to 340px) instead of guessing the
+          frame's height. */}
       <StepBody className="min-h-0 flex-1">
-        {/* One panel (MESITA-4072): the heading inside, then the QR and the
-            timer, centred. The QR's white square wears no border of its own:
-            never a box in a box. */}
+        {/* One panel (MESITA-4072): the heading inside, then the QR, centred.
+            The QR's white square wears no border of its own: never a box in
+            a box.
+            WHAT RANKS (MESITA-4131, Pato: "Better design for this view"):
+            the QR first, as large as the panel allows; under it the bill's
+            total, the largest words on the screen, with the way it's paid;
+            then what the signature earns and what happens if time runs out. The time left
+            sits on the heading's right, where the way's chip sat. */}
         <PaySection
           title="Show your waiter"
           action={
-            <span className="border-border flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-sm font-semibold tabular-nums [&>svg]:h-4 [&>svg]:w-4">
-              {wayIcon}
-              {wayWords}
+            <span className="flex shrink-0 items-center gap-1.5 text-sm tabular-nums" role="timer" aria-live="off" data-guest-sign-timer>
+              <Clock className={cn("h-4 w-4", closing ? WAIT : "text-muted-foreground")} aria-hidden />
+              <span className={cn("font-semibold", closing && WAIT)}>{countdown}</span>
+              <span className="text-muted-foreground">left to sign</span>
             </span>
           }
           className="flex min-h-0 flex-1 flex-col"
         >
-        <div className="flex min-h-0 flex-1 flex-col items-center gap-2 p-4 pt-3 text-center">
-          {/* MESITA-3913: what the signature earns, Available at once. */}
-          {(tab.cashback_on_sign_cents ?? 0) > 0 ? (
-            <p className={cn("flex shrink-0 items-center justify-center gap-1.5 text-sm font-semibold", GOOD)} data-guest-sign-cashback>
-              <Coins className="h-4 w-4" aria-hidden />+{m(tab.cashback_on_sign_cents ?? 0)} back as credits once the waiter signs
-            </p>
-          ) : null}
+        <div className="flex min-h-0 flex-1 flex-col items-center gap-1.5 p-4 pt-3 text-center">
           {/* The QR's slot takes the height left; the square is as tall as
-              the slot allows, never over 280px, never under 140px. */}
-          <div className="flex min-h-[140px] w-full flex-1 items-center justify-center">
-            <div className="flex aspect-square h-full max-h-[280px] max-w-full items-center justify-center rounded-2xl bg-white">
+              the slot allows, never over 340px, never under 120px (a split
+              bill's parts line on a 375×553 frame needs the 20px). */}
+          <div className="flex min-h-[120px] w-full flex-1 items-center justify-center">
+            <div className="flex aspect-square h-full max-h-[340px] max-w-full items-center justify-center rounded-2xl bg-white">
               {qr ? (
-                <QRCodeSVG value={qr} size={280} marginSize={0} style={{ width: "100%", height: "100%" }} title="Your bill's QR for the waiter" />
+                <QRCodeSVG value={qr} size={340} marginSize={0} style={{ width: "100%", height: "100%" }} title="Your bill's QR for the waiter" />
+              ) : qrFailed ? (
+                <div className="flex flex-col items-center gap-3" data-guest-sign-qr-failed>
+                  <p className="text-muted-foreground text-sm" role="alert">
+                    The QR didn&apos;t load.
+                  </p>
+                  <button
+                    type="button"
+                    className={cn(QUIET_BUTTON_CLASS, "w-auto")}
+                    onClick={() => {
+                      setQrFailed(false);
+                      setQrTry((n) => n + 1);
+                    }}
+                  >
+                    Try again
+                  </button>
+                </div>
               ) : (
                 <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" aria-label="Loading the QR" />
               )}
             </div>
           </div>
-          <p className="flex shrink-0 flex-wrap items-center justify-center gap-x-1.5 text-sm tabular-nums" role="timer" aria-live="off">
-            <Clock className={cn("h-4 w-4", WAIT)} aria-hidden />
-            <span className={cn("text-base font-semibold", WAIT)}>{countdown}</span>
-            {/* Honest about the end (MESITA-4130, Pato: "not then it's final,
-                just then it cancels"): an unsigned bill expires, its card hold
-                and credit are released, nothing is charged. */}
-            <span className="text-muted-foreground">left to sign · if not, it cancels and nothing is charged</span>
+          {/* The whole bill, never one part of it. One way: its words beside
+              the total. A split: each part on the line under. */}
+          <p className="flex shrink-0 flex-wrap items-center justify-center gap-x-2 tabular-nums" data-guest-sign-total>
+            <span className="text-2xl font-semibold">{m(total)}</span>
+            {ways.length === 1 ? (
+              <span className="text-muted-foreground flex items-center gap-1 text-sm [&>svg]:h-4 [&>svg]:w-4">
+                {ways[0].icon}
+                {ways[0].alone}
+              </span>
+            ) : null}
+          </p>
+          {ways.length > 1 ? (
+            <p className="text-muted-foreground flex shrink-0 flex-wrap items-center justify-center gap-x-3 text-sm tabular-nums" data-guest-sign-parts>
+              {ways.map((w) => (
+                <span key={w.key} className="flex items-center gap-1 [&>svg]:h-4 [&>svg]:w-4">
+                  {w.icon}
+                  {m(w.cents)} {w.part}
+                </span>
+              ))}
+            </p>
+          ) : null}
+          {/* MESITA-3913: what the signature earns, Available at once. */}
+          {(tab.cashback_on_sign_cents ?? 0) > 0 ? (
+            <p className={cn("flex shrink-0 items-center justify-center gap-1.5 text-sm font-semibold", GOOD)} data-guest-sign-cashback>
+              <Coins className="h-4 w-4 shrink-0" aria-hidden />+{m(tab.cashback_on_sign_cents ?? 0)} back as credits once signed
+            </p>
+          ) : null}
+          {/* The last line, honest about the end (MESITA-4130, Pato: "not
+              then it's final, just then it cancels"): an unsigned bill
+              expires, its card hold and credit are released, nothing is
+              charged. With the reads failing, the table bill's
+              "Reconnecting…" (the waiter can still scan). */}
+          <p className="text-muted-foreground shrink-0 text-sm" role="status" data-guest-sign-note>
+            {/* One line on a 375px phone: the longer "if not, it cancels and
+                nothing is charged" wrapped and pushed the panel 20px over. */}
+            {reconnecting ? "Reconnecting…" : "Not signed in time? It cancels, no charge."}
           </p>
           {error ? (
             <p className="text-destructive shrink-0 text-sm" role="alert">
