@@ -330,14 +330,15 @@ export function ReservationForm({
     );
   }
 
-  // THE STEPS (MESITA-4174, Pato: "less fucking steps"): When, then
-  // Details. Each fits a phone screen; the Reserve button says the summary.
-  const steps: ReserveStep[] = ["when", "details"];
+  // THE STEPS (MESITA-4179, Pato: "3 STEPS, NOT 2 STEPS"): When (date,
+  // time), People (party, flexibility, backup), Details (name, seating,
+  // notes). Each fits a phone screen; the Reserve button says the summary.
+  const steps: ReserveStep[] = ["when", "people", "details"];
   const at = Math.min(stepAt, steps.length - 1);
   const step = steps[at];
   const last = at === steps.length - 1;
   // Next waits for the duplicate answered and a time.
-  const nextBlocked = checking || awaitingChoice || !time;
+  const nextBlocked = step === "when" && (checking || awaitingChoice || !time);
   const next = () => {
     if (!nextBlocked && !last) setStepAt(at + 1);
   };
@@ -347,7 +348,9 @@ export function ReservationForm({
       ? "Choose an option above"
       : !time
         ? "No times left"
-        : `Next · ${whenLabel}`;
+        : step === "when"
+          ? `Next · ${dayLabel ? `${dayLabel} ` : ""}${time}`
+          : `Next · ${whenLabel}`;
   const range = windowRange(time, timeWindow);
 
   return (
@@ -377,18 +380,23 @@ export function ReservationForm({
             )}
             <ReservationDatePicker options={dateOptions} value={date} onChange={setDateChoice} />
             <ReservationTimePicker value={time} onChange={setTimeChoice} date={date} hours={hours} tz={tz} />
-            <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
           </>
         )}
 
-        {step === "details" && (
-          <div className="flex flex-col gap-4 [&>section]:mt-0 [&>div:first-child]:mt-0">
+        {step === "people" && (
+          <div className="flex flex-col gap-4 [&>section]:mt-0 [&>div]:mt-0">
+            <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
             {!rescheduling && (
               <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
             )}
             {!rescheduling && (
               <ReservationFallbackPicker value={fallback} onChange={setFallback} range={range} />
             )}
+          </div>
+        )}
+
+        {step === "details" && (
+          <div className="flex flex-col gap-4 [&>section]:mt-0 [&>div:first-child]:mt-0">
             {!rescheduling && (
               <div className="grid grid-cols-2 gap-2">
                 <ReservationField

@@ -8,6 +8,7 @@ import {
   CircleCheck,
   Minus,
   Plus,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -240,7 +241,8 @@ export function ReservationTimePicker({
           {groups.map((g) => (
             <div key={g.label}>
               <p className="text-muted-foreground type-body mb-1 font-medium">{g.label}</p>
-              <div className="grid grid-cols-4 gap-1.5">
+              {/* Small (MESITA-4179, Pato: "TIME SMAL"): five a row. */}
+              <div className="grid grid-cols-5 gap-1.5">
                 {g.slots.map((slot) => {
                   const active = slot.time === value;
                   return (
@@ -250,7 +252,7 @@ export function ReservationTimePicker({
                       role="radio"
                       aria-checked={active}
                       onClick={() => onChange(slot.time)}
-                      className={cn(CHOICE, "h-10 text-base", active ? CHOICE_ON : CHOICE_OFF)}
+                      className={cn(CHOICE, "h-9 rounded-lg text-sm", active ? CHOICE_ON : CHOICE_OFF)}
                     >
                       {slot.time}
                     </button>
@@ -520,17 +522,18 @@ export function ReservationSeatingPicker({
   );
 }
 
-// ── The steps (MESITA-4172, two since MESITA-4174) ─────────────────────────
+// ── The steps (MESITA-4172; two in MESITA-4174; three since MESITA-4179) ───
 // Pato: "write at the top the steps of the reservation in a progress bar,
 // kinda like the Pay view … make it not scrollable but in steps", then over
-// five: "less fucking steps". Two: When, then Details. The bar is Pay's
-// StepNav (pay-flow.tsx) in look: ‹ "When · 1 of 2" › with the step's icon,
-// thin segments under it, done and current ink.
+// five: "less fucking steps", then over two: "3 STEPS, NOT 2 STEPS". When,
+// People, Details. The bar is Pay's StepNav (pay-flow.tsx) in look:
+// ‹ "When · 1 of 3" › with the step's icon, thin segments, done and current ink.
 
-export type ReserveStep = "when" | "details";
+export type ReserveStep = "when" | "people" | "details";
 
 const STEP_META: Record<ReserveStep, { name: string; icon: LucideIcon }> = {
   when: { name: "When", icon: CalendarDays },
+  people: { name: "People", icon: Users },
   details: { name: "Details", icon: CircleCheck },
 };
 
