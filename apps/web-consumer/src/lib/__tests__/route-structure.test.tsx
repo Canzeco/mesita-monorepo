@@ -290,12 +290,12 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/pay/place/p1", "Pay"],
     ["/pay/bill/t1", "Pay"],
     ["/pay/receipt/r1", "Pay"],
-    // The Wallet is its own tab again (MESITA-3886), with its House Cards,
-    // gift links and the Share page it opens.
-    ["/wallet", "Wallet"],
-    ["/wallet/p1", "Wallet"],
-    ["/wallet/gift/g1", "Wallet"],
-    ["/share", "Wallet"],
+    // The Wallet is Pay's lower half (MESITA-4199): /wallet, its House Cards,
+    // gift links and the Share page light Pay.
+    ["/wallet", "Pay"],
+    ["/wallet/p1", "Pay"],
+    ["/wallet/gift/g1", "Pay"],
+    ["/share", "Pay"],
     // Activity's chips are Me's pages (MESITA-3855): they, a reservation and
     // a ticket light Me.
     ["/me/notifications", "Me"],
@@ -378,8 +378,8 @@ describe("the bar is Home · Search · Pay · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Wallet · Me (MESITA-3886)", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Wallet", "Me"]);
+  it("is exactly Home · Search · Pay · Me (MESITA-4199)", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
   });
 
   it("the @modal host stacks over the body only, not BottomNav (MESITA-2747)", () => {
@@ -404,12 +404,12 @@ describe("the bar is Home · Search · Pay · Me", () => {
     expect(labels).not.toContain("Activity");
   });
 
-  // Five <a> tabs and no button: Wallet is a tab again (MESITA-3886); Share
-  // is a page Wallet opens.
-  it("draws five links and no button", async () => {
+  // Four <a> tabs and no button: the Wallet is Pay's lower half (MESITA-4199);
+  // Share is a page Pay opens.
+  it("draws four links and no button", async () => {
     const html = await renderNav("/search");
-    expect(html.split("<a ").slice(1)).toHaveLength(5);
-    expect(html).toContain(`href="${CONSUMER_ROUTES.wallet}"`);
+    expect(html.split("<a ").slice(1)).toHaveLength(4);
+    expect(html).not.toContain(`href="${CONSUMER_ROUTES.wallet}"`);
     expect(html.split("<button").slice(1)).toHaveLength(0);
   });
 
@@ -431,7 +431,6 @@ describe("the bar is Home · Search · Pay · Me", () => {
       CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
-      CONSUMER_ROUTES.wallet,
       CONSUMER_ROUTES.me,
     ]);
     const redirects = await nextConfig.redirects!();
@@ -850,13 +849,13 @@ describe("T7 — every former url still resolves after the move", () => {
   // match, as Next fires it — and that is why this asserts the destination
   // rather than just the entry.
   it.each([
-    ["/credits", "/wallet"],
-    ["/inbox/credits", "/wallet"],
-    ["/new-visit/wallet", "/wallet"],
-    ["/new-visit/wallet/buy", "/wallet"],
-    ["/new-visit/wallet/gift", "/wallet"],
-    ["/new-visit/wallet/redeem", "/wallet"],
-    ["/new-visit/wallet/balance/bal_1", "/wallet"],
+    ["/credits", "/pay"],
+    ["/inbox/credits", "/pay"],
+    ["/new-visit/wallet", "/pay"],
+    ["/new-visit/wallet/buy", "/pay"],
+    ["/new-visit/wallet/gift", "/pay"],
+    ["/new-visit/wallet/redeem", "/pay"],
+    ["/new-visit/wallet/balance/bal_1", "/pay"],
   ])("keeps %s redirecting straight to %s", async (address, destination) => {
     const redirects = await nextConfig.redirects!();
     const hit = redirects.find((r) => matches(r.source, address));
@@ -1074,6 +1073,6 @@ describe("the route map", () => {
     expect(parentHref("/me/plan")).toBe("/me/settings");
     expect(parentHref("/me/settings/contact")).toBe("/me/settings");
     expect(parentHref("/pay/receipt/x")).toBe("/pay");
-    expect(parentHref("/wallet/w1")).toBe("/wallet");
+    expect(parentHref("/wallet/w1")).toBe("/pay");
   });
 });

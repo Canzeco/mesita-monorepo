@@ -3,7 +3,7 @@
 // middleware's sign-in wall and route handlers read these, never a typed
 // path, so they cannot drift into stringly-typed mismatches (MESITA-3642).
 //
-// The live app is the bar (Home · Search · Pay · Wallet · Me), the place
+// The live app is the bar (Home · Search · Pay · Me), the place
 // screen, reservations, and the money objects under Pay and Wallet. ROUTE_MAP below says, once, how each screen opens, which tab
 // it lights, where the bar shows and where Back lands (MESITA-3646).
 // Every address that shipped and no longer renders a page lives only in
@@ -11,7 +11,7 @@
 //
 // THE WORDS (MESITA-4013). An address is written in these and no others:
 //
-//   tab     one of the bar's five: Home · Search · Pay · Wallet · Me. Never
+//   tab     one of the bar's four: Home · Search · Pay · Me. Never
 //           the bill: `tab` is that thing's wire name only (pay_tabs, the
 //           EF bodies, `tabId` in props).
 //   page    a screen pushed over the one it was opened from; it has Back.
@@ -415,8 +415,8 @@ export function placeGooglePath(googlePlaceId: string): string {
 // frame (a type error) and lights no tab. Addresses that only redirect live
 // in `legacy` and next.config's table, never here.
 
-/** The bar's tabs: Home · Search · Pay · Wallet · Me (MESITA-3886). */
-export type ConsumerTab = "home" | "search" | "pay" | "wallet" | "me";
+/** The bar's tabs: Home · Search · Pay · Me (MESITA-4199). */
+export type ConsumerTab = "home" | "search" | "pay" | "me";
 
 /** How a screen arrives: a bar `tab`; a `page` pushed over the screen it was
  *  opened from; a `panel` that slides over the page under it (an @modal
@@ -472,19 +472,21 @@ export const ROUTE_MAP = {
   payBill: row("/pay/bill/:billId", "pay", "page", "pay", false),
   payJoin: row("/pay/join/:token", "pay", "door", "pay", false),
   payReceipt: row("/pay/receipt/:paymentId", "pay", "page", "pay", false),
-  // Wallet, its own tab again (MESITA-3886); it and its children light it.
-  wallet: row("/wallet", "wallet", "tab", null),
-  walletPlace: row("/wallet/place/:placeId", "wallet", "page", "wallet"),
-  walletGift: row("/wallet/gift/:token", "wallet", "page", "wallet"),
-  walletRedeem: row("/wallet/redeem", "wallet", "page", "wallet"),
-  walletAddCard: row("/wallet/cards/new", "wallet", "page", "wallet"),
-  // Wallet's Buy Credits and Send Gift lists, and a House Card's send page,
+  // THE WALLET IS PAY'S LOWER HALF (MESITA-4199): /wallet forwards to /pay;
+  // its children keep their addresses, light Pay and land back on it. It
+  // was its own tab from MESITA-3722 and again from MESITA-3886.
+  wallet: row("/wallet", "pay", "door", "pay"),
+  walletPlace: row("/wallet/place/:placeId", "pay", "page", "pay"),
+  walletGift: row("/wallet/gift/:token", "pay", "page", "pay"),
+  walletRedeem: row("/wallet/redeem", "pay", "page", "pay"),
+  walletAddCard: row("/wallet/cards/new", "pay", "page", "pay"),
+  // Pay's Buy Credits and Send Gift lists, and a House Card's send page,
   // which was a sheet over it (MESITA-4096).
-  walletBuy: row("/wallet/buy", "wallet", "page", "wallet"),
-  walletSend: row("/wallet/send", "wallet", "page", "wallet"),
-  walletPlaceSend: row("/wallet/place/:placeId/send", "wallet", "page", "walletPlace"),
-  // Share's page, pushed from Wallet's big button (MESITA-3886).
-  share: row("/share", "wallet", "page", "wallet"),
+  walletBuy: row("/wallet/buy", "pay", "page", "pay"),
+  walletSend: row("/wallet/send", "pay", "page", "pay"),
+  walletPlaceSend: row("/wallet/place/:placeId/send", "pay", "page", "walletPlace"),
+  // Share's page, pushed from Pay's Share Mesita button.
+  share: row("/share", "pay", "page", "pay"),
   me: row("/me", "me", "tab", null),
   meProfile: row("/me/profile", "me", "page", "me"),
   meInstagram: row("/me/instagram", "me", "page", "me"),

@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { QrCode, Search, User, Wallet } from "lucide-react";
+import { QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -27,14 +27,14 @@ import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 import { CountBubble } from "./CountBubble";
 import { useUnseenNotificationCount } from "./use-unseen-notifications";
 
-// FIVE TABS, in this order (Pato, 2026-11-14, MESITA-3886: "separate pay
-// and wallet again. only pay and only wallet"):
+// FOUR TABS, in this order (Pato, 2026-11-16, MESITA-4199: "merge pay and
+// wallet into one page ... call that page Pay"):
 //
-//   Home · Search · Pay · Wallet · Me
+//   Home · Search · Pay · Me
 //
-// WALLET IS A TAB AGAIN, SHARE IS IN IT: Wallet held this slot before
-// (MESITA-3722); Share held it from MESITA-3855/3867 and is now Wallet's big
-// Share Mesita button, which opens /share.
+// WALLET IS PAY'S LOWER HALF: it held its own slot from MESITA-3722 and again
+// from MESITA-3886 (Share held it MESITA-3855/3867 between); /wallet now
+// forwards to /pay, and Share Mesita is one of Pay's four buttons.
 //
 // ACTIVITY LEFT THE BAR (MESITA-3855, Pato: "We are going to remove Activity
 // too"): its chips are Me's Notifications, Reservations and Tickets pages. It
@@ -47,8 +47,8 @@ import { useUnseenNotificationCount } from "./use-unseen-notifications";
 //   Me › Notifications clears it.
 //
 //   PAY LIGHTS ON EVERY ADDRESS UNDER /pay (/pay/place/<placeId>, /pay/bill/<id>,
-//   /pay/receipt/<id>); WALLET ON /wallet, its House Cards and gift links,
-//   and /share (MESITA-3886).
+//   /pay/receipt/<id>), and on the Wallet's House Cards, gift links, Buy,
+//   Send, Claim, Add a card and /share (MESITA-4199).
 //
 // THE ME TAB WEARS THE GUEST'S PICTURE (Pato, MESITA-3077: "add profile
 // picture to me instead", after first asking for it at Home's and Search's
@@ -95,12 +95,6 @@ const ITEMS: Item[] = [
     // Reward from MESITA-3211 until then).
     label: "Pay",
     tab: "pay",
-  },
-  {
-    href: CONSUMER_ROUTES.wallet,
-    Icon: Wallet,
-    label: "Wallet",
-    tab: "wallet",
   },
   {
     href: CONSUMER_ROUTES.me,

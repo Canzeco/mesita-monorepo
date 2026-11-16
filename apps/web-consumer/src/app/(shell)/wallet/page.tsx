@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { WalletPage } from "@/components/consumer/wallet/WalletPage";
-import { isRouteId, walletGiftPath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, isRouteId, walletGiftPath, walletPlacePath } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
@@ -8,17 +7,21 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
 
-// /wallet — THE WALLET TAB (Pato, 2026-11-11, MESITA-3722: "return wallet
-// as a different page ... Home Search Pay Wallet Me"): what you pay with,
-// its own bar tab. MESITA-3720 had drawn it under Pay's places. A place's House Card (/wallet/place/<placeId>) and a friend's credit
-// link (/wallet/gift/<token>) are its children (MESITA-3614); their older
-// query shapes (?place=, ?gift=) forward to them. A saved card's Stripe
-// return (?card=) is read by the page itself.
+// /wallet — A DOOR TO PAY (Pato, 2026-11-16, MESITA-4199: "merge pay and
+// wallet into one page ... call that page Pay"): the Wallet is Pay's lower
+// half, so /wallet forwards to /pay, its query kept (a saved card's Stripe
+// return, ?card=, is read there). A place's House Card (/wallet/place/<id>)
+// and a friend's credit link (/wallet/gift/<token>) keep their addresses;
+// their older query shapes (?place=, ?gift=) still forward to them. It was
+// its own bar tab from MESITA-3722 and again from MESITA-3886.
 export default async function Page({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;
   const gift = one(sp.gift);
   if (gift) redirect(walletGiftPath(gift));
   const place = one(sp.place);
   if (isRouteId(place)) redirect(walletPlacePath(place));
-  return <WalletPage />;
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) if (typeof v === "string") q.set(k, v);
+  const rest = q.toString();
+  redirect(`${CONSUMER_ROUTES.pay}${rest ? `?${rest}` : ""}`);
 }
