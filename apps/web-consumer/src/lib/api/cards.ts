@@ -17,9 +17,9 @@ export type SavedCard = {
   in_use: boolean;
 };
 
-/** How many cards a guest may save (MESITA-3749). The server's rule
+/** How many cards a guest may save: one (MESITA-4168). The server's rule
  *  (consumer-web-add-card answers too_many); here it only hides Add. */
-export const MAX_SAVED_CARDS = 3;
+export const MAX_SAVED_CARDS = 1;
 
 export async function apiListCards(client: SupabaseClient): Promise<{ cards: SavedCard[]; test_mode: boolean }> {
   const r = await invokeEF<{ cards: SavedCard[]; test_mode: boolean }>(client, "consumer-web-list-cards", {});
@@ -73,7 +73,7 @@ export function expiryLabel(c: Pick<SavedCard, "exp_month" | "exp_year">): strin
 
 export const CARD_REFUSAL: Record<string, string> = {
   sign_in: "Sign in to save a card.",
-  too_many: "You have three cards. Remove one in Wallet.",
+  too_many: "You already have a card. Remove it in Wallet to add another.",
   in_use: "This card pays your Premier plan. Change it there first.",
   not_found: "That card is already gone.",
   setup_failed: "Couldn't open the card form. Try again.",

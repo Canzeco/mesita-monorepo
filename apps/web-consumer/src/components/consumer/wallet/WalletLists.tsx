@@ -330,10 +330,10 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
 export function WalletBodySkeleton() {
   return (
     <div aria-busy>
-      <WalletPanelList title="Money Payment Methods">
+      <WalletPanelList title="Payment Methods">
         <RowsSkeleton count={2} />
       </WalletPanelList>
-      <WalletPanelList title="Credits Payment Methods">
+      <WalletPanelList title="Loyalty Cards">
         <RowsSkeleton count={2} />
       </WalletPanelList>
     </div>

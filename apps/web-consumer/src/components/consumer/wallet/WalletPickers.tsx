@@ -25,7 +25,7 @@ function AddCreditsCardRow() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <AddRow line="Add a Credits Card" ariaLabel="Add a Credits Card" onClick={() => setOpen(true)} />
+      <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" onClick={() => setOpen(true)} />
       <AddCreditsCardDialog open={open} onClose={() => setOpen(false)} />
     </>
   );
@@ -80,7 +80,7 @@ export function BuyCreditsPage() {
       ) : selling === null ? (
         <WalletPanelList title="Places">
           <RowsSkeleton count={3} />
-          <AddRow line="Add a Credits Card" ariaLabel="Add a Credits Card" disabled />
+          <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" disabled />
         </WalletPanelList>
       ) : selling.length === 0 ? (
         <EmptyState
@@ -115,7 +115,7 @@ export function SendGiftPage() {
       ) : credits === null ? (
         <WalletPanelList title="Your places">
           <RowsSkeleton count={3} />
-          <AddRow line="Add a Credits Card" ariaLabel="Add a Credits Card" disabled />
+          <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" disabled />
         </WalletPanelList>
       ) : wallet?.can_send !== true ? (
         <EmptyState icon={Gift} title="Sending credit isn't open yet" />

@@ -231,12 +231,14 @@ export function WalletSection({
         </p>
       ) : null}
 
-      <WalletPanelList title="Money Payment Methods">
+      {/* PAYMENT METHODS AND LOYALTY CARDS (Pato, 2026-11-16, MESITA-4168:
+          "Payment Methods: Card (only can save one), Cash. Loyalty Cards"). */}
+      <WalletPanelList title="Payment Methods">
         {cards.map((c) => <SavedCardRow key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
         <CashRow onOpen={() => setMethod({ kind: "cash" })} />
         {/* Add is the list's last row (MESITA-3744), and reads "Add" in both
             lists (Pato, MESITA-3740: "add and add, keep the symmetry"). It
-            leaves once three cards are saved (MESITA-3749); Credits Cards
+            leaves once one card is saved (MESITA-4168); Loyalty Cards
             have no limit. */}
         {cards.length < MAX_SAVED_CARDS ? (
           <AddRow line="Add a card" ariaLabel="Add a payment card" href={CONSUMER_ROUTES.walletAddCard} />
@@ -244,7 +246,7 @@ export function WalletSection({
       </WalletPanelList>
 
       <WalletPanelList
-        title="Credits Payment Methods"
+        title="Loyalty Cards"
         fallback={
           creditsState === "failed" ? (
             <EmptyState
@@ -273,7 +275,7 @@ export function WalletSection({
             ))
           : null}
         {creditsState === "rows" ? (
-          <AddRow line="Add a Credits Card" ariaLabel="Add a Credits Card" onClick={() => setExplainAdd(true)} />
+          <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" onClick={() => setExplainAdd(true)} />
         ) : null}
       </WalletPanelList>
 

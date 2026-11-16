@@ -10,8 +10,8 @@ export type PayCard = { id: string; label: string; last4: string; exp_month: num
  *  or a host with no cards (admin, business). */
 export type PayCards = { state: "loading" } | { state: "error" } | { state: "ready"; cards: PayCard[] };
 
-/** How many cards one guest may save (the server's rule, MESITA-3749). */
-export const MAX_PAY_CARDS = 3;
+/** How many cards one guest may save (the server's rule: one since MESITA-4168). */
+export const MAX_PAY_CARDS = 1;
 
 export function isCardExpired(c: Pick<PayCard, "exp_month" | "exp_year">, now: Date = new Date()): boolean {
   const y = now.getFullYear();

@@ -8,7 +8,7 @@ export default function Loading() {
     <Screen title="Buy Credits" paper>
       <WalletPanelList title="Places">
         <RowsSkeleton count={3} />
-        <AddRow line="Add a Credits Card" ariaLabel="Add a Credits Card" disabled />
+        <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" disabled />
       </WalletPanelList>
     </Screen>
   );

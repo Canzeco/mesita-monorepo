@@ -14,7 +14,7 @@
 // Refusals (stable `code`):
 //   400 update_app — an old app bundle asked for Stripe's page: reload Mesita
 //   401 sign_in
-//   409 too_many (+max) — three cards saved: remove one in Wallet
+//   409 too_many (+max) — a card is already saved: remove it in Wallet (MESITA-4168)
 //   502 setup_failed (+ref) — Stripe did not create the SetupIntent: retry, up to 2
 //   503 payments_unavailable — Stripe keys missing for this mode
 // The client secret is never logged.
