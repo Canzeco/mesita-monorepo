@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, CircleCheck, Crown, Info, Lock, Minus, PartyPopper, Plus, Ticket, type LucideIcon } from "lucide-react";
+import { Check, ChevronRight, CircleCheck, Crown, Info, Lock, Minus, PartyPopper, Plus, Ticket, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -527,15 +527,23 @@ export type VoucherOffer = {
   why: string | null;
 };
 
+/** The Offers page's voucher groups (MESITA-4154). The ids keep the
+ *  sections the host opens (`?rewards=special`, `?rewards=prepayment`). */
+const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<MoneyVoucherKey> }[] = [
+  { id: "special", title: "Special Vouchers", keys: new Set(["voucher_welcome", "voucher_story", "voucher_vip"]) },
+  { id: "prepayment", title: "Bonus Vouchers", keys: new Set(["voucher_200", "voucher_1000", "voucher_5000"]) },
+];
+
 /** The vouchers a guest is shown: every product but the parked ones
  *  (MESITA-3831: Story is off sale and
  *  off the page, money-state's NOT_YET_SELLABLE). */
 function listedProducts(): Product[] {
-  // Welcome, Small, Medium, Big, VIP (MESITA-4056; Medium was off MESITA-3834).
-  return [...SPECIAL.slice(0, 1), ...STANDARD, ...SPECIAL.slice(1)].filter((p) => !NOT_YET_SELLABLE[p.key]);
+  // Welcome, VIP, Small, Medium, Big (MESITA-4154: the specials lead);
+  // Welcome · sizes · VIP from MESITA-4056.
+  return [...SPECIAL, ...STANDARD].filter((p) => !NOT_YET_SELLABLE[p.key]);
 }
 
-/** The vouchers in the Offers page's order, Welcome · Small · Medium · Big · VIP
+/** The vouchers in the Offers page's order, Welcome · VIP · Small · Medium · Big (MESITA-4154)
  *  (MESITA-3834). */
 export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions["guest"]): VoucherOffer[] {
   const { unavailable, dim, guestLock, buyable } = offerRules(money, guest);
@@ -583,6 +591,8 @@ export function VouchersPane({
   const creditPct = money?.credit_cashback_bps ? `${money.credit_cashback_bps / 100}%` : null;
   const prepayPct = money?.prepay_cashback_bps ? `${money.prepay_cashback_bps / 100}%` : null;
   const facts = creditFacts(creditPct);
+  // The Cashback group's rate: the place's own card cashback, or none.
+  const cashbackPct = money?.cashback && money.card_cashback_bps ? `${money.card_cashback_bps / 100}%` : null;
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;
   // THE CHECKOUT IS THE PAGE (MESITA-4065, Pato: "you simply select the item
@@ -696,13 +706,18 @@ export function VouchersPane({
     // buy carries a selector at its right; the one Buy sits at the foot
     // (MESITA-3487). No Pay bill here.
     <div className="bg-card -mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
-      <section className="flex flex-col gap-2" aria-labelledby="rewards-prepayment" data-promos="prepayment">
-        <SectionTitle
-          id="rewards-prepayment"
-          title="Prepayments"
-        />
+      {/* THREE GROUPS (Pato, 2026-11-16, MESITA-4154): Special Vouchers
+          (Welcome · VIP), Bonus Vouchers (Small · Medium · Big), then Cashback.
+          One "Prepayments" list before. The two voucher groups share one
+          basket and the one Pay at the foot. */}
+      {GROUPS.map((g) => {
+        const list = products.filter((p) => g.keys.has(p.key));
+        if (list.length === 0) return null;
+        return (
+      <section key={g.id} className="flex flex-col gap-2" aria-labelledby={`rewards-${g.id}`} data-promos={g.id}>
+        <SectionTitle id={`rewards-${g.id}`} title={g.title} />
         <ul className="border-border divide-border divide-y rounded-2xl border" data-voucher-catalog>
-          {products.map((p) => {
+          {list.map((p) => {
             const line = catalog[p.key];
             const pay = priceValue(p, line, currency);
             const get = creditValue(p, line, currency);
@@ -823,6 +838,33 @@ export function VouchersPane({
           })}
         </ul>
       </section>
+        );
+      })}
+      {/* CASHBACK IS BACK (MESITA-4154; it left with MESITA-4062): the place's
+          own card rate, one row that opens Pay. Not in the basket. */}
+      {cashbackPct ? (
+        <section className="flex flex-col gap-2" aria-labelledby="rewards-cashback" data-promos="cashback">
+          <SectionTitle id="rewards-cashback" title="Cashback" />
+          <ul className="border-border rounded-2xl border">
+            <li>
+              <button
+                type="button"
+                {...(actions?.onPay ? { onClick: actions.onPay } : { disabled: true })}
+                aria-label={`Pay with Mesita: ${cashbackPct} back in credits`}
+                className={cn(ROW, "hover:bg-muted/50 rounded-2xl")}
+              >
+                <span className={cn(CHIP, "bg-green-400 text-neutral-950")} aria-hidden>
+                  {cashbackPct}
+                </span>
+                <span className={LINE} aria-hidden>
+                  <span className={NAME}>Pay</span> <Fact text={`Pay your bill with Mesita · ${cashbackPct} back in credits`} />
+                </span>
+                <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+              </button>
+            </li>
+          </ul>
+        </section>
+      ) : null}
       {/* ONE PAY AT THE FOOT (MESITA-3487; MESITA-4065): the card it charges
           is named above it (MESITA-4150: the only place it is named), so nobody
           pays with a card they cannot see;
