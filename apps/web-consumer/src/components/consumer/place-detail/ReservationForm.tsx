@@ -1,22 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarClock, Loader2, PhoneCall } from "lucide-react";
+import { CalendarClock, ChevronDown, Loader2, PhoneCall } from "lucide-react";
 
 import {
   buildDateOptions,
   firstOpenDate,
   ReservationDatePicker,
-  ReservationGroupHeading,
+  ReservationField,
+  ReservationFallbackPicker,
   ReservationPartyPicker,
-  ReservationNotifyPicker,
   ReservationSeatingPicker,
   ReservationWindowPicker,
   DEFAULT_TIME_WINDOW,
+  type ReservationFallback,
   type ReservationSeating,
   type ReservationTimeWindow,
   ReservationTimePicker,
-  type ReservationNotify,
+  windowRange,
 } from "@/components/consumer/reservation-pickers";
 import {
   apiCreateReservation,
@@ -79,10 +80,13 @@ function resolveSubmitLabel(args: {
   time: string | null;
   rescheduling: boolean;
   whenLabel: string;
+  missing: string | null;
 }): string {
   if (args.checking) return "Checking your reservations…";
   if (args.awaitingChoice) return "Choose an option above";
   if (!args.time) return "No times left";
+  // The button says what is missing instead of greying out mutely.
+  if (args.missing) return args.missing;
   return args.rescheduling
     ? `Move my table · ${args.whenLabel}`
     : `Reserve · ${args.whenLabel}`;
@@ -132,8 +136,11 @@ export function ReservationForm({
   const [timeChoice, setTimeChoice] = useState<string | null>(null);
   const [party, setParty] = useState(DEFAULT_PARTY);
   const [notes, setNotes] = useState("");
-  // App only by default (MESITA-3961): a call is something the guest asks for.
-  const [notify, setNotify] = useState<ReservationNotify>("app");
+  // If the place has nothing in the window (MESITA-4166): their times come
+  // back in the app by default; a call is something the guest asks for
+  // (MESITA-3961); "cancel" books nothing.
+  const [fallback, setFallback] = useState<ReservationFallback>("offer");
+  const [moreOpen, setMoreOpen] = useState(false);
   const [timeWindow, setTimeWindow] = useState<ReservationTimeWindow>(DEFAULT_TIME_WINDOW);
   const [seating, setSeating] = useState<ReservationSeating>("any");
   const [submitting, setSubmitting] = useState(false);
@@ -168,9 +175,14 @@ export function ReservationForm({
   const time = resolveSlot(date, timeChoice, hours, tz);
 
   const chosen = dateOptions.find((d) => d.iso === date);
-  const whenLabel = chosen
-    ? `${chosen.weekday === "Today" || chosen.weekday === "Tom." ? chosen.weekday : `${chosen.weekday} ${chosen.day}`} · ${time ?? "—"}`
-    : (time ?? "—");
+  const dayLabel = chosen
+    ? chosen.weekday === "Today"
+      ? "Today"
+      : chosen.weekday === "Tom."
+        ? "Tomorrow"
+        : `${chosen.weekday} ${chosen.day}`
+    : "";
+  const whenLabel = `${dayLabel ? `${dayLabel} ` : ""}${time ?? "—"} · ${party} ${guestNoun(party)}`;
 
   const rescheduling = choice === "reschedule" && existing !== null;
   // A found duplicate locks submit until the guest answers the banner — the
@@ -207,6 +219,13 @@ export function ReservationForm({
   // A new table needs both names (MESITA-3629, Pato: "first and last names
   // must be mandatory"); Reserve stays off until they are typed.
   const needsName = !rescheduling && (!firstName.trim() || !lastName.trim());
+  const missing = rescheduling
+    ? null
+    : !firstName.trim()
+      ? "Add your first name"
+      : !lastName.trim()
+        ? "Add your last name"
+        : null;
 
   async function submit() {
     if (!date || !time || submitting || checking || awaitingChoice) return;
@@ -233,13 +252,14 @@ export function ReservationForm({
           reservedAt,
           partySize: party,
           notes,
-          guestNotify: notify,
+          guestNotify: fallback === "offer_call" ? "call" : "app",
+          ifUnavailable: fallback === "cancel" ? "cancel" : "offer",
           firstName,
           lastName,
           timeWindowMinutes: timeWindow,
           seating,
           requestId: requestIdFor(
-            [place.id, reservedAt, party, notes.trim(), firstName.trim(), lastName.trim(), notify, timeWindow, seating].join("|"),
+            [place.id, reservedAt, party, notes.trim(), firstName.trim(), lastName.trim(), fallback, timeWindow, seating].join("|"),
           ),
         });
       }
@@ -268,6 +288,7 @@ export function ReservationForm({
     time,
     rescheduling,
     whenLabel,
+    missing,
   });
 
   if (done) {
@@ -282,8 +303,8 @@ export function ReservationForm({
         <p className="text-muted-foreground type-body mx-auto mt-2 max-w-xs leading-relaxed">
           Mesita is calling{" "}
           <span className="text-foreground font-medium">{place.name}</span>{" "}
-          to {rescheduling ? "move" : "book"} your table for {party} on{" "}
-          {whenLabel}. We&apos;ll update this reservation once the place
+          to {rescheduling ? "move" : "book"} your table for {party}{" "}
+          {guestNoun(party)}, {dayLabel ? `${dayLabel} ` : ""}at {time ?? "—"}. We&apos;ll update this reservation once the place
           confirms.
         </p>
         <button
@@ -310,7 +331,6 @@ export function ReservationForm({
         />
       )}
 
-      <ReservationGroupHeading first>When</ReservationGroupHeading>
       <ReservationDatePicker
         options={dateOptions}
         value={date}
@@ -322,90 +342,108 @@ export function ReservationForm({
         date={date}
         hours={hours}
         tz={tz}
-      />
-      {!rescheduling && (
-        <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
-      )}
-
-      <ReservationGroupHeading>Who</ReservationGroupHeading>
+      >
+        {!rescheduling && time && (
+          <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
+        )}
+      </ReservationTimePicker>
       <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
 
       {!rescheduling && (
-        <div className="mt-4">
-          <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-            Name
-          </p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <input
+        <section className="mt-7">
+          <h2 className="font-sans text-base font-semibold tracking-normal">Name</h2>
+          <p className="text-muted-foreground type-body">The name the table is under.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <ReservationField
+              label="First name"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               maxLength={60}
-              placeholder="First name"
-              autoComplete="off"
-              aria-label="First name"
+              autoComplete="given-name"
               required
-              className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
             />
-            <input
+            <ReservationField
+              label="Last name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               maxLength={60}
-              placeholder="Last name"
               autoComplete="family-name"
-              aria-label="Last name"
               required
-              className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
             />
           </div>
-          <p className="text-muted-foreground type-meta mt-2">
-            The name the table is under.
-          </p>
-        </div>
+        </section>
       )}
 
-      <ReservationGroupHeading>Extras</ReservationGroupHeading>
-      {!rescheduling && <ReservationSeatingPicker value={seating} onChange={setSeating} />}
-
-      <div className="mt-4">
-        <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-          Notes
-        </p>
-        <input
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          maxLength={280}
-          placeholder="Optional: allergies, a birthday, a high chair…"
-          aria-label="Notes"
-          className="border-border bg-card focus:border-foreground/40 mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+      {!rescheduling && (
+        <ReservationFallbackPicker
+          value={fallback}
+          onChange={setFallback}
+          range={windowRange(time, timeWindow)}
         />
-      </div>
-
-      {!rescheduling && <ReservationNotifyPicker value={notify} onChange={setNotify} />}
-
-      {error && (
-        <p className="type-body bg-destructive/10 text-destructive mt-3 rounded-xl px-3 py-2 font-medium">
-          {error}
-        </p>
       )}
 
-      <button
-        type="button"
-        onClick={submit}
-        disabled={submitting || checking || awaitingChoice || !time || needsName}
-        className="bg-primary text-primary-foreground mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition active:scale-[0.99] disabled:opacity-60"
-      >
-        {submitting ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {rescheduling ? "Updating…" : "Requesting…"}
-          </>
-        ) : (
-          submitLabel
+      {/* Seating and notes are extras: folded, so the path stays short. */}
+      <section className="mt-7">
+        <button
+          type="button"
+          onClick={() => setMoreOpen((v) => !v)}
+          aria-expanded={moreOpen}
+          className="flex min-h-11 w-full items-center justify-between text-left"
+        >
+          <span>
+            <span className="block text-base font-semibold">More options</span>
+            <span className="text-muted-foreground type-body block">
+              {[
+                !rescheduling && seating !== "any" ? seating[0].toUpperCase() + seating.slice(1) : null,
+                notes.trim() ? "Note added" : null,
+              ]
+                .filter(Boolean)
+                .join(" · ") || (rescheduling ? "Notes" : "Seating, notes")}
+            </span>
+          </span>
+          <ChevronDown className={cn("h-5 w-5 transition", moreOpen && "rotate-180")} aria-hidden />
+        </button>
+        {moreOpen && (
+          <div className="mt-3 flex flex-col gap-4">
+            {!rescheduling && <ReservationSeatingPicker value={seating} onChange={setSeating} />}
+            <ReservationField
+              label="Notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={280}
+              placeholder="Allergies, a birthday, a high chair…"
+            />
+          </div>
         )}
-      </button>
-      <p className="text-muted-foreground type-body mt-2 text-center">
-        Mesita calls the place and tells you the answer.
-      </p>
+      </section>
+
+      {/* The one action, always in view (MESITA-4166): sticky at the bottom
+          of the page's scroller, with what you are booking spelled out. */}
+      <div className="bg-card border-border sticky bottom-0 z-10 -mx-5 mt-8 border-t px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {error && (
+          <p className="type-body bg-destructive/10 text-destructive mb-3 rounded-xl px-3 py-2 font-medium">
+            {error}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={submit}
+          disabled={submitting || checking || awaitingChoice || !time || needsName}
+          className="bg-primary text-primary-foreground inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold transition active:scale-[0.99] disabled:opacity-50"
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {rescheduling ? "Updating…" : "Requesting…"}
+            </>
+          ) : (
+            submitLabel
+          )}
+        </button>
+        <p className="text-muted-foreground type-body mt-2 text-center">
+          Mesita calls the place for you and tells you the answer.
+        </p>
+      </div>
     </>
   );
 }

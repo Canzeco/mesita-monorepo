@@ -1,4 +1,5 @@
-import { Check, Minus, Plus } from "lucide-react";
+import { useState } from "react";
+import { Check, ChevronDown, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   bookingWindowDays,
@@ -78,7 +79,42 @@ export function firstOpenDate(options: DateOption[]): string {
   return options.find((d) => !d.disabled)?.iso ?? "";
 }
 
-/** Date row — horizontally scrollable pills, one month out. */
+// ── The look (MESITA-4166) ─────────────────────────────────────────────────
+// White page; an unselected choice is white with a border you can SEE
+// (foreground/20, not the hairline); the chosen one is solid ink. Pato:
+// "is hard to see" — every choice on this page uses these three classes.
+
+const CHOICE = "rounded-xl border font-semibold tabular-nums transition";
+const CHOICE_OFF = "border-foreground/20 bg-card text-foreground";
+const CHOICE_ON = "border-foreground bg-foreground text-background";
+const CHOICE_DEAD = "border-foreground/10 bg-card text-muted-foreground cursor-not-allowed opacity-40";
+
+/** One section of the Reserve page: a plain 16px title (body face, sentence
+ *  case — no ALL-CAPS eyebrow), an optional control on the right. */
+export function ReservationSection({
+  title,
+  aside,
+  children,
+  className,
+}: {
+  title: string;
+  aside?: React.ReactNode;
+  children?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cn("mt-7", className)}>
+      <div className="flex min-h-11 items-center justify-between gap-3">
+        <h2 className="font-sans text-base font-semibold tracking-normal">{title}</h2>
+        {aside}
+      </div>
+      {children && <div className="mt-2">{children}</div>}
+    </section>
+  );
+}
+
+/** Date — one week as a seven-column grid (no sideways scroll); "More dates"
+ *  opens the rest of the month in the same grid. */
 export function ReservationDatePicker({
   options,
   value,
@@ -88,51 +124,81 @@ export function ReservationDatePicker({
   value: string;
   onChange: (iso: string) => void;
 }) {
+  const [more, setMore] = useState(false);
+  const picked = options.findIndex((d) => d.iso === value);
+  // A date picked beyond the first week keeps the grid open.
+  const open = more || picked >= 7;
+  const shown = open ? options : options.slice(0, 7);
   return (
-    <div className="mt-5">
-      <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-        Day
-      </p>
-      <div className="scrollbar-hide -mx-5 mt-2 flex flex-nowrap gap-2 overflow-x-auto px-5 pb-1">
-        {options.map((d) => {
+    <ReservationSection
+      title="Date"
+      aside={
+        options.length > 7 ? (
+          <button
+            type="button"
+            onClick={() => setMore(!open)}
+            aria-expanded={open}
+            className="text-foreground inline-flex h-11 items-center gap-1 text-sm font-semibold"
+          >
+            {open ? "Fewer dates" : "More dates"}
+            <ChevronDown className={cn("h-4 w-4 transition", open && "rotate-180")} aria-hidden />
+          </button>
+        ) : null
+      }
+    >
+      <div role="radiogroup" aria-label="Date" className="grid grid-cols-7 gap-1.5">
+        {shown.map((d, i) => {
           const active = d.iso === value;
+          // The first of a month says the month, so a long grid stays legible.
+          const top = i > 0 && d.day === 1 ? d.month : d.weekday;
           return (
             <button
               key={d.iso}
               type="button"
+              role="radio"
+              aria-checked={active}
+              aria-label={`${d.weekday} ${d.day} ${d.month}${d.disabled ? ", no times" : ""}`}
               onClick={() => onChange(d.iso)}
               disabled={d.disabled}
-              aria-disabled={d.disabled}
-              title={d.disabled ? "No times on this day" : undefined}
               className={cn(
-                "flex w-14 shrink-0 flex-col items-center rounded-2xl border py-2 transition",
-                d.disabled
-                  ? "border-border bg-muted/40 text-muted-foreground cursor-not-allowed opacity-45"
-                  : active
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-card text-foreground",
+                CHOICE,
+                "flex h-16 min-w-0 flex-col items-center justify-center gap-0.5",
+                d.disabled ? CHOICE_DEAD : active ? CHOICE_ON : CHOICE_OFF,
               )}
             >
-              <span className={cn("type-meta font-semibold uppercase", !active && "text-muted-foreground")}>
-                {d.weekday}
-              </span>
-              <span className="text-lg font-semibold tabular-nums">{d.day}</span>
-              <span className={cn("type-meta", !active && "text-muted-foreground")}>{d.month}</span>
+              <span className={cn("type-body truncate font-medium", !active && "text-muted-foreground")}>{top}</span>
+              <span className="text-lg leading-none">{d.day}</span>
             </button>
           );
         })}
       </div>
-    </div>
+    </ReservationSection>
   );
 }
 
+type SlotGroup = { label: string; slots: ReservationSlot[] };
+
+/** Morning · Lunch · Dinner, then After midnight LAST: 01:30 belongs to this
+ *  date but reads as tonight, so it never leads the list (MESITA-4166). */
+function groupSlots(slots: ReservationSlot[]): SlotGroup[] {
+  const bands: SlotGroup[] = [
+    { label: "Morning", slots: [] },
+    { label: "Lunch", slots: [] },
+    { label: "Dinner", slots: [] },
+    { label: "After midnight", slots: [] },
+  ];
+  for (const s of slots) {
+    const h = Number(s.time.slice(0, 2));
+    const band = s.afterMidnight ? 3 : h < 12 ? 0 : h < 17 ? 1 : 2;
+    bands[band].slots.push(s);
+  }
+  return bands.filter((b) => b.slots.length > 0);
+}
+
 /**
- * Time picker — horizontal scroll, exactly two rows (:00 on top, :30 on
- * bottom). Slots behind the place's clock render muted + unclickable; they
- * stay in the strip so the layout never jumps.
- *
- * Only times inside the place's hours are listed (MESITA-3951); a place with
- * no hours lists the baseline window.
+ * Time — every time still ahead of the place's clock, in a four-column grid
+ * grouped by part of the day. Nothing scrolls sideways, nothing is clipped.
+ * Only times inside the place's hours are listed (MESITA-3951).
  */
 export function ReservationTimePicker({
   value,
@@ -140,6 +206,7 @@ export function ReservationTimePicker({
   date,
   hours,
   tz,
+  children,
 }: {
   value: string | null;
   onChange: (slot: string) => void;
@@ -147,82 +214,49 @@ export function ReservationTimePicker({
   hours?: WeeklyHours | null;
   /** The place's IANA zone (MESITA-3626): "past" is judged on its clock. */
   tz?: string | null;
+  /** Drawn under the grid, inside the section (the flexibility control). */
+  children?: React.ReactNode;
 }) {
-  const slots = buildSlots(date ?? "", hours);
+  const slots = buildSlots(date ?? "", hours).filter(
+    (slot) => !(date && isSlotPast(date, slot.time, tz)),
+  );
+  const groups = groupSlots(slots);
   return (
-    <div className="mt-4">
-      <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-        Time
-      </p>
-      <div className="scrollbar-hide -mx-5 mt-2 flex flex-nowrap gap-2 overflow-x-auto px-5 pb-1">
-        {slots.filter((slot) => !(date && isSlotPast(date, slot.time, tz))).map((slot) => (
-          <TimeSlotButton
-            key={slot.time}
-            slot={slot}
-            date={date}
-            tz={tz}
-            value={value}
-            onChange={onChange}
-          />
-        ))}
-      </div>
-    </div>
+    <ReservationSection title="Time">
+      {groups.length === 0 ? (
+        <p className="text-muted-foreground type-body">No times left on this day. Pick another date.</p>
+      ) : (
+        <div role="radiogroup" aria-label="Time" className="flex flex-col gap-3">
+          {groups.map((g) => (
+            <div key={g.label}>
+              <p className="text-muted-foreground type-body mb-1.5 font-medium">{g.label}</p>
+              <div className="grid grid-cols-4 gap-2">
+                {g.slots.map((slot) => {
+                  const active = slot.time === value;
+                  return (
+                    <button
+                      key={slot.time}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => onChange(slot.time)}
+                      className={cn(CHOICE, "h-12 text-base", active ? CHOICE_ON : CHOICE_OFF)}
+                    >
+                      {slot.time}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {children}
+    </ReservationSection>
   );
 }
 
-function TimeSlotButton({
-  slot,
-  date,
-  tz,
-  value,
-  onChange,
-}: {
-  slot: ReservationSlot | null;
-  date?: string;
-  tz?: string | null;
-  value: string | null;
-  onChange: (slot: string) => void;
-}) {
-  if (!slot) {
-    return <div className="h-[42px] w-full" aria-hidden />;
-  }
-  const past = date ? isSlotPast(date, slot.time, tz) : false;
-  const active = slot.time === value && !past;
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(slot.time)}
-      disabled={past}
-      aria-disabled={past}
-      title={
-        past
-          ? "This time has already passed"
-          : slot.afterMidnight
-              ? "After midnight"
-              : undefined
-      }
-      className={cn(
-        "flex h-10 shrink-0 flex-col items-center justify-center rounded-full border px-4 text-sm leading-none font-semibold tabular-nums transition",
-        past
-          ? "border-border bg-muted/40 text-muted-foreground cursor-not-allowed opacity-45"
-          : active
-            ? "border-foreground bg-foreground text-background"
-            : "border-border bg-card text-foreground",
-      )}
-    >
-      {slot.time}
-      {/* 01:30 sits before lunch on the same date; "late" says it is the
-          small hours, not a typo (MESITA-4161). */}
-      {slot.afterMidnight && (
-        <span className={cn("type-meta mt-0.5 font-medium", !active && "text-muted-foreground")}>
-          late
-        </span>
-      )}
-    </button>
-  );
-}
-
-/** Party-size stepper — min 1, max 12. */
+/** People — one row: the title left, a big stepper right. 1–10. */
 export function ReservationPartyPicker({
   value,
   onChange,
@@ -230,122 +264,66 @@ export function ReservationPartyPicker({
   value: number;
   onChange: (updater: (n: number) => number) => void;
 }) {
+  const step = cn(
+    CHOICE,
+    CHOICE_OFF,
+    "flex h-11 w-11 items-center justify-center rounded-full disabled:opacity-30",
+  );
   return (
-    <div className="mt-4">
-      <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-        Party size
-      </p>
-      <div className="border-border bg-card mt-2 flex items-center gap-4 rounded-2xl border py-2 pr-2 pl-4">
-        <span className="type-body flex-1">People</span>
-        <button
-          type="button"
-          onClick={() => onChange((n) => Math.max(MIN_PARTY, n - 1))}
-          disabled={value <= MIN_PARTY}
-          aria-label="Decrease party size"
-          className="bg-muted text-foreground hover:bg-muted/70 flex h-9 w-9 items-center justify-center rounded-full transition disabled:opacity-40"
-        >
-          <Minus className="h-4 w-4" />
-        </button>
-        <span className="w-6 text-center text-lg font-semibold tabular-nums">
-          {value}
-        </span>
-        <button
-          type="button"
-          onClick={() => onChange((n) => Math.min(MAX_PARTY, n + 1))}
-          disabled={value >= MAX_PARTY}
-          aria-label="Increase party size"
-          className="bg-muted text-foreground hover:bg-muted/70 flex h-9 w-9 items-center justify-center rounded-full transition disabled:opacity-40"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
+    <ReservationSection
+      title="People"
+      aside={
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onChange((n) => Math.max(MIN_PARTY, n - 1))}
+            disabled={value <= MIN_PARTY}
+            aria-label="Fewer people"
+            className={step}
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <span className="w-7 text-center text-xl font-semibold tabular-nums" aria-live="polite">
+            {value}
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange((n) => Math.min(MAX_PARTY, n + 1))}
+            disabled={value >= MAX_PARTY}
+            aria-label="More people"
+            className={step}
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+      }
+    />
   );
 }
 
-/** How the guest hears back (MESITA-3961). The server stores it as
- *  consumer_notify: "app" | "call". */
-export type ReservationNotify = "app" | "call";
-
-const NOTIFY_OPTIONS: Array<{ value: ReservationNotify; label: string; hint: string }> = [
-  { value: "app", label: "App notification", hint: "Every answer shows in the app." },
-  {
-    value: "call",
-    label: "App notification + call me",
-    hint: "Mesita also calls when the place needs your answer.",
-  },
-];
-
-/**
- * Updates — one card of two rows. Pato, 2026-11-14: "the guest must select
- * ... app notification or (app notification + call me)". A confirmed table is
- * never a call; a call is only for a decision (other times, a cancellation).
- */
-export function ReservationNotifyPicker({
-  value,
-  onChange,
-}: {
-  value: ReservationNotify;
-  onChange: (next: ReservationNotify) => void;
-}) {
+/** A text field with its label ABOVE it, never the placeholder alone. */
+export function ReservationField({
+  label,
+  className,
+  ...input
+}: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <div className="mt-4">
-      <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-        Updates
-      </p>
-      <div
-        role="radiogroup"
-        aria-label="Updates"
-        className="border-border bg-card divide-border mt-2 divide-y rounded-2xl border"
-      >
-        {NOTIFY_OPTIONS.map((o) => {
-          const active = o.value === value;
-          return (
-            <button
-              key={o.value}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              onClick={() => onChange(o.value)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="type-body block font-medium">{o.label}</span>
-                <span className="text-muted-foreground type-meta block">{o.hint}</span>
-              </span>
-              <span
-                aria-hidden
-                className={cn(
-                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
-                  active ? "border-foreground bg-foreground text-background" : "border-border",
-                )}
-              >
-                {active && <Check className="h-3 w-3" />}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <label className={cn("block min-w-0", className)}>
+      <span className="text-muted-foreground type-body mb-1.5 block font-medium">{label}</span>
+      <input
+        {...input}
+        className="border-foreground/20 bg-card focus:border-foreground h-12 w-full rounded-xl border px-3.5 text-base outline-none"
+      />
+    </label>
   );
 }
 
-// ── Time flexibility and seating (MESITA-3957) ─────────────────────────────
-// What the agent may decide alone on the call: a time inside the window and
-// where to sit. Anything else goes back to the guest.
+// ── Flexibility (MESITA-3957) ──────────────────────────────────────────────
+// What a1 may take alone on the call: a time inside the window.
 
 export type ReservationTimeWindow = 0 | 30 | 60;
 /** decision: 30 minutes either side by default (MESITA-3957, Pato's call). */
 export const DEFAULT_TIME_WINDOW: ReservationTimeWindow = 30;
-export type ReservationSeating = "any" | "inside" | "outside" | "bar";
-
-function windowOptions(time: string | null): { value: ReservationTimeWindow; label: string }[] {
-  return [
-    { value: 0, label: time ? `Only ${time}` : "Only that time" },
-    { value: 30, label: "± 30 min" },
-    { value: 60, label: "± 1 hour" },
-  ];
-}
 
 /** `HH:mm` moved by `delta` minutes, wrapping round the clock. */
 function shiftHhmm(time: string, delta: number): string {
@@ -354,75 +332,13 @@ function shiftHhmm(time: string, delta: number): string {
   return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
 }
 
-/** The hint names the actual range, not an abstract rule (MESITA-4161). */
-function windowHint(time: string | null, window: ReservationTimeWindow): string {
-  if (window === 0) return "We ask for that time only. If it's taken, we ask you before changing it.";
-  if (!time) return "We take a time inside this range without asking you; anything else, we ask.";
-  return `We book any time from ${shiftHhmm(time, -window)} to ${shiftHhmm(time, window)} without asking you. Anything else, we ask first.`;
+/** "19:30–20:30", or "20:00" alone for Exact; null without a time. */
+export function windowRange(time: string | null, window: ReservationTimeWindow): string | null {
+  if (!time) return null;
+  return window === 0 ? time : `${shiftHhmm(time, -window)}–${shiftHhmm(time, window)}`;
 }
 
-/** A group heading over a few fields: When · Who · Extras (MESITA-4161). */
-export function ReservationGroupHeading({ children, first }: { children: string; first?: boolean }) {
-  return (
-    <h2
-      className={cn(
-        "text-foreground text-base font-semibold",
-        first ? "mt-6" : "border-border mt-8 border-t pt-6",
-      )}
-    >
-      {children}
-    </h2>
-  );
-}
-
-const SEATING_OPTIONS: { value: ReservationSeating; label: string }[] = [
-  { value: "any", label: "No preference" },
-  { value: "inside", label: "Inside" },
-  { value: "outside", label: "Outside" },
-  { value: "bar", label: "Bar" },
-];
-
-function ChoicePills<T extends string | number>({
-  title,
-  hint,
-  options,
-  value,
-  onChange,
-}: {
-  title: string;
-  hint: string;
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (next: T) => void;
-}) {
-  return (
-    <div className="mt-4">
-      <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">{title}</p>
-      <div role="radiogroup" aria-label={title} className="mt-2 flex flex-wrap gap-2">
-        {options.map((o) => {
-          const active = o.value === value;
-          return (
-            <button
-              key={String(o.value)}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              onClick={() => onChange(o.value)}
-              className={cn(
-                "h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition",
-                active ? "border-foreground bg-foreground text-background" : "border-border bg-card text-foreground",
-              )}
-            >
-              {o.label}
-            </button>
-          );
-        })}
-      </div>
-      {hint && <p className="text-muted-foreground type-meta mt-2">{hint}</p>}
-    </div>
-  );
-}
-
+/** One segmented control under the time grid. */
 export function ReservationWindowPicker({
   value,
   onChange,
@@ -430,19 +346,138 @@ export function ReservationWindowPicker({
 }: {
   value: ReservationTimeWindow;
   onChange: (next: ReservationTimeWindow) => void;
-  /** The picked time, so the title and hint can name it. */
   time: string | null;
 }) {
+  const options: { value: ReservationTimeWindow; label: string }[] = [
+    { value: 0, label: "Exact" },
+    { value: 30, label: "± 30 min" },
+    { value: 60, label: "± 1 hour" },
+  ];
+  const range = windowRange(time, value);
   return (
-    <ChoicePills
-      title={time ? `If ${time} is taken` : "If that time is taken"}
-      hint={windowHint(time, value)}
-      options={windowOptions(time)}
-      value={value}
-      onChange={onChange}
-    />
+    <div className="mt-4">
+      <p className="type-body mb-1.5 font-medium">How flexible?</p>
+      <div
+        role="radiogroup"
+        aria-label="How flexible"
+        className="border-foreground/20 grid grid-cols-3 gap-1 rounded-xl border p-1"
+      >
+        {options.map((o) => {
+          const active = o.value === value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(o.value)}
+              className={cn(
+                "h-10 rounded-lg text-sm font-semibold transition",
+                active ? "bg-foreground text-background" : "text-foreground",
+              )}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+      {range && (
+        <p className="text-muted-foreground type-body mt-1.5">
+          {value === 0
+            ? `We ask for ${range} only.`
+            : `We book any time ${range} without asking you.`}
+        </p>
+      )}
+    </div>
   );
 }
+
+// ── If they can't seat you (MESITA-4166) ───────────────────────────────────
+// The guest decides, when they create the ticket, what happens when the place
+// has nothing inside the range. Pato: "add the param for the consumer when he
+// creates the ticket". A confirmed table is always just a notification.
+//   offer       their times arrive in the app (consumer_notify app)
+//   offer_call  same, and a2 calls once if no pick in 15 min (notify call)
+//   cancel      nothing is booked; one notification (if_unavailable cancel)
+
+export type ReservationFallback = "offer" | "offer_call" | "cancel";
+
+/** "Don't book anything" needs `if_unavailable` on the ticket and a1 obeying
+ *  it. Until that backend lands, the choice is hidden: shown, it would be
+ *  stored as "offer" and the guest would get times they said no to. The
+ *  backend PR flips this. */
+export const FALLBACK_CANCEL_LIVE = false;
+
+const FALLBACK_OPTIONS: Array<{ value: ReservationFallback; label: string; hint: string }> = [
+  { value: "offer", label: "Show me other times", hint: "Their times arrive in the app. You pick one." },
+  {
+    value: "offer_call",
+    label: "Show me other times and call me",
+    hint: "If you haven't picked in 15 minutes, Mesita calls you.",
+  },
+  { value: "cancel", label: "Don't book anything", hint: "We tell you in the app. Nothing is booked." },
+];
+
+export function ReservationFallbackPicker({
+  value,
+  onChange,
+  range,
+}: {
+  value: ReservationFallback;
+  onChange: (next: ReservationFallback) => void;
+  /** "19:30–20:30" — the window the place could not meet. */
+  range: string | null;
+}) {
+  const title = range ? `If they can't seat you ${range.includes("–") ? range : `at ${range}`}` : "If they can't seat you";
+  return (
+    <ReservationSection title={title}>
+      <div
+        role="radiogroup"
+        aria-label="If they can't seat you"
+        className="border-foreground/20 divide-foreground/10 divide-y rounded-xl border"
+      >
+        {FALLBACK_OPTIONS.filter((o) => o.value !== "cancel" || FALLBACK_CANCEL_LIVE).map((o) => {
+          const active = o.value === value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(o.value)}
+              className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left"
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                  active ? "border-foreground bg-foreground text-background" : "border-foreground/30",
+                )}
+              >
+                {active && <Check className="h-3 w-3" strokeWidth={3} />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">{o.label}</span>
+                <span className="text-muted-foreground type-body block">{o.hint}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </ReservationSection>
+  );
+}
+
+// ── Seating (MESITA-3957) ──────────────────────────────────────────────────
+
+export type ReservationSeating = "any" | "inside" | "outside" | "bar";
+
+const SEATING_OPTIONS: { value: ReservationSeating; label: string }[] = [
+  { value: "any", label: "Any" },
+  { value: "inside", label: "Inside" },
+  { value: "outside", label: "Outside" },
+  { value: "bar", label: "Bar" },
+];
 
 export function ReservationSeatingPicker({
   value,
@@ -452,6 +487,25 @@ export function ReservationSeatingPicker({
   onChange: (next: ReservationSeating) => void;
 }) {
   return (
-    <ChoicePills title="Seating" hint="" options={SEATING_OPTIONS} value={value} onChange={onChange} />
+    <div>
+      <p className="text-muted-foreground type-body mb-1.5 font-medium">Seating</p>
+      <div role="radiogroup" aria-label="Seating" className="grid grid-cols-4 gap-2">
+        {SEATING_OPTIONS.map((o) => {
+          const active = o.value === value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(o.value)}
+              className={cn(CHOICE, "h-11 text-sm", active ? CHOICE_ON : CHOICE_OFF)}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
