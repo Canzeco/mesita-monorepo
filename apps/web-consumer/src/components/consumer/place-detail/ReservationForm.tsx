@@ -8,20 +8,15 @@ import {
   firstOpenDate,
   ReservationDatePicker,
   ReservationField,
-  ReservationFallbackPicker,
+  ReservationUpdatesPicker,
   ReservationPartyPicker,
-  ReservationSeatingPicker,
   ReservationSection,
   ReservationWindowPicker,
   DEFAULT_TIME_WINDOW,
-  type ReservationFallback,
-  type ReservationSeating,
+  type ReservationNotify,
   type ReservationTimeWindow,
   ReservationTimePicker,
   ReserveStepNav,
-  PreviewRow,
-  FALLBACK_LABEL,
-  windowRange,
   type ReserveStep,
 } from "@/components/consumer/reservation-pickers";
 import {
@@ -147,13 +142,15 @@ export function ReservationForm({
   const [timeChoice, setTimeChoice] = useState<string | null>(null);
   const [party, setParty] = useState(DEFAULT_PARTY);
   const [notes, setNotes] = useState("");
-  // If the place has nothing in the window (MESITA-4166): their times come
-  // back in the app by default; a call is something the guest asks for
-  // (MESITA-3961); "cancel" books nothing.
-  const [fallback, setFallback] = useState<ReservationFallback>("offer");
+  // How the guest hears back (MESITA-4187, Pato: "On Confirmation (app +
+  // call me) · On Rejection (app + call me)"). The app always tells; a call
+  // is something the guest asks for (MESITA-3961), so both start at app.
+  const [onConfirm, setOnConfirm] = useState<ReservationNotify>("app");
+  const [onReject, setOnReject] = useState<ReservationNotify>("app");
+  // The number Mesita calls, from the profile; shown, never edited here.
+  const [phone, setPhone] = useState("");
   const [stepAt, setStepAt] = useState(0);
   const [timeWindow, setTimeWindow] = useState<ReservationTimeWindow>(DEFAULT_TIME_WINDOW);
-  const [seating, setSeating] = useState<ReservationSeating>("any");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -209,10 +206,12 @@ export function ReservationForm({
       .then((r) => ({
         first: (r.consumer?.first_name ?? "").trim(),
         last: (r.consumer?.last_name ?? "").trim(),
+        phone: (r.consumer?.phone ?? "").trim(),
       }))
-      .catch(() => ({ first: "", last: "" }))
-      .then(({ first, last }) => {
+      .catch(() => ({ first: "", last: "", phone: "" }))
+      .then(({ first, last, phone: number }) => {
         if (cancelled) return;
+        setPhone(number);
         if (first) setFirstName((v) => v || first);
         if (last) setLastName((v) => v || last);
       });
@@ -270,14 +269,13 @@ export function ReservationForm({
           reservedAt,
           partySize: party,
           notes,
-          guestNotify: fallback === "offer_call" ? "call" : "app",
-          ifUnavailable: fallback === "cancel" ? "cancel" : "offer",
+          guestNotify: onReject,
+          confirmNotify: onConfirm,
           firstName,
           lastName,
           timeWindowMinutes: timeWindow,
-          seating,
           requestId: requestIdFor(
-            [place.id, reservedAt, party, notes.trim(), firstName.trim(), lastName.trim(), fallback, timeWindow, seating].join("|"),
+            [place.id, reservedAt, party, notes.trim(), firstName.trim(), lastName.trim(), onConfirm, onReject, timeWindow].join("|"),
           ),
         });
       }
@@ -336,17 +334,17 @@ export function ReservationForm({
     );
   }
 
-  // THE STEPS (MESITA-4183, Pato: "Time · Details · Preview · 3 steps"):
+  // THE STEPS (MESITA-4183; fields MESITA-4187, Pato's list):
   //   Time     date and time
-  //   Details  people, how flexible, if they can't seat you, seating
-  //   Preview  what you're booking (tap a row to change it), the name
-  //            (prefilled, MESITA-4172), notes, and Reserve
+  //   Details  people, how flexible, notes ("keep notes in second page")
+  //   Preview  the name (prefilled), the phone (shown, not edited), the
+  //            Updates (when booked · if we can't book you), and Reserve
+  // Seating is gone ("we don't have enough info to standardize that").
   // Each fits a phone screen, in Pay's panels on the grey page.
   const steps: ReserveStep[] = ["time", "details", "preview"];
   const at = Math.min(stepAt, steps.length - 1);
   const step = steps[at];
   const last = at === steps.length - 1;
-  const goTo = (s: ReserveStep) => setStepAt(Math.max(0, steps.indexOf(s)));
   // Next waits for the duplicate answered and a time.
   const nextBlocked = step === "time" && (checking || awaitingChoice || !time);
   const next = () => {
@@ -361,9 +359,6 @@ export function ReservationForm({
         : step === "time"
           ? `Next · ${dayLabel ? `${dayLabel} ` : ""}${time}`
           : `Next · ${whenLabel}`;
-  const range = windowRange(time, timeWindow);
-  const flexLabel = timeWindow === 0 ? "exact" : timeWindow === 30 ? "± 30 min" : "± 1 hour";
-  const seatLabel = seating === "any" ? "Any" : seating[0].toUpperCase() + seating.slice(1);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col px-4">
@@ -404,30 +399,22 @@ export function ReservationForm({
             {!rescheduling && (
               <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
             )}
-            {!rescheduling && (
-              <ReservationFallbackPicker value={fallback} onChange={setFallback} range={range} />
-            )}
-            {!rescheduling && <ReservationSeatingPicker value={seating} onChange={setSeating} />}
+            <ReservationSection title="Notes">
+              <ReservationField
+                label="Optional"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                maxLength={280}
+                placeholder="Allergies, a birthday, a high chair…"
+              />
+            </ReservationSection>
           </>
         )}
 
         {step === "preview" && (
           <>
-            <Panel title="Your table">
-              <div className="mt-3">
-                <PreviewRow label="When" value={`${dayLabel ? `${dayLabel} · ` : ""}${time ?? "—"}`} onEdit={() => goTo("time")} />
-                <PreviewRow label="People" value={`${party} ${guestNoun(party)}`} onEdit={() => goTo("details")} />
-                {!rescheduling && (
-                  <>
-                    <PreviewRow label="Flexible" value={flexLabel} onEdit={() => goTo("details")} />
-                    <PreviewRow label="If full" value={FALLBACK_LABEL[fallback]} onEdit={() => goTo("details")} />
-                    <PreviewRow label="Seating" value={seatLabel} onEdit={() => goTo("details")} />
-                  </>
-                )}
-              </div>
-            </Panel>
             {!rescheduling && (
-              <ReservationSection title="Name">
+              <ReservationSection title="Your details">
                 <div className="grid grid-cols-2 gap-2">
                   <ReservationField
                     label="First name"
@@ -446,17 +433,26 @@ export function ReservationForm({
                     required
                   />
                 </div>
+                {/* The number Mesita calls (MESITA-4187: "prepopulated,
+                    cannot be edited"); it changes on Me, not here. */}
+                <ReservationField
+                  label="Phone"
+                  className="mt-3"
+                  value={phone || "No phone on your profile"}
+                  readOnly
+                  aria-readonly
+                  tabIndex={-1}
+                />
               </ReservationSection>
             )}
-            <ReservationSection title="Notes">
-              <ReservationField
-                label="Optional"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                maxLength={280}
-                placeholder="Allergies, a birthday, a high chair…"
+            {!rescheduling && (
+              <ReservationUpdatesPicker
+                onConfirm={onConfirm}
+                onReject={onReject}
+                setConfirm={setOnConfirm}
+                setReject={setOnReject}
               />
-            </ReservationSection>
+            )}
           </>
         )}
       </div>

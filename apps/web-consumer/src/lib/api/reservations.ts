@@ -62,11 +62,9 @@ export function apiCreateReservation(
     timeWindowMinutes?: 0 | 30 | 60;
     /** MESITA-3957: where the guest wants to sit. */
     seating?: "any" | "inside" | "outside" | "bar";
-    /** MESITA-4166: what happens when the place has nothing in the window —
-     *  "offer" (their times come back to the guest) or "cancel" (nothing is
-     *  booked). Sent only when "cancel", so an EF without the field is
-     *  unaffected by the default. */
-    ifUnavailable?: "offer" | "cancel";
+    /** MESITA-4187: how a CONFIRMED table reaches the guest — the app, or
+     *  the app and a2's call. */
+    confirmNotify?: "app" | "call";
   },
 ): Promise<CreatedReservation> {
   const notes = args.notes?.trim();
@@ -85,7 +83,7 @@ export function apiCreateReservation(
         ...(args.requestId ? { request_id: args.requestId } : {}),
         ...(args.timeWindowMinutes !== undefined ? { time_window_minutes: args.timeWindowMinutes } : {}),
         ...(args.seating ? { seating: args.seating } : {}),
-        ...(args.ifUnavailable === "cancel" ? { if_unavailable: "cancel" } : {}),
+        ...(args.confirmNotify ? { confirm_notify: args.confirmNotify } : {}),
       },
       "Couldn't create the reservation",
     ),

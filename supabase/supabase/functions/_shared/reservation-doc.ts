@@ -233,6 +233,9 @@ export type ReservationDoc = {
   reschedules_day: string | null;
   modification_of: string | null;
   consumer_notify: ConsumerNotify;
+  /** How a CONFIRMED table reaches the guest (MESITA-4187): "app" only, or
+   *  "call" — a2 also phones. consumer_notify covers other times/refusals. */
+  confirm_notify: ConsumerNotify;
   reminder_state: ReminderState;
   reminder_at: string | null;
   reminder_attempts: number;
@@ -324,6 +327,7 @@ export const RESERVATION_PATCH_KEYS = [
   "reschedules_day",
   "modification_of",
   "consumer_notify",
+  "confirm_notify",
   "reminder_state",
   "reminder_at",
   "reminder_attempts",
@@ -438,6 +442,7 @@ const CLOSED_SET_FIELDS: ReadonlyArray<
   ["notice_kind", NOTICE_KIND_VALUES, true],
   ["cancelled_by", CANCELLED_BY_VALUES, true],
   ["consumer_notify", CONSUMER_NOTIFY_VALUES, false],
+  ["confirm_notify", CONSUMER_NOTIFY_VALUES, false],
   ["reported_verdict", REPORTED_VERDICT_VALUES, true],
   ["seating", new Set<string>(SEATING_VALUES), false],
   ["change_state", CHANGE_STATE_VALUES, false],
