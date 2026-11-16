@@ -324,7 +324,10 @@ export function GuestTabView({
           <p className="flex shrink-0 flex-wrap items-center justify-center gap-x-1.5 text-sm tabular-nums" role="timer" aria-live="off">
             <Clock className={cn("h-4 w-4", WAIT)} aria-hidden />
             <span className={cn("text-base font-semibold", WAIT)}>{countdown}</span>
-            <span className="text-muted-foreground">to sign · then it&apos;s final</span>
+            {/* Honest about the end (MESITA-4130, Pato: "not then it's final,
+                just then it cancels"): an unsigned bill expires, its card hold
+                and credit are released, nothing is charged. */}
+            <span className="text-muted-foreground">left to sign · if not, it cancels and nothing is charged</span>
           </p>
           {error ? (
             <p className="text-destructive shrink-0 text-sm" role="alert">
