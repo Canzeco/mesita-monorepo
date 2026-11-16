@@ -144,3 +144,12 @@ Deno.test("guardrailsDrift: the pushed guardrails read back clean; a console swi
   ]);
   assert(guardrailsDrift(null).length > 0);
 });
+
+Deno.test("GUARDRAILS: every retry runs blocking (ElevenLabs refuses retry in streaming, MESITA-4148)", () => {
+  const withTrigger = [GUARDRAILS.content, ...GUARDRAILS.custom.config.configs] as Array<
+    { execution_mode?: string; trigger_action: { type: string } }
+  >;
+  for (const g of withTrigger) {
+    if (g.trigger_action.type === "retry") assertEquals(g.execution_mode, "blocking");
+  }
+});
