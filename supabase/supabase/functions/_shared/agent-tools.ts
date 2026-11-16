@@ -109,23 +109,46 @@ export type CallerPlace = {
 };
 
 /**
- * The place whose line is calling (places.phone or the reservation_target
- * endpoint), matched on the last 10 digits. `tail` is the caller's
- * phoneTail; null when no place owns that line.
+ * A PostgREST `match` (POSIX regex) for a number that ends in these 10 digits
+ * with anything but digits between them. Google stores a place's phone with
+ * spaces ("+52 81 8335 6200"), so the digits never sit side by side and a
+ * plain `ilike %8183356200%` matched none of the 247 live places
+ * (MESITA-4143). Digits only: nothing in it is special to PostgREST's `or`.
  */
-export async function placeByCallerLine(
+export function lineEndingPattern(tail: string): string {
+  return tail.split("").join("[^0-9]*") + "[^0-9]*$";
+}
+
+/**
+ * Every place whose line is calling (places.phone or the reservation_target
+ * endpoint), matched on the last 10 digits, by name. `tail` is the caller's
+ * phoneTail. More than one when a restaurant group answers several places'
+ * reservations on one desk (live 2026-11-16: 3 lines, 6 places): that line
+ * speaks for all of them, the same rule placeOwnsTicket already applies.
+ */
+export async function placesByCallerLine(
   admin: SupabaseClient,
   tail: string,
-): Promise<CallerPlace | null> {
-  const { data: candidates } = await admin
+): Promise<CallerPlace[]> {
+  if (!/^\d{10}$/.test(tail)) return [];
+  const p = lineEndingPattern(tail);
+  const { data, error } = await admin
     .from("place_profiles")
     .select(`id, name, phone, reservation_target, photos, ${PLACE_ZONE_COLUMNS}`)
-    .or(`phone.ilike.%${tail}%,reservation_target.ilike.%${tail}%`)
-    .limit(10);
-  const matches = ((candidates ?? []) as CallerPlace[]).filter((p) =>
-    sameLine(p.phone, tail) || sameLine(p.reservation_target, tail)
+    .or(`phone.match.${p},reservation_target.match.${p}`)
+    .order("name", { ascending: true })
+    .limit(20);
+  if (error) throw new Error(`place line lookup failed: ${error.message}`);
+  return ((data ?? []) as CallerPlace[]).filter((pl) =>
+    sameLine(pl.phone, tail) || sameLine(pl.reservation_target, tail)
   );
-  return matches[0] ?? null;
+}
+
+/** How a3 names the caller's place(s): "Ijen y Kaum Bali". */
+export function lineName(places: Array<{ name?: string | null }>): string {
+  const names = places.map((p) => (p.name ?? "").trim()).filter(Boolean);
+  if (names.length <= 1) return names[0] ?? "(sin nombre)";
+  return `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
 }
 
 // ── Speakable formatting ─────────────────────────────────────────────────────

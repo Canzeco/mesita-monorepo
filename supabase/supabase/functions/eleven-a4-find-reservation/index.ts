@@ -20,9 +20,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireAgentRequest } from "../_shared/request.ts";
 import {
-  ownTicket,
+  lineName,
   phoneTail,
-  placeByCallerLine,
+  placesByCallerLine,
   speakable,
   ticketByCode,
   ticketsOfPlace,
@@ -62,30 +62,38 @@ serveJson("eleven-a4-find-reservation", async (req) => {
     return json({ ok: false, error: "a name, day, hour, party size or reference_code is required" }, 400);
   }
 
-  const place = await placeByCallerLine(admin, tail);
-  if (!place) {
+  // Every place on the caller's line: one, or a group's shared desk
+  // (MESITA-4143). The line speaks for all of them.
+  const places = await placesByCallerLine(admin, tail);
+  if (places.length === 0) {
     return json({ ok: true, verified: false, reason: "no Mesita place with this number" });
   }
+  const byId = new Map(places.map((p) => [p.id, p]));
 
-  const zone = placeZone(place);
   let found: TicketRow[];
   if (code) {
-    // Another place's code reads as not found — never as "not yours".
-    const own = ownTicket(await ticketByCode(admin, code), place.id);
-    found = own ? [own] : [];
+    // Another line's code reads as not found — never as "not yours".
+    const t = await ticketByCode(admin, code);
+    found = t && byId.has(t.place_id) ? [t] : [];
   } else {
-    // The place's book from six hours ago, soonest first — one place's book
-    // is small, so rank it all in code rather than filter in SQL.
-    const book = await ticketsOfPlace(admin, place.id, 300);
-    found = rankTickets(book, clues, zone, new Date()).map((r) => r.ticket);
+    // Each place's book from six hours ago, ranked in its own zone (a place's
+    // book is small, so rank it all in code), then merged best first.
+    const now = new Date();
+    const ranked = (await Promise.all(places.map(async (p) =>
+      rankTickets(await ticketsOfPlace(admin, p.id, 300), clues, placeZone(p), now)
+    ))).flat();
+    found = ranked.sort((a, b) => b.score - a.score).slice(0, 3).map((r) => r.ticket);
   }
 
   return json({
     ok: true,
     verified: true,
-    place: { name: place.name ?? "(sin nombre)" },
+    place: { name: lineName(places) },
     found: found.length > 0,
     // Best first: the agent reads tickets[0] back to confirm.
-    tickets: found.map((t) => speakable(t, place.name ?? "", zone)),
+    tickets: found.map((t) => {
+      const p = byId.get(t.place_id);
+      return speakable(t, p?.name ?? "", placeZone(p));
+    }),
   });
 });

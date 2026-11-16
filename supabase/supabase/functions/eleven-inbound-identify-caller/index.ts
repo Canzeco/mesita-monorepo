@@ -8,7 +8,9 @@
 //
 //   { caller_phone, expect? }  →  { kind: "place" | "guest" | "both", place?, guest? }
 //
-//   place  the place, its notes (MESITA-3955) and its upcoming book
+//   place  the place, its notes (MESITA-3955) and its upcoming book; a line
+//          a restaurant group shares answers for all its places at once
+//          (names joined, each ticket names its place, MESITA-4143)
 //   guest  the account holder and their newest reservations
 //   both   one number is a place's line AND a guest's account: the agent asks
 //          which one they call about
@@ -21,7 +23,8 @@
 // unknown lane (the old verify functions answered 200 for an unknown caller,
 // so that lane never ran).
 //
-// Matching is by the last 10 digits (+52 / +521 / bare compare equal).
+// Matching is by the last 10 digits (+52 / +521 / bare compare equal), and a
+// place's stored number may carry spaces (placesByCallerLine).
 // Replaces eleven-a3-verify-caller and eleven-a4-verify-caller.
 // Auth: anon bearer + x-agent-secret.
 //
@@ -32,8 +35,9 @@ import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireAgentRequest } from "../_shared/request.ts";
 import {
   guestName,
+  lineName,
   phoneTail,
-  placeByCallerLine,
+  placesByCallerLine,
   placeNames,
   sameLine,
   speakable,
@@ -55,17 +59,29 @@ serveJson("eleven-inbound-identify-caller", async (req) => {
     return json({ ok: false, kind: "unknown", reason: "caller number unavailable" }, 404);
   }
 
-  // ── A place's line ────────────────────────────────────────────────────────
-  const placeRow = await placeByCallerLine(admin, tail);
-  const place = placeRow
-    ? {
-      name: placeRow.name ?? "(sin nombre)",
-      notes: notesForCall(await loadPlaceNotes(admin, placeRow.id)),
-      tickets: (await ticketsOfPlace(admin, placeRow.id, 8)).map((t) =>
-        speakable(t, placeRow.name ?? "", placeZone(placeRow))
-      ),
-    }
-    : null;
+  // ── A place's line (one place, or a group's shared desk) ──────────────────
+  const linePlaces = await placesByCallerLine(admin, tail);
+  let place: Record<string, unknown> | null = null;
+  if (linePlaces.length > 0) {
+    const perPlace = await Promise.all(linePlaces.map(async (p) => ({
+      p,
+      notes: notesForCall(await loadPlaceNotes(admin, p.id)),
+      tickets: await ticketsOfPlace(admin, p.id, 8),
+    })));
+    const notes = perPlace.length === 1
+      ? perPlace[0].notes
+      : perPlace.filter((x) => x.notes).map((x) => `${x.p.name ?? ""}: ${x.notes}`).join(" · ");
+    place = {
+      name: lineName(linePlaces),
+      notes,
+      // Soonest first across the line's places; each names its place.
+      tickets: perPlace
+        .flatMap((x) => x.tickets.map((t) => ({ t, p: x.p })))
+        .sort((a, b) => Date.parse(a.t.reserved_at) - Date.parse(b.t.reserved_at))
+        .slice(0, 8)
+        .map(({ t, p }) => speakable(t, p.name ?? "", placeZone(p))),
+    };
+  }
 
   // ── A guest's account ─────────────────────────────────────────────────────
   const { data: candidates, error } = await admin

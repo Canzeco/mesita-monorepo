@@ -67,7 +67,7 @@ const refuse = (status: number, code: string, error: string): ProposalVerdict =>
 
 /**
  * Whether the calling place may propose this change to this ticket.
- * `callerPlaceId` is the place whose line is calling (placeByCallerLine), or
+ * `callerPlaceId` is the place whose line is calling (placesByCallerLine), or
  * null when no place owns the line. A ticket of another place reads as not
  * found, the same as a4_find_reservation (MESITA-3622, MESITA-3973).
  */

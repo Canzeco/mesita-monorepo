@@ -38,10 +38,11 @@ Deno.test("notesForCall: one line, empty when there are none", () => {
   assertEquals(notesForCall("Mesas: terraza.\nOtros: cierran lunes."), "Mesas: terraza. · Otros: cierran lunes.");
 });
 
-Deno.test("placeCallKind: only a1 and a4 are calls with a place", () => {
-  const fleet = { a1: "agent_a1", a4: "agent_a4" };
+Deno.test("placeCallKind: a1 out, a3 (and a retired a4) in; a2 is never a place call", () => {
+  const fleet = { a1: "agent_a1", a3: "agent_a3", a4: "agent_a4" };
   assertEquals(placeCallKind("agent_a1", fleet), "a1");
-  assertEquals(placeCallKind("agent_a4", fleet), "a4");
+  assertEquals(placeCallKind("agent_a3", fleet), "inbound");
+  assertEquals(placeCallKind("agent_a4", fleet), "inbound");
   assertEquals(placeCallKind("agent_a2", fleet), null);
   assertEquals(placeCallKind(undefined, fleet), null);
   assertEquals(placeCallKind("agent_a1", {}), null);

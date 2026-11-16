@@ -24,7 +24,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireAgentRequest } from "../_shared/request.ts";
-import { cleanNote, esDate, esTime, phoneTail, placeByCallerLine, ticketByCode } from "../_shared/agent-tools.ts";
+import { cleanNote, esDate, esTime, phoneTail, placesByCallerLine, ticketByCode } from "../_shared/agent-tools.ts";
 import { placeZone } from "../_shared/local-time.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
 import { judgeProposal, proposePatch } from "../_shared/reservation-change.ts";
@@ -45,8 +45,12 @@ serveJson("eleven-a4-change-reservation", async (req) => {
   }>(req, {});
 
   const tail = phoneTail(body.caller_phone);
-  const place = tail.length >= 10 ? await placeByCallerLine(admin, tail) : null;
-  const ticket = place ? await ticketByCode(admin, body.reference_code) : null;
+  // The caller's line may answer for several places (a group's shared desk,
+  // MESITA-4143): the place in play is the one on that line that owns the
+  // ticket; any other ticket stays not_found.
+  const places = tail.length >= 10 ? await placesByCallerLine(admin, tail) : [];
+  const ticket = places.length > 0 ? await ticketByCode(admin, body.reference_code) : null;
+  const place = places.find((p) => p.id === ticket?.place_id) ?? places[0] ?? null;
   const zone = placeZone(place);
   const now = new Date();
 

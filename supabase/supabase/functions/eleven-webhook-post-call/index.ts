@@ -33,7 +33,7 @@ import {
   verifyElevenSignature,
 } from "../_shared/reservation-call-outcome.ts";
 import { runInBackground } from "../_shared/background.ts";
-import { phoneTail, placeByCallerLine } from "../_shared/agent-tools.ts";
+import { phoneTail, placesByCallerLine } from "../_shared/agent-tools.ts";
 import { callerNumber, placeCallKind, updatePlaceNotes } from "../_shared/place-notes.ts";
 import { rowPlaceId } from "../_shared/place-id.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -43,8 +43,9 @@ const FN = "eleven-webhook-post-call";
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
 
 /**
- * Place notes (MESITA-3955): a finished call WITH A PLACE (a1 out, a4 in)
- * rewrites that place's notes from its transcript. Runs past the response and
+ * Place notes (MESITA-3955): a finished call WITH A PLACE (a1 out; a3 in when
+ * the caller's line is a place's, MESITA-4143) rewrites that place's notes
+ * from its transcript; a group's shared desk rewrites each of its places'. Runs past the response and
  * never changes the call's outcome; a failure is logged and the notes stay.
  */
 async function learnFromPlaceCall(
@@ -57,23 +58,31 @@ async function learnFromPlaceCall(
   const agents = ((settings?.agents_config as Record<string, unknown> | null)?.agents ?? null) as
     | Record<string, { id?: string } | undefined>
     | null;
-  const kind = placeCallKind(data.agent_id, { a1: agents?.a1?.id?.trim(), a4: agents?.a4?.id?.trim() });
+  const kind = placeCallKind(data.agent_id, {
+    a1: agents?.a1?.id?.trim(),
+    a3: agents?.a3?.id?.trim(),
+    a4: agents?.a4?.id?.trim(),
+  });
   if (!kind) return;
 
-  let placeId: string | null = null;
+  let placeIds: string[] = [];
   if (kind === "a1") {
     const t = await supabaseOutcomeStore(admin, env, FN).findByConversation(conversationId);
-    placeId = t ? rowPlaceId(t as unknown as Record<string, unknown>) : null;
+    const id = t ? rowPlaceId(t as unknown as Record<string, unknown>) : null;
+    placeIds = id ? [id] : [];
   } else {
+    // A guest's call to a3 has no place on its line and is skipped here.
     const tail = phoneTail(callerNumber(data));
-    placeId = tail.length >= 10 ? (await placeByCallerLine(admin, tail))?.id ?? null : null;
+    placeIds = tail.length >= 10 ? (await placesByCallerLine(admin, tail)).map((p) => p.id) : [];
   }
-  if (!placeId) {
+  if (placeIds.length === 0) {
     console.log(`[${FN}] ${conversationId} notes: no place for this ${kind} call`);
     return;
   }
-  const res = await updatePlaceNotes(admin, { placeId, conversationId, transcript: data.transcript });
-  console.log(`[${FN}] ${conversationId} notes ${placeId}: ${JSON.stringify(res)}`);
+  for (const placeId of placeIds) {
+    const res = await updatePlaceNotes(admin, { placeId, conversationId, transcript: data.transcript });
+    console.log(`[${FN}] ${conversationId} notes ${placeId}: ${JSON.stringify(res)}`);
+  }
 }
 
 serveJson("eleven-webhook-post-call", async (req) => {

@@ -36,7 +36,8 @@
 // original table and a1 calls the place to say so.
 // decision: two searches at most (MESITA-4079). The second runs in its own
 // node, which has no way to search again, so a second empty result ends the
-// errand: say so, point to Business › Reservations or a call back.
+// errand: say so and offer a call back with the Mesita code (Business ›
+// Reservations has no list of tables, MESITA-4143).
 // decision: the wait for the place's answer is structural (MESITA-4120). A
 // simulated call cancelled while the read-back was still a question even
 // with the "yes AFTER the read-back" edge (MESITA-4079): ElevenLabs judged
@@ -192,7 +193,7 @@ export const A3: FleetAgent = {
         label: "Place · second search",
         position: pos(1920, -160),
         prompt: [
-          "Esta fue la segunda y última búsqueda. Si tampoco encontró nada (found es false), di exactamente: «No la encuentro. Puede revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar.» Nada más: no preguntes si el nombre o la fecha están bien, no pidas otro dato ni sugieras otro día u otro nombre. Despídete en una frase y cuelga con end_call.",
+          "Esta fue la segunda y última búsqueda. Si tampoco encontró nada (found es false), di exactamente: «No la encuentro. Si tiene el código de Mesita de esa reservación, vuelva a llamar y me lo dicta.» Nada más: no preguntes si el nombre o la fecha están bien, no pidas otro dato ni sugieras otro día u otro nombre. Despídete en una frase y cuelga con end_call.",
           "Si sí encontró algo:",
           READ_BACK,
         ].join("\n"),
@@ -204,7 +205,7 @@ export const A3: FleetAgent = {
         entry: "wait_for_user",
         prompt: [
           ANSWER,
-          "Si dijo que no y ya no queda otra, di exactamente: «Entonces no la encuentro. Puede revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar.» No busques ni pidas más datos; despídete y cuelga con end_call.",
+          "Si dijo que no y ya no queda otra, di exactamente: «Entonces no la encuentro. Si tiene el código de Mesita de esa reservación, vuelva a llamar y me lo dicta.» No busques ni pidas más datos; despídete y cuelga con end_call.",
         ].join("\n"),
         edgeOrder: ["e_paa_cancel", "e_paa_change", "e_paa_end"],
       }),

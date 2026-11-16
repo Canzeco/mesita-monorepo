@@ -6,10 +6,13 @@
 // wrong person's table).
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
+import { dialable } from "./elevenlabs.ts";
 import {
   accentTolerantPattern,
   codeLookupKey,
   guestOwnsTicket,
+  lineEndingPattern,
+  lineName,
   ownTicket,
   placeOwnsTicket,
 } from "./agent-tools.ts";
@@ -112,4 +115,31 @@ Deno.test("spoof: get_reservation's tool takes no name", async () => {
       .request_body_schema).properties,
   );
   assertEquals(props, ["reference_code"]);
+});
+
+// MESITA-4143: every live place phone is Google's spaced format, and the old
+// `ilike %<10 digits>%` matched none of them, so no place calling Mesita was
+// recognised. The pattern runs in Postgres (`~`); JS RegExp reads it the same.
+Deno.test("lineEndingPattern: a place's spaced, dashed or bare number is its line; another number is not", () => {
+  const re = new RegExp(lineEndingPattern("8183356200"));
+  for (const stored of ["+52 81 8335 6200", "+52 1 81 8335 6200", "81-8335-6200", "(81) 8335 6200", "+528183356200"]) {
+    assert(re.test(stored), stored);
+  }
+  for (const other of ["+52 81 8335 6201", "+52 81 8335 6200 ext 2", "+52 18 8335 6200"]) {
+    assert(!re.test(other), other);
+  }
+  assert(!/[,()]/.test(lineEndingPattern("8183356200")), "nothing PostgREST's or() would split on");
+});
+
+Deno.test("lineName: one place by its name; a shared desk names every place", () => {
+  assertEquals(lineName([{ name: "Ijen" }]), "Ijen");
+  assertEquals(lineName([{ name: "Ijen" }, { name: "Kaum Bali" }]), "Ijen y Kaum Bali");
+  assertEquals(lineName([{ name: "A" }, { name: "B" }, { name: "C" }]), "A, B y C");
+  assertEquals(lineName([]), "(sin nombre)");
+});
+
+Deno.test("dialable: the dialler gets + and digits only", () => {
+  assertEquals(dialable("+52 81 8335 6200"), "+528183356200");
+  assertEquals(dialable(" +1 (628) 296-0710 "), "+16282960710");
+  assertEquals(dialable("528183356200"), "528183356200");
 });
