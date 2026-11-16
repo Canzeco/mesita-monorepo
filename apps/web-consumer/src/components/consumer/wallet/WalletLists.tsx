@@ -53,9 +53,13 @@ const CHIP = "flex h-8 w-[3.2rem] shrink-0 items-center justify-center overflow-
 // it"): a row is its chip and its name, no expiry. Two rows keep a quiet
 // second line (MESITA-4091): a saved card's "Ends in 4242", and Cash's "Pay
 // at the place, outside the app" (Pato: "just for them to understand").
+// TALLER ROWS, FULL HAIRLINES (MESITA-4129, Pato: "make the cards a bit
+// taller ... the lines separating the cards must be bigger and full ... why
+// between [the heading and] the cards there is no separation"): 64px rows,
+// every hairline edge to edge, one under the heading too.
 const ROW =
-  "hover:bg-muted/60 flex min-h-12 w-full items-center gap-3.5 px-4 py-2 text-left transition";
-const DIVIDER = "bg-border ml-[4.75rem] h-px";
+  "hover:bg-muted/60 flex min-h-16 w-full items-center gap-3.5 px-4 py-3 text-left transition";
+const DIVIDER = "bg-border h-px";
 
 /** A section of rows in a panel (the app's one Panel, components/shared;
  *  MESITA-4063 drew it here first, MESITA-4071 shared it with Me): its heading, the rows split by hairlines
@@ -78,10 +82,10 @@ export function WalletPanelList({
       {rows.length === 0 && fallback ? (
         <div className="p-4 pt-2">{fallback}</div>
       ) : (
-        <ul role="list" className="mt-1 pb-1">
+        <ul role="list" className="mt-3">
           {rows.map((row, i) => (
             <Fragment key={i}>
-              {i > 0 ? <li aria-hidden className={DIVIDER} /> : null}
+              <li aria-hidden className={DIVIDER} />
               <li>{row}</li>
             </Fragment>
           ))}
