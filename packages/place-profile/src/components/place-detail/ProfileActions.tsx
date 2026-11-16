@@ -29,7 +29,7 @@ import { buildDirectionsUrl } from "../../lib/maps-link";
 // TWO ROWS OF TILES (Pato's sketches, MESITA-3419 then MESITA-4151):
 //
 //   [ Save ] [ Maps ] [ Contact ] [ Share ] [ Upgrade ]   black, glyph over label (MESITA-3581)
-//   [   Reserve   ] [        Offers         ]           pinned, 2/5 · 3/5 (MESITA-4156)
+//   [     Reserve      ] [       Offers        ]          pinned, halves (MESITA-4159)
 //
 // ROW 2 IS TWO BUTTONS (Pato, MESITA-4151: "showing the wallet balance there
 // and the pay button is not really relevant ... pay is already in the bottom
@@ -71,13 +71,13 @@ export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
  *  glyph-over-label before that. */
 export const PROFILE_TILE_BOX_CLASS =
   "flex h-13 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
-/** Row 2, pinned: Reserve two fifths, Offers three (Pato, MESITA-4156:
- *  "reserve reserve offers offers offers"), on the five-tile grid above so
- *  the edges line up; halves in MESITA-4151, quarters from MESITA-3574. */
-export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-5 gap-2";
+/** Row 2, pinned: Reserve and Offers, a half each (Pato, MESITA-4159:
+ *  "reservations 2.5 and offers 2.5"); two fifths and three in MESITA-4156,
+ *  halves in MESITA-4151, quarters from MESITA-3574. */
+export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-2 gap-2";
 /** Reserve's and Offers' spans in that row. */
-export const PROFILE_RESERVE_SPAN_CLASS = "col-span-2";
-export const PROFILE_OFFERS_SPAN_CLASS = "col-span-3";
+export const PROFILE_RESERVE_SPAN_CLASS = "col-span-1";
+export const PROFILE_OFFERS_SPAN_CLASS = "col-span-1";
 
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
