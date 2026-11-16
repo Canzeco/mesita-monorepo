@@ -1,9 +1,11 @@
 "use client";
 
-import { ScreenHeader } from "@/components/consumer/nav/Screen";
+import { HEADER_BUTTON_CLASS } from "@/components/consumer/nav/Screen";
+import { Panel } from "@/components/shared/Panel";
+import { PlacePhotoMark } from "@/components/consumer/wallet/PlaceCredit";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 import {
@@ -58,7 +60,7 @@ function ReservationRow({ row, tz }: { row: EFReservationRow; tz: string | null 
   return (
     <Link
       href={reservationPath(row.id)}
-      className="border-border hover:bg-muted/50 flex items-center gap-3 border-t px-3.5 py-3 transition first:border-t-0"
+      className="border-border hover:bg-muted/50 flex items-center gap-3 border-t px-4 py-3 transition"
     >
       <div className="min-w-0 flex-1">
         <p className="type-body font-semibold">
@@ -123,13 +125,27 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
   );
 
   return (
-    <div className="bg-card relative flex flex-1 flex-col overflow-hidden">
+    <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
       {/* The one page header (MESITA-4097): square Back, the title. */}
-      {/* The place IS the header (MESITA-4183), the way Pay's header names
-          it (MESITA-4122): one row instead of "Reserve a table" over the
-          name; the step bar under it says what this screen does. */}
-      <ScreenHeader title={place.name} onBack={onBack} />
-      <div className="flex min-h-0 flex-1 flex-col px-5">
+      {/* THE HEADER (MESITA-4183, Pato: "the name of the place on top,
+          Reserve at …, with logo. Enhance that"): Back, the place's round
+          photo, "Reserve at" over the whole name, left-aligned like the
+          place screen's own header so a long name is never cut. */}
+      <header className="border-border bg-card sticky top-0 z-20 flex shrink-0 items-center gap-3 border-b px-3 py-2.5">
+        <button type="button" onClick={onBack} aria-label="Back" className={HEADER_BUTTON_CLASS}>
+          <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+        </button>
+        <span className="[&>span]:h-11 [&>span]:w-11 [&>span]:text-base">
+          <PlacePhotoMark photo={place.photo ?? null} name={place.name} />
+        </span>
+        <h1 className="min-w-0 flex-1">
+          <span className="text-muted-foreground type-body block font-medium">Reserve at</span>
+          <span className="font-display line-clamp-2 block text-lg leading-tight font-semibold tracking-tight">
+            {place.name}
+          </span>
+        </h1>
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col">
 
         <ReservationForm
           place={place}
@@ -139,14 +155,13 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
           onDone={onBack}
           intro={
             mine.length > 0 ? (
-              <section className="mb-5">
-                <h2 className="mb-2 font-sans text-base font-semibold tracking-normal">Your reservations here</h2>
-                <div className="border-foreground/20 overflow-hidden rounded-xl border">
+              <Panel title="Your reservations here">
+                <div className="mt-3">
                   {mine.map((row) => (
                     <ReservationRow key={row.id} row={row} tz={place.timezone || null} />
                   ))}
                 </div>
-              </section>
+              </Panel>
             ) : null
           }
         />
