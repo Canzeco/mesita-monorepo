@@ -162,7 +162,8 @@ function tag(reason: VoucherReason | undefined): string {
 
 
 /** A section title on the one-screen Offers page: 16px (MESITA-3452). */
-const OFFERS_TITLE_CLASS = "text-foreground font-sans text-base leading-tight font-semibold";
+// The Panel heading's face since MESITA-4196 (16px display, as the Reserve page).
+const OFFERS_TITLE_CLASS = "text-foreground font-display text-base leading-tight font-semibold tracking-tight";
 
 /** A card: one hairline edge, white, rounded. */
 const CARD = "border-border bg-card rounded-2xl border";
@@ -678,7 +679,10 @@ export function VouchersPane({
     // one card of rows, each led by its big number. A prepayment row you can
     // buy carries a selector at its right; the one Buy sits at the foot
     // (MESITA-3487). No Pay bill here.
-    <div className="bg-card -mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
+    // ON THE GREY PAGE (MESITA-4196, Pato over the Reserve page: "Fix the
+    // prepaid vouchers"): the body is the page background, the vouchers one
+    // white panel on it, as the Reserve page's sections. White from MESITA-3486.
+    <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
       {/* TWO GROUPS (Pato, 2026-11-16, MESITA-4173): Prepaid Vouchers
           (Welcome · VIP · Small · Medium · Big), then Credits Back. Special
           and Bonus Vouchers in MESITA-4154; one "Prepayments"
@@ -687,9 +691,13 @@ export function VouchersPane({
         const list = products.filter((p) => g.keys.has(p.key));
         if (list.length === 0) return null;
         return (
-      <section key={g.id} className="flex flex-col gap-2" aria-labelledby={`rewards-${g.id}`} data-promos={g.id}>
-        <SectionTitle id={`rewards-${g.id}`} title={g.title} />
-        <ul className="border-border divide-border divide-y rounded-2xl border" data-voucher-catalog>
+      // ONE PANEL (MESITA-4196): the Reserve page's Panel, its heading inside
+      // at the top, the rows under a hairline.
+      <section key={g.id} className={cn(CARD, "shrink-0 overflow-hidden")} aria-labelledby={`rewards-${g.id}`} data-promos={g.id}>
+        <div className="px-4 pt-4 pb-3">
+          <SectionTitle id={`rewards-${g.id}`} title={g.title} />
+        </div>
+        <ul className="border-border divide-border divide-y border-t" data-voucher-catalog>
           {list.map((p) => {
             const line = catalog[p.key];
             const pay = priceValue(p, line, currency);
@@ -758,10 +766,11 @@ export function VouchersPane({
                       aria-label={`Choose the ${p.name} voucher, ${deal}`}
                       className="sr-only"
                     />
-                    {/* A TICK BOX, NOT A RADIO (MESITA-3841): several rows can be on; at the left since MESITA-4186. */}
+                    {/* A ROUND TICK (MESITA-4196): one voucher per payment since
+                        MESITA-4186, so the Reserve page's round choice mark; at the left. */}
                     <span
                       className={cn(
-                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2",
+                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
                         on ? "border-foreground bg-foreground text-paper" : "border-border",
                       )}
                       aria-hidden
