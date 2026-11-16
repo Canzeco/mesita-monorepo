@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect } from "react";
 import { SizedImg } from "@mesita/place-profile";
-import { ChevronLeft, ChevronRight, HandCoins, Lock, MapPin, PenLine, ReceiptText, Wallet, X, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleCheck, CreditCard, HandCoins, Lock, MapPin, PenLine, ReceiptText, Wallet, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { PayPlace } from "@/lib/api/wallet";
 import { Button } from "@/components/ui/button";
@@ -163,26 +163,27 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
   );
 }
 
-/** The seven steps (MESITA-4117, Pato: "THE PAYMENT FLOW MUST HAVE 7 STEPS,
- *  ONE HIDDEN OPTIONAL: Pick, Bill, Tip, Method, Card, Pay, Sign"; five until
- *  then, MESITA-3878). Pick is the Pay tab's list of places, done on every
- *  later step; Card is skipped for cash, Card and
- *  Pay when credits cover everything (lib/guest-pay-stages.ts). */
-export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Method", "Card", "Pay", "Sign"] as const;
+/** The eight steps (MESITA-4135, Pato: "ticket must be 8 steps with some
+ *  hidden ... 7 receipt ... don't hide it in the progress bar"; seven since
+ *  MESITA-4117, five until then, MESITA-3878). Pick is the Pay tab's list of
+ *  places, done on every later step; Card is skipped for cash, Card and Pay
+ *  when credits cover everything (lib/guest-pay-stages.ts). */
+export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Method", "Card", "Pay", "Sign", "Receipt"] as const;
 
-/** WHAT THE BAR SHOWS: FIVE (MESITA-4129, Pato: "don't mention all steps
- *  to make it look shorter ... better five steps: (Pick hidden) Bill, Tip,
- *  Method, Pay (Card hidden), Sign"). The seven steps stay the flow; Pick
- *  reads Bill and Card reads Pay. */
-const SHOWN_STEPS = ["Bill", "Tip", "Method", "Pay", "Sign"] as const;
+/** WHAT THE BAR SHOWS: SEVEN, Pick hidden (MESITA-4135). Card shows, and a
+ *  payment that skips it (or Pay) draws that segment dashed, as MESITA-4117
+ *  did; MESITA-4129 had shown five (Card and Receipt hidden). Pick reads
+ *  Bill. */
+const SHOWN_STEPS = ["Bill", "Tip", "Method", "Card", "Pay", "Sign", "Receipt"] as const;
 const SHOWN_AT: Record<(typeof PAY_FLOW_STEPS)[number], number> = {
   Pick: 0,
   Bill: 0,
   Tip: 1,
   Method: 2,
   Card: 3,
-  Pay: 3,
-  Sign: 4,
+  Pay: 4,
+  Sign: 5,
+  Receipt: 6,
 };
 
 /** Each shown step's icon beside its name (MESITA-4125, Pato: "use icons in
@@ -191,8 +192,10 @@ const SHOWN_ICONS: Record<(typeof SHOWN_STEPS)[number], LucideIcon> = {
   Bill: ReceiptText,
   Tip: HandCoins,
   Method: Wallet,
+  Card: CreditCard,
   Pay: Lock,
   Sign: PenLine,
+  Receipt: CircleCheck,
 };
 
 /** A step's body: its panels stacked FROM THE TOP, 16px apart, the empty
@@ -213,7 +216,7 @@ export function StepBody({ children, className }: { children: React.ReactNode; c
  *  that cannot act is hidden (its 44px slot kept, gone from the screen
  *  reader); › exists only where the footer's button is a plain Next, never
  *  where it moves money or leaves the app. Under it, seven thin segments
- *  (MESITA-4117), done and current ink, skipped ones dashed. A pure view:
+ *  (MESITA-4135), done and current ink, skipped ones dashed. A pure view:
  *  the screen owns the back logic. */
 export function StepNav({
   at,
@@ -272,15 +275,19 @@ export function StepNav({
           <ChevronRight className="h-6 w-6" aria-hidden />
         </button>
       </div>
-      {/* Five segments (MESITA-4129): done and current ink, not yet grey. */}
-      <ol className="mt-1 grid grid-cols-5 gap-1.5" aria-label={`Step ${shownAt + 1} of ${SHOWN_STEPS.length}: ${name}`}>
-        {SHOWN_STEPS.map((step, i) => (
-          <li
-            key={step}
-            aria-current={i === shownAt ? "step" : undefined}
-            className={cn("h-1 rounded-full", i <= shownAt ? "bg-foreground" : "bg-border")}
-          />
-        ))}
+      {/* Seven segments (MESITA-4135): done and current ink, not yet grey,
+          a skipped one a dashed hairline on nothing. */}
+      <ol className="mt-1 grid grid-cols-7 gap-1.5" aria-label={`Step ${shownAt + 1} of ${SHOWN_STEPS.length}: ${name}`}>
+        {SHOWN_STEPS.map((step, i) => {
+          const skip = i !== shownAt && skipped.includes(PAY_FLOW_STEPS.indexOf(step));
+          return (
+            <li
+              key={step}
+              aria-current={i === shownAt ? "step" : undefined}
+              className={cn("h-1 rounded-full", skip ? "border-border border border-dashed bg-transparent" : i <= shownAt ? "bg-foreground" : "bg-border")}
+            />
+          );
+        })}
       </ol>
     </div>
   );
@@ -318,7 +325,7 @@ export function PayTop({
   if (setHeader) {
     return step ? (
       <Panel className="shrink-0" data-pay-top>
-        <StepNav at={step.at} onBack={step.onBack} next={step.next} />
+        <StepNav at={step.at} onBack={step.onBack} next={step.next} skipped={step.skipped} />
       </Panel>
     ) : null;
   }

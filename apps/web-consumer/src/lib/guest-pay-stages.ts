@@ -1,12 +1,14 @@
-// THE GUEST'S SEVEN PAY STEPS (MESITA-4117, Pato, 2026-11-15: "THE PAYMENT
-// FLOW MUST HAVE 7 STEPS, ONE HIDDEN OPTIONAL: Pick, Bill, Tip, Method, Card,
-// Pay, Sign"; Card is the optional one: "if you selected cash or if your
-// credits cover all the bill, just skip this step").
+// THE GUEST'S EIGHT PAY STEPS (MESITA-4135, Pato, 2026-11-15: "ticket must
+// be 8 steps with some hidden: 0 (pick-hidden in bar) 1 bill 2 tip 3 method
+// 4 (card-optional) 5 pay 6 sign 7 receipt ... don't hide it in the progress
+// bar"; seven until then, MESITA-4117). Card is the optional one: "if you
+// selected cash or if your credits cover all the bill, just skip this step".
 //
-//   0 Pick · 1 Bill · 2 Tip · 3 Method · 4 Card · 5 Pay · 6 Sign
+//   0 Pick · 1 Bill · 2 Tip · 3 Method · 4 Card · 5 Pay · 6 Sign · 7 Receipt
 //
 // Pick is the Pay tab's list (never drawn as a current step); Bill and Tip
-// share GuestPayScreen's "bill" stage (typing or not); Sign is GuestTabView.
+// share GuestPayScreen's "bill" stage (typing or not); Sign and Receipt are
+// GuestTabView.
 // Card is skipped when the way is cash; Card and Pay are both skipped when
 // credits cover everything (Method opens the bill straight away).
 //
@@ -16,7 +18,7 @@
 import type { PayWith } from "@/lib/api/tab";
 import type { Stage } from "@/lib/guest-pay-draft";
 
-export const STEP = { pick: 0, bill: 1, tip: 2, method: 3, card: 4, pay: 5, sign: 6 } as const;
+export const STEP = { pick: 0, bill: 1, tip: 2, method: 3, card: 4, pay: 5, sign: 6, receipt: 7 } as const;
 
 /** The stage the screen shows: a stored or live stage that no longer makes
  *  sense goes back to Method, where the guest sees why. Card needs the card
