@@ -1,5 +1,6 @@
 "use client";
 
+import { createContext, useContext, useEffect } from "react";
 import { SizedImg } from "@mesita/place-profile";
 import { ChevronLeft, ChevronRight, MapPin, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -241,6 +242,15 @@ export function StepNav({
 
 /** THE TOP PANEL (MESITA-4072): the place and, on a step, the step nav,
  *  one shared Panel across the top of every guest Pay screen. */
+/** The place a bill is at, for the page header (MESITA-4122). */
+export type PayHeaderPlace = { name: string; photo: string | null };
+
+/** Set by the bill's page (PayTabScreen): a step hands it its place, and the
+ *  header reads "Pay at [photo] Name" (MESITA-4122, Pato: "move the place
+ *  name and pp to the header ... steps directly. Optimize vertical space").
+ *  Absent, the place keeps its own row in the top panel. */
+export const PayHeaderPlaceContext = createContext<((p: PayHeaderPlace | null) => void) | null>(null);
+
 export function PayTop({
   place,
   name,
@@ -252,6 +262,20 @@ export function PayTop({
   onChoose?: () => void;
   step?: { at: number; onBack?: () => void; next?: { onClick: () => void; disabled: boolean } };
 }) {
+  const setHeader = useContext(PayHeaderPlaceContext);
+  const label = place?.name ?? name ?? null;
+  const photo = place?.photo ?? null;
+  useEffect(() => {
+    setHeader?.(label ? { name: label, photo } : null);
+  }, [setHeader, label, photo]);
+  // The header names the place: the panel is the steps alone.
+  if (setHeader) {
+    return step ? (
+      <Panel className="shrink-0" data-pay-top>
+        <StepNav at={step.at} onBack={step.onBack} next={step.next} />
+      </Panel>
+    ) : null;
+  }
   return (
     <Panel className="shrink-0" data-pay-top>
       <div className="flex px-4 py-1.5">
