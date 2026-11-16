@@ -227,7 +227,7 @@
           "x": 1280,
           "y": -320
         },
-        "additional_prompt": "Si la búsqueda no encontró nada (found es false), dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.\nSi encontró algo:\nLa búsqueda regresa las más parecidas, la mejor primero. Lee la primera que no hayan rechazado UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo y Mesita le avisa al comensal»). Si llaman para cambiarla, la misma pregunta lo dice («… ¿Es esa?»).\nDespués de esa pregunta no digas nada más: espera su respuesta. No confirmes ni niegues reservaciones de otros lugares.",
+        "additional_prompt": "Si la búsqueda no encontró nada (found es false), dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.\nSi encontró algo:\nLa búsqueda regresa las más parecidas, la mejor primero. Lee la primera que no hayan rechazado UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo y Mesita le avisa al comensal»). Si llaman para cambiarla, la misma pregunta lo dice («… ¿Es esa?»).\nHaz la pregunta en el idioma en que habla quien llama (en inglés si habla inglés). Después de esa pregunta no digas nada más: espera su respuesta. No confirmes ni niegues reservaciones de otros lugares.",
         "entry_behavior": "generate_immediately",
         "conversation_config": {
           "agent": {
@@ -287,7 +287,7 @@
           "x": 1920,
           "y": -160
         },
-        "additional_prompt": "Esta fue la segunda y última búsqueda. Si tampoco encontró nada (found es false), di exactamente: «No la encuentro. Puede revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar.» Nada más: no preguntes si el nombre o la fecha están bien, no pidas otro dato ni sugieras otro día u otro nombre. Despídete en una frase y cuelga con end_call.\nSi sí encontró algo:\nLa búsqueda regresa las más parecidas, la mejor primero. Lee la primera que no hayan rechazado UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo y Mesita le avisa al comensal»). Si llaman para cambiarla, la misma pregunta lo dice («… ¿Es esa?»).\nDespués de esa pregunta no digas nada más: espera su respuesta. No confirmes ni niegues reservaciones de otros lugares.",
+        "additional_prompt": "Esta fue la segunda y última búsqueda. Si tampoco encontró nada (found es false), di exactamente: «No la encuentro. Puede revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar.» Nada más: no preguntes si el nombre o la fecha están bien, no pidas otro dato ni sugieras otro día u otro nombre. Despídete en una frase y cuelga con end_call.\nSi sí encontró algo:\nLa búsqueda regresa las más parecidas, la mejor primero. Lee la primera que no hayan rechazado UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo y Mesita le avisa al comensal»). Si llaman para cambiarla, la misma pregunta lo dice («… ¿Es esa?»).\nHaz la pregunta en el idioma en que habla quien llama (en inglés si habla inglés). Después de esa pregunta no digas nada más: espera su respuesta. No confirmes ni niegues reservaciones de otros lugares.",
         "entry_behavior": "generate_immediately",
         "conversation_config": {
           "agent": {
@@ -792,8 +792,8 @@
         "target": "place_answer",
         "forward_condition": {
           "type": "llm",
-          "condition": "Acabas de leer una reservación encontrada como pregunta («¿Es la de …?») y esperas su respuesta.",
-          "label": "read back"
+          "condition": "La última búsqueda encontró al menos una reservación (found es true).",
+          "label": "found"
         },
         "backward_condition": {
           "type": "llm",
@@ -874,8 +874,8 @@
         "target": "place_answer_again",
         "forward_condition": {
           "type": "llm",
-          "condition": "Acabas de leer una reservación encontrada como pregunta («¿Es la de …?») y esperas su respuesta.",
-          "label": "read back"
+          "condition": "La última búsqueda encontró al menos una reservación (found es true).",
+          "label": "found"
         },
         "backward_condition": {
           "type": "llm",
@@ -929,8 +929,8 @@
         "target": "place_cancel_answer",
         "forward_condition": {
           "type": "llm",
-          "condition": "Ya preguntaste cuál cancelan.",
-          "label": "asked"
+          "condition": "Quien llama quiere cancelar una de las reservaciones de su lista.",
+          "label": "cancel asked"
         }
       },
       "e_pca_do": {
@@ -988,8 +988,8 @@
         "target": "place_cancel_answer",
         "forward_condition": {
           "type": "llm",
-          "condition": "Ya explicaste por qué no se pudo y preguntaste si la dejan como está o la cancelan.",
-          "label": "asked"
+          "condition": "La herramienta de cambio respondió con un error: el cambio no se pudo proponer.",
+          "label": "change failed"
         }
       },
       "e_pdc_done": {
