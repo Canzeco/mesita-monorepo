@@ -45,6 +45,6 @@ describe("mesita.ai names no retired product", () => {
     expect(RETIRED.test("Open your Wallet")).toBe(true);
     expect(RETIRED.test("Diamond membership")).toBe(true);
     expect(RETIRED.test("https://check.mesita.ai/ABC")).toBe(true);
-    expect(RETIRED.test("Credit Prepayments")).toBe(false);
+    expect(RETIRED.test("Discounted Prepayments")).toBe(false);
   });
 });

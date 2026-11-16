@@ -45,9 +45,9 @@ function How() {
           ))}
         </ol>
         <p className="text-foreground max-w-3xl text-base leading-relaxed md:text-lg">
-          Digital Payments, Credit Prepayments and Credit Rewards sit between
-          the two sides: the money moment of a visit, and the reason a guest
-          comes back.
+          Discounted Prepayments sit between the two sides: the guest pays
+          ahead and gets more to spend, and the place has the money before the
+          meal.
         </p>
       </div>
     </section>
