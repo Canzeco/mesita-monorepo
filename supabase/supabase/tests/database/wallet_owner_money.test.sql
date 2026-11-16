@@ -16,7 +16,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(27);
+select plan(26);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-0000000a3307', 'maria.lopez@example.com'),
@@ -154,10 +154,10 @@ values ('00000000-0000-4000-8000-0000000a3548', '00000000-0000-4000-8000-0000000
 -- A: the waiter's code, bill MX$300: MX$100 credit, MX$200 in cash, a MX$30
 -- cash tip, Received (paid_at set: the trigger names the waiter).
 insert into public.wallet_payments (id, consumer_id, place_id, amount_cents, credit_cents, card_cents, outside_cents,
-                                    tip_cents, currency, status, outside_cashback_bps, cashback_cents,
+                                    tip_cents, currency, status,
                                     charge_amount_cents, paid_at, created_at)
 values ('00000000-0000-4000-8000-0000000c3548', '00000000-0000-4000-8000-0000000b3307',
-        '00000000-0000-4000-8000-000000033548', 30000, 10000, 0, 20000, 3000, 'mxn', 'paid', 200, 400,
+        '00000000-0000-4000-8000-000000033548', 30000, 10000, 0, 20000, 3000, 'mxn', 'paid',
         30000, now(), '2026-11-04T10:00:00Z');
 -- B: one tab, bill MX$400: a card row (MX$150 + a MX$20 card tip) and a cash
 -- row (MX$250 + a MX$10 cash tip).
@@ -200,8 +200,6 @@ select is(
   'card:stripe,outside:waiter', 'a tab''s card row and cash row both answer, each with its part and confirmer');
 select is((select j -> 'received_share' from c), '{"received": 2, "total": 3}'::jsonb,
   'the tab is one bill; two of three waiter''s bills ended in Received');
-select is((select (j ->> 'outside_cashback_today_cents')::int from c), 400,
-  'the place''s outside cashback over the rolling day');
 select ok((select j -> 'rows' -> 1 -> 'confirmed_by' = 'null'::jsonb from s), 'a voucher row has no confirmer');
 
 -- ━━━ The needs_review list ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

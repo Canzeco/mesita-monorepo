@@ -10,8 +10,7 @@
 //             tip_suggested_cents, bill_version, ticket, waiter_name, billed,
 //             credit_cents, cash_bill_cents, cash_tip_cents, cash_due_cents,
 //             cash_received_cents, card_bill_cents, card_tip_cents,
-//             cashback_cents, paid_at, expires_at, updated_at, test_mode,
-//             table } }
+//             paid_at, expires_at, updated_at, test_mode, table } }
 //   MESITA-3695: `table` on a split bill: bill, paid, left and each share by
 //   id (status, share, tip, cash due, cash received), never who holds it.
 //   400 (not a token) · 404 not_found
@@ -19,8 +18,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
 import { openRequest } from "../_shared/request.ts";
-import { readSettings } from "../_shared/payments.ts";
-import { moneyState } from "../_shared/money-state.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { isTabToken, readTabByToken, readTabParts, readShares, staffTabView, tableView } from "../_shared/tab.ts";
 
@@ -36,9 +33,8 @@ serveJson("visit-web-get-tab", async (req) => {
   try {
     const tab = await readTabByToken(admin, token);
     if (!tab) return json({ ok: false, code: "not_found", error: "This tab is gone" }, 404);
-    const [parts, settings, placeRes] = await Promise.all([
+    const [parts, placeRes] = await Promise.all([
       readTabParts(admin, tab.id),
-      readSettings(admin, tab.place_id),
       readVoucherPlace(admin, tab.place_id),
     ]);
     if (!placeRes.ok) throw new Error(placeRes.error);
@@ -55,7 +51,7 @@ serveJson("visit-web-get-tab", async (req) => {
     }
     return json({
       ok: true,
-      tab: staffTabView(tab, parts, { table, placeName: placeRes.place?.name ?? null, cashBackBps: moneyState({ ...settings, has_place_code: true }, null, null).cash_cashback_bps, nowMs, guestPhoto }),
+      tab: staffTabView(tab, parts, { table, placeName: placeRes.place?.name ?? null, nowMs, guestPhoto }),
     });
   } catch (err) {
     return failWithRequestId("visit-web-get-tab", "Couldn't read the tab. Try again.", err);

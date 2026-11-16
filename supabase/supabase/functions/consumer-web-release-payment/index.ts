@@ -18,7 +18,7 @@
 // Body: { payment_id: uuid }
 // Response: { ok: true, outcome: released | paid | unchanged | pending,
 //             payment_id, place: { id, name }, status, amount_cents,
-//             credit_cents, card_cents, tip_cents, cashback_cents, currency,
+//             credit_cents, card_cents, tip_cents, currency,
 //             paid_at, proof_seen_at, proof, ticket, test_mode }
 //   400 (a malformed call) · 401 sign_in · 404 gone (not the guest's) ·
 //   500 with request_id

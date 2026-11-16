@@ -34,7 +34,7 @@ import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 // like one or renews each visit"), and Buy or the tag. SPECIALS FIRST
 // (MESITA-3328, Pato: "Welcome, Instagram, VIP, normal shit then"). The
 // titles are Title Case, Pato's spelling (MESITA-3328: "Pre-Payment
-// Promos", "Payment Promos", "5% Cashback"), over the screen's sentence
+// Promos", "Payment Promos"), over the screen's sentence
 // case. THE STANDARD THREE SHARE ONE MARK AND ONE COLOUR, the
 // wallet on emerald (MESITA-3326, Pato: "the standard deals/promos must
 // have the same icon and the same color. the deals that have different
@@ -44,8 +44,7 @@ import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 // "must be 1 hour before paying the bill ... All but the Instagram one").
 // PREPAYMENTS ONLY (Pato, 2026-11-15, MESITA-4062: "remove payments from the
 // prepayments page. it is confusing. just leave prepayments offerings
-// there"): the Payments card (App and Cash Payment Cashback) is gone; the
-// rates live on the Pay tile and the Pay screens. Nothing scrolls sideways.
+// there"): the Payments card is gone. Nothing scrolls sideways.
 //
 // Every row is always there, so the tab never reads as empty and never
 // pretends: a voucher this place sells is lit and carries Buy (MESITA-3303),
@@ -367,8 +366,7 @@ function readyIn(key: MoneyVoucherKey): string {
 }
 
 /** The lines every prepayment (i) ends with (MESITA-3498, Pato: "credits are
- *  transferable to friends too"; "you don't need to prepay all the bill").
- *  No cashback line since MESITA-4191 ("No cashbacks"). */
+ *  transferable to friends too"; "you don't need to prepay all the bill"). */
 const CREDIT_FACTS = [
   // MESITA-3505, Pato: "you can fund your wallet with multiple vouchers and
   // then pay the bill with it ... everywhere, that is super important".
@@ -447,7 +445,7 @@ type GuestLock = "vip" | "instagram" | "followers" | null;
 function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
   // A Google-only card or an older read has no money: every switch reads off.
   // Only `unavailable` is valid from this local call: the read strips
-  // `pay_cards`, so its cashback and mesita_pay are not the server's.
+  // `pay_cards`, so its mesita_pay is not the server's.
   const state = moneyState(
     {
       // House Credits as the server says; an older read without it is
@@ -628,10 +626,7 @@ export function VouchersPane({
       ? { pay: priceValue(lines[0].product, undefined, currency), get: creditValue(lines[0].product, undefined, currency) }
       : null;
   // SHORTER ROWS, SYMMETRIC NAMES (MESITA-3490, Pato: "make the items a bit
-  // shorter"; "Mesita Payments Cashback ... External Pay Cashback").
-  // RENAMED (Pato, 2026-11-12, MESITA-3815: "Mesita Payment Cashback / back
-  // in credits ... Cash Payment Cashback / back in credits"): both lines open
-  // "Back in credits"; the chip already says the rate.
+  // shorter").
   // SHORTER STILL (Pato, 2026-11-13, MESITA-3829: "make this smaller
   // somehow, i mean, shorter, its using tooo much space"): 36px chips, 6px
   // row padding, the fact on one line.
@@ -686,7 +681,7 @@ export function VouchersPane({
     <div className="bg-card -mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
       {/* TWO GROUPS (Pato, 2026-11-16, MESITA-4173): Prepaid Vouchers
           (Welcome · VIP · Small · Medium · Big), then Credits Back. Special
-          and Bonus Vouchers then Cashback in MESITA-4154; one "Prepayments"
+          and Bonus Vouchers in MESITA-4154; one "Prepayments"
           list before. The vouchers share one basket and the one Pay at the foot. */}
       {GROUPS.map((g) => {
         const list = products.filter((p) => g.keys.has(p.key));

@@ -26,16 +26,16 @@ values ('00000000-0000-4000-8000-000000013461', false);
 -- in full below), C (MX$100, half lost to a dispute below), D (from before
 -- the charge model: Stripe's application fee took its fee).
 insert into public.wallet_payments (id, consumer_id, place_id, amount_cents, credit_cents, card_cents, tip_cents, currency, status,
-                                    stripe_account_id, cashback_bps, cashback_cents, application_fee_cents, request_id, paid_at, fee_collected)
+                                    stripe_account_id, application_fee_cents, request_id, paid_at, fee_collected)
 values
   ('00000000-0000-4000-8000-0000000b3461', '00000000-0000-4000-8000-0000000a3461', '00000000-0000-4000-8000-000000013461',
-   10000, 0, 10000, 0, 'mxn', 'paid', 'acct_test_3461', 0, 0, 500, '00000000-0000-4000-8000-00000000b461', now() - interval '8 days', 'invoice'),
+   10000, 0, 10000, 0, 'mxn', 'paid', 'acct_test_3461', 500, '00000000-0000-4000-8000-00000000b461', now() - interval '8 days', 'invoice'),
   ('00000000-0000-4000-8000-0000000b3462', '00000000-0000-4000-8000-0000000a3461', '00000000-0000-4000-8000-000000013461',
-   20000, 0, 20000, 0, 'mxn', 'paid', 'acct_test_3461', 0, 0, 1000, '00000000-0000-4000-8000-00000000b462', now() - interval '8 days', 'invoice'),
+   20000, 0, 20000, 0, 'mxn', 'paid', 'acct_test_3461', 1000, '00000000-0000-4000-8000-00000000b462', now() - interval '8 days', 'invoice'),
   ('00000000-0000-4000-8000-0000000b3463', '00000000-0000-4000-8000-0000000a3461', '00000000-0000-4000-8000-000000013461',
-   10000, 0, 10000, 0, 'mxn', 'paid', 'acct_test_3461', 0, 0, 500, '00000000-0000-4000-8000-00000000b463', now() - interval '8 days', 'invoice'),
+   10000, 0, 10000, 0, 'mxn', 'paid', 'acct_test_3461', 500, '00000000-0000-4000-8000-00000000b463', now() - interval '8 days', 'invoice'),
   ('00000000-0000-4000-8000-0000000b3464', '00000000-0000-4000-8000-0000000a3461', '00000000-0000-4000-8000-000000013461',
-   10000, 0, 10000, 0, 'mxn', 'paid', 'acct_test_3461', 0, 0, 500, '00000000-0000-4000-8000-00000000b464', now() - interval '8 days', 'application_fee');
+   10000, 0, 10000, 0, 'mxn', 'paid', 'acct_test_3461', 500, '00000000-0000-4000-8000-00000000b464', now() - interval '8 days', 'application_fee');
 
 -- ━━━ No fee on a refunded or lost-dispute part ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

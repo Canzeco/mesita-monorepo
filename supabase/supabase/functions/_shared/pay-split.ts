@@ -1,7 +1,6 @@
 // THE PAY TAB'S SPLIT (MESITA-3457). One amount, what the guest pays on
 // Mesita: available credit covers it first, the rest goes by card where the
-// place takes one. A tip is its own amount, by card only, with no fee and
-// no cashback.
+// place takes one. A tip is its own amount, by card only, with no fee.
 //
 // ONE SOURCE, TWO READERS: this file is the source; packages/place-profile/
 // src/pay-split.ts is its byte-identical copy (`deno task sync-shared`), so
@@ -11,8 +10,8 @@
 // recomputes on either.
 //
 // The minimum (Stripe's, per currency) arrives from the server as
-// `card_min_cents` (MIN_CHARGE_CENTS in money.ts); the cashback rate as
-// `cashback_bps`. Every number is integer centavos.
+// `card_min_cents` (MIN_CHARGE_CENTS in money.ts). Every number is integer
+// centavos.
 
 /** The smallest card part the form ever asks for. The server refuses a tip
  *  without a card part ("A tip goes with a card part"), so where credit
@@ -67,10 +66,4 @@ export function paySplit(args: {
     tip_cents: tip,
     raised: fromMin >= MIN_CARD_PART_CENTS && fromMin > card,
   };
-}
-
-/** The cashback a card part earns, rounded down: what "You earn MX$4 back"
- *  prints. 0 when the place's Cashback is off (`cashback_bps` 0). */
-export function cashbackFor(cardCents: number, cashbackBps: number): number {
-  return Math.floor((Math.max(0, cardCents) * Math.max(0, cashbackBps)) / 10000);
 }

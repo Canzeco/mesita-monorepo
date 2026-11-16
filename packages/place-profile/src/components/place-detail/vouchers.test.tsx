@@ -12,7 +12,6 @@ import { pesos, VouchersPane } from "./vouchers";
 const OFFER: PlaceMoney = {
   charges_enabled: true,
   mesita_pay: true,
-  cashback: true,
   vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_welcome: true, voucher_story: false, voucher_vip: false },
   test_mode: true,
   currency: "mxn",
@@ -58,7 +57,7 @@ describe("Vouchers tab", () => {
     expect(html).not.toContain('aria-label="Choose the Welcome voucher');
     expect(html).toContain("You had yours here");
     // An older read: switches on, no `sell`: nothing for sale.
-    const older = placeMoneyFrom({ charges_enabled: true, cashback: true, vouchers: { voucher_200: true } });
+    const older = placeMoneyFrom({ charges_enabled: true, vouchers: { voucher_200: true } });
     expect(render(older, () => {})).not.toContain("Buy the");
   });
 
@@ -82,7 +81,6 @@ describe("placeMoneyFrom", () => {
   it("reads the offer, the catalog and the balance; a bad line is dropped", () => {
     const m = placeMoneyFrom({
       charges_enabled: true,
-      cashback: true,
       test_mode: true,
       currency: "mxn",
       vouchers: { voucher_200: true, voucher_welcome: true },
@@ -104,7 +102,7 @@ describe("placeMoneyFrom", () => {
   });
 
   it("reads an older EF's money as nothing for sale", () => {
-    const m = placeMoneyFrom({ charges_enabled: true, cashback: false, vouchers: { voucher_200: true } });
+    const m = placeMoneyFrom({ charges_enabled: true, vouchers: { voucher_200: true } });
     expect(m?.sell).toEqual([]);
     expect(m?.balance).toBeNull();
     expect(m?.test_mode).toBe(false);

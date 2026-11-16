@@ -12,15 +12,14 @@
 // Body: { lat?: number, lng?: number } (the client rounds to 3 decimals)
 // Response: { ok: true, places: [{ place_id, name, photo, address, marks: { tier, mesita_pay },
 //             distance_m | null, currency, card_ok, available_cents,
-//             pending_cents, cashback_bps, outside_ok, outside_bps, test_mode, card_min_cents,
+//             pending_cents, outside_ok, test_mode, card_min_cents,
 //             paid_recent: { payment_id, total_cents, paid_at } | null }] }
 //   available_cents is spendable now (Available minus held credit).
 //   card_min_cents is MIN_CHARGE_CENTS (money.ts), the minimum the start
-//   checks on card + tip; cashback_bps is what a card part earns here.
+//   checks on card + tip.
 //   MESITA-3545: outside_ok = the place has a place code (the waiter's
-//   charge, so the bill can be paid outside); outside_bps is what a bill paid
-//   outside and confirmed earns (0 with the Cashback switch off). An
-//   outside-only place carries no Mesita Payments mark.
+//   charge, so the bill can be paid outside). An outside-only place carries
+//   no Mesita Payments mark.
 //   401 sign_in · 400 bad_location (+field; the client asks again without
 //   one) · 500 with request_id.
 
@@ -29,7 +28,7 @@ import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { MIN_CHARGE_CENTS, MONEY_CURRENCY } from "../_shared/money.ts";
 import { moneyState } from "../_shared/money-state.ts";
-import { cardsAccepted, listRowMoney, type PaymentKey, type PaymentSettings, type RateKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
+import { cardsAccepted, listRowMoney, type PaymentKey, type PaymentSettings, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { PAID_RECENT_HOURS, type PayPlaceInput, payPlaces, readLocation } from "../_shared/pay-places.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
@@ -87,7 +86,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
   if (paidRes.error) return fail("payments", paidRes.error.message);
 
   const settings = new Map<string, PaymentSettings>();
-  for (const row of (settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey | RateKey, unknown>>)[]) {
+  for (const row of (settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey, unknown>>)[]) {
     settings.set(row.place_id, settingsFromRow(row));
   }
   const paid = new Map<string, { payment_id: string; total_cents: number; paid_at: string }>();
@@ -124,11 +123,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
       // A closed place still owes its credit; only an active one is paid here.
       available_cents: active ? (b?.spendable_cents ?? 0) : 0,
       pending_cents: active ? (b?.pending_cents ?? 0) : 0,
-      cashback_bps: cardOk ? cashState.card_cashback_bps : 0,
       outside_ok: outsideOk,
-      outside_bps: outsideOk ? cashState.cash_cashback_bps : 0,
-      // MESITA-3827: Credits Payments Cashback on the credit part.
-      credit_bps: active ? cashState.credit_cashback_bps : 0,
       paid_recent: paid.get(p.id) ?? null,
     });
   }

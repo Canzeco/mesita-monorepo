@@ -35,7 +35,7 @@ select ok(
     and not has_table_privilege('anon', 'public.pay_tabs', 'SELECT')
     and not has_function_privilege('authenticated', 'public.pay_tab_open(uuid, uuid, text, text, boolean, interval, timestamptz)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.pay_tab_bill(text, text, boolean, integer, integer, integer, text, text, interval, timestamptz)', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.pay_tab_open_parts(uuid, uuid, integer, integer, integer, integer, integer, integer, uuid, text, integer, integer, timestamptz, text, integer, integer, text, timestamptz)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.pay_tab_open_parts(uuid, uuid, integer, integer, integer, integer, integer, integer, uuid, text, integer, timestamptz, text, integer, text, timestamptz)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.pay_tab_cash(text, text, integer, timestamptz)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.pay_tab_change(uuid, uuid, text)', 'EXECUTE'),
   'client roles can neither read tabs nor call the tab functions');
@@ -74,28 +74,28 @@ select is((pay_tab_bill(repeat('b', 64), repeat('e', 64), false, 1, 32000, 4500,
 
 select is(
   pay_tab_open_parts((select (r->>'tab_id')::uuid from t1), '00000000-0000-4000-8000-0000000b3567', 2,
-    0, 32000, 0, 0, 0, gen_random_uuid(), null, 200, 2)->>'code',
+    0, 32000, 0, 0, 0, gen_random_uuid(), null, 2)->>'code',
   'not_found', 'another guest cannot pay this tab');
 select is(
   pay_tab_open_parts((select (r->>'tab_id')::uuid from t1), '00000000-0000-4000-8000-0000000a3567', 1,
-    22000, 10000, 0, 0, 0, gen_random_uuid(), null, 200, 2)->>'code',
+    22000, 10000, 0, 0, 0, gen_random_uuid(), null, 2)->>'code',
   'stale', 'a split against the old bill is refused');
 select is(
   pay_tab_open_parts((select (r->>'tab_id')::uuid from t1), '00000000-0000-4000-8000-0000000a3567', 2,
-    22000, 9000, 0, 0, 0, gen_random_uuid(), null, 200, 2)->>'code',
+    22000, 9000, 0, 0, 0, gen_random_uuid(), null, 2)->>'code',
   'parts', 'parts that do not sum to the bill are refused');
 select is(
   pay_tab_open_parts((select (r->>'tab_id')::uuid from t1), '00000000-0000-4000-8000-0000000a3567', 2,
-    0, 0, 0, 32000, 0, gen_random_uuid(), null, 200, 2)->>'code',
+    0, 0, 0, 32000, 0, gen_random_uuid(), null, 2)->>'code',
   'card_unavailable', 'a card part without the place''s account is refused');
 select is(
   pay_tab_open_parts((select (r->>'tab_id')::uuid from t1), '00000000-0000-4000-8000-0000000a3567', 2,
-    25000, 7000, 0, 0, 0, gen_random_uuid(), null, 200, 2)->>'code',
+    25000, 7000, 0, 0, 0, gen_random_uuid(), null, 2)->>'code',
   'insufficient', 'more credit than the guest holds is refused');
 
 create temp table p1 on commit drop as
 select pay_tab_open_parts((select (r->>'tab_id')::uuid from t1), '00000000-0000-4000-8000-0000000a3567', 2,
-  22000, 10000, 4500, 0, 0, '00000000-0000-4000-8000-0000000e3567', null, 200, 2) as r;
+  22000, 10000, 4500, 0, 0, '00000000-0000-4000-8000-0000000e3567', null, 2) as r;
 select is((select r->>'status' from p1), 'paying', '$220MX credit + $100MX cash + $45MX cash tip opens');
 select is(
   (select (credit_cents, outside_cents, tip_cents, part, status)::text from public.wallet_payments
@@ -106,7 +106,7 @@ select is(
   22000, 'the credit is held, not spent, until the waiter confirms');
 select is(
   pay_tab_open_parts((select (r->>'tab_id')::uuid from t1), '00000000-0000-4000-8000-0000000a3567', 2,
-    22000, 10000, 4500, 0, 0, '00000000-0000-4000-8000-0000000e3567', null, 200, 2)->>'outcome',
+    22000, 10000, 4500, 0, 0, '00000000-0000-4000-8000-0000000e3567', null, 2)->>'outcome',
   'replayed', 'a double tap replays');
 select is(pay_tab_bill(repeat('b', 64), repeat('e', 64), false, 2, 1000, 0, null, null)->>'code',
   'paying', 'once the guest paid, the bill cannot change');
@@ -123,9 +123,9 @@ select is((select status from public.wallet_payments where id = (select (r->>'pa
 create temp table c1 on commit drop as select pay_tab_cash(repeat('b', 64), repeat('e', 64), 13000) as r;
 select is((select (r->>'cash_tip_cents')::int from c1), 3000, '$130MX received: the $15MX short comes off the tip');
 select is(
-  (select (status, tip_cents, cashback_cents, confirmed_by)::text from public.wallet_payments
+  (select (status, tip_cents, confirmed_by)::text from public.wallet_payments
     where id = (select (r->>'payment_id')::uuid from p1)),
-  '(paid,3000,200,waiter)', 'the row is paid, tip $30MX, 2% back on the $100MX cash bill only');
+  '(paid,3000,waiter)', 'the row is paid, tip $30MX, confirmed by the waiter');
 select is((select status from public.pay_tabs where id = (select (r->>'tab_id')::uuid from t1)), 'paid',
   'the tab reads paid');
 
@@ -141,14 +141,14 @@ begin
     perform pay_tab_bill(lpad(to_hex(i), 64, '9'), repeat('e', 64), true, 0, 5000, 0, null, null);
     if i < 3 then
       perform pay_tab_open_parts(v_tab, '00000000-0000-4000-8000-0000000b3567', 1, 0, 5000, 0, 0, 0,
-        gen_random_uuid(), null, 200, 2);
+        gen_random_uuid(), null, 2);
       perform pay_tab_cash(lpad(to_hex(i), 64, '9'), repeat('e', 64), null);
     end if;
   end loop;
 end $$;
 select is(
   pay_tab_open_parts((select id from public.pay_tabs where token_hash = lpad(to_hex(3), 64, '9')),
-    '00000000-0000-4000-8000-0000000b3567', 1, 0, 5000, 0, 0, 0, gen_random_uuid(), null, 200, 2)->>'code',
+    '00000000-0000-4000-8000-0000000b3567', 1, 0, 5000, 0, 0, 0, gen_random_uuid(), null, 2)->>'code',
   'outside_limit', 'a third cash bill the same day answers outside_limit');
 select is(
   pay_tab_change((select id from public.pay_tabs where token_hash = lpad(to_hex(3), 64, '9')),

@@ -104,7 +104,7 @@ function memoryChargeStore(seed: { codes?: Record<string, string>; payments?: Te
       const p = payments.get(paymentId);
       if (!p) return Promise.resolve({ ok: false, code: "not_found" });
       if (p.outside_cents === 0) return Promise.resolve({ ok: false, code: "not_outside" });
-      if (p.paid_at) return Promise.resolve({ ok: true, outcome: "already_paid", paid_at: p.paid_at, outside_cents: p.outside_cents, cashback_cents: Math.floor((p.outside_cents * 200) / 10000) });
+      if (p.paid_at) return Promise.resolve({ ok: true, outcome: "already_paid", paid_at: p.paid_at, outside_cents: p.outside_cents });
       if (p.status === "expired" && p.cancelled) return Promise.resolve({ ok: false, code: "closed", bill_cents: billOf.get(paymentId) });
       if (p.status !== "open") return Promise.resolve({ ok: false, code: "expired", bill_cents: billOf.get(paymentId) });
       if (p.expires_at && Date.parse(p.expires_at) <= clock.ms) {
@@ -113,7 +113,7 @@ function memoryChargeStore(seed: { codes?: Record<string, string>; payments?: Te
       }
       p.status = "paid";
       p.paid_at = new Date(clock.ms).toISOString();
-      return Promise.resolve({ ok: true, outcome: "paid", paid_at: p.paid_at, outside_cents: p.outside_cents, cashback_cents: Math.floor((p.outside_cents * 200) / 10000) });
+      return Promise.resolve({ ok: true, outcome: "paid", paid_at: p.paid_at, outside_cents: p.outside_cents });
     },
   };
   return { store, charges, tries, payments, clock, billOf };
@@ -397,7 +397,7 @@ Deno.test("outside: the poll shows the bill waiting for Received with its own ex
   m.clock.ms = T0 + 901_000;
   const ok = await confirmCharge(m.store, token);
   assert(ok.ok);
-  assertEquals([ok.outcome, ok.outside_cents, ok.cashback_cents], ["paid", 30000, 600]);
+  assertEquals([ok.outcome, ok.outside_cents], ["paid", 30000]);
   const again = await confirmCharge(m.store, token);
   assert(again.ok && again.outcome === "already_paid");
   const paid = await getCharge(m.store, token, T0 + 902_000);

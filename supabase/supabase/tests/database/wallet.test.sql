@@ -154,22 +154,22 @@ select is(
 );
 
 insert into public.wallet_payments (id, consumer_id, place_id, amount_cents, credit_cents, card_cents, currency, status,
-                                    stripe_account_id, cashback_cents, paid_at)
+                                    stripe_account_id, paid_at)
 values ('00000000-0000-4000-8000-0000000e3302', '00000000-0000-4000-8000-0000000c3302',
-        '00000000-0000-4000-8000-000000003302', 15000, 5000, 10000, 'mxn', 'paid', 'acct_test_3302', 500, now());
+        '00000000-0000-4000-8000-000000003302', 15000, 5000, 10000, 'mxn', 'paid', 'acct_test_3302', now());
 
 select lives_ok(
   $$insert into public.wallet_entries (consumer_id, place_id, kind, amount_cents, currency, payment_id, livemode)
-    values ('00000000-0000-4000-8000-0000000c3302', '00000000-0000-4000-8000-000000003302', 'cashback', 500, 'mxn', '00000000-0000-4000-8000-0000000e3302', false),
+    values ('00000000-0000-4000-8000-0000000c3302', '00000000-0000-4000-8000-000000003302', 'extra', 500, 'mxn', '00000000-0000-4000-8000-0000000e3302', false),
            ('00000000-0000-4000-8000-0000000c3302', '00000000-0000-4000-8000-000000003302', 'spend', -5000, 'mxn', '00000000-0000-4000-8000-0000000e3302', false)$$,
-  'a cashback and a spend entry hang off a payment'
+  'a legacy extra and a spend entry hang off a payment'
 );
 
 select throws_ok(
   $$insert into public.wallet_entries (consumer_id, place_id, kind, amount_cents, currency, purchase_id, payment_id, livemode)
-    values ('00000000-0000-4000-8000-0000000c3302', '00000000-0000-4000-8000-000000003302', 'cashback', 500, 'mxn', '00000000-0000-4000-8000-0000000d3302', '00000000-0000-4000-8000-0000000e3302', false)$$,
+    values ('00000000-0000-4000-8000-0000000c3302', '00000000-0000-4000-8000-000000003302', 'extra', 500, 'mxn', '00000000-0000-4000-8000-0000000d3302', '00000000-0000-4000-8000-0000000e3302', false)$$,
   '23514', null,
-  'a cashback entry names a payment or a purchase, never both (MESITA-3827)'
+  'a legacy extra entry names a payment or a purchase, never both (MESITA-3827)'
 );
 
 select throws_ok(
@@ -273,20 +273,20 @@ select is(
   'the balance never goes below zero'
 );
 
--- A payment's card part (MESITA-3305): a partial refund takes back the
--- cashback's refunded share (4000 of 10000 → 200 of 500), a full one the rest.
+-- A payment's card part (MESITA-3305): a refund reverses no credit (MESITA-4194);
+-- a partial one reads partly_refunded, a full one refunded.
 select is(
   (select r ->> 'status' || ':' || (r ->> 'reversed_cents')
      from wallet_refund_payment('00000000-0000-4000-8000-0000000e3302', 4000) r),
-  'partly_refunded:200',
-  'a partial refund of the card part reverses the cashback''s refunded share'
+  'partly_refunded:0',
+  'a partial refund of the card part reads partly_refunded and reverses no credit'
 );
 
 select is(
   (select r ->> 'status' || ':' || (r ->> 'reversed_cents')
      from wallet_refund_payment('00000000-0000-4000-8000-0000000e3302', 10000) r),
-  'refunded:300',
-  'a full refund of the card part reverses the rest of the cashback'
+  'refunded:0',
+  'a full refund of the card part reads refunded and reverses no credit'
 );
 
 -- ━━━ The waiter's charge ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

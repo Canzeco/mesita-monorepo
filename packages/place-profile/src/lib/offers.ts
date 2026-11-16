@@ -25,8 +25,6 @@ export type OfferSlide = {
 /** What a place offers now: the list row's `offers` and the place screen's
  *  money read both fit. */
 export type OfferInput = {
-  cashback: boolean;
-  card_cashback_bps?: number;
   sell: readonly string[];
 };
 
@@ -77,7 +75,7 @@ export function offersLabel(name: string, slides: OfferSlide[]): string {
 
 /** THE PLACE SCREEN ROW'S OFFER WORDS (Pato, MESITA-4184): Prepay leads and
  *  the bonuses read "+N% Bonus". No App Pay or Cash Pay slide since
- *  MESITA-4191 ("No cashbacks"). Home's offer button keeps offerSlides' words. */
+ *  MESITA-4191. Home's offer button keeps offerSlides' words. */
 export function rowOfferSlides(offers: OfferInput | null | undefined): OfferSlide[] {
   if (!offers) return [];
   const by = new Map(offerSlides(offers).map((s) => [s.key, s]));

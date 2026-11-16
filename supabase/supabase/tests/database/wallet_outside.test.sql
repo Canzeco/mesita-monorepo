@@ -1,7 +1,6 @@
 -- MESITA-3544 — Payments Flow v2, step 2: a bill paid outside Mesita. The
 -- credit part is held like a card part; the waiter's Received (one RPC, no
--- Stripe) turns it into the spend and writes 2% of the outside part as the
--- same cashback entry kind, Available at once (MESITA-3909); the tip never earns; a second
+-- Stripe) turns it into the spend; a second
 -- Received writes nothing; an unconfirmed bill expires with nothing born and
 -- its hold released; the Stripe cron never takes an outside bill; every paid
 -- row names its confirmer; client roles run none of it.
@@ -10,7 +9,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(24);
+select plan(23);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3544');
 insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a3544');
@@ -36,7 +35,7 @@ select has_column('public', 'wallet_payments', 'outside_cents', 'payments record
 select has_column('public', 'wallet_payments', 'confirmed_by', 'payments record who confirmed them');
 
 select ok(
-  not has_function_privilege('authenticated', 'public.wallet_open_outside(uuid, uuid, integer, integer, integer, text, boolean, uuid, text, text, integer, timestamptz)', 'EXECUTE')
+  not has_function_privilege('authenticated', 'public.wallet_open_outside(uuid, uuid, integer, integer, integer, text, boolean, uuid, text, text, timestamptz)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.wallet_confirm_outside(uuid, timestamptz)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.wallet_confirm_outside(uuid, timestamptz)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.wallet_expire_outside(timestamptz)', 'EXECUTE'),
@@ -63,7 +62,7 @@ select throws_ok(
 
 select is(
   wallet_open_outside('00000000-0000-4000-8000-0000000a3544', '00000000-0000-4000-8000-000000013544', 30000, 30000, 0,
-                      'mxn', false, '00000000-0000-4000-8000-0000000e3544', null, null, 200, now() + interval '10 minutes')->>'code',
+                      'mxn', false, '00000000-0000-4000-8000-0000000e3544', null, null, now() + interval '10 minutes')->>'code',
   'insufficient',
   'more credit than spendable is insufficient'
 );
@@ -71,7 +70,7 @@ select is(
 -- MX$500 bill: MX$220 from credit, MX$280 outside, MX$50 tip outside.
 create temp table probe on commit drop as
 select (wallet_open_outside('00000000-0000-4000-8000-0000000a3544', '00000000-0000-4000-8000-000000013544', 22000, 28000, 5000,
-                            'mxn', false, '00000000-0000-4000-8000-0000000f3544', null, 'T7', 200,
+                            'mxn', false, '00000000-0000-4000-8000-0000000f3544', null, 'T7',
                             now() + interval '10 minutes')->>'payment_id')::uuid as id;
 
 select is(
@@ -88,7 +87,7 @@ select is(
 
 select is(
   wallet_open_outside('00000000-0000-4000-8000-0000000a3544', '00000000-0000-4000-8000-000000013544', 22000, 28000, 5000,
-                      'mxn', false, '00000000-0000-4000-8000-0000000f3544', null, 'T7', 200, now() + interval '10 minutes')->>'outcome',
+                      'mxn', false, '00000000-0000-4000-8000-0000000f3544', null, 'T7', now() + interval '10 minutes')->>'outcome',
   'in_progress',
   'the same request replays to the open bill'
 );
@@ -102,9 +101,9 @@ select is(
 -- ━━━ The waiter's Received ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 select is(
-  wallet_confirm_outside((select id from probe))->>'cashback_cents',
-  '560',
-  'Received writes 2% of the outside part (MX$280 → MX$5.60), not of the tip or the credit'
+  wallet_confirm_outside((select id from probe))->>'outcome',
+  'paid',
+  'Received pays the outside bill'
 );
 
 select is(
@@ -116,22 +115,15 @@ select is(
 select is(
   (select array_agg(kind || ':' || amount_cents order by amount_cents) from public.wallet_entries
     where payment_id = (select id from probe)),
-  array['spend:-22000', 'cashback:560'],
-  'the hold became the spend, and the cashback is the same entry kind as a card part''s'
+  array['spend:-22000'],
+  'the hold became the spend, and nothing else is written'
 );
 
 select is(
   (select row(available_cents, pending_cents, held_cents)::text
      from wallet_balance('00000000-0000-4000-8000-0000000a3544', '00000000-0000-4000-8000-000000013544', 'mxn', false)),
-  '(560,0,0)',
-  'the credit is spent, the hold released, the cashback Available at once (MESITA-3909)'
-);
-
-select is(
-  (select available_cents from wallet_balance('00000000-0000-4000-8000-0000000a3544', '00000000-0000-4000-8000-000000013544',
-                                              'mxn', false, now() + interval '61 minutes')),
-  560,
-  'an hour later the cashback still spends at the next visit'
+  '(0,0,0)',
+  'the credit is spent and the hold released'
 );
 
 select is(
@@ -142,18 +134,18 @@ select is(
 
 select is(
   (select count(*)::int from public.wallet_entries where payment_id = (select id from probe)),
-  2,
+  1,
   'and writes nothing'
 );
 
 -- ━━━ Nobody confirms ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 insert into public.wallet_payments (id, consumer_id, place_id, amount_cents, credit_cents, outside_cents, currency, status,
-                                    outside_cashback_bps, expires_at)
+                                    expires_at)
 values ('00000000-0000-4000-8000-000000103544', '00000000-0000-4000-8000-0000000a3544', '00000000-0000-4000-8000-000000013544',
-        10000, 0, 10000, 'mxn', 'open', 200, now() - interval '1 minute'),
+        10000, 0, 10000, 'mxn', 'open', now() - interval '1 minute'),
        ('00000000-0000-4000-8000-000000113544', '00000000-0000-4000-8000-0000000a3544', '00000000-0000-4000-8000-000000013544',
-        10000, 0, 10000, 'mxn', 'open', 200, now() - interval '1 minute');
+        10000, 0, 10000, 'mxn', 'open', now() - interval '1 minute');
 
 select is(
   wallet_confirm_outside('00000000-0000-4000-8000-000000103544')->>'code',

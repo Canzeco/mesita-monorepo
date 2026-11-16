@@ -47,14 +47,12 @@
 // The outside path: body { place_id, charge_code, outside: true, tip_cents,
 // request_id }. A new tap after a cancel carries a NEW request_id. Always the charge's full bill: the server takes credit
 // first (min(spendable, bill)) and the rest is paid outside, waiting 30
-// minutes for the waiter's Received (visit-web-confirm-charge); the 2%
-// cashback only when the Cashback switch is on (else 0: credit is the
-// place's debt, so the switch never refuses the bill). Never no_account or
-// cards_off: no Stripe on this path.
+// minutes for the waiter's Received (visit-web-confirm-charge). Never
+// no_account or cards_off: no Stripe on this path.
 // Response (outside): { ok: true, payment_id, status: "open" | "paid",
 //           outcome: opened | in_progress | already_paid, amount_cents,
-//           credit_cents, outside_cents, tip_cents, outside_cashback_bps,
-//           currency, expires_at, test_mode }
+//           credit_cents, outside_cents, tip_cents, currency, expires_at,
+//           test_mode }
 //   400 outside_needs_charge (no charge_code) | tip_invalid ·
 //   409 credit_covers (+spendable_cents, bill_cents: credit pays the whole
 //       bill, pay from credit) | insufficient | taken
@@ -164,7 +162,6 @@ serveJson("consumer-web-start-payment", async (req) => {
         requestId: bodyRes.body.request_id,
         currency,
         livemode,
-        cashBackBps: money.cash_cashback_bps,
         nowMs: Date.now(),
       });
       if (!res.ok) {
@@ -185,7 +182,6 @@ serveJson("consumer-web-start-payment", async (req) => {
         credit_cents: res.started.credit_cents,
         outside_cents: res.started.outside_cents,
         tip_cents: res.started.tip_cents,
-        outside_bps: res.started.outside_cashback_bps,
         path: "outside",
       }));
       return json({ ok: true, ...res.started });
@@ -216,7 +212,7 @@ serveJson("consumer-web-start-payment", async (req) => {
     return json({ ok: false, code: "gone", error: "This place can't take payments" }, 404);
   }
   // A guest's credit is the place's debt (MESITA-3408): no switch refuses
-  // it. The switches still shape a card part (Mesita Payments, Cashback).
+  // it. The switches still shape a card part (Mesita Payments).
   const settings = await readSettings(admin, input.placeId);
   // Places store "MXN"; the ledger "mxn" (the RPC lowercases too).
   const currency = String(place.currency ?? MONEY_CURRENCY).toLowerCase();

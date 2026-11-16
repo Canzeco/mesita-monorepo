@@ -92,18 +92,14 @@ Deno.test("settings: no row is everything Off, App Payments included; unknown ke
   const off = settingsFromRow(null);
   // Eleven switches and four rates (credit and prepay since MESITA-3827;
   // Accept Stripe Payments since MESITA-3946, On by default like its column).
-  assertEquals(Object.keys(off).length, 15);
+  assertEquals(Object.keys(off).length, 11);
   assertEquals(off.stripe_payments, true);
   assertEquals(settingsFromRow({ stripe_payments: false }).stripe_payments, false);
   // Mesita Prepayments (MESITA-3597) reads off with no row and from anything but true.
   assertEquals(off.prepayments, false);
   assertEquals(settingsFromRow({ prepayments: "yes" }).prepayments, false);
   assertEquals(isPaymentKey("prepayments"), true);
-  assertEquals(Object.entries(off).filter(([k]) => !k.endsWith("_bps") && k !== "stripe_payments").every(([, v]) => v === false), true);
-  // The rates read Off (null) with no row, and from anything but a positive integer.
-  assertEquals(off.card_cashback_bps, null);
-  assertEquals(settingsFromRow({ card_cashback_bps: 700 }).card_cashback_bps, 700);
-  assertEquals(settingsFromRow({ cash_cashback_bps: "200" }).cash_cashback_bps, null);
+  assertEquals(Object.entries(off).filter(([k]) => k !== "stripe_payments").every(([, v]) => v === false), true);
   // Mesita Payments (MESITA-3599) is Off with no row and On only on an outright
   // true: it needs a Stripe account that takes cards, which no row can say.
   assertEquals(off.pay_cards, false);
@@ -111,8 +107,6 @@ Deno.test("settings: no row is everything Off, App Payments included; unknown ke
   assertEquals(settingsFromRow({ pay_cards: "yes" }).pay_cards, false);
   assertEquals(settingsFromRow({ house_credits: true, voucher_vip: "yes" }).house_credits, true);
   assertEquals(settingsFromRow({ house_credits: true, voucher_vip: "yes" }).voucher_vip, false);
-  // The retired Cashback switch (MESITA-3589) is not a key any more.
-  assertEquals(isPaymentKey("cashback"), false);
   // A row still carrying the dead columns (MESITA-3408, dropped by MESITA-3409) reads past them.
   const old = settingsFromRow({ pay_cash: false, pay_credits: false, voucher_200: true } as Record<string, unknown>);
   assertEquals("pay_cash" in old || "pay_credits" in old, false);
@@ -127,23 +121,19 @@ Deno.test("settings: no row is everything Off, App Payments included; unknown ke
 Deno.test("list rows (MESITA-3408): the mark lights where a guest can pay by card or buy a voucher", () => {
   // No settings row, charging account: Mesita Payments is Off until the owner
   // turns it on (MESITA-3599), so no mark.
-  assertEquals(listRowMoney(undefined, true), { sell: [], mesita_pay: false, cashback: false, card_cashback_bps: 0 });
+  assertEquals(listRowMoney(undefined, true), { sell: [], mesita_pay: false });
   // No charging account: nothing.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, voucher_200: true }, false), { sell: [], mesita_pay: false, cashback: false, card_cashback_bps: 0 });
+  assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, voucher_200: true }, false), { sell: [], mesita_pay: false });
   // Pay by phone off, MX$200 on with House Credits, charging: sells and shows the mark.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, prepayments: true, pay_cards: false, voucher_200: true }, true), { sell: ["voucher_200"], mesita_pay: true, cashback: false, card_cashback_bps: 0 });
+  assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, prepayments: true, pay_cards: false, voucher_200: true }, true), { sell: ["voucher_200"], mesita_pay: true });
   // Mesita Prepayments Off (MESITA-3597): the voucher's own switch alone sells nothing.
   assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, pay_cards: false, voucher_200: true }, true).sell, []);
   // Pay by phone off, nothing on: no mark.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false, house_credits: true, card_cashback_bps: 500 }, true), { sell: [], mesita_pay: false, cashback: false, card_cashback_bps: 0 });
-  // Card cashback with House Credits and cards: the offer button's Pay slide (MESITA-3467).
-  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: true, house_credits: true, card_cashback_bps: 500 }, true).cashback, true);
-  // Without House Credits no new credit is born: no cashback slide (MESITA-3589).
-  assertEquals(listRowMoney({ ...settingsFromRow(null), card_cashback_bps: 500 }, true).cashback, false);
+  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false, house_credits: true }, true), { sell: [], mesita_pay: false });
   // Accept Stripe Payments Off (MESITA-3946): no card pay, no voucher, no mark.
   assertEquals(
-    listRowMoney({ ...settingsFromRow(null), stripe_payments: false, house_credits: true, prepayments: true, pay_cards: true, voucher_200: true, card_cashback_bps: 500 }, true),
-    { sell: [], mesita_pay: false, cashback: false, card_cashback_bps: 0 },
+    listRowMoney({ ...settingsFromRow(null), stripe_payments: false, house_credits: true, prepayments: true, pay_cards: true, voucher_200: true }, true),
+    { sell: [], mesita_pay: false },
   );
   assertEquals(cardsAccepted({ pay_cards: true, stripe_payments: false }), false);
   assertEquals(cardsAccepted({ pay_cards: true }), true);

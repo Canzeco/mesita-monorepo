@@ -25,7 +25,7 @@ import { cn } from "../../lib/format";
 // Overview Menu Reviews Promos/Deals (maybe Promos is the best)"; Reviews
 // came before Menu until then): Menu is the Soon screen and Promos lists
 // the money products the place has on, the six vouchers as Prepayment
-// promos and cashback as Payment promos (the key stays `vouchers`). It read
+// promos (the key stays `vouchers`). It read
 // Deals for one evening (MESITA-3322), Vouchers from MESITA-3299, when the
 // discount product left, and Rewards from MESITA-3201 before that. The paid tier was
 // the fourth tab (MESITA-2861, called Premier, then Business); it is the host's

@@ -70,7 +70,7 @@ export type PlaceActions = {
   /** The Offers tile's voucher slides (MESITA-3412, MESITA-4151): open the
    *  host's Offers page at a section. Absent, the tile is inert (admin's preview). */
   onOpenRewards?: (section: RewardsSection) => void;
-  /** The Offers tile's cashback slide (MESITA-3352, MESITA-4151): opens the
+  /** The Offers tile's Pay slide (MESITA-3352, MESITA-4151): opens the
    *  host's Pay page. Absent, that slide is inert (admin's preview). */
   onPay?: () => void;
   /** The guest's own facts for the Offers (i) status (MESITA-3502): VIP needs

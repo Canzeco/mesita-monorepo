@@ -7,7 +7,7 @@
 // which carries the device id kept below. An older `s1` token answers
 // staff_code_needed: type the waiter code again.
 // pay_tab_verify does the rest under the pair lock: cash is confirmed with the
-// shortfall rules and its 2% cashback written; a tab paid in the app is only
+// shortfall rules; a tab paid in the app is only
 // stamped; a second Verify moves no money; a card still going through waits.
 // The phone that verified is kept as a hash of its device id, never the token.
 //
@@ -17,8 +17,7 @@
 // → captureHeldCard); 202 confirming while Stripe has not answered, 409
 // capture_failed when the charge failed (nothing charged, the bill ends).
 // Response: { ok: true, outcome: verified | already_verified | confirming, verified_at,
-//             same_phone?, cash_received_cents?, cash_tip_cents?,
-//             cashback_cents? }
+//             same_phone?, cash_received_cents?, cash_tip_cents? }
 //   400 bad_request | amount_required · 403 staff_code_needed | forbidden ·
 //   404 gone · 409 short (+missing_cents) | card_pending | expired |
 //   cancelled | not_paid
@@ -105,7 +104,6 @@ serveJson("visit-web-verify-tab", async (req) => {
       outcome: r.outcome,
       tab_id: tab.id,
       place_id: placeId,
-      cashback_cents: r.cashback_cents ?? 0,
       same_phone: r.same_phone ?? null,
     }));
     return json({
@@ -115,7 +113,6 @@ serveJson("visit-web-verify-tab", async (req) => {
       same_phone: r.same_phone ?? null,
       cash_received_cents: r.cash_received_cents ?? null,
       cash_tip_cents: r.cash_tip_cents ?? null,
-      cashback_cents: r.cashback_cents ?? 0,
     });
   } catch (err) {
     return failWithRequestId("visit-web-verify-tab", "Couldn't verify. Try again.", err);

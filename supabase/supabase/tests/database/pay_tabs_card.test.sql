@@ -2,8 +2,8 @@
 -- the credit (held), the card bill part and the card tip; a cash bill part
 -- is a second row with no credit; a double tap makes one card row; Received
 -- waits for the card; a failed card bills the tab again and frees the hold;
--- a settled card pays the tab, 5% back on the card bill part only, never the
--- tip; credits for the bill and the tip by card (InKind) works.
+-- a settled card pays the tab; credits for the bill and the tip by card
+-- (InKind) works.
 
 begin;
 
@@ -34,7 +34,7 @@ end $$;
 create function pg_temp.split(p_consumer uuid, p_tab uuid, p_version int, p_credit int, p_cash_bill int, p_cash_tip int,
   p_card_bill int, p_card_tip int, p_req uuid) returns jsonb language sql as $$
   select pay_tab_open_parts(p_tab, p_consumer, p_version, p_credit, p_cash_bill, p_cash_tip, p_card_bill, p_card_tip,
-    p_req, null, 200, 2, now(), 'acct_test_3563', p_card_bill * 500 / 10000, 500, null, now() + interval '10 minutes')
+    p_req, null, 2, now(), 'acct_test_3563', p_card_bill * 500 / 10000, null, now() + interval '10 minutes')
 $$;
 
 create function pg_temp.held(p_consumer uuid) returns int language sql as $$
@@ -44,7 +44,7 @@ $$;
 select ok(
   not has_function_privilege('authenticated', 'public.wallet_open_payment_pi(uuid, text)', 'EXECUTE')
     and not has_function_privilege('authenticated',
-      'public.pay_tab_open_parts(uuid, uuid, integer, integer, integer, integer, integer, integer, uuid, text, integer, integer, timestamptz, text, integer, integer, text, timestamptz)',
+      'public.pay_tab_open_parts(uuid, uuid, integer, integer, integer, integer, integer, integer, uuid, text, integer, timestamptz, text, integer, text, timestamptz)',
       'EXECUTE'),
   'client roles cannot open a card part or name its PaymentIntent');
 
@@ -68,10 +68,10 @@ select pg_temp.split('00000000-0000-4000-8000-0000000a3563', (select id from t),
   '00000000-0000-4000-8000-0000000f3563') as r;
 select is((select r->>'status' from p1), 'paying', '$220MX credit + $50MX card + $30MX cash, $45MX tip by card opens');
 select is(
-  (select (credit_cents, card_cents, tip_cents, outside_cents, part, status, cashback_bps, application_fee_cents, stripe_account_id)::text
+  (select (credit_cents, card_cents, tip_cents, outside_cents, part, status, application_fee_cents, stripe_account_id)::text
      from public.wallet_payments where id = (select (r->>'card_payment_id')::uuid from p1)),
-  '(22000,5000,4500,0,card,opening,500,250,acct_test_3563)',
-  'ONE card row: the credit, the card bill part and the card tip; 5% back and Mesita''s 5% fee on the card bill part');
+  '(22000,5000,4500,0,card,opening,250,acct_test_3563)',
+  'ONE card row: the credit, the card bill part and the card tip; Mesita''s 5% fee on the card bill part');
 select is(
   (select (credit_cents, outside_cents, part, status)::text from public.wallet_payments
     where tab_id = (select id from t) and part = 'outside'),
@@ -119,8 +119,8 @@ select is(wallet_settle_payment((select (r->>'card_payment_id')::uuid from p2), 
 select is((select status from public.pay_tabs where id = (select id from t)), 'paid',
   'with no cash owed, the tab reads paid');
 select is(
-  (select (cashback_cents, confirmed_by)::text from public.wallet_payments where id = (select (r->>'card_payment_id')::uuid from p2)),
-  '(400,stripe)', '5% back on the $80MX card bill part only: never the tip, never the credit');
+  (select confirmed_by from public.wallet_payments where id = (select (r->>'card_payment_id')::uuid from p2)),
+  'stripe', 'the settled card row reads confirmed by Stripe');
 select is(
   (select sum(amount_cents)::int from public.wallet_entries
     where payment_id = (select (r->>'card_payment_id')::uuid from p2) and kind = 'spend'),
@@ -142,8 +142,8 @@ select is(
 select wallet_open_payment_pi((select (r->>'card_payment_id')::uuid from p3), 'pi_test3563four');
 select wallet_settle_payment((select (r->>'card_payment_id')::uuid from p3), 'pi_test3563four');
 select is(
-  (select (status, cashback_cents, confirmed_by)::text from public.wallet_payments where id = (select (r->>'card_payment_id')::uuid from p3)),
-  '(paid,0,stripe)', 'confirmed by Stripe, no cashback on a tip');
+  (select (status, confirmed_by)::text from public.wallet_payments where id = (select (r->>'card_payment_id')::uuid from p3)),
+  '(paid,stripe)', 'confirmed by Stripe');
 select is((select status from public.pay_tabs where id = (select id from u)), 'paid', 'and the tab reads paid');
 
 -- ━━━ Card + cash: the card first, then Received ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -6,8 +6,8 @@
 //
 // MESITA-3545 (Payments Flow v2): a place with a place code is also listed
 // when it takes no card (`outside_ok`): the guest types the waiter's code
-// there and pays the bill outside, earning `outside_bps` when the Cashback
-// switch is on. Outside-only places count like card places below.
+// there and pays the bill outside. Outside-only places count like card
+// places below.
 //
 // While fewer than OPEN_ALL_BELOW places have Mesita Payments on, every one of
 // them is listed, nearest first (the /autoplan gate d3a of 2026-11-08: an
@@ -69,15 +69,9 @@ export type PayPlaceInput = {
   /** Spendable now: Available minus held (wallet_balances.spendable_cents). */
   available_cents: number;
   pending_cents: number;
-  cashback_bps: number;
   /** A place code is set: the waiter's charge can open here, so the guest
    *  can pay outside (MESITA-3545). */
   outside_ok: boolean;
-  /** What a bill paid outside and confirmed earns here (the place's Cash Payments Cashback,
-   *  with the Cashback switch on, else 0). */
-  outside_bps: number;
-  /** MESITA-3827: what the credit part earns here (Credits Payments Cashback), else 0. */
-  credit_bps?: number;
   paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;
 };
 
@@ -116,10 +110,7 @@ export function payPlaces(
       card_ok: r.card_ok,
       available_cents: r.available_cents,
       pending_cents: r.pending_cents,
-      cashback_bps: r.cashback_bps,
       outside_ok: r.outside_ok,
-      outside_bps: r.outside_bps,
-      credit_bps: r.credit_bps ?? 0,
       test_mode: opts.testMode,
       card_min_cents: opts.minCents(r.currency),
       paid_recent: r.paid_recent,

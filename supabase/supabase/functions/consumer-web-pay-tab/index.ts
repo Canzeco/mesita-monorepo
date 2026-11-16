@@ -6,15 +6,13 @@
 // transaction under the (guest, place) lock: the bill version the guest
 // read must be the tab's (else stale), the parts must add up to the bill,
 // the credit must be spendable. Credits for the whole bill and no cash tip →
-// paid now; a cash part → one outside row (2% back on the cash bill part
-// when the place's Cashback switch is on), collected by the waiter's
+// paid now; a cash part → one outside row, collected by the waiter's
 // Received (visit-web-cash-tab, which waits for a card part first).
 //
 // A card part (MESITA-3563, _shared/tab-card.ts): the saved card must be on
 // the guest's own customer (payments mode); one card row carries the credit
 // (held), the card bill part and the card tip; the card is cloned to the
-// place's account and charged there inside the app (no Checkout). 5% back on
-// the card bill part, never the tip.
+// place's account and charged there inside the app (no Checkout).
 //
 // Body: { tab_id, bill_version, credit_cents, cash_bill_cents,
 //         cash_tip_cents, card_bill_cents?, card_tip_cents?, card_pm_id?
@@ -98,12 +96,11 @@ serveJson("consumer-web-pay-tab", async (req) => {
       card = {
         stripeAccountId: account.stripe_account_id,
         feeCents: bps(split.cardBillCents, MESITA_FEE_BPS_PAYMENT),
-        cashbackBps: rates.card_back_bps,
         expiresAt: new Date(Date.now() + PI_TTL_MS).toISOString(),
       };
     }
 
-    const r = await callTabRpc(admin, "pay_tab_open_parts", splitArgs(userId, split, cashMoney.cash_cashback_bps, card));
+    const r = await callTabRpc(admin, "pay_tab_open_parts", splitArgs(userId, split, card));
     if (r.ok !== true) {
       const refusal = rpcRefusal(r);
       console.log("[consumer-web-pay-tab]", JSON.stringify({ outcome: refusal.code, tab_id: tab.id }));

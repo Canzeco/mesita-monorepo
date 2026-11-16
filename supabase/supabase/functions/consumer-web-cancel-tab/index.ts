@@ -8,7 +8,7 @@
 //
 // MESITA-3772: mode "close" ends the guest's own guest payment: cancelled
 // when nothing moved yet, else closed now (the cash part expires, the credit
-// declared with it is spent, no cashback; the window-end rule, run early).
+// declared with it is spent; the window-end rule, run early).
 // A signed payment answers 409 verified; a card still going through answers
 // 409 card_pending. "cancel" on a guest payment where money moved answers
 // 409 paid_part.

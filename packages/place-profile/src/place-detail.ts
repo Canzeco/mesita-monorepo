@@ -5,7 +5,7 @@
 
 import type { VoucherReason } from "./money-state";
 
-/** The six vouchers and the cashback a place can switch on (MESITA-3296). */
+/** The six vouchers a place can switch on (MESITA-3296). */
 export const VOUCHER_KEYS = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_story", "voucher_vip"] as const;
 export type VoucherKey = (typeof VOUCHER_KEYS)[number];
 
@@ -32,20 +32,6 @@ export type PlaceMoney = {
   charges_enabled: boolean;
   /** The green Mesita Payments mark, the server's (moneyState, MESITA-3408). */
   mesita_pay: boolean;
-  /** Payments Cashback, the standard 5%, on. */
-  cashback: boolean;
-  /** A bill paid to the waiter earns 2% here (the Cashback switch and a place
-   *  code, no Stripe; MESITA-3545). The server sends it; older reads lack it. */
-  outside_cashback?: boolean;
-  /** The place's own rates now, in bps, 0 = Off or not usable (MESITA-3589):
-   *  the card part (Mesita Payments Cashback) and the cash bill part (Cash
-   *  Payments Cashback). Older reads lack them. */
-  card_cashback_bps?: number;
-  cash_cashback_bps?: number;
-  /** MESITA-3827: the credit part (Credits Payments Cashback) and a voucher's
-   *  price (Mesita Prepayments Cashback); older reads lack them. */
-  credit_cashback_bps?: number;
-  prepay_cashback_bps?: number;
   /** House Credits is On here (MESITA-3589); older reads lack it. */
   house_credits?: boolean;
   /** Cash Payments is On here (the switch and the place code; MESITA-3589). */

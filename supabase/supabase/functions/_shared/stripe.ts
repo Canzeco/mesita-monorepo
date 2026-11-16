@@ -6,7 +6,7 @@
 // Two universes, two switches (MESITA-3279):
 //   STRIPE_MODE           Premier, on Mesita's own account
 //   PAYMENTS_STRIPE_MODE  money on places' connected accounts: vouchers, the
-//                         Pay card part, the waiter's charge, cashback, the
+//                         Pay card part, the waiter's charge, the
 //                         5% fee invoices, refunds, close-out
 // so taking Premier live cannot take payments live by accident, and the other
 // way round. Same platform account and the same keys. A value other than

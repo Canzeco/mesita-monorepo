@@ -1,7 +1,7 @@
 -- MESITA-3589 — the Place states of Main §10, the money and legal guards.
 -- The House Credits Contract is EF-only and one live per place; House Credits
--- On needs it; the vouchers and Mesita Prepayments (MESITA-3597) need House Credits; the rates are Off or 5% (card)
--- and Off or 2% (cash) since MESITA-3596; ending the contract turns House Credits and the
+-- On needs it; the vouchers and Mesita Prepayments (MESITA-3597) need House Credits;
+-- ending the contract turns House Credits and the
 -- vouchers off; and House Credits Off never stops a guest spending credit
 -- they already hold (a credit-only bill still settles).
 
@@ -9,14 +9,14 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(20);
+select plan(16);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3589'), ('00000000-0000-4000-8000-0000000b3589');
 insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a3589');
 insert into public.place_profiles (id, google_name) values ('00000000-0000-4000-8000-000000013589', 'Place States Probe');
 insert into public.places (id, slug, state, content_state, currency) values
   ('00000000-0000-4000-8000-000000013589', 'mesita-3589-probe', 'active', 'generating', 'MXN');
--- A Stripe account that takes cards: the vouchers and the card rate need it
+-- A Stripe account that takes cards: the vouchers need it
 -- (MESITA-3599, stripe_gate.test.sql), so the guards below are the ones tested.
 insert into public.place_payment_accounts (place_id, stripe_account_id, livemode, charges_enabled)
 values ('00000000-0000-4000-8000-000000013589', 'acct_test_3589', false, true);
@@ -59,25 +59,12 @@ select lives_ok(
      where place_id = '00000000-0000-4000-8000-000000013589'$$,
   'signed: House Credits, Mesita Prepayments and a voucher turn on');
 
--- ━━━ The rates ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ━━━ Mesita Payments ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-select throws_ok(
-  $$update public.place_payment_settings set card_cashback_bps = 700 where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  '23514', null, 'a card rate other than 5% is refused (MESITA-3596)');
-select throws_ok(
-  $$update public.place_payment_settings set cash_cashback_bps = 200 where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  '23514', null, 'a cash rate other than 3% is refused (MESITA-3837, MESITA-3843)');
 select lives_ok(
-  $$update public.place_payment_settings set card_cashback_bps = 500, cash_cashback_bps = 300
+  $$update public.place_payment_settings set pay_cards = false
      where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  '5% card and 3% cash are taken');
-select throws_ok(
-  $$update public.place_payment_settings set cash_cashback_bps = 500 where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  '23514', null, 'cash is never 5%');
-select lives_ok(
-  $$update public.place_payment_settings set pay_cards = false, card_cashback_bps = null
-     where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  'Mesita Payments and its cashback turn Off, Cash 2% stays');
+  'Mesita Payments turns Off');
 
 -- ━━━ Ending the contract ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -121,13 +108,13 @@ select is(pay_tab_bill(repeat('a', 64), repeat('e', 64), true, 0, 15000, 0, 'T1'
 
 create temp table p1 on commit drop as
 select pay_tab_open_parts((select (r->>'tab_id')::uuid from t1), '00000000-0000-4000-8000-0000000a3589', 1,
-  15000, 0, 0, 0, 0, gen_random_uuid(), null, 0, 2) as r;
+  15000, 0, 0, 0, 0, gen_random_uuid(), null, 2) as r;
 select is((select r->>'status' from p1), 'paid',
   'House Credits, Cash Payments and Mesita Payments all Off: a credit-only bill still settles');
 select is(
   (select sum(amount_cents)::int from public.wallet_entries
-    where consumer_id = '00000000-0000-4000-8000-0000000a3589' and kind = 'cashback'),
-  null, 'and no new credit is born from it');
+    where consumer_id = '00000000-0000-4000-8000-0000000a3589' and amount_cents > 0),
+  22000, 'and no new credit is born from it: only the $220MX bought');
 
 -- The waiter's code path: a credit-only payment with every switch off.
 select is(

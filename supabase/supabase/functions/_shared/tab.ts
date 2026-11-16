@@ -332,18 +332,9 @@ export type TabPartRow = {
   outside_cents: number;
   card_cents: number;
   tip_cents: number;
-  cashback_cents: number;
   paid_at: string | null;
   proof_token: string | null;
   created_at: string;
-  /** MESITA-3772: the rates stored on the row when it started (card part:
-   *  cashback_bps; cash part: outside_cashback_bps). */
-  cashback_bps?: number;
-  outside_cashback_bps?: number;
-  /** MESITA-3827: the credit part's rate stamped on the row, and what it
-   *  earned once written (cashback_cents stays the card or cash part). */
-  credit_cashback_bps?: number;
-  credit_cashback_cents?: number;
   /** MESITA-3856: when Stripe held this card part for the waiter. */
   held_at?: string | null;
 };
@@ -351,7 +342,7 @@ export type TabPartRow = {
 export const TAB_COLUMNS =
   "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, created_at, parent_tab_id, split_at, split_ways, origin, verified_at, verified_key_hash, end_reason, signing_at";
 const PART_COLUMNS =
-  "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, cashback_cents, paid_at, proof_token, created_at, cashback_bps, outside_cashback_bps, credit_cashback_bps, credit_cashback_cents, held_at";
+  "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, paid_at, proof_token, created_at, held_at";
 /** The guest's list reads only what a status needs (MESITA-3688): never
  *  `proof_token`, which PART_COLUMNS carries. */
 export const LIST_PART_COLUMNS = "id, tab_id, status, paid_at";
@@ -365,13 +356,8 @@ export function effectiveStatus(t: TabRow, parts: TabPartRow[], nowMs: number): 
   return parts.some((p) => p.paid_at) ? "paid" : "expired";
 }
 
-/** The amounts both screens show, from the tab's split. Cashback: the
- *  place's own rates (MESITA-3589): cashBackBps on the cash bill part,
- *  cardBackBps on the card bill part; never on credits or the tip. Once a
- *  part is paid the stored cashback is the answer. */
-export function tabMoney(t: TabRow, parts: TabPartRow[], cashBackBps: number, cardBackBps = 0) {
-  const live = parts.filter((p) => p.status !== "expired" && p.status !== "failed");
-  const cashbackPaid = live.reduce((s, p) => s + (p.paid_at ? p.cashback_cents + (p.credit_cashback_cents ?? 0) : 0), 0);
+/** The amounts both screens show, from the tab's split. */
+export function tabMoney(t: TabRow) {
   return {
     credit_cents: t.credit_cents,
     cash_bill_cents: t.cash_bill_cents,
@@ -380,40 +366,7 @@ export function tabMoney(t: TabRow, parts: TabPartRow[], cashBackBps: number, ca
     cash_received_cents: t.cash_received_cents,
     card_bill_cents: t.card_bill_cents,
     card_tip_cents: t.card_tip_cents,
-    cashback_cents: cashbackPaid ||
-      Math.floor((t.cash_bill_cents * Math.max(0, cashBackBps)) / 10_000) +
-        Math.floor((t.card_bill_cents * cardBackBps) / 10_000),
   };
-}
-
-/** MESITA-3772: a guest tab earns cashback only when the waiter signs it.
- *  What signing would earn now: each card part settled or still going
- *  through (its stored rate, else the place's card rate) plus the cash part
- *  (its stored rate, else the place's cash rate), as pay_tab_verify writes
- *  it (the cash part's daily caps may cut it there). 0 for a waiter's tab,
- *  and once the tab is signed, cancelled, closed or past its window. */
-export function cashbackOnSign(t: TabRow, parts: TabPartRow[], cashBackBps: number, cardBackBps: number, nowMs: number): number {
-  if ((t.origin ?? "waiter") !== "guest" || t.verified_at) return 0;
-  if (!["paying", "paid"].includes(t.status) || Date.parse(t.expires_at) <= nowMs) return 0;
-  const live = parts.filter((p) => ["opening", "open", "paid", "partly_refunded"].includes(p.status));
-  const card = live
-    .filter((p) => p.part === "card" && !(p.paid_at && p.cashback_cents > 0))
-    .reduce((s, p) => s + Math.floor((p.card_cents * Math.max(0, p.cashback_bps ?? cardBackBps)) / 10_000), 0);
-  const cashRows = live.filter((p) => p.part === "outside");
-  const cash = cashRows.length
-    ? cashRows.filter((p) => !p.paid_at).reduce((s, p) => s + Math.floor((p.outside_cents * Math.max(0, p.outside_cashback_bps ?? cashBackBps)) / 10_000), 0)
-    : t.status === "paying" ? Math.floor((t.cash_bill_cents * Math.max(0, cashBackBps)) / 10_000) : 0;
-  // MESITA-3827: the credit part's Credits Payments Cashback, at the row's
-  // stamped rate, wherever the credit sits (a card, cash or credit row).
-  const credit = live
-    .filter((p) => !((p.credit_cashback_cents ?? 0) > 0))
-    .reduce((s, p) => s + Math.floor((p.credit_cents * Math.max(0, p.credit_cashback_bps ?? 0)) / 10_000), 0);
-  return card + cash + credit;
-}
-
-/** MESITA-3772: what a guest tab's parts were actually granted. */
-export function cashbackGranted(parts: TabPartRow[]): number {
-  return parts.reduce((s, p) => s + (p.paid_at ? p.cashback_cents + (p.credit_cashback_cents ?? 0) : 0), 0);
 }
 
 // ── Friends split one bill (MESITA-3695) ────────────────────────────────────
@@ -522,28 +475,23 @@ export function hashJoinToken(token: string): Promise<string> {
 export type TabCardInfo = {
   card_available: boolean;
   card_unavailable_code: string | null;
-  card_back_bps: number;
   card_minimum_cents: number;
 };
 
-const NO_CARD: TabCardInfo = { card_available: false, card_unavailable_code: "not_configured", card_back_bps: 0, card_minimum_cents: 0 };
+const NO_CARD: TabCardInfo = { card_available: false, card_unavailable_code: "not_configured", card_minimum_cents: 0 };
 
 export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
   placeName: string | null;
   spendableCents: number;
   /** Cash Payments is on here (MESITA-3589): a cash part is allowed. */
   cashOk: boolean;
-  /** What the cash bill part earns here, in bps (0 = no cashback). */
-  cashBackBps: number;
   nowMs: number;
   card?: TabCardInfo;
   table?: (TableView & { mine: boolean }) | null;
   myShareTabId?: string | null;
 }) {
   const card = extra.card ?? NO_CARD;
-  const cashBps = extra.cashOk ? extra.cashBackBps : 0;
-  const money = tabMoney(t, parts, cashBps, card.card_back_bps);
-  const guest = (t.origin ?? "waiter") === "guest";
+  const money = tabMoney(t);
   return {
     tab_id: t.id,
     place: { id: t.place_id, name: extra.placeName },
@@ -557,19 +505,12 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
     spendable_cents: extra.spendableCents,
     rates: {
       cash_available: extra.cashOk,
-      cash_back_bps: extra.cashOk ? extra.cashBackBps : 0,
-      card_back_bps: card.card_back_bps,
       card_available: card.card_available,
       card_unavailable_code: card.card_unavailable_code,
       card_minimum_cents: card.card_minimum_cents,
     },
     ...money,
-    // MESITA-3772: on a guest tab cashback_cents is what was granted (the
-    // signature turns it on); cashback_on_sign_cents is what signing would
-    // earn now.
-    ...(guest ? { cashback_cents: cashbackGranted(parts) } : {}),
-    cashback_on_sign_cents: cashbackOnSign(t, parts, cashBps, card.card_back_bps, extra.nowMs),
-    // MESITA-3780: each part's money and its stored rate, so the Visit page
+    // MESITA-3780: each part's money, so the Visit page
     // can say what every method charged. Never `proof_token`.
     parts: parts.map((p) => ({
       id: p.id,
@@ -581,8 +522,6 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
       cash_cents: p.outside_cents,
       card_cents: p.card_cents,
       tip_cents: p.tip_cents,
-      cashback_cents: p.cashback_cents,
-      cashback_bps: (p.part === "outside" ? p.outside_cashback_bps : p.cashback_bps) ?? null,
       // MESITA-3856: a card held for the waiter, not still going through.
       held_at: p.held_at ?? null,
     })),
@@ -608,17 +547,11 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
   };
 }
 
-/** The cashback rate stamped on the live card part, 0 without one. */
-function cardPartBps(parts: TabPartRow[]): number {
-  const card = parts.find((p) => p.part === "card" && p.status !== "expired" && p.status !== "failed");
-  return Math.max(0, card?.cashback_bps ?? 0);
-}
-
 /** What the waiter's screen reads: never who the guest is. */
 export function staffTabView(
   t: TabRow,
   parts: TabPartRow[],
-  extra: { placeName: string | null; cashBackBps: number; nowMs: number; table?: TableView | null; guestPhoto?: string | null },
+  extra: { placeName: string | null; nowMs: number; table?: TableView | null; guestPhoto?: string | null },
 ) {
   return {
     place: { id: t.place_id, name: extra.placeName },
@@ -630,8 +563,7 @@ export function staffTabView(
     ticket: t.ticket,
     waiter_name: t.waiter_name,
     billed: t.staff_key_hash !== null && t.bill_cents !== null,
-    // MESITA-3910: the card part earns at the rate stamped on its row.
-    ...tabMoney(t, parts, extra.cashBackBps, cardPartBps(parts)),
+    ...tabMoney(t),
     paid_at: t.paid_at,
     expires_at: t.expires_at,
     updated_at: t.updated_at,
@@ -694,23 +626,21 @@ export async function callTabRpc(admin: Rpc, fn: string, args: Record<string, un
 }
 
 /** What a card part adds to the call: the place's account, Mesita's fee
- *  (5% of the card bill part, invoiced), the 5% the card bill part earns,
- *  the card row's proof token and when an unfinished one is cancelled. */
+ *  (5% of the card bill part, invoiced), the card row's proof token and
+ *  when an unfinished one is cancelled. */
 export type CardSplitArgs = {
   stripeAccountId: string;
   feeCents: number;
-  cashbackBps: number;
   expiresAt: string;
 };
 
 /** The split as pay_tab_open_parts takes it. */
-export function splitArgs(consumerId: string, s: SplitInput, cashBackBps: number, card?: CardSplitArgs | null) {
+export function splitArgs(consumerId: string, s: SplitInput, card?: CardSplitArgs | null) {
   return {
     ...(card
       ? {
         p_stripe_account_id: card.stripeAccountId,
         p_card_fee_cents: card.feeCents,
-        p_card_cashback_bps: card.cashbackBps,
         p_card_proof_token: mintProofToken(),
         p_card_expires_at: card.expiresAt,
       }
@@ -725,7 +655,6 @@ export function splitArgs(consumerId: string, s: SplitInput, cashBackBps: number
     p_card_tip_cents: s.cardTipCents,
     p_request_id: s.requestId,
     p_proof_token: mintProofToken(),
-    p_outside_cashback_bps: Math.max(0, cashBackBps),
     p_max_outside_per_day: OUTSIDE_MAX_PER_DAY,
   };
 }

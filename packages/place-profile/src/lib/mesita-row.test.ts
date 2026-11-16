@@ -7,8 +7,6 @@ import { mesitaRowState, PREPAY_PAUSED } from "./mesita-row";
 const BASE: PlaceMoney = {
   charges_enabled: false,
   mesita_pay: false,
-  cashback: false,
-  outside_cashback: false,
   vouchers: { voucher_200: false, voucher_1000: false, voucher_5000: false, voucher_welcome: false, voucher_story: false, voucher_vip: false },
   test_mode: true,
   currency: "mxn",
@@ -23,15 +21,11 @@ const BASE: PlaceMoney = {
 describe("offerSlides", () => {
   it("shows nothing for a place that runs nothing", () => {
     expect(offerSlides(null)).toEqual([]);
-    expect(offerSlides({ cashback: false, sell: [] })).toEqual([]);
-    // No cashback slide, even from a stale answer that still carries a rate (MESITA-4191).
-    expect(offerSlides({ cashback: true, card_cashback_bps: 500, sell: [] })).toEqual([]);
+    expect(offerSlides({ sell: [] })).toEqual([]);
   });
 
-  it("orders Welcome, Story, VIP, Prepay, shows only the best standard bonus, and never a cashback (MESITA-4191)", () => {
+  it("orders Welcome, Story, VIP, Prepay, shows only the best standard bonus", () => {
     const slides = offerSlides({
-      cashback: true,
-      card_cashback_bps: 700,
       sell: ["voucher_200", "voucher_5000", "voucher_vip", "voucher_welcome"],
     });
     expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Welcome +100%", "VIP +100%", "Prepay +30%"]);

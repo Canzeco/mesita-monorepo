@@ -2,12 +2,12 @@
 //
 // MESITA-3562 (Pay at the table, _shared/tab.ts): the guest's poll of their
 // tab. One tab row, its payment rows, the guest's spendable credit here and
-// the place's Cashback switch. Cheap on purpose: the Pay screen polls it
+// the place's Cash Payments switch. Cheap on purpose: the Pay screen polls it
 // about every 1.5 s while waiting for the bill, backing off, and stops when
 // hidden or the tab is final (paid, expired, cancelled).
 //
 // The card part (MESITA-3563, _shared/tab-card.ts): `rates` says whether
-// cards work here (card_available, card_unavailable_code, card_back_bps 5%,
+// cards work here (card_available, card_unavailable_code,
 // card_minimum_cents); `with_cards: true` (ask once, when the bill arrives)
 // adds the guest's saved cards; while a card part is in flight the poll
 // reads its PaymentIntent: `card_action` carries what Stripe.js needs to
@@ -24,7 +24,7 @@
 //             tip_suggested_cents, bill_version, ticket, waiter_name,
 //             spendable_cents, rates, credit_cents, cash_bill_cents,
 //             cash_tip_cents, cash_due_cents, cash_received_cents,
-//             card_bill_cents, card_tip_cents, cashback_cents, parts,
+//             card_bill_cents, card_tip_cents, parts,
 //             paid_at, expires_at, updated_at, test_mode },
 //             cards?: [{ id, brand, last4, exp_month, exp_year }],
 //             card_action?: { status: requires_action | processing,
@@ -35,10 +35,6 @@
 //   what is paid and left, the shares by id); on a split table it is the table
 //   itself and `tab.my_share_tab_id` names the guest's own share.
 //   `table.mine`: this guest split it (only they can show the friends' QR).
-//   MESITA-3772: on a guest tab `tab.cashback_cents` is what was granted
-//   (only the waiter's signature grants it, card and cash) and
-//   `tab.cashback_on_sign_cents` what signing would earn now (0 once signed,
-//   cancelled, closed or past its window).
 //   400 (a malformed call) · 401 sign_in · 404 not_found (no such tab of
 //   this guest)
 
@@ -116,7 +112,7 @@ serveJson("consumer-web-get-tab", async (req) => {
     ]);
     if (!placeRes.ok) throw new Error(placeRes.error);
     const rates = tabCardRates({ account, settings, livemode, currency: tab.currency, stripeReady: !!stripe && tab.livemode === livemode });
-    // Cash Payments and its cashback (MESITA-3589).
+    // Cash Payments (MESITA-3589).
     const cashMoney = moneyState({ ...settings, has_place_code: true }, null, null);
 
     let cards: Array<Record<string, unknown>> | undefined;
@@ -153,7 +149,6 @@ serveJson("consumer-web-get-tab", async (req) => {
         spendableCents: Math.max(balance?.spendable_cents ?? 0, 0),
         // A billed tab was billed with the place code, so it is set.
         cashOk: cashMoney.cash,
-        cashBackBps: cashMoney.cash_cashback_bps,
         nowMs,
         card: rates,
       }),
