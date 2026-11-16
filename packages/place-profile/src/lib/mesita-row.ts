@@ -6,7 +6,7 @@
 // server's list-vouchers read (place.money) through the shared slides.
 
 import type { PlaceDetail } from "../place-detail";
-import { offerSlides, type OfferSlide } from "./offers";
+import { rowOfferSlides, type OfferSlide } from "./offers";
 import { isReserveActionEnabled } from "./place-profile-actions";
 
 /** `note`: what the Off sheet says instead of its standard line (MESITA-3604). */
@@ -30,7 +30,9 @@ export function mesitaRowState(place: Pick<PlaceDetail, "reservations_enabled" |
   // Home's words, the best standard bonus only (Pato, MESITA-4162: "Prepay
   // (+30% Bonus), Welcome (+100% Bonus), VIP (+100% Bonus), Pay (5% Back).
   // JUST SHOW THIS. USE THE HIGHEST PREPAY THING").
-  const slides = offerSlides(money);
+  // The row's own words since MESITA-4184: Prepay first, "+N% Bonus", App
+  // Pay and Cash Pay (rowOfferSlides).
+  const slides = rowOfferSlides(money);
   // Mesita's own "Pause voucher sales" is not the place's choice (MESITA-3604).
   const paused = Object.values(money.unavailable ?? {}).includes("paused");
   return {
