@@ -113,13 +113,22 @@ export function offerDetailSlides(money: PlaceMoney | null | undefined): OfferSl
   for (const { key, section } of DETAIL_ORDER) {
     const line = money.catalog?.[key as keyof typeof money.catalog];
     if (!sell.has(key) || !line || line.price_cents <= 0) continue;
-    const text = `Prepay ${shortMoney(line.price_cents, currency)}, Get ${shortMoney(line.credit_cents, currency)}`;
-    slides.push({ key, lead: text, pill: "", short: text, spoken: text, section, tone: "" });
+    // "Prepay $1000MX, Get 20% Bonus" (Pato, MESITA-4157): the bonus over the price.
+    const pct = Math.round((line.bonus_cents * 100) / line.price_cents);
+    const text = `Prepay ${shortMoney(line.price_cents, currency)}, Get ${pct}% Bonus`;
+    slides.push({ key, lead: "", pill: text, short: "", spoken: text, section, tone: "" });
   }
   const bps = money.card_cashback_bps ?? 0;
   if (money.cashback && bps > 0) {
     const text = `Pay with Mesita, Get ${bps / 100}% Back`;
-    slides.push({ key: "cashback", lead: text, pill: "", short: text, spoken: text, section: null, tone: "" });
+    slides.push({ key: "cashback", lead: "", pill: text, short: "", spoken: text, section: null, tone: "" });
+  }
+  // The waiter's cash cashback (Pato, MESITA-4157: "Pay with Cash, get X%
+  // Back"): the place's own cash rate, when its Cash Cashback is on.
+  const cashBps = money.cash_cashback_bps ?? 0;
+  if (money.outside_cashback && cashBps > 0) {
+    const text = `Pay with Cash, Get ${cashBps / 100}% Back`;
+    slides.push({ key: "cash_cashback", lead: "", pill: text, short: "", spoken: text, section: null, tone: "" });
   }
   return slides;
 }
