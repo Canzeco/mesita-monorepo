@@ -19,6 +19,10 @@ const LEAD_MINUTES = 30;
 const WINDOW_MINUTES = 24 * 60;
 /** The Reserve page's slot step. */
 const STEP_MINUTES = 30;
+/** No table before 06:00 (MESITA-4185, Pato: "from 0 am to 6 am just don't
+ *  enable reservations nowhere"): a place open until 3 AM never shows 02:00.
+ *  The server refuses the same (_shared/reservation-hours.ts). */
+const EARLIEST_MINUTE = 6 * 60;
 const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
 export type ReserveTime = { day: string; time: string };
@@ -76,7 +80,7 @@ export function reserveTimes(place: Pick<PlaceDetail, "hours_table" | "timezone"
   for (let m = first; m <= nowMin + WINDOW_MINUTES; m += STEP_MINUTES) {
     const d = Math.floor(m / 1440);
     const mm = m % 1440;
-    if (!open(d, mm)) continue;
+    if (mm < EARLIEST_MINUTE || !open(d, mm)) continue;
     out.push({
       day: d === 0 ? "Today" : "Tomorrow",
       time: `${String(Math.floor(mm / 60)).padStart(2, "0")}:${String(mm % 60).padStart(2, "0")}`,
