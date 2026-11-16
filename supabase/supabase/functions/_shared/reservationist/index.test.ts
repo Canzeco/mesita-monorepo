@@ -102,11 +102,17 @@ Deno.test("a3 place lane: a found table is cancelled only on a yes after the rea
   // table when the answer is "no, esa no" (data loss), and a third search
   // keeps a place on the line asking the same thing.
   const wf = fleetWorkflows(ids()).a3;
-  const intoCancel = Object.entries(wf.edges).filter(([, e]) => e.target === "place_do_cancel");
-  for (const [id, e] of intoCancel) {
-    const fwd = e.forward_condition as { type: string; condition?: string };
-    assertEquals(fwd.type, "llm", `a3.${id}: the cancel is not gated by the place's answer`);
-    assert(/POSTERIOR/.test(fwd.condition ?? ""), `a3.${id}: the cancel does not wait for an answer after the question`);
+  // MESITA-4120: an LLM condition alone was judged on a3's own turn, so every
+  // way into a write tool leaves a node that waits for the place to speak.
+  const intoWrite = Object.entries(wf.edges).filter(([, e]) =>
+    e.target === "place_do_cancel" || e.target === "place_do_change"
+  );
+  assert(intoWrite.length > 0);
+  for (const [id, e] of intoWrite) {
+    const fwd = e.forward_condition as { type: string };
+    assertEquals(fwd.type, "llm", `a3.${id}: the write is not gated by the place's answer`);
+    const from = wf.nodes[e.source as string];
+    assertEquals(from.entry_behavior, "wait_for_user", `a3.${id}: leaves ${e.source}, which speaks before the place answers`);
   }
   const finds = Object.entries(wf.nodes).filter(([, n]) =>
     n.type === "tool" && (n.tools as Array<{ tool_id: string }>)[0].tool_id === "tool_a4_find_reservation"
@@ -118,4 +124,5 @@ Deno.test("a3 place lane: a found table is cancelled only on a yes after the rea
       (e.target === from && finds.includes(e.source as string) && e.backward_condition)
     );
   assert(!reachesFind("place_found_again"), "a3: the second search's node can search a third time");
+  assert(!reachesFind("place_answer_again"), "a3: the second search's answer can search a third time");
 });
