@@ -68,8 +68,8 @@ Deno.test("Stripe gets yen and Chilean pesos in whole units; the ledger keeps hu
   assertEquals(VOUCHER_CATALOG.voucher_vip.price_cents, 100_00);
   assertEquals(voucherFeeCents("voucher_200"), 10_00);
   assertEquals(VOUCHER_CATALOG.voucher_200.available_after_sec, 3600);
-  // Every voucher waits an hour except Story (MESITA-3323).
-  assertEquals(VOUCHER_CATALOG.voucher_welcome.available_after_sec, 3600);
+  // Every voucher waits an hour except Story (MESITA-3323) and Welcome (MESITA-4198).
+  assertEquals(VOUCHER_CATALOG.voucher_welcome.available_after_sec, 0);
   assertEquals(VOUCHER_CATALOG.voucher_vip.available_after_sec, 3600);
   assertEquals(VOUCHER_CATALOG.voucher_story.available_after_sec, 0);
 });
