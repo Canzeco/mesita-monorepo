@@ -96,7 +96,7 @@ const CHANGE_ASKED = llm(
  *  true then, so the condition is what is already known on entry. The node
  *  still speaks the read-back; the answer is heard in the waiting node. */
 const READ_ASKED = llm(
-  "La última búsqueda encontró al menos una reservación (found es true, tickets no está vacío).",
+  "La última búsqueda encontró al menos una reservación (found es true).",
   "found",
 );
 /** The place said no and another match is left: read it (way back). */

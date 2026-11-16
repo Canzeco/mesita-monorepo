@@ -792,7 +792,7 @@
         "target": "place_answer",
         "forward_condition": {
           "type": "llm",
-          "condition": "La última búsqueda encontró al menos una reservación (found es true, tickets no está vacío).",
+          "condition": "La última búsqueda encontró al menos una reservación (found es true).",
           "label": "found"
         },
         "backward_condition": {
@@ -874,7 +874,7 @@
         "target": "place_answer_again",
         "forward_condition": {
           "type": "llm",
-          "condition": "La última búsqueda encontró al menos una reservación (found es true, tickets no está vacío).",
+          "condition": "La última búsqueda encontró al menos una reservación (found es true).",
           "label": "found"
         },
         "backward_condition": {
