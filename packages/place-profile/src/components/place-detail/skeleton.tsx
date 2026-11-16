@@ -18,6 +18,8 @@ import {
   PLACE_STICKY_BLOCK_CLASS,
   PLACE_STICKY_ROW_CLASS,
   PROFILE_MESITA_ROW_CLASS,
+  PROFILE_OFFERS_SPAN_CLASS,
+  PROFILE_RESERVE_SPAN_CLASS,
   PROFILE_MESITA_TILE_BOX_CLASS,
   PROFILE_TILE_BOX_CLASS,
   PROFILE_TILES_ROW_CLASS,
@@ -233,13 +235,13 @@ export function PlaceDetailBodySkeleton({
       <span className="sr-only">Loading place</span>
       <ProfileSummarySkeleton />
       <div aria-hidden className="flex flex-col gap-3 px-4">
-        {/* The sticky block (MESITA-3330): two Mesita bones (MESITA-4151), then the strip
+        {/* The sticky block (MESITA-3330): two Mesita bones, 2/5 · 3/5 (MESITA-4156), then the strip
             itself, not a copy: its labels, its 3px blue underline. */}
         <div inert className={PLACE_STICKY_BLOCK_CLASS}>
           <div className={PLACE_STICKY_ROW_CLASS}>
             <div className={PROFILE_MESITA_ROW_CLASS}>
-              <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
-              <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
+              <Bone className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_RESERVE_SPAN_CLASS)} />
+              <Bone className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_OFFERS_SPAN_CLASS)} />
             </div>
           </div>
           <PlaceTabBar tab="place" onChange={noop} />
