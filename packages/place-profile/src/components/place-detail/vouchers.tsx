@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Banknote, Check, ChevronRight, CircleCheck, Crown, Info, Lock, Minus, PartyPopper, Plus, Smartphone, Ticket, type LucideIcon } from "lucide-react";
+import { Banknote, Check, ChevronRight, CircleCheck, Crown, Info, Lock, PartyPopper, Smartphone, Ticket, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -357,16 +357,6 @@ function whole(v: string): string {
   return noMx(v).replace(/\.00$/, "");
 }
 
-/** SELECT SEVERAL (MESITA-3841, Pato: "ENABLE TO SELECT MULTIPLE Vouchers";
- *  "One charge, basket"): the money vouchers take a quantity, up to the
- *  server's limit (consumer-web-buy-voucher, 1..5); Welcome and VIP are one
- *  each, the server's rule too. */
-const BASKET_MAX_QTY = 5;
-const QTY_VOUCHERS: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_200", "voucher_1000", "voucher_5000"]);
-function maxQty(key: MoneyVoucherKey): number {
-  return QTY_VOUCHERS.has(key) ? BASKET_MAX_QTY : 1;
-}
-
 function readyIn(key: MoneyVoucherKey): string {
   if (key === "voucher_story") return "after story";
   // Every voucher but Story waits an hour (MESITA-3323); Welcome and VIP
@@ -633,33 +623,20 @@ export function VouchersPane({
     const at = usableCards.findIndex((c) => c.id === payCard?.id);
     actions?.onSelectPayCard?.(usableCards[(at + 1) % usableCards.length].id);
   };
-  // SELECT, THEN BUY (MESITA-3487, Pato: "you select then you click Buy.
-  // selector at the right"). SEVERAL AT ONCE (MESITA-3841): each row toggles
-  // in or out of one basket, Small and Big with a quantity; Buy pays it all
-  // with one charge.
-  const [picked, setPicked] = useState<Partial<Record<MoneyVoucherKey, number>>>({});
-  const pick = (key: MoneyVoucherKey) => setPicked((b) => (b[key] ? b : { ...b, [key]: 1 }));
-  const toggle = (key: MoneyVoucherKey) =>
-    setPicked((b) => {
-      const next = { ...b };
-      if (next[key]) delete next[key];
-      else next[key] = 1;
-      return next;
-    });
-  const step = (key: MoneyVoucherKey, by: number) =>
-    setPicked((b) => {
-      const qty = Math.min(maxQty(key), (b[key] ?? 0) + by);
-      const next = { ...b };
-      if (qty <= 0) delete next[key];
-      else next[key] = qty;
-      return next;
-    });
+  // SELECT, THEN BUY (MESITA-3487, Pato: "you select then you click Buy").
+  // ONE VOUCHER PER PAYMENT (Pato, 2026-11-16, MESITA-4186: "Prepay must not
+  // be stocked"): ticking a row unticks the others, no quantity. Several in
+  // one basket with 1..5 of Small, Medium and Big from MESITA-3841; the
+  // server still takes a basket, the page sends one line.
+  const [picked, setPicked] = useState<MoneyVoucherKey | null>(null);
+  const pick = (key: MoneyVoucherKey) => setPicked(key);
+  const toggle = (key: MoneyVoucherKey) => setPicked((k) => (k === key ? null : key));
 
   // SIZES FIRST (MESITA-3484, Pato: "Small Bonus, Mid Bonus, Big Bonus /
   // Welcome Bonus, Story Bonus, VIP Bonus").
   const products = listedProducts();
   const anyBuyable = !loading && products.some((p) => buyable(p.key));
-  const chosen = loading ? [] : products.filter((p) => (picked[p.key] ?? 0) > 0 && buyable(p.key)).map((p) => ({ product: p, qty: Math.min(picked[p.key] ?? 0, maxQty(p.key)) }));
+  const chosen = loading ? [] : products.filter((p) => picked === p.key && buyable(p.key)).map((p) => ({ product: p, qty: 1 }));
   const items: VoucherBasketItem[] = chosen.map((c) => ({ voucher: c.product.key, qty: c.qty }));
   const units = chosen.reduce((n, c) => n + c.qty, 0);
   // The button's sums: the server's catalog lines, never a guess. A read
@@ -750,9 +727,8 @@ export function VouchersPane({
             const can = !loading && buyable(p.key);
             const face = FACES[p.key];
             const Mark = face.Mark;
-            const opening = buying && (picked[p.key] ?? 0) > 0;
-            const qty = can ? picked[p.key] ?? 0 : 0;
-            const on = qty > 0;
+            const opening = buying && picked === p.key;
+            const on = can && picked === p.key;
             const lock = guestLock(p.key);
             // TICK LEFT, BONUS RIGHT (Pato, 2026-11-16, MESITA-4186: "Select at
             // the left, Bonus amount ... at the right"; design review pick A):
@@ -821,38 +797,6 @@ export function VouchersPane({
                       {on ? <Check className="h-4 w-4" strokeWidth={3} /> : null}
                     </span>
                     {middle}
-                    {/* HOW MANY (MESITA-3841): Small and Big, once picked. The
-                        buttons are interactive content, so a tap on them never
-                        toggles the row. */}
-                    {on && maxQty(p.key) > 1 ? (
-                      <span className="flex shrink-0 items-center gap-1" data-voucher-qty={qty}>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            step(p.key, -1);
-                          }}
-                          disabled={buying}
-                          aria-label={`One ${p.name} voucher less`}
-                          className="border-border flex h-6 w-6 items-center justify-center rounded-full border disabled:opacity-40"
-                        >
-                          <Minus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-                        </button>
-                        <span className="w-4 text-center text-[15px] font-semibold tabular-nums" aria-live="polite">{qty}</span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            step(p.key, 1);
-                          }}
-                          disabled={buying || qty >= maxQty(p.key)}
-                          aria-label={`One more ${p.name} voucher`}
-                          className="border-border flex h-6 w-6 items-center justify-center rounded-full border disabled:opacity-40"
-                        >
-                          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-                        </button>
-                      </span>
-                    ) : null}
                     {chip}
                   </label>
                 ) : (
