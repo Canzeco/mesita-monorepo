@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Banknote, ChevronLeft, CreditCard, QrCode } from "lucide-react";
+import { Banknote, ChevronLeft, QrCode } from "lucide-react";
 import { PANEL_CLASS, PanelHeading } from "@/components/shared/Panel";
 import { QRCodeSVG } from "qrcode.react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -117,24 +117,10 @@ function StoryBody({ story }: { story: WaitingStory }) {
  *  The rates are the most a place gives; each place turns either on or off. */
 function CashBody() {
   return (
+    // KEEP IT SIMPLE (MESITA-4129, Pato: "remove the box How to Pay, just
+    // say in description Cash or terminal outside of Mesita App ... don't
+    // overexplain"): one panel, two rows, no footnote.
     <div className="flex flex-col gap-4">
-      <section className={cn(PANEL_CLASS, "divide-border flex flex-col divide-y")} aria-label="How you pay">
-        <div className="px-4 pt-4 pb-3">
-          <PanelHeading>How you pay</PanelHeading>
-        </div>
-        <CashbackLine
-          icon={<Banknote className="h-5 w-5" />}
-          tone="bg-muted text-foreground"
-          title="Pay with cash"
-          line="Hand it to the waiter"
-        />
-        <CashbackLine
-          icon={<CreditCard className="h-5 w-5" />}
-          tone="bg-muted text-foreground"
-          title="Pay at their terminal"
-          line="The place's card machine"
-        />
-      </section>
       <section className={cn(PANEL_CLASS, "divide-border flex flex-col divide-y")} aria-label="Credits back">
         <div className="px-4 pt-4 pb-3">
           <PanelHeading>Credits back</PanelHeading>
@@ -143,20 +129,17 @@ function CashBody() {
           icon={<QrCode className="h-5 w-5" />}
           tone="bg-foreground text-white"
           title="Mesita Pay"
-          line="In the app"
+          line="In the Mesita app"
           rate={{ text: "5% back", className: "bg-green-400 text-neutral-950" }}
         />
         <CashbackLine
           icon={<Banknote className="h-5 w-5" />}
           tone="bg-muted text-foreground"
           title="Cash or terminal"
-          line="Outside the app"
+          line="Outside the Mesita app"
           rate={{ text: "3% back", className: "bg-muted text-foreground" }}
         />
       </section>
-      <p className="text-muted-foreground px-1 text-sm leading-relaxed">
-        Each place sets its own: Mesita Pay 5% or off, cash 3% or off.
-      </p>
     </div>
   );
 }

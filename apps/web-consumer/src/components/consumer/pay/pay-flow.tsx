@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect } from "react";
 import { SizedImg } from "@mesita/place-profile";
-import { ChevronLeft, ChevronRight, Lock, MapPin, PenLine, ReceiptText, Wallet, X, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, HandCoins, Lock, MapPin, PenLine, ReceiptText, Wallet, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { PayPlace } from "@/lib/api/wallet";
 import { Button } from "@/components/ui/button";
@@ -170,26 +170,26 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
  *  Pay when credits cover everything (lib/guest-pay-stages.ts). */
 export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Method", "Card", "Pay", "Sign"] as const;
 
-/** WHAT THE BAR SHOWS: FOUR (MESITA-4128, Pato: "in progress bar, don't
- *  mention all steps to make it look shorter. Only show bill, method, pay,
- *  sign. If I am in tip still, keep it on bill"). The seven steps stay the
- *  flow; the bar groups them: Pick, Bill and Tip read Bill; Method and Card
- *  read Method; then Pay; then Sign. */
-const SHOWN_STEPS = ["Bill", "Method", "Pay", "Sign"] as const;
+/** WHAT THE BAR SHOWS: FIVE (MESITA-4129, Pato: "don't mention all steps
+ *  to make it look shorter ... better five steps: (Pick hidden) Bill, Tip,
+ *  Method, Pay (Card hidden), Sign"). The seven steps stay the flow; Pick
+ *  reads Bill and Card reads Pay. */
+const SHOWN_STEPS = ["Bill", "Tip", "Method", "Pay", "Sign"] as const;
 const SHOWN_AT: Record<(typeof PAY_FLOW_STEPS)[number], number> = {
   Pick: 0,
   Bill: 0,
-  Tip: 0,
-  Method: 1,
-  Card: 1,
-  Pay: 2,
-  Sign: 3,
+  Tip: 1,
+  Method: 2,
+  Card: 3,
+  Pay: 3,
+  Sign: 4,
 };
 
 /** Each shown step's icon beside its name (MESITA-4125, Pato: "use icons in
  *  the current steps for more clarity"). */
 const SHOWN_ICONS: Record<(typeof SHOWN_STEPS)[number], LucideIcon> = {
   Bill: ReceiptText,
+  Tip: HandCoins,
   Method: Wallet,
   Pay: Lock,
   Sign: PenLine,
@@ -272,8 +272,8 @@ export function StepNav({
           <ChevronRight className="h-6 w-6" aria-hidden />
         </button>
       </div>
-      {/* Four segments (MESITA-4128): done and current ink, not yet grey. */}
-      <ol className="mt-1 grid grid-cols-4 gap-1.5" aria-label={`Step ${shownAt + 1} of ${SHOWN_STEPS.length}: ${name}`}>
+      {/* Five segments (MESITA-4129): done and current ink, not yet grey. */}
+      <ol className="mt-1 grid grid-cols-5 gap-1.5" aria-label={`Step ${shownAt + 1} of ${SHOWN_STEPS.length}: ${name}`}>
         {SHOWN_STEPS.map((step, i) => (
           <li
             key={step}
