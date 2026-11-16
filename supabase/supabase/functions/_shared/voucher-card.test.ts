@@ -24,7 +24,7 @@ function row(over: Partial<PurchaseCardRow> = {}): PurchaseCardRow {
     place_id: "p",
     voucher: "voucher_1000",
     amount_cents: 100000,
-    bonus_cents: 30000,
+    bonus_cents: 20000,
     stripe_account_id: "acct_place",
     stripe_checkout_session_id: null,
     stripe_payment_intent_id: null,
@@ -126,7 +126,7 @@ Deno.test("voucher card: clone, create unconfirmed, store, confirm — keyed by 
     consumer_id: "c",
     voucher: "voucher_1000",
     amount_cents: "100000",
-    bonus_cents: "30000",
+    bonus_cents: "20000",
   });
   assertEquals(calls[2].params, { use_stripe_sdk: true });
   // Stored before confirmed; credited once with the voucher's hour.
@@ -304,7 +304,7 @@ Deno.test("basket: three rows, ONE PaymentIntent for the sum, stored on every ro
   assertEquals(meta.purchase_id, PURCHASE);
   assertEquals(meta.basket, "3");
   assertEquals(meta.amount_cents, "140000");
-  assertEquals(meta.bonus_cents, "34000");
+  assertEquals(meta.bonus_cents, "24000");
   assertEquals(meta.basket_items, "voucher_1000x1,voucher_200x2");
   const hour = new Date(NOW + 3600_000).toISOString();
   assertEquals(s.log, ["openPi:pi_b", `credit:pi_b:${hour}`, `credit@${F1}:pi_b:${hour}`, `credit@${F2}:pi_b:${hour}`]);

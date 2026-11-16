@@ -104,8 +104,8 @@ export type VoucherReason =
  *  · Big · VIP, Big being the MX$1,000 one). Nothing else is removed: the
  *  switches, the catalog lines and Story's gates stay, and vouchers already
  *  bought keep working. Deleting a line brings that voucher back. MEDIUM IS
- *  BACK (Pato, 2026-11-15, MESITA-4056): voucher_5000 is the MX$500 +20%
- *  Medium voucher, on sale again. */
+ *  BACK (Pato, 2026-11-15, MESITA-4056). Since MESITA-4152 Medium is
+ *  voucher_1000 (MX$1,000 +20%) and Big voucher_5000 (MX$5,000 +30%). */
 export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {
   voucher_story: "not_yet",
 };

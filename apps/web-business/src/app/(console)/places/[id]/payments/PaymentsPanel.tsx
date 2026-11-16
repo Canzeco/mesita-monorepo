@@ -103,10 +103,10 @@ type Product = { key: PaymentKey; name: string; line: string; value: string; ton
 // 20% · 10 USD 10% · 100 USD 20% ... all small must start with 1 and big be
 // 10X that"). TWIN of VOUCHER_PRICE_CENTS in _shared/money.ts.
 // The base price per currency, in whole units (MESITA-3943: the three); Small
-// 2×, Medium 5×, Big 10× (MESITA-4056), Welcome · Story · VIP at the base. TWIN of
+// 2×, Medium 10×, Big 50× (MESITA-4152), Welcome · Story · VIP at the base. TWIN of
 // VOUCHER_CURRENCY_LIST in _shared/money.ts.
 const SMALL: Record<string, number> = { MXN: 100, USD: 10, CAD: 10 };
-const TIMES: Record<VoucherKey, number> = { voucher_200: 2, voucher_1000: 10, voucher_5000: 5, voucher_welcome: 1, voucher_story: 1, voucher_vip: 1 };
+const TIMES: Record<VoucherKey, number> = { voucher_200: 2, voucher_1000: 10, voucher_5000: 50, voucher_welcome: 1, voucher_story: 1, voucher_vip: 1 };
 const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = Object.fromEntries(
   Object.entries(SMALL).map(([c, small]) => [
     c,
@@ -119,8 +119,8 @@ type VoucherSeed = Omit<Product, "line" | "key"> & { key: VoucherKey; bps: numbe
 
 const STANDARD: VoucherSeed[] = [
   { key: "voucher_200", name: "Small Voucher", bps: 1000, value: "+10%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
-  { key: "voucher_5000", name: "Medium Voucher", bps: 2000, value: "+20%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
-  { key: "voucher_1000", name: "Big Voucher", bps: 3000, value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
+  { key: "voucher_1000", name: "Medium Voucher", bps: 2000, value: "+20%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
+  { key: "voucher_5000", name: "Big Voucher", bps: 3000, value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
 ];
 
 const SPECIAL: VoucherSeed[] = [

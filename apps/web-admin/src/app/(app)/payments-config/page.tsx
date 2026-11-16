@@ -26,12 +26,12 @@ export const dynamic = "force-dynamic";
 const NAME: Record<string, string> = {
   voucher_welcome: "Welcome",
   voucher_200: "Small",
-  voucher_1000: "Big",
-  voucher_5000: "Medium",
+  voucher_1000: "Medium",
+  voucher_5000: "Big",
   voucher_story: "Story",
   voucher_vip: "VIP",
 };
-const ORDER = ["voucher_welcome", "voucher_200", "voucher_5000", "voucher_1000", "voucher_story", "voucher_vip"];
+const ORDER = ["voucher_welcome", "voucher_200", "voucher_1000", "voucher_5000", "voucher_story", "voucher_vip"];
 const WHO: Record<string, string> = {
   voucher_welcome: "One per guest per place",
   voucher_200: "As many as they like",

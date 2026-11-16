@@ -34,7 +34,7 @@ describe("offerSlides", () => {
       card_cashback_bps: 700,
       sell: ["voucher_200", "voucher_5000", "voucher_vip", "voucher_welcome"],
     });
-    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Welcome +100%", "VIP +100%", "Pay 7% Back", "Prepay +20%"]);
+    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Welcome +100%", "VIP +100%", "Pay 7% Back", "Prepay +30%"]);
     expect(slides.map((s) => s.section)).toEqual(["special", "special", null, "prepayment"]);
   });
 });

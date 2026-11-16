@@ -127,11 +127,14 @@ export type VoucherEntry = {
  *  taken back before merge). THREE SIZES (Pato, 2026-11-15, MESITA-4056:
  *  "$200MX +10% Small · $500MX +20% Medium · $1000MX +30% Big"): Small is
  *  2× the currency's base, Medium 5× and back on sale under the old
- *  voucher_5000 key (never bought), Big 10× at +30%. */
+ *  voucher_5000 key (never bought), Big 10× at +30%. EACH KEY ITS OWN PRICE
+ *  (Pato, 2026-11-16, MESITA-4152: "$200MX 10% Small · $1,000MX 20% Medium ·
+ *  $5,000MX 30% Big"): Medium is voucher_1000 (MX$1,000 +20%, 10×), Big is
+ *  voucher_5000 (MX$5,000 +30%, 50×). Purchases keep their stored amounts. */
 export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   voucher_200: { price_cents: 200_00, bonus_bps: 1000, kind: "open", available_after_sec: 3600 },
-  voucher_1000: { price_cents: 1_000_00, bonus_bps: 3000, kind: "open", available_after_sec: 3600 },
-  voucher_5000: { price_cents: 500_00, bonus_bps: 2000, kind: "open", available_after_sec: 3600 },
+  voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: 3600 },
+  voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: 3600 },
   voucher_welcome: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 3600 },
   voucher_story: { price_cents: 100_00, bonus_bps: 3000, kind: "earned", available_after_sec: 0 },
   voucher_vip: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 3600 },
@@ -173,7 +176,7 @@ export const UNSUPPORTED_COUNTRIES: readonly { region: string; why: string }[] =
 for (const r of VOUCHER_CURRENCY_LIST) {
   const s = r.small * 100;
   VOUCHER_PRICE_CENTS[r.code.toLowerCase()] = {
-    voucher_200: s * 2, voucher_1000: s * 10, voucher_5000: s * 5, voucher_welcome: s, voucher_story: s, voucher_vip: s,
+    voucher_200: s * 2, voucher_1000: s * 10, voucher_5000: s * 50, voucher_welcome: s, voucher_story: s, voucher_vip: s,
   };
 }
 
