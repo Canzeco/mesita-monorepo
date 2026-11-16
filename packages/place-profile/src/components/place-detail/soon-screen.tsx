@@ -12,13 +12,15 @@ import { PlaceEmptyScreen } from "./empty-screen";
 // this place doesn't have a menu. but mention that mesita will launch menu
 // for the next version"): it read "The menu is coming soon / This place's
 // menu lands here shortly." until then. "Smart menus" since MESITA-3989
-// (Pato: "we are adding smart menus").
+// (Pato: "we are adding smart menus"). "Order & Pay" since MESITA-4175
+// (Pato: "table orders and pickup orders … not delivery orders"): it names
+// both kinds and says plainly there is no delivery.
 export function SoonScreen() {
   return (
     <PlaceEmptyScreen
       icon={BookOpen}
-      title="Smart menus are coming to Mesita"
-      line="We're adding smart menus in the next version of Mesita."
+      title="Order & Pay is coming to Mesita"
+      line="Order and pay from the menu at your table, or order ahead and pick it up. Pickup only, no delivery."
     />
   );
 }
