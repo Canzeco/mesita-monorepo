@@ -162,10 +162,12 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
   );
 }
 
-/** The five steps (MESITA-3878; Tip its own since MESITA-3896): Open is
- *  where the flow starts and the Receipt where it ends, so neither is a
- *  segment. */
-export const PAY_FLOW_STEPS = ["Bill", "Tip", "Method", "Pay", "Sign"] as const;
+/** The seven steps (MESITA-4117, Pato: "THE PAYMENT FLOW MUST HAVE 7 STEPS,
+ *  ONE HIDDEN OPTIONAL: Pick, Bill, Tip, Method, Card, Pay, Sign"; five until
+ *  then, MESITA-3878). Pick is the Pay tab's list of places, done on every
+ *  later step; Card is skipped for cash, Card and
+ *  Pay when credits cover everything (lib/guest-pay-stages.ts). */
+export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Method", "Card", "Pay", "Sign"] as const;
 
 /** A step's body: its panels stacked FROM THE TOP, 16px apart, the empty
  *  room below them (MESITA-4077, Pato: "why is the bill box so separated
@@ -181,21 +183,32 @@ export function StepBody({ children, className }: { children: React.ReactNode; c
 }
 
 /** The step nav (MESITA-4061, Pato: "steps with arrows to nav across them
- *  < >"): ‹ one step back, "Tip · 2 of 5", › the footer's Next. An arrow
+ *  < >"): ‹ one step back, "Tip · 3 of 7", › the footer's Next. An arrow
  *  that cannot act is hidden (its 44px slot kept, gone from the screen
  *  reader); › exists only where the footer's button is a plain Next, never
- *  where it moves money or leaves the app. Under it, five thin segments,
- *  done and current ink. A pure view: the screen owns the back logic. */
+ *  where it moves money or leaves the app. Under it, seven thin segments
+ *  (MESITA-4117), done and current ink, skipped ones dashed. A pure view:
+ *  the screen owns the back logic. */
 export function StepNav({
   at,
   onBack,
   next,
+  skipped = [],
 }: {
   at: number;
   onBack?: () => void;
   next?: { onClick: () => void; disabled: boolean };
+  /** Steps this payment skips: a dashed segment, and the arrows' labels
+   *  name the step they really reach (MESITA-4117). */
+  skipped?: readonly number[];
 }) {
   const name = PAY_FLOW_STEPS[at];
+  // The neighbours an arrow really reaches, past skipped steps.
+  let prev = at - 1;
+  while (prev > 0 && skipped.includes(prev)) prev -= 1;
+  let following = at + 1;
+  while (following < PAY_FLOW_STEPS.length - 1 && skipped.includes(following)) following += 1;
+  const backLabel = prev <= 0 ? "Back to places" : `Back to ${PAY_FLOW_STEPS[prev]}`;
   const arrow = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent";
   return (
     // MESITA-4072 (Pato: "this payment workflow, all steps, maybe in boxes
@@ -208,7 +221,7 @@ export function StepNav({
           type="button"
           onClick={onBack}
           className={cn(arrow, !onBack && "invisible")}
-          aria-label={at > 0 ? `Back to ${PAY_FLOW_STEPS[at - 1]}` : "Back"}
+          aria-label={backLabel}
           tabIndex={onBack ? undefined : -1}
           data-pay-back
         >
@@ -223,16 +236,25 @@ export function StepNav({
           onClick={next?.onClick}
           disabled={next?.disabled}
           className={cn(arrow, !next && "invisible")}
-          aria-label={at < PAY_FLOW_STEPS.length - 1 ? `Next: ${PAY_FLOW_STEPS[at + 1]}` : "Next"}
+          aria-label={following < PAY_FLOW_STEPS.length ? `Next: ${PAY_FLOW_STEPS[following]}` : "Next"}
           tabIndex={next ? undefined : -1}
           data-pay-next
         >
           <ChevronRight className="h-6 w-6" aria-hidden />
         </button>
       </div>
-      <ol className="mt-1 grid grid-cols-5 gap-1.5" aria-label={`Step ${at + 1} of ${PAY_FLOW_STEPS.length}: ${name}`}>
+      {/* Segments only, one text line above (MESITA-4117): done and current
+          ink, not yet grey, skipped a dashed hairline on nothing. */}
+      <ol className="mt-1 grid grid-cols-7 gap-1.5" aria-label={`Step ${at + 1} of ${PAY_FLOW_STEPS.length}: ${name}`}>
         {PAY_FLOW_STEPS.map((step, i) => (
-          <li key={step} aria-current={i === at ? "step" : undefined} className={cn("h-1 rounded-full", i <= at ? "bg-foreground" : "bg-border")} />
+          <li
+            key={step}
+            aria-current={i === at ? "step" : undefined}
+            className={cn(
+              "h-1 rounded-full",
+              skipped.includes(i) && i !== at ? "border-border border border-dashed bg-transparent" : i <= at ? "bg-foreground" : "bg-border",
+            )}
+          />
         ))}
       </ol>
     </div>
@@ -250,14 +272,14 @@ export function PayTop({
   place: PayPlace | null;
   name?: string | null;
   onChoose?: () => void;
-  step?: { at: number; onBack?: () => void; next?: { onClick: () => void; disabled: boolean } };
+  step?: { at: number; onBack?: () => void; next?: { onClick: () => void; disabled: boolean }; skipped?: readonly number[] };
 }) {
   return (
     <Panel className="shrink-0" data-pay-top>
       <div className="flex px-4 py-1.5">
         <PlaceBar place={place} name={name} onChoose={onChoose} />
       </div>
-      {step ? <StepNav at={step.at} onBack={step.onBack} next={step.next} /> : null}
+      {step ? <StepNav at={step.at} onBack={step.onBack} next={step.next} skipped={step.skipped} /> : null}
     </Panel>
   );
 }
