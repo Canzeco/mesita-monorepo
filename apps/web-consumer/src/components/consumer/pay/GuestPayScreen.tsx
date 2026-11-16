@@ -14,7 +14,7 @@ import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } f
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { acceptCardsAnswer, type CardsLoad, cardsFailure, loadedCards, pickCard } from "@/lib/pay-cards";
-import { guardStage, initialStage, payBackStage, payNextStage, STEP, skippedSegments } from "@/lib/guest-pay-stages";
+import { guardStage, initialStage, PAY_CARD_REFUSALS, payBackStage, payNextStage, STEP, skippedSegments } from "@/lib/guest-pay-stages";
 import {
   clearGuestDraft,
   outcomeUnknownAfter,
@@ -79,6 +79,8 @@ type Blocked = { kind: "draft"; placeId: string; name: string | null } | { kind:
 const STILL_WORKING = "Still working. Tap again to try again.";
 /** Refusals that mean this card, not the bill: it is never preselected again. */
 const CARD_REFUSED = new Set(["card_declined", "card_needs_auth", "card_failed", "card_not_found", "locked"]);
+/** Refusals about the place or the amount, not the card: another card won't help. */
+const PLACE_CARD_REFUSALS = new Set(["below_minimum", "card_unavailable", "cards_off"]);
 const CALL_LIMIT_MS = 25_000;
 class SlowCall extends Error {}
 
@@ -164,6 +166,10 @@ export function GuestPayScreen({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notPaid, setNotPaid] = useState<string | null>(null);
+  // A card refusal on Pay (MESITA-4121): the guest stays on Pay with the
+  // refusal line; the card shown is the one refused, and the main button
+  // leads to another card (or another way when the place refused cards).
+  const [payRefusal, setPayRefusal] = useState<{ code: string; cardId: string | null } | null>(null);
   const requestId = useRef<string | null>(null);
   // A pay call timed out or lost the network: the bill may be open on the
   // server. Until that same request id answers, Cancel bill and ‹ are locked
@@ -301,6 +307,7 @@ export function GuestPayScreen({
     else if (!typing) setTyping(true);
     else return false;
     setError(null);
+    setPayRefusal(null);
     return true;
   }
   useEffect(() => {
@@ -327,6 +334,7 @@ export function GuestPayScreen({
     if (!place || busy || billCents <= 0) return;
     setBusy(true);
     setError(null);
+    setPayRefusal(null);
     requestId.current ??= crypto.randomUUID();
     const card = w === "card" ? leftCents : 0;
     const cash = w === "cash" ? leftCents : 0;
@@ -362,6 +370,13 @@ export function GuestPayScreen({
         return;
       }
       setBusy(false);
+      // Refused before the bill opened (MESITA-4121): nothing is held, so the
+      // guest stays on Pay; the next tap sends a fresh request id.
+      if (w === "card" && code && PAY_CARD_REFUSALS.has(code)) {
+        setPayRefusal({ code, cardId: chosenCard });
+        setError(TAB_REFUSAL[code] ?? NOT_PAID_REASON[code] ?? NETWORK_FAILURE);
+        return;
+      }
       if (code && NOT_PAID_REASON[code]) {
         setNotPaid(NOT_PAID_REASON[code]);
         return;
@@ -805,6 +820,7 @@ export function GuestPayScreen({
       if (!chosenCard) return;
       // The draft always holds the card that Pay will charge.
       setCardId(chosenCard);
+      setPayRefusal(null);
       setStage("pay");
     };
     const pickable = (cards ?? []).length < 3;
@@ -914,7 +930,24 @@ export function GuestPayScreen({
     </p>
   );
   if (way === "card") {
-    const guestFace = card ? cardFace(card.brand, brandLabel(card.brand)) : null;
+    // After a refusal the body keeps the refused card (the one the line is
+    // about); the next card is picked on Card.
+    const shownCard = (payRefusal && cards?.find((c) => c.id === payRefusal.cardId)) || card;
+    const guestFace = shownCard ? cardFace(shownCard.brand, brandLabel(shownCard.brand)) : null;
+    // A refusal about this card leads to another card; the place refusing
+    // cards (or the card part being too small) leads back to Method.
+    const placeRefused = payRefusal !== null && PLACE_CARD_REFUSALS.has(payRefusal.code);
+    const tryAnother = () => {
+      setError(null);
+      setPayRefusal(null);
+      setStage(placeRefused ? "method" : "card");
+    };
+    const payOutside = () => {
+      setError(null);
+      setPayRefusal(null);
+      setMethod("cash");
+      setStage("method");
+    };
     return frame(
       <>
         {top(STEP.pay, backArrow, undefined, paySkipped)}
@@ -934,7 +967,7 @@ export function GuestPayScreen({
               ) : (
                 <Skeleton className="h-36 w-56 rounded-2xl" />
               )
-            ) : card ? (
+            ) : shownCard ? (
               <>
                 <span className="flex flex-col items-center gap-1">
                   <span className="text-muted-foreground text-lg font-semibold">Charge</span>
@@ -945,11 +978,11 @@ export function GuestPayScreen({
                   className={cn("flex h-36 w-56 flex-col justify-between rounded-2xl p-5 text-left shadow-md", guestFace?.className)}
                   style={guestFace?.style}
                   role="img"
-                  aria-label={`${brandLabel(card.brand)} ending ${card.last4}`}
+                  aria-label={`${brandLabel(shownCard.brand)} ending ${shownCard.last4}`}
                   data-guest-card
                 >
                   {guestFace?.mark}
-                  <span className="text-lg font-semibold tracking-widest tabular-nums">•••• {card.last4}</span>
+                  <span className="text-lg font-semibold tracking-widest tabular-nums">•••• {shownCard.last4}</span>
                 </span>
                 {backLine}
                 <p className="text-muted-foreground flex max-w-xs items-center justify-center gap-2 text-sm">
@@ -961,13 +994,25 @@ export function GuestPayScreen({
           </PaySection>
         </StepBody>
         {status}
+        {/* Pay outside the app: a quiet second way out of a refusal, only
+            where the place takes cash (MESITA-4121). */}
+        {payRefusal && cashOn ? (
+          <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-2 shrink-0")} onClick={payOutside} data-guest-pay-outside>
+            Pay outside the app
+          </button>
+        ) : null}
         <StepFooter
           onCancel={askCancel}
           cancelDisabled={cancelLocked}
           // "Pay in one click" (MESITA-4106, Pato: "the button must say pay
           // in one click"); the amount is the body's headline. With no card
-          // resolvable guardStage shows Card instead.
-          primary={{ label: "Pay in one click", busy, disabled: held || !card, onClick: () => void openBill("card") }}
+          // resolvable guardStage shows Card instead. After a refusal the
+          // main button leads away from the refused card (MESITA-4121).
+          primary={
+            payRefusal
+              ? { label: placeRefused ? "Choose another way" : "Try another card", busy: false, disabled: held, onClick: tryAnother }
+              : { label: "Pay in one click", busy, disabled: held || !card, onClick: () => void openBill("card") }
+          }
         />
       </>,
       "app",

@@ -137,10 +137,24 @@ export function clearGuestDraft(placeId: string) {
   writeDraft(placeId, null);
 }
 
-/** "Start again" lands on the bill, everything typed, keypad down. */
-export function reopenGuestDraft(placeId: string) {
+/** "Start again" reopens what was typed, keypad down, at the given stage
+ *  (MESITA-4121: Card when the bill's card failed, Method when it expired or
+ *  was rejected, Bill otherwise). At Card the card that failed is excluded:
+ *  listed, never preselected. A draft older than 30 minutes is gone, so the
+ *  bill opens empty. */
+export function reopenGuestDraft(placeId: string, stage: Stage = "bill") {
   const d = readDraft(placeId);
-  if (d) writeDraft(placeId, { ...d, stage: "bill", typing: false, sentTabId: null });
+  if (!d) return;
+  const failedCard = stage === "card" ? (d.cardId ?? d.refusedCardId ?? null) : (d.refusedCardId ?? null);
+  writeDraft(placeId, {
+    ...d,
+    stage,
+    typing: false,
+    sentTabId: null,
+    method: stage === "card" ? "card" : d.method,
+    cardId: stage === "card" ? null : d.cardId,
+    refusedCardId: failedCard,
+  });
 }
 
 // ONE PAYMENT PER TAP (MESITA-4061). A pay call that times out or loses the

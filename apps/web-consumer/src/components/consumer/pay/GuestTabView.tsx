@@ -16,7 +16,7 @@ import { useWakeLock } from "@/lib/use-wake-lock";
 import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
 import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PaySection, PayTop, StepBody, StepFooter, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
-import { STEP, skippedFromParts } from "@/lib/guest-pay-stages";
+import { STEP, skippedFromParts, startAgainStage } from "@/lib/guest-pay-stages";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
 // /pay/bill/<id>, after App Pay, "I gave the cash" or credits alone:
@@ -277,7 +277,8 @@ export function GuestTabView({
           size="lg"
           className="min-h-12 w-full shrink-0 text-base font-semibold"
           onClick={() => {
-            reopenGuestDraft(tab.place.id);
+            // Start again opens where the bill failed (MESITA-4121).
+            reopenGuestDraft(tab.place.id, startAgainStage({ endReason: tab.end_reason ?? cardError, cardFailed }));
             onPayAgain(tab.place.id);
           }}
         >
