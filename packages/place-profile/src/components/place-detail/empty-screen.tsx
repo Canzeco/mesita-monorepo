@@ -10,7 +10,10 @@ import {
 type PlaceEmptyScreenProps = {
   icon: LucideIcon;
   title: string;
-  line: string;
+  line?: string;
+  /** Short lines under the title, one per row (MESITA-4182: the Smart Menu
+   *  Soon screen lists its features instead of a paragraph). */
+  items?: readonly string[];
 };
 
 /** Overview while a Google-only profile is being created (MESITA-2685).
@@ -27,16 +30,25 @@ export const NO_OVERVIEW: PlaceEmptyScreenProps = {
 // A tab with nothing to show draws this one screen: the Soon tab (Products), a place with no reviews yet (MESITA-2682) and Overview while the
 // profile is created (NO_OVERVIEW). The place scale (MESITA-2636): a grey
 // chip with an ink glyph, an Inter title, a 14px muted line. No next step.
-export function PlaceEmptyScreen({ icon: Icon, title, line }: PlaceEmptyScreenProps) {
+export function PlaceEmptyScreen({ icon: Icon, title, line, items }: PlaceEmptyScreenProps) {
   return (
     <div className="flex flex-col items-center px-6 py-16 text-center">
       <span className={PLACE_EMPTY_ICON_CLASS}>
         <Icon className="h-7 w-7" strokeWidth={2} aria-hidden />
       </span>
       <h3 className={cn(PLACE_SCREEN_TITLE_CLASS, "mt-4")}>{title}</h3>
-      <p className="text-muted-foreground mt-1.5 max-w-[30ch] text-sm leading-relaxed">
-        {line}
-      </p>
+      {line ? (
+        <p className="text-muted-foreground mt-1.5 max-w-[30ch] text-sm leading-relaxed">
+          {line}
+        </p>
+      ) : null}
+      {items?.length ? (
+        <ul className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
+          {items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }
