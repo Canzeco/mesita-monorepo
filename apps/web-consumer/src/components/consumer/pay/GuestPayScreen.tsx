@@ -35,7 +35,7 @@ import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { CardBrandChip, cardFace } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountInline, AmountKeypad } from "./AmountKeypad";
-import { CreditsCardChip, CreditsPill } from "@/components/consumer/wallet/WalletLists";
+import { CASH_GREEN, CreditsCardChip, CreditsPill } from "@/components/consumer/wallet/WalletLists";
 import { BAD, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, StepBody, StepFooter } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
@@ -744,7 +744,7 @@ export function GuestPayScreen({
                   on={way === "cash"}
                   off={cashWhy}
                   icon={<Banknote />}
-                  tone="bg-green-400 text-neutral-950"
+                  tone={CASH_GREEN}
                   id="cash"
                   title="Pay outside the app"
                   line="Cash or the place's card terminal"

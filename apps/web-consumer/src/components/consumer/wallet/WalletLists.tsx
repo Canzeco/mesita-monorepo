@@ -137,10 +137,15 @@ function RowText({ title, line }: { title: ReactNode; line?: ReactNode }) {
 }
 
 /** The method chips, also the rows of Pay's "How do you pay?" (MESITA-3748). */
+/** CASH'S OWN GREEN (MESITA-4125, Pato: "Mesita app green and cash same
+ *  green is super confusing ... use the cash green that is usually of the
+ *  money bills"): dollar-bill green, never Mesita's bright green-400. */
+export const CASH_GREEN = "bg-[#85bb65] text-neutral-950";
+
 export function CashChip() {
   return (
-    <span className={cn(CHIP, "bg-green-400")} aria-hidden>
-      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-950 text-xs font-bold text-green-400">$</span>
+    <span className={cn(CHIP, CASH_GREEN)} aria-hidden>
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-950 text-xs font-bold text-white">$</span>
     </span>
   );
 }
