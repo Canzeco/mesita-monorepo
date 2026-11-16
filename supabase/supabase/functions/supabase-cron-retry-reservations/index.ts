@@ -77,6 +77,7 @@ import {
   OUTCOME_TICKET_COLUMNS,
   owedCallStep,
   readConversation,
+  NOT_BOOKED_STATES,
   REAP_UNPLACED,
   STALE_CLAIM_MS,
   supabaseOutcomeStore,
@@ -310,7 +311,9 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
   const { data: cbRows } = await admin
     .from("reservation_tickets")
     .select("id")
-    .in("state", ["pending", "confirmed"])
+    // A not-booked guest call (MESITA-4188) rides a declined, unreachable or
+    // unresolved ticket; the engine re-checks the guest's choice.
+    .in("state", ["pending", "confirmed", ...NOT_BOOKED_STATES])
     .eq("callback_state", "scheduled")
     .not("callback_next_attempt_at", "is", null)
     .lte("callback_next_attempt_at", nowIso)

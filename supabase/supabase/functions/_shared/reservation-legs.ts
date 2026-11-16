@@ -52,6 +52,8 @@ export type LegCallContext =
   | "change_declined"
   | "confirmation"
   | "counter_offer"
+  /** a2 tells the guest Mesita couldn't get the table (MESITA-4188). */
+  | "not_booked"
   | "reminder"
   | "cancelled_by_venue";
 

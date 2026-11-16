@@ -37,7 +37,7 @@ import { invokeInternalCaller } from "./internal.ts";
 import { ATTEMPTS } from "./reservations-config.ts";
 import { nextAttemptAt } from "./reservation-retry.ts";
 import { PLACE_ZONE_COLUMNS, placeZone } from "./local-time.ts";
-import { nextGuestCallAt, spentLadderPatch } from "./reservation-callback.ts";
+import { deferToCallableHour, nextGuestCallAt, spentLadderPatch } from "./reservation-callback.ts";
 import { REMINDER_MAX_ATTEMPTS, reminderParkPatch } from "./reservation-reminder.ts";
 import { classifyFailedConversation, noticeNextAt, outageRetryAt } from "./reservation-run.ts";
 import type { ReservationAttempt, ReservationPatch } from "./reservation-doc.ts";
@@ -268,10 +268,14 @@ export function decideLegOutcome(
     classifyFailedConversation(r.errorCode) === "platform";
   const outageRetries = num(t.outage_retries);
 
-  if (leg === "book") return decideBooking(t, r, place, platformKill, now);
+  if (leg === "book") return withNotBookedCall(decideBooking(t, r, place, platformKill, now), t, zone, reservedAt, now);
 
   if (leg === "callback") {
-    const label = t.state === "confirmed" ? "confirmed" : "counter-offer";
+    const label = t.state === "confirmed"
+      ? "confirmed"
+      : NOT_BOOKED_STATES.includes(t.state)
+      ? "not booked"
+      : "counter-offer";
     const n = num(t.callback_attempts) + 1;
     if (r.answered) {
       return {
@@ -432,6 +436,47 @@ export function decideLegOutcome(
     };
   }
   return park(r.final ? "no answer" : "outcome unknown");
+}
+
+// ── "If we can't book you: App + call me" (MESITA-4188) ─────────────────────
+// Pato: "On Rejection (app + call me) (if the reservation is canceled or
+// rejected or the request doesn't fit)". A run that ends without a table —
+// the place said no, nobody who books answered, or the answer was unclear —
+// rings the guest who asked for a call: a2's `not_booked` call, inside the
+// guest politeness window (09:00–22:00 place-local; held to 09:00 outside
+// it), never after the table's time. The app is told either way.
+
+export const NOT_BOOKED_STATES: readonly string[] = ["declined", "unreachable", "unresolved"];
+
+function withNotBookedCall(
+  d: LegDecision,
+  t: OutcomeTicket,
+  zone: string | null,
+  reservedAt: Date | null,
+  now: Date,
+): LegDecision {
+  const state = (d.patch as Record<string, unknown>).state;
+  if (typeof state !== "string" || !NOT_BOOKED_STATES.includes(state)) return d;
+  if (t.consumer_notify !== "call") return d;
+  const { at, deferred } = deferToCallableHour(now, zone);
+  if (reservedAt && at.getTime() >= reservedAt.getTime()) return d;
+  const last = (d.patch as Record<string, unknown>).last_call_state;
+  return {
+    ...d,
+    patch: {
+      ...d.patch,
+      callback_state: "scheduled",
+      callback_at: now.toISOString(),
+      callback_next_attempt_at: at.toISOString(),
+      // A new errand: the guest ladder starts over.
+      callback_attempts: 0,
+      last_call_state: cut(
+        `${typeof last === "string" ? last : state} — a2 tells the guest${deferred ? " at 09:00" : ""}`,
+      ),
+    },
+    // Inside the window it rings now; held calls wait for the minute cron.
+    kickCallback: !deferred,
+  };
 }
 
 function decideBooking(

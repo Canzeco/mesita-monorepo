@@ -248,3 +248,56 @@ Deno.test("readConversation: failed with nobody speaking is no answer; live is n
   const killed = readConversation({ status: "failed", metadata: { error: { code: 1002 } } });
   assertEquals(killed.errorCode, 1002);
 });
+
+// ── "If we can't book you: App + call me" (MESITA-4188) ─────────────────────
+// Mexico City: 18:00Z is 12:00 local (callable); 06:00Z is 00:00 (quiet).
+const NOON_MX = new Date("2026-11-17T18:00:00Z");
+const MIDNIGHT_MX = new Date("2026-11-17T06:00:00Z");
+const TONIGHT_8PM = "2026-11-18T02:00:00.000Z";
+
+Deno.test("not booked: a flat no rings a guest who asked, now, inside the window", async () => {
+  const { store, table, notified, kicked } = memoryStore(
+    placedBooking({ reported_verdict: "declined", consumer_notify: "call", reserved_at: TONIGHT_8PM }),
+  );
+  await applyCallResult(store, "conv_1", DONE_SUCCESS, NOON_MX);
+  assertEquals(table.row.state, "declined");
+  assertEquals(table.row.callback_state, "scheduled");
+  assertEquals(table.row.callback_next_attempt_at, NOON_MX.toISOString());
+  assertEquals(notified, ["declined"]); // the app hears it too
+  assertEquals(kicked, ["t1"]);
+});
+
+Deno.test("not booked: an app-only guest gets no call", async () => {
+  const { store, table, kicked } = memoryStore(
+    placedBooking({ reported_verdict: "declined", consumer_notify: "app", reserved_at: TONIGHT_8PM }),
+  );
+  await applyCallResult(store, "conv_1", DONE_SUCCESS, NOON_MX);
+  assertEquals(table.row.callback_state, "skipped");
+  assertEquals(kicked, []);
+});
+
+Deno.test("not booked: past 22:00 the call waits for 09:00 and is not kicked", async () => {
+  const { store, table, kicked } = memoryStore(
+    placedBooking({ reported_verdict: "declined", consumer_notify: "call", reserved_at: TONIGHT_8PM }),
+  );
+  await applyCallResult(store, "conv_1", DONE_SUCCESS, MIDNIGHT_MX);
+  assertEquals(table.row.callback_state, "scheduled");
+  assertEquals(table.row.callback_next_attempt_at, "2026-11-17T15:00:00.000Z"); // 09:00 MX
+  assertEquals(kicked, []);
+});
+
+Deno.test("not booked: nobody who books answered, last try — the guest who asked is rung", async () => {
+  const { store, table, kicked } = memoryStore(
+    placedBooking({
+      reported_verdict: "unreachable",
+      consumer_notify: "call",
+      reserved_at: TONIGHT_8PM,
+      call_attempts: 2,
+      attempts_planned: 2,
+    }),
+  );
+  await applyCallResult(store, "conv_1", DONE_SUCCESS, NOON_MX);
+  assertEquals(table.row.state, "unreachable");
+  assertEquals(table.row.callback_state, "scheduled");
+  assertEquals(kicked, ["t1"]);
+});

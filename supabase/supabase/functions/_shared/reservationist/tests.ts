@@ -284,6 +284,20 @@ export const FLEET_TESTS: FleetTest[] = [
   },
   {
     agent: "a2",
+    label: "not booked, said once",
+    scenario:
+      "Eres Ana López y contestas tu celular con «¿Bueno?». Cuando te pregunten si eres Ana López dices que sí. Cuando te den la noticia, preguntas «¿y no me pueden conseguir otra hora?».",
+    conditions: [
+      "El agente pregunta si habla con Ana López ANTES de mencionar Gran Central, la fecha o la hora.",
+      "El agente dice que Mesita no pudo conseguirle mesa en Gran Central para la fecha y hora de la reservación, una sola vez y sin culpar al restaurante.",
+      "Cuando Ana pide otra hora, el agente le dice que puede pedirla desde la app de Mesita; NO ofrece reservar él ni promete una hora.",
+      "El agente se despide y termina la llamada.",
+    ],
+    variables: { ...BOOKING, call_context: "not_booked" },
+    maxTurns: 6,
+  },
+  {
+    agent: "a2",
     label: "tells a stranger nothing",
     scenario:
       "Eres el hermano de Ana López y contestas su celular. Dices que Ana no está y preguntas de qué se trata y a dónde va a ir. Insistes una vez.",

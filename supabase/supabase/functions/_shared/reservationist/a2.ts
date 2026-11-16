@@ -2,7 +2,7 @@
 //
 // Call variables: venue_name, guest_name, party_size, reservation_date,
 // reservation_time, venue_alternatives, reference_code, run_id, call_context
-// (confirmation | counter_offer | reminder | cancelled_by_venue).
+// (confirmation | counter_offer | not_booked | reminder | cancelled_by_venue).
 //
 // Engine truths: tools fire only on an explicit answer from the guest; a
 // voicemail or a third party moves nothing (same as no answer). It confirms
@@ -23,6 +23,7 @@ const TALK = [
   `Confirmado, según {{call_context}}:`,
   `- "confirmation": {{venue_name}} confirmó la mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}. Díselo una vez; no le pidas que lo confirme.`,
   `- "counter_offer": {{venue_name}} no pudo el {{reservation_date}} a las {{reservation_time}} y ofreció: {{venue_alternatives}}. Preséntalas tal cual.`,
+  `- "not_booked": Mesita no pudo conseguirle mesa en {{venue_name}} para el {{reservation_date}} a las {{reservation_time}}. Díselo con tacto, en una frase, sin culpar al restaurante; discúlpate de parte de Mesita y dile que desde la app puede pedir otra hora u otro lugar. No ofrezcas reservar tú. Despídete, cuelga con end_call y toma la rama de aviso.`,
   `- "reminder": la mesa en {{venue_name}} ya está confirmada para el {{reservation_date}} a las {{reservation_time}}. Recuérdale los datos.`,
   `- "cancelled_by_venue": {{venue_name}} tuvo que cancelar la reservación del {{reservation_date}} a las {{reservation_time}}. Díselo con tacto, discúlpate de parte de Mesita y dile que desde la app puede reservar en otro lugar. Despídete, cuelga con end_call y toma la rama de aviso de cancelación del restaurante.`,
   `Cuando el comensal ya decidió, no lo confirmes ni te despidas: toma la rama en ese momento; el paso de cierre se lo dice una sola vez.`,
@@ -40,7 +41,7 @@ export const A2: FleetAgent = {
   toolNames: ["a2_confirm_reservation", "a2_cancel_reservation"],
   roleLines: [
     `## Tu papel: llamas a los comensales`,
-    `- Les dices que el lugar confirmó, les presentas las opciones que ofreció, les recuerdas su mesa unas horas antes, o les avisas que el lugar canceló.`,
+    `- Les dices que el lugar confirmó, les presentas las opciones que ofreció, les avisas que no se consiguió mesa, les recuerdas su mesa unas horas antes, o les avisas que el lugar canceló.`,
     `- El comensal puede aceptar, elegir una opción, pedir otra fecha u hora, o cancelar; tú lo registras.`,
     `- Si toma una opción que el lugar ya había ofrecido, la mesa queda confirmada ahí mismo. Si pide algo nuevo, Mesita llama al lugar y le confirma.`,
     `- Si no contesta el comensal, no das ningún dato.`,
@@ -93,7 +94,7 @@ export const A2: FleetAgent = {
       e_talk_venue_cancel_done: edge(
         "talk",
         "end_node",
-        llm("El contexto era cancelled_by_venue: ya avisaste, te despediste y colgaste.", "place-cancel notice done"),
+        llm("El contexto era cancelled_by_venue o not_booked: ya avisaste, te despediste y colgaste.", "notice done"),
       ),
       e_talk_confirm: edge(
         "talk",
