@@ -37,6 +37,13 @@
 // decision: two searches at most (MESITA-4079). The second runs in its own
 // node, which has no way to search again, so a second empty result ends the
 // errand: say so, point to Business › Reservations or a call back.
+// decision: the wait for the place's answer is structural (MESITA-4120). A
+// simulated call cancelled while the read-back was still a question even
+// with the "yes AFTER the read-back" edge (MESITA-4079): ElevenLabs judged
+// it on a3's own turn. Now a table is read in a node that has no edge to a
+// write tool, and every way into a4_cancel_reservation and
+// a4_change_reservation leaves a node with entry_behavior wait_for_user,
+// so the place has spoken before any of them is judged.
 // decision: the place's triage never answers about one table (MESITA-4089).
 // Simulated calls showed it reading a table straight from the caller check,
 // asking the name before searching, offering the code, and telling a place
@@ -52,26 +59,43 @@ const PROMPT = [
   NATURAL,
 ].join("\n\n");
 
-/** How a found table is read back and when it may be cancelled (MESITA-4079). */
+/** How a found table is read back (MESITA-4079). The node that reads has
+ *  no way to a write tool; the answer is heard in a waiting node. */
 const READ_BACK = [
-  "La búsqueda regresa las más parecidas, la mejor primero. Lee la primera UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo y Mesita le avisa al comensal»).",
-  "Si llaman para cambiarle la hora o el número de personas: tras su sí, si aún no dijeron la nueva hora o cuántas personas, pregúntalo una vez. No repitas la lectura.",
-  "Después de leerla, CALLA y ESPERA su respuesta. Nunca canceles antes de oír su sí a esa lectura: lo que dijeron antes de que la leyeras (por ejemplo «hay que cancelar») no cuenta. Su sí («sí», «esa», «sí, cancélala») confirma a la vez que es esa y la cancelación: no vuelvas a preguntar.",
-  "Si el cambio no se pudo registrar, el flujo te lleva a otro paso; no lo intentes de nuevo aquí.",
-  "Si dicen que no y hay otra, lee la siguiente igual, una vez. No confirmes ni niegues reservaciones de otros lugares. Si solo era consulta, contesta lo que pregunten con lo que regresó la búsqueda y despídete.",
+  "La búsqueda regresa las más parecidas, la mejor primero. Lee la primera que no hayan rechazado UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo y Mesita le avisa al comensal»). Si llaman para cambiarla, la misma pregunta lo dice («… ¿Es esa?»).",
+  "Después de esa pregunta no digas nada más: espera su respuesta. No confirmes ni niegues reservaciones de otros lugares.",
+].join("\n");
+
+/** What a waiting node does once the place answered the read-back. */
+const ANSWER = [
+  "Quien llama acaba de responder a tu lectura de la reservación.",
+  "Si dijo que sí es esa y quiere cancelarla (lo pidió antes o ahora): no vuelvas a preguntar; di solo «Listo.» y el flujo la cancela.",
+  "Si dijo que sí es esa y quiere cambiarle la hora (o el día) o el número de personas: si ya dijo el nuevo valor, di solo «Listo.» y el flujo lo propone; si falta, pregúntalo una vez («¿A qué hora la quieren pasar?» o «¿Para cuántas personas?»). No repitas la lectura.",
+  "Si solo consultaba, contesta lo que pregunte con lo que regresó la búsqueda (por ejemplo, que sigue confirmada) y despídete.",
 ].join("\n");
 
 /** The only way into the place's cancel tool from a search (MESITA-4079). */
 const YES_TO_READ_BACK = llm(
-  "Ya leíste una reservación encontrada y, en un turno POSTERIOR a esa lectura, quien llama respondió que sí es esa (un sí claro: «sí», «esa», «sí, cancélala») y quiere cancelarla (lo pidió antes o ahora). Si todavía no ha respondido a tu lectura, NO: espera. Lo que dijo antes de la lectura no cuenta como ese sí.",
+  "En un turno POSTERIOR a tu lectura, quien llama respondió que sí es esa (un sí claro: «sí», «esa», «sí, cancélala») y quiere cancelarla (lo pidió antes o ahora). Un «no», una duda o una pregunta no son ese sí.",
   "yes to the read-back",
 );
 
 /** The only way into the change tool: the place confirmed the table after
  *  the read-back and said what to change it to (MESITA-4073). */
 const CHANGE_ASKED = llm(
-  "Ya leíste una reservación encontrada y, en un turno POSTERIOR a esa lectura, quien llama confirmó que es esa, quiere cambiarle la hora (o el día) y/o el número de personas, y ya dijo el nuevo valor (la nueva hora o cuántas personas). Si todavía falta el nuevo valor o no ha respondido a tu lectura, NO.",
+  "En un turno POSTERIOR a tu lectura, quien llama confirmó que es esa, quiere cambiarle la hora (o el día) y/o el número de personas, y ya dijo el nuevo valor (la nueva hora o cuántas personas). Si todavía falta el nuevo valor, NO.",
   "change asked",
+);
+
+/** The read-back was said: move to the waiting node. */
+const READ_ASKED = llm(
+  "Acabas de leer una reservación encontrada como pregunta («¿Es la de …?») y esperas su respuesta.",
+  "read back",
+);
+/** The place said no and another match is left: read it (way back). */
+const NEXT_MATCH = llm(
+  "Quien llama dijo que no es la que leíste, y en los resultados de la búsqueda queda otra que todavía no has leído.",
+  "read the next",
 );
 
 export const A3: FleetAgent = {
@@ -136,24 +160,45 @@ export const A3: FleetAgent = {
       }),
       place_find: toolNode(tool("a4_find_reservation"), pos(960, -320), ["e_pf_found"]),
       place_found: talkNode({
-        label: "Place · present matches",
+        label: "Place · read the match",
         position: pos(1280, -320),
         prompt: [
+          "Si la búsqueda no encontró nada (found es false), dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.",
+          "Si encontró algo:",
           READ_BACK,
-          "Si dicen que no y no queda otra, o la búsqueda no encontró nada, dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.",
         ].join("\n"),
-        edgeOrder: ["e_pfd_cancel", "e_pfd_change", "e_pfd_again", "e_pfd_end"],
+        edgeOrder: ["e_pfd_read", "e_pfd_again", "e_pfd_end"],
+      }),
+      place_answer: talkNode({
+        label: "Place · hear the answer",
+        position: pos(1600, -320),
+        entry: "wait_for_user",
+        prompt: [
+          ANSWER,
+          "Si dijo que no y ya no queda otra, dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.",
+        ].join("\n"),
+        edgeOrder: ["e_pans_cancel", "e_pans_change", "e_pans_again", "e_pans_end"],
       }),
       place_find_again: toolNode(tool("a4_find_reservation"), pos(1600, -160), ["e_pfa_found"]),
       place_found_again: talkNode({
         label: "Place · second search",
         position: pos(1920, -160),
         prompt: [
-          "Esta fue la segunda y última búsqueda. Si tampoco encontró nada (found es false), o dicen que no y no queda otra, di exactamente: «No la encuentro. Puede revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar.» Nada más: no preguntes si el nombre o la fecha están bien, no pidas otro dato ni sugieras otro día u otro nombre. Despídete en una frase y cuelga con end_call.",
+          "Esta fue la segunda y última búsqueda. Si tampoco encontró nada (found es false), di exactamente: «No la encuentro. Puede revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar.» Nada más: no preguntes si el nombre o la fecha están bien, no pidas otro dato ni sugieras otro día u otro nombre. Despídete en una frase y cuelga con end_call.",
           "Si sí encontró algo:",
           READ_BACK,
         ].join("\n"),
-        edgeOrder: ["e_pfa_cancel", "e_pfa_change", "e_pfa_end"],
+        edgeOrder: ["e_pfa_read", "e_pfa_end"],
+      }),
+      place_answer_again: talkNode({
+        label: "Place · hear the answer (last search)",
+        position: pos(2240, -80),
+        entry: "wait_for_user",
+        prompt: [
+          ANSWER,
+          "Si dijo que no y ya no queda otra, di exactamente: «Entonces no la encuentro. Puede revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar.» No busques ni pidas más datos; despídete y cuelga con end_call.",
+        ].join("\n"),
+        edgeOrder: ["e_paa_cancel", "e_paa_change", "e_paa_end"],
       }),
       place_do_change: toolNode(tool("a4_change_reservation"), pos(2240, -240), ["e_pdch_done", "e_pdch_fail"]),
       place_change_done: talkNode({
@@ -167,15 +212,23 @@ export const A3: FleetAgent = {
         label: "Place · change not possible",
         position: pos(2560, -80),
         prompt:
-          "El cambio no se pudo proponer. Explica en una frase por qué, según el error de la herramienta: too_late = ya no da tiempo de preguntarle al comensal antes de la mesa; not_confirmed = la reservación aún no está confirmada (respondan cuando Mesita los llame); too_soon = la hora nueva ya pasó o es en menos de media hora; nothing_to_change = es igual a la que ya tiene. Ofrece una sola vez dejarla como está o cancelarla; para cancelar, pide un sí claro. No intentes el cambio de nuevo.",
-        edgeOrder: ["e_pchf_cancel", "e_pchf_end"],
+          "El cambio no se pudo proponer. Explica en una frase por qué, según el error de la herramienta: too_late = ya no da tiempo de preguntarle al comensal antes de la mesa; not_confirmed = la reservación aún no está confirmada (respondan cuando Mesita los llame); too_soon = la hora nueva ya pasó o es en menos de media hora; nothing_to_change = es igual a la que ya tiene. Pregunta una sola vez si la dejan como está o la cancelan, y espera su respuesta. No intentes el cambio de nuevo.",
+        edgeOrder: ["e_pchf_ask"],
       }),
       place_confirm_cancel: talkNode({
         label: "Place · confirm cancellation",
         position: pos(1600, -400),
         prompt:
-          "Pregunta una sola vez cuál cancelan, con los datos de la lista que leíste: a nombre de quién, fecha y hora («¿Cancelo la de Ana López del sábado a las 8:30?»). El código lo tomas tú de las reservaciones. Luego CALLA y ESPERA: solo con un sí claro a esa pregunta se cancela.",
-        edgeOrder: ["e_pcc_do"],
+          "Pregunta una sola vez cuál cancelan, con los datos de la lista que leíste: a nombre de quién, fecha y hora («¿Cancelo la de Ana López del sábado a las 8:30?»). El código lo tomas tú de las reservaciones. Después de la pregunta no digas nada más: espera su respuesta.",
+        edgeOrder: ["e_pcc_ask"],
+      }),
+      place_cancel_answer: talkNode({
+        label: "Place · hear the cancel answer",
+        position: pos(1920, -560),
+        entry: "wait_for_user",
+        prompt:
+          "Quien llama acaba de responder si se cancela esa reservación. Si es un sí claro, di solo «Listo.» y el flujo la cancela. Si no, di que queda como está y, si no necesitan nada más, despídete y cuelga con end_call.",
+        edgeOrder: ["e_pca_do", "e_pca_end"],
       }),
       place_do_cancel: toolNode(tool("a4_cancel_reservation"), pos(1920, -400), ["e_pdc_done"]),
       place_cancel_done: talkNode({
@@ -299,42 +352,51 @@ export const A3: FleetAgent = {
       // back: an always-open way back looped the call to death (MESITA-4029),
       // and the second search's node has no further search (MESITA-4079).
       e_pf_found: edge("place_find", "place_found", RESULT_OK),
-      e_pfd_cancel: edge("place_found", "place_do_cancel", YES_TO_READ_BACK, RESULT_FAIL),
+      // Read in one node, heard in the next (MESITA-4120): the way back reads
+      // the next match after a no.
+      e_pfd_read: edge("place_found", "place_answer", READ_ASKED, NEXT_MATCH),
       e_pfd_again: edge(
         "place_found",
         "place_find_again",
         llm(
-          "La búsqueda no encontró nada, o dijeron que no a las que leíste y no queda otra, y ya dieron OTRO dato (otro nombre, día, hora, personas o código), distinto de lo que ya se buscó.",
+          "La búsqueda no encontró nada y quien llama ya dio OTRO dato (otro nombre, día, hora, personas o código), distinto de lo que ya se buscó.",
           "search again",
         ),
       ),
-      e_pfd_change: edge("place_found", "place_do_change", CHANGE_ASKED),
-      e_pfd_end: edge("place_found", "end_node", llm("Solo era consulta; resuelto y despedido.", "done")),
-      e_pfa_found: edge("place_find_again", "place_found_again", RESULT_OK),
-      e_pfa_cancel: edge("place_found_again", "place_do_cancel", YES_TO_READ_BACK, RESULT_FAIL),
-      e_pfa_change: edge("place_found_again", "place_do_change", CHANGE_ASKED),
-      e_pfa_end: edge("place_found_again", "end_node", llm("Resuelto, o dijiste que no la encuentras; ya te despediste.", "done")),
-      e_pcc_do: edge(
-        "place_confirm_cancel",
-        "place_do_cancel",
+      e_pfd_end: edge("place_found", "end_node", llm("Resuelto y despedido.", "done")),
+      e_pans_cancel: edge("place_answer", "place_do_cancel", YES_TO_READ_BACK, RESULT_FAIL),
+      e_pans_change: edge("place_answer", "place_do_change", CHANGE_ASKED),
+      e_pans_again: edge(
+        "place_answer",
+        "place_find_again",
         llm(
-          "Ya preguntaste cuál cancelan y, en un turno POSTERIOR a tu pregunta, respondieron que sí con claridad. Si todavía no responden a tu pregunta, NO: espera.",
-          "confirmed",
+          "Quien llama dijo que no a la que leíste, no queda otra en los resultados, y ya dio OTRO dato (otro nombre, día, hora, personas o código).",
+          "search again",
         ),
+      ),
+      e_pans_end: edge("place_answer", "end_node", llm("Solo era consulta; resuelto y despedido.", "done")),
+      e_pfa_found: edge("place_find_again", "place_found_again", RESULT_OK),
+      e_pfa_read: edge("place_found_again", "place_answer_again", READ_ASKED, NEXT_MATCH),
+      e_pfa_end: edge("place_found_again", "end_node", llm("Dijiste que no la encuentras y te despediste.", "done")),
+      e_paa_cancel: edge("place_answer_again", "place_do_cancel", YES_TO_READ_BACK, RESULT_FAIL),
+      e_paa_change: edge("place_answer_again", "place_do_change", CHANGE_ASKED),
+      e_paa_end: edge("place_answer_again", "end_node", llm("Resuelto, o dijiste que no la encuentras; ya te despediste.", "done")),
+      e_pcc_ask: edge("place_confirm_cancel", "place_cancel_answer", llm("Ya preguntaste cuál cancelan.", "asked")),
+      e_pca_do: edge(
+        "place_cancel_answer",
+        "place_do_cancel",
+        llm("Quien llama respondió con un sí claro a cancelar esa reservación.", "confirmed"),
         RESULT_FAIL,
       ),
+      e_pca_end: edge("place_cancel_answer", "end_node", llm("No la cancelan; queda como está y ya te despediste.", "done")),
       e_pdch_done: edge("place_do_change", "place_change_done", RESULT_OK),
       e_pdch_fail: edge("place_do_change", "place_change_failed", RESULT_FAIL),
       e_pchd_end: edge("place_change_done", "end_node", llm("Resuelto y despedido.", "done")),
-      e_pchf_cancel: edge(
+      e_pchf_ask: edge(
         "place_change_failed",
-        "place_do_cancel",
-        llm(
-          "Ofreciste cancelarla y, en un turno POSTERIOR a esa oferta, quien llama respondió con un sí claro a cancelar esa reservación. Si todavía no responde, NO.",
-          "cancel instead",
-        ),
+        "place_cancel_answer",
+        llm("Ya explicaste por qué no se pudo y preguntaste si la dejan como está o la cancelan.", "asked"),
       ),
-      e_pchf_end: edge("place_change_failed", "end_node", llm("La dejan como está; resuelto y despedido.", "done")),
       e_pdc_done: edge("place_do_cancel", "place_cancel_done", RESULT_OK),
       e_pcd_end: edge("place_cancel_done", "end_node", llm("Resuelto y despedido.", "done")),
       e_pr_end: edge("place_redirect", "end_node", llm("Ya los orientaste y te despediste.", "done")),

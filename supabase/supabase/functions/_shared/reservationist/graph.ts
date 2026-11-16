@@ -80,13 +80,17 @@ export function talkNode(opts: {
   position: { x: number; y: number };
   prompt: string;
   edgeOrder: string[];
+  /** "wait_for_user": the node says nothing on entry; the other side speaks
+   *  first, so no edge out of it can be judged on the agent's own words
+   *  (MESITA-4120). Default: speak on entry. */
+  entry?: "generate_immediately" | "wait_for_user";
 }): Record<string, unknown> {
   return {
     type: "override_agent",
     label: opts.label,
     position: opts.position,
     additional_prompt: opts.prompt,
-    entry_behavior: "generate_immediately",
+    entry_behavior: opts.entry ?? "generate_immediately",
     conversation_config: { agent: { prompt: { tool_ids: [] } } },
     edge_order: opts.edgeOrder,
   };
