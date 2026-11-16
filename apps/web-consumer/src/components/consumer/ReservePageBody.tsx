@@ -126,21 +126,8 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
     <div className="bg-card relative flex flex-1 flex-col overflow-hidden">
       {/* The one page header (MESITA-4097): square Back, the title. */}
       <ScreenHeader title="Reserve a table" onBack={onBack} />
-      <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto px-5 pt-5">
-        <p className="truncate text-xl font-semibold">{place.name}</p>
-
-        {mine.length > 0 && (
-          <>
-            <h2 className="mt-7 mb-2 font-sans text-base font-semibold tracking-normal">
-              Your reservations here
-            </h2>
-            <div className="border-foreground/20 overflow-hidden rounded-xl border">
-              {mine.map((row) => (
-                <ReservationRow key={row.id} row={row} tz={place.timezone || null} />
-              ))}
-            </div>
-          </>
-        )}
+      <div className="flex min-h-0 flex-1 flex-col px-5">
+        <p className="truncate pt-3 pb-2 text-lg font-semibold">{place.name}</p>
 
         <ReservationForm
           place={place}
@@ -148,6 +135,18 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
           checking={checking}
           onBooked={reread}
           onDone={onBack}
+          intro={
+            mine.length > 0 ? (
+              <section className="mb-5">
+                <h2 className="mb-2 font-sans text-base font-semibold tracking-normal">Your reservations here</h2>
+                <div className="border-foreground/20 overflow-hidden rounded-xl border">
+                  {mine.map((row) => (
+                    <ReservationRow key={row.id} row={row} tz={place.timezone || null} />
+                  ))}
+                </div>
+              </section>
+            ) : null
+          }
         />
       </div>
     </div>

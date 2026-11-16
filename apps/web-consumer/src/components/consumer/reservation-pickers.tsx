@@ -1,5 +1,18 @@
 import { useState } from "react";
-import { Check, ChevronDown, Minus, Plus } from "lucide-react";
+import {
+  CalendarDays,
+  CalendarX2,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleCheck,
+  Clock,
+  Minus,
+  Plus,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   bookingWindowDays,
@@ -240,7 +253,7 @@ export function ReservationTimePicker({
                       role="radio"
                       aria-checked={active}
                       onClick={() => onChange(slot.time)}
-                      className={cn(CHOICE, "h-12 text-base", active ? CHOICE_ON : CHOICE_OFF)}
+                      className={cn(CHOICE, "h-11 text-base", active ? CHOICE_ON : CHOICE_OFF)}
                     >
                       {slot.time}
                     </button>
@@ -509,3 +522,101 @@ export function ReservationSeatingPicker({
     </div>
   );
 }
+
+// ── The steps (MESITA-4172) ────────────────────────────────────────────────
+// Pato: "write at the top the steps of the reservation in a progress bar,
+// kinda like the Pay view … make it not scrollable but in steps". The bar is
+// Pay's StepNav (pay-flow.tsx) in look: ‹ "Time · 2 of 5" › with the step's
+// icon, thin segments under it, done and current ink.
+
+export type ReserveStep = "date" | "time" | "people" | "backup" | "review";
+
+const STEP_META: Record<ReserveStep, { name: string; icon: LucideIcon }> = {
+  date: { name: "Date", icon: CalendarDays },
+  time: { name: "Time", icon: Clock },
+  people: { name: "People", icon: Users },
+  backup: { name: "Backup", icon: CalendarX2 },
+  review: { name: "Review", icon: CircleCheck },
+};
+
+export function ReserveStepNav({
+  steps,
+  at,
+  onBack,
+  onNext,
+}: {
+  steps: readonly ReserveStep[];
+  at: number;
+  onBack?: () => void;
+  onNext?: () => void;
+}) {
+  const step = steps[at];
+  const { name, icon: Icon } = STEP_META[step];
+  const arrow =
+    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:bg-muted disabled:opacity-40";
+  return (
+    <div className="border-border shrink-0 border-b px-2 pt-1 pb-2.5" data-reserve-steps>
+      <div className="flex h-11 items-center">
+        <button
+          type="button"
+          onClick={onBack}
+          className={cn(arrow, !onBack && "invisible")}
+          aria-label={at > 0 ? `Back to ${STEP_META[steps[at - 1]].name}` : "Back"}
+          tabIndex={onBack ? undefined : -1}
+        >
+          <ChevronLeft className="h-6 w-6" aria-hidden />
+        </button>
+        <p className="flex min-w-0 flex-1 items-center justify-center gap-1.5 truncate text-base">
+          <Icon className="h-5 w-5 shrink-0" aria-hidden />
+          <span className="font-semibold">{name}</span>
+          <span className="text-muted-foreground">{` · ${at + 1} of ${steps.length}`}</span>
+        </p>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={!onNext}
+          className={cn(arrow, at >= steps.length - 1 && "invisible")}
+          aria-label={at < steps.length - 1 ? `Next: ${STEP_META[steps[at + 1]].name}` : "Next"}
+          tabIndex={at < steps.length - 1 ? undefined : -1}
+        >
+          <ChevronRight className="h-6 w-6" aria-hidden />
+        </button>
+      </div>
+      <ol
+        className="mt-1 grid gap-1.5 px-2"
+        style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+        aria-label={`Step ${at + 1} of ${steps.length}: ${name}`}
+      >
+        {steps.map((s, i) => (
+          <li
+            key={s}
+            aria-current={i === at ? "step" : undefined}
+            className={cn("h-1 rounded-full", i <= at ? "bg-foreground" : "bg-border")}
+          />
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/** One row of the Review card: what was chosen, tap to change it. */
+export function ReviewRow({ label, value, onEdit }: { label: string; value: string; onEdit?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onEdit}
+      disabled={!onEdit}
+      className="flex min-h-12 w-full items-center gap-3 px-4 py-2.5 text-left"
+    >
+      <span className="text-muted-foreground type-body w-20 shrink-0 font-medium">{label}</span>
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{value}</span>
+      {onEdit && <span className="text-muted-foreground type-body shrink-0 underline underline-offset-2">Change</span>}
+    </button>
+  );
+}
+
+export const FALLBACK_LABEL: Record<ReservationFallback, string> = {
+  offer: "Show me other times",
+  offer_call: "Other times and call me",
+  cancel: "Don't book anything",
+};

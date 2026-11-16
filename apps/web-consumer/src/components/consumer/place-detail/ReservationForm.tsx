@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarClock, ChevronDown, Loader2, PhoneCall } from "lucide-react";
+import { CalendarClock, Loader2, PhoneCall } from "lucide-react";
 
 import {
   buildDateOptions,
@@ -17,7 +17,11 @@ import {
   type ReservationSeating,
   type ReservationTimeWindow,
   ReservationTimePicker,
+  ReserveStepNav,
+  ReviewRow,
+  FALLBACK_LABEL,
   windowRange,
+  type ReserveStep,
 } from "@/components/consumer/reservation-pickers";
 import {
   apiCreateReservation,
@@ -104,8 +108,11 @@ export function ReservationForm({
   checking,
   onBooked,
   onDone,
+  intro,
 }: {
   place: ReservationFormPlace;
+  /** Drawn at the top of the first step only (the guest's tables here). */
+  intro?: React.ReactNode;
   /** The guest's live table at THIS place, if any (the duplicate guard). */
   existing: EFReservationRow | null;
   /** The page is still reading the guest's tables: submit waits. */
@@ -140,16 +147,18 @@ export function ReservationForm({
   // back in the app by default; a call is something the guest asks for
   // (MESITA-3961); "cancel" books nothing.
   const [fallback, setFallback] = useState<ReservationFallback>("offer");
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [stepAt, setStepAt] = useState(0);
   const [timeWindow, setTimeWindow] = useState<ReservationTimeWindow>(DEFAULT_TIME_WINDOW);
   const [seating, setSeating] = useState<ReservationSeating>("any");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  // THE NAME THE TABLE IS UNDER (MESITA-3607, Pato: "First Name and Last
-  // Name (don't prepopulate first name)"). Saved on the reservation, not the
-  // profile; the last name starts as the profile's.
+  // THE NAME THE TABLE IS UNDER: saved on the reservation, not the profile.
+  // Both names start as the profile's (MESITA-4172, Pato: "DON'T ASK ME
+  // FIRST NAME AGAIN, IT WAS PROVIDED ON ONBOARDING, PREPOPULATE THOSE
+  // FIELDS" — this undoes MESITA-3607's empty first name). Review shows them
+  // filled and editable.
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
@@ -189,14 +198,19 @@ export function ReservationForm({
   // whole point is that a second table is never created silently.
   const awaitingChoice = existing !== null && choice === null;
 
-  // The profile's last name seeds the field, once.
+  // The profile's names seed the fields, once; a typed name wins.
   useEffect(() => {
     let cancelled = false;
     apiFetchConsumerProfile(supabase)
-      .then((r) => (r.consumer?.last_name ?? "").trim())
-      .catch(() => "")
-      .then((profileLast) => {
-        if (!cancelled && profileLast) setLastName((v) => v || profileLast);
+      .then((r) => ({
+        first: (r.consumer?.first_name ?? "").trim(),
+        last: (r.consumer?.last_name ?? "").trim(),
+      }))
+      .catch(() => ({ first: "", last: "" }))
+      .then(({ first, last }) => {
+        if (cancelled) return;
+        if (first) setFirstName((v) => v || first);
+        if (last) setLastName((v) => v || last);
       });
     return () => {
       cancelled = true;
@@ -318,96 +332,116 @@ export function ReservationForm({
     );
   }
 
+  // THE STEPS (MESITA-4172). A reschedule moves a table already booked
+  // under a name with its backup chosen, so it skips Backup.
+  const steps: ReserveStep[] = rescheduling
+    ? ["date", "time", "people", "review"]
+    : ["date", "time", "people", "backup", "review"];
+  const at = Math.min(stepAt, steps.length - 1);
+  const step = steps[at];
+  const last = at === steps.length - 1;
+  const goTo = (s: ReserveStep) => setStepAt(Math.max(0, steps.indexOf(s)));
+  // Next waits for what the step needs: the duplicate answered, a time.
+  const nextBlocked =
+    (step === "date" && (checking || awaitingChoice)) || (step === "time" && !time);
+  const next = () => {
+    if (!nextBlocked && !last) setStepAt(at + 1);
+  };
+  const nextLabel =
+    step === "date" && checking
+      ? "Checking your reservations…"
+      : step === "date" && awaitingChoice
+        ? "Choose an option above"
+        : step === "time" && !time
+          ? "No times left"
+          : "Next";
+  const range = windowRange(time, timeWindow);
+  const flexLabel =
+    timeWindow === 0 ? "exact" : timeWindow === 30 ? "± 30 min" : "± 1 hour";
+
   return (
-    <>
-      {existing && (
-        <DuplicateBanner
-          existing={existing}
-          tz={tz}
-          choice={choice}
-          onReschedule={chooseReschedule}
-          onAnother={() => setChoice("another")}
-          onReset={() => setChoice(null)}
-        />
-      )}
-
-      <ReservationDatePicker
-        options={dateOptions}
-        value={date}
-        onChange={setDateChoice}
+    <div className="-mx-5 flex min-h-0 flex-1 flex-col">
+      <ReserveStepNav
+        steps={steps}
+        at={at}
+        onBack={at > 0 ? () => setStepAt(at - 1) : undefined}
+        onNext={!last && !nextBlocked ? next : undefined}
       />
-      <ReservationTimePicker
-        value={time}
-        onChange={setTimeChoice}
-        date={date}
-        hours={hours}
-        tz={tz}
-      >
-        {!rescheduling && time && (
-          <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
+
+      {/* One step a screen, nothing to scroll on a phone; the body scrolls
+          only if a very short screen cannot hold it. */}
+      <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-4 [&>section:first-child]:mt-0 [&>*:first-child>section:first-child]:mt-0">
+        {step === "date" && (
+          <>
+            {intro}
+            {existing && (
+              <DuplicateBanner
+                existing={existing}
+                tz={tz}
+                choice={choice}
+                onReschedule={chooseReschedule}
+                onAnother={() => setChoice("another")}
+                onReset={() => setChoice(null)}
+              />
+            )}
+            <ReservationDatePicker options={dateOptions} value={date} onChange={setDateChoice} />
+          </>
         )}
-      </ReservationTimePicker>
-      <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
 
-      {!rescheduling && (
-        <section className="mt-7">
-          <h2 className="font-sans text-base font-semibold tracking-normal">Name</h2>
-          <p className="text-muted-foreground type-body">The name the table is under.</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <ReservationField
-              label="First name"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              maxLength={60}
-              autoComplete="given-name"
-              required
-            />
-            <ReservationField
-              label="Last name"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              maxLength={60}
-              autoComplete="family-name"
-              required
-            />
-          </div>
-        </section>
-      )}
+        {step === "time" && (
+          <ReservationTimePicker value={time} onChange={setTimeChoice} date={date} hours={hours} tz={tz}>
+            {!rescheduling && time && (
+              <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
+            )}
+          </ReservationTimePicker>
+        )}
 
-      {!rescheduling && (
-        <ReservationFallbackPicker
-          value={fallback}
-          onChange={setFallback}
-          range={windowRange(time, timeWindow)}
-        />
-      )}
+        {step === "people" && <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />}
 
-      {/* Seating and notes are extras: folded, so the path stays short. */}
-      <section className="mt-7">
-        <button
-          type="button"
-          onClick={() => setMoreOpen((v) => !v)}
-          aria-expanded={moreOpen}
-          className="flex min-h-11 w-full items-center justify-between text-left"
-        >
-          <span>
-            <span className="block text-base font-semibold">More options</span>
-            <span className="text-muted-foreground type-body block">
-              {[
-                !rescheduling && seating !== "any" ? seating[0].toUpperCase() + seating.slice(1) : null,
-                notes.trim() ? "Note added" : null,
-              ]
-                .filter(Boolean)
-                .join(" · ") || (rescheduling ? "Notes" : "Seating, notes")}
-            </span>
-          </span>
-          <ChevronDown className={cn("h-5 w-5 transition", moreOpen && "rotate-180")} aria-hidden />
-        </button>
-        {moreOpen && (
-          <div className="mt-3 flex flex-col gap-4">
+        {step === "backup" && (
+          <ReservationFallbackPicker value={fallback} onChange={setFallback} range={range} />
+        )}
+
+        {step === "review" && (
+          <div className="flex flex-col gap-5">
+            <div className="border-foreground/20 divide-foreground/10 divide-y rounded-xl border">
+              <ReviewRow label="Date" value={dayLabel || "—"} onEdit={() => goTo("date")} />
+              <ReviewRow
+                label="Time"
+                value={time ? (rescheduling ? time : `${time} · ${flexLabel}`) : "—"}
+                onEdit={() => goTo("time")}
+              />
+              <ReviewRow label="People" value={`${party} ${guestNoun(party)}`} onEdit={() => goTo("people")} />
+              {!rescheduling && (
+                <ReviewRow label="Backup" value={FALLBACK_LABEL[fallback]} onEdit={() => goTo("backup")} />
+              )}
+            </div>
+
+            {!rescheduling && (
+              <div className="grid grid-cols-2 gap-2">
+                <ReservationField
+                  label="First name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  maxLength={60}
+                  autoComplete="given-name"
+                  required
+                />
+                <ReservationField
+                  label="Last name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  maxLength={60}
+                  autoComplete="family-name"
+                  required
+                />
+              </div>
+            )}
+
             {!rescheduling && <ReservationSeatingPicker value={seating} onChange={setSeating} />}
+
             <ReservationField
-              label="Notes"
+              label="Notes (optional)"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               maxLength={280}
@@ -415,36 +449,48 @@ export function ReservationForm({
             />
           </div>
         )}
-      </section>
+      </div>
 
-      {/* The one action, always in view (MESITA-4166): sticky at the bottom
-          of the page's scroller, with what you are booking spelled out. */}
-      <div className="bg-card border-border sticky bottom-0 z-10 -mx-5 mt-8 border-t px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {error && (
+      {/* The step's one button, pinned (Pay's footer). */}
+      <div className="border-border shrink-0 border-t px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {error && last && (
           <p className="type-body bg-destructive/10 text-destructive mb-3 rounded-xl px-3 py-2 font-medium">
             {error}
           </p>
         )}
-        <button
-          type="button"
-          onClick={submit}
-          disabled={submitting || checking || awaitingChoice || !time || needsName}
-          className="bg-primary text-primary-foreground inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold transition active:scale-[0.99] disabled:opacity-50"
-        >
-          {submitting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {rescheduling ? "Updating…" : "Requesting…"}
-            </>
-          ) : (
-            submitLabel
-          )}
-        </button>
-        <p className="text-muted-foreground type-body mt-2 text-center">
-          Mesita calls the place for you and tells you the answer.
-        </p>
+        {last ? (
+          <button
+            type="button"
+            onClick={submit}
+            disabled={submitting || checking || awaitingChoice || !time || needsName}
+            className="bg-primary text-primary-foreground inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold transition active:scale-[0.99] disabled:opacity-50"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {rescheduling ? "Updating…" : "Requesting…"}
+              </>
+            ) : (
+              submitLabel
+            )}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={next}
+            disabled={nextBlocked}
+            className="bg-primary text-primary-foreground inline-flex h-14 w-full items-center justify-center rounded-2xl text-base font-semibold transition active:scale-[0.99] disabled:opacity-50"
+          >
+            {nextLabel}
+          </button>
+        )}
+        {last && (
+          <p className="text-muted-foreground type-body mt-2 text-center">
+            Mesita calls the place for you and tells you the answer.
+          </p>
+        )}
       </div>
-    </>
+    </div>
   );
 }
 
