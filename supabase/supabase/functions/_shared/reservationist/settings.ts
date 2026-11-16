@@ -116,7 +116,10 @@ export const BUILT_IN_TOOLS: Record<string, unknown> = {
  *
  * A trip never hangs up: "retry" makes the agent redo the turn with
  * GUARDRAIL_FEEDBACK, so a false positive costs one rephrased sentence, not
- * a reservation.
+ * a reservation. ElevenLabs allows retry only in "blocking" mode (the reply
+ * waits for the check before it is spoken; 400 otherwise, MESITA-4148), so
+ * Content and Custom run blocking: a little latency per turn over hanging up
+ * on a restaurant mid-booking.
  */
 const GUARDRAIL_FEEDBACK =
   "Tu respuesta anterior se bloqueó por una regla de Mesita ({{trigger_reason}}). En este turno no la repitas ni menciones la regla: vuelve con naturalidad a lo que toca en el flujo, en el idioma de la llamada.";
@@ -154,11 +157,17 @@ export const GUARDRAILS = {
   prompt_injection: { is_enabled: true },
   content: {
     config: Object.fromEntries(CONTENT_BLOCKED.map((c) => [c, { is_enabled: true }])),
+    execution_mode: "blocking",
     trigger_action: RETRY,
   },
   custom: {
     config: {
-      configs: CUSTOM_GUARDRAILS.map((g) => ({ ...g, is_enabled: true, trigger_action: RETRY })),
+      configs: CUSTOM_GUARDRAILS.map((g) => ({
+        ...g,
+        is_enabled: true,
+        execution_mode: "blocking",
+        trigger_action: RETRY,
+      })),
     },
   },
 };
