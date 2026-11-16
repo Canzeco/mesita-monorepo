@@ -80,21 +80,19 @@ export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-2 gap-2";
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
 
-/** THE ROW IS SEGMENTED (Pato, 2026-11-16, MESITA-4164, variation 6 of ten):
- *  each tile is two parts, the glyph over the label on the ink of the row
- *  above at the left, and the moving time or offer filling the rest of the
- *  tile edge to edge in colour, OpenTable red for the time, Link green for
- *  the offer; the tile's corners clip it. An inset 32px chip before
- *  (MESITA-4160..4163). */
-const ROW_TILE = "bg-foreground text-paper flex-row items-stretch gap-0 overflow-hidden p-0 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]";
+/** A BLACK BOX WITH THE MOVING BOX INSIDE (Pato, 2026-11-16, MESITA-4184:
+ *  "black box but with red box inside"; design review pick A): the tile is
+ *  the ink of the row above at the SAME 52px HEIGHT (Pato: "THE BUTTONS MUST
+ *  BE SAME HEIGHT AS TOP BUTTONS"), the icon over the word at the left, and
+ *  the coloured box inside at the right with a 6px black frame. The colour
+ *  ran edge to edge from MESITA-4164; an inset 32px chip before that. */
+const ROW_TILE = "bg-foreground text-paper flex-row items-stretch gap-1.5 overflow-hidden p-1.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]";
 // The glyph over the word, as in the row above, in one fixed width: the
-// boxes say "Reserve" and "Offers" (Pato, MESITA-4171: "the box must
-// actually say Reserve and Offers"; design review pick A, "Icon over
-// word"). The glyph alone from MESITA-4167, 40px wide.
-const ROW_LEAD = "flex w-15 shrink-0 flex-col items-center justify-center gap-1";
-// The moving words big (Pato, MESITA-4165: "make the moving text bigger"):
-// 15px, 11px before.
-const ROW_CHIP = "relative min-w-0 flex-1 overflow-hidden text-lg leading-tight font-extrabold tabular-nums";
+// boxes say "Reserve" and "Offers" (Pato, MESITA-4171).
+const ROW_LEAD = "flex w-13 shrink-0 flex-col items-center justify-center gap-1";
+// The moving box: rounded inside the frame, a small caption over the words
+// at 14px so "+100% Bonus" fits a 360px phone (18px before, MESITA-4167).
+const ROW_CHIP = "relative min-w-0 flex-1 overflow-hidden rounded-md text-sm leading-tight font-extrabold tabular-nums";
 const RESERVE_CHIP = "bg-[#DA3743] text-white";
 const OFFERS_CHIP = "bg-green-400 text-neutral-950";
 const OFF_CHIP = "bg-paper/15 text-paper/70 flex items-center justify-center";

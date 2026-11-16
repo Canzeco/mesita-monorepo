@@ -83,3 +83,25 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
 export function offersLabel(name: string, slides: OfferSlide[]): string {
   return `Offers at ${name}: ${slides.map((s) => s.spoken).join("; ")}`;
 }
+
+/** THE PLACE SCREEN ROW'S OFFER WORDS (Pato, MESITA-4184: "Prepay (+30%
+ *  Bonus) · Welcome (+100% Bonus) · VIP (+100% Bonus) · App Pay (5% Back) ·
+ *  Cash Pay"): Prepay leads, the bonuses read "+N% Bonus", the card cashback
+ *  is App Pay and the place's cash cashback joins as Cash Pay (its own rate;
+ *  0 = no slide). Home's offer button keeps offerSlides' words. */
+export function rowOfferSlides(offers: (OfferInput & { cash_cashback_bps?: number }) | null | undefined): OfferSlide[] {
+  if (!offers) return [];
+  const by = new Map(offerSlides(offers).map((s) => [s.key, s]));
+  const ORDER = ["prepay", "voucher_welcome", "voucher_story", "voucher_vip", "cashback"];
+  const out = ORDER.flatMap((key): OfferSlide[] => {
+    const s = by.get(key);
+    if (!s) return [];
+    if (key === "cashback") return [{ ...s, lead: "App Pay", short: "App Pay", spoken: `App Pay, ${s.pill.toLowerCase()}` }];
+    return s.bonus ? [{ ...s, pill: `+${s.bonus}% Bonus` }] : [s];
+  });
+  const cash = offers.cash_cashback_bps ?? 0;
+  if (cash > 0) {
+    out.push({ key: "cash", lead: "Cash Pay", pill: `${cash / 100}% Back`, short: "Cash Pay", spoken: `Cash Pay, ${cash / 100}% back`, section: null, tone: GREEN });
+  }
+  return out;
+}
