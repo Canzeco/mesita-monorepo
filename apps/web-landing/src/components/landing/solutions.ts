@@ -1,9 +1,11 @@
-// The product solutions. Guests: six, as 🦚 Main § 3 names them; Digital
-// Payments, Credit Prepayments and Credit Rewards are not built, so they carry
-// `soon` and the page tags them instead of hiding them. Restaurants: every
-// product on Business › All (web-business places/[id]/all), same names, same
-// copy, same order: four current, ten Soon (MESITA-3845, Pato: "List all this
-// in the Solutions for Restaurants"). Rename a product there first, then here.
+// The product solutions. Guests: three, as 🦚 Main names them (MESITA-4190,
+// Pato: "Simplification. No cashbacks."): Global Discovery, Reservations Agent,
+// Discounted Prepayments. Discounted Prepayments is not live with real money
+// yet, so it carries `soon` and the page tags it instead of hiding it.
+// Restaurants: every product on Business › All (web-business
+// places/[id]/all), same names, same copy, same order: four current, ten Soon
+// (MESITA-3845, Pato: "List all this in the Solutions for Restaurants").
+// Rename a product there first, then here.
 
 export type Solution = {
   name: string;
@@ -15,12 +17,8 @@ export type Solution = {
 
 export const GUEST_SOLUTIONS: Solution[] = [
   {
-    name: "Global Catalog",
-    body: "Every restaurant, café, bar and club in the city, including places that have never heard of Mesita. Photos, hours, reviews and channels in one profile, built from Google and the open web.",
-  },
-  {
-    name: "Discovery Engines",
-    body: "Find your next place five ways: type its name, browse what is near or popular in forty one-word families, read the map, ask Don Memo in your own words, or see what places are posting.",
+    name: "Global Discovery",
+    body: "Every restaurant, café, bar and club in the city, including places that have never heard of Mesita, each with photos, hours, reviews and channels in one profile. Find your next place five ways: type its name, browse what is near or popular in forty one-word families, read the map, ask Don Memo in your own words, or see what people nearby are looking at.",
     ways: ["Name", "Catalog", "Map", "Deep", "Social"],
   },
   {
@@ -28,18 +26,8 @@ export const GUEST_SOLUTIONS: Solution[] = [
     body: "Ask for a table and the Reservationist makes the call. It phones the place with your date, time and party size, and comes back with a confirmation or alternatives.",
   },
   {
-    name: "Digital Payments",
-    body: "Pay the bill from your phone. Scan the QR on the table and pay by card, Apple Pay or Google Pay, straight to the place. No account needed.",
-    soon: true,
-  },
-  {
-    name: "Credit Prepayments",
-    body: "Buy a place’s meals ahead at the bonus it offers, pay 100 and hold 110. Keep it, gift it, or send it to a friend.",
-    soon: true,
-  },
-  {
-    name: "Credit Rewards",
-    body: "A percent of every payment back as credit at that same place, for the next visit. See what you earn before you pay.",
+    name: "Discounted Prepayments",
+    body: "Pay a place ahead and get more to spend there: pay MX$1,000, spend MX$1,200. Your credit never expires, spends only at that place, and you can send it to a friend.",
     soon: true,
   },
 ];
