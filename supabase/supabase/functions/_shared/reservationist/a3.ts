@@ -44,6 +44,10 @@
 // write tool, and every way into a4_cancel_reservation and
 // a4_change_reservation leaves a node with entry_behavior wait_for_user,
 // so the place has spoken before any of them is judged.
+// decision: the waiting node is entered on "the search found something"
+// (MESITA-4127), true when the reading node is entered; "you just read it"
+// never was, so the answer stayed in the reading node and the change tool
+// was never reached.
 // decision: the place's triage never answers about one table (MESITA-4089).
 // Simulated calls showed it reading a table straight from the caller check,
 // asking the name before searching, offering the code, and telling a place
@@ -63,7 +67,7 @@ const PROMPT = [
  *  no way to a write tool; the answer is heard in a waiting node. */
 const READ_BACK = [
   "La búsqueda regresa las más parecidas, la mejor primero. Lee la primera que no hayan rechazado UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo y Mesita le avisa al comensal»). Si llaman para cambiarla, la misma pregunta lo dice («… ¿Es esa?»).",
-  "Después de esa pregunta no digas nada más: espera su respuesta. No confirmes ni niegues reservaciones de otros lugares.",
+  "Haz la pregunta en el idioma en que habla quien llama (en inglés si habla inglés). Después de esa pregunta no digas nada más: espera su respuesta. No confirmes ni niegues reservaciones de otros lugares.",
 ].join("\n");
 
 /** What a waiting node does once the place answered the read-back. */
@@ -87,10 +91,13 @@ const CHANGE_ASKED = llm(
   "change asked",
 );
 
-/** The read-back was said: move to the waiting node. */
+/** Into the waiting node. ElevenLabs judges a node's edges on entry, in
+ *  parallel with what it says (MESITA-4127): "you just read it" is never
+ *  true then, so the condition is what is already known on entry. The node
+ *  still speaks the read-back; the answer is heard in the waiting node. */
 const READ_ASKED = llm(
-  "Acabas de leer una reservación encontrada como pregunta («¿Es la de …?») y esperas su respuesta.",
-  "read back",
+  "La última búsqueda encontró al menos una reservación (found es true, tickets no está vacío).",
+  "found",
 );
 /** The place said no and another match is left: read it (way back). */
 const NEXT_MATCH = llm(
@@ -381,7 +388,7 @@ export const A3: FleetAgent = {
       e_paa_cancel: edge("place_answer_again", "place_do_cancel", YES_TO_READ_BACK, RESULT_FAIL),
       e_paa_change: edge("place_answer_again", "place_do_change", CHANGE_ASKED),
       e_paa_end: edge("place_answer_again", "end_node", llm("Resuelto, o dijiste que no la encuentras; ya te despediste.", "done")),
-      e_pcc_ask: edge("place_confirm_cancel", "place_cancel_answer", llm("Ya preguntaste cuál cancelan.", "asked")),
+      e_pcc_ask: edge("place_confirm_cancel", "place_cancel_answer", llm("Quien llama quiere cancelar una de las reservaciones de su lista.", "cancel asked")),
       e_pca_do: edge(
         "place_cancel_answer",
         "place_do_cancel",
@@ -395,7 +402,7 @@ export const A3: FleetAgent = {
       e_pchf_ask: edge(
         "place_change_failed",
         "place_cancel_answer",
-        llm("Ya explicaste por qué no se pudo y preguntaste si la dejan como está o la cancelan.", "asked"),
+        llm("La herramienta de cambio respondió con un error: el cambio no se pudo proponer.", "change failed"),
       ),
       e_pdc_done: edge("place_do_cancel", "place_cancel_done", RESULT_OK),
       e_pcd_end: edge("place_cancel_done", "end_node", llm("Resuelto y despedido.", "done")),
