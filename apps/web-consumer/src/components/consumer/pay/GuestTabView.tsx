@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
 import { BAD, GOOD, GOOD_TINT, MoneyRow, NOT_PAID_REASON, PaySection, PayTop, StepBody, StepFooter, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
+import { STEP, skippedFromParts } from "@/lib/guest-pay-stages";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
 // /pay/bill/<id>, after App Pay, "I gave the cash" or credits alone:
@@ -281,7 +282,7 @@ export function GuestTabView({
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
       {/* MESITA-4061: the same frame as every guest step. The bill is open,
           so neither arrow acts: going back is Cancel bill, the footer. */}
-      <PayTop place={place} name={tab.place.name} step={{ at: 4 }} />
+      <PayTop place={place} name={tab.place.name} step={{ at: STEP.sign, skipped: skippedFromParts(tab.parts) }} />
       {/* FITS THE SCREEN, NEVER SCROLLS (MESITA-4102, Pato: "optimize
           vertical space ... i should not be scrolling here"). The body, the
           panel and the QR's slot are one column that fills the height left;

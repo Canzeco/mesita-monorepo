@@ -41,11 +41,13 @@ export function loadedCards(load: CardsLoad): SavedCard[] | null {
   return load.state === "loaded" ? load.cards : null;
 }
 
-/** The remembered card if it is still saved, else the first, else none. */
-export function pickCard(cards: SavedCard[] | null, remembered: string | null): string | null {
+/** The remembered card if it is still saved, else the first, else none.
+ *  A just-refused card (`exclude`) is never picked by default (MESITA-4117):
+ *  the guest taps it to try it again. */
+export function pickCard(cards: SavedCard[] | null, remembered: string | null, exclude: string | null = null): string | null {
   if (!cards) return null;
-  if (remembered && cards.some((c) => c.id === remembered)) return remembered;
-  return cards[0]?.id ?? null;
+  if (remembered && remembered !== exclude && cards.some((c) => c.id === remembered)) return remembered;
+  return cards.find((c) => c.id !== exclude)?.id ?? null;
 }
 
 /** Next waits on Methods: cards unknown, the place takes them, credit does

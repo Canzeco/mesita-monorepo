@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, ChevronRight, Coins, Lock, Plus, ReceiptText, Smartphone, XCircle } from "lucide-react";
+import { Banknote, Check, Coins, Lock, Plus, ReceiptText, Smartphone, XCircle } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
@@ -14,6 +14,7 @@ import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } f
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { acceptCardsAnswer, type CardsLoad, cardsFailure, loadedCards, pickCard } from "@/lib/pay-cards";
+import { guardStage, initialStage, payBackStage, payNextStage, STEP, skippedSegments } from "@/lib/guest-pay-stages";
 import {
   clearGuestDraft,
   outcomeUnknownAfter,
@@ -35,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { CardBrandChip, cardFace } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountInline, AmountKeypad } from "./AmountKeypad";
 import { CreditsCardChip, CreditsPill } from "@/components/consumer/wallet/WalletLists";
-import { BAD, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, RowsCard, StepBody, StepFooter } from "./pay-flow";
+import { BAD, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, StepBody, StepFooter } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
 // THE GUEST PAYS (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
@@ -76,6 +77,8 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-com
 type Blocked = { kind: "draft"; placeId: string; name: string | null } | { kind: "bill"; tabId: string; name: string | null };
 
 const STILL_WORKING = "Still working. Tap again to try again.";
+/** Refusals that mean this card, not the bill: it is never preselected again. */
+const CARD_REFUSED = new Set(["card_declined", "card_needs_auth", "card_failed", "card_not_found", "locked"]);
 const CALL_LIMIT_MS = 25_000;
 class SlowCall extends Error {}
 
@@ -137,7 +140,9 @@ export function GuestPayScreen({
     if (sentTabId) onPaid(sentTabId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sentTabId]);
-  const [stage, setStage] = useState<Stage>(draft?.stage ?? "bill");
+  // A draft at Card or Pay with credits off starts at Method (MESITA-4117):
+  // credits come back on by default, so the guest sees the new split.
+  const [stage, setStage] = useState<Stage>(() => initialStage(draft));
   const [typing, setTyping] = useState(draft?.typing ?? true);
   const [amount, setAmount] = useState(draft?.amount ?? "");
   // A draft from before MESITA-3876 may hold the retired 0 chip: no pick.
@@ -149,9 +154,10 @@ export function GuestPayScreen({
   const [useCredit, setUseCredit] = useState(true);
   const [method, setMethod] = useState<PayWith | null>(draft?.method ?? null);
   const [cardId, setCardId] = useState<string | null>(draft?.cardId ?? null);
+  // The card the bank just refused: listed, never preselected (MESITA-4117).
+  const [refusedCardId, setRefusedCardId] = useState<string | null>(draft?.refusedCardId ?? null);
   const [tipSheet, setTipSheet] = useState(false);
   const [otherTyping, setOtherTyping] = useState("");
-  const [cardsSheet, setCardsSheet] = useState(false);
   const [cardsLoad, setCardsLoad] = useState<CardsLoad>({ state: "loading" });
   const [cardsAttempt, setCardsAttempt] = useState(0);
   const latestCardsAttempt = useRef(0);
@@ -246,7 +252,12 @@ export function GuestPayScreen({
   // The way the bill goes: the guest's pick if it can, else the only one.
   const way: PayWith | null =
     method === "card" && appOn ? "card" : method === "cash" && cashOn ? "cash" : appOn && !cashOn ? "card" : cashOn && !appOn ? "cash" : null;
-  const chosenCard = pickCard(cards, cardId);
+  const chosenCard = pickCard(cards, cardId, refusedCardId);
+  const creditsOnly = dueCents === 0;
+  // The step shown (MESITA-4117): a stored or live stage that stopped making
+  // sense goes back to Method, or to Card when no card can be charged. Pure,
+  // so nothing sets state while rendering.
+  const shown = guardStage({ stage, method, way, dueCents, cardMissing: cards !== null && !chosenCard });
   const splitFor = (w: PayWith) =>
     place
       ? paySplit({ place, billCents, tipCents, spendableCents: spendable, useCredit: creditOn, restWith: w, tipWith: w, cardId: chosenCard })
@@ -264,12 +275,12 @@ export function GuestPayScreen({
   useEffect(() => {
     if (sentTabId) return;
     requestId.current = requestIdAfterEdit(requestId.current, outcomeUnknown);
-    writeDraft(placeId, { stage, typing, amount, tip, other, useCredit, method, cardId });
-  }, [sentTabId, placeId, stage, typing, amount, tip, other, useCredit, method, cardId, outcomeUnknown]);
+    writeDraft(placeId, { stage: shown, typing, amount, tip, other, useCredit, method, cardId, refusedCardId });
+  }, [sentTabId, placeId, shown, typing, amount, tip, other, useCredit, method, cardId, refusedCardId, outcomeUnknown]);
 
   useEffect(() => {
     root.current?.focus({ preventScroll: true });
-  }, [stage, typing, notPaid]);
+  }, [shown, typing, notPaid]);
 
   // The header's X leaves (MESITA-3880), with the latest state each render.
   useEffect(() => {
@@ -286,8 +297,7 @@ export function GuestPayScreen({
       setNotPaid(null);
       return true;
     }
-    if (stage === "pay") setStage(dueCents > 0 ? "method" : "bill");
-    else if (stage === "method") setStage("bill");
+    if (shown === "pay" || shown === "card" || shown === "method") setStage(payBackStage(shown, way));
     else if (!typing) setTyping(true);
     else return false;
     setError(null);
@@ -309,7 +319,6 @@ export function GuestPayScreen({
   });
   function addCard() {
     setError(null);
-    setCardsSheet(false);
     openAddCard();
   }
 
@@ -335,14 +344,17 @@ export function GuestPayScreen({
       }));
       rememberGuestTab(r.tab_id, r.qr_url);
       writeLastTip(placeId, tip);
-      // Start again comes back to the bill with everything typed.
-      writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, cardId, sentTabId: r.tab_id });
+      // Start again comes back to the bill with everything typed; the draft
+      // keeps the card actually charged, not only one the guest tapped.
+      writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, cardId: w === "card" ? chosenCard : cardId, refusedCardId, sentTabId: r.tab_id });
       setOutcomeUnknown(false);
       if (r.card?.status === "requires_action") await runBankCheck(r.card);
       onPaid(r.tab_id);
     } catch (e) {
       const code = e instanceof EFError ? e.code : null;
       if (code) requestId.current = null;
+      // The bank refused this card: never its default again (MESITA-4117).
+      if (w === "card" && code && CARD_REFUSED.has(code)) setRefusedCardId(chosenCard);
       setOutcomeUnknown(outcomeUnknownAfter(code));
       const openId = code === "too_many_open" && e instanceof EFError ? e.body?.open_tab_id : null;
       if (typeof openId === "string" && openId) {
@@ -414,7 +426,7 @@ export function GuestPayScreen({
 
   // Desktop keys reach the keypad.
   function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if (e.metaKey || e.ctrlKey || e.altKey || stage !== "bill" || !typing) return;
+    if (e.metaKey || e.ctrlKey || e.altKey || shown !== "bill" || !typing) return;
     const key: PadKey | null = /^[0-9]$/.test(e.key) ? (e.key as PadKey) : e.key === "." ? "." : e.key === "Backspace" ? "back" : null;
     if (key) {
       e.preventDefault();
@@ -473,8 +485,8 @@ export function GuestPayScreen({
   // nav. ‹ is the same step back as the header's back arrow; › only where
   // the footer's button is a plain Next.
   const backArrow = held || outcomeUnknown ? undefined : () => void backOneStep();
-  const top = (at: number, onBack: (() => void) | undefined, next?: { onClick: () => void; disabled: boolean }) => (
-    <PayTop place={place} onChoose={leave} step={{ at, onBack, next }} />
+  const top = (at: number, onBack: (() => void) | undefined, next?: { onClick: () => void; disabled: boolean }, skipped?: number[]) => (
+    <PayTop place={place} onChoose={leave} step={{ at, onBack, next, skipped }} />
   );
 
   // NOT PAID (before the bill opened: the card was refused).
@@ -531,11 +543,12 @@ export function GuestPayScreen({
   // 1 OPEN + 2 BILL, TYPING: the amount and the keypad, together in the
   // middle. The keypad takes the room there is, between 11rem and 16rem, so
   // a short phone (or an error line) shrinks it instead of scrolling.
-  if (stage === "bill" && typing) {
+  if (shown === "bill" && typing) {
     const toTip = () => billCents > 0 && setTyping(false);
     return frame(
       <>
-        {top(0, undefined, { onClick: toTip, disabled: billCents <= 0 })}
+        {/* ‹ leaves to the places (MESITA-4117), keeping the draft. */}
+        {top(STEP.bill, held ? undefined : leave, { onClick: toTip, disabled: billCents <= 0 })}
         {/* The bill's panel (MESITA-4072), at the top (MESITA-4077): one
             row, "Bill" and the typed amount on its right (MESITA-4082, no
             big display), then the keypad. A short phone shrinks the keys
@@ -579,12 +592,12 @@ export function GuestPayScreen({
     );
 
   // 2 TIP: the bill, the tip chips, credits, the summary card.
-  if (stage === "bill") {
+  if (shown === "bill") {
     const tipOk = tip !== null;
     const tipNext = () => setStage("method");
     return frame(
       <>
-        {top(1, backArrow, { onClick: tipNext, disabled: !tipOk || billCents <= 0 || held })}
+        {top(STEP.tip, backArrow, { onClick: tipNext, disabled: !tipOk || billCents <= 0 || held })}
         {/* ONE PANEL (MESITA-4077): the tip choices, then Bill · Tip · Total.
             The Bill row opens the keypad again; what it earns is on Method. */}
         <StepBody>
@@ -644,52 +657,22 @@ export function GuestPayScreen({
     );
   }
 
-  // The bill's card, picked on Method (MESITA-4100) and shown again on Pay.
+  // The bill's card, picked on Card (MESITA-4117) and shown again on Pay.
   const card = cards?.find((c) => c.id === chosenCard) ?? null;
   const cardsUnknown = cards === null;
-  const cardSheets = (
-    <>
-        <LocalSheet open={cardsSheet} onClose={() => setCardsSheet(false)} ariaLabel="Your cards">
-          <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-            <p className="pt-2 pb-3 text-lg font-semibold">Your cards</p>
-            <RowsCard>
-              {(cards ?? []).map((c: SavedCard) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  className="flex min-h-14 items-center justify-between gap-3 px-4 text-left"
-                  onClick={() => {
-                    setCardId(c.id);
-                    setCardsSheet(false);
-                  }}
-                >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <CardBrandChip brand={c.brand} last4={c.last4} />
-                    <span className="truncate text-base font-semibold">
-                      {brandLabel(c.brand)} •••• {c.last4}
-                    </span>
-                  </span>
-                  {c.id === chosenCard ? <Check className="h-5 w-5" aria-hidden /> : null}
-                </button>
-              ))}
-              {(cards ?? []).length < 3 ? (
-                <button type="button" className="flex min-h-14 items-center gap-3 px-4 text-left text-base font-semibold" onClick={() => addCard()}>
-                  <Plus className="h-5 w-5" aria-hidden />
-                  Add a card
-                </button>
-              ) : null}
-            </RowsCard>
-          </div>
-        </LocalSheet>
-    </>
-  );
+  const retryCards = () => {
+    setCardsLoad({ state: "loading" });
+    setCardsAttempt((n) => n + 1);
+  };
+  // What this payment earns, one wording at zero (MESITA-4117, Pato: "IF NO
+  // CASHBACK MENTION (0% Back)").
+  const backText = (cents: number) => (cents > 0 ? `+${m(cents)} back as credits` : "0% back");
 
   // 3 METHOD: App or Cash for everything that's left.
-  if (stage === "method") {
-    // Credits cover the bill and there is no tip: nothing is left for a
-    // way, so the button opens the bill (credits are spent). It is money,
-    // so › is not offered.
-    const creditsOnly = dueCents === 0;
+  if (shown === "method") {
+    // Credits cover the bill and the tip: nothing is left for a way, so the
+    // button opens the bill (credits are spent). It is money, so › is not
+    // offered.
     // What each way earns, in a box on its row (MESITA-4100, Pato: "THE
     // CASHBACK AMOUNT IS SUPER IMPORTANT ... IN A BOX WITH COLOR"): green
     // with the amount when it earns, grey "0% back" when it does not.
@@ -702,15 +685,18 @@ export function GuestPayScreen({
     const creditBack = backBox(place.credit_bps ?? 0, splitFor(way ?? "card")?.credit_back_cents ?? 0);
     // Everything this payment earns: the way's part plus the credit part.
     const chosenBack = cashbackFor(way ?? "card");
-    const toPay = () => {
+    // Next: Card for the card way, Pay for cash (MESITA-4117).
+    const toNext = () => {
       if (way) {
         setMethod(way);
-        setStage("pay");
+        setStage(payNextStage(way));
       }
     };
+    // Card turns skipped as soon as the way is cash or credits cover it.
+    const skipped = skippedSegments({ way, creditsOnly });
     return frame(
       <>
-        {top(2, backArrow, creditsOnly ? undefined : { onClick: toPay, disabled: !way || held || (way === "card" && !card) })}
+        {top(STEP.method, backArrow, creditsOnly ? undefined : { onClick: toNext, disabled: !way || held }, skipped)}
         {/* ONE PANEL (MESITA-4077): credits, App and Cash, then what is left
             to pay. Each way says what it earns; nothing else repeats it. */}
         <StepBody>
@@ -754,57 +740,6 @@ export function GuestPayScreen({
                   back={backLine("card")}
                   onPick={() => setMethod("card")}
                 />
-                {/* THE CARD, PICKED HERE (MESITA-4100, Pato: "the card must be
-                    selected in the method step, and if no card, offer button
-                    to add card"): under Pay in the app while it is chosen. */}
-                {way === "card" ? (
-                  <div className="flex min-h-14 items-center gap-3 px-4 py-3" data-guest-method-card>
-                    <span className={LEAD_SLOT} aria-hidden />
-                    {cardsUnknown ? (
-                      cardsLoad.state === "failed" ? (
-                        <button
-                          type="button"
-                          className="text-sm font-semibold underline"
-                          onClick={() => {
-                            setCardsLoad({ state: "loading" });
-                            setCardsAttempt((n) => n + 1);
-                          }}
-                        >
-                          Couldn&apos;t load your cards. Retry
-                        </button>
-                      ) : (
-                        <Skeleton className="h-10 w-48 rounded-xl" />
-                      )
-                    ) : card ? (
-                      <button
-                        type="button"
-                        onClick={() => setCardsSheet(true)}
-                        className="border-border hover:bg-muted/60 flex min-w-0 flex-1 items-center gap-3 rounded-xl border px-3 py-2 text-left transition"
-                        aria-label={`${brandLabel(card.brand)} ending ${card.last4}. Change card`}
-                      >
-                        <CardBrandChip brand={card.brand} last4={card.last4} />
-                        <span className="min-w-0 flex-1 truncate text-base font-semibold">
-                          {brandLabel(card.brand)} •••• {card.last4}
-                        </span>
-                        <span className="text-muted-foreground flex shrink-0 items-center text-sm font-semibold">
-                          Change
-                          <ChevronRight className="h-4 w-4" aria-hidden />
-                        </span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => addCard()}
-                        disabled={busy}
-                        className="bg-foreground text-paper flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition hover:opacity-90"
-                        data-guest-add-card
-                      >
-                        <Plus className="h-4 w-4" aria-hidden />
-                        Add a card to pay in the app
-                      </button>
-                    )}
-                  </div>
-                ) : null}
                 <MethodTile
                   on={way === "cash"}
                   off={cashWhy}
@@ -839,7 +774,7 @@ export function GuestPayScreen({
                     As credits at {place.name}
                   </span>
                 </span>
-                <span className="shrink-0 text-2xl font-semibold tabular-nums">{chosenBack > 0 ? `+${m(chosenBack)}` : m(0)}</span>
+                <span className="shrink-0 text-2xl font-semibold tabular-nums">{chosenBack > 0 ? `+${m(chosenBack)}` : "0% back"}</span>
               </div>
             ) : null}
           </PaySection>
@@ -851,22 +786,138 @@ export function GuestPayScreen({
           primary={
             creditsOnly
               ? { label: "Pay with credits", busy, disabled: held, onClick: () => void openBill(null) }
-              : { label: "Next", busy, disabled: !way || held || (way === "card" && !card), onClick: toPay }
+              : { label: "Next", busy, disabled: !way || held, onClick: toNext }
           }
         />
-        {cardSheets}
       </>,
       "method",
     );
   }
 
-  // 4A APP PAY: the saved card, "Pay MX$X", held now. Pay moves money and
-  // "Add a card" leaves the app: neither is offered as ›.
+  // 5 CARD (MESITA-4117, Pato: "Card (this one is if you selected to pay
+  // using mesita cards, like which of all your cards"): the saved cards as
+  // rows, the draft's (or the first) preselected, a just-refused card listed
+  // but never preselected; Add a card is its own page and comes back here
+  // with the new card chosen. Only on the card way with something to pay
+  // (guardStage sends anything else back to Method).
+  if (shown === "card") {
+    const toPay = () => {
+      if (!chosenCard) return;
+      // The draft always holds the card that Pay will charge.
+      setCardId(chosenCard);
+      setStage("pay");
+    };
+    const pickable = (cards ?? []).length < 3;
+    const noCard = !cardsUnknown && !chosenCard;
+    return frame(
+      <>
+        {top(STEP.card, backArrow, { onClick: toPay, disabled: cardsUnknown || !chosenCard || held })}
+        <StepBody>
+          <PaySection title="Which card?" className="text-base">
+            {/* The money, so the card is picked with the amount in view. */}
+            <p className="text-muted-foreground px-4 pb-3 text-sm" data-guest-card-amount>
+              {m(dueCents)} to your card{creditOn && creditCents > 0 ? ` · ${m(creditCents)} from credits` : ""}
+            </p>
+            {cardsUnknown ? (
+              cardsLoad.state === "failed" ? (
+                <button type="button" className="mx-4 mb-4 text-left text-sm font-semibold underline" onClick={retryCards}>
+                  Couldn&apos;t load your cards. Retry
+                </button>
+              ) : (
+                <div className="flex flex-col gap-2 px-4 pb-4" aria-busy>
+                  <Skeleton className="h-14 w-full rounded-xl" />
+                  <Skeleton className="h-14 w-full rounded-xl" />
+                </div>
+              )
+            ) : (cards ?? []).length === 0 ? (
+              <p className="px-4 pb-4 text-base font-semibold" data-guest-no-cards>
+                No cards yet
+              </p>
+            ) : (
+              <div className="divide-border border-border divide-y border-t" role="radiogroup" aria-label="Card">
+                {(cards ?? []).map((c: SavedCard) => {
+                  const on = c.id === chosenCard;
+                  const refused = c.id === refusedCardId;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => {
+                        setCardId(c.id);
+                        // Tapping the refused card tries it again.
+                        if (refused) setRefusedCardId(null);
+                      }}
+                      className="hover:bg-muted/60 flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition"
+                      data-guest-card-row
+                    >
+                      <CardBrandChip brand={c.brand} last4={c.last4} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-base font-semibold">
+                          {brandLabel(c.brand)} •••• {c.last4}
+                        </span>
+                        {refused ? <span className="text-muted-foreground block text-sm">Declined just now</span> : null}
+                      </span>
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+                          on ? "bg-foreground text-background" : "border-border border-2",
+                        )}
+                        aria-hidden
+                      >
+                        {on ? <Check className="h-4 w-4" /> : null}
+                      </span>
+                    </button>
+                  );
+                })}
+                {pickable && !noCard ? (
+                  <button type="button" className="hover:bg-muted/60 flex min-h-14 w-full items-center gap-3 px-4 text-left text-base font-semibold transition" onClick={addCard}>
+                    <Plus className="h-5 w-5" aria-hidden />
+                    Add a card
+                  </button>
+                ) : null}
+              </div>
+            )}
+          </PaySection>
+        </StepBody>
+        {status}
+        <StepFooter
+          onCancel={askCancel}
+          cancelDisabled={cancelLocked}
+          primary={
+            noCard
+              ? // No card to charge (none saved, or the only one was just
+                // refused): adding one is the step's action.
+                { label: "Add a card", busy, disabled: held, onClick: addCard }
+              : { label: "Next", busy, disabled: cardsUnknown || !chosenCard || held, onClick: toPay }
+          }
+        />
+      </>,
+      "card",
+    );
+  }
+
+  // 6A APP PAY: the card picked on Card, "Pay in one click", held now. Pay
+  // moves money: › is not offered. Only stage "pay" reaches here.
+  const paySkipped = skippedSegments({ way, creditsOnly });
+  const backLine = (
+    <p
+      className={cn(
+        "inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-sm font-semibold ring-1 ring-inset",
+        cashbackFor(way ?? "card") > 0 ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-muted text-muted-foreground ring-border",
+      )}
+      data-guest-pay-back
+    >
+      <Coins className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      {backText(cashbackFor(way ?? "card"))}
+    </p>
+  );
   if (way === "card") {
     const guestFace = card ? cardFace(card.brand, brandLabel(card.brand)) : null;
     return frame(
       <>
-        {top(3, backArrow)}
+        {top(STEP.pay, backArrow, undefined, paySkipped)}
         {/* ONE CENTRED CHARGE (MESITA-4100, Pato: "the pay step must be a
             simple pay button centered with the selected card, like charge X
             to this card"): the card is picked on Method, so here it is the
@@ -877,10 +928,7 @@ export function GuestPayScreen({
           <PaySection className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-10 text-center" data-guest-card-pay>
             {cardsUnknown ? (
               cardsLoad.state === "failed" ? (
-                <button type="button" className="text-base font-semibold underline" onClick={() => {
-                  setCardsLoad({ state: "loading" });
-                  setCardsAttempt((n) => n + 1);
-                }}>
+                <button type="button" className="text-base font-semibold underline" onClick={retryCards}>
                   Couldn&apos;t load your cards. Retry
                 </button>
               ) : (
@@ -903,39 +951,24 @@ export function GuestPayScreen({
                   {guestFace?.mark}
                   <span className="text-lg font-semibold tracking-widest tabular-nums">•••• {card.last4}</span>
                 </span>
+                {backLine}
                 <p className="text-muted-foreground flex max-w-xs items-center justify-center gap-2 text-sm">
                   <Lock className="h-4 w-4 shrink-0" aria-hidden />
                   Held now, charged when the waiter signs.
                 </p>
               </>
-            ) : (
-              <button
-                type="button"
-                onClick={() => addCard()}
-                disabled={busy}
-                className="border-muted-foreground/40 text-muted-foreground flex h-36 w-56 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed"
-                data-guest-add-card
-              >
-                <Plus className="h-6 w-6" aria-hidden />
-                <span className="text-base font-semibold">Add a card</span>
-              </button>
-            )}
+            ) : null}
           </PaySection>
         </StepBody>
         {status}
         <StepFooter
           onCancel={askCancel}
           cancelDisabled={cancelLocked}
-          primary={
-            card
-              ? // "Pay in one click" (MESITA-4106, Pato: "the button must say
-                // pay in one click"); the amount is the body's headline.
-                { label: "Pay in one click", busy, disabled: held, onClick: () => void openBill("card") }
-              : { label: "Add a card", busy, disabled: cardsUnknown || held, onClick: () => addCard() }
-          }
+          // "Pay in one click" (MESITA-4106, Pato: "the button must say pay
+          // in one click"); the amount is the body's headline. With no card
+          // resolvable guardStage shows Card instead.
+          primary={{ label: "Pay in one click", busy, disabled: held || !card, onClick: () => void openBill("card") }}
         />
-
-        {cardSheets}
       </>,
       "app",
     );
@@ -945,7 +978,7 @@ export function GuestPayScreen({
   // words sit together in the middle.
   return frame(
     <>
-      {top(3, backArrow)}
+      {top(STEP.pay, backArrow, undefined, paySkipped)}
       {/* BIG AND CENTRED (MESITA-4100, Pato: "BIGGER AND CENTERED AND MORE
           BEAUTIFUL ... VERTICALLY CENTERED IN THE BODY ... MAKE THE CIRCLE AND
           THE ICON AND THE INSTRUCTIONS BIGGER"): the panel fills the body and
@@ -960,6 +993,7 @@ export function GuestPayScreen({
             <span className="text-muted-foreground text-lg font-semibold">Give the waiter</span>
             <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
           </span>
+          {backLine}
           <span className="text-muted-foreground max-w-xs text-lg leading-snug">Then show them your QR so they confirm it.</span>
         </PaySection>
       </StepBody>

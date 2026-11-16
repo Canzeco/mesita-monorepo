@@ -8,7 +8,9 @@ import { payDraftExpired } from "@/lib/pay-draft";
 // left. Not the place-page PayDraft in ./pay-draft (session storage, its own
 // steps): that one only lends this file its 30-minute expiry.
 
-export type Stage = "bill" | "method" | "pay";
+export type Stage = "bill" | "method" | "card" | "pay";
+/** Every stage a stored draft may hold (MESITA-4117). */
+export const STAGES: readonly Stage[] = ["bill", "method", "card", "pay"];
 /** 10% · 15% · 20% · Other (MESITA-3876); no tip is Other with 0 typed. */
 export type Tip = 10 | 15 | 20 | "other" | null;
 export const TIP_CHIPS = [10, 15, 20] as const;
@@ -22,6 +24,8 @@ export type Draft = {
   useCredit: boolean;
   method: PayWith | null;
   cardId: string | null;
+  /** The card just refused: never preselected again (MESITA-4117). */
+  refusedCardId?: string | null;
   /** The bill this draft became (MESITA-3997): while it is set, every way
    *  back in (the place's Pay, a reload, the X and back) opens that bill's
    *  QR, never the Bill step again. Cancel bill and Start again clear it. */
@@ -69,7 +73,13 @@ export function readDraft(placeId: string): Draft | null {
     const d = JSON.parse(store()?.getItem(DRAFT_KEY(placeId)) ?? "null") as Draft | null;
     if (!d || typeof d.amount !== "string" || typeof d.savedAt !== "number") return null;
     if (payDraftExpired(d.savedAt, Date.now())) return null;
-    return d;
+    // A stored stage is never trusted (MESITA-4117): an unknown one reads as
+    // Bill, and a junk method or card id as none.
+    const stage = STAGES.includes(d.stage) ? d.stage : "bill";
+    const method = d.method === "card" || d.method === "cash" ? d.method : null;
+    const cardId = typeof d.cardId === "string" ? d.cardId : null;
+    const refusedCardId = typeof d.refusedCardId === "string" ? d.refusedCardId : null;
+    return { ...d, stage, method, cardId, refusedCardId };
   } catch {
     return null;
   }
