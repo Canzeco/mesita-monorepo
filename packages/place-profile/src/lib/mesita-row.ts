@@ -6,7 +6,7 @@
 // server's list-vouchers read (place.money) through the shared slides.
 
 import type { PlaceDetail } from "../place-detail";
-import { offerSlides, type OfferSlide } from "./offers";
+import { offerDetailSlides, type OfferSlide } from "./offers";
 import { isReserveActionEnabled } from "./place-profile-actions";
 
 /** `note`: what the Off sheet says instead of its standard line (MESITA-3604). */
@@ -27,7 +27,8 @@ export function mesitaRowState(place: Pick<PlaceDetail, "reservations_enabled" |
   // No read yet: a quiet "…" while it is out; none coming (admin's preview,
   // a Google-only card): Off, never a promised offer.
   if (!money) return { reserve, offers: { works: false, loading, slides: [] } };
-  const slides = offerSlides(money);
+  // The whole offers, one line each (MESITA-4155).
+  const slides = offerDetailSlides(money);
   // Mesita's own "Pause voucher sales" is not the place's choice (MESITA-3604).
   const paused = Object.values(money.unavailable ?? {}).includes("paused");
   return {

@@ -3,6 +3,8 @@
 // track are components/place-detail/offer-slides.tsx.
 
 import type { RewardsSection } from "../actions";
+import type { PlaceMoney } from "../place-detail";
+import { moneyLabel } from "./money";
 
 /** One offer on the moving button (MESITA-3467). */
 export type OfferSlide = {
@@ -80,4 +82,44 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
 /** What a screen reader hears: every offer, once. */
 export function offersLabel(name: string, slides: OfferSlide[]): string {
   return `Offers at ${name}: ${slides.map((s) => s.spoken).join("; ")}`;
+}
+
+// THE PLACE SCREEN'S OFFERS TILE SAYS THE WHOLE OFFER (Pato, 2026-11-16,
+// MESITA-4155: "list actually all the offers with all the details ...
+// (Prepay $200MX, Get $220MX) ... (Pay with Mesita, Get 5% Back). This shit
+// rotating"): one line per offer the place sells now, the sizes, then the
+// specials, then cashback. Amounts are the server catalog's, never typed.
+const DETAIL_ORDER: { key: string; section: RewardsSection }[] = [
+  { key: "voucher_200", section: "prepayment" },
+  { key: "voucher_1000", section: "prepayment" },
+  { key: "voucher_5000", section: "prepayment" },
+  { key: "voucher_welcome", section: "special" },
+  { key: "voucher_story", section: "special" },
+  { key: "voucher_vip", section: "special" },
+];
+
+/** "$5000MX": whole amounts read without cents or a thousands comma, as
+ *  Pato wrote them; anything with cents keeps them. */
+export function shortMoney(cents: number, currency: string): string {
+  return moneyLabel(cents, currency).replace(/\.00(?=\D*$)/, "").replace(/,/g, "");
+}
+
+/** The tile's slides, from the place's money read; none = Off. */
+export function offerDetailSlides(money: PlaceMoney | null | undefined): OfferSlide[] {
+  if (!money) return [];
+  const sell = new Set<string>(money.sell ?? []);
+  const currency = money.currency ?? "mxn";
+  const slides: OfferSlide[] = [];
+  for (const { key, section } of DETAIL_ORDER) {
+    const line = money.catalog?.[key as keyof typeof money.catalog];
+    if (!sell.has(key) || !line || line.price_cents <= 0) continue;
+    const text = `Prepay ${shortMoney(line.price_cents, currency)}, Get ${shortMoney(line.credit_cents, currency)}`;
+    slides.push({ key, lead: text, pill: "", short: text, spoken: text, section, tone: "" });
+  }
+  const bps = money.card_cashback_bps ?? 0;
+  if (money.cashback && bps > 0) {
+    const text = `Pay with Mesita, Get ${bps / 100}% Back`;
+    slides.push({ key: "cashback", lead: text, pill: "", short: text, spoken: text, section: null, tone: "" });
+  }
+  return slides;
 }
