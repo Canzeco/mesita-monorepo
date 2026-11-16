@@ -6,7 +6,7 @@
 // this pins the wiring and the facts the money and naming rules depend on.
 
 import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
-import { FLEET, fleetWorkflows, knowledgeFor, TOOL_NAMES } from "./index.ts";
+import { FLEET, fleetWorkflows, GUARDRAILS, guardrailsDrift, knowledgeFor, TOOL_NAMES } from "./index.ts";
 
 const ids = () => new Map(TOOL_NAMES.map((n) => [n, `tool_${n}`]));
 
@@ -125,4 +125,22 @@ Deno.test("a3 place lane: a found table is cancelled only on a yes after the rea
     );
   assert(!reachesFind("place_found_again"), "a3: the second search's node can search a third time");
   assert(!reachesFind("place_answer_again"), "a3: the second search's answer can search a third time");
+});
+
+Deno.test("guardrailsDrift: the pushed guardrails read back clean; a console switch-off or a missing rule shows", () => {
+  // ElevenLabs echoes the config with its own defaults filled in.
+  const live = structuredClone(GUARDRAILS);
+  (live.content.config as Record<string, Record<string, unknown>>).profanity.threshold = 0.3;
+  (live.custom.config.configs[0] as Record<string, unknown>).model = "gemini-3.1-flash-lite";
+  assertEquals(guardrailsDrift(live), []);
+
+  live.focus.is_enabled = false;
+  live.content.config.sexual.is_enabled = false;
+  live.custom.config.configs.pop();
+  assertEquals(guardrailsDrift(live), [
+    "focus off",
+    "content.sexual off",
+    'custom "mesita · never agrees to a payment for a table" missing',
+  ]);
+  assert(guardrailsDrift(null).length > 0);
 });

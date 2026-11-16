@@ -21,7 +21,22 @@ import { A2 } from "./a2.ts";
 import { A3 } from "./a3.ts";
 import { FACTS } from "./facts.ts";
 import type { FleetAgent, FleetAgentKey, FleetWorkflow } from "./graph.ts";
-import { ASR, BUILT_IN_TOOLS, CONVERSATION, LANGUAGE, LANGUAGE_PRESETS, LLM, TTS, TURN, TURN_OUTBOUND } from "./settings.ts";
+import {
+  ASR,
+  BUILT_IN_TOOLS,
+  CONTENT_BLOCKED,
+  CONVERSATION,
+  CUSTOM_GUARDRAILS,
+  GUARDRAILS,
+  LANGUAGE,
+  LANGUAGE_PRESETS,
+  LLM,
+  TTS,
+  TURN,
+  TURN_OUTBOUND,
+} from "./settings.ts";
+
+export { GUARDRAILS } from "./settings.ts";
 import type { ToolName } from "./tools.ts";
 
 export type { FleetAgent, FleetAgentKey, FleetWorkflow } from "./graph.ts";
@@ -74,6 +89,32 @@ export function agentConversationConfig(agent: FleetAgent, toolIds: string[]): R
 }
 
 /**
+ * What the live guardrails get wrong against GUARDRAILS (MESITA-4136), as
+ * readable lines; empty = they match. Only the switches and the custom rules
+ * are compared: ElevenLabs fills defaults (threshold, model, execution mode)
+ * the repo leaves unset.
+ */
+export function guardrailsDrift(live: unknown): string[] {
+  const at = (v: unknown, ...path: string[]): unknown =>
+    path.reduce<unknown>((o, k) => (o && typeof o === "object" ? (o as Record<string, unknown>)[k] : undefined), v);
+  const out: string[] = [];
+  if (at(live, "focus", "is_enabled") !== true) out.push("focus off");
+  if (at(live, "prompt_injection", "is_enabled") !== true) out.push("prompt_injection off");
+  for (const c of CONTENT_BLOCKED) {
+    if (at(live, "content", "config", c, "is_enabled") !== true) out.push(`content.${c} off`);
+  }
+  const listed = at(live, "custom", "config", "configs");
+  const customs = (Array.isArray(listed) ? listed : []) as Array<Record<string, unknown>>;
+  for (const want of CUSTOM_GUARDRAILS) {
+    const got = customs.find((c) => c.name === want.name);
+    if (!got) out.push(`custom "${want.name}" missing`);
+    else if (got.is_enabled !== true) out.push(`custom "${want.name}" off`);
+    else if (got.prompt !== want.prompt) out.push(`custom "${want.name}" prompt differs`);
+  }
+  return out;
+}
+
+/**
  * sha256 of what an agent says: prompt + first message. The sync stores the
  * repo's hash in agents_config.agents.<key>.hash and inspect recomputes it
  * from the live agent, so a console edit shows up as drift.
@@ -101,6 +142,7 @@ export async function specHash(): Promise<string> {
       config: agentConversationConfig(a, a.toolNames.map((n) => `tool:${n}`)),
       knowledge: knowledgeFor(a),
     })),
+    guardrails: GUARDRAILS,
     workflows: fleetWorkflows(toolIds),
     tools: toolConfigs("SUPABASE_URL", "ANON_KEY", "TOOL_SECRET"),
     tests: FLEET_TESTS,

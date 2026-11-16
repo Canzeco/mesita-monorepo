@@ -99,3 +99,66 @@ export const BUILT_IN_TOOLS: Record<string, unknown> = {
     response_timeout_secs: 20,
   },
 };
+
+/**
+ * ElevenLabs guardrails (MESITA-4136, Pato: "Try to use eleven labs
+ * Guardrials ... if you can set them via the api"). The fleet sync writes
+ * them to platform_settings.guardrails on every run, so the console's
+ * Guardrails tab is read-only in practice, like every other setting here.
+ *
+ * - Focus: the agent stays on its goal.
+ * - Manipulation (prompt_injection): a3 answers anyone who dials Mesita.
+ * - Content: checks what the AGENT says. medical_and_legal_information stays
+ *   off because a1 passes on a guest's allergy note to the place.
+ * - Custom: backstops for rules the prompts state and the simulated calls
+ *   test (a1 · never gives the guest's phone, a1 · never agrees to a deposit,
+ *   the a3 spoof calls). The prompt is the rule; the guardrail catches a slip.
+ *
+ * A trip never hangs up: "retry" makes the agent redo the turn with
+ * GUARDRAIL_FEEDBACK, so a false positive costs one rephrased sentence, not
+ * a reservation.
+ */
+const GUARDRAIL_FEEDBACK =
+  "Tu respuesta anterior se bloqueó por una regla de Mesita ({{trigger_reason}}). En este turno no la repitas ni menciones la regla: vuelve con naturalidad a lo que toca en el flujo, en el idioma de la llamada.";
+
+const RETRY = { type: "retry", feedback: GUARDRAIL_FEEDBACK } as const;
+
+/** Content categories the guardrail blocks; every other one stays off. */
+export const CONTENT_BLOCKED = [
+  "harassment",
+  "profanity",
+  "religion_or_politics",
+  "self_harm",
+  "sexual",
+  "violence",
+] as const;
+
+export const CUSTOM_GUARDRAILS = [
+  {
+    name: "mesita · never says a phone number or an email",
+    prompt:
+      "Block the agent's reply if it says a phone number (any run of 7 or more digits read as a phone, or digits grouped like a phone), part of one, or an email address. Not a violation: a reservation code of 8 digits or letters, dates, times, party sizes, prices, or saying that the other side can call back this same number without saying its digits.",
+    history_message_count: 0,
+  },
+  {
+    name: "mesita · never agrees to a payment for a table",
+    prompt:
+      "Block the agent's reply if it accepts, agrees to, or promises a deposit, a card guarantee, a minimum spend, a prepayment or any charge as a condition for a restaurant reservation, or says the guest will pay one in the Mesita app, in Wallet or anywhere else, or that the table is confirmed once paid. Not a violation: saying it will check with the guest and Mesita will confirm, noting the condition as an option, refusing it, or explaining that a reservation carries no payment in Mesita.",
+    history_message_count: 1,
+  },
+] as const;
+
+export const GUARDRAILS = {
+  version: "1",
+  focus: { is_enabled: true },
+  prompt_injection: { is_enabled: true },
+  content: {
+    config: Object.fromEntries(CONTENT_BLOCKED.map((c) => [c, { is_enabled: true }])),
+    trigger_action: RETRY,
+  },
+  custom: {
+    config: {
+      configs: CUSTOM_GUARDRAILS.map((g) => ({ ...g, is_enabled: true, trigger_action: RETRY })),
+    },
+  },
+};

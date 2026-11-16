@@ -14,6 +14,7 @@ import {
   agentConversationConfig,
   FLEET,
   fleetWorkflows,
+  GUARDRAILS,
   KB_VERSION,
   kbDocName,
   knowledgeFor,
@@ -61,6 +62,7 @@ export async function mirrorFiles(): Promise<Record<string, string>> {
       name: a.name,
       direction: DIRECTION[a.key] ?? "",
       conversation_config: agentConversationConfig(a, a.toolNames.map((n) => `tool:${n}`)),
+      platform_settings: { guardrails: GUARDRAILS },
       workflow: workflows[a.key],
       knowledge: { name: kbDocName(a.key), text: knowledgeFor(a).split("\n") },
     });
