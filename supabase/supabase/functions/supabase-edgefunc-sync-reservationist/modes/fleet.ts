@@ -2,7 +2,8 @@
 //
 // Make the four live agents match _shared/reservationist/ on EVERY run:
 // upsert the nine tools, then push each agent's name, first message, prompt,
-// tools and settings (voice, LLM, ASR, turn, conversation) onto its Main
+// tools, settings (voice, LLM, ASR, turn, conversation) and guardrails
+// (platform_settings.guardrails, MESITA-4136) onto its Main
 // branch, read it back, and store the repo hash in
 // agents_config.agents.<key>.hash. A console edit is overwritten by the next
 // run and shows up as drift in mode "inspect" until then.
@@ -16,7 +17,14 @@ import {
   type VersionedAgentShape,
 } from "../el-client.ts";
 import { json } from "../../_shared/http.ts";
-import { agentConversationConfig, agentHash, FLEET, toolConfigs } from "../../_shared/reservationist/index.ts";
+import {
+  agentConversationConfig,
+  agentHash,
+  FLEET,
+  GUARDRAILS,
+  guardrailsDrift,
+  toolConfigs,
+} from "../../_shared/reservationist/index.ts";
 
 export async function fleet(ctx: WorkspaceCtx): Promise<Response> {
   const { key, mode, env, agentsConfig, configuredAgents, toolIdByName, toolSecret, listedAgents, saveAgentsConfig } =
@@ -54,7 +62,15 @@ export async function fleet(ctx: WorkspaceCtx): Promise<Response> {
         const branch = await resolveMainBranchId(key, id, tip);
         const path = `/v1/convai/agents/${encodeURIComponent(id)}` +
           (branch.ok ? `?branch_id=${encodeURIComponent(branch.branchId)}` : "");
-        const patchBody: Record<string, unknown> = { name: spec.name, conversation_config: conversationConfig };
+        // Guardrails merge into the agent's platform_settings so a PATCH that
+        // replaced the object whole would still keep everything else there.
+        const livePlatform = ((before.body as { platform_settings?: Record<string, unknown> } | null)
+          ?.platform_settings) ?? {};
+        const patchBody: Record<string, unknown> = {
+          name: spec.name,
+          conversation_config: conversationConfig,
+          platform_settings: { ...livePlatform, guardrails: GUARDRAILS },
+        };
         if (branch.ok) patchBody.version_description = `Mesita fleet sync ${spec.key} ${hash.slice(0, 12)}`;
         const patch = await elFetch(key, path, { method: "PATCH", body: patchBody });
         if (!patch.ok) return json({ ok: false, error: `agent ${spec.key}: ${patch.error}` }, 502);
@@ -65,6 +81,9 @@ export async function fleet(ctx: WorkspaceCtx): Promise<Response> {
           typeof liveAgent?.first_message === "string" ? liveAgent.first_message : "",
         );
         const liveTools = [...(liveAgent?.prompt?.tool_ids ?? [])].sort();
+        const guardrailIssues = guardrailsDrift(
+          after.ok ? (after.body as { platform_settings?: { guardrails?: unknown } }).platform_settings?.guardrails : null,
+        );
         agentsOut[spec.key] = { id, name: spec.name, hash };
         agentReport.push({
           key: spec.key,
@@ -74,7 +93,9 @@ export async function fleet(ctx: WorkspaceCtx): Promise<Response> {
           hash,
           live_hash: liveHash,
           tool_ids: toolIds,
-          ok: liveHash === hash && JSON.stringify(liveTools) === JSON.stringify([...toolIds].sort()),
+          guardrail_drift: guardrailIssues,
+          ok: liveHash === hash && JSON.stringify(liveTools) === JSON.stringify([...toolIds].sort()) &&
+            guardrailIssues.length === 0,
         });
         continue;
       }
@@ -82,7 +103,7 @@ export async function fleet(ctx: WorkspaceCtx): Promise<Response> {
 
     const created = await elFetch(key, "/v1/convai/agents/create", {
       method: "POST",
-      body: { name: spec.name, conversation_config: conversationConfig },
+      body: { name: spec.name, conversation_config: conversationConfig, platform_settings: { guardrails: GUARDRAILS } },
     });
     if (!created.ok) return json({ ok: false, error: `agent ${spec.key}: ${created.error}` }, 502);
     const newId = (created.body as { agent_id?: string } | null)?.agent_id ?? null;

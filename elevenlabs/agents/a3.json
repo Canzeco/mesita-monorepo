@@ -94,6 +94,69 @@
       }
     }
   },
+  "platform_settings": {
+    "guardrails": {
+      "version": "1",
+      "focus": {
+        "is_enabled": true
+      },
+      "prompt_injection": {
+        "is_enabled": true
+      },
+      "content": {
+        "config": {
+          "harassment": {
+            "is_enabled": true
+          },
+          "profanity": {
+            "is_enabled": true
+          },
+          "religion_or_politics": {
+            "is_enabled": true
+          },
+          "self_harm": {
+            "is_enabled": true
+          },
+          "sexual": {
+            "is_enabled": true
+          },
+          "violence": {
+            "is_enabled": true
+          }
+        },
+        "trigger_action": {
+          "type": "retry",
+          "feedback": "Tu respuesta anterior se bloqueó por una regla de Mesita ({{trigger_reason}}). En este turno no la repitas ni menciones la regla: vuelve con naturalidad a lo que toca en el flujo, en el idioma de la llamada."
+        }
+      },
+      "custom": {
+        "config": {
+          "configs": [
+            {
+              "name": "mesita · never says a phone number or an email",
+              "prompt": "Block the agent's reply if it says a phone number (any run of 7 or more digits read as a phone, or digits grouped like a phone), part of one, or an email address. Not a violation: a reservation code of 8 digits or letters, dates, times, party sizes, prices, or saying that the other side can call back this same number without saying its digits.",
+              "history_message_count": 0,
+              "is_enabled": true,
+              "trigger_action": {
+                "type": "retry",
+                "feedback": "Tu respuesta anterior se bloqueó por una regla de Mesita ({{trigger_reason}}). En este turno no la repitas ni menciones la regla: vuelve con naturalidad a lo que toca en el flujo, en el idioma de la llamada."
+              }
+            },
+            {
+              "name": "mesita · never agrees to a payment for a table",
+              "prompt": "Block the agent's reply if it accepts, agrees to, or promises a deposit, a card guarantee, a minimum spend, a prepayment or any charge as a condition for a restaurant reservation, or says the guest will pay one in the Mesita app, in Wallet or anywhere else, or that the table is confirmed once paid. Not a violation: saying it will check with the guest and Mesita will confirm, noting the condition as an option, refusing it, or explaining that a reservation carries no payment in Mesita.",
+              "history_message_count": 1,
+              "is_enabled": true,
+              "trigger_action": {
+                "type": "retry",
+                "feedback": "Tu respuesta anterior se bloqueó por una regla de Mesita ({{trigger_reason}}). En este turno no la repitas ni menciones la regla: vuelve con naturalidad a lo que toca en el flujo, en el idioma de la llamada."
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
   "workflow": {
     "prevent_subagent_loops": true,
     "nodes": {
