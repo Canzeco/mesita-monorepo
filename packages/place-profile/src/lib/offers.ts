@@ -30,15 +30,17 @@ export type OfferInput = {
   sell: readonly string[];
 };
 
-// THE WORDS AND COLOURS ARE PATO'S (MESITA-3475, MESITA-3791: "Welcome (+X%)
-// · Story (+X%) · VIP (+X%) · Pay (+X% Back) · Prepay (+X%) ONLY SHOW THE
-// HIGHEST STANDARD VOUCHER"): blue Welcome, Instagram-pink Story, gold VIP,
-// Link green for the rest. Pay reads "5% Back" with no "+" (MESITA-3871).
+// THE WORDS ARE PATO'S (MESITA-3475, MESITA-3791: "Welcome (+X%) · Story
+// (+X%) · VIP (+X%) · Pay (+X% Back) · Prepay (+X%) ONLY SHOW THE HIGHEST
+// STANDARD VOUCHER"). Pay reads "5% Back" with no "+" (MESITA-3871).
+// EVERY OFFER IS GREEN (MESITA-4181, Pato: "I WANT ALL OFFERS GREEN … JUST
+// GREENS, LESS CONFUSION"): Link green for all of them; MESITA-3475's blue
+// Welcome, pink Story and gold VIP are gone.
 const GREEN = "bg-green-400 text-neutral-950";
 const OFFER_SLIDES: OfferSlide[] = [
-  { key: "voucher_welcome", lead: "Welcome", pill: "+100%", short: "Welcome", spoken: "Welcome prepay, 100% bonus", section: "special", tone: "bg-[#2563EB] text-white", bonus: 100 },
-  { key: "voucher_story", lead: "Story", pill: "+30%", short: "Story", spoken: "Story prepay, 30% bonus", section: "special", tone: "bg-[#E1306C] text-white", bonus: 30 },
-  { key: "voucher_vip", lead: "VIP", pill: "+100%", short: "VIP", spoken: "VIP prepay, 100% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950", bonus: 100 },
+  { key: "voucher_welcome", lead: "Welcome", pill: "+100%", short: "Welcome", spoken: "Welcome prepay, 100% bonus", section: "special", tone: GREEN, bonus: 100 },
+  { key: "voucher_story", lead: "Story", pill: "+30%", short: "Story", spoken: "Story prepay, 30% bonus", section: "special", tone: GREEN, bonus: 30 },
+  { key: "voucher_vip", lead: "VIP", pill: "+100%", short: "VIP", spoken: "VIP prepay, 100% bonus", section: "special", tone: GREEN, bonus: 100 },
   // The pill is the place's own card rate (offerSlides fills it in).
   { key: "cashback", lead: "Pay", pill: "Back", short: "Pay", spoken: "Mesita Pay cashback", section: null, tone: GREEN },
   // The best standard voucher on sale (offerSlides picks it).

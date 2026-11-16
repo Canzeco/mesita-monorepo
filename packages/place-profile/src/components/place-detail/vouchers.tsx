@@ -192,9 +192,10 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
     voucher_200: green,
     voucher_1000: green,
     voucher_5000: green,
-    voucher_welcome: { card: "bg-blue-200 text-neutral-950", ...LIGHT, Mark: PartyPopper },
-    voucher_story: { card: "bg-pink-200 text-neutral-950", ...LIGHT, Mark: Instagram },
-    voucher_vip: { card: "bg-amber-200 text-neutral-950", ...LIGHT, Mark: Crown },
+    // Every offer green (MESITA-4181); the marks still tell them apart.
+    voucher_welcome: { ...green, Mark: PartyPopper },
+    voucher_story: { ...green, Mark: Instagram },
+    voucher_vip: { ...green, Mark: Crown },
   };
 })();
 

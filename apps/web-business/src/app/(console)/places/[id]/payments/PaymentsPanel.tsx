@@ -124,9 +124,9 @@ const STANDARD: VoucherSeed[] = [
 ];
 
 const SPECIAL: VoucherSeed[] = [
-  { key: "voucher_welcome", name: "Welcome Voucher", bps: 10000, tail: "One per guest at your place.", value: "+100%", tone: "bg-blue-100 text-blue-700", icon: ConfettiIcon },
-  { key: "voucher_story", name: "Story Voucher", bps: 3000, tail: "After posting an Instagram story at your place.", value: "+30%", tone: "bg-pink-100 text-pink-700", icon: InstagramLogoIcon },
-  { key: "voucher_vip", name: "VIP Voucher", bps: 10000, tail: "VIP guests only.", value: "+100%", tone: "bg-amber-100 text-amber-700", icon: CrownIcon },
+  { key: "voucher_welcome", name: "Welcome Voucher", bps: 10000, tail: "One per guest at your place.", value: "+100%", tone: "bg-green-100 text-green-700", icon: ConfettiIcon },
+  { key: "voucher_story", name: "Story Voucher", bps: 3000, tail: "After posting an Instagram story at your place.", value: "+30%", tone: "bg-green-100 text-green-700", icon: InstagramLogoIcon },
+  { key: "voucher_vip", name: "VIP Voucher", bps: 10000, tail: "VIP guests only.", value: "+100%", tone: "bg-green-100 text-green-700", icon: CrownIcon },
 ];
 
 /** The voucher rows in the place's currency; none where vouchers aren't sold. */
