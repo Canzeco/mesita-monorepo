@@ -123,5 +123,12 @@ export function offerDetailSlides(money: PlaceMoney | null | undefined): OfferSl
     const text = `Pay with Mesita, Get ${bps / 100}% Back`;
     slides.push({ key: "cashback", lead: "", pill: text, short: "", spoken: text, section: null, tone: "" });
   }
+  // The waiter's cash cashback (Pato, MESITA-4157: "Pay with Cash, get X%
+  // Back"): the place's own cash rate, when its Cash Cashback is on.
+  const cashBps = money.cash_cashback_bps ?? 0;
+  if (money.outside_cashback && cashBps > 0) {
+    const text = `Pay with Cash, Get ${cashBps / 100}% Back`;
+    slides.push({ key: "cash_cashback", lead: "", pill: text, short: "", spoken: text, section: null, tone: "" });
+  }
   return slides;
 }

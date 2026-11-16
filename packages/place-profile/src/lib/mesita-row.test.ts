@@ -52,6 +52,8 @@ describe("mesitaRowState", () => {
       ...BASE,
       cashback: true,
       card_cashback_bps: 500,
+      outside_cashback: true,
+      cash_cashback_bps: 200,
       sell: ["voucher_vip", "voucher_5000", "voucher_200", "voucher_welcome"],
       catalog: { voucher_200: line(20000, 22000), voucher_5000: line(500000, 650000), voucher_welcome: line(10000, 20000), voucher_vip: line(10000, 20000) },
     });
@@ -61,8 +63,9 @@ describe("mesitaRowState", () => {
       "Prepay $100MX, Get 100% Bonus",
       "Prepay $100MX, Get 100% Bonus",
       "Pay with Mesita, Get 5% Back",
+      "Pay with Cash, Get 2% Back",
     ]);
-    expect(slides.map((s) => s.section)).toEqual(["prepayment", "prepayment", "special", "special", null]);
+    expect(slides.map((s) => s.section)).toEqual(["prepayment", "prepayment", "special", "special", null, null]);
     // On sale but no catalog line: no guessed amount.
     expect(offerDetailSlides({ ...BASE, sell: ["voucher_1000"] })).toEqual([]);
   });
