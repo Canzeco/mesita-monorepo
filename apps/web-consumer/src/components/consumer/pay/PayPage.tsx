@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, MapPin, QrCode } from "lucide-react";
+import { ChevronRight, Clock, MapPin, QrCode } from "lucide-react";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -512,6 +512,18 @@ function OpenBillPanel({
   const currency = tab?.currency ?? listed?.currency ?? "mxn";
   const bill = tab ? tab.bill_cents : draft ? readAmount(draft.amount) : null;
   const tip = tab ? tab.card_tip_cents + tab.cash_tip_cents : null;
+  // THE SIGN TIMER (MESITA-4130, Pato: "if sign, add the timer to sign in
+  // the outside ticket"): the same countdown as the bill's Sign step, from
+  // the server's expires_at, ticking each second while a sent bill waits.
+  const [now, setNow] = useState(() => Date.now());
+  const waiting = tab !== null && tab.status !== "cancelled" && tab.status !== "expired" && !(tab.status === "paid" && tab.verified_at);
+  useEffect(() => {
+    if (!waiting) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [waiting]);
+  const secs = tab ? Math.max(0, Math.ceil((Date.parse(tab.expires_at) - now) / 1000)) : 0;
+  const countdown = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
 
   async function cancel() {
     if (busy) return;
@@ -547,6 +559,13 @@ function OpenBillPanel({
           <span className="block truncate text-sm text-amber-800">{what}</span>
         </span>
       </div>
+      {waiting ? (
+        <p className="flex items-center gap-2 px-4 pt-3 text-sm" role="timer" aria-live="off" data-pay-open-bill-timer>
+          <Clock className="h-4 w-4 shrink-0 text-amber-700" aria-hidden />
+          <span className="text-base font-semibold text-amber-700 tabular-nums">{countdown}</span>
+          <span className="text-amber-800">left to sign · if not, it cancels and nothing is charged</span>
+        </p>
+      ) : null}
       {bill ? (
         <div className="mt-4 divide-y divide-amber-200 border-t border-amber-200 text-base">
           <BillRow label="Bill" value={money(bill, currency)} />
@@ -566,19 +585,24 @@ function OpenBillPanel({
           {error}
         </p>
       ) : null}
-      <div className="flex flex-col gap-1 p-4">
-        <Button asChild size="lg" className="min-h-12 w-full text-base font-semibold">
-          <Link href={href}>Continue</Link>
-        </Button>
-        <button
+      {/* ONE ROW, LEFT AND RIGHT (MESITA-4130, Pato: "red cancel and black
+          continue, left and right"): the Pay steps' footer shape, red Cancel
+          bill a quarter, black Continue three quarters. Cancel asks first. */}
+      <div className="grid grid-cols-[1fr_3fr] gap-3 p-4">
+        <Button
           type="button"
+          size="lg"
+          variant="danger"
+          className="min-h-12 w-full px-1 text-sm leading-tight font-semibold whitespace-normal"
           onClick={() => setConfirm(true)}
           disabled={busy}
-          className="flex h-11 w-full items-center justify-center text-sm font-semibold text-amber-900 disabled:opacity-60"
           data-pay-open-bill-cancel
         >
           Cancel bill
-        </button>
+        </Button>
+        <Button asChild size="lg" className="min-h-12 w-full text-base font-semibold">
+          <Link href={href}>Continue</Link>
+        </Button>
       </div>
       <LocalDialog open={confirm} onClose={() => setConfirm(false)} ariaLabel="Cancel this bill">
         <div className="p-5">
