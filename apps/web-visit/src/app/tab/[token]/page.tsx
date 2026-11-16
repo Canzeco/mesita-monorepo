@@ -283,7 +283,6 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
         <p className="tab-paid-amount">{moneyLabel(total, tab.currency)}</p>
         {tipPaid > 0 ? <p className="tab-paid-line">Includes {moneyLabel(tipPaid, tab.currency)} tip</p> : null}
         {split ? <p className="tab-paid-line">Split between {split.shares.filter((s) => s.status === "paid").length}</p> : null}
-        {tab.paid_at ? <p className="tab-paid-line">{clockTime(tab.paid_at)}</p> : null}
         {tab.ticket ? <p className="tab-paid-line">Ticket {tab.ticket}</p> : null}
         <p className="tab-paid-line">{tab.place.name ?? "A Mesita place"}</p>
       </main>

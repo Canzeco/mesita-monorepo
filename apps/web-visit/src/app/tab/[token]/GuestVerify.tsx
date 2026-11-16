@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { clockTime, moneyLabel } from "@mesita/place-profile/lib/money";
+import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { listPayments, rejectTab, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
 import { signRequest } from "@/lib/sign-gate";
@@ -147,7 +147,8 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
           <CheckIcon className="pay-icon-xl" />
         </span>
         <p className="tab-paid-title" role="status">
-          {mine?.again ? SIGN.alreadySignedAt(clockTime(verifiedAt)) : SIGN.signedAt(clockTime(verifiedAt))}
+          {/* No time once signed (MESITA-4133). */}
+          {mine?.again ? "Already signed" : "Signed"}
         </p>
         <p className="tab-paid-amount">{money(total)}</p>
         {tip > 0 ? <p className="tab-paid-line">Includes {money(tip)} tip</p> : null}
