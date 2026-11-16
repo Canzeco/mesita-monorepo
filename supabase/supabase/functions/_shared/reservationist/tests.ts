@@ -291,7 +291,7 @@ export const FLEET_TESTS: FleetTest[] = [
       "El agente pregunta si habla con Ana López ANTES de mencionar Gran Central, la fecha o la hora.",
       "El agente dice que Mesita no pudo conseguirle mesa en Gran Central para la fecha y hora de la reservación, una sola vez y sin culpar al restaurante.",
       "Cuando Ana pide otra hora, el agente le dice que puede pedirla desde la app de Mesita; NO ofrece reservar él ni promete una hora.",
-      "El agente se despide y termina la llamada.",
+      "El agente se despide al final.",
     ],
     variables: { ...BOOKING, call_context: "not_booked" },
     maxTurns: 6,
