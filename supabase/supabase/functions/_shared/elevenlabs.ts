@@ -192,6 +192,17 @@ export type OutboundCallResult =
  * non-whitelisted override is accepted at placement and then killed at
  * initiation — the callee hears an immediate hang-up; MESITA-757).
  */
+/**
+ * The number as the dialler takes it: "+" and digits only. A place's Google
+ * phone is stored spaced ("+52 81 8335 6200", all 247 live places), and the
+ * owner-typed one may carry dashes or parentheses (MESITA-4143).
+ */
+export function dialable(raw: string): string {
+  const t = raw.trim();
+  const digits = t.replace(/\D/g, "");
+  return t.startsWith("+") ? `+${digits}` : digits;
+}
+
 export async function placeOutboundCall(
   key: string,
   input: {
@@ -209,7 +220,7 @@ export async function placeOutboundCall(
       body: JSON.stringify({
         agent_id: input.agentId,
         agent_phone_number_id: input.agentPhoneNumberId,
-        to_number: input.toNumber,
+        to_number: dialable(input.toNumber),
         conversation_initiation_client_data: { dynamic_variables: input.dynamicVariables },
       }),
     });

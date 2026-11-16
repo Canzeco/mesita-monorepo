@@ -115,17 +115,20 @@ export function notesForCall(notes: string | null | undefined): string {
 
 /**
  * Which place a finished call was with, when it was a call with a place.
- * a1 calls belong to a reservation (the place is the ticket's); a4 calls are
- * known by the line the place phoned from. Any other agent: not a place call.
+ * a1 calls belong to a reservation (the place is the ticket's). Inbound calls
+ * (a3, which took over a4's place lane in MESITA-3974; a4 while its id is
+ * still configured) are known by the line the caller phoned from, and are a
+ * place call only when that line is a place's (MESITA-4143). Any other
+ * agent: not a place call.
  */
 export function placeCallKind(
   agentId: unknown,
-  fleet: { a1?: string | null; a4?: string | null },
-): "a1" | "a4" | null {
+  fleet: { a1?: string | null; a3?: string | null; a4?: string | null },
+): "a1" | "inbound" | null {
   if (typeof agentId !== "string" || !agentId.trim()) return null;
   const id = agentId.trim();
   if (fleet.a1 && id === fleet.a1) return "a1";
-  if (fleet.a4 && id === fleet.a4) return "a4";
+  if ((fleet.a3 && id === fleet.a3) || (fleet.a4 && id === fleet.a4)) return "inbound";
   return null;
 }
 

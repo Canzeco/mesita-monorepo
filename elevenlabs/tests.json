@@ -463,7 +463,7 @@
     "conditions": [
       "Cuando la búsqueda no encuentra nada, el agente pide un dato más una sola vez.",
       "El agente NO inventa ni lee ninguna reservación, nombre, hora ni código que la herramienta no haya regresado.",
-      "El agente no repite la búsqueda en bucle: busca como máximo dos veces y, si sigue sin encontrar, lo dice y ofrece revisar en Business › Reservaciones o volver a llamar.",
+      "El agente no repite la búsqueda en bucle: busca como máximo dos veces y, si sigue sin encontrar, lo dice y ofrece volver a llamar con el código de Mesita de la reservación.",
       "Después de la segunda búsqueda sin resultados, el agente no vuelve a preguntar si el nombre es correcto ni pide otro dato."
     ],
     "maxTurns": 10,
