@@ -74,7 +74,8 @@ export function buildDateOptions(
     const { weekday, day, month } = placeDateParts(iso);
     out.push({
       iso,
-      weekday: i === 0 ? "Today" : i === 1 ? "Tom." : DAY_NAMES[weekday],
+      // Today, then weekday names (MESITA-4183: "Tom." read as a name).
+      weekday: i === 0 ? "Today" : DAY_NAMES[weekday],
       day,
       month: MONTH_NAMES[month],
       // A closed day, or late at night today, has nothing left. The pill stays
@@ -237,12 +238,12 @@ export function ReservationTimePicker({
       {groups.length === 0 ? (
         <p className="text-muted-foreground type-body">No times left on this day. Pick another date.</p>
       ) : (
-        <div role="radiogroup" aria-label="Time" className="flex flex-col gap-2">
+        <div role="radiogroup" aria-label="Time" className="flex flex-col gap-3">
           {groups.map((g) => (
             <div key={g.label}>
-              <p className="text-muted-foreground type-body mb-1 font-medium">{g.label}</p>
+              <p className="type-body mb-1.5 font-semibold">{g.label}</p>
               {/* Small (MESITA-4179, Pato: "TIME SMAL"): five a row. */}
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-5 gap-2">
                 {g.slots.map((slot) => {
                   const active = slot.time === value;
                   return (
@@ -252,7 +253,7 @@ export function ReservationTimePicker({
                       role="radio"
                       aria-checked={active}
                       onClick={() => onChange(slot.time)}
-                      className={cn(CHOICE, "h-9 rounded-lg text-sm", active ? CHOICE_ON : CHOICE_OFF)}
+                      className={cn(CHOICE, "h-11 text-base", active ? CHOICE_ON : CHOICE_OFF)}
                     >
                       {slot.time}
                     </button>
@@ -566,7 +567,7 @@ export function ReserveStepNav({
         </button>
         <p className="flex min-w-0 flex-1 items-center justify-center gap-1.5 truncate text-base">
           <Icon className="h-5 w-5 shrink-0" aria-hidden />
-          <span className="font-semibold">{name}</span>
+          <span className="font-semibold">{`Reserve · ${name}`}</span>
           <span className="text-muted-foreground">{` · ${at + 1} of ${steps.length}`}</span>
         </p>
         <button

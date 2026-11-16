@@ -185,7 +185,7 @@ export function ReservationForm({
   const dayLabel = chosen
     ? chosen.weekday === "Today"
       ? "Today"
-      : chosen.weekday === "Tom."
+      : dateOptions.indexOf(chosen) === 1
         ? "Tomorrow"
         : `${chosen.weekday} ${chosen.day}`
     : "";

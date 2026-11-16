@@ -125,9 +125,11 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
   return (
     <div className="bg-card relative flex flex-1 flex-col overflow-hidden">
       {/* The one page header (MESITA-4097): square Back, the title. */}
-      <ScreenHeader title="Reserve a table" onBack={onBack} />
+      {/* The place IS the header (MESITA-4183), the way Pay's header names
+          it (MESITA-4122): one row instead of "Reserve a table" over the
+          name; the step bar under it says what this screen does. */}
+      <ScreenHeader title={place.name} onBack={onBack} />
       <div className="flex min-h-0 flex-1 flex-col px-5">
-        <p className="truncate pt-3 pb-2 text-lg font-semibold">{place.name}</p>
 
         <ReservationForm
           place={place}
