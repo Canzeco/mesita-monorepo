@@ -2,7 +2,9 @@ import {
   ArrowRight,
   BadgeCheck,
   CalendarCheck,
+  Compass,
   MapPin,
+  Percent,
   Star,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +12,30 @@ import { Button } from "@/components/ui/button";
 import { BUSINESS_URL, CONSUMER_URL } from "@/components/landing/urls";
 
 const FAMILIES = ["Tacos", "Mexican", "Night"];
+
+// The three UVPs in the first view, in Pato's words (MESITA-4193): one per
+// guest product in `solutions.ts`, same order. Discounts is Discounted
+// Prepayments, not live with real money yet, so it says Soon.
+const UVPS = [
+  {
+    icon: Compass,
+    name: "Discovery",
+    line: "Every place in the city, found by name, nearby, on the map or by asking.",
+    soon: false,
+  },
+  {
+    icon: CalendarCheck,
+    name: "Reservations",
+    line: "Ask for a table and an agent calls the place for you.",
+    soon: false,
+  },
+  {
+    icon: Percent,
+    name: "Discounts",
+    line: "Pay a place ahead and spend more there: pay MX$1,000, spend MX$1,200.",
+    soon: true,
+  },
+];
 
 // The hero sells both sides in one viewport: the guest's promise on the left,
 // one place profile on the right with a chip from each side of Mesita on it
@@ -60,12 +86,27 @@ function Hero() {
             </Button>
           </div>
 
-          <p className="text-muted-foreground text-sm">
-            <span className="text-foreground font-medium">Three products</span>{" "}
-            for guests ·{" "}
-            <span className="text-foreground font-medium">fourteen</span> for
-            restaurants · one catalog under both
-          </p>
+          <ul className="flex w-full flex-col gap-3">
+            {UVPS.map(({ icon: Icon, name, line, soon }) => (
+              <li key={name} className="flex items-start gap-3">
+                <span className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="text-sm leading-snug">
+                  <span className="text-foreground block font-semibold">
+                    {name}
+                    {soon ? (
+                      <span className="text-muted-foreground font-medium">
+                        {" "}
+                        · Soon
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="text-muted-foreground">{line}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div className="relative mx-auto w-full max-w-sm" aria-hidden>
