@@ -92,7 +92,9 @@ export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
 const ROW_TILE = "bg-foreground text-paper flex-row items-stretch gap-0 overflow-hidden p-0 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]";
 // The glyph over the label, as in the row above, in one fixed width.
 const ROW_LEAD = "flex w-14 shrink-0 flex-col items-center justify-center gap-1";
-const ROW_CHIP = "relative min-w-0 flex-1 overflow-hidden text-[11px] font-extrabold tabular-nums";
+// The moving words big (Pato, MESITA-4165: "make the moving text bigger"):
+// 15px, 11px before.
+const ROW_CHIP = "relative min-w-0 flex-1 overflow-hidden text-[15px] leading-tight font-extrabold tabular-nums";
 const RESERVE_CHIP = "bg-[#DA3743] text-white";
 const OFFERS_CHIP = "bg-green-400 text-neutral-950";
 const OFF_CHIP = "bg-paper/15 text-paper/70 flex items-center justify-center";
@@ -357,7 +359,8 @@ function ReserveTile({ place, onReserve }: { place: PlaceDetail; onReserve?: () 
             spoken: `${t.day} ${t.time}`,
             section: null,
             tone: "",
-            pill: `${t.day === "Tomorrow" ? "Tmrw" : t.day} ${t.time}`,
+            // Two lines, so the time can be big (MESITA-4165): "Today" over "20:30".
+            pill: `${t.day}\n${t.time}`,
           })),
     [clock, place],
   );

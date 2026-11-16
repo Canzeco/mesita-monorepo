@@ -126,7 +126,7 @@ function OfferWords({ slide, short = false, plain = false, className }: { slide:
       {plain ? (
         // The chip's words alone (the place screen's row, MESITA-4160):
         // "Prepay +30%", "Pay 5% Back", "Today 20:00".
-        <span className="truncate">{slide.lead ? `${slide.lead} ${slide.pill}` : slide.pill}</span>
+        <span className="overflow-hidden text-center whitespace-pre-line">{slide.lead ? `${slide.lead} ${slide.pill}` : slide.pill}</span>
       ) : (
         <>
           {slide.lead ? <span className="truncate">{short ? slide.short : slide.lead}</span> : null}
