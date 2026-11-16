@@ -20,44 +20,58 @@ export { offerSlides, offersLabel, type OfferInput, type OfferSlide } from "../.
 // anything listens, and skips a beat while the page is hidden or was
 // scrolled in the last 600ms, so nothing moves under a moving list.
 export const OFFER_BEAT_MS = 2000;
+/** The place screen's row: a time and an offer change together every
+ *  second, 500ms still and a 500ms slide (Pato, MESITA-4160: "stuff must
+ *  rotate every second, sync ... like this hour that bonus"). */
+export const PAIR_BEAT_MS = 1000;
 const SCROLL_QUIET_MS = 600;
 
-let beat = 0;
-let timer: ReturnType<typeof setInterval> | null = null;
 let lastScrollAt = 0;
-const listeners = new Set<() => void>();
-
 function onScroll() {
   lastScrollAt = Date.now();
 }
 
-function tick() {
-  if (document.hidden) return;
-  if (Date.now() - lastScrollAt < SCROLL_QUIET_MS) return;
-  beat += 1;
-  for (const listener of listeners) listener();
-}
+/** One clock per period, shared by every button that reads it. */
+type Beat = { count: number; subscribe: (listener: () => void) => () => void };
+const beats = new Map<number, Beat>();
 
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  if (!timer) {
-    timer = setInterval(tick, OFFER_BEAT_MS);
-    // Capture: lists scroll inside their own boxes, not the window.
-    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
-  }
-  return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0 && timer) {
-      clearInterval(timer);
-      timer = null;
-      document.removeEventListener("scroll", onScroll, { capture: true });
-    }
+function beatFor(ms: number): Beat {
+  const found = beats.get(ms);
+  if (found) return found;
+  const listeners = new Set<() => void>();
+  let timer: ReturnType<typeof setInterval> | null = null;
+  const b: Beat = {
+    count: 0,
+    subscribe(listener) {
+      listeners.add(listener);
+      if (!timer) {
+        timer = setInterval(() => {
+          if (document.hidden) return;
+          if (Date.now() - lastScrollAt < SCROLL_QUIET_MS) return;
+          b.count += 1;
+          for (const l of listeners) l();
+        }, ms);
+        // Capture: lists scroll inside their own boxes, not the window.
+        document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+      }
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size === 0 && timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      };
+    },
   };
+  beats.set(ms, b);
+  return b;
 }
 
-/** The shared beat: a count that rises every 2s. The server render reads 0. */
-export function useOfferBeat(): number {
-  return useSyncExternalStore(subscribe, () => beat, () => 0);
+/** The shared beat: a count that rises every `ms` (2s by default). The
+ *  server render reads 0. */
+export function useOfferBeat(ms: number = OFFER_BEAT_MS): number {
+  const b = beatFor(ms);
+  return useSyncExternalStore(b.subscribe, () => b.count, () => 0);
 }
 
 const REDUCE = "(prefers-reduced-motion: reduce)";
@@ -76,8 +90,8 @@ export function useReducedMotion(): boolean {
 /** The slide the shared beat shows now, plus the one it just left (for the
  *  slide-up). Under reduced motion it holds the first voucher slide, so the
  *  Offers page stays one tap away (MESITA-4151), else the first slide. */
-export function useOfferSlide(slides: OfferSlide[]): { index: number; previous: number | null } {
-  const beatNow = useOfferBeat();
+export function useOfferSlide(slides: OfferSlide[], ms: number = OFFER_BEAT_MS): { index: number; previous: number | null } {
+  const beatNow = useOfferBeat(ms);
   const reduced = useReducedMotion();
   // The beat this button first drew on: no slide-up on arrival.
   const [firstBeat] = useState(beatNow);
@@ -96,23 +110,22 @@ const OFFER_SLIDE_CSS = `@keyframes offer-in{from{transform:translateY(100%)}to{
 @keyframes offer-out{from{transform:translateY(0)}to{transform:translateY(-100%)}}
 .offer-in{animation:offer-in 300ms ease-out both}
 .offer-out{animation:offer-out 300ms ease-out both}
-@media (prefers-reduced-motion:reduce){.offer-in{animation:none}.offer-out{display:none}}`;
+.offer-in-slow{animation:offer-in 500ms ease-out both}
+.offer-out-slow{animation:offer-out 500ms ease-out both}
+@media (prefers-reduced-motion:reduce){.offer-in,.offer-in-slow{animation:none}.offer-out,.offer-out-slow{display:none}}`;
 
 /** The ink pill beside a slide's words. */
 const OFFER_PILL =
   "bg-foreground text-paper shrink-0 rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums";
 
-function OfferWords({ slide, short = false, className }: { slide: OfferSlide; short?: boolean; className?: string }) {
+function OfferWords({ slide, short = false, plain = false, className }: { slide: OfferSlide; short?: boolean; plain?: boolean; className?: string }) {
   return (
     <span className={cn("absolute inset-0 flex items-center justify-center gap-1.5", className)}>
       {/* A slide with no lead is the whole offer in the black tag (the place
           screen's Offers box, MESITA-4157). */}
-      {slide.lines ? (
-        // Two lines, the place screen's black box (MESITA-4158).
-        <span className="flex min-w-0 flex-col items-center leading-tight">
-          <span className="max-w-full truncate">{slide.lines[0]}</span>
-          <span className="max-w-full truncate">{slide.lines[1]}</span>
-        </span>
+      {plain ? (
+        // The chip's words alone (the place screen's row, MESITA-4160).
+        <span className="truncate">{slide.pill}</span>
       ) : (
         <>
           {slide.lead ? <span className="truncate">{short ? slide.short : slide.lead}</span> : null}
@@ -131,21 +144,26 @@ export function OfferTrack({
   index,
   previous,
   short,
+  plain,
 }: {
   slides: OfferSlide[];
   index: number;
   previous: number | null;
   short?: boolean;
+  /** The place screen's chips: the words alone, a 500ms slide (MESITA-4160). */
+  plain?: boolean;
 }) {
+  const inCls = plain ? "offer-in-slow" : "offer-in";
+  const outCls = plain ? "offer-out-slow" : "offer-out";
   return (
     <span className="relative block h-full w-full overflow-hidden" aria-hidden>
       <style href="mesita-offer-slide" precedence="default">
         {OFFER_SLIDE_CSS}
       </style>
       {previous !== null ? (
-        <OfferWords key={`out-${slides[previous].key}-${index}`} slide={slides[previous]} short={short} className="offer-out" />
+        <OfferWords key={`out-${slides[previous].key}-${index}`} slide={slides[previous]} short={short} plain={plain} className={outCls} />
       ) : null}
-      <OfferWords key={`in-${slides[index].key}`} slide={slides[index]} short={short} className={previous !== null ? "offer-in" : undefined} />
+      <OfferWords key={`in-${slides[index].key}`} slide={slides[index]} short={short} plain={plain} className={previous !== null ? inCls : undefined} />
     </span>
   );
 }
