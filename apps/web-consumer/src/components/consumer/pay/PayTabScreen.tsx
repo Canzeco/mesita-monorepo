@@ -3,11 +3,18 @@
 import { Screen } from "@/components/consumer/nav/Screen";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CONSUMER_ROUTES, payPlacePath, payReceiptPath, payBillPath } from "@/lib/consumer-route-contract";
+import {
+  CONSUMER_ROUTES,
+  payPlacePath,
+  payReceiptPath,
+  payBillPath,
+} from "@/lib/consumer-route-contract";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
+import { SizedImg } from "@mesita/place-profile";
 import { GuestPayScreen } from "./GuestPayScreen";
+import { PayHeaderPlaceContext, type PayHeaderPlace } from "./pay-flow";
 import { PayFormSheet } from "./PayForm";
 import { writeOpenTabId } from "./pay-common";
 import { TabView, type TabStart } from "./TabView";
@@ -34,11 +41,19 @@ export function PayTabScreen({ start }: { start: TabStart }) {
   // A fix already in hand gives the distance on Open (MESITA-3861); none is asked here.
   const [at] = useState(() => {
     const c = typeof window === "undefined" ? null : locationSnapshot().coords;
-    return c ? { lat: Math.round(c.lat * 1000) / 1000, lng: Math.round(c.lng * 1000) / 1000 } : null;
+    return c
+      ? {
+          lat: Math.round(c.lat * 1000) / 1000,
+          lng: Math.round(c.lng * 1000) / 1000,
+        }
+      : null;
   });
   const { places, failed, refresh } = usePayPlaces(at);
   const [formPlaceId, setFormPlaceId] = useState<string | null>(null);
-  const formPlace = formPlaceId && places ? places.find((p) => p.place_id === formPlaceId) ?? null : null;
+  const formPlace =
+    formPlaceId && places
+      ? (places.find((p) => p.place_id === formPlaceId) ?? null)
+      : null;
   const leave = () => goBack(router);
   // MESITA-3715: on the guest's steps the back arrow steps back first.
   const stepBack = useRef<(() => boolean) | null>(null);
@@ -56,62 +71,103 @@ export function PayTabScreen({ start }: { start: TabStart }) {
     setHasClose(fn !== null);
   }, []);
 
+  // "Pay at [photo] Name" once a step knows its place (MESITA-4122).
+  const [headerPlace, setHeaderPlace] = useState<PayHeaderPlace | null>(null);
+
   return (
-    <Screen
-      title="Pay"
-      // MESITA-4068 (Pato: "header on its own < pay"): the header's boxed ‹
-      // leaves, keeping the draft, as the X did (MESITA-3880); the step nav's
-      // own ‹ steps back. With no step's own close it is Back.
-      onBack={() => (hasClose ? close.current?.() : back())}
-      flush
-      paper
-    >
-      {/* MESITA-3739: white, no tab bar, and a fixed height chain down to
+    <PayHeaderPlaceContext.Provider value={setHeaderPlace}>
+      <Screen
+        title={headerPlace?.name ?? "Pay"}
+        titleMark={
+          headerPlace ? (
+            <>
+              <span className="shrink-0">Pay at</span>
+              <span
+                className="bg-muted h-7 w-7 shrink-0 overflow-hidden rounded-full"
+                aria-hidden
+              >
+                {headerPlace.photo ? (
+                  <SizedImg
+                    src={headerPlace.photo}
+                    size="thumb"
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : null}
+              </span>
+            </>
+          ) : undefined
+        }
+        // MESITA-4068 (Pato: "header on its own < pay"): the header's boxed ‹
+        // leaves, keeping the draft, as the X did (MESITA-3880); the step nav's
+        // own ‹ steps back. With no step's own close it is Back.
+        onBack={() => (hasClose ? close.current?.() : back())}
+        flush
+        paper
+      >
+        {/* MESITA-3739: white, no tab bar, and a fixed height chain down to
           each step's flexible part. A guest step's body scrolls only when its
           one centred group does not fit (MESITA-4061); the footer never moves. */}
-      <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {start.kind === "place" ? (
-          // MESITA-3709: the guest pays alone; the waiter verifies after.
-          <GuestPayScreen
-            placeId={start.placeId}
-            places={places}
-            placesFailed={failed}
-            getSupabase={getSupabase}
-            onPaid={(id) => navigateTo(router, payBillPath(id), { replace: true })}
-            onOpenPlace={(id) => navigateTo(router, payPlacePath(id), { replace: true })}
-            onChoosePlace={() => navigateTo(router, `${CONSUMER_ROUTES.pay}?pick=1`, { replace: true })}
-            registerBack={registerBack}
-            registerClose={registerClose}
-          />
-        ) : (
-        <TabView
-          start={start}
-          getSupabase={getSupabase}
-          canUseCode={(placeId) => places?.some((p) => p.place_id === placeId) ?? false}
-          onTabId={(id) => {
-            writeOpenTabId(id);
-            replaceAddress(payBillPath(id));
+        <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {start.kind === "place" ? (
+            // MESITA-3709: the guest pays alone; the waiter verifies after.
+            <GuestPayScreen
+              placeId={start.placeId}
+              places={places}
+              placesFailed={failed}
+              getSupabase={getSupabase}
+              onPaid={(id) =>
+                navigateTo(router, payBillPath(id), { replace: true })
+              }
+              onOpenPlace={(id) =>
+                navigateTo(router, payPlacePath(id), { replace: true })
+              }
+              onChoosePlace={() =>
+                navigateTo(router, `${CONSUMER_ROUTES.pay}?pick=1`, {
+                  replace: true,
+                })
+              }
+              registerBack={registerBack}
+              registerClose={registerClose}
+            />
+          ) : (
+            <TabView
+              start={start}
+              getSupabase={getSupabase}
+              canUseCode={(placeId) =>
+                places?.some((p) => p.place_id === placeId) ?? false
+              }
+              onTabId={(id) => {
+                writeOpenTabId(id);
+                replaceAddress(payBillPath(id));
+              }}
+              onWaiterCode={setFormPlaceId}
+              onDone={leave}
+              onPayAgain={(placeId) =>
+                navigateTo(router, payPlacePath(placeId), { replace: true })
+              }
+              placeFor={(id) => places?.find((p) => p.place_id === id) ?? null}
+              registerBack={registerBack}
+              registerClose={registerClose}
+            />
+          )}
+        </div>
+        <PayFormSheet
+          place={formPlace}
+          refill={null}
+          onClose={() => {
+            setFormPlaceId(null);
+            leave();
           }}
-          onWaiterCode={setFormPlaceId}
-          onDone={leave}
-          onPayAgain={(placeId) => navigateTo(router, payPlacePath(placeId), { replace: true })}
-          placeFor={(id) => places?.find((p) => p.place_id === id) ?? null}
-          registerBack={registerBack}
-          registerClose={registerClose}
+          onPaid={(p) =>
+            navigateTo(router, payReceiptPath(p.payment_id), { replace: true })
+          }
+          onTaken={(id) =>
+            navigateTo(router, payReceiptPath(id), { replace: true })
+          }
+          onRefresh={refresh}
         />
-        )}
-      </div>
-      <PayFormSheet
-        place={formPlace}
-        refill={null}
-        onClose={() => {
-          setFormPlaceId(null);
-          leave();
-        }}
-        onPaid={(p) => navigateTo(router, payReceiptPath(p.payment_id), { replace: true })}
-        onTaken={(id) => navigateTo(router, payReceiptPath(id), { replace: true })}
-        onRefresh={refresh}
-      />
-    </Screen>
+      </Screen>
+    </PayHeaderPlaceContext.Provider>
   );
 }
