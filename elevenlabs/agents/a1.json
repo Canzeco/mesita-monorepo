@@ -333,7 +333,7 @@
         "target": "report_confirmed",
         "forward_condition": {
           "type": "llm",
-          "condition": "El restaurante confirmó la mesa tal como se pidió, o a una hora dentro del rango que aceptó el comensal.",
+          "condition": "El restaurante confirmó la mesa tal como se pidió, o a una hora dentro del rango que aceptó el comensal, SIN condiciones de pago. Si para esa mesa pide un depósito, una garantía con tarjeta o un consumo mínimo, NO es confirmada: es una opción para el comensal.",
           "label": "confirmed"
         },
         "backward_condition": {
@@ -347,7 +347,7 @@
         "target": "report_counter",
         "forward_condition": {
           "type": "llm",
-          "condition": "El restaurante no puede tal cual y ofreció opciones concretas (otra hora u otra área).",
+          "condition": "El restaurante no puede tal cual y ofreció opciones concretas (otra hora u otra área), o solo da la mesa con un depósito, una garantía con tarjeta o un consumo mínimo (esa condición va en la nota de la opción).",
           "label": "counter-offer"
         },
         "backward_condition": {

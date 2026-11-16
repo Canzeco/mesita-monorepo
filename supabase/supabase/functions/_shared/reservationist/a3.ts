@@ -74,7 +74,7 @@ const READ_BACK = [
 const ANSWER = [
   "Quien llama acaba de responder a tu lectura de la reservación.",
   "Si dijo que sí es esa y quiere cancelarla (lo pidió antes o ahora): no vuelvas a preguntar; di solo «Listo.» y el flujo la cancela.",
-  "Si dijo que sí es esa y quiere cambiarle la hora (o el día) o el número de personas: si ya dijo el nuevo valor, di solo «Listo.» y el flujo lo propone; si falta, pregúntalo una vez («¿A qué hora la quieren pasar?» o «¿Para cuántas personas?»). No repitas la lectura.",
+  "Si dijo que sí es esa y quiere cambiarle la hora (o el día) o el número de personas: si ya dijo el nuevo valor, en cualquier momento de la llamada (también antes de tu lectura, como «¿la pueden pasar a cuatro personas?»), di solo «Listo.» y el flujo lo propone; si falta, pregúntalo una vez («¿A qué hora la quieren pasar?» o «¿Para cuántas personas?»). No repitas la lectura. Nunca le digas al restaurante que el comensal lo cambia en la app: tú se lo propones al comensal.",
   "Si solo consultaba, contesta lo que pregunte con lo que regresó la búsqueda (por ejemplo, que sigue confirmada) y despídete.",
 ].join("\n");
 
@@ -87,7 +87,7 @@ const YES_TO_READ_BACK = llm(
 /** The only way into the change tool: the place confirmed the table after
  *  the read-back and said what to change it to (MESITA-4073). */
 const CHANGE_ASKED = llm(
-  "En un turno POSTERIOR a tu lectura, quien llama confirmó que es esa, quiere cambiarle la hora (o el día) y/o el número de personas, y ya dijo el nuevo valor (la nueva hora o cuántas personas). Si todavía falta el nuevo valor, NO.",
+  "En un turno POSTERIOR a tu lectura, quien llama confirmó que es esa (un «sí» o «esa» basta). Y en algún momento de la llamada, antes o después de la lectura, pidió cambiarle la hora (o el día) y/o el número de personas y dijo el nuevo valor (la nueva hora o cuántas personas). Si nunca dijo el nuevo valor, NO.",
   "change asked",
 );
 

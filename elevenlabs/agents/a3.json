@@ -249,7 +249,7 @@
           "x": 1600,
           "y": -320
         },
-        "additional_prompt": "Quien llama acaba de responder a tu lectura de la reservación.\nSi dijo que sí es esa y quiere cancelarla (lo pidió antes o ahora): no vuelvas a preguntar; di solo «Listo.» y el flujo la cancela.\nSi dijo que sí es esa y quiere cambiarle la hora (o el día) o el número de personas: si ya dijo el nuevo valor, di solo «Listo.» y el flujo lo propone; si falta, pregúntalo una vez («¿A qué hora la quieren pasar?» o «¿Para cuántas personas?»). No repitas la lectura.\nSi solo consultaba, contesta lo que pregunte con lo que regresó la búsqueda (por ejemplo, que sigue confirmada) y despídete.\nSi dijo que no y ya no queda otra, dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.",
+        "additional_prompt": "Quien llama acaba de responder a tu lectura de la reservación.\nSi dijo que sí es esa y quiere cancelarla (lo pidió antes o ahora): no vuelvas a preguntar; di solo «Listo.» y el flujo la cancela.\nSi dijo que sí es esa y quiere cambiarle la hora (o el día) o el número de personas: si ya dijo el nuevo valor, en cualquier momento de la llamada (también antes de tu lectura, como «¿la pueden pasar a cuatro personas?»), di solo «Listo.» y el flujo lo propone; si falta, pregúntalo una vez («¿A qué hora la quieren pasar?» o «¿Para cuántas personas?»). No repitas la lectura. Nunca le digas al restaurante que el comensal lo cambia en la app: tú se lo propones al comensal.\nSi solo consultaba, contesta lo que pregunte con lo que regresó la búsqueda (por ejemplo, que sigue confirmada) y despídete.\nSi dijo que no y ya no queda otra, dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.",
         "entry_behavior": "wait_for_user",
         "conversation_config": {
           "agent": {
@@ -308,7 +308,7 @@
           "x": 2240,
           "y": -80
         },
-        "additional_prompt": "Quien llama acaba de responder a tu lectura de la reservación.\nSi dijo que sí es esa y quiere cancelarla (lo pidió antes o ahora): no vuelvas a preguntar; di solo «Listo.» y el flujo la cancela.\nSi dijo que sí es esa y quiere cambiarle la hora (o el día) o el número de personas: si ya dijo el nuevo valor, di solo «Listo.» y el flujo lo propone; si falta, pregúntalo una vez («¿A qué hora la quieren pasar?» o «¿Para cuántas personas?»). No repitas la lectura.\nSi solo consultaba, contesta lo que pregunte con lo que regresó la búsqueda (por ejemplo, que sigue confirmada) y despídete.\nSi dijo que no y ya no queda otra, di exactamente: «Entonces no la encuentro. Puede revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar.» No busques ni pidas más datos; despídete y cuelga con end_call.",
+        "additional_prompt": "Quien llama acaba de responder a tu lectura de la reservación.\nSi dijo que sí es esa y quiere cancelarla (lo pidió antes o ahora): no vuelvas a preguntar; di solo «Listo.» y el flujo la cancela.\nSi dijo que sí es esa y quiere cambiarle la hora (o el día) o el número de personas: si ya dijo el nuevo valor, en cualquier momento de la llamada (también antes de tu lectura, como «¿la pueden pasar a cuatro personas?»), di solo «Listo.» y el flujo lo propone; si falta, pregúntalo una vez («¿A qué hora la quieren pasar?» o «¿Para cuántas personas?»). No repitas la lectura. Nunca le digas al restaurante que el comensal lo cambia en la app: tú se lo propones al comensal.\nSi solo consultaba, contesta lo que pregunte con lo que regresó la búsqueda (por ejemplo, que sigue confirmada) y despídete.\nSi dijo que no y ya no queda otra, di exactamente: «Entonces no la encuentro. Puede revisarla en Business › Reservations, en la app de Mesita para negocios, o volver a llamar.» No busques ni pidas más datos; despídete y cuelga con end_call.",
         "entry_behavior": "wait_for_user",
         "conversation_config": {
           "agent": {
@@ -838,7 +838,7 @@
         "target": "place_do_change",
         "forward_condition": {
           "type": "llm",
-          "condition": "En un turno POSTERIOR a tu lectura, quien llama confirmó que es esa, quiere cambiarle la hora (o el día) y/o el número de personas, y ya dijo el nuevo valor (la nueva hora o cuántas personas). Si todavía falta el nuevo valor, NO.",
+          "condition": "En un turno POSTERIOR a tu lectura, quien llama confirmó que es esa (un «sí» o «esa» basta). Y en algún momento de la llamada, antes o después de la lectura, pidió cambiarle la hora (o el día) y/o el número de personas y dijo el nuevo valor (la nueva hora o cuántas personas). Si nunca dijo el nuevo valor, NO.",
           "label": "change asked"
         }
       },
@@ -911,7 +911,7 @@
         "target": "place_do_change",
         "forward_condition": {
           "type": "llm",
-          "condition": "En un turno POSTERIOR a tu lectura, quien llama confirmó que es esa, quiere cambiarle la hora (o el día) y/o el número de personas, y ya dijo el nuevo valor (la nueva hora o cuántas personas). Si todavía falta el nuevo valor, NO.",
+          "condition": "En un turno POSTERIOR a tu lectura, quien llama confirmó que es esa (un «sí» o «esa» basta). Y en algún momento de la llamada, antes o después de la lectura, pidió cambiarle la hora (o el día) y/o el número de personas y dijo el nuevo valor (la nueva hora o cuántas personas). Si nunca dijo el nuevo valor, NO.",
           "label": "change asked"
         }
       },
