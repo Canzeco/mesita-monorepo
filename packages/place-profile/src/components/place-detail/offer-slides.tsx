@@ -20,10 +20,14 @@ export { offerSlides, offersLabel, type OfferInput, type OfferSlide } from "../.
 // anything listens, and skips a beat while the page is hidden or was
 // scrolled in the last 600ms, so nothing moves under a moving list.
 export const OFFER_BEAT_MS = 2000;
-/** The place screen's row: a time and an offer change together every
- *  second, 500ms still and a 500ms slide (Pato, MESITA-4160: "stuff must
- *  rotate every second, sync ... like this hour that bonus"). */
-export const PAIR_BEAT_MS = 1000;
+/** The place screen's row ticks every 500ms and each tile changes on every
+ *  second tick, Reserve on the even ones and Offers on the odd: each moves
+ *  once a second, half a second apart, so a time never reads as paired with
+ *  an offer (Pato, MESITA-4170: "not syncronized ... each one to change must
+ *  be 1 second, and 500ms of difference"; one pair a second in MESITA-4160).
+ *  One clock, so the gap holds whichever tile mounts first. */
+export const ROW_TICK_MS = 500;
+export const ROW_TICKS_PER_CHANGE = 2;
 const SCROLL_QUIET_MS = 600;
 
 let lastScrollAt = 0;
@@ -90,8 +94,14 @@ export function useReducedMotion(): boolean {
 /** The slide the shared beat shows now, plus the one it just left (for the
  *  slide-up). Under reduced motion it holds the first voucher slide, so the
  *  Offers page stays one tap away (MESITA-4151), else the first slide. */
-export function useOfferSlide(slides: OfferSlide[], ms: number = OFFER_BEAT_MS): { index: number; previous: number | null } {
-  const beatNow = useOfferBeat(ms);
+export function useOfferSlide(
+  slides: OfferSlide[],
+  ms: number = OFFER_BEAT_MS,
+  /** Change every `every` ticks of the clock, `phase` ticks early (the
+   *  place screen's row, MESITA-4170). One slide a tick by default. */
+  { every = 1, phase = 0 }: { every?: number; phase?: number } = {},
+): { index: number; previous: number | null } {
+  const beatNow = Math.floor((useOfferBeat(ms) + phase) / every);
   const reduced = useReducedMotion();
   // The beat this button first drew on: no slide-up on arrival.
   const [firstBeat] = useState(beatNow);
