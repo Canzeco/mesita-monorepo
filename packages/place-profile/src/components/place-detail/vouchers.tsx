@@ -1,9 +1,9 @@
 "use client";
 
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, CircleCheck, CreditCard, Crown, Info, Lock, Minus, PartyPopper, Plus, Ticket, type LucideIcon } from "lucide-react";
-import { cardExpiry, isCardExpired, MAX_PAY_CARDS, type PayCards } from "../../pay-cards";
+import { Check, CircleCheck, Crown, Info, Lock, Minus, PartyPopper, Plus, Ticket, type LucideIcon } from "lucide-react";
+import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
@@ -590,7 +590,15 @@ export function VouchersPane({
   const readyCards = payCards?.state === "ready" ? payCards.cards : null;
   const payCardId = actions?.payCardId ?? null;
   const payCard = readyCards?.find((c) => c.id === payCardId && !isCardExpired(c)) ?? null;
-  const payWithRef = useRef<HTMLElement>(null);
+  // NO "PAY WITH" BOX (MESITA-4150, Pato: "remove this fucking box of
+  // payments bottom in prepayments"): the card is named in the foot, and
+  // Change steps to the next usable card.
+  const usableCards = readyCards?.filter((c) => !isCardExpired(c)) ?? [];
+  const nextCard = () => {
+    if (usableCards.length < 2) return;
+    const at = usableCards.findIndex((c) => c.id === payCard?.id);
+    actions?.onSelectPayCard?.(usableCards[(at + 1) % usableCards.length].id);
+  };
   // SELECT, THEN BUY (MESITA-3487, Pato: "you select then you click Buy.
   // selector at the right"). SEVERAL AT ONCE (MESITA-3841): each row toggles
   // in or out of one basket, Small and Big with a quantity; Buy pays it all
@@ -813,19 +821,9 @@ export function VouchersPane({
           })}
         </ul>
       </section>
-      {payCards && anyBuyable ? (
-        <PayWith
-          sectionRef={payWithRef}
-          cards={payCards}
-          selected={payCardId}
-          locked={buying}
-          onSelect={actions?.onSelectPayCard}
-          onAdd={actions?.onAddPayCard}
-          onRetry={actions?.onRetryPayCards}
-        />
-      ) : null}
       {/* ONE PAY AT THE FOOT (MESITA-3487; MESITA-4065): the card it charges
-          is named above it, so nobody pays with a card they cannot see;
+          is named above it (MESITA-4150: the only place it is named), so nobody
+          pays with a card they cannot see;
           purple, Stripe's colour (Pato: "maybe the stripe button purple"). */}
       <div className="bg-card border-border sticky bottom-0 -mx-4 mt-auto -mb-4 border-t px-4 py-3" data-promos="checkout">
         {payCard && items.length > 0 ? (
@@ -833,12 +831,27 @@ export function VouchersPane({
             <span className="text-foreground truncate font-medium">
               {payCard.label} •••• {payCard.last4}
             </span>
+            {usableCards.length > 1 ? (
+              <button
+                type="button"
+                disabled={buying}
+                className="text-foreground shrink-0 font-semibold underline underline-offset-2 disabled:opacity-50"
+                onClick={nextCard}
+              >
+                Change
+              </button>
+            ) : null}
+          </p>
+        ) : null}
+        {payCards?.state === "error" && items.length > 0 ? (
+          <p className="text-muted-foreground mb-2 flex items-center justify-between text-sm" role="alert">
+            <span className="text-foreground">Couldn&apos;t load your cards</span>
             <button
               type="button"
               className="text-foreground shrink-0 font-semibold underline underline-offset-2"
-              onClick={() => payWithRef.current?.scrollIntoView({ block: "center", behavior: "smooth" })}
+              onClick={actions?.onRetryPayCards}
             >
-              Change
+              Retry
             </button>
           </p>
         ) : null}
@@ -857,90 +870,3 @@ export function VouchersPane({
   );
 }
 
-/** "Pay with" (MESITA-4065): the guest's saved cards as one card of radio
- *  rows under the offers, then "Add a card". Expired cards are listed but
- *  cannot be picked; at three cards Add stays, disabled, and says why. */
-function PayWith({
-  sectionRef,
-  cards,
-  selected,
-  locked,
-  onSelect,
-  onAdd,
-  onRetry,
-}: {
-  sectionRef: RefObject<HTMLElement | null>;
-  cards: PayCards;
-  selected: string | null;
-  locked: boolean;
-  onSelect?: (id: string) => void;
-  onAdd?: () => void;
-  onRetry?: () => void;
-}) {
-  const ROW = "flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left disabled:opacity-50";
-  const full = cards.state === "ready" && cards.cards.length >= MAX_PAY_CARDS;
-  return (
-    <section ref={sectionRef} className="flex flex-col gap-2" aria-labelledby="rewards-pay-with" data-promos="pay-with">
-      <SectionTitle id="rewards-pay-with" title="Pay with" />
-      <div className="border-border divide-border divide-y rounded-2xl border">
-        {cards.state === "loading" ? (
-          <div className={ROW} aria-busy>
-            <span className="bg-muted h-5 w-5 animate-pulse rounded" aria-hidden />
-            <span className="bg-muted h-4 flex-1 animate-pulse rounded" aria-hidden />
-          </div>
-        ) : null}
-        {cards.state === "error" ? (
-          <div className={ROW} role="alert">
-            <span className="text-foreground flex-1 text-sm">Couldn&apos;t load your cards</span>
-            <button type="button" onClick={onRetry} className="text-foreground text-sm font-semibold underline underline-offset-2">
-              Retry
-            </button>
-          </div>
-        ) : null}
-        {cards.state === "ready" ? (
-          <div role="radiogroup" aria-label="Pay with" className="divide-border divide-y">
-            {cards.cards.map((c) => {
-              const expired = isCardExpired(c);
-              const on = c.id === selected && !expired;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  disabled={locked || expired}
-                  onClick={() => onSelect?.(c.id)}
-                  className={ROW}
-                  data-pay-card={c.id}
-                >
-                  <CreditCard className="text-foreground h-5 w-5 shrink-0" aria-hidden />
-                  <span className="min-w-0 flex-1">
-                    <span className="text-foreground block truncate text-[15px] font-semibold">
-                      {c.label} •••• {c.last4}
-                    </span>
-                    <span className="text-muted-foreground block text-[13px]">{expired ? "Expired" : `Expires ${cardExpiry(c)}`}</span>
-                  </span>
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${on ? "border-foreground" : "border-border"}`}
-                    aria-hidden
-                  >
-                    {on ? <span className="bg-foreground h-3 w-3 rounded-full" /> : null}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-        {cards.state !== "error" ? (
-          <button type="button" onClick={onAdd} disabled={locked || full || cards.state === "loading"} className={ROW} data-pay-add-card>
-            <Plus className="text-foreground h-5 w-5 shrink-0" aria-hidden />
-            <span className="min-w-0 flex-1">
-              <span className="text-foreground block text-[15px] font-semibold">Add a card</span>
-              {full ? <span className="text-muted-foreground block text-[13px]">Up to 3 cards. Remove one in Wallet.</span> : null}
-            </span>
-          </button>
-        ) : null}
-      </div>
-    </section>
-  );
-}
