@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { PlaceMoney } from "../place-detail";
-import { mesitaRowState } from "./mesita-row";
+import { offerSlides } from "./offers";
+import { mesitaRowState, PREPAY_PAUSED } from "./mesita-row";
 
 const BASE: PlaceMoney = {
   charges_enabled: false,
@@ -17,41 +18,41 @@ const BASE: PlaceMoney = {
   balance: { available_cents: 0, pending_cents: 0, held_cents: 0, spendable_cents: 0 },
 };
 
-// Money promises (MESITA-3581): a tile is green only when it works here, with
-// the place's real numbers, never a promise the place cannot keep.
-describe("mesitaRowState", () => {
-  it("says Off for everything a place does not run, and never $0MX", () => {
-    const s = mesitaRowState({ reservations_enabled: false, money: BASE });
-    expect(s).toEqual({
-      reserve: { works: false, pill: "Off" },
-      prepay: { works: false, pill: "Off" },
-      wallet: { works: false, pill: "Off" },
-      pay: { works: false, pill: "Off" },
-    });
+// Money promises (MESITA-3581, MESITA-4151): an offer shows only when the
+// place runs it, with the place's real rate, never a typed-in promise.
+describe("offerSlides", () => {
+  it("shows nothing for a place that runs nothing", () => {
+    expect(offerSlides(null)).toEqual([]);
+    expect(offerSlides({ cashback: false, sell: [] })).toEqual([]);
+    // Cashback on but no rate in the answer: no guessed number.
+    expect(offerSlides({ cashback: true, sell: [] })).toEqual([]);
   });
 
-  it("reads the best bonus from what sells, the balance, and the cash rate", () => {
-    const s = mesitaRowState({
-      money: {
-        ...BASE,
-        charges_enabled: true,
-        outside_cashback: true,
-        cash_cashback_bps: 300,
-        sell: ["voucher_200", "voucher_1000"],
-        catalog: {
-          voucher_200: { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 0 },
-          voucher_1000: { price_cents: 100000, bonus_cents: 20000, credit_cents: 120000, available_after_sec: 0 },
-          voucher_5000: { price_cents: 500000, bonus_cents: 150000, credit_cents: 650000, available_after_sec: 0 },
-        },
-        balance: { available_cents: 12000, pending_cents: 0, held_cents: 0, spendable_cents: 12000 },
-      },
+  it("orders Welcome, Story, VIP, Pay, Prepay and shows only the best standard bonus", () => {
+    const slides = offerSlides({
+      cashback: true,
+      card_cashback_bps: 700,
+      sell: ["voucher_200", "voucher_5000", "voucher_vip", "voucher_welcome"],
     });
-    expect(s.prepay).toEqual({ works: true, pill: "20% Bonus" });
-    expect(s.wallet).toEqual({ works: true, pill: "$120.00MX" });
-    // The place's own rates (MESITA-3589), never a typed-in 5% / 2%.
-    expect(s.pay).toEqual({ works: true, pill: "3% Back" });
-    expect(mesitaRowState({ money: { ...BASE, cashback: true, card_cashback_bps: 700, outside_cashback: true, cash_cashback_bps: 300 } }).pay.pill).toBe("7% Back");
-    // An older read without the rate says On, never a guessed number.
-    expect(mesitaRowState({ money: { ...BASE, charges_enabled: true, cashback: true } }).pay.pill).toBe("On");
+    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Welcome +100%", "VIP +100%", "Pay 7% Back", "Prepay +20%"]);
+    expect(slides.map((s) => s.section)).toEqual(["special", "special", null, "prepayment"]);
+  });
+});
+
+describe("mesitaRowState", () => {
+  it("is Off for a place that takes no bookings and offers nothing", () => {
+    const s = mesitaRowState({ reservations_enabled: false, money: BASE });
+    expect(s.reserve.works).toBe(false);
+    expect(s.offers).toEqual({ works: false, loading: false, slides: [] });
+  });
+
+  it("works with one slide, and says paused while Mesita pauses sales", () => {
+    expect(mesitaRowState({ money: { ...BASE, cashback: true, card_cashback_bps: 500 } }).offers.works).toBe(true);
+    const paused = mesitaRowState({ money: { ...BASE, unavailable: { voucher_200: "paused" } } });
+    expect(paused.offers).toMatchObject({ works: false, note: PREPAY_PAUSED });
+  });
+
+  it("waits quietly while the first read is out", () => {
+    expect(mesitaRowState({ money: undefined }, true).offers).toEqual({ works: false, loading: true, slides: [] });
   });
 });

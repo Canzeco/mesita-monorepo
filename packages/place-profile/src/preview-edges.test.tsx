@@ -89,14 +89,9 @@ describe("member preview edges", () => {
     expect(html).not.toContain("data-reserve-slot");
     // Directions routes to the place (lib/maps-link.ts).
     expect(html).toContain("google.com/maps/dir/?api=1&amp;destination=");
-    // Pay is back as a Soon button under Reserve (MESITA-2688), full width since MESITA-3303.
-    // One row of three since MESITA-3314: Reserve · Prepay · Pay, no "Mesita".
-    // The amount rides in the name (MESITA-3324). With no money read (this
-    // preview) nothing Mesita runs is promised: Off, never "30% Bonus" or
-    // "5% Back" typed in the code (MESITA-3581). An Off tile still opens a
-    // sheet saying why (MESITA-3583).
-    expect(html).toContain('aria-label="Prepay, Off"');
-    expect(html).toContain('aria-label="Pay, Off"');
+    // Row 2 is Reserve · Offers (MESITA-4151). With no money read (this
+    // preview) no offer is promised: Offers is Off, never a typed "+30%".
+    expect(html).toContain('aria-label="Offers, Off"');
     expect(html).not.toContain("30% Bonus");
     // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
     expect(html).not.toContain("backdrop-blur");
@@ -153,19 +148,19 @@ describe("member preview edges", () => {
     expect(nav).toContain('aria-label="Place sections"');
     expect(nav).toContain("bg-card");
     expect(nav).not.toContain("bg-background");
-    const prepayAt = html.indexOf('aria-label="Prepay');
+    const offersAt = html.indexOf('aria-label="Offers');
     const directionsAt = html.indexOf("Directions in Google Maps");
     const saveAt = html.indexOf('aria-label="Add to favorites"');
     const contactAt = html.indexOf('aria-label="Contact"');
     const shareAt = html.indexOf('aria-label="Share"');
-    // Save · Maps · Contact · Share · Upgrade / Reserve · Prepay · Pay (MESITA-3426).
+    // Save · Maps · Contact · Share · Upgrade / Reserve · Offers (MESITA-4151).
     const reserveAt = html.indexOf('aria-label="Reserve a table');
     expect(saveAt).toBeGreaterThan(-1);
     expect(directionsAt).toBeGreaterThan(saveAt);
     expect(contactAt).toBeGreaterThan(directionsAt);
     expect(shareAt).toBeGreaterThan(contactAt);
     expect(reserveAt).toBeGreaterThan(shareAt);
-    expect(prepayAt).toBeGreaterThan(reserveAt);
+    expect(offersAt).toBeGreaterThan(reserveAt);
     expect(html).not.toContain("Save, Soon");
     expect(html).toContain("Menu");
     expect(html).not.toContain(">Products<");

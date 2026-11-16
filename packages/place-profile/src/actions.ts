@@ -67,24 +67,12 @@ export type PlaceActions = {
    *  drawn by the host; called only while the tab is open. Absent (admin's
    *  Preview, a Google-only card), the tab shows an empty screen. */
   renderSocial?: () => ReactNode;
-  /** Prepay (MESITA-3412): open the host's Offers sheet. Absent, the tile is
-   *  inert (admin's preview). */
+  /** The Offers tile's voucher slides (MESITA-3412, MESITA-4151): open the
+   *  host's Offers page at a section. Absent, the tile is inert (admin's preview). */
   onOpenRewards?: (section: RewardsSection) => void;
-  /** The Pay tile (MESITA-3352): opens the host's Pay page. Absent, the
-   *  tile is inert (admin's preview). */
+  /** The Offers tile's cashback slide (MESITA-3352, MESITA-4151): opens the
+   *  host's Pay page. Absent, that slide is inert (admin's preview). */
   onPay?: () => void;
-  /** The pinned row's Wallet tile (MESITA-3574): opens the host's Wallet at
-   *  this place's credit. Absent (admin's preview, business), the tile is
-   *  inert. Its pill reads `place.money.balance`. */
-  onOpenWallet?: () => void;
-  /** The Wallet tile's Off sheet (MESITA-3583): this place's House Card is
-   *  already in the guest's Wallet (pinned or holding credit), from the
-   *  host's list-vouchers read. Absent: unknown, the sheet offers to add it. */
-  houseCardInWallet?: boolean;
-  /** "Add card to Wallet" (MESITA-3583): pins this place's House Card with
-   *  $0 (consumer-web-add-house-card). Resolves true once it is in the
-   *  Wallet. Absent (admin's preview, business): the sheet has no button. */
-  onAddHouseCard?: () => Promise<boolean>;
   /** The guest's own facts for the Offers (i) status (MESITA-3502): VIP needs
    *  the VIP Class, Story a linked Instagram. Absent (signed out, admin's
    *  preview, profile not read yet), no guest lock is drawn. */

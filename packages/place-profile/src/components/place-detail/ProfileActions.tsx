@@ -3,14 +3,11 @@
 import {
   CalendarCheck,
   ChevronRight,
-  CreditCard,
   Heart,
   Map as MapIcon,
   Phone,
-  QrCode,
   Rocket,
   Share2,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import type React from "react";
@@ -20,89 +17,35 @@ import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
-import { MESITA_ROW_LOADING, mesitaRowState, type MesitaTileState } from "../../lib/mesita-row";
+import { mesitaRowState } from "../../lib/mesita-row";
+import { OfferTrack, offersLabel, useOfferSlide, type OfferSlide } from "./offer-slides";
 import { OffTileSheet, type OffTile } from "./OffTileSheet";
 import { PLACE_PILL_CLASS } from "../../lib/ui";
 import { buildDirectionsUrl } from "../../lib/maps-link";
 
 
-// TWO ROWS OF TILES (Pato, MESITA-3315: "make those 3 buttons the same
-// height of the other 5 buttons, but wider because are three instead of 5.
-// and keep the dark colors"; MESITA-3314 had them as one row of 44px
-// buttons, "the three buttons instead of lines buttons, in one line:
-// Reserve, Prepay, Pay"; MESITA-2690 had three rows, Mesita Reserve full
-// width over Mesita Prepay and Mesita Payments halved; MESITA-2688/2689 had
-// Reserve and Pay side by side):
+// TWO ROWS OF TILES (Pato's sketches, MESITA-3419 then MESITA-4151):
 //
-//   [ Save ] [ Maps ] [ Contact ] [ Share ] [ Upgrade ]      black, glyph over label (MESITA-3581)
-//   [ Reserve ] [ Prepay ] [ Wallet ] [ Pay ]   each green with its real number where it works here, grey "Off" where it doesn't (MESITA-3581)
-//   ink · green · green · green, pinned (MESITA-3574, Pato: "make this four
-//   items ... Reserve Prepay Wallet-Card-Preview-(for that place) Pay. 5 and
-//   4. just mention wallet and display how many credits the user has
-//   there"; three since MESITA-3426)
+//   [ Save ] [ Maps ] [ Contact ] [ Share ] [ Upgrade ]   black, glyph over label (MESITA-3581)
+//   [     Reserve      ] [       Offers        ]          pinned, halves (MESITA-4151)
 //
-// That is Pato's 3×3 sketch (MESITA-3419); layout D (MESITA-3416) before.
+// ROW 2 IS TWO BUTTONS (Pato, MESITA-4151: "showing the wallet balance there
+// and the pay button is not really relevant ... pay is already in the bottom
+// menu, and wallet too ... reservations button must be black, and the offers
+// button must be moving ... just like the banner in home"). Reserve is the
+// black ink tile, always drawn (MESITA-3078): live where the place takes
+// bookings, an "Off" pill and the Off sheet where it doesn't. Offers is
+// Home's moving offer button (offer-slides.tsx, one copy): Welcome, Story,
+// VIP, Pay N% Back, Prepay +N%, each in its own colour, a slide every 2s.
+// The slide under the finger is the door: a voucher opens the Offers page at
+// its section, Pay opens Pay. With no offer here it is the grey Off tile.
+// Four tiles (Reserve · Prepay · Wallet · Pay) from MESITA-3574 to 4150.
 //
-// GREEN IS "IT WORKS HERE" (Pato, MESITA-3581, option B: "all top buttons are
-// black, the buttons that work at the bottom are green, and the ones that
-// don't are gray"; "if no wallet, don't mention $0MX, mention Off"). Row 1 is
-// black because grey now means Off below, and Save, Maps, Contact, Share and
-// Upgrade always work; decision: this overrides the quiet-grey outbound row.
-// Row 2 reads lib/mesita-row.ts: Reserve from the place's bit, Prepay's best
-// bonus, the Wallet balance and Pay's 5% / 2% from the list-vouchers read.
-// Live on 2026-11-09: Reserve on at 35 of 121 places, cards at 2, cash
-// cashback at 1, so most places show a grey row and that is the truth.
-//
-// ROW 1 is five equal tiles, icon over a 12px label (grey until MESITA-3581). Save is the heart
-// (MESITA-2521's favorite); once saved only the heart turns red, never the
-// tile (MESITA-2635). Maps opens Google Maps already routing to the place
-// (MESITA-2619); it read Directions until the fifth tile left no room for
-// the word (MESITA-3200). Share is back here; the top bar's dots report.
-// UPGRADE (Pato, MESITA-3200: "I don't like boost being hidden there below";
-// MESITA-3201: "Upgrade just opens a modal on top, like contact") opens the
-// host's sheet, never Checkout, on every place: a Google-only one gets that
-// sheet's not-open-yet screen, so the row never changes width.
-//
-// ROW 2 is Reserve in the INK and the money tiles in LINK GREEN (Pato,
-// MESITA-3353: "reserve with dark button"; "use the green color of Link to
-// psychologically give trust: green background, black text"): green-400
-// under near-black words, Stripe Link's pay button; all three emerald for
-// an hour, MESITA-3348, and the ink from MESITA-3315 before that), the grey
-// tiles' height (56px), the
-// glyph at the left of a 12px label (MESITA-3335; it sat over the label
-// until then), 8px apart (Pato, MESITA-2689: "same height and
-// colour"), three equal widths, the labels without "Mesita ". PREPAY AND
-// PAY SAY THE AMOUNT under the label, always, blocked or not (Pato,
-// MESITA-3324: "Prepay, Up to 25% OFF / Pay, 5% Cashback ... BUT ALWAYS
-// MENTION THE AMOUNT"): his fixed sentences (MESITA-3313; cashback is the
-// standard 5%, MESITA-3299), never a number computed here. No chip
-// on any of them (MESITA-3317, Pato: "remove the stupid walk-in icon. just
-// put the button blocked if it doesn't work"): a blocked tile is the same
-// dark tile, disabled, and only the screen reader hears why. NO TIMES ON
-// THE PROFILE
-// (Pato, MESITA-2633: fixed hours "can be confused with confirmed
-// availability"): the guest picks day, party and a preferred time in the
-// sheet, then the agent calls and confirms. Pay waits for W2b (MESITA-3305)
-// and Prepay for its own wave: since W1b (MESITA-3303) buying a voucher
-// lives on the Vouchers tab, and W1b had taken the Prepay button off, but
-// Pato's row names it (MESITA-3314), so it stays. Both are inert and wear
-// NO Soon chip (Pato, MESITA-3315: "remove the soon btw"; the consumer
-// bar's grey Soon tag sat on them from MESITA-2690). MESITA-2618 had taken
-// Pay off.
-//
-// No "I went" (MESITA-2567), no pinned bar. Every button is 44px or more
-// (MESITA-2324). A missing callback leaves its button visible and inert, so
-// admin's preview keeps the consumer's shape. A PLACE THAT TAKES NO
-// RESERVATIONS HAS A DISABLED RESERVE, NEVER A MISSING ONE (Pato, MESITA-3078:
-// "must be disabled, but never fucking disapearing"; MESITA-3076 had hidden
-// it). BLOCKED IS DARK (Pato, MESITA-3081: "reservations must be blocked
-// dark", "same for mesita prepay and mesita pay"): every blocked Mesita
-// button is the ink button, `disabled`, no hover, no press. Reserve varies by
-// place ("reserve can vary depending on the place"): live where it takes
-// bookings, blocked where it doesn't (its Walk-in chip left with
-// MESITA-3317). Prepay and Pay are both blocked, with no chip: the free-amount prepay left with the discount
-// product (MESITA-3299), vouchers sell on their tab (MESITA-3303) and paying
-// arrives with W2b (MESITA-3305).
+// Row 1: Save is the heart (MESITA-2521); once saved only the heart turns
+// red (MESITA-2635). Maps opens Google Maps routing to the place
+// (MESITA-2619). Upgrade opens the host's sheet on every place (MESITA-3201).
+// Every button is 44px or more (MESITA-2324). A missing callback leaves its
+// button visible and inert, so admin's preview keeps the consumer's shape.
 
 // THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
 // four gray buttons a bit darker, just a bit, minimum"): the border grey at
@@ -125,18 +68,14 @@ export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
  *  glyph-over-label before that. */
 export const PROFILE_TILE_BOX_CLASS =
   "flex h-13 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
-/** Row 2, pinned: Reserve · Prepay · Wallet · Pay, a quarter each
- *  (MESITA-3574; a third each in MESITA-3426, Prepay · Pay halves in
- *  MESITA-3423, Prepay · Card · Pay in MESITA-3419). */
-export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-4 gap-2";
+/** Row 2, pinned: Reserve · Offers, a half each (MESITA-4151; a quarter
+ *  each from MESITA-3574). */
+export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-2 gap-2";
 
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
 
-// Prepay and Pay are Link green; Reserve is the ink (MESITA-3428, Card's tone
-// in MESITA-3419), its pill inverted to read on the dark.
-// Since MESITA-3581 the row is green where a thing works here and the old
-// grey tile where it doesn't; no black below (the top row is black).
+// The reservation button's tones: green once confirmed, grey while booking.
 const MONEY_TONE = {
   green: "bg-green-400 text-neutral-950",
   off: "bg-border/60 text-foreground",
@@ -295,10 +234,9 @@ export function ProfileActions({
 }
 
 /** THE MESITA ROW, PINNED (Pato, MESITA-3330: "the dark buttons must not be
- *  scrollable, those stuck at the top"): Reserve · Prepay · Wallet · Pay leave the
- *  summary band and ride in PlaceDetailBody's sticky block with the tab
- *  strip, so they stay reachable while the body scrolls; the grey tiles
- *  scroll away with the summary. Same tiles, same wiring. */
+ *  scrollable, those stuck at the top"): Reserve · Offers ride in
+ *  PlaceDetailBody's sticky block with the tab strip; the black tiles above
+ *  scroll away with the summary. */
 export function MesitaActions({
   place,
   actions,
@@ -306,70 +244,107 @@ export function MesitaActions({
   place: PlaceDetail;
   actions?: PlaceActions;
 }) {
-  // PREPAY AND PAY OPEN REWARDS (Pato, MESITA-3412: "Rewards modal opens when
-  // you click either prepay or pay, but covering almost full screen"): the
-  // Rewards tab left the strip and became the host's sheet. Prepay opens it;
-  // Pay goes to the bill (onPay) since the sheet lost its Payments card
-  // (MESITA-4062). With no host callback (admin's Preview) both stay the
-  // inert green tile. Always drawn: the tab that hid them (MESITA-3398) is gone.
-  const onOpenRewards = actions?.onOpenRewards;
-  const onReserve = actions?.onReserve;
-  const row = mesitaRowState(place, actions?.vouchersLoading === true, actions?.houseCardInWallet === true);
-  const openPrepay = onOpenRewards ? () => onOpenRewards("prepayment") : undefined;
-  const tone = (t: MesitaTileState) => (t.works ? "green" : "off");
-  // What the screen reader hears after the label: the pill ("20% Bonus",
-  // "Off"), or "loading" while the first read is out.
-  const said = (t: MesitaTileState) => (t.pill === MESITA_ROW_LOADING ? "loading" : t.pill);
-  // AN OFF TILE STILL ANSWERS (Pato, MESITA-3583: "still make it clickable,
-  // like open a modal"): a grey "Off" tile opens one sheet saying why; a
-  // green tile does what it always did; "…" (still loading) waits.
+  const row = mesitaRowState(place, actions?.vouchersLoading === true);
+  // AN OFF TILE STILL ANSWERS (Pato, MESITA-3583): it opens one sheet saying why.
   const [offOpen, setOffOpen] = useState<OffTile | null>(null);
-  const tap = (key: OffTile, t: MesitaTileState, live: (() => void) | undefined) =>
-    t.works ? live : t.pill === MESITA_ROW_LOADING ? undefined : () => setOffOpen(key);
+  const onReserve = actions?.onReserve;
+  const onOpenRewards = actions?.onOpenRewards;
+  const onPay = actions?.onPay;
+  // The door a slide opens: its Offers section, or Pay for the cashback.
+  const openSlide = (slide: OfferSlide) => {
+    if (slide.section) return onOpenRewards ? () => onOpenRewards(slide.section!) : undefined;
+    return onPay;
+  };
   return (
     <div className="flex flex-col gap-2">
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
       {offOpen ? (
-        <OffTileSheet
-          tile={offOpen}
-          line={row[offOpen].note}
-          onClose={() => setOffOpen(null)}
-          inWallet={actions?.houseCardInWallet}
-          onAddHouseCard={place.money?.house_credits === false ? undefined : actions?.onAddHouseCard}
-          onOpenWallet={actions?.onOpenWallet}
-        />
+        <OffTileSheet tile={offOpen} line={offOpen === "offers" ? row.offers.note : undefined} onClose={() => setOffOpen(null)} />
       ) : null}
-      {/* RESERVE LEADS THE PINNED ROW (MESITA-3426): green "On" where the
-          place takes bookings, grey "Off" where it doesn't (On / Off since
-          MESITA-3577), inert there and never faded (MESITA-3078, MESITA-3423). */}
-      <MesitaTile
-        Icon={CalendarCheck}
-        label="Reserve"
-        tone={tone(row.reserve)}
-        badge={row.reserve.pill}
-        onClick={tap("reserve", row.reserve, onReserve)}
-        ariaLabel={row.reserve.works ? "Reserve a table" : "Reserve, off: this place doesn't offer reservations"}
-      />
-      {/* PREPAY (MESITA-3574): Buy Credits' card, not a ticket, since MESITA-4098 (credits for many visits, not one bill); green with the best bonus among
-          the vouchers this place sells now, never a typed "30% Bonus". Opens
-          the Offers page when it works, the Off sheet when it doesn't. */}
-      <MesitaTile Icon={CreditCard} label="Prepay" amount={said(row.prepay)} badge={row.prepay.pill} tone={tone(row.prepay)} onClick={tap("prepay", row.prepay, openPrepay)} />
-      {/* WALLET (MESITA-3574, Wallet again in MESITA-3577): green with the
-          guest's Available credit here, "Off" when none (MESITA-3581, never
-          "$0MX"). Opens the Wallet at this place's credit. Prepay comes first,
-          then Wallet, then Pay: the order the money moves (MESITA-3577). */}
-      <MesitaTile Icon={Wallet} label="Wallet" amount={said(row.wallet)} badge={row.wallet.pill} tone={tone(row.wallet)} onClick={tap("wallet", row.wallet, actions?.onOpenWallet)} />
-      {/* PAY GOES TO /pay (MESITA-3501): the place's card cashback ("7% Back"), else its cash rate
-          when only the waiter's cash cashback is on (MESITA-3545). */}
-      <MesitaTile Icon={QrCode} label="Pay" amount={said(row.pay)} badge={row.pay.pill} tone={tone(row.pay)} onClick={tap("pay", row.pay, actions?.onPay)} />
+      <button
+        type="button"
+        {...(row.reserve.works
+          ? onReserve
+            ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
+            : inertButtonProps(false)
+          : { onClick: () => setOffOpen("reserve"), "aria-haspopup": "dialog" as const })}
+        aria-label={row.reserve.works ? "Reserve a table" : "Reserve, off: this place doesn't offer reservations"}
+        className={cn(PROFILE_MESITA_TILE_BOX_CLASS, "bg-foreground text-paper flex-row gap-1.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]")}
+      >
+        <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
+        <span className="truncate">Reserve</span>
+        {row.reserve.works ? null : (
+          <span className={cn(PLACE_PILL_CLASS, "bg-paper text-foreground")} aria-hidden>
+            Off
+          </span>
+        )}
+      </button>
+      {row.offers.works ? (
+        <OffersTile name={place.name} slides={row.offers.slides} open={openSlide} />
+      ) : (
+        <button
+          type="button"
+          {...(row.offers.loading ? inertButtonProps(false) : { onClick: () => setOffOpen("offers"), "aria-haspopup": "dialog" as const })}
+          aria-label={row.offers.loading ? "Offers, loading" : "Offers, Off"}
+          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, MONEY_TONE.off, "flex-row gap-1.5 text-xs font-semibold")}
+        >
+          <span className="truncate">Offers</span>
+          <span className={cn(PLACE_PILL_CLASS, "bg-paper text-muted-foreground")} aria-hidden>
+            {row.offers.loading ? "…" : "Off"}
+          </span>
+        </button>
+      )}
     </div>
     {actions?.reservation ? <ReservationButton r={actions.reservation} /> : null}
     </div>
   );
 }
 
+/** THE OFFERS TILE (MESITA-4151): Home's offer button in the row's tile
+ *  box. The words move on the shared beat; the box takes the slide's colour.
+ *  The slide on screen when the finger lands is the door, and the tile holds
+ *  that slide while a finger or keyboard focus is on it. */
+function OffersTile({
+  name,
+  slides,
+  open,
+}: {
+  name: string;
+  slides: OfferSlide[];
+  open: (slide: OfferSlide) => (() => void) | undefined;
+}) {
+  const live = useOfferSlide(slides);
+  const [held, setHeld] = useState<number | null>(null);
+  const index = held ?? live.index;
+  const slide = slides[index];
+  const run = open(slide);
+  const hold = () => setHeld((h) => h ?? live.index);
+  const release = () => setHeld(null);
+  return (
+    <button
+      type="button"
+      {...(run ? { onClick: run } : inertButtonProps(false))}
+      aria-label={offersLabel(name, slides)}
+      onPointerDown={hold}
+      onFocus={hold}
+      onPointerCancel={release}
+      onPointerLeave={release}
+      onBlur={release}
+      className={cn(
+        PROFILE_MESITA_TILE_BOX_CLASS,
+        slide.tone,
+        "relative px-2 text-xs font-semibold transition-colors duration-300 hover:opacity-90 active:scale-[0.99]",
+      )}
+      data-tile-bonus
+    >
+      <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} />
+    </button>
+  );
+}
+
 /** YOUR TABLE HERE (MESITA-3640, Pato: "if there is an active reservation
- *  for that place display it below the 4 buttons as one large button"): a
+ *  for that place display it below the 4 buttons as one large button"; two
+ *  buttons since MESITA-4151): a
  *  guest holds at most one live reservation per place. Full width under the
  *  row, the tiles' height and shape, green once the place confirmed, grey
  *  while it is booking; opens the reservation. */
@@ -410,67 +385,3 @@ export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pb-4";
 
 /** A Mesita tile's glyph: the grey tiles' 18px. */
 const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";
-
-/** A Mesita money tile that is not built yet: the blocked ink tile, no chip
- *  (Pato, MESITA-3315: "remove the soon"); the screen reader still hears it.
- *  `amount` is the second line, always shown (MESITA-3324): "30% Bonus" (Pato,
- *  MESITA-3349: "don't mention up to 30% bonus, just 30% Bonus"; "Up to"
- *  for an hour, MESITA-3345) and
- *  "5% Back" (Pato, MESITA-3339: "its clearer, instead of OFF"; "Up to 25%
- *  OFF" and "5% Cashback" until then). */
-function MesitaTile({
-  Icon,
-  label,
-  amount,
-  tone,
-  badge,
-  onClick,
-  ariaLabel,
-}: {
-  Icon: LucideIcon;
-  label: string;
-  /** What the screen reader hears after the label ("30% Bonus"). */
-  amount?: string;
-  /** The whole spoken name, when label + amount is not it (Reserve). */
-  ariaLabel?: string;
-  tone: keyof typeof MONEY_TONE;
-  /** The ink pill beside the label ("30% Bonus"). */
-  badge?: string;
-  /** Opens the host's Rewards sheet; absent, the tile is inert. */
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      {...(onClick ? { onClick, "aria-haspopup": "dialog" as const } : inertButtonProps(false))}
-      disabled={!onClick}
-      aria-label={ariaLabel ?? (onClick ? `${label}, ${amount}` : `${label}, ${amount}, not available here`)}
-      className={cn(
-        PROFILE_MESITA_TILE_BOX_CLASS,
-        MONEY_TONE[tone],
-        "text-xs font-semibold",
-        onClick ? "transition hover:opacity-90 active:scale-[0.99]" : ariaLabel ? "" : "cursor-not-allowed",
-      )}
-    >
-      {/* Glyph beside label, the grey tiles' shape (MESITA-3421). THE BONUS
-          ON THE CORNER (Pato, MESITA-3421: "in prepay and pay mention the
-          fucking bonus"): a third of the row holds glyph and "Prepay" but not
-          "30% Bonus" beside them, so the ink pill rode the top-right corner; INSIDE
-          THE GREEN (Pato, MESITA-3424: "bonus and back must go inside the green
-          boxes"): with two halves, glyph · label · pill fit one line. A THIRD
-          AGAIN (MESITA-3426, "A"): glyph and label over the pill. */}
-      <span className="flex min-w-0 items-center gap-1">
-        <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
-        <span className="truncate">{label}</span>
-      </span>
-      {badge ? (
-        <span
-          className={cn(PLACE_PILL_CLASS, tone === "off" ? "bg-paper text-muted-foreground" : "bg-foreground text-paper")}
-          aria-hidden
-        >
-          {badge}
-        </span>
-      ) : null}
-    </button>
-  );
-}
