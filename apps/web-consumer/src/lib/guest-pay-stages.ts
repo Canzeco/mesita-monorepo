@@ -83,3 +83,39 @@ export function initialStage(d: { stage: Stage; useCredit: boolean } | null): St
   if ((d.stage === "card" || d.stage === "pay") && d.useCredit === false) return "method";
   return d.stage;
 }
+
+/** Card refusals that keep the guest on Pay (MESITA-4121): the bill never
+ *  opened, nothing is held, and the way out is another card (or cash). */
+export const PAY_CARD_REFUSALS: ReadonlySet<string> = new Set([
+  "card_declined",
+  "card_needs_auth",
+  "card_failed",
+  "card_not_found",
+  "locked",
+  "below_minimum",
+  "card_unavailable",
+  "cards_off",
+]);
+
+/** Where Not paid's Start again opens (MESITA-4121): Card when the bill's
+ *  card failed (the failed card is not preselected), Method when the bill
+ *  expired or the waiter rejected it, Bill otherwise. */
+export function startAgainStage(a: { endReason: string | null; cardFailed: boolean }): Stage {
+  switch (a.endReason) {
+    case "bank_check_failed":
+    case "capture_failed":
+    case "hold_released":
+    case "card_declined":
+    case "card_needs_auth":
+      return "card";
+    case "expired":
+    case "rejected":
+      return "method";
+    case null:
+    case undefined:
+    case "":
+      return a.cardFailed ? "card" : "bill";
+    default:
+      return "bill";
+  }
+}

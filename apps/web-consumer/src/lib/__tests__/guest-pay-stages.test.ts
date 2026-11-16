@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { SavedCard } from "@/lib/api/cards";
-import { readDraft, writeDraft } from "@/lib/guest-pay-draft";
-import { guardStage, initialStage, payBackStage, payNextStage, STEP, skippedFromParts, skippedSegments } from "@/lib/guest-pay-stages";
+import { readDraft, reopenGuestDraft, writeDraft } from "@/lib/guest-pay-draft";
+import { guardStage, initialStage, payBackStage, payNextStage, STEP, skippedFromParts, skippedSegments, startAgainStage } from "@/lib/guest-pay-stages";
 import { pickCard } from "@/lib/pay-cards";
 
 // Money (MVP test rule), MESITA-4117: the card charged is the card the guest
@@ -145,5 +145,66 @@ describe("readDraft never trusts a stored stage", () => {
     const d = readDraft("p");
     expect(d?.stage).toBe("card");
     expect(d?.cardId).toBe("pm_a");
+  });
+});
+
+describe("startAgainStage (MESITA-4121)", () => {
+  it("a failed card part starts again at Card", () => {
+    for (const r of ["bank_check_failed", "capture_failed", "hold_released"]) {
+      expect(startAgainStage({ endReason: r, cardFailed: true })).toBe("card");
+    }
+    expect(startAgainStage({ endReason: null, cardFailed: true })).toBe("card");
+  });
+  it("an expired or rejected bill starts again at Method", () => {
+    expect(startAgainStage({ endReason: "expired", cardFailed: false })).toBe("method");
+    expect(startAgainStage({ endReason: "rejected", cardFailed: true })).toBe("method");
+  });
+  it("anything else starts again at Bill", () => {
+    expect(startAgainStage({ endReason: "cancelled", cardFailed: false })).toBe("bill");
+    expect(startAgainStage({ endReason: null, cardFailed: false })).toBe("bill");
+  });
+});
+
+describe("reopenGuestDraft never preselects the card that failed (MESITA-4121)", () => {
+  function memoryStorage(): Storage {
+    const m = new Map<string, string>();
+    return {
+      get length() {
+        return m.size;
+      },
+      clear: () => m.clear(),
+      getItem: (k) => m.get(k) ?? null,
+      key: (i) => [...m.keys()][i] ?? null,
+      removeItem: (k) => void m.delete(k),
+      setItem: (k, v) => void m.set(k, String(v)),
+    };
+  }
+  beforeEach(() => {
+    (globalThis as { window?: unknown }).window = { localStorage: memoryStorage() };
+  });
+  afterEach(() => {
+    delete (globalThis as { window?: unknown }).window;
+  });
+  const sent = { stage: "bill" as const, typing: false, amount: "100", tip: 10 as const, other: "", useCredit: true, method: "card" as const, cardId: "pm_a", sentTabId: "t1" };
+
+  it("at Card the charged card becomes the refused one and nothing is picked", () => {
+    writeDraft("p", sent);
+    reopenGuestDraft("p", "card");
+    const d = readDraft("p");
+    expect(d?.stage).toBe("card");
+    expect(d?.cardId).toBeNull();
+    expect(d?.refusedCardId).toBe("pm_a");
+    expect(d?.sentTabId ?? null).toBeNull();
+    expect(pickCard([card("pm_a"), card("pm_b")], d?.cardId ?? null, d?.refusedCardId ?? null)).toBe("pm_b");
+  });
+  it("at Method the card stays", () => {
+    writeDraft("p", sent);
+    reopenGuestDraft("p", "method");
+    expect(readDraft("p")?.cardId).toBe("pm_a");
+    expect(readDraft("p")?.stage).toBe("method");
+  });
+  it("no draft (older than 30 minutes): nothing to reopen, the bill opens empty", () => {
+    reopenGuestDraft("p", "card");
+    expect(readDraft("p")).toBeNull();
   });
 });
