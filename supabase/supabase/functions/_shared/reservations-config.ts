@@ -8,7 +8,20 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 // `number` is the BUSINESS-side test line (what the agent dials instead of a
 // place while test mode is on). The retired Playground's guest-side
 // `consumerNumber` is no longer read (MESITA-2144); a stored one is ignored.
-export type TestCall = { enabled: boolean; number: string };
+/**
+ * Who a1 rings for the place while testing (MESITA-4149, Pato: consultants
+ * test on their own phones, "no quiero poner su número en la consola"):
+ *   "number"  the test line typed in Admin › Configurations › Reservations
+ *   "guest"   the phone of the guest who made the reservation, so each tester
+ *             plays the restaurant on their own phone
+ * `enabled: false` is production: the place's real number.
+ */
+export type TestCallTarget = "number" | "guest";
+export type TestCall = { enabled: boolean; number: string; target: TestCallTarget };
+
+export function coerceTestCallTarget(v: unknown): TestCallTarget {
+  return v === "guest" ? "guest" : "number";
+}
 
 // Abuse/cost guards (eng-review 2026-08-04): every unit of abuse here is a real
 // metered phone call, so the doors are capped. Knobs, not constants — tunable
@@ -48,7 +61,7 @@ export const ATTEMPTS = 2;
 // EVERY reservation instead of any real place. Ships ENABLED so a config row that
 // predates the knob (or a reset) can never fall through to a real place. Mirror of
 // TEST_CALL_SEED in the web-admin catalog.
-export const TEST_CALL_SEED: TestCall = { enabled: true, number: "+524445499597" };
+export const TEST_CALL_SEED: TestCall = { enabled: true, number: "+524445499597", target: "number" };
 
 /**
  * Coerce the stored reservations_config jsonb into the agent-runtime knobs.
@@ -69,6 +82,7 @@ export function coerceReservationsCallConfig(raw: unknown): ReservationsCallConf
       number: typeof t.number === "string" && t.number.trim()
         ? t.number.trim()
         : TEST_CALL_SEED.number,
+      target: coerceTestCallTarget(t.target),
     },
     limits: coerceLimits(c.limits),
     reminder: coerceReminder(c.reminder),

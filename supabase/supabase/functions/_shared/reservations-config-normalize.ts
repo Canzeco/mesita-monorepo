@@ -66,13 +66,21 @@ export function normalizeConfig(
     if (t.number !== undefined && typeof t.number !== "string") {
       return { ok: false, error: "config.testCall.number must be a string" };
     }
-    if (t.enabled && !looksLikePhone(number)) {
+    // target (MESITA-4149) — optional; absent keeps the test line, so a row or
+    // an older admin build that predates it behaves exactly as before.
+    if (t.target !== undefined && t.target !== "number" && t.target !== "guest") {
+      return { ok: false, error: 'config.testCall.target must be "number" or "guest"' };
+    }
+    const target = t.target === "guest" ? "guest" : "number";
+    // Only the test line needs a number; the guest's phone mode dials no
+    // configured number, so a blank or half-typed one is kept as it is.
+    if (t.enabled && target === "number" && !looksLikePhone(number)) {
       return {
         ok: false,
         error: "config.testCall.number must be an E.164 phone (e.g. +5215512345678) while the override is on",
       };
     }
-    testCall = { enabled: t.enabled, number };
+    testCall = { enabled: t.enabled, number, target };
   }
 
   // unlimitedReservations — optional, defaults OFF so an older admin build that

@@ -2,12 +2,33 @@
 
 import { FlaskConical } from "lucide-react";
 import {
+  ChoicePill,
   SectionCard,
-  Switch,
   SwitchRow,
   TextField,
 } from "@/components/admin-ui";
-import type { ReservationsConfig } from "./catalog";
+import {
+  type CallMode,
+  callMode,
+  type ReservationsConfig,
+  withCallMode,
+} from "./catalog";
+
+// MESITA-4149: three call modes. Consultants test on their own phones, so the
+// guest's-phone mode rings whoever made the reservation, with no number in the
+// console.
+const MODES: Array<[CallMode, string]> = [
+  ["number", "Test number"],
+  ["guest", "Guest's phone"],
+  ["production", "Production"],
+];
+
+const MODE_HINT: Record<CallMode, string> = {
+  number: "Every call to a place dials the test number below.",
+  guest:
+    "Every call to a place dials the phone of the guest who made the reservation.",
+  production: "The agent is calling real businesses.",
+};
 
 export function TestingCard({
   cfg,
@@ -20,58 +41,65 @@ export function TestingCard({
   testInvalid: boolean;
   patch: (next: Partial<ReservationsConfig>) => void;
 }) {
+  const mode = callMode(cfg.testCall);
   return (
     <SectionCard
       icon={<FlaskConical />}
       title="Testing"
-      subtitle="Keep both on until a real run."
+      subtitle="Stay off Production until a real run."
     >
       <div className="border-border bg-background mt-5 rounded-xl border p-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex min-w-0 flex-col gap-1">
-            <span className="text-sm font-medium">Test mode</span>
-            <span
-              className={
-                cfg.testCall.enabled
-                  ? "text-muted-foreground type-meta"
-                  : "text-warning type-meta font-medium"
-              }
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-sm font-medium">Who the agent calls</span>
+          <span
+            className={
+              mode === "production"
+                ? "text-warning type-meta font-medium"
+                : "text-muted-foreground type-meta"
+            }
+          >
+            {MODE_HINT[mode]}
+          </span>
+        </div>
+        <div
+          className="mt-3 flex flex-wrap gap-2"
+          role="group"
+          aria-label="Who the agent calls"
+        >
+          {MODES.map(([m, label]) => (
+            <ChoicePill
+              key={m}
+              active={mode === m}
+              disabled={pending}
+              onClick={() => patch({ testCall: withCallMode(cfg.testCall, m) })}
             >
-              {cfg.testCall.enabled
-                ? "Every call dials the test number, never a real place."
-                : "The agent is calling real businesses."}
-            </span>
-          </div>
-          <Switch
-            checked={cfg.testCall.enabled}
-            pending={pending}
-            label="Test mode"
-            onCheckedChange={(enabled) =>
-              patch({ testCall: { ...cfg.testCall, enabled } })
+              {label}
+            </ChoicePill>
+          ))}
+        </div>
+        {mode === "number" ? (
+          <TextField
+            className="mt-4"
+            label="Test number"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="+524445499597"
+            value={cfg.testCall.number}
+            disabled={pending}
+            aria-invalid={testInvalid || undefined}
+            onChange={(number) =>
+              patch({ testCall: { ...cfg.testCall, number } })
+            }
+            hint={
+              testInvalid ? (
+                <span className="text-warning">
+                  Needs E.164 — a leading + and country code.
+                </span>
+              ) : undefined
             }
           />
-        </div>
-        <TextField
-          className="mt-4"
-          label="Test number"
-          type="tel"
-          inputMode="tel"
-          autoComplete="tel"
-          placeholder="+524445499597"
-          value={cfg.testCall.number}
-          disabled={pending}
-          aria-invalid={testInvalid || undefined}
-          onChange={(number) =>
-            patch({ testCall: { ...cfg.testCall, number } })
-          }
-          hint={
-            testInvalid ? (
-              <span className="text-warning">
-                Needs E.164 — a leading + and country code.
-              </span>
-            ) : undefined
-          }
-        />
+        ) : null}
       </div>
 
       <div className="mt-3">

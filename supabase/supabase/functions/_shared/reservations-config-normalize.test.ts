@@ -80,7 +80,7 @@ Deno.test("normalizeConfig: retired keys are ignored even when malformed", () =>
     testCall: { enabled: false, number: "", consumerNumber: 42 },
   });
   assert(r.ok, `a retired key was still validated: ${r.ok ? "" : r.error}`);
-  assertEquals(r.value.testCall, { enabled: false, number: "" });
+  assertEquals(r.value.testCall, { enabled: false, number: "", target: "number" });
 });
 
 Deno.test("normalizeConfig: an enabled test-call override needs a real number", () => {
@@ -90,6 +90,28 @@ Deno.test("normalizeConfig: an enabled test-call override needs a real number", 
 
   blob.testCall = { enabled: true, number: "+5215512345678", consumerNumber: "" };
   assert(normalizeConfig(blob).ok);
+});
+
+// MESITA-4149: the guest's-phone mode rings the reserving guest, so it needs
+// no configured number; an absent target is the test line (old rows, old
+// admin builds); anything else is refused.
+Deno.test("normalizeConfig: testCall.target is number (default) or guest; guest mode needs no number", () => {
+  const blob: Record<string, unknown> = consoleBlob();
+  blob.testCall = { enabled: true, number: "+5215512345678" };
+  const absent = normalizeConfig(blob);
+  assert(absent.ok);
+  if (absent.ok) assertEquals(absent.value.testCall.target, "number");
+
+  blob.testCall = { enabled: true, number: "", target: "guest" };
+  const guest = normalizeConfig(blob);
+  assert(guest.ok);
+  if (guest.ok) assertEquals(guest.value.testCall, { enabled: true, number: "", target: "guest" });
+
+  blob.testCall = { enabled: true, number: "", target: "number" };
+  assert(!normalizeConfig(blob).ok);
+
+  blob.testCall = { enabled: true, number: "+5215512345678", target: "place" };
+  assert(!normalizeConfig(blob).ok);
 });
 
 Deno.test("normalizeConfig: reminder defaults OFF when omitted, and refuses a bad shape", () => {

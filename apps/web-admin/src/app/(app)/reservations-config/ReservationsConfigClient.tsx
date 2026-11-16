@@ -19,7 +19,11 @@ import { Notice } from "@/components/admin-ui";
 import { SaveRow } from "@/components/admin-ui/config";
 import { useConfigEditor } from "@/components/admin-ui/use-config-editor";
 import { getReservationsConfig, updateReservationsConfig } from "./actions";
-import { looksLikePhone, type NeedsAttentionRow, type ReservationsConfig } from "./catalog";
+import {
+  type NeedsAttentionRow,
+  type ReservationsConfig,
+  testNumberInvalid,
+} from "./catalog";
 import { NeedsAttentionCard } from "./NeedsAttentionCard";
 import { TestingCard } from "./TestingCard";
 
@@ -32,16 +36,27 @@ export function ReservationsConfigClient({
   initialNeedsAttention: NeedsAttentionRow[];
   loadError: string | null;
 }) {
-  const [attention, setAttention] = useState<NeedsAttentionRow[]>(initialNeedsAttention);
-  const { cfg, setCfg, saved, setOk, pending, error, loadBlocked, ok, saveWith } =
-    useConfigEditor({
-      initialConfig,
-      loadError,
-      load: getReservationsConfig,
-      onLoaded: (r) => setAttention(r.needsAttention),
-    });
+  const [attention, setAttention] = useState<NeedsAttentionRow[]>(
+    initialNeedsAttention,
+  );
+  const {
+    cfg,
+    setCfg,
+    saved,
+    setOk,
+    pending,
+    error,
+    loadBlocked,
+    ok,
+    saveWith,
+  } = useConfigEditor({
+    initialConfig,
+    loadError,
+    load: getReservationsConfig,
+    onLoaded: (r) => setAttention(r.needsAttention),
+  });
 
-  const testInvalid = cfg.testCall.enabled && !looksLikePhone(cfg.testCall.number);
+  const testInvalid = testNumberInvalid(cfg.testCall);
 
   const dirty = useMemo(
     () => JSON.stringify(cfg) !== JSON.stringify(saved),
@@ -65,13 +80,20 @@ export function ReservationsConfigClient({
   return (
     <div className="flex flex-col gap-4">
       <NeedsAttentionCard rows={attention} />
-      <TestingCard cfg={cfg} pending={pending} testInvalid={testInvalid} patch={patch} />
+      <TestingCard
+        cfg={cfg}
+        pending={pending}
+        testInvalid={testInvalid}
+        patch={patch}
+      />
       <SaveRow
         pending={pending}
         dirty={dirty && !testInvalid}
         ok={ok}
         onClick={save}
-        loadError={loadBlocked ? (error ?? "Failed to load Reservations config") : null}
+        loadError={
+          loadBlocked ? (error ?? "Failed to load Reservations config") : null
+        }
       />
       {error && <Notice className="mt-4">{error}</Notice>}
     </div>

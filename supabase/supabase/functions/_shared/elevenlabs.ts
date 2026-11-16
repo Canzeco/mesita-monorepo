@@ -195,12 +195,18 @@ export type OutboundCallResult =
 /**
  * The number as the dialler takes it: "+" and digits only. A place's Google
  * phone is stored spaced ("+52 81 8335 6200", all 247 live places), and the
- * owner-typed one may carry dashes or parentheses (MESITA-4143).
+ * owner-typed one may carry dashes or parentheses (MESITA-4143). A guest's
+ * phone comes from Supabase Auth as bare international digits
+ * ("5215512345678", no "+"), so 11+ digits get the "+"; 10 digits are a
+ * Mexican number without its code (MESITA-4149, the guest plays the place).
  */
 export function dialable(raw: string): string {
   const t = raw.trim();
   const digits = t.replace(/\D/g, "");
-  return t.startsWith("+") ? `+${digits}` : digits;
+  if (!digits) return "";
+  if (t.startsWith("+") || digits.length >= 11) return `+${digits}`;
+  if (digits.length === 10) return `+52${digits}`;
+  return digits;
 }
 
 export async function placeOutboundCall(

@@ -37,6 +37,12 @@ Deno.test("dialNumber: ticket, then test line, then Reservations phone, then Goo
   assertEquals(dialNumber({ testNumber: null, place }), { number: "+528111111111", via: "Reservations phone" });
   assertEquals(dialNumber({ place: { phone: "+528122222222" } }), { number: "+528122222222", via: "Google phone" });
   assertEquals(dialNumber({ place: {} }).number, "");
+  // MESITA-4149: the guest's own phone stands in for the place, named as such.
+  assertEquals(
+    dialNumber({ testNumber: "5215512345678", testVia: "test mode: the guest's phone", place }),
+    { number: "5215512345678", via: "test mode: the guest's phone" },
+  );
+  assertEquals(dialNumber({ testNumber: "", testVia: "test mode: the guest's phone", place }).number, "");
 });
 
 // The engine must not decide by channel any more: a whatsapp/instagram/web

@@ -647,12 +647,20 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
     .maybeSingle();
   const place = (placeRow ?? null) as PlaceRow | null;
 
+  const consumer = (r.consumer ?? null) as ConsumerName | null;
+  const consumerNumber = (r.consumer_phone ?? consumer?.phone ?? "").trim();
+
   // ── Resolve the business number (MESITA-3622): the ticket's own → the test
-  // line while testCall is on → the Reservations phone → Google's. Reservations
-  // are received by phone; the place's channel pick decides nothing.
+  // target while testCall is on → the Reservations phone → Google's.
+  // Reservations are received by phone; the place's channel pick decides
+  // nothing. The test target is the test line, or (MESITA-4149) the phone of
+  // the guest who made this reservation, who then plays the restaurant; a
+  // guest with no phone dead-ends like a place with no number.
+  const guestPlaysPlace = cfg.testCall.enabled && cfg.testCall.target === "guest";
   const { number: businessNumber, via } = dialNumber({
     ticketPhone: r.place_phone,
-    testNumber: cfg.testCall.enabled ? cfg.testCall.number : null,
+    testNumber: cfg.testCall.enabled ? (guestPlaysPlace ? consumerNumber : cfg.testCall.number) : null,
+    testVia: guestPlaysPlace ? "test mode: the guest's phone" : "test-mode number",
     place,
   });
   const dialsPlace = intent === "book" ||
@@ -700,9 +708,6 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
     }
     return json({ ok: false, error: `no number to dial (${via})` }, 422);
   }
-
-  const consumer = (r.consumer ?? null) as ConsumerName | null;
-  const consumerNumber = (r.consumer_phone ?? consumer?.phone ?? "").trim();
 
   const runId = crypto.randomUUID();
   // Every time this run speaks or schedules is the place's (MESITA-3626).

@@ -141,5 +141,9 @@ Deno.test("lineName: one place by its name; a shared desk names every place", ()
 Deno.test("dialable: the dialler gets + and digits only", () => {
   assertEquals(dialable("+52 81 8335 6200"), "+528183356200");
   assertEquals(dialable(" +1 (628) 296-0710 "), "+16282960710");
-  assertEquals(dialable("528183356200"), "528183356200");
+  // A guest's phone from Supabase Auth: bare international digits (MESITA-4149).
+  assertEquals(dialable("5215512345678"), "+5215512345678");
+  assertEquals(dialable("528183356200"), "+528183356200");
+  assertEquals(dialable("5512345678"), "+525512345678");
+  assertEquals(dialable(""), "");
 });
