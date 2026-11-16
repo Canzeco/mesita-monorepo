@@ -71,14 +71,10 @@ export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
  *  glyph-over-label before that. */
 export const PROFILE_TILE_BOX_CLASS =
   "flex h-13 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
-/** Row 2, pinned: Reserve two fifths, Offers three (Pato, MESITA-4163:
- *  "reserve button 2 buttons wide and offers 3 buttons wide"), on the
- *  five-tile grid so the edges line up with the row above; halves in
- *  MESITA-4159, 2/5 · 3/5 first in MESITA-4156. */
-export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-5 gap-2";
-/** Reserve's and Offers' spans in that row. */
-export const PROFILE_RESERVE_SPAN_CLASS = "col-span-2";
-export const PROFILE_OFFERS_SPAN_CLASS = "col-span-3";
+/** Row 2, pinned: Reserve half, Offers half (Pato, MESITA-4169: "each of
+ *  the reserve and offers buttons to be 50% and 50%"); 2/5 · 3/5 on the
+ *  five-tile grid in MESITA-4163 and MESITA-4156, halves in MESITA-4159. */
+export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-2 gap-2";
 
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
@@ -295,7 +291,7 @@ export function MesitaActions({
           onClick={() => setOffOpen("reserve")}
           aria-haspopup="dialog"
           aria-label="Reserve, off: this place doesn't offer reservations"
-          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_RESERVE_SPAN_CLASS, ROW_TILE)}
+          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE)}
         >
           <span className={ROW_LEAD}>
             <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
@@ -313,7 +309,7 @@ export function MesitaActions({
           type="button"
           {...(row.offers.loading ? inertButtonProps(false) : { onClick: () => setOffOpen("offers"), "aria-haspopup": "dialog" as const })}
           aria-label={row.offers.loading ? "Offers, loading" : "Offers, Off"}
-          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_OFFERS_SPAN_CLASS, ROW_TILE)}
+          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE)}
         >
           <span className={ROW_LEAD}>
             <Tag className={MESITA_TILE_ICON} strokeWidth={2.25} />
@@ -373,7 +369,7 @@ function ReserveTile({ place, onReserve }: { place: PlaceDetail; onReserve?: () 
       type="button"
       {...(onReserve ? { onClick: onReserve, "aria-haspopup": "dialog" as const } : inertButtonProps(false))}
       aria-label={slides.length > 0 ? `Reserve a table: ask for ${slides.map((s) => s.spoken).join(", ")}` : "Reserve a table"}
-      className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_RESERVE_SPAN_CLASS, ROW_TILE)}
+      className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE)}
     >
       <span className={ROW_LEAD}>
         <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
@@ -418,7 +414,7 @@ function OffersTile({
       onPointerCancel={release}
       onPointerLeave={release}
       onBlur={release}
-      className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_OFFERS_SPAN_CLASS, ROW_TILE)}
+      className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE)}
       data-tile-bonus
     >
       <span className={ROW_LEAD}>
