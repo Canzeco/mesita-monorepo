@@ -29,17 +29,17 @@ function render(money: PlaceMoney | undefined, onBuyVoucher?: () => void): strin
 }
 
 describe("Vouchers tab", () => {
-  // Story and VIP are parked (MESITA-3831): off sale, so off the page, for
-  // every guest. Their locks (MESITA-3502) come back with them.
-  it("lists VIP but not the parked Story, even for a VIP guest with Instagram linked (MESITA-3831, MESITA-3833)", () => {
+  // VIP is parked (MESITA-4197): off sale, so off the page, for every guest,
+  // even a VIP one. Story is back (it was parked by MESITA-3831).
+  it("lists Story but not the parked VIP, even for a VIP guest with Instagram linked (MESITA-4197)", () => {
     const html = renderToStaticMarkup(
       <VouchersPane
         place={{ money: OFFER, name: "Probe", photos: [] } as unknown as PlaceDetail}
         actions={{ onBuyVoucher: () => {}, guest: { vip: true, instagramLinked: true } }}
       />,
     );
-    expect(html).toContain('aria-label="Choose the VIP voucher');
-    expect(html).not.toContain("Story voucher");
+    expect(html).toContain("Story voucher");
+    expect(html).not.toContain("VIP voucher");
     expect(html).toContain('aria-label="Choose the Small voucher');
   });
 
