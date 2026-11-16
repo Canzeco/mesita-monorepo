@@ -566,19 +566,24 @@ function OpenBillPanel({
           {error}
         </p>
       ) : null}
-      <div className="flex flex-col gap-1 p-4">
-        <Button asChild size="lg" className="min-h-12 w-full text-base font-semibold">
-          <Link href={href}>Continue</Link>
-        </Button>
-        <button
+      {/* ONE ROW, LEFT AND RIGHT (MESITA-4130, Pato: "red cancel and black
+          continue, left and right"): the Pay steps' footer shape, red Cancel
+          bill a quarter, black Continue three quarters. Cancel asks first. */}
+      <div className="grid grid-cols-[1fr_3fr] gap-3 p-4">
+        <Button
           type="button"
+          size="lg"
+          variant="danger"
+          className="min-h-12 w-full px-1 text-sm leading-tight font-semibold whitespace-normal"
           onClick={() => setConfirm(true)}
           disabled={busy}
-          className="flex h-11 w-full items-center justify-center text-sm font-semibold text-amber-900 disabled:opacity-60"
           data-pay-open-bill-cancel
         >
           Cancel bill
-        </button>
+        </Button>
+        <Button asChild size="lg" className="min-h-12 w-full text-base font-semibold">
+          <Link href={href}>Continue</Link>
+        </Button>
       </div>
       <LocalDialog open={confirm} onClose={() => setConfirm(false)} ariaLabel="Cancel this bill">
         <div className="p-5">
