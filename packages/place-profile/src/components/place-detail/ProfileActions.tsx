@@ -71,13 +71,14 @@ export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
  *  glyph-over-label before that. */
 export const PROFILE_TILE_BOX_CLASS =
   "flex h-13 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
-/** Row 2, pinned: Reserve and Offers, a half each (Pato, MESITA-4159:
- *  "reservations 2.5 and offers 2.5"); two fifths and three in MESITA-4156,
- *  halves in MESITA-4151, quarters from MESITA-3574. */
-export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-2 gap-2";
+/** Row 2, pinned: Reserve two fifths, Offers three (Pato, MESITA-4163:
+ *  "reserve button 2 buttons wide and offers 3 buttons wide"), on the
+ *  five-tile grid so the edges line up with the row above; halves in
+ *  MESITA-4159, 2/5 · 3/5 first in MESITA-4156. */
+export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-5 gap-2";
 /** Reserve's and Offers' spans in that row. */
-export const PROFILE_RESERVE_SPAN_CLASS = "col-span-1";
-export const PROFILE_OFFERS_SPAN_CLASS = "col-span-1";
+export const PROFILE_RESERVE_SPAN_CLASS = "col-span-2";
+export const PROFILE_OFFERS_SPAN_CLASS = "col-span-3";
 
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
@@ -87,13 +88,15 @@ export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
  *  the row above, so the two rows read as one family; the only colour is the
  *  moving chip at the right, OpenTable red for the time, Link green for the
  *  offer. Red Reserve and green Offers with a black box inside before. */
-const ROW_TILE = "bg-foreground text-paper flex-row gap-2 py-1.5 pr-1.5 pl-1 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]";
+const ROW_TILE = "bg-foreground text-paper flex-row items-center gap-1.5 pr-2.5 pl-1 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]";
 // The glyph over the label, as in the row above, in one fixed width, so both
 // chips come out the same size (MESITA-4162).
 const ROW_LEAD = "flex w-12 shrink-0 flex-col items-center gap-1";
 // Both chips one size, one type size (Pato, MESITA-4162: "make the shit of
 // the same size").
-const ROW_CHIP = "relative h-full min-w-0 flex-1 overflow-hidden rounded-md text-[11px] font-extrabold tabular-nums";
+// A 32px chip, not the tile's full height (Pato, MESITA-4163: "maybe not
+// that much").
+const ROW_CHIP = "relative h-8 min-w-0 flex-1 overflow-hidden rounded-md text-[11px] font-extrabold tabular-nums";
 const RESERVE_CHIP = "bg-[#DA3743] text-white";
 const OFFERS_CHIP = "bg-green-400 text-neutral-950";
 const OFF_CHIP = "bg-paper/15 text-paper/70 flex items-center justify-center";
