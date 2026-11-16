@@ -83,20 +83,16 @@ export const PROFILE_OFFERS_SPAN_CLASS = "col-span-3";
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
 
-/** THE ROW IS BLACK WITH COLOURED CHIPS (Pato, 2026-11-16, MESITA-4160,
- *  option C "Black + chips" over a calm and a bold one): both tiles the ink of
- *  the row above, so the two rows read as one family; the only colour is the
- *  moving chip at the right, OpenTable red for the time, Link green for the
- *  offer. Red Reserve and green Offers with a black box inside before. */
-const ROW_TILE = "bg-foreground text-paper flex-row items-center gap-1.5 pr-2.5 pl-1 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]";
-// The glyph over the label, as in the row above, in one fixed width, so both
-// chips come out the same size (MESITA-4162).
-const ROW_LEAD = "flex w-12 shrink-0 flex-col items-center gap-1";
-// Both chips one size, one type size (Pato, MESITA-4162: "make the shit of
-// the same size").
-// A 32px chip, not the tile's full height (Pato, MESITA-4163: "maybe not
-// that much").
-const ROW_CHIP = "relative h-8 min-w-0 flex-1 overflow-hidden rounded-md text-[11px] font-extrabold tabular-nums";
+/** THE ROW IS SEGMENTED (Pato, 2026-11-16, MESITA-4164, variation 6 of ten):
+ *  each tile is two parts, the glyph over the label on the ink of the row
+ *  above at the left, and the moving time or offer filling the rest of the
+ *  tile edge to edge in colour, OpenTable red for the time, Link green for
+ *  the offer; the tile's corners clip it. An inset 32px chip before
+ *  (MESITA-4160..4163). */
+const ROW_TILE = "bg-foreground text-paper flex-row items-stretch gap-0 overflow-hidden p-0 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]";
+// The glyph over the label, as in the row above, in one fixed width.
+const ROW_LEAD = "flex w-14 shrink-0 flex-col items-center justify-center gap-1";
+const ROW_CHIP = "relative min-w-0 flex-1 overflow-hidden text-[11px] font-extrabold tabular-nums";
 const RESERVE_CHIP = "bg-[#DA3743] text-white";
 const OFFERS_CHIP = "bg-green-400 text-neutral-950";
 const OFF_CHIP = "bg-paper/15 text-paper/70 flex items-center justify-center";
