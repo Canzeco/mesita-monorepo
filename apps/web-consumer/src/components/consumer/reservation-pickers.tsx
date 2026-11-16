@@ -152,7 +152,7 @@ export function ReservationTimePicker({
   return (
     <div className="mt-4">
       <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-        Hour
+        Time
       </p>
       <div className="scrollbar-hide -mx-5 mt-2 flex flex-nowrap gap-2 overflow-x-auto px-5 pb-1">
         {slots.filter((slot) => !(date && isSlotPast(date, slot.time, tz))).map((slot) => (
@@ -202,7 +202,7 @@ function TimeSlotButton({
               : undefined
       }
       className={cn(
-        "h-10 shrink-0 rounded-full border px-4 text-sm font-semibold tabular-nums transition",
+        "flex h-10 shrink-0 flex-col items-center justify-center rounded-full border px-4 text-sm leading-none font-semibold tabular-nums transition",
         past
           ? "border-border bg-muted/40 text-muted-foreground cursor-not-allowed opacity-45"
           : active
@@ -211,6 +211,13 @@ function TimeSlotButton({
       )}
     >
       {slot.time}
+      {/* 01:30 sits before lunch on the same date; "late" says it is the
+          small hours, not a typo (MESITA-4161). */}
+      {slot.afterMidnight && (
+        <span className={cn("type-meta mt-0.5 font-medium", !active && "text-muted-foreground")}>
+          late
+        </span>
+      )}
     </button>
   );
 }
@@ -332,11 +339,41 @@ export type ReservationTimeWindow = 0 | 30 | 60;
 export const DEFAULT_TIME_WINDOW: ReservationTimeWindow = 30;
 export type ReservationSeating = "any" | "inside" | "outside" | "bar";
 
-const WINDOW_OPTIONS: { value: ReservationTimeWindow; label: string }[] = [
-  { value: 0, label: "Exact" },
-  { value: 30, label: "± 30 min" },
-  { value: 60, label: "± 1 hour" },
-];
+function windowOptions(time: string | null): { value: ReservationTimeWindow; label: string }[] {
+  return [
+    { value: 0, label: time ? `Only ${time}` : "Only that time" },
+    { value: 30, label: "± 30 min" },
+    { value: 60, label: "± 1 hour" },
+  ];
+}
+
+/** `HH:mm` moved by `delta` minutes, wrapping round the clock. */
+function shiftHhmm(time: string, delta: number): string {
+  const [h, m] = time.split(":").map(Number);
+  const t = (((h * 60 + m + delta) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+}
+
+/** The hint names the actual range, not an abstract rule (MESITA-4161). */
+function windowHint(time: string | null, window: ReservationTimeWindow): string {
+  if (window === 0) return "We ask for that time only. If it's taken, we ask you before changing it.";
+  if (!time) return "We take a time inside this range without asking you; anything else, we ask.";
+  return `We book any time from ${shiftHhmm(time, -window)} to ${shiftHhmm(time, window)} without asking you. Anything else, we ask first.`;
+}
+
+/** A group heading over a few fields: When · Who · Extras (MESITA-4161). */
+export function ReservationGroupHeading({ children, first }: { children: string; first?: boolean }) {
+  return (
+    <h2
+      className={cn(
+        "text-foreground text-base font-semibold",
+        first ? "mt-6" : "border-border mt-8 border-t pt-6",
+      )}
+    >
+      {children}
+    </h2>
+  );
+}
 
 const SEATING_OPTIONS: { value: ReservationSeating; label: string }[] = [
   { value: "any", label: "No preference" },
@@ -389,15 +426,18 @@ function ChoicePills<T extends string | number>({
 export function ReservationWindowPicker({
   value,
   onChange,
+  time,
 }: {
   value: ReservationTimeWindow;
   onChange: (next: ReservationTimeWindow) => void;
+  /** The picked time, so the title and hint can name it. */
+  time: string | null;
 }) {
   return (
     <ChoicePills
-      title="Time flexibility"
-      hint="We take a time inside this range without asking you; anything else, we ask."
-      options={WINDOW_OPTIONS}
+      title={time ? `If ${time} is taken` : "If that time is taken"}
+      hint={windowHint(time, value)}
+      options={windowOptions(time)}
       value={value}
       onChange={onChange}
     />

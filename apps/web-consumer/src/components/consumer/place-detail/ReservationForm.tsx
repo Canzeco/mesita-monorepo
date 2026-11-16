@@ -7,6 +7,7 @@ import {
   buildDateOptions,
   firstOpenDate,
   ReservationDatePicker,
+  ReservationGroupHeading,
   ReservationPartyPicker,
   ReservationNotifyPicker,
   ReservationSeatingPicker,
@@ -309,6 +310,7 @@ export function ReservationForm({
         />
       )}
 
+      <ReservationGroupHeading first>When</ReservationGroupHeading>
       <ReservationDatePicker
         options={dateOptions}
         value={date}
@@ -321,6 +323,11 @@ export function ReservationForm({
         hours={hours}
         tz={tz}
       />
+      {!rescheduling && (
+        <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
+      )}
+
+      <ReservationGroupHeading>Who</ReservationGroupHeading>
       <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
 
       {!rescheduling && (
@@ -350,10 +357,13 @@ export function ReservationForm({
               className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
             />
           </div>
+          <p className="text-muted-foreground type-meta mt-2">
+            The name the table is under.
+          </p>
         </div>
       )}
 
-      {!rescheduling && <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} />}
+      <ReservationGroupHeading>Extras</ReservationGroupHeading>
       {!rescheduling && <ReservationSeatingPicker value={seating} onChange={setSeating} />}
 
       <div className="mt-4">
@@ -364,7 +374,7 @@ export function ReservationForm({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           maxLength={280}
-          placeholder="Optional"
+          placeholder="Optional: allergies, a birthday, a high chair…"
           aria-label="Notes"
           className="border-border bg-card focus:border-foreground/40 mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
         />
