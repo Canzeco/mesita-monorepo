@@ -96,9 +96,20 @@ function reservationRows(rows: EFReservationRow[], nowMs: number): Row[] {
       item.state === "confirmed";
     const at = item.reservedAt ?? row.reserved_at;
     const upcoming = live && Date.parse(at) >= nowMs;
-    const label = stateMeta(item.state).label;
-    const tone: StatusTone =
-      item.state === "confirmed" ? "green" : live ? "ink" : "grey";
+    // PASSED, SAID LIKE CANCELLED (MESITA-4125, Pato: "if the bill already
+    // passed instead of cancelled say passed, but use the same outside ticket
+    // design as with cancelled"): a reservation whose time is gone reads
+    // "Passed" in grey with the dimmed photo and name, whether the server
+    // already marked it passed or it was still live when its time came.
+    const passed = item.state === "passed" || (live && !upcoming);
+    const label = passed ? "Passed" : stateMeta(item.state).label;
+    const tone: StatusTone = passed
+      ? "grey"
+      : item.state === "confirmed"
+        ? "green"
+        : live
+          ? "ink"
+          : "grey";
     return {
       key: `r-${row.id}`,
       type: "reservations",
@@ -107,15 +118,13 @@ function reservationRows(rows: EFReservationRow[], nowMs: number): Row[] {
       upcoming,
       place: item.placeName,
       photo: item.placePhoto,
-      // No "Past" on the row: its group says it (MESITA-3778, Pato: "don't
-      // show the fucking past").
-      status: { label: label === "Passed" ? "" : label, tone },
+      status: { label, tone },
       big: item.when,
       line: join(
         `${item.partySize} ${item.partySize === 1 ? "person" : "people"}`,
         item.referenceCode && `#${item.referenceCode}`,
       ),
-      dim: item.state === "cancelled" || item.state === "failed",
+      dim: passed || item.state === "cancelled" || item.state === "failed",
       href: reservationPath(row.id),
     };
   });
