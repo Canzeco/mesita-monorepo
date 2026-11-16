@@ -14,13 +14,16 @@ import { PlaceEmptyScreen } from "./empty-screen";
 // menu lands here shortly." until then. "Smart menus" since MESITA-3989
 // (Pato: "we are adding smart menus"). "Order & Pay" since MESITA-4175
 // (Pato: "table orders and pickup orders … not delivery orders"): it names
-// both kinds and says plainly there is no delivery.
+// both kinds and says plainly there is no delivery. "Smart Menu" and what
+// it does since MESITA-4177 (Pato: "mention capabilities of Smart menu";
+// the capabilities are his from MESITA-3244: interactive, hosted in
+// Mesita, AI answers questions, orders and payments in place or remote).
 export function SoonScreen() {
   return (
     <PlaceEmptyScreen
       icon={BookOpen}
-      title="Order & Pay is coming to Mesita"
-      line="Order and pay from the menu at your table, or order ahead and pick it up. Pickup only, no delivery."
+      title="Smart Menu is coming to Mesita"
+      line="An interactive menu hosted on Mesita. Ask its AI about any dish, then order and pay from your table, or order ahead and pick it up. Pickup only, no delivery."
     />
   );
 }
