@@ -27,7 +27,7 @@ import { buildDirectionsUrl } from "../../lib/maps-link";
 // TWO ROWS OF TILES (Pato's sketches, MESITA-3419 then MESITA-4151):
 //
 //   [ Save ] [ Maps ] [ Contact ] [ Share ] [ Upgrade ]   black, glyph over label (MESITA-3581)
-//   [     Reserve      ] [       Offers        ]          pinned, halves (MESITA-4151)
+//   [   Reserve   ] [        Offers         ]           pinned, 2/5 · 3/5 (MESITA-4156)
 //
 // ROW 2 IS TWO BUTTONS (Pato, MESITA-4151: "showing the wallet balance there
 // and the pay button is not really relevant ... pay is already in the bottom
@@ -69,9 +69,13 @@ export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
  *  glyph-over-label before that. */
 export const PROFILE_TILE_BOX_CLASS =
   "flex h-13 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
-/** Row 2, pinned: Reserve · Offers, a half each (MESITA-4151; a quarter
- *  each from MESITA-3574). */
-export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-2 gap-2";
+/** Row 2, pinned: Reserve two fifths, Offers three (Pato, MESITA-4156:
+ *  "reserve reserve offers offers offers"), on the five-tile grid above so
+ *  the edges line up; halves in MESITA-4151, quarters from MESITA-3574. */
+export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-5 gap-2";
+/** Reserve's and Offers' spans in that row. */
+export const PROFILE_RESERVE_SPAN_CLASS = "col-span-2";
+export const PROFILE_OFFERS_SPAN_CLASS = "col-span-3";
 
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
@@ -270,7 +274,7 @@ export function MesitaActions({
             : inertButtonProps(false)
           : { onClick: () => setOffOpen("reserve"), "aria-haspopup": "dialog" as const })}
         aria-label={row.reserve.works ? "Reserve a table" : "Reserve, off: this place doesn't offer reservations"}
-        className={cn(PROFILE_MESITA_TILE_BOX_CLASS, "bg-foreground text-paper flex-row gap-1.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]")}
+        className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_RESERVE_SPAN_CLASS, "bg-foreground text-paper flex-row gap-1.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]")}
       >
         <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
         <span className="truncate">Reserve</span>
@@ -287,7 +291,7 @@ export function MesitaActions({
           type="button"
           {...(row.offers.loading ? inertButtonProps(false) : { onClick: () => setOffOpen("offers"), "aria-haspopup": "dialog" as const })}
           aria-label={row.offers.loading ? "Offers, loading" : "Offers, Off"}
-          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, MONEY_TONE.off, "flex-row gap-1.5 text-xs font-semibold")}
+          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_OFFERS_SPAN_CLASS, MONEY_TONE.off, "flex-row gap-1.5 text-xs font-semibold")}
         >
           <span className="truncate">Offers</span>
           <span className={cn(PLACE_PILL_CLASS, "bg-paper text-muted-foreground")} aria-hidden>
@@ -333,6 +337,7 @@ function OffersTile({
       onBlur={release}
       className={cn(
         PROFILE_MESITA_TILE_BOX_CLASS,
+        PROFILE_OFFERS_SPAN_CLASS,
         // BLACK, LIKE RESERVE (Pato, 2026-11-16, MESITA-4155: "payments
         // inside a black box"); the words carry the offer.
         "bg-foreground text-paper relative px-2 text-xs font-semibold hover:opacity-90 active:scale-[0.99]",
