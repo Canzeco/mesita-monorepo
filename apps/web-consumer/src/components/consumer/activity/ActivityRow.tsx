@@ -70,10 +70,6 @@ export type ActivityItem = {
   /** What happened to the guest's credit (MESITA-4001): "+" came in (green),
    *  "−" went out; none for card or cash money. Drawn before `big`. */
   sign?: "+" | "−" | null;
-  /** Cashback this ticket earned, in cents, and its words ("+$3.00
-   *  cashback"), green under the state. */
-  cashbackCents?: number | null;
-  cashback?: string | null;
   href?: string;
   /** The one thing to do about it, a filled button under the row. */
   action?: { label: string; href: string };

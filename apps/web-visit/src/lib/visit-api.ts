@@ -201,10 +201,9 @@ export async function getCharge(token: string): Promise<ChargeRead | "gone" | "f
 /** The waiter's Received on a bill the guest pays outside (MESITA-3545):
  *  `paid`, or the server's words to show ("Cancelled by the guest",
  *  "Expired", "Not paying outside yet"), or `failed` (no answer: tap again). */
-export async function confirmCharge(token: string): Promise<{ paid_at: string; cashback_cents: number } | { refused: string } | "failed"> {
+export async function confirmCharge(token: string): Promise<{ paid_at: string } | { refused: string } | "failed"> {
   const { res, data } = await post("visit-web-confirm-charge", { token });
-  // cashback_cents: what the guest got back at the place's own rate (MESITA-3589).
-  if (data?.ok) return { paid_at: String(data.paid_at), cashback_cents: Number(data.cashback_cents ?? 0) };
+  if (data?.ok) return { paid_at: String(data.paid_at) };
   if (!res || res.status >= 500 || !data) return "failed";
   return { refused: typeof data.error === "string" ? data.error : "Couldn't confirm. Try again." };
 }
@@ -277,7 +276,6 @@ export type TabRead = {
   cash_received_cents: number | null;
   card_bill_cents: number;
   card_tip_cents: number;
-  cashback_cents: number;
   paid_at: string | null;
   expires_at: string;
   updated_at: string;
@@ -382,7 +380,6 @@ export type Verified = {
   outcome: "verified" | "already_verified" | "confirming";
   verified_at: string | null;
   same_phone: boolean | null;
-  cashback_cents: number;
 };
 
 export async function verifyTab(
@@ -394,7 +391,6 @@ export async function verifyTab(
       outcome: data.outcome === "already_verified" ? "already_verified" : data.outcome === "confirming" ? "confirming" : "verified",
       verified_at: typeof data.verified_at === "string" ? data.verified_at : null,
       same_phone: typeof data.same_phone === "boolean" ? data.same_phone : null,
-      cashback_cents: typeof data.cashback_cents === "number" ? data.cashback_cents : 0,
     };
   }
   if (!res || res.status >= 500 || !data) return "failed";

@@ -111,8 +111,7 @@ function StoryBody({ story }: { story: WaitingStory }) {
 /** Cash (MESITA-4116; redesigned MESITA-4125, Pato: "don't make cash look as
  *  a card ... just mention like pay with cash, or pay in their terminal ...
  *  redesign this page from scratch"). No card face: two panels and a line.
- *  How you pay: cash, or the place's terminal, both outside the app. No
- *  cashback since MESITA-4191; every
+ *  How you pay: cash, or the place's terminal, both outside the app. Every
  *  icon disc is grey (MESITA-4129, Pato: "why all fucking green").
  *  The rates are the most a place gives; each place turns either on or off. */
 function CashBody() {

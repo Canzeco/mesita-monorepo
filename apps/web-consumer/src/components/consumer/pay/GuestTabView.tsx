@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Banknote, CircleCheck, Clock, Gift, HandCoins, Loader2, PenLine, Smartphone, Wallet, XCircle } from "lucide-react";
+import { Banknote, CircleCheck, Clock, HandCoins, Loader2, PenLine, Smartphone, Wallet, XCircle } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
 import { Button } from "@/components/ui/button";
-import { PushLink } from "@/components/consumer/nav/PushLink";
-import { walletSendPath } from "@/lib/consumer-route-contract";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type TabCardStep } from "@/lib/api/tab";
@@ -29,8 +27,7 @@ import { STEP, skippedFromParts, startAgainStage } from "@/lib/guest-pay-stages"
 //   Confirming    a Loader and "Confirming…" while money moves (the bank's
 //                 check, the charge at the signature).
 //   7 Receipt     the step panel, a green Paid with the total, the lines
-//                 with their icons, "Signed by staff" ✓, the cashback; Send
-//                 a gift beside Done when the bill earned some.
+//                 with their icons, "Signed by staff" ✓; Done.
 //   Not paid      a red XCircle, one line why, "Nothing was charged", Start
 //                 again (the bill with everything typed).
 //
@@ -176,14 +173,11 @@ export function GuestTabView({
   ].filter((w) => w !== null);
 
   // 7 RECEIPT (MESITA-4135, Pato: "a better design when the tickets are gone
-  // and you receive your cashback ... keep the structure"). The same three
+  // ... keep the structure"). The same three
   // parts as before, green Paid, one panel of rows, Done, now under the step
   // panel ("Receipt · 7 of 7"): Paid carries the total, Signed by staff
-  // carries its check, and with cashback the footer offers Send a gift beside
-  // Done, the place's House Card send page ("receipt has a shortcut button to send gift
-  // related to that card").
+  // carries its check, and the footer is Done.
   if (signed) {
-    const back = tab.cashback_cents;
     return (
       <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="receipt">
         <PayTop place={place} name={tab.place.name} step={{ at: STEP.receipt, skipped: skippedFromParts(tab.parts) }} />
@@ -217,21 +211,8 @@ export function GuestTabView({
             />
           </PaySection>
         </StepBody>
-        {/* The footer, always in reach: with cashback, Send a gift beside
-            Done, the place's House Card send page (credits back are spendable
-            at once, MESITA-3909). Quiet, colour on the mark only (loud
-            buttons invite leaving). */}
-        <div className={cn("border-border -mx-4 mt-3 grid shrink-0 gap-3 border-t px-4 pt-3", back > 0 && "grid-cols-2")}>
-          {back > 0 ? (
-            <PushLink
-              href={walletSendPath(tab.place.id)}
-              className={cn(QUIET_BUTTON_CLASS, "flex items-center justify-center gap-2 rounded-xl")}
-              data-guest-send-gift
-            >
-              <Gift className={cn("h-5 w-5", GOOD)} aria-hidden />
-              Send a gift
-            </PushLink>
-          ) : null}
+        {/* The footer, always in reach. */}
+        <div className="border-border -mx-4 mt-3 grid shrink-0 gap-3 border-t px-4 pt-3">
           <Button size="lg" className="min-h-12 w-full text-base font-semibold" onClick={onDone}>
             Done
           </Button>

@@ -7,7 +7,7 @@ export const metadata = { title: "Money" };
 
 // Money (MESITA-3301 as Transactions; Pato, MESITA-3308: "call the
 // Transactions page Money"): every money row at the place, the three money
-// products of Main: a payment, a voucher bought, cashback given (MESITA-3272
+// products of Main: a payment, a voucher bought (MESITA-3272
 // W3 fills it). The page stands before any place takes payments.
 // MESITA-3596: the owner's Money box and Log live here, not on Payments
 // (Payments only configures). Anyone the server refuses the money read (an

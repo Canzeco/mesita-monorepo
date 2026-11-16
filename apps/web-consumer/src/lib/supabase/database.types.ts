@@ -1246,7 +1246,6 @@ export type Database = {
       }
       place_payment_settings: {
         Row: {
-          cashback: boolean
           pay_cards: boolean
           place_id: string
           updated_at: string
@@ -1259,7 +1258,6 @@ export type Database = {
           voucher_welcome: boolean
         }
         Insert: {
-          cashback?: boolean
           pay_cards?: boolean
           place_id: string
           updated_at?: string
@@ -1272,7 +1270,6 @@ export type Database = {
           voucher_welcome?: boolean
         }
         Update: {
-          cashback?: boolean
           pay_cards?: boolean
           place_id?: string
           updated_at?: string
@@ -2549,8 +2546,6 @@ export type Database = {
           amount_cents: number
           application_fee_cents: number
           card_cents: number
-          cashback_bps: number
-          cashback_cents: number
           consumer_id: string | null
           created_at: string
           credit_cents: number
@@ -2582,8 +2577,6 @@ export type Database = {
           amount_cents: number
           application_fee_cents?: number
           card_cents?: number
-          cashback_bps?: number
-          cashback_cents?: number
           consumer_id?: string | null
           created_at?: string
           credit_cents?: number
@@ -2615,8 +2608,6 @@ export type Database = {
           amount_cents?: number
           application_fee_cents?: number
           card_cents?: number
-          cashback_bps?: number
-          cashback_cents?: number
           consumer_id?: string | null
           created_at?: string
           credit_cents?: number
@@ -3348,7 +3339,6 @@ export type Database = {
         Args: {
           p_application_fee_cents: number
           p_card_cents: number
-          p_cashback_bps: number
           p_consumer_id: string
           p_credit_cents: number
           p_currency: string

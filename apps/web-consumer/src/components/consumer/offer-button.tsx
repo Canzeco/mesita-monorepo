@@ -52,7 +52,7 @@ export function OfferButton({
       // "if i click the offer, that opens profile and then offers too
       // directly"). PAY OPENS THE PLAIN PROFILE (Pato, 2026-11-15, MESITA-4062:
       // "remove payments from the prepayments page"): the Offers sheet has no
-      // cashback card now, and the Pay tile there shows the rate. It is where
+      // Payments card now. It is where
       // tapping the card goes too; Pato can flip it to /pay from the preview.
       // Pay too since MESITA-4173 (Pato: "The offers button must not
       // redirect to pay"): the Offers page lists Credits Back.

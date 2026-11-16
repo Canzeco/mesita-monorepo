@@ -9,7 +9,7 @@ import { payStrip, type PayStripTab } from "@/lib/pay-strip";
 //
 // An open payment ends one of three ways: the waiter signs it, the guest
 // cancels it (nothing moved yet: the credit comes back), or the guest closes
-// it (money moved and it is not signed: it ends now and earns no cashback).
+// it (money moved and it is not signed: it ends now).
 
 /** A list row is the guest's open payment. */
 export function isOpenGuestVisit(v: Pick<GuestVisit, "origin" | "verified_at" | "status" | "expires_at">, nowMs: number): boolean {
@@ -40,7 +40,7 @@ export type EndTab = PayStripTab & Pick<GuestTab, "status">;
 
 /** The bottom button of the payment's page: "cancel" while nothing has moved
  *  (the credit comes back), "close" once money moved and the waiter has not
- *  signed (it ends now with no cashback), none once it is signed, over,
+ *  signed (it ends now), none once it is signed, over,
  *  refunded, being checked, or while a card is still going through (a card
  *  held for the waiter, MESITA-3856, can be cancelled). */
 export function endAction(tab: EndTab, nowMs: number): "cancel" | "close" | null {

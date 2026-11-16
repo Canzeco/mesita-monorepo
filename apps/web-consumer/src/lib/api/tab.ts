@@ -29,8 +29,6 @@ export type GuestTab = {
   /** The guest's credit here they can spend now. */
   spendable_cents: number;
   rates: {
-    cash_back_bps: number;
-    card_back_bps: number;
     card_available: boolean;
     card_unavailable_code: string | null;
     /** Stripe's minimum for the card part (bill + tip by card). */
@@ -43,26 +41,18 @@ export type GuestTab = {
   cash_received_cents: number | null;
   card_bill_cents: number;
   card_tip_cents: number;
-  /** The cashback actually granted so far. */
-  cashback_cents: number;
-  /** MESITA-3772: what the waiter's signature would earn now, card and cash
-   *  (cashback turns on only when the waiter signs). Older reads have none. */
-  cashback_on_sign_cents?: number;
   /** The payment rows the guest's split opened: `card` and `outside` (cash). */
   parts: Array<{
     id: string;
     part: string | null;
     status: string;
     paid_at: string | null;
-    /** MESITA-3780: what this part charged, and its stored cashback rate.
-     *  Older reads have none. */
+    /** MESITA-3780: what this part charged. Older reads have none. */
     created_at?: string;
     credit_cents?: number;
     cash_cents?: number;
     card_cents?: number;
     tip_cents?: number;
-    cashback_cents?: number;
-    cashback_bps?: number | null;
     /** MESITA-3856: when the bank held this card for the waiter. */
     held_at?: string | null;
   }>;
@@ -258,11 +248,11 @@ export async function runBankCheck(
  *  before the waiter's Received and frees the credit it held. On the guest's
  *  own payment (MESITA-3772) the answer says how it ended: "cancelled" when
  *  nothing had moved, "closed" when money moved and the waiter had not
- *  signed (it ends now with no cashback). A signed one is refused. */
+ *  signed (it ends now). A signed one is refused. */
 export async function apiCancelTab(
   client: SupabaseClient,
   tabId: string,
-  /** "close" ends a guest payment whose money moved, unsigned: no cashback (MESITA-3772). */
+  /** "close" ends a guest payment whose money moved, unsigned (MESITA-3772). */
   mode: "cancel" | "change" | "close",
 ): Promise<{ outcome?: "cancelled" | "closed" }> {
   return await invokeEF<{ outcome?: "cancelled" | "closed" }>(client, "consumer-web-cancel-tab", { tab_id: tabId, mode });
@@ -308,32 +298,19 @@ export type PayWith = "cash" | "card";
 
 /** How the screen splits a bill: the guest's credit first (up to the bill)
  *  when they use it, the rest of the bill in cash or by card, the whole tip
- *  in cash or by card (credits never pay a tip). Cashback is the place's
- *  rate on the cash bill part (2%) plus the card rate on the card bill part
- *  (5%), plus the credits rate on the credit part where the place gives it
- *  (MESITA-3827), never on the tip; the server may give less (its daily
- *  cap). `card_tip_alone`: a card tip needs part of the bill by card or
+ *  in cash or by card (credits never pay a tip). `card_tip_alone`: a card tip needs part of the bill by card or
  *  credits (the server refuses it otherwise). */
 export function tabSplit(args: {
   billCents: number;
   tipCents: number;
   spendableCents: number;
   useCredit: boolean;
-  cashBackBps: number;
   billWith?: PayWith;
   tipWith?: PayWith;
-  cardBackBps?: number;
-  /** MESITA-3827: Credits Payments Cashback on the credit part. */
-  creditBackBps?: number;
 }): TabSplit & {
   total_cents: number;
   cash_due_cents: number;
   card_due_cents: number;
-  cashback_cents: number;
-  /** cashback_cents by part (MESITA-4100: Pay › Method shows each). */
-  cash_back_cents: number;
-  card_back_cents: number;
-  credit_back_cents: number;
   card_tip_alone: boolean;
 } {
   const bill = Math.max(0, Math.round(args.billCents));
@@ -346,9 +323,6 @@ export function tabSplit(args: {
   const cashBill = rest - cardBill;
   const cardTip = args.tipWith === "card" ? tip : 0;
   const cashTip = tip - cardTip;
-  const cashBack = Math.floor((cashBill * Math.max(0, args.cashBackBps)) / 10_000);
-  const cardBack = Math.floor((cardBill * Math.max(0, args.cardBackBps ?? 0)) / 10_000);
-  const creditBack = Math.floor((credit * Math.max(0, args.creditBackBps ?? 0)) / 10_000);
   return {
     credit_cents: credit,
     cash_bill_cents: cashBill,
@@ -358,10 +332,6 @@ export function tabSplit(args: {
     total_cents: bill + tip,
     cash_due_cents: cashBill + cashTip,
     card_due_cents: cardBill + cardTip,
-    cashback_cents: cashBack + cardBack + creditBack,
-    cash_back_cents: cashBack,
-    card_back_cents: cardBack,
-    credit_back_cents: creditBack,
     card_tip_alone: cardTip > 0 && cardBill === 0 && credit === 0,
   };
 }

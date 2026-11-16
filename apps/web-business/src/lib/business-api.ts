@@ -435,9 +435,7 @@ export type PaymentKey =
   | "voucher_welcome"
   | "voucher_story"
   | "voucher_vip";
-/** The place's own cashback rates in bps (MESITA-3589); null = Off. */
-export type PaymentRateKey = "card_cashback_bps" | "cash_cashback_bps" | "credit_cashback_bps" | "prepay_cashback_bps";
-export type PaymentSettings = Record<PaymentKey, boolean> & Record<PaymentRateKey, number | null>;
+export type PaymentSettings = Record<PaymentKey, boolean>;
 /** The House Credits Contract (MESITA-3589), independent of Stripe. */
 export type HouseCreditsContract = { signed: boolean; signed_at: string | null; terms_version: string | null; text?: string };
 /** The Stripe Account's seven values (Main §10). */
@@ -529,8 +527,6 @@ export type PlaceMoneyRow = {
   /** Pay at the table: the tab this row pays, and which part it is. */
   tab_id?: string | null;
   part?: "credit" | "outside" | "card" | null;
-  cashback_cents?: number;
-  outside_cashback_bps?: number;
   /** MESITA-3709: a guest's own payment and the waiter's Verify: when, the
    *  phone's short mark, and "check this phone" for a lone cash Verify. */
   guest_verify?: { verified_at: string | null; phone: string | null; check_phone: boolean; cash: boolean; closed: boolean };
@@ -547,9 +543,6 @@ export type PlaceMoney = {
   /** MESITA-3548: bills with a waiter's bill over the window, and how many
    *  ended in the waiter's Received (cash). Missing on the old shape. */
   received_share?: { received: number; total: number };
-  /** The place's outside cashback over the rolling day, and its ceiling. */
-  outside_cashback_today_cents?: number;
-  outside_cashback_ceiling_cents?: number;
   rows: PlaceMoneyRow[];
   next: PlaceMoneyCursor;
 };
@@ -594,16 +587,9 @@ export async function refundPlaceMoneyRow(
   };
 }
 
-/** One switch: Cashback or one voucher. Returns every switch as it now stands. */
+/** One switch: a way to pay or one voucher. Returns every switch as it now stands. */
 export async function setPlacePayment(placeId: string, key: PaymentKey, enabled: boolean): Promise<Result<PaymentSettings>> {
   const r = await efInvoke<{ settings: PaymentSettings }>("business-web-set-payment", { place_id: placeId, key, enabled });
-  if (!r.ok) return fail(r);
-  return { ok: true, data: r.data.settings };
-}
-
-/** A cashback rate (MESITA-3589): whole percents 1..20 as bps, or null = Off. */
-export async function setPlacePaymentRate(placeId: string, key: PaymentRateKey, bps: number | null): Promise<Result<PaymentSettings>> {
-  const r = await efInvoke<{ settings: PaymentSettings }>("business-web-set-payment", { place_id: placeId, key, bps });
   if (!r.ok) return fail(r);
   return { ok: true, data: r.data.settings };
 }

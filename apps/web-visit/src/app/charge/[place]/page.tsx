@@ -54,7 +54,7 @@ function loadCharge(place: string): OpenedCharge | null {
 type Screen =
   | { kind: "form" }
   | { kind: "open"; charge: OpenedCharge; offset: number }
-  | { kind: "paid"; charge: OpenedCharge; paidAt: string; read: ChargeRead | null; received: boolean; cashbackCents?: number }
+  | { kind: "paid"; charge: OpenedCharge; paidAt: string; read: ChargeRead | null; received: boolean }
   | { kind: "expired"; testMode: boolean };
 
 export default function ChargePage({ params }: { params: Promise<{ place: string }> }) {
@@ -173,7 +173,7 @@ export default function ChargePage({ params }: { params: Promise<{ place: string
         setError(r.refused);
         setLast((prev) => (prev ? { ...prev, outside: null } : prev));
       } else {
-        setScreen({ kind: "paid", charge: c, paidAt: r.paid_at, read: last, received: true, cashbackCents: r.cashback_cents });
+        setScreen({ kind: "paid", charge: c, paidAt: r.paid_at, read: last, received: true });
       }
     } finally {
       setReceiving(false);
@@ -211,7 +211,6 @@ export default function ChargePage({ params }: { params: Promise<{ place: string
       const collected = (r?.outside?.cents ?? (r ? c.amount_cents - (r.paid_cents ?? 0) : c.amount_cents)) + tipPaid;
       status = `Received · ${clockTime(screen.paidAt)}`;
       big = moneyLabel(collected, c.currency);
-      // The guest's cashback at the place's own rate (MESITA-3589), when known.
     } else {
       const paid = r?.paid_cents ?? c.amount_cents;
       status = `Paid · ${clockTime(screen.paidAt)}`;

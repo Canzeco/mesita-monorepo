@@ -20,7 +20,6 @@
 //   Paid with         one line per method: its bill + tip and its amount; a
 //                     state only when it is not simply Paid ("Didn't go
 //                     through" is ink, never red); a paid part opens its receipt
-//   Cashback          only when earned or pending
 //   Split             a share or a split table (S16)
 //   Details           who typed the bill, waiter, ticket, the visit number
 //                     with a copy button
@@ -28,7 +27,7 @@
 //   Pay here again (filled) · Open the place
 //
 // A visit nothing was paid on (expired, cancelled) says "Nothing was
-// charged." and draws no payment or cashback lines: a page of "Not charged"
+// charged." and draws no payment lines: a page of "Not charged"
 // said one fact many times.
 //
 // No green full screen, no live clock, no steps: those are for the waiter at
@@ -253,8 +252,6 @@ function Statement({ tab }: { tab: GuestTab }) {
     );
   }
 
-  // ── Cashback: its own section only when earned or pending ──
-
   // ── Timeline ──
   const events: Array<[string, string, string?]> = [];
   if (tab.created_at) events.push([tab.created_at, "Opened"]);
@@ -281,7 +278,7 @@ function Statement({ tab }: { tab: GuestTab }) {
   const suggested = tab.tip_suggested_cents;
   const opened = tab.created_at ?? tab.billed_at ?? tab.updated_at;
 
-  // Nothing was paid and the bill is closed: no payment or cashback lines.
+  // Nothing was paid and the bill is closed: no payment lines.
   const unpaid = !paid && !open;
   const typedBy = guestTab ? "You" : (tab.waiter_name ?? "The waiter");
 

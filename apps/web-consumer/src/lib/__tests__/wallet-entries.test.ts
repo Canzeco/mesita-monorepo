@@ -68,14 +68,14 @@ describe("groupEntries", () => {
     expect(rows).toHaveLength(2);
   });
 
-  it("keeps a settled spend and its cashback as two rows, and the spend's payment", () => {
+  it("keeps a settled spend and its extra credit as two rows, and the spend's payment", () => {
     const rows = groupEntries([
       e({ kind: "spend", amount_cents: -50_000, payment_id: "pay" }),
-      e({ kind: "cashback", amount_cents: 2_500, payment_id: "pay" }),
+      e({ kind: "extra", amount_cents: 2_500, payment_id: "pay" }),
     ]);
     expect(rows.map((r) => [r.kind, r.amount_cents, r.payment_id])).toEqual([
       ["spend", -50_000, "pay"],
-      ["cashback", 2_500, "pay"],
+      ["extra", 2_500, "pay"],
     ]);
   });
 
@@ -94,10 +94,10 @@ describe("splitEntries", () => {
       e({ kind: "voucher", amount_cents: 1, purchase_id: "late", pending: true, available_at: "2026-11-11T19:40:00.000Z", at: "2026-11-11T18:40:00.000Z" }),
       e({ kind: "voucher", amount_cents: 2, purchase_id: "soon", pending: true, available_at: "2026-11-11T19:20:00.000Z", at: "2026-11-11T18:20:00.000Z" }),
       e({ kind: "spend", amount_cents: -3, payment_id: "x", at: "2026-11-11T17:00:00.000Z" }),
-      e({ kind: "cashback", amount_cents: 4, payment_id: "y", at: "2026-11-11T16:00:00.000Z" }),
+      e({ kind: "extra", amount_cents: 4, payment_id: "y", at: "2026-11-11T16:00:00.000Z" }),
     ]);
     expect(pending.map((r) => r.purchase_id)).toEqual(["soon", "late"]);
-    expect(history.map((r) => r.kind)).toEqual(["spend", "cashback"]);
+    expect(history.map((r) => r.kind)).toEqual(["spend", "extra"]);
   });
 
   it("moves a purchase refunded before it landed to History, one row, not pending", () => {

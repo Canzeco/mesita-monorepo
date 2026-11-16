@@ -1,5 +1,5 @@
 // The product solutions. Guests: three, as 🦚 Main names them (MESITA-4190,
-// Pato: "Simplification. No cashbacks."): Global Discovery, Reservations Agent,
+// Pato: "Simplification."): Global Discovery, Reservations Agent,
 // Discounted Prepayments. Discounted Prepayments is not live with real money
 // yet, so it carries `soon` and the page tags it instead of hiding it.
 // Restaurants: every product on Business › All (web-business

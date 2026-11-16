@@ -6,7 +6,7 @@ import { CreditsLimitPanel } from "./CreditsLimitPanel";
 // each place can accept ... The default changes for each country/currency,
 // but i also want to be able to monitor that super important"). The most
 // House Credits a place may owe its guests at once; a voucher buy that would
-// pass it is refused. Cashback still lands.
+// pass it is refused.
 export const dynamic = "force-dynamic";
 
 export default async function CreditsLimitPage() {

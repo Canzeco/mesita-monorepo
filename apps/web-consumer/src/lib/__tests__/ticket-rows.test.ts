@@ -1,4 +1,4 @@
-// Pins which tab, kind, sign and cashback every wallet entry and visit gets
+// Pins which tab, kind and sign every wallet entry and visit gets
 // in Me › Tickets (MESITA-4001). Money-adjacent: a wrong sign or a dropped
 // entry tells the guest their credit moved the wrong way. Time text is never
 // asserted, so the time zone cannot change a result.
@@ -36,32 +36,30 @@ const only = (rows: Row[]) => {
 };
 
 describe("payment rows (Visits tab)", () => {
-  it("credits spent read minus, with the cashback earned beside them in cents", () => {
+  it("credits spent read minus, with legacy extra credit beside them", () => {
     const r = only(
-      walletRows(wallet([e("spend", -11000, { payment_id: "p1" }), e("cashback", 300, { payment_id: "p1" })])),
+      walletRows(wallet([e("spend", -11000, { payment_id: "p1" }), e("extra", 300, { payment_id: "p1" })])),
     );
     expect(r.type).toBe("visits");
     expect(r.kind).toBe("payment");
     expect(KIND_WORD[r.kind!]).toBe("Payment");
     expect(r.sign).toBe("−");
-    expect(r.cashbackCents).toBe(300);
     expect(r.status.label).toBe("Paid");
   });
 
-  it("cashback alone reads plus, with no separate cashback line", () => {
-    const r = only(walletRows(wallet([e("cashback", 300, { payment_id: "p1" })])));
+  it("legacy extra credit alone reads plus", () => {
+    const r = only(walletRows(wallet([e("extra", 300, { payment_id: "p1" })])));
     expect(r.sign).toBe("+");
-    expect(r.cashbackCents).toBeNull();
   });
 
-  it("a cash payment with neither credits nor cashback has no sign", () => {
+  it("a cash payment with neither credits nor extra credit has no sign", () => {
     const r = only(walletRows(wallet([e("reversal", -300, { payment_id: "p1" })])));
     expect(r.sign).toBeNull();
   });
 
-  it("a cashback reversal folds into its payment, which reads Refunded", () => {
+  it("an extra-credit reversal folds into its payment, which reads Refunded", () => {
     const r = only(
-      walletRows(wallet([e("cashback", 300, { payment_id: "p1" }), e("reversal", -300, { payment_id: "p1" })])),
+      walletRows(wallet([e("extra", 300, { payment_id: "p1" }), e("reversal", -300, { payment_id: "p1" })])),
     );
     expect(r.type).toBe("visits");
     expect(r.status.label).toBe("Refunded");
@@ -96,36 +94,29 @@ describe("visit rows", () => {
     ...over,
   });
 
-  it("a paid visit is unsigned and carries its payments' cashback in cents", () => {
+  it("a paid visit is unsigned", () => {
     const facts = new Map([
-      ["p1", { currency: "MXN", credits: 0, cashback: 300, takenBack: 0, givenBack: 0 }],
+      ["p1", { currency: "MXN", credits: 0, extra: 300, takenBack: 0, givenBack: 0 }],
     ]);
     const r = only(visitRows([visit()], facts));
     expect(r.type).toBe("visits");
     expect(r.kind).toBe("visit");
     expect(KIND_WORD[r.kind!]).toBe("Visit");
     expect(r.sign).toBeNull();
-    expect(r.cashbackCents).toBe(300);
-  });
-
-  it("a visit with no payment facts has no cashback", () => {
-    const r = only(visitRows([visit({ part_payment_ids: [] })], new Map()));
-    expect(r.cashbackCents).toBeNull();
   });
 });
 
 describe("voucher rows (MESITA-4003)", () => {
-  it("a purchase reads plus and folds its cashback into the row", () => {
+  it("a purchase reads plus and folds its legacy extra credit into the row", () => {
     const r = only(
-      walletRows(wallet([e("prepay", 50000, { purchase_id: "u1" }), e("cashback", 2500, { purchase_id: "u1" })])),
+      walletRows(wallet([e("prepay", 50000, { purchase_id: "u1" }), e("extra", 2500, { purchase_id: "u1" })])),
     );
     expect(r.kind).toBe("voucher");
     expect(r.sign).toBe("+");
-    expect(r.cashbackCents).toBe(2500);
   });
 
-  it("a cashback with no voucher beside it stays a row of its own", () => {
-    expect(walletRows(wallet([e("cashback", 2500, { purchase_id: "u9" })]))).toHaveLength(1);
+  it("an extra credit with no voucher beside it stays a row of its own", () => {
+    expect(walletRows(wallet([e("extra", 2500, { purchase_id: "u9" })]))).toHaveLength(1);
   });
 
   it("a bonus and a Story voucher read plus; the Story line says post", () => {
@@ -155,17 +146,17 @@ describe("every other kind lands on its tab with its kind", () => {
     });
   }
 
-  it("a purchase refund is one row per purchase: Back to your card, no sign, cashback taken back", () => {
+  it("a purchase refund is one row per purchase: Back to your card, no sign", () => {
     const rows = walletRows(
       wallet([
         e("prepay", 50000, { purchase_id: "u1" }),
-        e("cashback", 2500, { purchase_id: "u1" }),
+        e("extra", 2500, { purchase_id: "u1" }),
         e("reversal", -30000, { purchase_id: "u1" }),
         e("reversal", -20000, { purchase_id: "u1" }),
       ]),
     ).filter((r) => r.type === "refunds");
     expect(rows).toHaveLength(1);
-    expect([rows[0]!.line, rows[0]!.sign, rows[0]!.cashback]).toEqual(["Back to your card", undefined, expect.stringContaining("−")]);
+    expect([rows[0]!.line, rows[0]!.sign]).toEqual(["Back to your card", undefined]);
     expect(rows[0]!.big).toBe(money(50000, "MXN"));
   });
 

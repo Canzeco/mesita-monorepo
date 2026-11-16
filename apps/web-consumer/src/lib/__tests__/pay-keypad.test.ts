@@ -96,12 +96,10 @@ const place = (p: Partial<PayPlace> = {}): PayPlace => ({
   card_ok: true,
   available_cents: 0,
   pending_cents: 0,
-  cashback_bps: 0,
   test_mode: false,
   card_min_cents: 1000,
   paid_recent: null,
   outside_ok: true,
-  outside_bps: 0,
   ...p,
 });
 
@@ -219,7 +217,6 @@ describe("payButton", () => {
       tipCents: a.tip ?? 0,
       spendableCents: a.credit ?? 0,
       useCredit: (a.credit ?? 0) > 0,
-      cashBackBps: 0,
       billWith: a.billWith,
       tipWith: a.tipWith ?? a.billWith,
     });
@@ -262,14 +259,5 @@ describe("payButton", () => {
               if (inApp === 0) expect(b).toEqual({ button: "I paid", line: null });
               else expect(b).toEqual({ button: `Pay ${m(inApp)}`, line: cash > 0 ? `+ ${m(cash)} cash to the waiter` : null });
             }
-  });
-});
-
-describe("MESITA-3827: Credits Payments Cashback in the split", () => {
-  it("adds the credits rate on the credit part only, never the tip, each part rounded down", () => {
-    const s = tabSplit({ billCents: 10_099, tipCents: 1_000, spendableCents: 5_099, useCredit: true, cashBackBps: 200, billWith: "cash", tipWith: "cash", creditBackBps: 200 });
-    // credit 5,099 → 101 (101.98 down); cash 5,000 → 100; the tip earns nothing.
-    expect(s.cashback_cents).toBe(201);
-    expect(tabSplit({ billCents: 10_099, tipCents: 1_000, spendableCents: 5_099, useCredit: true, cashBackBps: 200 }).cashback_cents).toBe(100);
   });
 });

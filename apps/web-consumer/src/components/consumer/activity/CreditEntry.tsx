@@ -9,7 +9,7 @@
 //   TicketHero       photo + badge, "+$500.00MX", its state (Available,
 //                    Pending · available <date>, Refunded <date>), the place,
 //                    when, the Test chip
-//   Your credit      Bought · Bonus · Cashback · Total credit (a gift or a
+//   Your credit      Bought · Bonus · Extra credit · Total credit (a gift or a
 //                    refund: its Type)
 //   Refund           the Refund ticket, when this purchase was refunded
 //   At <place>       Available · Pending · You can spend now
@@ -33,7 +33,7 @@
 //
 // A Refund page (MESITA-4011, Tickets 10/10): the top box with the amount and
 // no sign, Refunded, "Refunded to the card you paid with.", a Timeline box
-// (Bought, Refunded), the Refund box (cashback taken back when any, the original
+// (Bought, Refunded), the Refund box (credit taken back when any, the original
 // purchase as a link only when its purchase_id finds it, the purchase number
 // with copy) and Open the House Card (outline) alone. Found by purchase_id.
 //
@@ -208,7 +208,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
       const refunded = reversals.reduce((n, x) => n + Math.abs(x.amount_cents), 0) || amount;
       const original = b.entries.find((x) => BOUGHT.has(x.kind) && x.purchase_id === pid);
       const takenBack = b.entries
-        .filter((x) => x.kind === "cashback" && !x.payment_id && x.purchase_id === pid)
+        .filter((x) => x.kind === "extra" && !x.payment_id && x.purchase_id === pid)
         .reduce((n, x) => n + x.amount_cents, 0);
       return (
         <TicketPage data-credit-entry>
@@ -263,12 +263,12 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     const bonus = bought
       ? b.entries.find((x) => x.kind === "bonus" && (e.purchase_id ? x.purchase_id === e.purchase_id : x.at === e.at))
       : undefined;
-    // The cashback this purchase earned (a cashback with its purchase id and
-    // no payment id, MESITA-4003).
-    const cashback =
+    // The legacy extra credit this purchase earned (an `extra` with its
+    // purchase id and no payment id, MESITA-4003).
+    const extra =
       bought && e.purchase_id
         ? b.entries
-            .filter((x) => x.kind === "cashback" && !x.payment_id && x.purchase_id === e.purchase_id)
+            .filter((x) => x.kind === "extra" && !x.payment_id && x.purchase_id === e.purchase_id)
             .reduce((n, x) => n + x.amount_cents, 0)
         : 0;
     // The refund of this purchase: its largest reversal.
@@ -310,9 +310,9 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           <TicketPanel title="Your credit">
             <TicketLine label="Bought" value={m(amount)} />
             {bonus ? <TicketLine label="Bonus" value={`+${m(bonus.amount_cents)}`} /> : null}
-            {cashback > 0 ? <TicketLine label="Extra credit" value={`+${m(cashback)}`} /> : null}
-            {bonus || cashback > 0 ? (
-              <TicketLine label="Total credit" value={m(amount + (bonus?.amount_cents ?? 0) + cashback)} strong />
+            {extra > 0 ? <TicketLine label="Extra credit" value={`+${m(extra)}`} /> : null}
+            {bonus || extra > 0 ? (
+              <TicketLine label="Total credit" value={m(amount + (bonus?.amount_cents ?? 0) + extra)} strong />
             ) : null}
           </TicketPanel>
         ) : (

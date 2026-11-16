@@ -101,7 +101,7 @@ export const CONSUMER_ROUTES = {
   visit: { prefix: "/me/tickets/visits/" },
   // ONE CREDIT MOVEMENT, ONE PAGE (MESITA-3782): a voucher, bonus, refund or
   // gift ticket opens /me/tickets/credit/<placeId>/<kind>.<ms> (MESITA-3855).
-  // One noun on purpose (MESITA-4016): bonus and cashback have no chip.
+  // One noun on purpose (MESITA-4016): bonus and extra credit have no chip.
   credit: { prefix: "/me/tickets/credit/" },
   // ONE GIFT, ONE PAGE (MESITA-4066): a Gifts row opens
   // /me/tickets/gift/<giftId>, the gift found by its id in the wallet read;
