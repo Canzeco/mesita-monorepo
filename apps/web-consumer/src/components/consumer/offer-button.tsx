@@ -54,7 +54,9 @@ export function OfferButton({
       // "remove payments from the prepayments page"): the Offers sheet has no
       // cashback card now, and the Pay tile there shows the rate. It is where
       // tapping the card goes too; Pato can flip it to /pay from the preview.
-      href={slide.section ? `${href}?rewards=${slide.section}` : href}
+      // Pay too since MESITA-4173 (Pato: "The offers button must not
+      // redirect to pay"): the Offers page lists Credits Back.
+      href={`${href}?rewards=${slide.section ?? "prepayment"}`}
       aria-label={offersLabel(name, slides)}
       onPointerDown={hold}
       onFocus={hold}

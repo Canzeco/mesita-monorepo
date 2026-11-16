@@ -272,12 +272,11 @@ export function MesitaActions({
   const [offOpen, setOffOpen] = useState<OffTile | null>(null);
   const onReserve = actions?.onReserve;
   const onOpenRewards = actions?.onOpenRewards;
-  const onPay = actions?.onPay;
-  // The door a slide opens: its Offers section, or Pay for the cashback.
-  const openSlide = (slide: OfferSlide) => {
-    if (slide.section) return onOpenRewards ? () => onOpenRewards(slide.section!) : undefined;
-    return onPay;
-  };
+  // EVERY SLIDE OPENS THE OFFERS PAGE (Pato, MESITA-4173: "The offers
+  // button must not redirect to pay"): the cashback slide too, which went to
+  // Pay; the page lists it under Credits Back.
+  const openSlide = (slide: OfferSlide) =>
+    onOpenRewards ? () => onOpenRewards(slide.section ?? "prepayment") : undefined;
   return (
     <div className="flex flex-col gap-2">
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">

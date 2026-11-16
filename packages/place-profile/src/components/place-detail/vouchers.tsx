@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronRight, CircleCheck, Crown, Info, Lock, Minus, PartyPopper, Plus, Ticket, type LucideIcon } from "lucide-react";
+import { Banknote, Check, ChevronRight, CircleCheck, Crown, Info, Lock, Minus, PartyPopper, Plus, Smartphone, Ticket, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -527,11 +527,16 @@ export type VoucherOffer = {
   why: string | null;
 };
 
-/** The Offers page's voucher groups (MESITA-4154). The ids keep the
- *  sections the host opens (`?rewards=special`, `?rewards=prepayment`). */
-const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<MoneyVoucherKey> }[] = [
-  { id: "special", title: "Special Vouchers", keys: new Set(["voucher_welcome", "voucher_story", "voucher_vip"]) },
-  { id: "prepayment", title: "Bonus Vouchers", keys: new Set(["voucher_200", "voucher_1000", "voucher_5000"]) },
+/** The Offers page's voucher list: ONE GROUP, "Prepaid Vouchers" (Pato,
+ *  MESITA-4173: "Prepaid Vouchers ... Welcome, VIP"); Special Vouchers and
+ *  Bonus Vouchers from MESITA-4154. The host still opens it by
+ *  `?rewards=prepayment` or `?rewards=special`. */
+const GROUPS: { id: "prepayment"; title: string; keys: ReadonlySet<MoneyVoucherKey> }[] = [
+  {
+    id: "prepayment",
+    title: "Prepaid Vouchers",
+    keys: new Set(["voucher_welcome", "voucher_story", "voucher_vip", "voucher_200", "voucher_1000", "voucher_5000"]),
+  },
 ];
 
 /** The vouchers a guest is shown: every product but the parked ones
@@ -591,8 +596,18 @@ export function VouchersPane({
   const creditPct = money?.credit_cashback_bps ? `${money.credit_cashback_bps / 100}%` : null;
   const prepayPct = money?.prepay_cashback_bps ? `${money.prepay_cashback_bps / 100}%` : null;
   const facts = creditFacts(creditPct);
-  // The Cashback group's rate: the place's own card cashback, or none.
+  // Credits Back's rates (MESITA-4173): App Pay is the place's card
+  // cashback, Cash Pay its cash bill cashback; a rate that is off hides its row.
   const cashbackPct = money?.cashback && money.card_cashback_bps ? `${money.card_cashback_bps / 100}%` : null;
+  const cashPct = money?.cash_cashback_bps ? `${money.cash_cashback_bps / 100}%` : null;
+  const creditsBack = [
+    ...(cashbackPct
+      ? [{ key: "app", name: "App Pay", pct: cashbackPct, Mark: Smartphone, fact: `Pay your bill in Mesita · ${cashbackPct} back` }]
+      : []),
+    ...(cashPct
+      ? [{ key: "cash", name: "Cash Pay", pct: cashPct, Mark: Banknote, fact: `Pay the waiter in cash · ${cashPct} back` }]
+      : []),
+  ];
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;
   // THE CHECKOUT IS THE PAGE (MESITA-4065, Pato: "you simply select the item
@@ -706,10 +721,10 @@ export function VouchersPane({
     // buy carries a selector at its right; the one Buy sits at the foot
     // (MESITA-3487). No Pay bill here.
     <div className="bg-card -mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
-      {/* THREE GROUPS (Pato, 2026-11-16, MESITA-4154): Special Vouchers
-          (Welcome · VIP), Bonus Vouchers (Small · Medium · Big), then Cashback.
-          One "Prepayments" list before. The two voucher groups share one
-          basket and the one Pay at the foot. */}
+      {/* TWO GROUPS (Pato, 2026-11-16, MESITA-4173): Prepaid Vouchers
+          (Welcome · VIP · Small · Medium · Big), then Credits Back. Special
+          and Bonus Vouchers then Cashback in MESITA-4154; one "Prepayments"
+          list before. The vouchers share one basket and the one Pay at the foot. */}
       {GROUPS.map((g) => {
         const list = products.filter((p) => g.keys.has(p.key));
         if (list.length === 0) return null;
@@ -840,28 +855,35 @@ export function VouchersPane({
       </section>
         );
       })}
-      {/* CASHBACK IS BACK (MESITA-4154; it left with MESITA-4062): the place's
-          own card rate, one row that opens Pay. Not in the basket. */}
-      {cashbackPct ? (
-        <section className="flex flex-col gap-2" aria-labelledby="rewards-cashback" data-promos="cashback">
-          <SectionTitle id="rewards-cashback" title="Cashback" />
-          <ul className="border-border rounded-2xl border">
-            <li>
-              <button
-                type="button"
-                {...(actions?.onPay ? { onClick: actions.onPay } : { disabled: true })}
-                aria-label={`Pay with Mesita: ${cashbackPct} back in credits`}
-                className={cn(ROW, "hover:bg-muted/50 rounded-2xl")}
-              >
-                <span className={cn(CHIP, "bg-green-400 text-neutral-950")} aria-hidden>
-                  {cashbackPct}
-                </span>
-                <span className={LINE} aria-hidden>
-                  <span className={NAME}>Pay</span> <Fact text={`Pay your bill with Mesita · ${cashbackPct} back in credits`} />
-                </span>
-                <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-              </button>
-            </li>
+      {/* CREDITS BACK (Pato, MESITA-4173: "Credits Back · App Pay · Cash
+          Pay"): the place's two bill cashbacks, each a row that opens Pay.
+          Not in the basket. One Cashback row (App Pay only) from MESITA-4154. */}
+      {creditsBack.length > 0 ? (
+        <section className="flex flex-col gap-2" aria-labelledby="rewards-credits-back" data-promos="credits-back">
+          <SectionTitle id="rewards-credits-back" title="Credits Back" />
+          <ul className="border-border divide-border divide-y rounded-2xl border">
+            {creditsBack.map((c) => (
+              <li key={c.key} data-credits-back={c.key}>
+                <button
+                  type="button"
+                  {...(actions?.onPay ? { onClick: actions.onPay } : { disabled: true })}
+                  aria-label={`${c.name}: ${c.pct} back in credits`}
+                  className={cn(ROW, "hover:bg-muted/50 first:rounded-t-2xl last:rounded-b-2xl")}
+                >
+                  <span className={cn(CHIP, "bg-green-400 text-neutral-950")} aria-hidden>
+                    {c.pct}
+                  </span>
+                  <span className={LINE} aria-hidden>
+                    <span className={NAME}>
+                      <c.Mark className={ICON} strokeWidth={2.25} />
+                      {c.name}
+                    </span>{" "}
+                    <Fact text={c.fact} />
+                  </span>
+                  <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+                </button>
+              </li>
+            ))}
           </ul>
         </section>
       ) : null}

@@ -1,35 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { PlaceTopBar, VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
+import { ChevronLeft, Wallet } from "lucide-react";
+import { VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import type { WalletCardModel } from "@/components/consumer/wallet/WalletCard";
-import { CreditsRow } from "@/components/consumer/wallet/WalletLists";
+import { money } from "@/lib/api/wallet";
+import { cardAmount } from "@/lib/wallet-card";
 import type { PlaceDetail } from "@/lib/place-detail";
 
-/** The place's balance as a Wallet card: the server's amounts, formatted
- *  by the row, never added. No balance read = $0. */
-function offersCard(place: PlaceDetail): WalletCardModel {
-  const balance = place.money?.balance ?? null;
-  return {
-    key: place.id,
-    name: place.name,
-    photo: place.profilePhoto ?? null,
-    tier: place.boost_tier ?? null,
-    currency: place.money?.currency ?? "mxn",
-    available_cents: balance?.available_cents ?? 0,
-    pending_cents: balance?.pending_cents ?? 0,
-    hasBalance: balance !== null,
-    tap: { kind: "plain" },
-  };
+/** The guest's credit here as one number (MESITA-4173): the Wallet card's
+ *  own amount, the server's cents, formatted and never added. No balance
+ *  read = $0. */
+function creditHere(place: PlaceDetail): { label: string; amount: string } {
+  const balance = place.money?.balance;
+  const currency = place.money?.currency ?? "mxn";
+  const shown = cardAmount({ available_cents: balance?.available_cents ?? 0, pending_cents: balance?.pending_cents ?? 0 });
+  return { label: shown.pending ? "Pending credit here" : "Your credit here", amount: money(shown.cents, currency) };
 }
 
 // THE REWARDS SHEET (Pato, MESITA-3412: "Rewards modal opens when you click
 // either prepay or pay, but covering almost full screen"): the place's
 // Rewards page, once the fourth tab, in the house semi-modal (88%, the same
-// shape as Contact, Reserve and Upgrade). Prepay opens it; since MESITA-4062
-// it holds the Prepayments card only. The pane undoes a 16px body inset, so
-// the scroller supplies it.
+// shape as Contact, Reserve and Upgrade). Every Offers tap opens it since
+// MESITA-4173: Prepaid Vouchers, then Credits Back. The pane undoes a 16px
+// body inset, so the scroller supplies it.
 export function RewardsSheet({
   place,
   actions,
@@ -50,27 +44,42 @@ export function RewardsSheet({
   const [last, setLast] = useState<RewardsSection | null>(section);
   if (section != null && section !== last) setLast(section);
   const drawn = section ?? last;
+  const credit = creditHere(place);
   return (
     <LocalSheet open={section != null} onClose={onClose} ariaLabel={`${place.name} offers`} fullScreen from="right">
-      {/* A hairline between the bar and the page (MESITA-3474, Pato: "add a
-          line dividing ... only the header from the body"). */}
-      <div className="border-border border-b">
-      <PlaceTopBar
-        name={place.name}
-        premierTier={place.boost_tier ?? 0}
-        onBack={onClose}
-      />
-      </div>
+      {/* THE PAGE IS "OFFERS" (Pato, MESITA-4173: "the page must not be called
+          prepay, it must be called Offers. so at the top the name of the
+          place"): the title over the place's name; a hairline under the bar
+          (MESITA-3474). The place's top bar with its name alone before. */}
+      <header className="bg-card border-border z-20 flex h-14 shrink-0 items-center gap-1 border-b px-1.5">
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={onClose}
+          className="text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
+        >
+          <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
+        </button>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-foreground text-lg leading-tight font-bold">Offers</h2>
+          <p className="text-muted-foreground truncate text-[0.8125rem] leading-tight">{place.name}</p>
+        </div>
+      </header>
       <div className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4">
-        {/* THE BALANCE, ABOVE THE OFFERS (Pato, 2026-11-15, MESITA-4060:
-            "remove that wallet of there because it looks like a button. just
-            at the top of products maybe display the current balance ...
-            reusing the component of wallet"): the Wallet's own Credits row,
-            in one box, no link (this page is the place's). It replaced the
-            top bar's black balance pill (OffersWalletPill, MESITA-3483..3935).
-            The pane pulls itself up 16px, so its wrapper gives that back. */}
-        <div className="border-border bg-card shrink-0 overflow-hidden rounded-2xl border" data-offers-balance>
-          <CreditsRow card={offersCard(place)} />
+        {/* THE CREDIT AS ONE NUMBER (Pato, MESITA-4173: "it must display
+            current wallet just the number with current amount"): a black
+            card, the label over the amount. The Wallet's Credits row before
+            (MESITA-4060), the top bar's black pill before that. */}
+        <div
+          className="bg-foreground text-paper flex shrink-0 items-end justify-between gap-3 rounded-2xl px-4 pt-4 pb-3.5"
+          aria-label={`${credit.label}: ${credit.amount}`}
+          data-offers-balance
+        >
+          <div className="min-w-0" aria-hidden>
+            <p className="mb-1.5 text-[0.6875rem] font-bold tracking-wider uppercase opacity-70">{credit.label}</p>
+            <p className="truncate text-4xl leading-none font-extrabold tracking-tight tabular-nums">{credit.amount}</p>
+          </div>
+          <Wallet className="h-6 w-6 shrink-0 opacity-80" strokeWidth={2.25} aria-hidden />
         </div>
         <div className="flex flex-1 shrink-0 flex-col pt-4">
           {drawn != null ? <VouchersPane place={place} actions={actions} /> : null}
