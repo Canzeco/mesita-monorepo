@@ -359,7 +359,9 @@ function whole(v: string): string {
 
 function readyIn(key: MoneyVoucherKey): string {
   if (key === "voucher_story") return "after story";
-  // Every voucher but Story waits an hour (MESITA-3323); Welcome and VIP
+  // Welcome lands at once (MESITA-4198, Pato: "welcome bonus is instant").
+  if (key === "voucher_welcome") return "now";
+  // Every other voucher waits an hour (MESITA-3323); Welcome and VIP
   // said "instantly" while the catalog held them an hour (fixed MESITA-3835,
   // Pato: "don't land instantly ... they should actually land 1hr after
   // payment").
@@ -390,7 +392,7 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string
     case "voucher_welcome":
       return [
         deal,
-        "Your credits are ready 1 hour after you buy.",
+        "Your credits are ready as soon as you buy.",
         "One per place. Every other place on Mesita has its own Welcome for you.",
         ...facts,
       ];
@@ -515,23 +517,22 @@ export type VoucherOffer = {
   why: string | null;
 };
 
-/** The Offers page's voucher list: TWO PANELS BY THE RULE (Pato,
- *  2026-11-16, MESITA-4198: "Prepaid Bonuses ... Instant Vouchers ... or what
- *  is the best design"): Special Bonuses, the ones a guest unlocks (Welcome
- *  once per place, Story per visit, VIP while it is parked), then Anytime
- *  Bonuses, the three sizes, as many as you like. Not "instant": every
- *  voucher lands in 1 hr. One "Prepaid Vouchers" group from MESITA-4173,
+/** The Offers page's voucher list: TWO PANELS (Pato, 2026-11-16,
+ *  MESITA-4198: "Separate between Instant Vouchers and Prepayment
+ *  Vouchers"): Instant Vouchers, the ones that land at once (Welcome now,
+ *  Story when the story is up; VIP too while it is parked), then Prepayment
+ *  Vouchers, the three sizes, in 1 hr. One "Prepaid Vouchers" group from MESITA-4173,
  *  Special and Bonus Vouchers in MESITA-4154. The host still opens it by
  *  `?rewards=prepayment` or `?rewards=special`. */
 const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<MoneyVoucherKey> }[] = [
   {
     id: "special",
-    title: "Special Bonuses",
+    title: "Instant Vouchers",
     keys: new Set(["voucher_welcome", "voucher_story", "voucher_vip"]),
   },
   {
     id: "prepayment",
-    title: "Anytime Bonuses",
+    title: "Prepayment Vouchers",
     keys: new Set(["voucher_200", "voucher_1000", "voucher_5000"]),
   },
 ];
@@ -692,8 +693,8 @@ export function VouchersPane({
     // prepaid vouchers"): the body is the page background, the vouchers one
     // white panel on it, as the Reserve page's sections. White from MESITA-3486.
     <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
-      {/* TWO PANELS (Pato, 2026-11-16, MESITA-4198): Special Bonuses
-          (Welcome · Story), then Anytime Bonuses (Small · Medium · Big). One
+      {/* TWO PANELS (Pato, 2026-11-16, MESITA-4198): Instant Vouchers
+          (Welcome · Story), then Prepayment Vouchers (Small · Medium · Big). One
           "Prepaid Vouchers" panel in MESITA-4173. Both panels share one basket
           and the one Pay at the foot. */}
       {GROUPS.map((g) => {
