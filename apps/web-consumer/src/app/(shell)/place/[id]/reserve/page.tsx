@@ -20,6 +20,7 @@ export default async function PlaceReservePage({
         name: place.name,
         hours_table: place.hours_table,
         timezone: place.timezone,
+        photo: place.profilePhoto,
       }}
     />
   );

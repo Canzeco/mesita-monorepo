@@ -11,6 +11,7 @@ import {
   ReservationFallbackPicker,
   ReservationPartyPicker,
   ReservationSeatingPicker,
+  ReservationSection,
   ReservationWindowPicker,
   DEFAULT_TIME_WINDOW,
   type ReservationFallback,
@@ -18,6 +19,8 @@ import {
   type ReservationTimeWindow,
   ReservationTimePicker,
   ReserveStepNav,
+  PreviewRow,
+  FALLBACK_LABEL,
   windowRange,
   type ReserveStep,
 } from "@/components/consumer/reservation-pickers";
@@ -29,6 +32,7 @@ import {
 import { EFError } from "@/lib/api/_invoke";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
+import { Panel } from "@/components/shared/Panel";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
@@ -68,6 +72,8 @@ export type ReservationFormPlace = {
   hours_table?: Array<{ day: string; range: string }>;
   /** The place's IANA zone; "" or absent reads as Mexico City. */
   timezone?: string | null;
+  /** The round profile picture, for the header (MESITA-4183). */
+  photo?: string | null;
 };
 
 // What to do when the guest already holds a live table here.
@@ -185,7 +191,7 @@ export function ReservationForm({
   const dayLabel = chosen
     ? chosen.weekday === "Today"
       ? "Today"
-      : chosen.weekday === "Tom."
+      : dateOptions.indexOf(chosen) === 1
         ? "Tomorrow"
         : `${chosen.weekday} ${chosen.day}`
     : "";
@@ -330,15 +336,19 @@ export function ReservationForm({
     );
   }
 
-  // THE STEPS (MESITA-4179, Pato: "3 STEPS, NOT 2 STEPS"): When (date,
-  // time), People (party, flexibility, backup), Details (name, seating,
-  // notes). Each fits a phone screen; the Reserve button says the summary.
-  const steps: ReserveStep[] = ["when", "people", "details"];
+  // THE STEPS (MESITA-4183, Pato: "Time · Details · Preview · 3 steps"):
+  //   Time     date and time
+  //   Details  people, how flexible, if they can't seat you, seating
+  //   Preview  what you're booking (tap a row to change it), the name
+  //            (prefilled, MESITA-4172), notes, and Reserve
+  // Each fits a phone screen, in Pay's panels on the grey page.
+  const steps: ReserveStep[] = ["time", "details", "preview"];
   const at = Math.min(stepAt, steps.length - 1);
   const step = steps[at];
   const last = at === steps.length - 1;
+  const goTo = (s: ReserveStep) => setStepAt(Math.max(0, steps.indexOf(s)));
   // Next waits for the duplicate answered and a time.
-  const nextBlocked = step === "when" && (checking || awaitingChoice || !time);
+  const nextBlocked = step === "time" && (checking || awaitingChoice || !time);
   const next = () => {
     if (!nextBlocked && !last) setStepAt(at + 1);
   };
@@ -348,24 +358,29 @@ export function ReservationForm({
       ? "Choose an option above"
       : !time
         ? "No times left"
-        : step === "when"
+        : step === "time"
           ? `Next · ${dayLabel ? `${dayLabel} ` : ""}${time}`
           : `Next · ${whenLabel}`;
   const range = windowRange(time, timeWindow);
+  const flexLabel = timeWindow === 0 ? "exact" : timeWindow === 30 ? "± 30 min" : "± 1 hour";
+  const seatLabel = seating === "any" ? "Any" : seating[0].toUpperCase() + seating.slice(1);
 
   return (
-    <div className="-mx-5 flex min-h-0 flex-1 flex-col">
-      <ReserveStepNav
-        steps={steps}
-        at={at}
-        onBack={at > 0 ? () => setStepAt(at - 1) : undefined}
-        onNext={!last && !nextBlocked ? next : undefined}
-      />
+    <div className="flex min-h-0 flex-1 flex-col px-4">
+      {/* The step bar in its own panel, as on Pay (PayTop). */}
+      <Panel className="mt-3">
+        <ReserveStepNav
+          steps={steps}
+          at={at}
+          onBack={at > 0 ? () => setStepAt(at - 1) : undefined}
+          onNext={!last && !nextBlocked ? next : undefined}
+        />
+      </Panel>
 
       {/* One step a screen, nothing to scroll on a phone; the body scrolls
           only if a very short screen cannot hold it. */}
-      <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-4 [&>section:first-child]:mt-0">
-        {step === "when" && (
+      <div className="scrollbar-thin-dark -mx-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
+        {step === "time" && (
           <>
             {intro}
             {existing && (
@@ -383,8 +398,8 @@ export function ReservationForm({
           </>
         )}
 
-        {step === "people" && (
-          <div className="flex flex-col gap-4 [&>section]:mt-0 [&>div]:mt-0">
+        {step === "details" && (
+          <>
             <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
             {!rescheduling && (
               <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
@@ -392,45 +407,62 @@ export function ReservationForm({
             {!rescheduling && (
               <ReservationFallbackPicker value={fallback} onChange={setFallback} range={range} />
             )}
-          </div>
+            {!rescheduling && <ReservationSeatingPicker value={seating} onChange={setSeating} />}
+          </>
         )}
 
-        {step === "details" && (
-          <div className="flex flex-col gap-4 [&>section]:mt-0 [&>div:first-child]:mt-0">
-            {!rescheduling && (
-              <div className="grid grid-cols-2 gap-2">
-                <ReservationField
-                  label="First name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  maxLength={60}
-                  autoComplete="given-name"
-                  required
-                />
-                <ReservationField
-                  label="Last name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  maxLength={60}
-                  autoComplete="family-name"
-                  required
-                />
+        {step === "preview" && (
+          <>
+            <Panel title="Your table">
+              <div className="mt-3">
+                <PreviewRow label="When" value={`${dayLabel ? `${dayLabel} · ` : ""}${time ?? "—"}`} onEdit={() => goTo("time")} />
+                <PreviewRow label="People" value={`${party} ${guestNoun(party)}`} onEdit={() => goTo("details")} />
+                {!rescheduling && (
+                  <>
+                    <PreviewRow label="Flexible" value={flexLabel} onEdit={() => goTo("details")} />
+                    <PreviewRow label="If full" value={FALLBACK_LABEL[fallback]} onEdit={() => goTo("details")} />
+                    <PreviewRow label="Seating" value={seatLabel} onEdit={() => goTo("details")} />
+                  </>
+                )}
               </div>
+            </Panel>
+            {!rescheduling && (
+              <ReservationSection title="Name">
+                <div className="grid grid-cols-2 gap-2">
+                  <ReservationField
+                    label="First name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    maxLength={60}
+                    autoComplete="given-name"
+                    required
+                  />
+                  <ReservationField
+                    label="Last name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    maxLength={60}
+                    autoComplete="family-name"
+                    required
+                  />
+                </div>
+              </ReservationSection>
             )}
-            {!rescheduling && <ReservationSeatingPicker value={seating} onChange={setSeating} />}
-            <ReservationField
-              label="Notes (optional)"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              maxLength={280}
-              placeholder="Allergies, a birthday, a high chair…"
-            />
-          </div>
+            <ReservationSection title="Notes">
+              <ReservationField
+                label="Optional"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                maxLength={280}
+                placeholder="Allergies, a birthday, a high chair…"
+              />
+            </ReservationSection>
+          </>
         )}
       </div>
 
       {/* The step's one button, pinned (Pay's footer). */}
-      <div className="border-border shrink-0 border-t px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="border-border -mx-4 shrink-0 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {error && last && (
           <p className="type-body bg-destructive/10 text-destructive mb-3 rounded-xl px-3 py-2 font-medium">
             {error}
@@ -496,7 +528,7 @@ function DuplicateBanner({
   const when = seed ? `${seed.date} · ${seed.time}` : "an upcoming slot";
 
   return (
-    <div className="border-border bg-muted/50 mt-4 rounded-2xl border p-3">
+    <div className="border-border bg-card shrink-0 rounded-2xl border p-4">
       <div className="flex items-start gap-2.5">
         <span className="bg-primary/10 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
           <CalendarClock className="h-4 w-4" />
