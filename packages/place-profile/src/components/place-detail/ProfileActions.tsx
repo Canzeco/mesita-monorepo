@@ -86,10 +86,11 @@ export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
  *  the offer; the tile's corners clip it. An inset 32px chip before
  *  (MESITA-4160..4163). */
 const ROW_TILE = "bg-foreground text-paper flex-row items-stretch gap-0 overflow-hidden p-0 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]";
-// The glyph over the label, as in the row above, in one fixed width.
-// The glyph only (Pato, MESITA-4167, variation 6 "Caption + big"); the
-// words "Reserve" and "Offers" stay in the spoken labels.
-const ROW_LEAD = "flex w-10 shrink-0 items-center justify-center";
+// The glyph over the word, as in the row above, in one fixed width: the
+// boxes say "Reserve" and "Offers" (Pato, MESITA-4171: "the box must
+// actually say Reserve and Offers"; design review pick A, "Icon over
+// word"). The glyph alone from MESITA-4167, 40px wide.
+const ROW_LEAD = "flex w-15 shrink-0 flex-col items-center justify-center gap-1";
 // The moving words big (Pato, MESITA-4165: "make the moving text bigger"):
 // 15px, 11px before.
 const ROW_CHIP = "relative min-w-0 flex-1 overflow-hidden text-lg leading-tight font-extrabold tabular-nums";
@@ -295,7 +296,7 @@ export function MesitaActions({
         >
           <span className={ROW_LEAD}>
             <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
-            <span className="sr-only">Reserve</span>
+            <span>Reserve</span>
           </span>
           <span className={cn(ROW_CHIP, OFF_CHIP)} aria-hidden>
             Off
@@ -313,7 +314,7 @@ export function MesitaActions({
         >
           <span className={ROW_LEAD}>
             <Tag className={MESITA_TILE_ICON} strokeWidth={2.25} />
-            <span className="sr-only">Offers</span>
+            <span>Offers</span>
           </span>
           <span className={cn(ROW_CHIP, OFF_CHIP)} aria-hidden>
             {row.offers.loading ? "…" : "Off"}
@@ -374,7 +375,7 @@ function ReserveTile({ place, onReserve }: { place: PlaceDetail; onReserve?: () 
     >
       <span className={ROW_LEAD}>
         <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
-        <span className="sr-only">Reserve</span>
+        <span>Reserve</span>
       </span>
       {slides.length > 0 ? (
         <span className={cn(ROW_CHIP, RESERVE_CHIP)}>
@@ -420,7 +421,7 @@ function OffersTile({
     >
       <span className={ROW_LEAD}>
         <Tag className={MESITA_TILE_ICON} strokeWidth={2.25} />
-        <span className="sr-only">Offers</span>
+        <span>Offers</span>
       </span>
       <span className={cn(ROW_CHIP, OFFERS_CHIP)}>
         <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} plain />
