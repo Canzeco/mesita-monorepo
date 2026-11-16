@@ -146,11 +146,11 @@ export const A1: FleetAgent = {
           "end_node",
           llm("El contexto era cancellation, offer_release o change_declined: ya diste el aviso, te despediste y colgaste.", "cancel notice done"),
         ),
-        e_book_confirmed: edge("book", "report_confirmed", llm("El restaurante confirmó la mesa tal como se pidió, o a una hora dentro del rango que aceptó el comensal.", "confirmed"), RESULT_FAIL),
+        e_book_confirmed: edge("book", "report_confirmed", llm("El restaurante confirmó la mesa tal como se pidió, o a una hora dentro del rango que aceptó el comensal, SIN condiciones de pago. Si para esa mesa pide un depósito, una garantía con tarjeta o un consumo mínimo, NO es confirmada: es una opción para el comensal.", "confirmed"), RESULT_FAIL),
         e_book_counter: edge(
           "book",
           "report_counter",
-          llm("El restaurante no puede tal cual y ofreció opciones concretas (otra hora u otra área).", "counter-offer"),
+          llm("El restaurante no puede tal cual y ofreció opciones concretas (otra hora u otra área), o solo da la mesa con un depósito, una garantía con tarjeta o un consumo mínimo (esa condición va en la nota de la opción).", "counter-offer"),
           RESULT_FAIL,
         ),
         e_book_declined: edge("book", "report_declined", llm("El restaurante dijo que no hay lugar ni opciones.", "declined"), RESULT_FAIL),
