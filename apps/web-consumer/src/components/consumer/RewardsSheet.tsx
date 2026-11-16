@@ -65,7 +65,8 @@ export function RewardsSheet({
           <p className="text-muted-foreground truncate text-[0.8125rem] leading-tight">{place.name}</p>
         </div>
       </header>
-      <div className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4">
+      {/* The grey page under the panels (MESITA-4196), as the Reserve page. */}
+      <div className="scrollbar-thin-dark bg-background flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4">
         {/* THE CREDIT AS ONE NUMBER (Pato, MESITA-4173: "it must display
             current wallet just the number with current amount"): a black
             card, the label over the amount. The Wallet's Credits row before
