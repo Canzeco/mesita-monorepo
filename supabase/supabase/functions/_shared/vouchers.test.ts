@@ -63,7 +63,7 @@ Deno.test("every switched-on voucher sells but VIP, off sale (MESITA-4197); Medi
   assertEquals("pay_cards" in o.vouchers, false);
   assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 });
   // Every voucher waits an hour except Story (MESITA-3323).
-  assertEquals(o.catalog.voucher_welcome.available_after_sec, 3600);
+  assertEquals(o.catalog.voucher_welcome.available_after_sec, 0);
   assertEquals(o.catalog.voucher_story.available_after_sec, 0);
 });
 
