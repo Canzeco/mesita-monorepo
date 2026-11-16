@@ -3,6 +3,7 @@
 import {
   CalendarCheck,
   ChevronRight,
+  Tag,
   Heart,
   Map as MapIcon,
   Phone,
@@ -79,6 +80,10 @@ export const PROFILE_OFFERS_SPAN_CLASS = "col-span-3";
 
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
+
+/** Reserve's ground: OpenTable's red (Pato, 2026-11-16, MESITA-4157: "in
+ *  reserve maybe use the red of opentable"); black from MESITA-4151. */
+const RESERVE_TONE = "bg-[#DA3743] text-white";
 
 // The reservation button's tones: green once confirmed, grey while booking.
 const MONEY_TONE = {
@@ -274,7 +279,7 @@ export function MesitaActions({
             : inertButtonProps(false)
           : { onClick: () => setOffOpen("reserve"), "aria-haspopup": "dialog" as const })}
         aria-label={row.reserve.works ? "Reserve a table" : "Reserve, off: this place doesn't offer reservations"}
-        className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_RESERVE_SPAN_CLASS, "bg-foreground text-paper flex-row gap-1.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]")}
+        className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_RESERVE_SPAN_CLASS, RESERVE_TONE, "flex-row gap-1.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]")}
       >
         <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
         <span className="truncate">Reserve</span>
@@ -338,13 +343,21 @@ function OffersTile({
       className={cn(
         PROFILE_MESITA_TILE_BOX_CLASS,
         PROFILE_OFFERS_SPAN_CLASS,
-        // BLACK, LIKE RESERVE (Pato, 2026-11-16, MESITA-4155: "payments
-        // inside a black box"); the words carry the offer.
-        "bg-foreground text-paper relative px-2 text-xs font-semibold hover:opacity-90 active:scale-[0.99]",
+        // A GREEN BOX TITLED OFFERS (Pato, 2026-11-16, MESITA-4157: "green
+        // box with black tag inside with white text"; "it must say offers and
+        // display an icon"): the tag glyph and "Offers" on top, the offer
+        // moving below in a black tag. Black from MESITA-4155.
+        "gap-0.5 bg-green-400 px-2 text-xs font-semibold text-neutral-950 hover:opacity-90 active:scale-[0.99]",
       )}
       data-tile-bonus
     >
-      <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} />
+      <span className="flex min-w-0 items-center gap-1">
+        <Tag className={MESITA_TILE_ICON} strokeWidth={2.25} />
+        <span className="truncate">Offers</span>
+      </span>
+      <span className="block h-5 w-full">
+        <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} />
+      </span>
     </button>
   );
 }

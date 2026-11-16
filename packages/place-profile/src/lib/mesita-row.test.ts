@@ -55,11 +55,11 @@ describe("mesitaRowState", () => {
       sell: ["voucher_vip", "voucher_5000", "voucher_200", "voucher_welcome"],
       catalog: { voucher_200: line(20000, 22000), voucher_5000: line(500000, 650000), voucher_welcome: line(10000, 20000), voucher_vip: line(10000, 20000) },
     });
-    expect(slides.map((s) => s.lead)).toEqual([
-      "Prepay $200MX, Get $220MX",
-      "Prepay $5000MX, Get $6500MX",
-      "Prepay $100MX, Get $200MX",
-      "Prepay $100MX, Get $200MX",
+    expect(slides.map((s) => s.pill)).toEqual([
+      "Prepay $200MX, Get 10% Bonus",
+      "Prepay $5000MX, Get 30% Bonus",
+      "Prepay $100MX, Get 100% Bonus",
+      "Prepay $100MX, Get 100% Bonus",
       "Pay with Mesita, Get 5% Back",
     ]);
     expect(slides.map((s) => s.section)).toEqual(["prepayment", "prepayment", "special", "special", null]);

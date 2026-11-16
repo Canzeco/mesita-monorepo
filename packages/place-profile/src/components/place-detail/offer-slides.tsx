@@ -105,16 +105,10 @@ const OFFER_PILL =
 function OfferWords({ slide, short = false, className }: { slide: OfferSlide; short?: boolean; className?: string }) {
   return (
     <span className={cn("absolute inset-0 flex items-center justify-center gap-1.5", className)}>
-      {/* A slide with no pill is a whole sentence (the place screen's
-          tile, MESITA-4155): it may take two lines. */}
-      {slide.pill ? (
-        <>
-          <span className="truncate">{short ? slide.short : slide.lead}</span>
-          <span className={OFFER_PILL}>{slide.pill}</span>
-        </>
-      ) : (
-        <span className="line-clamp-2 text-center leading-tight">{slide.lead}</span>
-      )}
+      {/* A slide with no lead is the whole offer in the black tag (the place
+          screen's Offers box, MESITA-4157). */}
+      {slide.lead ? <span className="truncate">{short ? slide.short : slide.lead}</span> : null}
+      <span className={cn(OFFER_PILL, !slide.lead && "truncate")}>{slide.pill}</span>
     </span>
   );
 }
