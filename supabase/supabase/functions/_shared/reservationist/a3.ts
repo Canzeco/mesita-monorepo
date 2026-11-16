@@ -96,7 +96,7 @@ const CHANGE_ASKED = llm(
  *  true then, so the condition is what is already known on entry. The node
  *  still speaks the read-back; the answer is heard in the waiting node. */
 const READ_ASKED = llm(
-  "La última búsqueda encontró al menos una reservación (found es true).",
+  "La última búsqueda encontró al menos una reservación (found es true), o ya leíste una reservación encontrada como pregunta («¿Es la de …?»).",
   "found",
 );
 /** The place said no and another match is left: read it (way back). */
@@ -173,6 +173,7 @@ export const A3: FleetAgent = {
           "Si la búsqueda no encontró nada (found es false), dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.",
           "Si encontró algo:",
           READ_BACK,
+          "Aquí no resuelves cambios ni cancelaciones: eso pasa en el paso siguiente. Nunca le digas al restaurante que el comensal lo cambia en la app.",
         ].join("\n"),
         edgeOrder: ["e_pfd_read", "e_pfd_again", "e_pfd_end"],
       }),

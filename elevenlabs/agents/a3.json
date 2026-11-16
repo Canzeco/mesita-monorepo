@@ -227,7 +227,7 @@
           "x": 1280,
           "y": -320
         },
-        "additional_prompt": "Si la búsqueda no encontró nada (found es false), dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.\nSi encontró algo:\nLa búsqueda regresa las más parecidas, la mejor primero. Lee la primera que no hayan rechazado UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo y Mesita le avisa al comensal»). Si llaman para cambiarla, la misma pregunta lo dice («… ¿Es esa?»).\nHaz la pregunta en el idioma en que habla quien llama (en inglés si habla inglés). Después de esa pregunta no digas nada más: espera su respuesta. No confirmes ni niegues reservaciones de otros lugares.",
+        "additional_prompt": "Si la búsqueda no encontró nada (found es false), dilo una vez y pide UN dato más (otro nombre, el día, la hora o las personas); con ese dato se busca una segunda y última vez.\nSi encontró algo:\nLa búsqueda regresa las más parecidas, la mejor primero. Lee la primera que no hayan rechazado UNA vez, como pregunta, para que confirmen que es esa: a nombre de quién, fecha, hora y personas («¿Es la de Ana López, el viernes a las 8, para cuatro?»). Si llaman para cancelarla, la misma pregunta lo dice («… ¿Es esa? Si me dice que sí, la cancelo y Mesita le avisa al comensal»). Si llaman para cambiarla, la misma pregunta lo dice («… ¿Es esa?»).\nHaz la pregunta en el idioma en que habla quien llama (en inglés si habla inglés). Después de esa pregunta no digas nada más: espera su respuesta. No confirmes ni niegues reservaciones de otros lugares.\nAquí no resuelves cambios ni cancelaciones: eso pasa en el paso siguiente. Nunca le digas al restaurante que el comensal lo cambia en la app.",
         "entry_behavior": "generate_immediately",
         "conversation_config": {
           "agent": {
@@ -792,7 +792,7 @@
         "target": "place_answer",
         "forward_condition": {
           "type": "llm",
-          "condition": "La última búsqueda encontró al menos una reservación (found es true).",
+          "condition": "La última búsqueda encontró al menos una reservación (found es true), o ya leíste una reservación encontrada como pregunta («¿Es la de …?»).",
           "label": "found"
         },
         "backward_condition": {
@@ -874,7 +874,7 @@
         "target": "place_answer_again",
         "forward_condition": {
           "type": "llm",
-          "condition": "La última búsqueda encontró al menos una reservación (found es true).",
+          "condition": "La última búsqueda encontró al menos una reservación (found es true), o ya leíste una reservación encontrada como pregunta («¿Es la de …?»).",
           "label": "found"
         },
         "backward_condition": {
