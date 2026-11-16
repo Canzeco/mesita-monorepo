@@ -126,7 +126,12 @@ function OfferWords({ slide, short = false, plain = false, className }: { slide:
       {plain ? (
         // The chip's words alone (the place screen's row, MESITA-4160):
         // "Prepay +30%", "Pay 5% Back", "Today 20:00".
-        <span className="overflow-hidden text-center whitespace-pre-line">{slide.lead ? `${slide.lead} ${slide.pill}` : slide.pill}</span>
+        // A small-caps caption over the big number (MESITA-4167): PREPAY /
+        // +30%, TODAY / 20:30.
+        <span className="flex min-w-0 flex-col items-center leading-none">
+          {slide.lead ? <span className="mb-0.5 max-w-full truncate text-[9px] font-extrabold tracking-wider uppercase opacity-75">{slide.lead}</span> : null}
+          <span className="max-w-full truncate">{slide.pill}</span>
+        </span>
       ) : (
         <>
           {slide.lead ? <span className="truncate">{short ? slide.short : slide.lead}</span> : null}
