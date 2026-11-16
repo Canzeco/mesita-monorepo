@@ -57,14 +57,14 @@ describe("mesitaRowState", () => {
       sell: ["voucher_vip", "voucher_5000", "voucher_200", "voucher_welcome"],
       catalog: { voucher_200: line(20000, 22000), voucher_5000: line(500000, 650000), voucher_welcome: line(10000, 20000), voucher_vip: line(10000, 20000) },
     });
-    expect(slides.map((s) => s.lines?.[0])).toEqual(["Prepay $200MX", "Prepay $5000MX", "Prepay $100MX", "Prepay $100MX", "Pay with Mesita", "Pay with Cash"]);
+    expect(slides.map((s) => s.pill)).toEqual(["+10% Bonus", "+30% Bonus", "+100% Bonus", "+100% Bonus", "5% Cashback", "2% Cash Back"]);
     expect(slides.map((s) => s.spoken)).toEqual([
-      "Prepay $200MX, Get +10% Bonus",
-      "Prepay $5000MX, Get +30% Bonus",
-      "Prepay $100MX, Get +100% Bonus",
-      "Prepay $100MX, Get +100% Bonus",
-      "Pay with Mesita, Get 5% Cashback",
-      "Pay with Cash, Get 2% Cashback",
+      "Prepay $200MX, get 10% bonus",
+      "Prepay $5000MX, get 30% bonus",
+      "Prepay $100MX, get 100% bonus",
+      "Prepay $100MX, get 100% bonus",
+      "Pay with Mesita, get 5% cashback",
+      "Pay with cash, get 2% back",
     ]);
     expect(slides.map((s) => s.section)).toEqual(["prepayment", "prepayment", "special", "special", null, null]);
     // On sale but no catalog line: no guessed amount.

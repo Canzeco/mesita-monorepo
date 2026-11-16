@@ -20,7 +20,7 @@ import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
 import { mesitaRowState } from "../../lib/mesita-row";
 import { reserveTimes } from "../../lib/reserve-times";
-import { OfferTrack, offersLabel, useOfferSlide, type OfferSlide } from "./offer-slides";
+import { OfferTrack, offersLabel, PAIR_BEAT_MS, useOfferSlide, type OfferSlide } from "./offer-slides";
 import { OffTileSheet, type OffTile } from "./OffTileSheet";
 import { PLACE_PILL_CLASS } from "../../lib/ui";
 import { buildDirectionsUrl } from "../../lib/maps-link";
@@ -82,9 +82,17 @@ export const PROFILE_OFFERS_SPAN_CLASS = "col-span-1";
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
 
-/** Reserve's ground: OpenTable's red (Pato, 2026-11-16, MESITA-4157: "in
- *  reserve maybe use the red of opentable"); black from MESITA-4151. */
-const RESERVE_TONE = "bg-[#DA3743] text-white";
+/** THE ROW IS BLACK WITH COLOURED CHIPS (Pato, 2026-11-16, MESITA-4160,
+ *  option C "Black + chips" over a calm and a bold one): both tiles the ink of
+ *  the row above, so the two rows read as one family; the only colour is the
+ *  moving chip at the right, OpenTable red for the time, Link green for the
+ *  offer. Red Reserve and green Offers with a black box inside before. */
+const ROW_TILE = "bg-foreground text-paper flex-row justify-between gap-1.5 px-2.5 text-xs font-bold transition hover:opacity-90 active:scale-[0.99]";
+const ROW_LEAD = "flex min-w-0 items-center gap-1.5";
+const ROW_CHIP = "relative h-7 w-[5.75rem] shrink-0 overflow-hidden rounded-md text-[11px] font-extrabold tabular-nums";
+const RESERVE_CHIP = "bg-[#DA3743] text-white";
+const OFFERS_CHIP = "bg-green-400 text-neutral-950";
+const OFF_CHIP = "bg-paper/15 text-paper/70 flex items-center justify-center";
 
 // The reservation button's tones: green once confirmed, grey while booking.
 const MONEY_TONE = {
@@ -280,11 +288,13 @@ export function MesitaActions({
           onClick={() => setOffOpen("reserve")}
           aria-haspopup="dialog"
           aria-label="Reserve, off: this place doesn't offer reservations"
-          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_RESERVE_SPAN_CLASS, RESERVE_TONE, "flex-row gap-1.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]")}
+          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_RESERVE_SPAN_CLASS, ROW_TILE)}
         >
-          <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
-          <span className="truncate">Reserve</span>
-          <span className={cn(PLACE_PILL_CLASS, "bg-paper text-foreground")} aria-hidden>
+          <span className={ROW_LEAD}>
+            <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
+            <span className="truncate">Reserve</span>
+          </span>
+          <span className={cn(ROW_CHIP, OFF_CHIP)} aria-hidden>
             Off
           </span>
         </button>
@@ -296,10 +306,13 @@ export function MesitaActions({
           type="button"
           {...(row.offers.loading ? inertButtonProps(false) : { onClick: () => setOffOpen("offers"), "aria-haspopup": "dialog" as const })}
           aria-label={row.offers.loading ? "Offers, loading" : "Offers, Off"}
-          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_OFFERS_SPAN_CLASS, MONEY_TONE.off, "flex-row gap-1.5 text-xs font-semibold")}
+          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_OFFERS_SPAN_CLASS, ROW_TILE)}
         >
-          <span className="truncate">Offers</span>
-          <span className={cn(PLACE_PILL_CLASS, "bg-paper text-muted-foreground")} aria-hidden>
+          <span className={ROW_LEAD}>
+            <Tag className={MESITA_TILE_ICON} strokeWidth={2.25} />
+            <span className="truncate">Offers</span>
+          </span>
+          <span className={cn(ROW_CHIP, OFF_CHIP)} aria-hidden>
             {row.offers.loading ? "…" : "Off"}
           </span>
         </button>
@@ -337,35 +350,30 @@ function ReserveTile({ place, onReserve }: { place: PlaceDetail; onReserve?: () 
         : reserveTimes(place, clock * TEN_MIN).map((t) => ({
             key: `${t.day}-${t.time}`,
             lead: "",
-            pill: "",
             short: "",
             spoken: `${t.day} ${t.time}`,
             section: null,
             tone: "",
-            lines: [t.day, t.time] as [string, string],
+            pill: `${t.day === "Tomorrow" ? "Tmrw" : t.day} ${t.time}`,
           })),
     [clock, place],
   );
-  const live = useOfferSlide(slides);
+  // The time and the offer move together, one pair a second (MESITA-4160).
+  const live = useOfferSlide(slides, PAIR_BEAT_MS);
   return (
     <button
       type="button"
       {...(onReserve ? { onClick: onReserve, "aria-haspopup": "dialog" as const } : inertButtonProps(false))}
       aria-label={slides.length > 0 ? `Reserve a table: ask for ${slides.map((s) => s.spoken).join(", ")}` : "Reserve a table"}
-      className={cn(
-        PROFILE_MESITA_TILE_BOX_CLASS,
-        PROFILE_RESERVE_SPAN_CLASS,
-        RESERVE_TONE,
-        "flex-row gap-2 py-1 pr-1 pl-2.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]",
-      )}
+      className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_RESERVE_SPAN_CLASS, ROW_TILE)}
     >
-      <span className="flex shrink-0 flex-col items-center gap-1">
+      <span className={ROW_LEAD}>
         <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
-        <span>Reserve</span>
+        <span className="truncate">Reserve</span>
       </span>
       {slides.length > 0 ? (
-        <span className="bg-foreground text-paper block h-full min-w-0 flex-1 rounded-md font-bold">
-          <OfferTrack slides={slides} index={live.index} previous={live.previous} />
+        <span className={cn(ROW_CHIP, RESERVE_CHIP)}>
+          <OfferTrack slides={slides} index={live.index} previous={live.previous} plain />
         </span>
       ) : null}
     </button>
@@ -385,7 +393,7 @@ function OffersTile({
   slides: OfferSlide[];
   open: (slide: OfferSlide) => (() => void) | undefined;
 }) {
-  const live = useOfferSlide(slides);
+  const live = useOfferSlide(slides, PAIR_BEAT_MS);
   const [held, setHeld] = useState<number | null>(null);
   const index = held ?? live.index;
   const slide = slides[index];
@@ -402,25 +410,15 @@ function OffersTile({
       onPointerCancel={release}
       onPointerLeave={release}
       onBlur={release}
-      className={cn(
-        PROFILE_MESITA_TILE_BOX_CLASS,
-        PROFILE_OFFERS_SPAN_CLASS,
-        // A GREEN BOX TITLED OFFERS (Pato, 2026-11-16, MESITA-4157: "green
-        // box with black tag inside with white text"; "it must say offers and
-        // display an icon"): the tag glyph and "Offers" on top, the offer
-        // moving below in a black tag. Black from MESITA-4155.
-        // "Offers" AT THE LEFT, THE OFFER IN A TALLER BLACK BOX AT THE RIGHT,
-        // TWO LINES (Pato, MESITA-4158).
-        "flex-row gap-2 bg-green-400 py-1 pr-1 pl-2.5 text-xs font-semibold text-neutral-950 hover:opacity-90 active:scale-[0.99]",
-      )}
+      className={cn(PROFILE_MESITA_TILE_BOX_CLASS, PROFILE_OFFERS_SPAN_CLASS, ROW_TILE)}
       data-tile-bonus
     >
-      <span className="flex shrink-0 flex-col items-center gap-1">
+      <span className={ROW_LEAD}>
         <Tag className={MESITA_TILE_ICON} strokeWidth={2.25} />
-        <span>Offers</span>
+        <span className="truncate">Offers</span>
       </span>
-      <span className="bg-foreground text-paper block h-full min-w-0 flex-1 rounded-md font-bold">
-        <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} />
+      <span className={cn(ROW_CHIP, OFFERS_CHIP)}>
+        <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} plain />
       </span>
     </button>
   );

@@ -20,8 +20,6 @@ export type OfferSlide = {
   section: RewardsSection | null;
   /** The box's colour and ink while this slide shows (MESITA-3475). */
   tone: string;
-  /** The place screen's Offers box: the offer in two lines (MESITA-4158). */
-  lines?: [string, string];
   /** A voucher's bonus in percent; the list band reads the best one. */
   bonus?: number;
 };
@@ -106,10 +104,10 @@ export function shortMoney(cents: number, currency: string): string {
   return moneyLabel(cents, currency).replace(/\.00(?=\D*$)/, "").replace(/,/g, "");
 }
 
-/** One offer as the box says it: two lines, read aloud as one sentence. */
-function detail(key: string, lines: [string, string], section: RewardsSection | null): OfferSlide {
-  const text = `${lines[0]}, ${lines[1]}`;
-  return { key, lead: "", pill: text, short: "", spoken: text, section, tone: "", lines };
+/** One offer as the row's chip says it ("+20% Bonus"), read aloud whole
+ *  ("Prepay $1000MX, get 20% bonus"; MESITA-4160). */
+function detail(key: string, chip: string, spoken: string, section: RewardsSection | null): OfferSlide {
+  return { key, lead: "", pill: chip, short: "", spoken, section, tone: "" };
 }
 
 /** The tile's slides, from the place's money read; none = Off. */
@@ -123,18 +121,17 @@ export function offerDetailSlides(money: PlaceMoney | null | undefined): OfferSl
     if (!sell.has(key) || !line || line.price_cents <= 0) continue;
     // "Prepay $1000MX, Get 20% Bonus" (Pato, MESITA-4157): the bonus over the price.
     const pct = Math.round((line.bonus_cents * 100) / line.price_cents);
-    const lines: [string, string] = [`Prepay ${shortMoney(line.price_cents, currency)}`, `Get +${pct}% Bonus`];
-    slides.push(detail(key, lines, section));
+    slides.push(detail(key, `+${pct}% Bonus`, `Prepay ${shortMoney(line.price_cents, currency)}, get ${pct}% bonus`, section));
   }
   const bps = money.card_cashback_bps ?? 0;
   if (money.cashback && bps > 0) {
-    slides.push(detail("cashback", ["Pay with Mesita", `Get ${bps / 100}% Cashback`], null));
+    slides.push(detail("cashback", `${bps / 100}% Cashback`, `Pay with Mesita, get ${bps / 100}% cashback`, null));
   }
   // The waiter's cash cashback (Pato, MESITA-4157: "Pay with Cash, get X%
   // Back"): the place's own cash rate, when its Cash Cashback is on.
   const cashBps = money.cash_cashback_bps ?? 0;
   if (money.outside_cashback && cashBps > 0) {
-    slides.push(detail("cash_cashback", ["Pay with Cash", `Get ${cashBps / 100}% Cashback`], null));
+    slides.push(detail("cash_cashback", `${cashBps / 100}% Cash Back`, `Pay with cash, get ${cashBps / 100}% back`, null));
   }
   return slides;
 }
