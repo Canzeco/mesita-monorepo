@@ -24,7 +24,7 @@ Deno.test("removeCheck lets the owner remove a free card", () => {
   assertEquals(removeCheck({ id: "pm_1", customer: "cus_me" }, "cus_me", new Set()).ok, true);
 });
 
-Deno.test("a fourth card is refused: too_many", () => {
+Deno.test("a second card is refused: too_many (MESITA-4168)", () => {
   const r = addCardCheck(MAX_CARDS);
   assertEquals(r.ok, false);
   if (!r.ok) {

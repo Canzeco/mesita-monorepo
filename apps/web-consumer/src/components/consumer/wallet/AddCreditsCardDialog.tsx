@@ -43,13 +43,13 @@ export function AddCreditsCardDialog({
     <LocalDialog
       open={open}
       onClose={onClose}
-      ariaLabel="Credits Cards add themselves"
+      ariaLabel="Loyalty Cards add themselves"
     >
       <div data-add-credits-card-dialog>
         <div className="flex items-start gap-3 p-4">
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-base font-semibold tracking-tight">
-              Credits Cards add themselves
+              Loyalty Cards add themselves
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
               A place&apos;s card appears here the first time you get credits

@@ -29,9 +29,10 @@ export type SavedCard = {
   in_use: boolean;
 };
 
-/** How many cards one guest may save: three (Pato, MESITA-3749: "max to add
- *  three money cards"). Credits Cards have no limit. */
-export const MAX_CARDS = 3;
+/** How many cards one guest may save: one (Pato, 2026-11-16, MESITA-4168:
+ *  "Card (only can save one)"; three since MESITA-3749). Guests who saved more
+ *  before keep them. Loyalty (Credits) Cards have no limit. */
+export const MAX_CARDS = 1;
 /** How many cards one read lists. More than MAX_CARDS, so a guest who saved
  *  more before the limit (ten, until MESITA-3749) still sees, pays with and
  *  removes every one. */
