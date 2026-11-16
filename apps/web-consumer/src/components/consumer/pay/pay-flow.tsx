@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect } from "react";
 import { SizedImg } from "@mesita/place-profile";
-import { ChevronLeft, ChevronRight, MapPin, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, CreditCard, HandCoins, Lock, MapPin, PenLine, ReceiptText, Store, Wallet, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { PayPlace } from "@/lib/api/wallet";
 import { Button } from "@/components/ui/button";
@@ -170,6 +170,18 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
  *  Pay when credits cover everything (lib/guest-pay-stages.ts). */
 export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Method", "Card", "Pay", "Sign"] as const;
 
+/** Each step's icon beside its name in the step nav (MESITA-4125, Pato:
+ *  "use icons in the current steps for more clarity"). */
+const PAY_STEP_ICONS: Record<(typeof PAY_FLOW_STEPS)[number], LucideIcon> = {
+  Pick: Store,
+  Bill: ReceiptText,
+  Tip: HandCoins,
+  Method: Wallet,
+  Card: CreditCard,
+  Pay: Lock,
+  Sign: PenLine,
+};
+
 /** A step's body: its panels stacked FROM THE TOP, 16px apart, the empty
  *  room below them (MESITA-4077, Pato: "why is the bill box so separated
  *  from the steps box. optimize vertical space a lot"; MESITA-4061 had
@@ -204,6 +216,7 @@ export function StepNav({
   skipped?: readonly number[];
 }) {
   const name = PAY_FLOW_STEPS[at];
+  const StepIcon = PAY_STEP_ICONS[name];
   // The neighbours an arrow really reaches, past skipped steps.
   let prev = at - 1;
   while (prev > 0 && skipped.includes(prev)) prev -= 1;
@@ -228,7 +241,8 @@ export function StepNav({
         >
           <ChevronLeft className="h-6 w-6" aria-hidden />
         </button>
-        <p className="min-w-0 flex-1 truncate text-center text-base">
+        <p className="flex min-w-0 flex-1 items-center justify-center gap-1.5 truncate text-base">
+          <StepIcon className="h-5 w-5 shrink-0" aria-hidden />
           <span className="font-semibold">{name}</span>
           <span className="text-muted-foreground">{` · ${at + 1} of ${PAY_FLOW_STEPS.length}`}</span>
         </p>
