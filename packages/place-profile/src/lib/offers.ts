@@ -3,8 +3,6 @@
 // track are components/place-detail/offer-slides.tsx.
 
 import type { RewardsSection } from "../actions";
-import type { PlaceMoney } from "../place-detail";
-import { moneyLabel } from "./money";
 
 /** One offer on the moving button (MESITA-3467). */
 export type OfferSlide = {
@@ -82,56 +80,4 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
 /** What a screen reader hears: every offer, once. */
 export function offersLabel(name: string, slides: OfferSlide[]): string {
   return `Offers at ${name}: ${slides.map((s) => s.spoken).join("; ")}`;
-}
-
-// THE PLACE SCREEN'S OFFERS TILE SAYS THE WHOLE OFFER (Pato, 2026-11-16,
-// MESITA-4155: "list actually all the offers with all the details ...
-// (Prepay $200MX, Get $220MX) ... (Pay with Mesita, Get 5% Back). This shit
-// rotating"): one line per offer the place sells now, the sizes, then the
-// specials, then cashback. Amounts are the server catalog's, never typed.
-const DETAIL_ORDER: { key: string; section: RewardsSection }[] = [
-  { key: "voucher_200", section: "prepayment" },
-  { key: "voucher_1000", section: "prepayment" },
-  { key: "voucher_5000", section: "prepayment" },
-  { key: "voucher_welcome", section: "special" },
-  { key: "voucher_story", section: "special" },
-  { key: "voucher_vip", section: "special" },
-];
-
-/** "$5000MX": whole amounts read without cents or a thousands comma, as
- *  Pato wrote them; anything with cents keeps them. */
-export function shortMoney(cents: number, currency: string): string {
-  return moneyLabel(cents, currency).replace(/\.00(?=\D*$)/, "").replace(/,/g, "");
-}
-
-/** One offer as the row's chip says it ("+20% Bonus"), read aloud whole
- *  ("Prepay $1000MX, get 20% bonus"; MESITA-4160). */
-function detail(key: string, chip: string, spoken: string, section: RewardsSection | null): OfferSlide {
-  return { key, lead: "", pill: chip, short: "", spoken, section, tone: "" };
-}
-
-/** The tile's slides, from the place's money read; none = Off. */
-export function offerDetailSlides(money: PlaceMoney | null | undefined): OfferSlide[] {
-  if (!money) return [];
-  const sell = new Set<string>(money.sell ?? []);
-  const currency = money.currency ?? "mxn";
-  const slides: OfferSlide[] = [];
-  for (const { key, section } of DETAIL_ORDER) {
-    const line = money.catalog?.[key as keyof typeof money.catalog];
-    if (!sell.has(key) || !line || line.price_cents <= 0) continue;
-    // "Prepay $1000MX, Get 20% Bonus" (Pato, MESITA-4157): the bonus over the price.
-    const pct = Math.round((line.bonus_cents * 100) / line.price_cents);
-    slides.push(detail(key, `+${pct}% Bonus`, `Prepay ${shortMoney(line.price_cents, currency)}, get ${pct}% bonus`, section));
-  }
-  const bps = money.card_cashback_bps ?? 0;
-  if (money.cashback && bps > 0) {
-    slides.push(detail("cashback", `${bps / 100}% Cashback`, `Pay with Mesita, get ${bps / 100}% cashback`, null));
-  }
-  // The waiter's cash cashback (Pato, MESITA-4157: "Pay with Cash, get X%
-  // Back"): the place's own cash rate, when its Cash Cashback is on.
-  const cashBps = money.cash_cashback_bps ?? 0;
-  if (money.outside_cashback && cashBps > 0) {
-    slides.push(detail("cash_cashback", `${cashBps / 100}% Cash Back`, `Pay with cash, get ${cashBps / 100}% back`, null));
-  }
-  return slides;
 }

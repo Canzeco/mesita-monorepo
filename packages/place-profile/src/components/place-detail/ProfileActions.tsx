@@ -87,9 +87,13 @@ export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
  *  the row above, so the two rows read as one family; the only colour is the
  *  moving chip at the right, OpenTable red for the time, Link green for the
  *  offer. Red Reserve and green Offers with a black box inside before. */
-const ROW_TILE = "bg-foreground text-paper flex-row justify-between gap-1.5 px-2.5 text-xs font-bold transition hover:opacity-90 active:scale-[0.99]";
-const ROW_LEAD = "flex min-w-0 items-center gap-1.5";
-const ROW_CHIP = "relative h-7 w-[5.75rem] shrink-0 overflow-hidden rounded-md text-[11px] font-extrabold tabular-nums";
+const ROW_TILE = "bg-foreground text-paper flex-row gap-2 py-1.5 pr-1.5 pl-1 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]";
+// The glyph over the label, as in the row above, in one fixed width, so both
+// chips come out the same size (MESITA-4162).
+const ROW_LEAD = "flex w-12 shrink-0 flex-col items-center gap-1";
+// Both chips one size, one type size (Pato, MESITA-4162: "make the shit of
+// the same size").
+const ROW_CHIP = "relative h-full min-w-0 flex-1 overflow-hidden rounded-md text-[11px] font-extrabold tabular-nums";
 const RESERVE_CHIP = "bg-[#DA3743] text-white";
 const OFFERS_CHIP = "bg-green-400 text-neutral-950";
 const OFF_CHIP = "bg-paper/15 text-paper/70 flex items-center justify-center";

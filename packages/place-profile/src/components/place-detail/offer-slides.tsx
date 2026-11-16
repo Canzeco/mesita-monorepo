@@ -124,8 +124,9 @@ function OfferWords({ slide, short = false, plain = false, className }: { slide:
       {/* A slide with no lead is the whole offer in the black tag (the place
           screen's Offers box, MESITA-4157). */}
       {plain ? (
-        // The chip's words alone (the place screen's row, MESITA-4160).
-        <span className="truncate">{slide.pill}</span>
+        // The chip's words alone (the place screen's row, MESITA-4160):
+        // "Prepay +30%", "Pay 5% Back", "Today 20:00".
+        <span className="truncate">{slide.lead ? `${slide.lead} ${slide.pill}` : slide.pill}</span>
       ) : (
         <>
           {slide.lead ? <span className="truncate">{short ? slide.short : slide.lead}</span> : null}
