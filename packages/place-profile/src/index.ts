@@ -28,6 +28,17 @@ export {
   PlaceProfileSkeleton,
   PlaceTopBarSkeleton,
 } from "./components/place-detail/skeleton";
+export {
+  OFFER_BEAT_MS,
+  OfferTrack,
+  offerSlides,
+  offersLabel,
+  useOfferBeat,
+  useOfferSlide,
+  useReducedMotion,
+  type OfferInput,
+  type OfferSlide,
+} from "./components/place-detail/offer-slides";
 export { VouchersPane, voucherOffers, type VoucherOffer } from "./components/place-detail/vouchers";
 export { cardExpiry, isCardExpired, MAX_PAY_CARDS, pickPayCard, type PayCard, type PayCards } from "./pay-cards";
 export type {

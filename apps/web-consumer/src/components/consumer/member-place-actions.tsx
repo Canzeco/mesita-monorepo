@@ -8,7 +8,7 @@ import type { PayCard, PayCards, PlaceActions, PlaceMenuItem, PlaceMoney, Reward
 import { pickPayCard } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
-import { apiAddHouseCard, apiBuyVoucher, apiListVouchers, BUY_REFUSAL, buyRefusalAction, isDefinitiveRefusal } from "@/lib/api/wallet";
+import { apiBuyVoucher, apiListVouchers, BUY_REFUSAL, buyRefusalAction, isDefinitiveRefusal } from "@/lib/api/wallet";
 import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { runBankCheck } from "@/lib/api/tab";
 import { useAddCardPage } from "@/lib/added-card";
@@ -241,7 +241,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onRetryPayCards: () => void vouchers.loadCards(),
     onLoadVouchers: vouchers.load,
     vouchersLoading: vouchers.loading,
-    // Pay (the pinned row's tile and the Cashback card's, MESITA-3352): this
+    // Pay (the Offers tile's cashback slide, MESITA-3352, MESITA-4151): this
     // place's bill, /pay/place/<placeId> (MESITA-3614), the one door every "pay
     // here" uses; the sheet closes on the way out.
     onPay: () => {
@@ -249,15 +249,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       setAskDismissed(true);
       navigateTo(router, payPlacePath(place.id), { motion: "drill" });
     },
-    // The pinned row's Wallet tile (MESITA-3574): this place's House Card,
-    // /wallet/place/<placeId> (MESITA-3614); its pill reads the list-vouchers
-    // balance below.
-    onOpenWallet: () => navigateTo(router, walletPlacePath(place.id), { motion: "drill" }),
-    // The Wallet tile's Off sheet (MESITA-3583): "Add card to Wallet" pins
-    // this place's House Card with $0; the sheet says when it already is.
-    ...(isMesitaPlaceId(place.id)
-      ? { houseCardInWallet: vouchers.inWallet, onAddHouseCard: vouchers.addHouseCard }
-      : {}),
     // The Offers (i) status (MESITA-3502): VIP needs the VIP Class, Story a
     // linked Instagram; each lock's action opens the page that lifts it.
     ...(profile
@@ -400,10 +391,6 @@ export function usePlaceVouchers(
   money: PlaceMoney | null;
   /** The last list-vouchers for this place failed (MESITA-3868). */
   failed: boolean;
-  /** This place's House Card is in the guest's Wallet (MESITA-3582). */
-  inWallet: boolean | undefined;
-  /** Pins it with $0; resolves true once it is in the Wallet. */
-  addHouseCard: () => Promise<boolean>;
   /** The basket's lead voucher while it is being paid. */
   buying: VoucherKey | null;
   /** The first list-vouchers for this place has not answered (MESITA-3388). */
@@ -435,16 +422,14 @@ export function usePlaceVouchers(
   useEffect(() => {
     onPaid.current = opts.onPaid;
   });
-  const [card, setCard] = useState<{ placeId: string; inWallet: boolean } | null>(null);
   const [buying, setBuying] = useState<VoucherKey | null>(null);
   const load = useCallback(async () => {
     if (!mesita) return;
     const mine = ++request.current;
     await apiListVouchers(getSupabase(), placeId)
-      .then(({ money, inWallet }) => {
+      .then(({ money }) => {
         if (mine !== request.current) return;
         setOffer({ placeId, money: money ?? null, failed: false });
-        if (inWallet !== undefined) setCard({ placeId, inWallet });
       })
       .catch(() => {
         if (mine !== request.current) return;
@@ -454,22 +439,6 @@ export function usePlaceVouchers(
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesita, placeId]);
-
-  const addHouseCard = useCallback(
-    async () => {
-      if (!mesita) return false;
-      try {
-        await apiAddHouseCard(getSupabase(), placeId);
-        setCard({ placeId, inWallet: true });
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    // getSupabase is a stable lazy getter (MESITA-3207).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mesita, placeId],
-  );
 
   // THE CHECKOUT IS THE OFFERS PAGE (MESITA-4065, Pato: "you simply select
   // the item and select the payment method and click the button to pay …
@@ -593,8 +562,6 @@ export function usePlaceVouchers(
   return {
     money,
     failed: mine?.failed === true,
-    inWallet: card && card.placeId === placeId ? card.inWallet : undefined,
-    addHouseCard,
     buying,
     loading: mesita && mine === null,
     load,
