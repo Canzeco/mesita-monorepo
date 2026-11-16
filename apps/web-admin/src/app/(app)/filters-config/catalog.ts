@@ -29,8 +29,13 @@ export type SignalParams = {
   /** Proximity is 1 ÷ (1 + (d ÷ D)^e): ½ at D km whatever e is
    *  (MESITA-3015); e = 1 is the plain reciprocal (MESITA-3083). */
   proximity: { halfKm: number; exponent: number };
-  /** Popularity is (1 + reviews × stars)^root; 0.33 is the cube root. */
-  popularity: { root: number };
+  /** Popularity is (1 + reviews × stars)^root; 0.33 is the cube root.
+   *  `starsPower`: × (stars ÷ 5)^k on the Catalog and Chat (MESITA-4153). */
+  popularity: { root: number; starsPower: number };
+  /** Home's n-th place of a kind × repeat^(n − 1) (MESITA-4153). */
+  variety: { repeat: number };
+  /** Home's shuffle after the sort; 0 = none (MESITA-4153). */
+  shuffle: { temperature: number };
 };
 
 export type NameFastConfig = {
@@ -113,6 +118,14 @@ export const EXPONENT_MAX = 4;
 /** Mirrors the Popularity root bounds in _shared/pipeline-signals.ts (MESITA-3083). */
 export const POPULARITY_ROOT_MIN = 0.1;
 export const POPULARITY_ROOT_MAX = 1;
+/** Mirrors STARS_POWER_*, VARIETY_REPEAT_*, SHUFFLE_TEMPERATURE_* in
+ *  _shared/pipeline-signals.ts (MESITA-4153). */
+export const STARS_POWER_MIN = 0;
+export const STARS_POWER_MAX = 12;
+export const VARIETY_REPEAT_MIN = 0.1;
+export const VARIETY_REPEAT_MAX = 1;
+export const SHUFFLE_TEMPERATURE_MIN = 0;
+export const SHUFFLE_TEMPERATURE_MAX = 5;
 
 /** Mirrors MAP_PLACES_SHOWN_* in _shared/discovery-config.ts (MESITA-2713, MESITA-2909). */
 export const MAP_PLACES_SHOWN_MIN = 1;
@@ -229,7 +242,9 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 /** Mirrors DEFAULT_SIGNAL_PARAMS. */
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   proximity: { halfKm: 1, exponent: 1 },
-  popularity: { root: 0.33 },
+  popularity: { root: 0.33, starsPower: 6 },
+  variety: { repeat: 0.6 },
+  shuffle: { temperature: 0.3 },
 };
 
 export const DEFAULT_CONFIG: DiscoveryConfig = {
@@ -265,6 +280,8 @@ function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
+  const variety = (r.variety ?? {}) as Record<string, unknown>;
+  const shuffle = (r.shuffle ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
     proximity: {
@@ -273,6 +290,19 @@ function coerceParams(raw: unknown): SignalParams {
     },
     popularity: {
       root: bounded(pop.root, d.popularity.root, POPULARITY_ROOT_MIN, POPULARITY_ROOT_MAX, 2),
+      starsPower: bounded(pop.starsPower, d.popularity.starsPower, STARS_POWER_MIN, STARS_POWER_MAX, 1),
+    },
+    variety: {
+      repeat: bounded(variety.repeat, d.variety.repeat, VARIETY_REPEAT_MIN, VARIETY_REPEAT_MAX, 2),
+    },
+    shuffle: {
+      temperature: bounded(
+        shuffle.temperature,
+        d.shuffle.temperature,
+        SHUFFLE_TEMPERATURE_MIN,
+        SHUFFLE_TEMPERATURE_MAX,
+        2,
+      ),
     },
   };
 }

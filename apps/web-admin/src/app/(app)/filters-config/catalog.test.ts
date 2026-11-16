@@ -53,7 +53,9 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
       }).params,
     ).toEqual({
       proximity: { halfKm: 1, exponent: 1 },
-      popularity: { root: 0.33 },
+      popularity: { root: 0.33, starsPower: 6 },
+      variety: { repeat: 0.6 },
+      shuffle: { temperature: 0.3 },
     });
   });
 
@@ -66,11 +68,18 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
           selected: { otherFactor: 0 },
         },
       }).params,
-    ).toEqual({ proximity: { halfKm: 2.3, exponent: 1.3 }, popularity: { root: 0.33 } });
+    ).toEqual({
+      proximity: { halfKm: 2.3, exponent: 1.3 },
+      popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 },
+    });
     expect(coerceConfig({ params: { proximity: { halfKm: 0 } } }).params.proximity).toEqual({ halfKm: 0.1, exponent: 1 });
     expect(coerceConfig({ params: { proximity: { halfKm: 999, exponent: 9 } } }).params.proximity).toEqual({ halfKm: 100, exponent: 4 });
-    expect(coerceConfig({ params: { popularity: { root: 0 } } }).params.popularity).toEqual({ root: 0.1 });
-    expect(coerceConfig({ params: { popularity: { root: 5 } } }).params.popularity).toEqual({ root: 1 });
+    expect(coerceConfig({ params: { popularity: { root: 0 } } }).params.popularity).toEqual({ root: 0.1, starsPower: 6 });
+    expect(coerceConfig({ params: { popularity: { root: 5 } } }).params.popularity).toEqual({ root: 1, starsPower: 6 });
+    // MESITA-4153: the stars weight, the repeat penalty and the temperature clamp.
+    expect(coerceConfig({ params: { popularity: { starsPower: 99 } } }).params.popularity.starsPower).toBe(12);
+    expect(coerceConfig({ params: { variety: { repeat: 0 } } }).params.variety).toEqual({ repeat: 0.1 });
+    expect(coerceConfig({ params: { shuffle: { temperature: -1 } } }).params.shuffle).toEqual({ temperature: 0 });
   });
 
   it("the four source switches and catalogPlacesShown are dropped (MESITA-2872, MESITA-2909)", () => {

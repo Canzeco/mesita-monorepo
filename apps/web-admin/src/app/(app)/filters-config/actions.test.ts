@@ -60,7 +60,9 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
     ...live,
     params: {
       proximity: { halfKm: 8, exponent: 2 },
-      popularity: { root: 0.5 },
+      popularity: { root: 0.5, starsPower: 4 },
+      variety: { repeat: 0.7 },
+      shuffle: { temperature: 1 },
     },
     map: {
       ...live.map,
@@ -127,7 +129,12 @@ describe("the Catalog box (MESITA-2909)", () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.catalog]);
-    expect(sent.config?.params).toEqual({ proximity: { halfKm: 8, exponent: 2 }, popularity: { root: 0.5 } });
+    expect(sent.config?.params).toEqual({
+      proximity: { halfKm: 8, exponent: 2 },
+      popularity: { root: 0.5, starsPower: 4 },
+      variety: { repeat: 0.7 },
+      shuffle: { temperature: 1 },
+    });
     expect(sent.config?.map).toEqual({ ...live.map, catalogPageSize: 33 });
     expect(sent.config?.name).toEqual(live.name);
     expect(sent.config?.chat).toEqual(live.chat);
