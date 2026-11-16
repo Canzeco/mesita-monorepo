@@ -4,7 +4,10 @@
 //   tests         create or update every test of _shared/reservationist/tests.ts
 //                 in the workspace, matched by name. The repo wins.
 //   run_tests     run each agent's tests against its saved configuration;
-//                 answers one invocation id per agent. Body { agent } runs one.
+//                 answers one invocation id per agent. Body { agent } runs one
+//                 agent's; body { tests: [label, …] } runs only those calls.
+//                 Every simulated call costs ElevenLabs credits: run the one
+//                 you are fixing, never the suite by habit (MESITA-4134).
 //   test_results  body { invocation_ids: [...] }: each run read back as
 //                 passed / failed / pending with the evaluator's reason.
 //
@@ -89,17 +92,39 @@ export async function tests(ctx: WorkspaceCtx): Promise<Response> {
   );
 }
 
+/** The calls a run_tests body asks for: { tests } by label or full name,
+ *  else { agent }'s, else all. An unknown label is an error, never "all":
+ *  a typo must not spend the whole suite's credits (MESITA-4134). */
+export function pickTests(
+  body: { agent?: unknown; tests?: unknown },
+  all: readonly FleetTest[] = FLEET_TESTS,
+): { ok: true; tests: FleetTest[] } | { ok: false; error: string } {
+  if (body.tests !== undefined) {
+    const raw = Array.isArray(body.tests) ? body.tests : [body.tests];
+    const want = raw.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(Boolean);
+    if (want.length === 0) return { ok: false, error: "tests: one or more labels required" };
+    const picked: FleetTest[] = [];
+    for (const w of want) {
+      const hit = all.find((t) => t.label === w || testName(t) === w);
+      if (!hit) return { ok: false, error: `no simulated call named "${w}"` };
+      if (!picked.includes(hit)) picked.push(hit);
+    }
+    return { ok: true, tests: picked };
+  }
+  const only = typeof body.agent === "string" ? body.agent.trim() : "";
+  return { ok: true, tests: all.filter((t) => !only || t.agent === only) };
+}
+
 export async function runTests(ctx: WorkspaceCtx): Promise<Response> {
-  const only = typeof (ctx.body as { agent?: unknown }).agent === "string"
-    ? ((ctx.body as { agent?: string }).agent ?? "").trim()
-    : "";
+  const picked = pickTests(ctx.body as { agent?: unknown; tests?: unknown });
+  if (!picked.ok) return json({ ok: false, error: picked.error }, 400);
   const listed = await listOurTests(ctx.key);
   if (!listed.ok) return json({ ok: false, error: listed.error }, 502);
   const runs: Array<Record<string, unknown>> = [];
-  const agents = [...new Set(FLEET_TESTS.map((t) => t.agent))].filter((a) => !only || a === only);
+  const agents = [...new Set(picked.tests.map((t) => t.agent))];
   for (const agent of agents) {
     const agentId = ctx.configuredAgents[agent]?.id?.trim();
-    const wanted = FLEET_TESTS.filter((t) => t.agent === agent).map(testName);
+    const wanted = picked.tests.filter((t) => t.agent === agent).map(testName);
     const ids = wanted.map((n) => listed.byName.get(n)).filter((x): x is string => !!x);
     if (!agentId || ids.length !== wanted.length) {
       runs.push({

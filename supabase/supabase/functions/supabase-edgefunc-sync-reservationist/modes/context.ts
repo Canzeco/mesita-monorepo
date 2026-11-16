@@ -31,6 +31,9 @@ export type ModeBody = {
   limit?: unknown;
   /** run_tests: run one agent's tests only ("a1" … "a4"). */
   agent?: unknown;
+  /** run_tests: only these calls, by label ("never accepts another hour")
+   *  or full name. Each costs ElevenLabs credits (MESITA-4134). */
+  tests?: unknown;
   /** test_results: the invocation ids run_tests answered. */
   invocation_ids?: unknown;
 };
