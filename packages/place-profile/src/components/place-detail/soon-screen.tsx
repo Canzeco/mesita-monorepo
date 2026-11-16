@@ -18,12 +18,19 @@ import { PlaceEmptyScreen } from "./empty-screen";
 // it does since MESITA-4177 (Pato: "mention capabilities of Smart menu";
 // the capabilities are his from MESITA-3244: interactive, hosted in
 // Mesita, AI answers questions, orders and payments in place or remote).
+// Three short lines, not a paragraph, since MESITA-4182 (Pato: "more
+// concise … ask the menu questions, calories … order & pay … table orders
+// … pickup orders").
 export function SoonScreen() {
   return (
     <PlaceEmptyScreen
       icon={BookOpen}
       title="Smart Menu is coming to Mesita"
-      line="An interactive menu hosted on Mesita. Ask its AI about any dish, then order and pay from your table, or order ahead and pick it up. Pickup only, no delivery."
+      items={[
+        "Ask about any dish: calories, allergens, ingredients",
+        "Order & pay from your table",
+        "Order ahead for pickup, no delivery",
+      ]}
     />
   );
 }
