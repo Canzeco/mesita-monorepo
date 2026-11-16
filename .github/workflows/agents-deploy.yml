@@ -5,9 +5,12 @@ name: agents deploy
 # all the configuration of eleven labs in a repo to just deploy"). The
 # Supabase integration deploys the sync function a few minutes after a push
 # to main; this waits for that deploy (supabase/scripts/sync-agents.sh
-# compares spec hashes), then pushes the agents and runs their
-# simulated-call tests. A sync failure fails the job; a failed test is a
-# warning in the job summary.
+# compares spec hashes), then pushes the agents. Simulated calls cost
+# ElevenLabs credits (MESITA-4134): a push runs ONLY the calls its merge
+# commit names, one "Agent-tests: <label>" line each, one at a time,
+# stopping at the first failure. No line, no call. A manual run takes
+# `tests` (one label per line, or "all"). A sync failure fails the job;
+# a failed call is a warning in the job summary.
 #
 # REQUIRES repo secret SUPABASE_ACCESS_TOKEN (already set for supabase deploy).
 
@@ -20,6 +23,11 @@ on:
       - "supabase/scripts/sync-agents.sh"
       - ".github/workflows/agents-deploy.yml"
   workflow_dispatch:
+    inputs:
+      tests:
+        description: 'Simulated calls to run, one label per line ("all" = the whole suite, costly). Empty = none.'
+        required: false
+        default: ""
 
 concurrency:
   group: agents-deploy
@@ -48,7 +56,22 @@ jobs:
         with:
           version: 2.100.0
 
+      - name: Which simulated calls
+        id: pick
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          INPUT_TESTS: ${{ github.event.inputs.tests }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            list="$INPUT_TESTS"
+          else
+            list=$(printf '%s\n' "$COMMIT_MESSAGE" | sed -n 's/^[[:space:]*-]*Agent-tests:[[:space:]]*//p')
+          fi
+          { echo "list<<__EOF__"; printf '%s\n' "$list"; echo "__EOF__"; } >>"$GITHUB_OUTPUT"
+          echo "calls: $(printf '%s' "$list" | awk 'NF' | wc -l | tr -d ' ')"
+
       - name: Wait for the deploy, sync, test
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          AGENT_TESTS: ${{ steps.pick.outputs.list }}
         run: supabase/scripts/sync-agents.sh
