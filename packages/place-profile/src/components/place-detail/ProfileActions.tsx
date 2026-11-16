@@ -20,7 +20,7 @@ import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
 import { mesitaRowState } from "../../lib/mesita-row";
 import { reserveTimes } from "../../lib/reserve-times";
-import { OfferTrack, offersLabel, PAIR_BEAT_MS, useOfferSlide, type OfferSlide } from "./offer-slides";
+import { OfferTrack, offersLabel, ROW_TICK_MS, ROW_TICKS_PER_CHANGE, useOfferSlide, type OfferSlide } from "./offer-slides";
 import { OffTileSheet, type OffTile } from "./OffTileSheet";
 import { PLACE_PILL_CLASS } from "../../lib/ui";
 import { buildDirectionsUrl } from "../../lib/maps-link";
@@ -362,8 +362,9 @@ function ReserveTile({ place, onReserve }: { place: PlaceDetail; onReserve?: () 
           })),
     [clock, place],
   );
-  // The time and the offer move together, one pair a second (MESITA-4160).
-  const live = useOfferSlide(slides, PAIR_BEAT_MS);
+  // A time a second, on the row's even ticks; the offer moves on the odd
+  // ones, half a second later (MESITA-4170).
+  const live = useOfferSlide(slides, ROW_TICK_MS, { every: ROW_TICKS_PER_CHANGE });
   return (
     <button
       type="button"
@@ -397,7 +398,7 @@ function OffersTile({
   slides: OfferSlide[];
   open: (slide: OfferSlide) => (() => void) | undefined;
 }) {
-  const live = useOfferSlide(slides, PAIR_BEAT_MS);
+  const live = useOfferSlide(slides, ROW_TICK_MS, { every: ROW_TICKS_PER_CHANGE, phase: 1 });
   const [held, setHeld] = useState<number | null>(null);
   const index = held ?? live.index;
   const slide = slides[index];
