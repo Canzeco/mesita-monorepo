@@ -123,18 +123,18 @@ export function offerDetailSlides(money: PlaceMoney | null | undefined): OfferSl
     if (!sell.has(key) || !line || line.price_cents <= 0) continue;
     // "Prepay $1000MX, Get 20% Bonus" (Pato, MESITA-4157): the bonus over the price.
     const pct = Math.round((line.bonus_cents * 100) / line.price_cents);
-    const lines: [string, string] = [`Prepay ${shortMoney(line.price_cents, currency)}`, `Get ${pct}% Bonus`];
+    const lines: [string, string] = [`Prepay ${shortMoney(line.price_cents, currency)}`, `Get +${pct}% Bonus`];
     slides.push(detail(key, lines, section));
   }
   const bps = money.card_cashback_bps ?? 0;
   if (money.cashback && bps > 0) {
-    slides.push(detail("cashback", ["Pay with Mesita", `Get ${bps / 100}% Back`], null));
+    slides.push(detail("cashback", ["Pay with Mesita", `Get ${bps / 100}% Cashback`], null));
   }
   // The waiter's cash cashback (Pato, MESITA-4157: "Pay with Cash, get X%
   // Back"): the place's own cash rate, when its Cash Cashback is on.
   const cashBps = money.cash_cashback_bps ?? 0;
   if (money.outside_cashback && cashBps > 0) {
-    slides.push(detail("cash_cashback", ["Pay with Cash", `Get ${cashBps / 100}% Back`], null));
+    slides.push(detail("cash_cashback", ["Pay with Cash", `Get ${cashBps / 100}% Cashback`], null));
   }
   return slides;
 }
