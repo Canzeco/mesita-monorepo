@@ -241,7 +241,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onRetryPayCards: () => void vouchers.loadCards(),
     onLoadVouchers: vouchers.load,
     vouchersLoading: vouchers.loading,
-    // Pay (the Offers tile's cashback slide, MESITA-3352, MESITA-4151): this
+    // Pay (the Offers tile's Pay slide, MESITA-3352, MESITA-4151): this
     // place's bill, /pay/place/<placeId> (MESITA-3614), the one door every "pay
     // here" uses; the sheet closes on the way out.
     onPay: () => {

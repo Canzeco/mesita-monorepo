@@ -17,7 +17,6 @@ import {
   accountView,
   type PaymentKey,
   type PaymentSettings,
-  type RateKey,
   SETTINGS_COLUMNS,
   settingsFromRow,
   type StripeState,
@@ -115,9 +114,9 @@ export async function readPlaceStatesFacts(
 
   const accountBy = new Map<string, AccountRow>();
   for (const r of (accounts.data ?? []) as unknown as AccountRow[]) accountBy.set(r.place_id, r);
-  const settingsBy = new Map<string, Partial<Record<PaymentKey | RateKey, unknown>>>();
+  const settingsBy = new Map<string, Partial<Record<PaymentKey, unknown>>>();
   for (const r of (settings.data ?? []) as unknown as ({ place_id: string } & Record<string, unknown>)[]) {
-    settingsBy.set(r.place_id, r as Partial<Record<PaymentKey | RateKey, unknown>>);
+    settingsBy.set(r.place_id, r as Partial<Record<PaymentKey, unknown>>);
   }
   const signed = new Set(((contracts.data ?? []) as { place_id: string }[]).map((r) => r.place_id));
   const coded = new Set(((codes.data ?? []) as { place_id: string }[]).map((r) => r.place_id));

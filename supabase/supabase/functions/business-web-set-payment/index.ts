@@ -5,9 +5,7 @@
 //
 // MESITA-3589: the Place states of Main §10. A switch (House Credits, Cash
 // Payments, Mesita Payments, Mesita Prepayments (MESITA-3597), or one of its
-// six vouchers) on or off,
-// or a cashback (card or cash): Off, or its one rate (MESITA-3596: card 5%,
-// cash 2%).
+// six vouchers) on or off.
 // The rules, each with the one step that unlocks it:
 //   - House Credits On needs a signed House Credits Contract (SQL refuses
 //     too). House Credits Off turns the vouchers off with it, since they
@@ -18,18 +16,11 @@
 //   - A voucher On needs House Credits On (SQL refuses too). It sells only
 //     while Mesita Prepayments is on as well (moneyState).
 //   - Cash Payments On needs the place code (the waiter's Received).
-//   - Mesita Payments, its cashback (card), Mesita Prepayments and every voucher On need the place's
+//   - Mesita Payments, Mesita Prepayments and every voucher On need the place's
 //     Stripe account, in the server's payments mode, to take cards
 //     (MESITA-3599; SQL refuses too, in either mode). Off never needs it.
-//   - The rates are fixed, so cash (2%) is never above card (5%); the SQL
-//     guard stays as a backstop.
 //
-// Body: { place_id: uuid, key: house_credits|cash_payments|pay_cards|prepayments|voucher_*, enabled: boolean }
-//    or { place_id: uuid, key: card_cashback_bps|cash_cashback_bps|credit_cashback_bps|prepay_cashback_bps,
-//         bps: 500 (card) | 200 (cash) | 200 (credit) | 500 (prepay) | null }
-//   - Credits Payments Cashback and Mesita Prepayments Cashback (MESITA-3827)
-//     need House Credits On; Prepayments Cashback also needs Mesita
-//     Prepayments On and the Stripe account.
+// Body: { place_id: uuid, key: stripe_payments|house_credits|cash_payments|pay_cards|prepayments|voucher_*, enabled: boolean }
 // Response: { ok: true, settings: { ...every setting } }
 //   409 { code: needs_contract | needs_house_credits | needs_place_code | needs_stripe }
 
@@ -39,7 +30,7 @@ import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { MONEY_VOUCHER_KEYS } from "../_shared/money-state.ts";
-import { isPaymentKey, isRateKey, isValidCashbackBps, needsStripe, readAccount, readContract, readSettings, stripeStateOf } from "../_shared/payments.ts";
+import { isPaymentKey, needsStripe, readAccount, readContract, readSettings, stripeStateOf } from "../_shared/payments.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
 const NEEDS_STRIPE = { ok: false, code: "needs_stripe", error: "Connect the Stripe Account first: App Payments and App Prepayments need an account that takes cards." };
@@ -51,43 +42,17 @@ serveJson("business-web-set-payment", async (req) => {
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const { place_id: placeId, key, enabled, bps } = bodyRes.body;
+  const { place_id: placeId, key, enabled } = bodyRes.body;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   // A stale Payments tab can still send a setting that left (Cash, Credits,
-  // MESITA-3408; Cashback, MESITA-3589): its own code and an owner-facing
+  // MESITA-3408; the rates, MESITA-4194): its own code and an owner-facing
   // line, shown as-is.
-  if (!isPaymentKey(key) && !isRateKey(key)) {
+  if (!isPaymentKey(key)) {
     return json({ ok: false, code: "unknown_switch", error: "This page changed. Reload to see the new settings." }, 400);
   }
-  if (isPaymentKey(key) && typeof enabled !== "boolean") {
+  if (typeof enabled !== "boolean") {
     return json({ ok: false, code: "invalid", error: "enabled must be true or false" }, 400);
   }
-  // NO CASHBACKS (Pato, 2026-11-16, MESITA-4191: "I want to remove
-  // Cashbacks. It complicates shit a lot. No cashbacks."): a rate key may
-  // only turn Off. Every rate is null since the migration, so no payment or
-  // voucher mints cashback; credit guests already earned stays spendable.
-  if (isRateKey(key) && bps !== null) {
-    return json({ ok: false, code: "cashback_gone", error: "Cashback is gone from Mesita. Reload to see the new settings." }, 400);
-  }
-  if (isRateKey(key) && bps !== null && !isValidCashbackBps(key, bps)) {
-    const line: Record<string, string> = {
-      card_cashback_bps: "App Payments Cashback is Off or 5%.",
-      cash_cashback_bps: "Cash Payments Cashback is Off or 3%.",
-      credit_cashback_bps: "Credits Payments Cashback is Off or 2%.",
-      prepay_cashback_bps: "App Prepayments Cashback is Off or 2%.",
-    };
-    return json({ ok: false, code: "invalid", error: line[key] }, 400);
-  }
-
-  // CASHBACK ONLY WHERE MESITA'S 5% FEE IS (Pato, 2026-11-14, MESITA-3928:
-  // "App Payments: 5% Fee. 5% Back to user. Cash Payments: 0% Fee. 0% Back
-  // to user. App Prepayment. 5% Fee. 5% Back to user."): credit and cash can
-  // go off, never on. Cash earned 3% under MESITA-3837; vouchers earn again.
-  // CASH IS OFF OR 3% AGAIN (Pato, 2026-11-14, MESITA-3944: "CASHBACK AS
-  // CREDITS FOR CASH PAYMENTS IS FUCKING OFF OR 3"): the place's choice,
-  // paid when the waiter taps Received. Credit is Off or 2% again (Pato,
-  // same issue: "Credits Payments: OFF or 2%. Cash Payments: OFF or 3%. App
-  // Payments: OFF or 5%"). Every way to pay gives cashback again.
 
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;
@@ -96,48 +61,37 @@ serveJson("business-web-set-payment", async (req) => {
   const current = await readSettings(admin, placeId);
   const patch: Record<string, unknown> = {};
 
-  const turningOn = isPaymentKey(key) ? enabled === true : bps !== null;
-  if (turningOn && needsStripe(key)) {
+  const on = enabled;
+  if (on && needsStripe(key)) {
     const account = await readAccount(admin, placeId);
     if (stripeStateOf(account, paymentsLivemode()) !== "charging") return json(NEEDS_STRIPE, 409);
   }
 
-  if (isPaymentKey(key)) {
-    const on = enabled as boolean;
-    if (key === "house_credits" && on) {
-      const contract = await readContract(admin, placeId);
-      if (!contract.signed) {
-        return json({ ok: false, code: "needs_contract", error: "Sign the House Credits Agreement first." }, 409);
-      }
+  if (key === "house_credits" && on) {
+    const contract = await readContract(admin, placeId);
+    if (!contract.signed) {
+      return json({ ok: false, code: "needs_contract", error: "Sign the House Credits Agreement first." }, 409);
     }
-    if (key === "house_credits" && !on) {
-      // Mesita Prepayments sells House Credits: it and its vouchers go off with it.
-      patch.prepayments = false;
-      for (const v of MONEY_VOUCHER_KEYS) patch[v] = false;
-    }
-    if (key === "prepayments" && on && !current.house_credits) {
-      return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
-    }
-    if ((MONEY_VOUCHER_KEYS as readonly string[]).includes(key) && on && !current.house_credits) {
-      return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
-    }
-    if (key === "cash_payments" && on) {
-      const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).maybeSingle();
-      if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
-      if (!code) {
-        return json({ ok: false, code: "needs_place_code", error: "Set the place code first: your waiters confirm cash with it." }, 409);
-      }
-    }
-    patch[key] = on;
-  } else {
-    if ((key === "credit_cashback_bps" || key === "prepay_cashback_bps" || key === "cash_cashback_bps") && bps !== null && !current.house_credits) {
-      return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
-    }
-    if (key === "prepay_cashback_bps" && bps !== null && !current.prepayments) {
-      return json({ ok: false, code: "needs_prepayments", error: "Turn App Prepayments on first." }, 409);
-    }
-    patch[key] = bps;
   }
+  if (key === "house_credits" && !on) {
+    // Mesita Prepayments sells House Credits: it and its vouchers go off with it.
+    patch.prepayments = false;
+    for (const v of MONEY_VOUCHER_KEYS) patch[v] = false;
+  }
+  if (key === "prepayments" && on && !current.house_credits) {
+    return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
+  }
+  if ((MONEY_VOUCHER_KEYS as readonly string[]).includes(key) && on && !current.house_credits) {
+    return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
+  }
+  if (key === "cash_payments" && on) {
+    const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).maybeSingle();
+    if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
+    if (!code) {
+      return json({ ok: false, code: "needs_place_code", error: "Set the place code first: your waiters confirm cash with it." }, 409);
+    }
+  }
+  patch[key] = on;
 
   // Update the row, insert only when there is none (MESITA-3603): an upsert's
   // INSERT half is CHECKed before ON CONFLICT, with the column defaults

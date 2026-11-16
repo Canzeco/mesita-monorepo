@@ -3,7 +3,7 @@
 // minimum, never a tip without a card part).
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { cashbackFor, MIN_CARD_PART_CENTS, paySplit } from "./pay-split.ts";
+import { MIN_CARD_PART_CENTS, paySplit } from "./pay-split.ts";
 import { MIN_CHARGE_CENTS } from "./money.ts";
 
 const MIN = MIN_CHARGE_CENTS.mxn;
@@ -55,10 +55,4 @@ Deno.test("cards off: over the credit and any tip are refused", () => {
   assertEquals(split(300_00, 0, 250_00, false), { kind: "over", credit_cents: 250_00, short_cents: 50_00 });
   assertEquals(split(100_00, 10_00, 250_00, false), { kind: "no_card_tip" });
   assertEquals(split(100_00, 0, 250_00, false).kind, "credit");
-});
-
-Deno.test("cashback is the card part's share, rounded down; never the tip", () => {
-  assertEquals(cashbackFor(80_00, 500), 4_00);
-  assertEquals(cashbackFor(99, 500), 4);
-  assertEquals(cashbackFor(80_00, 0), 0);
 });

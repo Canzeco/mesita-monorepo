@@ -31,8 +31,6 @@ const ALL_ON: PaymentSettings = {
   prepayments: true,
   house_credits: true,
   cash_payments: true,
-  card_cashback_bps: 500,
-  cash_cashback_bps: 200, credit_cashback_bps: null, prepay_cashback_bps: null,
   voucher_200: true,
   voucher_1000: true,
   voucher_5000: true,
@@ -61,9 +59,8 @@ Deno.test("every switched-on voucher sells but Story, off sale (MESITA-3831); Me
   assertEquals(o.unavailable, { voucher_story: "not_yet" });
   assertEquals(o.test_mode, true);
   assertEquals(o.charges_enabled, true);
-  assertEquals(o.cashback, true);
   assertEquals(o.mesita_pay, true);
-  assertEquals("pay_cards" in o.vouchers || "cashback" in o.vouchers, false);
+  assertEquals("pay_cards" in o.vouchers, false);
   assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 });
   // Every voucher waits an hour except Story (MESITA-3323).
   assertEquals(o.catalog.voucher_welcome.available_after_sec, 3600);
@@ -88,7 +85,6 @@ Deno.test("paused stops every sale; Welcome once; an account from the other univ
   assertEquals(live.sell, []);
   assertEquals(live.unavailable.voucher_200, "needs_account");
   assertEquals(live.charges_enabled, false);
-  assertEquals(live.cashback, false);
   const none = offerFrom({ ...base, account: null });
   assertEquals(none.unavailable.voucher_200, "needs_account");
 });

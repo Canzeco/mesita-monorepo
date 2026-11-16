@@ -29,19 +29,6 @@ export type VoucherOffer = {
   test_mode: boolean;
   currency: string;
   charges_enabled: boolean;
-  cashback: boolean;
-  /** A bill paid to the waiter earns cashback here (Cash Payments Cashback;
-   *  MESITA-3545, the place's own rate since MESITA-3589). */
-  outside_cashback: boolean;
-  /** The place's rates now, in bps (0 = Off or not usable; MESITA-3589):
-   *  the card part (Mesita Payments Cashback) and the cash bill part (Cash
-   *  Payments Cashback). Never on the tip. */
-  card_cashback_bps: number;
-  cash_cashback_bps: number;
-  /** MESITA-3827: the credit part (Credits Payments Cashback) and a voucher's
-   *  price (Mesita Prepayments Cashback), 0 = Off or not usable. */
-  credit_cashback_bps: number;
-  prepay_cashback_bps: number;
   /** House Credits is On here: new credit can be born. Off never stops a
    *  guest spending what they already hold. */
   house_credits: boolean;
@@ -122,18 +109,12 @@ export function offerFrom(i: OfferInput): VoucherOffer {
     else sell.push(k);
   }
   // The guest's offer carries the voucher switches alone; the Mesita Payments switch
-  // (MESITA-3396) is already folded into `cashback` and the mark.
+  // (MESITA-3396) is already folded into the mark.
   const vouchers = Object.fromEntries(MONEY_VOUCHER_KEYS.map((k) => [k, i.settings[k] === true])) as Record<MoneyVoucherKey, boolean>;
   return {
     test_mode: !i.livemode,
     currency: i.currency,
     charges_enabled: usable,
-    cashback: state.cashback,
-    outside_cashback: state.outside_cashback,
-    card_cashback_bps: state.card_cashback_bps,
-    cash_cashback_bps: state.cash_cashback_bps,
-    credit_cashback_bps: state.credit_cashback_bps,
-    prepay_cashback_bps: state.prepay_cashback_bps,
     house_credits: state.house_credits,
     cash: state.cash,
     mesita_pay: state.mesita_pay,

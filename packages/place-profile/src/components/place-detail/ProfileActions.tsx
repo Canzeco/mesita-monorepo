@@ -272,8 +272,8 @@ export function MesitaActions({
   const onReserve = actions?.onReserve;
   const onOpenRewards = actions?.onOpenRewards;
   // EVERY SLIDE OPENS THE OFFERS PAGE (Pato, MESITA-4173: "The offers
-  // button must not redirect to pay"): the cashback slide too, which went to
-  // Pay; the page lists it under Credits Back.
+  // button must not redirect to pay"): the Pay slide too, which went to
+  // Pay.
   const openSlide = (slide: OfferSlide) =>
     onOpenRewards ? () => onOpenRewards(slide.section ?? "prepayment") : undefined;
   return (

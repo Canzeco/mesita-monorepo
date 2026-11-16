@@ -48,7 +48,7 @@ select is(
   '(50000,5000,billed,t)', 'A''s share: $500MX, half the tip suggestion, billed under the waiter''s key');
 select throws_like(
   $$select pay_tab_open_parts((select id from tb), '00000000-0000-4000-8000-0000000a3695', 1,
-      0, 100000, 0, 0, 0, gen_random_uuid(), null, 200, 5)$$,
+      0, 100000, 0, 0, 0, gen_random_uuid(), null, 5)$$,
   '%split_locked%', 'a split table is never paid whole');
 select is(pay_tab_bill(repeat('1', 64), repeat('e', 64), false, 1, 90000, 0, null, null)->>'code',
   'split_locked', 'the waiter cannot change a split bill');
@@ -75,7 +75,7 @@ select is(
 
 select is(
   pay_tab_open_parts((select (r->>'share_tab_id')::uuid from sa), '00000000-0000-4000-8000-0000000a3695', 1,
-    0, 50000, 5000, 0, 0, gen_random_uuid(), null, 200, 5)->>'status',
+    0, 50000, 5000, 0, 0, gen_random_uuid(), null, 5)->>'status',
   'paying', 'A pays their $500MX share in cash');
 select is(
   pay_tab_set_share((select (r->>'share_tab_id')::uuid from sb), '00000000-0000-4000-8000-0000000b3695', 60000)->>'code',
@@ -83,12 +83,12 @@ select is(
 select throws_like(
   $$update public.pay_tabs set bill_cents = 60000 where id = (select (r->>'share_tab_id')::uuid from sb);
     select pay_tab_open_parts((select (r->>'share_tab_id')::uuid from sb), '00000000-0000-4000-8000-0000000b3695', 1,
-      0, 60000, 0, 0, 0, gen_random_uuid(), null, 200, 5)$$,
+      0, 60000, 0, 0, 0, gen_random_uuid(), null, 5)$$,
   '%share_too_big%', 'a share bigger than what is left never starts paying, even past the share check');
 update public.pay_tabs set bill_cents = 50000 where id = (select (r->>'share_tab_id')::uuid from sb);
 select is(
   pay_tab_open_parts((select (r->>'share_tab_id')::uuid from sb), '00000000-0000-4000-8000-0000000b3695', 1,
-    0, 50000, 0, 0, 0, gen_random_uuid(), null, 200, 5)->>'status',
+    0, 50000, 0, 0, 0, gen_random_uuid(), null, 5)->>'status',
   'paying', 'B pays the other $500MX in cash');
 select throws_like(
   $$select pay_tab_change((select id from tb), '00000000-0000-4000-8000-0000000a3695', 'cancel')$$,

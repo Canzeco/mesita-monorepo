@@ -220,8 +220,8 @@ export function splitPaymentRefund(row: PaymentRow, amount?: number): { card: nu
 /** A payment: its card part through Stripe, then its credit part as credit
  *  (a credit-only payment makes no Stripe call). */
 export async function refundPayment(deps: RefundDeps, row: PaymentRow, amount?: number): Promise<RefundResult> {
-  // An outside bill refunds whole (MESITA-3545): the credit part back, the
-  // cashback reversed, no Stripe. A partial amount is not offered for it.
+  // An outside bill refunds whole (MESITA-3545): the credit part back, no
+  // Stripe. A partial amount is not offered for it.
   if ((row.outside_cents ?? 0) > 0) {
     if (!row.paid_at || row.status === "refunded" || row.status === "needs_review") {
       return { ok: false, code: "nothing_to_refund", error: "Nothing left to refund on this payment" };
@@ -230,7 +230,6 @@ export async function refundPayment(deps: RefundDeps, row: PaymentRow, amount?: 
     console.log("[money-admin] refund_outside", JSON.stringify({
       payment_id: row.id,
       credit_refunded_cents: res.credit_refunded_cents ?? 0,
-      cashback_reversed_cents: res.cashback_reversed_cents ?? 0,
       uncovered_cents: res.uncovered_cents ?? 0,
     }));
     return {

@@ -9,16 +9,14 @@
 // the place code of the tab's place (the guest's QR token alone never
 // confirms cash). Less than the cash bill part writes nothing and answers
 // short with what is missing; a shortfall within the tip comes off the tip.
-// Received spends the held credit and writes the cashback (2% of the cash
-// bill part when the place's Cashback switch was on), Available at once.
-// Idempotent: a second tap answers already_paid.
+// Received spends the held credit. Idempotent: a second tap answers already_paid.
 //
 // Body: { token, staff_token | place_code, cash_received_cents?,
 //         share_tab_id? }
 //   MESITA-3695: on a split bill, `share_tab_id` names the share whose cash
 //   the waiter received (a share of the table this token opens).
 // Response: { ok: true, outcome: paid | already_paid, cash_received_cents,
-//             cash_tip_cents, cashback_cents, staff_token? }
+//             cash_tip_cents, staff_token? }
 //   400 (a malformed call) · 403 staff_only · 404 not_found ·
 //   409 short (+missing_cents, cash_bill_cents) | no_cash | expired |
 //   closed | place_code_required | locked
@@ -81,14 +79,12 @@ serveJson("visit-web-cash-tab", async (req) => {
       outcome: r.outcome,
       tab_id: tab.id,
       cash_received_cents: r.cash_received_cents,
-      cashback_cents: r.cashback_cents ?? 0,
     }));
     return json({
       ok: true,
       outcome: r.outcome,
       cash_received_cents: r.cash_received_cents ?? null,
       cash_tip_cents: r.cash_tip_cents ?? null,
-      cashback_cents: r.cashback_cents ?? 0,
       ...minted,
     });
   } catch (err) {

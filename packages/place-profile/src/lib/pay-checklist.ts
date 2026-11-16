@@ -82,7 +82,7 @@ export function payChecklist(i: ChecklistInput): ChecklistStep[] {
       note: collected
         ? null
         : i.closed
-        ? SIGN.notSignedNoCashback
+        ? SIGN.notSignedClosed
         : i.side === "guest"
         ? "Give it to the waiter"
         : "Collect it",

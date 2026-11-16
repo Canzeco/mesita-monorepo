@@ -11,15 +11,13 @@
 // MESITA-3548 (Payments Flow v2, step D): money received counts outside
 // bills the waiter marked Received; tips count card tips only (a cash tip is
 // the waiter's, in person); each row says its confirmer (stripe · waiter ·
-// credit), its outside part, the waiter's bill, its tab and part; the window's
-// received_share and the place's outside cashback over the rolling day
-// against OUTSIDE_CASHBACK_DAILY_CEILING_CENTS. Every new field is read by
-// name with a default, so the old RPC shape still answers.
+// credit), its outside part, the waiter's bill, its tab and part; and the
+// window's received_share. Every new field is read by name with a default,
+// so the old RPC shape still answers.
 //
 // Body: { place_id: uuid, from?: ISO, to?: ISO, before?: { created_at, id } }
 // Response: { ok, test_mode, received_cents, fee_cents, tips_cents,
 //             available_cents, pending_cents, received_share: { received, total },
-//             outside_cashback_today_cents, outside_cashback_ceiling_cents,
 //             rows: [...], next }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -28,7 +26,6 @@ import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { maskGuest } from "../_shared/money-admin.ts";
-import { OUTSIDE_CASHBACK_DAILY_CEILING_CENTS } from "../_shared/money.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
 function isoOr(v: unknown, fallback: string): string | null {
@@ -55,8 +52,6 @@ type Row = {
   charge_amount_cents?: number | null;
   tab_id?: string | null;
   part?: string | null;
-  cashback_cents?: number | null;
-  outside_cashback_bps?: number | null;
   guest_name: string | null;
   guest_email: string | null;
 };
@@ -107,8 +102,6 @@ serveJson("business-web-get-place-money", async (req) => {
     charge_amount_cents: r.charge_amount_cents == null ? null : Number(r.charge_amount_cents),
     tab_id: typeof r.tab_id === "string" ? r.tab_id : null,
     part: PARTS.has(String(r.part)) ? r.part : null,
-    cashback_cents: Number(r.cashback_cents ?? 0),
-    outside_cashback_bps: Number(r.outside_cashback_bps ?? 0),
     guest: maskGuest(guest_name, guest_email),
   }));
   // MESITA-3709: a guest's own payment ends with the waiter's Verify. Each
@@ -163,8 +156,6 @@ serveJson("business-web-get-place-money", async (req) => {
     available_cents: Number(s.available_cents ?? 0),
     pending_cents: Number(s.pending_cents ?? 0),
     received_share: { received: Number(share.received ?? 0), total: Number(share.total ?? 0) },
-    outside_cashback_today_cents: Number(s.outside_cashback_today_cents ?? 0),
-    outside_cashback_ceiling_cents: OUTSIDE_CASHBACK_DAILY_CEILING_CENTS,
     rows: rowsOut,
     next: s.next ?? null,
   });

@@ -8,7 +8,7 @@
 // the offer with no balance.
 //
 // Body: { place_id: uuid }
-// Response: { ok: true, money: { test_mode, currency, charges_enabled, cashback, vouchers,
+// Response: { ok: true, money: { test_mode, currency, charges_enabled, vouchers,
 //                               sell, unavailable, catalog, balance, paused },
 //            in_wallet?: boolean (MESITA-3582, signed in only) }
 

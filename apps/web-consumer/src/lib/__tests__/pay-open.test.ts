@@ -1,7 +1,7 @@
 // Money (MESITA-3772): one open payment per guest. Picking the wrong one
 // lets a guest open a second payment or hides the one still waiting for the
 // waiter; the wrong end button closes a payment that should only be
-// cancelled (the credit then stays spent and no cashback is earned).
+// cancelled (the credit then stays spent).
 import { describe, expect, it } from "vitest";
 import { endAction, type EndTab, pickOpenGuestPayment } from "@/lib/pay-open";
 

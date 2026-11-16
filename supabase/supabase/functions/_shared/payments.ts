@@ -1,6 +1,6 @@
 // Business › Payments (MESITA-3296): the place's Stripe Connect account and
-// its money switches. Account layer only: no charge, voucher sale or cashback
-// is written anywhere yet (MESITA-3272 holds that for the owner talks, the
+// its money switches. Account layer only: no charge or voucher sale is
+// written anywhere yet (MESITA-3272 holds that for the owner talks, the
 // lawyer and the hand pilot).
 //
 // The posture (Main § 7, gate 2026-08-29): a PLATFORM, not a marketplace. The
@@ -30,7 +30,7 @@ import { paymentsLivemode, type StripeCall } from "./stripe.ts";
  *  (MESITA-3597): its own On/Off, needing House Credits (SQL) and a Stripe
  *  Account taking cards (the set EF). The six vouchers are its sub-switches
  *  (which vouchers it sells) and need House Credits On (SQL refuses
- *  otherwise). The old `cashback` switch moved into the two rates below. */
+ *  otherwise). */
 export const PAYMENT_KEYS = [
   // MESITA-3946: Accept Stripe Payments, over pay_cards and prepayments.
   "stripe_payments",
@@ -48,13 +48,11 @@ export const PAYMENT_KEYS = [
 export type PaymentKey = (typeof PAYMENT_KEYS)[number];
 
 /** The settings that need the place's Stripe account to take cards before
- *  they turn On (MESITA-3599): Mesita Payments, its Cashback-as-Credits,
+ *  they turn On (MESITA-3599): Mesita Payments,
  *  Mesita Prepayments (MESITA-3597) and its six vouchers. House Credits and Cash Payments never do. */
 export const NEEDS_STRIPE_KEYS = [
   "pay_cards",
-  "card_cashback_bps",
   "prepayments",
-  "prepay_cashback_bps",
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
@@ -70,58 +68,27 @@ export function isPaymentKey(v: unknown): v is PaymentKey {
   return typeof v === "string" && (PAYMENT_KEYS as readonly string[]).includes(v);
 }
 
-/** The place's own cashback rates in bps (MESITA-3589): null = Off.
- *  Card: Mesita Payments Cashback. Cash: Cash Payments Cashback. Credit:
- *  Credits Payments Cashback; prepay: Mesita Prepayments Cashback (MESITA-3827). */
-export const RATE_KEYS = ["card_cashback_bps", "cash_cashback_bps", "credit_cashback_bps", "prepay_cashback_bps"] as const;
-export type RateKey = (typeof RATE_KEYS)[number];
-
-export function isRateKey(v: unknown): v is RateKey {
-  return typeof v === "string" && (RATE_KEYS as readonly string[]).includes(v);
-}
-
-/** The one rate each cashback may take when on (MESITA-3596, Pato: "OFF or
- *  2% and OFF or 5%"): Mesita Payments 5%, Cash Payments 2%. Off is null. */
-export const CASHBACK_BPS: Record<RateKey, number> = {
-  card_cashback_bps: 500,
-  // Off or 3% (MESITA-3837); not offered under MESITA-3928, the place's
-  // choice again since MESITA-3944.
-  cash_cashback_bps: 300,
-  // MESITA-3827 (Pato: "add the option to give cashback with credits too");
-  // offered again since MESITA-3944 ("Credits Payments: OFF or 2%").
-  credit_cashback_bps: 200,
-  // 2% since MESITA-3946 (Pato: "prepayments is 2% or off, not 5%").
-  prepay_cashback_bps: 200,
-};
-
 /** App Payments takes cards here: its own switch AND Accept Stripe Payments
  *  (MESITA-3946). Every reader of `pay_cards` asks this instead. */
 export function cardsAccepted(s: Partial<Record<"pay_cards" | "stripe_payments", unknown>> | null | undefined): boolean {
   return s?.pay_cards === true && s?.stripe_payments !== false;
 }
-export function isValidCashbackBps(key: RateKey, v: unknown): v is number {
-  return v === CASHBACK_BPS[key];
-}
 
 /** Every column a settings read selects. */
-export const SETTINGS_COLUMNS = [...PAYMENT_KEYS, ...RATE_KEYS].join(", ");
+export const SETTINGS_COLUMNS = [...PAYMENT_KEYS].join(", ");
 
-export type PaymentSettings = Record<PaymentKey, boolean> & Record<RateKey, number | null>;
+export type PaymentSettings = Record<PaymentKey, boolean>;
 
 /** No row = everything Off (MESITA-3599, Pato: "neither Mesita Pay nor
  *  Mesita Payments can be enabled without the Stripe Account"): Mesita Payments
  *  is On only when the row says `true`, which the set EF and SQL allow only
  *  once the place's Stripe account takes cards. */
-export function settingsFromRow(row: Partial<Record<PaymentKey | RateKey, unknown>> | null): PaymentSettings {
+export function settingsFromRow(row: Partial<Record<PaymentKey, unknown>> | null): PaymentSettings {
   const out = {} as PaymentSettings;
   for (const k of PAYMENT_KEYS) out[k] = row?.[k] === true;
   // Accept Stripe Payments defaults On, as its column (MESITA-3946): only an
   // explicit false turns it off. The card switches under it still read Off.
   out.stripe_payments = row?.stripe_payments !== false;
-  for (const k of RATE_KEYS) {
-    const v = row?.[k];
-    out[k] = typeof v === "number" && Number.isInteger(v) && v > 0 ? v : null;
-  }
   return out;
 }
 
@@ -129,7 +96,7 @@ export async function readSettings(admin: SupabaseClient, placeId: string): Prom
   const { data, error } = await admin.from("place_payment_settings").select(SETTINGS_COLUMNS)
     .eq("place_id", placeId).maybeSingle();
   if (error) throw new Error(`place_payment_settings: ${error.message}`);
-  return settingsFromRow(data as Partial<Record<PaymentKey | RateKey, unknown>> | null);
+  return settingsFromRow(data as Partial<Record<PaymentKey, unknown>> | null);
 }
 
 /** The place's House Credits Contract, live or none (MESITA-3589). */
@@ -210,9 +177,9 @@ export async function chargesEnabledByPlace(
 }
 
 /** THE OFFER BUTTON'S SLIDES (MESITA-3467, Pato: "a carousel of offers ...
- *  whatever offers the place is offering"): cashback on a card payment and
- *  the vouchers the place sells now, in moneyState's words. */
-export type ListRowOffers = { cashback: boolean; card_cashback_bps: number; sell: MoneyVoucherKey[] };
+ *  whatever offers the place is offering"): the vouchers the place sells
+ *  now, in moneyState's words. */
+export type ListRowOffers = { sell: MoneyVoucherKey[] };
 
 /** THE HOME TILE'S VOUCHER LINE (MESITA-3312, Pato: "if the place offers
  *  voucher, draw the ... voucher icon at the bottom of the buttons") AND
@@ -231,7 +198,7 @@ export async function withVouchersUpTo<T extends { id: string }>(
   const ids = places.map((p) => p.id);
   if (ids.length === 0) return [];
   // No admin client (a run with no service key): nothing for sale, no line.
-  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false, offers: { cashback: false, card_cashback_bps: 0, sell: [] } }));
+  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false, offers: { sell: [] } }));
   // One list page of ids, so no chunking. The account read is the shared
   // in-mode rule (MESITA-3394); a failed read reads as no Pay, as before.
   const [settingsRes, charging] = await Promise.all([
@@ -243,13 +210,13 @@ export async function withVouchersUpTo<T extends { id: string }>(
   }
   // via unknown: a template-string select widens `data` to supabase-js's
   // GenericStringError union, as in get-place.
-  const settingRows = (settingsRes.error ? [] : settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey | RateKey, unknown>>)[];
+  const settingRows = (settingsRes.error ? [] : settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey, unknown>>)[];
   const settings = new Map<string, PaymentSettings>();
   for (const row of settingRows) settings.set(row.place_id, settingsFromRow(row));
   const charges = charging ?? new Set<string>();
   return places.map((p) => {
-    const { sell, mesita_pay, cashback, card_cashback_bps } = listRowMoney(settings.get(p.id), charges.has(p.id));
-    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay, offers: { cashback, card_cashback_bps, sell } };
+    const { sell, mesita_pay } = listRowMoney(settings.get(p.id), charges.has(p.id));
+    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay, offers: { sell } };
   });
 }
 
@@ -258,9 +225,9 @@ export async function withVouchersUpTo<T extends { id: string }>(
 export function listRowMoney(
   settings: PaymentSettings | undefined,
   charges: boolean,
-): { sell: MoneyVoucherKey[]; mesita_pay: boolean; cashback: boolean; card_cashback_bps: number } {
+): { sell: MoneyVoucherKey[]; mesita_pay: boolean } {
   const state = moneyState(settings ?? settingsFromRow(null), charges ? { charges_enabled: true } : null, null);
-  return { sell: state.sell, mesita_pay: state.mesita_pay, cashback: state.cashback, card_cashback_bps: state.card_cashback_bps };
+  return { sell: state.sell, mesita_pay: state.mesita_pay };
 }
 
 // ── The account ────────────────────────────────────────────────────────────

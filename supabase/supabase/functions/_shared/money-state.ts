@@ -43,8 +43,7 @@ export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
  *  renaming resets live config); absent reads ON, so a reader from before it
  *  keeps working. `house_credits` is House Credits (On only while a signed
  *  House Credits Contract exists, enforced in SQL). `cash_payments` is Cash
- *  Payments (the waiter confirms a bill paid outside). The two rates are the
- *  place's own cashback in bps, null/absent = Off. `has_place_code` is not a
+ *  Payments (the waiter confirms a bill paid outside). `has_place_code` is not a
  *  switch but a fact the caller passes when it read place_codes
  *  (MESITA-3545): the waiter's Received needs one. Absent reads false.
  *  `prepayments` is Mesita Prepayments (MESITA-3597): a voucher sells only
@@ -58,12 +57,6 @@ export type MoneySettings = {
   prepayments?: boolean;
   house_credits?: boolean;
   cash_payments?: boolean;
-  card_cashback_bps?: number | null;
-  cash_cashback_bps?: number | null;
-  /** MESITA-3827: Credits Payments Cashback (null/absent = Off). */
-  credit_cashback_bps?: number | null;
-  /** MESITA-3827: Mesita Prepayments Cashback (null/absent = Off). */
-  prepay_cashback_bps?: number | null;
   has_place_code?: boolean;
 } & Record<MoneyVoucherKey, boolean>;
 
@@ -122,28 +115,10 @@ export type MoneyState = {
   sell: MoneyVoucherKey[];
   /** Every voucher not in `sell`, with its reason. */
   unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>>;
-  /** Cashback lands on the card part of a payment here (Mesita Payments
-   *  Cashback): `card_cashback_bps` > 0. */
-  cashback: boolean;
-  /** What the card part of the bill earns here now, in bps; 0 = none
-   *  (MESITA-3589: the place's own rate, needs House Credits and cards). */
-  card_cashback_bps: number;
   /** A bill paid outside can be confirmed here by the waiter's Received
-   *  (Cash Payments On and a place code), with or without cashback. */
+   *  (Cash Payments On and a place code). */
   cash: boolean;
-  /** Cashback lands on a bill paid outside and confirmed by the waiter's
-   *  Received (Cash Payments Cashback): `cash_cashback_bps` > 0. */
-  outside_cashback: boolean;
-  /** What the cash part of the bill earns here now, in bps; 0 = none
-   *  (needs House Credits, Cash Payments and a place code). */
-  cash_cashback_bps: number;
-  /** What the credit part of the bill earns here now, in bps; 0 = none
-   *  (MESITA-3827: Credits Payments Cashback, needs House Credits). */
-  credit_cashback_bps: number;
-  /** What a voucher's price earns here now, in bps; 0 = none (MESITA-3827:
-   *  Mesita Prepayments Cashback, only while a voucher sells). */
-  prepay_cashback_bps: number;
-  /** House Credits is On here: new credit can be born (cashback, vouchers).
+  /** House Credits is On here: new credit can be born (vouchers).
    *  Off never stops a guest spending credit they already hold. */
   house_credits: boolean;
   /** How a guest can pay here: from credit, by card, both, or not at all. */
@@ -176,26 +151,11 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
   }
   const credit = (balance?.spendable_cents ?? 0) > 0;
   const pay: PayWay = credit && cards ? "both" : credit ? "credit" : cards ? "card" : "none";
-  const rate = (v: number | null | undefined) => (typeof v === "number" && Number.isInteger(v) && v > 0 ? v : 0);
-  // Cashback is new credit: it needs House Credits, and lands on the card
-  // part (cards on) or the cash bill part (Cash Payments on), never the tip.
-  const card_cashback_bps = houseCredits && cards ? rate(settings.card_cashback_bps) : 0;
-  const cash_cashback_bps = houseCredits && cash ? rate(settings.cash_cashback_bps) : 0;
-  // MESITA-3827: the credit part earns with House Credits alone; a voucher's
-  // price earns only where a voucher sells (House Credits, Prepayments, cards).
-  const credit_cashback_bps = houseCredits ? rate(settings.credit_cashback_bps) : 0;
-  const prepay_cashback_bps = sell.length > 0 ? rate(settings.prepay_cashback_bps) : 0;
   const mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0;
   return {
     sell,
     unavailable,
-    cashback: card_cashback_bps > 0,
-    card_cashback_bps,
     cash,
-    outside_cashback: cash_cashback_bps > 0,
-    cash_cashback_bps,
-    credit_cashback_bps,
-    prepay_cashback_bps,
     house_credits: houseCredits,
     pay,
     mesita_pay,

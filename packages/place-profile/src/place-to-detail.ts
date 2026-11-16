@@ -94,14 +94,7 @@ export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
     charges_enabled: m.charges_enabled === true,
     // An older EF answer has no mark: fall back to the old rule, never drop it.
     mesita_pay: typeof m.mesita_pay === "boolean" ? m.mesita_pay : m.charges_enabled === true,
-    cashback: m.cashback === true,
-    // The waiter's 2% (MESITA-3545); the place screen's Pay reads it (MESITA-3581).
-    outside_cashback: m.outside_cashback === true,
-    // The place's own rates and switches (MESITA-3589); absent on older reads.
-    ...(typeof m.card_cashback_bps === "number" ? { card_cashback_bps: m.card_cashback_bps } : {}),
-    ...(typeof m.cash_cashback_bps === "number" ? { cash_cashback_bps: m.cash_cashback_bps } : {}),
-    ...(typeof m.credit_cashback_bps === "number" ? { credit_cashback_bps: m.credit_cashback_bps } : {}),
-    ...(typeof m.prepay_cashback_bps === "number" ? { prepay_cashback_bps: m.prepay_cashback_bps } : {}),
+    // The place's own switches (MESITA-3589); absent on older reads.
     ...(typeof m.house_credits === "boolean" ? { house_credits: m.house_credits } : {}),
     ...(typeof m.cash === "boolean" ? { cash: m.cash } : {}),
     vouchers,

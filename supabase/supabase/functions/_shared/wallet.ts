@@ -163,8 +163,8 @@ export type Entry = {
   /** The payment a spend belongs to (MESITA-3304): the Wallet links it to
    *  that payment's proof. */
   payment_id?: string | null;
-  /** Who confirmed a cashback's payment (MESITA-3554): wallet_payments.
-   *  confirmed_by, joined by the EF for cashback entries only. 'waiter' is
+  /** Who confirmed an 'extra' entry's payment (MESITA-3554): wallet_payments.
+   *  confirmed_by, joined by the EF for 'extra' entries only. 'waiter' is
    *  a bill paid in cash at the table. */
   confirmed_by?: "credit" | "stripe" | "waiter" | null;
   /** The purchase a voucher, prepay, bonus or purchase reversal belongs to
@@ -195,7 +195,7 @@ export type Balance = {
     pending: boolean;
     available_at: string | null;
     payment_id: string | null;
-    /** Set on a cashback entry with a payment (MESITA-3554); null otherwise. */
+    /** Set on an 'extra' entry with a payment (MESITA-3554); null otherwise. */
     confirmed_by: "credit" | "stripe" | "waiter" | null;
     /** The purchase behind the entry (MESITA-3750); null on payment and gift rows. */
     purchase_id: string | null;
@@ -247,7 +247,7 @@ export function balancesOf(
       pending,
       available_at: pending ? e.available_at ?? null : null,
       payment_id: e.payment_id ?? null,
-      confirmed_by: e.kind === "cashback" && e.payment_id ? e.confirmed_by ?? null : null,
+      confirmed_by: e.kind === "extra" && e.payment_id ? e.confirmed_by ?? null : null,
       purchase_id: e.purchase_id ?? null,
       gift_id: e.gift_id ?? null,
     });

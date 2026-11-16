@@ -65,7 +65,6 @@ const DROPPED_TABLES = [
   "business_invites",
   "business_plans",
   "businesses",
-  "cashback_ledger",
   "classes",
   "consumer_connectors",
   "consumer_invite_codes",

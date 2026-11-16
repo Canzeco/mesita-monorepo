@@ -63,7 +63,7 @@ export const PLACE_SCREEN_TITLE_CLASS =
  *  its own; the site adds it. ONE SHAPE (MESITA-3379; three until then). */
 export const PLACE_PILL_CLASS =
   "rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums";
-/** The one big number a card may show (Stats, the cashback figure, the
+/** The one big number a card may show (Stats, the
  *  no-photo initial): 24px, one line box, no ink of its own, like
  *  PLACE_BUTTON_CLASS carries no fill; the site adds the colour (MESITA-3379;
  *  the initial was 30px, the Stats line 32px tall). */

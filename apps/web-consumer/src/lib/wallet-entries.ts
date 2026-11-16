@@ -5,7 +5,7 @@
 //
 //   bonus ─┐ same purchase_id + same pending flag   ─► one row, amount = sum,
 //   voucher┘ (no purchase_id: same at + available_at)   bonus_cents kept
-//   spend + cashback (same at)                        ─► two rows, never merged
+//   spend + extra (same at)                           ─► two rows, never merged
 //   pending purchase with a reversal on its id        ─► refunded: History
 //
 // The at + available_at fallback exists only for the minutes between the web

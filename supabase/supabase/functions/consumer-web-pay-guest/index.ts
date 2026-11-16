@@ -8,7 +8,7 @@
 // through the same pay_tab_open_parts the waiter's tab uses: the parts must
 // add up to the bill, the credit must be spendable. Any refusal leaves
 // nothing (the SQL raises). Credit alone → paid now; a cash part → it waits
-// for the waiter's Verify (visit-web-verify-tab), which writes the 2%; a card
+// for the waiter's Verify (visit-web-verify-tab); a card
 // part → charged inside the app as on the waiter's tab (_shared/tab-card.ts).
 // Every guest tab ends with the waiter scanning its QR and tapping Verify,
 // within an hour (MESITA-3843, MESITA-4048).
@@ -23,10 +23,7 @@
 // Response: { ok: true, outcome: opened | replayed, tab_id, status: paying |
 //             paid, token, qr_url, expires_at, card_payment_id?,
 //             card?: { status, payment_intent_id, client_secret?,
-//                      stripe_account?, publishable_key? },
-//             cashback_on_sign_cents (MESITA-3772: what the waiter's
-//             signature would earn: card bill × card rate + cash bill ×
-//             cash rate; nothing is earned unsigned) }
+//                      stripe_account?, publishable_key? } }
 //   MESITA-3772: one open guest payment per guest at any place; a second
 //   tap answers 409 too_many_open with open_tab_id and open_place_id.
 //   MESITA-3776: a ticket another guest paid here in the last 12 hours
@@ -89,7 +86,6 @@ serveJson("consumer-web-pay-guest", async (req) => {
     const stripe = key ? stripeClient(key) : null;
     let customer: string | null = null;
     let cardArgs: Record<string, unknown> = {};
-    let cardBackBps = 0;
     if (hasCard) {
       const account = await readAccount(admin, pay.placeId);
       const rates = tabCardRates({ account, settings, livemode, currency, stripeReady: !!stripe });
@@ -102,11 +98,9 @@ serveJson("consumer-web-pay-guest", async (req) => {
       if (!(await ownCard(stripe!, customer, pay.cardPmId as string))) {
         return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
       }
-      cardBackBps = rates.card_back_bps;
       cardArgs = {
         p_stripe_account_id: account.stripe_account_id,
         p_card_fee_cents: bps(pay.cardBillCents, MESITA_FEE_BPS_PAYMENT),
-        p_card_cashback_bps: rates.card_back_bps,
         p_card_proof_token: mintProofToken(),
         p_card_expires_at: new Date(Date.now() + PI_TTL_MS).toISOString(),
       };
@@ -127,7 +121,6 @@ serveJson("consumer-web-pay-guest", async (req) => {
       p_card_tip_cents: pay.cardTipCents,
       p_request_id: pay.requestId,
       p_proof_token: mintProofToken(),
-      p_outside_cashback_bps: Math.max(0, cashMoney.cash_cashback_bps),
       p_ticket: pay.ticket,
       p_repeat_ok: pay.repeatOk,
       // The waiter has an hour to sign (MESITA-4048; ten minutes, MESITA-3843).
@@ -191,9 +184,6 @@ serveJson("consumer-web-pay-guest", async (req) => {
       expires_at: r.expires_at ?? null,
       card_payment_id: cardPaymentId,
       test_mode: !livemode,
-      cashback_on_sign_cents: bps(pay.cardBillCents, cardBackBps) + bps(pay.cashBillCents, Math.max(0, cashMoney.cash_cashback_bps))
-        // MESITA-3827: the credit part's Credits Payments Cashback, also at the signature.
-        + bps(pay.creditCents, Math.max(0, cashMoney.credit_cashback_bps)),
       ...(cardStep ? { card: cardStep } : {}),
     });
   } catch (err) {

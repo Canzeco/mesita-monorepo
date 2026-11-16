@@ -107,7 +107,7 @@ function pendingLine(g: EntryGroup, now: number): string {
 const CREDIT_PAGE = new Set(["prepay", "voucher", "bonus", "gift_out", "gift_in", "gift_back"]);
 
 /** Where a row opens: a paid bill's receipt, a credit movement's page, or
- *  nothing (cashback, a bill's refund: their bill's row is the receipt). */
+ *  nothing (extra credit, a bill's refund: their bill's row is the receipt). */
 function entryHref(placeId: string, g: EntryGroup): string | null {
   if (g.kind === "spend") return g.payment_id ? payReceiptPath(g.payment_id) : null;
   if (CREDIT_PAGE.has(g.kind) || (g.kind === "reversal" && g.purchase_id)) return creditEntryPath(placeId, g);

@@ -20,8 +20,8 @@ import type { PlaceTab } from "@/lib/routes";
 // Discounts left with the discount product (MESITA-3299, Pato: "discounts are
 // gone across all the app"). Operations is Views · Visits · Money
 // (MESITA-3301; Money was Transactions for an hour, MESITA-3308): a visit is
-// a guest paying here with Mesita, Money is every payment, voucher and
-// cashback; both pages stand before any place takes payments (Pato: "keep the
+// a guest paying here with Mesita, Money is every payment and
+// voucher; both pages stand before any place takes payments (Pato: "keep the
 // pages even if Mesita Payments is not enabled yet").
 export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: string }> = {
   views: { label: "Views", icon: EyeIcon, sub: "Who saw your place online." },

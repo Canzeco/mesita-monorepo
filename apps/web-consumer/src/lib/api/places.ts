@@ -111,14 +111,9 @@ export type Place = {
    *  account can charge, from the server; absent = no mark. list-catalog and
    *  list-places send it. */
   mesita_pay?: boolean;
-  /** The offer button's slides (MESITA-3467): cashback on a card payment
-   *  and the vouchers the place sells now; absent = no button.
-   *  list-catalog and list-places send it. */
+  /** The offer button's slides (MESITA-3467): the vouchers the place sells
+   *  now; absent = no button. list-catalog and list-places send it. */
   offers?: {
-    cashback: boolean;
-    card_cashback_bps?: number;
-    /** Cash at the table's cashback (MESITA-3671); not sent by the catalog yet. */
-    cash_cashback_bps?: number;
     sell: string[];
   } | null;
 

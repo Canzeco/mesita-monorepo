@@ -3,7 +3,7 @@
 // the Connect receiver, the cron and consumer-web-get-payment (a read of the
 // payment the guest came back to) all read the session on the place's
 // connected account and call the same replay-safe RPCs, so two deliveries
-// of one event write the spend and the cashback once.
+// of one event write the spend once.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { readCheckoutSession } from "./checkout-session.ts";
@@ -36,7 +36,7 @@ export type PaymentSettleOutcome = "paid" | "already_paid" | "pending" | "expire
 
 type SettleAnswer = { ok?: boolean; outcome?: string; code?: string } | null;
 
-/** Stripe said paid: the hold becomes the spend, cashback lands at once (MESITA-3909).
+/** Stripe said paid: the hold becomes the spend (MESITA-3909).
  *  Idempotent through the RPC. */
 export async function settlePaidPayment(admin: Pick<SupabaseClient, "rpc">, paymentId: string, paymentIntent: string | null): Promise<PaymentSettleOutcome> {
   const { data, error } = await admin.rpc("wallet_settle_payment", { p_payment_id: paymentId, p_payment_intent: paymentIntent });

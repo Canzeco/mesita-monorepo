@@ -47,12 +47,11 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS } from "./pay-common";
 // 2. Billed: one screen. The tip (the waiter's suggestion picked, 10/15/20%,
 //    Other; no tip is Other with 0 typed, MESITA-3748: the guest decides), how the bill is paid (the guest's
 //    credit here first, on by default, the rest in cash) and how the tip is
-//    paid (cash; credits never pay a tip), what comes back (2% of the cash
-//    bill part, never the tip) and one button "Pay $total".
+//    paid (cash; credits never pay a tip) and one button "Pay $total".
 // 3. A cash part: "Give the waiter $C in cash" until the waiter taps
 //    Received; "Change how I pay" undoes it before then.
-// 4. Paid: full screen green-700, the amount, the time, the place, the
-//    cashback and a live clock.
+// 4. Paid: full screen green-700, the amount, the time, the place and a
+//    live clock.
 //
 // ONE SCREEN A STATE (MESITA-3742, after MESITA-3739 did the guest's own
 // flow): white, no tab bar, nothing scrolls. The QR takes the height left
@@ -68,7 +67,7 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS } from "./pay-common";
 //
 // Cards (MESITA-3572; the card part is MESITA-3563): when get-tab says the
 // place takes cards, the rest of the bill and the tip can each go on a saved
-// card (5% back on the card bill part, never the tip). The card is charged
+// card. The card is charged
 // inside the app; a bank check (3-D Secure) runs in Stripe.js, loaded only
 // then. No saved card: "Add a card" opens Stripe's page and comes back here.
 //
@@ -757,8 +756,6 @@ function SplitScreen({
     tipCents: tip,
     spendableCents: tab.spendable_cents,
     useCredit,
-    cashBackBps: tab.rates.cash_back_bps,
-    cardBackBps: tab.rates.card_back_bps,
     billWith: effBillWith,
     tipWith,
   });

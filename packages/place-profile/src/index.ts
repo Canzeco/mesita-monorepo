@@ -73,7 +73,7 @@ export {
   type StripeState,
   type StripeStageKey,
 } from "./lib/place-states";
-export { cashbackFor, MIN_CARD_PART_CENTS, paySplit, type PaySplit } from "./pay-split";
+export { MIN_CARD_PART_CENTS, paySplit, type PaySplit } from "./pay-split";
 export { GOOGLE_TYPE_EMOJI, googleTypeEmoji } from "./lib/google-type-emoji";
 export { AboutBox } from "./components/AboutBox";
 export { SizedImage, SizedImg } from "./components/SizedPhoto";

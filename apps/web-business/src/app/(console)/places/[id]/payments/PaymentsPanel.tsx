@@ -6,7 +6,7 @@
 //   Credits Account  · Credits Agreement · Credits Balance (read-only) · Accept
 //                      Credits Payments (House Credits: on once signed, then locked)
 //   Payments         · one row per way to pay, Accept only: Cash · App · Credits
-//                      (always) · Prepayments. No cashback since MESITA-4191.
+//                      (always) · Prepayments.
 // The history below is how it got here.
 // Configuration only (MESITA-3596, Pato: "in payments its just to configure"):
 // the owner's money and its log live on Operations › Money, and there is no
@@ -17,16 +17,13 @@
 // stupid progress bar on top"), then section cards of rows, each row a mark, a title and one line, its value and
 // its control:
 //   (MESITA-3827, Pato: "Main Configuration · Cash Payments · Credits
-//   Payments · Mesita Payments · Mesita Prepayments", each way to pay with its
-//   own Cashback-as-Credits:)
+//   Payments · Mesita Payments · Mesita Prepayments":)
 //   Main Configuration · the Stripe Account row and its button, then the
 //     House Credits Agreement and the House Credits switch it unlocks;
-//   Cash Payments · Cash Payments, then its Cashback-as-Credits (Off or 3%, MESITA-3944);
-//   Credits Payments · Credits Payments (Always on), then its Cashback-as-
-//     Credits (Off or 2%, on the credit part; a switch again, MESITA-3944);
-//   Mesita Payments · Mesita Payments, then its Cashback-as-Credits (Off or 5%);
-//   Mesita Prepayments · Mesita Prepayments, its Cashback-as-Credits (Off or
-//     5% of a voucher's price), then one row per voucher;
+//   Cash Payments · Cash Payments;
+//   Credits Payments · Credits Payments (Always on);
+//   Mesita Payments · Mesita Payments;
+//   Mesita Prepayments · Mesita Prepayments, then one row per voucher;
 //   Waiter Code · its own section, last (MESITA-3824; inside Cash Payments
 //     from MESITA-3625, moved from Settings by MESITA-3600): waiters sign
 //     any payment's QR with it, cash or card;
@@ -82,8 +79,7 @@ import { WaiterCodeRow } from "./WaiterCode";
 
 /** One row: mark · title and line · value · control; the line wraps, the rest hold. */
 const MARK_ROW = "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-4 px-5 py-3 text-sm sm:px-6";
-/** A way to pay (MESITA-3946): mark · title and line · Accept. No
- *  Cashback-as-Credits column since MESITA-4191 ("No cashbacks").
+/** A way to pay (MESITA-3946): mark · title and line · Accept.
  *  On a phone the control drops under the words. */
 const PAIR_ROW =
   "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-5 py-3 text-sm sm:grid-cols-[auto_minmax(0,1fr)_9.5rem] sm:px-6";
@@ -411,8 +407,7 @@ export function PaymentsPanel({
       {/* THREE CARDS (Pato, 2026-11-14, MESITA-3946, on the mock: "yes, ies
           okey. build the fucking business app there"): Stripe Account ·
           Credits Account · Payments, then Vouchers. Each way to pay is ONE
-          row with its Accept control; the Cashback-as-Credits column left
-          with MESITA-4191 ("No cashbacks"). */}
+          row with its Accept control. */}
       <Card className={SECTION}>
         <h2 className={HEAD}>Stripe Account</h2>
         <ul className="divide-border divide-y">

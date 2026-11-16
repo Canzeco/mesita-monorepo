@@ -28,7 +28,7 @@ export type WalletEntry = {
   available_at?: string | null;
   /** A spend's payment (MESITA-3304): the Wallet links it to its proof. */
   payment_id?: string | null;
-  /** Who confirmed a cashback's payment (MESITA-3554): 'waiter' is a bill
+  /** Who confirmed an extra credit's payment (MESITA-3554): 'waiter' is a bill
    *  paid in cash at the table. Null on other entries; absent from a server
    *  before MESITA-3554. */
   confirmed_by?: string | null;
@@ -269,7 +269,6 @@ export type PayProof = {
   credit_cents?: number;
   card_cents?: number;
   tip_cents?: number;
-  cashback_cents?: number;
   /** How much was refunded, when the server sends it: a partial refund
    *  reads "Refunded MX$N" (else "Partly refunded"). */
   refunded_cents?: number;
@@ -393,7 +392,6 @@ export async function apiGetPayment(client: SupabaseClient, paymentId: string): 
     credit_cents: r.credit_cents,
     card_cents: r.card_cents,
     tip_cents: r.tip_cents,
-    cashback_cents: r.cashback_cents,
     refunded_cents: r.refunded_cents,
     ticket: r.ticket ?? null,
     currency: r.currency,
@@ -434,7 +432,6 @@ export async function apiReleasePayment(client: SupabaseClient, paymentId: strin
       credit_cents: r.credit_cents,
       card_cents: r.card_cents,
       tip_cents: r.tip_cents,
-      cashback_cents: r.cashback_cents,
       currency: r.currency,
       paid_at: r.paid_at,
       proof_seen_at: r.proof_seen_at,
@@ -490,7 +487,7 @@ export const CHARGE_REFUSAL: Record<string, string> = {
 // ── The Pay tab's list (MESITA-3457) ────────────────────────────────────────
 
 /** One place the guest can pay at now: their credit there, whether Mesita
- *  Pay takes a card part, the card minimum and cashback rate, and the last
+ *  Pay takes a card part, the card minimum, and the last
  *  12 hours' payment. Every number is the server's. */
 export type PayPlace = {
   place_id: string;
@@ -507,18 +504,12 @@ export type PayPlace = {
   /** Spendable now: Available minus credit held by open payments. */
   available_cents: number;
   pending_cents: number;
-  /** What a card part earns back here; 0 when Cashback is off. */
-  cashback_bps: number;
   test_mode: boolean;
   /** Stripe's minimum on card + tip (the start refuses below it). */
   card_min_cents: number;
   paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;
   /** Cash Payments is on here (the owner's switch and a waiter code). */
   outside_ok?: boolean;
-  /** What the cash bill part earns back once the waiter verifies it. */
-  outside_bps?: number;
-  /** MESITA-3827: what the credit part earns back (Credits Payments Cashback). */
-  credit_bps?: number;
 };
 
 /** The places, credit first then nearest. `at` is rounded by the caller and
@@ -562,8 +553,8 @@ export const ENTRY_LABEL: Record<string, string> = {
   prepay: "Prepaid",
   voucher: "Voucher",
   bonus: "Bonus",
-  // Credit from the retired cashback (MESITA-4191): said plainly.
-  cashback: "Credit",
+  // Legacy extra credit some guests hold (MESITA-4191, MESITA-4194): said plainly.
+  extra: "Credit",
   spend: "Paid",
   reversal: "Refund",
   // Credit given back on a payment (MESITA-3750: it showed the raw word).
@@ -576,7 +567,7 @@ export const ENTRY_LABEL: Record<string, string> = {
 
 /** An entry's label (MESITA-3750). A reversal reads from what it carries: a
  *  purchase_id is a refunded purchase; a payment_id is a refunded bill's
- *  cashback taken back. The wallet_entries CHECK requires one of the two on
+ *  extra credit taken back. The wallet_entries CHECK requires one of the two on
  *  every reversal, so the plain "Refund" fallback is defensive only. */
 export function entryLabel(e: Pick<WalletEntry, "kind" | "purchase_id" | "payment_id">): string {
   if (e.kind === "reversal") {

@@ -20,13 +20,11 @@
 //
 // Response: { ok: true, payment_id, place: { id, name, marks?: { tier, mesita_pay } },
 //             status, amount_cents, credit_cents, card_cents, tip_cents,
-//             cashback_cents, currency, paid_at | null, proof_seen_at,
+//             currency, paid_at | null, proof_seen_at,
 //             proof: { token, url } | null, ticket | null, refunded_cents,
 //             url?: string | null, expires_at?: string | null, test_mode }
 // MESITA-3545: also outside_cents and expires_at (a bill being paid to the
-// waiter waits for Received until then), and cashback_available_at, when
-// the cashback entry lands Available (the proof reads "+$6MX back · ready in
-// 1 hour"), null with no cashback.
+// waiter waits for Received until then).
 //
 //   401 sign_in · 404 gone (not theirs)
 
@@ -96,11 +94,5 @@ serveJson("consumer-web-get-payment", async (req) => {
   if (!res.ok || !res.row) return json({ ok: false, code: "gone", error: "That payment isn't here" }, 404);
   const marks = await readPlaceMarks(admin, res.row.place_id, res.placeTier ?? null);
   const view = paymentView(res.row, res.placeName, marks);
-  let cashbackAvailableAt: string | null = null;
-  if (res.row.cashback_cents > 0) {
-    const cb = await admin.from("wallet_entries").select("available_at").eq("payment_id", res.row.id).eq("kind", "cashback").limit(1).maybeSingle();
-    if (cb.error) console.error("[consumer-web-get-payment] cashback_read", JSON.stringify({ payment_id: paymentId, error: cb.error.message }));
-    cashbackAvailableAt = (cb.data as { available_at: string } | null)?.available_at ?? null;
-  }
-  return json({ ok: true, ...view, cashback_available_at: cashbackAvailableAt, ...(view.status === "open" || view.status === "opening" ? { url: url ?? null, expires_at: res.row.expires_at ?? null } : {}) });
+  return json({ ok: true, ...view, ...(view.status === "open" || view.status === "opening" ? { url: url ?? null, expires_at: res.row.expires_at ?? null } : {}) });
 });

@@ -1,4 +1,4 @@
--- MESITA-3460 — a lost dispute takes the cashback back like a refund. The
+-- MESITA-3460 — a lost dispute is applied like a refund. The
 -- refund RPCs take a third argument, p_reason (refund | dispute_lost,
 -- default refund), and store it on the reversal entry; the two-argument
 -- versions are gone; an unknown reason changes nothing; only the service
@@ -8,7 +8,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(10);
+select plan(9);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3460');
 insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a3460');
@@ -17,14 +17,11 @@ insert into public.place_profiles (id, google_name) values
 insert into public.places (id, slug, state, content_state, currency) values
   ('00000000-0000-4000-8000-000000013460', 'mesita-3460-probe', 'active', 'generating', 'MXN');
 
--- A paid MX$100 card payment with MX$5 of cashback, Available an hour ago.
+-- A paid MX$100 card payment.
 insert into public.wallet_payments (id, consumer_id, place_id, amount_cents, credit_cents, card_cents, tip_cents, currency, status,
-                                    stripe_account_id, cashback_bps, cashback_cents, request_id, paid_at)
+                                    stripe_account_id, request_id, paid_at)
 values ('00000000-0000-4000-8000-0000000b3460', '00000000-0000-4000-8000-0000000a3460', '00000000-0000-4000-8000-000000013460',
-        10000, 0, 10000, 0, 'mxn', 'paid', 'acct_test_3460', 500, 500, '00000000-0000-4000-8000-00000000b460', now() - interval '2 hours');
-insert into public.wallet_entries (consumer_id, place_id, kind, amount_cents, currency, payment_id, livemode, available_at)
-values ('00000000-0000-4000-8000-0000000a3460', '00000000-0000-4000-8000-000000013460', 'cashback', 500, 'mxn',
-        '00000000-0000-4000-8000-0000000b3460', false, now() - interval '1 hour');
+        10000, 0, 10000, 0, 'mxn', 'paid', 'acct_test_3460', '00000000-0000-4000-8000-00000000b460', now() - interval '2 hours');
 
 -- A paid MX$200 voucher purchase with its MX$20 bonus.
 insert into public.wallet_purchases (id, consumer_id, place_id, amount_cents, currency, status, stripe_account_id,
@@ -56,7 +53,7 @@ select ok(
 
 select throws_ok(
   $$insert into public.wallet_entries (consumer_id, place_id, kind, amount_cents, currency, payment_id, livemode, available_at, reason)
-    values ('00000000-0000-4000-8000-0000000a3460', '00000000-0000-4000-8000-000000013460', 'cashback', 1, 'mxn',
+    values ('00000000-0000-4000-8000-0000000a3460', '00000000-0000-4000-8000-000000013460', 'refund', 1, 'mxn',
             '00000000-0000-4000-8000-0000000b3460', false, now(), 'dispute_lost')$$,
   '23514',
   null,
@@ -79,11 +76,11 @@ select is(
 
 -- ━━━ A lost dispute on the payment ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
--- A partial dispute of MX$40 first: 40% of the cashback (MX$2) back.
+-- A partial dispute of MX$40 first.
 select is(
-  wallet_refund_payment('00000000-0000-4000-8000-0000000b3460', 4000, 'dispute_lost') ->> 'reversed_cents',
-  '200',
-  'a lost partial dispute reverses its share of the cashback'
+  wallet_refund_payment('00000000-0000-4000-8000-0000000b3460', 4000, 'dispute_lost') ->> 'status',
+  'partly_refunded',
+  'a lost partial dispute reads partly_refunded'
 );
 
 -- Then the place refunds the rest: the default reason is refund.
@@ -91,13 +88,6 @@ select is(
   wallet_refund_payment('00000000-0000-4000-8000-0000000b3460', 10000) ->> 'status',
   'refunded',
   'a refund after the lost dispute completes it and reads refunded'
-);
-
-select is(
-  (select string_agg(reason || ':' || (-amount_cents)::text, ',' order by created_at, reason)
-     from public.wallet_entries where payment_id = '00000000-0000-4000-8000-0000000b3460' and kind = 'reversal'),
-  'dispute_lost:200,refund:300',
-  'each reversal entry says why it was written'
 );
 
 -- ━━━ A lost dispute on the purchase ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

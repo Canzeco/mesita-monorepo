@@ -1,8 +1,8 @@
 // MESITA-3545 (Payments Flow v2): the cash path end to end through the
 // deployed doors, with no Stripe anywhere: the waiter opens a charge with a
 // tip, the guest looks it up and pays the waiter, the staff screen sees the
-// bill waiting, Received pays it and writes 2% cashback Pending one hour.
-// Then a cancel: the charge is free again and Received has nothing to
+// bill waiting, Received pays it and, with no credit part, writes no wallet
+// entry. Then a cancel: the charge is free again and Received has nothing to
 // confirm (the timeout and the closed answer are pgTAP's). It needs SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and
 // SUPABASE_ANON_KEY (a PR's `deno test` has none: the test reports itself
 // ignored). Everything it made is deleted in finally, children first.
@@ -27,7 +27,7 @@ async function call(name: string, body: Record<string, unknown>, jwt?: string): 
 }
 
 Deno.test({
-  name: "outside path: charge with tip → pay the waiter → Received → 2% Pending; a cancel frees the charge",
+  name: "outside path: charge with tip → pay the waiter → Received pays it; a cancel frees the charge",
   ignore: !ready,
   sanitizeOps: false,
   sanitizeResources: false,
@@ -52,11 +52,11 @@ Deno.test({
       const jwt = s.session.access_token;
 
       // A place with no Stripe account (MESITA-3589): a signed House Credits
-      // Contract, House Credits and Cash Payments on at 2%, and a place code.
+      // Contract, House Credits and Cash Payments on, and a place code.
       await admin.from("place_profiles").insert({ id: place, google_name: `Outside live ${stamp}` }).throwOnError();
       await admin.from("places").insert({ id: place, slug: `outside-live-${stamp}`, state: "active", content_state: "generating", currency: "MXN" }).throwOnError();
       await admin.from("house_credits_contracts").insert({ place_id: place, signed_by: userId, signer_role: "owner", terms_version: "draft-2026-11", text_sha256: "0".repeat(64) }).throwOnError();
-      await admin.from("place_payment_settings").upsert({ place_id: place, house_credits: true, cash_payments: true, cash_cashback_bps: 300 }).throwOnError();
+      await admin.from("place_payment_settings").upsert({ place_id: place, house_credits: true, cash_payments: true }).throwOnError();
       await admin.from("place_codes").insert({ place_id: place, code_hash: await hashPlaceCode(place, "123456") }).throwOnError();
 
       // 1. Received pays it.
@@ -72,12 +72,10 @@ Deno.test({
       const poll = await call("visit-web-get-charge", { token });
       assertEquals((poll.data.outside as Record<string, unknown>)?.cents, 50000);
       const recv = await call("visit-web-confirm-charge", { token });
-      assertEquals([recv.status, recv.data.outcome, recv.data.cashback_cents], [200, "paid", 1000], JSON.stringify(recv.data));
-      const { data: entries } = await admin.from("wallet_entries").select("kind, amount_cents, available_at").eq("payment_id", String(start.data.payment_id));
-      assertEquals(entries?.length, 1);
-      assertEquals(entries?.[0].kind, "cashback");
-      assertEquals(entries?.[0].amount_cents, 1000);
-      assert(Date.parse(String(entries?.[0].available_at)) - Date.parse(String(recv.data.paid_at)) === 3_600_000);
+      assertEquals([recv.status, recv.data.outcome], [200, "paid"], JSON.stringify(recv.data));
+      assert(typeof recv.data.paid_at === "string");
+      const { data: entries } = await admin.from("wallet_entries").select("kind").eq("payment_id", String(start.data.payment_id));
+      assertEquals(entries?.length, 0);
 
       // 2. The guest cancels: Received reads closed.
       const open2 = await call("visit-web-open-charge", { place_id: place, place_code: "123456", amount_cents: 20000 });

@@ -2,7 +2,7 @@
 // in TypeScript (the ledger's are pgTAP's, pay_tabs.test.sql).
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { callTabRpc, cashbackGranted, cashbackOnSign, effectiveStatus, guestTabView, guestRefusal, readGuestPayBody, hashTabStaffKey, hashTabToken, readBillBody, readCashBody, readSplitBody, readSplitTabBody, rpcRefusal, tableView, type TabPartRow, type TabRow, tabMoney } from "./tab.ts";
+import { callTabRpc, effectiveStatus, guestTabView, guestRefusal, readGuestPayBody, hashTabStaffKey, hashTabToken, readBillBody, readCashBody, readSplitBody, readSplitTabBody, rpcRefusal, tableView, type TabPartRow, type TabRow, tabMoney } from "./tab.ts";
 
 const TOKEN = "AbCdEfGhIjKlMnOpQrStUv";
 const TAB = "00000000-0000-4000-8000-000000003562";
@@ -63,15 +63,12 @@ function tab(over: Partial<TabRow> = {}): TabRow {
 function part(over: Partial<TabPartRow> = {}): TabPartRow {
   return {
     id: REQ, part: "outside", status: "open", credit_cents: 22000, outside_cents: 10000, card_cents: 0, tip_cents: 4500,
-    cashback_cents: 0, paid_at: null, proof_token: null, created_at: "2026-11-09T10:00:00Z", ...over,
+    paid_at: null, proof_token: null, created_at: "2026-11-09T10:00:00Z", ...over,
   };
 }
 
-Deno.test("cashback: the place's cash rate on the cash bill part only, never credits or the tip", () => {
-  assertEquals(tabMoney(tab(), [part()], 200).cashback_cents, 200);
-  assertEquals(tabMoney(tab(), [part()], 700).cashback_cents, 700);
-  assertEquals(tabMoney(tab(), [part()], 0).cashback_cents, 0);
-  assertEquals(tabMoney(tab(), [part()], 200).cash_due_cents, 14500);
+Deno.test("tabMoney: the cash due is the cash bill part plus the cash tip", () => {
+  assertEquals(tabMoney(tab()).cash_due_cents, 14500);
 });
 
 Deno.test("a stale tab reads expired, unless a part is in flight or paid", () => {
@@ -164,7 +161,7 @@ Deno.test("the guest's tap: a typed bill in whole centavos, never a credit tip",
   assertEquals(noCard.ok ? null : noCard.code, "card_required");
 });
 
-// ━━━ MESITA-3772: the signature turns cashback on ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━ MESITA-3772: guest tabs ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const NOW = Date.parse("2026-11-09T10:10:00Z");
 
@@ -172,33 +169,9 @@ function guestTab(over: Partial<TabRow> = {}): TabRow {
   return tab({ origin: "guest", verified_at: null, credit_cents: 0, cash_bill_cents: 10000, cash_tip_cents: 0, card_bill_cents: 20000, ...over });
 }
 const cardPart = (over: Partial<TabPartRow> = {}) =>
-  part({ id: "card", part: "card", status: "paid", credit_cents: 0, outside_cents: 0, card_cents: 20000, tip_cents: 0, paid_at: "2026-11-09T10:01:00Z", cashback_bps: 500, ...over });
+  part({ id: "card", part: "card", status: "paid", credit_cents: 0, outside_cents: 0, card_cents: 20000, tip_cents: 0, paid_at: "2026-11-09T10:01:00Z", ...over });
 const cashPart = (over: Partial<TabPartRow> = {}) =>
-  part({ credit_cents: 0, outside_cents: 10000, tip_cents: 0, outside_cashback_bps: 200, ...over });
-
-Deno.test("cashbackOnSign: an unsigned guest tab's settled card and pending cash earn only on signing", () => {
-  // 5% of $200 card + 2% of $100 cash.
-  assertEquals(cashbackOnSign(guestTab(), [cardPart(), cashPart()], 200, 500, NOW), 1000 + 200);
-  // A card still going through counts too; a failed one does not.
-  assertEquals(cashbackOnSign(guestTab(), [cardPart({ status: "open", paid_at: null })], 0, 500, NOW), 1000);
-  assertEquals(cashbackOnSign(guestTab(), [cardPart({ status: "failed", paid_at: null })], 0, 500, NOW), 0);
-  // Nothing once signed, closed (window over) or cancelled, nor on a waiter's tab.
-  assertEquals(cashbackOnSign(guestTab({ verified_at: "2026-11-09T10:05:00Z" }), [cardPart()], 200, 500, NOW), 0);
-  assertEquals(cashbackOnSign(guestTab({ status: "paid", expires_at: "2026-11-09T10:09:00Z" }), [cardPart()], 200, 500, NOW), 0);
-  assertEquals(cashbackOnSign(guestTab({ status: "cancelled" }), [cardPart()], 200, 500, NOW), 0);
-  assertEquals(cashbackOnSign(tab({ card_bill_cents: 20000 }), [cardPart()], 200, 500, NOW), 0);
-});
-
-Deno.test("guest view: cashback_cents is what was granted, never the promise", () => {
-  const extra = { placeName: null, spendableCents: 0, cashOk: true, cashBackBps: 200, nowMs: NOW,
-    card: { card_available: true, card_unavailable_code: null, card_back_bps: 500, card_minimum_cents: 0 } };
-  const unsigned = guestTabView(guestTab(), [cardPart(), cashPart()], extra);
-  assertEquals([unsigned.cashback_cents, unsigned.cashback_on_sign_cents], [0, 1200]);
-  const signed = guestTabView(guestTab({ status: "paid", verified_at: "2026-11-09T10:05:00Z" }),
-    [cardPart({ cashback_cents: 1000 }), cashPart({ status: "paid", paid_at: "2026-11-09T10:05:00Z", cashback_cents: 200 })], extra);
-  assertEquals([signed.cashback_cents, signed.cashback_on_sign_cents], [1200, 0]);
-  assertEquals(cashbackGranted([cardPart({ cashback_cents: 1000 }), cashPart({ cashback_cents: 200 })]), 1000);
-});
+  part({ credit_cents: 0, outside_cents: 10000, tip_cents: 0, ...over });
 
 Deno.test("too_many_open names the open payment", () => {
   const r = rpcRefusal({ ok: false, code: "too_many_open", max_open: 1, open_tab_id: TAB, open_place_id: TAB });
@@ -236,13 +209,13 @@ Deno.test("a ticket already paid reads back as its refusal: another guest's, or 
 });
 
 Deno.test("guest view: each part says what it charged, and the timeline is there (MESITA-3780)", () => {
-  const extra = { placeName: null, spendableCents: 0, cashOk: true, cashBackBps: 200, nowMs: NOW,
-    card: { card_available: true, card_unavailable_code: null, card_back_bps: 500, card_minimum_cents: 0 } };
+  const extra = { placeName: null, spendableCents: 0, cashOk: true, nowMs: NOW,
+    card: { card_available: true, card_unavailable_code: null, card_minimum_cents: 0 } };
   const v = guestTabView(guestTab({ created_at: "2026-11-09T09:30:00Z", billed_at: "2026-11-09T09:40:00Z" }),
     [cardPart({ tip_cents: 1500 }), cashPart({ id: "cash", part: "outside" })], extra);
   const [card, cash] = v.parts;
-  assertEquals([card.card_cents, card.tip_cents, card.cashback_bps], [20000, 1500, 500]);
-  assertEquals([cash.cash_cents, cash.cashback_bps], [10000, 200]);
+  assertEquals([card.card_cents, card.tip_cents], [20000, 1500]);
+  assertEquals(cash.cash_cents, 10000);
   assertEquals([v.created_at, v.billed_at], ["2026-11-09T09:30:00Z", "2026-11-09T09:40:00Z"]);
   // The proof token never leaves the server.
   assertEquals(JSON.stringify(v).includes("proof_token"), false);

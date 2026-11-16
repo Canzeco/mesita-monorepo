@@ -208,7 +208,6 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   if (card > 0) lines.push({ key: "card", icon: <SmartphoneIcon className="pay-icon" />, label: "By card", value: money(tab.card_bill_cents) });
   if (cash > 0) lines.push({ key: "cash", icon: <BanknoteIcon className="pay-icon" />, label: "Cash received", value: money(tab.cash_bill_cents) });
   if (tip > 0) lines.push({ key: "tip", icon: <HandCoinsIcon className="pay-icon" />, label: "Tip", value: money(tip) });
-  // MESITA-3910: what the guest gets back, as a detail (Pato: "maybe also mention the cashback").
 
   return (
     <main className="proof verify" data-tab-state="verify">
@@ -262,8 +261,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
             <p className="proof-line pay-reject-title">Reject this bill?</p>
             {/* What rejecting does to the money (MESITA-4105, Pato: "if cash
                 mention to return money ... if digital, say you already
-                received the payment ... the guest is not going to receive
-                his cashback"). */}
+                received the payment"). */}
             {cash > 0 ? (
               <p className="pay-final-line">Give the guest back the {money(cash)} cash.</p>
             ) : null}

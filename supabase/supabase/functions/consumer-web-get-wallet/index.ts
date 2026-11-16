@@ -26,7 +26,8 @@
 //                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, confirmed_by, purchase_id, gift_id }] }],
 //   available_at (MESITA-3549) rides a pending entry: when it turns
 //   Available. Null on an Available entry.
-//   confirmed_by (MESITA-3554) rides a cashback entry with a payment:
+//   confirmed_by (MESITA-3554) rides an 'extra' entry (legacy credit,
+//   MESITA-4194) with a payment:
 //   'credit' | 'stripe' | 'waiter' from wallet_payments, so Transactions
 //   can name a cash bill the waiter confirmed. Null on every other entry.
 //   spendable_cents (MESITA-3304) is Available minus credit held by open
@@ -57,7 +58,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { cardsAccepted, chargesEnabledByPlace, listRowMoney, type PaymentKey, type RateKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
+import { cardsAccepted, chargesEnabledByPlace, listRowMoney, type PaymentKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { storyUrl } from "../_shared/proof.ts";
 import { readPins, withPins } from "../_shared/house-cards.ts";
@@ -144,25 +145,25 @@ serveJson("consumer-web-get-wallet", async (req) => {
   for (const r of (sums ?? []) as Array<{ place_id: string; currency: string; spendable_cents: number }>) {
     spendable.set(balanceKey(r.place_id, r.currency), r.spendable_cents);
   }
-  // WHO CONFIRMED A CASHBACK (MESITA-3554): one read of the payments behind
-  // the cashback entries. A failed read leaves confirmed_by null (the line
-  // reads plain "Cashback"); the money is unaffected.
+  // WHO CONFIRMED AN EXTRA CREDIT'S PAYMENT (MESITA-3554): one read of the
+  // payments behind the 'extra' entries. A failed read leaves confirmed_by
+  // null; the money is unaffected.
   const entries = (rows ?? []) as Entry[];
-  const cashbackPayments = [
-    ...new Set(entries.filter((e) => e.kind === "cashback" && e.payment_id).map((e) => e.payment_id as string)),
+  const extraPayments = [
+    ...new Set(entries.filter((e) => e.kind === "extra" && e.payment_id).map((e) => e.payment_id as string)),
   ];
-  if (cashbackPayments.length > 0) {
+  if (extraPayments.length > 0) {
     const { data: payRows, error: payErr } = await admin
       .from("wallet_payments")
       .select("id, confirmed_by")
       .eq("consumer_id", userId)
-      .in("id", cashbackPayments);
+      .in("id", extraPayments);
     if (payErr) console.error(`[consumer-web-get-wallet] confirmed_by read: ${payErr.message}`);
     const confirmedBy = new Map(
       ((payErr ? [] : payRows) ?? []).map((p: { id: string; confirmed_by: Entry["confirmed_by"] }) => [p.id, p.confirmed_by]),
     );
     for (const e of entries) {
-      if (e.kind === "cashback" && e.payment_id) e.confirmed_by = confirmedBy.get(e.payment_id) ?? null;
+      if (e.kind === "extra" && e.payment_id) e.confirmed_by = confirmedBy.get(e.payment_id) ?? null;
     }
   }
   // PINNED HOUSE CARDS (MESITA-3582): a place the guest added by hand with
@@ -246,7 +247,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   const cardsOn = new Set<string>();
   // via unknown: a template-string select widens `data` (as in payments.ts).
   const settingRows = ((settingsRes.error ? [] : settingsRes.data) ?? []) as unknown as Array<
-    { place_id: string } & Partial<Record<PaymentKey | RateKey, unknown>>
+    { place_id: string } & Partial<Record<PaymentKey, unknown>>
   >;
   const settingsById = new Map(settingRows.map((r) => [r.place_id, r]));
   for (const r of settingRows) {

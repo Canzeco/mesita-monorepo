@@ -1,10 +1,10 @@
 // Money constants and arithmetic (MESITA-3302). Server only: clients never
-// compute a price, a bonus, a fee or cashback; they show what an EF answered.
+// compute a price, a bonus or a fee; they show what an EF answered.
 //
 // Mesita's fee is 5% of each direct charge on the place's connected account,
 // billed to the place apart on a Stripe invoice (charge model d5a,
-// MESITA-3461; the charge carries no application fee); the place pays Stripe. Cashback is credit at the place,
-// never cash. Every number is integer centavos; a rate is basis points,
+// MESITA-3461; the charge carries no application fee); the place pays Stripe.
+// Every number is integer centavos; a rate is basis points,
 // rounded down.
 
 import type { MoneyVoucherKey } from "./money-state.ts";
@@ -15,25 +15,11 @@ import type { MoneyVoucherKey } from "./money-state.ts";
 export const MESITA_FEE_BPS_VOUCHER = 500;
 export const MESITA_FEE_BPS_PAYMENT = 500;
 
-// Cashback has no constant here since MESITA-3589: each place switches its
-// own (place_payment_settings.card_cashback_bps / cash_cashback_bps, Off or
-// 5% card and Off or 2% cash since MESITA-3596, CASHBACK_BPS in payments.ts).
-// moneyState turns
-// them into what applies now; the EFs store it on the row at start/open and
-// settle/Received/refund read the row, never the setting.
-
 /** Outside bills one guest may open at one place in a rolling day (open,
  *  paid or refunded; cancelled and expired ones do not count). Estimated:
  *  Pato sets the number (MESITA-3545, folds MESITA-3553). The RPC
  *  wallet_open_outside_capped takes it as p_max_per_day. */
 export const OUTSIDE_MAX_PER_DAY = 2;
-
-/** A place's outside cashback over a rolling day, in centavos ($500MX).
- *  Past it a Received still confirms the bill, with what is left, or no
- *  cashback. Estimated: Pato sets it. TWIN of c_ceiling in
- *  wallet_confirm_outside (20261109130000_charge_tip_outside_path.sql);
- *  changing one is a migration plus this line. */
-export const OUTSIDE_CASHBACK_DAILY_CEILING_CENTS = 50_000;
 
 /** The fallback currency when a place's is unknown. Each place's own is
  *  places.currency, set from its country (MESITA-3913). */

@@ -27,8 +27,6 @@ const ALL_ON: PaymentSettings = {
   prepayments: true,
   house_credits: true,
   cash_payments: true,
-  card_cashback_bps: 500,
-  cash_cashback_bps: 200, credit_cashback_bps: null, prepay_cashback_bps: null,
   voucher_200: true,
   voucher_1000: true,
   voucher_5000: true,
@@ -133,7 +131,7 @@ function startArgs(over: Partial<Parameters<typeof startCardPayment>[2]> = {}) {
   };
 }
 
-Deno.test("start: hold (credit = bill − card, fee and cashback rate stored) → Checkout on the account keyed by the row → open", async () => {
+Deno.test("start: hold (credit = bill − card, fee stored) → Checkout on the account keyed by the row → open", async () => {
   const stripeCalls: Array<{ method: string; path: string; params?: Record<string, unknown>; opts?: Record<string, unknown> }> = [];
   const stripe: StripeCall = (method, path, params, opts) => {
     stripeCalls.push({ method, path, params, opts: opts as Record<string, unknown> });
@@ -157,7 +155,6 @@ Deno.test("start: hold (credit = bill − card, fee and cashback rate stored) �
   // The fee billed apart is bps of the card part alone.
   assertEquals(hold.p_application_fee_cents, bps(500, MESITA_FEE_BPS_PAYMENT));
   assertEquals(hold.p_application_fee_cents, 25);
-  assertEquals(hold.p_cashback_bps, 500);
   assertEquals(hold.p_stripe_account_id, "acct_place");
   assertEquals(typeof hold.p_proof_token, "string");
   assertEquals(stripeCalls.length, 1);
@@ -165,15 +162,6 @@ Deno.test("start: hold (credit = bill − card, fee and cashback rate stored) �
   assertEquals(stripeCalls[0].opts?.idempotencyKey, ROW);
   assertEquals(stripeCalls[0].opts?.stripeAccount, "acct_place");
   assertEquals(fake.rpcs.find((x) => x.name === "wallet_open_payment")?.args, { p_payment_id: ROW, p_session_id: "cs_new" });
-});
-
-Deno.test("start: the cashback switch off stores rate 0; settle never re-reads the switch", async () => {
-  const fake = fakeAdmin({
-    table: () => ({ data: [] }),
-    rpc: (name) => name === "wallet_hold_payment" ? { data: { ok: true, outcome: "held", payment_id: ROW, expires_at: "x" } } : { data: { ok: true } },
-  });
-  await startCardPayment(fake.client, () => Promise.resolve({ id: "cs", url: "u" }), startArgs({ settings: { ...ALL_ON, card_cashback_bps: null } }));
-  assertEquals(fake.rpcs.find((x) => x.name === "wallet_hold_payment")!.args.p_cashback_bps, 0);
 });
 
 Deno.test("start: Stripe refuses → the hold is released as failed with Stripe's code, 502 checkout_failed", async () => {

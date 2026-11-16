@@ -1,7 +1,7 @@
 -- MESITA-3856 — a guest's card is held, not charged, until the waiter signs.
 -- The bank's hold starts the bill's ten minutes; Sign marks the bill signing
 -- (X, Reject and the cron wait) and the captured card's settle finishes the
--- signature with its cashback; a failed capture ends the bill with nothing
+-- signature; a failed capture ends the bill with nothing
 -- charged and the credit released; X, Reject and expiry end a held bill and
 -- list its hold for cancelling; a hold that lands after its bill ended is let
 -- go; only the service role calls any of it.
@@ -10,7 +10,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(31);
+select plan(30);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3856');
 insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a3856');
@@ -39,8 +39,8 @@ create function pg_temp.card_bill(n text) returns uuid language plpgsql as $$
 declare r jsonb; c uuid;
 begin
   r := pay_tab_guest_pay('00000000-0000-4000-8000-0000000a3856', '00000000-0000-4000-8000-000000013856', 'MXN', false,
-    repeat(n, 64), 10000, 2000, 0, 0, 8000, 0, gen_random_uuid(), null, 0, now(), 'acct_test_3856',
-    0, 500, null, now() + interval '10 minutes', p_window => interval '10 minutes');
+    repeat(n, 64), 10000, 2000, 0, 0, 8000, 0, gen_random_uuid(), null, now(), 'acct_test_3856',
+    0, null, now() + interval '10 minutes', p_window => interval '10 minutes');
   c := (r->>'card_payment_id')::uuid;
   perform wallet_open_payment_pi(c, 'pi_3856n' || n);
   return (r->>'tab_id')::uuid;
@@ -88,16 +88,14 @@ select is(pay_tab_guest_end((select id from t1), now()), false, 'and the cron ne
 do $$ begin perform wallet_settle_payment(pg_temp.card_row((select id from t1)), 'pi_3856n1'); end $$;
 select ok((select verified_at is not null and status = 'paid' from pay_tabs where id = (select id from t1)),
   'the captured card signs the bill, even past its window');
-select is(pg_temp.available(), 20400, 'the $20MX credit is spent once (the $4MX left is its cashback, Available at once since MESITA-3909)');
-select is((select cashback_cents from wallet_payments where id = pg_temp.card_row((select id from t1))), 400,
-  'and the card part earns 5% of $80MX');
+select is(pg_temp.available(), 20000, 'the $20MX credit is spent once');
 
 -- ━━━ 2. Held, then X ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 create temp table t2 on commit drop as select pg_temp.card_bill('2') as id;
 do $$ begin perform wallet_card_held(pg_temp.card_row((select id from t2)), now()); end $$;
 select is(pay_tab_change((select id from t2), '00000000-0000-4000-8000-0000000a3856', 'cancel')->>'outcome',
   'cancelled', 'X cancels a bill whose card is held');
-select is(pg_temp.spendable(), 20400, 'its $20MX credit is released');
+select is(pg_temp.spendable(), 20000, 'its $20MX credit is released');
 select is((select stripe_payment_intent_id from wallet_released_holds((select id from t2), 10)), 'pi_3856n2',
   'and its hold is listed for cancelling');
 do $$ begin perform wallet_hold_cancelled(pg_temp.card_row((select id from t2))); end $$;
@@ -114,7 +112,7 @@ select is(wallet_card_held(pg_temp.card_row((select id from t3)), now())->>'deci
 select is(pay_tab_capture_failed((select id from t3), 'card_declined')->>'outcome', 'failed', 'the capture fails');
 select ok((select status = 'cancelled' and end_reason = 'capture_failed' and signing_at is null from pay_tabs where id = (select id from t3)),
   'the bill ends: the card charge failed');
-select is(pg_temp.spendable(), 20400, 'nothing is spent');
+select is(pg_temp.spendable(), 20000, 'nothing is spent');
 select is((select count(*)::int from wallet_released_holds((select id from t3), 10)), 1, 'and the hold is let go');
 
 -- ━━━ 4. Held, then the window passes ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -125,7 +123,7 @@ select is(pay_tab_guest_end((select id from t4), now()), true, 'the cron ends a 
 select ok((select status = 'expired' and end_reason = 'expired' from pay_tabs where id = (select id from t4))
           and (select status = 'expired' from wallet_payments where id = pg_temp.card_row((select id from t4))),
   'expired, with its card row');
-select is(pg_temp.spendable(), 20400, 'its credit is released');
+select is(pg_temp.spendable(), 20000, 'its credit is released');
 
 -- ━━━ 5. The hold lands after the bill ended ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 create temp table t5 on commit drop as select pg_temp.card_bill('5') as id;

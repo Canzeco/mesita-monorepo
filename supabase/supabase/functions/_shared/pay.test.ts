@@ -71,7 +71,7 @@ Deno.test("startPayment: passes the request through and shapes a paid answer", a
     fn: "wallet_pay_credit",
     args: {
       p_consumer_id: USER, p_place_id: PLACE, p_amount_cents: 5000, p_currency: "mxn", p_livemode: false,
-      p_request_id: REQ, p_proof_token: TOKEN, p_ticket: "T-12", p_cashback: true,
+      p_request_id: REQ, p_proof_token: TOKEN, p_ticket: "T-12",
     },
   }]);
   assert(r.ok);
@@ -120,7 +120,7 @@ Deno.test("startPayment: an RPC error or an unknown answer is a 5xx, never a ref
 });
 
 const ROW: PaymentRow = {
-  id: "p1", place_id: PLACE, status: "paid", amount_cents: 5000, credit_cents: 5000, card_cents: 0, tip_cents: 0, cashback_cents: 0,
+  id: "p1", place_id: PLACE, status: "paid", amount_cents: 5000, credit_cents: 5000, card_cents: 0, tip_cents: 0,
   currency: "mxn", paid_at: "2026-11-07T12:00:00Z", proof_token: TOKEN, proof_seen_at: null, ticket: "T-12", refunded_cents: 0, livemode: false,
   stripe_checkout_session_id: null, stripe_account_id: null, created_at: "2026-11-07T11:59:00Z", expires_at: null,
 };

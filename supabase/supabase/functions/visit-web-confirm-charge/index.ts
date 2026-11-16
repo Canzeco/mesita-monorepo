@@ -5,14 +5,12 @@
 // staff screen on visit.mesita.ai shows "Guest is paying $NMX outside" and
 // one Received button, which calls this with the charge token only (the
 // same key the screen polls with, never the place code). Received is the
-// confirmer: wallet_confirm_outside marks the bill paid, spends the held
-// credit and writes the cashback (2% when the place's Cashback switch was
-// on when the bill opened), Available at once. Idempotent: a second tap
-// answers already. Nothing for staff after it (Rules §2).
+// confirmer: wallet_confirm_outside marks the bill paid and spends the held
+// credit. Idempotent: a second tap answers already. Nothing for staff after it (Rules §2).
 //
 // Body: { token: 22 base64url chars } (never the place code)
 // Response: { ok: true, outcome: paid | already_paid, payment_id,
-//             outside_cents, cashback_cents, paid_at }
+//             outside_cents, paid_at }
 //   400 (not a token) · 404 gone (no such charge) ·
 //   409 not_outside ("Not paying outside yet") | closed ("Cancelled by the
 //       guest") | expired ("Expired") | forbidden (another place's bill)
@@ -42,14 +40,12 @@ serveJson("visit-web-confirm-charge", async (req) => {
       outcome: res.outcome,
       payment_id: res.payment_id,
       place_id: res.place_id,
-      cashback_cents: res.cashback_cents,
     }));
     return json({
       ok: true,
       outcome: res.outcome,
       payment_id: res.payment_id,
       outside_cents: res.outside_cents,
-      cashback_cents: res.cashback_cents,
       paid_at: res.paid_at,
     });
   } catch (err) {

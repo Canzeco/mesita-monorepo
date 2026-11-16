@@ -26,14 +26,14 @@ import { PlaceFactsRun } from "./place-facts";
  *   │         │ │ Restaurant · ★4.7│   (MESITA-3669)
  *   │         │ │ (8.6K) · ◷ Open ·│
  *   │         │ │ ➤ 0.4 km         │
- *   │         │ │[ Cashback +5% ] │   every offer in turn, only when it has one
+ *   │         │ │[ Prepay +30%  ] │   every offer in turn, only when it has one
  *   └─────────┘ │[♡ Save][Share]  │
  *               └────────────────┘
  *
  * The photo square and the text open the place; Save and Share are the
  * shared CardActions (a Google-only place gets Generate Profile instead), so
  * a tap on them never navigates. THE PHOTO STAYS CLEAN (Pato, MESITA-3664:
- * "remove the cashback icon from the fucking image. keep the image clean.
+ * "remove the offer icon from the image. keep the image clean.
  * you have a lot of space at the right. fucking use it"): the offers are the
  * shared rotating OfferButton in the info square, just above Save · Share,
  * cycling every offer in its own colour (MESITA-3665); a tap goes where the
@@ -155,7 +155,7 @@ export function PlaceRowCard({
               buttons offers moving and switching across all the offers with
               different colors"): the shared OfferButton, each offer in its
               own colour on the shared beat, in the short words (MESITA-3671:
-              "Pay (+5% Cashback)", "$200MX (+10%)"). */}
+              "$200MX (+10%)"). */}
           <OfferButton
             href={placeHref(place.slug || place.id)}
             name={place.name}

@@ -15,7 +15,7 @@
 // binds the charge, the payment's tip is the tip. A guest may pay the bill
 // outside Mesita (cash or the place's terminal): the payment opens with an
 // outside part and the staff screen shows one Received button; Received is
-// the confirmer that makes the 2% cashback (wallet_confirm_outside).
+// the confirmer (wallet_confirm_outside).
 //
 // The secrets: the 4-digit code and the 128-bit token are both stored only
 // as SHA-256 hashes (place_charges.code_hash, token_hash) and never logged.
@@ -385,7 +385,7 @@ export async function confirmCharge(
   store: ChargeStore,
   token: string,
 ): Promise<
-  | { ok: true; outcome: "paid" | "already_paid"; payment_id: string; place_id: string; outside_cents: number; cashback_cents: number; paid_at: string }
+  | { ok: true; outcome: "paid" | "already_paid"; payment_id: string; place_id: string; outside_cents: number; paid_at: string }
   | Refusal
 > {
   const row = await store.chargeByToken(await hashChargeToken(token));
@@ -401,7 +401,6 @@ export async function confirmCharge(
       payment_id: p.id,
       place_id: row.place_id,
       outside_cents: Number(r.outside_cents ?? p.outside_cents),
-      cashback_cents: Number(r.cashback_cents ?? 0),
       paid_at: String(r.paid_at),
     };
   }

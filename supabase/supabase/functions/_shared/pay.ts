@@ -151,8 +151,6 @@ export async function startPayment(
     p_request_id: args.input.requestId,
     p_proof_token: args.token ?? mintProofToken(),
     p_ticket: args.input.ticket,
-    // MESITA-3827: a direct credit payment earns its Credits Payments Cashback now.
-    p_cashback: true,
   });
   if (error) throw new Error(`wallet_pay_credit: ${error.message}`);
   const r = data as RpcAnswer | null;
@@ -191,7 +189,7 @@ export async function startPayment(
 // ── Paying outside (MESITA-3545) ─────────────────────────────────────────────
 
 /** How long an outside bill waits for the waiter's Received: its own 30
- *  minutes, not the charge's 10, so a slow cash handover still earns. */
+ *  minutes, not the charge's 10, so a slow cash handover still confirms. */
 export const OUTSIDE_TTL_SEC = 30 * 60;
 
 /** The outside split of a bill: credit first (what the guest can spend
@@ -211,7 +209,6 @@ export type StartedOutside = {
   credit_cents: number;
   outside_cents: number;
   tip_cents: number;
-  outside_cashback_bps: number;
   currency: string;
   expires_at: string | null;
   test_mode: boolean;
@@ -231,12 +228,9 @@ export async function startOutsidePayment(
     requestId: string;
     currency: string;
     livemode: boolean;
-    /** The place's Cash Payments Cashback now, in bps (0 = none; MESITA-3589). */
-    cashBackBps: number;
     nowMs: number;
   },
 ): Promise<{ ok: true; started: StartedOutside } | PayRefusal> {
-  const bps = Math.max(0, args.cashBackBps);
   const expiresAt = new Date(args.nowMs + OUTSIDE_TTL_SEC * 1000).toISOString();
   // The split is the SQL's, under the pair lock: credit = least(spendable, bill).
   const { data, error } = await admin.rpc("wallet_open_outside_capped", {
@@ -249,7 +243,6 @@ export async function startOutsidePayment(
     p_request_id: args.requestId,
     p_proof_token: mintProofToken(),
     p_ticket: args.ticket,
-    p_outside_cashback_bps: bps,
     p_expires_at: expiresAt,
     p_max_per_day: OUTSIDE_MAX_PER_DAY,
   });
@@ -270,7 +263,6 @@ export async function startOutsidePayment(
         credit_cents: credit,
         outside_cents: outside,
         tip_cents: Number(r.tip_cents ?? args.tipCents),
-        outside_cashback_bps: bps,
         currency: args.currency,
         expires_at: typeof r.expires_at === "string" ? r.expires_at : null,
         test_mode: !args.livemode,
@@ -313,7 +305,6 @@ export type PaymentRow = {
   tip_cents: number;
   /** The part paid outside Mesita, confirmed by the waiter (MESITA-3545). */
   outside_cents?: number;
-  cashback_cents: number;
   currency: string;
   /** Null while a card part's Checkout is still open. */
   paid_at: string | null;
@@ -330,7 +321,7 @@ export type PaymentRow = {
 };
 
 const PAYMENT_COLUMNS =
-  "id, place_id, status, amount_cents, credit_cents, card_cents, tip_cents, outside_cents, cashback_cents, currency, paid_at, " +
+  "id, place_id, status, amount_cents, credit_cents, card_cents, tip_cents, outside_cents, currency, paid_at, " +
   "proof_token, proof_seen_at, ticket, refunded_cents, livemode, stripe_checkout_session_id, stripe_account_id, created_at, expires_at";
 
 /** The place's two marks beside its name (MESITA-3321): the Premier tier
@@ -352,7 +343,6 @@ export function paymentView(row: PaymentRow, placeName: string | null, marks?: P
     card_cents: row.card_cents,
     tip_cents: row.tip_cents,
     outside_cents: row.outside_cents ?? 0,
-    cashback_cents: row.cashback_cents,
     currency: row.currency,
     paid_at: row.paid_at,
     expires_at: row.expires_at ?? null,
