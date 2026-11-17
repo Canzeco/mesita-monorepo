@@ -393,7 +393,7 @@ function ReserveTile({ place, onReserve }: { place: PlaceDetail; onReserve?: () 
 /** THE OFFERS TILE (MESITA-4151): Home's offer button in the row's tile
  *  box. The words move on the shared beat; the box takes the slide's colour.
  *  The slide on screen when the finger lands is the door, and the tile holds
- *  that slide while a finger or keyboard focus is on it. */
+ *  that slide while the finger is down (MESITA-4217). */
 function OffersTile({
   name,
   slides,
@@ -408,18 +408,27 @@ function OffersTile({
   const index = held ?? live.index;
   const slide = slides[index];
   const run = open(slide);
+  // HELD ONLY WHILE A FINGER IS DOWN (MESITA-4217): the slide under the
+  // finger is the door, and the tap lets go. A focus hold froze the box after
+  // a click or once the Offers sheet handed focus back.
   const hold = () => setHeld((h) => h ?? live.index);
   const release = () => setHeld(null);
   return (
     <button
       type="button"
-      {...(run ? { onClick: run } : inertButtonProps(false))}
+      {...(run
+        ? {
+            onClick: () => {
+              run();
+              release();
+            },
+          }
+        : inertButtonProps(false))}
       aria-label={offersLabel(name, slides)}
       onPointerDown={hold}
-      onFocus={hold}
+      onPointerUp={() => setTimeout(release, 0)}
       onPointerCancel={release}
       onPointerLeave={release}
-      onBlur={release}
       className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE)}
       data-tile-bonus
     >
