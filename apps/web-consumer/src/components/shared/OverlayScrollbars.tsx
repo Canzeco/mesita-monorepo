@@ -15,10 +15,6 @@ import { useEffect } from "react";
 // No state and no re-renders: it only moves its own divs. It redraws on
 // scroll, on resize, and for a short while after anything in the page
 // changes (a screen sliding in moves its scroller without scrolling it).
-//
-// LEFT WHEN ASKED (Pato, MESITA-4271: "also add really thin scrollbar in the
-// left side of latral men"): a scroller with `data-scrollbar-left` gets its
-// thumb at its left edge instead (Home's family rail).
 
 const SELECTOR = ".scrollbar-thin-dark:not([data-home-scroller])";
 const INSET = 2;
@@ -32,8 +28,7 @@ export function OverlayScrollbars() {
     layer.dataset.overlayScrollbars = "";
     // Above the route and local overlays' surfaces; a covered thumb is
     // hidden by the hit test below, so the order only matters at the edge.
-    layer.style.cssText =
-      "position:fixed;inset:0;pointer-events:none;z-index:135;overflow:hidden";
+    layer.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:135;overflow:hidden";
     document.body.appendChild(layer);
 
     const thumbs = new Map<HTMLElement, HTMLDivElement>();
@@ -76,27 +71,16 @@ export function OverlayScrollbars() {
         const r = el.getBoundingClientRect();
         const { scrollHeight, clientHeight, scrollTop } = el;
         const track = r.height - INSET * 2;
-        if (
-          r.width <= 0 ||
-          track <= MIN_THUMB ||
-          scrollHeight <= clientHeight + 1
-        ) {
+        if (r.width <= 0 || track <= MIN_THUMB || scrollHeight <= clientHeight + 1) {
           thumb.style.display = "none";
           continue;
         }
         const h = Math.max(MIN_THUMB, (track * clientHeight) / scrollHeight);
-        const progress = Math.min(
-          1,
-          Math.max(0, scrollTop / (scrollHeight - clientHeight)),
-        );
-        const left = el.hasAttribute("data-scrollbar-left");
-        const x = left ? r.left + INSET : r.right - INSET - WIDTH;
+        const progress = Math.min(1, Math.max(0, scrollTop / (scrollHeight - clientHeight)));
+        const x = r.right - INSET - WIDTH;
         const y = r.top + INSET + (track - h) * progress;
         // Hidden when something else is on top of the scroller there.
-        const hit = document.elementFromPoint(
-          left ? x + WIDTH + 4 : x - 4,
-          y + h / 2,
-        );
+        const hit = document.elementFromPoint(x - 4, y + h / 2);
         if (!hit || !el.contains(hit)) {
           thumb.style.display = "none";
           continue;
@@ -119,12 +103,7 @@ export function OverlayScrollbars() {
       track();
       kick();
     });
-    changes.observe(document.body, {
-      subtree: true,
-      childList: true,
-      attributes: true,
-      attributeFilter: ["class", "data-state", "hidden"],
-    });
+    changes.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "data-state", "hidden"] });
     const onWindow = () => kick();
     window.addEventListener("resize", onWindow);
 
@@ -136,8 +115,7 @@ export function OverlayScrollbars() {
       changes.disconnect();
       resize.disconnect();
       window.removeEventListener("resize", onWindow);
-      for (const el of thumbs.keys())
-        el.removeEventListener("scroll", onScroll);
+      for (const el of thumbs.keys()) el.removeEventListener("scroll", onScroll);
       layer.remove();
     };
   }, []);
