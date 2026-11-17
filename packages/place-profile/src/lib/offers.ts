@@ -38,7 +38,11 @@ export type OfferInput = {
 // ONE COLOUR PER KIND (Pato, 2026-11-16, MESITA-4207): the sizes green,
 // Welcome blue, Story pink like Instagram, soft tints with black ink, the
 // Offers page's own chip colours. Link green (bg-green-400) for all before.
-const GREEN = "bg-green-200 text-neutral-950";
+// THE GREEN IS STRIPE LINK'S (Pato, 2026-11-17, MESITA-4210: "MAKE THE DARK
+// GREEN BACK AGAIN. USING THE STRIPE LINK COLORS KINDA"): #00D66F, black ink;
+// MESITA-4207's pale green-200 is gone. Blue and pink stay soft.
+const LINK_GREEN = "bg-[#00D66F] text-neutral-950";
+const GREEN = LINK_GREEN;
 const BLUE = "bg-blue-200 text-neutral-950";
 const PINK = "bg-pink-200 text-neutral-950";
 

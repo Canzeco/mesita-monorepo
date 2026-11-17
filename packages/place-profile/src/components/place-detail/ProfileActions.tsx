@@ -94,7 +94,8 @@ const ROW_LEAD = "flex w-13 shrink-0 flex-col items-center justify-center gap-1"
 // at 14px so "+100% Bonus" fits a 360px phone (18px before, MESITA-4167).
 const ROW_CHIP = "relative min-w-0 flex-1 overflow-hidden rounded-md text-sm leading-tight font-extrabold tabular-nums";
 const RESERVE_CHIP = "bg-[#DA3743] text-white";
-const OFFERS_CHIP = "bg-green-200 text-neutral-950";
+// Stripe Link green, the offers' one green (MESITA-4210).
+const OFFERS_CHIP = "bg-[#00D66F] text-neutral-950";
 const OFF_CHIP = "bg-paper/15 text-paper/70 flex items-center justify-center";
 
 // The reservation button's tones: green once confirmed, grey while booking.
