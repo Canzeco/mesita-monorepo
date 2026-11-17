@@ -528,8 +528,10 @@ export type VoucherOffer = {
 
 /** The Offers page's voucher list: TWO PANELS BY HOW MANY YOU CAN BUY
  *  (Pato, 2026-11-16, MESITA-4203: "both are prepayments ... IDK" → "Yes,
- *  rename"): Limited Vouchers (Welcome one per place, Story and VIP one per
- *  visit), then Unlimited Vouchers, the three sizes, as many as you like.
+ *  rename"): SPECIAL OFFERS (Welcome one per place, Story and VIP one per
+ *  visit), then STANDARD OFFERS, the three sizes, as many as you like (Pato,
+ *  2026-11-17, MESITA-4216: "Special Offers · Standard Offers"; Limited and
+ *  Unlimited Vouchers in MESITA-4203).
  *  What the guest paid is ready at once, the bonus 3 hours later (MESITA-4214).
  *  Instant / Prepayment Vouchers in MESITA-4198. One "Prepaid Vouchers" group from MESITA-4173,
  *  Special and Bonus Vouchers in MESITA-4154. The host still opens it by
@@ -537,12 +539,12 @@ export type VoucherOffer = {
 const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<MoneyVoucherKey> }[] = [
   {
     id: "special",
-    title: "Limited Vouchers",
+    title: "Special Offers",
     keys: new Set(["voucher_welcome", "voucher_story", "voucher_vip"]),
   },
   {
     id: "prepayment",
-    title: "Unlimited Vouchers",
+    title: "Standard Offers",
     keys: new Set(["voucher_200", "voucher_1000", "voucher_5000"]),
   },
 ];
@@ -708,8 +710,8 @@ export function VouchersPane({
     // prepaid vouchers"): the body is the page background, the vouchers one
     // white panel on it, as the Reserve page's sections. White from MESITA-3486.
     <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
-      {/* TWO PANELS (Pato, 2026-11-16, MESITA-4203): Limited Vouchers
-          (Welcome · Story), then Unlimited Vouchers (Small · Medium · Big). One
+      {/* TWO PANELS (MESITA-4203; named in MESITA-4216): Special Offers
+          (Welcome · Story), then Standard Offers (Small · Medium · Big). One
           "Prepaid Vouchers" panel in MESITA-4173. Both panels share one basket
           and the one Pay at the foot. */}
       {GROUPS.map((g) => {
