@@ -30,6 +30,13 @@ describe("reserveTimes (MESITA-4176: every open half hour, next 24 hours)", () =
     expect(t).not.toContain("Tomorrow 13:00");
   });
 
+  it("a place closed for days shows its next open day by weekday (MESITA-4222)", () => {
+    const hours = week("Closed").map((r) => (r.day === "Saturday" ? { ...r, range: "12:30–20:00" } : r));
+    const t = reserveTimes({ hours_table: hours, timezone: "America/Mexico_City" }, MON_4PM).map(label);
+    expect(t[0]).toBe("Sat 12:30");
+    expect(t[t.length - 1]).toBe("Sat 19:00");
+  });
+
   it("starts at 06:00 for a place open all night", () => {
     const t = reserveTimes({ hours_table: week("00:00–23:59"), timezone: "America/Mexico_City" }, MON_4PM).map(label);
     expect(t).toContain("Tomorrow 06:00");

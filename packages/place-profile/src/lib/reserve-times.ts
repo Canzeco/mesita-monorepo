@@ -17,6 +17,12 @@ const LAST_TABLE_MINUTES = 60;
 const LEAD_MINUTES = 30;
 /** How far ahead the box looks (MESITA-4176). */
 const WINDOW_MINUTES = 24 * 60;
+/** CLOSED FOR A WHILE STILL SHOWS RED (Pato, 2026-11-17, MESITA-4222:
+ *  "reserve must be on that ... beautiful red switching thing"): with nothing
+ *  open in the next 24 hours, look up to a week ahead and show the 24 hours
+ *  from the next open time, by weekday ("Sat 12:30"). */
+const FAR_MINUTES = 7 * 24 * 60;
+const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 /** The Reserve page's slot step. */
 const STEP_MINUTES = 30;
 /** No table before 06:00 (MESITA-4185, Pato: "from 0 am to 6 am just don't
@@ -77,12 +83,16 @@ export function reserveTimes(place: Pick<PlaceDetail, "hours_table" | "timezone"
   };
   const out: ReserveTime[] = [];
   const first = Math.ceil((nowMin + LEAD_MINUTES) / STEP_MINUTES) * STEP_MINUTES;
-  for (let m = first; m <= nowMin + WINDOW_MINUTES; m += STEP_MINUTES) {
+  // The next 24 hours; if they hold nothing, the 24 hours from the next open
+  // time within a week (MESITA-4222).
+  let end = nowMin + WINDOW_MINUTES;
+  for (let m = first; m <= end || (out.length === 0 && m <= nowMin + FAR_MINUTES); m += STEP_MINUTES) {
     const d = Math.floor(m / 1440);
     const mm = m % 1440;
     if (mm < EARLIEST_MINUTE || !open(d, mm)) continue;
+    if (out.length === 0 && m > end) end = m + WINDOW_MINUTES;
     out.push({
-      day: d === 0 ? "Today" : "Tomorrow",
+      day: d === 0 ? "Today" : d === 1 ? "Tomorrow" : WEEKDAY[(today + d) % 7],
       time: `${String(Math.floor(mm / 60)).padStart(2, "0")}:${String(mm % 60).padStart(2, "0")}`,
     });
   }
