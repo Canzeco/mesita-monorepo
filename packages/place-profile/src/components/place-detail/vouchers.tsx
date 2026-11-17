@@ -107,15 +107,15 @@ const STANDARD: Product[] = [
   // MX$500 +20% (the voucher_5000 key), MX$1,000 +30%. EACH KEY ITS PRICE
   // (Pato, 2026-11-16, MESITA-4152): Small MX$200 +10%, Medium MX$1,000 +20%
   // (voucher_1000), Big MX$5,000 +30% (voucher_5000).
-  { key: "voucher_200", name: "Small", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Medium", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Bonus", brief: "As many as you like" },
-  { key: "voucher_5000", name: "Big", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Bonus", brief: "As many as you like" },
+  { key: "voucher_200", name: "Small", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Medium", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium", brief: "As many as you like" },
+  { key: "voucher_5000", name: "Big", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big", brief: "As many as you like" },
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $200.00MX.", limit: "One per place.", bonus: "100% bonus", short: "Welcome Bonus", brief: "One per place" },
-  { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $130.00MX.", limit: "One per day.", bonus: "30% bonus", short: "Story Bonus", brief: "Post a story · 1/day" },
-  { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $200.00MX.", when: "VIP guests only.", limit: "One per day.", bonus: "100% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $200.00MX.", limit: "One per place.", bonus: "100% bonus", short: "Welcome", brief: "One per place" },
+  { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $130.00MX.", limit: "One per day.", bonus: "30% bonus", short: "Story", brief: "Post a story · 1/day" },
+  { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $200.00MX.", when: "VIP guests only.", limit: "One per day.", bonus: "100% bonus", short: "VIP", brief: "VIP guests · 1/day" },
 ];
 
 /** "$1,200.00MX" from cents: always two decimals (MESITA-3767). Formatting
@@ -503,7 +503,7 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
  *  the Offers page's own words, colour and rules, formatted, never added. */
 export type VoucherOffer = {
   key: MoneyVoucherKey;
-  /** "Small Bonus" … "VIP Bonus". */
+  /** "Small" … "VIP" (MESITA-4206; "Small Bonus" … before). */
   title: string;
   /** The chip's tint and ink (the voucher's face). */
   chipClass: string;
@@ -765,7 +765,8 @@ export function VouchersPane({
             );
             const chip = (
               <span className={cn(CHIP, face.card)} aria-hidden>
-                +{p.bonus.replace(/ bonus$/, "")}
+                {/* "+20% Bonus" (Pato, 2026-11-16, MESITA-4206): the word rides the number. */}
+                +{p.bonus.replace(/ bonus$/, "")} Bonus
               </span>
             );
             return (
