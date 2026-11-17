@@ -9,7 +9,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(18);
+select plan(16);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3589'), ('00000000-0000-4000-8000-0000000b3589');
 insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a3589');
@@ -121,19 +121,6 @@ select is(
   wallet_pay_credit('00000000-0000-4000-8000-0000000a3589', '00000000-0000-4000-8000-000000013589', 5000, 'mxn', false,
     gen_random_uuid(), 'bbbbbbbbbbbbbbbbbbbbb2', null)->>'outcome',
   'paid', 'a credit-only payment by the waiter''s code also pays with every switch off');
-
--- ━━━ The MESITA-4282 bridge (MESITA-4283 drops it) ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-select is(
-  (select house_credits from public.place_payment_settings where place_id = '00000000-0000-4000-8000-000000013589'),
-  (select loyalty_cards from public.place_payment_settings where place_id = '00000000-0000-4000-8000-000000013589'),
-  'house_credits reads as a copy of loyalty_cards for EFs deployed before the rename'
-);
-select ok(
-  not has_table_privilege('anon', 'public.house_credits_contracts', 'SELECT')
-  and not has_table_privilege('authenticated', 'public.house_credits_contracts', 'SELECT')
-  and not has_table_privilege('authenticated', 'public.house_credits_contracts', 'INSERT'),
-  'the house_credits_contracts bridge view grants no client role anything'
-);
 
 select * from finish();
 rollback;

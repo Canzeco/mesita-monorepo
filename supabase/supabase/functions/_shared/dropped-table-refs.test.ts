@@ -81,6 +81,7 @@ const DROPPED_TABLES = [
   "favorites",
   "guest_make_goods",
   "guests",
+  "house_credits_contracts",
   "manager_invites",
   "managers",
   "membership_plans",
@@ -148,6 +149,7 @@ const DROPPED_TABLES = [
   "visit_member_tries",
   "visit_ticket_payments",
   "visit_tickets",
+  "wallet_house_cards",
 ] as const;
 
 /** Ordinary words a new call site could reach for — the MESITA-1719 holes. */
