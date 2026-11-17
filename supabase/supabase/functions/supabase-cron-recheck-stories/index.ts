@@ -1,25 +1,25 @@
 // Supabase Edge Function — supabase-cron-recheck-stories (internal)
 //
-// MESITA-4264: pg_cron calls it every 10 minutes (job `recheck-stories`).
-// One tick:
-//   1. voids the bonus of Stories nobody approved within 7 days
-//      (wallet_expire_stories; the paid credit stays);
-//   2. re-checks approved Stories whose story_recheck_at has come (at most
-//      50): one storyStillUp fetch each (Range bytes=0-0, 10 s timeout), 10
-//      at a time, no new row after 100 seconds, then
+// MESITA-4264, MESITA-4296: pg_cron calls it every 10 minutes (job
+// `recheck-stories`). One tick:
+//   1. re-checks claimed Stories whose story_recheck_at (payment + 3 hours)
+//      has come (at most 50): one storyStillUp fetch each (Range bytes=0-0,
+//      10 s timeout), 10 at a time, no new row after 100 seconds, then
 //      wallet_settle_story_recheck releases the bonus or counts a failure
-//      (three, 10 minutes apart, void it). Real Meta mentions are not
-//      fetched until story_recheck_meta is on (the P9 spike): released as is;
-//   3. deletes unclaimed mentions older than 24 hours (claimed ones stay as
-//      the proof behind a bonus);
-//   4. with Meta on, fills a mention's missing handle from its sender IGSID
+//      (three, 10 minutes apart, void it; a story past its own 24 hours is
+//      released). Real Meta mentions are not fetched until story_recheck_meta
+//      is on (the P9 spike): released as is;
+//   2. deletes unclaimed mentions older than 24 hours that no live purchase
+//      reserves (wallet_purge_story_mentions; claimed ones stay as the proof
+//      behind a bonus);
+//   3. with Meta on, fills a mention's missing handle from its sender IGSID
 //      (3 tries).
 // One bad row logs a JSON line and the batch goes on.
 //
 // Body: {} | { purchase_id }  (one purchase re-checked now, whatever its
 //        story_recheck_at; the same service-role caller)
 // Response: { ok: true, processed, released, voided, failed, skipped,
-//             expired, swept, handles_filled }
+//             swept, handles_filled }
 // Auth: verify_jwt = true + requireInternalRequest (the pg_cron vault key).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -47,22 +47,15 @@ serveJson("supabase-cron-recheck-stories", async (req) => {
     return json({ ok: true, ...report });
   }
 
-  let expired = 0;
-  {
-    const { data, error } = await admin.rpc("wallet_expire_stories", { p_limit: STORY_RULES.rowsPerTick });
-    if (error) console.error(`[${FN}]`, JSON.stringify({ step: "expire", error: error.message }));
-    else expired = Number(data ?? 0);
-  }
-
   const rows = await recheckRows(admin, new Date().toISOString(), STORY_RULES.rowsPerTick);
   const report = await runStoryRecheck(admin, rows, rules.recheckMeta);
 
   let swept = 0;
   {
     const before = new Date(Date.now() - STORY_RULES.mentionLifeSec * 1000).toISOString();
-    const { data, error } = await admin.from("story_mentions").delete().is("purchase_id", null).lt("mentioned_at", before).select("id");
+    const { data, error } = await admin.rpc("wallet_purge_story_mentions", { p_before: before });
     if (error) console.error(`[${FN}]`, JSON.stringify({ step: "sweep", error: error.message }));
-    else swept = (data ?? []).length;
+    else swept = Number(data ?? 0);
   }
 
   let handlesFilled = 0;
@@ -88,7 +81,7 @@ serveJson("supabase-cron-recheck-stories", async (req) => {
     }
   }
 
-  const out = { ...report, expired, swept, handles_filled: handlesFilled };
+  const out = { ...report, swept, handles_filled: handlesFilled };
   console.log(`[${FN}]`, JSON.stringify(out));
   return json({ ok: true, ...out });
 });

@@ -1,4 +1,4 @@
-// The Story bonus's re-check (MESITA-4264), shared by
+// The Story bonus's re-check (MESITA-4264, from payment since MESITA-4296), shared by
 // supabase-cron-recheck-stories and the operator's recheck_now: read the
 // due purchases with the mention each claimed, fetch each story again
 // (storyStillUp), and hand the answer to wallet_settle_story_recheck.
@@ -26,11 +26,12 @@ async function withMentions(admin: SupabaseClient, ids: string[]): Promise<Reche
   });
 }
 
-/** Approved Stories with no bonus decision whose re-check time has come. */
+/** Claimed Stories (story_activated_at set at the credit) with no bonus
+ *  decision whose re-check time has come. */
 export async function recheckRows(admin: SupabaseClient, nowIso: string, limit: number): Promise<RecheckRow[]> {
   const { data, error } = await admin.from("wallet_purchases")
     .select("id")
-    .eq("voucher", "voucher_story").eq("story_review", "approved").is("story_bonus", null)
+    .eq("voucher", "voucher_story").not("story_activated_at", "is", null).is("story_bonus", null)
     .lte("story_recheck_at", nowIso)
     .order("story_recheck_at", { ascending: true })
     .limit(limit);

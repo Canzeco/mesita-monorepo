@@ -346,13 +346,15 @@ export async function readInstagramSyncState(
     ok: true;
     handle: string | null;
     followers: number | null;
+    /** MESITA-4263: null when not known yet. */
+    isPrivate: boolean | null;
     deleted: boolean;
   }
   | { ok: false; error: string }
 > {
   const { data, error } = await admin
     .from("consumers")
-    .select("instagram_handle, instagram_followers_count, deleted_at")
+    .select("instagram_handle, instagram_followers_count, instagram_is_private, deleted_at")
     .eq("id", consumerId)
     .maybeSingle();
   if (error) return { ok: false, error: error.message };
@@ -360,6 +362,7 @@ export async function readInstagramSyncState(
     ok: true,
     handle: (data?.instagram_handle as string | null) ?? null,
     followers: (data?.instagram_followers_count as number | null) ?? null,
+    isPrivate: (data?.instagram_is_private as boolean | null) ?? null,
     deleted: Boolean(data?.deleted_at),
   };
 }

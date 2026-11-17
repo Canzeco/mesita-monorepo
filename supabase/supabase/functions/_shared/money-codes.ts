@@ -89,6 +89,17 @@ export const MONEY_CODES = [
   // Story with live payments while Meta is off (MESITA-4264): no way to
   // verify the story, so the buy is refused
   "story_unavailable",
+  // Story verified before payment (MESITA-4296): the account must be public;
+  // the buy names the story the guest showed, which must still be theirs,
+  // free, young enough and of the same mode; a Story is paid alone; a payment
+  // for the same story still in flight blocks a second one
+  "private_account",
+  "story_not_found",
+  "story_taken",
+  "story_too_old",
+  "story_livemode",
+  "story_one_per_basket",
+  "story_payment_in_progress",
 ] as const;
 
 export type MoneyCode = (typeof MONEY_CODES)[number];
