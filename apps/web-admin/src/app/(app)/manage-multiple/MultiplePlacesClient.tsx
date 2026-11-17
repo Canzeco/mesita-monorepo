@@ -10,6 +10,7 @@ import { SectionCard } from "@/components/admin-ui";
 import { SearchTab } from "./SearchTab";
 import { MesitaSearchTab } from "./MesitaSearchTab";
 import { WriteBox } from "./WriteBox";
+import { RepickFamiliesCard } from "./RepickFamiliesCard";
 import { parseGooglePlaceIds } from "./google-place-ids";
 import { LEGACY_HASHES, PIPELINE_STEPS, WRITE_BOX_ACTIONS, type PipelineStepId } from "./pipeline";
 import { PipelineNav } from "./PipelineNav";
@@ -172,6 +173,8 @@ export function MultiplePlacesClient() {
       >
         {box("delete")}
       </Step>
+
+      <RepickFamiliesCard />
     </div>
   );
 }

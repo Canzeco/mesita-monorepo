@@ -8,6 +8,8 @@ export type FamilyRow = {
   label: string;
   emoji: string;
   sortOrder: number;
+  /** What the family means to the Description prompt (MESITA-4238). */
+  meaning?: string;
 };
 
 export type GoogleCategoryRow = {

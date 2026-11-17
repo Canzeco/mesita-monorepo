@@ -24,6 +24,7 @@ import { fetchPlaceTags, pickVocabularyTags } from "../_shared/tags.ts";
 import { fetchPlaceFamilies } from "../_shared/categories.ts";
 import {
   familiesToStore,
+  familyHintLine,
   familyVocabularyLines,
   isGoogleCategoryEnabled,
   mainGoogleCategory,
@@ -185,6 +186,7 @@ async function fillAtlasProfileInner(
       googleTags,
       tagVocabulary: [...tagSlugs],
       familyVocabulary: enabled ? familyVocabularyLines(familyVocabulary) : [],
+      familyHint: familyHintLine(saved.google_types, saved.category),
       // The franchise rule's anchor: a chain branch is named brand + zone.
       zone: anchor.zone,
       city: anchor.city,

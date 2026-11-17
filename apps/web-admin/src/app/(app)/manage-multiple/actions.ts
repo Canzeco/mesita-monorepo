@@ -548,3 +548,40 @@ export async function enrichPlacesAll(
   );
   return Object.fromEntries(rows.flat());
 }
+
+// ── Re-pick families (MESITA-4238) ─────────────────────────────────────────
+
+export type RepickRow = {
+  place_id: string;
+  name: string;
+  main_category: string | null;
+  before: string[] | null;
+  after: string[] | null;
+  outcome: "written" | "skipped" | "kept" | "failed" | "proposed";
+  reason?: string;
+  error?: string;
+};
+
+export type RepickReply = {
+  run_id: string;
+  dry_run: boolean;
+  model: string;
+  rows: RepickRow[];
+  counts: Record<string, number>;
+  next_cursor: string | null;
+  done: boolean;
+  total?: number;
+};
+
+/** One call to admin-web-repick-families: a dry-run count or one live batch. */
+export async function repickFamilies(body: {
+  dryRun?: boolean;
+  cursor?: string | null;
+  batch?: number;
+  run_id?: string;
+  place_ids?: string[];
+}): Promise<Result<RepickReply>> {
+  const r = await efInvoke<RepickReply>("admin-web-repick-families", body);
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data };
+}

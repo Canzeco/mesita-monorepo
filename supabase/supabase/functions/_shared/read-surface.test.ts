@@ -179,6 +179,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/smoke-enrich.ts", // the smoke fixture's id by its Google id (MESITA-2803)
   "_shared/agent-enrich.ts", // the agent Enrich's place ids by Google id (MESITA-3242)
   "_shared/reservation-confirm.ts", // lng only, for the on-the-spot confirm's reminder (MESITA-2981)
+  "_shared/families-repick.ts", // families, texts and operator marks a family re-pick compares (MESITA-4238)
   "_shared/reservation-call-outcome.ts", // hours, lng, name, photos for a finished call's outcome (MESITA-3618)
   "admin-web-search-places/index.ts",
   // The place screen's one read, admin's and the Business app's (MESITA-3103).

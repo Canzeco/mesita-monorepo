@@ -17,6 +17,7 @@
 // cost (async ack, separate deploy boundary, cron claim). Every internal
 // endpoint runs requireInternalCaller, and internal-callers.test.ts holds
 // this list to the code and to verify_jwt = true:
+//   admin-web-repick-families
 //   supabase-cron-bill-fees
 //   supabase-cron-refresh-instagram-token
 //   supabase-cron-retry-reservations
@@ -31,6 +32,9 @@
 // enricher-edgefunc-write-place and enricher-edgefunc-sync-sources are not on
 // it: Render calls them with ENRICH_WRITE_KEY on verify_jwt = false, so this
 // role check must never guard them (see the invariant below).
+// admin-web-repick-families is the one admin EF on the list: it takes a
+// super-admin JWT OR a service-role bearer, so the agent can run the families
+// eval and re-pick without Pato's OTP sign-in (MESITA-4238).
 //
 // Wire protocol:
 //   1. The caller sends `Authorization: Bearer <service_role JWT or

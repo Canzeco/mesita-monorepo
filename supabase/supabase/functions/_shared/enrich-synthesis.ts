@@ -12,7 +12,7 @@ import {
   QUALITY_MODEL,
 } from "./enrich-config.ts";
 import { MAX_PLACE_TAGS } from "./tags.ts";
-import { FAMILIES_RULE } from "./families-infer.ts";
+import { familiesRule } from "./families-infer.ts";
 import { ZONE_RULE } from "./zone-infer.ts";
 import {
   type ProfileResult,
@@ -64,6 +64,8 @@ export async function synthesizeProfile(input: {
   tagVocabulary?: string[];
   /** `slug — Label` lines the model may pick Mesita Families from (MESITA-2891). */
   familyVocabulary?: string[];
+  /** Google's cuisine suggestion line (familyHintLine, MESITA-4238). */
+  familyHint?: string;
   // The branch anchor for the FRANCHISE RULE below, and the hint the Mesita
   // Zone is read from (MESITA-2937): zone is Google's colonia / neighborhood
   // when it names one, city the fallback.
@@ -79,7 +81,7 @@ export async function synthesizeProfile(input: {
   const {
     openaiKey, model, name, locationLine, category, zone, city, igBio,
     googleReviewsText, serpSummary, googleTypes, googleTags, tagVocabulary,
-    familyVocabulary,
+    familyVocabulary, familyHint,
   } = input;
 
   // Where this branch actually is — the qualifier the franchise rule spends.
@@ -108,6 +110,7 @@ export async function synthesizeProfile(input: {
     grounding,
     tagVocabulary: tagVocabulary ?? [],
     familyVocabulary: familyVocabulary ?? [],
+    familyHint: familyHint ?? "",
   });
 
   const systemContent = PRESENTATION_INSTRUCTIONS;
@@ -158,6 +161,8 @@ export function buildPresentationInput(place: {
   grounding: string;
   tagVocabulary?: string[];
   familyVocabulary?: string[];
+  /** Google's cuisine suggestion line (familyHintLine, MESITA-4238). */
+  familyHint?: string;
 }): string {
   const { name, locationLine, category, branchAnchor, grounding } = place;
   const vocabulary = place.tagVocabulary ?? [];
@@ -202,7 +207,7 @@ export function buildPresentationInput(place: {
     `"tags" are Mesita tags: up to ${MAX_PLACE_TAGS} slugs copied VERBATIM ` +
     `from the TAG VOCABULARY below that the sources clearly support (service, ` +
     `vibe, drinks, occasion, amenities…); [] when none is supported. ` +
-    (familyLines.length ? `${FAMILIES_RULE} ` : "") +
+    (familyLines.length ? `${familiesRule("enrich")} ` : "") +
     `${ZONE_RULE} ` +
     `"description" and ` +
     `every other text field MUST be a single JSON string — never an array or ` +
@@ -210,6 +215,7 @@ export function buildPresentationInput(place: {
     `Never invent ratings, reviewer quotes, prices, or a chef's name.` +
     (vocabulary.length ? `\n\nTAG VOCABULARY: ${vocabulary.join(", ")}` : "") +
     (familyLines.length ? `\n\nFAMILY LIST:\n${familyLines.join("\n")}` : "") +
+    (familyLines.length && place.familyHint ? `\n${place.familyHint}` : "") +
     (branchAnchor
       ? `\n\nLOCATION ANCHOR (the franchise rule spends this; the zone is read from it): ${branchAnchor}`
       : "") +

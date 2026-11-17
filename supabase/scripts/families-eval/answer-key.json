@@ -1,0 +1,992 @@
+{
+ "seed": "mesita-4238-2026-11-17",
+ "created": "2026-11-17",
+ "labellers": "two blind subagents; labels = agreed pairs",
+ "agreement": {
+  "american": 1.0,
+  "arabic": 1.0,
+  "asian": 1.0,
+  "breakfast": 0.83,
+  "burgers": 1.0,
+  "coffee": 0.88,
+  "dinner": 0.81,
+  "drinks": 1.0,
+  "european": 1.0,
+  "fancy": 1.0,
+  "healthy": 1.0,
+  "italian": 0.5,
+  "japanese": 1.0,
+  "mexican": 1.0,
+  "music": 1.0,
+  "night_out": 1.0,
+  "pizza": 0.0,
+  "quick_bite": 0.75,
+  "seafood": 1.0,
+  "steak": 0.8,
+  "sushi": 1.0,
+  "tacos": 1.0
+ },
+ "places": [
+  {
+   "place_id": "2010cf5d-54c7-4510-b37f-c56751a9e050",
+   "google_place_id": "ChIJTYznuTA90i0RYbfzR4hnMkM",
+   "name": "Mozaic",
+   "google_types": [
+    "fine_dining_restaurant",
+    "cocktail_bar",
+    "french_restaurant",
+    "wine_bar",
+    "european_restaurant",
+    "bar",
+    "family_restaurant",
+    "restaurant"
+   ],
+   "category": "fine_dining_restaurant",
+   "labels": [
+    "dinner",
+    "european",
+    "fancy"
+   ],
+   "contested": [],
+   "snapshot": [
+    "dinner",
+    "drinks",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "34ecfa83-0578-48d5-be1b-2c4dfdf07d85",
+   "google_place_id": "ChIJaesIUfa9YoYRl2inUvmmhn4",
+   "name": "Hatxa",
+   "google_types": [
+    "spanish_restaurant",
+    "european_restaurant",
+    "restaurant"
+   ],
+   "category": "spanish_restaurant",
+   "labels": [
+    "dinner",
+    "european"
+   ],
+   "contested": [],
+   "snapshot": [
+    "dinner",
+    "drinks",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "abe640b4-330d-4630-bc1f-9cb4b2b26048",
+   "google_place_id": "ChIJQzuUUWqYYoYRhHBnIqInuQc",
+   "name": "El Costeñito",
+   "google_types": [
+    "seafood_restaurant",
+    "bar_and_grill",
+    "mexican_restaurant",
+    "bar",
+    "restaurant"
+   ],
+   "category": "seafood_restaurant",
+   "labels": [
+    "mexican",
+    "seafood"
+   ],
+   "contested": [],
+   "snapshot": [
+    "seafood",
+    "mexican",
+    "dinner",
+    "drinks",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "76ad9c83-ccc9-4ebd-af2a-2daa9ab7dee2",
+   "google_place_id": "ChIJMQMSGlXHYoYRvTUDPQHF4Vw",
+   "name": "The Food Box Tanarah",
+   "google_types": [
+    "hamburger_restaurant",
+    "american_restaurant",
+    "restaurant"
+   ],
+   "category": "hamburger_restaurant",
+   "labels": [
+    "american",
+    "burgers"
+   ],
+   "contested": [
+    "quick_bite"
+   ],
+   "snapshot": [
+    "burgers",
+    "dinner",
+    "drinks",
+    "family",
+    "quick_bite"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "5835e9ff-401c-4a2e-a42b-1bec958dcbb6",
+   "google_place_id": "ChIJGYnnmiFH0i0RscaeM-Sx3t8",
+   "name": "Made's Warung Seminyak",
+   "google_types": [
+    "indonesian_restaurant",
+    "western_restaurant",
+    "restaurant"
+   ],
+   "category": "indonesian_restaurant",
+   "labels": [
+    "asian"
+   ],
+   "contested": [],
+   "snapshot": [
+    "dinner",
+    "drinks",
+    "family",
+    "tourist"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "3e710afc-97ee-435c-b25f-7d4053dc02bc",
+   "google_place_id": "ChIJj8vXcIW9YoYRTlO5tDsFQjY",
+   "name": "Bardot",
+   "google_types": [
+    "french_restaurant",
+    "european_restaurant",
+    "restaurant"
+   ],
+   "category": "french_restaurant",
+   "labels": [
+    "dinner",
+    "european"
+   ],
+   "contested": [],
+   "snapshot": [
+    "dinner",
+    "fancy",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "468b1218-8ea7-415d-ab04-9b8d8fa9e69a",
+   "google_place_id": "ChIJu5nMkne_YoYR4ox0LHXblhY",
+   "name": "Mariscos El Gordo",
+   "google_types": [
+    "seafood_restaurant",
+    "restaurant"
+   ],
+   "category": "seafood_restaurant",
+   "labels": [
+    "mexican",
+    "seafood"
+   ],
+   "contested": [],
+   "snapshot": [
+    "seafood",
+    "dinner",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "20cf308e-24d9-48b6-80cb-94e006a6ea86",
+   "google_place_id": "ChIJTSYEVxdH0i0REnr1UbzYT3A",
+   "name": "Ultimo Restaurant",
+   "google_types": [
+    "italian_restaurant",
+    "european_restaurant",
+    "restaurant"
+   ],
+   "category": "italian_restaurant",
+   "labels": [
+    "dinner",
+    "italian"
+   ],
+   "contested": [],
+   "snapshot": [
+    "italian",
+    "dinner",
+    "family",
+    "drinks"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "b5f087f9-a6e5-4500-a4af-fbc701d87b4a",
+   "google_place_id": "ChIJm_sdCNNc0i0RIJmaIzLcoJA",
+   "name": "Kayuputi",
+   "google_types": [
+    "fine_dining_restaurant",
+    "bar",
+    "restaurant"
+   ],
+   "category": "fine_dining_restaurant",
+   "labels": [
+    "asian",
+    "dinner",
+    "fancy"
+   ],
+   "contested": [],
+   "snapshot": [
+    "dinner",
+    "drinks",
+    "fancy"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "fea6ec16-6f9b-4e00-a118-6c14b6cbb4c1",
+   "google_place_id": "ChIJpdgeNt29YoYRCiIzBqlKs58",
+   "name": "Hotaru Highpark",
+   "google_types": [
+    "japanese_restaurant",
+    "sushi_restaurant",
+    "restaurant"
+   ],
+   "category": "japanese_restaurant",
+   "labels": [
+    "japanese",
+    "sushi"
+   ],
+   "contested": [],
+   "snapshot": [
+    "japanese",
+    "sushi",
+    "dinner",
+    "family",
+    "drinks"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "eaf53382-22ef-49a7-a87b-c9b717f907dd",
+   "google_place_id": "ChIJcfxIJo850i0RsrveoncQeBs",
+   "name": "Shelter Restaurant",
+   "google_types": [
+    "middle_eastern_restaurant",
+    "restaurant"
+   ],
+   "category": "middle_eastern_restaurant",
+   "labels": [
+    "arabic",
+    "dinner"
+   ],
+   "contested": [],
+   "snapshot": [
+    "dinner",
+    "drinks",
+    "healthy"
+   ],
+   "amenity_text": false
+  },
+  {
+   "place_id": "d8979639-49ac-40ce-9342-b6ef224e1c8e",
+   "google_place_id": "ChIJ6_yMT-e9YoYRUdC6bChhDAI",
+   "name": "La Gran Barra",
+   "google_types": [
+    "fine_dining_restaurant",
+    "restaurant"
+   ],
+   "category": "fine_dining_restaurant",
+   "labels": [
+    "dinner",
+    "fancy"
+   ],
+   "contested": [],
+   "snapshot": [
+    "dinner",
+    "fancy",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "bd771097-cab3-452d-8dc1-d7762c1f52d4",
+   "google_place_id": "ChIJuWpfwms90i0RmUc7F9E9hGY",
+   "name": "Clear Cafe",
+   "google_types": [
+    "cafe"
+   ],
+   "category": "cafe",
+   "labels": [
+    "breakfast",
+    "healthy"
+   ],
+   "contested": [
+    "coffee"
+   ],
+   "snapshot": [
+    "coffee",
+    "breakfast",
+    "healthy",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "f10cd28f-e7ce-4442-8f8e-125ef6c99dfc",
+   "google_place_id": "ChIJd_4RIFe_YoYRVLcJ7_l1tWc",
+   "name": "Café + Brunch Noyolo",
+   "google_types": [
+    "brunch_restaurant",
+    "restaurant"
+   ],
+   "category": "brunch_restaurant",
+   "labels": [
+    "breakfast",
+    "coffee"
+   ],
+   "contested": [],
+   "snapshot": [
+    "breakfast",
+    "coffee",
+    "healthy",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "232dcb90-ad90-460a-adfe-555a12c5fd0c",
+   "google_place_id": "ChIJ_fmIEG1H0i0RccVPKwLHHBE",
+   "name": "Watercress Batu Belig",
+   "google_types": [
+    "cafe",
+    "brunch_restaurant",
+    "breakfast_restaurant",
+    "acai_shop",
+    "western_restaurant",
+    "coffee_shop",
+    "brazilian_restaurant",
+    "food_store",
+    "event_venue",
+    "bar",
+    "restaurant",
+    "store"
+   ],
+   "category": "cafe",
+   "labels": [
+    "breakfast",
+    "coffee"
+   ],
+   "contested": [],
+   "snapshot": [
+    "coffee",
+    "breakfast",
+    "healthy",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "e0ab5d4f-46f2-46e7-babd-83fdbb66866c",
+   "google_place_id": "ChIJU__zd_y_YoYR4vK93jeBnvg",
+   "name": "Kefi Slow Coffee & Matcha Bar",
+   "google_types": [
+    "coffee_shop",
+    "cafe",
+    "food_store",
+    "store"
+   ],
+   "category": "coffee_shop",
+   "labels": [
+    "coffee"
+   ],
+   "contested": [],
+   "snapshot": [
+    "coffee",
+    "breakfast",
+    "healthy",
+    "quick_bite"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "e2a8145c-6d79-4e90-ad25-216cb9f768c1",
+   "google_place_id": "ChIJWZAsPXi9YoYRIB_826JUNJc",
+   "name": "El Bambis Café",
+   "google_types": [
+    "coffee_shop",
+    "cafe",
+    "food_store",
+    "store"
+   ],
+   "category": "coffee_shop",
+   "labels": [
+    "coffee"
+   ],
+   "contested": [
+    "breakfast"
+   ],
+   "snapshot": [
+    "coffee",
+    "breakfast",
+    "healthy",
+    "quick_bite"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "09730ba0-82b1-41f9-b6c7-a3e8ae1f5506",
+   "google_place_id": "ChIJOaEQDnk40i0Rzhou4NcRx-w",
+   "name": "Crate Cafe",
+   "google_types": [
+    "cafe",
+    "breakfast_restaurant",
+    "vegan_restaurant",
+    "vegetarian_restaurant",
+    "brunch_restaurant",
+    "restaurant"
+   ],
+   "category": "cafe",
+   "labels": [
+    "breakfast",
+    "coffee",
+    "healthy"
+   ],
+   "contested": [],
+   "snapshot": [
+    "coffee",
+    "breakfast",
+    "healthy",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "6d0e70cb-c767-41d4-82aa-d6bdfc114c4c",
+   "google_place_id": "ChIJMY56QXlH0i0RjcgOQcZWDXU",
+   "name": "Milk & Madu Berawa",
+   "google_types": [
+    "cafe",
+    "brunch_restaurant",
+    "breakfast_restaurant",
+    "playground",
+    "coffee_shop",
+    "pizza_restaurant",
+    "food_store",
+    "bar",
+    "family_restaurant",
+    "restaurant",
+    "store"
+   ],
+   "category": "cafe",
+   "labels": [
+    "breakfast",
+    "coffee"
+   ],
+   "contested": [
+    "pizza"
+   ],
+   "snapshot": [
+    "coffee",
+    "breakfast",
+    "dinner",
+    "family",
+    "pizza",
+    "burgers"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "ae296061-0d5c-43a6-ab0d-b411353339fd",
+   "google_place_id": "ChIJ64kDGgC_YoYRPvSqw_zp44Y",
+   "name": "Café Azúcar Morena",
+   "google_types": [
+    "coffee_shop",
+    "cafe",
+    "food_store",
+    "store"
+   ],
+   "category": "coffee_shop",
+   "labels": [
+    "coffee"
+   ],
+   "contested": [],
+   "snapshot": [
+    "coffee",
+    "breakfast",
+    "healthy",
+    "quick_bite",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "b21eed54-2d0b-4b23-aa86-9e9c9c81c3fb",
+   "google_place_id": "ChIJ94zSm369YoYRqcc5s25NZ8U",
+   "name": "Botanero Moritas San Pedro",
+   "google_types": [
+    "bar_and_grill",
+    "mexican_restaurant",
+    "bar",
+    "restaurant"
+   ],
+   "category": "bar_and_grill",
+   "labels": [
+    "drinks",
+    "mexican"
+   ],
+   "contested": [],
+   "snapshot": [
+    "mexican",
+    "dinner",
+    "drinks",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "0dfe24d8-7e03-4493-a24c-55c1366aa6a6",
+   "google_place_id": "ChIJ21XBrn040i0Rjf7GPV4so38",
+   "name": "Old Man's",
+   "google_types": [
+    "bar",
+    "pub",
+    "live_music_venue",
+    "night_club",
+    "event_venue",
+    "restaurant"
+   ],
+   "category": "bar",
+   "labels": [
+    "drinks",
+    "music",
+    "night_out"
+   ],
+   "contested": [],
+   "snapshot": [
+    "drinks",
+    "dinner",
+    "fun",
+    "family",
+    "tourist"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "872395d1-f718-46ec-b63b-3bfaa82512a4",
+   "google_place_id": "ChIJiQdg1YdH0i0R8ANUMzZizN0",
+   "name": "The Lawn Canggu Beach Club",
+   "google_types": [
+    "bar",
+    "restaurant"
+   ],
+   "category": "bar",
+   "labels": [
+    "drinks"
+   ],
+   "contested": [],
+   "snapshot": [
+    "drinks",
+    "dinner",
+    "tacos",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "aa19036c-a75d-4133-83e3-ef92794fa134",
+   "google_place_id": "ChIJq6pBryW-YoYRJq6RzrznB18",
+   "name": "Metabrews Co",
+   "google_types": [
+    "brewpub",
+    "pub",
+    "bar",
+    "restaurant"
+   ],
+   "category": "brewpub",
+   "labels": [
+    "drinks"
+   ],
+   "contested": [],
+   "snapshot": [
+    "drinks",
+    "dinner",
+    "breakfast"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "d5312bdd-aa0c-446c-b51b-13cdb0749c08",
+   "google_place_id": "ChIJGYM6jeSVYoYRkd5k1v-ALM0",
+   "name": "Indio Azteca",
+   "google_types": [
+    "bar_and_grill",
+    "mexican_restaurant",
+    "bar",
+    "restaurant"
+   ],
+   "category": "bar_and_grill",
+   "labels": [
+    "mexican"
+   ],
+   "contested": [
+    "dinner"
+   ],
+   "snapshot": [
+    "mexican",
+    "dinner",
+    "drinks",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "806299f9-c5b1-412e-baef-e1f9a406edc7",
+   "google_place_id": "ChIJI8iNQdGZKoQRap4YCl60SSE",
+   "name": "The Normal San Luis Potosí",
+   "google_types": [
+    "bar"
+   ],
+   "category": "bar",
+   "labels": [
+    "drinks",
+    "night_out"
+   ],
+   "contested": [],
+   "snapshot": [
+    "drinks",
+    "night_out",
+    "fun"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "51651610-a87a-4ec7-b8e8-ba547375dbb1",
+   "google_place_id": "ChIJzRRQ4QJF0i0Rz9K6Oqfkl-o",
+   "name": "Rock Bar",
+   "google_types": [
+    "bar",
+    "restaurant"
+   ],
+   "category": "bar",
+   "labels": [
+    "drinks"
+   ],
+   "contested": [],
+   "snapshot": [
+    "drinks",
+    "dinner",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "0a3a7951-65dd-4fc2-b79b-6e3e4ba31383",
+   "google_place_id": "ChIJPRs8n-e9YoYRL3UZYxMRiSU",
+   "name": "Pinto Bar",
+   "google_types": [
+    "bar",
+    "restaurant"
+   ],
+   "category": "bar",
+   "labels": [
+    "drinks"
+   ],
+   "contested": [],
+   "snapshot": [
+    "drinks",
+    "dinner",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "0b7181dc-f3cc-452b-a920-80973a469e34",
+   "google_place_id": "ChIJpeDtsm090i0RX7aS5RUMUD0",
+   "name": "Kebun Bistro",
+   "google_types": [
+    "bistro",
+    "mediterranean_restaurant",
+    "french_restaurant",
+    "italian_restaurant",
+    "european_restaurant",
+    "restaurant"
+   ],
+   "category": "bistro",
+   "labels": [
+    "dinner",
+    "european"
+   ],
+   "contested": [
+    "italian"
+   ],
+   "snapshot": [
+    "dinner",
+    "family",
+    "drinks"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "037aade4-59a3-4a6d-aa93-30b75c74d524",
+   "google_place_id": "ChIJBTU4R_-9YoYRBtdH0vbdRGk",
+   "name": "El Gran Invernadero",
+   "google_types": [
+    "steak_house",
+    "breakfast_restaurant",
+    "mexican_restaurant",
+    "restaurant"
+   ],
+   "category": "steak_house",
+   "labels": [
+    "mexican",
+    "steak"
+   ],
+   "contested": [],
+   "snapshot": [
+    "steak",
+    "dinner",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "fdc90ee9-4a22-42db-b4c8-a5116ac88662",
+   "google_place_id": "ChIJp6jTP_K9YoYRGyfgVFg3B5M",
+   "name": "Verdelima Plaza Chipinque",
+   "google_types": [
+    "salad_shop",
+    "sandwich_shop",
+    "fast_food_restaurant",
+    "restaurant"
+   ],
+   "category": "salad_shop",
+   "labels": [
+    "healthy",
+    "quick_bite"
+   ],
+   "contested": [],
+   "snapshot": [
+    "healthy",
+    "quick_bite",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "e867d7ee-acc7-455d-be43-220dc8df905e",
+   "google_place_id": "ChIJEcu2F9yYKoQRYd3dA-Cfpss",
+   "name": "Gran Central",
+   "google_types": [
+    "steak_house",
+    "restaurant"
+   ],
+   "category": "steak_house",
+   "labels": [
+    "steak"
+   ],
+   "contested": [
+    "dinner"
+   ],
+   "snapshot": [
+    "steak",
+    "dinner",
+    "family",
+    "drinks"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "a3ec73f7-4f5e-4b52-927d-1bbec55a247b",
+   "google_place_id": "ChIJ__8jGIm9YoYReHRFpzUwwH4",
+   "name": "Holsteins San Pedro",
+   "google_types": [
+    "steak_house",
+    "restaurant"
+   ],
+   "category": "steak_house",
+   "labels": [
+    "dinner",
+    "steak"
+   ],
+   "contested": [],
+   "snapshot": [
+    "steak",
+    "dinner",
+    "drinks",
+    "fancy",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "8081d33a-0a16-4a96-a3de-c85e8df78e3f",
+   "google_place_id": "ChIJjcAA5wJF0i0R6hcdUEheO2k",
+   "name": "DAVA",
+   "google_types": [
+    "steak_house",
+    "fine_dining_restaurant",
+    "cocktail_bar",
+    "bar",
+    "restaurant"
+   ],
+   "category": "steak_house",
+   "labels": [
+    "dinner",
+    "fancy",
+    "steak"
+   ],
+   "contested": [],
+   "snapshot": [
+    "steak",
+    "dinner",
+    "drinks",
+    "fancy"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "13332fa3-14d5-40b6-b6e3-a34a5b6c3eed",
+   "google_place_id": "ChIJq6rqmEa-YoYRQpwsQVDW7sw",
+   "name": "Atope",
+   "google_types": [
+    "spanish_restaurant",
+    "european_restaurant",
+    "restaurant"
+   ],
+   "category": "spanish_restaurant",
+   "labels": [
+    "dinner",
+    "european"
+   ],
+   "contested": [],
+   "snapshot": [
+    "dinner",
+    "drinks",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "de70b519-4b4b-4a5b-9024-f0ddf2c8396b",
+   "google_place_id": "ChIJkVHGpKG_YoYRl3oB_sOB0bw",
+   "name": "Tacos Rafa Ahogados",
+   "google_types": [
+    "taco_restaurant",
+    "restaurant"
+   ],
+   "category": "taco_restaurant",
+   "labels": [
+    "mexican",
+    "quick_bite",
+    "tacos"
+   ],
+   "contested": [],
+   "snapshot": [
+    "tacos",
+    "quick_bite",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "a3010410-76ec-4870-9e7c-4d5dc1544074",
+   "google_place_id": "ChIJ0x7UGRRH0i0RKa1AnlBmNfQ",
+   "name": "Sangsaka Restaurant",
+   "google_types": [
+    "indonesian_restaurant",
+    "restaurant"
+   ],
+   "category": "indonesian_restaurant",
+   "labels": [
+    "asian",
+    "dinner"
+   ],
+   "contested": [],
+   "snapshot": [
+    "dinner",
+    "family",
+    "drinks"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "bdfcc757-4cfe-4636-83ee-9f42981eb49d",
+   "google_place_id": "ChIJVVX2Rwy-YoYRT3cKE-_vXEA",
+   "name": "Lilōu Monterrey",
+   "google_types": [
+    "american_restaurant",
+    "restaurant"
+   ],
+   "category": "american_restaurant",
+   "labels": [
+    "american"
+   ],
+   "contested": [
+    "dinner"
+   ],
+   "snapshot": [
+    "dinner",
+    "drinks",
+    "family"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "5ab861ed-8c88-4d1e-8cd1-8594192abd2f",
+   "google_place_id": "ChIJBQV9Kyi-YoYRQmdII6jfUAE",
+   "name": "Taquería La Mexicana",
+   "google_types": [
+    "taco_restaurant",
+    "butcher_shop",
+    "mexican_restaurant",
+    "breakfast_restaurant",
+    "food_store",
+    "manufacturer",
+    "restaurant",
+    "store",
+    "service"
+   ],
+   "category": "taco_restaurant",
+   "labels": [
+    "mexican",
+    "quick_bite",
+    "tacos"
+   ],
+   "contested": [],
+   "snapshot": [
+    "tacos",
+    "family",
+    "dinner"
+   ],
+   "amenity_text": true
+  },
+  {
+   "place_id": "ed11f35f-3e7c-4083-b2a6-40716766e694",
+   "google_place_id": "ChIJBWxfWhA50i0Rzb3CWOIu8tA",
+   "name": "Masonry Restaurant Canggu",
+   "google_types": [
+    "mediterranean_restaurant",
+    "wine_bar",
+    "bar_and_grill",
+    "australian_restaurant",
+    "cocktail_bar",
+    "bar",
+    "european_restaurant",
+    "steak_house",
+    "restaurant"
+   ],
+   "category": "mediterranean_restaurant",
+   "labels": [
+    "dinner",
+    "european"
+   ],
+   "contested": [
+    "steak"
+   ],
+   "snapshot": [
+    "dinner",
+    "drinks",
+    "family"
+   ],
+   "amenity_text": true
+  }
+ ]
+}

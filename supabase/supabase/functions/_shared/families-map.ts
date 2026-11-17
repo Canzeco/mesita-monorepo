@@ -8,12 +8,15 @@
 // No category ↔ family join is returned or stored any more.
 import type { GoogleCategory, PlaceFamily } from "./categories.ts";
 import { type PlaceTag, TAG_FACETS } from "./tags.ts";
+import { FAMILY_MEANINGS } from "./families-infer.ts";
 
 export type FamiliesMapFamily = {
   slug: string;
   label: string;
   emoji: string;
   sortOrder: number;
+  /** What the family means to the Description prompt (MESITA-4238); "" if none. */
+  meaning: string;
 };
 
 export type FamiliesMapGoogleCategory = { slug: string; label: string };
@@ -59,6 +62,7 @@ export function buildFamiliesMap(
         label: f.label,
         emoji: f.emoji,
         sortOrder: f.sort_order,
+        meaning: FAMILY_MEANINGS[f.slug] ?? "",
       })),
     enabledCategories: googleCategories.filter((c) => c.enabled).map(row).sort(byLabel),
     disabledCategories: googleCategories.filter((c) => !c.enabled).map(row).sort(byLabel),

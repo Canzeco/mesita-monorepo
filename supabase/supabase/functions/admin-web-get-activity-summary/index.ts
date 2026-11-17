@@ -43,6 +43,9 @@ serveJson("admin-web-get-activity-summary", async (req) => {
       .from("admin_operator_events")
       .select("id, verb, outcome, place_id, source, detail, created_at")
       .gte("created_at", since)
+      // A families re-pick writes one undo row per place (MESITA-4238); a run
+      // of hundreds would bury every other operator verb in Recent activity.
+      .not("source", "like", "repick-families%")
       .order("created_at", { ascending: false })
       .limit(FEED_CAP),
   ]);

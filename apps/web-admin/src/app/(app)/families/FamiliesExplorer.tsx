@@ -93,15 +93,18 @@ function FamiliesList({ families }: { families: FamilyRow[] }) {
     <SectionCard
       title="Mesita Families"
       right={<Count n={families.length} />}
-      subtitle="The list the Description step picks from: one to five per place, inferred on Create and every Enrich."
+      subtitle="What the Description step picks from, carefully: about four on Create, about six after Enrich, never more than seven. Each family's meaning is what the model reads."
     >
-      <ul className="mt-4 flex flex-wrap gap-2">
+      <ul className="mt-4 divide-y divide-border">
         {families.map((family) => (
-          <li key={family.slug}>
+          <li key={family.slug} className="flex items-baseline gap-3 py-2">
             <Chip title={family.slug}>
               {family.emoji ? `${family.emoji} ` : ""}
               {family.label}
             </Chip>
+            {family.meaning ? (
+              <span className="text-muted-foreground text-sm">{family.meaning}</span>
+            ) : null}
           </li>
         ))}
       </ul>
