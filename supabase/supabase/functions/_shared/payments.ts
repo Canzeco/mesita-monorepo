@@ -16,6 +16,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { moneyState, type MoneyVoucherKey } from "./money-state.ts";
+import { readMoneyConfig } from "./money-config.ts";
 import { vouchersUpToPct } from "./money.ts";
 import { paymentsLivemode, type StripeCall } from "./stripe.ts";
 
@@ -201,9 +202,12 @@ export async function withVouchersUpTo<T extends { id: string }>(
   if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false, offers: { sell: [] } }));
   // One list page of ids, so no chunking. The account read is the shared
   // in-mode rule (MESITA-3394); a failed read reads as no Pay, as before.
-  const [settingsRes, charging] = await Promise.all([
+  // BUYING PAUSED SELLS NOTHING (autoplan eng E3, MESITA-4207): the admin
+  // console's kill switch empties every row's offers, as offerFrom does.
+  const [settingsRes, charging, config] = await Promise.all([
     admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", ids),
     chargesEnabledByPlace(admin, ids, paymentsLivemode()),
+    readMoneyConfig(admin),
   ]);
   if (settingsRes.error) {
     console.error("[payments] settings_read_failed", JSON.stringify({ code: settingsRes.error.code, message: settingsRes.error.message, places: ids.length }));
@@ -215,8 +219,9 @@ export async function withVouchersUpTo<T extends { id: string }>(
   for (const row of settingRows) settings.set(row.place_id, settingsFromRow(row));
   const charges = charging ?? new Set<string>();
   return places.map((p) => {
-    const { sell, mesita_pay } = listRowMoney(settings.get(p.id), charges.has(p.id));
-    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay, offers: { sell } };
+    const money = listRowMoney(settings.get(p.id), charges.has(p.id));
+    const sell = config.buying_paused ? [] : money.sell;
+    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay: money.mesita_pay, offers: { sell } };
   });
 }
 

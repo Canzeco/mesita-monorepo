@@ -265,16 +265,30 @@ export async function readGuestBlocks(
 }
 
 /** List rows with `offers.sell` narrowed to what this guest can buy
- *  (MESITA-4207). `vouchers_up_to_pct` and `mesita_pay` stay the place's. */
+ *  (MESITA-4207). `vouchers_up_to_pct` and `mesita_pay` stay the place's.
+ *  STORY NEEDS THE GUEST'S INSTAGRAM TOO (autoplan eng E2): Story leaves
+ *  every row when storyRefusal would refuse this guest at the buy door, so
+ *  no chip invites a purchase the guest cannot make. A failed read keeps it. */
 export async function withGuestOffers<T extends { id: string; offers: { sell: MoneyVoucherKey[] } }>(
   admin: SupabaseClient | null,
   consumerId: string | null,
   rows: T[],
 ): Promise<T[]> {
   if (!admin || !consumerId) return rows;
-  const blocks = await readGuestBlocks(admin, consumerId, rows.map((r) => r.id));
-  if (!blocks) return rows;
-  return rows.map((r) => ({ ...r, offers: { ...r.offers, sell: guestSell(r.offers.sell, blocks.get(r.id)) } }));
+  const [blocks, story] = await Promise.all([
+    readGuestBlocks(admin, consumerId, rows.map((r) => r.id)),
+    readStoryGuest(admin, consumerId).then(
+      (g) => storyRefusal("voucher_story", g) === null,
+      (e) => {
+        console.error("[vouchers] story_guest_read_failed", JSON.stringify({ message: String(e) }));
+        return true;
+      },
+    ),
+  ]);
+  return rows.map((r) => {
+    const sell = blocks ? guestSell(r.offers.sell, blocks.get(r.id)) : [...r.offers.sell];
+    return { ...r, offers: { ...r.offers, sell: story ? sell : sell.filter((k) => k !== "voucher_story") } };
+  });
 }
 
 /** The whole offer for one place and one (maybe anonymous) guest. */
