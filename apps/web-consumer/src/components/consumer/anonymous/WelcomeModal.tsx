@@ -102,7 +102,7 @@ export function WelcomeModal() {
               // create a phone, but phone sign. maybe the account already
               // created"): the Sign page's green phone button, so a
               // returning guest reads it as signing in.
-              className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-green-600 text-base font-semibold text-white shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition hover:bg-green-700 active:scale-[0.99]"
+              className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-[0.99]"
             >
               <Phone className="h-4 w-4" aria-hidden />
               Continue with phone
@@ -110,7 +110,10 @@ export function WelcomeModal() {
             <button
               type="button"
               onClick={markSeen}
-              className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold text-white"
+              // A GREY BUTTON TOO (Pato, MESITA-4287: "anonymous must also look
+              // like a button, maybe gray, and make them smaller"): both are
+              // 44px, text-sm; this one translucent grey on the photo.
+              className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-xl bg-white/20 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30 active:scale-[0.99]"
             >
               Explore anonymously
             </button>
