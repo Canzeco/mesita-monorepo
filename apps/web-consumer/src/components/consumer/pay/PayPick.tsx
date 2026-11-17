@@ -174,8 +174,12 @@ function PlaceList({
                   {p.distance_m !== null ? distanceText(p.distance_m) : null}
                   {/* THE QR (Pato, 2026-11-17, MESITA-4242: "a fictional qr at
                       the right … like you are about to generate a qr"): the
-                      row starts a bill, as Pay Bill's own QR says. */}
-                  <QrCode className="text-foreground h-6 w-6" strokeWidth={2} aria-hidden data-pay-pick-qr />
+                      row starts a bill, as Pay Bill's own QR says. MESITA-4251
+                      (Pato: "in a black box or something"): a white QR on a
+                      black chip, the Wallet's card-chip size. */}
+                  <span className="flex h-8 w-[3.2rem] items-center justify-center rounded-md bg-neutral-950 text-white" aria-hidden data-pay-pick-qr>
+                    <QrCode className="h-5 w-5" strokeWidth={2} />
+                  </span>
                   <ChevronRight className="h-4 w-4" aria-hidden />
                 </span>
               </button>
