@@ -7,6 +7,7 @@ import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions } from "../../actions";
+import { storyApproved, StoryCheckPanel, storyStepIndex, useStoryCheck } from "./story-check-panel";
 import { cn } from "../../lib/format";
 import {
   PLACE_META_CLASS,
@@ -232,7 +233,7 @@ function whole(v: string): string {
  *  says when each part is ready. Story's money is ready at once too since
  *  MESITA-4264; only its bonus waits on the story. */
 function readyIn(key: MoneyVoucherKey): string {
-  return key === "voucher_story" ? "bonus 3 hr after story approval" : "bonus in 3 hr";
+  return key === "voucher_story" ? "bonus 3 hr after you pay" : "bonus in 3 hr";
 }
 
 /** The (i)'s "Your status" line for a prepayment offer (MESITA-3502). */
@@ -324,7 +325,7 @@ export type VoucherOffer = {
   bonus: string;
   pay: string;
   get: string;
-  /** "bonus in 3 hr" or "bonus 3 hr after story approval" (MESITA-4214, MESITA-4264). */
+  /** "bonus in 3 hr" or "bonus 3 hr after you pay" (MESITA-4214, MESITA-4297). */
   ready: string;
   /** This guest can buy it now. */
   buyable: boolean;
@@ -439,32 +440,32 @@ function sheetSteps(
     case "voucher_welcome":
       return [{ Icon: PartyPopper, title: "Your first visit here", line: "One per place, only before you've ever paid here.", locked: lock }, today, later, spend];
     case "voucher_story":
-      // MESITA-4264: the money is ready at payment; the story only earns
-      // the bonus, verified from its @mesita mention and approved by staff.
-      // MESITA-4291 (Pato: "ITS TAGGING @ AND YOU ACTUALLY MENTION THE
-      // INSTAGRAM OF THE PLACE"): the story mentions @mesita and the
-      // place's own @handle, named here; each step says when.
+      // MESITA-4297 (Pato: "your story gets verified by waiter, and then you
+      // pay. then receive instant principal. don't delete story for 3 hours
+      // and in 3 hours you receive your bonus"): post, the waiter approves,
+      // pay, the bonus 3 hours after paying. MESITA-4291: the story tags
+      // @mesita and the place's own @handle, named here.
       return [
         {
           Icon: IG,
-          when: "Before you buy",
+          when: "Before you start",
           title: `Have ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")}+ Instagram followers`,
           line: "A public Instagram, linked in Me. One per visit.",
           locked: lock,
         },
-        { ...today, line: "It's yours the moment you pay, story or not." },
         {
           Icon: Camera,
-          when: "At the place",
-          title: `Post a story mentioning @mesita and ${placeHandle ? `@${placeHandle}` : "the place's Instagram"}`,
-          line: "Type both @ names in the story.",
+          when: "Right now",
+          title: `Post a story tagging @mesita and ${placeHandle ? `@${placeHandle}` : "the place's Instagram"}`,
+          line: "Turn on Paid partnership in Instagram, or add #ad.",
         },
-        { Icon: BadgeCheck, when: "Before you leave", title: "Show your QR to the staff", line: "They see your story and approve it." },
+        { Icon: BadgeCheck, when: "At the place", title: "Show your QR to the staff", line: "They see your story and approve it. After approval you have 2 hours to pay." },
+        { ...today, when: "Then", title: `Pay ${pay}, it lands instantly`, line: "Yours the moment you pay." },
         {
           Icon: Clock,
-          when: "3 hours after approval",
+          when: "3 hours after you pay",
           title: `${bonus ? `+${bonus}` : "Your"} bonus lands`,
-          line: "If your story is still up.",
+          line: "If your story is still up. Don't delete it.",
           green: true,
         },
       ];
@@ -521,6 +522,7 @@ function PaySheet({
   signedOut,
   onPay,
   onClose,
+  storyActions,
 }: {
   product: Product;
   placeName: string;
@@ -545,8 +547,17 @@ function PaySheet({
   signedOut: boolean;
   onPay: () => Promise<Receipt | null>;
   onClose: () => void;
+  /** The host's story-check actions (MESITA-4297); Story only. */
+  storyActions?: PlaceActions;
 }) {
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+  // THE WAITER APPROVES FIRST (MESITA-4297): a Story sheet with the host's
+  // check opens it, shows the QR and keeps Pay shut until it is approved.
+  const storyLive = product.key === "voucher_story" && can && Boolean(storyActions?.openStoryCheck);
+  const story = useStoryCheck(storyActions, storyLive && receipt === null);
+  const check = story.read?.ok ? story.read.check : null;
+  const currentStep = storyLive ? storyStepIndex(check) : null;
+  const approved = storyApproved(check);
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -561,10 +572,21 @@ function PaySheet({
   const cardsPending = payCards !== undefined && payCards.state !== "ready";
   const needsCard = payCards?.state === "ready" && payCard === null;
   const host = typeof document !== "undefined" ? document.getElementById("mesita-app-card") : null;
-  const button = signedOut ? "Sign in to buy" : buying ? "Paying…" : needsCard ? "Add a card to pay" : `Pay ${whole(pay)}`;
+  const storyBlocked = storyLive && !signedOut && !approved;
+  const button = signedOut
+    ? "Sign in to buy"
+    : storyBlocked
+      ? "Get your story approved first"
+      : buying ? "Paying…" : needsCard ? "Add a card to pay" : `Pay ${whole(pay)}`;
   const press = async () => {
+    if (storyLive && !signedOut) {
+      // Read the check once more right before paying: the 2 hours may have run out.
+      const r = await story.refresh();
+      if (!r?.ok || !storyApproved(r.check)) return;
+    }
     const r = await onPay();
     if (r) setReceipt(r);
+    else if (storyLive) void story.refresh();
   };
   if (typeof document === "undefined") return null;
   return createPortal(
@@ -622,7 +644,7 @@ function PaySheet({
                   <li className="tabular-nums">
                     {receipt.bonus ? `The ${receipt.bonus} bonus` : "The bonus"}
                     {product.key === "voucher_story"
-                      ? " lands three hours after staff approve your story, if it is still up."
+                      ? " lands 3 hours after you paid, if your story is still up. Don't delete it."
                       : receipt.readyAt ? ` is ready at ${readyClock(receipt.readyAt)}.` : " is ready 3 hours later."}
                   </li>
                 </>
@@ -653,18 +675,37 @@ function PaySheet({
                 <span className="text-2xl font-extrabold text-[#00A85A] tabular-nums">{whole(get)}</span>
               </div>
             </div>
+            {storyLive ? (
+              <StoryCheckPanel
+                s={story}
+                renderQr={storyActions?.renderQr}
+                placeHandle={placeHandle}
+                canEmulate={Boolean(storyActions?.emulateStory)}
+                onLinkInstagram={storyActions?.onLinkInstagram}
+              />
+            ) : null}
             <ol className="flex flex-col py-1" aria-label="How it works" data-offer-steps>
               {sheetSteps(product.key, whole(pay), bonusAmount ? whole(bonusAmount) : null, stepLock, placeName, placeHandle).map((s, i, all) => (
-                <li key={s.title} className="flex gap-3.5" data-offer-step-locked={s.locked ? "true" : undefined}>
+                <li
+                  key={s.title}
+                  className={cn("flex gap-3.5", currentStep !== null && i > currentStep && "opacity-60")}
+                  aria-current={currentStep === i ? "step" : undefined}
+                  data-offer-step-locked={s.locked ? "true" : undefined}
+                >
                   {/* The icon column: a round step and the line down to the next. */}
                   <span className="flex flex-col items-center" aria-hidden>
                     <span
                       className={cn(
                         "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
                         s.green ? "bg-[#00D66F] text-neutral-950" : "bg-muted text-foreground",
+                        currentStep === i && "ring-foreground ring-2",
                       )}
                     >
-                      <s.Icon className="h-5 w-5" strokeWidth={2.25} />
+                      {currentStep !== null && i < currentStep ? (
+                        <CircleCheck className="h-5 w-5" strokeWidth={2.25} />
+                      ) : (
+                        <s.Icon className="h-5 w-5" strokeWidth={2.25} />
+                      )}
                       {s.locked ? (
                         <span className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-neutral-950 ring-2 ring-white">
                           <Lock className="h-3 w-3" strokeWidth={2.75} />
@@ -734,7 +775,7 @@ function PaySheet({
                 <button
                   type="button"
                   onClick={() => void press()}
-                  disabled={!live || buying || cardsPending}
+                  disabled={!live || buying || cardsPending || storyBlocked}
                   className="bg-foreground text-paper disabled:bg-muted disabled:text-muted-foreground flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold tabular-nums hover:opacity-90"
                   data-voucher-buy={product.key}
                 >
@@ -874,6 +915,7 @@ export function VouchersPane({
         signedOut={signedOut}
         onPay={onPay}
         onClose={close}
+        storyActions={p.key === "voucher_story" ? actions : undefined}
       />
     );
   }

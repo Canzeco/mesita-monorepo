@@ -8,7 +8,17 @@ import type { PayCard, PayCards, PlaceActions, PlaceMenuItem, PlaceMoney, Reward
 import { pickPayCard } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
-import { apiBuyVoucher, apiListVouchers, BUY_REFUSAL, buyRefusalAction, isDefinitiveRefusal } from "@/lib/api/wallet";
+import {
+  apiBuyVoucher,
+  apiEmulateStory,
+  apiListVouchers,
+  apiStoryCheck,
+  BUY_REFUSAL,
+  buyRefusalAction,
+  isDefinitiveRefusal,
+  STORY_EMULATOR_REFUSAL,
+} from "@/lib/api/wallet";
+import { QRCodeSVG } from "qrcode.react";
 import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { runBankCheck } from "@/lib/api/tab";
 import { useAddCardPage } from "@/lib/added-card";
@@ -109,6 +119,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 } {
   const { isSaved, toggle } = useSavedPlaces();
   const router = useRouter();
+  const getSupabase = useLazyBrowserSupabase();
   const profile = useConsumerProfile().data;
   const saved = isSaved(place.id);
   const [contactOpen, setContactOpen] = useState(false);
@@ -283,6 +294,30 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       setRewards(null);
       navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" });
     },
+    // THE STORY CHECK (MESITA-4297): the waiter approves the story before the
+    // guest pays. The sheet opens the check, polls it, draws its QR here.
+    ...(isMesitaPlaceId(place.id)
+      ? {
+        openStoryCheck: () => apiStoryCheck(getSupabase(), place.id, true),
+        getStoryCheck: () => apiStoryCheck(getSupabase(), place.id, false),
+        renderQr: (url: string) => <QRCodeSVG value={url} size={224} marginSize={0} aria-label="Story QR for the staff" />,
+        // The test band, test mode only (the server also refuses with Meta on).
+        ...(vouchers.money?.test_mode
+          ? {
+            emulateStory: async (action: "post" | "delete") => {
+              try {
+                await apiEmulateStory(getSupabase(), { placeId: place.id }, action);
+                return true;
+              } catch (err) {
+                const code = err instanceof EFError ? err.code : null;
+                toast((code && STORY_EMULATOR_REFUSAL[code]) || STORY_EMULATOR_REFUSAL.emulate_failed, { tone: "error" });
+                return false;
+              }
+            },
+          }
+          : {}),
+      }
+      : {}),
   };
 
   const enriching =

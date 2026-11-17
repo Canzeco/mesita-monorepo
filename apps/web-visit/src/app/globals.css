@@ -868,6 +868,12 @@ button.verify-reject:disabled {
   background: #f5f5f5;
 }
 
+/* What the waiter checks by eye before Approve (MESITA-4297). */
+.story-checks {
+  align-self: stretch;
+  margin-top: 16px;
+}
+
 .story-note {
   color: #525252;
 }

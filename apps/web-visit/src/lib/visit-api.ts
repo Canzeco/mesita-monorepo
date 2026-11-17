@@ -43,8 +43,8 @@ const PROOF_WORDS: Words = {
   failed: "Couldn't check this proof. Try again.",
 };
 const STORY_WORDS: Words = {
-  invalid: "This Story voucher is not valid. Ask the guest to show it again.",
-  failed: "Couldn't check this Story voucher. Try again.",
+  invalid: "This Story QR is not valid. Ask the guest to show it again.",
+  failed: "Couldn't check this story. Try again.",
 };
 /** A page older than the server it talks to (the 409 `reload` answer). */
 const RELOAD_WORDS = "This page changed. Reload it.";
@@ -86,7 +86,8 @@ export function markProofSeen(token: string): Promise<{ seen_at: string }> {
   return call<{ seen_at: string }>("visit-web-mark-proof-seen", { token });
 }
 
-// ── The Story voucher (MESITA-3507, from the @mesita mention since MESITA-4264)
+// ── The Story check (MESITA-3507; @mesita mention MESITA-4264; approved
+//    before the guest pays since MESITA-4297)
 
 /** One Instagram story of the guest's handle, as Meta (or, in test mode, the
  *  emulator) reported it. `media_url` null: the host was not allowed, so the
@@ -99,61 +100,49 @@ export type StoryMention = {
   source: "meta" | "emulator";
 };
 
-export type StoryState = "needs_story" | "received" | "rejected" | "approved" | "released" | "void";
+/** waiting: no story yet; too_old: older than the waiter may approve. */
+export type StoryStatus = "waiting" | "received" | "too_old";
 
-/** A paid Story voucher as staff read it: the buyer's verified Instagram,
- *  where the Story stands, and the stories staff can approve one of. */
-export type StoryVoucher = {
-  purchase_id: string;
+export type StoryState = "open" | "approved" | "used" | "expired";
+
+/** A guest's story check as the waiter reads it: the guest's verified
+ *  Instagram, where the check stands and the one story to approve (or the
+ *  one approved). No money: the guest pays after the approval. */
+export type StoryCheck = {
+  check_id: string;
   place: { id: string; name: string | null; instagram_handle: string | null; time_zone: string };
   instagram_handle: string | null;
-  amount_cents: number;
-  bonus_cents: number;
-  /** Price plus bonus. */
-  credit_cents: number;
-  currency: string;
-  paid_at: string | null;
-  approved_at: string | null;
-  /** Any status but paid: no story can be approved on it. */
-  refunded: boolean;
-  /** paid, refunded, partly_refunded, needs_review. */
-  status: string;
   state: StoryState;
-  review: "approved" | "rejected" | null;
-  reviewed_at: string | null;
-  recheck_at: string | null;
-  /** When the bonus lands if the story is still up. */
-  bonus_at: string | null;
-  bonus: "released" | "void" | null;
-  bonus_void_reason: "unreachable" | "expired" | "refunded" | "operator" | null;
-  bonus_decided_at: string | null;
-  /** Approve by this time or the bonus is void. */
-  expires_at: string | null;
-  /** Unclaimed stories of the guest's handle, last 24 hours, newest first. */
-  mentions: StoryMention[];
-  /** The story staff approved on this voucher. */
-  claimed_mention: StoryMention | null;
+  story: (StoryMention & { status: StoryStatus }) | null;
+  story_status: StoryStatus;
+  last_rejected_at: string | null;
+  approved_at: string | null;
+  /** open: when the check lapses; approved: the pay-by time. */
+  expires_at: string;
+  limits: { approve_valid_sec: number; max_story_age_sec: number; bonus_wait_sec: number };
   test_mode: boolean;
   /** How often and how long the page re-reads while it waits for a story. */
   poll: { every_ms: number; for_ms: number };
   server_time: string;
 };
 
-export function getStory(token: string): Promise<StoryVoucher> {
-  return call<StoryVoucher>("visit-web-get-story", { token }, STORY_WORDS);
+export function getStory(token: string): Promise<StoryCheck> {
+  return call<StoryCheck>("visit-web-get-story", { token }, STORY_WORDS);
 }
 
 export type StoryReviewed = {
   outcome: "approved" | "already_approved" | "rejected";
   approved_at: string | null;
-  bonus_at: string | null;
+  /** The pay-by time once approved. */
+  expires_at: string | null;
 };
 
-/** Staff approve one story (by its id) or reject them all. Needs a current
- *  waiter-code staff token of the voucher's place (403 staff_code_needed
- *  otherwise). A refusal carries the server's code: `reload`, `refunded`,
- *  `not_paid`, `already_decided`, `mention_claimed`, `mention_expired`,
- *  `handle_mismatch`, `livemode_mismatch`, `forbidden`, `gone`. */
+/** The waiter approves the check's story (by its id) or rejects it. Needs a
+ *  current waiter-code staff token of the check's place (403
+ *  staff_code_needed otherwise). A refusal carries the server's code and
+ *  words: `reload`, `gone`, `story_token_retired`, `already_decided`,
+ *  `story_gone`, `story_claimed`, `story_too_old`, `handle_mismatch`,
+ *  `emulator_on_live`, `wrong_place`. */
 export async function reviewStory(
   args: { token: string; decision: "approve" | "reject"; mention_id?: string; staff_token: string; place_id: string },
 ): Promise<StoryReviewed | TabRefusal | "failed"> {
@@ -162,7 +151,7 @@ export async function reviewStory(
     return {
       outcome: data.outcome === "already_approved" ? "already_approved" : data.outcome === "rejected" ? "rejected" : "approved",
       approved_at: typeof data.approved_at === "string" ? data.approved_at : null,
-      bonus_at: typeof data.bonus_at === "string" ? data.bonus_at : null,
+      expires_at: typeof data.expires_at === "string" ? data.expires_at : null,
     };
   }
   if (!res || res.status >= 500 || !data) return "failed";

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { Banknote, ChevronLeft, QrCode } from "lucide-react";
 import { PANEL_CLASS, PanelHeading } from "@/components/shared/Panel";
-import { QRCodeSVG } from "qrcode.react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 import { EFError } from "@/lib/api/_invoke";
@@ -17,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { SECONDARY } from "./wallet-buttons";
 
 // A PAYMENT METHOD, FULL SCREEN (Pato, MESITA-3533): a saved card or a
-// Story waiting for staff, opened from a Wallet rail. A place's credit is a
+// Story waiting for its bonus, opened from a Wallet rail. A place's credit is a
 // page of its own, /wallet/place/<placeId> (PlaceCredit.tsx, MESITA-3614).
 
 export type Method =
@@ -109,14 +108,14 @@ function CardBody({ card, onRemove }: { card: SavedCard; onRemove?: (card: Saved
   );
 }
 
-/** A Story voucher (MESITA-4264): what was paid is already credit; the
- *  bonus waits on a story mentioning @mesita and the place's Instagram, approved by staff
- *  from this QR and still up 3 hours later. Once a story arrived it shows
- *  here, the same media staff see. In test mode, while Instagram is not
- *  connected, the test band simulates the story. */
+/** A bought Story voucher (MESITA-4297): the waiter approved the story
+ *  before payment, what was paid is already credit, and the bonus lands 3
+ *  hours after payment if the story is still up. The story shows here, the
+ *  same media the waiter saw. In test mode, while Instagram is not connected,
+ *  the test band can delete it so the re-check finds it gone. */
 function StoryBody({ story, onChanged }: { story: WaitingStory; onChanged?: () => void }) {
   const getSupabase = useLazyBrowserSupabase();
-  const [busy, setBusy] = useState<"post" | "delete" | null>(null);
+  const [busy, setBusy] = useState(false);
   // The line turns to "Checking your story…" at the bonus time.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -127,21 +126,20 @@ function StoryBody({ story, onChanged }: { story: WaitingStory; onChanged?: () =
     return () => clearTimeout(id);
   }, [story.bonus_at]);
 
-  const simulate = async (action: "post" | "delete") => {
-    setBusy(action);
+  const simulateDelete = async () => {
+    setBusy(true);
     try {
-      await apiEmulateStory(getSupabase(), story.purchase_id, action);
+      await apiEmulateStory(getSupabase(), { purchaseId: story.purchase_id }, "delete");
       onChanged?.();
     } catch (err) {
       const code = err instanceof EFError ? err.code : null;
       toast((code && STORY_EMULATOR_REFUSAL[code]) || STORY_EMULATOR_REFUSAL.emulate_failed, { tone: "error" });
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   };
 
   const name = story.place?.name ?? "this place";
-  const open = storyBonusOpen(story);
   const media = story.mention?.media_url ? story.mention : null;
   return (
     <div className="flex flex-col items-center gap-4 text-center" data-story-sheet={story.state}>
@@ -159,41 +157,25 @@ function StoryBody({ story, onChanged }: { story: WaitingStory; onChanged?: () =
           {media.media_kind === "video" ? (
             <video src={media.media_url ?? undefined} className="h-full w-full object-cover" playsInline muted controls preload="metadata" />
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element -- a story's own media URL, shown as staff see it
+            // eslint-disable-next-line @next/next/no-img-element -- a story's own media URL, shown as the waiter saw it
             <img src={media.media_url ?? undefined} alt="Your story" className="h-full w-full object-cover" />
           )}
         </div>
       ) : null}
-      {open ? <QRCodeSVG value={story.url} size={224} marginSize={0} aria-label="Story voucher QR for staff" /> : null}
-      {story.state === "needs_story" ? (
-        <p className="text-muted-foreground text-sm">Posted? It can take a minute to show here.</p>
-      ) : null}
-      {story.emulator ? (
+      {story.emulator && storyBonusOpen(story) ? (
         // THE TEST BAND (MESITA-4264): under the main content, never the
         // primary button; only while payments are in test mode and Meta is off.
         <div className="border-border flex w-full flex-col items-center gap-2 rounded-2xl border border-dashed p-3" data-story-emulator>
           <TestModeNote className="self-center" />
-          {story.state === "approved" ? (
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => void simulate("delete")}
-              className="text-muted-foreground min-h-11 px-3 text-sm font-semibold underline disabled:opacity-60"
-              data-story-simulate="delete"
-            >
-              {busy === "delete" ? "Deleting…" : "Simulate deleting the story (test)"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => void simulate("post")}
-              className="text-muted-foreground min-h-11 px-3 text-sm font-semibold underline disabled:opacity-60"
-              data-story-simulate="post"
-            >
-              {busy === "post" ? "Posting…" : "Simulate story (test)"}
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void simulateDelete()}
+            className="text-muted-foreground min-h-11 px-3 text-sm font-semibold underline disabled:opacity-60"
+            data-story-simulate="delete"
+          >
+            {busy ? "Deleting…" : "Simulate deleting the story (test)"}
+          </button>
         </div>
       ) : null}
     </div>

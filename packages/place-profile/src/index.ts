@@ -49,6 +49,8 @@ export type {
   PlaceMenuItem,
   VoucherBasketItem,
   VoucherBuyOutcome,
+  StoryCheck,
+  StoryCheckRead,
 } from "./actions";
 export type { PlaceBalance, PlaceDetail, PlaceMoney, PlaceScore, VoucherCatalogLine, VoucherKey } from "./place-detail";
 export { VOUCHER_KEYS } from "./place-detail";

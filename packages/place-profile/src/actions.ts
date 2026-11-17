@@ -12,6 +12,37 @@ export type VoucherBasketItem = { voucher: VoucherKey; qty: number };
  *  host already said why). */
 export type VoucherBuyOutcome = "paid" | "processing" | "failed";
 
+/** The guest's story check at this place (MESITA-4297): the Story QR the
+ *  waiter approves BEFORE the guest pays (the server's CheckView). */
+export type StoryCheck = {
+  id: string;
+  token: string;
+  /** The Story QR the waiter scans. */
+  url: string;
+  state: "open" | "approved" | "used" | "expired";
+  story: {
+    id: string;
+    media_url: string | null;
+    media_kind: "image" | "video";
+    mentioned_at: string;
+    source: "meta" | "emulator";
+    status: "waiting" | "received" | "too_old";
+  } | null;
+  story_status: "waiting" | "received" | "too_old";
+  last_rejected_at: string | null;
+  approved_at: string | null;
+  /** open: 24 hours after it opened; approved: the pay-by time. */
+  expires_at: string;
+  limits: { approve_valid_sec: number; max_story_age_sec: number; bonus_wait_sec: number };
+  test_mode: boolean;
+};
+
+/** A read of the guest's check: the check (null: none yet), or why not
+ *  (needs_instagram, few_followers, story_unavailable, network, …). */
+export type StoryCheckRead =
+  | { ok: true; check: StoryCheck | null }
+  | { ok: false; code: string; error: string; minFollowers: number | null };
+
 /** The profile is on screen before Mesita holds it — a Google-only card the
  *  guest opened (MESITA-2307). While the create runs a Creating fact leads
  *  the facts row (MESITA-2679); a refusal says why at the top of Overview. */
@@ -90,6 +121,17 @@ export type PlaceActions = {
   askedVoucher?: string | null;
   /** Link Instagram in the Story (i): the host's Instagram page. */
   onLinkInstagram?: () => void;
+  /** THE STORY CHECK (MESITA-4297): the waiter approves the story before the
+   *  guest pays. `openStoryCheck` mints or returns the guest's check here;
+   *  `getStoryCheck` re-reads it (the sheet polls while it waits); `renderQr`
+   *  draws the QR (the package holds no QR library). A host without them
+   *  (web-business) shows the steps only and keeps Pay on its own rules. */
+  openStoryCheck?: () => Promise<StoryCheckRead>;
+  getStoryCheck?: () => Promise<StoryCheckRead>;
+  renderQr?: (url: string) => ReactNode;
+  /** The test band's "Simulate story (test)" / delete, before payment
+   *  (test mode, Instagram not connected). Resolves true when it worked. */
+  emulateStory?: (action: "post" | "delete") => Promise<boolean>;
 };
 
 export function inertButtonProps(live: boolean): {

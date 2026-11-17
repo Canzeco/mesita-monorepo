@@ -1,6 +1,6 @@
-// The Story staff page's times (MESITA-4264): absolute times in the place's
-// timezone ("Approved at 14:05 · the bonus lands from 17:05"), and how long
-// ago a story was posted ("12 min ago"), read against the server's clock.
+// The Story staff page's times (MESITA-4264, MESITA-4297): absolute times in
+// the place's timezone ("Approved at 14:05", "until 14:35 to pay"), and how
+// long ago a story was posted ("12 min ago"), read against the server's clock.
 
 const FALLBACK_TZ = "America/Mexico_City";
 

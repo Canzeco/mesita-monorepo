@@ -1,16 +1,18 @@
-// THE STORY VOUCHER'S LINE (MESITA-4264): what the Wallet row, its sheet and
-// Me › Tickets say about a Story voucher's bonus, by the server's state.
-// The paid amount is already in the balance; only the bonus waits. Times
-// read in the place's own zone, absolute ("bonus from 17:05"). A PLAIN
-// MODULE: no React.
+// THE STORY VOUCHER'S LINE (MESITA-4264, MESITA-4297): what the Wallet row,
+// its sheet and Me › Tickets say about a BOUGHT Story's bonus, by the
+// server's state. The waiter approved the story before payment; the paid
+// amount is already in the balance; only the bonus waits, 3 hours after
+// payment. Times read in the place's own zone, absolute ("bonus at 17:05").
+// A PLAIN MODULE: no React.
 
 import type { StoryVoidReason, WaitingStory } from "@/lib/api/wallet";
 
 const VOID_LINE: Record<StoryVoidReason, string> = {
   unreachable: "Bonus not added: the story was not up 3 hours later",
-  expired: "Bonus not added: no story was approved within 7 days",
+  expired: "Bonus not added: no story was approved in time",
   refunded: "Bonus not added: the voucher was refunded",
   operator: "Bonus not added",
+  not_verified: "Bonus not added: this story was already used for another Story voucher",
 };
 
 function parts(iso: string, timeZone: string): Intl.DateTimeFormatPart[] | null {
@@ -58,19 +60,16 @@ export function storyChecking(s: Pick<WaitingStory, "state" | "bonus_at">, now =
   return Number.isFinite(at) && now >= at;
 }
 
-/** The one line for a Story voucher, by its state. */
+/** The one line for a bought Story voucher, by its state. */
 export function storyLine(s: WaitingStory, now = Date.now()): string {
-  const by = s.expires_at ? ` · get it approved by ${storyDate(s.expires_at, s.time_zone)}` : "";
   switch (s.state) {
-    case "needs_story":
-      return `Post a story mentioning @mesita and the place's Instagram${by}`;
-    case "received":
-      return `A story from you arrived · show the QR to staff${by}`;
-    case "rejected":
-      return "Not approved · post a new story mentioning @mesita and the place's Instagram";
+    case "processing":
+      return "Payment processing · keep your story up";
     case "approved":
       if (storyChecking(s, now)) return "Checking your story…";
-      return s.bonus_at ? `Approved · bonus from ${storyClock(s.bonus_at, s.time_zone, now)}` : "Approved";
+      return s.bonus_at
+        ? `Bonus at ${storyClock(s.bonus_at, s.time_zone, now)} · keep your story up until then`
+        : "Keep your story up · bonus in 3 hours";
     case "released":
       return "Bonus added";
     case "void":

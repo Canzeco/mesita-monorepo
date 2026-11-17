@@ -3,36 +3,53 @@
 import { use, useEffect, useState } from "react";
 import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
-import { getStory, listPayments, reviewStory, type StoryMention, type StoryVoucher, VisitError } from "@/lib/visit-api";
+import { getStory, listPayments, reviewStory, type StoryCheck, type StoryMention, VisitError } from "@/lib/visit-api";
 import { keepStaff, readStaff } from "@/lib/staff-key";
 import { waiterCode } from "@/lib/sign-gate";
 import { agoLabel, zonedClock } from "@/lib/story-time";
 import { CodeBoxes } from "../../tab/[token]/CodeBoxes";
 
-// /story/<token> — the staff page for a guest's Story voucher (MESITA-3507,
-// verified from the @mesita mention since MESITA-4264). The guest's Wallet
-// shows a QR; staff scan it and land here. Top to bottom: the place, "Story
-// voucher" and the guest's verified @handle; the one instruction (the story
-// must tag @mesita AND this place: Meta reports only the @mesita tag, so the
-// place tag is the staff's eye); every unclaimed story of that handle from
-// the last 24 hours, newest first, each with its own Approve; "None of these
-// tag this place" (Reject) last. Approve and Reject need the waiter code,
-// the tab page's sign-in: the 12-hour staff token kept on this device, never
-// the code. The guest holds the QR, so the token alone approves nothing.
-// While no story has arrived the page re-reads every poll.every_ms for
-// poll.for_ms, then offers Refresh. Every rule and peso is the server's.
+// /story/<token> — the waiter's page for a guest's story check (MESITA-3507,
+// the @mesita mention since MESITA-4264, approved BEFORE the guest pays since
+// MESITA-4297). The guest's Offers sheet shows a Story QR; the waiter scans
+// it and lands here. Top to bottom: the place, "Story voucher" and the
+// guest's verified @handle; the guest's newest story, how long ago it was
+// posted, and what the waiter checks by eye (@mesita tagged, this place
+// tagged, the Paid partnership label); Approve and Reject. Approve and Reject
+// need the waiter code, the tab page's sign-in: the 12-hour staff token kept
+// on this device, never the code. The guest holds the QR, so the token alone
+// approves nothing. While no story (or no story newer than a reject) has
+// arrived, the page re-reads every poll.every_ms for poll.for_ms, then offers
+// Refresh. No money here: the guest pays after the approval. Every rule is
+// the server's.
 
 type Read =
   | { kind: "loading" }
-  | { kind: "ok"; story: StoryVoucher }
+  | { kind: "ok"; check: StoryCheck }
   | { kind: "invalid" }
+  | { kind: "retired" }
   | { kind: "failed" }
   | { kind: "reload" };
 
-/** The states where a story can still be approved. */
-const OPEN = ["needs_story", "received", "rejected"];
+const TOO_OLD = "This story is too old for the bonus. Ask the guest to post a new one.";
+const REOPEN = "Ask the guest to open the Story sheet again";
 
 const handleOf = (h: string | null) => (h ? `@${h.replace(/^@/, "")}` : null);
+
+/** The story the waiter can act on: none after a reject until a newer one. */
+function freshStory(check: StoryCheck) {
+  const s = check.story;
+  if (!s) return null;
+  if (check.state === "open" && check.last_rejected_at && Date.parse(s.mentioned_at) <= Date.parse(check.last_rejected_at)) return null;
+  return s;
+}
+
+/** Re-read while an open check has no story the waiter can approve. */
+function waitsForStory(check: StoryCheck) {
+  if (check.state !== "open") return false;
+  const s = freshStory(check);
+  return !s || s.status === "too_old";
+}
 
 function reloadPage() {
   window.location.reload();
@@ -46,8 +63,7 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
   const [pollUntil, setPollUntil] = useState<number | null>(null);
   const [waitOver, setWaitOver] = useState(false);
   const [typedCode, setTypedCode] = useState("");
-  // The mention id being approved, or "reject".
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // Bumped when the kept staff token changes, so the code box shows or hides.
@@ -56,15 +72,16 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
   useEffect(() => {
     let cancelled = false;
     getStory(token)
-      .then((story) => {
+      .then((check) => {
         if (cancelled) return;
-        setRead({ kind: "ok", story });
-        const waiting = !story.refunded && OPEN.includes(story.state) && story.mentions.length === 0;
-        setPollUntil((until) => (waiting ? until ?? Date.now() + story.poll.for_ms : null));
+        setRead({ kind: "ok", check });
+        const waiting = waitsForStory(check);
+        setPollUntil((until) => (waiting ? until ?? Date.now() + check.poll.for_ms : null));
       })
       .catch((e) => {
         if (cancelled) return;
         if (e instanceof VisitError && e.code === "reload") return setRead({ kind: "reload" });
+        if (e instanceof VisitError && e.code === "story_token_retired") return setRead({ kind: "retired" });
         if (e instanceof VisitError && e.invalid) return setRead({ kind: "invalid" });
         // A missed re-read keeps the page as it was (a fresh object, so the
         // poll schedules its next read).
@@ -85,12 +102,12 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
       } else {
         setNonce((n) => n + 1);
       }
-    }, read.story.poll.every_ms);
+    }, read.check.poll.every_ms);
     return () => clearTimeout(timer);
   }, [read, pollUntil]);
 
   function refresh() {
-    if (read.kind === "ok") setPollUntil(Date.now() + read.story.poll.for_ms);
+    if (read.kind === "ok") setPollUntil(Date.now() + read.check.poll.for_ms);
     setWaitOver(false);
     setNonce((n) => n + 1);
   }
@@ -108,7 +125,16 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
     return (
       <main className="proof">
         <p className="proof-status warn" role="alert">
-          This Story voucher is not valid. Ask the guest to show it again.
+          This Story QR is not valid. Ask the guest to show it again.
+        </p>
+      </main>
+    );
+  }
+  if (read.kind === "retired") {
+    return (
+      <main className="proof" data-story-state="retired">
+        <p className="proof-status warn" role="alert">
+          {REOPEN}
         </p>
       </main>
     );
@@ -118,7 +144,7 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
     return (
       <main className="proof">
         <p className="proof-status" role="alert">
-          Couldn&apos;t check this Story voucher. Try again.
+          Couldn&apos;t check this story. Try again.
         </p>
         <button type="button" onClick={() => { setRead({ kind: "loading" }); setNonce((n) => n + 1); }}>
           Try again
@@ -127,12 +153,12 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
     );
   }
 
-  const { story } = read;
-  const placeId = story.place.id;
-  const guest = handleOf(story.instagram_handle);
-  const placeTag = handleOf(story.place.instagram_handle);
+  const { check } = read;
+  const placeId = check.place.id;
+  const guest = handleOf(check.instagram_handle);
+  const placeTag = handleOf(check.place.instagram_handle);
   const staffKept = readStaff(placeId);
-  const clock = (iso: string) => zonedClock(iso, story.place.time_zone);
+  const clock = (iso: string) => zonedClock(iso, check.place.time_zone);
 
   /** The staff token for this tap: the kept one, or the typed waiter code
    *  traded for one (then kept, as the tab page does). Null on refusal. */
@@ -164,14 +190,20 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
     return key.staff_token;
   }
 
-  async function decide(decision: "approve" | "reject", mentionId?: string) {
+  async function decide(decision: "approve" | "reject", mentionId: string) {
     if (busy) return;
-    setBusy(mentionId ?? "reject");
+    setBusy(decision);
     setError(null);
     try {
       const staff = await staffToken();
       if (!staff) return;
-      const r = await reviewStory({ token, decision, ...(mentionId ? { mention_id: mentionId } : {}), staff_token: staff, place_id: placeId });
+      const r = await reviewStory({
+        token,
+        decision,
+        ...(decision === "approve" ? { mention_id: mentionId } : {}),
+        staff_token: staff,
+        place_id: placeId,
+      });
       if (r === "failed") return setError("Couldn't save. Try again");
       if ("refused" in r) {
         if (r.code === "staff_code_needed") {
@@ -181,181 +213,163 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
         }
         if (r.code === "reload") return setRead({ kind: "reload" });
         if (r.code === "gone") return setRead({ kind: "invalid" });
-        if (r.code === "mention_claimed" || r.code === "mention_expired") {
-          setNotice("This story was just used. Refreshing…");
+        if (r.code === "story_token_retired") return setRead({ kind: "retired" });
+        if (r.code === "story_gone" || r.code === "story_claimed") {
+          setNotice(r.error);
           setTimeout(() => {
             setNotice(null);
             setNonce((n) => n + 1);
           }, 1500);
           return;
         }
-        setError(r.error);
-        // Refunded, not paid, already decided: the next read shows why.
-        if (r.code === "refunded" || r.code === "not_paid" || r.code === "already_decided") setNonce((n) => n + 1);
+        setError(r.code === "story_too_old" ? TOO_OLD : r.error);
+        // Too old or already decided: the next read shows where it stands.
+        if (r.code === "story_too_old" || r.code === "already_decided") setNonce((n) => n + 1);
         return;
       }
+      if (r.outcome === "rejected") setPollUntil(Date.now() + check.poll.for_ms);
+      setWaitOver(false);
       setNonce((n) => n + 1);
     } finally {
       setBusy(null);
     }
   }
 
-  const band = story.test_mode ? (
+  const band = check.test_mode ? (
     <p className="test-band" role="status" data-test-band>
       {TEST_BAND_TEXT}
     </p>
   ) : null;
   const header = (
     <header className="story-head">
-      <p className="proof-place">{story.place.name ?? "A Mesita place"}</p>
+      <p className="proof-place">{check.place.name ?? "A Mesita place"}</p>
       <h1>Story voucher</h1>
       <p className="proof-line">{guest ?? "No Instagram linked"}</p>
     </header>
   );
 
-  // Not paid any more: nothing can be approved.
-  if (story.refunded) {
+  if (check.state === "used") {
     return (
-      <main className="proof" data-story-state="refunded">
+      <main className="proof" data-story-state="used">
         {band}
         {header}
-        <p className="proof-status warn" role="alert">
-          {story.status === "needs_review" ? "This voucher is not paid yet." : "This voucher was refunded"}
-        </p>
-      </main>
-    );
-  }
-
-  if (story.state === "released") {
-    return (
-      <main className="proof" data-story-state="released">
-        {band}
-        {header}
-        {story.claimed_mention ? <StoryCard mention={story.claimed_mention} now={story.server_time} big /> : null}
+        {check.story ? <StoryCard mention={check.story} now={check.server_time} big /> : null}
         <p className="proof-done story-outcome" role="status">
-          Bonus added
+          Approved and paid.
         </p>
       </main>
     );
   }
 
-  if (story.state === "void") {
-    const why =
-      story.bonus_void_reason === "expired"
-        ? "No story was approved within 7 days"
-        : story.bonus_void_reason === "refunded"
-          ? "This voucher was refunded"
-          : story.bonus_void_reason === "unreachable"
-            ? "Bonus not added · the story was not up 3 hours later"
-            : "Bonus not added";
+  if (check.state === "expired") {
     return (
-      <main className="proof" data-story-state="void">
+      <main className="proof" data-story-state="expired">
         {band}
         {header}
         <p className="proof-status warn" role="alert">
-          {why}
+          This approval expired. {REOPEN}.
         </p>
       </main>
     );
   }
 
-  if (story.state === "approved") {
+  if (check.state === "approved") {
     return (
       <main className="proof" data-story-state="approved">
         {band}
         {header}
-        {story.claimed_mention ? <StoryCard mention={story.claimed_mention} now={story.server_time} big /> : null}
+        {check.story ? <StoryCard mention={check.story} now={check.server_time} big /> : null}
         <p className="proof-done story-outcome" role="status">
-          {story.approved_at ? `Approved at ${clock(story.approved_at)}` : "Approved"}
-          {story.bonus_at ? ` · the bonus lands from ${clock(story.bonus_at)} if the story is still up` : ""}
+          {check.approved_at ? `Approved at ${clock(check.approved_at)}` : "Approved"} · the guest can now pay for the Story voucher
         </p>
+        <p className="proof-line">They have until {clock(check.expires_at)} to pay.</p>
       </main>
     );
   }
 
-  // needs_story · received · rejected: a story can still be approved.
-  const candidates = story.mentions;
+  // open: a story can still be approved.
+  const story = freshStory(check);
+  const tooOld = story?.status === "too_old";
   const alert = error ? (
     <p className="proof-status warn" role="alert" aria-live="polite">
       {error}
     </p>
   ) : null;
+  const waiting = waitOver ? (
+    <div className="story-wait" data-story-wait="over">
+      <p className="proof-line">
+        No new story from {guest ?? "the guest"} yet. Ask the guest to post one.
+      </p>
+      <button type="button" className="quiet" onClick={refresh}>
+        Refresh
+      </button>
+    </div>
+  ) : (
+    <div className="story-wait" data-story-wait="polling">
+      <span className="pay-spinner" aria-hidden />
+      <p className="proof-line" role="status">
+        Waiting for the guest&apos;s story…
+      </p>
+    </div>
+  );
+
   return (
-    <main className="proof" data-story-state={story.state}>
+    <main className="proof" data-story-state="open">
       {band}
       {header}
-      <p className="proof-status story-rule">
-        Approve only a story that tags @mesita AND {placeTag ? `${placeTag} (this place)` : "this place"}
-      </p>
-      {story.review === "rejected" ? <p className="proof-line story-note">Rejected. The guest can post again.</p> : null}
+      {check.last_rejected_at && !story ? (
+        <p className="proof-line story-note">Not approved. The guest can post again.</p>
+      ) : null}
       {notice ? (
         <p className="proof-status" role="status">
           {notice}
         </p>
       ) : null}
 
-      {candidates.length === 0 ? (
-        waitOver ? (
-          <div className="story-wait" data-story-wait="over">
-            <p className="proof-line">
-              No story from {guest ?? "the guest"} yet. Ask the guest to tag @mesita and this place.
-            </p>
-            <button type="button" className="quiet" onClick={refresh}>
-              Refresh
-            </button>
-          </div>
-        ) : (
-          <div className="story-wait" data-story-wait="polling">
-            <span className="pay-spinner" aria-hidden />
-            <p className="proof-line" role="status">
-              Waiting for the story…
-            </p>
-          </div>
-        )
+      {!story ? (
+        waiting
       ) : (
         <>
           <div className="story-list">
-            {candidates.map((m) => (
-              <StoryCard
-                key={m.id}
-                mention={m}
-                now={story.server_time}
-                busy={busy === m.id}
-                disabled={!!busy || !!notice}
-                onApprove={() => void decide("approve", m.id)}
-              />
-            ))}
+            <StoryCard mention={story} now={check.server_time} />
           </div>
-          {staffKept === null ? <CodeBoxes value={typedCode} onChange={setTypedCode} /> : null}
-          {alert}
-          <button type="button" className="quiet" disabled={!!busy || !!notice} onClick={() => void decide("reject")}>
-            {busy === "reject" ? "Saving…" : "None of these tag this place"}
-          </button>
+          {tooOld ? (
+            <>
+              <p className="proof-status warn" role="alert">
+                {TOO_OLD}
+              </p>
+              {waiting}
+            </>
+          ) : (
+            <>
+              <ul className="story-checks" aria-label="Check the story shows">
+                <li>@mesita tagged</li>
+                <li>{placeTag ?? "This place"} tagged</li>
+                <li>Paid partnership label</li>
+              </ul>
+              {staffKept === null ? <CodeBoxes value={typedCode} onChange={setTypedCode} /> : null}
+              {alert}
+              <button type="button" disabled={!!busy || !!notice} onClick={() => void decide("approve", story.id)}>
+                {busy === "approve" ? "Approving…" : "Approve"}
+              </button>
+              <button type="button" className="quiet" disabled={!!busy || !!notice} onClick={() => void decide("reject", story.id)}>
+                {busy === "reject" ? "Saving…" : "Reject"}
+              </button>
+            </>
+          )}
         </>
       )}
     </main>
   );
 }
 
-/** One story in a fixed 9:16 frame: the frame holds its size while the
- *  media loads; media that fails greys the card and disables its Approve. */
-function StoryCard({
-  mention,
-  now,
-  big = false,
-  busy = false,
-  disabled = false,
-  onApprove,
-}: {
-  mention: StoryMention;
-  now: string;
-  big?: boolean;
-  busy?: boolean;
-  disabled?: boolean;
-  onApprove?: () => void;
-}) {
+/** The story in a fixed 9:16 frame: the frame holds its size while the media
+ *  loads; media that fails greys the card. Under it: how long ago it was
+ *  posted, and "Test story" for an emulator story. */
+function StoryCard({ mention, now, big = false }: { mention: StoryMention; now: string; big?: boolean }) {
   const [failed, setFailed] = useState(false);
   const broken = failed || !mention.media_url;
+  const ago = agoLabel(mention.mentioned_at, now);
   return (
     <div className={`story-card${big ? " story-card-big" : ""}${broken ? " story-card-broken" : ""}`} data-mention={mention.id}>
       <div className="story-frame">
@@ -368,12 +382,10 @@ function StoryCard({
           <img className="story-media" src={mention.media_url ?? undefined} alt="The guest's Instagram story" onError={() => setFailed(true)} />
         )}
       </div>
-      <p className="proof-place">{agoLabel(mention.mentioned_at, now)}</p>
-      {onApprove ? (
-        <button type="button" disabled={broken || disabled} onClick={onApprove}>
-          {busy ? "Approving…" : "Approve"}
-        </button>
-      ) : null}
+      <p className="proof-place">
+        {ago === "just now" ? "Posted just now" : `Posted ${ago}`}
+        {mention.source === "emulator" ? " · Test story" : ""}
+      </p>
     </div>
   );
 }
