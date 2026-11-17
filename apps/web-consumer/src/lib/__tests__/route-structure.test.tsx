@@ -889,17 +889,16 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     expect(childDirs(join(pay, "receipt"))).toEqual(["[paymentId]"]);
   });
 
-  it("(shell)/wallet holds a place's House Card, the gift link, Redeem and Add a card, and nothing else", () => {
+  it("(shell)/wallet holds a place's House Card, the gift link and Add a card, and nothing else", () => {
     const wallet = join(SHELL, "wallet");
     expect(existsSync(join(wallet, "page.tsx"))).toBe(true);
-    // Redeem a code is its own page since MESITA-4020.
+    // Claim Gift's code page left in MESITA-4223: a gift is a link only.
     // Add a card is its own page since MESITA-4092.
     // Buy Credits and Send Gift lists, a House Card's send page (MESITA-4096).
-    expect(childDirs(wallet)).toEqual(["buy", "cards", "gift", "place", "redeem", "send"]);
+    expect(childDirs(wallet)).toEqual(["buy", "cards", "gift", "place", "send"]);
     expect(existsSync(join(wallet, "buy", "page.tsx"))).toBe(true);
     expect(existsSync(join(wallet, "send", "page.tsx"))).toBe(true);
     expect(existsSync(join(wallet, "place", "[placeId]", "send", "page.tsx"))).toBe(true);
-    expect(existsSync(join(wallet, "redeem", "page.tsx"))).toBe(true);
     expect(childDirs(join(wallet, "cards"))).toEqual(["new"]);
     expect(existsSync(join(wallet, "cards", "new", "page.tsx"))).toBe(true);
     expect(childDirs(join(wallet, "gift"))).toEqual(["[token]"]);
@@ -914,7 +913,6 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     "/pay/receipt/00000000-0000-4000-8000-000000000001",
     "/wallet/place/00000000-0000-4000-8000-000000000001",
     "/wallet/gift/abc",
-    "/wallet/redeem",
     "/wallet/cards/new",
     "/wallet/buy",
     "/wallet/send",

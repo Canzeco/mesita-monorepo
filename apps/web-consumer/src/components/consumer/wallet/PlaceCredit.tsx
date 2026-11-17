@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, CreditCard, Gift, HandCoins, QrCode } from "lucide-react";
+import { ChevronRight, CreditCard, Gift, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { SizedImg } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -14,7 +14,7 @@ import {
   type SentLink,
   type WaitingStory,
 } from "@/lib/api/wallet";
-import { CONSUMER_ROUTES, creditEntryPath, payPlacePath, payReceiptPath, walletSendPath } from "@/lib/consumer-route-contract";
+import { creditEntryPath, payPlacePath, payReceiptPath, walletSendPath } from "@/lib/consumer-route-contract";
 import { placeHref } from "@/lib/place-route";
 import { countdownLabel, nextAvailableMs, shouldReread } from "@/lib/wallet-countdown";
 import { type EntryGroup, groupKeys, splitEntries } from "@/lib/wallet-entries";
@@ -192,11 +192,11 @@ export function HouseCardSkeleton() {
     <div className="flex flex-col" aria-hidden>
       <Panel className="mt-4 p-4">
         <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
-        {/* View place under the card, then the four doors (MESITA-4119:
-            the page has four, Buy · Send · Claim · Go to Pay, at 52px). */}
+        {/* View place under the card, then the doors (MESITA-4119; three
+            since MESITA-4223: Buy · Send Gift · Go to Pay, at 52px). */}
         <Skeleton className="mx-auto mt-3 h-9 w-28 rounded-full" />
         <div className={`mt-4 ${DOOR_ROW}`}>
-          {[0, 1, 2, 3].map((i) => (
+          {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-13 rounded-xl" />
           ))}
         </div>
@@ -343,7 +343,8 @@ export function PlaceCredit({
         /* THE ACTIONS, IN THE PAGE (MESITA-3868): one row under the card that
            scrolls with it. Wallet's four doors since MESITA-4095 (Pato: "the
            same 4 buttons, the same sizes, but instead of saying share mesita,
-           mention go to pay"): Buy · Send Gift · Claim Gift · Go to Pay. */
+           mention go to pay"): Buy · Send Gift · Go to Pay. Claim Gift left in
+           MESITA-4223: a gift is a link the friend opens. */
         <div className={`mt-4 ${DOOR_ROW}`} data-house-card-actions>
           <PushLink href={`${href}?rewards=prepayment&from=wallet`} className={DOOR_BUY} data-house-card-fund>
             <CreditCard className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
@@ -367,10 +368,6 @@ export function PlaceCredit({
               Send Gift
             </button>
           ) : null}
-          <PushLink href={CONSUMER_ROUTES.walletRedeem} className={DOOR_GIFT} data-house-card-claim>
-            <HandCoins className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
-            Claim Gift
-          </PushLink>
           <PushLink href={payPlacePath(row.placeId)} className={DOOR_PINK} data-house-card-pay>
             <QrCode className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
             Go to Pay

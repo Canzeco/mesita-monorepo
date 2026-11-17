@@ -135,8 +135,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       wallet: "/wallet",
       walletPlace: { prefix: "/wallet/place/" },
       walletGift: { prefix: "/wallet/gift/" },
-      // Redeem a friend's code, its own page (MESITA-4020).
-      walletRedeem: "/wallet/redeem",
       // Add a card, its own page (MESITA-4092).
       walletAddCard: "/wallet/cards/new",
       // Buy Credits and Send Gift pick a place first (MESITA-4096).
@@ -191,6 +189,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         visitPrefix: "/visit/",
         walletBalancePrefix: "/wallet/balance/",
         walletGiftTab: "/wallet/gift",
+        // Claim Gift's code page; a gift is a link only (MESITA-4223).
+        walletRedeem: "/wallet/redeem",
         credits: "/credits",
         inboxCredits: "/inbox/credits",
         order: "/order",
@@ -460,6 +460,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/wallet/gift", destination: "/pay", permanent: true },
+      { source: "/wallet/redeem", destination: "/pay", permanent: true },
       { source: "/credits", destination: "/pay", permanent: true },
       { source: "/inbox/credits", destination: "/pay", permanent: true },
       { source: "/inbox/orders", destination: "/pay", permanent: true },
