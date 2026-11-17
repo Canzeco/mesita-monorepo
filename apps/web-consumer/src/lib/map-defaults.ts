@@ -151,10 +151,10 @@ export function mapPinSvg(
 
 /** A Map dot (MESITA-3980): a place past the pins, drawn small — "there is
  *  something here, zoom in". Not a hit target, so the pad is the disk. */
-// A black dot is r 3.5, between the first 2.5 and MESITA-3992's 4.5 (Pato,
-// MESITA-3994: "make the black dots a bit smaller, and in between from past
-// and current"); a red Premier dot keeps 4.5, as a Premier pin is larger.
-export const MAP_DOT_RADIUS = 3.5;
+// A black dot is r 3: MESITA-3994 set 3.5 (between the first 2.5 and
+// MESITA-3992's 4.5), and MESITA-4231 took half a pixel more off (Pato: "just
+// a bit smaller"); a red Premier dot keeps 4.5, as a Premier pin is larger.
+export const MAP_DOT_RADIUS = 3;
 export const MAP_PREMIER_DOT_RADIUS = 4.5;
 export const MAP_DOT_SIZE = 12;
 
