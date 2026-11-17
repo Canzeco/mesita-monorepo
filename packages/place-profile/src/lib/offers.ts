@@ -40,11 +40,14 @@ export type OfferInput = {
 // Offers page's own chip colours. Link green (bg-green-400) for all before.
 // THE GREEN IS STRIPE LINK'S (Pato, 2026-11-17, MESITA-4210: "MAKE THE DARK
 // GREEN BACK AGAIN. USING THE STRIPE LINK COLORS KINDA"): #00D66F, black ink;
-// MESITA-4207's pale green-200 is gone. Blue and pink stay soft.
-const LINK_GREEN = "bg-[#00D66F] text-neutral-950";
-const GREEN = LINK_GREEN;
-const BLUE = "bg-blue-200 text-neutral-950";
-const PINK = "bg-pink-200 text-neutral-950";
+// MESITA-4207's pale green-200 is gone.
+// STRONG TINTS FOR ALL (Pato, 2026-11-17, MESITA-4211: "story must be darker
+// too. also welcome. and vip must be yellow."): the 400 weight next to Link
+// green, black ink; VIP has its own yellow again.
+const GREEN = "bg-[#00D66F] text-neutral-950";
+const BLUE = "bg-blue-400 text-neutral-950";
+const PINK = "bg-pink-400 text-neutral-950";
+const YELLOW = "bg-yellow-400 text-neutral-950";
 
 /** THE ONE COLOUR MAP (autoplan F5, MESITA-4207): the slides, the Home chips
  *  and the Offers page rows (vouchers.tsx FACES) all read it, so the next
@@ -52,7 +55,7 @@ const PINK = "bg-pink-200 text-neutral-950";
 export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
   voucher_welcome: BLUE,
   voucher_story: PINK,
-  voucher_vip: GREEN,
+  voucher_vip: YELLOW,
   voucher_200: GREEN,
   voucher_1000: GREEN,
   voucher_5000: GREEN,
