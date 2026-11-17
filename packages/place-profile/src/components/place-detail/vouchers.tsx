@@ -521,22 +521,23 @@ export type VoucherOffer = {
   why: string | null;
 };
 
-/** The Offers page's voucher list: TWO PANELS (Pato, 2026-11-16,
- *  MESITA-4198: "Separate between Instant Vouchers and Prepayment
- *  Vouchers"): Instant Vouchers, the ones that land at once (Welcome now,
- *  Story when the story is up; VIP too while it is parked), then Prepayment
- *  Vouchers, the three sizes, in 1 hr. One "Prepaid Vouchers" group from MESITA-4173,
+/** The Offers page's voucher list: TWO PANELS BY HOW MANY YOU CAN BUY
+ *  (Pato, 2026-11-16, MESITA-4203: "both are prepayments ... IDK" → "Yes,
+ *  rename"): Limited Vouchers (Welcome one per place, Story and VIP one per
+ *  visit), then Unlimited Vouchers, the three sizes, as many as you like.
+ *  When the credit lands is each row's ("now", "after story", "in 1 hr").
+ *  Instant / Prepayment Vouchers in MESITA-4198. One "Prepaid Vouchers" group from MESITA-4173,
  *  Special and Bonus Vouchers in MESITA-4154. The host still opens it by
  *  `?rewards=prepayment` or `?rewards=special`. */
 const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<MoneyVoucherKey> }[] = [
   {
     id: "special",
-    title: "Instant Vouchers",
+    title: "Limited Vouchers",
     keys: new Set(["voucher_welcome", "voucher_story", "voucher_vip"]),
   },
   {
     id: "prepayment",
-    title: "Prepayment Vouchers",
+    title: "Unlimited Vouchers",
     keys: new Set(["voucher_200", "voucher_1000", "voucher_5000"]),
   },
 ];
@@ -697,8 +698,8 @@ export function VouchersPane({
     // prepaid vouchers"): the body is the page background, the vouchers one
     // white panel on it, as the Reserve page's sections. White from MESITA-3486.
     <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
-      {/* TWO PANELS (Pato, 2026-11-16, MESITA-4198): Instant Vouchers
-          (Welcome · Story), then Prepayment Vouchers (Small · Medium · Big). One
+      {/* TWO PANELS (Pato, 2026-11-16, MESITA-4203): Limited Vouchers
+          (Welcome · Story), then Unlimited Vouchers (Small · Medium · Big). One
           "Prepaid Vouchers" panel in MESITA-4173. Both panels share one basket
           and the one Pay at the foot. */}
       {GROUPS.map((g) => {
