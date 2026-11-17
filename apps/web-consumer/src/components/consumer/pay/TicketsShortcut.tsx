@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 
 // THE TICKETS SHORTCUT (Pato, 2026-11-14, MESITA-3891: "in wallet at the
 // top up show a shortcut to transactions/tickets in me", then the same "top
-// right" on Pay): the band's grey pill at the right of the "Pay" and "Wallet"
-// titles, opening Me › Tickets (every visit, voucher, gift and refund), pushed
+// right" on Pay): the band's grey pill at the right of the "Wallet" title
+// (MESITA-4245), opening Me › Tickets (every visit, voucher, gift and refund), pushed
 // with Back. The band's own control shape
 // (Search's Ask AI pill), so it reads as a control, not a fourth button next
 // to Share and Gift. Reads nothing: the page and its loading frame draw it.

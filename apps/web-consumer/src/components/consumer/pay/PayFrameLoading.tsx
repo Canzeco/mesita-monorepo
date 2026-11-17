@@ -9,27 +9,14 @@ import { WalletBodySkeleton } from "../wallet/WalletLists";
 /** A Pay screen's frame while it loads: the title in place, the body in
  *  bones (Pato, MESITA-2701: "the placeholders must be similar to the page
  *  you are loading"). Every Pay address draws it (MESITA-3614). */
-export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | "bill" | "proof" }) {
+export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "proof" }) {
   if (body === "list") {
     // /pay (MESITA-4232): the title band, Pay Bill's shape, the three
     // buttons as themselves, then the money in bones.
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8 *:shrink-0" aria-busy>
-        <PayHeader title="Pay" action={<TicketsShortcut />} />
-        <PayBillSkeleton />
-        <WalletShareGift />
-        <WalletBodySkeleton />
-      </div>
-    );
-  }
-  if (body === "wallet") {
-    // /wallet (MESITA-3886): the title band and the Share and Gift buttons as
-    // themselves (they read nothing), then the page's own skeleton
-    // (MESITA-3814: the rows' shape, the same one the page shows while its one
-    // read runs), so nothing jumps.
-    return (
-      <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
         <PayHeader title="Wallet" action={<TicketsShortcut />} />
+        <PayBillSkeleton />
         <WalletShareGift />
         <WalletBodySkeleton />
       </div>
