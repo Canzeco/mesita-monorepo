@@ -23,7 +23,7 @@ import { type Method, MethodSheet } from "./MethodSheet";
 import { SentLinks } from "./SendCredit";
 import { Panel } from "@/components/shared/Panel";
 import { WalletPanelList } from "./WalletLists";
-import { DOOR_BUY, DOOR_GIFT, DOOR_GLYPH, DOOR_PINK, DOOR_ROW, PRIMARY, SECONDARY } from "./wallet-buttons";
+import { DOOR_GLYPH, DOOR_QUIET, DOOR_ROW_TWO, PAY_BAR, PRIMARY, SECONDARY } from "./wallet-buttons";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
 import { toast } from "@/lib/toast";
 import type { CreditRow } from "./use-wallet";
@@ -39,10 +39,10 @@ import type { CreditRow } from "./use-wallet";
 //   [mini House Card]     half the column, centred (MESITA-3802): the
 //                         place's photo and name, the server's amount (a
 //                         muted $0 when nothing is spendable yet), "House Card"
-//   [Buy Credits][Send Gift][Claim Gift][Go to Pay]   Wallet's four doors
-//                         (MESITA-4095), 52px, icon over label; Go to Pay
-//                         sits where Wallet has Share Mesita. Gift follows
-//                         giftAction (hidden, dimmed with a reason, or open)
+//   [▦ Pay here  ›]       the pink Pay bar, full width, 60px (MESITA-4253)
+//   [Buy Credits][Send Gift]   two dark doors under it, 52px, icon over
+//                         label. Gift follows giftAction (hidden, dimmed
+//                         with a reason, or open)
 //   (held-credit line)    only while an open payment holds credit
 //   (Confirming a payment…)  only while the server is still confirming one
 //   Vouchers to activate  Story vouchers waiting for staff, only when any
@@ -192,11 +192,12 @@ export function HouseCardSkeleton() {
     <div className="flex flex-col" aria-hidden>
       <Panel className="mt-4 p-4">
         <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
-        {/* View place under the card, then the doors (MESITA-4119; three
-            since MESITA-4223: Buy · Send Gift · Go to Pay, at 52px). */}
+        {/* View place under the card, then the Pay bar and the two doors
+            under it (MESITA-4253). */}
         <Skeleton className="mx-auto mt-3 h-9 w-28 rounded-full" />
-        <div className={`mt-4 ${DOOR_ROW}`}>
-          {[0, 1, 2].map((i) => (
+        <Skeleton className="mt-4 h-15 w-full rounded-xl" />
+        <div className={`mt-2 ${DOOR_ROW_TWO}`}>
+          {[0, 1].map((i) => (
             <Skeleton key={i} className="h-13 rounded-xl" />
           ))}
         </div>
@@ -340,38 +341,49 @@ export function PlaceCredit({
           Your credit here stays yours; ask Mesita support to use it.
         </p>
       ) : (
-        /* THE ACTIONS, IN THE PAGE (MESITA-3868): one row under the card that
-           scrolls with it. Wallet's four doors since MESITA-4095 (Pato: "the
-           same 4 buttons, the same sizes, but instead of saying share mesita,
-           mention go to pay"): Buy · Send Gift · Go to Pay. Claim Gift left in
-           MESITA-4223: a gift is a link the friend opens. */
-        <div className={`mt-4 ${DOOR_ROW}`} data-house-card-actions>
-          <PushLink href={`${href}?rewards=prepayment&from=wallet`} className={DOOR_BUY} data-house-card-fund>
-            <CreditCard className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
-            Buy Credits
+        /* THE ACTIONS, IN THE PAGE (MESITA-3868): under the card, scrolling
+           with it. Since MESITA-4253 (Pato picked drawing A of four, "Build
+           A"): Pay is the one loud thing, a pink bar naming what can be spent
+           here; Buy Credits and Send Gift are two dark doors under it, the
+           Pay tab's look (MESITA-4250). They were three equal doors in three
+           colours (MESITA-4095), none of them the main one. */
+        <div className="mt-4 flex flex-col gap-2" data-house-card-actions>
+          <PushLink href={payPlacePath(row.placeId)} className={PAY_BAR} data-house-card-pay>
+            <QrCode className="h-7 w-7 shrink-0" strokeWidth={2} aria-hidden />
+            <span className="flex min-w-0 flex-col">
+              <span className="text-base leading-tight font-bold">Pay here</span>
+              {spendable > 0 ? (
+                <span className="truncate text-sm leading-tight text-white/85" data-house-card-pay-line>
+                  Use {money(spendable, card.currency)} at the table
+                </span>
+              ) : null}
+            </span>
+            <ChevronRight className="ml-auto h-5 w-5 shrink-0" aria-hidden />
           </PushLink>
-          {/* Send Gift is its own page (MESITA-4096); it was a sheet here. */}
-          {gift === "open" ? (
-            <PushLink href={walletSendPath(row.placeId)} className={DOOR_GIFT} data-send-credit-open>
-              <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
-              Send Gift
+          <div className={DOOR_ROW_TWO}>
+            <PushLink href={`${href}?rewards=prepayment&from=wallet`} className={DOOR_QUIET} data-house-card-fund>
+              <CreditCard className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+              Buy Credits
             </PushLink>
-          ) : gift ? (
-            <button
-              type="button"
-              className={cn(DOOR_GIFT, "opacity-50")}
-              onClick={() => toast(gift.blocked)}
-              aria-label={`Send Gift: ${gift.blocked}`}
-              data-send-credit-open
-            >
-              <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
-              Send Gift
-            </button>
-          ) : null}
-          <PushLink href={payPlacePath(row.placeId)} className={DOOR_PINK} data-house-card-pay>
-            <QrCode className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
-            Go to Pay
-          </PushLink>
+            {/* Send Gift is its own page (MESITA-4096); it was a sheet here. */}
+            {gift === "open" ? (
+              <PushLink href={walletSendPath(row.placeId)} className={DOOR_QUIET} data-send-credit-open>
+                <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+                Send Gift
+              </PushLink>
+            ) : gift ? (
+              <button
+                type="button"
+                className={cn(DOOR_QUIET, "opacity-50")}
+                onClick={() => toast(gift.blocked)}
+                aria-label={`Send Gift: ${gift.blocked}`}
+                data-send-credit-open
+              >
+                <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+                Send Gift
+              </button>
+            ) : null}
+          </div>
         </div>
       )}
       {held ? (
