@@ -113,15 +113,16 @@ const BAR_RED = "before:bg-red-600";
 // white, not dark. white with blue / red stuff at the left"): a solid card
 // band with ink text, the 4px blue bar (red for Saved) at its left; the
 // blue bar left with MESITA-4037, Saved keeps its red one.
-// ALMOST INK (Pato, MESITA-3813: "not that dark, but almost"): 85% ink
-// with 15% card, solid, from the tokens.
-const RAIL_SURFACE = "bg-[color-mix(in_oklab,var(--foreground)_85%,var(--card))] text-card";
+// LIGHT AGAIN (Pato, 2026-11-17, MESITA-4268: "lets try making the later
+// bar instead of dark, light"): the grey fill token with ink names and a
+// hairline at its right edge; the chosen row stays the white band.
+// Reverses MESITA-3812/3813's almost-ink surface.
+const RAIL_SURFACE = "bg-muted text-foreground";
 const RAIL_ROW =
-  "text-card relative flex h-11 w-full shrink-0 items-center text-left transition";
+  "text-foreground relative flex h-11 w-full shrink-0 items-center text-left transition";
 const RAIL_ROW_ON =
   "bg-card text-foreground before:absolute before:inset-y-0 before:left-0 before:w-1";
-const RAIL_EMOJI =
-  "flex w-12 shrink-0 justify-center text-xl leading-none";
+const RAIL_EMOJI = "flex w-12 shrink-0 justify-center text-xl leading-none";
 
 /** The column's default row: every place, one list, ranked like the Search
  *  map (Pato, MESITA-2516: "only keeping All is cleaner. just like in map").
@@ -554,7 +555,7 @@ export function CatalogRails() {
             RAIL_ROW,
             on
               ? cn(RAIL_ROW_ON, c.key === SAVED_CHIP && BAR_RED)
-              : "hover:bg-card/10",
+              : "hover:bg-foreground/5",
             on && open && "font-semibold",
           )}
         >
@@ -576,7 +577,12 @@ export function CatalogRails() {
   const railScrolled = (el: HTMLElement) =>
     setRailAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
   const emojiRail = (
-    <div className={cn(RAIL_SURFACE, "relative flex w-12 shrink-0 flex-col")}>
+    <div
+      className={cn(
+        RAIL_SURFACE,
+        "border-border relative flex w-12 shrink-0 flex-col border-r",
+      )}
+    >
       <nav
         ref={railRef}
         aria-label="Families"
@@ -598,7 +604,7 @@ export function CatalogRails() {
             if (el)
               el.scrollBy({ top: el.clientHeight * 0.8, behavior: "smooth" });
           }}
-          className="from-[color-mix(in_oklab,var(--foreground)_85%,var(--card))] text-card/70 absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t to-transparent pb-1.5"
+          className="from-muted text-muted-foreground absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t to-transparent pb-1.5"
           data-places-rail-more
         >
           <ChevronDown className="h-4 w-4" strokeWidth={2.5} aria-hidden />
