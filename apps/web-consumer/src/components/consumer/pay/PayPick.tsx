@@ -41,14 +41,19 @@ export function PayPickPage() {
   return (
     <Screen title="Where are you paying?" paper>
       <div className="-mx-5 -my-5" data-pay-box>
-        <div className="px-5 pt-4 pb-3">
-          <SearchBar
-            query={query}
+        {/* A REAL FIELD (MESITA-4295, Pato: "better design"): the bare
+            SearchBar sits in a 44px grey pill; the list under it stays
+            boxless (MESITA-4280). */}
+        <div className="px-5 pt-4 pb-2">
+          <div className="bg-muted flex h-11 items-center rounded-full pr-1 pl-4" data-pay-pick-search>
+            <SearchBar
+              query={query}
             showClear={query.length > 0}
             onQueryChange={setQuery}
-            onClear={() => setQuery("")}
-            placeholder="Search a place"
-          />
+              onClear={() => setQuery("")}
+              placeholder="Search a place"
+            />
+          </div>
         </div>
         {places ? (
           <PlaceList
@@ -154,50 +159,26 @@ function PlaceList({
       ) : shown.length === 0 ? (
         <p className="text-muted-foreground px-5 py-4 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
       ) : (
-        // The rows run edge to edge (MESITA-4280): a full hairline above
-        // each and under the last.
-        <div className="border-border border-b" data-pay-places>
-          {shown.map((p) => (
-            <Fragment key={p.place_id}>
-              <div className="bg-border h-px" />
-              <button
-                type="button"
-                onClick={() => onPick(p.place_id)}
-                className="hover:bg-muted/60 flex min-h-[4.75rem] w-full items-center gap-3.5 px-5 py-3 text-left transition"
-              >
-                <PlacePhoto place={p} className="h-12 w-12" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-base font-semibold">{p.name ?? "A Mesita place"}</span>
-                  {p.address ? (
-                    <span className="text-muted-foreground mt-0.5 block truncate text-sm">{p.address}</span>
-                  ) : null}
-                </span>
-                <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-sm tabular-nums">
-                  {p.distance_m !== null ? distanceText(p.distance_m) : null}
-                  {/* THE QR (Pato, 2026-11-17, MESITA-4242: "a fictional qr at
-                      the right … like you are about to generate a qr"): the
-                      row starts a bill, as Pay Bill's own QR says. MESITA-4251
-                      (Pato: "in a black box or something"): a white QR on a
-                      black chip, the Wallet's card-chip size. */}
-                  <span className="flex h-8 w-[3.2rem] items-center justify-center rounded-md bg-neutral-950 text-white" aria-hidden data-pay-pick-qr>
-                    <QrCode className="h-5 w-5" strokeWidth={2} />
-                  </span>
-                  <ChevronRight className="h-4 w-4" aria-hidden />
-                </span>
-              </button>
-            </Fragment>
-          ))}
-          {hidden > 0 ? (
+        // SECTIONS (MESITA-4295): the places you hold credit at, then the
+        // nearest; a search is one list. The rows run edge to edge
+        // (MESITA-4280) with a hairline between them.
+        <div data-pay-places>
+          {q ? (
+            <Section title="Results" places={shown} onPick={onPick} />
+          ) : (
             <>
-              <div className="bg-border h-px" />
-              <button
-                type="button"
-                onClick={() => setShowAll(true)}
-                className="hover:bg-muted/60 flex min-h-12 w-full items-center justify-center px-5 text-sm font-semibold transition"
-              >
-                Show all {matches.length} places
-              </button>
+              <Section title="Your cards" places={shown.filter((p) => p.available_cents > 0)} onPick={onPick} />
+              <Section title="Near you" places={shown.filter((p) => p.available_cents <= 0)} onPick={onPick} />
             </>
+          )}
+          {hidden > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="border-border hover:bg-muted/60 flex min-h-12 w-full items-center justify-center border-t px-5 text-sm font-semibold transition"
+            >
+              Show all {matches.length} places
+            </button>
           ) : null}
         </div>
       )}
@@ -205,13 +186,53 @@ function PlaceList({
   );
 }
 
+/** One eyebrow and its rows; none, nothing. */
+function Section({ title, places, onPick }: { title: string; places: PayPlace[]; onPick: (placeId: string) => void }) {
+  if (places.length === 0) return null;
+  return (
+    <section className="mt-3">
+      <p className="type-eyebrow text-muted-foreground px-5 pb-2">{title}</p>
+      <div className="border-border divide-border divide-y border-y">
+        {places.map((p) => (
+          <PlaceRow key={p.place_id} p={p} onPick={onPick} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** A place: photo, name, "1.0 km · address", then the QR chip and a chevron. */
+function PlaceRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
+  const line = [p.distance_m !== null ? distanceText(p.distance_m) : null, p.address].filter(Boolean).join(" · ");
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(p.place_id)}
+      className="hover:bg-muted/60 flex min-h-[4.5rem] w-full items-center gap-3.5 px-5 py-3 text-left transition"
+    >
+      <PlacePhoto place={p} className="h-12 w-12" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-base font-semibold">{p.name ?? "A Mesita place"}</span>
+        {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm tabular-nums">{line}</span> : null}
+      </span>
+      {/* THE QR (MESITA-4242, Pato: "a fictional qr at the right"): white on
+          a black chip (MESITA-4251). */}
+      <span className="flex h-8 w-[3.2rem] shrink-0 items-center justify-center rounded-md bg-neutral-950 text-white" aria-hidden data-pay-pick-qr>
+        <QrCode className="h-5 w-5" strokeWidth={2} />
+      </span>
+      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+    </button>
+  );
+}
+
 function RowsSkeleton() {
   return (
-    <div className="border-border border-b" aria-busy>
+    <div className="mt-3" aria-busy>
+      <Skeleton className="mx-5 mb-2 h-3 w-20" />
+      <div className="border-border divide-border divide-y border-y">
       {[0, 1, 2].map((i) => (
         <Fragment key={i}>
-          <div className="bg-border h-px" />
-          <div className="flex min-h-[4.75rem] items-center gap-3 px-5 py-3">
+          <div className="flex min-h-[4.5rem] items-center gap-3 px-5 py-3">
             <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
             <div className="flex-1">
               <Skeleton className="h-4 w-40" />
@@ -221,6 +242,7 @@ function RowsSkeleton() {
           </div>
         </Fragment>
       ))}
+      </div>
     </div>
   );
 }
@@ -230,7 +252,7 @@ export function PayPickLoading() {
   return (
     <Screen title="Where are you paying?" paper>
       <div className="-mx-5 -my-5" aria-busy>
-        <div className="px-5 pt-4 pb-3">
+        <div className="px-5 pt-4 pb-2">
           <Skeleton className="h-11 w-full rounded-full" />
         </div>
         <RowsSkeleton />
