@@ -1,11 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Gift, QrCode, Store } from "lucide-react";
+import { ChevronRight, Gift, Plus, QrCode, Store } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { OffersTile, offerSlides, SizedImg } from "@mesita/place-profile";
+import { offerSlides, SizedImg } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import {
@@ -28,17 +27,19 @@ import { SentLinks } from "./SendCredit";
 import { Panel, PanelHeading } from "@/components/shared/Panel";
 import { WalletPanelList } from "./WalletLists";
 import { TicketsBoard, type TicketTab } from "@/components/consumer/activity/MeLists";
-import { DOOR_GLYPH, DOOR_QUIET, PRIMARY, SECONDARY } from "./wallet-buttons";
+import { PRIMARY, SECONDARY } from "./wallet-buttons";
 import { offerHref } from "@/components/consumer/offer-button";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
 import { toast } from "@/lib/toast";
 import type { CreditRow } from "./use-wallet";
 
-/** Pay here as a door (MESITA-4269): Stripe purple, glyph over label. */
-const PAY_TILE = cn(DOOR_QUIET, "bg-[#635bff] text-white hover:bg-[#5249e6] hover:opacity-100 focus-visible:ring-[#a5a0ff]");
-/** View place as a door (MESITA-4273): Send Gift's size, grey, the quiet
- *  outbound-link look. */
-const PLACE_TILE = cn(DOOR_QUIET, "bg-muted text-foreground hover:bg-border hover:opacity-100");
+/** THE BANK ROW (MESITA-4281, Pato picked drawing A: "the four buttons like
+ *  that look like shit"): four round 52px faces with the label under,
+ *  the banking-app look. Only Pay Bill has colour (Stripe purple). */
+const ROUND =
+  "flex w-18 flex-col items-center gap-1.5 text-center text-xs leading-tight font-semibold text-foreground outline-none transition active:scale-[0.97] focus-visible:[&>span]:ring-2 focus-visible:[&>span]:ring-neutral-400";
+const ROUND_FACE = "relative flex h-13 w-13 items-center justify-center rounded-full";
+const ROUND_GLYPH = "h-5 w-5";
 
 // A PLACE'S HOUSE CARD, /wallet/place/<placeId> (MESITA-3741). Since MESITA-3868
 // (Pato, 2026-11-14, over a screenshot: "the buttons there floting feels
@@ -51,11 +52,10 @@ const PLACE_TILE = cn(DOOR_QUIET, "bg-muted text-foreground hover:bg-border hove
 //   [mini House Card]     half the column, centred (MESITA-3802): the
 //                         place's photo and name, the server's amount (a
 //                         muted $0 when nothing is spendable yet), "House Card"
-//   [Pay here][Offers]    2 × 2 doors (MESITA-4269): Stripe-purple Pay, the
-//   [Send Gift][View place]  place screen's Offers box (none for sale: Pay
-//                         spans the row), Send Gift dark (follows giftAction:
-//                         hidden, dimmed with a reason, or open), View place
-//                         grey (MESITA-4273)
+//   (Pay Bill)(Add Funds)(Send Gift)(View Place)  four round buttons, label
+//                         under (MESITA-4281); only Pay Bill purple; Add Funds
+//                         wears a +N% chip and hides when nothing is for sale;
+//                         Send Gift follows giftAction (hidden, dimmed, open)
 //   (held-credit line)    only while an open payment holds credit
 //   (Confirming a payment…)  only while the server is still confirming one
 //   Vouchers to activate  Story vouchers waiting for staff, only when any
@@ -202,12 +202,11 @@ export function HouseCardSkeleton() {
     <div className="flex flex-col" aria-hidden>
       <Panel className="mt-4 p-4">
         <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
-        {/* The 2 × 2 doors (MESITA-4273). */}
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <Skeleton className="h-13 rounded-xl" />
-          <Skeleton className="h-13 rounded-xl" />
-          <Skeleton className="h-13 rounded-xl" />
-          <Skeleton className="h-13 rounded-xl" />
+        {/* The bank row (MESITA-4281). */}
+        <div className="mt-5 flex justify-around">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-13 w-13 rounded-full" />
+          ))}
         </div>
       </Panel>
       <Panel className="mt-4 p-4">
@@ -243,7 +242,6 @@ export function PlaceCredit({
 }) {
   const { card, balance } = row;
   const href = placeHref(row.placeSlug);
-  const router = useRouter();
   const offers = useMemo(() => offerSlides(balance?.offers), [balance?.offers]);
   // A balance whose place the server could not name: gone from Mesita.
   const gone = balance !== null && balance.place === null;
@@ -352,45 +350,66 @@ export function PlaceCredit({
            Share Mesita left and View place took its slot as a grey door
            (MESITA-4273, Pato: "remove share mesita from here. view place must
            be same a grey button of the same size"); it was a pill under the
-           card (MESITA-4116). */
-        <div className="mt-4 grid grid-cols-2 gap-2" data-house-card-actions>
+           card (MESITA-4116). Since MESITA-4281 the four are one bank row
+           of round buttons: Pay Bill, Add Funds (this page's word for
+           Offers), Send Gift, View Place. */
+        <div className="mt-5 flex justify-around gap-1" data-house-card-actions>
           <PushLink
             href={payPlacePath(row.placeId)}
-            className={cn(PAY_TILE, offers.length === 0 && "col-span-2")}
-            aria-label={spendable > 0 ? `Pay here: use ${money(spendable, card.currency)} at the table` : "Pay here"}
+            className={ROUND}
+            aria-label={spendable > 0 ? `Pay Bill: use ${money(spendable, card.currency)} at the table` : "Pay Bill"}
             data-house-card-pay
           >
-            <QrCode className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
-            Pay here
+            <span className={cn(ROUND_FACE, "bg-[#635bff] text-white")}>
+              <QrCode className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+            </span>
+            Pay Bill
           </PushLink>
           {offers.length > 0 ? (
-            <OffersTile
-              name={card.name ?? "this place"}
-              slides={offers}
-              open={(slide) => () => router.push(offerHref(href, slide, true))}
-            />
+            <PushLink
+              href={offerHref(href, offers[0], true)}
+              className={ROUND}
+              aria-label={offers[0].bonus ? `Add Funds: ${offers[0].bonus}% bonus` : "Add Funds"}
+              data-house-card-offer
+            >
+              <span className={cn(ROUND_FACE, "bg-muted")}>
+                <Plus className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+                {offers[0].bonus ? (
+                  <span className={cn("type-meta absolute -top-1.5 -right-3 rounded-full px-1.5 py-0.5 leading-none font-bold", offers[0].tone)}>
+                    +{offers[0].bonus}%
+                  </span>
+                ) : null}
+              </span>
+              Add Funds
+            </PushLink>
           ) : null}
           {/* Send Gift is its own page (MESITA-4096); it was a sheet here. */}
           {gift === "open" ? (
-            <PushLink href={walletSendPath(row.placeId)} className={DOOR_QUIET} data-send-credit-open>
-              <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+            <PushLink href={walletSendPath(row.placeId)} className={ROUND} data-send-credit-open>
+              <span className={cn(ROUND_FACE, "bg-muted")}>
+                <Gift className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+              </span>
               Send Gift
             </PushLink>
           ) : gift ? (
             <button
               type="button"
-              className={cn(DOOR_QUIET, "opacity-50")}
+              className={cn(ROUND, "opacity-50")}
               onClick={() => toast(gift.blocked)}
               aria-label={`Send Gift: ${gift.blocked}`}
               data-send-credit-open
             >
-              <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+              <span className={cn(ROUND_FACE, "bg-muted")}>
+                <Gift className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+              </span>
               Send Gift
             </button>
           ) : null}
-<PushLink href={href} className={cn(PLACE_TILE, !gift && "col-span-2")} data-house-card-place>
-            <Store className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
-            View place
+          <PushLink href={href} className={ROUND} data-house-card-place>
+            <span className={cn(ROUND_FACE, "bg-muted")}>
+              <Store className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+            </span>
+            View Place
           </PushLink>
         </div>
       )}
