@@ -172,6 +172,10 @@ function PlaceList({
                 </span>
                 <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-sm tabular-nums">
                   {p.distance_m !== null ? distanceText(p.distance_m) : null}
+                  {/* THE QR (Pato, 2026-11-17, MESITA-4242: "a fictional qr at
+                      the right … like you are about to generate a qr"): the
+                      row starts a bill, as Pay Bill's own QR says. */}
+                  <QrCode className="text-foreground h-6 w-6" strokeWidth={2} aria-hidden data-pay-pick-qr />
                   <ChevronRight className="h-4 w-4" aria-hidden />
                 </span>
               </button>
