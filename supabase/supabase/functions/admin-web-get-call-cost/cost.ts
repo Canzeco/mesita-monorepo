@@ -13,6 +13,22 @@ export const PLAN_LIST_PRICES: Record<string, { usd: number; credits: number }> 
   business: { usd: 1320, credits: 11_000_000 },
 };
 
+/** The tier's list price. ElevenLabs suffixes tier names ("creator_2024",
+ *  "pro_new"), so a tier matches the plan it starts with (MESITA-4235: the
+ *  card read "Plan price unknown" for a suffixed tier). */
+export function listPrice(tier: string | null): { usd: number; credits: number } | null {
+  const t = tier?.trim().toLowerCase();
+  if (!t) return null;
+  const key = Object.keys(PLAN_LIST_PRICES).find((k) => t === k || t.startsWith(k));
+  return key ? PLAN_LIST_PRICES[key] : null;
+}
+
+/** USD → MXN from Frankfurter's ECB rates: a positive number, else null. */
+export function parseMxnPerUsd(body: unknown): number | null {
+  const v = (body as { rates?: { MXN?: unknown } } | null)?.rates?.MXN;
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
+}
+
 export type CallCost = {
   calls: number;
   minutes: number;
@@ -41,10 +57,12 @@ export function callCost(
   if (plan.invoiceUsd && plan.invoiceUsd > 0 && plan.creditLimit && plan.creditLimit > 0) {
     usdPerCredit = plan.invoiceUsd / plan.creditLimit;
     priceSource = "invoice";
-  } else if (plan.tier && PLAN_LIST_PRICES[plan.tier.toLowerCase()]) {
-    const p = PLAN_LIST_PRICES[plan.tier.toLowerCase()];
-    usdPerCredit = p.usd / p.credits;
-    priceSource = "list";
+  } else {
+    const p = listPrice(plan.tier);
+    if (p) {
+      usdPerCredit = p.usd / p.credits;
+      priceSource = "list";
+    }
   }
 
   const creditsPerMinute = minutes > 0 ? credits / minutes : null;

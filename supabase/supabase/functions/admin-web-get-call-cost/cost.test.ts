@@ -1,5 +1,19 @@
 import { assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
-import { callCost } from "./cost.ts";
+import { callCost, listPrice, parseMxnPerUsd } from "./cost.ts";
+
+Deno.test("call cost: a suffixed tier still finds its list price; an unknown one is null", () => {
+  assertEquals(listPrice("creator_2024"), { usd: 22, credits: 100_000 });
+  assertEquals(listPrice("Pro"), { usd: 99, credits: 500_000 });
+  assertEquals(listPrice("free"), null);
+  assertEquals(listPrice(null), null);
+});
+
+Deno.test("call cost: the peso rate is a positive number or null, never 0", () => {
+  assertEquals(parseMxnPerUsd({ rates: { MXN: 18.4 } }), 18.4);
+  assertEquals(parseMxnPerUsd({ rates: { MXN: 0 } }), null);
+  assertEquals(parseMxnPerUsd({ rates: {} }), null);
+  assertEquals(parseMxnPerUsd(null), null);
+});
 
 Deno.test("call cost: credits per minute weighs by length; invoice ÷ credit limit prices a credit", () => {
   const c = callCost(

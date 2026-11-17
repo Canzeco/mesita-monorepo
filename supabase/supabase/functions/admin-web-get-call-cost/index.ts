@@ -11,6 +11,9 @@
 //   plan     /v1/user/subscription: USD per credit = invoice ÷ credit limit,
 //            else the tier's list price
 //   answer   Σ credits ÷ Σ minutes, × USD per credit (cost.ts)
+//   pesos    USD → MXN from Frankfurter (ECB rates, no key), so the card reads
+//            in pesos (MESITA-4235, Pato: "use pesos not only eleven labs
+//            credits"); null when the rate cannot be read
 //
 // ElevenLabs only: the Twilio phone line bills apart.
 //
@@ -20,7 +23,18 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireAdminRequest } from "../_shared/request.ts";
 import { resolveElevenLabsKey } from "../_shared/elevenlabs.ts";
-import { type CallRow, callCost } from "./cost.ts";
+import { type CallRow, callCost, parseMxnPerUsd } from "./cost.ts";
+
+const FX = "https://api.frankfurter.dev/v1/latest?base=USD&symbols=MXN";
+
+async function mxnPerUsd(): Promise<number | null> {
+  try {
+    const res = await fetch(FX, { signal: AbortSignal.timeout(5_000) });
+    return res.ok ? parseMxnPerUsd(await res.json()) : null;
+  } catch {
+    return null;
+  }
+}
 
 const EL = "https://api.elevenlabs.io";
 const PAGE = 100;
@@ -87,9 +101,10 @@ serveJson("admin-web-get-call-cost", async (req) => {
   )];
   if (agentIds.length === 0) return json({ ok: false, error: "No reservation agents in agents_config" }, 500);
 
-  const [lists, sub] = await Promise.all([
+  const [lists, sub, fx] = await Promise.all([
     Promise.all(agentIds.map((id) => agentCalls(key, id, sinceUnix))),
     elGet(key, "/v1/user/subscription"),
+    mxnPerUsd(),
   ]);
   const failed = lists.find((l) => !l.ok);
   if (failed && !failed.ok) return json({ ok: false, error: `ElevenLabs conversations: ${failed.error}` }, 502);
@@ -109,6 +124,7 @@ serveJson("admin-web-get-call-cost", async (req) => {
     ok: true,
     days,
     plan: tier,
+    mxnPerUsd: fx,
     truncated: lists.some((l) => l.ok && l.truncated),
     ...callCost(rows, { tier, creditLimit, invoiceUsd }),
   });
