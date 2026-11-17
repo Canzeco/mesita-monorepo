@@ -433,8 +433,7 @@ export type PaymentKey =
   | "voucher_1000"
   | "voucher_5000"
   | "voucher_welcome"
-  | "voucher_story"
-  | "voucher_vip";
+  | "voucher_story";
 export type PaymentSettings = Record<PaymentKey, boolean>;
 /** The House Credits Contract (MESITA-3589), independent of Stripe. */
 export type HouseCreditsContract = { signed: boolean; signed_at: string | null; terms_version: string | null; text?: string };

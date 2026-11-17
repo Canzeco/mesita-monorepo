@@ -45,11 +45,10 @@ export type OfferInput = {
 // MESITA-4207's pale green-200 is gone.
 // STRONG TINTS FOR ALL (Pato, 2026-11-17, MESITA-4211: "story must be darker
 // too. also welcome. and vip must be yellow."): the 400 weight next to Link
-// green, black ink; VIP has its own yellow again.
+// green, black ink. The VIP offer and its yellow are gone (MESITA-4249).
 const GREEN = "bg-[#00D66F] text-neutral-950";
 const BLUE = "bg-blue-400 text-neutral-950";
 const PINK = "bg-pink-400 text-neutral-950";
-const YELLOW = "bg-yellow-400 text-neutral-950";
 
 /** THE ONE COLOUR MAP (autoplan F5, MESITA-4207): the slides, the Home chips
  *  and the Offers page rows (vouchers.tsx FACES) all read it, so the next
@@ -57,7 +56,6 @@ const YELLOW = "bg-yellow-400 text-neutral-950";
 export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
   voucher_welcome: BLUE,
   voucher_story: PINK,
-  voucher_vip: YELLOW,
   voucher_200: GREEN,
   voucher_1000: GREEN,
   voucher_5000: GREEN,
@@ -75,7 +73,6 @@ const OFFER_SLIDES: OfferSlide[] = [
   { key: "voucher_welcome", lead: "Welcome", pill: "+100% Bonus", short: "Welcome", spoken: "Welcome, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_welcome, bonus: 100, voucher: "voucher_welcome" },
   // Story +50% since MESITA-4207 (pay $100, get $150); +30% before.
   { key: "voucher_story", lead: "Story", pill: "+50% Bonus", short: "Story", spoken: "Story, 50% bonus", section: "special", tone: VOUCHER_TONE.voucher_story, bonus: 50, voucher: "voucher_story" },
-  { key: "voucher_vip", lead: "VIP", pill: "+100% Bonus", short: "VIP", spoken: "VIP, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_vip, bonus: 100, voucher: "voucher_vip" },
 ];
 
 /** The standard vouchers' bonuses: the server's catalog (supabase

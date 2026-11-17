@@ -92,7 +92,8 @@ Deno.test("settings: no row is everything Off, App Payments included; unknown ke
   const off = settingsFromRow(null);
   // Eleven switches and four rates (credit and prepay since MESITA-3827;
   // Accept Stripe Payments since MESITA-3946, On by default like its column).
-  assertEquals(Object.keys(off).length, 11);
+  // Ten since the VIP offer left (MESITA-4249).
+  assertEquals(Object.keys(off).length, 10);
   assertEquals(off.stripe_payments, true);
   assertEquals(settingsFromRow({ stripe_payments: false }).stripe_payments, false);
   // Mesita Prepayments (MESITA-3597) reads off with no row and from anything but true.
@@ -105,8 +106,8 @@ Deno.test("settings: no row is everything Off, App Payments included; unknown ke
   assertEquals(off.pay_cards, false);
   assertEquals(settingsFromRow({ pay_cards: true }).pay_cards, true);
   assertEquals(settingsFromRow({ pay_cards: "yes" }).pay_cards, false);
-  assertEquals(settingsFromRow({ house_credits: true, voucher_vip: "yes" }).house_credits, true);
-  assertEquals(settingsFromRow({ house_credits: true, voucher_vip: "yes" }).voucher_vip, false);
+  assertEquals(settingsFromRow({ house_credits: true, voucher_story: "yes" }).house_credits, true);
+  assertEquals(settingsFromRow({ house_credits: true, voucher_story: "yes" }).voucher_story, false);
   // A row still carrying the dead columns (MESITA-3408, dropped by MESITA-3409) reads past them.
   const old = settingsFromRow({ pay_cash: false, pay_credits: false, voucher_200: true } as Record<string, unknown>);
   assertEquals("pay_cash" in old || "pay_credits" in old, false);

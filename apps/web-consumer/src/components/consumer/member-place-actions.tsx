@@ -269,21 +269,16 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     },
     // The Home chip's voucher (MESITA-4207), only while its ask stands.
     askedVoucher: askDismissed ? null : askedVoucher,
-    // The Offers (i) status (MESITA-3502): VIP needs the VIP Class, Story a
-    // linked Instagram; each lock's action opens the page that lifts it.
+    // The Offers (i) status (MESITA-3502): Story needs a linked Instagram;
+    // its lock's action opens the page that lifts it.
     ...(profile
       ? {
         guest: {
-          vip: profile.guest_class === "vip",
           instagramLinked: Boolean(profile.instagram_handle),
           instagramFollowers: profile.instagram_followers_count ?? null,
         },
       }
       : {}),
-    onJoinVip: () => {
-      setRewards(null);
-      navigateTo(router, CONSUMER_ROUTES.mePages.class, { motion: "drill" });
-    },
     onLinkInstagram: () => {
       setRewards(null);
       navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" });

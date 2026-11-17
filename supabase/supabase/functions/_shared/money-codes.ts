@@ -81,10 +81,8 @@ export const MONEY_CODES = [
   "taken_back",
   // A guest typed too many wrong gift codes this hour (MESITA-3737)
   "too_many_tries",
-  // Story and VIP, one each new visit (MESITA-3463): bought for every visit
+  // Story, one each new visit (MESITA-3463): bought for every visit
   "needs_visit",
-  // VIP (MESITA-3550): the guest is not of the VIP class
-  "not_vip",
   // A voucher buy without a saved card (MESITA-4065: no Stripe page; the
   // guest adds a card in the app first)
   "card_required",

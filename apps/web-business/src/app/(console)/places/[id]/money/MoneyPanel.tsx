@@ -42,7 +42,6 @@ const KIND: Record<string, string> = {
   voucher_5000: "Big Voucher",
   voucher_welcome: "Welcome Voucher",
   voucher_story: "Story Voucher",
-  voucher_vip: "VIP Voucher",
 };
 
 const CONFIRMER: Record<string, string> = { stripe: "Stripe", waiter: "Waiter", credit: "Credit" };

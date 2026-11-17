@@ -7,7 +7,7 @@ import { mesitaRowState, PREPAY_PAUSED } from "./mesita-row";
 const BASE: PlaceMoney = {
   charges_enabled: false,
   mesita_pay: false,
-  vouchers: { voucher_200: false, voucher_1000: false, voucher_5000: false, voucher_welcome: false, voucher_story: false, voucher_vip: false },
+  vouchers: { voucher_200: false, voucher_1000: false, voucher_5000: false, voucher_welcome: false, voucher_story: false },
   test_mode: true,
   currency: "mxn",
   sell: [],
@@ -24,13 +24,13 @@ describe("offerSlides", () => {
     expect(offerSlides({ sell: [] })).toEqual([]);
   });
 
-  it("orders Prepay, Welcome, Story, VIP, shows only the best standard bonus (MESITA-4219)", () => {
+  it("orders Prepay, Welcome, Story (no VIP, MESITA-4249), shows only the best standard bonus (MESITA-4219)", () => {
     const slides = offerSlides({
-      sell: ["voucher_200", "voucher_5000", "voucher_vip", "voucher_welcome"],
+      sell: ["voucher_200", "voucher_5000", "voucher_story", "voucher_welcome"],
     });
-    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Prepay +30% Bonus", "Welcome +100% Bonus", "VIP +100% Bonus"]);
+    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Prepay +30% Bonus", "Welcome +100% Bonus", "Story +50% Bonus"]);
     expect(slides.map((s) => s.section)).toEqual(["prepayment", "special", "special"]);
-    expect(slides.map((s) => s.voucher)).toEqual(["voucher_5000", "voucher_welcome", "voucher_vip"]);
+    expect(slides.map((s) => s.voucher)).toEqual(["voucher_5000", "voucher_welcome", "voucher_story"]);
   });
 });
 
