@@ -1,21 +1,29 @@
 import { ConfigPageLayout } from "@/components/admin-ui";
 import { getActivitySummary } from "@/lib/activity-summary";
+import { getReservationsConfig } from "../reservations-config/actions";
 import { listLogs } from "./actions";
 import { LogsClient } from "./LogsClient";
+import { NeedsAttentionCard } from "./NeedsAttentionCard";
 
 export const dynamic = "force-dynamic";
 
 export default async function LogsPage() {
-  const [initialLogs, initialSummary] = await Promise.all([
+  // Reservations that need a human (MESITA-4293: logs live here, never on a
+  // Configurations page). Hidden when empty or unreadable.
+  const [initialLogs, initialSummary, reservations] = await Promise.all([
     listLogs(),
     getActivitySummary(),
+    getReservationsConfig(),
   ]);
   return (
     <ConfigPageLayout
       title="Logs"
       description="A recent activity feed. Enrichment workflow lines stay available for deep debugging."
     >
-      <LogsClient initialLogs={initialLogs} initialSummary={initialSummary} />
+      <div className="flex flex-col gap-4">
+        <NeedsAttentionCard rows={reservations.ok ? reservations.needsAttention : []} />
+        <LogsClient initialLogs={initialLogs} initialSummary={initialSummary} />
+      </div>
     </ConfigPageLayout>
   );
 }

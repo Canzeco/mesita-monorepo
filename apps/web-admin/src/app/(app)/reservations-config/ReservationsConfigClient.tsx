@@ -4,8 +4,8 @@
 //
 // MINIMAL PAGE (Pato, 2026-08-21: "make this much simpler by far … simple and
 // clean UI minimalist few words"; 2026-10-10, MESITA-2122: "remove stupid
-// stuff"). ONE box: Testing, plus a Needs Attention card only when something
-// needs attention. No Calls card, no fleet strip, no workflow diagram.
+// stuff"). ONE box: Testing. Needs attention moved to Logs (MESITA-4293:
+// no logs on a Configurations page). No Calls card, no fleet strip, no workflow diagram.
 //
 // STOP RENDERING, NEVER STOP CARRYING: `limits` (kill switch + daily caps)
 // and `reminder` have no controls — the Edge Functions still read them at
@@ -14,31 +14,21 @@
 // WHOLE-BLOB save; `dirty` gates on loadError so a failed read can never
 // overwrite the live singleton (MESITA-737).
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Notice } from "@/components/admin-ui";
 import { SaveRow } from "@/components/admin-ui/config";
 import { useConfigEditor } from "@/components/admin-ui/use-config-editor";
 import { getReservationsConfig, updateReservationsConfig } from "./actions";
-import {
-  type NeedsAttentionRow,
-  type ReservationsConfig,
-  testNumberInvalid,
-} from "./catalog";
-import { NeedsAttentionCard } from "./NeedsAttentionCard";
+import { type ReservationsConfig, testNumberInvalid } from "./catalog";
 import { TestingCard } from "./TestingCard";
 
 export function ReservationsConfigClient({
   initialConfig,
-  initialNeedsAttention,
   loadError,
 }: {
   initialConfig: ReservationsConfig;
-  initialNeedsAttention: NeedsAttentionRow[];
   loadError: string | null;
 }) {
-  const [attention, setAttention] = useState<NeedsAttentionRow[]>(
-    initialNeedsAttention,
-  );
   const {
     cfg,
     setCfg,
@@ -53,7 +43,6 @@ export function ReservationsConfigClient({
     initialConfig,
     loadError,
     load: getReservationsConfig,
-    onLoaded: (r) => setAttention(r.needsAttention),
   });
 
   const testInvalid = testNumberInvalid(cfg.testCall);
@@ -79,7 +68,6 @@ export function ReservationsConfigClient({
 
   return (
     <div className="flex flex-col gap-4">
-      <NeedsAttentionCard rows={attention} />
       <TestingCard
         cfg={cfg}
         pending={pending}
