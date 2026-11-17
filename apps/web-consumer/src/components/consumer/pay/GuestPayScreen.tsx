@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, Lock, ReceiptText, XCircle } from "lucide-react";
-import { MesitaMark } from "@/components/brand/MesitaMark";
+import { Banknote, Check, CreditCard, Lock, ReceiptText, XCircle } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
@@ -36,7 +35,7 @@ import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { cardFace } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
-import { CreditsCardChip, CreditsPill } from "@/components/consumer/wallet/WalletLists";
+import { CashChip, CreditsCardChip, CreditsPill, SavedCardChip } from "@/components/consumer/wallet/WalletLists";
 import { BAD, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, StepBody, StepFooter } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab, CancelBillButtons } from "./pay-common";
 
@@ -708,25 +707,26 @@ export function GuestPayScreen({
             ) : null}
             {creditsOnly ? null : (
               <div className="divide-border flex flex-col divide-y" role="radiogroup" aria-label="How you pay">
-                {/* MESITA APP (MESITA-4123, Pato: "keep the pay with app like
-                    really beautiful, Mesita App or whatever"): the Mesita mark
-                    on the brand pink, always; the choice is the ring. */}
+                {/* CARD (MESITA-4244, Pato: "maybe just mentioning the card
+                    i think its clearer. with the visa thing. just say Card";
+                    was "Mesita App" on the brand pink, MESITA-4123): the
+                    guest's one saved card, its brand chip as on the Wallet;
+                    the choice is the ring. */}
                 <MethodTile
                   on={way === "card"}
                   off={appWhy}
-                  icon={<MesitaMark className="!h-6 !w-6" />}
-                  tone="bg-pink-gradient text-white shadow-sm"
+                  lead={card ? <SavedCardChip brand={card.brand} last4={card.last4} /> : <NoCardChip />}
                   id="app"
-                  title="Mesita App"
-                  line={card ? `${brandLabel(card.brand)} •••• ${card.last4}${card.id === refusedCardId ? " · Declined just now" : ""}` : "Pay in the app with your card"}
+                  title="Card"
+                  line={card ? `${brandLabel(card.brand)} •••• ${card.last4}${card.id === refusedCardId ? " · Declined just now" : ""}` : "Add one on the next step"}
                   onPick={() => setMethod("card")}
                 />
+                {/* Cash in its dollar-bill green (MESITA-4244, Pato: "for
+                    cash use green"), the Wallet's Cash chip. */}
                 <MethodTile
                   on={way === "cash"}
                   off={cashWhy}
-                  icon={<Banknote />}
-                  // The quieter way: grey until picked, then ink.
-                  tone={way === "cash" ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}
+                  lead={<CashChip />}
                   id="cash"
                   title="Pay outside the app"
                   line="Cash or the place's card terminal"
@@ -887,12 +887,20 @@ export function GuestPayScreen({
  *  edge and the words on another. */
 const LEAD_SLOT = "flex w-[3.2rem] shrink-0 items-center";
 
+/** No card saved yet: a black card chip, the Wallet's chip shape. */
+function NoCardChip() {
+  return (
+    <span className="flex h-8 w-[3.2rem] shrink-0 items-center justify-center rounded-md bg-neutral-900 text-white" aria-hidden>
+      <CreditCard className="h-4 w-4" />
+    </span>
+  );
+}
+
 function MethodTile({
   id,
   on,
   off,
-  icon,
-  tone,
+  lead,
   title,
   line,
   onPick,
@@ -901,10 +909,9 @@ function MethodTile({
   id: string;
   on: boolean;
   off: string | null;
-  icon: React.ReactNode;
-  /** The way's own colour (MESITA-3877): App the brand pink, Cash the
-   *  Wallet's Cash green. Grey when the place can't take it. */
-  tone: string;
+  /** The way's chip, the Wallet's (MESITA-4244): the saved card's brand,
+   *  Cash's green. Greyed when the place can't take it. */
+  lead: React.ReactNode;
   title: string;
   line: string;
   onPick: () => void;
@@ -922,11 +929,7 @@ function MethodTile({
       )}
       data-guest-method={id}
     >
-      <span className={LEAD_SLOT}>
-        <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full [&>svg]:h-5 [&>svg]:w-5", off ? "bg-muted" : tone)} aria-hidden>
-          {icon}
-        </span>
-      </span>
+      <span className={cn(LEAD_SLOT, off && "opacity-40 grayscale")}>{lead}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-base font-semibold">{title}</span>
         <span className="text-muted-foreground block truncate text-sm">{off ?? line}</span>
