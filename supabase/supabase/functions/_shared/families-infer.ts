@@ -56,7 +56,7 @@ export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
   arabic: "Middle Eastern or eastern Mediterranean — Lebanese, Turkish, Greek, kebab",
   european: "another European cuisine — Spanish, French, German, tapas",
   american: "American food — diner, barbecue joint, fries and shakes",
-  dinner: "a sit-down restaurant people go to for an evening meal — most full-service restaurants; not cafés, bakeries, juice bars, counters or bars that also serve food",
+  dinner: "a sit-down restaurant whose main service is the evening meal — a dinner menu people book for; not a casual lunch spot (mariscos, taquería, warung, fonda, sushi bar), café, counter, bar or beach club",
   fancy: "genuinely upscale — fine dining, a tasting menu, a dress code or special-occasion prices; not merely stylish, popular, well rated or at a nice hotel",
   family: "a day out for kids — zoos, aquariums, water parks, indoor playgrounds; not a restaurant that welcomes children or has a kids' menu",
   drinks: "drinking is the point — a bar, cantina, brewery or wine bar; not a restaurant that serves beer",
@@ -102,9 +102,9 @@ export function familiesRule(stage: FamiliesStage): string {
     "LIST line gives and a guest browsing that family would be glad to find " +
     "it there. An amenity never earns a family: welcoming kids, serving " +
     "alcohol, having music or being open late is not Family, Bar, Music or " +
-    "Night. Cuisine and meal families (every cuisine, Dinner, Breakfast, " +
-    "Coffee, Quick) describe what the place serves: give each one that truly " +
-    "applies. When unsure about a family, leave " +
+    "Night. Cuisine and meal families (every cuisine, Breakfast, Coffee, " +
+    "Quick) describe what the place serves: give each one that truly applies; " +
+    "Dinner only when its meaning fits. When unsure about a family, leave " +
     `it out — but always return at least one, the closest by meaning. ${count}`
   );
 }

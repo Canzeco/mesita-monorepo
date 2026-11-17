@@ -141,7 +141,8 @@ type PlaceSnapshot = {
 const AMENITY_LINE =
   "The texts below were written earlier by a model that over-picked families. " +
   "Amenity words in them (family-friendly, kids, cocktails, beer, live music, " +
-  "open late, great views) are not evidence for a family; judge what the place IS.";
+  "open late, great views) are not evidence for a family; judge what the place IS. " +
+  "A place whose name or Google categories make it a bar, pub or cantina is still Bar.";
 
 /** The two messages one re-pick (or one Enrich-arm replay) sends. Pure. */
 export function buildRepickMessages(
