@@ -15,8 +15,8 @@ import type { ReactNode } from "react";
 /** The page's band, held at the top of its scroller: the title, a control
  *  at its right (the Tickets shortcut, MESITA-3891), and on Pay the search
  *  bar under a hairline (Pato, MESITA-3891: "add a line dividing the
- *  searchbar and pay"). `-mx-4` because both pages pad their scroller by
- *  1rem.
+ *  searchbar and pay"). `-mx-2` because the Wallet pads its scroller by
+ *  8px (MESITA-4276); the title keeps its own 16px inset.
  *
  *  SHORT (Pato, 2026-11-15, MESITA-4087: "make page header shorter"): 52px
  *  (8px over and under a 36px Tickets pill, the title one step down at
@@ -32,7 +32,7 @@ export function PayHeader({
 }) {
   return (
     <div
-      className="border-border bg-card sticky top-0 z-10 -mx-4 border-b"
+      className="border-border bg-card sticky top-0 z-10 -mx-2 border-b"
       data-page-band
     >
       <div className="flex min-h-9 items-center justify-between gap-3 px-4 py-2">
