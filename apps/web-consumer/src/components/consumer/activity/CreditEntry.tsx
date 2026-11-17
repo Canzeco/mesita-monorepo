@@ -42,6 +42,7 @@
 // Tickets already holds (the same cached read); an entry it cannot find any
 // more says so and goes back to Tickets.
 
+import { creditEntryTitle } from "@/lib/credit-entry-title";
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -375,5 +376,5 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     );
   })();
 
-  return <MeScreen title="Credit">{body}</MeScreen>;
+  return <MeScreen title={creditEntryTitle(entryKey)}>{body}</MeScreen>;
 }
