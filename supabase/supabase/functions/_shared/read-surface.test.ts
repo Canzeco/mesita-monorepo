@@ -245,6 +245,8 @@ const PROFILES_READ_ALLOWLIST = [
   "admin-web-list-premier/index.ts",
   // Wallet (MESITA-3097): the prepay place's state, currency and switch; the name and photo of each place a guest holds money at.
   "_shared/wallet.ts",
+  // List rows (MESITA-4291): each place's instagram_url, so Story leaves a row whose place has no Instagram.
+  "_shared/payments.ts",
   // VIP partners (MESITA-2556): a partner venue's id by Google Place ID, and its name for the list.
   "_shared/vip-partners.ts",
   // web-business (MESITA-3103): name and photo of the places a guest runs or

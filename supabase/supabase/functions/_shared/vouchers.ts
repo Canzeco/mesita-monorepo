@@ -16,6 +16,7 @@ import { type AccountRow, type PaymentSettings, readAccount, readSettings } from
 import { readMoneyConfig } from "./money-config.ts";
 import { readInstagramSyncState } from "./consumer-doc.ts";
 import { storyMode, type StoryMode } from "./story-mention.ts";
+import { instagramHandleOfUrl } from "./place-instagram.ts";
 import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount, VISIT_STATUSES } from "./visits.ts";
 
@@ -341,13 +342,16 @@ export async function voucherOffer(
     welcomeUsed,
     perVisitUsed,
     hasPlaceCode: !code.error && !!code.data,
-  }), storyMode());
+  }), storyMode(), instagramHandleOfUrl(place.instagram_url) !== null);
 }
 
 /** Story is sold only while a mention source exists (MESITA-4264): with
- *  live payments and Meta off ('unavailable') it leaves `sell`. */
-export function withStoryMode(offer: VoucherOffer, mode: StoryMode): VoucherOffer {
-  if (mode !== "unavailable" || !offer.sell.includes("voucher_story")) return offer;
+ *  live payments and Meta off ('unavailable') it leaves `sell`. NO PLACE
+ *  INSTAGRAM, NO STORY (MESITA-4291): the story mentions the place's
+ *  Instagram, so a place without one sells none. Absent `placeInstagram`
+ *  reads false: a caller that did not read the place sells no Story. */
+export function withStoryMode(offer: VoucherOffer, mode: StoryMode, placeInstagram = false): VoucherOffer {
+  if ((mode !== "unavailable" && placeInstagram) || !offer.sell.includes("voucher_story")) return offer;
   return {
     ...offer,
     sell: offer.sell.filter((k) => k !== "voucher_story"),

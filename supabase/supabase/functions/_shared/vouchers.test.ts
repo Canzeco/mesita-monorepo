@@ -383,10 +383,19 @@ Deno.test("list rows: one Story per visit opens again after a visit (MESITA-3463
 Deno.test("withStoryMode: Story leaves sell only when no mention source exists (MESITA-4264)", () => {
   const o = offerFrom(base);
   assertEquals(o.sell.includes("voucher_story"), true);
-  assertEquals(withStoryMode(o, "emulated").sell.includes("voucher_story"), true);
-  assertEquals(withStoryMode(o, "meta").sell.includes("voucher_story"), true);
-  const off = withStoryMode(o, "unavailable");
+  assertEquals(withStoryMode(o, "emulated", true).sell.includes("voucher_story"), true);
+  assertEquals(withStoryMode(o, "meta", true).sell.includes("voucher_story"), true);
+  const off = withStoryMode(o, "unavailable", true);
   assertEquals(off.sell.includes("voucher_story"), false);
   assertEquals(off.unavailable.voucher_story, "off");
   assertEquals(off.sell.length, o.sell.length - 1, "every other voucher still sells");
+});
+
+Deno.test("withStoryMode: no place Instagram, no Story (MESITA-4291)", () => {
+  const o = offerFrom(base);
+  const off = withStoryMode(o, "meta", false);
+  assertEquals(off.sell.includes("voucher_story"), false);
+  assertEquals(off.unavailable.voucher_story, "off");
+  assertEquals(off.sell.length, o.sell.length - 1, "every other voucher still sells");
+  assertEquals(withStoryMode(o, "meta").sell.includes("voucher_story"), false, "absent reads no Instagram");
 });

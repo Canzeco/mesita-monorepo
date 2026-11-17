@@ -79,12 +79,8 @@ export function storyBonusAt(row: Pick<StoryRow, "story_activated_at">, rules: P
   return new Date(Date.parse(row.story_activated_at) + rules.bonusWaitSec * 1000).toISOString();
 }
 
-/** The place's Instagram username from its stored URL, or null. */
-export function instagramHandleOfUrl(url: unknown): string | null {
-  if (typeof url !== "string") return null;
-  const m = url.trim().match(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})\/?(?:[?#].*)?$/i);
-  return m ? m[1].toLowerCase() : null;
-}
+import { instagramHandleOfUrl } from "./place-instagram.ts";
+export { instagramHandleOfUrl };
 
 export type StoryPlace = { id: string; name: string | null; instagram_handle: string | null; time_zone: string };
 

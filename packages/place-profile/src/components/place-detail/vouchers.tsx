@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgeCheck, Camera, CircleCheck, Clock, CreditCard, Lock, PartyPopper, ShoppingBag, Ticket, Utensils, X, Zap, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Camera, CircleCheck, Clock, CreditCard, Lock, PartyPopper, Ticket, Utensils, X, Zap, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -415,7 +415,22 @@ export function readyClock(iso: string, now = new Date()): string {
 // over the bold line, so the timeline reads Right now → In 3 hours → Anytime.
 type Step = { Icon: LucideIcon; when?: string; title: string; line: string; green?: boolean; locked?: string };
 const IG = Instagram as unknown as LucideIcon;
-function sheetSteps(key: MoneyVoucherKey, pay: string, bonus: string | null, firstLocked: string | null, placeName: string): Step[] {
+/** The place's Instagram username from its stored URL, or null: the twin of
+ *  supabase _shared/place-instagram.ts (MESITA-4291). */
+export function instagramHandle(url: unknown): string | null {
+  if (typeof url !== "string") return null;
+  const m = url.trim().match(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})\/?(?:[?#].*)?$/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
+function sheetSteps(
+  key: MoneyVoucherKey,
+  pay: string,
+  bonus: string | null,
+  firstLocked: string | null,
+  placeName: string,
+  placeHandle: string | null,
+): Step[] {
   const today: Step = { Icon: Zap, when: "Right now", title: `${pay} lands instantly`, line: "It's yours the moment you pay." };
   const later: Step = { Icon: Clock, when: "In 3 hours", title: `${bonus ? `+${bonus}` : "Your"} bonus lands`, line: "Added to your credit by itself.", green: true };
   const spend: Step = { Icon: Utensils, when: "Anytime", title: "Spend it here", line: `On any bill at ${placeName}, all or part. It never expires.` };
@@ -424,31 +439,38 @@ function sheetSteps(key: MoneyVoucherKey, pay: string, bonus: string | null, fir
     case "voucher_welcome":
       return [{ Icon: PartyPopper, title: "Your first visit here", line: "One per place, only before you've ever paid here.", locked: lock }, today, later, spend];
     case "voucher_story":
+      // MESITA-4264: the money is ready at payment; the story only earns
+      // the bonus, verified from its @mesita mention and approved by staff.
+      // MESITA-4291 (Pato: "ITS TAGGING @ AND YOU ACTUALLY MENTION THE
+      // INSTAGRAM OF THE PLACE"): the story mentions @mesita and the
+      // place's own @handle, named here; each step says when.
       return [
-        { Icon: IG, title: `Have ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")}+ Instagram followers`, line: "Your Instagram linked in Me. One per visit.", locked: lock },
-        // MESITA-4264: the money is ready at payment; the story only earns
-        // the bonus, verified from its @mesita mention and approved by staff.
-        { Icon: ShoppingBag, when: "Right now", title: `Pay ${pay}, it lands instantly`, line: "It's yours the moment you pay." },
-        { Icon: Camera, title: "Post a story tagging @mesita and the place", line: "From a public Instagram account." },
-        { Icon: BadgeCheck, title: "Show your QR to the staff", line: "They see your story and approve it." },
+        {
+          Icon: IG,
+          when: "Before you buy",
+          title: `Have ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")}+ Instagram followers`,
+          line: "A public Instagram, linked in Me. One per visit.",
+          locked: lock,
+        },
+        { ...today, line: "It's yours the moment you pay, story or not." },
+        {
+          Icon: Camera,
+          when: "At the place",
+          title: `Post a story mentioning @mesita and ${placeHandle ? `@${placeHandle}` : "the place's Instagram"}`,
+          line: "Type both @ names in the story.",
+        },
+        { Icon: BadgeCheck, when: "Before you leave", title: "Show your QR to the staff", line: "They see your story and approve it." },
         {
           Icon: Clock,
-          title: `${bonus ? `+${bonus}` : "Your bonus"} three hours after they approve it`,
-          line: "If the story is still up.",
+          when: "3 hours after approval",
+          title: `${bonus ? `+${bonus}` : "Your"} bonus lands`,
+          line: "If your story is still up.",
           green: true,
         },
       ];
     default:
       return [today, later, spend];
   }
-}
-
-/** Story's deal in one sentence, amounts first (MESITA-4264). The amounts
- *  come from the catalog; formatting only. */
-function storyDeal(pay: string, bonus: string | null): string {
-  return `Pay ${pay}, get it now. Post a story from a public account tagging @mesita and the place, show your QR: ${
-    bonus ? `+${bonus}` : "your bonus"
-  } three hours after staff approve it, if the story is still up.`;
 }
 
 /** The first step's lock for this guest, when that step is what stops them. */
@@ -480,6 +502,7 @@ type Receipt = { outcome: "paid" | "processing"; pay: string; bonus: string | nu
 function PaySheet({
   product,
   placeName,
+  placeHandle,
   pay,
   get,
   bonus,
@@ -501,6 +524,8 @@ function PaySheet({
 }: {
   product: Product;
   placeName: string;
+  /** The place's Instagram username, named in Story's steps (MESITA-4291). */
+  placeHandle: string | null;
   pay: string;
   get: string;
   bonus: string;
@@ -628,14 +653,8 @@ function PaySheet({
                 <span className="text-2xl font-extrabold text-[#00A85A] tabular-nums">{whole(get)}</span>
               </div>
             </div>
-            {product.key === "voucher_story" ? (
-              // AMOUNTS FIRST (MESITA-4264): the deal in one sentence, from the catalog.
-              <p className="text-foreground text-[15px] leading-snug tabular-nums" data-offer-story-deal>
-                {storyDeal(whole(pay), bonusAmount ? whole(bonusAmount) : null)}
-              </p>
-            ) : null}
             <ol className="flex flex-col py-1" aria-label="How it works" data-offer-steps>
-              {sheetSteps(product.key, whole(pay), bonusAmount ? whole(bonusAmount) : null, stepLock, placeName).map((s, i, all) => (
+              {sheetSteps(product.key, whole(pay), bonusAmount ? whole(bonusAmount) : null, stepLock, placeName, placeHandle).map((s, i, all) => (
                 <li key={s.title} className="flex gap-3.5" data-offer-step-locked={s.locked ? "true" : undefined}>
                   {/* The icon column: a round step and the line down to the next. */}
                   <span className="flex flex-col items-center" aria-hidden>
@@ -836,6 +855,7 @@ export function VouchersPane({
       <PaySheet
         product={p}
         placeName={place.name}
+        placeHandle={instagramHandle(place.channels?.instagram_url)}
         pay={pay}
         get={get}
         bonus={`+${p.bonus.replace(/ bonus$/, "")}`}

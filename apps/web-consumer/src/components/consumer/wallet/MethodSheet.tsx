@@ -110,7 +110,7 @@ function CardBody({ card, onRemove }: { card: SavedCard; onRemove?: (card: Saved
 }
 
 /** A Story voucher (MESITA-4264): what was paid is already credit; the
- *  bonus waits on a story tagging @mesita and the place, approved by staff
+ *  bonus waits on a story mentioning @mesita and the place's Instagram, approved by staff
  *  from this QR and still up 3 hours later. Once a story arrived it shows
  *  here, the same media staff see. In test mode, while Instagram is not
  *  connected, the test band simulates the story. */
