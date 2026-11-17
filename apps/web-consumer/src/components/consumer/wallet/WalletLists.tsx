@@ -3,7 +3,8 @@
 import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { ChevronRight, Clock3, Plus, QrCode } from "lucide-react";
+import { ChevronRight, Clock3, Plus } from "lucide-react";
+import { Instagram } from "@/components/shared/instagram-icon";
 import { PlaceMarks, SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
 import { CardBrandChip } from "@/components/shared/card-brand-marks";
@@ -15,6 +16,7 @@ import { cardAmount } from "@/lib/wallet-card";
 import { cn } from "@/lib/utils";
 import { Panel } from "@/components/shared/Panel";
 import { type WalletCardModel, walletCardLabel } from "./WalletCard";
+import { useStoryNew } from "./use-story-now";
 
 // The lists' parts: every row of both lists.
 //
@@ -380,7 +382,7 @@ export function EmptyCreditsRow({ href }: { href: string }) {
   );
 }
 
-/** A Story voucher (MESITA-3507): its tap opens the sheet with the QR.
+/** A Story voucher (MESITA-3507): its tap opens the Story page (MESITA-4296: no QR, no staff).
  *  The Loyalty Card's plain row (MESITA-3869): title, grey line, muted amount,
  *  chevron; no chip of its own. MESITA-4264: what was paid is already
  *  credit, so the row is the bonus and where the story stands. */
@@ -389,11 +391,12 @@ export function StoryRow({ story, onOpen, now }: { story: WaitingStory; onOpen: 
   const bonus = `+${money(story.bonus_cents, story.currency)}`;
   const line = storyLine(story, now);
   const open = storyBonusOpen(story);
+  const fresh = useStoryNew(story);
   return (
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`Story bonus at ${name}: ${bonus}. ${line}`}
+      aria-label={`Story bonus at ${name}: ${bonus}.${fresh ? " New." : ""} ${line}`}
       className={cn(ROW, "flex-col items-stretch gap-2.5")}
       data-wallet-story={story.state}
     >
@@ -401,22 +404,34 @@ export function StoryRow({ story, onOpen, now }: { story: WaitingStory; onOpen: 
         <CreditsCardChip photo={story.place?.photo ?? null} name={name} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-base leading-tight font-semibold">{name}</span>
-          <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight tabular-nums">Story bonus {bonus}</span>
+          <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight tabular-nums">
+            Story bonus {bonus}
+            {fresh ? <NewChip /> : null}
+          </span>
         </span>
         <Chevron />
       </span>
       {/* A waiting Story is its place's pending (MESITA-4232, D13), in the
           same blue box as a card's pending (MESITA-4260); a decided one
           keeps its outcome for 24 hours in a grey box. */}
-      <PendingBox icon={open ? QrCode : Clock3} quiet={!open}>
+      <PendingBox icon={open ? Instagram : Clock3} quiet={!open}>
         {line}
       </PendingBox>
     </button>
   );
 }
 
+/** A released Story bonus, the first time it shows (MESITA-4296). */
+export function NewChip() {
+  return (
+    <span className="ml-1.5 inline-block rounded-full bg-emerald-50 px-1.5 py-0.5 align-middle type-label leading-none font-bold text-emerald-700" data-story-new>
+      New
+    </span>
+  );
+}
+
 /** Money on its way (MESITA-4260): a soft blue box under a Loyalty Card. */
-function PendingBox({ icon: Icon, children, quiet = false }: { icon: typeof Clock3; children: ReactNode; quiet?: boolean }) {
+function PendingBox({ icon: Icon, children, quiet = false }: { icon: typeof Clock3 | typeof Instagram; children: ReactNode; quiet?: boolean }) {
   return (
     <span
       className={cn(

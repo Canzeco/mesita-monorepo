@@ -39,16 +39,14 @@ const story = (over: Partial<WaitingStory> = {}): WaitingStory => ({
   credit_cents: 15000,
   currency: "MXN",
   paid_at: AT,
-  token: "t",
-  url: "https://visit.mesita.ai/story/t",
-  state: "needs_story",
-  approved_at: null,
-  expires_at: null,
+  state: "waiting",
+  claimed_at: AT,
   bonus_at: null,
   recheck_at: null,
   bonus: null,
   bonus_void_reason: null,
   bonus_decided_at: null,
+  refunded: false,
   time_zone: "America/Mexico_City",
   mention: null,
   test_mode: true,
@@ -150,7 +148,7 @@ describe("voucher rows (MESITA-4003)", () => {
       wallet([e("bonus", 5000)], { waiting_stories: [story()] } as unknown as Partial<Wallet>),
     );
     expect(rows.map((r) => r.sign)).toEqual(["+", "+"]);
-    // MESITA-4264: the MX$100 paid is already a voucher row; only the bonus waits.
+    // MESITA-4264: the MX$100 paid is already a voucher row; only the bonus waits (MESITA-4296: 3 h after payment).
     expect(rows[1]!.big).toBe(money(5000, "MXN"));
     expect(rows[1]!.status.label).toBe("Waiting");
   });
@@ -158,7 +156,7 @@ describe("voucher rows (MESITA-4003)", () => {
   it("a released Story bonus is not drawn twice; a voided one reads Not added", () => {
     const rows = walletRows(
       wallet([], {
-        waiting_stories: [story({ purchase_id: "s1", state: "released", bonus: "released" }), story({ purchase_id: "s2", state: "void", bonus: "void", bonus_void_reason: "expired" })],
+        waiting_stories: [story({ purchase_id: "s1", state: "released", bonus: "released" }), story({ purchase_id: "s2", state: "void", bonus: "void", bonus_void_reason: "unreachable" })],
       } as unknown as Partial<Wallet>),
     );
     expect(rows.map((r) => [r.key, r.status.label])).toEqual([["s-s2", "Not added"]]);
