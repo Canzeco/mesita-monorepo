@@ -18,6 +18,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { moneyState, type MoneyVoucherKey } from "./money-state.ts";
 import { readMoneyConfig } from "./money-config.ts";
 import { vouchersUpToPct } from "./money.ts";
+import { instagramHandleOfUrl } from "./place-instagram.ts";
 import { paymentsLivemode, type StripeCall } from "./stripe.ts";
 
 // ── Settings ───────────────────────────────────────────────────────────────
@@ -202,11 +203,18 @@ export async function withVouchersUpTo<T extends { id: string }>(
   // in-mode rule (MESITA-3394); a failed read reads as no Pay, as before.
   // BUYING PAUSED SELLS NOTHING (autoplan eng E3, MESITA-4207): the admin
   // console's kill switch empties every row's offers, as offerFrom does.
-  const [settingsRes, charging, config] = await Promise.all([
+  // NO PLACE INSTAGRAM, NO STORY (MESITA-4291): one batched read of the
+  // places' Instagram URLs; a failed read keeps Story (the buy door gates it).
+  const [settingsRes, charging, config, igRes] = await Promise.all([
     admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", ids),
     chargesEnabledByPlace(admin, ids, paymentsLivemode()),
     readMoneyConfig(admin),
+    admin.from("profiles").select("id, instagram_url").in("id", ids),
   ]);
+  if (igRes.error) console.error("[payments] instagram_read_failed", JSON.stringify({ message: igRes.error.message, places: ids.length }));
+  const noInstagram = new Set<string>(
+    igRes.error ? [] : ((igRes.data ?? []) as { id: string; instagram_url: unknown }[]).filter((r) => instagramHandleOfUrl(r.instagram_url) === null).map((r) => r.id),
+  );
   if (settingsRes.error) {
     console.error("[payments] settings_read_failed", JSON.stringify({ code: settingsRes.error.code, message: settingsRes.error.message, places: ids.length }));
   }
@@ -218,7 +226,7 @@ export async function withVouchersUpTo<T extends { id: string }>(
   const charges = charging ?? new Set<string>();
   return places.map((p) => {
     const money = listRowMoney(settings.get(p.id), charges.has(p.id));
-    const sell = config.buying_paused ? [] : money.sell;
+    const sell = config.buying_paused ? [] : noInstagram.has(p.id) ? money.sell.filter((k) => k !== "voucher_story") : money.sell;
     return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay: money.mesita_pay, offers: { sell } };
   });
 }

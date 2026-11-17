@@ -63,11 +63,11 @@ export function storyLine(s: WaitingStory, now = Date.now()): string {
   const by = s.expires_at ? ` · get it approved by ${storyDate(s.expires_at, s.time_zone)}` : "";
   switch (s.state) {
     case "needs_story":
-      return `Post a story tagging @mesita and the place${by}`;
+      return `Post a story mentioning @mesita and the place's Instagram${by}`;
     case "received":
       return `A story from you arrived · show the QR to staff${by}`;
     case "rejected":
-      return "Not approved · post a new story tagging @mesita and the place";
+      return "Not approved · post a new story mentioning @mesita and the place's Instagram";
     case "approved":
       if (storyChecking(s, now)) return "Checking your story…";
       return s.bonus_at ? `Approved · bonus from ${storyClock(s.bonus_at, s.time_zone, now)}` : "Approved";

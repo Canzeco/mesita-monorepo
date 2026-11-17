@@ -269,6 +269,8 @@ export type VoucherPlace = {
   currency: string | null;
   /** The Premier tier, the red mark beside the name on a Pay proof (MESITA-3539). */
   boost_tier?: number | null;
+  /** The place's Instagram URL: Story sells only where it names a handle (MESITA-4291). */
+  instagram_url?: string | null;
 };
 
 /** The place a guest buys a voucher at: its name for the receipt, its state
@@ -279,7 +281,7 @@ export async function readVoucherPlace(
 ): Promise<{ ok: true; place: VoucherPlace | null } | { ok: false; error: string }> {
   const { data, error } = await admin
     .from("profiles")
-    .select("id, name, state, currency, boost_tier")
+    .select("id, name, state, currency, boost_tier, instagram_url")
     .eq("id", placeId)
     .maybeSingle();
   if (error) return { ok: false, error: `place_read: ${error.message}` };

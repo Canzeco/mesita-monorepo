@@ -1,6 +1,6 @@
 // The Story voucher's @mesita mention (MESITA-4264). Pato, 2026-11-17: the
 // guest pays the Story voucher (what they paid is Available at once), posts
-// an Instagram story from a public account tagging @mesita and the place;
+// an Instagram story from a public account mentioning @mesita and the place's Instagram;
 // Meta tells Mesita about the mention (meta-instagram-receive-message);
 // staff with the waiter code see the story on their own phone
 // (visit-web-get-story) and approve or reject it (visit-web-review-story);

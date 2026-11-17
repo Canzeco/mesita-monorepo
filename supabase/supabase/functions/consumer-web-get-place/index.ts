@@ -107,7 +107,7 @@ serveJson("consumer-web-get-place", async (req) => {
     // the caller's credit here; never the account itself.
     voucherOffer(
       admin,
-      { id: placeId, name: text(row.name), state: text(row.state), currency: text(row.currency) },
+      { id: placeId, name: text(row.name), state: text(row.state), currency: text(row.currency), instagram_url: text(row.instagram_url) },
       user?.id ?? null,
       paymentsLivemode(),
     ),
