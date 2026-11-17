@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Banknote, Check, Lock, ReceiptText, XCircle } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { readAmount } from "@mesita/place-profile/lib/money";
+import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -14,7 +15,7 @@ import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } f
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { acceptCardsAnswer, type CardsLoad, cardsFailure, loadedCards, pickCard } from "@/lib/pay-cards";
-import { initialStage, PAY_CARD_REFUSALS, STEP } from "@/lib/guest-pay-stages";
+import { guardStage, initialStage, PAY_CARD_REFUSALS, payBackStage, STEP } from "@/lib/guest-pay-stages";
 import {
   clearGuestDraft,
   outcomeUnknownAfter,
@@ -33,6 +34,7 @@ import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 import { payPlacePath } from "@/lib/consumer-route-contract";
 import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
+import { cardFace } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
 import { CreditsCardChip, CreditsPill } from "@/components/consumer/wallet/WalletLists";
 import { BAD, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, StepBody, StepFooter } from "./pay-flow";
@@ -43,18 +45,22 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-com
 // (MESITA-4061, Pato: "X Pay / Profile Name of place / steps with arrows to
 // nav across them < > / the actual body free of nav buttons / cancel button
 // and next step button"): the header's X · Pay, the place row (tapping the
-// name chooses another place), the step nav ‹ "Tip · 2 of 5" ›, the body,
-// then Cancel bill and the step's button.
+// name chooses another place), the step nav ‹ "Tip · 2 of 5" ›, one body
+// group centred both ways, then Cancel bill and the step's button.
 //
 //   1 Bill    the amount and a large keypad under ReceiptText (Off: the
 //             place large across the top, saying why).
-//   2 Tip     the tip chips (10%, 15%, 20%, Other) and Bill, Tip, Total.
-//   3 Pay     (MESITA-4226: Method, Card and Pay merged) the credits switch
-//             (on by default; credits never pay the tip), then Mesita App
-//             (the guest's one saved card) or Pay outside the app, what is
-//             left, and the button: "Pay in one click" (the card is held,
-//             charged when the waiter signs), "I gave the cash", or "Pay
-//             with credits" when credits cover everything.
+//   2 Tip     the tip chips (10%,
+//             15%, Other) with HandCoins and the summary card: Bill, Tip,
+//             Total, and the Coins line.
+//   3 Method  the Wallet switch "Use my credits" (MESITA-4068: asked here,
+//             not on Tip; on by default; credits never pay the tip), what is
+//             left, then App or Cash, one way for all of it; the chosen tile
+//             has a thick border; the Coins line follows the choice. Credits
+//             cover everything and no tip: "Pay with credits" opens the bill.
+//   4A App    the saved card and "Pay MX$X": the card is held, charged when
+//             the waiter signs.
+//   4B Cash   "Give MX$X to the waiter", then "I gave the cash".
 //
 // Paying opens the bill (/pay/bill/<id>, GuestTabView: Sign, Confirming,
 // Receipt, Not paid). The header's back arrow steps back.
@@ -72,7 +78,7 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-com
 type Blocked = { kind: "draft"; placeId: string; name: string | null } | { kind: "bill"; tabId: string; name: string | null };
 
 const STILL_WORKING = "Still working. Tap again to try again.";
-/** Refusals that mean this card, not the bill: Pay marks it "Declined just now". */
+/** Refusals that mean this card, not the bill: Method marks it "Declined just now". */
 const CARD_REFUSED = new Set(["card_declined", "card_needs_auth", "card_failed", "card_not_found", "locked"]);
 const CALL_LIMIT_MS = 25_000;
 class SlowCall extends Error {}
@@ -135,7 +141,8 @@ export function GuestPayScreen({
     if (sentTabId) onPaid(sentTabId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sentTabId]);
-  // A draft past Tip opens at Pay, where the credits switch is (MESITA-4226).
+  // A draft at Card or Pay with credits off starts at Method (MESITA-4117):
+  // credits come back on by default, so the guest sees the new split.
   const [stage, setStage] = useState<Stage>(() => initialStage(draft));
   const [typing, setTyping] = useState(draft?.typing ?? true);
   const [amount, setAmount] = useState(draft?.amount ?? "");
@@ -148,7 +155,7 @@ export function GuestPayScreen({
   const [useCredit, setUseCredit] = useState(true);
   const [method, setMethod] = useState<PayWith | null>(draft?.method ?? null);
   const [cardId, setCardId] = useState<string | null>(draft?.cardId ?? null);
-  // The card the bank just refused: Pay says "Declined just now" (MESITA-4226).
+  // The card the bank just refused: Method says "Declined just now" (MESITA-4226).
   const [refusedCardId, setRefusedCardId] = useState<string | null>(draft?.refusedCardId ?? null);
   const [tipSheet, setTipSheet] = useState(false);
   const [otherTyping, setOtherTyping] = useState("");
@@ -254,7 +261,10 @@ export function GuestPayScreen({
   const way: PayWith | null = method === "cash" && cashOn ? "cash" : appOn ? "card" : cashOn ? "cash" : null;
   const chosenCard = pickCard(cards, cardId);
   const creditsOnly = dueCents === 0;
-  const shown = stage;
+  // The step shown (MESITA-4117): a stored or live stage that stopped making
+  // sense goes back to Method, or to Card when no card can be charged. Pure,
+  // so nothing sets state while rendering.
+  const shown = guardStage({ stage, method, way, dueCents });
 
   // Every change is saved, so the X and "Add a card" come back to it.
   useEffect(() => {
@@ -282,7 +292,7 @@ export function GuestPayScreen({
       setNotPaid(null);
       return true;
     }
-    if (shown === "pay") setStage("bill");
+    if (shown === "pay" || shown === "method") setStage(payBackStage(shown));
     else if (!typing) setTyping(true);
     else return false;
     setError(null);
@@ -588,7 +598,7 @@ export function GuestPayScreen({
   // 2 TIP: the bill, the tip chips, credits, the summary card.
   if (shown === "bill") {
     const tipOk = tip !== null;
-    const tipNext = () => setStage("pay");
+    const tipNext = () => setStage("method");
     return frame(
       <>
         {top(STEP.tip, backArrow, { onClick: tipNext, disabled: !tipOk || billCents <= 0 || held })}
@@ -651,7 +661,7 @@ export function GuestPayScreen({
     );
   }
 
-  // The guest's one saved card (MESITA-4168: one card per guest).
+  // The guest's one saved card (MESITA-4168), named on Method, charged on Pay.
   const card = cards?.find((c) => c.id === chosenCard) ?? null;
   const cardsUnknown = cards === null;
   const retryCards = () => {
@@ -659,42 +669,26 @@ export function GuestPayScreen({
     setCardsAttempt((n) => n + 1);
   };
 
-  // 3 PAY (MESITA-4226, Pato: "remove card. we only have one card ... merge
-  // methods for them to look shorter"): Method, Card and Pay in one step.
-  // One panel: the credits switch, then Mesita App (the one card under it,
-  // or Add a card) or Pay outside the app, then what is left to pay and one
-  // line on what happens next. The button moves the money, so › is not
-  // offered:
-  //   credits cover all   "Pay with credits"
-  //   Mesita App          "Pay in one click" (MESITA-4106); "Add a card"
-  //                       when none is saved (back from Add, it shows here)
-  //   outside the app     "I gave the cash"
-  const declined = !!card && card.id === refusedCardId;
-  const cardLine = cardsUnknown
-    ? cardsLoad.state === "failed"
-      ? "Couldn't load your card"
-      : "Loading your card…"
-    : card
-    ? `${brandLabel(card.brand)} •••• ${card.last4}${declined ? " · Declined just now" : ""}`
-    : "Add a card to pay in the app";
-  const payOutside = () => {
-    setError(null);
-    setPayRefusal(null);
-    setMethod("cash");
-  };
-  const primary = creditsOnly
-    ? { label: "Pay with credits", busy, disabled: held, onClick: () => void openBill(null) }
-    : way === "cash"
-    ? { label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }
-    : way === "card" && !cardsUnknown && !card
-    ? { label: "Add a card", busy, disabled: held, onClick: addCard }
-    : { label: "Pay in one click", busy, disabled: held || way !== "card" || !card, onClick: () => void openBill("card") };
-  return frame(
-    <>
-      {top(STEP.pay, backArrow)}
-      <StepBody>
-        <PaySection title="How you pay" className="text-base">
-          <div className="divide-border mt-1 divide-y">
+  // 3 METHOD: App or Cash for everything that's left.
+  if (shown === "method") {
+    // Credits cover the bill and the tip: nothing is left for a way, so the
+    // button opens the bill (credits are spent). It is money, so › is not
+    // offered.
+    // Next: Pay, for either way (MESITA-4226: no Card step).
+    const toNext = () => {
+      if (way) {
+        setMethod(way);
+        setStage("pay");
+      }
+    };
+    return frame(
+      <>
+        {top(STEP.method, backArrow, creditsOnly ? undefined : { onClick: toNext, disabled: !way || held })}
+        {/* ONE PANEL (MESITA-4077): credits, App and Cash, then what is left
+            to pay. Each way says what it earns; nothing else repeats it. */}
+        <StepBody>
+          <PaySection title="How you pay" className="text-base">
+            <div className="divide-border mt-1 divide-y">
             {spendable > 0 ? (
               <button
                 type="button"
@@ -721,8 +715,9 @@ export function GuestPayScreen({
             ) : null}
             {creditsOnly ? null : (
               <div className="divide-border flex flex-col divide-y" role="radiogroup" aria-label="How you pay">
-                {/* MESITA APP (MESITA-4123): the Mesita mark on the brand
-                    pink; the line under it is the guest's one card. */}
+                {/* MESITA APP (MESITA-4123, Pato: "keep the pay with app like
+                    really beautiful, Mesita App or whatever"): the Mesita mark
+                    on the brand pink, always; the choice is the ring. */}
                 <MethodTile
                   on={way === "card"}
                   off={appWhy}
@@ -730,7 +725,7 @@ export function GuestPayScreen({
                   tone="bg-pink-gradient text-white shadow-sm"
                   id="app"
                   title="Mesita App"
-                  line={cardLine}
+                  line={card ? `${brandLabel(card.brand)} •••• ${card.last4}${card.id === refusedCardId ? " · Declined just now" : ""}` : "Pay in the app with your card"}
                   onPick={() => setMethod("card")}
                 />
                 <MethodTile
@@ -748,35 +743,146 @@ export function GuestPayScreen({
             )}
             {creditOn ? <MoneyRow label="Credits" value={`−${m(creditCents)}`} /> : null}
             <MoneyRow label={leftCents === 0 ? "Tip to pay" : "Left to pay"} value={m(dueCents)} strong />
-          </div>
-        </PaySection>
-        {/* What happens next, one line under the panel. */}
-        {creditsOnly ? null : way === "cash" ? (
-          <p className="text-muted-foreground flex items-center justify-center gap-2 text-sm" data-guest-cash-give>
-            <Banknote className="h-4 w-4 shrink-0" aria-hidden />
-            Give the waiter {m(dueCents)}, then show them your QR.
-          </p>
-        ) : way === "card" && card ? (
-          <p className="text-muted-foreground flex items-center justify-center gap-2 text-sm" data-guest-card-pay>
-            <Lock className="h-4 w-4 shrink-0" aria-hidden />
-            Held now, charged when the waiter signs.
-          </p>
-        ) : way === "card" && cardsLoad.state === "failed" ? (
-          <button type="button" className="text-sm font-semibold underline" onClick={retryCards}>
-            Couldn&apos;t load your card. Retry
+            </div>
+          </PaySection>
+        </StepBody>
+        {status}
+        <StepFooter
+          onCancel={askCancel}
+          cancelDisabled={cancelLocked}
+          primary={
+            creditsOnly
+              ? { label: "Pay with credits", busy, disabled: held, onClick: () => void openBill(null) }
+              : { label: "Next", busy, disabled: !way || held, onClick: toNext }
+          }
+        />
+      </>,
+      "method",
+    );
+  }
+
+  // 4A APP PAY: the guest's one saved card (MESITA-4168; the Card step that
+  // picked among several is gone, MESITA-4226), "Pay in one click", held
+  // now. No card saved: "Add a card", which comes back here with it. Pay
+  // moves money: › is not offered. Only stage "pay" reaches here.
+  if (way === "card") {
+    const shownCard = card;
+    const guestFace = shownCard ? cardFace(shownCard.brand, brandLabel(shownCard.brand)) : null;
+    // After a refusal the way out is Method (the guest has one card).
+    const chooseAnother = () => {
+      setError(null);
+      setPayRefusal(null);
+      setStage("method");
+    };
+    const payOutside = () => {
+      setError(null);
+      setPayRefusal(null);
+      setMethod("cash");
+      setStage("method");
+    };
+    return frame(
+      <>
+        {top(STEP.pay, backArrow)}
+        {/* ONE CENTRED CHARGE (MESITA-4100, Pato: "the pay step must be a
+            simple pay button centered with the selected card, like charge X
+            to this card"): the card is picked on Method, so here it is the
+            card, the amount and one line on when it is charged. No CVC: a
+            saved card is charged by Stripe without it; a bank that wants its
+            own check asks in its window when Pay is tapped (runBankCheck). */}
+        <StepBody className="flex-1">
+          <PaySection className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-10 text-center" data-guest-card-pay>
+            {cardsUnknown ? (
+              cardsLoad.state === "failed" ? (
+                <button type="button" className="text-base font-semibold underline" onClick={retryCards}>
+                  Couldn&apos;t load your card. Retry
+                </button>
+              ) : (
+                <Skeleton className="h-36 w-56 rounded-2xl" />
+              )
+            ) : !shownCard ? (
+              <span className="flex flex-col items-center gap-1" data-guest-no-cards>
+                <span className="text-muted-foreground text-lg font-semibold">Add a card to pay</span>
+                <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
+              </span>
+            ) : shownCard ? (
+              <>
+                <span className="flex flex-col items-center gap-1">
+                  <span className="text-muted-foreground text-lg font-semibold">Charge</span>
+                  <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
+                  <span className="text-muted-foreground text-lg">to this card</span>
+                </span>
+                <span
+                  className={cn("flex h-36 w-56 flex-col justify-between rounded-2xl p-5 text-left shadow-md", guestFace?.className)}
+                  style={guestFace?.style}
+                  role="img"
+                  aria-label={`${brandLabel(shownCard.brand)} ending ${shownCard.last4}`}
+                  data-guest-card
+                >
+                  {guestFace?.mark}
+                  <span className="text-lg font-semibold tracking-widest tabular-nums">•••• {shownCard.last4}</span>
+                </span>
+                <p className="text-muted-foreground flex max-w-xs items-center justify-center gap-2 text-sm">
+                  <Lock className="h-4 w-4 shrink-0" aria-hidden />
+                  Held now, charged when the waiter signs.
+                </p>
+              </>
+            ) : null}
+          </PaySection>
+        </StepBody>
+        {status}
+        {/* Pay outside the app: a quiet second way out of a refusal, only
+            where the place takes cash (MESITA-4121). */}
+        {payRefusal && cashOn ? (
+          <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-2 shrink-0")} onClick={payOutside} data-guest-pay-outside>
+            Pay outside the app
           </button>
         ) : null}
+        <StepFooter
+          onCancel={askCancel}
+          cancelDisabled={cancelLocked}
+          // "Pay in one click" (MESITA-4106, Pato: "the button must say pay
+          // in one click"); the amount is the body's headline. No card
+          // saved: Add a card. After a refusal the main button leads back
+          // to Method (MESITA-4121, MESITA-4226).
+          primary={
+            payRefusal
+              ? { label: "Choose another way", busy: false, disabled: held, onClick: chooseAnother }
+              : !cardsUnknown && !card
+              ? { label: "Add a card", busy, disabled: held, onClick: addCard }
+              : { label: "Pay in one click", busy, disabled: held || !card, onClick: () => void openBill("card") }
+          }
+        />
+      </>,
+      "app",
+    );
+  }
+
+  // 4B CASH PAY: give the cash, then the QR. The bubble, the amount and the
+  // words sit together in the middle.
+  return frame(
+    <>
+      {top(STEP.pay, backArrow)}
+      {/* BIG AND CENTRED (MESITA-4100, Pato: "BIGGER AND CENTERED AND MORE
+          BEAUTIFUL ... VERTICALLY CENTERED IN THE BODY ... MAKE THE CIRCLE AND
+          THE ICON AND THE INSTRUCTIONS BIGGER"): the panel fills the body and
+          holds the bubble, the amount and the two instructions in its middle.
+          The amount once (MESITA-4077). */}
+      <StepBody className="flex-1">
+        <PaySection className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-10 text-center" data-guest-cash-give>
+          <span className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-green-400 text-neutral-950 shadow-sm ring-8 ring-green-100" aria-hidden>
+            <Banknote className="h-14 w-14" strokeWidth={1.75} />
+          </span>
+          <span className="flex flex-col items-center gap-1">
+            <span className="text-muted-foreground text-lg font-semibold">Give the waiter</span>
+            <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
+          </span>
+          <span className="text-muted-foreground max-w-xs text-lg leading-snug">Then show them your QR so they confirm it.</span>
+        </PaySection>
       </StepBody>
       {status}
-      {/* After a card refusal: paying outside the app is one tap (MESITA-4121). */}
-      {payRefusal && cashOn && way === "card" ? (
-        <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-2 shrink-0")} onClick={payOutside} data-guest-pay-outside>
-          Pay outside the app
-        </button>
-      ) : null}
-      <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={primary} />
+      <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
     </>,
-    "pay",
+    "cash",
   );
 }
 

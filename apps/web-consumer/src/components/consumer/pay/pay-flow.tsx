@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect } from "react";
 import { SizedImg } from "@mesita/place-profile";
-import { ChevronLeft, ChevronRight, CircleCheck, HandCoins, Lock, MapPin, PenLine, ReceiptText, X, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleCheck, HandCoins, Lock, MapPin, PenLine, ReceiptText, Wallet, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { PayPlace } from "@/lib/api/wallet";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 // THE GUEST-LEAD PAY FLOW'S SHARED PIECES (MESITA-3861, Pato's "14. Payments
 // Flow Guest-Lead"): the place across the top (Open), the X in the corner,
 // the rows card, the three state colours and the Not paid reasons. The
-// screens are GuestPayScreen (Open, Bill, Tip, Pay) and
+// screens are GuestPayScreen (Open, Bill, Tip, Method, Pay) and
 // GuestTabView (Sign, Confirming, Receipt, Not paid).
 
 /** State colours, used only for state, always with an icon and words. */
@@ -163,29 +163,37 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
   );
 }
 
-/** The steps (MESITA-4226, Pato: "too much fucking steps ... remove card ...
- *  merge methods for them to look shorter"; eight until then, MESITA-4135).
- *  Pick is the Pay tab's list of places, done on every later step; Pay holds
- *  the credits switch, the way and the card (lib/guest-pay-stages.ts). No
- *  step is skipped. */
-export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Pay", "Sign", "Receipt"] as const;
+/** The steps (MESITA-4226, Pato: "remove card. we only have one card ...
+ *  we should have all those steps. but don't mention them all"; eight until
+ *  then, MESITA-4135). Pick is the Pay tab's list of places, done on every
+ *  later step (lib/guest-pay-stages.ts). */
+export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Method", "Pay", "Sign", "Receipt"] as const;
 
-/** WHAT THE BAR SHOWS: FIVE, Pick hidden (it reads Bill). */
-const SHOWN_STEPS = ["Bill", "Tip", "Pay", "Sign", "Receipt"] as const;
+/** WHAT THE BAR SHOWS (MESITA-4226, Pato: "Receipt only when its done ...
+ *  before that, hide it"): Bill to Sign, five; once the bill is done the
+ *  Receipt joins as a sixth. Pick is hidden (it reads Bill). */
+const ALL_SHOWN = ["Bill", "Tip", "Method", "Pay", "Sign", "Receipt"] as const;
 const SHOWN_AT: Record<(typeof PAY_FLOW_STEPS)[number], number> = {
   Pick: 0,
   Bill: 0,
   Tip: 1,
-  Pay: 2,
-  Sign: 3,
-  Receipt: 4,
+  Method: 2,
+  Pay: 3,
+  Sign: 4,
+  Receipt: 5,
 };
+
+/** The segments drawn at a step: Receipt only on the Receipt. */
+export function shownSteps(at: number): readonly (typeof ALL_SHOWN)[number][] {
+  return PAY_FLOW_STEPS[at] === "Receipt" ? ALL_SHOWN : ALL_SHOWN.slice(0, -1);
+}
 
 /** Each shown step's icon beside its name (MESITA-4125, Pato: "use icons in
  *  the current steps for more clarity"). */
-const SHOWN_ICONS: Record<(typeof SHOWN_STEPS)[number], LucideIcon> = {
+const SHOWN_ICONS: Record<(typeof ALL_SHOWN)[number], LucideIcon> = {
   Bill: ReceiptText,
   Tip: HandCoins,
+  Method: Wallet,
   Pay: Lock,
   Sign: PenLine,
   Receipt: CircleCheck,
@@ -209,8 +217,8 @@ export function StepBody({ children, className }: { children: React.ReactNode; c
  *  that cannot act is hidden (its 44px slot kept, gone from the screen
  *  reader); › exists only where the footer's button is a plain Next, never
  *  where it moves money or leaves the app. Under it, five thin segments
- *  (MESITA-4226), done and current ink. A pure view: the screen owns the
- *  back logic. */
+ *  (six on the Receipt, MESITA-4226), done and current ink. A pure view:
+ *  the screen owns the back logic. */
 export function StepNav({
   at,
   onBack,
@@ -220,8 +228,9 @@ export function StepNav({
   onBack?: () => void;
   next?: { onClick: () => void; disabled: boolean };
 }) {
+  const shown = shownSteps(at);
   const shownAt = SHOWN_AT[PAY_FLOW_STEPS[at]];
-  const name = SHOWN_STEPS[shownAt];
+  const name = ALL_SHOWN[shownAt];
   const StepIcon = SHOWN_ICONS[name];
   const prev = at - 1;
   const following = at + 1;
@@ -247,7 +256,7 @@ export function StepNav({
         <p className="flex min-w-0 flex-1 items-center justify-center gap-1.5 truncate text-base">
           <StepIcon className="h-5 w-5 shrink-0" aria-hidden />
           <span className="font-semibold">{name}</span>
-          <span className="text-muted-foreground">{` · ${shownAt + 1} of ${SHOWN_STEPS.length}`}</span>
+          <span className="text-muted-foreground">{` · ${shownAt + 1} of ${shown.length}`}</span>
         </p>
         <button
           type="button"
@@ -261,9 +270,10 @@ export function StepNav({
           <ChevronRight className="h-6 w-6" aria-hidden />
         </button>
       </div>
-      {/* Five segments (MESITA-4226): done and current ink, not yet grey. */}
-      <ol className="mt-1 grid grid-cols-5 gap-1.5" aria-label={`Step ${shownAt + 1} of ${SHOWN_STEPS.length}: ${name}`}>
-        {SHOWN_STEPS.map((step, i) => (
+      {/* Five segments, six on the Receipt (MESITA-4226): done and current
+          ink, not yet grey. */}
+      <ol className={cn("mt-1 grid gap-1.5", shown.length === 6 ? "grid-cols-6" : "grid-cols-5")} aria-label={`Step ${shownAt + 1} of ${shown.length}: ${name}`}>
+        {shown.map((step, i) => (
           <li key={step} aria-current={i === shownAt ? "step" : undefined} className={cn("h-1 rounded-full", i <= shownAt ? "bg-foreground" : "bg-border")} />
         ))}
       </ol>

@@ -8,11 +8,11 @@ import { payDraftExpired } from "@/lib/pay-draft";
 // left. Not the place-page PayDraft in ./pay-draft (session storage, its own
 // steps): that one only lends this file its 30-minute expiry.
 
-export type Stage = "bill" | "pay";
-/** Every stage a stored draft may hold (MESITA-4226: Bill and Pay). The
- *  retired Method and Card read as Pay, where they were merged. */
-export const STAGES: readonly Stage[] = ["bill", "pay"];
-const MERGED_INTO_PAY: readonly string[] = ["method", "card"];
+export type Stage = "bill" | "method" | "pay";
+/** Every stage a stored draft may hold (MESITA-4226: the Card step is
+ *  gone; a draft saved there reads as Pay, which shows the one card). */
+export const STAGES: readonly Stage[] = ["bill", "method", "pay"];
+const MERGED_INTO_PAY: readonly string[] = ["card"];
 /** 10% · 15% · 20% · Other (MESITA-3876); no tip is Other with 0 typed. */
 export type Tip = 10 | 15 | 20 | "other" | null;
 export const TIP_CHIPS = [10, 15, 20] as const;
@@ -140,8 +140,8 @@ export function clearGuestDraft(placeId: string) {
 }
 
 /** "Start again" reopens what was typed, keypad down, at the given stage
- *  (MESITA-4121, MESITA-4226: Pay when the bill's card failed, expired or
- *  was rejected, Bill otherwise). When the card failed, Pay marks it
+ *  (MESITA-4121, MESITA-4226: Pay when the bill's card failed, Method when
+ *  it expired or was rejected, Bill otherwise). When the card failed, Pay marks it
  *  "Declined just now": a guest has one card, so it stays chosen, and
  *  paying outside the app is one tap away. A draft older than 30 minutes is
  *  gone, so the bill opens empty. */

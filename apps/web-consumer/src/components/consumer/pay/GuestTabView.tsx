@@ -175,7 +175,7 @@ export function GuestTabView({
   // 7 RECEIPT (MESITA-4135, Pato: "a better design when the tickets are gone
   // ... keep the structure"). The same three
   // parts as before, green Paid, one panel of rows, Done, now under the step
-  // panel ("Receipt · 5 of 5"): Paid carries the total, Signed by staff
+  // panel ("Receipt · 6 of 6", the sixth segment shown only here): Paid carries the total, Signed by staff
   // carries its check, and the footer is Done.
   if (signed) {
     return (
@@ -245,11 +245,10 @@ export function GuestTabView({
           className="min-h-12 w-full shrink-0 text-base font-semibold"
           onClick={() => {
             // Start again opens where the bill failed (MESITA-4121).
-            // The card is marked "Declined just now" unless the bill only
-            // expired or was rejected (MESITA-4226).
-            const reason = tab.end_reason ?? cardError;
-            const stage = startAgainStage({ endReason: reason, cardFailed });
-            reopenGuestDraft(tab.place.id, stage, stage === "pay" && reason !== "expired" && reason !== "rejected");
+            // A failed card reopens Pay with it marked "Declined just now"
+            // (MESITA-4226).
+            const stage = startAgainStage({ endReason: tab.end_reason ?? cardError, cardFailed });
+            reopenGuestDraft(tab.place.id, stage, stage === "pay");
             onPayAgain(tab.place.id);
           }}
         >

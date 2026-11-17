@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { SavedCard } from "@/lib/api/cards";
 import { readDraft, reopenGuestDraft, writeDraft } from "@/lib/guest-pay-draft";
-import { initialStage, STEP, startAgainStage } from "@/lib/guest-pay-stages";
+import { guardStage, initialStage, payBackStage, STEP, startAgainStage } from "@/lib/guest-pay-stages";
 import { pickCard } from "@/lib/pay-cards";
 
-// Money (MVP test rule), MESITA-4226: five steps, Method and Card merged into
-// Pay. A draft saved at a retired step reopens at Pay (where the credits
-// switch is), never past it; the card charged is the guest's one saved card.
+// Money (MVP test rule), MESITA-4226: no Card step (one saved card per
+// guest). A reload never turns a card choice into a cash give, never spends
+// credits the guest switched off, and a draft saved at the retired Card step
+// reopens at Pay with its card.
 
 const card = (id: string): SavedCard => ({ id, brand: "visa", last4: "4242", exp_month: 8, exp_year: 2029, in_use: false });
 
@@ -24,16 +25,50 @@ function memoryStorage(): Storage {
   };
 }
 
-describe("the five steps", () => {
-  it("Bill · Tip · Pay · Sign · Receipt after Pick", () => {
-    expect(STEP).toEqual({ pick: 0, bill: 1, tip: 2, pay: 3, sign: 4, receipt: 5 });
+describe("the steps", () => {
+  it("Pick · Bill · Tip · Method · Pay · Sign · Receipt", () => {
+    expect(STEP).toEqual({ pick: 0, bill: 1, tip: 2, method: 3, pay: 4, sign: 5, receipt: 6 });
+  });
+});
+
+describe("guardStage", () => {
+  const base = { method: "card" as const, way: "card" as const, dueCents: 9700 };
+
+  it("keeps Pay on the guest's way with something to pay", () => {
+    expect(guardStage({ ...base, stage: "pay" })).toBe("pay");
+    expect(guardStage({ ...base, stage: "pay", method: "cash", way: "cash" })).toBe("pay");
+  });
+
+  it("never turns a card choice into the cash screen", () => {
+    // A reload where the card minimum now rules the card out: way is cash.
+    expect(guardStage({ ...base, stage: "pay", way: "cash" })).toBe("method");
+    expect(guardStage({ ...base, stage: "pay", way: null })).toBe("method");
+  });
+
+  it("never stops at Pay when credits cover everything", () => {
+    expect(guardStage({ ...base, stage: "pay", dueCents: 0 })).toBe("method");
+  });
+
+  it("leaves Bill and Method alone", () => {
+    expect(guardStage({ ...base, stage: "bill", way: null })).toBe("bill");
+    expect(guardStage({ ...base, stage: "method", way: null, dueCents: 0 })).toBe("method");
+  });
+});
+
+describe("back", () => {
+  it("Pay → Method → Tip", () => {
+    expect(payBackStage("pay")).toBe("method");
+    expect(payBackStage("method")).toBe("bill");
   });
 });
 
 describe("initialStage", () => {
-  it("a draft at Pay starts at Pay; none starts at Bill", () => {
-    expect(initialStage({ stage: "pay" })).toBe("pay");
-    expect(initialStage({ stage: "bill" })).toBe("bill");
+  it("a draft at Pay with credits off starts at Method", () => {
+    expect(initialStage({ stage: "pay", useCredit: false })).toBe("method");
+  });
+  it("otherwise the draft's stage, or Bill with none", () => {
+    expect(initialStage({ stage: "pay", useCredit: true })).toBe("pay");
+    expect(initialStage({ stage: "method", useCredit: false })).toBe("method");
     expect(initialStage(null)).toBe("bill");
   });
 });
@@ -74,22 +109,24 @@ describe("readDraft never trusts a stored stage", () => {
     expect(d?.refusedCardId).toBe("pm_x");
   });
 
-  it("reads a draft saved at the retired Method or Card as Pay, keeping its card", () => {
-    for (const old of ["method", "card"]) {
-      writeDraft("p", { stage: old as never, typing: false, amount: "100", tip: 10, other: "", useCredit: true, method: "card", cardId: "pm_a" });
-      const d = readDraft("p");
-      expect(d?.stage).toBe("pay");
-      expect(d?.cardId).toBe("pm_a");
-    }
+  it("reads a draft saved at the retired Card step as Pay, keeping its card", () => {
+    writeDraft("p", { stage: "card" as never, typing: false, amount: "100", tip: 10, other: "", useCredit: true, method: "card", cardId: "pm_a" });
+    const d = readDraft("p");
+    expect(d?.stage).toBe("pay");
+    expect(d?.cardId).toBe("pm_a");
   });
 });
 
 describe("startAgainStage (MESITA-4121, MESITA-4226)", () => {
-  it("a failed card, an expired or a rejected bill starts again at Pay", () => {
-    for (const r of ["bank_check_failed", "capture_failed", "hold_released", "expired", "rejected"]) {
+  it("a failed card part starts again at Pay", () => {
+    for (const r of ["bank_check_failed", "capture_failed", "hold_released"]) {
       expect(startAgainStage({ endReason: r, cardFailed: true })).toBe("pay");
     }
     expect(startAgainStage({ endReason: null, cardFailed: true })).toBe("pay");
+  });
+  it("an expired or rejected bill starts again at Method", () => {
+    expect(startAgainStage({ endReason: "expired", cardFailed: false })).toBe("method");
+    expect(startAgainStage({ endReason: "rejected", cardFailed: true })).toBe("method");
   });
   it("anything else starts again at Bill", () => {
     expect(startAgainStage({ endReason: "cancelled", cardFailed: false })).toBe("bill");
@@ -115,9 +152,10 @@ describe("reopenGuestDraft (MESITA-4121)", () => {
     expect(d?.refusedCardId).toBe("pm_a");
     expect(d?.sentTabId ?? null).toBeNull();
   });
-  it("after an expired bill: Pay, nothing marked refused", () => {
+  it("after an expired bill: Method, nothing marked refused", () => {
     writeDraft("p", sent);
-    reopenGuestDraft("p", "pay");
+    reopenGuestDraft("p", "method");
+    expect(readDraft("p")?.stage).toBe("method");
     expect(readDraft("p")?.refusedCardId ?? null).toBeNull();
   });
   it("no draft (older than 30 minutes): nothing to reopen, the bill opens empty", () => {

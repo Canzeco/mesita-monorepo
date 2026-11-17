@@ -1,34 +1,57 @@
-// THE GUEST'S FIVE PAY STEPS (MESITA-4226, Pato, 2026-11-17: "too much
-// fucking steps ... remove card. we only have one card ... merge methods for
-// them to look shorter"; eight until then, MESITA-4135, with Method and Card
-// their own steps).
+// THE GUEST'S PAY STEPS (MESITA-4226, Pato, 2026-11-17: "remove card. we
+// only have one card ... we should have all those steps. but don't mention
+// them all ... Receipt only when its done"; eight until then, MESITA-4135,
+// with a Card step to pick among saved cards — a guest saves one card since
+// MESITA-4168).
 //
-//   0 Pick · 1 Bill · 2 Tip · 3 Pay · 4 Sign · 5 Receipt
+//   0 Pick · 1 Bill · 2 Tip · 3 Method · 4 Pay · 5 Sign · 6 Receipt
 //
 // Pick is the Pay tab's list (never drawn as a current step); Bill and Tip
-// share GuestPayScreen's "bill" stage (typing or not); Pay holds the credits
-// switch, the way (Mesita App with the guest's one saved card, or outside the
-// app) and the button that opens the bill; Sign and Receipt are GuestTabView.
-// No step is ever skipped: every payment walks the same five.
+// share GuestPayScreen's "bill" stage (typing or not); Method picks the way
+// (credits, Mesita App with the one card, or outside the app); Pay charges
+// the card or says to give the cash; Sign and Receipt are GuestTabView. The
+// bar shows Bill to Sign (five); Receipt joins it only once the bill is done.
+// Credits that cover everything open the bill from Method (Pay not shown).
 //
 // Every rule that decides which step shows lives here, React-free, so it is
-// tested on its own.
+// tested on its own and the screen never sets state while rendering.
 
+import type { PayWith } from "@/lib/api/tab";
 import type { Stage } from "@/lib/guest-pay-draft";
 
-export const STEP = { pick: 0, bill: 1, tip: 2, pay: 3, sign: 4, receipt: 5 } as const;
+export const STEP = { pick: 0, bill: 1, tip: 2, method: 3, pay: 4, sign: 5, receipt: 6 } as const;
 
-/** The stage a reopened draft starts at: a draft saved past Tip opens at
- *  Pay, where the credits switch is (credits are on by default every time
- *  the bill opens, MESITA-4100). */
-export function initialStage(d: { stage: Stage } | null): Stage {
+/** The stage the screen shows: a stored or live stage that no longer makes
+ *  sense goes back to Method, where the guest sees why. Pay needs a way that
+ *  is still the one the guest chose (a reload can turn a card choice into
+ *  cash when the card minimum changes) and something to pay. A card Pay with
+ *  no saved card stays on Pay, whose button is then Add a card. */
+export function guardStage(a: { stage: Stage; method: PayWith | null; way: PayWith | null; dueCents: number }): Stage {
+  if (a.stage === "pay") {
+    if (a.dueCents <= 0 || a.way === null) return "method";
+    if (a.method !== null && a.way !== a.method) return "method";
+    return "pay";
+  }
+  return a.stage;
+}
+
+/** One step back from a stage ("bill" means Tip; the keypad is the screen's). */
+export function payBackStage(stage: Stage): Stage {
+  return stage === "pay" ? "method" : "bill";
+}
+
+/** The stage a reopened draft starts at. Credits are on by default every
+ *  time the bill opens (MESITA-4100), so a draft saved at Pay with credits
+ *  off would pay a different split than the guest saw: it starts at Method,
+ *  where the switch is. */
+export function initialStage(d: { stage: Stage; useCredit: boolean } | null): Stage {
   if (!d) return "bill";
-  return d.stage === "pay" ? "pay" : "bill";
+  if (d.stage === "pay" && d.useCredit === false) return "method";
+  return d.stage;
 }
 
 /** Card refusals that keep the guest on Pay (MESITA-4121): the bill never
- *  opened, nothing is held, and the way out is the same card again or
- *  paying outside the app. */
+ *  opened, nothing is held, and the way out is the card again or cash. */
 export const PAY_CARD_REFUSALS: ReadonlySet<string> = new Set([
   "card_declined",
   "card_needs_auth",
@@ -41,8 +64,8 @@ export const PAY_CARD_REFUSALS: ReadonlySet<string> = new Set([
 ]);
 
 /** Where Not paid's Start again opens (MESITA-4121, MESITA-4226): Pay when
- *  the bill's card failed, the bill expired or the waiter rejected it; Bill
- *  otherwise. */
+ *  the bill's card failed (the card marked "Declined just now"), Method when
+ *  the bill expired or the waiter rejected it, Bill otherwise. */
 export function startAgainStage(a: { endReason: string | null; cardFailed: boolean }): Stage {
   switch (a.endReason) {
     case "bank_check_failed":
@@ -50,9 +73,10 @@ export function startAgainStage(a: { endReason: string | null; cardFailed: boole
     case "hold_released":
     case "card_declined":
     case "card_needs_auth":
+      return "pay";
     case "expired":
     case "rejected":
-      return "pay";
+      return "method";
     case null:
     case undefined:
     case "":
