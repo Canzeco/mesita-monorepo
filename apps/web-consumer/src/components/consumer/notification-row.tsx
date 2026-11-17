@@ -97,7 +97,7 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
   const href = credit
     ? isRouteId(placeId)
       ? walletPlacePath(placeId)
-      : CONSUMER_ROUTES.wallet
+      : CONSUMER_ROUTES.pay
     : isRouteId(reservationId)
       ? reservationPath(reservationId)
       : undefined;

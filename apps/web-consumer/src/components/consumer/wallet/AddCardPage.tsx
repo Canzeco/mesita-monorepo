@@ -35,7 +35,7 @@ export function AddCardPage() {
       if (new URLSearchParams(window.location.search).has(PICK_PARAM)) handOverAddedCard(id);
       toast.success("Card saved.");
       invalidateCached(WALLET_CACHE_KEY);
-      goBack(router, CONSUMER_ROUTES.wallet);
+      goBack(router, CONSUMER_ROUTES.pay);
     },
   });
   return (

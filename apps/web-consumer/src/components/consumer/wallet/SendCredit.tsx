@@ -380,7 +380,7 @@ export function RedeemCodePage() {
       const r = await apiRedeemGiftCode(getSupabase(), digits);
       toast.success(`${money(r.amount_cents, r.currency)} of credit is yours.`);
       invalidateCached(WALLET_CACHE_KEY);
-      goBack(router, CONSUMER_ROUTES.wallet);
+      goBack(router, CONSUMER_ROUTES.pay);
     } catch (err) {
       if (err instanceof EFError && err.code === "gone") setError("That code isn't right. Check the 12 digits.");
       else setError(refusal(err, "Couldn't take the credit. Try again."));

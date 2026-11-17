@@ -28,6 +28,8 @@ import { usePayPlaces } from "./use-pay-places";
 import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
 import { TicketsShortcut } from "./TicketsShortcut";
+import { WalletSection } from "@/components/consumer/wallet/WalletSection";
+import { WalletShareGift } from "@/components/consumer/wallet/WalletShareGift";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
@@ -39,12 +41,23 @@ import { TicketsShortcut } from "./TicketsShortcut";
 // (PayTabScreen, MESITA-3564). The bill and the receipt have their own
 // addresses (MESITA-3614): /pay/bill/<id> and /pay/receipt/<id>.
 //
-// ONLY PAY (Pato, 2026-11-14, MESITA-3886: "separate pay and wallet again.
-// only pay and only wallet"): the title band at the top (PayHeader), then the
-// payment in progress and the places (the nearest PLACES_SHOWN, then "Show
-// all"). Wallet is its own bar tab again (/wallet). From MESITA-3729 until
-// this the band was a Pay | Wallet switch; MESITA-3720 had drawn the Wallet
-// under these places on one page, and MESITA-3721 put the credits on the rows.
+// ONE PAY TAB (Pato, 2026-11-16, MESITA-4199: "MERGE PAY AND WALLET INTO ONE
+// PAGE SOMEHOW. TWO PAGES ADD COMPLEXITIES" / "call that page Pay"; mockup
+// https://claude.ai/artifact/9hGDgrXYVNabHQKBy72GJr, variant A):
+//
+//   Pay ........................................ [Tickets]
+//   [ search a place ]
+//   Places: every place you hold credit at, pinned, with its balance chip;
+//           then the nearest, up to PLACES_SHOWN; "Show all"
+//   Pay with: the card, Cash, Add a card, Loyalty Cards (WalletSection)
+//   Buy Credits · Send Gift · Claim Gift · Share Mesita (WalletShareGift)
+//
+// The bar is Home · Search · Pay · Me; /wallet forwards here. With a bill
+// open, the bill panel replaces the search and the places; Pay with stays.
+// Fourth shape of this pair: MESITA-3720 drew the Wallet under the places
+// (split the same day, 3722), 3729 made a Pay | Wallet switch, 3886 split
+// them again. This one keeps the Wallet near (five places at most above it,
+// credit places first) and has no switch.
 //
 // ONE OPEN PAYMENT (Pato, 2026-11-11, MESITA-3772: "you can only have one
 // ticket opened at a time ... in the pay page just display the button to go
@@ -97,7 +110,12 @@ function readNotNow(): boolean {
   }
 }
 
-export function PayPage() {
+export function PayPage({
+  giftToken = null,
+}: {
+  /** /wallet/gift/<token>: a friend's credit link opens over Pay. */
+  giftToken?: string | null;
+} = {}) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   const [loc, setLoc] = useState<Loc>({ state: "unknown" });
@@ -249,7 +267,7 @@ export function PayPage() {
   }
 
   return (
-    <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
+    <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8 *:shrink-0">
       <PayHeader
         title="Pay"
         action={<TicketsShortcut />}
@@ -303,6 +321,8 @@ export function PayPage() {
           <ListSkeleton />
         )}
       </div>
+      <WalletSection giftToken={giftToken} />
+      <WalletShareGift />
     </KeptScroll>
   );
 }
@@ -336,9 +356,15 @@ function PlaceList({
   const matches = q
     ? places.filter((p) => fold(p.name ?? "").includes(q))
     : places;
-  // The nearest PLACES_SHOWN, so the Wallet below is never far (MESITA-3720);
-  // a search always lists every match.
-  const shown = q || showAll ? matches : matches.slice(0, PLACES_SHOWN);
+  // Every place the guest holds credit at, at any distance, then the nearest
+  // up to PLACES_SHOWN, so Pay with below is never far (MESITA-4199); a
+  // search always lists every match.
+  const held = matches.filter((p) => p.available_cents > 0);
+  const near = matches.filter((p) => p.available_cents <= 0);
+  const shown =
+    q || showAll
+      ? matches
+      : [...held, ...near.slice(0, Math.max(0, PLACES_SHOWN - held.length))];
   const hidden = matches.length - shown.length;
   return (
     <div className="flex flex-col">
@@ -414,9 +440,17 @@ function PlaceList({
                       ) : null}
                     </span>
                     <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-sm tabular-nums">
-                      {p.distance_m !== null
-                        ? distanceText(p.distance_m)
-                        : null}
+                      {/* Your credit here, the Loyalty Card's chip. */}
+                      {p.available_cents > 0 ? (
+                        <span
+                          className="bg-foreground text-background rounded-full px-2.5 py-1 text-xs font-semibold"
+                          data-pay-place-credit
+                        >
+                          {money(p.available_cents, p.currency)}
+                        </span>
+                      ) : p.distance_m !== null ? (
+                        distanceText(p.distance_m)
+                      ) : null}
                       <ChevronRight className="h-4 w-4" aria-hidden />
                     </span>
                   </button>

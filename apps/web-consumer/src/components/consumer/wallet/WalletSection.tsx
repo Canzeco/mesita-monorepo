@@ -19,7 +19,6 @@ import { useWallet } from "./use-wallet";
 import {
   CashRow,
   CreditsRow,
-  EmptyCreditsRow,
   AddRow,
   SavedCardRow,
   StoryRow,
@@ -158,7 +157,7 @@ export function WalletSection({
   const [gift, setGift] = useState(giftToken);
   const closeGift = useCallback(() => {
     setGift(null);
-    navigateTo(router, CONSUMER_ROUTES.wallet, { replace: true });
+    navigateTo(router, CONSUMER_ROUTES.pay, { replace: true });
   }, [router]);
 
   // Saved cards come with the Wallet's read; null means Stripe failed.
@@ -231,9 +230,14 @@ export function WalletSection({
         </p>
       ) : null}
 
-      {/* PAYMENT METHODS AND LOYALTY CARDS (Pato, 2026-11-16, MESITA-4168:
-          "Payment Methods: Card (only can save one), Cash. Loyalty Cards"). */}
-      <WalletPanelList title="Payment Methods">
+      {/* ONE PAY TAB (Pato, 2026-11-16, MESITA-4199: "merge pay and wallet
+          into one page ... call that page Pay"): this section is Pay's lower
+          half, ONE "Pay with" panel of every way to pay: the saved card,
+          Cash, Add a card, then waiting Stories, each Loyalty Card (its House
+          Card on tap) and Add a Loyalty Card. The places above show the same
+          credit as a chip. Two panels until this, Payment Methods and
+          Loyalty Cards (MESITA-4168). */}
+      <WalletPanelList title="Pay with">
         {cards.map((c) => <SavedCardRow key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
         <CashRow onOpen={() => setMethod({ kind: "cash" })} />
         {/* Add is the list's last row (MESITA-3744), and reads "Add" in both
@@ -243,23 +247,6 @@ export function WalletSection({
         {cards.length < MAX_SAVED_CARDS ? (
           <AddRow line="Add a card" ariaLabel="Add a payment card" href={CONSUMER_ROUTES.walletAddCard} />
         ) : null}
-      </WalletPanelList>
-
-      <WalletPanelList
-        title="Loyalty Cards"
-        fallback={
-          creditsState === "failed" ? (
-            <EmptyState
-              inline
-              icon={WalletIcon}
-              title="Couldn't load Wallet"
-              description="Check your connection and try again."
-              action={{ label: "Try again", onClick: reread }}
-            />
-          ) : null
-        }
-      >
-        {creditsState === "empty" ? <EmptyCreditsRow href={CONSUMER_ROUTES.search} /> : null}
         {creditsState === "rows"
           ? stories.map((s) => <StoryRow key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)
           : null}
@@ -274,10 +261,21 @@ export function WalletSection({
               />
             ))
           : null}
-        {creditsState === "rows" ? (
+        {creditsState === "rows" || creditsState === "empty" ? (
           <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" onClick={() => setExplainAdd(true)} />
         ) : null}
       </WalletPanelList>
+      {creditsState === "failed" ? (
+        <div className="mt-3">
+          <EmptyState
+            inline
+            icon={WalletIcon}
+            title="Couldn't load your credits"
+            description="Check your connection and try again."
+            action={{ label: "Try again", onClick: reread }}
+          />
+        </div>
+      ) : null}
 
       {/* Add a Credits Card explains, never navigates (MESITA-4088). */}
       <AddCreditsCardDialog open={explainAdd} onClose={() => setExplainAdd(false)} />
