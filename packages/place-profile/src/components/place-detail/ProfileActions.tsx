@@ -41,7 +41,7 @@ import { buildDirectionsUrl } from "../../lib/maps-link";
 // (MESITA-4155): "Prepay $200MX, Get $220MX" for each voucher, sizes first,
 // then "Pay with Mesita, Get 5% Back"; a slide every 2s on Home's beat.
 // The slide under the finger is the door: a voucher opens the Offers page at
-// its section, Pay opens Pay. With no offer here it is the grey None tile
+// its section, Pay opens Pay. With no offer here it is the grey Off tile (MESITA-4205)
 // (MESITA-4180, Pato: "off feels like gone, like sold out").
 // Four tiles (Reserve · Prepay · Wallet · Pay) from MESITA-3574 to 4150.
 //
@@ -307,7 +307,7 @@ export function MesitaActions({
         <button
           type="button"
           {...(row.offers.loading ? inertButtonProps(false) : { onClick: () => setOffOpen("offers"), "aria-haspopup": "dialog" as const })}
-          aria-label={row.offers.loading ? "Offers, loading" : "Offers, None"}
+          aria-label={row.offers.loading ? "Offers, loading" : "Offers, off: this place has no offers"}
           className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE)}
         >
           <span className={ROW_LEAD}>
@@ -315,7 +315,7 @@ export function MesitaActions({
             <span>Offers</span>
           </span>
           <span className={cn(ROW_CHIP, OFF_CHIP)} aria-hidden>
-            {row.offers.loading ? "…" : "None"}
+            {row.offers.loading ? "…" : "Off"}
           </span>
         </button>
       )}
