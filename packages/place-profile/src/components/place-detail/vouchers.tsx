@@ -663,7 +663,9 @@ export function VouchersPane({
   // somehow, i mean, shorter, its using tooo much space"): 36px chips, 6px
   // row padding, the fact on one line.
   // 12px row padding and gaps since MESITA-4186 (the tick box at the left).
-  const ROW = "flex w-full items-center gap-3 px-3.5 py-3 text-left";
+  // ONE SCREEN, NO SCROLL (Pato, 2026-11-17, MESITA-4221: "shorter, cleaner,
+  // i don't want to scroll"): ~48px rows, 8px padding, tight lines.
+  const ROW = "flex w-full items-center gap-3 px-3.5 py-2 text-left";
   // A BIT SMALLER (MESITA-3768, Pato: "make this a bit smaller, the text, just
   // a bit"): one small step each, titles 15px, fact lines 13px, chips 18px.
   // ONE RUN OF TEXT (Pato, 2026-11-14, MESITA-3863: "Name of thing in Bold.
@@ -674,8 +676,8 @@ export function VouchersPane({
   // when narrow (two lines on a 390px phone, so 8px gaps and 12px row
   // padding); the (i) in its own column at the right; chips 28px tall.
   // Wide enough for "+100%" (MESITA-4186: it overflowed the 48px chip).
-  const CHIP = "flex h-8 min-w-15 shrink-0 items-center justify-center rounded-lg px-2 text-[15px] font-extrabold tracking-tight tabular-nums";
-  const LINE = "text-muted-foreground min-w-0 flex-1 text-sm leading-snug";
+  const CHIP = "flex h-7 min-w-15 shrink-0 items-center justify-center rounded-lg px-2 text-sm font-extrabold tracking-tight tabular-nums";
+  const LINE = "text-muted-foreground min-w-0 flex-1 text-[13px] leading-tight";
   const NAME = "text-foreground text-[15px] font-semibold";
   const ICON = "mr-1 inline h-4 w-4 align-[-0.15em]";
   // Where a row has no tick box or lock, so every (i) sits in one column.
@@ -725,7 +727,7 @@ export function VouchersPane({
       // ONE PANEL (MESITA-4196): the Reserve page's Panel, its heading inside
       // at the top, the rows under a hairline.
       <section key={g.id} className={cn(CARD, "shrink-0 overflow-hidden")} aria-labelledby={`rewards-${g.id}`} data-promos={g.id}>
-        <div className="px-4 pt-4 pb-3">
+        <div className="px-4 pt-3 pb-2">
           <SectionTitle id={`rewards-${g.id}`} title={g.title} />
         </div>
         <ul className="border-border divide-border divide-y border-t" data-voucher-catalog>
@@ -836,6 +838,10 @@ export function VouchersPane({
           is named above it (MESITA-4150: the only place it is named), so nobody
           pays with a card they cannot see;
           purple, Stripe's colour (Pato: "maybe the stripe button purple"). */}
+      {/* NO DEAD BUTTON (MESITA-4221, Pato: "remove the select offer button
+          and just clickable"): the row is the tap; the foot rises only once an
+          offer is picked. A tap picks, never pays: Pay still confirms. */}
+      {items.length > 0 ? (
       <div className="bg-card border-border sticky bottom-0 -mx-4 mt-auto -mb-4 border-t px-4 py-3" data-promos="checkout">
         {payCard && items.length > 0 ? (
           <p className="text-muted-foreground mb-2 flex items-center justify-between text-sm" data-pay-card-line>
@@ -877,6 +883,7 @@ export function VouchersPane({
           {footText}
         </button>
       </div>
+      ) : null}
     </div>
   );
 }

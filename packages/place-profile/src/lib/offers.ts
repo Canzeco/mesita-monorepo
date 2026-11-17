@@ -64,15 +64,15 @@ export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
 };
 // THE WORDS (Pato, 2026-11-17, MESITA-4219: "Classic (30% Bonus) · Welcome
 // (100% Bonus) · Story · VIP"): Classic, the best standard voucher, leads;
-// every pill reads "N% Bonus" on every screen. Story keeps the catalog's real
+// every pill reads "+N% Bonus" on every screen (the "+" back, MESITA-4221). Story keeps the catalog's real
 // 50%. Prepay led with "+N%" before.
 const OFFER_SLIDES: OfferSlide[] = [
   // The best standard voucher on sale (offerSlides picks it).
   { key: "prepay", lead: "Classic", pill: "", short: "Classic", spoken: "Classic", section: "prepayment", tone: GREEN },
-  { key: "voucher_welcome", lead: "Welcome", pill: "100% Bonus", short: "Welcome", spoken: "Welcome, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_welcome, bonus: 100, voucher: "voucher_welcome" },
+  { key: "voucher_welcome", lead: "Welcome", pill: "+100% Bonus", short: "Welcome", spoken: "Welcome, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_welcome, bonus: 100, voucher: "voucher_welcome" },
   // Story +50% since MESITA-4207 (pay $100, get $150); +30% before.
-  { key: "voucher_story", lead: "Story", pill: "50% Bonus", short: "Story", spoken: "Story, 50% bonus", section: "special", tone: VOUCHER_TONE.voucher_story, bonus: 50, voucher: "voucher_story" },
-  { key: "voucher_vip", lead: "VIP", pill: "100% Bonus", short: "VIP", spoken: "VIP, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_vip, bonus: 100, voucher: "voucher_vip" },
+  { key: "voucher_story", lead: "Story", pill: "+50% Bonus", short: "Story", spoken: "Story, 50% bonus", section: "special", tone: VOUCHER_TONE.voucher_story, bonus: 50, voucher: "voucher_story" },
+  { key: "voucher_vip", lead: "VIP", pill: "+100% Bonus", short: "VIP", spoken: "VIP, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_vip, bonus: 100, voucher: "voucher_vip" },
 ];
 
 /** The standard vouchers' bonuses: the server's catalog (supabase
@@ -91,7 +91,7 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
   const top = standard.reduce<[string, number] | null>((a, b) => (a && a[1] >= b[1] ? a : b), null);
   return OFFER_SLIDES.flatMap((s): OfferSlide[] => {
     if (s.key === "prepay")
-      return top ? [{ ...s, pill: `${top[1]}% Bonus`, spoken: `Classic, ${top[1]}% bonus`, bonus: top[1], voucher: top[0] }] : [];
+      return top ? [{ ...s, pill: `+${top[1]}% Bonus`, spoken: `Classic, ${top[1]}% bonus`, bonus: top[1], voucher: top[0] }] : [];
     return sell.has(s.key) ? [s] : [];
   });
 }

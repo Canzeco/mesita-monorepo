@@ -28,7 +28,7 @@ describe("offerSlides", () => {
     const slides = offerSlides({
       sell: ["voucher_200", "voucher_5000", "voucher_vip", "voucher_welcome"],
     });
-    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Classic 30% Bonus", "Welcome 100% Bonus", "VIP 100% Bonus"]);
+    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Classic +30% Bonus", "Welcome +100% Bonus", "VIP +100% Bonus"]);
     expect(slides.map((s) => s.section)).toEqual(["prepayment", "special", "special"]);
     expect(slides.map((s) => s.voucher)).toEqual(["voucher_5000", "voucher_welcome", "voucher_vip"]);
   });
