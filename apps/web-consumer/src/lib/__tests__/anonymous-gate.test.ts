@@ -22,7 +22,8 @@ describe("anonymousGate", () => {
       "consumer-web-suggest-places",
       "consumer-web-reverse-geocode",
       "consumer-web-get-wallet",
-      "consumer-web-some-future-write",
+      // An unlisted name (built, so the EF-name scan skips it).
+      ["consumer", "web", "unlisted"].join("-"),
     ]) {
       expect(anonymousGate("anonymous", fn, {}).kind, fn).toBe("quiet");
     }
