@@ -29,9 +29,9 @@ function render(money: PlaceMoney | undefined, onBuyVoucher?: () => void): strin
 }
 
 describe("Vouchers tab", () => {
-  // VIP is parked (MESITA-4197): off sale, so off the page, for every guest,
-  // even a VIP one. Story is back (it was parked by MESITA-3831).
-  it("lists Story but not the parked VIP, even for a VIP guest with Instagram linked (MESITA-4197)", () => {
+  // VIP is parked (MESITA-4197): shown locked, never for sale, for every
+  // guest, even a VIP one (MESITA-4220: "DISPLAY VIP EVEN IF BLOCKED").
+  it("lists Story, and the parked VIP locked with no selector, even for a VIP guest (MESITA-4220)", () => {
     const html = renderToStaticMarkup(
       <VouchersPane
         place={{ money: OFFER, name: "Probe", photos: [] } as unknown as PlaceDetail}
@@ -39,7 +39,8 @@ describe("Vouchers tab", () => {
       />,
     );
     expect(html).toContain("Story voucher");
-    expect(html).not.toContain("VIP voucher");
+    expect(html).toContain("VIP");
+    expect(html).not.toContain('aria-label="Choose the VIP voucher');
     expect(html).toContain('aria-label="Choose the Small voucher');
   });
 
