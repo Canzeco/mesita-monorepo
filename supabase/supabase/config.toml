@@ -411,6 +411,21 @@ verify_jwt = false
 [functions.visit-web-activate-story]
 verify_jwt = false
 
+# MESITA-4264: staff approve or reject the guest's story (waiter-code staff
+# token of the purchase's place; the guest's Story token alone never approves).
+[functions.visit-web-review-story]
+verify_jwt = false
+
+# MESITA-4264: the Meta emulator, the caller's own test-mode Story only; it
+# copies its bundled sample image into the story-emulator bucket.
+[functions.consumer-web-emulate-story]
+verify_jwt = true
+static_files = ["./functions/consumer-web-emulate-story/sample-story.jpg"]
+
+# MESITA-4264: the operator's release / void / unapprove / recheck_now of a Story.
+[functions.admin-web-story-override]
+verify_jwt = true
+
 # MESITA-3306 (W2c): the waiter's charge. No sign-in on visit.mesita.ai: the
 # place code opens a charge, the 128-bit charge token reads it.
 [functions.visit-web-open-charge]
@@ -488,6 +503,11 @@ verify_jwt = false
 # MESITA-3461: Mesita's fee billed to places, every hour.
 # Kill switch: select cron.unschedule('bill-fees');
 [functions.supabase-cron-bill-fees]
+verify_jwt = true
+
+# MESITA-4264: the Story bonus re-check, every 10 minutes.
+# Kill switch: select cron.unschedule('recheck-stories');
+[functions.supabase-cron-recheck-stories]
 verify_jwt = true
 
 # MESITA-3305 (W2b): the money ledger's backstop, every 5 minutes.

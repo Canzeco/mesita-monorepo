@@ -229,9 +229,10 @@ function whole(v: string): string {
 
 /** YOUR MONEY NOW, THE BONUS IN 3 HOURS (Pato, 2026-11-17, MESITA-4214):
  *  every voucher. The row and the button say only "Pay $X · Get $Y"; the (i)
- *  says when each part is ready. Story's money waits for its story. */
+ *  says when each part is ready. Story's money is ready at once too since
+ *  MESITA-4264; only its bonus waits on the story. */
 function readyIn(key: MoneyVoucherKey): string {
-  return key === "voucher_story" ? "after story, bonus 3 hr later" : "bonus in 3 hr";
+  return key === "voucher_story" ? "bonus 3 hr after story approval" : "bonus in 3 hr";
 }
 
 /** The (i)'s "Your status" line for a prepayment offer (MESITA-3502). */
@@ -323,7 +324,7 @@ export type VoucherOffer = {
   bonus: string;
   pay: string;
   get: string;
-  /** "bonus in 3 hr" or "after story, bonus 3 hr later" (MESITA-4214). */
+  /** "bonus in 3 hr" or "bonus 3 hr after story approval" (MESITA-4214, MESITA-4264). */
   ready: string;
   /** This guest can buy it now. */
   buyable: boolean;
@@ -421,14 +422,29 @@ function sheetSteps(key: MoneyVoucherKey, pay: string, bonus: string | null, fir
     case "voucher_story":
       return [
         { Icon: IG, title: `Have ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")}+ Instagram followers`, line: "Your Instagram linked in Me. One per visit.", locked: lock },
-        { Icon: ShoppingBag, title: `Buy it here · pay ${pay}`, line: "It waits for your story." },
-        { Icon: Camera, title: "Post a story at the place", line: "Tag the place on Instagram." },
-        { Icon: BadgeCheck, title: `Show it to the staff · ${pay} ready`, line: "They check it, and your money is ready." },
-        later,
+        // MESITA-4264: the money is ready at payment; the story only earns
+        // the bonus, verified from its @mesita mention and approved by staff.
+        { Icon: ShoppingBag, title: `Pay ${pay}, get it now`, line: "It's ready to spend right away." },
+        { Icon: Camera, title: "Post a story tagging @mesita and the place", line: "From a public Instagram account." },
+        { Icon: BadgeCheck, title: "Show your QR to the staff", line: "They see your story and approve it." },
+        {
+          Icon: Clock,
+          title: `${bonus ? `+${bonus}` : "Your bonus"} three hours after they approve it`,
+          line: "If the story is still up.",
+          green: true,
+        },
       ];
     default:
       return [today, later, spend];
   }
+}
+
+/** Story's deal in one sentence, amounts first (MESITA-4264). The amounts
+ *  come from the catalog; formatting only. */
+function storyDeal(pay: string, bonus: string | null): string {
+  return `Pay ${pay}, get it now. Post a story from a public account tagging @mesita and the place, show your QR: ${
+    bonus ? `+${bonus}` : "your bonus"
+  } three hours after staff approve it, if the story is still up.`;
 }
 
 /** The first step's lock for this guest, when that step is what stops them. */
@@ -572,13 +588,13 @@ function PaySheet({
               {receipt.outcome === "paid" ? (
                 <>
                   <li className="tabular-nums">
-                    {product.key === "voucher_story"
-                      ? `${whole(receipt.pay)} is ready once you show your story.`
-                      : `${whole(receipt.pay)} is ready to spend now.`}
+                    {`${whole(receipt.pay)} is ready to spend now.`}
                   </li>
                   <li className="tabular-nums">
                     {receipt.bonus ? `The ${receipt.bonus} bonus` : "The bonus"}
-                    {receipt.readyAt && product.key !== "voucher_story" ? ` is ready at ${readyClock(receipt.readyAt)}.` : " is ready 3 hours later."}
+                    {product.key === "voucher_story"
+                      ? " lands three hours after staff approve your story, if it is still up."
+                      : receipt.readyAt ? ` is ready at ${readyClock(receipt.readyAt)}.` : " is ready 3 hours later."}
                   </li>
                 </>
               ) : (
@@ -608,6 +624,12 @@ function PaySheet({
                 <span className="text-2xl font-extrabold text-[#00A85A] tabular-nums">{whole(get)}</span>
               </div>
             </div>
+            {product.key === "voucher_story" ? (
+              // AMOUNTS FIRST (MESITA-4264): the deal in one sentence, from the catalog.
+              <p className="text-foreground text-[15px] leading-snug tabular-nums" data-offer-story-deal>
+                {storyDeal(whole(pay), bonusAmount ? whole(bonusAmount) : null)}
+              </p>
+            ) : null}
             <ol className="flex flex-col py-1" aria-label="How it works" data-offer-steps>
               {sheetSteps(product.key, whole(pay), bonusAmount ? whole(bonusAmount) : null, stepLock).map((s, i, all) => (
                 <li key={s.title} className="flex gap-3.5" data-offer-step-locked={s.locked ? "true" : undefined}>

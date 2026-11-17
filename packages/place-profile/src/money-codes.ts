@@ -86,6 +86,9 @@ export const MONEY_CODES = [
   // A voucher buy without a saved card (MESITA-4065: no Stripe page; the
   // guest adds a card in the app first)
   "card_required",
+  // Story with live payments while Meta is off (MESITA-4264): no way to
+  // verify the story, so the buy is refused
+  "story_unavailable",
 ] as const;
 
 export type MoneyCode = (typeof MONEY_CODES)[number];

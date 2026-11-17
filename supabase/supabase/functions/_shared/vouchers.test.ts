@@ -19,6 +19,7 @@ import {
   sameUnits,
   storyRefusal,
   voucherMetadata,
+  withStoryMode,
 } from "./vouchers.ts";
 
 const PLACE = "00000000-0000-4000-8000-0000000a3303";
@@ -377,4 +378,15 @@ Deno.test("list rows: one Story per visit opens again after a visit (MESITA-3463
   const blocks = guestBlocksFrom([{ place_id: "p", voucher: "voucher_story" }], [{ place_id: "p" }]);
   assertEquals(blocks.get("p"), { welcomeUsed: false, perVisitUsed: { voucher_story: false } });
   assertEquals(guestSell(["voucher_story"], blocks.get("p")), ["voucher_story"]);
+});
+
+Deno.test("withStoryMode: Story leaves sell only when no mention source exists (MESITA-4264)", () => {
+  const o = offerFrom(base);
+  assertEquals(o.sell.includes("voucher_story"), true);
+  assertEquals(withStoryMode(o, "emulated").sell.includes("voucher_story"), true);
+  assertEquals(withStoryMode(o, "meta").sell.includes("voucher_story"), true);
+  const off = withStoryMode(o, "unavailable");
+  assertEquals(off.sell.includes("voucher_story"), false);
+  assertEquals(off.unavailable.voucher_story, "off");
+  assertEquals(off.sell.length, o.sell.length - 1, "every other voucher still sells");
 });

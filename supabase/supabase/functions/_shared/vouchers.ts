@@ -15,6 +15,7 @@ import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWE
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
 import { readMoneyConfig } from "./money-config.ts";
 import { readInstagramSyncState } from "./consumer-doc.ts";
+import { storyMode, type StoryMode } from "./story-mention.ts";
 import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount, VISIT_STATUSES } from "./visits.ts";
 
@@ -290,7 +291,11 @@ export async function withGuestOffers<T extends { id: string; offers: { sell: Mo
   consumerId: string | null,
   rows: T[],
 ): Promise<T[]> {
-  if (!admin || !consumerId) return rows;
+  // NO MENTION SOURCE, NO STORY (MESITA-4264): live payments with Meta off.
+  const storyOpen = storyMode() !== "unavailable";
+  if (!admin || !consumerId) {
+    return storyOpen ? rows : rows.map((r) => ({ ...r, offers: { ...r.offers, sell: r.offers.sell.filter((k) => k !== "voucher_story") } }));
+  }
   const [blocks, story] = await Promise.all([
     readGuestBlocks(admin, consumerId, rows.map((r) => r.id)),
     readStoryGuest(admin, consumerId).then(
@@ -303,7 +308,7 @@ export async function withGuestOffers<T extends { id: string; offers: { sell: Mo
   ]);
   return rows.map((r) => {
     const sell = blocks ? guestSell(r.offers.sell, blocks.get(r.id)) : [...r.offers.sell];
-    return { ...r, offers: { ...r.offers, sell: story ? sell : sell.filter((k) => k !== "voucher_story") } };
+    return { ...r, offers: { ...r.offers, sell: story && storyOpen ? sell : sell.filter((k) => k !== "voucher_story") } };
   });
 }
 
@@ -326,7 +331,7 @@ export async function voucherOffer(
   ]);
   // A failed read reads no code: Offers never advertises 2% it cannot honour.
   if (code.error) console.error("[vouchers] place_code_read", JSON.stringify({ place_id: place.id, error: code.error.message }));
-  return offerFrom({
+  return withStoryMode(offerFrom({
     settings,
     account,
     livemode,
@@ -336,7 +341,18 @@ export async function voucherOffer(
     welcomeUsed,
     perVisitUsed,
     hasPlaceCode: !code.error && !!code.data,
-  });
+  }), storyMode());
+}
+
+/** Story is sold only while a mention source exists (MESITA-4264): with
+ *  live payments and Meta off ('unavailable') it leaves `sell`. */
+export function withStoryMode(offer: VoucherOffer, mode: StoryMode): VoucherOffer {
+  if (mode !== "unavailable" || !offer.sell.includes("voucher_story")) return offer;
+  return {
+    ...offer,
+    sell: offer.sell.filter((k) => k !== "voucher_story"),
+    unavailable: { ...offer.unavailable, voucher_story: "off" },
+  };
 }
 
 // ── Buying ─────────────────────────────────────────────────────────────────

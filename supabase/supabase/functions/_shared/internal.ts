@@ -19,6 +19,7 @@
 // this list to the code and to verify_jwt = true:
 //   admin-web-repick-families
 //   supabase-cron-bill-fees
+//   supabase-cron-recheck-stories
 //   supabase-cron-refresh-instagram-token
 //   supabase-cron-retry-reservations
 //   supabase-cron-settle-wallet

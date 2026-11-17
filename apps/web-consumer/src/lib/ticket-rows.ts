@@ -14,6 +14,7 @@ import {
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
 import type { TicketKind } from "@/lib/ticket-kinds";
+import { storyBonusOpen, storyLine } from "@/lib/story-lines";
 import type {
   ActivityItem,
   StatusTone,
@@ -182,7 +183,7 @@ const GIFT_KINDS = new Set(["gift_out", "gift_in", "gift_back"]);
 const BOUGHT_KINDS = new Set(["prepay", "voucher"]);
 const sum = (es: WalletEntry[]) => es.reduce((n, e) => n + e.amount_cents, 0);
 
-export function walletRows(w: Wallet): Row[] {
+export function walletRows(w: Wallet, now = Date.now()): Row[] {
   const out: Row[] = [];
   for (const b of w.balances) {
     const place = b.place?.name ?? "A Mesita place";
@@ -323,8 +324,12 @@ export function walletRows(w: Wallet): Row[] {
       );
   }
 
-  // A Story voucher paid, waiting for the post (MESITA-3507).
+  // A Story voucher's bonus, waiting on the story (MESITA-3507; MESITA-4264:
+  // what was paid is a voucher row above, already credited). A released
+  // bonus is its own Bonus row, so it is not drawn twice.
   for (const s of w.waiting_stories ?? []) {
+    if (s.state === "released") continue;
+    const open = storyBonusOpen(s);
     out.push({
       key: `s-${s.purchase_id}`,
       type: "vouchers",
@@ -334,10 +339,10 @@ export function walletRows(w: Wallet): Row[] {
       upcoming: false,
       place: s.place?.name ?? "A Mesita place",
       photo: s.place?.photo ?? null,
-      status: { label: "Waiting", tone: "ink" },
-      big: money(s.credit_cents, s.currency),
+      status: open ? { label: "Waiting", tone: "ink" } : { label: "Not added", tone: "grey" },
+      big: money(s.bonus_cents, s.currency),
       money: true,
-      line: "Story voucher · post your Story",
+      line: storyLine(s, now),
       href: walletPlacePath(s.place_id),
     });
   }

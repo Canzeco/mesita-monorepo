@@ -2,7 +2,8 @@
   "tasks": {
     "lint": "deno lint --rules-exclude=no-unversioned-import,no-import-prefix supabase/functions/",
     "test": "deno test --allow-env --allow-net --allow-read supabase/functions/",
-    "families-eval": "deno run --allow-read --allow-write=scripts/families-eval --allow-net --allow-run=supabase scripts/families-eval/score.ts"
+    "families-eval": "deno run --allow-read --allow-write=scripts/families-eval --allow-net --allow-run=supabase scripts/families-eval/score.ts",
+    "story-e2e": "deno run --allow-net --allow-env --allow-read --allow-run=supabase scripts/story-e2e.ts"
   },
   "lint": {
     "rules": {

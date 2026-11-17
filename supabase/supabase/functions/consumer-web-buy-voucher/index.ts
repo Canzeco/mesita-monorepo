@@ -41,11 +41,13 @@
 //   409 card_declined (+decline_code) | card_needs_auth | closed | in_progress
 //   404 place · 409 no_account | currency_mismatch | paused | not_available |
 //   not_yet | needs_card_payments | needs_instagram | few_followers (Story) |
+//   story_unavailable (Story with live payments and Meta off, MESITA-4264) |
 //   welcome_used | below_minimum | place_cap (MESITA-3947)
 //   502 card_failed | stripe_unreachable · 503 payments not configured
 // The client secret of a bank check is returned, never logged.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { storyMode } from "../_shared/story-mention.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { readCustomer } from "../_shared/boost.ts";
@@ -133,6 +135,10 @@ serveJson("consumer-web-buy-voucher", async (req) => {
     }
   }
 
+  // No mention source, no Story (MESITA-4264): live payments with Meta off.
+  if (kinds.includes("voucher_story") && storyMode() === "unavailable") {
+    return json({ ok: false, code: "story_unavailable", error: "The Story voucher is not available right now" }, 409);
+  }
   const [offer, account] = await Promise.all([voucherOffer(admin, place, userId, livemode), readAccount(admin, placeId)]);
   // Every voucher in the basket passes its own gates (MESITA-3841).
   for (const k of kinds) {
