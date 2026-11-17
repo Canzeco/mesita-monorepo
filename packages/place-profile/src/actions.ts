@@ -2,6 +2,7 @@ import type { MouseEvent, ReactNode } from "react";
 
 import type { PlaceDetail, VoucherKey } from "./place-detail";
 import type { PayCards } from "./pay-cards";
+import type { StoryCheckAnswer } from "./story-check";
 
 export type PlaceMenuItem = PlaceDetail["products"]["menu"][number];
 
@@ -10,7 +11,11 @@ export type VoucherBasketItem = { voucher: VoucherKey; qty: number };
 /** How a voucher buy ended (MESITA-4224): the pay sheet turns into a receipt
  *  on "paid" or "processing" and stays open to try again on "failed" (the
  *  host already said why). */
-export type VoucherBuyOutcome = "paid" | "processing" | "failed";
+export type VoucherBuyOutcome = "paid" | "processing" | "failed" | StoryRefused;
+/** A Story buy the server refused about the story itself (MESITA-4296:
+ *  private_account or a story_* code): nothing was charged and the sheet goes
+ *  back to the check step with `line`. */
+export type StoryRefused = { story_refused: string };
 
 /** The profile is on screen before Mesita holds it — a Google-only card the
  *  guest opened (MESITA-2307). While the create runs a Creating fact leads
@@ -48,7 +53,20 @@ export type PlaceActions = {
    *  second sheet. `cardId` null: no usable card, the host opens its card
    *  sheet. Absent, the button is inert (admin's preview). Resolves with how
    *  it ended (MESITA-4224); a host that returns nothing leaves the sheet open. */
-  onBuyVoucher?: (items: VoucherBasketItem[], cardId: string | null) => void | Promise<VoucherBuyOutcome>;
+  onBuyVoucher?: (
+    items: VoucherBasketItem[],
+    cardId: string | null,
+    /** A Story names the story the check found (MESITA-4296); paid alone. */
+    opts?: { mentionId?: string },
+  ) => void | Promise<VoucherBuyOutcome>;
+  /** The Story sheet's check (MESITA-4296): consumer-web-check-story for
+   *  this place; `poll` skips the gate (the sheet's look once it passed).
+   *  Resolves `failed` on a 500 or no answer, never throws. Absent (admin's
+   *  preview, signed out), the sheet shows the steps and no Pay. */
+  onCheckStory?: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
+  /** Test mode only: post a sample story for this guest (the Meta emulator,
+   *  MESITA-4296). Resolves null when posted, else the refusal's line. */
+  onSimulateStory?: () => Promise<string | null>;
   /** A voucher of the basket being paid; while set the button reads Paying…
    *  and the card rows and steppers are locked. */
   buyingVoucher?: VoucherKey | null;
@@ -84,7 +102,12 @@ export type PlaceActions = {
    *  needs a linked Instagram. Absent (signed out, admin's
    *  preview, profile not read yet), no guest lock is drawn. */
   /** instagramFollowers (MESITA-3507): Story needs more than STORY_MIN_FOLLOWERS; absent reads as unknown, no lock. */
-  guest?: { instagramLinked: boolean; instagramFollowers?: number | null };
+  guest?: {
+    instagramLinked: boolean;
+    instagramFollowers?: number | null;
+    /** The guest's Instagram username, on the Story sheet's Found card (MESITA-4296). */
+    instagramHandle?: string | null;
+  };
   /** The voucher a Home offer chip asked for (MESITA-4207, `?voucher=`):
    *  the Offers page opens with it ticked when this guest can buy it. */
   askedVoucher?: string | null;

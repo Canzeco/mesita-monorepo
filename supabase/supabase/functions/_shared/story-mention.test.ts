@@ -1,4 +1,4 @@
-// MESITA-4264: the Story mention's money rules, without a database.
+// MESITA-4264, MESITA-4296: the Story mention's money rules, without a database.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   allowedMediaUrl,
@@ -13,7 +13,6 @@ import {
   type RecheckRow,
   runRecheckTick,
   STORY_RULES,
-  storyExpiresAt,
   storyMode,
   storyModeOf,
   storyRulesFrom,
@@ -97,56 +96,65 @@ Deno.test("storyMode: meta when the webhook is configured, emulated in test mode
   );
 });
 
-Deno.test("emulator: the caller's own test-mode Story only, and never with Meta on", () => {
-  const mine = { consumer_id: "u", voucher: "voucher_story", livemode: false };
-  assertEquals(emulatorRefusal(mine, "u", false), null);
-  assertEquals(emulatorRefusal({ ...mine, livemode: true }, "u", false)?.code, "live_purchase");
-  assertEquals(emulatorRefusal(mine, "someone-else", false)?.code, "not_your_purchase");
-  assertEquals(emulatorRefusal({ ...mine, voucher: "voucher_200" }, "u", false)?.code, "not_your_purchase");
-  assertEquals(emulatorRefusal(null, "u", false)?.code, "not_your_purchase");
-  assertEquals(emulatorRefusal(mine, "u", true)?.code, "meta_on");
+Deno.test("emulator: test mode only, and never with Meta on (MESITA-4296: no purchase needed)", () => {
+  assertEquals(emulatorRefusal(false, false), null);
+  assertEquals(emulatorRefusal(true, false)?.code, "not_test_mode");
+  assertEquals(emulatorRefusal(false, true)?.code, "meta_on");
 });
 
-Deno.test("emulator ids and URLs: emu-<purchase>-<n>, versioned", () => {
-  const p = "00000000-0000-4000-8000-000000004264";
-  assertEquals(emulatorStoryId(p, 3), `emu-${p}-3`);
-  assertEquals(emulatorN(`emu-${p}-3`, p), 3);
-  assertEquals(emulatorN(`emu-${p}-x`, p), null);
-  assertEquals(emulatorN("mid.1", p), null);
+Deno.test("emulator ids and URLs: emu-<consumer>-<n>, versioned", () => {
+  const c = "00000000-0000-4000-8000-000000004296";
+  assertEquals(emulatorStoryId(c, 3), `emu-${c}-3`);
+  assertEquals(emulatorN(`emu-${c}-3`, c), 3);
+  assertEquals(emulatorN(`emu-${c}-x`, c), null);
+  assertEquals(emulatorN("mid.1", c), null);
   assertEquals(
-    emulatorUrl("https://x.supabase.co/", p, 2),
-    `https://x.supabase.co/storage/v1/object/public/story-emulator/${p}/2.jpg?v=2`,
+    emulatorUrl("https://x.supabase.co/", c, 2),
+    `https://x.supabase.co/storage/v1/object/public/story-emulator/${c}/2.jpg?v=2`,
   );
 });
 
-Deno.test("mentionFits: a test story completes only a test purchase; 24 hours", () => {
+Deno.test("mentionFits: same livemode only; must outlive the re-check by the margin (MESITA-4296)", () => {
   const now = Date.parse("2026-11-17T12:00:00Z");
   const fresh = "2026-11-17T11:00:00Z";
   assertEquals(mentionFits({ livemode: false, mentioned_at: fresh }, false, now), true);
-  assertEquals(mentionFits({ livemode: false, mentioned_at: fresh }, true, now), false);
-  assertEquals(mentionFits({ livemode: true, mentioned_at: fresh }, false, now), true);
-  assertEquals(mentionFits({ livemode: true, mentioned_at: "2026-11-16T11:59:00Z" }, true, now), false);
+  assertEquals(mentionFits({ livemode: false, mentioned_at: fresh }, true, now), false, "a test story never pays a live purchase");
+  assertEquals(mentionFits({ livemode: true, mentioned_at: fresh }, false, now), false, "a live story never pays a test purchase");
+  // 24 h − 3 h − 90 min = 19 h 30 min: the check's boundary.
+  const edge = new Date(now - (19 * 3600 + 30 * 60) * 1000).toISOString();
+  const past = new Date(now - (19 * 3600 + 30 * 60 + 1) * 1000).toISOString();
+  assertEquals(mentionFits({ livemode: true, mentioned_at: edge }, true, now), true, "exactly at the check margin fits");
+  assertEquals(mentionFits({ livemode: true, mentioned_at: past }, true, now), false, "one second past does not");
+  // 24 h − 3 h − 60 min = 20 h: the credit's boundary.
+  const credit = new Date(now - 20 * 3600 * 1000).toISOString();
+  const rules = { bonusWaitSec: 10800 };
+  assertEquals(mentionFits({ livemode: true, mentioned_at: credit }, true, now, rules, STORY_RULES.creditMarginSec), true);
+  assertEquals(mentionFits({ livemode: true, mentioned_at: credit }, true, now + 1000, rules, STORY_RULES.creditMarginSec), false);
 });
 
-Deno.test("rules: 3 h, 10 min, 3 tries, 7 days, 50 rows a tick, 10 at a time, 100 s, 10 s fetch", () => {
+Deno.test("rules: 3 h, 10 min, 3 tries, margins 60/90 min, 50 rows a tick, 10 at a time, 100 s, 10 s fetch, 5 s poll for 2 min", () => {
   assertEquals(STORY_RULES.bonusWaitSec, 10800);
   assertEquals(STORY_RULES.retrySec, 600);
   assertEquals(STORY_RULES.maxTries, 3);
-  assertEquals(STORY_RULES.approveWindowDays, 7);
+  assertEquals(STORY_RULES.creditMarginSec, 3600);
+  assertEquals(STORY_RULES.checkMarginSec, 5400);
+  assert(STORY_RULES.creditMarginSec >= STORY_RULES.retrySec * STORY_RULES.maxTries + STORY_RULES.retrySec, "the margin covers 3 tries plus one cron tick");
+  assert(STORY_RULES.checkMarginSec > STORY_RULES.creditMarginSec, "the check asks more than the credit");
   assertEquals(STORY_RULES.rowsPerTick, 50);
   assertEquals(STORY_RULES.parallel, 10);
   assertEquals(STORY_RULES.tickBudgetMs, 100_000);
   assertEquals(STORY_RULES.fetchTimeoutMs, 10_000);
+  assertEquals(STORY_RULES.pollEveryMs, 5_000);
+  assertEquals(STORY_RULES.pollForMs, 120_000);
 });
 
-Deno.test("storyRulesFrom + storyExpiresAt: 7 days after max(paid_at, anchor)", () => {
-  const rules = storyRulesFrom({ story_expiry_anchor: "2026-11-17T00:00:00Z", story_recheck_meta: false });
+Deno.test("storyRulesFrom: the live config with the defaults", () => {
+  const rules = storyRulesFrom({ story_credit_margin_sec: 1800, story_recheck_meta: true });
   assertEquals(rules.bonusWaitSec, 10800);
-  assertEquals(rules.recheckMeta, false);
-  assertEquals(storyExpiresAt("2026-11-10T00:00:00Z", rules), "2026-11-24T00:00:00.000Z", "an old purchase starts at the anchor");
-  assertEquals(storyExpiresAt("2026-11-20T00:00:00Z", rules), "2026-11-27T00:00:00.000Z");
-  assertEquals(storyRulesFrom(null).approveDays, 7);
-  assertEquals(storyExpiresAt(null, rules), null);
+  assertEquals(rules.creditMarginSec, 1800);
+  assertEquals(rules.checkMarginSec, 5400);
+  assertEquals(rules.recheckMeta, true);
+  assertEquals(storyRulesFrom(null).recheckMeta, false);
 });
 
 Deno.test("storyStillUp: a Range GET; 2xx/206 up, anything else down, timeout down", async () => {

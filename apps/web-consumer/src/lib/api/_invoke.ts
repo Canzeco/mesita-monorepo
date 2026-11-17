@@ -67,6 +67,9 @@ export async function invokeEF<T>(
   // `error` string. Useful for less obvious EFs whose default message
   // wouldn't be readable on its own.
   fallback = `${fn} failed`,
+  // Extra query parameters (MESITA-4296: check-story's `poll=1`), beside the
+  // region pin. The gate and the logs still read the bare name.
+  query?: Record<string, string>,
 ): Promise<T> {
   // ANONYMOUS MODE (MESITA-4246): one table, lib/anonymous.ts, decides what
   // a visitor without an onboarded account may call. Quiet calls never leave
@@ -82,7 +85,7 @@ export async function invokeEF<T>(
   }
   const started = Date.now();
   const { data, error } = await client.functions.invoke<EFResult<T>>(
-    `${fn}?forceFunctionRegion=${FUNCTION_REGION}`,
+    `${fn}?${new URLSearchParams({ ...query, forceFunctionRegion: FUNCTION_REGION }).toString()}`,
     { body },
   );
   const ms = Date.now() - started;

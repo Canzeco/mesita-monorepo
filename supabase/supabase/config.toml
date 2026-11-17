@@ -404,25 +404,18 @@ verify_jwt = false
 [functions.visit-web-mark-proof-seen]
 verify_jwt = false
 
-# MESITA-3507: the Story voucher's staff page. No sign-in: the token is the key.
-[functions.visit-web-get-story]
-verify_jwt = false
+# MESITA-4296: the Story sheet looks for the guest's story before Pay.
+[functions.consumer-web-check-story]
+verify_jwt = true
 
-[functions.visit-web-activate-story]
-verify_jwt = false
-
-# MESITA-4264: staff approve or reject the guest's story (waiter-code staff
-# token of the purchase's place; the guest's Story token alone never approves).
-[functions.visit-web-review-story]
-verify_jwt = false
-
-# MESITA-4264: the Meta emulator, the caller's own test-mode Story only; it
-# copies its bundled sample image into the story-emulator bucket.
+# MESITA-4264, MESITA-4296: the Meta emulator, test mode only, posted before
+# any purchase; it copies its bundled sample image into the story-emulator
+# bucket.
 [functions.consumer-web-emulate-story]
 verify_jwt = true
 static_files = ["./functions/consumer-web-emulate-story/sample-story.jpg"]
 
-# MESITA-4264: the operator's release / void / unapprove / recheck_now of a Story.
+# MESITA-4264: the operator's release / void / recheck_now of a Story.
 [functions.admin-web-story-override]
 verify_jwt = true
 

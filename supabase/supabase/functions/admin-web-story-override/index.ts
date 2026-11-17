@@ -1,21 +1,20 @@
 // Supabase Edge Function — admin-web-story-override
 //
-// MESITA-4264: the operator settles a Story dispute without hand SQL.
-// Super-admin only; every call is logged with the actor.
-//   release      write the bonus now (refused once voided)
+// MESITA-4264, MESITA-4296: the operator settles a Story dispute without
+// hand SQL. Super-admin only; every call is logged with the actor.
+//   release      write the bonus now; also lifts a void that never paid a
+//                bonus (mention_lost, no_mention, unreachable…)
 //   void         void the bonus (reason operator); after a release it
 //                reverses the bonus entry, up to what the guest still holds
-//   unapprove    undo staff's approval and free the story (refused once the
-//                bonus is decided)
-//   recheck_now  fetch the approved story again now and settle it, as the
+//   recheck_now  fetch the claimed story again now and settle it, as the
 //                cron would
-// release / void / unapprove go through wallet_override_story; recheck_now
-// through the cron's own re-check (_shared/story-recheck.ts).
+// release / void go through wallet_override_story; recheck_now through the
+// cron's own re-check (_shared/story-recheck.ts).
 //
-// Body: { purchase_id: uuid, action: "release" | "void" | "unapprove" | "recheck_now" }
+// Body: { purchase_id: uuid, action: "release" | "void" | "recheck_now" }
 // Response: { ok: true, action, outcome, ... }
 //   400 bad_request · 401/403 (not a super-admin) · 404 not_found ·
-//   409 already_decided | not_approved | refunded | not_paid · 500 server
+//   409 already_decided | refunded | not_paid · 500 server
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -26,7 +25,7 @@ import { readStoryRules } from "../_shared/story-mention.ts";
 import { recheckOne } from "../_shared/story-recheck.ts";
 
 const FN = "admin-web-story-override";
-const ACTIONS = new Set(["release", "void", "unapprove", "recheck_now"]);
+const ACTIONS = new Set(["release", "void", "recheck_now"]);
 
 serveJson("admin-web-story-override", async (req) => {
   const ctx = await requireAdminRequest(req);
@@ -36,7 +35,7 @@ serveJson("admin-web-story-override", async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const { purchase_id: purchaseId, action } = bodyRes.body;
   if (!isUuid(purchaseId) || typeof action !== "string" || !ACTIONS.has(action)) {
-    return json({ ok: false, code: "bad_request", error: "Body needs purchase_id and action release|void|unapprove|recheck_now" }, 400);
+    return json({ ok: false, code: "bad_request", error: "Body needs purchase_id and action release|void|recheck_now" }, 400);
   }
 
   try {

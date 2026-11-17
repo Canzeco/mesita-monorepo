@@ -34,11 +34,6 @@ export function proofUrl(token: string, read: ReadEnv = envRead): string {
   return `${visitOrigin(read)}/proof/${token}`;
 }
 
-/** The Story voucher's activation page (MESITA-3507), on the same origin. */
-export function storyUrl(token: string, read: ReadEnv = envRead): string {
-  return `${visitOrigin(read)}/story/${token}`;
-}
-
 /** A table's tab (MESITA-3562): the QR the guest shows the waiter. */
 export function tabUrl(token: string, read: ReadEnv = envRead): string {
   return `${visitOrigin(read)}/tab/${token}`;

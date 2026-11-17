@@ -42,10 +42,6 @@ const PROOF_WORDS: Words = {
   invalid: "This proof is not valid. Ask the guest to show it again.",
   failed: "Couldn't check this proof. Try again.",
 };
-const STORY_WORDS: Words = {
-  invalid: "This Story voucher is not valid. Ask the guest to show it again.",
-  failed: "Couldn't check this Story voucher. Try again.",
-};
 /** A page older than the server it talks to (the 409 `reload` answer). */
 const RELOAD_WORDS = "This page changed. Reload it.";
 
@@ -84,89 +80,6 @@ export function getProof(token: string): Promise<Proof> {
 
 export function markProofSeen(token: string): Promise<{ seen_at: string }> {
   return call<{ seen_at: string }>("visit-web-mark-proof-seen", { token });
-}
-
-// ── The Story voucher (MESITA-3507, from the @mesita mention since MESITA-4264)
-
-/** One Instagram story of the guest's handle, as Meta (or, in test mode, the
- *  emulator) reported it. `media_url` null: the host was not allowed, so the
- *  card says it can't load. */
-export type StoryMention = {
-  id: string;
-  media_url: string | null;
-  media_kind: "image" | "video";
-  mentioned_at: string;
-  source: "meta" | "emulator";
-};
-
-export type StoryState = "needs_story" | "received" | "rejected" | "approved" | "released" | "void";
-
-/** A paid Story voucher as staff read it: the buyer's verified Instagram,
- *  where the Story stands, and the stories staff can approve one of. */
-export type StoryVoucher = {
-  purchase_id: string;
-  place: { id: string; name: string | null; instagram_handle: string | null; time_zone: string };
-  instagram_handle: string | null;
-  amount_cents: number;
-  bonus_cents: number;
-  /** Price plus bonus. */
-  credit_cents: number;
-  currency: string;
-  paid_at: string | null;
-  approved_at: string | null;
-  /** Any status but paid: no story can be approved on it. */
-  refunded: boolean;
-  /** paid, refunded, partly_refunded, needs_review. */
-  status: string;
-  state: StoryState;
-  review: "approved" | "rejected" | null;
-  reviewed_at: string | null;
-  recheck_at: string | null;
-  /** When the bonus lands if the story is still up. */
-  bonus_at: string | null;
-  bonus: "released" | "void" | null;
-  bonus_void_reason: "unreachable" | "expired" | "refunded" | "operator" | null;
-  bonus_decided_at: string | null;
-  /** Approve by this time or the bonus is void. */
-  expires_at: string | null;
-  /** Unclaimed stories of the guest's handle, last 24 hours, newest first. */
-  mentions: StoryMention[];
-  /** The story staff approved on this voucher. */
-  claimed_mention: StoryMention | null;
-  test_mode: boolean;
-  /** How often and how long the page re-reads while it waits for a story. */
-  poll: { every_ms: number; for_ms: number };
-  server_time: string;
-};
-
-export function getStory(token: string): Promise<StoryVoucher> {
-  return call<StoryVoucher>("visit-web-get-story", { token }, STORY_WORDS);
-}
-
-export type StoryReviewed = {
-  outcome: "approved" | "already_approved" | "rejected";
-  approved_at: string | null;
-  bonus_at: string | null;
-};
-
-/** Staff approve one story (by its id) or reject them all. Needs a current
- *  waiter-code staff token of the voucher's place (403 staff_code_needed
- *  otherwise). A refusal carries the server's code: `reload`, `refunded`,
- *  `not_paid`, `already_decided`, `mention_claimed`, `mention_expired`,
- *  `handle_mismatch`, `livemode_mismatch`, `forbidden`, `gone`. */
-export async function reviewStory(
-  args: { token: string; decision: "approve" | "reject"; mention_id?: string; staff_token: string; place_id: string },
-): Promise<StoryReviewed | TabRefusal | "failed"> {
-  const { res, data } = await post("visit-web-review-story", args);
-  if (data?.ok) {
-    return {
-      outcome: data.outcome === "already_approved" ? "already_approved" : data.outcome === "rejected" ? "rejected" : "approved",
-      approved_at: typeof data.approved_at === "string" ? data.approved_at : null,
-      bonus_at: typeof data.bonus_at === "string" ? data.bonus_at : null,
-    };
-  }
-  if (!res || res.status >= 500 || !data) return "failed";
-  return tabRefusal(data, "Couldn't save. Try again");
 }
 
 // ── The waiter's charge (MESITA-3306) ───────────────────────────────────────

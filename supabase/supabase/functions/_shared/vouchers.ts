@@ -17,6 +17,7 @@ import { readMoneyConfig } from "./money-config.ts";
 import { readInstagramSyncState } from "./consumer-doc.ts";
 import { storyMode, type StoryMode } from "./story-mention.ts";
 import { instagramHandleOfUrl } from "./place-instagram.ts";
+import { isStoryTakenConflict, STORY_TAKEN } from "./story-buy.ts";
 import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount, VISIT_STATUSES } from "./visits.ts";
 
@@ -409,7 +410,12 @@ export function buyRefusal(offer: VoucherOffer, voucher: MoneyVoucherKey, accoun
 }
 
 /** The guest's own Instagram, as `consumers` stores it. */
-export type StoryGuest = { instagram_handle: string | null; instagram_followers_count: number | null } | null;
+export type StoryGuest = {
+  instagram_handle: string | null;
+  instagram_followers_count: number | null;
+  /** MESITA-4263: null = not known yet (never synced since); only false is public. */
+  instagram_is_private?: boolean | null;
+} | null;
 
 /** Story's guest gate (MESITA-3507): a linked Instagram with MORE than
  *  STORY_MIN_FOLLOWERS followers. Null when the guest may buy it. Any other
@@ -427,6 +433,12 @@ export function storyRefusal(voucher: MoneyVoucherKey, guest: StoryGuest): BuyRe
       error: `The Story voucher is for Instagram accounts with more than ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} followers`,
     };
   }
+  // MESITA-4296: a private account's mentions never reach Mesita (Mesita
+  // follows no one), so the story could never be found. Unknown reads private
+  // until the next Sync records it (MESITA-4263).
+  if (guest.instagram_is_private !== false && guest.instagram_is_private !== undefined) {
+    return { ok: false, status: 409, code: "private_account", error: "Make your Instagram public, then sync it in Me" };
+  }
   return null;
 }
 
@@ -435,7 +447,7 @@ export async function readStoryGuest(admin: SupabaseClient, consumerId: string):
   const res = await readInstagramSyncState(admin, consumerId);
   if (!res.ok) throw new Error(`consumers: ${res.error}`);
   if (res.deleted) return null;
-  return { instagram_handle: res.handle, instagram_followers_count: res.followers };
+  return { instagram_handle: res.handle, instagram_followers_count: res.followers, instagram_is_private: res.isPrivate };
 }
 
 /** What a voucher's Stripe object carries: the saved card's PaymentIntent
@@ -606,6 +618,8 @@ export async function openPurchaseRow(
     requestId: string;
     livemode: boolean;
     followers?: readonly MoneyVoucherKey[];
+    /** MESITA-4296: the story a Story purchase reserves (consumer-web-check-story found it). */
+    storyMentionId?: string | null;
   },
 ): Promise<{ ok: true; duplicate: false; purchaseId: string } | { ok: true; duplicate: true } | BuyRefusal> {
   const lines = catalogLines(args.currency);
@@ -635,10 +649,13 @@ export async function openPurchaseRow(
       bonus_cents: line.bonus_cents,
       application_fee_cents: voucherFeeCents(args.voucher, args.currency),
       request_id: args.requestId,
+      ...(args.storyMentionId ? { story_mention_id: args.storyMentionId } : {}),
     })
     .select("id")
     .single();
   if (insertErr) {
+    // MESITA-4296: another tap reserved this story first.
+    if (isStoryTakenConflict(insertErr)) return { ok: false, status: STORY_TAKEN.status, code: STORY_TAKEN.code, error: STORY_TAKEN.error };
     if (insertErr.code === "23505") return { ok: true, duplicate: true };
     throw new Error(`purchase_insert: ${insertErr.message}`);
   }

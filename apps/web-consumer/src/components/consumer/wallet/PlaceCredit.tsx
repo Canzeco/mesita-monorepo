@@ -21,7 +21,7 @@ import { countdownLabel, nextAvailableMs, shouldReread } from "@/lib/wallet-coun
 import { type EntryGroup, groupKeys, splitEntries } from "@/lib/wallet-entries";
 import { cn } from "@/lib/utils";
 import { type Method, MethodSheet } from "./MethodSheet";
-import { useStoryNow } from "./use-story-now";
+import { useStoryNew, useStoryNow } from "./use-story-now";
 import { storyBonusOpen, storyLine } from "@/lib/story-lines";
 import { SentLinks } from "./SendCredit";
 import { Panel, PanelHeading } from "@/components/shared/Panel";
@@ -58,8 +58,8 @@ const ROUND_GLYPH = "h-5 w-5";
 //                         Send Gift follows giftAction (hidden, dimmed, open)
 //   (held-credit line)    only while an open payment holds credit
 //   (Confirming a payment…)  only while the server is still confirming one
-//   Vouchers to activate  Story vouchers waiting for staff, only when any
-//                         (MESITA-4116)
+//   Vouchers to activate  Story bonuses still waiting on the story, only when
+//                         any (MESITA-4116; no staff since MESITA-4296)
 //   Pending               purchases not Available yet, soonest first
 //                         ("Pending · available in 25 min"), only when any
 //   Tickets               this place's Tickets, Me › Tickets' pills and rows
@@ -89,7 +89,7 @@ const ROUND_GLYPH = "h-5 w-5";
 // refunded before it landed is a settled row reading "Refunded", never money
 // on its way: a row is drawn as waiting only when it comes from the pending
 // list. A bill opens its receipt; a purchase, its refund, a lone bonus and a
-// gift open their own page (MESITA-3753); a Story row opens its QR. Every row
+// gift open their own page (MESITA-3753); a Story row opens its story. Every row
 // that opens something ends in a chevron. Every amount is the server's
 // (consumer-web-get-wallet); this screen formats, never adds.
 //
@@ -171,15 +171,17 @@ function EntryRow({
 function StoryEntryRow({ story, onOpen, now }: { story: WaitingStory; onOpen: () => void; now: number }) {
   const amount = `+${money(story.bonus_cents, story.currency)}`;
   const line = storyLine(story, now);
+  // A released bonus reads New the first time it shows (MESITA-4296).
+  const fresh = useStoryNew(story);
   return (
     <button
       type="button"
       onClick={onOpen}
       className={cn(ROW, "hover:bg-muted/60 transition")}
-      aria-label={`Story bonus, ${amount}. ${line}`}
+      aria-label={`Story bonus, ${amount}.${fresh ? " New." : ""} ${line}`}
       data-loyalty-card-story={story.state}
     >
-      <RowBody title="Story bonus" line={line} amount={amount} waiting={storyBonusOpen(story)} />
+      <RowBody title={fresh ? "Story bonus · New" : "Story bonus"} line={line} amount={amount} waiting={storyBonusOpen(story)} />
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
     </button>
   );

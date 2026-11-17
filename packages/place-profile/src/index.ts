@@ -49,7 +49,18 @@ export type {
   PlaceMenuItem,
   VoucherBasketItem,
   VoucherBuyOutcome,
+  StoryRefused,
 } from "./actions";
+export {
+  isStoryGateReason,
+  postedAgo,
+  STORY_GATE_REASONS,
+  STORY_POLL_DEFAULT,
+  type StoryCheckAnswer,
+  type StoryCheckMention,
+  type StoryCheckReason,
+  type StoryPollWindow,
+} from "./story-check";
 export type { PlaceBalance, PlaceDetail, PlaceMoney, PlaceScore, VoucherCatalogLine, VoucherKey } from "./place-detail";
 export { VOUCHER_KEYS } from "./place-detail";
 export { placeMoneyFrom } from "./place-to-detail";
