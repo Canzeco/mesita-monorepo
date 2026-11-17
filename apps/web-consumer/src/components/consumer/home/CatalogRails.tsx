@@ -119,10 +119,13 @@ const SocialFeed = dynamic(
 const RAIL_SURFACE = "bg-muted text-foreground";
 const RAIL_ROW =
   "text-foreground relative flex h-11 w-full shrink-0 items-center text-left transition";
-// THE CHOSEN ROW IS BLUE (Pato, 2026-11-17, MESITA-4270: "the selected
-// item must be blue"): a solid blue band with white text, Saved included —
-// replaces MESITA-4015's white band and MESITA-3718's red bar.
-const RAIL_ROW_ON = "bg-blue-600 text-white";
+// WHITE WITH A BLUE EDGE (Pato, 2026-11-17, MESITA-4289: "i don't like the
+// lateral menu at the left being that blue … blue but only left select
+// border as in prev versions, but with the menu light"; /plan-design-review):
+// the chosen row is a white band with ink text and a 4px blue bar on its
+// left edge, Saved included. MESITA-4270's solid blue band lasted a day.
+const RAIL_ROW_ON =
+  "bg-card text-foreground before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-blue-600";
 const RAIL_EMOJI = "flex w-12 shrink-0 justify-center text-xl leading-none";
 
 /** The column's default row: every place, one list, ranked like the Search
