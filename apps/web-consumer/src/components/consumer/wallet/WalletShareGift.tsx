@@ -1,7 +1,8 @@
 
+import { Gift, Share2 } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { DOOR_EMOJI, DOOR_QUIET } from "./wallet-buttons";
+import { DOOR_GLYPH, DOOR_QUIET } from "./wallet-buttons";
 
 // WALLET'S THREE DOORS (Pato, 2026-11-14, MESITA-3894: "Share Mesita / Send
 // Credits (Gift) / Redeem Credits (the redeem button at the bottom is
@@ -38,8 +39,9 @@ import { DOOR_EMOJI, DOOR_QUIET } from "./wallet-buttons";
 /** The row: two links, the same in the loading frame. TWO DOORS SINCE
  *  MESITA-4269 (Pato: "remove the button to buy credits from there. just
  *  leave Pay Bill, Send Gift, Share Mesita"; Buy Credits lives on each House
- *  Card); "remove the emojis in the buttons to buy credits and share", so
- *  Share Mesita reads its name alone and Send Gift keeps its 🎁. */
+ *  Card). ONE ICON LANGUAGE (MESITA-4272, Pato: "either emojis or both or
+ *  none. you can use icons too"): both wear line glyphs, Gift and Share2,
+ *  like the Pay Bill QR and the place screen's tiles; the 🎁 is gone. */
 export function WalletShareGift() {
   return (
     <div className="mt-3 grid grid-cols-2 gap-2" data-wallet-share-gift>
@@ -48,7 +50,7 @@ export function WalletShareGift() {
         className={DOOR_QUIET}
         data-wallet-send
       >
-        <span className={DOOR_EMOJI} aria-hidden>🎁</span>
+        <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
         Send Gift
       </PushLink>
       <PushLink
@@ -56,6 +58,7 @@ export function WalletShareGift() {
         className={DOOR_QUIET}
         data-wallet-share
       >
+        <Share2 className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
         Share Mesita
       </PushLink>
     </div>
