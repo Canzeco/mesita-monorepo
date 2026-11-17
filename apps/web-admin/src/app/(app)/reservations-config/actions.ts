@@ -7,7 +7,8 @@
 // Backed by the `reservations` section of admin-web-get-config /
 // admin-web-update-config, which read and write the reservations_config jsonb
 // on the public.app_config singleton. The read also carries the
-// needs-attention feed. No client ever touches the DB.
+// needs-attention feed, which Logs renders (MESITA-4293). No client ever
+// touches the DB.
 //
 // The Playground actions that used to live here are gone with the Playground
 // itself (2026-07-27) — testing happens from the consumer app with test mode ON.

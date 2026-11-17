@@ -2,7 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 import { Chip, SectionCard } from "@/components/admin-ui";
-import type { NeedsAttentionRow } from "./catalog";
+import type { NeedsAttentionRow } from "../reservations-config/catalog";
 
 function whyAttention(row: NeedsAttentionRow): string {
   if (row.notice_state === "failed") {
@@ -22,7 +22,7 @@ export function NeedsAttentionCard({ rows }: { rows: NeedsAttentionRow[] }) {
   return (
     <SectionCard
       icon={<AlertTriangle />}
-      title={`Needs attention (${rows.length})`}
+      title={`Reservations that need attention (${rows.length})`}
       subtitle="These do not fix themselves."
     >
       <ul className="mt-5 space-y-2">

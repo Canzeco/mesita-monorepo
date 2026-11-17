@@ -5,7 +5,7 @@ import { CallCostCard, CallCostShell } from "./CallCostCard";
 import { ReservationsConfigClient } from "./ReservationsConfigClient";
 import { DEFAULT_CONFIG } from "./catalog";
 
-// Reservations — Testing (plus Needs Attention when non-empty), then Call
+// Reservations — Testing, then Call
 // cost (MESITA-4043), which streams in on its own. MESITA-2122 cut the Calls
 // card (kill switch, caps, reminder, enrich override) and the fleet strip;
 // those knobs live on in the stored row.
@@ -21,7 +21,6 @@ export default async function ReservationsConfigPage() {
       <div className="flex flex-col gap-4">
         <ReservationsConfigClient
           initialConfig={res.ok ? res.config : DEFAULT_CONFIG}
-          initialNeedsAttention={res.ok ? res.needsAttention : []}
           loadError={res.ok ? null : res.error}
         />
         <Suspense
