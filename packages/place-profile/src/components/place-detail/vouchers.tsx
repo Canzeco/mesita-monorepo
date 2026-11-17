@@ -198,7 +198,7 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
     // like instagram"; soft tints). Every offer green from MESITA-4181.
     voucher_welcome: { ...green, card: VOUCHER_TONE.voucher_welcome, Mark: PartyPopper },
     voucher_story: { ...green, card: VOUCHER_TONE.voucher_story, Mark: Instagram },
-    voucher_vip: { ...green, Mark: Crown },
+    voucher_vip: { ...green, card: VOUCHER_TONE.voucher_vip, Mark: Crown },
   };
 })();
 
