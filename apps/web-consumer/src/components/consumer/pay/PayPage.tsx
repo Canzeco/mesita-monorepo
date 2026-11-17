@@ -40,7 +40,7 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 // THE PAY TAB, REDRAWN (Pato, 2026-11-17, MESITA-4232; /plan-design-review
 // D3-D13):
 //
-//   Pay ...................................... [Tickets] (grey)
+//   Wallet ................................... [Tickets] (grey)  (MESITA-4245)
 //   [ ▦ Pay Bill ]  80px, Mesita pink, the loudest thing (MESITA-4240)
 //   [ Buy Credits ] [ Send Gift ] [ Share Mesita ]  grey, no box
 //   Payment Methods: [ Cash · Outside the app ] [ Visa ••4242 · In the app ]
@@ -144,8 +144,12 @@ export function PayPage({
 
   return (
     <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8 *:shrink-0">
-      {/* The header: the title and Tickets, a quiet grey pill (MESITA-4232). */}
-      <PayHeader title="Pay" action={<TicketsShortcut />} />
+      {/* The header: the title and Tickets, a quiet grey pill (MESITA-4232).
+          "Wallet" since MESITA-4245 (Pato: "the header just saying pay is
+          shit"; /autoplan): the page holds your money, the pink Pay Bill is
+          the verb. Not "Mesita Wallet": the Mesita prefix claims Mesita is the
+          counterparty, and place credit is the place's. */}
+      <PayHeader title="Wallet" action={<TicketsShortcut />} />
 
       {/* PAY BILL (Pato, 2026-11-17, MESITA-4232: "GIANT BUTTON … CALL THAT
           PAY BILL"): the page's loudest thing (pink since MESITA-4240), first. With a bill open it

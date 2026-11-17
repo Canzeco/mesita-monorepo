@@ -7,9 +7,10 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
 
-// /wallet — A DOOR TO PAY (Pato, 2026-11-16, MESITA-4199: "merge pay and
-// wallet into one page ... call that page Pay"): the Wallet is Pay's lower
-// half, so /wallet forwards to /pay, its query kept (a saved card's Stripe
+// /wallet — A DOOR TO THE WALLET PAGE: the page titled "Wallet" (bar tab
+// "Wallet", MESITA-4245) lives at /pay and its code is PayPage; MESITA-4199
+// merged the two pages ("call that page Pay", since renamed), so /wallet
+// forwards to /pay, its query kept (a saved card's Stripe
 // return, ?card=, is read there). A place's House Card (/wallet/place/<id>)
 // and a friend's credit link (/wallet/gift/<token>) keep their addresses;
 // their older query shapes (?place=, ?gift=) still forward to them. It was

@@ -37,7 +37,7 @@ export function PayPickPage() {
   const [query, setQuery] = useState("");
 
   return (
-    <Screen title="Pay Bill" paper>
+    <Screen title="Where are you paying?" paper>
       <Panel className="mt-1" data-pay-box>
         <div className="px-4 pt-4 pb-1">
           <SearchBar
@@ -222,7 +222,7 @@ function RowsSkeleton() {
 /** /pay/pick's loading frame: the header, the search bar's shape, rows. */
 export function PayPickLoading() {
   return (
-    <Screen title="Pay Bill" paper>
+    <Screen title="Where are you paying?" paper>
       <Panel className="mt-1" aria-busy>
         <div className="px-4 pt-4 pb-1">
           <Skeleton className="h-11 w-full rounded-full" />

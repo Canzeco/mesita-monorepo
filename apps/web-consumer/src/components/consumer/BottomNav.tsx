@@ -91,9 +91,11 @@ const ITEMS: Item[] = [
   {
     href: CONSUMER_ROUTES.pay,
     Icon: QrCode,
-    // Pay again (Pato, MESITA-3291: "rename the page Reward to Pay"; it read
-    // Reward from MESITA-3211 until then).
-    label: "Pay",
+    // Wallet (MESITA-4245, Pato via /autoplan): the tab names the page it
+    // opens; the QR stays, the pink Pay Bill on the page carries the verb. It
+    // read Pay from MESITA-3291 (Reward before that). nav_tab_tap sends this
+    // label, so its tab value reads "Wallet" from this change.
+    label: "Wallet",
     tab: "pay",
   },
   {
