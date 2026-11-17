@@ -143,9 +143,8 @@ function EntryRow({
   waiting: boolean;
 }) {
   const when = waiting ? pendingLine(group, now) : group.refunded ? "Refunded" : entryDate(group.at);
-  const line = group.bonus_cents ? `${when} · includes ${money(group.bonus_cents, currency)} bonus` : when;
   const amount = `${group.amount_cents > 0 ? "+" : ""}${money(group.amount_cents, currency)}`;
-  const body = <RowBody title={entryLabel(group)} line={line} amount={amount} waiting={waiting} />;
+  const body = <RowBody title={entryLabel(group)} line={when} amount={amount} waiting={waiting} />;
   const href = entryHref(placeId, group);
   return href ? (
     <PushLink href={href} className={cn(ROW, "hover:bg-muted/60 transition")} data-house-card-entry={group.kind}>

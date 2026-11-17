@@ -551,7 +551,9 @@ export function entryDate(iso: string): string {
 
 export const ENTRY_LABEL: Record<string, string> = {
   prepay: "Prepaid",
-  voucher: "Voucher",
+  // The paid part of a voucher (MESITA-4257, Pato: "like credits received");
+  // its bonus is its own "Bonus" row.
+  voucher: "Credits received",
   bonus: "Bonus",
   // Legacy extra credit some guests hold (MESITA-4191, MESITA-4194): said plainly.
   extra: "Credit",
