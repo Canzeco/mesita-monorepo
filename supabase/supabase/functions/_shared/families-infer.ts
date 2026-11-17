@@ -56,7 +56,7 @@ export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
   arabic: "Middle Eastern or eastern Mediterranean — Lebanese, Turkish, Greek, kebab",
   european: "another European cuisine — Spanish, French, German, tapas",
   american: "American food — diner, barbecue joint, fries and shakes",
-  dinner: "a sit-down restaurant whose main service is the evening meal — a dinner menu people book for; not a casual lunch spot (mariscos, taquería, warung, fonda, sushi bar), café, counter, bar or beach club",
+  dinner: "a dinner destination — the evening meal is the occasion: bistros, steakhouses, trattorias, tasting menus, date-night places people book; not a casual or everyday restaurant that also serves at night, nor a café, counter, bar or beach club",
   fancy: "genuinely upscale — fine dining, a tasting menu, a dress code or special-occasion prices; not merely stylish, popular, well rated or at a nice hotel",
   family: "a day out for kids — zoos, aquariums, water parks, indoor playgrounds; not a restaurant that welcomes children or has a kids' menu",
   drinks: "drinking is the point — a bar, cantina, brewery or wine bar; not a restaurant that serves beer",
