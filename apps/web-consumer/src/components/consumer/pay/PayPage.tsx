@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES, payBillPath, payPlacePath } from "@/lib/consumer-route-contract";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
-import { forgetGuestTab, NETWORK_FAILURE, PlacePhoto, QUIET_BUTTON_CLASS, readGuestTabIds } from "./pay-common";
+import { forgetGuestTab, NETWORK_FAILURE, PlacePhoto, readGuestTabIds, CancelBillButtons } from "./pay-common";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
@@ -348,14 +348,7 @@ function OpenBillPanel({
         <div className="p-5">
           <p className="text-base font-semibold">Cancel this bill?</p>
           <p className="text-muted-foreground mt-1 text-sm">Nothing is paid.</p>
-          <div className="mt-4 flex gap-2">
-            <Button className="min-h-12 flex-1 text-base font-semibold" disabled={busy} onClick={() => void cancel()}>
-              {busy ? "Cancelling…" : "Cancel bill"}
-            </Button>
-            <button type="button" className={cn(QUIET_BUTTON_CLASS, "flex-1")} onClick={() => setConfirm(false)}>
-              Keep it
-            </button>
-          </div>
+          <CancelBillButtons busy={busy} disabled={busy} onCancel={() => void cancel()} onKeep={() => setConfirm(false)} />
         </div>
       </LocalDialog>
     </Panel>
