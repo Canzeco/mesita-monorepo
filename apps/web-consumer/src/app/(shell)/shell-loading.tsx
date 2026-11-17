@@ -13,6 +13,7 @@ import ProfileLoading from "./me/profile/loading";
 import SettingsLoading from "./me/settings/(page)/loading";
 import ContactLoading from "./me/settings/contact/loading";
 import PayLoading from "./pay/loading";
+import PayPickLoading from "./pay/pick/loading";
 import WalletLoading from "./wallet/loading";
 import GiftLoading from "./me/gift/loading";
 import FeedbackLoading from "./me/settings/feedback/loading";
@@ -53,6 +54,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   placeReserve: () => <PlaceReserveLoading />,
   reservation: () => <ReservationPageLoading />,
   pay: () => <PayLoading />,
+  payPick: () => <PayPickLoading />,
   payPlace: () => <PayPlaceLoading />,
   payBill: () => <PayTabLoading />,
   payJoin: () => <PayTabLoading />,

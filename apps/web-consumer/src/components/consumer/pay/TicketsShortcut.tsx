@@ -22,7 +22,7 @@ export function TicketsShortcut() {
   return (
     <PushLink
       href={CONSUMER_ROUTES.mePages.tickets}
-      className={cn(HEADER_PILL, "bg-foreground text-paper hover:bg-foreground/90 h-9 rounded-xl border-transparent pr-2 pl-3")}
+      className={cn(HEADER_PILL, "bg-muted text-foreground hover:bg-border h-9 rounded-xl border-transparent pr-2 pl-3")}
       data-tickets-shortcut
     >
       <Ticket className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />

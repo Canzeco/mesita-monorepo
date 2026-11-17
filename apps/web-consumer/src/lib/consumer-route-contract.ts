@@ -67,7 +67,8 @@ export const CONSUMER_ROUTES = {
   // money object lives under the bar tab that owns it, and a place's address
   // is a door that opens the object:
   //
-  //   /pay                       the places you can pay at (the tab)
+  //   /pay                       Pay Bill, your money (the tab)
+  //   /pay/pick                  the places you can pay at (MESITA-4232)
   //   /pay/place/<placeId>       pay at that place: opens your bill there and
   //                              becomes /pay/bill/<id> (the table QR's door)
   //   /pay/bill/<billId>         the bill at the table (MESITA-3564)
@@ -89,6 +90,8 @@ export const CONSUMER_ROUTES = {
   // Pay. Those shapes still arrive (printed table QRs, Stripe returns, sent
   // links): /pay and /wallet's server pages forward each one in one hop.
   pay: "/pay",
+  // PAY BILL'S PLACE PICKER (MESITA-4232): a pushed page, not a modal.
+  payPick: "/pay/pick",
   payPlace: { prefix: "/pay/place/" },
   payBill: { prefix: "/pay/bill/" },
   payJoin: { prefix: "/pay/join/" },
@@ -468,6 +471,7 @@ export const ROUTE_MAP = {
   pay: row("/pay", "pay", "tab", null),
   // The pay screens own the whole frame, as the place screen does: no bar,
   // the header's back is the way out, so every step fits (MESITA-3739).
+  payPick: row("/pay/pick", "pay", "page", "pay"),
   payPlace: row("/pay/place/:placeId", "pay", "door", "pay", false),
   payBill: row("/pay/bill/:billId", "pay", "page", "pay", false),
   payJoin: row("/pay/join/:token", "pay", "door", "pay", false),

@@ -882,7 +882,7 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
   it("(shell)/pay holds the door, the bill, a friend's share door and the receipt, and nothing else", () => {
     const pay = join(SHELL, "pay");
     expect(existsSync(join(pay, "page.tsx"))).toBe(true);
-    expect(childDirs(pay)).toEqual(["bill", "join", "place", "receipt"]);
+    expect(childDirs(pay)).toEqual(["bill", "join", "pick", "place", "receipt"]);
     expect(childDirs(join(pay, "join"))).toEqual(["[token]"]);
     expect(childDirs(join(pay, "bill"))).toEqual(["[billId]"]);
     expect(childDirs(join(pay, "place"))).toEqual(["[placeId]"]);
@@ -908,6 +908,7 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
   // A redirect whose source matches a live money address shadows it: the
   // page never renders and every gate stays green.
   it.each([
+    "/pay/pick",
     "/pay/place/00000000-0000-4000-8000-000000000001",
     "/pay/bill/00000000-0000-4000-8000-000000000001",
     "/pay/receipt/00000000-0000-4000-8000-000000000001",

@@ -1,14 +1,11 @@
 "use client";
 
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
-import { Fragment, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { PushLink } from "@/components/consumer/nav/PushLink";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Clock, MapPin, QrCode } from "lucide-react";
-import { SearchBar } from "@/components/consumer/search/SearchBar";
-import { RowDivider } from "@/components/consumer/me/settings-rows";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { Panel, PanelHeading } from "@/components/shared/Panel";
+import { ChevronRight, Clock, QrCode } from "lucide-react";
+import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
@@ -17,19 +14,18 @@ import { money, type PayPlace } from "@/lib/api/wallet";
 import { clearGuestDraft, readDraft } from "@/lib/guest-pay-draft";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { cn } from "@/lib/utils";
-import { payBillPath, payPlacePath } from "@/lib/consumer-route-contract";
-import { navigateTo } from "@/lib/navigate";
+import { CONSUMER_ROUTES, payBillPath, payPlacePath } from "@/lib/consumer-route-contract";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
-import { locationSnapshot, requestUserLocation } from "@/lib/use-user-location";
 import { forgetGuestTab, NETWORK_FAILURE, PlacePhoto, QUIET_BUTTON_CLASS, readGuestTabIds } from "./pay-common";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { distanceText, usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
 import { TicketsShortcut } from "./TicketsShortcut";
-import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 import { WalletShareGift } from "@/components/consumer/wallet/WalletShareGift";
+import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
@@ -41,24 +37,20 @@ import { WalletShareGift } from "@/components/consumer/wallet/WalletShareGift";
 // (PayTabScreen, MESITA-3564). The bill and the receipt have their own
 // addresses (MESITA-3614): /pay/bill/<id> and /pay/receipt/<id>.
 //
-// ONE PAY TAB (Pato, 2026-11-16, MESITA-4199: "MERGE PAY AND WALLET INTO ONE
-// PAGE SOMEHOW. TWO PAGES ADD COMPLEXITIES" / "call that page Pay"; mockup
-// https://claude.ai/artifact/9hGDgrXYVNabHQKBy72GJr, variant A):
+// THE PAY TAB, REDRAWN (Pato, 2026-11-17, MESITA-4232; /plan-design-review
+// D3-D13):
 //
-//   Pay ........................................ [Tickets]
-//   [ search a place ]
-//   Buy Credits · Send Gift · Claim Gift · Share Mesita (WalletShareGift;
-//           on top since MESITA-4202, last in MESITA-4199)
-//   Places: every place you hold credit at, pinned, with its balance chip;
-//           then the nearest, up to PLACES_SHOWN; "Show all"
-//   Pay with: the card, Cash, Add a card, Loyalty Cards (WalletSection)
+//   Pay ...................................... [Tickets] (grey)
+//   [ ▦ Pay Bill                          › ]  72px, the only black thing
+//   [ Buy Credits ] [ Send Gift ] [ Share Mesita ]  grey, no box
+//   Payment Methods: [ Cash · Outside the app ] [ Visa ••4242 · In the app ]
+//   Loyalty Cards: rows, black pill = ready, amber line = pending
 //
-// The bar is Home · Search · Pay · Me; /wallet forwards here. With a bill
-// open, the bill panel replaces the search and the places; Pay with stays.
-// Fourth shape of this pair: MESITA-3720 drew the Wallet under the places
-// (split the same day, 3722), 3729 made a Pay | Wallet switch, 3886 split
-// them again. This one keeps the Wallet near (five places at most above it,
-// credit places first) and has no switch.
+// Pay Bill opens /pay/pick (the place picker, a pushed page: the search bar
+// and the places that were this page's own box, MESITA-4204). At a place
+// (within AT_PLACE_M) it reads "Pay Bill at <place>" and opens that bill,
+// "Other place" under it. With a bill open it IS the bill (the amber panel
+// below). The bar is Home · Search · Pay · Me; /wallet forwards here.
 //
 // ONE OPEN PAYMENT (Pato, 2026-11-11, MESITA-3772: "you can only have one
 // ticket opened at a time ... in the pay page just display the button to go
@@ -70,46 +62,11 @@ import { WalletShareGift } from "@/components/consumer/wallet/WalletShareGift";
 // (OpenBillPanel): the place, the amounts, its state and Continue; the amber
 // band (PendingTicketBanner) shows on every other tab, never on /pay.
 //
-// The location is asked once, after a priming card ("See Mesita Payments
-// places near you"), rounded to 3 decimals and sent only to the list read.
+// The location is asked on /pay/pick only (pay-location.ts); Pay uses a fix
+// the browser already grants.
 
-/** The location the list read carries, in decimals (~110 m). The server's
- *  twin is LOCATION_DECIMALS in _shared/pay-places.ts. */
-const LOCATION_DECIMALS = 3;
-/** "Not now" on the location card holds for this browser session. */
-const LOCATION_NOT_NOW_KEY = "mesita.pay.location-not-now";
-
-/** The guest is at a place this close (MESITA-3861): Pay starts there. */
+/** The guest is at a place this close (MESITA-3861): Pay Bill names it. */
 const AT_PLACE_M = 150;
-
-/** Places listed before "Show all" (MESITA-3720). */
-const PLACES_SHOWN = 5;
-
-const round = (v: number) =>
-  Math.round(v * 10 ** LOCATION_DECIMALS) / 10 ** LOCATION_DECIMALS;
-
-/** "350 m" / "2.4 km". */
-function distanceText(m: number): string {
-  return m < 1000
-    ? `${Math.max(10, Math.round(m / 10) * 10)} m`
-    : `${(m / 1000).toFixed(1)} km`;
-}
-
-type Loc =
-  | { state: "unknown" }
-  | { state: "prime" }
-  | { state: "asking" }
-  | { state: "blocked" }
-  | { state: "off" }
-  | { state: "on"; at: { lat: number; lng: number } };
-
-function readNotNow(): boolean {
-  try {
-    return window.sessionStorage.getItem(LOCATION_NOT_NOW_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
 
 export function PayPage({
   giftToken = null,
@@ -117,16 +74,13 @@ export function PayPage({
   /** /wallet/gift/<token>: a friend's credit link opens over Pay. */
   giftToken?: string | null;
 } = {}) {
-  const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
-  const [loc, setLoc] = useState<Loc>({ state: "unknown" });
-  const { places, failed, refresh } = usePayPlaces(
-    loc.state === "on" ? loc.at : null,
-  );
+  // Pay never asks for the location (the picker does); a fix the browser
+  // already grants names the place the guest is at (MESITA-4232, D5).
+  const { loc } = usePayLocation({ prime: false });
+  const { places } = usePayPlaces(loc.state === "on" ? loc.at : null);
   // null while the open payment is still being looked for.
   const [openTabs, setOpenTabs] = useState<GuestTab[] | null>(null);
-  // The band's search bar filters the list below (MESITA-3738).
-  const [query, setQuery] = useState("");
 
   // The guest's own payments still in progress (paying, or paid and not yet
   // signed, inside their window), read fresh each time: the one the server
@@ -177,110 +131,28 @@ export function PayPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The location: a fix already in hand is used; a granted permission is
-  // asked at once; otherwise the priming card asks first.
-  useEffect(() => {
-    let cancelled = false;
-    const have = locationSnapshot().coords;
-    const ask = () => {
-      setLoc({ state: "asking" });
-      void requestUserLocation().then((c) => {
-        if (cancelled) return;
-        if (c)
-          setLoc({ state: "on", at: { lat: round(c.lat), lng: round(c.lng) } });
-        else
-          setLoc({
-            state: locationSnapshot().error === "denied" ? "blocked" : "off",
-          });
-      });
-    };
-    if (have) {
-      // Deferred a tick: no state is set inside the effect's own body.
-      void Promise.resolve().then(() => {
-        if (!cancelled)
-          setLoc({
-            state: "on",
-            at: { lat: round(have.lat), lng: round(have.lng) },
-          });
-      });
-    } else if (
-      typeof navigator !== "undefined" &&
-      navigator.permissions?.query
-    ) {
-      void navigator.permissions
-        .query({ name: "geolocation" as PermissionName })
-        .then((s) => {
-          if (cancelled) return;
-          if (s.state === "granted") ask();
-          else if (s.state === "denied") setLoc({ state: "blocked" });
-          else setLoc({ state: readNotNow() ? "off" : "prime" });
-        })
-        .catch(() => {
-          if (!cancelled) setLoc({ state: readNotNow() ? "off" : "prime" });
-        });
-    } else {
-      void Promise.resolve().then(() => {
-        if (!cancelled) setLoc({ state: readNotNow() ? "off" : "prime" });
-      });
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // OPEN (MESITA-3861, "14. Payments Flow Guest-Lead"): with no ticket open,
-  // the Pay tab starts with the place the guest is at (the nearest, within
-  // AT_PLACE_M), unless they came here to choose another (?pick=1). A ticket
-  // left open is never a redirect (MESITA-3908, Pato: "one thing is closing
-  // and other thing is cancelling"): its card leads the page instead.
+  // AT A PLACE (MESITA-3861, reshaped by MESITA-4232 D5): the nearest place
+  // within AT_PLACE_M is named on Pay Bill. It no longer opens by itself:
+  // the page never moves before the guest taps.
   const pending = usePendingTicket();
-  const hasPending = pending !== null;
-  useEffect(() => {
-    if (!openTabs || openTabs.length > 0 || hasPending) return;
-    if (loc.state !== "on" || !places || places.length === 0) return;
-    if (new URLSearchParams(window.location.search).has("pick")) return;
-    const near = places
-      .filter((p) => p.distance_m !== null)
-      .sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0))[0];
-    if (near && (near.distance_m ?? Infinity) <= AT_PLACE_M)
-      navigateTo(router, payPlacePath(near.place_id), { replace: true });
-  }, [openTabs, hasPending, loc, places, router]);
-
-  function askLocation() {
-    setLoc({ state: "asking" });
-    void requestUserLocation().then((c) => {
-      if (c)
-        setLoc({ state: "on", at: { lat: round(c.lat), lng: round(c.lng) } });
-      else
-        setLoc({
-          state: locationSnapshot().error === "denied" ? "blocked" : "off",
-        });
-    });
-  }
-
-  function notNow() {
-    try {
-      window.sessionStorage.setItem(LOCATION_NOT_NOW_KEY, "1");
-    } catch {
-      // Private mode: the card comes back next visit, nothing else breaks.
-    }
-    setLoc({ state: "off" });
-  }
+  const here =
+    loc.state === "on" && places
+      ? (places
+          .filter((p) => p.distance_m !== null && p.distance_m <= AT_PLACE_M)
+          .sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0))[0] ?? null)
+      : null;
 
   return (
     <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8 *:shrink-0">
-      {/* THE HEADER IS THE TITLE AND TICKETS ONLY (MESITA-4204); the search
-          bar lives in the Pay box below. */}
+      {/* The header: the title and Tickets, a quiet grey pill (MESITA-4232). */}
       <PayHeader title="Pay" action={<TicketsShortcut />} />
 
-      {/* THE FOUR BUTTONS ON TOP (Pato, 2026-11-16, MESITA-4202: "move the
-          four buttons to the top"): right under the band, in every state;
-          they ended the page in MESITA-4199. */}
-      <WalletShareGift />
-
-      {/* A bill in progress: the bill itself, one panel (MESITA-4086), in
-          the Pay box's place; no amber band on this page. */}
-      {openTabs !== null && (openTabs.length > 0 || pending) ? (
+      {/* PAY BILL (Pato, 2026-11-17, MESITA-4232: "GIANT BUTTON … CALL THAT
+          PAY BILL"): the page's one black thing, first. With a bill open it
+          IS the bill (D4): the amber panel, Continue bill and Cancel bill. */}
+      {openTabs === null ? (
+        <PayBillSkeleton />
+      ) : openTabs.length > 0 || pending ? (
         <div className="mt-4 flex flex-col">
           <OpenBillPanel
             tab={openTabs[0] ?? null}
@@ -293,243 +165,60 @@ export function PayPage({
           />
         </div>
       ) : (
-        // THE PAY BOX (Pato, 2026-11-16, MESITA-4204: "The Pay with the QR
-        // must be on its own BOX PAY (NOT THE HEADER THE SEARCHBAR) ... Just
-        // one box that contains: Searchbar, Place A, Place B, Place C"): one
-        // panel headed by the QR and "Pay", the search bar, then the places
-        // as its rows. Every state of the list sits inside it.
-        <Panel className="mt-4" data-pay-box>
-          <div className="flex min-h-6 items-center gap-2 px-4 pt-4">
-            <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            <PanelHeading>Pay</PanelHeading>
-          </div>
-          <div className="px-4 pt-3 pb-1">
-            <SearchBar
-              query={query}
-              showClear={query.length > 0}
-              onQueryChange={setQuery}
-              onClear={() => setQuery("")}
-              placeholder="Search a place"
-            />
-          </div>
-          {openTabs === null ? (
-            <RowsSkeleton bare />
-          ) : places ? (
-            <PlaceList
-              places={places}
-              query={query}
-              loc={loc}
-              onPick={(id) =>
-                navigateTo(router, payPlacePath(id), { motion: "push" })
-              }
-              onUseLocation={askLocation}
-              onNotNow={notNow}
-            />
-          ) : failed ? (
-            <div className="p-4">
-              <EmptyState
-                inline
-                icon={QrCode}
-                title="Couldn't load Pay"
-                description="Check your connection and try again."
-                action={{ label: "Try again", onClick: refresh }}
-              />
-            </div>
-          ) : (
-            <RowsSkeleton bare />
-          )}
-        </Panel>
+        <PayBillButton here={here} />
       )}
+
+      {/* The three doors under it, grey (MESITA-4232). */}
+      <WalletShareGift />
+
       <WalletSection giftToken={giftToken} />
     </KeptScroll>
   );
 }
 
-/** Lower case, no accents: "Cafe" finds "Café". */
-function fold(v: string): string {
-  return v
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-function PlaceList({
-  places,
-  query,
-  loc,
-  onPick,
-  onUseLocation,
-  onNotNow,
-}: {
-  places: PayPlace[];
-  /** The search bar's text, from the band (PayHeader, MESITA-3738). */
-  query: string;
-  loc: Loc;
-  onPick: (placeId: string) => void;
-  onUseLocation: () => void;
-  onNotNow: () => void;
-}) {
-  const q = fold(query.trim());
-  const [showAll, setShowAll] = useState(false);
-  const matches = q
-    ? places.filter((p) => fold(p.name ?? "").includes(q))
-    : places;
-  // Every place the guest holds credit at, at any distance, then the nearest
-  // up to PLACES_SHOWN, so Pay with below is never far (MESITA-4199); a
-  // search always lists every match.
-  const held = matches.filter((p) => p.available_cents > 0);
-  const near = matches.filter((p) => p.available_cents <= 0);
-  const shown =
-    q || showAll
-      ? matches
-      : [...held, ...near.slice(0, Math.max(0, PLACES_SHOWN - held.length))];
-  const hidden = matches.length - shown.length;
+/** Pay Bill (MESITA-4232): 72px, full width, black. At a place it reads
+ *  "Pay Bill at <place>" and opens that place's bill, with "Other place"
+ *  under it for the picker; otherwise it opens the picker (/pay/pick). */
+function PayBillButton({ here }: { here: PayPlace | null }) {
+  const name = here?.name ?? null;
   return (
-    <div className="flex flex-col">
-      {loc.state === "prime" ? (
-        <div className="px-4 py-3">
-          <p className="flex items-center gap-2 text-base font-semibold">
-            <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-            See places near you that take App Payments
-          </p>
-          <div className="mt-3 flex gap-2">
-            <Button
-              className="min-h-11 flex-1 font-semibold"
-              onClick={onUseLocation}
-            >
-              Use my location
-            </Button>
-            <button
-              type="button"
-              className="border-border bg-card hover:bg-muted min-h-11 flex-1 rounded-xl border px-4 text-sm font-semibold transition"
-              onClick={onNotNow}
-            >
-              Not now
-            </button>
-          </div>
-        </div>
-      ) : loc.state === "blocked" ? (
-        <p className="text-muted-foreground px-4 py-2 text-sm">
-          Location is off for mesita.ai. Turn it on in your browser&apos;s site
-          settings.
-        </p>
+    <div className="mt-4 flex flex-col" data-pay-bill>
+      <PushLink
+        href={here ? payPlacePath(here.place_id) : CONSUMER_ROUTES.payPick}
+        className="bg-foreground text-paper flex min-h-[4.5rem] w-full items-center gap-3 rounded-2xl px-5 py-3 text-left transition hover:opacity-90 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2 outline-none"
+        aria-label={name ? `Pay Bill at ${name}` : "Pay Bill"}
+        data-pay-bill-button
+      >
+        <QrCode className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-lg leading-tight font-semibold">
+            {name ? `Pay Bill at ${name}` : "Pay Bill"}
+          </span>
+          <span className="text-paper/70 mt-0.5 block truncate text-sm leading-tight">
+            {here && here.distance_m !== null
+              ? `You're here · ${distanceText(here.distance_m)}`
+              : "Pick the place you're at"}
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
+      </PushLink>
+      {here ? (
+        <PushLink
+          href={CONSUMER_ROUTES.payPick}
+          className="text-muted-foreground hover:text-foreground mx-auto mt-1 flex min-h-11 items-center px-4 text-sm font-semibold transition"
+          data-pay-bill-other
+        >
+          Other place
+        </PushLink>
       ) : null}
-
-      {loc.state === "asking" && places.length === 0 ? (
-        <RowsSkeleton bare />
-      ) : places.length === 0 ? (
-        <div className="p-4">
-          <EmptyState
-            inline
-            icon={MapPin}
-            title={
-              loc.state === "on"
-                ? "No place near you takes App Payments"
-                : "Turn on location to see places near you that take App Payments"
-            }
-            description=""
-          />
-        </div>
-      ) : (
-        <>
-          {shown.length === 0 ? (
-            <p className="text-muted-foreground px-4 py-4 text-sm">
-              No place matches &ldquo;{query.trim()}&rdquo;
-            </p>
-          ) : (
-            // The rows run edge to edge inside the Pay box (MESITA-4204):
-            // a hairline above each, never a box of their own.
-            <div className="mt-2" data-pay-places>
-              {shown.map((p, i) => (
-                <Fragment key={p.place_id}>
-                  <div className={cn("bg-border h-px", i > 0 && "ml-[4.5rem]")} />
-                  <button
-                    type="button"
-                    onClick={() => onPick(p.place_id)}
-                    className="hover:bg-muted/60 flex min-h-[4.75rem] w-full items-center gap-3.5 px-4 py-3 text-left transition"
-                  >
-                    <PlacePhoto place={p} className="h-12 w-12" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-base font-semibold">
-                        {p.name ?? "A Mesita place"}
-                      </span>
-                      {p.address ? (
-                        <span className="text-muted-foreground mt-0.5 block truncate text-sm">
-                          {p.address}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-sm tabular-nums">
-                      {/* ONE BALANCE ON THE PAGE (MESITA-4204, Pato: "your
-                          call"): a place row shows its distance; the credit
-                          shows once, on its Loyalty Card under Pay with.
-                          MESITA-4199 drew it here too, so Orinoco read twice. */}
-                      {p.distance_m !== null ? distanceText(p.distance_m) : null}
-                      <ChevronRight className="h-4 w-4" aria-hidden />
-                    </span>
-                  </button>
-                </Fragment>
-              ))}
-              {hidden > 0 ? (
-                <>
-                  <div className="bg-border h-px" />
-                  <button
-                    type="button"
-                    onClick={() => setShowAll(true)}
-                    className="hover:bg-muted/60 flex min-h-12 w-full items-center justify-center px-4 text-sm font-semibold transition"
-                  >
-                    Show all {matches.length} places
-                  </button>
-                </>
-              ) : null}
-            </div>
-          )}
-        </>
-      )}
     </div>
   );
 }
 
-/** `bare`: rows only, inside the Pay box (MESITA-4204); otherwise the
- *  bordered box the loading frame draws. */
-function RowsSkeleton({ bare = false }: { bare?: boolean }) {
-  return (
-    <div
-      className={bare ? "mt-2" : "border-border bg-card overflow-hidden rounded-2xl border"}
-      aria-busy
-    >
-      {[0, 1, 2].map((i) => (
-        <Fragment key={i}>
-          {i > 0 && <RowDivider />}
-          <div className="flex min-h-[4.75rem] items-center gap-3 px-4 py-3">
-            <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
-            <div className="flex-1">
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="mt-1.5 h-3 w-24" />
-            </div>
-            <Skeleton className="h-5 w-16" />
-          </div>
-        </Fragment>
-      ))}
-    </div>
-  );
-}
-
-/** The Pay box in bones (MESITA-4119, its box since MESITA-4204): the QR
- *  heading, the search bar's shape and three rows. /pay's loading.tsx. */
-export function ListSkeleton() {
-  return (
-    <Panel className="mt-4" aria-busy>
-      <div className="flex min-h-6 items-center gap-2 px-4 pt-4">
-        <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-        <PanelHeading>Pay</PanelHeading>
-      </div>
-      <div className="px-4 pt-3 pb-1">
-        <Skeleton className="h-11 w-full rounded-full" />
-      </div>
-      <RowsSkeleton bare />
-    </Panel>
-  );
+/** Pay Bill's shape while the open-bill read runs, so a bill that is open
+ *  never flashes the black button first. */
+export function PayBillSkeleton() {
+  return <Skeleton className="mt-4 h-[4.5rem] w-full rounded-2xl" aria-hidden />;
 }
 
 /** The open bill on /pay (MESITA-4086): one panel, the place's photo and
@@ -659,7 +348,7 @@ function OpenBillPanel({
           Cancel bill
         </Button>
         <Button asChild size="lg" className="min-h-12 w-full text-base font-semibold">
-          <Link href={href}>Continue</Link>
+          <Link href={href}>Continue bill</Link>
         </Button>
       </div>
       <LocalDialog open={confirm} onClose={() => setConfirm(false)} ariaLabel="Cancel this bill">
