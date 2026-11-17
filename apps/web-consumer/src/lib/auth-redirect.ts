@@ -64,3 +64,31 @@ export function payPlaceFromNext(
   }
   return null;
 }
+
+/** A gift link's key: 22 characters of base64url, case-sensitive. */
+const GIFT_TOKEN = "([A-Za-z0-9_-]{22})";
+/** A friend's gift link, /wallet/gift/<token>, and its address before
+ *  MESITA-3614, /wallet?gift=<token>. No `i` flag: the key is
+ *  case-sensitive, and a lowercased key is a different (dead) link. A
+ *  trailing query (`?fbclid=` from Instagram or Messenger) is fine. */
+const GIFT_NEXT = [
+  new RegExp(`^/wallet/gift/${GIFT_TOKEN}(?:[/?#]|$)`),
+  new RegExp(`^/wallet\\?(?:.*&)?gift=${GIFT_TOKEN}(?:&|#|$)`),
+];
+
+/**
+ * A gift link at sign-in (MESITA-4229): when the guest's `?next=` is a
+ * friend's gift link, its key, so sign-in can say what the link holds.
+ * Anything else, null.
+ */
+export function giftTokenFromNext(
+  raw: string | undefined | null,
+): string | null {
+  const target = safeNextPath(raw);
+  if (!target) return null;
+  for (const re of GIFT_NEXT) {
+    const match = re.exec(target);
+    if (match) return match[1];
+  }
+  return null;
+}

@@ -1,9 +1,16 @@
+import { cache } from "react";
+import type { Metadata, ResolvingMetadata } from "next";
 import { redirect } from "next/navigation";
+import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { PhoneOtpForm } from "@/components/auth/PhoneOtpForm";
 import { CoverAuthLayout } from "@/components/auth/CoverAuthLayout";
-import { consumerAuthDestination, payPlaceFromNext } from "@/lib/auth-redirect";
-import { apiGetPayPlaceName } from "@/lib/api/auth";
+import {
+  consumerAuthDestination,
+  giftTokenFromNext,
+  payPlaceFromNext,
+} from "@/lib/auth-redirect";
+import { apiGetGiftPreview, apiGetPayPlaceName } from "@/lib/api/auth";
 
 // Root of the consumer subdomain. Strong routing contract:
 //
@@ -16,6 +23,44 @@ import { apiGetPayPlaceName } from "@/lib/api/auth";
 // enabled for consumers"): Continue with Google and the email code are gone.
 
 export const dynamic = "force-dynamic";
+
+type Params = { searchParams: Promise<{ next?: string }> };
+
+// A FRIEND'S GIFT LINK (MESITA-4229). A signed-out friend who taps
+// /wallet/gift/<token> lands here with `?next=`, and so does the crawler
+// that draws the link's card in WhatsApp. Both used to see "Restaurants,
+// from your phone", which reads as an ad; now the page and the card say what
+// the link holds: "$200.00MX of credit at Orinoco. Sign in to take it." One
+// read per request (cache) serves the page and its metadata; any failure,
+// or no answer in 1.5s, is today's plain sign-in.
+const readGift = cache(async (next: string | undefined) => {
+  const token = giftTokenFromNext(next);
+  if (!token) return null;
+  const preview = await apiGetGiftPreview(await createServerSupabase(), token);
+  if (!preview) return null;
+  const amount = moneyLabel(preview.amount_cents, preview.currency);
+  return {
+    line: preview.placeName
+      ? `${amount} of credit at ${preview.placeName}`
+      : `${amount} of credit`,
+  };
+});
+
+export async function generateMetadata(
+  { searchParams }: Params,
+  parent: ResolvingMetadata,
+): Promise<Metadata> {
+  const gift = await readGift((await searchParams).next);
+  if (!gift) return {};
+  const description = "From a friend on Mesita. Sign in to take it.";
+  const { openGraph, twitter } = await parent;
+  return {
+    title: gift.line,
+    description,
+    openGraph: { ...openGraph, title: gift.line, description } as Metadata["openGraph"],
+    twitter: { ...twitter, title: gift.line, description } as Metadata["twitter"],
+  };
+}
 
 export default async function ConsumerRootPage({
   searchParams,
@@ -41,13 +86,24 @@ export default async function ConsumerRootPage({
   const payPlaceName = payPlaceId
     ? await apiGetPayPlaceName(supabase, payPlaceId).catch(() => null)
     : null;
+  const gift = payPlaceName ? null : await readGift(params.next);
 
   return (
     <CoverAuthLayout
       headline={
-        payPlaceName ? `Pay at ${payPlaceName}` : "Restaurants, from your phone"
+        payPlaceName
+          ? `Pay at ${payPlaceName}`
+          : gift
+            ? "Credit from a friend"
+            : "Restaurants, from your phone"
       }
-      title={payPlaceName ? `Sign in to pay at ${payPlaceName}` : undefined}
+      title={
+        payPlaceName
+          ? `Sign in to pay at ${payPlaceName}`
+          : gift
+            ? `${gift.line}. Sign in to take it.`
+            : undefined
+      }
       footer={
         <>
           By continuing you agree to Mesita&apos;s terms of service and privacy

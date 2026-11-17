@@ -70,3 +70,30 @@ export function giftRefusalStatus(code: string | undefined): number {
       return 500;
   }
 }
+
+// ─── The link's public preview (MESITA-4229) ────────────────────────
+// A signed-out friend who taps a gift link lands on sign-in with
+// `?next=/wallet/gift/<token>`; consumer-web-get-gift-preview lets that page
+// (and its link card) say "$200.00MX of credit at Orinoco". Only an OPEN
+// link of this payments mode answers, and only with the amount and
+// currency: never who sent it, who took it, or any id. Every other state is
+// one "gone", so the preview tells nobody which links once existed.
+
+export type GiftRow = {
+  id?: string;
+  place_id: string;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  livemode: boolean;
+  sender_id?: string | null;
+  recipient_id?: string | null;
+};
+
+export type GiftPreview = { amount_cents: number; currency: string };
+
+/** What a link may show before sign-in, or null when it shows nothing. */
+export function giftPreview(row: GiftRow | null, livemode: boolean): GiftPreview | null {
+  if (!row || row.status !== "open" || row.livemode !== livemode) return null;
+  return { amount_cents: row.amount_cents, currency: row.currency };
+}

@@ -1,0 +1,59 @@
+// Supabase Edge Function — consumer-web-get-gift-preview
+//
+// MESITA-4229: a friend's gift link, before sign-in. A signed-out friend who
+// taps <origin>/wallet/gift/<token> lands on sign-in with `?next=`; this
+// read lets that page and its link card say "$200.00MX of credit at
+// Orinoco. Sign in to take it." Public (no session yet) and narrow: an open
+// link of this payments mode answers with its amount, currency and place
+// name; anything else (unknown, taken, taken back, the other mode) is one
+// 404 `gone`. Never the sender, the recipient or an id. The place name is
+// read with the anon client, like consumer-web-get-pay-place-name, so a
+// place the public catalog hides answers place: null.
+//
+// Body: { token: string }
+// Response: { ok: true, gift: { amount_cents, currency, place: { name } | null } }
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
+import { anonClient } from "../_shared/auth.ts";
+import { giftPreview, type GiftRow, hashGiftToken, isGiftToken } from "../_shared/gift.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
+
+/** A link's answer changes when someone takes it: never cache it. */
+function noStore(res: Response): Response {
+  res.headers.set("Cache-Control", "no-store");
+  return res;
+}
+
+serveJson("consumer-web-get-gift-preview", async (req) => {
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
+  const bodyRes = await readJson<Record<string, unknown>>(req);
+  if (!bodyRes.ok) return bodyRes.response;
+  const token = bodyRes.body.token;
+  if (!isGiftToken(token)) return json({ ok: false, error: "token must be a credit link's key" }, 400);
+
+  const { data, error } = await admin
+    .from("wallet_gifts")
+    .select("place_id, amount_cents, currency, status, livemode")
+    .eq("token_hash", await hashGiftToken(token))
+    .maybeSingle();
+  if (error) return json({ ok: false, error: `gift: ${error.message}` }, 500);
+
+  const row = data as GiftRow | null;
+  const preview = giftPreview(row, paymentsLivemode());
+  if (!row || !preview) return noStore(json({ ok: false, code: "gone", error: "That link isn't here." }, 404));
+
+  // The name is a nicety: a failed read still answers, without it.
+  const { data: place, error: placeError } = await anonClient(env)
+    .from("profiles")
+    .select("name")
+    .eq("id", row.place_id)
+    .maybeSingle();
+  if (placeError) console.error("[consumer-web-get-gift-preview] place name:", placeError.message);
+  const name = typeof place?.name === "string" && place.name.trim() ? place.name.trim() : null;
+
+  return noStore(json({ ok: true, gift: { ...preview, place: name ? { name } : null } }));
+});

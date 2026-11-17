@@ -60,3 +60,40 @@ export async function apiGetPayPlaceName(
   );
   return res.name;
 }
+
+export type GiftPreview = {
+  amount_cents: number;
+  currency: string;
+  placeName: string | null;
+};
+
+/** A friend's gift link before sign-in (MESITA-4229): an open link's amount
+ *  and place, for the sign-in title and its link card. Null for anything
+ *  else: a link someone took, one taken back, an unknown key, an error, or
+ *  no answer within `timeoutMs`, so a slow read never holds the sign-in
+ *  page. No session needed. */
+export async function apiGetGiftPreview(
+  client: SupabaseClient,
+  token: string,
+  timeoutMs = 1500,
+): Promise<GiftPreview | null> {
+  const read = invokeEF<{
+    gift: { amount_cents: number; currency: string; place: { name: string } | null };
+  }>(client, "consumer-web-get-gift-preview", { token }).then(
+    (res) => ({
+      amount_cents: res.gift.amount_cents,
+      currency: res.gift.currency,
+      placeName: res.gift.place?.name ?? null,
+    }),
+    () => null,
+  );
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs);
+  });
+  try {
+    return await Promise.race([read, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
