@@ -7,6 +7,10 @@ export type PlaceMenuItem = PlaceDetail["products"]["menu"][number];
 
 /** One line of the Offers page's basket (MESITA-3841): a voucher and how many. */
 export type VoucherBasketItem = { voucher: VoucherKey; qty: number };
+/** How a voucher buy ended (MESITA-4224): the pay sheet turns into a receipt
+ *  on "paid" or "processing" and stays open to try again on "failed" (the
+ *  host already said why). */
+export type VoucherBuyOutcome = "paid" | "processing" | "failed";
 
 /** The profile is on screen before Mesita holds it — a Google-only card the
  *  guest opened (MESITA-2307). While the create runs a Creating fact leads
@@ -42,8 +46,9 @@ export type PlaceActions = {
    *  page since MESITA-4065): pays the guest's selection with the card the
    *  page drew as selected, one charge for all, on the place's account. No
    *  second sheet. `cardId` null: no usable card, the host opens its card
-   *  sheet. Absent, the button is inert (admin's preview). */
-  onBuyVoucher?: (items: VoucherBasketItem[], cardId: string | null) => void;
+   *  sheet. Absent, the button is inert (admin's preview). Resolves with how
+   *  it ended (MESITA-4224); a host that returns nothing leaves the sheet open. */
+  onBuyVoucher?: (items: VoucherBasketItem[], cardId: string | null) => void | Promise<VoucherBuyOutcome>;
   /** A voucher of the basket being paid; while set the button reads Paying…
    *  and the card rows and steppers are locked. */
   buyingVoucher?: VoucherKey | null;

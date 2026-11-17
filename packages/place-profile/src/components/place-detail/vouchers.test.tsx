@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { TEST_BAND_TEXT } from "../TestBand";
 import type { PlaceDetail, PlaceMoney } from "../../place-detail";
 import { placeMoneyFrom } from "../../place-to-detail";
-import { pesos, VouchersPane } from "./vouchers";
+import { pesos, readyClock, VouchersPane } from "./vouchers";
 
 const OFFER: PlaceMoney = {
   charges_enabled: true,
@@ -38,10 +38,9 @@ describe("Vouchers tab", () => {
         actions={{ onBuyVoucher: () => {}, guest: { vip: true, instagramLinked: true } }}
       />,
     );
-    expect(html).toContain("Story voucher");
-    expect(html).toContain("VIP");
-    expect(html).not.toContain('aria-label="Choose the VIP voucher');
-    expect(html).toContain('aria-label="Choose the Small voucher');
+    expect(row(html, "voucher_story")).toContain("Story");
+    expect(row(html, "voucher_vip")).toContain("data-voucher-locked");
+    expect(row(html, "voucher_200")).not.toContain("data-voucher-locked");
   });
 
   it("shows no test notice on the Offers page, test mode or not (MESITA-3454, Pato's call for now)", () => {
@@ -50,16 +49,17 @@ describe("Vouchers tab", () => {
   });
 
   it("offers Buy only on what the server lists in `sell`, and never on a read without it", () => {
-    const html = render(OFFER, () => {});
-    // A row for sale carries a selector; one Buy at the foot (MESITA-3487).
-    expect(html).toContain('aria-label="Choose the Small voucher');
-    expect(html).toContain('aria-label="Choose the Big voucher'); // the MX$1,000 one since MESITA-3834
-    expect(html).not.toContain("MX$5,000 voucher"); // off sale and off the page (MESITA-3834)
-    expect(html).not.toContain('aria-label="Choose the Welcome voucher');
-    expect(html).toContain("You had yours here");
+    // Live mode: a row the server does not sell wears the lock (MESITA-4224:
+    // a tap opens the sheet, where the reason replaces Pay).
+    const html = render({ ...OFFER, test_mode: false }, () => {});
+    expect(row(html, "voucher_200")).not.toContain("data-voucher-locked");
+    expect(row(html, "voucher_1000")).not.toContain("data-voucher-locked");
+    expect(row(html, "voucher_5000")).toContain("data-voucher-locked");
+    expect(row(html, "voucher_welcome")).toContain("data-voucher-locked");
+    expect(row(html, "voucher_welcome")).toContain("You already had yours here");
     // An older read: switches on, no `sell`: nothing for sale.
-    const older = placeMoneyFrom({ charges_enabled: true, vouchers: { voucher_200: true } });
-    expect(render(older, () => {})).not.toContain("Buy the");
+    const older = render({ ...placeMoneyFrom({ charges_enabled: true, vouchers: { voucher_200: true } })!, test_mode: false }, () => {});
+    expect(row(older, "voucher_200")).toContain("data-voucher-locked");
   });
 
   it("the green mark is the server's; an older read without it keeps the old rule (MESITA-3408)", () => {
@@ -73,10 +73,25 @@ describe("Vouchers tab", () => {
     expect(pesos(22000, "mxn")).toBe("$220.00MX");
     expect(pesos(120000, "mxn")).toBe("$1,200.00MX");
     expect(pesos(1050, "mxn")).toBe("$10.50MX");
-    expect(render(OFFER)).toContain("Pay $1,000.00MX, Get $1,200.00MX");
-    expect(render(OFFER)).toContain("+20%");
+    expect(row(render(OFFER), "voucher_1000")).toContain("Pay $1,000 · Get $1,200");
+    expect(row(render(OFFER), "voucher_1000")).toContain("+20%");
+  });
+
+  it("the pending time is the server's; a bad one is no time (MESITA-4224)", () => {
+    const at = "2026-11-17T18:40:00.000Z";
+    expect(placeMoneyFrom({ balance: { pending_cents: 100, next_ready_at: at } })?.balance?.next_ready_at).toBe(at);
+    expect(placeMoneyFrom({ balance: { pending_cents: 100, next_ready_at: "soon" } })?.balance?.next_ready_at).toBeNull();
+    expect(readyClock("nope")).toBe("");
   });
 });
+
+/** One row's markup, by its voucher key. */
+function row(html: string, key: string): string {
+  const start = html.indexOf(`data-voucher="${key}"`);
+  expect(start).toBeGreaterThan(-1);
+  const end = html.indexOf("</li>", start);
+  return html.slice(start, end);
+}
 
 describe("placeMoneyFrom", () => {
   it("reads the offer, the catalog and the balance; a bad line is dropped", () => {

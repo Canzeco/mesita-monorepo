@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Banknote, Check, ChevronRight, CircleCheck, Crown, Info, Lock, PartyPopper, Smartphone, Ticket, type LucideIcon } from "lucide-react";
+import { ChevronRight, CircleCheck, Crown, Lock, PartyPopper, Ticket, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
-import type { PlaceActions, VoucherBasketItem } from "../../actions";
+import type { PlaceActions } from "../../actions";
 import { cn } from "../../lib/format";
 import {
   PLACE_META_CLASS,
@@ -202,12 +202,6 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
   };
 })();
 
-/** A row's fact (MESITA-3863). It wraps like any text, but "in 1 hr" stays
- *  whole, so a narrow row never strands "hr" on a line of its own. */
-function Fact({ text }: { text: string }) {
-  return <span className="tabular-nums">{text.replace(/ in (\d+) hr\b/, " in\u00a0$1\u00a0hr")}</span>;
-}
-
 function SectionTitle({ id, title }: { id: string; title: string }) {
   return (
     <h3 id={id} className={OFFERS_TITLE_CLASS}>
@@ -216,134 +210,9 @@ function SectionTitle({ id, title }: { id: string; title: string }) {
   );
 }
 
-/** AN (i) ON EACH OFFER (MESITA-3493, Pato: "add one i button for each
- *  offer"), opening a SMALL MODAL, NOT A DROPDOWN (MESITA-3488): a centred
- *  card over a dimmed page with the offer's own explanation and Got it; a tap
- *  outside or Escape closes it. It opens in a portal on the body, above the
- *  sheet and out of any dimmed row; it sits inside a row's label, so every click
- *  in it is stopped and its default prevented: reading never picks the row. */
-/** The (i)'s status strip and its one action (MESITA-3502, Pato: "below show
- *  the state ... and maybe also an action like request upgrade besides the
- *  Got it button"). */
+/** A locked offer's status line (MESITA-3502), the sheet's reason since
+ *  MESITA-4224. */
 type InfoStatus = { ok: boolean; text: string };
-type InfoAction = { label: string; onClick: () => void };
-
-function InfoButton({
-  title,
-  text,
-  status,
-  action,
-}: {
-  title: string;
-  text: string[];
-  status?: InfoStatus;
-  action?: InfoAction;
-}) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-  // ON THE PHONE, NOT THE PAGE (MESITA-3524, Pato: "modal must be ON THE
-  // PHONE emulator screen, not on the terminals"): the popup portals into the
-  // app card when there is one (the consumer app's #mesita-app-card), else the
-  // body (admin's preview).
-  const host = typeof document !== "undefined" ? document.getElementById("mesita-app-card") : null;
-  const stop = (e: { preventDefault(): void; stopPropagation(): void }) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-  return (
-    <span className="inline-flex" onClick={stop}>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-haspopup="dialog"
-        aria-label={`How ${title} works`}
-        className="text-muted-foreground hover:text-foreground relative flex h-6 w-6 items-center justify-center rounded-full after:absolute after:-inset-2"
-        data-offer-info
-      >
-        <Info className="h-5 w-5" aria-hidden />
-      </button>
-      {open && typeof document !== "undefined" ? createPortal(
-        <span
-          className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-6")}
-          onClick={() => setOpen(false)}
-          data-offers-note
-        >
-          <span
-            role="dialog"
-            aria-modal="true"
-            aria-label={`How ${title} works`}
-            className="bg-card flex max-h-[85vh] w-full max-w-sm cursor-auto flex-col gap-3 rounded-2xl p-5 text-left shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span className="text-foreground text-base font-semibold">{title}</span>
-            {/* SHORT PARAGRAPHS (MESITA-3497, Pato: "use multiple paragraphs"),
-                SMALLER (MESITA-3852, Pato: "text smaller"; "keep the pages super
-                clean"): the descriptions live here, never on the page, in 14px. */}
-            <span className="text-muted-foreground flex flex-col gap-2 overflow-y-auto text-sm leading-snug font-normal">
-              {text.map((t) => (
-                <span key={t} className="block">
-                  {t}
-                </span>
-              ))}
-            </span>
-            {status ? (
-              <span
-                className={cn(
-                  "mt-1 flex items-start gap-2.5 rounded-xl px-3 py-2.5",
-                  status.ok ? "bg-green-50 text-green-900" : "bg-amber-50 text-amber-900",
-                )}
-                data-offer-status={status.ok ? "ok" : "locked"}
-              >
-                {status.ok ? (
-                  <CircleCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-                ) : (
-                  <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-                )}
-                <span className="flex flex-col">
-                  <span className="text-[11px] font-semibold tracking-wide uppercase opacity-70">Your status</span>
-                  <span className="text-sm leading-snug font-semibold">{status.text}</span>
-                </span>
-              </span>
-            ) : null}
-            <span className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                autoFocus
-                className={cn(
-                  "h-11 rounded-xl text-sm font-semibold hover:opacity-90",
-                  action ? "bg-muted text-foreground w-28 shrink-0" : "bg-foreground text-paper flex-1",
-                )}
-              >
-                Got it
-              </button>
-              {action ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpen(false);
-                    action.onClick();
-                  }}
-                  className="bg-foreground text-paper h-11 flex-1 rounded-xl text-sm font-semibold hover:opacity-90"
-                  data-offer-action
-                >
-                  {action.label}
-                </button>
-              ) : null}
-            </span>
-          </span>
-        </span>,
-        host ?? document.body,
-      )
-      : null}
-    </span>
-  );
-}
 
 /** WHEN THE CREDITS ARRIVE (MESITA-3498, Pato: "Welcome, Story and VIP are
  *  activated immediately; the other vouchers take one hour ... Pay X, get Y
@@ -365,65 +234,6 @@ function whole(v: string): string {
  *  says when each part is ready. Story's money waits for its story. */
 function readyIn(key: MoneyVoucherKey): string {
   return key === "voucher_story" ? "after story, bonus 3 hr later" : "bonus in 3 hr";
-}
-
-/** The (i)'s timing line, every voucher but Story (MESITA-4214). */
-function readyLine(pay: string): string {
-  return `Your ${whole(pay)} is ready as soon as you pay. The bonus is ready 3 hours later.`;
-}
-
-/** The two lines every voucher's (i) ends with (MESITA-3498, Pato: "credits
- *  are transferable to friends too"; "you don't need to prepay all the
- *  bill"). REWRITTEN SHORT (Pato, 2026-11-16, MESITA-4201: "UPDATE THE
- *  EXPLAINATIONS OF EACH VOUCHER"): no line may contradict a voucher's own
- *  limit (the old "Buy as many vouchers as you want" sat under Welcome's
- *  "One per place"), no product names. */
-const CREDIT_FACTS = [
-  "Spend it on any bill here, all of it or just part. Pay the rest by card or directly to the place.",
-  "It only works at this place. You can send it to a friend.",
-];
-
-/** What each voucher's (i) says (MESITA-3492, MESITA-3498, MESITA-4201): the
- *  row's own amounts as the row shows them, when the credit is ready, who can
- *  buy it and how often, then the two shared lines. */
-function offerInfo(key: MoneyVoucherKey, pay: string, get: string, _bonus: string, facts: string[]): string[] {
-  const deal = `Pay ${whole(pay)}, get ${whole(get)} to spend here.`;
-  switch (key) {
-    case "voucher_200":
-    case "voucher_1000":
-    case "voucher_5000":
-      return [
-        deal,
-        readyLine(pay),
-        // MESITA-3505: several vouchers fund one bill.
-        "Buy as many as you like. It all adds up to your credit here.",
-        ...facts,
-      ];
-    case "voucher_welcome":
-      return [
-        deal,
-        readyLine(pay),
-        "One per place, if you haven't paid here before.",
-        ...facts,
-      ];
-    case "voucher_story":
-      return [
-        deal,
-        // TWO STEPS AND A FLOOR (MESITA-3506, MESITA-3507).
-        "For guests whose Instagram has more than 1,000 followers.",
-        "Buy it, post an Instagram story at the place tagging it, and show it to the staff. Your money is ready then, the bonus 3 hours later.",
-        "One per visit.",
-        ...facts,
-      ];
-    case "voucher_vip":
-      return [
-        deal,
-        "Only for guests in Mesita's VIP Class.",
-        readyLine(pay),
-        "One per visit.",
-        ...facts,
-      ];
-  }
 }
 
 /** The (i)'s "Your status" line for a prepayment offer (MESITA-3502). */
@@ -587,6 +397,264 @@ export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions[
   });
 }
 
+/** "6:40 pm", or "Tue 6:40 pm" when it is not today (MESITA-4224). */
+export function readyClock(iso: string, now = new Date()): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "";
+  const time = at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
+  return at.toDateString() === now.toDateString() ? time : `${at.toLocaleDateString("en-US", { weekday: "short" })} ${time}`;
+}
+
+/** The sheet's facts (Pato, 2026-11-17, MESITA-4224: "when you click and open
+ *  modal, then you understand"): when the money is ready, when the bonus is,
+ *  where it spends, who may buy it. The rows say only the deal. */
+function sheetFacts(key: MoneyVoucherKey, pay: string, bonus: string | null): string[] {
+  const later = bonus ? `The ${bonus} bonus is ready 3 hours later.` : "The bonus is ready 3 hours later.";
+  const first = key === "voucher_story"
+    ? `Post an Instagram story at the place tagging it and show it to the staff. Your ${pay} is ready then.`
+    : `Your ${pay} is ready to spend as soon as you pay.`;
+  return [first, later, "Spend it on any bill here, all of it or part. It never expires.", sheetLimit(key)];
+}
+
+function sheetLimit(key: MoneyVoucherKey): string {
+  if (key === "voucher_welcome") return "One per place, if you haven't paid here before.";
+  if (key === "voucher_story") return "For Instagram accounts over 1,000 followers. One per visit.";
+  if (key === "voucher_vip") return "For guests in Mesita's VIP Class. One per visit.";
+  return "Buy as many as you like.";
+}
+
+type Receipt = { outcome: "paid" | "processing"; pay: string; bonus: string | null; readyAt: string | null };
+
+/** THE PAY SHEET (Pato, 2026-11-17, MESITA-4224: "simply click a button and
+ *  the offer you select opens a modal and in that modal you click to pay and
+ *  you receive explanation"): a bottom sheet in the app card (Pay in thumb
+ *  reach), the product's face, the deal, the facts, the card, one black Pay.
+ *  A locked offer opens it too, its reason where Pay goes. Paid, it turns
+ *  into a receipt. Escape or a tap outside closes it; focus returns to the
+ *  row that opened it.
+ *  decision: a sheet in the package, against apps/web-consumer › Overlays
+ *  (MESITA-4094, pages not sheets): Pato's live call in the design review. */
+function PaySheet({
+  product,
+  placeName,
+  pay,
+  get,
+  bonus,
+  bonusAmount,
+  can,
+  status,
+  unlock,
+  live,
+  buying,
+  payCards,
+  payCard,
+  canChange,
+  onChangeCard,
+  onRetryCards,
+  signedOut,
+  onPay,
+  onClose,
+}: {
+  product: Product;
+  placeName: string;
+  pay: string;
+  get: string;
+  bonus: string;
+  bonusAmount: string | null;
+  can: boolean;
+  status: InfoStatus;
+  unlock: { label: string; onClick: () => void } | null;
+  live: boolean;
+  buying: boolean;
+  payCards: PayCards | undefined;
+  payCard: { label: string; last4: string } | null;
+  canChange: boolean;
+  onChangeCard: () => void;
+  onRetryCards?: () => void;
+  signedOut: boolean;
+  onPay: () => Promise<Receipt | null>;
+  onClose: () => void;
+}) {
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    panel.current?.focus();
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const face = FACES[product.key];
+  const Mark = face.Mark ?? Ticket;
+  const cardsPending = payCards !== undefined && payCards.state !== "ready";
+  const needsCard = payCards?.state === "ready" && payCard === null;
+  const host = typeof document !== "undefined" ? document.getElementById("mesita-app-card") : null;
+  const button = signedOut ? "Sign in to buy" : buying ? "Paying…" : needsCard ? "Add a card to pay" : `Pay ${whole(pay)}`;
+  const press = async () => {
+    const r = await onPay();
+    if (r) setReceipt(r);
+  };
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div
+      className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex flex-col justify-end bg-black/40")}
+      onClick={onClose}
+      data-offer-sheet={product.key}
+    >
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="offer-sheet-title"
+        tabIndex={-1}
+        className="bg-card flex max-h-[90%] w-full flex-col gap-4 overflow-y-auto rounded-t-3xl px-5 pt-2 pb-5 outline-none"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="bg-border mx-auto h-1 w-10 shrink-0 rounded-full" aria-hidden />
+        <div className="flex items-center gap-3">
+          <span className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl", face.card)} aria-hidden>
+            <Mark className="h-7 w-7" strokeWidth={2.25} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 id="offer-sheet-title" className="text-foreground text-lg leading-tight font-bold">{product.short}</h3>
+            <p className="text-muted-foreground truncate text-sm">{placeName}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-muted-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+          >
+            <X className="h-5 w-5" strokeWidth={2.25} />
+          </button>
+        </div>
+
+        {receipt ? (
+          // THE RECEIPT (MESITA-4224, D5): what landed now and what lands later.
+          <div className="flex flex-col gap-4" role="status" data-offer-receipt={receipt.outcome}>
+            <div className="flex items-center gap-3">
+              <CircleCheck className="h-8 w-8 shrink-0 text-[#00A85A]" strokeWidth={2.25} aria-hidden />
+              <p className="text-foreground text-xl font-bold tabular-nums">
+                {receipt.outcome === "paid" ? `Paid ${whole(receipt.pay)}` : "Your bank is confirming"}
+              </p>
+            </div>
+            <ul className="text-foreground flex flex-col gap-2 text-[15px] leading-snug">
+              {receipt.outcome === "paid" ? (
+                <>
+                  <li className="tabular-nums">
+                    {product.key === "voucher_story"
+                      ? `${whole(receipt.pay)} is ready once you show your story.`
+                      : `${whole(receipt.pay)} is ready to spend now.`}
+                  </li>
+                  <li className="tabular-nums">
+                    {receipt.bonus ? `The ${receipt.bonus} bonus` : "The bonus"}
+                    {receipt.readyAt && product.key !== "voucher_story" ? ` is ready at ${readyClock(receipt.readyAt)}.` : " is ready 3 hours later."}
+                  </li>
+                </>
+              ) : (
+                <li>The credit shows here once it&apos;s through. You won&apos;t be charged twice.</li>
+              )}
+            </ul>
+            <button
+              type="button"
+              onClick={onClose}
+              autoFocus
+              className="bg-foreground text-paper h-12 w-full rounded-xl text-base font-semibold hover:opacity-90"
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="bg-background flex items-end justify-between gap-3 rounded-2xl px-4 py-3">
+              <div className="flex flex-col">
+                <span className="text-muted-foreground text-sm">You pay</span>
+                <span className="text-foreground text-2xl font-bold tabular-nums">{whole(pay)}</span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-muted-foreground text-sm">
+                  You get <span className="text-foreground font-semibold">{bonus}</span>
+                </span>
+                <span className="text-2xl font-extrabold text-[#00A85A] tabular-nums">{whole(get)}</span>
+              </div>
+            </div>
+            <ul className="text-foreground flex flex-col gap-2 text-[15px] leading-snug">
+              {sheetFacts(product.key, whole(pay), bonusAmount ? whole(bonusAmount) : null).map((t) => (
+                <li key={t} className="flex gap-2.5">
+                  <span className="bg-foreground mt-[0.55rem] h-1.5 w-1.5 shrink-0 rounded-full" aria-hidden />
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+            {can ? (
+              <div className="flex flex-col gap-3">
+                {payCard && !signedOut ? (
+                  <p className="flex items-center justify-between text-[15px]" data-pay-card-line>
+                    <span className="text-foreground truncate font-medium">
+                      {payCard.label} •••• {payCard.last4}
+                    </span>
+                    {canChange ? (
+                      <button
+                        type="button"
+                        disabled={buying}
+                        onClick={onChangeCard}
+                        className="text-foreground shrink-0 font-semibold underline underline-offset-2 disabled:opacity-50"
+                      >
+                        Change
+                      </button>
+                    ) : null}
+                  </p>
+                ) : null}
+                {payCards?.state === "error" ? (
+                  <p className="flex items-center justify-between text-[15px]" role="alert">
+                    <span className="text-foreground">Couldn&apos;t load your cards</span>
+                    <button type="button" onClick={onRetryCards} className="text-foreground shrink-0 font-semibold underline underline-offset-2">
+                      Retry
+                    </button>
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void press()}
+                  disabled={!live || buying || cardsPending}
+                  className="bg-foreground text-paper disabled:bg-muted disabled:text-muted-foreground h-12 w-full rounded-xl text-base font-semibold tabular-nums hover:opacity-90"
+                  data-voucher-buy={product.key}
+                >
+                  {button}
+                </button>
+              </div>
+            ) : (
+              // LOCKED (MESITA-4224, D4): the reason where Pay goes, and the one
+              // action that unlocks it when there is one.
+              <div className="flex flex-col gap-3">
+                <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-900" data-offer-status="locked">
+                  <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+                  <span className="text-[15px] leading-snug font-semibold">{status.text}</span>
+                </p>
+                {unlock ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      unlock.onClick();
+                    }}
+                    className="bg-foreground text-paper h-12 w-full rounded-xl text-base font-semibold hover:opacity-90"
+                    data-offer-action
+                  >
+                    {unlock.label}
+                  </button>
+                ) : null}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>,
+    host ?? document.body,
+  );
+}
+
 export function VouchersPane({
   place,
   actions,
@@ -601,290 +669,154 @@ export function VouchersPane({
 
   const money = place.money;
   // The host is still asking list-vouchers and the place read carried no
-  // offer: draw the rows and a bone, never a guess (MESITA-3388).
+  // offer: draw the rows, never a guess (MESITA-3388).
   const loading = actions?.vouchersLoading === true && !money;
   const { unavailable, dim, guestLock, buyable } = offerRules(money, actions?.guest);
   const catalog = money?.catalog ?? {};
   const currency = money?.currency ?? "mxn";
-  const facts = CREDIT_FACTS;
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;
-  // THE CHECKOUT IS THE PAGE (MESITA-4065, Pato: "you simply select the item
-  // and select the payment method and click the button to pay"): the saved
-  // cards sit under the offers, the one purple Pay charges the selected card.
   const payCards: PayCards | undefined = actions?.payCards;
   const readyCards = payCards?.state === "ready" ? payCards.cards : null;
   const payCardId = actions?.payCardId ?? null;
   const payCard = readyCards?.find((c) => c.id === payCardId && !isCardExpired(c)) ?? null;
-  // NO "PAY WITH" BOX (MESITA-4150, Pato: "remove this fucking box of
-  // payments bottom in prepayments"): the card is named in the foot, and
-  // Change steps to the next usable card.
+  // Change steps to the next usable card (MESITA-4150).
   const usableCards = readyCards?.filter((c) => !isCardExpired(c)) ?? [];
   const nextCard = () => {
     if (usableCards.length < 2) return;
     const at = usableCards.findIndex((c) => c.id === payCard?.id);
     actions?.onSelectPayCard?.(usableCards[(at + 1) % usableCards.length].id);
   };
-  // SELECT, THEN BUY (MESITA-3487, Pato: "you select then you click Buy").
-  // ONE VOUCHER PER PAYMENT (Pato, 2026-11-16, MESITA-4186: "Prepay must not
-  // be stocked"): ticking a row unticks the others, no quantity. Several in
-  // one basket with 1..5 of Small, Medium and Big from MESITA-3841; the
-  // server still takes a basket, the page sends one line.
-  // A HOME CHIP'S VOUCHER STARTS TICKED (Pato, 2026-11-16, MESITA-4207):
-  // "Medium +20%" on Home opens this page with Medium picked; the foot only
-  // counts it when this guest can buy it (`chosen` filters on buyable).
+  // Signed out: no balance and no cards were read (MESITA-4224, D6).
+  const signedOut = live && money != null && money.balance === null && payCards === undefined;
+
+  // A TAP OPENS THE SHEET (MESITA-4224): no tick, no foot Pay. A Home chip's
+  // voucher (MESITA-4207) opens its sheet at once.
   const asked = actions?.askedVoucher;
-  const [picked, setPicked] = useState<MoneyVoucherKey | null>(() =>
+  const [open, setOpen] = useState<MoneyVoucherKey | null>(() =>
     asked && (MONEY_VOUCHER_KEYS as readonly string[]).includes(asked) ? (asked as MoneyVoucherKey) : null);
-  const pick = (key: MoneyVoucherKey) => setPicked(key);
-  const toggle = (key: MoneyVoucherKey) => setPicked((k) => (k === key ? null : key));
+  const opener = useRef<HTMLButtonElement | null>(null);
+  const close = useCallback(() => {
+    setOpen(null);
+    opener.current?.focus();
+  }, []);
 
-  // SIZES FIRST (MESITA-3484, Pato: "Small Bonus, Mid Bonus, Big Bonus /
-  // Welcome Bonus, Story Bonus, VIP Bonus").
   const products = listedProducts();
-  const anyBuyable = !loading && products.some((p) => buyable(p.key));
-  const chosen = loading ? [] : products.filter((p) => picked === p.key && buyable(p.key)).map((p) => ({ product: p, qty: 1 }));
-  const items: VoucherBasketItem[] = chosen.map((c) => ({ voucher: c.product.key, qty: c.qty }));
-  const units = chosen.reduce((n, c) => n + c.qty, 0);
-  // The button's sums: the server's catalog lines, never a guess. A read
-  // without them names the one voucher as before.
-  const lines = chosen.map((c) => ({ ...c, line: catalog[c.product.key] }));
-  const summed = lines.length > 0 && lines.every((l) => l.line)
-    ? {
-      pay: pesos(lines.reduce((sum, l) => sum + l.line!.price_cents * l.qty, 0), currency),
-      get: pesos(lines.reduce((sum, l) => sum + l.line!.credit_cents * l.qty, 0), currency),
-    }
-    : lines.length === 1 && units === 1
-      ? { pay: priceValue(lines[0].product, undefined, currency), get: creditValue(lines[0].product, undefined, currency) }
-      : null;
-  // SHORTER ROWS, SYMMETRIC NAMES (MESITA-3490, Pato: "make the items a bit
-  // shorter").
-  // SHORTER STILL (Pato, 2026-11-13, MESITA-3829: "make this smaller
-  // somehow, i mean, shorter, its using tooo much space"): 36px chips, 6px
-  // row padding, the fact on one line.
-  // 12px row padding and gaps since MESITA-4186 (the tick box at the left).
-  // ONE SCREEN, NO SCROLL (Pato, 2026-11-17, MESITA-4221: "shorter, cleaner,
-  // i don't want to scroll"): ~48px rows, 8px padding, tight lines.
-  const ROW = "flex w-full items-center gap-3 px-3.5 py-2 text-left";
-  // A BIT SMALLER (MESITA-3768, Pato: "make this a bit smaller, the text, just
-  // a bit"): one small step each, titles 15px, fact lines 13px, chips 18px.
-  // ONE RUN OF TEXT (Pato, 2026-11-14, MESITA-3863: "Name of thing in Bold.
-  // and then description starting in the same line. then the i in other
-  // part ... vertically save space"; "enable two lines if the page is not
-  // wide enough"): the bold name (15px), then the fact in grey (14px; MESITA-3872,
-  // Pato: "the not bold letters not that small, or in general is too small"), wrapping
-  // when narrow (two lines on a 390px phone, so 8px gaps and 12px row
-  // padding); the (i) in its own column at the right; chips 28px tall.
-  // Wide enough for "+100%" (MESITA-4186: it overflowed the 48px chip).
-  const CHIP = "flex h-7 min-w-15 shrink-0 items-center justify-center rounded-lg px-2 text-sm font-extrabold tracking-tight tabular-nums";
-  const LINE = "text-muted-foreground min-w-0 flex-1 text-[13px] leading-tight";
-  const NAME = "text-foreground text-[15px] font-semibold";
-  const ICON = "mr-1 inline h-4 w-4 align-[-0.15em]";
-  // Where a row has no tick box or lock, so every (i) sits in one column.
-  const SLOT = <span className="h-6 w-6 shrink-0" aria-hidden />;
 
-  // The foot's one button (MESITA-4065). Nothing picked: "Select an offer".
-  // Cards still loading or failed: Pay waits (never a flash of "Add a card").
-  // No usable card: "Add a card to pay" opens the host's card sheet. Else Pay.
-  const payText = summed
-    ? `Pay ${noMx(summed.pay)}, Get ${noMx(summed.get)}`
-    : `Pay for ${units} vouchers`;
-  const needsCard = readyCards !== null && payCard === null;
-  const footText = items.length === 0 ? "Select an offer" : buying ? "Paying…" : needsCard ? "Add a card to pay" : payText;
-  const footLabel = items.length === 0
-    ? "Select an offer to buy"
-    : needsCard
-      ? "Add a card to pay"
-      : units === 1
-        ? `Pay for the ${chosen[0].product.name} voucher`
-        : `Pay for ${units} vouchers`;
-  const cardsPending = payCards !== undefined && payCards.state !== "ready";
-  const footDisabled = items.length === 0 || !live || buying || cardsPending;
-  const footAction = items.length > 0 && live
-    ? () => {
-      if (needsCard) actions?.onAddPayCard?.();
-      else actions?.onBuyVoucher?.(items, payCard?.id ?? null);
-    }
-    : undefined;
+  const sheetProduct = open && !loading ? products.find((p) => p.key === open) ?? null : null;
+  let sheet: ReactNode = null;
+  if (sheetProduct) {
+    const p = sheetProduct;
+    const line = catalog[p.key];
+    const pay = priceValue(p, line, currency);
+    const get = creditValue(p, line, currency);
+    const can = buyable(p.key);
+    const lock = guestLock(p.key);
+    const unlock = lock === "vip" && actions?.onJoinVip
+      ? { label: "Request VIP", onClick: actions.onJoinVip }
+      : lock === "instagram" && actions?.onLinkInstagram
+        ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
+        : null;
+    const bonusAmount = line ? pesos(line.bonus_cents, currency) : null;
+    const onPay = async (): Promise<Receipt | null> => {
+      if (!live) return null;
+      const out = await actions?.onBuyVoucher?.([{ voucher: p.key, qty: 1 }], signedOut ? null : payCard?.id ?? null);
+      if (out !== "paid" && out !== "processing") return null;
+      const readyAt = line ? new Date(Date.now() + line.available_after_sec * 1000).toISOString() : null;
+      return { outcome: out, pay, bonus: bonusAmount ? whole(bonusAmount) : null, readyAt };
+    };
+    sheet = (
+      <PaySheet
+        product={p}
+        placeName={place.name}
+        pay={pay}
+        get={get}
+        bonus={`+${p.bonus.replace(/ bonus$/, "")}`}
+        bonusAmount={bonusAmount}
+        can={can}
+        status={offerStatus(p.key, can, lock, unavailable[p.key])}
+        unlock={unlock}
+        live={live}
+        buying={buying}
+        payCards={payCards}
+        payCard={payCard}
+        canChange={usableCards.length > 1}
+        onChangeCard={nextCard}
+        onRetryCards={actions?.onRetryPayCards}
+        signedOut={signedOut}
+        onPay={onPay}
+        onClose={close}
+      />
+    );
+  }
 
   return (
-    // A LIST (MESITA-3486, Pato: "make the things as a list, not as boxes"):
-    // one card of rows, each led by its big number. A prepayment row you can
-    // buy carries a selector at its right; the one Buy sits at the foot
-    // (MESITA-3487). No Pay bill here.
-    // ON THE GREY PAGE (MESITA-4196, Pato over the Reserve page: "Fix the
-    // prepaid vouchers"): the body is the page background, the vouchers one
-    // white panel on it, as the Reserve page's sections. White from MESITA-3486.
+    // ON THE GREY PAGE (MESITA-4196): two white panels, Special then Classic
+    // (MESITA-4218).
     <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
-      {/* TWO PANELS (MESITA-4203; named in MESITA-4216): Special Offers
-          (Welcome · Story), then Classic Offers (Small · Medium · Big). One
-          "Prepaid Vouchers" panel in MESITA-4173. Both panels share one basket
-          and the one Pay at the foot. */}
       {GROUPS.map((g) => {
         const list = products.filter((p) => g.keys.has(p.key));
         if (list.length === 0) return null;
         return (
-      // ONE PANEL (MESITA-4196): the Reserve page's Panel, its heading inside
-      // at the top, the rows under a hairline.
-      <section key={g.id} className={cn(CARD, "shrink-0 overflow-hidden")} aria-labelledby={`rewards-${g.id}`} data-promos={g.id}>
-        <div className="px-4 pt-3 pb-2">
-          <SectionTitle id={`rewards-${g.id}`} title={g.title} />
-        </div>
-        <ul className="border-border divide-border divide-y border-t" data-voucher-catalog>
-          {list.map((p) => {
-            const line = catalog[p.key];
-            const pay = priceValue(p, line, currency);
-            const get = creditValue(p, line, currency);
-            const deal = `Pay ${pay}, Get ${get}`;
-            const reason = unavailable[p.key];
-            const can = !loading && buyable(p.key);
-            const face = FACES[p.key];
-            const Mark = face.Mark;
-            const opening = buying && picked === p.key;
-            const on = can && picked === p.key;
-            const lock = guestLock(p.key);
-            // TICK LEFT, BONUS RIGHT (Pato, 2026-11-16, MESITA-4186: "Select at
-            // the left, Bonus amount ... at the right"; design review pick A):
-            // the name with its mark and the (i) on line one, the deal on line
-            // two, whole amounts without ".00MX". The chip led the row and the
-            // tick box ended it from MESITA-3486.
-            const middle = (
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <span className={cn(NAME, "truncate")} aria-hidden>
-                    {Mark ? <Mark className={ICON} strokeWidth={2.25} /> : null}
-                    {p.short}
-                  </span>
-                  <InfoButton
-                    title={p.short}
-                    text={offerInfo(p.key, pay, get, p.bonus.replace(/ bonus$/, ""), facts)}
-                    status={loading ? undefined : offerStatus(p.key, can, lock, reason)}
-                    action={
-                      loading
-                        ? undefined
-                        : can
-                          ? { label: "Choose this offer", onClick: () => pick(p.key) }
-                          : lock === "vip" && actions?.onJoinVip
-                            ? { label: "Request VIP", onClick: actions.onJoinVip }
-                            : lock === "instagram" && actions?.onLinkInstagram
-                              ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
-                              : undefined
-                    }
-                  />
-                </span>
-                <span className={LINE} aria-hidden>
-                  <Fact
-                    text={opening
-                      ? "Opening…"
-                      : `Pay ${whole(pay)} · Get ${whole(get)}`}
-                  />
-                </span>
-              </span>
-            );
-            const chip = (
-              <span className={cn(CHIP, face.card)} aria-hidden>
-                {/* "+20% Bonus" (Pato, 2026-11-16, MESITA-4206): the word rides the number. */}
-                +{p.bonus.replace(/ bonus$/, "")} Bonus
-              </span>
-            );
-            return (
-              <li key={p.key} data-voucher={p.key} className={cn(!loading && !can && dim && "opacity-50")}>
-                {can ? (
-                  <label className={cn(ROW, "hover:bg-muted/50 cursor-pointer")}>
-                    <input
-                      type="checkbox"
-                      name="voucher"
-                      value={p.key}
-                      checked={on}
-                      onChange={() => toggle(p.key)}
-                      aria-label={`Choose the ${p.name} voucher, ${deal}`}
-                      className="sr-only"
-                    />
-                    {/* A ROUND TICK (MESITA-4196): one voucher per payment since
-                        MESITA-4186, so the Reserve page's round choice mark; at the left. */}
-                    <span
-                      className={cn(
-                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
-                        on ? "border-foreground bg-foreground text-paper" : "border-border",
-                      )}
-                      aria-hidden
+          <section key={g.id} className={cn(CARD, "shrink-0 overflow-hidden")} aria-labelledby={`rewards-${g.id}`} data-promos={g.id}>
+            <div className="px-4 pt-3 pb-2">
+              <SectionTitle id={`rewards-${g.id}`} title={g.title} />
+            </div>
+            <ul className="border-border divide-border divide-y border-t" data-voucher-catalog>
+              {list.map((p) => {
+                const line = catalog[p.key];
+                const pay = priceValue(p, line, currency);
+                const get = creditValue(p, line, currency);
+                const can = !loading && buyable(p.key);
+                const face = FACES[p.key];
+                const Mark = face.Mark ?? Ticket;
+                const bonus = `+${p.bonus.replace(/ bonus$/, "")}`;
+                const locked = !loading && !can;
+                const why = locked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key]).text : "";
+                // A PRODUCT ROW (Pato, 2026-11-17, MESITA-4224: "offers must
+                // really look like products, like item products"; D8): the
+                // product's face, its name, the deal, the bonus in ink, an
+                // arrow. Colour on the face only; no tick, no (i), no pill.
+                return (
+                  <li key={p.key} data-voucher={p.key} className={cn(locked && dim && "opacity-50")}>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={(e) => {
+                        opener.current = e.currentTarget;
+                        setOpen(p.key);
+                      }}
+                      aria-haspopup="dialog"
+                      aria-label={`${p.short}, pay ${whole(pay)}, get ${whole(get)}, ${bonus} bonus${locked ? `. ${why}` : ""}`}
+                      className="hover:bg-muted/50 flex min-h-[4.5rem] w-full cursor-pointer items-center gap-3 px-3.5 py-2 text-left"
                     >
-                      {on ? <Check className="h-4 w-4" strokeWidth={3} /> : null}
-                    </span>
-                    {middle}
-                    {chip}
-                  </label>
-                ) : (
-                  <div className={ROW} aria-label={`${p.name} voucher, ${deal}. ${loading ? "" : tag(reason)}`}>
-                    {/* LOCKED, NOT A SELECTOR (MESITA-3495, Pato: "if not available show a
-                        locked icon instead of the circle"), where the tick box sits. */}
-                    {loading ? SLOT : (
-                      <span className="text-muted-foreground flex h-6 w-6 shrink-0 items-center justify-center" aria-hidden data-voucher-locked>
-                        <Lock className="h-5 w-5" strokeWidth={2.25} />
+                      <span className={cn("relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl", face.card)} aria-hidden>
+                        <Mark className="h-7 w-7" strokeWidth={2.25} />
+                        {locked ? (
+                          <span className="bg-card text-foreground absolute -right-1 -bottom-1 flex h-6 w-6 items-center justify-center rounded-full shadow-sm" data-voucher-locked>
+                            <Lock className="h-3.5 w-3.5" strokeWidth={2.5} />
+                          </span>
+                        ) : null}
                       </span>
-                    )}
-                    {middle}
-                    {chip}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+                      <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
+                        <span className="text-foreground truncate text-base font-semibold">{p.short}</span>
+                        <span className="text-muted-foreground truncate text-sm tabular-nums">
+                          Pay {whole(pay)} · Get {whole(get)}
+                        </span>
+                      </span>
+                      <span className="text-foreground shrink-0 text-lg font-extrabold tracking-tight tabular-nums" aria-hidden>
+                        {bonus}
+                      </span>
+                      <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         );
       })}
-      {/* ONE PAY AT THE FOOT (MESITA-3487; MESITA-4065): the card it charges
-          is named above it (MESITA-4150: the only place it is named), so nobody
-          pays with a card they cannot see;
-          purple, Stripe's colour (Pato: "maybe the stripe button purple"). */}
-      {/* NO DEAD BUTTON (MESITA-4221, Pato: "remove the select offer button
-          and just clickable"): the row is the tap; the foot rises only once an
-          offer is picked. A tap picks, never pays: Pay still confirms. */}
-      {items.length > 0 ? (
-      <div className="bg-card border-border sticky bottom-0 -mx-4 mt-auto -mb-4 border-t px-4 py-3" data-promos="checkout">
-        {payCard && items.length > 0 ? (
-          <p className="text-muted-foreground mb-2 flex items-center justify-between text-sm" data-pay-card-line>
-            <span className="text-foreground truncate font-medium">
-              {payCard.label} •••• {payCard.last4}
-            </span>
-            {usableCards.length > 1 ? (
-              <button
-                type="button"
-                disabled={buying}
-                className="text-foreground shrink-0 font-semibold underline underline-offset-2 disabled:opacity-50"
-                onClick={nextCard}
-              >
-                Change
-              </button>
-            ) : null}
-          </p>
-        ) : null}
-        {payCards?.state === "error" && items.length > 0 ? (
-          <p className="text-muted-foreground mb-2 flex items-center justify-between text-sm" role="alert">
-            <span className="text-foreground">Couldn&apos;t load your cards</span>
-            <button
-              type="button"
-              className="text-foreground shrink-0 font-semibold underline underline-offset-2"
-              onClick={actions?.onRetryPayCards}
-            >
-              Retry
-            </button>
-          </p>
-        ) : null}
-        <button
-          type="button"
-          onClick={footAction}
-          disabled={footDisabled}
-          aria-label={footLabel}
-          className="flex h-12 w-full items-center justify-center rounded-xl bg-[#635BFF] text-base font-semibold text-white hover:opacity-90 disabled:bg-muted disabled:text-muted-foreground"
-          data-voucher-buy={items.length > 0 ? items.map((i) => (i.qty > 1 ? `${i.voucher}x${i.qty}` : i.voucher)).join(",") : undefined}
-        >
-          {footText}
-        </button>
-      </div>
-      ) : null}
+      {sheet}
     </div>
   );
 }
-
