@@ -25,8 +25,9 @@ import { type Method, MethodSheet } from "./MethodSheet";
 import { useStoryNow } from "./use-story-now";
 import { storyBonusOpen, storyLine } from "@/lib/story-lines";
 import { SentLinks } from "./SendCredit";
-import { Panel } from "@/components/shared/Panel";
+import { Panel, PanelHeading } from "@/components/shared/Panel";
 import { WalletPanelList } from "./WalletLists";
+import { TicketsBoard, type TicketTab } from "@/components/consumer/activity/MeLists";
 import { DOOR_GLYPH, DOOR_QUIET, PRIMARY, SECONDARY } from "./wallet-buttons";
 import { offerHref } from "@/components/consumer/offer-button";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
@@ -59,11 +60,10 @@ const PLACE_TILE = cn(DOOR_QUIET, "bg-muted text-foreground hover:bg-border hove
 //   (Confirming a payment…)  only while the server is still confirming one
 //   Vouchers to activate  Story vouchers waiting for staff, only when any
 //                         (MESITA-4116)
-//   Transactions          ONE list: (until MESITA-4116 Story vouchers waiting for staff, "Not
-//                         activated · show the QR to staff"), then purchases
-//                         not Available yet, soonest first ("Pending ·
-//                         available in 25 min"), then every settled in and
-//                         out, newest first; 10 settled rows, then Show all
+//   Pending               purchases not Available yet, soonest first
+//                         ("Pending · available in 25 min"), only when any
+//   Tickets               this place's Tickets, Me › Tickets' pills and rows
+//                         (MESITA-4279; a "Transactions" ledger before)
 //   Waiting for a friend  links nobody took yet
 //   Remove from Wallet    one quiet link, last
 //
@@ -102,8 +102,6 @@ const PLACE_TILE = cn(DOOR_QUIET, "bg-muted text-foreground hover:bg-border hove
 const TICK_MS = 30_000;
 /** The server turns an entry Available on its own clock: ask a little after. */
 const REREAD_SLACK_MS = 5_000;
-/** Settled rows before "Show all". */
-const HISTORY_FIRST = 10;
 const ROW = "flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left";
 
 /** A waiting purchase's grey line: its own time. */
@@ -198,7 +196,7 @@ export function PlacePhotoMark({ photo, name }: { photo: string | null; name: st
   );
 }
 
-/** The page loading: the card's panel, then the Transactions panel. */
+/** The page loading: the card's panel, then the Tickets list. */
 export function HouseCardSkeleton() {
   return (
     <div className="flex flex-col" aria-hidden>
@@ -251,11 +249,11 @@ export function PlaceCredit({
   const gone = balance !== null && balance.place === null;
   const held = balance !== null && balance.spendable_cents < balance.available_cents;
   const entries = balance?.entries;
-  const { pending, history } = splitEntries(entries ?? []);
+  const { pending } = splitEntries(entries ?? []);
   const counting = pending.some((g) => g.available_at);
   const [now, setNow] = useState(() => Date.now());
   const storyNow = useStoryNow(stories);
-  const [allHistory, setAllHistory] = useState(false);
+  const [ticketKind, setTicketKind] = useState<TicketTab>("visits");
 
   useEffect(() => {
     if (!counting) return;
@@ -300,13 +298,11 @@ export function PlaceCredit({
   // A card with a Story voucher waiting is never removable from here.
   const removable = onRemove !== undefined && stories.length === 0 && canRemoveHouseCard(balance);
   const pendingKeys = groupKeys(pending);
-  const shownHistory = allHistory ? history : history.slice(0, HISTORY_FIRST);
-  const historyKeys = groupKeys(shownHistory);
   return (
     <>
       {/* EACH SECTION A PANEL (Pato, 2026-11-15, MESITA-4064: "each section
           in body must be in a box or something for more clarity. make a
-          cleaner UI"): the card and what it can do, Transactions, Waiting
+          cleaner UI"): the card and what it can do, Tickets, Waiting
           for a friend, each one Panel (MESITA-4063's, shared since MESITA-4071), 16px apart. */}
       <Panel className="mt-4 p-4" data-house-card-panel>
       {/* THE MINI HOUSE CARD (MESITA-3802, Pato: "instead of that ugly pink
@@ -412,7 +408,7 @@ export function PlaceCredit({
 
       {/* VOUCHERS TO ACTIVATE (MESITA-4116, Pato: "also add a list of
           vouchers pending to activate if it's the case"): Story vouchers
-          waiting for staff get their own panel over Transactions, only when
+          waiting for staff get their own panel over Tickets, only when
           there are any. */}
       {stories.length > 0 ? (
         <WalletPanelList title="Story vouchers">
@@ -422,31 +418,28 @@ export function PlaceCredit({
         </WalletPanelList>
       ) : null}
 
-      <WalletPanelList
-        title="Transactions"
-        fallback={
-          <p className="text-muted-foreground text-sm" data-house-card-history-empty>
-            No transactions yet
-          </p>
-        }
-      >
-        {pending.map((g, i) => (
-          <EntryRow key={`w-${pendingKeys[i]}`} group={g} placeId={row.placeId} currency={card.currency} now={now} waiting />
-        ))}
-        {shownHistory.map((g, i) => (
-          <EntryRow key={historyKeys[i]} group={g} placeId={row.placeId} currency={card.currency} now={now} waiting={false} />
-        ))}
-        {!allHistory && history.length > HISTORY_FIRST ? (
-          <button
-            type="button"
-            onClick={() => setAllHistory(true)}
-            className="text-muted-foreground hover:bg-muted/60 flex min-h-12 w-full items-center justify-center px-4 py-3 text-sm font-semibold transition"
-            data-house-card-history-all
-          >
-            Show all
-          </button>
-        ) : null}
-      </WalletPanelList>
+      {/* MONEY ON ITS WAY (MESITA-4279): the pending lines, each with its
+          countdown, stay in their own panel while there are any. */}
+      {pending.length > 0 ? (
+        <WalletPanelList title="Pending">
+          {pending.map((g, i) => (
+            <EntryRow key={`w-${pendingKeys[i]}`} group={g} placeId={row.placeId} currency={card.currency} now={now} waiting />
+          ))}
+        </WalletPanelList>
+      ) : null}
+
+      {/* THIS PLACE'S TICKETS (MESITA-4279, Pato: "a scoped version of the
+          notifications+tickets page but for that place"; option A of the
+          board): Me › Tickets' pills and rows filtered to this place, one
+          row per thing done here (a voucher with its bonus, a gift with its
+          taking back). It was "Transactions", one ledger line per row
+          (MESITA-4116). Notifications stay at Me. */}
+      <section className="mt-6" data-house-card-tickets>
+        <div className="mb-3 px-1">
+          <PanelHeading>Tickets</PanelHeading>
+        </div>
+        <TicketsBoard kind={ticketKind} onPick={setTicketKind} placeId={row.placeId} flush={false} />
+      </section>
 
       <SentLinks links={sentLinks} currency={card.currency} onChanged={changed} />
 

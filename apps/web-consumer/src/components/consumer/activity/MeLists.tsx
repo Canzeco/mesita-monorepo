@@ -218,7 +218,7 @@ const EMPTY: Record<
 /** Tickets' tabs (MESITA-3893, Pato: "remove all. just Visits. Vouchers.
  *  Gifts"). REFUNDS IS ITS OWN TAB AGAIN (MESITA-3949, Pato: "add Refunds
  *  here ... Refunds is important in tickets"), last. */
-type TicketTab = "visits" | "vouchers" | "gifts" | "refunds";
+export type TicketTab = "visits" | "vouchers" | "gifts" | "refunds";
 // AN ICON ON EACH (MESITA-3900, Pato: "add icons to the top menu here"):
 // the ones the page's empty states already wear. Gifts became Gifts-In and
 // Gifts-Out (MESITA-3941), hyphenated (MESITA-3949, Pato: "use \"-\""), and
@@ -364,6 +364,38 @@ export function TicketsPage() {
   // kind page turns unknown names away.
   const pathname = usePathname() ?? CONSUMER_ROUTES.mePages.tickets;
   const kind = ticketTabOf(pathname.split("/")[3]);
+  // A tab tap rewrites the address in place: no navigation, so no loading
+  // frame between tabs; Next keeps usePathname in step (MESITA-3811).
+  const pick = (k: TicketTab) =>
+    window.history.replaceState(
+      null,
+      "",
+      k === "visits" ? ticketsHref() : ticketsHref(k),
+    );
+  return (
+    <MeScreen title="Tickets">
+      <TicketsBoard kind={kind} onPick={pick} />
+    </MeScreen>
+  );
+}
+
+/** ONE PLACE'S TICKETS (MESITA-4279, Pato over the Loyalty Card page:
+ *  "a scoped version of the notifications+tickets page but for that place";
+ *  option A): Me › Tickets' pills and rows, read the same way, with every
+ *  source filtered to `placeId` when one is given. The caller owns the
+ *  chosen kind: Me › Tickets keeps it in the address, the card page in
+ *  local state. `flush` runs the pills to MeScreen's edges. */
+export function TicketsBoard({
+  kind,
+  onPick,
+  placeId = null,
+  flush = true,
+}: {
+  kind: TicketTab;
+  onPick: (k: TicketTab) => void;
+  placeId?: string | null;
+  flush?: boolean;
+}) {
   const getSupabase = useLazyBrowserSupabase();
 
   // The keys Activity used, so CreditEntry's read stays shared.
@@ -378,11 +410,31 @@ export function TicketsPage() {
     if (wallet.error) reportError("me tickets wallet failed", wallet.error);
   }, [visits.error, wallet.error]);
 
+  // The place's slice of each read (MESITA-4279); everything when no place.
+  const walletData = useMemo<Wallet | null>(() => {
+    const w = wallet.data;
+    if (!w || !placeId) return w ?? null;
+    return {
+      ...w,
+      balances: w.balances.filter((b) => b.place_id === placeId),
+      gifts: (w.gifts ?? []).filter((g) => g.place_id === placeId),
+    };
+  }, [wallet.data, placeId]);
+  const visitList = useMemo(
+    () =>
+      visits.data
+        ? placeId
+          ? visits.data.visits.filter((v) => v.place.id === placeId)
+          : visits.data.visits
+        : null,
+    [visits.data, placeId],
+  );
+
   const byKind = useMemo(() => {
     const visitIds = new Set(
-      (visits.data?.visits ?? []).flatMap((v) => v.part_payment_ids),
+      (visitList ?? []).flatMap((v) => v.part_payment_ids),
     );
-    const moneyRows = wallet.data ? walletRows(wallet.data) : null;
+    const moneyRows = walletData ? walletRows(walletData) : null;
     const payments = moneyRows
       ? moneyRows.filter((r) => r.type === "visits")
       : [];
@@ -396,9 +448,9 @@ export function TicketsPage() {
     return {
       // One meal, one ticket: a payment that paid a tab is written on its
       // Visit; every other payment is a ticket of its own beside them.
-      visits: visits.data
+      visits: visitList
         ? [
-            ...visitRows(visits.data.visits, facts),
+            ...visitRows(visitList, facts),
             ...payments.filter(
               (r) => !(r.paymentId && visitIds.has(r.paymentId)),
             ),
@@ -407,7 +459,7 @@ export function TicketsPage() {
       vouchers: of("vouchers"),
       refunds: of("refunds"),
     } satisfies Record<Exclude<TicketTab, "gifts">, Row[] | null>;
-  }, [visits.data, wallet.data]);
+  }, [visitList, walletData]);
 
   const walletReady = !wallet.loading;
   // Visits waits for the wallet too, so its payments never pop in late.
@@ -431,37 +483,26 @@ export function TicketsPage() {
       ? "Couldn't load your payments. Visits shows your tables only."
       : null;
 
-  // A tab tap rewrites the address in place: no navigation, so no loading
-  // frame between tabs; Next keeps usePathname in step (MESITA-3811).
-  const pick = (k: TicketTab) =>
-    window.history.replaceState(
-      null,
-      "",
-      k === "visits" ? ticketsHref() : ticketsHref(k),
-    );
-
   // A SCROLLING ROW OF ICON PILLS (MESITA-3993, Pato: "make a horizontal
   // scroll menu with icons"; option A of the board): Reservations' blue
   // strip (MESITA-3893) squeezed five tabs into a phone. No counts, no intro.
   return (
-    <MeScreen title="Tickets">
-      <div className="flex flex-col gap-4">
-        <TicketPills on={kind} onPick={pick} />
-        {kind === "gifts" && ready && !failed && wallet.data ? (
-          <GiftTickets gifts={wallet.data.gifts ?? []} />
-        ) : (
-          <TicketList
-            type={kind}
-            rows={kind === "gifts" ? null : byKind[kind]}
-            ready={ready}
-            failed={failed}
-            retry={retry}
-            note={note}
-            foot={foot}
-          />
-        )}
-      </div>
-    </MeScreen>
+    <div className="flex flex-col gap-4">
+      <TicketPills on={kind} onPick={onPick} flush={flush} />
+      {kind === "gifts" && ready && !failed && walletData ? (
+        <GiftTickets gifts={walletData.gifts ?? []} />
+      ) : (
+        <TicketList
+          type={kind}
+          rows={kind === "gifts" ? null : byKind[kind]}
+          ready={ready}
+          failed={failed}
+          retry={retry}
+          note={note}
+          foot={foot}
+        />
+      )}
+    </div>
   );
 }
 
@@ -640,9 +681,12 @@ function SubpageTabs<K extends string>({
 function TicketPills({
   on,
   onPick,
+  flush = true,
 }: {
   on: TicketTab | null;
   onPick?: (k: TicketTab) => void;
+  /** Runs to MeScreen's edges; false inside a card page's column. */
+  flush?: boolean;
 }) {
   const rail = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -653,7 +697,10 @@ function TicketPills({
     <nav
       ref={rail}
       aria-label="Kinds of ticket"
-      className="scrollbar-hide border-border -mx-5 flex shrink-0 scroll-px-5 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain border-b px-5 pb-4"
+      className={cn(
+        "scrollbar-hide border-border flex shrink-0 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain border-b pb-4",
+        flush && "-mx-5 scroll-px-5 px-5",
+      )}
       data-ticket-pills
     >
       {TICKET_TABS.map((t) => {
