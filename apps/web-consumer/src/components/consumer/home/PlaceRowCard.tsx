@@ -12,7 +12,7 @@ import {
 } from "@/lib/place-placeholder";
 import { cn } from "@/lib/utils";
 import { CardActions } from "@/components/consumer/place-card";
-import { OfferChips, offerChips } from "@/components/consumer/offer-button";
+import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsRun } from "./place-facts";
 
@@ -60,7 +60,7 @@ export function PlaceRowCard({
   const photo = cardPhoto(place);
   const placeholder = placePlaceholder(place);
   const google = isGoogleOnlyPlace(place);
-  const chips = google ? [] : offerChips(place);
+  const slides = google ? [] : offerSlides(place);
 
   const open = (children: ReactNode, className: string, label?: string) =>
     google ? (
@@ -155,9 +155,9 @@ export function PlaceRowCard({
             taps between chips through to the name's stretched link (the dead
             spot MESITA-3797 removed); only the chips and Save · Share catch them. */}
         <div className="pointer-events-none relative z-10 mt-auto flex flex-col gap-2">
-          {/* EVERY OFFER AS A CHIP (MESITA-4207): nothing when the
-              place sells none here (design review 2A). */}
-          <OfferChips href={placeHref(place.slug || place.id)} name={place.name} chips={chips} />
+          {/* ONE SWITCHING BOX (MESITA-4219): every offer, moving; nothing
+              when the place sells none here. Chips in MESITA-4207. */}
+          <OfferButton href={placeHref(place.slug || place.id)} name={place.name} slides={slides} />
           <div className="pointer-events-auto">
           <CardActions
             name={place.name}

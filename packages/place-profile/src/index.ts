@@ -31,13 +31,11 @@ export {
 export {
   OFFER_BEAT_MS,
   OfferTrack,
-  offerChips,
   offerSlides,
   offersLabel,
   useOfferBeat,
   useOfferSlide,
   useReducedMotion,
-  type OfferChip,
   type OfferInput,
   type OfferSlide,
 } from "./components/place-detail/offer-slides";
