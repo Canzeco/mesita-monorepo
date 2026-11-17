@@ -1,5 +1,5 @@
-// The House Card's rows (MESITA-3750): one row per purchase, the right sum,
-// and never a merged bill or a refunded purchase shown as money on its way.
+// The House Card's rows (MESITA-3750, two per voucher since MESITA-4257):
+// the server's amounts, never a merged bill or a refunded purchase shown as money on its way.
 import { describe, expect, it } from "vitest";
 import { entryLabel, type WalletEntry } from "@/lib/api/wallet";
 import { groupEntries, groupKeys, splitEntries } from "@/lib/wallet-entries";
@@ -17,55 +17,25 @@ const e = (x: Partial<WalletEntry> & Pick<WalletEntry, "kind" | "amount_cents">)
 });
 
 describe("groupEntries", () => {
-  it("folds a voucher's bonus into one row with the summed amount", () => {
+  // MESITA-4257: a voucher and its bonus are two rows, every amount the server's.
+  it("keeps a voucher and its bonus as two rows, the bonus right above it", () => {
     const rows = groupEntries([
-      e({ kind: "voucher", amount_cents: 10_000, purchase_id: "p1", pending: true, available_at: LANDS }),
-      e({ kind: "bonus", amount_cents: 2_000, purchase_id: "p1", pending: true, available_at: LANDS }),
+      e({ kind: "voucher", amount_cents: 10_000, purchase_id: "p1" }),
+      e({ kind: "bonus", amount_cents: 2_000, purchase_id: "p1" }),
     ]);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ kind: "voucher", amount_cents: 12_000, bonus_cents: 2_000 });
+    expect(rows.map((r) => [r.kind, r.amount_cents])).toEqual([["bonus", 2_000], ["voucher", 10_000]]);
   });
 
-  it("folds a prepay's bonus too, and a bonus listed before its purchase", () => {
+  it("pairs a bonus with its own purchase wherever the read put it", () => {
     const rows = groupEntries([
-      e({ kind: "bonus", amount_cents: 500, purchase_id: "p2" }),
-      e({ kind: "prepay", amount_cents: 5_000, purchase_id: "p2" }),
-    ]);
-    expect(rows).toEqual([expect.objectContaining({ kind: "prepay", amount_cents: 5_500, bonus_cents: 500 })]);
-  });
-
-  it("joins by purchase_id even when the times differ", () => {
-    const rows = groupEntries([
-      e({ kind: "voucher", amount_cents: 10_000, purchase_id: "p3", at: AT }),
-      e({ kind: "bonus", amount_cents: 1_000, purchase_id: "p3", at: "2026-11-11T18:00:01.000Z" }),
-    ]);
-    expect(rows.map((r) => r.amount_cents)).toEqual([11_000]);
-  });
-
-  it("falls back to the same at and available_at without a purchase_id", () => {
-    const rows = groupEntries([
-      e({ kind: "voucher", amount_cents: 10_000, pending: true, available_at: LANDS }),
-      e({ kind: "bonus", amount_cents: 1_000, pending: true, available_at: LANDS }),
-    ]);
-    expect(rows.map((r) => r.amount_cents)).toEqual([11_000]);
-  });
-
-  it("keeps two purchases apart even with equal amounts", () => {
-    const rows = groupEntries([
+      e({ kind: "bonus", amount_cents: 1_000, purchase_id: "b", at: "2026-11-11T18:00:00.000Z" }),
       e({ kind: "voucher", amount_cents: 10_000, purchase_id: "a", at: "2026-11-11T18:20:00.000Z" }),
       e({ kind: "bonus", amount_cents: 1_000, purchase_id: "a", at: "2026-11-11T18:20:00.000Z" }),
       e({ kind: "voucher", amount_cents: 10_000, purchase_id: "b", at: "2026-11-11T18:00:00.000Z" }),
-      e({ kind: "bonus", amount_cents: 1_000, purchase_id: "b", at: "2026-11-11T18:00:00.000Z" }),
     ]);
-    expect(rows.map((r) => [r.purchase_id, r.amount_cents])).toEqual([["a", 11_000], ["b", 11_000]]);
-  });
-
-  it("never merges a pending entry with a settled one", () => {
-    const rows = groupEntries([
-      e({ kind: "voucher", amount_cents: 10_000, purchase_id: "p", pending: true, available_at: LANDS }),
-      e({ kind: "bonus", amount_cents: 1_000, purchase_id: "p", pending: false }),
+    expect(rows.map((r) => [r.kind, r.purchase_id])).toEqual([
+      ["bonus", "a"], ["voucher", "a"], ["bonus", "b"], ["voucher", "b"],
     ]);
-    expect(rows).toHaveLength(2);
   });
 
   it("keeps a settled spend and its extra credit as two rows, and the spend's payment", () => {
@@ -100,7 +70,24 @@ describe("splitEntries", () => {
     expect(history.map((r) => r.kind)).toEqual(["spend", "extra"]);
   });
 
-  it("moves a purchase refunded before it landed to History, one row, not pending", () => {
+  it("lists a bonus that lands later as its own pending row, after its purchase", () => {
+    const { pending, history } = splitEntries([
+      e({ kind: "bonus", amount_cents: 2_000, purchase_id: "p", pending: true, available_at: "2026-11-11T20:00:00.000Z" }),
+      e({ kind: "voucher", amount_cents: 10_000, purchase_id: "p", pending: false }),
+    ]);
+    expect(history.map((r) => r.kind)).toEqual(["voucher"]);
+    expect(pending.map((r) => [r.kind, r.amount_cents])).toEqual([["bonus", 2_000]]);
+  });
+
+  it("puts a purchase before its bonus when both land at the same time", () => {
+    const { pending } = splitEntries([
+      e({ kind: "bonus", amount_cents: 2_000, purchase_id: "p", pending: true, available_at: LANDS }),
+      e({ kind: "voucher", amount_cents: 10_000, purchase_id: "p", pending: true, available_at: LANDS }),
+    ]);
+    expect(pending.map((r) => r.kind)).toEqual(["voucher", "bonus"]);
+  });
+
+  it("moves both rows of a purchase refunded before it landed to History, not pending", () => {
     const { pending, history } = splitEntries([
       e({ kind: "reversal", amount_cents: -12_000, purchase_id: "r", at: "2026-11-11T18:30:00.000Z" }),
       e({ kind: "voucher", amount_cents: 10_000, purchase_id: "r", pending: true, available_at: LANDS }),
@@ -109,7 +96,8 @@ describe("splitEntries", () => {
     expect(pending).toEqual([]);
     expect(history.map((r) => [r.kind, r.amount_cents, r.refunded ?? false])).toEqual([
       ["reversal", -12_000, false],
-      ["voucher", 12_000, true],
+      ["bonus", 2_000, true],
+      ["voucher", 10_000, true],
     ]);
   });
 });
