@@ -68,7 +68,10 @@ export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
 // 50%. Prepay led with "+N%" before.
 const OFFER_SLIDES: OfferSlide[] = [
   // The best standard voucher on sale (offerSlides picks it).
-  { key: "prepay", lead: "Classic", pill: "", short: "Classic", spoken: "Classic", section: "prepayment", tone: GREEN },
+  // "Prepay" on the previews since MESITA-4255 (Pato: "instead of classic use
+  // the word prepay. its just clearer"); the Offers page keeps its "Classic
+  // Offers" and "Special Offers" panels.
+  { key: "prepay", lead: "Prepay", pill: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
   { key: "voucher_welcome", lead: "Welcome", pill: "+100% Bonus", short: "Welcome", spoken: "Welcome, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_welcome, bonus: 100, voucher: "voucher_welcome" },
   // Story +50% since MESITA-4207 (pay $100, get $150); +30% before.
   { key: "voucher_story", lead: "Story", pill: "+50% Bonus", short: "Story", spoken: "Story, 50% bonus", section: "special", tone: VOUCHER_TONE.voucher_story, bonus: 50, voucher: "voucher_story" },
@@ -91,7 +94,7 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
   const top = standard.reduce<[string, number] | null>((a, b) => (a && a[1] >= b[1] ? a : b), null);
   return OFFER_SLIDES.flatMap((s): OfferSlide[] => {
     if (s.key === "prepay")
-      return top ? [{ ...s, pill: `+${top[1]}% Bonus`, spoken: `Classic, ${top[1]}% bonus`, bonus: top[1], voucher: top[0] }] : [];
+      return top ? [{ ...s, pill: `+${top[1]}% Bonus`, spoken: `Prepay, ${top[1]}% bonus`, bonus: top[1], voucher: top[0] }] : [];
     return sell.has(s.key) ? [s] : [];
   });
 }
@@ -102,7 +105,7 @@ export function offersLabel(name: string, slides: OfferSlide[]): string {
 }
 
 /** THE PLACE SCREEN ROW'S OFFER WORDS (Pato, MESITA-4184): the same slides
- *  as Home since MESITA-4219, Classic first, "N% Bonus". */
+ *  as Home since MESITA-4219, Prepay first, "N% Bonus". */
 export function rowOfferSlides(offers: OfferInput | null | undefined): OfferSlide[] {
   return offerSlides(offers);
 }
