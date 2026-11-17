@@ -498,6 +498,9 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
   // paused (Pato, MESITA-3342: "must be buyable or whatever").
   const buyable = (k: MoneyVoucherKey) => {
     if (guestLock(k)) return false;
+    // A parked voucher (NOT_YET_SELLABLE, VIP today) is shown but stays
+    // locked even in test mode; the server refuses the buy (MESITA-4220).
+    if (NOT_YET_SELLABLE[k]) return false;
     const reason = unavailable[k];
     return reason === undefined || (!dim && reason !== "used" && reason !== "paused" && reason !== "needs_visit");
   };
@@ -550,13 +553,13 @@ const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<M
   },
 ];
 
-/** The vouchers a guest is shown: every product but the parked ones
- *  (MESITA-3831: Story is off sale and
- *  off the page, money-state's NOT_YET_SELLABLE). */
+/** The vouchers a guest is shown: EVERY ONE, LOCKED OR NOT (Pato,
+ *  2026-11-17, MESITA-4220: "DISPLAY VIP EVEN IF BLOCKED"). A voucher not on
+ *  sale yet (money-state's VIP today) is a locked row, never
+ *  a missing one; it was dropped from the page from MESITA-3831. */
 function listedProducts(): Product[] {
-  // Welcome, VIP, Small, Medium, Big (MESITA-4154: the specials lead);
-  // Welcome · sizes · VIP from MESITA-4056.
-  return [...SPECIAL, ...STANDARD].filter((p) => !NOT_YET_SELLABLE[p.key]);
+  // Welcome, Story, VIP, Small, Medium, Big (MESITA-4154: the specials lead).
+  return [...SPECIAL, ...STANDARD];
 }
 
 /** The vouchers in the Offers page's order, Welcome · VIP · Small · Medium · Big (MESITA-4154)
