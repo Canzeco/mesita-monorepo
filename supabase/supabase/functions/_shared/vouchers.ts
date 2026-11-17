@@ -18,7 +18,15 @@ import { readInstagramSyncState, readVipStanding } from "./consumer-doc.ts";
 import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount, VISIT_STATUSES } from "./visits.ts";
 
-export type PlaceBalance = { available_cents: number; pending_cents: number; held_cents: number; spendable_cents: number };
+export type PlaceBalance = {
+  available_cents: number;
+  pending_cents: number;
+  held_cents: number;
+  spendable_cents: number;
+  /** When the next pending credit turns spendable (MESITA-4224: the Offers
+   *  page's "Pending $X · ready 6:40 pm"); null with nothing pending. */
+  next_ready_at: string | null;
+};
 
 /** One catalog line as the client shows it: the price, the bonus, and the
  *  credit the guest ends up with (the sum, so no client adds). */
@@ -159,8 +167,16 @@ export async function readPlaceBalance(
     p_livemode: livemode,
   });
   if (error) throw new Error(`wallet_balance: ${error.message}`);
-  const row = (Array.isArray(data) ? data[0] : data) as PlaceBalance | null | undefined;
-  return row ?? { available_cents: 0, pending_cents: 0, held_cents: 0, spendable_cents: 0 };
+  const row = (Array.isArray(data) ? data[0] : data) as Omit<PlaceBalance, "next_ready_at"> | null | undefined;
+  const sums = row ?? { available_cents: 0, pending_cents: 0, held_cents: 0, spendable_cents: 0 };
+  // Only a guest with pending credit pays the second read (MESITA-4224).
+  if (sums.pending_cents <= 0) return { ...sums, next_ready_at: null };
+  const { data: next, error: nextError } = await admin.from("wallet_entries").select("available_at")
+    .eq("consumer_id", consumerId).eq("place_id", placeId).eq("currency", currency).eq("livemode", livemode)
+    .gt("available_at", new Date().toISOString()).order("available_at", { ascending: true }).limit(1);
+  if (nextError) throw new Error(`wallet_entries: ${nextError.message}`);
+  const at = (next ?? [])[0] as { available_at: string | null } | undefined;
+  return { ...sums, next_ready_at: at?.available_at ?? null };
 }
 
 /** Welcome is once per guest per place, at any visit (MESITA-3854, Pato: "if

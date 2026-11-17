@@ -25,6 +25,9 @@ export type PlaceBalance = {
   pending_cents: number;
   held_cents: number;
   spendable_cents: number;
+  /** When the next pending credit turns spendable (MESITA-4224); null with
+   *  nothing pending, absent on an older read. */
+  next_ready_at?: string | null;
 };
 
 export type PlaceMoney = {
