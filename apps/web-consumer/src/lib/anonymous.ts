@@ -21,6 +21,7 @@
 
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { withNext } from "@/lib/auth-redirect";
+import { signActionFromNext, type SignAction } from "@/lib/sign-intent";
 
 export type Viewer = "anonymous" | "member" | "unknown";
 
@@ -117,7 +118,9 @@ export function anonymousGate(
   if (v === "member") return { kind: "pass" };
   if (OPEN.has(fn)) return { kind: "pass" };
   const isSave =
-    fn === "consumer-web-track-activity" && body.kind === "saved" && body.on !== false;
+    fn === "consumer-web-track-activity" &&
+    body.kind === "saved" &&
+    body.on !== false;
   // A session whose profile read failed (`unknown`) still reads and acts;
   // only its tracking stays quiet (MESITA-4246, E7).
   if (v === "unknown") {
@@ -125,13 +128,18 @@ export function anonymousGate(
       fn === "consumer-web-track-event" ||
       fn === "consumer-web-track-place-share" ||
       (fn === "consumer-web-track-activity" && !isSave);
-    return tracking ? { kind: "quiet", answer: QUIET_ANSWER[fn] ?? {} } : { kind: "pass" };
+    return tracking
+      ? { kind: "quiet", answer: QUIET_ANSWER[fn] ?? {} }
+      : { kind: "pass" };
   }
   if (fn === "consumer-web-track-activity") {
     // A view is tracking; a save is the visitor's own act.
     if (isSave) {
       const placeId = typeof body.place_id === "string" ? body.place_id : "";
-      return { kind: "sign", intent: placeId ? { kind: "save", placeId } : null };
+      return {
+        kind: "sign",
+        intent: placeId ? { kind: "save", placeId } : null,
+      };
     }
     return { kind: "quiet", answer: { kind: body.kind, on: false } };
   }
@@ -145,7 +153,11 @@ const INTENT_KEY = "mesita.signIntent";
 /** The pending action, kept for the tab across Sign (sessionStorage). */
 export function saveSignIntent(intent: SignIntent | null): void {
   try {
-    if (intent) sessionStorage.setItem(INTENT_KEY, JSON.stringify({ ...intent, at: Date.now() }));
+    if (intent)
+      sessionStorage.setItem(
+        INTENT_KEY,
+        JSON.stringify({ ...intent, at: Date.now() }),
+      );
     else sessionStorage.removeItem(INTENT_KEY);
   } catch {
     // Private mode: the visitor signs in and taps Save again.
@@ -159,9 +171,15 @@ export function takeSignIntent(): SignIntent | null {
     const raw = sessionStorage.getItem(INTENT_KEY);
     sessionStorage.removeItem(INTENT_KEY);
     if (!raw) return null;
-    const v = JSON.parse(raw) as { kind?: unknown; placeId?: unknown; at?: unknown };
-    if (typeof v.at !== "number" || Date.now() - v.at > 30 * 60_000) return null;
-    if (v.kind === "save" && typeof v.placeId === "string") return { kind: "save", placeId: v.placeId };
+    const v = JSON.parse(raw) as {
+      kind?: unknown;
+      placeId?: unknown;
+      at?: unknown;
+    };
+    if (typeof v.at !== "number" || Date.now() - v.at > 30 * 60_000)
+      return null;
+    if (v.kind === "save" && typeof v.placeId === "string")
+      return { kind: "save", placeId: v.placeId };
     return null;
   } catch {
     return null;
@@ -173,10 +191,62 @@ export function signHref(next: string): string {
   return withNext(CONSUMER_ROUTES.sign, next);
 }
 
-/** Send the visitor to Sign from wherever they stand (browser only). */
+// ASK BEFORE SENDING (Pato, 2026-11-17, MESITA-4288: "likes or reservations
+// or offers require sign and display the modal before aggressively
+// redirecting"): a gated tap no longer jumps to Sign. It opens SignGateModal,
+// which says why ("Sign in to save places") and offers Continue with phone
+// or Not now. Only Continue keeps the intent and goes to Sign.
+
+/** Why the modal is up: a save, or what the target path is for. */
+export type SignGateReason = "save" | SignAction;
+
+/** One pending ask: where Sign returns to, and the action it finishes. */
+export type SignGate = {
+  next: string;
+  intent: SignIntent | null;
+  reason: SignGateReason;
+};
+
+let gate: SignGate | null = null;
+const gateListeners = new Set<() => void>();
+
+function setGate(g: SignGate | null): void {
+  gate = g;
+  for (const l of gateListeners) l();
+}
+
+export function subscribeSignGate(l: () => void): () => void {
+  gateListeners.add(l);
+  return () => gateListeners.delete(l);
+}
+
+export function currentSignGate(): SignGate | null {
+  return gate;
+}
+
+/** Ask the visitor to sign in for `next` (a path in this app). */
+export function openSignGate(next: string, intent: SignIntent | null): void {
+  setGate({
+    next,
+    intent,
+    reason: intent?.kind === "save" ? "save" : signActionFromNext(next),
+  });
+}
+
+export function closeSignGate(): void {
+  setGate(null);
+}
+
+/** Continue with phone: keep the intent for the tab, then go to Sign. */
+export function continueToSign(g: SignGate): void {
+  if (typeof window === "undefined") return;
+  saveSignIntent(g.intent);
+  setGate(null);
+  window.location.assign(signHref(g.next));
+}
+
+/** A gated action where the visitor stands: ask first (browser only). */
 export function requestSignIn(intent: SignIntent | null): void {
   if (typeof window === "undefined") return;
-  saveSignIntent(intent);
-  const here = `${window.location.pathname}${window.location.search}`;
-  window.location.assign(signHref(here));
+  openSignGate(`${window.location.pathname}${window.location.search}`, intent);
 }
