@@ -3,7 +3,7 @@
 import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight, Clock3, Plus, QrCode } from "lucide-react";
 import { PlaceMarks, SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
 import { CardBrandChip } from "@/components/shared/card-brand-marks";
@@ -204,7 +204,7 @@ export function CreditsRow({
   /** Pay's Loyalty Cards (MESITA-4232, D9): the pill shows only what is
    *  ready to spend, $0 included; pending says itself in `pendingLine`. */
   ready?: boolean;
-  /** "$200.00 pending · lands in 3 h", amber, under the name. */
+  /** "$200.00 pending · ready in 3 h": a blue box under the row (MESITA-4260). */
   pendingLine?: string | null;
   /** Its House Card page. Absent on a page that IS this place's (the
    *  Offers page's balance, MESITA-4060): a plain row, no chevron. */
@@ -215,7 +215,7 @@ export function CreditsRow({
 }) {
   const amount = ready ? { cents: Math.max(0, card.available_cents), pending: false } : cardAmount(card);
   const line = creditsLine(gone);
-  const inner = (
+  const body = (
     <>
       <CreditsCardChip photo={card.photo} name={card.name} eager={eager} />
       <span className="min-w-0 flex-1">
@@ -224,22 +224,37 @@ export function CreditsRow({
           <PlaceMarks tier={card.tier} ad={false} />
         </span>
         {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{line}</span> : null}
-        {pendingLine ? (
-          <span className="mt-0.5 block truncate text-sm leading-tight font-medium text-amber-700" data-wallet-pending>
-            {pendingLine}
-          </span>
+        {/* "Ready to spend" (MESITA-4260, Pato: "x amount ready"): the
+            black pill is money you can spend now; green says so. */}
+        {ready && !line ? (
+          <span className="mt-0.5 block truncate text-sm leading-tight font-medium text-emerald-700">Ready to spend</span>
         ) : null}
       </span>
       <CreditsPill>{money(amount.cents, card.currency)}</CreditsPill>
+      {href ? <Chevron /> : null}
     </>
   );
+  // PENDING GETS A BOX (MESITA-4260, Pato: "really important to mention if
+  // money is coming … even if loyalty card space gets bigger"; option A):
+  // under the row, inside the card's tap target, a blue box (blue = on its
+  // way, green = ready) names the pending amount and when it lands. No
+  // pending, no box: the row stays one line.
+  const box = pendingLine ? <PendingBox icon={Clock3}>{pendingLine}</PendingBox> : null;
+  const cls = box ? cn(ROW, "flex-col items-stretch gap-2.5") : ROW;
+  const inner = box ? (
+    <>
+      <span className="flex min-w-0 items-center gap-3.5">{body}</span>
+      {box}
+    </>
+  ) : (
+    body
+  );
   return href ? (
-    <Link href={href} aria-label={walletCardLabel(card)} className={ROW} data-wallet-method="credits">
+    <Link href={href} aria-label={walletCardLabel(card)} className={cls} data-wallet-method="credits">
       {inner}
-      <Chevron />
     </Link>
   ) : (
-    <div role="group" aria-label={walletCardLabel(card)} className={cn(ROW, "hover:bg-transparent")} data-wallet-method="credits">
+    <div role="group" aria-label={walletCardLabel(card)} className={cn(cls, "hover:bg-transparent")} data-wallet-method="credits">
       {inner}
     </div>
   );
@@ -363,22 +378,36 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
       type="button"
       onClick={onOpen}
       aria-label={`Story voucher at ${name}: ${money(story.credit_cents, story.currency)} waiting for activation. Show the QR`}
-      className={ROW}
+      className={cn(ROW, "flex-col items-stretch gap-2.5")}
       data-wallet-story
     >
-      <CreditsCardChip photo={story.place?.photo ?? null} name={name} />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-base leading-tight font-semibold">{name}</span>
-        {/* A waiting Story is its place's pending (MESITA-4232, D13). */}
-        <span className="mt-0.5 block truncate text-sm leading-tight font-medium text-amber-700">
-          Story pending · tap to show the QR
+      <span className="flex min-w-0 items-center gap-3.5">
+        <CreditsCardChip photo={story.place?.photo ?? null} name={name} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-base leading-tight font-semibold">{name}</span>
+          <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">Story reward</span>
         </span>
+        <Chevron />
       </span>
-      <span className="text-muted-foreground shrink-0 text-base font-semibold tabular-nums">
-        +{money(story.credit_cents, story.currency)}
-      </span>
-      <Chevron />
+      {/* A waiting Story is its place's pending (MESITA-4232, D13), in the
+          same blue box as a card's pending (MESITA-4260). */}
+      <PendingBox icon={QrCode}>
+        {money(story.credit_cents, story.currency)} waiting · show the QR to staff
+      </PendingBox>
     </button>
+  );
+}
+
+/** Money on its way (MESITA-4260): a soft blue box under a Loyalty Card. */
+function PendingBox({ icon: Icon, children }: { icon: typeof Clock3; children: ReactNode }) {
+  return (
+    <span
+      className="flex min-w-0 items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-sm leading-tight font-medium text-blue-700 ring-1 ring-blue-200 ring-inset"
+      data-wallet-pending
+    >
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      <span className="min-w-0 truncate">{children}</span>
+    </span>
   );
 }
 

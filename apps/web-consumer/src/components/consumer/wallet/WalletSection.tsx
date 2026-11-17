@@ -145,7 +145,7 @@ function decodeAll(urls: string[], ms: number): Promise<void> {
   return Promise.race([Promise.all(each).then(() => undefined), new Promise<void>((r) => setTimeout(r, ms))]);
 }
 
-/** "$200.00 pending · lands in 3 h" (MESITA-4232, D9): the pending total
+/** "$200.00 pending · ready in 3 h" (MESITA-4232, D9; "ready" since MESITA-4260): the pending total
  *  and when its first entry turns Available; null with nothing pending. */
 function pendingLine(b: WalletBalance, now: number): string | null {
   if (b.pending_cents <= 0) return null;
@@ -157,7 +157,7 @@ function pendingLine(b: WalletBalance, now: number): string | null {
     .sort((x, y) => x - y)[0];
   if (next === undefined) return amount;
   const mins = Math.ceil((next - now) / 60_000);
-  return `${amount} · lands in ${mins < 60 ? `${mins} min` : `${Math.ceil(mins / 60)} h`}`;
+  return `${amount} · ready in ${mins < 60 ? `${mins} min` : `${Math.ceil(mins / 60)} h`}`;
 }
 
 export function WalletSection({
@@ -265,8 +265,9 @@ export function WalletSection({
       </PaymentMethods>
 
       {/* LOYALTY CARDS (MESITA-4232, D9/D10/D13): waiting Stories as their
-          place's pending, then each card with its ready pill and an amber
-          pending line, then Add a Loyalty Card. Empty: one grey line. */}
+          place's pending, then each card with its ready pill, "Ready to
+          spend" and, when money is coming, a blue pending box (MESITA-4260),
+          then Add a Loyalty Card. Empty: one grey line. */}
       <WalletPanelList title="Loyalty Cards">
         {creditsState === "rows"
           ? stories.map((s) => <StoryRow key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)

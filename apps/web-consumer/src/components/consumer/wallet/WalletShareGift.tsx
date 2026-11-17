@@ -1,8 +1,7 @@
-import { CreditCard, Gift, Share2 } from "lucide-react";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { DOOR_GLYPH, DOOR_QUIET, DOOR_ROW } from "./wallet-buttons";
+import { DOOR_EMOJI, DOOR_QUIET, DOOR_ROW } from "./wallet-buttons";
 
 // WALLET'S THREE DOORS (Pato, 2026-11-14, MESITA-3894: "Share Mesita / Send
 // Credits (Gift) / Redeem Credits (the redeem button at the bottom is
@@ -45,7 +44,7 @@ export function WalletShareGift() {
         className={DOOR_QUIET}
         data-wallet-buy
       >
-        <CreditCard className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+        <span className={DOOR_EMOJI} aria-hidden>💳</span>
         Buy Credits
       </PushLink>
       <PushLink
@@ -53,7 +52,7 @@ export function WalletShareGift() {
         className={DOOR_QUIET}
         data-wallet-send
       >
-        <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+        <span className={DOOR_EMOJI} aria-hidden>🎁</span>
         Send Gift
       </PushLink>
       <PushLink
@@ -61,7 +60,7 @@ export function WalletShareGift() {
         className={DOOR_QUIET}
         data-wallet-share
       >
-        <Share2 className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+        <span className={DOOR_EMOJI} aria-hidden>💌</span>
         Share Mesita
       </PushLink>
     </div>
