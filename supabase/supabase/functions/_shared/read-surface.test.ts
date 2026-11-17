@@ -181,7 +181,6 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/reservation-confirm.ts", // lng only, for the on-the-spot confirm's reminder (MESITA-2981)
   "_shared/families-repick.ts", // families, texts and operator marks a family re-pick compares (MESITA-4238)
   "_shared/reservation-call-outcome.ts", // hours, lng, name, photos for a finished call's outcome (MESITA-3618)
-  "_shared/story.ts", // name, instagram_url, timezone, lng for the Story staff page (MESITA-4264)
   "consumer-web-get-wallet/index.ts", // timezone, lng of a Story's place for its bonus time (MESITA-4264)
   "admin-web-search-places/index.ts",
   // The place screen's one read, admin's and the Business app's (MESITA-3103).
