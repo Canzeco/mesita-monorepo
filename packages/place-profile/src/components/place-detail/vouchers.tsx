@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CircleCheck, Clock, CreditCard, Crown, Lock, PartyPopper, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Camera, CircleCheck, Clock, CreditCard, Crown, Lock, PartyPopper, ShoppingBag, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -409,15 +409,45 @@ export function readyClock(iso: string, now = new Date()): string {
  *  friendly and maybe taller explanation ... keep it clean"; D3): now, in 3
  *  hours, anytime after. Each step a bold line and one small line; the bonus
  *  step in green. Four grey bullets from MESITA-4224. */
-type Step = { Icon: LucideIcon; title: string; line: string; green?: boolean };
-function sheetSteps(key: MoneyVoucherKey, pay: string, bonus: string | null): Step[] {
-  return [
-    key === "voucher_story"
-      ? { Icon: Instagram as unknown as LucideIcon, title: `After your story · ${pay} ready`, line: "Post a story at the place tagging it and show it to the staff." }
-      : { Icon: Wallet, title: `Today · ${pay} ready to spend`, line: "You pay, and it's yours right away." },
-    { Icon: Clock, title: `In 3 hours · ${bonus ? `+${bonus}` : "your"} bonus`, line: "It lands in your credit by itself.", green: true },
-    { Icon: Utensils, title: "Spend it here, anytime", line: "On any bill here, all of it or part. It never expires." },
-  ];
+// EACH SPECIAL TELLS ITS OWN STORY (Pato, 2026-11-17, MESITA-4234: "same for
+// all the other vouchers ... actually explain clearly and pretty how they
+// work"; D3): who can get it first, then its own steps. Welcome and VIP four
+// steps, Story five (buy, post, show the staff, bonus). `locked` on the first
+// step is this guest's reason when that step is what stops them.
+type Step = { Icon: LucideIcon; title: string; line: string; green?: boolean; locked?: string };
+const IG = Instagram as unknown as LucideIcon;
+/** VIP is 5,000+ Instagram followers (web-consumer class-words VIP_FOLLOWERS, MESITA-3864). */
+const VIP_FOLLOWERS_LABEL = "5,000+";
+function sheetSteps(key: MoneyVoucherKey, pay: string, bonus: string | null, firstLocked: string | null): Step[] {
+  const today: Step = { Icon: Wallet, title: `Today · ${pay} ready to spend`, line: "You pay, and it's yours right away." };
+  const later: Step = { Icon: Clock, title: `In 3 hours · ${bonus ? `+${bonus}` : "your"} bonus`, line: "It lands in your credit by itself.", green: true };
+  const spend: Step = { Icon: Utensils, title: "Spend it here, anytime", line: "On any bill here, all of it or part. It never expires." };
+  const lock = firstLocked ?? undefined;
+  switch (key) {
+    case "voucher_welcome":
+      return [{ Icon: PartyPopper, title: "Your first visit here", line: "One per place, only before you've ever paid here.", locked: lock }, today, later, spend];
+    case "voucher_vip":
+      return [{ Icon: Crown, title: "Be in Mesita's VIP Class", line: `${VIP_FOLLOWERS_LABEL} Instagram followers. One per visit.`, locked: lock }, today, later, spend];
+    case "voucher_story":
+      return [
+        { Icon: IG, title: `Have ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")}+ Instagram followers`, line: "Your Instagram linked in Me. One per visit.", locked: lock },
+        { Icon: ShoppingBag, title: `Buy it here · pay ${pay}`, line: "It waits for your story." },
+        { Icon: Camera, title: "Post a story at the place", line: "Tag the place on Instagram." },
+        { Icon: BadgeCheck, title: `Show it to the staff · ${pay} ready`, line: "They check it, and your money is ready." },
+        later,
+      ];
+    default:
+      return [today, later, spend];
+  }
+}
+
+/** The first step's lock for this guest, when that step is what stops them. */
+function firstStepLock(key: MoneyVoucherKey, lock: GuestLock, reason: VoucherReason | undefined): string | null {
+  if (key === "voucher_welcome" && reason === "used") return "You already had yours here.";
+  if (key === "voucher_vip" && lock === "vip") return "You're not in the VIP Class yet.";
+  if (key === "voucher_story" && lock === "instagram") return "Link your Instagram to use Story.";
+  if (key === "voucher_story" && lock === "followers") return `Your Instagram needs more than ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`;
+  return null;
 }
 
 /** Who may buy it and how often: a small chip under the sheet's title (D3). */
@@ -448,6 +478,7 @@ function PaySheet({
   bonusAmount,
   can,
   status,
+  stepLock,
   unlock,
   live,
   buying,
@@ -468,6 +499,8 @@ function PaySheet({
   bonusAmount: string | null;
   can: boolean;
   status: InfoStatus;
+  /** This guest's reason, drawn on the first step when that step stops them (MESITA-4234). */
+  stepLock: string | null;
   unlock: { label: string; onClick: () => void } | null;
   live: boolean;
   buying: boolean;
@@ -588,17 +621,22 @@ function PaySheet({
               </div>
             </div>
             <ol className="flex flex-col py-1" aria-label="How it works" data-offer-steps>
-              {sheetSteps(product.key, whole(pay), bonusAmount ? whole(bonusAmount) : null).map((s, i, all) => (
-                <li key={s.title} className="flex gap-3.5">
+              {sheetSteps(product.key, whole(pay), bonusAmount ? whole(bonusAmount) : null, stepLock).map((s, i, all) => (
+                <li key={s.title} className="flex gap-3.5" data-offer-step-locked={s.locked ? "true" : undefined}>
                   {/* The icon column: a round step and the line down to the next. */}
                   <span className="flex flex-col items-center" aria-hidden>
                     <span
                       className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                        "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
                         s.green ? "bg-[#00D66F] text-neutral-950" : "bg-muted text-foreground",
                       )}
                     >
                       <s.Icon className="h-5 w-5" strokeWidth={2.25} />
+                      {s.locked ? (
+                        <span className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-neutral-950 ring-2 ring-white">
+                          <Lock className="h-3 w-3" strokeWidth={2.75} />
+                        </span>
+                      ) : null}
                     </span>
                     {i < all.length - 1 ? <span className="bg-border my-1 w-0.5 flex-1" /> : null}
                   </span>
@@ -607,6 +645,9 @@ function PaySheet({
                       {s.title}
                     </span>
                     <span className="text-muted-foreground text-sm leading-snug">{s.line}</span>
+                    {s.locked ? (
+                      <span className="mt-1 text-sm leading-snug font-semibold text-amber-800">{s.locked}</span>
+                    ) : null}
                   </span>
                 </li>
               ))}
@@ -661,10 +702,14 @@ function PaySheet({
               // LOCKED (MESITA-4224, D4): the reason where Pay goes, and the one
               // action that unlocks it when there is one.
               <div className="flex flex-col gap-3">
-                <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-900" data-offer-status="locked">
-                  <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-                  <span className="text-[15px] leading-snug font-semibold">{status.text}</span>
-                </p>
+                {/* The amber box only when no step already carries the lock
+                    (MESITA-4234): sales paused, not at this place yet. */}
+                {stepLock ? null : (
+                  <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-900" data-offer-status="locked">
+                    <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+                    <span className="text-[15px] leading-snug font-semibold">{status.text}</span>
+                  </p>
+                )}
                 {unlock ? (
                   <button
                     type="button"
@@ -774,6 +819,7 @@ export function VouchersPane({
         bonusAmount={bonusAmount}
         can={can}
         status={offerStatus(p.key, can, lock, unavailable[p.key])}
+        stepLock={can ? null : firstStepLock(p.key, lock, unavailable[p.key])}
         unlock={unlock}
         live={live}
         buying={buying}
