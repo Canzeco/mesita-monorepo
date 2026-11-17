@@ -46,3 +46,30 @@ Deno.test("sending is always on in test mode, and in live only once sending_live
   assert(!sendingOn(moneyConfigFrom({ sending_live: "true" }), true));
   assert(sendingOn(moneyConfigFrom({ sending_live: true }), true));
 });
+
+// MESITA-4229 — a link's public preview shows only an open link of this
+// payments mode, and only its amount and currency: never who sent it, who
+// took it, or any id.
+import { giftPreview, type GiftRow } from "./gift.ts";
+
+const ROW: GiftRow = {
+  id: "00000000-0000-4000-8000-00000000f001",
+  place_id: PLACE,
+  amount_cents: 20000,
+  currency: "mxn",
+  status: "open",
+  livemode: false,
+  sender_id: "00000000-0000-4000-8000-00000000f002",
+  recipient_id: null,
+};
+
+Deno.test("giftPreview: an open link of this mode shows its amount and nothing else", () => {
+  assertEquals(giftPreview(ROW, false), { amount_cents: 20000, currency: "mxn" });
+});
+
+Deno.test("giftPreview: taken, taken back, the other mode and no row all show nothing", () => {
+  assertEquals(giftPreview({ ...ROW, status: "claimed", recipient_id: "00000000-0000-4000-8000-00000000f003" }, false), null);
+  assertEquals(giftPreview({ ...ROW, status: "taken_back" }, false), null);
+  assertEquals(giftPreview(ROW, true), null);
+  assertEquals(giftPreview(null, false), null);
+});

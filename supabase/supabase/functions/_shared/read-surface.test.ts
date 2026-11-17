@@ -260,6 +260,8 @@ const PROFILES_READ_ALLOWLIST = [
   "consumer-web-list-pay-places/index.ts",
   // The Pay QR door (MESITA-3526): one place's name, anon client, for the sign-in title.
   "consumer-web-get-pay-place-name/index.ts",
+  // A gift link before sign-in (MESITA-4229): one place's name, anon client, for the sign-in title.
+  "consumer-web-get-gift-preview/index.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {

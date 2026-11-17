@@ -212,6 +212,12 @@ verify_jwt = false
 [functions.consumer-web-get-pay-place-name]
 verify_jwt = false
 
+# MESITA-4229: a gift link, before sign-in. Sign-in and its link card show an
+# open link's amount and place; the friend has no session yet. Never the
+# sender, the recipient or an id; every other state is one 404 `gone`.
+[functions.consumer-web-get-gift-preview]
+verify_jwt = false
+
 # MESITA-3954: the guest's reservations as an iCal feed. Public: Google,
 # Apple and Outlook fetch it with no session; the token in the URL is the key.
 [functions.consumer-web-get-calendar-feed]
