@@ -15,6 +15,7 @@ import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataG
 import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
 import { Toaster } from "@/components/consumer/Toaster";
 import { PendingSignIntent } from "@/components/consumer/anonymous/PendingSignIntent";
+import { SignGateModal } from "@/components/consumer/anonymous/SignGateModal";
 import { WelcomeModal } from "@/components/consumer/anonymous/WelcomeModal";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
@@ -107,7 +108,11 @@ export default async function ConsumerShellLayout({
   if (!user) {
     if (!authUser && isTransientAuthError(userError)) throw userError;
     if (!openHere) {
-      redirect(authUser ? withNext(CONSUMER_ROUTES.sign, here) : clearSessionHref(here));
+      redirect(
+        authUser
+          ? withNext(CONSUMER_ROUTES.sign, here)
+          : clearSessionHref(here),
+      );
     }
   }
 
@@ -155,11 +160,12 @@ export default async function ConsumerShellLayout({
   if (user && needsOnboarding && !openHere) {
     redirect(withNext(CONSUMER_ROUTES.sign, here));
   }
-  const viewer: Viewer = !user || needsOnboarding
-    ? "anonymous"
-    : profileUnavailable
-      ? "unknown"
-      : "member";
+  const viewer: Viewer =
+    !user || needsOnboarding
+      ? "anonymous"
+      : profileUnavailable
+        ? "unknown"
+        : "member";
 
   // Two-box layout strategy (per user spec):
   //   - Bottom: BottomNav (shrink-0).
@@ -234,6 +240,7 @@ export default async function ConsumerShellLayout({
           <BottomNav />
           <PendingSignIntent />
           <WelcomeModal />
+          <SignGateModal />
         </div>
       </ConsumerIdentityProvider>
       <Toaster />

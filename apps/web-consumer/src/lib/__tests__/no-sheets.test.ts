@@ -19,7 +19,10 @@ import { describe, expect, it } from "vitest";
 
 const LAW = "apps/web-consumer/CLAUDE.md › Overlays";
 const SRC = join(__dirname, "../..");
-const PLACE_PROFILE = join(__dirname, "../../../../../packages/place-profile/src");
+const PLACE_PROFILE = join(
+  __dirname,
+  "../../../../../packages/place-profile/src",
+);
 const DEFINITION = "components/consumer/overlay/LocalOverlay.tsx";
 
 /** The destructive yes/no confirms (MESITA-4094). Adding one needs a
@@ -29,6 +32,9 @@ export const CONFIRM_FILES = [
   // The first-open welcome (MESITA-4246, decision: Pato asked for a modal
   // over Home; two buttons, Create account and Explore anonymously).
   "components/consumer/anonymous/WelcomeModal.tsx",
+  // Sign in for a gated tap (MESITA-4288: "display the modal before
+  // aggressively redirecting"): Continue with phone or Not now.
+  "components/consumer/anonymous/SignGateModal.tsx",
   "components/consumer/me/CalendarModal.tsx",
   "components/consumer/me/InstagramModal.tsx",
   "components/consumer/pay/GuestPayScreen.tsx",
@@ -117,20 +123,37 @@ export function overlayImports(src: string): OverlayImport[] {
   const text = stripComments(src);
   const found: OverlayImport[] = [];
   // A statement starts its line, so an import written inside a string never counts.
-  const re = /^[ \t]*(import|export)\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/gm;
+  const re =
+    /^[ \t]*(import|export)\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/gm;
   for (const m of text.matchAll(re)) {
     if (!OVERLAY_SOURCE.test(m[3])) continue;
     const line = text.slice(0, m.index).split("\n").length;
     for (const part of m[2].split(",")) {
-      const name = part.trim().replace(/^type\s+/, "").split(/\s+as\s+/)[0].trim();
+      const name = part
+        .trim()
+        .replace(/^type\s+/, "")
+        .split(/\s+as\s+/)[0]
+        .trim();
       if (name) found.push({ name, line, reexport: m[1] === "export" });
     }
   }
-  for (const m of text.matchAll(/^[ \t]*export\s+\*\s+from\s*["']([^"']+)["']/gm)) {
-    if (OVERLAY_SOURCE.test(m[1])) found.push({ name: "*", line: text.slice(0, m.index).split("\n").length, reexport: true });
+  for (const m of text.matchAll(
+    /^[ \t]*export\s+\*\s+from\s*["']([^"']+)["']/gm,
+  )) {
+    if (OVERLAY_SOURCE.test(m[1]))
+      found.push({
+        name: "*",
+        line: text.slice(0, m.index).split("\n").length,
+        reexport: true,
+      });
   }
   for (const m of text.matchAll(/\bimport\(\s*["']([^"']+)["']\s*\)/g)) {
-    if (OVERLAY_SOURCE.test(m[1])) found.push({ name: "*", line: text.slice(0, m.index).split("\n").length, reexport: false });
+    if (OVERLAY_SOURCE.test(m[1]))
+      found.push({
+        name: "*",
+        line: text.slice(0, m.index).split("\n").length,
+        reexport: false,
+      });
   }
   return found;
 }
@@ -142,7 +165,8 @@ function sourceFiles(root: string): string[] {
       if (entry === "node_modules" || entry === "__tests__") continue;
       const p = join(dir, entry);
       if (statSync(p).isDirectory()) walk(p);
-      else if (/\.(ts|tsx)$/.test(entry) && !/\.(test|spec)\.tsx?$/.test(entry)) out.push(p);
+      else if (/\.(ts|tsx)$/.test(entry) && !/\.(test|spec)\.tsx?$/.test(entry))
+        out.push(p);
     }
   };
   walk(root);
@@ -154,9 +178,13 @@ function scan() {
   const rows: { file: string; imp: OverlayImport }[] = [];
   for (const root of roots) {
     for (const abs of sourceFiles(root)) {
-      const file = root === SRC ? relative(SRC, abs) : `place-profile/${relative(root, abs)}`;
+      const file =
+        root === SRC
+          ? relative(SRC, abs)
+          : `place-profile/${relative(root, abs)}`;
       if (file === DEFINITION) continue;
-      for (const imp of overlayImports(readFileSync(abs, "utf8"))) rows.push({ file, imp });
+      for (const imp of overlayImports(readFileSync(abs, "utf8")))
+        rows.push({ file, imp });
     }
   }
   return rows;
@@ -169,7 +197,7 @@ describe("the overlay scanner (MESITA-4094)", () => {
       "/* import { LocalSheet } from './LocalOverlay' */",
       "const s = \"import { LocalSheet } from './LocalOverlay'\";",
       "const el = <div>{/* <LocalSheet> */}</div>;",
-      "import { LocalSheet as Panel, LocalDialog } from \"@/components/consumer/overlay/LocalOverlay\";",
+      'import { LocalSheet as Panel, LocalDialog } from "@/components/consumer/overlay/LocalOverlay";',
       "export { LocalSheet } from './LocalOverlay';",
       "const lazy = import('./overlay/LocalOverlay');",
     ].join("\n");
@@ -187,15 +215,25 @@ describe("no bottom sheets (MESITA-4094)", () => {
 
   it("only allowlisted files import LocalSheet; a new screen is a page with its own route", () => {
     const bad = rows
-      .filter(({ file, imp }) => (imp.name === "LocalSheet" || imp.name === "*") && !SHEET_ALLOWLIST.includes(file))
-      .map(({ file, imp }) => `${file}:${imp.line} imports ${imp.name} — make it a page with its own route (see ${LAW})`);
+      .filter(
+        ({ file, imp }) =>
+          (imp.name === "LocalSheet" || imp.name === "*") &&
+          !SHEET_ALLOWLIST.includes(file),
+      )
+      .map(
+        ({ file, imp }) =>
+          `${file}:${imp.line} imports ${imp.name} — make it a page with its own route (see ${LAW})`,
+      );
     expect(bad).toEqual([]);
   });
 
   it("LocalDialog is only for destructive yes/no confirms", () => {
     const allowed = [...CONFIRM_FILES, ...DIALOG_ALLOWLIST];
     const bad = rows
-      .filter(({ file, imp }) => imp.name === "LocalDialog" && !allowed.includes(file))
+      .filter(
+        ({ file, imp }) =>
+          imp.name === "LocalDialog" && !allowed.includes(file),
+      )
       .map(
         ({ file, imp }) =>
           `${file}:${imp.line} imports LocalDialog — a screen is a page (see ${LAW}); a destructive yes/no confirm? add the file to CONFIRM_FILES with a decision: line`,
@@ -204,15 +242,27 @@ describe("no bottom sheets (MESITA-4094)", () => {
   });
 
   it("nothing re-exports the overlay primitives", () => {
-    const bad = rows.filter(({ imp }) => imp.reexport).map(({ file, imp }) => `${file}:${imp.line} re-exports ${imp.name} (see ${LAW})`);
+    const bad = rows
+      .filter(({ imp }) => imp.reexport)
+      .map(
+        ({ file, imp }) =>
+          `${file}:${imp.line} re-exports ${imp.name} (see ${LAW})`,
+      );
     expect(bad).toEqual([]);
   });
 
   it("the allowlists only shrink: every listed file still uses what it is listed for", () => {
-    const uses = (file: string, name: string) => rows.some((r) => r.file === file && r.imp.name === name);
+    const uses = (file: string, name: string) =>
+      rows.some((r) => r.file === file && r.imp.name === name);
     const stale = [
-      ...SHEET_ALLOWLIST.filter((f) => !uses(f, "LocalSheet")).map((f) => `${f} no longer imports LocalSheet — remove it from SHEET_ALLOWLIST`),
-      ...DIALOG_ALLOWLIST.filter((f) => !uses(f, "LocalDialog")).map((f) => `${f} no longer imports LocalDialog — remove it from DIALOG_ALLOWLIST`),
+      ...SHEET_ALLOWLIST.filter((f) => !uses(f, "LocalSheet")).map(
+        (f) =>
+          `${f} no longer imports LocalSheet — remove it from SHEET_ALLOWLIST`,
+      ),
+      ...DIALOG_ALLOWLIST.filter((f) => !uses(f, "LocalDialog")).map(
+        (f) =>
+          `${f} no longer imports LocalDialog — remove it from DIALOG_ALLOWLIST`,
+      ),
     ];
     expect(stale).toEqual([]);
   });

@@ -67,7 +67,7 @@ import {
 } from "@/lib/area-pool-cache";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { useServerProfile } from "@/lib/identity-context";
+import { useServerProfile, useViewer } from "@/lib/identity-context";
 import { trackEvent } from "@/lib/analytics/track";
 import {
   useUserLocation,
@@ -219,6 +219,7 @@ export function savedPlaceList(
 
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
+  const viewer = useViewer();
   const coords = useUserLocation();
   const openGooglePlace = useOpenGooglePlace();
   const [pool, setPool] = useState<AreaPool | null>(null);
@@ -497,7 +498,11 @@ export function CatalogRails() {
     </nav>
   );
 
-  const chips = placesChips();
+  // NO SAVED FOR ANONYMOUS (Pato, 2026-11-17, MESITA-4288: "anonymous users
+  // cannot save places. don't show that option"): the rail starts at Top.
+  const chips = placesChips().filter(
+    (c) => viewer !== "anonymous" || c.key !== SAVED_CHIP,
+  );
   // PLACES' EMOJI RAIL (Pato, MESITA-3781: "put a lateral menu when you
   // only show the items … i can click the lateral vertical menu and open with
   // names"): a slim dark column (ink since MESITA-3812) at the left edge
