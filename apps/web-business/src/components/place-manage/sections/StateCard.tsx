@@ -30,9 +30,10 @@
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
 // still exist and trade", which is a different question from Disabled ("can a
 // guest reach it on Mesita") — a place can be OPERATIONAL in Google and
-// disabled here, or enabled here and long dead. It is a FLAG, never a gate:
-// Google is wrong sometimes, and auto-disabling on a third-party signal would
-// vanish a live place with no human in the loop (the Ojo posture).
+// disabled here, or enabled here and long dead. Since MESITA-4233 (Pato,
+// 2026-11-17) Pulsing off IS a gate, one way: Google's CLOSED_* disables the
+// place in the database (trigger pulsing_off_disables_the_place); Google
+// saying OPERATIONAL again does not re-enable it — Enable is the operator's.
 //
 // NAMING (Pato, 2026-08-22 · renamed 2026-09-05, MESITA-1541). This box is
 // State, and CRENUP names something else entirely: the enrichment machinery.
@@ -132,6 +133,10 @@ export function StateCard({ place }: { place: AdminPlace }) {
       : bizStatus === "CLOSED_TEMPORARILY"
         ? `Temporary close${operatingSeen ? ` (seen ${operatingSeen})` : ""} — a refurb or a seasonal break.`
         : `Permanently closed${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Inactive.`;
+  // Pulsing off disables the place (MESITA-4233); the detail says so.
+  const pulsingOffNote = bizStatus !== null && bizStatus !== "OPERATIONAL"
+    ? " Pulsing off disables the place on Mesita."
+    : "";
 
   const [enrichState, setEnrichState] = useState<PlaceEnrichmentState | null>(
     null,
@@ -199,7 +204,7 @@ export function StateCard({ place }: { place: AdminPlace }) {
           name="Pulsing"
           on={operating === true}
           chip={stateBoolChip(operating)}
-          detail={operatingDetail}
+          detail={operatingDetail + pulsingOffNote}
         />
         <StateRow
           name="Enriching"

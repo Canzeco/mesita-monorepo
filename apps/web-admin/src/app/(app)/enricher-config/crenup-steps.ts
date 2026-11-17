@@ -121,7 +121,7 @@ export const UPDATION_LEVELS: readonly UpdationLevel[] = [
       "Address and location",
       "Price level",
       "Rating and review count",
-      "Open or closed",
+      "Pulsing",
       "Tags and types",
       "Google's summary",
       "Links Google lists",
