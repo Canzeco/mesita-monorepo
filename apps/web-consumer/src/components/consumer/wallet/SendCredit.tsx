@@ -56,7 +56,7 @@ function refusal(err: unknown, fallback: string, currency = "mxn"): string {
 }
 
 /** /wallet/place/<placeId>/send — the sender's page (MESITA-4096; it was a
- *  sheet over the House Card): an amount, Send, then the link to share once.
+ *  sheet over the Loyalty Card): an amount, Send, then the link to share once.
  *  Not enough to send here (nothing spendable, more typed than spendable, or
  *  the server's `insufficient`): a Buy Credits button to the place's prepay
  *  page (Pato: "if not enough money, add shortcut button to redirect to
@@ -74,7 +74,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
   // One request id per amount: a retry after a lost answer replays, never sends twice.
   const attempt = useRef<{ id: string; cents: number } | null>(null);
 
-  // No House Card here: the send list is the nearest true screen.
+  // No Loyalty Card here: the send list is the nearest true screen.
   useEffect(() => {
     if (credits && !row) navigateTo(router, CONSUMER_ROUTES.walletSend, { replace: true });
   }, [credits, row, router]);
@@ -246,7 +246,7 @@ export function SentLinks({ links, currency, onChanged }: { links: SentLink[]; c
   }
 
   return (
-    // A panel of its own on the House Card page (MESITA-4064).
+    // A panel of its own on the Loyalty Card page (MESITA-4064).
     <Panel className="mt-4" title="Waiting for a friend">
       <ul className="divide-border mt-1 divide-y pb-1" data-sent-links>
         {links.map((l) => (

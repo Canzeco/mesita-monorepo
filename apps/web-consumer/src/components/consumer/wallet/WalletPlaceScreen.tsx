@@ -6,15 +6,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
-import { apiRemoveHouseCard } from "@/lib/api/wallet";
+import { apiRemoveLoyaltyCard } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES, walletSendPath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { HouseCardSkeleton, PlaceCredit, PlacePhotoMark } from "./PlaceCredit";
+import { LoyaltyCardSkeleton, PlaceCredit, PlacePhotoMark } from "./PlaceCredit";
 import { useWallet } from "./use-wallet";
 
-// /wallet/place/<placeId> — a place's House Card, full screen (MESITA-3533's
+// /wallet/place/<placeId> — a place's Loyalty Card, full screen (MESITA-3533's
 // sheet as a page, MESITA-3614). Reached from its card on the Wallet's
 // Credits rail and straight from the place screen's Wallet tile, so the
 // tile no longer lands on the Wallet and then pops a sheet. Back lands where
@@ -42,19 +42,19 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   const row = credits?.find((r) => r.placeId === placeId) ?? null;
   const back = useCallback(() => goBack(router), [router]);
 
-  // No House Card here: the Wallet is the nearest true screen. Not while a
+  // No Loyalty Card here: the Wallet is the nearest true screen. Not while a
   // purchase here is still confirming: a first one brings the card with it
   // (MESITA-3617).
   useEffect(() => {
     if (credits && !row && !confirming) navigateTo(router, CONSUMER_ROUTES.pay, { replace: true });
   }, [credits, row, confirming, router]);
 
-  // Remove from Wallet (MESITA-3605): a pinned $0 House Card leaves, and so
+  // Remove from Wallet (MESITA-3605): a pinned $0 Loyalty Card leaves, and so
   // does its page.
-  const removeHouseCard = useCallback(
+  const removeLoyaltyCard = useCallback(
     async (id: string) => {
       try {
-        await apiRemoveHouseCard(getSupabase(), id);
+        await apiRemoveLoyaltyCard(getSupabase(), id);
         toast.success("Removed from Wallet.");
         back();
       } catch (err) {
@@ -96,7 +96,7 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
             stories={(wallet?.waiting_stories ?? []).filter((s) => s.place_id === row.placeId)}
             confirming={confirming}
             onReread={reread}
-            onRemove={removeHouseCard}
+            onRemove={removeLoyaltyCard}
           />
         ) : failed ? (
           <EmptyState
@@ -106,7 +106,7 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
             action={{ label: "Try again", onClick: reread }}
           />
         ) : (
-          <HouseCardSkeleton />
+          <LoyaltyCardSkeleton />
         )}
       </div>
     </Screen>

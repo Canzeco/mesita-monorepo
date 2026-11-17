@@ -81,7 +81,7 @@ export const CONSUMER_ROUTES = {
   //                              /pay/bill/<shareId>
   //   /pay/receipt/<paymentId>   a paid bill's proof (MESITA-3459)
   //   /wallet                    the Wallet tab (MESITA-3886)
-  //   /wallet/place/<placeId>    a place's House Card, full screen (MESITA-3533)
+  //   /wallet/place/<placeId>    a place's Loyalty Card, full screen (MESITA-3533)
   //   /wallet/gift/<token>       a friend's credit link (MESITA-3292)
   //
   // The bill was /pay/tab/<id>, and the two place addresses were a bare id
@@ -119,7 +119,7 @@ export const CONSUMER_ROUTES = {
   // page, no switch between them. They were two halves of the Pay tab under
   // one band (MESITA-3698/3729); Wallet was the bar's fourth tab from
   // MESITA-3295 and sat under Pay's list from MESITA-3631. A Mesita Prepay checkout returns to
-  // the place's House Card with ?prepay= (MESITA-3617), an added card to
+  // the place's Loyalty Card with ?prepay= (MESITA-3617), an added card to
   // /wallet?card=.
   wallet: "/wallet",
   walletPlace: { prefix: "/wallet/place/" },
@@ -158,7 +158,7 @@ export const CONSUMER_ROUTES = {
     // the header's Class chip opens the same body as a sheet.
     class: "/me/class",
     // GIFT (Pato, 2026-11-11, MESITA-3771): the places the guest holds credit
-    // at; a tap opens that House Card with Gift Credits open.
+    // at; a tap opens that Loyalty Card with Gift Credits open.
     gift: "/me/gift",
     // ACTIVITY'S CHIPS, AS ME'S PAGES (MESITA-3855): Notifications,
     // Reservations, and Tickets — every visit, voucher, gift and refund,
@@ -386,12 +386,12 @@ export function payReceiptPath(paymentId: string): string {
   return `${CONSUMER_ROUTES.payReceipt.prefix}${paymentId}`;
 }
 
-/** A place's House Card in the Wallet. */
+/** A place's Loyalty Card in the Wallet. */
 export function walletPlacePath(placeId: string): string {
   return `${CONSUMER_ROUTES.walletPlace.prefix}${placeId}`;
 }
 
-/** A House Card's Send Gift page: the amount, then the link (MESITA-4096). */
+/** A Loyalty Card's Send Gift page: the amount, then the link (MESITA-4096). */
 export function walletSendPath(placeId: string): string {
   return `${walletPlacePath(placeId)}/send`;
 }
@@ -487,7 +487,7 @@ export const ROUTE_MAP = {
   walletPlace: row("/wallet/place/:placeId", "pay", "page", "pay"),
   walletGift: row("/wallet/gift/:token", "pay", "page", "pay"),
   walletAddCard: row("/wallet/cards/new", "pay", "page", "pay"),
-  // Pay's Buy Credits and Send Gift lists, and a House Card's send page,
+  // Pay's Buy Credits and Send Gift lists, and a Loyalty Card's send page,
   // which was a sheet over it (MESITA-4096).
   walletBuy: row("/wallet/buy", "pay", "page", "pay"),
   walletSend: row("/wallet/send", "pay", "page", "pay"),

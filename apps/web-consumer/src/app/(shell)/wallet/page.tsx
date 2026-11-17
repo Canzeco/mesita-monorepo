@@ -11,7 +11,7 @@ const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : u
 // "Wallet", MESITA-4245) lives at /pay and its code is PayPage; MESITA-4199
 // merged the two pages ("call that page Pay", since renamed), so /wallet
 // forwards to /pay, its query kept (a saved card's Stripe
-// return, ?card=, is read there). A place's House Card (/wallet/place/<id>)
+// return, ?card=, is read there). A place's Loyalty Card (/wallet/place/<id>)
 // and a friend's credit link (/wallet/gift/<token>) keep their addresses;
 // their older query shapes (?place=, ?gift=) still forward to them. It was
 // its own bar tab from MESITA-3722 and again from MESITA-3886.

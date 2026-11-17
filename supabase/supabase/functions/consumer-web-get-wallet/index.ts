@@ -16,7 +16,7 @@
 // also carries the guest's saved cards (`cards`, read from Stripe in
 // parallel with everything below; null when Stripe failed, so the money
 // still answers). The /wallet page paints once, from this one answer. The
-// House Card, Activity and Gift reads leave it off and never wait on Stripe.
+// Loyalty Card, Activity and Gift reads leave it off and never wait on Stripe.
 //
 // Body: { session_id?: string, with_cards?: boolean }
 // Response: { ok: true, test_mode,
@@ -73,7 +73,7 @@ import { requireConsumerRequest } from "../_shared/request.ts";
 import { cardsAccepted, chargesEnabledByPlace, listRowMoney, type PaymentKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { storyUrl } from "../_shared/proof.ts";
-import { readPins, withPins } from "../_shared/house-cards.ts";
+import { readPins, withPins } from "../_shared/loyalty-cards.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import {
   balanceKey,
@@ -191,7 +191,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
       if (e.kind === "extra" && e.payment_id) e.confirmed_by = confirmedBy.get(e.payment_id) ?? null;
     }
   }
-  // PINNED HOUSE CARDS (MESITA-3582): a place the guest added by hand with
+  // PINNED LOYALTY CARDS (MESITA-3582): a place the guest added by hand with
   // no entries reads as a $0 card after the ones holding money, never twice.
   const pinsRes = await readPins(admin, userId);
   if (!pinsRes.ok) return json({ ok: false, error: pinsRes.error }, 500);

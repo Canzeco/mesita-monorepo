@@ -169,7 +169,7 @@ export type Entry = {
    *  a bill paid in cash at the table. */
   confirmed_by?: "credit" | "stripe" | "waiter" | null;
   /** The purchase a voucher, prepay, bonus or purchase reversal belongs to
-   *  (MESITA-3750): the House Card shows a voucher and its bonus as one row. */
+   *  (MESITA-3750): the Loyalty Card shows a voucher and its bonus as one row. */
   purchase_id?: string | null;
   /** The gift a gift_out, gift_in or gift_back belongs to (MESITA-4066): the
    *  entry page finds its gift by it, never by amount. */

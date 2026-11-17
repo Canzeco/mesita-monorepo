@@ -177,7 +177,7 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // SHARE REPLACES GIFT (Pato, 2026-11-14, MESITA-3940: "here add share
   // instead of gift"): the cell opens /share, the channel-rows page Wallet
   // opens too (MESITA-3886). /me/gift stays a live address; gifting credit
-  // lives on a place's House Card in Wallet.
+  // lives on a place's Loyalty Card in Wallet.
   {
     Icon: Share2,
     title: "Share",

@@ -13,13 +13,13 @@ import { DOOR_GLYPH, DOOR_QUIET } from "./wallet-buttons";
 // Share Mesita opens /share, the card of channel rows. Send Credits opens
 // Me › Gift, the places you hold credit at (it read "Gift Credits"). Redeem
 // Credits opens the Redeem a code sheet, which was the "Gift code" row at the
-// bottom of the Credits list until this. The House Card's action shape
+// bottom of the Credits list until this. The Loyalty Card's action shape
 // (MESITA-3868): the icon over a one-line label, so three fit a 320px phone.
 // Mesita's own actions, in colour (MESITA-3802); since MESITA-3901 each its own:
 // pink, blue, green. They were two 56px buttons side by side
 // (MESITA-3890), and a 120px Share block before that (MESITA-3886).
 
-// The classes live in wallet-buttons.ts (DOOR_*) since MESITA-4095: the House
+// The classes live in wallet-buttons.ts (DOOR_*) since MESITA-4095: the Loyalty
 // Card wears the same four. History of the colours and sizes: MESITA-3901
 // (three colours, shorter), MESITA-4032/4045 (Buy black, gifts green, Share
 // pink), MESITA-4054 (soft tints), MESITA-4087 (52px).
@@ -31,14 +31,14 @@ import { DOOR_GLYPH, DOOR_QUIET } from "./wallet-buttons";
 // PICK A PLACE FIRST (MESITA-4096, Pato: "buy credits and send credits must
 // actually display a list of places to select the action"): Buy Credits opens
 // /wallet/buy (the places that sell credits, a row opens its prepay page);
-// Send Gift opens /wallet/send (the House Cards, a row opens its send page).
+// Send Gift opens /wallet/send (the Loyalty Cards, a row opens its send page).
 // Claim Gift stays the one code page: a code works at any place.
 // GREY, NO BOX (MESITA-4232): the three sit on the page under Pay Bill, one
 // soft grey with black ink; the panel around them and the black / green /
 // pink tints are gone.
 /** The row: two links, the same in the loading frame. TWO DOORS SINCE
  *  MESITA-4269 (Pato: "remove the button to buy credits from there. just
- *  leave Pay Bill, Send Gift, Share Mesita"; Buy Credits lives on each House
+ *  leave Pay Bill, Send Gift, Share Mesita"; Buy Credits lives on each Loyalty
  *  Card). ONE ICON LANGUAGE (MESITA-4272, Pato: "either emojis or both or
  *  none. you can use icons too"): both wear line glyphs, Gift and Share2,
  *  like the Pay Bill QR and the place screen's tiles; the 🎁 is gone. */

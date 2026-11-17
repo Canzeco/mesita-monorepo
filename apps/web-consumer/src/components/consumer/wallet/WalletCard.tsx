@@ -1,6 +1,6 @@
 import { money } from "@/lib/api/wallet";
 
-// A PLACE'S CREDITS CARD, AS DATA (MESITA-3511's House Card). Since
+// A PLACE'S CREDITS CARD, AS DATA (MESITA-3511's Loyalty Card). Since
 // MESITA-3741 nothing draws the payment-card face: the Wallet lists a card as
 // a row (WalletLists' CreditsRow) and its page shows the amounts as a plain
 // card (PlaceCredit). The amount is the server's, chosen by `cardAmount`.

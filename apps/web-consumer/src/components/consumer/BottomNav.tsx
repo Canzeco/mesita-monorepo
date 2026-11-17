@@ -48,7 +48,7 @@ import { useUnseenNotificationCount } from "./use-unseen-notifications";
 //   Me › Notifications clears it.
 //
 //   PAY LIGHTS ON EVERY ADDRESS UNDER /pay (/pay/place/<placeId>, /pay/bill/<id>,
-//   /pay/receipt/<id>), and on the Wallet's House Cards, gift links, Buy,
+//   /pay/receipt/<id>), and on the Wallet's Loyalty Cards, gift links, Buy,
 //   Send, Claim, Add a card and /share (MESITA-4199).
 //
 // THE ME TAB WEARS THE GUEST'S PICTURE (Pato, MESITA-3077: "add profile
@@ -70,7 +70,7 @@ type Item = {
   label: string;
   /** The tab this item is. Which screens light it is ROUTE_MAP's `tab`
    *  (lib/consumer-route-contract.ts, MESITA-3646): a place lights Home, a
-   *  House Card Pay, a reservation or a ticket Me. */
+   *  Loyalty Card Pay, a reservation or a ticket Me. */
   tab: ConsumerTab;
 };
 

@@ -7,7 +7,7 @@ export const SECONDARY =
 
 // THE DOORS (MESITA-4031..4087): Wallet's row of equal buttons,
 // an icon over a label that may wrap, 52px, each kind its own soft tint
-// (MESITA-4054). Wallet wears Buy · Send · Claim · Share Mesita; a House Card
+// (MESITA-4054). Wallet wears Buy · Send · Claim · Share Mesita; a Loyalty Card
 // wears the same four with Go to Pay in Share Mesita's place (MESITA-4095,
 // Pato: "the same 4 buttons, the same sizes, but instead of saying share
 // mesita, mention go to pay").
@@ -18,6 +18,6 @@ const DOOR =
  *  MESITA-4269. Dark since MESITA-4269 (Pato: "make the buttons below dark,
  *  like the 5 buttons color in mesita profile"): the place screen's tile
  *  colour, bg-foreground with paper ink; grey in MESITA-4254, black in
- *  MESITA-4250. The House Card's doors under its Pay bar wear them too. */
+ *  MESITA-4250. The Loyalty Card's doors under its Pay bar wear them too. */
 export const DOOR_QUIET = `${DOOR.replace("text-white", "text-paper")} bg-foreground hover:opacity-90 focus-visible:ring-neutral-400`;
 export const DOOR_GLYPH = "h-4 w-4 shrink-0";

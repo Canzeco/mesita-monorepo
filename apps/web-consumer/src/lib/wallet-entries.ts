@@ -1,4 +1,4 @@
-// A House Card's rows (MESITA-3750). The server writes a voucher (or prepay)
+// A Loyalty Card's rows (MESITA-3750). The server writes a voucher (or prepay)
 // and its bonus as two entries; since MESITA-4257 (Pato: "remember the
 // transaction when buying a voucher, like credits received, and the bonus
 // lands after so it might be pending") they read as two rows too: Credits

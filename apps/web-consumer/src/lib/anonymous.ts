@@ -77,7 +77,7 @@ const QUIET = new Set([
 const ACTION = new Set([
   "consumer-web-get-person",
   "consumer-web-buy-voucher",
-  "consumer-web-add-house-card",
+  "consumer-web-add-loyalty-card",
   "consumer-web-save-location",
   "consumer-web-report-place",
   "consumer-web-ask-memo",

@@ -1,4 +1,4 @@
-// The House Card's rows (MESITA-3750, two per voucher since MESITA-4257):
+// The Loyalty Card's rows (MESITA-3750, two per voucher since MESITA-4257):
 // the server's amounts, never a merged bill or a refunded purchase shown as money on its way.
 import { describe, expect, it } from "vitest";
 import { entryLabel, type WalletEntry } from "@/lib/api/wallet";

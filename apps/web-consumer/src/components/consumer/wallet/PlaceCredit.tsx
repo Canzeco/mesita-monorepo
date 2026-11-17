@@ -8,7 +8,7 @@ import { offerSlides, SizedImg } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import {
-  canRemoveHouseCard,
+  canRemoveLoyaltyCard,
   entryDate,
   entryLabel,
   money,
@@ -41,7 +41,7 @@ const ROUND =
 const ROUND_FACE = "relative flex h-13 w-13 items-center justify-center rounded-full";
 const ROUND_GLYPH = "h-5 w-5";
 
-// A PLACE'S HOUSE CARD, /wallet/place/<placeId> (MESITA-3741). Since MESITA-3868
+// A PLACE'S LOYALTY CARD, /wallet/place/<placeId> (MESITA-3741). Since MESITA-3868
 // (Pato, 2026-11-14, over a screenshot: "the buttons there floting feels
 // weird ... the voycher catalog there feels weird. maybe a button to add
 // funds opens that catalog, not directly ... on top of transactions mention
@@ -49,9 +49,9 @@ const ROUND_GLYPH = "h-5 w-5";
 // minimalsitc") the page reads: the card, what I can do, what happened.
 // Nothing is fixed over the content. Top to bottom:
 //
-//   [mini House Card]     half the column, centred (MESITA-3802): the
+//   [mini Loyalty Card]     half the column, centred (MESITA-3802): the
 //                         place's photo and name, the server's amount (a
-//                         muted $0 when nothing is spendable yet), "House Card"
+//                         muted $0 when nothing is spendable yet), "Loyalty Card"
 //   (Pay Bill)(Add Funds)(Send Gift)(View Place)  four round buttons, label
 //                         under (MESITA-4281); only Pay Bill purple; Add Funds
 //                         wears a +N% chip and hides when nothing is for sale;
@@ -98,7 +98,7 @@ const ROUND_GLYPH = "h-5 w-5";
 // MESITA-3750: while a row still reads "available soon", each tick asks for
 // one more read, at most 3 per stuck moment (shouldReread), then stops.
 
-/** One tick per open House Card. */
+/** One tick per open Loyalty Card. */
 const TICK_MS = 30_000;
 /** The server turns an entry Available on its own clock: ask a little after. */
 const REREAD_SLACK_MS = 5_000;
@@ -156,7 +156,7 @@ function EntryRow({
   const body = <RowBody title={entryLabel(group)} line={when} amount={amount} waiting={waiting} />;
   const href = entryHref(placeId, group);
   return href ? (
-    <PushLink href={href} className={cn(ROW, "hover:bg-muted/60 transition")} data-house-card-entry={group.kind}>
+    <PushLink href={href} className={cn(ROW, "hover:bg-muted/60 transition")} data-loyalty-card-entry={group.kind}>
       {body}
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
     </PushLink>
@@ -177,7 +177,7 @@ function StoryEntryRow({ story, onOpen, now }: { story: WaitingStory; onOpen: ()
       onClick={onOpen}
       className={cn(ROW, "hover:bg-muted/60 transition")}
       aria-label={`Story bonus, ${amount}. ${line}`}
-      data-house-card-story={story.state}
+      data-loyalty-card-story={story.state}
     >
       <RowBody title="Story bonus" line={line} amount={amount} waiting={storyBonusOpen(story)} />
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
@@ -186,7 +186,7 @@ function StoryEntryRow({ story, onOpen, now }: { story: WaitingStory; onOpen: ()
 }
 
 /** The place's round photo beside the page's title (Pato, 2026-11-15,
- *  MESITA-4064: "when a house card is selected, show profile picture on
+ *  MESITA-4064: "when a loyalty card is selected, show profile picture on
  *  header"): the card's own photo, 32px; its initial without one. */
 export function PlacePhotoMark({ photo, name }: { photo: string | null; name: string }) {
   return (
@@ -197,7 +197,7 @@ export function PlacePhotoMark({ photo, name }: { photo: string | null; name: st
 }
 
 /** The page loading: the card's panel, then the Tickets list. */
-export function HouseCardSkeleton() {
+export function LoyaltyCardSkeleton() {
   return (
     <div className="flex flex-col" aria-hidden>
       <Panel className="mt-4 p-4">
@@ -294,7 +294,7 @@ export function PlaceCredit({
   const muted = card.available_cents <= 0;
   const amount = money(Math.max(0, card.available_cents), card.currency);
   // A card with a Story voucher waiting is never removable from here.
-  const removable = onRemove !== undefined && stories.length === 0 && canRemoveHouseCard(balance);
+  const removable = onRemove !== undefined && stories.length === 0 && canRemoveLoyaltyCard(balance);
   const pendingKeys = groupKeys(pending);
   return (
     <>
@@ -302,18 +302,18 @@ export function PlaceCredit({
           in body must be in a box or something for more clarity. make a
           cleaner UI"): the card and what it can do, Tickets, Waiting
           for a friend, each one Panel (MESITA-4063's, shared since MESITA-4071), 16px apart. */}
-      <Panel className="mt-4 p-4" data-house-card-panel>
-      {/* THE MINI HOUSE CARD (MESITA-3802, Pato: "instead of that ugly pink
-          box display mini House Card, not occupying full width of screen,
+      <Panel className="mt-4 p-4" data-loyalty-card-panel>
+      {/* THE MINI LOYALTY CARD (MESITA-3802, Pato: "instead of that ugly pink
+          box display mini Loyalty Card, not occupying full width of screen,
           only 50% of screen. card must display amount of credits, name, and
           profile picture"): a card-shaped pink gradient, half the column,
-          centred; the place's photo and name, the amount, "House Card". A $0
+          centred; the place's photo and name, the amount, "Loyalty Card". A $0
           is white at reduced opacity, never grey on pink. */}
       <div
         role="img"
-        aria-label={`House Card, ${card.name}, ${amount} available`}
+        aria-label={`Loyalty Card, ${card.name}, ${amount} available`}
         className="relative mx-auto aspect-[1.586] w-1/2 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-[var(--brand-pink-500)] to-[var(--brand-pink-800)] p-3 text-white shadow-md"
-        data-house-card-amounts
+        data-loyalty-card-amounts
       >
         <span className="pointer-events-none absolute -top-8 -right-6 h-20 w-20 rounded-full bg-white/10" aria-hidden />
         <div className="relative flex items-center gap-1.5" aria-hidden>
@@ -329,10 +329,10 @@ export function PlaceCredit({
         <p className={cn("relative mt-3 text-xl font-semibold tabular-nums", muted && "text-white/70")} aria-hidden>
           {amount}
         </p>
-        <p className="type-eyebrow relative text-white/80" aria-hidden>House Card</p>
+        <p className="type-eyebrow relative text-white/80" aria-hidden>Loyalty Card</p>
       </div>
       {gone ? (
-        <p className="text-muted-foreground mt-4 text-sm" data-house-card-gone>
+        <p className="text-muted-foreground mt-4 text-sm" data-loyalty-card-gone>
           Your credit here stays yours; ask Mesita support to use it.
         </p>
       ) : (
@@ -353,12 +353,12 @@ export function PlaceCredit({
            card (MESITA-4116). Since MESITA-4281 the four are one bank row
            of round buttons: Pay Bill, Add Funds (this page's word for
            Offers), Send Gift, View Place. */
-        <div className="mt-5 flex justify-around gap-1" data-house-card-actions>
+        <div className="mt-5 flex justify-around gap-1" data-loyalty-card-actions>
           <PushLink
             href={payPlacePath(row.placeId)}
             className={ROUND}
             aria-label={spendable > 0 ? `Pay Bill: use ${money(spendable, card.currency)} at the table` : "Pay Bill"}
-            data-house-card-pay
+            data-loyalty-card-pay
           >
             <span className={cn(ROUND_FACE, "bg-[#635bff] text-white")}>
               <QrCode className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
@@ -370,7 +370,7 @@ export function PlaceCredit({
               href={offerHref(href, offers[0], true)}
               className={ROUND}
               aria-label={offers[0].bonus ? `Add Funds: ${offers[0].bonus}% bonus` : "Add Funds"}
-              data-house-card-offer
+              data-loyalty-card-offer
             >
               <span className={cn(ROUND_FACE, "bg-muted")}>
                 <Plus className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
@@ -405,7 +405,7 @@ export function PlaceCredit({
               Send Gift
             </button>
           ) : null}
-          <PushLink href={href} className={ROUND} data-house-card-place>
+          <PushLink href={href} className={ROUND} data-loyalty-card-place>
             <span className={cn(ROUND_FACE, "bg-muted")}>
               <Store className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
             </span>
@@ -414,13 +414,13 @@ export function PlaceCredit({
         </div>
       )}
       {held ? (
-        <p className="text-muted-foreground mt-4 text-sm" data-house-card-held>
+        <p className="text-muted-foreground mt-4 text-sm" data-loyalty-card-held>
           Some credit is held by an open payment. It returns when that payment finishes or expires.
         </p>
       ) : null}
       </Panel>
       {confirming ? (
-        <p className="text-muted-foreground mt-4 text-sm" role="status" data-house-card-confirming>
+        <p className="text-muted-foreground mt-4 text-sm" role="status" data-loyalty-card-confirming>
           Confirming a payment…
         </p>
       ) : null}
@@ -453,7 +453,7 @@ export function PlaceCredit({
           row per thing done here (a voucher with its bonus, a gift with its
           taking back). It was "Transactions", one ledger line per row
           (MESITA-4116). Notifications stay at Me. */}
-      <section className="mt-6" data-house-card-tickets>
+      <section className="mt-6" data-loyalty-card-tickets>
         <div className="mb-3 px-1">
           <PanelHeading>Tickets</PanelHeading>
         </div>
@@ -472,7 +472,7 @@ export function PlaceCredit({
               type="button"
               className="text-muted-foreground hover:text-foreground min-h-11 px-3 text-sm transition"
               onClick={() => setRemoveOpen(true)}
-              data-house-card-remove
+              data-loyalty-card-remove
             >
               Remove from Wallet
             </button>
@@ -482,9 +482,9 @@ export function PlaceCredit({
 
       <MethodSheet method={method} onClose={() => setMethod(null)} stories={stories} onStoryChanged={onReread} />
       {removable ? (
-        <LocalSheet open={removeOpen} onClose={() => (removing ? undefined : setRemoveOpen(false))} ariaLabel="Remove this House Card">
-          <div className="flex flex-col px-4 pt-5 pb-8" data-house-card-remove-confirm>
-            <h2 className="text-xl font-semibold">Remove this House Card?</h2>
+        <LocalSheet open={removeOpen} onClose={() => (removing ? undefined : setRemoveOpen(false))} ariaLabel="Remove this Loyalty Card">
+          <div className="flex flex-col px-4 pt-5 pb-8" data-loyalty-card-remove-confirm>
+            <h2 className="text-xl font-semibold">Remove this Loyalty Card?</h2>
             <p className="text-muted-foreground mt-1 text-sm leading-relaxed">You can add it again any time.</p>
             <div className="mt-4 flex flex-col gap-2">
               <button

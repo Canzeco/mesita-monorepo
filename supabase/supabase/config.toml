@@ -369,11 +369,11 @@ verify_jwt = true
 [functions.consumer-web-remove-card]
 verify_jwt = true
 
-# MESITA-3582: pin / unpin a place's House Card in the Wallet (signed in).
-[functions.consumer-web-add-house-card]
+# MESITA-3582: pin / unpin a place's Loyalty Card in the Wallet (signed in).
+[functions.consumer-web-add-loyalty-card]
 verify_jwt = true
 
-[functions.consumer-web-remove-house-card]
+[functions.consumer-web-remove-loyalty-card]
 verify_jwt = true
 
 # MESITA-3304 (W2a): pay from credit and read a payment back (signed in);

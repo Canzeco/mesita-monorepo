@@ -10,7 +10,7 @@
 //                  take cards (consumer-web-list-pay-places, `card_ok`). A row
 //                  opens the place's Offers at Prepayments, where the buying
 //                  happens (MESITA-3883).
-//   /wallet/send   the Wallet's House Cards. A row opens that card's send page,
+//   /wallet/send   the Wallet's Loyalty Cards. A row opens that card's send page,
 //                  /wallet/place/<id>/send, which offers Buy Credits when
 //                  there is not enough to send.
 //
@@ -100,7 +100,7 @@ export function BuyCreditsPage() {
   );
 }
 
-/** /wallet/send — pick the House Card to send credit from. */
+/** /wallet/send — pick the Loyalty Card to send credit from. */
 export function SendGiftPage() {
   const { wallet, credits, failed, reread } = useWallet();
   return (
@@ -122,7 +122,7 @@ export function SendGiftPage() {
       ) : credits.length === 0 ? (
         <EmptyState
           icon={Gift}
-          title="No House Cards yet"
+          title="No Loyalty Cards yet"
           description="Buy credits at a place first."
           action={{ label: "Buy Credits", href: CONSUMER_ROUTES.walletBuy }}
         />

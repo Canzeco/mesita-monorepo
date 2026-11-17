@@ -48,9 +48,9 @@ import { money, type WalletBalance } from "@/lib/api/wallet";
 // list of cards as with the money payment methods. keep the symmetry"):
 // Credits Payment Methods is one white card of rows exactly like Money
 // Payment Methods: waiting Story rows, then a CreditsRow per place (its
-// House Card on tap), "Find a place" when there is none. No black band,
+// Loyalty Card on tap), "Find a place" when there is none. No black band,
 // transactions or Fund | Gift here any more: Buy Credits, Send Gift, Go
-// to Pay and the history are on the House Card page (PlaceCredit). The
+// to Pay and the history are on the Loyalty Card page (PlaceCredit). The
 // notes below are the history.
 //
 // MONEY FIRST, CREDITS CARDS WITH THEIR TRANSACTIONS (Pato, 2026-11-11,
@@ -66,7 +66,7 @@ import { money, type WalletBalance } from "@/lib/api/wallet";
 // PLAIN CARDS, PATO'S HEADINGS (Pato, 2026-11-11, MESITA-3731: "keep just the
 // card without the buttons to fund nor gift. those must go inside";
 // "Credits Payment Methods / Money Payment Methods"): a Credits Card is just
-// its row, Fund and Gift are on its House Card page (PlaceCredit), and the
+// its row, Fund and Gift are on its Loyalty Card page (PlaceCredit), and the
 // lists read Credits Payment Methods, then Money Payment Methods. The notes
 // below describe MESITA-3727's layout, under the names it used.
 //
@@ -86,7 +86,7 @@ import { money, type WalletBalance } from "@/lib/api/wallet";
 // heading), empty (one quiet prompt row, no heading Add) and rows. A failed
 // refresh that still holds a Wallet keeps every row.
 //
-// GIFT and FUND moved inside the card (MESITA-3731): the House Card page
+// GIFT and FUND moved inside the card (MESITA-3731): the Loyalty Card page
 // (PlaceCredit) shows them; Gift is still decided by giftAction.
 //
 // SAVED CARDS: a first-load failure shows Cash alone and one toast per
@@ -100,22 +100,22 @@ import { money, type WalletBalance } from "@/lib/api/wallet";
 // since MESITA-3722 (WalletPage, /wallet); MESITA-3720 drew it under Pay's
 // places, with the page's band switched off (`testBand`).
 // Wallet was its own bar tab from MESITA-3295, then sat under Pay's list
-// (MESITA-3631) until this. A place's card is a link to its House Card,
+// (MESITA-3631) until this. A place's card is a link to its Loyalty Card,
 // /wallet/place/<placeId> (MESITA-3614); a saved card or a waiting Story opens its
 // sheet here. The money is useWallet's (consumer-web-get-wallet).
 //
 // ADD A CREDITS CARD (Pato, MESITA-3705: "add Credits Card. not add credits
 // directly — to add credits you click the card"): Credits' Add goes to
 // Search; a place's "Add card to Wallet" (MESITA-3583) puts its card here,
-// and the card's House Card is where credits are bought.
+// and the card's Loyalty Card is where credits are bought.
 //
 // /wallet/gift/<token> draws the Wallet with a friend's credit link open
 // over it (MESITA-3292); closing it leaves for /wallet.
 //
 // FUND AND GIFT ON EACH CREDITS CARD (Pato, 2026-11-11, MESITA-3724: "add
 // quick button in credits to Fund and Gift buttons to each Credits Card"):
-// Fund opens the place's credit purchase (the House Card's "Buy Credits",
-// `?rewards=prepayment` on the place); Gift opens the House Card's "Send to a
+// Fund opens the place's credit purchase (the Loyalty Card's "Buy Credits",
+// `?rewards=prepayment` on the place); Gift opens the Loyalty Card's "Send to a
 // friend" sheet here, greyed out while nothing can be sent (spendable $0,
 // or sending off). A place gone from Mesita gets neither.
 

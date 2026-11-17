@@ -13,7 +13,7 @@ import { invokeEF } from "./_invoke";
 import type { SavedCard } from "./cards";
 
 /** The screen cache's key for the Wallet read (lib/screen-cache.ts): Me ›
- *  Tickets, a credit movement's page and the House Card share one answer, so
+ *  Tickets, a credit movement's page and the Loyalty Card share one answer, so
  *  a row tapped on any of them opens on what that screen just read
  *  (MESITA-3753). */
 export const WALLET_CACHE_KEY = "activity-wallet";
@@ -167,7 +167,7 @@ export async function apiGetWallet(
 }
 
 /** The place's offer and the caller's credit there (the Vouchers tab).
- *  `inWallet` (MESITA-3582): this place's House Card is already in the
+ *  `inWallet` (MESITA-3582): this place's Loyalty Card is already in the
  *  signed-in caller's Wallet; undefined when signed out or unknown. */
 export async function apiListVouchers(
   client: SupabaseClient,
@@ -177,24 +177,24 @@ export async function apiListVouchers(
   return { money: placeMoneyFrom(r.money), inWallet: typeof r.in_wallet === "boolean" ? r.in_wallet : undefined };
 }
 
-/** Pins a place's House Card to the guest's Wallet with $0 (MESITA-3582).
+/** Pins a place's Loyalty Card to the guest's Wallet with $0 (MESITA-3582).
  *  `already`: it was pinned before. */
-export async function apiAddHouseCard(client: SupabaseClient, placeId: string): Promise<{ already: boolean }> {
-  const r = await invokeEF<{ already?: boolean }>(client, "consumer-web-add-house-card", { place_id: placeId });
+export async function apiAddLoyaltyCard(client: SupabaseClient, placeId: string): Promise<{ already: boolean }> {
+  const r = await invokeEF<{ already?: boolean }>(client, "consumer-web-add-loyalty-card", { place_id: placeId });
   return { already: r.already === true };
 }
 
-/** Takes a pinned $0 House Card off the guest's Wallet (MESITA-3605). The
+/** Takes a pinned $0 Loyalty Card off the guest's Wallet (MESITA-3605). The
  *  server refuses with code has_credit when the guest holds anything there. */
-export async function apiRemoveHouseCard(client: SupabaseClient, placeId: string): Promise<void> {
-  await invokeEF<{ ok: boolean }>(client, "consumer-web-remove-house-card", { place_id: placeId });
+export async function apiRemoveLoyaltyCard(client: SupabaseClient, placeId: string): Promise<void> {
+  await invokeEF<{ ok: boolean }>(client, "consumer-web-remove-loyalty-card", { place_id: placeId });
 }
 
 /** Whether the Wallet offers "Remove from Wallet" (MESITA-3605): a card the
  *  guest pinned that holds nothing and has no history. A card with history
  *  shows by its entries, so removing the pin would change nothing. The
  *  server checks the money again; this only decides the button. */
-export function canRemoveHouseCard(b: WalletBalance | null): boolean {
+export function canRemoveLoyaltyCard(b: WalletBalance | null): boolean {
   if (!b || b.pinned !== true) return false;
   return (
     b.balance_cents === 0 &&

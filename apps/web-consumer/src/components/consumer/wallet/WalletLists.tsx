@@ -22,16 +22,16 @@ import { type WalletCardModel, walletCardLabel } from "./WalletCard";
 // list of cards as with the money payment methods. keep the symmetry"): a
 // Credits Card is a row like a saved card (CreditsRow: the place's photo in
 // the card-shaped chip, the name, one quiet line, the amount, a chevron to
-// its House Card), in one white card of rows; MESITA-3736's black band with
+// its Loyalty Card), in one white card of rows; MESITA-3736's black band with
 // transactions and Fund | Gift is gone from the Wallet. Buy and Gift live on
-// the House Card page (PlaceCredit). No card yet: EmptyCreditsRow.
+// the Loyalty Card page (PlaceCredit). No card yet: EmptyCreditsRow.
 //
 // THE WALLET REDESIGN (Pato, 2026-11-11, MESITA-3727, /autoplan approved
 // with "rec"): Credits first, then Ways to pay (WalletSection). Each list's
 // Add is a quiet button on its heading (HeadingButton), never a dashed first
 // row. A Credits Card is just its row (Pato, MESITA-3731: "keep just the card
 // without the buttons to fund nor gift. those must go inside"): Fund and Gift
-// are on its House Card page. A shown amount of 0 is muted. A guest with no Credits Card
+// are on its Loyalty Card page. A shown amount of 0 is muted. A guest with no Credits Card
 // sees one quiet prompt (EmptyCreditsRow). CreditRowSkeleton is the loading
 // shape for a card, shared with Pay's loading frame.
 //
@@ -41,7 +41,7 @@ import { type WalletCardModel, walletCardLabel } from "./WalletCard";
 // last: a row at the bottom of the card, never on the heading (Pato,
 // MESITA-3744: "the add button must be below, not there"). A row is a small payment-card-shaped chip in the method's own
 // colour (MESITA-3643's card shape: green $ Cash, a black saved card, a
-// black House Card wearing the place's photo, a pink Story), its name, a
+// black Loyalty Card wearing the place's photo, a pink Story), its name, a
 // quiet second line, and the amount or a chevron. The rails they replace
 // (MESITA-3530: "TWO HORIZONTAL CAROUSELS with cards") scrolled sideways,
 // 2.5 tiles across (MESITA-3534).
@@ -211,7 +211,7 @@ export function CreditsRow({
   ready?: boolean;
   /** "$200.00 pending · ready in 3 h": a blue box under the row (MESITA-4260). */
   pendingLine?: string | null;
-  /** Its House Card page. Absent on a page that IS this place's (the
+  /** Its Loyalty Card page. Absent on a page that IS this place's (the
    *  Offers page's balance, MESITA-4060): a plain row, no chevron. */
   href?: string;
   /** The place left Mesita; the money stays. */
@@ -381,7 +381,7 @@ export function EmptyCreditsRow({ href }: { href: string }) {
 }
 
 /** A Story voucher (MESITA-3507): its tap opens the sheet with the QR.
- *  The House Card's plain row (MESITA-3869): title, grey line, muted amount,
+ *  The Loyalty Card's plain row (MESITA-3869): title, grey line, muted amount,
  *  chevron; no chip of its own. MESITA-4264: what was paid is already
  *  credit, so the row is the bonus and where the story stands. */
 export function StoryRow({ story, onOpen, now }: { story: WaitingStory; onOpen: () => void; now: number }) {
