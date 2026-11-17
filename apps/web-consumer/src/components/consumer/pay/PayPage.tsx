@@ -8,7 +8,7 @@ import { ChevronRight, Clock, MapPin, QrCode } from "lucide-react";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Panel } from "@/components/shared/Panel";
+import { Panel, PanelHeading } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
@@ -269,33 +269,19 @@ export function PayPage({
 
   return (
     <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8 *:shrink-0">
-      <PayHeader
-        title="Pay"
-        action={<TicketsShortcut />}
-        bar={
-          openTabs && openTabs.length === 0 && !pending ? (
-            <SearchBar
-              query={query}
-              showClear={query.length > 0}
-              onQueryChange={setQuery}
-              onClear={() => setQuery("")}
-              placeholder="Search a place"
-            />
-          ) : undefined
-        }
-      />
+      {/* THE HEADER IS THE TITLE AND TICKETS ONLY (MESITA-4204); the search
+          bar lives in the Pay box below. */}
+      <PayHeader title="Pay" action={<TicketsShortcut />} />
 
       {/* THE FOUR BUTTONS ON TOP (Pato, 2026-11-16, MESITA-4202: "move the
           four buttons to the top"): right under the band, in every state;
           they ended the page in MESITA-4199. */}
       <WalletShareGift />
 
-      {/* A bill in progress: the bill itself, one panel at the top
-          (MESITA-4086); no amber band on this page. */}
-      <div className="mt-5 flex flex-col">
-        {openTabs === null ? (
-          <ListSkeleton />
-        ) : openTabs.length > 0 || pending ? (
+      {/* A bill in progress: the bill itself, one panel (MESITA-4086), in
+          the Pay box's place; no amber band on this page. */}
+      {openTabs !== null && (openTabs.length > 0 || pending) ? (
+        <div className="mt-4 flex flex-col">
           <OpenBillPanel
             tab={openTabs[0] ?? null}
             pending={pending}
@@ -305,28 +291,55 @@ export function PayPage({
               setOpenTabs((t) => (t ? t.filter((x) => x.tab_id !== tabId) : t))
             }
           />
-        ) : places ? (
-          <PlaceList
-            places={places}
-            query={query}
-            loc={loc}
-            onPick={(id) =>
-              navigateTo(router, payPlacePath(id), { motion: "push" })
-            }
-            onUseLocation={askLocation}
-            onNotNow={notNow}
-          />
-        ) : failed ? (
-          <EmptyState
-            icon={QrCode}
-            title="Couldn't load Pay"
-            description="Check your connection and try again."
-            action={{ label: "Try again", onClick: refresh }}
-          />
-        ) : (
-          <ListSkeleton />
-        )}
-      </div>
+        </div>
+      ) : (
+        // THE PAY BOX (Pato, 2026-11-16, MESITA-4204: "The Pay with the QR
+        // must be on its own BOX PAY (NOT THE HEADER THE SEARCHBAR) ... Just
+        // one box that contains: Searchbar, Place A, Place B, Place C"): one
+        // panel headed by the QR and "Pay", the search bar, then the places
+        // as its rows. Every state of the list sits inside it.
+        <Panel className="mt-4" data-pay-box>
+          <div className="flex min-h-6 items-center gap-2 px-4 pt-4">
+            <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+            <PanelHeading>Pay</PanelHeading>
+          </div>
+          <div className="px-4 pt-3 pb-1">
+            <SearchBar
+              query={query}
+              showClear={query.length > 0}
+              onQueryChange={setQuery}
+              onClear={() => setQuery("")}
+              placeholder="Search a place"
+            />
+          </div>
+          {openTabs === null ? (
+            <RowsSkeleton bare />
+          ) : places ? (
+            <PlaceList
+              places={places}
+              query={query}
+              loc={loc}
+              onPick={(id) =>
+                navigateTo(router, payPlacePath(id), { motion: "push" })
+              }
+              onUseLocation={askLocation}
+              onNotNow={notNow}
+            />
+          ) : failed ? (
+            <div className="p-4">
+              <EmptyState
+                inline
+                icon={QrCode}
+                title="Couldn't load Pay"
+                description="Check your connection and try again."
+                action={{ label: "Try again", onClick: refresh }}
+              />
+            </div>
+          ) : (
+            <RowsSkeleton bare />
+          )}
+        </Panel>
+      )}
       <WalletSection giftToken={giftToken} />
     </KeptScroll>
   );
@@ -374,7 +387,7 @@ function PlaceList({
   return (
     <div className="flex flex-col">
       {loc.state === "prime" ? (
-        <div className="border-border bg-card mb-3 rounded-2xl border px-4 py-4">
+        <div className="px-4 py-3">
           <p className="flex items-center gap-2 text-base font-semibold">
             <MapPin className="h-4 w-4 shrink-0" aria-hidden />
             See places near you that take App Payments
@@ -396,38 +409,40 @@ function PlaceList({
           </div>
         </div>
       ) : loc.state === "blocked" ? (
-        <p className="text-muted-foreground mb-3 text-sm">
+        <p className="text-muted-foreground px-4 py-2 text-sm">
           Location is off for mesita.ai. Turn it on in your browser&apos;s site
           settings.
         </p>
       ) : null}
 
       {loc.state === "asking" && places.length === 0 ? (
-        <RowsSkeleton />
+        <RowsSkeleton bare />
       ) : places.length === 0 ? (
-        <EmptyState
-          icon={MapPin}
-          title={
-            loc.state === "on"
-              ? "No place near you takes App Payments"
-              : "Turn on location to see places near you that take App Payments"
-          }
-          description=""
-        />
+        <div className="p-4">
+          <EmptyState
+            inline
+            icon={MapPin}
+            title={
+              loc.state === "on"
+                ? "No place near you takes App Payments"
+                : "Turn on location to see places near you that take App Payments"
+            }
+            description=""
+          />
+        </div>
       ) : (
         <>
           {shown.length === 0 ? (
-            <p className="text-muted-foreground px-1 text-sm">
+            <p className="text-muted-foreground px-4 py-4 text-sm">
               No place matches &ldquo;{query.trim()}&rdquo;
             </p>
           ) : (
-            <div
-              className="border-border bg-card overflow-hidden rounded-2xl border"
-              data-pay-places
-            >
+            // The rows run edge to edge inside the Pay box (MESITA-4204):
+            // a hairline above each, never a box of their own.
+            <div className="mt-2" data-pay-places>
               {shown.map((p, i) => (
                 <Fragment key={p.place_id}>
-                  {i > 0 && <div className="bg-border ml-[4.5rem] h-px" />}
+                  <div className={cn("bg-border h-px", i > 0 && "ml-[4.5rem]")} />
                   <button
                     type="button"
                     onClick={() => onPick(p.place_id)}
@@ -481,10 +496,12 @@ function PlaceList({
   );
 }
 
-function RowsSkeleton() {
+/** `bare`: rows only, inside the Pay box (MESITA-4204); otherwise the
+ *  bordered box the loading frame draws. */
+function RowsSkeleton({ bare = false }: { bare?: boolean }) {
   return (
     <div
-      className="border-border bg-card overflow-hidden rounded-2xl border"
+      className={bare ? "mt-2" : "border-border bg-card overflow-hidden rounded-2xl border"}
       aria-busy
     >
       {[0, 1, 2].map((i) => (
@@ -504,12 +521,20 @@ function RowsSkeleton() {
   );
 }
 
-/** The places list in bones; /pay's loading.tsx draws it too (MESITA-4119). */
+/** The Pay box in bones (MESITA-4119, its box since MESITA-4204): the QR
+ *  heading, the search bar's shape and three rows. /pay's loading.tsx. */
 export function ListSkeleton() {
   return (
-    <div aria-busy>
-      <RowsSkeleton />
-    </div>
+    <Panel className="mt-4" aria-busy>
+      <div className="flex min-h-6 items-center gap-2 px-4 pt-4">
+        <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+        <PanelHeading>Pay</PanelHeading>
+      </div>
+      <div className="px-4 pt-3 pb-1">
+        <Skeleton className="h-11 w-full rounded-full" />
+      </div>
+      <RowsSkeleton bare />
+    </Panel>
   );
 }
 
