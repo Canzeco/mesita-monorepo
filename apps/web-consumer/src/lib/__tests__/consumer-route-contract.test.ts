@@ -107,6 +107,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
   it("pins the exact canonical route map", () => {
     expect(CONSUMER_ROUTES).toEqual({
       onboard: "/onboard",
+      // The Sign tab (MESITA-4246): sign-in and onboarding on one page.
+      sign: "/sign",
       // Search's OWN top-level route (MESITA-1616) — not nested under
       // /discover. See the legacy block below for the /discover/search entry
       // that replaced it as a redirect source.
@@ -689,14 +691,23 @@ describe("middleware auth wall (shouldGate)", () => {
     "/reservation/r1",
     "/inbox/mine",
     "/inbox/global",
-    // Every shell tab is walled at the edge (MESITA-3013): a signed-out tap
-    // gets the redirect before an SSR render that would redirect anyway.
+    // Every personal shell tab is walled at the edge (MESITA-3013).
     "/home",
-    "/home/places",
-    "/home/social",
-    "/search",
-    "/place/abc",
+    // Ask is a paid model call (MESITA-4246).
+    "/search/chat",
+    "/place/abc/reserve",
   ];
+  // ANONYMOUS MODE (MESITA-4246): Home, Social, Search, a place and Sign
+  // open with no session. The kill switch walls them again.
+  const openToAnonymous = ["/home/places", "/home/social", "/search", "/place/abc", "/sign"];
+
+  it.each(openToAnonymous)("%s is open to an anonymous visitor", (p) => {
+    expect(shouldGate(p)).toBe(false);
+  });
+
+  it.each(openToAnonymous.filter((p) => p !== "/sign"))("%s is walled again with ANONYMOUS_BROWSE=off", (p) => {
+    expect(shouldGate(p, false)).toBe(true);
+  });
   // "Ungated at middleware" — NOT "public". Everything under app/(shell) is
   // still walled by that layout's own getUser() check. Only "/" and
   // "/onboard" are reachable signed-out.
@@ -754,6 +765,12 @@ describe("?next= threading (safeNextPath / withNext)", () => {
       "https://evil.com",
       "http://evil.com",
       "evil.com",
+      // A browser reads a backslash as a slash (MESITA-4246).
+      "/\\evil.com",
+      "%2F%2Fevil.com",
+      "/%2F/evil.com",
+      "/%5Cevil.com",
+      "/ok\tx",
       "",
       undefined,
       null,

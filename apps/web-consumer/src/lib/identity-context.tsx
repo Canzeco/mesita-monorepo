@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { ConsumerProfile } from "@/lib/api/profile";
+import { setViewer, type Viewer } from "@/lib/anonymous";
 import { PROFILE_KEY, seedCached } from "@/lib/screen-cache";
 import {
   INSTAGRAM_REACH_FOLLOWERS,
@@ -47,6 +48,16 @@ const IdentityContext = createContext<ConsumerFacts>(NO_IDENTITY);
 // in its HTML) and seeds lib/screen-cache.ts (so a client write wins after).
 const ServerProfileContext = createContext<ConsumerProfile | null>(null);
 
+// WHO IS LOOKING (MESITA-4246): an onboarded `member`, an `anonymous`
+// visitor (no session, or signed in but not onboarded), or `unknown` (a
+// session whose profile read failed). The bar and the call gate read it.
+const ViewerContext = createContext<Viewer>("member");
+
+/** member · anonymous · unknown, from the shell layout's server read. */
+export function useViewer(): Viewer {
+  return useContext(ViewerContext);
+}
+
 /** The profile row the shell layout read on the server, or null. */
 export function useServerProfile(): ConsumerProfile | null {
   return useContext(ServerProfileContext);
@@ -57,8 +68,11 @@ export function ConsumerIdentityProvider({
   instagramFollowers = null,
   profileUnavailable = false,
   profile = null,
+  viewer = "member",
   children,
 }: {
+  /** member · anonymous · unknown (MESITA-4246). */
+  viewer?: Viewer;
   /** The whole row the layout read; null when the read failed. */
   profile?: ConsumerProfile | null;
   /** Real `consumers.instagram_handle`, normalized (no leading @). */
@@ -99,13 +113,18 @@ export function ConsumerIdentityProvider({
     if (profile) seedCached(PROFILE_KEY, profile);
     return null;
   });
+  // The call gate (lib/anonymous.ts) reads the viewer outside React, so the
+  // module copy is set during render, before any child can call out.
+  setViewer(viewer);
 
   return (
-    <ServerProfileContext.Provider value={profile}>
-      <IdentityContext.Provider value={value}>
-        {children}
-      </IdentityContext.Provider>
-    </ServerProfileContext.Provider>
+    <ViewerContext.Provider value={viewer}>
+      <ServerProfileContext.Provider value={profile}>
+        <IdentityContext.Provider value={value}>
+          {children}
+        </IdentityContext.Provider>
+      </ServerProfileContext.Provider>
+    </ViewerContext.Provider>
   );
 }
 

@@ -24,8 +24,13 @@
 // place screen's Social tab, and the 15 km circle does not apply (the guest
 // is already looking at the place). Who is named is unchanged.
 //
+// ANONYMOUS (MESITA-4246): no session, or the project key, reads one page
+// of the same feed with every person reduced to a first name and Class
+// (anonymousPerson) and every time to its day (coarseAt). A broken session
+// is a 401, never the anonymous view.
+//
 // Body: { lat?, lng?, before?, place_id? }
-//   → { items: [{ placeId, kind, at, person, distanceKm, place }], next }
+//   → { viewer: "member"|"anonymous", items: [{ placeId, kind, at, person, distanceKm, place }], next }
 //   distanceKm is the guest to the PLACE (it draws the circle and is the
 //   row's "0.7 km away"). Nothing about where the EVENT happened leaves
 //   this function (MESITA-2946: MESITA-2853's eventKm let two readings from
@@ -40,10 +45,17 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireConsumerRequest } from "../_shared/request.ts";
+import { consumerOrAnonymousRequest } from "../_shared/request.ts";
 import { anonClient } from "../_shared/auth.ts";
 import { haversineKm } from "../_shared/geo.ts";
-import { type ActivityRow, type FeedEvent, feedEvents, isMesitaPlaceId, nearYou } from "../_shared/place-activity.ts";
+import {
+  type ActivityRow,
+  anonymousFeedEvents,
+  type FeedEvent,
+  feedEvents,
+  isMesitaPlaceId,
+  nearYou,
+} from "../_shared/place-activity.ts";
 import { type Card, readCards, viewerSeesHandles } from "../_shared/place-activity-read.ts";
 import { NO_SCREEN_RADIUS_KM } from "../_shared/discovery-config.ts";
 import { finiteOrNull } from "../_shared/input.ts";
@@ -55,10 +67,10 @@ const MAX_SCANS = 6;
 type Body = { lat?: number; lng?: number; before?: string; place_id?: string };
 
 serveJson("consumer-web-list-activity", async (req) => {
-  const ctx = await requireConsumerRequest(req);
+  const ctx = await consumerOrAnonymousRequest(req);
   if (ctx instanceof Response) return ctx;
   const { env, admin, user } = ctx;
-  const viewerId = user.id;
+  const viewer = user ? "member" : "anonymous";
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -75,7 +87,7 @@ serveJson("consumer-web-list-activity", async (req) => {
   const lat = finiteOrNull(body.lat);
   const lng = finiteOrNull(body.lng);
   const hasPoint = lat != null && lng != null;
-  const canSee = await viewerSeesHandles(admin, viewerId);
+  const canSee = user ? await viewerSeesHandles(admin, user.id) : false;
 
   const items: Array<FeedEvent & { distanceKm: number | null; place: Card }> = [];
   let cursor = before;
@@ -87,7 +99,7 @@ serveJson("consumer-web-list-activity", async (req) => {
     });
     if (feedRes.error) return json({ ok: false, error: `feed: ${feedRes.error.message}` }, 500);
     const rows = (feedRes.data ?? []) as ActivityRow[];
-    const events = feedEvents(rows, viewerId, canSee);
+    const events = user ? feedEvents(rows, user.id, canSee) : anonymousFeedEvents(rows);
     const cardsRes = await readCards(anon, [...new Set(events.map((e) => e.placeId))]);
     if (!cardsRes.ok) return json({ ok: false, error: cardsRes.error }, 500);
     for (const e of events) {
@@ -99,11 +111,14 @@ serveJson("consumer-web-list-activity", async (req) => {
       const distanceKm = Number.isFinite(km) ? km : null;
       if (!placeId && !nearYou(distanceKm, NO_SCREEN_RADIUS_KM, hasPoint)) continue;
       items.push({ ...e, distanceKm, place });
-      if (items.length === PAGE_ITEMS) return json({ ok: true, items, next: e.at });
+      if (items.length === PAGE_ITEMS) {
+        // An anonymous visitor gets one page: the cursor is an exact time.
+        return json({ ok: true, viewer, items, next: user ? e.at : null });
+      }
     }
     // Fewer rows than asked for: the feed ends here.
-    if (rows.length < SCAN_ROWS) return json({ ok: true, items, next: null });
+    if (rows.length < SCAN_ROWS) return json({ ok: true, viewer, items, next: null });
     cursor = rows[rows.length - 1].created_at;
   }
-  return json({ ok: true, items, next: cursor });
+  return json({ ok: true, viewer, items, next: user ? cursor : null });
 });

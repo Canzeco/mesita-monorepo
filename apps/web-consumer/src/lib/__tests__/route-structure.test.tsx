@@ -13,6 +13,7 @@ import {
   type RouteId,
 } from "@/lib/consumer-route-contract";
 import { shouldGate } from "@/lib/supabase/middleware";
+import { isOpenToAnonymous } from "@/lib/consumer-route-contract";
 import { LEGACY_REDIRECTS } from "@/lib/legacy-redirects";
 import { TICKET_KINDS } from "@/lib/ticket-kinds";
 import { ME_HUB_GRID, ME_HUB_SETTINGS } from "@/app/(shell)/me/hub-tiles";
@@ -1057,12 +1058,13 @@ describe("the route map", () => {
     expect(tabFor("/me/old-box")).toBe("me");
   });
 
-  it("walls every row at the edge (the shell's getUser stays the real wall)", () => {
+  it("walls every row at the edge but the anonymous ones and Sign (MESITA-4246)", () => {
     for (const id of ids) {
-      expect(
-        shouldGate(ROUTE_MAP[id].pattern.replace(/:[a-zA-Z]+/g, "x1")),
-        id,
-      ).toBe(true);
+      const path = ROUTE_MAP[id].pattern.replace(/:[a-zA-Z]+/g, "x1");
+      const open = isOpenToAnonymous(path);
+      expect(shouldGate(path), id).toBe(!open);
+      // The kill switch walls them again; Sign stays reachable.
+      if (open && id !== "sign") expect(shouldGate(path, false), id).toBe(true);
     }
   });
 

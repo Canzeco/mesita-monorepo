@@ -7,6 +7,17 @@ const CONSUMER_AFTER_AUTH = "/auth/post-signin";
  */
 export function safeNextPath(raw: string | undefined | null): string | null {
   if (!raw?.startsWith("/") || raw.startsWith("//")) return null;
+  // A browser reads `/\evil.com` as `//evil.com`, and a percent-encoded
+  // slash or backslash can turn into one after a decode (MESITA-4246: Sign
+  // links get shared, so `next` must never leave the site).
+  if (/[\\\u0000-\u001f\u007f]/.test(raw)) return null;
+  if (/%(2f|5c)/i.test(raw)) return null;
+  try {
+    const url = new URL(raw, "https://mesita.invalid");
+    if (url.origin !== "https://mesita.invalid") return null;
+  } catch {
+    return null;
+  }
   return raw;
 }
 

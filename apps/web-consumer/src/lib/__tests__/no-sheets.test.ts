@@ -26,6 +26,9 @@ const DEFINITION = "components/consumer/overlay/LocalOverlay.tsx";
  *  one-sentence, two-button confirm and a `decision:` line on its issue. */
 export const CONFIRM_FILES = [
   "components/consumer/activity/GiftPage.tsx",
+  // The first-open welcome (MESITA-4246, decision: Pato asked for a modal
+  // over Home; two buttons, Create account and Explore anonymously).
+  "components/consumer/anonymous/WelcomeModal.tsx",
   "components/consumer/me/CalendarModal.tsx",
   "components/consumer/me/InstagramModal.tsx",
   "components/consumer/pay/GuestPayScreen.tsx",

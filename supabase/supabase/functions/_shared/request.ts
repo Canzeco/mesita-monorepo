@@ -5,6 +5,7 @@
 //   door                        callers                     who gets in
 //   openRequest                 visit-web-*, public reads   anyone (POST)
 //   requireConsumerRequest      consumer-web-*              a signed-in guest
+//   consumerOrAnonymousRequest  consumer-web-* (Social)     a guest, or nobody
 //   requireBusinessRequest      business-web-*              a Google sign-in
 //   requireBusinessSuperAdmin   business-web-* (ops only)   ...who is a super-admin
 //   requireAdminRequest         admin-web-*                 a super-admin
@@ -28,7 +29,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { corsPreflight, json, rejectUnlessMethods } from "./http.ts";
-import { adminClient, type AuthedUser, bearerToken, type EFEnv, getAuthedUser, readEFEnv } from "./auth.ts";
+import { adminClient, type AuthedUser, bearerToken, classifyCaller, type EFEnv, getAuthedUser, readEFEnv } from "./auth.ts";
 import { checkSuperAdmin, requireSuperAdmin } from "./auth-super-admin.ts";
 import { requireInternalCaller } from "./internal.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
@@ -71,6 +72,19 @@ export async function requireConsumerRequest(req: Request, door: ConsumerDoor = 
     ? undefined
     : json({ ok: false, code: "sign_in", error: door.signIn }, 401);
   return await withUser(req, ctx, unauthorized);
+}
+
+/** A consumer-web-* read an anonymous visitor may also make (MESITA-4246):
+ *  `user` is null for no session or the project key, the 401
+ *  `session_invalid` for a broken session (never served as anonymous). */
+export async function consumerOrAnonymousRequest(
+  req: Request,
+): Promise<(OpenRequest & { user: AuthedUser | null }) | Response> {
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const who = await classifyCaller(req, ctx.env);
+  if (!who.ok) return who.response;
+  return { ...ctx, user: who.user };
 }
 
 // ─── business-web-* ─────────────────────────────────────────────────

@@ -11,6 +11,7 @@
 // yet, so its save stays local only.
 
 import { useCallback, useSyncExternalStore } from "react";
+import { currentViewer, requestSignIn } from "@/lib/anonymous";
 
 const STORAGE_KEY = "mesita:saved-places";
 const PREVIEW_STORAGE_KEY = "mesita:saved-place-previews";
@@ -153,8 +154,18 @@ function writePreviewStorage<T extends { id: string }>(map: Map<string, T>) {
   }
 }
 
+// AN ANONYMOUS SAVE IS A SIGN-IN (MESITA-4246): nothing is written, not even
+// on this device; the visitor goes to Sign and the save is applied when they
+// come back onboarded (PendingSignIntent).
+function anonymousSave(placeId: string): boolean {
+  if (currentViewer() !== "anonymous") return false;
+  requestSignIn(UUID_RE.test(placeId) ? { kind: "save", placeId } : null);
+  return true;
+}
+
 function toggleSavedPlace(placeId: string): boolean {
   ensureHydrated();
+  if (!cache.has(placeId) && anonymousSave(placeId)) return false;
   const next = new Set(cache);
   let nowSaved: boolean;
   if (next.has(placeId)) {
@@ -172,6 +183,7 @@ function toggleSavedPlace(placeId: string): boolean {
 }
 
 function setPlaceSaved(placeId: string, saved: boolean): void {
+  if (saved && anonymousSave(placeId)) return;
   if (setLocal(placeId, saved)) writeThrough(placeId, saved);
 }
 

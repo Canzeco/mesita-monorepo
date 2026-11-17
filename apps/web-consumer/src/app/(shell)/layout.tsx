@@ -2,7 +2,7 @@ import { Suspense } from "react";
 
 import { Z_ROUTE_MODAL } from "@/lib/z-index";
 import { cn, errMsg } from "@/lib/utils";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { ScreenStage } from "@/components/consumer/nav/ScreenStage";
@@ -14,6 +14,8 @@ import { ShellLoadingFor } from "./shell-loading";
 import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataGuard";
 import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
 import { Toaster } from "@/components/consumer/Toaster";
+import { PendingSignIntent } from "@/components/consumer/anonymous/PendingSignIntent";
+import { WelcomeModal } from "@/components/consumer/anonymous/WelcomeModal";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
   apiFetchConsumerProfile,
@@ -21,7 +23,12 @@ import {
 } from "@/lib/api/profile";
 import { ConsumerIdentityProvider } from "@/lib/identity-context";
 import { consumerCanBrowse } from "@/lib/consumer-onboarding";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import {
+  CONSUMER_ROUTES,
+  isOpenToAnonymous,
+} from "@/lib/consumer-route-contract";
+import { anonymousBrowseOn } from "@/lib/anonymous-flag";
+import type { Viewer } from "@/lib/anonymous";
 import { withNext } from "@/lib/auth-redirect";
 import { clearSessionHref, isTransientAuthError } from "@/lib/stale-session";
 
@@ -70,31 +77,38 @@ export default async function ConsumerShellLayout({
     ? `${pathname}${requestHeaders.get("x-search") ?? ""}`
     : "";
   const supabase = await createServerSupabase();
+  // ANONYMOUS MODE (MESITA-4246): Home, Search, a place and Social open
+  // without an account (the route contract's one list). Everything else is
+  // a member's and sends the visitor to Sign with where they were.
+  const openHere = anonymousBrowseOn() && isOpenToAnonymous(pathname);
   // THE TWO OREGON READS RUN TOGETHER (MESITA-2850). A hard load waits on
   // this layout, and it used to ask for the user, then for the profile: two
-  // round trips back to back. The profile read leaves now, beside getUser;
-  // its result is only used once the wall below has passed, and a visitor it
-  // was not meant for gets a failed read that nothing ever looks at.
-  const profileRead = apiFetchConsumerProfile(supabase).then(
-    (value) => ({ ok: true as const, value }),
-    (error: unknown) => ({ ok: false as const, error }),
-  );
+  // round trips back to back. The profile read leaves now, beside getUser,
+  // but only when the request carries a Supabase session cookie: an
+  // anonymous visitor costs no profile call (MESITA-4246).
+  const hasSessionCookie = (await cookies())
+    .getAll()
+    .some((c) => c.name.startsWith("sb-"));
+  const profileRead = hasSessionCookie
+    ? apiFetchConsumerProfile(supabase).then(
+        (value) => ({ ok: true as const, value }),
+        (error: unknown) => ({ ok: false as const, error }),
+      )
+    : null;
   const { data: userData, error: userError } = await supabase.auth.getUser();
-  const user = userData.user;
-  // ONE WALL (MESITA-2137): no anonymous sessions, so a visitor without an
-  // account goes to the phone sign-in. A leftover anonymous session from the
-  // MESITA-2066 era counts as none.
-  //
-  // MESITA-3590: no user goes through /auth/clear-session, which clears a
-  // cookie naming a deleted user before `/` (the proxy would otherwise bounce
-  // `/` back to post-signin while the cookie lives). An Auth outage throws
-  // to the error boundary instead of signing anyone out.
+  const authUser = userData.user;
+  // ONE WALL (MESITA-2137, MESITA-4246): no Supabase anonymous sessions; a
+  // leftover one from the MESITA-2066 era counts as no account. Without an
+  // account an open screen renders for an anonymous visitor; any other
+  // screen goes to Sign. MESITA-3590: no user goes through
+  // /auth/clear-session, which clears a cookie naming a deleted user. An Auth
+  // outage throws to the error boundary instead of signing anyone out.
+  const user = authUser && !authUser.is_anonymous ? authUser : null;
   if (!user) {
-    if (isTransientAuthError(userError)) throw userError;
-    redirect(clearSessionHref(here));
-  }
-  if (user.is_anonymous) {
-    redirect(withNext("/", here));
+    if (!authUser && isTransientAuthError(userError)) throw userError;
+    if (!openHere) {
+      redirect(authUser ? withNext(CONSUMER_ROUTES.sign, here) : clearSessionHref(here));
+    }
   }
 
   // consumer-get-profile lazily creates the row, so a brand-new account still
@@ -104,11 +118,8 @@ export default async function ConsumerShellLayout({
   //
   // "The EF threw" is NOT the same as "the profile is incomplete": a cold
   // start, a 500 or a dropped connection would otherwise eject a fully
-  // onboarded consumer to /onboard (where the form's own fetch fails the
-  // same way, so they'd be asked to re-enter data they already gave us —
-  // and on the next success they'd bounce back here). On a throw we render
-  // the shell degraded and let each page surface its own error; the session
-  // is intact and nothing here is security-relevant.
+  // onboarded consumer to onboarding. On a throw we render the shell
+  // degraded (viewer `unknown`) and let each page surface its own error.
   //
   // redirect() throws NEXT_REDIRECT, so it MUST stay outside the read's
   // failure branch — otherwise a redirect would be reported as a failure.
@@ -116,35 +127,39 @@ export default async function ConsumerShellLayout({
   let instagramFollowers: number | null = null;
   let needsOnboarding = false;
   // "The EF threw" is not "the guest has no Instagram" (design review
-  // 2026-08-22). This layout deliberately degrades rather than ejecting, so
-  // a failed read and an account with nothing connected would otherwise be
-  // the same state — and a surface that states the fact would assert the
-  // guess. Only this catch knows the difference, so it says so.
+  // 2026-08-22). Only this catch knows the difference, so it says so.
   let profileUnavailable = false;
   let profile: ConsumerProfile | null = null;
-  const read = await profileRead;
-  if (read.ok) {
-    profile = read.value.consumer;
-    // The SIGNUP gate only — first name + birthday (MESITA-1806). A missing
-    // last name no longer ejects anyone to /onboard; the reservation sheet
-    // asks for it at the one moment it is load-bearing.
-    needsOnboarding = !consumerCanBrowse(profile);
-    instagramHandle = profile.instagram_handle?.trim() || null;
-    instagramFollowers = profile.instagram_followers_count ?? null;
-  } else {
-    console.error(
-      "[consumer/shell] consumer-get-profile:",
-      errMsg(read.error, "profile fetch failed"),
-    );
-    profileUnavailable = true;
+  if (user) {
+    const read = profileRead
+      ? await profileRead
+      : await apiFetchConsumerProfile(supabase).then(
+          (value) => ({ ok: true as const, value }),
+          (error: unknown) => ({ ok: false as const, error }),
+        );
+    if (read.ok) {
+      profile = read.value.consumer;
+      needsOnboarding = !consumerCanBrowse(profile);
+      instagramHandle = profile.instagram_handle?.trim() || null;
+      instagramFollowers = profile.instagram_followers_count ?? null;
+    } else {
+      console.error(
+        "[consumer/shell] consumer-get-profile:",
+        errMsg(read.error, "profile fetch failed"),
+      );
+      profileUnavailable = true;
+    }
   }
-  // Carry the destination into onboarding so finishing the form lands the
-  // guest on what they originally opened, not a generic home tab.
-  // Every registered account finishes signup, whichever surface it opened —
-  // only an anonymous browse session is exempt (Bugbot, PR #1995).
-  if (needsOnboarding && !user.is_anonymous) {
-    redirect(withNext(CONSUMER_ROUTES.onboard, here));
+  // A signed-in account that has not finished onboarding is anonymous on an
+  // open screen and finishes on Sign for everything else (MESITA-4246).
+  if (user && needsOnboarding && !openHere) {
+    redirect(withNext(CONSUMER_ROUTES.sign, here));
   }
+  const viewer: Viewer = !user || needsOnboarding
+    ? "anonymous"
+    : profileUnavailable
+      ? "unknown"
+      : "member";
 
   // Two-box layout strategy (per user spec):
   //   - Bottom: BottomNav (shrink-0).
@@ -166,7 +181,7 @@ export default async function ConsumerShellLayout({
       {/* Runs before the children subtree hydrates the saved set, so a fresh
           consumer never inherits the previous account's localStorage-backed
           favorites / reservations (survives sign-out + DB reset). */}
-      <ConsumerLocalDataGuard consumerId={user.id} />
+      {user ? <ConsumerLocalDataGuard consumerId={user.id} /> : null}
       {/* Where Back lands (MESITA-3614): the entry the app opened on. */}
       <ShellEntry />
       {/* Turns the place-detail 404 bounce into a stated reason + prunes the
@@ -179,6 +194,7 @@ export default async function ConsumerShellLayout({
         instagramFollowers={instagramFollowers}
         profileUnavailable={profileUnavailable}
         profile={profile}
+        viewer={viewer}
       >
         <div className="relative flex flex-1 flex-col overflow-hidden">
           {/* A ticket left open, on every screen with the bar (MESITA-3906),
@@ -216,6 +232,8 @@ export default async function ConsumerShellLayout({
             </div>
           </ScreenStage>
           <BottomNav />
+          <PendingSignIntent />
+          <WelcomeModal />
         </div>
       </ConsumerIdentityProvider>
       <Toaster />

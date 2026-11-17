@@ -13,6 +13,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logCall } from "@/lib/call-log";
 import { reportEFFailure } from "@/lib/report-error";
+import { anonymousGate, currentViewer, requestSignIn } from "@/lib/anonymous";
 
 // EVERY FUNCTION RUNS NEXT TO THE DATABASE (MESITA-3021). The project lives
 // in us-west-2 (Oregon). Unpinned, a call from Monterrey enters Supabase's
@@ -67,6 +68,18 @@ export async function invokeEF<T>(
   // wouldn't be readable on its own.
   fallback = `${fn} failed`,
 ): Promise<T> {
+  // ANONYMOUS MODE (MESITA-4246): one table, lib/anonymous.ts, decides what
+  // a visitor without an onboarded account may call. Quiet calls never leave
+  // (no social event, no paid Google call); an action sends them to Sign.
+  const gate = anonymousGate(currentViewer(), fn, body);
+  if (gate.kind === "quiet") {
+    if (gate.answer) return gate.answer as T;
+    throw new EFError("Sign in to see this", { fn, code: "anonymous", status: 401 });
+  }
+  if (gate.kind === "sign") {
+    requestSignIn(gate.intent);
+    throw new EFError("Sign in to continue", { fn, code: "sign_in_required", status: 401 });
+  }
   const started = Date.now();
   const { data, error } = await client.functions.invoke<EFResult<T>>(
     `${fn}?forceFunctionRegion=${FUNCTION_REGION}`,

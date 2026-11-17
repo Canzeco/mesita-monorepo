@@ -55,7 +55,8 @@ export default async function PostSigninPage({
   // on once it's saved. Sending them to the target first only bounced them
   // back off the (shell) gate with the destination already lost.
   if (!consumerResult?.onboarded) {
-    redirect(withNext(CONSUMER_ROUTES.onboard, explicitNext));
+    // Onboarding is Sign's second step now (MESITA-4246).
+    redirect(withNext(CONSUMER_ROUTES.sign, explicitNext));
   }
   redirect(explicitNext ?? CONSUMER_ROUTES.home);
 }
