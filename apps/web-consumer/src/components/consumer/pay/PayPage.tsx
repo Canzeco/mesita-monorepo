@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Clock, QrCode } from "lucide-react";
+import { Clock, QrCode } from "lucide-react";
 import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { forgetGuestTab, NETWORK_FAILURE, PlacePhoto, QUIET_BUTTON_CLASS, readGuestTabIds } from "./pay-common";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
-import { distanceText, usePayLocation } from "./pay-location";
+import { usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
@@ -176,31 +176,24 @@ export function PayPage({
   );
 }
 
-/** Pay Bill (MESITA-4232): 72px, full width, black. At a place it reads
- *  "Pay Bill at <place>" and opens that place's bill, with "Other place"
- *  under it for the picker; otherwise it opens the picker (/pay/pick). */
+/** Pay Bill (MESITA-4232; its shape MESITA-4236, Pato: "SAME HEIGHT AS THE
+ *  OTHER 3 BUTTON MENUS … I THINK THAT THE QR IS SUPER INTUITIVE"): the three
+ *  boxes' 52px, full width, black, one centred line: a big QR and the label.
+ *  At a place it reads "Pay Bill at <place>" and opens that place's bill,
+ *  with "Other place" under it for the picker; otherwise it opens the picker
+ *  (/pay/pick). */
 function PayBillButton({ here }: { here: PayPlace | null }) {
   const name = here?.name ?? null;
   return (
     <div className="mt-4 flex flex-col" data-pay-bill>
       <PushLink
         href={here ? payPlacePath(here.place_id) : CONSUMER_ROUTES.payPick}
-        className="bg-foreground text-paper flex min-h-[4.5rem] w-full items-center gap-3 rounded-2xl px-5 py-3 text-left transition hover:opacity-90 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2 outline-none"
+        className="bg-foreground text-paper flex h-13 w-full items-center justify-center gap-2.5 rounded-xl px-4 transition hover:opacity-90 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2 outline-none"
         aria-label={name ? `Pay Bill at ${name}` : "Pay Bill"}
         data-pay-bill-button
       >
-        <QrCode className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-lg leading-tight font-semibold">
-            {name ? `Pay Bill at ${name}` : "Pay Bill"}
-          </span>
-          <span className="text-paper/70 mt-0.5 block truncate text-sm leading-tight">
-            {here && here.distance_m !== null
-              ? `You're here · ${distanceText(here.distance_m)}`
-              : "Pick the place you're at"}
-          </span>
-        </span>
-        <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
+        <QrCode className="h-8 w-8 shrink-0" strokeWidth={2} aria-hidden />
+        <span className="min-w-0 truncate text-lg font-bold">{name ? `Pay Bill at ${name}` : "Pay Bill"}</span>
       </PushLink>
       {here ? (
         <PushLink
@@ -218,7 +211,7 @@ function PayBillButton({ here }: { here: PayPlace | null }) {
 /** Pay Bill's shape while the open-bill read runs, so a bill that is open
  *  never flashes the black button first. */
 export function PayBillSkeleton() {
-  return <Skeleton className="mt-4 h-[4.5rem] w-full rounded-2xl" aria-hidden />;
+  return <Skeleton className="mt-4 h-13 w-full rounded-xl" aria-hidden />;
 }
 
 /** The open bill on /pay (MESITA-4086): one panel, the place's photo and
