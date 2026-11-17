@@ -26,7 +26,7 @@ export function PayHeader({
   action,
   bar,
 }: {
-  title: "Pay" | "Wallet";
+  title: "Pay" | "Wallet" | "Mesita Wallet";
   action?: ReactNode;
   bar?: ReactNode;
 }) {

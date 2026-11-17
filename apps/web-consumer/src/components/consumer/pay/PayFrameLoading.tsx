@@ -15,7 +15,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
     // buttons as themselves, then the money in bones.
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8 *:shrink-0" aria-busy>
-        <PayHeader title="Wallet" action={<TicketsShortcut />} />
+        <PayHeader title="Mesita Wallet" action={<TicketsShortcut />} />
         <PayBillSkeleton />
         <WalletShareGift />
         <WalletBodySkeleton />
