@@ -124,10 +124,6 @@ export type MoneyState = {
   /** Loyalty Cards is On here: new credit can be born (vouchers).
    *  Off never stops a guest spending credit they already hold. */
   loyalty_cards: boolean;
-  /** BRIDGE (MESITA-4282): the same flag under its old name, for a place
-   *  screen loaded before the rename (it reads `house_credits !== false`, so
-   *  a missing key would read On). MESITA-4283 drops it. */
-  house_credits: boolean;
   /** How a guest can pay here: from credit, by card, both, or not at all. */
   pay: PayWay;
   /** The green mark: Mesita Payments or Mesita Prepayments here now (see the header). */
@@ -164,7 +160,6 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
     unavailable,
     cash,
     loyalty_cards: loyaltyCards,
-    house_credits: loyaltyCards,
     pay,
     mesita_pay,
   };

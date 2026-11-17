@@ -8,7 +8,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(10);
+select plan(9);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3582'),
@@ -39,14 +39,6 @@ select ok(
   and not has_table_privilege('authenticated', 'public.wallet_loyalty_cards', 'UPDATE')
   and not has_table_privilege('authenticated', 'public.wallet_loyalty_cards', 'DELETE'),
   'a signed-in guest goes through the EFs, never the table'
-);
--- The MESITA-4277 bridge view under the old name is EF-only too (until
--- MESITA-4283 drops it).
-select ok(
-  not has_table_privilege('anon', 'public.wallet_house_cards', 'SELECT')
-  and not has_table_privilege('authenticated', 'public.wallet_house_cards', 'SELECT')
-  and not has_table_privilege('authenticated', 'public.wallet_house_cards', 'INSERT'),
-  'the wallet_house_cards bridge view grants no client role anything'
 );
 
 -- ━━━ One pin per guest and place ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

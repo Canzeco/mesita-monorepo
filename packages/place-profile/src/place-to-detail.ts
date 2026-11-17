@@ -97,9 +97,7 @@ export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
     // An older EF answer has no mark: fall back to the old rule, never drop it.
     mesita_pay: typeof m.mesita_pay === "boolean" ? m.mesita_pay : m.charges_enabled === true,
     // The place's own switches (MESITA-3589); absent on older reads.
-    // BRIDGE (MESITA-4282): an Edge Function deployed before the rename
-    // still answers house_credits. MESITA-4283 drops the fallback.
-    ...(typeof (m.loyalty_cards ?? m.house_credits) === "boolean" ? { loyalty_cards: (m.loyalty_cards ?? m.house_credits) as boolean } : {}),
+    ...(typeof m.loyalty_cards === "boolean" ? { loyalty_cards: m.loyalty_cards } : {}),
     ...(typeof m.cash === "boolean" ? { cash: m.cash } : {}),
     vouchers,
     test_mode: m.test_mode === true,

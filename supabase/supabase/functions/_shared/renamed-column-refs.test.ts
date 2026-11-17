@@ -44,7 +44,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 
 /** Renamed columns. The old name is dead everywhere except the compat seam. */
-const RETIRED_COLUMNS = ["project_id"] as const;
+const RETIRED_COLUMNS = ["project_id", "house_credits"] as const;
 
 /** Names this guard cannot judge: the seam itself, and this file. */
 const EXEMPT = ["_shared/place-id.ts", "_shared/renamed-column-refs.test.ts"];

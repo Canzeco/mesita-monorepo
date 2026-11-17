@@ -42,10 +42,7 @@ serveJson("business-web-set-payment", async (req) => {
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const { place_id: placeId, key: rawKey, enabled } = bodyRes.body;
-  // BRIDGE (MESITA-4282): a Payments tab loaded before the rename still
-  // sends house_credits; it is loyalty_cards. MESITA-4283 drops this.
-  const key = rawKey === "house_credits" ? "loyalty_cards" : rawKey;
+  const { place_id: placeId, key, enabled } = bodyRes.body;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   // A stale Payments tab can still send a setting that left (Cash, Credits,
   // MESITA-3408; the rates, MESITA-4194): its own code and an owner-facing
