@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { anonymousGate, saveSignIntent, takeSignIntent } from "@/lib/anonymous";
 
 // MESITA-4246: what a visitor without an onboarded account may call. No
@@ -45,7 +45,17 @@ describe("anonymousGate", () => {
 });
 
 describe("the sign intent", () => {
-  afterEach(() => sessionStorage.clear());
+  // An in-memory sessionStorage, whatever the test environment provides.
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("sessionStorage", {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+      clear: () => store.clear(),
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
 
   it("is read once", () => {
     saveSignIntent({ kind: "save", placeId: "p1" });
