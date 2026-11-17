@@ -799,13 +799,28 @@ export function VouchersPane({
                         ) : null}
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
-                        <span className="text-foreground truncate text-base font-semibold">{p.short}</span>
-                        <span className="text-muted-foreground truncate text-sm tabular-nums">
-                          Pay {whole(pay)} · Get {whole(get)}
+                        {/* IN A BOX, SAYING BONUS (Pato, 2026-11-17, MESITA-4227:
+                            "the bonus amount must be in a box and must mention
+                            bonus even if repeated a lot of times"): ink on a grey
+                            box beside the name, so the face stays the row's one
+                            colour and the deal keeps the full width under it (at
+                            the right it cut "Get $6,500" on a 390px phone). */}
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="text-foreground truncate text-base font-semibold">{p.short}</span>
+                          <span
+                            className="bg-muted text-foreground border-border shrink-0 rounded-md border px-1.5 py-0.5 text-[13px] leading-tight font-extrabold tracking-tight whitespace-nowrap tabular-nums"
+                            data-offer-bonus
+                          >
+                            {bonus} Bonus
+                          </span>
                         </span>
-                      </span>
-                      <span className="text-foreground shrink-0 text-lg font-extrabold tracking-tight tabular-nums" aria-hidden>
-                        {bonus}
+                        {/* IN INK (Pato, 2026-11-17, MESITA-4227: "the pay and
+                            get must be clearer, it's too transparent"): Pay
+                            medium, Get semibold, only the dot grey. */}
+                        <span className="text-foreground truncate text-[15px] font-medium tabular-nums">
+                          Pay {whole(pay)} <span className="text-muted-foreground">·</span>{" "}
+                          <span className="font-semibold">Get {whole(get)}</span>
+                        </span>
                       </span>
                       <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
                     </button>
