@@ -142,11 +142,12 @@ export type StoryPollDeps = {
 export type StoryPoll = {
   /** Start a new look now for the window (the old one, if any, ends). */
   start: (window?: StoryPollWindow) => void;
-  /** Start a new look after the debounce: focus and visibilitychange. */
+  /** Start a new look after the debounce: focus and visibilitychange. Does
+   *  nothing before the first start (a gate) or after a found story. */
   restart: () => void;
   /** The sheet closed or paid: no answer is reported after this. */
   close: () => void;
-  /** A story was found: the look ends; start() wakes it again. */
+  /** A story was found: the look ends and focus no longer wakes it; start() does. */
   found: () => void;
   readonly looking: boolean;
 };
@@ -166,6 +167,10 @@ export function createStoryPoll(deps: StoryPollDeps): StoryPoll {
   let looking = false;
   let inFlight = false;
   let waiting = false;
+  // Woken by focus only once a look ran (never past a gate) and no story
+  // was found since; an explicit start() always runs.
+  let armed = false;
+  let asleep = false;
   let deadline = 0;
   let every = STORY_POLL_DEFAULT.every_ms;
   let win: StoryPollWindow = STORY_POLL_DEFAULT;
@@ -200,6 +205,7 @@ export function createStoryPoll(deps: StoryPollDeps): StoryPoll {
         if (closed) return;
         deps.onAnswer(a);
         if (a.kind === "found") {
+          asleep = true;
           gen++;
           clearTick();
           setLooking(false);
@@ -223,6 +229,8 @@ export function createStoryPoll(deps: StoryPollDeps): StoryPoll {
   const start = (w?: StoryPollWindow) => {
     if (closed) return;
     if (w) win = w;
+    armed = true;
+    asleep = false;
     every = Math.max(1_000, win.every_ms);
     gen++;
     clearTick();
@@ -234,7 +242,7 @@ export function createStoryPoll(deps: StoryPollDeps): StoryPoll {
   return {
     start,
     restart: () => {
-      if (closed) return;
+      if (closed || !armed || asleep) return;
       if (debounceTimer !== null) clearTimer(debounceTimer);
       debounceTimer = setTimer(() => {
         debounceTimer = null;
@@ -250,6 +258,7 @@ export function createStoryPoll(deps: StoryPollDeps): StoryPoll {
       setLooking(false);
     },
     found: () => {
+      asleep = true;
       gen++;
       clearTick();
       setLooking(false);

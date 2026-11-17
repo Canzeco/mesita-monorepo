@@ -142,14 +142,34 @@ describe("the Story look (createStoryPoll)", () => {
 
   it("debounces restarts from focus and visibilitychange", async () => {
     const h = harness(() => missing);
+    h.poll.start(POLL);
+    await h.advance(10 * 60_000);
+    const before = h.calls();
     h.poll.restart();
     h.poll.restart();
     h.poll.restart();
     await h.advance(599);
-    expect(h.calls()).toBe(0);
+    expect(h.calls()).toBe(before);
     await h.advance(1);
-    expect(h.calls()).toBe(1);
+    expect(h.calls()).toBe(before + 1);
     expect(h.poll.looking).toBe(true);
+  });
+
+  it("focus never wakes a look that never started (a gate) or found its story", async () => {
+    const h = harness(() => found);
+    h.poll.restart();
+    await h.advance(60_000);
+    expect(h.calls()).toBe(0);
+    h.poll.start(POLL);
+    await h.advance(60_000);
+    expect(h.calls()).toBe(1);
+    h.poll.restart();
+    await h.advance(60_000);
+    expect(h.calls()).toBe(1);
+    // A tap on Check my story still looks.
+    h.poll.start(POLL);
+    await h.flush();
+    expect(h.calls()).toBe(2);
   });
 
   it("restarts after the window ended", async () => {
