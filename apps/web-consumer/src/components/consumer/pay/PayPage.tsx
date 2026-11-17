@@ -460,17 +460,11 @@ function PlaceList({
                       ) : null}
                     </span>
                     <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-sm tabular-nums">
-                      {/* Your credit here, the Loyalty Card's chip. */}
-                      {p.available_cents > 0 ? (
-                        <span
-                          className="bg-foreground text-background rounded-full px-2.5 py-1 text-xs font-semibold"
-                          data-pay-place-credit
-                        >
-                          {money(p.available_cents, p.currency)}
-                        </span>
-                      ) : p.distance_m !== null ? (
-                        distanceText(p.distance_m)
-                      ) : null}
+                      {/* ONE BALANCE ON THE PAGE (MESITA-4204, Pato: "your
+                          call"): a place row shows its distance; the credit
+                          shows once, on its Loyalty Card under Pay with.
+                          MESITA-4199 drew it here too, so Orinoco read twice. */}
+                      {p.distance_m !== null ? distanceText(p.distance_m) : null}
                       <ChevronRight className="h-4 w-4" aria-hidden />
                     </span>
                   </button>
