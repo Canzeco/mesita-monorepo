@@ -105,8 +105,8 @@ select ok(
 select ok(
   not has_function_privilege('anon', 'public.consumer_instagram_claim_scrape(uuid, text, integer, integer)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.consumer_instagram_claim_scrape(uuid, text, integer, integer)', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.consumer_instagram_sync(uuid, text, integer)', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.consumer_instagram_sync(uuid, text, integer)', 'EXECUTE'),
+    and not has_function_privilege('anon', 'public.consumer_instagram_sync(uuid, text, integer, boolean)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.consumer_instagram_sync(uuid, text, integer, boolean)', 'EXECUTE'),
   'client roles cannot execute either function');
 
 select * from finish();

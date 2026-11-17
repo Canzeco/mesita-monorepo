@@ -183,6 +183,8 @@ async function sync(
     p_consumer_id: consumerId,
     p_handle: handle,
     p_followers: profile.followerCount,
+    // VIP needs a public account (MESITA-4263).
+    p_private: profile.isPrivate,
   });
   if (error) {
     return serverError(
@@ -298,6 +300,7 @@ serveJson("consumer-web-lookup-instagram", async (req) => {
     p_consumer_id: consumerId,
     p_handle: profile.username,
     p_followers: profile.followerCount,
+    p_private: profile.isPrivate,
   });
   if (verifyErr) {
     return serverError(

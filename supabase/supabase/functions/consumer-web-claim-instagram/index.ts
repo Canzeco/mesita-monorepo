@@ -53,6 +53,7 @@ import {
   judgeProfile,
   makeClaimCode,
   normalizeHandle,
+  scrapedPrivate,
 } from "../_shared/instagram-claim.ts";
 import { dmLink, readInstagramDmConfig } from "../_shared/instagram-dm.ts";
 import { disconnectInstagram, readInstagramStatus } from "../_shared/consumer-doc.ts";
@@ -237,6 +238,8 @@ serveJson("consumer-web-claim-instagram", async (req) => {
       p_consumer_id: consumerId,
       p_handle: claim.handle,
       p_followers: verdict.followers,
+      // VIP needs a public account (MESITA-4263).
+      p_private: scrapedPrivate(profile),
     });
     if (verifyErr) return jsonError(verifyErr.message, 500);
 

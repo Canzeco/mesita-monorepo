@@ -13,7 +13,7 @@
 import { APIFY_ACTORS, runApifyActor } from "./apify.ts";
 import { isDeadIgStub } from "./enrich-instagram-match.ts";
 import { pickProfilePicUrl } from "./instagram-avatar.ts";
-import { normalizeHandle } from "./instagram-claim.ts";
+import { normalizeHandle, scrapedPrivate } from "./instagram-claim.ts";
 import { numOf } from "./parse-utils.ts";
 
 export type InstagramProfile = {
@@ -21,6 +21,8 @@ export type InstagramProfile = {
   /** Instagram's own link: it expires, so it is copied, never stored. */
   profilePictureUrl: string | null;
   followerCount: number;
+  /** The account is private (MESITA-4263), null when the scrape didn't say. */
+  isPrivate: boolean | null;
 };
 
 export type InstagramLookupResult =
@@ -52,6 +54,7 @@ export function profileFromScrape(
     followerCount: followers != null && followers > 0
       ? Math.trunc(followers)
       : 0,
+    isPrivate: scrapedPrivate(item),
   };
 }
 
