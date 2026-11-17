@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Gift, QrCode, Share2 } from "lucide-react";
+import { ChevronRight, Gift, QrCode, Store } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { OffersTile, offerSlides, SizedImg } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -28,7 +28,6 @@ import { SentLinks } from "./SendCredit";
 import { Panel } from "@/components/shared/Panel";
 import { WalletPanelList } from "./WalletLists";
 import { DOOR_GLYPH, DOOR_QUIET, PRIMARY, SECONDARY } from "./wallet-buttons";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { offerHref } from "@/components/consumer/offer-button";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
 import { toast } from "@/lib/toast";
@@ -36,6 +35,9 @@ import type { CreditRow } from "./use-wallet";
 
 /** Pay here as a door (MESITA-4269): Stripe purple, glyph over label. */
 const PAY_TILE = cn(DOOR_QUIET, "bg-[#635bff] text-white hover:bg-[#5249e6] hover:opacity-100 focus-visible:ring-[#a5a0ff]");
+/** View place as a door (MESITA-4273): Send Gift's size, grey, the quiet
+ *  outbound-link look. */
+const PLACE_TILE = cn(DOOR_QUIET, "bg-muted text-foreground hover:bg-border hover:opacity-100");
 
 // A PLACE'S HOUSE CARD, /wallet/place/<placeId> (MESITA-3741). Since MESITA-3868
 // (Pato, 2026-11-14, over a screenshot: "the buttons there floting feels
@@ -48,11 +50,11 @@ const PAY_TILE = cn(DOOR_QUIET, "bg-[#635bff] text-white hover:bg-[#5249e6] hove
 //   [mini House Card]     half the column, centred (MESITA-3802): the
 //                         place's photo and name, the server's amount (a
 //                         muted $0 when nothing is spendable yet), "House Card"
-//   [▦ Pay here  ›]       the pink Pay bar, full width, 60px (MESITA-4253)
-//   [Prepay +30% Bonus ›] Home's switching offers, full width (MESITA-4262);
-//                         none for sale, no bar
-//   [Send Gift]           quiet, one line; follows giftAction (hidden,
-//                         dimmed with a reason, or open)
+//   [Pay here][Offers]    2 × 2 doors (MESITA-4269): Stripe-purple Pay, the
+//   [Send Gift][View place]  place screen's Offers box (none for sale: Pay
+//                         spans the row), Send Gift dark (follows giftAction:
+//                         hidden, dimmed with a reason, or open), View place
+//                         grey (MESITA-4273)
 //   (held-credit line)    only while an open payment holds credit
 //   (Confirming a payment…)  only while the server is still confirming one
 //   Vouchers to activate  Story vouchers waiting for staff, only when any
@@ -63,7 +65,6 @@ const PAY_TILE = cn(DOOR_QUIET, "bg-[#635bff] text-white hover:bg-[#5249e6] hove
 //                         available in 25 min"), then every settled in and
 //                         out, newest first; 10 settled rows, then Show all
 //   Waiting for a friend  links nobody took yet
-//   View place            a grey pill under the card (MESITA-4116)
 //   Remove from Wallet    one quiet link, last
 //
 // History of the three things this undid, each Pato's own ask at the time:
@@ -203,12 +204,13 @@ export function HouseCardSkeleton() {
     <div className="flex flex-col" aria-hidden>
       <Panel className="mt-4 p-4">
         <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
-        {/* View place under the card, then Pay, the offer bar and Send
-            Gift (MESITA-4262). */}
-        <Skeleton className="mx-auto mt-3 h-9 w-28 rounded-full" />
-        <Skeleton className="mt-4 h-15 w-full rounded-xl" />
-        <Skeleton className="mt-2 h-14 w-full rounded-xl" />
-        <Skeleton className="mt-2 h-12 w-full rounded-xl" />
+        {/* The 2 × 2 doors (MESITA-4273). */}
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Skeleton className="h-13 rounded-xl" />
+          <Skeleton className="h-13 rounded-xl" />
+          <Skeleton className="h-13 rounded-xl" />
+          <Skeleton className="h-13 rounded-xl" />
+        </div>
       </Panel>
       <Panel className="mt-4 p-4">
         <Skeleton className="h-5 w-28 rounded-md" />
@@ -335,19 +337,6 @@ export function PlaceCredit({
         </p>
         <p className="type-eyebrow relative text-white/80" aria-hidden>House Card</p>
       </div>
-      {/* VIEW PLACE AT THE TOP (MESITA-4116, Pato: "add the view place as a
-          button at the top, not at the bottom hidden"): a quiet grey pill
-          under the card, the outbound-link style. */}
-      {gone ? null : (
-        <PushLink
-          href={href}
-          className="bg-muted text-foreground hover:bg-border mx-auto mt-3 flex h-9 items-center gap-1 rounded-full px-4 text-sm font-semibold transition"
-          data-house-card-place
-        >
-          View place
-          <ChevronRight className="h-4 w-4" aria-hidden />
-        </PushLink>
-      )}
       {gone ? (
         <p className="text-muted-foreground mt-4 text-sm" data-house-card-gone>
           Your credit here stays yours; ask Mesita support to use it.
@@ -363,11 +352,15 @@ export function PlaceCredit({
            Send Gift. Offers. Share Mesita. maybe 2x2 matrix"): Pay here in
            Stripe purple and the place screen's own Offers box on top ("just
            reuse this box there"), Send Gift and Share Mesita dark under them.
-           It was a pink Pay bar over a green Prepay bar (MESITA-4253/4262). */
+           It was a pink Pay bar over a green Prepay bar (MESITA-4253/4262).
+           Share Mesita left and View place took its slot as a grey door
+           (MESITA-4273, Pato: "remove share mesita from here. view place must
+           be same a grey button of the same size"); it was a pill under the
+           card (MESITA-4116). */
         <div className="mt-4 grid grid-cols-2 gap-2" data-house-card-actions>
           <PushLink
             href={payPlacePath(row.placeId)}
-            className={PAY_TILE}
+            className={cn(PAY_TILE, offers.length === 0 && "col-span-2")}
             aria-label={spendable > 0 ? `Pay here: use ${money(spendable, card.currency)} at the table` : "Pay here"}
             data-house-card-pay
           >
@@ -399,9 +392,9 @@ export function PlaceCredit({
               Send Gift
             </button>
           ) : null}
-          <PushLink href={CONSUMER_ROUTES.share} className={DOOR_QUIET} data-house-card-share>
-            <Share2 className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
-            Share Mesita
+<PushLink href={href} className={cn(PLACE_TILE, !gift && "col-span-2")} data-house-card-place>
+            <Store className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+            View place
           </PushLink>
         </div>
       )}
