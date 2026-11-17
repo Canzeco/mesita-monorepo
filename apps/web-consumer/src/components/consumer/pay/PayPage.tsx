@@ -41,7 +41,7 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 // D3-D13):
 //
 //   Wallet ................................... [Tickets] (grey)  (MESITA-4245)
-//   [ ▦ Pay Bill ]  56px, ink black, the one dark thing (MESITA-4254)
+//   [ ▦ Pay Bill ]  56px, Stripe purple, the one coloured thing (MESITA-4260)
 //   [ Buy Credits ] [ Send Gift ] [ Share Mesita ]  grey, no box
 //   Payment Methods: [ Cash · Outside the app ] [ Visa ••4242 · In the app ]
 //   Loyalty Cards: rows, black pill = ready, amber line = pending
@@ -152,7 +152,7 @@ export function PayPage({
       <PayHeader title="Mesita Wallet" action={<TicketsShortcut />} />
 
       {/* PAY BILL (Pato, 2026-11-17, MESITA-4232: "GIANT BUTTON … CALL THAT
-          PAY BILL"): the page's one dark thing (native black since MESITA-4254), first. With a bill open it
+          PAY BILL"): the page's one coloured thing (Stripe purple since MESITA-4260), first. With a bill open it
           IS the bill (D4): the amber panel, Continue bill and Cancel bill. */}
       {openTabs === null ? (
         <PayBillSkeleton />
@@ -180,7 +180,8 @@ export function PayPage({
   );
 }
 
-/** Pay Bill (MESITA-4232). A NATIVE PAY BUTTON since MESITA-4254 (Pato: "THE
+/** Pay Bill (MESITA-4232). Stripe purple #635bff since MESITA-4260 (Pato:
+ *  "maybe do the button purple like stripe"); A NATIVE PAY BUTTON since MESITA-4254 (Pato: "THE
  *  PAY BUTTON LOOKS LIKE SHIT … AN OLD 2010s app"; picked option A of the
  *  options page): ink black, 56px, one centred line, an 18px QR and "Pay
  *  Bill" at text-base semibold, like Apple Pay or Stripe; the page's one dark
@@ -194,7 +195,7 @@ function PayBillButton({ here }: { here: PayPlace | null }) {
     <div className="mt-4 flex flex-col" data-pay-bill>
       <PushLink
         href={here ? payPlacePath(here.place_id) : CONSUMER_ROUTES.payPick}
-        className="bg-foreground text-paper flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-4 transition hover:opacity-90 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2 outline-none"
+        className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#635bff] px-4 text-white transition hover:bg-[#5249e6] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[#a5a0ff] focus-visible:ring-offset-2 outline-none"
         aria-label={name ? `Pay Bill at ${name}` : "Pay Bill"}
         data-pay-bill-button
       >
