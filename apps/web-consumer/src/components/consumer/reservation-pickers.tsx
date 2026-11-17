@@ -443,8 +443,10 @@ function NotifyRow({
   onChange: (next: ReservationNotify) => void;
 }) {
   const options: Array<{ value: ReservationNotify; label: string }> = [
-    { value: "app", label: "App only" },
-    { value: "call", label: "App + a call" },
+    // MESITA-4266, Pato: "App Notification + Phone Call … mention like
+    // notification is important". The long one wraps inside its segment.
+    { value: "app", label: "App notification" },
+    { value: "call", label: "App notification + Phone call" },
   ];
   return (
     <div>
@@ -460,7 +462,7 @@ function NotifyRow({
               aria-checked={active}
               onClick={() => onChange(o.value)}
               className={cn(
-                "h-11 rounded-lg text-sm font-semibold transition",
+                "min-h-12 rounded-lg px-2 py-1.5 text-sm leading-tight font-semibold text-balance transition",
                 active ? "bg-foreground text-background" : "text-foreground",
               )}
             >
