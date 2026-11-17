@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect } from "react";
 import { SizedImg } from "@mesita/place-profile";
-import { ChevronLeft, ChevronRight, CircleCheck, CreditCard, HandCoins, Lock, MapPin, PenLine, ReceiptText, Wallet, X, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleCheck, HandCoins, Lock, MapPin, PenLine, ReceiptText, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { PayPlace } from "@/lib/api/wallet";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 // THE GUEST-LEAD PAY FLOW'S SHARED PIECES (MESITA-3861, Pato's "14. Payments
 // Flow Guest-Lead"): the place across the top (Open), the X in the corner,
 // the rows card, the three state colours and the Not paid reasons. The
-// screens are GuestPayScreen (Open, Bill, Method, App Pay, Cash Pay) and
+// screens are GuestPayScreen (Open, Bill, Tip, Pay) and
 // GuestTabView (Sign, Confirming, Receipt, Not paid).
 
 /** State colours, used only for state, always with an icon and words. */
@@ -163,27 +163,22 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
   );
 }
 
-/** The eight steps (MESITA-4135, Pato: "ticket must be 8 steps with some
- *  hidden ... 7 receipt ... don't hide it in the progress bar"; seven since
- *  MESITA-4117, five until then, MESITA-3878). Pick is the Pay tab's list of
- *  places, done on every later step; Card is skipped for cash, Card and Pay
- *  when credits cover everything (lib/guest-pay-stages.ts). */
-export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Method", "Card", "Pay", "Sign", "Receipt"] as const;
+/** The steps (MESITA-4226, Pato: "too much fucking steps ... remove card ...
+ *  merge methods for them to look shorter"; eight until then, MESITA-4135).
+ *  Pick is the Pay tab's list of places, done on every later step; Pay holds
+ *  the credits switch, the way and the card (lib/guest-pay-stages.ts). No
+ *  step is skipped. */
+export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Pay", "Sign", "Receipt"] as const;
 
-/** WHAT THE BAR SHOWS: SEVEN, Pick hidden (MESITA-4135). Card shows, and a
- *  payment that skips it (or Pay) draws that segment dashed, as MESITA-4117
- *  did; MESITA-4129 had shown five (Card and Receipt hidden). Pick reads
- *  Bill. */
-const SHOWN_STEPS = ["Bill", "Tip", "Method", "Card", "Pay", "Sign", "Receipt"] as const;
+/** WHAT THE BAR SHOWS: FIVE, Pick hidden (it reads Bill). */
+const SHOWN_STEPS = ["Bill", "Tip", "Pay", "Sign", "Receipt"] as const;
 const SHOWN_AT: Record<(typeof PAY_FLOW_STEPS)[number], number> = {
   Pick: 0,
   Bill: 0,
   Tip: 1,
-  Method: 2,
-  Card: 3,
-  Pay: 4,
-  Sign: 5,
-  Receipt: 6,
+  Pay: 2,
+  Sign: 3,
+  Receipt: 4,
 };
 
 /** Each shown step's icon beside its name (MESITA-4125, Pato: "use icons in
@@ -191,8 +186,6 @@ const SHOWN_AT: Record<(typeof PAY_FLOW_STEPS)[number], number> = {
 const SHOWN_ICONS: Record<(typeof SHOWN_STEPS)[number], LucideIcon> = {
   Bill: ReceiptText,
   Tip: HandCoins,
-  Method: Wallet,
-  Card: CreditCard,
   Pay: Lock,
   Sign: PenLine,
   Receipt: CircleCheck,
@@ -212,33 +205,26 @@ export function StepBody({ children, className }: { children: React.ReactNode; c
 }
 
 /** The step nav (MESITA-4061, Pato: "steps with arrows to nav across them
- *  < >"): ‹ one step back, "Tip · 3 of 7", › the footer's Next. An arrow
+ *  < >"): ‹ one step back, "Tip · 2 of 5", › the footer's Next. An arrow
  *  that cannot act is hidden (its 44px slot kept, gone from the screen
  *  reader); › exists only where the footer's button is a plain Next, never
- *  where it moves money or leaves the app. Under it, seven thin segments
- *  (MESITA-4135), done and current ink, skipped ones dashed. A pure view:
- *  the screen owns the back logic. */
+ *  where it moves money or leaves the app. Under it, five thin segments
+ *  (MESITA-4226), done and current ink. A pure view: the screen owns the
+ *  back logic. */
 export function StepNav({
   at,
   onBack,
   next,
-  skipped = [],
 }: {
   at: number;
   onBack?: () => void;
   next?: { onClick: () => void; disabled: boolean };
-  /** Steps this payment skips: a dashed segment, and the arrows' labels
-   *  name the step they really reach (MESITA-4117). */
-  skipped?: readonly number[];
 }) {
   const shownAt = SHOWN_AT[PAY_FLOW_STEPS[at]];
   const name = SHOWN_STEPS[shownAt];
   const StepIcon = SHOWN_ICONS[name];
-  // The neighbours an arrow really reaches, past skipped steps.
-  let prev = at - 1;
-  while (prev > 0 && skipped.includes(prev)) prev -= 1;
-  let following = at + 1;
-  while (following < PAY_FLOW_STEPS.length - 1 && skipped.includes(following)) following += 1;
+  const prev = at - 1;
+  const following = at + 1;
   const backLabel = prev <= 0 ? "Back to places" : `Back to ${PAY_FLOW_STEPS[prev]}`;
   const arrow = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent";
   return (
@@ -275,19 +261,11 @@ export function StepNav({
           <ChevronRight className="h-6 w-6" aria-hidden />
         </button>
       </div>
-      {/* Seven segments (MESITA-4135): done and current ink, not yet grey,
-          a skipped one a dashed hairline on nothing. */}
-      <ol className="mt-1 grid grid-cols-7 gap-1.5" aria-label={`Step ${shownAt + 1} of ${SHOWN_STEPS.length}: ${name}`}>
-        {SHOWN_STEPS.map((step, i) => {
-          const skip = i !== shownAt && skipped.includes(PAY_FLOW_STEPS.indexOf(step));
-          return (
-            <li
-              key={step}
-              aria-current={i === shownAt ? "step" : undefined}
-              className={cn("h-1 rounded-full", skip ? "border-border border border-dashed bg-transparent" : i <= shownAt ? "bg-foreground" : "bg-border")}
-            />
-          );
-        })}
+      {/* Five segments (MESITA-4226): done and current ink, not yet grey. */}
+      <ol className="mt-1 grid grid-cols-5 gap-1.5" aria-label={`Step ${shownAt + 1} of ${SHOWN_STEPS.length}: ${name}`}>
+        {SHOWN_STEPS.map((step, i) => (
+          <li key={step} aria-current={i === shownAt ? "step" : undefined} className={cn("h-1 rounded-full", i <= shownAt ? "bg-foreground" : "bg-border")} />
+        ))}
       </ol>
     </div>
   );
@@ -313,7 +291,7 @@ export function PayTop({
   place: PayPlace | null;
   name?: string | null;
   onChoose?: () => void;
-  step?: { at: number; onBack?: () => void; next?: { onClick: () => void; disabled: boolean }; skipped?: readonly number[] };
+  step?: { at: number; onBack?: () => void; next?: { onClick: () => void; disabled: boolean } };
 }) {
   const setHeader = useContext(PayHeaderPlaceContext);
   const label = place?.name ?? name ?? null;
@@ -325,7 +303,7 @@ export function PayTop({
   if (setHeader) {
     return step ? (
       <Panel className="shrink-0" data-pay-top>
-        <StepNav at={step.at} onBack={step.onBack} next={step.next} skipped={step.skipped} />
+        <StepNav at={step.at} onBack={step.onBack} next={step.next} />
       </Panel>
     ) : null;
   }
@@ -334,7 +312,7 @@ export function PayTop({
       <div className="flex px-4 py-1.5">
         <PlaceBar place={place} name={name} onChoose={onChoose} />
       </div>
-      {step ? <StepNav at={step.at} onBack={step.onBack} next={step.next} skipped={step.skipped} /> : null}
+      {step ? <StepNav at={step.at} onBack={step.onBack} next={step.next} /> : null}
     </Panel>
   );
 }

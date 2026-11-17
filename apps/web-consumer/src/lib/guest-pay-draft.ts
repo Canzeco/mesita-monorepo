@@ -8,9 +8,11 @@ import { payDraftExpired } from "@/lib/pay-draft";
 // left. Not the place-page PayDraft in ./pay-draft (session storage, its own
 // steps): that one only lends this file its 30-minute expiry.
 
-export type Stage = "bill" | "method" | "card" | "pay";
-/** Every stage a stored draft may hold (MESITA-4117). */
-export const STAGES: readonly Stage[] = ["bill", "method", "card", "pay"];
+export type Stage = "bill" | "pay";
+/** Every stage a stored draft may hold (MESITA-4226: Bill and Pay). The
+ *  retired Method and Card read as Pay, where they were merged. */
+export const STAGES: readonly Stage[] = ["bill", "pay"];
+const MERGED_INTO_PAY: readonly string[] = ["method", "card"];
 /** 10% · 15% · 20% · Other (MESITA-3876); no tip is Other with 0 typed. */
 export type Tip = 10 | 15 | 20 | "other" | null;
 export const TIP_CHIPS = [10, 15, 20] as const;
@@ -75,7 +77,7 @@ export function readDraft(placeId: string): Draft | null {
     if (payDraftExpired(d.savedAt, Date.now())) return null;
     // A stored stage is never trusted (MESITA-4117): an unknown one reads as
     // Bill, and a junk method or card id as none.
-    const stage = STAGES.includes(d.stage) ? d.stage : "bill";
+    const stage: Stage = STAGES.includes(d.stage) ? d.stage : MERGED_INTO_PAY.includes(d.stage) ? "pay" : "bill";
     const method = d.method === "card" || d.method === "cash" ? d.method : null;
     const cardId = typeof d.cardId === "string" ? d.cardId : null;
     const refusedCardId = typeof d.refusedCardId === "string" ? d.refusedCardId : null;
@@ -138,22 +140,20 @@ export function clearGuestDraft(placeId: string) {
 }
 
 /** "Start again" reopens what was typed, keypad down, at the given stage
- *  (MESITA-4121: Card when the bill's card failed, Method when it expired or
- *  was rejected, Bill otherwise). At Card the card that failed is excluded:
- *  listed, never preselected. A draft older than 30 minutes is gone, so the
- *  bill opens empty. */
-export function reopenGuestDraft(placeId: string, stage: Stage = "bill") {
+ *  (MESITA-4121, MESITA-4226: Pay when the bill's card failed, expired or
+ *  was rejected, Bill otherwise). When the card failed, Pay marks it
+ *  "Declined just now": a guest has one card, so it stays chosen, and
+ *  paying outside the app is one tap away. A draft older than 30 minutes is
+ *  gone, so the bill opens empty. */
+export function reopenGuestDraft(placeId: string, stage: Stage = "bill", cardFailed = false) {
   const d = readDraft(placeId);
   if (!d) return;
-  const failedCard = stage === "card" ? (d.cardId ?? d.refusedCardId ?? null) : (d.refusedCardId ?? null);
   writeDraft(placeId, {
     ...d,
     stage,
     typing: false,
     sentTabId: null,
-    method: stage === "card" ? "card" : d.method,
-    cardId: stage === "card" ? null : d.cardId,
-    refusedCardId: failedCard,
+    refusedCardId: cardFailed ? (d.cardId ?? d.refusedCardId ?? null) : (d.refusedCardId ?? null),
   });
 }
 
