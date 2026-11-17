@@ -272,7 +272,7 @@ export function CreditsPill({ children }: { children: ReactNode }) {
  *  D8, D11): two tiles side by side, no panel around them, each saying where
  *  the money moves. */
 const TILE =
-  "border-border hover:bg-muted/60 flex min-h-[4.5rem] min-w-0 flex-1 items-center gap-3 rounded-2xl border bg-card px-3 py-3 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-neutral-400";
+  "hover:bg-muted/60 flex min-h-[4.5rem] min-w-0 items-center gap-3 px-4 py-3 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-400";
 
 function TileText({ title, line }: { title: string; line: string }) {
   return (
@@ -313,7 +313,7 @@ export function AddCardTile({ href }: { href: string }) {
     <PushLink
       href={href}
       aria-label="Add a payment card"
-      className={cn(TILE, "border-muted-foreground/40 border-2 border-dashed")}
+      className={TILE}
       data-wallet-add
     >
       <AddChip />
@@ -322,15 +322,14 @@ export function AddCardTile({ href }: { href: string }) {
   );
 }
 
-/** The two tiles under their heading (D11: no outer panel). */
+/** The two halves in ONE box (Pato, 2026-11-17, MESITA-4236: "PAYMENT
+ *  METHODS IN A BOX", undoing MESITA-4232's D11): the panel and its heading
+ *  like Loyalty Cards, Cash left and the card right, a hairline between. */
 export function PaymentMethods({ children }: { children: ReactNode }) {
   return (
-    <section className="mt-5" aria-labelledby="payment-methods-heading" data-payment-methods>
-      <h2 id="payment-methods-heading" className="font-display px-1 text-base font-bold">
-        Payment Methods
-      </h2>
-      <div className="mt-2 flex gap-2">{children}</div>
-    </section>
+    <Panel className="mt-4" title="Payment Methods" data-payment-methods>
+      <div className="border-border divide-border mt-3 grid grid-cols-2 divide-x border-t">{children}</div>
+    </Panel>
   );
 }
 
@@ -390,8 +389,8 @@ export function WalletBodySkeleton() {
   return (
     <div aria-busy>
       <PaymentMethods>
-        <Skeleton className="h-[4.5rem] flex-1 rounded-2xl" />
-        <Skeleton className="h-[4.5rem] flex-1 rounded-2xl" />
+        <div className="p-3"><Skeleton className="h-12 rounded-xl" /></div>
+        <div className="p-3"><Skeleton className="h-12 rounded-xl" /></div>
       </PaymentMethods>
       <WalletPanelList title="Loyalty Cards">
         <RowsSkeleton count={2} />
