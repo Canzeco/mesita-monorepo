@@ -14,7 +14,7 @@ import { useWakeLock } from "@/lib/use-wake-lock";
 import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
 import { BAD, GOOD, MoneyRow, NOT_PAID_REASON, PaySection, PayTop, StepBody, StepFooter, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
-import { STEP, skippedFromParts, startAgainStage } from "@/lib/guest-pay-stages";
+import { STEP, startAgainStage } from "@/lib/guest-pay-stages";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
 // /pay/bill/<id>, after App Pay, "I gave the cash" or credits alone:
@@ -175,12 +175,12 @@ export function GuestTabView({
   // 7 RECEIPT (MESITA-4135, Pato: "a better design when the tickets are gone
   // ... keep the structure"). The same three
   // parts as before, green Paid, one panel of rows, Done, now under the step
-  // panel ("Receipt · 7 of 7"): Paid carries the total, Signed by staff
+  // panel ("Receipt · 6 of 6", the sixth segment shown only here): Paid carries the total, Signed by staff
   // carries its check, and the footer is Done.
   if (signed) {
     return (
       <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="receipt">
-        <PayTop place={place} name={tab.place.name} step={{ at: STEP.receipt, skipped: skippedFromParts(tab.parts) }} />
+        <PayTop place={place} name={tab.place.name} step={{ at: STEP.receipt }} />
         <StepBody className="min-h-0 flex-1">
           {/* Paid, one green row with the total (it was a full-bleed band
               140px tall; under the step panel the rows and the gift must
@@ -245,7 +245,10 @@ export function GuestTabView({
           className="min-h-12 w-full shrink-0 text-base font-semibold"
           onClick={() => {
             // Start again opens where the bill failed (MESITA-4121).
-            reopenGuestDraft(tab.place.id, startAgainStage({ endReason: tab.end_reason ?? cardError, cardFailed }));
+            // A failed card reopens Pay with it marked "Declined just now"
+            // (MESITA-4226).
+            const stage = startAgainStage({ endReason: tab.end_reason ?? cardError, cardFailed });
+            reopenGuestDraft(tab.place.id, stage, stage === "pay");
             onPayAgain(tab.place.id);
           }}
         >
@@ -307,7 +310,7 @@ export function GuestTabView({
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
       {/* MESITA-4061: the same frame as every guest step. The bill is open,
           so neither arrow acts: going back is Cancel bill, the footer. */}
-      <PayTop place={place} name={tab.place.name} step={{ at: STEP.sign, skipped: skippedFromParts(tab.parts) }} />
+      <PayTop place={place} name={tab.place.name} step={{ at: STEP.sign }} />
       {/* FITS THE SCREEN, NEVER SCROLLS (MESITA-4102, Pato: "optimize
           vertical space ... i should not be scrolling here"). The body, the
           panel and the QR's slot are one column that fills the height left;
