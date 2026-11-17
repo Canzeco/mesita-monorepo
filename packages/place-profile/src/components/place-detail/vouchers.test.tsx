@@ -73,7 +73,7 @@ describe("Vouchers tab", () => {
     expect(pesos(22000, "mxn")).toBe("$220.00MX");
     expect(pesos(120000, "mxn")).toBe("$1,200.00MX");
     expect(pesos(1050, "mxn")).toBe("$10.50MX");
-    expect(row(render(OFFER), "voucher_1000")).toContain("Pay $1,000 · Get $1,200");
+    expect(row(render(OFFER), "voucher_1000").replace(/<[^>]+>/g, "")).toContain("Pay $1,000 · Get $1,200");
     expect(row(render(OFFER), "voucher_1000")).toContain("+20%");
   });
 
