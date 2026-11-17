@@ -1,9 +1,9 @@
-// MESITA-4264: the Story mention's money rules, without a database.
+// MESITA-4264, MESITA-4297: the Story mention's money rules, without a database.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   allowedMediaUrl,
   emulatorN,
-  emulatorRefusal,
+  emulatorOwner,
   emulatorStoryId,
   emulatorUrl,
   mediaKindOf,
@@ -13,7 +13,6 @@ import {
   type RecheckRow,
   runRecheckTick,
   STORY_RULES,
-  storyExpiresAt,
   storyMode,
   storyModeOf,
   storyRulesFrom,
@@ -97,19 +96,11 @@ Deno.test("storyMode: meta when the webhook is configured, emulated in test mode
   );
 });
 
-Deno.test("emulator: the caller's own test-mode Story only, and never with Meta on", () => {
-  const mine = { consumer_id: "u", voucher: "voucher_story", livemode: false };
-  assertEquals(emulatorRefusal(mine, "u", false), null);
-  assertEquals(emulatorRefusal({ ...mine, livemode: true }, "u", false)?.code, "live_purchase");
-  assertEquals(emulatorRefusal(mine, "someone-else", false)?.code, "not_your_purchase");
-  assertEquals(emulatorRefusal({ ...mine, voucher: "voucher_200" }, "u", false)?.code, "not_your_purchase");
-  assertEquals(emulatorRefusal(null, "u", false)?.code, "not_your_purchase");
-  assertEquals(emulatorRefusal(mine, "u", true)?.code, "meta_on");
-});
-
-Deno.test("emulator ids and URLs: emu-<purchase>-<n>, versioned", () => {
+Deno.test("emulator ids and URLs: emu-<check>-<n>, versioned", () => {
   const p = "00000000-0000-4000-8000-000000004264";
   assertEquals(emulatorStoryId(p, 3), `emu-${p}-3`);
+  assertEquals(emulatorOwner(`emu-${p}-3`), { id: p, n: 3 });
+  assertEquals(emulatorOwner("mid.1"), null);
   assertEquals(emulatorN(`emu-${p}-3`, p), 3);
   assertEquals(emulatorN(`emu-${p}-x`, p), null);
   assertEquals(emulatorN("mid.1", p), null);
@@ -128,25 +119,24 @@ Deno.test("mentionFits: a test story completes only a test purchase; 24 hours", 
   assertEquals(mentionFits({ livemode: true, mentioned_at: "2026-11-16T11:59:00Z" }, true, now), false);
 });
 
-Deno.test("rules: 3 h, 10 min, 3 tries, 7 days, 50 rows a tick, 10 at a time, 100 s, 10 s fetch", () => {
+Deno.test("rules: 3 h, 2 h to pay, 10 min, 3 tries, 50 rows a tick, 10 at a time, 100 s, 10 s fetch", () => {
   assertEquals(STORY_RULES.bonusWaitSec, 10800);
+  assertEquals(STORY_RULES.approveValidSec, 7200);
   assertEquals(STORY_RULES.retrySec, 600);
   assertEquals(STORY_RULES.maxTries, 3);
-  assertEquals(STORY_RULES.approveWindowDays, 7);
   assertEquals(STORY_RULES.rowsPerTick, 50);
   assertEquals(STORY_RULES.parallel, 10);
   assertEquals(STORY_RULES.tickBudgetMs, 100_000);
   assertEquals(STORY_RULES.fetchTimeoutMs, 10_000);
 });
 
-Deno.test("storyRulesFrom + storyExpiresAt: 7 days after max(paid_at, anchor)", () => {
-  const rules = storyRulesFrom({ story_expiry_anchor: "2026-11-17T00:00:00Z", story_recheck_meta: false });
-  assertEquals(rules.bonusWaitSec, 10800);
-  assertEquals(rules.recheckMeta, false);
-  assertEquals(storyExpiresAt("2026-11-10T00:00:00Z", rules), "2026-11-24T00:00:00.000Z", "an old purchase starts at the anchor");
-  assertEquals(storyExpiresAt("2026-11-20T00:00:00Z", rules), "2026-11-27T00:00:00.000Z");
-  assertEquals(storyRulesFrom(null).approveDays, 7);
-  assertEquals(storyExpiresAt(null, rules), null);
+Deno.test("storyRulesFrom: the twin of story_rules() — clamped, never throwing (MESITA-4297)", () => {
+  const d = storyRulesFrom(null);
+  assertEquals([d.bonusWaitSec, d.approveValidSec, d.maxStoryAgeSec, d.recheckMeta], [10800, 7200, 59400, false], "3 h, 2 h, 16 h 30 min");
+  assertEquals(storyRulesFrom({ story_approve_valid_sec: 999999 }).approveValidSec, 14400, "a huge window clamps to 4 hours");
+  assertEquals(storyRulesFrom({ story_approve_valid_sec: "nonsense" }).approveValidSec, 7200, "a non-number reads the default");
+  assertEquals(storyRulesFrom({ story_approve_valid_sec: 14400 }).maxStoryAgeSec, 52200, "a 4-hour window keeps stories to 14 h 30 min");
+  assertEquals(storyRulesFrom({ story_recheck_meta: true }).recheckMeta, true);
 });
 
 Deno.test("storyStillUp: a Range GET; 2xx/206 up, anything else down, timeout down", async () => {

@@ -42,12 +42,15 @@
 //   404 place · 409 no_account | currency_mismatch | paused | not_available |
 //   not_yet | needs_card_payments | needs_instagram | few_followers (Story) |
 //   story_unavailable (Story with live payments and Meta off, MESITA-4264) |
+//   story_not_verified { reason: no_check | expired | used | mode_mismatch,
+//     check_state, expires_at } (Story without the waiter's approval, MESITA-4297) |
 //   welcome_used | below_minimum | place_cap (MESITA-3947)
 //   502 card_failed | stripe_unreachable · 503 payments not configured
 // The client secret of a bank check is returned, never logged.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { storyMode } from "../_shared/story-mention.ts";
+import { readStoryBuyGate, storyNotVerified } from "../_shared/story-check.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { readCustomer } from "../_shared/boost.ts";
@@ -146,10 +149,20 @@ serveJson("consumer-web-buy-voucher", async (req) => {
     if (refusal) return json({ ok: false, code: refusal.code, error: refusal.error }, refusal.status);
   }
   if (!account) return json({ ok: false, code: "no_account", error: "This place has not connected payments yet" }, 409);
-  // Story's own gate: the guest's Instagram above the follower floor (MESITA-3507).
+  // Story's own gates: the guest's Instagram above the follower floor
+  // (MESITA-3507), and an approved, unexpired, unpresented story check of
+  // this guest at this place in this payments mode (MESITA-4297: the waiter
+  // verifies the story BEFORE the guest pays). A replay never gets here.
+  let storyCheckId: string | null = null;
   if (kinds.includes("voucher_story")) {
     const story = storyRefusal("voucher_story", await readStoryGuest(admin, userId));
     if (story) return json({ ok: false, code: story.code, error: story.error }, story.status);
+    const check = await readStoryBuyGate(admin, userId, placeId, livemode);
+    if (!check.ok) {
+      console.log("[consumer-web-buy-voucher]", JSON.stringify({ outcome: "story_not_verified", reason: check.reason, place_id: placeId }));
+      return json(storyNotVerified(check), 409);
+    }
+    storyCheckId = check.checkId;
   }
 
   const key = paymentsStripeKey();
@@ -177,6 +190,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
       platformPm: cardPmId,
       publishableKey: paymentsPublishableKey(livemode),
       nowMs: Date.now(),
+      storyCheckId,
     });
     if (!card.ok) {
       const detail = "detail" in card && card.detail ? card.detail : {};

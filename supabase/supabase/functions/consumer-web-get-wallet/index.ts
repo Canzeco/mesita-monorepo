@@ -72,7 +72,6 @@ import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { cardsAccepted, chargesEnabledByPlace, listRowMoney, type PaymentKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
-import { storyUrl } from "../_shared/proof.ts";
 import { readPins, withPins } from "../_shared/loyalty-cards.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import {
@@ -91,10 +90,7 @@ import {
   MENTION_COLUMNS,
   type MentionRow,
   mentionView,
-  readCandidateMentions,
-  readStoryRules,
   STORY_RULES,
-  storyExpiresAt,
   storyMode,
 } from "../_shared/story-mention.ts";
 import { placeZone, PLACE_ZONE_COLUMNS } from "../_shared/local-time.ts";
@@ -197,34 +193,30 @@ serveJson("consumer-web-get-wallet", async (req) => {
   if (!pinsRes.ok) return json({ ok: false, error: pinsRes.error }, 500);
   const balances = withPins(balancesOf(entries, Date.now(), spendable), pinsRes.pins, MONEY_CURRENCY);
 
-  // STORIES (MESITA-3507, MESITA-4264): what the guest paid is in the
-  // balances above since payment; the row shows where the bonus stands:
-  // every Story whose bonus is undecided, and a decided one for 24 hours.
+  // STORIES (MESITA-3507, MESITA-4264, MESITA-4297): the waiter approved the
+  // story before payment; what the guest paid is in the balances above since
+  // payment; the row shows where the bonus stands: every bought Story still
+  // processing or waiting for its 3-hour re-check, and a decided one for 24
+  // hours.
   const decidedSince = new Date(Date.now() - STORY_RULES.decidedListedSec * 1000).toISOString();
   const { data: storyRows, error: storyErr } = await admin
     .from("wallet_purchases")
-    .select(`${STORY_COLUMNS}, story_token`)
+    .select(STORY_COLUMNS)
     .eq("consumer_id", userId)
     .eq("livemode", livemode)
     .eq("voucher", "voucher_story")
-    .not("story_token", "is", null)
-    .or(`and(status.eq.paid,story_bonus.is.null),story_bonus_decided_at.gte.${decidedSince}`)
-    .order("paid_at", { ascending: false })
+    .or(`status.in.(opening,open),and(status.eq.paid,story_bonus.is.null),story_bonus_decided_at.gte.${decidedSince}`)
+    .order("created_at", { ascending: false })
     .limit(20);
   if (storyErr) return json({ ok: false, error: `stories: ${storyErr.message}` }, 500);
-  const stories = (storyRows ?? []) as Array<StoryRow & { story_token: string }>;
-  // The stories behind them: what each claimed, and the guest's newest
-  // unclaimed one (it shows on every Story not yet approved). A failed read
-  // only hides the story; the money is unaffected.
+  const stories = (storyRows ?? []) as StoryRow[];
+  // The story each used. A failed read only hides the image; the money is unaffected.
   let claimedByPurchase = new Map<string, MentionRow>();
-  let newestCandidate: MentionRow | null = null;
-  const storyRules = stories.length > 0 ? await readStoryRules(admin) : null;
   const storyZones = new Map<string, string>();
   if (stories.length > 0) {
     try {
-      const [claimed, guestRow, zones] = await Promise.all([
+      const [claimed, zones] = await Promise.all([
         admin.from("story_mentions").select(MENTION_COLUMNS).in("purchase_id", stories.map((st) => st.id)),
-        admin.from("consumers").select("instagram_handle").eq("id", userId).maybeSingle(),
         admin.from("place_profiles").select(`id, ${PLACE_ZONE_COLUMNS}`).in("id", [...new Set(stories.map((st) => st.place_id))]),
       ]);
       if (claimed.error) throw new Error(`story_mentions: ${claimed.error.message}`);
@@ -232,12 +224,11 @@ serveJson("consumer-web-get-wallet", async (req) => {
       for (const z of ((zones.error ? [] : zones.data) ?? []) as Array<{ id: string; timezone?: unknown; lng?: unknown }>) {
         storyZones.set(z.id, placeZone(z));
       }
-      const handle = (guestRow.data as { instagram_handle?: string | null } | null)?.instagram_handle ?? null;
-      newestCandidate = (await readCandidateMentions(admin, handle, livemode, Date.now()))[0] ?? null;
     } catch (e) {
       console.error(`[consumer-web-get-wallet] story mentions read: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
+
   const emulatorOn = !livemode && storyMode() === "emulated";
 
   // EVERY GIFT SENT OR RECEIVED (MESITA-4036): Tickets' one Gifts list,
@@ -342,10 +333,8 @@ serveJson("consumer-web-get-wallet", async (req) => {
       offers: offersById.get(place_id) ?? { sell: [] },
     })),
     waiting_stories: stories.map((st) => {
-      const claimed = claimedByPurchase.get(st.id) ?? null;
-      const open = st.status === "paid" && !st.story_bonus && st.story_review !== "approved";
-      const candidate = open ? newestCandidate : null;
-      const mention = claimed ?? candidate;
+      const mention = claimedByPurchase.get(st.id) ?? null;
+      const state = storyState(st);
       return {
         purchase_id: st.id,
         place: places.get(st.place_id) ?? null,
@@ -355,15 +344,10 @@ serveJson("consumer-web-get-wallet", async (req) => {
         credit_cents: st.amount_cents + st.bonus_cents,
         currency: st.currency,
         paid_at: st.paid_at,
-        token: st.story_token,
-        url: storyUrl(st.story_token),
-        state: storyState(
-          { story_review: st.story_review ?? null, story_reviewed_at: st.story_reviewed_at ?? null, story_bonus: st.story_bonus ?? null },
-          candidate?.mentioned_at ?? null,
-        ),
+        state,
         approved_at: st.story_activated_at,
-        expires_at: storyRules ? storyExpiresAt(st.paid_at, storyRules) : null,
-        bonus_at: storyRules ? storyBonusAt(st, storyRules) : null,
+        /** The bonus lands then if the story is still up (3 hours after payment). */
+        bonus_at: storyBonusAt(st),
         recheck_at: st.story_recheck_at ?? null,
         bonus: st.story_bonus ?? null,
         bonus_void_reason: st.story_bonus_void_reason ?? null,
@@ -371,7 +355,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
         time_zone: storyZones.get(st.place_id) ?? placeZone(null),
         mention: mention ? mentionView(mention) : null,
         test_mode: !st.livemode,
-        emulator: emulatorOn && !st.livemode && st.status === "paid" && !st.story_bonus,
+        emulator: emulatorOn && !st.livemode && state === "approved" && mention?.source === "emulator",
       };
     }),
     sent_links: sentLinks.map((g) => ({

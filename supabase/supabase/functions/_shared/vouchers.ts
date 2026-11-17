@@ -606,6 +606,8 @@ export async function openPurchaseRow(
     requestId: string;
     livemode: boolean;
     followers?: readonly MoneyVoucherKey[];
+    /** The approved story check a Story in this basket presents (MESITA-4297). */
+    storyCheckId?: string | null;
   },
 ): Promise<{ ok: true; duplicate: false; purchaseId: string } | { ok: true; duplicate: true } | BuyRefusal> {
   const lines = catalogLines(args.currency);
@@ -635,6 +637,7 @@ export async function openPurchaseRow(
       bonus_cents: line.bonus_cents,
       application_fee_cents: voucherFeeCents(args.voucher, args.currency),
       request_id: args.requestId,
+      story_check_id: args.voucher === "voucher_story" ? args.storyCheckId ?? null : null,
     })
     .select("id")
     .single();
@@ -656,6 +659,7 @@ export async function openPurchaseRow(
       bonus_cents: lines[k].bonus_cents,
       application_fee_cents: voucherFeeCents(k, args.currency),
       basket_lead_id: purchaseId,
+      story_check_id: k === "voucher_story" ? args.storyCheckId ?? null : null,
     })));
     if (followErr) {
       console.error("[vouchers] basket_write", JSON.stringify({ purchase_id: purchaseId, code: followErr.code, error: followErr.message }));

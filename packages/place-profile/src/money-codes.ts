@@ -89,6 +89,9 @@ export const MONEY_CODES = [
   // Story with live payments while Meta is off (MESITA-4264): no way to
   // verify the story, so the buy is refused
   "story_unavailable",
+  // A Story buy without the waiter's approval (MESITA-4297): the guest gets
+  // the story approved first (reason no_check | expired | used | mode_mismatch)
+  "story_not_verified",
 ] as const;
 
 export type MoneyCode = (typeof MONEY_CODES)[number];

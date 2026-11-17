@@ -1,10 +1,11 @@
-// Staff's approve / reject of a Story (MESITA-4264): the pure half of
-// visit-web-review-story, so the rules test without a database.
+// The waiter's approve / reject of a story check (MESITA-4264, MESITA-4297):
+// the pure half of visit-web-review-story, so the rules test without a
+// database.
 //
 // The guest holds the Story QR, so the token alone never approves anything:
-// the phone must carry a current `s2` waiter-code staff token of the
-// purchase's place (_shared/staff.ts, the tab Verify's rule). Without one,
-// or with another place's, the answer is 403 staff_code_needed / forbidden.
+// the phone must carry a current `s2` waiter-code staff token of the CHECK's
+// place (_shared/staff.ts, the tab Verify's rule). Without one the answer is
+// 403 staff_code_needed; a waiter of another place gets 403 wrong_place.
 
 import { isUuid } from "./place-id.ts";
 import { isStoryToken } from "./story.ts";
@@ -25,7 +26,7 @@ const refuse = (status: number, code: string, error: string): ReviewRefusal => (
 /** The body, or the refusal. A body without a decision is a staff page from
  *  before MESITA-4264 (its Activate tap): 409 reload, never an approve. */
 export function readReviewBody(b: Record<string, unknown>): { ok: true; body: ReviewBody } | ReviewRefusal {
-  if (!isStoryToken(b.token)) return refuse(400, "bad_request", "That is not a Story voucher");
+  if (!isStoryToken(b.token)) return refuse(400, "bad_request", "That is not a Story QR");
   if (b.decision === undefined || b.decision === null) return refuse(409, "reload", "This page changed. Reload it.");
   if (b.decision !== "approve" && b.decision !== "reject") return refuse(400, "bad_request", "decision must be approve or reject");
   const mentionId = b.mention_id === undefined || b.mention_id === null ? null : b.mention_id;
@@ -47,28 +48,28 @@ export function readReviewBody(b: Record<string, unknown>): { ok: true; body: Re
   };
 }
 
-/** The staff gate: a current s2 token (a device id) for the purchase's
- *  place. `info` is readStaffToken's answer against that place's keys. */
+/** The staff gate: a current s2 token (a device id) for the check's place.
+ *  `info` is readStaffToken's answer against that place's keys, so another
+ *  place's token never verifies. */
 export function staffGate(
   body: Pick<ReviewBody, "staffToken" | "placeId">,
-  purchasePlaceId: string,
+  checkPlaceId: string,
   info: StaffTokenInfo | null,
 ): { ok: true; jti: string } | ReviewRefusal {
-  if (body.placeId && body.placeId !== purchasePlaceId) return refuse(403, "forbidden", "This voucher is for another place.");
+  if (body.placeId && body.placeId !== checkPlaceId) return refuse(403, "wrong_place", "This story is for another place.");
   if (!body.staffToken || !info || info.version !== 2 || !info.jti) return refuse(403, "staff_code_needed", "Type the waiter code");
   return { ok: true, jti: info.jti };
 }
 
 /** The RPC's refusal codes → HTTP. */
 const RPC_REFUSAL: Record<string, { status: number; error: string }> = {
-  gone: { status: 404, error: "This Story voucher is not valid. Ask the guest to show it again." },
-  refunded: { status: 409, error: "This voucher was refunded" },
-  not_paid: { status: 409, error: "This voucher is not paid" },
-  already_decided: { status: 409, error: "This Story was already decided" },
-  mention_claimed: { status: 409, error: "This story was just used. Refreshing…" },
-  mention_expired: { status: 409, error: "This story is too old or gone. Refreshing…" },
+  gone: { status: 404, error: "This Story QR is not valid any more. Ask the guest to show it again." },
+  already_decided: { status: 409, error: "This story was already decided" },
+  story_gone: { status: 409, error: "This story is gone. Refreshing…" },
+  story_claimed: { status: 409, error: "This story was already used. Refreshing…" },
+  story_too_old: { status: 409, error: "This story is too old for the bonus. Ask the guest to post a new one." },
   handle_mismatch: { status: 409, error: "This story is from another Instagram account" },
-  livemode_mismatch: { status: 409, error: "A test story cannot approve a real voucher" },
+  emulator_on_live: { status: 409, error: "A test story cannot approve a real Story" },
   reload: { status: 409, error: "This page changed. Reload it." },
 };
 
@@ -76,3 +77,6 @@ export function reviewRefusal(code: string | undefined): ReviewRefusal {
   const r = code ? RPC_REFUSAL[code] : undefined;
   return r ? refuse(r.status, code!, r.error) : refuse(500, "server", "Couldn't save. Try again");
 }
+
+/** The codes the RPC answers (story-review.test.ts pins the map covers them). */
+export const REVIEW_CODES = Object.keys(RPC_REFUSAL);

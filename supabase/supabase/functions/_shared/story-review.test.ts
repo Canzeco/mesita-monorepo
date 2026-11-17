@@ -1,6 +1,6 @@
-// MESITA-4264: approving a Story needs the waiter code of the purchase's place.
+// MESITA-4264, MESITA-4297: approving a story check needs the waiter code of the check's place.
 import { assertEquals } from "jsr:@std/assert@1";
-import { readReviewBody, reviewRefusal, staffGate } from "./story-review.ts";
+import { readReviewBody, REVIEW_CODES, reviewRefusal, staffGate } from "./story-review.ts";
 import { mintStaffToken, readStaffToken } from "./staff.ts";
 
 const TOKEN = "0123456789abcdef0123456789abcdef";
@@ -39,14 +39,14 @@ Deno.test("staffGate: no staff token is 403 staff_code_needed", async () => {
 
 Deno.test("staffGate: another place's staff token is refused", async () => {
   const { token } = await mintStaffToken(SERVICE, OTHER, KEYS, Date.now());
-  // Read against the PURCHASE's place, the HMAC fails: no info.
+  // Read against the CHECK's place, the HMAC fails: no info.
   const info = await readStaffToken(SERVICE, PLACE, token, KEYS, Date.now());
   assertEquals(info, null);
   const g = staffGate({ staffToken: token, placeId: null }, PLACE, info);
   assertEquals(g.ok ? null : g.code, "staff_code_needed");
-  // Naming the other place outright is forbidden.
+  // A waiter whose page names another place: 403 wrong_place.
   const g2 = staffGate({ staffToken: token, placeId: OTHER }, PLACE, info);
-  assertEquals(g2.ok ? null : [g2.status, g2.code], [403, "forbidden"]);
+  assertEquals(g2.ok ? null : [g2.status, g2.code], [403, "wrong_place"]);
 });
 
 Deno.test("staffGate: an s1 token (no device id) must type the code again", () => {
@@ -55,7 +55,12 @@ Deno.test("staffGate: an s1 token (no device id) must type the code again", () =
 });
 
 Deno.test("reviewRefusal: stable codes; unknown is a server error without database text", () => {
-  assertEquals(reviewRefusal("mention_claimed").status, 409);
+  assertEquals(reviewRefusal("story_claimed").status, 409);
+  assertEquals(reviewRefusal("story_too_old").code, "story_too_old");
+  // Every code wallet_review_story_check answers has its own copy.
+  for (const c of ["gone", "already_decided", "story_gone", "story_claimed", "story_too_old", "handle_mismatch", "emulator_on_live"]) {
+    assertEquals(REVIEW_CODES.includes(c), true, c);
+  }
   assertEquals(reviewRefusal("gone").status, 404);
   assertEquals(reviewRefusal("reload").code, "reload");
   const s = reviewRefusal("weird");

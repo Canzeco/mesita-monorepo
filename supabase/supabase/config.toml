@@ -412,9 +412,16 @@ verify_jwt = false
 verify_jwt = false
 
 # MESITA-4264: staff approve or reject the guest's story (waiter-code staff
-# token of the purchase's place; the guest's Story token alone never approves).
+# token of the check's place; the guest's Story QR alone never approves).
 [functions.visit-web-review-story]
 verify_jwt = false
+
+# MESITA-4297: the guest's story check (the Story QR the waiter approves before payment).
+[functions.consumer-web-open-story-check]
+verify_jwt = true
+
+[functions.consumer-web-get-story-check]
+verify_jwt = true
 
 # MESITA-4264: the Meta emulator, the caller's own test-mode Story only; it
 # copies its bundled sample image into the story-emulator bucket.
@@ -422,7 +429,8 @@ verify_jwt = false
 verify_jwt = true
 static_files = ["./functions/consumer-web-emulate-story/sample-story.jpg"]
 
-# MESITA-4264: the operator's release / void / unapprove / recheck_now of a Story.
+# MESITA-4264, MESITA-4297: the operator's release / void / recheck_now of a
+# Story bonus, and expire_check / release_story of a story check.
 [functions.admin-web-story-override]
 verify_jwt = true
 

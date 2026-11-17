@@ -20,18 +20,21 @@ import { META_GRAPH_VERSION, readDmProfile, readInstagramDmConfig } from "./inst
 import { paymentsLivemode } from "./stripe.ts";
 
 // ── The rule numbers, in one place ───────────────────────────────────────────
-// The database functions take the 3 hours and the 7 days from
-// app_config.money_config (story_bonus_wait_sec, story_approve_days) with
-// these same defaults; the Wallet and staff copy read times from the answers.
+// story_rules() takes the 3 hours and the 2 hours from app_config.money_config
+// (story_bonus_wait_sec, story_approve_valid_sec) with these same defaults;
+// storyRulesFrom is its twin.
 export const STORY_RULES = {
-  /** Approval → the bonus, if the story is still up. */
+  /** Payment → the bonus, if the story is still up (MESITA-4297). */
   bonusWaitSec: 3 * 60 * 60,
+  /** The waiter's approval is good this long to start paying. */
+  approveValidSec: 2 * 60 * 60,
+  /** The margin under 24 hours a story's age keeps for a slow bank check, a
+   *  late webhook, the cron tick and the re-check retries. */
+  ageMarginSec: 2 * 60 * 60 + 30 * 60,
   /** A failed re-check tries again after this long… */
   retrySec: 10 * 60,
   /** …and voids the bonus at this many failures. */
   maxTries: 3,
-  /** A Story nobody approved within this many days loses its bonus. */
-  approveWindowDays: 7,
   /** A story lives 24 hours; an unclaimed mention is deleted after it. */
   mentionLifeSec: 24 * 60 * 60,
   /** Rows one cron tick takes. */
@@ -42,6 +45,8 @@ export const STORY_RULES = {
   tickBudgetMs: 100_000,
   /** One re-check fetch waits this long. */
   fetchTimeoutMs: 10_000,
+  /** The Offers sheet polls an open check this often while it is open. */
+  guestPollEveryMs: 5_000,
   /** The staff page polls this often while waiting for a story… */
   staffPollEveryMs: 5_000,
   /** …for this long, then offers Refresh. */
@@ -303,6 +308,8 @@ export type MentionRow = {
   id: string;
   ig_handle: string | null;
   purchase_id: string | null;
+  /** The story check that claimed it (MESITA-4297). */
+  check_id?: string | null;
   media_url: string | null;
   media_kind: "image" | "video";
   source: "meta" | "emulator";
@@ -310,7 +317,7 @@ export type MentionRow = {
   livemode: boolean;
 };
 
-export const MENTION_COLUMNS = "id, ig_handle, purchase_id, media_url, media_kind, source, mentioned_at, livemode";
+export const MENTION_COLUMNS = "id, ig_handle, purchase_id, check_id, media_url, media_kind, source, mentioned_at, livemode";
 
 /** A mention as staff and the Wallet see it. */
 export type MentionView = { id: string; media_url: string | null; media_kind: "image" | "video"; mentioned_at: string; source: "meta" | "emulator" };
@@ -347,12 +354,12 @@ export async function readCandidateMentions(
   return ((data ?? []) as MentionRow[]).filter((m) => mentionFits(m, purchaseLivemode, nowMs));
 }
 
-/** The emulator's story ids: `emu-<purchase id>-<n>`. */
+/** The emulator's story ids: `emu-<check id>-<n>` (a purchase id before MESITA-4297). */
 export function emulatorStoryId(purchaseId: string, n: number): string {
   return `emu-${purchaseId}-${n}`;
 }
 
-/** n of an emulator story id of this purchase, or null. */
+/** n of an emulator story id of this check, or null. */
 export function emulatorN(storyId: string, purchaseId: string): number | null {
   const prefix = `emu-${purchaseId}-`;
   if (!storyId.startsWith(prefix)) return null;
@@ -371,26 +378,30 @@ export function emulatorUrl(supabaseUrl: string, purchaseId: string, n: number):
 }
 
 // ── The live rules (app_config.money_config) ─────────────────────────────────
+// The twin of story_rules() (MESITA-4297): the same clamps, never throwing.
 
 export type StoryRulesLive = {
+  /** Payment → the bonus, if the story is still up (1–6 hours). */
   bonusWaitSec: number;
-  approveDays: number;
-  /** A Story's 7 days start no earlier than this (the MESITA-4264 deploy). */
-  expiryAnchor: string | null;
+  /** An approved check is good this long to start paying (30 min–4 hours). */
+  approveValidSec: number;
+  /** The oldest story the waiter may approve: 24 h − pay window − bonus wait − 2 h 30 min. */
+  maxStoryAgeSec: number;
   /** Fetch real Meta mentions again 3 hours later (off until the P9 spike). */
   recheckMeta: boolean;
 };
 
+const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+
 export function storyRulesFrom(raw: unknown): StoryRulesLive {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : d);
-  const anchor = typeof o.story_expiry_anchor === "string" && !Number.isNaN(Date.parse(o.story_expiry_anchor))
-    ? o.story_expiry_anchor
-    : null;
+  const int = (v: unknown, d: number) => (typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : d);
+  const bonusWaitSec = clamp(int(o.story_bonus_wait_sec, STORY_RULES.bonusWaitSec), 3600, 21600);
+  const approveValidSec = clamp(int(o.story_approve_valid_sec, STORY_RULES.approveValidSec), 1800, 14400);
   return {
-    bonusWaitSec: num(o.story_bonus_wait_sec, STORY_RULES.bonusWaitSec),
-    approveDays: num(o.story_approve_days, STORY_RULES.approveWindowDays),
-    expiryAnchor: anchor,
+    bonusWaitSec,
+    approveValidSec,
+    maxStoryAgeSec: Math.max(86400 - approveValidSec - bonusWaitSec - STORY_RULES.ageMarginSec, 3600),
     recheckMeta: o.story_recheck_meta === true,
   };
 }
@@ -400,13 +411,6 @@ export async function readStoryRules(admin: SupabaseClient): Promise<StoryRulesL
   const { data, error } = await admin.from("app_config").select("money_config").eq("id", 1).maybeSingle();
   if (error) console.error("[story-mention] rules_read_failed", JSON.stringify({ error: error.message }));
   return storyRulesFrom((data as { money_config?: unknown } | null)?.money_config);
-}
-
-/** The approve-by time: 7 days after max(paid_at, anchor). */
-export function storyExpiresAt(paidAt: string | null, rules: StoryRulesLive): string | null {
-  if (!paidAt) return null;
-  const start = Math.max(Date.parse(paidAt), rules.expiryAnchor ? Date.parse(rules.expiryAnchor) : 0);
-  return new Date(start + rules.approveDays * 24 * 60 * 60 * 1000).toISOString();
 }
 
 // ── The sender's username ────────────────────────────────────────────────────
@@ -440,21 +444,11 @@ export async function headMediaKind(url: string | null, fetchImpl: typeof fetch 
   }
 }
 
-// ── The emulator's gate ──────────────────────────────────────────────────────
+// ── The emulator's ids ───────────────────────────────────────────────────────
 
-export type EmulatorRefusal = { status: number; code: "not_your_purchase" | "live_purchase" | "meta_on"; error: string };
-
-/** Why the emulator refuses this purchase, or null: only the caller's own
- *  Story, only in test mode, only while the real webhook is off. */
-export function emulatorRefusal(
-  row: { consumer_id: string | null; voucher: string | null; livemode: boolean } | null,
-  userId: string,
-  metaOn: boolean,
-): EmulatorRefusal | null {
-  if (metaOn) return { status: 409, code: "meta_on", error: "Instagram is connected: post a real story" };
-  if (!row || row.consumer_id !== userId || row.voucher !== "voucher_story") {
-    return { status: 403, code: "not_your_purchase", error: "That is not your Story voucher" };
-  }
-  if (row.livemode) return { status: 409, code: "live_purchase", error: "The story simulator works only in test mode" };
-  return null;
+/** The check (or, before MESITA-4297, purchase) an emulator story id
+ *  `emu-<uuid>-<n>` names, with its n; null for any other id. */
+export function emulatorOwner(storyId: string): { id: string; n: number } | null {
+  const m = /^emu-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-(\d+)$/.exec(storyId);
+  return m ? { id: m[1], n: Number(m[2]) } : null;
 }
