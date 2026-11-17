@@ -610,6 +610,9 @@ verify_jwt = true
 verify_jwt = true
 
 # Refresh Google factuals; the gallery hero only while the gallery is one photo (MESITA-2794).
+[functions.admin-web-repick-families]
+verify_jwt = true
+
 [functions.admin-web-update-place-google]
 verify_jwt = true
 
