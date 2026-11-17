@@ -44,6 +44,6 @@ serveJson("visit-web-get-story", async (req) => {
   if (res.kind === "retired") {
     return json({ ok: false, code: "story_token_retired", error: "Ask the guest to open the Story sheet again" }, 410);
   }
-  if (res.kind === "none") return json({ ok: false, code: "gone", error: "This Story QR is not valid. Ask the guest to show it again." }, 404);
+  if (res.kind !== "check") return json({ ok: false, code: "gone", error: "This Story QR is not valid. Ask the guest to show it again." }, 404);
   return json({ ok: true, ...res.view, poll: STAFF_POLL, server_time: new Date().toISOString() });
 });

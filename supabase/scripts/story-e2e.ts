@@ -1,22 +1,26 @@
-// deno task story-e2e — MESITA-4264's live run, Stripe test mode only.
+// deno task story-e2e — MESITA-4297's live run, Stripe test mode only.
 //
 // Against the live project, through the deployed Edge Functions, with the
 // Meta emulator: a throwaway guest with a verified Instagram handle (written
 // by the service role, as DM verification is off), a throwaway place with a
-// waiter code, then two Story purchases:
-//   1. credited (what the guest paid Available at once) → emulate post →
-//      staff read the token (the story is a candidate) → approve with the
-//      waiter code → the cron's {purchase_id} re-check → bonus released.
-//   2. credited → post → approve → emulate delete → three re-checks →
-//      bonus void (unreachable), the paid credit untouched.
+// waiter code, then the new order — the waiter approves BEFORE the guest pays:
+//   1. open the story check → emulate post → the waiter reads the check (the
+//      story shows) → approve with the waiter code → buy → what the guest
+//      paid Available at once, the check used → the cron's {purchase_id}
+//      re-check → bonus released.
+//   2. a new check → post → approve → emulate delete before paying (the check
+//      opens again) → post → approve → buy → emulate delete after paying →
+//      three re-checks → bonus void (unreachable), the paid credit untouched.
 // Plus the refusals: approve without the waiter code (403), the old activate
-// (409 reload). The purchase rows are opened and credited by the service
-// role through wallet_credit_purchase, the function Stripe's webhook calls
-// (a throwaway place has no connected Stripe account to charge).
+// (409 reload). The purchase rows are opened and credited by the service role
+// through wallet_credit_purchase, the function Stripe's webhook calls (a
+// throwaway place has no connected Stripe account to charge, so the buy door's
+// story_not_verified is covered by Deno and pgTAP, not here).
 //
-// The service key is read from the Supabase CLI into this process and never
-// printed. Everything it made is deleted in finally. Prints PASS/FAIL per
-// step; exits 1 on any FAIL.
+// Run: cd supabase && deno task story-e2e
+// The keys are read from the Supabase CLI into this process and never
+// printed. Everything it made is deleted in finally. Prints PASS/FAIL and the
+// time per step; exits 1 on any FAIL.
 
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { hashPlaceCode } from "../supabase/functions/_shared/place-code.ts";
@@ -49,10 +53,13 @@ async function cliKeys(): Promise<{ service: string; anon: string }> {
 }
 
 let failures = 0;
+let last = Date.now();
 function step(name: string, ok: boolean, detail: unknown = ""): void {
   if (!ok) failures++;
   const d = detail === "" ? "" : ` ${typeof detail === "string" ? detail : JSON.stringify(detail).slice(0, 400)}`;
-  console.log(`${ok ? "PASS" : "FAIL"}  ${name}${ok ? "" : d}`);
+  const ms = Date.now() - last;
+  last = Date.now();
+  console.log(`${ok ? "PASS" : "FAIL"}  ${name} (${ms} ms)${ok ? "" : d}`);
 }
 
 async function call(fn: string, bearer: string, body: unknown, extra: Record<string, string> = {}): Promise<{ status: number; body: Record<string, unknown> }> {
@@ -65,7 +72,8 @@ async function call(fn: string, bearer: string, body: unknown, extra: Record<str
   return { status: res.status, body: json as Record<string, unknown> };
 }
 
-async function storyPurchase(admin: SupabaseClient, userId: string, placeId: string): Promise<{ id: string; token: string }> {
+/** A Story buy presenting the check, credited as Stripe's webhook would. */
+async function storyPurchase(admin: SupabaseClient, userId: string, placeId: string, checkId: string): Promise<{ id: string; story: string | undefined }> {
   const id = crypto.randomUUID();
   const { error } = await admin.from("wallet_purchases").insert({
     id,
@@ -80,6 +88,7 @@ async function storyPurchase(admin: SupabaseClient, userId: string, placeId: str
     application_fee_cents: 0,
     stripe_checkout_session_id: `cs_test_story_e2e_${id}`,
     livemode: false,
+    story_check_id: checkId,
   });
   if (error) throw new Error(`purchase insert: ${error.message}`);
   const { data, error: cErr } = await admin.rpc("wallet_credit_purchase", {
@@ -89,9 +98,10 @@ async function storyPurchase(admin: SupabaseClient, userId: string, placeId: str
   });
   if (cErr) throw new Error(`wallet_credit_purchase: ${cErr.message}`);
   if ((data as { outcome?: string })?.outcome !== "credited") throw new Error(`credit: ${JSON.stringify(data)}`);
-  const { data: row } = await admin.from("wallet_purchases").select("story_token").eq("id", id).single();
-  return { id, token: (row as { story_token: string }).story_token };
+  return { id, story: (data as { story?: string }).story };
 }
+
+type Check = { id: string; token: string; state: string; story_status: string; story: { id: string; media_url: string | null } | null; expires_at: string };
 
 async function purchaseRow(admin: SupabaseClient, id: string) {
   const { data } = await admin.from("wallet_purchases")
@@ -111,6 +121,7 @@ async function main(): Promise<void> {
   const handle = `e2e_story_${stamp}`;
   const placeId = crypto.randomUUID();
   const purchases: string[] = [];
+  const allChecks: string[] = [];
   let userId: string | null = null;
 
   try {
@@ -148,55 +159,82 @@ async function main(): Promise<void> {
     step("waiter code signs a staff phone in", !!staffToken, staff);
     if (!staffToken) return;
 
-    // ── Purchase 1: released ─────────────────────────────────────────────────
-    const p1 = await storyPurchase(admin, userId, placeId);
-    purchases.push(p1.id);
-    step("1 paid credit Available at payment, no bonus", (await entryKinds(admin, p1.id)).join() === "voucher:10000", await entryKinds(admin, p1.id));
+    const checks: string[] = [];
+    const approve = (token: string, mention: string) =>
+      call("visit-web-review-story", keys.anon, { token, decision: "approve", mention_id: mention, staff_token: staffToken, place_id: placeId });
+    const post = async (label: string) => {
+      const r = await call("consumer-web-emulate-story", guestJwt, { action: "post", place_id: placeId });
+      const m = (r.body.mention as { id?: string; media_url?: string } | undefined) ?? {};
+      step(`${label} emulate post records a story`, r.status === 200 && !!m.id, r);
+      return m;
+    };
 
-    const post1 = await call("consumer-web-emulate-story", guestJwt, { action: "post", purchase_id: p1.id });
-    const m1 = (post1.body.mention as { id?: string; media_url?: string } | undefined) ?? {};
-    step("1 emulate post records a mention", post1.status === 200 && !!m1.id, post1);
+    // ── Run 1: approved, paid, released ──────────────────────────────────────
+    const open1 = await call("consumer-web-open-story-check", guestJwt, { place_id: placeId });
+    const c1 = open1.body.check as Check | undefined;
+    step("1 the Story sheet opens a check, waiting for a story", open1.status === 200 && c1?.state === "open" && c1.story_status === "waiting", open1);
+    if (!c1) return;
+    checks.push(c1.id);
+    const get1 = await call("consumer-web-get-story-check", guestJwt, { place_id: placeId });
+    step("1 reading it again returns the same check", (get1.body.check as Check | undefined)?.id === c1.id, get1);
+
+    const m1 = await post("1");
     if (m1.media_url) {
       const img = await fetch(m1.media_url, { headers: { Range: "bytes=0-0" } });
       await img.body?.cancel();
       step("1 the story's image loads", img.status === 200 || img.status === 206, img.status);
     }
+    const seen = await call("consumer-web-get-story-check", guestJwt, { place_id: placeId });
+    step("1 the guest's sheet reads story received", (seen.body.check as Check | undefined)?.story_status === "received", seen.body);
 
-    const read1 = await call("visit-web-get-story", keys.anon, { token: p1.token });
-    const cands = (read1.body.mentions as { id: string }[] | undefined) ?? [];
-    step("1 staff see the story as a candidate", read1.body.state === "received" && cands.some((c) => c.id === m1.id), read1.body);
+    const read1 = await call("visit-web-get-story", keys.anon, { token: c1.token });
+    step("1 the waiter sees the story", read1.body.state === "open" && (read1.body.story as { id?: string } | null)?.id === m1.id, read1.body);
 
-    const noCode = await call("visit-web-review-story", keys.anon, { token: p1.token, decision: "approve", mention_id: m1.id });
+    const noCode = await call("visit-web-review-story", keys.anon, { token: c1.token, decision: "approve", mention_id: m1.id });
     step("approve without the waiter code is 403 staff_code_needed", noCode.status === 403 && noCode.body.code === "staff_code_needed", noCode);
-    const old = await call("visit-web-activate-story", keys.anon, { token: p1.token });
+    const old = await call("visit-web-activate-story", keys.anon, { token: c1.token });
     step("the old activate answers 409 reload", old.status === 409 && old.body.code === "reload", old);
 
-    const ap1 = await call("visit-web-review-story", keys.anon, {
-      token: p1.token, decision: "approve", mention_id: m1.id, staff_token: staffToken, place_id: placeId,
-    });
-    step("1 staff approve", ap1.status === 200 && ap1.body.outcome === "approved", ap1);
-    const again = await call("visit-web-review-story", keys.anon, {
-      token: p1.token, decision: "approve", mention_id: m1.id, staff_token: staffToken,
-    });
-    step("1 a second approve answers the stored time", again.body.outcome === "already_approved", again);
+    const ap1 = await approve(c1.token, m1.id!);
+    step("1 the waiter approves (good 2 hours to pay)", ap1.status === 200 && ap1.body.outcome === "approved" && !!ap1.body.expires_at, ap1);
+    const again = await approve(c1.token, m1.id!);
+    step("1 a second approve answers the stored approval", again.body.outcome === "already_approved", again);
+    const sheet1 = await call("consumer-web-get-story-check", guestJwt, { place_id: placeId });
+    step("1 the guest's sheet reads approved", (sheet1.body.check as Check | undefined)?.state === "approved", sheet1.body);
+
+    const p1 = await storyPurchase(admin, userId, placeId, c1.id);
+    purchases.push(p1.id);
+    step("1 paid: credited, bonus waiting", p1.story === "waiting", p1);
+    step("1 paid credit Available at once, no bonus yet", (await entryKinds(admin, p1.id)).join() === "voucher:10000", await entryKinds(admin, p1.id));
+    const { data: used } = await admin.from("story_checks").select("state, used_by_purchase").eq("id", c1.id).single();
+    step("1 the check is used by the purchase", (used as { state: string; used_by_purchase: string }).used_by_purchase === p1.id, used);
+    const pr1 = await admin.from("wallet_purchases").select("paid_at, story_recheck_at").eq("id", p1.id).single();
+    const gap = Date.parse((pr1.data as { story_recheck_at: string }).story_recheck_at) - Date.parse((pr1.data as { paid_at: string }).paid_at);
+    step("1 the bonus re-check is 3 hours after payment", Math.abs(gap - 3 * 3600_000) < 2000, pr1.data);
 
     const cron1 = await call("supabase-cron-recheck-stories", keys.service, { purchase_id: p1.id }, { "X-Internal-Caller": "story-e2e" });
     step("1 the re-check releases the bonus", cron1.status === 200 && cron1.body.released === 1, cron1);
     const r1 = await purchaseRow(admin, p1.id);
     step("1 bonus released, voucher + bonus entries", r1.story_bonus === "released" && (await entryKinds(admin, p1.id)).join() === "bonus:5000,voucher:10000", { r1, e: await entryKinds(admin, p1.id) });
 
-    // ── Purchase 2: void (unreachable) ───────────────────────────────────────
-    const p2 = await storyPurchase(admin, userId, placeId);
+    // ── Run 2: delete before paying reopens; delete after paying voids ───────
+    const open2 = await call("consumer-web-open-story-check", guestJwt, { place_id: placeId });
+    const c2 = open2.body.check as Check | undefined;
+    step("2 a new check after the used one", open2.status === 200 && !!c2 && c2.id !== c1.id && c2.state === "open", open2);
+    if (!c2) return;
+    checks.push(c2.id);
+    const m2a = await post("2");
+    step("2 the waiter approves", (await approve(c2.token, m2a.id!)).body.outcome === "approved");
+    const delBefore = await call("consumer-web-emulate-story", guestJwt, { action: "delete", place_id: placeId });
+    const reopened = await call("consumer-web-get-story-check", guestJwt, { place_id: placeId });
+    step("2 deleting the story before paying opens the check again", delBefore.status === 200 && (reopened.body.check as Check | undefined)?.state === "open", { delBefore, c: reopened.body });
+    const m2 = await post("2 again");
+    step("2 the waiter approves the new story", (await approve(c2.token, m2.id!)).body.outcome === "approved");
+    const p2 = await storyPurchase(admin, userId, placeId, c2.id);
     purchases.push(p2.id);
-    const post2 = await call("consumer-web-emulate-story", guestJwt, { action: "post", purchase_id: p2.id });
-    const m2 = (post2.body.mention as { id?: string } | undefined) ?? {};
-    step("2 emulate post", post2.status === 200 && !!m2.id, post2);
-    const ap2 = await call("visit-web-review-story", keys.anon, {
-      token: p2.token, decision: "approve", mention_id: m2.id, staff_token: staffToken,
-    });
-    step("2 staff approve", ap2.body.outcome === "approved", ap2);
+    step("2 paid: credited, bonus waiting", p2.story === "waiting", p2);
     const del2 = await call("consumer-web-emulate-story", guestJwt, { action: "delete", purchase_id: p2.id });
-    step("2 emulate delete removes the claimed story", del2.status === 200 && del2.body.mention_id === m2.id, del2);
+    step("2 emulate delete after paying removes the story", del2.status === 200 && del2.body.mention_id === m2.id, del2);
     for (let i = 1; i <= 3; i++) {
       const c = await call("supabase-cron-recheck-stories", keys.service, { purchase_id: p2.id }, { "X-Internal-Caller": "story-e2e" });
       step(`2 re-check ${i} finds the story gone`, c.status === 200 && c.body.released === 0 && c.body.failed === 0, c);
@@ -215,19 +253,23 @@ async function main(): Promise<void> {
       rows.find((r) => r.purchase_id === p1.id)?.state === "released" && rows.find((r) => r.purchase_id === p2.id)?.state === "void",
       rows,
     );
+    allChecks.push(...checks);
   } catch (e) {
     step("run", false, e instanceof Error ? e.message : String(e));
   } finally {
-    if (purchases.length > 0) {
-      await admin.from("story_mentions").delete().in("purchase_id", purchases);
-      for (const id of purchases) {
+    if (userId) {
+      const { data: cs } = await admin.from("story_checks").select("id").eq("consumer_id", userId);
+      const ids = [...new Set([...allChecks, ...((cs ?? []) as { id: string }[]).map((c) => c.id)])];
+      if (purchases.length > 0) await admin.from("story_mentions").delete().in("purchase_id", purchases);
+      for (const id of ids) {
         await admin.from("story_mentions").delete().like("ig_story_id", `emu-${id}-%`);
         const { data: objs } = await admin.storage.from("story-emulator").list(id);
         const names = ((objs ?? []) as { name: string }[]).map((o) => `${id}/${o.name}`);
         if (names.length > 0) await admin.storage.from("story-emulator").remove(names);
       }
-    }
-    if (userId) {
+      // purchases ↔ checks reference each other: unlink, then delete both.
+      await admin.from("wallet_purchases").update({ story_check_id: null }).eq("consumer_id", userId);
+      await admin.from("story_checks").delete().eq("consumer_id", userId);
       await admin.from("wallet_entries").delete().eq("consumer_id", userId);
       await admin.from("wallet_purchases").delete().eq("consumer_id", userId);
     }
