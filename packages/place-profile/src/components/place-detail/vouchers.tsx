@@ -11,6 +11,7 @@ import { cn } from "../../lib/format";
 import {
   PLACE_META_CLASS,
 } from "../../lib/ui";
+import { VOUCHER_TONE } from "../../lib/offers";
 import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, STORY_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 
@@ -187,7 +188,7 @@ const LIGHT = { muted: "text-neutral-950/60", big: "", buy: "bg-neutral-950 text
 const FACES: Record<MoneyVoucherKey, Face> = (() => {
   // EVERY ROW WEARS A MARK (Pato, MESITA-3835: "either all with icons or
   // none with icons"): the sized vouchers share the ticket.
-  const green: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT, Mark: Ticket };
+  const green: Face = { card: VOUCHER_TONE.voucher_200, ...LIGHT, Mark: Ticket };
   return {
     voucher_200: green,
     voucher_1000: green,
@@ -195,8 +196,8 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
     // ONE COLOUR PER KIND (Pato, 2026-11-16, MESITA-4207: "unlimited
     // voucher ... Green, but welcome make it blue, and story make it pink
     // like instagram"; soft tints). Every offer green from MESITA-4181.
-    voucher_welcome: { ...green, card: "bg-blue-200 text-neutral-950", Mark: PartyPopper },
-    voucher_story: { ...green, card: "bg-pink-200 text-neutral-950", Mark: Instagram },
+    voucher_welcome: { ...green, card: VOUCHER_TONE.voucher_welcome, Mark: PartyPopper },
+    voucher_story: { ...green, card: VOUCHER_TONE.voucher_story, Mark: Instagram },
     voucher_vip: { ...green, Mark: Crown },
   };
 })();

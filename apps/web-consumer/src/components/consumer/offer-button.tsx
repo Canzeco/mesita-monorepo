@@ -40,14 +40,15 @@ export function OfferChips({ href, name, chips, className }: {
 }) {
   if (chips.length === 0) return null;
   return (
-    <ul className={cn("flex flex-wrap gap-1.5", className)} aria-label={`Offers at ${name}`} data-offer-chips>
+    <ul className={cn("flex flex-wrap gap-x-1.5 gap-y-3", className)} aria-label={`Offers at ${name}`} data-offer-chips>
       {chips.map((c) => (
         <li key={c.key}>
           <PushLink
             href={`${href}?rewards=${c.section}&voucher=${c.key}`}
             aria-label={`${c.spoken}, at ${name}`}
             className={cn(
-              "relative inline-flex h-8 items-center rounded-lg px-2 text-xs font-extrabold tracking-tight whitespace-nowrap tabular-nums",
+              "pointer-events-auto relative inline-flex h-8 items-center rounded-lg px-2 text-xs font-extrabold tracking-tight whitespace-nowrap tabular-nums",
+              "focus-visible:ring-primary outline-none focus-visible:ring-2",
               "transition after:absolute after:inset-x-0 after:-inset-y-1.5 hover:opacity-90 active:scale-[0.98]",
               c.tone,
             )}

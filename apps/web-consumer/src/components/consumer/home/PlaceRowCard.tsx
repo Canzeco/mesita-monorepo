@@ -151,10 +151,14 @@ export function PlaceRowCard({
             boxes buttons, like keep an ordered grid"): the offer line and
             Save · Share share one block pinned to the square's bottom, 8px
             apart both ways, the gap Save and Share already keep. */}
-        <div className="relative z-10 mt-auto flex flex-col gap-2">
+        {/* NO DEAD GAPS (autoplan design review, MESITA-4207): the block lets
+            taps between chips through to the name's stretched link (the dead
+            spot MESITA-3797 removed); only the chips and Save · Share catch them. */}
+        <div className="pointer-events-none relative z-10 mt-auto flex flex-col gap-2">
           {/* EVERY OFFER AS A CHIP (MESITA-4207): nothing when the
               place sells none here (design review 2A). */}
           <OfferChips href={placeHref(place.slug || place.id)} name={place.name} chips={chips} />
+          <div className="pointer-events-auto">
           <CardActions
             name={place.name}
             saved={saved}
@@ -169,6 +173,7 @@ export function PlaceRowCard({
                 : undefined
             }
           />
+          </div>
         </div>
       </div>
     </li>

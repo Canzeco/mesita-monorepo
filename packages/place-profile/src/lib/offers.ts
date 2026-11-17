@@ -3,6 +3,7 @@
 // track are components/place-detail/offer-slides.tsx.
 
 import type { RewardsSection } from "../actions";
+import type { MoneyVoucherKey } from "../money-state";
 
 /** One offer on the moving button (MESITA-3467). */
 export type OfferSlide = {
@@ -40,11 +41,23 @@ export type OfferInput = {
 const GREEN = "bg-green-200 text-neutral-950";
 const BLUE = "bg-blue-200 text-neutral-950";
 const PINK = "bg-pink-200 text-neutral-950";
+
+/** THE ONE COLOUR MAP (autoplan F5, MESITA-4207): the slides, the Home chips
+ *  and the Offers page rows (vouchers.tsx FACES) all read it, so the next
+ *  colour call is one edit here. */
+export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
+  voucher_welcome: BLUE,
+  voucher_story: PINK,
+  voucher_vip: GREEN,
+  voucher_200: GREEN,
+  voucher_1000: GREEN,
+  voucher_5000: GREEN,
+};
 const OFFER_SLIDES: OfferSlide[] = [
-  { key: "voucher_welcome", lead: "Welcome", pill: "+100%", short: "Welcome", spoken: "Welcome prepay, 100% bonus", section: "special", tone: BLUE, bonus: 100 },
+  { key: "voucher_welcome", lead: "Welcome", pill: "+100%", short: "Welcome", spoken: "Welcome prepay, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_welcome, bonus: 100 },
   // Story +50% since MESITA-4207 (pay $100, get $150); +30% before.
-  { key: "voucher_story", lead: "Story", pill: "+50%", short: "Story", spoken: "Story prepay, 50% bonus", section: "special", tone: PINK, bonus: 50 },
-  { key: "voucher_vip", lead: "VIP", pill: "+100%", short: "VIP", spoken: "VIP prepay, 100% bonus", section: "special", tone: GREEN, bonus: 100 },
+  { key: "voucher_story", lead: "Story", pill: "+50%", short: "Story", spoken: "Story prepay, 50% bonus", section: "special", tone: VOUCHER_TONE.voucher_story, bonus: 50 },
+  { key: "voucher_vip", lead: "VIP", pill: "+100%", short: "VIP", spoken: "VIP prepay, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_vip, bonus: 100 },
   // The best standard voucher on sale (offerSlides picks it).
   { key: "prepay", lead: "Prepay", pill: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
 ];
@@ -90,12 +103,12 @@ export type OfferChip = {
  *  the guest can buy here, Welcome · Story · VIP · Small · Medium · Big, no
  *  rotation. Home's list row carries `sell` per guest (consumer-web-list-places). */
 const CHIPS: { key: string; name: string; bonus: number; section: RewardsSection; tone: string }[] = [
-  { key: "voucher_welcome", name: "Welcome", bonus: 100, section: "special", tone: BLUE },
-  { key: "voucher_story", name: "Story", bonus: 50, section: "special", tone: PINK },
-  { key: "voucher_vip", name: "VIP", bonus: 100, section: "special", tone: GREEN },
-  { key: "voucher_200", name: "Small", bonus: STANDARD_BONUS.voucher_200, section: "prepayment", tone: GREEN },
-  { key: "voucher_1000", name: "Medium", bonus: STANDARD_BONUS.voucher_1000, section: "prepayment", tone: GREEN },
-  { key: "voucher_5000", name: "Big", bonus: STANDARD_BONUS.voucher_5000, section: "prepayment", tone: GREEN },
+  { key: "voucher_welcome", name: "Welcome", bonus: 100, section: "special", tone: VOUCHER_TONE.voucher_welcome },
+  { key: "voucher_story", name: "Story", bonus: 50, section: "special", tone: VOUCHER_TONE.voucher_story },
+  { key: "voucher_vip", name: "VIP", bonus: 100, section: "special", tone: VOUCHER_TONE.voucher_vip },
+  { key: "voucher_200", name: "Small", bonus: STANDARD_BONUS.voucher_200, section: "prepayment", tone: VOUCHER_TONE.voucher_200 },
+  { key: "voucher_1000", name: "Medium", bonus: STANDARD_BONUS.voucher_1000, section: "prepayment", tone: VOUCHER_TONE.voucher_1000 },
+  { key: "voucher_5000", name: "Big", bonus: STANDARD_BONUS.voucher_5000, section: "prepayment", tone: VOUCHER_TONE.voucher_5000 },
 ];
 
 export function offerChips(offers: OfferInput | null | undefined): OfferChip[] {
