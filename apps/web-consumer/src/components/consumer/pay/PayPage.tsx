@@ -147,9 +147,9 @@ export function PayPage({
       {/* The header: the title and Tickets, a quiet grey pill (MESITA-4232).
           "Wallet" since MESITA-4245 (Pato: "the header just saying pay is
           shit"; /autoplan): the page holds your money, the pink Pay Bill is
-          the verb. Not "Mesita Wallet": the Mesita prefix claims Mesita is the
-          counterparty, and place credit is the place's. */}
-      <PayHeader title="Wallet" action={<TicketsShortcut />} />
+          the verb. "Mesita Wallet" since MESITA-4252 (Pato: "call at the top
+          Mesita Wallet, not only wallet"); the bar tab stays "Wallet". */}
+      <PayHeader title="Mesita Wallet" action={<TicketsShortcut />} />
 
       {/* PAY BILL (Pato, 2026-11-17, MESITA-4232: "GIANT BUTTON … CALL THAT
           PAY BILL"): the page's loudest thing (pink since MESITA-4240), first. With a bill open it
