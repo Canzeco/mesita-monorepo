@@ -11,7 +11,7 @@ import { cn } from "../../lib/format";
 import {
   PLACE_META_CLASS,
 } from "../../lib/ui";
-import { moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, STORY_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
+import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, STORY_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 
 // THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
@@ -114,7 +114,7 @@ const STANDARD: Product[] = [
 
 const SPECIAL: Product[] = [
   { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $200.00MX.", limit: "One per place.", bonus: "100% bonus", short: "Welcome", brief: "One per place" },
-  { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $130.00MX.", limit: "One per day.", bonus: "30% bonus", short: "Story", brief: "Post a story · 1/day" },
+  { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $150.00MX.", limit: "One per day.", bonus: "50% bonus", short: "Story", brief: "Post a story · 1/day" },
   { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $200.00MX.", when: "VIP guests only.", limit: "One per day.", bonus: "100% bonus", short: "VIP", brief: "VIP guests · 1/day" },
 ];
 
@@ -192,9 +192,11 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
     voucher_200: green,
     voucher_1000: green,
     voucher_5000: green,
-    // Every offer green (MESITA-4181); the marks still tell them apart.
-    voucher_welcome: { ...green, Mark: PartyPopper },
-    voucher_story: { ...green, Mark: Instagram },
+    // ONE COLOUR PER KIND (Pato, 2026-11-16, MESITA-4207: "unlimited
+    // voucher ... Green, but welcome make it blue, and story make it pink
+    // like instagram"; soft tints). Every offer green from MESITA-4181.
+    voucher_welcome: { ...green, card: "bg-blue-200 text-neutral-950", Mark: PartyPopper },
+    voucher_story: { ...green, card: "bg-pink-200 text-neutral-950", Mark: Instagram },
     voucher_vip: { ...green, Mark: Crown },
   };
 })();
@@ -619,7 +621,12 @@ export function VouchersPane({
   // be stocked"): ticking a row unticks the others, no quantity. Several in
   // one basket with 1..5 of Small, Medium and Big from MESITA-3841; the
   // server still takes a basket, the page sends one line.
-  const [picked, setPicked] = useState<MoneyVoucherKey | null>(null);
+  // A HOME CHIP'S VOUCHER STARTS TICKED (Pato, 2026-11-16, MESITA-4207):
+  // "Medium +20%" on Home opens this page with Medium picked; the foot only
+  // counts it when this guest can buy it (`chosen` filters on buyable).
+  const asked = actions?.askedVoucher;
+  const [picked, setPicked] = useState<MoneyVoucherKey | null>(() =>
+    asked && (MONEY_VOUCHER_KEYS as readonly string[]).includes(asked) ? (asked as MoneyVoucherKey) : null);
   const pick = (key: MoneyVoucherKey) => setPicked(key);
   const toggle = (key: MoneyVoucherKey) => setPicked((k) => (k === key ? null : key));
 

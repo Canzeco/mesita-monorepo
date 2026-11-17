@@ -34,10 +34,16 @@ export type OfferInput = {
 // EVERY OFFER IS GREEN (MESITA-4181, Pato: "I WANT ALL OFFERS GREEN … JUST
 // GREENS, LESS CONFUSION"): Link green for all of them; MESITA-3475's blue
 // Welcome, pink Story and gold VIP are gone.
-const GREEN = "bg-green-400 text-neutral-950";
+// ONE COLOUR PER KIND (Pato, 2026-11-16, MESITA-4207): the sizes green,
+// Welcome blue, Story pink like Instagram, soft tints with black ink, the
+// Offers page's own chip colours. Link green (bg-green-400) for all before.
+const GREEN = "bg-green-200 text-neutral-950";
+const BLUE = "bg-blue-200 text-neutral-950";
+const PINK = "bg-pink-200 text-neutral-950";
 const OFFER_SLIDES: OfferSlide[] = [
-  { key: "voucher_welcome", lead: "Welcome", pill: "+100%", short: "Welcome", spoken: "Welcome prepay, 100% bonus", section: "special", tone: GREEN, bonus: 100 },
-  { key: "voucher_story", lead: "Story", pill: "+30%", short: "Story", spoken: "Story prepay, 30% bonus", section: "special", tone: GREEN, bonus: 30 },
+  { key: "voucher_welcome", lead: "Welcome", pill: "+100%", short: "Welcome", spoken: "Welcome prepay, 100% bonus", section: "special", tone: BLUE, bonus: 100 },
+  // Story +50% since MESITA-4207 (pay $100, get $150); +30% before.
+  { key: "voucher_story", lead: "Story", pill: "+50%", short: "Story", spoken: "Story prepay, 50% bonus", section: "special", tone: PINK, bonus: 50 },
   { key: "voucher_vip", lead: "VIP", pill: "+100%", short: "VIP", spoken: "VIP prepay, 100% bonus", section: "special", tone: GREEN, bonus: 100 },
   // The best standard voucher on sale (offerSlides picks it).
   { key: "prepay", lead: "Prepay", pill: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
@@ -66,6 +72,42 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
       return best > 0 ? [{ ...s, pill: `+${best}%`, spoken: `Prepay, ${best}% bonus`, bonus: best }] : [];
     return sell.has(s.key) ? [s] : [];
   });
+}
+
+/** One chip on a Home card (MESITA-4207). */
+export type OfferChip = {
+  key: string;
+  /** "Welcome +100%". */
+  label: string;
+  /** "Welcome voucher: 100% bonus", read aloud. */
+  spoken: string;
+  section: RewardsSection;
+  tone: string;
+};
+
+/** EVERY OFFER AS A CHIP (Pato, 2026-11-16, MESITA-4207 design review: "the
+ *  preliminar offers in the home view look like shit"): one chip per voucher
+ *  the guest can buy here, Welcome · Story · VIP · Small · Medium · Big, no
+ *  rotation. Home's list row carries `sell` per guest (consumer-web-list-places). */
+const CHIPS: { key: string; name: string; bonus: number; section: RewardsSection; tone: string }[] = [
+  { key: "voucher_welcome", name: "Welcome", bonus: 100, section: "special", tone: BLUE },
+  { key: "voucher_story", name: "Story", bonus: 50, section: "special", tone: PINK },
+  { key: "voucher_vip", name: "VIP", bonus: 100, section: "special", tone: GREEN },
+  { key: "voucher_200", name: "Small", bonus: STANDARD_BONUS.voucher_200, section: "prepayment", tone: GREEN },
+  { key: "voucher_1000", name: "Medium", bonus: STANDARD_BONUS.voucher_1000, section: "prepayment", tone: GREEN },
+  { key: "voucher_5000", name: "Big", bonus: STANDARD_BONUS.voucher_5000, section: "prepayment", tone: GREEN },
+];
+
+export function offerChips(offers: OfferInput | null | undefined): OfferChip[] {
+  if (!offers) return [];
+  const sell = new Set(offers.sell);
+  return CHIPS.filter((c) => sell.has(c.key)).map((c) => ({
+    key: c.key,
+    label: `${c.name} +${c.bonus}%`,
+    spoken: `${c.name} voucher: ${c.bonus}% bonus`,
+    section: c.section,
+    tone: c.tone,
+  }));
 }
 
 /** What a screen reader hears: every offer, once. */

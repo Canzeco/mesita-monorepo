@@ -94,7 +94,7 @@ const ROW_LEAD = "flex w-13 shrink-0 flex-col items-center justify-center gap-1"
 // at 14px so "+100% Bonus" fits a 360px phone (18px before, MESITA-4167).
 const ROW_CHIP = "relative min-w-0 flex-1 overflow-hidden rounded-md text-sm leading-tight font-extrabold tabular-nums";
 const RESERVE_CHIP = "bg-[#DA3743] text-white";
-const OFFERS_CHIP = "bg-green-400 text-neutral-950";
+const OFFERS_CHIP = "bg-green-200 text-neutral-950";
 const OFF_CHIP = "bg-paper/15 text-paper/70 flex items-center justify-center";
 
 // The reservation button's tones: green once confirmed, grey while booking.
@@ -426,7 +426,9 @@ function OffersTile({
         <Tag className={MESITA_TILE_ICON} strokeWidth={2.25} />
         <span>Offers</span>
       </span>
-      <span className={cn(ROW_CHIP, OFFERS_CHIP)}>
+      {/* THE CHIP WEARS THE OFFER ON SCREEN'S COLOUR (MESITA-4207): Welcome
+          blue, Story pink, the sizes green; one green for all before. */}
+      <span className={cn(ROW_CHIP, "transition-colors duration-300", slides[index]?.tone ?? OFFERS_CHIP)}>
         <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} plain />
       </span>
     </button>
