@@ -159,6 +159,7 @@ declare
   v_kind text;
   v_at timestamptz := coalesce(p_available_at, now());
   v_claim text;
+  v_lost boolean := false;
 begin
   select * into v from public.wallet_purchases where id = p_purchase_id for update;
   if not found then
@@ -168,6 +169,18 @@ begin
     return jsonb_build_object('ok', true, 'outcome', 'already_paid');
   end if;
   perform public.wallet_lock(v.consumer_id, v.place_id);
+
+  -- A Story that expired or failed, whose story another live purchase has
+  -- reserved since (the guest's retry), gives the reservation up BEFORE it
+  -- turns paid: the money is credited, only its bonus is lost. Otherwise the
+  -- one-live-reservation index would refuse the payment itself.
+  if v.voucher = 'voucher_story' and v.story_mention_id is not null and v.status in ('failed', 'expired')
+     and exists (select 1 from public.wallet_purchases o
+                  where o.story_mention_id = v.story_mention_id and o.id <> v.id
+                    and o.status not in ('failed', 'expired', 'refunded')) then
+    update public.wallet_purchases set story_mention_id = null where id = v.id;
+    v_lost := true;
+  end if;
 
   -- An expired or failed purchase that Stripe nevertheless paid is still
   -- credited: the guest's money arrived.
@@ -182,7 +195,14 @@ begin
   if v.voucher = 'voucher_story' then
     insert into public.wallet_entries (consumer_id, place_id, kind, amount_cents, currency, purchase_id, livemode, available_at)
     values (v.consumer_id, v.place_id, 'voucher', v.amount_cents, v.currency, v.id, v.livemode, least(v_at, now()));
-    v_claim := public.story_claim(v.id);
+    if v_lost then
+      update public.wallet_purchases
+         set story_bonus = 'void', story_bonus_void_reason = 'mention_lost', story_bonus_decided_at = now(), updated_at = now()
+       where id = v.id and story_bonus is null;
+      v_claim := 'mention_lost';
+    else
+      v_claim := public.story_claim(v.id);
+    end if;
     return jsonb_build_object('ok', true, 'outcome', 'credited', 'story', v_claim);
   end if;
 
