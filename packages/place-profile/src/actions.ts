@@ -58,8 +58,10 @@ export type PlaceActions = {
   /** The card a Pay charges (the host remembers the last one used). */
   payCardId?: string | null;
   onSelectPayCard?: (id: string) => void;
-  /** "Add a card": the host's in-app card sheet (no Stripe page). */
-  onAddPayCard?: () => void;
+  /** "Add a card": the host's Add a card page (no Stripe page). With the
+   *  offer whose sheet asked, the host brings the guest back to that sheet
+   *  (MESITA-4230). */
+  onAddPayCard?: (voucher?: VoucherKey) => void;
   /** Retry after the card list failed to load. */
   onRetryPayCards?: () => void;
   /** The Rewards sheet opened: the host refreshes `place.money` (the offer and

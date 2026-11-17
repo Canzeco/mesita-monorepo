@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronRight, CircleCheck, Crown, Lock, PartyPopper, Ticket, X, type LucideIcon } from "lucide-react";
+import { CircleCheck, Clock, CreditCard, Crown, Lock, PartyPopper, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -405,22 +405,27 @@ export function readyClock(iso: string, now = new Date()): string {
   return at.toDateString() === now.toDateString() ? time : `${at.toLocaleDateString("en-US", { weekday: "short" })} ${time}`;
 }
 
-/** The sheet's facts (Pato, 2026-11-17, MESITA-4224: "when you click and open
- *  modal, then you understand"): when the money is ready, when the bonus is,
- *  where it spends, who may buy it. The rows say only the deal. */
-function sheetFacts(key: MoneyVoucherKey, pay: string, bonus: string | null): string[] {
-  const later = bonus ? `The ${bonus} bonus is ready 3 hours later.` : "The bonus is ready 3 hours later.";
-  const first = key === "voucher_story"
-    ? `Post an Instagram story at the place tagging it and show it to the staff. Your ${pay} is ready then.`
-    : `Your ${pay} is ready to spend as soon as you pay.`;
-  return [first, later, "Spend it on any bill here, all of it or part. It never expires.", sheetLimit(key)];
+/** HOW IT WORKS, IN THREE STEPS (Pato, 2026-11-17, MESITA-4230: "a more
+ *  friendly and maybe taller explanation ... keep it clean"; D3): now, in 3
+ *  hours, anytime after. Each step a bold line and one small line; the bonus
+ *  step in green. Four grey bullets from MESITA-4224. */
+type Step = { Icon: LucideIcon; title: string; line: string; green?: boolean };
+function sheetSteps(key: MoneyVoucherKey, pay: string, bonus: string | null): Step[] {
+  return [
+    key === "voucher_story"
+      ? { Icon: Instagram as unknown as LucideIcon, title: `After your story · ${pay} ready`, line: "Post a story at the place tagging it and show it to the staff." }
+      : { Icon: Wallet, title: `Today · ${pay} ready to spend`, line: "You pay, and it's yours right away." },
+    { Icon: Clock, title: `In 3 hours · ${bonus ? `+${bonus}` : "your"} bonus`, line: "It lands in your credit by itself.", green: true },
+    { Icon: Utensils, title: "Spend it here, anytime", line: "On any bill here, all of it or part. It never expires." },
+  ];
 }
 
+/** Who may buy it and how often: a small chip under the sheet's title (D3). */
 function sheetLimit(key: MoneyVoucherKey): string {
-  if (key === "voucher_welcome") return "One per place, if you haven't paid here before.";
-  if (key === "voucher_story") return "For Instagram accounts over 1,000 followers. One per visit.";
-  if (key === "voucher_vip") return "For guests in Mesita's VIP Class. One per visit.";
-  return "Buy as many as you like.";
+  if (key === "voucher_welcome") return "One per place · first visit";
+  if (key === "voucher_story") return "1,000+ followers · one per visit";
+  if (key === "voucher_vip") return "VIP Class · one per visit";
+  return "Buy as many as you like";
 }
 
 type Receipt = { outcome: "paid" | "processing"; pay: string; bonus: string | null; readyAt: string | null };
@@ -519,6 +524,9 @@ function PaySheet({
           <div className="min-w-0 flex-1">
             <h3 id="offer-sheet-title" className="text-foreground text-lg leading-tight font-bold">{product.short}</h3>
             <p className="text-muted-foreground truncate text-sm">{placeName}</p>
+            <span className="bg-muted text-foreground mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold" data-offer-limit>
+              {sheetLimit(product.key)}
+            </span>
           </div>
           <button
             type="button"
@@ -579,14 +587,30 @@ function PaySheet({
                 <span className="text-2xl font-extrabold text-[#00A85A] tabular-nums">{whole(get)}</span>
               </div>
             </div>
-            <ul className="text-foreground flex flex-col gap-2 text-[15px] leading-snug">
-              {sheetFacts(product.key, whole(pay), bonusAmount ? whole(bonusAmount) : null).map((t) => (
-                <li key={t} className="flex gap-2.5">
-                  <span className="bg-foreground mt-[0.55rem] h-1.5 w-1.5 shrink-0 rounded-full" aria-hidden />
-                  <span>{t}</span>
+            <ol className="flex flex-col py-1" aria-label="How it works" data-offer-steps>
+              {sheetSteps(product.key, whole(pay), bonusAmount ? whole(bonusAmount) : null).map((s, i, all) => (
+                <li key={s.title} className="flex gap-3.5">
+                  {/* The icon column: a round step and the line down to the next. */}
+                  <span className="flex flex-col items-center" aria-hidden>
+                    <span
+                      className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                        s.green ? "bg-[#00D66F] text-neutral-950" : "bg-muted text-foreground",
+                      )}
+                    >
+                      <s.Icon className="h-5 w-5" strokeWidth={2.25} />
+                    </span>
+                    {i < all.length - 1 ? <span className="bg-border my-1 w-0.5 flex-1" /> : null}
+                  </span>
+                  <span className={cn("flex min-w-0 flex-col pt-1.5", i < all.length - 1 && "pb-4")}>
+                    <span className={cn("text-base leading-snug font-bold tabular-nums", s.green ? "text-[#00A85A]" : "text-foreground")}>
+                      {s.title}
+                    </span>
+                    <span className="text-muted-foreground text-sm leading-snug">{s.line}</span>
+                  </span>
                 </li>
               ))}
-            </ul>
+            </ol>
             {can ? (
               <div className="flex flex-col gap-3">
                 {payCard && !signedOut ? (
@@ -614,13 +638,22 @@ function PaySheet({
                     </button>
                   </p>
                 ) : null}
+                {/* NO CARD YET (Pato, 2026-11-17, MESITA-4230: "if no card,
+                    redirect to somewhere to add a credit card"; D4): the Add a
+                    card page, then straight back to this sheet, card picked. */}
+                {needsCard && !signedOut ? (
+                  <p className="text-muted-foreground text-center text-sm" data-offer-add-card-note>
+                    You&apos;ll add a card, then come right back here.
+                  </p>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => void press()}
                   disabled={!live || buying || cardsPending}
-                  className="bg-foreground text-paper disabled:bg-muted disabled:text-muted-foreground h-12 w-full rounded-xl text-base font-semibold tabular-nums hover:opacity-90"
+                  className="bg-foreground text-paper disabled:bg-muted disabled:text-muted-foreground flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold tabular-nums hover:opacity-90"
                   data-voucher-buy={product.key}
                 >
+                  {needsCard && !signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
                   {button}
                 </button>
               </div>
@@ -720,6 +753,12 @@ export function VouchersPane({
     const bonusAmount = line ? pesos(line.bonus_cents, currency) : null;
     const onPay = async (): Promise<Receipt | null> => {
       if (!live) return null;
+      // No card yet: the Add a card page, which brings the guest back to
+      // this offer's sheet (MESITA-4230, D4).
+      if (!signedOut && readyCards !== null && payCard === null && actions?.onAddPayCard) {
+        actions.onAddPayCard(p.key);
+        return null;
+      }
       const out = await actions?.onBuyVoucher?.([{ voucher: p.key, qty: 1 }], signedOut ? null : payCard?.id ?? null);
       if (out !== "paid" && out !== "processing") return null;
       const readyAt = line ? new Date(Date.now() + line.available_after_sec * 1000).toISOString() : null;
@@ -799,21 +838,7 @@ export function VouchersPane({
                         ) : null}
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
-                        {/* IN A BOX, SAYING BONUS (Pato, 2026-11-17, MESITA-4227:
-                            "the bonus amount must be in a box and must mention
-                            bonus even if repeated a lot of times"): ink on a grey
-                            box beside the name, so the face stays the row's one
-                            colour and the deal keeps the full width under it (at
-                            the right it cut "Get $6,500" on a 390px phone). */}
-                        <span className="flex min-w-0 items-center gap-2">
-                          <span className="text-foreground truncate text-base font-semibold">{p.short}</span>
-                          <span
-                            className="bg-muted text-foreground border-border shrink-0 rounded-md border px-1.5 py-0.5 text-[13px] leading-tight font-extrabold tracking-tight whitespace-nowrap tabular-nums"
-                            data-offer-bonus
-                          >
-                            {bonus} Bonus
-                          </span>
-                        </span>
+                        <span className="text-foreground truncate text-base font-semibold">{p.short}</span>
                         {/* IN INK (Pato, 2026-11-17, MESITA-4227: "the pay and
                             get must be clearer, it's too transparent"): Pay
                             medium, Get semibold, only the dot grey. */}
@@ -822,7 +847,21 @@ export function VouchersPane({
                           <span className="font-semibold">Get {whole(get)}</span>
                         </span>
                       </span>
-                      <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
+                      {/* THE BONUS IS THE HERO, AT THE RIGHT IN A BLACK BOX
+                          (Pato, 2026-11-17, MESITA-4230: "the bonus amount must
+                          be at the right in a box and must be clearer. its the
+                          most important ... in a black box"; MESITA-4227: "must
+                          mention bonus"): "+30%" big over "BONUS". The chevron
+                          went so the deal keeps its width on a 390px phone;
+                          the box is the row's tap cue. */}
+                      <span
+                        className="bg-foreground text-paper flex w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-xl py-1.5 tabular-nums"
+                        aria-hidden
+                        data-offer-bonus
+                      >
+                        <span className="text-lg leading-none font-extrabold tracking-tight">{bonus}</span>
+                        <span className="mt-1 text-[10px] leading-none font-bold tracking-wider uppercase opacity-80">Bonus</span>
+                      </span>
                     </button>
                   </li>
                 );
