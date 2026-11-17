@@ -28,6 +28,8 @@ import { EFError } from "@/lib/api/_invoke";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { Panel } from "@/components/shared/Panel";
+import { PushLink } from "@/components/consumer/nav/PushLink";
+import { reservationPath } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
@@ -42,8 +44,9 @@ const RESERVATION_LIMIT_CODE = "reservation_limit_reached";
 const RESERVATION_LIMIT_MESSAGE =
   "You've reached this month's reservation limit.";
 
-// The guest already holds a live table here at that time
-// (_shared/reservation-create.ts); the server's message is shown as is.
+// The guest already holds a live table here, at any time: one live table per
+// place (MESITA-3640, _shared/reservation-create.ts); the server's message is
+// shown as is.
 const ALREADY_RESERVED_CODE = "already_reserved";
 
 // The place's clock lives in @mesita/place-profile/lib/place-time — the single
@@ -71,11 +74,12 @@ export type ReservationFormPlace = {
   photo?: string | null;
 };
 
-// What to do when the guest already holds a live table here.
+// What to do when the guest already holds a live table here. One live table
+// per place (MESITA-3640), so a second one is never offered (MESITA-4138):
 //   null         → they haven't answered the banner yet; submit stays locked
-//   "another"    → book a second table (normal create flow)
-//   "reschedule" → move the existing booking instead of creating a twin
-type DuplicateChoice = "another" | "reschedule";
+//   "reschedule" → move the existing booking
+// Cancelling happens on the table's own page.
+type DuplicateChoice = "reschedule";
 
 function resolveSubmitLabel(args: {
   checking: boolean;
@@ -384,7 +388,6 @@ export function ReservationForm({
                 tz={tz}
                 choice={choice}
                 onReschedule={chooseReschedule}
-                onAnother={() => setChoice("another")}
                 onReset={() => setChoice(null)}
               />
             )}
@@ -503,13 +506,13 @@ export function ReservationForm({
 /**
  * "You already have a table here." Shown inline above the pickers rather than
  * as a blocking dialog: the guest keeps the whole form in view and just tells
- * us which of the two things they meant.
+ * us whether to change it or cancel it. One live table per place, so there is
+ * no second one to make (MESITA-4138).
  */
 function DuplicateBanner({
   existing,
   choice,
   onReschedule,
-  onAnother,
   onReset,
   tz,
 }: {
@@ -517,7 +520,6 @@ function DuplicateBanner({
   tz: string | null;
   choice: DuplicateChoice | null;
   onReschedule: () => void;
-  onAnother: () => void;
   onReset: () => void;
 }) {
   const seed = placeDateTime(existing.reserved_at, tz);
@@ -546,21 +548,18 @@ function DuplicateBanner({
             onClick={onReschedule}
             className="bg-primary text-primary-foreground type-body flex-1 rounded-full py-2 font-semibold transition active:scale-[0.99]"
           >
-            Reschedule that one
+            Change it
           </button>
-          <button
-            type="button"
-            onClick={onAnother}
-            className="border-border bg-card hover:bg-muted type-body flex-1 rounded-full border py-2 font-semibold transition"
+          <PushLink
+            href={reservationPath(existing.id)}
+            className="border-border bg-card hover:bg-muted type-body flex-1 rounded-full border py-2 text-center font-semibold transition"
           >
-            Make another
-          </button>
+            Cancel it
+          </PushLink>
         </div>
       ) : (
         <p className="text-muted-foreground mt-2 text-xs">
-          {choice === "reschedule"
-            ? "Moving your existing table."
-            : "Booking a second table here."}
+          Moving your existing table.
           <button
             type="button"
             onClick={onReset}
