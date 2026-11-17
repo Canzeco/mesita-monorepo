@@ -47,10 +47,11 @@ import { WalletShareGift } from "@/components/consumer/wallet/WalletShareGift";
 //
 //   Pay ........................................ [Tickets]
 //   [ search a place ]
+//   Buy Credits · Send Gift · Claim Gift · Share Mesita (WalletShareGift;
+//           on top since MESITA-4202, last in MESITA-4199)
 //   Places: every place you hold credit at, pinned, with its balance chip;
 //           then the nearest, up to PLACES_SHOWN; "Show all"
 //   Pay with: the card, Cash, Add a card, Loyalty Cards (WalletSection)
-//   Buy Credits · Send Gift · Claim Gift · Share Mesita (WalletShareGift)
 //
 // The bar is Home · Search · Pay · Me; /wallet forwards here. With a bill
 // open, the bill panel replaces the search and the places; Pay with stays.
@@ -284,6 +285,11 @@ export function PayPage({
         }
       />
 
+      {/* THE FOUR BUTTONS ON TOP (Pato, 2026-11-16, MESITA-4202: "move the
+          four buttons to the top"): right under the band, in every state;
+          they ended the page in MESITA-4199. */}
+      <WalletShareGift />
+
       {/* A bill in progress: the bill itself, one panel at the top
           (MESITA-4086); no amber band on this page. */}
       <div className="mt-5 flex flex-col">
@@ -322,7 +328,6 @@ export function PayPage({
         )}
       </div>
       <WalletSection giftToken={giftToken} />
-      <WalletShareGift />
     </KeptScroll>
   );
 }
