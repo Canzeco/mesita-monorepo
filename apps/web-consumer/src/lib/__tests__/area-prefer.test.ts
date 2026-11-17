@@ -77,7 +77,7 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     expect(rails).toContain(
       "const base = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);",
     );
-    expect(rails).toContain("const requestKey = `${areaPoolKey(from)}|${");
+    expect(rails).toContain("const requestKey = `${guest}|${areaPoolKey(from)}|${");
     const effect = rails.slice(
       rails.indexOf("useEffect(() => {\n    // Until the browser answers"),
     );

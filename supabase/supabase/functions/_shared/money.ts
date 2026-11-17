@@ -124,7 +124,9 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   // WELCOME LANDS AT ONCE (Pato, 2026-11-16, MESITA-4198: "welcome bonus is
   // instant" ... "Instant Vouchers"); held an hour from MESITA-3835.
   voucher_welcome: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 0 },
-  voucher_story: { price_cents: 100_00, bonus_bps: 3000, kind: "earned", available_after_sec: 0 },
+  // STORY IS +50% (Pato, 2026-11-16, MESITA-4207): pay MX$100, get MX$150;
+  // +30% until then. Purchases keep their stored amounts.
+  voucher_story: { price_cents: 100_00, bonus_bps: 5000, kind: "earned", available_after_sec: 0 },
   voucher_vip: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 3600 },
 };
 

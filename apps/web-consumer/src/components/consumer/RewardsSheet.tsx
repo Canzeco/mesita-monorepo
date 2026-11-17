@@ -83,7 +83,7 @@ export function RewardsSheet({
           <Wallet className="h-6 w-6 shrink-0 opacity-80" strokeWidth={2.25} aria-hidden />
         </div>
         <div className="flex flex-1 shrink-0 flex-col pt-4">
-          {drawn != null ? <VouchersPane place={place} actions={actions} /> : null}
+          {drawn != null ? <VouchersPane key={actions?.askedVoucher ?? "none"} place={place} actions={actions} /> : null}
         </div>
       </div>
     </LocalSheet>

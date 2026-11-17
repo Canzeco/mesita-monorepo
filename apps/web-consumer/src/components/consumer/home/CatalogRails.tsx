@@ -67,6 +67,7 @@ import {
 } from "@/lib/area-pool-cache";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { useServerProfile } from "@/lib/identity-context";
 import { trackEvent } from "@/lib/analytics/track";
 import {
   useUserLocation,
@@ -251,7 +252,11 @@ export function CatalogRails() {
   // The rail reached its last family: the down arrow hides (MESITA-3806).
   const [railAtEnd, setRailAtEnd] = useState(false);
   const menuRef = useRef<HTMLElement | null>(null);
-  const requestKey = `${areaPoolKey(from)}|${
+  // THE POOL IS THIS GUEST'S (autoplan eng E1, MESITA-4207): its offers are
+  // narrowed per guest, so a pool kept across a sign-out or sign-in would
+  // show another guest's chips; the guest is part of the key.
+  const guest = useServerProfile()?.id ?? "anon";
+  const requestKey = `${guest}|${areaPoolKey(from)}|${
     families.length > 0 ? families.join(",") : ALL_CHIP
   }`;
 

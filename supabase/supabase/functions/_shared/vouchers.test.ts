@@ -10,6 +10,8 @@ import {
   basketUnits,
   buyRefusal,
   CATALOG_LINES,
+  guestBlocksFrom,
+  guestSell,
   offerFrom,
   openPurchaseRow,
   overCreditLimit,
@@ -356,4 +358,40 @@ Deno.test("a basket's metadata names the lead and carries the sums; a single vou
   assertEquals(many.bonus_cents, "24000");
   assertEquals(many.basket, "3");
   assertEquals(many.basket_items, "voucher_200x2,voucher_1000x1");
+});
+
+// MESITA-4207: the list rows' chips drop what THIS guest already used, by
+// the same rule as the place screen's Offers (offerFrom).
+Deno.test("list rows: guestSell drops Welcome used here and a per-visit voucher spent this visit, like offerFrom", () => {
+  const sell = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_story"] as const;
+  const blocks = guestBlocksFrom(
+    [
+      { place_id: "a", voucher: "voucher_welcome" },
+      { place_id: "b", voucher: "voucher_story" },
+      { place_id: "c", voucher: "voucher_story" },
+      { place_id: "c", voucher: "voucher_story" },
+    ],
+    [{ place_id: "c" }, { place_id: "d" }],
+  );
+  // a: Welcome bought here; Story still open (no Story bought).
+  assertEquals(guestSell(sell, blocks.get("a")), ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"]);
+  // b: one Story, no visit yet: spent until the guest pays a bill here.
+  assertEquals(guestSell(sell, blocks.get("b")), ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome"]);
+  // c: two Stories, one visit: spent.
+  assertEquals(blocks.get("c")?.perVisitUsed.voucher_story, true);
+  // d: a visit and no purchase: nothing blocked, no entry.
+  assertEquals(blocks.has("d"), false);
+  assertEquals(guestSell(sell, blocks.get("d")), [...sell]);
+  // Same answer as the place screen's offer for every place.
+  for (const id of ["a", "b", "c", "d"]) {
+    const g = blocks.get(id);
+    const o = offerFrom({ ...base, welcomeUsed: g?.welcomeUsed ?? false, perVisitUsed: g?.perVisitUsed });
+    assertEquals(guestSell(sell, g), o.sell);
+  }
+});
+
+Deno.test("list rows: one Story per visit opens again after a visit (MESITA-3463, MESITA-4207)", () => {
+  const blocks = guestBlocksFrom([{ place_id: "p", voucher: "voucher_story" }], [{ place_id: "p" }]);
+  assertEquals(blocks.get("p"), { welcomeUsed: false, perVisitUsed: { voucher_story: false, voucher_vip: false } });
+  assertEquals(guestSell(["voucher_story"], blocks.get("p")), ["voucher_story"]);
 });

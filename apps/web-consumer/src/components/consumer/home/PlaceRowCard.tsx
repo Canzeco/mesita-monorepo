@@ -12,7 +12,7 @@ import {
 } from "@/lib/place-placeholder";
 import { cn } from "@/lib/utils";
 import { CardActions } from "@/components/consumer/place-card";
-import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
+import { OfferChips, offerChips } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsRun } from "./place-facts";
 
@@ -26,7 +26,8 @@ import { PlaceFactsRun } from "./place-facts";
  *   │         │ │ Restaurant · ★4.7│   (MESITA-3669)
  *   │         │ │ (8.6K) · ◷ Open ·│
  *   │         │ │ ➤ 0.4 km         │
- *   │         │ │[ Prepay +30%  ] │   every offer in turn, only when it has one
+ *   │         │ │[Welcome +100%]  │   every offer as a chip (MESITA-4207)
+ *   │         │ │[Small +10%] …   │
  *   └─────────┘ │[♡ Save][Share]  │
  *               └────────────────┘
  *
@@ -35,9 +36,9 @@ import { PlaceFactsRun } from "./place-facts";
  * a tap on them never navigates. THE PHOTO STAYS CLEAN (Pato, MESITA-3664:
  * "remove the offer icon from the image. keep the image clean.
  * you have a lot of space at the right. fucking use it"): the offers are the
- * shared rotating OfferButton in the info square, just above Save · Share,
- * cycling every offer in its own colour (MESITA-3665); a tap goes where the
- * offer on screen points, the place's bill or its Rewards section.
+ * offer chips in the info square, just above Save · Share, one per voucher
+ * this guest can buy (MESITA-4207; the rotating OfferButton from MESITA-3665
+ * before); a chip opens the place's Offers with that voucher ticked.
  */
 export function PlaceRowCard({
   place,
@@ -59,7 +60,7 @@ export function PlaceRowCard({
   const photo = cardPhoto(place);
   const placeholder = placePlaceholder(place);
   const google = isGoogleOnlyPlace(place);
-  const slides = google ? [] : offerSlides(place);
+  const chips = google ? [] : offerChips(place);
 
   const open = (children: ReactNode, className: string, label?: string) =>
     google ? (
@@ -150,18 +151,14 @@ export function PlaceRowCard({
             boxes buttons, like keep an ordered grid"): the offer line and
             Save · Share share one block pinned to the square's bottom, 8px
             apart both ways, the gap Save and Share already keep. */}
-        <div className="relative z-10 mt-auto flex flex-col gap-2">
-          {/* EVERY OFFER, MOVING (Pato, MESITA-3665: "make the green
-              buttons offers moving and switching across all the offers with
-              different colors"): the shared OfferButton, each offer in its
-              own colour on the shared beat, in the short words (MESITA-3671:
-              "$200MX (+10%)"). */}
-          <OfferButton
-            href={placeHref(place.slug || place.id)}
-            name={place.name}
-            slides={slides}
-            short
-          />
+        {/* NO DEAD GAPS (autoplan design review, MESITA-4207): the block lets
+            taps between chips through to the name's stretched link (the dead
+            spot MESITA-3797 removed); only the chips and Save · Share catch them. */}
+        <div className="pointer-events-none relative z-10 mt-auto flex flex-col gap-2">
+          {/* EVERY OFFER AS A CHIP (MESITA-4207): nothing when the
+              place sells none here (design review 2A). */}
+          <OfferChips href={placeHref(place.slug || place.id)} name={place.name} chips={chips} />
+          <div className="pointer-events-auto">
           <CardActions
             name={place.name}
             saved={saved}
@@ -176,6 +173,7 @@ export function PlaceRowCard({
                 : undefined
             }
           />
+          </div>
         </div>
       </div>
     </li>

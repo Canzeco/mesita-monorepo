@@ -86,6 +86,11 @@ function readFromWallet(): boolean {
   return new URLSearchParams(window.location.search).get("from") === "wallet";
 }
 
+/** The voucher a Home offer chip asked for (MESITA-4207). */
+function readVoucherAsk(): string | null {
+  return new URLSearchParams(window.location.search).get("voucher");
+}
+
 function readRewardsAsk(): RewardsSection | null {
   const v = new URLSearchParams(window.location.search).get("rewards");
   // "payment" is ignored on purpose: the Payments card left Offers (MESITA-4062).
@@ -116,6 +121,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   // opens the sheet on arrival, once: closing it drops the ask.
   const askedRewards = useSyncExternalStore(noopSubscribe, readRewardsAsk, () => null);
   const fromWallet = useSyncExternalStore(noopSubscribe, readFromWallet, () => false);
+  const askedVoucher = useSyncExternalStore(noopSubscribe, readVoucherAsk, () => null);
   const [askDismissed, setAskDismissed] = useState(false);
   const rewardsShown = rewards ?? (askDismissed ? null : askedRewards);
   // When the Upgrade tile or ⋯ › Upgrade last asked for the Upgrade sheet (ms).
@@ -138,6 +144,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       const params = new URLSearchParams(window.location.search);
       params.delete("rewards");
       params.delete("from");
+      params.delete("voucher");
       const q = params.toString();
       window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
       if (fromWallet) goBack(router, walletPlacePath(place.id));
@@ -249,6 +256,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       setAskDismissed(true);
       navigateTo(router, payPlacePath(place.id), { motion: "drill" });
     },
+    // The Home chip's voucher (MESITA-4207), only while its ask stands.
+    askedVoucher: askDismissed ? null : askedVoucher,
     // The Offers (i) status (MESITA-3502): VIP needs the VIP Class, Story a
     // linked Instagram; each lock's action opens the page that lifts it.
     ...(profile

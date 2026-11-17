@@ -5,7 +5,7 @@ const ROW: StoryRow = {
   id: "p",
   status: "paid",
   amount_cents: 10000,
-  bonus_cents: 3000,
+  bonus_cents: 5000,
   currency: "mxn",
   livemode: false,
   paid_at: "2026-11-09T04:00:00Z",
@@ -23,7 +23,7 @@ Deno.test("isStoryToken: 32 lowercase hex only (MESITA-3507)", () => {
 
 Deno.test("storyView: the credit is price plus bonus; a refund before activation reads refunded", () => {
   const v = storyView(ROW, "Taquería", "ana");
-  assertEquals(v.credit_cents, 13000);
+  assertEquals(v.credit_cents, 15000);
   assertEquals(v.instagram_handle, "ana");
   assertEquals(v.refunded, false);
   assertEquals(v.test_mode, true);

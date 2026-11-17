@@ -78,6 +78,9 @@ export type PlaceActions = {
    *  preview, profile not read yet), no guest lock is drawn. */
   /** instagramFollowers (MESITA-3507): Story needs more than STORY_MIN_FOLLOWERS; absent reads as unknown, no lock. */
   guest?: { vip: boolean; instagramLinked: boolean; instagramFollowers?: number | null };
+  /** The voucher a Home offer chip asked for (MESITA-4207, `?voucher=`):
+   *  the Offers page opens with it ticked when this guest can buy it. */
+  askedVoucher?: string | null;
   /** Request VIP in the VIP (i): the host's VIP Class page. */
   onJoinVip?: () => void;
   /** Link Instagram in the Story (i): the host's Instagram page. */
