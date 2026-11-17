@@ -101,7 +101,6 @@ const SocialFeed = dynamic(
 // family is not required anymore"): the white band alone marks a chosen
 // family. SAVED'S BAR IS RED, the heart's colour (Pato, MESITA-3718: "for saved
 // instead of blue selector use red. its the only exception").
-const BAR_RED = "before:bg-red-600";
 // ONE ROW, CLOSED OR OPEN (Pato, MESITA-3800: "it must be vertically
 // aligned the closed menu with the open menu"): the rail and the open menu
 // draw every family in the same 44px row, the emoji centred in the same 48px
@@ -114,14 +113,16 @@ const BAR_RED = "before:bg-red-600";
 // band with ink text, the 4px blue bar (red for Saved) at its left; the
 // blue bar left with MESITA-4037, Saved keeps its red one.
 // LIGHT AGAIN (Pato, 2026-11-17, MESITA-4268: "lets try making the later
-// bar instead of dark, light"): the grey fill token with ink names and a
-// hairline at its right edge; the chosen row stays the white band.
+// bar instead of dark, light"): the grey fill token with ink names, no
+// edge line (MESITA-4270 took MESITA-4268's hairline away).
 // Reverses MESITA-3812/3813's almost-ink surface.
 const RAIL_SURFACE = "bg-muted text-foreground";
 const RAIL_ROW =
   "text-foreground relative flex h-11 w-full shrink-0 items-center text-left transition";
-const RAIL_ROW_ON =
-  "bg-card text-foreground before:absolute before:inset-y-0 before:left-0 before:w-1";
+// THE CHOSEN ROW IS BLUE (Pato, 2026-11-17, MESITA-4270: "the selected
+// item must be blue"): a solid blue band with white text, Saved included —
+// replaces MESITA-4015's white band and MESITA-3718's red bar.
+const RAIL_ROW_ON = "bg-blue-600 text-white";
 const RAIL_EMOJI = "flex w-12 shrink-0 justify-center text-xl leading-none";
 
 /** The column's default row: every place, one list, ranked like the Search
@@ -553,9 +554,7 @@ export function CatalogRails() {
           data-on={on ? "" : undefined}
           className={cn(
             RAIL_ROW,
-            on
-              ? cn(RAIL_ROW_ON, c.key === SAVED_CHIP && BAR_RED)
-              : "hover:bg-foreground/5",
+            on ? RAIL_ROW_ON : "hover:bg-foreground/5",
             on && open && "font-semibold",
           )}
         >
@@ -577,12 +576,7 @@ export function CatalogRails() {
   const railScrolled = (el: HTMLElement) =>
     setRailAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
   const emojiRail = (
-    <div
-      className={cn(
-        RAIL_SURFACE,
-        "border-border relative flex w-12 shrink-0 flex-col border-r",
-      )}
-    >
+    <div className={cn(RAIL_SURFACE, "relative flex w-12 shrink-0 flex-col")}>
       <nav
         ref={railRef}
         aria-label="Families"
