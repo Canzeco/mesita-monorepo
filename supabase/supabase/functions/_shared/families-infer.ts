@@ -34,8 +34,8 @@ export function familyChoices(families: readonly PlaceFamily[]): PlaceFamily[] {
  * This map is the master; Docs › Atlas points here.
  */
 export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
-  coffee: "a café or coffee bar — coffee is the main reason to go",
-  breakfast: "breakfast or brunch is the main meal — a morning place",
+  coffee: "a café or coffee bar — coffee is a main reason to go, including cafés that also serve breakfast or brunch",
+  breakfast: "breakfast or brunch is a main meal — a morning place; not a taquería, grill or restaurant that merely opens early",
   bakery: "a bakery or pastry shop — bread and pastries baked in house",
   sweet: "dessert is the point — ice cream, gelato, cakes, churros, chocolate",
   healthy: "the menu is built around healthy food — salads, bowls, juices, vegan",
@@ -45,7 +45,7 @@ export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
   pizza: "pizza is the main dish",
   chicken: "wings or fried chicken are the main dish",
   sushi: "sushi or poke is the main dish",
-  mexican: "the menu is Mexican cuisine — not just one Mexican dish",
+  mexican: "the menu is Mexican — taquerías, mariscos, fondas, cantinas with Mexican food and Mexican restaurants all count",
   steak: "a steakhouse or grill — beef cuts and barbecue are the point",
   seafood: "the menu is seafood — mariscos, ceviche, fish, oysters",
   italian: "the menu is Italian — pasta, risotto, Italian dishes",
@@ -56,8 +56,8 @@ export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
   arabic: "Middle Eastern or eastern Mediterranean — Lebanese, Turkish, Greek, kebab",
   european: "another European cuisine — Spanish, French, German, tapas",
   american: "American food — diner, barbecue joint, fries and shakes",
-  dinner: "a sit-down evening meal is the main reason to go; not every restaurant open at night",
-  fancy: "upscale — a special occasion, a dress code or a tasting menu",
+  dinner: "a sit-down restaurant people go to for an evening meal — most full-service restaurants; not cafés, bakeries, juice bars, counters or bars that also serve food",
+  fancy: "genuinely upscale — fine dining, a tasting menu, a dress code or special-occasion prices; not merely stylish, popular, well rated or at a nice hotel",
   family: "a day out for kids — zoos, aquariums, water parks, indoor playgrounds; not a restaurant that welcomes children or has a kids' menu",
   drinks: "drinking is the point — a bar, cantina, brewery or wine bar; not a restaurant that serves beer",
   sports: "built to watch sports — screens and game nights are the draw",
@@ -102,8 +102,9 @@ export function familiesRule(stage: FamiliesStage): string {
     "LIST line gives and a guest browsing that family would be glad to find " +
     "it there. An amenity never earns a family: welcoming kids, serving " +
     "alcohol, having music or being open late is not Family, Bar, Music or " +
-    "Night. A family must set this place apart from a typical restaurant; " +
-    "skip one that would fit most places. When unsure about a family, leave " +
+    "Night. Cuisine and meal families (every cuisine, Dinner, Breakfast, " +
+    "Coffee, Quick) describe what the place serves: give each one that truly " +
+    "applies. When unsure about a family, leave " +
     `it out — but always return at least one, the closest by meaning. ${count}`
   );
 }
