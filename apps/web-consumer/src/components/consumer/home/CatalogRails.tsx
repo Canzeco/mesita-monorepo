@@ -581,10 +581,12 @@ export function CatalogRails() {
         ref={railRef}
         aria-label="Families"
         onScroll={(e) => railScrolled(e.currentTarget)}
-        // NO SCROLLBAR (Pato, MESITA-3807: "the scrolling bar in the
-        // sidebar menu looks like shit"; MESITA-3806 gave it the rows' thin
-        // bar for one round): the down arrow at its foot says it scrolls.
-        className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
+        // A REALLY THIN BAR ON THE LEFT (Pato, 2026-11-17, MESITA-4271: "also
+        // add really thin scrollbar in the left side of latral men"): the
+        // app's floating 3px thumb, drawn at the rail's left edge; it ended
+        // MESITA-3807's no scrollbar. The down arrow at its foot stays.
+        className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
+        data-scrollbar-left
         data-places-rail
       >
         {railRows(false)}
