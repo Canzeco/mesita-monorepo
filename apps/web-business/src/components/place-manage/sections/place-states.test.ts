@@ -18,7 +18,7 @@ const acct = (o: Partial<PaymentAccount> = {}): PaymentAccount => ({
 });
 const settings = (o: Partial<PaymentSettings> = {}): PaymentSettings => ({
   stripe_payments: true,
-  house_credits: true,
+  loyalty_cards: true,
   cash_payments: true,
   pay_cards: true,
   prepayments: true,
@@ -61,17 +61,17 @@ describe("place states", () => {
     expect([cash.cashPayments.chip, cash.mesitaPayments.chip]).toEqual(["On", "Off"]);
   });
 
-  it("sells prepayments only with House Credits, a voucher on and Stripe taking cards", () => {
-    expect(moneyPlaceStates({ ...base, account: acct(), settings: settings({ house_credits: false, voucher_200: false }) }).mesitaPrepayments.chip).toBe("Off");
+  it("sells prepayments only with Loyalty Cards, a voucher on and Stripe taking cards", () => {
+    expect(moneyPlaceStates({ ...base, account: acct(), settings: settings({ loyalty_cards: false, voucher_200: false }) }).mesitaPrepayments.chip).toBe("Off");
     expect(moneyPlaceStates({ ...base, account: acct(), settings: settings() }).mesitaPrepayments.chip).toBe("On");
     expect(moneyPlaceStates({ ...base, account: acct({ charges_enabled: false }), settings: settings() }).mesitaPrepayments.chip).toBe("Off");
     expect(moneyPlaceStates({ ...base, account: acct(), settings: settings({ voucher_200: false }) }).mesitaPrepayments.chip).toBe("Off");
   });
 
-  it("reads House Credits and its contract", () => {
+  it("reads Loyalty Cards and its contract", () => {
     const m = moneyPlaceStates({ ...base, codeSet: true, account: acct(), settings: settings() });
-    expect([m.houseCredits.chip, m.houseCreditsContract.chip]).toEqual(["On", "Signed"]);
-    const off = moneyPlaceStates({ ...base, codeSet: true, account: acct(), settings: settings({ house_credits: false, voucher_200: false }) });
-    expect(off.houseCredits.chip).toBe("Off");
+    expect([m.loyaltyCards.chip, m.loyaltyCardsContract.chip]).toEqual(["On", "Signed"]);
+    const off = moneyPlaceStates({ ...base, codeSet: true, account: acct(), settings: settings({ loyalty_cards: false, voucher_200: false }) });
+    expect(off.loyaltyCards.chip).toBe("Off");
   });
 });

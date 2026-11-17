@@ -17,7 +17,7 @@ export type LimitPlace = {
   override_cents: number | null;
   /** The limit that binds it now; null when its currency has no default. */
   limit_cents: number | null;
-  house_credits: boolean;
+  loyalty_cards: boolean;
 };
 
 export type CreditsLimit = { test_mode: boolean; defaults: LimitDefault[]; places: LimitPlace[] };

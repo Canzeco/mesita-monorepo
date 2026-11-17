@@ -95,8 +95,8 @@ export type MoneyPlaceStates = {
   billing: PlaceStateValue;
   stripe: PlaceStateValue;
   reservations: PlaceStateValue;
-  houseCreditsContract: PlaceStateValue;
-  houseCredits: PlaceStateValue;
+  loyaltyCardsContract: PlaceStateValue;
+  loyaltyCards: PlaceStateValue;
   cashPayments: PlaceStateValue;
   mesitaPayments: PlaceStateValue;
   mesitaPrepayments: PlaceStateValue;
@@ -119,10 +119,10 @@ export function moneyPlaceStates(i: PlaceStatesInput): MoneyPlaceStates {
     billing: { on: !pastDue, chip: pastDue ? "Past due" : "Paid up" },
     stripe: { on: stripe === "Connected", chip: stripe },
     reservations: i.reservations == null ? { on: false, chip: "?" } : onOff(i.reservations),
-    houseCreditsContract: i.contract
+    loyaltyCardsContract: i.contract
       ? { on: i.contract.signed, chip: i.contract.signed ? "Signed" : "Not signed" }
       : { on: false, chip: "?" },
-    houseCredits: onOff(s?.house_credits === true),
+    loyaltyCards: onOff(s?.loyalty_cards === true),
     // Cash Payments: the owner's switch and the waiter's code (MESITA-3589).
     cashPayments: onOff(money?.cash === true),
     // Mesita Payments: a guest can pay the bill by card in the app now
@@ -169,8 +169,8 @@ export const PLACE_STATE_ROWS = [
   { key: "billing", label: "Billing" },
   { key: "stripe", label: "Stripe Account" },
   { key: "reservations", label: "Reservations" },
-  { key: "houseCreditsContract", label: "House Credits Contract" },
-  { key: "houseCredits", label: "House Credits" },
+  { key: "loyaltyCardsContract", label: "Loyalty Cards Agreement" },
+  { key: "loyaltyCards", label: "Loyalty Cards" },
   { key: "cashPayments", label: "Cash Payments" },
   { key: "mesitaPayments", label: "App Payments" },
   { key: "mesitaPrepayments", label: "App Prepayments" },

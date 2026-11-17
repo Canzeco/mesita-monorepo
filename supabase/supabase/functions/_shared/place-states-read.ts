@@ -78,7 +78,7 @@ export async function readPlaceStatesFacts(
   const [accounts, settings, contracts, codes, invoices, managers, claims, backings] = await Promise.all([
     admin.from("place_payment_accounts").select(ACCOUNT_COLUMNS).in("place_id", ids),
     admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", ids),
-    admin.from("house_credits_contracts").select("place_id").in("place_id", ids).is("ended_at", null),
+    admin.from("loyalty_cards_contracts").select("place_id").in("place_id", ids).is("ended_at", null),
     admin.from("place_codes").select("place_id").in("place_id", ids),
     admin
       .from("place_fee_invoices")
@@ -100,7 +100,7 @@ export async function readPlaceStatesFacts(
   for (const [name, res] of [
     ["place_payment_accounts", accounts],
     ["place_payment_settings", settings],
-    ["house_credits_contracts", contracts],
+    ["loyalty_cards_contracts", contracts],
     ["place_codes", codes],
     ["place_fee_invoices", invoices],
     ["place_managers", managers],

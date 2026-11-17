@@ -38,9 +38,9 @@ export type VoucherOffer = {
   test_mode: boolean;
   currency: string;
   charges_enabled: boolean;
-  /** House Credits is On here: new credit can be born. Off never stops a
+  /** Loyalty Cards is On here: new credit can be born. Off never stops a
    *  guest spending what they already hold. */
-  house_credits: boolean;
+  loyalty_cards: boolean;
   /** Cash Payments is On here (the owner's switch and the place code). */
   cash: boolean;
   /** The green Mesita Payments mark, moneyState's, before the pause and
@@ -139,7 +139,7 @@ export function offerFrom(i: OfferInput): VoucherOffer {
     test_mode: !i.livemode,
     currency: i.currency,
     charges_enabled: usable,
-    house_credits: state.house_credits,
+    loyalty_cards: state.loyalty_cards,
     cash: state.cash,
     mesita_pay: state.mesita_pay,
     vouchers,
@@ -363,7 +363,7 @@ export type BuyOk = { ok: true; url: string; purchase_id: string };
 export const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string }> = {
   off: { code: "not_available", error: "This place does not sell that voucher" },
   needs_account: { code: "no_account", error: "This place has not connected payments yet" },
-  needs_house_credits: { code: "not_available", error: "This place doesn't accept prepayments" },
+  needs_loyalty_cards: { code: "not_available", error: "This place doesn't accept prepayments" },
   needs_billing: { code: "not_available", error: "This place doesn't accept prepayments right now" },
   not_yet: { code: "not_yet", error: "This voucher is not on sale yet" },
   needs_card_payments: { code: "needs_card_payments", error: "This voucher needs card payments, which are not on yet" },

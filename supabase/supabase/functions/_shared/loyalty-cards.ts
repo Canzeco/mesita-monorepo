@@ -10,20 +10,20 @@ import type { Balance } from "./wallet.ts";
 
 export type Pin = { place_id: string; added_at: string };
 
-/** Of these places, the ones with House Credits On. A pin counts only there
+/** Of these places, the ones with Loyalty Cards On. A pin counts only there
  *  (MESITA-3611): the place screen and the Wallet read the same rule. */
-async function houseCreditsOn(admin: SupabaseClient, placeIds: string[]): Promise<{ ok: true; on: Set<string> } | { ok: false; error: string }> {
+async function loyaltyCardsOn(admin: SupabaseClient, placeIds: string[]): Promise<{ ok: true; on: Set<string> } | { ok: false; error: string }> {
   if (placeIds.length === 0) return { ok: true, on: new Set() };
   const { data, error } = await admin
     .from("place_payment_settings")
     .select("place_id")
     .in("place_id", placeIds)
-    .eq("house_credits", true);
+    .eq("loyalty_cards", true);
   if (error) return { ok: false, error: `settings: ${error.message}` };
   return { ok: true, on: new Set(((data ?? []) as Array<{ place_id: string }>).map((r) => r.place_id)) };
 }
 
-/** The guest's pins at places with House Credits On, newest first. */
+/** The guest's pins at places with Loyalty Cards On, newest first. */
 export async function readPins(
   admin: SupabaseClient,
   consumerId: string,
@@ -36,7 +36,7 @@ export async function readPins(
     .limit(200);
   if (error) return { ok: false, error: `loyalty_cards: ${error.message}` };
   const pins = (data ?? []) as Pin[];
-  const on = await houseCreditsOn(admin, pins.map((p) => p.place_id));
+  const on = await loyaltyCardsOn(admin, pins.map((p) => p.place_id));
   if (!on.ok) return on;
   return { ok: true, pins: pins.filter((p) => on.on.has(p.place_id)) };
 }
@@ -65,8 +65,8 @@ export function withPins(balances: Balance[], pins: Pin[], currency: string): Ar
   return out;
 }
 
-/** Whether this place's card is in the guest's Wallet: pinned where House
- *  Credits is On, or holding any entry there in this universe. */
+/** Whether this place's card is in the guest's Wallet: pinned where Loyalty
+ *  Cards is On, or holding any entry there in this universe. */
 export async function inWallet(
   admin: SupabaseClient,
   consumerId: string,
@@ -76,7 +76,7 @@ export async function inWallet(
   const [pin, entry, on] = await Promise.all([
     admin.from("wallet_loyalty_cards").select("place_id").eq("consumer_id", consumerId).eq("place_id", placeId).maybeSingle(),
     admin.from("wallet_entries").select("id").eq("consumer_id", consumerId).eq("place_id", placeId).eq("livemode", livemode).limit(1),
-    houseCreditsOn(admin, [placeId]),
+    loyaltyCardsOn(admin, [placeId]),
   ]);
   if (pin.error) return { ok: false, error: `loyalty_cards: ${pin.error.message}` };
   if (entry.error) return { ok: false, error: `entries: ${entry.error.message}` };

@@ -869,8 +869,8 @@ verify_jwt = true
 [functions.business-web-set-payment]
 verify_jwt = true
 
-# The House Credits Contract, signed by the owner (MESITA-3589).
-[functions.business-web-sign-house-credits-contract]
+# The Loyalty Cards Agreement, signed by the owner (MESITA-3589).
+[functions.business-web-sign-loyalty-cards-contract]
 verify_jwt = true
 
 # Business › Payments, the owner's money (MESITA-3307): totals and rows,

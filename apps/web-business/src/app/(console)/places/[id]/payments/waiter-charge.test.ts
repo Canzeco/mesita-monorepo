@@ -1,6 +1,6 @@
 // Money (MESITA-3306; Cash Payments since MESITA-3589): the waiter confirms a
 // bill paid outside with the waiter code (set on this page since MESITA-3600), so Cash Payments cannot turn on
-// without it and the page says so from the server's code_set. House Credits
+// without it and the page says so from the server's code_set. Loyalty Cards
 // and Mesita Payments are never gated on the code.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -17,8 +17,8 @@ describe("the place code on Payments", () => {
     expect(PANEL).toContain("/charge/${encodeURIComponent(placeId)}");
   });
 
-  it("never gates House Credits or App Payments on the place code", () => {
-    const hc = PANEL.slice(PANEL.indexOf('key: "house_credits"'), PANEL.indexOf('key: "cash_payments"'));
+  it("never gates Loyalty Cards or App Payments on the place code", () => {
+    const hc = PANEL.slice(PANEL.indexOf('key: "loyalty_cards"'), PANEL.indexOf('key: "cash_payments"'));
     const mp = PANEL.slice(PANEL.indexOf('key: "pay_cards"'), PANEL.indexOf('id: "credits-payments"'));
     expect(hc).not.toMatch(/codeSet/);
     expect(mp).not.toMatch(/codeSet/);

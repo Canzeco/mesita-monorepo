@@ -125,7 +125,7 @@ export function CreditsLimitPanel({
       <SectionCard
         icon={<GaugeIcon aria-hidden />}
         title="Places"
-        subtitle={`Every place holding credit or with House Credits on, most used first. Outstanding is Available plus Pending, every guest, plus unclaimed gifts. ${WATCH_PCT}% and over is highlighted.${testMode ? " Test mode: these are test-mode balances." : ""}`}
+        subtitle={`Every place holding credit or with Loyalty Cards on, most used first. Outstanding is Available plus Pending, every guest, plus unclaimed gifts. ${WATCH_PCT}% and over is highlighted.${testMode ? " Test mode: these are test-mode balances." : ""}`}
         right={
           watched > 0 ? (
             <Chip tone="danger" data-credits-watch>
@@ -135,7 +135,7 @@ export function CreditsLimitPanel({
         }
       >
         {rows.length === 0 ? (
-          <EmptyState className="mt-4">No place holds credit or has House Credits on yet.</EmptyState>
+          <EmptyState className="mt-4">No place holds credit or has Loyalty Cards on yet.</EmptyState>
         ) : (
           <div className="mt-4">
             <Table className="min-w-[760px]" data-admin-credits-limit>
@@ -168,7 +168,7 @@ export function CreditsLimitPanel({
                         ) : (
                           <span className="font-semibold">{r.place_name ?? r.place_id}</span>
                         )}
-                        {!r.house_credits ? <span className="text-muted-foreground block text-xs">House Credits off</span> : null}
+                        {!r.loyalty_cards ? <span className="text-muted-foreground block text-xs">Loyalty Cards off</span> : null}
                       </Td>
                       <Td className="text-muted-foreground">{r.currency}</Td>
                       <Td numeric className="whitespace-nowrap">

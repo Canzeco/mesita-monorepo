@@ -113,14 +113,15 @@ select is(
   (select r - 'place_id' - 'place_name' - 'outstanding_cents'
      from jsonb_array_elements(public.admin_credit_limits(false) -> 'places') r
     where r ->> 'place_id' = '00000000-0000-4000-8000-000000003947'),
-  jsonb_build_object('currency', 'MXN', 'override_cents', 250000, 'limit_cents', 250000, 'house_credits', false),
+  jsonb_build_object('currency', 'MXN', 'override_cents', 250000, 'limit_cents', 250000, 'loyalty_cards', false,
+                     'house_credits', false),  -- MESITA-4282 bridge key; MESITA-4283 drops it
   'a place holding credit is listed with its currency, its own limit and the limit that binds it'
 );
 
 select ok(
   not exists (select 1 from jsonb_array_elements(public.admin_credit_limits(false) -> 'places') r
                where r ->> 'place_id' = '00000000-0000-4000-8000-000000013947'),
-  'a place with no credit and House Credits Off is not listed'
+  'a place with no credit and Loyalty Cards Off is not listed'
 );
 
 select * from finish();

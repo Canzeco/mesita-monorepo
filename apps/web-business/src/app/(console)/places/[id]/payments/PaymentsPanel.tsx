@@ -4,7 +4,7 @@
 // SINCE MESITA-3946 THE PAGE IS THREE CARDS, then Vouchers and Waiter Code:
 //   Stripe Account   · the account (a LARGE Open Stripe button, MESITA-4024: Pato, "must be far larger") · Accept Stripe Payments
 //   Credits Account  · Credits Agreement · Credits Balance (read-only) · Accept
-//                      Credits Payments (House Credits: on once signed, then locked)
+//                      Credits Payments (Loyalty Cards: on once signed, then locked)
 //   Payments         · one row per way to pay, Accept only: Cash · App · Credits
 //                      (always) · Prepayments.
 // The history below is how it got here.
@@ -19,7 +19,7 @@
 //   (MESITA-3827, Pato: "Main Configuration · Cash Payments · Credits
 //   Payments · Mesita Payments · Mesita Prepayments":)
 //   Main Configuration · the Stripe Account row and its button, then the
-//     House Credits Agreement and the House Credits switch it unlocks;
+//     Loyalty Cards Agreement and the Loyalty Cards switch it unlocks;
 //   Cash Payments · Cash Payments;
 //   Credits Payments · Credits Payments (Always on);
 //   Mesita Payments · Mesita Payments;
@@ -27,17 +27,17 @@
 //   Waiter Code · its own section, last (MESITA-3824; inside Cash Payments
 //     from MESITA-3625, moved from Settings by MESITA-3600): waiters sign
 //     any payment's QR with it, cash or card;
-//   (Credits Payments, one row, Always on, sits last in House Credits:
+//   (Credits Payments, one row, Always on, sits last in Loyalty Cards:
 //     MESITA-3703, Pato: "Add field call it Credits Payments to maintain
-//     symmetry", then MESITA-3704: "credits payments must go in the House
-//     Credits section". Guests pay with the credit they hold here. No
-//     switch: a guest's credit is the place's debt, always honoured; House
-//     Credits Off stops new credit only.)
+//     symmetry", then MESITA-3704: "credits payments must go in the Loyalty
+//     Cards section". Guests pay with the credit they hold here. No
+//     switch: a guest's credit is the place's debt, always honoured; Loyalty
+//     Cards Off stops new credit only.)
 // A switch that can't turn on is disabled and its row says the one missing
 // step, with a link to it. Never "Mesita Pay" (Pato, 2026-11-10).
-// The House Credits Agreement is independent of Stripe (Pato, 2026-11-09):
+// The Loyalty Cards Agreement is independent of Stripe (Pato, 2026-11-09):
 // signing opens a plain Agree dialog whose text is a placeholder until a
-// lawyer writes it. A guest's credit is the place's debt: House Credits Off
+// lawyer writes it. A guest's credit is the place's debt: Loyalty Cards Off
 // stops new credit, never what guests hold. The owner and Mesita staff change
 // these; the server refuses anyone else and repeats each rule.
 
@@ -65,13 +65,13 @@ import { placeTabHref, returnUrl } from "@/lib/routes";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import {
   openPaymentDashboard,
-  type HouseCreditsContract,
+  type LoyaltyCardsContract,
   type PaymentAccount,
   type PaymentKey,
   type PlacePayments,
   type StripeStage,
   setPlacePayment,
-  signHouseCreditsContract,
+  signLoyaltyCardsContract,
   startPaymentOnboarding,
 } from "@/lib/business-api";
 import { WaiterCodeRow } from "./WaiterCode";
@@ -155,7 +155,7 @@ const isVoucherKey = (k: PaymentKey): k is VoucherKey => k.startsWith("voucher_"
 /** Why a switched-on voucher is not for sale yet (MESITA-3303). */
 const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
   needs_account: "Not for sale until the Stripe Account takes cards.",
-  needs_house_credits: "Not for sale until House Credits is on.",
+  needs_loyalty_cards: "Not for sale until Loyalty Cards is on.",
   needs_billing: "Not for sale until Mesita's invoice is paid.",
   not_yet: "Not on sale yet.",
   needs_card_payments: "On sale once card payments are on.",
@@ -184,7 +184,7 @@ const QUIET_PILL_CLASS = "bg-muted text-foreground hover:bg-muted/70 hover:opaci
 function accountCopy(a: PaymentAccount): { line: string; button: string | null; open: boolean } {
   switch (a.state) {
     case "none":
-      return { line: "Your own account, where App Payments and App Prepayments land. Not needed for House Credits or cash.", button: "Connect Stripe", open: false };
+      return { line: "Your own account, where App Payments and App Prepayments land. Not needed for Loyalty Cards or cash.", button: "Connect Stripe", open: false };
     case "onboarding":
       return { line: "Setup not finished.", button: "Continue setup", open: false };
     case "restricted":
@@ -198,7 +198,7 @@ function accountCopy(a: PaymentAccount): { line: string; button: string | null; 
   }
 }
 
-function signedOn(c: HouseCreditsContract): string {
+function signedOn(c: LoyaltyCardsContract): string {
   if (!c.signed_at) return "Signed";
   const d = new Date(c.signed_at);
   return `Signed ${d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`;
@@ -215,7 +215,7 @@ export function PaymentsPanel({
 }) {
   const [settings, setSettings] = useState(initial.settings);
   const currency = initial.currency ?? "MXN";
-  const [contract, setContract] = useState<HouseCreditsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
+  const [contract, setContract] = useState<LoyaltyCardsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
   const [agreeing, setAgreeing] = useState(false);
   const [busy, setBusy] = useState<PaymentKey | "stripe" | "contract" | null>(null);
   const [error, setError] = useState<string | null>(back === "refresh" ? "The Stripe setup link expired. Open it again." : null);
@@ -248,7 +248,7 @@ export function PaymentsPanel({
   async function agree() {
     setBusy("contract");
     setError(null);
-    const r = await signHouseCreditsContract(placeId);
+    const r = await signLoyaltyCardsContract(placeId);
     setBusy(null);
     setAgreeing(false);
     if (!r.ok) return setError(r.error);
@@ -278,8 +278,8 @@ export function PaymentsPanel({
       {text}
     </a>
   );
-  const needsContract = step("Sign the House Credits Agreement first.", "#house-credits-agreement");
-  const needsHouseCredits = step("Turn House Credits on first.", "#house-credits");
+  const needsContract = step("Sign the Loyalty Cards Agreement first.", "#loyalty-cards-agreement");
+  const needsLoyaltyCards = step("Turn Loyalty Cards on first.", "#loyalty-cards");
   const needsStripe = step("Connect the Stripe Account first.", "#stripe-account");
   const needsCode = step("Set the waiter code first.", "#waiter-code");
   const needsPrepayments = step("Turn App Prepayments on first.", "#mesita-prepayments");
@@ -364,7 +364,7 @@ export function PaymentsPanel({
   const voucherRow = ({ key, name, line, value, tone, icon }: Product) => {
     const on = settings[key] && takesCards;
     const reason = isVoucherKey(key) ? state.unavailable[key] : undefined;
-    const blocked = !takesCards ? needsStripe : !on && !settings.house_credits ? needsHouseCredits : null;
+    const blocked = !takesCards ? needsStripe : !on && !settings.loyalty_cards ? needsLoyaltyCards : null;
     const note = on
       ? settings.prepayments
         ? reason && NOT_SELLING[reason]
@@ -449,7 +449,7 @@ export function PaymentsPanel({
       <Card className={SECTION}>
         <h2 className={HEAD}>Credits Account</h2>
         <ul className="divide-border divide-y">
-          <li id="house-credits-agreement" className={MARK_ROW} data-place-state="house_credits_contract">
+          <li id="loyalty-cards-agreement" className={MARK_ROW} data-place-state="loyalty_cards_contract">
             {mark(SignatureIcon, contract.signed, "bg-emerald-100 text-emerald-700")}
             <div className="min-w-0">
               <p className="font-medium">Credits Agreement</p>
@@ -482,21 +482,21 @@ export function PaymentsPanel({
             <span />
           </li>
           {/* ACCEPT CREDITS PAYMENTS CAN'T TURN DOWN (Pato, MESITA-3946): the
-              House Credits switch, on once the agreement is signed and then
+              Loyalty Cards switch, on once the agreement is signed and then
               locked; a guest's credit is always honoured. */}
-          <li id="house-credits" className={MARK_ROW} data-place-state="house_credits">
-            {mark(WalletIcon, settings.house_credits, "bg-emerald-100 text-emerald-700")}
+          <li id="loyalty-cards" className={MARK_ROW} data-place-state="loyalty_cards">
+            {mark(WalletIcon, settings.loyalty_cards, "bg-emerald-100 text-emerald-700")}
             <div className="min-w-0">
               <p className="font-medium">Accept Credits Payments</p>
               <p className="text-muted-foreground">Guests earn credit here and pay with it. Once on, it stays on.</p>
-              {under(settings.house_credits || contract.signed ? undefined : needsContract, null)}
+              {under(settings.loyalty_cards || contract.signed ? undefined : needsContract, null)}
             </div>
-            <p className={cn("font-semibold whitespace-nowrap", !settings.house_credits && "text-muted-foreground")}>{settings.house_credits ? "Always on" : "Off"}</p>
+            <p className={cn("font-semibold whitespace-nowrap", !settings.loyalty_cards && "text-muted-foreground")}>{settings.loyalty_cards ? "Always on" : "Off"}</p>
             <Switch
-              on={settings.house_credits}
-              pending={pending || settings.house_credits || !contract.signed}
-              onClick={() => void flip("house_credits", true)}
-              label={`Accept Credits Payments: ${settings.house_credits ? "always on" : "off"}`}
+              on={settings.loyalty_cards}
+              pending={pending || settings.loyalty_cards || !contract.signed}
+              onClick={() => void flip("loyalty_cards", true)}
+              label={`Accept Credits Payments: ${settings.loyalty_cards ? "always on" : "off"}`}
             />
           </li>
         </ul>
@@ -591,12 +591,12 @@ export function PaymentsPanel({
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="hc-agreement-title" className="text-base font-semibold">
-              House Credits Agreement
+              Loyalty Cards Agreement
             </h2>
             <p className="text-muted-foreground mt-2">{contract.text ?? "The full agreement will be added before launch."}</p>
             {/* MESITA-3923: the currency is agreed here, and fixed by the signature. */}
             <p className="mt-2 font-medium" data-agreement-currency>
-              Your House Credits run in {currency} ({CURRENCY_NAME[currency] ?? currency}). Signing fixes it.
+              Your Loyalty Cards run in {currency} ({CURRENCY_NAME[currency] ?? currency}). Signing fixes it.
             </p>
             <div className="mt-6 flex justify-end gap-2">
               <button type="button" className={cn(PILL_BUTTON_CLASS, QUIET_PILL_CLASS)} disabled={busy === "contract"} onClick={() => setAgreeing(false)}>

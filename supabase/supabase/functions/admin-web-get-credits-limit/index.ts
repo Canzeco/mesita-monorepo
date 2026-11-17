@@ -4,13 +4,13 @@
 //
 // One read, admin_credit_limits, in STRIPE_MODE's universe (never the
 // body's): the default limit per currency, and every place holding credit
-// or with House Credits On, with its outstanding credit (Available + Pending
+// or with Loyalty Cards On, with its outstanding credit (Available + Pending
 // + open gift links, what the buy path counts), its own limit (null = the
 // default) and the limit that binds it. Super-admins only.
 //
 // Response: { ok: true, test_mode, defaults: [{ currency, limit_cents,
 //   updated_at }], places: [{ place_id, place_name, currency,
-//   outstanding_cents, override_cents, limit_cents, house_credits }] }
+//   outstanding_cents, override_cents, limit_cents, loyalty_cards }] }
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
 import { requireAdminRequest } from "../_shared/request.ts";
