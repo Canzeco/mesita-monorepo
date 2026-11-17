@@ -48,6 +48,8 @@ export type PurchaseRow = {
   stripe_account_id: string;
   stripe_payment_intent_id: string | null;
   voucher: string | null;
+  /** When staff APPROVED the Story's story (MESITA-4264). Not "credited":
+   *  what the guest paid is credited at payment since MESITA-4264. */
   story_activated_at: string | null;
   status: string;
   paid_at: string | null;

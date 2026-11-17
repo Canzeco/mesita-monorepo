@@ -40,9 +40,20 @@
 //   with no entries is a $0 card they can remove.
 //   card_ok (MESITA-3305) says the place can take a card part: its account
 //   charges in this universe and the owner's Cards switch is on.
-//             waiting_stories (MESITA-3507): [{ purchase_id, place, place_id,
-//               credit_cents, currency, paid_at, token, url }]: paid Story
-//               vouchers staff have not activated yet (no credit until then),
+//             waiting_stories (MESITA-3507, MESITA-4264): [{ purchase_id, place,
+//               place_id, amount_cents, bonus_cents, credit_cents, currency,
+//               paid_at, token, url, state: needs_story | received | rejected |
+//               approved | released | void, approved_at, expires_at (approve
+//               by), bonus_at, recheck_at, bonus: released | void | null,
+//               bonus_void_reason: unreachable | expired | refunded | operator | null,
+//               bonus_decided_at, time_zone (the place's IANA zone),
+//               mention: { id, media_url, media_kind, mentioned_at, source } | null
+//               (the claimed story, else the newest unclaimed one),
+//               test_mode, emulator (the Simulate buttons may show) }]:
+//               Story vouchers whose bonus is undecided, plus those decided
+//               in the last 24 hours (their outcome line). What the guest
+//               paid is already in the balances above since MESITA-4264;
+//               only the bonus waits,
 //             sent_links (MESITA-3292): [{ gift_id, place_id, amount_cents,
 //               currency, created_at }]: credit links the guest sent that
 //               nobody took yet (already off their balance; take-back-able),
@@ -75,6 +86,18 @@ import {
 } from "../_shared/wallet.ts";
 import { readSavedCards } from "../_shared/cards.ts";
 import { withGuestOffers } from "../_shared/vouchers.ts";
+import { STORY_COLUMNS, storyBonusAt, type StoryRow, storyState } from "../_shared/story.ts";
+import {
+  MENTION_COLUMNS,
+  type MentionRow,
+  mentionView,
+  readCandidateMentions,
+  readStoryRules,
+  STORY_RULES,
+  storyExpiresAt,
+  storyMode,
+} from "../_shared/story-mention.ts";
+import { placeZone, PLACE_ZONE_COLUMNS } from "../_shared/local-time.ts";
 import { type GiftEntryRow, giftPeopleIds, type GiftRow, giftTickets, type PersonRow } from "../_shared/wallet-gifts.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
@@ -174,24 +197,48 @@ serveJson("consumer-web-get-wallet", async (req) => {
   if (!pinsRes.ok) return json({ ok: false, error: pinsRes.error }, 500);
   const balances = withPins(balancesOf(entries, Date.now(), spendable), pinsRes.pins, MONEY_CURRENCY);
 
-  // STORIES WAITING FOR STAFF (MESITA-3507): paid, not yet activated, so no
-  // credit in the balances above. The Wallet shows each with its QR.
+  // STORIES (MESITA-3507, MESITA-4264): what the guest paid is in the
+  // balances above since payment; the row shows where the bonus stands:
+  // every Story whose bonus is undecided, and a decided one for 24 hours.
+  const decidedSince = new Date(Date.now() - STORY_RULES.decidedListedSec * 1000).toISOString();
   const { data: storyRows, error: storyErr } = await admin
     .from("wallet_purchases")
-    .select("id, place_id, amount_cents, bonus_cents, currency, paid_at, story_token")
+    .select(`${STORY_COLUMNS}, story_token`)
     .eq("consumer_id", userId)
     .eq("livemode", livemode)
     .eq("voucher", "voucher_story")
-    .eq("status", "paid")
-    .is("story_activated_at", null)
     .not("story_token", "is", null)
+    .or(`and(status.eq.paid,story_bonus.is.null),story_bonus_decided_at.gte.${decidedSince}`)
     .order("paid_at", { ascending: false })
     .limit(20);
   if (storyErr) return json({ ok: false, error: `stories: ${storyErr.message}` }, 500);
-  const stories = (storyRows ?? []) as Array<{
-    id: string; place_id: string; amount_cents: number; bonus_cents: number;
-    currency: string; paid_at: string | null; story_token: string;
-  }>;
+  const stories = (storyRows ?? []) as Array<StoryRow & { story_token: string }>;
+  // The stories behind them: what each claimed, and the guest's newest
+  // unclaimed one (it shows on every Story not yet approved). A failed read
+  // only hides the story; the money is unaffected.
+  let claimedByPurchase = new Map<string, MentionRow>();
+  let newestCandidate: MentionRow | null = null;
+  const storyRules = stories.length > 0 ? await readStoryRules(admin) : null;
+  const storyZones = new Map<string, string>();
+  if (stories.length > 0) {
+    try {
+      const [claimed, guestRow, zones] = await Promise.all([
+        admin.from("story_mentions").select(MENTION_COLUMNS).in("purchase_id", stories.map((st) => st.id)),
+        admin.from("consumers").select("instagram_handle").eq("id", userId).maybeSingle(),
+        admin.from("place_profiles").select(`id, ${PLACE_ZONE_COLUMNS}`).in("id", [...new Set(stories.map((st) => st.place_id))]),
+      ]);
+      if (claimed.error) throw new Error(`story_mentions: ${claimed.error.message}`);
+      claimedByPurchase = new Map(((claimed.data ?? []) as MentionRow[]).map((m) => [m.purchase_id as string, m]));
+      for (const z of ((zones.error ? [] : zones.data) ?? []) as Array<{ id: string; timezone?: unknown; lng?: unknown }>) {
+        storyZones.set(z.id, placeZone(z));
+      }
+      const handle = (guestRow.data as { instagram_handle?: string | null } | null)?.instagram_handle ?? null;
+      newestCandidate = (await readCandidateMentions(admin, handle, livemode, Date.now()))[0] ?? null;
+    } catch (e) {
+      console.error(`[consumer-web-get-wallet] story mentions read: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  const emulatorOn = !livemode && storyMode() === "emulated";
 
   // EVERY GIFT SENT OR RECEIVED (MESITA-4036): Tickets' one Gifts list,
   // sender on the left, receiver on the right. The open ones the guest sent
@@ -294,16 +341,39 @@ serveJson("consumer-web-get-wallet", async (req) => {
       card_ok: (charging?.has(place_id) ?? false) && cardsOn.has(place_id),
       offers: offersById.get(place_id) ?? { sell: [] },
     })),
-    waiting_stories: stories.map((st) => ({
-      purchase_id: st.id,
-      place: places.get(st.place_id) ?? null,
-      place_id: st.place_id,
-      credit_cents: st.amount_cents + st.bonus_cents,
-      currency: st.currency,
-      paid_at: st.paid_at,
-      token: st.story_token,
-      url: storyUrl(st.story_token),
-    })),
+    waiting_stories: stories.map((st) => {
+      const claimed = claimedByPurchase.get(st.id) ?? null;
+      const open = st.status === "paid" && !st.story_bonus && st.story_review !== "approved";
+      const candidate = open ? newestCandidate : null;
+      const mention = claimed ?? candidate;
+      return {
+        purchase_id: st.id,
+        place: places.get(st.place_id) ?? null,
+        place_id: st.place_id,
+        amount_cents: st.amount_cents,
+        bonus_cents: st.bonus_cents,
+        credit_cents: st.amount_cents + st.bonus_cents,
+        currency: st.currency,
+        paid_at: st.paid_at,
+        token: st.story_token,
+        url: storyUrl(st.story_token),
+        state: storyState(
+          { story_review: st.story_review ?? null, story_reviewed_at: st.story_reviewed_at ?? null, story_bonus: st.story_bonus ?? null },
+          candidate?.mentioned_at ?? null,
+        ),
+        approved_at: st.story_activated_at,
+        expires_at: storyRules ? storyExpiresAt(st.paid_at, storyRules) : null,
+        bonus_at: storyRules ? storyBonusAt(st, storyRules) : null,
+        recheck_at: st.story_recheck_at ?? null,
+        bonus: st.story_bonus ?? null,
+        bonus_void_reason: st.story_bonus_void_reason ?? null,
+        bonus_decided_at: st.story_bonus_decided_at ?? null,
+        time_zone: storyZones.get(st.place_id) ?? placeZone(null),
+        mention: mention ? mentionView(mention) : null,
+        test_mode: !st.livemode,
+        emulator: emulatorOn && !st.livemode && st.status === "paid" && !st.story_bonus,
+      };
+    }),
     sent_links: sentLinks.map((g) => ({
       gift_id: g.id,
       place_id: g.place_id,
