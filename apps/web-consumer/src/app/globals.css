@@ -125,6 +125,11 @@
   /* RESERVED: the one thing that says "this destroys something". */
   --destructive: oklch(0.58 0.24 28);
   --destructive-foreground: var(--paper);
+  /* The Reserve red (MESITA-4259, Pato: "Red colors like in OpenTable"):
+     ONLY the reservation pickers and the Reserve page's step bar and button.
+     Never an error; that is --destructive. White on it is 4.56:1 (AA). */
+  --reserve: #da3743;
+  --reserve-foreground: #ffffff;
   --border: oklch(0.891 0 0);
   --input: var(--fill);
   --ring: oklch(0.205 0 0);
@@ -252,6 +257,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-reserve: var(--reserve);
+  --color-reserve-foreground: var(--reserve-foreground);
   --color-on-media: var(--on-media);
   --color-on-media-muted: var(--on-media-muted);
   --color-media-glass: var(--media-glass);

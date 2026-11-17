@@ -8,6 +8,7 @@ import {
   firstOpenDate,
   ReservationDatePicker,
   ReservationField,
+  ReservationNotes,
   ReservationUpdatesPicker,
   ReservationPartyPicker,
   ReservationSection,
@@ -29,6 +30,7 @@ import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { Panel } from "@/components/shared/Panel";
 import { PushLink } from "@/components/consumer/nav/PushLink";
+import { PlacePhotoMark } from "@/components/consumer/wallet/PlaceCredit";
 import { reservationPath } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
@@ -95,7 +97,7 @@ function resolveSubmitLabel(args: {
   // The button says what is missing instead of greying out mutely.
   if (args.missing) return args.missing;
   return args.rescheduling
-    ? `Move my table · ${args.whenLabel}`
+    ? `Move to ${args.whenLabel}`
     : `Reserve · ${args.whenLabel}`;
 }
 
@@ -111,6 +113,7 @@ export function ReservationForm({
   checking,
   onBooked,
   onDone,
+  onExit,
   intro,
 }: {
   place: ReservationFormPlace;
@@ -124,6 +127,8 @@ export function ReservationForm({
   onBooked: () => void;
   /** The confirmation's Done. */
   onDone: () => void;
+  /** Back from the first step: leave the page. */
+  onExit: () => void;
 }) {
   const supabase = useBrowserSupabase();
 
@@ -338,19 +343,19 @@ export function ReservationForm({
     );
   }
 
-  // THE STEPS (MESITA-4183; fields MESITA-4187, Pato's list):
-  //   Time     date and time
-  //   Details  people, how flexible, notes ("keep notes in second page")
-  //   Preview  the name (prefilled), the phone (shown, not edited), the
-  //            Updates (when booked · if we can't book you), and Reserve
-  // Seating is gone ("we don't have enough info to standardize that").
-  // Each fits a phone screen, in Pay's panels on the grey page.
-  const steps: ReserveStep[] = ["time", "details", "preview"];
+  // THE STEPS (MESITA-4259, Pato's order):
+  //   When   date, time, and how flexible (inside the Time box)
+  //   Party  people and the optional notes, in a bigger box
+  //   You    the name (prefilled), the phone (shown, not edited), how we
+  //          tell you, and Reserve
+  // Changing a reservation keeps its name, phone and choices, so it stops at
+  // Party (D3): no empty third page. Each step fits a phone screen.
+  const steps: ReserveStep[] = rescheduling ? ["when", "party"] : ["when", "party", "you"];
   const at = Math.min(stepAt, steps.length - 1);
   const step = steps[at];
   const last = at === steps.length - 1;
   // Next waits for the duplicate answered and a time.
-  const nextBlocked = step === "time" && (checking || awaitingChoice || !time);
+  const nextBlocked = step === "when" && (checking || awaitingChoice || !time);
   const next = () => {
     if (!nextBlocked && !last) setStepAt(at + 1);
   };
@@ -360,26 +365,29 @@ export function ReservationForm({
       ? "Choose an option above"
       : !time
         ? "No times left"
-        : step === "time"
+        : step === "when"
           ? `Next · ${dayLabel ? `${dayLabel} ` : ""}${time}`
           : `Next · ${whenLabel}`;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col px-4">
-      {/* The step bar in its own panel, as on Pay (PayTop). */}
+      {/* The one top box (MESITA-4259 D1): Back, the place, the steps. */}
       <Panel className="mt-3">
         <ReserveStepNav
           steps={steps}
           at={at}
-          onBack={at > 0 ? () => setStepAt(at - 1) : undefined}
-          onNext={!last && !nextBlocked ? next : undefined}
+          onBack={at > 0 ? () => setStepAt(at - 1) : onExit}
+          place={{
+            name: place.name,
+            photo: <PlacePhotoMark photo={place.photo ?? null} name={place.name} />,
+          }}
         />
       </Panel>
 
       {/* One step a screen, nothing to scroll on a phone; the body scrolls
           only if a very short screen cannot hold it. */}
       <div className="scrollbar-thin-dark -mx-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
-        {step === "time" && (
+        {step === "when" && (
           <>
             {intro}
             {existing && (
@@ -392,29 +400,22 @@ export function ReservationForm({
               />
             )}
             <ReservationDatePicker options={dateOptions} value={date} onChange={setDateChoice} />
-            <ReservationTimePicker value={time} onChange={setTimeChoice} date={date} hours={hours} tz={tz} />
+            <ReservationTimePicker value={time} onChange={setTimeChoice} date={date} hours={hours} tz={tz}>
+              {!rescheduling && (
+                <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
+              )}
+            </ReservationTimePicker>
           </>
         )}
 
-        {step === "details" && (
+        {step === "party" && (
           <>
             <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
-            {!rescheduling && (
-              <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
-            )}
-            <ReservationSection title="Notes">
-              <ReservationField
-                label="Optional"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                maxLength={280}
-                placeholder="Allergies, a birthday, a high chair…"
-              />
-            </ReservationSection>
+            <ReservationNotes value={notes} onChange={setNotes} />
           </>
         )}
 
-        {step === "preview" && (
+        {step === "you" && (
           <>
             {!rescheduling && (
               <ReservationSection title="Your details">
@@ -472,7 +473,7 @@ export function ReservationForm({
             type="button"
             onClick={submit}
             disabled={submitting || checking || awaitingChoice || !time || needsName}
-            className="bg-primary text-primary-foreground inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold transition active:scale-[0.99] disabled:opacity-50"
+            className="bg-reserve text-reserve-foreground inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold transition active:scale-[0.99] disabled:opacity-50"
           >
             {submitting ? (
               <>
@@ -488,7 +489,7 @@ export function ReservationForm({
             type="button"
             onClick={next}
             disabled={nextBlocked}
-            className="bg-primary text-primary-foreground inline-flex h-14 w-full items-center justify-center rounded-2xl text-base font-semibold transition active:scale-[0.99] disabled:opacity-50"
+            className="bg-reserve text-reserve-foreground inline-flex h-14 w-full items-center justify-center rounded-2xl text-base font-semibold transition active:scale-[0.99] disabled:opacity-50"
           >
             {nextLabel}
           </button>
