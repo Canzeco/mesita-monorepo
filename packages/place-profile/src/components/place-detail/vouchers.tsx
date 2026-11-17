@@ -368,50 +368,54 @@ function readyIn(key: MoneyVoucherKey): string {
   return "in 1 hr";
 }
 
-/** The lines every prepayment (i) ends with (MESITA-3498, Pato: "credits are
- *  transferable to friends too"; "you don't need to prepay all the bill"). */
+/** The two lines every voucher's (i) ends with (MESITA-3498, Pato: "credits
+ *  are transferable to friends too"; "you don't need to prepay all the
+ *  bill"). REWRITTEN SHORT (Pato, 2026-11-16, MESITA-4201: "UPDATE THE
+ *  EXPLAINATIONS OF EACH VOUCHER"): no line may contradict a voucher's own
+ *  limit (the old "Buy as many vouchers as you want" sat under Welcome's
+ *  "One per place"), no product names. */
 const CREDIT_FACTS = [
-  // MESITA-3505, Pato: "you can fund your wallet with multiple vouchers and
-  // then pay the bill with it ... everywhere, that is super important".
-  "Buy as many vouchers as you want: their credits add up in one wallet, and you can pay one bill with all of them.",
-  "Spend your credits on your bill here whenever you want, in the Mesita app. You don't have to cover the whole bill with them: pay part with credits and the rest with App Payments or directly to the place.",
-  "Credits only work at this place. You can send them to a friend.",
+  "Spend it on any bill here, all of it or just part. Pay the rest by card or directly to the place.",
+  "It only works at this place. You can send it to a friend.",
 ];
 
-/** What each offer's (i) says, one short paragraph per idea (MESITA-3492,
- *  split by MESITA-3497, rewritten clearer by MESITA-3498), with the row's
- *  own Pay and Get. */
-function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string, facts: string[]): string[] {
-  const deal = `Pay ${pay}, get ${get} in credits at this place. That's ${bonus} extra.`
-;
+/** What each voucher's (i) says (MESITA-3492, MESITA-3498, MESITA-4201): the
+ *  row's own amounts as the row shows them, when the credit is ready, who can
+ *  buy it and how often, then the two shared lines. */
+function offerInfo(key: MoneyVoucherKey, pay: string, get: string, _bonus: string, facts: string[]): string[] {
+  const deal = `Pay ${whole(pay)}, get ${whole(get)} to spend here.`;
   switch (key) {
     case "voucher_200":
     case "voucher_1000":
     case "voucher_5000":
-      return [deal, "Your credits are ready 1 hour after you buy.", "Buy as many as you like.", ...facts];
+      return [
+        deal,
+        "Ready 1 hour after you pay.",
+        // MESITA-3505: several vouchers fund one bill.
+        "Buy as many as you like. It all adds up to your credit here.",
+        ...facts,
+      ];
     case "voucher_welcome":
       return [
         deal,
-        "Your credits are ready as soon as you buy.",
-        "One per place. Every other place on Mesita has its own Welcome for you.",
+        "Ready as soon as you pay.",
+        "One per place, if you haven't paid here before.",
         ...facts,
       ];
     case "voucher_story":
       return [
         deal,
-        // TWO STEPS AND A FLOOR (MESITA-3506, Pato: "first buy it, then ...
-        // activate it by posting an instagram story tagging the place";
-        // "only available for users that have more than 1000 followers").
-        "Only for guests with more than 1,000 Instagram followers.",
-        "It takes two steps. 1. Buy it here. 2. Activate it: post an Instagram story at the place, tag the place, and show the story to the staff.",
+        // TWO STEPS AND A FLOOR (MESITA-3506, MESITA-3507).
+        "For guests whose Instagram has more than 1,000 followers.",
+        "Buy it, post an Instagram story at the place tagging it, and show it to the staff. Your credit is ready then.",
         "One per visit.",
         ...facts,
       ];
     case "voucher_vip":
       return [
         deal,
-        "Only for Mesita's VIP Class. VIP guests are added by hand: models, modeling agencies, creators and others places want to see. Not VIP? You can't buy this one.",
-        "Your credits are ready 1 hour after you buy. One per visit.",
+        "Only for guests in Mesita's VIP Class.",
+        "Ready 1 hour after you pay. One per visit.",
         ...facts,
       ];
   }
