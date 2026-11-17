@@ -1,7 +1,7 @@
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { DOOR_EMOJI, DOOR_QUIET, DOOR_ROW } from "./wallet-buttons";
+import { DOOR_EMOJI, DOOR_QUIET } from "./wallet-buttons";
 
 // WALLET'S THREE DOORS (Pato, 2026-11-14, MESITA-3894: "Share Mesita / Send
 // Credits (Gift) / Redeem Credits (the redeem button at the bottom is
@@ -35,18 +35,14 @@ import { DOOR_EMOJI, DOOR_QUIET, DOOR_ROW } from "./wallet-buttons";
 // GREY, NO BOX (MESITA-4232): the three sit on the page under Pay Bill, one
 // soft grey with black ink; the panel around them and the black / green /
 // pink tints are gone.
-/** The row: three links, the same in the loading frame. */
+/** The row: two links, the same in the loading frame. TWO DOORS SINCE
+ *  MESITA-4269 (Pato: "remove the button to buy credits from there. just
+ *  leave Pay Bill, Send Gift, Share Mesita"; Buy Credits lives on each House
+ *  Card); "remove the emojis in the buttons to buy credits and share", so
+ *  Share Mesita reads its name alone and Send Gift keeps its 🎁. */
 export function WalletShareGift() {
   return (
-    <div className={`mt-3 ${DOOR_ROW}`} data-wallet-share-gift>
-      <PushLink
-        href={CONSUMER_ROUTES.walletBuy}
-        className={DOOR_QUIET}
-        data-wallet-buy
-      >
-        <span className={DOOR_EMOJI} aria-hidden>💳</span>
-        Buy Credits
-      </PushLink>
+    <div className="mt-3 grid grid-cols-2 gap-2" data-wallet-share-gift>
       <PushLink
         href={CONSUMER_ROUTES.walletSend}
         className={DOOR_QUIET}
@@ -60,7 +56,6 @@ export function WalletShareGift() {
         className={DOOR_QUIET}
         data-wallet-share
       >
-        <span className={DOOR_EMOJI} aria-hidden>💌</span>
         Share Mesita
       </PushLink>
     </div>

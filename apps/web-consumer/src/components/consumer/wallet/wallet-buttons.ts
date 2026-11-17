@@ -14,12 +14,12 @@ export const SECONDARY =
 export const DOOR_ROW = "grid grid-cols-3 gap-2";
 const DOOR =
   "type-body flex h-13 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-center leading-tight font-semibold text-white transition hover:opacity-90 active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
-/** Wallet's three doors (MESITA-4232): one colour for all three, soft grey
- *  with black ink, so the black Pay Bill is the page's one dark thing
- *  (MESITA-4254; they were black for an hour in MESITA-4250, Pato: "maybe do
- *  the buttons three buttons dark"). The House Card wears them under its Pay
- *  bar since MESITA-4253. */
-export const DOOR_QUIET = `${DOOR.replace("text-white", "text-foreground")} bg-muted hover:bg-border focus-visible:ring-neutral-400`;
+/** Wallet's doors (MESITA-4232): Send Gift and Share Mesita since
+ *  MESITA-4269. Dark since MESITA-4269 (Pato: "make the buttons below dark,
+ *  like the 5 buttons color in mesita profile"): the place screen's tile
+ *  colour, bg-foreground with paper ink; grey in MESITA-4254, black in
+ *  MESITA-4250. The House Card's doors under its Pay bar wear them too. */
+export const DOOR_QUIET = `${DOOR.replace("text-white", "text-paper")} bg-foreground hover:opacity-90 focus-visible:ring-neutral-400`;
 export const DOOR_GLYPH = "h-4 w-4 shrink-0";
 /** Wallet's three doors wear emojis (MESITA-4260, Pato: "maybe use emojis
  *  for those three … whatever you think is a great clean design"): 💳 Buy
