@@ -22,6 +22,12 @@ import {
 import { cn } from "@/lib/utils";
 import { AUTH_BUTTON_SIZE } from "./auth-ui";
 
+// GREEN FOR THE PHONE (Pato, 2026-11-17, MESITA-4286: "use a more standard
+// login button. and since its phone registration maybe a green box
+// instead"): the send and verify buttons are the phone's green with white
+// words, the way a phone sign-in reads; every other primary stays ink.
+const PHONE_GREEN = "bg-green-600 text-white hover:bg-green-700";
+
 // Two-step phone OTP. Phone is the identity — there's no "create account"
 // vs "sign in" anymore; first verify on a number creates the auth.user,
 // subsequent verifies sign that user in. Single flow for both consumer and
@@ -93,7 +99,9 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         return false;
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "We couldn't call you. Try again.");
+      setError(
+        err instanceof Error ? err.message : "We couldn't call you. Try again.",
+      );
       return false;
     } finally {
       setLoading(false);
@@ -180,7 +188,12 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         <button
           type="submit"
           disabled={loading}
-          className={cn(PRIMARY_BUTTON_CLASS, AUTH_BUTTON_SIZE, "mt-1")}
+          className={cn(
+            PRIMARY_BUTTON_CLASS,
+            AUTH_BUTTON_SIZE,
+            PHONE_GREEN,
+            "mt-1",
+          )}
         >
           {sending === "sms" ? (
             <Spinner size="sm" className="border-white/40 border-t-white" />
@@ -261,7 +274,12 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
       <button
         type="submit"
         disabled={loading || code.length !== OTP_LENGTH}
-        className={cn(PRIMARY_BUTTON_CLASS, AUTH_BUTTON_SIZE, "mt-2")}
+        className={cn(
+          PRIMARY_BUTTON_CLASS,
+          AUTH_BUTTON_SIZE,
+          PHONE_GREEN,
+          "mt-2",
+        )}
       >
         {loading ? (
           <Spinner size="sm" className="border-white/40 border-t-white" />
