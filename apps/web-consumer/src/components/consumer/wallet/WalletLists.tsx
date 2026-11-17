@@ -10,6 +10,7 @@ import { CardBrandChip } from "@/components/shared/card-brand-marks";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { brandLabel, expiryLabel, isExpired, type SavedCard } from "@/lib/api/cards";
 import { money, type WaitingStory } from "@/lib/api/wallet";
+import { storyBonusOpen, storyLine } from "@/lib/story-lines";
 import { cardAmount } from "@/lib/wallet-card";
 import { cn } from "@/lib/utils";
 import { Panel } from "@/components/shared/Panel";
@@ -396,41 +397,49 @@ export function EmptyCreditsRow({ href }: { href: string }) {
   );
 }
 
-/** A Story voucher waiting for staff (MESITA-3507): its tap shows the QR.
+/** A Story voucher (MESITA-3507): its tap opens the sheet with the QR.
  *  The House Card's plain row (MESITA-3869): title, grey line, muted amount,
- *  chevron; no chip of its own. */
-export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () => void }) {
+ *  chevron; no chip of its own. MESITA-4264: what was paid is already
+ *  credit, so the row is the bonus and where the story stands. */
+export function StoryRow({ story, onOpen, now }: { story: WaitingStory; onOpen: () => void; now: number }) {
   const name = story.place?.name ?? "A Mesita place";
+  const bonus = `+${money(story.bonus_cents, story.currency)}`;
+  const line = storyLine(story, now);
+  const open = storyBonusOpen(story);
   return (
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`Story voucher at ${name}: ${money(story.credit_cents, story.currency)} waiting for activation. Show the QR`}
+      aria-label={`Story bonus at ${name}: ${bonus}. ${line}`}
       className={cn(ROW, "flex-col items-stretch gap-2.5")}
-      data-wallet-story
+      data-wallet-story={story.state}
     >
       <span className="flex min-w-0 items-center gap-3.5">
         <CreditsCardChip photo={story.place?.photo ?? null} name={name} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-base leading-tight font-semibold">{name}</span>
-          <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">Story reward</span>
+          <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight tabular-nums">Story bonus {bonus}</span>
         </span>
         <Chevron />
       </span>
       {/* A waiting Story is its place's pending (MESITA-4232, D13), in the
-          same blue box as a card's pending (MESITA-4260). */}
-      <PendingBox icon={QrCode}>
-        {money(story.credit_cents, story.currency)} waiting · show the QR to staff
+          same blue box as a card's pending (MESITA-4260); a decided one
+          keeps its outcome for 24 hours in a grey box. */}
+      <PendingBox icon={open ? QrCode : Clock3} quiet={!open}>
+        {line}
       </PendingBox>
     </button>
   );
 }
 
 /** Money on its way (MESITA-4260): a soft blue box under a Loyalty Card. */
-function PendingBox({ icon: Icon, children }: { icon: typeof Clock3; children: ReactNode }) {
+function PendingBox({ icon: Icon, children, quiet = false }: { icon: typeof Clock3; children: ReactNode; quiet?: boolean }) {
   return (
     <span
-      className="flex min-w-0 items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-sm leading-tight font-medium text-blue-700 ring-1 ring-blue-200 ring-inset"
+      className={cn(
+        "flex min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-sm leading-tight font-medium ring-1 ring-inset",
+        quiet ? "bg-muted text-muted-foreground ring-border" : "bg-blue-50 text-blue-700 ring-blue-200",
+      )}
       data-wallet-pending
     >
       <Icon className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />

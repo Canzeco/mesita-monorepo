@@ -16,6 +16,7 @@ import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
+import { useStoryNow } from "./use-story-now";
 import {
   AddCardTile,
   AddRow,
@@ -172,6 +173,8 @@ export function WalletSection({
   const [explainAdd, setExplainAdd] = useState(false);
   // When the pending lines count from: the page's first paint.
   const [now] = useState(() => Date.now());
+  // Story lines turn to "Checking your story…" at their bonus time (MESITA-4264).
+  const storyNow = useStoryNow(wallet?.waiting_stories ?? []);
   // The saved-card failure toast fires at most once per mount.
   const cardsToasted = useRef(false);
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
@@ -270,7 +273,7 @@ export function WalletSection({
           then Add a Loyalty Card. Empty: one grey line. */}
       <WalletPanelList title="Loyalty Cards">
         {creditsState === "rows"
-          ? stories.map((s) => <StoryRow key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)
+          ? stories.map((s) => <StoryRow key={s.purchase_id} story={s} now={storyNow} onOpen={() => setMethod({ kind: "story", story: s })} />)
           : null}
         {creditsState === "rows"
           ? credits?.map((row) => (
@@ -306,7 +309,7 @@ export function WalletSection({
 
       {/* Add a Credits Card explains, never navigates (MESITA-4088). */}
       <AddCreditsCardDialog open={explainAdd} onClose={() => setExplainAdd(false)} />
-      <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
+      <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} stories={stories} onStoryChanged={reread} />
       <GiftClaimSheet
         token={wallet || failed ? gift : null}
         onClose={closeGift}

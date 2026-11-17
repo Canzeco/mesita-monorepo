@@ -20,6 +20,8 @@ import { countdownLabel, nextAvailableMs, shouldReread } from "@/lib/wallet-coun
 import { type EntryGroup, groupKeys, splitEntries } from "@/lib/wallet-entries";
 import { cn } from "@/lib/utils";
 import { type Method, MethodSheet } from "./MethodSheet";
+import { useStoryNow } from "./use-story-now";
+import { storyBonusOpen, storyLine } from "@/lib/story-lines";
 import { SentLinks } from "./SendCredit";
 import { Panel } from "@/components/shared/Panel";
 import { WalletPanelList } from "./WalletLists";
@@ -161,19 +163,21 @@ function EntryRow({
   );
 }
 
-/** A Story voucher waiting for staff, in the list's own row shape: the one
- *  row that needs the guest to act, so its line says how. */
-function StoryEntryRow({ story, onOpen }: { story: WaitingStory; onOpen: () => void }) {
-  const amount = `+${money(story.credit_cents, story.currency)}`;
+/** A Story voucher's bonus, in the list's own row shape (MESITA-4264): what
+ *  was paid is already credit, so the row is the bonus and its line says
+ *  where the story stands. */
+function StoryEntryRow({ story, onOpen, now }: { story: WaitingStory; onOpen: () => void; now: number }) {
+  const amount = `+${money(story.bonus_cents, story.currency)}`;
+  const line = storyLine(story, now);
   return (
     <button
       type="button"
       onClick={onOpen}
       className={cn(ROW, "hover:bg-muted/60 transition")}
-      aria-label={`Story voucher, ${amount}, not activated. Show the QR to staff`}
-      data-house-card-story
+      aria-label={`Story bonus, ${amount}. ${line}`}
+      data-house-card-story={story.state}
     >
-      <RowBody title="Story voucher" line="Not activated · show the QR to staff" amount={amount} waiting />
+      <RowBody title="Story bonus" line={line} amount={amount} waiting={storyBonusOpen(story)} />
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
     </button>
   );
@@ -225,7 +229,8 @@ export function PlaceCredit({
   canSend: boolean;
   /** Links sent at this place that nobody took yet. */
   sentLinks: SentLink[];
-  /** Story vouchers bought here that staff have not activated yet. */
+  /** Story vouchers bought here whose bonus is undecided, or was decided in
+   *  the last 24 hours (MESITA-4264). */
   stories?: WaitingStory[];
   /** The server is still confirming a purchase (Wallet-wide, so a line, not
    *  a row of this place's list). */
@@ -242,6 +247,7 @@ export function PlaceCredit({
   const { pending, history } = splitEntries(entries ?? []);
   const counting = pending.some((g) => g.available_at);
   const [now, setNow] = useState(() => Date.now());
+  const storyNow = useStoryNow(stories);
   const [allHistory, setAllHistory] = useState(false);
 
   useEffect(() => {
@@ -403,9 +409,9 @@ export function PlaceCredit({
           waiting for staff get their own panel over Transactions, only when
           there are any. */}
       {stories.length > 0 ? (
-        <WalletPanelList title="Vouchers to activate">
+        <WalletPanelList title="Story vouchers">
           {stories.map((st) => (
-            <StoryEntryRow key={st.purchase_id} story={st} onOpen={() => setMethod({ kind: "story", story: st })} />
+            <StoryEntryRow key={st.purchase_id} story={st} now={storyNow} onOpen={() => setMethod({ kind: "story", story: st })} />
           ))}
         </WalletPanelList>
       ) : null}
@@ -456,7 +462,7 @@ export function PlaceCredit({
         </div>
       ) : null}
 
-      <MethodSheet method={method} onClose={() => setMethod(null)} />
+      <MethodSheet method={method} onClose={() => setMethod(null)} stories={stories} onStoryChanged={onReread} />
       {removable ? (
         <LocalSheet open={removeOpen} onClose={() => (removing ? undefined : setRemoveOpen(false))} ariaLabel="Remove this House Card">
           <div className="flex flex-col px-4 pt-5 pb-8" data-house-card-remove-confirm>

@@ -4,7 +4,7 @@
 // asserted, so the time zone cannot change a result.
 import { describe, expect, it } from "vitest";
 import type { GuestVisit } from "@/lib/api/tab";
-import { money, type Wallet, type WalletEntry } from "@/lib/api/wallet";
+import { money, type WaitingStory, type Wallet, type WalletEntry } from "@/lib/api/wallet";
 import { KIND_WORD, visitRows, walletRows, type Row } from "@/lib/ticket-rows";
 
 const AT = "2026-11-14T12:00:00.000Z";
@@ -29,6 +29,32 @@ function wallet(entries: WalletEntry[], extra: Partial<Wallet> = {}): Wallet {
     ...extra,
   } as unknown as Wallet;
 }
+
+const story = (over: Partial<WaitingStory> = {}): WaitingStory => ({
+  purchase_id: "s1",
+  place_id: "x",
+  place: null,
+  amount_cents: 10000,
+  bonus_cents: 5000,
+  credit_cents: 15000,
+  currency: "MXN",
+  paid_at: AT,
+  token: "t",
+  url: "https://visit.mesita.ai/story/t",
+  state: "needs_story",
+  approved_at: null,
+  expires_at: null,
+  bonus_at: null,
+  recheck_at: null,
+  bonus: null,
+  bonus_void_reason: null,
+  bonus_decided_at: null,
+  time_zone: "America/Mexico_City",
+  mention: null,
+  test_mode: true,
+  emulator: false,
+  ...over,
+});
 
 const only = (rows: Row[]) => {
   expect(rows).toHaveLength(1);
@@ -119,16 +145,23 @@ describe("voucher rows (MESITA-4003)", () => {
     expect(walletRows(wallet([e("extra", 2500, { purchase_id: "u9" })]))).toHaveLength(1);
   });
 
-  it("a bonus and a Story voucher read plus; the Story line says post", () => {
+  it("a bonus and a Story voucher read plus; the Story row is its bonus, not what was paid", () => {
     const rows = walletRows(
-      wallet([e("bonus", 5000)], {
-        waiting_stories: [
-          { purchase_id: "s1", place_id: "x", place: null, credit_cents: 1000, currency: "MXN", paid_at: AT },
-        ],
-      } as unknown as Partial<Wallet>),
+      wallet([e("bonus", 5000)], { waiting_stories: [story()] } as unknown as Partial<Wallet>),
     );
     expect(rows.map((r) => r.sign)).toEqual(["+", "+"]);
-    expect(rows[1]!.line).toBe("Story voucher · post your Story");
+    // MESITA-4264: the MX$100 paid is already a voucher row; only the bonus waits.
+    expect(rows[1]!.big).toBe(money(5000, "MXN"));
+    expect(rows[1]!.status.label).toBe("Waiting");
+  });
+
+  it("a released Story bonus is not drawn twice; a voided one reads Not added", () => {
+    const rows = walletRows(
+      wallet([], {
+        waiting_stories: [story({ purchase_id: "s1", state: "released", bonus: "released" }), story({ purchase_id: "s2", state: "void", bonus: "void", bonus_void_reason: "expired" })],
+      } as unknown as Partial<Wallet>),
+    );
+    expect(rows.map((r) => [r.key, r.status.label])).toEqual([["s-s2", "Not added"]]);
   });
 });
 
@@ -172,9 +205,7 @@ describe("every other kind lands on its tab with its kind", () => {
   it("a Story voucher waiting; a link nobody took is not a row", () => {
     const rows = walletRows(
       wallet([], {
-        waiting_stories: [
-          { purchase_id: "s1", place_id: "x", place: null, credit_cents: 1000, currency: "MXN", paid_at: AT },
-        ],
+        waiting_stories: [story()],
         sent_links: [{ gift_id: "g1", place_id: "x", amount_cents: 1000, currency: "MXN", created_at: AT }],
       } as unknown as Partial<Wallet>),
     );

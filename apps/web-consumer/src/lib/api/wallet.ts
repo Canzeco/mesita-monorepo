@@ -79,16 +79,55 @@ export type WalletBalance = {
 /** What happened to the Checkout the guest came back from. */
 export type PrepayOutcome = "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none";
 
-/** A paid Story voucher staff have not activated yet (MESITA-3507): no
- *  credit until they see the guest's story and scan this QR. */
+/** Where a Story voucher's bonus stands (MESITA-4264), the server's
+ *  storyState(): no story yet, one arrived, staff rejected it, approved
+ *  (the bonus waits 3 hours), the bonus released, or voided. */
+export type StoryState = "needs_story" | "received" | "rejected" | "approved" | "released" | "void";
+
+/** Why a Story's bonus was not added (MESITA-4264). */
+export type StoryVoidReason = "unreachable" | "expired" | "refunded" | "operator";
+
+/** The Instagram story the voucher stands on (MESITA-4264): the one staff
+ *  approved, else the newest one not yet used. */
+export type StoryMention = {
+  id: string;
+  media_url: string | null;
+  media_kind: "image" | "video";
+  mentioned_at: string;
+  source: "meta" | "emulator";
+};
+
+/** A Story voucher whose bonus is not decided yet, or was decided in the
+ *  last 24 hours (MESITA-3507; MESITA-4264). What the guest paid is already
+ *  in their balance; only `bonus_cents` waits on the story. */
 export type WaitingStory = {
   purchase_id: string;
   place: WalletBalance["place"];
   place_id: string;
+  amount_cents: number;
+  bonus_cents: number;
   credit_cents: number;
   currency: string;
   paid_at: string | null;
+  token: string;
+  /** The Story QR staff scan (visit.mesita.ai/story/<token>). */
   url: string;
+  state: StoryState;
+  approved_at: string | null;
+  /** Approve by: after it the bonus is voided (expired). */
+  expires_at: string | null;
+  /** When the bonus can land: approval + 3 hours. */
+  bonus_at: string | null;
+  recheck_at: string | null;
+  bonus: "released" | "void" | null;
+  bonus_void_reason: StoryVoidReason | null;
+  bonus_decided_at: string | null;
+  /** The place's IANA zone: the row's times read in it. */
+  time_zone: string;
+  mention: StoryMention | null;
+  test_mode: boolean;
+  /** The Simulate buttons may show (test mode, Meta off). */
+  emulator: boolean;
 };
 
 export type Wallet = {
@@ -195,6 +234,28 @@ export async function apiBuyVoucher(
   return await invokeEF<{ purchase_id: string; card: VoucherCardStep }>(client, "consumer-web-buy-voucher", args);
 }
 
+/** The Meta emulator (MESITA-4264): in test mode, while Instagram is not
+ *  connected, post a sample story for this Story voucher, or delete it so
+ *  the 3-hour re-check finds it gone. Refusals arrive as EFError with a code
+ *  from STORY_EMULATOR_REFUSAL. */
+export async function apiEmulateStory(
+  client: SupabaseClient,
+  purchaseId: string,
+  action: "post" | "delete",
+): Promise<{ ok: true; action: "post" | "delete"; n: number }> {
+  return await invokeEF(client, "consumer-web-emulate-story", { action, purchase_id: purchaseId });
+}
+
+/** What the guest reads when the emulator refuses, by the server's code. */
+export const STORY_EMULATOR_REFUSAL: Record<string, string> = {
+  not_your_purchase: "That is not your Story voucher.",
+  live_purchase: "The simulator only works in test mode.",
+  meta_on: "Instagram is connected: post a real story.",
+  needs_instagram: "Link your Instagram first.",
+  nothing_to_delete: "There is no story to delete.",
+  emulate_failed: "Couldn't simulate the story. Try again.",
+};
+
 /** What the guest reads when the buy is refused, by the server's code. */
 export const BUY_REFUSAL: Record<string, string> = {
   sign_in: "Sign in to buy a voucher.",
@@ -206,6 +267,8 @@ export const BUY_REFUSAL: Record<string, string> = {
   needs_card_payments: "This voucher arrives with card payments.",
   needs_instagram: "Link your Instagram to buy the Story voucher.",
   few_followers: "The Story voucher is for Instagram accounts with more than 1,000 followers.",
+  // MESITA-4264: live payments while Instagram stories can't be checked yet.
+  story_unavailable: "The Story voucher isn't available right now.",
   welcome_used: "You already had your Welcome voucher here.",
   needs_visit: "One per visit. Pay a bill here by card to buy another.",
   below_minimum: "This amount is below the card minimum.",
