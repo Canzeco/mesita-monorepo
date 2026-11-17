@@ -16,7 +16,7 @@ import { type AccountRow, type PaymentSettings, readAccount, readSettings } from
 import { readMoneyConfig } from "./money-config.ts";
 import { readInstagramSyncState, readVipStanding } from "./consumer-doc.ts";
 import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
-import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount } from "./visits.ts";
+import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount, VISIT_STATUSES } from "./visits.ts";
 
 export type PlaceBalance = { available_cents: number; pending_cents: number; held_cents: number; spendable_cents: number };
 
@@ -92,6 +92,19 @@ export type OfferInput = {
   hasPlaceCode?: boolean;
 };
 
+/** This guest's own block on one voucher at one place, or null: Welcome
+ *  once per place ("used"), Story and VIP one each new visit
+ *  ("needs_visit"). One rule for the place screen's offer (offerFrom) and
+ *  the list rows (guestSell, MESITA-4207). */
+export function guestReason(
+  k: MoneyVoucherKey,
+  g: { welcomeUsed: boolean; perVisitUsed?: Partial<Record<PerVisitVoucher, boolean>> },
+): "used" | "needs_visit" | null {
+  if (k === "voucher_welcome" && g.welcomeUsed) return "used";
+  if (g.perVisitUsed?.[k as PerVisitVoucher]) return "needs_visit";
+  return null;
+}
+
 /** The pure half of the offer. */
 export function offerFrom(i: OfferInput): VoucherOffer {
   const usable = !!i.account && i.account.livemode === i.livemode && i.account.charges_enabled;
@@ -104,9 +117,11 @@ export function offerFrom(i: OfferInput): VoucherOffer {
   const sell: MoneyVoucherKey[] = [];
   for (const k of state.sell) {
     if (i.paused) unavailable[k] = "paused";
-    else if (k === "voucher_welcome" && i.welcomeUsed) unavailable[k] = "used";
-    else if (i.perVisitUsed?.[k as PerVisitVoucher]) unavailable[k] = "needs_visit";
-    else sell.push(k);
+    else {
+      const why = guestReason(k, i);
+      if (why) unavailable[k] = why;
+      else sell.push(k);
+    }
   }
   // The guest's offer carries the voucher switches alone; the Mesita Payments switch
   // (MESITA-3396) is already folded into the mark.
@@ -181,6 +196,85 @@ export async function readPerVisitUsed(
     out[k] = perVisitSpent(rows.filter((r) => r.voucher === k).length, visits);
   }
   return out;
+}
+
+/** One guest's blocks at one place, as offerFrom reads them. */
+export type GuestBlocks = { welcomeUsed: boolean; perVisitUsed: Partial<Record<PerVisitVoucher, boolean>> };
+
+/** The vouchers a place's list row sells, minus this guest's own blocks
+ *  (MESITA-4207): Home's and Search's chips agree with the place screen's
+ *  Offers. No blocks (anonymous, or a place the guest never bought at)
+ *  leaves the place's list as it is. */
+export function guestSell(sell: readonly MoneyVoucherKey[], blocks: GuestBlocks | undefined): MoneyVoucherKey[] {
+  if (!blocks) return [...sell];
+  return sell.filter((k) => guestReason(k, blocks) === null);
+}
+
+/** The pure half of readGuestBlocks: the guest's live purchases (not expired
+ *  or failed) of Welcome, Story and VIP, and their visits (visits.ts), one
+ *  row each, grouped by place with readWelcomeUsed's and readPerVisitUsed's
+ *  definitions. A place with no purchase row gets no entry (nothing spent). */
+export function guestBlocksFrom(
+  purchases: readonly { place_id: string; voucher: string }[],
+  visits: readonly { place_id: string }[],
+): Map<string, GuestBlocks> {
+  const visitCount = new Map<string, number>();
+  for (const v of visits) visitCount.set(v.place_id, (visitCount.get(v.place_id) ?? 0) + 1);
+  const bought = new Map<string, Map<string, number>>();
+  for (const p of purchases) {
+    const byVoucher = bought.get(p.place_id) ?? new Map<string, number>();
+    byVoucher.set(p.voucher, (byVoucher.get(p.voucher) ?? 0) + 1);
+    bought.set(p.place_id, byVoucher);
+  }
+  const out = new Map<string, GuestBlocks>();
+  for (const [placeId, byVoucher] of bought) {
+    const visitsHere = visitCount.get(placeId) ?? 0;
+    const perVisitUsed: Partial<Record<PerVisitVoucher, boolean>> = {};
+    for (const k of PER_VISIT_VOUCHERS) perVisitUsed[k] = perVisitSpent(byVoucher.get(k) ?? 0, visitsHere);
+    out.set(placeId, { welcomeUsed: (byVoucher.get("voucher_welcome") ?? 0) > 0, perVisitUsed });
+  }
+  return out;
+}
+
+/** This guest's blocks at every place of a list page (MESITA-4207): two
+ *  batched reads for the page, never one per place. Null for an anonymous
+ *  caller or an empty page; a failed read is logged and reads null, so the
+ *  page keeps the place-level offers rather than fail. */
+export async function readGuestBlocks(
+  admin: SupabaseClient,
+  consumerId: string | null,
+  placeIds: readonly string[],
+): Promise<Map<string, GuestBlocks> | null> {
+  if (!consumerId || placeIds.length === 0) return null;
+  const ids = [...new Set(placeIds)];
+  const [bought, visits] = await Promise.all([
+    admin.from("wallet_purchases").select("place_id, voucher").eq("consumer_id", consumerId).in("place_id", ids)
+      .in("voucher", ["voucher_welcome", ...PER_VISIT_VOUCHERS]).not("status", "in", "(expired,failed)"),
+    admin.from("wallet_payments").select("place_id").eq("consumer_id", consumerId).in("place_id", ids)
+      .gt("card_cents", 0).in("status", [...VISIT_STATUSES]),
+  ]);
+  const error = bought.error ?? visits.error;
+  if (error) {
+    console.error("[vouchers] guest_blocks_read_failed", JSON.stringify({ message: error.message, places: ids.length }));
+    return null;
+  }
+  return guestBlocksFrom(
+    (bought.data ?? []) as { place_id: string; voucher: string }[],
+    (visits.data ?? []) as { place_id: string }[],
+  );
+}
+
+/** List rows with `offers.sell` narrowed to what this guest can buy
+ *  (MESITA-4207). `vouchers_up_to_pct` and `mesita_pay` stay the place's. */
+export async function withGuestOffers<T extends { id: string; offers: { sell: MoneyVoucherKey[] } }>(
+  admin: SupabaseClient | null,
+  consumerId: string | null,
+  rows: T[],
+): Promise<T[]> {
+  if (!admin || !consumerId) return rows;
+  const blocks = await readGuestBlocks(admin, consumerId, rows.map((r) => r.id));
+  if (!blocks) return rows;
+  return rows.map((r) => ({ ...r, offers: { ...r.offers, sell: guestSell(r.offers.sell, blocks.get(r.id)) } }));
 }
 
 /** The whole offer for one place and one (maybe anonymous) guest. */

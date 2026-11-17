@@ -72,6 +72,9 @@ Deno.test("Stripe gets yen and Chilean pesos in whole units; the ledger keeps hu
   assertEquals(VOUCHER_CATALOG.voucher_welcome.available_after_sec, 0);
   assertEquals(VOUCHER_CATALOG.voucher_vip.available_after_sec, 3600);
   assertEquals(VOUCHER_CATALOG.voucher_story.available_after_sec, 0);
+  // Story is MX$100 +50% (MESITA-4207): MX$50 bonus, MX$150 of credit.
+  assertEquals(voucherPriceCents("voucher_story"), 100_00);
+  assertEquals(voucherBonusCents("voucher_story"), 50_00);
 });
 
 Deno.test("the Home tile's line is the best bonus among what the place sells (MESITA-3312)", () => {
