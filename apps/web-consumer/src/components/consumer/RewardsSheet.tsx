@@ -72,17 +72,19 @@ export function RewardsSheet({
             card, the label over the amount. The Wallet's Credits row before
             (MESITA-4060), the top bar's black pill before that. */}
         <div
-          className="bg-foreground text-paper flex shrink-0 items-end justify-between gap-3 rounded-2xl px-4 pt-4 pb-3.5"
+          className="bg-foreground text-paper flex shrink-0 items-center justify-between gap-3 rounded-2xl px-4 py-3"
           aria-label={`${credit.label}: ${credit.amount}`}
           data-offers-balance
         >
-          <div className="min-w-0" aria-hidden>
-            <p className="mb-1.5 text-[0.6875rem] font-bold tracking-wider uppercase opacity-70">{credit.label}</p>
-            <p className="truncate text-4xl leading-none font-extrabold tracking-tight tabular-nums">{credit.amount}</p>
-          </div>
-          <Wallet className="h-6 w-6 shrink-0 opacity-80" strokeWidth={2.25} aria-hidden />
+          {/* ONE LINE (MESITA-4221: "shorter … i don't want to scroll"): the
+              label and wallet at the left, the amount at the right. */}
+          <p className="flex min-w-0 items-center gap-2 text-[0.6875rem] font-bold tracking-wider uppercase opacity-80" aria-hidden>
+            <Wallet className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+            <span className="truncate">{credit.label}</span>
+          </p>
+          <p className="shrink-0 text-2xl leading-none font-extrabold tracking-tight tabular-nums" aria-hidden>{credit.amount}</p>
         </div>
-        <div className="flex flex-1 shrink-0 flex-col pt-4">
+        <div className="flex flex-1 shrink-0 flex-col pt-3">
           {drawn != null ? <VouchersPane key={actions?.askedVoucher ?? "none"} place={place} actions={actions} /> : null}
         </div>
       </div>
