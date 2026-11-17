@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, CreditCard, Gift, QrCode } from "lucide-react";
+import { ChevronRight, Gift, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { SizedImg } from "@mesita/place-profile";
+import { offerSlides, SizedImg } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import {
@@ -23,10 +23,14 @@ import { type Method, MethodSheet } from "./MethodSheet";
 import { SentLinks } from "./SendCredit";
 import { Panel } from "@/components/shared/Panel";
 import { WalletPanelList } from "./WalletLists";
-import { DOOR_GLYPH, DOOR_QUIET, DOOR_ROW_TWO, PAY_BAR, PRIMARY, SECONDARY } from "./wallet-buttons";
+import { DOOR_GLYPH, DOOR_QUIET, PAY_BAR, PRIMARY, SECONDARY } from "./wallet-buttons";
+import { OfferBar } from "@/components/consumer/offer-button";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
 import { toast } from "@/lib/toast";
 import type { CreditRow } from "./use-wallet";
+
+/** Send Gift under the offers (MESITA-4262): the quiet door, one line. */
+const GIFT_ROW = cn(DOOR_QUIET, "h-12 flex-row gap-2");
 
 // A PLACE'S HOUSE CARD, /wallet/place/<placeId> (MESITA-3741). Since MESITA-3868
 // (Pato, 2026-11-14, over a screenshot: "the buttons there floting feels
@@ -40,9 +44,10 @@ import type { CreditRow } from "./use-wallet";
 //                         place's photo and name, the server's amount (a
 //                         muted $0 when nothing is spendable yet), "House Card"
 //   [▦ Pay here  ›]       the pink Pay bar, full width, 60px (MESITA-4253)
-//   [Buy Credits][Send Gift]   two dark doors under it, 52px, icon over
-//                         label. Gift follows giftAction (hidden, dimmed
-//                         with a reason, or open)
+//   [Prepay +30% Bonus ›] Home's switching offers, full width (MESITA-4262);
+//                         none for sale, no bar
+//   [Send Gift]           quiet, one line; follows giftAction (hidden,
+//                         dimmed with a reason, or open)
 //   (held-credit line)    only while an open payment holds credit
 //   (Confirming a payment…)  only while the server is still confirming one
 //   Vouchers to activate  Story vouchers waiting for staff, only when any
@@ -191,15 +196,12 @@ export function HouseCardSkeleton() {
     <div className="flex flex-col" aria-hidden>
       <Panel className="mt-4 p-4">
         <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
-        {/* View place under the card, then the Pay bar and the two doors
-            under it (MESITA-4253). */}
+        {/* View place under the card, then Pay, the offer bar and Send
+            Gift (MESITA-4262). */}
         <Skeleton className="mx-auto mt-3 h-9 w-28 rounded-full" />
         <Skeleton className="mt-4 h-15 w-full rounded-xl" />
-        <div className={`mt-2 ${DOOR_ROW_TWO}`}>
-          {[0, 1].map((i) => (
-            <Skeleton key={i} className="h-13 rounded-xl" />
-          ))}
-        </div>
+        <Skeleton className="mt-2 h-14 w-full rounded-xl" />
+        <Skeleton className="mt-2 h-12 w-full rounded-xl" />
       </Panel>
       <Panel className="mt-4 p-4">
         <Skeleton className="h-5 w-28 rounded-md" />
@@ -359,30 +361,29 @@ export function PlaceCredit({
             </span>
             <ChevronRight className="ml-auto h-5 w-5 shrink-0" aria-hidden />
           </PushLink>
-          <div className={DOOR_ROW_TWO}>
-            <PushLink href={`${href}?rewards=prepayment&from=wallet`} className={DOOR_QUIET} data-house-card-fund>
-              <CreditCard className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
-              Buy Credits
+          {/* PREPAY HERE (MESITA-4262, Pato: "pay here, prepay here, with
+              bonus, and then the send gift"): Home's switching offers, full
+              width, in Buy Credits' place; none for sale, no bar. */}
+          <OfferBar placeHref={href} name={card.name ?? "this place"} slides={offerSlides(balance?.offers)} />
+          {/* Send Gift is its own page (MESITA-4096); it was a sheet here.
+              Quiet and full width under the offers since MESITA-4262. */}
+          {gift === "open" ? (
+            <PushLink href={walletSendPath(row.placeId)} className={GIFT_ROW} data-send-credit-open>
+              <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+              Send Gift
             </PushLink>
-            {/* Send Gift is its own page (MESITA-4096); it was a sheet here. */}
-            {gift === "open" ? (
-              <PushLink href={walletSendPath(row.placeId)} className={DOOR_QUIET} data-send-credit-open>
-                <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
-                Send Gift
-              </PushLink>
-            ) : gift ? (
-              <button
-                type="button"
-                className={cn(DOOR_QUIET, "opacity-50")}
-                onClick={() => toast(gift.blocked)}
-                aria-label={`Send Gift: ${gift.blocked}`}
-                data-send-credit-open
-              >
-                <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
-                Send Gift
-              </button>
-            ) : null}
-          </div>
+          ) : gift ? (
+            <button
+              type="button"
+              className={cn(GIFT_ROW, "opacity-50")}
+              onClick={() => toast(gift.blocked)}
+              aria-label={`Send Gift: ${gift.blocked}`}
+              data-send-credit-open
+            >
+              <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+              Send Gift
+            </button>
+          ) : null}
         </div>
       )}
       {held ? (
