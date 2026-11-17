@@ -11,13 +11,13 @@ import { WalletBodySkeleton } from "../wallet/WalletLists";
  *  you are loading"). Every Pay address draws it (MESITA-3614). */
 export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | "bill" | "proof" }) {
   if (body === "list") {
-    // /pay: the band (title and search bar, MESITA-3886) and the places.
+    // /pay (MESITA-4204): the title band, the four buttons as themselves,
+    // then the Pay box (QR, search bar, places) in bones.
     return (
-      <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
-        <PayHeader title="Pay" action={<TicketsShortcut />} bar={<span className="text-muted-foreground text-sm font-semibold">Search a place</span>} />
-        <div className="mt-5">
-          <ListSkeleton />
-        </div>
+      <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8 *:shrink-0" aria-busy>
+        <PayHeader title="Pay" action={<TicketsShortcut />} />
+        <WalletShareGift />
+        <ListSkeleton />
       </div>
     );
   }
