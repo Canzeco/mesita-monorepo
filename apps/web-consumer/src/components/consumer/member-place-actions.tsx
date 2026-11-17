@@ -4,11 +4,20 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { readCached, writeCached } from "@/lib/screen-cache";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import type { PayCard, PayCards, PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherBasketItem, VoucherBuyOutcome, VoucherKey } from "@mesita/place-profile";
+import type { PayCard, PayCards, PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, StoryCheckAnswer, VoucherBasketItem, VoucherBuyOutcome, VoucherKey } from "@mesita/place-profile";
 import { pickPayCard } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
-import { apiBuyVoucher, apiListVouchers, BUY_REFUSAL, buyRefusalAction, isDefinitiveRefusal } from "@/lib/api/wallet";
+import {
+  apiBuyVoucher,
+  apiCheckStory,
+  apiEmulateStory,
+  apiListVouchers,
+  BUY_REFUSAL,
+  buyRefusalAction,
+  isDefinitiveRefusal,
+  STORY_EMULATOR_REFUSAL,
+} from "@/lib/api/wallet";
 import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { runBankCheck } from "@/lib/api/tab";
 import { useAddCardPage } from "@/lib/added-card";
@@ -239,6 +248,9 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // one tap, or Stripe's page, MESITA-3552); opening the sheet refreshes
     // the offer and the credit.
     onBuyVoucher: vouchers.buy,
+    // The Story sheet's check before Pay and its test-mode simulator (MESITA-4296).
+    onCheckStory: vouchers.checkStory,
+    onSimulateStory: vouchers.simulateStory,
     buyingVoucher: vouchers.buying,
     // The checkout in the page (MESITA-4065): the saved cards and their pick.
     ...(vouchers.payCards ? { payCards: vouchers.payCards } : {}),
@@ -276,6 +288,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         guest: {
           instagramLinked: Boolean(profile.instagram_handle),
           instagramFollowers: profile.instagram_followers_count ?? null,
+          instagramHandle: profile.instagram_handle ?? null,
         },
       }
       : {}),
@@ -414,7 +427,11 @@ export function usePlaceVouchers(
   load: () => Promise<void>;
   /** The Offers page's basket (MESITA-3841) paid with the card it drew
    *  (MESITA-4065); no card opens the card sheet. */
-  buy: (items: VoucherBasketItem[], cardId: string | null) => Promise<VoucherBuyOutcome>;
+  buy: (items: VoucherBasketItem[], cardId: string | null, opts?: { mentionId?: string }) => Promise<VoucherBuyOutcome>;
+  /** The Story sheet's check (MESITA-4296). */
+  checkStory: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
+  /** Test mode: post a sample story; null when posted, else the refusal's line. */
+  simulateStory: () => Promise<string | null>;
   /** The guest's saved cards; undefined signed out or off Mesita. */
   payCards: PayCards | undefined;
   payCardId: string | null;
@@ -504,7 +521,7 @@ export function usePlaceVouchers(
   const pending = useRef<{ key: string; requestId: string; unknown: number } | null>(null);
 
   const buy = useCallback(
-    async (what: VoucherBasketItem[], cardId: string | null): Promise<VoucherBuyOutcome> => {
+    async (what: VoucherBasketItem[], cardId: string | null, opts: { mentionId?: string } = {}): Promise<VoucherBuyOutcome> => {
       if (!mesita) return "failed";
       const items = what.filter((i) => i.qty > 0);
       if (items.length === 0) return "failed";
@@ -512,7 +529,8 @@ export function usePlaceVouchers(
         openAddCard();
         return "failed";
       }
-      const key = `${cardId}|${items.map((i) => `${i.voucher}x${i.qty}`).join(",")}`;
+      // A Story names its story (MESITA-4296): another story is another buy.
+      const key = `${cardId}|${items.map((i) => `${i.voucher}x${i.qty}`).join(",")}|${opts.mentionId ?? ""}`;
       if (pending.current?.key !== key) pending.current = { key, requestId: crypto.randomUUID(), unknown: 0 };
       if (pending.current.unknown >= 3) {
         toast(BUY_REFUSAL.unconfirmed, { tone: "error" });
@@ -527,6 +545,7 @@ export function usePlaceVouchers(
         ...(one ? { voucher: items[0].voucher } : { items }),
         request_id: pending.current.requestId,
         card_pm_id: cardId,
+        ...(opts.mentionId ? { mention_id: opts.mentionId } : {}),
       } as Parameters<typeof apiBuyVoucher>[1];
       try {
         let r = await apiBuyVoucher(getSupabase(), args);
@@ -551,7 +570,11 @@ export function usePlaceVouchers(
         const status = err instanceof EFError ? err.status : null;
         if (isDefinitiveRefusal(status, code)) pending.current = null;
         else if (pending.current) pending.current.unknown += 1;
-        const action = buyRefusalAction(code);
+        const field = err instanceof EFError && err.body && typeof err.body.field === "string" ? err.body.field : null;
+        const action = buyRefusalAction(code, field);
+        // A Story refusal (MESITA-4296): nothing was charged; the sheet goes
+        // back to its check step and says why there, no toast.
+        if (action.kind === "story") return { story_refused: action.line };
         if (action.kind === "add_card") openAddCard();
         if (action.kind === "reload_cards") void loadCards();
         const line = !isDefinitiveRefusal(status, code) && pending.current && pending.current.unknown >= 3 ? BUY_REFUSAL.unconfirmed : action.line;
@@ -568,6 +591,25 @@ export function usePlaceVouchers(
     [mesita, placeId, load, loadCards],
   );
 
+  const checkStory = useCallback(
+    (o: { poll: boolean }): Promise<StoryCheckAnswer> =>
+      mesita ? apiCheckStory(getSupabase(), placeId, o.poll) : Promise.resolve({ kind: "failed" }),
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mesita, placeId],
+  );
+  const simulateStory = useCallback(async (): Promise<string | null> => {
+    try {
+      await apiEmulateStory(getSupabase(), "post");
+      return null;
+    } catch (err) {
+      const code = err instanceof EFError ? err.code : null;
+      return (code && STORY_EMULATOR_REFUSAL[code]) || STORY_EMULATOR_REFUSAL.emulate_failed;
+    }
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const mine = offer?.placeId === placeId ? offer : null;
   const money = mine?.money ?? null;
   // Add a card: its own page since MESITA-4101 (/wallet/cards/new); back
@@ -581,7 +623,9 @@ export function usePlaceVouchers(
     buying,
     loading: mesita && mine === null,
     load,
-    buy: (items, cardId) => buy(items, cardId),
+    buy: (items, cardId, opts) => buy(items, cardId, opts),
+    checkStory,
+    simulateStory,
     payCards,
     payCardId,
     selectCard,
