@@ -65,7 +65,6 @@ import {
 import {
   adminClient,
   anonClient,
-  getOptionalAuthedUser,
   readAnonEnv,
   readEFEnv,
 } from "../_shared/auth.ts";
@@ -73,7 +72,7 @@ import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { withVouchersUpTo } from "../_shared/payments.ts";
-import { withGuestOffers } from "../_shared/vouchers.ts";
+import { withPlaceOffers } from "../_shared/vouchers.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS, NO_SCREEN_RADIUS_KM } from "../_shared/discovery-config.ts";
 import { decideNearby, wantsGoogleFill } from "../_shared/geo.ts";
@@ -161,9 +160,6 @@ serveJson("consumer-web-list-places", async (req) => {
   // to listed rows (state 'active') for anon + authenticated. This is the
   // single source of truth for what consumers are allowed to see.
   const supabase = anonClient(envRes.env);
-  // The signed-in guest, if any, for the offer chips (MESITA-4207): read
-  // alongside the pool, never a 401.
-  const guest = getOptionalAuthedUser(req, envRes.env).then((r) => r.user?.id ?? null, () => null);
 
   const body = await readJsonOr<ListBody>(req, {});
   const nearbyDecision = decideNearby(body as Record<string, unknown>);
@@ -254,14 +250,12 @@ serveJson("consumer-web-list-places", async (req) => {
   // The Search card's promo strip (MESITA-3327): `vouchers_up_to_pct` per
   // row, two batched reads for the page, as list-catalog does (MESITA-3312).
   // No EF env (a local run with no service key): the strip just stays off.
-  // The chips drop what this guest already used (MESITA-4207), two more
-  // batched reads; signed out, the place's own list.
+  // Every offer the place sells, whoever looks (MESITA-4292).
   const money = efEnv.ok ? adminClient(efEnv.env) : null;
-  const guestId = await guest;
   return json({
     ok: true,
     places: withFamilyKeysList(
-      await withGuestOffers(money, guestId, await withVouchersUpTo(
+      withPlaceOffers(await withVouchersUpTo(
         money,
         places.map(({ area: a, ...p }) => {
         const wired = wireMapPlace(p as PlaceProfileRow);
