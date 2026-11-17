@@ -3,7 +3,6 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronLeft,
-  ChevronRight,
   CircleCheck,
   Minus,
   Plus,
@@ -94,11 +93,13 @@ export function firstOpenDate(options: DateOption[]): string {
 // White page; an unselected choice is white with a border you can SEE
 // (foreground/20, not the hairline); the chosen one is solid ink. Pato:
 // "is hard to see" — every choice on this page uses these three classes.
+// The chosen one wears the Reserve red since MESITA-4259 (Pato: "Red colors
+// like in OpenTable"); --reserve is never an error colour.
 
 const CHOICE = "rounded-xl border font-semibold tabular-nums transition";
 const PILL = "rounded-full";
 const CHOICE_OFF = "border-foreground/20 bg-card text-foreground";
-const CHOICE_ON = "border-foreground bg-foreground text-background";
+const CHOICE_ON = "border-reserve bg-reserve text-reserve-foreground";
 const CHOICE_DEAD = "border-foreground/10 bg-card text-muted-foreground cursor-not-allowed opacity-40";
 
 /** One section of the Reserve page: the app's Panel (MESITA-4183, Pato over
@@ -206,6 +207,7 @@ export function ReservationTimePicker({
   date,
   hours,
   tz,
+  children,
 }: {
   value: string | null;
   onChange: (slot: string) => void;
@@ -213,6 +215,8 @@ export function ReservationTimePicker({
   hours?: WeeklyHours | null;
   /** The place's IANA zone (MESITA-3626): "past" is judged on its clock. */
   tz?: string | null;
+  /** Under the grid, inside the same box: How flexible? (MESITA-4259 D2). */
+  children?: React.ReactNode;
 }) {
   const ahead = buildSlots(date ?? "", hours).filter(
     (slot) => !(date && isSlotPast(date, slot.time, tz)),
@@ -242,6 +246,7 @@ export function ReservationTimePicker({
           })}
         </div>
       )}
+      {slots.length > 0 && children}
     </ReservationSection>
   );
 }
@@ -308,6 +313,41 @@ export function ReservationField({
   );
 }
 
+/** Notes — a 4-line box (MESITA-4259 D6, Pato: "make the notes box
+ *  bigger"); the count shows only near the cap. */
+export function ReservationNotes({
+  value,
+  onChange,
+  max = 280,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  max?: number;
+}) {
+  const left = max - value.length;
+  return (
+    <ReservationSection
+      title="Notes"
+      aside={<span className="text-muted-foreground type-body pr-1">Optional</span>}
+    >
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        maxLength={max}
+        rows={4}
+        aria-label="Notes"
+        placeholder="Birthday, high chair, window table…"
+        className="border-foreground/20 bg-card focus:border-foreground block w-full resize-none rounded-xl border px-3.5 py-3 text-base leading-snug outline-none"
+      />
+      {left <= 40 && (
+        <p className="text-muted-foreground type-body mt-1.5 text-right tabular-nums" aria-live="polite">
+          {left} left
+        </p>
+      )}
+    </ReservationSection>
+  );
+}
+
 // ── Flexibility (MESITA-3957) ──────────────────────────────────────────────
 // What a1 may take alone on the call: a time inside the window.
 
@@ -328,7 +368,8 @@ export function windowRange(time: string | null, window: ReservationTimeWindow):
   return window === 0 ? time : `${shiftHhmm(time, -window)}–${shiftHhmm(time, window)}`;
 }
 
-/** One segmented control under the time grid. */
+/** How flexible? — one compact segmented row at the foot of the Time box
+ *  (MESITA-4259 D2), so the When step fits one phone screen. */
 export function ReservationWindowPicker({
   value,
   onChange,
@@ -345,7 +386,8 @@ export function ReservationWindowPicker({
   ];
   const range = windowRange(time, value);
   return (
-    <ReservationSection title="How flexible?">
+    <div className="border-border mt-4 border-t pt-3">
+      <p className="type-body mb-1.5 font-semibold">How flexible?</p>
       <div
         role="radiogroup"
         aria-label="How flexible"
@@ -361,7 +403,7 @@ export function ReservationWindowPicker({
               aria-checked={active}
               onClick={() => onChange(o.value)}
               className={cn(
-                "h-10 rounded-lg text-sm font-semibold transition",
+                "h-11 rounded-lg text-sm font-semibold transition",
                 active ? "bg-foreground text-background" : "text-foreground",
               )}
             >
@@ -377,7 +419,7 @@ export function ReservationWindowPicker({
             : `We try for ${time} first. If it's taken, we book ${range} without asking.`}
         </p>
       )}
-    </ReservationSection>
+    </div>
   );
 }
 
@@ -401,8 +443,8 @@ function NotifyRow({
   onChange: (next: ReservationNotify) => void;
 }) {
   const options: Array<{ value: ReservationNotify; label: string }> = [
-    { value: "app", label: "App notification" },
-    { value: "call", label: "App + call me" },
+    { value: "app", label: "App only" },
+    { value: "call", label: "App + a call" },
   ];
   return (
     <div>
@@ -418,7 +460,7 @@ function NotifyRow({
               aria-checked={active}
               onClick={() => onChange(o.value)}
               className={cn(
-                "h-10 rounded-lg text-sm font-semibold transition",
+                "h-11 rounded-lg text-sm font-semibold transition",
                 active ? "bg-foreground text-background" : "text-foreground",
               )}
             >
@@ -431,7 +473,8 @@ function NotifyRow({
   );
 }
 
-/** The Updates panel: when you're booked, and if we can't book you. */
+/** How should we tell you? (MESITA-4259 D4, Pato: "clearer language"):
+ *  Reservation confirmed, and Reservation not possible. */
 export function ReservationUpdatesPicker({
   onConfirm,
   onReject,
@@ -444,11 +487,11 @@ export function ReservationUpdatesPicker({
   setReject: (next: ReservationNotify) => void;
 }) {
   return (
-    <ReservationSection title="Updates">
+    <ReservationSection title="How should we tell you?">
       <div className="flex flex-col gap-4">
-        <NotifyRow label="When you're booked" value={onConfirm} onChange={setConfirm} />
+        <NotifyRow label="Reservation confirmed" value={onConfirm} onChange={setConfirm} />
         <NotifyRow
-          label="If we can't book you"
+          label="Reservation not possible"
           value={onReject}
           onChange={setReject}
         />
@@ -465,59 +508,59 @@ export function ReservationUpdatesPicker({
 // (pay-flow.tsx) in look: ‹ "Time · 1 of 3" › with the step's icon, thin
 // segments, done and current ink.
 
-export type ReserveStep = "time" | "details" | "preview";
+// MESITA-4259: When · Party · You (Pato: "first page … date and hour and
+// time flexibility", then "number of people and optional notes", "lastly the
+// name … and the phone"). Changing a reservation stops at Party.
+export type ReserveStep = "when" | "party" | "you";
 
-const STEP_META: Record<ReserveStep, { name: string; icon: LucideIcon }> = {
-  time: { name: "Time", icon: CalendarDays },
-  details: { name: "Details", icon: Users },
-  preview: { name: "Preview", icon: CircleCheck },
+export const STEP_META: Record<ReserveStep, { name: string; icon: LucideIcon }> = {
+  when: { name: "When", icon: CalendarDays },
+  party: { name: "Party", icon: Users },
+  you: { name: "You", icon: CircleCheck },
 };
 
+/**
+ * THE TOP BOX (MESITA-4259 D1, Pato: "I DON'T LIKE THE HEADER RESERVE AT
+ * THERE"): no page header bar. One Panel: Back, the place's round photo and
+ * name on one line, then "When · 1 of 3" over the red step segments. Back
+ * walks the steps, and leaves the page from the first one.
+ */
 export function ReserveStepNav({
   steps,
   at,
   onBack,
-  onNext,
+  place,
 }: {
   steps: readonly ReserveStep[];
   at: number;
-  onBack?: () => void;
-  onNext?: () => void;
+  onBack: () => void;
+  place: { name: string; photo: React.ReactNode };
 }) {
   const step = steps[at];
   const { name, icon: Icon } = STEP_META[step];
-  const arrow =
-    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:bg-muted disabled:opacity-40";
   return (
-    <div className="px-2 pt-1 pb-2.5" data-reserve-steps>
-      <div className="flex h-11 items-center">
+    <div className="px-3 pt-3 pb-3.5" data-reserve-steps>
+      <div className="flex items-center gap-2.5">
         <button
           type="button"
           onClick={onBack}
-          className={cn(arrow, !onBack && "invisible")}
+          className="hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
           aria-label={at > 0 ? `Back to ${STEP_META[steps[at - 1]].name}` : "Back"}
-          tabIndex={onBack ? undefined : -1}
         >
           <ChevronLeft className="h-6 w-6" aria-hidden />
         </button>
-        <p className="flex min-w-0 flex-1 items-center justify-center gap-1.5 truncate text-base">
-          <Icon className="h-5 w-5 shrink-0" aria-hidden />
-          <span className="font-semibold">{name}</span>
-          <span className="text-muted-foreground">{` · ${at + 1} of ${steps.length}`}</span>
-        </p>
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={!onNext}
-          className={cn(arrow, at >= steps.length - 1 && "invisible")}
-          aria-label={at < steps.length - 1 ? `Next: ${STEP_META[steps[at + 1]].name}` : "Next"}
-          tabIndex={at < steps.length - 1 ? undefined : -1}
-        >
-          <ChevronRight className="h-6 w-6" aria-hidden />
-        </button>
+        <span className="shrink-0 [&>span]:h-9 [&>span]:w-9 [&>span]:text-sm">{place.photo}</span>
+        <h1 className="font-display line-clamp-2 min-w-0 flex-1 text-lg leading-tight font-semibold tracking-tight">
+          {place.name}
+        </h1>
       </div>
+      <p className="type-body mt-3 flex items-center gap-1.5 px-1">
+        <Icon className="text-reserve h-4 w-4 shrink-0" aria-hidden />
+        <span className="font-semibold">{name}</span>
+        <span className="text-muted-foreground">{` · ${at + 1} of ${steps.length}`}</span>
+      </p>
       <ol
-        className="mt-1 grid gap-1.5 px-2"
+        className="mt-2 grid gap-1.5 px-1"
         style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
         aria-label={`Step ${at + 1} of ${steps.length}: ${name}`}
       >
@@ -525,7 +568,7 @@ export function ReserveStepNav({
           <li
             key={s}
             aria-current={i === at ? "step" : undefined}
-            className={cn("h-1 rounded-full", i <= at ? "bg-foreground" : "bg-border")}
+            className={cn("h-1 rounded-full", i <= at ? "bg-reserve" : "bg-border")}
           />
         ))}
       </ol>

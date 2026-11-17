@@ -1,11 +1,9 @@
 "use client";
 
-import { HEADER_BUTTON_CLASS } from "@/components/consumer/nav/Screen";
 import { Panel } from "@/components/shared/Panel";
-import { PlacePhotoMark } from "@/components/consumer/wallet/PlaceCredit";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 import {
@@ -126,25 +124,8 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
 
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
-      {/* The one page header (MESITA-4097): square Back, the title. */}
-      {/* THE HEADER (MESITA-4183, Pato: "the name of the place on top,
-          Reserve at …, with logo. Enhance that"): Back, the place's round
-          photo, "Reserve at" over the whole name, left-aligned like the
-          place screen's own header so a long name is never cut. */}
-      <header className="border-border bg-card sticky top-0 z-20 flex shrink-0 items-center gap-3 border-b px-3 py-2.5">
-        <button type="button" onClick={onBack} aria-label="Back" className={HEADER_BUTTON_CLASS}>
-          <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-        </button>
-        <span className="[&>span]:h-11 [&>span]:w-11 [&>span]:text-base">
-          <PlacePhotoMark photo={place.photo ?? null} name={place.name} />
-        </span>
-        <h1 className="min-w-0 flex-1">
-          <span className="text-muted-foreground type-body block font-medium">Reserve at</span>
-          <span className="font-display line-clamp-2 block text-lg leading-tight font-semibold tracking-tight">
-            {place.name}
-          </span>
-        </h1>
-      </header>
+      {/* No page header bar (MESITA-4259 D1): Back, the place and the steps
+          share the form's one top box. */}
       <div className="flex min-h-0 flex-1 flex-col">
 
         <ReservationForm
@@ -153,6 +134,7 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
           checking={checking}
           onBooked={reread}
           onDone={onBack}
+          onExit={onBack}
           intro={
             mine.length > 0 ? (
               <Panel title="Your reservations here">
