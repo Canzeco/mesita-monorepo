@@ -48,14 +48,16 @@ export const CLASS_MINE = "Current";
 export const CLASS_ROWS = {
   regular: {
     title: "Regular",
-    perks: ["Everyone on Mesita", "The standard vouchers"],
+    perks: ["Every guest starts here"],
   },
+  // How you get VIP, nothing else (MESITA-4278, Pato: "just a clearer
+  // explanation"). Both lines must be true.
   vip: {
     title: "VIP",
     perks: [
-      "A public Instagram account",
-      "More than 1,000 Instagram followers",
-      "Never sold",
+      "Your Instagram account is public",
+      "It has more than 1,000 followers",
+      "Both must be true. Sync to update.",
     ],
   },
 } as const satisfies Record<"regular" | "vip", ClassRowWords>;
