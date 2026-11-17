@@ -26,11 +26,3 @@ export const DOOR_GLYPH = "h-4 w-4 shrink-0";
  *  Credits, 🎁 Send Gift, 💌 Share Mesita, one size over grey. */
 export const DOOR_EMOJI = "text-lg leading-none";
 
-// THE HOUSE CARD'S PAY BAR (MESITA-4253, Pato over four drawings: "Build
-// A"): spending the credit is why the card is open, so Pay is one full-width
-// bar in the Pay tab's Pay Bill pink, 60px, the QR glyph, "Pay here" over a
-// line naming the balance, a chevron; Buy Credits and Send Gift sit under it
-// as two DOOR_QUIET doors, the Wallet's grey look.
-export const PAY_BAR =
-  "flex h-15 w-full items-center gap-3 rounded-xl bg-[var(--brand-pink-600)] px-4 text-left text-white transition hover:bg-[var(--brand-pink-700)] active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-pink-300)] focus-visible:ring-offset-2";
-

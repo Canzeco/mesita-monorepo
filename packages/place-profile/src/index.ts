@@ -23,6 +23,7 @@ export {
   type PlaceTab,
 } from "./components/place-detail/tabs";
 export { PopularTimesBox } from "./components/place-detail/popular-times";
+export { OffersTile } from "./components/place-detail/ProfileActions";
 export {
   PlaceDetailBodySkeleton,
   PlaceProfileSkeleton,

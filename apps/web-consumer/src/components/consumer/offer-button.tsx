@@ -2,7 +2,6 @@
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
 
 import { OfferTrack, offerSlides as slidesFor, offersLabel, useOfferSlide, type OfferSlide } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
@@ -90,73 +89,4 @@ export function OfferStrip({ name, slides, className }: { name: string; slides: 
 export function offerHref(placeHref: string, slide: OfferSlide, fromWallet = false): string {
   const voucher = slide.voucher ? `&voucher=${slide.voucher}` : "";
   return `${placeHref}?rewards=${slide.section ?? "prepayment"}${voucher}${fromWallet ? "&from=wallet" : ""}`;
-}
-
-/** Held while a finger is down (MESITA-4217), the live slide otherwise. */
-function useHeldSlide(slides: OfferSlide[]) {
-  const live = useOfferSlide(slides);
-  const [held, setHeld] = useState<number | null>(null);
-  return {
-    index: held ?? live.index,
-    previous: held === null ? live.previous : null,
-    hold: () => setHeld((h) => h ?? live.index),
-    release: () => setHeld(null),
-  };
-}
-
-/** THE HOUSE CARD'S PREPAY BAR (MESITA-4262, Pato over drawing A: "pay here,
- *  prepay here with bonus, then send gift"): Home's switching offers, full
- *  width under Pay, 56px, the same slides, colours and beat. A tap opens the
- *  place's Offers with the offer on screen ticked, and Back returns here. */
-export function OfferBar({ placeHref, name, slides }: { placeHref: string; name: string; slides: OfferSlide[] }) {
-  const s = useHeldSlide(slides);
-  if (slides.length === 0) return null;
-  const slide = slides[s.index];
-  return (
-    <PushLink
-      href={offerHref(placeHref, slide, true)}
-      aria-label={offersLabel(name, slides)}
-      onClick={s.release}
-      onPointerDown={s.hold}
-      onPointerCancel={s.release}
-      onPointerLeave={s.release}
-      className={cn(
-        "relative flex h-14 w-full items-center rounded-xl pr-3 pl-4 text-base font-bold transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2 hover:opacity-90 active:scale-[0.99]",
-        slide.tone,
-      )}
-      data-house-card-offer
-    >
-      <span className="relative h-full min-w-0 flex-1">
-        <OfferTrack slides={slides} index={s.index} previous={s.previous} />
-      </span>
-      <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
-    </PushLink>
-  );
-}
-
-/** A LOYALTY CARD'S OFFER PILL (MESITA-4262, drawing W1): the same slides
- *  small, on the card's second line; a tap opens that place's Offers. Its
- *  row is a stretched link, so this sits above it (z-10) as its own link. */
-export function OfferPill({ placeHref, name, slides }: { placeHref: string; name: string; slides: OfferSlide[] }) {
-  const s = useHeldSlide(slides);
-  if (slides.length === 0) return null;
-  const slide = slides[s.index];
-  return (
-    <PushLink
-      href={offerHref(placeHref, slide)}
-      aria-label={offersLabel(name, slides)}
-      onClick={s.release}
-      onPointerDown={s.hold}
-      onPointerCancel={s.release}
-      onPointerLeave={s.release}
-      className={cn(
-        "relative z-10 inline-flex h-7 w-40 shrink-0 items-center rounded-full px-2 text-xs font-semibold transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400",
-        "after:absolute after:inset-x-0 after:-inset-y-2",
-        slide.tone,
-      )}
-      data-wallet-offer
-    >
-      <OfferTrack slides={slides} index={s.index} previous={s.previous} short />
-    </PushLink>
-  );
 }
