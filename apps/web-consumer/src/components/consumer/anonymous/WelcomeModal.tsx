@@ -11,11 +11,10 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // THE WELCOME (MESITA-4246, Pato 2026-11-17: "un modal que flota sobre Home
 // y te dice como usuario anónimo o este, regístrate ... y que te salga la
-// propuesta de valor"). Once per device, over Home, to an anonymous visitor
-// only. Create account goes to Sign; Explore anonymously or the close
-// leaves Home as it is. The flag is read through useSyncExternalStore (no
-// setState in an effect) and storage failures mean "already seen", so a
-// private window never gets stuck behind it.
+// propuesta de valor"). Over Home, to an anonymous visitor only. Create
+// account goes to Sign; Explore anonymously or the close leaves Home as it
+// is. The flag is read through useSyncExternalStore (no setState in an
+// effect); the server snapshot is "answered", so SSR never paints it.
 //
 // THE MONTERREY COVER (Pato, 2026-11-17, MESITA-4284: "use the monterrey
 // background in thism modal. that modal looks like shit"; /plan-design-review,
@@ -24,25 +23,26 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // (MESITA-3746). A veil at the top holds the mark and the wordmark, a deep
 // fade at the bottom holds the copy in white, a solid white Create account
 // (MESITA-3795) and Explore anonymously in white text.
-const SEEN_KEY = "mesita.welcomeSeen";
 // The wordmark as the header and the sign-in cover write it (MESITA-3653).
 const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 const listeners = new Set<() => void>();
 
+// EVERY PAGE LOAD (Pato, 2026-11-17, MESITA-4285: "when i reload page as an
+// not user, redirect the home and first show the modal and ask the
+// question"; /autoplan, gate answered rec): the answer lives in memory, not
+// on the device, so every full load or new visit asks again until the guest
+// has an account. Explore anonymously or the backdrop closes it for this load
+// only; in-app tab taps keep the module alive and never bring it back. It
+// was once per device (localStorage) before. Explore anonymously creates no
+// Supabase session: there is none for anonymous visitors (MESITA-2137).
+let answered = false;
+
 function seen(): boolean {
-  try {
-    return window.localStorage.getItem(SEEN_KEY) === "1";
-  } catch {
-    return true;
-  }
+  return answered;
 }
 
 function markSeen(): void {
-  try {
-    window.localStorage.setItem(SEEN_KEY, "1");
-  } catch {
-    // Nothing to keep; the dialog closes anyway.
-  }
+  answered = true;
   for (const l of listeners) l();
 }
 
