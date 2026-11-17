@@ -1,7 +1,7 @@
 import { Screen } from "@/components/consumer/nav/Screen";
 import { GuestPayLoading } from "./GuestPayScreen";
 import { PayHeader } from "./PayHeader";
-import { ListSkeleton } from "./PayPage";
+import { PayBillSkeleton } from "./PayPage";
 import { WalletShareGift } from "@/components/consumer/wallet/WalletShareGift";
 import { TicketsShortcut } from "./TicketsShortcut";
 import { WalletBodySkeleton } from "../wallet/WalletLists";
@@ -11,13 +11,14 @@ import { WalletBodySkeleton } from "../wallet/WalletLists";
  *  you are loading"). Every Pay address draws it (MESITA-3614). */
 export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | "bill" | "proof" }) {
   if (body === "list") {
-    // /pay (MESITA-4204): the title band, the four buttons as themselves,
-    // then the Pay box (QR, search bar, places) in bones.
+    // /pay (MESITA-4232): the title band, Pay Bill's shape, the three
+    // buttons as themselves, then the money in bones.
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8 *:shrink-0" aria-busy>
         <PayHeader title="Pay" action={<TicketsShortcut />} />
+        <PayBillSkeleton />
         <WalletShareGift />
-        <ListSkeleton />
+        <WalletBodySkeleton />
       </div>
     );
   }

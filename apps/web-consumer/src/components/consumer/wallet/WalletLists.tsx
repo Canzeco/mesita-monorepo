@@ -179,46 +179,10 @@ export function PlainChip({ children }: { children: ReactNode }) {
 
 const Chevron = () => <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />;
 
-/** Cash (MESITA-3584's green with the black $ coin). Opens its page
- *  (MESITA-4116, Pato: "in the cash option also include >"): what paying
- *  outside the app means and the credits back it gives. */
-export function CashRow({ onOpen }: { onOpen: () => void }) {
-  return (
-    <button type="button" onClick={onOpen} className={ROW} data-wallet-method="cash">
-      <CashChip />
-      <RowText title="Cash" line="Pay at the place, outside the app" />
-      <Chevron />
-    </button>
-  );
-}
-
-/** A saved card (MESITA-3523): its brand over "Ends in 4242" (MESITA-4091,
- *  Pato: "just don't mention with it expired, you can just mention it ends
- *  in abcd"), "Expired" on the right only when it is. Opens its sheet. */
-export function SavedCardRow({ card, onOpen }: { card: SavedCard; onOpen: () => void }) {
-  const brand = brandLabel(card.brand);
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label={`${brand} ending in ${card.last4}, expires ${expiryLabel(card)}`}
-      className={ROW}
-      data-wallet-method="saved-card"
-    >
-      <SavedCardChip brand={card.brand} last4={card.last4} />
-      <RowText title={brand} line={`Ends in ${card.last4}`} />
-      {isExpired(card) ? (
-        <span className="text-muted-foreground shrink-0 text-sm">Expired</span>
-      ) : null}
-      <Chevron />
-    </button>
-  );
-}
-
-/** The quiet line under a Credits Card's name: only a gone place's. The
- *  row never says Pending or Available (MESITA-4059, Pato: "don't mention
- *  the pending state in credits card"); the pill says the amount and the
- *  House Card says when pending credit lands. */
+/** The quiet line under a Credits Card's name: only a gone place's. Pay's
+ *  Loyalty Cards say pending in their own amber line since MESITA-4232
+ *  (Pato: "must display current balance. and also if pending"), which
+ *  reverses MESITA-4059 there; other lists still never say it. */
 function creditsLine(gone: boolean): string | null {
   return gone ? "Ask Mesita support to use it" : null;
 }
@@ -233,8 +197,15 @@ export function CreditsRow({
   href,
   gone = false,
   eager = false,
+  ready = false,
+  pendingLine = null,
 }: {
   card: WalletCardModel;
+  /** Pay's Loyalty Cards (MESITA-4232, D9): the pill shows only what is
+   *  ready to spend, $0 included; pending says itself in `pendingLine`. */
+  ready?: boolean;
+  /** "$200.00 pending · lands in 3 h", amber, under the name. */
+  pendingLine?: string | null;
   /** Its House Card page. Absent on a page that IS this place's (the
    *  Offers page's balance, MESITA-4060): a plain row, no chevron. */
   href?: string;
@@ -242,7 +213,7 @@ export function CreditsRow({
   gone?: boolean;
   eager?: boolean;
 }) {
-  const amount = cardAmount(card);
+  const amount = ready ? { cents: Math.max(0, card.available_cents), pending: false } : cardAmount(card);
   const line = creditsLine(gone);
   const inner = (
     <>
@@ -253,6 +224,11 @@ export function CreditsRow({
           <PlaceMarks tier={card.tier} ad={false} />
         </span>
         {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{line}</span> : null}
+        {pendingLine ? (
+          <span className="mt-0.5 block truncate text-sm leading-tight font-medium text-amber-700" data-wallet-pending>
+            {pendingLine}
+          </span>
+        ) : null}
       </span>
       <CreditsPill>{money(amount.cents, card.currency)}</CreditsPill>
     </>
@@ -291,6 +267,82 @@ export function CreditsPill({ children }: { children: ReactNode }) {
   );
 }
 
+/** PAYMENT METHODS, ONE LINE (Pato, 2026-11-17, MESITA-4232: "(Cash) (Card)
+ *  Only one card. make it horizontal, cash at the left, card at the right";
+ *  D8, D11): two tiles side by side, no panel around them, each saying where
+ *  the money moves. */
+const TILE =
+  "border-border hover:bg-muted/60 flex min-h-[4.5rem] min-w-0 flex-1 items-center gap-3 rounded-2xl border bg-card px-3 py-3 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-neutral-400";
+
+function TileText({ title, line }: { title: string; line: string }) {
+  return (
+    <span className="min-w-0 flex-1">
+      <span className="block truncate text-base leading-tight font-semibold">{title}</span>
+      <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{line}</span>
+    </span>
+  );
+}
+
+export function CashTile({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button type="button" onClick={onOpen} className={TILE} aria-label="Cash, paid outside the app" data-wallet-method="cash">
+      <CashChip />
+      <TileText title="Cash" line="Outside the app" />
+    </button>
+  );
+}
+
+export function CardTile({ card, onOpen }: { card: SavedCard; onOpen: () => void }) {
+  const brand = brandLabel(card.brand);
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`${brand} ending in ${card.last4}, expires ${expiryLabel(card)}, charged in the app`}
+      className={TILE}
+      data-wallet-method="saved-card"
+    >
+      <SavedCardChip brand={card.brand} last4={card.last4} />
+      <TileText title={`${brand} •• ${card.last4}`} line={isExpired(card) ? "Expired" : "In the app"} />
+    </button>
+  );
+}
+
+export function AddCardTile({ href }: { href: string }) {
+  return (
+    <PushLink
+      href={href}
+      aria-label="Add a payment card"
+      className={cn(TILE, "border-muted-foreground/40 border-2 border-dashed")}
+      data-wallet-add
+    >
+      <AddChip />
+      <TileText title="Add a card" line="In the app" />
+    </PushLink>
+  );
+}
+
+/** The two tiles under their heading (D11: no outer panel). */
+export function PaymentMethods({ children }: { children: ReactNode }) {
+  return (
+    <section className="mt-5" aria-labelledby="payment-methods-heading" data-payment-methods>
+      <h2 id="payment-methods-heading" className="font-display px-1 text-base font-bold">
+        Payment Methods
+      </h2>
+      <div className="mt-2 flex gap-2">{children}</div>
+    </section>
+  );
+}
+
+/** No Loyalty Card yet (D10): one grey line above Add a Loyalty Card. */
+export function EmptyLoyaltyLine() {
+  return (
+    <p className="text-muted-foreground px-4 py-3 text-sm" data-wallet-empty-loyalty>
+      Buy credit at a place and its card shows here.
+    </p>
+  );
+}
+
 /** No Credits Card yet: one row, the way to get one (Search). */
 export function EmptyCreditsRow({ href }: { href: string }) {
   return (
@@ -315,7 +367,14 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
       className={ROW}
       data-wallet-story
     >
-      <RowText title={`Story voucher · ${name}`} />
+      <CreditsCardChip photo={story.place?.photo ?? null} name={name} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-base leading-tight font-semibold">{name}</span>
+        {/* A waiting Story is its place's pending (MESITA-4232, D13). */}
+        <span className="mt-0.5 block truncate text-sm leading-tight font-medium text-amber-700">
+          Story pending · tap to show the QR
+        </span>
+      </span>
       <span className="text-muted-foreground shrink-0 text-base font-semibold tabular-nums">
         +{money(story.credit_cents, story.currency)}
       </span>
@@ -330,9 +389,10 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
 export function WalletBodySkeleton() {
   return (
     <div aria-busy>
-      <WalletPanelList title="Payment Methods">
-        <RowsSkeleton count={2} />
-      </WalletPanelList>
+      <PaymentMethods>
+        <Skeleton className="h-[4.5rem] flex-1 rounded-2xl" />
+        <Skeleton className="h-[4.5rem] flex-1 rounded-2xl" />
+      </PaymentMethods>
       <WalletPanelList title="Loyalty Cards">
         <RowsSkeleton count={2} />
       </WalletPanelList>

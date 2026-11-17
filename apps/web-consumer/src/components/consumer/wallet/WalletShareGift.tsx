@@ -2,8 +2,7 @@ import { CreditCard, Gift, Share2 } from "lucide-react";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { Panel } from "@/components/shared/Panel";
-import { DOOR_BUY, DOOR_GIFT, DOOR_GLYPH, DOOR_PINK, DOOR_ROW } from "./wallet-buttons";
+import { DOOR_GLYPH, DOOR_QUIET, DOOR_ROW } from "./wallet-buttons";
 
 // WALLET'S THREE DOORS (Pato, 2026-11-14, MESITA-3894: "Share Mesita / Send
 // Credits (Gift) / Redeem Credits (the redeem button at the bottom is
@@ -34,13 +33,16 @@ import { DOOR_BUY, DOOR_GIFT, DOOR_GLYPH, DOOR_PINK, DOOR_ROW } from "./wallet-b
 // /wallet/buy (the places that sell credits, a row opens its prepay page);
 // Send Gift opens /wallet/send (the House Cards, a row opens its send page).
 // Claim Gift stays the one code page: a code works at any place.
-/** The row: four links, the same in the loading frame. */
+// GREY, NO BOX (MESITA-4232): the three sit on the page under Pay Bill, one
+// soft grey with black ink; the panel around them and the black / green /
+// pink tints are gone.
+/** The row: three links, the same in the loading frame. */
 export function WalletShareGift() {
   return (
-    <Panel className={`mt-4 p-4 ${DOOR_ROW}`} data-wallet-share-gift>
+    <div className={`mt-3 ${DOOR_ROW}`} data-wallet-share-gift>
       <PushLink
         href={CONSUMER_ROUTES.walletBuy}
-        className={DOOR_BUY}
+        className={DOOR_QUIET}
         data-wallet-buy
       >
         <CreditCard className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
@@ -48,7 +50,7 @@ export function WalletShareGift() {
       </PushLink>
       <PushLink
         href={CONSUMER_ROUTES.walletSend}
-        className={DOOR_GIFT}
+        className={DOOR_QUIET}
         data-wallet-send
       >
         <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
@@ -56,12 +58,12 @@ export function WalletShareGift() {
       </PushLink>
       <PushLink
         href={CONSUMER_ROUTES.share}
-        className={DOOR_PINK}
+        className={DOOR_QUIET}
         data-wallet-share
       >
         <Share2 className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
         Share Mesita
       </PushLink>
-    </Panel>
+    </div>
   );
 }

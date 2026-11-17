@@ -20,4 +20,8 @@ export const DOOR_BUY = `${DOOR.replace("text-white", "text-paper")} bg-foregrou
 export const DOOR_GIFT = `${DOOR.replace("text-white", "text-emerald-800")} bg-emerald-50 ring-1 ring-inset ring-emerald-200 focus-visible:ring-emerald-400`;
 /** Share Mesita on Wallet, Go to Pay on a House Card: pink tint. */
 export const DOOR_PINK = `${DOOR.replace("text-white", "text-pink-700")} bg-pink-50 ring-1 ring-inset ring-pink-200 focus-visible:ring-pink-400`;
+/** Pay's three doors (MESITA-4232, Pato: "change color of those 3 top
+ *  boxes. they look like shit"): one soft grey, black ink, so Pay Bill is the
+ *  page's only black. The House Card keeps BUY/GIFT/PINK. */
+export const DOOR_QUIET = `${DOOR.replace("text-white", "text-foreground")} bg-muted hover:bg-border focus-visible:ring-neutral-400`;
 export const DOOR_GLYPH = "h-4 w-4 shrink-0";

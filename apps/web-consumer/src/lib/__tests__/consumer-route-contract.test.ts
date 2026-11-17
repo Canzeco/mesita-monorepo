@@ -122,6 +122,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       reservation: { prefix: "/reservation/" },
       // The Pay tab; each money object has its address under it (MESITA-3614).
       pay: "/pay",
+      // Pay Bill's place picker (MESITA-4232).
+      payPick: "/pay/pick",
       payPlace: { prefix: "/pay/place/" },
       payBill: { prefix: "/pay/bill/" },
       // A friend's share of a split bill (MESITA-3695).

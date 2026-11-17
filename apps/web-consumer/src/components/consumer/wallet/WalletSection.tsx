@@ -6,7 +6,7 @@ import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
 import { photoUrl } from "@mesita/place-profile";
-import { apiRemoveCard, CARD_REFUSAL, MAX_SAVED_CARDS, type SavedCard } from "@/lib/api/cards";
+import { apiRemoveCard, CARD_REFUSAL, type SavedCard } from "@/lib/api/cards";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -17,14 +17,19 @@ import { type Method, MethodSheet } from "./MethodSheet";
 import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
 import {
-  CashRow,
-  CreditsRow,
+  AddCardTile,
   AddRow,
-  SavedCardRow,
+  CardTile,
+  CashTile,
+  CreditsRow,
+  EmptyLoyaltyLine,
+  PaymentMethods,
+  RowsSkeleton,
   StoryRow,
   WalletBodySkeleton,
   WalletPanelList,
 } from "./WalletLists";
+import { money, type WalletBalance } from "@/lib/api/wallet";
 
 // ONE READ, ONE PAINT (Pato, 2026-11-12, MESITA-3814: "first load the
 // functions and then display all the wallets, don't display stuff in an
@@ -140,6 +145,21 @@ function decodeAll(urls: string[], ms: number): Promise<void> {
   return Promise.race([Promise.all(each).then(() => undefined), new Promise<void>((r) => setTimeout(r, ms))]);
 }
 
+/** "$200.00 pending · lands in 3 h" (MESITA-4232, D9): the pending total
+ *  and when its first entry turns Available; null with nothing pending. */
+function pendingLine(b: WalletBalance, now: number): string | null {
+  if (b.pending_cents <= 0) return null;
+  const amount = `${money(b.pending_cents, b.currency)} pending`;
+  const next = b.entries
+    .filter((e) => e.pending && e.available_at)
+    .map((e) => Date.parse(e.available_at as string))
+    .filter((t) => Number.isFinite(t) && t > now)
+    .sort((x, y) => x - y)[0];
+  if (next === undefined) return amount;
+  const mins = Math.ceil((next - now) / 60_000);
+  return `${amount} · lands in ${mins < 60 ? `${mins} min` : `${Math.ceil(mins / 60)} h`}`;
+}
+
 export function WalletSection({
   giftToken = null,
 }: {
@@ -150,6 +170,8 @@ export function WalletSection({
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
   const [method, setMethod] = useState<Method | null>(null);
   const [explainAdd, setExplainAdd] = useState(false);
+  // When the pending lines count from: the page's first paint.
+  const [now] = useState(() => Date.now());
   // The saved-card failure toast fires at most once per mount.
   const cardsToasted = useRef(false);
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
@@ -230,23 +252,22 @@ export function WalletSection({
         </p>
       ) : null}
 
-      {/* ONE PAY TAB (Pato, 2026-11-16, MESITA-4199: "merge pay and wallet
-          into one page ... call that page Pay"): this section is Pay's lower
-          half, ONE "Pay with" panel of every way to pay: the saved card,
-          Cash, Add a card, then waiting Stories, each Loyalty Card (its House
-          Card on tap) and Add a Loyalty Card. The places above show the same
-          credit as a chip. Two panels until this, Payment Methods and
-          Loyalty Cards (MESITA-4168). */}
-      <WalletPanelList title="Pay with">
-        {cards.map((c) => <SavedCardRow key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
-        <CashRow onOpen={() => setMethod({ kind: "cash" })} />
-        {/* Add is the list's last row (MESITA-3744), and reads "Add" in both
-            lists (Pato, MESITA-3740: "add and add, keep the symmetry"). It
-            leaves once one card is saved (MESITA-4168); Loyalty Cards
-            have no limit. */}
-        {cards.length < MAX_SAVED_CARDS ? (
-          <AddRow line="Add a card" ariaLabel="Add a payment card" href={CONSUMER_ROUTES.walletAddCard} />
-        ) : null}
+      {/* PAYMENT METHODS (Pato, 2026-11-17, MESITA-4232, D8/D11): Cash left,
+          the one card right (MAX_SAVED_CARDS), each saying where the money
+          moves; no card = a dashed Add a card. No panel around them. */}
+      <PaymentMethods>
+        <CashTile onOpen={() => setMethod({ kind: "cash" })} />
+        {cards[0] ? (
+          <CardTile card={cards[0]} onOpen={() => setMethod({ kind: "card", card: cards[0] })} />
+        ) : (
+          <AddCardTile href={CONSUMER_ROUTES.walletAddCard} />
+        )}
+      </PaymentMethods>
+
+      {/* LOYALTY CARDS (MESITA-4232, D9/D10/D13): waiting Stories as their
+          place's pending, then each card with its ready pill and an amber
+          pending line, then Add a Loyalty Card. Empty: one grey line. */}
+      <WalletPanelList title="Loyalty Cards">
         {creditsState === "rows"
           ? stories.map((s) => <StoryRow key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)
           : null}
@@ -258,9 +279,13 @@ export function WalletSection({
                 href={row.card.tap.kind === "link" ? row.card.tap.href : placeHref(row.placeSlug)}
                 gone={row.balance.place === null}
                 eager={shown++ < EAGER_CARDS}
+                ready
+                pendingLine={pendingLine(row.balance, now)}
               />
             ))
           : null}
+        {creditsState === "empty" ? <EmptyLoyaltyLine /> : null}
+        {creditsState === "loading" ? <RowsSkeleton count={2} /> : null}
         {creditsState === "rows" || creditsState === "empty" ? (
           <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" onClick={() => setExplainAdd(true)} />
         ) : null}
