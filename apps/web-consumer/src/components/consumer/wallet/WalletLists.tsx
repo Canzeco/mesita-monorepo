@@ -79,7 +79,7 @@ export function WalletPanelList({
 }) {
   const rows = Children.toArray(children).filter(Boolean);
   return (
-    <Panel className="mt-4" title={title} action={action}>
+    <Panel className="mt-2" title={title} action={action}>
       {rows.length === 0 && fallback ? (
         <div className="p-4 pt-2">{fallback}</div>
       ) : (
@@ -354,7 +354,7 @@ export function AddCardTile({ href }: { href: string }) {
  *  like Loyalty Cards, Cash left and the card right, a hairline between. */
 export function PaymentMethods({ children }: { children: ReactNode }) {
   return (
-    <Panel className="mt-4" title="Payment Methods" data-payment-methods>
+    <Panel className="mt-2" title="Payment Methods" data-payment-methods>
       <div className="border-border divide-border mt-3 grid grid-cols-2 divide-x border-t">{children}</div>
     </Panel>
   );

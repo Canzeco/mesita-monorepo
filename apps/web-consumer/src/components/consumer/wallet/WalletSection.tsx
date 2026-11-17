@@ -250,7 +250,7 @@ export function WalletSection({
   return (
     <div className="flex flex-col" data-wallet>
       {wallet?.settling ? (
-        <p className="text-muted-foreground mt-4 text-sm" role="status">
+        <p className="text-muted-foreground mt-2 px-2 text-sm" role="status">
           Confirming a payment…
         </p>
       ) : null}
@@ -295,7 +295,7 @@ export function WalletSection({
         ) : null}
       </WalletPanelList>
       {creditsState === "failed" ? (
-        <div className="mt-3">
+        <div className="mt-2">
           <EmptyState
             inline
             icon={WalletIcon}

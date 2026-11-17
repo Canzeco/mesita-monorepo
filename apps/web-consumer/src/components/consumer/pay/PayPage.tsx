@@ -143,7 +143,11 @@ export function PayPage({
       : null;
 
   return (
-    <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8 *:shrink-0">
+    // 8PX, NOT 16 (Pato, 2026-11-17, MESITA-4276: "make body margins far
+    // smaller in this page ... it feels like an old mobile app from the
+    // 2010s"): 8px at the sides and 8px between Pay Bill, the doors and each
+    // panel, Home's one step (MESITA-4035); panels keep their 16px insides.
+    <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-8 *:shrink-0">
       {/* The header: the title and Tickets, a quiet grey pill (MESITA-4232).
           "Wallet" since MESITA-4245 (Pato: "the header just saying pay is
           shit"; /autoplan): the page holds your money, the pink Pay Bill is
@@ -157,7 +161,7 @@ export function PayPage({
       {openTabs === null ? (
         <PayBillSkeleton />
       ) : openTabs.length > 0 || pending ? (
-        <div className="mt-4 flex flex-col">
+        <div className="mt-2 flex flex-col">
           <OpenBillPanel
             tab={openTabs[0] ?? null}
             pending={pending}
@@ -194,7 +198,7 @@ export function PayPage({
 function PayBillButton({ here }: { here: PayPlace | null }) {
   const name = here?.name ?? null;
   return (
-    <div className="mt-4 flex flex-col" data-pay-bill>
+    <div className="mt-2 flex flex-col" data-pay-bill>
       <PushLink
         href={here ? payPlacePath(here.place_id) : CONSUMER_ROUTES.payPick}
         className="flex h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl bg-[#635bff] px-4 text-white transition hover:bg-[#5249e6] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[#a5a0ff] focus-visible:ring-offset-2 outline-none"
@@ -224,7 +228,7 @@ function PayBillButton({ here }: { here: PayPlace | null }) {
 /** Pay Bill's shape while the open-bill read runs, so a bill that is open
  *  never flashes the black button first. */
 export function PayBillSkeleton() {
-  return <Skeleton className="mt-4 h-28 w-full rounded-2xl" aria-hidden />;
+  return <Skeleton className="mt-2 h-28 w-full rounded-2xl" aria-hidden />;
 }
 
 /** The open bill on /pay (MESITA-4086): one panel, the place's photo and

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 // with the heading), split by hairlines: never a box in a box, no shadow.
 // Wallet (MESITA-4063/4064) drew it first as WalletPanel; Me's SectionBox
 // (MESITA-4052/4053), the heading above its box, is retired. Panels stack
-// 16px apart; the caller spaces them (Wallet's `mt-4`, Me's `gap-4`).
+// apart by the caller: the Wallet 8px (`mt-2`, MESITA-4276), Me 16px (`gap-4`).
 
 // shrink-0 (MESITA-4078): in a flex-column scroller a panel must never be
 // squeezed when something above it (the bill band) takes height; it was,

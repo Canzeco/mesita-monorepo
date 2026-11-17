@@ -14,7 +14,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
     // /pay (MESITA-4232): the title band, Pay Bill's shape, the three
     // buttons as themselves, then the money in bones.
     return (
-      <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8 *:shrink-0" aria-busy>
+      <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-8 *:shrink-0" aria-busy>
         <PayHeader title="Mesita Wallet" action={<TicketsShortcut />} />
         <PayBillSkeleton />
         <WalletShareGift />

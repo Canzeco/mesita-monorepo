@@ -44,7 +44,7 @@ import { DOOR_GLYPH, DOOR_QUIET } from "./wallet-buttons";
  *  like the Pay Bill QR and the place screen's tiles; the 🎁 is gone. */
 export function WalletShareGift() {
   return (
-    <div className="mt-3 grid grid-cols-2 gap-2" data-wallet-share-gift>
+    <div className="mt-2 grid grid-cols-2 gap-2" data-wallet-share-gift>
       <PushLink
         href={CONSUMER_ROUTES.walletSend}
         className={DOOR_QUIET}
