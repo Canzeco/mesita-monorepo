@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { readCached, writeCached } from "@/lib/screen-cache";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import type { PayCard, PayCards, PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherBasketItem, VoucherKey } from "@mesita/place-profile";
+import type { PayCard, PayCards, PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherBasketItem, VoucherBuyOutcome, VoucherKey } from "@mesita/place-profile";
 import { pickPayCard } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
@@ -408,7 +408,7 @@ export function usePlaceVouchers(
   load: () => Promise<void>;
   /** The Offers page's basket (MESITA-3841) paid with the card it drew
    *  (MESITA-4065); no card opens the card sheet. */
-  buy: (items: VoucherBasketItem[], cardId: string | null) => void;
+  buy: (items: VoucherBasketItem[], cardId: string | null) => Promise<VoucherBuyOutcome>;
   /** The guest's saved cards; undefined signed out or off Mesita. */
   payCards: PayCards | undefined;
   payCardId: string | null;
@@ -498,19 +498,19 @@ export function usePlaceVouchers(
   const pending = useRef<{ key: string; requestId: string; unknown: number } | null>(null);
 
   const buy = useCallback(
-    async (what: VoucherBasketItem[], cardId: string | null) => {
-      if (!mesita) return;
+    async (what: VoucherBasketItem[], cardId: string | null): Promise<VoucherBuyOutcome> => {
+      if (!mesita) return "failed";
       const items = what.filter((i) => i.qty > 0);
-      if (items.length === 0) return;
+      if (items.length === 0) return "failed";
       if (!cardId) {
         openAddCard();
-        return;
+        return "failed";
       }
       const key = `${cardId}|${items.map((i) => `${i.voucher}x${i.qty}`).join(",")}`;
       if (pending.current?.key !== key) pending.current = { key, requestId: crypto.randomUUID(), unknown: 0 };
       if (pending.current.unknown >= 3) {
         toast(BUY_REFUSAL.unconfirmed, { tone: "error" });
-        return;
+        return "failed";
       }
       setBuying(items[0].voucher);
       // One voucher reads exactly as before; a basket sends its lines, one
@@ -534,12 +534,12 @@ export function usePlaceVouchers(
         if (r.card.status === "succeeded" || r.card.status === "processing") {
           pending.current = null;
           writeLastCard(userKey.current, cardId);
-          if (r.card.status === "succeeded") toast.success(one ? "Voucher bought. The credit is in your Wallet." : "Vouchers bought. The credit is in your Wallet.");
-          else toast("Your bank is confirming the payment. The credit shows in your Wallet once it's through.");
+          // The Offers sheet's receipt says it (MESITA-4224): no toast.
           onPaid.current?.();
-        } else {
-          toast("Your bank didn't confirm the payment.", { tone: "error" });
+          return r.card.status === "succeeded" ? "paid" : "processing";
         }
+        toast("Your bank didn't confirm the payment.", { tone: "error" });
+        return "failed";
       } catch (err: unknown) {
         const code = err instanceof EFError ? err.code : null;
         const status = err instanceof EFError ? err.status : null;
@@ -551,6 +551,7 @@ export function usePlaceVouchers(
         const line = !isDefinitiveRefusal(status, code) && pending.current && pending.current.unknown >= 3 ? BUY_REFUSAL.unconfirmed : action.line;
         toast(line, { tone: "error" });
         if (action.kind === "say" && action.reload) void load();
+        return "failed";
       } finally {
         setBuying(null);
         void load();
@@ -574,7 +575,7 @@ export function usePlaceVouchers(
     buying,
     loading: mesita && mine === null,
     load,
-    buy: (items, cardId) => void buy(items, cardId),
+    buy: (items, cardId) => buy(items, cardId),
     payCards,
     payCardId,
     selectCard,

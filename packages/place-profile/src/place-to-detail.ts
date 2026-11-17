@@ -88,6 +88,8 @@ export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
         pending_cents: n(b.pending_cents) ?? 0,
         held_cents: n(b.held_cents) ?? 0,
         spendable_cents: n(b.spendable_cents) ?? 0,
+        // MESITA-4224: the Offers page's "ready 6:40 pm"; a bad value is no time.
+        next_ready_at: typeof b.next_ready_at === "string" && !Number.isNaN(Date.parse(b.next_ready_at)) ? b.next_ready_at : null,
       }
     : null;
   return {

@@ -1,21 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, Wallet } from "lucide-react";
-import { VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
+import { ChevronLeft, Clock, Wallet } from "lucide-react";
+import { readyClock, VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { money } from "@/lib/api/wallet";
-import { cardAmount } from "@/lib/wallet-card";
 import type { PlaceDetail } from "@/lib/place-detail";
 
-/** The guest's credit here as one number (MESITA-4173): the Wallet card's
- *  own amount, the server's cents, formatted and never added. No balance
- *  read = $0. */
-function creditHere(place: PlaceDetail): { label: string; amount: string } {
+/** The guest's credit here (MESITA-4224): spendable now, and the pending
+ *  part with the time the next of it turns on. The server's cents,
+ *  formatted, never added. Null when no balance was read (signed out). */
+function creditHere(place: PlaceDetail): { label: string; ready: string; pending: string | null } | null {
   const balance = place.money?.balance;
+  if (!balance) return null;
   const currency = place.money?.currency ?? "mxn";
-  const shown = cardAmount({ available_cents: balance?.available_cents ?? 0, pending_cents: balance?.pending_cents ?? 0 });
-  return { label: shown.pending ? "Pending credit here" : "Your credit here", amount: money(shown.cents, currency) };
+  const ready = money(balance.spendable_cents, currency);
+  const at = balance.next_ready_at ? readyClock(balance.next_ready_at) : "";
+  const pending = balance.pending_cents > 0
+    ? `Pending ${money(balance.pending_cents, currency)}${at ? ` · ready ${at}` : ""}`
+    : null;
+  return { label: `Ready now ${ready}${pending ? `. ${pending}` : ""}`, ready, pending };
 }
 
 // THE REWARDS SHEET (Pato, MESITA-3412: "Rewards modal opens when you click
@@ -60,31 +64,46 @@ export function RewardsSheet({
         >
           <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
         </button>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-foreground text-lg leading-tight font-bold">Offers</h2>
-          <p className="text-muted-foreground truncate text-[0.8125rem] leading-tight">{place.name}</p>
+        {/* ONE LINE (Pato, 2026-11-17, MESITA-4224: "the header must only
+            have one line ... the place name and profile picture"): the
+            place's round photo and its name. "Offers" over the name before. */}
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-3">
+          {place.profilePhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={place.profilePhoto} alt="" className="bg-muted h-8 w-8 shrink-0 rounded-full object-cover" />
+          ) : null}
+          <h2 className="text-foreground truncate text-base leading-tight font-semibold">{place.name}</h2>
         </div>
       </header>
       {/* The grey page under the panels (MESITA-4196), as the Reserve page. */}
       <div className="scrollbar-thin-dark bg-background flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4">
-        {/* THE CREDIT AS ONE NUMBER (Pato, MESITA-4173: "it must display
-            current wallet just the number with current amount"): a black
-            card, the label over the amount. The Wallet's Credits row before
-            (MESITA-4060), the top bar's black pill before that. */}
-        <div
-          className="bg-foreground text-paper flex shrink-0 items-center justify-between gap-3 rounded-2xl px-4 py-3"
-          aria-label={`${credit.label}: ${credit.amount}`}
-          data-offers-balance
-        >
-          {/* ONE LINE (MESITA-4221: "shorter … i don't want to scroll"): the
-              label and wallet at the left, the amount at the right. */}
-          <p className="flex min-w-0 items-center gap-2 text-[0.6875rem] font-bold tracking-wider uppercase opacity-80" aria-hidden>
-            <Wallet className="h-5 w-5 shrink-0" strokeWidth={2.25} />
-            <span className="truncate">{credit.label}</span>
-          </p>
-          <p className="shrink-0 text-2xl leading-none font-extrabold tracking-tight tabular-nums" aria-hidden>{credit.amount}</p>
-        </div>
-        <div className="flex flex-1 shrink-0 flex-col pt-3">
+        {/* READY NOW, PENDING AND WHEN (Pato, 2026-11-17, MESITA-4224:
+            "current balance pending balance (for the bonuses)", D3): the big
+            number is what the guest can spend here now; the line under it,
+            only while a bonus waits, says how much and when. Signed out there
+            is no balance and no card (D6). */}
+        {credit ? (
+          <div
+            className="bg-foreground text-paper flex shrink-0 flex-col gap-1 rounded-2xl px-4 py-3"
+            aria-label={credit.label}
+            data-offers-balance
+          >
+            <div className="flex items-center justify-between gap-3" aria-hidden>
+              <p className="flex min-w-0 items-center gap-2 text-[0.6875rem] font-bold tracking-wider uppercase opacity-80">
+                <Wallet className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+                <span className="truncate">Ready now</span>
+              </p>
+              <p className="shrink-0 text-2xl leading-none font-extrabold tracking-tight tabular-nums">{credit.ready}</p>
+            </div>
+            {credit.pending ? (
+              <p className="flex items-center gap-1.5 text-sm tabular-nums opacity-80" aria-hidden data-offers-pending>
+                <Clock className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                <span className="truncate">{credit.pending}</span>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        <div className={credit ? "flex flex-1 shrink-0 flex-col pt-3" : "flex flex-1 shrink-0 flex-col"}>
           {drawn != null ? <VouchersPane key={actions?.askedVoucher ?? "none"} place={place} actions={actions} /> : null}
         </div>
       </div>

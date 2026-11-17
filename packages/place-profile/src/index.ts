@@ -39,7 +39,7 @@ export {
   type OfferInput,
   type OfferSlide,
 } from "./components/place-detail/offer-slides";
-export { VouchersPane, voucherOffers, type VoucherOffer } from "./components/place-detail/vouchers";
+export { readyClock, VouchersPane, voucherOffers, type VoucherOffer } from "./components/place-detail/vouchers";
 export { cardExpiry, isCardExpired, MAX_PAY_CARDS, pickPayCard, type PayCard, type PayCards } from "./pay-cards";
 export type {
   PlaceActions,
@@ -47,6 +47,7 @@ export type {
   PlaceCreatingView,
   PlaceMenuItem,
   VoucherBasketItem,
+  VoucherBuyOutcome,
 } from "./actions";
 export type { PlaceBalance, PlaceDetail, PlaceMoney, PlaceScore, VoucherCatalogLine, VoucherKey } from "./place-detail";
 export { VOUCHER_KEYS } from "./place-detail";
