@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgeCheck, Camera, CircleCheck, Clock, CreditCard, Lock, PartyPopper, ShoppingBag, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Camera, CircleCheck, Clock, CreditCard, Lock, PartyPopper, ShoppingBag, Ticket, Utensils, X, Zap, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -409,12 +409,16 @@ export function readyClock(iso: string, now = new Date()): string {
 // work"; D3): who can get it first, then its own steps. Welcome four
 // steps, Story five (buy, post, show the staff, bonus). `locked` on the first
 // step is this guest's reason when that step is what stops them.
-type Step = { Icon: LucideIcon; title: string; line: string; green?: boolean; locked?: string };
+// EACH STEP SAYS WHEN (Pato, 2026-11-17, MESITA-4290: "its not today, its
+// right now instantly ... the money lands instantly and the bonus lands in 3
+// hours. Spend this money here. It never expires"): a small uppercase `when`
+// over the bold line, so the timeline reads Right now → In 3 hours → Anytime.
+type Step = { Icon: LucideIcon; when?: string; title: string; line: string; green?: boolean; locked?: string };
 const IG = Instagram as unknown as LucideIcon;
-function sheetSteps(key: MoneyVoucherKey, pay: string, bonus: string | null, firstLocked: string | null): Step[] {
-  const today: Step = { Icon: Wallet, title: `Today · ${pay} ready to spend`, line: "You pay, and it's yours right away." };
-  const later: Step = { Icon: Clock, title: `In 3 hours · ${bonus ? `+${bonus}` : "your"} bonus`, line: "It lands in your credit by itself.", green: true };
-  const spend: Step = { Icon: Utensils, title: "Spend it here, anytime", line: "On any bill here, all of it or part. It never expires." };
+function sheetSteps(key: MoneyVoucherKey, pay: string, bonus: string | null, firstLocked: string | null, placeName: string): Step[] {
+  const today: Step = { Icon: Zap, when: "Right now", title: `${pay} lands instantly`, line: "It's yours the moment you pay." };
+  const later: Step = { Icon: Clock, when: "In 3 hours", title: `${bonus ? `+${bonus}` : "Your"} bonus lands`, line: "Added to your credit by itself.", green: true };
+  const spend: Step = { Icon: Utensils, when: "Anytime", title: "Spend it here", line: `On any bill at ${placeName}, all or part. It never expires.` };
   const lock = firstLocked ?? undefined;
   switch (key) {
     case "voucher_welcome":
@@ -424,7 +428,7 @@ function sheetSteps(key: MoneyVoucherKey, pay: string, bonus: string | null, fir
         { Icon: IG, title: `Have ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")}+ Instagram followers`, line: "Your Instagram linked in Me. One per visit.", locked: lock },
         // MESITA-4264: the money is ready at payment; the story only earns
         // the bonus, verified from its @mesita mention and approved by staff.
-        { Icon: ShoppingBag, title: `Pay ${pay}, get it now`, line: "It's ready to spend right away." },
+        { Icon: ShoppingBag, when: "Right now", title: `Pay ${pay}, it lands instantly`, line: "It's yours the moment you pay." },
         { Icon: Camera, title: "Post a story tagging @mesita and the place", line: "From a public Instagram account." },
         { Icon: BadgeCheck, title: "Show your QR to the staff", line: "They see your story and approve it." },
         {
@@ -631,13 +635,13 @@ function PaySheet({
               </p>
             ) : null}
             <ol className="flex flex-col py-1" aria-label="How it works" data-offer-steps>
-              {sheetSteps(product.key, whole(pay), bonusAmount ? whole(bonusAmount) : null, stepLock).map((s, i, all) => (
+              {sheetSteps(product.key, whole(pay), bonusAmount ? whole(bonusAmount) : null, stepLock, placeName).map((s, i, all) => (
                 <li key={s.title} className="flex gap-3.5" data-offer-step-locked={s.locked ? "true" : undefined}>
                   {/* The icon column: a round step and the line down to the next. */}
                   <span className="flex flex-col items-center" aria-hidden>
                     <span
                       className={cn(
-                        "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                        "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
                         s.green ? "bg-[#00D66F] text-neutral-950" : "bg-muted text-foreground",
                       )}
                     >
@@ -650,11 +654,22 @@ function PaySheet({
                     </span>
                     {i < all.length - 1 ? <span className="bg-border my-1 w-0.5 flex-1" /> : null}
                   </span>
-                  <span className={cn("flex min-w-0 flex-col pt-1.5", i < all.length - 1 && "pb-4")}>
-                    <span className={cn("text-base leading-snug font-bold tabular-nums", s.green ? "text-[#00A85A]" : "text-foreground")}>
+                  <span className={cn("flex min-w-0 flex-col", s.when ? "pt-0" : "pt-2", i < all.length - 1 && "pb-6")}>
+                    {s.when ? (
+                      <span
+                        className={cn(
+                          "text-xs leading-tight font-bold tracking-wider uppercase",
+                          s.green ? "text-[#00A85A]" : "text-muted-foreground",
+                        )}
+                        data-offer-step-when
+                      >
+                        {s.when}
+                      </span>
+                    ) : null}
+                    <span className={cn("mt-0.5 text-[17px] leading-snug font-bold tabular-nums", s.green ? "text-[#00A85A]" : "text-foreground")}>
                       {s.title}
                     </span>
-                    <span className="text-muted-foreground text-sm leading-snug">{s.line}</span>
+                    <span className="text-muted-foreground mt-0.5 text-sm leading-snug">{s.line}</span>
                     {s.locked ? (
                       <span className="mt-1 text-sm leading-snug font-semibold text-amber-800">{s.locked}</span>
                     ) : null}
