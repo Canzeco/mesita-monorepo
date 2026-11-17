@@ -23,7 +23,7 @@ const OFFER_BOX =
 
 /** ONE SWITCHING BOX (Pato, 2026-11-17, MESITA-4219: "this boxes looks like
  *  shit, return to the switching boxes"): every offer this guest can buy here
- *  in one box the height of Save · Share, Classic · Welcome · Story · VIP, each
+ *  in one box the height of Save · Share, Classic · Welcome · Story, each
  *  in its colour with its "N% Bonus" pill, on the shared 2s beat. A tap opens
  *  the place's Offers with the offer on screen ticked (`?voucher=`). Held only
  *  while a finger is down (MESITA-4217). MESITA-4207's chip list before. */

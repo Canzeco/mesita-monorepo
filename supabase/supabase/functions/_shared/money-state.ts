@@ -34,7 +34,6 @@ export const MONEY_VOUCHER_KEYS = [
   "voucher_5000",
   "voucher_welcome",
   "voucher_story",
-  "voucher_vip",
 ] as const;
 export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
 
@@ -83,7 +82,7 @@ export type VoucherReason =
   | "paused"
   /** Welcome: this guest already had theirs here, or has paid here before. */
   | "used"
-  /** Story and VIP, one each new visit (MESITA-3463): this guest already
+  /** Story, one each new visit (MESITA-3463): this guest already
    *  bought one here for every visit (a paid bill with a card part). */
   | "needs_visit";
 
@@ -102,9 +101,10 @@ export type VoucherReason =
  *  VIP IS PARKED AND STORY IS BACK (Pato, 2026-11-16, MESITA-4197: "Should
  *  we really have VIP or only Story???" ... "hide VIP for the moment"): the
  *  one-time offers are Welcome and Story. */
-export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {
-  voucher_vip: "not_yet",
-};
+//  THE VIP OFFER IS GONE (Pato, 2026-11-17, MESITA-4249: "THE VIP OFFER IS
+//  GONE ACROSS ALL THE APP"): the special offers are Welcome and Story. Its
+//  key left the catalog; place_payment_settings.voucher_vip is a dead column.
+export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
 
 /** Story is for guests whose linked Instagram has MORE than this many
  *  followers (MESITA-3507, Pato: "only available for users that have more

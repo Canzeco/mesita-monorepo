@@ -14,7 +14,7 @@ import type { MoneyCode } from "./money-codes.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
 import { readMoneyConfig } from "./money-config.ts";
-import { readInstagramSyncState, readVipStanding } from "./consumer-doc.ts";
+import { readInstagramSyncState } from "./consumer-doc.ts";
 import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount, VISIT_STATUSES } from "./visits.ts";
 
@@ -93,7 +93,7 @@ export type OfferInput = {
   balance: PlaceBalance | null;
   /** Welcome once: this guest already bought one here, or has paid here. */
   welcomeUsed: boolean;
-  /** Story and VIP, one each new visit (MESITA-3463): true when this guest
+  /** Story, one each new visit (MESITA-3463): true when this guest
    *  already bought one here for every visit they made. Absent reads false. */
   perVisitUsed?: Partial<Record<PerVisitVoucher, boolean>>;
   /** The place has a place code, so the waiter's charge can open (MESITA-3545). */
@@ -101,7 +101,7 @@ export type OfferInput = {
 };
 
 /** This guest's own block on one voucher at one place, or null: Welcome
- *  once per place ("used"), Story and VIP one each new visit
+ *  once per place ("used"), Story one each new visit
  *  ("needs_visit"). One rule for the place screen's offer (offerFrom) and
  *  the list rows (guestSell, MESITA-4207). */
 export function guestReason(
@@ -191,7 +191,7 @@ export async function readWelcomeUsed(admin: SupabaseClient, consumerId: string 
   return (data ?? []).length > 0;
 }
 
-/** Story and VIP, one each new visit (MESITA-3463): each is spent when the
+/** Story, one each new visit (MESITA-3463): each is spent when the
  *  guest's live purchases of it here (not expired or failed) outnumber
  *  their visits here (visits.ts). */
 export async function readPerVisitUsed(
@@ -227,7 +227,7 @@ export function guestSell(sell: readonly MoneyVoucherKey[], blocks: GuestBlocks 
 }
 
 /** The pure half of readGuestBlocks: the guest's live purchases (not expired
- *  or failed) of Welcome, Story and VIP, and their visits (visits.ts), one
+ *  or failed) of Welcome and Story, and their visits (visits.ts), one
  *  row each, grouped by place with readWelcomeUsed's and readPerVisitUsed's
  *  definitions. A place with no purchase row gets no entry (nothing spent). */
 export function guestBlocksFrom(
@@ -407,34 +407,6 @@ export async function readStoryGuest(admin: SupabaseClient, consumerId: string):
   return { instagram_handle: res.handle, instagram_followers_count: res.followers };
 }
 
-/** The buying guest's class (MESITA-3550): the class and the last day it
- *  holds (null = no end). How often VIP sells is MESITA-3463's, one each
- *  new visit, in the offer. */
-export type VipGuest = { guest_class: string | null; vip_until: string | null } | null;
-
-/** VIP's guest gate (MESITA-3550): the VIP class, not past `vip_until`
- *  (compared as YYYY-MM-DD in Mexico City). Null when the guest may buy it.
- *  Any other voucher passes. */
-export function vipRefusal(voucher: MoneyVoucherKey, guest: VipGuest, today: string): BuyRefusal | null {
-  if (voucher !== "voucher_vip") return null;
-  if (guest?.guest_class !== "vip" || (guest.vip_until !== null && guest.vip_until.slice(0, 10) < today)) {
-    return { ok: false, status: 409, code: "not_vip", error: "The VIP voucher is for VIP guests" };
-  }
-  return null;
-}
-
-/** Today's date in Mexico City, YYYY-MM-DD, for vip_until. */
-export function mexicoToday(now: Date): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(now);
-}
-
-/** The buying guest's class, for vipRefusal, through the consumer door. */
-export async function readVipGuest(admin: SupabaseClient, consumerId: string): Promise<VipGuest> {
-  const res = await readVipStanding(admin, consumerId);
-  if (!res.ok) throw new Error(`consumers: ${res.message}`);
-  return res.row;
-}
-
 /** What a voucher's Stripe object carries: the saved card's PaymentIntent
  *  (MESITA-3552; the Checkout went with MESITA-4065): the receiver reads
  *  mesita_kind and purchase_id. */
@@ -474,11 +446,11 @@ export type BasketItem = { voucher: MoneyVoucherKey; qty: number };
 
 /** At most this many of one voucher in a basket (Small and Big). */
 export const BASKET_MAX_QTY = 5;
-/** Once per guest per place (Welcome) or one each visit (VIP): one unit. */
-export const BASKET_ONE_ONLY: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_welcome", "voucher_vip", "voucher_story"]);
+/** Once per guest per place (Welcome) or one each visit (Story): one unit. */
+export const BASKET_ONE_ONLY: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_welcome", "voucher_story"]);
 
 /** The request's basket: `items: [{voucher, qty}]`, or the old one-voucher
- *  `voucher` as a basket of one. Known keys, whole qty 1..5, Welcome / VIP /
+ *  `voucher` as a basket of one. Known keys, whole qty 1..5, Welcome and
  *  Story at most 1, no key twice. Pure. */
 export function parseBasket(body: { items?: unknown; voucher?: unknown }): { ok: true; items: BasketItem[] } | { ok: false; error: string } {
   const isKey = (v: unknown): v is MoneyVoucherKey => typeof v === "string" && (MONEY_VOUCHER_KEYS as readonly string[]).includes(v);
@@ -508,7 +480,7 @@ export function parseBasket(body: { items?: unknown; voucher?: unknown }): { ok:
 /** Catalog order, Welcome first: the lead is the first unit, so Welcome's
  *  once-per-guest index answers on the lead's write exactly as a one-voucher
  *  buy does. */
-const BASKET_ORDER: readonly MoneyVoucherKey[] = ["voucher_welcome", "voucher_vip", "voucher_story", "voucher_200", "voucher_1000", "voucher_5000"];
+const BASKET_ORDER: readonly MoneyVoucherKey[] = ["voucher_welcome", "voucher_story", "voucher_200", "voucher_1000", "voucher_5000"];
 
 /** The basket as voucher units, one per row to write: the lead first. Pure. */
 export function basketUnits(items: readonly BasketItem[]): MoneyVoucherKey[] {
@@ -545,7 +517,6 @@ export function voucherName(k: MoneyVoucherKey, currency: string = MONEY_CURRENC
       return `${moneyText(catalogLines(currency)[k].price_cents, currency)} voucher`;
     case "voucher_welcome": return "Welcome voucher";
     case "voucher_story": return "Story voucher";
-    case "voucher_vip": return "VIP voucher";
   }
 }
 

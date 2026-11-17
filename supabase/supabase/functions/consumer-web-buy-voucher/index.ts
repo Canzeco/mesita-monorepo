@@ -41,7 +41,7 @@
 //   409 card_declined (+decline_code) | card_needs_auth | closed | in_progress
 //   404 place · 409 no_account | currency_mismatch | paused | not_available |
 //   not_yet | needs_card_payments | needs_instagram | few_followers (Story) |
-//   not_vip (VIP) | welcome_used | below_minimum | place_cap (MESITA-3947)
+//   welcome_used | below_minimum | place_cap (MESITA-3947)
 //   502 card_failed | stripe_unreachable · 503 payments not configured
 // The client secret of a bank check is returned, never logged.
 
@@ -58,13 +58,10 @@ import { purchaseStore } from "../_shared/purchase-pi.ts";
 import {
   basketUnits,
   buyRefusal,
-  mexicoToday,
   parseBasket,
   readStoryGuest,
-  readVipGuest,
   sameUnits,
   storyRefusal,
-  vipRefusal,
   voucherOffer,
 } from "../_shared/vouchers.ts";
 import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
@@ -147,11 +144,6 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   if (kinds.includes("voucher_story")) {
     const story = storyRefusal("voucher_story", await readStoryGuest(admin, userId));
     if (story) return json({ ok: false, code: story.code, error: story.error }, story.status);
-  }
-  // VIP's own gate: the VIP class (MESITA-3550); one each visit is the offer's.
-  if (kinds.includes("voucher_vip")) {
-    const vip = vipRefusal("voucher_vip", await readVipGuest(admin, userId), mexicoToday(new Date()));
-    if (vip) return json({ ok: false, code: vip.code, error: vip.error }, vip.status);
   }
 
   const key = paymentsStripeKey();

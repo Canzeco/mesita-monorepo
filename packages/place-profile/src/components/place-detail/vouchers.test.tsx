@@ -12,11 +12,11 @@ import { pesos, readyClock, VouchersPane } from "./vouchers";
 const OFFER: PlaceMoney = {
   charges_enabled: true,
   mesita_pay: true,
-  vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_welcome: true, voucher_story: false, voucher_vip: false },
+  vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_welcome: true, voucher_story: false },
   test_mode: true,
   currency: "mxn",
   sell: ["voucher_200", "voucher_1000"],
-  unavailable: { voucher_5000: "not_yet", voucher_welcome: "used", voucher_story: "off", voucher_vip: "off" },
+  unavailable: { voucher_5000: "not_yet", voucher_welcome: "used", voucher_story: "off" },
   catalog: {
     voucher_200: { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 },
     voucher_1000: { price_cents: 100000, bonus_cents: 20000, credit_cents: 120000, available_after_sec: 3600 },
@@ -29,17 +29,16 @@ function render(money: PlaceMoney | undefined, onBuyVoucher?: () => void): strin
 }
 
 describe("Vouchers tab", () => {
-  // VIP is parked (MESITA-4197): shown locked, never for sale, for every
-  // guest, even a VIP one (MESITA-4220: "DISPLAY VIP EVEN IF BLOCKED").
-  it("lists Story, and the parked VIP locked with no selector, even for a VIP guest (MESITA-4220)", () => {
+  // The VIP offer is gone (MESITA-4249): Welcome and Story are the specials.
+  it("lists Story and no VIP offer (MESITA-4249)", () => {
     const html = renderToStaticMarkup(
       <VouchersPane
         place={{ money: OFFER, name: "Probe", photos: [] } as unknown as PlaceDetail}
-        actions={{ onBuyVoucher: () => {}, guest: { vip: true, instagramLinked: true } }}
+        actions={{ onBuyVoucher: () => {}, guest: { instagramLinked: true } }}
       />,
     );
     expect(row(html, "voucher_story")).toContain("Story");
-    expect(row(html, "voucher_vip")).toContain("data-voucher-locked");
+    expect(html).not.toContain('data-voucher="voucher_vip"');
     expect(row(html, "voucher_200")).not.toContain("data-voucher-locked");
   });
 

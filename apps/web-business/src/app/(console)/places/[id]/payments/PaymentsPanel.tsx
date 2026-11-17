@@ -47,7 +47,6 @@ import type { Icon } from "@phosphor-icons/react";
 import {
   ArrowSquareOutIcon,
   ConfettiIcon,
-  CrownIcon,
   CreditCardIcon,
   DeviceMobileIcon,
   InstagramLogoIcon,
@@ -98,10 +97,10 @@ type Product = { key: PaymentKey; name: string; line: string; value: string; ton
 // 20% · 10 USD 10% · 100 USD 20% ... all small must start with 1 and big be
 // 10X that"). TWIN of VOUCHER_PRICE_CENTS in _shared/money.ts.
 // The base price per currency, in whole units (MESITA-3943: the three); Small
-// 2×, Medium 10×, Big 50× (MESITA-4152), Welcome · Story · VIP at the base. TWIN of
+// 2×, Medium 10×, Big 50× (MESITA-4152), Welcome · Story at the base. TWIN of
 // VOUCHER_CURRENCY_LIST in _shared/money.ts.
 const SMALL: Record<string, number> = { MXN: 100, USD: 10, CAD: 10 };
-const TIMES: Record<VoucherKey, number> = { voucher_200: 2, voucher_1000: 10, voucher_5000: 50, voucher_welcome: 1, voucher_story: 1, voucher_vip: 1 };
+const TIMES: Record<VoucherKey, number> = { voucher_200: 2, voucher_1000: 10, voucher_5000: 50, voucher_welcome: 1, voucher_story: 1 };
 const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = Object.fromEntries(
   Object.entries(SMALL).map(([c, small]) => [
     c,
@@ -122,7 +121,6 @@ const STANDARD: VoucherSeed[] = [
 const SPECIAL: VoucherSeed[] = [
   { key: "voucher_welcome", name: "Welcome Voucher", bps: 10000, tail: "One per guest at your place.", value: "+100%", tone: "bg-blue-100 text-blue-700", icon: ConfettiIcon },
   { key: "voucher_story", name: "Story Voucher", bps: 5000, tail: "After posting an Instagram story at your place.", value: "+50%", tone: "bg-pink-100 text-pink-700", icon: InstagramLogoIcon },
-  { key: "voucher_vip", name: "VIP Voucher", bps: 10000, tail: "VIP guests only.", value: "+100%", tone: "bg-green-100 text-green-700", icon: CrownIcon },
 ];
 
 /** The voucher rows in the place's currency; none where vouchers aren't sold. */

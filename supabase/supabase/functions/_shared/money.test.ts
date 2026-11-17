@@ -63,14 +63,12 @@ Deno.test("Stripe gets yen and Chilean pesos in whole units; the ledger keeps hu
   assertEquals(voucherBonusCents("voucher_1000"), 200_00);
   assertEquals(voucherBonusCents("voucher_5000"), 1_500_00);
   assertEquals(voucherBonusCents("voucher_welcome"), 100_00);
-  // Welcome and VIP are MX$100 +100% (MESITA-3835): MX$100 bonus.
-  assertEquals(voucherBonusCents("voucher_vip"), 100_00);
-  assertEquals(VOUCHER_CATALOG.voucher_vip.price_cents, 100_00);
+  // No VIP offer (MESITA-4249).
+  assertEquals("voucher_vip" in VOUCHER_CATALOG, false);
   assertEquals(voucherFeeCents("voucher_200"), 10_00);
   assertEquals(VOUCHER_CATALOG.voucher_200.available_after_sec, 10800);
   // Every voucher waits an hour except Story (MESITA-3323) and Welcome (MESITA-4198).
   assertEquals(VOUCHER_CATALOG.voucher_welcome.available_after_sec, 10800);
-  assertEquals(VOUCHER_CATALOG.voucher_vip.available_after_sec, 10800);
   assertEquals(VOUCHER_CATALOG.voucher_story.available_after_sec, 10800);
   // Story is MX$100 +50% (MESITA-4207): MX$50 bonus, MX$150 of credit.
   assertEquals(voucherPriceCents("voucher_story"), 100_00);

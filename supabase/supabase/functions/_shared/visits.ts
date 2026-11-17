@@ -13,7 +13,7 @@
 //                 apart from card_cents, and start-payment refuses a tip
 //                 with no card part), an open, failed or expired row
 //
-// Readers: the Story and VIP vouchers, one each new visit (vouchers.ts,
+// Readers: the Story voucher, one each new visit (vouchers.ts,
 // perVisitUsed). Welcome has its own gate (readWelcomeUsed: once per place,
 // any visit, MESITA-3854).
 
@@ -44,7 +44,7 @@ export async function readVisitCount(admin: SupabaseClient, consumerId: string |
 }
 
 /** The vouchers sold one each new visit (Docs › Main §6). */
-export const PER_VISIT_VOUCHERS = ["voucher_story", "voucher_vip"] as const;
+export const PER_VISIT_VOUCHERS = ["voucher_story"] as const;
 export type PerVisitVoucher = (typeof PER_VISIT_VOUCHERS)[number];
 
 /** One each new visit: the first may be bought before any visit (the guest

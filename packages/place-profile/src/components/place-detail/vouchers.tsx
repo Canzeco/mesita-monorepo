@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgeCheck, Camera, CircleCheck, Clock, CreditCard, Crown, Lock, PartyPopper, ShoppingBag, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Camera, CircleCheck, Clock, CreditCard, Lock, PartyPopper, ShoppingBag, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -116,7 +116,6 @@ const STANDARD: Product[] = [
 const SPECIAL: Product[] = [
   { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $200.00MX.", limit: "One per place.", bonus: "100% bonus", short: "Welcome", brief: "One per place" },
   { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $150.00MX.", limit: "One per day.", bonus: "50% bonus", short: "Story", brief: "Post a story · 1/day" },
-  { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $200.00MX.", when: "VIP guests only.", limit: "One per day.", bonus: "100% bonus", short: "VIP", brief: "VIP guests · 1/day" },
 ];
 
 /** "$1,200.00MX" from cents: always two decimals (MESITA-3767). Formatting
@@ -198,7 +197,6 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
     // like instagram"; soft tints). Every offer green from MESITA-4181.
     voucher_welcome: { ...green, card: VOUCHER_TONE.voucher_welcome, Mark: PartyPopper },
     voucher_story: { ...green, card: VOUCHER_TONE.voucher_story, Mark: Instagram },
-    voucher_vip: { ...green, card: VOUCHER_TONE.voucher_vip, Mark: Crown },
   };
 })();
 
@@ -240,14 +238,12 @@ function readyIn(key: MoneyVoucherKey): string {
 function offerStatus(
   key: MoneyVoucherKey,
   can: boolean,
-  lock: "vip" | "instagram" | "followers" | null,
+  lock: "instagram" | "followers" | null,
   reason: VoucherReason | undefined,
 ): InfoStatus {
-  if (lock === "vip") return { ok: false, text: "You're not in the VIP Class yet." };
   if (lock === "instagram") return { ok: false, text: "Link your Instagram to use Story offers." };
   if (lock === "followers") return { ok: false, text: `Your Instagram needs more than ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} followers.` };
   if (can) {
-    if (key === "voucher_vip") return { ok: true, text: "You're in the VIP Class. You can buy this." };
     if (key === "voucher_welcome") return { ok: true, text: "Available: one per place." };
     if (key === "voucher_story") return { ok: true, text: "Available. One per visit." };
     return { ok: true, text: "Available. Buy as many as you like." };
@@ -260,7 +256,7 @@ function offerStatus(
 
 /** The Offers page (MESITA-3412: the host's sheet off Prepay; it was the
  *  fourth tab). Prepayments only since MESITA-4062. */
-type GuestLock = "vip" | "instagram" | "followers" | null;
+type GuestLock = "instagram" | "followers" | null;
 
 /** Who may buy what, once for every list of the six vouchers (VouchersPane,
  *  and the House Card's Vouchers via voucherOffers, MESITA-3822). */
@@ -278,7 +274,6 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
       voucher_5000: money?.vouchers.voucher_5000 === true,
       voucher_welcome: money?.vouchers.voucher_welcome === true,
       voucher_story: money?.vouchers.voucher_story === true,
-      voucher_vip: money?.vouchers.voucher_vip === true,
     },
     money ? { charges_enabled: money.charges_enabled } : null,
     null,
@@ -292,11 +287,10 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
   // IN TEST MODE NOTHING IS GREYED (Pato, MESITA-3334); live mode dims a row
   // not for sale.
   const dim = money?.test_mode !== true;
-  // THE GUEST'S OWN LOCKS (MESITA-3502): VIP is for the VIP Class, Story needs
-  // a linked Instagram. Unknown guest (no profile read), no lock.
+  // THE GUEST'S OWN LOCKS (MESITA-3502): Story needs a linked Instagram with
+  // enough followers; no offer names a Class (MESITA-4249). Unknown guest (no profile read), no lock.
   const guestLock = (k: MoneyVoucherKey): GuestLock => {
     if (!guest) return null;
-    if (k === "voucher_vip" && !guest.vip) return "vip";
     if (k === "voucher_story" && !guest.instagramLinked) return "instagram";
     // MESITA-3507: the server refuses Story at STORY_MIN_FOLLOWERS or fewer.
     if (k === "voucher_story" && guest.instagramFollowers != null && guest.instagramFollowers <= STORY_MIN_FOLLOWERS) {
@@ -308,7 +302,7 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
   // paused (Pato, MESITA-3342: "must be buyable or whatever").
   const buyable = (k: MoneyVoucherKey) => {
     if (guestLock(k)) return false;
-    // A parked voucher (NOT_YET_SELLABLE, VIP today) is shown but stays
+    // A parked voucher (NOT_YET_SELLABLE, none today) is shown but stays
     // locked even in test mode; the server refuses the buy (MESITA-4220).
     if (NOT_YET_SELLABLE[k]) return false;
     const reason = unavailable[k];
@@ -354,7 +348,7 @@ const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<M
   {
     id: "special",
     title: "Special Offers",
-    keys: new Set(["voucher_welcome", "voucher_story", "voucher_vip"]),
+    keys: new Set(["voucher_welcome", "voucher_story"]),
   },
   {
     id: "prepayment",
@@ -411,13 +405,11 @@ export function readyClock(iso: string, now = new Date()): string {
  *  step in green. Four grey bullets from MESITA-4224. */
 // EACH SPECIAL TELLS ITS OWN STORY (Pato, 2026-11-17, MESITA-4234: "same for
 // all the other vouchers ... actually explain clearly and pretty how they
-// work"; D3): who can get it first, then its own steps. Welcome and VIP four
+// work"; D3): who can get it first, then its own steps. Welcome four
 // steps, Story five (buy, post, show the staff, bonus). `locked` on the first
 // step is this guest's reason when that step is what stops them.
 type Step = { Icon: LucideIcon; title: string; line: string; green?: boolean; locked?: string };
 const IG = Instagram as unknown as LucideIcon;
-/** VIP is 5,000+ Instagram followers (web-consumer class-words VIP_FOLLOWERS, MESITA-3864). */
-const VIP_FOLLOWERS_LABEL = "5,000+";
 function sheetSteps(key: MoneyVoucherKey, pay: string, bonus: string | null, firstLocked: string | null): Step[] {
   const today: Step = { Icon: Wallet, title: `Today · ${pay} ready to spend`, line: "You pay, and it's yours right away." };
   const later: Step = { Icon: Clock, title: `In 3 hours · ${bonus ? `+${bonus}` : "your"} bonus`, line: "It lands in your credit by itself.", green: true };
@@ -426,8 +418,6 @@ function sheetSteps(key: MoneyVoucherKey, pay: string, bonus: string | null, fir
   switch (key) {
     case "voucher_welcome":
       return [{ Icon: PartyPopper, title: "Your first visit here", line: "One per place, only before you've ever paid here.", locked: lock }, today, later, spend];
-    case "voucher_vip":
-      return [{ Icon: Crown, title: "Be in Mesita's VIP Class", line: `${VIP_FOLLOWERS_LABEL} Instagram followers. One per visit.`, locked: lock }, today, later, spend];
     case "voucher_story":
       return [
         { Icon: IG, title: `Have ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")}+ Instagram followers`, line: "Your Instagram linked in Me. One per visit.", locked: lock },
@@ -444,7 +434,6 @@ function sheetSteps(key: MoneyVoucherKey, pay: string, bonus: string | null, fir
 /** The first step's lock for this guest, when that step is what stops them. */
 function firstStepLock(key: MoneyVoucherKey, lock: GuestLock, reason: VoucherReason | undefined): string | null {
   if (key === "voucher_welcome" && reason === "used") return "You already had yours here.";
-  if (key === "voucher_vip" && lock === "vip") return "You're not in the VIP Class yet.";
   if (key === "voucher_story" && lock === "instagram") return "Link your Instagram to use Story.";
   if (key === "voucher_story" && lock === "followers") return `Your Instagram needs more than ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`;
   return null;
@@ -454,7 +443,6 @@ function firstStepLock(key: MoneyVoucherKey, lock: GuestLock, reason: VoucherRea
 function sheetLimit(key: MoneyVoucherKey): string {
   if (key === "voucher_welcome") return "One per place · first visit";
   if (key === "voucher_story") return "1,000+ followers · one per visit";
-  if (key === "voucher_vip") return "VIP Class · one per visit";
   return "Buy as many as you like";
 }
 
@@ -790,11 +778,9 @@ export function VouchersPane({
     const get = creditValue(p, line, currency);
     const can = buyable(p.key);
     const lock = guestLock(p.key);
-    const unlock = lock === "vip" && actions?.onJoinVip
-      ? { label: "Request VIP", onClick: actions.onJoinVip }
-      : lock === "instagram" && actions?.onLinkInstagram
-        ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
-        : null;
+    const unlock = lock === "instagram" && actions?.onLinkInstagram
+      ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
+      : null;
     const bonusAmount = line ? pesos(line.bonus_cents, currency) : null;
     const onPay = async (): Promise<Receipt | null> => {
       if (!live) return null;

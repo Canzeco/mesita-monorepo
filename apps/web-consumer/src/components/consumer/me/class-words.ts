@@ -10,8 +10,9 @@
 //
 // CLASS IS NOT PLAN (see ClassSheet): nothing here names a plan, a price or
 // a buy. CLASS IS AUTOMATIC (Pato, MESITA-3850: "more than 5K followers. you
-// are VIP. easy peasy"; 5,000 or more since MESITA-3864): nothing here joins
-// or leaves one.
+// are VIP. easy peasy"; more than 1,000 since MESITA-4249, Pato 2026-11-17:
+// "to be VIP you only need more than 1,000 followers"): nothing here joins or
+// leaves one. No offer names a Class (MESITA-4249: the VIP offer is gone).
 
 /** A class as a card (MESITA-3905): its name and what it brings, as checks. */
 export type ClassRowWords = {
@@ -19,18 +20,18 @@ export type ClassRowWords = {
   perks: readonly string[];
 };
 
-/** The VIP bar (MESITA-3864): 5,000 verified followers or more. The server
+/** The VIP bar (MESITA-4249): MORE THAN 1,000 verified followers. The server
  *  owns the rule (consumers.guest_class is generated); this is only for the
  *  progress line and must equal it. */
-export const VIP_FOLLOWERS = 5000;
+export const VIP_FOLLOWERS = 1000;
 
 /** The status card's words (MESITA-3873). */
 export const CLASS_STATUS = {
   title: { regular: "Regular Class", vip: "VIP Class" },
-  noInstagram: "Connect your Instagram. At 5,000 followers you're VIP.",
+  noInstagram: "Connect your Instagram. Above 1,000 followers you're VIP.",
   toGo: (n: string) => `${n} more followers to VIP`,
   countUnknown: "Sync your followers to see how close you are to VIP.",
-  vip: "You get the VIP voucher where a place offers it.",
+  vip: "You're VIP: more than 1,000 Instagram followers.",
   unknown: "Couldn't load your class.",
   connect: { label: "Connect Instagram", sub: "Takes a minute" },
   sync: "Sync your followers",
@@ -48,8 +49,7 @@ export const CLASS_ROWS = {
   vip: {
     title: "VIP",
     perks: [
-      "5,000 or more Instagram followers",
-      "The VIP voucher where a place offers it",
+      "More than 1,000 Instagram followers",
       "Never sold",
     ],
   },

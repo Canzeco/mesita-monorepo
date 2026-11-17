@@ -80,16 +80,14 @@ export type PlaceActions = {
   /** The Offers tile's Pay slide (MESITA-3352, MESITA-4151): opens the
    *  host's Pay page. Absent, that slide is inert (admin's preview). */
   onPay?: () => void;
-  /** The guest's own facts for the Offers (i) status (MESITA-3502): VIP needs
-   *  the VIP Class, Story a linked Instagram. Absent (signed out, admin's
+  /** The guest's own facts for the Offers (i) status (MESITA-3502): Story
+   *  needs a linked Instagram. Absent (signed out, admin's
    *  preview, profile not read yet), no guest lock is drawn. */
   /** instagramFollowers (MESITA-3507): Story needs more than STORY_MIN_FOLLOWERS; absent reads as unknown, no lock. */
-  guest?: { vip: boolean; instagramLinked: boolean; instagramFollowers?: number | null };
+  guest?: { instagramLinked: boolean; instagramFollowers?: number | null };
   /** The voucher a Home offer chip asked for (MESITA-4207, `?voucher=`):
    *  the Offers page opens with it ticked when this guest can buy it. */
   askedVoucher?: string | null;
-  /** Request VIP in the VIP (i): the host's VIP Class page. */
-  onJoinVip?: () => void;
   /** Link Instagram in the Story (i): the host's Instagram page. */
   onLinkInstagram?: () => void;
 };
@@ -108,7 +106,7 @@ export function inertButtonProps(live: boolean): {
 }
 
 /** Why the Offers sheet opened (MESITA-3412): Prepay and the Wallet at
- *  `prepayment`, the Home offer button's Welcome, Story and VIP slides at
+ *  `prepayment`, the Home offer button's Welcome and Story slides at
  *  `special` (MESITA-3467). Both show the same one section; "payment" went
  *  with the Payments card (MESITA-4062). */
 export type RewardsSection = "prepayment" | "special";

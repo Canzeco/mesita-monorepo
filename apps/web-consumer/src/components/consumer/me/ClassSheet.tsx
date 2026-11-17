@@ -10,12 +10,12 @@
 // live in class-words.ts.
 //
 // CLASS IS AUTOMATIC (MESITA-3850, MESITA-3864): VIP is a verified Instagram
-// with 5,000 followers or more, computed by the database
+// with more than 1,000 followers (MESITA-4249), computed by the database
 // (consumers.guest_class is a generated column). No button joins or leaves.
 //
 // THE GUEST'S OWN CLASS ON TOP (MESITA-3873, Pato: "display you current class
 // … and a shortcut to connect instagram"): a status card (class, one line, a
-// bar to 5,000 while Regular and connected) with the Instagram door under it,
+// bar to 1,000 while Regular and connected) with the Instagram door under it,
 // then the two classes with a You pill on the guest's own. A failed profile
 // read never guesses a class.
 //
@@ -74,7 +74,7 @@ function StatusCrown({ vip }: { vip: boolean }) {
   );
 }
 
-/** "1,240 followers … 5,000" over a thin bar (the MESITA-3054 bar, back). */
+/** "640 followers … 1,000" over a thin bar (the MESITA-3054 bar, back). */
 function FollowerProgress({ followers }: { followers: number }) {
   const share = Math.min(followers / VIP_FOLLOWERS, 1);
   return (
@@ -172,7 +172,7 @@ function ClassCard({ title, perks }: ClassRowWords) {
 }
 
 /** The guest's own class (decision 1D): the crown, the class with its
- *  Current pill, where they stand, the bar to 5,000, its perks. */
+ *  Current pill, where they stand, the bar to 1,000, its perks. */
 function MyClassCard({ guestClass, handle, followers }: { guestClass: GuestClass; handle: string | null; followers: number | null }) {
   const vip = guestClass === "vip";
   const line = vip
@@ -181,7 +181,7 @@ function MyClassCard({ guestClass, handle, followers }: { guestClass: GuestClass
       ? CLASS_STATUS.noInstagram
       : followers === null
         ? CLASS_STATUS.countUnknown
-        : CLASS_STATUS.toGo(count(Math.max(VIP_FOLLOWERS - followers, 0)));
+        : CLASS_STATUS.toGo(count(Math.max(VIP_FOLLOWERS + 1 - followers, 0)));
   const words = CLASS_ROWS[guestClass];
   return (
     <div className="p-4" aria-label={words.title} data-class-row={words.title} data-class-status={guestClass}>

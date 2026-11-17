@@ -32,7 +32,6 @@ const ALL_ON: PaymentSettings = {
   voucher_5000: true,
   voucher_welcome: true,
   voucher_story: true,
-  voucher_vip: true,
 };
 
 const ACCOUNT: AccountRow = {
