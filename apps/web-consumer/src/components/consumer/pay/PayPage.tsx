@@ -41,7 +41,7 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 // D3-D13):
 //
 //   Wallet ................................... [Tickets] (grey)  (MESITA-4245)
-//   [ ▦ Pay Bill ]  80px, Mesita pink, the loudest thing (MESITA-4240)
+//   [ ▦ Pay Bill ]  56px, ink black, the one dark thing (MESITA-4254)
 //   [ Buy Credits ] [ Send Gift ] [ Share Mesita ]  grey, no box
 //   Payment Methods: [ Cash · Outside the app ] [ Visa ••4242 · In the app ]
 //   Loyalty Cards: rows, black pill = ready, amber line = pending
@@ -152,7 +152,7 @@ export function PayPage({
       <PayHeader title="Mesita Wallet" action={<TicketsShortcut />} />
 
       {/* PAY BILL (Pato, 2026-11-17, MESITA-4232: "GIANT BUTTON … CALL THAT
-          PAY BILL"): the page's loudest thing (pink since MESITA-4240), first. With a bill open it
+          PAY BILL"): the page's one dark thing (native black since MESITA-4254), first. With a bill open it
           IS the bill (D4): the amber panel, Continue bill and Cancel bill. */}
       {openTabs === null ? (
         <PayBillSkeleton />
@@ -180,14 +180,13 @@ export function PayPage({
   );
 }
 
-/** Pay Bill (MESITA-4232; one centred line since MESITA-4236, Pato: "I THINK
- *  THAT THE QR IS SUPER INTUITIVE"). MESITA-4240 (Pato: "make it super
- *  visible, almost screaming"): Mesita pink (brand pink-600, the shade white
- *  clears AA on; brand.json names brand pink THE primary-button colour), 80px,
- *  a 40px QR and the label at text-2xl; the only pink on Pay. It was black
- *  and 52px, the three boxes' height.
- *  At a place it reads "Pay Bill at <place>" and opens that place's bill,
- *  with "Other place" under it for the picker; otherwise it opens the picker
+/** Pay Bill (MESITA-4232). A NATIVE PAY BUTTON since MESITA-4254 (Pato: "THE
+ *  PAY BUTTON LOOKS LIKE SHIT … AN OLD 2010s app"; picked option A of the
+ *  options page): ink black, 56px, one centred line, an 18px QR and "Pay
+ *  Bill" at text-base semibold, like Apple Pay or Stripe; the page's one dark
+ *  thing. It was a pink 80px slab (MESITA-4240) and black 52px before. At a
+ *  place it reads "Pay Bill at <place>" and opens that place's bill, with
+ *  "Other place" under it for the picker; otherwise it opens the picker
  *  (/pay/pick). */
 function PayBillButton({ here }: { here: PayPlace | null }) {
   const name = here?.name ?? null;
@@ -195,12 +194,12 @@ function PayBillButton({ here }: { here: PayPlace | null }) {
     <div className="mt-4 flex flex-col" data-pay-bill>
       <PushLink
         href={here ? payPlacePath(here.place_id) : CONSUMER_ROUTES.payPick}
-        className="flex h-20 w-full items-center justify-center gap-3 rounded-2xl bg-[var(--brand-pink-600)] px-4 text-white transition hover:bg-[var(--brand-pink-700)] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[var(--brand-pink-300)] focus-visible:ring-offset-2 outline-none"
+        className="bg-foreground text-paper flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-4 transition hover:opacity-90 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2 outline-none"
         aria-label={name ? `Pay Bill at ${name}` : "Pay Bill"}
         data-pay-bill-button
       >
-        <QrCode className="h-10 w-10 shrink-0" strokeWidth={2} aria-hidden />
-        <span className="min-w-0 truncate text-2xl font-bold">{name ? `Pay Bill at ${name}` : "Pay Bill"}</span>
+        <QrCode className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
+        <span className="min-w-0 truncate text-base font-semibold tracking-tight">{name ? `Pay Bill at ${name}` : "Pay Bill"}</span>
       </PushLink>
       {here ? (
         <PushLink
@@ -218,7 +217,7 @@ function PayBillButton({ here }: { here: PayPlace | null }) {
 /** Pay Bill's shape while the open-bill read runs, so a bill that is open
  *  never flashes the black button first. */
 export function PayBillSkeleton() {
-  return <Skeleton className="mt-4 h-20 w-full rounded-2xl" aria-hidden />;
+  return <Skeleton className="mt-4 h-14 w-full rounded-2xl" aria-hidden />;
 }
 
 /** The open bill on /pay (MESITA-4086): one panel, the place's photo and
