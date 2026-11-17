@@ -80,7 +80,7 @@ function noopSubscribe() {
   return () => {};
 }
 
-/** The ask came from a House Card's Buy Credits (MESITA-3883): closing the
+/** The ask came from a Loyalty Card's Buy Credits (MESITA-3883): closing the
  *  Offers page goes back there, not down to the profile. */
 function readFromWallet(): boolean {
   return new URLSearchParams(window.location.search).get("from") === "wallet";
@@ -131,12 +131,12 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
-  // A PAID VOUCHER ENDS ON THE HOUSE CARD (Pato, MESITA-4055: "don't
+  // A PAID VOUCHER ENDS ON THE LOYALTY CARD (Pato, MESITA-4055: "don't
   // redirect to prepay, maybe redirect to wallet … and don't leave that
   // open"). A saved card's payment that succeeded or is processing closes
   // the Offers page, drops ?rewards and ?from so Back never reopens it, and
-  // opens this place's House Card, where Stripe's page already lands
-  // (MESITA-3617). Asked from the House Card, it goes back there.
+  // opens this place's Loyalty Card, where Stripe's page already lands
+  // (MESITA-3617). Asked from the Loyalty Card, it goes back there.
   const vouchers = usePlaceVouchers(place.id, {
     onPaid: () => {
       setRewards(null);
@@ -399,7 +399,7 @@ function usePlaceReservation(placeId: string): {
 export function usePlaceVouchers(
   placeId: string,
   /** `onPaid` runs when a card payment succeeded or is still processing, never
-   *  on a declined, abandoned or failed attempt: the House Card reads the
+   *  on a declined, abandoned or failed attempt: the Loyalty Card reads the
    *  Wallet again from it (MESITA-3868). */
   opts: { onPaid?: () => void } = {},
 ): {

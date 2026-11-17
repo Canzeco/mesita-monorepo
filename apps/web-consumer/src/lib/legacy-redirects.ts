@@ -39,7 +39,7 @@ const ROW_ID =
 export const LEGACY_REDIRECTS: Redirect[] = [
   // THE ADDRESSES SAY THE PRODUCT'S WORDS (MESITA-4013). The bill was
   // /pay/tab/<id> ("tab" is the bar's word); a Google place opened at
-  // /place/open/<gid>; pay-at-a-place and a House Card were a bare place id
+  // /place/open/<gid>; pay-at-a-place and a Loyalty Card were a bare place id
   // beside fixed words. Sent links, an open tab on an old build and the
   // voucher checkout's return (the voucher checkout's return, until
   // MESITA-4016) all arrive on the old shapes; Next carries

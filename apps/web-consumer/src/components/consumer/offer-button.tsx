@@ -85,7 +85,7 @@ export function OfferStrip({ name, slides, className }: { name: string; slides: 
 }
 
 /** Where a slide's tap goes: the place's Offers with that offer ticked
- *  (MESITA-4219). `from=wallet` brings Back to the House Card (MESITA-3883). */
+ *  (MESITA-4219). `from=wallet` brings Back to the Loyalty Card (MESITA-3883). */
 export function offerHref(placeHref: string, slide: OfferSlide, fromWallet = false): string {
   const voucher = slide.voucher ? `&voucher=${slide.voucher}` : "";
   return `${placeHref}?rewards=${slide.section ?? "prepayment"}${voucher}${fromWallet ? "&from=wallet" : ""}`;

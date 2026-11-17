@@ -14,7 +14,7 @@
 //   Refund           the Refund ticket, when this purchase was refunded
 //   At <place>       Available · Pending · You can spend now
 //   Purchase         the purchase number with copy
-//   Pay here (filled, when spendable) · Open the House Card (outline)
+//   Pay here (filled, when spendable) · Open the Loyalty Card (outline)
 //   Gift credit      a quiet text link, when sending is allowed
 //
 // A gift received (MESITA-4006, Tickets 6/10) is shorter: the header reads
@@ -29,13 +29,13 @@
 // sent gift's take-back was paired to a send by amount and order, which could
 // swap two same-amount gifts; that pairing is gone. A gift line with no gift
 // in the read (past its cap, or an older server) keeps the short page below:
-// the header, one line, the place's balance, Open the House Card.
+// the header, one line, the place's balance, Open the Loyalty Card.
 //
 // A Refund page (MESITA-4011, Tickets 10/10): the top box with the amount and
 // no sign, Refunded, "Refunded to the card you paid with.", a Timeline box
 // (Bought, Refunded), the Refund box (credit taken back when any, the original
 // purchase as a link only when its purchase_id finds it, the purchase number
-// with copy) and Open the House Card (outline) alone. Found by purchase_id.
+// with copy) and Open the Loyalty Card (outline) alone. Found by purchase_id.
 //
 // A refunded purchase reads Refunded <date> and links to its Refund ticket by
 // purchase_id; the purchase number has a copy button. It reads the wallet
@@ -252,7 +252,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
             href={walletPlacePath(placeId)}
             className="border-border bg-card hover:bg-muted/60 flex h-11 items-center justify-center rounded-full border text-sm font-semibold transition"
           >
-            Open the House Card
+            Open the Loyalty Card
           </Link>
         </TicketPage>
       );
@@ -281,7 +281,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     const [state, tone] = stateOf(e, refund);
     const out = e.kind === "gift_out" || e.kind === "reversal";
     const canGift = wallet.data.can_send === true && b.spendable_cents > 0;
-    const houseCard = { label: "Open the House Card", href: walletPlacePath(placeId) };
+    const loyaltyCard = { label: "Open the Loyalty Card", href: walletPlacePath(placeId) };
     const received = e.kind === "gift_in";
     const given = e.kind === "gift_out" || e.kind === "gift_back";
     return (
@@ -350,18 +350,18 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
         ) : null}
 
         {given ? (
-          <TicketActions primary={houseCard} />
+          <TicketActions primary={loyaltyCard} />
         ) : b.spendable_cents > 0 ? (
           <TicketActions
             primary={{ label: "Pay here", href: payPlacePath(placeId) }}
-            secondary={received ? undefined : houseCard}
+            secondary={received ? undefined : loyaltyCard}
           />
         ) : (
           <Link
-            href={houseCard.href}
+            href={loyaltyCard.href}
             className="border-border bg-card hover:bg-muted/60 flex h-11 items-center justify-center rounded-full border text-sm font-semibold transition"
           >
-            {houseCard.label}
+            {loyaltyCard.label}
           </Link>
         )}
         {canGift ? (

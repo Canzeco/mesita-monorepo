@@ -12,12 +12,12 @@ import type { WalletCardModel } from "./WalletCard";
 // cards ride this same read and the page draws once.
 //
 // THE WALLET'S MONEY, read once for both Wallet screens (MESITA-3614): the
-// rails at /wallet and a place's House Card at /wallet/place/<placeId>. Money
+// rails at /wallet and a place's Loyalty Card at /wallet/place/<placeId>. Money
 // comes from consumer-web-get-wallet only; nothing here adds anything up
 // (MESITA-3098).
 //
 // Checkout comes back with `?prepay=<session>` (_shared/vouchers.ts), on the
-// House Card of the place the guest bought at (MESITA-3617): the read credits it, the toast says what the server said, and the parameter
+// Loyalty Card of the place the guest bought at (MESITA-3617): the read credits it, the toast says what the server said, and the parameter
 // is dropped so a reload does not ask again. While the server is still
 // confirming a purchase (`settling`) the screen says so and asks again.
 //
@@ -59,7 +59,7 @@ function creditRow(b: WalletBalance): CreditRow {
       available_cents: b.available_cents,
       pending_cents: b.pending_cents,
       hasBalance: true,
-      // Every card opens its House Card page: history, Pay here, Fund, Gift.
+      // Every card opens its Loyalty Card page: history, Pay here, Fund, Gift.
       tap: { kind: "link", href: walletPlacePath(b.place_id) },
     },
   };

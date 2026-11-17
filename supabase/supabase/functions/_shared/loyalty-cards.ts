@@ -1,9 +1,9 @@
-// House Cards a guest pinned by hand (MESITA-3582).
+// Loyalty Cards a guest pinned by hand (MESITA-3582).
 //
-// A House Card is a place's card in the guest's Wallet. It appears on its
+// A Loyalty Card is a place's card in the guest's Wallet. It appears on its
 // own once the guest holds entries there (wallet_entries); a guest can also
 // pin it with $0 from the place screen ("Add card to Wallet"). A pin is a
-// Wallet preference, not money: wallet_house_cards, EF-only.
+// Wallet preference, not money: wallet_loyalty_cards, EF-only.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { Balance } from "./wallet.ts";
@@ -29,12 +29,12 @@ export async function readPins(
   consumerId: string,
 ): Promise<{ ok: true; pins: Pin[] } | { ok: false; error: string }> {
   const { data, error } = await admin
-    .from("wallet_house_cards")
+    .from("wallet_loyalty_cards")
     .select("place_id, added_at")
     .eq("consumer_id", consumerId)
     .order("added_at", { ascending: false })
     .limit(200);
-  if (error) return { ok: false, error: `house_cards: ${error.message}` };
+  if (error) return { ok: false, error: `loyalty_cards: ${error.message}` };
   const pins = (data ?? []) as Pin[];
   const on = await houseCreditsOn(admin, pins.map((p) => p.place_id));
   if (!on.ok) return on;
@@ -74,11 +74,11 @@ export async function inWallet(
   livemode: boolean,
 ): Promise<{ ok: true; in_wallet: boolean } | { ok: false; error: string }> {
   const [pin, entry, on] = await Promise.all([
-    admin.from("wallet_house_cards").select("place_id").eq("consumer_id", consumerId).eq("place_id", placeId).maybeSingle(),
+    admin.from("wallet_loyalty_cards").select("place_id").eq("consumer_id", consumerId).eq("place_id", placeId).maybeSingle(),
     admin.from("wallet_entries").select("id").eq("consumer_id", consumerId).eq("place_id", placeId).eq("livemode", livemode).limit(1),
     houseCreditsOn(admin, [placeId]),
   ]);
-  if (pin.error) return { ok: false, error: `house_cards: ${pin.error.message}` };
+  if (pin.error) return { ok: false, error: `loyalty_cards: ${pin.error.message}` };
   if (entry.error) return { ok: false, error: `entries: ${entry.error.message}` };
   if (!on.ok) return on;
   return { ok: true, in_wallet: (!!pin.data && on.on.has(placeId)) || (entry.data ?? []).length > 0 };

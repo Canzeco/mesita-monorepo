@@ -260,7 +260,7 @@ function offerStatus(
 type GuestLock = "instagram" | "followers" | null;
 
 /** Who may buy what, once for every list of the six vouchers (VouchersPane,
- *  and the House Card's Vouchers via voucherOffers, MESITA-3822). */
+ *  and the Loyalty Card's Vouchers via voucherOffers, MESITA-3822). */
 function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
   // A Google-only card or an older read has no money: every switch reads off.
   // Only `unavailable` is valid from this local call: the read strips
@@ -312,7 +312,7 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
   return { unavailable, dim, guestLock, buyable };
 }
 
-/** One of the six vouchers as a row elsewhere (the House Card, MESITA-3822):
+/** One of the six vouchers as a row elsewhere (the Loyalty Card, MESITA-3822):
  *  the Offers page's own words, colour and rules, formatted, never added. */
 export type VoucherOffer = {
   key: MoneyVoucherKey;

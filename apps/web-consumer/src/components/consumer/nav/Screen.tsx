@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 // THE FRAME EVERY PUSHED PAGE WEARS (MESITA-3647): back, a centred title, an
 // optional action, and the one scroller under them. Every Me page, Settings'
-// subpages, Share, the bill, its receipt, a House Card and a reservation
+// subpages, Share, the bill, its receipt, a Loyalty Card and a reservation
 // opened from a link wear it, so a screen that slides in over another always
 // has the same way out in the same place.
 //
@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 // production build a paper screen also flags its own overflow
 // (`data-overflow` and one console warning), because those screens are
 // built to never scroll and the app has no visual QA path. A white page
-// that is a list (a House Card's history, MESITA-3747) says `scrolls` and is
+// that is a list (a Loyalty Card's history, MESITA-3747) says `scrolls` and is
 // not watched.
 //
 // BACK IS A HISTORY POP (lib/navigate.ts goBack): the screen slides away and
@@ -65,7 +65,7 @@ export function Screen({
   /** The header's left control in place of Back (MESITA-3880: the Pay
    *  steps' X, beside the title). */
   lead?: React.ReactNode;
-  /** A small picture left of the title, centred with it (a House Card's
+  /** A small picture left of the title, centred with it (a Loyalty Card's
    *  place photo, MESITA-4064). */
   titleMark?: React.ReactNode;
   /** White ground and header instead of the grey (the pay screens). */

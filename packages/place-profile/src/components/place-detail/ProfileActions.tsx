@@ -394,7 +394,7 @@ function ReserveTile({ place, onReserve }: { place: PlaceDetail; onReserve?: () 
  *  box. The words move on the shared beat; the box takes the slide's colour.
  *  The slide on screen when the finger lands is the door, and the tile holds
  *  that slide while the finger is down (MESITA-4217). */
-/** The Offers box (MESITA-4169), also the House Card's (MESITA-4269, Pato:
+/** The Offers box (MESITA-4169), also the Loyalty Card's (MESITA-4269, Pato:
  *  "literally just reuse this box there"). */
 export function OffersTile({
   name,

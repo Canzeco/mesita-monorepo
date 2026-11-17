@@ -79,7 +79,7 @@ function outcomeSentence(outcome: string | null): string {
  *  sentence with the place in bold and how long ago in grey at its end
  *  ("Taquería Orinoco confirmed your table. 2h"), then a small grey button
  *  when the row leads somewhere. In the list box since MESITA-4053; no day
- *  heading. A credit row opens that place's House Card, where the credit now
+ *  heading. A credit row opens that place's Loyalty Card, where the credit now
  *  reads Available (the Wallet when it names no place). It was an Activity
  *  row with the time on the right until MESITA-4000. */
 export function NotificationRow({ n }: { n: ConsumerNotification }) {

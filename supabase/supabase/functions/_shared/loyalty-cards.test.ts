@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { withPins } from "./house-cards.ts";
+import { withPins } from "./loyalty-cards.ts";
 import type { Balance } from "./wallet.ts";
 
 const held: Balance = {

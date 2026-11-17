@@ -1,6 +1,6 @@
-// Supabase Edge Function — consumer-web-remove-house-card
+// Supabase Edge Function — consumer-web-remove-loyalty-card
 //
-// MESITA-3582: takes a pinned $0 House Card off the signed-in guest's
+// MESITA-3582: takes a pinned $0 Loyalty Card off the signed-in guest's
 // Wallet. A card that holds money (Available or Pending) stays: it is shown
 // by its entries, not the pin, so the pin is kept and the call answers 409
 // has_credit. Removing a card that is not pinned answers ok.
@@ -12,11 +12,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { balanceAt } from "../_shared/house-cards.ts";
+import { balanceAt } from "../_shared/loyalty-cards.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
-serveJson("consumer-web-remove-house-card", async (req) => {
+serveJson("consumer-web-remove-loyalty-card", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to remove a card" });
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
@@ -31,8 +31,8 @@ serveJson("consumer-web-remove-house-card", async (req) => {
   if (bal.cents !== 0) {
     return json({ ok: false, code: "has_credit", error: "This card has credit, so it stays in your Wallet" }, 409);
   }
-  const { error } = await admin.from("wallet_house_cards").delete().eq("consumer_id", userId).eq("place_id", placeId);
-  if (error) return json({ ok: false, error: `house_cards: ${error.message}` }, 500);
-  console.log("[consumer-web-remove-house-card]", JSON.stringify({ outcome: "removed" }));
+  const { error } = await admin.from("wallet_loyalty_cards").delete().eq("consumer_id", userId).eq("place_id", placeId);
+  if (error) return json({ ok: false, error: `loyalty_cards: ${error.message}` }, 500);
+  console.log("[consumer-web-remove-loyalty-card]", JSON.stringify({ outcome: "removed" }));
   return json({ ok: true });
 });

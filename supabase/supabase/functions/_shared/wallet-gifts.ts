@@ -32,7 +32,7 @@ export type PersonRow = {
   appear_anonymous: boolean | null;
 };
 
-/** The guest's own ledger line for a gift: its House Card entry page.
+/** The guest's own ledger line for a gift: its Loyalty Card entry page.
  *  `available_at` is when a received gift's credit turns Available
  *  (MESITA-4066: "Taken · ready in 1 hr"). */
 export type GiftEntryRow = { gift_id: string; kind: string; created_at: string; available_at?: string | null };

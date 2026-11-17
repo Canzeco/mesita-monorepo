@@ -4,14 +4,14 @@
 // 2026-11-15: "Like this guy sent money and if nobody has taken then
 // waiting. Or if someone has claimed then like show"). A Gifts row opens it,
 // and a gift line's credit page forwards here. Each section is a bordered
-// panel, as on the House Card page (the shared Panel, MESITA-4064). Since
+// panel, as on the Loyalty Card page (the shared Panel, MESITA-4064). Since
 // MESITA-4118 it is the standard every ticket follows: its top box and panels
 // are TicketParts' TicketHero, TicketPanel and TimelinePanel.
 //
 //   (Pato)(Ana)🎁 [place]     the Gifts row's picture, 64px
 //   You sent $3.00MX          the sentence
 //   Taken · ready in 1 hr     the state in its tone (lib/gift-ticket.ts)
-//   Taquería Orinoco ›        the place, opening its House Card
+//   Taquería Orinoco ›        the place, opening its Loyalty Card
 //
 //   Timeline   Sent · then Taken by Ana, or Taken back, from the gift's own
 //              row (wallet_gifts), never paired by amount
@@ -19,7 +19,7 @@
 //
 //   One action by state: the sender of an open gift can Take back (confirmed
 //   in a LocalDialog, then the wallet read again); the receiver of a taken
-//   gift can Open the House Card to spend it. Otherwise none.
+//   gift can Open the Loyalty Card to spend it. Otherwise none.
 //
 // The gift comes from the wallet read Tickets already holds (the same cached
 // key), found by its id; one it cannot find says so and goes back to Gifts.
@@ -207,7 +207,7 @@ export function GiftPage({ giftId }: { giftId: string }) {
           <TakeBack g={g} onDone={reread} />
         ) : g.role === "recipient" && g.status === "claimed" ? (
           <PushLink href={walletPlacePath(g.place_id)} className={FILLED}>
-            Open the House Card
+            Open the Loyalty Card
           </PushLink>
         ) : null}
       </TicketPage>

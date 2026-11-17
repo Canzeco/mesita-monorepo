@@ -292,7 +292,7 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/pay/place/p1", "Pay"],
     ["/pay/bill/t1", "Pay"],
     ["/pay/receipt/r1", "Pay"],
-    // The Wallet is Pay's lower half (MESITA-4199): /wallet, its House Cards,
+    // The Wallet is Pay's lower half (MESITA-4199): /wallet, its Loyalty Cards,
     // gift links and the Share page light it too.
     ["/wallet", "Pay"],
     ["/wallet/p1", "Pay"],
@@ -891,12 +891,12 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     expect(childDirs(join(pay, "receipt"))).toEqual(["[paymentId]"]);
   });
 
-  it("(shell)/wallet holds a place's House Card, the gift link and Add a card, and nothing else", () => {
+  it("(shell)/wallet holds a place's Loyalty Card, the gift link and Add a card, and nothing else", () => {
     const wallet = join(SHELL, "wallet");
     expect(existsSync(join(wallet, "page.tsx"))).toBe(true);
     // Claim Gift's code page left in MESITA-4223: a gift is a link only.
     // Add a card is its own page since MESITA-4092.
-    // Buy Credits and Send Gift lists, a House Card's send page (MESITA-4096).
+    // Buy Credits and Send Gift lists, a Loyalty Card's send page (MESITA-4096).
     expect(childDirs(wallet)).toEqual(["buy", "cards", "gift", "place", "send"]);
     expect(existsSync(join(wallet, "buy", "page.tsx"))).toBe(true);
     expect(existsSync(join(wallet, "send", "page.tsx"))).toBe(true);
