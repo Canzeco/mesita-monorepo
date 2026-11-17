@@ -138,6 +138,64 @@ export async function getOptionalAuthedUser(
   return { user: shapeAuthedUser(data.user) };
 }
 
+// ─── Anonymous or member (MESITA-4246) ──────────────────────────────
+//
+// Anonymous mode: a visitor with no session browses Social and a place's
+// likes line. Unlike getOptionalAuthedUser, a BROKEN session is not
+// anonymous: it is a 401 `session_invalid`, so an expired member is never
+// silently served the reduced, anonymous view.
+//
+//   no Authorization, the bearer is the project key (the app sends it when
+//   there is no session), or a JWT whose role is `anon`  → anonymous
+//   any other bearer that auth accepts                   → member
+//   any other bearer                                     → 401
+
+/** The `role` claim of a JWT, or null. Never verifies: the gateway or
+ *  auth.getUser does that. */
+export function jwtRole(token: string): string | null {
+  const part = token.split(".")[1];
+  if (!part) return null;
+  try {
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)));
+    return typeof payload?.role === "string" ? payload.role : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether the bearer is no person at all (pure). */
+export function isAnonymousBearer(token: string | null, req: Request, anonKey: string): boolean {
+  if (!token) return true;
+  if (token === anonKey) return true;
+  const apikey = (req.headers.get("apikey") ?? "").trim();
+  if (apikey && token === apikey) return true;
+  return jwtRole(token) === "anon";
+}
+
+export async function classifyCaller(
+  req: Request,
+  env: EFEnv | AnonEnv,
+): Promise<
+  | { ok: true; user: AuthedUser | null }
+  | { ok: false; response: Response }
+> {
+  const token = bearerToken(req);
+  if (isAnonymousBearer(token, req, env.anonKey)) return { ok: true, user: null };
+  const userClient = createClient(env.url, env.anonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const { data, error } = await userClient.auth.getUser();
+  if (error || !data.user) {
+    return {
+      ok: false,
+      response: json({ ok: false, code: "session_invalid", error: "Invalid session" }, 401),
+    };
+  }
+  if (data.user.is_anonymous) return { ok: true, user: null };
+  return { ok: true, user: shapeAuthedUser(data.user) };
+}
+
 // ─── Admin client ───────────────────────────────────────────────────
 
 export function adminClient(env: EFEnv): SupabaseClient {

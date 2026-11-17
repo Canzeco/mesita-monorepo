@@ -173,10 +173,11 @@ export function toPerson(
     avatarUrl: row.avatar_url ?? null,
     handle: handle && locked ? maskHandle(handle) : handle,
     handleLocked: locked,
-    followers: Math.max(
-      0,
-      Math.trunc(Number(row.instagram_followers_count ?? 0)) || 0,
-    ),
+    // Your own count only (MESITA-4246, q2a): followers set Regular or VIP
+    // and are never shown to anyone else.
+    followers: isYou
+      ? Math.max(0, Math.trunc(Number(row.instagram_followers_count ?? 0)) || 0)
+      : 0,
     isYou,
     guestClass: toClass(row.guest_class),
     plan: toPlan(row.plan),
@@ -259,4 +260,42 @@ export function socialLine(
   const rest = total - 1;
   if (rest <= 0) return `${who} liked this`;
   return `${who} and ${rest} ${rest === 1 ? "other" : "others"} liked this`;
+}
+
+/** Someone as an ANONYMOUS visitor sees them (MESITA-4246): the first name
+ *  and Class, nothing else. No photo, no handle, no Instagram mark, no
+ *  followers, no plan; never "you". */
+export function anonymousPerson(row: ActivityRow): ActivityPerson {
+  return {
+    name: row.first_name?.trim() || MEMBER_FALLBACK_NAME,
+    avatarUrl: null,
+    handle: null,
+    handleLocked: false,
+    followers: 0,
+    isYou: false,
+    guestClass: toClass(row.guest_class),
+    plan: "free",
+    instagram: false,
+    anonymous: true,
+  };
+}
+
+/** An event's time as an anonymous visitor sees it: the start of its UTC
+ *  day, so a feed read cannot time a member's visit to the minute. */
+export function coarseAt(at: string): string {
+  const ms = Date.parse(at);
+  if (!Number.isFinite(ms)) return at;
+  const d = new Date(ms);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString();
+}
+
+/** The feed as an anonymous visitor sees it (pure). */
+export function anonymousFeedEvents(rows: readonly ActivityRow[]): FeedEvent[] {
+  return [...rows]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .flatMap((row) =>
+      row.place_id && isActivityKind(row.kind)
+        ? [{ placeId: row.place_id, kind: row.kind, at: coarseAt(row.created_at), person: anonymousPerson(row) }]
+        : []
+    );
 }

@@ -32,6 +32,10 @@
 
 export const CONSUMER_ROUTES = {
   onboard: "/onboard",
+  // SIGN (MESITA-4246): the anonymous visitor's tab, in Me's slot. Phone,
+  // code and onboarding on one page with the bar showing; it becomes Me once
+  // the account is onboarded.
+  sign: "/sign",
   // SEARCH — its own top-level route and bottom tab (MESITA-1616): the map +
   // the one search bar + Filters. `/discover/search` and `/discover/map` are
   // redirect SOURCES for the bookmarks those addresses shipped under.
@@ -491,6 +495,8 @@ export const ROUTE_MAP = {
   // Share's page, pushed from Pay's Share Mesita button.
   share: row("/share", "pay", "page", "pay"),
   me: row("/me", "me", "tab", null),
+  // Sign holds Me's slot while the visitor is anonymous (MESITA-4246).
+  sign: row("/sign", "me", "tab", null),
   meProfile: row("/me/profile", "me", "page", "me"),
   meInstagram: row("/me/instagram", "me", "page", "me"),
   // Opened from Settings since the Me cell went Soon (MESITA-3855).
@@ -578,6 +584,29 @@ export function parentHref(pathname: string): string {
       .map((x) => (x.startsWith(":") ? (params.get(x) ?? x) : x))
       .join("/")
   );
+}
+
+// ─── WHO MAY OPEN A SCREEN (MESITA-4246) ───────────────────────────────────
+//
+// Anonymous mode: a visitor with no onboarded account opens these rows and
+// nothing else. Every other row, and every address under a shell root that
+// is no row, is a member's: the proxy, the shell layout and the walled
+// pages all read this one list. `routeFor` matches a fixed segment before a
+// `:param`, so /place/google/x and /place/x/reserve are their own (member)
+// rows, never /place/:id.
+const OPEN_ROUTES: ReadonlySet<RouteId> = new Set<RouteId>([
+  "home",
+  "homeSocial",
+  "search",
+  "place",
+  "sign",
+]);
+
+/** Can a visitor without an onboarded account open this pathname? */
+export function isOpenToAnonymous(pathname: string): boolean {
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  const id = routeFor(path);
+  return id !== null && OPEN_ROUTES.has(id);
 }
 
 /** Every first segment a row lives under: the edge auth wall's list. */

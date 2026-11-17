@@ -5,8 +5,12 @@
 // for the action row. Its own name since MESITA-3042 (it was
 // consumer-web-list-activity's "place" scope).
 //
+// ANONYMOUS (MESITA-4246): no session reads the same line with every
+// person reduced to a first name and Class (anonymousPerson); `me.saved` is
+// false. A broken session is a 401.
+//
 // Body: { place_id }
-//   → { line, people, total, me: { saved } }
+//   → { viewer, line, people, total, me: { saved } }
 //
 // Who appears is the SQL's call (place_activity_people over
 // place_activity_visible). Handles leave masked unless the viewer shows their
@@ -14,8 +18,8 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireConsumerRequest } from "../_shared/request.ts";
-import { type ActivityRow, isMesitaPlaceId, socialLine, toPerson } from "../_shared/place-activity.ts";
+import { consumerOrAnonymousRequest } from "../_shared/request.ts";
+import { type ActivityRow, anonymousPerson, isMesitaPlaceId, socialLine, toPerson } from "../_shared/place-activity.ts";
 import { viewerSeesHandles } from "../_shared/place-activity-read.ts";
 
 const LINE_FACES = 5;
@@ -23,10 +27,9 @@ const LINE_FACES = 5;
 type Body = { place_id?: string };
 
 serveJson("consumer-web-list-place-likes", async (req) => {
-  const ctx = await requireConsumerRequest(req);
+  const ctx = await consumerOrAnonymousRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
-  const viewerId = user.id;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -37,21 +40,24 @@ serveJson("consumer-web-list-place-likes", async (req) => {
 
   const [peopleRes, mineRes, canSee] = await Promise.all([
     admin.rpc("place_activity_people", { p_place_id: placeId, p_limit: LINE_FACES }),
-    admin
-      .from("place_activity")
-      .select("kind")
-      .eq("consumer_id", viewerId)
-      .eq("place_id", placeId),
-    viewerSeesHandles(admin, viewerId),
+    user
+      ? admin
+        .from("place_activity")
+        .select("kind")
+        .eq("consumer_id", user.id)
+        .eq("place_id", placeId)
+      : Promise.resolve({ data: [], error: null }),
+    user ? viewerSeesHandles(admin, user.id) : Promise.resolve(false),
   ]);
   if (peopleRes.error) return json({ ok: false, error: `people: ${peopleRes.error.message}` }, 500);
   if (mineRes.error) return json({ ok: false, error: `mine: ${mineRes.error.message}` }, 500);
   const rows = (peopleRes.data ?? []) as ActivityRow[];
-  const people = rows.map((r) => toPerson(r, viewerId, canSee));
+  const people = rows.map((r) => (user ? toPerson(r, user.id, canSee) : anonymousPerson(r)));
   const total = rows.length > 0 ? Number(rows[0].total ?? rows.length) : 0;
   const mine = new Set(((mineRes.data ?? []) as { kind: string }[]).map((r) => r.kind));
   return json({
     ok: true,
+    viewer: user ? "member" : "anonymous",
     line: socialLine(people[0] ?? null, total),
     people,
     total,

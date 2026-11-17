@@ -11,11 +11,15 @@
 // nothing here writes. Greeting / prompt / model come from
 // supabase-edgefunc-get-memo-config (which reads discovery_config.chat).
 //
+// Members only since MESITA-4246: no session (or the project key) is a 401
+// `auth_required`, a broken session a 401 `session_invalid`.
+//
 // Secrets: OPENAI_KEY. Never leaves Supabase.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { openRequest } from "../_shared/request.ts";
+import { classifyCaller } from "../_shared/auth.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type DiscoveryConfig, loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { deepDepsFor, runDeepPipeline } from "../_shared/deep-pipeline.ts";
@@ -58,6 +62,16 @@ serveJson("consumer-web-ask-memo", async (req) => {
   const ctx = openRequest(req);
   if (ctx instanceof Response) return ctx;
   const { env, admin } = ctx;
+  // Members only (MESITA-4246): every answer is a paid model call, and an
+  // anonymous visitor's Ask sends them to Sign.
+  const who = await classifyCaller(req, env);
+  if (!who.ok) return who.response;
+  if (!who.user) {
+    return json(
+      { ok: false, code: "auth_required", error: "Sign in to use Ask", fix: "/sign?next=/search/chat" },
+      401,
+    );
+  }
 
   const bodyRes = await readJson<MemoBody>(req);
   if (!bodyRes.ok) return bodyRes.response;

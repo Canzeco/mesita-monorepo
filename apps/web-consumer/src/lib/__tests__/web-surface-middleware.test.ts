@@ -50,17 +50,33 @@ describe("the edge wall", () => {
     state.user = null;
   });
 
-  it.each(["/me", "/home/places", "/search", "/place/abc", "/pay"])(
-    "%s walls a signed-out visitor at the sign-in, keeping ?next=",
+  it.each(["/me", "/pay", "/wallet", "/place/abc/reserve"])(
+    "%s walls a signed-out visitor at Sign, keeping ?next=",
     async (path) => {
       const res = await visit(`${path}?ref=ig`);
-      expect(location(res).pathname).toBe("/");
+      expect(location(res).pathname).toBe("/sign");
       expect(location(res).searchParams.get("next")).toBe(`${path}?ref=ig`);
     },
   );
 
+  // Anonymous mode (MESITA-4246): browsing needs no session.
+  it.each(["/home/places", "/home/social", "/search", "/place/abc", "/sign"])(
+    "%s opens for a signed-out visitor",
+    async (path) => {
+      const res = await visit(path);
+      expect(res.headers.get("location")).toBeNull();
+    },
+  );
+
+  it("a signed-out / opens Home, or Sign when it carries a next", async () => {
+    expect(location(await visit("/")).pathname).toBe("/home/places");
+    const res = await visit("/?next=%2Fpay");
+    expect(location(res).pathname).toBe("/sign");
+    expect(location(res).searchParams.get("next")).toBe("/pay");
+  });
+
   it("never mints a session for the sign-in page", async () => {
-    const res = await visit("/");
+    const res = await visit("/sign");
     expect(res.headers.get("location")).toBeNull();
     expect(res.cookies.getAll()).toEqual(
       expect.not.arrayContaining([
@@ -72,7 +88,7 @@ describe("the edge wall", () => {
   it("a leftover anonymous session does not pass the wall", async () => {
     state.user = { id: "anon-1", is_anonymous: true };
     const res = await visit("/me");
-    expect(location(res).pathname).toBe("/");
+    expect(location(res).pathname).toBe("/sign");
   });
 
   it("a registered account goes through, with its path stamped", async () => {

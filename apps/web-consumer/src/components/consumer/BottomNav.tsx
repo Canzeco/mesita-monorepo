@@ -14,6 +14,7 @@ import { QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
+import { useViewer } from "@/lib/identity-context";
 import { cn } from "@/lib/utils";
 import {
   CONSUMER_ROUTES,
@@ -104,8 +105,25 @@ const ITEMS: Item[] = [
   },
 ];
 
+// THE ANONYMOUS BAR (MESITA-4246, Pato: "cuando eres anónimo, solo se
+// enseñan tres pestañas, home, search, y sign"): Sign takes Me's slot, the
+// bar re-spaces to three, and Pay is gone until the account is onboarded.
+// Sign and Me share the person glyph but are different pages.
+const ANONYMOUS_ITEMS: Item[] = [
+  ITEMS[0]!,
+  ITEMS[1]!,
+  {
+    href: CONSUMER_ROUTES.sign,
+    Icon: User,
+    label: "Sign",
+    tab: "me",
+  },
+];
+
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
+  const viewer = useViewer();
+  const items = viewer === "anonymous" ? ANONYMOUS_ITEMS : ITEMS;
   const avatarUrl = useConsumerProfile().data?.avatar_url ?? null;
   const unseen = useUnseenNotificationCount();
   const router = useRouter();
@@ -141,7 +159,7 @@ export function BottomNav() {
       )}
     >
       <div className="flex items-end justify-around">
-        {ITEMS.map((item) => {
+        {items.map((item) => {
           const { Icon, label } = item;
           const active = pending
             ? pending === item.href

@@ -4,8 +4,10 @@ import type { Database } from "./database.types";
 import {
   CONSUMER_ROUTES,
   isAtRoute,
+  isOpenToAnonymous,
   shellRoots,
 } from "@/lib/consumer-route-contract";
+import { anonymousBrowseOn } from "@/lib/anonymous-flag";
 
 // Routing rules. Two passes:
 //
@@ -28,9 +30,12 @@ import {
 // instead of paying for an SSR render that then redirects (MESITA-3013 added
 // Home, Search and the place screens).
 //
-// So there is no anonymous browsing: a shared /place/<id> link is a sign-in
-// wall, on /web as on /mob. MESITA-2066 opened /web on anonymous sessions;
-// MESITA-2137 closed it again (production has anonymous sign-ins off).
+// ANONYMOUS MODE (MESITA-4246, Pato 2026-11-17): a visitor with no account
+// opens Home, Search, a place and Social (`isOpenToAnonymous`, the route
+// contract's one list); every other shell address goes to /sign?next=. This
+// is NOT a Supabase anonymous session (MESITA-2137 removed those and
+// production keeps them off): there is no session at all. ANONYMOUS_BROWSE=off
+// puts the whole wall back on the next deploy.
 //
 // Legacy addresses (consumer-route-contract.ts › `legacy`) are NOT listed:
 // next.config.ts redirects() 308s them to their canonical destination BEFORE
@@ -65,7 +70,11 @@ const PROTECTED_PREFIXES: string[] = [
 const SIGNED_IN_BOUNCE = new Set(["/"]);
 
 // Exported for the route-contract test suite (gate matrix).
-export function shouldGate(pathname: string): boolean {
+export function shouldGate(
+  pathname: string,
+  anonymousBrowse: boolean = anonymousBrowseOn(),
+): boolean {
+  if (anonymousBrowse && isOpenToAnonymous(pathname)) return false;
   return PROTECTED_PREFIXES.some((prefix) => isAtRoute(pathname, prefix));
 }
 
@@ -144,14 +153,24 @@ export async function updateSupabaseSession(request: NextRequest) {
     return redirected;
   }
 
-  // Signed-out wall (phone OTP).
+  // Signed-out wall (phone OTP), now the Sign tab (MESITA-4246).
   if (shouldGate(pathname) && !registered) {
     const signInUrl = request.nextUrl.clone();
-    signInUrl.pathname = "/";
+    signInUrl.pathname = CONSUMER_ROUTES.sign;
     signInUrl.search = `?next=${encodeURIComponent(
       pathname + request.nextUrl.search,
     )}`;
     return redirectKeepingSession(signInUrl);
+  }
+
+  // A signed-out `/` opens Home (MESITA-4246): the app is browsable without
+  // an account. An old link's `/?next=` goes to Sign with it.
+  if (!registered && pathname === "/" && anonymousBrowseOn()) {
+    const dest = request.nextUrl.clone();
+    const incoming = request.nextUrl.searchParams.get("next");
+    dest.pathname = incoming ? CONSUMER_ROUTES.sign : CONSUMER_ROUTES.home;
+    dest.search = incoming ? `?next=${encodeURIComponent(incoming)}` : "";
+    return redirectKeepingSession(dest);
   }
 
   // Already-signed-in bounce. We keep the user's own `?next=` intact so a

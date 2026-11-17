@@ -1,6 +1,9 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   type ActivityRow,
+  anonymousFeedEvents,
+  anonymousPerson,
+  coarseAt,
   feedEvents,
   cleanHandle,
   isActivityKind,
@@ -59,7 +62,9 @@ Deno.test("a viewer who does not show their Instagram gets masked handles", () =
   const locked = toPerson(row({}), "z", false);
   assertEquals(locked.handle, "per***");
   assertEquals(locked.handleLocked, true);
-  assertEquals(locked.followers, 1200);
+  // Never someone else's count (MESITA-4246, q2a); your own shows.
+  assertEquals(locked.followers, 0);
+  assertEquals(toPerson(row({}), "a", false).followers, 1200);
   const open = toPerson(row({}), "z", true);
   assertEquals(open.handle, "perdon");
   assertEquals(open.handleLocked, false);
@@ -223,4 +228,34 @@ Deno.test("a row without a handle is named by first name, with a face but no han
   // The guest's own anonymous row still reads as them.
   assertEquals(toPerson(row({ anonymous: true, consumer_id: "z" }), "z").isYou, true);
   assertEquals(toPerson(row({}), "z").anonymous, false);
+});
+
+// MESITA-4246: an anonymous visitor sees a first name and Class, and the day.
+Deno.test("an anonymous visitor sees a first name and Class, nothing else", () => {
+  const p = anonymousPerson(
+    row({ avatar_url: "https://x/y.jpg", guest_class: "vip", plan: "premium", instagram: true }),
+  );
+  assertEquals(p, {
+    name: "Perdón",
+    avatarUrl: null,
+    handle: null,
+    handleLocked: false,
+    followers: 0,
+    isYou: false,
+    guestClass: "vip",
+    plan: "free",
+    instagram: false,
+    anonymous: true,
+  });
+});
+
+Deno.test("an anonymous feed carries the day, never the minute", () => {
+  assertEquals(coarseAt("2026-10-19T23:59:59Z"), "2026-10-19T00:00:00.000Z");
+  const events = anonymousFeedEvents([
+    row({ created_at: "2026-10-19T10:00:00Z" }),
+    row({ created_at: "2026-10-20T08:30:00Z", kind: "went" }),
+  ]);
+  assertEquals(events.length, 1);
+  assertEquals(events[0].at, "2026-10-19T00:00:00.000Z");
+  assertEquals(events[0].person.handle, null);
 });
