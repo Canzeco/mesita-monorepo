@@ -61,6 +61,8 @@ export async function updateReservationsConfig(
 export type CallCost = {
   days: number;
   plan: string | null;
+  /** USD → MXN (Frankfurter, ECB); null when the rate could not be read. */
+  mxnPerUsd: number | null;
   truncated: boolean;
   calls: number;
   minutes: number;
