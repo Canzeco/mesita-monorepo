@@ -2,7 +2,16 @@
 // outcomes that matter — a valid list, a not-enabled category, a useless reply.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { familiesToStore, familyVocabularyLines, mainGoogleCategory, pickFamilies } from "./families-infer.ts";
+import {
+  FAMILY_MEANINGS,
+  familiesToStore,
+  familyHintLine,
+  familyVocabularyLines,
+  HINT_FAMILIES,
+  mainGoogleCategory,
+  pickFamilies,
+} from "./families-infer.ts";
+import { CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";
 
 const FAMILIES = [
   { slug: "coffee", label: "Coffee", emoji: "☕", sort_order: 1 },
@@ -44,7 +53,38 @@ Deno.test("mainGoogleCategory: the first Google category, else the category", ()
 
 Deno.test("familyVocabularyLines: a family with a meaning carries it, Undefined is never offered", () => {
   const lines = familyVocabularyLines(FAMILIES);
-  assertEquals(lines.includes("coffee — Coffee"), true);
+  assertEquals(lines.some((l) => l.startsWith("coffee — Coffee: ")), true);
   assertEquals(lines.some((l) => l.startsWith("dinner — Dinner: ")), true);
   assertEquals(lines.some((l) => l.startsWith("undefined")), false);
+});
+
+// MESITA-4238: every family the model may pick carries a meaning, so no line
+// is a bare label the model can read its own way (Family as "kids allowed").
+Deno.test("FAMILY_MEANINGS: every catalog family has a meaning", () => {
+  const missing = CATALOG_FAMILY_SLUGS.filter((slug) => !FAMILY_MEANINGS[slug]?.trim());
+  assertEquals(missing, []);
+});
+
+Deno.test("familyVocabularyLines: a live family with no meaning still renders as its label", () => {
+  const lines = familyVocabularyLines([{ slug: "brand_new", label: "New", emoji: "✨", sort_order: 1 }]);
+  assertEquals(lines, ["brand_new — New"]);
+});
+
+// The hint must never nudge the families this fix removes: the code map gives
+// Family to family_restaurant, Bar to bar_and_grill, Dinner to every cuisine.
+Deno.test("HINT_FAMILIES: no venue or generic family is ever hinted", () => {
+  const never = [
+    "family", "drinks", "fun", "night_out", "nightclub", "karaoke", "music", "tourist",
+    "cinema", "casino", "spa", "sports", "hookah", "dinner", "fancy", "healthy", "quick_bite", "sweet",
+  ];
+  assertEquals(never.filter((f) => HINT_FAMILIES.has(f)), []);
+});
+
+Deno.test("familyHintLine: cuisines pass, Dinner and Family never do", () => {
+  const mexican = familyHintLine(["mexican_restaurant"], null);
+  assertEquals(mexican.includes("mexican"), true);
+  assertEquals(mexican.includes("dinner"), false);
+  assertEquals(familyHintLine(["family_restaurant"], null).includes("family"), false);
+  assertEquals(familyHintLine(["bar_and_grill"], null).includes("drinks"), false);
+  assertEquals(familyHintLine([], null), "");
 });

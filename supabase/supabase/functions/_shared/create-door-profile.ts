@@ -27,7 +27,8 @@ import {
 } from "./infer-place-reservations.ts";
 import { fetchPlaceFamilies } from "./categories.ts";
 import {
-  FAMILIES_RULE,
+  familiesRule,
+  familyHintLine,
   familiesToStore,
   familyVocabularyLines,
   isGoogleCategoryEnabled,
@@ -77,6 +78,7 @@ export async function synthesizeDoorProfile(
     isGoogleCategoryEnabled(admin, mainGoogleCategory(signals.googleTypes, null)),
   ]);
   const familyLines = enabled ? familyVocabularyLines(familyVocab) : [];
+  const familyHint = familyHintLine(signals.googleTypes, null);
   const tagSlugs = new Set(tagVocab.map((t) => t.slug));
 
   const placeLines = [
@@ -103,9 +105,9 @@ export async function synthesizeDoorProfile(
     'name already follows the MESITA NAME rule below>",' +
     '"semantic_summary":"<one dense English paragraph (~60-90 words) of what ' +
     'this place IS, for semantic search — no marketing voice>",' +
-    '"families":["<1-7 slugs from the family list>"],' +
+    '"families":["<slugs from the family list>"],' +
     '"zone":"<the Mesita Zone, or null>"}. ' +
-    FAMILIES_RULE + " " +
+    familiesRule("create") + " " +
     ZONE_RULE + " " +
     RESERVATIONS_RULE + " " +
     "MESITA NAME: strip slogans, legal forms (S.A. de C.V., LLC, Inc.), " +
@@ -125,6 +127,7 @@ export async function synthesizeDoorProfile(
   const userPrompt =
     `Tags:\n${tagVocab.map((t) => t.slug).join(", ")}\n\n` +
     (familyLines.length ? `Families (FAMILY LIST):\n${familyLines.join("\n")}\n\n` : "") +
+    (familyLines.length && familyHint ? `${familyHint}\n\n` : "") +
     `Place:\n${placeLines}`;
 
   try {
