@@ -5,13 +5,10 @@ import { useRouter } from "next/navigation";
 import { ChevronRight, MapPin, QrCode } from "lucide-react";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
-import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import type { PayPlace } from "@/lib/api/wallet";
-import { cn } from "@/lib/utils";
 import { payPlacePath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { PlacePhoto } from "./pay-common";
@@ -26,6 +23,11 @@ import { usePayPlaces } from "./use-pay-places";
 // pinned first, then the nearest up to PLACES_SHOWN and "Show all". A row
 // opens that place's bill (/pay/place/<id>). The location is asked here
 // only, after a priming card.
+//
+// NO BOX (Pato, 2026-11-17, MESITA-4280: "why inside a box … just use a
+// searchbar and the places directly display separated by hr"): the search
+// bar sits on its own under the header and the rows run edge to edge, a full
+// hairline between them; the Panel with its side margins is gone.
 
 /** Places listed before "Show all" (MESITA-3720). */
 const PLACES_SHOWN = 5;
@@ -38,8 +40,8 @@ export function PayPickPage() {
 
   return (
     <Screen title="Where are you paying?" paper>
-      <Panel className="mt-1" data-pay-box>
-        <div className="px-4 pt-4 pb-1">
+      <div className="-mx-5 -my-5" data-pay-box>
+        <div className="px-5 pt-4 pb-3">
           <SearchBar
             query={query}
             showClear={query.length > 0}
@@ -58,7 +60,7 @@ export function PayPickPage() {
             onNotNow={notNow}
           />
         ) : failed ? (
-          <div className="p-4">
+          <div className="px-5 py-4">
             <EmptyState
               inline
               icon={QrCode}
@@ -70,7 +72,7 @@ export function PayPickPage() {
         ) : (
           <RowsSkeleton />
         )}
-      </Panel>
+      </div>
     </Screen>
   );
 }
@@ -110,7 +112,7 @@ function PlaceList({
   return (
     <div className="flex flex-col">
       {loc.state === "prime" ? (
-        <div className="px-4 py-3">
+        <div className="px-5 py-3">
           <p className="flex items-center gap-2 text-base font-semibold">
             <MapPin className="h-4 w-4 shrink-0" aria-hidden />
             See places near you that take App Payments
@@ -129,7 +131,7 @@ function PlaceList({
           </div>
         </div>
       ) : loc.state === "blocked" ? (
-        <p className="text-muted-foreground px-4 py-2 text-sm">
+        <p className="text-muted-foreground px-5 py-2 text-sm">
           Location is off for mesita.ai. Turn it on in your browser&apos;s site settings.
         </p>
       ) : null}
@@ -137,7 +139,7 @@ function PlaceList({
       {loc.state === "asking" && places.length === 0 ? (
         <RowsSkeleton />
       ) : places.length === 0 ? (
-        <div className="p-4">
+        <div className="px-5 py-4">
           <EmptyState
             inline
             icon={MapPin}
@@ -150,18 +152,18 @@ function PlaceList({
           />
         </div>
       ) : shown.length === 0 ? (
-        <p className="text-muted-foreground px-4 py-4 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
+        <p className="text-muted-foreground px-5 py-4 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
       ) : (
-        // The rows run edge to edge inside the box (MESITA-4204): a hairline
-        // above each, never a box of their own.
-        <div className="mt-2" data-pay-places>
-          {shown.map((p, i) => (
+        // The rows run edge to edge (MESITA-4280): a full hairline above
+        // each and under the last.
+        <div className="border-border border-b" data-pay-places>
+          {shown.map((p) => (
             <Fragment key={p.place_id}>
-              <div className={cn("bg-border h-px", i > 0 && "ml-[4.5rem]")} />
+              <div className="bg-border h-px" />
               <button
                 type="button"
                 onClick={() => onPick(p.place_id)}
-                className="hover:bg-muted/60 flex min-h-[4.75rem] w-full items-center gap-3.5 px-4 py-3 text-left transition"
+                className="hover:bg-muted/60 flex min-h-[4.75rem] w-full items-center gap-3.5 px-5 py-3 text-left transition"
               >
                 <PlacePhoto place={p} className="h-12 w-12" />
                 <span className="min-w-0 flex-1">
@@ -191,7 +193,7 @@ function PlaceList({
               <button
                 type="button"
                 onClick={() => setShowAll(true)}
-                className="hover:bg-muted/60 flex min-h-12 w-full items-center justify-center px-4 text-sm font-semibold transition"
+                className="hover:bg-muted/60 flex min-h-12 w-full items-center justify-center px-5 text-sm font-semibold transition"
               >
                 Show all {matches.length} places
               </button>
@@ -205,11 +207,11 @@ function PlaceList({
 
 function RowsSkeleton() {
   return (
-    <div className="mt-2" aria-busy>
+    <div className="border-border border-b" aria-busy>
       {[0, 1, 2].map((i) => (
         <Fragment key={i}>
-          {i > 0 && <RowDivider />}
-          <div className="flex min-h-[4.75rem] items-center gap-3 px-4 py-3">
+          <div className="bg-border h-px" />
+          <div className="flex min-h-[4.75rem] items-center gap-3 px-5 py-3">
             <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
             <div className="flex-1">
               <Skeleton className="h-4 w-40" />
@@ -227,12 +229,12 @@ function RowsSkeleton() {
 export function PayPickLoading() {
   return (
     <Screen title="Where are you paying?" paper>
-      <Panel className="mt-1" aria-busy>
-        <div className="px-4 pt-4 pb-1">
+      <div className="-mx-5 -my-5" aria-busy>
+        <div className="px-5 pt-4 pb-3">
           <Skeleton className="h-11 w-full rounded-full" />
         </div>
         <RowsSkeleton />
-      </Panel>
+      </div>
     </Screen>
   );
 }
