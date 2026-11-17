@@ -17,8 +17,9 @@ export { offerChips, offerSlides, offersLabel, type OfferChip, type OfferInput, 
 // THE OFFER BEAT (MESITA-3467, Pato: "switching across all the offers, every
 // two seconds ... like a carousel"): ONE clock for every offer button on the
 // page, so the buttons on screen change together. It counts up every 2s while
-// anything listens, and skips a beat while the page is hidden or was
-// scrolled in the last 600ms, so nothing moves under a moving list.
+// anything listens, and skips a beat while the page is hidden or (Home's
+// list beat only) was scrolled in the last 600ms, so nothing moves under a
+// moving list.
 export const OFFER_BEAT_MS = 2000;
 /** The place screen's row ticks every 500ms and each tile changes on every
  *  second tick, Reserve on the even ones and Offers on the odd: each moves
@@ -43,6 +44,11 @@ function beatFor(ms: number): Beat {
   const found = beats.get(ms);
   if (found) return found;
   const listeners = new Set<() => void>();
+  // THE PLACE SCREEN'S ROW NEVER STALLS (Pato, 2026-11-17, MESITA-4217:
+  // "OFFER AND RESERVATIONS TOOOO MUST ROTATE EVERY SECOND, SOMETIMES IT GETS
+  // STUCK"): the scroll pause froze both boxes whenever the page or the photo
+  // carousel moved. Only Home's list beat still waits out a scroll.
+  const pausesOnScroll = ms !== ROW_TICK_MS;
   let timer: ReturnType<typeof setInterval> | null = null;
   const b: Beat = {
     count: 0,
@@ -51,7 +57,7 @@ function beatFor(ms: number): Beat {
       if (!timer) {
         timer = setInterval(() => {
           if (document.hidden) return;
-          if (Date.now() - lastScrollAt < SCROLL_QUIET_MS) return;
+          if (pausesOnScroll && Date.now() - lastScrollAt < SCROLL_QUIET_MS) return;
           b.count += 1;
           for (const l of listeners) l();
         }, ms);
