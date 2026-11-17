@@ -1,13 +1,18 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import { Outfit } from "next/font/google";
-import { ArrowRight, Smartphone, X } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
-import { cn } from "@/lib/utils";
 
-// Sign-in opens on a photo, not a form (MESITA-3650). The first screen is
+// THE FORM IS ON THE PAGE (Pato, 2026-11-17, MESITA-4286: "sign must already
+// have phone and send code thing, not hidden. quick access … remove pop up
+// modal … don't hide the bottom menu"): the photo is a band at the top with
+// the wordmark and the headline, and the white panel under it already holds
+// the title, the phone field and the send buttons. No cover-then-sheet, no
+// X; one column that scrolls, so the keyboard never hides the field, and the
+// shell's bar stays under it. The history below is the cover it replaced.
+//
+// Sign-in opened on a photo, not a form (MESITA-3650). The first screen is
 // the cover, the wordmark, one line and ONE button, "Continue with phone number"
 // (MESITA-3920, undoing MESITA-3751's Sign up + Log in: both opened the same
 // form, and a tester read two buttons on the bottom edge as "scroll for
@@ -32,127 +37,57 @@ export function CoverAuthLayout({
   footer,
 }: {
   headline: string;
-  /** Overrides the sheet title (the Pay QR door names its place). */
+  /** Overrides the panel title (the Pay QR door names its place). */
   title?: string;
-  /** Under the sheet title. */
+  /** Under the panel title. */
   subtitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
-  // false is the cover; true is the sign-in sheet.
-  const [open, setOpen] = useState(false);
-  const sheetTitle = title ?? "Continue with phone number";
-  const sheetSubtitle = subtitle ?? "We'll text you a code.";
+  const panelTitle = title ?? "Continue with phone number";
+  const panelSubtitle = subtitle ?? "We'll text you a code.";
 
   return (
-    <div className="relative flex-1 overflow-hidden bg-black text-white">
-      <Image
-        src="/auth/terrace.jpg"
-        alt=""
-        fill
-        priority
-        sizes="(min-width: 768px) 30rem, 100vw"
-        // The photo shows as it is: no blur on it or behind the words
-        // (MESITA-3746). It only grows a little when the sheet opens.
-        className={cn(
-          "object-cover object-[center_40%] transition-transform duration-700 ease-out",
-          open && "scale-105",
-        )}
-      />
-      {/* Legibility: a veil at the top for the logo and a deep one at the
-          bottom for the copy and the button; the middle stays clear. */}
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent via-35% to-black/90"
-      />
-
-      <div
-        inert={open}
-        className={cn(
-          "absolute inset-0 flex flex-col justify-between p-6 pb-10 transition-opacity duration-300",
-          open && "opacity-0",
-        )}
-      >
-        <span className="flex items-center gap-2 self-start text-white select-none">
-          <MesitaMark className="h-8 w-8" />
-          <span
-            className={`${wordmarkFont.className} text-[28px] leading-none tracking-[-0.03em]`}
-          >
-            Mesita
-          </span>
-        </span>
-
-        <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col gap-6 duration-700">
-          <div>
-            <h1 className="font-display text-4xl leading-[1.05] font-semibold tracking-[-0.02em] text-balance">
-              {headline}
-            </h1>
-            <p className="mt-3 text-base leading-snug text-white/80">
-              Discovery, reservations, payments and rewards.
-            </p>
-          </div>
-          <div className="flex flex-col items-center gap-3">
-            {/* One solid white button reads on the photo (MESITA-3795). */}
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="group flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-white text-lg font-semibold text-black shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition hover:bg-white/90 active:scale-[0.98]"
+    <div className="scrollbar-thin-dark bg-card flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="relative h-[34%] min-h-52 shrink-0 overflow-hidden bg-black text-white">
+        <Image
+          src="/auth/terrace.jpg"
+          alt=""
+          fill
+          priority
+          sizes="(min-width: 768px) 30rem, 100vw"
+          // The photo shows as it is: no blur (MESITA-3746).
+          className="object-cover object-[center_42%]"
+        />
+        {/* Legibility: a veil at the top for the logo and a deeper one at
+            the foot for the headline; the mountain stays clear. */}
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent via-35% to-black/80"
+        />
+        <div className="absolute inset-0 flex flex-col justify-between p-5 pb-10">
+          <span className="flex items-center gap-2 self-start select-none">
+            <MesitaMark className="h-7 w-7" />
+            <span
+              className={`${wordmarkFont.className} text-2xl leading-none tracking-[-0.03em]`}
             >
-              <Smartphone className="h-5 w-5" aria-hidden />
-              Continue with phone number
-              <ArrowRight
-                className="h-5 w-5 transition-transform group-hover:translate-x-0.5"
-                aria-hidden
-              />
-            </button>
-            <p className="text-sm text-white/70">
-              New or returning, we text you a code.
-            </p>
-          </div>
+              Mesita
+            </span>
+          </span>
+          <h1 className="font-display text-3xl leading-[1.05] font-semibold tracking-[-0.02em] text-balance">
+            {headline}
+          </h1>
         </div>
       </div>
 
-      {/* Dims the photo behind the sheet; a tap on it closes the sheet. */}
-      <button
-        type="button"
-        aria-label="Close"
-        tabIndex={-1}
-        onClick={() => setOpen(false)}
-        className={cn(
-          "absolute inset-0 bg-black/40 transition-opacity duration-300",
-          open ? "opacity-100" : "pointer-events-none opacity-0",
-        )}
-      />
-
-      <section
-        inert={!open}
-        aria-hidden={!open}
-        className={cn(
-          "scrollbar-thin-dark bg-card text-foreground absolute inset-x-0 bottom-0 max-h-[90%] overflow-y-auto rounded-t-[28px] px-6 pt-3 pb-8 shadow-2xl transition-transform duration-300 ease-out",
-          open ? "translate-y-0" : "translate-y-full",
-        )}
-      >
-        <div
-          aria-hidden
-          className="bg-border mx-auto mb-4 h-1 w-10 rounded-full"
-        />
-        <header className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-display text-3xl leading-tight font-semibold tracking-[-0.02em]">
-              {sheetTitle}
-            </h2>
-            <p className="text-muted-foreground mt-1 text-base leading-snug">
-              {sheetSubtitle}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Back to the cover"
-            className="bg-muted text-muted-foreground hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition"
-          >
-            <X className="h-4 w-4" />
-          </button>
+      <section className="bg-card text-foreground relative -mt-6 flex flex-1 flex-col rounded-t-[28px] px-6 pt-6 pb-8">
+        <header className="mb-5">
+          <h2 className="font-display text-2xl leading-tight font-semibold tracking-[-0.02em]">
+            {panelTitle}
+          </h2>
+          <p className="text-muted-foreground mt-1 text-base leading-snug">
+            {panelSubtitle}
+          </p>
         </header>
         {children}
         {footer && (
