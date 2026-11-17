@@ -21,8 +21,3 @@ const DOOR =
  *  MESITA-4250. The House Card's doors under its Pay bar wear them too. */
 export const DOOR_QUIET = `${DOOR.replace("text-white", "text-paper")} bg-foreground hover:opacity-90 focus-visible:ring-neutral-400`;
 export const DOOR_GLYPH = "h-4 w-4 shrink-0";
-/** Wallet's three doors wear emojis (MESITA-4260, Pato: "maybe use emojis
- *  for those three … whatever you think is a great clean design"): 💳 Buy
- *  Credits, 🎁 Send Gift, 💌 Share Mesita, one size over grey. */
-export const DOOR_EMOJI = "text-lg leading-none";
-

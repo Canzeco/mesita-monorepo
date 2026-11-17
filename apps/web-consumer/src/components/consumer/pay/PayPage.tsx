@@ -41,7 +41,7 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 // D3-D13):
 //
 //   Wallet ................................... [Tickets] (grey)  (MESITA-4245)
-//   [ ▦ Pay Bill ]  56px, Stripe purple, the one coloured thing (MESITA-4260)
+//   [ ▦ Pay Bill ]  112px (MESITA-4272), Stripe purple, the one coloured thing (MESITA-4260)
 //   [ Buy Credits ] [ Send Gift ] [ Share Mesita ]  grey, no box
 //   Payment Methods: [ Cash · Outside the app ] [ Visa ••4242 · In the app ]
 //   Loyalty Cards: rows, black pill = ready, amber line = pending
@@ -180,7 +180,9 @@ export function PayPage({
   );
 }
 
-/** Pay Bill (MESITA-4232). Stripe purple #635bff since MESITA-4260 (Pato:
+/** Pay Bill (MESITA-4232). 112px since MESITA-4272 (Pato: "qr button must be
+ *  bigger, maybe double height … make it more visible"): a 36px QR stacked
+ *  over "Pay Bill" at text-lg semibold. Stripe purple #635bff since MESITA-4260 (Pato:
  *  "maybe do the button purple like stripe"); A NATIVE PAY BUTTON since MESITA-4254 (Pato: "THE
  *  PAY BUTTON LOOKS LIKE SHIT … AN OLD 2010s app"; picked option A of the
  *  options page): ink black, 56px, one centred line, an 18px QR and "Pay
@@ -195,12 +197,12 @@ function PayBillButton({ here }: { here: PayPlace | null }) {
     <div className="mt-4 flex flex-col" data-pay-bill>
       <PushLink
         href={here ? payPlacePath(here.place_id) : CONSUMER_ROUTES.payPick}
-        className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#635bff] px-4 text-white transition hover:bg-[#5249e6] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[#a5a0ff] focus-visible:ring-offset-2 outline-none"
+        className="flex h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl bg-[#635bff] px-4 text-white transition hover:bg-[#5249e6] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[#a5a0ff] focus-visible:ring-offset-2 outline-none"
         aria-label={name ? `Pay Bill at ${name}` : "Pay Bill"}
         data-pay-bill-button
       >
-        <QrCode className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
-        <span className="min-w-0 truncate text-base font-semibold tracking-tight">{name ? `Pay Bill at ${name}` : "Pay Bill"}</span>
+        <QrCode className="h-9 w-9 shrink-0" strokeWidth={2} aria-hidden />
+        <span className="max-w-full min-w-0 truncate text-lg font-semibold tracking-tight">{name ? `Pay Bill at ${name}` : "Pay Bill"}</span>
       </PushLink>
       {here ? (
         <PushLink
@@ -218,7 +220,7 @@ function PayBillButton({ here }: { here: PayPlace | null }) {
 /** Pay Bill's shape while the open-bill read runs, so a bill that is open
  *  never flashes the black button first. */
 export function PayBillSkeleton() {
-  return <Skeleton className="mt-4 h-14 w-full rounded-2xl" aria-hidden />;
+  return <Skeleton className="mt-4 h-28 w-full rounded-2xl" aria-hidden />;
 }
 
 /** The open bill on /pay (MESITA-4086): one panel, the place's photo and
