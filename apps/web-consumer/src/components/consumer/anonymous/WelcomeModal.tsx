@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import Image from "next/image";
 import { Outfit } from "next/font/google";
 import { usePathname, useRouter } from "next/navigation";
+import { Phone } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { useViewer } from "@/lib/identity-context";
@@ -21,8 +22,9 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // "Photo fills the card"): the card IS the sign-in cover photo (the terrace
 // under the Cerro de la Silla, CoverAuthLayout's), 4:5, full bleed, no blur
 // (MESITA-3746). A veil at the top holds the mark and the wordmark, a deep
-// fade at the bottom holds the copy in white, a solid white Create account
-// (MESITA-3795) and Explore anonymously in white text.
+// fade at the bottom holds the copy in white, the green Continue with phone
+// (MESITA-4287; a white Create account before) and Explore anonymously in
+// white text.
 // The wordmark as the header and the sign-in cover write it (MESITA-3653).
 const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 const listeners = new Set<() => void>();
@@ -87,8 +89,8 @@ export function WelcomeModal() {
               Discover your next favorite place.
             </p>
             <p className="mt-2 text-sm leading-snug text-white/80">
-              Find restaurants, cafés and bars near you. Create an account to
-              save places, book tables and access offers.
+              Find restaurants, cafés and bars near you. Sign in with your phone
+              to save places, book tables and access offers.
             </p>
             <button
               type="button"
@@ -96,14 +98,22 @@ export function WelcomeModal() {
                 markSeen();
                 router.push(CONSUMER_ROUTES.sign);
               }}
-              className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-white text-base font-semibold text-black shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition hover:bg-white/90 active:scale-[0.99]"
+              // CONTINUE WITH PHONE (Pato, 2026-11-17, MESITA-4287: "not
+              // create a phone, but phone sign. maybe the account already
+              // created"): the Sign page's green phone button, so a
+              // returning guest reads it as signing in.
+              className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-[0.99]"
             >
-              Create account
+              <Phone className="h-4 w-4" aria-hidden />
+              Continue with phone
             </button>
             <button
               type="button"
               onClick={markSeen}
-              className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold text-white"
+              // A GREY BUTTON TOO (Pato, MESITA-4287: "anonymous must also look
+              // like a button, maybe gray, and make them smaller"): both are
+              // 44px, text-sm; this one translucent grey on the photo.
+              className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-xl bg-white/20 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30 active:scale-[0.99]"
             >
               Explore anonymously
             </button>
