@@ -63,6 +63,14 @@ export type ClaimVerdict =
  * profile) and its bio must hold the code. The follower count is the
  * scrape's, never the app's.
  */
+/** Whether a scraped Instagram profile is private (MESITA-4263: VIP needs a
+ *  public one): Apify's `private` flag, or null when the scrape did not say,
+ *  which is not public. Pure. */
+export function scrapedPrivate(profile: Record<string, unknown> | undefined): boolean | null {
+  const v = profile?.private ?? profile?.isPrivate;
+  return typeof v === "boolean" ? v : null;
+}
+
 export function judgeProfile(
   profile: Record<string, unknown>,
   claim: { handle: string; code: string },

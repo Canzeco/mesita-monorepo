@@ -11,6 +11,7 @@ Deno.test("profileFromScrape: the scraped account's followers and photo", () => 
         followersCount: 1234.9,
         profilePicUrlHD: "https://cdn.example/hd.jpg",
         fullName: "Mesita",
+        private: false,
       },
       "mesita.mx",
     ),
@@ -18,6 +19,7 @@ Deno.test("profileFromScrape: the scraped account's followers and photo", () => 
       username: "mesita.mx",
       profilePictureUrl: "https://cdn.example/hd.jpg",
       followerCount: 1234,
+      isPrivate: false,
     },
   );
 });

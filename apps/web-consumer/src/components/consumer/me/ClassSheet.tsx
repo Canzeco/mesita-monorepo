@@ -181,7 +181,9 @@ function MyClassCard({ guestClass, handle, followers }: { guestClass: GuestClass
       ? CLASS_STATUS.noInstagram
       : followers === null
         ? CLASS_STATUS.countUnknown
-        : CLASS_STATUS.toGo(count(Math.max(VIP_FOLLOWERS + 1 - followers, 0)));
+        : followers > VIP_FOLLOWERS
+          ? CLASS_STATUS.needsPublic
+          : CLASS_STATUS.toGo(count(Math.max(VIP_FOLLOWERS + 1 - followers, 0)));
   const words = CLASS_ROWS[guestClass];
   return (
     <div className="p-4" aria-label={words.title} data-class-row={words.title} data-class-status={guestClass}>

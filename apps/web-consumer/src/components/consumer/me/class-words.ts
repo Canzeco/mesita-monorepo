@@ -20,7 +20,8 @@ export type ClassRowWords = {
   perks: readonly string[];
 };
 
-/** The VIP bar (MESITA-4249): MORE THAN 1,000 verified followers. The server
+/** The VIP bar (MESITA-4249): MORE THAN 1,000 verified followers, on a
+ *  PUBLIC account (MESITA-4263, Pato: "BOTH MUST BE TRUE"). The server
  *  owns the rule (consumers.guest_class is generated); this is only for the
  *  progress line and must equal it. */
 export const VIP_FOLLOWERS = 1000;
@@ -28,10 +29,13 @@ export const VIP_FOLLOWERS = 1000;
 /** The status card's words (MESITA-3873). */
 export const CLASS_STATUS = {
   title: { regular: "Regular Class", vip: "VIP Class" },
-  noInstagram: "Connect your Instagram. Above 1,000 followers you're VIP.",
+  noInstagram: "Connect a public Instagram. Above 1,000 followers you're VIP.",
   toGo: (n: string) => `${n} more followers to VIP`,
   countUnknown: "Sync your followers to see how close you are to VIP.",
-  vip: "You're VIP: more than 1,000 Instagram followers.",
+  // Enough followers but still Regular: the account is private, or its
+  // privacy isn't known yet (MESITA-4263). A Sync reads it again.
+  needsPublic: "VIP also needs a public Instagram. Make yours public, then sync.",
+  vip: "You're VIP: a public Instagram with more than 1,000 followers.",
   unknown: "Couldn't load your class.",
   connect: { label: "Connect Instagram", sub: "Takes a minute" },
   sync: "Sync your followers",
@@ -49,6 +53,7 @@ export const CLASS_ROWS = {
   vip: {
     title: "VIP",
     perks: [
+      "A public Instagram account",
       "More than 1,000 Instagram followers",
       "Never sold",
     ],

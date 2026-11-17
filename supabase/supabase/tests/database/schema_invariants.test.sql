@@ -779,8 +779,8 @@ select ok(
 );
 
 select ok(
-  not has_function_privilege('authenticated', 'public.consumer_instagram_verify(uuid, text, integer)', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.consumer_instagram_verify(uuid, text, integer)', 'EXECUTE'),
+  not has_function_privilege('authenticated', 'public.consumer_instagram_verify(uuid, text, integer, boolean)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.consumer_instagram_verify(uuid, text, integer, boolean)', 'EXECUTE'),
   'client roles cannot stamp a handle verified'
 );
 

@@ -1,27 +1,31 @@
--- MESITA-3850 — VIP is automatic: a verified Instagram with more than 1,000
--- followers (MESITA-4249), and nothing else. The class follows the count both ways, no
+-- MESITA-3850 — VIP is automatic: a verified, PUBLIC Instagram (MESITA-4263)
+-- with more than 1,000 followers (MESITA-4249), and nothing else. The class follows the count both ways, no
 -- one can write it, and the manual doors are closed.
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(13);
+select plan(15);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3850'),
   ('00000000-0000-4000-8000-0000000b3850'),
   ('00000000-0000-4000-8000-0000000c3850'),
   ('00000000-0000-4000-8000-0000000d3850'),
-  ('00000000-0000-4000-8000-0000000e3850');
-insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count) values
-  ('00000000-0000-4000-8000-0000000a3850', null, null, null),
-  ('00000000-0000-4000-8000-0000000b3850', 'probe_3850_b', now(), 1000),
-  ('00000000-0000-4000-8000-0000000c3850', 'probe_3850_c', now(), 1001);
+  ('00000000-0000-4000-8000-0000000e3850'),
+  ('00000000-0000-4000-8000-0000000f3850'),
+  ('00000000-0000-4000-8000-000000103850');
+insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, instagram_is_private) values
+  ('00000000-0000-4000-8000-0000000a3850', null, null, null, null),
+  ('00000000-0000-4000-8000-0000000b3850', 'probe_3850_b', now(), 1000, false),
+  ('00000000-0000-4000-8000-0000000c3850', 'probe_3850_c', now(), 1001, false),
+  ('00000000-0000-4000-8000-0000000f3850', 'probe_3850_f', now(), 90000, true),
+  ('00000000-0000-4000-8000-000000103850', 'probe_3850_g', now(), 90000, null);
 insert into public.consumers (id, instagram_followers_count) values
   ('00000000-0000-4000-8000-0000000d3850', 90000);
-insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, appear_anonymous) values
-  ('00000000-0000-4000-8000-0000000e3850', 'probe_3850_e', now(), 1001, true);
+insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, appear_anonymous, instagram_is_private) values
+  ('00000000-0000-4000-8000-0000000e3850', 'probe_3850_e', now(), 1001, true, false);
 
 select is(
   (select attgenerated::text from pg_attribute
@@ -57,7 +61,19 @@ select is(
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000e3850'),
   'vip',
-  'Public profile off does not matter (MESITA-3864)'
+  'Mesita''s Public profile switch does not matter (MESITA-3864)'
+);
+
+select is(
+  (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000f3850'),
+  'regular',
+  'a PRIVATE Instagram is Regular, whatever its followers (MESITA-4263)'
+);
+
+select is(
+  (select guest_class from public.consumers where id = '00000000-0000-4000-8000-000000103850'),
+  'regular',
+  'privacy not known is Regular until a sync says public (MESITA-4263)'
 );
 
 update public.consumers set instagram_followers_count = 900

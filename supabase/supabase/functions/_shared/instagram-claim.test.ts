@@ -8,6 +8,7 @@ import {
   judgeProfile,
   makeClaimCode,
   normalizeHandle,
+  scrapedPrivate,
 } from "./instagram-claim.ts";
 
 Deno.test("normalizeHandle: strips @, lowercases, refuses non-usernames", () => {
@@ -65,4 +66,14 @@ Deno.test("judgeProfile: the scrape's follower count, only with the code in the 
     judgeProfile({ username: "perdon.mx", biography: "MESITA-7K3Q9X" }, claim),
     { ok: true, followers: 0 },
   );
+});
+
+// MESITA-4263: VIP needs a public Instagram; an unknown privacy is not public.
+Deno.test("scrapedPrivate reads Apify's private flag; anything else is unknown", () => {
+  assertEquals(scrapedPrivate({ private: false }), false);
+  assertEquals(scrapedPrivate({ private: true }), true);
+  assertEquals(scrapedPrivate({ isPrivate: true }), true);
+  assertEquals(scrapedPrivate({}), null);
+  assertEquals(scrapedPrivate({ private: "no" }), null);
+  assertEquals(scrapedPrivate(undefined), null);
 });
