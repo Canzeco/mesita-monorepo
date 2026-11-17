@@ -67,6 +67,9 @@ export type WalletBalance = {
   /** The place can take a card part (MESITA-3305): its Stripe account
    *  charges and the owner's Cards switch is on. Absent reads as no. */
   card_ok?: boolean;
+  /** What this guest can buy here now (MESITA-4262): the vouchers Home's
+   *  offer button switches through. Absent before MESITA-4262 reads as none. */
+  offers?: { sell: string[] };
   last_at: string;
   entries: WalletEntry[];
   /** The guest added this card by hand (MESITA-3582). Absent reads as no. */

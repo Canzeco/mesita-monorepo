@@ -33,5 +33,4 @@ export const DOOR_EMOJI = "text-lg leading-none";
 // as two DOOR_QUIET doors, the Wallet's grey look.
 export const PAY_BAR =
   "flex h-15 w-full items-center gap-3 rounded-xl bg-[var(--brand-pink-600)] px-4 text-left text-white transition hover:bg-[var(--brand-pink-700)] active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-pink-300)] focus-visible:ring-offset-2";
-/** The two doors under the Pay bar. */
-export const DOOR_ROW_TWO = "grid grid-cols-2 gap-2";
+

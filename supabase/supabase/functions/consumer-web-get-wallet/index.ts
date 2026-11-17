@@ -21,6 +21,7 @@
 // Body: { session_id?: string, with_cards?: boolean }
 // Response: { ok: true, test_mode,
 //             balances: [{ place: { id, slug, name, photo, boost_tier, mesita_pay } | null, place_id, currency,
+//               offers: { sell } (MESITA-4262, what Home's offer button says),
 //                          balance_cents, available_cents, pending_cents,
 //                          spendable_cents, last_at, card_ok, pinned,
 //                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, confirmed_by, purchase_id, gift_id }] }],
@@ -73,6 +74,7 @@ import {
   type SettleOutcome,
 } from "../_shared/wallet.ts";
 import { readSavedCards } from "../_shared/cards.ts";
+import { withGuestOffers } from "../_shared/vouchers.ts";
 import { type GiftEntryRow, giftPeopleIds, type GiftRow, giftTickets, type PersonRow } from "../_shared/wallet-gifts.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
@@ -259,6 +261,26 @@ serveJson("consumer-web-get-wallet", async (req) => {
     place.mesita_pay = listRowMoney(settingsFromRow(settingsById.get(id) ?? null), charging?.has(id) ?? false).mesita_pay;
   }
 
+  // THE OFFERS (MESITA-4262, Pato: "important to display offers inside
+  // wallet too … a super important selling point"): each card's switching
+  // offers, the list rows' rule (withVouchersUpTo's listRowMoney, the
+  // buying_paused kill switch, then what this guest can buy), so a Loyalty
+  // Card and a Home tile say the same offers. A failed guest read keeps the
+  // place's list (withGuestOffers logs it).
+  const offerRows = await withGuestOffers(
+    admin,
+    userId,
+    balances.map((b) => ({
+      id: b.place_id,
+      offers: {
+        sell: moneyConfig.buying_paused
+          ? []
+          : listRowMoney(settingsFromRow(settingsById.get(b.place_id) ?? null), charging?.has(b.place_id) ?? false).sell,
+      },
+    })),
+  );
+  const offersById = new Map(offerRows.map((r) => [r.id, r.offers]));
+
   const cards = cardsRead ? await cardsRead : undefined;
 
   return json({
@@ -270,6 +292,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
       place_id,
       ...b,
       card_ok: (charging?.has(place_id) ?? false) && cardsOn.has(place_id),
+      offers: offersById.get(place_id) ?? { sell: [] },
     })),
     waiting_stories: stories.map((st) => ({
       purchase_id: st.id,

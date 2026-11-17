@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
-import { photoUrl } from "@mesita/place-profile";
+import { offerSlides, photoUrl } from "@mesita/place-profile";
 import { apiRemoveCard, CARD_REFUSAL, type SavedCard } from "@/lib/api/cards";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
@@ -282,6 +282,7 @@ export function WalletSection({
                 eager={shown++ < EAGER_CARDS}
                 ready
                 pendingLine={pendingLine(row.balance, now)}
+                offer={{ placeHref: placeHref(row.placeSlug), slides: offerSlides(row.balance.offers) }}
               />
             ))
           : null}

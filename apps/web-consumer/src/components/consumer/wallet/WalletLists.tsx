@@ -4,7 +4,7 @@ import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { ChevronRight, Clock3, Plus, QrCode } from "lucide-react";
-import { PlaceMarks, SizedImg } from "@mesita/place-profile";
+import { type OfferSlide, PlaceMarks, SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
 import { CardBrandChip } from "@/components/shared/card-brand-marks";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -13,6 +13,7 @@ import { money, type WaitingStory } from "@/lib/api/wallet";
 import { cardAmount } from "@/lib/wallet-card";
 import { cn } from "@/lib/utils";
 import { Panel } from "@/components/shared/Panel";
+import { OfferPill } from "@/components/consumer/offer-button";
 import { type WalletCardModel, walletCardLabel } from "./WalletCard";
 
 // The lists' parts: every row of both lists.
@@ -199,8 +200,12 @@ export function CreditsRow({
   eager = false,
   ready = false,
   pendingLine = null,
+  offer = null,
 }: {
   card: WalletCardModel;
+  /** The place's switching offers (MESITA-4262, drawing W1): a small pill
+   *  under the balance; its tap opens the place's Offers. */
+  offer?: { placeHref: string; slides: OfferSlide[] } | null;
   /** Pay's Loyalty Cards (MESITA-4232, D9): the pill shows only what is
    *  ready to spend, $0 included; pending says itself in `pendingLine`. */
   ready?: boolean;
@@ -215,6 +220,7 @@ export function CreditsRow({
 }) {
   const amount = ready ? { cents: Math.max(0, card.available_cents), pending: false } : cardAmount(card);
   const line = creditsLine(gone);
+  const offers = offer && offer.slides.length > 0 && !gone ? offer : null;
   const body = (
     <>
       <CreditsCardChip photo={card.photo} name={card.name} eager={eager} />
@@ -230,7 +236,16 @@ export function CreditsRow({
           <span className="mt-0.5 block truncate text-sm leading-tight font-medium text-emerald-700">Ready to spend</span>
         ) : null}
       </span>
-      <CreditsPill>{money(amount.cents, card.currency)}</CreditsPill>
+      {offers ? (
+        <span className="flex shrink-0 flex-col items-end gap-1.5">
+          <CreditsPill>{money(amount.cents, card.currency)}</CreditsPill>
+          <span className="pointer-events-auto">
+            <OfferPill placeHref={offers.placeHref} name={card.name ?? "this place"} slides={offers.slides} />
+          </span>
+        </span>
+      ) : (
+        <CreditsPill>{money(amount.cents, card.currency)}</CreditsPill>
+      )}
       {href ? <Chevron /> : null}
     </>
   );
@@ -249,6 +264,19 @@ export function CreditsRow({
   ) : (
     body
   );
+  // WITH OFFERS THE ROW IS A STRETCHED LINK (MESITA-4262): a link cannot
+  // hold the offer pill's link, so the House Card link fills the row from
+  // behind and the words let taps through to it; only the pill takes its own.
+  if (href && offers) {
+    return (
+      <div className={cn(cls, "relative")} data-wallet-method="credits">
+        <Link href={href} aria-label={walletCardLabel(card)} className="absolute inset-0 rounded-[inherit] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-400" />
+        <span className={cn("pointer-events-none relative flex min-w-0 flex-1", box ? "flex-col items-stretch gap-2.5" : "items-center gap-3.5")}>
+          {inner}
+        </span>
+      </div>
+    );
+  }
   return href ? (
     <Link href={href} aria-label={walletCardLabel(card)} className={cls} data-wallet-method="credits">
       {inner}
