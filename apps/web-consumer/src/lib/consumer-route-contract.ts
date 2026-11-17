@@ -117,10 +117,6 @@ export const CONSUMER_ROUTES = {
   wallet: "/wallet",
   walletPlace: { prefix: "/wallet/place/" },
   walletGift: { prefix: "/wallet/gift/" },
-  // REDEEM A FRIEND'S CODE, ITS OWN PAGE (MESITA-4020, Pato: "redeem credits
-  // must be own page, not a fucking ugly ass modal"), pushed from Wallet's
-  // Redeem Credits button. It was a legacy address 308ing to /wallet.
-  walletRedeem: "/wallet/redeem",
   // ADD A CARD, ITS OWN PAGE (MESITA-4092, Pato: "OWN SUBPAGES IS CLEANER"),
   // pushed from Wallet's Add a card row; it was an 88% sheet.
   walletAddCard: "/wallet/cards/new",
@@ -231,6 +227,10 @@ export const CONSUMER_ROUTES = {
     // The old Wallet tab's one-segment children, by name. /wallet/buy is a
     // live page again since MESITA-4096 (Buy Credits' place list).
     walletGiftTab: "/wallet/gift",
+    // Claim Gift's 12-digit code page (MESITA-4020): a gift is a link only
+    // since MESITA-4223 (Pato: "no necesita la gente meter un input de un
+    // código").
+    walletRedeem: "/wallet/redeem",
     credits: "/credits",
     inboxCredits: "/inbox/credits",
     order: "/order",
@@ -478,7 +478,6 @@ export const ROUTE_MAP = {
   wallet: row("/wallet", "pay", "door", "pay"),
   walletPlace: row("/wallet/place/:placeId", "pay", "page", "pay"),
   walletGift: row("/wallet/gift/:token", "pay", "page", "pay"),
-  walletRedeem: row("/wallet/redeem", "pay", "page", "pay"),
   walletAddCard: row("/wallet/cards/new", "pay", "page", "pay"),
   // Pay's Buy Credits and Send Gift lists, and a House Card's send page,
   // which was a sheet over it (MESITA-4096).

@@ -11,11 +11,10 @@
 //
 // Body: { place_id: uuid, amount_cents: integer > 0, request_id: uuid }
 // Response: { ok: true, outcome: "sent" | "already_sent", gift_id,
-//             amount_cents, currency, token: string | null,
-//             code: string | null, test_mode }
-//   token is the link's key and code its 12 digits (MESITA-3737), both
-//   shown once; a replay (already_sent) answers null for both, since only
-//   their hashes are stored. The client builds the link:
+//             amount_cents, currency, token: string | null, test_mode }
+//   token is the link's key, shown once; a replay (already_sent) answers
+//   null, since only its hash is stored. A link only since MESITA-4223
+//   (MESITA-3737's 12-digit code is gone). The client builds the link:
 //   <its origin>/wallet/gift/<token>.
 //   400 amount_required | above_cap · 401 sign_in · 404 gone ·
 //   409 not_live | insufficient (spendable_cents) | too_many_open | taken ·
@@ -24,7 +23,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { GIFT_MAX_OPEN, giftRefusalStatus, hashGiftCode, hashGiftToken, mintGiftCode, mintGiftToken, readSendBody } from "../_shared/gift.ts";
+import { GIFT_MAX_OPEN, giftRefusalStatus, hashGiftToken, mintGiftToken, readSendBody } from "../_shared/gift.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
@@ -54,7 +53,6 @@ serveJson("consumer-web-send-credit", async (req) => {
   const currency = String(placeRes.place.currency ?? MONEY_CURRENCY).toLowerCase();
 
   const token = mintGiftToken();
-  const code = mintGiftCode();
   const { data, error } = await admin.rpc("wallet_send_credit", {
     p_sender_id: userId,
     p_place_id: input.placeId,
@@ -64,7 +62,6 @@ serveJson("consumer-web-send-credit", async (req) => {
     p_request_id: input.requestId,
     p_token_hash: await hashGiftToken(token),
     p_max_open: GIFT_MAX_OPEN,
-    p_code_hash: await hashGiftCode(code),
   });
   if (error) {
     console.error("[consumer-web-send-credit] rpc", error.message);
@@ -91,7 +88,6 @@ serveJson("consumer-web-send-credit", async (req) => {
     amount_cents: res.amount_cents,
     currency: res.currency,
     token: res.outcome === "sent" ? token : null,
-    code: res.outcome === "sent" ? code : null,
     test_mode: !livemode,
   });
 });

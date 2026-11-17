@@ -1,4 +1,4 @@
-import { CreditCard, Gift, HandCoins, Share2 } from "lucide-react";
+import { CreditCard, Gift, Share2 } from "lucide-react";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -53,17 +53,6 @@ export function WalletShareGift() {
       >
         <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
         Send Gift
-      </PushLink>
-      {/* Its own page since MESITA-4020; it opened a sheet until then.
-          Claim Gift, not Redeem Credits (MESITA-4045, Pato: "less
-          transactional than redeem credits"). */}
-      <PushLink
-        href={CONSUMER_ROUTES.walletRedeem}
-        className={DOOR_GIFT}
-        data-wallet-redeem
-      >
-        <HandCoins className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
-        Claim Gift
       </PushLink>
       <PushLink
         href={CONSUMER_ROUTES.share}

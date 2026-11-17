@@ -97,6 +97,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // Wallet, Pay's second half (MESITA-3698; on /pay from MESITA-3631).
   { source: "/wallet/balance/:id", destination: "/pay", permanent: true },
   { source: "/wallet/gift", destination: "/pay", permanent: true },
+  { source: "/wallet/redeem", destination: "/pay", permanent: true },
   { source: "/credits", destination: "/pay", permanent: true },
   { source: "/inbox/credits", destination: "/pay", permanent: true },
   { source: "/inbox/orders", destination: "/pay", permanent: true },

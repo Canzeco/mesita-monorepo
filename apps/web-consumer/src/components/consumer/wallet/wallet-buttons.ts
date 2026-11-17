@@ -11,7 +11,7 @@ export const SECONDARY =
 // wears the same four with Go to Pay in Share Mesita's place (MESITA-4095,
 // Pato: "the same 4 buttons, the same sizes, but instead of saying share
 // mesita, mention go to pay").
-export const DOOR_ROW = "grid grid-cols-4 gap-2";
+export const DOOR_ROW = "grid grid-cols-3 gap-2";
 const DOOR =
   "type-body flex h-13 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-center leading-tight font-semibold text-white transition hover:opacity-90 active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
 /** Buy Credits: the one solid black door. */
