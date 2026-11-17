@@ -96,8 +96,7 @@ import {
 import { CATALOG_PAGE_SIZE_MAX } from "../_shared/discovery-config.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { withVouchersUpTo } from "../_shared/payments.ts";
-import { withGuestOffers } from "../_shared/vouchers.ts";
-import { getOptionalAuthedUser } from "../_shared/auth.ts";
+import { withPlaceOffers } from "../_shared/vouchers.ts";
 import { isUuid } from "../_shared/place-id.ts";
 
 type Body = {
@@ -149,11 +148,8 @@ function wirePlaces(rows: unknown[]): PoolRow[] {
 serveJson("consumer-web-list-catalog", async (req) => {
   const ctx = openRequest(req);
   if (ctx instanceof Response) return ctx;
-  const { env, admin } = ctx;
+  const { admin } = ctx;
 
-  // The signed-in guest, if any, for the offer chips (MESITA-4207): read
-  // alongside the rank, never a 401.
-  const guest = getOptionalAuthedUser(req, env).then((r) => r.user?.id ?? null, () => null);
   const body = await readJsonOr<Body>(req, {});
   const cfg = await loadDiscoveryConfig(admin);
   const nearby = decideNearby(body as Record<string, unknown>);
@@ -225,9 +221,9 @@ serveJson("consumer-web-list-catalog", async (req) => {
       familyKeys: families,
       ...filled.summary,
     }));
-    // The tile's voucher line (MESITA-3312), two reads for the page; the
-    // chips drop what this guest already used (MESITA-4207), two more.
-    const fillPlaces = await withGuestOffers(admin, await guest, await withVouchersUpTo(admin, filled.places));
+    // The tile's voucher line (MESITA-3312), two reads for the page; every
+    // offer the place sells, whoever looks (MESITA-4292).
+    const fillPlaces = withPlaceOffers(await withVouchersUpTo(admin, filled.places));
     return json({ ok: true, places: fillPlaces, summary: filled.summary });
   }
 
@@ -253,9 +249,9 @@ serveJson("consumer-web-list-catalog", async (req) => {
     return readError(err);
   }
 
-  // The tile's voucher line (MESITA-3312), two reads for the page; the
-  // chips drop what this guest already used (MESITA-4207), two more.
-  const places = await withGuestOffers(admin, await guest, await withVouchersUpTo(admin, pool.places));
+  // The tile's voucher line (MESITA-3312), two reads for the page; every
+  // offer the place sells, whoever looks (MESITA-4292).
+  const places = withPlaceOffers(await withVouchersUpTo(admin, pool.places));
 
   console.log(JSON.stringify({
     fn: "consumer-web-list-catalog",

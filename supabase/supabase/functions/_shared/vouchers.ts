@@ -313,6 +313,17 @@ export async function withGuestOffers<T extends { id: string; offers: { sell: Mo
   });
 }
 
+/** EVERY OFFER THE PLACE SELLS (Pato, 2026-11-17, MESITA-4292: "the offers
+ *  must be dancing … welcome story prepay (the three classics)"): Home's and
+ *  Search's list rows keep the place's own `offers.sell`, whoever looks; only
+ *  the place-wide Story gate applies (no mention source, MESITA-4264). The
+ *  Offers page and the buy door still refuse what this guest cannot buy, with
+ *  the reason. withGuestOffers (MESITA-4207) stays for the Wallet. */
+export function withPlaceOffers<T extends { offers: { sell: MoneyVoucherKey[] } }>(rows: T[]): T[] {
+  if (storyMode() !== "unavailable") return rows;
+  return rows.map((r) => ({ ...r, offers: { ...r.offers, sell: r.offers.sell.filter((k) => k !== "voucher_story") } }));
+}
+
 /** The whole offer for one place and one (maybe anonymous) guest. */
 export async function voucherOffer(
   admin: SupabaseClient,
