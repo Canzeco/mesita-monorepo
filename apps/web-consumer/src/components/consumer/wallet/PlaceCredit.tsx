@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ChevronRight, Gift, QrCode } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronRight, Gift, QrCode, Share2 } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { offerSlides, SizedImg } from "@mesita/place-profile";
+import { OffersTile, offerSlides, SizedImg } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import {
@@ -25,14 +27,15 @@ import { storyBonusOpen, storyLine } from "@/lib/story-lines";
 import { SentLinks } from "./SendCredit";
 import { Panel } from "@/components/shared/Panel";
 import { WalletPanelList } from "./WalletLists";
-import { DOOR_GLYPH, DOOR_QUIET, PAY_BAR, PRIMARY, SECONDARY } from "./wallet-buttons";
-import { OfferBar } from "@/components/consumer/offer-button";
+import { DOOR_GLYPH, DOOR_QUIET, PRIMARY, SECONDARY } from "./wallet-buttons";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { offerHref } from "@/components/consumer/offer-button";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
 import { toast } from "@/lib/toast";
 import type { CreditRow } from "./use-wallet";
 
-/** Send Gift under the offers (MESITA-4262): the quiet door, one line. */
-const GIFT_ROW = cn(DOOR_QUIET, "h-12 flex-row gap-2");
+/** Pay here as a door (MESITA-4269): Stripe purple, glyph over label. */
+const PAY_TILE = cn(DOOR_QUIET, "bg-[#635bff] text-white hover:bg-[#5249e6] hover:opacity-100 focus-visible:ring-[#a5a0ff]");
 
 // A PLACE'S HOUSE CARD, /wallet/place/<placeId> (MESITA-3741). Since MESITA-3868
 // (Pato, 2026-11-14, over a screenshot: "the buttons there floting feels
@@ -240,6 +243,8 @@ export function PlaceCredit({
 }) {
   const { card, balance } = row;
   const href = placeHref(row.placeSlug);
+  const router = useRouter();
+  const offers = useMemo(() => offerSlides(balance?.offers), [balance?.offers]);
   // A balance whose place the server could not name: gone from Mesita.
   const gone = balance !== null && balance.place === null;
   const held = balance !== null && balance.spendable_cents < balance.available_cents;
@@ -354,34 +359,38 @@ export function PlaceCredit({
            here; Buy Credits and Send Gift are two dark doors under it, the
            Pay tab's look (MESITA-4250). They were three equal doors in three
            colours (MESITA-4095), none of them the main one. */
-        <div className="mt-4 flex flex-col gap-2" data-house-card-actions>
-          <PushLink href={payPlacePath(row.placeId)} className={PAY_BAR} data-house-card-pay>
-            <QrCode className="h-7 w-7 shrink-0" strokeWidth={2} aria-hidden />
-            <span className="flex min-w-0 flex-col">
-              <span className="text-base leading-tight font-bold">Pay here</span>
-              {spendable > 0 ? (
-                <span className="truncate text-sm leading-tight text-white/85" data-house-card-pay-line>
-                  Use {money(spendable, card.currency)} at the table
-                </span>
-              ) : null}
-            </span>
-            <ChevronRight className="ml-auto h-5 w-5 shrink-0" aria-hidden />
+        /* FOUR DOORS, 2 × 2 (MESITA-4269, Pato: "four buttons: Pay Here.
+           Send Gift. Offers. Share Mesita. maybe 2x2 matrix"): Pay here in
+           Stripe purple and the place screen's own Offers box on top ("just
+           reuse this box there"), Send Gift and Share Mesita dark under them.
+           It was a pink Pay bar over a green Prepay bar (MESITA-4253/4262). */
+        <div className="mt-4 grid grid-cols-2 gap-2" data-house-card-actions>
+          <PushLink
+            href={payPlacePath(row.placeId)}
+            className={PAY_TILE}
+            aria-label={spendable > 0 ? `Pay here: use ${money(spendable, card.currency)} at the table` : "Pay here"}
+            data-house-card-pay
+          >
+            <QrCode className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+            Pay here
           </PushLink>
-          {/* PREPAY HERE (MESITA-4262, Pato: "pay here, prepay here, with
-              bonus, and then the send gift"): Home's switching offers, full
-              width, in Buy Credits' place; none for sale, no bar. */}
-          <OfferBar placeHref={href} name={card.name ?? "this place"} slides={offerSlides(balance?.offers)} />
-          {/* Send Gift is its own page (MESITA-4096); it was a sheet here.
-              Quiet and full width under the offers since MESITA-4262. */}
+          {offers.length > 0 ? (
+            <OffersTile
+              name={card.name ?? "this place"}
+              slides={offers}
+              open={(slide) => () => router.push(offerHref(href, slide, true))}
+            />
+          ) : null}
+          {/* Send Gift is its own page (MESITA-4096); it was a sheet here. */}
           {gift === "open" ? (
-            <PushLink href={walletSendPath(row.placeId)} className={GIFT_ROW} data-send-credit-open>
+            <PushLink href={walletSendPath(row.placeId)} className={DOOR_QUIET} data-send-credit-open>
               <Gift className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
               Send Gift
             </PushLink>
           ) : gift ? (
             <button
               type="button"
-              className={cn(GIFT_ROW, "opacity-50")}
+              className={cn(DOOR_QUIET, "opacity-50")}
               onClick={() => toast(gift.blocked)}
               aria-label={`Send Gift: ${gift.blocked}`}
               data-send-credit-open
@@ -390,6 +399,10 @@ export function PlaceCredit({
               Send Gift
             </button>
           ) : null}
+          <PushLink href={CONSUMER_ROUTES.share} className={DOOR_QUIET} data-house-card-share>
+            <Share2 className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
+            Share Mesita
+          </PushLink>
         </div>
       )}
       {held ? (
