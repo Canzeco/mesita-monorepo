@@ -286,18 +286,18 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/search/chat", "Search"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
-    // The money tab (label Wallet since MESITA-4245) lights for /pay and every
+    // The money tab (label Pay again since MESITA-4265) lights for /pay and every
     // money address under it (MESITA-3614).
-    ["/pay", "Wallet"],
-    ["/pay/place/p1", "Wallet"],
-    ["/pay/bill/t1", "Wallet"],
-    ["/pay/receipt/r1", "Wallet"],
+    ["/pay", "Pay"],
+    ["/pay/place/p1", "Pay"],
+    ["/pay/bill/t1", "Pay"],
+    ["/pay/receipt/r1", "Pay"],
     // The Wallet is Pay's lower half (MESITA-4199): /wallet, its House Cards,
     // gift links and the Share page light it too.
-    ["/wallet", "Wallet"],
-    ["/wallet/p1", "Wallet"],
-    ["/wallet/gift/g1", "Wallet"],
-    ["/share", "Wallet"],
+    ["/wallet", "Pay"],
+    ["/wallet/p1", "Pay"],
+    ["/wallet/gift/g1", "Pay"],
+    ["/share", "Pay"],
     // Activity's chips are Me's pages (MESITA-3855): they, a reservation and
     // a ticket light Me.
     ["/me/notifications", "Me"],
@@ -380,8 +380,8 @@ describe("the bar is Home · Search · Pay · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Wallet · Me (MESITA-4245)", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Wallet", "Me"]);
+  it("is exactly Home · Search · Pay · Me (MESITA-4265)", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
   });
 
   it("the @modal host stacks over the body only, not BottomNav (MESITA-2747)", () => {
