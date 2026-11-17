@@ -38,7 +38,7 @@ import { cardFace } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
 import { CreditsCardChip, CreditsPill } from "@/components/consumer/wallet/WalletLists";
 import { BAD, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, StepBody, StepFooter } from "./pay-flow";
-import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
+import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab, CancelBillButtons } from "./pay-common";
 
 // THE GUEST PAYS (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
 // /pay/place/<placeId>, one screen a step. Every step wears one frame
@@ -449,14 +449,7 @@ export function GuestPayScreen({
           <p className="text-base font-semibold">Cancel this bill?</p>
           {/* Before the bill opens nothing has moved (MESITA-4106). */}
           <p className="text-muted-foreground mt-1 text-sm">Nothing is paid. Your credits stay in your Wallet.</p>
-          <div className="mt-4 flex gap-2">
-            <Button className="min-h-12 flex-1 text-base font-semibold" disabled={cancelLocked} onClick={cancelBill}>
-              Cancel bill
-            </Button>
-            <button type="button" className={cn(QUIET_BUTTON_CLASS, "flex-1")} onClick={() => setConfirmCancel(false)}>
-              Keep it
-            </button>
-          </div>
+          <CancelBillButtons disabled={cancelLocked} onCancel={cancelBill} onKeep={() => setConfirmCancel(false)} />
         </div>
       </LocalDialog>
     </div>

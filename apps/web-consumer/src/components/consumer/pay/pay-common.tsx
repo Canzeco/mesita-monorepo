@@ -3,6 +3,7 @@
 import { SizedImg } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
 import type { PayPlace, PayProof } from "@/lib/api/wallet";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 // What the Pay screens share. MESITA-3614 split the one Pay page into a
@@ -18,6 +19,27 @@ export const FIELD_CLASS =
  *  while one is open. */
 export const QUIET_BUTTON_CLASS =
   "border-border bg-card hover:bg-muted min-h-12 w-full rounded-2xl border px-4 text-base font-semibold transition";
+
+/** The two buttons of every "Cancel this bill?" dialog (MESITA-4239, Pato:
+ *  "this button must be red, and smaller ... non standardized"): the red
+ *  Cancel bill beside an outlined Keep it, both the standard dialog size
+ *  (h-11, text-sm, round), as the reservation cancel dialog. */
+export function CancelBillButtons({ busy, disabled, onCancel, onKeep }: { busy?: boolean; disabled?: boolean; onCancel: () => void; onKeep: () => void }) {
+  return (
+    <div className="mt-4 flex gap-2">
+      <Button variant="danger" className="flex-1 px-4 text-sm font-semibold" disabled={disabled} onClick={onCancel}>
+        {busy ? "Cancelling…" : "Cancel bill"}
+      </Button>
+      <button
+        type="button"
+        className="border-border bg-card hover:bg-muted inline-flex h-11 flex-1 items-center justify-center rounded-full border px-4 text-sm font-semibold transition"
+        onClick={onKeep}
+      >
+        Keep it
+      </button>
+    </div>
+  );
+}
 
 /** A 403 or 404 on the read: the payment is not this guest's. */
 export const isGone = (e: unknown) => e instanceof EFError && (e.status === 403 || e.status === 404);

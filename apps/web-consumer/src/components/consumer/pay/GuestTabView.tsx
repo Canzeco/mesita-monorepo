@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { useWakeLock } from "@/lib/use-wake-lock";
 import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
 import { BAD, GOOD, MoneyRow, NOT_PAID_REASON, PaySection, PayTop, StepBody, StepFooter, WAIT } from "./pay-flow";
-import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab } from "./pay-common";
+import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab, CancelBillButtons } from "./pay-common";
 import { STEP, startAgainStage } from "@/lib/guest-pay-stages";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
@@ -433,14 +433,7 @@ export function GuestTabView({
             ) : null}
             {tab.credit_cents === 0 && card === 0 && cash === 0 ? <li className="text-muted-foreground">Nothing is paid.</li> : null}
           </ul>
-          <div className="mt-4 flex gap-2">
-            <Button className="min-h-12 flex-1 text-base font-semibold" disabled={busy} onClick={() => void cancel()}>
-              {busy ? "Cancelling…" : "Cancel bill"}
-            </Button>
-            <button type="button" className={cn(QUIET_BUTTON_CLASS, "flex-1")} onClick={() => setConfirmCancel(false)}>
-              Keep it
-            </button>
-          </div>
+          <CancelBillButtons busy={busy} disabled={busy} onCancel={() => void cancel()} onKeep={() => setConfirmCancel(false)} />
         </div>
       </LocalDialog>
     </div>
