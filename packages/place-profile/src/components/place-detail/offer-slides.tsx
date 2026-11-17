@@ -5,7 +5,7 @@ import { useState, useSyncExternalStore } from "react";
 import { cn } from "../../lib/format";
 import type { OfferSlide } from "../../lib/offers";
 
-export { offerChips, offerSlides, offersLabel, type OfferChip, type OfferInput, type OfferSlide } from "../../lib/offers";
+export { offerSlides, offersLabel, type OfferInput, type OfferSlide } from "../../lib/offers";
 
 // THE OFFER SLIDES, ONE COPY FOR EVERY SCREEN (MESITA-4151). Home's offer
 // button, Search's strip and the place screen's Offers tile read the same

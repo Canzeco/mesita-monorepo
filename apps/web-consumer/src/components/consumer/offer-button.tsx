@@ -1,7 +1,9 @@
 "use client";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { OfferTrack, offerChips as chipsFor, offerSlides as slidesFor, offersLabel, useOfferSlide, type OfferChip, type OfferSlide } from "@mesita/place-profile";
+import { useState } from "react";
+
+import { OfferTrack, offerSlides as slidesFor, offersLabel, useOfferSlide, type OfferSlide } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
 import { CARD_BUTTON_BOX } from "@/components/consumer/place-card";
@@ -19,46 +21,50 @@ export function offerSlides(place: Pick<Place, "offers">): OfferSlide[] {
 const OFFER_BOX =
   "relative flex w-full items-center justify-center px-2.5 font-sans text-xs font-semibold transition-colors duration-300";
 
-/** The place's chips from its list row (MESITA-4207); none = no block. */
-export function offerChips(place: Pick<Place, "offers">): OfferChip[] {
-  return chipsFor(place.offers);
-}
-
-/** EVERY OFFER AS A CHIP (Pato, 2026-11-16, MESITA-4207 design review: "the
- *  preliminar offers in the home view look like shit"): one chip per voucher
- *  this guest can buy here, "Welcome +100%" · "Story +50%" · "Small +10%" ·
- *  "Medium +20%" · "Big +30%", wrapping, nothing moving. Each is the Offers
- *  page's chip (32px, its colour per kind, black ink) and its own link: it
- *  opens the place's Offers with that voucher ticked (`?voucher=`). 44px to
- *  tap: an invisible 6px above and below. The rotating OfferButton
- *  (MESITA-3439, MESITA-3467) before. */
-export function OfferChips({ href, name, chips, className }: {
+/** ONE SWITCHING BOX (Pato, 2026-11-17, MESITA-4219: "this boxes looks like
+ *  shit, return to the switching boxes"): every offer this guest can buy here
+ *  in one box the height of Save · Share, Classic · Welcome · Story · VIP, each
+ *  in its colour with its "N% Bonus" pill, on the shared 2s beat. A tap opens
+ *  the place's Offers with the offer on screen ticked (`?voucher=`). Held only
+ *  while a finger is down (MESITA-4217). MESITA-4207's chip list before. */
+export function OfferButton({
+  href,
+  name,
+  slides,
+  className,
+}: {
   href: string;
   name: string;
-  chips: OfferChip[];
+  slides: OfferSlide[];
   className?: string;
 }) {
-  if (chips.length === 0) return null;
+  const live = useOfferSlide(slides);
+  const [held, setHeld] = useState<number | null>(null);
+  if (slides.length === 0) return null;
+  const index = held ?? live.index;
+  const slide = slides[index];
+  const hold = () => setHeld((h) => h ?? live.index);
+  const release = () => setHeld(null);
   return (
-    <ul className={cn("flex flex-wrap gap-x-1.5 gap-y-3", className)} aria-label={`Offers at ${name}`} data-offer-chips>
-      {chips.map((c) => (
-        <li key={c.key}>
-          <PushLink
-            href={`${href}?rewards=${c.section}&voucher=${c.key}`}
-            aria-label={`${c.spoken}, at ${name}`}
-            className={cn(
-              "pointer-events-auto relative inline-flex h-8 items-center rounded-lg px-2 text-xs font-extrabold tracking-tight whitespace-nowrap tabular-nums",
-              "focus-visible:ring-primary outline-none focus-visible:ring-2",
-              "transition after:absolute after:inset-x-0 after:-inset-y-1.5 hover:opacity-90 active:scale-[0.98]",
-              c.tone,
-            )}
-            data-offer-chip={c.key}
-          >
-            {c.label}
-          </PushLink>
-        </li>
-      ))}
-    </ul>
+    <PushLink
+      href={`${href}?rewards=${slide.section ?? "prepayment"}${slide.voucher ? `&voucher=${slide.voucher}` : ""}`}
+      aria-label={offersLabel(name, slides)}
+      onClick={release}
+      onPointerDown={hold}
+      onPointerCancel={release}
+      onPointerLeave={release}
+      className={cn(
+        CARD_BUTTON_BOX,
+        OFFER_BOX,
+        slide.tone,
+        "pointer-events-auto focus-visible:ring-primary outline-none focus-visible:ring-2",
+        "transition after:absolute after:inset-x-0 after:-inset-y-1.5 hover:opacity-90 active:scale-[0.99]",
+        className,
+      )}
+      data-tile-bonus
+    >
+      <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} short />
+    </PushLink>
   );
 }
 
