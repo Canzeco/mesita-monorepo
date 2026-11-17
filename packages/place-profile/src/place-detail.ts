@@ -35,8 +35,8 @@ export type PlaceMoney = {
   charges_enabled: boolean;
   /** The green Mesita Payments mark, the server's (moneyState, MESITA-3408). */
   mesita_pay: boolean;
-  /** House Credits is On here (MESITA-3589); older reads lack it. */
-  house_credits?: boolean;
+  /** Loyalty Cards is On here (MESITA-3589); older reads lack it. */
+  loyalty_cards?: boolean;
   /** Cash Payments is On here (the switch and the place code; MESITA-3589). */
   cash?: boolean;
   vouchers: Record<VoucherKey, boolean>;

@@ -40,8 +40,8 @@ export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
 /** The owner's switches, the Place states of Main §10 (MESITA-3589).
  *  `pay_cards` is Mesita Payments (MESITA-3396, the key is never renamed:
  *  renaming resets live config); absent reads ON, so a reader from before it
- *  keeps working. `house_credits` is House Credits (On only while a signed
- *  House Credits Contract exists, enforced in SQL). `cash_payments` is Cash
+ *  keeps working. `loyalty_cards` is Loyalty Cards (On only while a signed
+ *  Loyalty Cards Agreement exists, enforced in SQL). `cash_payments` is Cash
  *  Payments (the waiter confirms a bill paid outside). `has_place_code` is not a
  *  switch but a fact the caller passes when it read place_codes
  *  (MESITA-3545): the waiter's Received needs one. Absent reads false.
@@ -54,7 +54,7 @@ export type MoneySettings = {
   stripe_payments?: boolean;
   pay_cards?: boolean;
   prepayments?: boolean;
-  house_credits?: boolean;
+  loyalty_cards?: boolean;
   cash_payments?: boolean;
   has_place_code?: boolean;
 } & Record<MoneyVoucherKey, boolean>;
@@ -71,8 +71,8 @@ export type MoneyBalance = { spendable_cents: number } | null;
 export type VoucherReason =
   | "off"
   | "needs_account"
-  /** House Credits is Off here (MESITA-3589): no new credits, so no voucher. */
-  | "needs_house_credits"
+  /** Loyalty Cards is Off here (MESITA-3589): no new credits, so no voucher. */
+  | "needs_loyalty_cards"
   /** Mesita's fee invoice is unpaid (MESITA-3461): Billing is Past due. */
   | "needs_billing"
   | "not_yet"
@@ -121,8 +121,12 @@ export type MoneyState = {
   /** A bill paid outside can be confirmed here by the waiter's Received
    *  (Cash Payments On and a place code). */
   cash: boolean;
-  /** House Credits is On here: new credit can be born (vouchers).
+  /** Loyalty Cards is On here: new credit can be born (vouchers).
    *  Off never stops a guest spending credit they already hold. */
+  loyalty_cards: boolean;
+  /** BRIDGE (MESITA-4282): the same flag under its old name, for a place
+   *  screen loaded before the rename (it reads `house_credits !== false`, so
+   *  a missing key would read On). MESITA-4283 drops it. */
   house_credits: boolean;
   /** How a guest can pay here: from credit, by card, both, or not at all. */
   pay: PayWay;
@@ -138,7 +142,7 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
   // Accept Stripe Payments (MESITA-3946) is over both card products.
   const stripe = settings.stripe_payments !== false;
   const cards = charges && !billingDue && stripe && settings.pay_cards !== false;
-  const houseCredits = settings.house_credits === true;
+  const loyaltyCards = settings.loyalty_cards === true;
   const cash = settings.cash_payments === true && settings.has_place_code === true;
   // Mesita Prepayments (MESITA-3597). Absent means on, as pay_cards.
   const prepayments = stripe && settings.prepayments !== false;
@@ -146,7 +150,7 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
   const unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
   for (const key of MONEY_VOUCHER_KEYS) {
     if (settings[key] !== true || !prepayments) unavailable[key] = "off";
-    else if (!houseCredits) unavailable[key] = "needs_house_credits";
+    else if (!loyaltyCards) unavailable[key] = "needs_loyalty_cards";
     else if (!charges) unavailable[key] = "needs_account";
     else if (billingDue) unavailable[key] = "needs_billing";
     else if (NOT_YET_SELLABLE[key]) unavailable[key] = NOT_YET_SELLABLE[key];
@@ -159,7 +163,8 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
     sell,
     unavailable,
     cash,
-    house_credits: houseCredits,
+    loyalty_cards: loyaltyCards,
+    house_credits: loyaltyCards,
     pay,
     mesita_pay,
   };

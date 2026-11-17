@@ -153,7 +153,7 @@ function priceValue(product: Product, line: VoucherCatalogLine | undefined, curr
 /** One tag per state, objective: where it stands for this guest at this place. */
 function tag(reason: VoucherReason | undefined): string {
   if (!reason) return "Available here";
-  if (reason === "off" || reason === "needs_account" || reason === "needs_house_credits" || reason === "needs_billing") return "Not at this place yet";
+  if (reason === "off" || reason === "needs_account" || reason === "needs_loyalty_cards" || reason === "needs_billing") return "Not at this place yet";
   if (reason === "paused") return "Paused for a moment";
   if (reason === "used") return "You had yours here";
   if (reason === "needs_visit") return "One per visit";
@@ -267,9 +267,9 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
   // `pay_cards`, so its mesita_pay is not the server's.
   const state = moneyState(
     {
-      // House Credits as the server says; an older read without it is
+      // Loyalty Cards as the server says; an older read without it is
       // read as on, so the server's own unavailable reasons stand.
-      house_credits: money?.house_credits !== false,
+      loyalty_cards: money?.loyalty_cards !== false,
       voucher_200: money?.vouchers.voucher_200 === true,
       voucher_1000: money?.vouchers.voucher_1000 === true,
       voucher_5000: money?.vouchers.voucher_5000 === true,

@@ -24,18 +24,18 @@ import { paymentsLivemode, type StripeCall } from "./stripe.ts";
 
 /** The owner's on/off switches, in Main §10's order (MESITA-3589).
  *  `pay_cards` is Mesita Payments (MESITA-3396; the key is never renamed:
- *  renaming resets live config). `house_credits` is House Credits (On only
- *  while a signed House Credits Contract exists: SQL refuses otherwise).
+ *  renaming resets live config). `loyalty_cards` is Loyalty Cards (On only
+ *  while a signed Loyalty Cards Agreement exists: SQL refuses otherwise).
  *  `cash_payments` is Cash Payments (the waiter's Received; the set EF
  *  refuses On without the place code). `prepayments` is Mesita Prepayments
- *  (MESITA-3597): its own On/Off, needing House Credits (SQL) and a Stripe
+ *  (MESITA-3597): its own On/Off, needing Loyalty Cards (SQL) and a Stripe
  *  Account taking cards (the set EF). The six vouchers are its sub-switches
- *  (which vouchers it sells) and need House Credits On (SQL refuses
+ *  (which vouchers it sells) and need Loyalty Cards On (SQL refuses
  *  otherwise). */
 export const PAYMENT_KEYS = [
   // MESITA-3946: Accept Stripe Payments, over pay_cards and prepayments.
   "stripe_payments",
-  "house_credits",
+  "loyalty_cards",
   "cash_payments",
   "pay_cards",
   "prepayments",
@@ -49,7 +49,7 @@ export type PaymentKey = (typeof PAYMENT_KEYS)[number];
 
 /** The settings that need the place's Stripe account to take cards before
  *  they turn On (MESITA-3599): Mesita Payments,
- *  Mesita Prepayments (MESITA-3597) and its six vouchers. House Credits and Cash Payments never do. */
+ *  Mesita Prepayments (MESITA-3597) and its six vouchers. Loyalty Cards and Cash Payments never do. */
 export const NEEDS_STRIPE_KEYS = [
   "pay_cards",
   "prepayments",
@@ -98,12 +98,12 @@ export async function readSettings(admin: SupabaseClient, placeId: string): Prom
   return settingsFromRow(data as Partial<Record<PaymentKey, unknown>> | null);
 }
 
-/** The place's House Credits Contract, live or none (MESITA-3589). */
-export const HOUSE_CREDITS_TERMS_VERSION = "draft-2026-11";
+/** The place's Loyalty Cards Agreement, live or none (MESITA-3589). */
+export const LOYALTY_CARDS_TERMS_VERSION = "draft-2026-11";
 /** The exact text the owner is shown and agrees to (Pato, 2026-11-09: "JUST
  *  MAKE AN AGREE MODAL EXPLAINING NOTHING"); a lawyer's text replaces it and
  *  bumps the version before launch. Its sha256 is stored with the signature. */
-export const HOUSE_CREDITS_TERMS_TEXT = "The full agreement will be added before launch.";
+export const LOYALTY_CARDS_TERMS_TEXT = "The full agreement will be added before launch.";
 
 export async function sha256Hex(text: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -112,9 +112,9 @@ export async function sha256Hex(text: string): Promise<string> {
 export type ContractView = { signed: boolean; signed_at: string | null; terms_version: string | null };
 
 export async function readContract(admin: SupabaseClient, placeId: string): Promise<ContractView> {
-  const { data, error } = await admin.from("house_credits_contracts").select("signed_at, terms_version")
+  const { data, error } = await admin.from("loyalty_cards_contracts").select("signed_at, terms_version")
     .eq("place_id", placeId).is("ended_at", null).maybeSingle();
-  if (error) throw new Error(`house_credits_contracts: ${error.message}`);
+  if (error) throw new Error(`loyalty_cards_contracts: ${error.message}`);
   const row = data as { signed_at?: string; terms_version?: string } | null;
   return { signed: !!row, signed_at: row?.signed_at ?? null, terms_version: row?.terms_version ?? null };
 }
@@ -264,8 +264,8 @@ export function isDashboardPairRefusal(message: string): boolean {
 }
 
 /** Where a place's Stripe account can live: Mexico, the US and Canada
- *  (MESITA-3943, the launch countries). Anywhere else a place runs House
- *  Credits and cash, never cards. */
+ *  (MESITA-3943, the launch countries). Anywhere else a place runs Loyalty
+ *  Cards and cash, never cards. */
 export const CONNECT_COUNTRIES = ["MX", "US", "CA"] as const;
 export type ConnectCountry = (typeof CONNECT_COUNTRIES)[number];
 export function isConnectCountry(v: unknown): v is ConnectCountry {

@@ -106,8 +106,8 @@ Deno.test("settings: no row is everything Off, App Payments included; unknown ke
   assertEquals(off.pay_cards, false);
   assertEquals(settingsFromRow({ pay_cards: true }).pay_cards, true);
   assertEquals(settingsFromRow({ pay_cards: "yes" }).pay_cards, false);
-  assertEquals(settingsFromRow({ house_credits: true, voucher_story: "yes" }).house_credits, true);
-  assertEquals(settingsFromRow({ house_credits: true, voucher_story: "yes" }).voucher_story, false);
+  assertEquals(settingsFromRow({ loyalty_cards: true, voucher_story: "yes" }).loyalty_cards, true);
+  assertEquals(settingsFromRow({ loyalty_cards: true, voucher_story: "yes" }).voucher_story, false);
   // A row still carrying the dead columns (MESITA-3408, dropped by MESITA-3409) reads past them.
   const old = settingsFromRow({ pay_cash: false, pay_credits: false, voucher_200: true } as Record<string, unknown>);
   assertEquals("pay_cash" in old || "pay_credits" in old, false);
@@ -124,16 +124,16 @@ Deno.test("list rows (MESITA-3408): the mark lights where a guest can pay by car
   // turns it on (MESITA-3599), so no mark.
   assertEquals(listRowMoney(undefined, true), { sell: [], mesita_pay: false });
   // No charging account: nothing.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, voucher_200: true }, false), { sell: [], mesita_pay: false });
-  // Pay by phone off, MX$200 on with House Credits, charging: sells and shows the mark.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, prepayments: true, pay_cards: false, voucher_200: true }, true), { sell: ["voucher_200"], mesita_pay: true });
+  assertEquals(listRowMoney({ ...settingsFromRow(null), loyalty_cards: true, voucher_200: true }, false), { sell: [], mesita_pay: false });
+  // Pay by phone off, MX$200 on with Loyalty Cards, charging: sells and shows the mark.
+  assertEquals(listRowMoney({ ...settingsFromRow(null), loyalty_cards: true, prepayments: true, pay_cards: false, voucher_200: true }, true), { sell: ["voucher_200"], mesita_pay: true });
   // Mesita Prepayments Off (MESITA-3597): the voucher's own switch alone sells nothing.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, pay_cards: false, voucher_200: true }, true).sell, []);
+  assertEquals(listRowMoney({ ...settingsFromRow(null), loyalty_cards: true, pay_cards: false, voucher_200: true }, true).sell, []);
   // Pay by phone off, nothing on: no mark.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false, house_credits: true }, true), { sell: [], mesita_pay: false });
+  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false, loyalty_cards: true }, true), { sell: [], mesita_pay: false });
   // Accept Stripe Payments Off (MESITA-3946): no card pay, no voucher, no mark.
   assertEquals(
-    listRowMoney({ ...settingsFromRow(null), stripe_payments: false, house_credits: true, prepayments: true, pay_cards: true, voucher_200: true }, true),
+    listRowMoney({ ...settingsFromRow(null), stripe_payments: false, loyalty_cards: true, prepayments: true, pay_cards: true, voucher_200: true }, true),
     { sell: [], mesita_pay: false },
   );
   assertEquals(cardsAccepted({ pay_cards: true, stripe_payments: false }), false);

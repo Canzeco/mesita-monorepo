@@ -21,7 +21,7 @@
 //                 what the business decides — Owned · Plan · Billing ·
 //                 Stripe Account · Reservations · Cash Payments ·
 //                 Mesita Payments · Mesita Prepayments, with
-//                 House Credits (never "Mesita Credits": credits are the
+//                 Loyalty Cards (never "Mesita Credits": credits are the
 //                 place's debt). Drawn by PlaceStatesCard / place-states.ts.
 //   ENRICHMENT STEPS (8)  their own box: 1. Details Enriched …
 //                 8. Vectors Enriched, each a bool (called or not).

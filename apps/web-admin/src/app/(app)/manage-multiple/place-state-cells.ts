@@ -2,8 +2,8 @@
 // (MESITA-3595, Pato: "List all the states discussed in admin too"):
 //
 //   Profile  Created · Pulsing · Enriching · Enriched · Premier · Disabled
-//   Place    Owned · Plan · Billing · Stripe · Reservations · House Credits
-//            Contract · House Credits · Cash Payments · Mesita Payments
+//   Place    Owned · Plan · Billing · Stripe · Reservations · Loyalty Cards
+//            Contract · Loyalty Cards · Cash Payments · Mesita Payments
 //            · Mesita Prepayments
 //
 // The Place chips come from @mesita/place-profile's place-states.ts, the
@@ -64,8 +64,8 @@ export function placeStateChips(hit: PlaceHit): Record<PlaceStateKey, PlaceState
     billing: money(m.billing),
     stripe: money(m.stripe),
     reservations: m.reservations,
-    houseCreditsContract: money(m.houseCreditsContract),
-    houseCredits: money(m.houseCredits),
+    loyaltyCardsContract: money(m.loyaltyCardsContract),
+    loyaltyCards: money(m.loyaltyCards),
     cashPayments: money(m.cashPayments),
     mesitaPayments: money(m.mesitaPayments),
     mesitaPrepayments: money(m.mesitaPrepayments),

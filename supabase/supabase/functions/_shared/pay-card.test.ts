@@ -25,7 +25,7 @@ const ALL_ON: PaymentSettings = {
   stripe_payments: true,
   pay_cards: true,
   prepayments: true,
-  house_credits: true,
+  loyalty_cards: true,
   cash_payments: true,
   voucher_200: true,
   voucher_1000: true,

@@ -126,7 +126,7 @@ export default async function PaymentsConfigPage() {
           <SectionCard
             icon={<CoinsIcon aria-hidden />}
             title="Currencies"
-            subtitle="Three countries at launch: Mexico, the United States and Canada, each in its own currency (fixed when the place signs the House Credits Agreement). Small +10% starts with 1; Big +20% is 10× Small; Welcome, Story and VIP cost the Small price."
+            subtitle="Three countries at launch: Mexico, the United States and Canada, each in its own currency (fixed when the place signs the Loyalty Cards Agreement). Small +10% starts with 1; Big +20% is 10× Small; Welcome, Story and VIP cost the Small price."
           >
             <div className="mt-4">
               <Table className="min-w-[640px]" data-admin-voucher-currencies>
@@ -172,7 +172,7 @@ export default async function PaymentsConfigPage() {
                     </li>
                   ))}
                 </ul>
-                <p className="text-muted-foreground mt-1 text-sm">Places there run House Credits and cash; no vouchers or cards.</p>
+                <p className="text-muted-foreground mt-1 text-sm">Places there run Loyalty Cards and cash; no vouchers or cards.</p>
               </div>
             ) : null}
           </SectionCard>

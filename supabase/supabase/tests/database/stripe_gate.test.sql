@@ -1,7 +1,7 @@
 -- MESITA-3599 — Mesita Pay (pay_cards) and every Prepaid Voucher need the place's Stripe
 -- account to take cards (Pato, 2026-11-10: "neither Mesita Pay nor Mesita
 -- Payments can be enabled without the Stripe Account"). Mesita Pay defaults
--- Off; turning Off never needs Stripe; House Credits and Cash Payments are
+-- Off; turning Off never needs Stripe; Loyalty Cards and Cash Payments are
 -- independent of Stripe. Mesita Prepayments (MESITA-3597) needs it too.
 
 begin;
@@ -14,7 +14,7 @@ insert into auth.users (id) values ('00000000-0000-4000-8000-0000000b3599');
 insert into public.place_profiles (id, google_name) values ('00000000-0000-4000-8000-000000013599', 'Stripe Gate Probe');
 insert into public.places (id, slug, state, content_state, currency) values
   ('00000000-0000-4000-8000-000000013599', 'mesita-3599-probe', 'active', 'generating', 'MXN');
-insert into public.house_credits_contracts (place_id, signed_by, signer_role, terms_version, text_sha256)
+insert into public.loyalty_cards_contracts (place_id, signed_by, signer_role, terms_version, text_sha256)
 values ('00000000-0000-4000-8000-000000013599', '00000000-0000-4000-8000-0000000b3599', 'owner', 'draft-2026-11', repeat('0', 64));
 
 -- ━━━ No Stripe account ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -30,9 +30,9 @@ select is(
   false, 'Mesita Pay defaults Off');
 
 select lives_ok(
-  $$update public.place_payment_settings set house_credits = true, cash_payments = true
+  $$update public.place_payment_settings set loyalty_cards = true, cash_payments = true
      where place_id = '00000000-0000-4000-8000-000000013599'$$,
-  'House Credits and Cash Payments do not need Stripe');
+  'Loyalty Cards and Cash Payments do not need Stripe');
 
 select throws_ok(
   $$update public.place_payment_settings set pay_cards = true where place_id = '00000000-0000-4000-8000-000000013599'$$,

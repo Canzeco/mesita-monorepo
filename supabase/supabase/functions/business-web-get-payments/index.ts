@@ -8,10 +8,10 @@
 // Body: { place_id: uuid }
 // Response: { ok: true, can_edit, test_mode,
 //             account: { state: none|onboarding|ready|restricted, ... },
-//             settings: { house_credits, cash_payments, pay_cards, voucher_200,
+//             settings: { loyalty_cards, cash_payments, pay_cards, voucher_200,
 //                         ..., voucher_story },
-//             contract: { signed, signed_at, terms_version },  the House
-//                          Credits Contract (MESITA-3589), independent of Stripe
+//             contract: { signed, signed_at, terms_version },  the Loyalty
+//                          Cards Agreement (MESITA-3589), independent of Stripe
 //             account.stage: none|onboarding|in_review|connected|action_needed|
 //                          payouts_paused|restricted (Main §10's Place Stripe)
 //             code_set,    whether the place code is set: the waiter's charge
@@ -25,7 +25,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { accountView, HOUSE_CREDITS_TERMS_TEXT, readAccount, readContract, readSettings, refreshAccount } from "../_shared/payments.ts";
+import { accountView, LOYALTY_CARDS_TERMS_TEXT, readAccount, readContract, readSettings, refreshAccount } from "../_shared/payments.ts";
 import { FEE_INVOICE_COLUMNS, type FeeInvoiceRow, feeView } from "../_shared/fee-billing.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 import { errorMessage } from "../_shared/errors.ts";
@@ -56,7 +56,7 @@ serveJson("business-web-get-payments", async (req) => {
     }
   }
   const [settings, contract] = await Promise.all([readSettings(admin, placeId), readContract(admin, placeId)]);
-  // MESITA-3913: the one currency of this place's House Credits.
+  // MESITA-3913: the one currency of this place's Loyalty Cards.
   const placeRes = await readVoucherPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const placeRow = placeRes.place;
@@ -97,7 +97,7 @@ serveJson("business-web-get-payments", async (req) => {
     account: accountView(account),
     settings,
     currency: String(placeRow?.currency ?? "MXN").toUpperCase(),
-    contract: { ...contract, text: HOUSE_CREDITS_TERMS_TEXT },
+    contract: { ...contract, text: LOYALTY_CARDS_TERMS_TEXT },
     code_set: !!code,
     credits_balance,
     fee: feeView(hold, (invoices ?? []) as FeeInvoiceRow[], Date.now()),

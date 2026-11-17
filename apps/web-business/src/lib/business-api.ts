@@ -419,13 +419,13 @@ export async function decideVerification(
 /** The owner's switches. `pay_cards` is the Mesita Payments switch (MESITA-3396; the key is
  *  never renamed, renaming resets live config). Cash and Credits left with
  *  MESITA-3408. Mirrors PAYMENT_KEYS in supabase/_shared/payments.ts. */
-/** The owner's on/off switches (Main §10, MESITA-3589): House Credits, Cash
+/** The owner's on/off switches (Main §10, MESITA-3589): Loyalty Cards, Cash
  *  Payments, Mesita Payments (`pay_cards`), Mesita Prepayments
  *  (`prepayments`, MESITA-3597) and its six vouchers. */
 export type PaymentKey =
   /** MESITA-3946: Accept Stripe Payments, over App Payments and App Prepayments. */
   | "stripe_payments"
-  | "house_credits"
+  | "loyalty_cards"
   | "cash_payments"
   | "pay_cards"
   | "prepayments"
@@ -435,8 +435,8 @@ export type PaymentKey =
   | "voucher_welcome"
   | "voucher_story";
 export type PaymentSettings = Record<PaymentKey, boolean>;
-/** The House Credits Contract (MESITA-3589), independent of Stripe. */
-export type HouseCreditsContract = { signed: boolean; signed_at: string | null; terms_version: string | null; text?: string };
+/** The Loyalty Cards Agreement (MESITA-3589), independent of Stripe. */
+export type LoyaltyCardsContract = { signed: boolean; signed_at: string | null; terms_version: string | null; text?: string };
 /** The Stripe Account's seven values (Main §10). */
 export type StripeStage = "none" | "onboarding" | "in_review" | "connected" | "action_needed" | "payouts_paused" | "restricted";
 export type PaymentAccount = {
@@ -455,11 +455,11 @@ export type PlacePayments = {
   test_mode: boolean;
   account: PaymentAccount;
   settings: PaymentSettings;
-  /** MESITA-3913: the one currency of this place's House Credits, from its
+  /** MESITA-3913: the one currency of this place's Loyalty Cards, from its
    *  country ("MXN", "USD"). Older servers lack it: MXN. */
   currency: string;
-  /** The House Credits Contract (MESITA-3589); older servers lack it. */
-  contract?: HouseCreditsContract;
+  /** The Loyalty Cards Agreement (MESITA-3589); older servers lack it. */
+  contract?: LoyaltyCardsContract;
   /** Whether the place code is set: the waiter's charge needs it (MESITA-3306). */
   code_set: boolean;
   /** MESITA-3946: credit guests hold here now; null when the read failed. */
@@ -593,9 +593,9 @@ export async function setPlacePayment(placeId: string, key: PaymentKey, enabled:
   return { ok: true, data: r.data.settings };
 }
 
-/** The owner agrees to the House Credits Contract (MESITA-3589). */
-export async function signHouseCreditsContract(placeId: string): Promise<Result<HouseCreditsContract>> {
-  const r = await efInvoke<{ contract: HouseCreditsContract }>("business-web-sign-house-credits-contract", { place_id: placeId });
+/** The owner agrees to the Loyalty Cards Agreement (MESITA-3589). */
+export async function signLoyaltyCardsContract(placeId: string): Promise<Result<LoyaltyCardsContract>> {
+  const r = await efInvoke<{ contract: LoyaltyCardsContract }>("business-web-sign-loyalty-cards-contract", { place_id: placeId });
   if (!r.ok) return fail(r);
   return { ok: true, data: r.data.contract };
 }

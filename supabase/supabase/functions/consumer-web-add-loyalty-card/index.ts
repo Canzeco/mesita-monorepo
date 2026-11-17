@@ -7,8 +7,8 @@
 // Body: { place_id: uuid }
 // Response: { ok: true, already: boolean }
 //   400 (not a place id) · 401 sign_in · 404 (no such place)
-//   409 house_credits_off (MESITA-3610, Pato: "if the place doesn't enable
-//   House Credits, the Loyalty Card cannot be enabled from the consumer app") · 500
+//   409 loyalty_cards_off (MESITA-3610, Pato: "if the place doesn't enable
+//   Loyalty Cards, the Loyalty Card cannot be enabled from the consumer app") · 500
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -30,8 +30,8 @@ serveJson("consumer-web-add-loyalty-card", async (req) => {
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   if (!placeRes.place) return json({ ok: false, error: "Place not found" }, 404);
   const settings = await readSettings(admin, placeId);
-  if (!settings.house_credits) {
-    return json({ ok: false, code: "house_credits_off", error: "This place doesn't use House Credits." }, 409);
+  if (!settings.loyalty_cards) {
+    return json({ ok: false, code: "loyalty_cards_off", error: "This place doesn't use Loyalty Cards." }, 409);
   }
 
   const { data, error } = await admin

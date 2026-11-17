@@ -3,7 +3,7 @@
 // Place States (MESITA-3588): what the business decides, read-only, beside
 // Profile States (what comes from Google or Mesita). The list and its words
 // are Main §10 (MESITA-3586): Owned · Plan · Billing · Stripe · Reservations ·
-// House Credits Contract · House Credits · Cash Payments · Mesita Payments
+// Loyalty Cards Agreement · Loyalty Cards · Cash Payments · Mesita Payments
 // · Mesita Prepayments (MESITA-3597).
 // A failed read shows "?", never a false no.
 
@@ -130,15 +130,15 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
           detail="Takes bookings through Mesita. Staff switch it in Settings."
         />
         <StateRow
-          name="House Credits Contract"
-          on={m.houseCreditsContract.on}
-          chip={money(m.houseCreditsContract.chip)}
-          detail="The owner's agreement with Mesita to run House Credits. Separate from Stripe."
+          name="Loyalty Cards Agreement"
+          on={m.loyaltyCardsContract.on}
+          chip={money(m.loyaltyCardsContract.chip)}
+          detail="The owner's agreement with Mesita to run Loyalty Cards. Separate from Stripe."
         />
         <StateRow
-          name="House Credits"
-          on={m.houseCredits.on}
-          chip={money(m.houseCredits.chip)}
+          name="Loyalty Cards"
+          on={m.loyaltyCards.on}
+          chip={money(m.loyaltyCards.chip)}
           detail="New credit can be born here (vouchers). Off never stops guests spending what they hold."
         />
         <StateRow
@@ -157,7 +157,7 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
           name="App Prepayments"
           on={m.mesitaPrepayments.on}
           chip={money(m.mesitaPrepayments.chip)}
-          detail="Guests can buy prepaid vouchers here now. Needs the App Prepayments switch, House Credits, a voucher switched on, the Stripe Account taking cards and no unpaid invoice."
+          detail="Guests can buy prepaid vouchers here now. Needs the App Prepayments switch, Loyalty Cards, a voucher switched on, the Stripe Account taking cards and no unpaid invoice."
         />
       </div>
     </SectionCard>

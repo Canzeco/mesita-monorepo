@@ -45,7 +45,7 @@ serveJson("business-web-start-payment-onboarding", async (req) => {
   const { place_id: placeId, return_url: returnUrl } = bodyRes.body;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   // MESITA-3913: the account's country follows the place's currency (one
-  // House Credits card, one currency), never a default.
+  // Loyalty Cards card, one currency), never a default.
   const placeRes = await readVoucherPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const placeRow = placeRes.place;

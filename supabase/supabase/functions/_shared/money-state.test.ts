@@ -12,7 +12,7 @@ const off: MoneySettings = {
   voucher_story: false,
 };
 const allOn: MoneySettings = {
-  house_credits: true,
+  loyalty_cards: true,
   cash_payments: true,
   has_place_code: true,
   voucher_200: true,
@@ -72,16 +72,16 @@ Deno.test("cash (MESITA-3589): Cash Payments needs the switch and the place code
   assertEquals(moneyState({ ...cash, cash_payments: false }, null, null).cash, false);
 });
 
-Deno.test("Prepayments (MESITA-3589) need House Credits and Billing paid up", () => {
-  assertEquals(moneyState({ ...allOn, house_credits: false }, can, null).unavailable.voucher_200, "needs_house_credits");
+Deno.test("Prepayments (MESITA-3589) need Loyalty Cards and Billing paid up", () => {
+  assertEquals(moneyState({ ...allOn, loyalty_cards: false }, can, null).unavailable.voucher_200, "needs_loyalty_cards");
   assertEquals(moneyState(allOn, { charges_enabled: true, fee_hold: true }, null).unavailable.voucher_200, "needs_billing");
   assertEquals(moneyState(allOn, { charges_enabled: true, fee_hold: true }, null).sell, []);
 });
 
-Deno.test("House Credits Off never stops a guest spending what they hold", () => {
+Deno.test("Loyalty Cards Off never stops a guest spending what they hold", () => {
   const nothing = { ...off, pay_cards: false };
   assertEquals(moneyState(nothing, null, { spendable_cents: 500 }).pay, "credit");
-  assertEquals(moneyState(nothing, null, { spendable_cents: 500 }).house_credits, false);
+  assertEquals(moneyState(nothing, null, { spendable_cents: 500 }).loyalty_cards, false);
 });
 
 Deno.test("the green mark (MESITA-3408): on when a guest can pay the bill by card here or buy a voucher", () => {
@@ -89,12 +89,12 @@ Deno.test("the green mark (MESITA-3408): on when a guest can pay the bill by car
   // Pay by phone on with a charging account: card bill pay, mark on.
   assertEquals(moneyState(off, can, null).mesita_pay, true);
   // A sellable voucher lights it, even with Pay by phone off.
-  assertEquals(moneyState({ ...off, house_credits: true, voucher_200: true, pay_cards: false }, can, null).mesita_pay, true);
+  assertEquals(moneyState({ ...off, loyalty_cards: true, voucher_200: true, pay_cards: false }, can, null).mesita_pay, true);
   // Pay by phone off and nothing selling: off.
-  assertEquals(moneyState({ ...off, house_credits: true, pay_cards: false }, can, null).mesita_pay, false);
+  assertEquals(moneyState({ ...off, loyalty_cards: true, pay_cards: false }, can, null).mesita_pay, false);
   // Medium (voucher_5000) sells again (MESITA-4056): its switch alone lights it.
-  assertEquals(moneyState({ ...off, house_credits: true, pay_cards: false, voucher_5000: true }, can, null).mesita_pay, true);
-  assertEquals(moneyState({ ...off, house_credits: true, pay_cards: false, voucher_story: true }, can, null).mesita_pay, true);
+  assertEquals(moneyState({ ...off, loyalty_cards: true, pay_cards: false, voucher_5000: true }, can, null).mesita_pay, true);
+  assertEquals(moneyState({ ...off, loyalty_cards: true, pay_cards: false, voucher_story: true }, can, null).mesita_pay, true);
   // No account: no mark.
   assertEquals(moneyState(allOn, null, null).mesita_pay, false);
   assertEquals(moneyState(allOn, cannot, null).mesita_pay, false);

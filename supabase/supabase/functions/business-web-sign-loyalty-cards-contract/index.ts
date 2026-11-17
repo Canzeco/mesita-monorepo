@@ -1,12 +1,12 @@
-// Supabase Edge Function — business-web-sign-house-credits-contract
+// Supabase Edge Function — business-web-sign-loyalty-cards-contract
 //
-// MESITA-3589: the owner agrees to the House Credits Contract (Notion Main
-// §10: House Credits Contract, Not signed · Signed). Independent of Stripe
+// MESITA-3589: the owner agrees to the Loyalty Cards Agreement (Notion Main
+// §10: Loyalty Cards Agreement, Not signed · Signed). Independent of Stripe
 // Connect (Pato, 2026-11-09: "REMEMBER THAT CONTRACT IS INDEPENDENT FROM
 // STRIPE CONNECT"): nothing here reads or needs the place's Stripe account.
 // The text is a placeholder until a lawyer writes it (terms_version
 // draft-2026-11); the record keeps who agreed, when and to which version.
-// Signing never turns House Credits on: that is the owner's next switch.
+// Signing never turns Loyalty Cards on: that is the owner's next switch.
 //
 // The place's owner (or Mesita staff on the owner's behalf) only.
 //
@@ -22,9 +22,9 @@ import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
-import { HOUSE_CREDITS_TERMS_TEXT, HOUSE_CREDITS_TERMS_VERSION, readContract, sha256Hex } from "../_shared/payments.ts";
+import { LOYALTY_CARDS_TERMS_TEXT, LOYALTY_CARDS_TERMS_VERSION, readContract, sha256Hex } from "../_shared/payments.ts";
 
-serveJson("business-web-sign-house-credits-contract", async (req) => {
+serveJson("business-web-sign-loyalty-cards-contract", async (req) => {
   const ctx = await requireBusinessRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
@@ -41,27 +41,27 @@ serveJson("business-web-sign-house-credits-contract", async (req) => {
   const existing = await readContract(admin, placeId);
   if (existing.signed) return json({ ok: true, outcome: "already_signed", contract: existing });
 
-  // MESITA-3923: the place's House Credits currency is agreed here, and the
+  // MESITA-3923: the place's Loyalty Cards currency is agreed here, and the
   // signature locks it (place_currency_open).
   const placeRes = await readVoucherPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const currency = String(placeRes.place?.currency ?? "MXN").toUpperCase();
 
-  const { error } = await admin.from("house_credits_contracts").insert({
+  const { error } = await admin.from("loyalty_cards_contracts").insert({
     place_id: placeId,
     currency,
     signed_by: user.id,
     signed_by_email: user.email ?? null,
     signer_role: access.role === "superadmin" ? "superadmin" : "owner",
-    terms_version: HOUSE_CREDITS_TERMS_VERSION,
-    text_sha256: await sha256Hex(HOUSE_CREDITS_TERMS_TEXT),
+    terms_version: LOYALTY_CARDS_TERMS_VERSION,
+    text_sha256: await sha256Hex(LOYALTY_CARDS_TERMS_TEXT),
     ip: (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || null,
     user_agent: (req.headers.get("user-agent") ?? "").slice(0, 400) || null,
   });
   // Two taps at once: the unique live-contract index lets one through.
   if (error && error.code !== "23505") {
-    return json({ ok: false, error: `house_credits_contracts: ${error.message}` }, 500);
+    return json({ ok: false, error: `loyalty_cards_contracts: ${error.message}` }, 500);
   }
-  console.log("[business-web-sign-house-credits-contract]", JSON.stringify({ place_id: placeId, user_id: user.id, terms_version: HOUSE_CREDITS_TERMS_VERSION }));
+  console.log("[business-web-sign-loyalty-cards-contract]", JSON.stringify({ place_id: placeId, user_id: user.id, terms_version: LOYALTY_CARDS_TERMS_VERSION }));
   return json({ ok: true, outcome: error ? "already_signed" : "signed", contract: await readContract(admin, placeId) });
 });
