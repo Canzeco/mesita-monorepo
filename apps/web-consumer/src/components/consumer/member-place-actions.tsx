@@ -244,7 +244,18 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     ...(vouchers.payCards ? { payCards: vouchers.payCards } : {}),
     payCardId: vouchers.payCardId,
     onSelectPayCard: vouchers.selectCard,
-    onAddPayCard: vouchers.addCard,
+    // BACK TO THE SAME SHEET (Pato, 2026-11-17, MESITA-4230, D4): the offer
+    // rides this page's address across the Add a card trip, so Back lands on
+    // Offers with that offer's sheet open and the new card picked.
+    onAddPayCard: (voucher?: VoucherKey) => {
+      if (voucher) {
+        const params = new URLSearchParams(window.location.search);
+        params.set("rewards", "prepayment");
+        params.set("voucher", voucher);
+        window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}`);
+      }
+      vouchers.addCard();
+    },
     onRetryPayCards: () => void vouchers.loadCards(),
     onLoadVouchers: vouchers.load,
     vouchersLoading: vouchers.loading,

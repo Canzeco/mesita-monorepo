@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, Clock, Wallet } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, Clock, Wallet } from "lucide-react";
 import { readyClock, VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { money } from "@/lib/api/wallet";
+import { walletPlacePath } from "@/lib/consumer-route-contract";
+import { navigateTo } from "@/lib/navigate";
 import type { PlaceDetail } from "@/lib/place-detail";
 
 /** The guest's credit here (MESITA-4224): spendable now, and the pending
@@ -49,6 +52,7 @@ export function RewardsSheet({
   if (section != null && section !== last) setLast(section);
   const drawn = section ?? last;
   const credit = creditHere(place);
+  const router = useRouter();
   return (
     <LocalSheet open={section != null} onClose={onClose} ariaLabel={`${place.name} offers`} fullScreen from="right">
       {/* THE PAGE IS "OFFERS" (Pato, MESITA-4173: "the page must not be called
@@ -83,24 +87,47 @@ export function RewardsSheet({
             only while a bonus waits, says how much and when. Signed out there
             is no balance and no card (D6). */}
         {credit ? (
-          <div
-            className="bg-foreground text-paper flex shrink-0 flex-col gap-1 rounded-2xl px-4 py-3"
-            aria-label={credit.label}
-            data-offers-balance
-          >
-            <div className="flex items-center justify-between gap-3" aria-hidden>
+          // TWO WAYS ON (Pato, 2026-11-17, MESITA-4230: "add shortcut to go
+          // for wallet or shortcut to go to pay bill"; D5): the card opens
+          // your credit here (history, pending); its white Pay bill opens
+          // this place's Pay, where the credit spends.
+          <div className="bg-foreground text-paper relative flex shrink-0 flex-col gap-2 rounded-2xl px-4 py-3" data-offers-balance>
+            <button
+              type="button"
+              onClick={() => navigateTo(router, walletPlacePath(place.id), { motion: "drill" })}
+              aria-label={`Your credit here. ${credit.label}`}
+              className="absolute inset-0 rounded-2xl"
+              data-offers-credit-link
+            />
+            <div className="pointer-events-none flex items-center justify-between gap-3" aria-hidden>
               <p className="flex min-w-0 items-center gap-2 text-[0.6875rem] font-bold tracking-wider uppercase opacity-80">
                 <Wallet className="h-5 w-5 shrink-0" strokeWidth={2.25} />
                 <span className="truncate">Ready now</span>
               </p>
               <p className="shrink-0 text-2xl leading-none font-extrabold tracking-tight tabular-nums">{credit.ready}</p>
             </div>
-            {credit.pending ? (
-              <p className="flex items-center gap-1.5 text-sm tabular-nums opacity-80" aria-hidden data-offers-pending>
-                <Clock className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                <span className="truncate">{credit.pending}</span>
-              </p>
-            ) : null}
+            <div className="pointer-events-none flex items-center justify-between gap-3">
+              {credit.pending ? (
+                <p className="flex min-w-0 items-center gap-1.5 text-sm tabular-nums opacity-80" aria-hidden data-offers-pending>
+                  <Clock className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                  <span className="truncate">{credit.pending}</span>
+                </p>
+              ) : (
+                <span className="flex items-center gap-0.5 text-sm opacity-80" aria-hidden>
+                  Your credit here <ChevronRight className="h-4 w-4" strokeWidth={2.25} />
+                </span>
+              )}
+              {actions.onPay ? (
+                <button
+                  type="button"
+                  onClick={actions.onPay}
+                  className="bg-paper text-foreground pointer-events-auto relative h-9 shrink-0 rounded-full px-4 text-sm font-bold hover:opacity-90"
+                  data-offers-pay-bill
+                >
+                  Pay bill
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : null}
         <div className={credit ? "flex flex-1 shrink-0 flex-col pt-3" : "flex flex-1 shrink-0 flex-col"}>
