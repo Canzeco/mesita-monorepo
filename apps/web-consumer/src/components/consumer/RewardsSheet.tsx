@@ -22,7 +22,7 @@ function creditHere(place: PlaceDetail): { label: string; amount: string } {
 // either prepay or pay, but covering almost full screen"): the place's
 // Rewards page, once the fourth tab, in the house semi-modal (88%, the same
 // shape as Contact, Reserve and Upgrade). Every Offers tap opens it since
-// MESITA-4173; Special Offers, then Standard Offers since MESITA-4216. The pane undoes a 16px
+// MESITA-4173; Special Offers, then Classic Offers since MESITA-4218. The pane undoes a 16px
 // body inset, so the scroller supplies it.
 export function RewardsSheet({
   place,
