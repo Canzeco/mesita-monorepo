@@ -201,7 +201,11 @@ function PayBillButton({ here }: { here: PayPlace | null }) {
         aria-label={name ? `Pay Bill at ${name}` : "Pay Bill"}
         data-pay-bill-button
       >
-        <QrCode className="h-9 w-9 shrink-0" strokeWidth={2} aria-hidden />
+        {/* The QR in a white circle (MESITA-4275, Pato: "put the qr inside a
+            circle"), purple ink, like the bar's Pay tab's black circle. */}
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white" style={{ color: "#635bff" }} aria-hidden>
+          <QrCode className="h-7 w-7" strokeWidth={2.25} />
+        </span>
         <span className="max-w-full min-w-0 truncate text-lg font-semibold tracking-tight">{name ? `Pay Bill at ${name}` : "Pay Bill"}</span>
       </PushLink>
       {here ? (
