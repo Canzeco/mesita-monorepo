@@ -23,18 +23,40 @@ export function familyChoices(families: readonly PlaceFamily[]): PlaceFamily[] {
   return families.filter((f) => f.slug !== "undefined");
 }
 
-/** The FAMILY LIST block a prompt carries: `slug — Label`, one per line. */
+/**
+ * What the families the model over-picked mean (MESITA-4237). On 2026-11-17
+ * Family sat on 83% of places and Dinner on 76%: shown only a label, the model
+ * read Family as "kids allowed" and Dinner as "open at night". Keyed by slug,
+ * which never changes; a family without a line here is its label.
+ */
+export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
+  family: "built for kids — a kids' menu, a play area or a family-style crowd; not merely kid-friendly",
+  dinner: "a sit-down evening meal is the main reason to go; not every restaurant open at night",
+  drinks: "drinking is the point — a bar, cantina, brewery or wine bar; not a restaurant that serves beer",
+  fancy: "upscale — a special occasion, a dress code or a tasting menu",
+  healthy: "the menu is built around healthy food — salads, bowls, juices, vegan",
+  quick_bite: "eat fast — counter service, street food, takeout",
+  fun: "an activity beyond eating — games, bowling, a show",
+  tourist: "a landmark or attraction visitors seek out",
+};
+
+/** The FAMILY LIST block a prompt carries: `slug — Label`, plus its meaning. */
 export function familyVocabularyLines(families: readonly PlaceFamily[]): string[] {
-  return familyChoices(families).map((f) => `${f.slug} — ${f.label}`);
+  return familyChoices(families).map((f) => {
+    const meaning = FAMILY_MEANINGS[f.slug];
+    return meaning ? `${f.slug} — ${f.label}: ${meaning}` : `${f.slug} — ${f.label}`;
+  });
 }
 
 /** The instruction both Description prompts carry for `families`. */
 export const FAMILIES_RULE =
   `"families" are Mesita families: ${FAMILIES_MIN} to ${FAMILIES_MAX} slugs ` +
   "copied VERBATIM from the FAMILY LIST — what a guest is in the mood for " +
-  "when they would look for this place (coffee, dinner, drinks, fun…). Pick " +
-  "every family a guest would expect to find it under and no more; most " +
-  "places fit one to three. Always return at least one.";
+  "when they would look for this place (coffee, dinner, drinks, fun…). A " +
+  "family must set this place apart from a typical restaurant: skip one that " +
+  "would fit most places, and follow the meaning a FAMILY LIST line gives. " +
+  "Aim for one to three; return more only when each is a real reason to go. " +
+  "Always return at least one.";
 
 function normalise(v: string): string {
   return v.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}\s_-]/gu, "")

@@ -2,7 +2,7 @@
 // outcomes that matter — a valid list, a not-enabled category, a useless reply.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { familiesToStore, mainGoogleCategory, pickFamilies } from "./families-infer.ts";
+import { familiesToStore, familyVocabularyLines, mainGoogleCategory, pickFamilies } from "./families-infer.ts";
 
 const FAMILIES = [
   { slug: "coffee", label: "Coffee", emoji: "☕", sort_order: 1 },
@@ -40,4 +40,11 @@ Deno.test("mainGoogleCategory: the first Google category, else the category", ()
   assertEquals(mainGoogleCategory(["cafe", "bakery"], "bakery"), "cafe");
   assertEquals(mainGoogleCategory([], "bakery"), "bakery");
   assertEquals(mainGoogleCategory(null, "undefined"), null);
+});
+
+Deno.test("familyVocabularyLines: a family with a meaning carries it, Undefined is never offered", () => {
+  const lines = familyVocabularyLines(FAMILIES);
+  assertEquals(lines.includes("coffee — Coffee"), true);
+  assertEquals(lines.some((l) => l.startsWith("dinner — Dinner: ")), true);
+  assertEquals(lines.some((l) => l.startsWith("undefined")), false);
 });
