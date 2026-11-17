@@ -9,7 +9,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(35);
+select plan(36);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3302'),
@@ -65,13 +65,13 @@ values ('00000000-0000-4000-8000-0000000d3302', '00000000-0000-4000-8000-0000000
         'voucher_200', 2000, 1000, 'cs_test_3302');
 
 select is(
-  wallet_credit_purchase('00000000-0000-4000-8000-0000000d3302', 'pi_test_3302', now() + interval '1 hour') ->> 'outcome',
+  wallet_credit_purchase('00000000-0000-4000-8000-0000000d3302', 'pi_test_3302', now() + interval '3 hours') ->> 'outcome',
   'credited',
   'a paid voucher purchase is credited'
 );
 
 select is(
-  wallet_credit_purchase('00000000-0000-4000-8000-0000000d3302', 'pi_test_3302', now() + interval '1 hour') ->> 'outcome',
+  wallet_credit_purchase('00000000-0000-4000-8000-0000000d3302', 'pi_test_3302', now() + interval '3 hours') ->> 'outcome',
   'already_paid',
   'crediting it again does nothing'
 );
@@ -84,15 +84,21 @@ select is(
 );
 
 select is(
-  (select pending_cents from wallet_balance('00000000-0000-4000-8000-0000000a3302', '00000000-0000-4000-8000-000000003302', 'mxn', false, now())),
-  22000,
-  'both entries are Pending until the hour passes'
+  (select available_cents from wallet_balance('00000000-0000-4000-8000-0000000a3302', '00000000-0000-4000-8000-000000003302', 'mxn', false, now())),
+  20000,
+  'what the guest paid is Available at once (MESITA-4214)'
 );
 
 select is(
-  (select available_cents from wallet_balance('00000000-0000-4000-8000-0000000a3302', '00000000-0000-4000-8000-000000003302', 'mxn', false, now() + interval '2 hours')),
+  (select pending_cents from wallet_balance('00000000-0000-4000-8000-0000000a3302', '00000000-0000-4000-8000-000000003302', 'mxn', false, now())),
+  2000,
+  'the bonus is Pending until its 3 hours pass'
+);
+
+select is(
+  (select available_cents from wallet_balance('00000000-0000-4000-8000-0000000a3302', '00000000-0000-4000-8000-000000003302', 'mxn', false, now() + interval '4 hours')),
   22000,
-  'and Available once it has'
+  'and Available once they have'
 );
 
 -- ━━━ Statuses and their paid_at ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -206,7 +212,7 @@ values ('00000000-0000-4000-8000-0000000a3302', '00000000-0000-4000-8000-0000000
 
 select is(
   (select array[available_cents, held_cents, spendable_cents]
-     from wallet_balance('00000000-0000-4000-8000-0000000a3302', '00000000-0000-4000-8000-000000003302', 'mxn', false, now() + interval '2 hours')),
+     from wallet_balance('00000000-0000-4000-8000-0000000a3302', '00000000-0000-4000-8000-000000003302', 'mxn', false, now() + interval '4 hours')),
   array[22000, 2000, 20000],
   'an open mixed payment holds its credit part: spendable is available minus held'
 );

@@ -130,7 +130,7 @@ Deno.test("voucher card: clone, create unconfirmed, store, confirm — keyed by 
   });
   assertEquals(calls[2].params, { use_stripe_sdk: true });
   // Stored before confirmed; credited once with the voucher's hour.
-  assertEquals(s.log, ["openPi:pi_1", `credit:pi_1:${new Date(NOW + 3600_000).toISOString()}`]);
+  assertEquals(s.log, ["openPi:pi_1", `credit:pi_1:${new Date(NOW + 10_800_000).toISOString()}`]);
 });
 
 Deno.test("voucher card: a decline cancels the PI and fails the row; nothing is credited", async () => {
@@ -306,7 +306,7 @@ Deno.test("basket: three rows, ONE PaymentIntent for the sum, stored on every ro
   assertEquals(meta.amount_cents, "140000");
   assertEquals(meta.bonus_cents, "24000");
   assertEquals(meta.basket_items, "voucher_1000x1,voucher_200x2");
-  const hour = new Date(NOW + 3600_000).toISOString();
+  const hour = new Date(NOW + 10_800_000).toISOString();
   assertEquals(s.log, ["openPi:pi_b", `credit:pi_b:${hour}`, `credit@${F1}:pi_b:${hour}`, `credit@${F2}:pi_b:${hour}`]);
   assertEquals([s.row(PURCHASE), s.row(F1), s.row(F2)].map((r) => [r.status, r.stripe_payment_intent_id]), [
     ["paid", "pi_b"],

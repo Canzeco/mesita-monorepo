@@ -40,9 +40,9 @@ import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 // wallet on emerald (MESITA-3326, Pato: "the standard deals/promos must
 // have the same icon and the same color. the deals that have different
 // colors are welcome and story VIP"); the specials keep their own. Under the title, one
-// line says the credit is ready an hour after the purchase, Story's at
-// once (the catalog's available_after_sec, MESITA-3302; Pato, MESITA-3323:
-// "must be 1 hour before paying the bill ... All but the Instagram one").
+// line reads "Pay $X · Get $Y"; the (i) says what the guest paid is ready at
+// once and the bonus 3 hours later, every voucher (MESITA-4214; one hour for
+// all of it from MESITA-3323).
 // PREPAYMENTS ONLY (Pato, 2026-11-15, MESITA-4062: "remove payments from the
 // prepayments page. it is confusing. just leave prepayments offerings
 // there"): the Payments card is gone. Nothing scrolls sideways.
@@ -360,15 +360,16 @@ function whole(v: string): string {
   return noMx(v).replace(/\.00$/, "");
 }
 
+/** YOUR MONEY NOW, THE BONUS IN 3 HOURS (Pato, 2026-11-17, MESITA-4214):
+ *  every voucher. The row and the button say only "Pay $X · Get $Y"; the (i)
+ *  says when each part is ready. Story's money waits for its story. */
 function readyIn(key: MoneyVoucherKey): string {
-  if (key === "voucher_story") return "after story";
-  // Welcome lands at once (MESITA-4198, Pato: "welcome bonus is instant").
-  if (key === "voucher_welcome") return "now";
-  // Every other voucher waits an hour (MESITA-3323); Welcome and VIP
-  // said "instantly" while the catalog held them an hour (fixed MESITA-3835,
-  // Pato: "don't land instantly ... they should actually land 1hr after
-  // payment").
-  return "in 1 hr";
+  return key === "voucher_story" ? "after story, bonus 3 hr later" : "bonus in 3 hr";
+}
+
+/** The (i)'s timing line, every voucher but Story (MESITA-4214). */
+function readyLine(pay: string): string {
+  return `Your ${whole(pay)} is ready as soon as you pay. The bonus is ready 3 hours later.`;
 }
 
 /** The two lines every voucher's (i) ends with (MESITA-3498, Pato: "credits
@@ -393,7 +394,7 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, _bonus: strin
     case "voucher_5000":
       return [
         deal,
-        "Ready 1 hour after you pay.",
+        readyLine(pay),
         // MESITA-3505: several vouchers fund one bill.
         "Buy as many as you like. It all adds up to your credit here.",
         ...facts,
@@ -401,7 +402,7 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, _bonus: strin
     case "voucher_welcome":
       return [
         deal,
-        "Ready as soon as you pay.",
+        readyLine(pay),
         "One per place, if you haven't paid here before.",
         ...facts,
       ];
@@ -410,7 +411,7 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, _bonus: strin
         deal,
         // TWO STEPS AND A FLOOR (MESITA-3506, MESITA-3507).
         "For guests whose Instagram has more than 1,000 followers.",
-        "Buy it, post an Instagram story at the place tagging it, and show it to the staff. Your credit is ready then.",
+        "Buy it, post an Instagram story at the place tagging it, and show it to the staff. Your money is ready then, the bonus 3 hours later.",
         "One per visit.",
         ...facts,
       ];
@@ -418,7 +419,8 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, _bonus: strin
       return [
         deal,
         "Only for guests in Mesita's VIP Class.",
-        "Ready 1 hour after you pay. One per visit.",
+        readyLine(pay),
+        "One per visit.",
         ...facts,
       ];
   }
@@ -514,7 +516,7 @@ export type VoucherOffer = {
   bonus: string;
   pay: string;
   get: string;
-  /** "in 1 hr" or "after story". */
+  /** "bonus in 3 hr" or "after story, bonus 3 hr later" (MESITA-4214). */
   ready: string;
   /** This guest can buy it now. */
   buyable: boolean;
@@ -528,7 +530,7 @@ export type VoucherOffer = {
  *  (Pato, 2026-11-16, MESITA-4203: "both are prepayments ... IDK" → "Yes,
  *  rename"): Limited Vouchers (Welcome one per place, Story and VIP one per
  *  visit), then Unlimited Vouchers, the three sizes, as many as you like.
- *  When the credit lands is each row's ("now", "after story", "in 1 hr").
+ *  What the guest paid is ready at once, the bonus 3 hours later (MESITA-4214).
  *  Instant / Prepayment Vouchers in MESITA-4198. One "Prepaid Vouchers" group from MESITA-4173,
  *  Special and Bonus Vouchers in MESITA-4154. The host still opens it by
  *  `?rewards=prepayment` or `?rewards=special`. */
@@ -677,7 +679,7 @@ export function VouchersPane({
   // Cards still loading or failed: Pay waits (never a flash of "Add a card").
   // No usable card: "Add a card to pay" opens the host's card sheet. Else Pay.
   const payText = summed
-    ? `Pay ${noMx(summed.pay)}, Get ${noMx(summed.get)} ${readyIn(chosen[0]?.product.key ?? "voucher_200")}`
+    ? `Pay ${noMx(summed.pay)}, Get ${noMx(summed.get)}`
     : `Pay for ${units} vouchers`;
   const needsCard = readyCards !== null && payCard === null;
   const footText = items.length === 0 ? "Select an offer" : buying ? "Paying…" : needsCard ? "Add a card to pay" : payText;
@@ -766,7 +768,7 @@ export function VouchersPane({
                   <Fact
                     text={opening
                       ? "Opening…"
-                      : `Pay ${whole(pay)} · Get ${whole(get)} ${readyIn(p.key)}`}
+                      : `Pay ${whole(pay)} · Get ${whole(get)}`}
                   />
                 </span>
               </span>

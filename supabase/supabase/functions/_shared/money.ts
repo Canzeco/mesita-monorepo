@@ -82,6 +82,9 @@ export function bps(cents: number, rateBps: number): number {
   return Math.floor((cents * rateBps) / 10000);
 }
 
+/** The bonus's wait, every voucher (MESITA-4214). */
+export const BONUS_WAIT_SEC = 3 * 60 * 60;
+
 export type VoucherEntry = {
   /** What the guest pays, in centavos. */
   price_cents: number;
@@ -89,7 +92,8 @@ export type VoucherEntry = {
   bonus_bps: number;
   /** Open vouchers are bought in advance; earned ones are given on a rule. */
   kind: "open" | "earned";
-  /** How long after the charge the credit turns Available. */
+  /** How long after the charge the BONUS turns Available; what the guest
+   *  paid is Available at once (MESITA-4214). */
   available_after_sec: number;
 };
 
@@ -116,18 +120,24 @@ export type VoucherEntry = {
  *  voucher_5000 key (never bought), Big 10× at +30%. EACH KEY ITS OWN PRICE
  *  (Pato, 2026-11-16, MESITA-4152: "$200MX 10% Small · $1,000MX 20% Medium ·
  *  $5,000MX 30% Big"): Medium is voucher_1000 (MX$1,000 +20%, 10×), Big is
- *  voucher_5000 (MX$5,000 +30%, 50×). Purchases keep their stored amounts. */
+ *  voucher_5000 (MX$5,000 +30%, 50×). Purchases keep their stored amounts.
+ *  YOUR MONEY NOW, THE BONUS IN 3 HOURS (Pato, 2026-11-17, MESITA-4214:
+ *  "Pay now, get X right now, get Y in [3] hours"; Notion Main §8): every
+ *  voucher, Welcome and Story included. What the guest paid is Available the
+ *  moment it is credited (wallet_credit_purchase); available_after_sec is
+ *  now the bonus's wait. A meal is shorter, so a bonus never pays the bill
+ *  it was bought at. */
 export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
-  voucher_200: { price_cents: 200_00, bonus_bps: 1000, kind: "open", available_after_sec: 3600 },
-  voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: 3600 },
-  voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: 3600 },
-  // WELCOME LANDS AT ONCE (Pato, 2026-11-16, MESITA-4198: "welcome bonus is
-  // instant" ... "Instant Vouchers"); held an hour from MESITA-3835.
-  voucher_welcome: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 0 },
+  voucher_200: { price_cents: 200_00, bonus_bps: 1000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
+  voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
+  voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
+  // Welcome's MX$100 lands at once and its bonus in 3 hours (MESITA-4214;
+  // fully instant from MESITA-4198, an hour from MESITA-3835).
+  voucher_welcome: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
   // STORY IS +50% (Pato, 2026-11-16, MESITA-4207): pay MX$100, get MX$150;
   // +30% until then. Purchases keep their stored amounts.
-  voucher_story: { price_cents: 100_00, bonus_bps: 5000, kind: "earned", available_after_sec: 0 },
-  voucher_vip: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: 3600 },
+  voucher_story: { price_cents: 100_00, bonus_bps: 5000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
+  voucher_vip: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
 };
 
 /** VOUCHERS IN TWO CURRENCIES (Pato, 2026-11-14, MESITA-3914: "100 MX

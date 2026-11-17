@@ -111,7 +111,7 @@ Deno.test("completed: a voucher purchase is credited with its hour from the even
   );
   assertEquals(r.body, { ok: true, purchase_id: PURCHASE, outcome: "credited" });
   assertEquals(fake.rpcs[0].name, "wallet_credit_purchase");
-  assertEquals(fake.rpcs[0].args.p_available_at, new Date((1_800_000_000 + 3600) * 1000).toISOString());
+  assertEquals(fake.rpcs[0].args.p_available_at, new Date((1_800_000_000 + 10800) * 1000).toISOString());
 });
 
 Deno.test("completed before the session id is stored: metadata is missing, the session id finds the row", async () => {
@@ -481,7 +481,7 @@ Deno.test("voucher pi: succeeded credits the purchase its metadata names with it
   assertEquals(again.body.ignored, "replay");
   assertEquals(fake.rpcs, [{
     name: "wallet_credit_purchase",
-    args: { p_purchase_id: PURCHASE, p_payment_intent: "pi_v", p_available_at: new Date((1_800_000_000 + 3600) * 1000).toISOString() },
+    args: { p_purchase_id: PURCHASE, p_payment_intent: "pi_v", p_available_at: new Date((1_800_000_000 + 10800) * 1000).toISOString() },
   }]);
 });
 
@@ -540,7 +540,7 @@ Deno.test("basket pi: succeeded credits the lead and every follower with the sam
     event("payment_intent.succeeded", { id: "pi_b", metadata: { mesita_kind: "wallet_voucher", purchase_id: PURCHASE, voucher: "voucher_200", basket: "3" } }),
   );
   assertEquals(r.body, { ok: true, purchase_id: PURCHASE, outcome: "credited", basket: 3 });
-  const hour = new Date((1_800_000_000 + 3600) * 1000).toISOString();
+  const hour = new Date((1_800_000_000 + 10800) * 1000).toISOString();
   assertEquals(fake.rpcs.map((x) => x.args), [PURCHASE, F1, F2].map((id) => ({ p_purchase_id: id, p_payment_intent: "pi_b", p_available_at: hour })));
 });
 

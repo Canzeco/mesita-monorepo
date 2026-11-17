@@ -36,6 +36,7 @@ import { cancelReleasedHolds, releasePayment, settlePaidPayment, SIGN_WINDOW } f
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 import { type StripeCall } from "./stripe.ts";
 import { fromStripeAmount } from "./money.ts";
+import { availableAtFor } from "./wallet.ts";
 import { errorMessage } from "./errors.ts";
 
 export const SIGNATURE_TOLERANCE_SEC = 300;
@@ -579,12 +580,14 @@ async function voucherIntent(
   return { status: 200, body: { ok: true, purchase_id: row.id, outcome: "released", ...basket } };
 }
 
-/** A voucher's credit turns Available an hour after the charge (the catalog's
- *  rule for every open voucher; Story at once is a catalog detail the read
- *  path applies — here the charge time is the event's). */
+/** When a voucher's BONUS turns Available: the catalog's wait from the
+ *  charge, here the event's time (MESITA-4214, every voucher 3 hours; what
+ *  the guest paid is Available at once in wallet_credit_purchase). It reads
+ *  the same rule as the read path (wallet.ts availableAtFor), so the two
+ *  never disagree; it hard-coded an hour before. */
 function availableAtFromSession(session: Record<string, unknown>, createdSec?: number, voucher?: string | null): string | null {
   const meta = (session.metadata ?? {}) as Record<string, unknown>;
-  if ((voucher !== undefined ? voucher : meta.voucher) === "voucher_story") return null;
+  const key = voucher !== undefined ? voucher : (typeof meta.voucher === "string" ? meta.voucher : null);
   const base = (createdSec ?? Math.floor(Date.now() / 1000)) * 1000;
-  return new Date(base + 3600 * 1000).toISOString();
+  return availableAtFor(key, base);
 }

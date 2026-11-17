@@ -85,8 +85,8 @@ select is(
 select is(
   (select array_agg(kind || ':' || amount_cents order by kind) from public.wallet_entries
     where purchase_id = '00000000-0000-4000-8000-0000000d3507' and available_at <= now()),
-  array['bonus:3000', 'voucher:10000'],
-  'activation writes the voucher and its 30% bonus, Available now'
+  array['voucher:10000'],
+  'activation writes the voucher Available now; its bonus waits 3 hours (MESITA-4214)'
 );
 
 select is(
