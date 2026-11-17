@@ -21,6 +21,10 @@ const DOOR =
  *  bar since MESITA-4253. */
 export const DOOR_QUIET = `${DOOR.replace("text-white", "text-foreground")} bg-muted hover:bg-border focus-visible:ring-neutral-400`;
 export const DOOR_GLYPH = "h-4 w-4 shrink-0";
+/** Wallet's three doors wear emojis (MESITA-4260, Pato: "maybe use emojis
+ *  for those three … whatever you think is a great clean design"): 💳 Buy
+ *  Credits, 🎁 Send Gift, 💌 Share Mesita, one size over grey. */
+export const DOOR_EMOJI = "text-lg leading-none";
 
 // THE HOUSE CARD'S PAY BAR (MESITA-4253, Pato over four drawings: "Build
 // A"): spending the credit is why the card is open, so Pay is one full-width
