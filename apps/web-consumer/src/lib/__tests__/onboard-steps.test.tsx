@@ -67,13 +67,13 @@ describe("the onboarding form renders all fields on one screen", () => {
     }
   });
 
-  it("asks each name half with a label, not a placeholder echoing it", () => {
+  it("asks each name half with a label; any placeholder is an example, never the label echoed", () => {
     const html = markup();
     for (const field of ["first_name", "last_name"]) {
       const input =
         new RegExp(`<input\\b[^>]*name="${field}"[^>]*>`).exec(html)?.[0] ?? "";
       expect(input).toBeTruthy();
-      expect(input).not.toContain("placeholder=");
+      expect(input).not.toMatch(/placeholder="(first|last) name"/i);
     }
   });
 });

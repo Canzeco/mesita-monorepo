@@ -153,6 +153,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
             inputMode="numeric"
             autoComplete="off"
             maxLength={7}
+            placeholder="7-digit code"
             value={placeCode}
             onChange={(e) => setPlaceCode(e.target.value)}
           />

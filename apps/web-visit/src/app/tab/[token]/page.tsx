@@ -231,7 +231,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
     staffToken === null ? (
       <label className="field">
         Waiter code
-        <input className="secret" inputMode="numeric" autoComplete="off" maxLength={7} value={placeCode} onChange={(e) => setPlaceCode(e.target.value)} />
+        <input className="secret" inputMode="numeric" autoComplete="off" maxLength={7} placeholder="7-digit code" value={placeCode} onChange={(e) => setPlaceCode(e.target.value)} />
       </label>
     ) : null;
 
@@ -464,7 +464,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
         ) : null}
         <label className="field">
           Ticket or table no. (optional)
-          <input autoComplete="off" maxLength={32} value={ticket} onChange={(e) => setTicket(e.target.value)} />
+          <input autoComplete="off" maxLength={32} placeholder="e.g. 12" value={ticket} onChange={(e) => setTicket(e.target.value)} />
         </label>
         {alert}
         <button type="submit" disabled={!canSend}>

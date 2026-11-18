@@ -353,6 +353,7 @@ export default function ChargePage({ params }: { params: Promise<{ place: string
             inputMode="numeric"
             autoComplete="off"
             maxLength={7}
+            placeholder="7-digit code"
             value={placeCode}
             onChange={(e) => setPlaceCode(e.target.value)}
           />
@@ -378,7 +379,7 @@ export default function ChargePage({ params }: { params: Promise<{ place: string
         ) : null}
         <label className="field">
           Ticket or table no. (optional)
-          <input autoComplete="off" maxLength={32} value={ticket} onChange={(e) => setTicket(e.target.value)} />
+          <input autoComplete="off" maxLength={32} placeholder="e.g. 12" value={ticket} onChange={(e) => setTicket(e.target.value)} />
         </label>
         {error ? (
           <p className="proof-status warn" role="alert">

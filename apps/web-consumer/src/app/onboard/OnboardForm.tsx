@@ -229,6 +229,7 @@ export function OnboardForm({
             }}
             maxLength={60}
             autoComplete="given-name"
+            placeholder="e.g. Ana"
             required
           />
         </div>
@@ -248,6 +249,7 @@ export function OnboardForm({
             }}
             maxLength={60}
             autoComplete="family-name"
+            placeholder="e.g. García"
             required
           />
         </div>
@@ -343,6 +345,7 @@ export function OnboardForm({
                 setError(null);
               }}
               maxLength={31}
+              placeholder="yourhandle"
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
