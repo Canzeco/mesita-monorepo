@@ -29,6 +29,7 @@ import {
   StoryRow,
   WalletBodySkeleton,
   WalletPanelList,
+  pendingWords,
 } from "./WalletLists";
 import { money, type WalletBalance } from "@/lib/api/wallet";
 
@@ -146,14 +147,6 @@ function decodeAll(urls: string[], ms: number): Promise<void> {
   return Promise.race([Promise.all(each).then(() => undefined), new Promise<void>((r) => setTimeout(r, ms))]);
 }
 
-/** "2 h 14 min", "14 min": hours and minutes, never seconds (MESITA-4360). */
-function untilLabel(ms: number): string {
-  const mins = Math.max(1, Math.ceil(ms / 60_000));
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return h > 0 ? (m > 0 ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
-}
-
 /** ONE LINE PER PENDING AMOUNT (MESITA-4360, Pato: "if 2 bonuses, then 2
  *  blue boxes … show hours and minutes, not seconds, a counter"): each
  *  pending entry, soonest first, "$1,500.00MX bonus pending · ready in 2 h
@@ -166,11 +159,7 @@ function pendingLines(b: WalletBalance, now: number): string[] {
     .map((e) => ({ e, t: e.available_at ? Date.parse(e.available_at) : Number.NaN }))
     .sort((x, y) => (Number.isFinite(x.t) ? x.t : Infinity) - (Number.isFinite(y.t) ? y.t : Infinity));
   if (rows.length === 0) return [`${money(b.pending_cents, b.currency)} pending`];
-  return rows.map(({ e, t }) => {
-    const what = `${money(e.amount_cents, b.currency)} ${e.kind === "bonus" ? "bonus pending" : "pending"}`;
-    if (!Number.isFinite(t)) return what;
-    return t > now ? `${what} · ready in ${untilLabel(t - now)}` : `${what} · ready soon`;
-  });
+  return rows.map(({ e }) => pendingWords(e.amount_cents, b.currency, e.kind, e.available_at, now));
 }
 
 export function WalletSection({
