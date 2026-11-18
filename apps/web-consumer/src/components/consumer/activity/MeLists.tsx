@@ -32,7 +32,7 @@
 // once its sources answered. Nothing here computes a balance: it lists and
 // formats what the server sent.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
@@ -483,9 +483,8 @@ export function TicketsBoard({
       ? "Couldn't load your payments. Visits shows your tables only."
       : null;
 
-  // A SCROLLING ROW OF ICON PILLS (MESITA-3993, Pato: "make a horizontal
-  // scroll menu with icons"; option A of the board): Reservations' blue
-  // strip (MESITA-3893) squeezed five tabs into a phone. No counts, no intro.
+  // THE PLACE PROFILE'S STRIP (MESITA-4322; icon pills MESITA-3993 before):
+  // four equal tabs, the chosen one blue. No counts, no intro.
   return (
     <div className="flex flex-col gap-4">
       <TicketPills on={kind} onPick={onPick} flush={flush} />
@@ -671,13 +670,13 @@ function SubpageTabs<K extends string>({
   );
 }
 
-/** Tickets' kinds as a row of pills that scrolls sideways (MESITA-3993):
- *  A full-width hairline under the row divides it from the list (MESITA-4049,
- *  Pato: "PUT A LINE DIVIDING CAROUSEL MENU FROM EVENTS").
- *  icon and word on each, the chosen one solid ink, the rest white with a
- *  hairline. It runs to the screen's edges so the last pill peeks in and
- *  says the row scrolls; a pick slides its pill into view. `on` null is the
- *  loading frame: words in place, none chosen. */
+/** Tickets' kinds as the place profile's strip (MESITA-4322, Pato: "a menu
+ *  similar to the mesita profile … each item takes 25% and selected item is
+ *  blue"; it was a scrolling row of icon pills, MESITA-3993): four equal
+ *  tabs, words only, white with a bottom hairline, the chosen one blue-600
+ *  bold over a 3px blue-600 line, the rest muted (packages/place-profile
+ *  PlaceTabBar, size for size). `on` null is the loading frame: words in
+ *  place, none chosen. */
 function TicketPills({
   on,
   onPick,
@@ -688,19 +687,10 @@ function TicketPills({
   /** Runs to MeScreen's edges; false inside a card page's column. */
   flush?: boolean;
 }) {
-  const rail = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const pill = rail.current?.querySelector<HTMLElement>("[aria-current]");
-    pill?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [on]);
   return (
     <nav
-      ref={rail}
       aria-label="Kinds of ticket"
-      className={cn(
-        "scrollbar-hide border-border flex shrink-0 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain border-b pb-4",
-        flush && "-mx-5 scroll-px-5 px-5",
-      )}
+      className={cn("bg-card border-border grid shrink-0 grid-cols-4 border-b", flush && "-mx-5")}
       data-ticket-pills
     >
       {TICKET_TABS.map((t) => {
@@ -713,17 +703,12 @@ function TicketPills({
             onClick={onPick ? () => onPick(t.kind) : undefined}
             disabled={!onPick}
             className={cn(
-              "flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm whitespace-nowrap transition",
+              "-mb-px flex items-center justify-center border-b-[3px] px-0.5 py-3 text-center type-body leading-normal tracking-wide transition",
               chosen
-                ? "border-foreground bg-foreground text-background font-semibold"
-                : "border-border bg-card text-foreground/80 hover:bg-muted/40 font-medium",
+                ? "border-blue-600 font-bold text-blue-600"
+                : "text-muted-foreground hover:text-foreground border-transparent font-medium",
             )}
           >
-            <t.icon
-              className="h-4 w-4 shrink-0"
-              strokeWidth={chosen ? 2.25 : 2}
-              aria-hidden
-            />
             {t.label}
           </button>
         );
