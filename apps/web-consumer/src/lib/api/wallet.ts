@@ -279,12 +279,16 @@ export type ExpressStep =
     error?: string;
   };
 
-type ExpressBasket = { place_id: string; mention_id?: string } & (
+export type ExpressBasket = { place_id: string; mention_id?: string } & (
   | { voucher: VoucherKey; items?: never }
   | { items: Array<{ voucher: VoucherKey; qty: number }>; voucher?: never }
 );
 
-export async function apiExpressSetup(client: SupabaseClient, args: ExpressBasket): Promise<ExpressSetup> {
+export async function apiExpressSetup(
+  client: SupabaseClient,
+  /** MESITA-4386: a bill's card part (plus tip) instead of a voucher basket. */
+  args: ExpressBasket | { place_id: string; bill: { amount_cents: number } },
+): Promise<ExpressSetup> {
   return await invokeEF<ExpressSetup>(client, "consumer-web-express-pay-setup", args);
 }
 

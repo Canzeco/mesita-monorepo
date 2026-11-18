@@ -10,7 +10,7 @@
 import { useRef } from "react";
 import type { VoucherBasketItem } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
-import { apiBuyVoucherExpress, apiExpressSetup, BUY_REFUSAL, type ExpressStep, isDefinitiveRefusal } from "@/lib/api/wallet";
+import { apiBuyVoucherExpress, apiExpressSetup, BUY_REFUSAL, type ExpressBasket, type ExpressStep, isDefinitiveRefusal } from "@/lib/api/wallet";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -51,7 +51,7 @@ export function ExpressVoucherPay({
     place_id: placeId,
     ...(one ? { voucher: items[0].voucher } : { items }),
     ...(mentionId ? { mention_id: mentionId } : {}),
-  } as Parameters<typeof apiExpressSetup>[1];
+  } as ExpressBasket;
 
   const refusal = (err: unknown): ExpressPayRefusal | null => {
     if (!(err instanceof EFError)) return null;

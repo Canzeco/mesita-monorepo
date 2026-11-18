@@ -61,6 +61,7 @@ export function ExpressPayButton({
   open,
   settle,
   disabled = false,
+  hold = false,
   onState,
   onLock,
   onDone,
@@ -72,6 +73,9 @@ export function ExpressPayButton({
   settle: () => Promise<ExpressPaySettle>;
   /** The card path is paying: the button does nothing. */
   disabled?: boolean;
+  /** MESITA-4386: a manual-capture hold (Pay Bill): Face ID authorizes, the
+   *  waiter's code captures; requires_capture counts as confirmed. */
+  hold?: boolean;
   /** loading (the 48 px skeleton), ready, or none (collapse the slot). */
   onState: (state: "loading" | "ready" | "none") => void;
   onLock: (locked: boolean) => void;
@@ -87,6 +91,7 @@ export function ExpressPayButton({
     live.current = { open, settle, disabled, onState, onLock, onDone, onError, onEvent };
   });
   const setupOnce = useRef(setup);
+  const holdOnce = useRef(hold);
 
   useEffect(() => {
     let gone = false;
@@ -118,7 +123,7 @@ export function ExpressPayButton({
         return;
       }
       let amount = cfg.amount_cents;
-      const elements = stripe.elements({ mode: "payment", amount, currency: cfg.currency, allowedPaymentMethodTypes: ["card"], locale: "en" });
+      const elements = stripe.elements({ mode: "payment", amount, currency: cfg.currency, allowedPaymentMethodTypes: ["card"], locale: "en", ...(holdOnce.current ? { captureMethod: "manual" as const } : {}) });
       const wants = (w: ExpressWallet) => (cfg.wallets.includes(w) ? "auto" : "never") as "auto" | "never";
       const element = elements.create("expressCheckout", {
         paymentMethods: { applePay: wants("apple_pay"), googlePay: wants("google_pay"), link: "never", amazonPay: "never", paypal: "never", klarna: "never" },
@@ -198,7 +203,7 @@ export function ExpressPayButton({
             return;
           }
           const status = paymentIntent?.status;
-          if (status !== "succeeded" && status !== "processing") {
+          if (status !== "succeeded" && status !== "processing" && !(holdOnce.current && status === "requires_capture")) {
             fail(`pi_${status ?? "unknown"}`, DECLINED);
             return;
           }

@@ -173,6 +173,10 @@ export function GuestTabView({
     cash > 0 ? { key: "cash", icon: <Banknote aria-hidden />, cents: cash, alone: "cash", part: "cash" } : null,
   ].filter((w) => w !== null);
 
+  // MESITA-4386: "Paid with Apple Pay / Google Pay": the card row names the wallet.
+  const payWith = tab.parts.find((p) => p.part === "card" && p.paid_at)?.pay_with;
+  const cardLabel = payWith === "apple_pay" ? "Apple Pay" : payWith === "google_pay" ? "Google Pay" : "Card";
+
   // 7 RECEIPT (MESITA-4135, Pato: "a better design when the tickets are gone
   // ... keep the structure"). The same three
   // parts as before, green Paid, one panel of rows, Done, now under the step
@@ -201,7 +205,7 @@ export function GuestTabView({
               <span className="min-w-0 flex-1 truncate text-base font-semibold">{placeName}</span>
             </div>
             {tab.credit_cents > 0 ? <MoneyRow icon={<Wallet />} label="Credits" value={m(tab.credit_cents)} /> : null}
-            {tab.card_bill_cents > 0 ? <MoneyRow icon={<Smartphone />} label="Card" value={m(tab.card_bill_cents)} /> : null}
+            {tab.card_bill_cents > 0 ? <MoneyRow icon={<Smartphone />} label={cardLabel} value={m(tab.card_bill_cents)} /> : null}
             {tab.cash_bill_cents > 0 ? <MoneyRow icon={<Banknote />} label="Cash" value={m(tab.cash_bill_cents)} /> : null}
             {tip > 0 ? <MoneyRow icon={<HandCoins />} label="Tip" value={m(tip)} /> : null}
             <MoneyRow label="Total" value={m(total)} strong />
