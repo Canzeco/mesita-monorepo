@@ -7,10 +7,7 @@ import {
   WhyConnect,
 } from "@/components/consumer/me/InstagramModal";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import { SettingsGroup } from "@/components/consumer/me/settings-rows";
-import { INSTAGRAM_PHOTO_SWITCH } from "@/components/consumer/me/switch-words";
 import { useConsumerIdentity } from "@/lib/identity-context";
-import { SettingsRowSkeleton } from "../me-skeletons";
 
 // /me/instagram's fallback: InstagramModal as it first paints (Pato,
 // MESITA-2701: "the placeholders must be similar to the page you are
@@ -42,14 +39,6 @@ export function InstagramSkeleton() {
         {connected && <ConnectedAccount pending />}
         <WhyConnect connected={connected} />
         {!connected && <ConnectCardSkeleton />}
-
-        <SettingsGroup>
-          <SettingsRowSkeleton
-            label={INSTAGRAM_PHOTO_SWITCH.label}
-            sub={INSTAGRAM_PHOTO_SWITCH.on}
-            toggle
-          />
-        </SettingsGroup>
 
         {connected && <DisconnectLink disabled />}
       </div>

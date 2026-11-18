@@ -33,7 +33,6 @@ import {
   ME_BUTTON_CLASS,
   RowDivider,
   SettingsGroup,
-  Switch,
 } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -65,7 +64,6 @@ import {
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerIdentity, useServerProfile } from "@/lib/identity-context";
-import { INSTAGRAM_PHOTO_SWITCH } from "@/components/consumer/me/switch-words";
 
 // Instagram connect page (MESITA-936). Why connect is back with two reasons
 // (MESITA-4342, after MESITA-2983 cut it): see others' Instagram, and Story
@@ -148,7 +146,6 @@ function landingToast(params: URLSearchParams): string | null {
     return null;
   }
   if (photo === "updated") text += " · photo updated";
-  if (photo === "off") text += ". Turn on Use my Instagram photo to use it.";
   return text;
 }
 
@@ -275,9 +272,6 @@ export function InstagramModal() {
             />
           ))}
 
-        {/* Asked on the same screen as the connect (Pato, MESITA-2585:
-              "keep that as default but ask the user"). */}
-        <InstagramPhotoSwitch />
 
         {connected && action !== "changing" && (
           <DisconnectLink
@@ -411,6 +405,18 @@ export function ConnectedAccount({
   // After a refused or failed sync, Sync rests for the server's
   // retryAfterSeconds (else 60 s): set in the handler, cleared by a timer.
   const [resting, setResting] = useState(false);
+  // The photo question shows in place of Sync | Change (MESITA-4349).
+  const [asking, setAsking] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function answer(useIt: boolean) {
+    setSaving(true);
+    const ok = await savePhotoChoice(supabase, useIt);
+    setSaving(false);
+    if (!ok) return;
+    setAsking(false);
+    void sync();
+  }
 
   async function sync() {
     if (pending || busy || resting) return;
@@ -449,10 +455,17 @@ export function ConnectedAccount({
   return (
     <SettingsGroup>
       <CurrentConnectionRow pending={pending} />
+      {asking ? (
+        <div className="px-4 pt-1 pb-4">
+          <PhotoQuestion onAnswer={(y) => void answer(y)} busy={saving} />
+        </div>
+      ) : (
       <div className="grid grid-cols-2 gap-2 px-4 pt-1 pb-4">
         <button
           type="button"
-          onClick={sync}
+          onClick={() => {
+            if (!pending && !busy && !resting) setAsking(true);
+          }}
           disabled={pending || busy || resting}
           className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)}
           data-instagram-sync
@@ -474,6 +487,7 @@ export function ConnectedAccount({
           Change
         </button>
       </div>
+      )}
       {syncing && (
         <p className="text-muted-foreground type-label border-border/60 border-t px-4 py-3">
           Reading your Instagram. This can take up to a minute.
@@ -559,6 +573,10 @@ function ConnectByMessage() {
   const [waitingSince, setWaitingSince] = useState<number | null>(null);
   const [gaveUp, setGaveUp] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The photo question comes before the code goes out (MESITA-4349): the
+  // webhook reads the answer when the message lands.
+  const [answered, setAnswered] = useState(false);
+  const [savingChoice, setSavingChoice] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -632,7 +650,20 @@ function ConnectByMessage() {
           <Copy className="text-muted-foreground h-4 w-4" />
         </button>
       )}
-      {claim ? (
+      {claim && !answered ? (
+        <div className="mt-2">
+          <PhotoQuestion
+            busy={savingChoice}
+            onAnswer={(useIt) => {
+              setSavingChoice(true);
+              void savePhotoChoice(supabase, useIt).then((ok) => {
+                setSavingChoice(false);
+                if (ok) setAnswered(true);
+              });
+            }}
+          />
+        </div>
+      ) : claim ? (
         <a
           href={claim.link}
           target="_blank"
@@ -788,9 +819,31 @@ function ConnectLookup({
   const invalid = typed !== "" && !username;
   const canSubmit = !pending && !busy && username !== null && mine;
 
-  async function submit(e: FormEvent) {
+  // The photo question, asked before the fetch (MESITA-4349).
+  const [asking, setAsking] = useState(false);
+
+  function submit(e: FormEvent) {
     e.preventDefault();
     if (!canSubmit || !username) return;
+    setAsking(true);
+  }
+
+  async function answer(useIt: boolean) {
+    if (!username) return;
+    setBusy(true);
+    onBusyChange?.(true);
+    const ok = await savePhotoChoice(supabase, useIt);
+    if (!ok) {
+      setBusy(false);
+      onBusyChange?.(false);
+      return;
+    }
+    setAsking(false);
+    await lookup();
+  }
+
+  async function lookup() {
+    if (!username) return;
     setBusy(true);
     onBusyChange?.(true);
     setResult(null);
@@ -890,6 +943,9 @@ function ConnectLookup({
             />
             This is my Instagram account
           </label>
+          {asking ? (
+            <PhotoQuestion onAnswer={(y) => void answer(y)} busy={busy} />
+          ) : (
           <Button
             type="submit"
             size="sm"
@@ -902,6 +958,7 @@ function ConnectLookup({
             )}
             {busy ? "Connecting…" : "Connect"}
           </Button>
+          )}
           <div aria-live="polite">
             {busy && (
               <p className="text-muted-foreground type-label text-center">
@@ -1064,63 +1121,65 @@ function DisconnectDialog({
   );
 }
 
-// "USE MY INSTAGRAM PHOTO" (Pato, MESITA-2585: "lets keep that as default but
-// ask the user, they can not activate that if they want. we only get the
-// username and the [followers]"). A server fact (consumers.use_instagram_photo,
-// on by default) that both verify paths read: on, verifying copies the
-// Instagram photo as the picture unless the guest uploaded one (MESITA-2578);
-// off, only the handle and followers are stored, and a picture that came
-// from Instagram is taken down.
-function InstagramPhotoSwitch() {
-  const supabase = useBrowserSupabase();
-  // The kept profile row (MESITA-3014); a flip shows at once, the saved row
-  // then lands in the store.
-  const { data, error } = useConsumerProfile();
-  const [flipped, setOn] = useState<boolean | null>(null);
-  const on =
-    flipped ??
-    (data ? data.use_instagram_photo !== false : error ? true : null);
-  const [pending, setPending] = useState(false);
+// THE PHOTO IS A QUESTION (Pato, 2026-11-18, MESITA-4349: "use my
+// instagram photo is asked at the time you connect or sync, like is a
+// question … a question you always ask before fetching"). Sync, Connect and
+// Send my code first show this in place of their buttons; the answer is
+// saved (consumers.use_instagram_photo, which both verify paths read) and
+// only then does the fetch run. Use it replaces the current picture,
+// whatever it is (MESITA-3046); Keep mine leaves it as it is. It was a
+// standing switch row under the account (MESITA-2585) until then.
+async function savePhotoChoice(
+  supabase: ReturnType<typeof useBrowserSupabase>,
+  useIt: boolean,
+): Promise<boolean> {
+  try {
+    await apiUpdateConsumerProfile(supabase, { use_instagram_photo: useIt });
+    return true;
+  } catch (e) {
+    toast.error(errMsg(e, "Couldn't save that. Try again."));
+    return false;
+  }
+}
 
-  const flip = () => {
-    if (on == null || pending) return;
-    const next = !on;
-    setOn(next);
-    setPending(true);
-    apiUpdateConsumerProfile(supabase, { use_instagram_photo: next })
-      .then(() => setOn(null))
-      .catch((e) => {
-        setOn(!next);
-        toast.error(errMsg(e, "Couldn't change that."));
-      })
-      .finally(() => setPending(false));
-  };
-
-  const shown = on ?? true;
+function PhotoQuestion({
+  onAnswer,
+  busy = false,
+}: {
+  onAnswer: (useIt: boolean) => void;
+  busy?: boolean;
+}) {
   return (
-    <SettingsGroup>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={shown}
-        disabled={on == null || pending}
-        onClick={flip}
-        className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition disabled:opacity-60"
-        data-instagram-photo-switch
-      >
+    <div className="flex flex-col gap-3" data-instagram-photo-question>
+      <div className="flex items-center gap-3">
         <IconChip>
           <ImageIcon className="h-[18px] w-[18px]" />
         </IconChip>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold">
-            {INSTAGRAM_PHOTO_SWITCH.label}
-          </span>
-          <span className="text-muted-foreground type-label block">
-            {shown ? INSTAGRAM_PHOTO_SWITCH.on : INSTAGRAM_PHOTO_SWITCH.off}
-          </span>
+          <span className="block text-sm font-semibold">Use your Instagram photo?</span>
+          <span className="text-muted-foreground type-label block">As your Mesita picture.</span>
         </span>
-        <Switch on={shown} />
-      </button>
-    </SettingsGroup>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onAnswer(true)}
+          className={cn(ME_BUTTON_CLASS, "bg-foreground text-paper flex items-center justify-center disabled:opacity-60")}
+          data-instagram-photo-yes
+        >
+          Use it
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onAnswer(false)}
+          className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)}
+          data-instagram-photo-no
+        >
+          Keep mine
+        </button>
+      </div>
+    </div>
   );
 }
