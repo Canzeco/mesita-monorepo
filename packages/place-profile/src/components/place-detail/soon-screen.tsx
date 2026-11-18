@@ -26,6 +26,11 @@ import { PlaceEmptyScreen } from "./empty-screen";
 // concise … Smart Menu is coming to mesita. Don't mention orders yet …
 // like ask ai and calories … don't mention allergens"): it says coming to
 // Mesita again, by his word, and only the asking.
+// Table orders back in the second line since MESITA-4389 (Pato, 2026-11-18:
+// "Order and pay from you table and ask …"): table only, no pickup or
+// delivery. A visual-menu line too (Pato: "graphical menu … beautiful
+// images and videos"; the screen signals what is coming, for investors
+// who audit the app, so it may promise a little ahead).
 export function SoonScreen() {
   return (
     <PlaceEmptyScreen
@@ -33,7 +38,8 @@ export function SoonScreen() {
       title="Smart Menu"
       items={[
         "Smart Menu is coming to Mesita.",
-        "Ask AI about any dish: calories, ingredients and more.",
+        "A visual menu with beautiful photos and videos of every dish.",
+        "Order and pay from your table, and ask AI about any dish: calories, ingredients and more.",
       ]}
     />
   );
