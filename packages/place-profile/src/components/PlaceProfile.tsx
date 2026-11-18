@@ -30,6 +30,7 @@ export function PlaceProfile({
   actions,
   creating,
   social,
+  scrollRef,
 }: {
   place: PlaceDetail;
   onBack?: () => void;
@@ -41,6 +42,9 @@ export function PlaceProfile({
   /** Social v1's line (MESITA-2442), under the chips like Instagram's
    *  "Followed by". */
   social?: React.ReactNode;
+  /** The scroller's ref, so a host can keep its offset across a Back
+   *  (MESITA-4379: the consumer's useKeptScroll). */
+  scrollRef?: (el: HTMLDivElement | null) => void;
 }) {
   return (
     <div className="bg-background relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -51,6 +55,7 @@ export function PlaceProfile({
         onMore={actions?.onMore}
       />
       <div
+        ref={scrollRef}
         className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto"
         tabIndex={scrollLabel ? 0 : undefined}
         aria-label={scrollLabel}

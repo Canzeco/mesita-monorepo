@@ -6,7 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { StoryOfferPage, type PlaceActions } from "@mesita/place-profile";
 import { ScreenHeader } from "@/components/consumer/nav/Screen";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
-import { CONSUMER_ROUTES, placePath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, placeOffersPath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo } from "@/lib/navigate";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -15,9 +15,8 @@ import { useConsumerProfile } from "@/lib/use-consumer-profile";
  * THE STORY PAGE (MESITA-4303): the Story offer in boxes with its action
  * pinned under them (packages/place-profile StoryOfferPage). The same reads
  * as the Offers page (usePlaceVouchers), but a paid Story stays here as its
- * countdown (D4) instead of leaving for Wallet. Back returns to Offers: the
- * place's address with ?rewards=special, which Offers' tap wrote before it
- * pushed here.
+ * countdown (D4) instead of leaving for Wallet. Back returns to Offers, the
+ * page that pushed it (/place/<id>/offers since MESITA-4379).
  */
 export function StoryPageBody({ place: fetched }: { place: PlaceDetail }) {
   const router = useRouter();
@@ -27,7 +26,7 @@ export function StoryPageBody({ place: fetched }: { place: PlaceDetail }) {
   useEffect(() => {
     void loadCards();
   }, [loadCards]);
-  const offersHref = `${placePath(fetched.id)}?rewards=special`;
+  const offersHref = placeOffersPath(fetched.id, "special");
   const back = useCallback(() => goBack(router, offersHref), [router, offersHref]);
   const place: PlaceDetail = vouchers.money ? { ...fetched, money: vouchers.money } : fetched;
 

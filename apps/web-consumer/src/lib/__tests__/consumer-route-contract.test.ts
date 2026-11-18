@@ -33,7 +33,11 @@ import nextConfig from "../../../next.config";
 
 const SHELL = join(__dirname, "..", "..", "app", "(shell)");
 
-type Redirect = { source: string; destination: string };
+type Redirect = {
+  source: string;
+  destination: string;
+  has?: Array<{ type: string; key?: string; value?: string }>;
+};
 
 /** Next's matcher, reduced to what this table uses: `:name` is ONE segment,
  *  `:name*` is ZERO OR MORE (path-to-regexp's `*` modifier — `/inbox/:path*`
@@ -63,7 +67,16 @@ function firstRedirect(
   table: Redirect[],
   address: string,
 ): Redirect | undefined {
-  return table.find((r) => matches(r.source, address));
+  // A row with `has` fires only when the address holds that query, as Next
+  // fires it; these sample addresses hold none (MESITA-4379's
+  // `/place/:id?rewards=` rows must not read as shadowing the place).
+  const [path, query = ""] = address.split("?");
+  const held = new URLSearchParams(query);
+  return table.find(
+    (r) =>
+      matches(r.source, path!) &&
+      (r.has ?? []).every((h) => h.key !== undefined && held.get(h.key) === h.value),
+  );
 }
 
 /** A legacy prefix (`/visit/`) stands for a `:param` entry; give it a sample
@@ -304,8 +317,13 @@ describe("the legacy block and the redirect table are one set", () => {
     // /wallet/<placeId>): a `:param(regex)` that takes a Mesita id only, so
     // they have no prefix the legacy block could name.
     const BARE_PLACE_IDS = ["/pay/:placeId(", "/wallet/:placeId("];
-    const spokenFor = (source: string) => {
+    // A live page's old query ask (MESITA-4379: the place's `?rewards=` is
+    // the Offers page now). Fires only with that query (`has`), so the page
+    // itself is never shadowed (the shadow test above).
+    const QUERY_ASKS = ["/place/:id"];
+    const spokenFor = (source: string, has?: unknown[]) => {
       if (BARE_PLACE_IDS.some((b) => source.startsWith(b))) return true;
+      if (has?.length && QUERY_ASKS.includes(source)) return true;
       const exact = source.replace(/\/:[A-Za-z]+\*?$/, "/");
       if (legacy.includes(source)) return true;
       if (source.includes(":") && legacy.includes(exact)) return true;
@@ -318,7 +336,7 @@ describe("the legacy block and the redirect table are one set", () => {
       );
     };
     expect(
-      table.filter((r) => !spokenFor(r.source)).map((r) => r.source),
+      table.filter((r) => !spokenFor(r.source, r.has)).map((r) => r.source),
     ).toEqual([]);
   });
 
@@ -416,6 +434,13 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
     expect(redirects).toEqual([
       // The addresses renamed to the product's words (MESITA-4013).
       { source: "/pay/tab/:id", destination: "/pay/bill/:id", permanent: true },
+      // Offers left the profile for its own page (MESITA-4379).
+      ...["prepayment", "special"].map((value) => ({
+        source: "/place/:id",
+        has: [{ type: "query", key: "rewards", value }],
+        destination: "/place/:id/offers",
+        permanent: true,
+      })),
       {
         source: "/place/open/:gid",
         destination: "/place/google/:gid",

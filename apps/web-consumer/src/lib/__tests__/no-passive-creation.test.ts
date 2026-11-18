@@ -168,7 +168,7 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
       "components/consumer/home/CatalogRails.tsx",
       "components/consumer/search/SearchRailCard.tsx",
       "components/consumer/search/SearchMap.tsx",
-      "app/(shell)/place/[id]/page.tsx",
+      "app/(shell)/place/[id]/(profile)/page.tsx",
       "app/(shell)/@modal/(.)place/[id]/page.tsx",
       "app/(shell)/place/google/[gid]/page.tsx",
       "app/(shell)/@modal/(.)place/google/[gid]/page.tsx",

@@ -48,7 +48,7 @@ export function OfferButton({
   const release = () => setHeld(null);
   return (
     <PushLink
-      href={`${href}?rewards=${slide.section ?? "prepayment"}`}
+      href={`${href}/offers?rewards=${slide.section ?? "prepayment"}`}
       aria-label={offersLabel(name, slides)}
       onClick={release}
       onPointerDown={hold}
@@ -85,9 +85,10 @@ export function OfferStrip({ name, slides, className }: { name: string; slides: 
   );
 }
 
-/** Where a slide's tap goes: the place's Offers page, no offer's sheet open
- *  (MESITA-4358; it ticked the offer on screen, MESITA-4219). `from=wallet`
- *  brings Back to the Loyalty Card (MESITA-3883). */
+/** Where a slide's tap goes: the place's Offers page (/place/<id>/offers
+ *  since MESITA-4379), no offer's sheet open (MESITA-4358; it ticked the
+ *  offer on screen, MESITA-4219). `from=wallet` sends a paid offer back to
+ *  the Loyalty Card (MESITA-3883). */
 export function offerHref(placeHref: string, slide: OfferSlide, fromWallet = false): string {
-  return `${placeHref}?rewards=${slide.section ?? "prepayment"}${fromWallet ? "&from=wallet" : ""}`;
+  return `${placeHref}/offers?rewards=${slide.section ?? "prepayment"}${fromWallet ? "&from=wallet" : ""}`;
 }

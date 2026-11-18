@@ -2,8 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { readCached, writeCached } from "@/lib/screen-cache";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { readCached, readCachedEntry, writeCached } from "@/lib/screen-cache";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { PayCard, PayCards, PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, StoryCheckAnswer, VoucherBasketItem, VoucherBuyOutcome, VoucherKey } from "@mesita/place-profile";
 import { pickPayCard } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
@@ -23,7 +23,6 @@ import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { runBankCheck } from "@/lib/api/tab";
 import { useAddCardPage } from "@/lib/added-card";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
-import { RewardsSheet } from "@/components/consumer/RewardsSheet";
 import { PlaceSocialList } from "@/components/consumer/PlaceSocialList";
 import {
   apiPlaceActivity,
@@ -37,12 +36,11 @@ import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
 import { useBrowserSupabase, useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
-import { goBack, navigateTo } from "@/lib/navigate";
-import { CONSUMER_ROUTES, payPlacePath, placeReservePath, placeStoryPath, reservationPath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { navigateTo } from "@/lib/navigate";
+import { placeOffersPath, placeReservePath, reservationPath } from "@/lib/consumer-route-contract";
 import { apiListReservations, type EFReservationRow } from "@/lib/api/reservations";
 import { statusLabel, whenLine } from "@/lib/reservation-when";
 import { toReservationItem } from "@/lib/reservations-adapter";
-import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { toast } from "@/lib/toast";
 import { openSignGate } from "@/lib/anonymous";
 import { useViewer } from "@/lib/identity-context";
@@ -89,27 +87,6 @@ const BoostSheet = dynamic(() =>
  *  on the skeleton; whatever lands later fills in. */
 export const FIRST_READS_CAP_MS = 3_000;
 
-function noopSubscribe() {
-  return () => {};
-}
-
-/** The ask came from a Loyalty Card's Buy Credits (MESITA-3883): closing the
- *  Offers page goes back there, not down to the profile. */
-function readFromWallet(): boolean {
-  return new URLSearchParams(window.location.search).get("from") === "wallet";
-}
-
-/** The voucher a Home offer chip asked for (MESITA-4207). */
-function readVoucherAsk(): string | null {
-  return new URLSearchParams(window.location.search).get("voucher");
-}
-
-function readRewardsAsk(): RewardsSection | null {
-  const v = new URLSearchParams(window.location.search).get("rewards");
-  // "payment" is ignored on purpose: the Payments card left Offers (MESITA-4062).
-  return v === "prepayment" || v === "special" ? v : null;
-}
-
 export function useMemberPlaceActions(place: PlaceDetail): {
   /** The place to draw: Enriching once a view found it mid-run. */
   place: PlaceDetail;
@@ -133,21 +110,10 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     if (signedOut) openSignGate(next, null);
     else open();
   };
-  const profile = useConsumerProfile().data;
   const saved = isSaved(place.id);
   const [contactOpen, setContactOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  // Prepay opens the Offers sheet (MESITA-3412).
-  const [rewards, setRewards] = useState<RewardsSection | null>(null);
-  // ?rewards=prepayment|special (the Home tile's offer button,
-  // MESITA-3439, its slides since MESITA-3467)
-  // opens the sheet on arrival, once: closing it drops the ask.
-  const askedRewards = useSyncExternalStore(noopSubscribe, readRewardsAsk, () => null);
-  const fromWallet = useSyncExternalStore(noopSubscribe, readFromWallet, () => false);
-  const askedVoucher = useSyncExternalStore(noopSubscribe, readVoucherAsk, () => null);
-  const [askDismissed, setAskDismissed] = useState(false);
-  const rewardsShown = signedOut ? null : rewards ?? (askDismissed ? null : askedRewards);
   // When the Upgrade tile or ⋯ › Upgrade last asked for the Upgrade sheet (ms).
   const [boostAskedAt, setBoostAskedAt] = useState(0);
   const [boostClosedAt, setBoostClosedAt] = useState(0);
@@ -155,26 +121,9 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
-  // A PAID VOUCHER ENDS ON THE LOYALTY CARD (Pato, MESITA-4055: "don't
-  // redirect to prepay, maybe redirect to wallet … and don't leave that
-  // open"). A saved card's payment that succeeded or is processing closes
-  // the Offers page, drops ?rewards and ?from so Back never reopens it, and
-  // opens this place's Loyalty Card, where Stripe's page already lands
-  // (MESITA-3617). Asked from the Loyalty Card, it goes back there.
-  const vouchers = usePlaceVouchers(place.id, {
-    onPaid: () => {
-      setRewards(null);
-      setAskDismissed(true);
-      const params = new URLSearchParams(window.location.search);
-      params.delete("rewards");
-      params.delete("from");
-      params.delete("voucher");
-      const q = params.toString();
-      window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
-      if (fromWallet) goBack(router, walletPlacePath(place.id));
-      else navigateTo(router, walletPlacePath(place.id), { motion: "drill" });
-    },
-  });
+  // The place's offer and the guest's credit here, for the Wallet tile
+  // (MESITA-3574). Buying happens on the Offers page (MESITA-4379).
+  const vouchers = usePlaceVouchers(place.id);
   const reservation = usePlaceReservation(place.id);
   const live = reservation.row;
   // ONE READ, ONE PAINT (Pato, MESITA-3803: "call those two functions in
@@ -187,7 +136,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   // button popping in under it. A stuck read gives up the wait after
   // FIRST_READS_CAP_MS. State is set in callbacks only (Next 16 lint).
   const loadVouchers = vouchers.load;
-  const loadCards = vouchers.loadCards;
   const loadReservation = reservation.load;
   const [readFor, setReadFor] = useState<string | null>(null);
   useEffect(() => {
@@ -205,13 +153,10 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       clearTimeout(cap);
     };
   }, [loadVouchers, loadReservation, place.id]);
-  // The saved cards for the Offers page's "Pay with" (MESITA-4065): read
-  // beside the first reads, never holding the profile's first paint.
-  useEffect(() => {
-    void loadCards();
-  }, [loadCards]);
   // A Google-only card has neither read: it paints at once.
-  const ready = !isMesitaPlaceId(place.id) || readFor === place.id;
+  // Back to a place this session already read paints at once from the kept
+  // answers (MESITA-4379) while both reads run again behind it.
+  const ready = !isMesitaPlaceId(place.id) || readFor === place.id || (vouchers.warm && reservation.warm);
   // Stripe Checkout's return asks for the sheet too: it is open while the
   // latest ask is newer than the last close (MESITA-3201).
   const boostOpen = Math.max(boostAskedAt, boost.returnedAt ?? 0) > boostClosedAt;
@@ -259,74 +204,12 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     ...(isMesitaPlaceId(place.id)
       ? { renderSocial: () => <PlaceSocialList placeId={place.id} /> }
       : {}),
-    // Prepay and Pay (MESITA-3412): the Rewards sheet, once the fourth tab.
-    onOpenRewards: (section: RewardsSection) =>
-      askOr(`/place/${place.id}?rewards=${section}`, () => setRewards(section))(),
-    // The Rewards sheet (MESITA-3303): Buy asks how to pay (a saved card in
-    // one tap, or Stripe's page, MESITA-3552); opening the sheet refreshes
-    // the offer and the credit.
-    onBuyVoucher: vouchers.buy,
-    onOfferOpened: vouchers.opened,
-    // The Story sheet's check before Pay and its test-mode simulator (MESITA-4296).
-    onCheckStory: vouchers.checkStory,
-    onSimulateStory: vouchers.simulateStory,
-    // STORY IS A PAGE (MESITA-4303): Offers stays in this address
-    // (?rewards=special, no ?voucher) so Back from Story reopens Offers, never Story.
-    onOpenStory: () => {
-      const params = new URLSearchParams(window.location.search);
-      params.set("rewards", "special");
-      params.delete("voucher");
-      window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}`);
-      navigateTo(router, placeStoryPath(place.id), { motion: "drill" });
-    },
-    buyingVoucher: vouchers.buying,
-    // The checkout in the page (MESITA-4065): the saved cards and their pick.
-    ...(vouchers.payCards ? { payCards: vouchers.payCards } : {}),
-    payCardId: vouchers.payCardId,
-    onSelectPayCard: vouchers.selectCard,
-    // BACK TO THE SAME SHEET (Pato, 2026-11-17, MESITA-4230, D4): the offer
-    // rides this page's address across the Add a card trip, so Back lands on
-    // Offers with that offer's sheet open and the new card picked.
-    onAddPayCard: (voucher?: VoucherKey) => {
-      if (voucher) {
-        const params = new URLSearchParams(window.location.search);
-        params.set("rewards", "prepayment");
-        params.set("voucher", voucher);
-        window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}`);
-      }
-      vouchers.addCard();
-    },
-    onRetryPayCards: () => void vouchers.loadCards(),
-    onLoadVouchers: vouchers.load,
-    vouchersLoading: vouchers.loading,
-    // Pay (the Offers tile's Pay slide, MESITA-3352, MESITA-4151): this
-    // place's bill, /pay/place/<placeId> (MESITA-3614), the one door every "pay
-    // here" uses; the sheet closes on the way out.
-    onPay: () => {
-      if (signedOut) {
-        openSignGate(payPlacePath(place.id), null);
-        return;
-      }
-      setRewards(null);
-      setAskDismissed(true);
-      navigateTo(router, payPlacePath(place.id), { motion: "drill" });
-    },
-    // The Home chip's voucher (MESITA-4207), only while its ask stands.
-    askedVoucher: askDismissed ? null : askedVoucher,
-    // The Offers (i) status (MESITA-3502): Story needs a linked Instagram;
-    // its lock's action opens the page that lifts it.
-    ...(profile
-      ? {
-        guest: {
-          instagramLinked: Boolean(profile.instagram_handle),
-          instagramFollowers: profile.instagram_followers_count ?? null,
-          instagramHandle: profile.instagram_handle ?? null,
-        },
-      }
-      : {}),
-    onLinkInstagram: () => {
-      setRewards(null);
-      navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" });
+    // OFFERS IS A PAGE (MESITA-4379): the Offers tile pushes
+    // /place/<id>/offers, which slides in over the profile; Back uncovers
+    // it. It was a full-screen sheet over this screen (MESITA-3412).
+    onOpenRewards: (section: RewardsSection) => {
+      const href = placeOffersPath(place.id, section);
+      askOr(href, () => navigateTo(router, href, { motion: "drill" }))();
     },
   };
 
@@ -356,21 +239,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         open={boostOpen}
         onClose={() => setBoostClosedAt(Date.now())}
       />
-      {/* Before the menu and report sheets: the full-screen Offers page
-          (MESITA-3448) opens its ⋯ menu on top of itself. */}
-      <RewardsSheet
-        place={shown}
-        actions={actions}
-        section={rewardsShown}
-        onClose={() => {
-          if (fromWallet && rewards == null && !askDismissed && askedRewards != null) {
-            goBack(router, walletPlacePath(place.id));
-            return;
-          }
-          setRewards(null);
-          setAskDismissed(true);
-        }}
-      />
       <PlaceMoreSheet
         place={place}
         open={moreOpen}
@@ -393,7 +261,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         onClose={() => setMenu(null)}
         menu={menu}
       />
-      {vouchers.sheet}
     </>
   );
 
@@ -420,8 +287,13 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 /** The guest's live reservation at this place, if any (MESITA-3640: one per
  *  place). `upcoming` is exactly "live" server-side (pending or confirmed,
  *  slot within the 4h grace). A failed read draws no button. */
+const reservationKey = (placeId: string) => `place-reservation:${placeId}`;
+const vouchersKey = (placeId: string) => `place-vouchers:${placeId}`;
+
 function usePlaceReservation(placeId: string): {
   row: EFReservationRow | null;
+  /** This session read it before: the kept answer is drawn at once. */
+  warm: boolean;
   /** Reads it; resolves once it answered or failed (never rejects). */
   load: () => Promise<void>;
 } {
@@ -429,7 +301,14 @@ function usePlaceReservation(placeId: string): {
   // would refetch forever in an effect (MESITA-3207).
   const supabase = useBrowserSupabase();
   const mesita = isMesitaPlaceId(placeId);
-  const [found, setFound] = useState<{ placeId: string; row: EFReservationRow | null } | null>(null);
+  // KEPT FOR BACK (MESITA-4379): a page pushed over the place (Offers,
+  // Reserve, Story) unmounts it; Back draws the last answer at once and
+  // reads again behind it, instead of the skeleton.
+  const [found, setFound] = useState<{ placeId: string; row: EFReservationRow | null } | null>(() => {
+    const kept = readCachedEntry<EFReservationRow | null>(reservationKey(placeId));
+    return kept ? { placeId, row: kept.value } : null;
+  });
+  const [warm] = useState(() => readCachedEntry(reservationKey(placeId)) !== null);
   const load = useCallback(async () => {
     if (!mesita) return;
     const row = await apiListReservations(supabase, { scope: "upcoming", limit: 100 })
@@ -437,8 +316,9 @@ function usePlaceReservation(placeId: string): {
       .catch(() => null);
     // Keyed by place: an answer for a place left behind is never drawn.
     setFound({ placeId, row });
+    writeCached(reservationKey(placeId), row);
   }, [mesita, placeId, supabase]);
-  return { row: found?.placeId === placeId ? found.row : null, load };
+  return { row: found?.placeId === placeId ? found.row : null, warm, load };
 }
 
 export function usePlaceVouchers(
@@ -449,6 +329,9 @@ export function usePlaceVouchers(
   opts: { onPaid?: () => void } = {},
 ): {
   money: PlaceMoney | null;
+  /** This session read the offer before: the kept answer is drawn at once
+   *  (MESITA-4379). */
+  warm: boolean;
   /** The last list-vouchers for this place failed (MESITA-3868). */
   failed: boolean;
   /** The basket's lead voucher while it is being paid. */
@@ -484,7 +367,11 @@ export function usePlaceVouchers(
   // read failed. Written in the promise callbacks only (Next 16 lint), and
   // only by the latest request, so an older answer never lands last. An
   // answer with no offer clears earlier rows; a failed read keeps them.
-  const [offer, setOffer] = useState<{ placeId: string; money: PlaceMoney | null; failed: boolean } | null>(null);
+  const [offer, setOffer] = useState<{ placeId: string; money: PlaceMoney | null; failed: boolean } | null>(() => {
+    const kept = readCachedEntry<PlaceMoney | null>(vouchersKey(placeId));
+    return kept ? { placeId, money: kept.value, failed: false } : null;
+  });
+  const [warm] = useState(() => readCachedEntry(vouchersKey(placeId)) !== null);
   const request = useRef(0);
   const onPaid = useRef(opts.onPaid);
   useEffect(() => {
@@ -498,6 +385,7 @@ export function usePlaceVouchers(
       .then(({ money }) => {
         if (mine !== request.current) return;
         setOffer({ placeId, money: money ?? null, failed: false });
+        writeCached(vouchersKey(placeId), money ?? null);
       })
       .catch(() => {
         if (mine !== request.current) return;
@@ -678,6 +566,7 @@ export function usePlaceVouchers(
 
   return {
     money,
+    warm,
     failed: mine?.failed === true,
     buying,
     loading: mesita && mine === null,

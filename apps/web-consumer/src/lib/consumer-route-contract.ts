@@ -337,6 +337,23 @@ export function placeStoryPath(idOrSlug: string): string {
   return `${placePath(idOrSlug)}/story`;
 }
 
+/** The place's Offers page (MESITA-4379): a page under the place, never a
+ *  sheet over its profile, so a tap lands on Offers without the profile
+ *  loading first. `section` (prepayment | special) says why it opened;
+ *  `fromWallet` marks a Loyalty Card's Add Funds, so a paid offer goes back
+ *  to that card instead of pushing a second one. */
+export function placeOffersPath(
+  idOrSlug: string,
+  section?: "prepayment" | "special" | null,
+  fromWallet = false,
+): string {
+  const q = new URLSearchParams();
+  if (section) q.set("rewards", section);
+  if (fromWallet) q.set("from", "wallet");
+  const qs = q.toString();
+  return `${placePath(idOrSlug)}/offers${qs ? `?${qs}` : ""}`;
+}
+
 /** /place/<id>/reserve: a full page, never the place slide-over. */
 export function isPlaceReservePath(pathname: string): boolean {
   return /^\/place\/[^/]+\/reserve\/?$/.test(pathname);
@@ -469,6 +486,10 @@ export const ROUTE_MAP = {
   placeReserve: row("/place/:id/reserve", "home", "page", "place", false),
   // The Story offer, pushed from Offers (MESITA-4303): a page, not a sheet.
   placeStory: row("/place/:id/story", "home", "page", "place", false),
+  // OFFERS IS A PAGE (MESITA-4379, Pato: "why it needs to pass across that
+  // page"): it was a full-screen sheet over the profile at
+  // /place/<id>?rewards=…, so the profile loaded before Offers showed.
+  placeOffers: row("/place/:id/offers", "home", "page", "place", false),
   // A reservation is reached from a place and from Me › Reservations; it
   // lights Me, whose list is where it lands back (MESITA-3855).
   reservation: row("/reservation/:id", "me", "panel", "meReservations"),
