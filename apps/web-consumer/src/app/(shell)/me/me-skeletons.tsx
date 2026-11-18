@@ -27,14 +27,16 @@ import { ICON_CHIP_CLASS } from "@/components/consumer/me/settings-rows";
 // NOT A CLIENT MODULE: the route loading.tsx files are server components
 // and import these directly; IdentityBar imports them on the client.
 
-/** Me's app bar (IdentityBar): full-width white paper, a hairline under it,
- *  fixed above the grid by flex. Shared so the bar and its skeleton are one
- *  box. */
+/** Me's header (IdentityBar) is a card since MESITA-4313 (Pato picked A of
+ *  three mocks: "the header looks like shit"): the tiles' own material
+ *  (profile-sections.tsx TILE_MATERIAL), the first card of the page, where a
+ *  full-width white band with a hairline sat before. Shared so the card and
+ *  its skeleton are one box. */
 export const IDENTITY_BAR_CLASS =
-  "border-border bg-card relative shrink-0 border-b";
-/** The bar's body: the card on the tiles' 16px edge, 12px above and below. */
+  "border-border bg-card shadow-rest relative shrink-0 rounded-2xl border";
+/** The card's body: 16px in on every side. */
 export const IDENTITY_BAR_BODY_CLASS =
-  "relative flex flex-col items-center px-4 py-3";
+  "relative flex flex-col items-center p-4";
 
 /** IdentityCard while the profile loads: the 64px photo in its 1.5px ring
  *  (67px) at the left, then the two 20px lines, name and Instagram, as bars
@@ -50,10 +52,10 @@ export function IdentityCardSkeleton() {
       </div>
       <div className={IDENTITY_LINES_CLASS}>
         <span className={IDENTITY_NAME_CLASS}>
-          <Skeleton className="h-3.5 w-32 rounded" />
+          <Skeleton className="h-5 w-40 rounded" />
         </span>
         <span className={IDENTITY_INSTAGRAM_CLASS}>
-          <Skeleton className="h-5 w-5 shrink-0 rounded-full" />
+          <Skeleton className="h-4.5 w-4.5 shrink-0 rounded-full" />
           <Skeleton className="h-3.5 w-44 max-w-full rounded" />
         </span>
       </div>

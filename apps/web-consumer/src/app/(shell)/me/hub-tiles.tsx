@@ -216,9 +216,11 @@ export function MeHubFrame({
 }) {
   return (
     <div className="flex h-full flex-col">
-      {bar}
-      <KeptScroll className="scrollbar-thin-dark flex-1 overflow-y-auto px-4 pt-3 pb-8">
-        <div className="flex flex-col gap-2">
+      {/* THE HEADER IS THE FIRST CARD (Pato, MESITA-4313, picked A): it
+          scrolls with the tiles, on their 16px edge, 12px above the grid. */}
+      <KeptScroll className="scrollbar-thin-dark flex-1 overflow-y-auto px-4 pt-4 pb-8">
+        <div className="flex flex-col gap-3">
+          {bar}
           <DestGrid>
             {ME_HUB_GRID.map((cell) => (
               <Fragment key={cell.title}>{tile(cell, "cell")}</Fragment>

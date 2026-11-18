@@ -528,8 +528,8 @@ function useMemberHistory(event: CardEvent | null): MemberHistory | null {
     : (historyMemory.get(key) ?? null);
 }
 
-/** The card's Instagram box, Me's own wording: "@handle (~1.2K
- *  followers)" beside the logo (no "Insta:" since MESITA-3067), a masked
+/** The card's Instagram box, Me's own wording: "@handle · ~1.2K
+ *  followers" beside the logo (no "Insta:" since MESITA-3067), a masked
  *  "@per***", or "No Instagram" (a fact about the member, MESITA-2696).
  *  On your own card the handle shows too. */
 function cardInstagramLabel(person: ActivityPerson): string {
