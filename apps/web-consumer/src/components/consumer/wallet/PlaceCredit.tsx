@@ -222,7 +222,7 @@ export function LoyaltyCardSkeleton() {
         <div className="mt-5 grid grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
             <span key={i} className="flex flex-col items-center gap-2">
-              <span className="h-13 w-13 rounded-full bg-white/10" />
+              <span className="h-13 w-13 rounded-full bg-white/25" />
               <span className="h-3 w-14 rounded-md bg-white/10" />
             </span>
           ))}
@@ -337,7 +337,9 @@ export function PlaceCredit({
       {/* THE DARK TOP BOX (MESITA-4353, Pato: "this box containing card and
           4 buttons must have a dark background … top box with bottom box"):
           near-black, the card on it, white labels; the Tickets get their
-          own white box under it. */}
+          own white box under it. LIGHT BUTTONS ON DARK (MESITA-4356, Pato:
+          "buttons must be light if the background is dark, but keep the
+          purple purple"): white circles with ink icons; Pay Bill purple. */}
       <Panel className="bg-foreground mt-4 border-transparent p-5" data-loyalty-card-panel>
       {/* THE MINI LOYALTY CARD (MESITA-3802, Pato: "instead of that ugly pink
           box display mini Loyalty Card, not occupying full width of screen,
@@ -423,7 +425,7 @@ export function PlaceCredit({
               aria-label={offers[0].bonus ? `Add Funds: ${offers[0].bonus}% bonus` : "Add Funds"}
               data-loyalty-card-offer
             >
-              <span className={cn(ROUND_FACE, "bg-white/12 text-white")}>
+              <span className={cn(ROUND_FACE, "text-foreground bg-white")}>
                 <Plus className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
                 {offers[0].bonus ? (
                   <span className={cn("type-meta absolute -top-1.5 -right-3 rounded-full px-1.5 py-0.5 leading-none font-bold", offers[0].tone)}>
@@ -437,7 +439,7 @@ export function PlaceCredit({
           {/* Send Gift is its own page (MESITA-4096); it was a sheet here. */}
           {gift === "open" ? (
             <PushLink href={walletSendPath(row.placeId)} className={ROUND} data-send-credit-open>
-              <span className={cn(ROUND_FACE, "bg-white/12 text-white")}>
+              <span className={cn(ROUND_FACE, "text-foreground bg-white")}>
                 <Gift className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
               </span>
               Send Gift
@@ -450,14 +452,14 @@ export function PlaceCredit({
               aria-label={`Send Gift: ${gift.blocked}`}
               data-send-credit-open
             >
-              <span className={cn(ROUND_FACE, "bg-white/12 text-white")}>
+              <span className={cn(ROUND_FACE, "text-foreground bg-white")}>
                 <Gift className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
               </span>
               Send Gift
             </button>
           ) : null}
           <PushLink href={href} className={ROUND} data-loyalty-card-place>
-            <span className={cn(ROUND_FACE, "bg-white/12 text-white")}>
+            <span className={cn(ROUND_FACE, "text-foreground bg-white")}>
               <Store className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
             </span>
             View Place
