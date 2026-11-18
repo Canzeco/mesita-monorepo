@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, CreditCard, Lock, ReceiptText, Smartphone, XCircle } from "lucide-react";
+import { Banknote, Check, CreditCard, Lock, ReceiptText, XCircle } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } f
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { apiExpressSetup, money, type PayPlace } from "@/lib/api/wallet";
 import { ExpressBillPay } from "./ExpressBillPay";
+import type { ExpressWallet } from "./ExpressPayButton";
 import { acceptCardsAnswer, type CardsLoad, cardsFailure, loadedCards, pickCard } from "@/lib/pay-cards";
 import { guardStage, initialStage, PAY_CARD_REFUSALS, payBackStage, STEP } from "@/lib/guest-pay-stages";
 import {
@@ -159,6 +160,12 @@ export function GuestPayScreen({
   // Pay step's button says whether this phone can.
   const [express, setExpress] = useState(draft?.express === true);
   const [expressOn, setExpressOn] = useState(false);
+  // MESITA-4397: Apple Pay and Google Pay are two rows; `wallet` is the one
+  // picked, `wallets` what the place's setup offers, `applePhone` whether
+  // this browser is Apple's (it has Apple Pay and no Google Pay button).
+  const [wallet, setWallet] = useState<ExpressWallet | null>(draft?.wallet ?? null);
+  const [wallets, setWallets] = useState<ExpressWallet[]>([]);
+  const [applePhone, setApplePhone] = useState(false);
   const [expressState, setExpressState] = useState<"loading" | "ready" | "none">("loading");
   const [cardId, setCardId] = useState<string | null>(draft?.cardId ?? null);
   // The card the bank just refused: Method says "Declined just now" (MESITA-4226).
@@ -276,8 +283,8 @@ export function GuestPayScreen({
   useEffect(() => {
     if (sentTabId) return;
     requestId.current = requestIdAfterEdit(requestId.current, outcomeUnknown);
-    writeDraft(placeId, { stage: shown, typing, amount, tip, other, useCredit, method, express, cardId, refusedCardId });
-  }, [sentTabId, placeId, shown, typing, amount, tip, other, useCredit, method, express, cardId, refusedCardId, outcomeUnknown]);
+    writeDraft(placeId, { stage: shown, typing, amount, tip, other, useCredit, method, express, wallet, cardId, refusedCardId });
+  }, [sentTabId, placeId, shown, typing, amount, tip, other, useCredit, method, express, wallet, cardId, refusedCardId, outcomeUnknown]);
 
   // Whether the place can take Apple Pay / Google Pay for what's left
   // (MESITA-4386): asked once the amount settles, on Method and Pay.
@@ -287,7 +294,10 @@ export function GuestPayScreen({
     const t = window.setTimeout(() => {
       void apiExpressSetup(getSupabase(), { place_id: placeId, bill: { amount_cents: dueCents } })
         .then((r) => {
-          if (!gone) setExpressOn(r.available);
+          if (gone) return;
+          setExpressOn(r.available);
+          setWallets(r.available ? r.wallets : []);
+          setApplePhone("ApplePaySession" in window);
         })
         .catch(() => {
           if (!gone) setExpressOn(false);
@@ -751,24 +761,31 @@ export function GuestPayScreen({
                   onPick={() => {
                     setMethod("card");
                     setExpress(false);
+                    setWallet(null);
                   }}
                 />
-                {/* APPLE PAY / GOOGLE PAY (MESITA-4386): Face ID on Pay holds
-                    it; the waiter's code charges it. */}
-                {expressOn && !appWhy ? (
-                  <MethodTile
-                    on={way === "card" && express}
-                    off={null}
-                    lead={<WalletChip />}
-                    id="express"
-                    title="Apple Pay / Google Pay"
-                    line="Held with Face ID, charged when the waiter signs"
-                    onPick={() => {
-                      setMethod("card");
-                      setExpress(true);
-                    }}
-                  />
-                ) : null}
+                {/* APPLE PAY and GOOGLE PAY (MESITA-4386; two rows since
+                    MESITA-4397, Pato: "show apple pay and google pay
+                    separated"): Face ID on Pay holds it; the waiter's code
+                    charges it. The one this browser can't use stays, greyed. */}
+                {expressOn && !appWhy
+                  ? EXPRESS_ROWS.filter((r) => wallets.includes(r.wallet)).map((r) => (
+                      <MethodTile
+                        key={r.wallet}
+                        on={way === "card" && express && wallet === r.wallet}
+                        off={(r.wallet === "apple_pay") === applePhone ? null : "Not on this phone"}
+                        lead={r.chip}
+                        id={r.wallet}
+                        title={r.title}
+                        line="Held now, charged when the waiter signs"
+                        onPick={() => {
+                          setMethod("card");
+                          setExpress(true);
+                          setWallet(r.wallet);
+                        }}
+                      />
+                    ))
+                  : null}
                 {/* Cash in its dollar-bill green (MESITA-4244, Pato: "for
                     cash use green"), the Wallet's Cash chip. */}
                 <MethodTile
@@ -781,6 +798,7 @@ export function GuestPayScreen({
                   onPick={() => {
                     setMethod("cash");
                     setExpress(false);
+                    setWallet(null);
                   }}
                 />
               </div>
@@ -809,11 +827,13 @@ export function GuestPayScreen({
   // wallet button and when it is charged. Face ID holds the card part and
   // opens the bill; the waiter's code charges it. A phone without a wallet
   // says so, and the way out is Method.
-  if (way === "card" && express && expressOn) {
+  if (way === "card" && express && expressOn && wallet) {
+    const walletName = wallet === "apple_pay" ? "Apple Pay" : "Google Pay";
     const chooseAnother = () => {
       setError(null);
       setPayRefusal(null);
       setExpress(false);
+      setWallet(null);
       setStage("method");
     };
     return frame(
@@ -829,11 +849,12 @@ export function GuestPayScreen({
               {expressState === "loading" ? <Skeleton className="absolute inset-0 h-12 rounded-xl" /> : null}
               {expressState === "none" ? (
                 <p className="text-base font-semibold" role="status">
-                  This phone can&apos;t pay with Apple Pay or Google Pay here. Choose another way.
+                  This phone can&apos;t pay with {walletName} here. Choose another way.
                 </p>
               ) : null}
               <div className={cn(expressState !== "ready" && "pointer-events-none opacity-0")}>
                 <ExpressBillPay
+                  wallet={wallet}
                   getSupabase={getSupabase}
                   placeId={placeId}
                   billCents={billCents}
@@ -846,7 +867,7 @@ export function GuestPayScreen({
                   onOpened={(tabId, qrUrl) => {
                     rememberGuestTab(tabId, qrUrl);
                     writeLastTip(placeId, tip);
-                    writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, express, cardId, refusedCardId, sentTabId: tabId });
+                    writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, express, wallet, cardId, refusedCardId, sentTabId: tabId });
                     setOutcomeUnknown(false);
                   }}
                   onBill={(tabId) => onPaid(tabId)}
@@ -1007,15 +1028,38 @@ export function GuestPayScreen({
 /** A row for App or Cash in the How you pay panel (MESITA-4072; a bordered
  *  tile with a thick border when chosen until then): the ring on the right
  *  fills when chosen; grey with one line why when the place can't take it. */
-/** Apple Pay / Google Pay's tile mark (MESITA-4386): a black phone-wallet
- *  chip; the brands' own buttons appear on Pay. */
-function WalletChip() {
+/** Apple Pay's and Google Pay's marks (MESITA-4397): a black chip and a
+ *  white one, the Wallet's chip shape; the brands' own buttons are on Pay. */
+function ApplePayChip() {
   return (
-    <span className="flex h-9 w-12 items-center justify-center rounded-md bg-neutral-950 text-white" aria-hidden>
-      <Smartphone className="h-5 w-5" strokeWidth={2} />
+    <span className="flex h-8 w-[3.2rem] items-center justify-center rounded-md bg-neutral-950 text-xs font-semibold tracking-tight text-white" aria-hidden>
+      <svg viewBox="0 0 814 1000" className="mr-0.5 h-3.5 w-3.5 fill-current" aria-hidden>
+        <path d="M788 341c-6 4-108 62-108 190 0 149 131 201 135 203-1 3-21 72-69 142-43 62-88 123-156 123s-86-40-164-40c-77 0-104 41-166 41s-106-57-156-127C47 790 0 663 0 541c0-194 126-297 250-297 66 0 121 43 162 43 40 0 102-46 177-46 29 0 131 3 199 100zM554 160c31-37 53-88 53-139 0-7-1-14-2-20-50 2-110 34-146 76-28 32-55 83-55 135 0 8 1 16 2 18 3 1 9 2 14 2 45 0 102-30 134-72z" />
+      </svg>
+      Pay
     </span>
   );
 }
+
+function GooglePayChip() {
+  return (
+    <span className="border-border flex h-8 w-[3.2rem] items-center justify-center gap-0.5 rounded-md border bg-white text-xs font-semibold tracking-tight text-neutral-700" aria-hidden>
+      <svg viewBox="0 0 48 48" className="h-3.5 w-3.5" aria-hidden>
+        <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.8-2.1 5.1-4.4 6.7v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.2z" />
+        <path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.6-3.9-12.3-9.1H4.4v5.7C8 41.1 15.4 46 24 46z" />
+        <path fill="#FBBC05" d="M11.7 28.2c-.4-1.3-.7-2.7-.7-4.2s.3-2.9.7-4.2v-5.7H4.4C2.9 17.1 2 20.5 2 24s.9 6.9 2.4 9.9l7.3-5.7z" />
+        <path fill="#EA4335" d="M24 10.7c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.2 29.9 2 24 2 15.4 2 8 6.9 4.4 14.1l7.3 5.7c1.7-5.2 6.6-9.1 12.3-9.1z" />
+      </svg>
+      Pay
+    </span>
+  );
+}
+
+/** Method's two phone-wallet rows, in this order (MESITA-4397). */
+const EXPRESS_ROWS: { wallet: ExpressWallet; title: string; chip: React.ReactNode }[] = [
+  { wallet: "apple_pay", title: "Apple Pay", chip: <ApplePayChip /> },
+  { wallet: "google_pay", title: "Google Pay", chip: <GooglePayChip /> },
+];
 
 /** Method's rows share one leading slot (MESITA-4085), as wide as the
  *  Credits Card image, each mark at its left edge: the marks start on one

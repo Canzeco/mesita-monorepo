@@ -20,6 +20,7 @@ import { trackEvent } from "@/lib/analytics/track";
 import {
   ExpressPayButton,
   type ExpressPayOpen,
+  type ExpressWallet,
   ExpressPayRefusal,
   type ExpressPaySettle,
 } from "@/components/consumer/pay/ExpressPayButton";
@@ -27,6 +28,7 @@ import {
 type Client = Parameters<typeof apiGetTab>[0];
 
 export function ExpressBillPay({
+  wallet,
   getSupabase,
   placeId,
   billCents,
@@ -40,6 +42,8 @@ export function ExpressBillPay({
   onBill,
   onError,
 }: {
+  /** MESITA-4397: the one wallet the guest picked on Method. */
+  wallet: ExpressWallet;
   getSupabase: () => Client;
   placeId: string;
   billCents: number;
@@ -94,7 +98,7 @@ export function ExpressBillPay({
       setup={async () => {
         const s = await apiExpressSetup(getSupabase(), { place_id: placeId, bill: { amount_cents: dueCents } });
         return s.available
-          ? { available: true, wallets: s.wallets, publishable_key: s.publishable_key, stripe_account: s.stripe_account, amount_cents: s.amount_cents, currency: s.currency, label: s.label }
+          ? { available: true, wallets: s.wallets.filter((w) => w === wallet), publishable_key: s.publishable_key, stripe_account: s.stripe_account, amount_cents: s.amount_cents, currency: s.currency, label: s.label }
           : { available: false, code: s.code };
       }}
       open={open}
