@@ -37,7 +37,7 @@ import { sharePlace } from "@/lib/share-place";
 import { useBrowserSupabase, useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
 import { goBack, navigateTo } from "@/lib/navigate";
-import { CONSUMER_ROUTES, payPlacePath, placeReservePath, reservationPath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payPlacePath, placeReservePath, placeStoryPath, reservationPath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { apiListReservations, type EFReservationRow } from "@/lib/api/reservations";
 import { statusLabel, whenLine } from "@/lib/reservation-when";
 import { toReservationItem } from "@/lib/reservations-adapter";
@@ -251,6 +251,15 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // The Story sheet's check before Pay and its test-mode simulator (MESITA-4296).
     onCheckStory: vouchers.checkStory,
     onSimulateStory: vouchers.simulateStory,
+    // STORY IS A PAGE (MESITA-4303): Offers stays in this address
+    // (?rewards=special, no ?voucher) so Back from Story reopens Offers, never Story.
+    onOpenStory: () => {
+      const params = new URLSearchParams(window.location.search);
+      params.set("rewards", "special");
+      params.delete("voucher");
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}`);
+      navigateTo(router, placeStoryPath(place.id), { motion: "drill" });
+    },
     buyingVoucher: vouchers.buying,
     // The checkout in the page (MESITA-4065): the saved cards and their pick.
     ...(vouchers.payCards ? { payCards: vouchers.payCards } : {}),

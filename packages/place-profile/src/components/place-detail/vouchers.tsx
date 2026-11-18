@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Camera, Check, CircleCheck, Clock, Copy, CreditCard, Gift, Lock, PartyPopper, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { Camera, Check, CircleCheck, Clock, Copy, CreditCard, Gift, Infinity as InfinityIcon, Lock, PartyPopper, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -12,7 +12,6 @@ import {
   isStoryGateReason,
   postedAgo,
   STORY_POLL_DEFAULT,
-  storyMarkerKey,
   storySheetView,
   type StoryCheckAnswer,
   type StoryGateReason,
@@ -510,13 +509,51 @@ function StepList({ steps, dim }: { steps: Step[]; dim?: boolean }) {
   );
 }
 
-/** Where the credit spends and for how long: under the steps, not a step. */
-function SpendLine() {
+/** A WHITE BOX ON THE GREY GROUND (Pato, 2026-11-17, MESITA-4303: "MORE
+ *  MODULAR ... IN BOXES ... ONE BOX FOR THE STEPS AND ONE BOX FOR THE
+ *  EXPLANATION ... KEEP THIS ORDERED"; D2): the Reserve page's panel, its
+ *  small label inside, one job per box. */
+function Box({
+  title,
+  className,
+  children,
+  ...data
+}: { title?: string; className?: string; children: ReactNode } & { [k: `data-${string}`]: string | undefined }) {
   return (
-    <p className="text-muted-foreground border-border flex items-center gap-2 border-t pt-3 text-sm leading-snug" data-offer-spend>
-      <Utensils className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      Spend it on any bill here. It never expires.
-    </p>
+    <section className={cn(CARD, "shrink-0 px-4 py-3", className)} {...data}>
+      {title ? <h4 className={cn(SECTION_LABEL, "mb-2.5")}>{title}</h4> : null}
+      {children}
+    </section>
+  );
+}
+
+/** GOOD TO KNOW (D3): every rule of the offer in one box, the limit with
+ *  them; Welcome's one-time rule first and amber (MESITA-4299: "mention that
+ *  this is only one"). The header carries no limit chip any more. */
+function GoodToKnow({ productKey }: { productKey: MoneyVoucherKey }) {
+  const rows: { Icon: LucideIcon; text: string; warn?: boolean }[] = [];
+  if (productKey === "voucher_welcome") rows.push({ Icon: Clock, text: "One time only. Gone after your first payment here.", warn: true });
+  rows.push({ Icon: Utensils, text: "Spend it on any bill here." }, { Icon: InfinityIcon, text: "It never expires." });
+  if (productKey === "voucher_story") rows.push({ Icon: Repeat1, text: "One per visit." });
+  else if (productKey !== "voucher_welcome") rows.push({ Icon: Repeat, text: "Buy as many as you like." });
+  return (
+    <Box title="Good to know" data-offer-good-to-know="">
+      <ul className="flex flex-col gap-2">
+        {rows.map((r) => (
+          <li
+            key={r.text}
+            className={cn(
+              "flex items-start gap-2.5 text-[15px] leading-snug",
+              r.warn ? "-mx-1 rounded-xl bg-amber-50 px-3 py-2 font-semibold text-amber-900" : "text-foreground",
+            )}
+            data-offer-once={r.warn ? "" : undefined}
+          >
+            <r.Icon className={cn("mt-0.5 h-[18px] w-[18px] shrink-0", !r.warn && "text-muted-foreground")} strokeWidth={2.25} aria-hidden />
+            {r.text}
+          </li>
+        ))}
+      </ul>
+    </Box>
   );
 }
 
@@ -540,15 +577,14 @@ function storyNeeds(guest: StoryGuest, failing: StoryFail, passed: boolean): Nee
   ];
 }
 
-function NeedList({ needs }: { needs: Need[] }) {
+function NeedBox({ needs }: { needs: Need[] }) {
   return (
-    <div className="flex flex-col gap-2" data-story-needs>
-      <p className={SECTION_LABEL}>Who can get it</p>
-      <ul className="flex flex-col gap-1.5">
+    <Box title="Who can get it" data-story-needs="">
+      <ul className="flex flex-col gap-2">
         {needs.map((n) => (
           <li
             key={n.label}
-            className={cn("flex items-center gap-2 text-[15px] leading-snug tabular-nums", n.state === "locked" ? "font-semibold text-amber-900" : "text-foreground")}
+            className={cn("flex items-center gap-2.5 text-[15px] leading-snug tabular-nums", n.state === "locked" ? "font-semibold text-amber-900" : "text-foreground")}
             data-story-need={n.state}
           >
             {n.state === "ok" ? (
@@ -565,15 +601,8 @@ function NeedList({ needs }: { needs: Need[] }) {
           </li>
         ))}
       </ul>
-    </div>
+    </Box>
   );
-}
-
-/** How often it can be bought: a small chip under the sheet's title (D3). */
-function sheetLimit(key: MoneyVoucherKey): string {
-  if (key === "voucher_welcome") return "One per place";
-  if (key === "voucher_story") return "One per visit";
-  return "Buy as many as you like";
 }
 
 type Receipt = { outcome: "paid" | "processing"; pay: string; bonus: string | null; readyAt: string | null };
@@ -586,9 +615,176 @@ function isStoryRefused(r: PayResult | VoucherBuyOutcome | void): r is StoryRefu
   return typeof r === "object" && r !== null && "story_refused" in r;
 }
 
-/** The Story sheet's check, from the host (MESITA-4296). */
+/** One offer as the sheet and the Story page draw it: the deal, who may buy
+ *  it, the card it pays with, and Pay. */
+type Offer = {
+  pay: string;
+  get: string;
+  /** "+10%". */
+  bonus: string;
+  /** "$20.00MX", or null without a catalog line. */
+  bonusAmount: string | null;
+  can: boolean;
+  status: InfoStatus;
+  /** This guest's own Story lock; the checklist wears it (MESITA-4299). */
+  guestLock: GuestLock;
+  storyGuest: StoryGuest;
+  /** The one action that lifts a lock; `quiet` draws it as a text link. */
+  unlock: { label: string; onClick: () => void; quiet?: boolean } | null;
+  live: boolean;
+  buying: boolean;
+  payCards: PayCards | undefined;
+  payCard: { label: string; last4: string } | null;
+  canChange: boolean;
+  onChangeCard: () => void;
+  onRetryCards?: () => void;
+  signedOut: boolean;
+  /** The cards are still being read. */
+  cardsPending: boolean;
+  /** Cards were read and none is usable: Pay goes to Add a card. */
+  needsCard: boolean;
+  onPay: (mentionId?: string) => Promise<PayResult>;
+};
+
+/** Everything the Offers page and the Story page share: the rules, the
+ *  cards, and how one product is bought. */
+function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined) {
+  const money = place.money;
+  // The host is still asking list-vouchers and the place read carried no
+  // offer: draw the rows, never a guess (MESITA-3388).
+  const loading = actions?.vouchersLoading === true && !money;
+  const rules = offerRules(money, actions?.guest);
+  const catalog = money?.catalog ?? {};
+  const currency = money?.currency ?? "mxn";
+  const live = Boolean(actions?.onBuyVoucher);
+  const buying = actions?.buyingVoucher != null;
+  const payCards: PayCards | undefined = actions?.payCards;
+  const readyCards = payCards?.state === "ready" ? payCards.cards : null;
+  const payCardId = actions?.payCardId ?? null;
+  const payCard = readyCards?.find((c) => c.id === payCardId && !isCardExpired(c)) ?? null;
+  // Change steps to the next usable card (MESITA-4150).
+  const usableCards = readyCards?.filter((c) => !isCardExpired(c)) ?? [];
+  const nextCard = () => {
+    if (usableCards.length < 2) return;
+    const at = usableCards.findIndex((c) => c.id === payCard?.id);
+    actions?.onSelectPayCard?.(usableCards[(at + 1) % usableCards.length].id);
+  };
+  // Signed out: no balance and no cards were read (MESITA-4224, D6).
+  const signedOut = live && money != null && money.balance === null && payCards === undefined;
+  // The host's check, bound once so the Story look keeps one loop.
+  const onCheckStory = actions?.onCheckStory;
+  const checkStory = useCallback(
+    (opts: { poll: boolean }): Promise<StoryCheckAnswer> => onCheckStory ? onCheckStory(opts) : Promise.resolve({ kind: "failed" }),
+    [onCheckStory],
+  );
+
+  const offer = (p: Product): Offer => {
+    const line = catalog[p.key];
+    const pay = priceValue(p, line, currency);
+    const can = rules.buyable(p.key);
+    const lock = rules.guestLock(p.key);
+    // Too few followers: the count is the last sync's, so the guest can read it again.
+    const unlock = lock === "instagram" && actions?.onLinkInstagram
+      ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
+      : lock === "followers" && actions?.onLinkInstagram
+        ? { label: "Grew your account? Sync Instagram", onClick: actions.onLinkInstagram, quiet: true }
+        : null;
+    const bonusAmount = line ? pesos(line.bonus_cents, currency) : null;
+    return {
+      pay,
+      get: creditValue(p, line, currency),
+      bonus: `+${p.bonus.replace(/ bonus$/, "")}`,
+      bonusAmount,
+      can,
+      status: offerStatus(p.key, can, lock, rules.unavailable[p.key]),
+      guestLock: can ? null : lock,
+      storyGuest: {
+        linked: actions?.guest ? actions.guest.instagramLinked : null,
+        followers: actions?.guest?.instagramFollowers ?? null,
+        handle: actions?.guest?.instagramHandle ?? null,
+      },
+      unlock,
+      live,
+      buying,
+      payCards,
+      payCard,
+      canChange: usableCards.length > 1,
+      onChangeCard: nextCard,
+      onRetryCards: actions?.onRetryPayCards,
+      signedOut,
+      cardsPending: payCards !== undefined && payCards.state !== "ready",
+      needsCard: payCards?.state === "ready" && payCard === null,
+      onPay: async (mentionId?: string): Promise<PayResult> => {
+        if (!live) return null;
+        // No card yet: the Add a card page, which brings the guest back to
+        // this offer (MESITA-4230, D4).
+        if (!signedOut && readyCards !== null && payCard === null && actions?.onAddPayCard) {
+          actions.onAddPayCard(p.key);
+          return null;
+        }
+        // One unit, nothing else in the basket: a Story is paid alone and
+        // names the story the check found (MESITA-4296).
+        const out = await actions?.onBuyVoucher?.(
+          [{ voucher: p.key, qty: 1 }],
+          signedOut ? null : payCard?.id ?? null,
+          mentionId ? { mentionId } : undefined,
+        );
+        if (isStoryRefused(out)) return out;
+        if (out !== "paid" && out !== "processing") return null;
+        // Story's bonus waits 3 hours from payment (MESITA-4296).
+        const wait = line ? line.available_after_sec : p.key === "voucher_story" ? 3 * 3600 : null;
+        const readyAt = wait !== null ? new Date(Date.now() + wait * 1000).toISOString() : null;
+        return { outcome: out, pay, bonus: bonusAmount ? whole(bonusAmount) : null, readyAt };
+      },
+    };
+  };
+  return { loading, ...rules, catalog, currency, offer, checkStory };
+}
+
+/** The card the offer pays with, Change, a failed read's Retry, and the
+ *  no-card note (MESITA-4230, D4). */
+function CardLine({ offer }: { offer: Offer }) {
+  return (
+    <>
+      {offer.payCard && !offer.signedOut ? (
+        <p className="flex items-center justify-between text-[15px]" data-pay-card-line>
+          <span className="text-foreground truncate font-medium">
+            {offer.payCard.label} •••• {offer.payCard.last4}
+          </span>
+          {offer.canChange ? (
+            <button
+              type="button"
+              disabled={offer.buying}
+              onClick={offer.onChangeCard}
+              className="text-foreground min-h-9 shrink-0 font-semibold underline underline-offset-2 disabled:opacity-50"
+            >
+              Change
+            </button>
+          ) : null}
+        </p>
+      ) : null}
+      {offer.payCards?.state === "error" ? (
+        <p className="flex items-center justify-between text-[15px]" role="alert">
+          <span className="text-foreground">Couldn&apos;t load your cards</span>
+          <button type="button" onClick={offer.onRetryCards} className="text-foreground min-h-9 shrink-0 font-semibold underline underline-offset-2">
+            Retry
+          </button>
+        </p>
+      ) : null}
+      {offer.needsCard && !offer.signedOut ? (
+        <p className="text-muted-foreground text-center text-sm" data-offer-add-card-note>
+          You&apos;ll add a card, then come right back here.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+const PRIMARY = "bg-foreground text-paper disabled:bg-muted disabled:text-muted-foreground flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold tabular-nums hover:opacity-90";
+const QUIET = "text-muted-foreground min-h-11 self-center px-3 text-sm font-semibold underline underline-offset-2";
+
+/** The Story check, from the host (MESITA-4296). */
 type StoryHost = {
-  placeId: string;
   check: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
   simulate: (() => Promise<string | null>) | null;
   /** The guest's Instagram username, on the Found card. */
@@ -597,22 +793,6 @@ type StoryHost = {
   /** The host's Instagram page: link it, or sync it after making it public. */
   onInstagram: (() => void) | null;
 };
-
-function readMarker(placeId: string): boolean {
-  try {
-    return window.sessionStorage.getItem(storyMarkerKey(placeId)) === "1";
-  } catch {
-    return false;
-  }
-}
-function writeMarker(placeId: string, on: boolean): void {
-  try {
-    if (on) window.sessionStorage.setItem(storyMarkerKey(placeId), "1");
-    else window.sessionStorage.removeItem(storyMarkerKey(placeId));
-  } catch {
-    // nothing remembered
-  }
-}
 
 /** OPEN INSTAGRAM (MESITA-4296): the story camera by deep link; when the page
  *  is still showing 1.5 s later the app did not open, so instagram.com opens
@@ -635,7 +815,7 @@ function openInstagram(): void {
   }
 }
 
-/** One @name to type in the story, copied on a tap. */
+/** The names to type in the story, copied on a tap (44px tall, MESITA-4303). */
 function CopyChip({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -650,7 +830,7 @@ function CopyChip({ text }: { text: string }) {
           })
           .catch(() => {});
       }}
-      className="bg-muted text-foreground inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-semibold"
+      className="bg-muted text-foreground inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold"
       aria-label={`Copy ${text}`}
       data-story-copy
     >
@@ -661,13 +841,12 @@ function CopyChip({ text }: { text: string }) {
 }
 
 /** The Found card: the story's thumbnail, the guest's @handle, how long ago.
- *  An image that fails to load falls back to the handle, the time and the
- *  Instagram mark. */
+ *  An image that fails to load falls back to the Instagram mark. */
 function FoundCard({ mention, handle }: { mention: { media_url: string | null; media_kind: "image" | "video"; mentioned_at: string }; handle: string | null }) {
   const [broken, setBroken] = useState(false);
   const thumb = mention.media_url && mention.media_kind === "image" && !broken ? mention.media_url : null;
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-[#E9FBF1] p-3" data-story-found>
+    <div className="mt-3 flex items-center gap-3 rounded-xl bg-[#E9FBF1] p-3" data-story-found>
       <span className="bg-muted flex h-20 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg" aria-hidden>
         {thumb ? (
           // eslint-disable-next-line @next/next/no-img-element -- the story's own media URL
@@ -690,46 +869,99 @@ function FoundCard({ mention, handle }: { mention: { media_url: string | null; m
   );
 }
 
-/** THE STORY SHEET (MESITA-4296, Pato: "súbete historia, paga, y luego el
- *  bono … no puedes borrar la story durante 3 horas"): the offer, who can
- *  get it, a strip of three steps with the current one lit, then the step's
- *  own body. On open the check runs once with its gate; a gate reason shows
- *  only that reason and its one action. Otherwise the guest posts, the sheet
+/** "2 h 14 min" until `iso`, whole minutes, or null once it has passed. */
+function leftUntil(iso: string, now: number): string | null {
+  const at = Date.parse(iso);
+  if (!Number.isFinite(at) || at <= now) return null;
+  const min = Math.ceil((at - now) / 60_000);
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}
+
+/** THE STORY PAGE'S FRAME (MESITA-4303, Pato: "definitely with own subpage,
+ *  not modal weird view"; D5): the boxes scroll on the grey page, the one
+ *  action is pinned under them on a white bar, clear of the phone's edge. */
+function StoryFrame({ children, bar }: { children: ReactNode; bar: ReactNode }) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col" data-story-page>
+      <div className="scrollbar-thin-dark bg-background flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pt-4 pb-6">{children}</div>
+      <div className="bg-card border-border flex shrink-0 flex-col gap-2 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-story-bar>
+        {bar}
+      </div>
+    </div>
+  );
+}
+
+/** PAID (D4): the money is the guest's now, and a live countdown says until
+ *  when the story must stay up; Done goes back to Offers. */
+function StoryPaid({ receipt, placeName, onDone }: { receipt: Receipt; placeName: string; onDone: () => void }) {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const first = window.setTimeout(tick, 0);
+    const every = window.setInterval(tick, 30_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(every);
+    };
+  }, []);
+  const paid = receipt.outcome === "paid";
+  const left = receipt.readyAt && now !== null ? leftUntil(receipt.readyAt, now) : null;
+  const bonus = receipt.bonus ? `+${receipt.bonus} bonus` : "bonus";
+  return (
+    <StoryFrame
+      bar={
+        <button type="button" onClick={onDone} autoFocus className={PRIMARY}>
+          Done
+        </button>
+      }
+    >
+      <Box data-offer-receipt={receipt.outcome}>
+        <p className="text-foreground flex items-center gap-2 text-xl font-bold tabular-nums" role="status">
+          <CircleCheck className="h-7 w-7 shrink-0 text-[#00A85A]" strokeWidth={2.25} aria-hidden />
+          {paid ? `${whole(receipt.pay)} is yours` : "Your bank is confirming"}
+        </p>
+        <p className="text-muted-foreground mt-1 text-[15px] leading-snug">
+          {paid ? `Ready to spend now at ${placeName}.` : "The credit shows here once it's through. You won't be charged twice."}
+        </p>
+      </Box>
+      {paid ? (
+        <Box title="Your bonus" data-story-countdown="">
+          <p className="text-foreground text-[17px] leading-snug font-bold tabular-nums">
+            {receipt.readyAt ? `Don't delete your story until ${readyClock(receipt.readyAt)}` : "Don't delete your story for 3 hours"}
+          </p>
+          <p className="text-muted-foreground mt-1 text-[15px] leading-snug tabular-nums" aria-live="polite">
+            {left ? `${left} left. Then your ${bonus} lands by itself.` : `Then your ${bonus} lands by itself.`}
+          </p>
+        </Box>
+      ) : null}
+    </StoryFrame>
+  );
+}
+
+/** THE STORY PAGE (MESITA-4303; the sheet's StoryFlow since MESITA-4296):
+ *  boxes in order (the deal, who can get it, how it works, good to know) and
+ *  the pinned bar. On open the check runs once with its gate: a gate shows
+ *  the checklist and its one action; otherwise the guest posts, the page
  *  looks for the story (every poll.every_ms for poll.for_ms, again on focus),
- *  and a found story turns the one button into Pay, which names the story. A
- *  story refusal brings the sheet back here with its line. */
+ *  and a found story turns the bar into the card and Pay. Paid, the page
+ *  stays as the countdown (D4). Already bought here: a box and Wallet (D6). */
 function StoryFlow({
   host,
-  guest,
+  offer,
+  placeName,
   placeHandle,
-  pay,
-  get,
-  bonus,
-  bonusAmount,
-  live,
-  buying,
-  cardsPending,
-  needsCard,
-  signedOut,
-  cardBlock,
-  onPay,
-  onPaid,
+  onDone,
+  onWallet,
 }: {
   host: StoryHost;
-  guest: StoryGuest;
+  offer: Offer;
+  placeName: string;
   placeHandle: string | null;
-  pay: string;
-  get: string;
-  bonus: string;
-  bonusAmount: string | null;
-  live: boolean;
-  buying: boolean;
-  cardsPending: boolean;
-  needsCard: boolean;
-  signedOut: boolean;
-  cardBlock: ReactNode;
-  onPay: (mentionId?: string) => Promise<PayResult>;
-  onPaid: (r: Receipt) => void;
+  onDone: () => void;
+  onWallet: () => void;
 }) {
   const [answer, setAnswer] = useState<StoryCheckAnswer | null>(null);
   const [gate, setGate] = useState<StoryGateReason | null>(null);
@@ -737,9 +969,9 @@ function StoryFlow({
   const [refusal, setRefusal] = useState<string | null>(null);
   const [simulating, setSimulating] = useState(false);
   const [handle, setHandle] = useState<string | null>(placeHandle);
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
   const poll = useRef<StoryPoll | null>(null);
   const check = host.check;
-  const placeId = host.placeId;
 
   useEffect(() => {
     let gone = false;
@@ -763,13 +995,11 @@ function StoryFlow({
           setGate(a.reason);
           setHandle(a.placeHandle);
           setAnswer(a);
-          writeMarker(placeId, false);
           return;
         }
         if (a.kind !== "failed") setHandle(a.placeHandle);
         setAnswer(a.kind === "failed" ? { kind: "missing", reason: "no_story", placeHandle: null, poll: STORY_POLL_DEFAULT } : a);
         if (a.kind === "found") return;
-        writeMarker(placeId, true);
         loop.start(a.kind === "failed" ? STORY_POLL_DEFAULT : a.poll);
       });
     // Back from Instagram: look again, one loop, debounced.
@@ -785,11 +1015,10 @@ function StoryFlow({
       document.removeEventListener("visibilitychange", wake);
       window.removeEventListener("focus", wake);
     };
-  }, [check, placeId]);
+  }, [check]);
 
   const view = storySheetView(answer, looking, gate);
   const mention = view.step === "found" ? view.mention : null;
-  const current = mention ? 1 : 0;
 
   // The look stops once a story is found; a wake or tap then does nothing.
   useEffect(() => {
@@ -813,12 +1042,11 @@ function StoryFlow({
   const press = async () => {
     if (!mention) {
       // To Instagram's story camera; the look runs again on the way back.
-      writeMarker(placeId, true);
       openInstagram();
       lookNow();
       return;
     }
-    const r = await onPay(mention.id);
+    const r = await offer.onPay(mention.id);
     if (isStoryRefused(r)) {
       // Nothing was charged: back to the check with the server's line.
       setRefusal(r.story_refused);
@@ -826,150 +1054,172 @@ function StoryFlow({
       poll.current?.start();
       return;
     }
-    if (r) {
-      writeMarker(placeId, false);
-      onPaid(r);
-    }
+    if (r) setReceipt(r);
   };
 
-  const failing: StoryFail =
-    view.step !== "gate"
-      ? null
-      : view.reason === "needs_instagram"
-        ? "instagram"
-        : view.reason === "private_account"
-          ? "private"
-          : view.reason === "few_followers"
-            ? "followers"
-            : null;
-  const amount = whole(pay);
-  const bonusText = bonusAmount ? whole(bonusAmount) : null;
-  const button = signedOut
-    ? "Sign in to buy"
-    : !mention
-      ? "Open Instagram"
-      : buying
-        ? "Paying…"
-        : needsCard
-          ? "Add a card to pay"
-          : `Pay ${amount}`;
+  if (receipt) return <StoryPaid receipt={receipt} placeName={placeName} onDone={onDone} />;
+
+  const deal = <OfferBox pay={offer.pay} get={offer.get} bonus={offer.bonus} />;
+  const amount = whole(offer.pay);
+  const bonusText = offer.bonusAmount ? whole(offer.bonusAmount) : null;
+  const good = <GoodToKnow productKey="voucher_story" />;
+
+  // ALREADY BOUGHT HERE (D6): no lock; the Story and its countdown are in Wallet.
+  if (view.step === "gate" && view.reason === "already_bought") {
+    return (
+      <StoryFrame
+        bar={
+          <button type="button" onClick={onWallet} className={PRIMARY} data-story-wallet>
+            See it in Wallet
+          </button>
+        }
+      >
+        {deal}
+        <Box data-story-gate="already_bought">
+          <p className="text-foreground text-[17px] leading-snug font-bold">You already have a Story here.</p>
+          <p className="text-muted-foreground mt-1 text-[15px] leading-snug">One per visit. Its bonus and countdown are in Wallet.</p>
+        </Box>
+        {good}
+      </StoryFrame>
+    );
+  }
+
+  if (view.step === "gate") {
+    const failing: StoryFail =
+      view.reason === "needs_instagram" ? "instagram" : view.reason === "private_account" ? "private" : view.reason === "few_followers" ? "followers" : null;
+    return (
+      <StoryFrame
+        bar={
+          <>
+            {view.action && host.onInstagram ? (
+              <button type="button" onClick={host.onInstagram} className={PRIMARY} data-offer-action>
+                {view.action === "sync_instagram" ? "Sync Instagram" : "Link Instagram"}
+              </button>
+            ) : (
+              <button type="button" onClick={onDone} className={PRIMARY} data-story-other-offers>
+                See other offers
+              </button>
+            )}
+            {/* Too few followers: the count is the last sync's, so a guest who grew can read it again. */}
+            {view.reason === "few_followers" && host.onInstagram ? (
+              <button type="button" onClick={host.onInstagram} className={QUIET} data-offer-action="quiet">
+                Grew your account? Sync Instagram
+              </button>
+            ) : null}
+          </>
+        }
+      >
+        {deal}
+        <div data-story-gate={view.reason} className="contents">
+          <NeedBox needs={storyNeeds(offer.storyGuest, failing, false)} />
+          {/* The amber line only when the checklist does not already say it. */}
+          {failing === "instagram" || failing === "followers" ? null : (
+            <p className="flex shrink-0 items-start gap-2.5 rounded-2xl bg-amber-50 px-4 py-3 text-amber-900">
+              <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+              <span className="text-[15px] leading-snug font-semibold">{view.text}</span>
+            </p>
+          )}
+        </div>
+        <Box title="How it works" className="opacity-50">
+          <StepList steps={storySteps(amount, bonusText, storyPostLine(handle), null)} />
+        </Box>
+        {good}
+      </StoryFrame>
+    );
+  }
+
   const lookLine =
     view.step === "checking" || looking
       ? "Looking for your story. It shows up here by itself."
       : view.step === "post"
         ? view.note
         : null;
+  const button = offer.signedOut
+    ? "Sign in to buy"
+    : !mention
+      ? "Open Instagram"
+      : offer.buying
+        ? "Paying…"
+        : offer.needsCard
+          ? "Add a card to pay"
+          : `Pay ${amount}`;
 
   return (
-    <>
-      <OfferBox pay={pay} get={get} bonus={bonus} />
-      <NeedList needs={storyNeeds(guest, failing, view.step === "post" || view.step === "found")} />
-      {view.step === "gate" ? (
-        <div className="flex flex-col gap-3" data-story-gate={view.reason}>
-          <p className={SECTION_LABEL}>How it works</p>
-          <StepList steps={storySteps(amount, bonusText, storyPostLine(handle), null)} dim />
-          {/* The amber line only when the checklist does not already say it. */}
-          {failing === "instagram" || failing === "followers" ? null : (
-            <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-900">
-              <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-              <span className="text-[15px] leading-snug font-semibold">{view.text}</span>
-            </p>
-          )}
-          {view.action && host.onInstagram ? (
-            <button
-              type="button"
-              onClick={host.onInstagram}
-              className="bg-foreground text-paper h-12 w-full rounded-xl text-base font-semibold hover:opacity-90"
-              data-offer-action
-            >
-              {view.action === "sync_instagram" ? "Sync Instagram" : "Link Instagram"}
-            </button>
-          ) : null}
-          {/* Too few followers: the count is the last sync's, so a guest who grew can read it again. */}
-          {view.reason === "few_followers" && host.onInstagram ? (
-            <button
-              type="button"
-              onClick={host.onInstagram}
-              className="text-muted-foreground min-h-11 self-center px-3 text-sm font-semibold underline underline-offset-2"
-              data-offer-action="quiet"
-            >
-              Grew your account? Sync Instagram
-            </button>
-          ) : null}
-        </div>
-      ) : (
+    <StoryFrame
+      bar={
         <>
-          <div className="flex flex-col gap-2" data-story-steps>
-            <p className={SECTION_LABEL}>How it works</p>
-            <StepList
-              steps={storySteps(
-                amount,
-                bonusText,
-                <>
-                  Tag us both in it.
-                  <span className="mt-1.5 block">
-                    <CopyChip text={storyTags(handle)} />
-                  </span>
-                </>,
-                mention !== null,
-              )}
-            />
-          </div>
-          {mention ? <FoundCard mention={mention} handle={host.guestHandle} /> : null}
           {refusal ? (
             <p className="rounded-xl bg-amber-50 px-3 py-2.5 text-[15px] leading-snug font-semibold text-amber-900" role="alert" data-story-refusal>
               {refusal}
             </p>
           ) : null}
-          <div className="flex flex-col gap-3">
-            {mention ? cardBlock : null}
-            <button
-              type="button"
-              onClick={() => void press()}
-              disabled={!live || buying || (mention !== null && cardsPending)}
-              className="bg-foreground text-paper disabled:bg-muted disabled:text-muted-foreground flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold tabular-nums hover:opacity-90"
-              data-voucher-buy="voucher_story"
-              data-story-primary={mention ? "pay" : "post"}
-            >
-              {mention && needsCard && !signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
-              {mention ? null : <Instagram className="h-5 w-5" aria-hidden />}
-              {button}
-            </button>
-            {mention ? null : (
-              <p className="text-muted-foreground flex min-h-5 flex-wrap items-center justify-center gap-x-2 text-center text-sm" aria-live="polite" data-story-look>
-                <span>{lookLine}</span>
-                {view.step === "post" && !looking ? (
-                  <button type="button" onClick={lookNow} className="text-foreground min-h-9 font-semibold underline underline-offset-2" data-story-check>
-                    Check again
-                  </button>
-                ) : null}
-              </p>
-            )}
-            {host.testMode && host.simulate && !mention ? (
-              <div className="border-border flex items-center justify-center gap-2 rounded-xl border border-dashed p-2" data-story-emulator>
-                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-amber-900 uppercase">Test</span>
-                <button
-                  type="button"
-                  disabled={simulating}
-                  onClick={() => void simulate()}
-                  className="text-muted-foreground min-h-9 px-2 text-sm font-semibold underline disabled:opacity-60"
-                  data-story-simulate="post"
-                >
-                  {simulating ? "Posting…" : "Simulate a story"}
+          {mention ? <CardLine offer={offer} /> : null}
+          <button
+            type="button"
+            onClick={() => void press()}
+            disabled={!offer.live || offer.buying || (mention !== null && offer.cardsPending)}
+            className={PRIMARY}
+            data-voucher-buy="voucher_story"
+            data-story-primary={mention ? "pay" : "post"}
+          >
+            {mention && offer.needsCard && !offer.signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
+            {mention ? null : <Instagram className="h-5 w-5" aria-hidden />}
+            {button}
+          </button>
+          {mention ? null : (
+            <p className="text-muted-foreground flex min-h-5 flex-wrap items-center justify-center gap-x-2 text-center text-sm" aria-live="polite" data-story-look>
+              <span>{lookLine}</span>
+              {view.step === "post" && !looking ? (
+                <button type="button" onClick={lookNow} className="text-foreground min-h-9 font-semibold underline underline-offset-2" data-story-check>
+                  Check again
                 </button>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </p>
+          )}
         </>
-      )}
-    </>
+      }
+    >
+      {deal}
+      <NeedBox needs={storyNeeds(offer.storyGuest, null, view.step === "post" || view.step === "found")} />
+      <Box title="How it works" data-story-steps="">
+        <StepList
+          steps={storySteps(
+            amount,
+            bonusText,
+            <>
+              Tag us both in it.
+              <span className="mt-1.5 block">
+                <CopyChip text={storyTags(handle)} />
+              </span>
+            </>,
+            mention !== null,
+          )}
+        />
+        {mention ? <FoundCard mention={mention} handle={host.guestHandle} /> : null}
+      </Box>
+      {good}
+      {host.testMode && host.simulate && !mention ? (
+        <div className="border-border flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-dashed p-2" data-story-emulator>
+          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-amber-900 uppercase">Test</span>
+          <button
+            type="button"
+            disabled={simulating}
+            onClick={() => void simulate()}
+            className="text-muted-foreground min-h-9 px-2 text-sm font-semibold underline disabled:opacity-60"
+            data-story-simulate="post"
+          >
+            {simulating ? "Posting…" : "Simulate a story"}
+          </button>
+        </div>
+      ) : null}
+    </StoryFrame>
   );
 }
 
-/** The deal: You pay $X · You get $Y with the bonus named. */
+/** The deal: You pay $X · You get $Y with the bonus named, in its own box. */
 function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string }) {
   return (
-    <div className="bg-background flex items-end justify-between gap-3 rounded-2xl px-4 py-3">
+    <div className={cn(CARD, "flex shrink-0 items-end justify-between gap-3 px-4 py-3")} data-offer-deal>
       <div className="flex flex-col">
         <span className="text-muted-foreground text-sm">You pay</span>
         <span className="text-foreground text-2xl font-bold tabular-nums">{whole(pay)}</span>
@@ -985,66 +1235,28 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
 }
 
 /** THE PAY SHEET (Pato, 2026-11-17, MESITA-4224: "simply click a button and
- *  the offer you select opens a modal and in that modal you click to pay and
- *  you receive explanation"): a bottom sheet in the app card (Pay in thumb
- *  reach), the product's face, the deal, the facts, the card, one black Pay.
- *  A locked offer opens it too, its reason where Pay goes. Paid, it turns
- *  into a receipt. Escape or a tap outside closes it; focus returns to the
- *  row that opened it. Story runs its own check first (StoryFlow, MESITA-4296).
+ *  the offer you select opens a modal and in that modal you click to pay"):
+ *  a bottom sheet in the app card (Pay in thumb reach). IN BOXES ON GREY
+ *  since MESITA-4303 (D2): the header, then the deal, How it works, Good to
+ *  know, and the card with Pay, each its own white box, in that order. A
+ *  locked offer shows its reason where Pay goes. Paid, it turns into a
+ *  receipt. Escape or a tap outside closes it; focus returns to the row that
+ *  opened it. Story opens its own page when the host has one (MESITA-4303);
+ *  here it is only a preview (admin) or a host without the page.
  *  decision: a sheet in the package, against apps/web-consumer › Overlays
  *  (MESITA-4094, pages not sheets): Pato's live call in the design review. */
 function PaySheet({
   product,
   placeName,
   placeHandle,
-  pay,
-  get,
-  bonus,
-  bonusAmount,
-  can,
-  status,
-  guestLock,
-  storyGuest,
-  unlock,
-  live,
-  buying,
-  payCards,
-  payCard,
-  canChange,
-  onChangeCard,
-  onRetryCards,
-  signedOut,
-  story,
-  onPay,
+  offer,
   onClose,
 }: {
   product: Product;
   placeName: string;
   /** The place's Instagram username, named in Story's steps (MESITA-4291). */
   placeHandle: string | null;
-  pay: string;
-  get: string;
-  bonus: string;
-  bonusAmount: string | null;
-  can: boolean;
-  status: InfoStatus;
-  /** This guest's own Story lock; the checklist wears it (MESITA-4299). */
-  guestLock: GuestLock;
-  /** The guest's Instagram facts for Story's checklist. */
-  storyGuest: StoryGuest;
-  /** The one action that lifts a lock; `quiet` draws it as a text link. */
-  unlock: { label: string; onClick: () => void; quiet?: boolean } | null;
-  live: boolean;
-  buying: boolean;
-  payCards: PayCards | undefined;
-  payCard: { label: string; last4: string } | null;
-  canChange: boolean;
-  onChangeCard: () => void;
-  onRetryCards?: () => void;
-  signedOut: boolean;
-  /** Story's check (MESITA-4296); null for every other voucher, or without a host check. */
-  story: StoryHost | null;
-  onPay: (mentionId?: string) => Promise<PayResult>;
+  offer: Offer;
   onClose: () => void;
 }) {
   const [receipt, setReceipt] = useState<Receipt | null>(null);
@@ -1059,54 +1271,16 @@ function PaySheet({
   }, [onClose]);
   const face = FACES[product.key];
   const Mark = face.Mark ?? Ticket;
-  const cardsPending = payCards !== undefined && payCards.state !== "ready";
-  const needsCard = payCards?.state === "ready" && payCard === null;
   const host = typeof document !== "undefined" ? document.getElementById("mesita-app-card") : null;
-  const button = signedOut ? "Sign in to buy" : buying ? "Paying…" : needsCard ? "Add a card to pay" : `Pay ${whole(pay)}`;
+  const { can, signedOut, buying, needsCard } = offer;
+  const button = signedOut ? "Sign in to buy" : buying ? "Paying…" : needsCard ? "Add a card to pay" : `Pay ${whole(offer.pay)}`;
   const press = async () => {
-    const r = await onPay();
+    const r = await offer.onPay();
     if (r && !isStoryRefused(r)) setReceipt(r);
   };
   const isStory = product.key === "voucher_story";
-  // Story checks the story first when the host can and the guest may buy.
-  const storyFlow = isStory && can && story !== null && !signedOut ? story : null;
-  const cardBlock = (
-    <>
-      {payCard && !signedOut ? (
-        <p className="flex items-center justify-between text-[15px]" data-pay-card-line>
-          <span className="text-foreground truncate font-medium">
-            {payCard.label} •••• {payCard.last4}
-          </span>
-          {canChange ? (
-            <button
-              type="button"
-              disabled={buying}
-              onClick={onChangeCard}
-              className="text-foreground shrink-0 font-semibold underline underline-offset-2 disabled:opacity-50"
-            >
-              Change
-            </button>
-          ) : null}
-        </p>
-      ) : null}
-      {payCards?.state === "error" ? (
-        <p className="flex items-center justify-between text-[15px]" role="alert">
-          <span className="text-foreground">Couldn&apos;t load your cards</span>
-          <button type="button" onClick={onRetryCards} className="text-foreground shrink-0 font-semibold underline underline-offset-2">
-            Retry
-          </button>
-        </p>
-      ) : null}
-      {/* NO CARD YET (Pato, 2026-11-17, MESITA-4230: "if no card,
-          redirect to somewhere to add a credit card"; D4): the Add a
-          card page, then straight back to this sheet, card picked. */}
-      {needsCard && !signedOut ? (
-        <p className="text-muted-foreground text-center text-sm" data-offer-add-card-note>
-          You&apos;ll add a card, then come right back here.
-        </p>
-      ) : null}
-    </>
-  );
+  const amount = whole(offer.pay);
+  const bonusText = offer.bonusAmount ? whole(offer.bonusAmount) : null;
   if (typeof document === "undefined") return null;
   return createPortal(
     <div
@@ -1120,20 +1294,17 @@ function PaySheet({
         aria-modal="true"
         aria-labelledby="offer-sheet-title"
         tabIndex={-1}
-        className="bg-card flex max-h-[90%] w-full flex-col gap-4 overflow-y-auto rounded-t-3xl px-5 pt-2 pb-5 outline-none"
+        className="bg-background flex max-h-[92%] w-full flex-col gap-3 overflow-y-auto rounded-t-3xl px-4 pt-2 pb-5 outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <span className="bg-border mx-auto h-1 w-10 shrink-0 rounded-full" aria-hidden />
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3 px-1">
           <span className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl", face.card)} aria-hidden>
             <Mark className="h-7 w-7" strokeWidth={2.25} />
           </span>
           <div className="min-w-0 flex-1">
             <h3 id="offer-sheet-title" className="text-foreground text-lg leading-tight font-bold">{product.short}</h3>
             <p className="text-muted-foreground truncate text-sm">{placeName}</p>
-            <span className="bg-muted text-foreground mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold" data-offer-limit>
-              {sheetLimit(product.key)}
-            </span>
           </div>
           <button
             type="button"
@@ -1147,138 +1318,138 @@ function PaySheet({
 
         {receipt ? (
           // THE RECEIPT (MESITA-4224, D5): what landed now and what lands later.
-          <div className="flex flex-col gap-4" role="status" data-offer-receipt={receipt.outcome}>
-            <div className="flex items-center gap-3">
-              <CircleCheck className="h-8 w-8 shrink-0 text-[#00A85A]" strokeWidth={2.25} aria-hidden />
-              <p className="text-foreground text-xl font-bold tabular-nums">
-                {receipt.outcome === "paid" ? `Paid ${whole(receipt.pay)}` : "Your bank is confirming"}
-              </p>
-            </div>
-            <ul className="text-foreground flex flex-col gap-2 text-[15px] leading-snug">
-              {receipt.outcome === "paid" ? (
-                <>
-                  <li className="tabular-nums">
-                    {`${whole(receipt.pay)} is ready to spend now.`}
-                  </li>
-                  {isStory ? (
-                    // MESITA-4296: plainly, what the guest must not do.
-                    <li className="font-semibold tabular-nums" data-story-receipt>
-                      {`Don't delete your story for 3 hours. At ${receipt.readyAt ? readyClock(receipt.readyAt) : "that time"} we check it's still up and your ${receipt.bonus ? `+${receipt.bonus} ` : ""}bonus lands.`}
-                    </li>
-                  ) : (
+          <Box data-offer-receipt={receipt.outcome}>
+            <div className="flex flex-col gap-4" role="status">
+              <div className="flex items-center gap-3">
+                <CircleCheck className="h-8 w-8 shrink-0 text-[#00A85A]" strokeWidth={2.25} aria-hidden />
+                <p className="text-foreground text-xl font-bold tabular-nums">
+                  {receipt.outcome === "paid" ? `Paid ${whole(receipt.pay)}` : "Your bank is confirming"}
+                </p>
+              </div>
+              <ul className="text-foreground flex flex-col gap-2 text-[15px] leading-snug">
+                {receipt.outcome === "paid" ? (
+                  <>
+                    <li className="tabular-nums">{`${whole(receipt.pay)} is ready to spend now.`}</li>
                     <li className="tabular-nums">
                       {receipt.bonus ? `The ${receipt.bonus} bonus` : "The bonus"}
                       {receipt.readyAt ? ` is ready at ${readyClock(receipt.readyAt)}.` : " is ready 3 hours later."}
                     </li>
-                  )}
-                </>
-              ) : (
-                <li>The credit shows here once it&apos;s through. You won&apos;t be charged twice.</li>
-              )}
-            </ul>
-            <button
-              type="button"
-              onClick={onClose}
-              autoFocus
-              className="bg-foreground text-paper h-12 w-full rounded-xl text-base font-semibold hover:opacity-90"
-            >
-              Done
-            </button>
-          </div>
-        ) : storyFlow ? (
-          <StoryFlow
-            host={storyFlow}
-            guest={storyGuest}
-            placeHandle={placeHandle}
-            pay={pay}
-            get={get}
-            bonus={bonus}
-            bonusAmount={bonusAmount}
-            live={live}
-            buying={buying}
-            cardsPending={cardsPending}
-            needsCard={needsCard}
-            signedOut={signedOut}
-            cardBlock={cardBlock}
-            onPay={onPay}
-            onPaid={setReceipt}
-          />
+                  </>
+                ) : (
+                  <li>The credit shows here once it&apos;s through. You won&apos;t be charged twice.</li>
+                )}
+              </ul>
+              <button type="button" onClick={onClose} autoFocus className={PRIMARY}>
+                Done
+              </button>
+            </div>
+          </Box>
         ) : (
           <>
-            <OfferBox pay={pay} get={get} bonus={bonus} />
-            {product.key === "voucher_welcome" && can ? (
-              // ONE TIME (MESITA-4299, Pato: "mention that this is only one and
-              // then expires"): it ends with the guest's first payment here.
-              <p className="flex items-center gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-[15px] leading-snug font-semibold text-amber-900" data-offer-once>
-                <Clock className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-                One time only. Gone after your first payment here.
-              </p>
-            ) : null}
+            <OfferBox pay={offer.pay} get={offer.get} bonus={offer.bonus} />
             {isStory ? (
-              // A Story the live check does not run for: locked, signed out, admin's preview.
               <>
-                <NeedList needs={storyNeeds(storyGuest, guestLock === "instagram" ? "instagram" : guestLock === "followers" ? "followers" : null, false)} />
-                <div className="flex flex-col gap-2">
-                  <p className={SECTION_LABEL}>How it works</p>
-                  <StepList steps={storySteps(whole(pay), bonusAmount ? whole(bonusAmount) : null, storyPostLine(placeHandle), null)} dim={!can} />
-                </div>
+                <NeedBox needs={storyNeeds(offer.storyGuest, offer.guestLock === "instagram" ? "instagram" : offer.guestLock === "followers" ? "followers" : null, false)} />
+                <Box title="How it works" className={can ? undefined : "opacity-50"}>
+                  <StepList steps={storySteps(amount, bonusText, storyPostLine(placeHandle), null)} />
+                </Box>
               </>
             ) : (
-              <>
-                <StepList steps={sheetSteps(whole(pay), bonusAmount ? whole(bonusAmount) : null, signedOut ? null : payCard)} />
-                <SpendLine />
-              </>
+              <Box title="How it works" data-offer-steps-box="">
+                <StepList steps={sheetSteps(amount, bonusText, signedOut ? null : offer.payCard)} />
+              </Box>
             )}
-            {can ? (
-              <div className="flex flex-col gap-3">
-                {cardBlock}
-                <button
-                  type="button"
-                  onClick={() => void press()}
-                  disabled={!live || buying || cardsPending}
-                  className="bg-foreground text-paper disabled:bg-muted disabled:text-muted-foreground flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold tabular-nums hover:opacity-90"
-                  data-voucher-buy={product.key}
-                >
-                  {needsCard && !signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
-                  {button}
-                </button>
-              </div>
-            ) : (
-              // LOCKED (MESITA-4224, D4): the reason where Pay goes, and the one
-              // action that unlocks it when there is one.
-              <div className="flex flex-col gap-3">
-                {/* The amber box only when no step already carries the lock
-                    (MESITA-4234): sales paused, not at this place yet. */}
-                {isStory && guestLock ? null : (
-                  <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-900" data-offer-status="locked">
-                    <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-                    <span className="text-[15px] leading-snug font-semibold">{status.text}</span>
-                  </p>
-                )}
-                {unlock ? (
+            <GoodToKnow productKey={product.key} />
+            <Box data-offer-pay-box="">
+              {can ? (
+                <div className="flex flex-col gap-3">
+                  <CardLine offer={offer} />
                   <button
                     type="button"
-                    onClick={() => {
-                      onClose();
-                      unlock.onClick();
-                    }}
-                    className={
-                      unlock.quiet
-                        ? "text-muted-foreground min-h-11 self-center px-3 text-sm font-semibold underline underline-offset-2"
-                        : "bg-foreground text-paper h-12 w-full rounded-xl text-base font-semibold hover:opacity-90"
-                    }
-                    data-offer-action={unlock.quiet ? "quiet" : ""}
+                    onClick={() => void press()}
+                    disabled={!offer.live || buying || offer.cardsPending}
+                    className={PRIMARY}
+                    data-voucher-buy={product.key}
                   >
-                    {unlock.label}
+                    {needsCard && !signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
+                    {button}
                   </button>
-                ) : null}
-              </div>
-            )}
+                </div>
+              ) : (
+                // LOCKED (MESITA-4224, D4): the reason where Pay goes, and the
+                // one action that unlocks it when there is one.
+                <div className="flex flex-col gap-3">
+                  {/* The amber line only when the checklist does not already say it. */}
+                  {isStory && offer.guestLock ? null : (
+                    <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-900" data-offer-status="locked">
+                      <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+                      <span className="text-[15px] leading-snug font-semibold">{offer.status.text}</span>
+                    </p>
+                  )}
+                  {offer.unlock ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        offer.unlock?.onClick();
+                      }}
+                      className={offer.unlock.quiet ? QUIET : PRIMARY}
+                      data-offer-action={offer.unlock.quiet ? "quiet" : ""}
+                    >
+                      {offer.unlock.label}
+                    </button>
+                  ) : null}
+                </div>
+              )}
+            </Box>
           </>
         )}
       </div>
     </div>,
     host ?? document.body,
+  );
+}
+
+/** THE STORY OFFER ON ITS OWN PAGE (MESITA-4303): the host's
+ *  /place/<id>/story draws this under its own header. Without the host's
+ *  check (admin's preview) there is no page: Story stays a sheet. */
+export function StoryOfferPage({
+  place,
+  actions,
+  onDone,
+  onWallet,
+}: {
+  place: PlaceDetail;
+  actions?: PlaceActions;
+  /** Back to the Offers page. */
+  onDone: () => void;
+  /** This place's credit in Wallet, where a bought Story's countdown lives. */
+  onWallet: () => void;
+}) {
+  const onLoad = actions?.onLoadVouchers;
+  useEffect(() => {
+    onLoad?.();
+  }, [onLoad]);
+  const co = useOfferCheckout(place, actions);
+  const story = SPECIAL.find((p) => p.key === "voucher_story");
+  if (!story) return null;
+  const offer = co.offer(story);
+  const host: StoryHost = {
+    check: co.checkStory,
+    simulate: actions?.onSimulateStory ?? null,
+    guestHandle: actions?.guest?.instagramHandle ?? null,
+    testMode: place.money?.test_mode === true,
+    onInstagram: actions?.onLinkInstagram ?? null,
+  };
+  return (
+    <StoryFlow
+      host={host}
+      offer={offer}
+      placeName={place.name}
+      placeHandle={instagramHandle(place.channels?.instagram_url)}
+      onDone={onDone}
+      onWallet={onWallet}
+    />
   );
 }
 
@@ -1294,151 +1465,46 @@ export function VouchersPane({
     onLoad?.();
   }, [onLoad]);
 
-  const money = place.money;
-  // The host is still asking list-vouchers and the place read carried no
-  // offer: draw the rows, never a guess (MESITA-3388).
-  const loading = actions?.vouchersLoading === true && !money;
-  const { unavailable, dim, guestLock, buyable } = offerRules(money, actions?.guest);
-  const catalog = money?.catalog ?? {};
-  const currency = money?.currency ?? "mxn";
-  const live = Boolean(actions?.onBuyVoucher);
-  const buying = actions?.buyingVoucher != null;
-  const payCards: PayCards | undefined = actions?.payCards;
-  const readyCards = payCards?.state === "ready" ? payCards.cards : null;
-  const payCardId = actions?.payCardId ?? null;
-  const payCard = readyCards?.find((c) => c.id === payCardId && !isCardExpired(c)) ?? null;
-  // Change steps to the next usable card (MESITA-4150).
-  const usableCards = readyCards?.filter((c) => !isCardExpired(c)) ?? [];
-  const nextCard = () => {
-    if (usableCards.length < 2) return;
-    const at = usableCards.findIndex((c) => c.id === payCard?.id);
-    actions?.onSelectPayCard?.(usableCards[(at + 1) % usableCards.length].id);
-  };
-  // Signed out: no balance and no cards were read (MESITA-4224, D6).
-  const signedOut = live && money != null && money.balance === null && payCards === undefined;
+  const co = useOfferCheckout(place, actions);
+  const { loading, dim, guestLock, buyable, unavailable, catalog, currency } = co;
+  // STORY IS A PAGE (MESITA-4303): the host opens /place/<id>/story; without
+  // one (admin's preview) Story stays a sheet like the rest.
+  const openStory = actions?.onOpenStory;
 
   // A TAP OPENS THE SHEET (MESITA-4224): no tick, no foot Pay. A Home chip's
-  // voucher (MESITA-4207) opens its sheet at once.
+  // voucher (MESITA-4207) opens its sheet at once, or Story's page.
   const asked = actions?.askedVoucher;
-  const [open, setOpen] = useState<MoneyVoucherKey | null>(() =>
-    asked && (MONEY_VOUCHER_KEYS as readonly string[]).includes(asked) ? (asked as MoneyVoucherKey) : null);
+  const askedKey = asked && (MONEY_VOUCHER_KEYS as readonly string[]).includes(asked) ? (asked as MoneyVoucherKey) : null;
+  const [open, setOpen] = useState<MoneyVoucherKey | null>(() => (askedKey === "voucher_story" && openStory ? null : askedKey));
   const opener = useRef<HTMLButtonElement | null>(null);
-  const placeId = place.id;
   const close = useCallback(() => {
-    // Closed by the guest: the Story sheet no longer reopens by itself.
-    writeMarker(placeId, false);
     setOpen(null);
     opener.current?.focus();
-  }, [placeId]);
-  // BACK FROM INSTAGRAM (MESITA-4296): a trip to post the story may reload
-  // this page; the marker reopens the Story sheet at its check step. Set
-  // after a tick (no setState in an effect body).
-  const canCheck = Boolean(actions?.onCheckStory);
+  }, []);
+  // A Home chip asked for Story: its page, after a tick (no navigation in render).
   useEffect(() => {
-    if (!canCheck || asked) return;
+    if (askedKey !== "voucher_story" || !openStory) return;
     let gone = false;
     void Promise.resolve().then(() => {
-      if (!gone && readMarker(placeId)) setOpen((o) => o ?? "voucher_story");
+      if (!gone) openStory();
     });
     return () => {
       gone = true;
     };
-  }, [canCheck, asked, placeId]);
-  // The host's check, bound once per place so the sheet's look keeps one loop.
-  const onCheckStory = actions?.onCheckStory;
-  const checkStory = useCallback(
-    (opts: { poll: boolean }): Promise<StoryCheckAnswer> => onCheckStory ? onCheckStory(opts) : Promise.resolve({ kind: "failed" }),
-    [onCheckStory],
-  );
+  }, [askedKey, openStory]);
 
   const products = listedProducts();
 
   const sheetProduct = open && !loading ? products.find((p) => p.key === open) ?? null : null;
-  let sheet: ReactNode = null;
-  if (sheetProduct) {
-    const p = sheetProduct;
-    const line = catalog[p.key];
-    const pay = priceValue(p, line, currency);
-    const get = creditValue(p, line, currency);
-    const can = buyable(p.key);
-    const lock = guestLock(p.key);
-    // Too few followers: the count is the last sync's, so the guest can read it again.
-    const unlock = lock === "instagram" && actions?.onLinkInstagram
-      ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
-      : lock === "followers" && actions?.onLinkInstagram
-        ? { label: "Grew your account? Sync Instagram", onClick: actions.onLinkInstagram, quiet: true }
-        : null;
-    const bonusAmount = line ? pesos(line.bonus_cents, currency) : null;
-    const onPay = async (mentionId?: string): Promise<PayResult> => {
-      if (!live) return null;
-      // No card yet: the Add a card page, which brings the guest back to
-      // this offer's sheet (MESITA-4230, D4).
-      if (!signedOut && readyCards !== null && payCard === null && actions?.onAddPayCard) {
-        actions.onAddPayCard(p.key);
-        return null;
-      }
-      // One unit, nothing else in the basket: a Story is paid alone and
-      // names the story the check found (MESITA-4296).
-      const out = await actions?.onBuyVoucher?.(
-        [{ voucher: p.key, qty: 1 }],
-        signedOut ? null : payCard?.id ?? null,
-        mentionId ? { mentionId } : undefined,
-      );
-      if (isStoryRefused(out)) return out;
-      if (out !== "paid" && out !== "processing") return null;
-      // Story's bonus waits 3 hours from payment (MESITA-4296).
-      const wait = line ? line.available_after_sec : p.key === "voucher_story" ? 3 * 3600 : null;
-      const readyAt = wait !== null ? new Date(Date.now() + wait * 1000).toISOString() : null;
-      return { outcome: out, pay, bonus: bonusAmount ? whole(bonusAmount) : null, readyAt };
-    };
-    const story: StoryHost | null =
-      p.key === "voucher_story" && actions?.onCheckStory
-        ? {
-          placeId,
-          check: checkStory,
-          simulate: actions.onSimulateStory ?? null,
-          guestHandle: actions.guest?.instagramHandle ?? null,
-          testMode: money?.test_mode === true,
-          onInstagram: actions.onLinkInstagram
-            ? () => {
-              close();
-              actions.onLinkInstagram?.();
-            }
-            : null,
-        }
-        : null;
-    sheet = (
-      <PaySheet
-        product={p}
-        placeName={place.name}
-        placeHandle={instagramHandle(place.channels?.instagram_url)}
-        pay={pay}
-        get={get}
-        bonus={`+${p.bonus.replace(/ bonus$/, "")}`}
-        bonusAmount={bonusAmount}
-        can={can}
-        status={offerStatus(p.key, can, lock, unavailable[p.key])}
-        guestLock={can ? null : lock}
-        storyGuest={{
-          linked: actions?.guest ? actions.guest.instagramLinked : null,
-          followers: actions?.guest?.instagramFollowers ?? null,
-          handle: actions?.guest?.instagramHandle ?? null,
-        }}
-        unlock={unlock}
-        live={live}
-        buying={buying}
-        payCards={payCards}
-        payCard={payCard}
-        canChange={usableCards.length > 1}
-        onChangeCard={nextCard}
-        onRetryCards={actions?.onRetryPayCards}
-        signedOut={signedOut}
-        story={story}
-        onPay={onPay}
-        onClose={close}
-      />
-    );
-  }
+  const sheet: ReactNode = sheetProduct ? (
+    <PaySheet
+      product={sheetProduct}
+      placeName={place.name}
+      placeHandle={instagramHandle(place.channels?.instagram_url)}
+      offer={co.offer(sheetProduct)}
+      onClose={close}
+    />
+  ) : null;
 
   return (
     // ON THE GREY PAGE (MESITA-4196): two white panels, Special then Classic
@@ -1474,9 +1540,10 @@ export function VouchersPane({
                       disabled={loading}
                       onClick={(e) => {
                         opener.current = e.currentTarget;
-                        setOpen(p.key);
+                        if (p.key === "voucher_story" && openStory) openStory();
+                        else setOpen(p.key);
                       }}
-                      aria-haspopup="dialog"
+                      aria-haspopup={p.key === "voucher_story" && openStory ? undefined : "dialog"}
                       aria-label={`${p.short}, pay ${whole(pay)}, get ${whole(get)}, ${bonus} bonus${locked ? `. ${why}` : ""}`}
                       className="hover:bg-muted/50 flex min-h-[4.5rem] w-full cursor-pointer items-center gap-3 px-3.5 py-2 text-left"
                     >

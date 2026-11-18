@@ -333,6 +333,11 @@ export function placeReservePath(idOrSlug: string): string {
   return `${placePath(idOrSlug)}/reserve`;
 }
 
+/** The Story offer's own page under a place (MESITA-4303). */
+export function placeStoryPath(idOrSlug: string): string {
+  return `${placePath(idOrSlug)}/story`;
+}
+
 /** /place/<id>/reserve: a full page, never the place slide-over. */
 export function isPlaceReservePath(pathname: string): boolean {
   return /^\/place\/[^/]+\/reserve\/?$/.test(pathname);
@@ -463,6 +468,8 @@ export const ROUTE_MAP = {
   place: row("/place/:id", "home", "panel", "home", false),
   placeGoogle: row("/place/google/:gid", "home", "panel", "home", false),
   placeReserve: row("/place/:id/reserve", "home", "page", "place", false),
+  // The Story offer, pushed from Offers (MESITA-4303): a page, not a sheet.
+  placeStory: row("/place/:id/story", "home", "page", "place", false),
   // A reservation is reached from a place and from Me › Reservations; it
   // lights Me, whose list is where it lands back (MESITA-3855).
   reservation: row("/reservation/:id", "me", "panel", "meReservations"),

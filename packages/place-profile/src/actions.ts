@@ -64,6 +64,9 @@ export type PlaceActions = {
    *  Resolves `failed` on a 500 or no answer, never throws. Absent (admin's
    *  preview, signed out), the sheet shows the steps and no Pay. */
   onCheckStory?: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
+  /** Story's own page (MESITA-4303): the host pushes /place/<id>/story.
+   *  Absent (admin's preview), Story opens as a sheet like the rest. */
+  onOpenStory?: () => void;
   /** Test mode only: post a sample story for this guest (the Meta emulator,
    *  MESITA-4296). Resolves null when posted, else the refusal's line. */
   onSimulateStory?: () => Promise<string | null>;
