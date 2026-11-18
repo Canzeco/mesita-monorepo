@@ -74,10 +74,12 @@ export function giftRefusalStatus(code: string | undefined): number {
 // ─── The link's public preview (MESITA-4229) ────────────────────────
 // A signed-out friend who taps a gift link lands on sign-in with
 // `?next=/wallet/gift/<token>`; consumer-web-get-gift-preview lets that page
-// (and its link card) say "$200.00MX of credit at Orinoco". Only an OPEN
-// link of this payments mode answers, and only with the amount and
-// currency: never who sent it, who took it, or any id. Every other state is
-// one "gone", so the preview tells nobody which links once existed.
+// (and its link card) say "$200.00MX of credit at Orinoco". An OPEN or a
+// CLAIMED link of this payments mode answers, with its state, amount and
+// currency: never who took it, or any id. A claimed link answers so its card
+// can say "Claimed" (Pato, 2026-11-18, MESITA-4367: "if the gift gets
+// claimed, that preview must change"). A taken-back link, an unknown key and
+// the other mode are one "gone".
 
 export type GiftRow = {
   id?: string;
@@ -90,10 +92,11 @@ export type GiftRow = {
   recipient_id?: string | null;
 };
 
-export type GiftPreview = { amount_cents: number; currency: string };
+export type GiftPreview = { status: "open" | "claimed"; amount_cents: number; currency: string };
 
 /** What a link may show before sign-in, or null when it shows nothing. */
 export function giftPreview(row: GiftRow | null, livemode: boolean): GiftPreview | null {
-  if (!row || row.status !== "open" || row.livemode !== livemode) return null;
-  return { amount_cents: row.amount_cents, currency: row.currency };
+  if (!row || row.livemode !== livemode) return null;
+  if (row.status !== "open" && row.status !== "claimed") return null;
+  return { status: row.status, amount_cents: row.amount_cents, currency: row.currency };
 }

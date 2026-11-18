@@ -48,6 +48,8 @@ export async function apiGetPayPlaceName(
 }
 
 export type GiftPreview = {
+  /** A claimed link answers too, so its card says "Claimed" (MESITA-4367). */
+  claimed: boolean;
   amount_cents: number;
   currency: string;
   placeName: string | null;
@@ -58,9 +60,9 @@ export type GiftPreview = {
   senderPhoto: string | null;
 };
 
-/** A friend's gift link before sign-in (MESITA-4229): an open link's amount
- *  and place, for the sign-in title and its link card. Null for anything
- *  else: a link someone took, one taken back, an unknown key, an error, or
+/** A friend's gift link before sign-in (MESITA-4229): an open or claimed
+ *  link's amount and place, for the sign-in title and its link card. Null
+ *  for anything else: a link taken back, an unknown key, an error, or
  *  no answer within `timeoutMs`, so a slow read never holds the sign-in
  *  page. No session needed. */
 export async function apiGetGiftPreview(
@@ -70,6 +72,7 @@ export async function apiGetGiftPreview(
 ): Promise<GiftPreview | null> {
   const read = invokeEF<{
     gift: {
+      status?: "open" | "claimed";
       amount_cents: number;
       currency: string;
       place: { name: string; photo?: string | null } | null;
@@ -77,6 +80,7 @@ export async function apiGetGiftPreview(
     };
   }>(client, "consumer-web-get-gift-preview", { token }).then(
     (res) => ({
+      claimed: res.gift.status === "claimed",
       amount_cents: res.gift.amount_cents,
       currency: res.gift.currency,
       placeName: res.gift.place?.name ?? null,

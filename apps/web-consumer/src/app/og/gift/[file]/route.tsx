@@ -10,8 +10,14 @@ import { SHARE_CARD } from "@/lib/share-app";
 // credits and gift box"; "Yes, show sender"). The Mesita card's split: an
 // ink panel at the left with a gift-box mark, the amount, the place, and
 // the sender's photo and first name; the place's photo at the right. A link
-// that is taken, gone or has no photo gets the Mesita card. Drawn here, not
-// by an outside image service: nothing about the gift leaves Mesita.
+// that is taken back, gone or has no photo gets the Mesita card. Drawn here,
+// not by an outside image service: nothing about the gift leaves Mesita.
+//
+// A CLAIMED GIFT (Pato, 2026-11-18, MESITA-4367: "if the gift gets claimed,
+// that preview must change … he will preview claimed right?"): the same card,
+// a "Claimed" pill over the amount, the amount struck through, and the photo
+// dimmed under a "Claimed" stamp. WhatsApp keeps a link's first preview, so
+// only a chat that unfurls the link after the claim sees it.
 
 export const runtime = "nodejs";
 
@@ -53,6 +59,7 @@ export async function GET(
   const amount = moneyLabel(gift.amount_cents, gift.currency);
   const sender = gift.senderName ?? "a friend";
   const nameSize = (gift.placeName?.length ?? 0) > 26 ? 34 : 40;
+  const claimed = gift.claimed;
 
   const png = new ImageResponse(
     (
@@ -71,15 +78,33 @@ export async function GET(
         >
           <GiftBox />
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 26, color: "rgba(255,255,255,0.7)" }}>Gift card</div>
+            {claimed ? (
+              <div style={{ display: "flex" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    fontSize: 24,
+                    color: "#0b0b0b",
+                    background: "#fff",
+                    borderRadius: 999,
+                    padding: "6px 18px",
+                  }}
+                >
+                  Claimed
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 26, color: "rgba(255,255,255,0.7)" }}>Gift card</div>
+            )}
             <div
               style={{
-                marginTop: 6,
+                marginTop: claimed ? 14 : 6,
                 fontFamily: fraunces ? "Fraunces" : undefined,
                 fontSize: 84,
                 fontWeight: 600,
                 letterSpacing: "-0.02em",
                 lineHeight: 1,
+                ...(claimed ? { textDecoration: "line-through", color: "rgba(255,255,255,0.55)" } : {}),
               }}
             >
               {amount}
@@ -124,14 +149,48 @@ export async function GET(
             </div>
           </div>
         </div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={gift.placePhoto}
-          alt=""
-          width={W - PANEL}
-          height={H}
-          style={{ width: W - PANEL, height: H, objectFit: "cover" }}
-        />
+        <div style={{ width: W - PANEL, height: H, display: "flex", position: "relative" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={gift.placePhoto}
+            alt=""
+            width={W - PANEL}
+            height={H}
+            style={{ width: W - PANEL, height: H, objectFit: "cover" }}
+          />
+          {claimed ? (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: W - PANEL,
+                height: H,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(0,0,0,0.55)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  border: "6px solid #fff",
+                  borderRadius: 18,
+                  padding: "10px 34px",
+                  color: "#fff",
+                  fontSize: 76,
+                  fontFamily: fraunces ? "Fraunces" : undefined,
+                  fontWeight: 600,
+                  letterSpacing: "0.04em",
+                  transform: "rotate(-10deg)",
+                }}
+              >
+                CLAIMED
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
     ),
     {

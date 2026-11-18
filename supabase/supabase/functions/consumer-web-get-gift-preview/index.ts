@@ -4,14 +4,16 @@
 // taps <origin>/wallet/gift/<token> lands on sign-in with `?next=`; this
 // read lets that page and its link card say "$200.00MX of credit at
 // Orinoco. Sign in to take it." Public (no session yet) and narrow: an open
-// link of this payments mode answers with its amount, currency and place
-// name; anything else (unknown, taken, taken back, the other mode) is one
-// 404 `gone`. Never the sender, the recipient or an id. The place name is
+// or claimed link of this payments mode answers with its state, amount,
+// currency, place and sender (MESITA-4367: a claimed link's card says
+// "Claimed"); anything else (unknown, taken back, the other mode) is one 404
+// `gone`. Never the recipient or an id. The place name is
 // read with the anon client, like consumer-web-get-pay-place-name, so a
 // place the public catalog hides answers place: null.
 //
 // Body: { token: string }
-// Response: { ok: true, gift: { amount_cents, currency, place: { name } | null } }
+// Response: { ok: true, gift: { status: "open" | "claimed", amount_cents, currency,
+//             place: { name, photo } | null, sender: { firstName, photo } | null } }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";

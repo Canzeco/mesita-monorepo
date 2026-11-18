@@ -6,24 +6,39 @@
 import type { Metadata } from "next";
 
 /** Where the gift's card is drawn: a .jpg path, past the proxy's matcher.
- *  ?v= is the design's version: chat apps keep an image by its address. */
-export function giftCardImagePath(token: string): string {
-  return `/og/gift/${encodeURIComponent(token)}.jpg?v=1`;
+ *  ?v= is the design's version: chat apps keep an image by its address.
+ *  A claimed gift's card has its own address (MESITA-4367), so no cache
+ *  that kept the open card answers it. */
+export function giftCardImagePath(token: string, claimed = false): string {
+  return `/og/gift/${encodeURIComponent(token)}.jpg?v=1${claimed ? "&claimed=1" : ""}`;
 }
 
-/** "From Patricio on Mesita. Sign in to take it." */
-export function giftDescription(senderName: string | null): string {
-  return `From ${senderName ?? "a friend"} on Mesita. Sign in to take it.`;
+/** "From Patricio on Mesita. Sign in to take it." A claimed gift (MESITA-4367):
+ *  "From Patricio on Mesita. Someone already took it." */
+export function giftDescription(senderName: string | null, claimed = false): string {
+  return `From ${senderName ?? "a friend"} on Mesita. ${claimed ? "Someone already took it." : "Sign in to take it."}`;
+}
+
+/** The sign-in page's line under the headline. */
+export function giftSignTitle(gift: { line: string; claimed: boolean }): string {
+  return gift.claimed ? `${gift.line}. Someone already took it.` : `${gift.line}. Sign in to take it.`;
+}
+
+/** "$100.00MX of credit at Orinoco", or "Claimed: $100.00MX of credit at
+ *  Orinoco" once someone took it (MESITA-4367). */
+export function giftLine(amount: string, placeName: string | null, claimed: boolean): string {
+  const line = placeName ? `${amount} of credit at ${placeName}` : `${amount} of credit`;
+  return claimed ? `Claimed: ${line}` : line;
 }
 
 /** The gift's title, description and card for a page's metadata. */
 export function giftMetadata(
-  gift: { line: string; token: string; senderName: string | null },
+  gift: { line: string; token: string; senderName: string | null; claimed: boolean },
   parent: { openGraph: Metadata["openGraph"] | null; twitter: Metadata["twitter"] | null },
 ): Metadata {
-  const description = giftDescription(gift.senderName);
+  const description = giftDescription(gift.senderName, gift.claimed);
   const image = {
-    url: giftCardImagePath(gift.token),
+    url: giftCardImagePath(gift.token, gift.claimed),
     width: 1200,
     height: 630,
     alt: `${gift.line}. ${description}`,

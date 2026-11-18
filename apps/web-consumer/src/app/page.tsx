@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type { Metadata, ResolvingMetadata } from "next";
-import { giftMetadata } from "@/lib/gift-link-card";
+import { giftLine, giftMetadata, giftSignTitle } from "@/lib/gift-link-card";
 import { redirect } from "next/navigation";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -41,9 +41,9 @@ const readGift = cache(async (next: string | undefined) => {
   if (!preview) return null;
   const amount = moneyLabel(preview.amount_cents, preview.currency);
   return {
-    line: preview.placeName
-      ? `${amount} of credit at ${preview.placeName}`
-      : `${amount} of credit`,
+    line: giftLine(amount, preview.placeName, preview.claimed),
+    // A claimed link says so (MESITA-4367).
+    claimed: preview.claimed,
     // The link's card (MESITA-4363): the gift's token and its sender.
     token,
     senderName: preview.senderName,
@@ -99,7 +99,7 @@ export default async function ConsumerRootPage({
         payPlaceName
           ? `Sign in to pay at ${payPlaceName}`
           : gift
-            ? `${gift.line}. Sign in to take it.`
+            ? giftSignTitle(gift)
             : undefined
       }
       footer={
