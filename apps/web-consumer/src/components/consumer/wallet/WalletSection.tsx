@@ -117,7 +117,7 @@ import { money, type WalletBalance } from "@/lib/api/wallet";
 // FUND AND GIFT ON EACH CREDITS CARD (Pato, 2026-11-11, MESITA-3724: "add
 // quick button in credits to Fund and Gift buttons to each Credits Card"):
 // Fund opens the place's credit purchase (the Loyalty Card's "Buy Credits",
-// `?rewards=prepayment` on the place); Gift opens the Loyalty Card's "Send to a
+// `/place/<id>/offers?rewards=prepayment`, MESITA-4379); Gift opens the Loyalty Card's "Send to a
 // friend" sheet here, greyed out while nothing can be sent (spendable $0,
 // or sending off). A place gone from Mesita gets neither.
 

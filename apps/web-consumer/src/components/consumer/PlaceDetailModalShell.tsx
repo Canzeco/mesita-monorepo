@@ -2,6 +2,7 @@
 
 import { PlaceTopBar } from "@mesita/place-profile";
 import { useSlideOverClose } from "@/components/consumer/overlay/SlideOverShell";
+import { useKeptScroll } from "@/lib/use-kept-scroll";
 import type { PlaceDetail } from "@/lib/place-detail";
 
 // Content chrome for the intercepted /place/[id] route. The sliding panel
@@ -33,6 +34,10 @@ export function PlaceDetailModalShell({
   onMore?: () => void;
 }) {
   const close = useSlideOverClose();
+  // BACK FINDS THE PLACE WHERE YOU LEFT IT (MESITA-4379): Offers, Reserve
+  // and Story are pages pushed over the place, so Back mounts it again; its
+  // scroller returns to the offset it had (lib/use-kept-scroll.ts).
+  const keep = useKeptScroll<HTMLDivElement>();
   return (
     <>
       <PlaceTopBar
@@ -53,7 +58,7 @@ export function PlaceDetailModalShell({
           background in Overview, boxes white"): the slide-over panel is
           paper, so the scroller paints bg-background like the direct link's
           PlaceProfile; Overview's cards stay white on it. */}
-      <div className="scrollbar-thin-dark bg-background min-h-0 flex-1 overflow-y-auto">
+      <div ref={keep} className="scrollbar-thin-dark bg-background min-h-0 flex-1 overflow-y-auto">
         {children}
       </div>
     </>

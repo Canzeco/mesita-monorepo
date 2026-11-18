@@ -47,7 +47,7 @@ import type { WalletCardModel } from "./WalletCard";
 
 /** A place's prepay page: its Offers at Prepayments, Back returning here. */
 export function prepayHref(placeIdOrSlug: string): string {
-  return `${placeHref(placeIdOrSlug)}?rewards=prepayment&from=wallet`;
+  return `${placeHref(placeIdOrSlug)}/offers?rewards=prepayment&from=wallet`;
 }
 
 function payPlaceCard(p: PayPlace): WalletCardModel {

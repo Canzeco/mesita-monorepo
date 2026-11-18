@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { goBack } from "@/lib/navigate";
+import { useKeptScroll } from "@/lib/use-kept-scroll";
 import { PlaceProfile } from "@mesita/place-profile";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -27,6 +28,9 @@ export function PlaceDetailPageBody({
   const { place, ready, actions, sheets, social } = useMemberPlaceActions(scored);
   // Back where you came from, or Home on a cold open (lib/navigate.ts).
   const onBack = useCallback(() => goBack(router, fallbackHref), [fallbackHref, router]);
+  // Back from a page pushed over the place (Offers, Reserve, Story) finds it
+  // scrolled where it was (MESITA-4379).
+  const keep = useKeptScroll<HTMLDivElement>();
 
   // The route's own loading silhouette until the Wallet and reservation
   // reads are in, so the profile lands whole (MESITA-3803).
@@ -38,6 +42,7 @@ export function PlaceDetailPageBody({
         onBack={onBack}
         actions={actions}
         social={social}
+        scrollRef={keep}
       />
       {sheets}
     </div>

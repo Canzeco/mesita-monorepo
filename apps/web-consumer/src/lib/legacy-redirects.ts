@@ -45,6 +45,16 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // MESITA-4016) all arrive on the old shapes; Next carries
   // the query across.
   { source: "/pay/tab/:id", destination: "/pay/bill/:id", permanent: true },
+  // OFFERS LEFT THE PROFILE (MESITA-4379): it was a sheet over the place at
+  // /place/<id>?rewards=prepayment|special. Sent links, the sign-in return
+  // and an open tab on an old build land on the page; Next carries the
+  // query (rewards, from, voucher) across, so the page reads them as before.
+  ...["prepayment", "special"].map((value) => ({
+    source: "/place/:id",
+    has: [{ type: "query" as const, key: "rewards", value }],
+    destination: "/place/:id/offers",
+    permanent: true,
+  })),
   {
     source: "/place/open/:gid",
     destination: "/place/google/:gid",
