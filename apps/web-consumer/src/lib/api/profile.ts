@@ -16,7 +16,11 @@ export type ConsumerProfile = {
   first_name: string | null;
   last_name: string | null;
   sex: string | null;
+  // Legacy full date; the apps stopped writing it in MESITA-4302.
   birthday: string | null;
+  // MESITA-4302: year of birth, the age source. Optional so a cached row from
+  // before the column still reads (birthYearOf falls back to `birthday`).
+  birth_year?: number | null;
   phone: string | null;
   // Claimed Instagram username (MESITA-74) — normalized, no leading @.
   instagram_handle: string | null;
@@ -57,7 +61,8 @@ type ConsumerOnboardingInput = {
   // Male/Female only (MESITA-727). Optional so callers that don't edit sex
   // (e.g. the Edit-profile sheet) omit it — the EF patches only present keys.
   sex?: "male" | "female";
-  birthday?: string; // YYYY-MM-DD
+  // MESITA-4302: year of birth; the EF checks current year − year >= 14.
+  birth_year?: number;
 };
 
 // Avatar-only patch after a Storage upload (MESITA-953). null clears.

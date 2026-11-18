@@ -2,12 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Camera, Check } from "lucide-react";
-import {
-  BirthdayPicker,
-  BirthdayPickerSkeleton,
-  Skeleton,
-  Spinner,
-} from "@/components/shared";
+import { Skeleton, Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { DefaultAvatar, SizedImage } from "@mesita/place-profile";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -26,37 +21,46 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS, INPUT_CLASS } from "@/lib/ui-classes";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
-import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
+import { cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
+import {
+  birthYearOf,
+  birthYearOldEnough,
+  birthYearOptions,
+  joinName,
+  nameError,
+  splitFullName,
+} from "@/lib/consumer-onboarding";
 
 // Full-page identity editor at /me/profile (MESITA-1789). Was a LocalSheet
 // over Me. Writes through consumer-web-update-profile. Consumers auth with
 // their phone (not email), so email isn't shown or edited here.
 //
-// Phone is auth identity (set at sign-in) and is not editable here — only
-// first name, last name, sex and birthday. That is onboarding's set PLUS the
-// last name, which the reservation flow collects rather than /onboard. The
-// claim that it was "the same set onboarding collects" was true until
-// MESITA-1806 dropped sex from signup and stayed in this comment for the
-// whole time a profile surface was printing a field nothing asked for
-// (MESITA-1829). Re-derive it here if the gate moves again.
+// NAME, SEX, YEAR OF BIRTH (MESITA-4302, Pato: "Name. Year of birth. Fuck
+// specific age. And ask sex too. keep this easier. cleaner."). One Name box
+// split by splitFullName (first word = first name, the rest = last name; one
+// word is refused because bookings need a last name), the Sex switch, and a
+// year select. The birthday date is no longer written.
+//
+// Phone is auth identity (set at sign-in) and is not editable here. The
+// fields are onboarding's own three (consumer-onboarding.ts ONBOARD_FIELDS).
 // Both name halves are required and always sent together: the EF re-derives
 // full_name from them, and that's the name reservations are booked under.
 //
 // Photo upload (MESITA-953) is immediate on pick: Storage → EF avatar_url
-// patch. Name/sex/birthday save via Save; the back arrow is Cancel.
+// patch. Name/sex/year save via Save; the back arrow is Cancel.
 //
 // PHOTO AND NAME ABOVE, FIELDS IN A BOX, SAVE IN A FOOTER BAND (MESITA-4052,
 // Pato 2026-11-15: "put sections into boxes … the button module or section
 // must also have a hr line dividing stuff from white land"). The 96px photo
 // and the full name lead the page, centred, outside any box (decision 1C);
-// names, sex and birthday sit in one Details box; Save is a full-width
+// name, sex and year sit in one Details box; Save is a full-width
 // button in MeScreen's footer band under a hairline, never in the header
 // (it sat there from MESITA-3101). Its states (decision 2C): grey and off
 // until a field changes, black with a change, "Saving…" with a spinner,
 // "Saved" for 2 seconds (the page stays; it popped back to Me until
 // MESITA-4052), and a failed save prints its error above the button and
-// keeps every edit. The names share one row; Sex is a two-button switch;
-// Birthday is BirthdayPicker's compact row.
+// keeps every edit. Name is one full-width box; Sex is a two-button switch;
+// Year of birth is one native select.
 //
 // NO MEMBER NUMBER (MESITA-3874, Pato: "nobody gives a fuck about the
 // member number. remove that"). `consumers.code` stays in the database for
@@ -73,15 +77,14 @@ const SEX_OPTIONS = [
   { value: "male", label: "Male" },
 ] as const;
 
-/** The four fields' labels. */
+/** The three fields' labels. */
 const FIELD_LABEL = {
-  firstName: "First name",
-  lastName: "Last name",
+  name: "Name",
   sex: "Sex",
-  birthday: "Birthday",
+  birthYear: "Year of birth",
 } as const;
 
-/** First name, Last name and Sex: the shared input, a notch smaller. One
+/** Name and Year of birth: the shared input, a notch smaller. One
  *  string for the fields and their loading boxes (MESITA-2701). */
 const FIELD_CLASS = cn(INPUT_CLASS, "h-auto rounded-lg py-2");
 
@@ -114,9 +117,6 @@ const NAME_CLASS = "font-display min-h-7 max-w-full truncate text-lg font-semibo
 /** The fields' column inside the Details box, 24px under the name. */
 const FIELDS_CLASS = "flex flex-col gap-3 p-4";
 const DETAILS_CLASS = "mt-4";
-
-/** First and Last name on one row. */
-const NAME_ROW_CLASS = "grid grid-cols-2 gap-3";
 
 /** Sex's switch: the field's box holding two halves. */
 const SEX_SWITCH_CLASS =
@@ -159,7 +159,7 @@ export function EditProfileSheet() {
   return <EditProfileForm profile={profile} />;
 }
 
-/** One field's label: SheetField's, Sex's and Birthday's, and the
+/** One field's label: SheetField's, Sex's and the year's, and the
  *  skeleton's. */
 function FieldLabel({ children, id }: { children: string; id?: string }) {
   return (
@@ -182,8 +182,8 @@ function FieldLabel({ children, id }: { children: string; id?: string }) {
  * exactly as the form's do; what the read brings (photo, values) and
  * every control is a block at its box: Save's box in the header, the 64px
  * photo with the camera badge on its corner, the two
- * name fields as their own empty controls (FIELD_SKELETON_CLASS), Sex's
- * switch with its words hidden, BirthdayPicker's compact skeleton.
+ * Name field as its own empty control (FIELD_SKELETON_CLASS), Sex's
+ * switch with its words hidden, the year select empty.
  * /me/profile/loading.tsx draws this same one.
  */
 export function EditProfileSkeleton() {
@@ -202,18 +202,14 @@ export function EditProfileSkeleton() {
       <div className={DETAILS_CLASS}>
       <Panel title="Details">
       <div className={FIELDS_CLASS} aria-hidden>
-        <div className={NAME_ROW_CLASS}>
-          {[FIELD_LABEL.firstName, FIELD_LABEL.lastName].map((label) => (
-            <div key={label} className="min-w-0">
-              <FieldLabel>{label}</FieldLabel>
-              <input
-                disabled
-                tabIndex={-1}
-                aria-hidden
-                className={FIELD_SKELETON_CLASS}
-              />
-            </div>
-          ))}
+        <div>
+          <FieldLabel>{FIELD_LABEL.name}</FieldLabel>
+          <input
+            disabled
+            tabIndex={-1}
+            aria-hidden
+            className={FIELD_SKELETON_CLASS}
+          />
         </div>
         <div>
           <FieldLabel>{FIELD_LABEL.sex}</FieldLabel>
@@ -234,8 +230,13 @@ export function EditProfileSkeleton() {
           </div>
         </div>
         <div>
-          <FieldLabel>{FIELD_LABEL.birthday}</FieldLabel>
-          <BirthdayPickerSkeleton compact />
+          <FieldLabel>{FIELD_LABEL.birthYear}</FieldLabel>
+          <select
+            disabled
+            tabIndex={-1}
+            aria-hidden
+            className={FIELD_SKELETON_CLASS}
+          />
         </div>
       </div>
       </Panel>
@@ -251,13 +252,14 @@ export function EditProfileSkeleton() {
 function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   const supabase = useBrowserSupabase();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [firstName, setFirstName] = useState(profile.first_name ?? "");
-  const [lastName, setLastName] = useState(profile.last_name ?? "");
+  const storedName = joinName(profile.first_name, profile.last_name);
+  const storedYear = birthYearOf(profile);
+  const [name, setName] = useState(storedName);
   // Male/Female only (MESITA-727). "" = nothing stored yet, which is why the
   // select carries an empty option — a legacy profile shouldn't silently
   // acquire a sex just by opening this page.
   const [sex, setSex] = useState(profile.sex ?? "");
-  const [birthday, setBirthday] = useState(profile.birthday ?? "");
+  const [birthYear, setBirthYear] = useState<number | null>(storedYear);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -267,10 +269,9 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   const displayAvatarUrl = previewUrl ?? profile.avatar_url ?? null;
 
   const dirty =
-    firstName.trim() !== (profile.first_name ?? "") ||
-    lastName.trim() !== (profile.last_name ?? "") ||
+    name.trim().replace(/\s+/g, " ") !== storedName ||
     sex !== (profile.sex ?? "") ||
-    birthday !== (profile.birthday ?? "");
+    birthYear !== storedYear;
 
   // "Saved" reads for 2 seconds, then the button goes back to grey Save.
   useEffect(() => {
@@ -313,12 +314,13 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
 
   async function save() {
     if (!dirty || saving) return;
-    if (!firstName.trim() || !lastName.trim()) {
-      setSaveError("First and last name are both required.");
+    const badName = nameError(name);
+    const split = splitFullName(name);
+    if (badName || !split) {
+      setSaveError(badName ?? "Add your last name too.");
       return;
     }
-    const age = ageFromBirthday(birthday);
-    if (age !== null && age < MIN_SIGNUP_AGE) {
+    if (birthYear !== null && !birthYearOldEnough(birthYear)) {
       setSaveError(`You must be at least ${MIN_SIGNUP_AGE} to use Mesita.`);
       return;
     }
@@ -326,10 +328,10 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
     setSaving(true);
     try {
       await apiUpdateConsumerProfile(supabase, {
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
+        first_name: split.first,
+        last_name: split.last,
         ...(sex === "male" || sex === "female" ? { sex } : {}),
-        birthday,
+        ...(birthYear !== null ? { birth_year: birthYear } : {}),
       });
       setSaved(true);
     } catch (e) {
@@ -424,30 +426,20 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
           </span>
         </button>
         <p className={NAME_CLASS}>
-          {[firstName.trim(), lastName.trim()].filter(Boolean).join(" ") ||
-            "Your name"}
+          {name.trim() || "Your name"}
         </p>
       </div>
 
       <div className={DETAILS_CLASS}>
       <Panel title="Details">
       <div className={FIELDS_CLASS}>
-        <div className={NAME_ROW_CLASS}>
-          <SheetField
-            label={FIELD_LABEL.firstName}
-            value={firstName}
-            onChange={setFirstName}
-            placeholder={FIELD_LABEL.firstName}
-            autoComplete="given-name"
-          />
-          <SheetField
-            label={FIELD_LABEL.lastName}
-            value={lastName}
-            onChange={setLastName}
-            placeholder={FIELD_LABEL.lastName}
-            autoComplete="family-name"
-          />
-        </div>
+        <SheetField
+          label={FIELD_LABEL.name}
+          value={name}
+          onChange={setName}
+          placeholder="First and last name"
+          autoComplete="name"
+        />
         <div>
           <FieldLabel id="profile-sex-label">{FIELD_LABEL.sex}</FieldLabel>
           {/* No option lit is a real state: a legacy profile with no sex
@@ -480,8 +472,27 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
           </div>
         </div>
         <label className="block">
-          <FieldLabel>{FIELD_LABEL.birthday}</FieldLabel>
-          <BirthdayPicker value={birthday} onChange={setBirthday} compact />
+          <FieldLabel>{FIELD_LABEL.birthYear}</FieldLabel>
+          <select
+            value={birthYear ?? ""}
+            onChange={(e) =>
+              setBirthYear(e.target.value ? Number(e.target.value) : null)
+            }
+            autoComplete="bday-year"
+            className={cn(
+              FIELD_CLASS,
+              birthYear === null && "text-muted-foreground",
+            )}
+          >
+            <option value="" disabled>
+              Year
+            </option>
+            {birthYearOptions().map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
       </Panel>

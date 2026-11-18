@@ -15,7 +15,7 @@ import {
 } from "@/lib/auth-redirect";
 import { apiGetGiftPreview, apiGetPayPlaceName } from "@/lib/api/auth";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
-import { consumerCanBrowse } from "@/lib/consumer-onboarding";
+import { birthYearOf, consumerCanBrowse, joinName } from "@/lib/consumer-onboarding";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { signIntentFromNext } from "@/lib/sign-intent";
 import { isTransientAuthError } from "@/lib/stale-session";
@@ -90,9 +90,8 @@ export default async function SignPage({ searchParams }: Params) {
       const { consumer: profile } = await apiFetchConsumerProfile(supabase);
       onboarded = consumerCanBrowse(profile);
       initial = {
-        firstName: profile.first_name ?? profile.full_name ?? "",
-        lastName: profile.last_name ?? "",
-        birthday: profile.birthday ?? "",
+        name: joinName(profile.first_name, profile.last_name) || (profile.full_name ?? ""),
+        birthYear: birthYearOf(profile),
         sex: profile.sex ?? "",
       };
     } catch (err) {

@@ -9,10 +9,14 @@ import {
 } from "@/lib/api/profile";
 import { EFError } from "@/lib/api/_invoke";
 import { normalizeInstagramHandle } from "@/lib/instagram-handle";
-import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
+import { cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 import {
+  birthYearOldEnough,
+  birthYearOptions,
   CONSUMER_SEXES,
   isConsumerSex,
+  nameError,
+  splitFullName,
   ONBOARD_FIELDS,
   ONBOARD_PAGE_DEK,
   ONBOARD_PAGE_HEADLINE,
@@ -20,7 +24,7 @@ import {
 } from "@/lib/consumer-onboarding";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { safeNextPath } from "@/lib/auth-redirect";
-import { BirthdayPicker, Spinner } from "@/components/shared";
+import { Spinner } from "@/components/shared";
 import {
   ERROR_BOX_CLASS,
   INPUT_CLASS,
@@ -28,16 +32,18 @@ import {
 } from "@/lib/ui-classes";
 
 // Onboarding collects THREE things beyond the phone (already on the auth.user
-// from the OTP step): first name, birthday and sex. `consumer-onboarding.ts`
+// from the OTP step): name, sex and year of birth (MESITA-4302, Pato: "Name.
+// Year of birth. Fuck specific age. And ask sex too. keep this easier.
+// cleaner."). `consumer-onboarding.ts`
 // carries why sex came back and why it is required (MESITA-1829); briefly, a
 // profile surface printed it while nothing collected it. It also owns
 // ONBOARD_FIELDS — the field list the gate checks and the form renders.
 //
-// LAST NAME IS HERE TOO (Pato, MESITA-4090): first and last name side by side,
-// both required, the same pair Me › Profile edits. The place books tables
-// under the full name.
+// ONE NAME BOX (MESITA-4302). The last name is still required (MESITA-4090:
+// the place books tables under it), so the box needs two words and
+// splitFullName stores the first as the first name and the rest as the last.
 //
-// ONE SCREEN (MESITA-2746): first name, birthday and sex together. A
+// ONE SCREEN (MESITA-2746): name, sex and year of birth together. A
 // returning half-finished profile prefills what is already stored; one
 // Continue writes whatever is still missing (usually all three at once).
 //
@@ -61,9 +67,9 @@ import {
 // attempt names the specific gap.
 
 export type OnboardInitialValues = {
-  firstName: string;
-  lastName: string;
-  birthday: string;
+  /** First + last joined, as the one box shows them. */
+  name: string;
+  birthYear: number | null;
   sex: string;
 };
 
@@ -93,9 +99,10 @@ export function OnboardForm({
   // LAZY on purpose: the client is only needed when Continue fires, so a
   // render — including this component's unit test — never touches env vars.
   const getSupabase = useLazyBrowserSupabase();
-  const [firstName, setFirstName] = useState(initial?.firstName ?? "");
-  const [lastName, setLastName] = useState(initial?.lastName ?? "");
-  const [birthday, setBirthday] = useState(initial?.birthday ?? "");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [birthYear, setBirthYear] = useState<number | null>(
+    initial?.birthYear ?? null,
+  );
   const [sex, setSex] = useState<ConsumerSex | "">(() =>
     isConsumerSex(initial?.sex) ? initial.sex : "",
   );
@@ -105,12 +112,10 @@ export function OnboardForm({
   const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const birthdayField = ONBOARD_FIELDS.find((f) => f.key === "birthday");
+  const yearField = ONBOARD_FIELDS.find((f) => f.key === "birth_year");
 
   const ready =
-    Boolean(firstName.trim()) &&
-    Boolean(lastName.trim()) &&
-    Boolean(birthday) && isConsumerSex(sex);
+    Boolean(name.trim()) && birthYear !== null && isConsumerSex(sex);
 
   /** Arrow keys move between the options and select as they go, which is what
    *  the radio pattern specifies — and with two options Left and Right are the
@@ -142,16 +147,16 @@ export function OnboardForm({
     setError(null);
 
     const fd = new FormData(e.currentTarget);
-    const first = ((fd.get("first_name") as string | null) ?? firstName).trim();
-    const last = ((fd.get("last_name") as string | null) ?? lastName).trim();
-    if (!first) return setError("Tell us your first name.");
-    if (!last) return setError("Tell us your last name.");
-    if (!birthday) return setError("Add your birthday.");
-    const age = ageFromBirthday(birthday);
-    if (age === null || age < MIN_SIGNUP_AGE) {
+    const typedName = ((fd.get("name") as string | null) ?? name).trim();
+    const badName = nameError(typedName);
+    if (badName) return setError(badName);
+    const split = splitFullName(typedName);
+    if (!split) return setError("Add your last name too.");
+    if (!isConsumerSex(sex)) return setError("Pick one to continue.");
+    if (birthYear === null) return setError("Pick your year of birth.");
+    if (!birthYearOldEnough(birthYear)) {
       return setError(`You must be at least ${MIN_SIGNUP_AGE} to use Mesita.`);
     }
-    if (!isConsumerSex(sex)) return setError("Pick one to continue.");
     const typed = instagram.trim().replace(/^@/, "");
     const handle = typed ? normalizeInstagramHandle(typed) : null;
     if (typed && !handle) {
@@ -160,15 +165,14 @@ export function OnboardForm({
       );
     }
 
-    setFirstName(first);
-    setLastName(last);
+    setName(typedName);
     setLoading(true);
     void (async () => {
       try {
         await apiUpdateConsumerProfile(getSupabase(), {
-          first_name: first,
-          last_name: last,
-          birthday,
+          first_name: split.first,
+          last_name: split.last,
+          birth_year: birthYear,
           sex,
         });
       } catch (err) {
@@ -204,59 +208,23 @@ export function OnboardForm({
       <p className="text-muted-foreground mt-2 text-sm">{ONBOARD_PAGE_DEK}</p>
 
       <div className="mt-8 flex flex-col gap-6">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="min-w-0">
-            <label htmlFor="onboard-first-name" className={FIELD_LABEL_CLASS}>
-              {FIELD("first_name")}
-            </label>
-            <input
-              id="onboard-first-name"
-              name="first_name"
-              className={INPUT_CLASS}
-              value={firstName}
-              onChange={(e) => {
-                setFirstName(e.target.value);
-                setError(null);
-              }}
-              maxLength={60}
-              autoComplete="given-name"
-              required
-            />
-          </div>
-          <div className="min-w-0">
-            <label htmlFor="onboard-last-name" className={FIELD_LABEL_CLASS}>
-              {FIELD("last_name")}
-            </label>
-            <input
-              id="onboard-last-name"
-              name="last_name"
-              className={INPUT_CLASS}
-              value={lastName}
-              onChange={(e) => {
-                setLastName(e.target.value);
-                setError(null);
-              }}
-              maxLength={60}
-              autoComplete="family-name"
-              required
-            />
-          </div>
-        </div>
-
         <div>
-          <span className={FIELD_LABEL_CLASS}>{FIELD("birthday")}</span>
-          <BirthdayPicker
-            value={birthday}
-            onChange={(v) => {
-              setBirthday(v);
+          <label htmlFor="onboard-name" className={FIELD_LABEL_CLASS}>
+            {FIELD("name")}
+          </label>
+          <input
+            id="onboard-name"
+            name="name"
+            className={INPUT_CLASS}
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
               setError(null);
             }}
+            maxLength={120}
+            autoComplete="name"
+            required
           />
-          {birthdayField?.hint ? (
-            <p className="text-muted-foreground type-body mt-3">
-              Nobody sees it. It confirms you&apos;re old enough for Mesita.
-            </p>
-          ) : null}
         </div>
 
         <div>
@@ -290,6 +258,38 @@ export function OnboardForm({
               })}
             </div>
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="onboard-birth-year" className={FIELD_LABEL_CLASS}>
+            {FIELD("birth_year")}
+          </label>
+          <select
+            id="onboard-birth-year"
+            name="birth_year"
+            className={cn(INPUT_CLASS, birthYear === null && "text-muted-foreground")}
+            value={birthYear ?? ""}
+            onChange={(e) => {
+              setBirthYear(e.target.value ? Number(e.target.value) : null);
+              setError(null);
+            }}
+            autoComplete="bday-year"
+            required
+          >
+            <option value="" disabled>
+              Year
+            </option>
+            {birthYearOptions().map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+          {yearField?.hint ? (
+            <p className="text-muted-foreground type-body mt-3">
+              Nobody sees it. It confirms you&apos;re old enough for Mesita.
+            </p>
+          ) : null}
         </div>
 
         <div>

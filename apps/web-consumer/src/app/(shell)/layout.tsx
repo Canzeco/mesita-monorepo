@@ -55,7 +55,7 @@ const BAR_HREFS = [
 // Mandatory onboarding gate for every page inside /(shell).
 //
 // No exceptions: a consumer with a half-filled profile (no name /
-// birthday / sex) gets bounced to /onboard. Onboard is the only
+// birth year / sex) gets bounced to /onboard. Onboard is the only
 // surface that knows how to collect the missing fields, so every other
 // route assumes the row is complete and renders accordingly. This kills
 // the "Complete your profile" half-state — it should never be reachable.

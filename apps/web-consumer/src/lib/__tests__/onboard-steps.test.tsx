@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-// MESITA-2746: /onboard is one screen with first name, birthday and sex. This
+// MESITA-2746: /onboard is one screen; since MESITA-4302 it asks name, sex
+// and year of birth. This
 // suite runs in the `node` environment with no jsdom (vitest.config.ts), so the
 // form cannot be clicked through — only static markup is checked.
 
@@ -23,12 +24,11 @@ import {
 } from "@/lib/consumer-onboarding";
 
 function markup(initial?: {
-  firstName: string;
-  lastName?: string;
-  birthday: string;
+  name: string;
+  birthYear: number | null;
   sex: string;
 }) {
-  return renderToStaticMarkup(<OnboardForm initial={initial && { lastName: "", ...initial }} />);
+  return renderToStaticMarkup(<OnboardForm initial={initial} />);
 }
 
 describe("the onboarding form renders all fields on one screen", () => {
@@ -38,7 +38,7 @@ describe("the onboarding form renders all fields on one screen", () => {
     for (const { label } of ONBOARD_FIELDS) {
       expect(html).toContain(label);
     }
-    expect(html).toContain('name="first_name"');
+    expect(html).toContain('name="name"');
     expect(html).toContain('role="radiogroup"');
     expect(html.match(/role="radio"/g) ?? []).toHaveLength(2);
   });
@@ -51,14 +51,13 @@ describe("the onboarding form renders all fields on one screen", () => {
 
   it("prefills stored values while still showing every field", () => {
     const initial = {
-      firstName: "Ana",
-      birthday: "1998-03-14",
+      name: "Ana Ruiz",
+      birthYear: 1998,
       sex: "",
     };
     const html = markup(initial);
-    expect(html).toContain("Ana");
-    expect(html).toContain('value="1998"');
-    expect(html).toContain('value="14"');
+    expect(html).toContain("Ana Ruiz");
+    expect(html).toMatch(/<option[^>]*value="1998"[^>]*selected/);
     for (const { label } of ONBOARD_FIELDS) {
       expect(html).toContain(label);
     }
@@ -66,7 +65,7 @@ describe("the onboarding form renders all fields on one screen", () => {
 
   it("asks the name with a label, not a placeholder echoing it", () => {
     const html = markup();
-    const nameInput = /<input\b[^>]*name="first_name"[^>]*>/.exec(html)?.[0] ?? "";
+    const nameInput = /<input\b[^>]*name="name"[^>]*>/.exec(html)?.[0] ?? "";
     expect(nameInput).toBeTruthy();
     expect(nameInput).not.toContain("placeholder=");
   });
