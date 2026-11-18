@@ -55,7 +55,7 @@
 //               paid is already in the balances above since MESITA-4264;
 //               only the bonus waits,
 //             sent_links (MESITA-3292): [{ gift_id, place_id, amount_cents,
-//               currency, created_at }]: credit links the guest sent that
+//               currency, created_at, can_share (MESITA-4390) }]: credit links the guest sent that
 //               nobody took yet (already off their balance; take-back-able),
 //             gifts (MESITA-4036): every gift the guest sent or received,
 //               newest first, _shared/wallet-gifts.ts's GiftTicket + place:
@@ -232,7 +232,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   const [{ data: giftRows, error: giftErr }, moneyConfig] = await Promise.all([
     admin
       .from("wallet_gifts")
-      .select("id, sender_id, recipient_id, place_id, amount_cents, currency, status, created_at, claimed_at, taken_back_at")
+      .select("id, sender_id, recipient_id, place_id, amount_cents, currency, status, created_at, claimed_at, taken_back_at, token_sealed")
       .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
       .eq("livemode", livemode)
       .order("created_at", { ascending: false })
@@ -356,6 +356,9 @@ serveJson("consumer-web-get-wallet", async (req) => {
       amount_cents: g.amount_cents,
       currency: g.currency,
       created_at: g.created_at,
+      // MESITA-4390: its link can be shown again (consumer-web-get-gift-link);
+      // a link sent before then can only be taken back. Never the key itself.
+      can_share: Boolean((g as GiftRow & { token_sealed?: string | null }).token_sealed),
     })),
     gifts: giftList.map((g) => ({ ...g, place: places.get(g.place_id) ?? null })),
     can_send: sendingOn(moneyConfig, livemode),
