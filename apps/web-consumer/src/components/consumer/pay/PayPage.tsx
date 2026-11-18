@@ -2,7 +2,7 @@
 
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Clock, QrCode } from "lucide-react";
 import { Panel } from "@/components/shared/Panel";
@@ -23,8 +23,8 @@ import { usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
-import { TicketsShortcut } from "./TicketsShortcut";
-import { WalletShareGift } from "@/components/consumer/wallet/WalletShareGift";
+import { TicketsShortcut, TicketsShortcutSkeleton } from "./TicketsShortcut";
+import { WalletShareGift, WalletShareGiftSkeleton } from "@/components/consumer/wallet/WalletShareGift";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
@@ -81,6 +81,11 @@ export function PayPage({
   const { places } = usePayPlaces(loc.state === "on" ? loc.at : null);
   // null while the open payment is still being looked for.
   const [openTabs, setOpenTabs] = useState<GuestTab[] | null>(null);
+  // ONE PAINT (MESITA-4376): the buttons stay bones until the bills AND the
+  // Wallet have read, so nothing live shows over a half-loaded page.
+  const [walletReady, setWalletReady] = useState(false);
+  const loaded = openTabs !== null && walletReady;
+  const markWalletReady = useCallback(() => setWalletReady(true), []);
 
   // The guest's own payments still in progress (paying, or paid and not yet
   // signed, inside their window), read fresh each time: the one the server
@@ -153,12 +158,12 @@ export function PayPage({
           shit"; /autoplan): the page holds your money, the pink Pay Bill is
           the verb. "Mesita Wallet" since MESITA-4252 (Pato: "call at the top
           Mesita Wallet, not only wallet"); the bar tab stays "Wallet". */}
-      <PayHeader title="Mesita Wallet" action={<TicketsShortcut />} />
+      <PayHeader title="Mesita Wallet" action={loaded ? <TicketsShortcut /> : <TicketsShortcutSkeleton />} />
 
       {/* PAY BILL (Pato, 2026-11-17, MESITA-4232: "GIANT BUTTON … CALL THAT
           PAY BILL"): the page's one coloured thing (Stripe purple since MESITA-4260), first. With a bill open it
           IS the bill (D4): the amber panel, Continue bill and Cancel bill. */}
-      {openTabs === null ? (
+      {!loaded || openTabs === null ? (
         <PayBillSkeleton />
       ) : openTabs.length > 0 || pending ? (
         <div className="mt-2 flex flex-col">
@@ -177,9 +182,9 @@ export function PayPage({
       )}
 
       {/* The three doors under it, grey (MESITA-4232). */}
-      <WalletShareGift />
+      {loaded ? <WalletShareGift /> : <WalletShareGiftSkeleton />}
 
-      <WalletSection giftToken={giftToken} />
+      <WalletSection giftToken={giftToken} onReady={markWalletReady} />
     </KeptScroll>
   );
 }
