@@ -10,6 +10,7 @@ import { RouteBadge } from "@/components/consumer/RouteBadge";
 import { ViewportLock } from "@/components/consumer/ViewportLock";
 import { OverlayScrollbars } from "@/components/shared/OverlayScrollbars";
 import { SHARE_CARD } from "@/lib/share-app";
+import { HEADLINE, VALUE_LINE } from "@/lib/value-line";
 
 const inter = Inter({
   variable: "--font-body",
@@ -60,22 +61,24 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://mesita.ai"),
   title: {
-    default: "Mesita — restaurants, from your phone",
+    default: `Mesita — ${HEADLINE}`,
     template: "%s · Mesita",
   },
-  description:
-    "Discovery, reservations, payments and rewards, all from your phone.",
+  // The cover's words (MESITA-4341): "restaurants, from your phone /
+  // payments and rewards" outlived the cover by days.
+  description: VALUE_LINE,
   openGraph: {
-    title: "Mesita — restaurants, from your phone",
-    description: "Discovery, reservations, payments and rewards.",
+    title: `Mesita — ${HEADLINE}`,
+    description: VALUE_LINE,
     siteName: "Mesita",
     locale: "en_US",
     type: "website",
-    // THE MESITA SHARE CARD (MESITA-2639): every shared link unfurls with
-    // it; the Share tab shows the same file. A static image under public/,
-    // (.jpg, under WhatsApp's 300 KB cap), so signed-out crawlers reach it past the proxy's matcher. Since
-    // MESITA-3761 it is the sign-in cover: the terrace photo, the wordmark,
-    // "Every table in Monterrey" and the cover's line (the JPEG still carries those words; MESITA-3911 changed the live cover).
+    // THE MESITA SHARE CARD (MESITA-2639): every shared link without its
+    // own unfurls with it. Drawn live at /og/mesita.jpg since MESITA-4341:
+    // the terrace photo, the wordmark, the cover's headline and value line
+    // (a static JPEG before, still saying "Every table in Monterrey"). A
+    // .jpg path, so crawlers reach it past the proxy's matcher; JPEG, under
+    // WhatsApp's 300 KB cap.
     images: [
       {
         url: SHARE_CARD.src,
@@ -87,8 +90,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mesita — restaurants, from your phone",
-    description: "Discovery, reservations, payments and rewards.",
+    title: `Mesita — ${HEADLINE}`,
+    description: VALUE_LINE,
     images: [SHARE_CARD.src],
   },
 };

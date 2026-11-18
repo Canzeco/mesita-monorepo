@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { Outfit } from "next/font/google";
 import { MesitaMark } from "@/components/brand/MesitaMark";
+import { VALUE_LINE } from "@/lib/value-line";
 
 // QUIET (Pato, 2026-11-18, MESITA-4317: "Make this far cleaner";
 // /plan-design-review, mock A): the headline, the value line, the phone
@@ -45,11 +46,7 @@ import { MesitaMark } from "@/components/brand/MesitaMark";
 // writes it (ModeTabs), not the lockup's lowercase "mesita." (MESITA-3653).
 const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 
-/** The value in one sentence, under the cover's and the welcome's headline.
- *  No city (Pato, 2026-11-18, MESITA-4328: "don't mention monterrey"); no
- *  place count until it is true (262 Mesita places that day, not 10,000). */
-export const VALUE_LINE =
-  "Discovery, reservations, discounts and gifts at restaurants, cafés and bars.";
+export { VALUE_LINE };
 
 export function CoverAuthLayout({
   headline,
