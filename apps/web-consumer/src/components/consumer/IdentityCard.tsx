@@ -202,34 +202,36 @@ export function IdentityModules({
   nameHref: string;
 }) {
   const [handle, followers] = splitInstagramLabel(instagram.label);
+  // THE GRID (Pato, 2026-11-18, MESITA-4340: "photo name / photo instagram.
+  // name and instagram same height. photo double height"): the photo spans
+  // both rows, 48 + 8 + 48 = 104px; the two boxes beside it are 48px each.
+  // The "Name" label of MESITA-4335 is gone: the name says itself.
   return (
-    <div className="flex w-full min-w-0 flex-col gap-2" data-identity-card>
-      <div className="flex min-w-0 items-center gap-3">
-        <span className={IDENTITY_RING_CLASS} aria-hidden>
-          <span className={cn("bg-muted relative block h-14 w-14 overflow-hidden rounded-full")}>
-            {avatarUrl ? (
-              <SizedImg src={avatarUrl} size="thumb" alt="" className="h-full w-full object-cover" />
-            ) : (
-              <DefaultAvatar className="h-full w-full" />
-            )}
-          </span>
+    <div
+      className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[3rem_3rem] gap-x-3 gap-y-2"
+      data-identity-card
+    >
+      <span className={cn(IDENTITY_RING_CLASS, "row-span-2 self-center")} aria-hidden>
+        <span className="bg-muted relative block h-[101px] w-[101px] overflow-hidden rounded-full">
+          {avatarUrl ? (
+            <SizedImg src={avatarUrl} size="thumb" alt="" className="h-full w-full object-cover" />
+          ) : (
+            <DefaultAvatar className="h-full w-full" />
+          )}
         </span>
-        <PushLink
-          href={nameHref}
-          aria-label={`Profile: ${name}`}
-          className={cn(MODULE_CLASS, "h-14 flex-1 flex-col items-start justify-center")}
-          data-identity-name
-        >
-          <span className="text-muted-foreground text-xs font-medium">Name</span>
-          <span className="text-foreground w-full truncate text-lg leading-tight font-bold tracking-tight">
-            {name}
-          </span>
-        </PushLink>
-      </div>
+      </span>
+      <PushLink
+        href={nameHref}
+        aria-label={`Profile: ${name}`}
+        className={cn(MODULE_CLASS, "h-12")}
+        data-identity-name
+      >
+        <span className="text-foreground truncate text-lg font-bold tracking-tight">{name}</span>
+      </PushLink>
       <PushLink
         href={instagram.href}
         aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
-        className={cn(MODULE_CLASS, "h-11 gap-2 text-sm")}
+        className={cn(MODULE_CLASS, "h-12 gap-2 text-sm")}
         data-identity-instagram
       >
         <InstagramBadge connected={instagram.connected} />
