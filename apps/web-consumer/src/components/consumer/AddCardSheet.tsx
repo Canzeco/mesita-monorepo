@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 // TWO FRAMES, ONE FORM (MESITA-4092, Pato: "ADD CARD MUST HAVE ITS OWN
 // SUBPAGE ... OWN SUBPAGES IS CLEANER"): useAddCard is the form's whole
 // behaviour, AddCardFields and SaveCardButton its parts, drawn only by
-// /wallet/cards/new (AddCardPage). Every caller pushes that page; the 88%
+// AddCardModal (MESITA-4398; AddCardPage stays for old links). The 88%
 // sheet is gone since MESITA-4101 (lib/added-card.ts hands the card back).
 
 /** Stripe's purple, the one pay accent (MESITA-4065). */

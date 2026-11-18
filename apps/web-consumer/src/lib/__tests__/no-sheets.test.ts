@@ -40,6 +40,9 @@ export const CONFIRM_FILES = [
   // Cash or terminal, a quick note (MESITA-4382: Pato asked for a modal
   // instead of the full Cash page); Got it closes it.
   "components/consumer/wallet/CashDialog.tsx",
+  // Add a card (MESITA-4398, Pato: "card must not be another page. it must
+  // be a modal."): Stripe's form, Save card or close.
+  "components/consumer/wallet/AddCardModal.tsx",
   "components/consumer/me/CalendarModal.tsx",
   "components/consumer/me/InstagramModal.tsx",
   "components/consumer/pay/GuestPayScreen.tsx",

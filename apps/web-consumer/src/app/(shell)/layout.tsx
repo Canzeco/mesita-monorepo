@@ -16,6 +16,7 @@ import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
 import { Toaster } from "@/components/consumer/Toaster";
 import { PendingSignIntent } from "@/components/consumer/anonymous/PendingSignIntent";
 import { SignGateModal } from "@/components/consumer/anonymous/SignGateModal";
+import { AddCardModal } from "@/components/consumer/wallet/AddCardModal";
 import { WelcomeModal } from "@/components/consumer/anonymous/WelcomeModal";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
@@ -241,6 +242,7 @@ export default async function ConsumerShellLayout({
           <PendingSignIntent />
           <WelcomeModal />
           <SignGateModal />
+          <AddCardModal />
         </div>
       </ConsumerIdentityProvider>
       <Toaster />

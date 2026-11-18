@@ -347,17 +347,19 @@ export function CardTile({ card, onOpen }: { card: SavedCard; onOpen: () => void
   );
 }
 
-export function AddCardTile({ href }: { href: string }) {
+/** Opens the Add a card modal (MESITA-4398; a page until then). */
+export function AddCardTile({ onClick }: { onClick: () => void }) {
   return (
-    <PushLink
-      href={href}
+    <button
+      type="button"
+      onClick={onClick}
       aria-label="Add a payment card"
-      className={TILE}
+      className={cn(TILE, "w-full text-left")}
       data-wallet-add
     >
       <AddChip />
       <TileText title="Add a card" line="In the app" />
-    </PushLink>
+    </button>
   );
 }
 

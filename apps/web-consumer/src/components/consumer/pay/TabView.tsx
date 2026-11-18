@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { brandLabel } from "@/lib/api/cards";
-import { useAddCardPage } from "@/lib/added-card";
+import { useAddCardModal } from "@/lib/added-card";
 import {
   apiCancelTab,
   apiGetTab,
@@ -727,9 +727,9 @@ function SplitScreen({
   const [pmPick, setPmPick] = useState<string | null>(null);
   const [cardSheet, setCardSheet] = useState(false);
   const [busy, setBusy] = useState(false);
-  // Add a card: its own page since MESITA-4101; back here it is this
+  // Add a card: a modal since MESITA-4398; once saved it is this
   // bill's card.
-  const openAddCard = useAddCardPage((id) => {
+  const openAddCard = useAddCardModal((id) => {
     setPmPick(id);
     onCardSaved();
   });
