@@ -39,6 +39,16 @@
 // anytime". The loaded page and the loading frame are one shape; the "Your
 // plan" / "Other plan" boxes above are gone.
 //
+// PLANS AS PRODUCTS SINCE MESITA-4385 (Pato 2026-11-18 on the page above:
+// "omg. this looks like shit … add boxes and shit. add colors. must look
+// like fucking products"; mock B "Pro hero"): the usage card, then Mesita
+// Pro as a card with a brand-pink band (name, "$1" large, "USD a month"),
+// two pink stat tiles (10 tickets a month, +7 more than Free), the Soon
+// perk, and its action inside the card (Upgrade with the terms, Renews ·
+// Cancel Pro, or Keep Pro); then Free as one grey line with a ticket mark
+// and "$0". No footer band and no Plans/Your plan boxes. Pro is the one
+// coloured product on Me; the rest of the app stays achromatic.
+//
 // One capability, nothing else (Pato: "only that capability for the moment").
 // The server decides it all (consumer-web-get-plan, -start-plan,
 // -cancel-plan; supabase/functions/_shared/guest-plan.ts): Upgrade opens
@@ -49,13 +59,13 @@
 // Plan copy never names Class, and Class copy never names a plan (MESITA-2553).
 
 import { useEffect, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Ticket } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import {
+  dollars,
   PLAN_ROWS,
-  type PlanRowWords,
 } from "@/components/consumer/me/plan-words";
 import { EFError } from "@/lib/api/_invoke";
 import {
@@ -64,69 +74,129 @@ import {
   apiStartPlan,
   type GuestPlanView,
 } from "@/lib/api/plan";
-import { PRO_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
+import {
+  FREE_RESERVATIONS_PER_MONTH,
+  PRO_PRICE_CENTS,
+  PRO_RESERVATIONS_PER_MONTH,
+} from "@/lib/plan-perks";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { ERROR_BOX_CLASS, INFO_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import {
   CurrentPill,
   ME_BUTTON_CLASS,
-  RowDivider,
 } from "./settings-rows";
-import { Panel } from "@/components/shared/Panel";
 
-/** One plan as a row of the Plans card: its name with the Current pill, its
- *  price, its perks as a check list, then `children` (Pro's Renews line).
- *  The name is an h3 in the body sans under the panel's serif h2, and a paid
- *  price is the name's size, never larger (MESITA-4359, 6A and 8A). */
-function PlanCard({
-  words,
+/** Mesita's own pink, the brand gradient's two ends (assets/brand). The
+ *  app's `bg-pink-gradient` was repainted ink when it went achromatic, so
+ *  Pro reads the brand tokens directly: Pro is the one coloured product on
+ *  Me (MESITA-4385, Pato: "add colors. must look like fucking products"). */
+const PRO_GRADIENT_CLASS =
+  "bg-[linear-gradient(135deg,var(--brand-pink-400),var(--brand-pink-600))]";
+// Inline, since the type-role lint reads any `text-[…]` as a font size.
+const PRO_INK = { color: "var(--brand-pink-600)" } as const;
+const PRO_INK_DEEP = { color: "var(--brand-pink-700)" } as const;
+
+/** Mesita Pro as a product (MESITA-4385, mock B "Pro hero"): a pink band
+ *  with its name and price, then a white body with two stat tiles, the Soon
+ *  perk, and the action the guest's plan calls for (`children`). */
+function ProCard({
   current,
-  paid = false,
   children,
 }: {
-  words: PlanRowWords;
   current: boolean;
-  /** Pro: its price in ink; Free's "$0" is grey. */
-  paid?: boolean;
   children?: React.ReactNode;
 }) {
+  const words = PLAN_ROWS.premium;
   return (
     <section
-      className="p-4"
       aria-label={words.title}
       data-plan-row={words.title}
+      className="overflow-hidden rounded-2xl border border-[var(--brand-pink-100)] shadow-[0_12px_28px_-14px_var(--brand-pink-600)]"
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-sans text-base font-semibold">
-          {words.title}
-          {current && <CurrentPill data-plan-current="" />}
-        </h3>
-        <span
-          className={cn(
-            "shrink-0 text-base",
-            paid ? "font-semibold" : "text-muted-foreground",
+      <div
+        className={cn(
+          PRO_GRADIENT_CLASS,
+          "flex items-start justify-between gap-3 p-4 text-white",
+        )}
+      >
+        <div className="min-w-0">
+          <h3 className="font-display text-2xl leading-tight font-bold">
+            Mesita {words.title}
+          </h3>
+          {current && (
+            <span
+              data-plan-current=""
+              className="type-meta mt-1.5 inline-block rounded-full bg-white/25 px-2 py-0.5 font-semibold"
+            >
+              Current
+            </span>
           )}
-        >
-          {words.price}
-        </span>
+        </div>
+        <p className="flex shrink-0 flex-col items-end">
+          <span className="text-4xl leading-none font-extrabold tracking-tight tabular-nums">
+            {dollars(PRO_PRICE_CENTS)}
+          </span>{" "}
+          <span className="type-label text-white/85">USD a month</span>
+        </p>
       </div>
-      <ul className="mt-3 flex flex-col gap-2 text-sm">
-        <li className="flex items-center gap-2">
-          <Check className="h-4 w-4 shrink-0" aria-hidden />
-          {words.perk}
-        </li>
+      <div className="bg-card flex flex-col gap-3 p-4">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl bg-[var(--brand-pink-50)] px-3 py-2">
+            <p className="text-xl font-extrabold tabular-nums" style={PRO_INK}>
+              {PRO_RESERVATIONS_PER_MONTH}
+            </p>
+            <p className="type-label font-medium" style={PRO_INK_DEEP}>
+              reservation tickets a month
+            </p>
+          </div>
+          <div className="rounded-xl bg-[var(--brand-pink-50)] px-3 py-2">
+            <p className="text-xl font-extrabold tabular-nums" style={PRO_INK}>
+              +{PRO_RESERVATIONS_PER_MONTH - FREE_RESERVATIONS_PER_MONTH}
+            </p>
+            <p className="type-label font-medium" style={PRO_INK_DEEP}>
+              more than Free
+            </p>
+          </div>
+        </div>
         {words.soonPerk && (
-          <li className="text-muted-foreground flex items-center gap-2">
-            <Check className="h-4 w-4 shrink-0" aria-hidden />
+          <p className="text-muted-foreground flex items-center gap-2 text-sm">
+            <Check className="h-4 w-4 shrink-0" style={PRO_INK} aria-hidden />
             {words.soonPerk}
             <span className="bg-muted text-muted-foreground type-meta rounded-full px-1.5 py-0.5 font-semibold">
               Soon
             </span>
-          </li>
+          </p>
         )}
-      </ul>
-      {children ? <div className="mt-4">{children}</div> : null}
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** Free as one grey line under Pro (MESITA-4385): a ticket mark, the name
+ *  with its Current pill, its monthly tickets and "$0". */
+function FreeLine({ current }: { current: boolean }) {
+  const words = PLAN_ROWS.free;
+  return (
+    <section
+      aria-label={words.title}
+      data-plan-row={words.title}
+      className="border-border bg-muted/60 flex items-center gap-3 rounded-2xl border p-3.5"
+    >
+      <span className="border-border bg-card grid h-10 w-10 shrink-0 place-items-center rounded-xl border">
+        <Ticket className="text-muted-foreground h-5 w-5" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <h3 className="font-display text-lg leading-tight font-bold">
+          {words.title}
+          {current && <CurrentPill data-plan-current="" />}
+        </h3>
+        <p className="text-muted-foreground text-sm">{words.perk}</p>
+      </div>
+      <span className="shrink-0 text-lg font-extrabold tabular-nums">
+        {words.price}
+      </span>
     </section>
   );
 }
@@ -148,34 +218,36 @@ function resetDay(now = new Date()): string {
   });
 }
 
-/** This month's usage (MESITA-3899): the first panel, the reason to
- *  upgrade. Ink bar; full and red at or over the cap. Empty before the read.
- *  MESITA-4359 (2A): "{used} of {cap} used", and a Free guest at or over the
- *  cap is told how many more Pro gives this month. A guest can be over the
- *  cap (tickets booked before it fell to 3), so the bar's value is clamped
- *  and the spoken text carries the true count (9A). */
+/** This month's usage (MESITA-3899), the reason to upgrade, as its own card
+ *  (MESITA-4385): "{used} of {cap} tickets used" with a red "Limit reached"
+ *  pill at or over the cap, the bar (ink, red when full), then the reset
+ *  day and, for a Free guest at or over the cap, how many more Pro gives
+ *  this month in pink. A guest can be over the cap (tickets booked before it
+ *  fell to 3), so the bar's value is clamped and the spoken text carries the
+ *  true count (MESITA-4359, 9A). */
 function UsageCard({ view }: { view: GuestPlanView | null }) {
   const used = view?.used ?? 0;
   const cap = view?.cap ?? 0;
   const full = !!view && used >= cap;
   const ratio = view && cap > 0 ? Math.min(used / cap, 1) : full ? 1 : 0;
   const proMore =
-    view?.plan === "free" && full
-      ? PRO_RESERVATIONS_PER_MONTH - used
-      : 0;
+    view?.plan === "free" && full ? PRO_RESERVATIONS_PER_MONTH - used : 0;
   return (
     <section
-      className="p-4"
+      className="border-border bg-card rounded-2xl border p-4"
       aria-label="This month"
       data-plan-usage
     >
-      <p className="text-sm font-semibold">
-        {!view
-          ? "Reservations this month"
-          : full
-            ? `Limit reached · ${used} of ${cap} used`
-            : `${used} of ${cap} used`}
-      </p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold">
+          {view ? `${used} of ${cap} tickets used` : "Tickets this month"}
+        </p>
+        {full && (
+          <span className="bg-destructive/10 text-destructive type-meta shrink-0 rounded-full px-2 py-0.5 font-semibold">
+            Limit reached
+          </span>
+        )}
+      </div>
       <div
         role="progressbar"
         aria-label="Reservations used this month"
@@ -199,11 +271,19 @@ function UsageCard({ view }: { view: GuestPlanView | null }) {
       </div>
       <p className="text-muted-foreground type-label mt-2">
         Resets {resetDay()}
-        {proMore > 0 && ` · Pro gives you ${proMore} more now`}
+        {proMore > 0 && (
+          <>
+            {" · "}
+            <span className="font-semibold" style={PRO_INK}>
+              Pro gives you {proMore} more now
+            </span>
+          </>
+        )}
       </p>
     </section>
   );
 }
+
 
 /** "Dec 14". */
 function day(iso: string | null): string {
@@ -311,11 +391,34 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
   const plan = view?.plan ?? null;
   const paidPro = plan === "premium" && !view?.granted;
 
-  // PRO'S LINE LIVES IN ITS BOX; ITS BUTTON IN THE FOOTER BAND (MESITA-4052).
-  // An operator's grant (granted) has neither: nothing to buy, nothing to
-  // cancel.
-  const proLine =
-    paidPro && view && !view.cancel_at_period_end ? (
+  /** Pro's pink button, inside Pro's card (MESITA-4385: no footer band, so
+   *  no white gap between the product and its action). */
+  const proButton = (label: string, data: Record<string, string>) => (
+    <Button
+      size="lg"
+      className={cn(ME_BUTTON_CLASS, PRO_GRADIENT_CLASS, "w-full text-white")}
+      onClick={upgrade}
+      disabled={busy}
+      {...data}
+    >
+      {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+      {label}
+    </Button>
+  );
+
+  // What Pro's card ends with, by the guest's plan. An operator's grant
+  // (granted) has nothing to buy and nothing to cancel.
+  const proAction =
+    plan === "free" ? (
+      <div className="mt-1 flex flex-col gap-2">
+        {proButton("Upgrade to Pro", { "data-plan-upgrade": "" })}
+        {/* True terms (MESITA-4359, 3A): Pro is monthly and Cancel Pro ends
+            it at the period's end. */}
+        <p className="text-muted-foreground type-label text-center">
+          Billed monthly in USD · Cancel anytime
+        </p>
+      </div>
+    ) : paidPro && view && !view.cancel_at_period_end ? (
       <p className="text-muted-foreground type-label">
         Renews {day(view.paid_until)} ·{" "}
         <button
@@ -330,73 +433,25 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
         </button>
       </p>
     ) : paidPro && view?.cancel_at_period_end ? (
-      <p className="text-muted-foreground type-label">
-        Ends {day(view.paid_until)}, then you&apos;re on Free.
-      </p>
-    ) : null;
-
-  const footerButton =
-    plan === "free" ? (
-      <Button
-        size="lg"
-        className={cn(ME_BUTTON_CLASS, "w-full")}
-        onClick={upgrade}
-        disabled={busy}
-        data-plan-upgrade=""
-      >
-        {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-        Upgrade to Pro
-      </Button>
-    ) : paidPro && view?.cancel_at_period_end ? (
-      <Button
-        size="lg"
-        className={cn(ME_BUTTON_CLASS, "w-full")}
-        onClick={upgrade}
-        disabled={busy}
-        data-plan-keep=""
-      >
-        {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-        Keep Pro
-      </Button>
-    ) : null;
-
-  // Free guests read the terms under Upgrade (MESITA-4359, 3A): true, since
-  // Pro is monthly and Cancel Pro ends it at the period's end.
-  const footer =
-    plan === "free" ? (
-      <div className="flex flex-col gap-2">
-        {footerButton}
+      <div className="mt-1 flex flex-col gap-2">
+        {proButton("Keep Pro", { "data-plan-keep": "" })}
         <p className="text-muted-foreground type-label text-center">
-          Billed monthly in USD · Cancel anytime
+          Ends {day(view.paid_until)}, then you&apos;re on Free.
         </p>
       </div>
-    ) : (
-      footerButton
-    );
+    ) : null;
 
-  const free = (
-    <PlanCard words={PLAN_ROWS.free} current={plan === "free"} />
-  );
-  const pro = (
-    <PlanCard words={PLAN_ROWS.premium} current={plan === "premium"} paid>
-      {proLine}
-    </PlanCard>
-  );
-
-  // Before the read and after it, one shape (MESITA-4359, 1A and 4A): the
-  // month first, then Free and Pro in that order; only the pill moves.
+  // MESITA-4385 (mock B): the month, then Mesita Pro as the product, then
+  // Free as one line. Before the read the same shape draws with no pill and
+  // no button.
   return (
-    <MeScreen title="Plan" footer={footer}>
+    <MeScreen title="Plan">
       <div className="flex flex-col gap-4">
-        <Panel title="This month">
-          <UsageCard view={view} />
-        </Panel>
-        <Panel title="Plans">
-          {free}
-          <RowDivider />
-          {pro}
-        </Panel>
+        <UsageCard view={view} />
+        <ProCard current={plan === "premium"}>{proAction}</ProCard>
+        <FreeLine current={plan === "free"} />
       </div>
+
 
       <div className="mt-4 flex flex-col gap-3" aria-live="polite">
         {failed && (
