@@ -226,7 +226,10 @@ export function IdentityModules({
         className={cn(MODULE_CLASS, "h-12")}
         data-identity-name
       >
-        <span className="text-foreground truncate text-lg font-bold tracking-tight">{name}</span>
+        {/* ONE TYPE (Pato, 2026-11-18, MESITA-4348: "keep fonts
+            standardized"): the name and the handle are the Me tiles' own
+            text-sm bold; the followers the same size, muted. */}
+        <span className="text-foreground truncate text-sm font-bold tracking-tight">{name}</span>
       </PushLink>
       <PushLink
         href={instagram.href}
@@ -235,9 +238,9 @@ export function IdentityModules({
         data-identity-instagram
       >
         <InstagramBadge connected={instagram.connected} />
-        <span className="text-foreground truncate font-semibold">{handle}</span>
+        <span className="text-foreground truncate font-bold tracking-tight">{handle}</span>
         {followers ? (
-          <span className="text-muted-foreground ml-auto shrink-0 pl-2">{followers}</span>
+          <span className="text-muted-foreground ml-auto shrink-0 pl-2 font-medium">{followers}</span>
         ) : null}
       </PushLink>
     </div>
