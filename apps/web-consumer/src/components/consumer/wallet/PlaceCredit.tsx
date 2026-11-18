@@ -295,6 +295,15 @@ export function PlaceCredit({
   // before the purchase it refunds lands).
   const muted = card.available_cents <= 0;
   const amount = money(Math.max(0, card.available_cents), card.currency);
+  // ON ITS WAY, ON THE CARD (MESITA-4321, Pato: "the card view here must
+  // also express both current credits and pending credits … no time to
+  // land, just pending"): money still landing here (the server's pending,
+  // a bonus's 3 hours) plus Story bonuses still waiting on their story,
+  // which the server has not credited yet, so they are not in it.
+  const comingCents =
+    Math.max(0, balance?.pending_cents ?? 0) +
+    stories.filter((s) => s.place_id === row.placeId && storyBonusOpen(s)).reduce((n, s) => n + Math.max(0, s.bonus_cents), 0);
+  const coming = comingCents > 0 ? `+${money(comingCents, card.currency)} pending` : null;
   // A card with a Story voucher waiting is never removable from here.
   const removable = onRemove !== undefined && stories.length === 0 && canRemoveLoyaltyCard(balance);
   const pendingKeys = groupKeys(pending);
@@ -313,7 +322,7 @@ export function PlaceCredit({
           is white at reduced opacity, never grey on pink. */}
       <div
         role="img"
-        aria-label={`Loyalty Card, ${card.name}, ${amount} available`}
+        aria-label={`Loyalty Card, ${card.name}, ${amount} available${coming ? `, ${coming}` : ""}`}
         className="relative mx-auto aspect-[1.586] w-1/2 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-[var(--brand-pink-500)] to-[var(--brand-pink-800)] p-3 text-white shadow-md"
         data-loyalty-card-amounts
       >
@@ -331,6 +340,11 @@ export function PlaceCredit({
         <p className={cn("relative mt-3 text-xl font-semibold tabular-nums", muted && "text-white/70")} aria-hidden>
           {amount}
         </p>
+        {coming ? (
+          <p className="relative text-sm font-medium text-white/80 tabular-nums" aria-hidden data-loyalty-card-pending>
+            {coming}
+          </p>
+        ) : null}
         <p className="type-eyebrow relative text-white/80" aria-hidden>Loyalty Card</p>
       </div>
       {gone ? (
