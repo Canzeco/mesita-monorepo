@@ -222,7 +222,8 @@ const EMPTY: Record<
 /** Tickets' tabs (MESITA-3893, Pato: "remove all. just Visits. Vouchers.
  *  Gifts"). REFUNDS IS ITS OWN TAB AGAIN (MESITA-3949, Pato: "add Refunds
  *  here ... Refunds is important in tickets"), last. */
-export type TicketTab = "visits" | "vouchers" | "gifts" | "refunds";
+export type TicketTab = "visits" | "vouchers" | "gifts";
+// REFUNDS LEFT FOR SETTINGS (MESITA-4402): /me/settings/refunds, RefundsPage.
 // AN ICON ON EACH (MESITA-3900, Pato: "add icons to the top menu here"):
 // the ones the page's empty states already wear. Gifts became Gifts-In and
 // Gifts-Out (MESITA-3941), hyphenated (MESITA-3949, Pato: "use \"-\""), and
@@ -235,13 +236,11 @@ const TICKET_TABS: ReadonlyArray<{
   { kind: "visits", label: "Visits", icon: UtensilsCrossed },
   { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
   { kind: "gifts", label: "Gifts", icon: Gift },
-  { kind: "refunds", label: "Refunds", icon: HandCoins },
 ];
 
 /** The tab a /me/tickets address shows: bare is Visits. */
 function ticketTabOf(seg: string | undefined): TicketTab {
   if (seg === "vouchers") return "vouchers";
-  if (seg === "refunds") return "refunds";
   if (seg === "gifts" || seg === "gifts-in" || seg === "gifts-out")
     return "gifts";
   return "visits";
@@ -372,6 +371,40 @@ export function useVisits() {
   });
 }
 
+/** /me/settings/refunds (MESITA-4402): the refund rows Tickets' Refunds tab
+ *  listed, now a Settings page. */
+export function RefundsPage() {
+  const getSupabase = useLazyBrowserSupabase();
+  const wallet = useCachedQuery<Wallet>(
+    WALLET_CACHE_KEY,
+    () => apiGetWallet(getSupabase()),
+    { ttl: TTL },
+  );
+  useEffect(() => {
+    if (wallet.error) reportError("me refunds wallet failed", wallet.error);
+  }, [wallet.error]);
+  const rows = useMemo(
+    () =>
+      wallet.data
+        ? walletRows(wallet.data).filter((r) => r.type === "refunds")
+        : null,
+    [wallet.data],
+  );
+  return (
+    <MeScreen title="Refunds">
+      <TicketList
+        type="refunds"
+        rows={rows}
+        ready={!wallet.loading}
+        failed={!!wallet.error}
+        retry={() => wallet.reload()}
+        note={null}
+        foot={null}
+      />
+    </MeScreen>
+  );
+}
+
 /** /me/tickets and /me/tickets/<kind>: every transaction, one chip per kind. */
 export function TicketsPage() {
   // THE TAB IS THE PATH (as Activity's chip was, MESITA-3811):
@@ -479,7 +512,6 @@ export function TicketsBoard({
           ]
         : null,
       vouchers: of("vouchers"),
-      refunds: of("refunds"),
     } satisfies Record<Exclude<TicketTab, "gifts">, Row[] | null>;
   }, [visitList, walletData]);
 
@@ -722,7 +754,7 @@ function TicketPills({
   return (
     <nav
       aria-label="Kinds of ticket"
-      className={cn("bg-card border-border grid shrink-0 grid-cols-4 border-b", flush && "-mx-5")}
+      className={cn("bg-card border-border grid shrink-0 grid-cols-3 border-b", flush && "-mx-5")}
       data-ticket-pills
     >
       {TICKET_TABS.map((t) => {

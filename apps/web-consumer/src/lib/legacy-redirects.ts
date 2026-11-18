@@ -148,11 +148,17 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // Me › Transactions became Activity (MESITA-3631) and is Me › Tickets
   // again (MESITA-3855).
   { source: "/me/transactions", destination: ticketsHref(), permanent: true },
-  // MESITA-3771: MCP is a perk on Plan; Refunds is Tickets' chip (MESITA-3855).
+  // MESITA-3771: MCP is a perk on Plan. Refunds was Tickets' chip
+  // (MESITA-3855) and is a Settings page (MESITA-4402).
   { source: "/me/connector", destination: "/me/plan", permanent: true },
   {
     source: "/me/refunds",
-    destination: ticketsHref("refunds"),
+    destination: "/me/settings/refunds",
+    permanent: true,
+  },
+  {
+    source: "/me/tickets/refunds",
+    destination: "/me/settings/refunds",
     permanent: true,
   },
   // Gifts split into Gifts-In and Gifts-Out (MESITA-3941) and are one

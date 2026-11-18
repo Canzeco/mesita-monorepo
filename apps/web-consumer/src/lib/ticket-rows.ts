@@ -22,7 +22,9 @@ import type {
 } from "@/components/consumer/activity/ActivityRow";
 
 /** A list of tickets: Reservations, or one kind of ticket. */
-export type ListType = "reservations" | TicketKind;
+/** Refunds are a list of their own in Settings since MESITA-4402, not a
+ *  ticket kind; their rows are still read here. */
+export type ListType = "reservations" | TicketKind | "refunds";
 
 /** One ticket and where it sorts: Upcoming soonest first, then Past newest
  *  first. */

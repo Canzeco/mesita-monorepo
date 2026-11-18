@@ -165,6 +165,8 @@ export const CONSUMER_ROUTES = {
     tickets: "/me/tickets",
     settings: "/me/settings",
     settingsContact: "/me/settings/contact",
+    // Refunds left Tickets for Settings (MESITA-4402).
+    settingsRefunds: "/me/settings/refunds",
     // Feedback about the app itself, not a place (MESITA-3029).
     settingsFeedback: "/me/settings/feedback",
     // Integrations (MESITA-3954): Calendar, and MCP Soon; Me's cell read
@@ -261,13 +263,16 @@ export const CONSUMER_ROUTES = {
     // Me › Transactions became Activity (MESITA-3631), then Me › Tickets
     // (MESITA-3855).
     meTransactions: "/me/transactions",
-    // MCP is a Pro perk on Plan (MESITA-3771); Refunds is Tickets' chip.
+    // MCP is a Pro perk on Plan (MESITA-3771); Refunds is a Settings page
+    // (MESITA-4402).
     meConnector: "/me/connector",
     meRefunds: "/me/refunds",
     // Gifts-In and Gifts-Out (MESITA-3941) are one Gifts list again
     // (MESITA-4036), /me/tickets/gifts.
     meTicketsGiftsIn: "/me/tickets/gifts-in",
     meTicketsGiftsOut: "/me/tickets/gifts-out",
+    // Refunds left Tickets for Settings (MESITA-4402).
+    meTicketsRefunds: "/me/tickets/refunds",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
     // Diamond pair, Plan's Pro checkout, Visits, Metrics, Passport.
     // /me/plan (MESITA-2134) is live again. /me/class left Me with Class
@@ -540,6 +545,7 @@ export const ROUTE_MAP = {
   meTicketsKind: row("/me/tickets/:kind", "me", "page", "me"),
   meSettings: row("/me/settings", "me", "page", "me"),
   meSettingsContact: row("/me/settings/contact", "me", "page", "meSettings"),
+  meSettingsRefunds: row("/me/settings/refunds", "me", "page", "meSettings"),
   meSettingsFeedback: row("/me/settings/feedback", "me", "page", "meSettings"),
   // Integrations (MESITA-3954); Calendar is also Reservations' header icon.
   meIntegrations: row("/me/integrations", "me", "page", "me"),
