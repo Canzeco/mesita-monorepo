@@ -120,9 +120,9 @@ export type HubTile = {
   soon?: boolean;
 };
 
-/** The grid cells, in reading order; Settings is the last (nine with it
- *  since MESITA-4306: Profile · Instagram / Plan · Notifications /
- *  Reservations · Tickets / Share · Integrations / Settings). */
+/** The grid cells, in reading order; Settings is the last (ten with it
+ *  since MESITA-4329: Profile · Instagram / Plan · Saved / Notifications ·
+ *  Reservations / Tickets · Share / Integrations · Settings). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // tile only names the page (MESITA-2607).
@@ -146,6 +146,16 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     title: "Plan",
     summary: "Free or Pro",
     href: CONSUMER_ROUTES.mePages.plan,
+  },
+  // SAVED, A SHORTCUT (Pato, 2026-11-18, MESITA-4327: "add a new box, a
+  // shortcut for saved places. not own place. just a shortcut"): Home on
+  // its ❤️ Saved row, no page of its own. Right after Plan (MESITA-4329:
+  // "put it after plan"); it sat beside Settings first.
+  {
+    Icon: Heart,
+    title: "Saved",
+    summary: "Places you saved",
+    href: `${CONSUMER_ROUTES.home}?row=saved`,
   },
   // ACTIVITY'S CHIPS, AS ME'S PAGES (MESITA-3855). The Notifications cell
   // wears the red dot the bar's Activity tab wore (MESITA-3717).
@@ -189,16 +199,6 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     title: "Integrations",
     summary: "Calendar and MCP",
     href: CONSUMER_ROUTES.mePages.integrations,
-  },
-  // SAVED, A SHORTCUT (Pato, 2026-11-18, MESITA-4327: "add a new box, a
-  // shortcut for saved places. not own place. just a shortcut"): Home on
-  // its ❤️ Saved row, no page of its own. Beside Settings, which still
-  // closes the grid.
-  {
-    Icon: Heart,
-    title: "Saved",
-    summary: "Places you saved",
-    href: `${CONSUMER_ROUTES.home}?row=saved`,
   },
 ];
 
