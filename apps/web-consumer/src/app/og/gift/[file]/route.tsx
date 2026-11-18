@@ -86,7 +86,7 @@ export async function GET(
             </div>
             {gift.placeName ? (
               <div style={{ marginTop: 16, fontSize: nameSize, lineHeight: 1.15, display: "flex" }}>
-                at {gift.placeName}
+                {`at ${gift.placeName}`}
               </div>
             ) : null}
           </div>
@@ -117,7 +117,9 @@ export async function GET(
               </div>
             )}
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ fontSize: 26 }}>From {sender}</div>
+              {/* One string per line (MESITA-4365): next/og throws on a
+                  line of two text pieces that is not a flex box. */}
+              <div style={{ fontSize: 26 }}>{`From ${sender}`}</div>
               <div style={{ fontSize: 20, color: "rgba(255,255,255,0.6)" }}>on Mesita</div>
             </div>
           </div>

@@ -39,7 +39,10 @@ export async function jpegResponse(png: Response): Promise<Response | null> {
         "Cache-Control": `public, max-age=${DAY}, s-maxage=${DAY}, stale-while-revalidate=${7 * DAY}`,
       },
     });
-  } catch {
+  } catch (err) {
+    // A render or encode failure falls back to the Mesita card; say why
+    // (MESITA-4365: a gift card fell back for hours without a word).
+    console.error("[og-draw] card failed:", err);
     return null;
   }
 }
