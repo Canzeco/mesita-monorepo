@@ -55,6 +55,8 @@ export type GuestTab = {
     tip_cents?: number;
     /** MESITA-3856: when the bank held this card for the waiter. */
     held_at?: string | null;
+    /** MESITA-4386: express | apple_pay | google_pay on an express card part. */
+    pay_with?: string | null;
   }>;
   /** MESITA-3780: the timeline. Older reads have none. */
   created_at?: string | null;
@@ -136,6 +138,18 @@ export type TabCardStep = {
   publishable_key?: string;
 };
 
+/** MESITA-4386: an express hold waiting for Face ID / Google: the Pay
+ *  screen's ExpressPayButton confirms it with the client secret. */
+export type TabExpressStep = {
+  status: "requires_payment_method";
+  express: true;
+  payment_intent_id: string;
+  client_secret: string;
+  stripe_account: string;
+  publishable_key: string;
+  amount_cents: number;
+};
+
 export type TabRead = {
   tab: GuestTab;
   /** Only when asked (`withCards`) and the place takes cards. */
@@ -144,6 +158,8 @@ export type TabRead = {
   card_action?: TabCardStep;
   /** A card part that just failed; the tab is billed again. */
   card_error?: { code: string; error: string; decline_code?: string };
+  /** MESITA-4386: an express hold not yet confirmed in the browser. */
+  express_action?: TabExpressStep;
   /** MESITA-3709: a new QR for a guest tab, only when asked (`remint`). */
   token?: string;
   qr_url?: string;
@@ -175,17 +191,19 @@ export type PaidGuest = {
   expires_at: string | null;
   test_mode: boolean;
   card?: TabCardStep;
+  /** MESITA-4386: the express hold's step (Apple Pay / Google Pay). */
+  express?: TabExpressStep | { status: "held" | "processing" | "succeeded"; payment_intent_id: string };
 };
 
 export async function apiPayGuest(
   client: SupabaseClient,
-  args: { place_id: string; bill_cents: number; request_id: string; card_pm_id?: string | null } & TabSplit,
+  args: { place_id: string; bill_cents: number; request_id: string; card_pm_id?: string | null; express?: boolean } & TabSplit,
 ): Promise<PaidGuest> {
-  const { card_pm_id, ...rest } = args;
+  const { card_pm_id, express, ...rest } = args;
   const hasCard = rest.card_bill_cents > 0 || rest.card_tip_cents > 0;
   return await invokeEF<PaidGuest>(client, "consumer-web-pay-guest", {
     ...rest,
-    ...(hasCard && card_pm_id ? { card_pm_id } : {}),
+    ...(hasCard && express ? { express: true } : hasCard && card_pm_id ? { card_pm_id } : {}),
   });
 }
 

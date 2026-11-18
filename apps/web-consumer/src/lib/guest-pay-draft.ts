@@ -33,6 +33,8 @@ export type Draft = {
   other: string;
   useCredit: boolean;
   method: PayWith | null;
+  /** MESITA-4386: the card part goes by Apple Pay / Google Pay. */
+  express?: boolean;
   cardId: string | null;
   /** The card just refused: never preselected again (MESITA-4117). */
   refusedCardId?: string | null;
@@ -89,7 +91,7 @@ export function readDraft(placeId: string): Draft | null {
     const method = d.method === "card" || d.method === "cash" ? d.method : null;
     const cardId = typeof d.cardId === "string" ? d.cardId : null;
     const refusedCardId = typeof d.refusedCardId === "string" ? d.refusedCardId : null;
-    return { ...d, stage, method, cardId, refusedCardId };
+    return { ...d, stage, method, cardId, refusedCardId, express: d.express === true };
   } catch {
     return null;
   }

@@ -142,12 +142,15 @@ export type SplitInput = {
   cardTipCents: number;
   /** The saved card (a platform PaymentMethod) for a card part. */
   cardPmId: string | null;
+  /** MESITA-4386: the card part is paid with Apple Pay / Google Pay (guest
+   *  bills only): no saved card; the browser confirms the hold. */
+  express: boolean;
   requestId: string;
 };
 
 /** The guest's split. Every part is a whole number of centavos, 0 to the cap;
  *  the sums and the credit are the SQL's to check, under the pair lock. */
-export function readSplitBody(b: Record<string, unknown>): { ok: true; input: SplitInput } | TabRefusal {
+export function readSplitBody(b: Record<string, unknown>, opts: { allowExpress?: boolean } = {}): { ok: true; input: SplitInput } | TabRefusal {
   if (!isUuid(b.tab_id)) return refuse(400, "bad_request", "tab_id must be a tab id");
   if (!isUuid(b.request_id)) return refuse(400, "bad_request", "request_id must be a uuid");
   const v = b.bill_version;
@@ -159,7 +162,14 @@ export function readSplitBody(b: Record<string, unknown>): { ok: true; input: Sp
   if (parts.some((p) => p === null)) return refuse(400, "parts", "Each part is a whole number of centavos");
   const [credit, cashBill, cashTip, cardBill, cardTip] = parts as number[];
   let cardPmId: string | null = null;
-  if (cardBill > 0 || cardTip > 0) {
+  // MESITA-4386: express (Apple Pay / Google Pay) instead of a saved card.
+  if (b.express !== undefined && b.express !== null && b.express !== false) {
+    if (b.express !== true || !opts.allowExpress) return refuse(400, "bad_body", "express is for a guest's own bill", { field: "express" });
+    if (b.card_pm_id !== undefined && b.card_pm_id !== null) return refuse(400, "bad_body", "Send express or card_pm_id, not both", { field: "express" });
+    if (cardBill === 0 && cardTip === 0) return refuse(400, "bad_body", "express needs a card part", { field: "express" });
+  }
+  const express = b.express === true;
+  if ((cardBill > 0 || cardTip > 0) && !express) {
     if (typeof b.card_pm_id !== "string" || !/^pm_[A-Za-z0-9]{8,64}$/.test(b.card_pm_id)) {
       return refuse(400, "card_required", "Choose a saved card");
     }
@@ -176,6 +186,7 @@ export function readSplitBody(b: Record<string, unknown>): { ok: true; input: Sp
       cardBillCents: cardBill,
       cardTipCents: cardTip,
       cardPmId,
+      express,
       requestId: b.request_id,
     },
   };
@@ -210,7 +221,7 @@ export function readGuestPayBody(b: Record<string, unknown>): { ok: true; input:
   if (b.repeat_ok !== undefined && b.repeat_ok !== null && typeof b.repeat_ok !== "boolean") {
     return refuse(400, "bad_request", "repeat_ok must be true or false");
   }
-  const parsed = readSplitBody({ ...b, tab_id: b.place_id, bill_version: 1 });
+  const parsed = readSplitBody({ ...b, tab_id: b.place_id, bill_version: 1 }, { allowExpress: true });
   if (!parsed.ok) return parsed;
   const { tabId: _t, billVersion: _v, ...parts } = parsed.input;
   return { ok: true, input: { ...parts, placeId: b.place_id, billCents: bill, ticket, repeatOk: b.repeat_ok === true } };
@@ -337,12 +348,14 @@ export type TabPartRow = {
   created_at: string;
   /** MESITA-3856: when Stripe held this card part for the waiter. */
   held_at?: string | null;
+  /** MESITA-4386: express | apple_pay | google_pay on an express card part. */
+  pay_with?: string | null;
 };
 
 export const TAB_COLUMNS =
   "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, created_at, parent_tab_id, split_at, split_ways, origin, verified_at, verified_key_hash, end_reason, signing_at";
 const PART_COLUMNS =
-  "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, paid_at, proof_token, created_at, held_at";
+  "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, paid_at, proof_token, created_at, held_at, pay_with";
 /** The guest's list reads only what a status needs (MESITA-3688): never
  *  `proof_token`, which PART_COLUMNS carries. */
 export const LIST_PART_COLUMNS = "id, tab_id, status, paid_at";
@@ -524,6 +537,8 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
       tip_cents: p.tip_cents,
       // MESITA-3856: a card held for the waiter, not still going through.
       held_at: p.held_at ?? null,
+      // MESITA-4386: "Paid with Apple Pay / Google Pay".
+      pay_with: p.pay_with ?? null,
     })),
     // MESITA-3780: the visit's timeline.
     created_at: t.created_at ?? null,

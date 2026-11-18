@@ -35,6 +35,7 @@ import { cardRefusal } from "./pay-card.ts";
 import { PI_TTL_MS, releasePayment, settleByPaymentIntent, settlePaidPayment, SIGN_WINDOW } from "./settle-payment.ts";
 import { refuse, type TabRefusal } from "./tab.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
+import { walletOfIntent } from "./purchase-pi.ts";
 
 export function isPaymentMethodId(v: unknown): v is string {
   return typeof v === "string" && /^pm_[A-Za-z0-9]{8,64}$/.test(v);
@@ -90,7 +91,25 @@ export type CardStep =
     client_secret: string;
     stripe_account: string;
     publishable_key: string;
+  }
+  // MESITA-4386: an express hold waiting for the guest's Face ID / Google:
+  // the browser confirms it with the client secret (Stripe's Express
+  // Checkout Element). Never a bank check for runBankCheck.
+  | {
+    status: "requires_payment_method";
+    express: true;
+    payment_intent_id: string;
+    client_secret: string;
+    stripe_account: string;
+    publishable_key: string;
+    /** Stripe's units, exactly the PaymentIntent's amount. */
+    amount_cents: number;
   };
+
+/** An express step (MESITA-4386), told apart from a card's. Pure. */
+export function isExpressStep(step: CardStep | null | undefined): boolean {
+  return !!step && step.status === "requires_payment_method";
+}
 
 type Rpc = Pick<SupabaseClient, "rpc">;
 
@@ -103,9 +122,12 @@ export type CardRow = {
   tip_cents: number;
   created_at: string;
   held_at?: string | null;
+  /** MESITA-4386: card | express (absent on an older read: card). */
+  pay_source?: string | null;
+  pay_with?: string | null;
 };
 
-const CARD_ROW_COLUMNS = "id, status, stripe_account_id, stripe_payment_intent_id, card_cents, tip_cents, created_at, held_at";
+const CARD_ROW_COLUMNS = "id, status, stripe_account_id, stripe_payment_intent_id, card_cents, tip_cents, created_at, held_at, pay_source, pay_with";
 
 export async function readCardRow(admin: SupabaseClient, paymentId: string): Promise<CardRow | null> {
   const { data, error } = await admin.from("wallet_payments").select(CARD_ROW_COLUMNS).eq("id", paymentId).maybeSingle();
@@ -186,6 +208,77 @@ async function stepOf(
   }
 }
 
+// ── Express pay on the bill (MESITA-4386) ─────────────────────────────────
+
+/** THE one writer of an express card part's wallet (pay_with), from the
+ *  charge Stripe authorized (latest_charge, expanded when the PaymentIntent
+ *  in hand does not carry it). Idempotent; a failure is logged, never thrown. */
+export async function recordPaymentPayWith(
+  admin: SupabaseClient,
+  stripe: StripeCall,
+  args: { paymentId: string; account: string; pi: Record<string, unknown> },
+): Promise<"apple_pay" | "google_pay" | null> {
+  try {
+    let wallet = walletOfIntent(args.pi);
+    if (!wallet) {
+      const full = await stripe("GET", `payment_intents/${encodeURIComponent(String(args.pi.id))}`, { expand: ["latest_charge"] }, { stripeAccount: args.account });
+      wallet = walletOfIntent(full);
+    }
+    if (wallet) {
+      const { error } = await admin.from("wallet_payments").update({ pay_with: wallet }).eq("id", args.paymentId).eq("pay_source", "express");
+      if (error) throw new Error(error.message);
+    }
+    return wallet;
+  } catch (err) {
+    console.error("[tab-card] pay_with_failed", JSON.stringify({ payment_id: args.paymentId, error: String(err).slice(0, 200) }));
+    return null;
+  }
+}
+
+/** An EXPRESS card part's PaymentIntent as the guest's next step. Never
+ *  stepOf's default branch for a PaymentIntent the browser has not
+ *  confirmed yet: requires_payment_method with no error is the normal state
+ *  before Face ID, so it is kept, with its row open, and its client secret
+ *  answered again while it is younger than PI_TTL_MS (then the cron cancels
+ *  it and gives the credit back). A confirmed one the bank refused
+ *  (last_payment_error) has no retry on a bill: it is cancelled and the row
+ *  released, like a declined saved card. requires_capture is the hold: the
+ *  wallet is recorded and the bill's signing window starts. */
+async function expressStepOf(
+  admin: SupabaseClient,
+  stripe: StripeCall,
+  row: { id: string; account: string; createdAt: string },
+  pi: Record<string, unknown>,
+  publishableKey: string | null,
+  nowMs: number,
+): Promise<{ ok: true; step: CardStep } | TabRefusal> {
+  const piId = String(pi.id);
+  if (pi.status === "requires_capture" || pi.status === "succeeded") {
+    await recordPaymentPayWith(admin, stripe, { paymentId: row.id, account: row.account, pi });
+    return await stepOf(admin, stripe, row, pi, publishableKey);
+  }
+  if (pi.status === "processing" || pi.status === "canceled") return await stepOf(admin, stripe, row, pi, publishableKey);
+  const last = (pi.last_payment_error ?? null) as Record<string, unknown> | null;
+  if (last) return await stepOf(admin, stripe, row, { ...pi, status: "requires_payment_method" }, publishableKey);
+  if (nowMs - Date.parse(row.createdAt) >= PI_TTL_MS) {
+    return refuse(409, "closed", "That payment timed out. Start again.");
+  }
+  const secret = typeof pi.client_secret === "string" ? pi.client_secret : null;
+  if (!publishableKey || !secret) return refuse(503, "payments_unavailable", "Payments are not available right now");
+  return {
+    ok: true,
+    step: {
+      status: "requires_payment_method",
+      express: true,
+      payment_intent_id: piId,
+      client_secret: secret,
+      stripe_account: row.account,
+      publishable_key: publishableKey,
+      amount_cents: typeof pi.amount === "number" ? pi.amount : 0,
+    },
+  };
+}
+
 /** Steps 3–5 for a card row pay_tab_open_parts opened (or the same tap's
  *  row again). A thrown error is the door's 5xx: the row stays `opening`
  *  (no PI) and the cron fails it after ten minutes, or `open` (a PI) and
@@ -195,8 +288,9 @@ export async function runTabCard(
   stripe: StripeCall,
   args: {
     paymentId: string;
-    customer: string;
-    platformPm: string;
+    /** The saved card (pay_source card); unused on an express part. */
+    customer?: string;
+    platformPm?: string;
     currency: string;
     placeId: string;
     placeName: string | null;
@@ -205,12 +299,16 @@ export async function runTabCard(
     publishableKey: string | null;
     /** MESITA-3856: a guest tab's card is held (manual capture) until the waiter signs. */
     hold?: boolean;
+    nowMs?: number;
   },
 ): Promise<{ ok: true; step: CardStep } | TabRefusal> {
   const row = await readCardRow(admin, args.paymentId);
   if (!row || !row.stripe_account_id) throw new Error("card_row_missing");
   const account = row.stripe_account_id;
   const ref = { id: row.id, account };
+  // MESITA-4386: the row's pay_source decides, never the body.
+  const express = row.pay_source === "express";
+  const nowMs = args.nowMs ?? Date.now();
 
   if (row.stripe_payment_intent_id) {
     // The same tap again: read where its PI stands.
@@ -219,10 +317,16 @@ export async function runTabCard(
         ? { ok: true, step: { status: "succeeded", payment_intent_id: row.stripe_payment_intent_id } }
         : refuse(409, "closed", "That payment was cancelled. Tap again to start over.");
     }
+    if (express) {
+      const pi = await stripe("GET", `payment_intents/${encodeURIComponent(row.stripe_payment_intent_id)}`, { expand: ["latest_charge"] }, { stripeAccount: account });
+      return await expressStepOf(admin, stripe, { ...ref, createdAt: row.created_at }, pi, args.publishableKey, nowMs);
+    }
     const pi = await stripe("GET", `payment_intents/${encodeURIComponent(row.stripe_payment_intent_id)}`, undefined, { stripeAccount: account });
     return await stepOf(admin, stripe, ref, pi, args.publishableKey);
   }
   if (row.status !== "opening") return refuse(409, "closed", "That payment was cancelled. Tap again to start over.");
+  if (express) return await openExpressHold(admin, stripe, { ...ref, cardCents: row.card_cents, tipCents: row.tip_cents }, args);
+  if (!args.customer || !args.platformPm) throw new Error("card_source_missing");
 
   let pi: Record<string, unknown>;
   try {
@@ -283,6 +387,68 @@ export async function runTabCard(
   return await stepOf(admin, stripe, ref, confirmed, args.publishableKey);
 }
 
+/** MESITA-4386: open an express card part's hold: a manual-capture
+ *  PaymentIntent for the row's own amount, card only (Apple Pay and Google
+ *  Pay are cards), NO payment method and NO confirm; the row names it before
+ *  the browser ever sees the client secret. */
+async function openExpressHold(
+  admin: SupabaseClient,
+  stripe: StripeCall,
+  ref: { id: string; account: string; cardCents: number; tipCents: number },
+  args: { currency: string; placeId: string; placeName: string | null; consumerId: string; tabId: string; publishableKey: string | null },
+): Promise<{ ok: true; step: CardStep } | TabRefusal> {
+  if (!args.publishableKey) {
+    await releasePayment(admin, ref.id, "failed", "no_publishable_key");
+    return refuse(503, "payments_unavailable", "Payments are not available right now");
+  }
+  let pi: Record<string, unknown>;
+  try {
+    pi = await stripe("POST", "payment_intents", {
+      amount: toStripeAmount(ref.cardCents + ref.tipCents, args.currency),
+      currency: args.currency,
+      payment_method_types: ["card"],
+      capture_method: "manual",
+      description: `Mesita · ${(args.placeName ?? "place").slice(0, 200)}`,
+      metadata: {
+        mesita_kind: "wallet_payment",
+        payment_id: ref.id,
+        place_id: args.placeId,
+        consumer_id: args.consumerId,
+        tab_id: args.tabId,
+        card_cents: String(ref.cardCents),
+        tip_cents: String(ref.tipCents),
+        mesita_pay_with: "express",
+      },
+    }, { stripeAccount: ref.account, idempotencyKey: `tabexpress-pi:${ref.id}` });
+  } catch (err) {
+    const code = stripeCode(err);
+    console.error("[tab-card] express_start_failed", JSON.stringify({ payment_id: ref.id, code }));
+    await releasePayment(admin, ref.id, "failed", code);
+    return refuse(502, "card_failed", "Couldn't start the payment. Try again.", { stripe_code: code });
+  }
+  const piId = String(pi.id);
+  const { data: opened, error: openErr } = await admin.rpc("wallet_open_payment_pi", { p_payment_id: ref.id, p_payment_intent: piId });
+  const secret = typeof pi.client_secret === "string" ? pi.client_secret : null;
+  if (openErr || !(opened as { ok?: boolean } | null)?.ok || !secret) {
+    console.error("[tab-card] pi_write", JSON.stringify({ payment_id: ref.id, error: openErr?.message ?? (secret ? JSON.stringify(opened) : "no_secret") }));
+    await cancelQuietly(stripe, ref.account, piId, ref.id);
+    await releasePayment(admin, ref.id, "failed", "pi_write");
+    return refuse(502, "card_failed", "Couldn't start the payment. Try again.");
+  }
+  return {
+    ok: true,
+    step: {
+      status: "requires_payment_method",
+      express: true,
+      payment_intent_id: piId,
+      client_secret: secret,
+      stripe_account: ref.account,
+      publishable_key: args.publishableKey,
+      amount_cents: typeof pi.amount === "number" ? pi.amount : toStripeAmount(ref.cardCents + ref.tipCents, args.currency),
+    },
+  };
+}
+
 /** The guest's poll: an open card row's PI as the next step (a 3-D Secure
  *  challenge the guest has not finished, or one that just went through).
  *  Past PI_TTL_MS it is T2a's cancel-then-release. Answers null when there
@@ -296,6 +462,12 @@ export async function pollTabCard(
 ): Promise<{ step: CardStep | null; refusal: TabRefusal | null }> {
   if (row.status !== "open" || !row.stripe_payment_intent_id || !row.stripe_account_id) return { step: null, refusal: null };
   try {
+    const express = row.pay_source === "express";
+    // MESITA-4386: a held express part learns its wallet if the guest's own
+    // settle call never landed.
+    if (express && row.held_at && (row.pay_with ?? "express") === "express") {
+      await recordPaymentPayWith(admin, stripe, { paymentId: row.id, account: row.stripe_account_id, pi: { id: row.stripe_payment_intent_id } });
+    }
     // MESITA-3856: a held card lives as long as its bill, not PI_TTL_MS.
     if (row.held_at || nowMs - Date.parse(row.created_at) >= PI_TTL_MS) {
       await settleByPaymentIntent(admin, stripe, {
@@ -306,6 +478,13 @@ export async function pollTabCard(
         created_at: row.created_at,
       }, nowMs);
       return { step: null, refusal: null };
+    }
+    if (express) {
+      const pi = await stripe("GET", `payment_intents/${encodeURIComponent(row.stripe_payment_intent_id)}`, { expand: ["latest_charge"] }, {
+        stripeAccount: row.stripe_account_id,
+      });
+      const r = await expressStepOf(admin, stripe, { id: row.id, account: row.stripe_account_id, createdAt: row.created_at }, pi, publishableKey, nowMs);
+      return r.ok ? { step: r.step, refusal: null } : { step: null, refusal: r };
     }
     const pi = await stripe("GET", `payment_intents/${encodeURIComponent(row.stripe_payment_intent_id)}`, undefined, {
       stripeAccount: row.stripe_account_id,

@@ -37,6 +37,25 @@
 //   card_unavailable | card_tip_alone | below_minimum | cards_off |
 //   no_account | currency_mismatch | card_declined | card_needs_auth ·
 //   502 card_failed
+//
+// MESITA-4386: APPLE PAY / GOOGLE PAY. `express: true` instead of
+// `card_pm_id` pays the card part with the phone's wallet (Stripe's Express
+// Checkout Element; never a Connect Express account). The bill opens exactly
+// as with a card; the card part's row reads pay_source 'express' and gets a
+// MANUAL-CAPTURE PaymentIntent with no payment method, which the browser
+// confirms with Face ID / Google: that is the hold. The waiter's code
+// captures it like a held card (MESITA-3856); expiry, X or Reject cancel it
+// and give the credit back. A replay of the same request_id answers the same
+// PaymentIntent's state and never cancels one still waiting for the wallet.
+//   Example: { "place_id": "…", "bill_cents": 50000, "request_id": "…",
+//     "credit_cents": 0, "card_bill_cents": 50000, "card_tip_cents": 5000,
+//     "cash_bill_cents": 0, "cash_tip_cents": 0, "express": true }
+//   Answer adds express: { status: requires_payment_method, express: true,
+//     payment_intent_id, client_secret, stripe_account, publishable_key,
+//     amount_cents } — or held / processing once confirmed.
+//   Refusals beyond the card's: 400 bad_body field=express (with
+//   card_pm_id, or with no card part) · 409 disabled (the kill switch
+//   app_config.money_config.express_wallets is []).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
@@ -51,6 +70,7 @@ import { readVoucherPlace } from "../_shared/wallet.ts";
 import { mintProofToken } from "../_shared/proof.ts";
 import { callTabRpc, hashTabToken, mintTabToken, readGuestPayBody, rpcRefusal, tabUrl } from "../_shared/tab.ts";
 import { ownCard, runTabCard, tabCardRates } from "../_shared/tab-card.ts";
+import { readMoneyConfig } from "../_shared/money-config.ts";
 import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-pay-guest", async (req) => {
@@ -94,9 +114,16 @@ serveJson("consumer-web-pay-guest", async (req) => {
       }
       const gate = cardRefusal({ account, settings, livemode, currency, cardCents: pay.cardBillCents, tipCents: pay.cardTipCents });
       if (gate) return json({ ok: false, code: gate.code, error: gate.error, ...gate.detail }, gate.status);
-      customer = await readCustomer(admin, userId, livemode);
-      if (!(await ownCard(stripe!, customer, pay.cardPmId as string))) {
-        return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
+      if (pay.express) {
+        // MESITA-4386: the kill switch stops a Pay screen already open too.
+        if ((await readMoneyConfig(admin)).express_wallets.length === 0) {
+          return json({ ok: false, code: "disabled", error: "Apple Pay and Google Pay are off right now. Pay with a card." }, 409);
+        }
+      } else {
+        customer = await readCustomer(admin, userId, livemode);
+        if (!(await ownCard(stripe!, customer, pay.cardPmId as string))) {
+          return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
+        }
       }
       cardArgs = {
         p_stripe_account_id: account.stripe_account_id,
@@ -139,11 +166,19 @@ serveJson("consumer-web-pay-guest", async (req) => {
     // consumer-web-get-tab instead.
     const cardPaymentId = typeof r.card_payment_id === "string" ? r.card_payment_id : null;
     let cardStep: Record<string, unknown> | null = null;
-    if (hasCard && cardPaymentId && stripe && customer && r.outcome === "opened") {
+    // MESITA-4386: an express part is marked before its PaymentIntent opens
+    // (a freshly opened row only); its replay reads the same PaymentIntent.
+    if (pay.express && hasCard && cardPaymentId && r.outcome === "opened") {
+      const { error: markErr } = await admin.from("wallet_payments")
+        .update({ pay_source: "express", pay_with: "express" })
+        .eq("id", cardPaymentId).eq("status", "opening").is("stripe_payment_intent_id", null);
+      if (markErr) throw new Error(`express_mark: ${markErr.message}`);
+    }
+    const runCard = hasCard && cardPaymentId && stripe && (pay.express || (customer && r.outcome === "opened"));
+    if (runCard) {
       const res = await runTabCard(admin, stripe, {
         paymentId: cardPaymentId,
-        customer,
-        platformPm: pay.cardPmId as string,
+        ...(customer ? { customer, platformPm: pay.cardPmId as string } : {}),
         currency,
         placeId: pay.placeId,
         placeName: place.name ?? null,
@@ -184,7 +219,7 @@ serveJson("consumer-web-pay-guest", async (req) => {
       expires_at: r.expires_at ?? null,
       card_payment_id: cardPaymentId,
       test_mode: !livemode,
-      ...(cardStep ? { card: cardStep } : {}),
+      ...(cardStep ? (pay.express ? { express: cardStep } : { card: cardStep }) : {}),
     });
   } catch (err) {
     return failWithRequestId("consumer-web-pay-guest", "Couldn't pay. Try again with the same tap.", err);

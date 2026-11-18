@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, CreditCard, Lock, ReceiptText, XCircle } from "lucide-react";
+import { Banknote, Check, CreditCard, Lock, ReceiptText, Smartphone, XCircle } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,8 @@ import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { useAddCardPage } from "@/lib/added-card";
 import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
-import { money, type PayPlace } from "@/lib/api/wallet";
+import { apiExpressSetup, money, type PayPlace } from "@/lib/api/wallet";
+import { ExpressBillPay } from "./ExpressBillPay";
 import { acceptCardsAnswer, type CardsLoad, cardsFailure, loadedCards, pickCard } from "@/lib/pay-cards";
 import { guardStage, initialStage, PAY_CARD_REFUSALS, payBackStage, STEP } from "@/lib/guest-pay-stages";
 import {
@@ -152,6 +153,13 @@ export function GuestPayScreen({
   // off is not carried over from a saved draft.
   const [useCredit, setUseCredit] = useState(true);
   const [method, setMethod] = useState<PayWith | null>(draft?.method ?? null);
+  // APPLE PAY / GOOGLE PAY (MESITA-4386): the card part by the phone's
+  // wallet, held at Face ID and charged when the waiter signs. `express` is
+  // the guest's pick; `expressOn` says the place can take it (setup); the
+  // Pay step's button says whether this phone can.
+  const [express, setExpress] = useState(draft?.express === true);
+  const [expressOn, setExpressOn] = useState(false);
+  const [expressState, setExpressState] = useState<"loading" | "ready" | "none">("loading");
   const [cardId, setCardId] = useState<string | null>(draft?.cardId ?? null);
   // The card the bank just refused: Method says "Declined just now" (MESITA-4226).
   const [refusedCardId, setRefusedCardId] = useState<string | null>(draft?.refusedCardId ?? null);
@@ -268,8 +276,30 @@ export function GuestPayScreen({
   useEffect(() => {
     if (sentTabId) return;
     requestId.current = requestIdAfterEdit(requestId.current, outcomeUnknown);
-    writeDraft(placeId, { stage: shown, typing, amount, tip, other, useCredit, method, cardId, refusedCardId });
-  }, [sentTabId, placeId, shown, typing, amount, tip, other, useCredit, method, cardId, refusedCardId, outcomeUnknown]);
+    writeDraft(placeId, { stage: shown, typing, amount, tip, other, useCredit, method, express, cardId, refusedCardId });
+  }, [sentTabId, placeId, shown, typing, amount, tip, other, useCredit, method, express, cardId, refusedCardId, outcomeUnknown]);
+
+  // Whether the place can take Apple Pay / Google Pay for what's left
+  // (MESITA-4386): asked once the amount settles, on Method and Pay.
+  useEffect(() => {
+    if (!cardOk || dueCents <= 0 || (shown !== "method" && shown !== "pay")) return;
+    let gone = false;
+    const t = window.setTimeout(() => {
+      void apiExpressSetup(getSupabase(), { place_id: placeId, bill: { amount_cents: dueCents } })
+        .then((r) => {
+          if (!gone) setExpressOn(r.available);
+        })
+        .catch(() => {
+          if (!gone) setExpressOn(false);
+        });
+    }, 300);
+    return () => {
+      gone = true;
+      window.clearTimeout(t);
+    };
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardOk, dueCents, shown, placeId]);
 
   useEffect(() => {
     root.current?.focus({ preventScroll: true });
@@ -712,14 +742,33 @@ export function GuestPayScreen({
                     guest's one saved card, its brand chip as on the Wallet;
                     the choice is the ring. */}
                 <MethodTile
-                  on={way === "card"}
+                  on={way === "card" && !(express && expressOn)}
                   off={appWhy}
                   lead={card ? <SavedCardChip brand={card.brand} last4={card.last4} /> : <NoCardChip />}
                   id="app"
                   title="Card"
                   line={card ? `${brandLabel(card.brand)} •••• ${card.last4}${card.id === refusedCardId ? " · Declined just now" : ""}` : "Add one on the next step"}
-                  onPick={() => setMethod("card")}
+                  onPick={() => {
+                    setMethod("card");
+                    setExpress(false);
+                  }}
                 />
+                {/* APPLE PAY / GOOGLE PAY (MESITA-4386): Face ID on Pay holds
+                    it; the waiter's code charges it. */}
+                {expressOn && !appWhy ? (
+                  <MethodTile
+                    on={way === "card" && express}
+                    off={null}
+                    lead={<WalletChip />}
+                    id="express"
+                    title="Apple Pay / Google Pay"
+                    line="Held with Face ID, charged when the waiter signs"
+                    onPick={() => {
+                      setMethod("card");
+                      setExpress(true);
+                    }}
+                  />
+                ) : null}
                 {/* Cash in its dollar-bill green (MESITA-4244, Pato: "for
                     cash use green"), the Wallet's Cash chip. */}
                 <MethodTile
@@ -729,7 +778,10 @@ export function GuestPayScreen({
                   id="cash"
                   title="Pay outside the app"
                   line="Cash or the place's card terminal"
-                  onPick={() => setMethod("cash")}
+                  onPick={() => {
+                    setMethod("cash");
+                    setExpress(false);
+                  }}
                 />
               </div>
             )}
@@ -750,6 +802,80 @@ export function GuestPayScreen({
         />
       </>,
       "method",
+    );
+  }
+
+  // 4A' APPLE PAY / GOOGLE PAY (MESITA-4386): the amount, the phone's own
+  // wallet button and when it is charged. Face ID holds the card part and
+  // opens the bill; the waiter's code charges it. A phone without a wallet
+  // says so, and the way out is Method.
+  if (way === "card" && express && expressOn) {
+    const chooseAnother = () => {
+      setError(null);
+      setPayRefusal(null);
+      setExpress(false);
+      setStage("method");
+    };
+    return frame(
+      <>
+        {top(STEP.pay, backArrow)}
+        <StepBody className="flex-1">
+          <PaySection className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-10 text-center" data-guest-express-pay={expressState}>
+            <span className="flex flex-col items-center gap-1">
+              <span className="text-muted-foreground text-lg font-semibold">Pay</span>
+              <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
+            </span>
+            <div className="relative min-h-12 w-full max-w-xs">
+              {expressState === "loading" ? <Skeleton className="absolute inset-0 h-12 rounded-xl" /> : null}
+              {expressState === "none" ? (
+                <p className="text-base font-semibold" role="status">
+                  This phone can&apos;t pay with Apple Pay or Google Pay here. Choose another way.
+                </p>
+              ) : null}
+              <div className={cn(expressState !== "ready" && "pointer-events-none opacity-0")}>
+                <ExpressBillPay
+                  getSupabase={getSupabase}
+                  placeId={placeId}
+                  billCents={billCents}
+                  dueCents={dueCents}
+                  split={{ credit_cents: creditCents, card_bill_cents: leftCents, card_tip_cents: tipCents, cash_bill_cents: 0, cash_tip_cents: 0 }}
+                  requestId={() => (requestId.current ??= crypto.randomUUID())}
+                  disabled={held}
+                  onState={setExpressState}
+                  onLock={setBusy}
+                  onOpened={(tabId, qrUrl) => {
+                    rememberGuestTab(tabId, qrUrl);
+                    writeLastTip(placeId, tip);
+                    writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, express, cardId, refusedCardId, sentTabId: tabId });
+                    setOutcomeUnknown(false);
+                  }}
+                  onBill={(tabId) => onPaid(tabId)}
+                  onError={(text) => {
+                    requestId.current = null;
+                    setError(text);
+                  }}
+                />
+              </div>
+            </div>
+            {busy ? (
+              <p className="text-base font-semibold" role="status" data-guest-express-paying>
+                Paying…
+              </p>
+            ) : null}
+            <p className="text-muted-foreground flex max-w-xs items-center justify-center gap-2 text-sm">
+              <Lock className="h-4 w-4 shrink-0" aria-hidden />
+              Held now, charged when the waiter signs.
+            </p>
+          </PaySection>
+        </StepBody>
+        {status}
+        <StepFooter
+          onCancel={askCancel}
+          cancelDisabled={cancelLocked}
+          primary={{ label: "Choose another way", busy: false, disabled: held, onClick: chooseAnother }}
+        />
+      </>,
+      "express",
     );
   }
 
@@ -881,6 +1007,16 @@ export function GuestPayScreen({
 /** A row for App or Cash in the How you pay panel (MESITA-4072; a bordered
  *  tile with a thick border when chosen until then): the ring on the right
  *  fills when chosen; grey with one line why when the place can't take it. */
+/** Apple Pay / Google Pay's tile mark (MESITA-4386): a black phone-wallet
+ *  chip; the brands' own buttons appear on Pay. */
+function WalletChip() {
+  return (
+    <span className="flex h-9 w-12 items-center justify-center rounded-md bg-neutral-950 text-white" aria-hidden>
+      <Smartphone className="h-5 w-5" strokeWidth={2} />
+    </span>
+  );
+}
+
 /** Method's rows share one leading slot (MESITA-4085), as wide as the
  *  Credits Card image, each mark at its left edge: the marks start on one
  *  edge and the words on another. */
