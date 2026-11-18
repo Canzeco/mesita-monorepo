@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  CalendarClock,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
@@ -513,9 +514,12 @@ export function ReservationUpdatesPicker({
 // MESITA-4259: When · Party · You (Pato: "first page … date and hour and
 // time flexibility", then "number of people and optional notes", "lastly the
 // name … and the phone"). Changing a reservation stops at Party.
-export type ReserveStep = "when" | "party" | "you";
+// MESITA-4403 (Pato: "if you already have a table, add it as a prev step"):
+// a live table here comes first, as Your table.
+export type ReserveStep = "table" | "when" | "party" | "you";
 
 export const STEP_META: Record<ReserveStep, { name: string; icon: LucideIcon }> = {
+  table: { name: "Your table", icon: CalendarClock },
   when: { name: "When", icon: CalendarDays },
   party: { name: "Party", icon: Users },
   you: { name: "You", icon: CircleCheck },
