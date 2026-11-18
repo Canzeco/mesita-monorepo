@@ -47,7 +47,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ChevronDown, Compass, Heart } from "lucide-react";
+import { ChevronDown, Compass, Heart, Store, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
@@ -151,9 +151,12 @@ export function isEveryFamily(chip: string): boolean {
  *  just places"): the emoji rail beside rows of photo · facts, at
  *  /home/places, where every "go Home" lands. Places 1.0's family column and
  *  big tiles are gone; /home/rows is a legacy address. */
+// AN ICON BESIDE EACH WORD (Pato, 2026-11-18, MESITA-4346: "maybe in
+// Places and [Social] add an icon"): a storefront for the places, people
+// for Social, in the word's own colour.
 export const HOME_TABS = [
-  { key: "places", label: "Places", href: CONSUMER_ROUTES.home },
-  { key: "social", label: "Social", href: CONSUMER_ROUTES.homeSocial },
+  { key: "places", label: "Places", href: CONSUMER_ROUTES.home, Icon: Store },
+  { key: "social", label: "Social", href: CONSUMER_ROUTES.homeSocial, Icon: Users },
 ] as const;
 export type HomeTab = (typeof HOME_TABS)[number]["key"];
 
@@ -492,7 +495,12 @@ export function CatalogRails() {
               on ? "text-foreground font-bold" : "text-muted-foreground",
             )}
           >
-            <span className="relative py-3">
+            <span className="relative flex items-center gap-1.5 py-3">
+              <t.Icon
+                aria-hidden
+                className="h-[18px] w-[18px] shrink-0"
+                strokeWidth={on ? 2.5 : 2}
+              />
               {t.label}
               {on ? (
                 <span
