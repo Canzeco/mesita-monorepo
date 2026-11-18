@@ -4,10 +4,10 @@ import { HEADLINE, VALUE_LINE } from "@/lib/value-line";
 
 // /og/mesita.jpg — Mesita's own link preview (MESITA-4341, Pato: "update
 // this too"), the card mesita.ai and every page without its own unfurls
-// into. The sign-in cover as a 1200×630 card: the terrace photo full bleed,
-// the mark and wordmark top-left, the cover's headline in Fraunces and its
-// value line in Inter on the dark foot. Words from lib/value-line.ts, so
-// the card never says what the cover stopped saying.
+// into: an ink panel with the mark, the cover's headline (Fraunces) and its
+// value line (Inter) at the left, the terrace photo at the right
+// (MESITA-4361). Words from lib/value-line.ts, so the card never says what
+// the cover stopped saying.
 
 export const runtime = "nodejs";
 
@@ -23,74 +23,83 @@ export async function GET(req: Request) {
   const photo = new URL("/auth/terrace.jpg", req.url).toString();
   const mark = markSvg ? `data:image/svg+xml;base64,${Buffer.from(markSvg).toString("base64")}` : null;
 
+  // THE SPLIT (Pato, 2026-11-18, MESITA-4361: "it must be horizontal
+  // division not vertical. text on the left, image at the right"): an ink
+  // panel with the words at the left, the terrace photo at the right. The
+  // words over the full photo (MESITA-4341, MESITA-4344) read badly in a chat.
+  const PANEL = 520;
   const png = new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", background: "#000" }}>
+      <div style={{ width: 1200, height: 630, display: "flex", background: "#0b0b0b" }}>
+        <div
+          style={{
+            width: PANEL,
+            height: 630,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            padding: "52px 48px 44px",
+            color: "#fff",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {mark ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={mark} alt="" width={44} height={44} style={{ width: 44, height: 44 }} />
+            ) : null}
+            <div
+              style={{
+                fontFamily: outfit ? "Outfit" : undefined,
+                fontSize: 40,
+                fontWeight: 700,
+                letterSpacing: "-0.03em",
+              }}
+            >
+              Mesita
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div
+              style={{
+                fontFamily: fraunces ? "Fraunces" : undefined,
+                fontSize: 58,
+                fontWeight: 600,
+                letterSpacing: "-0.02em",
+                lineHeight: 1.05,
+              }}
+            >
+              {HEADLINE}
+            </div>
+            <div
+              style={{
+                marginTop: 20,
+                fontFamily: inter ? "Inter" : undefined,
+                fontSize: 24,
+                lineHeight: 1.35,
+                color: "rgba(255,255,255,0.8)",
+              }}
+            >
+              {VALUE_LINE}
+            </div>
+          </div>
+          <div
+            style={{
+              fontFamily: inter ? "Inter" : undefined,
+              fontSize: 20,
+              color: "rgba(255,255,255,0.6)",
+            }}
+          >
+            mesita.ai
+          </div>
+        </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={photo}
           alt=""
-          width={1200}
+          width={1200 - PANEL}
           height={630}
-          style={{ position: "absolute", top: 0, left: 0, width: 1200, height: 630, objectFit: "cover", objectPosition: "center 40%" }}
+          style={{ width: 1200 - PANEL, height: 630, objectFit: "cover", objectPosition: "center 45%" }}
         />
-        {/* The veil (MESITA-4344): Satori reads no "inset", so it is sized
-            by hand, or it draws nothing. Light at the top for the wordmark,
-            clear through the faces, deep at the foot for the words. */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: 1200,
-            height: 630,
-            display: "flex",
-            backgroundImage:
-              "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 26%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 62%, rgba(0,0,0,0.9) 100%)",
-          }}
-        />
-        <div style={{ position: "absolute", left: 56, top: 48, display: "flex", alignItems: "center", gap: 14 }}>
-          {mark ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={mark} alt="" width={52} height={52} style={{ width: 52, height: 52 }} />
-          ) : null}
-          <div
-            style={{
-              fontFamily: outfit ? "Outfit" : undefined,
-              fontSize: 46,
-              fontWeight: 700,
-              letterSpacing: "-0.03em",
-              color: "#fff",
-            }}
-          >
-            Mesita
-          </div>
-        </div>
-        <div style={{ position: "absolute", left: 56, right: 56, bottom: 52, display: "flex", flexDirection: "column" }}>
-          <div
-            style={{
-              fontFamily: fraunces ? "Fraunces" : undefined,
-              fontSize: 72,
-              fontWeight: 600,
-              letterSpacing: "-0.02em",
-              lineHeight: 1.04,
-              color: "#fff",
-            }}
-          >
-            {HEADLINE}
-          </div>
-          <div
-            style={{
-              marginTop: 18,
-              fontFamily: inter ? "Inter" : undefined,
-              fontSize: 30,
-              lineHeight: 1.3,
-              color: "rgba(255,255,255,0.85)",
-            }}
-          >
-            {VALUE_LINE}
-          </div>
-        </div>
       </div>
     ),
     {
