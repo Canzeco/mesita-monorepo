@@ -18,7 +18,6 @@ import {
   type VoucherKey,
 } from "@mesita/place-profile";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
-import { walletGiftPath } from "@/lib/consumer-route-contract";
 import { invokeEF } from "./_invoke";
 import type { SavedCard } from "./cards";
 
@@ -809,12 +808,34 @@ export type GiftTicket = {
   entry: { kind: string; at: string; available_at?: string | null } | null;
 };
 
-export type SentLink = { gift_id: string; place_id: string; amount_cents: number; currency: string; created_at: string };
+export type SentLink = {
+  gift_id: string;
+  place_id: string;
+  amount_cents: number;
+  currency: string;
+  created_at: string;
+  /** Its link can be shown again (MESITA-4390); false for a link sent
+   *  before, which can only be taken back. Absent from an older server. */
+  can_share?: boolean;
+};
 
-/** The link a friend opens: this app's own Wallet with the key,
- *  /wallet/gift/<token> (MESITA-3614; links sent as /wallet?gift= forward). */
-export function giftLink(token: string, origin: string = typeof window === "undefined" ? "" : window.location.origin): string {
-  return `${origin}${walletGiftPath(token)}`;
+/** The link a friend opens, short (MESITA-4390, Pato: "the link must only
+ *  be mesita.ai/g/abcdef"): this app's host, no scheme, /g/<key>. /g/<key>
+ *  forwards to the Wallet with the key, /wallet/gift/<key> (next.config). */
+export function giftLink(token: string, host: string = typeof window === "undefined" ? "" : window.location.host): string {
+  return `${host}${GIFT_SHORT_PREFIX}${encodeURIComponent(token)}`;
+}
+
+/** The short link's path prefix (MESITA-4390). */
+export const GIFT_SHORT_PREFIX = "/g/";
+
+/** An open gift's link again, for its sender (MESITA-4390). `token` is null
+ *  for a link sent before links could be shown again: take it back. */
+export async function apiGetGiftLink(
+  client: SupabaseClient,
+  giftId: string,
+): Promise<{ gift_id: string; amount_cents: number; currency: string; token: string | null }> {
+  return await invokeEF(client, "consumer-web-get-gift-link", { gift_id: giftId });
 }
 
 /** Sends credit at one place as a one-time link (a link only since
@@ -875,4 +896,5 @@ export const GIFT_REFUSAL: Record<string, string> = {
   claimed: "Someone already took this credit.",
   taken_back: "Your friend took this credit back.",
   own_gift: "This is your own link. Send it to a friend.",
+  too_many_tries: "Too many wrong links. Try again in an hour.",
 };

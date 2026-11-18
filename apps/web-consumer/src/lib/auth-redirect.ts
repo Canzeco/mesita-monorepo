@@ -77,7 +77,7 @@ export function payPlaceFromNext(
 }
 
 /** A gift link's key: 22 characters of base64url, case-sensitive. */
-const GIFT_TOKEN = "([A-Za-z0-9_-]{22})";
+const GIFT_TOKEN = "([A-Za-z0-9_-]{22}|[A-Za-z0-9]{6})"; // a short key since MESITA-4390
 /** A friend's gift link, /wallet/gift/<token>, and its address before
  *  MESITA-3614, /wallet?gift=<token>. No `i` flag: the key is
  *  case-sensitive, and a lowercased key is a different (dead) link. A

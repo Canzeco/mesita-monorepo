@@ -11,11 +11,14 @@ import {
 // URL, a bookmark) 308s once to the bare path, and a retired bare address
 // then takes its own hop through the legacy table.
 
+import { GIFT_SHORT_REDIRECTS } from "../gift-short-link";
+
 describe("retired surface prefixes", () => {
   it("next.config serves the legacy table, then the two prefix catches", async () => {
     expect(await nextConfig.redirects!()).toEqual([
       ...LEGACY_REDIRECTS,
       ...SURFACE_PREFIX_REDIRECTS,
+      ...GIFT_SHORT_REDIRECTS,
     ]);
   });
 
