@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Clock, Wallet } from "lucide-react";
+import { ChevronLeft, Clock, QrCode, Wallet } from "lucide-react";
 import { readyClock, VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { money } from "@/lib/api/wallet";
+import { PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
 import { walletPlacePath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import type { PlaceDetail } from "@/lib/place-detail";
@@ -87,46 +89,47 @@ export function RewardsSheet({
             only while a bonus waits, says how much and when. Signed out there
             is no balance and no card (D6). */}
         {credit ? (
-          // TWO WAYS ON (Pato, 2026-11-17, MESITA-4230: "add shortcut to go
-          // for wallet or shortcut to go to pay bill"; D5): the card opens
-          // your credit here (history, pending); its white Pay bill opens
-          // this place's Pay, where the credit spends.
-          <div className="bg-foreground text-paper relative flex shrink-0 flex-col gap-2 rounded-2xl px-4 py-3" data-offers-balance>
-            <button
-              type="button"
-              onClick={() => navigateTo(router, walletPlacePath(place.id), { motion: "drill" })}
-              aria-label={`Your credit here. ${credit.label}`}
-              className="absolute inset-0 rounded-2xl"
-              data-offers-credit-link
-            />
-            <div className="pointer-events-none flex items-center justify-between gap-3" aria-hidden>
-              <p className="flex min-w-0 items-center gap-2 text-[0.6875rem] font-bold tracking-wider uppercase opacity-80">
-                <Wallet className="h-5 w-5 shrink-0" strokeWidth={2.25} />
-                <span className="truncate">Ready now</span>
-              </p>
-              <p className="shrink-0 text-2xl leading-none font-extrabold tracking-tight tabular-nums">{credit.ready}</p>
+          // TWO BLACK BUTTONS (Pato, 2026-11-18, MESITA-4320: "i don't like
+          // the current format of the card ... two horizontal buttons. Pay
+          // Here. see Card. but two separated buttons. Both black. use the
+          // standard size"): no card. The balance is one plain line, then
+          // Pay here (this place's Pay, where the credit spends) and See
+          // card (your credit here: history, pending) side by side at the
+          // app's 48px. Before: a black card the whole of which opened your
+          // credit, with a white Pay bill pill (MESITA-4230).
+          <div className="flex shrink-0 flex-col gap-3" data-offers-balance>
+            <div className="flex items-baseline justify-between gap-3 px-1">
+              <p className="text-muted-foreground text-sm font-medium">Ready now</p>
+              <p className="text-foreground text-2xl leading-none font-extrabold tracking-tight tabular-nums">{credit.ready}</p>
             </div>
-            <div className="pointer-events-none flex items-center justify-between gap-3">
-              {credit.pending ? (
-                <p className="flex min-w-0 items-center gap-1.5 text-sm tabular-nums opacity-80" aria-hidden data-offers-pending>
-                  <Clock className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                  <span className="truncate">{credit.pending}</span>
-                </p>
-              ) : (
-                <span className="flex items-center gap-0.5 text-sm opacity-80" aria-hidden>
-                  Your credit here <ChevronRight className="h-4 w-4" strokeWidth={2.25} />
-                </span>
-              )}
+            {credit.pending ? (
+              <p className="text-muted-foreground -mt-1 flex items-center gap-1.5 px-1 text-sm tabular-nums" data-offers-pending>
+                <Clock className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                <span className="truncate">{credit.pending}</span>
+              </p>
+            ) : null}
+            <div className="flex gap-3">
               {actions.onPay ? (
                 <button
                   type="button"
                   onClick={actions.onPay}
-                  className="bg-paper text-foreground pointer-events-auto relative h-9 shrink-0 rounded-full px-4 text-sm font-bold hover:opacity-90"
+                  className={cn(PRIMARY_BUTTON_CLASS, "flex-1")}
                   data-offers-pay-bill
                 >
-                  Pay bill
+                  <QrCode className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                  Pay here
                 </button>
               ) : null}
+              <button
+                type="button"
+                onClick={() => navigateTo(router, walletPlacePath(place.id), { motion: "drill" })}
+                aria-label={`See card. ${credit.label}`}
+                className={cn(PRIMARY_BUTTON_CLASS, "flex-1")}
+                data-offers-credit-link
+              >
+                <Wallet className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                See card
+              </button>
             </div>
           </div>
         ) : null}
