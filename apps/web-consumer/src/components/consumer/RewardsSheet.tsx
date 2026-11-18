@@ -123,12 +123,12 @@ export function RewardsSheet({
               <button
                 type="button"
                 onClick={() => navigateTo(router, walletPlacePath(place.id), { motion: "drill" })}
-                aria-label={`See wallet. ${credit.label}`}
+                aria-label={`See Loyalty Card. ${credit.label}`}
                 className={cn(PRIMARY_BUTTON_CLASS, "flex-1")}
                 data-offers-credit-link
               >
                 <Wallet className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-                See wallet
+                See Loyalty Card
               </button>
             </div>
           </div>

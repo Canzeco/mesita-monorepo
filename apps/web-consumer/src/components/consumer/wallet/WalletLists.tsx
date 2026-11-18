@@ -361,6 +361,20 @@ export function AddCardTile({ href }: { href: string }) {
   );
 }
 
+/** The saved card while it is not known yet (MESITA-4373, Pato: "use
+ *  placeholders"): never "Add a card" for a guest whose card did not load. */
+export function CardTileSkeleton() {
+  return (
+    <div className={TILE} aria-hidden data-wallet-method="loading">
+      <Skeleton className="h-10 w-16 shrink-0 rounded-lg" />
+      <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <Skeleton className="h-4 w-20 rounded-md" />
+        <Skeleton className="h-3.5 w-16 rounded-md" />
+      </span>
+    </div>
+  );
+}
+
 /** The two halves in ONE box (Pato, 2026-11-17, MESITA-4236: "PAYMENT
  *  METHODS IN A BOX", undoing MESITA-4232's D11): the panel and its heading
  *  like Loyalty Cards, Cash left and the card right, a hairline between. */

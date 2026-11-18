@@ -388,19 +388,10 @@ export function PlaceCredit({
               data-loyalty-card-offer
             >
               <span className={cn(ROUND_FACE, "text-foreground bg-white")}>
-                {/* THE BONUS IN THE CIRCLE (MESITA-4362, Pato: "don't mention
-                    the discount there on top, mention the actual bonus inside
-                    the circle"); nothing on sale with a bonus, the plain +. */}
-                {/* INK, A SIGN AND THE NUMBER (MESITA-4366, Pato: "maybe black,
-                    not green, or add sign"): the + over a small "30%". */}
-                {offers[0].bonus ? (
-                  <span className="flex flex-col items-center leading-none">
-                    <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-                    <span className="mt-0.5 text-xs font-bold tracking-tight tabular-nums">{offers[0].bonus}%</span>
-                  </span>
-                ) : (
-                  <Plus className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
-                )}
+                {/* ONLY THE + (MESITA-4373, Pato: "don't mention the amount,
+                    only the plus icon is enough"); the bonus is on the Offers
+                    page. Undoes MESITA-4362/4366's number in the circle. */}
+                <Plus className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
               </span>
               Add Funds
             </PushLink>

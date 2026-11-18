@@ -19,6 +19,7 @@ import { useWallet } from "./use-wallet";
 import { useStoryNow } from "./use-story-now";
 import {
   AddCardTile,
+  CardTileSkeleton,
   AddRow,
   CardTile,
   CashTile,
@@ -200,8 +201,12 @@ export function WalletSection({
     if (cardsFailed && !cardsToasted.current) {
       cardsToasted.current = true;
       toast.error("Couldn't load your saved cards");
+      // One more read: the card tile stays a placeholder meanwhile, never
+      // a false "Add a card" (MESITA-4373).
+      const id = setTimeout(reread, 2_000);
+      return () => clearTimeout(id);
     }
-  }, [cardsFailed]);
+  }, [cardsFailed, reread]);
 
   // The first Credits photos, decoded before the page shows.
   const photoKey = (credits ?? [])
@@ -270,6 +275,8 @@ export function WalletSection({
         <CashTile onOpen={() => setMethod({ kind: "cash" })} />
         {cards[0] ? (
           <CardTile card={cards[0]} onOpen={() => setMethod({ kind: "card", card: cards[0] })} />
+        ) : cardsFailed ? (
+          <CardTileSkeleton />
         ) : (
           <AddCardTile href={CONSUMER_ROUTES.walletAddCard} />
         )}
