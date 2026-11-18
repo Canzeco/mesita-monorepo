@@ -25,7 +25,8 @@ const OFFER_BOX =
  *  shit, return to the switching boxes"): every offer this guest can buy here
  *  in one box the height of Save · Share, Classic · Welcome · Story, each
  *  in its colour with its "N% Bonus" pill, on the shared 2s beat. A tap opens
- *  the place's Offers with the offer on screen ticked (`?voucher=`). Held only
+ *  the place's Offers page, never one offer's sheet (MESITA-4358, Pato: "just
+ *  redirect to the offers, wherever I click it"; `?voucher=` before). Held only
  *  while a finger is down (MESITA-4217). MESITA-4207's chip list before. */
 export function OfferButton({
   href,
@@ -47,7 +48,7 @@ export function OfferButton({
   const release = () => setHeld(null);
   return (
     <PushLink
-      href={`${href}?rewards=${slide.section ?? "prepayment"}${slide.voucher ? `&voucher=${slide.voucher}` : ""}`}
+      href={`${href}?rewards=${slide.section ?? "prepayment"}`}
       aria-label={offersLabel(name, slides)}
       onClick={release}
       onPointerDown={hold}
@@ -84,9 +85,9 @@ export function OfferStrip({ name, slides, className }: { name: string; slides: 
   );
 }
 
-/** Where a slide's tap goes: the place's Offers with that offer ticked
- *  (MESITA-4219). `from=wallet` brings Back to the Loyalty Card (MESITA-3883). */
+/** Where a slide's tap goes: the place's Offers page, no offer's sheet open
+ *  (MESITA-4358; it ticked the offer on screen, MESITA-4219). `from=wallet`
+ *  brings Back to the Loyalty Card (MESITA-3883). */
 export function offerHref(placeHref: string, slide: OfferSlide, fromWallet = false): string {
-  const voucher = slide.voucher ? `&voucher=${slide.voucher}` : "";
-  return `${placeHref}?rewards=${slide.section ?? "prepayment"}${voucher}${fromWallet ? "&from=wallet" : ""}`;
+  return `${placeHref}?rewards=${slide.section ?? "prepayment"}${fromWallet ? "&from=wallet" : ""}`;
 }
