@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { Camera, Check, ChevronDown } from "lucide-react";
 import { Skeleton, Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { DefaultAvatar, SizedImage } from "@mesita/place-profile";
@@ -18,7 +18,7 @@ import {
 } from "@/lib/avatar-upload";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { ERROR_BOX_CLASS, INPUT_CLASS } from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 import {
@@ -91,45 +91,42 @@ const FIELD_LABEL = {
   birthYear: "Year of birth",
 } as const;
 
-/** Name and Year of birth: the shared input, a notch smaller. One
- *  string for the fields and their loading boxes (MESITA-2701). */
-const FIELD_CLASS = cn(INPUT_CLASS, "h-12 rounded-xl px-3.5 text-base");
 
-/** A field's box before its value lands: the field's own control, empty,
- *  disabled and muted. Not a div, because its height comes from the control:
- *  touch screens draw inputs and selects at 16px (globals.css), so the field
- *  is 38px on a desktop and about 41px on a phone, and a fixed block would
- *  match only one of them. */
-const FIELD_SKELETON_CLASS = cn(
-  FIELD_CLASS,
-  "bg-muted pointer-events-none animate-pulse border-transparent opacity-100",
-);
 
 // THE FORM'S BOXES, ONCE (MESITA-2701): each string below is the box the
 // form draws and the box its skeleton pulses.
 
 /** The 88px photo, in a hairline ring. */
-const PHOTO_BOX_CLASS = "h-22 w-22 shrink-0 rounded-full";
+const PHOTO_BOX_CLASS = "h-24 w-24 shrink-0 rounded-full";
 
 /** The photo and "Change photo", centred above the fields. */
 const TOP_ROW_CLASS = "flex flex-col items-center gap-2.5 pt-2";
 
 /** The fields and Save, one column under the photo. */
-const FIELDS_CLASS = "mt-6 flex flex-col gap-4";
+const FIELDS_CLASS = "mt-5 flex flex-col gap-4";
 
-/** Sex's switch: the field's box holding two halves. */
-const SEX_SWITCH_CLASS =
-  "bg-card border-border grid h-12 grid-cols-2 gap-1 rounded-xl border p-1";
+// ONE CARD OF ROWS (Pato, 2026-11-18, MESITA-4345: "this looks like shit.
+// better design. more friendly. maybe rounded border"; picked A of three
+// mocks): the four fields are rows of one rounded card, the label on the
+// left, the value on the right, hairlines between, the Me grid's own card.
+const CARD_CLASS =
+  "border-border bg-card divide-border overflow-hidden rounded-2xl border divide-y";
+const ROW_CLASS = "flex h-14 min-w-0 items-center gap-3 px-4";
+const ROW_LABEL_CLASS = "text-muted-foreground w-28 shrink-0 text-sm";
+/** A row's value: borderless, so the row is the field. */
+const ROW_INPUT_CLASS =
+  "text-foreground placeholder:text-muted-foreground h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none";
+
 const SEX_OPTION_CLASS =
-  "rounded-lg text-base font-medium transition active:scale-[0.98]";
+  "rounded-full px-3.5 py-1.5 text-sm font-medium transition active:scale-[0.98]";
 
 /** Save under the fields: the Me button, full width and 48px; off it is
  *  grey. */
 const SAVE_BUTTON_CLASS = cn(
   ME_BUTTON_CLASS,
-  "mt-2 h-12 w-full text-base disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100",
+  "h-12 w-full rounded-full text-base disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100",
 );
-const SAVE_BOX_CLASS = "mt-2 h-12 w-full rounded-xl";
+const SAVE_BOX_CLASS = "h-12 w-full rounded-full";
 
 /** How long "Saved" stays on the button. */
 const SAVED_MS = 2000;
@@ -159,18 +156,6 @@ export function EditProfileSheet() {
   return <EditProfileForm profile={profile} />;
 }
 
-/** One field's label: SheetField's, Sex's and the year's, and the
- *  skeleton's. */
-function FieldLabel({ children, id }: { children: string; id?: string }) {
-  return (
-    <span
-      id={id}
-      className="text-muted-foreground type-label mb-1 block font-medium"
-    >
-      {children}
-    </span>
-  );
-}
 
 /**
  * The form before the profile lands, block for block (Pato, MESITA-2701:
@@ -195,43 +180,13 @@ export function EditProfileSkeleton() {
       </div>
 
       <div className={FIELDS_CLASS} aria-hidden>
-        {[FIELD_LABEL.firstName, FIELD_LABEL.lastName].map((label) => (
-          <div key={label}>
-            <FieldLabel>{label}</FieldLabel>
-            <input
-              disabled
-              tabIndex={-1}
-              aria-hidden
-              className={FIELD_SKELETON_CLASS}
-            />
-          </div>
-        ))}
-        <div>
-          <FieldLabel>{FIELD_LABEL.sex}</FieldLabel>
-          <div
-            className={cn(
-              SEX_SWITCH_CLASS,
-              "bg-muted animate-pulse border-transparent",
-            )}
-          >
-            {SEX_OPTIONS.map((option) => (
-              <span
-                key={option.value}
-                className={cn(SEX_OPTION_CLASS, "invisible")}
-              >
-                {option.label}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div>
-          <FieldLabel>{FIELD_LABEL.birthYear}</FieldLabel>
-          <select
-            disabled
-            tabIndex={-1}
-            aria-hidden
-            className={FIELD_SKELETON_CLASS}
-          />
+        <div className={CARD_CLASS}>
+          {Object.values(FIELD_LABEL).map((label) => (
+            <div key={label} className={ROW_CLASS}>
+              <span className={ROW_LABEL_CLASS}>{label}</span>
+              <Skeleton className="h-4.5 w-28 rounded" />
+            </div>
+          ))}
         </div>
         <Skeleton className={SAVE_BOX_CLASS} />
       </div>
@@ -411,86 +366,102 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
               </span>
             )}
           </span>
+          {/* The camera badge says the photo is a button (MESITA-4345). */}
+          <span
+            aria-hidden
+            className="bg-foreground text-paper ring-background absolute right-0 bottom-0 flex h-8 w-8 items-center justify-center rounded-full ring-4"
+          >
+            <Camera className="h-4 w-4" />
+          </span>
         </button>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploadingPhoto}
-          className="text-foreground min-h-11 px-2 text-base font-semibold transition hover:opacity-70 disabled:opacity-50"
+          className="text-foreground min-h-11 px-2 text-sm font-semibold transition hover:opacity-70 disabled:opacity-50"
         >
           {uploadingPhoto ? "Uploading…" : "Change photo"}
         </button>
       </div>
 
       <div className={FIELDS_CLASS}>
-        <SheetField
-          label={FIELD_LABEL.firstName}
-          value={firstName}
-          onChange={setFirstName}
-          placeholder="First name"
-          autoComplete="given-name"
-        />
-        <SheetField
-          label={FIELD_LABEL.lastName}
-          value={lastName}
-          onChange={setLastName}
-          placeholder="Last name"
-          autoComplete="family-name"
-        />
-        <div>
-          <FieldLabel id="profile-sex-label">{FIELD_LABEL.sex}</FieldLabel>
-          {/* No option lit is a real state: a legacy profile with no sex
-              stored stays that way until the guest taps one. */}
-          <div
-            role="radiogroup"
-            aria-labelledby="profile-sex-label"
-            className={SEX_SWITCH_CLASS}
-          >
-            {SEX_OPTIONS.map((option) => {
-              const on = sex === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => setSex(option.value)}
-                  className={cn(
-                    SEX_OPTION_CLASS,
-                    on
-                      ? "bg-foreground text-paper"
-                      : "text-muted-foreground hover:bg-muted",
-                  )}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
+        <div className={CARD_CLASS}>
+          <SheetField
+            label={FIELD_LABEL.firstName}
+            value={firstName}
+            onChange={setFirstName}
+            placeholder="First name"
+            autoComplete="given-name"
+          />
+          <SheetField
+            label={FIELD_LABEL.lastName}
+            value={lastName}
+            onChange={setLastName}
+            placeholder="Last name"
+            autoComplete="family-name"
+          />
+          <div className={ROW_CLASS}>
+            <span id="profile-sex-label" className={ROW_LABEL_CLASS}>
+              {FIELD_LABEL.sex}
+            </span>
+            {/* No option lit is a real state: a legacy profile with no sex
+                stored stays that way until the guest taps one. */}
+            <div
+              role="radiogroup"
+              aria-labelledby="profile-sex-label"
+              className="flex gap-1.5"
+            >
+              {SEX_OPTIONS.map((option) => {
+                const on = sex === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => setSex(option.value)}
+                    className={cn(
+                      SEX_OPTION_CLASS,
+                      on
+                        ? "bg-foreground text-paper"
+                        : "bg-muted text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-        <label className="block">
-          <FieldLabel>{FIELD_LABEL.birthYear}</FieldLabel>
-          <select
-            value={birthYear ?? ""}
-            onChange={(e) =>
-              setBirthYear(e.target.value ? Number(e.target.value) : null)
-            }
-            autoComplete="bday-year"
-            className={cn(
-              FIELD_CLASS,
-              birthYear === null && "text-muted-foreground",
-            )}
-          >
-            <option value="" disabled>
-              Year
-            </option>
-            {birthYearOptions().map((y) => (
-              <option key={y} value={y}>
-                {y}
+          <label className={cn(ROW_CLASS, "relative")}>
+            <span className={ROW_LABEL_CLASS}>{FIELD_LABEL.birthYear}</span>
+            <select
+              value={birthYear ?? ""}
+              onChange={(e) =>
+                setBirthYear(e.target.value ? Number(e.target.value) : null)
+              }
+              autoComplete="bday-year"
+              className={cn(
+                ROW_INPUT_CLASS,
+                "cursor-pointer appearance-none pr-6",
+                birthYear === null && "text-muted-foreground font-normal",
+              )}
+            >
+              <option value="" disabled>
+                Year
               </option>
-            ))}
-          </select>
-        </label>
+              {birthYearOptions().map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              aria-hidden
+              className="text-muted-foreground pointer-events-none absolute right-4 h-4 w-4"
+            />
+          </label>
+        </div>
         {saveButton}
       </div>
     </MeScreen>
@@ -511,14 +482,14 @@ function SheetField({
   autoComplete?: string;
 }) {
   return (
-    <label className="block min-w-0">
-      <FieldLabel>{label}</FieldLabel>
+    <label className={ROW_CLASS}>
+      <span className={ROW_LABEL_CLASS}>{label}</span>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className={FIELD_CLASS}
+        className={ROW_INPUT_CLASS}
       />
     </label>
   );
