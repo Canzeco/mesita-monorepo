@@ -1,5 +1,7 @@
--- MESITA-3507, MESITA-4264, MESITA-4296 — the Story voucher, verified BEFORE
--- it is paid: the guest shows a story (an @mesita mention under their
+-- MESITA-3507, MESITA-4264, MESITA-4296, MESITA-4304 — the Story voucher,
+-- verified BEFORE it is paid: the guest shows a story, a waiter of the place
+-- approves it (story_review_open, story_review; an approval is for one place,
+-- the claim voids the bonus not_verified without it) (an @mesita mention under their
 -- verified handle), the buy reserves it (one live purchase per story), the
 -- credit lands the voucher at once and claims the story (unclaimed, the
 -- guest's current handle, the same mode, young enough to outlive the
@@ -14,7 +16,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(39);
+select plan(54);
 
 -- ━━━ Fixtures ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 insert into auth.users (id) values
@@ -24,9 +26,11 @@ insert into public.consumers (id, instagram_handle, instagram_verified_at, insta
   ('00000000-0000-4000-8000-0000000a4296', 'story_probe_a', now(), 5000, false),
   ('00000000-0000-4000-8000-0000000b4296', 'story_probe_b', now(), 5000, false);
 insert into public.place_profiles (id, google_name) values
-  ('00000000-0000-4000-8000-000000014296', 'Story Probe One');
+  ('00000000-0000-4000-8000-000000014296', 'Story Probe One'),
+  ('00000000-0000-4000-8000-000000024296', 'Story Probe Two');
 insert into public.places (id, slug, state, content_state, currency) values
-  ('00000000-0000-4000-8000-000000014296', 'mesita-4296-probe-one', 'active', 'generating', 'MXN');
+  ('00000000-0000-4000-8000-000000014296', 'mesita-4296-probe-one', 'active', 'generating', 'MXN'),
+  ('00000000-0000-4000-8000-000000024296', 'mesita-4296-probe-two', 'active', 'generating', 'MXN');
 
 -- The stories, by key. Ages are against now(): the credit needs
 -- mentioned_at + 24 h >= now + 3 h + 60 min, i.e. at most 20 hours old.
@@ -45,8 +49,23 @@ select k, (wallet_record_story_mention(h, 'emulator', 'emu-4296-' || k, null, 'i
     ('n',    'story_probe_a', interval '5 minutes',           false),
     ('old',  'story_probe_a', interval '25 hours',            false),
     ('keep', 'story_probe_a', interval '25 hours',            false),
-    ('gone', 'story_probe_a', interval '25 hours',            false)
+    ('gone', 'story_probe_a', interval '25 hours',            false),
+    ('u',    'story_probe_a', interval '5 minutes',           false),
+    ('w',    'story_probe_a', interval '5 minutes',           false),
+    ('v',    'story_probe_a', interval '5 minutes',           false),
+    ('j',    'story_probe_a', interval '5 minutes',           false),
+    ('z',    'story_probe_a', interval '21 hours',            false)
   ) as t(k, h, age, live);
+
+-- A waiter of place one approved every story a purchase below reserves
+-- (MESITA-4304), except u (never reviewed) and w (approved at place two);
+-- v, j and z are for the review functions.
+update public.story_mentions
+   set review_place_id = '00000000-0000-4000-8000-000000014296', review = 'approved', reviewed_at = now()
+ where id in (select id from mm where k not in ('u', 'w', 'v', 'j', 'z'));
+update public.story_mentions
+   set review_place_id = '00000000-0000-4000-8000-000000024296', review = 'approved', reviewed_at = now()
+ where id = (select id from mm where k = 'w');
 
 -- One Story purchase per case, reserving the story of the same key (h none,
 -- y the same story as x).
@@ -64,7 +83,9 @@ insert into sp values
   ('y', '00000000-0000-4000-8000-0000004296a7', 'x', 'open'),
   ('n', '00000000-0000-4000-8000-0000004296a8', 'n', 'open'),
   ('keep', '00000000-0000-4000-8000-0000004296a9', 'keep', 'open'),
-  ('gone', '00000000-0000-4000-8000-0000004296aa', 'gone', 'expired');
+  ('gone', '00000000-0000-4000-8000-0000004296aa', 'gone', 'expired'),
+  ('u', '00000000-0000-4000-8000-0000004296ab', 'u', 'open'),
+  ('w', '00000000-0000-4000-8000-0000004296ac', 'w', 'open');
 
 insert into public.wallet_purchases (id, consumer_id, place_id, amount_cents, currency, status, stripe_account_id,
                                      voucher, bonus_cents, application_fee_cents, stripe_checkout_session_id, livemode,
@@ -85,7 +106,9 @@ select ok(
       'public.wallet_purge_story_mentions(timestamptz)',
       'public.wallet_credit_purchase(uuid, text, timestamptz)',
       'public.wallet_refund_purchase(uuid, integer, text)',
-      'public.story_rules()'
+      'public.story_rules()',
+      'public.story_review_open(uuid, uuid)',
+      'public.story_review(text, uuid, boolean, text)'
     ]) f, unnest(array['anon', 'authenticated']) r
     where has_function_privilege(r, f, 'EXECUTE')),
   'every Story RPC is service-role only'
@@ -121,6 +144,107 @@ select is(
   (select count(*)::int from public.wallet_purchases where story_mention_id = (select id from mm where k = 'x')),
   2,
   'an expired purchase frees its story for another try'
+);
+
+-- ━━━ The waiter approves before the guest pays (MESITA-4304) ━━━━━━━━━━━━━━━━
+
+create temp table tk (k text primary key, token text);
+insert into tk select 'v', story_review_open((select id from mm where k = 'v'), '00000000-0000-4000-8000-000000014296') ->> 'token';
+
+select ok(
+  (select token ~ '^[0-9a-f]{32}$' from tk where k = 'v')
+    and (select review is null and review_place_id = '00000000-0000-4000-8000-000000014296'
+           from public.story_mentions where id = (select id from mm where k = 'v')),
+  'the guest''s check points the story at the place and mints its QR token, waiting'
+);
+
+select is(
+  story_review_open((select id from mm where k = 'v'), '00000000-0000-4000-8000-000000014296') ->> 'token',
+  (select token from tk where k = 'v'),
+  'checking again keeps the same token'
+);
+
+select is(
+  story_review((select token from tk where k = 'v'), '00000000-0000-4000-8000-000000024296', true, 'dev') ->> 'code',
+  'wrong_place',
+  'a waiter of another place cannot approve it'
+);
+
+select is(
+  story_review('0123456789abcdef0123456789abcdef', '00000000-0000-4000-8000-000000014296', true, 'dev') ->> 'code',
+  'gone',
+  'an unknown token is gone'
+);
+
+select is(
+  story_review((select token from tk where k = 'v'), '00000000-0000-4000-8000-000000014296', true, 'dev') ->> 'outcome',
+  'approved',
+  'the waiter of the place approves it'
+);
+
+select is(
+  story_review((select token from tk where k = 'v'), '00000000-0000-4000-8000-000000014296', true, 'dev') ->> 'outcome',
+  'already_approved',
+  'a second approve answers the stored approval'
+);
+
+select is(
+  story_review((select token from tk where k = 'v'), '00000000-0000-4000-8000-000000014296', false, 'dev') ->> 'code',
+  'already_decided',
+  'an approved story cannot be rejected after'
+);
+
+select ok(
+  (story_review_open((select id from mm where k = 'v'), '00000000-0000-4000-8000-000000024296') ->> 'review') is null
+    and (select review_token from public.story_mentions where id = (select id from mm where k = 'v')) = (select token from tk where k = 'v'),
+  'checking at another place moves the story there and clears the approval'
+);
+
+insert into tk select 'j', story_review_open((select id from mm where k = 'j'), '00000000-0000-4000-8000-000000014296') ->> 'token';
+
+select is(
+  story_review((select token from tk where k = 'j'), '00000000-0000-4000-8000-000000014296', false, 'dev') ->> 'outcome',
+  'rejected',
+  'the waiter rejects a story'
+);
+
+select is(
+  story_review((select token from tk where k = 'j'), '00000000-0000-4000-8000-000000014296', true, 'dev') ->> 'code',
+  'already_decided',
+  'a rejected story stays rejected'
+);
+
+insert into tk select 'z', story_review_open((select id from mm where k = 'z'), '00000000-0000-4000-8000-000000014296') ->> 'token';
+
+select is(
+  story_review((select token from tk where k = 'z'), '00000000-0000-4000-8000-000000014296', true, 'dev') ->> 'code',
+  'story_too_old',
+  'a story that would end before the re-check cannot be approved'
+);
+
+select is(
+  story_review_open((select id from mm where k = 'keep'), '00000000-0000-4000-8000-000000024296') ->> 'place_id',
+  '00000000-0000-4000-8000-000000014296',
+  'a story a live purchase reserves is never moved to another place'
+);
+
+select is(
+  wallet_credit_purchase((select id from sp where k = 'u'), 'pi_test_4296u', null) ->> 'story',
+  'not_verified',
+  'a story no waiter approved voids the bonus (not_verified)'
+);
+
+select is(
+  wallet_credit_purchase((select id from sp where k = 'w'), 'pi_test_4296w', null) ->> 'story',
+  'not_verified',
+  'an approval at another place does not count here'
+);
+
+select is(
+  (select count(*)::int from public.wallet_entries
+    where kind = 'voucher' and purchase_id in (select id from sp where k in ('u', 'w'))),
+  2,
+  'the money still lands on both'
 );
 
 -- ━━━ The credit: the voucher now, then the claim ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

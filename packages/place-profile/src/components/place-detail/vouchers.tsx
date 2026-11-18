@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Camera, Check, CircleCheck, Clock, Copy, CreditCard, Gift, Infinity as InfinityIcon, Lock, PartyPopper, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { Camera, Check, CircleCheck, QrCode, Clock, Copy, CreditCard, Gift, Infinity as InfinityIcon, Lock, PartyPopper, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -16,6 +16,7 @@ import {
   type StoryCheckAnswer,
   type StoryGateReason,
   type StoryPoll,
+  type StoryReview,
 } from "../../story-check";
 import { cn } from "../../lib/format";
 import {
@@ -451,12 +452,21 @@ function sheetSteps(pay: string, bonus: string | null, card: { label: string; la
   ];
 }
 
-/** Story: post, pay, keep it up. `found` null draws no progress (a locked
- *  sheet, admin's preview); false lights Post; true ticks Post and lights Pay. */
-function storySteps(pay: string, bonus: string | null, post: ReactNode, found: boolean | null): Step[] {
+/** Story: post, the waiter approves, pay, keep it up (MESITA-4304). `stage`
+ *  null draws no progress (a locked sheet, admin's preview); "post" lights
+ *  Post; "waiter" ticks Post and lights the waiter; "pay" ticks both. */
+function storySteps(pay: string, bonus: string | null, post: ReactNode, stage: "post" | "waiter" | "pay" | null): Step[] {
+  const at = (mine: "post" | "waiter" | "pay"): Step["state"] => {
+    if (stage === null) return undefined;
+    const order = ["post", "waiter", "pay"];
+    const i = order.indexOf(stage);
+    const j = order.indexOf(mine);
+    return j < i ? "done" : j === i ? "current" : undefined;
+  };
   return [
-    { Icon: Camera, title: "Post a story", line: post, state: found === null ? undefined : found ? "done" : "current" },
-    { Icon: CreditCard, title: "Pay, get your credit now", amount: pay, line: CREDIT_LINE, state: found ? "current" : undefined },
+    { Icon: Camera, title: "Post a story", line: post, state: at("post") },
+    { Icon: QrCode, title: "Show it to the waiter", line: "They approve it with the waiter code.", state: at("waiter") },
+    { Icon: CreditCard, title: "Pay, get your credit now", amount: pay, line: CREDIT_LINE, state: at("pay") },
     { Icon: Gift, title: "Keep it up 3 hours", amount: bonus ? `+${bonus}` : undefined, line: "Then your bonus is added by itself.", green: true },
   ];
 }
@@ -792,6 +802,8 @@ type StoryHost = {
   testMode: boolean;
   /** The host's Instagram page: link it, or sync it after making it public. */
   onInstagram: (() => void) | null;
+  /** The Story QR for the waiter (MESITA-4304). */
+  renderQr: ((url: string) => ReactNode) | null;
 };
 
 /** OPEN INSTAGRAM (MESITA-4296): the story camera by deep link; when the page
@@ -866,6 +878,36 @@ function FoundCard({ mention, handle }: { mention: { media_url: string | null; m
         <span className="text-muted-foreground text-sm leading-snug">Keep it up until you&apos;ve paid and 3 h after.</span>
       </span>
     </div>
+  );
+}
+
+/** THE WAITER STEP (MESITA-4304): while the waiter has to see the story, the
+ *  QR leads (at least 220 px) with a link for a phone without a camera; once
+ *  approved, one green line and Pay. */
+function WaiterBox({ review, renderQr }: { review: StoryReview; renderQr: ((url: string) => ReactNode) | null }) {
+  if (review.state === "approved") {
+    return (
+      <Box data-story-review="approved">
+        <p className="flex items-center gap-2 text-base font-bold text-[#00A85A]">
+          <CircleCheck className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+          Approved by the waiter. You can pay now.
+        </p>
+      </Box>
+    );
+  }
+  return (
+    <Box title="Show this to your waiter" data-story-review="waiting">
+      <div className="flex flex-col items-center gap-2 text-center" aria-live="polite">
+        {review.url && renderQr ? <div className="rounded-2xl bg-white p-3" data-story-qr>{renderQr(review.url)}</div> : null}
+        <p className="text-foreground text-[15px] leading-snug font-semibold">They scan it, check your story and approve it with the waiter code.</p>
+        <p className="text-muted-foreground text-sm leading-snug">Pay turns on here by itself once it&apos;s approved.</p>
+        {review.url ? (
+          <a href={review.url} target="_blank" rel="noreferrer" className="text-muted-foreground min-h-9 text-sm underline underline-offset-2">
+            Open the waiter&apos;s link
+          </a>
+        ) : null}
+      </div>
+    </Box>
   );
 }
 
@@ -999,7 +1041,8 @@ function StoryFlow({
         }
         if (a.kind !== "failed") setHandle(a.placeHandle);
         setAnswer(a.kind === "failed" ? { kind: "missing", reason: "no_story", placeHandle: null, poll: STORY_POLL_DEFAULT } : a);
-        if (a.kind === "found") return;
+        // An approved story is payable; a found one waits for the waiter.
+        if (a.kind === "found" && a.review.state === "approved") return;
         loop.start(a.kind === "failed" ? STORY_POLL_DEFAULT : a.poll);
       });
     // Back from Instagram: look again, one loop, debounced.
@@ -1019,11 +1062,14 @@ function StoryFlow({
 
   const view = storySheetView(answer, looking, gate);
   const mention = view.step === "found" ? view.mention : null;
+  // MESITA-4304: Pay only once a waiter of this place approved the story.
+  const review = view.step === "found" ? view.review : null;
+  const approved = review?.state === "approved";
 
-  // The look stops once a story is found; a wake or tap then does nothing.
+  // The look stops once the story is approved; a wake or tap then does nothing.
   useEffect(() => {
-    if (mention) poll.current?.found();
-  }, [mention]);
+    if (approved) poll.current?.found();
+  }, [approved]);
 
   const lookNow = () => {
     setRefusal(null);
@@ -1040,6 +1086,7 @@ function StoryFlow({
   };
 
   const press = async () => {
+    if (mention && !approved) return;
     if (!mention) {
       // To Instagram's story camera; the look runs again on the way back.
       openInstagram();
@@ -1138,7 +1185,9 @@ function StoryFlow({
     ? "Sign in to buy"
     : !mention
       ? "Open Instagram"
-      : offer.buying
+      : !approved
+        ? "Waiting for the waiter"
+        : offer.buying
         ? "Paying…"
         : offer.needsCard
           ? "Add a card to pay"
@@ -1153,16 +1202,16 @@ function StoryFlow({
               {refusal}
             </p>
           ) : null}
-          {mention ? <CardLine offer={offer} /> : null}
+          {approved ? <CardLine offer={offer} /> : null}
           <button
             type="button"
             onClick={() => void press()}
-            disabled={!offer.live || offer.buying || (mention !== null && offer.cardsPending)}
+            disabled={!offer.live || offer.buying || (mention !== null && (!approved || offer.cardsPending))}
             className={PRIMARY}
             data-voucher-buy="voucher_story"
-            data-story-primary={mention ? "pay" : "post"}
+            data-story-primary={mention ? (approved ? "pay" : "waiter") : "post"}
           >
-            {mention && offer.needsCard && !offer.signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
+            {approved && offer.needsCard && !offer.signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
             {mention ? null : <Instagram className="h-5 w-5" aria-hidden />}
             {button}
           </button>
@@ -1192,11 +1241,12 @@ function StoryFlow({
                 <CopyChip text={storyTags(handle)} />
               </span>
             </>,
-            mention !== null,
+            mention === null ? "post" : approved ? "pay" : "waiter",
           )}
         />
         {mention ? <FoundCard mention={mention} handle={host.guestHandle} /> : null}
       </Box>
+      {review ? <WaiterBox review={review} renderQr={host.renderQr} /> : null}
       {good}
       {host.testMode && host.simulate && !mention ? (
         <div className="border-border flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-dashed p-2" data-story-emulator>
@@ -1440,6 +1490,7 @@ export function StoryOfferPage({
     guestHandle: actions?.guest?.instagramHandle ?? null,
     testMode: place.money?.test_mode === true,
     onInstagram: actions?.onLinkInstagram ?? null,
+    renderQr: actions?.renderStoryQr ?? null,
   };
   return (
     <StoryFlow

@@ -70,6 +70,9 @@ export type PlaceActions = {
   /** Test mode only: post a sample story for this guest (the Meta emulator,
    *  MESITA-4296). Resolves null when posted, else the refusal's line. */
   onSimulateStory?: () => Promise<string | null>;
+  /** The Story QR for the waiter (MESITA-4304): the host draws `url`
+   *  (visit.mesita.ai/story/<token>) as a QR. Absent: the link only. */
+  renderStoryQr?: (url: string) => ReactNode;
   /** A voucher of the basket being paid; while set the button reads Paying…
    *  and the card rows and steppers are locked. */
   buyingVoucher?: VoucherKey | null;

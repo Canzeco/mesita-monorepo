@@ -8,6 +8,7 @@ import {
   createStoryPoll,
   isStoryGateReason,
   STORY_GATE_REASONS,
+  storyPayable,
   storySheetView,
   type StoryCheckAnswer,
   type StoryCheckReason,
@@ -20,7 +21,10 @@ const found: StoryCheckAnswer = {
   mention: { id: "m1", media_url: null, media_kind: "image", mentioned_at: "2026-11-17T10:00:00Z", source: "emulator" },
   placeHandle: "probe",
   poll: POLL,
+  review: { state: "approved", url: "https://visit.mesita.ai/story/0123456789abcdef0123456789abcdef" },
 };
+/** MESITA-4304: found, the waiter has not approved it yet. */
+const waiting: StoryCheckAnswer = { ...found, review: { state: "waiting", url: "https://visit.mesita.ai/story/0123456789abcdef0123456789abcdef" } } as StoryCheckAnswer;
 
 /** A fake clock and timer queue the loop runs on. */
 function harness(answers: () => StoryCheckAnswer | Promise<StoryCheckAnswer>) {
@@ -72,6 +76,33 @@ function harness(answers: () => StoryCheckAnswer | Promise<StoryCheckAnswer>) {
   };
   return { poll, log, looking, advance, flush, calls: () => calls, maxInFlight: () => maxInFlight, pending: () => timers.size };
 }
+
+describe("the waiter's approval gates Pay (MESITA-4304)", () => {
+  it("only an approved story is payable", () => {
+    expect(storyPayable(found)).toBe(true);
+    expect(storyPayable(waiting)).toBe(false);
+    expect(storyPayable(missing)).toBe(false);
+    expect(storyPayable(null)).toBe(false);
+  });
+
+  it("the look keeps going past the window while the waiter has not approved, and stops at the approval", async () => {
+    let n = 0;
+    const h = harness(() => (++n >= 60 ? found : waiting));
+    h.poll.start(POLL);
+    await h.advance(50 * 5_000);
+    expect(h.poll.looking).toBe(true);
+    await h.advance(60_000);
+    expect(h.log.at(-1)?.kind).toBe("found");
+    expect(h.poll.looking).toBe(false);
+    expect(h.pending()).toBe(0);
+  });
+
+  it("a rejected story says so at once and keeps the Post step", () => {
+    const v = storySheetView({ kind: "missing", reason: "story_rejected", placeHandle: null, poll: POLL }, true);
+    expect(v.step).toBe("post");
+    expect(v.step === "post" && v.note).toMatch(/didn't approve/);
+  });
+});
 
 describe("the Story look (createStoryPoll)", () => {
   it("stops when the story is found", async () => {

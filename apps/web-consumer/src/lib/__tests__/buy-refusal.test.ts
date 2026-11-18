@@ -19,7 +19,7 @@ describe("buyRefusalAction", () => {
     expect(buyRefusalAction("nope")).toEqual({ kind: "say", line: BUY_REFUSAL.failed, reload: true });
   });
   it("a Story refusal about the story sends the sheet back to the check (MESITA-4296: nothing charged)", () => {
-    for (const code of ["private_account", "story_not_found", "story_taken", "story_too_old", "story_livemode", "story_one_per_basket", "story_payment_in_progress"]) {
+    for (const code of ["private_account", "story_not_found", "story_taken", "story_too_old", "story_livemode", "story_one_per_basket", "story_payment_in_progress", "story_not_verified"]) {
       expect(buyRefusalAction(code)).toEqual({ kind: "story", line: BUY_REFUSAL[code] });
     }
     expect(buyRefusalAction("bad_body", "mention_id").kind).toBe("story");

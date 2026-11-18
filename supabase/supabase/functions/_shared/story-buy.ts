@@ -10,6 +10,8 @@
 //                                   paid by this guest
 //   409 story_too_old               it would end before the re-check
 //   409 story_livemode              a test story on a live purchase, or back
+//   409 story_not_verified          no waiter of this place approved it
+//                                   (MESITA-4304)
 //   409 story_payment_in_progress   this guest's earlier payment for this same
 //                                   story is still in flight at Stripe
 //
@@ -34,6 +36,7 @@ const REFUSE = {
   taken: { status: 409, code: "story_taken", error: "That story is already used. Post a new one" },
   tooOld: { status: 409, code: "story_too_old", error: "Your story must stay up 3 more hours. Post a new one" },
   livemode: { status: 409, code: "story_livemode", error: "That story can't be used for this payment" },
+  notVerified: { status: 409, code: "story_not_verified", error: "Show your story to the waiter first" },
   inFlight: { status: 409, code: "story_payment_in_progress", error: "Your payment with this story is still going through" },
 } as const satisfies Record<string, StoryBuyRefusal>;
 
@@ -46,8 +49,9 @@ export function storyBasketRefusal(kinds: readonly string[], units: number): Sto
 
 /** Pure: the named mention against this guest and this purchase. */
 export function storyMentionRefusal(
-  m: Pick<MentionRow, "ig_handle" | "purchase_id" | "livemode" | "mentioned_at"> | null,
+  m: Pick<MentionRow, "ig_handle" | "purchase_id" | "livemode" | "mentioned_at" | "review" | "review_place_id"> | null,
   guestHandle: string | null,
+  placeId: string,
   livemode: boolean,
   nowMs: number,
   rules: Pick<StoryRulesLive, "bonusWaitSec" | "creditMarginSec">,
@@ -57,6 +61,7 @@ export function storyMentionRefusal(
   if (m.purchase_id) return REFUSE.taken;
   if (m.livemode !== livemode) return REFUSE.livemode;
   if (!mentionFits(m, livemode, nowMs, rules, rules.creditMarginSec)) return REFUSE.tooOld;
+  if (m.review !== "approved" || m.review_place_id !== placeId) return REFUSE.notVerified;
   return null;
 }
 
@@ -73,12 +78,12 @@ type Holder = {
 export async function storyBuyGate(
   admin: SupabaseClient,
   stripe: () => StripeCall | null,
-  args: { consumerId: string; mentionId: unknown; guestHandle: string | null; livemode: boolean; rules: StoryRulesLive; nowMs: number },
+  args: { consumerId: string; placeId: string; mentionId: unknown; guestHandle: string | null; livemode: boolean; rules: StoryRulesLive; nowMs: number },
 ): Promise<{ ok: true; mentionId: string } | { ok: false; refusal: StoryBuyRefusal }> {
   if (!isUuid(args.mentionId)) return { ok: false, refusal: REFUSE.missing };
   const { data, error } = await admin.from("story_mentions").select(MENTION_COLUMNS).eq("id", args.mentionId).maybeSingle();
   if (error) throw new Error(`story_mentions: ${error.message}`);
-  const refused = storyMentionRefusal(data as MentionRow | null, args.guestHandle, args.livemode, args.nowMs, args.rules);
+  const refused = storyMentionRefusal(data as MentionRow | null, args.guestHandle, args.placeId, args.livemode, args.nowMs, args.rules);
   if (refused) return { ok: false, refusal: refused };
 
   // Who already holds it live (wallet_purchases_story_mention_live_idx).
