@@ -29,6 +29,7 @@ import { EFError } from "@/lib/api/_invoke";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { Panel } from "@/components/shared/Panel";
+import { CalendarQuickConnect } from "./CalendarQuickConnect";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { PlacePhotoMark } from "@/components/consumer/wallet/PlaceCredit";
 import { reservationPath } from "@/lib/consumer-route-contract";
@@ -412,6 +413,8 @@ export function ReservationForm({
           <>
             <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
             <ReservationNotes value={notes} onChange={setNotes} />
+            {/* No calendar connected yet: Google · Apple · Outlook (MESITA-4315). */}
+            <CalendarQuickConnect />
           </>
         )}
 
