@@ -37,7 +37,7 @@ serveJson("consumer-web-get-gift-preview", async (req) => {
 
   const { data, error } = await admin
     .from("wallet_gifts")
-    .select("place_id, amount_cents, currency, status, livemode")
+    .select("place_id, amount_cents, currency, status, livemode, sender_id")
     .eq("token_hash", await hashGiftToken(token))
     .maybeSingle();
   if (error) return json({ ok: false, error: `gift: ${error.message}` }, 500);
@@ -46,14 +46,41 @@ serveJson("consumer-web-get-gift-preview", async (req) => {
   const preview = giftPreview(row, paymentsLivemode());
   if (!row || !preview) return noStore(json({ ok: false, code: "gone", error: "That link isn't here." }, 404));
 
-  // The name is a nicety: a failed read still answers, without it.
-  const { data: place, error: placeError } = await anonClient(env)
-    .from("profiles")
-    .select("name")
-    .eq("id", row.place_id)
-    .maybeSingle();
-  if (placeError) console.error("[consumer-web-get-gift-preview] place name:", placeError.message);
-  const name = typeof place?.name === "string" && place.name.trim() ? place.name.trim() : null;
+  // The place and the sender are niceties: a failed read still answers,
+  // without them. THE LINK'S CARD (Pato, 2026-11-18, MESITA-4363: "the
+  // image must be the actual gift card and place"; "Yes, show sender"): the
+  // place's first photo and the sender's first name and photo, so the chat
+  // preview can draw the gift. The photo stays out when the sender appears
+  // anonymous; the first name is what the gift itself already says.
+  const [{ data: place, error: placeError }, sender] = await Promise.all([
+    anonClient(env).from("profiles").select("name, photos, profile_photo").eq("id", row.place_id).maybeSingle(),
+    row.sender_id
+      ? admin
+        .from("consumers")
+        .select("first_name, avatar_url, appear_anonymous, deleted_at")
+        .eq("id", row.sender_id)
+        .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+  if (placeError) console.error("[consumer-web-get-gift-preview] place:", placeError.message);
+  if (sender.error) console.error("[consumer-web-get-gift-preview] sender:", sender.error.message);
+  const p = place as { name?: unknown; photos?: unknown; profile_photo?: unknown } | null;
+  const name = typeof p?.name === "string" && p.name.trim() ? p.name.trim() : null;
+  const firstPhoto = Array.isArray(p?.photos) ? p.photos.find((x) => typeof x === "string" && x.startsWith("https://")) : null;
+  const photo = (typeof firstPhoto === "string" ? firstPhoto : null) ??
+    (typeof p?.profile_photo === "string" && p.profile_photo.startsWith("https://") ? p.profile_photo : null);
+  const c = sender.data as
+    | { first_name?: string | null; avatar_url?: string | null; appear_anonymous?: boolean | null; deleted_at?: string | null }
+    | null;
+  const senderName = c && !c.deleted_at && c.first_name?.trim() ? c.first_name.trim() : null;
+  const senderPhoto = senderName && !c?.appear_anonymous && c?.avatar_url?.startsWith("https://") ? c.avatar_url : null;
 
-  return noStore(json({ ok: true, gift: { ...preview, place: name ? { name } : null } }));
+  return noStore(json({
+    ok: true,
+    gift: {
+      ...preview,
+      place: name ? { name, photo } : null,
+      sender: senderName ? { firstName: senderName, photo: senderPhoto } : null,
+    },
+  }));
 });
