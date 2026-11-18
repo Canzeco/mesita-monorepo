@@ -6,6 +6,7 @@ import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { billTab, cashTab, getTab, type StaffKey, type TabRead, type TabRefusal } from "@/lib/visit-api";
 import { keepStaff, readStaff } from "@/lib/staff-key";
 import { GuestVerify } from "./GuestVerify";
+import { Bones } from "@/components/Bones";
 
 // /tab/<token> — Pay at the table, the waiter's side (MESITA-3565). The
 // guest shows a QR in the Mesita app; the waiter scans it and lands here. The
@@ -249,9 +250,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
     return (
       <main className="proof" data-tab-state="loading">
         {reconnecting}
-        <p className="proof-line" role="status">
-          Opening the tab…
-        </p>
+        <Bones label="Opening the tab" />
       </main>
     );
   }

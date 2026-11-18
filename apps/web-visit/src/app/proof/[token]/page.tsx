@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { clockTime, moneyLabel } from "@mesita/place-profile/lib/money";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { getProof, markProofSeen, type Proof, VisitError } from "@/lib/visit-api";
+import { Bones } from "@/components/Bones";
 
 // /proof/<token> — the staff page for a guest's payment proof (MESITA-3304,
 // W2a). The guest's Pay tab shows a QR; staff scan it and land here. The
@@ -85,9 +86,7 @@ export default function ProofPage({ params }: { params: Promise<{ token: string 
   if (read.kind === "loading") {
     return (
       <main className="proof">
-        <p className="proof-status" role="status">
-          Checking…
-        </p>
+        <Bones label="Checking the payment" />
       </main>
     );
   }

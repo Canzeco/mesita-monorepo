@@ -1,7 +1,7 @@
 import type { RefObject } from "react";
 
 import type { MapScore, Place } from "@/lib/api/places";
-import { Skeleton, Spinner } from "@/components/shared";
+import { Skeleton } from "@/components/shared";
 import type { Coords } from "@/lib/use-user-location";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { cn } from "@/lib/utils";
@@ -103,15 +103,6 @@ export function MapVeil() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 z-10">
       <Skeleton className="absolute inset-0 rounded-none" />
-      <div
-        className="absolute inset-x-0 flex -translate-y-1/2 justify-center"
-        style={{ top: SIGHT_MID_TOP }}
-      >
-        <Spinner
-          label="Loading map"
-          className="border-border border-t-primary"
-        />
-      </div>
     </div>
   );
 }

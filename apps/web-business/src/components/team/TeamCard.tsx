@@ -102,7 +102,14 @@ export function TeamCard({ placeId }: { placeId: string }) {
     <Card className="flex flex-col p-0 sm:p-0">
       <h2 className="px-5 pt-4 pb-2 font-semibold sm:px-6">Team</h2>
       <ul className="divide-border divide-y">
-        {team === null && !error ? <li className={`${ROW} text-muted-foreground`}>Loading…</li> : null}
+        {team === null && !error
+          ? [0, 1].map((i) => (
+              <li key={i} className={`${ROW} flex items-center gap-3`} aria-busy="true">
+                <div className="bg-muted size-9 shrink-0 animate-pulse rounded-full" />
+                <div className="bg-muted h-3.5 w-40 animate-pulse rounded" />
+              </li>
+            ))
+          : null}
         {team && !owner ? <li className={`${ROW} text-muted-foreground`}>Nobody owns this place on Mesita yet.</li> : null}
         {owner ? (
           <Person m={owner}>

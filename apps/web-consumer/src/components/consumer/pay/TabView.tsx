@@ -5,6 +5,7 @@ import { Banknote, CheckCircle2, ChevronRight, CreditCard, Users } from "lucide-
 import { QRCodeSVG } from "qrcode.react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { Spinner } from "@/components/shared/Spinner";
+import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
@@ -627,9 +628,7 @@ function QrScreen({
         {qr ? (
           <QRCodeSVG value={qr} size={240} marginSize={0} style={{ width: "100%", height: "100%" }} aria-label="Your bill's QR for the waiter" data-tab-qr />
         ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <Spinner size="sm" label="Opening your bill" />
-          </div>
+          <Skeleton className="h-full w-full rounded-xl" />
         )}
       </FittedQr>
       <p className="mt-3 flex h-6 shrink-0 items-center gap-2 text-base font-semibold" role="status" aria-live="polite">
@@ -955,9 +954,7 @@ function SplitScreen({
             ) : null}
             {usesCard ? (
               cards === null ? (
-                <div className="border-border flex h-12 items-center rounded-2xl border px-4">
-                  <Spinner size="sm" label="Loading your cards" />
-                </div>
+                <Skeleton className="h-12 w-full rounded-2xl" />
               ) : cards.length === 0 ? (
                 <button
                   type="button"
