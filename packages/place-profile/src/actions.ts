@@ -70,6 +70,9 @@ export type PlaceActions = {
   /** Test mode only: post a sample story for this guest (the Meta emulator,
    *  MESITA-4296). Resolves null when posted, else the refusal's line. */
   onSimulateStory?: () => Promise<string | null>;
+  /** Test mode only: the waiter's approval of that sample story, emulated
+   *  (MESITA-4307). Resolves null when approved, else the refusal's line. */
+  onSimulateApproval?: () => Promise<string | null>;
   /** The Story QR for the waiter (MESITA-4304): the host draws `url`
    *  (visit.mesita.ai/story/<token>) as a QR. Absent: the link only. */
   renderStoryQr?: (url: string) => ReactNode;

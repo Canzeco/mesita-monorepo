@@ -35,6 +35,7 @@ export function StoryPageBody({ place: fetched }: { place: PlaceDetail }) {
     onBuyVoucher: vouchers.buy,
     onCheckStory: vouchers.checkStory,
     onSimulateStory: vouchers.simulateStory,
+    onSimulateApproval: vouchers.simulateApproval,
     // MESITA-4304: the waiter scans this to approve the story before Pay.
     renderStoryQr: (url: string) => <QRCodeSVG value={url} size={224} marginSize={0} aria-label="Story QR for the waiter" />,
     buyingVoucher: vouchers.buying,

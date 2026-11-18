@@ -18,12 +18,20 @@
 //           Story waiting on its re-check), else of their newest one, so the
 //           re-check's fetch fails exactly as a deleted story's CDN link
 //           would.
+//   approve  MESITA-4307: the waiter's approval, emulated. Approves the
+//           guest's newest unreviewed EMULATOR story that their Story page
+//           pointed at `place_id` (consumer-web-check-story →
+//           story_review_open), through the same story_review a real
+//           waiter's tap runs (device hash "emulator"). A real Meta story is
+//           never approved here; a real waiter's page still works.
 //
-// Body: { action: "post" | "delete" }
+// Body: { action: "post" | "delete" } | { action: "approve", place_id }
 // Response: post   { ok: true, action: "post", mention: { id, media_url, media_kind, mentioned_at, source }, n }
 //           delete { ok: true, action: "delete", mention_id, n }
+//           approve { ok: true, action: "approve", mention_id, outcome: approved | already_approved }
 //   400 bad_request · 401 (not signed in) · 409 not_test_mode | meta_on |
-//   needs_instagram · 404 no_story (nothing to delete) · 500 emulate_failed
+//   needs_instagram · 404 no_story (nothing to delete or approve) ·
+//   409 story_too_old (approve) · 500 emulate_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -44,6 +52,8 @@ import {
 } from "../_shared/story-mention.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
+import { isUuid } from "../_shared/place-id.ts";
+import { reviewRefusal } from "../_shared/story-review.ts";
 
 const FN = "consumer-web-emulate-story";
 const BUCKET = "story-emulator";
@@ -58,8 +68,12 @@ serveJson("consumer-web-emulate-story", async (req) => {
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const { action } = bodyRes.body;
-  if (action !== "post" && action !== "delete") {
-    return json({ ok: false, code: "bad_request", error: "Body needs action post|delete" }, 400);
+  if (action !== "post" && action !== "delete" && action !== "approve") {
+    return json({ ok: false, code: "bad_request", error: "Body needs action post|delete|approve" }, 400);
+  }
+  const placeId = bodyRes.body.place_id;
+  if (action === "approve" && !isUuid(placeId)) {
+    return json({ ok: false, code: "bad_request", field: "place_id", error: "place_id must be a Mesita place id" }, 400);
   }
   const refusal = emulatorRefusal(paymentsLivemode(), readInstagramDmConfig() !== null);
   if (refusal) return json({ ok: false, code: refusal.code, error: refusal.error }, refusal.status);
@@ -68,13 +82,35 @@ serveJson("consumer-web-emulate-story", async (req) => {
   try {
     // This guest's emulator stories, newest n first.
     const { data: mineRaw, error: mineErr } = await admin.from("story_mentions")
-      .select(`${MENTION_COLUMNS}, ig_story_id, created_at`)
+      .select(`${MENTION_COLUMNS}, ig_story_id, created_at, review_token`)
       .eq("source", "emulator").like("ig_story_id", `emu-${me}-%`);
     if (mineErr) throw new Error(`story_mentions: ${mineErr.message}`);
-    const mine = ((mineRaw ?? []) as Array<MentionRow & { ig_story_id: string; created_at: string }>)
+    const mine = ((mineRaw ?? []) as Array<MentionRow & { ig_story_id: string; created_at: string; review_token: string | null }>)
       .map((m) => ({ ...m, n: emulatorN(m.ig_story_id, me) ?? 0 }))
       .filter((m) => m.n > 0)
       .sort((a, b) => b.n - a.n);
+
+    if (action === "approve") {
+      // The story the guest's Story page shows the waiter at this place.
+      const target = mine.find((m) => !m.purchase_id && m.review_place_id === placeId && m.review_token && m.review !== "rejected");
+      if (!target?.review_token) {
+        return json({ ok: false, code: "no_story", error: "Simulate a story and check it here first" }, 404);
+      }
+      const { data, error } = await admin.rpc("story_review", {
+        p_token: target.review_token,
+        p_place: placeId,
+        p_approve: true,
+        p_device_hash: "emulator",
+      });
+      if (error) throw new Error(`story_review: ${error.message}`);
+      const r = (data ?? {}) as { ok?: boolean; code?: string; outcome?: string };
+      console.log(`[${FN}]`, JSON.stringify({ action, consumer_id: me, mention_id: target.id, place_id: placeId, outcome: r.outcome ?? r.code }));
+      if (!r.ok) {
+        const refusal = reviewRefusal(r.code);
+        return json({ ok: false, code: refusal.code, error: refusal.error }, refusal.status);
+      }
+      return json({ ok: true, action, mention_id: target.id, outcome: r.outcome });
+    }
 
     if (action === "delete") {
       const target = mine.find((m) => m.purchase_id !== null) ?? mine[0];

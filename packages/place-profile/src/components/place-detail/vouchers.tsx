@@ -797,6 +797,8 @@ const QUIET = "text-muted-foreground min-h-11 self-center px-3 text-sm font-semi
 type StoryHost = {
   check: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
   simulate: (() => Promise<string | null>) | null;
+  /** Test mode: the waiter's approval, emulated (MESITA-4307). */
+  simulateApproval: (() => Promise<string | null>) | null;
   /** The guest's Instagram username, on the Found card. */
   guestHandle: string | null;
   testMode: boolean;
@@ -1085,6 +1087,16 @@ function StoryFlow({
     else lookNow();
   };
 
+  // MESITA-4307: the test band stands in for the waiter.
+  const simulateApproval = async () => {
+    if (!host.simulateApproval) return;
+    setSimulating(true);
+    const line = await host.simulateApproval().catch(() => "Couldn't simulate the approval. Try again.");
+    setSimulating(false);
+    if (line) setRefusal(line);
+    else lookNow();
+  };
+
   const press = async () => {
     if (mention && !approved) return;
     if (!mention) {
@@ -1247,6 +1259,20 @@ function StoryFlow({
         {mention ? <FoundCard mention={mention} handle={host.guestHandle} /> : null}
       </Box>
       {review ? <WaiterBox review={review} renderQr={host.renderQr} /> : null}
+      {host.testMode && host.simulateApproval && review?.state === "waiting" ? (
+        <div className="border-border flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-dashed p-2" data-story-emulator>
+          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-amber-900 uppercase">Test</span>
+          <button
+            type="button"
+            disabled={simulating}
+            onClick={() => void simulateApproval()}
+            className="text-muted-foreground min-h-9 px-2 text-sm font-semibold underline disabled:opacity-60"
+            data-story-simulate="approve"
+          >
+            {simulating ? "Approving…" : "Simulate the waiter's approval"}
+          </button>
+        </div>
+      ) : null}
       {good}
       {host.testMode && host.simulate && !mention ? (
         <div className="border-border flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-dashed p-2" data-story-emulator>
@@ -1487,6 +1513,7 @@ export function StoryOfferPage({
   const host: StoryHost = {
     check: co.checkStory,
     simulate: actions?.onSimulateStory ?? null,
+    simulateApproval: actions?.onSimulateApproval ?? null,
     guestHandle: actions?.guest?.instagramHandle ?? null,
     testMode: place.money?.test_mode === true,
     onInstagram: actions?.onLinkInstagram ?? null,
