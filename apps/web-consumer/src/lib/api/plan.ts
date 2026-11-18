@@ -18,14 +18,22 @@ export type GuestPlanView = {
   cancel_at_period_end: boolean;
   /** Checkout's return: "paid" once Stripe says so. */
   confirmed?: "paid" | "pending";
+  /** The admin testing switch lifts every cap (MESITA-4393). Absent when
+   *  the server could not read it, or before the EF carried it. */
+  cap_lifted?: boolean;
+  /** An operator set this guest's cap, so Pro would not change it. */
+  cap_override?: boolean;
 };
 
 export async function apiGetPlan(
   client: SupabaseClient,
   sessionId?: string,
+  opts: { light?: boolean } = {},
 ): Promise<GuestPlanView> {
   return await invokeEF<GuestPlanView>(client, "consumer-web-get-plan", {
     ...(sessionId ? { session_id: sessionId } : {}),
+    // The reserve form's read skips the Stripe sync (MESITA-4393).
+    ...(opts.light ? { light: true } : {}),
   });
 }
 
