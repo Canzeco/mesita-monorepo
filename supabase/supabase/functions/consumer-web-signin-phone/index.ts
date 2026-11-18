@@ -16,7 +16,7 @@ import { ensureConsumer } from "../_shared/business-request.ts";
 import { handleSignin, type SigninRow } from "./signin.ts";
 
 const SIGNIN_SELECT =
-  "id, code, full_name, first_name, last_name, phone, birthday, sex, deleted_at";
+  "id, code, full_name, first_name, last_name, phone, birth_year, sex, deleted_at";
 
 serveJson("consumer-web-signin-phone", async (req) => {
   const ctx = await requireConsumerRequest(req);
