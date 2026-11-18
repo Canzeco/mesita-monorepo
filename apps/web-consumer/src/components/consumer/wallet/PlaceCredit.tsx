@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { useStoryNew, useStoryNow } from "./use-story-now";
 import { storyBonusOpen, storyLine } from "@/lib/story-lines";
-import { Panel } from "@/components/shared/Panel";
+import { Panel, PANEL_CLASS } from "@/components/shared/Panel";
 import { WalletPanelList } from "./WalletLists";
 import { TicketsBoard, type TicketTab } from "@/components/consumer/activity/MeLists";
 import { ActivityRowsSkeleton } from "@/components/consumer/activity/ActivityRow";
@@ -36,7 +36,7 @@ import type { CreditRow } from "./use-wallet";
  *  that look like shit"): four round 52px faces with the label under,
  *  the banking-app look. Only Pay Bill has colour (Stripe purple). */
 const ROUND =
-  "flex w-18 flex-col items-center gap-1.5 text-center text-xs leading-tight font-semibold text-foreground outline-none transition active:scale-[0.97] focus-visible:[&>span]:ring-2 focus-visible:[&>span]:ring-neutral-400";
+  "flex w-18 flex-col items-center gap-1.5 text-center text-xs leading-tight font-semibold text-white outline-none transition active:scale-[0.97] focus-visible:[&>span]:ring-2 focus-visible:[&>span]:ring-neutral-400";
 const ROUND_FACE = "relative flex h-13 w-13 items-center justify-center rounded-full";
 const ROUND_GLYPH = "h-5 w-5";
 
@@ -217,26 +217,28 @@ export function LoyaltyCardSkeleton() {
   // four tabs and the list box, as the page draws them.
   return (
     <div className="flex flex-col" aria-hidden>
-      <Panel className="mt-4 p-4">
-        <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
+      <Panel className="bg-foreground mt-4 border-transparent p-5">
+        <div className="mx-auto aspect-[1.586] w-4/5 rounded-2xl bg-white/10" />
         <div className="mt-5 grid grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
             <span key={i} className="flex flex-col items-center gap-2">
-              <Skeleton className="h-13 w-13 rounded-full" />
-              <Skeleton className="h-3 w-14 rounded-md" />
+              <span className="h-13 w-13 rounded-full bg-white/10" />
+              <span className="h-3 w-14 rounded-md bg-white/10" />
             </span>
           ))}
         </div>
       </Panel>
-      <div className="border-border mt-5 border-t pt-2">
-        <div className="border-border mb-4 grid grid-cols-4 border-b">
+      <div className={cn(PANEL_CLASS, "mt-4")}>
+        <div className="border-border grid grid-cols-4 border-b">
           {[0, 1, 2, 3].map((i) => (
             <span key={i} className="flex justify-center py-3.5">
               <Skeleton className="h-3.5 w-16 rounded-md" />
             </span>
           ))}
         </div>
-        <ActivityRowsSkeleton />
+        <div className="[&_[aria-busy]]:rounded-none [&_[aria-busy]]:border-0">
+          <ActivityRowsSkeleton />
+        </div>
       </div>
     </div>
   );
@@ -332,42 +334,56 @@ export function PlaceCredit({
           in body must be in a box or something for more clarity. make a
           cleaner UI"): the card and what it can do, Tickets, Waiting
           for a friend, each one Panel (MESITA-4063's, shared since MESITA-4071), 16px apart. */}
-      <Panel className="mt-4 p-4" data-loyalty-card-panel>
+      {/* THE DARK TOP BOX (MESITA-4353, Pato: "this box containing card and
+          4 buttons must have a dark background … top box with bottom box"):
+          near-black, the card on it, white labels; the Tickets get their
+          own white box under it. */}
+      <Panel className="bg-foreground mt-4 border-transparent p-5" data-loyalty-card-panel>
       {/* THE MINI LOYALTY CARD (MESITA-3802, Pato: "instead of that ugly pink
           box display mini Loyalty Card, not occupying full width of screen,
           only 50% of screen. card must display amount of credits, name, and
           profile picture"): a card-shaped pink gradient, half the column,
           centred; the place's photo and name, the amount, "Loyalty Card". A $0
           is white at reduced opacity, never grey on pink. */}
+      {/* A BANK CARD (MESITA-4353, Pato: "update the design of the card"):
+          Mesita pink with a soft diagonal sheen, the place at the top left
+          and "Mesita" at the top right, the amount, the pending line and
+          "Loyalty Card" stacked at the bottom left; 80% of the box. */}
       <div
         role="img"
         aria-label={`Loyalty Card, ${card.name}, ${amount} available${coming ? `, ${coming}` : ""}`}
-        className="relative mx-auto aspect-[1.586] w-1/2 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-[var(--brand-pink-500)] to-[var(--brand-pink-800)] p-3 text-white shadow-md"
+        className="relative mx-auto flex aspect-[1.586] w-4/5 shrink-0 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--brand-pink-500)] to-[var(--brand-pink-800)] p-4 text-white shadow-lg"
         data-loyalty-card-amounts
       >
-        <span className="pointer-events-none absolute -top-8 -right-6 h-20 w-20 rounded-full bg-white/10" aria-hidden />
-        <div className="relative flex items-center gap-1.5" aria-hidden>
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/20 type-label font-semibold">
-            {card.photo ? (
-              <SizedImg src={card.photo} size="thumb" alt="" className="h-full w-full object-cover" />
-            ) : (
-              (card.name ?? "?").trim().charAt(0).toUpperCase()
-            )}
+        <span
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_35%,rgb(255_255_255/0.14)_50%,transparent_65%)]"
+          aria-hidden
+        />
+        <div className="relative flex items-start justify-between gap-2" aria-hidden>
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/20 type-label font-semibold">
+              {card.photo ? (
+                <SizedImg src={card.photo} size="thumb" alt="" className="h-full w-full object-cover" />
+              ) : (
+                (card.name ?? "?").trim().charAt(0).toUpperCase()
+              )}
+            </span>
+            <span className="line-clamp-2 min-w-0 text-sm leading-tight font-semibold">{card.name}</span>
           </span>
-          <span className="line-clamp-2 min-w-0 type-label leading-tight font-semibold">{card.name}</span>
+          <span className="font-display shrink-0 text-sm font-semibold tracking-tight text-white/80">Mesita</span>
         </div>
-        <p className={cn("relative mt-3 text-xl font-semibold tabular-nums", muted && "text-white/70")} aria-hidden>
-          {amount}
-        </p>
-        {coming ? (
-          <p className="relative text-sm font-medium text-white/80 tabular-nums" aria-hidden data-loyalty-card-pending>
-            {coming}
-          </p>
-        ) : null}
-        <p className="type-eyebrow relative text-white/80" aria-hidden>Loyalty Card</p>
+        <div className="relative flex flex-col items-start" aria-hidden>
+          <span className={cn("text-3xl leading-tight font-semibold tabular-nums", muted && "text-white/70")}>{amount}</span>
+          {coming ? (
+            <span className="text-sm font-medium text-white/80 tabular-nums" data-loyalty-card-pending>
+              {coming}
+            </span>
+          ) : null}
+          <span className="type-eyebrow mt-1 text-white/70">Loyalty Card</span>
+        </div>
       </div>
       {gone ? (
-        <p className="text-muted-foreground mt-4 text-sm" data-loyalty-card-gone>
+        <p className="mt-4 text-sm text-white/70" data-loyalty-card-gone>
           Your credit here stays yours; ask Mesita support to use it.
         </p>
       ) : (
@@ -407,7 +423,7 @@ export function PlaceCredit({
               aria-label={offers[0].bonus ? `Add Funds: ${offers[0].bonus}% bonus` : "Add Funds"}
               data-loyalty-card-offer
             >
-              <span className={cn(ROUND_FACE, "bg-muted")}>
+              <span className={cn(ROUND_FACE, "bg-white/12 text-white")}>
                 <Plus className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
                 {offers[0].bonus ? (
                   <span className={cn("type-meta absolute -top-1.5 -right-3 rounded-full px-1.5 py-0.5 leading-none font-bold", offers[0].tone)}>
@@ -421,7 +437,7 @@ export function PlaceCredit({
           {/* Send Gift is its own page (MESITA-4096); it was a sheet here. */}
           {gift === "open" ? (
             <PushLink href={walletSendPath(row.placeId)} className={ROUND} data-send-credit-open>
-              <span className={cn(ROUND_FACE, "bg-muted")}>
+              <span className={cn(ROUND_FACE, "bg-white/12 text-white")}>
                 <Gift className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
               </span>
               Send Gift
@@ -434,14 +450,14 @@ export function PlaceCredit({
               aria-label={`Send Gift: ${gift.blocked}`}
               data-send-credit-open
             >
-              <span className={cn(ROUND_FACE, "bg-muted")}>
+              <span className={cn(ROUND_FACE, "bg-white/12 text-white")}>
                 <Gift className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
               </span>
               Send Gift
             </button>
           ) : null}
           <PushLink href={href} className={ROUND} data-loyalty-card-place>
-            <span className={cn(ROUND_FACE, "bg-muted")}>
+            <span className={cn(ROUND_FACE, "bg-white/12 text-white")}>
               <Store className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
             </span>
             View Place
@@ -490,8 +506,8 @@ export function PlaceCredit({
           (MESITA-4116). Notifications stay at Me. NO HEADING, A LINE
           (MESITA-4324, Pato: "remove the tickets word from there and just
           put a line dividing the section"): a hairline over the strip. */}
-      <section className="border-border mt-5 border-t pt-2" data-loyalty-card-tickets>
-        <TicketsBoard kind={ticketKind} onPick={setTicketKind} placeId={row.placeId} flush={false} onChanged={onReread} />
+      <section className="mt-4" data-loyalty-card-tickets>
+        <TicketsBoard kind={ticketKind} onPick={setTicketKind} placeId={row.placeId} flush={false} boxed onChanged={onReread} />
       </section>
 
 
