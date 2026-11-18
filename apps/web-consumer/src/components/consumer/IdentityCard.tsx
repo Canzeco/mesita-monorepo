@@ -1,7 +1,7 @@
 "use client";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { BadgeCheck, UserRound } from "lucide-react";
+import { Crown, UserRound } from "lucide-react";
 import { useConsumerIdentity } from "@/lib/identity-context";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
@@ -204,9 +204,9 @@ export function IdentityModules({
   nameHref: string;
 }) {
   const [handle, followers] = splitInstagramLabel(instagram.label);
-  // Over the bar (1,000+ followers, igReach) a badge after the count says
-  // it without a word (Pato, MESITA-4370: "use VIP icon or something … but
-  // it's implicit").
+  // Over the bar (1,000+ followers, igReach) a black crown tag after the
+  // count (Pato, MESITA-4370: "a tag saying more than +1000 followers …
+  // maybe a crown"). Not a Class: Class left Me in MESITA-4306.
   const { igReach } = useConsumerIdentity();
   // ONE UNIT, TWO UNITS (Pato, 2026-11-18, MESITA-4370: "name 1 unit tall
   // and instagram 2 units tall"): a 36px name box over a 72px Instagram box
@@ -262,11 +262,14 @@ export function IdentityModules({
             <span className="text-muted-foreground flex items-center gap-1 font-medium">
               <span className="truncate">{followers}</span>
               {igReach && (
-                <BadgeCheck
-                  className="text-foreground h-4 w-4 shrink-0"
+                <span
+                  className="type-meta flex shrink-0 items-center gap-1 rounded-full bg-neutral-950 px-2 py-0.5 font-bold text-white"
                   aria-label="Over 1,000 followers"
                   data-identity-reach
-                />
+                >
+                  <Crown className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                  1K+
+                </span>
               )}
             </span>
           ) : null}
