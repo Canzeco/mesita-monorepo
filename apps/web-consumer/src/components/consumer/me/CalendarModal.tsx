@@ -7,17 +7,19 @@
 //                  subscribe page; the row turns Connected once it reads it
 //   connected      → a switch and when it last synced. Off = its link serves
 //                  an empty calendar, so Mesita's tables leave it on its
-//                  next sync; on again brings them back
+//                  next sync; on again brings them back. Off asks first
+//                  (MESITA-4400); on does not
+// Make new links is one quiet link on the grey under the card (MESITA-4400,
+// Pato: "why add new links like that??? maybe just one link on the
+// background"), not a card of its own.
 // Reservations' header calendar icon opens this page too.
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { RefreshCw } from "lucide-react";
 import { CalendarMark } from "@/components/shared/calendar-marks";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import {
   ME_BUTTON_CLASS,
   RowDivider,
-  SettingsActionRow,
   SettingsGroup,
   Switch,
 } from "@/components/consumer/me/settings-rows";
@@ -162,6 +164,7 @@ export function CalendarModal() {
   const [pending, setPending] = useState<CalendarKind | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [turnOff, setTurnOff] = useState<{ kind: CalendarKind; app: string } | null>(null);
   const data = feeds.data;
   const { reload } = feeds;
 
@@ -185,7 +188,7 @@ export function CalendarModal() {
     writeCached(KEY, { ...data, [kind]: { ...data[kind], on } });
     try {
       writeCached(KEY, await apiGetCalendarFeeds(getSupabase(), { set: { calendar: kind, on } }));
-      toast.success(on ? `${app} is on.` : `${app} is off. Your tables leave it on its next sync.`);
+      toast.success(on ? `${app} is on.` : `${app} is off. Your tables are removed on its next sync.`);
     } catch (e) {
       writeCached(KEY, data);
       toast.error(errMsg(e, "Couldn't change it."));
@@ -225,20 +228,19 @@ export function CalendarModal() {
                 pending={pending === kind}
                 added={!!added[kind]}
                 onAdd={() => setAdded((a) => ({ ...a, [kind]: true }))}
-                onSwitch={(on) => flip(kind, app, on)}
+                onSwitch={(on) => (on ? flip(kind, app, true) : setTurnOff({ kind, app }))}
               />
             </div>
           ))}
         </SettingsGroup>
-        <SettingsGroup title="Links">
-          <SettingsActionRow
-            Icon={RefreshCw}
-            label="Make new links"
-            sub="The old ones stop working"
-            disabled={!data}
-            onClick={() => setConfirm(true)}
-          />
-        </SettingsGroup>
+        <button
+          type="button"
+          disabled={!data}
+          onClick={() => setConfirm(true)}
+          className="text-muted-foreground type-label self-center underline underline-offset-2 transition disabled:opacity-60"
+        >
+          Make new links
+        </button>
         {feeds.error && (
           <button type="button" onClick={reload} className="text-muted-foreground type-label underline">
             Couldn&apos;t load your calendars. Try again
@@ -262,6 +264,29 @@ export function CalendarModal() {
               className="bg-foreground text-paper flex flex-1 items-center justify-center rounded-lg py-3 text-sm font-semibold transition disabled:opacity-60"
             >
               {busy ? "Making…" : "Make new links"}
+            </button>
+          </div>
+        </div>
+      </LocalDialog>
+      <LocalDialog open={turnOff !== null} onClose={() => setTurnOff(null)} ariaLabel="Turn off calendar">
+        <div className={SHEET_BODY_CLASS}>
+          <h2 className={SHEET_TITLE_CLASS}>Turn off {turnOff?.app}?</h2>
+          <p className="text-muted-foreground type-body mt-2 leading-snug">
+            Your Mesita tables are removed from {turnOff?.app} on its next sync.
+          </p>
+          <div className="mt-4 flex gap-2">
+            <button type="button" onClick={() => setTurnOff(null)} className={SHEET_CANCEL_BUTTON_CLASS}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (turnOff) void flip(turnOff.kind, turnOff.app, false);
+                setTurnOff(null);
+              }}
+              className="bg-foreground text-paper flex flex-1 items-center justify-center rounded-lg py-3 text-sm font-semibold transition"
+            >
+              Turn off
             </button>
           </div>
         </div>
