@@ -542,7 +542,7 @@ function Box({
  *  this is only one"). The header carries no limit chip any more. */
 function GoodToKnow({ productKey }: { productKey: MoneyVoucherKey }) {
   const rows: { Icon: LucideIcon; text: string; warn?: boolean }[] = [];
-  if (productKey === "voucher_welcome") rows.push({ Icon: Clock, text: "One time only. Gone after your first payment here.", warn: true });
+  if (productKey === "voucher_welcome") rows.push({ Icon: Clock, text: "One per guest at this place.", warn: true });
   rows.push({ Icon: Utensils, text: "Spend it on any bill here." }, { Icon: InfinityIcon, text: "It never expires." });
   if (productKey === "voucher_story") rows.push({ Icon: Repeat1, text: "One per visit." });
   else if (productKey !== "voucher_welcome") rows.push({ Icon: Repeat, text: "Buy as many as you like." });
