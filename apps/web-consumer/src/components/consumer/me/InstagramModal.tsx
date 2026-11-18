@@ -302,9 +302,13 @@ const QUIET_BUTTON_CLASS =
 //   1. Others' full handles show only to a guest whose own Instagram is
 //      connected and whose profile is public (place-activity seesHandles).
 //   2. A Story voucher needs more than STORY_MIN_FOLLOWERS followers
-//      (vouchers.ts refuses `<=`). "Bonus", never "discount": Story pays a
-//      bonus on top of what the guest pays.
+//      (vouchers.ts refuses `<=`). Named a discount, with the deal in plain
+//      numbers (Pato, MESITA-4347: "discount insta must be there too").
 // Connected, each row says where the guest stands.
+/** The Story voucher's deal, as place-profile's vouchers.tsx prints it
+ *  (`voucher_story`: "Pay $100.00MX, get $150.00MX."). Change both together. */
+const STORY_DEAL = { pay: "$100.00MX", get: "$150.00MX" } as const;
+
 export function WhyConnect({ connected }: { connected: boolean }) {
   const { igFollowers } = useConsumerIdentity();
   const { data } = useConsumerProfile();
@@ -336,11 +340,11 @@ export function WhyConnect({ connected }: { connected: boolean }) {
         </IconChip>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold">
-            Post Stories, get a bonus
+            Story discount
           </span>
           <span className="text-muted-foreground type-label block">
-            With more than {STORY_MIN_FOLLOWERS.toLocaleString("en-US")}{" "}
-            followers, a Story at a place adds a bonus to what you pay.
+            More than {STORY_MIN_FOLLOWERS.toLocaleString("en-US")} followers?
+            Post a Story at a place: pay {STORY_DEAL.pay}, get {STORY_DEAL.get}.
           </span>
           {connected && !storyOk && (
             <>
