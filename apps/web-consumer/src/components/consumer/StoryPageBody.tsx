@@ -33,6 +33,7 @@ export function StoryPageBody({ place: fetched }: { place: PlaceDetail }) {
 
   const actions: PlaceActions = {
     onBuyVoucher: vouchers.buy,
+    onOfferOpened: vouchers.opened,
     onCheckStory: vouchers.checkStory,
     onSimulateStory: vouchers.simulateStory,
     onSimulateApproval: vouchers.simulateApproval,

@@ -46,6 +46,7 @@ import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { toast } from "@/lib/toast";
 import { openSignGate } from "@/lib/anonymous";
 import { useViewer } from "@/lib/identity-context";
+import { trackEvent } from "@/lib/analytics/track";
 
 // THE SECONDARY SHEETS LOAD AFTER THE PLACE PAINTS (MESITA-3014). Each
 // opens on a tap, so none belongs in the first frame's bundle; they are
@@ -265,6 +266,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // one tap, or Stripe's page, MESITA-3552); opening the sheet refreshes
     // the offer and the credit.
     onBuyVoucher: vouchers.buy,
+    onOfferOpened: vouchers.opened,
     // The Story sheet's check before Pay and its test-mode simulator (MESITA-4296).
     onCheckStory: vouchers.checkStory,
     onSimulateStory: vouchers.simulateStory,
@@ -458,6 +460,8 @@ export function usePlaceVouchers(
   /** The Offers page's basket (MESITA-3841) paid with the card it drew
    *  (MESITA-4065); no card opens the card sheet. */
   buy: (items: VoucherBasketItem[], cardId: string | null, opts?: { mentionId?: string }) => Promise<VoucherBuyOutcome>;
+  /** offer_sheet_opened (MESITA-4375). */
+  opened: (voucher: VoucherKey, savedCard: boolean) => void;
   /** The Story sheet's check (MESITA-4296). */
   checkStory: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
   /** Test mode: post a sample story; null when posted, else the refusal's line. */
@@ -591,6 +595,8 @@ export function usePlaceVouchers(
         if (r.card.status === "succeeded" || r.card.status === "processing") {
           pending.current = null;
           writeLastCard(userKey.current, cardId);
+          // The funnel's paid side (MESITA-4375): every voucher of the basket.
+          trackEvent(getSupabase(), "voucher_paid", { place_id: placeId, items, method: "saved_card", status: r.card.status });
           // The Offers sheet's receipt says it (MESITA-4224): no toast.
           onPaid.current?.();
           return r.card.status === "succeeded" ? "paid" : "processing";
@@ -621,6 +627,15 @@ export function usePlaceVouchers(
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [mesita, placeId, load, loadCards],
+  );
+
+  const opened = useCallback(
+    (voucher: VoucherKey, savedCard: boolean) => {
+      if (mesita) trackEvent(getSupabase(), "offer_sheet_opened", { place_id: placeId, voucher, saved_card: savedCard });
+    },
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mesita, placeId],
   );
 
   const checkStory = useCallback(
@@ -668,6 +683,7 @@ export function usePlaceVouchers(
     loading: mesita && mine === null,
     load,
     buy: (items, cardId, opts) => buy(items, cardId, opts),
+    opened,
     checkStory,
     simulateStory,
     simulateApproval,
