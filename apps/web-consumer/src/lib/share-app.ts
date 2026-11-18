@@ -51,8 +51,10 @@ export const SHARE_CARD = {
   // headline and value line on the terrace photo, never a city baked into a
   // JPEG again (it said "Every table in Monterrey" long after the cover
   // changed). /og/mesita.jpg; the proxy's matcher skips .jpg.
-  src: "/og/mesita.jpg",
+  // ?v= is the card's version (MESITA-4361): chat apps keep an image by
+  // its address, so a new design gets a new one. Bump it with the design.
+  src: "/og/mesita.jpg?v=4361",
   width: 1200,
   height: 630,
-  alt: "Mesita — Discover your next favorite place. Discovery, reservations, discounts and gifts at restaurants, cafés and bars.",
+  alt: "Mesita — Discover your next favorite place. Discovery, reservations, discounts and gifts at restaurants, cafés and bars. mesita.ai",
 } as const;
