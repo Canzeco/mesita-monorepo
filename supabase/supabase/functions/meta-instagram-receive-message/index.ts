@@ -27,8 +27,10 @@
 // username (the profile lookup tried three times; a null handle the cron
 // fills from the IGSID) through _shared/story-mention.ts, livemode true,
 // duplicates by mid a no-op. A failed mention write answers 500 so Meta
-// retries (the unique key makes a retry safe). A guest is matched only when
-// staff open a Story token.
+// retries (the unique key makes a retry safe). MESITA-4405: a new mention
+// whose handle has exactly one open Story waiting for a post is bound to it
+// (story_bind_handle), so a guest who closed the app keeps their bonus; with
+// several, the guest's Story screen binds it.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
@@ -50,6 +52,7 @@ import { adoptInstagramAvatar } from "../_shared/instagram-avatar.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { serveJson } from "../_shared/http.ts";
 import { headMediaKind, igUsername, parseStoryMentions, recordStoryMention, storageHostOf } from "../_shared/story-mention.ts";
+import { bindMentionToOpenStory } from "../_shared/story.ts";
 
 const GRAPH = `https://graph.instagram.com/${META_GRAPH_VERSION}`;
 
@@ -187,7 +190,8 @@ serveJson("meta-instagram-receive-message", async (req) => {
           livemode: true,
           senderIgsid: sm.senderId,
         }, storageHostOf(envRes.env.url));
-        console.log("instagram_story_mention", JSON.stringify({ id: rec.id, duplicate: rec.duplicate, handle: handles.get(sm.senderId) !== null }));
+        const bound = rec.duplicate || !handles.get(sm.senderId) ? null : await bindMentionToOpenStory(admin, rec.id, "meta_webhook");
+        console.log("instagram_story_mention", JSON.stringify({ id: rec.id, duplicate: rec.duplicate, handle: handles.get(sm.senderId) !== null, bound_story_id: bound }));
       } catch (e) {
         console.error("ig_story_mention_failed", e instanceof Error ? e.message : e);
         return text("story mention not saved", 500);

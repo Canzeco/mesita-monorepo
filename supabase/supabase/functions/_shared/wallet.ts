@@ -15,6 +15,7 @@ import { VOUCHER_CATALOG } from "./money.ts";
 import { purchaseStore, settlePurchaseByPaymentIntent } from "./purchase-pi.ts";
 import type { MoneyVoucherKey } from "./money-state.ts";
 import { type StripeCall } from "./stripe.ts";
+import { logCreditStory } from "./story-log.ts";
 
 export { classifySession } from "./checkout-session.ts";
 
@@ -141,6 +142,7 @@ export async function settlePurchase(
   if (error) throw new Error(`wallet_credit: ${error.message}`);
   const res = data as { ok?: boolean; outcome?: SettleOutcome; code?: string } | null;
   if (!res?.ok) throw new Error(`wallet_credit: ${res?.code ?? "unknown"}`);
+  logCreditStory(purchase.id, res, "wallet_read");
   return res.outcome === "already_paid" ? "already_paid" : "credited";
 }
 

@@ -1,11 +1,10 @@
-// The Story voucher's @mesita mention (MESITA-4264, verified before payment
-// since MESITA-4296). Pato, 2026-11-17: the guest posts an Instagram story
-// from a public account mentioning @mesita and the place's Instagram; Meta
-// tells Mesita about the mention (meta-instagram-receive-message); the guest's
-// app finds it under their verified handle (consumer-web-check-story) and only
-// then offers Pay; the buy reserves it and the credit claims it
-// (story_claim); 3 hours after payment supabase-cron-recheck-stories fetches
-// the story again and releases the bonus if it still loads.
+// The Story's @mesita mention (MESITA-4264; bound to a Story record after
+// payment since MESITA-4405). The guest posts an Instagram story from a
+// public account mentioning @mesita and the place's Instagram; Meta tells
+// Mesita about the mention (meta-instagram-receive-message); story_bind ties
+// it to the guest's Story (stories.mention_id); a waiter approves it; the
+// bonus's wait after the approval supabase-cron-recheck-stories fetches the
+// story again and releases the bonus if it still loads.
 //
 // Meta is not switched on yet (MESITA-2579), so in Stripe test mode the
 // emulator (consumer-web-emulate-story) produces the same mention a real
@@ -45,10 +44,16 @@ export const STORY_RULES = {
   tickBudgetMs: 100_000,
   /** One re-check fetch waits this long. */
   fetchTimeoutMs: 10_000,
-  /** The Story sheet looks for the story this often… */
+  /** The Story screen looks for the story this often… */
   pollEveryMs: 5_000,
-  /** …for this long, then waits for a tap. */
+  /** …for this long, then every slowPollEveryMs (MESITA-4405). */
   pollForMs: 2 * 60_000,
+  slowPollEveryMs: 15_000,
+  /** Payment → the Story's deadline to be approved (MESITA-4405):
+   *  money_config.story_post_window_sec, clamped 2–24 hours. */
+  postWindowSec: 12 * 60 * 60,
+  postWindowMinSec: 2 * 60 * 60,
+  postWindowMaxSec: 24 * 60 * 60,
   /** The cron fills a mention's missing handle this many times. */
   handleTries: 3,
   /** A decided Story stays on the Wallet row this long. */
@@ -227,8 +232,9 @@ export async function storyStillUp(
   }
 }
 
-/** A purchase due for its re-check, with the mention it claimed. */
+/** An approved Story due for its re-check, with the mention it holds. */
 export type RecheckRow = {
+  story_id: string;
   purchase_id: string;
   mention: { source: "meta" | "emulator"; media_url: string | null; deleted_at?: string | null } | null;
 };
@@ -261,7 +267,7 @@ export type TickReport = { processed: number; released: number; voided: number; 
 export async function runRecheckTick(args: {
   rows: RecheckRow[];
   check: (row: RecheckRow) => Promise<StillUp & { fetched?: boolean }>;
-  settle: (purchaseId: string, reachable: boolean) => Promise<SettleAnswer>;
+  settle: (storyId: string, reachable: boolean, deleted: boolean) => Promise<SettleAnswer>;
   parallel?: number;
   budgetMs?: number;
   now?: () => number;
@@ -280,17 +286,17 @@ export async function runRecheckTick(args: {
     try {
       const r = await args.check(row);
       if (!r.reachable) {
-        log(JSON.stringify({ fn: "recheck-stories", purchase_id: row.purchase_id, step: "fetch", status: r.status }));
+        log(JSON.stringify({ fn: "recheck-stories", story_id: row.story_id, purchase_id: row.purchase_id, step: "fetch", status: r.status }));
       }
       step = "settle";
-      const s = await args.settle(row.purchase_id, r.reachable);
+      const s = await args.settle(row.story_id, r.reachable, r.status === "deleted");
       if (s.ok === false) throw new Error(s.code ?? "refused");
       report.processed++;
       if (s.outcome === "released") report.released++;
       if (s.outcome === "voided") report.voided++;
     } catch (e) {
       report.failed++;
-      log(JSON.stringify({ fn: "recheck-stories", purchase_id: row.purchase_id, step, error: e instanceof Error ? e.message : String(e) }));
+      log(JSON.stringify({ fn: "recheck-stories", story_id: row.story_id, purchase_id: row.purchase_id, step, error: e instanceof Error ? e.message : String(e) }));
     }
   };
 
@@ -352,45 +358,6 @@ export function mentionAlive(m: Pick<MentionRow, "mentioned_at">, nowMs: number)
   return nowMs - Date.parse(m.mentioned_at) < STORY_RULES.mentionLifeSec * 1000;
 }
 
-/** The statuses that hold a reservation (wallet_purchases_story_mention_live_idx). */
-export const LIVE_RESERVATION_EXCLUDES = ["failed", "expired", "refunded"] as const;
-
-/** The unclaimed mentions of one handle under 24 hours old, newest first,
- *  that no live purchase of ANOTHER guest reserves. Callers apply
- *  mentionFits for the margin they need (consumer-web-check-story, the buy). */
-export async function readCandidateMentions(
-  admin: SupabaseClient,
-  handle: string | null,
-  purchaseLivemode: boolean,
-  nowMs: number,
-  consumerId?: string,
-): Promise<MentionRow[]> {
-  if (!handle) return [];
-  const since = new Date(nowMs - STORY_RULES.mentionLifeSec * 1000).toISOString();
-  const { data, error } = await admin
-    .from("story_mentions")
-    .select(MENTION_COLUMNS)
-    .eq("ig_handle", handle.toLowerCase())
-    .is("purchase_id", null)
-    .gte("mentioned_at", since)
-    .order("mentioned_at", { ascending: false })
-    .limit(20);
-  if (error) throw new Error(`story_mentions: ${error.message}`);
-  const rows = ((data ?? []) as MentionRow[]).filter((m) => m.livemode === purchaseLivemode);
-  if (rows.length === 0) return rows;
-  const { data: held, error: heldErr } = await admin.from("wallet_purchases")
-    .select("story_mention_id, consumer_id")
-    .in("story_mention_id", rows.map((m) => m.id))
-    .not("status", "in", `(${LIVE_RESERVATION_EXCLUDES.join(",")})`);
-  if (heldErr) throw new Error(`wallet_purchases: ${heldErr.message}`);
-  const taken = new Set(
-    ((held ?? []) as Array<{ story_mention_id: string; consumer_id: string | null }>)
-      .filter((h) => !consumerId || h.consumer_id !== consumerId)
-      .map((h) => h.story_mention_id),
-  );
-  return rows.filter((m) => !taken.has(m.id));
-}
-
 /** The emulator's story ids: `emu-<consumer id>-<n>` (MESITA-4296: a story
  *  is posted before any purchase, so it belongs to the guest). */
 export function emulatorStoryId(consumerId: string, n: number): string {
@@ -423,6 +390,8 @@ export type StoryRulesLive = {
   checkMarginSec: number;
   /** Fetch real Meta mentions again 3 hours later (off until the P9 spike). */
   recheckMeta: boolean;
+  /** Payment → the Story's deadline (MESITA-4405), clamped as story_rules(). */
+  postWindowSec: number;
 };
 
 export function storyRulesFrom(raw: unknown): StoryRulesLive {
@@ -433,6 +402,10 @@ export function storyRulesFrom(raw: unknown): StoryRulesLive {
     creditMarginSec: num(o.story_credit_margin_sec, STORY_RULES.creditMarginSec),
     checkMarginSec: num(o.story_check_margin_sec, STORY_RULES.checkMarginSec),
     recheckMeta: o.story_recheck_meta === true,
+    postWindowSec: Math.min(
+      Math.max(num(o.story_post_window_sec, STORY_RULES.postWindowSec), STORY_RULES.postWindowMinSec),
+      STORY_RULES.postWindowMaxSec,
+    ),
   };
 }
 

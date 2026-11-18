@@ -1,32 +1,29 @@
-// deno task story-e2e — MESITA-4296's live run, with MESITA-4304's waiter
-// step, Stripe test mode only.
+// deno task story-e2e — MESITA-4405's live run (the Story record), Stripe
+// test mode only.
 //
 // Against the live project, through the deployed Edge Functions, with the
 // Meta emulator: a throwaway guest with a verified PUBLIC Instagram handle
 // (written by the service role, as DM verification is off) and a throwaway
-// place. The story comes FIRST, then the purchase:
-//   1. emulate post (no purchase yet) → check-story (poll) finds it, waiting
-//      for the waiter, with its QR → the waiter reads it (visit-web-get-story)
-//      → approve without the waiter code is 403 → the waiter approves with
-//      the code → check-story reads approved → a purchase reserving it is
-//      credited → the credit claims the story → the cron's {purchase_id}
-//      re-check → bonus released.
-//   2. post → check → the waiter approves → purchase → claimed → emulate
-//      delete → three re-checks → bonus void (unreachable), the paid credit
-//      untouched.
-//   3. a story too close to its 24 hours reads story_too_old; a rejected
-//      story reads story_rejected; a story no waiter approved pays the money
-//      and voids the bonus (not_verified).
-//   6. the emulated waiter (MESITA-4307): post → check → "Simulate the
-//      waiter's approval" → the check reads approved → paid and claimed.
-//   4. a second live purchase cannot reserve a story already reserved.
-//   5. a live purchase with a test story: the money lands, the bonus is void
-//      (mention_lost).
-// Plus the gate (a place with no Instagram → place_no_instagram) and the buy's
-// own refusals (no story named → 400; a Story with other vouchers → 409).
-// The purchase rows are opened and credited by the service role through
-// wallet_credit_purchase, the function Stripe's webhook calls (a throwaway
-// place has no connected Stripe account to charge).
+// place. The money comes FIRST, then the Story:
+//   1. a Story purchase is credited (as Stripe's webhook would): the paid
+//      amount lands at once and a Story waits for a post → Tag the place
+//      binds the story (the guest's only open Story) → the waiter reads it,
+//      approve without the code is 403, approves with it → the cron's
+//      {purchase_id} re-check → bonus released.
+//   2. reject → post again: the waiter rejects; the Story waits for a post
+//      again and the rejected story never binds back; a new post gets a new
+//      QR; "Simulate the waiter" approves it; released.
+//   3. deleted: approved, then "Simulate deleting it" → void deleted, the
+//      money untouched.
+//   4. two open Stories: a post binds to neither until the guest's screen
+//      (check-story {story_id}) binds it to the Story it shows.
+//   5. the deadline: a Story nobody posted for, past its deadline, turns
+//      void expired at the cron's tick.
+// Plus the gate (a place with no Instagram → place_no_instagram), the buy's
+// one Story rule (a Story with other vouchers → 409), get-story's 404 for a
+// Story that is not yours, and the Wallet's `stories` list. Purchase rows are
+// opened and credited by the service role through wallet_credit_purchase
+// (a throwaway place has no connected Stripe account to charge).
 //
 // The service key is read from the Supabase CLI into this process and never
 // printed. Everything it made is deleted in finally. Prints PASS/FAIL per
@@ -79,14 +76,12 @@ async function call(fn: string, bearer: string, body: unknown, extra: Record<str
   return { status: res.status, body: json as Record<string, unknown> };
 }
 
-/** A Story purchase reserving `mentionId`, credited as Stripe's webhook would. */
+/** A Story purchase, credited as Stripe's webhook would. */
 async function storyPurchase(
   admin: SupabaseClient,
   userId: string,
   placeId: string,
-  mentionId: string | null,
-  livemode = false,
-): Promise<{ id: string; story: string }> {
+): Promise<{ id: string; story: string; story_id: string }> {
   const id = crypto.randomUUID();
   const { error } = await admin.from("wallet_purchases").insert({
     id,
@@ -100,8 +95,7 @@ async function storyPurchase(
     bonus_cents: 5000,
     application_fee_cents: 0,
     stripe_checkout_session_id: `cs_test_story_e2e_${id}`,
-    livemode,
-    story_mention_id: mentionId,
+    livemode: false,
   });
   if (error) throw new Error(`purchase insert: ${error.message}`);
   const { data, error: cErr } = await admin.rpc("wallet_credit_purchase", {
@@ -110,15 +104,9 @@ async function storyPurchase(
     p_available_at: null,
   });
   if (cErr) throw new Error(`wallet_credit_purchase: ${cErr.message}`);
-  const res = data as { outcome?: string; story?: string };
+  const res = data as { outcome?: string; story?: string; story_id?: string };
   if (res?.outcome !== "credited") throw new Error(`credit: ${JSON.stringify(data)}`);
-  return { id, story: res.story ?? "" };
-}
-
-async function purchaseRow(admin: SupabaseClient, id: string) {
-  const { data } = await admin.from("wallet_purchases")
-    .select("status, story_activated_at, story_recheck_at, story_bonus, story_bonus_void_reason, story_recheck_tries").eq("id", id).single();
-  return data as { status: string; story_activated_at: string | null; story_recheck_at: string | null; story_bonus: string | null; story_bonus_void_reason: string | null; story_recheck_tries: number };
+  return { id, story: res.story ?? "", story_id: res.story_id ?? "" };
 }
 
 async function entryKinds(admin: SupabaseClient, id: string): Promise<string[]> {
@@ -126,13 +114,26 @@ async function entryKinds(admin: SupabaseClient, id: string): Promise<string[]> 
   return ((data ?? []) as { kind: string; amount_cents: number }[]).map((e) => `${e.kind}:${e.amount_cents}`).sort();
 }
 
+type StoryOut = {
+  story_id?: string;
+  state?: string;
+  void_reason?: string | null;
+  review_url?: string | null;
+  bonus_at?: string | null;
+  approved_at?: string | null;
+  deadline_at?: string;
+  paid_at?: string | null;
+  mention?: { id?: string } | null;
+  poll?: unknown;
+  emulator?: boolean;
+};
+
 async function main(): Promise<void> {
   const keys = await cliKeys();
   const admin = createClient(BASE, keys.service, { auth: { persistSession: false } });
   const stamp = crypto.randomUUID().slice(0, 8);
   const handle = `e2e_story_${stamp}`;
   const placeId = crypto.randomUUID();
-  const purchases: string[] = [];
   let userId: string | null = null;
 
   try {
@@ -173,50 +174,57 @@ async function main(): Promise<void> {
     step("the waiter code signs a waiter's phone in", !!staffToken, staff);
     const review = (token: string, decision: "approve" | "reject") =>
       call("visit-web-review-story", keys.anon, { token, decision, staff_token: staffToken, place_id: placeId });
-    /** The check (poll) finds the story; its QR token; the waiter approves it. */
-    const checkAndApprove = async (label: string, mentionId: string | undefined) => {
-      const f = await call("consumer-web-check-story", guestJwt, { place_id: placeId }, {}, "?poll=1");
-      const rv = f.body.review as { state?: string; url?: string } | undefined;
-      step(`${label} check finds the story, waiting for the waiter`, f.body.found === true && (f.body.mention as { id?: string })?.id === mentionId && rv?.state === "waiting", f);
-      const token = rv?.url?.split("/story/")[1] ?? "";
-      const ok = await review(token, "approve");
-      step(`${label} the waiter approves with the code`, ok.status === 200 && ok.body.outcome === "approved", ok);
-      return token;
+    const getStory = async (by: { story_id?: string; purchase_id?: string }): Promise<StoryOut> =>
+      ((await call("consumer-web-get-story", guestJwt, by)).body.story ?? {}) as StoryOut;
+    const tokenOf = (s: StoryOut) => s.review_url?.split("/story/")[1] ?? "";
+    const post = async () => (await call("consumer-web-emulate-story", guestJwt, { action: "post" })).body as {
+      mention?: { id?: string; media_url?: string | null };
+      bound_story_id?: string | null;
     };
+    const recheck = (purchaseId: string) =>
+      call("supabase-cron-recheck-stories", keys.service, { purchase_id: purchaseId }, { "X-Internal-Caller": "story-e2e" });
 
     const gate = await call("consumer-web-check-story", guestJwt, { place_id: placeId });
-    step("check: a place with no Instagram reads place_no_instagram", gate.status === 200 && gate.body.found === false && gate.body.reason === "place_no_instagram", gate);
-    const poll0 = await call("consumer-web-check-story", guestJwt, { place_id: placeId }, {}, "?poll=1");
-    step("check (poll): no story yet reads no_story", poll0.status === 200 && poll0.body.reason === "no_story", poll0);
-
-    const noStory = await call("consumer-web-buy-voucher", guestJwt, {
-      place_id: placeId, voucher: "voucher_story", request_id: crypto.randomUUID(), card_pm_id: "pm_card_visa",
-    });
-    step("buy: a Story with no story named is 400 bad_body mention_id", noStory.status === 400 && noStory.body.field === "mention_id", noStory);
+    step("gate: a place with no Instagram reads place_no_instagram", gate.status === 200 && gate.body.reason === "place_no_instagram", gate);
     const basket = await call("consumer-web-buy-voucher", guestJwt, {
       place_id: placeId, items: [{ voucher: "voucher_story", qty: 1 }, { voucher: "voucher_200", qty: 1 }],
-      request_id: crypto.randomUUID(), card_pm_id: "pm_card_visa", mention_id: crypto.randomUUID(),
+      request_id: crypto.randomUUID(), card_pm_id: "pm_card_visa",
     });
     step("buy: a Story with other vouchers is 409 story_one_per_basket", basket.status === 409 && basket.body.code === "story_one_per_basket", basket);
+    const noMention = await call("consumer-web-buy-voucher", guestJwt, {
+      place_id: placeId, voucher: "voucher_story", request_id: crypto.randomUUID(), card_pm_id: "pm_card_visa",
+    });
+    step("buy: a Story names no story any more (no mention_id refusal)", noMention.body.field !== "mention_id", noMention);
+    const nf = await call("consumer-web-get-story", guestJwt, { story_id: crypto.randomUUID() });
+    step("get-story: a Story that is not yours is 404", nf.status === 404 && nf.body.code === "not_found", nf);
 
-    // ── 1: post → check finds it → pay → claimed → released ─────────────────
-    const post1 = await call("consumer-web-emulate-story", guestJwt, { action: "post" });
-    const m1 = (post1.body.mention as { id?: string; media_url?: string | null } | undefined) ?? {};
-    step("1 Tag the place records a test story, no screenshot (MESITA-4310)", post1.status === 200 && !!m1.id && m1.media_url === null, post1);
-    const found1 = await call("consumer-web-check-story", guestJwt, { place_id: placeId }, {}, "?poll=1");
-    const rv1 = found1.body.review as { state?: string; url?: string } | undefined;
+    // ── 1: pay → post → approve → released ──────────────────────────────────
+    const p1 = await storyPurchase(admin, userId, placeId);
+    step("1 the credit creates the Story, waiting for a post", p1.story === "waiting_post" && !!p1.story_id, p1);
+    step("1 paid credit Available at payment, no bonus", (await entryKinds(admin, p1.id)).join() === "voucher:10000", await entryKinds(admin, p1.id));
+    const s1a = await getStory({ purchase_id: p1.id });
     step(
-      "1 check finds that story, waiting for the waiter, with its QR",
-      found1.body.found === true && (found1.body.mention as { id?: string } | undefined)?.id === m1.id && rv1?.state === "waiting" &&
-        /^https:\/\/visit\.mesita\.ai\/story\/[0-9a-f]{32}$/.test(rv1?.url ?? ""),
-      found1,
+      "1 get-story: waiting_post, deadline 12 h after payment, polling, test buttons",
+      s1a.story_id === p1.story_id && s1a.state === "waiting_post" && !!s1a.poll && s1a.emulator === true &&
+        Date.parse(s1a.deadline_at ?? "") - Date.parse(s1a.paid_at ?? "") === 12 * 3600 * 1000,
+      s1a,
     );
-    const t1 = rv1?.url?.split("/story/")[1] ?? "";
+    const poll1 = await call("consumer-web-check-story", guestJwt, { story_id: p1.story_id });
+    step("1 the screen's poll with no story yet stays waiting_post", (poll1.body.story as StoryOut)?.state === "waiting_post", poll1);
+    const post1 = await post();
+    step("1 Tag the place binds the story to the only open Story", !!post1.mention?.id && post1.mention.media_url === null && post1.bound_story_id === p1.story_id, post1);
+    const s1b = await getStory({ story_id: p1.story_id });
+    const t1 = tokenOf(s1b);
+    step(
+      "1 found: the story and the waiter QR",
+      s1b.state === "found" && s1b.mention?.id === post1.mention?.id && /^https:\/\/visit\.mesita\.ai\/story\/[0-9a-f]{32}$/.test(s1b.review_url ?? ""),
+      s1b,
+    );
     const read1 = await call("visit-web-get-story", keys.anon, { token: t1 });
     step(
       "1 the waiter's page shows the story, waiting",
-      read1.status === 200 && read1.body.state === "waiting" && (read1.body.story as { id?: string; status?: string })?.id === m1.id &&
-        (read1.body.story as { status?: string })?.status === "received" && read1.body.instagram_handle === handle,
+      read1.status === 200 && read1.body.state === "waiting" && (read1.body.story as { status?: string })?.status === "received" &&
+        read1.body.instagram_handle === handle,
       read1,
     );
     const noCode = await call("visit-web-review-story", keys.anon, { token: t1, decision: "approve" });
@@ -225,132 +233,89 @@ async function main(): Promise<void> {
     step("1 the waiter approves with the code", ap1.status === 200 && ap1.body.outcome === "approved", ap1);
     const again1 = await review(t1, "approve");
     step("1 a second approve answers the stored approval", again1.body.outcome === "already_approved", again1);
-    const sheet1 = await call("consumer-web-check-story", guestJwt, { place_id: placeId }, {}, "?poll=1");
-    step("1 the guest's check reads approved: Pay turns on", (sheet1.body.review as { state?: string })?.state === "approved", sheet1);
-    const p1 = await storyPurchase(admin, userId, placeId, m1.id ?? null);
-    purchases.push(p1.id);
-    step("1 the credit claims the story", p1.story === "claimed", p1);
-    step("1 paid credit Available at payment, no bonus", (await entryKinds(admin, p1.id)).join() === "voucher:10000", await entryKinds(admin, p1.id));
-    const r1a = await purchaseRow(admin, p1.id);
+    const s1c = await getStory({ story_id: p1.story_id });
     step(
-      "1 the re-check is set to payment + 3 hours",
-      !!r1a.story_activated_at && Date.parse(r1a.story_recheck_at ?? "") - Date.parse(r1a.story_activated_at) === 3 * 3600 * 1000,
-      r1a,
+      "1 approved: Checking · bonus at approval + 3 h, the QR gone, no poll",
+      s1c.state === "approved" && s1c.review_url === null && !s1c.poll &&
+        Date.parse(s1c.bonus_at ?? "") - Date.parse(s1c.approved_at ?? "") === 3 * 3600 * 1000,
+      s1c,
     );
-    const cron1 = await call("supabase-cron-recheck-stories", keys.service, { purchase_id: p1.id }, { "X-Internal-Caller": "story-e2e" });
+    const cron1 = await recheck(p1.id);
     step("1 the re-check releases the bonus", cron1.status === 200 && cron1.body.released === 1, cron1);
-    const r1 = await purchaseRow(admin, p1.id);
-    step("1 bonus released, voucher + bonus entries", r1.story_bonus === "released" && (await entryKinds(admin, p1.id)).join() === "bonus:5000,voucher:10000", { r1, e: await entryKinds(admin, p1.id) });
+    step("1 voucher + bonus entries", (await entryKinds(admin, p1.id)).join() === "bonus:5000,voucher:10000", await entryKinds(admin, p1.id));
+    step("1 the Story reads released", (await getStory({ story_id: p1.story_id })).state === "released");
 
-    // ── 2: deleted → void ────────────────────────────────────────────────────
-    const post2 = await call("consumer-web-emulate-story", guestJwt, { action: "post" });
-    const m2 = (post2.body.mention as { id?: string } | undefined) ?? {};
-    step("2 emulate post", post2.status === 200 && !!m2.id, post2);
-    await checkAndApprove("2", m2.id);
-    const p2 = await storyPurchase(admin, userId, placeId, m2.id ?? null);
-    purchases.push(p2.id);
-    step("2 claimed at the credit", p2.story === "claimed", p2);
-    const del2 = await call("consumer-web-emulate-story", guestJwt, { action: "delete" });
-    const { data: d2 } = await admin.from("story_mentions").select("deleted_at").eq("id", m2.id).single();
-    step("2 emulate delete marks the claimed test story deleted", del2.status === 200 && del2.body.mention_id === m2.id && !!(d2 as { deleted_at: string | null } | null)?.deleted_at, { del2, d2 });
-    for (let i = 1; i <= 3; i++) {
-      const c = await call("supabase-cron-recheck-stories", keys.service, { purchase_id: p2.id }, { "X-Internal-Caller": "story-e2e" });
-      step(`2 re-check ${i} finds the story gone`, c.status === 200 && c.body.released === 0 && c.body.failed === 0, c);
-    }
-    const r2 = await purchaseRow(admin, p2.id);
+    // ── 2: reject → post again → approve → released ────────────────────────
+    const p2 = await storyPurchase(admin, userId, placeId);
+    const post2 = await post();
+    step("2 a post binds to the new Story", post2.bound_story_id === p2.story_id, post2);
+    const s2a = await getStory({ story_id: p2.story_id });
+    const rj = await review(tokenOf(s2a), "reject");
+    step("2 the waiter rejects it", rj.status === 200 && rj.body.outcome === "rejected", rj);
+    const s2b = await getStory({ story_id: p2.story_id });
+    step("2 the Story waits for a new post, no QR", s2b.state === "waiting_post" && s2b.review_url === null && s2b.mention === null, s2b);
+    const poll2 = await call("consumer-web-check-story", guestJwt, { story_id: p2.story_id });
+    step("2 the rejected story never binds back here", (poll2.body.story as StoryOut)?.state === "waiting_post", poll2);
+    const late = await review(tokenOf(s2a), "approve");
+    step("2 a rejected story cannot be approved after", late.status === 409 && late.body.code === "already_decided", late);
+    const post2b = await post();
+    const s2c = await getStory({ story_id: p2.story_id });
     step(
-      "2 bonus void (unreachable), paid credit untouched",
-      r2.story_bonus === "void" && r2.story_bonus_void_reason === "unreachable" && (await entryKinds(admin, p2.id)).join() === "voucher:10000",
-      { r2, e: await entryKinds(admin, p2.id) },
+      "2 a new post binds with a new QR",
+      post2b.bound_story_id === p2.story_id && s2c.state === "found" && tokenOf(s2c) !== tokenOf(s2a) && tokenOf(s2c) !== "",
+      { post2b, s2c },
+    );
+    const ap2 = await call("consumer-web-emulate-story", guestJwt, { action: "approve", story_id: p2.story_id });
+    step("2 Simulate the waiter approves it", ap2.status === 200 && ap2.body.outcome === "approved", ap2);
+    const cron2 = await recheck(p2.id);
+    step("2 the re-check releases the bonus", cron2.body.released === 1 && (await entryKinds(admin, p2.id)).join() === "bonus:5000,voucher:10000", cron2);
+
+    // ── 3: approved, then deleted → void deleted ────────────────────────────
+    const p3 = await storyPurchase(admin, userId, placeId);
+    const post3 = await post();
+    step("3 a post binds", post3.bound_story_id === p3.story_id, post3);
+    await call("consumer-web-emulate-story", guestJwt, { action: "approve", story_id: p3.story_id });
+    const del3 = await call("consumer-web-emulate-story", guestJwt, { action: "delete" });
+    step("3 Simulate deleting it marks the approved Story's story", del3.status === 200 && del3.body.mention_id === post3.mention?.id, del3);
+    const cron3 = await recheck(p3.id);
+    const s3 = await getStory({ story_id: p3.story_id });
+    step(
+      "3 void deleted at once, the money untouched",
+      cron3.body.voided === 1 && s3.state === "void" && s3.void_reason === "deleted" && (await entryKinds(admin, p3.id)).join() === "voucher:10000",
+      { cron3, s3 },
     );
 
-    // ── 3: too old ───────────────────────────────────────────────────────────
-    const post3 = await call("consumer-web-emulate-story", guestJwt, { action: "post" });
-    const m3 = (post3.body.mention as { id?: string } | undefined) ?? {};
-    await admin.from("story_mentions").update({ mentioned_at: new Date(Date.now() - (20 * 3600 + 45 * 60) * 1000).toISOString() }).eq("id", m3.id);
-    const old3 = await call("consumer-web-check-story", guestJwt, { place_id: placeId }, {}, "?poll=1");
-    step("3 a story that would end before the re-check reads story_too_old", old3.body.found === false && old3.body.reason === "story_too_old", old3);
+    // ── 4: two open Stories: the screen binds ───────────────────────────────
+    const p4a = await storyPurchase(admin, userId, placeId);
+    const p4b = await storyPurchase(admin, userId, placeId);
+    const post4 = await post();
+    step("4 with two open Stories a post binds to neither", !!post4.mention?.id && post4.bound_story_id === null, post4);
+    const poll4 = await call("consumer-web-check-story", guestJwt, { story_id: p4b.story_id });
+    step("4 the screen binds it to the Story it shows", (poll4.body.story as StoryOut)?.state === "found" && (poll4.body.story as StoryOut)?.mention?.id === post4.mention?.id, poll4);
+    step("4 the other Story still waits", (await getStory({ story_id: p4a.story_id })).state === "waiting_post");
 
-    // ── 3b: rejected; 3c: never approved ─────────────────────────────────────
-    const post3b = await call("consumer-web-emulate-story", guestJwt, { action: "post" });
-    const m3b = (post3b.body.mention as { id?: string } | undefined) ?? {};
-    const f3b = await call("consumer-web-check-story", guestJwt, { place_id: placeId }, {}, "?poll=1");
-    const t3b = (f3b.body.review as { url?: string } | undefined)?.url?.split("/story/")[1] ?? "";
-    const rj = await review(t3b, "reject");
-    step("3b the waiter rejects a story", (f3b.body.mention as { id?: string })?.id === m3b.id && rj.status === 200 && rj.body.outcome === "rejected", rj);
-    const after3b = await call("consumer-web-check-story", guestJwt, { place_id: placeId }, {}, "?poll=1");
-    step("3b the guest's check reads story_rejected", after3b.body.found === false && after3b.body.reason === "story_rejected", after3b);
-    const late = await review(t3b, "approve");
-    step("3b a rejected story cannot be approved after", late.status === 409 && late.body.code === "already_decided", late);
-    const p3c = await storyPurchase(admin, userId, placeId, m3b.id ?? null);
-    purchases.push(p3c.id);
-    step(
-      "3c a story no waiter approved: money in, bonus void (not_verified)",
-      p3c.story === "not_verified" && (await entryKinds(admin, p3c.id)).join() === "voucher:10000",
-      p3c,
-    );
-
-    // ── 4: one live reservation per story ────────────────────────────────────
-    const post4 = await call("consumer-web-emulate-story", guestJwt, { action: "post" });
-    const m4 = (post4.body.mention as { id?: string } | undefined) ?? {};
-    const held = crypto.randomUUID();
-    const { error: h1 } = await admin.from("wallet_purchases").insert({
-      id: held, consumer_id: userId, place_id: placeId, amount_cents: 10000, currency: "mxn", status: "open",
-      stripe_account_id: "acct_test_story_e2e", voucher: "voucher_story", bonus_cents: 5000, application_fee_cents: 0,
-      livemode: false, story_mention_id: m4.id,
-    });
-    purchases.push(held);
-    const { error: h2 } = await admin.from("wallet_purchases").insert({
-      consumer_id: userId, place_id: placeId, amount_cents: 10000, currency: "mxn", status: "open",
-      stripe_account_id: "acct_test_story_e2e", voucher: "voucher_story", bonus_cents: 5000, application_fee_cents: 0,
-      livemode: false, story_mention_id: m4.id,
-    });
-    step("4 a second live purchase cannot reserve the same story", !h1 && h2?.code === "23505", { h1, h2 });
-
-    // ── 5: livemode ──────────────────────────────────────────────────────────
-    const post5 = await call("consumer-web-emulate-story", guestJwt, { action: "post" });
-    const m5 = (post5.body.mention as { id?: string } | undefined) ?? {};
-    const p5 = await storyPurchase(admin, userId, placeId, m5.id ?? null, true);
-    purchases.push(p5.id);
-    const r5 = await purchaseRow(admin, p5.id);
-    step(
-      "5 a live purchase with a test story: money in, bonus void (mention_lost)",
-      p5.story === "mention_lost" && r5.story_bonus_void_reason === "mention_lost" && (await entryKinds(admin, p5.id)).join() === "voucher:10000",
-      { p5, r5 },
-    );
-
-    // ── 6: the waiter's approval, emulated (MESITA-4307) ────────────────────
-    const none6 = await call("consumer-web-emulate-story", guestJwt, { action: "approve", place_id: crypto.randomUUID() });
-    step("6 emulate approve with no story checked at that place is 404 no_story", none6.status === 404 && none6.body.code === "no_story", none6);
-    const post6 = await call("consumer-web-emulate-story", guestJwt, { action: "post" });
-    const m6 = (post6.body.mention as { id?: string } | undefined) ?? {};
-    const f6 = await call("consumer-web-check-story", guestJwt, { place_id: placeId }, {}, "?poll=1");
-    step("6 check finds the simulated story, waiting", (f6.body.mention as { id?: string })?.id === m6.id && (f6.body.review as { state?: string })?.state === "waiting", f6);
-    const ap6 = await call("consumer-web-emulate-story", guestJwt, { action: "approve", place_id: placeId });
-    step("6 emulate approve approves it", ap6.status === 200 && ap6.body.outcome === "approved" && ap6.body.mention_id === m6.id, ap6);
-    const s6 = await call("consumer-web-check-story", guestJwt, { place_id: placeId }, {}, "?poll=1");
-    step("6 the guest's check reads approved", (s6.body.review as { state?: string })?.state === "approved", s6);
-    const p6 = await storyPurchase(admin, userId, placeId, m6.id ?? null);
-    purchases.push(p6.id);
-    step("6 paid: the credit claims the emulated-approved story", p6.story === "claimed", p6);
+    // ── 5: the deadline ─────────────────────────────────────────────────────
+    await admin.from("stories").update({ deadline_at: new Date(Date.now() - 60_000).toISOString() }).eq("id", p4a.story_id);
+    const tick = await call("supabase-cron-recheck-stories", keys.service, {}, { "X-Internal-Caller": "story-e2e" });
+    const s5 = await getStory({ story_id: p4a.story_id });
+    step("5 past its deadline with no post: void expired at the tick", tick.status === 200 && s5.state === "void" && s5.void_reason === "expired", { tick: tick.body, s5 });
 
     const wallet = await call("consumer-web-get-wallet", guestJwt, {});
-    const rows = (wallet.body.waiting_stories as { purchase_id: string; state: string }[] | undefined) ?? [];
+    const list = (wallet.body.stories as { story_id: string; state: string }[] | undefined) ?? [];
     step(
-      "the Wallet lists both decided Stories with their state",
-      rows.find((r) => r.purchase_id === p1.id)?.state === "released" && rows.find((r) => r.purchase_id === p2.id)?.state === "void",
-      rows,
+      "the Wallet's stories list has every Story with its state",
+      list.length === 5 && list.find((r) => r.story_id === p1.story_id)?.state === "released" &&
+        list.find((r) => r.story_id === p3.story_id)?.state === "void",
+      list,
     );
   } catch (e) {
     step("run", false, e instanceof Error ? e.message : String(e));
   } finally {
     if (userId) {
       await admin.from("wallet_entries").delete().eq("consumer_id", userId);
+      await admin.from("stories").delete().eq("consumer_id", userId);
       await admin.from("wallet_purchases").delete().eq("consumer_id", userId);
       await admin.from("story_mentions").delete().like("ig_story_id", `emu-${userId}-%`);
-      const { data: objs } = await admin.storage.from("story-emulator").list(userId);
-      const names = ((objs ?? []) as { name: string }[]).map((o) => `${userId}/${o.name}`);
-      if (names.length > 0) await admin.storage.from("story-emulator").remove(names);
     }
     await admin.from("place_codes").delete().eq("place_id", placeId);
     await admin.from("places").delete().eq("id", placeId);

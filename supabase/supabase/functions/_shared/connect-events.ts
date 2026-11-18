@@ -39,6 +39,7 @@ import { type StripeCall } from "./stripe.ts";
 import { fromStripeAmount } from "./money.ts";
 import { availableAtFor } from "./wallet.ts";
 import { errorMessage } from "./errors.ts";
+import { logCreditStory } from "./story-log.ts";
 
 export const SIGNATURE_TOLERANCE_SEC = 300;
 /** Stripe's events are a few KB; anything past this is not Stripe. */
@@ -380,6 +381,7 @@ async function dispatch(
       if (error) throw new Error(`wallet_credit_purchase: ${error.message}`);
       const res = data as { ok?: boolean; outcome?: string; code?: string } | null;
       if (!res?.ok) throw new Error(`wallet_credit_purchase: ${res?.code ?? "unknown"}`);
+      logCreditStory(row.id, res, "connect_webhook");
       return { status: 200, body: { ok: true, purchase_id: row.id, outcome: res.outcome ?? "credited" } };
     }
 

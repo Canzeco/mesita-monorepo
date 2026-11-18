@@ -17,9 +17,9 @@ import { readMoneyConfig } from "./money-config.ts";
 import { readInstagramSyncState } from "./consumer-doc.ts";
 import { storyMode, type StoryMode } from "./story-mention.ts";
 import { instagramHandleOfUrl } from "./place-instagram.ts";
-import { isStoryTakenConflict, STORY_TAKEN } from "./story-buy.ts";
 import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount, VISIT_STATUSES } from "./visits.ts";
+import { type StoryRecord, storyFreesSlot } from "./story.ts";
 
 export type PlaceBalance = {
   available_cents: number;
@@ -194,9 +194,24 @@ export async function readWelcomeUsed(admin: SupabaseClient, consumerId: string 
   return (data ?? []).length > 0;
 }
 
+/** The guest's Story purchases among these whose Story frees its visit
+ *  slot (MESITA-4405, storyFreesSlot): expired with no story ever bound. */
+async function readFreedStoryPurchases(admin: SupabaseClient, consumerId: string, purchaseIds: string[]): Promise<Set<string>> {
+  if (purchaseIds.length === 0) return new Set();
+  const { data, error } = await admin.from("stories").select("purchase_id, state, void_reason, first_bound_at")
+    .eq("consumer_id", consumerId).eq("state", "void").eq("void_reason", "expired").is("first_bound_at", null)
+    .in("purchase_id", purchaseIds);
+  if (error) throw new Error(`stories: ${error.message}`);
+  return new Set(
+    ((data ?? []) as Array<Pick<StoryRecord, "purchase_id" | "state" | "void_reason" | "first_bound_at">>)
+      .filter((r) => storyFreesSlot(r)).map((r) => r.purchase_id),
+  );
+}
+
 /** Story, one each new visit (MESITA-3463): each is spent when the
  *  guest's live purchases of it here (not expired or failed) outnumber
- *  their visits here (visits.ts). */
+ *  their visits here (visits.ts). A Story that expired with no story ever
+ *  posted does not count (MESITA-4405). */
 export async function readPerVisitUsed(
   admin: SupabaseClient,
   consumerId: string | null,
@@ -205,11 +220,13 @@ export async function readPerVisitUsed(
   if (!consumerId) return {};
   const [visits, bought] = await Promise.all([
     readVisitCount(admin, consumerId, placeId),
-    admin.from("wallet_purchases").select("voucher").eq("consumer_id", consumerId).eq("place_id", placeId)
+    admin.from("wallet_purchases").select("id, voucher").eq("consumer_id", consumerId).eq("place_id", placeId)
       .in("voucher", [...PER_VISIT_VOUCHERS]).not("status", "in", "(expired,failed)"),
   ]);
   if (bought.error) throw new Error(`wallet_purchases: ${bought.error.message}`);
-  const rows = (bought.data ?? []) as Array<{ voucher: string }>;
+  const all = (bought.data ?? []) as Array<{ id: string; voucher: string }>;
+  const freed = await readFreedStoryPurchases(admin, consumerId, all.filter((r) => r.voucher === "voucher_story").map((r) => r.id));
+  const rows = all.filter((r) => !freed.has(r.id));
   const out: Partial<Record<PerVisitVoucher, boolean>> = {};
   for (const k of PER_VISIT_VOUCHERS) {
     out[k] = perVisitSpent(rows.filter((r) => r.voucher === k).length, visits);
@@ -232,15 +249,18 @@ export function guestSell(sell: readonly MoneyVoucherKey[], blocks: GuestBlocks 
 /** The pure half of readGuestBlocks: the guest's live purchases (not expired
  *  or failed) of Welcome and Story, and their visits (visits.ts), one
  *  row each, grouped by place with readWelcomeUsed's and readPerVisitUsed's
- *  definitions. A place with no purchase row gets no entry (nothing spent). */
+ *  definitions. A place with no purchase row gets no entry (nothing spent).
+ *  A purchase marked `freed` (its Story expired with no story ever posted,
+ *  MESITA-4405) does not count. */
 export function guestBlocksFrom(
-  purchases: readonly { place_id: string; voucher: string }[],
+  purchases: readonly { place_id: string; voucher: string; freed?: boolean }[],
   visits: readonly { place_id: string }[],
 ): Map<string, GuestBlocks> {
   const visitCount = new Map<string, number>();
   for (const v of visits) visitCount.set(v.place_id, (visitCount.get(v.place_id) ?? 0) + 1);
   const bought = new Map<string, Map<string, number>>();
   for (const p of purchases) {
+    if (p.freed) continue;
     const byVoucher = bought.get(p.place_id) ?? new Map<string, number>();
     byVoucher.set(p.voucher, (byVoucher.get(p.voucher) ?? 0) + 1);
     bought.set(p.place_id, byVoucher);
@@ -267,7 +287,7 @@ export async function readGuestBlocks(
   if (!consumerId || placeIds.length === 0) return null;
   const ids = [...new Set(placeIds)];
   const [bought, visits] = await Promise.all([
-    admin.from("wallet_purchases").select("place_id, voucher").eq("consumer_id", consumerId).in("place_id", ids)
+    admin.from("wallet_purchases").select("id, place_id, voucher").eq("consumer_id", consumerId).in("place_id", ids)
       .in("voucher", ["voucher_welcome", ...PER_VISIT_VOUCHERS]).not("status", "in", "(expired,failed)"),
     admin.from("wallet_payments").select("place_id").eq("consumer_id", consumerId).in("place_id", ids)
       .gt("card_cents", 0).in("status", [...VISIT_STATUSES]),
@@ -277,8 +297,16 @@ export async function readGuestBlocks(
     console.error("[vouchers] guest_blocks_read_failed", JSON.stringify({ message: error.message, places: ids.length }));
     return null;
   }
+  const rows = (bought.data ?? []) as { id: string; place_id: string; voucher: string }[];
+  let freed: Set<string>;
+  try {
+    freed = await readFreedStoryPurchases(admin, consumerId, rows.filter((r) => r.voucher === "voucher_story").map((r) => r.id));
+  } catch (e) {
+    console.error("[vouchers] guest_blocks_read_failed", JSON.stringify({ message: String(e), places: ids.length }));
+    return null;
+  }
   return guestBlocksFrom(
-    (bought.data ?? []) as { place_id: string; voucher: string }[],
+    rows.map((r) => ({ ...r, freed: freed.has(r.id) })),
     (visits.data ?? []) as { place_id: string }[],
   );
 }
@@ -618,8 +646,6 @@ export async function openPurchaseRow(
     requestId: string;
     livemode: boolean;
     followers?: readonly MoneyVoucherKey[];
-    /** MESITA-4296: the story a Story purchase reserves (consumer-web-check-story found it). */
-    storyMentionId?: string | null;
     /** MESITA-4384: card (default) | express, on the lead and every follower. */
     paySource?: "card" | "express";
   },
@@ -653,13 +679,10 @@ export async function openPurchaseRow(
       application_fee_cents: voucherFeeCents(args.voucher, args.currency),
       request_id: args.requestId,
       ...pay,
-      ...(args.storyMentionId ? { story_mention_id: args.storyMentionId } : {}),
     })
     .select("id")
     .single();
   if (insertErr) {
-    // MESITA-4296: another tap reserved this story first.
-    if (isStoryTakenConflict(insertErr)) return { ok: false, status: STORY_TAKEN.status, code: STORY_TAKEN.code, error: STORY_TAKEN.error };
     if (insertErr.code === "23505") return { ok: true, duplicate: true };
     throw new Error(`purchase_insert: ${insertErr.message}`);
   }

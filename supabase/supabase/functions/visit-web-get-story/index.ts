@@ -1,9 +1,8 @@
 // Supabase Edge Function — visit-web-get-story
 //
-// MESITA-4304 (pieces from MESITA-3507, 4264, 4297): the waiter's page on
-// visit.mesita.ai/story/<token> reads the guest's story, BEFORE the guest
-// pays. The guest's Story page shows the QR once the app check found their
-// story (consumer-web-check-story → story_review_open). No sign-in: the
+// MESITA-4304, MESITA-4405: the waiter's page on visit.mesita.ai/story/<token>
+// reads the guest's story. The guest already paid; their Story screen shows
+// the QR once a story is bound to their Story (story_bind). No sign-in: the
 // token is the key to READ; approving needs the waiter code
 // (visit-web-review-story). Logs carry the story id, never the token.
 //
@@ -11,7 +10,8 @@
 // Response: { ok: true, mention_id,
 //             place: { id, name, instagram_handle },
 //             instagram_handle (the guest's verified one),
-//             state: waiting | approved | rejected | used,
+//             state: waiting | approved | rejected | used (no open Story
+//               holds it: past its deadline, refunded, or rebound),
 //             story: { id, media_url, media_kind, mentioned_at, source, status: received | too_old },
 //             reviewed_at, bonus_wait_sec, test_mode, server_time }
 //   400 bad_request (not a token) · 404 gone (no story carries it: swept
@@ -20,7 +20,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { openRequest } from "../_shared/request.ts";
-import { isReviewToken, WAITER_STORY_COLUMNS, type WaiterStoryRow, waiterStoryView } from "../_shared/story-review.ts";
+import { isReviewToken, WAITER_STORY_COLUMNS, type WaiterStoryHolder, type WaiterStoryRow, waiterStoryView } from "../_shared/story-review.ts";
 import { readStoryRules } from "../_shared/story-mention.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { instagramHandleOfUrl } from "../_shared/place-instagram.ts";
@@ -46,14 +46,19 @@ serveJson("visit-web-get-story", async (req) => {
     if (!row || !row.review_place_id) {
       return json({ ok: false, code: "gone", error: "This Story QR is not valid. Ask the guest to show it again." }, 404);
     }
-    const [placeRes, rules] = await Promise.all([readVoucherPlace(admin, row.review_place_id), readStoryRules(admin)]);
+    const [placeRes, rules, holderRes] = await Promise.all([
+      readVoucherPlace(admin, row.review_place_id),
+      readStoryRules(admin),
+      admin.from("stories").select("state, deadline_at").eq("mention_id", row.id).maybeSingle(),
+    ]);
+    if (holderRes.error) throw new Error(`stories: ${holderRes.error.message}`);
     if (!placeRes.ok) throw new Error(placeRes.error);
     const place = {
       id: row.review_place_id,
       name: placeRes.place?.name ?? null,
       instagram_handle: instagramHandleOfUrl(placeRes.place?.instagram_url ?? null),
     };
-    const view = waiterStoryView(row, place, !paymentsLivemode(), Date.now(), rules);
+    const view = waiterStoryView(row, (holderRes.data as WaiterStoryHolder) ?? null, place, !paymentsLivemode(), Date.now(), rules);
     return json({ ok: true, ...view });
   } catch (err) {
     console.error(`[${FN}]`, JSON.stringify({ error: errorMessage(err) }));

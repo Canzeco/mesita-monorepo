@@ -418,8 +418,13 @@ verify_jwt = false
 [functions.visit-web-mark-proof-seen]
 verify_jwt = false
 
-# MESITA-4296: the Story sheet looks for the guest's story before Pay.
+# MESITA-4296, MESITA-4405: the Story screen's poll (binds a posted story to
+# the guest's Story) and the Story gate for Offers.
 [functions.consumer-web-check-story]
+verify_jwt = true
+
+# MESITA-4405: one Story for its screen, owner only.
+[functions.consumer-web-get-story]
 verify_jwt = true
 
 # MESITA-4264, MESITA-4296, MESITA-4310: the Meta emulator, test mode only,
