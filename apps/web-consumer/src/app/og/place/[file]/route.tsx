@@ -1,9 +1,9 @@
 import { ImageResponse } from "next/og";
-import sharp from "sharp";
 import { apiFetchPlaceDetail } from "@/lib/api/places";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { PLACE_PREVIEW_SIZE, placePreviewLine } from "@/lib/place-preview";
 import { SHARE_CARD } from "@/lib/share-app";
+import { jpegResponse, loadGoogleFont } from "@/lib/og-draw";
 
 // /og/place/<slug>.jpg — a shared place link's card (MESITA-4334, Pato
 // picked C): the place's first photo across the top, a white band with the
@@ -15,30 +15,6 @@ import { SHARE_CARD } from "@/lib/share-app";
 export const runtime = "nodejs";
 
 const PHOTO_HEIGHT = 440;
-const DAY = 60 * 60 * 24;
-
-// Google fonts as TrueType: Google serves TTF to a client that names no
-// browser, which is what Satori reads (never woff2). Kept for the instance.
-// Fraunces 600 for the name; Inter 500 for the line (MESITA-4336: with only
-// Fraunces loaded, the line came out serif).
-const fonts = new Map<string, Promise<ArrayBuffer | null>>();
-function loadGoogleFont(query: string): Promise<ArrayBuffer | null> {
-  let font = fonts.get(query);
-  if (!font) {
-    font = (async (): Promise<ArrayBuffer | null> => {
-      try {
-        const css = await fetch(`https://fonts.googleapis.com/css2?${query}&display=swap`).then((r) => r.text());
-        const src = css.match(/src: url\((.+?)\) format\('(?:truetype|opentype)'\)/)?.[1];
-        if (!src) return null;
-        return await fetch(src).then((r) => r.arrayBuffer());
-      } catch {
-        return null;
-      }
-    })();
-    fonts.set(query, font);
-  }
-  return font;
-}
 
 /** The rating's star, drawn: no loaded font has ★ (it drew an empty box). */
 function Star() {
@@ -156,17 +132,5 @@ export async function GET(
     },
   );
 
-  try {
-    const jpeg = await sharp(Buffer.from(await png.arrayBuffer()))
-      .jpeg({ quality: 80, mozjpeg: true })
-      .toBuffer();
-    return new Response(new Uint8Array(jpeg), {
-      headers: {
-        "Content-Type": "image/jpeg",
-        "Cache-Control": `public, max-age=${DAY}, s-maxage=${DAY}, stale-while-revalidate=${7 * DAY}`,
-      },
-    });
-  } catch {
-    return genericCard(req);
-  }
+  return (await jpegResponse(png)) ?? genericCard(req);
 }

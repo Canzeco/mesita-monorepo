@@ -47,8 +47,12 @@ export const INSTAGRAM_DM_URL = "https://www.instagram.com/direct/inbox/";
  * friend's chat unfurls the shared link into. Since MESITA-3761 it is the sign-in cover as a 1200×630 JPEG.
  */
 export const SHARE_CARD = {
-  src: "/share/mesita-cover-og.jpg",
+  // Drawn live since MESITA-4341 (Pato: "update this too"): the cover's
+  // headline and value line on the terrace photo, never a city baked into a
+  // JPEG again (it said "Every table in Monterrey" long after the cover
+  // changed). /og/mesita.jpg; the proxy's matcher skips .jpg.
+  src: "/og/mesita.jpg",
   width: 1200,
   height: 630,
-  alt: "Mesita — Every table in Monterrey. Find a place, book a table, pay and earn credit back. mesita.ai",
+  alt: "Mesita — Discover your next favorite place. Discovery, reservations, discounts and gifts at restaurants, cafés and bars.",
 } as const;
