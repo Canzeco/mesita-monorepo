@@ -391,8 +391,13 @@ export function PlaceCredit({
                 {/* THE BONUS IN THE CIRCLE (MESITA-4362, Pato: "don't mention
                     the discount there on top, mention the actual bonus inside
                     the circle"); nothing on sale with a bonus, the plain +. */}
+                {/* INK, A SIGN AND THE NUMBER (MESITA-4366, Pato: "maybe black,
+                    not green, or add sign"): the + over a small "30%". */}
                 {offers[0].bonus ? (
-                  <span className="text-sm font-bold tracking-tight text-green-600 tabular-nums">+{offers[0].bonus}%</span>
+                  <span className="flex flex-col items-center leading-none">
+                    <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+                    <span className="mt-0.5 text-xs font-bold tracking-tight tabular-nums">{offers[0].bonus}%</span>
+                  </span>
                 ) : (
                   <Plus className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
                 )}
