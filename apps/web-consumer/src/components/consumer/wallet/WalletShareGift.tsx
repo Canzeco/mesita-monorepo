@@ -2,6 +2,7 @@
 import { Gift, Share2 } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { Skeleton } from "@/components/shared/Skeleton";
 import { DOOR_GLYPH, DOOR_QUIET } from "./wallet-buttons";
 
 // WALLET'S THREE DOORS (Pato, 2026-11-14, MESITA-3894: "Share Mesita / Send
@@ -61,6 +62,17 @@ export function WalletShareGift() {
         <Share2 className={DOOR_GLYPH} strokeWidth={2.25} aria-hidden />
         Share Mesita
       </PushLink>
+    </div>
+  );
+}
+
+/** The two doors while the page reads (MESITA-4376, Pato: "before the page
+ *  has loaded, you are already showing the buttons, that is wrong"). */
+export function WalletShareGiftSkeleton() {
+  return (
+    <div className="mt-2 grid grid-cols-2 gap-2" aria-hidden>
+      <Skeleton className="h-13 rounded-xl" />
+      <Skeleton className="h-13 rounded-xl" />
     </div>
   );
 }

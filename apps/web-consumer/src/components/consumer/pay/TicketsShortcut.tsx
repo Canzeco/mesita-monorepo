@@ -4,6 +4,7 @@ import { PushLink } from "@/components/consumer/nav/PushLink";
 import { HEADER_PILL } from "@/components/consumer/search/header-classes";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/shared/Skeleton";
 
 // THE TICKETS SHORTCUT (Pato, 2026-11-14, MESITA-3891: "in wallet at the
 // top up show a shortcut to transactions/tickets in me", then the same "top
@@ -32,4 +33,9 @@ export function TicketsShortcut() {
       <ChevronRight className="-ml-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
     </PushLink>
   );
+}
+
+/** Tickets while the page reads (MESITA-4376): a bone in the pill's shape. */
+export function TicketsShortcutSkeleton() {
+  return <Skeleton className="h-9 w-28 rounded-xl" aria-hidden />;
 }

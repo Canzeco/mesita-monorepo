@@ -165,8 +165,11 @@ function pendingLines(b: WalletBalance, now: number): string[] {
 
 export function WalletSection({
   giftToken = null,
+  onReady,
 }: {
   giftToken?: string | null;
+  /** Told once the Wallet has painted (MESITA-4376): /pay keeps its buttons in bones until then. */
+  onReady?: () => void;
 }) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
@@ -228,6 +231,9 @@ export function WalletSection({
     };
   }, [wallet, photoKey, painted]);
   const ready = painted || (failed && !wallet);
+  useEffect(() => {
+    if (ready) onReady?.();
+  }, [ready, onReady]);
 
   // Add a card in the app (MESITA-4065: no Stripe page), on its own page
   // since MESITA-4092 (/wallet/cards/new).
@@ -247,6 +253,7 @@ export function WalletSection({
   );
 
   if (!ready) return <WalletBodySkeleton />;
+
 
   let shown = 0;
   const stories = wallet?.waiting_stories ?? [];
