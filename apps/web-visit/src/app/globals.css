@@ -944,3 +944,31 @@ button.verify-reject:disabled {
   align-self: stretch;
   margin-top: 12px;
 }
+
+/* ── Loading bones (MESITA-4378): every load is a placeholder ─────────── */
+
+.bones {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-self: stretch;
+  padding-top: 8px;
+}
+
+.bone {
+  border-radius: 12px;
+  background: #f0f0f0;
+  animation: bone-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes bone-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bone {
+    animation: none;
+  }
+}

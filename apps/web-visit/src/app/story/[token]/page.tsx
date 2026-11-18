@@ -8,6 +8,7 @@ import { keepStaff, readStaff } from "@/lib/staff-key";
 import { waiterCode } from "@/lib/sign-gate";
 import { agoLabel } from "@/lib/story-time";
 import { CodeBoxes } from "../../tab/[token]/CodeBoxes";
+import { Bones } from "@/components/Bones";
 
 // /story/<token> — the waiter's page for a guest's Story voucher
 // (MESITA-4304; pieces from MESITA-3507, 4264 and the closed 4297). The app
@@ -55,9 +56,7 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
   if (read.kind === "loading") {
     return (
       <main className="proof">
-        <p className="proof-status" role="status">
-          Checking…
-        </p>
+        <Bones label="Checking the story" />
       </main>
     );
   }

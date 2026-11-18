@@ -393,11 +393,23 @@ export function ConfirmDialog({
   );
 }
 
-export function Spinner({ label }: { label?: string }) {
+/** Content loading: bones shaped like rows, never a spinner (MESITA-4378). */
+export function Spinner({ label, rows = 3 }: { label?: string; rows?: number }) {
+  return <SkeletonRows label={label} rows={rows} />;
+}
+
+export function SkeletonRows({ label, rows = 3 }: { label?: string; rows?: number }) {
   return (
-    <div className="text-muted-foreground flex items-center gap-2 py-10 text-sm">
-      <Loader2 className="h-4 w-4 animate-spin" />
-      {label ?? "Loading…"}
+    <div className="flex flex-col gap-3 py-2" aria-busy="true" aria-label={label ?? "Loading"}>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <div className="bg-muted size-9 shrink-0 animate-pulse rounded-xl" />
+          <div className="flex flex-1 flex-col gap-1.5">
+            <div className="bg-muted h-3.5 w-2/3 animate-pulse rounded" />
+            <div className="bg-muted h-3 w-1/3 animate-pulse rounded" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

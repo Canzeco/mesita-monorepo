@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { Banknote, Check, CreditCard, Lock, ReceiptText, XCircle } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
@@ -952,13 +951,16 @@ function MethodTile({
 }
 
 /** The bill in bones while the place loads (also the pay pages' loading). */
-/** Every Pay loading state (MESITA-3997, Pato: "the loading should not look
- *  like that"): the screen's own header stays, and one small spinner sits in
- *  the middle. No grey bones. */
+/** Every Pay loading state: the screen's own header stays, and bones shaped
+ *  like the bill fill the body (MESITA-4378, Pato 2026-11-18: every load is
+ *  a placeholder; supersedes MESITA-3997's spinner). */
 export function GuestPayLoading() {
   return (
-    <div className="flex min-h-0 flex-1 items-center justify-center" data-guest-pay="loading" aria-busy>
-      <Spinner size="md" label="Loading your bill" />
+    <div className="flex min-h-0 flex-1 flex-col gap-3 p-4" data-guest-pay="loading" aria-busy aria-label="Loading your bill">
+      <Skeleton className="h-40 w-full rounded-2xl" />
+      <Skeleton className="h-14 w-full rounded-2xl" />
+      <Skeleton className="h-14 w-full rounded-2xl" />
+      <Skeleton className="mt-auto h-12 w-full rounded-full" />
     </div>
   );
 }

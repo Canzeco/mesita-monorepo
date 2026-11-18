@@ -58,7 +58,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
     >
       {!loaded ? (
         <div className="mt-5">
-          <Spinner label="Loading…" />
+          <Spinner label="Loading enrichment" rows={2} />
         </div>
       ) : (
         <div className="mt-5">

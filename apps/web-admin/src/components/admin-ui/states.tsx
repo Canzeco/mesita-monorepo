@@ -1,16 +1,18 @@
 import type { LucideIcon } from "lucide-react";
-import { Loader2 } from "lucide-react";
 import { cn } from "./cn";
 import { CARD_CLASS } from "./classes";
 import { PAGE_BAND_CLASS, PageContainer } from "./layout";
 import { Skeleton as Bone } from "./ui/skeleton";
 import { Chip } from "./chip";
 
+/** Content loading: bones, never a spinner (MESITA-4378). */
 export function Spinner({ label }: { label?: string }) {
   return (
-    <div className="text-muted-foreground flex items-center gap-2 py-10 text-sm">
-      <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
-      {label ?? "Loading…"}
+    <div className="flex flex-col gap-3 py-4" aria-busy aria-label={label ?? "Loading"}>
+      <Bone className="h-4 w-40" />
+      <Bone className="h-8 w-full" />
+      <Bone className="h-8 w-full" />
+      <Bone className="h-8 w-2/3" />
     </div>
   );
 }

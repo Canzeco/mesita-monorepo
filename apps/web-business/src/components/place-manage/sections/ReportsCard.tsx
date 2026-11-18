@@ -52,7 +52,10 @@ export function ReportsCard({ place }: { place: AdminPlace }) {
           {error}
         </p>
       ) : !reports ? (
-        <p className="text-muted-foreground mt-3 text-sm">Loading…</p>
+        <div className="mt-3 flex flex-col gap-2" aria-busy="true" aria-label="Loading reports">
+          <div className="bg-muted h-3.5 w-3/4 animate-pulse rounded" />
+          <div className="bg-muted h-3.5 w-1/2 animate-pulse rounded" />
+        </div>
       ) : reports.length === 0 ? (
         <p className="text-muted-foreground mt-3 text-sm">No guest has reported this place.</p>
       ) : (

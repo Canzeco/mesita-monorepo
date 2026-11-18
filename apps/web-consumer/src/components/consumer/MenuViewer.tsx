@@ -1,10 +1,10 @@
 "use client";
 
+import { Skeleton } from "@/components/shared/Skeleton";
 import { useState } from "react";
 import {
   ExternalLink,
   FileText,
-  Loader2,
   Minus,
   Plus,
   Utensils,
@@ -161,11 +161,11 @@ function MenuViewerBody({
         )}
 
         {loading && !embedFailed ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-            <Loader2 className="text-primary h-7 w-7 animate-spin" />
-            <p className="text-muted-foreground text-xs font-medium">
-              Loading menu…
-            </p>
+          <div className="absolute inset-0 flex flex-col gap-3 p-5" aria-busy="true" aria-label="Loading menu">
+            <Skeleton className="h-6 w-1/2" />
+            {Array.from({ length: 8 }, (_, i) => (
+              <Skeleton key={i} className="h-4 w-full" />
+            ))}
           </div>
         ) : null}
       </div>

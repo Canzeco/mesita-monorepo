@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Banknote, CircleCheck, Clock, HandCoins, Loader2, PenLine, Smartphone, Wallet, XCircle } from "lucide-react";
+import { Skeleton } from "@/components/shared/Skeleton";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
 import { Button } from "@/components/ui/button";
@@ -361,7 +362,7 @@ export function GuestTabView({
                   </button>
                 </div>
               ) : (
-                <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" aria-label="Loading the QR" />
+                <Skeleton className="h-full w-full rounded-xl" />
               )}
             </div>
           </div>
