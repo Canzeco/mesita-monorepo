@@ -2,7 +2,7 @@
 
 import {
   CalendarCheck,
-  ChevronRight,
+  Clock,
   Tag,
   Heart,
   Map as MapIcon,
@@ -22,7 +22,6 @@ import { mesitaRowState } from "../../lib/mesita-row";
 import { reserveTimes } from "../../lib/reserve-times";
 import { OfferTrack, offersLabel, ROW_TICK_MS, ROW_TICKS_PER_CHANGE, useOfferSlide, type OfferSlide } from "./offer-slides";
 import { OffTileSheet, type OffTile } from "./OffTileSheet";
-import { PLACE_PILL_CLASS } from "../../lib/ui";
 import { buildDirectionsUrl } from "../../lib/maps-link";
 
 
@@ -99,11 +98,6 @@ const OFFERS_CHIP = "bg-[#00D66F] text-neutral-950";
 const OFF_CHIP = "bg-paper/15 text-paper/70 flex items-center justify-center";
 
 // The reservation button's tones: green once confirmed, grey while booking.
-const MONEY_TONE = {
-  green: "bg-green-400 text-neutral-950",
-  off: "bg-border/60 text-foreground",
-} as const;
-
 const tileBtn = cn(
   PROFILE_TILE_BOX_CLASS,
   "bg-foreground text-paper hover:opacity-90 text-xs font-semibold transition active:scale-[0.99]",
@@ -283,7 +277,9 @@ export function MesitaActions({
       {offOpen ? (
         <OffTileSheet tile={offOpen} line={offOpen === "offers" ? row.offers.note : undefined} onClose={() => setOffOpen(null)} />
       ) : null}
-      {row.reserve.works ? (
+      {actions?.reservation ? (
+        <TableTile r={actions.reservation} onReserve={onReserve} />
+      ) : row.reserve.works ? (
         <ReserveTile place={place} onReserve={onReserve} />
       ) : (
         <button
@@ -321,7 +317,6 @@ export function MesitaActions({
         </button>
       )}
     </div>
-    {actions?.reservation ? <ReservationButton r={actions.reservation} /> : null}
     </div>
   );
 }
@@ -447,32 +442,43 @@ export function OffersTile({
   );
 }
 
-/** YOUR TABLE HERE (MESITA-3640, Pato: "if there is an active reservation
- *  for that place display it below the 4 buttons as one large button"; two
- *  buttons since MESITA-4151): a
- *  guest holds at most one live reservation per place. Full width under the
- *  row, the tiles' height and shape, green once the place confirmed, grey
- *  while it is booking; opens the reservation. */
-function ReservationButton({ r }: { r: NonNullable<PlaceActions["reservation"]> }) {
+/** YOUR TABLE HERE IS THE RESERVE TILE (MESITA-4404, Pato: "If booked,
+ *  don't show reserve button. Just show the reservation there in a big red
+ *  block, and when you click that, you can book other thing … also
+ *  occupating 50% of space"; red while Booking too). A guest holds at most
+ *  one live table per place (MESITA-3640). The Reserve tile's frame and red
+ *  box, standing still: the day over the big time, the state under the
+ *  glyph (Booking / Booked). Tap opens the Reserve page, which starts on
+ *  Your table: Change it · Cancel it (MESITA-4403). It was a grey strip
+ *  under the row (MESITA-3640 to MESITA-4404). */
+function TableTile({
+  r,
+  onReserve,
+}: {
+  r: NonNullable<PlaceActions["reservation"]>;
+  onReserve?: () => void;
+}) {
+  // `when` is the host's "Thu 19 Nov · 20:00".
+  const [day, time] = r.when.split(" · ");
+  const state = r.confirmed ? "Booked" : "Booking";
+  const Icon = r.confirmed ? CalendarCheck : Clock;
   return (
     <button
       type="button"
-      onClick={r.onOpen}
+      onClick={onReserve ?? r.onOpen}
       data-profile-actions="reservation"
-      aria-label={`Your reservation here, ${r.when}, ${r.status}`}
-      className={cn(
-        "flex h-13 w-full min-w-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]",
-        MONEY_TONE[r.confirmed ? "green" : "off"],
-      )}
+      data-reservation-state={r.confirmed ? "booked" : "booking"}
+      aria-label={`Your table here: ${state}, ${day}${time ? `, ${time}` : ""}. Opens Reserve to change or cancel it.`}
+      className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE)}
     >
-      <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
-      <span className="truncate">Your reservation · {r.when}</span>
-      <span
-        className={cn(PLACE_PILL_CLASS, "ml-auto shrink-0", r.confirmed ? "bg-foreground text-paper" : "bg-paper text-muted-foreground")}
-      >
-        {r.status}
+      <span className={ROW_LEAD}>
+        <Icon className={cn(MESITA_TILE_ICON, !r.confirmed && "animate-pulse")} strokeWidth={2.25} />
+        <span>{state}</span>
       </span>
-      <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      <span className={cn(ROW_CHIP, RESERVE_CHIP, "flex flex-col items-center justify-center")}>
+        <span className="text-[10px] font-bold tracking-wide uppercase opacity-90">{day}</span>
+        {time ? <span className="text-base">{time}</span> : null}
+      </span>
     </button>
   );
 }
