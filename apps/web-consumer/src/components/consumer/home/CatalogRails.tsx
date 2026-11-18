@@ -49,7 +49,7 @@ import {
 } from "react";
 import { ChevronDown, Compass, Heart } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   apiFillAreaPool,
@@ -248,6 +248,16 @@ export function CatalogRails() {
   // layout, so the chip, the pool and the scroll survive a tab switch.
   const tab = homeTabOf(usePathname() ?? CONSUMER_ROUTES.home);
   const [chip, setChip] = useState<string>(ALL_CHIP);
+  // ?row=saved OPENS ON SAVED (MESITA-4327): Me's Saved box is a shortcut
+  // to this row, not a page of its own. Read during render (React's
+  // prop-to-state pattern), once per ask, so a tap on another row after
+  // it still wins.
+  const rowAsk = useSearchParams()?.get("row") ?? null;
+  const [lastRowAsk, setLastRowAsk] = useState<string | null>(null);
+  if (rowAsk !== lastRowAsk) {
+    setLastRowAsk(rowAsk);
+    if (rowAsk === SAVED_CHIP) setChip(SAVED_CHIP);
+  }
   // The family the pool was asked for (MESITA-2438): a family row's own,
   // none for All.
   const [families, setFamilies] = useState<string[]>([]);

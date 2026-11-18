@@ -4,6 +4,7 @@ import {
   Bell,
   CalendarCheck,
   CreditCard,
+  Heart,
   Settings as SettingsIcon,
   Ticket,
   UserRound,
@@ -188,6 +189,16 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     title: "Integrations",
     summary: "Calendar and MCP",
     href: CONSUMER_ROUTES.mePages.integrations,
+  },
+  // SAVED, A SHORTCUT (Pato, 2026-11-18, MESITA-4327: "add a new box, a
+  // shortcut for saved places. not own place. just a shortcut"): Home on
+  // its ❤️ Saved row, no page of its own. Beside Settings, which still
+  // closes the grid.
+  {
+    Icon: Heart,
+    title: "Saved",
+    summary: "Places you saved",
+    href: `${CONSUMER_ROUTES.home}?row=saved`,
   },
 ];
 

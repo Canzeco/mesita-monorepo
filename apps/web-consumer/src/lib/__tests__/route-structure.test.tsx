@@ -650,7 +650,7 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders nine cells in Pato's order", () => {
+  it("renders ten cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -676,6 +676,8 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
       "Share",
       // MCP's cell became Integrations (MESITA-3954): Calendar, MCP Soon.
       "Integrations",
+      // A shortcut to Home's ❤️ Saved row (MESITA-4327), no page of its own.
+      "Saved",
       "Settings",
     ]);
     // No Soon cell since MESITA-3954: MCP is a Soon row on Integrations.
