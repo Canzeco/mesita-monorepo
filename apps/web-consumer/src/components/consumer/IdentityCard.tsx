@@ -25,8 +25,8 @@ import {
 // PHOTO AT THE LEFT, NAME OVER INSTAGRAM AT ITS RIGHT (Pato, MESITA-4308:
 // "profile-photo, name / profile-photo, instagram"):
 //
-//   (64px photo)  Diego
-//                 ◎ @diego (~1.2K followers)
+//   (60px photo)  Diego                          20px bold (MESITA-4313)
+//                 ◎ @diego · ~1.2K followers
 //
 // PLAIN TEXT, NO OUTLINES (design review D1): Instagram's own profile
 // header. Before, each fact was a 36px outlined pill under a centred photo
@@ -42,21 +42,22 @@ import {
 // reads too (MESITA-2701).
 
 /** A line's tap area grows to the 44px floor without growing it visually
- *  (MESITA-1688): the lines are 20px each with 4px between, centred in the
- *  67px ring, and the app bar adds 12px of padding. So the name's area
- *  reaches up to the bar's top edge and the Instagram line's down to its
- *  bottom, each meeting the other at the gap: 23.5 + 20 + 2 = 45.5px. */
+ *  (MESITA-1688): the name is 28px and the Instagram line 20px with 4px
+ *  between, centred in the 63px ring (5.5px spare each side), and the card
+ *  adds 16px of padding (MESITA-4313). So the name's area reaches up to the
+ *  card's top edge and the Instagram line's down to its bottom, each meeting
+ *  the other at the gap: Instagram 21.5 + 20 + 2 = 43.5px, name 49.5px. */
 const NAME_TAP_CLASS =
-  "after:absolute after:inset-x-0 after:-top-[23.5px] after:-bottom-0.5 after:content-['']";
+  "after:absolute after:inset-x-0 after:-top-[21.5px] after:-bottom-0.5 after:content-['']";
 const INSTAGRAM_TAP_CLASS =
-  "after:absolute after:inset-x-0 after:-top-0.5 after:-bottom-[23.5px] after:content-['']";
+  "after:absolute after:inset-x-0 after:-top-0.5 after:-bottom-[22px] after:content-['']";
 
 /** A door's hover: the line dims, no box to fill. */
 const DOOR_HOVER_CLASS = "transition-opacity hover:opacity-70";
 
 export type IdentityInstagram = {
-  /** Me: "@handle (~25K followers)" or "Connect Instagram"
-   *  (MESITA-2606, MESITA-2696); Social: "@per*** (~1.2K followers)"
+  /** Me: "@handle · ~25K followers" or "Connect Instagram"
+   *  (MESITA-2606, MESITA-2696); Social: "@per*** · ~1.2K followers"
    *  or "No Instagram" (MESITA-2594, MESITA-2696). */
   label: string;
   /** False draws the plain ink glyph, no gradient: colour means connected
