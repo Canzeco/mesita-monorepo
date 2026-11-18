@@ -3,7 +3,6 @@
 import {
   ConnectCardSkeleton,
   ConnectedAccount,
-  DisconnectLink,
   WhyConnect,
 } from "@/components/consumer/me/InstagramModal";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -23,7 +22,7 @@ import { useConsumerIdentity } from "@/lib/identity-context";
 //                   one the page draws while it asks how connecting works
 //                   today), then Photo's switch row
 //   connected       the account card, Why connect, Photo's switch row,
-//                   then the red Disconnect link (MESITA-4342)
+//                   Disconnect in the account card's row (MESITA-4350)
 //
 // THE WORDS ARE THE PAGE'S: the intro, the account card and the
 // Connect card are InstagramModal's own components, and the switch rows'
@@ -40,7 +39,6 @@ export function InstagramSkeleton() {
         <WhyConnect connected={connected} />
         {!connected && <ConnectCardSkeleton />}
 
-        {connected && <DisconnectLink disabled />}
       </div>
       <p role="status" className="sr-only">
         Loading Instagram
