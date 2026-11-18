@@ -25,6 +25,7 @@ import { storyBonusOpen, storyLine } from "@/lib/story-lines";
 import { Panel } from "@/components/shared/Panel";
 import { WalletPanelList } from "./WalletLists";
 import { TicketsBoard, type TicketTab } from "@/components/consumer/activity/MeLists";
+import { ActivityRowsSkeleton } from "@/components/consumer/activity/ActivityRow";
 import { PRIMARY, SECONDARY } from "./wallet-buttons";
 import { offerHref } from "@/components/consumer/offer-button";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
@@ -198,21 +199,33 @@ export function PlacePhotoMark({ photo, name }: { photo: string | null; name: st
 
 /** The page loading: the card's panel, then the Tickets list. */
 export function LoyaltyCardSkeleton() {
+  // NO WORDS, THE PAGE'S SHAPE (MESITA-4332, Pato: "the loading must be
+  // placeholder with no words"): the card panel (the card, four round
+  // actions with their label bars), then the hairline, the Tickets strip's
+  // four tabs and the list box, as the page draws them.
   return (
     <div className="flex flex-col" aria-hidden>
       <Panel className="mt-4 p-4">
         <Skeleton className="mx-auto aspect-[1.586] w-1/2 rounded-xl" />
-        {/* The bank row (MESITA-4281). */}
-        <div className="mt-5 flex justify-around">
+        <div className="mt-5 grid grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-13 w-13 rounded-full" />
+            <span key={i} className="flex flex-col items-center gap-2">
+              <Skeleton className="h-13 w-13 rounded-full" />
+              <Skeleton className="h-3 w-14 rounded-md" />
+            </span>
           ))}
         </div>
       </Panel>
-      <Panel className="mt-4 p-4">
-        <Skeleton className="h-5 w-28 rounded-md" />
-        <Skeleton className="mt-3 h-48 w-full rounded-xl" />
-      </Panel>
+      <div className="border-border mt-5 border-t pt-2">
+        <div className="border-border mb-4 grid grid-cols-4 border-b">
+          {[0, 1, 2, 3].map((i) => (
+            <span key={i} className="flex justify-center py-3.5">
+              <Skeleton className="h-3.5 w-16 rounded-md" />
+            </span>
+          ))}
+        </div>
+        <ActivityRowsSkeleton />
+      </div>
     </div>
   );
 }
