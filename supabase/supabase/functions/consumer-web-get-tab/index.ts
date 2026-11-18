@@ -46,7 +46,7 @@ import { readAccount, readSettings } from "../_shared/payments.ts";
 import { moneyState } from "../_shared/money-state.ts";
 import { readCustomer } from "../_shared/boost.ts";
 import { listCards } from "../_shared/cards.ts";
-import { type CardStep, pollTabCard, readCardRow, tabCardRates } from "../_shared/tab-card.ts";
+import { type CardStep, isExpressStep, pollTabCard, readCardRow, tabCardRates } from "../_shared/tab-card.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readPlaceBalance } from "../_shared/vouchers.ts";
 import { callTabRpc, guestTabView, hashTabToken, mintTabToken, readShares, readTabById, readTabParts, tableView, tabUrl } from "../_shared/tab.ts";
@@ -75,6 +75,9 @@ serveJson("consumer-web-get-tab", async (req) => {
     // A card part in flight: read its PaymentIntent first, so the tab the
     // guest gets back already says what it settled.
     let cardAction: CardStep | null = null;
+    // MESITA-4386: an express hold still waiting for Face ID / Google is the
+    // Pay screen's to confirm, never a bank check for the bill page.
+    let expressAction: CardStep | null = null;
     let cardError: Record<string, unknown> | null = null;
     let tabNow = tab;
     let parts = await readTabParts(admin, tab.id);
@@ -83,7 +86,8 @@ serveJson("consumer-web-get-tab", async (req) => {
       const row = await readCardRow(admin, inFlight.id);
       if (row) {
         const polled = await pollTabCard(admin, stripe, row, paymentsPublishableKey(livemode), nowMs);
-        if (polled.step && polled.step.status !== "succeeded") cardAction = polled.step;
+        if (polled.step && isExpressStep(polled.step)) expressAction = polled.step;
+        else if (polled.step && polled.step.status !== "succeeded") cardAction = polled.step;
         if (polled.refusal) cardError = { code: polled.refusal.code, error: polled.refusal.error, ...polled.refusal.detail };
         if (polled.step?.status === "succeeded" || polled.refusal) {
           tabNow = (await readTabById(admin, tab.id)) ?? tab;
@@ -155,6 +159,7 @@ serveJson("consumer-web-get-tab", async (req) => {
       ...(cards ? { cards } : {}),
       ...(reminted ?? {}),
       ...(cardAction ? { card_action: cardAction } : {}),
+      ...(expressAction ? { express_action: expressAction } : {}),
       ...(cardError ? { card_error: cardError } : {}),
     });
   } catch (err) {
