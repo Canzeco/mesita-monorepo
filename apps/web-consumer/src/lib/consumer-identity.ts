@@ -12,8 +12,9 @@
 /** The Instagram bar, and the only number in this file. */
 export const INSTAGRAM_REACH_FOLLOWERS = 1_000;
 
-/** A Story voucher needs MORE than this many followers: the server's
- *  STORY_MIN_FOLLOWERS (_shared/money-state.ts; vouchers.ts refuses `<=`). */
+/** A Story voucher needs at least this many followers: the server's
+ *  STORY_MIN_FOLLOWERS (_shared/money-state.ts; vouchers.ts refuses `<`,
+ *  MESITA-4383). */
 export const STORY_MIN_FOLLOWERS = 1_000;
 
 /** What the app knows about a guest's Instagram. `unknown` means the profile

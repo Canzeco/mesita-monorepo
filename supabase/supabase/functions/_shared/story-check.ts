@@ -6,7 +6,7 @@
 // The order is fixed; the first reason that applies wins:
 //   place_no_instagram  the place has no Instagram to mention (MESITA-4291)
 //   needs_instagram     the guest has no verified Instagram
-//   few_followers       1,000 followers or fewer (MESITA-3507)
+//   few_followers       fewer than 1,000 followers (MESITA-3507, MESITA-4383)
 //   private_account     not known public (MESITA-4263): its mentions never arrive
 //   already_bought      one each visit (MESITA-3463)
 //   story_unavailable   live payments with Meta off: no story can arrive

@@ -261,13 +261,13 @@ Deno.test("the mark (MESITA-3408) is taken before Welcome-used and the pause, so
   assertEquals(offerFrom({ ...base, settings: nothing }).mesita_pay, false);
 });
 
-Deno.test("storyRefusal: Story needs a linked Instagram with MORE than 1,000 followers; other vouchers pass (MESITA-3507)", () => {
+Deno.test("storyRefusal: Story needs a linked Instagram with 1,000 or more followers; other vouchers pass (MESITA-3507, MESITA-4383)", () => {
   assertEquals(storyRefusal("voucher_200", null), null);
   assertEquals(storyRefusal("voucher_story", null)?.code, "needs_instagram");
   assertEquals(storyRefusal("voucher_story", { instagram_handle: null, instagram_followers_count: 50_000 })?.code, "needs_instagram");
   assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: null })?.code, "few_followers");
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1000 })?.code, "few_followers");
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1001 }), null);
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 999 })?.code, "few_followers");
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1000 }), null);
 });
 
 // ── The basket (MESITA-3841) ───────────────────────────────────────────────
