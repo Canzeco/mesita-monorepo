@@ -31,7 +31,8 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { snapshotFromStripe } from "./payments.ts";
-import { purchasesByPaymentIntent, purchaseStore, spreadGone } from "./purchase-pi.ts";
+import { purchasesByPaymentIntent, purchaseStore, recordPayWith, spreadGone } from "./purchase-pi.ts";
+import { registerAndStamp } from "./pm-domains.ts";
 import { cancelReleasedHolds, releasePayment, settlePaidPayment, SIGN_WINDOW } from "./settle-payment.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 import { type StripeCall } from "./stripe.ts";
@@ -491,7 +492,7 @@ async function dispatch(
       // 500 (Stripe disables an endpoint that keeps failing).
       const meta = (obj.metadata ?? {}) as Record<string, unknown>;
       const piId = typeof obj.id === "string" ? obj.id : null;
-      if (meta.mesita_kind === "wallet_voucher" && piId) return await voucherIntent(admin, event, obj, meta, piId, tag);
+      if (meta.mesita_kind === "wallet_voucher" && piId) return await voucherIntent(admin, deps.stripe, event, obj, meta, piId, tag);
       if (meta.mesita_kind !== "wallet_payment" || !piId) return ignored("not_mesita");
       const row = await paymentForIntent(admin, meta, piId);
       if (!row) {
@@ -530,6 +531,16 @@ async function dispatch(
         .update({ ...snapshot, last_event_created: created, updated_at: new Date().toISOString() })
         .eq("stripe_account_id", event.account as string);
       if (error) throw new Error(`account_update: ${error.message}`);
+      // MESITA-4384: an account that can charge gets mesita.ai as an Apple
+      // Pay / Google Pay domain. After the snapshot write and never blocking
+      // it: a failure is logged and express-pay-setup repairs it later.
+      if (snapshot.charges_enabled) {
+        await registerAndStamp(admin, deps.stripe, {
+          placeId: acct.place_id,
+          accountId: event.account as string,
+          livemode: deps.livemode,
+        }).catch((err) => console.error("[connect-events] express_domains_failed", JSON.stringify({ place_id: acct.place_id, error: String(err).slice(0, 200) })));
+      }
       return { status: 200, body: { ok: true, place_id: acct.place_id, outcome: "account_updated" } };
     }
   }
@@ -545,6 +556,7 @@ async function dispatch(
  *  every row (the lead and its followers) is credited or released. */
 async function voucherIntent(
   admin: SupabaseClient,
+  stripe: StripeCall,
   event: ConnectEvent,
   obj: Record<string, unknown>,
   meta: Record<string, unknown>,
@@ -573,6 +585,8 @@ async function voucherIntent(
   if (event.type === "payment_intent.succeeded") {
     const outcome = await store.credit(row.id, piId, availableAtFromSession(obj, event.created));
     for (const f of followers) await store.credit(f.id, piId, availableAtFromSession(obj, event.created, f.voucher));
+    // MESITA-4384: an express purchase's wallet, by the one writer.
+    if (row.pay_source === "express") await recordPayWith(store, stripe, { leadId: row.id, account: event.account as string, pi: obj });
     return { status: 200, body: { ok: true, purchase_id: row.id, outcome, ...basket } };
   }
   await store.release(row.id, "pi_canceled");

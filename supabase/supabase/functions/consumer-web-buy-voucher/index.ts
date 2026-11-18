@@ -55,6 +55,29 @@
 //   story_taken | story_too_old | story_livemode | story_one_per_basket |
 //   story_payment_in_progress
 // The client secret of a bank check is returned, never logged.
+//
+// MESITA-4384: EXPRESS PAY (Apple Pay / Google Pay through Stripe's Express
+// Checkout Element; "express" never means a Connect Express account). The
+// body carries `express: true` INSTEAD of `card_pm_id` (both, or a non-bool
+// express → 400 bad_body field=express). The same gates run; then the rows
+// open with pay_source 'express' and ONE PaymentIntent on the place's
+// account for the server's own amount, card only, with NO payment method and
+// NO confirm. The browser confirms it with the client secret, then sends the
+// SAME body (same request_id) again to settle; the replay branches on the
+// lead row's pay_source (an express replay needs no card) and never cancels
+// a PaymentIntent still waiting for the wallet (expressStepOf).
+//   Example (open, and the settle re-call):
+//     { "place_id": "…", "items": [{ "voucher": "voucher_1000", "qty": 1 }],
+//       "request_id": "…", "express": true }
+//   Response: { ok: true, purchase_id, express: { status:
+//     requires_payment_method | requires_action, payment_intent_id,
+//     client_secret, stripe_account, publishable_key, amount_cents (Stripe's
+//     units), decline_code?, error? } }, or once paid { status: succeeded,
+//     payment_intent_id, pay_with: apple_pay | google_pay | express } or
+//     { status: processing, payment_intent_id }.
+//   Refusals beyond the card path's: 409 disabled (the kill switch
+//   app_config.money_config.express_wallets is []), 409 closed (cancelled or
+//   timed out: start over), 503 payments_unavailable.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { readStoryRules, storyMode } from "../_shared/story-mention.ts";
@@ -66,7 +89,8 @@ import { isUuid } from "../_shared/place-id.ts";
 import { readAccount } from "../_shared/payments.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { ownCard } from "../_shared/tab-card.ts";
-import { openVoucherCard, readFollowerVouchers, readRequestRow, runVoucherCard, voucherBuyGate } from "../_shared/voucher-card.ts";
+import { expressBodyGate, openVoucherCard, readFollowerVouchers, readRequestRow, runVoucherCard, voucherBuyGate } from "../_shared/voucher-card.ts";
+import { readMoneyConfig } from "../_shared/money-config.ts";
 import { purchaseStore } from "../_shared/purchase-pi.ts";
 import {
   basketUnits,
@@ -105,10 +129,17 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   if (kinds.includes("voucher_story") && !isUuid(bodyRes.body.mention_id)) {
     return json({ ok: false, code: "bad_body", field: "mention_id", error: "Show your story first" }, 400);
   }
-  // A saved card is required (MESITA-4065): there is no Stripe page.
-  const gate = voucherBuyGate(bodyRes.body);
-  if (!gate.ok) return json({ ok: false, code: gate.code, error: gate.error }, gate.status);
-  const cardPmId = gate.cardPmId;
+  // MESITA-4384: express pay or a saved card, never both.
+  const how = expressBodyGate(bodyRes.body);
+  if (!how.ok) return json({ ok: false, code: how.code, field: how.field, error: how.error }, how.status);
+  const express = how.express;
+  // A saved card is required (MESITA-4065) unless the guest pays express.
+  let cardPmId = "";
+  if (!express) {
+    const gate = voucherBuyGate(bodyRes.body);
+    if (!gate.ok) return json({ ok: false, code: gate.code, error: gate.error }, gate.status);
+    cardPmId = gate.cardPmId;
+  }
 
   const placeRes = await readVoucherPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
@@ -127,9 +158,17 @@ serveJson("consumer-web-buy-voucher", async (req) => {
       const key = paymentsStripeKey();
       if (!key) return json({ ok: false, error: "Payments are not available right now" }, 503);
       const stripe = stripeClient(key);
-      const customer = await readCustomer(admin, userId, livemode);
-      if (!customer || !(await ownCard(stripe, customer, cardPmId))) {
-        return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
+      // MESITA-4384: the row's pay_source decides; an express replay needs no card.
+      const replayExpress = replay.pay_source === "express";
+      if (replayExpress !== express) {
+        return json({ ok: false, code: "in_progress", error: "Your purchase is already on its way." }, 409);
+      }
+      let customer: string | null = null;
+      if (!replayExpress) {
+        customer = await readCustomer(admin, userId, livemode);
+        if (!customer || !(await ownCard(stripe, customer, cardPmId))) {
+          return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
+        }
       }
       if (
         replay.place_id !== placeId || replay.voucher !== voucher || replay.stripe_checkout_session_id ||
@@ -139,8 +178,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
       }
       const res = await runVoucherCard(purchaseStore(admin), stripe, {
         purchaseId: replay.id,
-        customer,
-        platformPm: cardPmId,
+        ...(customer ? { customer, platformPm: cardPmId } : {}),
         currency: replay.currency,
         placeId,
         placeName: place.name ?? null,
@@ -150,6 +188,10 @@ serveJson("consumer-web-buy-voucher", async (req) => {
         nowMs: Date.now(),
       });
       if (!res.ok) return json({ ok: false, code: res.code, error: res.error, ...(res.detail ?? {}) }, res.status);
+      if ("express" in res) {
+        console.log("[consumer-web-buy-voucher]", JSON.stringify({ outcome: res.express.status, place_id: placeId, voucher, purchase_id: res.purchase_id, express: true, replay: true }));
+        return json({ ok: true, purchase_id: res.purchase_id, express: res.express });
+      }
       return json({ ok: true, purchase_id: res.purchase_id, card: res.card });
     }
   }
@@ -157,6 +199,10 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   // No mention source, no Story (MESITA-4264): live payments with Meta off.
   if (kinds.includes("voucher_story") && storyMode() === "unavailable") {
     return json({ ok: false, code: "story_unavailable", error: "The Story voucher is not available right now" }, 409);
+  }
+  // MESITA-4384: the kill switch stops a sheet that is already open too.
+  if (express && (await readMoneyConfig(admin)).express_wallets.length === 0) {
+    return json({ ok: false, code: "disabled", error: "Apple Pay and Google Pay are off right now. Pay with a card." }, 409);
   }
   const [offer, account] = await Promise.all([voucherOffer(admin, place, userId, livemode), readAccount(admin, placeId)]);
   // Every voucher in the basket passes its own gates (MESITA-3841).
@@ -195,10 +241,14 @@ serveJson("consumer-web-buy-voucher", async (req) => {
 
   {
     // A saved card: it must be on this guest's own customer, never an id
-    // the browser made up.
-    const customer = await readCustomer(admin, userId, livemode);
-    if (!customer || !(await ownCard(stripe, customer, cardPmId))) {
-      return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
+    // the browser made up. Express pay has no card yet (the wallet brings it).
+    let source: { kind: "card"; customer: string; platformPm: string } | { kind: "express" } = { kind: "express" };
+    if (!express) {
+      const customer = await readCustomer(admin, userId, livemode);
+      if (!customer || !(await ownCard(stripe, customer, cardPmId))) {
+        return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
+      }
+      source = { kind: "card", customer, platformPm: cardPmId };
     }
     const card = await openVoucherCard(admin, stripe, {
       consumerId: userId,
@@ -209,8 +259,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
       currency: offer.currency,
       requestId,
       livemode,
-      customer,
-      platformPm: cardPmId,
+      source,
       publishableKey: paymentsPublishableKey(livemode),
       nowMs: Date.now(),
       storyMentionId,
@@ -219,6 +268,10 @@ serveJson("consumer-web-buy-voucher", async (req) => {
       const detail = "detail" in card && card.detail ? card.detail : {};
       console.log("[consumer-web-buy-voucher]", JSON.stringify({ outcome: card.code, place_id: placeId, voucher, units: units.length }));
       return json({ ok: false, code: card.code, error: card.error, ...detail }, card.status);
+    }
+    if ("express" in card) {
+      console.log("[consumer-web-buy-voucher]", JSON.stringify({ outcome: card.express.status, place_id: placeId, voucher, units: units.length, purchase_id: card.purchase_id, express: true }));
+      return json({ ok: true, purchase_id: card.purchase_id, express: card.express });
     }
     console.log("[consumer-web-buy-voucher]", JSON.stringify({ outcome: card.card.status, place_id: placeId, voucher, units: units.length, purchase_id: card.purchase_id }));
     return json({ ok: true, purchase_id: card.purchase_id, card: card.card });

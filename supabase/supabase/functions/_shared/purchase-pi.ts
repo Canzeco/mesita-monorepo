@@ -44,10 +44,14 @@ export type PurchaseCardRow = {
   /** MESITA-3841: the basket's lead on a follower; null on a lead or a
    *  single purchase (absent on an older read). */
   basket_lead_id?: string | null;
+  /** MESITA-4384: card | express (absent on an older read: card). */
+  pay_source?: string | null;
+  /** MESITA-4384: express | apple_pay | google_pay on an express purchase. */
+  pay_with?: string | null;
 };
 
 const COLUMNS =
-  "id, status, consumer_id, place_id, voucher, amount_cents, bonus_cents, stripe_account_id, stripe_checkout_session_id, stripe_payment_intent_id, created_at, basket_lead_id";
+  "id, status, consumer_id, place_id, voucher, amount_cents, bonus_cents, stripe_account_id, stripe_checkout_session_id, stripe_payment_intent_id, created_at, basket_lead_id, pay_source, pay_with";
 
 /** The purchase row's writes, behind one seam so the money tests can fake it. */
 export type PurchaseStore = {
@@ -63,6 +67,9 @@ export type PurchaseStore = {
   release(id: string, code: string): Promise<void>;
   /** Stripe said succeeded: the voucher and its bonus, once. */
   credit(id: string, pi: string, availableAt: string | null): Promise<"credited" | "already_paid">;
+  /** MESITA-4384: the wallet that paid an express purchase, on the row and
+   *  every follower of it; only rows whose pay_source is express. */
+  payWith?(id: string, wallet: "apple_pay" | "google_pay"): Promise<void>;
 };
 
 export function purchaseStore(admin: SupabaseClient): PurchaseStore {
@@ -112,7 +119,53 @@ export function purchaseStore(admin: SupabaseClient): PurchaseStore {
       if (!res?.ok) throw new Error(`wallet_credit_purchase: ${res?.code ?? "unknown"}`);
       return res.outcome === "already_paid" ? "already_paid" : "credited";
     },
+    async payWith(id, wallet) {
+      const { error } = await admin.from("wallet_purchases")
+        .update({ pay_with: wallet, updated_at: new Date().toISOString() })
+        .or(`id.eq.${id},basket_lead_id.eq.${id}`).eq("pay_source", "express");
+      if (error) throw new Error(`purchase_pay_with: ${error.message}`);
+    },
   };
+}
+
+// ── Which wallet paid (MESITA-4384) ────────────────────────────────────────
+
+/** apple_pay | google_pay from a PaymentIntent whose latest_charge is
+ *  expanded; null when it is not (or the charge is a plain card). Pure. */
+export function walletOfIntent(pi: Record<string, unknown>): "apple_pay" | "google_pay" | null {
+  const charge = pi.latest_charge;
+  if (!charge || typeof charge !== "object") return null;
+  const details = (charge as Record<string, unknown>).payment_method_details as Record<string, unknown> | undefined;
+  const card = details?.card as Record<string, unknown> | undefined;
+  const wallet = (card?.wallet as Record<string, unknown> | undefined)?.type;
+  return wallet === "apple_pay" || wallet === "google_pay" ? wallet : null;
+}
+
+/** THE one writer of an express purchase's wallet (pay_with), called by
+ *  every settler right after a credit: the buy's replay, the receiver, the
+ *  cron and the Wallet read. Idempotent. Reads the PI again with
+ *  latest_charge expanded when the one in hand is not. A failure is logged,
+ *  never thrown: the credit already landed and must stay the answer. */
+export async function recordPayWith(
+  store: PurchaseStore,
+  stripe: StripeCall,
+  args: { leadId: string; account: string; pi: Record<string, unknown>; signal?: AbortSignal },
+): Promise<"apple_pay" | "google_pay" | null> {
+  try {
+    let wallet = walletOfIntent(args.pi);
+    if (!wallet) {
+      const full = await stripe("GET", `payment_intents/${encodeURIComponent(String(args.pi.id))}`, { expand: ["latest_charge"] }, {
+        stripeAccount: args.account,
+        signal: args.signal,
+      });
+      wallet = walletOfIntent(full);
+    }
+    if (wallet && store.payWith) await store.payWith(args.leadId, wallet);
+    return wallet;
+  } catch (err) {
+    console.error("[purchase-pi] pay_with_failed", JSON.stringify({ purchase_id: args.leadId, error: String(err).slice(0, 200) }));
+    return null;
+  }
 }
 
 export type PurchasePiOutcome = "credited" | "already_paid" | "pending" | "expired" | "mismatch";
@@ -133,6 +186,8 @@ export async function settlePurchaseByPaymentIntent(
     available_at: string | null;
     /** MESITA-3841: when known; otherwise read on a purchase_id that is not this row's. */
     basket_lead_id?: string | null;
+    /** MESITA-4384: when known; otherwise read when the PI succeeded. */
+    pay_source?: string | null;
   },
   nowMs: number,
   opts?: { signal?: AbortSignal },
@@ -150,15 +205,25 @@ export async function settlePurchaseByPaymentIntent(
       return "mismatch";
     }
   }
-  const decide = async (status: unknown): Promise<PurchasePiOutcome | null> => {
-    if (status === "succeeded") return await store.credit(purchase.id, piId, purchase.available_at);
+  const decide = async (status: unknown, intent: Record<string, unknown>): Promise<PurchasePiOutcome | null> => {
+    if (status === "succeeded") {
+      const outcome = await store.credit(purchase.id, piId, purchase.available_at);
+      // MESITA-4384: an express purchase learns its wallet here too (the
+      // receiver may settle before the guest's own re-call).
+      const source = purchase.pay_source !== undefined ? purchase.pay_source : (await store.read(purchase.id))?.pay_source ?? "card";
+      if (source === "express") {
+        const lead = typeof meta.purchase_id === "string" ? meta.purchase_id : purchase.id;
+        await recordPayWith(store, stripe, { leadId: lead, account, pi: intent, signal: opts?.signal });
+      }
+      return outcome;
+    }
     if (status === "canceled") {
       await store.release(purchase.id, "pi_canceled");
       return "expired";
     }
     return null;
   };
-  const first = await decide(pi.status);
+  const first = await decide(pi.status, pi);
   if (first) return first;
   if (pi.status === "processing" || nowMs - Date.parse(purchase.created_at) < PURCHASE_PI_TTL_MS) return "pending";
 
@@ -174,7 +239,7 @@ export async function settlePurchaseByPaymentIntent(
     if (!(err instanceof StripeError) || err.httpStatus !== 400) throw err;
     after = await stripe("GET", path, undefined, { stripeAccount: account, signal: opts?.signal });
   }
-  return (await decide(after.status)) ?? "pending";
+  return (await decide(after.status, after)) ?? "pending";
 }
 
 // ── A basket's shared charge (MESITA-3841) ─────────────────────────────────

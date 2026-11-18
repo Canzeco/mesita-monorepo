@@ -620,8 +620,11 @@ export async function openPurchaseRow(
     followers?: readonly MoneyVoucherKey[];
     /** MESITA-4296: the story a Story purchase reserves (consumer-web-check-story found it). */
     storyMentionId?: string | null;
+    /** MESITA-4384: card (default) | express, on the lead and every follower. */
+    paySource?: "card" | "express";
   },
 ): Promise<{ ok: true; duplicate: false; purchaseId: string } | { ok: true; duplicate: true } | BuyRefusal> {
+  const pay = args.paySource === "express" ? { pay_source: "express", pay_with: "express" } : { pay_source: "card" };
   const lines = catalogLines(args.currency);
   const line = lines[args.voucher];
   const followers = args.followers ?? [];
@@ -649,6 +652,7 @@ export async function openPurchaseRow(
       bonus_cents: line.bonus_cents,
       application_fee_cents: voucherFeeCents(args.voucher, args.currency),
       request_id: args.requestId,
+      ...pay,
       ...(args.storyMentionId ? { story_mention_id: args.storyMentionId } : {}),
     })
     .select("id")
@@ -673,6 +677,7 @@ export async function openPurchaseRow(
       bonus_cents: lines[k].bonus_cents,
       application_fee_cents: voucherFeeCents(k, args.currency),
       basket_lead_id: purchaseId,
+      ...pay,
     })));
     if (followErr) {
       console.error("[vouchers] basket_write", JSON.stringify({ purchase_id: purchaseId, code: followErr.code, error: followErr.message }));

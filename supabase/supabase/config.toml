@@ -358,6 +358,15 @@ verify_jwt = false
 [functions.consumer-web-buy-voucher]
 verify_jwt = true
 
+# MESITA-4384: express pay (Apple Pay / Google Pay) on the Offers sheet: what
+# the button needs (signed in), and the admin backfill of payment method
+# domains on every connected account (super-admin; re-run in live at go-live).
+[functions.consumer-web-express-pay-setup]
+verify_jwt = true
+
+[functions.admin-web-register-pm-domains]
+verify_jwt = true
+
 # MESITA-3523: saved cards on the Wallet's Money rail (signed in): the list,
 # Add (a Stripe setup Checkout) and Remove.
 [functions.consumer-web-list-cards]

@@ -111,6 +111,8 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     buyingVoucher: vouchers.buying,
     // The checkout in the page (MESITA-4065): the saved cards and their pick.
     ...(vouchers.payCards ? { payCards: vouchers.payCards } : {}),
+    // Apple Pay / Google Pay (MESITA-4384): signed-in guests only.
+    ...(vouchers.payCards ? { renderExpressPay: vouchers.renderExpress } : {}),
     payCardId: vouchers.payCardId,
     onSelectPayCard: vouchers.selectCard,
     // BACK TO THE SAME SHEET (Pato, 2026-11-17, MESITA-4230, D4): the offer

@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { readCached, readCachedEntry, writeCached } from "@/lib/screen-cache";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import type { PayCard, PayCards, PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, StoryCheckAnswer, VoucherBasketItem, VoucherBuyOutcome, VoucherKey } from "@mesita/place-profile";
+import type { ExpressPayArgs, PayCard, PayCards, PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, StoryCheckAnswer, VoucherBasketItem, VoucherBuyOutcome, VoucherKey } from "@mesita/place-profile";
 import { pickPayCard } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
@@ -45,6 +45,7 @@ import { toast } from "@/lib/toast";
 import { openSignGate } from "@/lib/anonymous";
 import { useViewer } from "@/lib/identity-context";
 import { trackEvent } from "@/lib/analytics/track";
+import { ExpressVoucherPay } from "@/components/consumer/ExpressVoucherPay";
 
 // THE SECONDARY SHEETS LOAD AFTER THE PLACE PAINTS (MESITA-3014). Each
 // opens on a tap, so none belongs in the first frame's bundle; they are
@@ -345,6 +346,8 @@ export function usePlaceVouchers(
   buy: (items: VoucherBasketItem[], cardId: string | null, opts?: { mentionId?: string }) => Promise<VoucherBuyOutcome>;
   /** offer_sheet_opened (MESITA-4375). */
   opened: (voucher: VoucherKey, savedCard: boolean) => void;
+  /** Apple Pay / Google Pay in the Offers sheet's pay box (MESITA-4384). */
+  renderExpress: (args: ExpressPayArgs) => ReactNode;
   /** The Story sheet's check (MESITA-4296). */
   checkStory: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
   /** Test mode: post a sample story; null when posted, else the refusal's line. */
@@ -557,6 +560,30 @@ export function usePlaceVouchers(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [placeId]);
 
+  // EXPRESS PAY (MESITA-4384): Apple Pay / Google Pay on the Offers sheet.
+  // A paid or processing purchase ends like a card one (onPaid); "received"
+  // (Stripe took it, the settle answer was slow) stays on the sheet.
+  const renderExpress = useCallback(
+    (a: ExpressPayArgs): ReactNode =>
+      mesita ? (
+        <ExpressVoucherPay
+          placeId={placeId}
+          items={a.items}
+          mentionId={a.mentionId}
+          disabled={a.disabled}
+          onState={a.onState}
+          onLock={a.onLock}
+          onError={a.onError}
+          onDone={(d) => {
+            a.onDone(d);
+            void load();
+            if (d.outcome !== "received") onPaid.current?.();
+          }}
+        />
+      ) : null,
+    [mesita, placeId, load],
+  );
+
   const mine = offer?.placeId === placeId ? offer : null;
   const money = mine?.money ?? null;
   // Add a card: its own page since MESITA-4101 (/wallet/cards/new); back
@@ -573,6 +600,7 @@ export function usePlaceVouchers(
     load,
     buy: (items, cardId, opts) => buy(items, cardId, opts),
     opened,
+    renderExpress,
     checkStory,
     simulateStory,
     simulateApproval,

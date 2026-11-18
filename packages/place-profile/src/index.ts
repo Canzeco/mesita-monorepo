@@ -49,6 +49,7 @@ export type {
   PlaceMenuItem,
   VoucherBasketItem,
   VoucherBuyOutcome,
+  ExpressPayArgs,
   StoryRefused,
 } from "./actions";
 export {

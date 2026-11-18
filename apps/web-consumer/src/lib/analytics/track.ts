@@ -25,7 +25,11 @@ export type AnalyticsEvent =
   // paid ÷ opened, split by saved card; first-time is derived from
   // wallet_purchases at report time.
   | "offer_sheet_opened"
-  | "voucher_paid";
+  | "voucher_paid"
+  // MESITA-4384 — express pay: which wallets the phone offered (the Express
+  // Checkout Element's ready), and an express payment that failed.
+  | "express_ready"
+  | "express_failed";
 
 /**
  * Fire-and-forget product event. NEVER throws and NEVER awaited by a
