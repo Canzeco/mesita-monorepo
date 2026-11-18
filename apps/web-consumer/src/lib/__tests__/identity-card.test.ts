@@ -19,8 +19,8 @@ describe("the identity card", () => {
 });
 
 // MESITA-2604 (Pato: "remove the > from the name … for the other fields
-// neither include >"): the four boxes draw no chevron, doors or facts.
-describe("the identity boxes", () => {
+// neither include >"): the lines draw no chevron, doors or facts.
+describe("the identity lines", () => {
   it("draw no chevron", () => {
     expect(CARD).not.toContain("ChevronRight");
   });

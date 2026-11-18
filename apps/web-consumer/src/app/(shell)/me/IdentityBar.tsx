@@ -19,9 +19,8 @@ import {
 // it lines up with the grid (MESITA-2577 asked for that and made it an inset
 // card; that read as one more tile).
 //
-//                     (photo)
-//   ( 👤 name                                    )
-//   ( ◎ @handle (~1.2K followers)                )
+//   (photo)  name
+//            ◎ @handle (~1.2K followers)          photo left (MESITA-4308)
 //   ─────── hairline ─────── full-width white bar; content on the 16px edge
 //
 // NO PLAN (MESITA-3830): it is the Plan tile on the grid below. NO CLASS
@@ -91,7 +90,8 @@ export function IdentityBar({
       <div className={IDENTITY_BAR_BODY_CLASS} data-identity-app-bar>
         {loading ? (
           // The skeleton mirrors the DESTINATION (Docs › Design §D): the
-          // 64px photo in its real ring, then the name and Instagram. /me's loading.tsx
+          // 64px photo in its real ring at the left, then the name and
+          // Instagram lines. /me's loading.tsx
           // draws the same one, so the route fallback and this hand over
           // without a jump (Pato, MESITA-2701: "the placeholders must be
           // similar to the page you are loading, like the sizes").
