@@ -6,7 +6,6 @@ import { PlacePageSkeleton } from "@/components/consumer/overlay/DetailSkeletons
 import SearchChatLoading from "./(discovery)/search/chat/loading";
 import SearchLoading from "./(discovery)/search/loading";
 import MeLoading from "./me/(hub)/loading";
-import ClassLoading from "./me/class/loading";
 import InstagramLoading from "./me/instagram/loading";
 import PlanLoading from "./me/plan/loading";
 import ProfileLoading from "./me/profile/loading";
@@ -79,7 +78,6 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   meProfile: () => <ProfileLoading />,
   meInstagram: () => <InstagramLoading />,
   mePlan: () => <PlanLoading />,
-  meClass: () => <ClassLoading />,
   meGift: () => <GiftLoading />,
   meNotifications: () => <NotificationsLoading />,
   meReservations: () => <ReservationsLoading />,

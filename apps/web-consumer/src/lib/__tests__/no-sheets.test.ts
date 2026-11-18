@@ -49,7 +49,6 @@ const SHEET_ALLOWLIST = [
   "components/consumer/PlaceContactSheet.tsx",
   "components/consumer/RewardsSheet.tsx",
   "components/consumer/home/LocationPicker.tsx",
-  "components/consumer/me/ClassSheet.tsx",
   "components/consumer/pay/GuestPayScreen.tsx",
   "components/consumer/pay/PayForm.tsx",
   "components/consumer/pay/SplitWithFriends.tsx",

@@ -4,7 +4,6 @@ import {
   Bell,
   CalendarCheck,
   CreditCard,
-  Crown,
   Settings as SettingsIcon,
   Ticket,
   UserRound,
@@ -95,6 +94,13 @@ import { DestGrid, type DestShape } from "./profile-sections";
 //   Notifications · Reservations / Tickets · Share /
 //   MCP (Soon) · Settings
 //
+// CLASS LEFT (MESITA-4306, Pato, 2026-11-17: "LETS REMOVE THE CLASS. MAYBE
+// WE CAN RETURN THEM IN THE FUTURE"): nine cells, Settings closing them:
+//
+//   Profile · Instagram / Plan · Notifications /
+//   Reservations · Tickets / Share · Integrations /
+//   Settings
+//
 // route-structure T8 pins them.
 //
 // NO TILE PRINTS A GUEST FACT (Pato, MESITA-2607: "in the boxes below don't
@@ -113,10 +119,9 @@ export type HubTile = {
   soon?: boolean;
 };
 
-/** The grid cells, in reading order; Settings is the last (ten with it
- *  since MESITA-3880: Profile · Instagram / Class · Plan / Notifications ·
- *  Reservations / Tickets · Share / Integrations · Settings; Share for Gift since
- *  MESITA-3940). */
+/** The grid cells, in reading order; Settings is the last (nine with it
+ *  since MESITA-4306: Profile · Instagram / Plan · Notifications /
+ *  Reservations · Tickets / Share · Integrations / Settings). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // tile only names the page (MESITA-2607).
@@ -131,17 +136,6 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     title: "Instagram",
     summary: "Connect your account",
     href: CONSUMER_ROUTES.mePages.instagram,
-  },
-  // CLASS BESIDE PLAN (Pato, MESITA-2562): two separate facts (MESITA-2553),
-  // each a page. Never the gem on Plan: that shape was the old class chip
-  // (MESITA-2551). The summary names the two values each page explains,
-  // never the guest's own (MESITA-2607). Class is joinable again (MESITA-3054;
-  // it read "Soon" under MESITA-3027).
-  {
-    Icon: Crown,
-    title: "Class",
-    summary: "Regular or VIP",
-    href: CONSUMER_ROUTES.mePages.class,
   },
   // PLAN IS SOLD AGAIN (Pato, 2026-11-14, MESITA-3870: "Add the Plan
   // again"): the cell opens /me/plan — Free 3 reservation tickets a month, Pro 10

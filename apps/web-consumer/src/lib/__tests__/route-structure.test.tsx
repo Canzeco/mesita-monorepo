@@ -650,7 +650,7 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders ten cells in Pato's order", () => {
+  it("renders nine cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -661,10 +661,10 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
     // one that edits it. Support is a group on Settings (MESITA-2169).
     // MESITA-3855: Activity left the bar, its pages came to Me. MESITA-3880:
     // Share is on the bar only ("remove share button from here is redundant").
+    // MESITA-4306: Class left ("LETS REMOVE THE CLASS").
     expect(gridTitles()).toEqual([
       "Profile",
       "Instagram",
-      "Class",
       "Plan",
       "Notifications",
       "Reservations",
