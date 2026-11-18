@@ -47,7 +47,8 @@ export function IdentityCardSkeleton() {
       <div className={`${IDENTITY_RING_CLASS} row-span-2 self-center`}>
         <Skeleton className="block h-[101px] w-[101px] rounded-full" />
       </div>
-      <div className="border-border flex h-12 items-center rounded-lg border px-3">
+      <div className="border-border flex h-12 items-center gap-2 rounded-lg border px-3">
+        <Skeleton className="h-5 w-5 shrink-0 rounded-full" />
         <Skeleton className="h-4.5 w-36 rounded" />
       </div>
       <div className="border-border flex h-12 items-center gap-2 rounded-lg border px-3">

@@ -1,6 +1,7 @@
 "use client";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
+import { UserRound } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -223,9 +224,18 @@ export function IdentityModules({
       <PushLink
         href={nameHref}
         aria-label={`Profile: ${name}`}
-        className={cn(MODULE_CLASS, "h-12")}
+        className={cn(MODULE_CLASS, "h-12 gap-2")}
         data-identity-name
       >
+        {/* A person before the name (Pato, 2026-11-18, MESITA-4354: "add an
+            icon for the name … like a person"), the Instagram badge's size
+            and place, so the two boxes line up. */}
+        <span
+          aria-hidden
+          className="bg-muted text-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+        >
+          <UserRound className="h-3 w-3" strokeWidth={2.5} />
+        </span>
         {/* ONE TYPE (Pato, 2026-11-18, MESITA-4348: "keep fonts
             standardized"): the name and the handle are the Me tiles' own
             text-sm bold; the followers the same size, muted. */}
