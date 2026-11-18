@@ -1,15 +1,13 @@
 import { Skeleton, SkeletonLine } from "@/components/shared";
 import {
-  IDENTITY_BOXES,
-  IDENTITY_BOX_SPAN,
   IDENTITY_CARD_CLASS,
-  IDENTITY_CHIP_CLASS,
-  IDENTITY_GRID_CLASS,
+  IDENTITY_INSTAGRAM_CLASS,
+  IDENTITY_LINES_CLASS,
+  IDENTITY_NAME_CLASS,
   IDENTITY_PHOTO_CLASS,
   IDENTITY_RING_CLASS,
 } from "@/components/consumer/identity-card-layout";
 import { ICON_CHIP_CLASS } from "@/components/consumer/me/settings-rows";
-import { cn } from "@/lib/utils";
 
 // ─── Me's loading silhouettes (MESITA-2701) ─────────────────────────────────
 //
@@ -39,10 +37,9 @@ export const IDENTITY_BAR_BODY_CLASS =
   "relative flex flex-col items-center px-4 py-3";
 
 /** IdentityCard while the profile loads: the 64px photo in its 1.5px ring
- *  (67px), then the two 36px boxes, name and Instagram, a row each
- *  (MESITA-4306). Every
- *  class and the row order are the card's own (identity-card-layout.ts),
- *  so this is IdentityCard's boxes, empty (Pato, MESITA-2701: "the
+ *  (67px) at the left, then the two 20px lines, name and Instagram, as bars
+ *  (MESITA-4308). Every class is the card's own (identity-card-layout.ts),
+ *  so nothing jumps when the profile lands (Pato, MESITA-2701: "the
  *  placeholders must be similar to the page you are loading, like the
  *  sizes"). */
 export function IdentityCardSkeleton() {
@@ -51,17 +48,14 @@ export function IdentityCardSkeleton() {
       <div className={IDENTITY_RING_CLASS}>
         <Skeleton className={IDENTITY_PHOTO_CLASS} />
       </div>
-      <div className={IDENTITY_GRID_CLASS}>
-        {IDENTITY_BOXES.map((box) => (
-          <Skeleton
-            key={box}
-            className={cn(
-              IDENTITY_CHIP_CLASS,
-              "border-transparent",
-              IDENTITY_BOX_SPAN[box],
-            )}
-          />
-        ))}
+      <div className={IDENTITY_LINES_CLASS}>
+        <span className={IDENTITY_NAME_CLASS}>
+          <Skeleton className="h-3.5 w-32 rounded" />
+        </span>
+        <span className={IDENTITY_INSTAGRAM_CLASS}>
+          <Skeleton className="h-5 w-5 shrink-0 rounded-full" />
+          <Skeleton className="h-3.5 w-44 max-w-full rounded" />
+        </span>
       </div>
     </div>
   );

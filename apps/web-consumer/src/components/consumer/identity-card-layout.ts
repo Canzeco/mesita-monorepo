@@ -1,18 +1,26 @@
-// The identity card's boxes, once (MESITA-2701). IdentityCard draws them
+// The identity card's geometry, once (MESITA-2701). IdentityCard draws it
 // with the guest's photo and facts; IdentityCardSkeleton
-// (app/(shell)/me/me-skeletons.tsx) draws the same boxes empty while Me's
+// (app/(shell)/me/me-skeletons.tsx) draws the same shape empty while Me's
 // profile read is out, and /me's loading.tsx draws that skeleton too (Pato,
 // MESITA-2701: "the placeholders must be similar to the page you are
-// loading, like the sizes"). The ring, the photo, the grid, the box and the
-// row order live here, so the two cannot drift a pixel apart.
+// loading, like the sizes"). The ring, the photo, the row and the two lines
+// live here, so the two cannot drift a pixel apart.
 //
 // A PLAIN MODULE, NOT THE CARD'S: me-skeletons is imported by server
 // loading.tsx files, and a value they import from a "use client" file
 // arrives as a client reference, not the string.
+//
+// PHOTO AT THE LEFT, NAME OVER INSTAGRAM AT ITS RIGHT (Pato, MESITA-4308:
+// "profile-photo, name / profile-photo, instagram"), plain text, no outlines,
+// Instagram's own profile header (D1 of the design review). The name is the
+// Me tiles' own text-sm bold, no new size (D2).
+//
+//   ┌ring 67px┐ 12px  Patricio Canseco                 text-sm bold, ink
+//   │ photo   │
+//   └─────────┘       ◎ @pato.canseco (~320 followers)  text-sm, muted ink
 
-/** The card: the photo centred over the boxes, 8px between. */
-export const IDENTITY_CARD_CLASS =
-  "flex w-full flex-col items-center gap-2 text-center";
+/** The card: one row, the photo then the two lines, 12px between. */
+export const IDENTITY_CARD_CLASS = "flex w-full min-w-0 items-center gap-3";
 
 /** The photo's 1.5px ring: plain structure, never a colour that means
  *  something. */
@@ -22,23 +30,14 @@ export const IDENTITY_RING_CLASS = "bg-border shrink-0 rounded-full p-[1.5px]";
 export const IDENTITY_PHOTO_CLASS =
   "relative block h-16 w-16 overflow-hidden rounded-full";
 
-/** The boxes' grid: one column, each box a whole row (MESITA-4306: Class
- *  left the card, so nothing shares a row). */
-export const IDENTITY_GRID_CLASS = "grid w-full min-w-0 grid-cols-1 gap-2";
+/** The two lines, left-aligned, filling the rest of the row: 20 + 4 + 20 =
+ *  44px, centred against the 67px ring. */
+export const IDENTITY_LINES_CLASS = "flex min-w-0 flex-1 flex-col gap-1";
 
-/** One box of the card (MESITA-2596, MESITA-2599): 36px tall, 14px text, the
- *  full width of its grid cell. */
-export const IDENTITY_CHIP_CLASS =
-  "border-border text-foreground relative flex h-9 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold";
+/** Line one: the name, in the Me tiles' own style (text-sm bold). */
+export const IDENTITY_NAME_CLASS =
+  "text-foreground relative flex h-5 min-w-0 items-center text-sm font-bold tracking-tight";
 
-/** The boxes in reading order: name, then Instagram. Plan left the card in
- *  MESITA-3830; Class left in MESITA-4306 (Pato, 2026-11-17: "LETS REMOVE
- *  THE CLASS. MAYBE WE CAN RETURN THEM IN THE FUTURE"). */
-export const IDENTITY_BOXES = ["name", "instagram"] as const;
-export type IdentityBox = (typeof IDENTITY_BOXES)[number];
-
-/** Every box takes the whole row. */
-export const IDENTITY_BOX_SPAN: Record<IdentityBox, string> = {
-  name: "",
-  instagram: "",
-};
+/** Line two: Instagram, its 20px badge then the handle, in muted ink. */
+export const IDENTITY_INSTAGRAM_CLASS =
+  "text-muted-foreground relative flex h-5 min-w-0 items-center gap-1.5 text-sm";
