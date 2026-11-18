@@ -11,6 +11,7 @@ import {
   payBillPath,
   creditEntryPath,
   visitPath,
+  storyTicketPath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
 import type { TicketKind } from "@/lib/ticket-kinds";
@@ -345,7 +346,8 @@ export function walletRows(w: Wallet, now = Date.now()): Row[] {
       big: money(s.bonus_cents, s.currency),
       money: true,
       line: storyLine(s, now),
-      href: walletPlacePath(s.place_id),
+      // MESITA-4405: the Story's own screen, its steps and its QR.
+      href: s.story_id ? storyTicketPath(s.story_id) : walletPlacePath(s.place_id),
     });
   }
 

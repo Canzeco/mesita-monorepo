@@ -98,10 +98,8 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const actions: PlaceActions = {
     onBuyVoucher: vouchers.buy,
     onOfferOpened: vouchers.opened,
-    // The Story sheet's check before Pay and its test-mode simulator (MESITA-4296).
+    // The Story page's gate (MESITA-4296; Buy only since MESITA-4405).
     onCheckStory: vouchers.checkStory,
-    onSimulateStory: vouchers.simulateStory,
-    onSimulateApproval: vouchers.simulateApproval,
     // STORY IS A PAGE (MESITA-4303): pushed over this one, so Back lands
     // here; the chip's ?voucher drops first so Back never reopens a sheet.
     onOpenStory: () => {

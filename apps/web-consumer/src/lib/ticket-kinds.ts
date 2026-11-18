@@ -20,10 +20,14 @@
 //
 // REFUNDS LEFT TICKETS (Pato, 2026-11-18, MESITA-4402: "remove refunds from
 // there. but refunds as something in settings"): /me/settings/refunds.
+//
+// STORIES (Pato, 2026-11-18, MESITA-4405: Tickets gets Visits · Vouchers ·
+// Gifts · Stories): /me/tickets/stories, each Story at /me/tickets/stories/<id>.
 export const TICKET_KINDS = [
   "visits",
   "vouchers",
   "gifts",
+  "stories",
 ] as const;
 
 export type TicketKind = (typeof TICKET_KINDS)[number];

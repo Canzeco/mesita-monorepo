@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { QRCodeSVG } from "qrcode.react";
 import { StoryOfferPage, type PlaceActions } from "@mesita/place-profile";
 import { ScreenHeader } from "@/components/consumer/nav/Screen";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
-import { CONSUMER_ROUTES, placeOffersPath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, placeOffersPath } from "@/lib/consumer-route-contract";
+import { ticketsHref } from "@/lib/ticket-kinds";
 import { goBack, navigateTo } from "@/lib/navigate";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -14,9 +14,9 @@ import { useConsumerProfile } from "@/lib/use-consumer-profile";
 /**
  * THE STORY PAGE (MESITA-4303): the Story offer in boxes with its action
  * pinned under them (packages/place-profile StoryOfferPage). The same reads
- * as the Offers page (usePlaceVouchers), but a paid Story stays here as its
- * countdown (D4) instead of leaving for Wallet. Back returns to Offers, the
- * page that pushed it (/place/<id>/offers since MESITA-4379).
+ * as the Offers page (usePlaceVouchers). Buy only since MESITA-4405: a paid
+ * Story lands on its own screen (Me › Tickets › Stories, usePlaceVouchers'
+ * buy). Back returns to Offers, the page that pushed it.
  */
 export function StoryPageBody({ place: fetched }: { place: PlaceDetail }) {
   const router = useRouter();
@@ -34,10 +34,6 @@ export function StoryPageBody({ place: fetched }: { place: PlaceDetail }) {
     onBuyVoucher: vouchers.buy,
     onOfferOpened: vouchers.opened,
     onCheckStory: vouchers.checkStory,
-    onSimulateStory: vouchers.simulateStory,
-    onSimulateApproval: vouchers.simulateApproval,
-    // MESITA-4304: the waiter scans this to approve the story before Pay.
-    renderStoryQr: (url: string) => <QRCodeSVG value={url} size={224} marginSize={0} aria-label="Story QR for the waiter" />,
     buyingVoucher: vouchers.buying,
     ...(vouchers.payCards ? { payCards: vouchers.payCards } : {}),
     payCardId: vouchers.payCardId,
@@ -66,7 +62,7 @@ export function StoryPageBody({ place: fetched }: { place: PlaceDetail }) {
         place={place}
         actions={actions}
         onDone={back}
-        onWallet={() => navigateTo(router, walletPlacePath(fetched.id), { motion: "drill" })}
+        onWallet={() => navigateTo(router, ticketsHref("stories"), { motion: "drill" })}
       />
     </div>
   );

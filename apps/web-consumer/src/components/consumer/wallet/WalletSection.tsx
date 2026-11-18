@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
 import { photoUrl } from "@mesita/place-profile";
 import { apiRemoveCard, CARD_REFUSAL, type SavedCard } from "@/lib/api/cards";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, storyTicketPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
@@ -299,7 +299,7 @@ export function WalletSection({
           then Add a Loyalty Card. Empty: one grey line. */}
       <WalletPanelList title="Loyalty Cards">
         {creditsState === "rows"
-          ? stories.map((s) => <StoryRow key={s.purchase_id} story={s} now={storyNow} onOpen={() => setMethod({ kind: "story", story: s })} />)
+          ? stories.map((s) => <StoryRow key={s.purchase_id} story={s} now={storyNow} onOpen={() => navigateTo(router, storyTicketPath(s.story_id), { motion: "drill" })} />)
           : null}
         {creditsState === "rows"
           ? credits?.map((row) => (
@@ -335,7 +335,7 @@ export function WalletSection({
       {/* Add a Credits Card explains, never navigates (MESITA-4088). */}
       <AddCreditsCardDialog open={explainAdd} onClose={() => setExplainAdd(false)} />
       <CashDialog open={cashOpen} onClose={() => setCashOpen(false)} />
-      <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} stories={stories} onStoryChanged={reread} />
+      <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
       <GiftClaimSheet
         token={wallet || failed ? gift : null}
         onClose={closeGift}

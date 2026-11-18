@@ -6,17 +6,7 @@
 // server in one transaction, read as one row, MESITA-3750.)
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  placeMoneyFrom,
-  STORY_GATE_REASONS,
-  STORY_POLL_DEFAULT,
-  type PlaceMoney,
-  type StoryCheckAnswer,
-  type StoryCheckMention,
-  type StoryCheckReason,
-  type StoryReview,
-  type VoucherKey,
-} from "@mesita/place-profile";
+import { isStoryGateReason, placeMoneyFrom, type PlaceMoney, type StoryCheckAnswer, type VoucherKey } from "@mesita/place-profile";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { invokeEF } from "./_invoke";
 import type { SavedCard } from "./cards";
@@ -88,33 +78,73 @@ export type WalletBalance = {
 /** What happened to the Checkout the guest came back from. */
 export type PrepayOutcome = "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none";
 
-/** Where a Story voucher's bonus stands (MESITA-4296, the server's
- *  storyState()): the story was found before payment, so the bonus waits
- *  until `bonus_at` (3 hours after payment) if the story is still up; then
- *  the server re-checks it (`checking`), and adds the bonus or voids it. */
-export type StoryState = "waiting" | "checking" | "released" | "void";
+/** THE STORY RECORD (MESITA-4405): the Story voucher is money; the Story
+ *  is its own record with its own steps (_shared/story.ts on the server):
+ *  waiting_post → found (the waiter's QR) → approved ("Checking · bonus at
+ *  HH:MM") → released | void. */
+export type StoryTicketState = "waiting_post" | "found" | "approved" | "released" | "void";
 
-/** Why a Story's bonus was not added (MESITA-4296): the story was gone at the
- *  re-check, it ended before payment finished, no story was named, the
- *  voucher was refunded, an operator voided it, or (before MESITA-4296) no
- *  staff approval came in time. */
-export type StoryVoidReason = "unreachable" | "mention_lost" | "no_mention" | "refunded" | "operator" | "expired";
+/** Why a Story paid no bonus (the server's STORY_VOID_REASONS). */
+export type StoryVoidReason = "expired" | "deleted" | "unreachable" | "refunded" | "operator";
 
-/** The Instagram story the voucher stands on (MESITA-4296: the one the
- *  guest showed before paying). */
+/** The Instagram story a Story holds. */
 export type StoryMention = {
   id: string;
   media_url: string | null;
   media_kind: "image" | "video";
   mentioned_at: string;
   source: "meta" | "emulator";
+  /** A test story deleted with the emulator. */
+  deleted?: boolean;
 };
 
-/** A Story voucher whose bonus is not decided yet, or was decided in the
- *  last 24 hours (MESITA-3507; MESITA-4296). What the guest paid is already
- *  in their balance; only `bonus_cents` waits on the story. */
+/** One Story, as consumer-web-get-story and the Wallet's `stories` list
+ *  answer it (the server's storyView). */
+export type StoryTicket = {
+  story_id: string;
+  purchase_id: string;
+  place_id: string;
+  /** On the Wallet's list; get-story answers `place_name` instead. */
+  place?: WalletBalance["place"];
+  place_name?: string | null;
+  state: StoryTicketState;
+  /** Post and get it approved before this, or the Story ends (expired). */
+  deadline_at: string;
+  created_at: string;
+  paid_at: string | null;
+  amount_cents: number;
+  bonus_cents: number;
+  credit_cents: number;
+  currency: string | null;
+  refunded: boolean;
+  approved_at: string | null;
+  /** While approved: when the bonus lands if the story is still up. */
+  bonus_at: string | null;
+  decided_at: string | null;
+  void_reason: StoryVoidReason | null;
+  first_bound_at: string | null;
+  mention: StoryMention | null;
+  /** The waiter's QR link (visit.mesita.ai/story/<token>), while found. */
+  review_url: string | null;
+  place_handle: string | null;
+  /** The place's IANA zone: the screen's times read in it. */
+  time_zone: string | null;
+  test_mode: boolean;
+  /** Test mode, Meta off: Tag the place, Simulate the waiter, Simulate deleting it. */
+  emulator: boolean;
+  /** Keep looking (waiting_post or found, before the deadline), or null. */
+  poll: { every_ms: number; slow_after_ms: number; slow_every_ms: number } | null;
+  server_time: string;
+};
+
+/** A Story on the Wallet's own rows (the server's `waiting_stories`, built
+ *  from the Story record since MESITA-4405): open Stories and those decided
+ *  in the last 24 hours. A tap opens the Story's screen. */
+export type StoryState = "waiting" | "checking" | "released" | "void";
+
 export type WaitingStory = {
   purchase_id: string;
+  story_id: string;
   place: WalletBalance["place"];
   place_id: string;
   amount_cents: number;
@@ -123,21 +153,19 @@ export type WaitingStory = {
   currency: string;
   paid_at: string | null;
   state: StoryState;
-  /** When the story was claimed for this voucher (the payment landed). */
+  /** When a waiter approved the story. */
   claimed_at: string | null;
-  /** When the bonus lands if the story is still up: payment + 3 hours. */
+  /** While approved: when the bonus lands if the story is still up. */
   bonus_at: string | null;
   recheck_at: string | null;
   bonus: "released" | "void" | null;
   bonus_void_reason: StoryVoidReason | null;
   bonus_decided_at: string | null;
-  /** Fully refunded: the story is free to use again. */
   refunded: boolean;
   /** The place's IANA zone: the row's times read in it. */
   time_zone: string;
   mention: StoryMention | null;
   test_mode: boolean;
-  /** The test-only "Simulate deleting the story" may show (test mode, Meta off). */
   emulator: boolean;
 };
 
@@ -147,6 +175,9 @@ export type Wallet = {
   balances: WalletBalance[];
   /** Absent from a server before MESITA-3507: reads as none. */
   waiting_stories?: WaitingStory[];
+  /** Tickets › Stories (MESITA-4405): every open Story plus the 20 most
+   *  recently decided, newest first. Absent from an older server: none. */
+  stories?: StoryTicket[];
   /** Credit links the guest sent that nobody took yet (MESITA-3292): the
    *  amount is already off their balance; they can take it back. */
   sent_links?: SentLink[];
@@ -240,8 +271,6 @@ export async function apiBuyVoucher(
     place_id: string;
     request_id: string;
     card_pm_id: string;
-    /** A Story names the story the check found (MESITA-4296). */
-    mention_id?: string;
   } & ({ voucher: VoucherKey; items?: never } | { items: Array<{ voucher: VoucherKey; qty: number }>; voucher?: never }),
 ): Promise<{ purchase_id: string; card: VoucherCardStep }> {
   return await invokeEF<{ purchase_id: string; card: VoucherCardStep }>(client, "consumer-web-buy-voucher", args);
@@ -278,7 +307,7 @@ export type ExpressStep =
     error?: string;
   };
 
-export type ExpressBasket = { place_id: string; mention_id?: string } & (
+export type ExpressBasket = { place_id: string } & (
   | { voucher: VoucherKey; items?: never }
   | { items: Array<{ voucher: VoucherKey; qty: number }>; voucher?: never }
 );
@@ -300,55 +329,44 @@ export async function apiBuyVoucherExpress(
   return await invokeEF<{ purchase_id: string; express: ExpressStep }>(client, "consumer-web-buy-voucher", { ...args, express: true });
 }
 
-/** The Story check before Pay (MESITA-4296): whether the guest's story has
- *  reached Mesita. `poll` skips the gate (the sheet's look once it passed).
- *  A 500 check_failed or no answer resolves `failed`: the sheet keeps
- *  looking and never reads it as no_story. */
-export async function apiCheckStory(client: SupabaseClient, placeId: string, poll: boolean): Promise<StoryCheckAnswer> {
+/** The Story gate on Offers (MESITA-4296; gate only since MESITA-4405):
+ *  may this guest buy Story here? A 500 or no answer resolves `failed`; the
+ *  buy is the last word anyway. */
+export async function apiCheckStory(client: SupabaseClient, placeId: string): Promise<StoryCheckAnswer> {
   try {
-    const r = await invokeEF<{
-      found: boolean;
-      mention?: StoryCheckMention;
-      reason?: string;
-      place_handle?: string | null;
-      poll?: { every_ms: number; for_ms: number };
-      review?: { state?: string; url?: string | null; reviewed_at?: string | null };
-    }>(client, "consumer-web-check-story", { place_id: placeId }, undefined, poll ? { poll: "1" } : undefined);
-    const window = r.poll && Number.isFinite(r.poll.every_ms) && Number.isFinite(r.poll.for_ms) ? r.poll : STORY_POLL_DEFAULT;
+    const r = await invokeEF<{ reason?: string | null; place_handle?: string | null }>(client, "consumer-web-check-story", { place_id: placeId });
     const placeHandle = typeof r.place_handle === "string" ? r.place_handle : null;
-    if (r.found && r.mention) {
-      // MESITA-4304: Pay waits for the waiter; a missing review reads waiting.
-      const review: StoryReview = {
-        state: r.review?.state === "approved" ? "approved" : "waiting",
-        url: typeof r.review?.url === "string" ? r.review.url : null,
-      };
-      return { kind: "found", mention: r.mention, placeHandle, poll: window, review };
-    }
-    const reason = (STORY_CHECK_REASONS as readonly string[]).includes(r.reason ?? "") ? (r.reason as StoryCheckReason) : "no_story";
-    return { kind: "missing", reason, placeHandle, poll: window };
+    return isStoryGateReason(r.reason) ? { kind: "gate", reason: r.reason, placeHandle } : { kind: "ready", placeHandle };
   } catch {
     return { kind: "failed" };
   }
 }
 
-const STORY_CHECK_REASONS: readonly StoryCheckReason[] = [...STORY_GATE_REASONS, "no_story", "story_too_old", "story_rejected"];
-
-/** The Meta emulator (MESITA-4264; MESITA-4296): in test mode, while
- *  Instagram is not connected, post a sample story for the guest (before any
- *  purchase: it is theirs, not a voucher's), or delete the image of their
- *  paid, waiting story so the 3-hour re-check finds it gone. Refusals arrive
- *  as EFError with a code from STORY_EMULATOR_REFUSAL. */
-export async function apiEmulateStory(
-  client: SupabaseClient,
-  action: "post" | "delete",
-): Promise<{ ok: true; action: "post" | "delete" }> {
-  return await invokeEF(client, "consumer-web-emulate-story", { action });
+/** One Story for its screen (MESITA-4405), by its id or its purchase's id
+ *  (right after a buy). Only the guest's own; 404 reads as not there yet. */
+export async function apiGetStory(client: SupabaseClient, by: { story_id: string } | { purchase_id: string }): Promise<StoryTicket> {
+  const r = await invokeEF<{ story: StoryTicket }>(client, "consumer-web-get-story", by);
+  return r.story;
 }
 
-/** The waiter's approval, emulated (MESITA-4307): test mode only, and only
- *  for the guest's own simulated story that this place's Story page shows. */
-export async function apiEmulateApproval(client: SupabaseClient, placeId: string): Promise<{ ok: true; outcome: string }> {
-  return await invokeEF(client, "consumer-web-emulate-story", { action: "approve", place_id: placeId });
+/** The Story screen's poll (MESITA-4405): while the Story waits for a post
+ *  the server binds the guest's newest fitting story, then answers it. */
+export async function apiPollStory(client: SupabaseClient, storyId: string): Promise<StoryTicket> {
+  const r = await invokeEF<{ story: StoryTicket }>(client, "consumer-web-check-story", { story_id: storyId });
+  return r.story;
+}
+
+/** The Meta emulator (MESITA-4264; on the Story since MESITA-4405), test
+ *  mode while Instagram is not connected: post a test story (it binds to
+ *  the guest's only waiting Story), delete it, or stand in for the waiter
+ *  on this Story (approve / reject). Refusals arrive as EFError with a code
+ *  from STORY_EMULATOR_REFUSAL. */
+export async function apiEmulateStory(
+  client: SupabaseClient,
+  action: "post" | "delete" | "approve" | "reject",
+  storyId?: string,
+): Promise<{ ok: true; action: string }> {
+  return await invokeEF(client, "consumer-web-emulate-story", { action, ...(storyId ? { story_id: storyId } : {}) });
 }
 
 /** What the guest reads when the emulator refuses, by the server's code. */
@@ -357,7 +375,9 @@ export const STORY_EMULATOR_REFUSAL: Record<string, string> = {
   meta_on: "Instagram is connected: post a real story.",
   needs_instagram: "Link your Instagram first.",
   story_too_old: "That story is too old. Simulate a new one.",
-  no_story: "There is no story to delete.",
+  no_story: "Tag the place first.",
+  gone: "That story can't be decided any more.",
+  already_decided: "That story was already decided.",
   emulate_failed: "Couldn't simulate the story. Try again.",
 };
 
@@ -374,16 +394,9 @@ export const BUY_REFUSAL: Record<string, string> = {
   few_followers: "The Story voucher is for Instagram accounts with 1,000 or more followers.",
   // MESITA-4264: live payments while Instagram stories can't be checked yet.
   story_unavailable: "The Story voucher isn't available right now.",
-  // MESITA-4296: the story is checked before Pay; nothing was charged.
+  // MESITA-4296: the account must be public; nothing was charged.
   private_account: "Your Instagram is private. Make it public, then sync it.",
-  story_not_found: "We couldn't find that story anymore. Check your story again.",
-  story_taken: "That story already earned a bonus. Post a new one.",
-  story_too_old: "Your story must stay up 3 more hours. Post a new one.",
-  story_livemode: "That story can't be used here. Post a new one.",
   story_one_per_basket: "Story is paid on its own. Try again.",
-  story_payment_in_progress: "A payment for this story is already on its way.",
-  // MESITA-4304: a waiter of the place approves the story before Pay.
-  story_not_verified: "Show your story to the waiter first.",
   welcome_used: "You already had your Welcome voucher here.",
   needs_visit: "One per visit. Pay a bill here by card to buy another.",
   below_minimum: "This amount is below the card minimum.",
@@ -415,23 +428,12 @@ export type BuyRefusalAction =
   | { kind: "reload_cards"; line: string }
   | { kind: "say"; line: string; reload: boolean };
 
-/** The Story refusals that send the sheet back to its check step
- *  (MESITA-4296): about the story or the account, never the money. */
-export const STORY_REFUSAL_CODES: ReadonlySet<string> = new Set([
-  "private_account",
-  "story_not_found",
-  "story_taken",
-  "story_too_old",
-  "story_livemode",
-  "story_one_per_basket",
-  "story_payment_in_progress",
-  "story_not_verified",
-]);
+/** The Story refusals the Story page says itself (MESITA-4296): about the
+ *  guest's account, never the money. Since MESITA-4405 no story is named. */
+export const STORY_REFUSAL_CODES: ReadonlySet<string> = new Set(["private_account", "story_one_per_basket"]);
 
-export function buyRefusalAction(code: string | null, field: string | null = null): BuyRefusalAction {
-  if ((code && STORY_REFUSAL_CODES.has(code)) || (code === "bad_body" && field === "mention_id")) {
-    return { kind: "story", line: (code && BUY_REFUSAL[code]) || BUY_REFUSAL.story_not_found };
-  }
+export function buyRefusalAction(code: string | null): BuyRefusalAction {
+  if (code && STORY_REFUSAL_CODES.has(code)) return { kind: "story", line: BUY_REFUSAL[code] };
   if (code === "card_required") return { kind: "add_card", line: BUY_REFUSAL.card_required };
   if (code === "card_not_found") return { kind: "reload_cards", line: BUY_REFUSAL.card_not_found };
   const line = (code && BUY_REFUSAL[code]) || BUY_REFUSAL.failed;

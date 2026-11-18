@@ -114,6 +114,10 @@ export const CONSUMER_ROUTES = {
   // /me/tickets/gift/<giftId>, the gift found by its id in the wallet read;
   // a gift line's credit page forwards there.
   gift: { prefix: "/me/tickets/gift/" },
+  // ONE STORY, ONE PAGE (MESITA-4405): the Story record's steps (post, the
+  // waiter's QR, the bonus), opened from Tickets › Stories, the Wallet's
+  // Story row, and right after a Story buy (?by=purchase, the purchase id).
+  story: { prefix: "/me/tickets/stories/" },
   // PAY AND WALLET, TWO TABS (Pato, 2026-11-14, MESITA-3886: "separate pay
   // and wallet again. only pay and only wallet"): each its own bar tab and
   // page, no switch between them. They were two halves of the Pay tab under
@@ -407,6 +411,16 @@ export function giftTicketPath(giftId: string): string {
   return `${CONSUMER_ROUTES.gift.prefix}${giftId}`;
 }
 
+/** One Story's screen (MESITA-4405). */
+export function storyTicketPath(storyId: string): string {
+  return `${CONSUMER_ROUTES.story.prefix}${storyId}`;
+}
+
+/** A Story's screen right after its buy, found by the purchase's id. */
+export function storyPurchasePath(purchaseId: string): string {
+  return `${CONSUMER_ROUTES.story.prefix}${purchaseId}?by=purchase`;
+}
+
 /** A paid bill's proof. */
 export function payReceiptPath(paymentId: string): string {
   return `${CONSUMER_ROUTES.payReceipt.prefix}${paymentId}`;
@@ -504,6 +518,8 @@ export const ROUTE_MAP = {
   credit: row("/me/tickets/credit/:placeId/:entry", "me", "page", "meTickets"),
   // One gift, sender and receiver, opened from Tickets › Gifts (MESITA-4066).
   gift: row("/me/tickets/gift/:giftId", "me", "page", "meTickets"),
+  // One Story and its steps, opened from Tickets › Stories (MESITA-4405).
+  story: row("/me/tickets/stories/:storyId", "me", "page", "meTickets"),
   pay: row("/pay", "pay", "tab", null),
   // The pay screens own the whole frame, as the place screen does: no bar,
   // the header's back is the way out, so every step fits (MESITA-3739).

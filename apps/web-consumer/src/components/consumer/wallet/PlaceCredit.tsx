@@ -12,12 +12,13 @@ import {
   money,
   type WaitingStory,
 } from "@/lib/api/wallet";
-import { creditEntryPath, payPlacePath, payReceiptPath, walletSendPath } from "@/lib/consumer-route-contract";
+import { creditEntryPath, payPlacePath, payReceiptPath, storyTicketPath, walletSendPath } from "@/lib/consumer-route-contract";
+import { useRouter } from "next/navigation";
+import { navigateTo } from "@/lib/navigate";
 import { placeHref } from "@/lib/place-route";
 import { nextAvailableMs, shouldReread } from "@/lib/wallet-countdown";
 import { type EntryGroup, groupKeys, splitEntries } from "@/lib/wallet-entries";
 import { cn } from "@/lib/utils";
-import { type Method, MethodSheet } from "./MethodSheet";
 import { useStoryNew, useStoryNow } from "./use-story-now";
 import { storyBonusOpen, storyLine } from "@/lib/story-lines";
 import { Panel, PANEL_CLASS } from "@/components/shared/Panel";
@@ -271,7 +272,7 @@ export function PlaceCredit({
 
   const [removeOpen, setRemoveOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const [method, setMethod] = useState<Method | null>(null);
+  const router = useRouter();
   const spendable = balance?.spendable_cents ?? 0;
   const gift = giftAction({ canSend, spendableCents: spendable, shownCents: cardAmount(card).cents });
   // Nothing spendable yet: a muted $0, never a minus (a refund can settle
@@ -445,7 +446,7 @@ export function PlaceCredit({
       {stories.length > 0 ? (
         <WalletPanelList title="Story vouchers" className="mt-4">
           {stories.map((st) => (
-            <StoryEntryRow key={st.purchase_id} story={st} now={storyNow} onOpen={() => setMethod({ kind: "story", story: st })} />
+            <StoryEntryRow key={st.purchase_id} story={st} now={storyNow} onOpen={() => navigateTo(router, storyTicketPath(st.story_id), { motion: "drill" })} />
           ))}
         </WalletPanelList>
       ) : null}
@@ -515,7 +516,6 @@ export function PlaceCredit({
         </div>
       ) : null}
 
-      <MethodSheet method={method} onClose={() => setMethod(null)} stories={stories} onStoryChanged={onReread} />
       {removable ? (
         <LocalSheet open={removeOpen} onClose={() => (removing ? undefined : setRemoveOpen(false))} ariaLabel="Remove this Loyalty Card">
           <div className="flex flex-col px-4 pt-5 pb-8" data-loyalty-card-remove-confirm>

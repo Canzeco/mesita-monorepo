@@ -4,49 +4,29 @@ import { useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
-import { EFError } from "@/lib/api/_invoke";
-import { apiEmulateStory, money, STORY_EMULATOR_REFUSAL, type WaitingStory } from "@/lib/api/wallet";
-import { storyLine } from "@/lib/story-lines";
-import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
-import { toast } from "@/lib/toast";
-import { TestModeNote } from "@/components/consumer/activity/TicketParts";
 import { cardFace } from "@/components/shared/card-brand-marks";
 import { cn } from "@/lib/utils";
 import { SECONDARY } from "./wallet-buttons";
-import { useStoryNow } from "./use-story-now";
 
 // A PAYMENT METHOD, FULL SCREEN (Pato, MESITA-3533): a saved card or a
 // Story whose bonus is waiting (MESITA-4296), opened from a Wallet rail. A place's credit is a
 // page of its own, /wallet/place/<placeId> (PlaceCredit.tsx, MESITA-3614).
 
-export type Method =
-  | { kind: "card"; card: SavedCard }
-  | { kind: "story"; story: WaitingStory };
+// A Story opens its own screen since MESITA-4405 (Me › Tickets › Stories).
+export type Method = { kind: "card"; card: SavedCard };
 
 export function MethodSheet({
   method: opened,
   onClose,
   onRemoveCard,
-  stories,
-  onStoryChanged,
 }: {
   method: Method | null;
   onClose: () => void;
   /** Remove a saved card (MESITA-3523); resolves once the server answered. */
   onRemoveCard?: (card: SavedCard) => Promise<void>;
-  /** The Wallet's current Story vouchers (MESITA-4264): an open Story sheet
-   *  shows the newest read of its own voucher, not the one it opened on. */
-  stories?: WaitingStory[];
-  /** A simulated story changed the voucher: read the Wallet again. */
-  onStoryChanged?: () => void;
 }) {
-  const fresh = opened?.kind === "story" ? stories?.find((s) => s.purchase_id === opened.story.purchase_id) : undefined;
-  const method: Method | null = fresh ? { kind: "story", story: fresh } : opened;
-  const title = method?.kind === "story"
-      ? "Story voucher"
-      : method?.kind === "card"
-        ? `${brandLabel(method.card.brand)} •••• ${method.card.last4}`
-        : "Card · Apple Pay · Google Pay";
+  const method: Method | null = opened;
+  const title = method?.kind === "card" ? `${brandLabel(method.card.brand)} •••• ${method.card.last4}` : "Card · Apple Pay · Google Pay";
   return (
     <LocalSheet open={method !== null} onClose={onClose} ariaLabel={title} fullScreen>
       <div className="border-border flex items-center gap-2 border-b px-2 py-2">
@@ -62,7 +42,6 @@ export function MethodSheet({
       </div>
       <div className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-8">
         {method?.kind === "card" ? <CardBody card={method.card} onRemove={onRemoveCard} /> : null}
-        {method?.kind === "story" ? <StoryBody story={method.story} onChanged={onStoryChanged} /> : null}
       </div>
     </LocalSheet>
   );
@@ -101,73 +80,6 @@ function CardBody({ card, onRemove }: { card: SavedCard; onRemove?: (card: Saved
         </button>
       )}
     </>
-  );
-}
-
-/** A Story voucher (MESITA-4296): the story was found before payment and
- *  what was paid is already credit; the bonus lands 3 hours after payment if
- *  the story is still up. The story the voucher stands on shows here. In
- *  test mode, while Instagram is not connected, the test band can delete the
- *  story so the re-check finds it gone. */
-function StoryBody({ story, onChanged }: { story: WaitingStory; onChanged?: () => void }) {
-  const getSupabase = useLazyBrowserSupabase();
-  const [busy, setBusy] = useState(false);
-  // The countdown moves on every minute and turns to "Checking…" on time.
-  const now = useStoryNow([story]);
-
-  const simulateDelete = async () => {
-    setBusy(true);
-    try {
-      await apiEmulateStory(getSupabase(), "delete");
-      onChanged?.();
-    } catch (err) {
-      const code = err instanceof EFError ? err.code : null;
-      toast((code && STORY_EMULATOR_REFUSAL[code]) || STORY_EMULATOR_REFUSAL.emulate_failed, { tone: "error" });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const name = story.place?.name ?? "this place";
-  const media = story.mention?.media_url ? story.mention : null;
-  return (
-    <div className="flex flex-col items-center gap-4 text-center" data-story-sheet={story.state}>
-      <div className="flex flex-col gap-1">
-        <p className="text-2xl font-bold tabular-nums">+{money(story.bonus_cents, story.currency)} bonus</p>
-        <p className="text-sm leading-relaxed" data-story-line aria-live="polite">
-          {storyLine(story, now)}
-        </p>
-        <p className="text-muted-foreground text-sm tabular-nums">
-          {money(story.amount_cents, story.currency)} you paid is already your credit at {name}.
-        </p>
-      </div>
-      {media ? (
-        <div className="bg-muted aspect-[9/16] w-3/5 overflow-hidden rounded-2xl" data-story-media={media.media_kind}>
-          {media.media_kind === "video" ? (
-            <video src={media.media_url ?? undefined} className="h-full w-full object-cover" playsInline muted controls preload="metadata" />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element -- the story's own media URL
-            <img src={media.media_url ?? undefined} alt="Your story" className="h-full w-full object-cover" />
-          )}
-        </div>
-      ) : null}
-      {story.emulator && story.state === "waiting" ? (
-        // THE TEST BAND (MESITA-4264): under the main content, never the
-        // primary button; only while payments are in test mode and Meta is off.
-        <div className="border-border flex w-full flex-col items-center gap-2 rounded-2xl border border-dashed p-3" data-story-emulator>
-          <TestModeNote className="self-center" />
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void simulateDelete()}
-            className="text-muted-foreground min-h-11 px-3 text-sm font-semibold underline disabled:opacity-60"
-            data-story-simulate="delete"
-          >
-            {busy ? "Deleting…" : "Simulate deleting the story"}
-          </button>
-        </div>
-      ) : null}
-    </div>
   );
 }
 

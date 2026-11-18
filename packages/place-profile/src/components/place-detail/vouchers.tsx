@@ -7,17 +7,7 @@ import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
 import type { ExpressPayArgs, PlaceActions, StoryRefused, VoucherBuyOutcome } from "../../actions";
-import {
-  createStoryPoll,
-  isStoryGateReason,
-  postedAgo,
-  STORY_POLL_DEFAULT,
-  storySheetView,
-  type StoryCheckAnswer,
-  type StoryGateReason,
-  type StoryPoll,
-  type StoryReview,
-} from "../../story-check";
+import { STORY_GATE_LINE, type StoryCheckAnswer } from "../../story-check";
 import { cn } from "../../lib/format";
 import {
   PLACE_META_CLASS,
@@ -241,10 +231,10 @@ function whole(v: string): string {
 /** YOUR MONEY NOW, THE BONUS IN 3 HOURS (Pato, 2026-11-17, MESITA-4214):
  *  every voucher. The row and the button say only "Pay $X · Get $Y"; the (i)
  *  says when each part is ready. Story's money is ready at once too since
- *  MESITA-4264; since MESITA-4296 the story is posted before Pay and its bonus
- *  lands 3 hours after payment if the story is still up. No staff. */
+ *  MESITA-4264; since MESITA-4405 the guest pays first and the bonus lands 3
+ *  hours after a waiter approves the story, if it is still up. */
 function readyIn(key: MoneyVoucherKey): string {
-  return key === "voucher_story" ? "bonus 3 hr after you pay, if your story is still up" : "bonus in 3 hr";
+  return key === "voucher_story" ? "bonus 3 hr after the waiter approves your story" : "bonus in 3 hr";
 }
 
 /** The (i)'s "Your status" line for a prepayment offer (MESITA-3502). */
@@ -453,21 +443,20 @@ function sheetSteps(pay: string, bonus: string | null, card: { label: string; la
   ];
 }
 
-/** Story: post, the waiter approves, pay, keep it up (MESITA-4304). `stage`
- *  null draws no progress (a locked sheet, admin's preview); "post" lights
- *  Post; "waiter" ticks Post and lights the waiter; "pay" ticks both. */
-function storySteps(pay: string, bonus: string | null, post: ReactNode, stage: "post" | "waiter" | "pay" | null): Step[] {
-  const at = (mine: "post" | "waiter" | "pay"): Step["state"] => {
+/** Story (MESITA-4405): pay and get the credit now, then post, the waiter
+ *  approves, and the bonus follows. `stage` null draws no progress. */
+function storySteps(pay: string, bonus: string | null, post: ReactNode, stage: "pay" | "post" | "waiter" | null): Step[] {
+  const at = (mine: "pay" | "post" | "waiter"): Step["state"] => {
     if (stage === null) return undefined;
-    const order = ["post", "waiter", "pay"];
+    const order = ["pay", "post", "waiter"];
     const i = order.indexOf(stage);
     const j = order.indexOf(mine);
     return j < i ? "done" : j === i ? "current" : undefined;
   };
   return [
+    { Icon: CreditCard, title: "Pay, get your credit now", amount: pay, line: CREDIT_LINE, state: at("pay") },
     { Icon: Camera, title: "Post a story", line: post, state: at("post") },
     { Icon: QrCode, title: "Show it to the waiter", line: "They approve it with the waiter code.", state: at("waiter") },
-    { Icon: CreditCard, title: "Pay, get your credit now", amount: pay, line: CREDIT_LINE, state: at("pay") },
     { Icon: Gift, title: "Keep it up 3 hours", amount: bonus ? `+${bonus}` : undefined, line: "Then your bonus is added by itself.", green: true },
   ];
 }
@@ -663,7 +652,7 @@ type Offer = {
   cardsPending: boolean;
   /** Cards were read and none is usable: Pay goes to Add a card. */
   needsCard: boolean;
-  onPay: (mentionId?: string) => Promise<PayResult>;
+  onPay: () => Promise<PayResult>;
   /** Apple Pay / Google Pay (MESITA-4384): the host's button for this
    *  offer, or null (signed out, admin's preview, a locked offer). */
   express: ((a: Omit<ExpressPayArgs, "items" | "onDone"> & { onReceipt: (r: Receipt) => void }) => ReactNode) | null;
@@ -747,7 +736,7 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
       cardsPending: payCards !== undefined && payCards.state !== "ready",
       needsCard: payCards?.state === "ready" && payCard === null,
       onOpened: () => actions?.onOfferOpened?.(p.key, payCard !== null),
-      onPay: async (mentionId?: string): Promise<PayResult> => {
+      onPay: async (): Promise<PayResult> => {
         if (!live) return null;
         // No card yet: the Add a card page, which brings the guest back to
         // this offer (MESITA-4230, D4).
@@ -755,13 +744,8 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
           actions.onAddPayCard(p.key);
           return null;
         }
-        // One unit, nothing else in the basket: a Story is paid alone and
-        // names the story the check found (MESITA-4296).
-        const out = await actions?.onBuyVoucher?.(
-          [{ voucher: p.key, qty: 1 }],
-          signedOut ? null : payCard?.id ?? null,
-          mentionId ? { mentionId } : undefined,
-        );
+        // One unit, nothing else in the basket (a Story is paid alone).
+        const out = await actions?.onBuyVoucher?.([{ voucher: p.key, qty: 1 }], signedOut ? null : payCard?.id ?? null);
         if (isStoryRefused(out)) return out;
         if (out !== "paid" && out !== "processing") return null;
         return receiptFor(out, null);
@@ -835,125 +819,13 @@ function CardLine({ offer }: { offer: Offer }) {
 const PRIMARY = "bg-foreground text-paper disabled:bg-muted disabled:text-muted-foreground flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold tabular-nums hover:opacity-90";
 const QUIET = "text-muted-foreground min-h-11 self-center px-3 text-sm font-semibold underline underline-offset-2";
 
-/** The Story check, from the host (MESITA-4296). */
+/** What the Story page needs from the host besides the offer (MESITA-4405:
+ *  the gate only; posting and the waiter live on the Story's own screen). */
 type StoryHost = {
   check: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
-  simulate: (() => Promise<string | null>) | null;
-  /** Test mode: the waiter's approval, emulated (MESITA-4307). */
-  simulateApproval: (() => Promise<string | null>) | null;
-  /** The guest's Instagram username, on the Found card. */
-  guestHandle: string | null;
-  testMode: boolean;
   /** The host's Instagram page: link it, or sync it after making it public. */
   onInstagram: (() => void) | null;
-  /** The Story QR for the waiter (MESITA-4304). */
-  renderQr: ((url: string) => ReactNode) | null;
 };
-
-/** OPEN INSTAGRAM (MESITA-4296): the story camera by deep link; when the page
- *  is still showing 1.5 s later the app did not open, so instagram.com opens
- *  instead. A failed deep link is silent. */
-function openInstagram(): void {
-  if (typeof window === "undefined") return;
-  let left = false;
-  const onHide = () => {
-    if (document.visibilityState === "hidden") left = true;
-  };
-  document.addEventListener("visibilitychange", onHide);
-  window.setTimeout(() => {
-    document.removeEventListener("visibilitychange", onHide);
-    if (!left && document.visibilityState !== "hidden") window.open("https://instagram.com", "_blank", "noopener,noreferrer");
-  }, 1_500);
-  try {
-    window.location.href = "instagram://story-camera";
-  } catch {
-    // silent: the fallback above opens the web
-  }
-}
-
-/** The names to type in the story, copied on a tap (44px tall, MESITA-4303). */
-function CopyChip({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        void navigator.clipboard
-          ?.writeText(text)
-          .then(() => {
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 1_500);
-          })
-          .catch(() => {});
-      }}
-      className="bg-muted text-foreground inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold"
-      aria-label={`Copy ${text}`}
-      data-story-copy
-    >
-      {copied ? "Copied" : text}
-      <Copy className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-    </button>
-  );
-}
-
-/** The Found card: the story's thumbnail, the guest's @handle, how long ago.
- *  An image that fails to load falls back to the Instagram mark. */
-function FoundCard({ mention, handle }: { mention: { media_url: string | null; media_kind: "image" | "video"; mentioned_at: string }; handle: string | null }) {
-  const [broken, setBroken] = useState(false);
-  const thumb = mention.media_url && mention.media_kind === "image" && !broken ? mention.media_url : null;
-  return (
-    <div className="mt-3 flex items-center gap-3 rounded-xl bg-[#E9FBF1] p-3" data-story-found>
-      <span className="bg-muted flex h-20 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg" aria-hidden>
-        {thumb ? (
-          // eslint-disable-next-line @next/next/no-img-element -- the story's own media URL
-          <img src={thumb} alt="" className="h-full w-full object-cover" onError={() => setBroken(true)} />
-        ) : (
-          <Instagram className="h-6 w-6" />
-        )}
-      </span>
-      <span className="flex min-w-0 flex-col">
-        <span className="flex items-center gap-1.5 text-base font-bold text-[#00A85A]">
-          <CircleCheck className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-          Found it
-        </span>
-        <span className="text-foreground truncate text-sm font-semibold">
-          {handle ? `@${handle}` : "Your story"} · {postedAgo(mention.mentioned_at)}
-        </span>
-        <span className="text-muted-foreground text-sm leading-snug">Keep it up until you&apos;ve paid and 3 h after.</span>
-      </span>
-    </div>
-  );
-}
-
-/** THE WAITER STEP (MESITA-4304): while the waiter has to see the story, the
- *  QR leads (at least 220 px) with a link for a phone without a camera; once
- *  approved, one green line and Pay. */
-function WaiterBox({ review, renderQr }: { review: StoryReview; renderQr: ((url: string) => ReactNode) | null }) {
-  if (review.state === "approved") {
-    return (
-      <Box data-story-review="approved">
-        <p className="flex items-center gap-2 text-base font-bold text-[#00A85A]">
-          <CircleCheck className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-          Approved by the waiter. You can pay now.
-        </p>
-      </Box>
-    );
-  }
-  return (
-    <Box title="Show this to your waiter" data-story-review="waiting">
-      <div className="flex flex-col items-center gap-2 text-center" aria-live="polite">
-        {review.url && renderQr ? <div className="rounded-2xl bg-white p-3" data-story-qr>{renderQr(review.url)}</div> : null}
-        <p className="text-foreground text-[15px] leading-snug font-semibold">They scan it, check your story and approve it with the waiter code.</p>
-        <p className="text-muted-foreground text-sm leading-snug">Pay turns on here by itself once it&apos;s approved.</p>
-        {review.url ? (
-          <a href={review.url} target="_blank" rel="noreferrer" className="text-muted-foreground min-h-9 text-sm underline underline-offset-2">
-            Open the waiter&apos;s link
-          </a>
-        ) : null}
-      </div>
-    </Box>
-  );
-}
 
 /** "2 h 14 min" until `iso`, whole minutes, or null once it has passed. */
 function leftUntil(iso: string, now: number): string | null {
@@ -980,22 +852,17 @@ function StoryFrame({ children, bar }: { children: ReactNode; bar: ReactNode }) 
   );
 }
 
-/** PAID (D4): the money is the guest's now, and a live countdown says until
- *  when the story must stay up; Done goes back to Offers. */
-function StoryPaid({ receipt, placeName, onDone }: { receipt: Receipt; placeName: string; onDone: () => void }) {
+/** PAID (MESITA-4405): the money is the guest's now; the host moves the guest
+ *  to the Story's own screen, where the steps start. This shows while it
+ *  does (and stays for a payment the bank is still confirming). */
+function StoryPaid({ receipt, placeName, onDone, deadlineAt }: { receipt: Receipt; placeName: string; onDone: () => void; deadlineAt: string | null }) {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
-    const tick = () => setNow(Date.now());
-    const first = window.setTimeout(tick, 0);
-    const every = window.setInterval(tick, 30_000);
-    return () => {
-      window.clearTimeout(first);
-      window.clearInterval(every);
-    };
+    const t = window.setTimeout(() => setNow(Date.now()), 0);
+    return () => window.clearTimeout(t);
   }, []);
   const paid = receipt.outcome === "paid";
-  const left = receipt.readyAt && now !== null ? leftUntil(receipt.readyAt, now) : null;
-  const bonus = receipt.bonus ? `+${receipt.bonus} bonus` : "bonus";
+  const left = deadlineAt && now !== null ? leftUntil(deadlineAt, now) : null;
   return (
     <StoryFrame
       bar={
@@ -1010,30 +877,25 @@ function StoryPaid({ receipt, placeName, onDone }: { receipt: Receipt; placeName
           {paid ? `${whole(receipt.pay)} is yours` : "Your bank is confirming"}
         </p>
         <p className="text-muted-foreground mt-1 text-[15px] leading-snug">
-          {paid ? `Ready to spend now at ${placeName}.` : "The credit shows here once it's through. You won't be charged twice."}
+          {paid ? `Ready to spend now at ${placeName}.` : "The credit shows once it's through. You won't be charged twice."}
         </p>
       </Box>
-      {paid ? (
-        <Box title="Your bonus" data-story-countdown="">
-          <p className="text-foreground text-[17px] leading-snug font-bold tabular-nums">
-            {receipt.readyAt ? `Don't delete your story until ${readyClock(receipt.readyAt)}` : "Don't delete your story for 3 hours"}
-          </p>
-          <p className="text-muted-foreground mt-1 text-[15px] leading-snug tabular-nums" aria-live="polite">
-            {left ? `${left} left. Then your ${bonus} lands by itself.` : `Then your ${bonus} lands by itself.`}
-          </p>
-        </Box>
-      ) : null}
+      <Box title="Your bonus" data-story-next="">
+        <p className="text-foreground text-[17px] leading-snug font-bold">Now post your story</p>
+        <p className="text-muted-foreground mt-1 text-[15px] leading-snug tabular-nums">
+          {left ? `You have ${left}. ` : ""}Its steps are in Me › Tickets › Stories.
+        </p>
+      </Box>
     </StoryFrame>
   );
 }
 
-/** THE STORY PAGE (MESITA-4303; the sheet's StoryFlow since MESITA-4296):
- *  boxes in order (the deal, who can get it, how it works, good to know) and
- *  the pinned bar. On open the check runs once with its gate: a gate shows
- *  the checklist and its one action; otherwise the guest posts, the page
- *  looks for the story (every poll.every_ms for poll.for_ms, again on focus),
- *  and a found story turns the bar into the card and Pay. Paid, the page
- *  stays as the countdown (D4). Already bought here: a box and Wallet (D6). */
+/** THE STORY OFFER (MESITA-4303's page; Buy only since MESITA-4405, Pato:
+ *  "1. Pay $X. 2. Get principal immediately. 3. Solve the Story artifact
+ *  (substeps). 4. Receive bonus."). On open the gate runs once: a gate shows
+ *  the checklist and its one action; otherwise the deal, how it works, and
+ *  Pay. Paid, the host lands the guest on the Story's own screen. Already
+ *  bought here: a box and the Story screen's list (D6). */
 function StoryFlow({
   host,
   offer,
@@ -1050,152 +912,76 @@ function StoryFlow({
   onWallet: () => void;
 }) {
   const [answer, setAnswer] = useState<StoryCheckAnswer | null>(null);
-  const [gate, setGate] = useState<StoryGateReason | null>(null);
-  const [looking, setLooking] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
-  const [simulating, setSimulating] = useState(false);
-  const [handle, setHandle] = useState<string | null>(placeHandle);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   useOfferOpened(offer);
-  const poll = useRef<StoryPoll | null>(null);
   const check = host.check;
 
   useEffect(() => {
     let gone = false;
-    const loop = createStoryPoll({
-      check: () => check({ poll: true }),
-      onAnswer: (a) => {
-        if (a.kind !== "failed") setHandle(a.placeHandle);
-        // A failed poll keeps what is on screen (never reads as no_story).
-        if (a.kind === "failed") return;
-        setAnswer(a);
-      },
-      onLooking: setLooking,
-    });
-    poll.current = loop;
-    // The first check runs the gate; the look after it skips it.
     void check({ poll: false })
       .catch((): StoryCheckAnswer => ({ kind: "failed" }))
       .then((a) => {
-        if (gone) return;
-        if (a.kind === "missing" && isStoryGateReason(a.reason)) {
-          setGate(a.reason);
-          setHandle(a.placeHandle);
-          setAnswer(a);
-          return;
-        }
-        if (a.kind !== "failed") setHandle(a.placeHandle);
-        setAnswer(a.kind === "failed" ? { kind: "missing", reason: "no_story", placeHandle: null, poll: STORY_POLL_DEFAULT } : a);
-        // An approved story is payable; a found one waits for the waiter.
-        if (a.kind === "found" && a.review.state === "approved") return;
-        loop.start(a.kind === "failed" ? STORY_POLL_DEFAULT : a.poll);
+        if (!gone) setAnswer(a);
       });
-    // Back from Instagram: look again, one loop, debounced.
-    const wake = () => {
-      if (document.visibilityState === "visible") loop.restart();
-    };
-    document.addEventListener("visibilitychange", wake);
-    window.addEventListener("focus", wake);
     return () => {
       gone = true;
-      loop.close();
-      poll.current = null;
-      document.removeEventListener("visibilitychange", wake);
-      window.removeEventListener("focus", wake);
     };
   }, [check]);
 
-  const view = storySheetView(answer, looking, gate);
-  const mention = view.step === "found" ? view.mention : null;
-  // MESITA-4304: Pay only once a waiter of this place approved the story.
-  const review = view.step === "found" ? view.review : null;
-  const approved = review?.state === "approved";
-
-  // The look stops once the story is approved; a wake or tap then does nothing.
-  useEffect(() => {
-    if (approved) poll.current?.found();
-  }, [approved]);
-
-  const lookNow = () => {
-    setRefusal(null);
-    poll.current?.start();
-  };
-
-  const simulate = async () => {
-    if (!host.simulate) return;
-    setSimulating(true);
-    const line = await host.simulate().catch(() => "Couldn't tag the place. Try again.");
-    setSimulating(false);
-    if (line) setRefusal(line);
-    else lookNow();
-  };
-
-  // MESITA-4307: the test band stands in for the waiter.
-  const simulateApproval = async () => {
-    if (!host.simulateApproval) return;
-    setSimulating(true);
-    const line = await host.simulateApproval().catch(() => "Couldn't simulate the approval. Try again.");
-    setSimulating(false);
-    if (line) setRefusal(line);
-    else lookNow();
-  };
+  const handle = answer && answer.kind !== "failed" ? (answer.placeHandle ?? placeHandle) : placeHandle;
+  const gate = answer?.kind === "gate" ? answer.reason : null;
 
   const press = async () => {
-    if (mention && !approved) return;
-    if (!mention) {
-      // To Instagram's story camera; the look runs again on the way back.
-      openInstagram();
-      lookNow();
-      return;
-    }
-    const r = await offer.onPay(mention.id);
+    setRefusal(null);
+    const r = await offer.onPay();
     if (isStoryRefused(r)) {
-      // Nothing was charged: back to the check with the server's line.
       setRefusal(r.story_refused);
-      setAnswer({ kind: "missing", reason: "no_story", placeHandle: handle, poll: STORY_POLL_DEFAULT });
-      poll.current?.start();
       return;
     }
     if (r) setReceipt(r);
   };
 
-  if (receipt) return <StoryPaid receipt={receipt} placeName={placeName} onDone={onDone} />;
+  const deadline = receipt ? new Date(Date.now() + 12 * 3600 * 1000).toISOString() : null;
+  if (receipt) return <StoryPaid receipt={receipt} placeName={placeName} onDone={onDone} deadlineAt={deadline} />;
 
   const deal = <OfferBox pay={offer.pay} get={offer.get} bonus={offer.bonus} />;
   const amount = whole(offer.pay);
   const bonusText = offer.bonusAmount ? whole(offer.bonusAmount) : null;
   const good = <GoodToKnow productKey="voucher_story" />;
+  const steps = <StepList steps={storySteps(amount, bonusText, storyPostLine(handle), null)} />;
 
-  // ALREADY BOUGHT HERE (D6): no lock; the Story and its countdown are in Wallet.
-  if (view.step === "gate" && view.reason === "already_bought") {
+  // ALREADY BOUGHT HERE (D6): no lock; the Story and its steps are in Tickets.
+  if (gate === "already_bought") {
     return (
       <StoryFrame
         bar={
           <button type="button" onClick={onWallet} className={PRIMARY} data-story-wallet>
-            See it in Wallet
+            See your Stories
           </button>
         }
       >
         {deal}
         <Box data-story-gate="already_bought">
           <p className="text-foreground text-[17px] leading-snug font-bold">You already have a Story here.</p>
-          <p className="text-muted-foreground mt-1 text-[15px] leading-snug">One per visit. Its bonus and countdown are in Wallet.</p>
+          <p className="text-muted-foreground mt-1 text-[15px] leading-snug">One per visit. Its steps and bonus are in Me › Tickets › Stories.</p>
         </Box>
         {good}
       </StoryFrame>
     );
   }
 
-  if (view.step === "gate") {
+  if (gate) {
+    const line = STORY_GATE_LINE[gate];
     const failing: StoryFail =
-      view.reason === "needs_instagram" ? "instagram" : view.reason === "private_account" ? "private" : view.reason === "few_followers" ? "followers" : null;
+      gate === "needs_instagram" ? "instagram" : gate === "private_account" ? "private" : gate === "few_followers" ? "followers" : null;
     return (
       <StoryFrame
         bar={
           <>
-            {view.action && host.onInstagram ? (
+            {line.action && host.onInstagram ? (
               <button type="button" onClick={host.onInstagram} className={PRIMARY} data-offer-action>
-                {view.action === "sync_instagram" ? "Sync Instagram" : "Link Instagram"}
+                {line.action === "sync_instagram" ? "Sync Instagram" : "Link Instagram"}
               </button>
             ) : (
               <button type="button" onClick={onDone} className={PRIMARY} data-story-other-offers>
@@ -1203,7 +989,7 @@ function StoryFlow({
               </button>
             )}
             {/* Too few followers: the count is the last sync's, so a guest who grew can read it again. */}
-            {view.reason === "few_followers" && host.onInstagram ? (
+            {gate === "few_followers" && host.onInstagram ? (
               <button type="button" onClick={host.onInstagram} className={QUIET} data-offer-action="quiet">
                 Grew your account? Sync Instagram
               </button>
@@ -1212,37 +998,29 @@ function StoryFlow({
         }
       >
         {deal}
-        <div data-story-gate={view.reason} className="contents">
+        <div data-story-gate={gate} className="contents">
           <NeedBox needs={storyNeeds(offer.storyGuest, failing, false)} />
           {/* The amber line only when the checklist does not already say it. */}
           {failing === "instagram" || failing === "followers" ? null : (
             <p className="flex shrink-0 items-start gap-2.5 rounded-2xl bg-amber-50 px-4 py-3 text-amber-900">
               <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-              <span className="text-[15px] leading-snug font-semibold">{view.text}</span>
+              <span className="text-[15px] leading-snug font-semibold">{line.text}</span>
             </p>
           )}
         </div>
         <Box title="How it works" className="opacity-50">
-          <StepList steps={storySteps(amount, bonusText, storyPostLine(handle), null)} />
+          {steps}
         </Box>
         {good}
       </StoryFrame>
     );
   }
 
-  const lookLine =
-    view.step === "checking" || looking
-      ? "Looking for your story. It shows up here by itself."
-      : view.step === "post"
-        ? view.note
-        : null;
   const button = offer.signedOut
     ? "Sign in to buy"
-    : !mention
-      ? "Open Instagram"
-      : !approved
-        ? "Waiting for the waiter"
-        : offer.buying
+    : answer === null
+      ? "Checking…"
+      : offer.buying
         ? "Paying…"
         : offer.needsCard
           ? "Add a card to pay"
@@ -1257,81 +1035,27 @@ function StoryFlow({
               {refusal}
             </p>
           ) : null}
-          {approved ? <CardLine offer={offer} /> : null}
+          <CardLine offer={offer} />
           <button
             type="button"
             onClick={() => void press()}
-            disabled={!offer.live || offer.buying || (mention !== null && (!approved || offer.cardsPending))}
+            disabled={!offer.live || offer.buying || answer === null || offer.cardsPending}
             className={PRIMARY}
             data-voucher-buy="voucher_story"
-            data-story-primary={mention ? (approved ? "pay" : "waiter") : "post"}
+            data-story-primary="pay"
           >
-            {approved && offer.needsCard && !offer.signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
-            {mention ? null : <Instagram className="h-5 w-5" aria-hidden />}
+            {offer.needsCard && !offer.signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
             {button}
           </button>
-          {mention ? null : (
-            <p className="text-muted-foreground flex min-h-5 flex-wrap items-center justify-center gap-x-2 text-center text-sm" aria-live="polite" data-story-look>
-              <span>{lookLine}</span>
-              {view.step === "post" && !looking ? (
-                <button type="button" onClick={lookNow} className="text-foreground min-h-9 font-semibold underline underline-offset-2" data-story-check>
-                  Check again
-                </button>
-              ) : null}
-            </p>
-          )}
         </>
       }
     >
       {deal}
-      <NeedBox needs={storyNeeds(offer.storyGuest, null, view.step === "post" || view.step === "found")} />
+      <NeedBox needs={storyNeeds(offer.storyGuest, null, answer?.kind === "ready")} />
       <Box title="How it works" data-story-steps="">
-        <StepList
-          steps={storySteps(
-            amount,
-            bonusText,
-            <>
-              Tag us both in it.
-              <span className="mt-1.5 block">
-                <CopyChip text={storyTags(handle)} />
-              </span>
-            </>,
-            mention === null ? "post" : approved ? "pay" : "waiter",
-          )}
-        />
-        {mention ? <FoundCard mention={mention} handle={host.guestHandle} /> : null}
+        {steps}
       </Box>
-      {review ? <WaiterBox review={review} renderQr={host.renderQr} /> : null}
-      {host.testMode && host.simulateApproval && review?.state === "waiting" ? (
-        <div className="border-border flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-dashed p-2" data-story-emulator>
-          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-amber-900 uppercase">Test</span>
-          <button
-            type="button"
-            disabled={simulating}
-            onClick={() => void simulateApproval()}
-            className="text-muted-foreground min-h-9 px-2 text-sm font-semibold underline disabled:opacity-60"
-            data-story-simulate="approve"
-          >
-            {simulating ? "Approving…" : "Simulate the waiter's approval"}
-          </button>
-        </div>
-      ) : null}
       {good}
-      {host.testMode && host.simulate && !mention ? (
-        <div className="border-border flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-dashed p-2" data-story-emulator>
-          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-amber-900 uppercase">Test</span>
-          <button
-            type="button"
-            disabled={simulating}
-            onClick={() => void simulate()}
-            className="text-muted-foreground min-h-9 px-2 text-sm font-semibold underline disabled:opacity-60"
-            data-story-simulate="post"
-          >
-            {/* MESITA-4310: no screenshot; the test story just tags @mesita and the place. */}
-            {simulating ? "Tagging…" : handle ? `Tag @${handle} (test story)` : "Tag the place (test story)"}
-          </button>
-        </div>
-      ) : null}
     </StoryFrame>
   );
 }
@@ -1660,12 +1384,7 @@ export function StoryOfferPage({
   const offer = co.offer(story);
   const host: StoryHost = {
     check: co.checkStory,
-    simulate: actions?.onSimulateStory ?? null,
-    simulateApproval: actions?.onSimulateApproval ?? null,
-    guestHandle: actions?.guest?.instagramHandle ?? null,
-    testMode: place.money?.test_mode === true,
     onInstagram: actions?.onLinkInstagram ?? null,
-    renderQr: actions?.renderStoryQr ?? null,
   };
   return (
     <StoryFlow

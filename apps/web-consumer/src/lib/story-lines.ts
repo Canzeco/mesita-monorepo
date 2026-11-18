@@ -1,11 +1,11 @@
-// THE STORY VOUCHER'S LINE (MESITA-4264; MESITA-4296): what the Wallet row,
-// its page and Me › Tickets say about a Story voucher's bonus, by the
-// server's state. The story was found before payment and the paid amount is
-// already in the balance; only the bonus waits, 3 hours after payment, if
-// the story is still up. Times read in the place's own zone ("17:05").
+// THE STORY VOUCHER'S LINE (MESITA-4264; the Story record since
+// MESITA-4405): what the Wallet's Story row and the Vouchers ticket say
+// about a Story's bonus. The paid amount is already in the balance; the
+// Story's steps (post, the waiter, the bonus) are on its own screen
+// (lib/story-ticket.ts). Times read in the place's own zone ("17:05").
 // A PLAIN MODULE: no React.
 
-import { money, type WaitingStory } from "@/lib/api/wallet";
+import type { WaitingStory } from "@/lib/api/wallet";
 
 function parts(iso: string, timeZone: string): Intl.DateTimeFormatPart[] | null {
   const at = new Date(iso);
@@ -69,33 +69,28 @@ export function storyChecking(s: Pick<WaitingStory, "state" | "bonus_at">, now =
 export const STORY_CHECKING_LINE = "Checking your story now. Your bonus lands within 30 min.";
 
 /** Why the bonus did not apply, by the server's reason. */
-function voidLine(s: WaitingStory, now: number): string {
-  const paid = money(s.amount_cents, s.currency);
-  const bonus = `+${money(s.bonus_cents, s.currency)}`;
+function voidLine(s: WaitingStory): string {
   switch (s.bonus_void_reason) {
-    case "unreachable": {
-      const at = s.bonus_decided_at ?? s.recheck_at ?? s.bonus_at;
-      return at
-        ? `Your story was gone at ${storyClock(at, s.time_zone, now)}, so the bonus didn't apply.`
-        : "Your story was gone, so the bonus didn't apply.";
-    }
-    case "mention_lost":
-      return `Your ${paid} credit is in your Wallet. The ${bonus} bonus didn't apply: your story was too old by the time payment finished.`;
-    case "refunded":
-      return s.refunded ? "Refunded. Your story is free to use again." : "No bonus on this Story.";
     case "expired":
-      return `Story review ended. Your ${paid} credit is kept.`;
+      return "Time ran out before a waiter approved a story. Your credit is kept.";
+    case "deleted":
+      return "Your story was deleted before the bonus time.";
+    case "unreachable":
+      return "We couldn't see your story at the bonus time, so the bonus didn't apply.";
+    case "refunded":
+      return "Refunded.";
     default:
       return "No bonus on this Story.";
   }
 }
 
-/** The one line for a Story voucher, by its state. */
+/** The one line for a Story on the Wallet, by its state: before approval
+ *  the Story's next step, after it the countdown to the bonus. */
 export function storyLine(s: WaitingStory, now = Date.now()): string {
   switch (s.state) {
     case "waiting": {
+      if (!s.bonus_at) return "Post your story and show it to the waiter.";
       if (storyChecking(s, now)) return STORY_CHECKING_LINE;
-      if (!s.bonus_at) return "Don't delete your story yet.";
       const left = storyLeft(s.bonus_at, now);
       return `Don't delete it until ${storyClock(s.bonus_at, s.time_zone, now)}${left ? ` · ${left}` : ""}`;
     }
@@ -104,7 +99,7 @@ export function storyLine(s: WaitingStory, now = Date.now()): string {
     case "released":
       return "Bonus added";
     case "void":
-      return voidLine(s, now);
+      return voidLine(s);
     default:
       return "No bonus on this Story.";
   }

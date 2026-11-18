@@ -11,16 +11,17 @@ import { CodeBoxes } from "../../tab/[token]/CodeBoxes";
 import { Bones } from "@/components/Bones";
 
 // /story/<token> — the waiter's page for a guest's Story voucher
-// (MESITA-4304; pieces from MESITA-3507, 4264 and the closed 4297). The app
-// already found the guest's story (consumer-web-check-story); the guest's
-// Story page shows this QR BEFORE they pay. Top to bottom: the place, "Story
+// (MESITA-4304; pieces from MESITA-3507, 4264 and the closed 4297). The
+// guest already paid (MESITA-4405: the voucher pays first); their Story
+// screen shows this QR once their story reached Mesita. Top to bottom: the place, "Story
 // voucher", the guest's verified @handle; the story, how long ago it was
 // posted, and what the waiter checks by eye (@mesita tagged, this place
 // tagged, the Paid partnership label); Approve and Reject. Both need the
 // waiter code, the tab page's sign-in: the 12-hour staff token kept on this
 // device, never the code. The guest holds the QR, so the token alone
-// approves nothing. No money here: the guest pays after the approval. Every
-// rule is the server's.
+// approves nothing. No money here: an approval starts the bonus's 3-hour
+// wait; a reject sends the guest back to post a new story. Every rule is the
+// server's.
 
 type Read = { kind: "loading" } | { kind: "ok"; story: WaiterStory } | { kind: "invalid" } | { kind: "failed" };
 
@@ -166,9 +167,9 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
   if (s.state !== "waiting") {
     const line =
       s.state === "approved"
-        ? "Approved · the guest can now pay for the Story voucher"
+        ? "Approved · the guest's bonus lands in 3 hours if the story stays up"
         : s.state === "used"
-          ? "Approved and paid."
+          ? "Nothing to approve here any more. Ask the guest to open their Story."
           : "Not approved. The guest can post a new story.";
     return (
       <main className="proof" data-story-state={s.state}>
