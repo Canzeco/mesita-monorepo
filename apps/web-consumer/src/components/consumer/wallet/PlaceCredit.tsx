@@ -461,7 +461,10 @@ export function PlaceCredit({
             box between the black box and the tickets box … improve the
             design"): one box per amount on its way, its own live minutes,
             a tap opens its ticket. */
-        <div className="mt-4 flex flex-col gap-2" data-loyalty-card-pending-boxes>
+        /* IN ITS OWN BOX (MESITA-4364, Pato: "literally create a box called
+            Pending Bonuses, and put the blue tint inside"). */
+        <Panel title="Pending Bonuses" className="mt-4">
+        <div className="flex flex-col gap-2 p-4" data-loyalty-card-pending-boxes>
           {pending.map((g, i) => {
             const words = pendingWords(g.amount_cents, card.currency, g.kind, g.available_at, now);
             const to = entryHref(row.placeId, g);
@@ -482,6 +485,7 @@ export function PlaceCredit({
             );
           })}
         </div>
+        </Panel>
       ) : null}
 
       {/* THIS PLACE'S TICKETS (MESITA-4279, Pato: "a scoped version of the
