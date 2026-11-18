@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { Skeleton, Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { DefaultAvatar, SizedImage } from "@mesita/place-profile";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { ME_BUTTON_CLASS } from "@/components/consumer/me/settings-rows";
-import { Panel } from "@/components/shared/Panel";
 import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
@@ -26,9 +25,6 @@ import {
   birthYearOf,
   birthYearOldEnough,
   birthYearOptions,
-  joinName,
-  nameError,
-  splitFullName,
 } from "@/lib/consumer-onboarding";
 
 // Full-page identity editor at /me/profile (MESITA-1789). Was a LocalSheet
@@ -36,10 +32,9 @@ import {
 // their phone (not email), so email isn't shown or edited here.
 //
 // NAME, SEX, YEAR OF BIRTH (MESITA-4302, Pato: "Name. Year of birth. Fuck
-// specific age. And ask sex too. keep this easier. cleaner."). One Name box
-// split by splitFullName (first word = first name, the rest = last name; one
-// word is refused because bookings need a last name), the Sex switch, and a
-// year select. The birthday date is no longer written.
+// specific age. And ask sex too. keep this easier. cleaner."). First name
+// and Last name since MESITA-4311 (one Name box split by splitFullName
+// before), the Sex switch, and a year select. The birthday date is no longer written.
 //
 // Phone is auth identity (set at sign-in) and is not editable here. The
 // fields are onboarding's own three (consumer-onboarding.ts ONBOARD_FIELDS).
@@ -62,6 +57,16 @@ import {
 // keeps every edit. Name is one full-width box; Sex is a two-button switch;
 // Year of birth is one native select.
 //
+// THE PAGE IS THE FORM (Pato, 2026-11-17, MESITA-4311: "this looks like
+// shit", picked A of three mocks, then "firt name and last name"): this
+// replaces MESITA-4052's layout below. No Details box and no heading; the
+// name is no longer printed under the photo (it showed three times). The
+// photo is 88px in a hairline ring with "Change photo" under it, no black
+// badge. Name is two fields, First name and Last name, each saved as typed
+// (no splitting); both are required because bookings need a last name.
+// Save sits right under the last field, not pinned to the footer band, so
+// no white is left between the fields and the button.
+//
 // NO MEMBER NUMBER (MESITA-3874, Pato: "nobody gives a fuck about the
 // member number. remove that"). `consumers.code` stays in the database for
 // staff and support; no guest screen prints it.
@@ -77,16 +82,17 @@ const SEX_OPTIONS = [
   { value: "male", label: "Male" },
 ] as const;
 
-/** The three fields' labels. */
+/** The fields' labels. */
 const FIELD_LABEL = {
-  name: "Name",
+  firstName: "First name",
+  lastName: "Last name",
   sex: "Sex",
   birthYear: "Year of birth",
 } as const;
 
 /** Name and Year of birth: the shared input, a notch smaller. One
  *  string for the fields and their loading boxes (MESITA-2701). */
-const FIELD_CLASS = cn(INPUT_CLASS, "h-auto rounded-lg py-2");
+const FIELD_CLASS = cn(INPUT_CLASS, "h-12 rounded-xl px-3.5 text-base");
 
 /** A field's box before its value lands: the field's own control, empty,
  *  disabled and muted. Not a div, because its height comes from the control:
@@ -101,35 +107,28 @@ const FIELD_SKELETON_CLASS = cn(
 // THE FORM'S BOXES, ONCE (MESITA-2701): each string below is the box the
 // form draws and the box its skeleton pulses.
 
-/** The 96px photo. */
-const PHOTO_BOX_CLASS = "h-24 w-24 shrink-0 rounded-full";
+/** The 88px photo, in a hairline ring. */
+const PHOTO_BOX_CLASS = "h-22 w-22 shrink-0 rounded-full";
 
-/** The camera badge on the photo's corner: 32px, a 2px paper rim. */
-const CAMERA_BADGE_BOX_CLASS =
-  "border-paper absolute right-0 bottom-0 h-8 w-8 rounded-full border-2";
+/** The photo and "Change photo", centred above the fields. */
+const TOP_ROW_CLASS = "flex flex-col items-center gap-2.5 pt-2";
 
-/** The photo and the name, centred above the box. */
-const TOP_ROW_CLASS = "flex flex-col items-center gap-3";
-
-/** The name under the photo: one 18px line. */
-const NAME_CLASS = "font-display min-h-7 max-w-full truncate text-lg font-semibold tracking-tight";
-
-/** The fields' column inside the Details box, 24px under the name. */
-const FIELDS_CLASS = "flex flex-col gap-3 p-4";
-const DETAILS_CLASS = "mt-4";
+/** The fields and Save, one column under the photo. */
+const FIELDS_CLASS = "mt-6 flex flex-col gap-4";
 
 /** Sex's switch: the field's box holding two halves. */
 const SEX_SWITCH_CLASS =
-  "bg-card border-border grid grid-cols-2 gap-1 rounded-lg border p-1";
+  "bg-card border-border grid h-12 grid-cols-2 gap-1 rounded-xl border p-1";
 const SEX_OPTION_CLASS =
-  "rounded-md py-1.5 text-sm font-medium transition active:scale-[0.98]";
+  "rounded-lg text-base font-medium transition active:scale-[0.98]";
 
-/** Save in the footer band: the Me button, full width; off it is grey. */
+/** Save under the fields: the Me button, full width and 48px; off it is
+ *  grey. */
 const SAVE_BUTTON_CLASS = cn(
   ME_BUTTON_CLASS,
-  "w-full disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100",
+  "mt-2 h-12 w-full text-base disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100",
 );
-const SAVE_BOX_CLASS = "h-11 w-full rounded-xl";
+const SAVE_BOX_CLASS = "mt-2 h-12 w-full rounded-xl";
 
 /** How long "Saved" stays on the button. */
 const SAVED_MS = 2000;
@@ -188,29 +187,24 @@ function FieldLabel({ children, id }: { children: string; id?: string }) {
  */
 export function EditProfileSkeleton() {
   return (
-    <MeScreen title="Profile" footer={<Skeleton className={SAVE_BOX_CLASS} />}>
+    <MeScreen title="Profile">
       <div className={TOP_ROW_CLASS}>
-        <div className="relative">
-          <Skeleton className={PHOTO_BOX_CLASS} />
-          <Skeleton className={CAMERA_BADGE_BOX_CLASS} />
-        </div>
-        <span className={cn(NAME_CLASS, "flex items-center")}>
-          <Skeleton className="h-4 w-32 rounded" />
-        </span>
+        <Skeleton className={PHOTO_BOX_CLASS} />
+        <Skeleton className="h-5 w-28 rounded" />
       </div>
 
-      <div className={DETAILS_CLASS}>
-      <Panel title="Details">
       <div className={FIELDS_CLASS} aria-hidden>
-        <div>
-          <FieldLabel>{FIELD_LABEL.name}</FieldLabel>
-          <input
-            disabled
-            tabIndex={-1}
-            aria-hidden
-            className={FIELD_SKELETON_CLASS}
-          />
-        </div>
+        {[FIELD_LABEL.firstName, FIELD_LABEL.lastName].map((label) => (
+          <div key={label}>
+            <FieldLabel>{label}</FieldLabel>
+            <input
+              disabled
+              tabIndex={-1}
+              aria-hidden
+              className={FIELD_SKELETON_CLASS}
+            />
+          </div>
+        ))}
         <div>
           <FieldLabel>{FIELD_LABEL.sex}</FieldLabel>
           <div
@@ -238,8 +232,7 @@ export function EditProfileSkeleton() {
             className={FIELD_SKELETON_CLASS}
           />
         </div>
-      </div>
-      </Panel>
+        <Skeleton className={SAVE_BOX_CLASS} />
       </div>
 
       <p role="status" className="sr-only">
@@ -252,9 +245,11 @@ export function EditProfileSkeleton() {
 function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   const supabase = useBrowserSupabase();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const storedName = joinName(profile.first_name, profile.last_name);
+  const storedFirst = profile.first_name?.trim() ?? "";
+  const storedLast = profile.last_name?.trim() ?? "";
   const storedYear = birthYearOf(profile);
-  const [name, setName] = useState(storedName);
+  const [firstName, setFirstName] = useState(storedFirst);
+  const [lastName, setLastName] = useState(storedLast);
   // Male/Female only (MESITA-727). "" = nothing stored yet, which is why the
   // select carries an empty option — a legacy profile shouldn't silently
   // acquire a sex just by opening this page.
@@ -269,7 +264,8 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   const displayAvatarUrl = previewUrl ?? profile.avatar_url ?? null;
 
   const dirty =
-    name.trim().replace(/\s+/g, " ") !== storedName ||
+    tidy(firstName) !== storedFirst ||
+    tidy(lastName) !== storedLast ||
     sex !== (profile.sex ?? "") ||
     birthYear !== storedYear;
 
@@ -314,10 +310,14 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
 
   async function save() {
     if (!dirty || saving) return;
-    const badName = nameError(name);
-    const split = splitFullName(name);
-    if (badName || !split) {
-      setSaveError(badName ?? "Add your last name too.");
+    const first = tidy(firstName);
+    const last = tidy(lastName);
+    if (!first) {
+      setSaveError("Tell us your first name.");
+      return;
+    }
+    if (!last) {
+      setSaveError("Add your last name too.");
       return;
     }
     if (birthYear !== null && !birthYearOldEnough(birthYear)) {
@@ -328,8 +328,8 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
     setSaving(true);
     try {
       await apiUpdateConsumerProfile(supabase, {
-        first_name: split.first,
-        last_name: split.last,
+        first_name: first,
+        last_name: last,
         ...(sex === "male" || sex === "female" ? { sex } : {}),
         ...(birthYear !== null ? { birth_year: birthYear } : {}),
       });
@@ -341,31 +341,30 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
     }
   }
 
+  const saveButton = (
+    <>
+      {saveError && (
+        <p role="alert" className="text-destructive text-sm">
+          {saveError}
+        </p>
+      )}
+      <Button
+        type="button"
+        onClick={() => void save()}
+        disabled={!dirty || saving || uploadingPhoto}
+        className={SAVE_BUTTON_CLASS}
+      >
+        {saving && (
+          <Spinner size="sm" className="border-white/40 border-t-white" />
+        )}
+        {saved && !dirty && <Check className="h-4 w-4" aria-hidden />}
+        {saving ? "Saving…" : saved && !dirty ? "Saved" : "Save"}
+      </Button>
+    </>
+  );
+
   return (
-    <MeScreen
-      title="Profile"
-      footer={
-        <>
-          {saveError && (
-            <p role="alert" className="text-destructive mb-2 text-sm">
-              {saveError}
-            </p>
-          )}
-          <Button
-            type="button"
-            onClick={() => void save()}
-            disabled={!dirty || saving || uploadingPhoto}
-            className={SAVE_BUTTON_CLASS}
-          >
-            {saving && (
-              <Spinner size="sm" className="border-white/40 border-t-white" />
-            )}
-            {saved && !dirty && <Check className="h-4 w-4" aria-hidden />}
-            {saving ? "Saving…" : saved && !dirty ? "Saved" : "Save"}
-          </Button>
-        </>
-      }
-    >
+    <MeScreen title="Profile">
       <div className={TOP_ROW_CLASS}>
         <input
           ref={fileInputRef}
@@ -383,62 +382,59 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploadingPhoto}
-          className="group relative shrink-0 disabled:opacity-70"
+          className="relative shrink-0 disabled:opacity-70"
           aria-label="Change profile photo"
         >
           <span
             className={cn(
-              "bg-pink-gradient flex p-[2.5px]",
+              "bg-muted ring-border relative block overflow-hidden ring-1",
               PHOTO_BOX_CLASS,
             )}
           >
-            <span className="bg-card relative flex-1 overflow-hidden rounded-full">
-              {displayAvatarUrl ? (
-                <SizedImage
-                  src={displayAvatarUrl}
-                  size="thumb"
-                  alt="Profile photo"
-                  fill
-                  sizes="96px"
-                  className="object-cover"
-                  unoptimized={Boolean(previewUrl)}
-                />
-              ) : (
-                <DefaultAvatar className="h-full w-full" />
-              )}
-              {uploadingPhoto && (
-                <span className="absolute inset-0 flex items-center justify-center bg-black/35">
-                  <Spinner
-                    size="sm"
-                    className="border-white/40 border-t-white"
-                  />
-                </span>
-              )}
-            </span>
-          </span>
-          <span
-            className={cn(
-              CAMERA_BADGE_BOX_CLASS,
-              "bg-foreground text-paper flex items-center justify-center transition group-active:scale-95",
+            {displayAvatarUrl ? (
+              <SizedImage
+                src={displayAvatarUrl}
+                size="thumb"
+                alt="Profile photo"
+                fill
+                sizes="88px"
+                className="object-cover"
+                unoptimized={Boolean(previewUrl)}
+              />
+            ) : (
+              <DefaultAvatar className="h-full w-full" />
             )}
-          >
-            <Camera className="h-4 w-4" />
+            {uploadingPhoto && (
+              <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                <Spinner size="sm" className="border-white/40 border-t-white" />
+              </span>
+            )}
           </span>
         </button>
-        <p className={NAME_CLASS}>
-          {name.trim() || "Your name"}
-        </p>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadingPhoto}
+          className="text-foreground min-h-11 px-2 text-base font-semibold transition hover:opacity-70 disabled:opacity-50"
+        >
+          {uploadingPhoto ? "Uploading…" : "Change photo"}
+        </button>
       </div>
 
-      <div className={DETAILS_CLASS}>
-      <Panel title="Details">
       <div className={FIELDS_CLASS}>
         <SheetField
-          label={FIELD_LABEL.name}
-          value={name}
-          onChange={setName}
-          placeholder="First and last name"
-          autoComplete="name"
+          label={FIELD_LABEL.firstName}
+          value={firstName}
+          onChange={setFirstName}
+          placeholder="First name"
+          autoComplete="given-name"
+        />
+        <SheetField
+          label={FIELD_LABEL.lastName}
+          value={lastName}
+          onChange={setLastName}
+          placeholder="Last name"
+          autoComplete="family-name"
         />
         <div>
           <FieldLabel id="profile-sex-label">{FIELD_LABEL.sex}</FieldLabel>
@@ -494,11 +490,15 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
             ))}
           </select>
         </label>
-      </div>
-      </Panel>
+        {saveButton}
       </div>
     </MeScreen>
   );
+}
+
+/** A name as saved: trimmed, inner runs of spaces made one. */
+function tidy(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
 }
 
 function SheetField({
