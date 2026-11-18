@@ -13,7 +13,10 @@ import {
 import {
   ArrowLeftRight,
   BadgeCheck,
+  Check,
+  CirclePlus,
   Copy,
+  Eye,
   ImageIcon,
   RefreshCw,
   Send,
@@ -29,7 +32,6 @@ import {
   IconChip,
   ME_BUTTON_CLASS,
   RowDivider,
-  SettingsActionRow,
   SettingsGroup,
   Switch,
 } from "@/components/consumer/me/settings-rows";
@@ -47,7 +49,11 @@ import {
   type InstagramDmClaim,
   type InstagramLookup,
 } from "@/lib/api/profile";
-import { followersLabel, updatedAgo } from "@/lib/consumer-identity";
+import {
+  followersLabel,
+  STORY_MIN_FOLLOWERS,
+  updatedAgo,
+} from "@/lib/consumer-identity";
 import { EFError } from "@/lib/api/_invoke";
 import { normalizeInstagramHandle } from "@/lib/instagram-handle";
 import {
@@ -61,8 +67,11 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerIdentity, useServerProfile } from "@/lib/identity-context";
 import { INSTAGRAM_PHOTO_SWITCH } from "@/components/consumer/me/switch-words";
 
-// Instagram connect page (MESITA-936): one lead line → Connect. The Why
-// connect pitch was cut (Pato, 2026-10-28, MESITA-2983).
+// Instagram connect page (MESITA-936). Why connect is back with two reasons
+// (MESITA-4342, after MESITA-2983 cut it): see others' Instagram, and Story
+// vouchers over 1,000 followers. Connected: the account with Sync | Change
+// side by side, Why connect with the guest's standing, Photo, then
+// Disconnect as a red link.
 //
 // IT GRANTS NOTHING (Pato, MESITA-2040: "instagram is just 1000 followers").
 // A connected handle is an identity fact; crossing the bar makes the account
@@ -243,6 +252,11 @@ export function InstagramModal() {
           />
         )}
 
+        {/* The two reasons to connect (MESITA-4342). Before connecting,
+              above the Connect card; after, under the account, each row
+              showing where the guest stands. */}
+        <WhyConnect connected={connected} />
+
         {/* While it is read, the card's own silhouette, not a spinner:
               the card that lands is ~330px tall to the spinner's 64px, so
               Photo's row below jumped (Pato, MESITA-2701). */}
@@ -278,6 +292,94 @@ export function InstagramModal() {
   );
 }
 
+
+/** The page's grey buttons (Sync, Change): quiet, the Me pages' 44px shape. */
+const QUIET_BUTTON_CLASS =
+  "bg-muted text-foreground hover:bg-muted/70 flex items-center justify-center gap-2 transition disabled:pointer-events-none disabled:opacity-60";
+
+// WHY CONNECT, TWO REASONS (Pato, MESITA-4342: "mention that why … TWO
+// REASONS"; it undoes MESITA-2983's cut). Both are server rules, not copy:
+//   1. Others' full handles show only to a guest whose own Instagram is
+//      connected and whose profile is public (place-activity seesHandles).
+//   2. A Story voucher needs more than STORY_MIN_FOLLOWERS followers
+//      (vouchers.ts refuses `<=`). "Bonus", never "discount": Story pays a
+//      bonus on top of what the guest pays.
+// Connected, each row says where the guest stands.
+export function WhyConnect({ connected }: { connected: boolean }) {
+  const { igFollowers } = useConsumerIdentity();
+  const { data } = useConsumerProfile();
+  const hidden = data?.appear_anonymous === true;
+  const storyOk = igFollowers > STORY_MIN_FOLLOWERS;
+  const need = STORY_MIN_FOLLOWERS + 1;
+  return (
+    <SettingsGroup title="Why connect">
+      <div className="flex items-center gap-3 px-4 py-3" data-why-connect="see">
+        <IconChip>
+          <Eye className="h-[18px] w-[18px]" />
+        </IconChip>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">
+            See other guests&apos; Instagram
+          </span>
+          <span className="text-muted-foreground type-label block">
+            {connected && hidden
+              ? "Your profile is hidden. Make it public in Settings to see theirs."
+              : "It goes both ways: to see theirs, you share yours."}
+          </span>
+        </span>
+        {connected && !hidden && <StatusMark>On</StatusMark>}
+      </div>
+      <RowDivider />
+      <div className="flex items-center gap-3 px-4 py-3" data-why-connect="story">
+        <IconChip>
+          <CirclePlus className="h-[18px] w-[18px]" />
+        </IconChip>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">
+            Post Stories, get a bonus
+          </span>
+          <span className="text-muted-foreground type-label block">
+            With more than {STORY_MIN_FOLLOWERS.toLocaleString("en-US")}{" "}
+            followers, a Story at a place adds a bonus to what you pay.
+          </span>
+          {connected && !storyOk && (
+            <>
+              <span
+                className="bg-muted mt-2 block h-1 overflow-hidden rounded-full"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={need}
+                aria-valuenow={igFollowers}
+                aria-label="Followers toward Stories"
+              >
+                <span
+                  className="bg-foreground block h-full"
+                  style={{
+                    width: `${Math.min(100, (igFollowers / need) * 100)}%`,
+                  }}
+                />
+              </span>
+              <span className="text-muted-foreground type-label mt-1 block tabular-nums">
+                {igFollowers.toLocaleString("en-US")} of{" "}
+                {need.toLocaleString("en-US")} followers
+              </span>
+            </>
+          )}
+        </span>
+        {connected && storyOk && <StatusMark>You qualify</StatusMark>}
+      </div>
+    </SettingsGroup>
+  );
+}
+
+function StatusMark({ children }: { children: ReactNode }) {
+  return (
+    <span className="text-foreground type-label flex shrink-0 items-center gap-1 font-semibold">
+      <Check className="h-4 w-4" aria-hidden />
+      {children}
+    </span>
+  );
+}
 
 /** A connected guest's account card under its eyebrow (MESITA-3060): the
  *  account row, then Sync | Change account and one live line. It reads the
@@ -337,32 +439,42 @@ export function ConnectedAccount({
     }
   }
 
-  // THREE ROWS, THE ME PAGES' OWN (Pato, MESITA-3062: "more standarized
-  // buttons … cleaner"): the account, then Sync and Change account as the
-  // same action rows Settings uses; the outlined buttons are gone.
+  // THE ACCOUNT, THEN TWO BUTTONS SIDE BY SIDE (Pato, MESITA-4342: "make
+  // the buttons cleaner … horizontal"): Sync and Change are two equal grey
+  // buttons under the account row; the two chevron rows (MESITA-3062) went.
   return (
-    <SettingsGroup title="Connected">
+    <SettingsGroup>
       <CurrentConnectionRow pending={pending} />
-      <RowDivider />
-      <SettingsActionRow
-        Icon={RefreshCw}
-        label={syncing ? "Syncing…" : "Sync"}
-        sub={
-          syncing
-            ? "Reading your Instagram. This can take up to a minute."
-            : "Update your followers and photo"
-        }
-        disabled={pending || busy || resting}
-        onClick={sync}
-      />
-      <RowDivider />
-      <SettingsActionRow
-        Icon={ArrowLeftRight}
-        label="Change account"
-        sub="Connect a different Instagram"
-        disabled={pending || busy}
-        onClick={() => onChange?.()}
-      />
+      <div className="grid grid-cols-2 gap-2 px-4 pt-1 pb-4">
+        <button
+          type="button"
+          onClick={sync}
+          disabled={pending || busy || resting}
+          className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)}
+          data-instagram-sync
+        >
+          <RefreshCw
+            className={cn("h-4 w-4", syncing && "animate-spin")}
+            aria-hidden
+          />
+          {syncing ? "Syncing…" : "Sync"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange?.()}
+          disabled={pending || busy}
+          className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)}
+          data-instagram-change
+        >
+          <ArrowLeftRight className="h-4 w-4" aria-hidden />
+          Change
+        </button>
+      </div>
+      {syncing && (
+        <p className="text-muted-foreground type-label border-border/60 border-t px-4 py-3">
+          Reading your Instagram. This can take up to a minute.
+        </p>
+      )}
       <div aria-live="polite">
         {!syncing && message && (
           <p
@@ -403,16 +515,18 @@ export function DisconnectLink({
   const { igHandle: handle } = useConsumerIdentity();
   return (
     <>
-      <SettingsGroup title="Account">
-        <SettingsActionRow
-          Icon={Unlink}
-          label="Disconnect Instagram"
-          sub={handle ? `Take @${handle} off Mesita` : undefined}
-          destructive
-          disabled={disabled}
-          onClick={() => onOpen?.()}
-        />
-      </SettingsGroup>
+      {/* A red text button, the page's quietest action (MESITA-4342): the
+            Account box around it is gone. */}
+      <button
+        type="button"
+        onClick={() => onOpen?.()}
+        disabled={disabled}
+        className="text-destructive flex min-h-11 items-center justify-center gap-2 self-center px-4 text-sm font-semibold hover:underline disabled:pointer-events-none disabled:opacity-60"
+        data-instagram-disconnect
+      >
+        <Unlink className="h-4 w-4" aria-hidden />
+        Disconnect Instagram
+      </button>
       <DisconnectDialog
         open={open}
         handle={handle}
@@ -980,7 +1094,7 @@ function InstagramPhotoSwitch() {
 
   const shown = on ?? true;
   return (
-    <SettingsGroup title="Photo">
+    <SettingsGroup>
       <button
         type="button"
         role="switch"

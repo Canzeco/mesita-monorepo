@@ -12,6 +12,10 @@
 /** The Instagram bar, and the only number in this file. */
 export const INSTAGRAM_REACH_FOLLOWERS = 1_000;
 
+/** A Story voucher needs MORE than this many followers: the server's
+ *  STORY_MIN_FOLLOWERS (_shared/money-state.ts; vouchers.ts refuses `<=`). */
+export const STORY_MIN_FOLLOWERS = 1_000;
+
 /** What the app knows about a guest's Instagram. `unknown` means the profile
  *  read FAILED — not "they have none". Every surface that STATES the fact
  *  (rather than colouring with it) must branch on it, which is the lesson

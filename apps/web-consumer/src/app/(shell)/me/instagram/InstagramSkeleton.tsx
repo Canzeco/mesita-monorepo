@@ -3,6 +3,8 @@
 import {
   ConnectCardSkeleton,
   ConnectedAccount,
+  DisconnectLink,
+  WhyConnect,
 } from "@/components/consumer/me/InstagramModal";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { SettingsGroup } from "@/components/consumer/me/settings-rows";
@@ -20,11 +22,11 @@ import { SettingsRowSkeleton } from "../me-skeletons";
 // right one is drawn from the first frame, and the account card itself
 // (handle, Verified) is drawn for real: it reads nothing else.
 //
-//   not connected   the Connect card's silhouette (the same
+//   not connected   Why connect, the Connect card's silhouette (the same
 //                   one the page draws while it asks how connecting works
 //                   today), then Photo's switch row
-//   connected       the account card, Social's and Photo's switch rows,
-//                   then the Account group's Disconnect row
+//   connected       the account card, Why connect, Photo's switch row,
+//                   then the red Disconnect link (MESITA-4342)
 //
 // THE WORDS ARE THE PAGE'S: the intro, the account card and the
 // Connect card are InstagramModal's own components, and the switch rows'
@@ -37,9 +39,11 @@ export function InstagramSkeleton() {
     <MeScreen title="Instagram">
 
       <div className="flex flex-col gap-4">
-        {connected ? <ConnectedAccount pending /> : <ConnectCardSkeleton />}
+        {connected && <ConnectedAccount pending />}
+        <WhyConnect connected={connected} />
+        {!connected && <ConnectCardSkeleton />}
 
-        <SettingsGroup title="Photo">
+        <SettingsGroup>
           <SettingsRowSkeleton
             label={INSTAGRAM_PHOTO_SWITCH.label}
             sub={INSTAGRAM_PHOTO_SWITCH.on}
@@ -47,14 +51,7 @@ export function InstagramSkeleton() {
           />
         </SettingsGroup>
 
-        {connected && (
-          <SettingsGroup title="Account">
-            <SettingsRowSkeleton
-              label="Disconnect Instagram"
-              sub="Take @handle off Mesita"
-            />
-          </SettingsGroup>
-        )}
+        {connected && <DisconnectLink disabled />}
       </div>
       <p role="status" className="sr-only">
         Loading Instagram
