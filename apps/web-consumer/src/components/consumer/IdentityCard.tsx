@@ -171,3 +171,73 @@ export function IdentityCard({
     </div>
   );
 }
+
+// ─── Me's header in modules (Pato, 2026-11-18, MESITA-4335: "put name and
+// instagram inside a box with thin borders, and keep a super clean modular
+// design on the header"; picked B of three mocks). Row one: the photo, then
+// a 1px box with a small "Name" over the name (opens Me › Profile). Row two:
+// a full-width 1px box, the Instagram badge and @handle on the left, the
+// followers on the right (opens Me › Instagram; "Connect Instagram" when
+// there is none). Social's member card keeps IdentityCard above.
+
+/** One module: a 1px hairline box on the card's white. */
+const MODULE_CLASS =
+  "border-border flex min-w-0 items-center rounded-lg border px-3 transition-colors hover:bg-muted/60";
+
+/** "@handle · ~320 followers" → ["@handle", "~320 followers"]. */
+function splitInstagramLabel(label: string): [string, string | null] {
+  const at = label.indexOf(" · ");
+  return at < 0 ? [label, null] : [label.slice(0, at), label.slice(at + 3)];
+}
+
+export function IdentityModules({
+  name,
+  avatarUrl,
+  instagram,
+  nameHref,
+}: {
+  name: string;
+  avatarUrl: string | null;
+  instagram: IdentityInstagram & { href: string };
+  nameHref: string;
+}) {
+  const [handle, followers] = splitInstagramLabel(instagram.label);
+  return (
+    <div className="flex w-full min-w-0 flex-col gap-2" data-identity-card>
+      <div className="flex min-w-0 items-center gap-3">
+        <span className={IDENTITY_RING_CLASS} aria-hidden>
+          <span className={cn("bg-muted relative block h-14 w-14 overflow-hidden rounded-full")}>
+            {avatarUrl ? (
+              <SizedImg src={avatarUrl} size="thumb" alt="" className="h-full w-full object-cover" />
+            ) : (
+              <DefaultAvatar className="h-full w-full" />
+            )}
+          </span>
+        </span>
+        <PushLink
+          href={nameHref}
+          aria-label={`Profile: ${name}`}
+          className={cn(MODULE_CLASS, "h-14 flex-1 flex-col items-start justify-center")}
+          data-identity-name
+        >
+          <span className="text-muted-foreground text-xs font-medium">Name</span>
+          <span className="text-foreground w-full truncate text-lg leading-tight font-bold tracking-tight">
+            {name}
+          </span>
+        </PushLink>
+      </div>
+      <PushLink
+        href={instagram.href}
+        aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
+        className={cn(MODULE_CLASS, "h-11 gap-2 text-sm")}
+        data-identity-instagram
+      >
+        <InstagramBadge connected={instagram.connected} />
+        <span className="text-foreground truncate font-semibold">{handle}</span>
+        {followers ? (
+          <span className="text-muted-foreground ml-auto shrink-0 pl-2">{followers}</span>
+        ) : null}
+      </PushLink>
+    </div>
+  );
+}

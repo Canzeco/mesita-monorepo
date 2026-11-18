@@ -1,7 +1,7 @@
 "use client";
 
 import type { ConsumerProfile } from "@/lib/api/profile";
-import { IdentityCard } from "@/components/consumer/IdentityCard";
+import { IdentityModules } from "@/components/consumer/IdentityCard";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
   IDENTITY_BAR_BODY_CLASS,
@@ -97,7 +97,9 @@ export function IdentityBar({
           // similar to the page you are loading, like the sizes").
           <IdentityCardSkeleton />
         ) : (
-          <IdentityCard
+          // MODULES (MESITA-4335, Pato picked B): a Name box beside the
+          // photo, then a full-width Instagram box, each a 1px hairline.
+          <IdentityModules
             name={name}
             avatarUrl={avatarUrl}
             instagram={{
