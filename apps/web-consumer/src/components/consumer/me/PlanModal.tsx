@@ -30,6 +30,15 @@
 // under a hairline; Renews · Cancel Pro stays in Pro's box. Before the read
 // both plans sit in one box, under the usage box, nothing marked.
 //
+// LIMIT FIRST, ONE PLANS CARD SINCE MESITA-4359 (/plan-design-review "Better
+// design for the plan", Pato 2026-11-18, eleven picks): the "This month" box
+// first ("Limit reached · 8 of 3 used", and a Free guest at or over the cap
+// reads "Pro gives you 2 more now"), then one "Plans" box: Free, then Pro,
+// always in that order, Current on the guest's row. Free's price is "$0";
+// Pro's is the name's size. Under Upgrade: "Billed monthly in USD · Cancel
+// anytime". The loaded page and the loading frame are one shape; the "Your
+// plan" / "Other plan" boxes above are gone.
+//
 // One capability, nothing else (Pato: "only that capability for the moment").
 // The server decides it all (consumer-web-get-plan, -start-plan,
 // -cancel-plan; supabase/functions/_shared/guest-plan.ts): Upgrade opens
@@ -55,6 +64,7 @@ import {
   apiStartPlan,
   type GuestPlanView,
 } from "@/lib/api/plan";
+import { PRO_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { ERROR_BOX_CLASS, INFO_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -65,38 +75,37 @@ import {
 } from "./settings-rows";
 import { Panel } from "@/components/shared/Panel";
 
-/** One plan as a card (MESITA-3899): its name with the Current pill, its
- *  price, its perks as a check list, then `children` (Pro's action). */
+/** One plan as a row of the Plans card: its name with the Current pill, its
+ *  price, its perks as a check list, then `children` (Pro's Renews line).
+ *  The name is an h3 in the body sans under the panel's serif h2, and a paid
+ *  price is the name's size, never larger (MESITA-4359, 6A and 8A). */
 function PlanCard({
   words,
   current,
-  featured = false,
+  paid = false,
   children,
 }: {
   words: PlanRowWords;
   current: boolean;
-  /** Pro: the large price. */
-  featured?: boolean;
+  /** Pro: its price in ink; Free's "$0" is grey. */
+  paid?: boolean;
   children?: React.ReactNode;
 }) {
   return (
     <section
-      // Inside its box (MESITA-4052); Pro is told apart by its large price.
       className="p-4"
       aria-label={words.title}
       data-plan-row={words.title}
     >
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-base font-semibold">
+        <h3 className="font-sans text-base font-semibold">
           {words.title}
           {current && <CurrentPill data-plan-current="" />}
-        </h2>
+        </h3>
         <span
           className={cn(
-            "shrink-0",
-            featured
-              ? "text-lg font-semibold"
-              : "text-muted-foreground text-sm",
+            "shrink-0 text-base",
+            paid ? "font-semibold" : "text-muted-foreground",
           )}
         >
           {words.price}
@@ -139,13 +148,21 @@ function resetDay(now = new Date()): string {
   });
 }
 
-/** This month's usage (MESITA-3899): the first card, the reason to
- *  upgrade. Ink bar; full and red at or over the cap. Empty before the read. */
+/** This month's usage (MESITA-3899): the first panel, the reason to
+ *  upgrade. Ink bar; full and red at or over the cap. Empty before the read.
+ *  MESITA-4359 (2A): "{used} of {cap} used", and a Free guest at or over the
+ *  cap is told how many more Pro gives this month. A guest can be over the
+ *  cap (tickets booked before it fell to 3), so the bar's value is clamped
+ *  and the spoken text carries the true count (9A). */
 function UsageCard({ view }: { view: GuestPlanView | null }) {
   const used = view?.used ?? 0;
   const cap = view?.cap ?? 0;
   const full = !!view && used >= cap;
   const ratio = view && cap > 0 ? Math.min(used / cap, 1) : full ? 1 : 0;
+  const proMore =
+    view?.plan === "free" && full
+      ? PRO_RESERVATIONS_PER_MONTH - used
+      : 0;
   return (
     <section
       className="p-4"
@@ -156,15 +173,20 @@ function UsageCard({ view }: { view: GuestPlanView | null }) {
         {!view
           ? "Reservations this month"
           : full
-            ? `Limit reached this month · ${used} used`
-            : `${used} of ${cap} reservations used`}
+            ? `Limit reached · ${used} of ${cap} used`
+            : `${used} of ${cap} used`}
       </p>
       <div
         role="progressbar"
         aria-label="Reservations used this month"
         aria-valuemin={0}
         aria-valuemax={cap}
-        aria-valuenow={view ? used : undefined}
+        aria-valuenow={view ? Math.min(used, cap) : undefined}
+        aria-valuetext={
+          view
+            ? `${used} of ${cap} tickets used${full ? ", limit reached" : ""}`
+            : undefined
+        }
         className="bg-muted mt-3 h-2 overflow-hidden rounded-full"
       >
         <div
@@ -177,6 +199,7 @@ function UsageCard({ view }: { view: GuestPlanView | null }) {
       </div>
       <p className="text-muted-foreground type-label mt-2">
         Resets {resetDay()}
+        {proMore > 0 && ` · Pro gives you ${proMore} more now`}
       </p>
     </section>
   );
@@ -299,7 +322,8 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
           type="button"
           onClick={cancel}
           disabled={busy}
-          className="text-foreground font-semibold underline"
+          // A 44px tap target that keeps the line's height (MESITA-4359, 10A).
+          className="text-foreground -my-3 inline-flex min-h-11 items-center font-semibold underline"
           data-plan-cancel=""
         >
           Cancel Pro
@@ -336,40 +360,43 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
       </Button>
     ) : null;
 
+  // Free guests read the terms under Upgrade (MESITA-4359, 3A): true, since
+  // Pro is monthly and Cancel Pro ends it at the period's end.
+  const footer =
+    plan === "free" ? (
+      <div className="flex flex-col gap-2">
+        {footerButton}
+        <p className="text-muted-foreground type-label text-center">
+          Billed monthly in USD · Cancel anytime
+        </p>
+      </div>
+    ) : (
+      footerButton
+    );
+
   const free = (
     <PlanCard words={PLAN_ROWS.free} current={plan === "free"} />
   );
   const pro = (
-    <PlanCard words={PLAN_ROWS.premium} current={plan === "premium"} featured>
+    <PlanCard words={PLAN_ROWS.premium} current={plan === "premium"} paid>
       {proLine}
     </PlanCard>
   );
 
+  // Before the read and after it, one shape (MESITA-4359, 1A and 4A): the
+  // month first, then Free and Pro in that order; only the pill moves.
   return (
-    <MeScreen title="Plan" footer={footerButton}>
-      {plan ? (
-        <div className="flex flex-col gap-4">
-          <Panel title="Your plan">
-            {plan === "free" ? free : pro}
-            <RowDivider />
-            <UsageCard view={view} />
-          </Panel>
-          <Panel title="Other plan">
-            {plan === "free" ? pro : free}
-          </Panel>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          <Panel title="This month">
-            <UsageCard view={view} />
-          </Panel>
-          <Panel title="Plans">
-            {free}
-            <RowDivider />
-            {pro}
-          </Panel>
-        </div>
-      )}
+    <MeScreen title="Plan" footer={footer}>
+      <div className="flex flex-col gap-4">
+        <Panel title="This month">
+          <UsageCard view={view} />
+        </Panel>
+        <Panel title="Plans">
+          {free}
+          <RowDivider />
+          {pro}
+        </Panel>
+      </div>
 
       <div className="mt-4 flex flex-col gap-3" aria-live="polite">
         {failed && (
