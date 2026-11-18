@@ -100,6 +100,8 @@ export const MONEY_CODES = [
   "story_livemode",
   "story_one_per_basket",
   "story_payment_in_progress",
+  // A waiter approves the story before the guest pays (MESITA-4304)
+  "story_not_verified",
 ] as const;
 
 export type MoneyCode = (typeof MONEY_CODES)[number];

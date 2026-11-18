@@ -16,8 +16,16 @@
 // `?poll=1` (the sheet's 5-second poll once the gate passed) skips the gate
 // and only looks for the story.
 //
+// MESITA-4304: a found story is then shown to a waiter of this place. The
+// check points it here (story_review_open, which mints its QR token) and
+// answers `review`: waiting (Pay stays off; the sheet shows the QR to
+// visit.mesita.ai/story/<token> and keeps polling, for `poll.for_ms`) or
+// approved (Pay on). A story the waiter rejected here never counts:
+// story_rejected when it was the only one.
+//
 // Body: { place_id: uuid }   Query: poll=1 (optional)
 // Response: { ok: true, found: true, mention: { id, media_url, media_kind, mentioned_at, source },
+//             review: { state: waiting | approved, url, reviewed_at },
 //             place_handle, poll: { every_ms, for_ms } }
 //         | { ok: true, found: false, reason, place_handle, poll }
 //   400 bad_body (+field) · 401 (not signed in) · 404 place ·
@@ -34,6 +42,7 @@ import { mentionView, readCandidateMentions, readStoryRules, STORY_RULES, storyM
 import { storyCheck } from "../_shared/story-check.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 import { errorMessage } from "../_shared/errors.ts";
+import { openStoryReview, REVIEW_POLL } from "../_shared/story-review.ts";
 
 const FN = "consumer-web-check-story";
 const POLL = { every_ms: STORY_RULES.pollEveryMs, for_ms: STORY_RULES.pollForMs };
@@ -75,12 +84,24 @@ serveJson("consumer-web-check-story", async (req) => {
       livemode,
       nowMs,
       rules,
+      placeId,
       pollOnly,
     });
     if (!pollOnly || res.found) {
       console.log(`[${FN}]`, JSON.stringify({ place_id: placeId, found: res.found, reason: res.found ? null : res.reason, poll: pollOnly }));
     }
-    if (res.found) return json({ ok: true, found: true, mention: mentionView(res.mention), place_handle: placeHandle, poll: POLL });
+    if (res.found) {
+      const review = await openStoryReview(admin, res.mention.id, placeId);
+      return json({
+        ok: true,
+        found: true,
+        mention: mentionView(res.mention),
+        review,
+        place_handle: placeHandle,
+        // Waiting for the waiter: keep looking longer than for the story.
+        poll: review.state === "approved" ? POLL : REVIEW_POLL,
+      });
+    }
     return json({ ok: true, found: false, reason: res.reason, place_handle: placeHandle, poll: POLL });
   } catch (err) {
     console.error(`[${FN}]`, JSON.stringify({ place_id: placeId, poll: pollOnly, error: errorMessage(err) }));

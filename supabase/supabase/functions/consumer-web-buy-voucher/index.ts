@@ -179,6 +179,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
     if (story) return json({ ok: false, code: story.code, error: story.error }, story.status);
     const gate = await storyBuyGate(admin, () => stripe, {
       consumerId: userId,
+      placeId,
       mentionId: bodyRes.body.mention_id,
       guestHandle: guest?.instagram_handle ?? null,
       livemode,

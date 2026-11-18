@@ -21,6 +21,7 @@ const base: StoryCheckInput = {
   offerReason: null,
   mode: "emulated",
   candidates: [mention(5)],
+  placeId: "place-1",
   livemode: false,
   nowMs: NOW,
   rules: { bonusWaitSec: 10800, checkMarginSec: 5400 },
@@ -59,6 +60,18 @@ Deno.test("storyCheck: a story too close to its 24 hours reads story_too_old; no
   assertEquals(storyCheck({ ...base, candidates: [mention(5, { livemode: true })] }), { found: false, reason: "story_too_old" }, "the other mode never fits");
 });
 
+Deno.test("storyCheck: a story approved here is picked first; one rejected here never counts (MESITA-4304)", () => {
+  const approved = mention(30, { review: "approved", review_place_id: "place-1" });
+  const r = storyCheck({ ...base, candidates: [mention(5), approved] });
+  assertEquals(r.found && r.mention.id, "m-30");
+  const rejected = mention(5, { review: "rejected", review_place_id: "place-1" });
+  assertEquals(storyCheck({ ...base, candidates: [rejected] }), { found: false, reason: "story_rejected" });
+  const r2 = storyCheck({ ...base, candidates: [rejected, mention(40)] });
+  assertEquals(r2.found && r2.mention.id, "m-40", "the next story that fits");
+  const elsewhere = mention(5, { review: "rejected", review_place_id: "place-2" });
+  assertEquals(storyCheck({ ...base, candidates: [elsewhere] }).found, true, "a rejection at another place does not count here");
+});
+
 Deno.test("storyCheck: poll=1 skips the gate and only looks for the story", () => {
   const r = storyCheck({ ...base, pollOnly: true, placeInstagram: false, guestRefusal: "few_followers" });
   assertEquals(r.found, true);
@@ -70,4 +83,5 @@ Deno.test("isStoryGateReason: the gate hides the Post step; the story loop does 
   }
   assertEquals(isStoryGateReason("no_story"), false);
   assertEquals(isStoryGateReason("story_too_old"), false);
+  assertEquals(isStoryGateReason("story_rejected"), false);
 });

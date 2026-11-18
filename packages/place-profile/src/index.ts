@@ -59,6 +59,7 @@ export {
   type StoryCheckAnswer,
   type StoryCheckMention,
   type StoryCheckReason,
+  type StoryReview,
   type StoryPollWindow,
 } from "./story-check";
 export type { PlaceBalance, PlaceDetail, PlaceMoney, PlaceScore, VoucherCatalogLine, VoucherKey } from "./place-detail";

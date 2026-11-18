@@ -311,9 +311,12 @@ export type MentionRow = {
   source: "meta" | "emulator";
   mentioned_at: string;
   livemode: boolean;
+  /** The waiter's decision at review_place_id (MESITA-4304). */
+  review?: "approved" | "rejected" | null;
+  review_place_id?: string | null;
 };
 
-export const MENTION_COLUMNS = "id, ig_handle, purchase_id, media_url, media_kind, source, mentioned_at, livemode";
+export const MENTION_COLUMNS = "id, ig_handle, purchase_id, media_url, media_kind, source, mentioned_at, livemode, review, review_place_id";
 
 /** A mention as staff and the Wallet see it. */
 export type MentionView = { id: string; media_url: string | null; media_kind: "image" | "video"; mentioned_at: string; source: "meta" | "emulator" };

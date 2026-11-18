@@ -6,6 +6,11 @@
 // reasons are a GATE (nothing to post: the Post step hides), the words for
 // each, and the poll loop that looks for the story while the guest posts.
 // No React, no network: the host does the call.
+//
+// MESITA-4304: a found story is not yet payable. The sheet shows its QR
+// (review.url, visit.mesita.ai/story/<token>) to the waiter, who approves it
+// with the place's waiter code; the look keeps going until the approval
+// arrives, and only an approved story turns Pay on.
 
 /** The story the check found, as the server shows it. */
 export type StoryCheckMention = {
@@ -26,7 +31,12 @@ export type StoryCheckReason =
   | "story_unavailable"
   | "not_available"
   | "no_story"
-  | "story_too_old";
+  | "story_too_old"
+  | "story_rejected";
+
+/** The waiter's side of a found story (MESITA-4304): waiting for the waiter,
+ *  or approved (Pay on). `url` is the QR the waiter scans. */
+export type StoryReview = { state: "waiting" | "approved"; url: string | null };
 
 /** How often and how long the sheet looks (the server's numbers). */
 export type StoryPollWindow = { every_ms: number; for_ms: number };
@@ -35,7 +45,7 @@ export type StoryPollWindow = { every_ms: number; for_ms: number };
  *  500 check_failed or no answer: the sheet keeps looking and never reads it
  *  as no_story. */
 export type StoryCheckAnswer =
-  | { kind: "found"; mention: StoryCheckMention; placeHandle: string | null; poll: StoryPollWindow }
+  | { kind: "found"; mention: StoryCheckMention; placeHandle: string | null; poll: StoryPollWindow; review: StoryReview }
   | { kind: "missing"; reason: StoryCheckReason; placeHandle: string | null; poll: StoryPollWindow }
   | { kind: "failed" };
 
@@ -44,7 +54,7 @@ export const STORY_POLL_DEFAULT: StoryPollWindow = { every_ms: 5_000, for_ms: 12
 /** The reasons posting cannot fix: the sheet shows only the reason and its
  *  one action, and hides the Post step. The twin of the server's
  *  STORY_GATE_REASONS. */
-export type StoryGateReason = Exclude<StoryCheckReason, "no_story" | "story_too_old">;
+export type StoryGateReason = Exclude<StoryCheckReason, "no_story" | "story_too_old" | "story_rejected">;
 
 export const STORY_GATE_REASONS: readonly StoryGateReason[] = [
   "place_no_instagram",
@@ -78,12 +88,19 @@ export const STORY_GATE_LINE: Record<StoryGateReason, { text: string; action: St
 export type StorySheetView =
   | { step: "checking" }
   | { step: "gate"; reason: StoryGateReason; text: string; action: StoryGateAction; showPost: false }
-  | { step: "post"; showPost: true; looking: boolean; note: string | null; reason: "no_story" | "story_too_old" | null }
-  | { step: "found"; showPost: false; mention: StoryCheckMention };
+  | { step: "post"; showPost: true; looking: boolean; note: string | null; reason: "no_story" | "story_too_old" | "story_rejected" | null }
+  | { step: "found"; showPost: false; mention: StoryCheckMention; review: StoryReview };
 
 /** Words once the look ended without a story (MESITA-4296). */
 export const STORY_NOT_YET = "We haven't seen it yet. Stories can take a minute to reach us.";
 export const STORY_TOO_OLD = "Your story must stay up 3 more hours. Post a new one.";
+/** MESITA-4304: the waiter said no to the story. */
+export const STORY_REJECTED = "The waiter didn't approve that story. Tag @mesita and the place, then post a new one.";
+
+/** Is this answer a story the guest can pay with (MESITA-4304)? */
+export function storyPayable(a: StoryCheckAnswer | null): boolean {
+  return a !== null && a.kind === "found" && a.review.state === "approved";
+}
 
 /** The pure mapping the sheet draws: a gate reason hides Post; no_story and
  *  story_too_old keep it, with their line once the look has ended; a found
@@ -94,13 +111,15 @@ export function storySheetView(last: StoryCheckAnswer | null, looking: boolean, 
     return { step: "gate", reason: gateSeen, text: g.text, action: g.action, showPost: false };
   }
   if (last === null) return { step: "checking" };
-  if (last.kind === "found") return { step: "found", showPost: false, mention: last.mention };
+  if (last.kind === "found") return { step: "found", showPost: false, mention: last.mention, review: last.review };
   if (last.kind === "missing" && isStoryGateReason(last.reason)) {
     const g = STORY_GATE_LINE[last.reason];
     return { step: "gate", reason: last.reason, text: g.text, action: g.action, showPost: false };
   }
-  const reason = last.kind === "missing" && (last.reason === "no_story" || last.reason === "story_too_old") ? last.reason : null;
-  const note = looking ? null : reason === "story_too_old" ? STORY_TOO_OLD : STORY_NOT_YET;
+  const reason =
+    last.kind === "missing" && (last.reason === "no_story" || last.reason === "story_too_old" || last.reason === "story_rejected") ? last.reason : null;
+  // A rejection is said at once: the look cannot change it.
+  const note = reason === "story_rejected" ? STORY_REJECTED : looking ? null : reason === "story_too_old" ? STORY_TOO_OLD : STORY_NOT_YET;
   return { step: "post", showPost: true, looking, note, reason };
 }
 
@@ -147,15 +166,16 @@ export type StoryPoll = {
   restart: () => void;
   /** The sheet closed or paid: no answer is reported after this. */
   close: () => void;
-  /** A story was found: the look ends and focus no longer wakes it; start() does. */
+  /** The story was approved: the look ends and focus no longer wakes it; start() does. */
   found: () => void;
   readonly looking: boolean;
 };
 
 /** ONE LOOP AT A TIME: every start ends the previous loop (its answers still
  *  land, its next tick never runs), and a check already in flight is never
- *  doubled: the new loop waits for it. The look stops on a found story, on
- *  close and at the window's end. */
+ *  doubled: the new loop waits for it. The look stops on an APPROVED story
+ *  (MESITA-4304; a found story waiting for the waiter keeps it going, its
+ *  window renewed from the answer), on close and at the window's end. */
 export function createStoryPoll(deps: StoryPollDeps): StoryPoll {
   const now = deps.now ?? (() => Date.now());
   const setTimer = deps.setTimer ?? ((fn: () => void, ms: number) => setTimeout(fn, ms));
@@ -204,7 +224,7 @@ export function createStoryPoll(deps: StoryPollDeps): StoryPoll {
         waiting = false;
         if (closed) return;
         deps.onAnswer(a);
-        if (a.kind === "found") {
+        if (a.kind === "found" && a.review.state === "approved") {
           asleep = true;
           gen++;
           clearTick();
@@ -212,6 +232,8 @@ export function createStoryPoll(deps: StoryPollDeps): StoryPoll {
           return;
         }
         if (a.kind !== "failed") every = Math.max(1_000, a.poll.every_ms);
+        // Waiting for the waiter: the look lasts as long as the server says.
+        if (a.kind === "found" && mine === gen) deadline = Math.max(deadline, now() + a.poll.for_ms);
         // A newer loop started while this check was out: its first tick now.
         if (queued && mine !== gen) {
           tick(gen);

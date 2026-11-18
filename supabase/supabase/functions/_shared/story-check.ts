@@ -13,6 +13,11 @@
 //   not_available       the place does not sell Story right now (paused, …)
 //   no_story            no story of this handle has reached Mesita
 //   story_too_old       the newest story would end before the re-check
+//   story_rejected      the waiter rejected every story that fits (MESITA-4304)
+//
+// A found story is then shown to the waiter (MESITA-4304): the check points it
+// at the place (story_review_open) and Pay waits for the approval. A story
+// already approved here is picked first; one rejected here never counts.
 
 import { mentionAlive, mentionFits, type MentionRow, type StoryRulesLive } from "./story-mention.ts";
 
@@ -25,7 +30,8 @@ export type StoryCheckReason =
   | "story_unavailable"
   | "not_available"
   | "no_story"
-  | "story_too_old";
+  | "story_too_old"
+  | "story_rejected";
 
 /** The reasons a guest can act on before posting: the sheet hides the Post
  *  step for these (no point posting a story that can never count). */
@@ -52,6 +58,8 @@ export type StoryCheckInput = {
   mode: "meta" | "emulated" | "unavailable";
   /** The guest's unclaimed, unreserved mentions, newest first (readCandidateMentions). */
   candidates: MentionRow[];
+  /** The place the guest is buying at: its waiter's decisions count. */
+  placeId: string;
   livemode: boolean;
   nowMs: number;
   rules: Pick<StoryRulesLive, "bonusWaitSec" | "checkMarginSec">;
@@ -74,7 +82,11 @@ export function storyCheck(i: StoryCheckInput): StoryCheckResult {
     if (i.offerReason) return { found: false, reason: "not_available" };
   }
   const alive = i.candidates.filter((m) => mentionAlive(m, i.nowMs));
-  const fit = alive.find((m) => mentionFits(m, i.livemode, i.nowMs, i.rules, i.rules.checkMarginSec));
+  const fits = alive.filter((m) => mentionFits(m, i.livemode, i.nowMs, i.rules, i.rules.checkMarginSec));
+  const here = (m: MentionRow) => m.review_place_id === i.placeId;
+  const usable = fits.filter((m) => !(here(m) && m.review === "rejected"));
+  const fit = usable.find((m) => here(m) && m.review === "approved") ?? usable[0];
   if (fit) return { found: true, mention: fit };
+  if (fits.length > 0) return { found: false, reason: "story_rejected" };
   return { found: false, reason: alive.length > 0 ? "story_too_old" : "no_story" };
 }

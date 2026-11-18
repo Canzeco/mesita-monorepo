@@ -476,6 +476,14 @@ verify_jwt = false
 [functions.visit-web-verify-tab]
 verify_jwt = false
 
+# MESITA-4304: the waiter's Story page reads the guest's story (the QR token is the key to read).
+[functions.visit-web-get-story]
+verify_jwt = false
+
+# MESITA-4304: the waiter approves or rejects the story with the waiter code, before the guest pays.
+[functions.visit-web-review-story]
+verify_jwt = false
+
 # MESITA-3843: the waiter's Reject of a guest's bill; the staff token is the gate.
 [functions.visit-web-reject-tab]
 verify_jwt = false

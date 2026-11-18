@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import { StoryOfferPage, type PlaceActions } from "@mesita/place-profile";
 import { ScreenHeader } from "@/components/consumer/nav/Screen";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
@@ -34,6 +35,8 @@ export function StoryPageBody({ place: fetched }: { place: PlaceDetail }) {
     onBuyVoucher: vouchers.buy,
     onCheckStory: vouchers.checkStory,
     onSimulateStory: vouchers.simulateStory,
+    // MESITA-4304: the waiter scans this to approve the story before Pay.
+    renderStoryQr: (url: string) => <QRCodeSVG value={url} size={224} marginSize={0} aria-label="Story QR for the waiter" />,
     buyingVoucher: vouchers.buying,
     ...(vouchers.payCards ? { payCards: vouchers.payCards } : {}),
     payCardId: vouchers.payCardId,

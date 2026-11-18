@@ -14,6 +14,7 @@ import {
   type StoryCheckAnswer,
   type StoryCheckMention,
   type StoryCheckReason,
+  type StoryReview,
   type VoucherKey,
 } from "@mesita/place-profile";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
@@ -259,10 +260,18 @@ export async function apiCheckStory(client: SupabaseClient, placeId: string, pol
       reason?: string;
       place_handle?: string | null;
       poll?: { every_ms: number; for_ms: number };
+      review?: { state?: string; url?: string | null; reviewed_at?: string | null };
     }>(client, "consumer-web-check-story", { place_id: placeId }, undefined, poll ? { poll: "1" } : undefined);
     const window = r.poll && Number.isFinite(r.poll.every_ms) && Number.isFinite(r.poll.for_ms) ? r.poll : STORY_POLL_DEFAULT;
     const placeHandle = typeof r.place_handle === "string" ? r.place_handle : null;
-    if (r.found && r.mention) return { kind: "found", mention: r.mention, placeHandle, poll: window };
+    if (r.found && r.mention) {
+      // MESITA-4304: Pay waits for the waiter; a missing review reads waiting.
+      const review: StoryReview = {
+        state: r.review?.state === "approved" ? "approved" : "waiting",
+        url: typeof r.review?.url === "string" ? r.review.url : null,
+      };
+      return { kind: "found", mention: r.mention, placeHandle, poll: window, review };
+    }
     const reason = (STORY_CHECK_REASONS as readonly string[]).includes(r.reason ?? "") ? (r.reason as StoryCheckReason) : "no_story";
     return { kind: "missing", reason, placeHandle, poll: window };
   } catch {
@@ -270,7 +279,7 @@ export async function apiCheckStory(client: SupabaseClient, placeId: string, pol
   }
 }
 
-const STORY_CHECK_REASONS: readonly StoryCheckReason[] = [...STORY_GATE_REASONS, "no_story", "story_too_old"];
+const STORY_CHECK_REASONS: readonly StoryCheckReason[] = [...STORY_GATE_REASONS, "no_story", "story_too_old", "story_rejected"];
 
 /** The Meta emulator (MESITA-4264; MESITA-4296): in test mode, while
  *  Instagram is not connected, post a sample story for the guest (before any
@@ -314,6 +323,8 @@ export const BUY_REFUSAL: Record<string, string> = {
   story_livemode: "That story can't be used here. Post a new one.",
   story_one_per_basket: "Story is paid on its own. Try again.",
   story_payment_in_progress: "A payment for this story is already on its way.",
+  // MESITA-4304: a waiter of the place approves the story before Pay.
+  story_not_verified: "Show your story to the waiter first.",
   welcome_used: "You already had your Welcome voucher here.",
   needs_visit: "One per visit. Pay a bill here by card to buy another.",
   below_minimum: "This amount is below the card minimum.",
@@ -352,6 +363,7 @@ export const STORY_REFUSAL_CODES: ReadonlySet<string> = new Set([
   "story_livemode",
   "story_one_per_basket",
   "story_payment_in_progress",
+  "story_not_verified",
 ]);
 
 export function buyRefusalAction(code: string | null, field: string | null = null): BuyRefusalAction {
