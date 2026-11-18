@@ -20,12 +20,13 @@ import { PlaceEmptyScreen } from "./empty-screen";
 // Mesita, AI answers questions, orders and payments in place or remote).
 // Three short lines, not a paragraph, since MESITA-4182 (Pato: "more
 // concise … ask the menu questions, calories … order & pay … table orders
-// … pickup orders").
+// … pickup orders"). The title is "Smart Menu" alone since MESITA-4314
+// (Pato: "don't mention Smart Menu coming to Mesita").
 export function SoonScreen() {
   return (
     <PlaceEmptyScreen
       icon={BookOpen}
-      title="Smart Menu is coming to Mesita"
+      title="Smart Menu"
       items={[
         "Ask about any dish: calories, allergens, ingredients",
         "Order & pay from your table",
