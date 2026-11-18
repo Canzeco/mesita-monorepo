@@ -25,12 +25,17 @@ import { CONSUMER_ROUTES, walletPlacePath } from "@/lib/consumer-route-contract"
 import { goBack, navigateTo } from "@/lib/navigate";
 import { invalidateCached } from "@/lib/screen-cache";
 import { placeHref } from "@/lib/place-route";
-import { shareOrCopy } from "@/lib/share-place";
+import { copyToClipboard, shareOrCopy } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { GIFT_PENDING } from "@/lib/wallet-card";
+import { AmountDisplay, AmountKeypad } from "@/components/consumer/pay/AmountKeypad";
+import { PaySection } from "@/components/consumer/pay/pay-flow";
+import { pressKey } from "@/lib/pay-keypad";
+import { GiftCardFace } from "./GiftCardFace";
+import { PlacePhotoMark } from "./PlaceCredit";
 import { useWallet } from "./use-wallet";
 import { prepayHref } from "./WalletPickers";
 
@@ -134,92 +139,130 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
     }
   }
 
-  return (
-    <Screen title="Send Gift" paper>
-      <div className="flex flex-col pt-4" data-send-credit>
-        {link ? (
-          <>
-            <h2 className="text-xl font-semibold">Share your link</h2>
-            <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-              Whoever opens it first gets {money(link.cents, currency)} of credit at {placeName}. This link shows only
-              once. Until your friend takes it, you can take it back from this card.
-            </p>
-            <p className="border-border bg-muted mt-4 rounded-xl border px-3 py-3 font-mono text-xs break-all">{link.url}</p>
-            <div className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                className={PRIMARY}
-                onClick={() =>
-                  void shareOrCopy(
-                    { title: "Mesita credit", text: `${money(link.cents, currency)} of credit at ${placeName}`, url: link.url },
-                    { text: link.url, copied: "Link copied", failed: "Couldn't copy the link" },
-                  )}
-              >
-                Share link
-              </button>
-              <button type="button" className={SECONDARY} onClick={done}>
-                Done
-              </button>
-            </div>
-          </>
-        ) : !canSend ? (
-          <p className="text-muted-foreground pt-2 text-center text-sm">
-            {gone ? "This place left Mesita, so its credit can't be sent." : "Sending credit isn't open yet."}
+  const copyLink = async (url: string) => {
+    if (await copyToClipboard(url)) toast.success("Link copied");
+    else toast.error("Couldn't copy the link");
+  };
+
+  // PACKED (MESITA-4333, Pato: "not sending, but pack them … then send the
+  // gift to one friend"): the gift card, one line on what happens, Send to a
+  // friend (the phone's share sheet), and a quiet Copy link · Done. The link
+  // still shows only once, so this screen is the only way to it.
+  if (link) {
+    const amountText = money(link.cents, currency);
+    return (
+      <Screen title="Send Gift" paper>
+        <div className="flex flex-col items-center pt-6 text-center" data-send-credit-packed>
+          <GiftCardFace name={placeName} photo={row.card.photo} amount={amountText} />
+          <h2 className="font-display mt-8 text-2xl font-semibold tracking-tight">Packed! Send it to one friend.</h2>
+          <p className="text-muted-foreground mt-2 max-w-xs text-sm leading-relaxed">
+            The first to open it gets it. Until then you can take it back.
           </p>
-        ) : spendableCents <= 0 ? (
-          /* Nothing to send yet: say why, and the way to get some. */
-          <>
-            <p className="text-muted-foreground pt-2 text-center text-sm" data-send-credit-empty>
-              {row.card.pending_cents > 0 ? GIFT_PENDING : `No credit at ${placeName} to send yet.`}
+          <button
+            type="button"
+            className={`${PRIMARY} mt-8`}
+            onClick={() =>
+              void shareOrCopy(
+                { title: "A Mesita gift card", text: `${amountText} to spend at ${placeName}`, url: link.url },
+                { text: link.url, copied: "Link copied", failed: "Couldn't copy the link" },
+              )}
+            data-send-credit-share
+          >
+            Send to a friend
+          </button>
+          <div className="text-muted-foreground mt-3 flex items-center gap-1 text-sm font-semibold">
+            <button type="button" className="hover:text-foreground px-2 py-2 transition" onClick={() => void copyLink(link.url)}>
+              Copy link
+            </button>
+            <span aria-hidden>·</span>
+            <button type="button" className="hover:text-foreground px-2 py-2 transition" onClick={done}>
+              Done
+            </button>
+          </div>
+        </div>
+      </Screen>
+    );
+  }
+
+  if (!canSend || spendableCents <= 0) {
+    return (
+      <Screen title="Send Gift" paper>
+        <div className="flex flex-col pt-4" data-send-credit>
+          {!canSend ? (
+            <p className="text-muted-foreground pt-2 text-center text-sm">
+              {gone ? "This place left Mesita, so its credit can't be sent." : "Sending credit isn't open yet."}
             </p>
-            {buy ? (
-              <Link href={buy} className={`${PRIMARY} mt-6`} data-send-credit-buy>
-                Buy Credits
-              </Link>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <p className="text-muted-foreground text-center text-sm">
-              At {placeName} only · up to {money(spendableCents, currency)}
-            </p>
-            <label className="border-foreground mx-auto mt-6 flex w-60 items-baseline justify-center gap-1.5 border-b-2 pb-2" htmlFor="send-amount">
-              <span className="text-muted-foreground text-4xl font-semibold">$</span>
-              <input
-                id="send-amount"
-                inputMode="decimal"
-                autoComplete="off"
-                autoFocus
-                placeholder="0"
-                value={amount}
-                onChange={(e) => {
-                  setAmount(e.target.value);
-                  setError(null);
-                  setShort(false);
-                }}
-                className="placeholder:text-muted-foreground/50 w-36 min-w-0 bg-transparent text-4xl font-semibold tabular-nums outline-none"
-                aria-label="Amount to send"
-              />
-              <span className="text-muted-foreground text-base font-semibold">{currency.toUpperCase()}</span>
-            </label>
+          ) : (
+            /* Nothing to send yet: say why, and the way to get some. */
+            <>
+              <p className="text-muted-foreground pt-2 text-center text-sm" data-send-credit-empty>
+                {row.card.pending_cents > 0 ? GIFT_PENDING : `No credit at ${placeName} to send yet.`}
+              </p>
+              {buy ? (
+                <Link href={buy} className={`${PRIMARY} mt-6`} data-send-credit-buy>
+                  Buy Credits
+                </Link>
+              ) : null}
+            </>
+          )}
+        </div>
+      </Screen>
+    );
+  }
+
+  // THE AMOUNT, THE BILL STEP'S WAY (MESITA-4333, Pato: "put the numbers not
+  // natively … like the bill page, reuse that component … make this page
+  // more beautiful"): a panel naming the place and the limit, then the Gift
+  // panel with AmountDisplay over AmountKeypad (no phone keyboard), and Pack
+  // in the white foot band.
+  const packCents = typed ?? 0;
+  return (
+    <Screen
+      title="Send Gift"
+      paper
+      footer={
+        <div className="flex flex-col gap-2">
+          {(over || short) && buy ? (
+            <Link href={buy} className={SECONDARY} data-send-credit-buy>
+              Buy Credits
+            </Link>
+          ) : null}
+          <button type="button" className={PRIMARY} disabled={busy || over || packCents <= 0} onClick={() => void send()}>
+            {busy ? "Packing…" : packCents > 0 ? `Pack ${money(packCents, currency)}` : "Pack"}
+          </button>
+          <p className="text-muted-foreground text-center text-xs">Into a gift card for one friend.</p>
+        </div>
+      }
+    >
+      <div className="flex h-full min-h-0 flex-col gap-3" data-send-credit>
+        <PaySection className="flex items-center gap-3 px-4 py-3" data-send-credit-place>
+          <PlacePhotoMark photo={row.card.photo} name={placeName} />
+          <span className="min-w-0">
+            <span className="text-muted-foreground block text-sm">Send a gift at</span>
+            <span className="block truncate text-base font-semibold">{placeName}</span>
+            <span className="text-muted-foreground block text-sm tabular-nums">Up to {money(spendableCents, currency)}</span>
+          </span>
+        </PaySection>
+        <PaySection title="Gift" className="flex min-h-0 shrink flex-col">
+          <div className="flex min-h-0 shrink flex-col px-4 pb-2">
+            <AmountDisplay text={amount} currency={currency} label="Gift" className="mt-1 shrink-0" />
             {error || over ? (
-              <p className="text-destructive mt-3 text-center text-sm" role="alert">
+              <p className="text-destructive text-center text-sm" role="alert">
                 {error ?? `You can send up to ${money(spendableCents, currency)} here.`}
               </p>
             ) : null}
-            <button type="button" className={`${PRIMARY} mt-6`} disabled={busy || over} onClick={() => void send()}>
-              {busy ? "Sending…" : "Send"}
-            </button>
-            {(over || short) && buy ? (
-              <Link href={buy} className={`${SECONDARY} mt-2`} data-send-credit-buy>
-                Buy Credits
-              </Link>
-            ) : null}
-            <p className="text-muted-foreground mt-3 text-center text-xs">
-              It leaves your balance now. You get a link to share.
-            </p>
-          </>
-        )}
+            <div className="mt-2 flex h-64 min-h-44 shrink flex-col">
+              <AmountKeypad
+                text={amount}
+                onKey={(k) => {
+                  setAmount((t) => pressKey(t, k));
+                  setError(null);
+                  setShort(false);
+                }}
+              />
+            </div>
+          </div>
+        </PaySection>
       </div>
     </Screen>
   );
