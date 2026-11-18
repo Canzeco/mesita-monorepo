@@ -41,7 +41,7 @@ import { toStripeAmount } from "./money.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { MoneyVoucherKey } from "./money-state.ts";
 import type { AccountRow } from "./payments.ts";
-import { type PurchaseStore, purchaseStore } from "./purchase-pi.ts";
+import { PURCHASE_PI_TTL_MS, type PurchaseStore, purchaseStore, recordPayWith } from "./purchase-pi.ts";
 import { type CardStep, isPaymentMethodId } from "./tab-card.ts";
 import { type BuyRefusal, openPurchaseRow, REFUSAL_FOR, sameUnits, voucherMetadata, voucherName } from "./vouchers.ts";
 import { availableAtFor, type VoucherPlace } from "./wallet.ts";
@@ -49,6 +49,42 @@ import { type StripeCall, StripeError } from "./stripe.ts";
 
 export type CardBuyRefusal = { ok: false; status: number; code: string; error: string; detail?: Record<string, unknown> };
 export type CardBuyOk = { ok: true; purchase_id: string; card: CardStep };
+
+/** MESITA-4384: express pay's step. The browser confirms the PaymentIntent
+ *  (Stripe's Express Checkout Element: Apple Pay / Google Pay), so an open
+ *  one answers its client secret and the amount Stripe holds; a settled one
+ *  names the wallet that paid. */
+export type ExpressStep =
+  | { status: "succeeded"; payment_intent_id: string; pay_with: "apple_pay" | "google_pay" | "express" }
+  | { status: "processing"; payment_intent_id: string }
+  | {
+    status: "requires_payment_method" | "requires_action";
+    payment_intent_id: string;
+    client_secret: string;
+    stripe_account: string;
+    publishable_key: string;
+    amount_cents: number;
+    /** The last decline's text, when the wallet's card was declined. */
+    decline_code?: string;
+    error?: string;
+  };
+export type ExpressBuyOk = { ok: true; purchase_id: string; express: ExpressStep };
+
+/** How a buy pays: a saved card the server copies and confirms, or express
+ *  pay the browser confirms (MESITA-4384). */
+export type VoucherSource = { kind: "card"; customer: string; platformPm: string } | { kind: "express" };
+
+/** The express/card choice of a buy body (MESITA-4384): exactly one of
+ *  `express: true` and `card_pm_id`. Pure. */
+export function expressBodyGate(body: Record<string, unknown>): { ok: true; express: boolean } | { ok: false; status: 400; code: "bad_body"; field: "express"; error: string } {
+  const hasCard = body.card_pm_id !== undefined && body.card_pm_id !== null && body.card_pm_id !== "";
+  const express = body.express === true;
+  if (body.express !== undefined && body.express !== null && body.express !== true && body.express !== false) {
+    return { ok: false, status: 400, code: "bad_body", field: "express", error: "express must be true or absent" };
+  }
+  if (express && hasCard) return { ok: false, status: 400, code: "bad_body", field: "express", error: "Send express or card_pm_id, not both" };
+  return { ok: true, express };
+}
 
 /** The card gate of a voucher buy (MESITA-4065: no Stripe page, a saved card
  *  is required). Runs after the body shape and before any place, voucher or
@@ -145,6 +181,134 @@ async function stepOf(
   }
 }
 
+/** MESITA-4384: an EXPRESS PaymentIntent's state as the guest's next step.
+ *  Never stepOf's default branch: a requires_payment_method PI here is the
+ *  normal state BEFORE the browser confirms (and after a wallet decline, when
+ *  the same PI takes another payment method), so it is kept, with its rows
+ *  open, while it is younger than PURCHASE_PI_TTL_MS; the cron's
+ *  cancel-then-release clears it after that. A succeeded PI credits every
+ *  row and records the wallet (the one writer, purchase-pi.ts). */
+async function expressStepOf(
+  store: PurchaseStore,
+  stripe: StripeCall,
+  row: Units,
+  pi: Record<string, unknown>,
+  ctx: { publishableKey: string | null; amount: number; createdAt: string; nowMs: number },
+): Promise<{ ok: true; step: ExpressStep } | CardBuyRefusal> {
+  const piId = String(pi.id);
+  switch (pi.status) {
+    case "succeeded": {
+      for (const r of row.rows) await store.credit(r.id, piId, r.availableAt);
+      const wallet = await recordPayWith(store, stripe, { leadId: row.id, account: row.account, pi });
+      return { ok: true, step: { status: "succeeded", payment_intent_id: piId, pay_with: wallet ?? "express" } };
+    }
+    case "processing":
+      return { ok: true, step: { status: "processing", payment_intent_id: piId } };
+    case "canceled":
+      await releaseAll(store, row, "pi_canceled");
+      return refuse(409, "closed", "That payment was cancelled. Tap again to start over.");
+    default: {
+      // requires_payment_method | requires_action | requires_confirmation.
+      if (ctx.nowMs - Date.parse(ctx.createdAt) >= PURCHASE_PI_TTL_MS) {
+        // Too old to take a payment now; the cron cancels it, then releases.
+        return refuse(409, "closed", "That payment timed out. Tap again to start over.");
+      }
+      const secret = typeof pi.client_secret === "string" ? pi.client_secret : null;
+      if (!ctx.publishableKey || !secret) return refuse(503, "payments_unavailable", "Payments are not available right now");
+      const last = (pi.last_payment_error ?? null) as Record<string, unknown> | null;
+      const decline = last ? String(last.decline_code ?? last.code ?? "declined").slice(0, 64) : null;
+      return {
+        ok: true,
+        step: {
+          status: pi.status === "requires_action" ? "requires_action" : "requires_payment_method",
+          payment_intent_id: piId,
+          client_secret: secret,
+          stripe_account: row.account,
+          publishable_key: ctx.publishableKey,
+          amount_cents: typeof pi.amount === "number" ? pi.amount : ctx.amount,
+          ...(decline ? { decline_code: decline, error: "Your bank declined it. Try another way to pay." } : {}),
+        },
+      };
+    }
+  }
+}
+
+/** MESITA-4384: open an express purchase's PaymentIntent: the server's own
+ *  amount, card only (Apple Pay and Google Pay are cards), NO payment method
+ *  and NO confirm; the row names it before the browser ever sees it. */
+async function openExpressIntent(
+  store: PurchaseStore,
+  stripe: StripeCall,
+  ref: Units,
+  args: {
+    currency: string;
+    placeId: string;
+    placeName: string | null;
+    consumerId: string;
+    voucher: MoneyVoucherKey;
+    publishableKey: string | null;
+    amount: number;
+    count: number;
+    followerKeys: MoneyVoucherKey[];
+  },
+): Promise<ExpressBuyOk | CardBuyRefusal> {
+  if (!args.publishableKey) {
+    await releaseAll(store, ref, "no_publishable_key");
+    return refuse(503, "payments_unavailable", "Payments are not available right now");
+  }
+  const amount = toStripeAmount(args.amount, args.currency);
+  let pi: Record<string, unknown>;
+  try {
+    pi = await stripe("POST", "payment_intents", {
+      amount,
+      currency: args.currency,
+      payment_method_types: ["card"],
+      description: `${args.count > 1 ? `${args.count} vouchers` : voucherName(args.voucher, args.currency)} · ${(args.placeName ?? "Mesita place")}`.slice(0, 250),
+      metadata: {
+        ...voucherMetadata({
+          purchaseId: ref.id,
+          placeId: args.placeId,
+          consumerId: args.consumerId,
+          voucher: args.voucher,
+          currency: args.currency,
+          ...(args.followerKeys.length > 0 ? { followers: args.followerKeys } : {}),
+        }),
+        mesita_pay_with: "express",
+      },
+    }, { stripeAccount: ref.account, idempotencyKey: `voucherexpress-pi:${ref.id}` });
+  } catch (err) {
+    if (inFlight(err)) return refuse(409, "in_progress", "Your purchase is already on its way.");
+    const code = stripeCode(err);
+    console.error("[voucher-card] express_start_failed", JSON.stringify({ purchase_id: ref.id, code }));
+    await releaseAll(store, ref, code);
+    return refuse(502, "card_failed", "Couldn't start the payment. Try again.", { stripe_code: code });
+  }
+  const piId = String(pi.id);
+  if (!(await store.openPi(ref.id, piId))) {
+    await cancelQuietly(stripe, ref.account, piId, ref.id);
+    await releaseAll(store, ref, "pi_write");
+    return refuse(502, "card_failed", "Couldn't start the payment. Try again.");
+  }
+  const secret = typeof pi.client_secret === "string" ? pi.client_secret : null;
+  if (!secret) {
+    await cancelQuietly(stripe, ref.account, piId, ref.id);
+    await releaseAll(store, ref, "no_client_secret");
+    return refuse(502, "card_failed", "Couldn't start the payment. Try again.");
+  }
+  return {
+    ok: true,
+    purchase_id: ref.id,
+    express: {
+      status: "requires_payment_method",
+      payment_intent_id: piId,
+      client_secret: secret,
+      stripe_account: ref.account,
+      publishable_key: args.publishableKey,
+      amount_cents: amount,
+    },
+  };
+}
+
 /** Steps 3–5 for the row openPurchaseRow opened (or the same tap's row
  *  again). A thrown error is the door's 5xx: the row stays `opening` (no PI;
  *  the cron fails it after ten minutes) or `open` (a PI; the cron reads it). */
@@ -153,8 +317,9 @@ export async function runVoucherCard(
   stripe: StripeCall,
   args: {
     purchaseId: string;
-    customer: string;
-    platformPm: string;
+    /** The saved card (pay_source card); unused on an express row. */
+    customer?: string;
+    platformPm?: string;
     currency: string;
     placeId: string;
     placeName: string | null;
@@ -163,7 +328,7 @@ export async function runVoucherCard(
     publishableKey: string | null;
     nowMs: number;
   },
-): Promise<CardBuyOk | CardBuyRefusal> {
+): Promise<CardBuyOk | ExpressBuyOk | CardBuyRefusal> {
   const row = await store.read(args.purchaseId);
   if (!row || !row.stripe_account_id) throw new Error("purchase_row_missing");
   const account = row.stripe_account_id;
@@ -177,10 +342,31 @@ export async function runVoucherCard(
   const done = (step: CardStep): CardBuyOk => ({ ok: true, purchase_id: row.id, card: step });
   const closed = () => refuse(409, "closed", "That purchase was cancelled. Tap again to start over.");
 
+  // MESITA-4384: the lead's pay_source decides the path, never the body.
+  const express = row.pay_source === "express";
+  const amount = all.reduce((sum, r) => sum + r.amount_cents, 0);
+  const expressDone = (step: ExpressStep): ExpressBuyOk => ({ ok: true, purchase_id: row.id, express: step });
+
   if (row.stripe_payment_intent_id) {
     // The same tap again: read where its PI stands.
-    if (all.every((r) => PAID.has(r.status))) return done({ status: "succeeded", payment_intent_id: row.stripe_payment_intent_id });
+    if (all.every((r) => PAID.has(r.status))) {
+      if (express) {
+        const payWith = row.pay_with === "apple_pay" || row.pay_with === "google_pay" ? row.pay_with : "express";
+        return expressDone({ status: "succeeded", payment_intent_id: row.stripe_payment_intent_id, pay_with: payWith });
+      }
+      return done({ status: "succeeded", payment_intent_id: row.stripe_payment_intent_id });
+    }
     if (row.status !== "open" && !PAID.has(row.status)) return closed();
+    if (express) {
+      const pi = await stripe("GET", `payment_intents/${encodeURIComponent(row.stripe_payment_intent_id)}`, { expand: ["latest_charge"] }, { stripeAccount: account });
+      const r = await expressStepOf(store, stripe, ref, pi, {
+        publishableKey: args.publishableKey,
+        amount: toStripeAmount(amount, args.currency),
+        createdAt: row.created_at,
+        nowMs: args.nowMs,
+      });
+      return r.ok ? expressDone(r.step) : r;
+    }
     const pi = await stripe("GET", `payment_intents/${encodeURIComponent(row.stripe_payment_intent_id)}`, undefined, { stripeAccount: account });
     const r = await stepOf(store, stripe, ref, pi, args.publishableKey);
     return r.ok ? done(r.step) : r;
@@ -191,8 +377,9 @@ export async function runVoucherCard(
     await releaseAll(store, ref, "basket_closed");
     return closed();
   }
-  const amount = all.reduce((sum, r) => sum + r.amount_cents, 0);
   const followerKeys = followers.map((f) => f.voucher as MoneyVoucherKey);
+  if (express) return await openExpressIntent(store, stripe, ref, { ...args, amount, count: all.length, followerKeys });
+  if (!args.customer || !args.platformPm) throw new Error("card_source_missing");
 
   let pi: Record<string, unknown>;
   try {
@@ -257,14 +444,25 @@ export async function readRequestRow(
   admin: SupabaseClient,
   consumerId: string,
   requestId: string,
-): Promise<{ id: string; voucher: string | null; place_id: string; currency: string; status: string; stripe_checkout_session_id: string | null } | null> {
+): Promise<RequestRow | null> {
   const { data, error } = await admin.from("wallet_purchases")
-    .select("id, voucher, place_id, currency, status, stripe_checkout_session_id")
+    .select("id, voucher, place_id, currency, status, stripe_checkout_session_id, pay_source")
     .eq("consumer_id", consumerId).eq("request_id", requestId)
     .maybeSingle();
   if (error) throw new Error(`purchase_read: ${error.message}`);
-  return (data as { id: string; voucher: string | null; place_id: string; currency: string; status: string; stripe_checkout_session_id: string | null } | null) ?? null;
+  return (data as RequestRow | null) ?? null;
 }
+
+/** A tap's lead row as the replay reads it; pay_source 'card' on old rows. */
+export type RequestRow = {
+  id: string;
+  voucher: string | null;
+  place_id: string;
+  currency: string;
+  status: string;
+  stripe_checkout_session_id: string | null;
+  pay_source: string;
+};
 
 /** The vouchers a basket lead's followers hold (MESITA-3841), to tell the
  *  same tap's basket from another one under the same request_id. */
@@ -288,16 +486,16 @@ export async function openVoucherCard(
     currency: string;
     requestId: string;
     livemode: boolean;
-    customer: string;
-    platformPm: string;
+    /** MESITA-4384: a saved card, or express pay (the browser confirms). */
+    source: VoucherSource;
     publishableKey: string | null;
     nowMs: number;
     followers?: readonly MoneyVoucherKey[];
     /** MESITA-4296: the story a Story purchase reserves. */
     storyMentionId?: string | null;
   },
-): Promise<CardBuyOk | CardBuyRefusal | BuyRefusal> {
-  const opened = await openPurchaseRow(admin, args);
+): Promise<CardBuyOk | ExpressBuyOk | CardBuyRefusal | BuyRefusal> {
+  const opened = await openPurchaseRow(admin, { ...args, paySource: args.source.kind });
   if (!opened.ok) return opened;
   let purchaseId: string;
   if (opened.duplicate) {
@@ -312,7 +510,7 @@ export async function openVoucherCard(
       if ((w ?? []).length > 0) return refuse(409, "in_progress", "Your Welcome voucher is already on its way.");
       return { ok: false, status: 409, ...REFUSAL_FOR.used };
     }
-    if (row.stripe_checkout_session_id || row.voucher !== args.voucher || row.place_id !== args.place.id) {
+    if (row.stripe_checkout_session_id || row.voucher !== args.voucher || row.place_id !== args.place.id || row.pay_source !== args.source.kind) {
       return refuse(409, "in_progress", "Your purchase is already on its way.");
     }
     if (!sameUnits(await readFollowerVouchers(admin, row.id), args.followers ?? [])) {
@@ -324,8 +522,7 @@ export async function openVoucherCard(
   }
   return await runVoucherCard(purchaseStore(admin), stripe, {
     purchaseId,
-    customer: args.customer,
-    platformPm: args.platformPm,
+    ...(args.source.kind === "card" ? { customer: args.source.customer, platformPm: args.source.platformPm } : {}),
     currency: args.currency,
     placeId: args.place.id,
     placeName: args.place.name ?? null,

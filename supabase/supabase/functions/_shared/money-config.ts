@@ -8,11 +8,30 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { readAppConfig } from "./write-config.ts";
 
-export type MoneyConfig = { buying_paused: boolean; sending_live: boolean };
+/** MESITA-4384: the wallets express pay may offer (Apple Pay, Google Pay). */
+export type ExpressWallet = "apple_pay" | "google_pay";
+export const EXPRESS_WALLETS: readonly ExpressWallet[] = ["apple_pay", "google_pay"];
+
+export type MoneyConfig = {
+  buying_paused: boolean;
+  sending_live: boolean;
+  /** MESITA-4384: the express-pay kill switch. Absent reads both wallets;
+   *  [] turns express off; a list narrows it. Unknown names are dropped. */
+  express_wallets: ExpressWallet[];
+};
+
+export function expressWalletsFrom(raw: unknown): ExpressWallet[] {
+  if (!Array.isArray(raw)) return [...EXPRESS_WALLETS];
+  return EXPRESS_WALLETS.filter((w) => raw.includes(w));
+}
 
 export function moneyConfigFrom(raw: unknown): MoneyConfig {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  return { buying_paused: o.buying_paused === true, sending_live: o.sending_live === true };
+  return {
+    buying_paused: o.buying_paused === true,
+    sending_live: o.sending_live === true,
+    express_wallets: expressWalletsFrom(o.express_wallets),
+  };
 }
 
 /** A read failure reads as not paused (a broken config must not stop every
@@ -21,8 +40,9 @@ export function moneyConfigFrom(raw: unknown): MoneyConfig {
 export async function readMoneyConfig(admin: SupabaseClient): Promise<MoneyConfig> {
   const res = await readAppConfig(admin, "money_config", "money_config_read");
   if (!res.ok) {
-    console.error("[money-config] read failed; reading as not paused, not sending live");
-    return { buying_paused: false, sending_live: false };
+    console.error("[money-config] read failed; reading as not paused, not sending live, express off");
+    // Express is new money surface: off when in doubt (the card path stays).
+    return { buying_paused: false, sending_live: false, express_wallets: [] };
   }
   return moneyConfigFrom(res.row?.money_config);
 }

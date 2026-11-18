@@ -102,7 +102,7 @@ Deno.test("voucher card: clone, create unconfirmed, store, confirm — keyed by 
     return { id: "pi_1", status: "succeeded" };
   });
   const res = await runVoucherCard(s.store, stripe, ARGS);
-  assert(res.ok);
+  assert(res.ok && "card" in res);
   assertEquals(res.purchase_id, PURCHASE);
   assertEquals(res.card, { status: "succeeded", payment_intent_id: "pi_1" });
   assertEquals(calls.map((c) => c.path), ["payment_methods", "payment_intents", "payment_intents/pi_1/confirm"]);
@@ -161,7 +161,7 @@ Deno.test("voucher card: 3-D Secure hands Stripe.js the secret and the account; 
   };
   const a = fakeStore(row());
   const ok = await runVoucherCard(a.store, fakeStripe(answer).stripe, ARGS);
-  assert(ok.ok);
+  assert(ok.ok && "card" in ok);
   assertEquals(ok.card, { status: "requires_action", payment_intent_id: "pi_3", client_secret: "pi_3_secret_x", stripe_account: "acct_place", publishable_key: "pk_test_abc" });
   assertEquals(a.log, ["openPi:pi_3"]);
 
@@ -176,7 +176,7 @@ Deno.test("voucher card: a double tap (the same row again) only reads its PI: no
   const s = fakeStore(row({ status: "open", stripe_payment_intent_id: "pi_4" }));
   const { stripe, calls } = fakeStripe(() => ({ id: "pi_4", status: "succeeded" }));
   const res = await runVoucherCard(s.store, stripe, ARGS);
-  assert(res.ok);
+  assert(res.ok && "card" in res);
   assertEquals(res.card.status, "succeeded");
   assertEquals(calls.map((c) => `${c.method} ${c.path}`), ["GET payment_intents/pi_4"]);
 

@@ -35,7 +35,15 @@ const ALLOWED_EVENTS = new Set([
   // voucher paid (method saved_card until express ships).
   "offer_sheet_opened",
   "voucher_paid",
+  // MESITA-4384 — express pay: which wallet the phone offered (from the
+  // Express Checkout Element's ready), and an express payment that failed.
+  "express_ready",
+  "express_failed",
 ]);
+
+/** MESITA-4384: correlation ids are short; a longer one is cut. */
+const ID_FIELDS = ["request_id", "purchase_id"] as const;
+const ID_MAX = 64;
 
 type Body = { event?: string; payload?: Record<string, unknown> };
 
@@ -50,10 +58,13 @@ serveJson("consumer-web-track-event", async (req) => {
   if (!ALLOWED_EVENTS.has(event)) {
     return json({ ok: false, error: `Unknown event: ${event}` }, 400);
   }
-  const payload =
+  const payload: Record<string, unknown> =
     bodyRes.body.payload && typeof bodyRes.body.payload === "object"
-      ? bodyRes.body.payload
+      ? { ...bodyRes.body.payload }
       : {};
+  for (const f of ID_FIELDS) {
+    if (f in payload) payload[f] = typeof payload[f] === "string" ? (payload[f] as string).slice(0, ID_MAX) : null;
+  }
 
   const { error } = await admin.from("consumer_analytics_events").insert({
     consumer_id: user.id,
