@@ -77,7 +77,7 @@ import {
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes").
 
-/** Sex's two choices, in the switch's order. */
+/** Sex's two choices, in the select's order. */
 const SEX_OPTIONS = [
   { value: "female", label: "Female" },
   { value: "male", label: "Male" },
@@ -116,9 +116,6 @@ const ROW_LABEL_CLASS = "text-muted-foreground w-28 shrink-0 text-sm";
 /** A row's value: borderless, so the row is the field. */
 const ROW_INPUT_CLASS =
   "text-foreground placeholder:text-muted-foreground h-full min-w-0 flex-1 bg-transparent text-base font-semibold outline-none";
-
-const SEX_OPTION_CLASS =
-  "rounded-full px-3.5 py-1.5 text-sm font-medium transition active:scale-[0.98]";
 
 /** Save under the fields: the Me button, full width and 48px; off it is
  *  grey. */
@@ -400,39 +397,39 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
             placeholder="Last name"
             autoComplete="family-name"
           />
-          <div className={ROW_CLASS}>
-            <span id="profile-sex-label" className={ROW_LABEL_CLASS}>
-              {FIELD_LABEL.sex}
-            </span>
-            {/* No option lit is a real state: a legacy profile with no sex
-                stored stays that way until the guest taps one. */}
-            <div
-              role="radiogroup"
-              aria-labelledby="profile-sex-label"
-              className="flex gap-1.5"
+          {/* A PICKER, NOT TWO PILLS (MESITA-4369, Pato 2026-11-18: "you
+              must not be able to change sex once onboarded. or yes, but when
+              clicking"): the stored value shows like Year of birth, and it
+              changes only when the guest opens the select and picks. A
+              legacy profile with no sex reads "Choose" and stores nothing
+              until then. */}
+          <label className={cn(ROW_CLASS, "relative")}>
+            <span className={ROW_LABEL_CLASS}>{FIELD_LABEL.sex}</span>
+            <select
+              value={sex}
+              onChange={(e) => setSex(e.target.value)}
+              autoComplete="sex"
+              data-profile-sex=""
+              className={cn(
+                ROW_INPUT_CLASS,
+                "cursor-pointer appearance-none pr-6",
+                sex === "" && "text-muted-foreground font-normal",
+              )}
             >
-              {SEX_OPTIONS.map((option) => {
-                const on = sex === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={on}
-                    onClick={() => setSex(option.value)}
-                    className={cn(
-                      SEX_OPTION_CLASS,
-                      on
-                        ? "bg-foreground text-paper"
-                        : "bg-muted text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+              <option value="" disabled>
+                Choose
+              </option>
+              {SEX_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              aria-hidden
+              className="text-muted-foreground pointer-events-none absolute right-4 h-4 w-4"
+            />
+          </label>
           <label className={cn(ROW_CLASS, "relative")}>
             <span className={ROW_LABEL_CLASS}>{FIELD_LABEL.birthYear}</span>
             <select
