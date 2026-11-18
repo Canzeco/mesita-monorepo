@@ -10,7 +10,7 @@
 //                  next sync; on again brings them back
 // Reservations' header calendar icon opens this page too.
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { RefreshCw } from "lucide-react";
 import { CalendarMark } from "@/components/shared/calendar-marks";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -30,6 +30,7 @@ import {
   type CalendarKind,
   subscribeUrl,
 } from "@/lib/api/calendar";
+import { calendarOrder } from "@/lib/add-to-calendar";
 import { writeCached } from "@/lib/screen-cache";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { timeAgo } from "@/lib/time-ago";
@@ -144,8 +145,16 @@ function CalendarRow({
   );
 }
 
+const noSubscribe = () => () => {};
+const userAgent = () => navigator.userAgent;
+const serverAgent = () => "";
+
 export function CalendarModal() {
   const getSupabase = useLazyBrowserSupabase();
+  // The phone's own calendar first (MESITA-4355): Apple on an iPhone, iPad
+  // or Mac, Google elsewhere; Outlook last.
+  const ua = useSyncExternalStore(noSubscribe, userAgent, serverAgent);
+  const calendars = calendarOrder(ua).map((k) => CALENDARS.find((c) => c.kind === k)!);
   const feeds = useCachedQuery<CalendarFeeds>(KEY, () => apiGetCalendarFeeds(getSupabase()), {
     ttl: 60_000,
   });
@@ -205,7 +214,7 @@ export function CalendarModal() {
         {/* Google, Apple and Outlook only (MESITA-3964, Pato: "No other
             calendar must be enabled"): no copy-the-link row for other apps. */}
         <SettingsGroup title="Your calendars">
-          {CALENDARS.map(({ kind, label, app }, i) => (
+          {calendars.map(({ kind, label, app }, i) => (
             <div key={kind}>
               {i > 0 && <RowDivider />}
               <CalendarRow
