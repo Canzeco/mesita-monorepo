@@ -1351,7 +1351,18 @@ function PaySheet({
   const host = typeof document !== "undefined" ? document.getElementById("mesita-app-card") : null;
   const { can, signedOut, buying, needsCard } = offer;
   const button = signedOut ? "Sign in to buy" : buying ? "Paying…" : needsCard ? "Add a card to pay" : `Pay ${whole(offer.pay)}`;
+  // ONE CONFIRM BEFORE A CHARGE (MESITA-4357, Pato: "when you click pay,
+  // please add a confirmation … this just feels too aggressive"): a tap that
+  // would charge the saved card first asks in the pay box; signing in and
+  // adding a card charge nothing, so they go straight through.
+  const [asking, setAsking] = useState(false);
+  const charges = !signedOut && !needsCard;
   const press = async () => {
+    if (charges && !asking) {
+      setAsking(true);
+      return;
+    }
+    setAsking(false);
     const r = await offer.onPay();
     if (r && !isStoryRefused(r)) setReceipt(r);
   };
@@ -1439,19 +1450,40 @@ function PaySheet({
             <GoodToKnow productKey={product.key} />
             <Box data-offer-pay-box="">
               {can ? (
-                <div className="flex flex-col gap-3">
-                  <CardLine offer={offer} />
-                  <button
-                    type="button"
-                    onClick={() => void press()}
-                    disabled={!offer.live || buying || offer.cardsPending}
-                    className={PRIMARY}
-                    data-voucher-buy={product.key}
-                  >
-                    {needsCard && !signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
-                    {button}
-                  </button>
-                </div>
+                asking && !buying ? (
+                  <div className="flex flex-col gap-3" data-offer-confirm="">
+                    <p className="text-foreground text-[17px] leading-snug font-semibold tabular-nums">
+                      {offer.payCard ? `Pay ${amount} with ${offer.payCard}?` : `Pay ${amount}?`}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void press()}
+                      disabled={!offer.live || offer.cardsPending}
+                      className={PRIMARY}
+                      data-voucher-buy={product.key}
+                      autoFocus
+                    >
+                      {`Yes, pay ${amount}`}
+                    </button>
+                    <button type="button" onClick={() => setAsking(false)} className={QUIET}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <CardLine offer={offer} />
+                    <button
+                      type="button"
+                      onClick={() => void press()}
+                      disabled={!offer.live || buying || offer.cardsPending}
+                      className={PRIMARY}
+                      data-voucher-ask={product.key}
+                    >
+                      {needsCard && !signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
+                      {button}
+                    </button>
+                  </div>
+                )
               ) : (
                 // LOCKED (MESITA-4224, D4): the reason where Pay goes, and the
                 // one action that unlocks it when there is one.
