@@ -36,7 +36,7 @@ import { GIFT_PENDING } from "@/lib/wallet-card";
 import { AmountDisplay, AmountKeypad } from "@/components/consumer/pay/AmountKeypad";
 import { PaySection } from "@/components/consumer/pay/pay-flow";
 import { pressKey } from "@/lib/pay-keypad";
-import { GiftCardFace } from "./GiftCardFace";
+import { GiftCardFace, GiftCardMini } from "./GiftCardFace";
 import { PlacePhotoMark } from "./PlaceCredit";
 import { useWallet } from "./use-wallet";
 import { prepayHref } from "./WalletPickers";
@@ -352,31 +352,42 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
       >
         <div className="flex flex-col gap-3" data-send-credit-open>
           {placePanel}
-          <PaySection title="Waiting for a friend">
-            <ul className="divide-border divide-y" data-send-credit-open-list>
-              {openHere.map((l) => {
-                const shareable = l.can_share !== false;
-                return (
-                  <li key={l.gift_id}>
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition active:opacity-70 disabled:opacity-50"
-                      disabled={opening !== null}
-                      onClick={() => void (shareable ? reopen(l.gift_id, l.amount_cents) : takeBack(l.gift_id))}
+          {/* ONE BOX PER GIFT (MESITA-4396, Pato: "make boxes … those look
+              like notifications"; picked A of three): a mini of the wine
+              card, the amount and when it was packed, a pill button. The
+              whole box is the tap. */}
+          <h2 className="font-display mt-1 px-1 text-lg font-semibold">Waiting for a friend</h2>
+          <ul className="flex flex-col gap-3" data-send-credit-open-list>
+            {openHere.map((l) => {
+              const shareable = l.can_share !== false;
+              return (
+                <li key={l.gift_id}>
+                  <button
+                    type="button"
+                    className="bg-card border-border flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition active:scale-[0.99] disabled:opacity-60"
+                    disabled={opening !== null}
+                    onClick={() => void (shareable ? reopen(l.gift_id, l.amount_cents) : takeBack(l.gift_id))}
+                  >
+                    <GiftCardMini faded={!shareable} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-base font-bold tabular-nums">{money(l.amount_cents, currency)}</span>
+                      <span className="text-muted-foreground block text-sm">
+                        Packed {entryDate(l.created_at)}
+                        {shareable ? "" : " · link not saved"}
+                      </span>
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${
+                        shareable ? "bg-foreground text-paper" : "border-border bg-card border"
+                      }`}
                     >
-                      <span className="min-w-0">
-                        <span className="block text-base font-semibold tabular-nums">{money(l.amount_cents, currency)}</span>
-                        <span className="text-muted-foreground block text-sm">Packed {entryDate(l.created_at)}</span>
-                      </span>
-                      <span className="shrink-0 text-sm font-semibold">
-                        {opening === l.gift_id ? "…" : shareable ? "Send" : "Take back"}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </PaySection>
+                      {opening === l.gift_id ? "…" : shareable ? "Send" : "Take back"}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </Screen>
     );
