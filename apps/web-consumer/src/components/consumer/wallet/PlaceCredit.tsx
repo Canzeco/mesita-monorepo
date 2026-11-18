@@ -12,7 +12,6 @@ import {
   entryDate,
   entryLabel,
   money,
-  type SentLink,
   type WaitingStory,
 } from "@/lib/api/wallet";
 import { creditEntryPath, payPlacePath, payReceiptPath, walletSendPath } from "@/lib/consumer-route-contract";
@@ -23,8 +22,7 @@ import { cn } from "@/lib/utils";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { useStoryNew, useStoryNow } from "./use-story-now";
 import { storyBonusOpen, storyLine } from "@/lib/story-lines";
-import { SentLinks } from "./SendCredit";
-import { Panel, PanelHeading } from "@/components/shared/Panel";
+import { Panel } from "@/components/shared/Panel";
 import { WalletPanelList } from "./WalletLists";
 import { TicketsBoard, type TicketTab } from "@/components/consumer/activity/MeLists";
 import { PRIMARY, SECONDARY } from "./wallet-buttons";
@@ -222,7 +220,6 @@ export function LoyaltyCardSkeleton() {
 export function PlaceCredit({
   row,
   canSend,
-  sentLinks,
   stories = [],
   confirming = false,
   onReread,
@@ -231,8 +228,6 @@ export function PlaceCredit({
   row: CreditRow;
   /** Sending credit is open here (MESITA-3292). */
   canSend: boolean;
-  /** Links sent at this place that nobody took yet. */
-  sentLinks: SentLink[];
   /** Story vouchers bought here whose bonus is undecided, or was decided in
    *  the last 24 hours (MESITA-4264). */
   stories?: WaitingStory[];
@@ -290,7 +285,6 @@ export function PlaceCredit({
   const [method, setMethod] = useState<Method | null>(null);
   const spendable = balance?.spendable_cents ?? 0;
   const gift = giftAction({ canSend, spendableCents: spendable, shownCents: cardAmount(card).cents });
-  const changed = onReread ?? (() => {});
   // Nothing spendable yet: a muted $0, never a minus (a refund can settle
   // before the purchase it refunds lands).
   const muted = card.available_cents <= 0;
@@ -468,15 +462,13 @@ export function PlaceCredit({
           board): Me › Tickets' pills and rows filtered to this place, one
           row per thing done here (a voucher with its bonus, a gift with its
           taking back). It was "Transactions", one ledger line per row
-          (MESITA-4116). Notifications stay at Me. */}
-      <section className="mt-6" data-loyalty-card-tickets>
-        <div className="mb-3 px-1">
-          <PanelHeading>Tickets</PanelHeading>
-        </div>
-        <TicketsBoard kind={ticketKind} onPick={setTicketKind} placeId={row.placeId} flush={false} />
+          (MESITA-4116). Notifications stay at Me. NO HEADING, A LINE
+          (MESITA-4324, Pato: "remove the tickets word from there and just
+          put a line dividing the section"): a hairline over the strip. */}
+      <section className="border-border mt-5 border-t pt-2" data-loyalty-card-tickets>
+        <TicketsBoard kind={ticketKind} onPick={setTicketKind} placeId={row.placeId} flush={false} onChanged={onReread} />
       </section>
 
-      <SentLinks links={sentLinks} currency={card.currency} onChanged={changed} />
 
       {/* ONE QUIET LINK, LAST: Remove from Wallet (MESITA-3605: only a card the
           guest pinned that holds nothing and has no history; one short

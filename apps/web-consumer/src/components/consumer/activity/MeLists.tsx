@@ -404,11 +404,14 @@ export function TicketsBoard({
   onPick,
   placeId = null,
   flush = true,
+  onChanged,
 }: {
   kind: TicketTab;
   onPick: (k: TicketTab) => void;
   placeId?: string | null;
   flush?: boolean;
+  /** The host's own read again, after a Take back from a Gifts row. */
+  onChanged?: () => void;
 }) {
   const getSupabase = useLazyBrowserSupabase();
 
@@ -503,7 +506,10 @@ export function TicketsBoard({
     <div className="flex flex-col gap-4">
       <TicketPills on={kind} onPick={onPick} flush={flush} />
       {kind === "gifts" && ready && !failed && walletData ? (
-        <GiftTickets gifts={walletData.gifts ?? []} />
+        <GiftTickets gifts={walletData.gifts ?? []} showPlace={!placeId} onChanged={() => {
+            wallet.reload();
+            onChanged?.();
+          }} />
       ) : (
         <TicketList
           type={kind}
@@ -687,7 +693,7 @@ function SubpageTabs<K extends string>({
 /** Tickets' kinds as the place profile's strip (MESITA-4322, Pato: "a menu
  *  similar to the mesita profile … each item takes 25% and selected item is
  *  blue"; it was a scrolling row of icon pills, MESITA-3993): four equal
- *  tabs, words only, white with a bottom hairline, the chosen one blue-600
+ *  tabs, a little icon and the word (icons back in MESITA-4324), white with a bottom hairline, the chosen one blue-600
  *  bold over a 3px blue-600 line, the rest muted (packages/place-profile
  *  PlaceTabBar, size for size). `on` null is the loading frame: words in
  *  place, none chosen. */
@@ -717,12 +723,15 @@ function TicketPills({
             onClick={onPick ? () => onPick(t.kind) : undefined}
             disabled={!onPick}
             className={cn(
-              "-mb-px flex items-center justify-center border-b-[3px] px-0.5 py-3 text-center type-body leading-normal tracking-wide transition",
+              "-mb-px flex items-center justify-center gap-1.5 border-b-[3px] px-0.5 py-3 text-center type-body leading-normal tracking-wide whitespace-nowrap transition",
               chosen
                 ? "border-blue-600 font-bold text-blue-600"
                 : "text-muted-foreground hover:text-foreground border-transparent font-medium",
             )}
           >
+            {/* A little icon before each word (MESITA-4324, Pato: "is ok if
+                you add little icons in the four"). */}
+            <t.icon className="h-4 w-4 shrink-0" strokeWidth={chosen ? 2.5 : 2} aria-hidden />
             {t.label}
           </button>
         );
