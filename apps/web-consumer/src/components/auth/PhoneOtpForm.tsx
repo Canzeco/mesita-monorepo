@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MessageCircle, Phone } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { apiCallSignInCode } from "@/lib/api/auth";
 import { PhoneInputWithCountry } from "./PhoneInputWithCountry";
 import {
   OTP_LENGTH,
@@ -40,12 +39,11 @@ const LINK_ON_PHOTO =
 // (see lib/phone-otp.ts): every send is a real SMS we pay Twilio for, and
 // a malformed one comes back as an unreadable provider string.
 //
-// The phone step asks how the code comes, text or call (MESITA-3470). Call
-// marks the number first (consumer-web-call-sign-in-code), so Auth's Send
-// SMS hook calls instead of texting. Resend uses the same way.
+// TEXT ONLY (Pato, 2026-11-18, MESITA-4317: "remove call verification.
+// Just phone verification"): the code comes by text message, one way; the
+// "Call me instead" link and its resend (MESITA-3470) are gone.
 
 type Step = "phone" | "code";
-type Method = "sms" | "call";
 
 export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
   const router = useRouter();
@@ -64,8 +62,6 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
   const [cooldown, setCooldown] = useState(0);
   // The number the cooldown belongs to: another number sends at once.
   const [cooldownPhone, setCooldownPhone] = useState("");
-  const [method, setMethod] = useState<Method>("sms");
-  const [sending, setSending] = useState<Method | null>(null);
 
   const parsed = useMemo(
     () => parsePhone(countryCode, localPhone),
@@ -79,7 +75,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
     return () => window.clearTimeout(timer);
   }, [cooldown]);
 
-  const sendCode = async (how: Method) => {
+  const sendCode = async () => {
     setError(null);
     setInfo(null);
     if (!parsed.ok) {
@@ -91,49 +87,33 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
       return false;
     }
     setLoading(true);
-    setSending(how);
-    try {
-      if (how === "call") await apiCallSignInCode(supabase, parsed.e164);
-      const { error: sendError } = await supabase.auth.signInWithOtp({
-        phone: parsed.e164,
-      });
-      if (sendError) {
-        setError(otpErrorMessage(sendError));
-        return false;
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "We couldn't call you. Try again.",
-      );
+    const { error: sendError } = await supabase.auth.signInWithOtp({
+      phone: parsed.e164,
+    });
+    setLoading(false);
+    if (sendError) {
+      setError(otpErrorMessage(sendError));
       return false;
-    } finally {
-      setLoading(false);
-      setSending(null);
     }
-    setMethod(how);
     setCooldown(RESEND_COOLDOWN_SECONDS);
     setCooldownPhone(parsed.e164);
     return true;
   };
 
-  const sentMessage = (how: Method) =>
-    how === "call"
-      ? "We're calling you now. Answer to hear your code."
-      : `We just texted you a ${OTP_LENGTH}-digit code.`;
+  const sentMessage = `We just texted you a ${OTP_LENGTH}-digit code.`;
 
-  const startVerification = async (how: Method) => {
-    if (await sendCode(how)) {
+  const startVerification = async () => {
+    if (await sendCode()) {
       setStep("code");
-      setInfo(sentMessage(how));
+      setInfo(sentMessage);
     }
   };
 
-  // Resend stays on the code step, by the same way, so the user never
-  // loses the digits they already typed.
+  // Resend stays on the code step, so the user never loses the number.
   const resendCode = async () => {
-    if (await sendCode(method)) {
+    if (await sendCode()) {
       setCode("");
-      setInfo(sentMessage(method));
+      setInfo(sentMessage);
     }
   };
 
@@ -166,7 +146,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void startVerification("sms");
+          void startVerification();
         }}
         className="flex flex-col gap-3"
       >
@@ -185,8 +165,8 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
 
         {error && <p className={ERROR_ON_PHOTO}>{error}</p>}
 
-        {/* One dark button; calling is the quiet second way (MESITA-3795).
-            Never greyed out while typing: a short number answers on tap. */}
+        {/* The one button (MESITA-4317). Never greyed out while typing: a
+            short number answers on tap. */}
         <button
           type="submit"
           disabled={loading}
@@ -197,34 +177,13 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
             "mt-1",
           )}
         >
-          {sending === "sms" ? (
+          {loading ? (
             <Spinner size="sm" className="border-white/40 border-t-white" />
           ) : (
-            <>
-              <MessageCircle className="h-4 w-4" />
-              Text me the code
-            </>
+            "Text me the code"
           )}
         </button>
 
-        <button
-          type="button"
-          onClick={() => void startVerification("call")}
-          disabled={loading}
-          className={cn(
-            LINK_ON_PHOTO,
-            "inline-flex h-11 items-center justify-center gap-1.5 self-center text-base font-medium",
-          )}
-        >
-          {sending === "call" ? (
-            <Spinner size="sm" className="border-white/40 border-t-white" />
-          ) : (
-            <>
-              <Phone className="h-4 w-4" />
-              Call me instead
-            </>
-          )}
-        </button>
       </form>
     );
   }
@@ -309,10 +268,8 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         )}
       >
         {cooldown > 0
-          ? `${method === "call" ? "Call again" : "Resend code"} in ${cooldown}s`
-          : method === "call"
-            ? "Didn't get it? Call me again"
-            : "Didn't get it? Resend code"}
+          ? `Resend code in ${cooldown}s`
+          : "Didn't get it? Resend code"}
       </button>
     </form>
   );

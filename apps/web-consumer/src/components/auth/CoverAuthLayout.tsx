@@ -4,6 +4,13 @@ import Image from "next/image";
 import { Outfit } from "next/font/google";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 
+// QUIET (Pato, 2026-11-18, MESITA-4317: "Make this far cleaner";
+// /plan-design-review, mock A): the headline, the value line, the phone
+// field, one green button and one quiet terms line. The default line is the
+// value in one sentence (Pato: "Discovery, reservations, discounts, and
+// gifts … the mobile app for restaurants and cafés and bars"), not how the
+// code comes; the Pay QR and gift doors pass their own. No "Call me instead".
+//
 // FULL BLEED (Pato, 2026-11-17, MESITA-4309: "Cover", then "make a better
 // design for this. wtf is that", and he picked A of three mocks): one
 // surface. The terrace fills the whole screen, the wordmark at its top; the
@@ -38,6 +45,10 @@ import { MesitaMark } from "@/components/brand/MesitaMark";
 // writes it (ModeTabs), not the lockup's lowercase "mesita." (MESITA-3653).
 const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 
+/** The value in one sentence, under the cover's and the welcome's headline. */
+export const VALUE_LINE =
+  "Discovery, reservations, discounts and gifts at restaurants, cafés and bars in Monterrey.";
+
 export function CoverAuthLayout({
   headline,
   title,
@@ -53,8 +64,7 @@ export function CoverAuthLayout({
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
-  const line =
-    title ?? subtitle ?? "Sign in with your number. We'll text you a code.";
+  const line = title ?? subtitle ?? VALUE_LINE;
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-black text-white">
@@ -93,7 +103,7 @@ export function CoverAuthLayout({
           <p className="mt-2 text-base leading-snug text-white/80">{line}</p>
           <div className="mt-6">{children}</div>
           {footer && (
-            <p className="mt-4 text-center text-xs leading-relaxed text-white/60">
+            <p className="mt-4 text-center text-xs leading-relaxed text-white/50">
               {footer}
             </p>
           )}

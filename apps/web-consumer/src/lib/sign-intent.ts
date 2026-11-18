@@ -38,6 +38,6 @@ export function signIntentFromNext(raw: string | null | undefined): {
     case "social":
       return { action, headline: "Sign in to see people", title: undefined };
     default:
-      return { action, headline: "Restaurants, from your phone", title: undefined };
+      return { action, headline: "Discover your next favorite place.", title: undefined };
   }
 }

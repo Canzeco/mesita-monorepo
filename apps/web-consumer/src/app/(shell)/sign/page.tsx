@@ -175,8 +175,8 @@ export default async function SignPage({ searchParams }: Params) {
       }
       footer={
         <>
-          By continuing you agree to Mesita&apos;s terms of service and privacy
-          policy. SMS rates may apply.
+          By continuing you accept the Terms and Privacy Policy. SMS rates may
+          apply.
         </>
       }
     >

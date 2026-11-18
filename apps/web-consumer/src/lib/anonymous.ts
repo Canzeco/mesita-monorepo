@@ -45,7 +45,6 @@ const OPEN = new Set([
   "consumer-web-list-activity",
   "consumer-web-list-place-likes",
   // Sign and onboarding run while the visitor is still anonymous.
-  "consumer-web-call-sign-in-code",
   "consumer-web-signin-phone",
   "consumer-web-get-profile",
   "consumer-web-update-profile",
@@ -194,7 +193,7 @@ export function signHref(next: string): string {
 // ASK BEFORE SENDING (Pato, 2026-11-17, MESITA-4288: "likes or reservations
 // or offers require sign and display the modal before aggressively
 // redirecting"): a gated tap no longer jumps to Sign. It opens SignGateModal,
-// which says why ("Sign in to save places") and offers Continue with phone
+// which says why ("Sign in to save places") and offers Sign in
 // or Not now. Only Continue keeps the intent and goes to Sign.
 
 /** Why the modal is up: a save, or what the target path is for. */
@@ -237,7 +236,7 @@ export function closeSignGate(): void {
   setGate(null);
 }
 
-/** Continue with phone: keep the intent for the tab, then go to Sign. */
+/** Sign in: keep the intent for the tab, then go to Sign. */
 export function continueToSign(g: SignGate): void {
   if (typeof window === "undefined") return;
   saveSignIntent(g.intent);
