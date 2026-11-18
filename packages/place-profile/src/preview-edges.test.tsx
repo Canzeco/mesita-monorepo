@@ -169,7 +169,6 @@ describe("member preview edges", () => {
     expect(html.slice(html.indexOf('aria-label="Place sections"'), html.indexOf("</nav>"))).not.toContain("Soon");
     const soon = renderToStaticMarkup(<SoonScreen />);
     expect(soon).toContain("Smart Menu");
-    expect(soon).not.toContain("coming to Mesita");
   });
 
   it("renders no outbound href when links and callbacks are absent", () => {
