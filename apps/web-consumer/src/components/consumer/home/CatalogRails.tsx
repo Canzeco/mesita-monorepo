@@ -122,10 +122,16 @@ const SocialFeed = dynamic(
 // emoji and name; the chosen pill is ink, the rest grey (the app's chip
 // pair). A menu button at its left opens every family at once. The emoji
 // rail and its widening menu (MESITA-3781…MESITA-4294) are gone.
-const PILL =
-  "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium whitespace-nowrap transition active:scale-[0.97]";
-const PILL_ON = "bg-foreground text-card";
-const PILL_OFF = "bg-muted text-foreground hover:bg-foreground/10";
+// UBER EATS' CATEGORY ROW (Pato, 2026-11-18, MESITA-4410: "it must look
+// the horizontal menu like the horizontal menu of uber eats listing pizza
+// and all that shit as categories"): a big emoji over its name, no box, no
+// pill; the chosen one's name is bold ink over a short ink bar, the rest
+// regular grey. Every tile is the same 64px column, so the row reads as a
+// shelf of icons.
+const CAT =
+  "flex w-16 shrink-0 flex-col items-center gap-1 pb-1 text-xs leading-4 transition active:scale-[0.96]";
+const CAT_EMOJI = "flex h-11 w-11 items-center justify-center text-4xl leading-none";
+const CAT_NAME = "relative w-full truncate text-center";
 
 /** The column's default row: every place, one list, ranked like the Search
  *  map (Pato, MESITA-2516: "only keeping All is cleaner. just like in map").
@@ -539,12 +545,22 @@ export function CatalogRails() {
         }}
         aria-pressed={on}
         data-on={on ? "" : undefined}
-        className={cn(PILL, on ? PILL_ON : PILL_OFF)}
+        className={cn(CAT, inMenu && "w-auto")}
       >
-        <span aria-hidden className="text-base leading-none">
+        <span aria-hidden className={CAT_EMOJI}>
           {c.emoji}
         </span>
-        {c.label}
+        <span
+          className={cn(
+            CAT_NAME,
+            on ? "text-foreground font-bold" : "text-muted-foreground font-medium",
+          )}
+        >
+          {c.label}
+          {on ? (
+            <span aria-hidden className="bg-foreground absolute inset-x-3 -bottom-1 h-[2px] rounded-full" />
+          ) : null}
+        </span>
       </button>
     );
   };
@@ -563,31 +579,44 @@ export function CatalogRails() {
     return () => document.removeEventListener("keydown", onKey);
   }, [menuOpen]);
   const strip = (
-    <div className="border-border bg-card flex shrink-0 items-center gap-2 border-b py-2.5 pl-4" data-places-strip>
-      <button
-        type="button"
-        onClick={() => setMenuOpen((o) => !o)}
-        aria-label={menuOpen ? "Close families" : "All families"}
-        aria-expanded={menuOpen}
-        className={cn(PILL, "w-9 justify-center px-0", menuOpen ? PILL_ON : PILL_OFF)}
-        data-places-menu-button
-      >
-        {menuOpen ? (
-          <X className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-        ) : (
-          <LayoutGrid className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-        )}
-      </button>
+    <div className="border-border bg-card flex shrink-0 items-start border-b pt-2.5 pb-2" data-places-strip>
       <nav
         ref={stripRef}
         aria-label="Families"
-        className="scrollbar-hide flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain pr-4"
+        className="scrollbar-hide flex min-w-0 flex-1 gap-1 overflow-x-auto overscroll-x-contain px-2"
       >
+        {/* THE MENU IS THE ROW'S FIRST TILE (MESITA-4410: "i want a menu"):
+            a grey round button with its name, the same column as a family,
+            opening every family at once. */}
+        <button
+          type="button"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-label={menuOpen ? "Close families" : "All families"}
+          aria-expanded={menuOpen}
+          className={CAT}
+          data-places-menu-button
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "flex h-11 w-11 items-center justify-center rounded-full transition",
+              menuOpen ? "bg-foreground text-card" : "bg-muted text-foreground",
+            )}
+          >
+            {menuOpen ? (
+              <X className="h-5 w-5" strokeWidth={2.5} />
+            ) : (
+              <LayoutGrid className="h-5 w-5" strokeWidth={2.25} />
+            )}
+          </span>
+          <span className={cn(CAT_NAME, "text-muted-foreground font-medium")}>Menu</span>
+        </button>
         {chips.map((c) => pill(c, false))}
       </nav>
     </div>
   );
-  // THE MENU (MESITA-4410): every family as wrapping pills in one white
+  // THE MENU (MESITA-4410): every family as the row's own tiles, four to a
+  // line, in one white
   // panel dropped from the strip over the rows; the rows blur and take no
   // taps behind it (MESITA-3807's rule kept); a tap outside, the X or
   // Escape closes it; a pick closes it.
@@ -602,7 +631,7 @@ export function CatalogRails() {
       />
       <nav
         aria-label="All families"
-        className="bg-card border-border shadow-elev scrollbar-thin-dark absolute inset-x-0 top-0 z-20 flex max-h-[70%] flex-wrap gap-2 overflow-y-auto border-b p-4"
+        className="bg-card border-border shadow-elev scrollbar-thin-dark absolute inset-x-0 top-0 z-20 grid max-h-[70%] grid-cols-4 gap-x-1 gap-y-3 overflow-y-auto border-b px-2 py-4"
         data-places-menu
       >
         {chips.map((c) => pill(c, true))}
