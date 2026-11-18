@@ -49,6 +49,13 @@
 // and "$0". No footer band and no Plans/Your plan boxes. Pro is the one
 // coloured product on Me; the rest of the app stays achromatic.
 //
+// CLEANER SINCE MESITA-4388 (Pato: "free on top of pro. and chill out with
+// your fucking shadows and ilumaination..its just a fucking subscription"):
+// Free sits above Pro, white; Pro has a hairline border and no shadow or
+// glow, a slimmer band with "$1 USD a month", two grey boxes (Pro's
+// reservations per month", "MCP connector · Soon"; no "+7 more than Free"),
+// and the app's ink Upgrade button.
+//
 // One capability, nothing else (Pato: "only that capability for the moment").
 // The server decides it all (consumer-web-get-plan, -start-plan,
 // -cancel-plan; supabase/functions/_shared/guest-plan.ts): Upgrade opens
@@ -59,7 +66,7 @@
 // Plan copy never names Class, and Class copy never names a plan (MESITA-2553).
 
 import { useEffect, useState } from "react";
-import { Check, Loader2, Ticket } from "lucide-react";
+import { Loader2, Ticket } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -75,7 +82,6 @@ import {
   type GuestPlanView,
 } from "@/lib/api/plan";
 import {
-  FREE_RESERVATIONS_PER_MONTH,
   PRO_PRICE_CENTS,
   PRO_RESERVATIONS_PER_MONTH,
 } from "@/lib/plan-perks";
@@ -95,11 +101,13 @@ const PRO_GRADIENT_CLASS =
   "bg-[linear-gradient(135deg,var(--brand-pink-400),var(--brand-pink-600))]";
 // Inline, since the type-role lint reads any `text-[…]` as a font size.
 const PRO_INK = { color: "var(--brand-pink-600)" } as const;
-const PRO_INK_DEEP = { color: "var(--brand-pink-700)" } as const;
 
-/** Mesita Pro as a product (MESITA-4385, mock B "Pro hero"): a pink band
- *  with its name and price, then a white body with two stat tiles, the Soon
- *  perk, and the action the guest's plan calls for (`children`). */
+/** Mesita Pro (MESITA-4385, cleaned in MESITA-4388, Pato: "chill out with
+ *  your fucking shadows and ilumaination..its just a fucking subscription.
+ *  make stuff cleaner"): the Me card's hairline border, no shadow; a pink
+ *  band with the name and price; then two boxes (Pro's reservations per month,
+ *  MCP connector Soon) and the action the guest's plan calls for
+ *  (`children`). */
 function ProCard({
   current,
   children,
@@ -112,79 +120,72 @@ function ProCard({
     <section
       aria-label={words.title}
       data-plan-row={words.title}
-      className="overflow-hidden rounded-2xl border border-[var(--brand-pink-100)] shadow-[0_12px_28px_-14px_var(--brand-pink-600)]"
+      className="border-border overflow-hidden rounded-2xl border"
     >
       <div
         className={cn(
           PRO_GRADIENT_CLASS,
-          "flex items-start justify-between gap-3 p-4 text-white",
+          "flex items-center justify-between gap-3 px-4 py-3.5 text-white",
         )}
       >
-        <div className="min-w-0">
-          <h3 className="font-display text-2xl leading-tight font-bold">
-            Mesita {words.title}
-          </h3>
+        <h3 className="font-display text-xl leading-tight font-bold">
+          Mesita {words.title}
           {current && (
             <span
               data-plan-current=""
-              className="type-meta mt-1.5 inline-block rounded-full bg-white/25 px-2 py-0.5 font-semibold"
+              className="type-meta ml-1.5 rounded-full bg-white/25 px-1.5 py-0.5 align-middle font-sans font-semibold"
             >
               Current
             </span>
           )}
-        </div>
-        <p className="flex shrink-0 flex-col items-end">
-          <span className="text-4xl leading-none font-extrabold tracking-tight tabular-nums">
+        </h3>
+        <p className="shrink-0 text-right">
+          <span className="text-xl font-bold tabular-nums">
             {dollars(PRO_PRICE_CENTS)}
           </span>{" "}
           <span className="type-label text-white/85">USD a month</span>
         </p>
       </div>
       <div className="bg-card flex flex-col gap-3 p-4">
+        {/* Two boxes, Pato's words (MESITA-4388: "just two boxes", Pro's
+            reservations per month and "MCP connector. Soon."). */}
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-xl bg-[var(--brand-pink-50)] px-3 py-2">
-            <p className="text-xl font-extrabold tabular-nums" style={PRO_INK}>
+          <div className="bg-muted rounded-xl px-3 py-2.5">
+            <p className="text-xl font-bold tabular-nums" style={PRO_INK}>
               {PRO_RESERVATIONS_PER_MONTH}
             </p>
-            <p className="type-label font-medium" style={PRO_INK_DEEP}>
-              reservation tickets a month
+            <p className="text-muted-foreground type-label">
+              reservations per month
             </p>
           </div>
-          <div className="rounded-xl bg-[var(--brand-pink-50)] px-3 py-2">
-            <p className="text-xl font-extrabold tabular-nums" style={PRO_INK}>
-              +{PRO_RESERVATIONS_PER_MONTH - FREE_RESERVATIONS_PER_MONTH}
+          <div className="bg-muted rounded-xl px-3 py-2.5">
+            <p className="text-xl font-bold" style={PRO_INK}>
+              MCP
             </p>
-            <p className="type-label font-medium" style={PRO_INK_DEEP}>
-              more than Free
+            <p className="text-muted-foreground type-label">
+              connector ·{" "}
+              <span className="text-foreground font-semibold">Soon</span>
             </p>
           </div>
         </div>
-        {words.soonPerk && (
-          <p className="text-muted-foreground flex items-center gap-2 text-sm">
-            <Check className="h-4 w-4 shrink-0" style={PRO_INK} aria-hidden />
-            {words.soonPerk}
-            <span className="bg-muted text-muted-foreground type-meta rounded-full px-1.5 py-0.5 font-semibold">
-              Soon
-            </span>
-          </p>
-        )}
         {children}
       </div>
     </section>
   );
 }
 
-/** Free as one grey line under Pro (MESITA-4385): a ticket mark, the name
- *  with its Current pill, its monthly tickets and "$0". */
+/** Free as one line above Pro (MESITA-4385; above and white since
+ *  MESITA-4388): a ticket mark, the name with its Current pill, its monthly
+ *  tickets and "$0". */
 function FreeLine({ current }: { current: boolean }) {
   const words = PLAN_ROWS.free;
   return (
     <section
       aria-label={words.title}
       data-plan-row={words.title}
-      className="border-border bg-muted/60 flex items-center gap-3 rounded-2xl border p-3.5"
+      className="border-border bg-card flex items-center gap-3 rounded-2xl border p-3.5"
     >
-      <span className="border-border bg-card grid h-10 w-10 shrink-0 place-items-center rounded-xl border">
+      <span className="bg-muted grid h-10 w-10 shrink-0 place-items-center rounded-xl">
         <Ticket className="text-muted-foreground h-5 w-5" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
@@ -240,7 +241,7 @@ function UsageCard({ view }: { view: GuestPlanView | null }) {
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-semibold">
-          {view ? `${used} of ${cap} tickets used` : "Tickets this month"}
+          {view ? `${used} of ${cap} reservations used` : "Reservations this month"}
         </p>
         {full && (
           <span className="bg-destructive/10 text-destructive type-meta shrink-0 rounded-full px-2 py-0.5 font-semibold">
@@ -256,7 +257,7 @@ function UsageCard({ view }: { view: GuestPlanView | null }) {
         aria-valuenow={view ? Math.min(used, cap) : undefined}
         aria-valuetext={
           view
-            ? `${used} of ${cap} tickets used${full ? ", limit reached" : ""}`
+            ? `${used} of ${cap} reservations used${full ? ", limit reached" : ""}`
             : undefined
         }
         className="bg-muted mt-3 h-2 overflow-hidden rounded-full"
@@ -391,12 +392,12 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
   const plan = view?.plan ?? null;
   const paidPro = plan === "premium" && !view?.granted;
 
-  /** Pro's pink button, inside Pro's card (MESITA-4385: no footer band, so
-   *  no white gap between the product and its action). */
+  /** Pro's button, the app's ink button, inside Pro's card (MESITA-4385: no
+   *  footer band, so no white gap between the product and its action). */
   const proButton = (label: string, data: Record<string, string>) => (
     <Button
       size="lg"
-      className={cn(ME_BUTTON_CLASS, PRO_GRADIENT_CLASS, "w-full text-white")}
+      className={cn(ME_BUTTON_CLASS, "w-full")}
       onClick={upgrade}
       disabled={busy}
       {...data}
@@ -441,15 +442,15 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
       </div>
     ) : null;
 
-  // MESITA-4385 (mock B): the month, then Mesita Pro as the product, then
-  // Free as one line. Before the read the same shape draws with no pill and
+  // The month, then Free, then Mesita Pro (MESITA-4388, Pato: "free on top
+  // of pro"). Before the read the same shape draws with no pill and
   // no button.
   return (
     <MeScreen title="Plan">
       <div className="flex flex-col gap-4">
         <UsageCard view={view} />
-        <ProCard current={plan === "premium"}>{proAction}</ProCard>
         <FreeLine current={plan === "free"} />
+        <ProCard current={plan === "premium"}>{proAction}</ProCard>
       </div>
 
 
