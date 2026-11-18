@@ -405,7 +405,15 @@ export function ReservationForm({
   //          tell you, and Reserve
   // Changing a reservation keeps its name, phone and choices, so it stops at
   // Party (D3): no empty third page. Each step fits a phone screen.
-  const steps: ReserveStep[] = rescheduling ? ["when", "party"] : ["when", "party", "you"];
+  // A live table here is its own first step (MESITA-4403, Pato: "if you
+  // already have a table, add it as a prev step … IF CANCELING, THEN DON'T
+  // PROCEED TO NEXT STEP"): Your table · When · Party. Its button is Change
+  // it; Cancel it opens the table's page and never moves on.
+  const steps: ReserveStep[] = existing
+    ? ["table", "when", "party"]
+    : rescheduling
+      ? ["when", "party"]
+      : ["when", "party", "you"];
   const at = Math.min(stepAt, steps.length - 1);
   const step = steps[at];
   const last = at === steps.length - 1;
@@ -413,6 +421,12 @@ export function ReservationForm({
   const nextBlocked = step === "when" && (checking || awaitingChoice || !time);
   const next = () => {
     if (!nextBlocked && !last) setStepAt(at + 1);
+  };
+  // Your table's Change it: seed the pickers once (a guest coming Back keeps
+  // what they picked since), then go to When.
+  const changeIt = () => {
+    if (choice === null) chooseReschedule();
+    setStepAt(at + 1);
   };
   const nextLabel = checking
     ? "Checking your reservations…"
@@ -474,18 +488,15 @@ export function ReservationForm({
             You&apos;re on Pro.
           </p>
         )}
-        {!plan.pro && step === "when" && (
+        {!plan.pro && step === "table" && existing && (
           <>
             {intro}
-            {existing && (
-              <DuplicateBanner
-                existing={existing}
-                tz={tz}
-                choice={choice}
-                onReschedule={chooseReschedule}
-                onReset={() => setChoice(null)}
-              />
-            )}
+            <DuplicateBanner />
+          </>
+        )}
+
+        {!plan.pro && step === "when" && (
+          <>
             <ReservationDatePicker options={dateOptions} value={date} onChange={setDateChoice} />
             <ReservationTimePicker value={time} onChange={setTimeChoice} date={date} hours={hours} tz={tz}>
               {!rescheduling && (
@@ -597,7 +608,23 @@ export function ReservationForm({
             )}
           </p>
         )}
-        {plan.pro ? null : last && !rescheduling && !plan.settled ? (
+        {plan.pro ? null : step === "table" && existing ? (
+          <div className="flex flex-col gap-2" data-reserve-table-step="">
+            <button
+              type="button"
+              onClick={changeIt}
+              className="bg-reserve text-reserve-foreground inline-flex h-14 w-full items-center justify-center rounded-2xl text-base font-semibold transition active:scale-[0.99]"
+            >
+              Change it
+            </button>
+            <PushLink
+              href={reservationPath(existing.id)}
+              className="border-border bg-card hover:bg-muted inline-flex h-12 w-full items-center justify-center rounded-2xl border text-base font-semibold transition"
+            >
+              Cancel it
+            </PushLink>
+          </div>
+        ) : last && !rescheduling && !plan.settled ? (
           <button
             type="button"
             disabled
@@ -660,27 +687,11 @@ export function ReservationForm({
 }
 
 /**
- * "You already have a table here." Shown inline above the pickers rather than
- * as a blocking dialog: the guest keeps the whole form in view and just tells
- * us whether to change it or cancel it. One live table per place, so there is
- * no second one to make (MESITA-4138).
+ * "You already have a table here." (Your table, MESITA-4403.) The tables
+ * themselves are listed above it; this says why the guest is stopped. One
+ * live table per place, so there is no second one to make (MESITA-4138).
  */
-function DuplicateBanner({
-  existing,
-  choice,
-  onReschedule,
-  onReset,
-  tz,
-}: {
-  existing: EFReservationRow;
-  tz: string | null;
-  choice: DuplicateChoice | null;
-  onReschedule: () => void;
-  onReset: () => void;
-}) {
-  const seed = placeDateTime(existing.reserved_at, tz);
-  const when = seed ? `${seed.date} · ${seed.time}` : "an upcoming slot";
-
+function DuplicateBanner() {
   return (
     <div className="border-border bg-card shrink-0 rounded-2xl border p-4">
       <div className="flex items-start gap-2.5">
@@ -692,39 +703,10 @@ function DuplicateBanner({
             You already have a table here
           </p>
           <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
-            {when} for {existing.party_size} {guestNoun(existing.party_size)}.
+            One table per place. Change it, or cancel it to book another.
           </p>
         </div>
       </div>
-
-      {choice === null ? (
-        <div className="mt-3 flex gap-2">
-          <button
-            type="button"
-            onClick={onReschedule}
-            className="bg-primary text-primary-foreground type-body flex-1 rounded-full py-2 font-semibold transition active:scale-[0.99]"
-          >
-            Change it
-          </button>
-          <PushLink
-            href={reservationPath(existing.id)}
-            className="border-border bg-card hover:bg-muted type-body flex-1 rounded-full border py-2 text-center font-semibold transition"
-          >
-            Cancel it
-          </PushLink>
-        </div>
-      ) : (
-        <p className="text-muted-foreground mt-2 text-xs">
-          Moving your existing table.
-          <button
-            type="button"
-            onClick={onReset}
-            className="text-foreground ml-1.5 font-semibold underline underline-offset-2"
-          >
-            Change
-          </button>
-        </p>
-      )}
     </div>
   );
 }
