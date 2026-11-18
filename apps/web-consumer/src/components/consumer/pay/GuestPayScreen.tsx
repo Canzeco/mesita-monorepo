@@ -755,8 +755,8 @@ export function GuestPayScreen({
   }
 
   // 4A APP PAY: the guest's one saved card (MESITA-4168; the Card step that
-  // picked among several is gone, MESITA-4226), "Pay in one click", held
-  // now. No card saved: "Add a card", which comes back here with it. Pay
+  // picked among several is gone, MESITA-4226), "Pay $X" (MESITA-4316),
+  // held now. No card saved: "Add a card", which comes back here with it. Pay
   // moves money: › is not offered. Only stage "pay" reaches here.
   if (way === "card") {
     const shownCard = card;
@@ -800,9 +800,9 @@ export function GuestPayScreen({
             ) : shownCard ? (
               <>
                 <span className="flex flex-col items-center gap-1">
-                  <span className="text-muted-foreground text-lg font-semibold">Charge</span>
+                  <span className="text-muted-foreground text-lg font-semibold">Pay</span>
                   <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
-                  <span className="text-muted-foreground text-lg">to this card</span>
+                  <span className="text-muted-foreground text-lg">with this card</span>
                 </span>
                 <span
                   className={cn("flex h-36 w-56 flex-col justify-between rounded-2xl p-5 text-left shadow-md", guestFace?.className)}
@@ -833,8 +833,8 @@ export function GuestPayScreen({
         <StepFooter
           onCancel={askCancel}
           cancelDisabled={cancelLocked}
-          // "Pay in one click" (MESITA-4106, Pato: "the button must say pay
-          // in one click"); the amount is the body's headline. No card
+          // "Pay $X" (MESITA-4316, was "Pay in one click", MESITA-4106): the
+          // card is held now and charged when the waiter signs. No card
           // saved: Add a card. After a refusal the main button leads back
           // to Method (MESITA-4121, MESITA-4226).
           primary={
@@ -842,7 +842,7 @@ export function GuestPayScreen({
               ? { label: "Choose another way", busy: false, disabled: held, onClick: chooseAnother }
               : !cardsUnknown && !card
               ? { label: "Add a card", busy, disabled: held, onClick: addCard }
-              : { label: "Pay in one click", busy, disabled: held || !card, onClick: () => void openBill("card") }
+              : { label: `Pay ${m(dueCents)}`, busy, disabled: held || !card, onClick: () => void openBill("card") }
           }
         />
       </>,
