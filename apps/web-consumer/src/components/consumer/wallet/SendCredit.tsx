@@ -25,7 +25,9 @@ import { CONSUMER_ROUTES, walletPlacePath } from "@/lib/consumer-route-contract"
 import { goBack, navigateTo } from "@/lib/navigate";
 import { invalidateCached } from "@/lib/screen-cache";
 import { placeHref } from "@/lib/place-route";
-import { copyToClipboard, shareOrCopy } from "@/lib/share-place";
+import { copyToClipboard, copyWithTextarea } from "@/lib/share-place";
+import { INSTAGRAM_DM_URL } from "@/lib/share-app";
+import { CHANNEL_MARKS } from "@/components/consumer/share/channel-icons";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { Panel } from "@/components/shared/Panel";
@@ -87,10 +89,27 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
   if (!row || !wallet) {
     return (
       <Screen title="Send Gift" paper>
-        <div className="flex flex-col items-center pt-6" aria-busy>
-          <Skeleton className="h-5 w-56 max-w-full" />
-          <Skeleton className="mt-6 h-12 w-60 max-w-full" />
-          <Skeleton className="mt-8 h-12 w-full rounded-xl" />
+        {/* THE PAGE'S SHAPE IN BONES, NO WORDS (MESITA-4352): the place
+            panel, the Gift panel's amount and twelve keys, the Pack bar. */}
+        <div className="flex flex-col gap-3" aria-busy>
+          <Panel className="flex items-center gap-3 px-4 py-3">
+            <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+            <span className="flex flex-col gap-1.5">
+              <Skeleton className="h-3.5 w-24 rounded-md" />
+              <Skeleton className="h-4 w-44 rounded-md" />
+              <Skeleton className="h-3.5 w-32 rounded-md" />
+            </span>
+          </Panel>
+          <Panel className="px-4 pt-4 pb-3">
+            <Skeleton className="h-5 w-12 rounded-md" />
+            <Skeleton className="mx-auto mt-4 h-12 w-48 rounded-lg" />
+            <div className="mt-4 grid grid-cols-3 gap-x-6 gap-y-4 px-4">
+              {Array.from({ length: 12 }, (_, i) => (
+                <Skeleton key={i} className="mx-auto h-8 w-8 rounded-md" />
+              ))}
+            </div>
+          </Panel>
+          <Skeleton className="mt-3 h-12 w-full rounded-xl" />
         </div>
       </Screen>
     );
@@ -146,10 +165,17 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
 
   // PACKED (MESITA-4333, Pato: "not sending, but pack them … then send the
   // gift to one friend"): the gift card, one line on what happens, Send to a
-  // friend (the phone's share sheet), and a quiet Copy link · Done. The link
+  // friend: WhatsApp · Instagram · Messages · Copy link (MESITA-4352), then Done. The link
   // still shows only once, so this screen is the only way to it.
   if (link) {
     const amountText = money(link.cents, currency);
+    const message = `A ${amountText} gift card for ${placeName} on Mesita: ${link.url}`;
+    // Instagram cannot be prefilled from the web: copy the message while the
+    // page has focus, then the link opens the inbox (as /share does).
+    const copyForInstagram = () => {
+      if (copyWithTextarea(message)) toast.success("Copied: paste it in an Instagram chat");
+      else void copyToClipboard(message).then((ok) => (ok ? toast.success("Copied: paste it in an Instagram chat") : toast.error("Couldn't copy: paste the link yourself")));
+    };
     return (
       <Screen title="Send Gift" paper>
         <div className="flex flex-col items-center pt-6 text-center" data-send-credit-packed>
@@ -158,27 +184,49 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
           <p className="text-muted-foreground mt-2 max-w-xs text-sm leading-relaxed">
             The first to open it gets it. Until then you can take it back.
           </p>
-          <button
-            type="button"
-            className={`${PRIMARY} mt-8`}
-            onClick={() =>
-              void shareOrCopy(
-                { title: "A Mesita gift card", text: `${amountText} to spend at ${placeName}`, url: link.url },
-                { text: link.url, copied: "Link copied", failed: "Couldn't copy the link" },
-              )}
-            data-send-credit-share
-          >
-            Send to a friend
-          </button>
-          <div className="text-muted-foreground mt-3 flex items-center gap-1 text-sm font-semibold">
-            <button type="button" className="hover:text-foreground px-2 py-2 transition" onClick={() => void copyLink(link.url)}>
-              Copy link
-            </button>
-            <span aria-hidden>·</span>
-            <button type="button" className="hover:text-foreground px-2 py-2 transition" onClick={done}>
-              Done
-            </button>
+          {/* ONE TAP PER CHANNEL (MESITA-4352, Pato: "add the shortcuts to
+              share with WhatsApp or Instagram or just copy links … include
+              sms too"): /share's marks as four round buttons, label under. */}
+          <div className="mt-8 grid w-full grid-cols-4 gap-2" data-send-credit-channels>
+            {(
+              [
+                { channel: "whatsapp", label: "WhatsApp", href: `https://wa.me/?text=${encodeURIComponent(message)}` },
+                { channel: "instagram", label: "Instagram", href: INSTAGRAM_DM_URL, onClick: copyForInstagram },
+                { channel: "messages", label: "Messages", href: `sms:?&body=${encodeURIComponent(message)}` },
+                { channel: "copy", label: "Copy link", onClick: () => void copyLink(link.url) },
+              ] as const
+            ).map((c) => {
+              const face = (
+                <>
+                  <span className="bg-muted flex h-14 w-14 items-center justify-center rounded-full [&_svg]:h-6 [&_svg]:w-6">
+                    {CHANNEL_MARKS[c.channel]}
+                  </span>
+                  <span className="text-sm font-medium">{c.label}</span>
+                </>
+              );
+              const cls = "flex flex-col items-center gap-2 rounded-xl py-1 transition active:opacity-70";
+              return "href" in c ? (
+                <a
+                  key={c.channel}
+                  href={c.href}
+                  target={c.channel === "messages" ? undefined : "_blank"}
+                  rel="noopener noreferrer"
+                  onClick={"onClick" in c ? c.onClick : undefined}
+                  className={cls}
+                  aria-label={`Send by ${c.label}`}
+                >
+                  {face}
+                </a>
+              ) : (
+                <button key={c.channel} type="button" onClick={c.onClick} className={cls}>
+                  {face}
+                </button>
+              );
+            })}
           </div>
+          <button type="button" className={`${SECONDARY} mt-6`} onClick={done}>
+            Done
+          </button>
         </div>
       </Screen>
     );
