@@ -1,4 +1,4 @@
--- MESITA-3219, MESITA-3392, MESITA-3422 — the history behind Business Views, and the
+-- MESITA-3219, MESITA-3392, MESITA-3422, MESITA-4326 — the history behind Business Views, and the
 -- guest readers that count every open from it: what writes a row, and that a
 -- like taken back is gone. Guests' names in the log are place_views_log.test.sql.
 
@@ -6,7 +6,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(13);
+select plan(17);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3219');
 insert into public.consumers (id, first_name) values ('00000000-0000-4000-8000-0000000a3219', 'Probe');
@@ -96,6 +96,32 @@ select is(
   (select views::int from public.place_view_counts(array['00000000-0000-4000-8000-000000003219'::uuid])),
   4,
   'Mesita Views counts every open'
+);
+
+-- MESITA-4326: a signed-out open is a view with no person.
+insert into public.place_events (consumer_id, place_id, kind)
+values (null, '00000000-0000-4000-8000-000000003219', 'viewed');
+select is(
+  (select views::int from public.place_view_counts(array['00000000-0000-4000-8000-000000003219'::uuid])),
+  5,
+  'a signed-out open counts in Mesita Views'
+);
+select is(
+  (select count(*)::int from public.place_views_events('00000000-0000-4000-8000-000000003219') where consumer_id is null),
+  1,
+  'Business Views'' total and chart count the signed-out open'
+);
+select is(
+  (select count(*)::int from public.place_views_log('00000000-0000-4000-8000-000000003219', null, 200) where consumer_id is null),
+  0,
+  'the views log never lists a signed-out open'
+);
+select throws_ok(
+  $$insert into public.place_events (consumer_id, place_id, kind)
+    values (null, '00000000-0000-4000-8000-000000003219', 'saved')$$,
+  '23514',
+  null,
+  'only a view may have no person: a like or share without one is refused'
 );
 
 select * from finish();

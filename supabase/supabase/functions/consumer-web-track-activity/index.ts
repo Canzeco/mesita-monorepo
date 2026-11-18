@@ -40,10 +40,19 @@
 // lands it on a multiple of "Update every N views" (updateEveryViews) runs
 // the same Google Update the admin Update runs (Google factuals into
 // place_profiles), in the background after the answer.
+//
+// A SIGNED-OUT OPEN IS A VIEW WITH NO PERSON (Pato, 2026-11-18, MESITA-4326:
+// "anonymous users must not be created in the database at all … the only
+// thing anonymous must act on is views"; "counts only"). With no session a
+// `viewed` writes one place_events row with no consumer: Business Views and
+// the Stats box count it, the log, the Social feed and the person card never
+// show it. It is not an Enrich/Update vote (applyPlaceRequest): those runs
+// cost money and a signed-out count is too easy to inflate. Anything else
+// with no session is 401.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireConsumerRequest } from "../_shared/request.ts";
+import { consumerOrAnonymousRequest } from "../_shared/request.ts";
 import { eventPoint, isActivityKind, isMesitaPlaceId } from "../_shared/place-activity.ts";
 import { applyPlaceRequest } from "../_shared/place-requests.ts";
 import { runGooglePlaceUpdate } from "../_shared/admin-google-place-update.ts";
@@ -60,10 +69,9 @@ type Body = {
 };
 
 serveJson("consumer-web-track-activity", async (req) => {
-  const ctx = await requireConsumerRequest(req);
+  const ctx = await consumerOrAnonymousRequest(req);
   if (ctx instanceof Response) return ctx;
   const { env, admin, user } = ctx;
-  const consumerId = user.id;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -74,6 +82,20 @@ serveJson("consumer-web-track-activity", async (req) => {
   if (!isMesitaPlaceId(placeId)) {
     return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   }
+  if (!user) {
+    if (kind !== "viewed") {
+      return json({ ok: false, error: "Sign in to save places", code: "sign_in_required" }, 401);
+    }
+    const { error } = await admin
+      .from("place_events")
+      .insert({ consumer_id: null, place_id: placeId, kind: "viewed" });
+    if (error) {
+      const status = error.code === "23503" ? 404 : 500;
+      return json({ ok: false, error: `anonymous_view: ${error.message}` }, status);
+    }
+    return json({ ok: true, kind, on: true, enriching: false });
+  }
+  const consumerId = user.id;
   const on = kind === "viewed" ? true : bodyRes.body.on !== false;
   const quiet = kind === "saved" && bodyRes.body.quiet === true;
   const point = eventPoint(bodyRes.body.lat, bodyRes.body.lng);
