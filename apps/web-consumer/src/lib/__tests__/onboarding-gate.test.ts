@@ -7,7 +7,6 @@ import {
   consumerCanBrowse,
   isConsumerSex,
   ONBOARD_FIELDS,
-  splitFullName,
 } from "../consumer-onboarding";
 import { MIN_SIGNUP_AGE } from "../utils";
 
@@ -79,10 +78,11 @@ describe("consumerCanBrowse — the signup gate", () => {
   });
 });
 
-describe("the three onboarding fields (MESITA-4302)", () => {
-  it("asks name, then sex, then year of birth", () => {
+describe("the onboarding fields (MESITA-4312)", () => {
+  it("asks first name, last name, then sex, then year of birth", () => {
     expect(ONBOARD_FIELDS.map((s) => s.key)).toEqual([
-      "name",
+      "first_name",
+      "last_name",
       "sex",
       "birth_year",
     ]);
@@ -93,25 +93,9 @@ describe("the three onboarding fields (MESITA-4302)", () => {
   });
 
   it("interpolates the age floor instead of printing a literal", () => {
-    const hint =
-      ONBOARD_FIELDS.find((f) => f.key === "birth_year")?.hint ?? "";
+    const hint = ONBOARD_FIELDS.find((f) => f.key === "birth_year")?.hint ?? "";
     expect(hint).toContain(String(MIN_SIGNUP_AGE));
     expect(hint).not.toContain("13");
-  });
-});
-
-// The one Name box still has to store a last name a place can book under.
-describe("splitFullName (MESITA-4302)", () => {
-  it("keeps the first word as the first name and the rest as the last", () => {
-    expect(splitFullName("  Patricio   Canseco López ")).toEqual({
-      first: "Patricio",
-      last: "Canseco López",
-    });
-  });
-
-  it("refuses a name with no last name", () => {
-    expect(splitFullName("Patricio")).toBeNull();
-    expect(splitFullName("   ")).toBeNull();
   });
 });
 
@@ -125,17 +109,20 @@ describe("the gate's other copies", () => {
       "supabase/supabase/functions/consumer-web-signin-phone/signin.ts",
       "export function isOnboarded",
     ],
-  ])("%s checks first_name, last_name, birth_year and sex", (_name, path, anchor) => {
-    const source = read(path);
-    const at = source.indexOf(anchor);
-    expect(at, `${anchor} not found in ${path}`).toBeGreaterThan(-1);
-    // Just the predicate body, so a mention in a nearby comment cannot make
-    // this pass on its own.
-    const body = source.slice(at, at + 400);
-    for (const field of ["first_name", "last_name", "birth_year", "sex"]) {
-      expect(body, `${path} stopped checking ${field}`).toContain(field);
-    }
-  });
+  ])(
+    "%s checks first_name, last_name, birth_year and sex",
+    (_name, path, anchor) => {
+      const source = read(path);
+      const at = source.indexOf(anchor);
+      expect(at, `${anchor} not found in ${path}`).toBeGreaterThan(-1);
+      // Just the predicate body, so a mention in a nearby comment cannot make
+      // this pass on its own.
+      const body = source.slice(at, at + 400);
+      for (const field of ["first_name", "last_name", "birth_year", "sex"]) {
+        expect(body, `${path} stopped checking ${field}`).toContain(field);
+      }
+    },
+  );
 
   it("asks for sex on the onboarding screen", () => {
     const path = "apps/web-consumer/src/app/onboard/OnboardForm.tsx";

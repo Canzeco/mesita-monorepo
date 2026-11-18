@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-// MESITA-2746: /onboard is one screen; since MESITA-4302 it asks name, sex
-// and year of birth. This
+// MESITA-2746: /onboard is one screen; since MESITA-4312 it asks first name,
+// last name, sex and year of birth. This
 // suite runs in the `node` environment with no jsdom (vitest.config.ts), so the
 // form cannot be clicked through — only static markup is checked.
 
@@ -24,7 +24,8 @@ import {
 } from "@/lib/consumer-onboarding";
 
 function markup(initial?: {
-  name: string;
+  firstName: string;
+  lastName: string;
   birthYear: number | null;
   sex: string;
 }) {
@@ -38,7 +39,8 @@ describe("the onboarding form renders all fields on one screen", () => {
     for (const { label } of ONBOARD_FIELDS) {
       expect(html).toContain(label);
     }
-    expect(html).toContain('name="name"');
+    expect(html).toContain('name="first_name"');
+    expect(html).toContain('name="last_name"');
     expect(html).toContain('role="radiogroup"');
     expect(html.match(/role="radio"/g) ?? []).toHaveLength(2);
   });
@@ -51,22 +53,27 @@ describe("the onboarding form renders all fields on one screen", () => {
 
   it("prefills stored values while still showing every field", () => {
     const initial = {
-      name: "Ana Ruiz",
+      firstName: "Ana",
+      lastName: "Ruiz",
       birthYear: 1998,
       sex: "",
     };
     const html = markup(initial);
-    expect(html).toContain("Ana Ruiz");
+    expect(html).toContain('value="Ana"');
+    expect(html).toContain('value="Ruiz"');
     expect(html).toMatch(/<option[^>]*value="1998"[^>]*selected/);
     for (const { label } of ONBOARD_FIELDS) {
       expect(html).toContain(label);
     }
   });
 
-  it("asks the name with a label, not a placeholder echoing it", () => {
+  it("asks each name half with a label, not a placeholder echoing it", () => {
     const html = markup();
-    const nameInput = /<input\b[^>]*name="name"[^>]*>/.exec(html)?.[0] ?? "";
-    expect(nameInput).toBeTruthy();
-    expect(nameInput).not.toContain("placeholder=");
+    for (const field of ["first_name", "last_name"]) {
+      const input =
+        new RegExp(`<input\\b[^>]*name="${field}"[^>]*>`).exec(html)?.[0] ?? "";
+      expect(input).toBeTruthy();
+      expect(input).not.toContain("placeholder=");
+    }
   });
 });

@@ -15,8 +15,7 @@ import {
   birthYearOptions,
   CONSUMER_SEXES,
   isConsumerSex,
-  nameError,
-  splitFullName,
+  tidyName,
   ONBOARD_FIELDS,
   ONBOARD_PAGE_DEK,
   ONBOARD_PAGE_HEADLINE,
@@ -39,9 +38,10 @@ import {
 // profile surface printed it while nothing collected it. It also owns
 // ONBOARD_FIELDS — the field list the gate checks and the form renders.
 //
-// ONE NAME BOX (MESITA-4302). The last name is still required (MESITA-4090:
-// the place books tables under it), so the box needs two words and
-// splitFullName stores the first as the first name and the rest as the last.
+// FIRST NAME AND LAST NAME (MESITA-4312, Pato: "Yes, split it"), two fields,
+// each saved as typed; MESITA-4302's one Name box split on the first space
+// is gone. Both are required (MESITA-4090: the place books tables under the
+// last name).
 //
 // ONE SCREEN (MESITA-2746): name, sex and year of birth together. A
 // returning half-finished profile prefills what is already stored; one
@@ -67,8 +67,8 @@ import {
 // attempt names the specific gap.
 
 export type OnboardInitialValues = {
-  /** First + last joined, as the one box shows them. */
-  name: string;
+  firstName: string;
+  lastName: string;
   birthYear: number | null;
   sex: string;
 };
@@ -99,7 +99,8 @@ export function OnboardForm({
   // LAZY on purpose: the client is only needed when Continue fires, so a
   // render — including this component's unit test — never touches env vars.
   const getSupabase = useLazyBrowserSupabase();
-  const [name, setName] = useState(initial?.name ?? "");
+  const [firstName, setFirstName] = useState(initial?.firstName ?? "");
+  const [lastName, setLastName] = useState(initial?.lastName ?? "");
   const [birthYear, setBirthYear] = useState<number | null>(
     initial?.birthYear ?? null,
   );
@@ -115,7 +116,10 @@ export function OnboardForm({
   const yearField = ONBOARD_FIELDS.find((f) => f.key === "birth_year");
 
   const ready =
-    Boolean(name.trim()) && birthYear !== null && isConsumerSex(sex);
+    Boolean(firstName.trim()) &&
+    Boolean(lastName.trim()) &&
+    birthYear !== null &&
+    isConsumerSex(sex);
 
   /** Arrow keys move between the options and select as they go, which is what
    *  the radio pattern specifies — and with two options Left and Right are the
@@ -147,11 +151,12 @@ export function OnboardForm({
     setError(null);
 
     const fd = new FormData(e.currentTarget);
-    const typedName = ((fd.get("name") as string | null) ?? name).trim();
-    const badName = nameError(typedName);
-    if (badName) return setError(badName);
-    const split = splitFullName(typedName);
-    if (!split) return setError("Add your last name too.");
+    const first = tidyName(
+      (fd.get("first_name") as string | null) ?? firstName,
+    );
+    const last = tidyName((fd.get("last_name") as string | null) ?? lastName);
+    if (!first) return setError("Tell us your first name.");
+    if (!last) return setError("Add your last name too.");
     if (!isConsumerSex(sex)) return setError("Pick one to continue.");
     if (birthYear === null) return setError("Pick your year of birth.");
     if (!birthYearOldEnough(birthYear)) {
@@ -165,13 +170,14 @@ export function OnboardForm({
       );
     }
 
-    setName(typedName);
+    setFirstName(first);
+    setLastName(last);
     setLoading(true);
     void (async () => {
       try {
         await apiUpdateConsumerProfile(getSupabase(), {
-          first_name: split.first,
-          last_name: split.last,
+          first_name: first,
+          last_name: last,
           birth_year: birthYear,
           sex,
         });
@@ -209,20 +215,39 @@ export function OnboardForm({
 
       <div className="mt-8 flex flex-col gap-6">
         <div>
-          <label htmlFor="onboard-name" className={FIELD_LABEL_CLASS}>
-            {FIELD("name")}
+          <label htmlFor="onboard-first-name" className={FIELD_LABEL_CLASS}>
+            {FIELD("first_name")}
           </label>
           <input
-            id="onboard-name"
-            name="name"
+            id="onboard-first-name"
+            name="first_name"
             className={INPUT_CLASS}
-            value={name}
+            value={firstName}
             onChange={(e) => {
-              setName(e.target.value);
+              setFirstName(e.target.value);
               setError(null);
             }}
-            maxLength={120}
-            autoComplete="name"
+            maxLength={60}
+            autoComplete="given-name"
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="onboard-last-name" className={FIELD_LABEL_CLASS}>
+            {FIELD("last_name")}
+          </label>
+          <input
+            id="onboard-last-name"
+            name="last_name"
+            className={INPUT_CLASS}
+            value={lastName}
+            onChange={(e) => {
+              setLastName(e.target.value);
+              setError(null);
+            }}
+            maxLength={60}
+            autoComplete="family-name"
             required
           />
         </div>
@@ -267,7 +292,10 @@ export function OnboardForm({
           <select
             id="onboard-birth-year"
             name="birth_year"
-            className={cn(INPUT_CLASS, birthYear === null && "text-muted-foreground")}
+            className={cn(
+              INPUT_CLASS,
+              birthYear === null && "text-muted-foreground",
+            )}
             value={birthYear ?? ""}
             onChange={(e) => {
               setBirthYear(e.target.value ? Number(e.target.value) : null);

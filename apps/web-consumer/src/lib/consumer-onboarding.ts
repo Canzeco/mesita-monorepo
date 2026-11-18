@@ -3,8 +3,8 @@
 //
 // `consumerCanBrowse` is what /onboard collects before the app opens at all:
 // first AND last name (Pato, MESITA-4090: "first and last name must be
-// mandatory when onboarding, not only first name"; typed in ONE Name box since
-// MESITA-4302 and split by `splitFullName`), year of birth (MESITA-4302:
+// mandatory when onboarding, not only first name"; two fields, First name
+// and Last name, since MESITA-4312), year of birth (MESITA-4302:
 // "Year of birth. Fuck specific age"; MIN_SIGNUP_AGE
 // is a ToS floor, and an age gate is only worth anything at account
 // creation), and sex (MESITA-1829). A profile without a last name is sent
@@ -58,14 +58,13 @@ type OnboardableProfile = {
   sex?: string | null;
 };
 
-// ─── Name: one box, two stored halves (MESITA-4302) ─────────────────────────
-// Pato picked one Name box over First + Last. The booking still needs a last
-// name (the host system keys on it; eleven-agent-get-reservation matches
-// first + last), so the box is split: the first word is the first name, the
-// rest is the last name. "Patricio Canseco López" keeps both surnames in the
-// last name. Accepted cost: "Juan Pablo Pérez" stores last name "Pablo Pérez".
+// ─── Name: First name and Last name (MESITA-4312) ──────────────────────────
+// Two fields since MESITA-4312 (Pato: "firt name and last name", then "Yes,
+// split it" for onboarding); MESITA-4302's one Name box split on the first
+// space is gone. Both are required: the booking needs a last name (the host
+// system keys on it; eleven-agent-get-reservation matches first + last).
 
-/** The two stored halves as the one box shows them. */
+/** The two stored halves as one line ("Patricio Canseco"). */
 export function joinName(
   first: string | null | undefined,
   last: string | null | undefined,
@@ -73,20 +72,9 @@ export function joinName(
   return [first?.trim(), last?.trim()].filter(Boolean).join(" ");
 }
 
-/** The box's text as the two halves, or null when it has fewer than two
- *  words (no last name to book under). */
-export function splitFullName(
-  value: string,
-): { first: string; last: string } | null {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  if (words.length < 2) return null;
-  return { first: words[0], last: words.slice(1).join(" ") };
-}
-
-/** The error for a name the split refuses. */
-export function nameError(value: string): string | null {
-  if (!value.trim()) return "Tell us your name.";
-  return splitFullName(value) ? null : "Add your last name too.";
+/** A name half as saved: trimmed, inner runs of spaces made one. */
+export function tidyName(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
 }
 
 // ─── Year of birth (MESITA-4302) ────────────────────────────────────────────
@@ -110,7 +98,10 @@ export function birthYearOptions(now: Date = new Date()): number[] {
 }
 
 /** True when the year clears the age floor. */
-export function birthYearOldEnough(year: number, now: Date = new Date()): boolean {
+export function birthYearOldEnough(
+  year: number,
+  now: Date = new Date(),
+): boolean {
   return now.getFullYear() - year >= MIN_SIGNUP_AGE;
 }
 
@@ -137,9 +128,9 @@ export function consumerCanBrowse(
 ): boolean {
   return Boolean(
     profile?.first_name?.trim() &&
-      profile?.last_name?.trim() &&
-      birthYearOf(profile) !== null &&
-      isConsumerSex(profile?.sex),
+    profile?.last_name?.trim() &&
+    birthYearOf(profile) !== null &&
+    isConsumerSex(profile?.sex),
   );
 }
 
@@ -152,7 +143,7 @@ export function consumerCanBrowse(
 export const ONBOARD_PAGE_HEADLINE = "Almost there.";
 export const ONBOARD_PAGE_DEK = "A few quick details and you're in.";
 
-type OnboardFieldKey = "name" | "sex" | "birth_year";
+type OnboardFieldKey = "first_name" | "last_name" | "sex" | "birth_year";
 
 type OnboardField = {
   readonly key: OnboardFieldKey;
@@ -162,7 +153,8 @@ type OnboardField = {
 };
 
 export const ONBOARD_FIELDS: readonly OnboardField[] = [
-  { key: "name", label: "Name", hint: null },
+  { key: "first_name", label: "First name", hint: null },
+  { key: "last_name", label: "Last name", hint: null },
   { key: "sex", label: "Sex", hint: null },
   {
     key: "birth_year",

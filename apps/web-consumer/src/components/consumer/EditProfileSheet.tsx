@@ -25,6 +25,7 @@ import {
   birthYearOf,
   birthYearOldEnough,
   birthYearOptions,
+  tidyName,
 } from "@/lib/consumer-onboarding";
 
 // Full-page identity editor at /me/profile (MESITA-1789). Was a LocalSheet
@@ -264,8 +265,8 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   const displayAvatarUrl = previewUrl ?? profile.avatar_url ?? null;
 
   const dirty =
-    tidy(firstName) !== storedFirst ||
-    tidy(lastName) !== storedLast ||
+    tidyName(firstName) !== storedFirst ||
+    tidyName(lastName) !== storedLast ||
     sex !== (profile.sex ?? "") ||
     birthYear !== storedYear;
 
@@ -310,8 +311,8 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
 
   async function save() {
     if (!dirty || saving) return;
-    const first = tidy(firstName);
-    const last = tidy(lastName);
+    const first = tidyName(firstName);
+    const last = tidyName(lastName);
     if (!first) {
       setSaveError("Tell us your first name.");
       return;
@@ -494,11 +495,6 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
       </div>
     </MeScreen>
   );
-}
-
-/** A name as saved: trimmed, inner runs of spaces made one. */
-function tidy(value: string): string {
-  return value.trim().replace(/\s+/g, " ");
 }
 
 function SheetField({

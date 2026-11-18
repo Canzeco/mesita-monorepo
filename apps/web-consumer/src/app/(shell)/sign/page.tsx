@@ -6,7 +6,10 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { PhoneOtpForm } from "@/components/auth/PhoneOtpForm";
 import { CoverAuthLayout } from "@/components/auth/CoverAuthLayout";
 import { SignOutButton } from "@/components/auth/SignOutButton";
-import { OnboardForm, type OnboardInitialValues } from "@/app/onboard/OnboardForm";
+import {
+  OnboardForm,
+  type OnboardInitialValues,
+} from "@/app/onboard/OnboardForm";
 import {
   consumerAuthDestination,
   giftTokenFromNext,
@@ -15,7 +18,7 @@ import {
 } from "@/lib/auth-redirect";
 import { apiGetGiftPreview, apiGetPayPlaceName } from "@/lib/api/auth";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
-import { birthYearOf, consumerCanBrowse, joinName } from "@/lib/consumer-onboarding";
+import { birthYearOf, consumerCanBrowse } from "@/lib/consumer-onboarding";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { signIntentFromNext } from "@/lib/sign-intent";
 import { isTransientAuthError } from "@/lib/stale-session";
@@ -64,8 +67,16 @@ export async function generateMetadata(
   return {
     title: gift.line,
     description,
-    openGraph: { ...openGraph, title: gift.line, description } as Metadata["openGraph"],
-    twitter: { ...twitter, title: gift.line, description } as Metadata["twitter"],
+    openGraph: {
+      ...openGraph,
+      title: gift.line,
+      description,
+    } as Metadata["openGraph"],
+    twitter: {
+      ...twitter,
+      title: gift.line,
+      description,
+    } as Metadata["twitter"],
   };
 }
 
@@ -90,21 +101,31 @@ export default async function SignPage({ searchParams }: Params) {
       const { consumer: profile } = await apiFetchConsumerProfile(supabase);
       onboarded = consumerCanBrowse(profile);
       initial = {
-        name: joinName(profile.first_name, profile.last_name) || (profile.full_name ?? ""),
+        firstName: profile.first_name?.trim() ?? "",
+        lastName: profile.last_name?.trim() ?? "",
         birthYear: birthYearOf(profile),
         sex: profile.sex ?? "",
       };
     } catch (err) {
-      console.error("[consumer/sign] consumer-get-profile:", errMsg(err, "profile fetch failed"));
+      console.error(
+        "[consumer/sign] consumer-get-profile:",
+        errMsg(err, "profile fetch failed"),
+      );
       failed = true;
     }
     if (onboarded) redirect(next ?? CONSUMER_ROUTES.me);
     if (failed) {
       return (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-          <p className="text-foreground text-base font-semibold">We couldn&apos;t load your account</p>
+          <p className="text-foreground text-base font-semibold">
+            We couldn&apos;t load your account
+          </p>
           <a
-            href={params.next ? `${CONSUMER_ROUTES.sign}?next=${encodeURIComponent(next ?? "")}` : CONSUMER_ROUTES.sign}
+            href={
+              params.next
+                ? `${CONSUMER_ROUTES.sign}?next=${encodeURIComponent(next ?? "")}`
+                : CONSUMER_ROUTES.sign
+            }
             className="text-foreground min-h-11 font-medium underline underline-offset-2"
           >
             Try again
@@ -159,7 +180,9 @@ export default async function SignPage({ searchParams }: Params) {
         </>
       }
     >
-      <PhoneOtpForm redirectAfter={consumerAuthDestination(next ?? undefined)} />
+      <PhoneOtpForm
+        redirectAfter={consumerAuthDestination(next ?? undefined)}
+      />
     </CoverAuthLayout>
   );
 }
