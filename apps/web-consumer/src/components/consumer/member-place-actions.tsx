@@ -21,7 +21,7 @@ import {
 } from "@/lib/api/wallet";
 import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { runBankCheck } from "@/lib/api/tab";
-import { useAddCardPage } from "@/lib/added-card";
+import { useAddCardModal } from "@/lib/added-card";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { PlaceSocialList } from "@/components/consumer/PlaceSocialList";
 import {
@@ -434,7 +434,7 @@ export function usePlaceVouchers(
   }, [mesita]);
 
   const selectCard = useCallback((id: string) => setPayCardId(id), []);
-  const openAddCard = useAddCardPage((id) => {
+  const openAddCard = useAddCardModal((id) => {
     setPayCardId(id);
     writeLastCard(userKey.current, id);
     toast.success("Card saved. Tap Pay to buy.");
@@ -586,7 +586,7 @@ export function usePlaceVouchers(
 
   const mine = offer?.placeId === placeId ? offer : null;
   const money = mine?.money ?? null;
-  // Add a card: its own page since MESITA-4101 (/wallet/cards/new); back
+  // Add a card: a modal since MESITA-4398 (a page in MESITA-4101); then
   // here the new card is the selected one. The basket is not kept, so the
   // guest taps Pay again.
   const sheet = null;

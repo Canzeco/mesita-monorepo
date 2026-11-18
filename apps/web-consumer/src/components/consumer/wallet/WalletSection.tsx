@@ -34,6 +34,7 @@ import {
   pendingWords,
 } from "./WalletLists";
 import { money, type WalletBalance } from "@/lib/api/wallet";
+import { openAddCardModal } from "@/lib/added-card";
 
 // ONE READ, ONE PAINT (Pato, 2026-11-12, MESITA-3814: "first load the
 // functions and then display all the wallets, don't display stuff in an
@@ -238,8 +239,8 @@ export function WalletSection({
     if (ready) onReady?.();
   }, [ready, onReady]);
 
-  // Add a card in the app (MESITA-4065: no Stripe page), on its own page
-  // since MESITA-4092 (/wallet/cards/new).
+  // Add a card in the app (MESITA-4065: no Stripe page), in a modal since
+  // MESITA-4398; saved, the Wallet reads again and lists it.
 
   const removeCard = useCallback(
     async (card: SavedCard) => {
@@ -288,7 +289,7 @@ export function WalletSection({
         ) : cardsFailed ? (
           <CardTileSkeleton />
         ) : (
-          <AddCardTile href={CONSUMER_ROUTES.walletAddCard} />
+          <AddCardTile onClick={() => openAddCardModal(() => reread())} />
         )}
       </PaymentMethods>
 

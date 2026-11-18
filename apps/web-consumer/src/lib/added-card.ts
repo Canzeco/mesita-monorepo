@@ -1,27 +1,61 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { navigateTo } from "@/lib/navigate";
+// ADD A CARD IS A MODAL (MESITA-4398, Pato, 2026-11-18: "card must not be
+// another page. it must be a modal."; reverses MESITA-4092/4101's page).
+// Every Add a card (Wallet, Pay's Method, the Offers page, the member tab)
+// opens ONE modal, AddCardModal, mounted once in the shell. The opener hands
+// a callback; on save the modal calls it with the new card's id and closes,
+// so the screen under it never moved and selects or lists the card at once.
+// /wallet/cards/new (AddCardPage) stays only for old links.
 
-// ADD A CARD, FROM THE MIDDLE OF A PURCHASE (MESITA-4101, Pato: "add card as
-// its own subpage everywhere"). Pay's Method step, the Offers page and the
-// member tab push /wallet/cards/new?pick=1 (AddCardPage); on save the page
-// leaves the new card's id here and goes Back, and the screen that opened it
-// takes the id once and selects that card. It is taken on mount AND on every
-// return to the screen's address, so it lands whether the screen remounted
-// or stayed mounted under the page. Wallet's own Add a card has no ?pick:
-// Wallet reads again and lists it.
+type Opened = { onAdded: (paymentMethodId: string) => void } | null;
+
+let opened: Opened = null;
+const listeners = new Set<() => void>();
+
+function emit() {
+  for (const l of listeners) l();
+}
+
+function subscribe(l: () => void) {
+  listeners.add(l);
+  return () => {
+    listeners.delete(l);
+  };
+}
+
+export function openAddCardModal(onAdded: (paymentMethodId: string) => void = () => {}): void {
+  opened = { onAdded };
+  emit();
+}
+
+export function closeAddCardModal(): void {
+  opened = null;
+  emit();
+}
+
+/** AddCardModal's view of the store: who opened it, or null when closed. */
+export function useAddCardModalState(): Opened {
+  return useSyncExternalStore(subscribe, () => opened, () => null);
+}
+
+/** Opens the Add a card modal; on save calls `onAdded` with the new card's
+ *  id, once. */
+export function useAddCardModal(onAdded: (paymentMethodId: string) => void): () => void {
+  const latest = useRef(onAdded);
+  useEffect(() => {
+    latest.current = onAdded;
+  });
+  return useCallback(() => openAddCardModal((id) => latest.current(id)), []);
+}
+
+// ---- The old page's hand-back (/wallet/cards/new?pick=1), kept for old links.
 
 const KEY = "mesita.added-card";
 /** The query that asks AddCardPage to hand the card back. */
 export const PICK_PARAM = "pick";
-
-export function addCardPickHref(): string {
-  return `${CONSUMER_ROUTES.walletAddCard}?${PICK_PARAM}=1`;
-}
 
 /** AddCardPage, on save: leave the id for the screen under it. */
 export function handOverAddedCard(paymentMethodId: string): void {
@@ -30,30 +64,4 @@ export function handOverAddedCard(paymentMethodId: string): void {
   } catch {
     // The card is saved either way; the screen just won't preselect it.
   }
-}
-
-function takeAddedCard(): string | null {
-  try {
-    const id = window.sessionStorage.getItem(KEY);
-    if (id) window.sessionStorage.removeItem(KEY);
-    return id;
-  } catch {
-    return null;
-  }
-}
-
-/** Opens the Add a card page and, back here, calls `onAdded` with the new
- *  card's id, once. */
-export function useAddCardPage(onAdded: (paymentMethodId: string) => void): () => void {
-  const router = useRouter();
-  const pathname = usePathname();
-  const latest = useRef(onAdded);
-  useEffect(() => {
-    latest.current = onAdded;
-  });
-  useEffect(() => {
-    const id = takeAddedCard();
-    if (id) latest.current(id);
-  }, [pathname]);
-  return () => navigateTo(router, addCardPickHref(), { motion: "push" });
 }

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiListCards, brandLabel } from "@/lib/api/cards";
-import { useAddCardPage } from "@/lib/added-card";
+import { useAddCardModal } from "@/lib/added-card";
 import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { apiExpressSetup, money, type PayPlace } from "@/lib/api/wallet";
@@ -344,9 +344,9 @@ export function GuestPayScreen({
 
   // Add a card in the app (MESITA-4065: no Stripe page): the card sheet; the
   // saved card becomes the bill's card.
-  // Its own page since MESITA-4101 (/wallet/cards/new): back here, the saved
+  // A modal since MESITA-4398 (a page in MESITA-4101): once saved, the saved
   // card becomes the bill's card. The draft survives the trip.
-  const openAddCard = useAddCardPage((id) => {
+  const openAddCard = useAddCardModal((id) => {
     setCardId(id);
     setCardsLoad({ state: "loading" });
     setCardsAttempt((n) => n + 1);
