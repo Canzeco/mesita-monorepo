@@ -17,10 +17,3 @@ export const PUBLIC_PROFILE_SWITCH = {
   on: "You're visible in the Social feed",
   off: "Only your first name shows in the Social feed, and others' Instagram stays hidden",
 } as const;
-
-export const INSTAGRAM_PHOTO_SWITCH = {
-  label: "Use my Instagram photo",
-  // True before and after connecting (MESITA-3001).
-  on: "Your Mesita picture comes from your Instagram",
-  off: "We keep only your username and followers",
-} as const;

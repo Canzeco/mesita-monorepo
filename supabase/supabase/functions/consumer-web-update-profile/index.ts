@@ -11,7 +11,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { clean } from "../_shared/input.ts";
-import { isInstagramAvatar } from "../_shared/instagram-avatar.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
 import { runInBackground } from "../_shared/background.ts";
 import { savePhotoSizes } from "../_shared/photo-sizes.ts";
@@ -135,15 +134,10 @@ serveJson("consumer-web-update-profile", async (req) => {
   if (!built.ok) return built.response;
   const patch = built.patch;
 
-  // Switching "Use my Instagram photo" off takes an Instagram-copied picture
-  // down with it; an uploaded photo stays (MESITA-2585).
-  if (
-    body.use_instagram_photo === false &&
-    body.avatar_url === undefined &&
-    isInstagramAvatar(existing.data?.avatar_url as string | null, userId)
-  ) {
-    patch.avatar_url = null;
-  }
+  // "Keep mine" keeps the picture (Pato, 2026-11-18, MESITA-4349): the
+  // photo is a question asked before each connect and sync now, not a
+  // standing switch, so a no never takes the current picture down. It took
+  // an Instagram-copied picture down until then (MESITA-2585).
 
   const update = await writeConsumer(admin, {
     mode: "update",
