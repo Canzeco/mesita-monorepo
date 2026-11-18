@@ -33,6 +33,7 @@
 // formats what the server sent.
 
 import { useEffect, useMemo, useState } from "react";
+import { PANEL_CLASS } from "@/components/shared/Panel";
 import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
@@ -404,12 +405,16 @@ export function TicketsBoard({
   onPick,
   placeId = null,
   flush = true,
+  boxed = false,
   onChanged,
 }: {
   kind: TicketTab;
   onPick: (k: TicketTab) => void;
   placeId?: string | null;
   flush?: boolean;
+  /** The strip and its list in one white box, the inner list box flattened
+   *  (MESITA-4353: the Loyalty Card page's bottom box). */
+  boxed?: boolean;
   /** The host's own read again, after a Take back from a Gifts row. */
   onChanged?: () => void;
 }) {
@@ -503,8 +508,15 @@ export function TicketsBoard({
   // THE PLACE PROFILE'S STRIP (MESITA-4322; icon pills MESITA-3993 before):
   // four equal tabs, the chosen one blue. No counts, no intro.
   return (
-    <div className="flex flex-col gap-4">
-      <TicketPills on={kind} onPick={onPick} flush={flush} />
+    <div
+      className={cn(
+        "flex flex-col",
+        boxed
+          ? `${PANEL_CLASS} [&_[data-activity]]:rounded-none [&_[data-activity]]:border-0`
+          : "gap-4",
+      )}
+    >
+      <TicketPills on={kind} onPick={onPick} flush={boxed ? false : flush} />
       {kind === "gifts" && ready && !failed && walletData ? (
         <GiftTickets gifts={walletData.gifts ?? []} showPlace={!placeId} onChanged={() => {
             wallet.reload();
