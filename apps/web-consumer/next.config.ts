@@ -5,6 +5,7 @@ import {
   LEGACY_REDIRECTS,
   SURFACE_PREFIX_REDIRECTS,
 } from "./src/lib/legacy-redirects";
+import { GIFT_SHORT_REDIRECTS } from "./src/lib/gift-short-link";
 
 const appDir = __dirname;
 const repoRoot = path.resolve(appDir, "../..");
@@ -65,7 +66,8 @@ const nextConfig: NextConfig = {
   // The legacy table lives in src/lib/legacy-redirects.ts. The retired /web
   // and /mob prefixes (MESITA-3013) 308 to the bare path after it.
   async redirects() {
-    return [...LEGACY_REDIRECTS, ...SURFACE_PREFIX_REDIRECTS];
+    // A gift's short link (MESITA-4390) after them: src/lib/gift-short-link.ts.
+    return [...LEGACY_REDIRECTS, ...SURFACE_PREFIX_REDIRECTS, ...GIFT_SHORT_REDIRECTS];
   },
 };
 

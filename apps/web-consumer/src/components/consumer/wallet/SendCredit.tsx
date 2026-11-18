@@ -10,6 +10,7 @@ import { Screen } from "@/components/consumer/nav/Screen";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiClaimGift,
+  apiGetGiftLink,
   apiLookGift,
   apiSendCredit,
   apiTakeBackCredit,
@@ -18,7 +19,6 @@ import {
   giftLink,
   type GiftLook,
   money,
-  type SentLink,
   WALLET_CACHE_KEY,
 } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES, walletPlacePath } from "@/lib/consumer-route-contract";
@@ -77,7 +77,13 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [short, setShort] = useState(false);
-  const [link, setLink] = useState<{ url: string; cents: number } | null>(null);
+  const [link, setLink] = useState<{ url: string; cents: number; giftId?: string; reopened?: boolean } | null>(null);
+  // OPEN GIFTS FIRST (MESITA-4390, Pato: "if i click to create gift, but i
+  // already have gift oepns, like show the prev list as a prev step … select
+  // current and copy or just create new gift"): `fresh` is the guest's "New
+  // gift"; `opening` the open gift whose link is being read.
+  const [fresh, setFresh] = useState(false);
+  const [opening, setOpening] = useState<string | null>(null);
   // One request id per amount: a retry after a lost answer replays, never sends twice.
   const attempt = useRef<{ id: string; cents: number } | null>(null);
 
@@ -143,10 +149,10 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
       attempt.current = null;
       invalidateCached(WALLET_CACHE_KEY);
       reread();
-      if (r.token) setLink({ url: giftLink(r.token), cents: r.amount_cents });
+      if (r.token) setLink({ url: giftLink(r.token), cents: r.amount_cents, giftId: r.gift_id });
       else {
         // A replay: the link went out on the first answer, which was lost.
-        toast("Sent. If you lost the link, take it back and send again.");
+        toast("Packed. It's waiting under Send Gift's open gifts.");
         done();
       }
     } catch (err) {
@@ -155,6 +161,39 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
       setError(refusal(err, "Couldn't send. Try again.", currency));
     } finally {
       setBusy(false);
+    }
+  }
+
+  // An open gift again: its link, read from the server (MESITA-4390). A gift
+  // packed before links could be shown again has none: it can only be taken
+  // back.
+  async function reopen(giftId: string, cents: number) {
+    setOpening(giftId);
+    try {
+      const r = await apiGetGiftLink(getSupabase(), giftId);
+      if (r.token) setLink({ url: giftLink(r.token), cents, giftId, reopened: true });
+      else toast("This gift's link can't be shown again. Take it back and pack a new one.");
+    } catch (err) {
+      toast.error(refusal(err, "Couldn't open this gift. Try again."));
+      invalidateCached(WALLET_CACHE_KEY);
+      reread();
+    } finally {
+      setOpening(null);
+    }
+  }
+
+  async function takeBack(giftId: string) {
+    setOpening(giftId);
+    try {
+      const r = await apiTakeBackCredit(getSupabase(), giftId);
+      toast.success(`${money(r.amount_cents, r.currency)} is back in your balance.`);
+      setLink(null);
+    } catch (err) {
+      toast.error(refusal(err, "Couldn't take it back. Try again."));
+    } finally {
+      setOpening(null);
+      invalidateCached(WALLET_CACHE_KEY);
+      reread();
     }
   }
 
@@ -175,8 +214,9 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
 
   // PACKED (MESITA-4333, Pato: "not sending, but pack them … then send the
   // gift to one friend"): the gift card, one line on what happens, Send to a
-  // friend: WhatsApp · Instagram · Messages · Copy link (MESITA-4352), then Done. The link
-  // still shows only once, so this screen is the only way to it.
+  // friend: WhatsApp · Instagram · Messages · Copy link (MESITA-4352), then Done. Since
+  // MESITA-4390 an open gift's card comes back from the open-gifts step, with
+  // Take it back under Done.
   if (link) {
     const amountText = money(link.cents, currency);
     const message = `A ${amountText} gift card for ${placeName} on Mesita: ${link.url}`;
@@ -209,7 +249,9 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
       <Screen title="Send Gift" paper>
         <div className="flex flex-col items-center pt-6 text-center" data-send-credit-packed>
           <GiftCardFace name={placeName} photo={row.card.photo} amount={amountText} />
-          <h2 className="font-display mt-8 text-2xl font-semibold tracking-tight">Packed! Send it to one friend.</h2>
+          <h2 className="font-display mt-8 text-2xl font-semibold tracking-tight">
+            {link.reopened ? "Send it to one friend." : "Packed! Send it to one friend."}
+          </h2>
           <p className="text-muted-foreground mt-2 max-w-xs text-sm leading-relaxed">
             The first to open it gets it. Until then you can take it back.
           </p>
@@ -253,9 +295,88 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
               );
             })}
           </div>
-          <button type="button" className={`${SECONDARY} mt-6`} onClick={done}>
+          <button
+            type="button"
+            className={`${SECONDARY} mt-6`}
+            onClick={() => {
+              // Back to the open gifts it came from; a new gift leaves as before.
+              if (link.reopened) setLink(null);
+              else done();
+            }}
+          >
             Done
           </button>
+          {link.giftId ? (
+            <button
+              type="button"
+              className="text-muted-foreground mt-2 py-3 text-sm font-semibold disabled:opacity-50"
+              disabled={opening === link.giftId}
+              onClick={() => void takeBack(link.giftId!)}
+            >
+              Take it back
+            </button>
+          ) : null}
+        </div>
+      </Screen>
+    );
+  }
+
+  const placePanel = (
+    <PaySection className="flex items-center gap-3 px-4 py-3" data-send-credit-place>
+      <PlacePhotoMark photo={row.card.photo} name={placeName} />
+      <span className="min-w-0">
+        <span className="text-muted-foreground block text-sm">Send a gift at</span>
+        <span className="block truncate text-base font-semibold">{placeName}</span>
+        <span className="text-muted-foreground block text-sm tabular-nums">Up to {money(spendableCents, currency)}</span>
+      </span>
+    </PaySection>
+  );
+
+  // THE OPEN GIFTS, A STEP BEFORE THE KEYPAD (MESITA-4390): each gift packed
+  // here that nobody took yet, newest first; a tap opens its card and share
+  // buttons again; "New gift" goes on to the amount.
+  const openHere = (wallet.sent_links ?? []).filter((l) => l.place_id === placeId);
+  if (!fresh && openHere.length > 0) {
+    return (
+      <Screen
+        title="Send Gift"
+        paper
+        footer={
+          <div className="flex flex-col gap-2">
+            <button type="button" className={PRIMARY} onClick={() => setFresh(true)} data-send-credit-new>
+              New gift
+            </button>
+            <p className="text-muted-foreground text-center text-xs">Or send one that&apos;s waiting.</p>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-3" data-send-credit-open>
+          {placePanel}
+          <PaySection title="Waiting for a friend">
+            <ul className="divide-border divide-y" data-send-credit-open-list>
+              {openHere.map((l) => {
+                const shareable = l.can_share !== false;
+                return (
+                  <li key={l.gift_id}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition active:opacity-70 disabled:opacity-50"
+                      disabled={opening !== null}
+                      onClick={() => void (shareable ? reopen(l.gift_id, l.amount_cents) : takeBack(l.gift_id))}
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-base font-semibold tabular-nums">{money(l.amount_cents, currency)}</span>
+                        <span className="text-muted-foreground block text-sm">Packed {entryDate(l.created_at)}</span>
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold">
+                        {opening === l.gift_id ? "…" : shareable ? "Send" : "Take back"}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </PaySection>
         </div>
       </Screen>
     );
@@ -312,14 +433,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
       }
     >
       <div className="flex h-full min-h-0 flex-col gap-3" data-send-credit>
-        <PaySection className="flex items-center gap-3 px-4 py-3" data-send-credit-place>
-          <PlacePhotoMark photo={row.card.photo} name={placeName} />
-          <span className="min-w-0">
-            <span className="text-muted-foreground block text-sm">Send a gift at</span>
-            <span className="block truncate text-base font-semibold">{placeName}</span>
-            <span className="text-muted-foreground block text-sm tabular-nums">Up to {money(spendableCents, currency)}</span>
-          </span>
-        </PaySection>
+        {placePanel}
         <PaySection title="Gift" className="flex min-h-0 shrink flex-col">
           <div className="flex min-h-0 shrink flex-col px-4 pb-2">
             <AmountDisplay text={amount} currency={currency} label="Gift" className="mt-1 shrink-0" />
@@ -342,51 +456,6 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
         </PaySection>
       </div>
     </Screen>
-  );
-}
-
-/** The links a guest sent at one place that nobody took yet. */
-export function SentLinks({ links, currency, onChanged }: { links: SentLink[]; currency: string; onChanged: () => void }) {
-  const getSupabase = useLazyBrowserSupabase();
-  const [busy, setBusy] = useState<string | null>(null);
-  if (links.length === 0) return null;
-
-  async function takeBack(id: string) {
-    setBusy(id);
-    try {
-      const r = await apiTakeBackCredit(getSupabase(), id);
-      toast.success(`${money(r.amount_cents, r.currency)} is back in your balance.`);
-      onChanged();
-    } catch (err) {
-      toast.error(refusal(err, "Couldn't take it back. Try again."));
-      onChanged();
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  return (
-    // A panel of its own on the Loyalty Card page (MESITA-4064).
-    <Panel className="mt-4" title="Waiting for a friend">
-      <ul className="divide-border mt-1 divide-y pb-1" data-sent-links>
-        {links.map((l) => (
-          <li key={l.gift_id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-            <span>
-              <span className="font-semibold tabular-nums">{money(l.amount_cents, currency)}</span>
-              <span className="text-muted-foreground"> · sent {entryDate(l.created_at)}</span>
-            </span>
-            <button
-              type="button"
-              disabled={busy === l.gift_id}
-              onClick={() => void takeBack(l.gift_id)}
-              className="hover:bg-muted rounded-lg px-3 py-2 font-semibold transition disabled:opacity-50"
-            >
-              Take back
-            </button>
-          </li>
-        ))}
-      </ul>
-    </Panel>
   );
 }
 

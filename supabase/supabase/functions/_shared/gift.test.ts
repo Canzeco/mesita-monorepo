@@ -80,3 +80,27 @@ Deno.test("giftPreview: taken back, the other mode and no row all show nothing",
   assertEquals(giftPreview(ROW, true), null);
   assertEquals(giftPreview(null, false), null);
 });
+
+// MESITA-4390 — short keys: 6 characters [A-Za-z0-9], and the old
+// 22-character keys still count as keys.
+import { GIFT_CODE_LENGTH, isGiftToken } from "./gift.ts";
+
+Deno.test("mintGiftToken: 6 alphanumeric characters, and they vary", () => {
+  const seen = new Set<string>();
+  for (let i = 0; i < 200; i++) {
+    const k = mintGiftToken();
+    assertEquals(k.length, GIFT_CODE_LENGTH);
+    assert(/^[A-Za-z0-9]{6}$/.test(k), k);
+    seen.add(k);
+  }
+  assert(seen.size > 190);
+});
+
+Deno.test("isGiftToken: a short key and a 22-character key pass; anything else does not", () => {
+  assert(isGiftToken("aB3x9Z"));
+  assert(isGiftToken("QAMqPmHEWBZZNmZycPVhaA"));
+  assertEquals(isGiftToken("aB3x9"), false);
+  assertEquals(isGiftToken("aB3x9Z!"), false);
+  assertEquals(isGiftToken("aB-x9Z"), false);
+  assertEquals(isGiftToken(null), false);
+});
