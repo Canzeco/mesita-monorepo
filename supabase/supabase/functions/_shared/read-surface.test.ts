@@ -331,6 +331,10 @@ const CONSUMER_READ_ALLOWLIST = [
   // gift went to or came from (appear_anonymous hides the photo). Read-only,
   // error logged.
   "consumer-web-get-wallet/index.ts",
+  // A gift link's card (MESITA-4363): the sender's first name and photo
+  // (appear_anonymous hides the photo; a closed account shows nothing).
+  // Read-only, error logged.
+  "consumer-web-get-gift-preview/index.ts",
 ];
 
 Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist", async () => {
