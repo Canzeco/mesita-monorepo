@@ -17,6 +17,8 @@
 //   3. a story too close to its 24 hours reads story_too_old; a rejected
 //      story reads story_rejected; a story no waiter approved pays the money
 //      and voids the bonus (not_verified).
+//   6. the emulated waiter (MESITA-4307): post → check → "Simulate the
+//      waiter's approval" → the check reads approved → paid and claimed.
 //   4. a second live purchase cannot reserve a story already reserved.
 //   5. a live purchase with a test story: the money lands, the bonus is void
 //      (mention_lost).
@@ -320,6 +322,21 @@ async function main(): Promise<void> {
       p5.story === "mention_lost" && r5.story_bonus_void_reason === "mention_lost" && (await entryKinds(admin, p5.id)).join() === "voucher:10000",
       { p5, r5 },
     );
+
+    // ── 6: the waiter's approval, emulated (MESITA-4307) ────────────────────
+    const none6 = await call("consumer-web-emulate-story", guestJwt, { action: "approve", place_id: crypto.randomUUID() });
+    step("6 emulate approve with no story checked at that place is 404 no_story", none6.status === 404 && none6.body.code === "no_story", none6);
+    const post6 = await call("consumer-web-emulate-story", guestJwt, { action: "post" });
+    const m6 = (post6.body.mention as { id?: string } | undefined) ?? {};
+    const f6 = await call("consumer-web-check-story", guestJwt, { place_id: placeId }, {}, "?poll=1");
+    step("6 check finds the simulated story, waiting", (f6.body.mention as { id?: string })?.id === m6.id && (f6.body.review as { state?: string })?.state === "waiting", f6);
+    const ap6 = await call("consumer-web-emulate-story", guestJwt, { action: "approve", place_id: placeId });
+    step("6 emulate approve approves it", ap6.status === 200 && ap6.body.outcome === "approved" && ap6.body.mention_id === m6.id, ap6);
+    const s6 = await call("consumer-web-check-story", guestJwt, { place_id: placeId }, {}, "?poll=1");
+    step("6 the guest's check reads approved", (s6.body.review as { state?: string })?.state === "approved", s6);
+    const p6 = await storyPurchase(admin, userId, placeId, m6.id ?? null);
+    purchases.push(p6.id);
+    step("6 paid: the credit claims the emulated-approved story", p6.story === "claimed", p6);
 
     const wallet = await call("consumer-web-get-wallet", guestJwt, {});
     const rows = (wallet.body.waiting_stories as { purchase_id: string; state: string }[] | undefined) ?? [];

@@ -11,6 +11,7 @@ import { EFError } from "@/lib/api/_invoke";
 import {
   apiBuyVoucher,
   apiCheckStory,
+  apiEmulateApproval,
   apiEmulateStory,
   apiListVouchers,
   BUY_REFUSAL,
@@ -441,6 +442,8 @@ export function usePlaceVouchers(
   checkStory: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
   /** Test mode: post a sample story; null when posted, else the refusal's line. */
   simulateStory: () => Promise<string | null>;
+  /** Test mode: the waiter's approval, emulated (MESITA-4307). */
+  simulateApproval: () => Promise<string | null>;
   /** The guest's saved cards; undefined signed out or off Mesita. */
   payCards: PayCards | undefined;
   payCardId: string | null;
@@ -619,6 +622,18 @@ export function usePlaceVouchers(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const simulateApproval = useCallback(async (): Promise<string | null> => {
+    try {
+      await apiEmulateApproval(getSupabase(), placeId);
+      return null;
+    } catch (err) {
+      const code = err instanceof EFError ? err.code : null;
+      return (code && STORY_EMULATOR_REFUSAL[code]) || STORY_EMULATOR_REFUSAL.emulate_failed;
+    }
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placeId]);
+
   const mine = offer?.placeId === placeId ? offer : null;
   const money = mine?.money ?? null;
   // Add a card: its own page since MESITA-4101 (/wallet/cards/new); back
@@ -635,6 +650,7 @@ export function usePlaceVouchers(
     buy: (items, cardId, opts) => buy(items, cardId, opts),
     checkStory,
     simulateStory,
+    simulateApproval,
     payCards,
     payCardId,
     selectCard,

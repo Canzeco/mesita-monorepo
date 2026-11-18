@@ -293,11 +293,18 @@ export async function apiEmulateStory(
   return await invokeEF(client, "consumer-web-emulate-story", { action });
 }
 
+/** The waiter's approval, emulated (MESITA-4307): test mode only, and only
+ *  for the guest's own simulated story that this place's Story page shows. */
+export async function apiEmulateApproval(client: SupabaseClient, placeId: string): Promise<{ ok: true; outcome: string }> {
+  return await invokeEF(client, "consumer-web-emulate-story", { action: "approve", place_id: placeId });
+}
+
 /** What the guest reads when the emulator refuses, by the server's code. */
 export const STORY_EMULATOR_REFUSAL: Record<string, string> = {
   not_test_mode: "The simulator only works in test mode.",
   meta_on: "Instagram is connected: post a real story.",
   needs_instagram: "Link your Instagram first.",
+  story_too_old: "That story is too old. Simulate a new one.",
   no_story: "There is no story to delete.",
   emulate_failed: "Couldn't simulate the story. Try again.",
 };
