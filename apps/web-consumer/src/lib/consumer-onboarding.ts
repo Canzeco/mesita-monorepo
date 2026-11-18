@@ -3,7 +3,9 @@
 //
 // `consumerCanBrowse` is what /onboard collects before the app opens at all:
 // first AND last name (Pato, MESITA-4090: "first and last name must be
-// mandatory when onboarding, not only first name"), birthday (MIN_SIGNUP_AGE
+// mandatory when onboarding, not only first name"; typed in ONE Name box since
+// MESITA-4302 and split by `splitFullName`), year of birth (MESITA-4302:
+// "Year of birth. Fuck specific age"; MIN_SIGNUP_AGE
 // is a ToS floor, and an age gate is only worth anything at account
 // creation), and sex (MESITA-1829). A profile without a last name is sent
 // back to /onboard once to add it (4 of 6 live rows when this shipped).
@@ -50,9 +52,67 @@ import { MIN_SIGNUP_AGE } from "@/lib/utils";
 type OnboardableProfile = {
   first_name?: string | null;
   last_name?: string | null;
+  birth_year?: number | null;
+  /** Legacy date; read only as a fallback year for an older cached row. */
   birthday?: string | null;
   sex?: string | null;
 };
+
+// ─── Name: one box, two stored halves (MESITA-4302) ─────────────────────────
+// Pato picked one Name box over First + Last. The booking still needs a last
+// name (the host system keys on it; eleven-agent-get-reservation matches
+// first + last), so the box is split: the first word is the first name, the
+// rest is the last name. "Patricio Canseco López" keeps both surnames in the
+// last name. Accepted cost: "Juan Pablo Pérez" stores last name "Pablo Pérez".
+
+/** The two stored halves as the one box shows them. */
+export function joinName(
+  first: string | null | undefined,
+  last: string | null | undefined,
+): string {
+  return [first?.trim(), last?.trim()].filter(Boolean).join(" ");
+}
+
+/** The box's text as the two halves, or null when it has fewer than two
+ *  words (no last name to book under). */
+export function splitFullName(
+  value: string,
+): { first: string; last: string } | null {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 2) return null;
+  return { first: words[0], last: words.slice(1).join(" ") };
+}
+
+/** The error for a name the split refuses. */
+export function nameError(value: string): string | null {
+  if (!value.trim()) return "Tell us your name.";
+  return splitFullName(value) ? null : "Add your last name too.";
+}
+
+// ─── Year of birth (MESITA-4302) ────────────────────────────────────────────
+// The floor is by year alone: current year − birth_year >= MIN_SIGNUP_AGE.
+// Off by up to a year, accepted in MESITA-4248. consumer-web-update-profile
+// enforces the same rule (parseBirthYear).
+
+/** The stored year, or the year of a legacy birthday on an older row. */
+export function birthYearOf(
+  profile: OnboardableProfile | null | undefined,
+): number | null {
+  if (typeof profile?.birth_year === "number") return profile.birth_year;
+  const y = Number(profile?.birthday?.slice(0, 4));
+  return Number.isInteger(y) && y > 1900 ? y : null;
+}
+
+/** The years the picker offers, newest allowed first, 100 years back. */
+export function birthYearOptions(now: Date = new Date()): number[] {
+  const newest = now.getFullYear() - MIN_SIGNUP_AGE;
+  return Array.from({ length: 87 }, (_, i) => newest - i);
+}
+
+/** True when the year clears the age floor. */
+export function birthYearOldEnough(year: number, now: Date = new Date()): boolean {
+  return now.getFullYear() - year >= MIN_SIGNUP_AGE;
+}
 
 /** The two values `consumers.sex` accepts. The check constraint was narrowed
  *  to exactly these in 20260825003000 (`other` was dropped and its rows
@@ -78,12 +138,13 @@ export function consumerCanBrowse(
   return Boolean(
     profile?.first_name?.trim() &&
       profile?.last_name?.trim() &&
-      profile?.birthday &&
+      birthYearOf(profile) !== null &&
       isConsumerSex(profile?.sex),
   );
 }
 
-// ONE SCREEN, FOUR FIELDS (MESITA-2746; last name since MESITA-4090). The gate's field list and the form's
+// ONE SCREEN, THREE FIELDS (MESITA-2746; one Name box and a year of birth
+// since MESITA-4302). The gate's field list and the form's
 // field list are the same list, in the same order, declared once here. A
 // partial profile prefills whatever is already stored; the guest fills the
 // gaps and submits once. `consumer-web-update-profile` accepts any subset of
@@ -91,7 +152,7 @@ export function consumerCanBrowse(
 export const ONBOARD_PAGE_HEADLINE = "Almost there.";
 export const ONBOARD_PAGE_DEK = "A few quick details and you're in.";
 
-type OnboardFieldKey = "first_name" | "last_name" | "birthday" | "sex";
+type OnboardFieldKey = "name" | "sex" | "birth_year";
 
 type OnboardField = {
   readonly key: OnboardFieldKey;
@@ -101,14 +162,13 @@ type OnboardField = {
 };
 
 export const ONBOARD_FIELDS: readonly OnboardField[] = [
-  { key: "first_name", label: "First name", hint: null },
-  { key: "last_name", label: "Last name", hint: null },
-  {
-    key: "birthday",
-    label: "Birthday",
-    hint: `We check you're ${MIN_SIGNUP_AGE} or over, and we'll remember it.`,
-  },
+  { key: "name", label: "Name", hint: null },
   { key: "sex", label: "Sex", hint: null },
+  {
+    key: "birth_year",
+    label: "Year of birth",
+    hint: `We check you're ${MIN_SIGNUP_AGE} or over.`,
+  },
 ];
 
 /**

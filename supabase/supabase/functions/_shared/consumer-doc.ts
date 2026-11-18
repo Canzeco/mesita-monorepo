@@ -50,6 +50,8 @@ export type ConsumerDoc = {
   full_name: string | null;
   sex: "male" | "female" | null;
   birthday: string | null;
+  // MESITA-4302: the year the guest gave; the age floor reads it.
+  birth_year: number | null;
   phone: string | null;
   avatar_url: string | null;
   instagram_handle: string | null;
@@ -84,6 +86,7 @@ export const CONSUMER_PATCH_KEYS = [
   "full_name",
   "sex",
   "birthday",
+  "birth_year",
   "phone",
   "avatar_url",
   "instagram_handle",
@@ -190,6 +193,16 @@ export function validateConsumerPatch(
       return { ok: false, error: "birthday must be YYYY-MM-DD or null" };
     }
     patch.birthday = v as string | null;
+  }
+  if ("birth_year" in raw) {
+    const v = raw.birth_year;
+    if (
+      v !== null &&
+      (typeof v !== "number" || !Number.isInteger(v) || v < 1900 || v > 2100)
+    ) {
+      return { ok: false, error: "birth_year must be an integer 1900-2100 or null" };
+    }
+    patch.birth_year = v as number | null;
   }
   if ("instagram_handle" in raw) {
     const v = raw.instagram_handle;

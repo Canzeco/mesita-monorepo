@@ -812,7 +812,7 @@ describe("consumer onboarding gates", () => {
   const complete = {
     first_name: "Ana",
     last_name: "Ruiz",
-    birthday: "1995-04-02",
+    birth_year: 1995,
     sex: "female",
   };
 

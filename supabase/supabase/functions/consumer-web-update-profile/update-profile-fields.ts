@@ -38,6 +38,9 @@ export type UpdateProfileBody = {
   last_name?: string | null;
   sex?: string | null;
   birthday?: string | null;
+  // MESITA-4302: the year of birth, the age source since the day/month went.
+  // An old client that still sends `birthday` gets its year written too.
+  birth_year?: number | null;
   // Public URL of a photo the caller already uploaded to consumer-avatars
   // (MESITA-953). null/"" clears. Foreign hosts are rejected.
   avatar_url?: string | null;
@@ -209,12 +212,51 @@ export function parseBirthday(birthdayRaw: string | null): ParseBirthdayResult {
   return { ok: true, birthday: birthdayRaw };
 }
 
+export type ParseBirthYearResult =
+  | { ok: true; birthYear: number | null }
+  | { ok: false; response: Response };
+
+/** Year of birth (MESITA-4302): an integer, not in the future, and the age
+ *  floor by year alone: current year − birth_year >= MIN_AGE (approximate by
+ *  up to a year, accepted in MESITA-4248). null/absent = nothing to write. */
+export function parseBirthYear(
+  raw: unknown,
+  now: Date = new Date(),
+): ParseBirthYearResult {
+  if (raw === undefined || raw === null || raw === "") {
+    return { ok: true, birthYear: null };
+  }
+  const year = typeof raw === "string" ? Number(raw) : raw;
+  const thisYear = now.getUTCFullYear();
+  if (
+    typeof year !== "number" || !Number.isInteger(year) || year < 1900 ||
+    year > thisYear
+  ) {
+    return {
+      ok: false,
+      response: json({ ok: false, error: "birth_year must be a past year" }, 400),
+    };
+  }
+  if (thisYear - year < MIN_AGE) {
+    return {
+      ok: false,
+      response: json(
+        { ok: false, error: `You must be at least ${MIN_AGE} years old to use Mesita.` },
+        400,
+      ),
+    };
+  }
+  return { ok: true, birthYear: year };
+}
+
 export type ProfileFieldValues = {
   firstName: string | null;
   lastName: string | null;
   fullName: string | null;
   sex: string | null;
   birthday: string | null;
+  // undefined = not in this patch; a number = set (MESITA-4302).
+  birthYear?: number | null;
   // undefined = not in this patch; null = clear; string = set.
   avatarUrl?: string | null;
 };
@@ -240,6 +282,7 @@ export function buildProfilePatch(
   }
   if (body.sex !== undefined) patch.sex = fields.sex;
   if (body.birthday !== undefined) patch.birthday = fields.birthday;
+  if (fields.birthYear !== undefined) patch.birth_year = fields.birthYear;
   if (body.avatar_url !== undefined) patch.avatar_url = fields.avatarUrl ?? null;
   if (body.use_instagram_photo !== undefined) {
     if (typeof body.use_instagram_photo !== "boolean") {

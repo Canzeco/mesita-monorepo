@@ -14,7 +14,7 @@ const ROW: SigninRow = {
   first_name: "Ana",
   last_name: "Ruiz",
   phone: "+528112345678",
-  birthday: "1990-01-01",
+  birth_year: 1990,
   sex: "female",
   deleted_at: null,
 };
@@ -109,7 +109,7 @@ Deno.test("a closed account answers 410 account_deleted", async () => {
 });
 
 Deno.test("an unfinished profile is not onboarded", async () => {
-  const res = await handleSignin(GOOGLE, deps({ ...ROW, birthday: null }));
+  const res = await handleSignin(GOOGLE, deps({ ...ROW, birth_year: null }));
   assertEquals(res.body.onboarded, false);
 });
 

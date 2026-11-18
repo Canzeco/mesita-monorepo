@@ -13,7 +13,8 @@
 //         phone never blanks a stored one)
 //   200 { role, consumer, onboarded }
 //
-// `onboarded` is the browse gate: first name + birthday + sex, the same
+// `onboarded` is the browse gate: first + last name, birth_year (MESITA-4302)
+// and sex, the same
 // predicate as web lib/consumer-onboarding.ts `consumerCanBrowse`
 // (MESITA-1829). Keep them in lock-step or the guest ping-pongs.
 
@@ -24,7 +25,7 @@ export type SigninRow = {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
-  birthday: string | null;
+  birth_year: number | null;
   sex: string | null;
   deleted_at?: string | null;
 };
@@ -55,7 +56,7 @@ export function providersOf(appMetadata: Record<string, unknown> | null): string
 }
 
 export function isOnboarded(row: SigninRow | null): boolean {
-  return !!row?.first_name?.trim() && !!row?.last_name?.trim() && !!row?.birthday && (row?.sex === "male" || row?.sex === "female");
+  return !!row?.first_name?.trim() && !!row?.last_name?.trim() && row?.birth_year != null && (row?.sex === "male" || row?.sex === "female");
 }
 
 export async function handleSignin(user: SigninUser, deps: SigninDeps): Promise<SigninReply> {

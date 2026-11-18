@@ -117,20 +117,6 @@ export function formatCompactCount(n: number, exact = false): string {
  */
 export const MIN_SIGNUP_AGE = 14;
 
-/** Whole years since `birthday` (YYYY-MM-DD). Null for missing/unparseable. */
-export function ageFromBirthday(
-  birthday: string | null | undefined,
-): number | null {
-  if (!birthday) return null;
-  const dob = new Date(birthday);
-  if (Number.isNaN(dob.getTime())) return null;
-  const now = new Date();
-  let age = now.getFullYear() - dob.getFullYear();
-  const m = now.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age -= 1;
-  return age >= 0 && age < 130 ? age : null;
-}
-
 /**
  * Display form of the stored phone (E.164 digits, usually without the +).
  * MX numbers ("52" + 10 digits) get the local grouping — "+52 444 549 9597";

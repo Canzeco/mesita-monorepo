@@ -2,6 +2,7 @@ import { assertEquals } from "jsr:@std/assert";
 import {
   buildProfilePatch,
   parseAvatarUrl,
+  parseBirthYear,
   parseName,
 } from "./update-profile-fields.ts";
 
@@ -157,4 +158,32 @@ Deno.test("buildProfilePatch: a non-boolean Instagram photo switch is a 400", ()
     NO_FIELDS,
   );
   assertEquals(res.ok, false);
+});
+
+// MESITA-4302: year of birth is the age source; the floor is by year alone.
+Deno.test("parseBirthYear: the 14-year floor counts years only", () => {
+  const now = new Date("2026-11-18T00:00:00Z");
+  assertEquals(parseBirthYear(2012, now).ok, true);
+  assertEquals(parseBirthYear("2012", now).ok, true);
+  assertEquals(parseBirthYear(2013, now).ok, false);
+  assertEquals(parseBirthYear(2027, now).ok, false);
+  assertEquals(parseBirthYear(1899, now).ok, false);
+  assertEquals(parseBirthYear(1990.5, now).ok, false);
+  assertEquals(parseBirthYear("abc", now).ok, false);
+  const none = parseBirthYear(undefined, now);
+  assertEquals(none.ok && none.birthYear, null);
+});
+
+Deno.test("buildProfilePatch writes birth_year only when given", () => {
+  const base = {
+    firstName: null,
+    lastName: null,
+    fullName: null,
+    sex: null,
+    birthday: null,
+  };
+  const without = buildProfilePatch({}, base);
+  assertEquals(without.ok && "birth_year" in without.patch, false);
+  const withYear = buildProfilePatch({ birth_year: 1990 }, { ...base, birthYear: 1990 });
+  assertEquals(withYear.ok && withYear.patch.birth_year, 1990);
 });

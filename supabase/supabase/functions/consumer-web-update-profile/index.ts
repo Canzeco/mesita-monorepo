@@ -21,6 +21,7 @@ import {
   AVATAR_BUCKET,
   parseAvatarUrl,
   parseBirthday,
+  parseBirthYear,
   parseName,
   parseSex,
   type UpdateProfileBody,
@@ -28,7 +29,7 @@ import {
 } from "./update-profile-fields.ts";
 
 const CONSUMER_PROFILE_SELECT =
-  "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, use_instagram_photo, appear_anonymous, guest_class, plan";
+  "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, use_instagram_photo, appear_anonymous, guest_class, plan";
 
 serveJson("consumer-web-update-profile", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -65,6 +66,16 @@ serveJson("consumer-web-update-profile", async (req) => {
   const birthdayRes = parseBirthday(birthdayRaw);
   if (!birthdayRes.ok) return birthdayRes.response;
   const { birthday } = birthdayRes;
+
+  // MESITA-4302: birth_year is the age source. Sent directly by the current
+  // forms; derived from `birthday` for a client that still sends the date.
+  const birthYearRes = parseBirthYear(body.birth_year);
+  if (!birthYearRes.ok) return birthYearRes.response;
+  const birthYear = body.birth_year !== undefined
+    ? birthYearRes.birthYear
+    : birthday
+    ? Number(birthday.slice(0, 4))
+    : undefined;
 
   const avatarRes = parseAvatarUrl(body.avatar_url, userId, env.url);
   if (!avatarRes.ok) return avatarRes.response;
@@ -118,6 +129,7 @@ serveJson("consumer-web-update-profile", async (req) => {
     fullName,
     sex,
     birthday,
+    birthYear,
     avatarUrl,
   });
   if (!built.ok) return built.response;
