@@ -43,13 +43,16 @@ export const PRO_PRICE_LINE = `${dollars(PRO_PRICE_CENTS)} USD a month`;
 export const PLAN_ROWS: Record<GuestPlan, PlanRowWords> = {
   free: {
     title: "Free",
-    price: "Free",
-    perk: `Max ${FREE_RESERVATIONS_PER_MONTH} reservation tickets a month`,
+    // "$0", not "Free" twice on one row (MESITA-4359, decision 7A); built,
+    // never typed, like Pro's (class-plan.test.tsx bars a typed price).
+    price: dollars(0),
+    perk: `${FREE_RESERVATIONS_PER_MONTH} reservation tickets a month`,
   },
   premium: {
     title: "Pro",
     price: PRO_PRICE_LINE,
-    perk: `Max ${PRO_RESERVATIONS_PER_MONTH} reservation tickets a month`,
+    // No "Max" since MESITA-4359 (11A): the usage bar above shows the cap.
+    perk: `${PRO_RESERVATIONS_PER_MONTH} reservation tickets a month`,
     soonPerk: "MCP for ChatGPT or Claude",
   },
 };

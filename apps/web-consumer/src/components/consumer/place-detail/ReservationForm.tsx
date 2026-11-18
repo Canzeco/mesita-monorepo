@@ -31,7 +31,10 @@ import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { Panel } from "@/components/shared/Panel";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { PlacePhotoMark } from "@/components/consumer/wallet/PlaceCredit";
-import { reservationPath } from "@/lib/consumer-route-contract";
+import {
+  CONSUMER_ROUTES,
+  reservationPath,
+} from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
@@ -466,6 +469,20 @@ export function ReservationForm({
         {error && last && (
           <p className="type-body bg-destructive/10 text-destructive mb-3 rounded-xl px-3 py-2 font-medium">
             {error}
+            {/* The cap's refusal leads to Plan, where Pro lifts it
+                (MESITA-4359, 5A): the moment of need, one tap away. */}
+            {error === RESERVATION_LIMIT_MESSAGE && (
+              <>
+                {" "}
+                <PushLink
+                  href={CONSUMER_ROUTES.mePages.plan}
+                  className="font-semibold underline"
+                  data-reserve-see-pro=""
+                >
+                  See Pro
+                </PushLink>
+              </>
+            )}
           </p>
         )}
         {last ? (
