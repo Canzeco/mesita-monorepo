@@ -14,7 +14,6 @@ import {
   ArrowLeftRight,
   BadgeCheck,
   Check,
-  CirclePlus,
   Copy,
   Eye,
   ImageIcon,
@@ -31,7 +30,6 @@ import { Button } from "@/components/ui/button";
 import {
   IconChip,
   ME_BUTTON_CLASS,
-  RowDivider,
   SettingsGroup,
 } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -67,9 +65,9 @@ import { useConsumerIdentity, useServerProfile } from "@/lib/identity-context";
 
 // Instagram connect page (MESITA-936). Why connect is back with two reasons
 // (MESITA-4342, after MESITA-2983 cut it): see others' Instagram, and Story
-// vouchers over 1,000 followers. Connected: the account with Sync | Change
-// side by side, Why connect with the guest's standing, Photo, then
-// Disconnect as a red link.
+// vouchers over 1,000 followers. Connected: the account with Sync (half) |
+// Change | Disconnect in one row, then Why connect as two coloured boxes
+// with the guest's standing (MESITA-4350).
 //
 // IT GRANTS NOTHING (Pato, MESITA-2040: "instagram is just 1000 followers").
 // A connected handle is an identity fact; crossing the bar makes the account
@@ -246,6 +244,9 @@ export function InstagramModal() {
             syncing={action === "syncing"}
             onSyncing={(on) => setAction(on ? "syncing" : "idle")}
             onChange={() => setAction("changing")}
+            disconnectOpen={action === "disconnecting"}
+            onDisconnect={() => setAction("disconnecting")}
+            onDisconnectClose={() => setAction("idle")}
           />
         )}
 
@@ -271,25 +272,20 @@ export function InstagramModal() {
               onCancel={connected ? () => setAction("idle") : undefined}
             />
           ))}
-
-
-        {connected && action !== "changing" && (
-          <DisconnectLink
-            disabled={action !== "idle" || changeBusy}
-            open={action === "disconnecting"}
-            onOpen={() => setAction("disconnecting")}
-            onClose={() => setAction("idle")}
-          />
-        )}
       </div>
     </MeScreen>
   );
 }
 
 
-/** The page's grey buttons (Sync, Change): quiet, the Me pages' 44px shape. */
+/** A quiet grey button in the Me pages' 44px shape (the photo question). */
 const QUIET_BUTTON_CLASS =
   "bg-muted text-foreground hover:bg-muted/70 flex items-center justify-center gap-2 transition disabled:pointer-events-none disabled:opacity-60";
+
+/** The account card's grey buttons (Sync, Change, Disconnect): one 56px
+ *  height so the stacked quarter buttons and the wide Sync line up. */
+const ROW_BUTTON_CLASS =
+  "bg-muted text-foreground hover:bg-muted/70 flex h-14 min-w-0 items-center justify-center rounded-xl text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-60";
 
 // WHY CONNECT, TWO REASONS (Pato, MESITA-4342: "mention that why … TWO
 // REASONS"; it undoes MESITA-2983's cut). Both are server rules, not copy:
@@ -298,10 +294,17 @@ const QUIET_BUTTON_CLASS =
 //   2. A Story voucher needs more than STORY_MIN_FOLLOWERS followers
 //      (vouchers.ts refuses `<=`). Named a discount, with the deal in plain
 //      numbers (Pato, MESITA-4347: "discount insta must be there too").
-// Connected, each row says where the guest stands.
-/** The Story voucher's deal, as place-profile's vouchers.tsx prints it
+// TWO COLOURED BOXES (Pato, MESITA-4350: "why connect looks like shit … use
+// boxes with color"): black with the Instagram mark for seeing others, and
+// the Story voucher's own pink (place-profile lib/offers.ts VOUCHER_TONE,
+// voucher_story) with the deal as its headline. Connected, each box says
+// where the guest stands in a pill.
+/** The Story voucher's deal, as place-profile's vouchers.tsx prices it
  *  (`voucher_story`: "Pay $100.00MX, get $150.00MX."). Change both together. */
-const STORY_DEAL = { pay: "$100.00MX", get: "$150.00MX" } as const;
+const STORY_DEAL = { pay: "$100", get: "$150" } as const;
+
+/** The Story voucher's tint: VOUCHER_TONE.voucher_story. Change both together. */
+const STORY_PINK = "bg-pink-400 text-neutral-950";
 
 export function WhyConnect({ connected }: { connected: boolean }) {
   const { igFollowers } = useConsumerIdentity();
@@ -310,70 +313,101 @@ export function WhyConnect({ connected }: { connected: boolean }) {
   const storyOk = igFollowers > STORY_MIN_FOLLOWERS;
   const need = STORY_MIN_FOLLOWERS + 1;
   return (
-    <SettingsGroup title="Why connect">
-      <div className="flex items-center gap-3 px-4 py-3" data-why-connect="see">
-        <IconChip>
-          <Eye className="h-[18px] w-[18px]" />
-        </IconChip>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold">
+    <section className="flex flex-col gap-3" aria-label="Why connect">
+      <h2 className="font-display px-0.5 text-base font-semibold tracking-tight">
+        Why connect
+      </h2>
+      <div
+        className="bg-foreground text-paper flex flex-col gap-2 rounded-2xl p-4"
+        data-why-connect="see"
+      >
+        <div className="flex items-center gap-3">
+          <IconChip tint="instagram">
+            <Eye className="h-[18px] w-[18px]" />
+          </IconChip>
+          <p className="min-w-0 flex-1 text-base leading-tight font-bold">
             See other guests&apos; Instagram
-          </span>
-          <span className="text-muted-foreground type-label block">
-            {connected && hidden
-              ? "Your profile is hidden. Make it public in Settings to see theirs."
-              : "It goes both ways: to see theirs, you share yours."}
-          </span>
-        </span>
-        {connected && !hidden && <StatusMark>On</StatusMark>}
-      </div>
-      <RowDivider />
-      <div className="flex items-center gap-3 px-4 py-3" data-why-connect="story">
-        <IconChip>
-          <CirclePlus className="h-[18px] w-[18px]" />
-        </IconChip>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold">
-            Story discount
-          </span>
-          <span className="text-muted-foreground type-label block">
-            More than {STORY_MIN_FOLLOWERS.toLocaleString("en-US")} followers?
-            Post a Story at a place: pay {STORY_DEAL.pay}, get {STORY_DEAL.get}.
-          </span>
-          {connected && !storyOk && (
-            <>
-              <span
-                className="bg-muted mt-2 block h-1 overflow-hidden rounded-full"
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={need}
-                aria-valuenow={igFollowers}
-                aria-label="Followers toward Stories"
-              >
-                <span
-                  className="bg-foreground block h-full"
-                  style={{
-                    width: `${Math.min(100, (igFollowers / need) * 100)}%`,
-                  }}
-                />
-              </span>
-              <span className="text-muted-foreground type-label mt-1 block tabular-nums">
-                {igFollowers.toLocaleString("en-US")} of{" "}
-                {need.toLocaleString("en-US")} followers
-              </span>
-            </>
+          </p>
+          {connected && !hidden && (
+            <Pill className="bg-paper text-foreground">
+              <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
+              On
+            </Pill>
           )}
-        </span>
-        {connected && storyOk && <StatusMark>You qualify</StatusMark>}
+        </div>
+        <p className="type-label text-paper/70">
+          {connected && hidden
+            ? "Your profile is hidden. Make it public in Settings to see theirs."
+            : "It goes both ways: share yours to see theirs."}
+        </p>
       </div>
-    </SettingsGroup>
+      <div
+        className={cn("flex flex-col gap-2 rounded-2xl p-4", STORY_PINK)}
+        data-why-connect="story"
+      >
+        <div className="flex items-center gap-3">
+          <p className="min-w-0 flex-1 text-base leading-tight font-bold">
+            Story discount
+          </p>
+          <Pill className="bg-neutral-950 text-white">
+            {connected && storyOk ? (
+              <>
+                <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
+                You qualify
+              </>
+            ) : (
+              `${need.toLocaleString("en-US")}+ followers`
+            )}
+          </Pill>
+        </div>
+        <p className="text-2xl font-bold tracking-tight tabular-nums">
+          Pay {STORY_DEAL.pay}{" "}
+          <span className="text-base font-semibold opacity-70">→</span> get{" "}
+          {STORY_DEAL.get}
+        </p>
+        <p className="type-label">Post a Story at a place and pay with it.</p>
+        {connected && !storyOk && (
+          <>
+            <span
+              className="mt-1 block h-1.5 overflow-hidden rounded-full bg-black/20"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={need}
+              aria-valuenow={igFollowers}
+              aria-label="Followers toward the Story discount"
+            >
+              <span
+                className="block h-full rounded-full bg-neutral-950"
+                style={{
+                  width: `${Math.min(100, (igFollowers / need) * 100)}%`,
+                }}
+              />
+            </span>
+            <span className="type-label font-semibold tabular-nums">
+              {igFollowers.toLocaleString("en-US")} of{" "}
+              {need.toLocaleString("en-US")} followers
+            </span>
+          </>
+        )}
+      </div>
+    </section>
   );
 }
 
-function StatusMark({ children }: { children: ReactNode }) {
+function Pill({
+  className,
+  children,
+}: {
+  className: string;
+  children: ReactNode;
+}) {
   return (
-    <span className="text-foreground type-label flex shrink-0 items-center gap-1 font-semibold">
-      <Check className="h-4 w-4" aria-hidden />
+    <span
+      className={cn(
+        "type-meta flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 font-bold",
+        className,
+      )}
+    >
       {children}
     </span>
   );
@@ -389,12 +423,18 @@ export function ConnectedAccount({
   syncing = false,
   onSyncing,
   onChange,
+  disconnectOpen = false,
+  onDisconnect,
+  onDisconnectClose,
 }: {
   pending?: boolean;
   busy?: boolean;
   syncing?: boolean;
   onSyncing?: (on: boolean) => void;
   onChange?: () => void;
+  disconnectOpen?: boolean;
+  onDisconnect?: () => void;
+  onDisconnectClose?: () => void;
 }) {
   const supabase = useBrowserSupabase();
   const { igHandle: handle } = useConsumerIdentity();
@@ -449,9 +489,10 @@ export function ConnectedAccount({
     }
   }
 
-  // THE ACCOUNT, THEN TWO BUTTONS SIDE BY SIDE (Pato, MESITA-4342: "make
-  // the buttons cleaner … horizontal"): Sync and Change are two equal grey
-  // buttons under the account row; the two chevron rows (MESITA-3062) went.
+  // THE ACCOUNT, THEN THREE BUTTONS IN ONE ROW (Pato, MESITA-4350: "the
+  // disconnect instagram must be on the three buttons above … sync must be
+  // bigger"): Sync takes half the row, Change and Disconnect a quarter each
+  // with the icon over the label. The bottom red link (MESITA-4342) went.
   return (
     <SettingsGroup>
       <CurrentConnectionRow pending={pending} />
@@ -460,14 +501,14 @@ export function ConnectedAccount({
           <PhotoQuestion onAnswer={(y) => void answer(y)} busy={saving} />
         </div>
       ) : (
-      <div className="grid grid-cols-2 gap-2 px-4 pt-1 pb-4">
+      <div className="grid grid-cols-4 gap-2 px-4 pt-1 pb-4">
         <button
           type="button"
           onClick={() => {
             if (!pending && !busy && !resting) setAsking(true);
           }}
           disabled={pending || busy || resting}
-          className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)}
+          className={cn(ROW_BUTTON_CLASS, "col-span-2 gap-2")}
           data-instagram-sync
         >
           <RefreshCw
@@ -480,11 +521,24 @@ export function ConnectedAccount({
           type="button"
           onClick={() => onChange?.()}
           disabled={pending || busy}
-          className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)}
+          className={cn(ROW_BUTTON_CLASS, "flex-col gap-1 text-xs")}
           data-instagram-change
         >
           <ArrowLeftRight className="h-4 w-4" aria-hidden />
           Change
+        </button>
+        <button
+          type="button"
+          onClick={() => onDisconnect?.()}
+          disabled={pending || busy}
+          className={cn(
+            ROW_BUTTON_CLASS,
+            "text-destructive flex-col gap-1 text-xs",
+          )}
+          data-instagram-disconnect
+        >
+          <Unlink className="h-4 w-4" aria-hidden />
+          Disconnect
         </button>
       </div>
       )}
@@ -512,45 +566,12 @@ export function ConnectedAccount({
           </p>
         )}
       </div>
-    </SettingsGroup>
-  );
-}
-
-/** "Disconnect Instagram", the last group on the page (MESITA-3060 moved it
- *  off the account row; MESITA-3062 made it the destructive action row, like
- *  Settings › Delete account), opening MESITA-3052's confirm. */
-export function DisconnectLink({
-  disabled = false,
-  open = false,
-  onOpen,
-  onClose,
-}: {
-  disabled?: boolean;
-  open?: boolean;
-  onOpen?: () => void;
-  onClose?: () => void;
-}) {
-  const { igHandle: handle } = useConsumerIdentity();
-  return (
-    <>
-      {/* A red text button, the page's quietest action (MESITA-4342): the
-            Account box around it is gone. */}
-      <button
-        type="button"
-        onClick={() => onOpen?.()}
-        disabled={disabled}
-        className="text-destructive flex min-h-11 items-center justify-center gap-2 self-center px-4 text-sm font-semibold hover:underline disabled:pointer-events-none disabled:opacity-60"
-        data-instagram-disconnect
-      >
-        <Unlink className="h-4 w-4" aria-hidden />
-        Disconnect Instagram
-      </button>
       <DisconnectDialog
-        open={open}
+        open={disconnectOpen}
         handle={handle}
-        onClose={() => onClose?.()}
+        onClose={() => onDisconnectClose?.()}
       />
-    </>
+    </SettingsGroup>
   );
 }
 
