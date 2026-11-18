@@ -1,10 +1,5 @@
 import { Skeleton, SkeletonLine } from "@/components/shared";
 import {
-  IDENTITY_CARD_CLASS,
-  IDENTITY_INSTAGRAM_CLASS,
-  IDENTITY_LINES_CLASS,
-  IDENTITY_NAME_CLASS,
-  IDENTITY_PHOTO_CLASS,
   IDENTITY_RING_CLASS,
 } from "@/components/consumer/identity-card-layout";
 import { ICON_CHIP_CLASS } from "@/components/consumer/me/settings-rows";
@@ -45,19 +40,22 @@ export const IDENTITY_BAR_BODY_CLASS =
  *  placeholders must be similar to the page you are loading, like the
  *  sizes"). */
 export function IdentityCardSkeleton() {
+  // The modules' own boxes (MESITA-4335): the 56px photo and the Name box,
+  // then the full-width Instagram box.
   return (
-    <div aria-hidden className={IDENTITY_CARD_CLASS}>
-      <div className={IDENTITY_RING_CLASS}>
-        <Skeleton className={IDENTITY_PHOTO_CLASS} />
+    <div aria-hidden className="flex w-full min-w-0 flex-col gap-2">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className={IDENTITY_RING_CLASS}>
+          <Skeleton className="block h-14 w-14 rounded-full" />
+        </div>
+        <div className="border-border flex h-14 flex-1 flex-col justify-center gap-1.5 rounded-lg border px-3">
+          <Skeleton className="h-3 w-10 rounded" />
+          <Skeleton className="h-4.5 w-36 rounded" />
+        </div>
       </div>
-      <div className={IDENTITY_LINES_CLASS}>
-        <span className={IDENTITY_NAME_CLASS}>
-          <Skeleton className="h-5 w-40 rounded" />
-        </span>
-        <span className={IDENTITY_INSTAGRAM_CLASS}>
-          <Skeleton className="h-4.5 w-4.5 shrink-0 rounded-full" />
-          <Skeleton className="h-3.5 w-44 max-w-full rounded" />
-        </span>
+      <div className="border-border flex h-11 items-center gap-2 rounded-lg border px-3">
+        <Skeleton className="h-5 w-5 shrink-0 rounded-full" />
+        <Skeleton className="h-3.5 w-32 rounded" />
       </div>
     </div>
   );
