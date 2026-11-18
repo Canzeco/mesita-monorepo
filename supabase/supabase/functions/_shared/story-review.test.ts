@@ -24,24 +24,27 @@ Deno.test("staffGate: only a current s2 waiter-code token of the story's place",
 });
 
 Deno.test("reviewRefusal: every RPC code has its status; anything else is a 500", () => {
-  assertEquals(REVIEW_CODES.sort(), ["already_decided", "gone", "story_claimed", "story_too_old", "wrong_place"]);
+  assertEquals(REVIEW_CODES.sort(), ["already_decided", "gone", "story_too_old", "wrong_place"]);
   assertEquals(reviewRefusal("gone").status, 404);
   assertEquals(reviewRefusal("story_too_old").status, 409);
   assertEquals(reviewRefusal("what").status, 500);
 });
 
 Deno.test("waiterState and the too_old status", () => {
-  assertEquals(waiterState({ purchase_id: "p", review: "approved" }), "used");
-  assertEquals(waiterState({ purchase_id: null, review: "approved" }), "approved");
-  assertEquals(waiterState({ purchase_id: null, review: "rejected" }), "rejected");
-  assertEquals(waiterState({ purchase_id: null, review: null }), "waiting");
   const now = Date.parse("2026-11-17T12:00:00Z");
+  const open = { state: "found", deadline_at: "2026-11-17T20:00:00Z" };
+  assertEquals(waiterState({ review: "approved" }, open, now), "approved");
+  assertEquals(waiterState({ review: "rejected" }, null, now), "rejected");
+  assertEquals(waiterState({ review: null }, open, now), "waiting");
+  assertEquals(waiterState({ review: null }, null, now), "used", "no Story holds it");
+  assertEquals(waiterState({ review: null }, { ...open, deadline_at: "2026-11-17T11:00:00Z" }, now), "used", "past the deadline");
+  assertEquals(waiterState({ review: null }, { ...open, state: "void" }, now), "used");
   const row = (agoMin: number): WaiterStoryRow => ({
-    id: "m", ig_handle: "ana", purchase_id: null, media_url: null, media_kind: "image", source: "emulator",
+    id: "m", ig_handle: "ana", media_url: null, media_kind: "image", source: "emulator",
     mentioned_at: new Date(now - agoMin * 60_000).toISOString(), livemode: false, review: null, review_place_id: PLACE, reviewed_at: null,
   });
   const rules = { bonusWaitSec: 10800, checkMarginSec: 5400 };
   const place = { id: PLACE, name: "P", instagram_handle: "p" };
-  assertEquals(waiterStoryView(row(5), place, true, now, rules).story.status, "received");
-  assertEquals(waiterStoryView(row(19 * 60 + 31), place, true, now, rules).story.status, "too_old");
+  assertEquals(waiterStoryView(row(5), open, place, true, now, rules).story.status, "received");
+  assertEquals(waiterStoryView(row(19 * 60 + 31), open, place, true, now, rules).story.status, "too_old");
 });

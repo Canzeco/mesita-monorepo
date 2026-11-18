@@ -69,9 +69,6 @@ serveJson("consumer-web-express-pay-setup", async (req) => {
     const r = storyBasketRefusal(kinds, units.length);
     if (r) return no(r.code);
   }
-  if (kinds.includes("voucher_story") && !isUuid(bodyRes.body.mention_id)) {
-    return json({ ok: false, code: "bad_body", field: "mention_id", error: "Show your story first" }, 400);
-  }
 
   const config = await readMoneyConfig(admin);
   if (config.express_wallets.length === 0) return no("disabled");

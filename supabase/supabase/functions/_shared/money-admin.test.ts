@@ -56,7 +56,7 @@ function fakeAdmin(calls: Call[], basket: PurchaseRow[] = []): SupabaseClient {
 const PURCHASE: PurchaseRow = {
   id: "pu-1", consumer_id: "c-1", place_id: "pl-1", amount_cents: 20000, bonus_cents: 2000, refunded_cents: 0,
   application_fee_cents: 1000, fee_collected: "application_fee", stripe_account_id: "acct_place", stripe_payment_intent_id: "pi_1", voucher: "voucher_200",
-  story_activated_at: null, status: "paid", paid_at: "2026-11-01T00:00:00Z", livemode: false, currency: "mxn",
+  status: "paid", paid_at: "2026-11-01T00:00:00Z", livemode: false, currency: "mxn",
   created_at: "2026-11-01T00:00:00Z",
 };
 

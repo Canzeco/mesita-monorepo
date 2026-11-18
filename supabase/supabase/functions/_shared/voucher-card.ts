@@ -491,8 +491,6 @@ export async function openVoucherCard(
     publishableKey: string | null;
     nowMs: number;
     followers?: readonly MoneyVoucherKey[];
-    /** MESITA-4296: the story a Story purchase reserves. */
-    storyMentionId?: string | null;
   },
 ): Promise<CardBuyOk | ExpressBuyOk | CardBuyRefusal | BuyRefusal> {
   const opened = await openPurchaseRow(admin, { ...args, paySource: args.source.kind });

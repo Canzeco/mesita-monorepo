@@ -1,26 +1,20 @@
-// The waiter's step of the Story voucher (MESITA-4304, on top of MESITA-4296's
-// app check; the pieces come from the closed MESITA-4297).
-//
-// The guest's check finds their story and points it at the place
-// (story_review_open, which mints a QR token); the Story page shows the QR
-// to visit.mesita.ai/story/<token>; the waiter reads the story there
-// (visit-web-get-story) and approves or rejects it with the place's waiter
-// code (visit-web-review-story). Only an approved story is payable.
+// The waiter's step of the Story (MESITA-4304; after payment since
+// MESITA-4405). story_bind ties the guest's story to their Story and mints
+// its QR token; the Story screen shows the QR to visit.mesita.ai/story/<token>;
+// the waiter reads the story there (visit-web-get-story) and approves or
+// rejects it with the place's waiter code (visit-web-review-story). An
+// approval starts the bonus's re-check; a reject sends the Story back to
+// waiting for a new post.
 //
 // The guest holds the QR, so the token alone never approves anything: the
 // phone must carry a current `s2` waiter-code staff token of the STORY's
 // place (_shared/staff.ts, the tab Verify's rule). Without one the answer is
 // 403 staff_code_needed; a waiter of another place gets 403 wrong_place.
 
-import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isUuid } from "./place-id.ts";
 import { PROOF_ORIGIN } from "./proof.ts";
 import type { StaffTokenInfo } from "./staff.ts";
-import { mentionFits, STORY_RULES, type StoryRulesLive } from "./story-mention.ts";
-
-/** How the guest's page looks while it waits for the waiter: every 5 s for
- *  10 minutes (the 2-minute story look is too short for a busy waiter). */
-export const REVIEW_POLL = { every_ms: STORY_RULES.pollEveryMs, for_ms: 10 * 60_000 } as const;
+import { mentionFits, type StoryRulesLive } from "./story-mention.ts";
 
 export function isReviewToken(t: unknown): t is string {
   return typeof t === "string" && /^[0-9a-f]{32}$/.test(t);
@@ -30,26 +24,11 @@ export function storyReviewUrl(token: string): string {
   return `${PROOF_ORIGIN}/story/${token}`;
 }
 
-export type StoryReviewAnswer = { state: "waiting" | "approved"; url: string | null; reviewed_at: string | null };
-
-/** The guest's side: point the found story at this place and answer where
- *  the waiter stands. A rejected story never reaches here (storyCheck skips
- *  it); should a race land one, it reads waiting (Pay stays off). */
-export async function openStoryReview(admin: SupabaseClient, mentionId: string, placeId: string): Promise<StoryReviewAnswer> {
-  const { data, error } = await admin.rpc("story_review_open", { p_mention: mentionId, p_place: placeId });
-  if (error) throw new Error(`story_review_open: ${error.message}`);
-  const r = (data ?? {}) as { ok?: boolean; token?: string; place_id?: string | null; review?: string | null; reviewed_at?: string | null };
-  if (!r.ok || !r.token) return { state: "waiting", url: null, reviewed_at: null };
-  const approved = r.review === "approved" && r.place_id === placeId;
-  return { state: approved ? "approved" : "waiting", url: storyReviewUrl(r.token), reviewed_at: approved ? r.reviewed_at ?? null : null };
-}
-
 // ── The waiter's read ───────────────────────────────────────────────────────
 
 export type WaiterStoryRow = {
   id: string;
   ig_handle: string | null;
-  purchase_id: string | null;
   media_url: string | null;
   media_kind: "image" | "video";
   source: "meta" | "emulator";
@@ -61,20 +40,24 @@ export type WaiterStoryRow = {
 };
 
 export const WAITER_STORY_COLUMNS =
-  "id, ig_handle, purchase_id, media_url, media_kind, source, mentioned_at, livemode, review, review_place_id, reviewed_at";
+  "id, ig_handle, media_url, media_kind, source, mentioned_at, livemode, review, review_place_id, reviewed_at";
+
+/** The Story that holds the story (MESITA-4405), when one does. */
+export type WaiterStoryHolder = { state: string; deadline_at: string } | null;
 
 /** Where the story stands for the waiter:
  *   waiting   approve or reject it (status received), or it is too old to
  *             approve (status too_old)
- *   approved  the guest can pay
- *   rejected  it never counts; the guest posts another
- *   used      a Story purchase claimed it */
+ *   approved  approved; the guest's bonus lands after the re-check
+ *   rejected  it never counts here; the guest posts another
+ *   used      no open Story holds it any more (past its deadline, refunded,
+ *             or rebound): nothing to decide */
 export type WaiterState = "waiting" | "approved" | "rejected" | "used";
 
-export function waiterState(row: Pick<WaiterStoryRow, "purchase_id" | "review">): WaiterState {
-  if (row.purchase_id) return "used";
+export function waiterState(row: Pick<WaiterStoryRow, "review">, holder: WaiterStoryHolder, nowMs: number): WaiterState {
   if (row.review === "approved") return "approved";
   if (row.review === "rejected") return "rejected";
+  if (!holder || holder.state !== "found" || Date.parse(holder.deadline_at) <= nowMs) return "used";
   return "waiting";
 }
 
@@ -82,6 +65,7 @@ export function waiterState(row: Pick<WaiterStoryRow, "purchase_id" | "review">)
  *  approval needs the story to outlive the re-check (the DB re-checks). */
 export function waiterStoryView(
   row: WaiterStoryRow,
+  holder: WaiterStoryHolder,
   place: { id: string; name: string | null; instagram_handle: string | null },
   testMode: boolean,
   nowMs: number,
@@ -92,7 +76,7 @@ export function waiterStoryView(
     mention_id: row.id,
     place,
     instagram_handle: row.ig_handle,
-    state: waiterState(row),
+    state: waiterState(row, holder, nowMs),
     story: {
       id: row.id,
       media_url: row.media_url,
@@ -153,7 +137,6 @@ const RPC_REFUSAL: Record<string, { status: number; error: string }> = {
   gone: { status: 404, error: "This Story QR is not valid any more. Ask the guest to show it again." },
   wrong_place: { status: 403, error: "This story is for another place." },
   already_decided: { status: 409, error: "This story was already decided" },
-  story_claimed: { status: 409, error: "This story was already used for a Story voucher" },
   story_too_old: { status: 409, error: "This story is too old for the bonus. Ask the guest to post a new one." },
 };
 

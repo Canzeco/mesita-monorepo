@@ -48,9 +48,6 @@ export type PurchaseRow = {
   stripe_account_id: string;
   stripe_payment_intent_id: string | null;
   voucher: string | null;
-  /** When staff APPROVED the Story's story (MESITA-4264). Not "credited":
-   *  what the guest paid is credited at payment since MESITA-4264. */
-  story_activated_at: string | null;
   status: string;
   paid_at: string | null;
   livemode: boolean;
@@ -59,7 +56,7 @@ export type PurchaseRow = {
 };
 
 export const PURCHASE_COLUMNS =
-  "id, consumer_id, place_id, amount_cents, bonus_cents, refunded_cents, application_fee_cents, fee_collected, stripe_account_id, stripe_payment_intent_id, voucher, story_activated_at, status, paid_at, livemode, currency, created_at";
+  "id, consumer_id, place_id, amount_cents, bonus_cents, refunded_cents, application_fee_cents, fee_collected, stripe_account_id, stripe_payment_intent_id, voucher, status, paid_at, livemode, currency, created_at";
 
 export type PaymentRow = {
   id: string;

@@ -380,6 +380,18 @@ Deno.test("list rows: one Story per visit opens again after a visit (MESITA-3463
   assertEquals(guestSell(["voucher_story"], blocks.get("p")), ["voucher_story"]);
 });
 
+Deno.test("list rows: a Story that expired with no story posted frees the visit's slot (MESITA-4405)", () => {
+  const spent = guestBlocksFrom([{ place_id: "p", voucher: "voucher_story" }], []);
+  assertEquals(guestSell(["voucher_story"], spent.get("p")), [], "a Story bought with no visit uses the slot");
+  const freed = guestBlocksFrom([{ place_id: "p", voucher: "voucher_story", freed: true }], []);
+  assertEquals(guestSell(["voucher_story"], freed.get("p")), ["voucher_story"], "an expired, never-posted Story does not");
+  const both = guestBlocksFrom([
+    { place_id: "p", voucher: "voucher_story", freed: true },
+    { place_id: "p", voucher: "voucher_story" },
+  ], []);
+  assertEquals(guestSell(["voucher_story"], both.get("p")), [], "only the freed one is skipped");
+});
+
 Deno.test("withStoryMode: Story leaves sell only when no mention source exists (MESITA-4264)", () => {
   const o = offerFrom(base);
   assertEquals(o.sell.includes("voucher_story"), true);

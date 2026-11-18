@@ -157,6 +157,13 @@ Deno.test("storyRulesFrom: the live config with the defaults", () => {
   assertEquals(storyRulesFrom(null).recheckMeta, false);
 });
 
+Deno.test("storyRulesFrom: the post window defaults to 12 h and is clamped 2–24 h, as story_rules()", () => {
+  assertEquals(storyRulesFrom(null).postWindowSec, 43_200);
+  assertEquals(storyRulesFrom({ story_post_window_sec: 21_600 }).postWindowSec, 21_600);
+  assertEquals(storyRulesFrom({ story_post_window_sec: 60 }).postWindowSec, 7_200);
+  assertEquals(storyRulesFrom({ story_post_window_sec: 999_999 }).postWindowSec, 86_400);
+});
+
 Deno.test("storyStillUp: a Range GET; 2xx/206 up, anything else down, timeout down", async () => {
   let sent: RequestInit | undefined;
   const ok206: typeof fetch = (_u, init) => {
@@ -179,23 +186,23 @@ Deno.test("recheckReachable: a real Meta mention is not fetched while story_rech
     fetched++;
     return Promise.resolve({ reachable: false, status: 404 as const });
   };
-  const meta: RecheckRow = { purchase_id: "p", mention: { source: "meta", media_url: "https://lookaside.fbsbx.com/a" } };
+  const meta: RecheckRow = { story_id: "s", purchase_id: "p", mention: { source: "meta", media_url: "https://lookaside.fbsbx.com/a" } };
   assertEquals((await recheckReachable(meta, false, still)).reachable, true);
   assertEquals(fetched, 0);
   assertEquals((await recheckReachable(meta, true, still)).reachable, false);
-  const emu: RecheckRow = { purchase_id: "p", mention: { source: "emulator", media_url: "https://x/1.jpg" } };
+  const emu: RecheckRow = { story_id: "s", purchase_id: "p", mention: { source: "emulator", media_url: "https://x/1.jpg" } };
   assertEquals((await recheckReachable(emu, false, still)).reachable, false, "an emulator story is always fetched");
   assertEquals(fetched, 2);
   // MESITA-4310: a test story without media is decided by its delete flag, never fetched.
-  const kept: RecheckRow = { purchase_id: "p", mention: { source: "emulator", media_url: null, deleted_at: null } };
+  const kept: RecheckRow = { story_id: "s", purchase_id: "p", mention: { source: "emulator", media_url: null, deleted_at: null } };
   assertEquals(await recheckReachable(kept, false, still), { reachable: true, status: "kept", fetched: false });
-  const gone: RecheckRow = { purchase_id: "p", mention: { source: "emulator", media_url: null, deleted_at: "2026-11-17T12:00:00Z" } };
+  const gone: RecheckRow = { story_id: "s", purchase_id: "p", mention: { source: "emulator", media_url: null, deleted_at: "2026-11-17T12:00:00Z" } };
   assertEquals(await recheckReachable(gone, false, still), { reachable: false, status: "deleted", fetched: false });
   assertEquals(fetched, 2);
 });
 
 Deno.test("runRecheckTick: one failing row is logged and the batch goes on", async () => {
-  const rows: RecheckRow[] = ["a", "b", "c"].map((id) => ({ purchase_id: id, mention: null }));
+  const rows: RecheckRow[] = ["a", "b", "c"].map((id) => ({ story_id: id, purchase_id: id, mention: null }));
   const logs: string[] = [];
   const report = await runRecheckTick({
     rows,
@@ -209,6 +216,7 @@ Deno.test("runRecheckTick: one failing row is logged and the batch goes on", asy
 
 Deno.test("runRecheckTick: 50 hanging hosts finish inside the budget, 10 at a time", async () => {
   const rows: RecheckRow[] = Array.from({ length: 50 }, (_, i) => ({
+    story_id: `s${i}`,
     purchase_id: `p${i}`,
     mention: { source: "emulator" as const, media_url: "https://hang/x.jpg" },
   }));
@@ -242,7 +250,7 @@ Deno.test("runRecheckTick: 50 hanging hosts finish inside the budget, 10 at a ti
 
 Deno.test("runRecheckTick: an RPC refusal counts as failed, voided counts", async () => {
   const report = await runRecheckTick({
-    rows: [{ purchase_id: "a", mention: null }, { purchase_id: "b", mention: null }],
+    rows: [{ story_id: "a", purchase_id: "a", mention: null }, { story_id: "b", purchase_id: "b", mention: null }],
     check: () => Promise.resolve({ reachable: false, status: 404 }),
     settle: (id) => Promise.resolve(id === "a" ? { ok: false, code: "not_approved" } : { ok: true, outcome: "voided" }),
     log: () => {},

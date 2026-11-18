@@ -31,8 +31,7 @@
 //         items?: [{ voucher, qty }] (in place of voucher),
 //         request_id: uuid (one per basket and card; every retry after an
 //           unknown outcome carries the same),
-//         card_pm_id: pm_… (a card saved on the guest's own customer),
-//         mention_id?: uuid (Story only: the story the guest showed) }
+//         card_pm_id: pm_… (a card saved on the guest's own customer) }
 // Response: { ok: true, purchase_id, card: { status: succeeded | processing |
 //   requires_action, payment_intent_id, client_secret?, stripe_account?,
 //   publishable_key? } }
@@ -45,15 +44,12 @@
 //   story_unavailable (Story with live payments and Meta off, MESITA-4264) |
 //   welcome_used | below_minimum | place_cap (MESITA-3947)
 //   502 card_failed | stripe_unreachable · 503 payments not configured
-// MESITA-4296: a STORY IS VERIFIED BEFORE IT IS PAID. The Story sheet found
-// the guest's story first (consumer-web-check-story) and the body names it:
-// `mention_id`. The buy re-checks it here (_shared/story-buy.ts) and the
-// purchase RESERVES it (story_mention_id); the credit claims it. A Story is
-// paid alone. Story refusals, each meaning nothing was charged and the sheet
-// goes back to Check my story:
-//   400 bad_body field=mention_id · 409 private_account | story_not_found |
-//   story_taken | story_too_old | story_livemode | story_one_per_basket |
-//   story_payment_in_progress
+// MESITA-4405: THE STORY VOUCHER PAYS FIRST. It is bought like any voucher,
+// with no story gate: the credit creates its Story record (_shared/story.ts),
+// where the guest posts, a waiter approves and the bonus follows. A Story is
+// paid alone; the guest rules stay here: 409 private_account |
+// story_one_per_basket (and needs_instagram, few_followers, needs_visit
+// above). A `mention_id` in the body is ignored.
 // The client secret of a bank check is returned, never logged.
 //
 // MESITA-4384: EXPRESS PAY (Apple Pay / Google Pay through Stripe's Express
@@ -80,8 +76,8 @@
 //   timed out: start over), 503 payments_unavailable.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { readStoryRules, storyMode } from "../_shared/story-mention.ts";
-import { storyBasketRefusal, storyBuyGate } from "../_shared/story-buy.ts";
+import { storyMode } from "../_shared/story-mention.ts";
+import { storyBasketRefusal } from "../_shared/story-buy.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { readCustomer } from "../_shared/boost.ts";
@@ -121,13 +117,11 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   const followers = units.slice(1);
   const kinds = basket.items.map((i) => i.voucher);
   if (!isUuid(requestId)) return json({ ok: false, code: "bad_body", field: "request_id", error: "request_id must be a uuid" }, 400);
-  // MESITA-4296: a Story is paid alone, and only with the story it shows.
+  // MESITA-4296: a Story is paid alone. Since MESITA-4405 it pays first:
+  // no story is named or checked here (the Story record follows the money).
   {
     const basketRefusal = storyBasketRefusal(kinds, units.length);
     if (basketRefusal) return json({ ok: false, code: basketRefusal.code, error: basketRefusal.error }, basketRefusal.status);
-  }
-  if (kinds.includes("voucher_story") && !isUuid(bodyRes.body.mention_id)) {
-    return json({ ok: false, code: "bad_body", field: "mention_id", error: "Show your story first" }, 400);
   }
   // MESITA-4384: express pay or a saved card, never both.
   const how = expressBodyGate(bodyRes.body);
@@ -217,26 +211,10 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   const stripe = stripeClient(key);
 
   // Story's own gate: the guest's public Instagram above the follower floor
-  // (MESITA-3507, MESITA-4263), then the story they showed (MESITA-4296).
-  let storyMentionId: string | null = null;
+  // (MESITA-3507, MESITA-4263). One per visit is buyRefusal's needs_visit.
   if (kinds.includes("voucher_story")) {
-    const guest = await readStoryGuest(admin, userId);
-    const story = storyRefusal("voucher_story", guest);
+    const story = storyRefusal("voucher_story", await readStoryGuest(admin, userId));
     if (story) return json({ ok: false, code: story.code, error: story.error }, story.status);
-    const gate = await storyBuyGate(admin, () => stripe, {
-      consumerId: userId,
-      placeId,
-      mentionId: bodyRes.body.mention_id,
-      guestHandle: guest?.instagram_handle ?? null,
-      livemode,
-      rules: await readStoryRules(admin),
-      nowMs: Date.now(),
-    });
-    if (!gate.ok) {
-      console.log("[consumer-web-buy-voucher]", JSON.stringify({ outcome: gate.refusal.code, place_id: placeId, voucher }));
-      return json({ ok: false, code: gate.refusal.code, error: gate.refusal.error, ...(gate.refusal.field ? { field: gate.refusal.field } : {}) }, gate.refusal.status);
-    }
-    storyMentionId = gate.mentionId;
   }
 
   {
@@ -262,7 +240,6 @@ serveJson("consumer-web-buy-voucher", async (req) => {
       source,
       publishableKey: paymentsPublishableKey(livemode),
       nowMs: Date.now(),
-      storyMentionId,
     });
     if (!card.ok) {
       const detail = "detail" in card && card.detail ? card.detail : {};

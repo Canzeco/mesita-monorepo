@@ -1,13 +1,14 @@
 // Supabase Edge Function — admin-web-story-override
 //
-// MESITA-4264, MESITA-4296: the operator settles a Story dispute without
-// hand SQL. Super-admin only; every call is logged with the actor.
+// MESITA-4264, MESITA-4405: the operator settles a Story dispute without
+// hand SQL, on the Story record (by its purchase id). Super-admin only;
+// every call is logged with the actor.
 //   release      write the bonus now; also lifts a void that never paid a
-//                bonus (mention_lost, no_mention, unreachable…)
+//                bonus (expired, unreachable…)
 //   void         void the bonus (reason operator); after a release it
 //                reverses the bonus entry, up to what the guest still holds
-//   recheck_now  fetch the claimed story again now and settle it, as the
-//                cron would
+//   recheck_now  fetch an approved Story's story again now and settle it, as
+//                the cron would
 // release / void go through wallet_override_story; recheck_now through the
 // cron's own re-check (_shared/story-recheck.ts).
 //
@@ -23,6 +24,7 @@ import { isUuid } from "../_shared/place-id.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import { readStoryRules } from "../_shared/story-mention.ts";
 import { recheckOne } from "../_shared/story-recheck.ts";
+import { storyLog } from "../_shared/story-log.ts";
 
 const FN = "admin-web-story-override";
 const ACTIONS = new Set(["release", "void", "recheck_now"]);
@@ -48,6 +50,12 @@ serveJson("admin-web-story-override", async (req) => {
     if (error) throw new Error(`wallet_override_story: ${error.message}`);
     const r = (data ?? {}) as Record<string, unknown> & { ok?: boolean; code?: string };
     console.log(`[${FN}]`, JSON.stringify({ actor: user.id, purchase_id: purchaseId, action, answer: r }));
+    if (r.outcome === "released" || r.outcome === "voided") {
+      storyLog(r.outcome === "released" ? "released" : "void", {
+        story_id: r.story_id as string | undefined, purchase_id: purchaseId, place_id: r.place_id as string | undefined,
+        livemode: r.livemode as boolean | undefined, reason: r.outcome === "voided" ? "operator" : null, via: "operator",
+      });
+    }
     if (!r.ok) {
       const status = r.code === "not_found" ? 404 : r.code === "bad_request" ? 400 : 409;
       return json({ ok: false, code: r.code ?? "server", error: `Refused: ${r.code ?? "unknown"}` }, status);

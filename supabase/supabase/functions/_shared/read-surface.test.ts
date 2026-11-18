@@ -182,6 +182,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/families-repick.ts", // families, texts and operator marks a family re-pick compares (MESITA-4238)
   "_shared/reservation-call-outcome.ts", // hours, lng, name, photos for a finished call's outcome (MESITA-3618)
   "consumer-web-get-wallet/index.ts", // timezone, lng of a Story's place for its bonus time (MESITA-4264)
+  "_shared/story-screen.ts", // timezone, lng of one Story's place for its screen (MESITA-4405)
   "admin-web-search-places/index.ts",
   // The place screen's one read, admin's and the Business app's (MESITA-3103).
   "_shared/place-overview.ts",
