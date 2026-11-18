@@ -450,7 +450,9 @@ export function OffersTile({
  *  box, standing still: the day over the big time, the state under the
  *  glyph (Booking / Booked). Tap opens the Reserve page, which starts on
  *  Your table: Change it · Cancel it (MESITA-4403). It was a grey strip
- *  under the row (MESITA-3640 to MESITA-4404). */
+ *  under the row (MESITA-3640 to MESITA-4404). RED EDGE TO EDGE
+ *  (MESITA-4407, Pato: "LITERALLY MAKE THE WHOLE BOX RED"): no black frame,
+ *  no inner box. */
 function TableTile({
   r,
   onReserve,
@@ -469,13 +471,13 @@ function TableTile({
       data-profile-actions="reservation"
       data-reservation-state={r.confirmed ? "booked" : "booking"}
       aria-label={`Your table here: ${state}, ${day}${time ? `, ${time}` : ""}. Opens Reserve to change or cancel it.`}
-      className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE)}
+      className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE, RESERVE_CHIP)}
     >
       <span className={ROW_LEAD}>
         <Icon className={cn(MESITA_TILE_ICON, !r.confirmed && "animate-pulse")} strokeWidth={2.25} />
         <span>{state}</span>
       </span>
-      <span className={cn(ROW_CHIP, RESERVE_CHIP, "flex flex-col items-center justify-center")}>
+      <span className={cn(ROW_CHIP, "flex flex-col items-center justify-center")}>
         <span className="text-[10px] font-bold tracking-wide uppercase opacity-90">{day}</span>
         {time ? <span className="text-base">{time}</span> : null}
       </span>
