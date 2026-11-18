@@ -47,7 +47,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ChevronDown, Compass, Heart, Store, Users } from "lucide-react";
+import { Compass, Heart, LayoutGrid, Store, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
@@ -116,17 +116,16 @@ const SocialFeed = dynamic(
 // bar instead of dark, light"): the grey fill token with ink names, no
 // edge line (MESITA-4270 took MESITA-4268's hairline away).
 // Reverses MESITA-3812/3813's almost-ink surface.
-const RAIL_SURFACE = "bg-muted text-foreground";
-const RAIL_ROW =
-  "text-foreground relative flex h-11 w-full shrink-0 items-center text-left transition";
-// WHITE WITH A BLUE EDGE (Pato, 2026-11-17, MESITA-4289: "i don't like the
-// lateral menu at the left being that blue … blue but only left select
-// border as in prev versions, but with the menu light"; /plan-design-review):
-// the chosen row is a white band with ink text and a 4px blue bar on its
-// left edge, Saved included. MESITA-4270's solid blue band lasted a day.
-const RAIL_ROW_ON =
-  "bg-card text-foreground before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-blue-600";
-const RAIL_EMOJI = "flex w-12 shrink-0 justify-center text-xl leading-none";
+// A HORIZONTAL STRIP, NO SIDE RAIL (Pato, 2026-11-18, MESITA-4410: "i
+// don't want a lateral menu. i want a menu and horizontal menu below
+// places"): under the Places · Social strip, one scrolling row of pills,
+// emoji and name; the chosen pill is ink, the rest grey (the app's chip
+// pair). A menu button at its left opens every family at once. The emoji
+// rail and its widening menu (MESITA-3781…MESITA-4294) are gone.
+const PILL =
+  "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium whitespace-nowrap transition active:scale-[0.97]";
+const PILL_ON = "bg-foreground text-card";
+const PILL_OFF = "bg-muted text-foreground hover:bg-foreground/10";
 
 /** The column's default row: every place, one list, ranked like the Search
  *  map (Pato, MESITA-2516: "only keeping All is cleaner. just like in map").
@@ -264,13 +263,9 @@ export function CatalogRails() {
   // The family the pool was asked for (MESITA-2438): a family row's own,
   // none for All.
   const [families, setFamilies] = useState<string[]>([]);
-  // The open menu: mounted, then wide (its width grows from the rail's).
+  // The menu: every family at once, dropped over the rows (MESITA-4410).
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuWide, setMenuWide] = useState(false);
-  const railRef = useRef<HTMLElement | null>(null);
-  // The rail reached its last family: the down arrow hides (MESITA-3806).
-  const [railAtEnd, setRailAtEnd] = useState(false);
-  const menuRef = useRef<HTMLElement | null>(null);
+  const stripRef = useRef<HTMLElement | null>(null);
   // THE POOL IS THIS GUEST'S (autoplan eng E1, MESITA-4207): its offers are
   // narrowed per guest, so a pool kept across a sign-out or sign-in would
   // show another guest's chips; the guest is part of the key.
@@ -524,20 +519,6 @@ export function CatalogRails() {
   const chips = placesChips().filter(
     (c) => viewer !== "anonymous" || c.key !== SAVED_CHIP,
   );
-  // PLACES' EMOJI RAIL (Pato, MESITA-3781: "put a lateral menu when you
-  // only show the items … i can click the lateral vertical menu and open with
-  // names"): a slim dark column (ink since MESITA-3812) at the left edge
-  // with only each family's emoji, ❤️ Saved and ⭐ Top first (MESITA-3763),
-  // every one full strength (MESITA-3785). A TAP PICKS AND OPENS (Pato,
-  // MESITA-3792: "CLICK A, THE ITEM GETS SELECTED, THE MENU GETS LARGER").
-  //
-  // THE MENU IS THE RAIL, WIDER (Pato, MESITA-3800: "i don't like how it
-  // vertically jumps and disaligns"): no full-card drawer and no title
-  // (MESITA-3764…3779). The open menu is drawn over the Places pane only,
-  // from the rail's own top-left, in the rail's rows and at the rail's
-  // scroll, and grows from 48px to half the card: every emoji stays where it
-  // was and the names appear beside it. A tap on the dim or Escape closes it,
-  // and the rail takes the menu's scroll back.
   const selectFamily = (key: string) => {
     if (chip === key) return;
     const c = chips.find((x) => x.key === key);
@@ -546,164 +527,105 @@ export function CatalogRails() {
     // Saved reads no pool: the last pool family stays asked.
     if (key !== SAVED_CHIP) setFamilies(chipFamilies(key));
   };
-  const openMenuAt = (key: string) => {
-    selectFamily(key);
-    const from = railRef.current?.scrollTop ?? 0;
-    setMenuOpen(true);
-    requestAnimationFrame(() => {
-      if (menuRef.current) menuRef.current.scrollTop = from;
-      requestAnimationFrame(() => setMenuWide(true));
-    });
-  };
-  const closeMenu = () => {
-    if (railRef.current && menuRef.current)
-      railRef.current.scrollTop = menuRef.current.scrollTop;
-    setMenuWide(false);
-    window.setTimeout(() => setMenuOpen(false), 200);
-  };
-  const railRows = (open: boolean) =>
-    chips.map((c) => {
-      const on = chip === c.key;
-      return (
-        <button
-          key={c.key}
-          type="button"
-          onClick={() => {
-            if (open) {
-              selectFamily(c.key);
-              closeMenu();
-            } else openMenuAt(c.key);
-          }}
-          aria-label={open ? c.label : `${c.label}: pick and open families`}
-          aria-haspopup={open ? undefined : "dialog"}
-          aria-current={on ? "true" : undefined}
-          data-on={on ? "" : undefined}
-          className={cn(
-            RAIL_ROW,
-            on ? RAIL_ROW_ON : "hover:bg-foreground/5",
-            on && open && "font-semibold",
-          )}
-        >
-          <span aria-hidden className={RAIL_EMOJI}>
-            {c.emoji}
-          </span>
-          {open ? (
-            <span className="min-w-0 truncate pr-3 text-base whitespace-nowrap">
-              {c.label}
-            </span>
-          ) : null}
-        </button>
-      );
-    });
-  // MORE BELOW, AND SAYS SO (Pato, MESITA-3806: "show an arrow or
-  // something at the bottom of sidebar menu to indicate that that shit is
-  // scrollable"): the rail's foot fades into its own grey under a down
-  // chevron; a tap scrolls most of a screen; at the last family it hides.
-  const railScrolled = (el: HTMLElement) =>
-    setRailAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
-  const emojiRail = (
-    <div className={cn(RAIL_SURFACE, "relative flex w-12 shrink-0 flex-col")}>
-      <nav
-        ref={railRef}
-        aria-label="Families"
-        onScroll={(e) => railScrolled(e.currentTarget)}
-        // NO SCROLLBAR (Pato, MESITA-3807: "the scrolling bar in the
-        // sidebar menu looks like shit"; MESITA-3806 gave it the rows' thin
-        // bar for one round): the down arrow at its foot says it scrolls.
-        // MESITA-4271 tried a 3px thumb at its left edge; it ran over the
-        // blue chosen band, so it went again (Pato, MESITA-4274: "this looks
-        // bad scrollbar overlapping. either remove it or fix it").
-        className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
-        data-places-rail
+  const pill = (c: { key: string; label: string; emoji: string }, inMenu: boolean) => {
+    const on = chip === c.key;
+    return (
+      <button
+        key={c.key}
+        type="button"
+        onClick={() => {
+          selectFamily(c.key);
+          if (inMenu) setMenuOpen(false);
+        }}
+        aria-pressed={on}
+        data-on={on ? "" : undefined}
+        className={cn(PILL, on ? PILL_ON : PILL_OFF)}
       >
-        {railRows(false)}
+        <span aria-hidden className="text-base leading-none">
+          {c.emoji}
+        </span>
+        {c.label}
+      </button>
+    );
+  };
+  // The chosen pill stays in view: a pick from the menu, or ?row=saved,
+  // scrolls the strip to it.
+  useEffect(() => {
+    const on = stripRef.current?.querySelector<HTMLElement>("[data-on]");
+    on?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+  }, [chip, tab]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+  const strip = (
+    <div className="border-border bg-card flex shrink-0 items-center gap-2 border-b py-2.5 pl-4" data-places-strip>
+      <button
+        type="button"
+        onClick={() => setMenuOpen((o) => !o)}
+        aria-label={menuOpen ? "Close families" : "All families"}
+        aria-expanded={menuOpen}
+        className={cn(PILL, "w-9 justify-center px-0", menuOpen ? PILL_ON : PILL_OFF)}
+        data-places-menu-button
+      >
+        {menuOpen ? (
+          <X className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+        ) : (
+          <LayoutGrid className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        )}
+      </button>
+      <nav
+        ref={stripRef}
+        aria-label="Families"
+        className="scrollbar-hide flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain pr-4"
+      >
+        {chips.map((c) => pill(c, false))}
       </nav>
-      {railAtEnd ? null : (
-        <button
-          type="button"
-          aria-label="More families"
-          onClick={() => {
-            const el = railRef.current;
-            if (el)
-              el.scrollBy({ top: el.clientHeight * 0.8, behavior: "smooth" });
-          }}
-          className="from-muted text-muted-foreground absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t to-transparent pb-1.5"
-          data-places-rail-more
-        >
-          <ChevronDown className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-        </button>
-      )}
     </div>
   );
-  const railMenu = menuOpen ? (
+  // THE MENU (MESITA-4410): every family as wrapping pills in one white
+  // panel dropped from the strip over the rows; the rows blur and take no
+  // taps behind it (MESITA-3807's rule kept); a tap outside, the X or
+  // Escape closes it; a pick closes it.
+  const menu = menuOpen ? (
     <>
       <button
         type="button"
         aria-label="Close families"
         tabIndex={-1}
-        onClick={closeMenu}
-        // BLURRED, NOT JUST DIM (Pato, MESITA-3804: "make the background
-        // blurred of the not menu part, else it looks weird"): every
-        // overlay's own backdrop, dim and blur.
-        className={cn(
-          OVERLAY_BACKDROP_CLASS,
-          "z-10 duration-200",
-          menuWide ? "opacity-100" : "opacity-0",
-        )}
+        onClick={() => setMenuOpen(false)}
+        className={cn(OVERLAY_BACKDROP_CLASS, "z-10")}
       />
       <nav
-        ref={menuRef}
-        aria-label="Families menu"
-        className={cn(
-          RAIL_SURFACE,
-          "shadow-elev absolute inset-y-0 left-0 z-20 flex flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain transition-[width] duration-200 ease-out motion-reduce:transition-none",
-          // A THIN BAR WHEN OPEN (Pato, 2026-11-17, MESITA-4294: "if menu
-          // open like that, then do show the scrollbar at right side inside
-          // lateral menu"): the app's floating 3px thumb at the menu's right
-          // edge, away from the blue left bar. The closed rail keeps none.
-          "scrollbar-thin-dark",
-          // A THIRD OF THE SCREEN (Pato, MESITA-3809: "make this menu 1/3
-          // of the screen when open, not half").
-          menuWide ? "w-1/3" : "w-12",
-        )}
-        data-places-menu-list
+        aria-label="All families"
+        className="bg-card border-border shadow-elev scrollbar-thin-dark absolute inset-x-0 top-0 z-20 flex max-h-[70%] flex-wrap gap-2 overflow-y-auto border-b p-4"
+        data-places-menu
       >
-        {railRows(true)}
+        {chips.map((c) => pill(c, true))}
       </nav>
     </>
   ) : null;
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeMenu();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [menuOpen]);
 
   // Home's header (the location alone, MESITA-2405) → the tabs → on Places
-  // the emoji rail beside the rows, on Social the feed full width; the pane
-  // scrolls on its own.
+  // the family strip over full-width rows (MESITA-4410), on Social the feed;
+  // the pane scrolls on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       {tabs}
+      {tab === "places" ? strip : null}
       <div className="relative flex min-h-0 flex-1">
-        {tab === "places" ? emojiRail : null}
-        {tab === "places" ? railMenu : null}
+        {tab === "places" ? menu : null}
         {/* ISOLATE: the rows' own z-10 (the offer and Save · Share over the
-            card's stretched link, MESITA-3797) stays inside this pane, so the
-            open menu's blur covers all of it and nothing under it takes a tap
-            (Pato, MESITA-3804: "blurred and not clickable"). */}
-        {/* THE ROWS THEMSELVES BLUR AND GO DEAF while the menu is open
-            (Pato, MESITA-3807: "the sections of places must be blurred and
-            not clickable"): the dim's backdrop-filter (MESITA-3804) drew no
-            blur on the live page, so the pane wears the filter itself and
-            takes no taps; the dim above still closes the menu. */}
+            card's stretched link, MESITA-3797) stays inside this pane; while
+            the menu is open the rows blur and take no taps (MESITA-3807). */}
         <div
           className={cn(
             "bg-card scrollbar-thin-dark isolate flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain transition-[filter] duration-200",
-            tab === "places" && menuOpen && "pointer-events-none",
-            tab === "places" && menuWide && "blur-sm",
+            tab === "places" && menuOpen && "pointer-events-none blur-sm",
           )}
           aria-hidden={tab === "places" && menuOpen ? true : undefined}
           data-home-scroller
