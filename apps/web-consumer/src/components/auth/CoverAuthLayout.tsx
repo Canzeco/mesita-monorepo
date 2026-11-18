@@ -45,9 +45,11 @@ import { MesitaMark } from "@/components/brand/MesitaMark";
 // writes it (ModeTabs), not the lockup's lowercase "mesita." (MESITA-3653).
 const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 
-/** The value in one sentence, under the cover's and the welcome's headline. */
+/** The value in one sentence, under the cover's and the welcome's headline.
+ *  No city (Pato, 2026-11-18, MESITA-4328: "don't mention monterrey"); no
+ *  place count until it is true (262 Mesita places that day, not 10,000). */
 export const VALUE_LINE =
-  "Discovery, reservations, discounts and gifts at restaurants, cafés and bars in Monterrey.";
+  "Discovery, reservations, discounts and gifts at restaurants, cafés and bars.";
 
 export function CoverAuthLayout({
   headline,

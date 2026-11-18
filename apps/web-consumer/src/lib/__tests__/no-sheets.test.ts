@@ -30,7 +30,7 @@ const DEFINITION = "components/consumer/overlay/LocalOverlay.tsx";
 export const CONFIRM_FILES = [
   "components/consumer/activity/GiftPage.tsx",
   // The first-open welcome (MESITA-4246, decision: Pato asked for a modal
-  // over Home; two buttons, Sign in and Browse without an account since MESITA-4323).
+  // over Home; two buttons, Sign in and Just browse since MESITA-4328).
   "components/consumer/anonymous/WelcomeModal.tsx",
   // Sign in for a gated tap (MESITA-4288: "display the modal before
   // aggressively redirecting"): Sign in or Not now.
