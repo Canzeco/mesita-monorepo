@@ -33,6 +33,7 @@ import { giftState } from "@/lib/gift-ticket";
 import { timeAgo } from "@/lib/time-ago";
 import { cn } from "@/lib/utils";
 import { ActivityRows } from "./ActivityRow";
+import { TakeBack } from "./GiftTakeBack";
 
 export const GIFT_TONE = {
   green: "text-green-700",
@@ -127,18 +128,35 @@ export function giftSentence(g: GiftTicket): string {
   return `${g.sender.name} sent ${amount}`;
 }
 
-export function GiftTicketRow({ g }: { g: GiftTicket }) {
+export function GiftTicketRow({
+  g,
+  showPlace = true,
+  onChanged,
+}: {
+  g: GiftTicket;
+  /** False on a place's own Loyalty Card page, where the name repeats. */
+  showPlace?: boolean;
+  /** Read the wallet again after a Take back from the row. */
+  onChanged?: () => void;
+}) {
   const state = giftState(g);
   const place = g.place?.name ?? "A Mesita place";
   const who = (p: GiftPerson | null, none: string) =>
     p ? (p.you ? "you" : p.name) : none;
   const words = giftSentence(g);
+  // TAKE BACK ON THE ROW (MESITA-4324, Pato: "remove the waiting for a
+  // friend list … it must be expressed in the gift tickets"): a gift you
+  // sent that nobody took yet carries the small grey Take back where the
+  // time was; the time moves to the state line. The pill is the link's
+  // sibling, never inside it (a link cannot hold a button).
+  const canTakeBack = g.status === "open" && g.sender.you && onChanged !== undefined;
+  const ago = timeAgo(movedAt(g));
   return (
-    <li>
+    <li className="flex items-center gap-2 pr-4">
       <PushLink
         href={giftTicketPath(g.gift_id)}
         aria-label={`Gift, ${money(g.amount_cents, g.currency)} at ${place}, from ${who(g.sender, "someone")}${g.status === "taken_back" ? "" : ` to ${who(g.recipient, "nobody yet")}`}, ${state.label}`}
-        className="hover:bg-muted/40 active:bg-muted/60 flex items-center gap-3 px-4 py-3 transition"
+        className={cn("hover:bg-muted/40 active:bg-muted/60 flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 transition", !canTakeBack && "-mr-4 pr-4")}
         data-gift-ticket={g.status}
       >
         <GiftFaces g={g} />
@@ -156,25 +174,44 @@ export function GiftTicketRow({ g }: { g: GiftTicket }) {
           <span className="block truncate text-sm font-semibold tabular-nums">
             {words}
           </span>
-          {/* The state, then the place: two lines fit beside three photos
-              at 375px (the sentence and the place on one line wrapped), and
-              a long place name truncates before the state does. */}
+          {/* The state, then the place (or the time, beside Take back): two
+              lines fit beside three photos at 375px, and a long place name
+              truncates before the state does. */}
           <span className="mt-0.5 block truncate text-sm">
             <span className={cn("font-medium", GIFT_TONE[state.tone])}>{state.label}</span>
-            <span className="text-muted-foreground"> · {place}</span>
+            {canTakeBack ? (
+              <span className="text-muted-foreground tabular-nums"> · {ago}</span>
+            ) : showPlace ? (
+              <span className="text-muted-foreground"> · {place}</span>
+            ) : null}
           </span>
         </span>
-        <span className="text-muted-foreground shrink-0 self-start text-sm tabular-nums">
-          {timeAgo(movedAt(g))}
-        </span>
+        {canTakeBack ? null : (
+          <span className="text-muted-foreground shrink-0 self-start text-sm tabular-nums">{ago}</span>
+        )}
       </PushLink>
+      {canTakeBack ? <TakeBack g={g} onDone={onChanged} variant="pill" /> : null}
     </li>
   );
 }
 
-/** Tickets' Gifts list: every gift sent or received, newest first, in the
- *  list box. */
-export function GiftTickets({ gifts }: { gifts: GiftTicket[] }) {
+/** Waiting gifts first (the ones you can act on), then the rest; each part
+ *  keeps the read's order, newest first (MESITA-4324). */
+export function giftOrder(gifts: GiftTicket[]): GiftTicket[] {
+  return [...gifts.filter((g) => g.status === "open"), ...gifts.filter((g) => g.status !== "open")];
+}
+
+/** Tickets' Gifts list: every gift sent or received, waiting ones first, in
+ *  the list box. */
+export function GiftTickets({
+  gifts,
+  showPlace = true,
+  onChanged,
+}: {
+  gifts: GiftTicket[];
+  showPlace?: boolean;
+  onChanged?: () => void;
+}) {
   if (gifts.length === 0) {
     return (
       <EmptyState
@@ -186,8 +223,8 @@ export function GiftTickets({ gifts }: { gifts: GiftTicket[] }) {
   }
   return (
     <ActivityRows data-gift-tickets>
-      {gifts.map((g) => (
-        <GiftTicketRow key={g.gift_id} g={g} />
+      {giftOrder(gifts).map((g) => (
+        <GiftTicketRow key={g.gift_id} g={g} showPlace={showPlace} onChanged={onChanged} />
       ))}
     </ActivityRows>
   );

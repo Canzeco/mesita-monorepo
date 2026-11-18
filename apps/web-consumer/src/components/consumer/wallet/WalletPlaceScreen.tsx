@@ -66,10 +66,6 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
     [getSupabase, back, reread],
   );
 
-  const sentLinks = row
-    ? (wallet?.sent_links ?? []).filter((l) => l.place_id === row.placeId && l.currency === row.card.currency)
-    : [];
-
   return (
     <Screen
       title={row?.card.name ?? "Wallet"}
@@ -92,7 +88,6 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
           <PlaceCredit
             row={row}
             canSend={wallet?.can_send === true}
-            sentLinks={sentLinks}
             stories={(wallet?.waiting_stories ?? []).filter((s) => s.place_id === row.placeId)}
             confirming={confirming}
             onReread={reread}

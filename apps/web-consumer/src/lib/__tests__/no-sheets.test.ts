@@ -28,7 +28,9 @@ const DEFINITION = "components/consumer/overlay/LocalOverlay.tsx";
 /** The destructive yes/no confirms (MESITA-4094). Adding one needs a
  *  one-sentence, two-button confirm and a `decision:` line on its issue. */
 export const CONFIRM_FILES = [
-  "components/consumer/activity/GiftPage.tsx",
+  // Take back a gift (MESITA-4066; its own file since MESITA-4324, the
+  // gift page and the waiting Gifts row share it).
+  "components/consumer/activity/GiftTakeBack.tsx",
   // The first-open welcome (MESITA-4246, decision: Pato asked for a modal
   // over Home; two buttons, Sign in and Just browse since MESITA-4328).
   "components/consumer/anonymous/WelcomeModal.tsx",
