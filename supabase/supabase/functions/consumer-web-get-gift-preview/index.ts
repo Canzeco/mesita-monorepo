@@ -19,7 +19,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { openRequest } from "../_shared/request.ts";
 import { anonClient } from "../_shared/auth.ts";
-import { giftPreview, type GiftRow, hashGiftToken, isGiftToken } from "../_shared/gift.ts";
+import { GIFT_MISS_CAP, giftGuardMiss, giftGuardOpen, giftPreview, type GiftRow, hashGiftToken, isGiftToken } from "../_shared/gift.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
 /** A link's answer changes when someone takes it: never cache it. */
@@ -37,6 +37,12 @@ serveJson("consumer-web-get-gift-preview", async (req) => {
   const token = bodyRes.body.token;
   if (!isGiftToken(token)) return json({ ok: false, error: "token must be a credit link's key" }, 400);
 
+  // A 6-character key can be guessed (MESITA-4390): past GIFT_MISS_CAP.preview
+  // wrong keys in an hour, the preview answers nothing for anyone (a link
+  // then unfurls as the Mesita card; taking it still works signed in).
+  const gone = () => noStore(json({ ok: false, code: "gone", error: "That link isn't here." }, 404));
+  if (!(await giftGuardOpen(admin, "preview", GIFT_MISS_CAP.preview))) return gone();
+
   const { data, error } = await admin
     .from("wallet_gifts")
     .select("place_id, amount_cents, currency, status, livemode, sender_id")
@@ -45,8 +51,9 @@ serveJson("consumer-web-get-gift-preview", async (req) => {
   if (error) return json({ ok: false, error: `gift: ${error.message}` }, 500);
 
   const row = data as GiftRow | null;
+  if (!row) await giftGuardMiss(admin, "preview");
   const preview = giftPreview(row, paymentsLivemode());
-  if (!row || !preview) return noStore(json({ ok: false, code: "gone", error: "That link isn't here." }, 404));
+  if (!row || !preview) return gone();
 
   // The place and the sender are niceties: a failed read still answers,
   // without them. THE LINK'S CARD (Pato, 2026-11-18, MESITA-4363: "the

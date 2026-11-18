@@ -8,7 +8,7 @@
 // stored hashed (like the waiter's charge token, MESITA-3306): the sender
 // sees the link once, and a lost link is taken back and sent again.
 
-import { isProofToken, mintProofToken } from "./proof.ts";
+import { isProofToken } from "./proof.ts";
 import { isUuid } from "./place-id.ts";
 import { MAX_PAYMENT_INPUT_CENTS } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
@@ -16,8 +16,37 @@ import type { MoneyCode } from "./money-codes.ts";
 /** At most this many open links per (sender, place). */
 export const GIFT_MAX_OPEN = 10;
 
-export const mintGiftToken = mintProofToken;
-export const isGiftToken = isProofToken;
+/** A link's key since MESITA-4390 (Pato: "random 6 chars alphanumeric …
+ *  the link must only be mesita.ai/g/abcdef"): 6 characters [A-Za-z0-9],
+ *  unbiased from the CSPRNG. 62^6 ≈ 57 billion keys; wallet_send_credit
+ *  refuses one any gift ever had (code_taken) and the EF draws again, and
+ *  wrong keys are capped (GIFT_MISS_CAP), so guessing one is hopeless. */
+export const GIFT_CODE_LENGTH = 6;
+const CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+export function mintGiftToken(): string {
+  let out = "";
+  while (out.length < GIFT_CODE_LENGTH) {
+    for (const b of crypto.getRandomValues(new Uint8Array(16))) {
+      // 248 = 62 × 4: bytes at or above it would bias the draw.
+      if (b < 248 && out.length < GIFT_CODE_LENGTH) out += CODE_ALPHABET[b % 62];
+    }
+  }
+  return out;
+}
+
+const SHORT_CODE = /^[A-Za-z0-9]{6}$/;
+/** A link's key: a short code (MESITA-4390) or a 22-character key sent
+ *  before it (MESITA-3292), which keep working. */
+export function isGiftToken(v: unknown): v is string {
+  return isProofToken(v) || (typeof v === "string" && SHORT_CODE.test(v));
+}
+
+/** How many tries the EF makes when a drawn key is taken. */
+export const GIFT_CODE_DRAWS = 5;
+
+/** Wrong keys allowed per hour (MESITA-4390): per signed-in guest (look and
+ *  claim), and for the public preview as a whole. */
+export const GIFT_MISS_CAP = { guest: 10, preview: 300 } as const;
 
 // A gift is a link only (MESITA-4223): MESITA-3737's 12-digit code is no
 // longer minted or accepted. wallet_gifts.code_hash and
@@ -99,4 +128,24 @@ export function giftPreview(row: GiftRow | null, livemode: boolean): GiftPreview
   if (!row || row.livemode !== livemode) return null;
   if (row.status !== "open" && row.status !== "claimed") return null;
   return { status: row.status, amount_cents: row.amount_cents, currency: row.currency };
+}
+
+// ─── The wrong-key cap (MESITA-4390) ────────────────────────────────
+type GuardClient = { rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }> };
+
+/** Is the bucket under its cap? A failed read lets the lookup through: the
+ *  cap guards guessing, it never blocks a real link on a database blip. */
+export async function giftGuardOpen(admin: GuardClient, bucket: string, max: number): Promise<boolean> {
+  const { data, error } = await admin.rpc("wallet_gift_link_guard", { p_bucket: bucket, p_max: max, p_miss: false });
+  if (error) {
+    console.error("[gift] guard read:", error.message);
+    return true;
+  }
+  return data !== false;
+}
+
+/** Record one wrong key in the bucket. Best effort. */
+export async function giftGuardMiss(admin: GuardClient, bucket: string): Promise<void> {
+  const { error } = await admin.rpc("wallet_gift_link_guard", { p_bucket: bucket, p_max: 0, p_miss: true });
+  if (error) console.error("[gift] guard miss:", error.message);
 }

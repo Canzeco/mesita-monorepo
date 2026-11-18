@@ -22,7 +22,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { giftRefusalStatus, hashGiftToken, isGiftToken } from "../_shared/gift.ts";
+import { GIFT_MISS_CAP, giftGuardMiss, giftGuardOpen, giftRefusalStatus, hashGiftToken, isGiftToken } from "../_shared/gift.ts";
 import { readWalletPlaces } from "../_shared/wallet.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
@@ -31,6 +31,7 @@ const REFUSAL: Record<string, string> = {
   claimed: "Someone already took this credit.",
   taken_back: "Your friend took this credit back.",
   own_gift: "This is your own link. Send it to a friend.",
+  too_many_tries: "Too many wrong links. Try again in an hour.",
 };
 
 serveJson("consumer-web-claim-credit", async (req) => {
@@ -46,6 +47,12 @@ serveJson("consumer-web-claim-credit", async (req) => {
   if (!isGiftToken(token)) return json({ ok: false, error: "token must be a credit link's key" }, 400);
 
   const tokenHash = await hashGiftToken(token);
+  // A 6-character key can be guessed, so wrong keys are capped per guest
+  // (MESITA-4390): past the cap, nothing is looked up for an hour.
+  const bucket = `c:${userId}`;
+  if (!(await giftGuardOpen(admin, bucket, GIFT_MISS_CAP.guest))) {
+    return json({ ok: false, code: "too_many_tries", error: REFUSAL.too_many_tries }, 429);
+  }
 
   if (bodyRes.body.look === true) {
     const { data: row, error } = await admin
@@ -58,7 +65,10 @@ serveJson("consumer-web-claim-credit", async (req) => {
       place_id: string; amount_cents: number; currency: string; status: string;
       sender_id: string | null; recipient_id: string | null; livemode: boolean;
     } | null;
-    if (!gift || gift.livemode !== livemode) return json({ ok: false, code: "gone", error: REFUSAL.gone }, 404);
+    if (!gift || gift.livemode !== livemode) {
+      if (!gift) await giftGuardMiss(admin, bucket);
+      return json({ ok: false, code: "gone", error: REFUSAL.gone }, 404);
+    }
     const placesRes = await readWalletPlaces(admin, [gift.place_id]);
     return json({
       ok: true,
@@ -79,6 +89,7 @@ serveJson("consumer-web-claim-credit", async (req) => {
     p_recipient_id: userId,
     p_livemode: livemode,
   });
+  if (!error && (data as { code?: string } | null)?.code === "gone") await giftGuardMiss(admin, bucket);
   return answer(data, error, livemode);
 });
 

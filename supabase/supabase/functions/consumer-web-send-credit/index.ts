@@ -17,7 +17,8 @@
 //   (_shared/gift-seal.ts) so consumer-web-get-gift-link can show it to the
 //   sender again while the gift is open. A link only since MESITA-4223
 //   (MESITA-3737's 12-digit code is gone). The client builds the link:
-//   <its origin>/wallet/gift/<token>.
+//   <its host>/g/<token> since MESITA-4390 (a 6-character key; a key any
+//   gift ever had is refused, code_taken, and drawn again here).
 //   400 amount_required | above_cap · 401 sign_in · 404 gone ·
 //   409 not_live | insufficient (spendable_cents) | too_many_open | taken ·
 //   500 with request_id
@@ -25,7 +26,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { GIFT_MAX_OPEN, giftRefusalStatus, hashGiftToken, mintGiftToken, readSendBody } from "../_shared/gift.ts";
+import { GIFT_CODE_DRAWS, GIFT_MAX_OPEN, giftRefusalStatus, hashGiftToken, mintGiftToken, readSendBody } from "../_shared/gift.ts";
 import { sealGiftToken } from "../_shared/gift-seal.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
@@ -55,18 +56,29 @@ serveJson("consumer-web-send-credit", async (req) => {
   if (!placeRes.place) return json({ ok: false, code: "gone", error: "That place isn't here" }, 404);
   const currency = String(placeRes.place.currency ?? MONEY_CURRENCY).toLowerCase();
 
-  const token = mintGiftToken();
-  const { data, error } = await admin.rpc("wallet_send_credit", {
-    p_sender_id: userId,
-    p_place_id: input.placeId,
-    p_amount_cents: input.amountCents,
-    p_currency: currency,
-    p_livemode: livemode,
-    p_request_id: input.requestId,
-    p_token_hash: await hashGiftToken(token),
-    p_max_open: GIFT_MAX_OPEN,
-    p_token_sealed: await sealGiftToken(token, env.serviceKey),
-  });
+  // A short key is drawn at random; one any gift ever had is refused
+  // (code_taken) and drawn again (MESITA-4390).
+  let token = "";
+  let data: unknown = null;
+  let error: { message: string } | null = null;
+  for (let draw = 0; draw < GIFT_CODE_DRAWS; draw++) {
+    token = mintGiftToken();
+    ({ data, error } = await admin.rpc("wallet_send_credit", {
+      p_sender_id: userId,
+      p_place_id: input.placeId,
+      p_amount_cents: input.amountCents,
+      p_currency: currency,
+      p_livemode: livemode,
+      p_request_id: input.requestId,
+      p_token_hash: await hashGiftToken(token),
+      p_max_open: GIFT_MAX_OPEN,
+      p_token_sealed: await sealGiftToken(token, env.serviceKey),
+    }));
+    if (error || (data as { code?: string } | null)?.code !== "code_taken") break;
+  }
+  if (!error && (data as { code?: string } | null)?.code === "code_taken") {
+    error = { message: `no free key after ${GIFT_CODE_DRAWS} draws` };
+  }
   if (error) {
     console.error("[consumer-web-send-credit] rpc", error.message);
     return json({ ok: false, error: "Couldn't send. Try again.", request_id: input.requestId }, 500);

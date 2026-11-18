@@ -9,7 +9,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(31);
+select plan(36);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3292'),
@@ -248,6 +248,40 @@ select is(
   wallet_claim_gift_code(repeat('1', 64), '00000000-0000-4000-8000-0000000b3292', false) ->> 'code',
   'too_many_tries',
   'after five wrong codes in an hour even a real code is refused'
+);
+
+-- ━━━ Short keys and the wrong-key cap (MESITA-4390) ━━━━━━━━━━━━━━━━━━━━━━━━━
+
+select is(
+  wallet_send_credit('00000000-0000-4000-8000-0000000a3292', '00000000-0000-4000-8000-000000013292', 100, 'MXN', false,
+                     '00000000-0000-4000-8000-00000000a4f0', repeat('a', 64)) ->> 'code',
+  'code_taken',
+  'a key hash any gift ever had is never handed out again'
+);
+
+select is(
+  (select token_sealed from wallet_gifts where token_hash = repeat('a', 64)),
+  null,
+  'a link sent without a sealed key keeps none'
+);
+
+select ok(
+  wallet_gift_link_guard('c:test-4390', 2) and wallet_gift_link_guard('c:test-4390', 2, true)
+    and wallet_gift_link_guard('c:test-4390', 2),
+  'one wrong key leaves the bucket under a cap of two'
+);
+
+select ok(
+  wallet_gift_link_guard('c:test-4390', 2, true) and not wallet_gift_link_guard('c:test-4390', 2)
+    and wallet_gift_link_guard('c:other-4390', 2),
+  'two wrong keys close that bucket, and only that bucket'
+);
+
+select ok(
+  not has_function_privilege('authenticated', 'public.wallet_gift_link_guard(text, integer, boolean)', 'EXECUTE')
+    and not has_table_privilege('authenticated', 'public.wallet_gift_link_misses', 'SELECT')
+    and not has_function_privilege('authenticated', 'public.wallet_send_credit(uuid, uuid, integer, text, boolean, uuid, text, integer, text, text)', 'EXECUTE'),
+  'client roles cannot call the guard, read the misses or send directly'
 );
 
 select * from finish();
