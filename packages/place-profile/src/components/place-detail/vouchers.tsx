@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Camera, CircleCheck, Clock, Copy, CreditCard, Lock, PartyPopper, Ticket, Utensils, X, Zap, type LucideIcon } from "lucide-react";
+import { Camera, Check, CircleCheck, Clock, Copy, CreditCard, Gift, Lock, PartyPopper, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -412,21 +412,27 @@ export function readyClock(iso: string, now = new Date()): string {
   return at.toDateString() === now.toDateString() ? time : `${at.toLocaleDateString("en-US", { weekday: "short" })} ${time}`;
 }
 
-/** HOW IT WORKS, IN THREE STEPS (Pato, 2026-11-17, MESITA-4230: "a more
- *  friendly and maybe taller explanation ... keep it clean"; D3): now, in 3
- *  hours, anytime after. Each step a bold line and one small line; the bonus
- *  step in green. Four grey bullets from MESITA-4224. */
-// EACH SPECIAL TELLS ITS OWN STORY (Pato, 2026-11-17, MESITA-4234: "same for
-// all the other vouchers ... actually explain clearly and pretty how they
-// work"; D3): who can get it first, then its own steps. Welcome four
-// steps, Story three since MESITA-4296 (post, pay, bonus). `locked` on the first
-// step is this guest's reason when that step is what stops them.
-// EACH STEP SAYS WHEN (Pato, 2026-11-17, MESITA-4290: "its not today, its
-// right now instantly ... the money lands instantly and the bonus lands in 3
-// hours. Spend this money here. It never expires"): a small uppercase `when`
-// over the bold line, so the timeline reads Right now → In 3 hours → Anytime.
-type Step = { Icon: LucideIcon; when?: string; title: string; line: string; green?: boolean; locked?: string };
-const IG = Instagram as unknown as LucideIcon;
+/** HOW IT WORKS, IN THREE STEPS (Pato, 2026-11-17, MESITA-4299: "Write all
+ *  the steps clearer ... 1. Pay X 2. Receive principal right now 3. Receive
+ *  bonus in 3 hours. JUST THIS 3 STEPS"): each step is one thing that
+ *  happens, its amount on the right of a bold line and one small line under
+ *  it; the bonus step in green. Where the credit spends and that it never
+ *  expires is one line under the steps, never a step. Welcome is the same
+ *  three under a one-time notice. Story's own three put the post first
+ *  (MESITA-4296), and who can get it is a checklist apart from the steps
+ *  (Pato: "the Instagram voucher is just too hard"). The Right now · In 3
+ *  hours · Anytime labels were MESITA-4290; each special's own first step
+ *  MESITA-4234; four grey bullets MESITA-4224. */
+type Step = {
+  Icon: LucideIcon;
+  title: string;
+  /** The money this step moves, on the right of the title. */
+  amount?: string;
+  line: ReactNode;
+  green?: boolean;
+  /** Story's live sheet lights the step the guest is on and ticks the one done. */
+  state?: "current" | "done";
+};
 /** The place's Instagram username from its stored URL, or null: the twin of
  *  supabase _shared/place-instagram.ts (MESITA-4291). */
 export function instagramHandle(url: unknown): string | null {
@@ -435,61 +441,138 @@ export function instagramHandle(url: unknown): string | null {
   return m ? m[1].toLowerCase() : null;
 }
 
-function sheetSteps(
-  key: MoneyVoucherKey,
-  pay: string,
-  bonus: string | null,
-  firstLocked: string | null,
-  placeName: string,
-  placeHandle: string | null,
-): Step[] {
-  const today: Step = { Icon: Zap, when: "Right now", title: `${pay} lands instantly`, line: "It's yours the moment you pay." };
-  const later: Step = { Icon: Clock, when: "In 3 hours", title: `${bonus ? `+${bonus}` : "Your"} bonus lands`, line: "Added to your credit by itself.", green: true };
-  const spend: Step = { Icon: Utensils, when: "Anytime", title: "Spend it here", line: `On any bill at ${placeName}, all or part. It never expires.` };
-  const lock = firstLocked ?? undefined;
-  switch (key) {
-    case "voucher_welcome":
-      return [{ Icon: PartyPopper, title: "Your first visit here", line: "One per place, only before you've ever paid here.", locked: lock }, today, later, spend];
-    case "voucher_story":
-      // MESITA-4296: post first, the app finds the story, then pay; the
-      // bonus lands 3 hours after payment if the story is still up. No
-      // staff. MESITA-4291: the story mentions @mesita and the place's
-      // own @handle. (The live sheet draws StoryFlow; these steps are what
-      // a sheet without the check shows: admin's preview, a locked offer.)
-      return [
-        {
-          Icon: Camera,
-          when: "First",
-          title: `Post a story mentioning @mesita and ${placeHandle ? `@${placeHandle}` : "the place's Instagram"}`,
-          line: `A public Instagram with ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")}+ followers, linked in Me. One per visit.`,
-          locked: lock,
-        },
-        { ...today, when: "Then", title: `Pay ${pay}`, line: "It's yours the moment you pay." },
-        {
-          Icon: Clock,
-          when: "3 hours after you pay",
-          title: `${bonus ? `+${bonus}` : "Your"} bonus lands`,
-          line: "If your story is still up.",
-          green: true,
-        },
-      ];
-    default:
-      return [today, later, spend];
-  }
+const CREDIT_LINE = "Ready to spend the second you pay.";
+
+/** Small, Medium, Big and Welcome: pay, the credit now, the bonus in 3 hours. */
+function sheetSteps(pay: string, bonus: string | null, card: { label: string; last4: string } | null): Step[] {
+  return [
+    { Icon: CreditCard, title: "Pay", amount: pay, line: card ? `With your ${card.label} ending ${card.last4}.` : "By card." },
+    { Icon: Wallet, title: "Get your credit now", amount: pay, line: CREDIT_LINE },
+    { Icon: Gift, title: "Get your bonus in 3 hours", amount: bonus ? `+${bonus}` : undefined, line: "Added by itself. Nothing to do.", green: true },
+  ];
 }
 
-/** The first step's lock for this guest, when that step is what stops them. */
-function firstStepLock(key: MoneyVoucherKey, lock: GuestLock, reason: VoucherReason | undefined): string | null {
-  if (key === "voucher_welcome" && reason === "used") return "You already had yours here.";
-  if (key === "voucher_story" && lock === "instagram") return "Link your Instagram to use Story.";
-  if (key === "voucher_story" && lock === "followers") return `Your Instagram needs more than ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`;
-  return null;
+/** Story: post, pay, keep it up. `found` null draws no progress (a locked
+ *  sheet, admin's preview); false lights Post; true ticks Post and lights Pay. */
+function storySteps(pay: string, bonus: string | null, post: ReactNode, found: boolean | null): Step[] {
+  return [
+    { Icon: Camera, title: "Post a story", line: post, state: found === null ? undefined : found ? "done" : "current" },
+    { Icon: CreditCard, title: "Pay, get your credit now", amount: pay, line: CREDIT_LINE, state: found ? "current" : undefined },
+    { Icon: Gift, title: "Keep it up 3 hours", amount: bonus ? `+${bonus}` : undefined, line: "Then your bonus is added by itself.", green: true },
+  ];
 }
 
-/** Who may buy it and how often: a small chip under the sheet's title (D3). */
+/** The two names a Story tags, as one text to copy (MESITA-4291). */
+function storyTags(handle: string | null): string {
+  return handle ? `@mesita @${handle}` : "@mesita";
+}
+
+function storyPostLine(handle: string | null): string {
+  return handle ? `Tag @mesita and @${handle} in it.` : "Tag @mesita and the place's Instagram in it.";
+}
+
+const SECTION_LABEL = "text-muted-foreground text-xs leading-tight font-bold tracking-wider uppercase";
+
+/** The steps: a round icon and the line down to the next, the title with its
+ *  amount, one small line. */
+function StepList({ steps, dim }: { steps: Step[]; dim?: boolean }) {
+  return (
+    <ol className={cn("flex flex-col", dim && "opacity-50")} aria-label="How it works" data-offer-steps>
+      {steps.map((s, i) => (
+        <li key={s.title} className="flex gap-3" aria-current={s.state === "current" ? "step" : undefined} data-offer-step={s.state}>
+          <span className="flex flex-col items-center" aria-hidden>
+            <span
+              className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                s.state === "current"
+                  ? "bg-foreground text-paper"
+                  : s.state === "done"
+                    ? "bg-[#E9FBF1] text-[#00A85A]"
+                    : s.green
+                      ? "bg-[#00D66F] text-neutral-950"
+                      : "bg-muted text-foreground",
+              )}
+            >
+              {s.state === "done" ? <Check className="h-5 w-5" strokeWidth={2.75} /> : <s.Icon className="h-5 w-5" strokeWidth={2.25} />}
+            </span>
+            {i < steps.length - 1 ? <span className="bg-border my-1 w-0.5 flex-1" /> : null}
+          </span>
+          <span className={cn("flex min-w-0 flex-1 flex-col pt-1.5", i < steps.length - 1 && "pb-4")}>
+            <span className={cn("flex items-baseline justify-between gap-3 text-[17px] leading-snug font-bold tabular-nums", s.green ? "text-[#00A85A]" : "text-foreground")}>
+              <span className="min-w-0">{s.title}</span>
+              {s.amount ? <span className="shrink-0">{s.amount}</span> : null}
+            </span>
+            <span className="text-muted-foreground mt-0.5 text-sm leading-snug">{s.line}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** Where the credit spends and for how long: under the steps, not a step. */
+function SpendLine() {
+  return (
+    <p className="text-muted-foreground border-border flex items-center gap-2 border-t pt-3 text-sm leading-snug" data-offer-spend>
+      <Utensils className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      Spend it on any bill here. It never expires.
+    </p>
+  );
+}
+
+/** WHO CAN GET A STORY (MESITA-4299): the three things the guest's Instagram
+ *  needs, apart from the steps, each ticked, locked or not known yet. */
+type StoryGuest = { linked: boolean | null; followers: number | null; handle: string | null };
+type StoryFail = "instagram" | "private" | "followers" | null;
+type Need = { label: string; state: "ok" | "locked" | "unknown" };
+
+/** `passed`: the server's check let this guest through, so all three hold. */
+function storyNeeds(guest: StoryGuest, failing: StoryFail, passed: boolean): Need[] {
+  const state = (fail: StoryFail, known: boolean): Need["state"] => (failing === fail ? "locked" : passed || known ? "ok" : "unknown");
+  const linked = failing !== "instagram" && (passed || guest.linked === true);
+  return [
+    { label: `Instagram linked${linked && guest.handle ? ` · @${guest.handle}` : ""}`, state: state("instagram", guest.linked === true) },
+    { label: "Public account", state: state("private", false) },
+    {
+      label: `${STORY_MIN_FOLLOWERS.toLocaleString("en-US")}+ followers${guest.followers != null ? ` · you have ${guest.followers.toLocaleString("en-US")}` : ""}`,
+      state: state("followers", guest.followers != null && guest.followers > STORY_MIN_FOLLOWERS),
+    },
+  ];
+}
+
+function NeedList({ needs }: { needs: Need[] }) {
+  return (
+    <div className="flex flex-col gap-2" data-story-needs>
+      <p className={SECTION_LABEL}>Who can get it</p>
+      <ul className="flex flex-col gap-1.5">
+        {needs.map((n) => (
+          <li
+            key={n.label}
+            className={cn("flex items-center gap-2 text-[15px] leading-snug tabular-nums", n.state === "locked" ? "font-semibold text-amber-900" : "text-foreground")}
+            data-story-need={n.state}
+          >
+            {n.state === "ok" ? (
+              <CircleCheck className="h-5 w-5 shrink-0 text-[#00A85A]" strokeWidth={2.25} aria-hidden />
+            ) : n.state === "locked" ? (
+              <Lock className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+            ) : (
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden>
+                <span className="bg-border h-2 w-2 rounded-full" />
+              </span>
+            )}
+            <span>{n.label}</span>
+            {n.state === "unknown" ? null : <span className="sr-only">{n.state === "ok" ? "(yes)" : "(missing)"}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** How often it can be bought: a small chip under the sheet's title (D3). */
 function sheetLimit(key: MoneyVoucherKey): string {
-  if (key === "voucher_welcome") return "One per place · first visit";
-  if (key === "voucher_story") return "1,000+ followers · one per visit";
+  if (key === "voucher_welcome") return "One per place";
+  if (key === "voucher_story") return "One per visit";
   return "Buy as many as you like";
 }
 
@@ -553,14 +636,14 @@ function openInstagram(): void {
 }
 
 /** One @name to type in the story, copied on a tap. */
-function CopyChip({ handle }: { handle: string }) {
+function CopyChip({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
       type="button"
       onClick={() => {
         void navigator.clipboard
-          ?.writeText(`@${handle}`)
+          ?.writeText(text)
           .then(() => {
             setCopied(true);
             window.setTimeout(() => setCopied(false), 1_500);
@@ -568,10 +651,10 @@ function CopyChip({ handle }: { handle: string }) {
           .catch(() => {});
       }}
       className="bg-muted text-foreground inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-semibold"
-      aria-label={`Copy @${handle}`}
-      data-story-copy={handle}
+      aria-label={`Copy ${text}`}
+      data-story-copy
     >
-      {copied ? "Copied" : `@${handle}`}
+      {copied ? "Copied" : text}
       <Copy className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
     </button>
   );
@@ -617,6 +700,7 @@ function FoundCard({ mention, handle }: { mention: { media_url: string | null; m
  *  story refusal brings the sheet back here with its line. */
 function StoryFlow({
   host,
+  guest,
   placeHandle,
   pay,
   get,
@@ -632,6 +716,7 @@ function StoryFlow({
   onPaid,
 }: {
   host: StoryHost;
+  guest: StoryGuest;
   placeHandle: string | null;
   pay: string;
   get: string;
@@ -727,6 +812,9 @@ function StoryFlow({
 
   const press = async () => {
     if (!mention) {
+      // To Instagram's story camera; the look runs again on the way back.
+      writeMarker(placeId, true);
+      openInstagram();
       lookNow();
       return;
     }
@@ -744,33 +832,49 @@ function StoryFlow({
     }
   };
 
-  const steps = [
-    { title: "Post", line: `Mention @mesita and ${handle ? `@${handle}` : "the place"}` },
-    { title: `Pay ${whole(pay)}`, line: "Ready at once" },
-    { title: `${bonusAmount ? `+${whole(bonusAmount)}` : "Bonus"} in 3 h`, line: "If the story is still up" },
-  ];
+  const failing: StoryFail =
+    view.step !== "gate"
+      ? null
+      : view.reason === "needs_instagram"
+        ? "instagram"
+        : view.reason === "private_account"
+          ? "private"
+          : view.reason === "few_followers"
+            ? "followers"
+            : null;
+  const amount = whole(pay);
+  const bonusText = bonusAmount ? whole(bonusAmount) : null;
   const button = signedOut
     ? "Sign in to buy"
     : !mention
-      ? "Check my story"
+      ? "Open Instagram"
       : buying
         ? "Paying…"
         : needsCard
           ? "Add a card to pay"
-          : `Pay ${whole(pay)}`;
+          : `Pay ${amount}`;
+  const lookLine =
+    view.step === "checking" || looking
+      ? "Looking for your story. It shows up here by itself."
+      : view.step === "post"
+        ? view.note
+        : null;
 
   return (
     <>
       <OfferBox pay={pay} get={get} bonus={bonus} />
-      <p className="text-muted-foreground -mt-1 text-sm" data-offer-eligibility>
-        {`${STORY_MIN_FOLLOWERS.toLocaleString("en-US")}+ followers on a public Instagram · one per visit · +${bonusAmount ? whole(bonusAmount) : bonus} 3 h after you pay, if the story is still up`}
-      </p>
+      <NeedList needs={storyNeeds(guest, failing, view.step === "post" || view.step === "found")} />
       {view.step === "gate" ? (
         <div className="flex flex-col gap-3" data-story-gate={view.reason}>
-          <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-900">
-            <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-            <span className="text-[15px] leading-snug font-semibold">{view.text}</span>
-          </p>
+          <p className={SECTION_LABEL}>How it works</p>
+          <StepList steps={storySteps(amount, bonusText, storyPostLine(handle), null)} dim />
+          {/* The amber line only when the checklist does not already say it. */}
+          {failing === "instagram" || failing === "followers" ? null : (
+            <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-900">
+              <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+              <span className="text-[15px] leading-snug font-semibold">{view.text}</span>
+            </p>
+          )}
           {view.action && host.onInstagram ? (
             <button
               type="button"
@@ -781,57 +885,37 @@ function StoryFlow({
               {view.action === "sync_instagram" ? "Sync Instagram" : "Link Instagram"}
             </button>
           ) : null}
+          {/* Too few followers: the count is the last sync's, so a guest who grew can read it again. */}
+          {view.reason === "few_followers" && host.onInstagram ? (
+            <button
+              type="button"
+              onClick={host.onInstagram}
+              className="text-muted-foreground min-h-11 self-center px-3 text-sm font-semibold underline underline-offset-2"
+              data-offer-action="quiet"
+            >
+              Grew your account? Sync Instagram
+            </button>
+          ) : null}
         </div>
       ) : (
         <>
-          <ol className="grid grid-cols-3 gap-2" aria-label="How it works" data-story-steps>
-            {steps.map((s, i) => (
-              <li
-                key={s.title}
-                aria-current={i === current ? "step" : undefined}
-                className={cn(
-                  "flex flex-col gap-0.5 rounded-xl px-2.5 py-2",
-                  i === current ? "bg-foreground text-paper" : i < current ? "bg-[#E9FBF1] text-[#00A85A]" : "bg-muted text-foreground",
-                )}
-              >
-                <span className="text-xs font-bold tracking-wider uppercase opacity-80">{i + 1}</span>
-                <span className="text-sm leading-tight font-bold tabular-nums">{s.title}</span>
-                <span className="text-xs leading-snug opacity-80">{s.line}</span>
-              </li>
-            ))}
-          </ol>
-          {mention ? (
-            <FoundCard mention={mention} handle={host.guestHandle} />
-          ) : view.step === "checking" ? (
-            <p className="text-muted-foreground text-sm" aria-live="polite">
-              Looking for your story…
-            </p>
-          ) : (
-            <div className="flex flex-col gap-3" data-story-post>
-              <p className="text-foreground text-[17px] leading-snug font-bold">
-                {`Post a story mentioning @mesita and ${handle ? `@${handle}` : "the place's Instagram"}`}
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    writeMarker(placeId, true);
-                    openInstagram();
-                  }}
-                  className="text-foreground border-border inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold"
-                  data-story-open-instagram
-                >
-                  <Instagram className="h-4 w-4" aria-hidden />
-                  Open Instagram
-                </button>
-                <CopyChip handle="mesita" />
-                {handle ? <CopyChip handle={handle} /> : null}
-              </div>
-              <p className="text-muted-foreground min-h-5 text-sm" aria-live="polite" data-story-look>
-                {looking ? "Looking for your story…" : view.step === "post" ? view.note : null}
-              </p>
-            </div>
-          )}
+          <div className="flex flex-col gap-2" data-story-steps>
+            <p className={SECTION_LABEL}>How it works</p>
+            <StepList
+              steps={storySteps(
+                amount,
+                bonusText,
+                <>
+                  Tag us both in it.
+                  <span className="mt-1.5 block">
+                    <CopyChip text={storyTags(handle)} />
+                  </span>
+                </>,
+                mention !== null,
+              )}
+            />
+          </div>
+          {mention ? <FoundCard mention={mention} handle={host.guestHandle} /> : null}
           {refusal ? (
             <p className="rounded-xl bg-amber-50 px-3 py-2.5 text-[15px] leading-snug font-semibold text-amber-900" role="alert" data-story-refusal>
               {refusal}
@@ -845,11 +929,22 @@ function StoryFlow({
               disabled={!live || buying || (mention !== null && cardsPending)}
               className="bg-foreground text-paper disabled:bg-muted disabled:text-muted-foreground flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold tabular-nums hover:opacity-90"
               data-voucher-buy="voucher_story"
-              data-story-primary={mention ? "pay" : "check"}
+              data-story-primary={mention ? "pay" : "post"}
             >
               {mention && needsCard && !signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
+              {mention ? null : <Instagram className="h-5 w-5" aria-hidden />}
               {button}
             </button>
+            {mention ? null : (
+              <p className="text-muted-foreground flex min-h-5 flex-wrap items-center justify-center gap-x-2 text-center text-sm" aria-live="polite" data-story-look>
+                <span>{lookLine}</span>
+                {view.step === "post" && !looking ? (
+                  <button type="button" onClick={lookNow} className="text-foreground min-h-9 font-semibold underline underline-offset-2" data-story-check>
+                    Check again
+                  </button>
+                ) : null}
+              </p>
+            )}
             {host.testMode && host.simulate && !mention ? (
               <div className="border-border flex items-center justify-center gap-2 rounded-xl border border-dashed p-2" data-story-emulator>
                 <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-amber-900 uppercase">Test</span>
@@ -908,7 +1003,8 @@ function PaySheet({
   bonusAmount,
   can,
   status,
-  stepLock,
+  guestLock,
+  storyGuest,
   unlock,
   live,
   buying,
@@ -932,9 +1028,12 @@ function PaySheet({
   bonusAmount: string | null;
   can: boolean;
   status: InfoStatus;
-  /** This guest's reason, drawn on the first step when that step stops them (MESITA-4234). */
-  stepLock: string | null;
-  unlock: { label: string; onClick: () => void } | null;
+  /** This guest's own Story lock; the checklist wears it (MESITA-4299). */
+  guestLock: GuestLock;
+  /** The guest's Instagram facts for Story's checklist. */
+  storyGuest: StoryGuest;
+  /** The one action that lifts a lock; `quiet` draws it as a text link. */
+  unlock: { label: string; onClick: () => void; quiet?: boolean } | null;
   live: boolean;
   buying: boolean;
   payCards: PayCards | undefined;
@@ -1032,11 +1131,9 @@ function PaySheet({
           <div className="min-w-0 flex-1">
             <h3 id="offer-sheet-title" className="text-foreground text-lg leading-tight font-bold">{product.short}</h3>
             <p className="text-muted-foreground truncate text-sm">{placeName}</p>
-            {storyFlow ? null : (
-              <span className="bg-muted text-foreground mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold" data-offer-limit>
-                {sheetLimit(product.key)}
-              </span>
-            )}
+            <span className="bg-muted text-foreground mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold" data-offer-limit>
+              {sheetLimit(product.key)}
+            </span>
           </div>
           <button
             type="button"
@@ -1091,6 +1188,7 @@ function PaySheet({
         ) : storyFlow ? (
           <StoryFlow
             host={storyFlow}
+            guest={storyGuest}
             placeHandle={placeHandle}
             pay={pay}
             get={get}
@@ -1108,49 +1206,29 @@ function PaySheet({
         ) : (
           <>
             <OfferBox pay={pay} get={get} bonus={bonus} />
-            <ol className="flex flex-col py-1" aria-label="How it works" data-offer-steps>
-              {sheetSteps(product.key, whole(pay), bonusAmount ? whole(bonusAmount) : null, stepLock, placeName, placeHandle).map((s, i, all) => (
-                <li key={s.title} className="flex gap-3.5" data-offer-step-locked={s.locked ? "true" : undefined}>
-                  {/* The icon column: a round step and the line down to the next. */}
-                  <span className="flex flex-col items-center" aria-hidden>
-                    <span
-                      className={cn(
-                        "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
-                        s.green ? "bg-[#00D66F] text-neutral-950" : "bg-muted text-foreground",
-                      )}
-                    >
-                      <s.Icon className="h-5 w-5" strokeWidth={2.25} />
-                      {s.locked ? (
-                        <span className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-neutral-950 ring-2 ring-white">
-                          <Lock className="h-3 w-3" strokeWidth={2.75} />
-                        </span>
-                      ) : null}
-                    </span>
-                    {i < all.length - 1 ? <span className="bg-border my-1 w-0.5 flex-1" /> : null}
-                  </span>
-                  <span className={cn("flex min-w-0 flex-col", s.when ? "pt-0" : "pt-2", i < all.length - 1 && "pb-6")}>
-                    {s.when ? (
-                      <span
-                        className={cn(
-                          "text-xs leading-tight font-bold tracking-wider uppercase",
-                          s.green ? "text-[#00A85A]" : "text-muted-foreground",
-                        )}
-                        data-offer-step-when
-                      >
-                        {s.when}
-                      </span>
-                    ) : null}
-                    <span className={cn("mt-0.5 text-[17px] leading-snug font-bold tabular-nums", s.green ? "text-[#00A85A]" : "text-foreground")}>
-                      {s.title}
-                    </span>
-                    <span className="text-muted-foreground mt-0.5 text-sm leading-snug">{s.line}</span>
-                    {s.locked ? (
-                      <span className="mt-1 text-sm leading-snug font-semibold text-amber-800">{s.locked}</span>
-                    ) : null}
-                  </span>
-                </li>
-              ))}
-            </ol>
+            {product.key === "voucher_welcome" && can ? (
+              // ONE TIME (MESITA-4299, Pato: "mention that this is only one and
+              // then expires"): it ends with the guest's first payment here.
+              <p className="flex items-center gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-[15px] leading-snug font-semibold text-amber-900" data-offer-once>
+                <Clock className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+                One time only. Gone after your first payment here.
+              </p>
+            ) : null}
+            {isStory ? (
+              // A Story the live check does not run for: locked, signed out, admin's preview.
+              <>
+                <NeedList needs={storyNeeds(storyGuest, guestLock === "instagram" ? "instagram" : guestLock === "followers" ? "followers" : null, false)} />
+                <div className="flex flex-col gap-2">
+                  <p className={SECTION_LABEL}>How it works</p>
+                  <StepList steps={storySteps(whole(pay), bonusAmount ? whole(bonusAmount) : null, storyPostLine(placeHandle), null)} dim={!can} />
+                </div>
+              </>
+            ) : (
+              <>
+                <StepList steps={sheetSteps(whole(pay), bonusAmount ? whole(bonusAmount) : null, signedOut ? null : payCard)} />
+                <SpendLine />
+              </>
+            )}
             {can ? (
               <div className="flex flex-col gap-3">
                 {cardBlock}
@@ -1171,7 +1249,7 @@ function PaySheet({
               <div className="flex flex-col gap-3">
                 {/* The amber box only when no step already carries the lock
                     (MESITA-4234): sales paused, not at this place yet. */}
-                {stepLock ? null : (
+                {isStory && guestLock ? null : (
                   <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-900" data-offer-status="locked">
                     <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
                     <span className="text-[15px] leading-snug font-semibold">{status.text}</span>
@@ -1184,8 +1262,12 @@ function PaySheet({
                       onClose();
                       unlock.onClick();
                     }}
-                    className="bg-foreground text-paper h-12 w-full rounded-xl text-base font-semibold hover:opacity-90"
-                    data-offer-action
+                    className={
+                      unlock.quiet
+                        ? "text-muted-foreground min-h-11 self-center px-3 text-sm font-semibold underline underline-offset-2"
+                        : "bg-foreground text-paper h-12 w-full rounded-xl text-base font-semibold hover:opacity-90"
+                    }
+                    data-offer-action={unlock.quiet ? "quiet" : ""}
                   >
                     {unlock.label}
                   </button>
@@ -1280,9 +1362,12 @@ export function VouchersPane({
     const get = creditValue(p, line, currency);
     const can = buyable(p.key);
     const lock = guestLock(p.key);
+    // Too few followers: the count is the last sync's, so the guest can read it again.
     const unlock = lock === "instagram" && actions?.onLinkInstagram
       ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
-      : null;
+      : lock === "followers" && actions?.onLinkInstagram
+        ? { label: "Grew your account? Sync Instagram", onClick: actions.onLinkInstagram, quiet: true }
+        : null;
     const bonusAmount = line ? pesos(line.bonus_cents, currency) : null;
     const onPay = async (mentionId?: string): Promise<PayResult> => {
       if (!live) return null;
@@ -1333,7 +1418,12 @@ export function VouchersPane({
         bonusAmount={bonusAmount}
         can={can}
         status={offerStatus(p.key, can, lock, unavailable[p.key])}
-        stepLock={can ? null : firstStepLock(p.key, lock, unavailable[p.key])}
+        guestLock={can ? null : lock}
+        storyGuest={{
+          linked: actions?.guest ? actions.guest.instagramLinked : null,
+          followers: actions?.guest?.instagramFollowers ?? null,
+          handle: actions?.guest?.instagramHandle ?? null,
+        }}
         unlock={unlock}
         live={live}
         buying={buying}
