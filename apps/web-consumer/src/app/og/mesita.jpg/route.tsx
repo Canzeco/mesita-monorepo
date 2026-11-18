@@ -32,15 +32,21 @@ export async function GET(req: Request) {
           alt=""
           width={1200}
           height={630}
-          style={{ position: "absolute", inset: 0, width: 1200, height: 630, objectFit: "cover", objectPosition: "center 40%" }}
+          style={{ position: "absolute", top: 0, left: 0, width: 1200, height: 630, objectFit: "cover", objectPosition: "center 40%" }}
         />
+        {/* The veil (MESITA-4344): Satori reads no "inset", so it is sized
+            by hand, or it draws nothing. Light at the top for the wordmark,
+            clear through the faces, deep at the foot for the words. */}
         <div
           style={{
             position: "absolute",
-            inset: 0,
+            top: 0,
+            left: 0,
+            width: 1200,
+            height: 630,
             display: "flex",
             backgroundImage:
-              "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 28%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.88) 100%)",
+              "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 26%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 62%, rgba(0,0,0,0.9) 100%)",
           }}
         />
         <div style={{ position: "absolute", left: 56, top: 48, display: "flex", alignItems: "center", gap: 14 }}>
