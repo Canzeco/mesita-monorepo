@@ -1453,7 +1453,7 @@ function PaySheet({
                 asking && !buying ? (
                   <div className="flex flex-col gap-3" data-offer-confirm="">
                     <p className="text-foreground text-[17px] leading-snug font-semibold tabular-nums">
-                      {offer.payCard ? `Pay ${amount} with ${offer.payCard}?` : `Pay ${amount}?`}
+                      {offer.payCard ? `Pay ${amount} with your ${offer.payCard.label} ending ${offer.payCard.last4}?` : `Pay ${amount}?`}
                     </p>
                     <button
                       type="button"
