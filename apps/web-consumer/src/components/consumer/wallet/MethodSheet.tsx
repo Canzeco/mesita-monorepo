@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Banknote, ChevronLeft, QrCode } from "lucide-react";
-import { PANEL_CLASS, PanelHeading } from "@/components/shared/Panel";
+import { ChevronLeft } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 import { EFError } from "@/lib/api/_invoke";
@@ -22,8 +21,7 @@ import { useStoryNow } from "./use-story-now";
 
 export type Method =
   | { kind: "card"; card: SavedCard }
-  | { kind: "story"; story: WaitingStory }
-  | { kind: "cash" };
+  | { kind: "story"; story: WaitingStory };
 
 export function MethodSheet({
   method: opened,
@@ -44,9 +42,7 @@ export function MethodSheet({
 }) {
   const fresh = opened?.kind === "story" ? stories?.find((s) => s.purchase_id === opened.story.purchase_id) : undefined;
   const method: Method | null = fresh ? { kind: "story", story: fresh } : opened;
-  const title = method?.kind === "cash"
-      ? "Cash"
-      : method?.kind === "story"
+  const title = method?.kind === "story"
       ? "Story voucher"
       : method?.kind === "card"
         ? `${brandLabel(method.card.brand)} •••• ${method.card.last4}`
@@ -67,7 +63,6 @@ export function MethodSheet({
       <div className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-8">
         {method?.kind === "card" ? <CardBody card={method.card} onRemove={onRemoveCard} /> : null}
         {method?.kind === "story" ? <StoryBody story={method.story} onChanged={onStoryChanged} /> : null}
-        {method?.kind === "cash" ? <CashBody /> : null}
       </div>
     </LocalSheet>
   );
@@ -182,53 +177,3 @@ function StoryBody({ story, onChanged }: { story: WaitingStory; onChanged?: () =
  *  How you pay: cash, or the place's terminal, both outside the app. Every
  *  icon disc is grey (MESITA-4129, Pato: "why all fucking green").
  *  The rates are the most a place gives; each place turns either on or off. */
-function CashBody() {
-  return (
-    // KEEP IT SIMPLE (MESITA-4129, Pato: "remove the box How to Pay, just
-    // say in description Cash or terminal outside of Mesita App ... don't
-    // overexplain"): one panel, two rows, no footnote.
-    <div className="flex flex-col gap-4">
-      <section className={cn(PANEL_CLASS, "divide-border flex flex-col divide-y")} aria-label="Ways to pay">
-        <div className="px-4 pt-4 pb-3">
-          <PanelHeading>Ways to pay</PanelHeading>
-        </div>
-        <WayLine
-          icon={<QrCode className="h-5 w-5" />}
-          tone="bg-foreground text-white"
-          title="Mesita Pay"
-          line="In the Mesita app"
-        />
-        <WayLine
-          icon={<Banknote className="h-5 w-5" />}
-          tone="bg-muted text-foreground"
-          title="Cash or terminal"
-          line="Outside the Mesita app"
-        />
-      </section>
-    </div>
-  );
-}
-
-function WayLine({
-  icon,
-  tone,
-  title,
-  line,
-}: {
-  icon: React.ReactNode;
-  tone: string;
-  title: string;
-  line: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full", tone)} aria-hidden>
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-base font-semibold">{title}</span>
-        <span className="text-muted-foreground block text-sm">{line}</span>
-      </span>
-    </div>
-  );
-}

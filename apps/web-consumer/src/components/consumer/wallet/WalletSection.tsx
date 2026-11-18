@@ -12,6 +12,7 @@ import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { placeHref } from "@/lib/place-route";
+import { CashDialog } from "./CashDialog";
 import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { GiftClaimSheet } from "./SendCredit";
@@ -176,6 +177,8 @@ export function WalletSection({
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
   const [method, setMethod] = useState<Method | null>(null);
   const [explainAdd, setExplainAdd] = useState(false);
+  // Cash is a quick note, not a page (MESITA-4382).
+  const [cashOpen, setCashOpen] = useState(false);
   // The pending boxes count down (MESITA-4360): a 30 s tick while any
   // card has money on its way, so the minutes move without seconds.
   const [now, setNow] = useState(() => Date.now());
@@ -279,7 +282,7 @@ export function WalletSection({
           the one card right (MAX_SAVED_CARDS), each saying where the money
           moves; no card = a dashed Add a card. No panel around them. */}
       <PaymentMethods>
-        <CashTile onOpen={() => setMethod({ kind: "cash" })} />
+        <CashTile onOpen={() => setCashOpen(true)} />
         {cards[0] ? (
           <CardTile card={cards[0]} onOpen={() => setMethod({ kind: "card", card: cards[0] })} />
         ) : cardsFailed ? (
@@ -330,6 +333,7 @@ export function WalletSection({
 
       {/* Add a Credits Card explains, never navigates (MESITA-4088). */}
       <AddCreditsCardDialog open={explainAdd} onClose={() => setExplainAdd(false)} />
+      <CashDialog open={cashOpen} onClose={() => setCashOpen(false)} />
       <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} stories={stories} onStoryChanged={reread} />
       <GiftClaimSheet
         token={wallet || failed ? gift : null}
