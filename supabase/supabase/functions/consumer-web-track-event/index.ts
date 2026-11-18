@@ -30,6 +30,11 @@ const ALLOWED_EVENTS = new Set([
   // MESITA-2590 — Social's "Open Instagram" on the person card, to measure
   // how often a guest leaves for Instagram.
   "social_open_instagram",
+  // MESITA-4375 — the offer funnel's baseline before Apple Pay / Google Pay:
+  // an offer's sheet opened (with whether a saved card was ready), and a
+  // voucher paid (method saved_card until express ships).
+  "offer_sheet_opened",
+  "voucher_paid",
 ]);
 
 type Body = { event?: string; payload?: Record<string, unknown> };

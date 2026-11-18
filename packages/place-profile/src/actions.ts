@@ -59,6 +59,9 @@ export type PlaceActions = {
     /** A Story names the story the check found (MESITA-4296); paid alone. */
     opts?: { mentionId?: string },
   ) => void | Promise<VoucherBuyOutcome>;
+  /** offer_sheet_opened (MESITA-4375): an offer's sheet or Story page opened;
+   *  `savedCard` says a usable saved card was ready. Fire-and-forget. */
+  onOfferOpened?: (voucher: VoucherKey, savedCard: boolean) => void;
   /** The Story sheet's check (MESITA-4296): consumer-web-check-story for
    *  this place; `poll` skips the gate (the sheet's look once it passed).
    *  Resolves `failed` on a 500 or no answer, never throws. Absent (admin's

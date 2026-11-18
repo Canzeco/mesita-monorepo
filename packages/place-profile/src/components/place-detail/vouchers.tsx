@@ -654,6 +654,9 @@ type Offer = {
   /** Cards were read and none is usable: Pay goes to Add a card. */
   needsCard: boolean;
   onPay: (mentionId?: string) => Promise<PayResult>;
+  /** The host's offer_sheet_opened (MESITA-4375): called once a sheet's
+   *  cards are known, with whether a saved card is ready. */
+  onOpened: () => void;
 };
 
 /** Everything the Offers page and the Story page share: the rules, the
@@ -724,6 +727,7 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
       signedOut,
       cardsPending: payCards !== undefined && payCards.state !== "ready",
       needsCard: payCards?.state === "ready" && payCard === null,
+      onOpened: () => actions?.onOfferOpened?.(p.key, payCard !== null),
       onPay: async (mentionId?: string): Promise<PayResult> => {
         if (!live) return null;
         // No card yet: the Add a card page, which brings the guest back to
@@ -749,6 +753,20 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
     };
   };
   return { loading, ...rules, catalog, currency, offer, checkStory };
+}
+
+/** OFFER EVENTS BASELINE (MESITA-4375): one offer_sheet_opened per opening,
+ *  sent once the cards are read (or known absent), so `saved_card` is true
+ *  only when a usable card was ready. The measuring ships before Apple Pay /
+ *  Google Pay so the funnel has a before. */
+function useOfferOpened(offer: Offer) {
+  const sent = useRef(false);
+  const { cardsPending, onOpened } = offer;
+  useEffect(() => {
+    if (sent.current || cardsPending) return;
+    sent.current = true;
+    onOpened();
+  }, [cardsPending, onOpened]);
 }
 
 /** The card the offer pays with, Change, a failed read's Retry, and the
@@ -1014,6 +1032,7 @@ function StoryFlow({
   const [simulating, setSimulating] = useState(false);
   const [handle, setHandle] = useState<string | null>(placeHandle);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+  useOfferOpened(offer);
   const poll = useRef<StoryPoll | null>(null);
   const check = host.check;
 
@@ -1337,6 +1356,7 @@ function PaySheet({
   onClose: () => void;
 }) {
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+  useOfferOpened(offer);
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
