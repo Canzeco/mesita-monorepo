@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Clock, Wallet } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { readyClock, VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { money } from "@/lib/api/wallet";
-import { PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
 import { walletPlacePath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import type { PlaceDetail } from "@/lib/place-detail";
@@ -89,41 +87,30 @@ export function RewardsSheet({
             only while a bonus waits, says how much and when. Signed out there
             is no balance and no card (D6). */}
         {credit ? (
-          // TWO BLACK BUTTONS (Pato, 2026-11-18, MESITA-4320: "i don't like
-          // the current format of the card ... two horizontal buttons. Pay
-          // Here. see Card. but two separated buttons. Both black. use the
-          // standard size"): no card. The balance is one plain line, then
-          // Pay here (this place's Pay, where the credit spends) and See
-          // card (your credit here: history, pending) side by side at the
-          // app's 48px. Before: a black card the whole of which opened your
-          // credit, with a white Pay bill pill (MESITA-4230).
-          <div className="flex shrink-0 flex-col gap-3" data-offers-balance>
-            <div className="flex items-baseline justify-between gap-3 px-1">
-              <p className="text-muted-foreground text-sm font-medium">Ready now</p>
-              <p className="text-foreground text-2xl leading-none font-extrabold tracking-tight tabular-nums">{credit.ready}</p>
-            </div>
-            {credit.pending ? (
-              <p className="text-muted-foreground -mt-1 flex items-center gap-1.5 px-1 text-sm tabular-nums" data-offers-pending>
-                <Clock className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                <span className="truncate">{credit.pending}</span>
-              </p>
-            ) : null}
-            {/* NO PAY HERE (MESITA-4380, Pato: "it feels like to prepay you
-                need to click pay"): buying is the offers below; spending is
-                the Loyalty Card and the Pay tab. */}
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => navigateTo(router, walletPlacePath(place.id), { motion: "drill" })}
-                aria-label={`See Loyalty Card. ${credit.label}`}
-                className={cn(PRIMARY_BUTTON_CLASS, "flex-1")}
-                data-offers-credit-link
-              >
-                <Wallet className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-                See Loyalty Card
-              </button>
-            </div>
-          </div>
+          // ONE DARK BOX (Pato, 2026-11-18, MESITA-4381: "just one box at the
+          // top mentioning current balance"): the Loyalty Card's ink panel,
+          // the balance and, while a bonus waits, the pending line; the whole
+          // box opens the Loyalty Card. Replaces MESITA-4320's two buttons.
+          <button
+            type="button"
+            onClick={() => navigateTo(router, walletPlacePath(place.id), { motion: "drill" })}
+            aria-label={`See Loyalty Card. ${credit.label}`}
+            className="bg-foreground text-paper flex w-full shrink-0 items-center gap-3 rounded-2xl p-4 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 active:scale-[0.99]"
+            data-offers-balance
+            data-offers-credit-link
+          >
+            <span className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="text-paper/70 text-sm font-medium">Loyalty Card · ready now</span>
+              <span className="text-2xl leading-none font-extrabold tracking-tight tabular-nums">{credit.ready}</span>
+              {credit.pending ? (
+                <span className="text-paper/70 mt-1 flex items-center gap-1.5 text-sm tabular-nums" data-offers-pending>
+                  <Clock className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                  <span className="truncate">{credit.pending}</span>
+                </span>
+              ) : null}
+            </span>
+            <ChevronRight className="text-paper/70 h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+          </button>
         ) : null}
         <div className={credit ? "flex flex-1 shrink-0 flex-col pt-3" : "flex flex-1 shrink-0 flex-col"}>
           {drawn != null ? <VouchersPane key={actions?.askedVoucher ?? "none"} place={place} actions={actions} /> : null}
