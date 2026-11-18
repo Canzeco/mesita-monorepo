@@ -208,8 +208,9 @@ export function CreditsRow({
    *  ready to spend, $0 included; pending says itself in `pendingLine`.
    *  ONLY THOSE TWO (MESITA-4269, Pato: "don't mention the promos there.
    *  its just current balance, pending balance if it applies"): no offer
-   *  pill (MESITA-4262), no "Ready to spend" (MESITA-4260); the photo is a
-   *  credit-card-sized chip with the name small at its right. */
+   *  pill (MESITA-4262), no "Ready to spend" (MESITA-4260). ONE ORDER
+   *  (MESITA-4301, Pato: "why the card looks bigger. please keep order"):
+   *  the same chip and name size as Cash, Visa and Add. */
   ready?: boolean;
   /** "$200.00 pending · ready in 3 h": a blue box under the row (MESITA-4260). */
   pendingLine?: string | null;
@@ -224,10 +225,10 @@ export function CreditsRow({
   const line = creditsLine(gone);
   const body = (
     <>
-      <CreditsCardChip photo={card.photo} name={card.name} eager={eager} card={ready} />
+      <CreditsCardChip photo={card.photo} name={card.name} eager={eager} />
       <span className="min-w-0 flex-1">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className={cn("truncate leading-tight font-semibold", ready ? "text-sm" : "text-base")}>{card.name}</span>
+          <span className="truncate text-base leading-tight font-semibold">{card.name}</span>
           <PlaceMarks tier={card.tier} ad={false} />
         </span>
         {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{line}</span> : null}
@@ -269,17 +270,13 @@ export function CreditsCardChip({
   photo,
   name,
   eager = false,
-  card = false,
 }: {
   photo: string | null;
   name: string | null;
   eager?: boolean;
-  /** Wallet's Loyalty Cards (MESITA-4269, Pato: "with dimensions of credit
-   *  card"): a bigger 1.586:1 card, 48 × 76px. */
-  card?: boolean;
 }) {
   return (
-    <span className={cn(CHIP, card && "h-12 w-[4.75rem] rounded-lg", "bg-neutral-950 text-sm font-semibold text-white")} aria-hidden>
+    <span className={cn(CHIP, "bg-neutral-950 text-sm font-semibold text-white")} aria-hidden>
       {photo ? (
         <SizedImg src={photo} size="thumb" alt="" loading={eager ? "eager" : "lazy"} className="h-full w-full object-cover" />
       ) : (
