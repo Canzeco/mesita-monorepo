@@ -163,6 +163,16 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
     else toast.error("Couldn't copy the link");
   };
 
+  // THE BRAND'S OWN COLOUR (MESITA-4368, Pato: "buttons of the colour of the
+  // thing: Instagram pink, WhatsApp green, Copy link dark"): a filled circle,
+  // the mark white on it.
+  const CHANNEL_FACE = {
+    whatsapp: "bg-[#25D366] [&_svg]:fill-white",
+    instagram: "bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] [&_g]:stroke-white",
+    messages: "bg-[#34C759] [&_svg]:fill-white",
+    copy: "bg-foreground [&_svg]:text-white",
+  } as const;
+
   // PACKED (MESITA-4333, Pato: "not sending, but pack them … then send the
   // gift to one friend"): the gift card, one line on what happens, Send to a
   // friend: WhatsApp · Instagram · Messages · Copy link (MESITA-4352), then Done. The link
@@ -198,7 +208,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
             ).map((c) => {
               const face = (
                 <>
-                  <span className="bg-muted flex h-14 w-14 items-center justify-center rounded-full [&_svg]:h-6 [&_svg]:w-6">
+                  <span className={`flex h-14 w-14 items-center justify-center rounded-full [&_svg]:h-6 [&_svg]:w-6 ${CHANNEL_FACE[c.channel]}`}>
                     {CHANNEL_MARKS[c.channel]}
                   </span>
                   <span className="text-sm font-medium">{c.label}</span>
