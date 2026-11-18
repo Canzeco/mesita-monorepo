@@ -144,19 +144,19 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
         ) : null}
         <span
           className={cn(
-            "block truncate text-base font-semibold",
+            "block text-base font-semibold break-words",
             t.dim && "text-muted-foreground",
           )}
         >
           {t.place}
         </span>
         {!t.money && t.big ? (
-          <span className="mt-0.5 block truncate text-sm tabular-nums">
+          <span className="mt-0.5 block text-sm break-words tabular-nums">
             {t.big}
           </span>
         ) : null}
         {t.line || t.when ? (
-          <span className="text-muted-foreground mt-0.5 block truncate text-sm tabular-nums">
+          <span className="text-muted-foreground mt-0.5 block text-sm break-words tabular-nums">
             {[t.line, t.when ? timeAgo(t.when) : ""].filter(Boolean).join(" · ")}
           </span>
         ) : null}
@@ -190,6 +190,9 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
       ) : null}
     </>
   );
+  // NEVER A CUT WORD (MESITA-4343, Pato: "if not enough space, it's ok if
+  // tickets are a bit taller … all the tickets in four sections"): lines
+  // wrap and the row grows; nothing truncates.
   const cls = "flex items-center gap-3 px-4 py-3";
   return (
     <li>

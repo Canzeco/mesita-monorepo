@@ -171,20 +171,19 @@ export function GiftTicketRow({
           <span className="bg-muted h-10 w-10 shrink-0 rounded-xl" aria-hidden />
         )}
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold tabular-nums">
+          <span className="block text-sm font-semibold break-words tabular-nums">
             {words}
           </span>
-          {/* The state, then the place (or the time, beside Take back): two
-              lines fit beside three photos at 375px, and a long place name
-              truncates before the state does. */}
-          <span className="mt-0.5 block truncate text-sm">
+          {/* The state (with the time, beside Take back), then the place on
+              its own line: the row grows rather than cut a word (MESITA-4343,
+              Pato: "it's ok if tickets are a bit taller"). */}
+          <span className="mt-0.5 block text-sm break-words">
             <span className={cn("font-medium", GIFT_TONE[state.tone])}>{state.label}</span>
-            {canTakeBack ? (
-              <span className="text-muted-foreground tabular-nums"> · {ago}</span>
-            ) : showPlace ? (
-              <span className="text-muted-foreground"> · {place}</span>
-            ) : null}
+            {canTakeBack ? <span className="text-muted-foreground tabular-nums"> · {ago}</span> : null}
           </span>
+          {showPlace ? (
+            <span className="text-muted-foreground mt-0.5 block text-sm break-words">{place}</span>
+          ) : null}
         </span>
         {canTakeBack ? null : (
           <span className="text-muted-foreground shrink-0 self-start text-sm tabular-nums">{ago}</span>
