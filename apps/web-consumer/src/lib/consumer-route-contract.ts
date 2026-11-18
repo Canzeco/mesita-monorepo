@@ -490,14 +490,15 @@ export const ROUTE_MAP = {
   // its children keep their addresses, light Pay and land back on it. It
   // was its own tab from MESITA-3722 and again from MESITA-3886.
   wallet: row("/wallet", "pay", "door", "pay"),
-  walletPlace: row("/wallet/place/:placeId", "pay", "page", "pay"),
+  // A Loyalty Card is a nested page: no bar (MESITA-4381).
+  walletPlace: row("/wallet/place/:placeId", "pay", "page", "pay", false),
   walletGift: row("/wallet/gift/:token", "pay", "page", "pay"),
   walletAddCard: row("/wallet/cards/new", "pay", "page", "pay"),
   // Pay's Buy Credits and Send Gift lists, and a Loyalty Card's send page,
   // which was a sheet over it (MESITA-4096).
   walletBuy: row("/wallet/buy", "pay", "page", "pay"),
   walletSend: row("/wallet/send", "pay", "page", "pay"),
-  walletPlaceSend: row("/wallet/place/:placeId/send", "pay", "page", "walletPlace"),
+  walletPlaceSend: row("/wallet/place/:placeId/send", "pay", "page", "walletPlace", false),
   // Share's page, pushed from Pay's Share Mesita button.
   share: row("/share", "pay", "page", "pay"),
   me: row("/me", "me", "tab", null),
