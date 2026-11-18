@@ -1,12 +1,7 @@
-// THE SEVEN PAY STEPS AND THE WORD "SIGN" (MESITA-3759, MESITA-3798). One
-// guest payment is seven named steps, the same on every screen and on both
-// phones:
-//
-//   1 Pick · 2 Bill · 3 Tip · 4 Methods · 5 Total · 6 Pay · 7 Sign
-//
-// Total shows the sums and moves no money; Pay says how each part is paid
-// (the card charged with Stripe, the cash handed to the waiter) and holds
-// the button (MESITA-3798).
+// THE WORD "SIGN" (MESITA-3759). The guest's steps are Pick · Bill · Tip ·
+// Method · Pay · Sign · Receipt; their list and bar live in web-consumer
+// (lib/guest-pay-stages.ts, pay-flow.tsx, MESITA-4226). MESITA-4305 removed
+// the older seven-step list (Methods, Total) that nothing drew any more.
 //
 // Pato, 2026-11-11: "call the last step Sign, where the waiter signs. Sign
 // that he attended that transaction."
@@ -18,48 +13,7 @@
 // fragment, so each sentence reads right.
 //
 // A plain module (no React): web-consumer, web-visit and web-business import
-// it from @mesita/place-profile/lib/pay-steps. web-consumer draws the strip
-// (PaySteps); the waiter's phone and the owner's console use labels only.
-
-export const PAY_STEPS = [
-  { key: "pick", name: "Pick" },
-  { key: "bill", name: "Bill" },
-  { key: "tip", name: "Tip" },
-  { key: "methods", name: "Methods" },
-  { key: "total", name: "Total" },
-  { key: "pay", name: "Pay" },
-  { key: "sign", name: "Sign" },
-] as const;
-
-export type PayStepKey = (typeof PAY_STEPS)[number]["key"];
-/** Whose phone: the guest never signs, so step 7 names the waiter there. */
-export type PayAudience = "guest" | "waiter";
-
-/** 1-based: Pick is 1, Sign is 7. */
-export function payStepNumber(key: PayStepKey): number {
-  return PAY_STEPS.findIndex((s) => s.key === key) + 1;
-}
-
-/** The step's name as that phone reads it. Three stated exceptions to the
- *  bare name: the guest's list heading "Pick a place", the guest's step 7
- *  "Waiter signs" (never an instruction to the guest), the waiter's "Sign". */
-export function payStepName(key: PayStepKey, audience: PayAudience = "guest"): string {
-  if (audience === "guest" && key === "pick") return "Pick a place";
-  if (audience === "guest" && key === "sign") return "Waiter signs";
-  return PAY_STEPS[payStepNumber(key) - 1].name;
-}
-
-/** The heading: "2 · Bill" on the guest's phone; the waiter saw no other
- *  step, so theirs has no number ("Sign"). */
-export function payStepLabel(key: PayStepKey, audience: PayAudience = "guest"): string {
-  const name = payStepName(key, audience);
-  return audience === "waiter" ? name : `${payStepNumber(key)} · ${name}`;
-}
-
-/** What a screen reader hears for the strip: "Step 2 of 7: Bill". */
-export function payStepSpoken(key: PayStepKey): string {
-  return `Step ${payStepNumber(key)} of ${PAY_STEPS.length}: ${payStepName(key, "guest")}`;
-}
+// it from @mesita/place-profile/lib/pay-steps.
 
 /** The waiter's button: the action, never the total. */
 export function signLabel(cashCents: number, money: (cents: number) => string): string {
