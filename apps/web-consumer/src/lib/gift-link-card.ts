@@ -5,6 +5,13 @@
 
 import type { Metadata } from "next";
 
+/** How long the Sign and cover pages wait for a gift link's preview
+ *  (MESITA-4391). A chat app keeps a link's FIRST preview: at 1.5 s a cold
+ *  read (1.3 s on Supabase plus the Vercel ↔ Oregon hop) lost the gift card
+ *  to the plain Mesita card for good. A typical read is ~0.7 s; only a gift
+ *  link waits. */
+export const GIFT_PREVIEW_PAGE_TIMEOUT_MS = 5000;
+
 /** Where the gift's card is drawn: a .jpg path, past the proxy's matcher.
  *  ?v= is the design's version: chat apps keep an image by its address.
  *  A claimed gift's card has its own address (MESITA-4367), so no cache

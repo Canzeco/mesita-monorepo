@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type { Metadata, ResolvingMetadata } from "next";
-import { giftLine, giftMetadata, giftSignTitle } from "@/lib/gift-link-card";
+import { GIFT_PREVIEW_PAGE_TIMEOUT_MS, giftLine, giftMetadata, giftSignTitle } from "@/lib/gift-link-card";
 import { redirect } from "next/navigation";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -37,7 +37,7 @@ type Params = { searchParams: Promise<{ next?: string }> };
 const readGift = cache(async (next: string | undefined) => {
   const token = giftTokenFromNext(next);
   if (!token) return null;
-  const preview = await apiGetGiftPreview(await createServerSupabase(), token);
+  const preview = await apiGetGiftPreview(await createServerSupabase(), token, GIFT_PREVIEW_PAGE_TIMEOUT_MS);
   if (!preview) return null;
   const amount = moneyLabel(preview.amount_cents, preview.currency);
   return {
