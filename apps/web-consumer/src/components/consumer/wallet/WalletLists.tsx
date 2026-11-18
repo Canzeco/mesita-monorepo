@@ -72,16 +72,19 @@ export function WalletPanelList({
   title,
   action,
   fallback,
+  className,
   children,
 }: {
   title: string;
+  /** The page's own rhythm, when it is not the Wallet's 8px (MESITA-4362). */
+  className?: string;
   action?: ReactNode;
   fallback?: ReactNode;
   children?: ReactNode;
 }) {
   const rows = Children.toArray(children).filter(Boolean);
   return (
-    <Panel className="mt-2" title={title} action={action}>
+    <Panel className={cn("mt-2", className)} title={title} action={action}>
       {rows.length === 0 && fallback ? (
         <div className="p-4 pt-2">{fallback}</div>
       ) : (
@@ -437,8 +440,25 @@ export function NewChip() {
   );
 }
 
+/** "2 h 14 min", "14 min": hours and minutes, never seconds (MESITA-4360). */
+export function untilLabel(ms: number): string {
+  const mins = Math.max(1, Math.ceil(ms / 60_000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? (m > 0 ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
+}
+
+/** One pending amount's words, the Wallet and the Loyalty Card page alike
+ *  (MESITA-4360/4362): "$1,500.00MX bonus pending · ready in 2 h 14 min". */
+export function pendingWords(amountCents: number, currency: string, kind: string, availableAt: string | null | undefined, now: number): string {
+  const what = `${money(amountCents, currency)} ${kind === "bonus" ? "bonus pending" : "pending"}`;
+  const t = availableAt ? Date.parse(availableAt) : Number.NaN;
+  if (!Number.isFinite(t)) return what;
+  return t > now ? `${what} · ready in ${untilLabel(t - now)}` : `${what} · ready soon`;
+}
+
 /** Money on its way (MESITA-4260): a soft blue box under a Loyalty Card. */
-function PendingBox({ icon: Icon, children, quiet = false }: { icon: typeof Clock3 | typeof Instagram; children: ReactNode; quiet?: boolean }) {
+export function PendingBox({ icon: Icon, children, quiet = false }: { icon: typeof Clock3 | typeof Instagram; children: ReactNode; quiet?: boolean }) {
   return (
     <span
       className={cn(
@@ -448,7 +468,8 @@ function PendingBox({ icon: Icon, children, quiet = false }: { icon: typeof Cloc
       data-wallet-pending
     >
       <Icon className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      <span className="min-w-0 truncate">{children}</span>
+      {/* Wraps rather than cuts (MESITA-4362): the whole line is the point. */}
+      <span className="min-w-0 flex-1">{children}</span>
     </span>
   );
 }

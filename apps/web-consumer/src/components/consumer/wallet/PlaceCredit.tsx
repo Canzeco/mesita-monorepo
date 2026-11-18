@@ -2,28 +2,26 @@
 
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Gift, Plus, QrCode, Store } from "lucide-react";
+import { ChevronRight, Clock3, Gift, Plus, QrCode, Store } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { offerSlides, SizedImg } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import {
   canRemoveLoyaltyCard,
-  entryDate,
-  entryLabel,
   money,
   type WaitingStory,
 } from "@/lib/api/wallet";
 import { creditEntryPath, payPlacePath, payReceiptPath, walletSendPath } from "@/lib/consumer-route-contract";
 import { placeHref } from "@/lib/place-route";
-import { countdownLabel, nextAvailableMs, shouldReread } from "@/lib/wallet-countdown";
+import { nextAvailableMs, shouldReread } from "@/lib/wallet-countdown";
 import { type EntryGroup, groupKeys, splitEntries } from "@/lib/wallet-entries";
 import { cn } from "@/lib/utils";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { useStoryNew, useStoryNow } from "./use-story-now";
 import { storyBonusOpen, storyLine } from "@/lib/story-lines";
 import { Panel, PANEL_CLASS } from "@/components/shared/Panel";
-import { WalletPanelList } from "./WalletLists";
+import { PendingBox, pendingWords, WalletPanelList } from "./WalletLists";
 import { TicketsBoard, type TicketTab } from "@/components/consumer/activity/MeLists";
 import { ActivityRowsSkeleton } from "@/components/consumer/activity/ActivityRow";
 import { PRIMARY, SECONDARY } from "./wallet-buttons";
@@ -103,13 +101,6 @@ const TICK_MS = 30_000;
 const REREAD_SLACK_MS = 5_000;
 const ROW = "flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left";
 
-/** A waiting purchase's grey line: its own time. */
-function pendingLine(g: EntryGroup, now: number): string {
-  const label = countdownLabel(g.available_at, now);
-  if (!label) return "Pending";
-  return label.startsWith("in ") ? `Pending · available ${label}` : "Pending · available soon";
-}
-
 /** The rows with a page of their own besides a paid bill (MESITA-3753): a
  *  purchase, its refund, a lone bonus, a gift. The kinds Me › Tickets opens. */
 const CREDIT_PAGE = new Set(["prepay", "voucher", "bonus", "gift_out", "gift_in", "gift_back"]);
@@ -132,35 +123,6 @@ function RowBody({ title, line, amount, waiting }: { title: string; line: string
       </span>
       <span className={cn("shrink-0 text-base font-semibold tabular-nums", waiting && "text-muted-foreground")}>{amount}</span>
     </>
-  );
-}
-
-/** A row: what happened, its grey line, how much. `waiting` comes from the
- *  list the row is in (pending), never from the entry's own flag. */
-function EntryRow({
-  group,
-  placeId,
-  currency,
-  now,
-  waiting,
-}: {
-  group: EntryGroup;
-  placeId: string;
-  currency: string;
-  now: number;
-  waiting: boolean;
-}) {
-  const when = waiting ? pendingLine(group, now) : group.refunded ? "Refunded" : entryDate(group.at);
-  const amount = `${group.amount_cents > 0 ? "+" : ""}${money(group.amount_cents, currency)}`;
-  const body = <RowBody title={entryLabel(group)} line={when} amount={amount} waiting={waiting} />;
-  const href = entryHref(placeId, group);
-  return href ? (
-    <PushLink href={href} className={cn(ROW, "hover:bg-muted/60 transition")} data-loyalty-card-entry={group.kind}>
-      {body}
-      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
-    </PushLink>
-  ) : (
-    <div className={ROW}>{body}</div>
   );
 }
 
@@ -426,12 +388,14 @@ export function PlaceCredit({
               data-loyalty-card-offer
             >
               <span className={cn(ROUND_FACE, "text-foreground bg-white")}>
-                <Plus className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+                {/* THE BONUS IN THE CIRCLE (MESITA-4362, Pato: "don't mention
+                    the discount there on top, mention the actual bonus inside
+                    the circle"); nothing on sale with a bonus, the plain +. */}
                 {offers[0].bonus ? (
-                  <span className={cn("type-meta absolute -top-1.5 -right-3 rounded-full px-1.5 py-0.5 leading-none font-bold", offers[0].tone)}>
-                    +{offers[0].bonus}%
-                  </span>
-                ) : null}
+                  <span className="text-sm font-bold tracking-tight text-green-600 tabular-nums">+{offers[0].bonus}%</span>
+                ) : (
+                  <Plus className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+                )}
               </span>
               Add Funds
             </PushLink>
@@ -483,7 +447,7 @@ export function PlaceCredit({
           waiting for staff get their own panel over Tickets, only when
           there are any. */}
       {stories.length > 0 ? (
-        <WalletPanelList title="Story vouchers">
+        <WalletPanelList title="Story vouchers" className="mt-4">
           {stories.map((st) => (
             <StoryEntryRow key={st.purchase_id} story={st} now={storyNow} onOpen={() => setMethod({ kind: "story", story: st })} />
           ))}
@@ -493,11 +457,31 @@ export function PlaceCredit({
       {/* MONEY ON ITS WAY (MESITA-4279): the pending lines, each with its
           countdown, stay in their own panel while there are any. */}
       {pending.length > 0 ? (
-        <WalletPanelList title="Pending">
-          {pending.map((g, i) => (
-            <EntryRow key={`w-${pendingKeys[i]}`} group={g} placeId={row.placeId} currency={card.currency} now={now} waiting />
-          ))}
-        </WalletPanelList>
+        /* THE WALLET'S BLUE BOXES (MESITA-4362, Pato: "I love the pending
+            box between the black box and the tickets box … improve the
+            design"): one box per amount on its way, its own live minutes,
+            a tap opens its ticket. */
+        <div className="mt-4 flex flex-col gap-2" data-loyalty-card-pending-boxes>
+          {pending.map((g, i) => {
+            const words = pendingWords(g.amount_cents, card.currency, g.kind, g.available_at, now);
+            const to = entryHref(row.placeId, g);
+            const box = (
+              <PendingBox icon={Clock3}>
+                <span className="flex min-w-0 items-center justify-between gap-2">
+                  <span className="min-w-0">{words}</span>
+                  {to ? <ChevronRight className="h-4 w-4 shrink-0" aria-hidden /> : null}
+                </span>
+              </PendingBox>
+            );
+            return to ? (
+              <PushLink key={`w-${pendingKeys[i]}`} href={to} className="block rounded-xl transition active:opacity-80" aria-label={words}>
+                {box}
+              </PushLink>
+            ) : (
+              <div key={`w-${pendingKeys[i]}`}>{box}</div>
+            );
+          })}
+        </div>
       ) : null}
 
       {/* THIS PLACE'S TICKETS (MESITA-4279, Pato: "a scoped version of the
