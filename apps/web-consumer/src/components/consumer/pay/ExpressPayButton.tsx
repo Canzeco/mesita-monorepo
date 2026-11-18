@@ -53,6 +53,9 @@ export class ExpressPayRefusal extends Error {
 }
 
 const BUDGET_MS = 20_000;
+/** MESITA-4406: no `ready` from Stripe by then (a web view with neither
+ *  wallet, a blocked frame) and the slot collapses: never a grey box. */
+const READY_MS = 6_000;
 const DECLINED = "Your bank declined it. Try another way to pay.";
 const COULD_NOT_START = "Couldn't start the payment. Try again.";
 
@@ -132,9 +135,29 @@ export function ExpressPayButton({
         buttonHeight: 48,
         layout: { maxColumns: 1, maxRows: 1, overflow: "never" },
       });
-      destroy = () => element.destroy();
+      let settledSlot = false;
+      const quiet = window.setTimeout(() => {
+        if (settledSlot) return;
+        settledSlot = true;
+        say("none");
+        live.current.onEvent?.("express_failed", { method: "unknown", code: "ready_timeout" });
+      }, READY_MS);
+      destroy = () => {
+        window.clearTimeout(quiet);
+        element.destroy();
+      };
 
+      element.on("loaderror", () => {
+        if (settledSlot) return;
+        settledSlot = true;
+        window.clearTimeout(quiet);
+        say("none");
+        live.current.onEvent?.("express_failed", { method: "unknown", code: "load_error" });
+      });
       element.on("ready", (e) => {
+        if (settledSlot) return;
+        settledSlot = true;
+        window.clearTimeout(quiet);
         const avail = e.availablePaymentMethods;
         const list: ExpressWallet[] = [];
         if (avail?.applePay && cfg.wallets.includes("apple_pay")) list.push("apple_pay");
