@@ -3,7 +3,8 @@
 // places land where the silhouettes stood. A plain module: a server loading
 // frame reads these strings too.
 
-/** One column of rows beside the emoji rail (MESITA-3781). ONE 8px step
+/** One column of rows, full width under the family strip (MESITA-4410): each
+ *  row is HALF PHOTO, HALF INFO (ROW_PAIR). ONE 8px step
  *  (MESITA-4035, Pato: "make all margins smaller and same size"): the same
  *  on every side of the list, between rows, and inside a row. */
 export const ROW_LIST = "grid grid-cols-1 content-start gap-2 p-2";
