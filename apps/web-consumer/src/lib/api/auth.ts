@@ -51,6 +51,11 @@ export type GiftPreview = {
   amount_cents: number;
   currency: string;
   placeName: string | null;
+  /** The place's first photo, for the link's card (MESITA-4363). */
+  placePhoto: string | null;
+  /** The sender's first name and photo (MESITA-4363); null when unknown. */
+  senderName: string | null;
+  senderPhoto: string | null;
 };
 
 /** A friend's gift link before sign-in (MESITA-4229): an open link's amount
@@ -64,12 +69,20 @@ export async function apiGetGiftPreview(
   timeoutMs = 1500,
 ): Promise<GiftPreview | null> {
   const read = invokeEF<{
-    gift: { amount_cents: number; currency: string; place: { name: string } | null };
+    gift: {
+      amount_cents: number;
+      currency: string;
+      place: { name: string; photo?: string | null } | null;
+      sender?: { firstName: string; photo: string | null } | null;
+    };
   }>(client, "consumer-web-get-gift-preview", { token }).then(
     (res) => ({
       amount_cents: res.gift.amount_cents,
       currency: res.gift.currency,
       placeName: res.gift.place?.name ?? null,
+      placePhoto: res.gift.place?.photo ?? null,
+      senderName: res.gift.sender?.firstName ?? null,
+      senderPhoto: res.gift.sender?.photo ?? null,
     }),
     () => null,
   );

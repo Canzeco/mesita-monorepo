@@ -1,5 +1,6 @@
 import { cache } from "react";
 import type { Metadata, ResolvingMetadata } from "next";
+import { giftMetadata } from "@/lib/gift-link-card";
 import { redirect } from "next/navigation";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -53,6 +54,9 @@ const readGift = cache(async (next: string | undefined) => {
     line: preview.placeName
       ? `${amount} of credit at ${preview.placeName}`
       : `${amount} of credit`,
+    // The link's card (MESITA-4363): the gift's token and its sender.
+    token,
+    senderName: preview.senderName,
   };
 });
 
@@ -62,22 +66,8 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const gift = await readGift((await searchParams).next);
   if (!gift) return {};
-  const description = "From a friend on Mesita. Sign in to take it.";
   const { openGraph, twitter } = await parent;
-  return {
-    title: gift.line,
-    description,
-    openGraph: {
-      ...openGraph,
-      title: gift.line,
-      description,
-    } as Metadata["openGraph"],
-    twitter: {
-      ...twitter,
-      title: gift.line,
-      description,
-    } as Metadata["twitter"],
-  };
+  return giftMetadata(gift, { openGraph, twitter });
 }
 
 export default async function SignPage({ searchParams }: Params) {
