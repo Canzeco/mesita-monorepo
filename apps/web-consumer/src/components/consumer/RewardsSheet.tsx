@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Clock, QrCode, Wallet } from "lucide-react";
+import { ChevronLeft, Clock, Wallet } from "lucide-react";
 import { readyClock, VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { money } from "@/lib/api/wallet";
@@ -108,18 +108,10 @@ export function RewardsSheet({
                 <span className="truncate">{credit.pending}</span>
               </p>
             ) : null}
+            {/* NO PAY HERE (MESITA-4380, Pato: "it feels like to prepay you
+                need to click pay"): buying is the offers below; spending is
+                the Loyalty Card and the Pay tab. */}
             <div className="flex gap-3">
-              {actions.onPay ? (
-                <button
-                  type="button"
-                  onClick={actions.onPay}
-                  className={cn(PRIMARY_BUTTON_CLASS, "flex-1")}
-                  data-offers-pay-bill
-                >
-                  <QrCode className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-                  Pay here
-                </button>
-              ) : null}
               <button
                 type="button"
                 onClick={() => navigateTo(router, walletPlacePath(place.id), { motion: "drill" })}
