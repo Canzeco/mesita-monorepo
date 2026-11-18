@@ -666,6 +666,9 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
       "Profile",
       "Instagram",
       "Plan",
+      // A shortcut to Home's ❤️ Saved row (MESITA-4327), after Plan since
+      // MESITA-4329.
+      "Saved",
       "Notifications",
       "Reservations",
       // Every transaction, four kinds (MESITA-3855); before Gift since
@@ -676,8 +679,6 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
       "Share",
       // MCP's cell became Integrations (MESITA-3954): Calendar, MCP Soon.
       "Integrations",
-      // A shortcut to Home's ❤️ Saved row (MESITA-4327), no page of its own.
-      "Saved",
       "Settings",
     ]);
     // No Soon cell since MESITA-3954: MCP is a Soon row on Integrations.
