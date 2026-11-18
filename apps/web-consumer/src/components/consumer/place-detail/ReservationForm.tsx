@@ -39,6 +39,10 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
 import { placeDateTime, placeInstantIso } from "@mesita/place-profile/lib/place-time";
+import { offerPro, type ReserveDraft } from "@/lib/reserve-plan";
+import { resetDay } from "@/lib/reset-day";
+import { ReserveProStep } from "./ReserveProStep";
+import { useReservePlan } from "./useReservePlan";
 
 const DEFAULT_PARTY = 2;
 
@@ -207,6 +211,46 @@ export function ReservationForm({
   const whenLabel = `${dayLabel ? `${dayLabel} ` : ""}${time ?? "—"} · ${party} ${guestNoun(party)}`;
 
   const rescheduling = choice === "reschedule" && existing !== null;
+
+  // THE PLAN (MESITA-4393): how many reservations are left, and the hidden
+  // Pro step when none are and Pro would help (useReservePlan,
+  // lib/reserve-plan.ts). A draft saved before Stripe Checkout comes back
+  // here; a slot that has passed meanwhile reopens the When step.
+  const applyDraft = (d: ReserveDraft) => {
+      setDateChoice(d.dateChoice);
+      setTimeChoice(d.timeChoice);
+      setTimeWindow(d.timeWindow as ReservationTimeWindow);
+      setParty(d.party);
+      setNotes(d.notes);
+      if (d.firstName) setFirstName(d.firstName);
+      if (d.lastName) setLastName(d.lastName);
+      setOnConfirm(d.onConfirm as ReservationNotify);
+      setOnReject(d.onReject as ReservationNotify);
+      const opts = buildDateOptions(hours, tz);
+      const open =
+        opts.some((o) => o.iso === d.dateChoice && !o.disabled) &&
+        resolveSlot(d.dateChoice, d.timeChoice, hours, tz) === d.timeChoice;
+      setStepAt(open ? Math.min(d.stepAt, 2) : 0);
+  };
+  const plan = useReservePlan({
+    supabase,
+    placeId: place.id,
+    checking,
+    hasLiveTable: existing !== null,
+    applyDraft,
+  });
+  const draftNow = (): Omit<ReserveDraft, "savedAt"> => ({
+    dateChoice: date ?? "",
+    timeChoice: time,
+    timeWindow,
+    party,
+    notes,
+    firstName,
+    lastName,
+    onConfirm,
+    onReject,
+    stepAt,
+  });
   // A found duplicate locks submit until the guest answers the banner — the
   // whole point is that a second table is never created silently.
   const awaitingChoice = existing !== null && choice === null;
@@ -292,9 +336,17 @@ export function ReservationForm({
         });
       }
       setDone(true);
+      plan.clearDraft();
       onBooked();
     } catch (e) {
       if (e instanceof EFError && e.code === RESERVATION_LIMIT_CODE) {
+        // A stale count: read again, and offer Pro when it would help
+        // (MESITA-4393); otherwise the limit error with See Pro.
+        const fresh = await plan.reread();
+        if (!rescheduling && offerPro(fresh)) {
+          plan.setPro(true);
+          return;
+        }
         setError(RESERVATION_LIMIT_MESSAGE);
         return;
       }
@@ -379,7 +431,13 @@ export function ReservationForm({
         <ReserveStepNav
           steps={steps}
           at={at}
-          onBack={at > 0 ? () => setStepAt(at - 1) : onExit}
+          onBack={
+            plan.pro
+              ? () => plan.setPro(false)
+              : at > 0
+                ? () => setStepAt(at - 1)
+                : onExit
+          }
           place={{
             name: place.name,
             photo: <PlacePhotoMark photo={place.photo ?? null} name={place.name} />,
@@ -390,7 +448,33 @@ export function ReservationForm({
       {/* One step a screen, nothing to scroll on a phone; the body scrolls
           only if a very short screen cannot hold it. */}
       <div className="scrollbar-thin-dark -mx-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
-        {step === "when" && (
+        {/* Blocked and Pro would not help (Pro at its cap, an operator
+            cap): a warning on every step (MESITA-4393). */}
+        {!plan.pro && plan.isBlocked && !plan.offer && (
+          <p
+            className="type-body bg-destructive/10 text-destructive rounded-xl px-3 py-2 font-medium"
+            data-reserve-no-left=""
+          >
+            No reservations left this month. More on {resetDay()}.
+          </p>
+        )}
+        {plan.pro && (
+          <ReserveProStep
+            view={plan.view}
+            busy={plan.busy}
+            pending={plan.pending}
+            checkFailed={plan.checkFailed}
+            onUpgrade={() => void plan.upgrade(draftNow())}
+            onRetry={() => void plan.retryPayment()}
+            onNotNow={() => plan.setPro(false)}
+          />
+        )}
+        {!plan.pro && plan.paid && step === "when" && (
+          <p className="type-body rounded-xl bg-emerald-500/10 px-3 py-2 font-medium text-emerald-700">
+            You&apos;re on Pro.
+          </p>
+        )}
+        {!plan.pro && step === "when" && (
           <>
             {intro}
             {existing && (
@@ -408,17 +492,29 @@ export function ReservationForm({
                 <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
               )}
             </ReservationTimePicker>
+            {plan.isBlocked && plan.offer && (
+              <p className="text-muted-foreground type-body" data-reserve-heads-up="">
+                No reservations left this month.{" "}
+                <button
+                  type="button"
+                  onClick={() => plan.setPro(true)}
+                  className="text-foreground -my-3 inline-flex min-h-11 items-center font-semibold underline"
+                >
+                  Get more reservations
+                </button>
+              </p>
+            )}
           </>
         )}
 
-        {step === "party" && (
+        {!plan.pro && step === "party" && (
           <>
             <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
             <ReservationNotes value={notes} onChange={setNotes} />
           </>
         )}
 
-        {step === "you" && (
+        {!plan.pro && step === "you" && (
           <>
             {!rescheduling && (
               <ReservationSection title="Your details">
@@ -466,7 +562,23 @@ export function ReservationForm({
 
       {/* The step's one button, pinned (Pay's footer). */}
       <div className="border-border -mx-4 shrink-0 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {error && last && (
+        {plan.pro && plan.error && (
+          <p className="type-body bg-destructive/10 text-destructive mb-3 rounded-xl px-3 py-2 font-medium">
+            {plan.error}
+          </p>
+        )}
+        {!plan.pro && plan.paid && last && (
+          <p className="type-body mb-2 text-center font-medium text-emerald-700">
+            You&apos;re on Pro.
+          </p>
+        )}
+        {!plan.pro && last && plan.applies && plan.view && (
+          <p className="text-muted-foreground type-body mb-2 text-center" data-reserve-left="">
+            {Math.max(plan.view.cap - plan.view.used, 0)} of {plan.view.cap}{" "}
+            reservations left this month
+          </p>
+        )}
+        {!plan.pro && error && last && (
           <p className="type-body bg-destructive/10 text-destructive mb-3 rounded-xl px-3 py-2 font-medium">
             {error}
             {/* The cap's refusal leads to Plan, where Pro lifts it
@@ -485,7 +597,33 @@ export function ReservationForm({
             )}
           </p>
         )}
-        {last ? (
+        {plan.pro ? null : last && !rescheduling && !plan.settled ? (
+          <button
+            type="button"
+            disabled
+            className="bg-reserve text-reserve-foreground inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold disabled:opacity-50"
+          >
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Checking…
+          </button>
+        ) : last && plan.offer && !submitting ? (
+          <button
+            type="button"
+            onClick={() => plan.setPro(true)}
+            className="bg-reserve text-reserve-foreground inline-flex h-14 w-full items-center justify-center rounded-2xl text-base font-semibold transition active:scale-[0.99]"
+            data-reserve-get-more=""
+          >
+            Get more reservations
+          </button>
+        ) : last && plan.isBlocked && !submitting ? (
+          <button
+            type="button"
+            disabled
+            className="bg-reserve text-reserve-foreground inline-flex h-14 w-full items-center justify-center rounded-2xl text-base font-semibold disabled:opacity-50"
+          >
+            No reservations left this month
+          </button>
+        ) : last ? (
           <button
             type="button"
             onClick={submit}
@@ -511,7 +649,7 @@ export function ReservationForm({
             {nextLabel}
           </button>
         )}
-        {last && (
+        {!plan.pro && last && (
           <p className="text-muted-foreground type-body mt-2 text-center">
             Mesita calls the place for you and tells you the answer.
           </p>
