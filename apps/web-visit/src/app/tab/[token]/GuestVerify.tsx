@@ -19,7 +19,8 @@ import { BanknoteIcon, CheckIcon, HandCoinsIcon, SmartphoneIcon, UserIcon, Walle
 // (MESITA-4108, Pato: "reject button must be red same height as black"). The signature is the
 // cash's confirmation: no yes/no question. Sign trades the code for a staff
 // token for this one signature; neither is kept. Then: Receipt (green),
-// Confirming (the card is being charged), Not charged (the charge failed),
+// Confirming (the card is being charged), Not charged (the charge failed;
+// it says to ask the guest to pay again, MESITA-4305),
 // or "This bill is no longer open" with why.
 
 function vibrate() {
@@ -167,6 +168,9 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
         </span>
         <h1>Not charged</h1>
         <p className="proof-line">The card charge failed. Nothing was charged.</p>
+        {/* MESITA-4305: the next step. The guest's Start again reopens Pay
+            with the same bill; their new QR comes back here to Sign. */}
+        <p className="proof-line">Ask the guest to pay again with another card or cash. Then scan their new QR.</p>
         <p className="proof-place">{placeName}</p>
       </main>
     );

@@ -1,12 +1,20 @@
 import type { PayWith } from "@/lib/api/tab";
-import { payDraftExpired } from "@/lib/pay-draft";
 
 // THE GUEST'S TICKET IN PROGRESS (MESITA-3879, moved here by MESITA-4061 so
 // it is tested on its own). What the guest typed at /pay/place/<placeId>
 // lives in localStorage, with one pending pointer once an amount is typed:
 // while it is pending, /pay and every other place's Pay open it where it was
-// left. Not the place-page PayDraft in ./pay-draft (session storage, its own
-// steps): that one only lends this file its 30-minute expiry.
+// left. A draft lives 30 minutes after its last change (MESITA-4305 moved
+// the limit here when the old place-page draft and its step list went).
+
+/** How long a draft lives after its last change. */
+export const PAY_DRAFT_MAX_AGE_MS = 30 * 60 * 1000;
+
+/** Whether a draft written at `savedAt` is past the limit at `now`. Exactly
+ *  at the limit it is still good. */
+export function payDraftExpired(savedAt: number, now: number): boolean {
+  return now - savedAt > PAY_DRAFT_MAX_AGE_MS;
+}
 
 export type Stage = "bill" | "method" | "pay";
 /** Every stage a stored draft may hold (MESITA-4226: the Card step is

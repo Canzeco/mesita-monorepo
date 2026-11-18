@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  PAY_DRAFT_MAX_AGE_MS,
   clearGuestDraft,
   outcomeUnknownAfter,
+  payDraftExpired,
   pendingTicketPlace,
   readDraft,
   requestIdAfterEdit,
@@ -78,5 +80,16 @@ describe("one payment per tap", () => {
   it("keeps the request id while the outcome is unknown, and drops it after an edit otherwise", () => {
     expect(requestIdAfterEdit("req-1", true)).toBe("req-1");
     expect(requestIdAfterEdit("req-1", false)).toBeNull();
+  });
+});
+
+// Money (MVP test rule): a stale draft must not come back as a payment half
+// made (MESITA-3759; the limit moved here with MESITA-4305).
+describe("the draft limit", () => {
+  it("is thirty minutes; exactly at the limit is still good", () => {
+    const now = 1_800_000_000_000;
+    expect(PAY_DRAFT_MAX_AGE_MS).toBe(30 * 60 * 1000);
+    expect(payDraftExpired(now - PAY_DRAFT_MAX_AGE_MS, now)).toBe(false);
+    expect(payDraftExpired(now - PAY_DRAFT_MAX_AGE_MS - 1, now)).toBe(true);
   });
 });
