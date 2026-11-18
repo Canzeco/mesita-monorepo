@@ -201,13 +201,8 @@ async function main(): Promise<void> {
 
     // ── 1: post → check finds it → pay → claimed → released ─────────────────
     const post1 = await call("consumer-web-emulate-story", guestJwt, { action: "post" });
-    const m1 = (post1.body.mention as { id?: string; media_url?: string } | undefined) ?? {};
-    step("1 emulate post records a story before any purchase", post1.status === 200 && !!m1.id, post1);
-    if (m1.media_url) {
-      const img = await fetch(m1.media_url, { headers: { Range: "bytes=0-0" } });
-      await img.body?.cancel();
-      step("1 the story's image loads", img.status === 200 || img.status === 206, img.status);
-    }
+    const m1 = (post1.body.mention as { id?: string; media_url?: string | null } | undefined) ?? {};
+    step("1 Tag the place records a test story, no screenshot (MESITA-4310)", post1.status === 200 && !!m1.id && m1.media_url === null, post1);
     const found1 = await call("consumer-web-check-story", guestJwt, { place_id: placeId }, {}, "?poll=1");
     const rv1 = found1.body.review as { state?: string; url?: string } | undefined;
     step(
@@ -256,7 +251,8 @@ async function main(): Promise<void> {
     purchases.push(p2.id);
     step("2 claimed at the credit", p2.story === "claimed", p2);
     const del2 = await call("consumer-web-emulate-story", guestJwt, { action: "delete" });
-    step("2 emulate delete removes the claimed story", del2.status === 200 && del2.body.mention_id === m2.id, del2);
+    const { data: d2 } = await admin.from("story_mentions").select("deleted_at").eq("id", m2.id).single();
+    step("2 emulate delete marks the claimed test story deleted", del2.status === 200 && del2.body.mention_id === m2.id && !!(d2 as { deleted_at: string | null } | null)?.deleted_at, { del2, d2 });
     for (let i = 1; i <= 3; i++) {
       const c = await call("supabase-cron-recheck-stories", keys.service, { purchase_id: p2.id }, { "X-Internal-Caller": "story-e2e" });
       step(`2 re-check ${i} finds the story gone`, c.status === 200 && c.body.released === 0 && c.body.failed === 0, c);

@@ -408,12 +408,11 @@ verify_jwt = false
 [functions.consumer-web-check-story]
 verify_jwt = true
 
-# MESITA-4264, MESITA-4296: the Meta emulator, test mode only, posted before
-# any purchase; it copies its bundled sample image into the story-emulator
-# bucket.
+# MESITA-4264, MESITA-4296, MESITA-4310: the Meta emulator, test mode only,
+# posted before any purchase: "Tag the place" records a test story with no
+# image; delete marks it deleted; approve stands in for the waiter (MESITA-4307).
 [functions.consumer-web-emulate-story]
 verify_jwt = true
-static_files = ["./functions/consumer-web-emulate-story/sample-story.jpg"]
 
 # MESITA-4264: the operator's release / void / recheck_now of a Story.
 [functions.admin-web-story-override]

@@ -1081,7 +1081,7 @@ function StoryFlow({
   const simulate = async () => {
     if (!host.simulate) return;
     setSimulating(true);
-    const line = await host.simulate().catch(() => "Couldn't simulate the story. Try again.");
+    const line = await host.simulate().catch(() => "Couldn't tag the place. Try again.");
     setSimulating(false);
     if (line) setRefusal(line);
     else lookNow();
@@ -1284,7 +1284,8 @@ function StoryFlow({
             className="text-muted-foreground min-h-9 px-2 text-sm font-semibold underline disabled:opacity-60"
             data-story-simulate="post"
           >
-            {simulating ? "Posting…" : "Simulate a story"}
+            {/* MESITA-4310: no screenshot; the test story just tags @mesita and the place. */}
+            {simulating ? "Tagging…" : handle ? `Tag @${handle} (test story)` : "Tag the place (test story)"}
           </button>
         </div>
       ) : null}
