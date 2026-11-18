@@ -362,16 +362,21 @@ export function PaymentsPanel({
   };
 
   const voucherRow = ({ key, name, line, value, tone, icon }: Product) => {
-    const on = settings[key] && takesCards;
+    // App Prepayments is over every voucher (MESITA-4300, Pato: "how are you
+    // accepting Prepayments but not accepting Vouchers"): while it reads Off,
+    // each voucher reads Off with its switch disabled and the one step; the
+    // stored choice is kept and comes back when App Prepayments is on.
+    const prepaymentsOn = settings.prepayments && takesCards && settings.stripe_payments;
+    const on = settings[key] && prepaymentsOn;
     const reason = isVoucherKey(key) ? state.unavailable[key] : undefined;
-    const blocked = !takesCards ? needsStripe : !on && !settings.loyalty_cards ? needsLoyaltyCards : null;
-    const note = on
-      ? settings.prepayments
-        ? reason && NOT_SELLING[reason]
-          ? NOT_SELLING[reason]
-          : null
-        : needsPrepayments
-      : null;
+    const blocked = !takesCards
+      ? needsStripe
+      : !prepaymentsOn
+        ? needsPrepayments
+        : !on && !settings.loyalty_cards
+          ? needsLoyaltyCards
+          : null;
+    const note = on && reason && NOT_SELLING[reason] ? NOT_SELLING[reason] : null;
     return (
       <li key={key} className={MARK_ROW} data-place-state={key}>
         {mark(icon, on, tone)}
