@@ -230,7 +230,10 @@ function StoryCard({ mention, now, big = false }: { mention: StoryMention; now: 
   return (
     <div className={`story-card${big ? " story-card-big" : ""}${broken ? " story-card-broken" : ""}`} data-mention={mention.id}>
       <div className="story-frame">
-        {broken ? (
+        {mention.source === "emulator" && !mention.media_url ? (
+          // MESITA-4310: a test story has no screenshot; it only tags.
+          <p className="story-broken">Test story · tags @mesita and this place</p>
+        ) : broken ? (
           <p className="story-broken">Can&apos;t load this story. Ask the guest to show it on their phone</p>
         ) : mention.media_kind === "video" ? (
           <video className="story-media" src={mention.media_url ?? undefined} muted playsInline controls preload="metadata" onError={() => setFailed(true)} />

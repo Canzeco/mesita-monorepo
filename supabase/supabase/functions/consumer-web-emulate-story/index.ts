@@ -8,16 +8,14 @@
 // mode, and only while the real webhook is not configured; the day the
 // META_IG_* secrets land it refuses by itself (meta_on).
 //
-//   post    copies the bundled sample-story.jpg into the public bucket
-//           story-emulator/<consumer>/<n>.jpg (cache-control no-store) and
-//           records a mention (source emulator, livemode false) under the
-//           guest's verified handle, its URL versioned ?v=<n>. The mention
-//           row is written first and n comes from the guest's existing
-//           emulator mentions, so a retry overwrites the same file.
-//   delete  removes the image of the guest's newest CLAIMED mention (a paid
-//           Story waiting on its re-check), else of their newest one, so the
-//           re-check's fetch fails exactly as a deleted story's CDN link
-//           would.
+//   post    "Tag the place": records a test story (source emulator, livemode
+//           false) under the guest's verified handle, tagging @mesita and
+//           the place. No screenshot, no image (MESITA-4310, Pato: "No
+//           screenshot required. Just tag the place."): media_url is null.
+//   delete  marks the guest's newest CLAIMED test story (a paid Story waiting
+//           on its re-check), else their newest one, deleted (deleted_at);
+//           the 3-hour re-check reads that flag as a deleted story. An older
+//           test story with an image also loses its image.
 //   approve  MESITA-4307: the waiter's approval, emulated. Approves the
 //           guest's newest unreviewed EMULATOR story that their Story page
 //           pointed at `place_id` (consumer-web-check-story →
@@ -26,7 +24,7 @@
 //           never approved here; a real waiter's page still works.
 //
 // Body: { action: "post" | "delete" } | { action: "approve", place_id }
-// Response: post   { ok: true, action: "post", mention: { id, media_url, media_kind, mentioned_at, source }, n }
+// Response: post   { ok: true, action: "post", mention: { id, media_url: null, media_kind, mentioned_at, source }, n }
 //           delete { ok: true, action: "delete", mention_id, n }
 //           approve { ok: true, action: "approve", mention_id, outcome: approved | already_approved }
 //   400 bad_request · 401 (not signed in) · 409 not_test_mode | meta_on |
@@ -43,7 +41,6 @@ import {
   emulatorRefusal,
   emulatorPath,
   emulatorStoryId,
-  emulatorUrl,
   MENTION_COLUMNS,
   type MentionRow,
   mentionView,
@@ -57,8 +54,6 @@ import { reviewRefusal } from "../_shared/story-review.ts";
 
 const FN = "consumer-web-emulate-story";
 const BUCKET = "story-emulator";
-/** A mention whose image never landed is reused by a retry this soon. */
-const RETRY_REUSE_MS = 5 * 60 * 1000;
 
 serveJson("consumer-web-emulate-story", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -82,10 +77,10 @@ serveJson("consumer-web-emulate-story", async (req) => {
   try {
     // This guest's emulator stories, newest n first.
     const { data: mineRaw, error: mineErr } = await admin.from("story_mentions")
-      .select(`${MENTION_COLUMNS}, ig_story_id, created_at, review_token`)
+      .select(`${MENTION_COLUMNS}, ig_story_id, created_at, review_token, deleted_at`)
       .eq("source", "emulator").like("ig_story_id", `emu-${me}-%`);
     if (mineErr) throw new Error(`story_mentions: ${mineErr.message}`);
-    const mine = ((mineRaw ?? []) as Array<MentionRow & { ig_story_id: string; created_at: string; review_token: string | null }>)
+    const mine = ((mineRaw ?? []) as Array<MentionRow & { ig_story_id: string; created_at: string; review_token: string | null; deleted_at: string | null }>)
       .map((m) => ({ ...m, n: emulatorN(m.ig_story_id, me) ?? 0 }))
       .filter((m) => m.n > 0)
       .sort((a, b) => b.n - a.n);
@@ -113,10 +108,15 @@ serveJson("consumer-web-emulate-story", async (req) => {
     }
 
     if (action === "delete") {
-      const target = mine.find((m) => m.purchase_id !== null) ?? mine[0];
+      const live = mine.filter((m) => !m.deleted_at);
+      const target = live.find((m) => m.purchase_id !== null) ?? live[0];
       if (!target) return json({ ok: false, code: "no_story", error: "No simulated story to delete" }, 404);
-      const { error: rmErr } = await admin.storage.from(BUCKET).remove([emulatorPath(me, target.n)]);
-      if (rmErr) throw new Error(`storage_remove: ${rmErr.message}`);
+      const { error: delErr } = await admin.from("story_mentions").update({ deleted_at: new Date().toISOString() }).eq("id", target.id);
+      if (delErr) throw new Error(`story_mentions: ${delErr.message}`);
+      if (target.media_url) {
+        const { error: rmErr } = await admin.storage.from(BUCKET).remove([emulatorPath(me, target.n)]);
+        if (rmErr) throw new Error(`storage_remove: ${rmErr.message}`);
+      }
       console.log(`[${FN}]`, JSON.stringify({ action, consumer_id: me, mention_id: target.id, n: target.n }));
       return json({ ok: true, action, mention_id: target.id, n: target.n });
     }
@@ -125,41 +125,17 @@ serveJson("consumer-web-emulate-story", async (req) => {
     if (!guest.ok) throw new Error(`consumers: ${guest.error}`);
     if (!guest.handle) return json({ ok: false, code: "needs_instagram", error: "Link your Instagram first" }, 409);
 
-    // A retry: the latest unclaimed mention whose image never landed.
-    let n = (mine[0]?.n ?? 0) + 1;
-    const latest = mine[0];
-    if (latest && !latest.purchase_id && Date.now() - Date.parse(latest.created_at) < RETRY_REUSE_MS) {
-      const head = await fetch(emulatorUrl(env.url, me, latest.n), { method: "HEAD" });
-      await head.body?.cancel();
-      if (!head.ok) n = latest.n;
-    }
-
-    const mediaUrl = emulatorUrl(env.url, me, n);
+    const n = (mine[0]?.n ?? 0) + 1;
     const rec = await recordStoryMention(admin, {
       handle: guest.handle.toLowerCase(),
       source: "emulator",
       storyId: emulatorStoryId(me, n),
-      mediaUrl,
+      mediaUrl: null,
       mediaKind: "image",
       mentionedAt: new Date().toISOString(),
       livemode: false,
       senderIgsid: null,
     }, storageHostOf(env.url));
-
-    const bytes = await Deno.readFile(new URL("./sample-story.jpg", import.meta.url));
-    const up = await fetch(`${env.url.replace(/\/+$/, "")}/storage/v1/object/${BUCKET}/${emulatorPath(me, n)}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.serviceKey}`,
-        apikey: env.serviceKey,
-        "Content-Type": "image/jpeg",
-        "cache-control": "no-store",
-        "x-upsert": "true",
-      },
-      body: bytes,
-    });
-    if (!up.ok) throw new Error(`storage_upload: ${up.status} ${(await up.text()).slice(0, 200)}`);
-    await up.body?.cancel();
 
     const { data: m, error: mErr } = await admin.from("story_mentions").select(MENTION_COLUMNS).eq("id", rec.id).single();
     if (mErr) throw new Error(`story_mentions: ${mErr.message}`);

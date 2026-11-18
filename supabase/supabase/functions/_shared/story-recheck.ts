@@ -13,16 +13,16 @@ import {
   type TickReport,
 } from "./story-mention.ts";
 
-type Claimed = { purchase_id: string; source: "meta" | "emulator"; media_url: string | null };
+type Claimed = { purchase_id: string; source: "meta" | "emulator"; media_url: string | null; deleted_at: string | null };
 
 async function withMentions(admin: SupabaseClient, ids: string[]): Promise<RecheckRow[]> {
   if (ids.length === 0) return [];
-  const { data, error } = await admin.from("story_mentions").select("purchase_id, source, media_url").in("purchase_id", ids);
+  const { data, error } = await admin.from("story_mentions").select("purchase_id, source, media_url, deleted_at").in("purchase_id", ids);
   if (error) throw new Error(`story_mentions: ${error.message}`);
   const byId = new Map(((data ?? []) as Claimed[]).map((m) => [m.purchase_id, m]));
   return ids.map((id) => {
     const m = byId.get(id);
-    return { purchase_id: id, mention: m ? { source: m.source, media_url: m.media_url } : null };
+    return { purchase_id: id, mention: m ? { source: m.source, media_url: m.media_url, deleted_at: m.deleted_at } : null };
   });
 }
 

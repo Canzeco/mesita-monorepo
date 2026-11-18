@@ -200,7 +200,7 @@ export async function recordStoryMention(
 
 // ── The re-check ─────────────────────────────────────────────────────────────
 
-export type StillUp = { reachable: boolean; status: number | "timeout" | "error" | "no_url" };
+export type StillUp = { reachable: boolean; status: number | "timeout" | "error" | "no_url" | "kept" | "deleted" };
 
 /** Whether a story's media still loads: GET with Range bytes=0-0 (a video is
  *  never downloaded), the body discarded, a 10-second timeout. 2xx/206 is
@@ -230,7 +230,7 @@ export async function storyStillUp(
 /** A purchase due for its re-check, with the mention it claimed. */
 export type RecheckRow = {
   purchase_id: string;
-  mention: { source: "meta" | "emulator"; media_url: string | null } | null;
+  mention: { source: "meta" | "emulator"; media_url: string | null; deleted_at?: string | null } | null;
 };
 
 /** Whether this row's story is still up. A real Meta mention is not fetched
@@ -242,6 +242,12 @@ export async function recheckReachable(
   still: (url: string | null) => Promise<StillUp>,
 ): Promise<StillUp & { fetched: boolean }> {
   if (row.mention?.source === "meta" && !recheckMeta) return { reachable: true, status: 200, fetched: false };
+  // MESITA-4310: a test story has no image; its delete is a flag.
+  if (row.mention?.source === "emulator" && !row.mention.media_url) {
+    return row.mention.deleted_at
+      ? { reachable: false, status: "deleted", fetched: false }
+      : { reachable: true, status: "kept", fetched: false };
+  }
   const r = await still(row.mention?.media_url ?? null);
   return { ...r, fetched: true };
 }

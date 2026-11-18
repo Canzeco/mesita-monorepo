@@ -186,6 +186,12 @@ Deno.test("recheckReachable: a real Meta mention is not fetched while story_rech
   const emu: RecheckRow = { purchase_id: "p", mention: { source: "emulator", media_url: "https://x/1.jpg" } };
   assertEquals((await recheckReachable(emu, false, still)).reachable, false, "an emulator story is always fetched");
   assertEquals(fetched, 2);
+  // MESITA-4310: a test story without media is decided by its delete flag, never fetched.
+  const kept: RecheckRow = { purchase_id: "p", mention: { source: "emulator", media_url: null, deleted_at: null } };
+  assertEquals(await recheckReachable(kept, false, still), { reachable: true, status: "kept", fetched: false });
+  const gone: RecheckRow = { purchase_id: "p", mention: { source: "emulator", media_url: null, deleted_at: "2026-11-17T12:00:00Z" } };
+  assertEquals(await recheckReachable(gone, false, still), { reachable: false, status: "deleted", fetched: false });
+  assertEquals(fetched, 2);
 });
 
 Deno.test("runRecheckTick: one failing row is logged and the batch goes on", async () => {
