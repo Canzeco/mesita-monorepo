@@ -197,6 +197,18 @@ export function PlacePhotoMark({ photo, name }: { photo: string | null; name: st
   );
 }
 
+/** The header's place while the card is unread (MESITA-4351, Pato: "the
+ *  placeholder saying wallet on top is just wrong"): a round photo bone and
+ *  a name bar, the route's loading.tsx and the screen alike. */
+export function PlaceTitleBones() {
+  return (
+    <span className="flex items-center gap-2" aria-hidden>
+      <Skeleton className="h-8 w-8 rounded-full" />
+      <Skeleton className="h-5 w-40 rounded-md" />
+    </span>
+  );
+}
+
 /** The page loading: the card's panel, then the Tickets list. */
 export function LoyaltyCardSkeleton() {
   // NO WORDS, THE PAGE'S SHAPE (MESITA-4332, Pato: "the loading must be

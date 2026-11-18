@@ -11,7 +11,7 @@ import { CONSUMER_ROUTES, walletSendPath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { LoyaltyCardSkeleton, PlaceCredit, PlacePhotoMark } from "./PlaceCredit";
+import { LoyaltyCardSkeleton, PlaceCredit, PlacePhotoMark, PlaceTitleBones } from "./PlaceCredit";
 import { useWallet } from "./use-wallet";
 
 // /wallet/place/<placeId> — a place's Loyalty Card, full screen (MESITA-3533's
@@ -68,8 +68,8 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
 
   return (
     <Screen
-      title={row?.card.name ?? "Wallet"}
-      titleMark={row ? <PlacePhotoMark photo={row.card.photo} name={row.card.name} /> : undefined}
+      title={row?.card.name ?? ""}
+      titleMark={row ? <PlacePhotoMark photo={row.card.photo} name={row.card.name} /> : <PlaceTitleBones />}
       onBack={back}
       flush
       paper
