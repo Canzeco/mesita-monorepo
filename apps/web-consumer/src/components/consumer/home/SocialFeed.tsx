@@ -136,7 +136,8 @@ import {
   approxFollowers,
   instagramWithFollowers,
 } from "@/lib/consumer-identity";
-import { useConsumerIdentity } from "@/lib/identity-context";
+import { useConsumerIdentity, useViewer } from "@/lib/identity-context";
+import { openSignGate } from "@/lib/anonymous";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { trackEvent } from "@/lib/analytics/track";
 
@@ -1135,7 +1136,10 @@ function SocialFeedBody() {
   const router = useRouter();
   const pathname = usePathname() ?? CONSUMER_ROUTES.homeSocial;
   const params = useSearchParams();
-  const cardEvent = params ? cardEventOf(params) : null;
+  // Signed out, no person card draws, even from a ?person= address
+  // (MESITA-4325): the tap asks to sign in instead (openPerson).
+  const signedOut = useViewer() === "anonymous";
+  const cardEvent = params && !signedOut ? cardEventOf(params) : null;
   const cardTab: HistoryTab =
     params?.get("grid") === "saved" ? "saved" : "viewed";
   const [pull, setPull] = useState(0);
@@ -1291,6 +1295,13 @@ function SocialFeedBody() {
   }, [next, moreRound, gaveUp, fromKey, supabase]);
 
   const openPerson = (it: ActivityFeedItem) => {
+    // THE MODAL, NOT THE PROFILE (Pato, 2026-11-18, MESITA-4325: "if i
+    // click someone's profile, and not signed, you should not open its
+    // profile. just display the modal").
+    if (signedOut) {
+      openSignGate(cardHref(pathname, it, "viewed"), null);
+      return;
+    }
     setPushedCard(cardKey(it));
     router.push(cardHref(pathname, it, "viewed"), { scroll: false });
   };

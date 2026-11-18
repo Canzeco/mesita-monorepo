@@ -12,6 +12,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import { currentViewer, requestSignIn } from "@/lib/anonymous";
+import { useViewer } from "@/lib/identity-context";
 
 const STORAGE_KEY = "mesita:saved-places";
 const PREVIEW_STORAGE_KEY = "mesita:saved-place-previews";
@@ -319,11 +320,18 @@ export function readSavedPlacePreviews<T extends { id: string }>(): Map<
 // React hook — returns the live set + helpers. Re-renders whenever any
 // caller mutates the store via toggleSavedPlace / setPlaceSaved.
 export function useSavedPlaces() {
-  const savedIds = useSyncExternalStore(
+  const stored = useSyncExternalStore(
     subscribe,
     getSnapshot,
     getServerSnapshot,
   );
+  // SIGNED OUT, NOTHING IS SAVED (Pato, 2026-11-18, MESITA-4325: "anonymous
+  // users are not supposed to be able to save shit"). A visitor can't save
+  // (toggle asks to sign in), but this browser's cache still held the last
+  // account's hearts and painted them red after it signed out. Without an
+  // account the set reads empty; the cache stays for that account's return.
+  const signedOut = useViewer() === "anonymous";
+  const savedIds = signedOut ? EMPTY : stored;
   // `false` until the localStorage read lands. Gate empty states on this or
   // they flash to everyone who has saves — see getHydratedSnapshot above.
   const hydrated = useSyncExternalStore(
