@@ -311,15 +311,16 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
     }
     return null;
   };
-  // Buyable: for sale, or in test mode any row the server has not used up or
-  // paused (Pato, MESITA-3342: "must be buyable or whatever").
+  // Buyable: the server sells it, in every mode (MESITA-4399: in test mode
+  // MESITA-3342 let any row through, so a voucher the place switched off
+  // showed Pay and no Apple Pay / Google Pay, and every buy was refused).
+  // Test mode still greys nothing (`dim`).
   const buyable = (k: MoneyVoucherKey) => {
     if (guestLock(k)) return false;
     // A parked voucher (NOT_YET_SELLABLE, none today) is shown but stays
-    // locked even in test mode; the server refuses the buy (MESITA-4220).
+    // locked; the server refuses the buy (MESITA-4220).
     if (NOT_YET_SELLABLE[k]) return false;
-    const reason = unavailable[k];
-    return reason === undefined || (!dim && reason !== "used" && reason !== "paused" && reason !== "needs_visit");
+    return unavailable[k] === undefined;
   };
   return { unavailable, dim, guestLock, buyable };
 }
