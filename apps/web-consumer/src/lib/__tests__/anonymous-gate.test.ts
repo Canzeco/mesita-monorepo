@@ -26,6 +26,12 @@ describe("anonymousGate", () => {
     expect(anonymousGate("anonymous", "consumer-web-update-profile", {}, true).kind).toBe("pass");
   });
 
+  // MESITA-4326: a signed-out open counts as a view with no person.
+  it("a signed-out view goes through; a save still asks to sign in", () => {
+    expect(anonymousGate("anonymous", "consumer-web-track-activity", { kind: "viewed", place_id: "p" }).kind).toBe("pass");
+    expect(anonymousGate("anonymous", "consumer-web-track-activity", { kind: "saved", place_id: "p" }).kind).toBe("sign");
+  });
+
   it("tracking, paid Google calls and member reads never leave", () => {
     for (const fn of [
       "consumer-web-track-event",
@@ -37,7 +43,7 @@ describe("anonymousGate", () => {
     ]) {
       expect(anonymousGate("anonymous", fn, {}).kind, fn).toBe("quiet");
     }
-    expect(anonymousGate("anonymous", "consumer-web-track-activity", { kind: "viewed", place_id: "p" }).kind).toBe("quiet");
+    expect(anonymousGate("anonymous", "consumer-web-track-activity", { kind: "unknown-kind", place_id: "p" }).kind).toBe("quiet");
   });
 
   it("a save or a buy sends the visitor to Sign; the save is kept", () => {

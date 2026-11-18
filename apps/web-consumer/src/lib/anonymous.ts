@@ -162,6 +162,9 @@ export function anonymousGate(
         intent: placeId ? { kind: "save", placeId } : null,
       };
     }
+    // A SIGNED-OUT VIEW COUNTS (Pato, 2026-11-18, MESITA-4326: "counts
+    // only"): the function writes a view with no person; nothing names it.
+    if (body.kind === "viewed") return { kind: "pass" };
     return { kind: "quiet", answer: { kind: body.kind, on: false } };
   }
   if (QUIET.has(fn)) return { kind: "quiet", answer: QUIET_ANSWER[fn] ?? null };
