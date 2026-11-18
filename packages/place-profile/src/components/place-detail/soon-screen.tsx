@@ -22,15 +22,18 @@ import { PlaceEmptyScreen } from "./empty-screen";
 // concise … ask the menu questions, calories … order & pay … table orders
 // … pickup orders"). The title is "Smart Menu" alone since MESITA-4314
 // (Pato: "don't mention Smart Menu coming to Mesita").
+// Two lines, no orders, since MESITA-4339 (Pato, 2026-11-18: "be more
+// concise … Smart Menu is coming to mesita. Don't mention orders yet …
+// like ask ai and calories … don't mention allergens"): it says coming to
+// Mesita again, by his word, and only the asking.
 export function SoonScreen() {
   return (
     <PlaceEmptyScreen
       icon={BookOpen}
       title="Smart Menu"
       items={[
-        "Ask about any dish: calories, allergens, ingredients",
-        "Order & pay from your table",
-        "Order ahead for pickup, no delivery",
+        "Smart Menu is coming to Mesita.",
+        "Ask AI about any dish: calories, ingredients and more.",
       ]}
     />
   );
