@@ -25,6 +25,7 @@ import WalletBuyLoading from "./wallet/buy/loading";
 import WalletSendLoading from "./wallet/send/loading";
 import WalletPlaceSendLoading from "./wallet/place/[placeId]/send/loading";
 import PlaceReserveLoading from "./place/[id]/reserve/loading";
+import PlaceStoryLoading from "./place/[id]/story/loading";
 import PayPlaceLoading from "./pay/place/[placeId]/loading";
 import PayTabLoading from "./pay/bill/[billId]/loading";
 import PayReceiptLoading from "./pay/receipt/[paymentId]/loading";
@@ -53,6 +54,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
     </div>
   ),
   placeReserve: () => <PlaceReserveLoading />,
+  placeStory: () => <PlaceStoryLoading />,
   reservation: () => <ReservationPageLoading />,
   pay: () => <PayLoading />,
   payPick: () => <PayPickLoading />,

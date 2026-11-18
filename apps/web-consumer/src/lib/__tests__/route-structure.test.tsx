@@ -1052,6 +1052,7 @@ describe("the route map", () => {
       expect(routeFor(sample(ROUTE_MAP[id].pattern)), id).toBe(id);
     expect(routeFor("/place/google/g1")).toBe("placeGoogle");
     expect(routeFor("/place/p1/reserve")).toBe("placeReserve");
+    expect(routeFor("/place/p1/story")).toBe("placeStory");
     expect(routeFor("/pay/bill/t1")).toBe("payBill");
     expect(routeFor("/wallet/gift/t1")).toBe("walletGift");
     expect(routeFor("/me/old-box")).toBeNull();
