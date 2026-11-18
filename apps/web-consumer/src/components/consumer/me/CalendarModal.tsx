@@ -24,6 +24,7 @@ import {
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import {
   apiGetCalendarFeeds,
+  CALENDAR_FEEDS_KEY,
   type CalendarFeed,
   type CalendarFeeds,
   type CalendarKind,
@@ -41,7 +42,7 @@ import {
 import { useCachedQuery } from "@/lib/use-cached-query";
 import { errMsg } from "@/lib/utils";
 
-const KEY = "calendar-feeds";
+const KEY = CALENDAR_FEEDS_KEY;
 const ROW_CLASS = "flex w-full items-center gap-3 px-4 py-3 text-left";
 
 const CALENDARS: Array<{ kind: CalendarKind; label: string; app: string }> = [

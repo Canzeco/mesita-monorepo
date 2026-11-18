@@ -19,6 +19,15 @@ export type CalendarFeed = {
 
 export type CalendarFeeds = Record<CalendarKind, CalendarFeed>;
 
+/** The one cache key for the feeds: the Calendar page and the Reserve
+ *  page's quick-connect (MESITA-4315) share it, so either updates both. */
+export const CALENDAR_FEEDS_KEY = "calendar-feeds";
+
+/** Connected = at least one calendar has ever read its link. */
+export function anyCalendarConnected(feeds: CalendarFeeds): boolean {
+  return Object.values(feeds).some((f) => !!f.last_read_at);
+}
+
 /** The three links, made on first ask. `reset` replaces all three; `set`
  *  switches one calendar on or off. */
 export async function apiGetCalendarFeeds(
