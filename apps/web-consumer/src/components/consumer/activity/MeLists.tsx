@@ -37,6 +37,7 @@ import { usePathname } from "next/navigation";
 import {
   BadgeDollarSign,
   CalendarCheck,
+  CalendarDays,
   Gift,
   HandCoins,
   Ticket,
@@ -44,6 +45,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
+import { HEADER_BUTTON_CLASS } from "@/components/consumer/nav/Screen";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { GiftTickets } from "./GiftTickets";
@@ -322,9 +325,20 @@ export function ReservationsPage() {
   return (
     <MeScreen
       title="Reservations"
-      // NO CALENDAR MARKS UP HERE (MESITA-4042, Pato: "remove the ugly ass
-      // icons of those calendars at the top right"); MESITA-3954 had put a
-      // button to Integrations › Calendar here. Me › Integrations keeps it.
+      // A CALENDAR SHORTCUT, TOP RIGHT (MESITA-4330, Pato: "top right, add
+      // shortcut to go to calendar"): Back's white square with one plain
+      // ink calendar icon, opening Me › Integrations › Calendar. Never the
+      // three colour calendar marks (MESITA-4042, Pato: "remove the ugly
+      // ass icons of those calendars at the top right").
+      action={
+        <PushLink
+          href={CONSUMER_ROUTES.mePages.integrationsCalendar}
+          aria-label="Calendar"
+          className={HEADER_BUTTON_CLASS}
+        >
+          <CalendarDays className="h-5 w-5" strokeWidth={2} aria-hidden />
+        </PushLink>
+      }
     >
       <div className="flex flex-col gap-4">
         <SubpageTabs
