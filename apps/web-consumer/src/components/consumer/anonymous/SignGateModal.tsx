@@ -1,16 +1,8 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import {
-  CalendarDays,
-  Heart,
-  LogIn,
-  QrCode,
-  Tag,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { PhotoSignCard } from "./PhotoSignCard";
 import { useViewer } from "@/lib/identity-context";
 import {
   closeSignGate,
@@ -44,45 +36,37 @@ import {
 
 const COPY: Record<
   SignGateReason,
-  { icon: LucideIcon; title: string; line: string }
+  { title: string; line: string }
 > = {
   save: {
-    icon: Heart,
     title: "Sign in to save places",
     line: "Keep the places you love in one list, on any phone.",
   },
   reserve: {
-    icon: CalendarDays,
     title: "Sign in to book",
     line: "Reserve a table in a few taps.",
   },
   offers: {
-    icon: Tag,
     title: "Sign in to get this offer",
     line: "Buy credit at this place and get the bonus on top.",
   },
   pay: {
-    icon: QrCode,
     title: "Sign in to pay",
     line: "Pay the bill from your phone at the table.",
   },
   social: {
-    icon: Users,
     title: "Sign in to see people",
     line: "See who goes where and what they like.",
   },
   gift: {
-    icon: Tag,
     title: "Sign in to take your credit",
     line: "A friend sent you credit. Sign in to keep it.",
   },
   place: {
-    icon: Heart,
     title: "Sign in to save places",
     line: "Keep the places you love in one list, on any phone.",
   },
   plain: {
-    icon: LogIn,
     title: "Sign in to continue",
     line: "Save places, book tables and get offers.",
   },
@@ -134,37 +118,22 @@ export function SignGateModal() {
 
   const open = viewer === "anonymous" && gate !== null;
   const copy = COPY[gate?.reason ?? "plain"];
-  const Icon = copy.icon;
 
   return (
     <LocalDialog open={open} onClose={closeSignGate} ariaLabel={copy.title}>
-      <div className="flex flex-col items-center px-6 pt-7 pb-5 text-center">
-        <span className="bg-muted text-foreground flex h-12 w-12 items-center justify-center rounded-full">
-          <Icon className="h-5 w-5" aria-hidden />
-        </span>
-        <p className="mt-4 text-lg font-semibold tracking-tight">
-          {copy.title}
-        </p>
-        <p className="text-muted-foreground mt-1 max-w-[280px] text-sm leading-snug">
-          {copy.line}
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            if (gate) continueToSign(gate);
-          }}
-          className="bg-foreground text-background mt-5 inline-flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold transition hover:opacity-90 active:scale-[0.99]"
-        >
-          Sign in
-        </button>
-        <button
-          type="button"
-          onClick={closeSignGate}
-          className="bg-muted text-foreground hover:bg-muted/80 mt-2 inline-flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold transition active:scale-[0.99]"
-        >
-          Not now
-        </button>
-      </div>
+      {/* ON THE MOUNTAIN (Pato, 2026-11-18, MESITA-4338: "all the modals
+          must display that stupid background of the mountain"): the
+          welcome's photo card, the reason as its headline. A white card
+          with an icon chip before. */}
+      <PhotoSignCard
+        title={copy.title}
+        line={copy.line}
+        onSignIn={() => {
+          if (gate) continueToSign(gate);
+        }}
+        secondLabel="Not now"
+        onSecond={closeSignGate}
+      />
     </LocalDialog>
   );
 }

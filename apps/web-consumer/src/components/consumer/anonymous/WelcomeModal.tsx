@@ -1,11 +1,9 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import Image from "next/image";
-import { Outfit } from "next/font/google";
 import { usePathname, useRouter } from "next/navigation";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
-import { MesitaMark } from "@/components/brand/MesitaMark";
+import { PhotoSignCard } from "./PhotoSignCard";
 import { VALUE_LINE } from "@/components/auth/CoverAuthLayout";
 import { useViewer } from "@/lib/identity-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -31,7 +29,6 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // yet"; picked "Sign in / Not now"): the cover's value line (VALUE_LINE), a white Sign in and a
 // plain second way, now Just browse (MESITA-4328). The phone comes up on the Sign page, not here.
 // The wordmark as the header and the sign-in cover write it (MESITA-3653).
-const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 const listeners = new Set<() => void>();
 
 // EVERY PAGE LOAD (Pato, 2026-11-17, MESITA-4285: "when i reload page as an
@@ -67,67 +64,20 @@ export function WelcomeModal() {
     viewer === "anonymous" && !alreadySeen && pathname.startsWith("/home");
   return (
     <LocalDialog open={open} onClose={markSeen} ariaLabel="Welcome to Mesita">
-      <div className="relative aspect-[4/5] w-full bg-black text-white">
-        <Image
-          src="/auth/terrace.jpg"
-          alt=""
-          fill
-          priority
-          sizes="24rem"
-          className="object-cover object-[center_35%]"
-        />
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent via-30% to-black/90"
-        />
-        <div className="absolute inset-0 flex flex-col justify-between p-5">
-          <span className="flex items-center gap-2 self-start select-none">
-            <MesitaMark className="h-7 w-7" />
-            <span
-              className={`${wordmarkFont.className} text-2xl leading-none tracking-[-0.03em]`}
-            >
-              Mesita
-            </span>
-          </span>
-          <div className="flex flex-col">
-            <p className="font-display text-3xl leading-[1.1] font-semibold tracking-[-0.02em] text-balance">
-              Discover your next favorite place.
-            </p>
-            <p className="mt-2 text-sm leading-snug text-white/80">
-              {VALUE_LINE}
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                markSeen();
-                router.push(CONSUMER_ROUTES.sign);
-              }}
-              // SIGN IN (MESITA-4317): white on the photo, the one action.
-              // "Sign in" covers a returning guest and a new one alike: the
-              // first code on a number creates the account (MESITA-4287).
-              className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl bg-white text-sm font-semibold text-neutral-900 transition hover:bg-white/90 active:scale-[0.99]"
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              onClick={markSeen}
-              // BROWSE WITHOUT AN ACCOUNT (Pato, 2026-11-18, MESITA-4323:
-              // "don't say not now ... continue with NO account ... keep it
-              // LEAN"): plain white words on the photo, 44px tall, so the
-              // white Sign in is the only button that shouts. "Not now"
-              // (MESITA-4317) said nothing; "Explore anonymously"
-              // (MESITA-4287) sounded like hiding; "as guest" is out because
-              // a Mesita guest is a signed-in diner. "Browse without an
-              // account" (MESITA-4323) was too long: "less words" (Pato,
-              // MESITA-4328), so "Just browse".
-              className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold text-white/85 transition hover:text-white"
-            >
-              Just browse
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* The shared photo card (PhotoSignCard, MESITA-4338). "Just browse"
+          (MESITA-4328): "Not now" (MESITA-4317) said nothing, "Explore
+          anonymously" (MESITA-4287) sounded like hiding, "as guest" is out
+          because a Mesita guest is a signed-in diner. */}
+      <PhotoSignCard
+        title="Discover your next favorite place."
+        line={VALUE_LINE}
+        onSignIn={() => {
+          markSeen();
+          router.push(CONSUMER_ROUTES.sign);
+        }}
+        secondLabel="Just browse"
+        onSecond={markSeen}
+      />
     </LocalDialog>
   );
 }
