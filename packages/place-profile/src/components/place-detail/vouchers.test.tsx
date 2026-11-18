@@ -59,6 +59,10 @@ describe("Vouchers tab", () => {
     // An older read: switches on, no `sell`: nothing for sale.
     const older = render({ ...placeMoneyFrom({ charges_enabled: true, vouchers: { voucher_200: true } })!, test_mode: false }, () => {});
     expect(row(older, "voucher_200")).toContain("data-voucher-locked");
+    // Test mode too (MESITA-4399): a row the server does not sell never pays.
+    const test = render(OFFER, () => {});
+    expect(row(test, "voucher_1000")).not.toContain("data-voucher-locked");
+    expect(row(test, "voucher_5000")).toContain("data-voucher-locked");
   });
 
   it("the green mark is the server's; an older read without it keeps the old rule (MESITA-3408)", () => {
