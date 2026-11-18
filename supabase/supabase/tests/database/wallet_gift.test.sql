@@ -37,7 +37,7 @@ end $$;
 -- ━━━ Access ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 select ok(
-  not has_function_privilege('authenticated', 'public.wallet_send_credit(uuid, uuid, integer, text, boolean, uuid, text, integer, text)', 'EXECUTE')
+  not has_function_privilege('authenticated', 'public.wallet_send_credit(uuid, uuid, integer, text, boolean, uuid, text, integer, text, text)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.wallet_claim_gift(text, uuid, boolean)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.wallet_claim_gift(text, uuid, boolean)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.wallet_take_back_gift(uuid, uuid)', 'EXECUTE')

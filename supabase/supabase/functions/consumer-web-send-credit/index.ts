@@ -12,8 +12,10 @@
 // Body: { place_id: uuid, amount_cents: integer > 0, request_id: uuid }
 // Response: { ok: true, outcome: "sent" | "already_sent", gift_id,
 //             amount_cents, currency, token: string | null, test_mode }
-//   token is the link's key, shown once; a replay (already_sent) answers
-//   null, since only its hash is stored. A link only since MESITA-4223
+//   token is the link's key; a replay (already_sent) answers null. Its hash
+//   is what a claim checks; since MESITA-4390 the key is also stored sealed
+//   (_shared/gift-seal.ts) so consumer-web-get-gift-link can show it to the
+//   sender again while the gift is open. A link only since MESITA-4223
 //   (MESITA-3737's 12-digit code is gone). The client builds the link:
 //   <its origin>/wallet/gift/<token>.
 //   400 amount_required | above_cap · 401 sign_in · 404 gone ·
@@ -24,6 +26,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { GIFT_MAX_OPEN, giftRefusalStatus, hashGiftToken, mintGiftToken, readSendBody } from "../_shared/gift.ts";
+import { sealGiftToken } from "../_shared/gift-seal.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
@@ -32,7 +35,7 @@ import { paymentsLivemode } from "../_shared/stripe.ts";
 serveJson("consumer-web-send-credit", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to send credit" });
   if (ctx instanceof Response) return ctx;
-  const { admin, user } = ctx;
+  const { admin, user, env } = ctx;
   const userId = user.id;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
@@ -62,6 +65,7 @@ serveJson("consumer-web-send-credit", async (req) => {
     p_request_id: input.requestId,
     p_token_hash: await hashGiftToken(token),
     p_max_open: GIFT_MAX_OPEN,
+    p_token_sealed: await sealGiftToken(token, env.serviceKey),
   });
   if (error) {
     console.error("[consumer-web-send-credit] rpc", error.message);
