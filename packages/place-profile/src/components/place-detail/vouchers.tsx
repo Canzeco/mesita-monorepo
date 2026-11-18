@@ -6,7 +6,7 @@ import { Camera, Check, CircleCheck, QrCode, Clock, Copy, CreditCard, Gift, Infi
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
-import type { PlaceActions, StoryRefused, VoucherBuyOutcome } from "../../actions";
+import type { ExpressPayArgs, PlaceActions, StoryRefused, VoucherBuyOutcome } from "../../actions";
 import {
   createStoryPoll,
   isStoryGateReason,
@@ -615,7 +615,16 @@ function NeedBox({ needs }: { needs: Need[] }) {
   );
 }
 
-type Receipt = { outcome: "paid" | "processing"; pay: string; bonus: string | null; readyAt: string | null };
+/** "received" (MESITA-4384): express pay where Stripe took the money and the
+ *  settle answer was slow; the voucher lands within a few minutes. */
+type Receipt = {
+  outcome: "paid" | "processing" | "received";
+  pay: string;
+  bonus: string | null;
+  readyAt: string | null;
+  /** Express pay's wallet, for "Paid with Apple Pay" (MESITA-4384). */
+  payWith?: "apple_pay" | "google_pay" | null;
+};
 
 /** What a Pay ends in: a receipt, a Story refusal (back to the check), or
  *  nothing (the host already said why; the sheet stays). */
@@ -654,6 +663,9 @@ type Offer = {
   /** Cards were read and none is usable: Pay goes to Add a card. */
   needsCard: boolean;
   onPay: (mentionId?: string) => Promise<PayResult>;
+  /** Apple Pay / Google Pay (MESITA-4384): the host's button for this
+   *  offer, or null (signed out, admin's preview, a locked offer). */
+  express: ((a: Omit<ExpressPayArgs, "items" | "onDone"> & { onReceipt: (r: Receipt) => void }) => ReactNode) | null;
   /** The host's offer_sheet_opened (MESITA-4375): called once a sheet's
    *  cards are known, with whether a saved card is ready. */
   onOpened: () => void;
@@ -703,6 +715,12 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
         ? { label: "Grew your account? Sync Instagram", onClick: actions.onLinkInstagram, quiet: true }
         : null;
     const bonusAmount = line ? pesos(line.bonus_cents, currency) : null;
+    const receiptFor = (outcome: Receipt["outcome"], payWith: Receipt["payWith"]): Receipt => {
+      // Story's bonus waits 3 hours from payment (MESITA-4296).
+      const wait = line ? line.available_after_sec : p.key === "voucher_story" ? 3 * 3600 : null;
+      const readyAt = wait !== null ? new Date(Date.now() + wait * 1000).toISOString() : null;
+      return { outcome, pay, bonus: bonusAmount ? whole(bonusAmount) : null, readyAt, payWith };
+    };
     return {
       pay,
       get: creditValue(p, line, currency),
@@ -745,11 +763,16 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
         );
         if (isStoryRefused(out)) return out;
         if (out !== "paid" && out !== "processing") return null;
-        // Story's bonus waits 3 hours from payment (MESITA-4296).
-        const wait = line ? line.available_after_sec : p.key === "voucher_story" ? 3 * 3600 : null;
-        const readyAt = wait !== null ? new Date(Date.now() + wait * 1000).toISOString() : null;
-        return { outcome: out, pay, bonus: bonusAmount ? whole(bonusAmount) : null, readyAt };
+        return receiptFor(out, null);
       },
+      express: actions?.renderExpressPay && live && can && !signedOut && p.key !== "voucher_story"
+        ? (a) =>
+          actions.renderExpressPay?.({
+            ...a,
+            items: [{ voucher: p.key, qty: 1 }],
+            onDone: (d) => a.onReceipt(receiptFor(d.outcome, d.payWith)),
+          })
+        : null,
     };
   };
   return { loading, ...rules, catalog, currency, offer, checkStory };
@@ -1358,14 +1381,28 @@ function PaySheet({
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   useOfferOpened(offer);
   const panel = useRef<HTMLDivElement>(null);
+  // EXPRESS PAY (MESITA-4384): the slot is a 48 px skeleton until the host's
+  // button says ready or none; from the wallet's confirm until it ends the
+  // sheet is locked (X, backdrop and Escape do nothing).
+  const [expressState, setExpressState] = useState<"loading" | "ready" | "none">(offer.express ? "loading" : "none");
+  const [locked, setLocked] = useState(false);
+  const [expressError, setExpressError] = useState<string | null>(null);
+  const lockedRef = useRef(false);
+  const close = useCallback(() => {
+    if (!lockedRef.current) onClose();
+  }, [onClose]);
+  const lock = useCallback((on: boolean) => {
+    lockedRef.current = on;
+    setLocked(on);
+  }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
     panel.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [close]);
   const face = FACES[product.key];
   const Mark = face.Mark ?? Ticket;
   const host = typeof document !== "undefined" ? document.getElementById("mesita-app-card") : null;
@@ -1393,7 +1430,7 @@ function PaySheet({
   return createPortal(
     <div
       className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex flex-col justify-end bg-black/40")}
-      onClick={onClose}
+      onClick={close}
       data-offer-sheet={product.key}
     >
       <div
@@ -1416,9 +1453,10 @@ function PaySheet({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={close}
+            disabled={locked}
             aria-label="Close"
-            className="text-muted-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+            className="text-muted-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
           >
             <X className="h-5 w-5" strokeWidth={2.25} />
           </button>
@@ -1431,11 +1469,24 @@ function PaySheet({
               <div className="flex items-center gap-3">
                 <CircleCheck className="h-8 w-8 shrink-0 text-[#00A85A]" strokeWidth={2.25} aria-hidden />
                 <p className="text-foreground text-xl font-bold tabular-nums">
-                  {receipt.outcome === "paid" ? `Paid ${whole(receipt.pay)}` : "Your bank is confirming"}
+                  {receipt.outcome === "paid" ? `Paid ${whole(receipt.pay)}` : receipt.outcome === "received" ? "Payment received" : "Your bank is confirming"}
                 </p>
               </div>
+              {receipt.payWith ? (
+                <p className="text-muted-foreground -mt-2 text-[15px]" data-offer-paid-with={receipt.payWith}>
+                  {receipt.payWith === "apple_pay" ? "Paid with Apple Pay" : "Paid with Google Pay"}
+                </p>
+              ) : null}
               <ul className="text-foreground flex flex-col gap-2 text-[15px] leading-snug">
-                {receipt.outcome === "paid" ? (
+                {receipt.outcome === "received" ? (
+                  <li>
+                    Your voucher will appear in{" "}
+                    <a href="/me/tickets" className="font-semibold underline underline-offset-2">
+                      Me › Tickets
+                    </a>{" "}
+                    within a few minutes. Nothing else to do.
+                  </li>
+                ) : receipt.outcome === "paid" ? (
                   <>
                     <li className="tabular-nums">{`${whole(receipt.pay)} is ready to spend now.`}</li>
                     <li className="tabular-nums">
@@ -1470,40 +1521,83 @@ function PaySheet({
             <GoodToKnow productKey={product.key} />
             <Box data-offer-pay-box="">
               {can ? (
-                asking && !buying ? (
-                  <div className="flex flex-col gap-3" data-offer-confirm="">
-                    <p className="text-foreground text-[17px] leading-snug font-semibold tabular-nums">
-                      {offer.payCard ? `Pay ${amount} with your ${offer.payCard.label} ending ${offer.payCard.last4}?` : `Pay ${amount}?`}
+                <div className="flex flex-col gap-3">
+                  {/* APPLE PAY / GOOGLE PAY (MESITA-4384): kept mounted while
+                      the card's ask shows, so the wallet is never set up twice. */}
+                  {offer.express && expressState !== "none" ? (
+                    <div className={cn("relative min-h-12", asking && !buying && "hidden")} data-express-slot={expressState}>
+                      {expressState === "loading" ? <div className="bg-muted absolute inset-0 rounded-xl" aria-hidden /> : null}
+                      <div className={cn(expressState === "loading" && "opacity-0", buying && "pointer-events-none opacity-50")}>
+                        {offer.express({
+                          disabled: buying,
+                          onState: setExpressState,
+                          onLock: lock,
+                          onError: setExpressError,
+                          onReceipt: (r) => {
+                            setExpressError(null);
+                            setReceipt(r);
+                          },
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                  {locked ? (
+                    <p className="text-foreground text-center text-[15px] font-semibold" role="status" data-express-paying="">
+                      Paying…
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => void press()}
-                      disabled={!offer.live || offer.cardsPending}
-                      className={PRIMARY}
-                      data-voucher-buy={product.key}
-                      autoFocus
-                    >
-                      {`Yes, pay ${amount}`}
+                  ) : null}
+                  {expressError && !locked ? (
+                    <p className="text-center text-[15px] leading-snug font-semibold text-red-700" role="alert" data-express-error="">
+                      {expressError}
+                    </p>
+                  ) : null}
+                  {locked ? null : asking && !buying ? (
+                    <div className="flex flex-col gap-3" data-offer-confirm="">
+                      <p className="text-foreground text-[17px] leading-snug font-semibold tabular-nums">
+                        {offer.payCard ? `Pay ${amount} with your ${offer.payCard.label} ending ${offer.payCard.last4}?` : `Pay ${amount}?`}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void press()}
+                        disabled={!offer.live || offer.cardsPending}
+                        className={PRIMARY}
+                        data-voucher-buy={product.key}
+                        autoFocus
+                      >
+                        {`Yes, pay ${amount}`}
+                      </button>
+                      <button type="button" onClick={() => setAsking(false)} className={QUIET}>
+                        Cancel
+                      </button>
+                    </div>
+                  ) : offer.express && expressState !== "none" && needsCard && !signedOut ? (
+                    // No saved card: the wallet leads, adding a card is the quiet way.
+                    <button type="button" onClick={() => void press()} disabled={!offer.live || buying} className={QUIET} data-voucher-ask={product.key}>
+                      Add a card
                     </button>
-                    <button type="button" onClick={() => setAsking(false)} className={QUIET}>
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    <CardLine offer={offer} />
-                    <button
-                      type="button"
-                      onClick={() => void press()}
-                      disabled={!offer.live || buying || offer.cardsPending}
-                      className={PRIMARY}
-                      data-voucher-ask={product.key}
-                    >
-                      {needsCard && !signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
-                      {button}
-                    </button>
-                  </div>
-                )
+                  ) : (
+                    <>
+                      {offer.express && expressState !== "none" ? (
+                        <div className="text-muted-foreground flex items-center gap-3 text-sm" aria-hidden data-express-or="">
+                          <span className="bg-border h-px flex-1" />
+                          or
+                          <span className="bg-border h-px flex-1" />
+                        </div>
+                      ) : null}
+                      <CardLine offer={offer} />
+                      <button
+                        type="button"
+                        onClick={() => void press()}
+                        disabled={!offer.live || buying || offer.cardsPending}
+                        className={PRIMARY}
+                        data-voucher-ask={product.key}
+                      >
+                        {needsCard && !signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
+                        {button}
+                      </button>
+                    </>
+                  )}
+                </div>
               ) : (
                 // LOCKED (MESITA-4224, D4): the reason where Pay goes, and the
                 // one action that unlocks it when there is one.

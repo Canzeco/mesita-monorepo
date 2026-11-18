@@ -17,6 +17,24 @@ export type VoucherBuyOutcome = "paid" | "processing" | "failed" | StoryRefused;
  *  back to the check step with `line`. */
 export type StoryRefused = { story_refused: string };
 
+/** EXPRESS PAY (MESITA-4384): what the Offers sheet hands the host's
+ *  Apple Pay / Google Pay button. The package has no Stripe; the host draws
+ *  the button and reports back. */
+export type ExpressPayArgs = {
+  items: VoucherBasketItem[];
+  mentionId?: string;
+  /** The card path is paying: the button does nothing. */
+  disabled: boolean;
+  /** loading (keep the 48 px slot), ready, or none (collapse it). */
+  onState: (state: "loading" | "ready" | "none") => void;
+  /** From the wallet's confirm until it ends: the sheet cannot close. */
+  onLock: (locked: boolean) => void;
+  /** "received": Stripe took it and the receipt is on its way. */
+  onDone: (done: { outcome: "paid" | "processing" | "received"; payWith: "apple_pay" | "google_pay" | null }) => void;
+  /** The pay box's error line; null clears it. */
+  onError: (text: string | null) => void;
+};
+
 /** The profile is on screen before Mesita holds it — a Google-only card the
  *  guest opened (MESITA-2307). While the create runs a Creating fact leads
  *  the facts row (MESITA-2679); a refusal says why at the top of Overview. */
@@ -59,6 +77,9 @@ export type PlaceActions = {
     /** A Story names the story the check found (MESITA-4296); paid alone. */
     opts?: { mentionId?: string },
   ) => void | Promise<VoucherBuyOutcome>;
+  /** Apple Pay / Google Pay in the Offers sheet's pay box (MESITA-4384).
+   *  Absent (signed out, admin's preview): no express slot. */
+  renderExpressPay?: (args: ExpressPayArgs) => ReactNode;
   /** offer_sheet_opened (MESITA-4375): an offer's sheet or Story page opened;
    *  `savedCard` says a usable saved card was ready. Fire-and-forget. */
   onOfferOpened?: (voucher: VoucherKey, savedCard: boolean) => void;

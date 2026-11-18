@@ -248,6 +248,55 @@ export async function apiBuyVoucher(
   return await invokeEF<{ purchase_id: string; card: VoucherCardStep }>(client, "consumer-web-buy-voucher", args);
 }
 
+/** MESITA-4384: what the Apple Pay / Google Pay button needs, or why it
+ *  stays hidden (`available: false` with the refusal's code). */
+export type ExpressSetup =
+  | {
+    available: true;
+    wallets: Array<"apple_pay" | "google_pay">;
+    publishable_key: string;
+    stripe_account: string;
+    /** Stripe's units, exactly the PaymentIntent's amount. */
+    amount_cents: number;
+    currency: string;
+    country: string;
+    label: string;
+  }
+  | { available: false; code: string };
+
+/** An express purchase's step (consumer-web-buy-voucher with `express`). */
+export type ExpressStep =
+  | { status: "succeeded"; payment_intent_id: string; pay_with: "apple_pay" | "google_pay" | "express" }
+  | { status: "processing"; payment_intent_id: string }
+  | {
+    status: "requires_payment_method" | "requires_action";
+    payment_intent_id: string;
+    client_secret: string;
+    stripe_account: string;
+    publishable_key: string;
+    amount_cents: number;
+    decline_code?: string;
+    error?: string;
+  };
+
+type ExpressBasket = { place_id: string; mention_id?: string } & (
+  | { voucher: VoucherKey; items?: never }
+  | { items: Array<{ voucher: VoucherKey; qty: number }>; voucher?: never }
+);
+
+export async function apiExpressSetup(client: SupabaseClient, args: ExpressBasket): Promise<ExpressSetup> {
+  return await invokeEF<ExpressSetup>(client, "consumer-web-express-pay-setup", args);
+}
+
+/** Opens an express purchase, or (the same request_id again) reads where it
+ *  stands: the browser confirms in between. */
+export async function apiBuyVoucherExpress(
+  client: SupabaseClient,
+  args: ExpressBasket & { request_id: string },
+): Promise<{ purchase_id: string; express: ExpressStep }> {
+  return await invokeEF<{ purchase_id: string; express: ExpressStep }>(client, "consumer-web-buy-voucher", { ...args, express: true });
+}
+
 /** The Story check before Pay (MESITA-4296): whether the guest's story has
  *  reached Mesita. `poll` skips the gate (the sheet's look once it passed).
  *  A 500 check_failed or no answer resolves `failed`: the sheet keeps
@@ -348,6 +397,9 @@ export const BUY_REFUSAL: Record<string, string> = {
   unconfirmed: "We couldn't confirm the payment. Check Wallet before trying again.",
   failed: "Couldn't complete the purchase. Try again.",
   closed: "That purchase was cancelled. Tap Pay to start over.",
+  // MESITA-4384: express pay's kill switch, flipped while the sheet was open.
+  disabled: "Apple Pay and Google Pay are off right now. Pay with a card.",
+  payments_unavailable: "Payments aren't available right now. Try again later.",
 };
 
 /** What a refused buy does (MESITA-3549; MESITA-4065). card_required opens
