@@ -7,7 +7,8 @@ import { COUNTRIES, COUNTRY_BY_CODE, type Country } from "@/lib/consumer-data";
 // surface is a single rounded pill — the left side is a styled "button"
 // that opens the OS-native picker (we overlay a transparent <select> so
 // mobile gets its proper picker and desktop gets a click-to-open). The
-// right side is the local subscriber number.
+// right side is the local subscriber number. It sits on the sign-in photo
+// (MESITA-4309): a white field as tall as the green button, no border.
 //
 // Fully controlled: the parent owns both the local number (onChange) and the
 // ISO country code (onCountryChange), and combines them itself.
@@ -35,7 +36,7 @@ export function PhoneInputWithCountry({
   const country: Country = COUNTRY_BY_CODE[countryCode] ?? COUNTRY_BY_CODE.MX;
 
   return (
-    <div className="border-border bg-card focus-within:border-foreground/40 relative flex h-11 w-full items-stretch overflow-hidden rounded-xl border transition">
+    <div className="bg-card text-foreground relative flex h-13 w-full items-stretch overflow-hidden rounded-[14px] border border-transparent transition focus-within:border-white focus-within:ring-2 focus-within:ring-white/40">
       {/* Country picker chip + transparent native select overlaying just
           the chip width. The select is absolutely positioned to the left
           half of the row so the phone input on the right stays clickable. */}
@@ -43,7 +44,7 @@ export function PhoneInputWithCountry({
         <span className="text-base leading-none" aria-hidden>
           {country.flag}
         </span>
-        <span className="text-sm font-medium tabular-nums">
+        <span className="text-base font-medium tabular-nums">
           +{country.dial}
         </span>
         <ChevronDown className="text-muted-foreground h-3 w-3" aria-hidden />
@@ -69,7 +70,7 @@ export function PhoneInputWithCountry({
         placeholder={placeholder}
         required={required}
         autoComplete="tel-national"
-        className="placeholder:text-muted-foreground h-11 flex-1 bg-transparent px-3 text-sm outline-none"
+        className="placeholder:text-muted-foreground h-13 min-w-0 flex-1 bg-transparent px-3 text-base outline-none"
       />
     </div>
   );
