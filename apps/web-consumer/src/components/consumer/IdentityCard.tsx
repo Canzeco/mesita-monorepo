@@ -1,7 +1,8 @@
 "use client";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { UserRound } from "lucide-react";
+import { BadgeCheck, UserRound } from "lucide-react";
+import { useConsumerIdentity } from "@/lib/identity-context";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -203,17 +204,24 @@ export function IdentityModules({
   nameHref: string;
 }) {
   const [handle, followers] = splitInstagramLabel(instagram.label);
+  // Over the bar (1,000+ followers, igReach) a badge after the count says
+  // it without a word (Pato, MESITA-4370: "use VIP icon or something … but
+  // it's implicit").
+  const { igReach } = useConsumerIdentity();
+  // ONE UNIT, TWO UNITS (Pato, 2026-11-18, MESITA-4370: "name 1 unit tall
+  // and instagram 2 units tall"): a 36px name box over a 72px Instagram box
+  // holding the handle over its followers; the photo spans both, 116px.
   // THE GRID (Pato, 2026-11-18, MESITA-4340: "photo name / photo instagram.
   // name and instagram same height. photo double height"): the photo spans
   // both rows, 48 + 8 + 48 = 104px; the two boxes beside it are 48px each.
   // The "Name" label of MESITA-4335 is gone: the name says itself.
   return (
     <div
-      className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[3rem_3rem] gap-x-3 gap-y-2"
+      className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[2.25rem_4.5rem] gap-x-3 gap-y-2"
       data-identity-card
     >
       <span className={cn(IDENTITY_RING_CLASS, "row-span-2 self-center")} aria-hidden>
-        <span className="bg-muted relative block h-[101px] w-[101px] overflow-hidden rounded-full">
+        <span className="bg-muted relative block h-[113px] w-[113px] overflow-hidden rounded-full">
           {avatarUrl ? (
             <SizedImg src={avatarUrl} size="thumb" alt="" className="h-full w-full object-cover" />
           ) : (
@@ -224,7 +232,7 @@ export function IdentityModules({
       <PushLink
         href={nameHref}
         aria-label={`Profile: ${name}`}
-        className={cn(MODULE_CLASS, "h-12 gap-2")}
+        className={cn(MODULE_CLASS, "h-9 gap-2")}
         data-identity-name
       >
         {/* A person before the name (Pato, 2026-11-18, MESITA-4354: "add an
@@ -244,14 +252,25 @@ export function IdentityModules({
       <PushLink
         href={instagram.href}
         aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
-        className={cn(MODULE_CLASS, "h-12 gap-2 text-sm")}
+        className={cn(MODULE_CLASS, "h-[4.5rem] gap-2 text-sm")}
         data-identity-instagram
       >
         <InstagramBadge connected={instagram.connected} />
-        <span className="text-foreground truncate font-bold tracking-tight">{handle}</span>
-        {followers ? (
-          <span className="text-muted-foreground ml-auto shrink-0 pl-2 font-medium">{followers}</span>
-        ) : null}
+        <span className="flex min-w-0 flex-col">
+          <span className="text-foreground truncate font-bold tracking-tight">{handle}</span>
+          {followers ? (
+            <span className="text-muted-foreground flex items-center gap-1 font-medium">
+              <span className="truncate">{followers}</span>
+              {igReach && (
+                <BadgeCheck
+                  className="text-foreground h-4 w-4 shrink-0"
+                  aria-label="Over 1,000 followers"
+                  data-identity-reach
+                />
+              )}
+            </span>
+          ) : null}
+        </span>
       </PushLink>
     </div>
   );

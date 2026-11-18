@@ -40,20 +40,23 @@ export const IDENTITY_BAR_BODY_CLASS =
  *  placeholders must be similar to the page you are loading, like the
  *  sizes"). */
 export function IdentityCardSkeleton() {
-  // The grid's own boxes (MESITA-4340): the 104px photo spanning both
-  // rows, the 48px name box over the 48px Instagram box.
+  // The grid's own boxes (MESITA-4370): the 116px photo spanning both
+  // rows, the 36px name box over the 72px Instagram box.
   return (
-    <div aria-hidden className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[3rem_3rem] gap-x-3 gap-y-2">
+    <div aria-hidden className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[2.25rem_4.5rem] gap-x-3 gap-y-2">
       <div className={`${IDENTITY_RING_CLASS} row-span-2 self-center`}>
-        <Skeleton className="block h-[101px] w-[101px] rounded-full" />
+        <Skeleton className="block h-[113px] w-[113px] rounded-full" />
       </div>
-      <div className="border-border flex h-12 items-center gap-2 rounded-lg border px-3">
+      <div className="border-border flex h-9 items-center gap-2 rounded-lg border px-3">
         <Skeleton className="h-5 w-5 shrink-0 rounded-full" />
         <Skeleton className="h-4.5 w-36 rounded" />
       </div>
-      <div className="border-border flex h-12 items-center gap-2 rounded-lg border px-3">
+      <div className="border-border flex h-[4.5rem] items-center gap-2 rounded-lg border px-3">
         <Skeleton className="h-5 w-5 shrink-0 rounded-full" />
-        <Skeleton className="h-3.5 w-32 rounded" />
+        <span className="flex flex-col gap-1.5">
+          <Skeleton className="h-3.5 w-32 rounded" />
+          <Skeleton className="h-3.5 w-24 rounded" />
+        </span>
       </div>
     </div>
   );
