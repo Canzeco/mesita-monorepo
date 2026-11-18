@@ -62,3 +62,18 @@ export function GiftCardFace({
     </div>
   );
 }
+
+/** The gift card in miniature (MESITA-4396): the wine face and its
+ *  champagne ribbon at 64×40, for the open-gifts boxes. `faded`: a gift whose
+ *  link was not saved, drawn grey. */
+export function GiftCardMini({ faded = false }: { faded?: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`relative h-10 w-16 shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-[#7f1d2d] to-[#4a0e1a] shadow-sm ${faded ? "opacity-60 grayscale" : ""}`}
+    >
+      <span className="absolute inset-y-0 right-[22%] w-[5px] bg-gradient-to-b from-[#efdcb0] to-[#c9a66b]" />
+      <span className="absolute inset-x-0 top-[46%] h-[5px] -translate-y-1/2 bg-gradient-to-r from-[#efdcb0] to-[#c9a66b]" />
+    </span>
+  );
+}
