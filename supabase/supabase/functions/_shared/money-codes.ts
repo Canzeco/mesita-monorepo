@@ -69,7 +69,7 @@ export const MONEY_CODES = [
   "not_yet",
   "needs_card_payments",
   "needs_instagram",
-  // Story: the guest's Instagram has 1,000 followers or fewer (MESITA-3507)
+  // Story: the guest's Instagram has fewer than 1,000 followers (MESITA-3507, MESITA-4383)
   "few_followers",
   // Sending credit to a friend (MESITA-3292): live sending waits on the
   // lawyer (money_config.sending_live), ten open links per place, a link is

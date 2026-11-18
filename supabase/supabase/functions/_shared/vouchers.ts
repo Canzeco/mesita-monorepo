@@ -425,12 +425,12 @@ export function storyRefusal(voucher: MoneyVoucherKey, guest: StoryGuest): BuyRe
   if (!guest?.instagram_handle) {
     return { ok: false, status: 409, code: "needs_instagram", error: "Link your Instagram to buy the Story voucher" };
   }
-  if ((guest.instagram_followers_count ?? 0) <= STORY_MIN_FOLLOWERS) {
+  if ((guest.instagram_followers_count ?? 0) < STORY_MIN_FOLLOWERS) {
     return {
       ok: false,
       status: 409,
       code: "few_followers",
-      error: `The Story voucher is for Instagram accounts with more than ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} followers`,
+      error: `The Story voucher is for Instagram accounts with ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} or more followers`,
     };
   }
   // MESITA-4296: a private account's mentions never reach Mesita (Mesita

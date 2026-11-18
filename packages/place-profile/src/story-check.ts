@@ -77,7 +77,7 @@ export type StoryGateAction = "link_instagram" | "sync_instagram" | null;
 export const STORY_GATE_LINE: Record<StoryGateReason, { text: string; action: StoryGateAction }> = {
   place_no_instagram: { text: "This place hasn't linked its Instagram yet, so Story isn't available here.", action: null },
   needs_instagram: { text: "Link your Instagram to use Story.", action: "link_instagram" },
-  few_followers: { text: "Story is for Instagram accounts with more than 1,000 followers.", action: null },
+  few_followers: { text: "Story is for Instagram accounts with 1,000 or more followers.", action: null },
   private_account: { text: "Your Instagram is private. Make it public, then sync it.", action: "sync_instagram" },
   already_bought: { text: "One Story per visit. Pay a bill here by card to get another.", action: null },
   story_unavailable: { text: "Story isn't available right now.", action: null },

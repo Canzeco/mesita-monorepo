@@ -319,7 +319,7 @@ export const BUY_REFUSAL: Record<string, string> = {
   not_yet: "This voucher isn't on sale yet.",
   needs_card_payments: "This voucher arrives with card payments.",
   needs_instagram: "Link your Instagram to buy the Story voucher.",
-  few_followers: "The Story voucher is for Instagram accounts with more than 1,000 followers.",
+  few_followers: "The Story voucher is for Instagram accounts with 1,000 or more followers.",
   // MESITA-4264: live payments while Instagram stories can't be checked yet.
   story_unavailable: "The Story voucher isn't available right now.",
   // MESITA-4296: the story is checked before Pay; nothing was charged.

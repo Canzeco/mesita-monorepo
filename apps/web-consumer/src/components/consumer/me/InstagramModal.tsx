@@ -291,8 +291,8 @@ const ROW_BUTTON_CLASS =
 // REASONS"; it undoes MESITA-2983's cut). Both are server rules, not copy:
 //   1. Others' full handles show only to a guest whose own Instagram is
 //      connected and whose profile is public (place-activity seesHandles).
-//   2. A Story voucher needs more than STORY_MIN_FOLLOWERS followers
-//      (vouchers.ts refuses `<=`). Named a discount, with the deal in plain
+//   2. A Story voucher needs STORY_MIN_FOLLOWERS followers or more
+//      (vouchers.ts refuses `<`, MESITA-4383). Named a discount, with the deal in plain
 //      numbers (Pato, MESITA-4347: "discount insta must be there too").
 // TWO COLOURED BOXES (Pato, MESITA-4350: "why connect looks like shit … use
 // boxes with color"): black with the Instagram mark for seeing others, and
@@ -310,8 +310,8 @@ export function WhyConnect({ connected }: { connected: boolean }) {
   const { igFollowers } = useConsumerIdentity();
   const { data } = useConsumerProfile();
   const hidden = data?.appear_anonymous === true;
-  const storyOk = igFollowers > STORY_MIN_FOLLOWERS;
-  const need = STORY_MIN_FOLLOWERS + 1;
+  const storyOk = igFollowers >= STORY_MIN_FOLLOWERS;
+  const need = STORY_MIN_FOLLOWERS;
   return (
     <section className="flex flex-col gap-3" aria-label="Why connect">
       <h2 className="font-display px-0.5 text-base font-semibold tracking-tight">
