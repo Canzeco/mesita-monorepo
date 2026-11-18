@@ -196,8 +196,11 @@ export function ProfileActions({
           ariaLabel={saved ? "Remove from favorites" : "Add to favorites"}
           // LIKED IS A RED HEART, NOT A RED TILE (Pato, MESITA-2635: "that
           // red is just too red"): the tile stays grey like its neighbours
-          // and only the glyph fills, the way Instagram marks a like.
-          iconClassName={cn(saved && "fill-destructive text-destructive")}
+          // and only the glyph fills, the way Instagram marks a like. ITS
+          // OUTLINE IS WHITE (Pato, MESITA-4408: "when liked, add a white
+          // border to save for better contrast in the blackbox"): the stroke
+          // is the glyph's text colour, so the red fill reads on the black tile.
+          iconClassName={cn(saved && "fill-destructive text-white")}
         />
         <ActionTile
           // The folded map again (Pato, MESITA-2669: "MAYBE for directions do
