@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Gift } from "lucide-react";
@@ -25,7 +25,7 @@ import { CONSUMER_ROUTES, walletPlacePath } from "@/lib/consumer-route-contract"
 import { goBack, navigateTo } from "@/lib/navigate";
 import { invalidateCached } from "@/lib/screen-cache";
 import { placeHref } from "@/lib/place-route";
-import { copyToClipboard, copyWithTextarea } from "@/lib/share-place";
+import { canShareNatively, copyToClipboard, copyWithTextarea } from "@/lib/share-place";
 import { INSTAGRAM_DM_URL } from "@/lib/share-app";
 import { CHANNEL_MARKS } from "@/components/consumer/share/channel-icons";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -180,11 +180,30 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
   if (link) {
     const amountText = money(link.cents, currency);
     const message = `A ${amountText} gift card for ${placeName} on Mesita: ${link.url}`;
-    // Instagram cannot be prefilled from the web: copy the message while the
-    // page has focus, then the link opens the inbox (as /share does).
+    // Instagram cannot be prefilled from the web. ON A PHONE (MESITA-4392,
+    // Pato: "the instagram button must work") the button opens the phone's
+    // share sheet with the message: Instagram is in it and sends straight to
+    // a chat. Elsewhere (a computer's sheet has no Instagram) it copies the
+    // message while the page has focus, then the link opens the inbox (as
+    // /share does) to paste it.
     const copyForInstagram = () => {
       if (copyWithTextarea(message)) toast.success("Copied: paste it in an Instagram chat");
       else void copyToClipboard(message).then((ok) => (ok ? toast.success("Copied: paste it in an Instagram chat") : toast.error("Couldn't copy: paste the link yourself")));
+    };
+    const shareToInstagram = (e: MouseEvent<HTMLAnchorElement>) => {
+      const data = { text: message };
+      const phone = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+      if (!phone || !canShareNatively(data)) {
+        copyForInstagram();
+        return;
+      }
+      e.preventDefault();
+      navigator.share(data).catch((err: unknown) => {
+        // Closing the sheet is a choice, not a failure.
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        copyForInstagram();
+        window.open(INSTAGRAM_DM_URL, "_blank", "noopener,noreferrer");
+      });
     };
     return (
       <Screen title="Send Gift" paper>
@@ -201,7 +220,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
             {(
               [
                 { channel: "whatsapp", label: "WhatsApp", href: `https://wa.me/?text=${encodeURIComponent(message)}` },
-                { channel: "instagram", label: "Instagram", href: INSTAGRAM_DM_URL, onClick: copyForInstagram },
+                { channel: "instagram", label: "Instagram", href: INSTAGRAM_DM_URL, onClick: shareToInstagram },
                 { channel: "messages", label: "Messages", href: `sms:?&body=${encodeURIComponent(message)}` },
                 { channel: "copy", label: "Copy link", onClick: () => void copyLink(link.url) },
               ] as const
