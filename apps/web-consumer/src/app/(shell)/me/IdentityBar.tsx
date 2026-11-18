@@ -1,12 +1,8 @@
 "use client";
 
-import { useState } from "react";
-
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
-import { ClassSheet } from "@/components/consumer/me/ClassSheet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { toGuestClass } from "@/lib/guest-standing";
 import {
   IDENTITY_BAR_BODY_CLASS,
   IDENTITY_BAR_CLASS,
@@ -24,13 +20,13 @@ import {
 // card; that read as one more tile).
 //
 //                     (photo)
-//   ( 👤 name          ) ( ♛ Regular Class      )   the pair (MESITA-3833)
+//   ( 👤 name                                    )
 //   ( ◎ @handle (~1.2K followers)                )
 //   ─────── hairline ─────── full-width white bar; content on the 16px edge
 //
-// NO PLAN (MESITA-3830): it is the Plan tile on the grid below. Class came
-// back next to the name (Pato, MESITA-3833: "Name at the left, VIP at the
-// right, Instagram at the bottom two columns").
+// NO PLAN (MESITA-3830): it is the Plan tile on the grid below. NO CLASS
+// (MESITA-4306, Pato: "LETS REMOVE THE CLASS"): VIP brought nothing, and the
+// Instagram box already shows the followers.
 //
 // The card itself is IdentityCard, the same one Social shows for a member
 // (MESITA-2547). NO PHONE: it is private (Pato, MESITA-2547: "that is super
@@ -82,8 +78,6 @@ export function IdentityBar({
     profile?.full_name ||
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
-  const guestClass = profile ? toGuestClass(profile.guest_class) : null;
-  const [classOpen, setClassOpen] = useState(false);
 
   return (
     <header
@@ -97,8 +91,7 @@ export function IdentityBar({
       <div className={IDENTITY_BAR_BODY_CLASS} data-identity-app-bar>
         {loading ? (
           // The skeleton mirrors the DESTINATION (Docs › Design §D): the
-          // 64px photo in its real ring, then the name · Class pair and
-          // Instagram (MESITA-3833). /me's loading.tsx
+          // 64px photo in its real ring, then the name and Instagram. /me's loading.tsx
           // draws the same one, so the route fallback and this hand over
           // without a jump (Pato, MESITA-2701: "the placeholders must be
           // similar to the page you are loading, like the sizes").
@@ -112,20 +105,12 @@ export function IdentityBar({
               connected: instagramConnected,
               href: CONSUMER_ROUTES.mePages.instagram,
             }}
-            // No profile (the read failed) hides Class: never a guessed
-            // "Regular" (MESITA-2553). A door on Me.
-            guestClass={guestClass}
-            onClassPress={guestClass ? () => setClassOpen(true) : undefined}
             // The name box opens Me › Profile, where the name is edited
             // (MESITA-2596).
             nameHref={CONSUMER_ROUTES.mePages.profile}
           />
         )}
       </div>
-
-      {guestClass && (
-        <ClassSheet open={classOpen} onClose={() => setClassOpen(false)} />
-      )}
     </header>
   );
 }

@@ -154,9 +154,6 @@ export const CONSUMER_ROUTES = {
     // Plan is back as a read-only page: Free and Pro, Pro's new perks Soon
     // (MESITA-2134, MESITA-2553). It left the legacy list the same day.
     plan: "/me/plan",
-    // Class, Regular or VIP, as a page behind Me's Class tile (MESITA-2562);
-    // the header's Class chip opens the same body as a sheet.
-    class: "/me/class",
     // GIFT (Pato, 2026-11-11, MESITA-3771): the places the guest holds credit
     // at; a tap opens that Loyalty Card with Gift Credits open.
     gift: "/me/gift",
@@ -273,7 +270,9 @@ export const CONSUMER_ROUTES = {
     meTicketsGiftsOut: "/me/tickets/gifts-out",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
     // Diamond pair, Plan's Pro checkout, Visits, Metrics, Passport.
-    // /me/plan (MESITA-2134) and /me/class (MESITA-2562) are live again.
+    // /me/plan (MESITA-2134) is live again. /me/class left Me with Class
+    // (MESITA-4306, Pato: "LETS REMOVE THE CLASS").
+    meClass: "/me/class",
     meClassInvite: "/me/class/invite",
     meDiamond: "/me/diamond",
     meDiamondInvite: "/me/diamond/invite",
@@ -508,7 +507,6 @@ export const ROUTE_MAP = {
   meInstagram: row("/me/instagram", "me", "page", "me"),
   // Opened from Settings since the Me cell went Soon (MESITA-3855).
   mePlan: row("/me/plan", "me", "page", "meSettings"),
-  meClass: row("/me/class", "me", "page", "me"),
   meGift: row("/me/gift", "me", "page", "me"),
   // Activity's chips as Me's pages (MESITA-3855).
   meNotifications: row("/me/notifications", "me", "page", "me"),

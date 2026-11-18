@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import { Skeleton, SkeletonLine } from "@/components/shared";
 import {
   IDENTITY_BOXES,
@@ -41,8 +39,8 @@ export const IDENTITY_BAR_BODY_CLASS =
   "relative flex flex-col items-center px-4 py-3";
 
 /** IdentityCard while the profile loads: the 64px photo in its 1.5px ring
- *  (67px), then the three 36px boxes in two rows — name · Class,
- *  Instagram — one column under 360px (MESITA-3833). Every
+ *  (67px), then the two 36px boxes, name and Instagram, a row each
+ *  (MESITA-4306). Every
  *  class and the row order are the card's own (identity-card-layout.ts),
  *  so this is IdentityCard's boxes, empty (Pato, MESITA-2701: "the
  *  placeholders must be similar to the page you are loading, like the
@@ -75,37 +73,6 @@ export function IdentityBarSkeleton() {
     <div className={IDENTITY_BAR_CLASS}>
       <div className={IDENTITY_BAR_BODY_CLASS}>
         <IdentityCardSkeleton />
-      </div>
-    </div>
-  );
-}
-
-/** A Plan or Class row while the guest's own is unknown (PlanModal's
- *  PlanRow, ClassSheet's ClassRow): px-4 py-3, the 36px icon chip, the
- *  title, then `children`: the fixed lines as themselves. */
-export function StandingRowSkeleton({
-  title,
-  soon,
-  children,
-}: {
-  title: string;
-  /** The Class card's Soon tag (MESITA-3027), drawn as itself. */
-  soon?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-start gap-3 px-4 py-3">
-      <Skeleton className={ICON_CHIP_CLASS} />
-      <div className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">
-          {title}
-          {soon && (
-            <span className="bg-muted text-muted-foreground type-meta ml-1.5 rounded-full px-1.5 py-0.5 align-middle font-semibold">
-              Soon
-            </span>
-          )}
-        </span>
-        {children}
       </div>
     </div>
   );
