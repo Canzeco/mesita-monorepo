@@ -13,12 +13,7 @@ import {
   otpErrorMessage,
   parsePhone,
 } from "@/lib/phone-otp";
-import {
-  ERROR_BOX_CLASS,
-  INFO_BOX_CLASS,
-  INPUT_CLASS,
-  PRIMARY_BUTTON_CLASS,
-} from "@/lib/ui-classes";
+import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { AUTH_BUTTON_SIZE } from "./auth-ui";
 
@@ -27,6 +22,14 @@ import { AUTH_BUTTON_SIZE } from "./auth-ui";
 // instead"): the send and verify buttons are the phone's green with white
 // words, the way a phone sign-in reads; every other primary stays ink.
 const PHONE_GREEN = "bg-green-600 text-white hover:bg-green-700";
+
+// ON THE PHOTO (MESITA-4309): the form sits on the sign-in photo's dark
+// foot, so its words are white, an error is a white box with red words,
+// and a note is a frosted one. The fields stay white with ink type.
+const ERROR_ON_PHOTO = "rounded-lg bg-white px-3 py-2 text-sm text-destructive";
+const INFO_ON_PHOTO = "rounded-lg bg-white/15 px-3 py-2 text-sm text-white";
+const LINK_ON_PHOTO =
+  "text-white/85 hover:text-white transition disabled:opacity-50";
 
 // Two-step phone OTP. Phone is the identity — there's no "create account"
 // vs "sign in" anymore; first verify on a number creates the auth.user,
@@ -168,9 +171,8 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         className="flex flex-col gap-3"
       >
         <label className="block">
-          <span className="text-foreground mb-1.5 block text-sm font-semibold">
-            Phone number
-          </span>
+          {/* The line above already asks for the number. */}
+          <span className="sr-only">Phone number</span>
           <PhoneInputWithCountry
             value={localPhone}
             onChange={setLocalPhone}
@@ -181,7 +183,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
           />
         </label>
 
-        {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
+        {error && <p className={ERROR_ON_PHOTO}>{error}</p>}
 
         {/* One dark button; calling is the quiet second way (MESITA-3795).
             Never greyed out while typing: a short number answers on tap. */}
@@ -209,10 +211,13 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
           type="button"
           onClick={() => void startVerification("call")}
           disabled={loading}
-          className="text-muted-foreground hover:text-foreground inline-flex h-11 items-center justify-center gap-1.5 self-center text-sm font-semibold transition disabled:opacity-50"
+          className={cn(
+            LINK_ON_PHOTO,
+            "inline-flex h-11 items-center justify-center gap-1.5 self-center text-base font-medium",
+          )}
         >
           {sending === "call" ? (
-            <Spinner size="sm" />
+            <Spinner size="sm" className="border-white/40 border-t-white" />
           ) : (
             <>
               <Phone className="h-4 w-4" />
@@ -241,16 +246,19 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
             setError(null);
             setInfo(null);
           }}
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-semibold transition"
+          className={cn(
+            LINK_ON_PHOTO,
+            "inline-flex min-h-11 items-center gap-1 text-sm font-semibold",
+          )}
         >
           <ArrowLeft className="h-3 w-3" />
           Change number
         </button>
-        <span className="text-muted-foreground text-xs">{e164}</span>
+        <span className="text-sm text-white/75 tabular-nums">{e164}</span>
       </div>
 
       <label className="block">
-        <span className="text-muted-foreground mb-1.5 block text-xs font-medium">
+        <span className="mb-1.5 block text-sm font-medium text-white/80">
           {OTP_LENGTH}-digit code
         </span>
         <input
@@ -262,14 +270,17 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
           onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
           placeholder="123456"
           data-field-size="lg"
-          className={cn(INPUT_CLASS, "text-center text-lg tracking-[0.5em]")}
+          className={cn(
+            INPUT_CLASS,
+            "text-foreground h-13 rounded-[14px] border-transparent text-center text-lg tracking-[0.5em] focus:border-white",
+          )}
           autoFocus
           required
         />
       </label>
 
-      {info && <p className={INFO_BOX_CLASS}>{info}</p>}
-      {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
+      {info && <p className={INFO_ON_PHOTO}>{info}</p>}
+      {error && <p className={ERROR_ON_PHOTO}>{error}</p>}
 
       <button
         type="submit"
@@ -292,7 +303,10 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         type="button"
         onClick={() => void resendCode()}
         disabled={loading || cooldown > 0}
-        className="text-muted-foreground hover:text-foreground h-9 text-center text-xs font-semibold transition disabled:opacity-50"
+        className={cn(
+          LINK_ON_PHOTO,
+          "min-h-11 text-center text-sm font-semibold",
+        )}
       >
         {cooldown > 0
           ? `${method === "call" ? "Call again" : "Resend code"} in ${cooldown}s`

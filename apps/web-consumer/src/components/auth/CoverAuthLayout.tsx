@@ -4,6 +4,15 @@ import Image from "next/image";
 import { Outfit } from "next/font/google";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 
+// FULL BLEED (Pato, 2026-11-17, MESITA-4309: "Cover", then "make a better
+// design for this. wtf is that", and he picked A of three mocks): one
+// surface. The terrace fills the whole screen, the wordmark at its top; the
+// headline, one line, the phone field, Text me the code, Call me instead
+// and the terms sit on the photo's dark foot. No white sheet and no second
+// title ("Continue with phone number" said a different thing from the
+// headline), so nothing is left empty. The form is styled for the photo
+// (PhoneOtpForm): white field, green button, white links.
+//
 // THE FORM IS ON THE PAGE (Pato, 2026-11-17, MESITA-4286: "sign must already
 // have phone and send code thing, not hidden. quick access … remove pop up
 // modal … don't hide the bottom menu"): the photo is a band at the top with
@@ -37,65 +46,59 @@ export function CoverAuthLayout({
   footer,
 }: {
   headline: string;
-  /** Overrides the panel title (the Pay QR door names its place). */
+  /** The line under the headline (the Pay QR door names its place). */
   title?: string;
-  /** Under the panel title. */
+  /** The line when there is no title. */
   subtitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
-  const panelTitle = title ?? "Continue with phone number";
-  const panelSubtitle = subtitle ?? "We'll text you a code.";
+  const line =
+    title ?? subtitle ?? "Sign in with your number. We'll text you a code.";
 
   return (
-    <div className="scrollbar-thin-dark bg-card flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="relative h-[34%] min-h-52 shrink-0 overflow-hidden bg-black text-white">
-        <Image
-          src="/auth/terrace.jpg"
-          alt=""
-          fill
-          priority
-          sizes="(min-width: 768px) 30rem, 100vw"
-          // The photo shows as it is: no blur (MESITA-3746).
-          className="object-cover object-[center_42%]"
-        />
-        {/* Legibility: a veil at the top for the logo and a deeper one at
-            the foot for the headline; the mountain stays clear. */}
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent via-35% to-black/80"
-        />
-        <div className="absolute inset-0 flex flex-col justify-between p-5 pb-10">
-          <span className="flex items-center gap-2 self-start select-none">
-            <MesitaMark className="h-7 w-7" />
-            <span
-              className={`${wordmarkFont.className} text-2xl leading-none tracking-[-0.03em]`}
-            >
-              Mesita
-            </span>
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-black text-white">
+      {/* The photo stays put behind the column; only the column scrolls. */}
+      <Image
+        src="/auth/terrace.jpg"
+        alt=""
+        fill
+        priority
+        sizes="(min-width: 768px) 30rem, 100vw"
+        // The photo shows as it is: no blur (MESITA-3746).
+        className="object-cover object-[center_32%]"
+      />
+      {/* Legibility: a light veil at the top for the wordmark, clear
+          through the faces and the mountain, then a deep fade under the
+          headline and the form. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-[linear-gradient(to_bottom,rgb(0_0_0/0.42)_0%,transparent_22%,transparent_34%,rgb(0_0_0/0.72)_58%,rgb(0_0_0/0.9)_100%)]"
+      />
+
+      <div className="scrollbar-thin-dark relative flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <span className="flex shrink-0 items-center gap-2 self-start p-5 select-none">
+          <MesitaMark className="h-7 w-7" />
+          <span
+            className={`${wordmarkFont.className} text-2xl leading-none tracking-[-0.03em]`}
+          >
+            Mesita
           </span>
-          <h1 className="font-display text-3xl leading-[1.05] font-semibold tracking-[-0.02em] text-balance">
+        </span>
+
+        <section className="mt-auto shrink-0 px-5 pt-16 pb-6">
+          <h1 className="font-display text-[2rem] leading-[1.04] font-semibold tracking-[-0.02em] text-balance">
             {headline}
           </h1>
-        </div>
+          <p className="mt-2 text-base leading-snug text-white/80">{line}</p>
+          <div className="mt-6">{children}</div>
+          {footer && (
+            <p className="mt-4 text-center text-xs leading-relaxed text-white/60">
+              {footer}
+            </p>
+          )}
+        </section>
       </div>
-
-      <section className="bg-card text-foreground relative -mt-6 flex flex-1 flex-col rounded-t-[28px] px-6 pt-6 pb-8">
-        <header className="mb-5">
-          <h2 className="font-display text-2xl leading-tight font-semibold tracking-[-0.02em]">
-            {panelTitle}
-          </h2>
-          <p className="text-muted-foreground mt-1 text-base leading-snug">
-            {panelSubtitle}
-          </p>
-        </header>
-        {children}
-        {footer && (
-          <p className="text-muted-foreground type-body mt-6 text-center">
-            {footer}
-          </p>
-        )}
-      </section>
     </div>
   );
 }
