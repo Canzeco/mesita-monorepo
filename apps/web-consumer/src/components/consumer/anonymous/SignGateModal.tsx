@@ -54,7 +54,7 @@ const COPY: Record<
   reserve: {
     icon: CalendarDays,
     title: "Sign in to book",
-    line: "Reserve a table in a few taps. We text you a code to sign in.",
+    line: "Reserve a table in a few taps.",
   },
   offers: {
     icon: Tag,
@@ -84,7 +84,7 @@ const COPY: Record<
   plain: {
     icon: LogIn,
     title: "Sign in to continue",
-    line: "It takes a minute with your phone number.",
+    line: "Save places, book tables and get offers.",
   },
 };
 

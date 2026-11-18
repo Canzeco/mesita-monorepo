@@ -31,6 +31,24 @@ export function setViewer(v: Viewer): void {
   viewer = v;
 }
 
+// NO SESSION, NO MEMBER READ (Pato, 2026-11-18, MESITA-4317: "you are
+// expiring the anonymous session too soon"). There is no anonymous session
+// to expire: a visitor without an account holds no session at all. But the
+// bar's avatar and a place card's actions read the profile, the profile
+// function answers 401 without a session, and that 401 left for
+// /auth/clear-session and then said "Your session expired. Sign in again."
+// The calls below need a session (a visitor signed in but not onboarded
+// makes them on Sign and Onboard), so invokeEF asks the browser's own
+// session store first (a local read, no network) and, without one, they
+// never leave.
+export const NEEDS_SESSION = new Set([
+  "consumer-web-signin-phone",
+  "consumer-web-get-profile",
+  "consumer-web-update-profile",
+  "consumer-web-lookup-instagram",
+  "consumer-web-claim-instagram",
+]);
+
 export function currentViewer(): Viewer {
   return viewer;
 }
@@ -113,8 +131,12 @@ export function anonymousGate(
   v: Viewer,
   fn: string,
   body: Record<string, unknown>,
+  held = true,
 ): AnonymousGate {
   if (v === "member") return { kind: "pass" };
+  if (!held && NEEDS_SESSION.has(fn)) {
+    return { kind: "quiet", answer: null };
+  }
   if (OPEN.has(fn)) return { kind: "pass" };
   const isSave =
     fn === "consumer-web-track-activity" &&

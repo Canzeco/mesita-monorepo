@@ -13,7 +13,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logCall } from "@/lib/call-log";
 import { reportEFFailure } from "@/lib/report-error";
-import { anonymousGate, currentViewer, requestSignIn } from "@/lib/anonymous";
+import {
+  anonymousGate,
+  currentViewer,
+  NEEDS_SESSION,
+  requestSignIn,
+} from "@/lib/anonymous";
 
 // EVERY FUNCTION RUNS NEXT TO THE DATABASE (MESITA-3021). The project lives
 // in us-west-2 (Oregon). Unpinned, a call from Monterrey enters Supabase's
@@ -74,7 +79,12 @@ export async function invokeEF<T>(
   // ANONYMOUS MODE (MESITA-4246): one table, lib/anonymous.ts, decides what
   // a visitor without an onboarded account may call. Quiet calls never leave
   // (no social event, no paid Google call); an action sends them to Sign.
-  const gate = anonymousGate(currentViewer(), fn, body);
+  // A session-only call asks the client's own store first (MESITA-4317): a
+  // visitor with no session never sends it, so no 401 says "expired".
+  const held = NEEDS_SESSION.has(fn)
+    ? (await client.auth.getSession()).data.session != null
+    : true;
+  const gate = anonymousGate(currentViewer(), fn, body, held);
   if (gate.kind === "quiet") {
     if (gate.answer) return gate.answer as T;
     throw new EFError("Sign in to see this", { fn, code: "anonymous", status: 401 });
