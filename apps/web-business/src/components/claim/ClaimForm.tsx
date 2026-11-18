@@ -373,7 +373,7 @@ function ManualStep({
       </div>
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         Your name
-        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} autoComplete="name" className={field} />
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} autoComplete="name" placeholder="Full name" className={field} />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         Your role at the place

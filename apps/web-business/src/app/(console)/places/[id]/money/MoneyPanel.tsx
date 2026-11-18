@@ -116,6 +116,7 @@ function RefundAction({ placeId, row, onDone }: { placeId: string; row: PlaceMon
       <input
         aria-label="Amount to refund"
         inputMode="decimal"
+        placeholder="0.00"
         className="border-border bg-background h-8 w-24 rounded-lg border px-2 text-sm tabular-nums"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}

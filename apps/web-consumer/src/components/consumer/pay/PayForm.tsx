@@ -420,6 +420,7 @@ function PayForm({
                   autoComplete="off"
                   maxLength={32}
                   value={ticket}
+                  placeholder="e.g. 12"
                   onChange={(e) => setTicket(e.target.value)}
                   className={cn(FIELD_CLASS, "mt-1.5")}
                 />
