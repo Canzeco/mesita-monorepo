@@ -4,8 +4,8 @@ import { Skeleton } from "@/components/shared";
 
 // Home's loading frame: CatalogRails' bands, block for block — the white
 // header, the white tab strip with its hairline (Places · Social), then
-// Places' grey emoji rail beside its rows (MESITA-3781, the only Places since
-// MESITA-3789). Drawn by every frame that can stand before Home lands (the
+// Places' family strip of pills over full-width rows (MESITA-4410; a grey
+// emoji rail beside them since MESITA-3781 before). Drawn by every frame that can stand before Home lands (the
 // discovery group, the shell, a full page load), so a tap on Home never
 // shows a spinner first (MESITA-2840).
 export function HomeLoadingFrame() {
@@ -24,11 +24,14 @@ export function HomeLoadingFrame() {
           </div>
         ))}
       </div>
-      <div className="flex min-h-0 flex-1">
-        <div className="bg-muted w-12 shrink-0" />
-        <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden">
-          <RowFallback />
-        </div>
+      <div className="border-border bg-card flex shrink-0 items-center gap-2 overflow-hidden border-b py-2.5 pl-4">
+        <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+        {["w-16", "w-[72px]", "w-[88px]", "w-20", "w-24"].map((w) => (
+          <Skeleton key={w} className={`h-9 shrink-0 rounded-full ${w}`} />
+        ))}
+      </div>
+      <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden">
+        <RowFallback />
       </div>
     </div>
   );

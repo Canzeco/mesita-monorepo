@@ -13,7 +13,7 @@ import SearchLoading from "./search/loading";
 // placeholders must be similar to the page you are loading"): the segment
 // being loaded is known here, before its layout arrives. Home's frame is
 // CatalogRails' bands, block for block: the white header, the white tab
-// strip with its hairline, the grey family column a quarter wide, then the
+// strip with its hairline, the family strip of pills (MESITA-4410), then the
 // tile column.
 export default function DiscoveryLoading() {
   const segment = useSelectedLayoutSegment();

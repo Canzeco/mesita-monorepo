@@ -6,7 +6,7 @@
 //
 // The file still does the work. Next prefetches a route down to its first
 // loading.tsx, so with it a tap on the bar carries Home's layout: the real
-// header, tab strip and family column, and CatalogRails' tile silhouettes
+// header, tab strip and family strip, and CatalogRails' tile silhouettes
 // (DiscoverFallback.tsx) or the Social feed's rows, at once, where the
 // shell's centred spinner stood. A Places ↔ Social switch commits at once
 // too, instead of waiting on the server for a page that renders null.
