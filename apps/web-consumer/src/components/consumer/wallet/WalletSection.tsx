@@ -146,19 +146,31 @@ function decodeAll(urls: string[], ms: number): Promise<void> {
   return Promise.race([Promise.all(each).then(() => undefined), new Promise<void>((r) => setTimeout(r, ms))]);
 }
 
-/** "$200.00 pending · ready in 3 h" (MESITA-4232, D9; "ready" since MESITA-4260): the pending total
- *  and when its first entry turns Available; null with nothing pending. */
-function pendingLine(b: WalletBalance, now: number): string | null {
-  if (b.pending_cents <= 0) return null;
-  const amount = `${money(b.pending_cents, b.currency)} pending`;
-  const next = b.entries
-    .filter((e) => e.pending && e.available_at)
-    .map((e) => Date.parse(e.available_at as string))
-    .filter((t) => Number.isFinite(t) && t > now)
-    .sort((x, y) => x - y)[0];
-  if (next === undefined) return amount;
-  const mins = Math.ceil((next - now) / 60_000);
-  return `${amount} · ready in ${mins < 60 ? `${mins} min` : `${Math.ceil(mins / 60)} h`}`;
+/** "2 h 14 min", "14 min": hours and minutes, never seconds (MESITA-4360). */
+function untilLabel(ms: number): string {
+  const mins = Math.max(1, Math.ceil(ms / 60_000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? (m > 0 ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
+}
+
+/** ONE LINE PER PENDING AMOUNT (MESITA-4360, Pato: "if 2 bonuses, then 2
+ *  blue boxes … show hours and minutes, not seconds, a counter"): each
+ *  pending entry, soonest first, "$1,500.00MX bonus pending · ready in 2 h
+ *  14 min". It was one line with the total and the first time (MESITA-4232,
+ *  D9; "ready" since MESITA-4260). */
+function pendingLines(b: WalletBalance, now: number): string[] {
+  if (b.pending_cents <= 0) return [];
+  const rows = b.entries
+    .filter((e) => e.pending && e.amount_cents > 0)
+    .map((e) => ({ e, t: e.available_at ? Date.parse(e.available_at) : Number.NaN }))
+    .sort((x, y) => (Number.isFinite(x.t) ? x.t : Infinity) - (Number.isFinite(y.t) ? y.t : Infinity));
+  if (rows.length === 0) return [`${money(b.pending_cents, b.currency)} pending`];
+  return rows.map(({ e, t }) => {
+    const what = `${money(e.amount_cents, b.currency)} ${e.kind === "bonus" ? "bonus pending" : "pending"}`;
+    if (!Number.isFinite(t)) return what;
+    return t > now ? `${what} · ready in ${untilLabel(t - now)}` : `${what} · ready soon`;
+  });
 }
 
 export function WalletSection({
@@ -171,8 +183,15 @@ export function WalletSection({
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
   const [method, setMethod] = useState<Method | null>(null);
   const [explainAdd, setExplainAdd] = useState(false);
-  // When the pending lines count from: the page's first paint.
-  const [now] = useState(() => Date.now());
+  // The pending boxes count down (MESITA-4360): a 30 s tick while any
+  // card has money on its way, so the minutes move without seconds.
+  const [now, setNow] = useState(() => Date.now());
+  const anyPending = (wallet?.balances ?? []).some((b) => b.pending_cents > 0);
+  useEffect(() => {
+    if (!anyPending) return;
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, [anyPending]);
   // Story lines turn to "Checking your story…" at their bonus time (MESITA-4264).
   const storyNow = useStoryNow(wallet?.waiting_stories ?? []);
   // The saved-card failure toast fires at most once per mount.
@@ -284,7 +303,7 @@ export function WalletSection({
                 gone={row.balance.place === null}
                 eager={shown++ < EAGER_CARDS}
                 ready
-                pendingLine={pendingLine(row.balance, now)}
+                pendingLines={pendingLines(row.balance, now)}
               />
             ))
           : null}

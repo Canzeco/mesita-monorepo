@@ -201,19 +201,20 @@ export function CreditsRow({
   gone = false,
   eager = false,
   ready = false,
-  pendingLine = null,
+  pendingLines = [],
 }: {
   card: WalletCardModel;
   /** Wallet's Loyalty Cards (MESITA-4232, D9): the pill shows only what is
-   *  ready to spend, $0 included; pending says itself in `pendingLine`.
+   *  ready to spend, $0 included; pending says itself in `pendingLines`.
    *  ONLY THOSE TWO (MESITA-4269, Pato: "don't mention the promos there.
    *  its just current balance, pending balance if it applies"): no offer
    *  pill (MESITA-4262), no "Ready to spend" (MESITA-4260). ONE ORDER
    *  (MESITA-4301, Pato: "why the card looks bigger. please keep order"):
    *  the same chip and name size as Cash, Visa and Add. */
   ready?: boolean;
-  /** "$200.00 pending · ready in 3 h": a blue box under the row (MESITA-4260). */
-  pendingLine?: string | null;
+  /** One blue box per pending amount under the row (MESITA-4260; one each
+   *  since MESITA-4360): "$1,500.00MX bonus pending · ready in 2 h 14 min". */
+  pendingLines?: string[];
   /** Its Loyalty Card page. Absent on a page that IS this place's (the
    *  Offers page's balance, MESITA-4060): a plain row, no chevron. */
   href?: string;
@@ -242,7 +243,16 @@ export function CreditsRow({
   // under the row, inside the card's tap target, a blue box (blue = on its
   // way, green = ready) names the pending amount and when it lands. No
   // pending, no box: the row stays one line.
-  const box = pendingLine ? <PendingBox icon={Clock3}>{pendingLine}</PendingBox> : null;
+  const box =
+    pendingLines.length > 0 ? (
+      <span className="flex flex-col gap-1.5">
+        {pendingLines.map((line, i) => (
+          <PendingBox key={i} icon={Clock3}>
+            {line}
+          </PendingBox>
+        ))}
+      </span>
+    ) : null;
   const cls = box ? cn(ROW, "flex-col items-stretch gap-2.5") : ROW;
   const inner = box ? (
     <>
