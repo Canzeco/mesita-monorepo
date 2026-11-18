@@ -12,9 +12,8 @@ export type VoucherBasketItem = { voucher: VoucherKey; qty: number };
  *  on "paid" or "processing" and stays open to try again on "failed" (the
  *  host already said why). */
 export type VoucherBuyOutcome = "paid" | "processing" | "failed" | StoryRefused;
-/** A Story buy the server refused about the story itself (MESITA-4296:
- *  private_account or a story_* code): nothing was charged and the sheet goes
- *  back to the check step with `line`. */
+/** A Story buy the server refused about the guest (MESITA-4296:
+ *  private_account): nothing was charged and the page says why. */
 export type StoryRefused = { story_refused: string };
 
 /** EXPRESS PAY (MESITA-4384): what the Offers sheet hands the host's
@@ -22,7 +21,6 @@ export type StoryRefused = { story_refused: string };
  *  the button and reports back. */
 export type ExpressPayArgs = {
   items: VoucherBasketItem[];
-  mentionId?: string;
   /** The card path is paying: the button does nothing. */
   disabled: boolean;
   /** loading (keep the 48 px slot), ready, or none (collapse it). */
@@ -71,35 +69,22 @@ export type PlaceActions = {
    *  second sheet. `cardId` null: no usable card, the host opens its card
    *  sheet. Absent, the button is inert (admin's preview). Resolves with how
    *  it ended (MESITA-4224); a host that returns nothing leaves the sheet open. */
-  onBuyVoucher?: (
-    items: VoucherBasketItem[],
-    cardId: string | null,
-    /** A Story names the story the check found (MESITA-4296); paid alone. */
-    opts?: { mentionId?: string },
-  ) => void | Promise<VoucherBuyOutcome>;
+  onBuyVoucher?: (items: VoucherBasketItem[], cardId: string | null) => void | Promise<VoucherBuyOutcome>;
   /** Apple Pay / Google Pay in the Offers sheet's pay box (MESITA-4384).
    *  Absent (signed out, admin's preview): no express slot. */
   renderExpressPay?: (args: ExpressPayArgs) => ReactNode;
   /** offer_sheet_opened (MESITA-4375): an offer's sheet or Story page opened;
    *  `savedCard` says a usable saved card was ready. Fire-and-forget. */
   onOfferOpened?: (voucher: VoucherKey, savedCard: boolean) => void;
-  /** The Story sheet's check (MESITA-4296): consumer-web-check-story for
-   *  this place; `poll` skips the gate (the sheet's look once it passed).
-   *  Resolves `failed` on a 500 or no answer, never throws. Absent (admin's
-   *  preview, signed out), the sheet shows the steps and no Pay. */
+  /** The Story page's gate (MESITA-4296; gate only since MESITA-4405):
+   *  consumer-web-check-story for this place. Resolves `failed` on a 500 or
+   *  no answer, never throws. Absent (admin's preview, signed out), the page
+   *  shows the steps and no Pay. A paid Story's steps live on the host's
+   *  Story screen, where the host lands the guest after the buy. */
   onCheckStory?: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
   /** Story's own page (MESITA-4303): the host pushes /place/<id>/story.
    *  Absent (admin's preview), Story opens as a sheet like the rest. */
   onOpenStory?: () => void;
-  /** Test mode only: post a sample story for this guest (the Meta emulator,
-   *  MESITA-4296). Resolves null when posted, else the refusal's line. */
-  onSimulateStory?: () => Promise<string | null>;
-  /** Test mode only: the waiter's approval of that sample story, emulated
-   *  (MESITA-4307). Resolves null when approved, else the refusal's line. */
-  onSimulateApproval?: () => Promise<string | null>;
-  /** The Story QR for the waiter (MESITA-4304): the host draws `url`
-   *  (visit.mesita.ai/story/<token>) as a QR. Absent: the link only. */
-  renderStoryQr?: (url: string) => ReactNode;
   /** A voucher of the basket being paid; while set the button reads Paying…
    *  and the card rows and steppers are locked. */
   buyingVoucher?: VoucherKey | null;

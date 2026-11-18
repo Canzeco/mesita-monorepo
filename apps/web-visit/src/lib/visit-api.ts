@@ -126,7 +126,7 @@ export type StoryReviewed = { outcome: "approved" | "already_approved" | "reject
 /** The waiter approves or rejects the story. Needs a current waiter-code
  *  staff token of the story's place (403 staff_code_needed otherwise). A
  *  refusal carries the server's code and words: `gone`, `wrong_place`,
- *  `already_decided`, `story_claimed`, `story_too_old`. */
+ *  `already_decided`, `story_too_old`. */
 export async function reviewStory(
   args: { token: string; decision: "approve" | "reject"; staff_token: string; place_id: string },
 ): Promise<StoryReviewed | TabRefusal | "failed"> {

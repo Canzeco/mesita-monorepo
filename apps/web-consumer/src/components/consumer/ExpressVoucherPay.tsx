@@ -27,7 +27,6 @@ const walletOf = (w: string | undefined): ExpressWallet | null => (w === "apple_
 export function ExpressVoucherPay({
   placeId,
   items,
-  mentionId,
   disabled,
   onState,
   onLock,
@@ -36,7 +35,6 @@ export function ExpressVoucherPay({
 }: {
   placeId: string;
   items: VoucherBasketItem[];
-  mentionId?: string;
   disabled: boolean;
   onState: (s: "loading" | "ready" | "none") => void;
   onLock: (locked: boolean) => void;
@@ -50,7 +48,6 @@ export function ExpressVoucherPay({
   const basket = {
     place_id: placeId,
     ...(one ? { voucher: items[0].voucher } : { items }),
-    ...(mentionId ? { mention_id: mentionId } : {}),
   } as ExpressBasket;
 
   const refusal = (err: unknown): ExpressPayRefusal | null => {

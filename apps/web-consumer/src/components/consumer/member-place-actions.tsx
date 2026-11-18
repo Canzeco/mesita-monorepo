@@ -11,13 +11,10 @@ import { EFError } from "@/lib/api/_invoke";
 import {
   apiBuyVoucher,
   apiCheckStory,
-  apiEmulateApproval,
-  apiEmulateStory,
   apiListVouchers,
   BUY_REFUSAL,
   buyRefusalAction,
   isDefinitiveRefusal,
-  STORY_EMULATOR_REFUSAL,
 } from "@/lib/api/wallet";
 import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { runBankCheck } from "@/lib/api/tab";
@@ -37,7 +34,7 @@ import { sharePlace } from "@/lib/share-place";
 import { useBrowserSupabase, useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
 import { navigateTo } from "@/lib/navigate";
-import { placeOffersPath, placeReservePath, reservationPath } from "@/lib/consumer-route-contract";
+import { placeOffersPath, placeReservePath, reservationPath, storyPurchasePath } from "@/lib/consumer-route-contract";
 import { apiListReservations, type EFReservationRow } from "@/lib/api/reservations";
 import { statusLabel, whenLine } from "@/lib/reservation-when";
 import { toReservationItem } from "@/lib/reservations-adapter";
@@ -343,17 +340,13 @@ export function usePlaceVouchers(
   load: () => Promise<void>;
   /** The Offers page's basket (MESITA-3841) paid with the card it drew
    *  (MESITA-4065); no card opens the card sheet. */
-  buy: (items: VoucherBasketItem[], cardId: string | null, opts?: { mentionId?: string }) => Promise<VoucherBuyOutcome>;
+  buy: (items: VoucherBasketItem[], cardId: string | null) => Promise<VoucherBuyOutcome>;
   /** offer_sheet_opened (MESITA-4375). */
   opened: (voucher: VoucherKey, savedCard: boolean) => void;
   /** Apple Pay / Google Pay in the Offers sheet's pay box (MESITA-4384). */
   renderExpress: (args: ExpressPayArgs) => ReactNode;
-  /** The Story sheet's check (MESITA-4296). */
+  /** The Story page's gate (MESITA-4296; gate only since MESITA-4405). */
   checkStory: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
-  /** Test mode: post a sample story; null when posted, else the refusal's line. */
-  simulateStory: () => Promise<string | null>;
-  /** Test mode: the waiter's approval, emulated (MESITA-4307). */
-  simulateApproval: () => Promise<string | null>;
   /** The guest's saved cards; undefined signed out or off Mesita. */
   payCards: PayCards | undefined;
   payCardId: string | null;
@@ -365,6 +358,7 @@ export function usePlaceVouchers(
   sheet: ReactNode;
 } {
   const getSupabase = useLazyBrowserSupabase();
+  const router = useRouter();
   const mesita = isMesitaPlaceId(placeId);
   // ONE RESULT PER PLACE (MESITA-3868): the offer or none, and whether the
   // read failed. Written in the promise callbacks only (Next 16 lint), and
@@ -448,7 +442,7 @@ export function usePlaceVouchers(
   const pending = useRef<{ key: string; requestId: string; unknown: number } | null>(null);
 
   const buy = useCallback(
-    async (what: VoucherBasketItem[], cardId: string | null, opts: { mentionId?: string } = {}): Promise<VoucherBuyOutcome> => {
+    async (what: VoucherBasketItem[], cardId: string | null): Promise<VoucherBuyOutcome> => {
       if (!mesita) return "failed";
       const items = what.filter((i) => i.qty > 0);
       if (items.length === 0) return "failed";
@@ -456,8 +450,7 @@ export function usePlaceVouchers(
         openAddCard();
         return "failed";
       }
-      // A Story names its story (MESITA-4296): another story is another buy.
-      const key = `${cardId}|${items.map((i) => `${i.voucher}x${i.qty}`).join(",")}|${opts.mentionId ?? ""}`;
+      const key = `${cardId}|${items.map((i) => `${i.voucher}x${i.qty}`).join(",")}`;
       if (pending.current?.key !== key) pending.current = { key, requestId: crypto.randomUUID(), unknown: 0 };
       if (pending.current.unknown >= 3) {
         toast(BUY_REFUSAL.unconfirmed, { tone: "error" });
@@ -472,7 +465,6 @@ export function usePlaceVouchers(
         ...(one ? { voucher: items[0].voucher } : { items }),
         request_id: pending.current.requestId,
         card_pm_id: cardId,
-        ...(opts.mentionId ? { mention_id: opts.mentionId } : {}),
       } as Parameters<typeof apiBuyVoucher>[1];
       try {
         let r = await apiBuyVoucher(getSupabase(), args);
@@ -490,6 +482,12 @@ export function usePlaceVouchers(
           trackEvent(getSupabase(), "voucher_paid", { place_id: placeId, items, method: "saved_card", status: r.card.status });
           // The Offers sheet's receipt says it (MESITA-4224): no toast.
           onPaid.current?.();
+          // A STORY'S STEPS START AT THE TABLE (MESITA-4405): a paid Story
+          // lands on its own screen, where the guest posts and shows the
+          // waiter; the screen waits for the Story while the credit lands.
+          if (items.length === 1 && items[0].voucher === "voucher_story") {
+            navigateTo(router, storyPurchasePath(r.purchase_id), { motion: "drill" });
+          }
           return r.card.status === "succeeded" ? "paid" : "processing";
         }
         toast("Your bank didn't confirm the payment.", { tone: "error" });
@@ -499,10 +497,9 @@ export function usePlaceVouchers(
         const status = err instanceof EFError ? err.status : null;
         if (isDefinitiveRefusal(status, code)) pending.current = null;
         else if (pending.current) pending.current.unknown += 1;
-        const field = err instanceof EFError && err.body && typeof err.body.field === "string" ? err.body.field : null;
-        const action = buyRefusalAction(code, field);
-        // A Story refusal (MESITA-4296): nothing was charged; the sheet goes
-        // back to its check step and says why there, no toast.
+        const action = buyRefusalAction(code);
+        // A Story refusal (MESITA-4296): nothing was charged; the Story page
+        // says why, no toast.
         if (action.kind === "story") return { story_refused: action.line };
         if (action.kind === "add_card") openAddCard();
         if (action.kind === "reload_cards") void loadCards();
@@ -517,7 +514,7 @@ export function usePlaceVouchers(
     },
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mesita, placeId, load, loadCards],
+    [mesita, placeId, load, loadCards, router],
   );
 
   const opened = useCallback(
@@ -530,35 +527,11 @@ export function usePlaceVouchers(
   );
 
   const checkStory = useCallback(
-    (o: { poll: boolean }): Promise<StoryCheckAnswer> =>
-      mesita ? apiCheckStory(getSupabase(), placeId, o.poll) : Promise.resolve({ kind: "failed" }),
+    (): Promise<StoryCheckAnswer> => (mesita ? apiCheckStory(getSupabase(), placeId) : Promise.resolve({ kind: "failed" })),
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [mesita, placeId],
   );
-  const simulateStory = useCallback(async (): Promise<string | null> => {
-    try {
-      await apiEmulateStory(getSupabase(), "post");
-      return null;
-    } catch (err) {
-      const code = err instanceof EFError ? err.code : null;
-      return (code && STORY_EMULATOR_REFUSAL[code]) || STORY_EMULATOR_REFUSAL.emulate_failed;
-    }
-    // getSupabase is a stable lazy getter (MESITA-3207).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const simulateApproval = useCallback(async (): Promise<string | null> => {
-    try {
-      await apiEmulateApproval(getSupabase(), placeId);
-      return null;
-    } catch (err) {
-      const code = err instanceof EFError ? err.code : null;
-      return (code && STORY_EMULATOR_REFUSAL[code]) || STORY_EMULATOR_REFUSAL.emulate_failed;
-    }
-    // getSupabase is a stable lazy getter (MESITA-3207).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [placeId]);
 
   // EXPRESS PAY (MESITA-4384): Apple Pay / Google Pay on the Offers sheet.
   // A paid or processing purchase ends like a card one (onPaid); "received"
@@ -569,7 +542,6 @@ export function usePlaceVouchers(
         <ExpressVoucherPay
           placeId={placeId}
           items={a.items}
-          mentionId={a.mentionId}
           disabled={a.disabled}
           onState={a.onState}
           onLock={a.onLock}
@@ -598,12 +570,10 @@ export function usePlaceVouchers(
     buying,
     loading: mesita && mine === null,
     load,
-    buy: (items, cardId, opts) => buy(items, cardId, opts),
+    buy: (items, cardId) => buy(items, cardId),
     opened,
     renderExpress,
     checkStory,
-    simulateStory,
-    simulateApproval,
     payCards,
     payCardId,
     selectCard,

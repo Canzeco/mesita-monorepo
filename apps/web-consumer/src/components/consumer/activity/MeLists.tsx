@@ -51,6 +51,8 @@ import { PushLink } from "@/components/consumer/nav/PushLink";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { GiftTickets } from "./GiftTickets";
+import { StoryTickets } from "./StoryTickets";
+import { Instagram } from "@/components/shared/instagram-icon";
 import { cn } from "@/lib/utils";
 import {
   apiListReservations,
@@ -213,6 +215,11 @@ const EMPTY: Record<
     title: "No gifts yet",
     action: { label: "Send Gift", href: CONSUMER_ROUTES.mePages.gift },
   },
+  // StoryTickets draws its own empty state (MESITA-4405).
+  stories: {
+    title: "No Stories yet",
+    action: { label: "Find a place", href: CONSUMER_ROUTES.search },
+  },
   // Refunds' words since MESITA-3771, kept (MESITA-3782).
   refunds: {
     title: "No refunds",
@@ -222,7 +229,7 @@ const EMPTY: Record<
 /** Tickets' tabs (MESITA-3893, Pato: "remove all. just Visits. Vouchers.
  *  Gifts"). REFUNDS IS ITS OWN TAB AGAIN (MESITA-3949, Pato: "add Refunds
  *  here ... Refunds is important in tickets"), last. */
-export type TicketTab = "visits" | "vouchers" | "gifts";
+export type TicketTab = "visits" | "vouchers" | "gifts" | "stories";
 // REFUNDS LEFT FOR SETTINGS (MESITA-4402): /me/settings/refunds, RefundsPage.
 // AN ICON ON EACH (MESITA-3900, Pato: "add icons to the top menu here"):
 // the ones the page's empty states already wear. Gifts became Gifts-In and
@@ -236,6 +243,8 @@ const TICKET_TABS: ReadonlyArray<{
   { kind: "visits", label: "Visits", icon: UtensilsCrossed },
   { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
   { kind: "gifts", label: "Gifts", icon: Gift },
+  // STORIES (MESITA-4405): the Story record's own tickets, always shown.
+  { kind: "stories", label: "Stories", icon: Instagram },
 ];
 
 /** The tab a /me/tickets address shows: bare is Visits. */
@@ -243,6 +252,7 @@ function ticketTabOf(seg: string | undefined): TicketTab {
   if (seg === "vouchers") return "vouchers";
   if (seg === "gifts" || seg === "gifts-in" || seg === "gifts-out")
     return "gifts";
+  if (seg === "stories") return "stories";
   return "visits";
 }
 
@@ -252,6 +262,7 @@ const ICON: Record<ListType | "all", LucideIcon> = {
   visits: UtensilsCrossed,
   vouchers: BadgeDollarSign,
   gifts: Gift,
+  stories: Instagram,
   refunds: HandCoins,
 };
 
@@ -473,6 +484,7 @@ export function TicketsBoard({
       ...w,
       balances: w.balances.filter((b) => b.place_id === placeId),
       gifts: (w.gifts ?? []).filter((g) => g.place_id === placeId),
+      stories: (w.stories ?? []).filter((st) => st.place_id === placeId),
     };
   }, [wallet.data, placeId]);
   const visitList = useMemo(
@@ -512,7 +524,7 @@ export function TicketsBoard({
           ]
         : null,
       vouchers: of("vouchers"),
-    } satisfies Record<Exclude<TicketTab, "gifts">, Row[] | null>;
+    } satisfies Record<Exclude<TicketTab, "gifts" | "stories">, Row[] | null>;
   }, [visitList, walletData]);
 
   const walletReady = !wallet.loading;
@@ -549,7 +561,9 @@ export function TicketsBoard({
       )}
     >
       <TicketPills on={kind} onPick={onPick} flush={boxed ? false : flush} />
-      {kind === "gifts" && ready && !failed && walletData ? (
+      {kind === "stories" && ready && !failed && walletData ? (
+        <StoryTickets stories={walletData.stories ?? []} showPlace={!placeId} />
+      ) : kind === "gifts" && ready && !failed && walletData ? (
         <GiftTickets gifts={walletData.gifts ?? []} showPlace={!placeId} onChanged={() => {
             wallet.reload();
             onChanged?.();
@@ -557,7 +571,7 @@ export function TicketsBoard({
       ) : (
         <TicketList
           type={kind}
-          rows={kind === "gifts" ? null : byKind[kind]}
+          rows={kind === "gifts" || kind === "stories" ? null : byKind[kind]}
           ready={ready}
           failed={failed}
           retry={retry}

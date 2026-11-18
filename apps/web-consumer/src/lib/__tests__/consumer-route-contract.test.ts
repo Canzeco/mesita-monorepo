@@ -148,6 +148,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       visit: { prefix: "/me/tickets/visits/" },
       credit: { prefix: "/me/tickets/credit/" },
       gift: { prefix: "/me/tickets/gift/" },
+      story: { prefix: "/me/tickets/stories/" },
       // Pay's second half (MESITA-3698).
       wallet: "/wallet",
       walletPlace: { prefix: "/wallet/place/" },

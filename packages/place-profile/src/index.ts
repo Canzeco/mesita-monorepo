@@ -54,14 +54,10 @@ export type {
 } from "./actions";
 export {
   isStoryGateReason,
-  postedAgo,
   STORY_GATE_REASONS,
-  STORY_POLL_DEFAULT,
   type StoryCheckAnswer,
-  type StoryCheckMention,
   type StoryCheckReason,
-  type StoryReview,
-  type StoryPollWindow,
+  type StoryGateReason,
 } from "./story-check";
 export type { PlaceBalance, PlaceDetail, PlaceMoney, PlaceScore, VoucherCatalogLine, VoucherKey } from "./place-detail";
 export { VOUCHER_KEYS } from "./place-detail";

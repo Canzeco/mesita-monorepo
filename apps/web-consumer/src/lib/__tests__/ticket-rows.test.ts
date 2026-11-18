@@ -32,6 +32,7 @@ function wallet(entries: WalletEntry[], extra: Partial<Wallet> = {}): Wallet {
 
 const story = (over: Partial<WaitingStory> = {}): WaitingStory => ({
   purchase_id: "s1",
+  story_id: "st1",
   place_id: "x",
   place: null,
   amount_cents: 10000,

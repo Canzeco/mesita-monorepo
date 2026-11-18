@@ -1,0 +1,91 @@
+// THE STORY TICKET'S WORDS (MESITA-4405): what the Story screen and the
+// Tickets › Stories row say, by the Story record's state. The paid amount is
+// already credit; the Story is the bonus's steps: post, the waiter approves,
+// the bonus lands after the re-check if the story is still up. Times read in
+// the place's own zone. A PLAIN MODULE: no React.
+
+import { money, type StoryTicket } from "@/lib/api/wallet";
+import { storyClock, storyLeft } from "@/lib/story-lines";
+
+export type StoryTone = "green" | "ink" | "grey";
+
+const zoneOf = (s: Pick<StoryTicket, "time_zone">) => s.time_zone ?? "America/Mexico_City";
+
+/** The bonus, "+$50.00MX". */
+export function storyBonus(s: Pick<StoryTicket, "bonus_cents" | "currency">): string {
+  return `+${money(s.bonus_cents, s.currency ?? "mxn")}`;
+}
+
+/** Past its deadline but not yet swept by the cron: reads as ended. */
+export function storyLate(s: Pick<StoryTicket, "state" | "deadline_at">, now: number): boolean {
+  return (s.state === "waiting_post" || s.state === "found") && Date.parse(s.deadline_at) <= now;
+}
+
+/** The state chip: one word or two, in its tone. */
+export function storyStatus(s: StoryTicket, now = Date.now()): { label: string; tone: StoryTone } {
+  if (storyLate(s, now)) return { label: "Time's up", tone: "grey" };
+  switch (s.state) {
+    case "waiting_post":
+      return { label: "Post your story", tone: "ink" };
+    case "found":
+      return { label: "Show the waiter", tone: "ink" };
+    case "approved":
+      return { label: s.bonus_at ? `Checking · bonus at ${storyClock(s.bonus_at, zoneOf(s), now)}` : "Checking", tone: "ink" };
+    case "released":
+      return { label: "Bonus added", tone: "green" };
+    default:
+      return { label: "No bonus", tone: "grey" };
+  }
+}
+
+/** Why there was no bonus, by the server's reason. */
+export function storyVoidLine(s: StoryTicket): string {
+  switch (s.void_reason) {
+    case "expired":
+      return "Time ran out before a waiter approved a story. Your credit is kept.";
+    case "deleted":
+      return "Your story was deleted before the bonus time. Your credit is kept.";
+    case "unreachable":
+      return "We couldn't see your story at the bonus time. Your credit is kept.";
+    case "refunded":
+      return "This voucher was refunded.";
+    default:
+      return "No bonus on this Story. Your credit is kept.";
+  }
+}
+
+/** The one line under the state: what to do now, or how it ended. */
+export function storyLine(s: StoryTicket, now = Date.now()): string {
+  const zone = zoneOf(s);
+  if (storyLate(s, now)) return "Time ran out. Your credit is kept.";
+  switch (s.state) {
+    case "waiting_post": {
+      const left = storyLeft(s.deadline_at, now);
+      return `Post by ${storyClock(s.deadline_at, zone, now)}${left ? ` · ${left}` : ""}`;
+    }
+    case "found":
+      return `Show your waiter the QR before ${storyClock(s.deadline_at, zone, now)}.`;
+    case "approved": {
+      if (!s.bonus_at) return "Keep your story up. Your bonus lands by itself.";
+      const left = storyLeft(s.bonus_at, now);
+      return left
+        ? `Don't delete your story until ${storyClock(s.bonus_at, zone, now)} · ${left}`
+        : "Checking your story now. Your bonus lands within 30 min.";
+    }
+    case "released":
+      return `${storyBonus(s)} is in your credit.`;
+    default:
+      return storyVoidLine(s);
+  }
+}
+
+/** The screen's poll delay (MESITA-4405, the server's numbers): every 5 s,
+ *  every 15 s after 2 minutes; null stops it (approved, void, the deadline,
+ *  or no hint). One timer at a time: the screen schedules the next call only
+ *  after the last one answered. */
+export function storyPollDelay(s: Pick<StoryTicket, "poll" | "state" | "deadline_at"> | null, startedMs: number, now: number): number | null {
+  if (!s || !s.poll || storyLate(s, now)) return null;
+  if (s.state !== "waiting_post" && s.state !== "found") return null;
+  const every = now - startedMs >= s.poll.slow_after_ms ? s.poll.slow_every_ms : s.poll.every_ms;
+  return Math.max(1_000, every);
+}
