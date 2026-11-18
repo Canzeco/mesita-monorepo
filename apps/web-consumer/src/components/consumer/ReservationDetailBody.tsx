@@ -7,6 +7,8 @@ import type { ReservationItem } from "@/lib/reservation-types";
 import { cn, errMsg } from "@/lib/utils";
 import { RESERVATION_FLOW, stateMeta } from "@/lib/reservation-state";
 import { ReservationActions } from "@/components/consumer/reservation-actions";
+import { AddToCalendar } from "@/components/consumer/AddToCalendar";
+import { reservationPath } from "@/lib/consumer-route-contract";
 import { TicketHeader } from "@/components/consumer/activity/TicketParts";
 import { PANEL_CLASS } from "@/components/shared/Panel";
 import { placeHref } from "@/lib/place-route";
@@ -286,6 +288,20 @@ export function ReservationDetailBody({
         >
           {confirmBusy ? "Confirming…" : "Got it — confirm in app"}
         </button>
+      )}
+
+      {/* Confirmed and still ahead: one tap adds it (MESITA-4355). */}
+      {r.state === "confirmed" && r.reservedAt && (
+        <AddToCalendar
+          table={{
+            id: r.id,
+            title: `Table for ${r.partySize} · ${r.placeName}`,
+            start: new Date(r.reservedAt),
+            minutes: 120,
+            location: r.placeName,
+            details: `Booked with Mesita${reference ? ` · Reference ${reference}` : ""}\nhttps://mesita.ai${reservationPath(r.id)}`,
+          }}
+        />
       )}
 
       <ReservationActions r={r} onChanged={onChanged} />
