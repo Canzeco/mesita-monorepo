@@ -17,23 +17,39 @@ export const runtime = "nodejs";
 const PHOTO_HEIGHT = 440;
 const DAY = 60 * 60 * 24;
 
-// Fraunces 600 as TrueType: Google serves TTF to a client that names no
+// Google fonts as TrueType: Google serves TTF to a client that names no
 // browser, which is what Satori reads (never woff2). Kept for the instance.
-let fraunces: Promise<ArrayBuffer | null> | null = null;
-function loadFraunces(): Promise<ArrayBuffer | null> {
-  fraunces ??= (async () => {
-    try {
-      const css = await fetch(
-        "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@144,600&display=swap",
-      ).then((r) => r.text());
-      const src = css.match(/src: url\((.+?)\) format\('(?:truetype|opentype)'\)/)?.[1];
-      if (!src) return null;
-      return await fetch(src).then((r) => r.arrayBuffer());
-    } catch {
-      return null;
-    }
-  })();
-  return fraunces;
+// Fraunces 600 for the name; Inter 500 for the line (MESITA-4336: with only
+// Fraunces loaded, the line came out serif).
+const fonts = new Map<string, Promise<ArrayBuffer | null>>();
+function loadGoogleFont(query: string): Promise<ArrayBuffer | null> {
+  let font = fonts.get(query);
+  if (!font) {
+    font = (async (): Promise<ArrayBuffer | null> => {
+      try {
+        const css = await fetch(`https://fonts.googleapis.com/css2?${query}&display=swap`).then((r) => r.text());
+        const src = css.match(/src: url\((.+?)\) format\('(?:truetype|opentype)'\)/)?.[1];
+        if (!src) return null;
+        return await fetch(src).then((r) => r.arrayBuffer());
+      } catch {
+        return null;
+      }
+    })();
+    fonts.set(query, font);
+  }
+  return font;
+}
+
+/** The rating's star, drawn: no loaded font has ★ (it drew an empty box). */
+function Star() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" style={{ marginRight: 6 }}>
+      <path
+        fill="#f59e0b"
+        d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"
+      />
+    </svg>
+  );
 }
 
 function genericCard(req: Request): Response {
@@ -52,8 +68,9 @@ export async function GET(
   const photo = place?.photos[0] ?? place?.profilePhoto ?? null;
   if (!place || !photo) return genericCard(req);
 
-  const [font, markSvg] = await Promise.all([
-    loadFraunces(),
+  const [font, sans, markSvg] = await Promise.all([
+    loadGoogleFont("family=Fraunces:opsz,wght@144,600"),
+    loadGoogleFont("family=Inter:wght@500"),
     fetch(new URL("/brand/mark-black.svg", req.url))
       .then((r) => (r.ok ? r.text() : null))
       .catch(() => null),
@@ -101,7 +118,25 @@ export async function GET(
               {place.name}
             </div>
             {line ? (
-              <div style={{ marginTop: 18, fontSize: 28, color: "#78716c", display: "flex" }}>{line}</div>
+              <div
+                style={{
+                  marginTop: 18,
+                  fontSize: 28,
+                  color: "#78716c",
+                  display: "flex",
+                  alignItems: "center",
+                  fontFamily: sans ? "Inter" : undefined,
+                }}
+              >
+                {line.startsWith("★ ") ? (
+                  <>
+                    <Star />
+                    {line.slice(2)}
+                  </>
+                ) : (
+                  line
+                )}
+              </div>
             ) : null}
           </div>
           {mark ? (
@@ -114,7 +149,10 @@ export async function GET(
     {
       ...PLACE_PREVIEW_SIZE,
       emoji: "twemoji",
-      fonts: font ? [{ name: "Fraunces", data: font, weight: 600, style: "normal" }] : undefined,
+      fonts: [
+        ...(sans ? [{ name: "Inter", data: sans, weight: 500 as const, style: "normal" as const }] : []),
+        ...(font ? [{ name: "Fraunces", data: font, weight: 600 as const, style: "normal" as const }] : []),
+      ],
     },
   );
 
