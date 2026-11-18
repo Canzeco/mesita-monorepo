@@ -567,8 +567,16 @@ export function CatalogRails() {
   // The chosen pill stays in view: a pick from the menu, or ?row=saved,
   // scrolls the strip to it.
   useEffect(() => {
-    const on = stripRef.current?.querySelector<HTMLElement>("[data-on]");
-    on?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+    // Only when it is out of view, and only the row itself scrolls: on a
+    // first load Top is already in view, so the row opens at its start with
+    // Menu showing (MESITA-4413; centring it hid Menu and half of Top).
+    const row = stripRef.current;
+    const on = row?.querySelector<HTMLElement>("[data-on]");
+    if (!row || !on) return;
+    const left = on.offsetLeft - 8;
+    const right = on.offsetLeft + on.offsetWidth + 8 - row.clientWidth;
+    if (left < row.scrollLeft) row.scrollTo({ left, behavior: "smooth" });
+    else if (right > row.scrollLeft) row.scrollTo({ left: right, behavior: "smooth" });
   }, [chip, tab]);
   useEffect(() => {
     if (!menuOpen) return;
@@ -583,7 +591,7 @@ export function CatalogRails() {
       <nav
         ref={stripRef}
         aria-label="Families"
-        className="scrollbar-hide flex min-w-0 flex-1 gap-1 overflow-x-auto overscroll-x-contain px-2"
+        className="scrollbar-hide relative flex min-w-0 flex-1 gap-1 overflow-x-auto overscroll-x-contain px-2"
       >
         {/* THE MENU IS THE ROW'S FIRST TILE (MESITA-4410: "i want a menu"):
             a grey round button with its name, the same column as a family,
