@@ -16,6 +16,16 @@ describe("anonymousGate", () => {
     }
   });
 
+  // MESITA-4317: a visitor with no session got "Your session expired" from
+  // the bar's profile read. Without a session it never leaves; with one (a
+  // signed-in visitor not yet onboarded) Onboard still reads and writes it.
+  it("a session-only call never leaves without a session", () => {
+    for (const v of ["anonymous", "unknown"] as const) {
+      expect(anonymousGate(v, "consumer-web-get-profile", {}, false)).toEqual({ kind: "quiet", answer: null });
+    }
+    expect(anonymousGate("anonymous", "consumer-web-update-profile", {}, true).kind).toBe("pass");
+  });
+
   it("tracking, paid Google calls and member reads never leave", () => {
     for (const fn of [
       "consumer-web-track-event",

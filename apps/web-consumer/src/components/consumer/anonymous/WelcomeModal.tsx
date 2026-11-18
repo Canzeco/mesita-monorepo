@@ -4,16 +4,16 @@ import { useSyncExternalStore } from "react";
 import Image from "next/image";
 import { Outfit } from "next/font/google";
 import { usePathname, useRouter } from "next/navigation";
-import { Phone } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { MesitaMark } from "@/components/brand/MesitaMark";
+import { VALUE_LINE } from "@/components/auth/CoverAuthLayout";
 import { useViewer } from "@/lib/identity-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // THE WELCOME (MESITA-4246, Pato 2026-11-17: "un modal que flota sobre Home
 // y te dice como usuario anónimo o este, regístrate ... y que te salga la
 // propuesta de valor"). Over Home, to an anonymous visitor only. Create
-// account goes to Sign; Explore anonymously or the close leaves Home as it
+// account goes to Sign; Not now or the close leaves Home as it
 // is. The flag is read through useSyncExternalStore (no setState in an
 // effect); the server snapshot is "answered", so SSR never paints it.
 //
@@ -25,6 +25,11 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // fade at the bottom holds the copy in white, the green Continue with phone
 // (MESITA-4287; a white Create account before) and Explore anonymously in
 // white text.
+//
+// SIGN IN, NO METHOD (Pato, 2026-11-18, MESITA-4317: "continue with phone
+// here just look weird. maybe login or sign … don't mention the method
+// yet"; picked "Sign in / Not now"): the cover's value line (VALUE_LINE), a white Sign in and a
+// plain Not now. The phone comes up on the Sign page, not here.
 // The wordmark as the header and the sign-in cover write it (MESITA-3653).
 const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 const listeners = new Set<() => void>();
@@ -33,9 +38,9 @@ const listeners = new Set<() => void>();
 // not user, redirect the home and first show the modal and ask the
 // question"; /autoplan, gate answered rec): the answer lives in memory, not
 // on the device, so every full load or new visit asks again until the guest
-// has an account. Explore anonymously or the backdrop closes it for this load
+// has an account. Not now or the backdrop closes it for this load
 // only; in-app tab taps keep the module alive and never bring it back. It
-// was once per device (localStorage) before. Explore anonymously creates no
+// was once per device (localStorage) before. Not now creates no
 // Supabase session: there is none for anonymous visitors (MESITA-2137).
 let answered = false;
 
@@ -89,8 +94,7 @@ export function WelcomeModal() {
               Discover your next favorite place.
             </p>
             <p className="mt-2 text-sm leading-snug text-white/80">
-              Find restaurants, cafés and bars near you. Sign in with your phone
-              to save places, book tables and access offers.
+              {VALUE_LINE}
             </p>
             <button
               type="button"
@@ -98,24 +102,22 @@ export function WelcomeModal() {
                 markSeen();
                 router.push(CONSUMER_ROUTES.sign);
               }}
-              // CONTINUE WITH PHONE (Pato, 2026-11-17, MESITA-4287: "not
-              // create a phone, but phone sign. maybe the account already
-              // created"): the Sign page's green phone button, so a
-              // returning guest reads it as signing in.
-              className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-[0.99]"
+              // SIGN IN (MESITA-4317): white on the photo, the one action.
+              // "Sign in" covers a returning guest and a new one alike: the
+              // first code on a number creates the account (MESITA-4287).
+              className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl bg-white text-sm font-semibold text-neutral-900 transition hover:bg-white/90 active:scale-[0.99]"
             >
-              <Phone className="h-4 w-4" aria-hidden />
-              Continue with phone
+              Sign in
             </button>
             <button
               type="button"
               onClick={markSeen}
-              // A GREY BUTTON TOO (Pato, MESITA-4287: "anonymous must also look
-              // like a button, maybe gray, and make them smaller"): both are
-              // 44px, text-sm; this one translucent grey on the photo.
-              className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-xl bg-white/20 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30 active:scale-[0.99]"
+              // NOT NOW (MESITA-4317): plain white words on the photo, 44px
+              // tall, so the white Sign in is the only button that shouts.
+              // It was a grey "Explore anonymously" (MESITA-4287).
+              className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold text-white/85 transition hover:text-white"
             >
-              Explore anonymously
+              Not now
             </button>
           </div>
         </div>

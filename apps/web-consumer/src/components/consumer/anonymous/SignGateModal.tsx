@@ -5,7 +5,6 @@ import {
   CalendarDays,
   Heart,
   LogIn,
-  Phone,
   QrCode,
   Tag,
   Users,
@@ -38,9 +37,10 @@ import {
 //   - a tap on a link they cannot open (Reserve, Pay…) or on an offer
 //     (`?rewards=`) is caught here before it navigates.
 //
-// The card says what the sign-in is for, then a green Continue with phone
-// (the welcome's and the Sign page's button) and a grey Not now. Only
-// Continue goes to Sign, carrying `next` and a pending Save as before.
+// The card says what the sign-in is for, then an ink Sign in and a grey Not
+// now. Only Sign in goes to Sign, carrying `next` and a pending Save as
+// before. It names no method (Pato, 2026-11-18, MESITA-4317: "don't mention
+// the method yet"): it was a green Continue with phone.
 
 const COPY: Record<
   SignGateReason,
@@ -54,7 +54,7 @@ const COPY: Record<
   reserve: {
     icon: CalendarDays,
     title: "Sign in to book",
-    line: "Reserve a table in a few taps. We text you a code to sign in.",
+    line: "Reserve a table in a few taps.",
   },
   offers: {
     icon: Tag,
@@ -84,7 +84,7 @@ const COPY: Record<
   plain: {
     icon: LogIn,
     title: "Sign in to continue",
-    line: "It takes a minute with your phone number.",
+    line: "Save places, book tables and get offers.",
   },
 };
 
@@ -153,10 +153,9 @@ export function SignGateModal() {
           onClick={() => {
             if (gate) continueToSign(gate);
           }}
-          className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-green-600 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-[0.99]"
+          className="bg-foreground text-background mt-5 inline-flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold transition hover:opacity-90 active:scale-[0.99]"
         >
-          <Phone className="h-4 w-4" aria-hidden />
-          Continue with phone
+          Sign in
         </button>
         <button
           type="button"

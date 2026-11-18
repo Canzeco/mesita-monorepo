@@ -32,20 +32,6 @@ export async function apiConsumerSigninPhone(
   );
 }
 
-/** "Call me with the code" (MESITA-3470): marks `phone` (E.164) so the
- *  code Auth sends next comes by call, not text. Call it right before
- *  signInWithOtp. No session needed. */
-export async function apiCallSignInCode(
-  client: SupabaseClient,
-  phone: string,
-): Promise<void> {
-  await invokeEF<Record<string, never>>(
-    client,
-    "consumer-web-call-sign-in-code",
-    { phone },
-  );
-}
-
 /** The Pay QR door (MESITA-3526): the name of the place a table QR points
  *  at, for the sign-in title. Name only; null for an unknown or hidden
  *  place. No session needed. */

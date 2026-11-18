@@ -95,7 +95,7 @@ export default async function ConsumerRootPage({
           ? `Pay at ${payPlaceName}`
           : gift
             ? "Credit from a friend"
-            : "Restaurants, from your phone"
+            : "Discover your next favorite place."
       }
       title={
         payPlaceName
@@ -106,8 +106,8 @@ export default async function ConsumerRootPage({
       }
       footer={
         <>
-          By continuing you agree to Mesita&apos;s terms of service and privacy
-          policy. SMS rates may apply.
+          By continuing you accept the Terms and Privacy Policy. SMS rates may
+          apply.
         </>
       }
     >
