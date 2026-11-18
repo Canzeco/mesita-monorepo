@@ -17,11 +17,13 @@
 // ONE GIFTS LIST AGAIN (Pato, 2026-11-15, MESITA-4036: "Unify gifts events in
 // and out. Only one view of gift events. Left side is sender and right side
 // is receiver"): /me/tickets/gifts; /gifts-in and /gifts-out forward there.
+//
+// REFUNDS LEFT TICKETS (Pato, 2026-11-18, MESITA-4402: "remove refunds from
+// there. but refunds as something in settings"): /me/settings/refunds.
 export const TICKET_KINDS = [
   "visits",
   "vouchers",
   "gifts",
-  "refunds",
 ] as const;
 
 export type TicketKind = (typeof TICKET_KINDS)[number];

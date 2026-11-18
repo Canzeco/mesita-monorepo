@@ -174,6 +174,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         tickets: "/me/tickets",
         settings: "/me/settings",
         settingsContact: "/me/settings/contact",
+        settingsRefunds: "/me/settings/refunds",
         settingsFeedback: "/me/settings/feedback",
         integrations: "/me/integrations",
         integrationsCalendar: "/me/integrations/calendar",
@@ -238,6 +239,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meRefunds: "/me/refunds",
         meTicketsGiftsIn: "/me/tickets/gifts-in",
         meTicketsGiftsOut: "/me/tickets/gifts-out",
+        meTicketsRefunds: "/me/tickets/refunds",
         subscribe: "/subscribe/premium",
         getTheApp: "/get-the-app",
         discoverFeed: "/discover/feed",
@@ -529,7 +531,12 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/me/connector", destination: "/me/plan", permanent: true },
       {
         source: "/me/refunds",
-        destination: "/me/tickets/refunds",
+        destination: "/me/settings/refunds",
+        permanent: true,
+      },
+      {
+        source: "/me/tickets/refunds",
+        destination: "/me/settings/refunds",
         permanent: true,
       },
       {

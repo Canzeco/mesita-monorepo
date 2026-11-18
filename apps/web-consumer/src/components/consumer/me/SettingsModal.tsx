@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { FileText, MessageSquare, MessageSquareHeart, ScrollText } from "lucide-react";
+import { FileText, HandCoins, MessageSquare, MessageSquareHeart, ScrollText } from "lucide-react";
 import { MESITA_PRIVACY_URL, MESITA_TERMS_URL } from "@/lib/mesita-contact";
 import { APP_VERSION } from "@/lib/app-version";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -103,6 +103,15 @@ export function SettingsModal() {
           <PhoneRow />
           <RowDivider />
           <SocialNameRow />
+          <RowDivider />
+          {/* Refunds left Tickets for here (Pato, MESITA-4402). */}
+          <SettingsLinkRow
+            Icon={HandCoins}
+            tint="muted"
+            href={CONSUMER_ROUTES.mePages.settingsRefunds}
+            label="Refunds"
+            sub="Money returned to you"
+          />
         </>
       }
       help={

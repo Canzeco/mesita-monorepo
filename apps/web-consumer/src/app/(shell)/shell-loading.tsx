@@ -11,6 +11,7 @@ import PlanLoading from "./me/plan/loading";
 import ProfileLoading from "./me/profile/loading";
 import SettingsLoading from "./me/settings/(page)/loading";
 import ContactLoading from "./me/settings/contact/loading";
+import RefundsLoading from "./me/settings/refunds/loading";
 import PayLoading from "./pay/loading";
 import PayPickLoading from "./pay/pick/loading";
 import WalletLoading from "./wallet/loading";
@@ -88,6 +89,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   meTicketsKind: () => <TicketsLoading />,
   meSettings: () => <SettingsLoading />,
   meSettingsContact: () => <ContactLoading />,
+  meSettingsRefunds: () => <RefundsLoading />,
   meSettingsFeedback: () => <FeedbackLoading />,
   meIntegrations: () => <IntegrationsLoading />,
   meIntegrationsCalendar: () => <CalendarLoading />,

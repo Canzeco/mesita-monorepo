@@ -35,6 +35,8 @@ export default function SettingsLoading() {
             sub={PUBLIC_PROFILE_SWITCH.on}
             toggle
           />
+          <RowDivider />
+          <SettingsRowSkeleton label="Refunds" sub="Money returned to you" />
         </>
       }
       help={
