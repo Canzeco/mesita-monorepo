@@ -44,6 +44,8 @@ import { statusLabel, whenLine } from "@/lib/reservation-when";
 import { toReservationItem } from "@/lib/reservations-adapter";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { toast } from "@/lib/toast";
+import { openSignGate } from "@/lib/anonymous";
+import { useViewer } from "@/lib/identity-context";
 
 // THE SECONDARY SHEETS LOAD AFTER THE PLACE PAINTS (MESITA-3014). Each
 // opens on a tap, so none belongs in the first frame's bundle; they are
@@ -119,6 +121,17 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 } {
   const { isSaved, toggle } = useSavedPlaces();
   const router = useRouter();
+  // THE MODAL, NOT THE PAGE (Pato, 2026-11-18, MESITA-4325: "if i click
+  // reservations ... offers ... display the fucking modal. don't open the
+  // pages nor redirect"): signed out, Reserve, Offers and Pay ask to sign in
+  // where the visitor stands, with the address they would have opened as
+  // `next`. The link catcher in SignGateModal only sees <a> taps; these open
+  // by navigateTo and local state.
+  const signedOut = useViewer() === "anonymous";
+  const askOr = (next: string, open: () => void) => () => {
+    if (signedOut) openSignGate(next, null);
+    else open();
+  };
   const profile = useConsumerProfile().data;
   const saved = isSaved(place.id);
   const [contactOpen, setContactOpen] = useState(false);
@@ -133,7 +146,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const fromWallet = useSyncExternalStore(noopSubscribe, readFromWallet, () => false);
   const askedVoucher = useSyncExternalStore(noopSubscribe, readVoucherAsk, () => null);
   const [askDismissed, setAskDismissed] = useState(false);
-  const rewardsShown = rewards ?? (askDismissed ? null : askedRewards);
+  const rewardsShown = signedOut ? null : rewards ?? (askDismissed ? null : askedRewards);
   // When the Upgrade tile or ⋯ › Upgrade last asked for the Upgrade sheet (ms).
   const [boostAskedAt, setBoostAskedAt] = useState(0);
   const [boostClosedAt, setBoostClosedAt] = useState(0);
@@ -225,7 +238,9 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // The three dots open the menu (MESITA-2692).
     onMore: () => setMoreOpen(true),
     // The full Reserve page (MESITA-3609), not a sheet.
-    onReserve: () => navigateTo(router, placeReservePath(place.id), { motion: "drill" }),
+    onReserve: askOr(placeReservePath(place.id), () =>
+      navigateTo(router, placeReservePath(place.id), { motion: "drill" }),
+    ),
     // The guest's one live table here (MESITA-3640), under the four tiles.
     reservation: live
       ? {
@@ -244,7 +259,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       ? { renderSocial: () => <PlaceSocialList placeId={place.id} /> }
       : {}),
     // Prepay and Pay (MESITA-3412): the Rewards sheet, once the fourth tab.
-    onOpenRewards: setRewards,
+    onOpenRewards: (section: RewardsSection) =>
+      askOr(`/place/${place.id}?rewards=${section}`, () => setRewards(section))(),
     // The Rewards sheet (MESITA-3303): Buy asks how to pay (a saved card in
     // one tap, or Stripe's page, MESITA-3552); opening the sheet refreshes
     // the offer and the credit.
@@ -285,6 +301,10 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // place's bill, /pay/place/<placeId> (MESITA-3614), the one door every "pay
     // here" uses; the sheet closes on the way out.
     onPay: () => {
+      if (signedOut) {
+        openSignGate(payPlacePath(place.id), null);
+        return;
+      }
       setRewards(null);
       setAskDismissed(true);
       navigateTo(router, payPlacePath(place.id), { motion: "drill" });
