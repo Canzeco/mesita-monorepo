@@ -13,7 +13,8 @@ import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 // rule (as Offers was, MESITA-4224).
 // THE TWO SPECIALS FIRST (Pato, MESITA-4417: "first the 2 specials … then
 // 4 items per row"): Saved and Top, which are not families, side by side
-// on top as two wide tiles; then the families, four to a line.
+// on top as two wide tiles; then the families, five to a line (Pato,
+// MESITA-4418: "use 5 columns, not 4").
 export function CategoriesModal({
   open,
   onClose,
@@ -48,7 +49,7 @@ export function CategoriesModal({
         <div className="border-border grid shrink-0 grid-cols-2 gap-2 border-b p-4" data-places-menu-specials>
           {specials}
         </div>
-        <div className="grid shrink-0 grid-cols-4 content-start gap-x-1 gap-y-4 px-2 py-4">
+        <div className="grid shrink-0 grid-cols-5 content-start gap-x-0.5 gap-y-4 px-1.5 py-4">
           {children}
         </div>
       </nav>
