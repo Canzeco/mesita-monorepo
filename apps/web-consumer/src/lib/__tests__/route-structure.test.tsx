@@ -663,6 +663,8 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
     // Share is on the bar only ("remove share button from here is redundant").
     // MESITA-4306: Class left ("LETS REMOVE THE CLASS").
     expect(gridTitles()).toEqual([
+      // Gift leads across both columns (MESITA-4420).
+      "Gift",
       "Profile",
       "Instagram",
       "Plan",
@@ -717,7 +719,8 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
     for (const cell of cells()) {
       expect(
         Object.keys(cell)
-          .filter((k) => k !== "soon" && k !== "jump")
+          // Gift's `wide` spans both columns (MESITA-4420).
+          .filter((k) => k !== "soon" && k !== "jump" && k !== "wide")
           .sort(),
         cell.title,
       ).toEqual(["Icon", "href", "summary", "title"]);
