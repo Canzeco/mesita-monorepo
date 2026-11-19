@@ -77,11 +77,11 @@ import {
 import { cn, errMsg } from "@/lib/utils";
 
 /** Home's location control (MESITA-2480): a 36px rounded box on the white
- *  header (MESITA-2531), ink text. WHITE WITH A BORDER (Pato, MESITA-4434:
- *  "the lateral menu is gray"; MESITA-4432's "only white"): it was the
- *  side rail's grey with no outline. */
+ *  header (MESITA-2531) — grey, no outline, ink text. GREY AGAIN (Pato,
+ *  MESITA-4441: "put it in a gray box without borders, as prev versions"):
+ *  MESITA-4434's white bordered box lasted a day. */
 export const HOME_LOCATION_CLASS =
-  "border-border bg-card text-foreground hover:bg-muted focus-visible:ring-ring ml-auto flex h-9 max-w-[65%] min-w-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold outline-none transition focus-visible:ring-2 active:scale-[0.98]";
+  "border-transparent bg-muted text-foreground hover:bg-border focus-visible:ring-ring ml-auto flex h-9 max-w-[65%] min-w-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold outline-none transition focus-visible:ring-2 active:scale-[0.98]";
 
 /** The box's word when Current location is chosen and the device has none. */
 export const NO_LOCATION_LABEL = "No location";
