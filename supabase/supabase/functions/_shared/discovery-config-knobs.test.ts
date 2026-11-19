@@ -91,7 +91,7 @@ Deno.test("params clamp; the reach, the divisor, Selected and the weights table 
   // stored `halfReviews` drops.
   assertEquals(
     normalizeDiscoveryConfig({ params: { proximity: { exponent: 9 }, popularity: { root: 0.3333, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } } }).params,
-    { proximity: { halfKm: 1, exponent: 4 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } },
+    { proximity: { halfKm: 1, exponent: 5 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } },
   );
   assertEquals(normalizeDiscoveryConfig({ params: { proximity: { exponent: 0.04 } } }).params.proximity.exponent, 0.5);
   // One decimal, clamped to 100; a stored row with only the retired divisor

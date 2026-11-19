@@ -59,7 +59,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     });
   });
 
-  it("the half distance clamps to 0.1–100 km at one decimal, the exponent to 0.5–4, the root to 0.1–1 at two; reach and Selected are dropped (MESITA-2703, MESITA-2909, MESITA-3083)", () => {
+  it("the half distance clamps to 0.1–100 km at one decimal, the exponent to 0.5–5, the root to 0.1–1 at two; reach and Selected are dropped (MESITA-2703, MESITA-2909, MESITA-3083)", () => {
     expect(
       coerceConfig({
         params: {
@@ -73,7 +73,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
       popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 },
     });
     expect(coerceConfig({ params: { proximity: { halfKm: 0 } } }).params.proximity).toEqual({ halfKm: 0.1, exponent: 1 });
-    expect(coerceConfig({ params: { proximity: { halfKm: 999, exponent: 9 } } }).params.proximity).toEqual({ halfKm: 100, exponent: 4 });
+    expect(coerceConfig({ params: { proximity: { halfKm: 999, exponent: 9 } } }).params.proximity).toEqual({ halfKm: 100, exponent: 5 });
     expect(coerceConfig({ params: { popularity: { root: 0 } } }).params.popularity).toEqual({ root: 0.1, starsPower: 6 });
     expect(coerceConfig({ params: { popularity: { root: 5 } } }).params.popularity).toEqual({ root: 1, starsPower: 6 });
     // MESITA-4153: the stars weight, the repeat penalty and the temperature clamp.
