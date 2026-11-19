@@ -8,37 +8,37 @@
 // stay as stored.
 
 export type FamilyKey =
-  | "coffee"
-  | "breakfast"
-  | "bakery"
-  | "sweet"
-  | "healthy"
-  | "quick_bite"
-  | "tacos"
-  | "burgers"
-  | "pizza"
-  | "chicken"
-  | "sushi"
-  | "mexican"
-  | "steak"
-  | "seafood"
-  | "italian"
-  | "japanese"
-  | "chinese"
-  | "asian"
-  | "indian"
-  | "arabic"
-  | "european"
-  | "american"
   | "dinner"
-  | "fancy"
-  | "family"
+  | "coffee"
   | "drinks"
-  | "sports"
-  | "hookah"
+  | "quick_bite"
+  | "breakfast"
+  | "mexican"
+  | "tacos"
+  | "seafood"
+  | "asian"
+  | "european"
+  | "fancy"
+  | "steak"
+  | "japanese"
+  | "american"
+  | "healthy"
+  | "italian"
+  | "sushi"
+  | "pizza"
+  | "burgers"
+  | "arabic"
+  | "chinese"
+  | "indian"
+  | "chicken"
+  | "sweet"
   | "night_out"
+  | "bakery"
   | "nightclub"
   | "music"
+  | "family"
+  | "sports"
+  | "hookah"
   | "karaoke"
   | "fun"
   | "cinema"
@@ -54,37 +54,37 @@ type PlaceFamily = {
 };
 
 export const PLACE_FAMILIES: PlaceFamily[] = [
-  { key: "coffee", label: "Coffee", emoji: "☕" },
-  { key: "breakfast", label: "Breakfast", emoji: "🍳" },
-  { key: "bakery", label: "Bakery", emoji: "🥐" },
-  { key: "sweet", label: "Dessert", emoji: "🍰" },
-  { key: "healthy", label: "Healthy", emoji: "🥗" },
-  { key: "quick_bite", label: "Quick", emoji: "⚡" },
-  { key: "tacos", label: "Tacos", emoji: "🌮" },
-  { key: "burgers", label: "Burgers", emoji: "🍔" },
-  { key: "pizza", label: "Pizza", emoji: "🍕" },
-  { key: "chicken", label: "Wings", emoji: "🍗" },
-  { key: "sushi", label: "Sushi", emoji: "🍣" },
-  { key: "mexican", label: "Mexican", emoji: "🇲🇽" },
-  { key: "steak", label: "Steak", emoji: "🥩" },
-  { key: "seafood", label: "Seafood", emoji: "🦐" },
-  { key: "italian", label: "Italian", emoji: "🍝" },
-  { key: "japanese", label: "Japanese", emoji: "🍱" },
-  { key: "chinese", label: "Chinese", emoji: "🥡" },
-  { key: "asian", label: "Asian", emoji: "🍥" },
-  { key: "indian", label: "Indian", emoji: "🍛" },
-  { key: "arabic", label: "Arabic", emoji: "🧆" },
-  { key: "european", label: "European", emoji: "🥨" },
-  { key: "american", label: "American", emoji: "🍟" },
   { key: "dinner", label: "Dinner", emoji: "🍽️" },
-  { key: "fancy", label: "Fancy", emoji: "🥂" },
-  { key: "family", label: "Family", emoji: "👨‍👩‍👧" },
+  { key: "coffee", label: "Coffee", emoji: "☕" },
   { key: "drinks", label: "Bar", emoji: "🍻" },
-  { key: "sports", label: "Sports", emoji: "📺" },
-  { key: "hookah", label: "Hookah", emoji: "💨" },
+  { key: "quick_bite", label: "Quick", emoji: "⚡" },
+  { key: "breakfast", label: "Breakfast", emoji: "🍳" },
+  { key: "mexican", label: "Mexican", emoji: "🇲🇽" },
+  { key: "tacos", label: "Tacos", emoji: "🌮" },
+  { key: "seafood", label: "Seafood", emoji: "🦐" },
+  { key: "asian", label: "Asian", emoji: "🍥" },
+  { key: "european", label: "European", emoji: "🥨" },
+  { key: "fancy", label: "Fancy", emoji: "🥂" },
+  { key: "steak", label: "Steak", emoji: "🥩" },
+  { key: "japanese", label: "Japanese", emoji: "🍱" },
+  { key: "american", label: "American", emoji: "🍟" },
+  { key: "healthy", label: "Healthy", emoji: "🥗" },
+  { key: "italian", label: "Italian", emoji: "🍝" },
+  { key: "sushi", label: "Sushi", emoji: "🍣" },
+  { key: "pizza", label: "Pizza", emoji: "🍕" },
+  { key: "burgers", label: "Burgers", emoji: "🍔" },
+  { key: "arabic", label: "Arabic", emoji: "🧆" },
+  { key: "chinese", label: "Chinese", emoji: "🥡" },
+  { key: "indian", label: "Indian", emoji: "🍛" },
+  { key: "chicken", label: "Wings", emoji: "🍗" },
+  { key: "sweet", label: "Dessert", emoji: "🍰" },
   { key: "night_out", label: "Night", emoji: "🌙" },
+  { key: "bakery", label: "Bakery", emoji: "🥐" },
   { key: "nightclub", label: "Club", emoji: "🪩" },
   { key: "music", label: "Music", emoji: "🎶" },
+  { key: "family", label: "Family", emoji: "👨‍👩‍👧" },
+  { key: "sports", label: "Sports", emoji: "📺" },
+  { key: "hookah", label: "Hookah", emoji: "💨" },
   { key: "karaoke", label: "Karaoke", emoji: "🎤" },
   { key: "fun", label: "Fun", emoji: "🎯" },
   { key: "cinema", label: "Cinema", emoji: "🎬" },
