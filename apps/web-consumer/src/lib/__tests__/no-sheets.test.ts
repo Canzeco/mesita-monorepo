@@ -55,9 +55,6 @@ export const CONFIRM_FILES = [
 const SHEET_ALLOWLIST = [
   "components/consumer/MenuViewer.tsx",
   "components/consumer/PlaceContactSheet.tsx",
-  // Home's Categories (MESITA-4417, decision: Pato asked for "a modal
-  // covering full page").
-  "components/consumer/home/CategoriesModal.tsx",
   "components/consumer/home/LocationPicker.tsx",
   "components/consumer/pay/GuestPayScreen.tsx",
   "components/consumer/pay/PayForm.tsx",
@@ -75,6 +72,9 @@ const SHEET_ALLOWLIST = [
 
 /** Non-confirm dialogs that become pages (MESITA-4112/4113). Only shrinks. */
 const DIALOG_ALLOWLIST = [
+  // Home's Categories, floating (MESITA-4433, decision: Pato asked for
+  // "modal floating"; a full-screen sheet in MESITA-4417).
+  "components/consumer/home/CategoriesModal.tsx",
   "components/consumer/ComingSoonModal.tsx",
   "components/consumer/home/SocialFeed.tsx",
   "components/consumer/search/FamilyFilterSheet.tsx",
