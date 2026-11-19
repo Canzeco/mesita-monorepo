@@ -112,3 +112,11 @@ export function storyLine(s: WaitingStory, now = Date.now()): string {
 export function storyBonusOpen(s: Pick<WaitingStory, "state">): boolean {
   return s.state === "waiting" || s.state === "checking";
 }
+
+/** The Wallet's Stories (MESITA-4446): only open ones. The server's
+ *  `waiting_stories` also carries Stories decided in the last 24 h for
+ *  Tickets' history; on the Wallet a decided one was a row nobody could
+ *  dismiss, and it blocked Remove on that place's Loyalty Card. */
+export function openStories<T extends Pick<WaitingStory, "state">>(list: readonly T[]): T[] {
+  return list.filter(storyBonusOpen);
+}
