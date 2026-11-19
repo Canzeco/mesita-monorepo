@@ -128,9 +128,14 @@ const SocialFeed = dynamic(
 // pill; the chosen one's name is bold ink over a short ink bar, the rest
 // regular grey. Every tile is the same 64px column, so the row reads as a
 // shelf of icons.
+// SMALLER, ON GREY, NAMED (Pato, 2026-11-18, MESITA-4415: "add a carousel
+// in a gray background, make icons smaller, and actually mention what is
+// about. very small letters for the family text. icon is enough"): the row
+// sits on a grey band under a small "Categories" label; 24px emoji in 52px
+// columns, the names at the floor size (type-meta, 10px).
 const CAT =
-  "flex w-16 shrink-0 flex-col items-center gap-1 pb-1 text-xs leading-4 transition active:scale-[0.96]";
-const CAT_EMOJI = "flex h-11 w-11 items-center justify-center text-4xl leading-none";
+  "flex w-[52px] shrink-0 flex-col items-center gap-0.5 pb-1 type-meta transition active:scale-[0.96]";
+const CAT_EMOJI = "flex h-8 w-8 items-center justify-center text-2xl leading-none";
 const CAT_NAME = "relative w-full truncate text-center";
 
 /** The column's default row: every place, one list, ranked like the Search
@@ -587,11 +592,12 @@ export function CatalogRails() {
     return () => document.removeEventListener("keydown", onKey);
   }, [menuOpen]);
   const strip = (
-    <div className="border-border bg-card flex shrink-0 items-start border-b pt-2.5 pb-2" data-places-strip>
+    <div className="bg-muted flex shrink-0 flex-col pt-2 pb-1.5" data-places-strip>
+      <p className="type-eyebrow text-muted-foreground px-4 pb-1.5">Categories</p>
       <nav
         ref={stripRef}
         aria-label="Families"
-        className="scrollbar-hide relative flex min-w-0 flex-1 gap-1 overflow-x-auto overscroll-x-contain px-2"
+        className="scrollbar-hide relative flex min-w-0 gap-0.5 overflow-x-auto overscroll-x-contain px-2"
       >
         {/* THE MENU IS THE ROW'S FIRST TILE (MESITA-4410: "i want a menu"):
             a grey round button with its name, the same column as a family,
@@ -607,14 +613,14 @@ export function CatalogRails() {
           <span
             aria-hidden
             className={cn(
-              "flex h-11 w-11 items-center justify-center rounded-full transition",
-              menuOpen ? "bg-foreground text-card" : "bg-muted text-foreground",
+              "flex h-8 w-8 items-center justify-center rounded-full transition",
+              menuOpen ? "bg-foreground text-card" : "bg-card text-foreground",
             )}
           >
             {menuOpen ? (
-              <X className="h-5 w-5" strokeWidth={2.5} />
+              <X className="h-4 w-4" strokeWidth={2.5} />
             ) : (
-              <LayoutGrid className="h-5 w-5" strokeWidth={2.25} />
+              <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
             )}
           </span>
           <span className={cn(CAT_NAME, "text-muted-foreground font-medium")}>Menu</span>
