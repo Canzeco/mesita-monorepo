@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 
 // THE CATEGORIES MODAL (Pato, 2026-11-18, MESITA-4417: "for menu actually
 // open a modal covering full page"): Home's Menu tile opens every family
@@ -32,8 +32,11 @@ export function CategoriesModal({
   children: ReactNode;
 }) {
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Categories" fullScreen>
-      <header className="bg-card border-border flex h-14 shrink-0 items-center border-b pr-1.5 pl-4">
+    // FLOATING (Pato, 2026-11-18, MESITA-4433: "build the modal better.
+    // modal floating"): the app's floating card, 20px in from every edge,
+    // rounded, over the dimmed Home; it scales in. Full screen before.
+    <LocalDialog open={open} onClose={onClose} ariaLabel="Categories" fit>
+      <header className="border-border flex h-14 shrink-0 items-center border-b pr-1.5 pl-5">
         <h2 className="text-foreground flex-1 text-base font-semibold">Categories</h2>
         <button
           type="button"
@@ -46,16 +49,16 @@ export function CategoriesModal({
       </header>
       <nav
         aria-label="All categories"
-        className="bg-card scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto"
+        className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto"
         data-places-menu
       >
-        <div className="flex shrink-0 gap-2 px-4 pt-4" data-places-menu-specials>
+        <div className="flex shrink-0 gap-2 px-3 pt-3" data-places-menu-specials>
           {specials}
         </div>
-        <div className="grid shrink-0 grid-cols-5 content-start gap-x-0.5 gap-y-4 px-1.5 py-4">
+        <div className="grid shrink-0 grid-cols-5 content-start gap-x-0.5 gap-y-3 px-1.5 pt-3 pb-4">
           {children}
         </div>
       </nav>
-    </LocalSheet>
+    </LocalDialog>
   );
 }
