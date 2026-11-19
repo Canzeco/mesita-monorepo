@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Camera, Check, CircleCheck, QrCode, Clock, Copy, CreditCard, Gift, Infinity as InfinityIcon, Lock, PartyPopper, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { Camera, Check, CircleCheck, Clock, Copy, CreditCard, Gift, Infinity as InfinityIcon, Lock, PartyPopper, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -453,22 +453,32 @@ function sheetSteps(pay: string, bonus: string | null, card: { label: string; la
   ];
 }
 
-/** Story (MESITA-4405): pay and get the credit now, then post, the waiter
- *  approves, and the bonus follows. `stage` null draws no progress. */
-function storySteps(pay: string, bonus: string | null, post: ReactNode, stage: "pay" | "post" | "waiter" | null, emulator = false): Step[] {
-  const at = (mine: "pay" | "post" | "waiter"): Step["state"] => {
-    if (stage === null) return undefined;
-    const order = ["pay", "post", "waiter"];
-    const i = order.indexOf(stage);
-    const j = order.indexOf(mine);
-    return j < i ? "done" : j === i ? "current" : undefined;
-  };
+/** Story: THE VOUCHER'S FOUR STEPS (Pato, MESITA-4431: "remember voucher
+ *  entity and story entity … 1. Pay 2. Get credits immediately 3. Post story
+ *  tagging place (resolve story task ticket) 4. receive bonus"). The waiter's
+ *  approval belongs to the Story record, whose ticket (Tickets › Stories)
+ *  walks it; this list is the voucher's. */
+function storySteps(pay: string, bonus: string | null, post: ReactNode, emulator = false): Step[] {
   return [
-    { Icon: CreditCard, title: "Pay, get your credit now", amount: pay, line: CREDIT_LINE, state: at("pay") },
-    { Icon: Camera, title: "Post a story", line: post, state: at("post") },
-    { Icon: QrCode, title: "Show it to the waiter", line: "They approve it with the waiter code.", state: at("waiter") },
-    // MESITA-4426: emulator mode's test Story waits seconds, not 3 hours.
-    { Icon: Gift, title: emulator ? "Keep it up a moment (test)" : "Keep it up 3 hours", amount: bonus ? `+${bonus}` : undefined, line: "Then your bonus is added by itself.", green: true },
+    { Icon: CreditCard, title: "Pay", amount: pay, line: "By card." },
+    { Icon: Wallet, title: "Get your credit now", amount: pay, line: CREDIT_LINE },
+    {
+      Icon: Camera,
+      title: "Post a story tagging the place",
+      line: (
+        <>
+          {post} Your Story ticket walks you through the rest.
+        </>
+      ),
+    },
+    {
+      Icon: Gift,
+      title: "Get your bonus",
+      amount: bonus ? `+${bonus}` : undefined,
+      // MESITA-4426: emulator mode's test Story waits seconds, not 3 hours.
+      line: emulator ? "Moments after the waiter approves it (test)." : "3 hours after the waiter approves it, if it is still up.",
+      green: true,
+    },
   ];
 }
 
@@ -975,7 +985,7 @@ function StoryFlow({
   const amount = whole(offer.pay);
   const bonusText = offer.bonusAmount ? whole(offer.bonusAmount) : null;
   const good = <GoodToKnow productKey="voucher_story" />;
-  const steps = <StepList steps={storySteps(amount, bonusText, storyPostLine(handle), null, offer.storyGuest.emulator)} />;
+  const steps = <StepList steps={storySteps(amount, bonusText, storyPostLine(handle), offer.storyGuest.emulator)} />;
 
   // ALREADY BOUGHT HERE (D6): no lock; the Story and its steps are in Tickets.
   if (gate === "already_bought") {
@@ -1261,7 +1271,7 @@ function PaySheet({
               <>
                 <NeedBox needs={storyNeeds(offer.storyGuest, offer.guestLock === "instagram" ? "instagram" : offer.guestLock === "followers" ? "followers" : null, false)} />
                 <Box title="How it works" className={can ? undefined : "opacity-50"}>
-                  <StepList steps={storySteps(amount, bonusText, storyPostLine(placeHandle), null, offer.storyGuest.emulator)} />
+                  <StepList steps={storySteps(amount, bonusText, storyPostLine(placeHandle), offer.storyGuest.emulator)} />
                 </Box>
               </>
             ) : (
