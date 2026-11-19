@@ -847,9 +847,9 @@ select is(
 
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
-  array['coffee','breakfast','bakery','sweet','healthy','quick_bite','tacos','burgers','pizza','chicken','sushi','mexican','steak','seafood','italian','japanese','chinese','asian','indian','arabic','european','american','dinner','fancy','family','drinks','sports','hookah','night_out','nightclub','music','karaoke','fun','cinema','casino','spa','tourist',
+  array['dinner','coffee','drinks','quick_bite','breakfast','mexican','tacos','seafood','asian','european','fancy','steak','japanese','american','healthy','italian','sushi','pizza','burgers','arabic','chinese','indian','chicken','sweet','night_out','bakery','nightclub','music','family','sports','hookah','karaoke','fun','cinema','casino','spa','tourist',
         'undefined']::text[],
-  'family catalog order is the thirty-seven guest rails, Undefined last (MESITA-2930)'
+  'family catalog order is the thirty-seven guest rails, biggest first, Undefined last (MESITA-4430)'
 );
 
 -- MESITA-2891: no category ↔ family dictionary. A place's Mesita Families
