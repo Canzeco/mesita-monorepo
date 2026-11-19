@@ -34,10 +34,16 @@ export async function getStoriesConfig(): Promise<StoriesResult> {
   return { ok: true, ...fromAnswer(r.data) };
 }
 
-export async function updateStoriesConfig(minFollowers: number): Promise<StoriesResult> {
+/** The editable keys only; the read-only waits are never sent. */
+export async function updateStoriesConfig(c: StoriesConfig): Promise<StoriesResult> {
   const r = await efInvoke<StoriesAnswer>("admin-web-update-config", {
     section: "stories",
-    config: { story_min_followers: minFollowers },
+    config: {
+      story_min_followers: c.story_min_followers,
+      story_emulator: c.story_emulator,
+      story_emulator_bonus_wait_sec: c.story_emulator_bonus_wait_sec,
+      story_emulator_post_window_sec: c.story_emulator_post_window_sec,
+    },
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, ...fromAnswer(r.data) };

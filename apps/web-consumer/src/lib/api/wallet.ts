@@ -120,6 +120,9 @@ export type StoryTicket = {
   approved_at: string | null;
   /** While approved: when the bonus lands if the story is still up. */
   bonus_at: string | null;
+  /** The bonus wait this Story was given at approval (MESITA-4426): 30 for
+   *  an emulator test, 10800 for a real one; absent on an older read. */
+  wait_sec?: number | null;
   decided_at: string | null;
   void_reason: StoryVoidReason | null;
   first_bound_at: string | null;

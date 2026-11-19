@@ -12,12 +12,24 @@ export type StoriesConfig = {
   story_bonus_wait_sec: number;
   /** Read-only here: payment → the deadline to post and be approved. */
   story_post_window_sec: number;
+  /** Emulator mode (MESITA-4426): in effect only with test payments and Meta off. */
+  story_emulator: boolean;
+  /** A test Story's bonus wait from an emulator story, 10–600 s. */
+  story_emulator_bonus_wait_sec: number;
+  /** A test Story's time to post while the switch is on, 60–3600 s. */
+  story_emulator_post_window_sec: number;
 };
+
+export const EMULATOR_BONUS_WAIT = { min: 10, max: 600 } as const;
+export const EMULATOR_POST_WINDOW = { min: 60, max: 3600 } as const;
 
 export const DEFAULT_STORIES: StoriesConfig = {
   story_min_followers: STORY_MIN_FOLLOWERS_DEFAULT,
   story_bonus_wait_sec: 3 * 3600,
   story_post_window_sec: 12 * 3600,
+  story_emulator: false,
+  story_emulator_bonus_wait_sec: 30,
+  story_emulator_post_window_sec: 120,
 };
 
 const int = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? Math.trunc(v) : d);
@@ -28,6 +40,9 @@ export function coerceStories(raw: unknown): StoriesConfig {
     story_min_followers: int(o.story_min_followers, DEFAULT_STORIES.story_min_followers),
     story_bonus_wait_sec: int(o.story_bonus_wait_sec, DEFAULT_STORIES.story_bonus_wait_sec),
     story_post_window_sec: int(o.story_post_window_sec, DEFAULT_STORIES.story_post_window_sec),
+    story_emulator: o.story_emulator === true,
+    story_emulator_bonus_wait_sec: int(o.story_emulator_bonus_wait_sec, DEFAULT_STORIES.story_emulator_bonus_wait_sec),
+    story_emulator_post_window_sec: int(o.story_emulator_post_window_sec, DEFAULT_STORIES.story_emulator_post_window_sec),
   };
 }
 
@@ -37,6 +52,18 @@ export function formatDuration(sec: number): string {
   if (sec >= 3600) return `${(sec / 3600).toFixed(1).replace(/\.0$/, "")} h`;
   if (sec % 60 === 0) return `${sec / 60} min`;
   return `${sec} s`;
+}
+
+/** What emulator mode does right now, from the same three inputs the server's
+ *  effective flag reads: the switch, payments in test mode, Meta off. */
+export function emulatorStatus(on: boolean, paymentsLive: boolean, storyMode: string | null): { active: boolean; line: string } {
+  if (!on) return { active: false, line: "Off. Story vouchers follow the real rules." };
+  if (paymentsLive) return { active: false, line: "Inactive: payments are live." };
+  if (storyMode === "meta") return { active: false, line: "Inactive: Meta mention detection is on." };
+  return {
+    active: true,
+    line: "Active: every guest with Instagram can buy Story vouchers, real guests too, while payments are in test mode.",
+  };
 }
 
 /** Saving a LOWER floor below 1,000 while payments are live opens Story to

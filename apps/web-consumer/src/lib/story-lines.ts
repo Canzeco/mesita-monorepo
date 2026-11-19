@@ -45,11 +45,14 @@ export function storyClock(iso: string, timeZone: string, now = Date.now()): str
   return sameDay ? clock : `${part(p, "weekday")} ${clock}`;
 }
 
-/** "2 h 14 min left" until `iso`, whole minutes, or null once it has passed. */
+/** "2 h 14 min left" until `iso`, whole minutes, or null once it has passed.
+ *  Under 2 minutes it counts seconds, "24 s left" (MESITA-4426: a test
+ *  Story's 30-second bonus and 2-minute deadline). */
 export function storyLeft(iso: string | null, now = Date.now()): string | null {
   if (!iso) return null;
   const at = Date.parse(iso);
   if (!Number.isFinite(at) || at <= now) return null;
+  if (at - now < 120_000) return `${Math.ceil((at - now) / 1_000)} s left`;
   const min = Math.ceil((at - now) / 60_000);
   const h = Math.floor(min / 60);
   const m = min % 60;

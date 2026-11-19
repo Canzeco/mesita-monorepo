@@ -19,13 +19,16 @@ describe("storyPollDelay", () => {
     expect(storyPollDelay(s("found"), T0, T0 + 119_000)).toBe(5_000);
     expect(storyPollDelay(s("found"), T0, T0 + 120_000)).toBe(15_000);
   });
-  it("stops at approved, released, void, the deadline, or no hint", () => {
-    expect(storyPollDelay(s("approved"), T0, T0)).toBeNull();
+  it("stops at released, void, or no hint; the server's hint alone keeps an approved or late Story polled", () => {
     expect(storyPollDelay(s("released"), T0, T0)).toBeNull();
     expect(storyPollDelay(s("void"), T0, T0)).toBeNull();
-    expect(storyPollDelay(s("waiting_post", { deadline_at: "2026-11-18T19:59:00Z" }), T0, T0)).toBeNull();
     expect(storyPollDelay(s("waiting_post", { poll: null }), T0, T0)).toBeNull();
+    expect(storyPollDelay(s("approved", { poll: null }), T0, T0)).toBeNull();
     expect(storyPollDelay(null, T0, T0)).toBeNull();
+    // MESITA-4426: near its bonus an approved Story is asked every 5 s, and
+    // one more look past the deadline lets the server end the Story.
+    expect(storyPollDelay(s("approved"), T0, T0)).toBe(POLL.every_ms);
+    expect(storyPollDelay(s("waiting_post", { deadline_at: "2026-11-18T19:59:00Z" }), T0, T0)).toBe(POLL.every_ms);
   });
   it("never faster than 1 s, whatever the server says", () => {
     expect(storyPollDelay(s("found", { poll: { ...POLL, every_ms: 10 } }), T0, T0)).toBe(1_000);
