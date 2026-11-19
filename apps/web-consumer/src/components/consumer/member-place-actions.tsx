@@ -124,6 +124,18 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const vouchers = usePlaceVouchers(place.id);
   const reservation = usePlaceReservation(place.id);
   const live = reservation.row;
+  // THE RESERVE TAP MOVES AT ONCE (MESITA-4443, Pato: "NAVIGATE
+  // IMMEDIATELY, THEN PUT THE LOADING … DON'T AWAIT IN THE SAME PAGE"): the
+  // Reserve tile is a button, not a Link, so nothing prefetched its page and
+  // a tap painted nothing until the server answered. Prefetch it here: a
+  // dynamic route prefetches only up to its loading.tsx (no page code, no
+  // writes), so the tap paints the grey Reserve frame at once and the page
+  // fills in behind it.
+  const reservePath = placeReservePath(place.id);
+  useEffect(() => {
+    if (signedOut || !isMesitaPlaceId(place.id)) return;
+    router.prefetch(reservePath);
+  }, [router, reservePath, signedOut, place.id]);
   // ONE READ, ONE PAINT (Pato, MESITA-3803: "call those two functions in
   // parallel from the frontend and await them … i don't like that you load
   // and display items in different orders and not all at the same time").

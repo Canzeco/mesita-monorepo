@@ -194,10 +194,13 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
     // Link prefetch names the URL the tap pushes and the bar needs no manual
     // router.prefetch. A dynamic route prefetches only up to its
     // loading.tsx, so no page code (and no place create) runs on a prefetch.
+    // One exception (MESITA-4443): the place screen prefetches its Reserve
+    // page, because the Reserve tile is a button (it holds a moving box and
+    // the live table), not a Link. The prefetch stops at reserve/loading.tsx.
     const prefetchers = appCode
       .filter((f) => /router\.prefetch\(|prefetch=\{true\}/.test(f.src))
       .map((f) => f.path);
-    expect(prefetchers).toEqual([]);
+    expect(prefetchers).toEqual(["components/consumer/member-place-actions.tsx"]);
   });
 
   it("Search's effects never open or create; the explicit open is a tap handler", () => {
