@@ -34,12 +34,15 @@ const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 /** The band: white, sticky, a hairline under it dividing it from the white
  *  tab strip, as Search's header divides from its chips (Pato, MESITA-2538:
  *  "try adding a line dividing mesita header with the other shit"). */
+// ONE BLACK BAND (Pato, 2026-11-19, MESITA-4442, option D of five): the
+// header, Places · Social and the category row are one ink block; the list
+// under it stays white. A white/10 hairline between its parts.
 export const BRAND_HEADER_CLASS =
-  "border-border bg-card text-foreground sticky top-0 z-20 shrink-0 border-b";
+  "border-paper/10 bg-foreground text-paper sticky top-0 z-20 shrink-0 border-b";
 
 /** The header's name, set as type, not a drawn logo (MESITA-2480). */
 export const HOME_WORDMARK_CLASS =
-  "text-foreground shrink-0 text-2xl leading-none tracking-[-0.03em] select-none";
+  "text-paper shrink-0 text-2xl leading-none tracking-[-0.03em] select-none";
 
 /** The white band with the word "Mesita", then the tab's own control (Home:
  *  the location box). */
