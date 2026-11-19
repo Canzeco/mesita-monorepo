@@ -7,6 +7,7 @@ import {
   placePlaceholder,
 } from "@/lib/place-placeholder";
 import { cn } from "@/lib/utils";
+import { isAdPlace } from "@/lib/catalog-modes";
 import { Skeleton } from "@/components/shared";
 import {
   CARD_ACTIONS_ROW,
@@ -214,7 +215,10 @@ export function RailCard({
           <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
-              <PlaceMarks tier={place.boost_tier} compact ad />
+              {/* "Ad" only on an ad pin (MESITA-4454, H4): the Map sends
+                  `ad: true` for a place in an ad slot; a Premier place in
+                  an organic slot wears its seal only. */}
+              <PlaceMarks tier={place.boost_tier} compact ad={isAdPlace(place)} />
             </p>
             <PriceKindRow facts={facts} />
             <StarsOpenRow facts={facts} withDistance={withDistance} />
