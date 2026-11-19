@@ -16,9 +16,14 @@ import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsLines } from "./place-facts";
 
-/** Two decimals; anything missing reads "n/a", never 0. */
+/** Four significant digits (MESITA-4450: Popularity runs into the tens,
+ *  Proximity can sit under 0.01); under 0.0001 in scientific form so a
+ *  tiny value never reads 0. Anything missing reads "n/a". */
 function scoreNumber(n: number | null | undefined): string {
-  return typeof n === "number" && Number.isFinite(n) ? n.toFixed(2) : "n/a";
+  if (typeof n !== "number" || !Number.isFinite(n)) return "n/a";
+  if (n === 0) return "0";
+  if (Math.abs(n) < 1e-4) return n.toExponential(2);
+  return String(Number(n.toPrecision(4)));
 }
 
 /**
