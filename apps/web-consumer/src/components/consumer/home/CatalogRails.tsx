@@ -635,7 +635,9 @@ export function CatalogRails() {
   const strip = (
     // NO LABEL (Pato, MESITA-4418: "don't mention categories it looks super
     // dirty"): MESITA-4415's "Categories" eyebrow is gone; the circles say it.
-    <div className="bg-card border-border flex shrink-0 items-start border-b pt-2.5 pb-1.5" data-places-strip>
+    // A GREY CAROUSEL, WHITE TILES (Pato, MESITA-4436: "gray carousel"):
+    // the band is the grey ground; the squares and circles stay white.
+    <div className="bg-muted border-border flex shrink-0 items-start border-b pt-2.5 pb-1.5" data-places-strip>
       {/* THE MENU STAYS PUT (Pato, MESITA-4423: "menu must be fixed"): its
           tile sits outside the scroller, pinned at the left, so it is always one tap away while the categories slide
           under nothing. It was the row's first tile (MESITA-4410). */}
