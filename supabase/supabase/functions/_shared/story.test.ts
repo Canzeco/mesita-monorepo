@@ -6,6 +6,7 @@ import {
   STORY_STATES,
   STORY_VOID_REASONS,
   storyFreesSlot,
+  storyApprovedPoll,
   storyNeedsPoll,
   storyView,
 } from "./story.ts";
@@ -24,6 +25,7 @@ const story = (x: Partial<StoryRecord> = {}): StoryRecord => ({
   approved_at: null,
   recheck_at: null,
   recheck_tries: 0,
+  wait_sec: null,
   decided_at: null,
   void_reason: null,
   bonus_cents: 5000,
@@ -51,6 +53,17 @@ Deno.test("storyNeedsPoll: waiting or found before the deadline; never approved,
   assertEquals(storyNeedsPoll(story({ state: "approved" }), NOW), false);
   assertEquals(storyNeedsPoll(story({ state: "void" }), NOW), false);
   assertEquals(storyNeedsPoll(story({ deadline_at: "2026-11-18T11:59:59Z" }), NOW), false);
+});
+
+Deno.test("storyApprovedPoll: an approved Story from 2 min before its re-check to 10 min after (MESITA-4426)", () => {
+  const at = (iso: string) => story({ state: "approved", recheck_at: iso });
+  assertEquals(storyApprovedPoll(at("2026-11-18T12:00:30Z"), NOW), true, "30 s ahead");
+  assertEquals(storyApprovedPoll(at("2026-11-18T12:02:00Z"), NOW), true, "exactly 2 min ahead");
+  assertEquals(storyApprovedPoll(at("2026-11-18T12:02:01Z"), NOW), false, "a real 3 h wait is not polled");
+  assertEquals(storyApprovedPoll(at("2026-11-18T11:51:00Z"), NOW), true, "9 min overdue");
+  assertEquals(storyApprovedPoll(at("2026-11-18T11:49:59Z"), NOW), false, "over 10 min late: the cron's");
+  assertEquals(storyApprovedPoll(story({ state: "found", recheck_at: "2026-11-18T12:00:30Z" }), NOW), false);
+  assertEquals(storyApprovedPoll(story({ state: "approved", recheck_at: null }), NOW), false);
 });
 
 Deno.test("storyView: the QR only while found; the bonus time only while approved", () => {

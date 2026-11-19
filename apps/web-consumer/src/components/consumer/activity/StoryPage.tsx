@@ -93,6 +93,16 @@ function CopyChip({ text }: { text: string }) {
 
 type StepState = "done" | "current" | undefined;
 
+/** The Story's own bonus wait, from the server (MESITA-4426): "30 s" for an
+ *  emulator test, "3 hours" for a real one or an older read. */
+function waitText(sec: number | null | undefined): string {
+  if (sec == null || sec >= 3600) {
+    const h = sec == null ? 3 : Math.round(sec / 3600);
+    return `${h} hour${h === 1 ? "" : "s"}`;
+  }
+  return sec >= 120 ? `${Math.round(sec / 60)} min` : `${sec} s`;
+}
+
 /** The four steps, the current one lit, the done ones ticked. */
 function StorySteps({ s }: { s: StoryTicket }) {
   const at: Record<string, StepState> = (() => {
@@ -114,7 +124,7 @@ function StorySteps({ s }: { s: StoryTicket }) {
     { key: "paid", Icon: WalletIcon, title: "Paid, your credit is ready", amount: paid },
     { key: "post", Icon: Camera, title: "Post a story", amount: null },
     { key: "waiter", Icon: QrCode, title: "The waiter approves it", amount: null },
-    { key: "bonus", Icon: Gift, title: "Keep it up 3 hours", amount: storyBonus(s) },
+    { key: "bonus", Icon: Gift, title: `Keep it up ${waitText(s.wait_sec)}`, amount: storyBonus(s) },
   ];
   return (
     <Panel className="px-4 py-3" data-story-steps="">
@@ -342,11 +352,14 @@ export function StoryPage({ id, byPurchase = false }: { id: string; byPurchase?:
     return () => window.clearTimeout(t);
   }, [read, byPurchase, refresh]);
 
-  // The countdown moves every 30 s.
+  // The countdown moves every 30 s; every second once the bonus or the
+  // deadline is under 2 minutes away (MESITA-4426: a test Story's 30 s).
+  const soonIso = read.story?.state === "approved" ? read.story.bonus_at : read.story?.deadline_at ?? null;
+  const soon = soonIso != null && Date.parse(soonIso) - now < 120_000 && Date.parse(soonIso) > now - 5_000;
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 30_000);
+    const t = window.setInterval(() => setNow(Date.now()), soon ? 1_000 : 30_000);
     return () => window.clearInterval(t);
-  }, []);
+  }, [soon]);
 
   const s = read.story;
   const body = (() => {

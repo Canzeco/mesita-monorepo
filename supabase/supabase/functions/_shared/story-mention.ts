@@ -397,7 +397,24 @@ export type StoryRulesLive = {
    *  money_config.story_min_followers, set on Admin › Configurations ›
    *  Stories; STORY_MIN_FOLLOWERS when unset or not a whole number. */
   minFollowers: number;
+  /** Emulator mode switched on (MESITA-4426): money_config.story_emulator.
+   *  In effect only in test mode with Meta off (storyEligibilityContext). */
+  emulator: boolean;
+  /** A test Story's bonus wait from an emulator story, 10–600 s (30). */
+  emulatorBonusWaitSec: number;
+  /** A test Story's time to post while the switch is on, 60–3600 s (120). */
+  emulatorPostWindowSec: number;
 };
+
+/** The emulator keys' bounds and defaults (MESITA-4426), as SQL clamps them. */
+export const STORY_EMULATOR = {
+  bonusWait: { min: 10, max: 600, default: 30 },
+  postWindow: { min: 60, max: 3600, default: 120 },
+} as const;
+
+function clampedInt(v: unknown, b: { min: number; max: number; default: number }): number {
+  return typeof v === "number" && Number.isFinite(v) ? Math.min(Math.max(Math.trunc(v), b.min), b.max) : b.default;
+}
 
 /** story_min_followers' bounds (MESITA-4425), as money_config_merge_story. */
 export const STORY_MIN_FOLLOWERS_MAX = 1_000_000;
@@ -420,6 +437,9 @@ export function storyRulesFrom(raw: unknown): StoryRulesLive {
       STORY_RULES.postWindowMaxSec,
     ),
     minFollowers: minFollowersFrom(o.story_min_followers),
+    emulator: o.story_emulator === true,
+    emulatorBonusWaitSec: clampedInt(o.story_emulator_bonus_wait_sec, STORY_EMULATOR.bonusWait),
+    emulatorPostWindowSec: clampedInt(o.story_emulator_post_window_sec, STORY_EMULATOR.postWindow),
   };
 }
 

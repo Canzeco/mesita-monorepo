@@ -3,12 +3,20 @@
 // MESITA-4405: the Story pays FIRST; this is the Story screen's look.
 //
 //   { story_id }   the guest's Story screen poll (every 5 s, every 15 s after
-//                  2 minutes, stopping at approved, void or the deadline):
-//                  while the Story waits for a post it tries story_bind (the
-//                  newest fitting story of the guest's verified handle; a
-//                  story rejected at this place never binds here), then
-//                  answers the Story as consumer-web-get-story does. Only the
-//                  Story's owner: anyone else reads 404.
+//                  2 minutes, stopping at void, the deadline, or 10 minutes
+//                  past an approved Story's re-check): while the Story waits
+//                  for a post it tries story_bind (the newest fitting story of
+//                  the guest's verified handle; a story rejected at this place
+//                  never binds here), then answers the Story as
+//                  consumer-web-get-story does. Only the Story's owner:
+//                  anyone else reads 404.
+//                  MESITA-4426: past its deadline the poll ends the Story
+//                  itself (story_expire_one: void expired, the credit stays),
+//                  and an approved TEST Story from the emulator whose wait is
+//                  over is settled here (story_settle_emulated_due: under
+//                  story_settle's own locks, only with emulator mode on, else
+//                  not_due), so a 30-second bonus does not wait for the
+//                  10-minute cron. Real Stories are the cron's.
 //   { place_id }   the Story gate only (Offers): may this guest buy the Story
 //                  voucher here? `found` is always false; `reason` is the
 //                  first that applies, in a fixed order (_shared/story-check.ts):
@@ -33,11 +41,34 @@ import { storyMode } from "../_shared/story-mention.ts";
 import { storyGate } from "../_shared/story-check.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 import { errorMessage } from "../_shared/errors.ts";
-import { bindStory, readOwnStory, storyNeedsPoll } from "../_shared/story.ts";
+import { bindStory, readOwnStory, storyNeedsPoll, type StoryRecord } from "../_shared/story.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { readStoryScreen } from "../_shared/story-screen.ts";
 import { storyLog } from "../_shared/story-log.ts";
 
 const FN = "consumer-web-check-story";
+
+/** The poll's own end of a Story (MESITA-4426): expire it past the deadline,
+ *  or settle a due test Story. True when the Story changed. */
+async function finishDueStory(admin: SupabaseClient, s: StoryRecord, nowMs: number): Promise<boolean> {
+  const fields = { story_id: s.id, purchase_id: s.purchase_id, place_id: s.place_id, livemode: s.livemode };
+  if ((s.state === "waiting_post" || s.state === "found") && Date.parse(s.deadline_at) <= nowMs) {
+    const { data, error } = await admin.rpc("story_expire_one", { p_story: s.id });
+    if (error) throw new Error(`story_expire_one: ${error.message}`);
+    const r = (data ?? {}) as { outcome?: string };
+    if (r.outcome === "expired") storyLog("void", { ...fields, reason: "expired", via: "screen" });
+    return r.outcome === "expired";
+  }
+  if (s.state === "approved" && !s.livemode && s.recheck_at && Date.parse(s.recheck_at) <= nowMs) {
+    const { data, error } = await admin.rpc("story_settle_emulated_due", { p_story: s.id });
+    if (error) throw new Error(`story_settle_emulated_due: ${error.message}`);
+    const r = (data ?? {}) as { outcome?: string; reason?: string };
+    if (r.outcome === "released") storyLog("released", { ...fields, via: "screen-emulator" });
+    if (r.outcome === "voided") storyLog("void", { ...fields, reason: r.reason, via: "screen-emulator" });
+    return r.outcome === "released" || r.outcome === "voided";
+  }
+  return false;
+}
 
 serveJson("consumer-web-check-story", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -54,6 +85,8 @@ serveJson("consumer-web-check-story", async (req) => {
       let s = await readOwnStory(admin, user.id, { storyId });
       if (!s) return json({ ok: false, code: "not_found", error: "Story not found" }, 404);
       const nowMs = Date.now();
+      const ended = await finishDueStory(admin, s, nowMs);
+      if (ended) s = (await readOwnStory(admin, user.id, { storyId })) ?? s;
       if (s.state === "waiting_post" && storyNeedsPoll(s, nowMs)) {
         const r = await bindStory(admin, s.id);
         if (r.outcome === "found") {

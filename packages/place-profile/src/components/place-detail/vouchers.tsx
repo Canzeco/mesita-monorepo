@@ -233,7 +233,9 @@ function whole(v: string): string {
  *  says when each part is ready. Story's money is ready at once too since
  *  MESITA-4264; since MESITA-4405 the guest pays first and the bonus lands 3
  *  hours after a waiter approves the story, if it is still up. */
-function readyIn(key: MoneyVoucherKey): string {
+function readyIn(key: MoneyVoucherKey, emulator = false): string {
+  // MESITA-4426: emulator mode's test Story waits seconds, not 3 hours.
+  if (key === "voucher_story" && emulator) return "bonus moments after the waiter approves your story (test)";
   return key === "voucher_story" ? "bonus 3 hr after the waiter approves your story" : "bonus in 3 hr";
 }
 
@@ -395,7 +397,7 @@ export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions[
       bonus: `+${p.bonus.replace(/ bonus$/, "")}`,
       pay: priceValue(p, line, currency),
       get: creditValue(p, line, currency),
-      ready: readyIn(p.key),
+      ready: readyIn(p.key, guest?.storyEmulator === true),
       buyable: can,
       dimmed: !can && dim,
       why: can ? null : status.text.replace(/\.$/, ""),
@@ -453,7 +455,7 @@ function sheetSteps(pay: string, bonus: string | null, card: { label: string; la
 
 /** Story (MESITA-4405): pay and get the credit now, then post, the waiter
  *  approves, and the bonus follows. `stage` null draws no progress. */
-function storySteps(pay: string, bonus: string | null, post: ReactNode, stage: "pay" | "post" | "waiter" | null): Step[] {
+function storySteps(pay: string, bonus: string | null, post: ReactNode, stage: "pay" | "post" | "waiter" | null, emulator = false): Step[] {
   const at = (mine: "pay" | "post" | "waiter"): Step["state"] => {
     if (stage === null) return undefined;
     const order = ["pay", "post", "waiter"];
@@ -465,7 +467,8 @@ function storySteps(pay: string, bonus: string | null, post: ReactNode, stage: "
     { Icon: CreditCard, title: "Pay, get your credit now", amount: pay, line: CREDIT_LINE, state: at("pay") },
     { Icon: Camera, title: "Post a story", line: post, state: at("post") },
     { Icon: QrCode, title: "Show it to the waiter", line: "They approve it with the waiter code.", state: at("waiter") },
-    { Icon: Gift, title: "Keep it up 3 hours", amount: bonus ? `+${bonus}` : undefined, line: "Then your bonus is added by itself.", green: true },
+    // MESITA-4426: emulator mode's test Story waits seconds, not 3 hours.
+    { Icon: Gift, title: emulator ? "Keep it up a moment (test)" : "Keep it up 3 hours", amount: bonus ? `+${bonus}` : undefined, line: "Then your bonus is added by itself.", green: true },
   ];
 }
 
@@ -963,14 +966,16 @@ function StoryFlow({
     if (r) setReceipt(r);
   };
 
-  const deadline = receipt ? new Date(Date.now() + 12 * 3600 * 1000).toISOString() : null;
+  // The real post window is 12 hours; emulator mode's is the admin's few
+  // minutes (MESITA-4426), which the Story screen shows from the server.
+  const deadline = receipt && !offer.storyGuest.emulator ? new Date(Date.now() + 12 * 3600 * 1000).toISOString() : null;
   if (receipt) return <StoryPaid receipt={receipt} placeName={placeName} onDone={onDone} deadlineAt={deadline} />;
 
   const deal = <OfferBox pay={offer.pay} get={offer.get} bonus={offer.bonus} />;
   const amount = whole(offer.pay);
   const bonusText = offer.bonusAmount ? whole(offer.bonusAmount) : null;
   const good = <GoodToKnow productKey="voucher_story" />;
-  const steps = <StepList steps={storySteps(amount, bonusText, storyPostLine(handle), null)} />;
+  const steps = <StepList steps={storySteps(amount, bonusText, storyPostLine(handle), null, offer.storyGuest.emulator)} />;
 
   // ALREADY BOUGHT HERE (D6): no lock; the Story and its steps are in Tickets.
   if (gate === "already_bought") {
@@ -1256,7 +1261,7 @@ function PaySheet({
               <>
                 <NeedBox needs={storyNeeds(offer.storyGuest, offer.guestLock === "instagram" ? "instagram" : offer.guestLock === "followers" ? "followers" : null, false)} />
                 <Box title="How it works" className={can ? undefined : "opacity-50"}>
-                  <StepList steps={storySteps(amount, bonusText, storyPostLine(placeHandle), null)} />
+                  <StepList steps={storySteps(amount, bonusText, storyPostLine(placeHandle), null, offer.storyGuest.emulator)} />
                 </Box>
               </>
             ) : (

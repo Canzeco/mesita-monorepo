@@ -17,6 +17,7 @@ export default async function StoriesConfigPage() {
       <StoriesConfigClient
         initialConfig={res.ok ? res.config : DEFAULT_STORIES}
         initialPaymentsLive={res.ok ? res.paymentsLive : true}
+        initialStoryMode={res.ok ? res.storyMode : null}
         loadError={res.ok ? null : res.error}
       />
     </ConfigPageLayout>

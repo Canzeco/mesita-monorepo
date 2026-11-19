@@ -299,6 +299,30 @@ Deno.test("storyEligibilityContext: the live floor from money_config; a failed r
   assertEquals(await storyEligibilityContext(fake(new Error("network"))), STORY_ELIGIBILITY_DEFAULT);
 });
 
+Deno.test("storyEligibilityContext: emulator mode only with the switch on, test payments and Meta off (MESITA-4426)", async () => {
+  const fake = (mc: unknown) => ({
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { money_config: mc }, error: null }) }) }) }),
+  }) as unknown as SupabaseClient;
+  const env = (vars: Record<string, string | undefined>, f: () => Promise<void>) => async () => {
+    const keep = Object.fromEntries(Object.keys(vars).map((k) => [k, Deno.env.get(k)]));
+    for (const [k, v] of Object.entries(vars)) v === undefined ? Deno.env.delete(k) : Deno.env.set(k, v);
+    try {
+      await f();
+    } finally {
+      for (const [k, v] of Object.entries(keep)) v === undefined ? Deno.env.delete(k) : Deno.env.set(k, v);
+    }
+  };
+  const metaOff = { META_IG_ACCESS_TOKEN: undefined, META_IG_USERNAME: undefined, META_IG_APP_SECRET: undefined, META_IG_VERIFY_TOKEN: undefined };
+  await env({ ...metaOff, PAYMENTS_STRIPE_MODE: "test", STRIPE_ALLOW_LIVE: undefined }, async () => {
+    assertEquals((await storyEligibilityContext(fake({ story_emulator: true }))).emulator, true, "on, test, Meta off");
+    assertEquals((await storyEligibilityContext(fake({ story_emulator: false }))).emulator, false, "switched off");
+    assertEquals((await storyEligibilityContext(fake({ story_emulator: "true" }))).emulator, false, "only a real boolean");
+  })();
+  await env({ ...metaOff, PAYMENTS_STRIPE_MODE: "live", STRIPE_ALLOW_LIVE: "true" }, async () => {
+    assertEquals((await storyEligibilityContext(fake({ story_emulator: true }))).emulator, false, "live payments: never");
+  })();
+});
+
 // ── The basket (MESITA-3841) ───────────────────────────────────────────────
 
 Deno.test("parseBasket: the old voucher field is a basket of one; items need known keys, qty 1..5, one Welcome / Story, no key twice", () => {

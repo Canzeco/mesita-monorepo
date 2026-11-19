@@ -70,7 +70,9 @@ export function storyLine(s: StoryTicket, now = Date.now()): string {
       const left = storyLeft(s.bonus_at, now);
       return left
         ? `Don't delete your story until ${storyClock(s.bonus_at, zone, now)} · ${left}`
-        : "Checking your story now. Your bonus lands within 30 min.";
+        : s.wait_sec != null && s.wait_sec < 600
+          ? "Checking your story now. Your bonus lands in a moment."
+          : "Checking your story now. Your bonus lands within 30 min.";
     }
     case "released":
       return `${storyBonus(s)} is in your credit.`;
@@ -84,8 +86,13 @@ export function storyLine(s: StoryTicket, now = Date.now()): string {
  *  or no hint). One timer at a time: the screen schedules the next call only
  *  after the last one answered. */
 export function storyPollDelay(s: Pick<StoryTicket, "poll" | "state" | "deadline_at"> | null, startedMs: number, now: number): number | null {
-  if (!s || !s.poll || storyLate(s, now)) return null;
+  if (!s || !s.poll) return null;
+  // MESITA-4426: past the deadline one more look lets the server end the
+  // Story; an approved Story near its bonus (the server's hint) is asked
+  // every 5 s so a test Story's 30-second bonus shows.
+  if (s.state === "approved") return Math.max(1_000, s.poll.every_ms);
   if (s.state !== "waiting_post" && s.state !== "found") return null;
+  if (storyLate(s, now)) return Math.max(1_000, s.poll.every_ms);
   const every = now - startedMs >= s.poll.slow_after_ms ? s.poll.slow_every_ms : s.poll.every_ms;
   return Math.max(1_000, every);
 }

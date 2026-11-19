@@ -46,6 +46,9 @@ export type StoryRecord = {
   approved_at: string | null;
   recheck_at: string | null;
   recheck_tries: number;
+  /** The bonus wait this Story was given at approval (MESITA-4426); null
+   *  before approval and on Stories approved before the column. */
+  wait_sec: number | null;
   decided_at: string | null;
   void_reason: StoryVoidReason | null;
   bonus_cents: number;
@@ -53,7 +56,7 @@ export type StoryRecord = {
 };
 
 export const STORY_RECORD_COLUMNS =
-  "id, purchase_id, consumer_id, place_id, livemode, state, deadline_at, mention_id, first_bound_at, approved_at, recheck_at, recheck_tries, decided_at, void_reason, bonus_cents, created_at";
+  "id, purchase_id, consumer_id, place_id, livemode, state, deadline_at, mention_id, first_bound_at, approved_at, recheck_at, recheck_tries, wait_sec, decided_at, void_reason, bonus_cents, created_at";
 
 export function isOpenStory(s: Pick<StoryRecord, "state">): boolean {
   return OPEN_STORY_STATES.includes(s.state);
@@ -70,6 +73,18 @@ export function storyFreesSlot(s: Pick<StoryRecord, "state" | "void_reason" | "f
  *  waiter's answer: waiting_post or found, before the deadline. */
 export function storyNeedsPoll(s: Pick<StoryRecord, "state" | "deadline_at">, nowMs: number): boolean {
   return (s.state === "waiting_post" || s.state === "found") && Date.parse(s.deadline_at) > nowMs;
+}
+
+/** An approved Story near its re-check (MESITA-4426): from 2 minutes before
+ *  it until 10 minutes after, the screen keeps asking, so a test Story's
+ *  30-second bonus shows while the screen is open (check-story settles a
+ *  due test Story; a real one is the cron's). */
+export const APPROVED_POLL = { beforeMs: 2 * 60_000, afterMs: 10 * 60_000 } as const;
+
+export function storyApprovedPoll(s: Pick<StoryRecord, "state" | "recheck_at">, nowMs: number): boolean {
+  if (s.state !== "approved" || !s.recheck_at) return false;
+  const at = Date.parse(s.recheck_at);
+  return at - nowMs <= APPROVED_POLL.beforeMs && nowMs - at <= APPROVED_POLL.afterMs;
 }
 
 /** The screen's poll: every 5 s, every 15 s after 2 minutes, stopping at
@@ -124,6 +139,8 @@ export function storyView(
     approved_at: s.approved_at,
     /** "Checking · bonus at HH:MM": the re-check time while approved. */
     bonus_at: s.state === "approved" ? s.recheck_at : null,
+    /** The bonus wait this Story was given (MESITA-4426): "Keep it up 30 s". */
+    wait_sec: s.wait_sec,
     decided_at: s.decided_at,
     void_reason: s.void_reason,
     first_bound_at: s.first_bound_at,
@@ -143,7 +160,7 @@ export function storyView(
     test_mode: !s.livemode,
     /** Test mode: Tag the place, Simulate the waiter, Simulate deleting it. */
     emulator: x.emulator && !s.livemode && isOpenStory(s),
-    poll: storyNeedsPoll(s, x.nowMs) ? STORY_POLL : null,
+    poll: storyNeedsPoll(s, x.nowMs) || storyApprovedPoll(s, x.nowMs) ? STORY_POLL : null,
     server_time: new Date(x.nowMs).toISOString(),
   };
 }
