@@ -1,7 +1,9 @@
 // The Map and Catalog scores and their gates (MESITA-2327; one pool since
 // MESITA-2379; points only since Territory was retired, MESITA-2603; split
-// into the Map and the Catalog, MESITA-2909).
+// into the Map and the Catalog, MESITA-2909; one formula with recipe rows,
+// MESITA-4454).
 import { assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
+import type { Recipe } from "./pipeline-signals.ts";
 import {
   type AreaCandidate,
   type AreaContext,
@@ -12,13 +14,15 @@ import {
 } from "./area-score.ts";
 
 const ANCHOR = { lat: 19.43, lng: -99.13 };
-/** Popularity of a 4.0★ place with 100 reviews: (1 + 100 × 4)^0.33 ≈ 7.23,
- *  the cube root (MESITA-3083; ln before it, MESITA-2710). */
-const POP = Math.pow(401, 0.33);
+/** The test's Inorganic-shaped row: Popularity = (stars² × reviews)^0.5 =
+ *  stars × √reviews, and the plan counts once (PremierExp 1). */
+const RECIPE: Recipe = { halfKm: 4, distanceExp: 1, starsExp: 2, googleExp: 0.5, premierExp: 1 };
+/** Popularity of a 4.0★ place with 100 reviews: 4 × √100 = 40. */
+const POP = 40;
 const CTX: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: 8 },
   families: [],
-  halfKm: 4,
+  recipe: RECIPE,
 };
 const BOUNDS = { low: { lat: 19.4, lng: -99.2 }, high: { lat: 19.5, lng: -99.1 } };
 const NONE: AreaContext = { ...CTX, location: { kind: "none" } };
@@ -162,12 +166,16 @@ Deno.test("non-finite numbers never reach the sort", () => {
 });
 
 Deno.test("the Map: the radius gates, Proximity is not read, Popularity orders (MESITA-2909)", () => {
-  const map: AreaContext = { ...CTX, location: { kind: "point", anchor: ANCHOR, radiusKm: 3 }, halfKm: null };
+  const map: AreaContext = {
+    ...CTX,
+    location: { kind: "point", anchor: ANCHOR, radiusKm: 3 },
+    recipe: { ...RECIPE, halfKm: null, distanceExp: null },
+  };
   const near = cand({ id: "near", rating: 4.0, reviewCount: 30 });
   const far = cand({ id: "far", lat: ANCHOR.lat + 2.9 / 111.195, rating: 4.6, reviewCount: 1000 });
   const s = areaScore(far, map);
   assertEquals(s.signals.proximity, null);
-  assertAlmostEquals(s.final, Math.pow(4601, 0.33), 1e-9);
+  assertAlmostEquals(s.final, 4.6 * Math.sqrt(1000), 1e-9);
   // The far, popular place outranks the near, quiet one inside the circle.
   assertEquals(rankArea([near, far], (c) => c, map).map((r) => r.item.id), ["far", "near"]);
   // Past the circle it is gated out.
@@ -175,7 +183,7 @@ Deno.test("the Map: the radius gates, Proximity is not read, Popularity orders (
 });
 
 Deno.test("the Catalog: no radius gate, Proximity ½ at the half distance (MESITA-2909)", () => {
-  const catalog: AreaContext = { ...CTX, location: { kind: "point", anchor: ANCHOR, radiusKm: null }, halfKm: 4 };
+  const catalog: AreaContext = { ...CTX, location: { kind: "point", anchor: ANCHOR, radiusKm: null } };
   const mid = cand({ lat: ANCHOR.lat + 4 / 111.195, rating: 4.0, reviewCount: 100 });
   const s = areaScore(mid, catalog);
   assertAlmostEquals(s.signals.proximity!, 0.5, 1e-3);
@@ -187,14 +195,15 @@ Deno.test("the Catalog: no radius gate, Proximity ½ at the half distance (MESIT
   assertEquals(far.final > 0, true);
 });
 
-Deno.test("Popularity is (1 + reviews × stars)^root, never normalized, and the product is never clamped (MESITA-2710, MESITA-3083)", () => {
+Deno.test("Popularity is (stars^StarsExp × reviews)^GoogleExp, never normalized, and the product is never clamped (MESITA-2710, MESITA-4454)", () => {
   const big = areaScore(cand({ rating: 4.6, reviewCount: 1000 }), NONE);
-  assertAlmostEquals(big.signals.popularity!, Math.pow(4601, 0.33), 1e-12);
+  assertAlmostEquals(big.signals.popularity!, 4.6 * Math.sqrt(1000), 1e-9);
   assertEquals(big.signals.popularity! > 1, true);
   // The score is Popularity itself, no cap at 1.
-  assertAlmostEquals(big.final, Math.pow(4601, 0.33) * 1, 1e-9);
-  // No reviews: a factor of 1, never 0 (the place still ranks by distance and plan).
-  assertEquals(areaScore(cand({ reviewCount: 0 }), NONE).signals.popularity, 1);
+  assertAlmostEquals(big.final, 4.6 * Math.sqrt(1000), 1e-9);
+  // No reviews: 0, and the place ranks last (MESITA-4454; the old 1 + kept it at 1).
+  assertEquals(areaScore(cand({ reviewCount: 0 }), NONE).signals.popularity, 0);
+  assertEquals(areaScore(cand({ reviewCount: 0, premierTier: 2 }), NONE).final, 0);
   // More reviews at the same stars always rank higher; stars count too.
   const order = rankArea(
     [cand({ id: "few", reviewCount: 30, rating: 4.9 }), cand({ id: "many", reviewCount: 3000, rating: 4.2 })],
@@ -215,14 +224,13 @@ Deno.test("no Popularity floor on the Area: a low or unrated place is ranked, ne
   // A place with no Google numbers scores 0 and ranks after every scored
   // place, a Premier 5X tier included (0 × 5 is still 0, never NaN).
   const ranked = rankArea([unrated, thin, ok], (c) => c, CTX);
-  assertEquals(ranked.map((r) => r.item.id), ["thin", "ok", "unrated"]);
+  assertEquals(ranked.map((r) => r.item.id), ["ok", "thin", "unrated"]);
   assertEquals(ranked[2].area.final, 0);
 });
 
-Deno.test("Premier multiplies by its tier, every other place by 1 (MESITA-2925)", () => {
-  // One spot, so Popularity alone orders: (1 + 50 × 4)^0.33 ≈ 5.76, × 2 ≈
-  // 11.5, under (1 + 3000 × 4.5)^0.33 ≈ 23.1: at the cube root a ×2 plan is
-  // worth 8× the reviews, not 60× (MESITA-3083; under ln it won).
+Deno.test("Premier multiplies by premierFactor ^ PremierExp, every other place by 1 (MESITA-2925, MESITA-4454)", () => {
+  // One spot, so Popularity alone orders: 4 × √50 ≈ 28.3, × 2 ≈ 56.6, under
+  // 4.5 × √3000 ≈ 246.5.
   const paid = cand({ id: "paid", rating: 4, reviewCount: 50, premierTier: 1 });
   const loved = cand({ id: "loved", rating: 4.5, reviewCount: 3000, source: "google" });
   const plain = cand({ id: "plain", rating: 4, reviewCount: 50 });
@@ -232,7 +240,21 @@ Deno.test("Premier multiplies by its tier, every other place by 1 (MESITA-2925)"
   assertAlmostEquals(areaScore(paid, CTX).final, 2 * areaScore(plain, CTX).final, 1e-9);
   assertEquals(rankArea([loved, plain, paid], (c) => c, CTX).map((r) => r.item.id), ["loved", "paid", "plain"]);
   // No location: Popularity × s.
-  assertAlmostEquals(areaScore(paid, NONE).final, 2 * Math.pow(201, 0.33), 1e-9);
+  assertAlmostEquals(areaScore(paid, NONE).final, 2 * 4 * Math.sqrt(50), 1e-9);
+  // An Organic row (PremierExp 0): the plan never moves the score (C1).
+  const organic: AreaContext = { ...CTX, recipe: { ...RECIPE, premierExp: 0 } };
+  assertEquals(areaScore(paid, organic).selectedFactor, 2);
+  assertEquals(areaScore(paid, organic).premierBoost, 1);
+  assertEquals(areaScore(paid, organic).final, areaScore(plain, organic).final);
+});
+
+Deno.test("the Map's ties break by id alone; the Catalog's by distance, then id (MESITA-4454)", () => {
+  const near = cand({ id: "z-near", rating: 4, reviewCount: 100 });
+  const far = cand({ id: "a-far", rating: 4, reviewCount: 100, lat: ANCHOR.lat + 1 / 111.195 });
+  const map: AreaContext = { ...CTX, recipe: { ...RECIPE, halfKm: null, distanceExp: null }, ties: "id" };
+  assertEquals(rankArea([near, far], (c) => c, map).map((r) => r.item.id), ["a-far", "z-near"]);
+  const flat: AreaContext = { ...CTX, recipe: { ...RECIPE, halfKm: null, distanceExp: null } };
+  assertEquals(rankArea([near, far], (c) => c, flat).map((r) => r.item.id), ["z-near", "a-far"]);
 });
 
 // NO REACH (MESITA-3015, money: Premier is sold). The reach (MESITA-2920)
@@ -243,15 +265,19 @@ const KM = 1 / 111.195;
 const CATALOG: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: null },
   families: [],
-  halfKm: 1,
+  recipe: { ...RECIPE, halfKm: 1 },
 };
 const TIERS: Array<{ label: string; over: Partial<AreaCandidate>; s: number }> = [
   { label: "Premier 2X", over: { source: "mesita", premierTier: 1 }, s: 2 },
   { label: "Premier 5X", over: { source: "mesita", premierTier: 2 }, s: 5 },
 ];
 
-Deno.test("every surface keeps the full Premier factor at any distance (MESITA-3015)", () => {
-  const map: AreaContext = { ...CATALOG, location: { kind: "point", anchor: ANCHOR, radiusKm: 50 }, halfKm: null };
+Deno.test("an Inorganic row (PremierExp 1) keeps the full Premier factor at any distance, on every surface (MESITA-3015)", () => {
+  const map: AreaContext = {
+    ...CATALOG,
+    location: { kind: "point", anchor: ANCHOR, radiusKm: 50 },
+    recipe: { ...CATALOG.recipe, halfKm: null, distanceExp: null },
+  };
   const chat: AreaContext = { ...CATALOG, location: { kind: "point", anchor: ANCHOR, radiusKm: 50 } };
   const none: AreaContext = { ...CATALOG, location: { kind: "none" } };
   for (const { label, over, s } of TIERS) {

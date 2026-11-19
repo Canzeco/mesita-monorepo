@@ -1,44 +1,29 @@
-// The gates and the two signals of the Map and Catalog pipelines (Area,
+// The gates and the score of the Map and Catalog pipelines (Area,
 // MESITA-2327, split in two by MESITA-2909; one pool since MESITA-2379;
-// points only since Territory was retired, MESITA-2500, MESITA-2603; the
-// Premier factor since MESITA-2925, Selected's multiplier before it).
+// points only since Territory was retired, MESITA-2500, MESITA-2603).
 //
-//   Map      final = Popularity × s           inside the screen radius
-//   Catalog  final = Proximity × Popularity × s   no radius, the whole catalog
-//   no location (either)  final = Popularity × s
+// DISCOVERY RANKING v2 (MESITA-4454): one formula on every screen, the
+// numbers from a recipe row (`params.recipes`, discovery-config.ts):
 //
-// THE SPLIT (Pato, MESITA-2909): on the Map distance is a SCREEN, never a
-// sort ("como screening dentro del radio, pero no la metería ya para el
-// sorting"): the Radius gate decides who is in and Popularity alone orders
-// them. The Catalog has no radius: every Mesita place is ranked, and
-// Proximity, 1 ÷ (1 + (d ÷ D)^e), D the operator's half distance and e the
-// operator's exponent (MESITA-3015, MESITA-3083), pulls nearer places up
-// without ever cutting a far one. Popularity is (1 + reviews × stars)^root,
-// the root the operator's (0.33, the cube root, MESITA-3083; ln before it,
-// MESITA-2710), unbounded, and the product is never clamped or normalized
-// (MESITA-2710). s is the Premier factor: a Premier place's paid tier,
-// ×2 · ×5 (`places.boost_tier`, MESITA-2789; 10X retired by MESITA-3041),
-// and 1 for every other place, at any distance. Selected and its operator
-// boost died with MESITA-2925. The two Area weights stay retired
-// (MESITA-2722): the only exponents are the two knobs above.
+//   final = Proximity × (stars ^ StarsExp × reviews) ^ GoogleExp
+//           × premierFactor ^ PremierExp                 (pipeline-signals.ts)
 //
-// NO REACH (MESITA-3015): the reach (s only within 2 × h, MESITA-2920)
-// existed because the log curve kept a far place alive. The reciprocal
-// bounds Premier by itself: at e = 1, past D the score is D ÷ d, so a
-// Premier 5X beats a place up to ~5× closer (125× the reviews at the cube
-// root) and a place in another city (100× the distance) never tops a
-// guest's Home.
+// The Map's rows have no Proximity (distance is a SCREEN there, MESITA-2909:
+// the Radius gate decides who is in, the score orders them); with no
+// location Proximity abstains at 1. premierFactor is the paid tier, ×2 · ×5
+// (`places.boost_tier`), and an Organic row's PremierExp is 0, so a plan
+// never moves the organic list; the Inorganic (ad) lane ranks Premier places
+// with its own row (area-pipeline.ts merges the two). The product is never
+// clamped or normalized (MESITA-2710). A place with 0 reviews or no stars
+// scores 0 and ranks last.
 //
-// Gates are binary eligibility (0 or 1) and stay separate from the
-// continuous signals, so diagnostics can say WHY a place is out (a gate)
-// apart from why it is low (a signal). A place a gate closes is dropped, not
-// ranked at 0. Gates: Family (every location) and Radius (a point with a
-// radius: the Map, and Chat's read). The Popularity floor left the Area in
-// MESITA-3086 (Pato: "Minimum popularity must go to the Name Search"): a
-// place with no Google numbers scores 0 and sorts last, never dropped. Ties
-// break on distance (a point only), then id.
+// Gates are binary eligibility (0 or 1) and stay separate from the score, so
+// diagnostics can say WHY a place is out (a gate) apart from why it is low.
+// A place a gate closes is dropped, not ranked at 0. Gates: Family (every
+// location) and Radius (a point with a radius: the Map, and Chat's read).
+// Ties break on distance then id (Catalog, Chat) or on id alone (the Map).
 
-import { proximity, rootPopularity } from "./pipeline-signals.ts";
+import { googlePopularity, type Recipe, recipeScore } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
 import { PREMIER_FACTOR } from "./boost.ts";
 
@@ -65,21 +50,12 @@ export type AreaContext = {
   location: AreaLocation;
   /** Requested families; empty = no Family gate (every family passes). */
   families: readonly string[];
-  /** Proximity's half distance D (km, MESITA-3015): the operator's
-   *  `params.proximity.halfKm`. null = no Proximity: the Map ranks by
-   *  Popularity alone. */
-  halfKm: number | null;
-  /** Proximity's exponent e (MESITA-3083): the operator's
-   *  `params.proximity.exponent`; absent = 1, the plain reciprocal. */
-  exponent?: number;
-  /** Popularity's root (MESITA-3083): `map.popularityRoot` on the Map,
-   *  `params.popularity.root` on the Catalog and Chat (MESITA-3086); absent
-   *  = 0.33, the cube root. */
-  popularityRoot?: number;
-  /** The stars weight k (MESITA-4153): Popularity × (stars ÷ 5)^k on the
-   *  Catalog and Chat (`params.popularity.starsPower`); absent or 0 = none,
-   *  the Map's case. */
-  starsPower?: number;
+  /** The recipe row the score reads (MESITA-4454, `recipeFor`). A null
+   *  `halfKm` is no Proximity: the Map's rows. */
+  recipe: Recipe;
+  /** Tie-break after the score: distance then id (the default: Catalog,
+   *  Chat), or id alone (the Map, MESITA-4454). */
+  ties?: "distance" | "id";
 };
 
 /** One candidate, normalized from whichever source produced it. */
@@ -158,17 +134,12 @@ export function premierFactor(c: Pick<AreaCandidate, "source" | "premierTier">):
   return tier === 2 ? PREMIER_FACTOR[2] : tier === 1 ? PREMIER_FACTOR[1] : 1;
 }
 
-/** Popularity, or null when the place has no rating or no review count. */
-function popularityOrNull(c: AreaCandidate, root?: number, starsPower?: number): number | null {
+/** Popularity, or null (n/a) when the place has no rating or no review
+ *  count; 0 reviews is 0 (MESITA-4454). */
+function popularityOrNull(c: AreaCandidate, recipe: Recipe): number | null {
   const ok = (v: unknown) => typeof v === "number" && Number.isFinite(v);
   if (!ok(c.rating) || !ok(c.reviewCount)) return null;
-  return rootPopularity(c, root, starsPower ?? 0);
-}
-
-/** The score without Proximity: Popularity × the Premier factor. The
- *  whole score with no location. */
-export function popularPart(c: AreaCandidate, root?: number, starsPower?: number): number {
-  return factor(popularityOrNull(c, root, starsPower) ?? 0) * premierFactor(c);
+  return googlePopularity(c, recipe.starsExp, recipe.googleExp);
 }
 
 /** One candidate's breakdown — the wire's `area` object (MESITA-2379).
@@ -186,12 +157,14 @@ export type AreaDiagnostics = {
   };
   signals: { proximity: number | null; popularity: number | null };
   source: AreaSource;
-  /** The factor `final` carries: the Premier factor (MESITA-2925), 1 for
-   *  a place that is not Premier, at any distance (the reach went with
-   *  MESITA-3015). The wire key predates Premier and is kept so the
+  /** premierFactor, the raw plan value (DX-e): 2 or 5 for a Premier place,
+   *  1 for every other. The wire key predates Premier and is kept so the
    *  score tags read on. */
   selectedFactor: number;
-  /** Popularity × selectedFactor, × Proximity on the Catalog. */
+  /** premierFactor ^ PremierExp, the scored value (DX-e): 1 on every
+   *  Organic row (MESITA-4454). */
+  premierBoost: number;
+  /** Proximity (1 when n/a) × Popularity × premierBoost. */
   final: number;
   formula: "point" | "none";
 };
@@ -200,7 +173,7 @@ export type AreaScore = AreaDiagnostics & { distanceKm: number | null };
 
 export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const loc = ctx.location;
-  const pop = popularityOrNull(c, ctx.popularityRoot, ctx.starsPower);
+  const pop = popularityOrNull(c, ctx.recipe);
   let km: number | null = null;
   if (loc.kind === "point" && typeof c.lat === "number" && typeof c.lng === "number") {
     const d = haversineKm(loc.anchor.lat, loc.anchor.lng, c.lat, c.lng);
@@ -210,14 +183,12 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const radius = loc.kind === "point" && loc.radiusKm !== null
     ? (km !== null && km <= loc.radiusKm ? 1 : 0)
     : null;
-  // The Map passes no half distance: distance screens, never sorts
-  // (MESITA-2909).
-  const prox = loc.kind === "point" && ctx.halfKm !== null
-    ? proximity(c, loc.anchor, ctx.halfKm, ctx.exponent)
-    : null;
   const sel = premierFactor(c);
-  const popPart = popularPart(c, ctx.popularityRoot, ctx.starsPower);
-  const final = prox === null ? popPart : factor(prox) * popPart;
+  // The Map's rows carry no half distance: distance screens, never sorts
+  // (MESITA-2909). A place that cannot be measured from a point (no
+  // coordinates) has Proximity 0.
+  const score = recipeScore(c, km, loc.kind === "point", sel, ctx.recipe);
+  const final = factor(score.proximity ?? 1) * factor(score.popularity) * score.premierBoost;
   const open = family === 1 && radius !== 0;
   return {
     familyKeys: knownFamilies(c.familyKeys),
@@ -228,10 +199,11 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
       ready: c.ready ?? null,
       reviews: c.reviews ?? null,
     },
-    signals: { proximity: prox, popularity: pop },
+    signals: { proximity: score.proximity, popularity: pop },
     source: c.source,
     selectedFactor: sel,
-    final: open ? final : 0,
+    premierBoost: score.premierBoost,
+    final: open && Number.isFinite(final) ? final : 0,
     formula: loc.kind,
     distanceKm: km,
   };
@@ -244,7 +216,7 @@ export function areaGatesOpen(a: AreaDiagnostics): boolean {
 
 /**
  * Rank candidates: gate, score, then sort by final score, distance (a point
- * location) and id. Returns each eligible candidate with its breakdown, best
+ * location, unless `ties` is "id") and id. Returns each eligible candidate with its breakdown, best
  * first.
  */
 export function rankArea<T>(
@@ -252,14 +224,15 @@ export function rankArea<T>(
   toCandidate: (item: T) => AreaCandidate,
   ctx: AreaContext,
 ): Array<{ item: T; area: AreaScore }> {
+  const byId = ctx.ties === "id";
   return items
     .map((item) => ({ item, candidate: toCandidate(item) }))
     .map(({ item, candidate }) => ({ item, id: candidate.id, area: areaScore(candidate, ctx) }))
     .filter(({ area }) => areaGatesOpen(area))
     .sort((a, b) =>
       b.area.final - a.area.final ||
-      (a.area.distanceKm ?? Infinity) - (b.area.distanceKm ?? Infinity) ||
-      a.id.localeCompare(b.id)
+      (byId ? 0 : (a.area.distanceKm ?? Infinity) - (b.area.distanceKm ?? Infinity)) ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
     )
     .map(({ item, area }) => ({ item, area }));
 }

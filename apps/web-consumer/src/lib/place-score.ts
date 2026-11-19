@@ -9,6 +9,9 @@
 // and hands `area` to the place as `score`. No location, no answer, or a
 // card the catalog does not show (gated, gone): no score, no box. Nothing
 // is computed in the browser.
+// THE POPULAR ORGANIC ROW (MESITA-4454, M-f): the place screen asks
+// `rankMode: "popular"` out loud, never the EF's default, and sends no
+// `adIds`, so its Premier factor is the organic one (premierBoost 1).
 
 import { useEffect, useState } from "react";
 import type { PlaceDetail, PlaceScore } from "@mesita/place-profile";
@@ -30,7 +33,7 @@ export function usePlaceScore<T extends Pick<PlaceDetail, "id">>(place: T): T & 
     if (!at) return;
     let live = true;
     const [la, ln] = at.split(",").map(Number);
-    apiFillAreaPool(supabase, { lat: la, lng: ln }, [], [place.id])
+    apiFillAreaPool(supabase, { lat: la, lng: ln }, [], [place.id], { rankMode: "popular" })
       .then((rows) => {
         if (!live) return;
         const a = rows.find((r) => r.id === place.id)?.area;
@@ -42,7 +45,7 @@ export function usePlaceScore<T extends Pick<PlaceDetail, "id">>(place: T): T & 
                 proximity: a.signals.proximity,
                 distance_km: a.distanceKm ?? null,
                 popularity: a.signals.popularity,
-                premier: a.selectedFactor ?? 1,
+                premier: a.premierBoost ?? a.selectedFactor ?? 1,
                 final: a.final,
               }
             : null,

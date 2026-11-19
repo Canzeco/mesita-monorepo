@@ -31,25 +31,34 @@ import dynamic from "next/dynamic";
 // pages it (20 tiles at a time, more on scroll). A family chip ASKS ITS OWN
 // QUESTION (MESITA-2438): it sends the family's key, so Google gets that
 // family's full type list and the server lists its primary places before
-// its secondary ones. Each location × row's pool is kept ten minutes
-// (lib/area-pool-cache.ts), so going back to a row spends nothing. Above
+// its secondary ones. Each question's list is kept for the tab session
+// (lib/catalog-modes.ts), so going back to a row spends nothing. Above
 // each tile, TEMPORARILY, the Search map's score tag: the sources that found
 // it, proximity · popularity · final (MESITA-2708). `useUserLocation` asks
 // for location on mount. No search bar.
 // The request sends no predicates, so a saved scope can never keep cutting
 // this list.
+//
+// THREE QUESTIONS, THREE LISTS (MESITA-4454, Discovery ranking v2): Nearby
+// (chip `near`), Popular (chip `all`) and each family chip send their own
+// `rankMode` and keep their own ranked answer for the tab session
+// (lib/catalog-modes.ts): a seed per mode, held until the guest moves 300 m,
+// so going back to a mode shows the same order, instantly, at the scroll it
+// was left at. A row wears "Ad" only when the rank put it in an ad slot.
 
 import {
+  useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { Compass, Heart, LayoutGrid, Store, Users, X } from "lucide-react";
+import { Compass, Heart, LayoutGrid, MapPin, Store, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   apiFillAreaPool,
   apiListAreaPool,
@@ -59,17 +68,25 @@ import {
 } from "@/lib/api/places";
 import { EFError } from "@/lib/api/_invoke";
 import {
-  areaPoolKey,
-  dropAreaPool,
-  readAreaPool,
-  writeAreaPool,
-} from "@/lib/area-pool-cache";
+  acceptRank,
+  dropModePool,
+  modeKey,
+  modePoolFor,
+  rankModeForChip,
+  readModePool,
+  seedFor,
+  subscribeModePools,
+  updateModePool,
+} from "@/lib/catalog-modes";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useServerProfile, useViewer } from "@/lib/identity-context";
 import { trackEvent } from "@/lib/analytics/track";
 import {
+  useLocateUser,
   useUserLocation,
+  useUserLocationError,
+  useUserLocationLocating,
   useUserLocationSettled,
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
@@ -180,19 +197,20 @@ function isSpecial(key: string): boolean {
  *  It replaced Nearby and Popular (MESITA-2426), which were one pool in two
  *  orders. */
 export const ALL_CHIP = "all";
-/** What the guest reads for `all` (MESITA-2534). */
-export const TOP_LABEL = "Top";
+/** What the guest reads for `all` (MESITA-2534): Popular since MESITA-4454
+ *  (Names, Pato). The key stays `all`: a rename resets stored choices. */
+export const TOP_LABEL = "Popular";
 
 /** The guest's hearted places (MESITA-3718): read from the local saved
  *  store, never the pool. */
 export const SAVED_CHIP = "saved";
 export const SAVED_LABEL = "Saved";
 
-/** NEAR (Pato, 2026-11-18, MESITA-4423: "build (Near and Top) and then the
- *  categories. for the moment near and top must have the same feed"): every
- *  family, the same pool and order as Top until Pato tunes its own ranking. */
+/** NEAR (Pato, 2026-11-18, MESITA-4423): every family. Its own question
+ *  since MESITA-4454 (`rankMode: "nearby"`), read as Nearby; the key stays
+ *  `near`. It shared Top's pool and order before. */
 export const NEAR_CHIP = "near";
-export const NEAR_LABEL = "Near";
+export const NEAR_LABEL = "Nearby";
 
 /** Top and Near are every family; any other row is one family. */
 export function isEveryFamily(chip: string): boolean {
@@ -231,7 +249,7 @@ export function placesChips(): { key: string; label: string; emoji: string }[] {
     // The word is Top, the key stays `all` (Pato, MESITA-2534: "all is the
     // wrong word … one might thing that is the sum aof all the other
     // subests, but not"): it is the best-ranked pool, not every place.
-    // Near before Top (MESITA-4423); the same feed as Top for now.
+    // Nearby before Popular (MESITA-4423); its own list since MESITA-4454.
     { key: NEAR_CHIP, label: NEAR_LABEL, emoji: "📍" },
     { key: ALL_CHIP, label: TOP_LABEL, emoji: "⭐" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
@@ -274,9 +292,29 @@ export function savedPlaceList(
 }
 
 /* NO LOCATION IS NOT A DEAD END (Pato, MESITA-2472): with no fix and no
- * saved location, every row ranks around the city's centre, the Search
- * map's own fallback. The header's location box names the city
- * (MESITA-2587: no bar above the tiles says the location is off). */
+ * saved location, Popular and every family row still rank, Proximity
+ * abstaining (MESITA-4454: no point is sent; it was the city's centre
+ * before). Nearby asks for the location instead (H5). The header's location
+ * box names the city (MESITA-2587: no bar above the tiles says the location
+ * is off). */
+
+/** The Nearby row's state with no point (MESITA-4454, H5): the browser is
+ *  still answering (a skeleton), the location was never given (the prompt
+ *  and its button), or it is blocked or unavailable (one line and "See
+ *  Popular"). */
+export function nearbyWithoutPoint(
+  settled: boolean,
+  locating: boolean,
+  error: string | null,
+): "loading" | "prompt" | "off" {
+  if (!settled || locating) return "loading";
+  return error === "denied" || error === "unavailable" || error === "unsupported"
+    ? "off"
+    : "prompt";
+}
+
+/** Each chip's scroll offset, for the tab session (MESITA-4454, H3). */
+const chipScroll = new Map<string, number>();
 
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
@@ -285,26 +323,25 @@ export function CatalogRails() {
   // on its photo (MESITA-4453).
   const tables = useLiveReservations();
   const coords = useUserLocation();
+  const locating = useUserLocationLocating();
+  const locationError = useUserLocationError();
+  const locate = useLocateUser();
   const openGooglePlace = useOpenGooglePlace();
-  const [pool, setPool] = useState<AreaPool | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  // A failed rank, for the question it failed on: another question (or Try
+  // again) hides it.
+  const [fetchError, setFetchError] = useState<{ tag: string; message: string } | null>(null);
   // Try again re-runs the fetch for the same request key (MESITA-2921): the
   // old link pointed at the page already open, so nothing refetched.
   const [retry, setRetry] = useState(0);
   // null = the guest's current location; a saved location = search from it.
   const origin = useActiveLocation();
   const locationSettled = useUserLocationSettled();
-  // No fix and no saved location, once the browser has answered: the city's
-  // centre (MESITA-2472). Before it answers: nothing yet (a skeleton).
-  const onCityFallback = origin === null && coords === null && locationSettled;
-  const base = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);
   // NO RADIUS (MESITA-2909): the Catalog ranks every Mesita place from
-  // this point; a saved pin's radius no longer cuts anything.
-  const from = base;
+  // this point; a saved pin's radius no longer cuts anything. No point at
+  // all: Proximity abstains (MESITA-4454; the city's centre before).
+  const here = origin ?? coords ?? null;
+  const hereKey = here ? `${here.lat},${here.lng}` : "none";
   const waitingForFix = origin === null && coords === null && !locationSettled;
-  // One ranking for every chip, the Map's (MESITA-2516): the question is
-  // the place and the family. Saved and the Social tab read no pool, so they
-  // keep the last pool chip's family and never spend a request.
   // The tab is the address (MESITA-2597); this component lives in Home's
   // layout, so the chip, the pool and the scroll survive a tab switch.
   const tab = homeTabOf(usePathname() ?? CONSUMER_ROUTES.home);
@@ -319,41 +356,56 @@ export function CatalogRails() {
     setLastRowAsk(rowAsk);
     if (rowAsk === SAVED_CHIP) setChip(SAVED_CHIP);
   }
-  // The family the pool was asked for (MESITA-2438): a family row's own,
-  // none for All.
-  const [families, setFamilies] = useState<string[]>([]);
+  // The last chip that reads a pool (MESITA-2438): Saved and the Social tab
+  // read none, so they keep it and never spend a request.
+  const [poolChip, setPoolChip] = useState<string>(ALL_CHIP);
+  const families = useMemo(() => chipFamilies(poolChip), [poolChip]);
+  // The question (MESITA-4454): Nearby, Popular or this family.
+  const rankMode = rankModeForChip(poolChip);
+  const mode = modeKey(rankMode, families);
+  // NEVER NEARBY WITHOUT A POINT (H5): the EF would refuse it.
+  const nearbyNoPoint = rankMode === "nearby" && here === null;
   // The menu: every family at once, dropped over the rows (MESITA-4410).
   const [menuOpen, setMenuOpen] = useState(false);
   // THE BAND NEVER HIDES (Pato, 2026-11-18, MESITA-4429: "Places and
   // social are fixed, never move nor hide, and the families are fixed too"):
   // MESITA-4428's fold-on-scroll is gone.
   const stripRef = useRef<HTMLElement | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
   // THE POOL IS THIS GUEST'S (autoplan eng E1, MESITA-4207): its offers are
   // narrowed per guest, so a pool kept across a sign-out or sign-in would
   // show another guest's chips; the guest is part of the key.
   const guest = useServerProfile()?.id ?? "anon";
-  const requestKey = `${guest}|${areaPoolKey(from)}|${
-    families.length > 0 ? families.join(",") : ALL_CHIP
-  }`;
+  const requestKey = `${guest}|${mode}`;
+  const errorTag = `${requestKey}#${retry}`;
+  // The mode's kept answer, painted the moment its chip is tapped (H3).
+  const pool = useSyncExternalStore(
+    subscribeModePools,
+    () => readModePool(guest, mode),
+    () => null,
+  );
 
   useEffect(() => {
     // Until the browser answers there is no point to rank from yet.
     if (waitingForFix) return;
+    if (nearbyNoPoint) return;
+    // The mode's seed from here: the same while the guest stays within
+    // 300 m of where it was made (C2, M-a).
+    const rec = seedFor(mode, here);
+    // A pool ranked with this seed and point paints from the store: no request.
+    if (modePoolFor(guest, mode, rec)) return;
     let cancelled = false;
-    // A pool kept from the last ten minutes paints at once: no request.
-    const kept = readAreaPool(requestKey);
-    const raf = requestAnimationFrame(() => {
-      if (cancelled) return;
-      setPool(kept);
-      setFetchError(null);
-    });
-    const fetchPool = async () => {
+    const tag = errorTag;
+    void (async () => {
       try {
-        const next = await apiListAreaPool(supabase, from, families);
+        const next = await apiListAreaPool(supabase, here, families, {
+          rankMode,
+          shuffleSeed: rec.seed,
+          seedPoint: rec.point,
+        });
         if (cancelled) return;
-        writeAreaPool(requestKey, next);
-        setPool(next);
-        setFetchError(null);
+        // A new config drops every mode's list and seed (DX-b).
+        acceptRank(guest, mode, rec, next, next.updatedAt);
       } catch (err) {
         if (cancelled) return;
         // The EF's code and requestId join this failure to its
@@ -362,24 +414,18 @@ export function CatalogRails() {
         console.warn("[catalog] load failed", {
           code: ef?.code ?? null,
           requestId: ef?.body?.requestId ?? null,
+          rankMode,
         });
-        setFetchError(errMsg(err, "Couldn't load the catalog"));
-        setPool({
-          kind: "none",
-          places: [],
-          order: [],
-          asked: 0,
-          rankedFrom: null,
-        });
+        setFetchError({ tag, message: errMsg(err, "Couldn't load the catalog") });
       }
-    };
-    if (!kept) void fetchPool();
+    })();
     return () => {
       cancelled = true;
-      cancelAnimationFrame(raf);
     };
+    // `here` is read through hereKey; `families` and `rankMode` through mode.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, requestKey, retry]);
+  }, [supabase, guest, mode, hereKey, waitingForFix, retry]);
+  const failed = fetchError?.tag === errorTag ? fetchError.message : null;
 
   // A GOOGLE CARD THE GUEST OPENED, SAVED OR SHARED IS A MESITA CARD once
   // the create lands (Pato, MESITA-2683: "the profile has been created but i
@@ -396,7 +442,8 @@ export function CatalogRails() {
   // the images"): the pool holds every ranked id (`order`) and the cards
   // filled so far; the sentinel under the last tile asks for the next
   // `pageSize` ids' cards, scored from the point the order was ranked at,
-  // until `asked` reaches the end. One fill at a time per question; a fill
+  // until `asked` reaches the end, with the rank's mode and the ad-slot ids
+  // among them (MESITA-4454, M-c). One fill at a time per question; a fill
   // that lands for an older question, or after `asked` moved, is dropped, so
   // no slice is skipped. A failed fill retries after 1 s, 2 s and 4 s, then
   // the next time the sentinel scrolls into view; `fill_invalid` never
@@ -430,6 +477,10 @@ export function CatalogRails() {
     const start = asked;
     const ids = pool.order.slice(start, start + (pool.pageSize ?? PLACES_PAGE));
     const rankedFrom = pool.rankedFrom;
+    const askedOrder = pool.order;
+    const adSet = new Set(pool.adIds);
+    const adIds = ids.filter((id) => adSet.has(id));
+    const fillMode = pool.rankMode ?? rankMode;
     const tag = `${key}@${start}`;
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -438,24 +489,25 @@ export function CatalogRails() {
         if (!entries.some((e) => e.isIntersecting)) return;
         if (filling.current === tag || invalidAt.current === tag) return;
         filling.current = tag;
-        void apiFillAreaPool(supabase, rankedFrom, families, ids)
+        void apiFillAreaPool(supabase, rankedFrom, families, ids, {
+          rankMode: fillMode,
+          adIds,
+        })
           .then((filled) => {
             if (key !== liveKey.current) return;
             fails.current = 0;
             emptyRun.current = filled.length === 0 ? emptyRun.current + 1 : 0;
             if (emptyRun.current >= 2) {
               emptyRun.current = 0;
-              dropAreaPool(key);
+              dropModePool(guest, mode);
               setRetry((n) => n + 1);
               return;
             }
-            setPool((cur) => {
-              if (!cur || key !== liveKey.current || cur.asked !== start)
-                return cur;
-              const merged = mergeFilledPlaces(cur, filled, start + ids.length);
-              writeAreaPool(key, merged);
-              return merged;
-            });
+            updateModePool(guest, mode, (cur) =>
+              key !== liveKey.current || cur.order !== askedOrder || cur.asked !== start
+                ? cur
+                : mergeFilledPlaces(cur, filled, start + ids.length),
+            );
           })
           .catch((err) => {
             // The EF's code and requestId join this to its log line.
@@ -586,10 +638,25 @@ export function CatalogRails() {
     if (chip === key) return;
     const c = chips.find((x) => x.key === key);
     if (c) trackEvent(supabase, "home_mode_view", { mode: c.label });
+    // EACH ROW KEEPS ITS PLACE (MESITA-4454, H3): the offset it was left at
+    // comes back with it.
+    if (scrollerRef.current) chipScroll.set(chip, scrollerRef.current.scrollTop);
     setChip(key);
-    // Saved reads no pool: the last pool family stays asked.
-    if (key !== SAVED_CHIP) setFamilies(chipFamilies(key));
+    // Saved reads no pool: the last pool chip stays asked.
+    if (key !== SAVED_CHIP) setPoolChip(key);
   };
+  // A row's offset returns with it; a row seen for the first time starts
+  // at the top. Only the DOM is touched, never state.
+  useLayoutEffect(() => {
+    if (tab !== "places" || !scrollerRef.current) return;
+    scrollerRef.current.scrollTop = chipScroll.get(chip) ?? 0;
+  }, [chip, tab]);
+  const seePopular = useCallback(() => {
+    if (scrollerRef.current) chipScroll.set(chip, scrollerRef.current.scrollTop);
+    trackEvent(supabase, "home_mode_view", { mode: TOP_LABEL });
+    setChip(ALL_CHIP);
+    setPoolChip(ALL_CHIP);
+  }, [chip, supabase]);
   const pill = (c: { key: string; label: string; emoji: string }, inMenu: boolean) => {
     const on = chip === c.key;
     return (
@@ -732,6 +799,7 @@ export function CatalogRails() {
         {/* ISOLATE: the rows' own z-10 (the offer and Save · Share over the
             card's stretched link, MESITA-3797) stays inside this pane. */}
         <div
+          ref={scrollerRef}
           className="bg-card scrollbar-thin-dark isolate flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
           data-home-scroller
         >
@@ -743,13 +811,22 @@ export function CatalogRails() {
 
   // PLACES' ROWS (MESITA-3662, Places since MESITA-3789): the ranked
   // places, one row each, drawn as PlaceRowCard.
-  const rows = (list: readonly Place[], label: string, paged: boolean) => (
+  // A row is an ad only in an ad slot (MESITA-4454, H4): its id is in the
+  // rank's `adIds`. Saved rows (no rank) never are.
+  const rows = (
+    list: readonly Place[],
+    label: string,
+    paged: boolean,
+    ranked: AreaPool | null = null,
+  ) => (
     <div>
       <ul role="list" aria-label={label} className={ROW_LIST}>
         {list.map((place, i) => (
           <PlaceRowCard
             key={place.id}
             place={withUserDistance(place, coords)}
+            ad={ranked ? ranked.adIds.includes(place.id) : false}
+            rank={ranked ? { pre: ranked.preShuffle[place.id] ?? null, shown: i + 1 } : null}
             saved={cards.isSaved(place)}
             table={tables.get(place.id) ?? null}
             onToggle={() => cards.toggle(place, i + 1)}
@@ -801,7 +878,31 @@ export function CatalogRails() {
   // drew one bare square before, so it grew to three, then to tiles.
   if (waitingForFix) return shell(waiting);
 
-  if (fetchError) {
+  // NEARBY WITH NO POINT (MESITA-4454, H5): never a request. A fix that
+  // lands while the guest is on another chip is read the next time Nearby
+  // opens.
+  if (nearbyNoPoint) {
+    const state = nearbyWithoutPoint(locationSettled, locating, locationError);
+    if (state === "loading") return shell(waiting);
+    return shell(
+      state === "prompt" ? (
+        <EmptyState
+          icon={MapPin}
+          title="Places near you"
+          description="Share your location to see what's nearby."
+          action={{ label: "Use my location", onClick: locate }}
+        />
+      ) : (
+        <EmptyState
+          icon={MapPin}
+          title="Nearby needs your location, and it isn't shared."
+          action={{ label: "See Popular", onClick: seePopular }}
+        />
+      ),
+    );
+  }
+
+  if (failed) {
     return shell(
       <EmptyState
         icon={Compass}
@@ -831,5 +932,5 @@ export function CatalogRails() {
     />
   );
 
-  return shell(shown.length === 0 ? empty : tiles(shown, label, true));
+  return shell(shown.length === 0 ? empty : tiles(shown, label, true, pool));
 }

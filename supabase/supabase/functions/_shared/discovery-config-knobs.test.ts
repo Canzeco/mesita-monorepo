@@ -2,11 +2,17 @@
 // must not leak into the new one.
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  DEFAULT_MIX,
+  DEFAULT_RECIPES,
   normalizeMapConfig,
   normalizeDeepConfig,
   normalizeDiscoveryConfig,
   normalizeNameConfig,
+  normalizeSignalParams,
 } from "./discovery-config.ts";
+
+/** The typed params with the v2 keys at their defaults (MESITA-4454). */
+const v2 = <T extends object>(o: T) => ({ ...o, recipes: DEFAULT_RECIPES, mix: DEFAULT_MIX });
 
 Deno.test("the Map's reload throttle defaults to 1.5 s, bounded like the client's 0.5..10 (MESITA-2444)", () => {
   assertEquals(normalizeMapConfig({}).reloadIdleSec, 1.5);
@@ -72,12 +78,12 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
     params: { proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 }, popularity: { confidence: 60 } },
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
-  assertEquals(cfg.params, { proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } });
+  assertEquals(cfg.params, v2({ proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } }));
   assertEquals("catalog" in cfg, false);
 });
 
-Deno.test("params clamp; the reach, the divisor, Selected and the weights table drop, the half distance arrives (MESITA-2687, MESITA-2703, MESITA-2909)", () => {
-  const cfg = normalizeDiscoveryConfig({
+Deno.test("params clamp; the typed rebuild drops the reach, the divisor, Selected and the weights table, the half distance arrives (MESITA-2687, MESITA-2703, MESITA-2909)", () => {
+  const raw = {
     params: {
       proximity: { reachKm: 7, halfKm: 0.01, radiusDivisor: 3 },
       selected: { otherFactor: 0.3 },
@@ -85,13 +91,17 @@ Deno.test("params clamp; the reach, the divisor, Selected and the weights table 
       modes: { nearby: { proximity: 99, popularity: -4 }, popular: { popularity: 1.234 } },
       balance: { proximity: 7 },
     },
-  });
-  assertEquals(cfg.params, { proximity: { halfKm: 0.1, exponent: 1 }, popularity: { root: 0.1, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } });
+  };
+  assertEquals(normalizeSignalParams(raw.params), v2({ proximity: { halfKm: 0.1, exponent: 1 }, popularity: { root: 0.1, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } }));
+  // The blob keeps a key no build reads until a migration deletes it (H-2).
+  const cfg = normalizeDiscoveryConfig(raw);
+  assertEquals((cfg.params as unknown as Record<string, unknown>).selected, { otherFactor: 0.3 });
+  assertEquals(cfg.params.proximity, { halfKm: 0.1, exponent: 1 });
   // The exponent and the root clamp at their own decimals (MESITA-3083); a
   // stored `halfReviews` drops.
   assertEquals(
     normalizeDiscoveryConfig({ params: { proximity: { exponent: 9 }, popularity: { root: 0.3333, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } } }).params,
-    { proximity: { halfKm: 1, exponent: 5 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } },
+    v2({ proximity: { halfKm: 1, exponent: 5 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } }),
   );
   assertEquals(normalizeDiscoveryConfig({ params: { proximity: { exponent: 0.04 } } }).params.proximity.exponent, 0.5);
   // One decimal, clamped to 100; a stored row with only the retired divisor
@@ -101,7 +111,7 @@ Deno.test("params clamp; the reach, the divisor, Selected and the weights table 
   assertEquals(normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 1 } } }).params.proximity, { halfKm: 1, exponent: 1 });
   // Most pins 1..200 default 50; the Catalog page size 5..100 default 20,
   // and the retired cut `catalogPlacesShown` drops (MESITA-2909).
-  const m = normalizeDiscoveryConfig({ map: { placesShown: 33, catalogPlacesShown: 40 } }).map;
+  const m = normalizeMapConfig({ placesShown: 33, catalogPlacesShown: 40 });
   assertEquals([m.placesShown, m.catalogPageSize, "catalogPlacesShown" in m], [33, 20, false]);
   const n = normalizeDiscoveryConfig({ map: { placesShown: 900, catalogPageSize: 500 } }).map;
   assertEquals([n.placesShown, n.catalogPageSize], [200, 100]);

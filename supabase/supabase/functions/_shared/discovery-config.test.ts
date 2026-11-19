@@ -12,9 +12,15 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
+  DEFAULT_MIX,
+  DEFAULT_RECIPES,
   NO_SCREEN_RADIUS_KM,
   DISCOVERY_DEFAULTS,
   normalizeDiscoveryConfig,
+  normalizeMapConfig,
+  normalizeMix,
+  normalizeRecipes,
+  normalizeSignalParams,
   PREMIER_YEARLY_CENTS_MAX,
   PREMIER_YEARLY_CENTS_MIN,
   SIGNAL_PARAM_BOUNDS,
@@ -97,16 +103,20 @@ Deno.test("the live blob loads: the retired keys drop, every live value stands",
   // `pinCount`, `supers`, the reload km/sec pair and `googleFill` are
   // dropped and seed nothing (MESITA-2687, MESITA-2703); the four source
   // switches are gone (MESITA-2872, MESITA-2909).
-  assertEquals("mesitaPopular" in cfg.map || "mesitaClosest" in cfg.map, false);
+  // The typed rebuild of `map` carries none of them; the blob keeps them
+  // until a migration deletes them (H-2, MESITA-4454).
+  const map = normalizeMapConfig(LIVE_BLOB_2026_10_18.map);
+  assertEquals("mesitaPopular" in map || "mesitaClosest" in map, false);
   for (
     const dead of ["pinCount", "supers", "reloadMinKm", "reloadMinSec", "googleFill", "googlePull", "googlePopular", "googleClosest"]
   ) {
-    assertEquals(dead in cfg.map, false, dead);
+    assertEquals(dead in map, false, dead);
   }
   assertEquals(cfg.chat.prompt, "Be Memo.");
-  // The deck's numbers on `params` go; the Area pipeline's three arrive at
-  // their provisional defaults because the live blob never stored them.
-  assertEquals(cfg.params, DISCOVERY_DEFAULTS.params);
+  // The typed params arrive at their defaults because the live blob never
+  // stored them; the deck's bags are not typed (the blob keeps them, H-2).
+  assertEquals(normalizeSignalParams(LIVE_BLOB_2026_10_18.params), DISCOVERY_DEFAULTS.params);
+  assertEquals(cfg.params.recipes, DEFAULT_RECIPES);
 });
 
 Deno.test("an unrelated Save does not resurrect a retired key", () => {
@@ -244,9 +254,8 @@ Deno.test("the deck's slices do not survive a normalize: swipe, engines, weights
 // What the live blob still stores under `params` (2026-10-18): the deck's
 // shape numbers on seven bags. Only the Area pipeline's three numbers are
 // read now; the rest must not come back, or the next Save writes it back.
-Deno.test("the deck's param bags and numbers do not survive a normalize", () => {
-  const cfg = normalizeDiscoveryConfig({
-    params: {
+Deno.test("the deck's param bags and numbers are not typed params", () => {
+  const cfg = normalizeSignalParams({
       name: {},
       timing: { dawn: 0.55, openShare: 0.7, closedFloor: 0.2 },
       category: { miss: 0.1, exact: 1, family: 0.55 },
@@ -263,7 +272,6 @@ Deno.test("the deck's param bags and numbers do not survive a normalize", () => 
       randomness: {},
       summary: { unembedded: 0.4 },
       mesita_level: {},
-    },
   });
   // The retired calibration (halfDistanceKm, referenceRating/Reviews,
   // MESITA-2347) goes with the deck's bags; the linear `balance`
@@ -271,7 +279,7 @@ Deno.test("the deck's param bags and numbers do not survive a normalize", () => 
   // (MESITA-2703) too. Popularity's half credit (`halfReviews`, read by
   // nothing) went with MESITA-3083; the half distance, the exponent and the
   // root arrive at their defaults.
-  assertEquals(cfg.params, { proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } });
+  assertEquals(cfg, { proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 }, recipes: DEFAULT_RECIPES, mix: DEFAULT_MIX });
 });
 
 // The tentative Social engine's box had no reader (MESITA-2144). A blob that
@@ -294,41 +302,35 @@ Deno.test("chat.prompt round-trips, truncates, and garbage becomes blank", () =>
 Deno.test("map knobs default on an old blob and clamp", () => {
   const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
   assertEquals(missing.map, DISCOVERY_DEFAULTS.map);
-  const clamped = normalizeDiscoveryConfig({
-    map: {
-      minRating: 9,
-      minReviews: -2,
-      minPopularity: 4,
-      popularityWeight: 9,
-      proximityWeight: 0.456,
-    },
+  const clamped = normalizeMapConfig({
+    minRating: 9,
+    minReviews: -2,
+    minPopularity: 4,
+    popularityWeight: 9,
+    proximityWeight: 0.456,
   });
-  assertEquals(clamped.map.minRating, 5);
-  assertEquals(clamped.map.minReviews, 0);
-  assertEquals(clamped.map.minPopularity, 1);
-  // The exponents are retired (MESITA-2722): a stored one is dropped.
-  assertEquals("popularityWeight" in clamped.map, false);
-  assertEquals("proximityWeight" in clamped.map, false);
+  assertEquals(clamped.minRating, 5);
+  assertEquals(clamped.minReviews, 0);
+  assertEquals(clamped.minPopularity, 1);
+  // The exponents are retired (MESITA-2722): the typed map has none.
+  assertEquals("popularityWeight" in clamped, false);
+  assertEquals("proximityWeight" in clamped, false);
 });
 
 Deno.test("the two Mesita source switches are dropped on normalize (MESITA-2909)", () => {
-  const map = normalizeDiscoveryConfig({ map: { mesitaPopular: 0, mesitaClosest: 20 } }).map;
+  const map = normalizeMapConfig({ mesitaPopular: 0, mesitaClosest: 20 });
   assertEquals("mesitaPopular" in map || "mesitaClosest" in map, false);
 });
 
 Deno.test("the retired Google sources are dropped on normalize (MESITA-2872)", () => {
-  const map = normalizeDiscoveryConfig({
-    map: { googlePopular: 20, googleClosest: 20 },
-  }).map as unknown as Record<string, unknown>;
+  const map = normalizeMapConfig({ googlePopular: 20, googleClosest: 20 }) as unknown as Record<string, unknown>;
   for (const dead of ["googlePopular", "googleClosest"]) {
     assertEquals(dead in map, false, dead);
   }
 });
 
 Deno.test("the retired stops and googleFill are dropped on normalize (MESITA-2703)", () => {
-  const map = normalizeDiscoveryConfig({
-    map: { googlePlaces: 60, mapGooglePlaces: 40, mesitaPlaces: 60, googleFill: false },
-  }).map as unknown as Record<string, unknown>;
+  const map = normalizeMapConfig({ googlePlaces: 60, mapGooglePlaces: 40, mesitaPlaces: 60, googleFill: false }) as unknown as Record<string, unknown>;
   for (const dead of ["googlePlaces", "mapGooglePlaces", "mesitaPlaces", "googleFill"]) {
     assertEquals(dead in map, false, dead);
   }
@@ -338,20 +340,20 @@ Deno.test("map.googlePull is retired: an old blob's key is dropped on normalize 
   // One Nearby Search (New) call per request, 20 places, never widened — the
   // Legacy 40/60 pull is gone, so the normalizer rebuilds `map` without it
   // and the next save drops it from the blob.
-  const map = normalizeDiscoveryConfig({ map: { googlePull: 60 } }).map;
+  const map = normalizeMapConfig({ googlePull: 60 });
   assertEquals("googlePull" in map, false);
   assertEquals("googlePull" in DISCOVERY_DEFAULTS.map, false);
 });
 
 Deno.test("map.radiusKm retired (MESITA-3086): a stored one is dropped; the no-screen radius is the constant 15 km", () => {
-  const map = normalizeDiscoveryConfig({ map: { radiusKm: 30, placesShown: 33 } }).map;
+  const map = normalizeMapConfig({ radiusKm: 30, placesShown: 33 });
   assertEquals("radiusKm" in map, false);
   assertEquals(map.placesShown, 33);
   assertEquals(NO_SCREEN_RADIUS_KM, 15);
 });
 
 Deno.test("map.popularityRoot is the Map's own root: default 0.33, 0.1..1, two decimals (MESITA-3086)", () => {
-  const root = (raw: unknown) => normalizeDiscoveryConfig({ map: { popularityRoot: raw } }).map.popularityRoot;
+  const root = (raw: unknown) => normalizeMapConfig({ popularityRoot: raw }).popularityRoot;
   assertEquals(DISCOVERY_DEFAULTS.map.popularityRoot, 0.33);
   assertEquals(root(undefined), 0.33);
   assertEquals(root(0.5), 0.5);
@@ -368,7 +370,7 @@ Deno.test("Minimum Popularity lives on name (MESITA-3086): default 2.7, 0..20, o
   assertEquals(floor(-1), 0);
   assertEquals(floor(99), 20);
   assertEquals(floor(3.44), 3.4);
-  assertEquals("popularityFloor" in normalizeDiscoveryConfig({ map: { popularityFloor: 4 } }).map, false);
+  assertEquals("popularityFloor" in normalizeMapConfig({ popularityFloor: 4 }), false);
 });
 
 Deno.test("name knobs default Fast 5 and Deep 3+3 on an old blob and clamp", () => {
@@ -400,7 +402,7 @@ Deno.test("name knobs default Fast 5 and Deep 3+3 on an old blob and clamp", () 
 });
 
 Deno.test("map.selectedFactor retired with Selected (MESITA-2925): a stored key is dropped, the rest kept", () => {
-  const map = normalizeDiscoveryConfig({ map: { selectedFactor: 5, placesShown: 33, reloadIdleSec: 4 } }).map;
+  const map = normalizeMapConfig({ selectedFactor: 5, placesShown: 33, reloadIdleSec: 4 });
   assertEquals("selectedFactor" in map, false);
   assertEquals(map.placesShown, 33);
   assertEquals(map.reloadIdleSec, 4);
@@ -435,4 +437,76 @@ Deno.test("Premier prices: the admin twin mirrors the bounds and the defaults", 
     /export const DEFAULT_PREMIER: PremierConfig = \{ yearlyCents: \{ boost_2x: (\d+), boost_5x: (\d+) \} \};/,
   );
   assertEquals(m ? { boost_2x: Number(m[1]), boost_5x: Number(m[2]) } : null, PREMIER_YEARLY_CENTS);
+});
+
+// ── Discovery ranking v2 (MESITA-4454): recipes, mix, unknown keys ──────────
+
+Deno.test("recipes: the table by default; organic Premier exponent forced 0; map rows have no distance; bounds clamp and report", () => {
+  assertEquals(normalizeDiscoveryConfig({}).params.recipes, DEFAULT_RECIPES);
+  assertEquals(normalizeDiscoveryConfig({}).params.mix, DEFAULT_MIX);
+  assertEquals(DEFAULT_RECIPES.catalogNearbyOrganic, { halfKm: 0.1, distanceExp: 4, starsExp: 2, googleExp: 0.33, premierExp: 0 });
+  assertEquals(DEFAULT_RECIPES.mapInorganic, { halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.17, premierExp: 1 });
+  const clamps: Array<[string, unknown]> = [];
+  const r = normalizeRecipes({
+    catalogPopularOrganic: { halfKm: 500, distanceExp: 0.1, starsExp: 9, googleExp: 0.01, premierExp: 2 },
+    catalogPopularInorganic: { premierExp: 3, googleExp: "0.5" },
+    catalogFamilyOrganic: { halfKm: null, distanceExp: "x" },
+    mapOrganic: { halfKm: 3, distanceExp: 2, premierExp: 1 },
+  }, (key, raw) => clamps.push([key, raw]));
+  // C1: an Organic row never carries a plan, whatever is stored.
+  assertEquals(r.catalogPopularOrganic, { halfKm: 100, distanceExp: 0.5, starsExp: 4, googleExp: 0.1, premierExp: 0 });
+  assertEquals(r.catalogPopularInorganic.premierExp, 2);
+  assertEquals(r.catalogPopularInorganic.googleExp, 0.5);
+  // L-1: a null on a Catalog row reads the default and is reported.
+  assertEquals([r.catalogFamilyOrganic.halfKm, r.catalogFamilyOrganic.distanceExp], [2, 2]);
+  // A Map row has no Proximity: its distance numbers are always null.
+  assertEquals(r.mapOrganic, { halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.33, premierExp: 0 });
+  assertEquals(clamps.map(([k]) => k).sort(), [
+    "params.recipes.catalogFamilyOrganic.distanceExp",
+    "params.recipes.catalogFamilyOrganic.halfKm",
+    "params.recipes.catalogPopularInorganic.premierExp",
+    "params.recipes.catalogPopularOrganic.distanceExp",
+    "params.recipes.catalogPopularOrganic.googleExp",
+    "params.recipes.catalogPopularOrganic.halfKm",
+    "params.recipes.catalogPopularOrganic.starsExp",
+  ]);
+  // An absent key is not a clamp.
+  const quiet: string[] = [];
+  normalizeRecipes({}, (k) => quiet.push(k));
+  normalizeMix({}, (k) => quiet.push(k));
+  assertEquals(quiet, []);
+});
+
+Deno.test("mix: Temperature 0–5 per mode, ad floor 0–1, ad cadence 0–10 whole", () => {
+  const seen: string[] = [];
+  const m = normalizeMix(
+    { temperature: { nearby: 9, family: -1, popular: 0.333 }, adFloor: 2, adEvery: 3.6 },
+    (k) => seen.push(k),
+  );
+  assertEquals(m, { temperature: { nearby: 5, family: 0, popular: 0.33 }, adFloor: 1, adEvery: 4 });
+  assertEquals(seen.sort(), ["params.mix.adFloor", "params.mix.temperature.family", "params.mix.temperature.nearby"]);
+  assertEquals(normalizeMix({ adEvery: 0 }).adEvery, 0);
+  assertEquals(normalizeMix({ adEvery: 99 }).adEvery, 10);
+});
+
+Deno.test("unknown keys under params and map survive a normalize and a round trip (H-2)", () => {
+  const raw = {
+    params: { future: { knob: 1 }, recipes: { catalogNearbyOrganic: { halfKm: 0.3 } }, shuffle: { temperature: 1.5 } },
+    map: { futureMap: true, popularityRoot: 0.4 },
+    future: { top: 1 },
+  };
+  const once = normalizeDiscoveryConfig(raw);
+  const twice = normalizeDiscoveryConfig(once);
+  for (const cfg of [once, twice]) {
+    const params = cfg.params as unknown as Record<string, unknown>;
+    const map = cfg.map as unknown as Record<string, unknown>;
+    assertEquals(params.future, { knob: 1 });
+    assertEquals(map.futureMap, true);
+    // Retired-but-stored keys stay put (deleted only by a migration, F8).
+    assertEquals(cfg.params.shuffle.temperature, 1.5);
+    assertEquals(cfg.map.popularityRoot, 0.4);
+    assertEquals(cfg.params.recipes.catalogNearbyOrganic.halfKm, 0.3);
+    // Top-level keys are still rebuilt.
+    assertEquals("future" in cfg, false);
+  }
 });

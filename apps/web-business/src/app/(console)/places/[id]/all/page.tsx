@@ -33,7 +33,7 @@ const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
   },
   {
     tab: "premier",
-    line: "Rank higher on Home and the Map, marked as an ad. See your level here and how it works.",
+    line: "Get ad spots on Home and the Map, marked as an ad. See your level here and how it works.",
   },
   {
     tab: "payments",

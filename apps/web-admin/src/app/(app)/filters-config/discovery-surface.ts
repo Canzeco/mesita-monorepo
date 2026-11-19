@@ -163,18 +163,18 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     computation: "runtime",
     cost: "Local arithmetic, free.",
     missing: "No location: not used (n/a). No coordinates: 0.",
-    normalization: "0..1 by construction: 1 at the point, ½ at the operator's half distance (0.1–100 km, live 1) whatever the exponent (0.5–5, MESITA-3083, MESITA-4451), never 0. At exponent 1 the curve is the plain reciprocal (MESITA-3015): ⅓ at twice the half distance, and past it the credit is half distance ÷ distance, so only distance ratios order places: twice as far is half the credit at any scale, which with Popularity's cube root means 8× the reviews or a ×2 plan. Under 1 the far keeps its credit; over 1 the curve is flat inside the half distance and a cliff past it. The Catalog and Chat only: the Map does not read it, its distance only screens. It replaced the log curve (MESITA-2909), which kept a famous place 36 km away above an average one 5 km away.",
+    normalization: "0..1 by construction: 1 at the point, ½ at the recipe row's Half distance (0.1–100 km) whatever its Distance exponent (0.5–5, MESITA-3083, MESITA-4451), never 0. Each Catalog row has its own pair (MESITA-4454: Nearby Organic 0.1 km and 4, Nearby Inorganic 0.5 km and 2, Family 2 km and 2, Popular 10 km and 2). At exponent 1 the curve is the plain reciprocal (MESITA-3015): past the Half distance the credit is Half distance ÷ distance. Under 1 the far keeps its credit; over 1 the curve is flat inside the Half distance and a cliff past it. The Catalog and Chat only: the Map rows have no Proximity, its distance only screens. It replaced the log curve (MESITA-2909), which kept a famous place 36 km away above an average one 5 km away.",
   },
   {
     key: "popularity",
     label: "Popularity",
-    formula: "(1 + reviews × stars)^root",
+    formula: "(stars ^ Stars exponent × reviews) ^ Google exponent",
     requires: ["rating", "review_count"],
     query: "Nothing.",
     computation: "runtime",
     cost: "Local arithmetic over stored numbers, free.",
-    missing: "No rating or no review count: 0 (shown as n/a). There is no new-place prior; that lowers the place, it never removes it.",
-    normalization: "None, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"). The root is the operator's (0.1–1, live 0.33, the cube root, MESITA-3083; ln until then): at the cube root 4.6★ × 1,000 reviews ≈ 16.2, 4.0★ × 30 ≈ 4.9, every 8× the reviews doubles the factor, so a ×2 plan is worth 8× the reviews and a ×5 plan 125×. The 1 + keeps a place with no reviews at 1, a factor, never 0. The score is a plain product, never clamped: Popularity × the Premier factor on the Map, × Proximity on the Catalog.",
+    missing: "No rating, no review count or 0 reviews: 0 (shown as n/a), so the place ranks last. There is no new-place prior; that lowers the place, it never removes it.",
+    normalization: "None, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"). Both exponents are the recipe row's (MESITA-4454): Stars exponent 0–4 (2 on every row: stars count squared), Google exponent 0.1–1 (0.33 on Organic rows, the cube root: every 8× the reviews doubles it; 0.17 on Inorganic rows, which squeezes famous and unknown places together so the plan decides more). It replaced (1 + reviews × stars)^root × (stars ÷ 5)^weight (MESITA-3083, MESITA-4153). The score is a plain product, never clamped: Popularity × the Premier boost on the Map, × Proximity on the Catalog.",
   },
 ];
 
@@ -275,9 +275,9 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["popularity"],
     gates: ["family", "radius"],
     factors: [
-      "Premier (MESITA-2925): a Premier place's score × its paid tier, Premier 2X · 5X; every other place's × 1.",
+      "Premier (MESITA-2925): the Premier boost (MESITA-4454), premierFactor ^ Premier exponent, premierFactor the paid plan (2 for 2X, 5 for 5X, 1 for every other place). Organic rows have Premier exponent 0, so a plan never moves the organic list.",
     ],
-    scoring: "Popularity × s, Popularity at the Map's own root (`map.popularityRoot`, MESITA-3086, so the root only sets how much a plan outweighs reviews), s the Premier factor (2 or 5 for a Premier place, 1 for every other place, MESITA-2925), a plain product never clamped or normalized (MESITA-2710). Distance is a screen, never a sort (Pato, MESITA-2909): the screen radius gates, Proximity is not read. The Map shows the top Map places shown. Ties break on distance, then id.",
+    scoring: "Popularity × s in two lanes (MESITA-4454), s the Premier boost (premierFactor ^ Premier exponent), a plain product never clamped or normalized (MESITA-2710). Organic: every place in the radius, scored with the Map Organic row (Premier exponent 0). Inorganic: Premier places only, scored with the Map Inorganic row. The two merge like Home's (one ad slot after every ad cadence organic places, 0 = no ads; a place shows once, and wears Ad only in an ad slot), with no ad floor (the screen is the cut) and no shuffle. Popular and Family share the two Map rows. Distance is a screen, never a sort (Pato, MESITA-2909): the screen radius gates, Proximity is not read. The Map shows the top Map places shown, ad pins included. Ties break on id.",
     keepsOrder: [],
     rules: [
       "Mesita places only: Google Nearby Search is gone (MESITA-2872), so the Map calls no Google. Every ready Mesita place inside the screen radius is a candidate (the two 20-place source switches retired in MESITA-2909); the guest never picks a source.",
@@ -298,9 +298,9 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["proximity", "popularity"],
     gates: ["family"],
     factors: [
-      "Premier (MESITA-2925): a Premier place's score × its paid tier, Premier 2X · 5X; every other place's × 1.",
+      "Premier (MESITA-2925): the Premier boost (MESITA-4454), premierFactor ^ Premier exponent, premierFactor the paid plan (2 for 2X, 5 for 5X, 1 for every other place). Organic rows have Premier exponent 0, so a plan never moves the organic list.",
     ],
-    scoring: "Proximity × Popularity × s, s the Premier factor (MESITA-2925), a plain product never clamped or normalized (MESITA-2710); Proximity is 1 ÷ (1 + (distance ÷ half distance)^exponent), ½ at the operator's half distance (MESITA-3015, the exponent a knob since MESITA-3083, live 1). No radius: a far place is never cut, only lowered. s counts at any distance (the reach went with MESITA-3015): at exponent 1, past the half distance the score is half distance ÷ distance, so a Premier 5X beats a place up to about five times closer (125× the reviews at the cube root) and one in another city never tops Home. No location: Popularity × s. Popularity × (stars ÷ 5)^k, the stars weight (MESITA-4153, default 6), so the best-rated rise. Home only: each place's kind is its rarest family and the n-th place of a kind × the repeat penalty^(n − 1) (default 0.6), then the order is shuffled by the temperature (each place weighted 1 ÷ rank^(1/T); 0 = the sort exactly, default 0.3), fresh on every rank and fixed while the guest scrolls. Chat ranks the same way inside the current-location radius, with the stars weight but no variety or shuffle. Ties break on distance, then id. One list (MESITA-3041): the two lanes of MESITA-3016 are retired.",
+    scoring: "Proximity × Popularity × s in two lanes (MESITA-4454), s the Premier boost (premierFactor ^ Premier exponent), a plain product never clamped or normalized (MESITA-2710); Proximity is 1 ÷ (1 + (distance ÷ Half distance) ^ Distance exponent). Each mode reads its own pair of recipe rows: Nearby (Home's Nearby chip), Family (a family chip) and Popular (Home's Popular chip). Organic: every place, scored with the mode's Organic row (Premier exponent 0); the repeat penalty applies here only, never on Nearby (each place's kind is its rarest family and the n-th place of a kind × the repeat penalty^(n − 1)). Inorganic: Premier places only, scored with the mode's Inorganic row; a place takes an ad slot only when Proximity (its Inorganic row) × premierFactor reaches the ad floor (default 0.2). The merge: one ad slot after every ad cadence organic places (default 1, 0 = no ads); a place already shown is skipped, an ad slot with no Premier place left is dropped, a place shows once and wears Ad only in an ad slot. Then only the first page (the page size) is shuffled by the mode's Temperature (each place weighted 1 ÷ position^(1/T); 0 = the merged order exactly; Nearby 0.33, Family 0.5, Popular 1), ads and organic places together, with one seed per guest visit and mode; everything after the first page keeps its exact order. No radius: a far place is never cut, only lowered. No location: Proximity counts as 1. Chat ranks with the Family Organic row inside the current-location radius: no ads, no shuffle. Pay, Wallet and the Reward tab rank by distance alone. Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
       "Mesita places only, no Google call (MESITA-2872). The whole catalog is ranked in one run and Home gets every ranked id with the first page's cards, then reads the rest by id a Catalog page size at a time (MESITA-2909, MESITA-3057).",

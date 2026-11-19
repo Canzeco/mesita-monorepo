@@ -12,6 +12,11 @@ import {
   NAME_POPULARITY_FLOOR_MIN,
   SIGNAL_PARAM_BOUNDS,
   DEFAULT_SIGNAL_PARAMS,
+  DEFAULT_MIX,
+  DEFAULT_RECIPES,
+  MIX_BOUNDS,
+  RECIPE_BOUNDS,
+  RECIPE_ROWS,
 } from "./discovery-config.ts";
 import {
   POPULARITY_ROOT_DEFAULT,
@@ -44,7 +49,7 @@ Deno.test("Catalog box bounds and defaults match the server (the half distance s
   assertEquals(constant("POPULARITY_ROOT_MIN"), SIGNAL_PARAM_BOUNDS.root.min);
   assertEquals(constant("POPULARITY_ROOT_MAX"), SIGNAL_PARAM_BOUNDS.root.max);
   const m = admin.match(
-    /const DEFAULT_SIGNAL_PARAMS: SignalParams = \{\s*proximity: \{ halfKm: ([0-9_.]+), exponent: ([0-9_.]+) \},\s*popularity: \{ root: ([0-9_.]+), starsPower: ([0-9_.]+) \},\s*variety: \{ repeat: ([0-9_.]+) \},\s*shuffle: \{ temperature: ([0-9_.]+) \},\s*\};/,
+    /const DEFAULT_SIGNAL_PARAMS: SignalParams = \{\s*proximity: \{ halfKm: ([0-9_.]+), exponent: ([0-9_.]+) \},\s*popularity: \{ root: ([0-9_.]+), starsPower: ([0-9_.]+) \},\s*variety: \{ repeat: ([0-9_.]+) \},\s*shuffle: \{ temperature: ([0-9_.]+) \},\s*recipes: DEFAULT_RECIPES,\s*mix: DEFAULT_MIX,\s*\};/,
   );
   const n = (i: number) => (m ? Number(m[i].replaceAll("_", "")) : null);
   assertEquals(n(1), PROXIMITY_HALF_KM_DEFAULT);
@@ -64,4 +69,57 @@ Deno.test("the Minimum Popularity default matches the server, in the root's unit
   assertEquals(constant("NAME_POPULARITY_FLOOR_MAX"), NAME_POPULARITY_FLOOR_MAX);
   // The Map's own root default twins the server's.
   assertEquals(/popularityRoot: 0\.33,/.test(admin), true);
+});
+
+// MESITA-4454: the Ranking and Mixing cards' bounds and the recipe table.
+Deno.test("Ranking and Mixing bounds, the recipe table and the mix defaults match the server (MESITA-4454)", () => {
+  // halfKm and distanceExp reuse the Proximity constants pinned above.
+  for (const [name, b] of [
+    ["STARS_EXP", RECIPE_BOUNDS.starsExp],
+    ["GOOGLE_EXP", RECIPE_BOUNDS.googleExp],
+    ["PREMIER_EXP", RECIPE_BOUNDS.premierExp],
+    ["MIX_TEMPERATURE", MIX_BOUNDS.temperature],
+    ["AD_FLOOR", MIX_BOUNDS.adFloor],
+    ["AD_EVERY", MIX_BOUNDS.adEvery],
+  ] as const) {
+    assertEquals(constant(`${name}_MIN`), b.min, name);
+    assertEquals(constant(`${name}_MAX`), b.max, name);
+  }
+  assertEquals(RECIPE_BOUNDS.halfKm.min, constant("HALF_KM_MIN"));
+  assertEquals(RECIPE_BOUNDS.distanceExp.max, constant("EXPONENT_MAX"));
+  // Each bound's decimals, read from the admin's RECIPE_BOUNDS / MIX_BOUNDS.
+  const decimals = (block: string, key: string) => {
+    const body = admin.match(new RegExp(`export const ${block} = \\{([\\s\\S]*?)\\} as const;`));
+    const m = body?.[1].match(new RegExp(`${key}: \\{[^}]*decimals: (\\d+) \\}`));
+    return m ? Number(m[1]) : null;
+  };
+  for (const [key, b] of Object.entries(RECIPE_BOUNDS)) assertEquals(decimals("RECIPE_BOUNDS", key), b.decimals, key);
+  for (const [key, b] of Object.entries(MIX_BOUNDS)) assertEquals(decimals("MIX_BOUNDS", key), b.decimals, key);
+  // The recipe table, row by row, and the mix.
+  const num = (v: string) => (v === "null" ? null : Number(v));
+  for (const row of RECIPE_ROWS) {
+    const m = admin.match(
+      new RegExp(
+        `  ${row}: \\{ halfKm: (null|[0-9.]+), distanceExp: (null|[0-9.]+), starsExp: ([0-9.]+), googleExp: ([0-9.]+), premierExp: ([0-9.]+) \\},`,
+      ),
+    );
+    assertEquals(
+      m ? { halfKm: num(m[1]), distanceExp: num(m[2]), starsExp: num(m[3]), googleExp: num(m[4]), premierExp: num(m[5]) } : null,
+      DEFAULT_RECIPES[row],
+      row,
+    );
+  }
+  const mix = admin.match(
+    /export const DEFAULT_MIX: MixParams = \{\s*temperature: \{ nearby: ([0-9.]+), family: ([0-9.]+), popular: ([0-9.]+) \},\s*adFloor: ([0-9.]+),\s*adEvery: ([0-9]+),\s*\};/,
+  );
+  assertEquals(
+    mix
+      ? {
+        temperature: { nearby: Number(mix[1]), family: Number(mix[2]), popular: Number(mix[3]) },
+        adFloor: Number(mix[4]),
+        adEvery: Number(mix[5]),
+      }
+      : null,
+    DEFAULT_MIX,
+  );
 });

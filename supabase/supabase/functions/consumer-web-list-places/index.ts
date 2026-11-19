@@ -24,8 +24,12 @@
 // GATE and only a gate (Pato, MESITA-2909: distance "como screening dentro
 // del radio, pero no la metería ya para el sorting"): Mesita's read is boxed
 // to it, the Radius gate drops what lies past it, and the places inside are
-// ranked by Popularity × the Premier factor (a Premier place's paid tier,
-// ×2 · ×5, MESITA-2925), no Proximity. EVERY ready place in the box is
+// ranked in two lanes, no Proximity (MESITA-4454): the Map Organic row
+// ((stars^StarsExp × reviews)^GoogleExp; its Premier exponent is 0) and the
+// Map Inorganic row over Premier places only (× premierFactor^PremierExp,
+// 2X · 5X), merged one ad after every `params.mix.adEvery` organic places
+// (0 = no ads; a place shows once). An ad pin carries `ad: true` and counts
+// against `map.placesShown`; ties break by id. EVERY ready place in the box is
 // ranked (MESITA-2950): the read walks the scoring columns by id, page after
 // page (`selectMapPool`, the Catalog's two passes from MESITA-2921), then
 // reads only the kept places' cards, so a wide ring never ranks an
@@ -131,6 +135,8 @@ type WireScore = {
   selectedFactor: number;
   /** Km from the cross (MESITA-2830); it screens, never scores. */
   distanceKm: number | null;
+  /** premierFactor ^ PremierExp, the scored plan value (MESITA-4454). */
+  premierBoost: number;
 };
 
 type CardRow = {
@@ -240,6 +246,8 @@ serveJson("consumer-web-list-places", async (req) => {
   console.log(JSON.stringify({
     fn: "consumer-web-list-places",
     requestId,
+    // The Map's lanes (MESITA-4454): Popular or Family, and ads shown.
+    mode: guestSupers.length > 0 ? "family" : "popular",
     radius: screenKm === null ? "operator" : "screen",
     radiusKm,
     ...area.summary,
@@ -257,16 +265,19 @@ serveJson("consumer-web-list-places", async (req) => {
     places: withFamilyKeysList(
       withPlaceOffers(await withVouchersUpTo(
         money,
-        places.map(({ area: a, ...p }) => {
+        places.map(({ area: a, ad, ...p }) => {
         const wired = wireMapPlace(p as PlaceProfileRow);
         return {
           ...wired,
+          // An ad pin (MESITA-4454): only a place in an ad slot wears "Ad".
+          ...(ad === true ? { ad: true } : {}),
           score: {
             proximity: a.signals.proximity,
             popularity: a.signals.popularity,
             final: a.final,
             selectedFactor: a.selectedFactor,
             distanceKm: a.distanceKm,
+            premierBoost: a.premierBoost,
           } satisfies WireScore,
         };
       }) as CardRow[],

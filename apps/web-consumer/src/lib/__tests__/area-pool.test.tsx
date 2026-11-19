@@ -7,14 +7,9 @@ import {
   diagExpression,
   diagNumber,
 } from "@/components/consumer/home/AreaDiagnostics";
-import {
-  AREA_POOL_TTL_MS,
-  areaPoolKey,
-  readAreaPool,
-  writeAreaPool,
-} from "@/lib/area-pool-cache";
 
-// MESITA-2384: the temporary score breakdown and the per-location pool.
+// MESITA-2384: the temporary score breakdown. The per-mode pool cache is
+// pinned in catalog-modes.test.ts (MESITA-4454).
 const base: Area = {
   familyKeys: ["coffee"],
   gates: { family: 1, radius: 1, active: 1, ready: 1, reviews: null },
@@ -55,27 +50,5 @@ describe("AreaDiagnostics (temporary)", () => {
     expect(html).not.toContain("in area");
     expect(html).not.toContain("proximity");
     expect(html).not.toMatch(/territory/i);
-  });
-});
-
-describe("the per-location pool cache", () => {
-  it("keys a saved pin by id and spot, current location by ~1 km cell, none without a location", () => {
-    expect(areaPoolKey(null)).toBe("none");
-    expect(areaPoolKey({ key: "saved:x", lat: 1, lng: 2 })).toBe("saved:x@1.0000,2.0000");
-    // A moved pin is a new question (MESITA-2501); a renamed one is not.
-    expect(areaPoolKey({ key: "saved:x", lat: 1.0005, lng: 2 })).not.toBe(
-      areaPoolKey({ key: "saved:x", lat: 1, lng: 2 }),
-    );
-    expect(areaPoolKey({ lat: 25.6512, lng: -100.2891 })).toBe("current:25.65,-100.29");
-    expect(areaPoolKey({ lat: 25.6538, lng: -100.2899 })).toBe("current:25.65,-100.29");
-    expect(areaPoolKey({ key: "saved:x", lat: 1, lng: 2 })).toBe("saved:x@1.0000,2.0000");
-  });
-
-  it("keeps a pool ten minutes, then forgets it", () => {
-    const pool = { kind: "point" as const, places: [], order: [], asked: 0, rankedFrom: null };
-    writeAreaPool("k", pool, 1000);
-    expect(readAreaPool("k", 1000 + AREA_POOL_TTL_MS - 1)).toBe(pool);
-    expect(readAreaPool("k", 1000 + AREA_POOL_TTL_MS)).toBeNull();
-    expect(readAreaPool("k", 1000)).toBeNull();
   });
 });

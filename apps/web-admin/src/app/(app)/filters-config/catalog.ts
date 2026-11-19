@@ -1,13 +1,14 @@
 // Discovery config — the console's twin of `_shared/discovery-config.ts`.
 //
-// Live HTML: ONE page, four pipeline boxes (MESITA-2327). Source, pipeline,
-// signal and gate facts live in discovery-surface.ts, a tested copy of the
-// Edge Function model. Family membership stays on Atlas.
+// Live HTML: ONE page of cards (MESITA-2327; five since MESITA-4454). Source,
+// pipeline, signal and gate facts live in discovery-surface.ts, a tested copy
+// of the Edge Function model. Family membership stays on Atlas.
 //
-// `coerceConfig` mirrors `normalizeDiscoveryConfig` key for key: this page
-// saves the WHOLE blob, so a key it forgets is reset to its default on the
-// server, and a key it keeps that the server dropped comes back on every
-// Save. The EF twin's discovery-config.test.ts reads this file to pin it.
+// `coerceConfig` mirrors `normalizeDiscoveryConfig` key for key. Under
+// `params` and `map` it spreads the raw object and overlays the typed keys
+// (H-2, MESITA-4454), so a key this build does not know (a newer build's, or
+// a retired one waiting for its migration) survives a read and a Save. The
+// EF twin's discovery-config.test.ts reads this file to pin it.
 //
 // RETIRED WITH THE SWIPE DECK (MESITA-2328): `weights`, `weightsByMode`,
 // `engines`, the `swipe` slice and the deck's numbers on `params`. They are
@@ -18,6 +19,47 @@
 // Save, like the deck's keys.
 
 import { num } from "@/lib/config-coerce";
+
+/** Home's three modes (MESITA-4454): chip Nearby (`near`), Popular (`all`),
+ *  any family chip. Mirrors RankMode in _shared/pipeline-signals.ts. */
+export type RankMode = "nearby" | "popular" | "family";
+
+/** One recipe row (MESITA-4454). `halfKm` and `distanceExp` are null on the
+ *  Map's rows (no Proximity there); `premierExp` is 0 on every Organic row.
+ *  Mirrors Recipe in _shared/pipeline-signals.ts. */
+export type Recipe = {
+  halfKm: number | null;
+  distanceExp: number | null;
+  starsExp: number;
+  googleExp: number;
+  premierExp: number;
+};
+
+/** The eight rows, Catalog modes × lanes plus the Map's two. Mirrors
+ *  RECIPE_ROWS in _shared/discovery-config.ts. */
+export const RECIPE_ROWS = [
+  "catalogNearbyOrganic",
+  "catalogNearbyInorganic",
+  "catalogFamilyOrganic",
+  "catalogFamilyInorganic",
+  "catalogPopularOrganic",
+  "catalogPopularInorganic",
+  "mapOrganic",
+  "mapInorganic",
+] as const;
+export type RecipeRow = (typeof RECIPE_ROWS)[number];
+export type Recipes = Record<RecipeRow, Recipe>;
+
+/** `params.mix`: per-mode Temperature, the ad floor, the ad cadence. */
+export type MixParams = {
+  temperature: Record<RankMode, number>;
+  adFloor: number;
+  adEvery: number;
+};
+
+/** "…Organic" (capital O); an Inorganic row ends "…Inorganic". */
+export const isOrganicRow = (row: RecipeRow) => row.endsWith("Organic");
+export const isMapRow = (row: RecipeRow) => row.startsWith("map");
 
 /**
  * The stored signal numbers (MESITA-3083): Proximity's half distance (km)
@@ -34,8 +76,14 @@ export type SignalParams = {
   popularity: { root: number; starsPower: number };
   /** Home's n-th place of a kind × repeat^(n − 1) (MESITA-4153). */
   variety: { repeat: number };
-  /** Home's shuffle after the sort; 0 = none (MESITA-4153). */
+  /** Home's shuffle after the sort; 0 = none (MESITA-4153). UNREAD since
+   *  MESITA-4454 (`mix.temperature` per mode replaces it); kept until the
+   *  follow-up migration deletes it. `proximity` and `popularity` likewise. */
   shuffle: { temperature: number };
+  /** The eight recipe rows (MESITA-4454): the Ranking card. */
+  recipes: Recipes;
+  /** Home's mix (MESITA-4454): the Mixing card. */
+  mix: MixParams;
 };
 
 export type NameFastConfig = {
@@ -126,6 +174,55 @@ export const VARIETY_REPEAT_MIN = 0.1;
 export const VARIETY_REPEAT_MAX = 1;
 export const SHUFFLE_TEMPERATURE_MIN = 0;
 export const SHUFFLE_TEMPERATURE_MAX = 5;
+/** Mirrors the recipe and mix bounds in _shared/pipeline-signals.ts
+ *  (MESITA-4454). Half distance and Distance exponent are HALF_KM_* and
+ *  EXPONENT_*. */
+export const STARS_EXP_MIN = 0;
+export const STARS_EXP_MAX = 4;
+export const GOOGLE_EXP_MIN = 0.1;
+export const GOOGLE_EXP_MAX = 1;
+export const PREMIER_EXP_MIN = 0;
+export const PREMIER_EXP_MAX = 2;
+export const MIX_TEMPERATURE_MIN = 0;
+export const MIX_TEMPERATURE_MAX = 5;
+export const AD_FLOOR_MIN = 0;
+export const AD_FLOOR_MAX = 1;
+export const AD_EVERY_MIN = 0;
+export const AD_EVERY_MAX = 10;
+
+/** Mirrors RECIPE_BOUNDS and MIX_BOUNDS in _shared/discovery-config.ts. */
+export const RECIPE_BOUNDS = {
+  halfKm: { min: HALF_KM_MIN, max: HALF_KM_MAX, decimals: 2 },
+  distanceExp: { min: EXPONENT_MIN, max: EXPONENT_MAX, decimals: 1 },
+  starsExp: { min: STARS_EXP_MIN, max: STARS_EXP_MAX, decimals: 1 },
+  googleExp: { min: GOOGLE_EXP_MIN, max: GOOGLE_EXP_MAX, decimals: 2 },
+  premierExp: { min: PREMIER_EXP_MIN, max: PREMIER_EXP_MAX, decimals: 1 },
+} as const;
+
+export const MIX_BOUNDS = {
+  temperature: { min: MIX_TEMPERATURE_MIN, max: MIX_TEMPERATURE_MAX, decimals: 2 },
+  adFloor: { min: AD_FLOOR_MIN, max: AD_FLOOR_MAX, decimals: 2 },
+  adEvery: { min: AD_EVERY_MIN, max: AD_EVERY_MAX, decimals: 0 },
+} as const;
+
+/** The recipe table (Pato, 2026-11-19). Mirrors DEFAULT_RECIPES. */
+export const DEFAULT_RECIPES: Recipes = {
+  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, starsExp: 2, googleExp: 0.33, premierExp: 0 },
+  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, starsExp: 2, googleExp: 0.17, premierExp: 1 },
+  catalogFamilyOrganic: { halfKm: 2, distanceExp: 2, starsExp: 2, googleExp: 0.33, premierExp: 0 },
+  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, starsExp: 2, googleExp: 0.17, premierExp: 1 },
+  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, starsExp: 2, googleExp: 0.33, premierExp: 0 },
+  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, starsExp: 2, googleExp: 0.17, premierExp: 1 },
+  mapOrganic: { halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.33, premierExp: 0 },
+  mapInorganic: { halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.17, premierExp: 1 },
+};
+
+/** Mirrors DEFAULT_MIX. */
+export const DEFAULT_MIX: MixParams = {
+  temperature: { nearby: 0.33, family: 0.5, popular: 1 },
+  adFloor: 0.2,
+  adEvery: 1,
+};
 
 /** Mirrors MAP_PLACES_SHOWN_* in _shared/discovery-config.ts (MESITA-2713, MESITA-2909). */
 export const MAP_PLACES_SHOWN_MIN = 1;
@@ -245,6 +342,8 @@ const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   popularity: { root: 0.33, starsPower: 6 },
   variety: { repeat: 0.6 },
   shuffle: { temperature: 0.3 },
+  recipes: DEFAULT_RECIPES,
+  mix: DEFAULT_MIX,
 };
 
 export const DEFAULT_CONFIG: DiscoveryConfig = {
@@ -261,6 +360,54 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
 function bounded(raw: unknown, fallback: number, min: number, max: number, decimals: number): number {
   const factor = 10 ** decimals;
   return Math.round(num(raw, fallback, min, max) * factor) / factor;
+}
+
+/** A plain object, else `{}`. Mirrors asRecord in _shared/config-coerce.ts. */
+function asRecord(raw: unknown): Record<string, unknown> {
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+}
+
+/** One recipe or mix value. Mirrors `reportedParam`: absent, null, blank or
+ *  not a number → the fallback; out of bounds → clamped; rounded to the
+ *  field's decimals either way. */
+function bounds(raw: unknown, fallback: number, b: { min: number; max: number; decimals: number }): number {
+  const factor = 10 ** b.decimals;
+  const n = typeof raw === "number" ? raw : raw === undefined || raw === null || raw === "" ? Number.NaN : Number(raw);
+  const v = Number.isFinite(n) ? Math.min(b.max, Math.max(b.min, n)) : fallback;
+  return Math.round(v * factor) / factor;
+}
+
+/** The eight recipe rows. Mirrors `normalizeRecipes`: a missing row or field
+ *  reads the table; Map rows have no distance numbers (null); every Organic
+ *  row's Premier exponent is 0 whatever is stored (C1, L-1). */
+export function coerceRecipes(raw: unknown): Recipes {
+  const r = asRecord(raw);
+  const out = {} as Recipes;
+  for (const row of RECIPE_ROWS) {
+    const v = asRecord(r[row]);
+    const d = DEFAULT_RECIPES[row];
+    const map = isMapRow(row);
+    out[row] = {
+      halfKm: map ? null : bounds(v.halfKm, d.halfKm as number, RECIPE_BOUNDS.halfKm),
+      distanceExp: map ? null : bounds(v.distanceExp, d.distanceExp as number, RECIPE_BOUNDS.distanceExp),
+      starsExp: bounds(v.starsExp, d.starsExp, RECIPE_BOUNDS.starsExp),
+      googleExp: bounds(v.googleExp, d.googleExp, RECIPE_BOUNDS.googleExp),
+      premierExp: isOrganicRow(row) ? 0 : bounds(v.premierExp, d.premierExp, RECIPE_BOUNDS.premierExp),
+    };
+  }
+  return out;
+}
+
+/** `params.mix`. Mirrors `normalizeMix`. */
+export function coerceMix(raw: unknown): MixParams {
+  const r = asRecord(raw);
+  const t = asRecord(r.temperature);
+  const temp = (mode: RankMode) => bounds(t[mode], DEFAULT_MIX.temperature[mode], MIX_BOUNDS.temperature);
+  return {
+    temperature: { nearby: temp("nearby"), family: temp("family"), popular: temp("popular") },
+    adFloor: bounds(r.adFloor, DEFAULT_MIX.adFloor, MIX_BOUNDS.adFloor),
+    adEvery: bounds(r.adEvery, DEFAULT_MIX.adEvery, MIX_BOUNDS.adEvery),
+  };
 }
 
 /**
@@ -304,22 +451,26 @@ function coerceParams(raw: unknown): SignalParams {
         2,
       ),
     },
+    recipes: coerceRecipes(r.recipes),
+    mix: coerceMix(r.mix),
   };
 }
 
 /**
  * Tolerant read of whatever the EF returned, rebuilt key by key exactly like
- * `normalizeDiscoveryConfig`: a retired key (`weights`, `weightsByMode`,
- * `engines`, `swipe`, MESITA-2328; `filters`, MESITA-2337) is not carried
- * into the next Save.
+ * `normalizeDiscoveryConfig`: a retired top-level key (`weights`,
+ * `weightsByMode`, `engines`, `swipe`, MESITA-2328; `filters`, MESITA-2337)
+ * is not carried into the next Save. Under `params` and `map` the raw object
+ * is spread first and the typed keys overlaid (H-2, MESITA-4454): an unknown
+ * key there is kept, never dropped by a Save.
  */
 export function coerceConfig(raw: unknown): DiscoveryConfig {
-  const r = (raw ?? {}) as Record<string, unknown>;
+  const r = asRecord(raw);
 
   return {
-    params: coerceParams(r.params),
+    params: { ...asRecord(r.params), ...coerceParams(r.params) },
     general: coerceGeneral(r.general),
-    map: coerceMap(r.map),
+    map: { ...asRecord(r.map), ...coerceMap(r.map) },
     name: coerceName(r.name),
     deep: coerceDeep(r.deep),
     chat: {

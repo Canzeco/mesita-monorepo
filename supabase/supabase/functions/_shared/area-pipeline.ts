@@ -4,13 +4,20 @@
 //
 //   Map (the Search tab)   (point, screen radius)
 //     every ready Mesita row in the circle's box (scoring columns, walked by
-//     id) → gates → Popularity × s → the top `map.placesShown` BY RANK,
-//     then their cards (MESITA-2950); the places after them up to
-//     `map.dotsShown` in all come back as bare dots (MESITA-3980)
+//     id) → gates → the Map Organic lane and the Map Inorganic lane (Premier
+//     places), merged one ad after every `params.mix.adEvery` organic
+//     places → the top `map.placesShown` (ad pins count), then their cards
+//     (MESITA-2950); the places after them up to `map.dotsShown` in all come
+//     back as bare dots (MESITA-3980)
 //   Catalog (Home)         (point or nothing, NO radius)
-//     every ready Mesita row (scoring columns, walked by id) → gates →
-//     Proximity × Popularity × s → the best 1000 BY RANK, then their cards;
-//     the client pages it (`map.catalogPageSize`)
+//     `catalog_rank_lanes` ranks both lanes in SQL for the guest's mode
+//     (Nearby · Popular · Family); `mergeLanes` merges them, the first page
+//     is shuffled by the mode's Temperature (`cutAndShuffle`), and only that
+//     page's cards are read; the client pages the rest by id
+//
+// DISCOVERY RANKING v2 (MESITA-4454): every score is one formula with a
+// recipe row per screen, mode and lane (`recipeFor`, discovery-config.ts):
+// Proximity × (stars^StarsExp × reviews)^GoogleExp × premierFactor^PremierExp.
 //
 // (Pato, MESITA-2909: on the Map distance is a screen, not a sort; the
 // Catalog "literal podemos sacar la lista final de todos los lugares en una
@@ -43,16 +50,14 @@ import {
   type LatLng,
   rankArea,
 } from "./area-score.ts";
+import { cutAndShuffle, mergeLanes, type RankMode, VARIETY_REPEAT_DEFAULT } from "./pipeline-signals.ts";
 import {
-  POPULARITY_ROOT_DEFAULT,
-  PROXIMITY_EXPONENT_DEFAULT,
-  PROXIMITY_HALF_KM_DEFAULT,
-  SHUFFLE_TEMPERATURE_DEFAULT,
-  shuffleByRank,
-  STARS_POWER_DEFAULT,
-  VARIETY_REPEAT_DEFAULT,
-} from "./pipeline-signals.ts";
-import { type DiscoveryConfig, NO_SCREEN_RADIUS_KM, type SignalParams } from "./discovery-config.ts";
+  type DiscoveryConfig,
+  mixFor,
+  NO_SCREEN_RADIUS_KM,
+  recipeFor,
+  type SignalParams,
+} from "./discovery-config.ts";
 import { chunked, ID_CHUNK } from "./postgrest.ts";
 import { finiteOrNull } from "./input.ts";
 
@@ -60,47 +65,12 @@ import { finiteOrNull } from "./input.ts";
  *  MESITA-2909. Chat ranks like the Catalog. */
 export type AreaSurface = "map" | "catalog";
 
-/** The numbers a pipeline reads from the blob: Proximity's half distance
- *  and exponent (the Catalog only; the Map has none, MESITA-2909,
- *  MESITA-3083) and Popularity's root, per surface since MESITA-3086: the
- *  Map reads `map.popularityRoot`, the Catalog and Chat
- *  `params.popularity.root`. No Popularity floor: it moved to the Name
- *  pipeline (MESITA-3086). The Premier factor is the row's own tier, no
- *  knob (MESITA-2925). */
-export function areaSignalParams(
-  params: SignalParams,
-  map: { popularityRoot?: number },
-  surface: AreaSurface,
-): Pick<AreaContext, "halfKm" | "exponent" | "popularityRoot" | "starsPower"> {
-  const positive = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n > 0;
-  const h = params.proximity?.halfKm;
-  const e = params.proximity?.exponent;
-  const root = surface === "map" ? map.popularityRoot : params.popularity?.root;
-  const k = params.popularity?.starsPower;
-  return {
-    halfKm: surface === "map" ? null : positive(h) ? h : PROXIMITY_HALF_KM_DEFAULT,
-    exponent: positive(e) ? e : PROXIMITY_EXPONENT_DEFAULT,
-    popularityRoot: positive(root) ? root : POPULARITY_ROOT_DEFAULT,
-    // The stars weight is the Catalog's and Chat's (MESITA-4153); the Map
-    // ranks by its own root alone.
-    starsPower: surface === "map"
-      ? 0
-      : typeof k === "number" && Number.isFinite(k) && k >= 0
-      ? k
-      : STARS_POWER_DEFAULT,
-  };
-}
-
-/** Home's variety and shuffle numbers (MESITA-4153): the repeat penalty
- *  `catalog_rank` applies per kind, and the temperature of the shuffle
- *  after the sort. Out-of-range or missing reads the default. */
-export function catalogMixParams(params: SignalParams): { repeat: number; temperature: number } {
+/** Home's repeat penalty (MESITA-4153): `catalog_rank_lanes` applies it
+ *  per kind in the Organic lane. Out of range or missing reads the
+ *  default. */
+export function varietyRepeat(params: Pick<SignalParams, "variety">): number {
   const r = params.variety?.repeat;
-  const t = params.shuffle?.temperature;
-  return {
-    repeat: typeof r === "number" && Number.isFinite(r) && r > 0 && r <= 1 ? r : VARIETY_REPEAT_DEFAULT,
-    temperature: typeof t === "number" && Number.isFinite(t) && t >= 0 ? t : SHUFFLE_TEMPERATURE_DEFAULT,
-  };
+  return typeof r === "number" && Number.isFinite(r) && r > 0 && r <= 1 ? r : VARIETY_REPEAT_DEFAULT;
 }
 
 /** A Mesita row in the pool: active and ready. */
@@ -214,6 +184,12 @@ export type AreaPoolDeps<T extends PoolRow> = {
   /** Which pipeline runs (MESITA-2909). Required, so a new caller has to
    *  choose. */
   surface: AreaSurface;
+  /** The Catalog's mode (MESITA-4454): which recipe rows score. Absent =
+   *  popular. The Map reads its own rows. */
+  mode?: RankMode;
+  /** A Catalog fill's ad-slot ids (M-c): scored with the mode's Inorganic
+   *  row and marked `ad`. */
+  adIds?: readonly string[];
 };
 
 /** The breakdown a pool place carries (diagnostics only, no card draws it). */
@@ -224,7 +200,9 @@ export type AreaPoolDiagnostics = AreaDiagnostics & {
   halfKm: number | null;
 };
 
-export type AreaPoolPlace = Record<string, unknown> & { id: string; area: AreaPoolDiagnostics };
+/** `ad: true` when the place sits in an ad slot (the Inorganic lane,
+ *  MESITA-4454): the only places that wear "Ad". */
+export type AreaPoolPlace = Record<string, unknown> & { id: string; area: AreaPoolDiagnostics; ad?: true };
 
 export type AreaPoolSummary = {
   /** Mesita rows the pipeline read, before its gates. */
@@ -239,6 +217,8 @@ export type AreaPoolSummary = {
   placesShown: number | null;
   /** The Catalog's page size; null on the Map. */
   pageSize: number | null;
+  /** Places returned in ad slots (MESITA-4454). */
+  ads: number;
 };
 
 function roundedKm(location: AreaLocation, lat: unknown, lng: unknown): number | null {
@@ -279,49 +259,98 @@ function mapDots(
 /** `map.catalogPageSize` when a caller's cfg predates it. */
 const CATALOG_PAGE_SIZE_FALLBACK = 20;
 
+type Lane<T> = {
+  item: { candidate: AreaCandidate; place: T & { distance_km: number | null } };
+  area: ReturnType<typeof rankArea>[number]["area"];
+  ad: boolean;
+};
+
 /**
  * The Map or Catalog pool: the caller's Mesita read gated, scored and ranked,
- * every place carrying its `area` breakdown. The Map keeps its top
- * `map.placesShown`; the Catalog keeps every place, best first.
+ * every place carrying its `area` breakdown. The Map ranks its Organic and
+ * Inorganic (Premier) lanes, merges them (`mergeLanes`, `params.mix.adEvery`)
+ * and keeps the top `map.placesShown`, ad pins included; ties by id. The
+ * Catalog (a fill, and tests) scores every place with the mode's Organic row,
+ * and `adIds` with its Inorganic row, best first.
  */
 export function selectAreaPool<T extends PoolRow>(
   deps: AreaPoolDeps<T>,
 ): Promise<{ places: AreaPoolPlace[]; summary: AreaPoolSummary; dots: MapDot[] }> {
   const catalog = deps.surface === "catalog";
-  const ctx: AreaContext = {
+  const mode = catalog ? deps.mode ?? "popular" : "map";
+  const organicRecipe = recipeFor(mode, "organic", deps.cfg);
+  const adRecipe = recipeFor(mode, "inorganic", deps.cfg);
+  const ctx = (recipe: AreaContext["recipe"]): AreaContext => ({
     location: deps.location,
     families: deps.families,
-    ...areaSignalParams(deps.cfg.params, deps.cfg.map, deps.surface),
-  };
-  const ranked = rankArea(
-    deps.mesitaRows.map((row) => ({
-      candidate: mesitaCandidate(row),
-      place: { ...row, distance_km: roundedKm(deps.location, row.lat, row.lng) },
-    })),
-    (item) => item.candidate,
-    ctx,
-  );
+    recipe,
+    ties: catalog ? "distance" : "id",
+  });
+  const items = deps.mesitaRows.map((row) => ({
+    candidate: mesitaCandidate(row),
+    place: { ...row, distance_km: roundedKm(deps.location, row.lat, row.lng) },
+  }));
+  const organic = rankArea(items, (item) => item.candidate, ctx(organicRecipe));
+  let lanes: Lane<T>[];
+  if (catalog) {
+    const ads = new Set(deps.adIds ?? []);
+    const adArea = new Map(
+      ads.size === 0 ? [] : rankArea(
+        items.filter((i) => ads.has(i.candidate.id)),
+        (item) => item.candidate,
+        ctx(adRecipe),
+      ).map((r) => [r.item.candidate.id, r.area] as const),
+    );
+    lanes = organic.map((r) => {
+      const a = adArea.get(r.item.candidate.id);
+      return a ? { item: r.item, area: a, ad: true } : { ...r, ad: false };
+    });
+  } else {
+    // The Map's Inorganic lane: Premier places only; the screen is its cut
+    // (no ad floor on the Map).
+    const inorganic = rankArea(
+      items.filter((i) => i.candidate.premierTier === 1 || i.candidate.premierTier === 2),
+      (item) => item.candidate,
+      ctx(adRecipe),
+    );
+    const merged = mergeLanes(
+      organic.map((r) => r.item.candidate.id),
+      inorganic.map((r) => r.item.candidate.id),
+      mixFor(deps.cfg).adEvery,
+    );
+    const adIds = new Set(merged.adIds);
+    const orgById = new Map(organic.map((r) => [r.item.candidate.id, r] as const));
+    const adById = new Map(inorganic.map((r) => [r.item.candidate.id, r] as const));
+    lanes = merged.order.flatMap((id) => {
+      const ad = adIds.has(id);
+      const r = ad ? adById.get(id) : orgById.get(id);
+      return r ? [{ ...r, ad }] : [];
+    });
+  }
   const shown = deps.cfg.map.placesShown ?? AREA_PLACES_SHOWN_FALLBACK;
-  const kept = catalog ? ranked : ranked.slice(0, Math.max(0, shown));
-  const places = kept.map(({ item, area }) => {
+  const kept = catalog ? lanes : lanes.slice(0, Math.max(0, shown));
+  const places = kept.map(({ item, area, ad }) => {
     const { distanceKm: km, ...diagnostics } = area;
     // The score tag prints it beside Proximity (MESITA-2830).
     const distanceKm = km === null ? null : Math.round(km * 100) / 100;
+    const halfKm = (ad ? adRecipe : organicRecipe).halfKm;
     return {
       ...item.place,
-      area: { ...diagnostics, distanceKm, halfKm: ctx.halfKm },
+      ...(ad ? { ad: true } : {}),
+      area: { ...diagnostics, distanceKm, halfKm },
     } as AreaPoolPlace;
   });
   const summary: AreaPoolSummary = {
     read: deps.mesitaRows.length,
-    ranked: ranked.length,
+    ranked: organic.length,
     returned: places.length,
     surface: deps.surface,
-    halfKm: ctx.halfKm,
+    halfKm: organicRecipe.halfKm,
     placesShown: catalog ? null : shown,
     pageSize: catalog ? catalogPageSize(deps.cfg.map) : null,
+    ads: places.filter((p) => p.ad === true).length,
   };
-  const dots = catalog ? [] : mapDots(ranked, shown, deps.cfg.map.dotsShown);
+  const dots = catalog ? [] : mapDots(lanes, shown, deps.cfg.map.dotsShown);
   return Promise.resolve({ places, summary, dots });
 }
 
@@ -558,13 +587,14 @@ async function selectRankedPool<T extends PoolRow>(
   for (const p of kept) {
     const card = byId.get(p.id);
     if (!card) continue;
-    places.push({ ...card, distance_km: p.distance_km, area: p.area } as AreaPoolPlace);
+    places.push({ ...card, distance_km: p.distance_km, ...(p.ad ? { ad: true } : {}), area: p.area } as AreaPoolPlace);
   }
   return {
     places,
     summary: {
       ...ranked.summary,
       returned: places.length,
+      ads: places.filter((p) => p.ad === true).length,
       total: ranked.summary.ranked,
       chunks: cards.chunks,
       scanCapped: walk.scanCapped,
@@ -575,7 +605,8 @@ async function selectRankedPool<T extends PoolRow>(
   };
 }
 
-/** The SQL rank (MESITA-3059): `catalog_rank` through supabase-js's `rpc`. */
+/** A SQL rank through supabase-js's `rpc`: `catalog_rank` (`nearest`,
+ *  MESITA-3059) or `catalog_rank_lanes` (MESITA-4454). */
 export type CatalogRankRpc = (
   args: Record<string, unknown>,
 ) => PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
@@ -586,32 +617,69 @@ const KNOWN_FAMILY_SLUGS: readonly string[] = FAMILIES
   .map((f) => f.slug as string)
   .filter((s) => s !== "undefined");
 
-/** `catalog_rank`'s arguments: every number and slug comes from the same
- *  TypeScript the scorer reads (`areaSignalParams`, PREMIER_FACTOR,
- *  the catalog families), so SQL owns the arithmetic only. */
-export function catalogRankArgs(
-  cfg: Pick<DiscoveryConfig, "general" | "map" | "params">,
+function gateArgs(
+  cfg: Pick<DiscoveryConfig, "general">,
   location: AreaLocation,
   families: readonly string[],
-  nearest: boolean,
-): Record<string, unknown> {
-  const sig = areaSignalParams(cfg.params, cfg.map, "catalog");
+) {
   const anchor = location.kind === "point" ? location.anchor : null;
   return {
     p_lat: anchor?.lat ?? null,
     p_lng: anchor?.lng ?? null,
-    p_half_km: sig.halfKm,
-    p_exponent: sig.exponent,
-    p_root: sig.popularityRoot,
-    p_stars_power: sig.starsPower ?? 0,
-    // `nearest` is distance alone: no variety (MESITA-4153).
-    p_repeat: nearest ? 1 : catalogMixParams(cfg.params).repeat,
     p_premier_1: PREMIER_FACTOR[1],
     p_premier_2: PREMIER_FACTOR[2],
     p_families: [...families],
     p_known_families: [...KNOWN_FAMILY_SLUGS],
     p_require_active: cfg.general.requireActive === true,
-    p_nearest: nearest,
+  };
+}
+
+/** `catalog_rank_lanes`' arguments (MESITA-4454): the mode's two recipe
+ *  rows, the repeat penalty (Nearby sends 1, off: E5, R4) and the ad floor.
+ *  Every number comes from the TypeScript config; SQL owns the arithmetic
+ *  only. */
+export function catalogRankLanesArgs(
+  cfg: Pick<DiscoveryConfig, "general" | "map" | "params">,
+  location: AreaLocation,
+  families: readonly string[],
+  mode: RankMode,
+): Record<string, unknown> {
+  const org = recipeFor(mode, "organic", cfg);
+  const ad = recipeFor(mode, "inorganic", cfg);
+  return {
+    ...gateArgs(cfg, location, families),
+    p_organic_half_km: org.halfKm,
+    p_organic_distance_exp: org.distanceExp,
+    p_organic_stars_exp: org.starsExp,
+    p_organic_google_exp: org.googleExp,
+    p_organic_premier_exp: org.premierExp,
+    p_ad_half_km: ad.halfKm,
+    p_ad_distance_exp: ad.distanceExp,
+    p_ad_stars_exp: ad.starsExp,
+    p_ad_google_exp: ad.googleExp,
+    p_ad_premier_exp: ad.premierExp,
+    p_repeat: mode === "nearby" ? 1 : varietyRepeat(cfg.params),
+    p_ad_floor: mixFor(cfg).adFloor,
+  };
+}
+
+/** `catalog_rank`'s arguments for `nearest` (the Reward tab, MESITA-3214):
+ *  distance alone, no lanes, no variety, so only the gates matter; the
+ *  score numbers are the Nearby Organic row's. */
+export function catalogNearestArgs(
+  cfg: Pick<DiscoveryConfig, "general" | "map" | "params">,
+  location: AreaLocation,
+  families: readonly string[],
+): Record<string, unknown> {
+  const r = recipeFor("nearby", "organic", cfg);
+  return {
+    ...gateArgs(cfg, location, families),
+    p_half_km: r.halfKm,
+    p_exponent: r.distanceExp,
+    p_root: r.googleExp,
+    p_stars_power: 0,
+    p_repeat: 1,
+    p_nearest: true,
   };
 }
 
@@ -626,50 +694,107 @@ export type CatalogRankSummary = AreaPoolSummary & {
   missing: number;
 };
 
+/** What the two lanes held (MESITA-4454): the log line's numbers. All 0 on
+ *  `nearest`. */
+export type CatalogLaneStats = {
+  /** Places in the Organic lane. */
+  organic: number;
+  /** Premier places past the ad floor (the Inorganic lane). */
+  premier: number;
+  /** Premier places under the ad floor, across the whole lane. */
+  belowFloor: number;
+  /** Premier places past the gates, before the floor. */
+  inorganicTotal: number;
+  /** Ad-slot places on the first page, after the shuffle. */
+  adsFirstPage: number;
+};
+
 export type CatalogPool = {
   places: AreaPoolPlace[];
   summary: CatalogRankSummary;
-  /** Every ranked id, best first (MESITA-3057): the Catalog hands Home the
-   *  whole order once and Home fills cards by id. */
+  /** Every ranked id (MESITA-3057), the merged list: the shuffled first
+   *  page, then the exact merged tail. Home fills cards by id. */
   order: string[];
+  /** The ids in ad slots, across the whole `order` (M-6); [] on `nearest`. */
+  adIds: string[];
+  /** id → its 1-based rank in the merged order before the shuffle, for the
+   *  first page's ids (M-c); {} on `nearest`. */
+  preShuffle: Record<string, number>;
+  lanes: CatalogLaneStats;
 };
 
+const ids = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
+const count = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+
 /**
- * The Catalog pool (MESITA-2921, MESITA-3059): `catalog_rank` ranks every
- * gated place in SQL, no row cap, and answers `order`, every ranked id best
- * first (MESITA-3057, Pato: "have all the ids … then populate with data and
- * the images"); only the first `pageSize` cards are read, and scored here
- * from the same point so each carries its `area` breakdown. Home fills the
- * rest with `selectCatalogFill`. `nearest` sorts by distance alone (the
- * Reward tab, MESITA-3214); Home's score still fills `area`. A failed rank
- * is pass 1, page 0.
+ * The Catalog pool (MESITA-2921, MESITA-3059, MESITA-4454): one SQL rank
+ * per request, no row cap. For a mode, `catalog_rank_lanes` answers both
+ * lane orders; `mergeLanes` puts one ad after every `params.mix.adEvery`
+ * organic places; `cutAndShuffle` redraws the first page by the mode's
+ * Temperature with the guest's `seed` (the tail keeps its exact order). Only
+ * the first `pageSize` cards are read, scored here from the same point with
+ * the mode's rows (ad slots with the Inorganic row). Home fills the rest
+ * with `selectCatalogFill`. `nearest` (the Reward tab, MESITA-3214) is
+ * `catalog_rank` by distance alone: no lanes, no ads, no shuffle. A failed
+ * rank is pass 1, page 0.
  */
 export async function selectCatalogPool<T extends PoolRow>(
   deps: Omit<RankedPoolDeps<T>, "pagesMax"> & {
+    /** `catalog_rank` (the `nearest` path). */
     rank: CatalogRankRpc;
+    /** `catalog_rank_lanes` (every mode). */
+    rankLanes: CatalogRankRpc;
     location: AreaLocation;
-    /** The first page's length: only these cards are read. */
+    /** The first page's length: only these cards are read, and the shuffle
+     *  pool. */
     pageSize: number;
     nearest?: boolean;
-    /** The shuffle's random source; tests pin it. */
-    random?: () => number;
+    /** The guest's mode (absent = popular). */
+    mode?: RankMode;
+    /** The first-page shuffle's seed, uint32. */
+    seed: number;
   },
 ): Promise<CatalogPool> {
-  const { data, error } = await deps.rank(
-    catalogRankArgs(deps.cfg, deps.location, deps.families, deps.nearest === true),
-  );
-  if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
-  const answer = (data ?? {}) as { read?: unknown; ids?: unknown };
-  const ranked = Array.isArray(answer.ids) ? answer.ids.map(String) : [];
-  // The shuffle after the sort (MESITA-4153): fresh on every rank, held for
-  // the whole scroll because fills read this one `order`. `nearest` (the
-  // Reward tab) is never shuffled.
-  const order = deps.nearest === true
-    ? ranked
-    : shuffleByRank(ranked, catalogMixParams(deps.cfg.params).temperature, deps.random);
-  const read = typeof answer.read === "number" ? answer.read : order.length;
-  const kept = order.slice(0, Math.max(0, deps.pageSize));
-  const filled = await selectCatalogFill({ ...deps, ids: kept });
+  const nearest = deps.nearest === true;
+  const mode: RankMode = deps.mode ?? "popular";
+  let order: string[];
+  let adIds: string[] = [];
+  let preShuffle: Record<string, number> = {};
+  let read: number;
+  let lanes: CatalogLaneStats = { organic: 0, premier: 0, belowFloor: 0, inorganicTotal: 0, adsFirstPage: 0 };
+  const page = Math.max(0, deps.pageSize);
+  if (nearest) {
+    const { data, error } = await deps.rank(catalogNearestArgs(deps.cfg, deps.location, deps.families));
+    if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
+    const answer = (data ?? {}) as { read?: unknown; ids?: unknown };
+    order = ids(answer.ids);
+    read = typeof answer.read === "number" ? answer.read : order.length;
+  } else {
+    const { data, error } = await deps.rankLanes(
+      catalogRankLanesArgs(deps.cfg, deps.location, deps.families, mode),
+    );
+    if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
+    const answer = (data ?? {}) as Record<string, unknown>;
+    const organic = ids(answer.ids);
+    const premier = ids(answer.premier);
+    const mix = mixFor(deps.cfg);
+    const merged = mergeLanes(organic, premier, mix.adEvery);
+    order = cutAndShuffle(merged.order, page, mix.temperature[mode], deps.seed);
+    adIds = merged.adIds;
+    const rankOf = new Map(merged.order.map((id, i) => [id, i + 1] as const));
+    preShuffle = Object.fromEntries(order.slice(0, page).map((id) => [id, rankOf.get(id) ?? 0]));
+    read = typeof answer.read === "number" ? answer.read : organic.length;
+    const ads = new Set(adIds);
+    lanes = {
+      organic: organic.length,
+      premier: premier.length,
+      belowFloor: count(answer.below_floor),
+      inorganicTotal: count(answer.inorganic_total),
+      adsFirstPage: order.slice(0, page).filter((id) => ads.has(id)).length,
+    };
+  }
+  const kept = order.slice(0, page);
+  const filled = await selectCatalogFill({ ...deps, mode, adIds, ids: kept });
   return {
     places: filled.places,
     summary: {
@@ -677,14 +802,18 @@ export async function selectCatalogPool<T extends PoolRow>(
       ranked: order.length,
       returned: filled.places.length,
       surface: "catalog",
-      halfKm: areaSignalParams(deps.cfg.params, deps.cfg.map, "catalog").halfKm,
+      halfKm: recipeFor(mode, "organic", deps.cfg).halfKm,
       placesShown: null,
       pageSize: catalogPageSize(deps.cfg.map),
+      ads: filled.places.filter((p) => p.ad === true).length,
       total: order.length,
       chunks: filled.summary.chunks,
       missing: kept.length - filled.places.length,
     },
     order,
+    adIds,
+    preShuffle,
+    lanes,
   };
 }
 
@@ -692,13 +821,20 @@ export async function selectCatalogPool<T extends PoolRow>(
  * A Catalog fill (MESITA-3057, Pato: "have all the ids … then populate with
  * data and the images"): the cards for ids Home already holds from a rank
  * answer's `order`, read through the same gates and scored from the same
- * point, so each card carries the rank's `area` and `distance_km`. Rows a
- * gate now closes (inactive, family) drop out;
- * the rest come back in the asked order. No pass 1: nothing is ranked again.
+ * point with the same mode's rows, so each card carries the rank's `area`
+ * and `distance_km`; an id in `adIds` is scored with the Inorganic row and
+ * marked `ad` (M-c). A fill never adds or removes an ad (M6). Rows a gate
+ * now closes (inactive, family) drop out; the rest come back in the asked
+ * order. No pass 1: nothing is ranked again.
  */
 export async function selectCatalogFill<T extends PoolRow>(
-  deps: Omit<RankedPoolDeps<T>, "pagesMax"> & { location: AreaLocation; ids: readonly string[] },
-): Promise<{ places: AreaPoolPlace[]; summary: { asked: number; returned: number; chunks: number } }> {
+  deps: Omit<RankedPoolDeps<T>, "pagesMax"> & {
+    location: AreaLocation;
+    ids: readonly string[];
+    mode?: RankMode;
+    adIds?: readonly string[];
+  },
+): Promise<{ places: AreaPoolPlace[]; summary: { asked: number; returned: number; chunks: number; ads: number } }> {
   const cards = await cardsForIds(
     deps.read,
     deps.cfg,
@@ -708,26 +844,37 @@ export async function selectCatalogFill<T extends PoolRow>(
   );
   // The card columns hold every scoring column, so the scorer reads the
   // cards themselves.
+  const asked = new Set(deps.ids);
   const scored = await selectAreaPool({
     surface: "catalog",
     location: deps.location,
     families: deps.families,
     mesitaRows: deps.wire(cards.rows),
     cfg: deps.cfg,
+    mode: deps.mode,
+    adIds: (deps.adIds ?? []).filter((id) => asked.has(id)),
   });
   const byId = new Map(scored.places.map((p) => [p.id, p]));
   const places = deps.ids.flatMap((id) => {
     const p = byId.get(id);
     return p ? [p] : [];
   });
-  return { places, summary: { asked: deps.ids.length, returned: places.length, chunks: cards.chunks } };
+  return {
+    places,
+    summary: {
+      asked: deps.ids.length,
+      returned: places.length,
+      chunks: cards.chunks,
+      ads: places.filter((p) => p.ad === true).length,
+    },
+  };
 }
 
 /**
  * The Map pool (MESITA-2950): the Catalog's two passes boxed to the screen
- * ring. Every gated place inside the box is ranked (Popularity × s, the
- * Radius gate drops the box's corners), the top `map.placesShown` kept, and
- * only their cards read.
+ * ring. Every gated place inside the box is ranked in two lanes and merged
+ * (the Radius gate drops the box's corners), the top `map.placesShown` kept
+ * (ad pins count), and only their cards read.
  */
 export function selectMapPool<T extends PoolRow>(
   deps: RankedPoolDeps<T> & { center: LatLng; radiusKm: number },
@@ -754,8 +901,9 @@ export type MesitaOpts = {
   limit?: number;
 };
 
-/** Ready Mesita rows ranked by the Catalog score (Premier factor
- *  included), inside the radius. */
+/** Ready Mesita rows ranked by the Catalog Family Organic row (M-f,
+ *  MESITA-4454: no Inorganic lane, no ads, no shuffle), inside the
+ *  radius. */
 export function rankMesitaPlaces<T extends Record<string, unknown>>(
   rows: readonly T[],
   opts: MesitaOpts,
@@ -769,8 +917,8 @@ export function rankMesitaPlaces<T extends Record<string, unknown>>(
     {
       location,
       families: opts.families ?? [],
-      // The Catalog score (MESITA-2909): Proximity with the half distance.
-      ...areaSignalParams(opts.params, {}, "catalog"),
+      // Chat ranks with the Catalog Family Organic row (MESITA-4454).
+      recipe: recipeFor("family", "organic", { params: opts.params }),
     },
   );
   const out = ranked.map(({ item }) => ({
