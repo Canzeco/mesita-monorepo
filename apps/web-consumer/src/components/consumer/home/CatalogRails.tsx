@@ -150,8 +150,13 @@ const CAT_EMOJI_OFF = "bg-card border-border border";
 // STRONGER, AND RED (Pato, MESITA-4423: "those backgrounds are too light
 // and look like shit. and not purple. red"): the specials a light red,
 // the families a light blue, each with a ring of its own hue.
-const CAT_TINT_SPECIAL = "bg-red-100 border border-red-200";
-const CAT_TINT_FAMILY = "bg-sky-100 border border-sky-200";
+// NO TINTS (Pato, MESITA-4427: "I don't like the colors red and blue at
+// all, maybe try adding another lines … menu LINE saved near top LINE
+// families"): every circle white with a hairline ring again; short ticks
+// split Menu, the specials and the families instead (MESITA-4421/4423's
+// purple, red and blue tints are gone).
+const CAT_TINT_SPECIAL = CAT_EMOJI_OFF;
+const CAT_TINT_FAMILY = CAT_EMOJI_OFF;
 const CAT_EMOJI_ON = "bg-foreground border border-transparent";
 const CAT_NAME = "relative w-full truncate text-center";
 
@@ -622,10 +627,10 @@ export function CatalogRails() {
     // dirty"): MESITA-4415's "Categories" eyebrow is gone; the circles say it.
     <div className="bg-card border-border flex shrink-0 items-start border-b pt-2.5 pb-1.5" data-places-strip>
       {/* THE MENU STAYS PUT (Pato, MESITA-4423: "menu must be fixed"): its
-          tile sits outside the scroller, pinned at the left with a hairline
-          after it, so it is always one tap away while the categories slide
+          tile sits outside the scroller, pinned at the left with a short
+          tick after it, so it is always one tap away while the categories slide
           under nothing. It was the row's first tile (MESITA-4410). */}
-      <div className="border-border flex shrink-0 border-r pr-1 pl-2">
+      <div className="flex shrink-0 pl-2">
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
@@ -650,12 +655,18 @@ export function CatalogRails() {
           <span className={cn(CAT_NAME, "text-muted-foreground font-medium")}>Menu</span>
         </button>
       </div>
+      {/* A SHORT TICK, NOT A WALL (Pato, MESITA-4427: "the line looks like
+          shit separating menu from others, make it not that large"): 24px,
+          level with the circles' middle. */}
+      <span aria-hidden className="bg-border mx-1 mt-2 h-6 w-px shrink-0" />
       <nav
         ref={stripRef}
         aria-label="Families"
         className="scrollbar-hide relative flex min-w-0 flex-1 gap-0.5 overflow-x-auto overscroll-x-contain px-1"
       >
-        {chips.map((c) => pill(c, false))}
+        {chips.filter((c) => isSpecial(c.key)).map((c) => pill(c, false))}
+        <span aria-hidden className="bg-border mx-1 mt-2 h-6 w-px shrink-0" />
+        {chips.filter((c) => !isSpecial(c.key)).map((c) => pill(c, false))}
       </nav>
     </div>
   );
