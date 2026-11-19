@@ -39,7 +39,9 @@ function scoreNumber(n: number | null | undefined): string {
  * (MESITA-4454, H1): Premier is premierFactor ^ PremierExp, so ×1 on every
  * organic row. The top line is the place's merged rank before the first
  * page's shuffle and its shown position ("#3 → 1st"), and "Ad" on an
- * ad-slot row; an organic row names no lane (E1). No `area`, no label.
+ * ad-slot row. The Lane line names the place's lane (MESITA-4465, Pato:
+ * "mention the lane too, if organic or inorganic"): Inorganic in an
+ * inorganic slot, Organic otherwise. No `area`, no label.
  * TO REMOVE: delete this and its one use.
  */
 function ScoreLabel({
@@ -58,6 +60,7 @@ function ScoreLabel({
       : ordinal(rank.shown)
     : null;
   const rows: Array<[string, string]> = [
+    ["Lane", ad ? "Inorganic" : "Organic"],
     ["Popularity", scoreNumber(area.signals.popularity)],
     ["Proximity", scoreNumber(area.signals.proximity)],
     ["Premier", `×${scoreNumber(area.premierBoost ?? area.selectedFactor ?? 1)}`],
