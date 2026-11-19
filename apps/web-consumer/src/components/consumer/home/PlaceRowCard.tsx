@@ -162,6 +162,8 @@ export function PlaceRowCard({
           <OfferButton href={placeHref(place.slug || place.id)} name={place.name} slides={slides} />
           <div className="pointer-events-auto">
           <CardActions
+            // White with a hairline, not grey (MESITA-4432).
+            buttonClassName="bg-card border-border hover:bg-muted border"
             name={place.name}
             saved={saved}
             onSave={onToggle}
