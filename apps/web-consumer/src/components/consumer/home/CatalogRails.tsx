@@ -542,7 +542,7 @@ export function CatalogRails() {
               // 16px, the app's body step (MESITA-4046, Pato: "looks so
               // fucking small the selected place … make it bigger"); 14px
               // before. The chosen word is bold ink, the other regular grey.
-              "flex flex-1 justify-center px-1 text-base whitespace-nowrap transition",
+              "relative flex flex-1 justify-center px-1 text-base whitespace-nowrap transition",
               on ? "text-foreground font-bold" : "text-muted-foreground",
             )}
           >
@@ -553,17 +553,17 @@ export function CatalogRails() {
                 strokeWidth={on ? 2.5 : 2}
               />
               {t.label}
-              {on ? (
-                <span
-                  aria-hidden
-                  // AN INK LINE AS WIDE AS THE WORD, 3px, on the strip's
-                  // bottom hairline (MESITA-4046; MESITA-4039's 32px line
-                  // under a 14px word read too timid). Still black, never
-                  // the whole half (MESITA-3892's full-width blue bar).
-                  className="bg-foreground absolute inset-x-0 bottom-0 h-[3px] rounded-full"
-                />
-              ) : null}
             </span>
+            {on ? (
+              <span
+                aria-hidden
+                // THE LINE IS THE WHOLE HALF (Pato, 2026-11-18, MESITA-4440:
+                // "do the place selector full width of its box, like 50% the
+                // line below places"): 3px ink across the tab's cell, on the
+                // strip's hairline. It was as wide as the word (MESITA-4046).
+                className="bg-foreground absolute inset-x-0 bottom-0 h-[3px]"
+              />
+            ) : null}
           </Link>
         );
       })}
