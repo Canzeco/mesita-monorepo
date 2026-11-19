@@ -1528,7 +1528,18 @@ export function VouchersPane({
                       aria-label={`${p.short}, pay ${whole(pay)}, get ${whole(get)}, ${bonus} bonus${locked ? `. ${why}` : ""}`}
                       className="hover:bg-muted/50 flex min-h-[4.5rem] w-full cursor-pointer items-center gap-3 px-3.5 py-2 text-left"
                     >
-                      <span className={cn("relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl", face.card)} aria-hidden>
+                      {/* A LOCKED OFFER READS LOCKED (Pato, 2026-11-19,
+                          MESITA-4456: "if blocked, it must be clearer"): the
+                          face and the bonus box go grey, the name and deal
+                          grey, and a third line says why, with a lock. The
+                          row still opens its sheet. */}
+                      <span
+                        className={cn(
+                          "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl",
+                          locked ? "bg-muted text-muted-foreground" : face.card,
+                        )}
+                        aria-hidden
+                      >
                         <Mark className="h-7 w-7" strokeWidth={2.25} />
                         {locked ? (
                           <span className="bg-card text-foreground absolute -right-1 -bottom-1 flex h-6 w-6 items-center justify-center rounded-full shadow-sm" data-voucher-locked>
@@ -1537,14 +1548,20 @@ export function VouchersPane({
                         ) : null}
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
-                        <span className="text-foreground truncate text-base font-semibold">{p.short}</span>
+                        <span className={cn("truncate text-base font-semibold", locked ? "text-muted-foreground" : "text-foreground")}>{p.short}</span>
                         {/* IN INK (Pato, 2026-11-17, MESITA-4227: "the pay and
                             get must be clearer, it's too transparent"): Pay
                             medium, Get semibold, only the dot grey. */}
-                        <span className="text-foreground truncate text-base font-semibold tabular-nums">
+                        <span className={cn("truncate text-base font-semibold tabular-nums", locked ? "text-muted-foreground" : "text-foreground")}>
                           Pay {whole(pay)} <span className="text-muted-foreground">·</span>{" "}
                           <span className="font-semibold">Get {whole(get)}</span>
                         </span>
+                        {locked ? (
+                          <span className="text-foreground mt-0.5 flex min-w-0 items-center gap-1 text-sm font-semibold" data-voucher-why>
+                            <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+                            <span className="truncate">{why.replace(/\.$/, "")}</span>
+                          </span>
+                        ) : null}
                       </span>
                       {/* THE BONUS IS THE HERO, AT THE RIGHT IN A BLACK BOX
                           (Pato, 2026-11-17, MESITA-4230: "the bonus amount must
@@ -1554,7 +1571,10 @@ export function VouchersPane({
                           went so the deal keeps its width on a 390px phone;
                           the box is the row's tap cue. */}
                       <span
-                        className="bg-foreground text-paper flex w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-xl py-1.5 tabular-nums"
+                        className={cn(
+                          "flex w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-xl py-1.5 tabular-nums",
+                          locked ? "bg-muted text-muted-foreground" : "bg-foreground text-paper",
+                        )}
                         aria-hidden
                         data-offer-bonus
                       >
