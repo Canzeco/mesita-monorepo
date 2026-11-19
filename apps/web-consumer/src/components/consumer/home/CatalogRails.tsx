@@ -147,15 +147,18 @@ const CAT_EMOJI_OFF = "bg-card border-border border";
 // families slightly purple background, normal families slightly blue, but
 // really lightly"): Saved and Top a whisper of purple, every family a
 // whisper of blue; Menu stays white; the chosen circle stays ink.
-const CAT_TINT_SPECIAL = "bg-purple-50 border-border border";
-const CAT_TINT_FAMILY = "bg-sky-50 border-border border";
+// STRONGER, AND RED (Pato, MESITA-4423: "those backgrounds are too light
+// and look like shit. and not purple. red"): the specials a light red,
+// the families a light blue, each with a ring of its own hue.
+const CAT_TINT_SPECIAL = "bg-red-100 border border-red-200";
+const CAT_TINT_FAMILY = "bg-sky-100 border border-sky-200";
 const CAT_EMOJI_ON = "bg-foreground border border-transparent";
 const CAT_NAME = "relative w-full truncate text-center";
 
-/** Saved and Top: not families, so the Categories modal lists them first,
- *  apart (MESITA-4417). */
+/** Saved, Near and Top: not families, so the Categories modal lists them
+ *  first, apart (MESITA-4417, Near since MESITA-4423). */
 function isSpecial(key: string): boolean {
-  return key === SAVED_CHIP || key === ALL_CHIP;
+  return key === SAVED_CHIP || key === NEAR_CHIP || key === ALL_CHIP;
 }
 
 /** The column's default row: every place, one list, ranked like the Search
@@ -171,9 +174,15 @@ export const TOP_LABEL = "Top";
 export const SAVED_CHIP = "saved";
 export const SAVED_LABEL = "Saved";
 
-/** All is every family; any other row is one family. */
+/** NEAR (Pato, 2026-11-18, MESITA-4423: "build (Near and Top) and then the
+ *  categories. for the moment near and top must have the same feed"): every
+ *  family, the same pool and order as Top until Pato tunes its own ranking. */
+export const NEAR_CHIP = "near";
+export const NEAR_LABEL = "Near";
+
+/** Top and Near are every family; any other row is one family. */
 export function isEveryFamily(chip: string): boolean {
-  return chip === ALL_CHIP;
+  return chip === ALL_CHIP || chip === NEAR_CHIP;
 }
 
 /** Home's two tabs, each its own address (Pato, MESITA-2597). PLACES IS
@@ -208,6 +217,8 @@ export function placesChips(): { key: string; label: string; emoji: string }[] {
     // The word is Top, the key stays `all` (Pato, MESITA-2534: "all is the
     // wrong word … one might thing that is the sum aof all the other
     // subests, but not"): it is the best-ranked pool, not every place.
+    // Near before Top (MESITA-4423); the same feed as Top for now.
+    { key: NEAR_CHIP, label: NEAR_LABEL, emoji: "📍" },
     { key: ALL_CHIP, label: TOP_LABEL, emoji: "⭐" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
       key: f.key as string,
@@ -609,15 +620,12 @@ export function CatalogRails() {
   const strip = (
     // NO LABEL (Pato, MESITA-4418: "don't mention categories it looks super
     // dirty"): MESITA-4415's "Categories" eyebrow is gone; the circles say it.
-    <div className="bg-card border-border flex shrink-0 flex-col border-b pt-2.5 pb-1.5" data-places-strip>
-      <nav
-        ref={stripRef}
-        aria-label="Families"
-        className="scrollbar-hide relative flex min-w-0 gap-0.5 overflow-x-auto overscroll-x-contain px-2"
-      >
-        {/* THE MENU IS THE ROW'S FIRST TILE (MESITA-4410: "i want a menu"):
-            a grey round button with its name, the same column as a family,
-            opening every family at once. */}
+    <div className="bg-card border-border flex shrink-0 items-start border-b pt-2.5 pb-1.5" data-places-strip>
+      {/* THE MENU STAYS PUT (Pato, MESITA-4423: "menu must be fixed"): its
+          tile sits outside the scroller, pinned at the left with a hairline
+          after it, so it is always one tap away while the categories slide
+          under nothing. It was the row's first tile (MESITA-4410). */}
+      <div className="border-border flex shrink-0 border-r pr-1 pl-2">
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
@@ -641,6 +649,12 @@ export function CatalogRails() {
           </span>
           <span className={cn(CAT_NAME, "text-muted-foreground font-medium")}>Menu</span>
         </button>
+      </div>
+      <nav
+        ref={stripRef}
+        aria-label="Families"
+        className="scrollbar-hide relative flex min-w-0 flex-1 gap-0.5 overflow-x-auto overscroll-x-contain px-1"
+      >
         {chips.map((c) => pill(c, false))}
       </nav>
     </div>
@@ -663,11 +677,11 @@ export function CatalogRails() {
             }}
             aria-pressed={on}
             className={cn(
-              "flex items-center gap-3 rounded-2xl border p-3 text-left text-sm font-semibold transition active:scale-[0.98]",
+              "flex min-w-0 flex-1 items-center gap-2 rounded-2xl border p-2.5 text-left text-sm font-semibold transition active:scale-[0.98]",
               on ? "bg-foreground text-card border-transparent" : "bg-card text-foreground border-border",
             )}
           >
-            <span aria-hidden className={cn(CAT_EMOJI, on ? "bg-card" : "bg-purple-50")}>
+            <span aria-hidden className={cn(CAT_EMOJI, on ? "bg-card" : CAT_TINT_SPECIAL)}>
               {c.emoji}
             </span>
             {c.label}
