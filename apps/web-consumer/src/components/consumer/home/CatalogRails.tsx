@@ -143,6 +143,12 @@ const CAT =
 const CAT_EMOJI =
   "flex h-10 w-10 items-center justify-center rounded-full text-xl leading-none transition";
 const CAT_EMOJI_OFF = "bg-card border-border border";
+// A FAINT TINT TELLS THEM APART (Pato, 2026-11-18, MESITA-4421: "special
+// families slightly purple background, normal families slightly blue, but
+// really lightly"): Saved and Top a whisper of purple, every family a
+// whisper of blue; Menu stays white; the chosen circle stays ink.
+const CAT_TINT_SPECIAL = "bg-purple-50 border-border border";
+const CAT_TINT_FAMILY = "bg-sky-50 border-border border";
 const CAT_EMOJI_ON = "bg-foreground border border-transparent";
 const CAT_NAME = "relative w-full truncate text-center";
 
@@ -566,7 +572,13 @@ export function CatalogRails() {
         data-on={on ? "" : undefined}
         className={cn(CAT, inMenu && "w-auto")}
       >
-        <span aria-hidden className={cn(CAT_EMOJI, on ? CAT_EMOJI_ON : CAT_EMOJI_OFF)}>
+        <span
+          aria-hidden
+          className={cn(
+            CAT_EMOJI,
+            on ? CAT_EMOJI_ON : isSpecial(c.key) ? CAT_TINT_SPECIAL : CAT_TINT_FAMILY,
+          )}
+        >
           {c.emoji}
         </span>
         <span
@@ -655,7 +667,7 @@ export function CatalogRails() {
               on ? "bg-foreground text-card border-transparent" : "bg-card text-foreground border-border",
             )}
           >
-            <span aria-hidden className={cn(CAT_EMOJI, on ? "bg-card" : "bg-muted")}>
+            <span aria-hidden className={cn(CAT_EMOJI, on ? "bg-card" : "bg-purple-50")}>
               {c.emoji}
             </span>
             {c.label}
