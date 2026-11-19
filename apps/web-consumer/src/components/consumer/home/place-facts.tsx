@@ -5,6 +5,7 @@ import { Clock, Navigation, Star } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
 import { cardFacts } from "@/components/consumer/place-card";
+import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 
 /** $ to $$$$ from a price range's low end ("$200–300MX" → $$), on the
  *  place screen's level ranges (place-price.ts LEVEL_RANGES). */
@@ -103,5 +104,74 @@ export function PlaceFactsRun({
         </Fragment>
       ))}
     </p>
+  );
+}
+
+/**
+ * ONE FACT PER LINE (Pato, 2026-11-18, MESITA-4418: "make the text bigger,
+ * and add more text: Name / Google Category / Price Range, Google Stars /
+ * Opening Status / Zone, distance / BUTTONS"): Home's row card under the
+ * name, 14px, each line truncated, a missing fact dropping its line:
+ *
+ *   Taco Restaurant                 the Google category (back from MESITA-3786)
+ *   $$ · ★ 4.7 (8.6K)
+ *   ◷ Open · until 3:00             or Closed · opens 13:00
+ *   ➤ Tecnológico · 0.4 km
+ */
+export function PlaceFactsLines({ place }: { place: Place }) {
+  const facts = cardFacts(place);
+  const overview = enrichPlaceOverview(place);
+  const price = facts.price ?? priceSymbolsFromRange(place.price_range);
+  const icon = "h-3.5 w-3.5 shrink-0";
+  const line = "flex min-w-0 items-center gap-1 truncate";
+  const zone = place.zone?.trim() || null;
+  const until = facts.open === true ? overview.closes_at : null;
+  const opens = facts.open === false ? overview.opens_at : null;
+  return (
+    <div className="text-foreground flex min-w-0 flex-col gap-0.5 text-sm leading-5" data-row-facts>
+      {facts.kind ? (
+        <p className="text-muted-foreground truncate" data-row-kind>
+          {facts.kind}
+        </p>
+      ) : null}
+      {price || facts.rating ? (
+        <p className={line}>
+          {price ? <span className="text-fact-price font-semibold">{price}</span> : null}
+          {price && facts.rating ? <span className="text-muted-foreground">·</span> : null}
+          {facts.rating ? (
+            <span className="flex min-w-0 items-center gap-0.5 truncate">
+              <Star className={cn(icon, "fill-fact-star text-fact-star")} aria-hidden />
+              {facts.rating}
+              {facts.reviews ? (
+                <span className="text-muted-foreground">({facts.reviews})</span>
+              ) : null}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
+      {facts.open !== null ? (
+        <p className={line} data-row-open>
+          <Clock
+            className={cn(icon, facts.open ? "text-fact-open" : "text-fact-closed")}
+            strokeWidth={2.5}
+            aria-hidden
+          />
+          <span className={cn("font-medium", facts.open ? "text-fact-open" : "text-fact-closed")}>
+            {facts.open ? "Open" : "Closed"}
+          </span>
+          {until || opens ? (
+            <span className="text-muted-foreground truncate">
+              · {until ? `until ${until}` : `opens ${opens}`}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
+      {zone || facts.distance ? (
+        <p className={cn(line, "text-muted-foreground")} data-row-where>
+          <Navigation className={cn(icon, "fill-fact-distance text-fact-distance")} aria-hidden />
+          <span className="truncate">{[zone, facts.distance].filter(Boolean).join(" · ")}</span>
+        </p>
+      ) : null}
+    </div>
   );
 }

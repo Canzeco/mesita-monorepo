@@ -24,8 +24,7 @@ export function HomeLoadingFrame() {
           </div>
         ))}
       </div>
-      <div className="bg-card border-border flex shrink-0 flex-col overflow-hidden border-b pt-2 pb-1.5">
-        <Skeleton className="mx-4 mb-1.5 h-3 w-20" />
+      <div className="bg-card border-border flex shrink-0 flex-col overflow-hidden border-b pt-2.5 pb-1.5">
         <div className="flex gap-0.5 px-2">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="flex w-[52px] shrink-0 flex-col items-center gap-0.5 pb-1">
