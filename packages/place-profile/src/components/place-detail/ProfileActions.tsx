@@ -488,19 +488,32 @@ function TableTile({
       aria-label={`Your table here: ${state}, ${day}${time ? `, ${time}` : ""}. Opens Reserve to change or cancel it.`}
       className={cn(
         PROFILE_MESITA_TILE_BOX_CLASS,
-        "flex-row items-center gap-2.5 overflow-hidden px-2.5 text-left transition hover:opacity-90 active:scale-[0.99]",
-        RESERVE_CHIP,
+        "flex-row items-center gap-2.5 overflow-hidden px-2 text-left transition hover:opacity-95 active:scale-[0.99]",
+        // PRETTIER (MESITA-4444, Pato: "TRY TO MAKE THE RED BUTTON
+        // PRETTIER"): a soft red depth, lighter at the top, and a 1px inner
+        // ring, so it reads as a ticket you can press. Still red edge to
+        // edge (MESITA-4407).
+        "bg-gradient-to-b from-[#E2454F] to-[#C92F3A] text-white ring-1 ring-white/10 ring-inset",
       )}
     >
+      {/* The tear-off calendar: month over date in a darker square, so the
+          date reads as one thing (MESITA-4444); no white box (MESITA-4438). */}
       <span
         aria-hidden
-        className="flex w-9 shrink-0 flex-col items-center justify-center leading-none"
+        className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-md bg-black/15 leading-none"
       >
-        <span className="text-xs font-semibold">{month ?? ""}</span>
-        <span className="text-sm font-extrabold tabular-nums">{date ?? ""}</span>
+        <span className="text-xs font-semibold opacity-90">{month ?? ""}</span>
+        <span className="mt-0.5 text-sm font-extrabold tabular-nums">{date ?? ""}</span>
       </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="flex items-center gap-1 text-xs font-semibold opacity-90">
+      <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
+        {/* The state as a pill (MESITA-4444): Booking translucent with a
+            pulsing dot, still waiting; Booked solid white, red text, earned. */}
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full px-1.5 py-px text-xs leading-tight font-semibold",
+            r.confirmed ? "bg-white text-[#C92F3A]" : "bg-white/20 text-white",
+          )}
+        >
           {r.confirmed ? (
             <Check className="h-3 w-3 shrink-0" strokeWidth={3} aria-hidden />
           ) : (
@@ -508,7 +521,7 @@ function TableTile({
           )}
           {state}
         </span>
-        <span className="truncate text-sm leading-tight font-extrabold tabular-nums">
+        <span className="max-w-full truncate text-sm leading-tight font-extrabold tabular-nums">
           {weekday}
           {time ? ` · ${time}` : ""}
         </span>
