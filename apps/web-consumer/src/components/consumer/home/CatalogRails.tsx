@@ -142,6 +142,12 @@ const CAT =
 // below (two lines would stack into 2px).
 const CAT_EMOJI =
   "flex h-10 w-10 items-center justify-center rounded-full text-xl leading-none transition";
+// SQUARES FOR THE SPECIALS, CIRCLES FOR THE FAMILIES (Pato, MESITA-4428:
+// "i don't like the current separations at all. the lines look like shit.
+// maybe try square boxes for the special boxes and circular boxes for the
+// family boxes"): Menu, Saved, Near and Top are rounded squares; the ticks
+// between them (MESITA-4427) are gone. The shape is the separation.
+const CAT_SQUARE = "rounded-xl";
 const CAT_EMOJI_OFF = "bg-card border-border border";
 // A FAINT TINT TELLS THEM APART (Pato, 2026-11-18, MESITA-4421: "special
 // families slightly purple background, normal families slightly blue, but
@@ -312,6 +318,51 @@ export function CatalogRails() {
   const [families, setFamilies] = useState<string[]>([]);
   // The menu: every family at once, dropped over the rows (MESITA-4410).
   const [menuOpen, setMenuOpen] = useState(false);
+  // THE BAND HIDES ON THE WAY DOWN (Pato, 2026-11-18, MESITA-4428: "if i
+  // start scrolling to the bottom, hide the families bar and places and
+  // social; when i … scroll to the top, just 10px, show again … with an
+  // animation"): Places · Social and the category row fold away while the
+  // list scrolls down and slide back on a 10px scroll up or at the top.
+  const [bandHidden, setBandHidden] = useState(false);
+  const lastTops = useRef(new WeakMap<EventTarget, number>());
+  // A fold resizes the scroller, which moves scrollTop at the list's end;
+  // scroll events are ignored for the fold's 250ms so it never flickers.
+  const bandLockedUntil = useRef(0);
+  const setBand = (hidden: boolean) => {
+    bandLockedUntil.current = performance.now() + 250;
+    setBandHidden(hidden);
+  };
+  // A new tab or category shows the band again (set during render, the
+  // prop-to-state pattern; never in an effect).
+  const bandKey = `${tab}|${chip}`;
+  const [lastBandKey, setLastBandKey] = useState(bandKey);
+  if (bandKey !== lastBandKey) {
+    setLastBandKey(bandKey);
+    if (bandHidden) setBandHidden(false);
+  }
+  const onPaneScroll = (e: React.UIEvent<HTMLElement>) => {
+    const el = e.target as HTMLElement;
+    // Only a vertical scroller counts (a sideways carousel inside Social
+    // fires scroll too).
+    if (!(el instanceof HTMLElement) || el.scrollHeight <= el.clientHeight + 1) return;
+    const top = el.scrollTop;
+    if (performance.now() < bandLockedUntil.current) {
+      lastTops.current.set(el, top);
+      return;
+    }
+    const last = lastTops.current.get(el) ?? 0;
+    const delta = top - last;
+    if (top < 8) {
+      if (bandHidden) setBand(false);
+      lastTops.current.set(el, top);
+    } else if (delta > 6) {
+      if (!bandHidden && top > 48) setBand(true);
+      lastTops.current.set(el, top);
+    } else if (delta < -10) {
+      if (bandHidden) setBand(false);
+      lastTops.current.set(el, top);
+    }
+  };
   const stripRef = useRef<HTMLElement | null>(null);
   // THE POOL IS THIS GUEST'S (autoplan eng E1, MESITA-4207): its offers are
   // narrowed per guest, so a pool kept across a sign-out or sign-in would
@@ -592,6 +643,7 @@ export function CatalogRails() {
           aria-hidden
           className={cn(
             CAT_EMOJI,
+            isSpecial(c.key) && CAT_SQUARE,
             on ? CAT_EMOJI_ON : isSpecial(c.key) ? CAT_TINT_SPECIAL : CAT_TINT_FAMILY,
           )}
         >
@@ -627,10 +679,9 @@ export function CatalogRails() {
     // dirty"): MESITA-4415's "Categories" eyebrow is gone; the circles say it.
     <div className="bg-card border-border flex shrink-0 items-start border-b pt-2.5 pb-1.5" data-places-strip>
       {/* THE MENU STAYS PUT (Pato, MESITA-4423: "menu must be fixed"): its
-          tile sits outside the scroller, pinned at the left with a short
-          tick after it, so it is always one tap away while the categories slide
+          tile sits outside the scroller, pinned at the left, so it is always one tap away while the categories slide
           under nothing. It was the row's first tile (MESITA-4410). */}
-      <div className="flex shrink-0 pl-2">
+      <div className="flex shrink-0 pl-2 pr-0.5">
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
@@ -643,6 +694,7 @@ export function CatalogRails() {
             aria-hidden
             className={cn(
               CAT_EMOJI,
+              CAT_SQUARE,
               menuOpen ? cn(CAT_EMOJI_ON, "text-card") : cn(CAT_EMOJI_OFF, "text-foreground"),
             )}
           >
@@ -655,18 +707,12 @@ export function CatalogRails() {
           <span className={cn(CAT_NAME, "text-muted-foreground font-medium")}>Menu</span>
         </button>
       </div>
-      {/* A SHORT TICK, NOT A WALL (Pato, MESITA-4427: "the line looks like
-          shit separating menu from others, make it not that large"): 24px,
-          level with the circles' middle. */}
-      <span aria-hidden className="bg-border mx-1 mt-2 h-6 w-px shrink-0" />
       <nav
         ref={stripRef}
         aria-label="Families"
         className="scrollbar-hide relative flex min-w-0 flex-1 gap-0.5 overflow-x-auto overscroll-x-contain px-1"
       >
-        {chips.filter((c) => isSpecial(c.key)).map((c) => pill(c, false))}
-        <span aria-hidden className="bg-border mx-1 mt-2 h-6 w-px shrink-0" />
-        {chips.filter((c) => !isSpecial(c.key)).map((c) => pill(c, false))}
+        {chips.map((c) => pill(c, false))}
       </nav>
     </div>
   );
@@ -692,7 +738,7 @@ export function CatalogRails() {
               on ? "bg-foreground text-card border-transparent" : "bg-card text-foreground border-border",
             )}
           >
-            <span aria-hidden className={cn(CAT_EMOJI, on ? "bg-card" : CAT_TINT_SPECIAL)}>
+            <span aria-hidden className={cn(CAT_EMOJI, CAT_SQUARE, on ? "bg-card" : CAT_TINT_SPECIAL)}>
               {c.emoji}
             </span>
             {c.label}
@@ -709,9 +755,23 @@ export function CatalogRails() {
   // the pane scrolls on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
-      {tabs}
-      {tab === "places" ? strip : null}
-      <div className="relative flex min-h-0 flex-1">
+      {/* The band folds by its grid row (1fr → 0fr) and fades, 200ms
+          (MESITA-4428); nothing moves for reduced motion but the fold. */}
+      <div
+        className={cn(
+          "grid shrink-0 transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none",
+          bandHidden ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
+        )}
+        aria-hidden={bandHidden ? true : undefined}
+        inert={bandHidden}
+        data-home-band={bandHidden ? "hidden" : "shown"}
+      >
+        <div className="min-h-0 overflow-hidden">
+          {tabs}
+          {tab === "places" ? strip : null}
+        </div>
+      </div>
+      <div className="relative flex min-h-0 flex-1" onScrollCapture={onPaneScroll}>
         {tab === "places" ? menu : null}
         {/* ISOLATE: the rows' own z-10 (the offer and Save · Share over the
             card's stretched link, MESITA-3797) stays inside this pane. */}
