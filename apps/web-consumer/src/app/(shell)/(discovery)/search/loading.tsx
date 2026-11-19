@@ -1,6 +1,7 @@
 import { Skeleton } from "@/components/shared";
 import {
   CHIP,
+  CHIP_SPECIAL,
   HEADER_BAND,
   HEADER_PILL,
 } from "@/components/consumer/search/header-classes";
@@ -15,8 +16,8 @@ import { cn } from "@/lib/utils";
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes"). The map under MapVeil with SearchHeader on its
 // top edge: the white band (MESITA-3019) holding the 40px locate disc, the
-// 40px bar and the 40px Ask AI pill (MESITA-3009), then the floating 32px chip row (the Filters disc,
-// Top, then families; MESITA-2882). Then the spinner on the cross, and the carousel floating
+// 40px bar and the 40px Ask AI pill (MESITA-3009), then the floating 32px chip row (the Menu and
+// Popular squares, then families; MESITA-4466). Then the spinner on the cross, and the carousel floating
 // over the map's foot (MESITA-2670): the same veil and the same first-load
 // row (skeleton pages) the mounted page draws until its
 // tiles and catalog land, so nothing moves on arrival.
@@ -24,10 +25,18 @@ import { cn } from "@/lib/utils";
 /** A header control's grey block at the control's own size: its token
  *  classes around its real label and a 16px icon box, kept invisible, so
  *  the block is the loaded pill's or chip's width; only the block shows. */
-function ControlSkeleton({ token, label }: { token: string; label: string }) {
+function ControlSkeleton({
+  token,
+  label,
+  square = false,
+}: {
+  token: string;
+  label: string;
+  square?: boolean;
+}) {
   return (
     <div aria-hidden className={cn(token, "invisible relative")}>
-      <Skeleton className="visible absolute -inset-px rounded-full" />
+      <Skeleton className={cn("visible absolute -inset-px", square ? "rounded-lg" : "rounded-full")} />
       <span className="h-4 w-4 shrink-0" />
       <span>{label}</span>
     </div>
@@ -49,9 +58,9 @@ export default function SearchLoading() {
             <ControlSkeleton token={HEADER_PILL} label="Ask AI" />
           </div>
           <div className="flex items-center gap-3 overflow-hidden pt-1 pl-3">
-            <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+            <ControlSkeleton token={CHIP_SPECIAL} label="Menu" square />
             <div className="flex items-center gap-2 py-2 pr-3">
-              <ControlSkeleton token={CHIP} label="Top" />
+              <ControlSkeleton token={CHIP_SPECIAL} label="Popular" square />
               {["Coffee", "Breakfast", "Brunch", "Bakery"].map((label) => (
                 <ControlSkeleton key={label} token={CHIP} label={label} />
               ))}

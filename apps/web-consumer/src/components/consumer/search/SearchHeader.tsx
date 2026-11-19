@@ -5,7 +5,7 @@
 // Searchbar | Ask AI / Families Carousel as in the past"):
 //
 //   (⌖) [ ⚲ Search places…   ] (✨ Ask AI)      three separate 40px controls
-//   (≡) (▦ Top) (○ Coffee) …                    32px chips, floating
+//   [▦ Menu] [⭐ Popular] (○ Coffee) …          32px chips, floating
 //
 // THREE SEPARATE CONTROLS (Pato, MESITA-3009: "location at the left,
 // searchbar, ask ai at the right, all separated"; MESITA-2999's one long
@@ -15,11 +15,14 @@
 // place has its own sheet (MESITA-2902). Under the bar's row one chip row:
 // THE FILTERS DISC AT THE FAR LEFT (Pato, MESITA-2882: "keep the Filters
 // icon at the super left"), pinned outside the scroll: a white icon-only
-// disc (MESITA-3006; MESITA-2999's worded chip "looks like [bad]"), then Top, then every
+// disc (MESITA-3006; MESITA-2999's worded chip "looks like [bad]"; Menu since MESITA-4466), then Popular, then every
 // family, each with its emoji (Pato, MESITA-3760: "the emojis must exist
 // here too"; Home's column has worn them since MESITA-3683).
-// Top, not All (Pato, MESITA-2882: "don't call it all, call it Top";
-// MESITA-2879 had All, MESITA-2534 Top). THE DISC OPENS THE FILTERS SHEET
+// Popular, as on Home (Pato, MESITA-4466: "rename top to popular here and
+// follow rule and filters is menu"; Top since MESITA-2882). MENU, NOT
+// FILTERS: the disc became Home's Menu box, the grid mark and the word, and
+// Menu and Popular are rounded squares while the families stay pills
+// (Home's MESITA-4428 rule: "square boxes for the special boxes"). THE DISC OPENS THE FILTERS SHEET
 // (Pato, MESITA-2903: "when i click filters, open the modal to see select
 // multiple families"; MESITA-2879 had deleted MESITA-2758's sheet and made
 // the disc a clear): any number of families, applied at once. While any is
@@ -27,8 +30,8 @@
 // MESITA-2884's red disc is gone).
 // NO NEARBY, NO POPULAR (MESITA-2499/2502): the map is the where, a chip
 // is only the what. A chip picks its family ALONE; it is lit while its
-// family is in the set (the sheet may hold several); Top is lit when none
-// is; tapping the only lit family goes back to Top. Sent as the
+// family is in the set (the sheet may hold several); Popular is lit when none
+// is; tapping the only lit family goes back to Popular. Sent as the
 // server-side `familyKeys`. The Minimum Popularity stays the operator's,
 // Admin › Discovery › Area.
 //
@@ -45,7 +48,7 @@
 
 import { useState, type ReactNode } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { SlidersHorizontal } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 import { AiSparkle } from "./AiSparkle";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import {
@@ -60,9 +63,9 @@ import { cn } from "@/lib/utils";
 import {
   BAR,
   CHIP,
-  CHIP_DISC,
   CHIP_OFF,
   CHIP_ON,
+  CHIP_SPECIAL,
   HEADER_BAND,
   HEADER_ICON,
   HEADER_ICON_STROKE,
@@ -71,9 +74,9 @@ import {
 } from "./header-classes";
 
 // A chip's mark is its family's emoji, the same one Home's column wears
-// (MESITA-3760, undoing MESITA-2478's line icons here); Top is ⭐ as on Home.
+// (MESITA-3760, undoing MESITA-2478's line icons here); Popular is ⭐ as on Home.
 const CHIP_EMOJI = "w-4 shrink-0 text-center text-sm leading-none";
-const TOP_EMOJI = "⭐";
+const POPULAR_EMOJI = "⭐";
 
 
 export function SearchHeader({
@@ -140,19 +143,20 @@ export function SearchHeader({
               onClick={() => setSheetOpen(true)}
               aria-label={
                 everyFamily
-                  ? "Filters"
-                  : `Filters (${filters.familyKeys.length} selected)`
+                  ? "Menu"
+                  : `Menu (${filters.familyKeys.length} selected)`
               }
               aria-haspopup="dialog"
               data-active={everyFamily ? undefined : "true"}
-              className={CHIP_DISC}
+              className={cn(CHIP_SPECIAL, CHIP_OFF, "relative")}
               data-search-filters
             >
-              <SlidersHorizontal
-                className={HEADER_ICON}
+              <LayoutGrid
+                className="h-4 w-4 shrink-0"
                 strokeWidth={HEADER_ICON_STROKE}
                 aria-hidden
               />
+              <span>Menu</span>
               {everyFamily ? null : (
                 <span
                   aria-hidden
@@ -169,19 +173,19 @@ export function SearchHeader({
               className="scrollbar-hide flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain py-2 pr-3"
               data-search-chips
             >
-              {/* The circle, Top, then the families (Pato, MESITA-3198, undoing
-                  MESITA-3195): the circle stays pinned, Top scrolls with them. */}
+              {/* Menu, Popular, then the families (Pato, MESITA-3198, undoing
+                  MESITA-3195): Menu stays pinned, Popular scrolls with them. */}
               <button
                 type="button"
                 onClick={clearMapFamilies}
                 aria-pressed={everyFamily}
-                className={cn(CHIP, everyFamily ? CHIP_ON : CHIP_OFF)}
+                className={cn(CHIP_SPECIAL, everyFamily ? CHIP_ON : CHIP_OFF)}
                 data-search-chip-top
               >
                 <span aria-hidden className={CHIP_EMOJI}>
-                  {TOP_EMOJI}
+                  {POPULAR_EMOJI}
                 </span>
-                <span>Top</span>
+                <span>Popular</span>
               </button>
               {FILTERABLE_PLACE_FAMILIES.map((family) => {
                 const on = filters.familyKeys.includes(family.key);
@@ -189,7 +193,7 @@ export function SearchHeader({
                   <button
                     key={family.key}
                     type="button"
-                    // Picking the lit family again goes back to Top.
+                    // Picking the lit family again goes back to Popular.
                     onClick={() => selectMapFamily(family.key)}
                     aria-pressed={on}
                     className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}

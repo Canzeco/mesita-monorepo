@@ -51,7 +51,7 @@ export function FamilyFilterSheet({
   onApply: (families: FamilyKey[]) => void;
 }) {
   return (
-    <LocalDialog open={open} onClose={onClose} ariaLabel="Filters" fit>
+    <LocalDialog open={open} onClose={onClose} ariaLabel="Menu" fit>
       {/* Mounted per opening, so the draft starts from the applied set. */}
       {open ? (
         <FamilyFilterBody
@@ -88,7 +88,7 @@ function FamilyFilterBody({
 
   return (
     <div className="flex min-h-0 flex-col gap-4 p-5" data-search-filter-sheet>
-      <h2 className="text-foreground text-base font-semibold">Filters</h2>
+      <h2 className="text-foreground text-base font-semibold">Menu</h2>
       {/* No explanation line under the title (MESITA-3897, Pato: "delete
           the stupid obvious explanation here"). */}
       <div
