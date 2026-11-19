@@ -53,6 +53,7 @@ function seedRow(): Row {
  * by a read sees what actually landed.
  */
 function fakeAdmin(row: Row): SupabaseClient {
+  let writes = 0;
   const pick = (columns: string): Row => {
     const out: Row = {};
     for (const c of columns.split(",").map((s) => s.trim())) out[c] = row[c];
@@ -76,16 +77,24 @@ function fakeAdmin(row: Row): SupabaseClient {
               Promise.resolve({ data: pick(columns), error: null }),
           }),
         }),
+        // `.eq("updated_at", x)` makes the write conditional (MESITA-4454):
+        // a filter that does not match the row writes nothing.
         update: (patch: Row) => {
-          Object.assign(row, patch);
-          return {
-            eq: () => ({
-              select: (columns: string) => ({
-                single: () =>
-                  Promise.resolve({ data: pick(columns), error: null }),
-              }),
+          const filters: Array<[string, unknown]> = [];
+          const land = () => {
+            const match = filters.every(([c, v]) => c === "id" || row[c] === v);
+            if (match) Object.assign(row, patch, { updated_at: `${STAMP}+${++writes}` });
+            return match;
+          };
+          // deno-lint-ignore no-explicit-any
+          const chain: any = {
+            eq: (c: string, v: unknown) => (filters.push([c, v]), chain),
+            select: (columns: string) => ({
+              single: () => (land(), Promise.resolve({ data: pick(columns), error: null })),
+              maybeSingle: () => Promise.resolve({ data: land() ? pick(columns) : null, error: null }),
             }),
           };
+          return chain;
         },
       };
     },
@@ -145,9 +154,10 @@ const CASES: Record<string, SectionCase> = {
       assert(c.map && typeof c.map === "object", "map missing");
     },
     // Coerced, not stored as sent: a root of 0 lands clamped at 0.1, a
-    // half distance of 999 at 100, and a retired key (the reach,
-    // MESITA-2703; the weights table `params.modes`, MESITA-2687; the linear
-    // `balance`) is dropped.
+    // half distance of 999 at 100, a typed bag's retired field (the reach,
+    // MESITA-2703) and a top-level retired key (the linear `balance`) are
+    // dropped. An untyped key under `params` (the weights table
+    // `params.modes`, MESITA-2687) waits for its migration (H-2, MESITA-4454).
     invalid: {
       config: {
         params: {
@@ -163,7 +173,7 @@ const CASES: Record<string, SectionCase> = {
         const c = saved.config as Row;
         assertEquals((c.params as Row).popularity, { root: 0.1, starsPower: 6 });
         assertEquals((c.params as Row).proximity, { halfKm: 100, exponent: 1 });
-        assertEquals("modes" in (c.params as Row), false);
+        assertEquals("modes" in (c.params as Row), true);
         assertEquals("balance" in c, false);
       },
     },
@@ -384,4 +394,96 @@ Deno.test("every section declares an app_config column and a normalizer", () => 
     );
     assertEquals(typeof section.normalize, "function", `${key} has no normalizer`);
   }
+});
+
+// ── MESITA-4454: the Discovery write keeps what it did not send, and a stale
+// page cannot overwrite a newer save ─────────────────────────────────────────
+
+Deno.test("discovery: an old-shape save keeps params.recipes, params.mix and retired keys (H-2)", async () => {
+  const row = seedRow();
+  row.discovery_config = {
+    params: {
+      recipes: { catalogNearbyOrganic: { halfKm: 0.3, distanceExp: 4, starsExp: 2, googleExp: 0.33, premierExp: 0 } },
+      mix: { adEvery: 3 },
+      popularity: { root: 0.2, starsPower: 6 },
+    },
+    map: { popularityRoot: 0.4, placesShown: 40 },
+  };
+  // What a console from before the recipes sends: the old params, no
+  // recipes, no mix.
+  const res = await writeConfigSection(
+    {
+      admin: fakeAdmin(row),
+      userId: USER,
+      body: { config: { params: { proximity: { halfKm: 2, exponent: 1 }, popularity: { root: 0.5 } }, map: { placesShown: 30 } } },
+    },
+    "discovery",
+  );
+  assertEquals(res.status, 200);
+  const stored = row.discovery_config as Row;
+  const params = stored.params as Row;
+  assertEquals((params.recipes as Row).catalogNearbyOrganic, { halfKm: 0.3, distanceExp: 4, starsExp: 2, googleExp: 0.33, premierExp: 0 });
+  assertEquals((params.mix as Row).adEvery, 3);
+  assertEquals((params.popularity as Row).root, 0.5);
+  assertEquals((stored.map as Row).popularityRoot, 0.4);
+  assertEquals((stored.map as Row).placesShown, 30);
+  // And the answer carries what landed.
+  const saved = (await body(res)).config as Row;
+  assertEquals(((saved.params as Row).mix as Row).adEvery, 3);
+});
+
+Deno.test("discovery: saving one card never drops another's keys, in either order", async () => {
+  const row = seedRow();
+  const admin = fakeAdmin(row);
+  const mixing = { config: { params: { mix: { adEvery: 2, adFloor: 0.3, temperature: { nearby: 0.1, family: 0.2, popular: 0.4 } }, variety: { repeat: 0.5 } }, map: { catalogPageSize: 25 } } };
+  const mapCard = { config: { map: { placesShown: 33, dotsShown: 120, reloadIdleSec: 2 } } };
+  for (const order of [[mixing, mapCard], [mapCard, mixing]]) {
+    row.discovery_config = null;
+    for (const b of order) {
+      const res = await writeConfigSection({ admin, userId: USER, body: b }, "discovery");
+      assertEquals(res.status, 200);
+    }
+    const c = row.discovery_config as Row;
+    assertEquals(((c.params as Row).mix as Row).adEvery, 2);
+    assertEquals(((c.params as Row).variety as Row).repeat, 0.5);
+    assertEquals((c.map as Row).catalogPageSize, 25);
+    assertEquals((c.map as Row).placesShown, 33);
+    assertEquals((c.map as Row).dotsShown, 120);
+  }
+});
+
+Deno.test("discovery: expectedUpdatedAt makes the write conditional; a stale page gets 409 config_conflict (H-3)", async () => {
+  const row = seedRow();
+  const admin = fakeAdmin(row);
+  // Two pages load the same updatedAt.
+  const loaded = String(row.updated_at);
+  const first = await writeConfigSection(
+    { admin, userId: USER, body: { config: { params: { mix: { adEvery: 2 } } }, expectedUpdatedAt: loaded } },
+    "discovery",
+  );
+  assertEquals(first.status, 200);
+  const firstBody = await body(first);
+  assert(firstBody.updatedAt !== loaded, "the save did not move updatedAt");
+  // The second page still holds the old stamp: refused, nothing written.
+  const second = await writeConfigSection(
+    { admin, userId: USER, body: { config: { params: { mix: { adEvery: 5 } } }, expectedUpdatedAt: loaded } },
+    "discovery",
+  );
+  assertEquals(second.status, 409);
+  const refused = await body(second);
+  assertEquals([refused.ok, refused.code], [false, "config_conflict"]);
+  assertEquals((((row.discovery_config as Row).params as Row).mix as Row).adEvery, 2);
+  // With the fresh stamp it lands.
+  const third = await writeConfigSection(
+    { admin, userId: USER, body: { config: { params: { mix: { adEvery: 5 } } }, expectedUpdatedAt: firstBody.updatedAt } },
+    "discovery",
+  );
+  assertEquals(third.status, 200);
+  assertEquals((((row.discovery_config as Row).params as Row).mix as Row).adEvery, 5);
+  // A non-string precondition is refused before any write.
+  const bad = await writeConfigSection(
+    { admin, userId: USER, body: { config: {}, expectedUpdatedAt: 12 } },
+    "discovery",
+  );
+  assertEquals(bad.status, 400);
 });

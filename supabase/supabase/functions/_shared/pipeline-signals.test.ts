@@ -1,7 +1,14 @@
 // The four Discovery signals (MESITA-2327): formulas and missing-data policy.
 import { assert, assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
 import {
+  clearsAdFloor,
   clearsPopularityFloor,
+  cutAndShuffle,
+  googlePopularity,
+  mergeLanes,
+  premierBoost,
+  rankModeForChip,
+  recipeScore,
   descriptionSimilarity,
   popularity,
   POPULARITY_HALF_REVIEWS_DEFAULT,
@@ -186,4 +193,114 @@ Deno.test("shuffleByRank: temperature 0 keeps the sort, any temperature keeps ev
   let moved = 0;
   for (let t = 0; t < 200; t++) moved += shuffleByRank(order, 0.3, rnd).indexOf(0);
   assert(moved / 200 < 2, `rank 1 drifted to ${moved / 200} on average at T 0.3`);
+});
+
+// ── MESITA-4454: one formula, two lanes, three modes ────────────────────────
+//
+// The same six places and recipe rows as catalog_rank_lanes.test.sql (M-e):
+// Organic {1 km, 2, 2, 0.5, 0}, Inorganic {1 km, 2, 2, 0.5, 1}, so
+// Popularity = stars × √reviews and Proximity = 1 ÷ (1 + km²).
+
+const ORG = { halfKm: 1, distanceExp: 2, starsExp: 2, googleExp: 0.5, premierExp: 0 };
+const INORG = { ...ORG, premierExp: 1 };
+
+Deno.test("v2 score: Proximity × (stars^StarsExp × reviews)^GoogleExp × premierFactor^PremierExp, by hand", () => {
+  // A: 4.5★ × 1000 at the point: 4.5 × √1000 ≈ 142.30.
+  assertAlmostEquals(recipeScore({ rating: 4.5, reviewCount: 1000 }, 0, true, 1, ORG).final, 142.302, 1e-3);
+  // D: 4.0★ × 100, 2X, 1 km: Organic 0.5 × 40 = 20; Inorganic × 2 = 40.
+  const d = recipeScore({ rating: 4, reviewCount: 100 }, 1, true, 2, ORG);
+  assertEquals([d.proximity, d.popularity, d.premierFactor, d.premierBoost, d.final], [0.5, 40, 2, 1, 20]);
+  assertAlmostEquals(recipeScore({ rating: 4, reviewCount: 100 }, 1, true, 2, INORG).final, 40, 1e-9);
+  // E: 4.8★ × 500, 5X, 2 km: Organic 0.2 × 107.33 ≈ 21.47; Inorganic × 5 ≈ 107.33.
+  assertAlmostEquals(recipeScore({ rating: 4.8, reviewCount: 500 }, 2, true, 5, ORG).final, 21.466, 1e-3);
+  assertAlmostEquals(recipeScore({ rating: 4.8, reviewCount: 500 }, 2, true, 5, INORG).final, 107.331, 1e-3);
+  // F: 2X at 50 km is under the 0.2 floor (0.0004 × 2); D and E clear it.
+  const fProx = recipeScore({ rating: 4.6, reviewCount: 300 }, 50, true, 2, INORG).proximity;
+  assertEquals(clearsAdFloor(fProx, 2, 0.2), false);
+  assertEquals(clearsAdFloor(0.5, 2, 0.2), true);
+  assertEquals(clearsAdFloor(0.2, 5, 0.2), true);
+  // No anchor: Proximity abstains (null, counted as 1), every Premier place clears.
+  const none = recipeScore({ rating: 4, reviewCount: 100 }, null, false, 2, INORG);
+  assertEquals([none.proximity, none.final], [null, 80]);
+  assertEquals(clearsAdFloor(none.proximity, 2, 0.2), true);
+  // A Map row has no Proximity even with an anchor.
+  assertEquals(recipeScore({ rating: 4, reviewCount: 100 }, 9, true, 1, { ...ORG, halfKm: null, distanceExp: null }).final, 40);
+  // Measured from an anchor without coordinates: Proximity 0.
+  assertEquals(recipeScore({ rating: 4, reviewCount: 100 }, null, true, 1, ORG).final, 0);
+});
+
+Deno.test("v2 score: 0 reviews or no stars scores 0; Premier exponent 0 ignores the plan", () => {
+  assertEquals(googlePopularity({ rating: 4, reviewCount: 0 }, 2, 0.33), 0);
+  assertEquals(googlePopularity({ rating: null, reviewCount: 50 }, 2, 0.33), 0);
+  assertEquals(googlePopularity({ rating: 4, reviewCount: null }, 2, 0.33), 0);
+  assertEquals(recipeScore({ rating: 4, reviewCount: 0 }, 0, true, 5, INORG).final, 0);
+  assertEquals(premierBoost(5, 0), 1);
+  assertEquals(premierBoost(2, 1), 2);
+  assertAlmostEquals(premierBoost(5, 0.5), Math.sqrt(5), 1e-12);
+  assertEquals(
+    recipeScore({ rating: 4, reviewCount: 100 }, 1, true, 5, ORG).final,
+    recipeScore({ rating: 4, reviewCount: 100 }, 1, true, 1, ORG).final,
+  );
+  // Stars count through StarsExp: at 0 only reviews do.
+  assertAlmostEquals(googlePopularity({ rating: 3, reviewCount: 100 }, 0, 1), 100, 1e-12);
+  assertAlmostEquals(googlePopularity({ rating: 3, reviewCount: 100 }, 2, 1), 900, 1e-12);
+});
+
+Deno.test("mergeLanes: one ad after every adEvery organic places; dupes skipped; empty slots dropped; 0 = no ads", () => {
+  const organic = ["o1", "o2", "o3", "o4", "o5", "o6"];
+  assertEquals(mergeLanes(organic, ["a1", "a2"], 1), {
+    order: ["o1", "a1", "o2", "a2", "o3", "o4", "o5", "o6"],
+    adIds: ["a1", "a2"],
+  });
+  assertEquals(mergeLanes(organic, ["a1", "a2", "a3"], 3), {
+    order: ["o1", "o2", "o3", "a1", "o4", "o5", "o6", "a2"],
+    adIds: ["a1", "a2"],
+  });
+  assertEquals(mergeLanes(organic, ["a1"], 0), { order: organic, adIds: [] });
+  // A Premier place is in both lanes: shown once, and only in an ad slot it wears "Ad".
+  const both = mergeLanes(["o1", "p1", "o2", "p2"], ["p2", "p1"], 1);
+  assertEquals(both.order, ["o1", "p2", "p1", "o2"]);
+  assertEquals(both.adIds, ["p2"]);
+  assertEquals(new Set(both.order).size, both.order.length);
+  // An ad already shown organically is skipped; the slot takes the next.
+  assertEquals(mergeLanes(["o1", "o2", "o3"], ["o1", "a1"], 1).adIds, ["a1"]);
+  // Empty lanes.
+  assertEquals(mergeLanes(organic, [], 1), { order: organic, adIds: [] });
+  assertEquals(mergeLanes([], ["a1"], 1), { order: [], adIds: [] });
+  // Duplicates inside the organic lane collapse.
+  assertEquals(mergeLanes(["o1", "o1", "o2"], [], 1).order, ["o1", "o2"]);
+});
+
+Deno.test("cutAndShuffle: keyed by (seed, id); T 0 is the identity; seed 0 valid; the tail is exact", () => {
+  const order = Array.from({ length: 60 }, (_, i) => `id${String(i).padStart(2, "0")}`);
+  assertEquals(cutAndShuffle(order, 20, 0, 123), order);
+  const a = cutAndShuffle(order, 20, 1, 123);
+  assertEquals(cutAndShuffle(order, 20, 1, 123), a);
+  assertEquals([...a.slice(0, 20)].sort(), order.slice(0, 20));
+  assertEquals(a.slice(20), order.slice(20));
+  assert(a.slice(0, 20).join() !== order.slice(0, 20).join(), "T 1 kept the first page exactly");
+  assert(cutAndShuffle(order, 20, 1, 124).join() !== a.join(), "another seed drew the same page");
+  const zero = cutAndShuffle(order, 20, 1, 0);
+  assertEquals(cutAndShuffle(order, 20, 1, 0), zero);
+  assertEquals([...zero.slice(0, 20)].sort(), order.slice(0, 20));
+  // One place entering the page shifts the rest only locally: the places
+  // ranked above it keep their relative order (their keys are unchanged).
+  const entered = [...order.slice(0, 15), "new", ...order.slice(15)];
+  const b = cutAndShuffle(entered, 21, 1, 123);
+  const above = new Set(order.slice(0, 15));
+  assertEquals(
+    b.filter((id) => above.has(id)),
+    cutAndShuffle(order, 20, 1, 123).filter((id) => above.has(id)),
+  );
+  // Low temperature: the head barely moves on average across seeds.
+  let moved = 0;
+  for (let seed = 0; seed < 200; seed++) moved += cutAndShuffle(order, 20, 0.3, seed).indexOf("id00");
+  assert(moved / 200 < 2, `rank 1 drifted to ${moved / 200} on average at T 0.3`);
+});
+
+Deno.test("rankModeForChip: near is nearby, all is popular, any family key is family", () => {
+  assertEquals(rankModeForChip("near"), "nearby");
+  assertEquals(rankModeForChip("all"), "popular");
+  assertEquals(rankModeForChip("tacos"), "family");
+  assertEquals(rankModeForChip("coffee"), "family");
 });

@@ -7,7 +7,7 @@ import {
 import {
   DISCOVERY_DEFAULTS,
   type GeneralConfig,
-  normalizeDiscoveryConfig,
+  normalizeDiscoveryConfig, normalizeMapConfig,
 } from "./discovery-config.ts";
 
 const OFF: GeneralConfig = { requireActive: false };
@@ -39,7 +39,9 @@ Deno.test("no reviews floor: general.minReviews and map.googleMinReviews are dro
     map: { googleMinReviews: 100 },
   });
   assertEquals(cfg.general, { requireActive: true });
-  assertEquals("googleMinReviews" in cfg.map, false);
+  // The typed map has no such knob; the blob keeps an untyped key until a
+  // migration deletes it (H-2, MESITA-4454) and nothing reads it.
+  assertEquals("googleMinReviews" in normalizeMapConfig({ googleMinReviews: 100 }), false);
   assert(clearsGeneralGate(cfg.general, { businessStatus: "OPERATIONAL" }));
 });
 

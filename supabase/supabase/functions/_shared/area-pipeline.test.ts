@@ -73,12 +73,12 @@ Deno.test("chat: every ready row inside the radius, a stale Selected mark ignore
   assertEquals(new Set(ids(out)), new Set(["ok", "unmarked", "created"]));
 });
 
-Deno.test("chat: a Premier place outranks a plain twin by its tier (MESITA-2925)", () => {
+Deno.test("chat: a plan never moves Chat — it ranks with the Family Organic row (MESITA-4454)", () => {
   const out = rankMesitaPlaces([
     mrow("plain", { google_review_count: 400 }),
-    mrow("premier", { google_review_count: 120, boost_tier: 1 }),
+    mrow("premier", { google_review_count: 120, boost_tier: 2 }),
   ], selOpts);
-  assertEquals(ids(out), ["premier", "plain"]);
+  assertEquals(ids(out), ["plain", "premier"]);
 });
 
 Deno.test("chat: has no review floor — a two-review place is kept", () => {
@@ -94,8 +94,8 @@ Deno.test("chat: the Catalog score ranks; the nearer twin first", () => {
     mrow("near-twin", { lat: CENTER.lat + 0.001 }),
   ], selOpts);
   assertEquals(ids(out), ["near-twin", "far-twin"]);
-  // quiet at 0 km: 1 × (1 + 15.5)^0.33 ≈ 2.5; loved at 1.1 km, h = 5 km:
-  // 0.82 × (1 + 14,700)^0.33 ≈ 19.4 (MESITA-3083).
+  // Family Organic (2 km, exponent 2, stars² , 0.33): quiet at 0 km:
+  // (3.1² × 5)^0.33 ≈ 3.6; loved at 1.1 km: 0.77 × (4.9² × 3000)^0.33 ≈ 30.8.
   const loved = rankMesitaPlaces([
     mrow("quiet", { google_stars_overall: 3.1, google_review_count: 5 }),
     mrow("loved", {
@@ -107,18 +107,19 @@ Deno.test("chat: the Catalog score ranks; the nearer twin first", () => {
   assertEquals(ids(loved), ["loved", "quiet"]);
 });
 
-Deno.test("chat: Chat ranks like the Catalog, by the half distance (MESITA-2909)", () => {
+Deno.test("chat: Chat ranks by the Family Organic row's half distance (MESITA-2909, MESITA-4454)", () => {
   const rows = [
     mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
     mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
   ];
-  // Stars weight off: this pins the half distance alone (MESITA-4153).
   const h = (halfKm: number) => ({
     ...selOpts,
     params: {
       ...selOpts.params,
-      proximity: { ...selOpts.params.proximity, halfKm },
-      popularity: { ...selOpts.params.popularity, starsPower: 0 },
+      recipes: {
+        ...selOpts.params.recipes,
+        catalogFamilyOrganic: { ...selOpts.params.recipes.catalogFamilyOrganic, halfKm },
+      },
     },
   });
   assertEquals(ids(rankMesitaPlaces(rows, h(0.5)))[0], "near-quiet");
@@ -230,7 +231,7 @@ Deno.test("Area never embeds: no Area file calls an embedding or a vector signal
 
 // ── The pool: Mesita Popularity and Mesita Proximity ────────────────────
 
-Deno.test("the Map: Popularity alone orders the circle; distance breaks ties (MESITA-2909)", async () => {
+Deno.test("the Map: Popularity alone orders the circle; id breaks ties (MESITA-2909, MESITA-4454)", async () => {
   const out = await selectAreaPool(deps({
     mesitaRows: [
       mrow("near-quiet", { lat: 25.6701, google_stars_overall: 3.0, google_review_count: 110 }),
@@ -243,7 +244,7 @@ Deno.test("the Map: Popularity alone orders the circle; distance breaks ties (ME
   const tie = await selectAreaPool(deps({
     mesitaRows: [mrow("far", { lat: 25.6705 }), mrow("near", { lat: 25.6702 })],
   }).d);
-  assertEquals(ids(tie.places), ["near", "far"]);
+  assertEquals(ids(tie.places), ["far", "near"]);
 });
 
 Deno.test("pool: the Family gate drops a row outside the requested families", async () => {
@@ -252,45 +253,34 @@ Deno.test("pool: the Family gate drops a row outside the requested families", as
   assertEquals(ids((await selectAreaPool(deps({ families: [], mesitaRows: rows }).d)).places), ["a-dinner"]);
 });
 
-Deno.test("the Catalog: every place, no radius, Proximity × Popularity × the Premier factor (MESITA-2909, MESITA-2925)", async () => {
-  const premier = mrow("off", { lat: 25.6702, google_stars_overall: 4.0, google_review_count: 200 });
-  // A stale Selected mark scores nothing (MESITA-2925).
-  const plain = mrow("plain", { selected: true, lat: 25.6702, google_stars_overall: 4.9, google_review_count: 9000 });
+Deno.test("the Catalog: every place, no radius; the Organic row ignores the plan, an ad id scores with the Inorganic row (MESITA-2909, MESITA-4454)", async () => {
+  const paid = mrow("paid", { lat: 25.6702, google_stars_overall: 4.0, google_review_count: 200, boost_tier: 2 });
+  const plain = mrow("plain", { lat: 25.6702, google_stars_overall: 4.9, google_review_count: 9000 });
   // 330 km away: kept, only lowered.
   const far = mrow("far", { lat: 28.6, google_stars_overall: 4.9, google_review_count: 9000 });
-  // Stars weight off: this pins the Premier factor against reviews alone
-  // (MESITA-4153 has its own pins).
-  const cfg = {
-    ...DISCOVERY_DEFAULTS,
-    params: {
-      ...DISCOVERY_DEFAULTS.params,
-      popularity: { ...DISCOVERY_DEFAULTS.params.popularity, starsPower: 0 },
-    },
-  };
-  const run = (tier: number) =>
+  const run = (adIds: string[]) =>
     selectAreaPool(
-      deps({ surface: "catalog", radiusKm: null, cfg, mesitaRows: [{ ...premier, boost_tier: tier }, plain, far] }).d,
+      deps({ surface: "catalog", radiusKm: null, mode: "popular", adIds, mesitaRows: [paid, plain, far] }).d,
     );
-  const out = await run(2);
-  const byId = Object.fromEntries(out.places.map((p) => [p.id, p.area]));
-  assertEquals(ids(out.places).length, 3);
-  assertEquals(byId["far"].gates.radius, null);
-  assertEquals(byId["off"].selectedFactor, 5);
-  // One list (MESITA-3041): no lane on the wire.
-  assertEquals("lane" in byId["off"], false);
-  assertEquals(byId["plain"].selectedFactor, 1);
-  for (const a of Object.values(byId)) {
-    assertEquals(a.halfKm, 1);
-    const want = (a.signals.proximity ?? 0) * (a.signals.popularity ?? 0) * a.selectedFactor;
-    assertEquals(Math.abs(a.final - want) < 1e-12, true);
+  const out = await run([]);
+  const byId = Object.fromEntries(out.places.map((p) => [p.id, p]));
+  assertEquals(ids(out.places), ["plain", "paid", "far"]);
+  assertEquals(byId["far"].area.gates.radius, null);
+  // The raw plan value rides along; the Organic row scores it × 1.
+  assertEquals(byId["paid"].area.selectedFactor, 5);
+  assertEquals(byId["paid"].area.premierBoost, 1);
+  assertEquals("ad" in byId["paid"], false);
+  for (const p of out.places) {
+    const a = p.area;
+    assertEquals(a.halfKm, 10);
+    const want = (a.signals.proximity ?? 0) * (a.signals.popularity ?? 0) * a.premierBoost;
+    assertEquals(Math.abs(a.final - want) < 1e-9, true);
   }
-  assertEquals(ids(out.places)[2], "far");
-  // Premier 5X lifts the quieter row over the loved plain one; tier 0 does not.
-  assert(ids(out.places).indexOf("off") < ids(out.places).indexOf("plain"));
-  const none = await run(0);
-  assert(ids(none.places).indexOf("plain") < ids(none.places).indexOf("off"));
-  const finals = out.places.map((p) => p.area.final);
-  assertEquals(finals, [...finals].sort((a, b) => b - a));
+  // A fill's ad id is scored with the Popular Inorganic row (× 5^1) and wears `ad`.
+  const ad = Object.fromEntries((await run(["paid"])).places.map((p) => [p.id, p]));
+  assertEquals(ad["paid"].ad, true);
+  assertEquals(ad["paid"].area.premierBoost, 5);
+  assertEquals("ad" in ad["plain"], false);
 });
 
 // Territory is retired (MESITA-2500, MESITA-2603): a point or nothing.
@@ -441,7 +431,7 @@ Deno.test("the Map keeps its top map.placesShown; the Catalog keeps all and send
   assertEquals((await run("map")).places.length, 50);
   const home = await run("catalog", { placesShown: 5, catalogPageSize: 12 });
   assertEquals(home.places.length, 80);
-  assertEquals([home.summary.surface, home.summary.halfKm, home.summary.pageSize, home.summary.placesShown], ["catalog", 1, 12, null]);
+  assertEquals([home.summary.surface, home.summary.halfKm, home.summary.pageSize, home.summary.placesShown], ["catalog", 10, 12, null]);
   assertEquals([top5.summary.surface, top5.summary.halfKm, top5.summary.pageSize, top5.summary.placesShown], ["map", null, null, 5]);
   assertEquals(catalogPageSize({}), 20);
 });
@@ -472,7 +462,12 @@ Deno.test("a Premier place past the pins is a red dot: the dot carries premier (
     mrow("paid", { google_review_count: 0, google_stars_overall: 0, boost_tier: 1 }),
   ];
   const { d } = deps({ mesitaRows: rows, surface: "map", radiusKm: 50 });
-  d.cfg = { ...d.cfg, map: { ...d.cfg.map, placesShown: 2, dotsShown: 100 } };
+  // No ad slots, so the paid place ranks by its own score (MESITA-4454).
+  d.cfg = {
+    ...d.cfg,
+    map: { ...d.cfg.map, placesShown: 2, dotsShown: 100 },
+    params: { ...d.cfg.params, mix: { ...d.cfg.params.mix, adEvery: 0 } },
+  };
   const out = await selectAreaPool(d);
   const paid = out.dots.find((x) => x.id === "paid");
   assert(paid, "the paid place is a dot");
@@ -480,26 +475,32 @@ Deno.test("a Premier place past the pins is a red dot: the dot carries premier (
   assertEquals(out.dots.filter((x) => x.premier).map((x) => x.id), ["paid"]);
 });
 
-// ── MESITA-3086: a Popularity root per surface ───────────────────────────
+// ── MESITA-4454: the Map's two lanes ──────────────────────────────────────
 
-Deno.test("the Map reads map.popularityRoot, the Catalog params.popularity.root; on the Map the root only moves Premier against plain", async () => {
-  // A Premier ×2 place with 100 reviews against a plain one with 600.
-  // Map score = (1 + reviews × stars)^root × the factor: at root 0.33 the
-  // plan wins (2 × 7.2 = 14.5 > 13.0), at 0.6 the reviews win
-  // (2 × 36.5 = 73 < 107).
-  const paid = mrow("paid", { google_stars_overall: 4.0, google_review_count: 100, boost_tier: 1 });
-  const loved = mrow("loved", { google_stars_overall: 4.0, google_review_count: 600 });
-  const run = (surface: "map" | "catalog", mapRoot: number) =>
-    selectAreaPool(
-      deps({
-        surface,
-        radiusKm: surface === "map" ? 50 : null,
-        mesitaRows: [paid, loved],
-        cfg: { ...DISCOVERY_DEFAULTS, map: { ...DISCOVERY_DEFAULTS.map, popularityRoot: mapRoot } },
-      }).d,
-    );
-  assertEquals(ids((await run("map", 0.33)).places), ["paid", "loved"]);
-  assertEquals(ids((await run("map", 0.6)).places), ["loved", "paid"]);
-  // The Catalog ignores the Map's root: same order at both.
-  assertEquals(ids((await run("catalog", 0.33)).places), ids((await run("catalog", 0.6)).places));
+Deno.test("the Map merges its lanes: one ad pin after every adEvery organic pins, ad pins count against placesShown, adEvery 0 = none", async () => {
+  // Eight plain places, best first by reviews; two Premier places that the
+  // Organic row (PremierExp 0) ranks last.
+  const plain = Array.from({ length: 8 }, (_, i) => mrow(`p${i}`, { google_review_count: 1000 - i * 50 }));
+  const paid5 = mrow("x5", { google_review_count: 20, boost_tier: 2 });
+  const paid2 = mrow("x2", { google_review_count: 30, boost_tier: 1 });
+  const run = async (adEvery: number, placesShown = 6) => {
+    const { d } = deps({ mesitaRows: [...plain, paid5, paid2], surface: "map", radiusKm: 50 });
+    d.cfg = {
+      ...d.cfg,
+      map: { ...d.cfg.map, placesShown, dotsShown: 0 },
+      params: { ...d.cfg.params, mix: { ...d.cfg.params.mix, adEvery } },
+    };
+    return await selectAreaPool(d);
+  };
+  const one = await run(1);
+  // Map Inorganic (× premierFactor): 5 × (16 × 20)^0.17 > 2 × (16 × 30)^0.17.
+  assertEquals(ids(one.places), ["p0", "x5", "p1", "x2", "p2", "p3"]);
+  assertEquals(one.places.filter((p) => p.ad).map((p) => p.id), ["x5", "x2"]);
+  assertEquals(one.summary.ads, 2);
+  const three = await run(3, 10);
+  assertEquals(ids(three.places), ["p0", "p1", "p2", "x5", "p3", "p4", "p5", "x2", "p6", "p7"]);
+  const none = await run(0, 10);
+  assertEquals(none.places.some((p) => p.ad), false);
+  assertEquals(ids(none.places).slice(-2), ["x2", "x5"]);
 });
+
