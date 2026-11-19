@@ -696,7 +696,10 @@ export function CatalogRails() {
               on ? "bg-foreground text-card border-transparent" : "bg-card text-foreground border-border",
             )}
           >
-            <span aria-hidden className={cn(CAT_EMOJI, CAT_SQUARE, on ? "bg-card" : CAT_TINT_SPECIAL)}>
+            {/* ONE BOX (Pato, MESITA-4429: "saved and near and top being on
+                double boxes looks pathetic"): the emoji sits bare in the
+                tile, no square of its own inside it. */}
+            <span aria-hidden className="text-2xl leading-none">
               {c.emoji}
             </span>
             {c.label}
