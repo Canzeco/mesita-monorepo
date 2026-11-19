@@ -26,6 +26,7 @@ import {
   writeSectionColumn,
 } from "./config-section-base.ts";
 import { normalizeDiscoveryConfig } from "./discovery-config.ts";
+import { writeDiscoverySection } from "./config-section-discovery.ts";
 import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
 import { writeEnricherSection } from "./config-section-enricher.ts";
 import {
@@ -43,13 +44,16 @@ const asIs = (raw: unknown): unknown => raw ?? null;
 
 
 export const CONFIG_SECTIONS: Record<string, ConfigSection> = {
-  // ── Uniform: read the column, write the whole blob back ──────────────────
-  // The Discovery model's knobs (MESITA-2327): the pipeline boxes' slices.
-  // The normalizer rebuilds the blob, so a retired key drops on write.
+  // ── Uniform read, own write ──────────────────────────────────────────────
+  // The Discovery model's knobs (MESITA-2327): the page's cards' slices. The
+  // write lays the console's blob over the stored one (`params` and `map`
+  // merge, so no save erases a key it did not send) and, with
+  // `expectedUpdatedAt`, refuses a stale page with 409 `config_conflict`
+  // (MESITA-4454).
   discovery: {
     column: "discovery_config",
     normalize: normalizeDiscoveryConfig,
-    write: writeSectionColumn,
+    write: writeDiscoverySection,
   },
   //
   // controls · ojo · orders · visits · rewards left with the admin pages that

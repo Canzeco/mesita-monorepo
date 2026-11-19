@@ -63,9 +63,37 @@
 // (every family rode every call), so an off switch lied to the operator.
 // Migration 20261028233000 strips them from the stored row.
 
+//
+// DISCOVERY RANKING v2 (MESITA-4454): `params.recipes` (eight rows, one per
+// screen · mode · lane) and `params.mix` (per-mode Temperature, ad floor,
+// ad cadence) are what the Map, the Catalog and Chat read now. Seeded by
+// migration 20261119060000; a missing key reads its default. The keys they
+// replace (`params.proximity`, `params.popularity.root` and `.starsPower`,
+// `params.shuffle.temperature`, `map.popularityRoot`) are still normalized
+// and kept, but UNREAD, until a follow-up migration deletes them (F8).
+//
+// UNKNOWN KEYS SURVIVE (H-2): under `params` and `map` the normalized object
+// is the raw one with the typed keys overlaid, so a key this build does not
+// know (a newer build's, or a retired one waiting for its migration) is never
+// dropped by a read or a save.
+
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { bool, num } from "./config-coerce.ts";
+import { asRecord, bool, num } from "./config-coerce.ts";
 import {
+  AD_EVERY_MAX,
+  AD_EVERY_MIN,
+  AD_FLOOR_MAX,
+  AD_FLOOR_MIN,
+  GOOGLE_EXP_MAX,
+  GOOGLE_EXP_MIN,
+  MIX_TEMPERATURE_MAX,
+  MIX_TEMPERATURE_MIN,
+  PREMIER_EXP_MAX,
+  PREMIER_EXP_MIN,
+  type RankMode,
+  type Recipe,
+  STARS_EXP_MAX,
+  STARS_EXP_MIN,
   POPULARITY_ROOT_DEFAULT,
   POPULARITY_ROOT_MAX,
   POPULARITY_ROOT_MIN,
@@ -106,9 +134,80 @@ export type SignalParams = {
   popularity: { root: number; starsPower: number };
   /** `repeat`: Home's n-th place of a kind × repeat^(n − 1) (MESITA-4153). */
   variety: { repeat: number };
-  /** `temperature`: Home's shuffle after the sort; 0 = none (MESITA-4153). */
+  /** `temperature`: Home's shuffle after the sort; 0 = none (MESITA-4153).
+   *  UNREAD since MESITA-4454 (`mix.temperature` per mode replaces it). */
   shuffle: { temperature: number };
+  /** The eight recipe rows (MESITA-4454). */
+  recipes: Recipes;
+  /** Home's mix (MESITA-4454): per-mode Temperature, ad floor, ad cadence. */
+  mix: MixParams;
 };
+
+/** The recipe rows, Catalog modes × lanes plus the Map's two (MESITA-4454). */
+export const RECIPE_ROWS = [
+  "catalogNearbyOrganic",
+  "catalogNearbyInorganic",
+  "catalogFamilyOrganic",
+  "catalogFamilyInorganic",
+  "catalogPopularOrganic",
+  "catalogPopularInorganic",
+  "mapOrganic",
+  "mapInorganic",
+] as const;
+export type RecipeRow = (typeof RECIPE_ROWS)[number];
+export type Recipes = Record<RecipeRow, Recipe>;
+
+/** `params.mix` (MESITA-4454). `temperature` per mode (the first-page
+ *  shuffle; 0 = the merged order exactly); `adFloor`: Proximity ×
+ *  premierFactor an ad needs; `adEvery`: one ad slot after every N organic
+ *  places, 0 = no ads (Catalog and Map). */
+export type MixParams = {
+  temperature: Record<RankMode, number>;
+  adFloor: number;
+  adEvery: number;
+};
+
+/** "…Organic" (capital O); an Inorganic row ends "…Inorganic". */
+export const isOrganicRow = (row: RecipeRow) => row.endsWith("Organic");
+export const isMapRow = (row: RecipeRow) => row.startsWith("map");
+
+/** The recipe table (Pato, 2026-11-19); the migration seeds the same values. */
+export const DEFAULT_RECIPES: Recipes = {
+  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, starsExp: 2, googleExp: 0.33, premierExp: 0 },
+  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, starsExp: 2, googleExp: 0.17, premierExp: 1 },
+  catalogFamilyOrganic: { halfKm: 2, distanceExp: 2, starsExp: 2, googleExp: 0.33, premierExp: 0 },
+  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, starsExp: 2, googleExp: 0.17, premierExp: 1 },
+  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, starsExp: 2, googleExp: 0.33, premierExp: 0 },
+  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, starsExp: 2, googleExp: 0.17, premierExp: 1 },
+  mapOrganic: { halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.33, premierExp: 0 },
+  mapInorganic: { halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.17, premierExp: 1 },
+};
+
+export const DEFAULT_MIX: MixParams = {
+  temperature: { nearby: 0.33, family: 0.5, popular: 1 },
+  adFloor: 0.2,
+  adEvery: 1,
+};
+
+/** Legal ranges of a recipe row and of the mix (MESITA-4454). */
+export const RECIPE_BOUNDS = {
+  halfKm: { min: PROXIMITY_HALF_KM_MIN, max: PROXIMITY_HALF_KM_MAX, decimals: 2 },
+  distanceExp: { min: PROXIMITY_EXPONENT_MIN, max: PROXIMITY_EXPONENT_MAX, decimals: 1 },
+  starsExp: { min: STARS_EXP_MIN, max: STARS_EXP_MAX, decimals: 1 },
+  googleExp: { min: GOOGLE_EXP_MIN, max: GOOGLE_EXP_MAX, decimals: 2 },
+  premierExp: { min: PREMIER_EXP_MIN, max: PREMIER_EXP_MAX, decimals: 1 },
+} as const;
+
+export const MIX_BOUNDS = {
+  temperature: { min: MIX_TEMPERATURE_MIN, max: MIX_TEMPERATURE_MAX, decimals: 2 },
+  adFloor: { min: AD_FLOOR_MIN, max: AD_FLOOR_MAX, decimals: 2 },
+  adEvery: { min: AD_EVERY_MIN, max: AD_EVERY_MAX, decimals: 0 },
+} as const;
+
+/** Told about every stored value the normalizer could not keep as is: out
+ *  of bounds (clamped), not a number, or null where a number is required
+ *  (DX-f, L-1). `key` is the dotted path. */
+export type OnClamp = (key: string, raw: unknown) => void;
 
 /**
  * The Deep pipeline (MESITA-2327): open-ended discovery over Mesita Places by
@@ -388,6 +487,8 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   popularity: { root: POPULARITY_ROOT_DEFAULT, starsPower: STARS_POWER_DEFAULT },
   variety: { repeat: VARIETY_REPEAT_DEFAULT },
   shuffle: { temperature: SHUFFLE_TEMPERATURE_DEFAULT },
+  recipes: DEFAULT_RECIPES,
+  mix: DEFAULT_MIX,
 };
 
 /** Legal ranges for the signal numbers. */
@@ -612,7 +713,71 @@ function boundedParam(
  * drops with it. A missing key reads its default: a row stored before a
  * knob existed never resets the others (keys are added, never renamed).
  */
-export function normalizeSignalParams(raw: unknown): SignalParams {
+/** One bounded value that reports: absent → the fallback, silently; not a
+ *  number (null included) → the fallback, reported; out of bounds →
+ *  clamped, reported. Rounded to the field's decimals either way. */
+function reportedParam(
+  raw: unknown,
+  fallback: number,
+  b: { min: number; max: number; decimals: number },
+  key: string,
+  onClamp?: OnClamp,
+): number {
+  const factor = 10 ** b.decimals;
+  if (raw === undefined) return Math.round(fallback * factor) / factor;
+  const n = typeof raw === "number" ? raw : (raw === null || raw === "" ? Number.NaN : Number(raw));
+  if (!Number.isFinite(n)) {
+    onClamp?.(key, raw);
+    return Math.round(fallback * factor) / factor;
+  }
+  if (n < b.min || n > b.max) onClamp?.(key, raw);
+  return Math.round(Math.min(b.max, Math.max(b.min, n)) * factor) / factor;
+}
+
+/**
+ * The eight recipe rows (MESITA-4454). A missing row or field reads the
+ * recipe table. Map rows have no Proximity: their `halfKm` and
+ * `distanceExp` are always null. A Catalog row's null distance number reads
+ * its default and is reported (L-1). Every Organic row's Premier exponent is
+ * 0 whatever is stored (C1): a plan never moves the organic list.
+ */
+export function normalizeRecipes(raw: unknown, onClamp?: OnClamp): Recipes {
+  const r = asRecord(raw);
+  const out = {} as Recipes;
+  for (const row of RECIPE_ROWS) {
+    const v = asRecord(r[row]);
+    const d = DEFAULT_RECIPES[row];
+    const key = (f: string) => `params.recipes.${row}.${f}`;
+    const map = isMapRow(row);
+    out[row] = {
+      halfKm: map ? null : reportedParam(v.halfKm, d.halfKm as number, RECIPE_BOUNDS.halfKm, key("halfKm"), onClamp),
+      distanceExp: map
+        ? null
+        : reportedParam(v.distanceExp, d.distanceExp as number, RECIPE_BOUNDS.distanceExp, key("distanceExp"), onClamp),
+      starsExp: reportedParam(v.starsExp, d.starsExp, RECIPE_BOUNDS.starsExp, key("starsExp"), onClamp),
+      googleExp: reportedParam(v.googleExp, d.googleExp, RECIPE_BOUNDS.googleExp, key("googleExp"), onClamp),
+      premierExp: isOrganicRow(row)
+        ? 0
+        : reportedParam(v.premierExp, d.premierExp, RECIPE_BOUNDS.premierExp, key("premierExp"), onClamp),
+    };
+  }
+  return out;
+}
+
+/** `params.mix` (MESITA-4454); a missing key reads its default. */
+export function normalizeMix(raw: unknown, onClamp?: OnClamp): MixParams {
+  const r = asRecord(raw);
+  const t = asRecord(r.temperature);
+  const temp = (mode: RankMode) =>
+    reportedParam(t[mode], DEFAULT_MIX.temperature[mode], MIX_BOUNDS.temperature, `params.mix.temperature.${mode}`, onClamp);
+  return {
+    temperature: { nearby: temp("nearby"), family: temp("family"), popular: temp("popular") },
+    adFloor: reportedParam(r.adFloor, DEFAULT_MIX.adFloor, MIX_BOUNDS.adFloor, "params.mix.adFloor", onClamp),
+    adEvery: reportedParam(r.adEvery, DEFAULT_MIX.adEvery, MIX_BOUNDS.adEvery, "params.mix.adEvery", onClamp),
+  };
+}
+
+export function normalizeSignalParams(raw: unknown, onClamp?: OnClamp): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
@@ -654,33 +819,50 @@ export function normalizeSignalParams(raw: unknown): SignalParams {
         SIGNAL_PARAM_BOUNDS.temperature,
       ),
     },
+    recipes: normalizeRecipes(asRecord(raw).recipes, onClamp),
+    mix: normalizeMix(asRecord(raw).mix, onClamp),
   };
 }
 
 /**
  * Tolerant read: any missing or invalid key falls back to its default, and
- * the blob is rebuilt key by key, so a retired key (`weights`,
- * `weightsByMode`, `engines`, `swipe`, MESITA-2328; `filters`, MESITA-2337;
- * the rails engine's `catalog`, MESITA-2923)
- * is dropped on the next save rather than lingering in jsonb forever.
+ * the top-level blob is rebuilt key by key, so a retired top-level key
+ * (`weights`, `weightsByMode`, `engines`, `swipe`, MESITA-2328; `filters`,
+ * MESITA-2337; the rails engine's `catalog`, MESITA-2923) is dropped on the
+ * next save rather than lingering in jsonb forever.
+ *
+ * Under `params` and `map` the raw object is spread first and the typed keys
+ * overlaid (H-2, MESITA-4454): a key this build does not know survives a read
+ * and a save, so an older build can never erase `params.recipes` or
+ * `params.mix`, and a retired key waits for the migration that deletes it.
+ * `onClamp` hears every stored value the recipe or mix normalizer had to
+ * replace (DX-f).
  */
-export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
-  const r = (raw ?? {}) as Record<string, unknown>;
+export function normalizeDiscoveryConfig(raw: unknown, onClamp?: OnClamp): DiscoveryConfig {
+  const r = asRecord(raw);
 
   return {
-    params: normalizeSignalParams(r.params),
+    params: { ...asRecord(r.params), ...normalizeSignalParams(r.params, onClamp) },
     general: normalizeGeneralConfig(r.general),
-    map: normalizeMapConfig(r.map),
+    map: { ...asRecord(r.map), ...normalizeMapConfig(r.map) },
     name: normalizeNameConfig(r.name),
     deep: normalizeDeepConfig(r.deep),
     chat: {
       prompt: normalizeChatPrompt(
-        ((r.chat ?? {}) as Record<string, unknown>).prompt,
+        asRecord(r.chat).prompt,
       ),
     },
     premier: normalizePremierConfig(r.premier),
   };
 }
+
+/** A config read with its row's `updated_at` (the rank response's
+ *  `updatedAt`, DX-b) and every value the normalizer replaced. */
+export type LoadedDiscoveryConfig = {
+  cfg: DiscoveryConfig;
+  updatedAt: string | null;
+  clamped: Array<{ key: string; raw: unknown }>;
+};
 
 /**
  * Load the live config, or the defaults if the row cannot be read.
@@ -689,24 +871,57 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
  * falling back to defaults degrades the ordering, while throwing would empty
  * the guest's screen. The read error is logged, not raised.
  */
-export async function loadDiscoveryConfig(
+export async function loadDiscoveryConfigWithMeta(
   admin: SupabaseClient,
-): Promise<DiscoveryConfig> {
+): Promise<LoadedDiscoveryConfig> {
+  const clamped: Array<{ key: string; raw: unknown }> = [];
   try {
     const { data, error } = await admin
       .from("app_config")
-      .select("discovery_config")
+      .select("discovery_config, updated_at")
       .eq("id", 1)
       .maybeSingle();
     if (error) {
       console.error("[discovery-config] read:", error.message);
-      return DISCOVERY_DEFAULTS;
+      return { cfg: DISCOVERY_DEFAULTS, updatedAt: null, clamped };
     }
-    return normalizeDiscoveryConfig(data?.discovery_config);
+    const row = (data ?? null) as { discovery_config?: unknown; updated_at?: unknown } | null;
+    return {
+      cfg: normalizeDiscoveryConfig(row?.discovery_config, (key, raw) => clamped.push({ key, raw })),
+      updatedAt: typeof row?.updated_at === "string" ? row.updated_at : null,
+      clamped,
+    };
   } catch (e) {
     console.error("[discovery-config] read threw:", errorMessage(e));
-    return DISCOVERY_DEFAULTS;
+    return { cfg: DISCOVERY_DEFAULTS, updatedAt: null, clamped };
   }
+}
+
+/** `loadDiscoveryConfigWithMeta` for a caller that needs the config only. */
+export async function loadDiscoveryConfig(
+  admin: SupabaseClient,
+): Promise<DiscoveryConfig> {
+  return (await loadDiscoveryConfigWithMeta(admin)).cfg;
+}
+
+/** The recipe row a screen, mode and lane read (M-f, MESITA-4454). `map`
+ *  is the Map's pair (Popular and Family share it); no mode resolves to
+ *  popular (the place screen's score). A cfg that predates the rows reads
+ *  the recipe table. */
+export function recipeFor(
+  mode: RankMode | "map" | undefined,
+  lane: "organic" | "inorganic",
+  cfg: { params: Pick<SignalParams, "recipes"> | SignalParams },
+): Recipe {
+  const m = mode ?? "popular";
+  const L = lane === "organic" ? "Organic" : "Inorganic";
+  const row = (m === "map" ? `map${L}` : `catalog${m[0].toUpperCase()}${m.slice(1)}${L}`) as RecipeRow;
+  return cfg.params?.recipes?.[row] ?? DEFAULT_RECIPES[row];
+}
+
+/** The mix, or its defaults on a cfg that predates it. */
+export function mixFor(cfg: { params: Partial<Pick<SignalParams, "mix">> }): MixParams {
+  return cfg.params?.mix ?? DEFAULT_MIX;
 }
 
 /**

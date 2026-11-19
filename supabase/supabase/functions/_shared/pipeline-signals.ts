@@ -7,6 +7,10 @@
 //                           1 ÷ (1 + (d ÷ D)^e), MESITA-3015, MESITA-3083
 //   popularity              Popularity · the Map and Catalog pipelines
 //                           (1 + reviews × stars)^root, MESITA-3083
+//   recipeScore             Discovery ranking v2 (MESITA-4454): the Map,
+//                           Catalog and Chat score, one recipe row per
+//                           screen, mode and lane; `mergeLanes` and
+//                           `cutAndShuffle` build Home's order
 //
 // A signal scores; it never excludes (that is a gate's job, area-score.ts).
 // Each one states its own missing-data policy here, beside the formula, so a
@@ -180,6 +184,224 @@ export function shuffleByRank<T>(
     .map((item, i) => ({ item, key: -Math.log(i + 1) / temperature + gumbel() }))
     .sort((a, b) => b.key - a.key)
     .map((x) => x.item);
+}
+
+// ── Discovery ranking v2 (MESITA-4454): one formula, two lanes, three modes ──
+//
+//   Score     = Proximity × (stars ^ StarsExp × reviews) ^ GoogleExp
+//               × premierFactor ^ PremierExp
+//   Proximity = 1 ÷ (1 + (distance ÷ HalfDistance) ^ DistanceExp)   (Map: none)
+//   premierFactor = 1 · 2 · 5 (no plan · 2X · 5X); premierBoost = premierFactor ^ PremierExp
+//
+// Every number is a recipe row (`params.recipes`, discovery-config.ts); the
+// SQL copy is `catalog_rank_lanes` (pinned by catalog_rank_lanes.test.sql on
+// the same hand values as pipeline-signals.test.ts).
+
+/** Recipe bounds (DX-a, Names: never "root"). Half distance and Distance
+ *  exponent are Proximity's own (above). */
+export const STARS_EXP_MIN = 0;
+export const STARS_EXP_MAX = 4;
+export const GOOGLE_EXP_MIN = 0.1;
+export const GOOGLE_EXP_MAX = 1;
+export const PREMIER_EXP_MIN = 0;
+export const PREMIER_EXP_MAX = 2;
+/** The mix: per-mode Temperature (the shuffle's), the ad floor and cadence. */
+export const MIX_TEMPERATURE_MIN = 0;
+export const MIX_TEMPERATURE_MAX = 5;
+export const AD_FLOOR_MIN = 0;
+export const AD_FLOOR_MAX = 1;
+export const AD_EVERY_MIN = 0;
+export const AD_EVERY_MAX = 10;
+
+/** One recipe row. `halfKm` and `distanceExp` are null on the Map's rows
+ *  (no Proximity there); `premierExp` is 0 on every Organic row. */
+export type Recipe = {
+  halfKm: number | null;
+  distanceExp: number | null;
+  starsExp: number;
+  googleExp: number;
+  premierExp: number;
+};
+
+/**
+ * Popularity v2: (stars ^ StarsExp × reviews) ^ GoogleExp. Unbounded, never
+ * normalized. 0 reviews, no stars, or no review count → 0: such a place
+ * ranks last (MESITA-4454; the old `1 +` kept it at 1).
+ */
+export function googlePopularity(
+  candidate: { rating?: number | null; reviewCount?: number | null },
+  starsExp: number,
+  googleExp: number,
+): number {
+  const r = candidate.rating;
+  const n = candidate.reviewCount;
+  if (typeof r !== "number" || typeof n !== "number") return 0;
+  if (!Number.isFinite(r) || !Number.isFinite(n) || n <= 0) return 0;
+  const s = Number.isFinite(starsExp) && starsExp >= 0 ? starsExp : 0;
+  const g = Number.isFinite(googleExp) && googleExp > 0 ? googleExp : 1;
+  return Math.pow(Math.pow(Math.max(0, r), s) * n, g);
+}
+
+/** premierFactor ^ PremierExp: 1 whenever the exponent is 0. */
+export function premierBoost(premierFactor: number, premierExp: number): number {
+  const f = Number.isFinite(premierFactor) && premierFactor > 0 ? premierFactor : 1;
+  const e = Number.isFinite(premierExp) && premierExp > 0 ? premierExp : 0;
+  return Math.pow(f, e);
+}
+
+/** One place's v2 score and its parts. `proximity` is null when the recipe
+ *  has no Proximity (a Map row) or there is no anchor to measure from — it
+ *  then counts as 1 (abstains). */
+export type RecipeScore = {
+  proximity: number | null;
+  popularity: number;
+  premierFactor: number;
+  premierBoost: number;
+  final: number;
+};
+
+/**
+ * THE v2 SCORE (MESITA-4454) for a candidate at `distanceKm` (null = no
+ * anchor, or no coordinates when `placed` is false). A Map row (null
+ * `halfKm`) has no Proximity. A place with no coordinates, measured from an
+ * anchor, has Proximity 0.
+ */
+export function recipeScore(
+  candidate: { rating?: number | null; reviewCount?: number | null },
+  distanceKm: number | null,
+  hasAnchor: boolean,
+  premierFactor: number,
+  recipe: Recipe,
+): RecipeScore {
+  const popularity = googlePopularity(candidate, recipe.starsExp, recipe.googleExp);
+  const boost = premierBoost(premierFactor, recipe.premierExp);
+  let prox: number | null = null;
+  if (recipe.halfKm !== null && hasAnchor) {
+    prox = distanceKm === null
+      ? 0
+      : proximityFromDistance(distanceKm, recipe.halfKm, recipe.distanceExp ?? PROXIMITY_EXPONENT_DEFAULT);
+  }
+  return {
+    proximity: prox,
+    popularity,
+    premierFactor,
+    premierBoost: boost,
+    final: (prox ?? 1) * popularity * boost,
+  };
+}
+
+/** The ad floor (MESITA-4454, M5): an Inorganic place takes an ad slot only
+ *  when Proximity (its lane's row; 1 with no anchor) × the raw
+ *  premierFactor (2 or 5) reaches it. */
+export function clearsAdFloor(proximityOrNull: number | null, premierFactor: number, adFloor: number): boolean {
+  return (proximityOrNull ?? 1) * premierFactor >= adFloor;
+}
+
+// ── The merge and the shuffle (MESITA-4454) ─────────────────────────────────
+
+/**
+ * THE MERGE (M-g): `adEvery` organic places, then one ad slot, again and
+ * again. A place already shown is skipped and its slot takes the next place
+ * of its lane; an ad slot with no Premier place left is dropped and the
+ * organic list continues; a place appears once. `adEvery` 0 = no ad slots.
+ * `adIds` are the ids sitting in ad slots (the only ones that wear "Ad").
+ */
+export function mergeLanes(
+  organic: readonly string[],
+  premier: readonly string[],
+  adEvery: number,
+): { order: string[]; adIds: string[] } {
+  const every = Number.isFinite(adEvery) ? Math.floor(adEvery) : 0;
+  const seen = new Set<string>();
+  const order: string[] = [];
+  const adIds: string[] = [];
+  let p = 0;
+  const nextAd = (): string | null => {
+    while (p < premier.length) {
+      const id = premier[p++];
+      if (!seen.has(id)) return id;
+    }
+    return null;
+  };
+  let sinceAd = 0;
+  for (const id of organic) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    order.push(id);
+    sinceAd++;
+    if (every > 0 && sinceAd >= every) {
+      sinceAd = 0;
+      const ad = nextAd();
+      if (ad !== null) {
+        seen.add(ad);
+        order.push(ad);
+        adIds.push(ad);
+      }
+    }
+  }
+  return { order, adIds };
+}
+
+/** A keyed uniform in (0, 1) from (seed, id): FNV-1a over the id, mixed
+ *  with the seed, then a murmur3 finalizer. Same seed and id → same draw,
+ *  whatever else is in the list (M-b). */
+export function keyedUniform(seed: number, id: string): number {
+  let h = (0x811c9dc5 ^ (seed >>> 0)) >>> 0;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  h ^= seed >>> 0;
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b) >>> 0;
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35) >>> 0;
+  h ^= h >>> 16;
+  return ((h >>> 0) + 0.5) / 4294967296;
+}
+
+/**
+ * THE FIRST-PAGE SHUFFLE (MESITA-4454): the first `pageSize` ids are drawn
+ * again with weight 1 ÷ rank^(1/T) (Plackett–Luce by the Gumbel trick, as
+ * `shuffleByRank`), the noise keyed by hash(seed, id) so a place keeps its
+ * draw when another enters the page (M-b). Everything after the first page
+ * keeps its exact order. T ≤ 0 is the identity. Every seed is valid, 0
+ * included.
+ */
+export function cutAndShuffle(
+  order: readonly string[],
+  pageSize: number,
+  temperature: number,
+  seed: number,
+): string[] {
+  const n = Math.max(0, Math.floor(Number.isFinite(pageSize) ? pageSize : 0));
+  if (!(Number.isFinite(temperature) && temperature > 0) || n < 2 || order.length < 2) return [...order];
+  const head = order.slice(0, n);
+  const tail = order.slice(n);
+  const shuffled = head
+    .map((id, i) => {
+      const u = keyedUniform(seed, id);
+      return { id, key: -Math.log(i + 1) / temperature - Math.log(-Math.log(u)) };
+    })
+    .sort((a, b) => b.key - a.key || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .map((x) => x.id);
+  return [...shuffled, ...tail];
+}
+
+/** The three questions Home asks (Names: Nearby · Popular · Family). */
+export const RANK_MODES = ["nearby", "popular", "family"] as const;
+export type RankMode = (typeof RANK_MODES)[number];
+
+export function isRankMode(v: unknown): v is RankMode {
+  return typeof v === "string" && (RANK_MODES as readonly string[]).includes(v);
+}
+
+/** A Home chip's key → its mode (DX-c): `near` → nearby, `all` → popular,
+ *  any family key → family. Stored chip keys are never renamed. */
+export function rankModeForChip(key: string): RankMode {
+  if (key === "near") return "nearby";
+  if (key === "all") return "popular";
+  return "family";
 }
 
 /** True when the place's Popularity is at or over the operator's floor

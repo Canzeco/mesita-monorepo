@@ -16,7 +16,7 @@
 // whatever it owns — the enricher touches two columns, models wants no
 // updated_at. Neither adds `updated_by`: the caller owns the patch.
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { jsonError } from "./http.ts";
+import { json, jsonError } from "./http.ts";
 
 /** One app_config row, keyed by whichever columns the caller selected. */
 export type AppConfigRow = Record<string, unknown>;
@@ -53,13 +53,41 @@ export async function readAppConfig(
  * Patch the singleton and hand back the columns named in `columns`. `.single()`
  * on the way out, so a write that matched no row surfaces as a 500 rather than
  * a success with nothing saved.
+ *
+ * With `expectedUpdatedAt` the write is conditional (MESITA-4454, H-3):
+ * `update … where id = 1 and updated_at = $expected`. Zero rows means someone
+ * saved since the caller read, and the answer is 409 `config_conflict`; the
+ * row's `app_config_set_updated_at` trigger stamps every write.
  */
 export async function writeAppConfig(
   admin: SupabaseClient,
   patch: Record<string, unknown>,
   columns: string,
   errorPrefix: string,
+  opts: { expectedUpdatedAt?: string } = {},
 ): Promise<{ ok: true; row: AppConfigRow } | { ok: false; response: Response }> {
+  if (opts.expectedUpdatedAt !== undefined) {
+    const { data, error } = await admin
+      .from("app_config")
+      .update(patch)
+      .eq("id", 1)
+      .eq("updated_at", opts.expectedUpdatedAt)
+      .select(columns)
+      .maybeSingle();
+    if (error) {
+      return {
+        ok: false,
+        response: jsonError(`${errorPrefix}: ${error.message}`, 500),
+      };
+    }
+    if (!data) {
+      return {
+        ok: false,
+        response: json({ ok: false, code: "config_conflict", error: "config changed, reload" }, 409),
+      };
+    }
+    return { ok: true, row: data as unknown as AppConfigRow };
+  }
   const { data, error } = await admin
     .from("app_config")
     .update(patch)
