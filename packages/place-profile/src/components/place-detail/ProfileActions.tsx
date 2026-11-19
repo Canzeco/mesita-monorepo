@@ -2,7 +2,8 @@
 
 import {
   CalendarCheck,
-  Clock,
+  Check,
+  ChevronRight,
   Tag,
   Heart,
   Map as MapIcon,
@@ -465,8 +466,13 @@ function TableTile({
 }) {
   // `when` is the host's "Thu 19 Nov · 20:00".
   const [day, time] = r.when.split(" · ");
+  const [weekday, date, month] = (day ?? "").split(" ");
   const state = r.confirmed ? "Booked" : "Booking";
-  const Icon = r.confirmed ? CalendarCheck : Clock;
+  // ONE ORDER, LEFT TO RIGHT (Pato, 2026-11-18, MESITA-4435: "red box must
+  // have more design. better order"): a white calendar badge (month over
+  // date), then the state small over the weekday and time big, then a
+  // chevron; still red edge to edge (MESITA-4407). It was the glyph and
+  // the word at the left with the day over the time in the middle.
   return (
     <button
       type="button"
@@ -474,16 +480,34 @@ function TableTile({
       data-profile-actions="reservation"
       data-reservation-state={r.confirmed ? "booked" : "booking"}
       aria-label={`Your table here: ${state}, ${day}${time ? `, ${time}` : ""}. Opens Reserve to change or cancel it.`}
-      className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE, RESERVE_CHIP)}
+      className={cn(
+        PROFILE_MESITA_TILE_BOX_CLASS,
+        "flex-row items-center gap-2.5 overflow-hidden px-2.5 text-left transition hover:opacity-90 active:scale-[0.99]",
+        RESERVE_CHIP,
+      )}
     >
-      <span className={ROW_LEAD}>
-        <Icon className={cn(MESITA_TILE_ICON, !r.confirmed && "animate-pulse")} strokeWidth={2.25} />
-        <span>{state}</span>
+      <span
+        aria-hidden
+        className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg bg-white leading-none text-[#DA3743]"
+      >
+        <span className="text-[10px] font-bold tracking-wide uppercase">{month ?? ""}</span>
+        <span className="text-lg font-extrabold tabular-nums">{date ?? ""}</span>
       </span>
-      <span className={cn(ROW_CHIP, "flex flex-col items-center justify-center")}>
-        <span className="text-[10px] font-bold tracking-wide uppercase opacity-90">{day}</span>
-        {time ? <span className="text-base">{time}</span> : null}
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex items-center gap-1 text-[10px] font-bold tracking-wide uppercase opacity-90">
+          {r.confirmed ? (
+            <Check className="h-3 w-3 shrink-0" strokeWidth={3} aria-hidden />
+          ) : (
+            <span aria-hidden className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-white" />
+          )}
+          {state}
+        </span>
+        <span className="truncate text-base leading-tight font-extrabold tabular-nums">
+          {weekday}
+          {time ? ` · ${time}` : ""}
+        </span>
       </span>
+      <ChevronRight className="h-4 w-4 shrink-0 opacity-80" strokeWidth={2.5} aria-hidden />
     </button>
   );
 }
