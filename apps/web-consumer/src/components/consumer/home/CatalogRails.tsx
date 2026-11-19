@@ -622,10 +622,10 @@ export function CatalogRails() {
     // dirty"): MESITA-4415's "Categories" eyebrow is gone; the circles say it.
     <div className="bg-card border-border flex shrink-0 items-start border-b pt-2.5 pb-1.5" data-places-strip>
       {/* THE MENU STAYS PUT (Pato, MESITA-4423: "menu must be fixed"): its
-          tile sits outside the scroller, pinned at the left with a hairline
-          after it, so it is always one tap away while the categories slide
+          tile sits outside the scroller, pinned at the left with a short
+          tick after it, so it is always one tap away while the categories slide
           under nothing. It was the row's first tile (MESITA-4410). */}
-      <div className="border-border flex shrink-0 border-r pr-1 pl-2">
+      <div className="flex shrink-0 pl-2">
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
@@ -650,6 +650,10 @@ export function CatalogRails() {
           <span className={cn(CAT_NAME, "text-muted-foreground font-medium")}>Menu</span>
         </button>
       </div>
+      {/* A SHORT TICK, NOT A WALL (Pato, MESITA-4427: "the line looks like
+          shit separating menu from others, make it not that large"): 24px,
+          level with the circles' middle. */}
+      <span aria-hidden className="bg-border mx-1 mt-2 h-6 w-px shrink-0" />
       <nav
         ref={stripRef}
         aria-label="Families"
