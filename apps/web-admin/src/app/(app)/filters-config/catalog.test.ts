@@ -4,10 +4,20 @@ import { join } from "node:path";
 
 import {
   coerceConfig,
+  coerceMix,
+  coerceRecipes,
   DEFAULT_CONFIG,
   DEFAULT_GENERAL,
   DEFAULT_MAP,
+  DEFAULT_MIX,
   DEFAULT_NAME,
+  DEFAULT_RECIPES,
+  EXPONENT_MAX,
+  EXPONENT_MIN,
+  HALF_KM_MAX,
+  HALF_KM_MIN,
+  MIX_BOUNDS,
+  RECIPE_BOUNDS,
 } from "./catalog";
 
 // `app_config.discovery_config` as stored on 2026-10-18 (trimmed): the
@@ -38,40 +48,37 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(Object.keys(cfg).sort()).toEqual(Object.keys(DEFAULT_CONFIG).sort());
   });
 
-  it("params keeps the half distance, the exponent and the Popularity root; the reach, the divisor, Selected, the linear balance, the weights table and the reviews half point are dropped (MESITA-2687, MESITA-2703, MESITA-2909, MESITA-3083)", () => {
-    expect(coerceConfig(LIVE_BLOB).params).toEqual(DEFAULT_CONFIG.params);
-    expect(
-      coerceConfig({
-        params: {
-          // `halfDistanceKm` and `radiusDivisor` are retired keys.
-          proximity: { maxKm: 30, halfDistanceKm: 6, radiusDivisor: 3 },
-          popularity: { priorRating: 4.2, referenceRating: 4, referenceReviews: 500, halfReviews: 250 },
-          balance: { proximity: 8 },
-          modes: { popular: { proximity: 0.5 } },
-          timing: { closedFloor: 0.2 },
-        },
-      }).params,
-    ).toEqual({
-      proximity: { halfKm: 1, exponent: 1 },
-      popularity: { root: 0.33, starsPower: 6 },
-      variety: { repeat: 0.6 },
-      shuffle: { temperature: 0.3 },
-    });
+  it("params keeps every typed key at its value, and an unknown key rides along untouched until a migration deletes it (H-2, MESITA-4454)", () => {
+    const typed = (cfg: ReturnType<typeof coerceConfig>) => {
+      const { proximity, popularity, variety, shuffle, recipes, mix } = cfg.params;
+      return { proximity, popularity, variety, shuffle, recipes, mix };
+    };
+    expect(typed(coerceConfig(LIVE_BLOB))).toEqual(DEFAULT_CONFIG.params);
+    const params = coerceConfig({
+      params: {
+        proximity: { maxKm: 30, halfDistanceKm: 6, radiusDivisor: 3 },
+        popularity: { priorRating: 4.2, referenceRating: 4, referenceReviews: 500, halfReviews: 250 },
+        balance: { proximity: 8 },
+        modes: { popular: { proximity: 0.5 } },
+      },
+    }).params as unknown as Record<string, unknown>;
+    // Typed keys are rebuilt field by field: their stale sub-keys go.
+    expect(params.proximity).toEqual({ halfKm: 1, exponent: 1 });
+    expect(params.popularity).toEqual({ root: 0.33, starsPower: 6 });
+    // Unknown keys under params are kept as stored (the server keeps them too).
+    expect(params.balance).toEqual({ proximity: 8 });
+    expect(params.modes).toEqual({ popular: { proximity: 0.5 } });
   });
 
-  it("the half distance clamps to 0.1–100 km at one decimal, the exponent to 0.5–5, the root to 0.1–1 at two; reach and Selected are dropped (MESITA-2703, MESITA-2909, MESITA-3083)", () => {
-    expect(
-      coerceConfig({
-        params: {
-          proximity: { reachKm: 12.34, halfKm: 2.34, exponent: 1.26 },
-          popularity: { halfReviews: 0, root: 0.3333 },
-          selected: { otherFactor: 0 },
-        },
-      }).params,
-    ).toEqual({
-      proximity: { halfKm: 2.3, exponent: 1.3 },
-      popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 },
-    });
+  it("the half distance clamps to 0.1–100 km at one decimal, the exponent to 0.5–5, the root to 0.1–1 at two (MESITA-2909, MESITA-3083)", () => {
+    const params = coerceConfig({
+      params: {
+        proximity: { reachKm: 12.34, halfKm: 2.34, exponent: 1.26 },
+        popularity: { halfReviews: 0, root: 0.3333 },
+      },
+    }).params;
+    expect(params.proximity).toEqual({ halfKm: 2.3, exponent: 1.3 });
+    expect(params.popularity).toEqual({ root: 0.33, starsPower: 6 });
     expect(coerceConfig({ params: { proximity: { halfKm: 0 } } }).params.proximity).toEqual({ halfKm: 0.1, exponent: 1 });
     expect(coerceConfig({ params: { proximity: { halfKm: 999, exponent: 9 } } }).params.proximity).toEqual({ halfKm: 100, exponent: 5 });
     expect(coerceConfig({ params: { popularity: { root: 0 } } }).params.popularity).toEqual({ root: 0.1, starsPower: 6 });
@@ -82,36 +89,28 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(coerceConfig({ params: { shuffle: { temperature: -1 } } }).params.shuffle).toEqual({ temperature: 0 });
   });
 
-  it("the four source switches and catalogPlacesShown are dropped (MESITA-2872, MESITA-2909)", () => {
+  it("map keeps its typed keys clamped and every other stored key as is (H-2, MESITA-4454)", () => {
     const m = coerceConfig({
-      map: { googlePopular: 20, googleClosest: 0, mesitaPopular: 3, mesitaClosest: 20, catalogPlacesShown: 40 },
-    }).map;
-    for (const gone of ["googlePopular", "googleClosest", "mesitaPopular", "mesitaClosest", "catalogPlacesShown"]) {
-      expect(gone in m).toBe(false);
+      map: { googlePopular: 20, mesitaClosest: 20, catalogPlacesShown: 40, selectedFactor: 5, placesShown: 33 },
+    }).map as unknown as Record<string, unknown>;
+    for (const kept of ["googlePopular", "mesitaClosest", "catalogPlacesShown", "selectedFactor"]) {
+      expect(kept in m).toBe(true);
     }
+    expect(m.placesShown).toBe(33);
     // Catalog page size (MESITA-2909): whole, 5..100, default 20.
     expect(DEFAULT_MAP.catalogPageSize).toBe(20);
     expect(coerceConfig({ map: { catalogPageSize: 1 } }).map.catalogPageSize).toBe(5);
     expect(coerceConfig({ map: { catalogPageSize: 500 } }).map.catalogPageSize).toBe(100);
-    // The exponents are retired (MESITA-2722): a stored one is dropped.
-    expect("popularityWeight" in coerceConfig({ map: { popularityWeight: 9 } }).map).toBe(false);
     // Most pins shown (MESITA-2713, MESITA-2909): whole, 1..200, default 50.
     expect(DEFAULT_MAP.placesShown).toBe(50);
     expect(coerceConfig({ map: { placesShown: 0 } }).map.placesShown).toBe(1);
     expect(coerceConfig({ map: { placesShown: 900 } }).map.placesShown).toBe(200);
     expect(coerceConfig({ map: { placesShown: 33.4 } }).map.placesShown).toBe(33);
-    // Minimum Popularity moved to Name (MESITA-3086): 0..20, one decimal,
-    // default 2.7 in the Popularity root's units; a stored map copy is dropped.
-    expect("popularityFloor" in coerceConfig({ map: { popularityFloor: 5 } }).map).toBe(false);
+    // Minimum Popularity lives on Name (MESITA-3086): 0..20, one decimal.
     expect(coerceConfig({}).name.popularityFloor).toBe(2.7);
     expect(coerceConfig({ name: { popularityFloor: -1 } }).name.popularityFloor).toBe(0);
     expect(coerceConfig({ name: { popularityFloor: 99 } }).name.popularityFloor).toBe(20);
     expect(coerceConfig({ name: { popularityFloor: 3.44 } }).name.popularityFloor).toBe(3.4);
-    // The Selected boost retired with Selected (MESITA-2925): a stored key
-    // is dropped, the rest of the map kept.
-    const stored = coerceConfig({ map: { selectedFactor: 5, placesShown: 33 } }).map;
-    expect(stored).not.toHaveProperty("selectedFactor");
-    expect(stored.placesShown).toBe(33);
   });
 
   it("filters go too: list-places' listed lanes were their last reader (MESITA-2337)", () => {
@@ -141,17 +140,13 @@ describe("coerceConfig", () => {
           minRating: 9,
           minPopularity: 4,
           supers: { restaurants: false },
-          reloadMinKm: 1,
-          reloadMinSec: 4,
-          mapGooglePlaces: 45,
-          googleFill: false,
-          googleClosest: 7,
         },
       }).map,
     ).toEqual({
       ...DEFAULT_MAP,
       minRating: 5,
       minPopularity: 1,
+      supers: { restaurants: false },
     });
     // The live throttle (MESITA-2444): 1.5 s by default, the client's 0.5–10.
     expect(coerceConfig({}).map.reloadIdleSec).toBe(1.5);
@@ -184,14 +179,8 @@ describe("coerceConfig", () => {
   });
 
 
-  it("map.googlePull and map.radiusKm are retired; the Map has its own root (MESITA-2298, MESITA-3086)", () => {
-    // One Nearby Search (New) call per request, 20 places, never widened: the
-    // Legacy 40/60 pull is gone and an old blob's key is dropped on coerce.
-    expect("googlePull" in DEFAULT_MAP).toBe(false);
-    expect("googlePull" in coerceConfig({ map: { googlePull: 60 } }).map).toBe(false);
-    // The radius is the screen's (MESITA-3086): a stored key is dropped.
-    expect("radiusKm" in coerceConfig({ map: { radiusKm: 7 } }).map).toBe(false);
-    // The Map's root: 0.1..1, two decimals, default 0.33.
+  it("the Map's root is still normalized while it waits for its migration (MESITA-3086, MESITA-4454)", () => {
+    // Unread since MESITA-4454 (the Map rows replace it); kept, clamped.
     expect(DEFAULT_MAP.popularityRoot).toBe(0.33);
     const root = (raw: unknown) => coerceConfig({ map: { popularityRoot: raw } }).map.popularityRoot;
     expect(root(0.01)).toBe(0.1);
@@ -232,15 +221,71 @@ describe("coerceConfig", () => {
   });
 });
 
+describe("recipes and mix (MESITA-4454), the twin of normalizeRecipes and normalizeMix", () => {
+  it("read the recipe table and the mix defaults when absent", () => {
+    expect(coerceConfig({}).params.recipes).toEqual(DEFAULT_RECIPES);
+    expect(coerceConfig({}).params.mix).toEqual(DEFAULT_MIX);
+    expect(DEFAULT_RECIPES.catalogNearbyOrganic).toEqual({ halfKm: 0.1, distanceExp: 4, starsExp: 2, googleExp: 0.33, premierExp: 0 });
+    expect(DEFAULT_RECIPES.mapInorganic).toEqual({ halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.17, premierExp: 1 });
+  });
+
+  it("clamp each field; an Organic row's Premier exponent is 0 and a Map row has no distance (C1, L-1)", () => {
+    const r = coerceRecipes({
+      catalogPopularOrganic: { halfKm: 500, distanceExp: 0.1, starsExp: 9, googleExp: 0.01, premierExp: 2 },
+      catalogPopularInorganic: { premierExp: 3, googleExp: "0.5" },
+      catalogFamilyOrganic: { halfKm: null, distanceExp: "x" },
+      catalogNearbyOrganic: { halfKm: 0.123 },
+      mapOrganic: { halfKm: 3, distanceExp: 2, premierExp: 1 },
+    });
+    expect(r.catalogPopularOrganic).toEqual({ halfKm: 100, distanceExp: 0.5, starsExp: 4, googleExp: 0.1, premierExp: 0 });
+    expect(r.catalogPopularInorganic.premierExp).toBe(2);
+    expect(r.catalogPopularInorganic.googleExp).toBe(0.5);
+    expect([r.catalogFamilyOrganic.halfKm, r.catalogFamilyOrganic.distanceExp]).toEqual([2, 2]);
+    expect(r.catalogNearbyOrganic.halfKm).toBe(0.12);
+    expect(r.mapOrganic).toEqual({ halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.33, premierExp: 0 });
+  });
+
+  it("mix: Temperature 0–5 per mode, ad floor 0–1, ad cadence 0–10 whole", () => {
+    expect(coerceMix({ temperature: { nearby: 9, family: -1, popular: 0.333 }, adFloor: 2, adEvery: 3.6 })).toEqual({
+      temperature: { nearby: 5, family: 0, popular: 0.33 },
+      adFloor: 1,
+      adEvery: 4,
+    });
+    expect(coerceMix({ adEvery: 0 }).adEvery).toBe(0);
+    expect(coerceMix({ adEvery: 99 }).adEvery).toBe(10);
+  });
+
+  it("an unknown key under params and map survives coerce and a round trip (H-2)", () => {
+    const raw = {
+      params: { future: { knob: 1 }, recipes: { catalogNearbyOrganic: { halfKm: 0.3 } } },
+      map: { futureMap: true },
+      future: { top: 1 },
+    };
+    const once = coerceConfig(raw);
+    for (const cfg of [once, coerceConfig(once)]) {
+      expect((cfg.params as unknown as Record<string, unknown>).future).toEqual({ knob: 1 });
+      expect((cfg.map as unknown as Record<string, unknown>).futureMap).toBe(true);
+      expect(cfg.params.recipes.catalogNearbyOrganic.halfKm).toBe(0.3);
+      expect(cfg).not.toHaveProperty("future");
+    }
+  });
+
+  it("the bounds name the same ranges as the constants", () => {
+    expect(RECIPE_BOUNDS.halfKm).toEqual({ min: HALF_KM_MIN, max: HALF_KM_MAX, decimals: 2 });
+    expect(RECIPE_BOUNDS.distanceExp).toEqual({ min: EXPONENT_MIN, max: EXPONENT_MAX, decimals: 1 });
+    expect(MIX_BOUNDS.adEvery.decimals).toBe(0);
+  });
+});
+
 describe("Discovery page box order", () => {
-  it("is ONE page of four pipeline boxes, no subpages (MESITA-2327, MESITA-2909, MESITA-3828)", () => {
+  it("is ONE page of five cards, no subpages (MESITA-2327, MESITA-3828, MESITA-4454)", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
     const nextConfig = readFileSync(
       join(__dirname, "../../../../next.config.ts"),
       "utf8",
     );
-    const order = ["<NameAdminBox", "<NameBox", "<MapBox", "<CatalogBox"].map((tag) =>
+    const order = ["<HowRankedCard", "<RankingBox", "<MixingBox", "<MapDisplayBox", "<NameBox", "<NameAdminBox"].map((tag) =>
       page.indexOf(tag),
     );
     expect(order.every((at) => at > -1)).toBe(true);
