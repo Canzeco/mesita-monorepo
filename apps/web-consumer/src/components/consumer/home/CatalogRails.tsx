@@ -135,7 +135,16 @@ const SocialFeed = dynamic(
 // columns, the names at the floor size (type-meta, 10px).
 const CAT =
   "flex w-[52px] shrink-0 flex-col items-center gap-0.5 pb-1 type-meta transition active:scale-[0.96]";
-const CAT_EMOJI = "flex h-8 w-8 items-center justify-center text-2xl leading-none";
+// WHITE, BETWEEN TWO LINES, IN CIRCLES (Pato, 2026-11-18, MESITA-4416:
+// "border / families carousel (white background, fams in white circles,
+// selected circle black background) / border"): each emoji in a 40px white
+// circle with a hairline ring; the chosen circle is ink. The line above is
+// the Places · Social strip's own hairline, so the band draws only the one
+// below (two lines would stack into 2px).
+const CAT_EMOJI =
+  "flex h-10 w-10 items-center justify-center rounded-full text-xl leading-none transition";
+const CAT_EMOJI_OFF = "bg-card border-border border";
+const CAT_EMOJI_ON = "bg-foreground border border-transparent";
 const CAT_NAME = "relative w-full truncate text-center";
 
 /** The column's default row: every place, one list, ranked like the Search
@@ -552,7 +561,7 @@ export function CatalogRails() {
         data-on={on ? "" : undefined}
         className={cn(CAT, inMenu && "w-auto")}
       >
-        <span aria-hidden className={CAT_EMOJI}>
+        <span aria-hidden className={cn(CAT_EMOJI, on ? CAT_EMOJI_ON : CAT_EMOJI_OFF)}>
           {c.emoji}
         </span>
         <span
@@ -562,9 +571,6 @@ export function CatalogRails() {
           )}
         >
           {c.label}
-          {on ? (
-            <span aria-hidden className="bg-foreground absolute inset-x-3 -bottom-1 h-[2px] rounded-full" />
-          ) : null}
         </span>
       </button>
     );
@@ -592,7 +598,7 @@ export function CatalogRails() {
     return () => document.removeEventListener("keydown", onKey);
   }, [menuOpen]);
   const strip = (
-    <div className="bg-muted flex shrink-0 flex-col pt-2 pb-1.5" data-places-strip>
+    <div className="bg-card border-border flex shrink-0 flex-col border-b pt-2 pb-1.5" data-places-strip>
       <p className="type-eyebrow text-muted-foreground px-4 pb-1.5">Categories</p>
       <nav
         ref={stripRef}
@@ -613,8 +619,8 @@ export function CatalogRails() {
           <span
             aria-hidden
             className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-full transition",
-              menuOpen ? "bg-foreground text-card" : "bg-card text-foreground",
+              CAT_EMOJI,
+              menuOpen ? cn(CAT_EMOJI_ON, "text-card") : cn(CAT_EMOJI_OFF, "text-foreground"),
             )}
           >
             {menuOpen ? (
