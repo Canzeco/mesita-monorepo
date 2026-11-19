@@ -15,17 +15,25 @@
 //          values before and after. The save is logged here, at the EF, with
 //          both and the admin's id, whatever the browser did.
 //
-// Editable now: story_min_followers. The real bonus wait and post window are
+// Editable: story_min_followers, and emulator mode (MESITA-4426):
+// story_emulator plus its test waits. The real bonus wait and post window are
 // shown read-only: they are real-money rules that go by migration.
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { jsonError, jsonOk } from "./http.ts";
 import { readAppConfig } from "./write-config.ts";
 import { appConfigMissing, type ConfigSection, type SectionWriteContext } from "./config-section-base.ts";
 import { paymentsLivemode } from "./stripe.ts";
-import { STORY_MIN_FOLLOWERS_MAX, storyMode, storyRulesFrom } from "./story-mention.ts";
+import { STORY_EMULATOR, STORY_MIN_FOLLOWERS_MAX, storyMode, storyRulesFrom } from "./story-mention.ts";
 
-/** The keys the console may send (money_config_merge_story allows these). */
-export const STORY_CONFIG_KEYS = ["story_min_followers"] as const;
+/** The keys the console may send (money_config_merge_story allows these),
+ *  with the whole-number range each must be in; null = a boolean. */
+const STORY_CONFIG_RANGES: Record<string, { min: number; max: number } | null> = {
+  story_min_followers: { min: 0, max: STORY_MIN_FOLLOWERS_MAX },
+  story_emulator: null,
+  story_emulator_bonus_wait_sec: STORY_EMULATOR.bonusWait,
+  story_emulator_post_window_sec: STORY_EMULATOR.postWindow,
+};
+export const STORY_CONFIG_KEYS = Object.keys(STORY_CONFIG_RANGES);
 
 /** The Story keys out of money_config, as the page renders them. */
 export function storiesConfigFrom(raw: unknown) {
@@ -34,6 +42,9 @@ export function storiesConfigFrom(raw: unknown) {
     story_min_followers: r.minFollowers,
     story_bonus_wait_sec: r.bonusWaitSec,
     story_post_window_sec: r.postWindowSec,
+    story_emulator: r.emulator,
+    story_emulator_bonus_wait_sec: r.emulatorBonusWaitSec,
+    story_emulator_post_window_sec: r.emulatorPostWindowSec,
   };
 }
 
@@ -51,15 +62,18 @@ export async function readStoriesSection(admin: SupabaseClient, section: ConfigS
 
 /** The console's patch, refused rather than coerced: an unknown key or a
  *  value that is not a whole number in range is a 400 naming it. */
-export function storiesPatchFrom(raw: unknown): { ok: true; patch: Record<string, number> } | { ok: false; error: string } {
+export function storiesPatchFrom(raw: unknown): { ok: true; patch: Record<string, number | boolean> } | { ok: false; error: string } {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, error: "config must be an object" };
-  const patch: Record<string, number> = {};
+  const patch: Record<string, number | boolean> = {};
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (!(STORY_CONFIG_KEYS as readonly string[]).includes(k)) return { ok: false, error: `unknown key ${k}` };
-    if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > STORY_MIN_FOLLOWERS_MAX) {
-      return { ok: false, error: `${k} must be a whole number from 0 to ${STORY_MIN_FOLLOWERS_MAX.toLocaleString("en-US")}` };
+    if (!Object.hasOwn(STORY_CONFIG_RANGES, k)) return { ok: false, error: `unknown key ${k}` };
+    const range = STORY_CONFIG_RANGES[k];
+    if (range === null) {
+      if (typeof v !== "boolean") return { ok: false, error: `${k} must be true or false` };
+    } else if (typeof v !== "number" || !Number.isInteger(v) || v < range.min || v > range.max) {
+      return { ok: false, error: `${k} must be a whole number from ${range.min.toLocaleString("en-US")} to ${range.max.toLocaleString("en-US")}` };
     }
-    patch[k] = v;
+    patch[k] = v as number | boolean;
   }
   if (Object.keys(patch).length === 0) return { ok: false, error: "nothing to save" };
   return { ok: true, patch };

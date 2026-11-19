@@ -98,7 +98,7 @@ function fakeAdmin(row: Row): SupabaseClient {
       }
       const before = (row.money_config ?? {}) as Row;
       const patch = args.p_patch as Row;
-      const after = { ...before, story_min_followers: patch.story_min_followers };
+      const after = { ...before, ...patch };
       row.money_config = after;
       row.updated_by = args.p_updated_by;
       return Promise.resolve({ data: { before, after, updated_at: STAMP }, error: null });
@@ -241,13 +241,25 @@ Deno.test("stories: the read shows only Story keys; a save keeps every other mon
   const row = seedRow();
   row.money_config = { buying_paused: true, express_wallets: ["apple_pay"], sending_live: false, story_bonus_wait_sec: 10800 };
   const read = await body(await readConfigSection(fakeAdmin(row), "stories"));
-  assertEquals(read.config, { story_min_followers: 1000, story_bonus_wait_sec: 10800, story_post_window_sec: 43200 });
+  assertEquals(read.config, {
+    story_min_followers: 1000,
+    story_bonus_wait_sec: 10800,
+    story_post_window_sec: 43200,
+    story_emulator: false,
+    story_emulator_bonus_wait_sec: 30,
+    story_emulator_post_window_sec: 120,
+  });
   assertEquals(typeof read.payments_live, "boolean");
   assert(["meta", "emulated", "unavailable"].includes(String(read.story_mode)));
   const saved = await writeConfigSection({ admin: fakeAdmin(row), userId: USER, body: { section: "stories", config: { story_min_followers: 0 } } }, "stories");
   assertEquals(saved.status, 200);
   assertEquals(row.money_config, { buying_paused: true, express_wallets: ["apple_pay"], sending_live: false, story_bonus_wait_sec: 10800, story_min_followers: 0 });
-  for (const bad of [{ story_min_followers: 1_000_001 }, { story_min_followers: 2.5 }, { story_min_followers: -1 }, { buying_paused: false }, {}]) {
+  for (const bad of [
+    { story_min_followers: 1_000_001 }, { story_min_followers: 2.5 }, { story_min_followers: -1 }, { buying_paused: false }, {},
+    // MESITA-4426: the emulator keys are typed and ranged too.
+    { story_emulator: "true" }, { story_emulator_bonus_wait_sec: 9 }, { story_emulator_bonus_wait_sec: 601 },
+    { story_emulator_post_window_sec: 59 }, { story_emulator_post_window_sec: 3601 },
+  ]) {
     const res = await writeConfigSection({ admin: fakeAdmin(row), userId: USER, body: { section: "stories", config: bad } }, "stories");
     assertEquals(res.status, 400, JSON.stringify(bad));
   }

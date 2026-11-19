@@ -452,8 +452,9 @@ export type StoryGuest = {
 export type StoryEligibility = {
   /** money_config.story_min_followers (Admin › Configurations › Stories). */
   minFollowers: number;
-  /** Emulator mode in effect: every guest with Instagram qualifies. Always
-   *  false until the emulator switch ships (MESITA-4426). */
+  /** Emulator mode in effect (MESITA-4426): money_config.story_emulator on
+   *  AND payments in test mode AND Meta off (storyMode() === "emulated").
+   *  Every guest with a linked Instagram then qualifies. */
   emulator: boolean;
 };
 
@@ -465,7 +466,9 @@ export const STORY_ELIGIBILITY_DEFAULT: StoryEligibility = { minFollowers: STORY
 export async function storyEligibilityContext(admin: SupabaseClient): Promise<StoryEligibility> {
   try {
     const rules = await readStoryRules(admin);
-    return { minFollowers: rules.minFollowers, emulator: false };
+    // Never a half-emulator: live payments or a real Meta source turn it off
+    // whatever the switch says.
+    return { minFollowers: rules.minFollowers, emulator: rules.emulator && storyMode() === "emulated" };
   } catch (e) {
     console.error("[vouchers] story_rules_read_failed", JSON.stringify({ message: String(e) }));
     return STORY_ELIGIBILITY_DEFAULT;
