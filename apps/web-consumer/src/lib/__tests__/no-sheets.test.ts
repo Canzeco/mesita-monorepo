@@ -55,6 +55,9 @@ export const CONFIRM_FILES = [
 const SHEET_ALLOWLIST = [
   "components/consumer/MenuViewer.tsx",
   "components/consumer/PlaceContactSheet.tsx",
+  // Home's Categories (MESITA-4417, decision: Pato asked for "a modal
+  // covering full page").
+  "components/consumer/home/CategoriesModal.tsx",
   "components/consumer/home/LocationPicker.tsx",
   "components/consumer/pay/GuestPayScreen.tsx",
   "components/consumer/pay/PayForm.tsx",

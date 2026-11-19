@@ -40,7 +40,6 @@ import dynamic from "next/dynamic";
 // this list.
 
 import {
-  Fragment,
   useEffect,
   useMemo,
   useRef,
@@ -81,7 +80,7 @@ import { readSavedPlacePreviews, useSavedPlaces } from "@/lib/saved-places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
-import { OVERLAY_BACKDROP_CLASS } from "@/components/consumer/overlay/overlay-presence";
+import { CategoriesModal } from "./CategoriesModal";
 import { RowFallback } from "./DiscoverFallback";
 import { ROW_LIST } from "./place-grid-classes";
 import { PlaceRowCard } from "./PlaceRowCard";
@@ -146,6 +145,12 @@ const CAT_EMOJI =
 const CAT_EMOJI_OFF = "bg-card border-border border";
 const CAT_EMOJI_ON = "bg-foreground border border-transparent";
 const CAT_NAME = "relative w-full truncate text-center";
+
+/** Saved and Top: not families, so the Categories modal lists them first,
+ *  apart (MESITA-4417). */
+function isSpecial(key: string): boolean {
+  return key === SAVED_CHIP || key === ALL_CHIP;
+}
 
 /** The column's default row: every place, one list, ranked like the Search
  *  map (Pato, MESITA-2516: "only keeping All is cleaner. just like in map").
@@ -589,14 +594,6 @@ export function CatalogRails() {
     if (left < row.scrollLeft) row.scrollTo({ left, behavior: "smooth" });
     else if (right > row.scrollLeft) row.scrollTo({ left: right, behavior: "smooth" });
   }, [chip, tab]);
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [menuOpen]);
   const strip = (
     <div className="bg-card border-border flex shrink-0 flex-col border-b pt-2 pb-1.5" data-places-strip>
       <p className="type-eyebrow text-muted-foreground px-4 pb-1.5">Categories</p>
@@ -635,29 +632,39 @@ export function CatalogRails() {
       </nav>
     </div>
   );
-  // THE MENU (MESITA-4410): every family as the row's own tiles, four to a
-  // line, in one white
-  // panel dropped from the strip over the rows; the rows blur and take no
-  // taps behind it (MESITA-3807's rule kept); a tap outside, the X or
-  // Escape closes it; a pick closes it.
-  const menu = menuOpen ? (
-    <>
-      <button
-        type="button"
-        aria-label="Close families"
-        tabIndex={-1}
-        onClick={() => setMenuOpen(false)}
-        className={cn(OVERLAY_BACKDROP_CLASS, "z-10")}
-      />
-      <nav
-        aria-label="All families"
-        className="bg-card border-border shadow-elev scrollbar-thin-dark absolute inset-x-0 top-0 z-20 grid max-h-[70%] grid-cols-4 gap-x-1 gap-y-3 overflow-y-auto border-b px-2 py-4"
-        data-places-menu
-      >
-        {chips.map((c) => pill(c, true))}
-      </nav>
-    </>
-  ) : null;
+  // THE MENU (MESITA-4417): every family as the row's own tiles, four to a
+  // line, in a modal over the whole card (CategoriesModal).
+  const menu = (
+    <CategoriesModal
+      open={menuOpen}
+      onClose={() => setMenuOpen(false)}
+      specials={chips.filter((c) => isSpecial(c.key)).map((c) => {
+        const on = chip === c.key;
+        return (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => {
+              selectFamily(c.key);
+              setMenuOpen(false);
+            }}
+            aria-pressed={on}
+            className={cn(
+              "flex items-center gap-3 rounded-2xl border p-3 text-left text-sm font-semibold transition active:scale-[0.98]",
+              on ? "bg-foreground text-card border-transparent" : "bg-card text-foreground border-border",
+            )}
+          >
+            <span aria-hidden className={cn(CAT_EMOJI, on ? "bg-card" : "bg-muted")}>
+              {c.emoji}
+            </span>
+            {c.label}
+          </button>
+        );
+      })}
+    >
+      {chips.filter((c) => !isSpecial(c.key)).map((c) => pill(c, true))}
+    </CategoriesModal>
+  );
 
   // Home's header (the location alone, MESITA-2405) → the tabs → on Places
   // the family strip over full-width rows (MESITA-4410), on Social the feed;
@@ -669,14 +676,9 @@ export function CatalogRails() {
       <div className="relative flex min-h-0 flex-1">
         {tab === "places" ? menu : null}
         {/* ISOLATE: the rows' own z-10 (the offer and Save · Share over the
-            card's stretched link, MESITA-3797) stays inside this pane; while
-            the menu is open the rows blur and take no taps (MESITA-3807). */}
+            card's stretched link, MESITA-3797) stays inside this pane. */}
         <div
-          className={cn(
-            "bg-card scrollbar-thin-dark isolate flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain transition-[filter] duration-200",
-            tab === "places" && menuOpen && "pointer-events-none blur-sm",
-          )}
-          aria-hidden={tab === "places" && menuOpen ? true : undefined}
+          className="bg-card scrollbar-thin-dark isolate flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
           data-home-scroller
         >
           {inner}
