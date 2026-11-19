@@ -648,11 +648,11 @@ export function catalogRankLanesArgs(
   const ad = recipeFor(mode, "inorganic", cfg);
   return {
     ...gateArgs(cfg, location, families),
-    p_org_half_km: org.halfKm,
-    p_org_distance_exp: org.distanceExp,
-    p_org_stars_exp: org.starsExp,
-    p_org_google_exp: org.googleExp,
-    p_org_premier_exp: org.premierExp,
+    p_organic_half_km: org.halfKm,
+    p_organic_distance_exp: org.distanceExp,
+    p_organic_stars_exp: org.starsExp,
+    p_organic_google_exp: org.googleExp,
+    p_organic_premier_exp: org.premierExp,
     p_ad_half_km: ad.halfKm,
     p_ad_distance_exp: ad.distanceExp,
     p_ad_stars_exp: ad.starsExp,

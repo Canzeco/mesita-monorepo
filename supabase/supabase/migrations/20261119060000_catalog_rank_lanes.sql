@@ -34,11 +34,11 @@ create or replace function public.catalog_rank_lanes(
   p_lat double precision,
   p_lng double precision,
   -- The Organic row.
-  p_org_half_km double precision,
-  p_org_distance_exp double precision,
-  p_org_stars_exp double precision,
-  p_org_google_exp double precision,
-  p_org_premier_exp double precision,
+  p_organic_half_km double precision,
+  p_organic_distance_exp double precision,
+  p_organic_stars_exp double precision,
+  p_organic_google_exp double precision,
+  p_organic_premier_exp double precision,
   -- The Inorganic row.
   p_ad_half_km double precision,
   p_ad_distance_exp double precision,
@@ -108,9 +108,9 @@ as $function$
               when p_lat is null or p_lng is null then 1
               when m.km is null then 0
               when m.km <= 0 then 1
-              when p_org_half_km is null or p_org_half_km <= 0 then 0
-              else 1 / (1 + power(m.km / p_org_half_km, p_org_distance_exp))
-            end) as prox_org,
+              when p_organic_half_km is null or p_organic_half_km <= 0 then 0
+              else 1 / (1 + power(m.km / p_organic_half_km, p_organic_distance_exp))
+            end) as prox_organic,
            (case
               when p_lat is null or p_lng is null then 1
               when m.km is null then 0
@@ -121,8 +121,8 @@ as $function$
            -- Popularity: 0 reviews or no stars scores 0.
            (case
               when m.stars is null or m.reviews is null or m.reviews <= 0 then 0
-              else power(power(greatest(0, m.stars), p_org_stars_exp) * m.reviews, p_org_google_exp)
-            end) as pop_org,
+              else power(power(greatest(0, m.stars), p_organic_stars_exp) * m.reviews, p_organic_google_exp)
+            end) as pop_organic,
            (case
               when m.stars is null or m.reviews is null or m.reviews <= 0 then 0
               else power(power(greatest(0, m.stars), p_ad_stars_exp) * m.reviews, p_ad_google_exp)
@@ -132,12 +132,12 @@ as $function$
   organic as (
     select x.id,
            x.km,
-           x.prox_org * x.pop_org * power(x.factor, coalesce(p_org_premier_exp, 0))
+           x.prox_organic * x.pop_organic * power(x.factor, coalesce(p_organic_premier_exp, 0))
              * (case
                   when p_repeat is null or p_repeat >= 1 or p_repeat <= 0 then 1
                   else power(p_repeat, (row_number() over (
                          partition by x.kind
-                         order by x.prox_org * x.pop_org * power(x.factor, coalesce(p_org_premier_exp, 0)) desc,
+                         order by x.prox_organic * x.pop_organic * power(x.factor, coalesce(p_organic_premier_exp, 0)) desc,
                                   x.km asc nulls last,
                                   x.id::text collate "C"
                        ) - 1)::double precision)

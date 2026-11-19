@@ -46,7 +46,7 @@ create or replace function pg_temp.lanes(p_lat double precision, p_lng double pr
 returns jsonb language sql as $$
   select public.catalog_rank_lanes(
     p_lat => p_lat, p_lng => p_lng,
-    p_org_half_km => 1, p_org_distance_exp => 2, p_org_stars_exp => 2, p_org_google_exp => 0.5, p_org_premier_exp => 0,
+    p_organic_half_km => 1, p_organic_distance_exp => 2, p_organic_stars_exp => 2, p_organic_google_exp => 0.5, p_organic_premier_exp => 0,
     p_ad_half_km => 1, p_ad_distance_exp => 2, p_ad_stars_exp => 2, p_ad_google_exp => 0.5, p_ad_premier_exp => 1,
     p_premier_1 => 2, p_premier_2 => 5,
     p_families => p_families,

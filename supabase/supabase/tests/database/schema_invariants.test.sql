@@ -1561,7 +1561,9 @@ select ok(
       -- Proximity's stored reach and Selected; MESITA-2909 brought
       -- `params.proximity` back with `halfKm` alone (MESITA-2972), so
       -- `params` holds Proximity and Popularity only.
-      and (coalesce(discovery_config -> 'params', '{}'::jsonb) - 'popularity' - 'proximity') = '{}'::jsonb
+      -- MESITA-4153 added `variety` and `shuffle`; MESITA-4454 added the recipe rows
+      -- (`recipes`) and the merge and shuffle settings (`mix`).
+      and (coalesce(discovery_config -> 'params', '{}'::jsonb) - 'popularity' - 'proximity' - 'variety' - 'shuffle' - 'recipes' - 'mix') = '{}'::jsonb
       and not (coalesce(discovery_config -> 'map', '{}'::jsonb)
              ?| array['supers', 'reloadMinKm', 'reloadMinSec', 'pinCount',
                       'googleFill', 'googlePlaces', 'mapGooglePlaces', 'mesitaPlaces',
@@ -1585,7 +1587,7 @@ select ok(
       -- MESITA-3083: Popularity's root and Proximity's exponent joined the
       -- knobs; `halfReviews` (read by nothing) retired. A stored row may
       -- still carry it until the next Save rebuilds the blob.
-      and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'root' - 'halfReviews') = '{}'::jsonb
+      and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'root' - 'halfReviews' - 'starsPower') = '{}'::jsonb
       and (coalesce(discovery_config #> '{params,proximity}', '{}'::jsonb) - 'halfKm' - 'exponent') = '{}'::jsonb
       and not (enrichment_config ? 'atlasPerRunCostCapUsd')
       -- MESITA-2831: the Atlas prefix is gone from every Enrichment key.

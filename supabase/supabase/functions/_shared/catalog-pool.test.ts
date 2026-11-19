@@ -235,7 +235,7 @@ Deno.test("catalog_rank_lanes' arguments are the mode's two recipe rows, the gat
   const o = cfg.params.recipes.catalogNearbyOrganic;
   const i = cfg.params.recipes.catalogNearbyInorganic;
   assertEquals(
-    [near.p_org_half_km, near.p_org_distance_exp, near.p_org_stars_exp, near.p_org_google_exp, near.p_org_premier_exp],
+    [near.p_organic_half_km, near.p_organic_distance_exp, near.p_organic_stars_exp, near.p_organic_google_exp, near.p_organic_premier_exp],
     [o.halfKm, o.distanceExp, o.starsExp, o.googleExp, 0],
   );
   assertEquals(
@@ -248,9 +248,9 @@ Deno.test("catalog_rank_lanes' arguments are the mode's two recipe rows, the gat
   const popular = catalogRankLanesArgs(cfg, resolveAreaLocation(null, null), [], "popular");
   assertEquals([popular.p_lat, popular.p_lng], [null, null]);
   assertEquals(popular.p_repeat, cfg.params.variety.repeat);
-  assertEquals(popular.p_org_half_km, cfg.params.recipes.catalogPopularOrganic.halfKm);
+  assertEquals(popular.p_organic_half_km, cfg.params.recipes.catalogPopularOrganic.halfKm);
   assertEquals(
-    catalogRankLanesArgs(cfg, resolveAreaLocation(CENTER, null), ["tacos"], "family").p_org_half_km,
+    catalogRankLanesArgs(cfg, resolveAreaLocation(CENTER, null), ["tacos"], "family").p_organic_half_km,
     cfg.params.recipes.catalogFamilyOrganic.halfKm,
   );
   // `nearest` keeps catalog_rank's old arguments: distance alone, no variety.
