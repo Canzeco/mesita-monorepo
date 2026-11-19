@@ -346,7 +346,9 @@ export function CatalogRails() {
   // The tab is the address (MESITA-2597); this component lives in Home's
   // layout, so the chip, the pool and the scroll survive a tab switch.
   const tab = homeTabOf(usePathname() ?? CONSUMER_ROUTES.home);
-  const [chip, setChip] = useState<string>(ALL_CHIP);
+  // HOME OPENS ON NEARBY (Pato, MESITA-4467: "the default must be nearby
+  // not popular"); Popular before. With no location Nearby asks for it.
+  const [chip, setChip] = useState<string>(NEAR_CHIP);
   // ?row=saved OPENS ON SAVED (MESITA-4327): Me's Saved box is a shortcut
   // to this row, not a page of its own. Read during render (React's
   // prop-to-state pattern), once per ask, so a tap on another row after
@@ -359,7 +361,7 @@ export function CatalogRails() {
   }
   // The last chip that reads a pool (MESITA-2438): Saved and the Social tab
   // read none, so they keep it and never spend a request.
-  const [poolChip, setPoolChip] = useState<string>(ALL_CHIP);
+  const [poolChip, setPoolChip] = useState<string>(NEAR_CHIP);
   const families = useMemo(() => chipFamilies(poolChip), [poolChip]);
   // The question (MESITA-4454): Nearby, Popular or this family.
   const rankMode = rankModeForChip(poolChip);
