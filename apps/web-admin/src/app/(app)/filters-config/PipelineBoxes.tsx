@@ -6,11 +6,12 @@
 //   1. How places are ranked   read only: the formula and which screen
 //                              reads which recipe row
 //   2. Ranking                 the eight recipe rows → `params.recipes`
-//   3. Mixing                  Home's shuffle, ads and variety →
-//                              `params.mix`, `params.variety`,
+//   3. Mixing                  Home's shuffle, the Inorganic lane and paging →
+//                              `params.mix`,
 //                              `map.catalogPageSize`
 //   4. Map display             pins, dots, reload timing → four `map` keys
-//   5. Searchbars              the Consumer and the Admin & Business boxes
+//   5. Searchbars              the guest bar and the Admin & Business bar,
+//                              one card, one Save (MESITA-4463)
 //
 // Each card saves only its own slices (BOX_SLICES, pinned by actions.test.ts),
 // so two cards can never overwrite each other. Every save carries the stamp
@@ -20,8 +21,20 @@
 // exponent, Google exponent, Premier exponent, Temperature; never "root".
 
 import { createContext, useContext, useState } from "react";
-import { LayoutGrid, ListOrdered, MapPin, ScanSearch, Search, Shuffle } from "lucide-react";
-import { NumberField, Notice, ReadField, SectionCard, SwitchRow } from "@/components/admin-ui";
+import { LayoutGrid, ListOrdered, MapPin, Search, Shuffle } from "lucide-react";
+import {
+  NumberCell,
+  NumberField,
+  Notice,
+  SectionCard,
+  SwitchRow,
+  Table,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+} from "@/components/admin-ui";
 import { SaveRow } from "@/components/admin-ui/config";
 import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { formatShortDate } from "@/lib/format";
@@ -47,22 +60,19 @@ import {
   NAME_POPULARITY_FLOOR_MAX,
   NAME_POPULARITY_FLOOR_MIN,
   RECIPE_BOUNDS,
-  VARIETY_REPEAT_MAX,
-  VARIETY_REPEAT_MIN,
   type DiscoveryConfig,
   type RankMode,
   type Recipe,
   type RecipeRow,
 } from "./catalog";
-import { HowItWorks, PipelineBox } from "./PipelineBox";
+import { HowItWorks } from "./PipelineBox";
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /** What each card's Save writes (actions.ts `DiscoverySlice`). Exported so
  *  actions.test.ts proves exactly these sets cannot reach each other. */
 export const BOX_SLICES = {
-  nameAdmin: ["nameAdmin"],
-  name: ["nameDeep", "nameLocations", "nameIdle", "nameFloor"],
+  searchbars: ["nameDeep", "nameLocations", "nameIdle", "nameFloor", "nameAdmin"],
   ranking: ["ranking"],
   mixing: ["mixing"],
   mapDisplay: ["mapDisplay"],
@@ -176,7 +186,7 @@ function proximityAt(d: number, halfKm: number, exp: number): number {
   return 1 / (1 + Math.pow(d / halfKm, exp));
 }
 
-/** The farthest an Inorganic place clears the ad floor: Proximity ×
+/** The farthest an Inorganic place clears the Inorganic floor: Proximity ×
  *  premierFactor (the plan's raw 2 or 5, never the exponent) ≥ floor, so
  *  d = Half distance × (premierFactor ÷ floor − 1)^(1 ÷ Distance exponent).
  *  A floor of 0 lets every distance through. */
@@ -206,10 +216,10 @@ export function HowRankedCard() {
     ["Home › Nearby chip", "Nearby Organic + Nearby Inorganic"],
     ["Home › a family chip", "Family Organic + Family Inorganic"],
     ["Home › Popular chip", "Popular Organic + Popular Inorganic"],
-    ["Chat", "Family Organic, inside its 15 km circle. No ads, no shuffle."],
+    ["Chat", "Family Organic, inside its 15 km circle. No Inorganic lane, no shuffle."],
     ["The place screen's score", "Popular Organic"],
     ["Search map", "Map Organic + Map Inorganic"],
-    ["Pay, Wallet and the Reward tab", "Nearest first. No rows, no ads, no shuffle."],
+    ["Pay, Wallet and the Reward tab", "Nearest first. No rows, no Inorganic lane, no shuffle."],
   ];
   return (
     <SectionCard
@@ -235,8 +245,8 @@ export function HowRankedCard() {
           </p>
           <p>
             Every list has two lanes. <strong>Organic</strong>: every place, with Premier exponent 0, so a
-            plan never moves it. <strong>Inorganic</strong>: Premier places only; they fill the ad slots and
-            wear the &ldquo;Ad&rdquo; mark. The Mixing card says how the two lanes merge.
+            plan never moves it. <strong>Inorganic</strong>: Premier places only; they fill the inorganic slots,
+            and guests see them marked &ldquo;Ad&rdquo;. The Mixing card says how the two lanes merge.
           </p>
           <p>A place with no reviews or no stars scores 0 and ranks last; it is never hidden.</p>
         </div>
@@ -276,99 +286,35 @@ export function HowRankedCard() {
 }
 
 // 2 ─ Ranking ──────────────────────────────────────────────────────────────
+//
+// One table (MESITA-4463, Pato: "make ranking view a table"; design review
+// 2026-11-19: 1A Effect column, 2A mode group rows, 3A kit NumberCell, 4A the
+// Row column pinned and the rest scrolling inside the card on a phone).
 
-/** One recipe row: five label/value fields that wrap at phone width, then
- *  a helper line computed from the row's own numbers (M1, M3). */
-function RecipeFields({
-  row,
-  recipe,
-  adFloor,
-  off,
-  onChange,
-}: {
-  row: RecipeRow;
-  recipe: Recipe;
-  adFloor: number;
-  off: boolean;
-  onChange: (p: Partial<Recipe>) => void;
-}) {
+type RecipeKey = "halfKm" | "distanceExp" | "starsExp" | "googleExp" | "premierExp";
+
+const RECIPE_COLUMNS: readonly { key: RecipeKey; label: string }[] = [
+  { key: "halfKm", label: "Half distance (km)" },
+  { key: "distanceExp", label: "Distance exponent" },
+  { key: "starsExp", label: "Stars exponent" },
+  { key: "googleExp", label: "Google exponent" },
+  { key: "premierExp", label: "Premier exponent" },
+];
+
+/** What the row's numbers do, computed from the row as edited (1A). */
+function recipeEffect(row: RecipeRow, recipe: Recipe, inorganicFloor: number): string {
   const organic = isOrganicRow(row);
-  const map = isMapRow(row);
-  const num = (
-    label: string,
-    key: "halfKm" | "distanceExp" | "starsExp" | "googleExp" | "premierExp",
-  ) => (
-    <NumberField
-      label={label}
-      value={recipe[key] as number}
-      min={RECIPE_BOUNDS[key].min}
-      max={RECIPE_BOUNDS[key].max}
-      decimals
-      well={false}
-      disabled={off}
-      onChange={(v) => onChange({ [key]: v })}
-    />
-  );
-  const dash = (label: string) => (
-    <ReadField label={label} boxed>
-      —
-    </ReadField>
-  );
   const h = recipe.halfKm;
   const e = recipe.distanceExp;
-  const prox =
-    h != null && e != null
-      ? [0.5, 1, 2, 5].map((d) => `${d} km ${fmtProx(proximityAt(d, h, e))}`).join(" · ")
-      : null;
-  const ratio = Math.pow(2.5, recipe.premierExp / recipe.googleExp);
-  return (
-    <div className="border-border flex flex-col gap-3 border-t pt-3">
-      <p className="text-sm">
-        <span className="font-semibold">{organic ? "Organic" : "Inorganic"}</span>
-        <span className="text-muted-foreground">
-          {organic ? " · every place; a plan never moves it" : " · Premier places only; they fill the ad slots"}
-        </span>
-      </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {map ? dash("Half distance (km)") : num("Half distance (km)", "halfKm")}
-        {map ? dash("Distance exponent") : num("Distance exponent", "distanceExp")}
-        {num("Stars exponent", "starsExp")}
-        {num("Google exponent", "googleExp")}
-        {organic ? (
-          <ReadField label="Premier exponent" boxed>
-            0
-          </ReadField>
-        ) : (
-          num("Premier exponent", "premierExp")
-        )}
-      </div>
-      <Meta>
-        {prox ? <>Proximity at {prox}.</> : <>No Proximity on the Map: the visible circle is the only cut.</>}
-        {!organic ? (
-          <>
-            {" "}
-            {map ? (
-              <>No ad floor on the Map: an ad pin needs only to be on screen.</>
-            ) : h != null && e != null ? (
-              <>
-                Ad reach at the saved ad floor {adFloor}: a 2X place up to {fmtKm(adReachKm(2, adFloor, h, e))},
-                a 5X place up to {fmtKm(adReachKm(5, adFloor, h, e))}.
-              </>
-            ) : null}{" "}
-            {recipe.premierExp > 0 ? (
-              <>
-                At the same distance and stars a 2X place passes a 5X place only with {timesFmt(ratio)} its
-                reviews (2.5 ^ (Premier exponent ÷ Google exponent)).
-              </>
-            ) : (
-              <>Premier exponent 0: 2X and 5X rank alike in this lane.</>
-            )}
-          </>
-        ) : null}
-      </Meta>
-    </div>
-  );
+  if (h == null || e == null) return organic ? "No distance on the Map" : "Any Premier place on screen";
+  if (organic) return `½ at ${h} km · 2 km ${fmtProx(proximityAt(2, h, e))}`;
+  return `2X up to ${fmtKm(adReachKm(2, inorganicFloor, h, e))} · 5X up to ${fmtKm(adReachKm(5, inorganicFloor, h, e))}`;
 }
+
+/** A value the server forces: plain muted text, never an input (C1, L-1). */
+const Fixed = ({ children }: { children: React.ReactNode }) => (
+  <span className="text-muted-foreground">{children}</span>
+);
 
 export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
   const editor = useDiscoveryEditor(seed);
@@ -382,8 +328,25 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
     }));
   };
   const dirty = !same(cfg.params.recipes, saved.params.recipes);
-  // The ad reach reads the SAVED floor: an unsaved edit in Mixing does not move it.
-  const adFloor = saved.params.mix.adFloor;
+  // The inorganic reach reads the SAVED floor: an unsaved edit in Mixing does not move it.
+  const inorganicFloor = saved.params.mix.adFloor;
+  const cell = (row: RecipeRow, rowName: string, key: RecipeKey, label: string) => {
+    const recipe = cfg.params.recipes[row];
+    if (isMapRow(row) && (key === "halfKm" || key === "distanceExp")) return <Fixed>—</Fixed>;
+    if (isOrganicRow(row) && key === "premierExp") return <Fixed>0</Fixed>;
+    return (
+      <NumberCell
+        ariaLabel={`${rowName}, ${label}`}
+        value={recipe[key] as number}
+        min={RECIPE_BOUNDS[key].min}
+        max={RECIPE_BOUNDS[key].max}
+        decimals
+        disabled={off}
+        onChange={(v) => patch(row, { [key]: v })}
+        className="ml-auto"
+      />
+    );
+  };
   return (
     <SectionCard
       id="s-ranking"
@@ -392,31 +355,66 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
       subtitle="The numbers in the formula, one row per screen, mode and lane."
       className="scroll-mt-16"
     >
-      <div className="mt-4 flex flex-col gap-6">
-        {MODES.map(({ mode, title, who }) => (
-          <Group key={mode} title={title}>
-            <Meta>{who}</Meta>
-            {(["Organic", "Inorganic"] as const).map((lane) => {
-              const row = rowOf(mode, lane);
-              return (
-                <RecipeFields
-                  key={row}
-                  row={row}
-                  recipe={cfg.params.recipes[row]}
-                  adFloor={adFloor}
-                  off={off}
-                  onChange={(p) => patch(row, p)}
-                />
-              );
-            })}
-          </Group>
-        ))}
+      <div className="mt-4 flex flex-col gap-3">
+        <Table>
+          <THead>
+            <Tr>
+              <Th sticky>Row</Th>
+              {RECIPE_COLUMNS.map(({ key, label }) => (
+                <Th key={key} numeric className="align-bottom whitespace-normal">
+                  <span className="block">{label}</span>
+                  <span className="text-muted-foreground type-meta block font-normal tabular-nums">
+                    {RECIPE_BOUNDS[key].min}–{RECIPE_BOUNDS[key].max}
+                  </span>
+                </Th>
+              ))}
+              <Th className="align-bottom">Effect</Th>
+            </Tr>
+          </THead>
+          <TBody>
+            {MODES.flatMap(({ mode, title, who }) => [
+              <Tr key={mode} className="bg-muted/40 hover:bg-muted/40">
+                <Td sticky className="bg-muted/40 font-semibold">
+                  {title}
+                </Td>
+                <Td colSpan={RECIPE_COLUMNS.length + 1} className="text-muted-foreground type-meta whitespace-normal">
+                  {who}
+                </Td>
+              </Tr>,
+              ...(["Organic", "Inorganic"] as const).map((lane) => {
+                const row = rowOf(mode, lane);
+                const rowName = `${title} ${lane}`;
+                return (
+                  <Tr key={row}>
+                    <Td sticky className="font-medium">
+                      {lane}
+                      {lane === "Inorganic" ? (
+                        <span className="text-muted-foreground type-meta block font-normal">Premier places only</span>
+                      ) : null}
+                    </Td>
+                    {RECIPE_COLUMNS.map(({ key, label }) => (
+                      <Td key={key} numeric>
+                        {cell(row, rowName, key, label)}
+                      </Td>
+                    ))}
+                    <Td className="text-muted-foreground type-meta min-w-48 whitespace-normal">
+                      {recipeEffect(row, cfg.params.recipes[row], inorganicFloor)}
+                    </Td>
+                  </Tr>
+                );
+              }),
+            ])}
+          </TBody>
+        </Table>
         <Meta>
           Half distance {RECIPE_BOUNDS.halfKm.min}–{RECIPE_BOUNDS.halfKm.max} km: about 0.5 km on foot, 2–3 km
           by car. Distance exponent: 1 is gentle, over 1 the list falls off past the Half distance. Stars
           exponent: how much stars count against reviews; 0 ignores stars. Google exponent: how far apart
           famous and unknown places sit; lower squeezes them together. Premier exponent: how much a plan
-          counts in the ad lane.
+          counts in the Inorganic lane; at the same distance and stars a 2X place passes a 5X place only with
+          2.5 ^ (Premier exponent ÷ Google exponent) times its reviews. Effect: Organic rows show where
+          Proximity is ½ and its value at 2 km; Inorganic rows show how far a Premier place can be and still
+          take an inorganic slot at the saved Inorganic floor ({inorganicFloor}).
         </Meta>
       </div>
       <Save editor={editor} dirty={dirty} slices={BOX_SLICES.ranking} />
@@ -436,19 +434,13 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
   };
   const temperature = (mode: RankMode, v: number) =>
     patchMix({ temperature: { ...mix.temperature, [mode]: v } });
-  const repeat = (v: number) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, params: { ...c.params, variety: { repeat: v } } }));
-  };
   const pageSize = (catalogPageSize: number) => {
     setOk(false);
     setCfg((c) => ({ ...c, map: { ...c.map, catalogPageSize } }));
   };
   const dirty =
     !same(mix, saved.params.mix) ||
-    !same(cfg.params.variety, saved.params.variety) ||
     cfg.map.catalogPageSize !== saved.map.catalogPageSize;
-  const r = cfg.params.variety.repeat;
   const T = MIX_BOUNDS.temperature;
   return (
     <SectionCard
@@ -476,15 +468,15 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
           </div>
           <Meta>
             Only the first page is shuffled; everything after it keeps its exact order. 0 keeps the order
-            exactly, 0.3 swaps neighbours, 1 is loose, 3 or more is almost random. Ads and organic places
-            shuffle together. A guest sees the same order for the whole visit; a new visit, or moving more
-            than 300 m, shuffles again.
+            exactly, 0.3 swaps neighbours, 1 is loose, 3 or more is almost random. Both lanes
+            shuffle together. Every page load shuffles again (a reload draws a new feed), and so does moving
+            more than 300 m; going back to a mode within one load keeps its order.
           </Meta>
         </Group>
-        <Group title="Ads">
+        <Group title="Inorganic lane">
           <div className="grid gap-3 sm:grid-cols-2">
             <NumberField
-              label="Ad floor"
+              label="Inorganic floor"
               value={mix.adFloor}
               min={MIX_BOUNDS.adFloor.min}
               max={MIX_BOUNDS.adFloor.max}
@@ -494,40 +486,31 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
               onChange={(adFloor) => patchMix({ adFloor })}
             />
             <NumberField
-              label="Ad cadence"
+              label="Inorganic cadence"
               value={mix.adEvery}
               min={MIX_BOUNDS.adEvery.min}
               max={MIX_BOUNDS.adEvery.max}
               disabled={off}
-              hint="One ad after every N organic places. 0 = no ads, on Home and on the Map."
+              hint="One inorganic place after every N organic places. 0 = the Organic lane alone, on Home and on the Map."
               onChange={(adEvery) => patchMix({ adEvery })}
             />
           </div>
           <Meta>
-            The merge: {mix.adEvery === 0 ? "no ad slots; the list is the Organic lane" : (
+            The merge: {mix.adEvery === 0 ? "no inorganic slots; the list is the Organic lane" : (
               <>
-                {mix.adEvery === 1 ? "one organic place" : `${mix.adEvery} organic places`}, then one ad, again
+                {mix.adEvery === 1 ? "one organic place" : `${mix.adEvery} organic places`}, then one inorganic place, again
                 and again
               </>
             )}
-            . A place already shown is skipped and its slot takes the next place of its lane. An ad slot with
-            no Premier place left is dropped and the organic list continues. A place appears once, and wears
-            &ldquo;Ad&rdquo; only when it sits in an ad slot. On Home a Premier place takes an ad slot only
-            when its Proximity (from its mode&apos;s Inorganic row) × its plan&apos;s 2 or 5 reaches the ad floor;
-            on the Map the screen is the cut, and ad pins count against Most pins shown.
+            . A place already shown is skipped and its slot takes the next place of its lane. An inorganic slot
+            with no Premier place left is dropped and the organic list continues. A place appears once; guests see it
+            marked &ldquo;Ad&rdquo; only in an inorganic slot. On Home a Premier place takes an inorganic slot
+            only when its Proximity (from its mode&apos;s Inorganic row) × its plan&apos;s 2 or 5 reaches the
+            Inorganic floor; on the Map the screen is the cut, and inorganic pins count against Most pins shown.
           </Meta>
         </Group>
-        <Group title="Variety and paging">
+        <Group title="Paging">
           <div className="grid gap-3 sm:grid-cols-2">
-            <NumberField
-              label="Repeat penalty"
-              value={r}
-              min={VARIETY_REPEAT_MIN}
-              max={VARIETY_REPEAT_MAX}
-              decimals
-              disabled={off}
-              onChange={repeat}
-            />
             <NumberField
               label="Page size"
               value={cfg.map.catalogPageSize}
@@ -537,11 +520,6 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
               onChange={pageSize}
             />
           </div>
-          <Meta>
-            Repeat penalty: each place has a kind, its rarest family (tacos, sushi, coffee…). In the Organic
-            lane the second place of a kind is multiplied by {r}, the third by {Math.round(r * r * 100) / 100},
-            so Home mixes kinds. Family and Popular only; Nearby never applies it. 1 turns it off.
-          </Meta>
           <Meta>
             Page size: Home draws the list this many places at a time; it is also the shuffled first page.
           </Meta>
@@ -594,8 +572,8 @@ export function MapDisplayBox(seed: ConfigSeed<DiscoveryConfig>) {
           </div>
           <Meta>
             The Map searches the visible circle (from the cross to the nearest edge of the map); with no
-            screen yet it uses 15 km. The best Most pins shown are full pins with a card in the carousel, ad
-            pins included; the places after them, up to Most marks shown in all, are small dots with no card
+            screen yet it uses 15 km. The best Most pins shown are full pins with a card in the carousel,
+            inorganic pins included; the places after them, up to Most marks shown in all, are small dots with no card
             that say &ldquo;zoom in here&rdquo;. At or under Most pins shown there are no dots.
           </Meta>
         </Group>
@@ -632,83 +610,11 @@ export function MapDisplayBox(seed: ConfigSeed<DiscoveryConfig>) {
   );
 }
 
-// 5 ─ Searchbars: Admin & Business Searchbar Pipeline (unchanged) ─────────────
-export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
-  const editor = useDiscoveryEditor(seed);
-  const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
-  const off = pending || loadBlocked;
-  const a = cfg.name.admin;
-  const patch = (p: Partial<DiscoveryConfig["name"]["admin"]>) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, name: { ...c.name, admin: { ...c.name.admin, ...p } } }));
-  };
-  const dirty = !same(cfg.name.admin, saved.name.admin);
-  return (
-    <PipelineBox
-      id="s-name-admin"
-      pipeline="name"
-      title="Admin & Business Searchbar Pipeline"
-      icon={<ScanSearch />}
-      callers={["Admin Single Place › Find", "Business › Places"]}
-      summary="Find a place by its name in Admin › Single Place, and when an owner claims their place. Google answers; admin sees Google's own order."
-      explanation={
-        <p>
-          The Name pipeline as an admin runs it. An admin types a name and
-          Google answers: Autocomplete runs through the guest bar&apos;s lane,
-          with its rules, except the Minimum Popularity order: admin sees
-          Google&apos;s own order. The Text Search column is Find&apos;s own
-          call: it applies Mesita&apos;s place types but not Discovery ›
-          General&apos;s active check. A Google hit Mesita holds shows as
-          that Mesita place; a place neither returns is not found. Locations
-          are never shown here. With the last option on, the page opens
-          listing every Mesita place, as an empty search; Business › Places
-          shows its first page, most reviewed first, before anything is
-          typed. Business owners search through this pipeline when they
-          claim their place (the Text Search column runs there too); a
-          Google-only hit is added to Mesita when the owner taps Add and
-          claim.
-        </p>
-      }
-      scoring="Rows found by both sources come first, then Text Search rank, then Autocomplete rank. Duplicates merge."
-      rules={[
-        "Autocomplete rows follow the guest bar's rules: closed places never show, and a row must be one of Mesita's place types. The guest bar's Minimum Popularity order does not apply: admin sees Google's own order.",
-        "Text Search rows are Find's own call: Mesita's place types and the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them), not Discovery › General.",
-      ]}
-      save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.nameAdmin} />}
-    >
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <NumberField
-          label="Max Autocomplete rows"
-          value={a.autoCount}
-          min={0}
-          max={NAME_LANE_COUNT_MAX}
-          disabled={off}
-          onChange={(autoCount) => patch({ autoCount })}
-        />
-        <NumberField
-          label="Max Text Search rows"
-          value={a.textCount}
-          min={1}
-          max={NAME_ADMIN_TEXT_MAX}
-          disabled={off}
-          onChange={(textCount) => patch({ textCount })}
-        />
-        <SwitchRow
-          label="Show results on an empty query"
-          checked={a.emptyQuery}
-          pending={off}
-          onCheckedChange={(emptyQuery) => patch({ emptyQuery })}
-        />
-      </div>
-      <p className="text-muted-foreground type-meta">
-        0 Autocomplete rows means Find does not call Autocomplete.
-      </p>
-    </PipelineBox>
-  );
-}
-
-// 5 ─ Searchbars: Consumer Searchbar Pipeline (unchanged) ─────────────────────
-export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
+// 5 ─ Searchbars: one card, two bars (MESITA-4463, Pato: "merge all searchbars
+// into one box"). The guest's Search bar and the Admin & Business bar (admin
+// Single Place › Find, Business › Places) share one Save that writes both
+// Name slices and nothing else.
+export function SearchbarsBox(seed: ConfigSeed<DiscoveryConfig>) {
   const editor = useDiscoveryEditor(seed);
   const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
   const off = pending || loadBlocked;
@@ -720,105 +626,138 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
     setOk(false);
     setCfg((c) => ({ ...c, name: { ...c.name, deep: { ...c.name.deep, ...p } } }));
   };
+  const admin = (p: Partial<DiscoveryConfig["name"]["admin"]>) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, name: { ...c.name, admin: { ...c.name.admin, ...p } } }));
+  };
+  const a = cfg.name.admin;
   const dirty =
     !same(cfg.name.deep, saved.name.deep) ||
+    !same(cfg.name.admin, saved.name.admin) ||
     cfg.name.locations !== saved.name.locations ||
     cfg.name.idleSec !== saved.name.idleSec ||
     cfg.name.popularityFloor !== saved.name.popularityFloor;
-  // The floor is read at the Catalog's SAVED root (MESITA-3086): an unsaved
-  // edit in the Catalog box does not change this readout.
+  // The floor is read at the SAVED Popularity exponent the Name pipeline still
+  // uses (`params.popularity.root`, retired by MESITA-4457): an unsaved edit
+  // elsewhere does not change this readout.
   const floor = cfg.name.popularityFloor;
-  const catalogRoot = saved.params.popularity.root;
-  const floorReviews = Math.max(0, (Math.pow(floor, 1 / catalogRoot) - 1) / 4);
+  const floorExp = saved.params.popularity.root;
+  const floorReviews = Math.max(0, (Math.pow(floor, 1 / floorExp) - 1) / 4);
   return (
-    <PipelineBox
+    <SectionCard
       id="s-name"
-      pipeline="name"
-      title="Consumer Searchbar Pipeline"
       icon={<Search />}
-      callers={["The guest's Search bar"]}
-      summary="The guest types a place's name; Google Autocomplete and Text Search answer together. Google places under the Minimum Popularity sort last; nothing is removed."
-      explanation={
-        <p>
-          The guest knows which place they want. The search runs once they
-          stop typing for the seconds below; Google Autocomplete and Text
-          Search run together and merge into one list with duplicates
-          removed. A Google hit Mesita holds shows as that Mesita place; a
-          place neither returns is not found. A Location (a city, a region)
-          shows with a location icon, and picking one moves the map. Picking
-          a place moves the map there and makes it the first card. Mesita
-          never searches its own places by name: Google&apos;s name finds
-          them, Mesita&apos;s name only labels them. The always-on rules below
-          still hold:
-          closed places never show and a row must be one of Mesita&apos;s
-          place types. Google places under the Minimum Popularity below sort
-          after the rest; none are removed. Locations never move.
-        </p>
-      }
-      save={
-        <Save editor={editor} dirty={dirty} slices={BOX_SLICES.name} />
-      }
+      title="Searchbars"
+      subtitle="Finding a place by its name. Google Autocomplete and Text Search answer; Mesita never searches its own places by name."
+      className="scroll-mt-16"
     >
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <NumberField
-          label="Seconds without typing before the search runs"
-          value={cfg.name.idleSec}
-          min={NAME_IDLE_SEC_MIN}
-          max={NAME_IDLE_SEC_MAX}
-          decimals
-          disabled={off}
-          onChange={(idleSec) => name({ idleSec })}
-        />
-        <NumberField
-          label="Max Autocomplete rows"
-          value={cfg.name.deep.autoCount}
-          min={0}
-          max={NAME_LANE_COUNT_MAX}
-          disabled={off}
-          onChange={(autoCount) => deep({ autoCount })}
-        />
-        <NumberField
-          label="Max Text Search rows"
-          value={cfg.name.deep.googleCount}
-          min={0}
-          max={NAME_LANE_COUNT_MAX}
-          disabled={off}
-          onChange={(googleCount) => deep({ googleCount })}
-        />
-        <SwitchRow
-          label="Show Locations"
-          checked={cfg.name.locations}
-          pending={off}
-          onCheckedChange={(locations) => name({ locations })}
-        />
-        <NumberField
-          label="Minimum Popularity"
-          value={cfg.name.popularityFloor}
-          min={NAME_POPULARITY_FLOOR_MIN}
-          max={NAME_POPULARITY_FLOOR_MAX}
-          decimals
-          disabled={off}
-          onChange={(popularityFloor) => name({ popularityFloor })}
-        />
+      <div className="mt-4 flex flex-col gap-6">
+        <Group title="Guest Search bar">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <NumberField
+              label="Seconds without typing before the search runs"
+              value={cfg.name.idleSec}
+              min={NAME_IDLE_SEC_MIN}
+              max={NAME_IDLE_SEC_MAX}
+              decimals
+              disabled={off}
+              onChange={(idleSec) => name({ idleSec })}
+            />
+            <NumberField
+              label="Max Autocomplete rows"
+              value={cfg.name.deep.autoCount}
+              min={0}
+              max={NAME_LANE_COUNT_MAX}
+              disabled={off}
+              onChange={(autoCount) => deep({ autoCount })}
+            />
+            <NumberField
+              label="Max Text Search rows"
+              value={cfg.name.deep.googleCount}
+              min={0}
+              max={NAME_LANE_COUNT_MAX}
+              disabled={off}
+              onChange={(googleCount) => deep({ googleCount })}
+            />
+            <SwitchRow
+              label="Show Locations"
+              checked={cfg.name.locations}
+              pending={off}
+              onCheckedChange={(locations) => name({ locations })}
+            />
+            <NumberField
+              label="Minimum Popularity"
+              value={cfg.name.popularityFloor}
+              min={NAME_POPULARITY_FLOOR_MIN}
+              max={NAME_POPULARITY_FLOOR_MAX}
+              decimals
+              disabled={off}
+              onChange={(popularityFloor) => name({ popularityFloor })}
+            />
+          </div>
+          <Meta>
+            The guest types a place&apos;s name; Autocomplete and Text Search answer together, merged with
+            duplicates removed. 0 rows turns a source off.{" "}
+            {floor > 0 ? (
+              <>
+                Google places whose Popularity (at exponent {floorExp}) is under {floor} sort after the rest;
+                none are removed. {floor} ≈ 4★ × {timesFmt(floorReviews).replace("×", "")} reviews.
+              </>
+            ) : (
+              <>Minimum Popularity is off: the bar keeps Google&apos;s order.</>
+            )}{" "}
+            Home, the Map and Chat never hide a place for its Popularity.
+          </Meta>
+        </Group>
+        <Group title="Admin & Business search">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <NumberField
+              label="Max Autocomplete rows"
+              value={a.autoCount}
+              min={0}
+              max={NAME_LANE_COUNT_MAX}
+              disabled={off}
+              onChange={(autoCount) => admin({ autoCount })}
+            />
+            <NumberField
+              label="Max Text Search rows"
+              value={a.textCount}
+              min={1}
+              max={NAME_ADMIN_TEXT_MAX}
+              disabled={off}
+              onChange={(textCount) => admin({ textCount })}
+            />
+            <SwitchRow
+              label="Show results on an empty query"
+              checked={a.emptyQuery}
+              pending={off}
+              onCheckedChange={(emptyQuery) => admin({ emptyQuery })}
+            />
+          </div>
+          <Meta>
+            Admin › Single Place › Find, and Business › Places when an owner claims their place. Google&apos;s
+            own order: rows found by both sources first, then Text Search rank, then Autocomplete rank. No
+            Minimum Popularity, no Locations. 0 Autocomplete rows means Find does not call Autocomplete.
+          </Meta>
+        </Group>
       </div>
-      <p className="text-muted-foreground type-meta">
-        0 rows turns a source off.
-      </p>
-      <p className="text-muted-foreground type-meta">
-        {floor > 0 ? (
-          <>
-            Minimum Popularity: Google places whose Popularity, at the
-            Catalog&apos;s root (now {catalogRoot}), is under {floor} sort after the
-            rest on the guest Search bar; none are removed. {floor} ≈ 4★ ×{" "}
-            {timesFmt(floorReviews).replace("×", "")} reviews at that root.
-          </>
-        ) : (
-          <>Minimum Popularity: Off. The bar keeps Google&apos;s order.</>
-        )}{" "}
-        Home, the Map and Chat never hide a place for its Popularity. Effect
-        shows only in guest Search results. {NAME_POPULARITY_FLOOR_MIN}–
-        {NAME_POPULARITY_FLOOR_MAX}.
-      </p>
-    </PipelineBox>
+      <Save editor={editor} dirty={dirty} slices={BOX_SLICES.searchbars} />
+      <HowItWorks
+        pipeline="name"
+        summary="How the searchbars work, in full"
+        explanation={
+          <p>
+            Both bars run the Name pipeline. A Google hit Mesita holds shows as that Mesita place; a place
+            neither source returns is not found. Closed places never show and a row must be one of
+            Mesita&apos;s place types. On the guest bar a Location (a city, a region) shows with a location
+            icon and moves the map; picking a place moves the map there and makes it the first card. The
+            admin bar&apos;s Text Search column is Find&apos;s own call: Mesita&apos;s place types, not
+            Discovery&apos;s active check. With &ldquo;Show results on an empty query&rdquo; on, Find opens on
+            every Mesita place and Business › Places shows its first page, most reviewed first; a Google-only
+            hit is added to Mesita when the owner taps Add and claim.
+          </p>
+        }
+      />
+    </SectionCard>
   );
 }

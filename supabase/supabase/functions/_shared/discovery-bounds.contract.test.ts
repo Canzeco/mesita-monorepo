@@ -49,16 +49,16 @@ Deno.test("Catalog box bounds and defaults match the server (the half distance s
   assertEquals(constant("POPULARITY_ROOT_MIN"), SIGNAL_PARAM_BOUNDS.root.min);
   assertEquals(constant("POPULARITY_ROOT_MAX"), SIGNAL_PARAM_BOUNDS.root.max);
   const m = admin.match(
-    /const DEFAULT_SIGNAL_PARAMS: SignalParams = \{\s*proximity: \{ halfKm: ([0-9_.]+), exponent: ([0-9_.]+) \},\s*popularity: \{ root: ([0-9_.]+), starsPower: ([0-9_.]+) \},\s*variety: \{ repeat: ([0-9_.]+) \},\s*shuffle: \{ temperature: ([0-9_.]+) \},\s*recipes: DEFAULT_RECIPES,\s*mix: DEFAULT_MIX,\s*\};/,
+    /const DEFAULT_SIGNAL_PARAMS: SignalParams = \{\s*proximity: \{ halfKm: ([0-9_.]+), exponent: ([0-9_.]+) \},\s*popularity: \{ root: ([0-9_.]+), starsPower: ([0-9_.]+) \},\s*shuffle: \{ temperature: ([0-9_.]+) \},\s*recipes: DEFAULT_RECIPES,\s*mix: DEFAULT_MIX,\s*\};/,
   );
   const n = (i: number) => (m ? Number(m[i].replaceAll("_", "")) : null);
   assertEquals(n(1), PROXIMITY_HALF_KM_DEFAULT);
   assertEquals(n(2), PROXIMITY_EXPONENT_DEFAULT);
   assertEquals(n(3), POPULARITY_ROOT_DEFAULT);
-  // MESITA-4153: the stars weight, the repeat penalty and the temperature.
+  // MESITA-4153: the stars weight and the temperature (the repeat penalty
+  // went with MESITA-4463).
   assertEquals(n(4), DEFAULT_SIGNAL_PARAMS.popularity.starsPower);
-  assertEquals(n(5), DEFAULT_SIGNAL_PARAMS.variety.repeat);
-  assertEquals(n(6), DEFAULT_SIGNAL_PARAMS.shuffle.temperature);
+  assertEquals(n(5), DEFAULT_SIGNAL_PARAMS.shuffle.temperature);
 });
 
 Deno.test("the Minimum Popularity default matches the server, in the root's units (MESITA-3083)", () => {

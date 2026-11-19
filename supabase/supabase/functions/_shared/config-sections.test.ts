@@ -435,7 +435,7 @@ Deno.test("discovery: an old-shape save keeps params.recipes, params.mix and ret
 Deno.test("discovery: saving one card never drops another's keys, in either order", async () => {
   const row = seedRow();
   const admin = fakeAdmin(row);
-  const mixing = { config: { params: { mix: { adEvery: 2, adFloor: 0.3, temperature: { nearby: 0.1, family: 0.2, popular: 0.4 } }, variety: { repeat: 0.5 } }, map: { catalogPageSize: 25 } } };
+  const mixing = { config: { params: { mix: { adEvery: 2, adFloor: 0.3, temperature: { nearby: 0.1, family: 0.2, popular: 0.4 } } }, map: { catalogPageSize: 25 } } };
   const mapCard = { config: { map: { placesShown: 33, dotsShown: 120, reloadIdleSec: 2 } } };
   for (const order of [[mixing, mapCard], [mapCard, mixing]]) {
     row.discovery_config = null;
@@ -445,7 +445,6 @@ Deno.test("discovery: saving one card never drops another's keys, in either orde
     }
     const c = row.discovery_config as Row;
     assertEquals(((c.params as Row).mix as Row).adEvery, 2);
-    assertEquals(((c.params as Row).variety as Row).repeat, 0.5);
     assertEquals((c.map as Row).catalogPageSize, 25);
     assertEquals((c.map as Row).placesShown, 33);
     assertEquals((c.map as Row).dotsShown, 120);

@@ -17,7 +17,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(19);
+select plan(21);
 
 insert into public.place_profiles
   (id, google_name, family_keys, enrichment_sources, lat, lng, google_stars_overall, google_review_count, business_state) values
@@ -41,7 +41,7 @@ update public.places set boost_tier = 2 where id = '00000000-0000-4000-8000-0000
 update public.places set content_state = 'generating'
  where id::text not like '00000000-0000-4000-8000-0000004454%';
 
--- One call shape: the recipe rows above, no variety, the 0.2 floor.
+-- One call shape: the recipe rows above, the 0.2 floor.
 create or replace function pg_temp.lanes(p_lat double precision, p_lng double precision, p_families text[])
 returns jsonb language sql as $$
   select public.catalog_rank_lanes(
@@ -112,6 +112,25 @@ select is((pg_temp.lanes(25.67, -100.30, array[]::text[]) ->> 'inorganic_total')
 
 select is((pg_temp.lanes(25.67, -100.30, array[]::text[]) ->> 'read')::int, 6,
   'read counts the gated places');
+
+-- ━━━ No repeat penalty (MESITA-4463) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+-- Under the old penalty, p_repeat 0.001 dropped D (the 2nd dinner) below F
+-- (AEFDBC). The argument is ignored now, so the order is the formula's.
+select is(
+  pg_temp.letters(public.catalog_rank_lanes(
+    p_lat => 25.67, p_lng => -100.30,
+    p_organic_half_km => 1, p_organic_distance_exp => 2, p_organic_stars_exp => 2, p_organic_google_exp => 0.5, p_organic_premier_exp => 0,
+    p_ad_half_km => 1, p_ad_distance_exp => 2, p_ad_stars_exp => 2, p_ad_google_exp => 0.5, p_ad_premier_exp => 1,
+    p_premier_1 => 2, p_premier_2 => 5, p_families => array[]::text[],
+    p_known_families => array['tacos', 'coffee', 'dinner'], p_require_active => false,
+    p_repeat => 0.001, p_ad_floor => 0.2) -> 'ids'),
+  'AEDFBC',
+  'p_repeat is ignored: two places of a kind keep the formula order');
+
+select ok(
+  (select c.discovery_config #> '{params,variety}' is null from public.app_config c where c.id = 1),
+  'params.variety is gone from the live config');
 
 -- ━━━ The family filter ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
