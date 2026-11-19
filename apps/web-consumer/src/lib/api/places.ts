@@ -411,7 +411,7 @@ function cleanPlace(place: Place): Place {
  * family. `nearest` sorts by distance alone (the Reward tab, MESITA-3214).
  *
  * DISCOVERY RANKING v2 (MESITA-4454): `rankMode` names the question
- * (nearby · popular · family), `shuffleSeed` the tab session's seed for it
+ * (nearby · popular · family), `shuffleSeed` this page load's seed for it
  * and `seedPoint` the point that seed was made at, which ranks while the
  * guest stays within 300 m of it. `origin` null sends no point: Proximity
  * abstains (never for nearby, which the caller does not ask without one).

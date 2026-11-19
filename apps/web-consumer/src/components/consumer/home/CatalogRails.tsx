@@ -31,7 +31,7 @@ import dynamic from "next/dynamic";
 // pages it (20 tiles at a time, more on scroll). A family chip ASKS ITS OWN
 // QUESTION (MESITA-2438): it sends the family's key, so Google gets that
 // family's full type list and the server lists its primary places before
-// its secondary ones. Each question's list is kept for the tab session
+// its secondary ones. Each question's list is kept for the page load
 // (lib/catalog-modes.ts), so going back to a row spends nothing. Above
 // each tile, TEMPORARILY, the Search map's score tag: the sources that found
 // it, proximity · popularity · final (MESITA-2708). `useUserLocation` asks
@@ -41,8 +41,8 @@ import dynamic from "next/dynamic";
 //
 // THREE QUESTIONS, THREE LISTS (MESITA-4454, Discovery ranking v2): Nearby
 // (chip `near`), Popular (chip `all`) and each family chip send their own
-// `rankMode` and keep their own ranked answer for the tab session
-// (lib/catalog-modes.ts): a seed per mode, held until the guest moves 300 m,
+// `rankMode` and keep their own ranked answer for the page load
+// (lib/catalog-modes.ts; a reload draws a new feed, MESITA-4463): a seed per mode, held until the guest moves 300 m,
 // so going back to a mode shows the same order, instantly, at the scroll it
 // was left at. A row wears "Ad" only when the rank put it in an ad slot.
 

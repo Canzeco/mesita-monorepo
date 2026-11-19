@@ -38,7 +38,7 @@
 //                family : popular. Anything else = 400 `rank_mode_invalid`
 //                before any read. "nearby" with no point = 400
 //                `location_required`.
-//   shuffleSeed  integer 0…2^32 − 1 (one per tab session and mode); absent
+//   shuffleSeed  integer 0…2^32 − 1 (one per page load and mode); absent
 //                draws one, echoed as `seed`. Anything else = 400
 //                `shuffle_seed_invalid`.
 //   seedLat/Lng  the point the seed was made at (sent until the guest moves
