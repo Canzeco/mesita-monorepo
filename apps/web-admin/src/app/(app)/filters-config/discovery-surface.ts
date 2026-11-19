@@ -163,7 +163,7 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     computation: "runtime",
     cost: "Local arithmetic, free.",
     missing: "No location: not used (n/a). No coordinates: 0.",
-    normalization: "0..1 by construction: 1 at the point, ½ at the operator's half distance (0.1–100 km, live 1) whatever the exponent (0.5–4, live 1, MESITA-3083), never 0. At exponent 1 the curve is the plain reciprocal (MESITA-3015): ⅓ at twice the half distance, and past it the credit is half distance ÷ distance, so only distance ratios order places: twice as far is half the credit at any scale, which with Popularity's cube root means 8× the reviews or a ×2 plan. Under 1 the far keeps its credit; over 1 the curve is flat inside the half distance and a cliff past it. The Catalog and Chat only: the Map does not read it, its distance only screens. It replaced the log curve (MESITA-2909), which kept a famous place 36 km away above an average one 5 km away.",
+    normalization: "0..1 by construction: 1 at the point, ½ at the operator's half distance (0.1–100 km, live 1) whatever the exponent (0.5–5, MESITA-3083, MESITA-4451), never 0. At exponent 1 the curve is the plain reciprocal (MESITA-3015): ⅓ at twice the half distance, and past it the credit is half distance ÷ distance, so only distance ratios order places: twice as far is half the credit at any scale, which with Popularity's cube root means 8× the reviews or a ×2 plan. Under 1 the far keeps its credit; over 1 the curve is flat inside the half distance and a cliff past it. The Catalog and Chat only: the Map does not read it, its distance only screens. It replaced the log curve (MESITA-2909), which kept a famous place 36 km away above an average one 5 km away.",
   },
   {
     key: "popularity",

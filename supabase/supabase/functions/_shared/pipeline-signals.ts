@@ -31,7 +31,7 @@ export const PROXIMITY_HALF_KM_MIN = 0.1;
 export const PROXIMITY_HALF_KM_MAX = 100;
 
 /** THE DISTANCE EXPONENT e (MESITA-3083): the operator's
- *  `params.proximity.exponent`, 0.5–4 at one decimal, live 1. At 1 the
+ *  `params.proximity.exponent`, 0.5–5 at one decimal (MESITA-4451), live 1. At 1 the
  *  curve is the plain reciprocal: past D the credit is D ÷ d, twice as far
  *  is half, and with Popularity's cube root the three factors speak one
  *  language (8× the reviews = a ×2 plan = twice as close). Under 1 the far
@@ -41,7 +41,7 @@ export const PROXIMITY_HALF_KM_MAX = 100;
  *  hyperparameter functional. */
 export const PROXIMITY_EXPONENT_DEFAULT = 1;
 export const PROXIMITY_EXPONENT_MIN = 0.5;
-export const PROXIMITY_EXPONENT_MAX = 4;
+export const PROXIMITY_EXPONENT_MAX = 5;
 
 /**
  * proximity(d) = 1 ÷ (1 + (d ÷ D)^e), D the half distance, e the exponent

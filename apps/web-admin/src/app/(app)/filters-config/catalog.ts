@@ -114,7 +114,7 @@ export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 export const HALF_KM_MIN = 0.1;
 export const HALF_KM_MAX = 100;
 export const EXPONENT_MIN = 0.5;
-export const EXPONENT_MAX = 4;
+export const EXPONENT_MAX = 5;
 /** Mirrors the Popularity root bounds in _shared/pipeline-signals.ts (MESITA-3083). */
 export const POPULARITY_ROOT_MIN = 0.1;
 export const POPULARITY_ROOT_MAX = 1;
