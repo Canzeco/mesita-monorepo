@@ -2,75 +2,73 @@
 //
 // THE CATALOG PIPELINE (Home's Places; split from Area by MESITA-2909,
 // `_shared/area-pipeline.ts`). Every ready Mesita place (the family row's
-// families pushed into the read) is gated, scored and ranked in SQL
-// (`catalog_rank`, MESITA-3059: one statement, no row cap), and only the
-// first page of that ranked list keeps its cards (MESITA-3044, Pato: "sort all catalog places in one run, but don't
-// load them all … never stop until the catalog is gone"). Ties break on
-// distance then id, so the order is stable (MESITA-2921: a capped id-ordered
-// read ranked a random 1000).
+// families pushed into the read) is gated, scored and ranked in SQL in one
+// statement, no row cap (MESITA-3059), and only the first page of that
+// ranked list keeps its cards (MESITA-3044). Ties break on distance then id.
 //
-// RANK ONCE, FILL BY ID (MESITA-3057, Pato: "don't bring the data of all
-// 1000 places in one run … have all the ids … then populate with data and
-// the images"): `ids: true` ranks once and answers `order`, every ranked id
-// best first, with the first page's cards; Home then sends `fill`, up to
+// RANK ONCE, FILL BY ID (MESITA-3057): a rank answers `order`, every ranked
+// id, with the first page's cards; Home then sends `fill`, up to
 // `CATALOG_PAGE_SIZE_MAX` of those ids, and gets only their cards, read
 // through the same gates and scored from the point it sends (the rank's).
-// Nothing is ranked again on scroll. The `offset` pages and the bare
-// best-1000 answer are gone (MESITA-3058: no build sent them in 10 days);
-// any request without `fill` is a rank. Every log line names its `mode`.
-// Nothing here calls Google (MESITA-2872).
+// Nothing is ranked again on scroll. Any request without `fill` is a rank.
+// Every log line names its `mode` (fill | rank). Nothing here calls Google.
 //
-// NO RADIUS (Pato, MESITA-2909: "en Catalog no nos importa … no hay un
-// radio"): distance never cuts a place. THE SCORE: Proximity × Popularity ×
-// the Premier factor (a Premier place's paid tier, ×2 · ×5, MESITA-2925;
-// one list again since MESITA-3041, the two lanes of MESITA-3016 retired),
-// Proximity = 1 ÷ (1 + (d ÷ D)^e), D the operator's half distance
-// (`params.proximity.halfKm`, MESITA-3015) and e the operator's exponent
-// (`params.proximity.exponent`, MESITA-3083): 1 at the guest, ½ at D; at
-// e = 1, ⅓ at twice D. Popularity = (1 + reviews × stars)^root, the root
-// the operator's (`params.popularity.root`, 0.33 = the cube root,
-// MESITA-3083). Live 1 km · 1 · 0.33: 8× the reviews = a ×2 plan = twice
-// as close. No point: Popularity × the factor.
+// DISCOVERY RANKING v2 (MESITA-4454): one formula, two lanes, three modes.
+//   Score     = Proximity × (stars ^ StarsExp × reviews) ^ GoogleExp
+//               × premierFactor ^ PremierExp
+//   Proximity = 1 ÷ (1 + (distance ÷ HalfDistance) ^ DistanceExp); no point = 1
+//   premierFactor = 1 · 2 · 5 (no plan · 2X · 5X)
+// The numbers are the mode's recipe rows (`params.recipes`). SQL
+// (`catalog_rank_lanes`) ranks the Organic lane (every place; the n-th of a
+// kind × `params.variety.repeat`^(n − 1), off on Nearby) and the Inorganic
+// lane (Premier places whose Proximity × premierFactor reaches
+// `params.mix.adFloor`). The two merge one ad after every
+// `params.mix.adEvery` organic places (0 = no ads; a place appears once); the
+// first page (`map.catalogPageSize`) is shuffled by the mode's
+// `params.mix.temperature` with the guest's seed, keyed per place, and the
+// tail keeps its exact order. A place with 0 reviews or no stars ranks last.
+// RETIRED, UNREAD (kept in the row until a follow-up migration deletes
+// them): `params.proximity`, `params.popularity.root`,
+// `params.popularity.starsPower`, `params.shuffle.temperature`.
 //
-// BEST PLACES, MORE KINDS, A LITTLE CHANCE (MESITA-4153, Pato: "in catalog
-// I always see the same places"): Popularity × (stars ÷ 5)^k
-// (`params.popularity.starsPower`); the n-th place of a kind (its rarest
-// family) × repeat^(n − 1) (`params.variety.repeat`), both in SQL; then
-// `order` is shuffled by `params.shuffle.temperature` (0 = the sort
-// exactly), once per rank. `nearest` gets neither variety nor shuffle.
-//
-// A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` pushes the
-// Family gate into the Mesita read. Without it the pool is every family's.
-//
-// Request: POST { unified: true, google: true, lat, lng, familyKeys?,
-//   fill? | ids? }   (that precedence; one per request)
-//   fill      1..100 Mesita ids (uuids, duplicates collapsed): their cards
-//             only, in that order; anything else in an array = 400
-//             `fill_invalid`. Answer { ok, places, summary: { asked,
-//             returned, chunks } }.
-//   ids       true: rank once and answer `order` (every ranked id) + the
-//             first page's cards. A request without `fill` is a rank either
-//             way (MESITA-3058).
-//   nearest   true, with `ids`: `order` is distance alone, nearest first, for
-//             the Reward tab (MESITA-3214). Home's score still fills `area`.
-//   lat/lng   a POINT; none = no location (Popularity alone).
-//   radiusKm  ignored since MESITA-2909 (the Catalog has no radius); pins
-//             carry none since MESITA-2914.
-//   bounds    ignored (Territory retired, MESITA-2500).
-//   google    ignored since MESITA-2872 (no Google stub comes back).
-// Response: { ok, location: { kind }, pageSize, total, order,
-//   places: [... { area }], summary }.
-//   order     every ranked id, best first
-//   total     every ranked place (the list the pages walk)
-//   summary.read      rows the SQL rank read (before the Family gate)
-//   summary.total     rows that passed the gates and were ranked
-//   summary.returned  places emitted (the first page)
-//   summary.chunks    pass-2 card reads
-//   summary.missing   kept ids pass 2 did not return
-// Error: 502 { ok: false, code: "catalog_read_failed", error, pass, page |
-//   chunk, requestId }; pass 1 is the SQL rank (page 0), pass 2 a card
-//   chunk. The PostgREST message is logged, never sent.
-//   Read-only, safe to retry.
+// Request: POST { lat?, lng?, familyKeys?, rankMode?, shuffleSeed?,
+//   seedLat?, seedLng?, nearest?, fill?, adIds? }   (any request without
+//   `fill` is a rank)
+//   rankMode     "nearby" | "popular" | "family"; absent → familyKeys ?
+//                family : popular. Anything else = 400 `rank_mode_invalid`
+//                before any read. "nearby" with no point = 400
+//                `location_required`.
+//   shuffleSeed  integer 0…2^32 − 1 (one per tab session and mode); absent
+//                draws one, echoed as `seed`. Anything else = 400
+//                `shuffle_seed_invalid`.
+//   seedLat/Lng  the point the seed was made at (sent until the guest moves
+//                300 m): when a valid pair, it is the point that ranks.
+//   lat/lng      a POINT; none = no location (Proximity abstains at 1).
+//   familyKeys   the family row's families (MESITA-2438); absent = every one.
+//   nearest      true: `order` is distance alone (the Reward tab,
+//                MESITA-3214): no lanes, no ads (`adIds: []`), no shuffle.
+//   fill         1..100 Mesita ids (uuids, duplicates collapsed): their cards
+//                only, in that order; anything else = 400 `fill_invalid`.
+//   adIds        with `fill`: the rank's `adIds` (uuids); those cards score
+//                with the mode's Inorganic row and carry `ad: true`. A fill
+//                never adds or removes an ad.
+//   radiusKm, bounds, google, unified, prefer, minReviews: ignored.
+// Rank response: { ok, location: { kind }, rankMode, pageSize, total, order,
+//   adIds, lanes: true, preShuffle, seed, updatedAt, places: [... { area,
+//   ad? }], summary }.
+//   order       every ranked id: the shuffled first page, then the merged tail
+//   adIds       ids sitting in ad slots, across the whole order
+//   preShuffle  id → its 1-based merged rank before the shuffle (first page)
+//   seed        the shuffle's seed (sent or drawn)
+//   updatedAt   the config row's updated_at: a change drops cached orders
+//   ad          true on a place in an ad slot (it wears "Ad"); else absent
+// Fill response: { ok, rankMode, places: [... { area, ad? }], summary:
+//   { asked, returned, chunks, ads } }.
+// Errors: 400 { ok: false, code, error, got?, requestId } for
+//   rank_mode_invalid · location_required · shuffle_seed_invalid ·
+//   fill_invalid; 502 { ok: false, code: "catalog_read_failed", error, pass,
+//   page | chunk, requestId } (pass 1 is the SQL rank, pass 2 a card chunk;
+//   the PostgREST message is logged, never sent). Read-only, safe to retry.
 //
 // Local:  supabase functions serve consumer-web-list-catalog
 // Deploy: supabase functions deploy consumer-web-list-catalog
@@ -81,7 +79,7 @@ import { openRequest } from "../_shared/request.ts";
 import { stripInternal } from "../_shared/place-pool-shape.ts";
 import type { PlaceProfileRow } from "../_shared/place-pool-shape.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
-import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
+import { CATALOG_PAGE_SIZE_MAX, loadDiscoveryConfigWithMeta } from "../_shared/discovery-config.ts";
 import { decideNearby } from "../_shared/geo.ts";
 import {
   areaPoolLogFields,
@@ -93,7 +91,7 @@ import {
   selectCatalogFill,
   selectCatalogPool,
 } from "../_shared/area-pipeline.ts";
-import { CATALOG_PAGE_SIZE_MAX } from "../_shared/discovery-config.ts";
+import { readRankMode, readSeedPoint, readShuffleSeed } from "../_shared/catalog-request.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { withVouchersUpTo } from "../_shared/payments.ts";
 import { withPlaceOffers } from "../_shared/vouchers.ts";
@@ -112,19 +110,26 @@ type Body = {
   minReviews?: unknown;
   /** Ignored since MESITA-2398; every build sends unified. */
   unified?: unknown;
-  /** Ignored since MESITA-2516: one ranking, the Map's. */
+  /** Ignored since MESITA-2516; `rankMode` is the guest's question. */
   prefer?: unknown;
   /** The family row's families (MESITA-2438); absent or empty = every family. */
   familyKeys?: unknown;
-  /** `true`: rank once and answer `order` (MESITA-3057). Every non-fill
-   *  request is a rank since MESITA-3058. */
+  /** Ignored since MESITA-3058: every non-fill request is a rank. */
   ids?: unknown;
-  /** With `ids`: sort by distance alone (the Reward tab, MESITA-3214). */
+  /** Sort by distance alone (the Reward tab, MESITA-3214). */
   nearest?: unknown;
   /** Ids from an `order` whose cards Home wants (MESITA-3057). */
   fill?: unknown;
+  /** nearby | popular | family (MESITA-4454). */
+  rankMode?: unknown;
+  /** The first-page shuffle's seed, uint32 (MESITA-4454). */
+  shuffleSeed?: unknown;
+  /** The point the seed was made at (MESITA-4454, M-a). */
+  seedLat?: unknown;
+  seedLng?: unknown;
+  /** With `fill`: the rank's ad-slot ids (MESITA-4454, M-c). */
+  adIds?: unknown;
 };
-
 
 /** A fill's ids, duplicates collapsed, or null when the list is empty, too
  *  long or holds a non-uuid. */
@@ -132,6 +137,13 @@ function readFill(v: unknown[]): string[] | null {
   const ids = [...new Set(v)];
   if (ids.length === 0 || ids.length > CATALOG_PAGE_SIZE_MAX) return null;
   return ids.every((id) => isUuid(id)) ? ids as string[] : null;
+}
+
+/** A fill's `adIds`: absent is none; an array of uuids, else null. */
+function readAdIds(v: unknown): string[] | null {
+  if (v === undefined || v === null) return [];
+  if (!Array.isArray(v)) return null;
+  return v.every((id) => isUuid(id)) ? [...new Set(v as string[])] : null;
 }
 
 function wirePlaces(rows: unknown[]): PoolRow[] {
@@ -151,20 +163,52 @@ serveJson("consumer-web-list-catalog", async (req) => {
   const { admin } = ctx;
 
   const body = await readJsonOr<Body>(req, {});
-  const cfg = await loadDiscoveryConfig(admin);
+  const requestId = crypto.randomUUID();
+  const fill = Array.isArray(body.fill) ? body.fill : null;
+  const mode = fill !== null ? "fill" : "rank";
+  const families = readGuestFamilyKeys(body.familyKeys).filter((f) => f !== "undefined");
+  const refuse = (code: string, error: string, extra: Record<string, unknown> = {}) => {
+    console.warn(JSON.stringify({ fn: "consumer-web-list-catalog", event: code, requestId, mode, ...extra }));
+    return json({ ok: false, code, error, ...extra, requestId }, 400);
+  };
+
+  // Every refusal comes before any read (DX-c, L-4).
+  const asked = readRankMode(body.rankMode, families);
+  if (!asked.ok) {
+    return refuse("rank_mode_invalid", "rankMode is nearby, popular or family", { got: asked.got });
+  }
+  const rankMode = asked.rankMode;
+  const seeded = readShuffleSeed(body.shuffleSeed);
+  if (!seeded.ok) {
+    return refuse("shuffle_seed_invalid", "shuffleSeed is an integer from 0 to 4294967295", { got: seeded.got });
+  }
+  // The seed's point ranks while the guest stays near it (M-a); else the
+  // request's own point.
   const nearby = decideNearby(body as Record<string, unknown>);
-  const center = nearby.mode === "ok" ? { lat: nearby.lat, lng: nearby.lng } : null;
+  const center = readSeedPoint(body as Record<string, unknown>) ??
+    (nearby.mode === "ok" ? { lat: nearby.lat, lng: nearby.lng } : null);
+  const nearest = body.nearest === true;
+  if (rankMode === "nearby" && center === null && !nearest) {
+    return refuse("location_required", "send lat/lng or use rankMode popular");
+  }
+
+  const loaded = await loadDiscoveryConfigWithMeta(admin);
+  const cfg = loaded.cfg;
+  if (loaded.clamped.length > 0) {
+    console.warn(JSON.stringify({
+      fn: "consumer-web-list-catalog",
+      event: "config_clamped",
+      requestId,
+      clamped: loaded.clamped,
+    }));
+  }
   // Home ranks from a point or nothing (MESITA-2500), with no radius
   // (MESITA-2909): the point only scores.
   if (body.bounds !== undefined && body.bounds !== null) {
     console.log(JSON.stringify({ fn: "consumer-web-list-catalog", event: "bounds_ignored" }));
   }
   const location = resolveAreaLocation(center, null);
-  const families = readGuestFamilyKeys(body.familyKeys).filter((f) => f !== "undefined");
-  const fill = Array.isArray(body.fill) ? body.fill : null;
-  const mode = fill !== null ? "fill" : "rank";
 
-  const requestId = crypto.randomUUID();
   const started = Date.now();
   const readError = (err: CatalogReadError) => {
     const at = err.pass === 1 ? { page: err.at } : { chunk: err.at };
@@ -173,6 +217,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
       event: "catalog_page_error",
       requestId,
       mode,
+      rankMode,
       pass: err.pass,
       ...at,
       pgCode: err.pgCode,
@@ -192,9 +237,9 @@ serveJson("consumer-web-list-catalog", async (req) => {
 
   if (fill !== null) {
     const ids = readFill(fill);
-    if (ids === null) {
-      console.warn(JSON.stringify({ fn: "consumer-web-list-catalog", event: "fill_invalid", requestId, mode, n: fill.length }));
-      return json({ ok: false, code: "fill_invalid", error: "fill takes 1 to 100 place ids", requestId }, 400);
+    const adIds = readAdIds(body.adIds);
+    if (ids === null || adIds === null) {
+      return refuse("fill_invalid", "fill takes 1 to 100 place ids; adIds takes place ids", { n: fill.length });
     }
     let filled: Awaited<ReturnType<typeof selectCatalogFill<PoolRow>>>;
     try {
@@ -206,6 +251,8 @@ serveJson("consumer-web-list-catalog", async (req) => {
         cardColumns: PLACE_CARD_COLUMNS,
         wire: wirePlaces,
         ids,
+        mode: rankMode,
+        adIds,
       });
     } catch (err) {
       if (!(err instanceof CatalogReadError)) throw err;
@@ -216,6 +263,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
       event: "catalog_fill",
       requestId,
       mode,
+      rankMode,
       ms: Date.now() - started,
       location: location.kind,
       familyKeys: families,
@@ -224,14 +272,16 @@ serveJson("consumer-web-list-catalog", async (req) => {
     // The tile's voucher line (MESITA-3312), two reads for the page; every
     // offer the place sells, whoever looks (MESITA-4292).
     const fillPlaces = withPlaceOffers(await withVouchersUpTo(admin, filled.places));
-    return json({ ok: true, places: fillPlaces, summary: filled.summary });
+    return json({ ok: true, rankMode, places: fillPlaces, summary: filled.summary });
   }
 
   let pool: Awaited<ReturnType<typeof selectCatalogPool<PoolRow>>>;
   try {
     pool = await selectCatalogPool<PoolRow>({
       // The rank itself is SQL (MESITA-3059): every gated place, no row cap.
+      // `nearest` keeps the distance-only rank; every mode ranks two lanes.
       rank: (args) => admin.rpc("catalog_rank", args),
+      rankLanes: (args) => admin.rpc("catalog_rank_lanes", args),
       read,
       cfg,
       location,
@@ -240,7 +290,9 @@ serveJson("consumer-web-list-catalog", async (req) => {
       // pool does not select it (MESITA-2328).
       cardColumns: PLACE_CARD_COLUMNS,
       wire: wirePlaces,
-      nearest: body.nearest === true,
+      nearest,
+      mode: rankMode,
+      seed: seeded.seed,
       // A rank answers the first page; `order` carries the rest by id.
       pageSize: catalogPageSize(cfg.map),
     });
@@ -258,10 +310,21 @@ serveJson("consumer-web-list-catalog", async (req) => {
     wire: "unified",
     requestId,
     mode,
+    rankMode,
+    nearest,
     ms: Date.now() - started,
     location: location.kind,
     familyKeys: families,
     ...pool.summary,
+    organic: pool.lanes.organic,
+    premier: pool.lanes.premier,
+    adsFirstPage: pool.lanes.adsFirstPage,
+    below_floor: pool.lanes.belowFloor,
+    inorganicTotal: pool.lanes.inorganicTotal,
+    seed: seeded.seed,
+    seedSent: seeded.sent,
+    preShuffle: pool.preShuffle,
+    updatedAt: loaded.updatedAt,
     ...areaPoolLogFields(pool.places),
   }));
 
@@ -270,9 +333,15 @@ serveJson("consumer-web-list-catalog", async (req) => {
     // No radius on the wire: the Catalog has none and the location sheet
     // names none (MESITA-2914).
     location: { kind: location.kind },
+    rankMode,
     pageSize: pool.summary.pageSize,
     total: pool.summary.total,
     order: pool.order,
+    adIds: pool.adIds,
+    lanes: true,
+    preShuffle: pool.preShuffle,
+    seed: seeded.seed,
+    updatedAt: loaded.updatedAt,
     places,
     summary: pool.summary,
   });
