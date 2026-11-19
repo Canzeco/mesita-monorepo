@@ -469,10 +469,12 @@ function TableTile({
   const [weekday, date, month] = (day ?? "").split(" ");
   const state = r.confirmed ? "Booked" : "Booking";
   // ONE ORDER, LEFT TO RIGHT (Pato, 2026-11-18, MESITA-4435: "red box must
-  // have more design. better order"): a white calendar badge (month over
+  // have more design. better order"): a calendar badge (month over
   // date), then the state small over the weekday and time big, then a
   // chevron; still red edge to edge (MESITA-4407). It was the glyph and
   // the word at the left with the day over the time in the middle.
+  // NO WHITE BOX (MESITA-4438, Pato: "no it must white box just white
+  // text"): month over date is white text on the red, like the rest.
   return (
     <button
       type="button"
@@ -488,7 +490,7 @@ function TableTile({
     >
       <span
         aria-hidden
-        className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg bg-white leading-none text-[#DA3743]"
+        className="flex w-9 shrink-0 flex-col items-center justify-center leading-none"
       >
         <span className="text-[10px] font-bold tracking-wide uppercase">{month ?? ""}</span>
         <span className="text-lg font-extrabold tabular-nums">{date ?? ""}</span>
