@@ -475,6 +475,10 @@ function TableTile({
   // the word at the left with the day over the time in the middle.
   // NO WHITE BOX (MESITA-4438, Pato: "no it must white box just white
   // text"): month over date is white text on the red, like the rest.
+  // THE ROW'S TWO SIZES (MESITA-4438, Pato: "keep standarized text in the
+  // red box"): small words are the tiles' text-xs semibold (Saved, Maps,
+  // Offers), the date and the weekday · time the chips' text-sm extrabold
+  // ("Off"); no 10px caps, no 16/18px numbers.
   return (
     <button
       type="button"
@@ -492,11 +496,11 @@ function TableTile({
         aria-hidden
         className="flex w-9 shrink-0 flex-col items-center justify-center leading-none"
       >
-        <span className="text-[10px] font-bold tracking-wide uppercase">{month ?? ""}</span>
-        <span className="text-lg font-extrabold tabular-nums">{date ?? ""}</span>
+        <span className="text-xs font-semibold">{month ?? ""}</span>
+        <span className="text-sm font-extrabold tabular-nums">{date ?? ""}</span>
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="flex items-center gap-1 text-[10px] font-bold tracking-wide uppercase opacity-90">
+        <span className="flex items-center gap-1 text-xs font-semibold opacity-90">
           {r.confirmed ? (
             <Check className="h-3 w-3 shrink-0" strokeWidth={3} aria-hidden />
           ) : (
@@ -504,7 +508,7 @@ function TableTile({
           )}
           {state}
         </span>
-        <span className="truncate text-base leading-tight font-extrabold tabular-nums">
+        <span className="truncate text-sm leading-tight font-extrabold tabular-nums">
           {weekday}
           {time ? ` · ${time}` : ""}
         </span>
