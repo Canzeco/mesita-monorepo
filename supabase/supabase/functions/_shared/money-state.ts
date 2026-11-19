@@ -106,9 +106,11 @@ export type VoucherReason =
 //  key left the catalog; place_payment_settings.voucher_vip is a dead column.
 export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
 
-/** Story is for guests whose linked Instagram has MORE than this many
- *  followers (MESITA-3507, Pato: "only available for users that have more
- *  than 1000 followers in instagram"). The buy EF refuses the rest. */
+/** The DEFAULT follower floor for the Story voucher (MESITA-3507): a guest
+ *  needs this many followers or more (MESITA-4383). The live floor is
+ *  app_config.money_config.story_min_followers, set on Admin ›
+ *  Configurations › Stories (MESITA-4425); this is what a missing or failed
+ *  read falls back to. */
 export const STORY_MIN_FOLLOWERS = 1000;
 
 export type PayWay = "credit" | "card" | "both" | "none";

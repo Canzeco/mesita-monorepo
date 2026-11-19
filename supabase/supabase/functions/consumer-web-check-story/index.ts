@@ -28,7 +28,7 @@ import { requireConsumerRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { instagramHandleOfUrl } from "../_shared/place-instagram.ts";
-import { readStoryGuest, storyRefusal, voucherOffer } from "../_shared/vouchers.ts";
+import { readStoryGuest, storyEligibilityContext, storyRefusal, voucherOffer } from "../_shared/vouchers.ts";
 import { storyMode } from "../_shared/story-mention.ts";
 import { storyGate } from "../_shared/story-check.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
@@ -75,14 +75,15 @@ serveJson("consumer-web-check-story", async (req) => {
     const place = placeRes.place;
     if (!place || place.state !== "active") return json({ ok: false, code: "place", error: "This place can't sell vouchers" }, 404);
     const placeHandle = instagramHandleOfUrl(place.instagram_url);
-    const [guest, offer] = await Promise.all([
+    const [guest, offer, storyCtx] = await Promise.all([
       readStoryGuest(admin, user.id),
       voucherOffer(admin, place, user.id, paymentsLivemode()),
+      storyEligibilityContext(admin),
     ]);
     const offerReason = !offer.sell.includes("voucher_story") ? (offer.unavailable.voucher_story ?? "off") : null;
     const reason = storyGate({
       placeInstagram: placeHandle !== null,
-      guestRefusal: storyRefusal("voucher_story", guest)?.code ?? null,
+      guestRefusal: storyRefusal("voucher_story", guest, storyCtx)?.code ?? null,
       offerReason,
       mode: storyMode(),
     });

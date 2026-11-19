@@ -17,6 +17,8 @@ import {
   overCreditLimit,
   parseBasket,
   sameUnits,
+  STORY_ELIGIBILITY_DEFAULT,
+  storyEligibilityContext,
   storyRefusal,
   voucherMetadata,
   withStoryMode,
@@ -261,13 +263,40 @@ Deno.test("the mark (MESITA-3408) is taken before Welcome-used and the pause, so
   assertEquals(offerFrom({ ...base, settings: nothing }).mesita_pay, false);
 });
 
-Deno.test("storyRefusal: Story needs a linked Instagram with 1,000 or more followers; other vouchers pass (MESITA-3507, MESITA-4383)", () => {
-  assertEquals(storyRefusal("voucher_200", null), null);
-  assertEquals(storyRefusal("voucher_story", null)?.code, "needs_instagram");
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: null, instagram_followers_count: 50_000 })?.code, "needs_instagram");
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: null })?.code, "few_followers");
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 999 })?.code, "few_followers");
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1000 }), null);
+Deno.test("storyRefusal: Story needs a linked Instagram with the live floor or more followers; other vouchers pass (MESITA-3507, MESITA-4383, MESITA-4425)", () => {
+  const D = STORY_ELIGIBILITY_DEFAULT;
+  assertEquals(D, { minFollowers: 1000, emulator: false });
+  assertEquals(storyRefusal("voucher_200", null, D), null);
+  assertEquals(storyRefusal("voucher_story", null, D)?.code, "needs_instagram");
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: null, instagram_followers_count: 50_000 }, D)?.code, "needs_instagram");
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: null }, D)?.code, "few_followers");
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 999 }, D)?.code, "few_followers");
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1000 }, D), null);
+  // The admin's floor, exactly at it and one below; the message names it.
+  const low = { minFollowers: 500, emulator: false };
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 500 }, low), null);
+  const below = storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 499 }, low);
+  assertEquals(below?.code, "few_followers");
+  assertEquals(below?.error, "The Story voucher is for Instagram accounts with 500 or more followers");
+  // A floor of 0 lets any linked public account through.
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 0, instagram_is_private: false }, { minFollowers: 0, emulator: false }), null);
+  // A private account is refused at any floor…
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 5000, instagram_is_private: true }, D)?.code, "private_account");
+  // …unless emulator mode is in effect: then only the link is needed.
+  const emu = { minFollowers: 1000, emulator: true };
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 3, instagram_is_private: true }, emu), null);
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: null, instagram_followers_count: 3 }, emu)?.code, "needs_instagram");
+});
+
+Deno.test("storyEligibilityContext: the live floor from money_config; a failed read is the default, never open (MESITA-4425)", async () => {
+  const fake = (result: unknown) => ({
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () => (result instanceof Error ? Promise.reject(result) : Promise.resolve(result)) }) }) }),
+  }) as unknown as SupabaseClient;
+  assertEquals(await storyEligibilityContext(fake({ data: { money_config: { story_min_followers: 250 } }, error: null })), { minFollowers: 250, emulator: false });
+  assertEquals(await storyEligibilityContext(fake({ data: { money_config: { buying_paused: true } }, error: null })), STORY_ELIGIBILITY_DEFAULT);
+  assertEquals(await storyEligibilityContext(fake({ data: { money_config: { story_min_followers: "abc" } }, error: null })), STORY_ELIGIBILITY_DEFAULT);
+  assertEquals(await storyEligibilityContext(fake({ data: null, error: { message: "down" } })), STORY_ELIGIBILITY_DEFAULT);
+  assertEquals(await storyEligibilityContext(fake(new Error("network"))), STORY_ELIGIBILITY_DEFAULT);
 });
 
 // ── The basket (MESITA-3841) ───────────────────────────────────────────────

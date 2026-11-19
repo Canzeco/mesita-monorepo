@@ -89,6 +89,20 @@ function fakeAdmin(row: Row): SupabaseClient {
         },
       };
     },
+    // The stories section's write (MESITA-4425): money_config_merge_story,
+    // modelled as the SQL does it — only story_min_followers, merged over
+    // the other keys, stamped, answering before and after.
+    rpc(fn: string, args: Row) {
+      if (fn !== "money_config_merge_story") {
+        return Promise.resolve({ data: null, error: { message: `no rpc ${fn}` } });
+      }
+      const before = (row.money_config ?? {}) as Row;
+      const patch = args.p_patch as Row;
+      const after = { ...before, story_min_followers: patch.story_min_followers };
+      row.money_config = after;
+      row.updated_by = args.p_updated_by;
+      return Promise.resolve({ data: { before, after, updated_at: STAMP }, error: null });
+    },
     // deno-lint-ignore no-explicit-any
   } as any as SupabaseClient;
 }
@@ -210,7 +224,35 @@ const CASES: Record<string, SectionCase> = {
     refuse: { status: 400, contains: "testCall must be an object" },
   },
 
+  stories: {
+    // Admin › Configurations › Stories (MESITA-4425): the follower floor.
+    valid: { config: { story_min_followers: 500 } },
+    assertSaved: (saved, row) => {
+      assertEquals((saved.config as Row).story_min_followers, 500);
+      assertEquals((row.money_config as Row).story_min_followers, 500);
+    },
+    // Refused, not clamped: a money rule never lands as something nobody typed.
+    invalid: { config: { story_min_followers: "abc" } },
+    refuse: { status: 400, contains: "story_min_followers must be a whole number" },
+  },
 };
+
+Deno.test("stories: the read shows only Story keys; a save keeps every other money_config key (MESITA-4425)", async () => {
+  const row = seedRow();
+  row.money_config = { buying_paused: true, express_wallets: ["apple_pay"], sending_live: false, story_bonus_wait_sec: 10800 };
+  const read = await body(await readConfigSection(fakeAdmin(row), "stories"));
+  assertEquals(read.config, { story_min_followers: 1000, story_bonus_wait_sec: 10800, story_post_window_sec: 43200 });
+  assertEquals(typeof read.payments_live, "boolean");
+  assert(["meta", "emulated", "unavailable"].includes(String(read.story_mode)));
+  const saved = await writeConfigSection({ admin: fakeAdmin(row), userId: USER, body: { section: "stories", config: { story_min_followers: 0 } } }, "stories");
+  assertEquals(saved.status, 200);
+  assertEquals(row.money_config, { buying_paused: true, express_wallets: ["apple_pay"], sending_live: false, story_bonus_wait_sec: 10800, story_min_followers: 0 });
+  for (const bad of [{ story_min_followers: 1_000_001 }, { story_min_followers: 2.5 }, { story_min_followers: -1 }, { buying_paused: false }, {}]) {
+    const res = await writeConfigSection({ admin: fakeAdmin(row), userId: USER, body: { section: "stories", config: bad } }, "stories");
+    assertEquals(res.status, 400, JSON.stringify(bad));
+  }
+  assertEquals((row.money_config as Row).buying_paused, true);
+});
 
 Deno.test("every registry key has a round-trip case — no section rides on another's proof", () => {
   assertEquals(

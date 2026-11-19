@@ -16,6 +16,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { META_GRAPH_VERSION, readDmProfile, readInstagramDmConfig } from "./instagram-dm.ts";
 import { paymentsLivemode } from "./stripe.ts";
+import { STORY_MIN_FOLLOWERS } from "./money-state.ts";
 
 // ── The rule numbers, in one place ───────────────────────────────────────────
 // The database functions take the 3 hours and the two margins from
@@ -392,7 +393,19 @@ export type StoryRulesLive = {
   recheckMeta: boolean;
   /** Payment → the Story's deadline (MESITA-4405), clamped as story_rules(). */
   postWindowSec: number;
+  /** The follower floor for buying a Story voucher (MESITA-4425):
+   *  money_config.story_min_followers, set on Admin › Configurations ›
+   *  Stories; STORY_MIN_FOLLOWERS when unset or not a whole number. */
+  minFollowers: number;
 };
+
+/** story_min_followers' bounds (MESITA-4425), as money_config_merge_story. */
+export const STORY_MIN_FOLLOWERS_MAX = 1_000_000;
+
+/** A whole number in 0..STORY_MIN_FOLLOWERS_MAX, else the default. */
+export function minFollowersFrom(v: unknown): number {
+  return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= STORY_MIN_FOLLOWERS_MAX ? v : STORY_MIN_FOLLOWERS;
+}
 
 export function storyRulesFrom(raw: unknown): StoryRulesLive {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
@@ -406,6 +419,7 @@ export function storyRulesFrom(raw: unknown): StoryRulesLive {
       Math.max(num(o.story_post_window_sec, STORY_RULES.postWindowSec), STORY_RULES.postWindowMinSec),
       STORY_RULES.postWindowMaxSec,
     ),
+    minFollowers: minFollowersFrom(o.story_min_followers),
   };
 }
 
