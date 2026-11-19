@@ -243,9 +243,10 @@ function offerStatus(
   can: boolean,
   lock: "instagram" | "followers" | null,
   reason: VoucherReason | undefined,
+  minFollowers: number,
 ): InfoStatus {
   if (lock === "instagram") return { ok: false, text: "Link your Instagram to use Story offers." };
-  if (lock === "followers") return { ok: false, text: `Your Instagram needs more than ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} followers.` };
+  if (lock === "followers") return { ok: false, text: `Your Instagram needs ${minFollowers.toLocaleString("en-US")} or more followers.` };
   if (can) {
     if (key === "voucher_welcome") return { ok: true, text: "Available: one per place." };
     if (key === "voucher_story") return { ok: true, text: "Available. One per visit." };
@@ -290,13 +291,20 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
   // IN TEST MODE NOTHING IS GREYED (Pato, MESITA-3334); live mode dims a row
   // not for sale.
   const dim = money?.test_mode !== true;
+  // The live follower floor (MESITA-4425); an older host or a profile read
+  // without story_rules reads the old constant.
+  const minFollowers = guest?.storyMinFollowers ?? STORY_MIN_FOLLOWERS;
   // THE GUEST'S OWN LOCKS (MESITA-3502): Story needs a linked Instagram with
   // enough followers; no offer names a Class (MESITA-4249). Unknown guest (no profile read), no lock.
   const guestLock = (k: MoneyVoucherKey): GuestLock => {
     if (!guest) return null;
     if (k === "voucher_story" && !guest.instagramLinked) return "instagram";
-    // MESITA-3507: the server refuses Story at STORY_MIN_FOLLOWERS or fewer.
-    if (k === "voucher_story" && guest.instagramFollowers != null && guest.instagramFollowers <= STORY_MIN_FOLLOWERS) {
+    // MESITA-4425: the server refuses Story BELOW the live floor (`<`, so
+    // exactly the floor buys; MESITA-4383), and not at all in emulator mode.
+    if (
+      k === "voucher_story" && !guest.storyEmulator && guest.instagramFollowers != null &&
+      guest.instagramFollowers < minFollowers
+    ) {
       return "followers";
     }
     return null;
@@ -312,7 +320,7 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
     if (NOT_YET_SELLABLE[k]) return false;
     return unavailable[k] === undefined;
   };
-  return { unavailable, dim, guestLock, buyable };
+  return { unavailable, dim, guestLock, buyable, minFollowers };
 }
 
 /** One of the six vouchers as a row elsewhere (the Loyalty Card, MESITA-3822):
@@ -373,13 +381,13 @@ function listedProducts(): Product[] {
 /** The vouchers in the Offers page's order, Welcome · VIP · Small · Medium · Big (MESITA-4154)
  *  (MESITA-3834). */
 export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions["guest"]): VoucherOffer[] {
-  const { unavailable, dim, guestLock, buyable } = offerRules(money, guest);
+  const { unavailable, dim, guestLock, buyable, minFollowers } = offerRules(money, guest);
   const catalog = money?.catalog ?? {};
   const currency = money?.currency ?? "mxn";
   return listedProducts().map((p) => {
     const line = catalog[p.key];
     const can = buyable(p.key);
-    const status = offerStatus(p.key, can, guestLock(p.key), unavailable[p.key]);
+    const status = offerStatus(p.key, can, guestLock(p.key), unavailable[p.key], minFollowers);
     return {
       key: p.key,
       title: p.short,
@@ -559,7 +567,15 @@ function GoodToKnow({ productKey }: { productKey: MoneyVoucherKey }) {
 
 /** WHO CAN GET A STORY (MESITA-4299): the three things the guest's Instagram
  *  needs, apart from the steps, each ticked, locked or not known yet. */
-type StoryGuest = { linked: boolean | null; followers: number | null; handle: string | null };
+type StoryGuest = {
+  linked: boolean | null;
+  followers: number | null;
+  handle: string | null;
+  /** The live floor (MESITA-4425). */
+  minFollowers: number;
+  /** Emulator mode: only the link is checked, so the other rows are hidden. */
+  emulator: boolean;
+};
 type StoryFail = "instagram" | "private" | "followers" | null;
 type Need = { label: string; state: "ok" | "locked" | "unknown" };
 
@@ -567,12 +583,15 @@ type Need = { label: string; state: "ok" | "locked" | "unknown" };
 function storyNeeds(guest: StoryGuest, failing: StoryFail, passed: boolean): Need[] {
   const state = (fail: StoryFail, known: boolean): Need["state"] => (failing === fail ? "locked" : passed || known ? "ok" : "unknown");
   const linked = failing !== "instagram" && (passed || guest.linked === true);
+  const link: Need = { label: `Instagram linked${linked && guest.handle ? ` · @${guest.handle}` : ""}`, state: state("instagram", guest.linked === true) };
+  // Emulator mode checks only the link; a row that is never checked is not drawn.
+  if (guest.emulator) return [link];
   return [
-    { label: `Instagram linked${linked && guest.handle ? ` · @${guest.handle}` : ""}`, state: state("instagram", guest.linked === true) },
+    link,
     { label: "Public account", state: state("private", false) },
     {
-      label: `${STORY_MIN_FOLLOWERS.toLocaleString("en-US")}+ followers${guest.followers != null ? ` · you have ${guest.followers.toLocaleString("en-US")}` : ""}`,
-      state: state("followers", guest.followers != null && guest.followers > STORY_MIN_FOLLOWERS),
+      label: `${guest.minFollowers.toLocaleString("en-US")}+ followers${guest.followers != null ? ` · you have ${guest.followers.toLocaleString("en-US")}` : ""}`,
+      state: state("followers", guest.followers != null && guest.followers >= guest.minFollowers),
     },
   ];
 }
@@ -717,12 +736,14 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
       bonus: `+${p.bonus.replace(/ bonus$/, "")}`,
       bonusAmount,
       can,
-      status: offerStatus(p.key, can, lock, rules.unavailable[p.key]),
+      status: offerStatus(p.key, can, lock, rules.unavailable[p.key], rules.minFollowers),
       guestLock: can ? null : lock,
       storyGuest: {
         linked: actions?.guest ? actions.guest.instagramLinked : null,
         followers: actions?.guest?.instagramFollowers ?? null,
         handle: actions?.guest?.instagramHandle ?? null,
+        minFollowers: rules.minFollowers,
+        emulator: actions?.guest?.storyEmulator === true,
       },
       unlock,
       live,
@@ -1473,7 +1494,7 @@ export function VouchersPane({
                 const Mark = face.Mark ?? Ticket;
                 const bonus = `+${p.bonus.replace(/ bonus$/, "")}`;
                 const locked = !loading && !can;
-                const why = locked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key]).text : "";
+                const why = locked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key], co.minFollowers).text : "";
                 // A PRODUCT ROW (Pato, 2026-11-17, MESITA-4224: "offers must
                 // really look like products, like item products"; D8): the
                 // product's face, its name, the deal, the bonus in ink, an

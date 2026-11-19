@@ -119,10 +119,16 @@ export type PlaceActions = {
   /** The guest's own facts for the Offers (i) status (MESITA-3502): Story
    *  needs a linked Instagram. Absent (signed out, admin's
    *  preview, profile not read yet), no guest lock is drawn. */
-  /** instagramFollowers (MESITA-3507): Story needs more than STORY_MIN_FOLLOWERS; absent reads as unknown, no lock. */
+  /** instagramFollowers (MESITA-3507): Story needs storyMinFollowers or more; absent reads as unknown, no lock. */
   guest?: {
     instagramLinked: boolean;
     instagramFollowers?: number | null;
+    /** The live follower floor (MESITA-4425, consumer-web-get-profile's
+     *  story_rules.min_followers); absent reads STORY_MIN_FOLLOWERS. */
+    storyMinFollowers?: number;
+    /** Emulator mode in effect (story_rules.emulator): no follower or
+     *  private-account lock, only the Instagram link. Absent reads false. */
+    storyEmulator?: boolean;
     /** The guest's Instagram username, on the Story sheet's Found card (MESITA-4296). */
     instagramHandle?: string | null;
   };
