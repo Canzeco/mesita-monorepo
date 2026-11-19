@@ -18,6 +18,7 @@ import { CardActions } from "@/components/consumer/place-card";
 import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsLines } from "./place-facts";
+import { ordinal } from "@/lib/catalog-modes";
 
 /** Four significant digits (MESITA-4450: Popularity runs into the tens,
  *  Proximity can sit under 0.01); under 0.0001 in scientific form so a
@@ -34,15 +35,32 @@ function scoreNumber(n: number | null | undefined): string {
  * much of each hyperparams"): the server's score parts on the photo, so the
  * Discovery knobs can be judged on a phone. Every number is `place.area`
  * (MESITA-2379); nothing is computed here. Final is the EF's
- * Proximity × Popularity × Premier; Home's variety penalty and shuffle are
- * not in it. No `area`, no label. TO REMOVE: delete this and its one use.
+ * Proximity × Popularity × Premier boost, read with the row's lane recipe
+ * (MESITA-4454, H1): Premier is premierFactor ^ PremierExp, so ×1 on every
+ * organic row. The top line is the place's merged rank before the first
+ * page's shuffle and its shown position ("#3 → 1st"), and "Ad" on an
+ * ad-slot row; an organic row names no lane (E1). No `area`, no label.
+ * TO REMOVE: delete this and its one use.
  */
-function ScoreLabel({ area }: { area: Place["area"] }) {
+function ScoreLabel({
+  area,
+  ad,
+  rank,
+}: {
+  area: Place["area"];
+  ad: boolean;
+  rank?: { pre: number | null; shown: number } | null;
+}) {
   if (!area) return null;
+  const head = rank
+    ? rank.pre !== null
+      ? `#${rank.pre} → ${ordinal(rank.shown)}`
+      : ordinal(rank.shown)
+    : null;
   const rows: Array<[string, string]> = [
     ["Popularity", scoreNumber(area.signals.popularity)],
     ["Proximity", scoreNumber(area.signals.proximity)],
-    ["Premier", `×${area.selectedFactor ?? 1}`],
+    ["Premier", `×${scoreNumber(area.premierBoost ?? area.selectedFactor ?? 1)}`],
     ["Final", scoreNumber(area.final)],
   ];
   return (
@@ -51,6 +69,12 @@ function ScoreLabel({ area }: { area: Place["area"] }) {
       aria-label="Score breakdown (temporary)"
       data-score-label
     >
+      {head || ad ? (
+        <div className="contents font-bold">
+          <dt>{ad ? "Ad" : ""}</dt>
+          <dd className="text-right">{head ?? ""}</dd>
+        </div>
+      ) : null}
       {rows.map(([k, v]) => (
         <div key={k} className={cn("contents", k === "Final" && "font-bold")}>
           <dt>{k}</dt>
@@ -126,8 +150,17 @@ export function PlaceRowCard({
   onOpen,
   onOpenGoogle,
   table = null,
+  ad = false,
+  rank = null,
 }: {
   place: Place;
+  /** The row sits in an ad slot (MESITA-4454, H4): its id is in the rank's
+   *  `adIds`. A Premier place in an organic slot passes false and wears its
+   *  seal only. The place link carries no ad context (M7). */
+  ad?: boolean;
+  /** The temporary score label's "#3 → 1st" (H1): the merged rank before
+   *  the shuffle (null past the first page) and the shown position. */
+  rank?: { pre: number | null; shown: number } | null;
   /** The guest's live table here, if any (MESITA-4453). */
   table?: LiveTable | null;
   saved: boolean;
@@ -202,7 +235,7 @@ export function PlaceRowCard({
               </span>
             </div>
           )}
-          <ScoreLabel area={place.area} />
+          <ScoreLabel area={place.area} ad={ad} rank={rank} />
         </>,
         cn(ROW_PHOTO, "block", focus),
         `Open ${place.name}`,
@@ -223,10 +256,10 @@ export function PlaceRowCard({
                 the name at 16px over one fact per line at 14px. */}
             <p className="flex min-w-0 items-start gap-1 text-base leading-snug font-semibold tracking-tight">
               <span className="line-clamp-2">{place.name}</span>
-              <PlaceMarks
-                tier={place.boost_tier}
-                ad={(place.boost_tier ?? 0) > 0}
-              />
+              {/* "Ad" ONLY IN AN AD SLOT (MESITA-4454, H4): the seal for
+                  every Premier place, "· Ad" only when the rank put it in
+                  an ad slot; it was every Premier row before. */}
+              <PlaceMarks tier={place.boost_tier} ad={ad} />
             </p>
             <PlaceFactsLines place={place} />
           </>,

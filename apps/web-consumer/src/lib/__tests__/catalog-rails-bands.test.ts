@@ -53,6 +53,8 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
       order: ["a", "b", "c"],
       asked: 3,
       rankedFrom: null,
+      adIds: [],
+      preShuffle: {},
     };
     expect(poolPlaces(pool, ALL_CHIP).map((p) => p.id)).toEqual([
       "a",
@@ -67,9 +69,9 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(PLACES_PAGE).toBe(20);
     expect(src).toContain("data-places-more");
     expect(src).toContain("new IntersectionObserver(");
-    // A kept pool paints without a request.
-    expect(src).toContain("const kept = readAreaPool(requestKey);");
-    expect(src).toContain("if (!kept) void fetchPool();");
+    // A mode's kept pool, ranked with its seed, paints without a request
+    // (MESITA-4454).
+    expect(src).toContain("if (modePoolFor(guest, mode, rec)) return;");
   });
 
   it("each tile's events carry source, rank and final (the breakdown box is hidden, MESITA-2660)", () => {
@@ -97,11 +99,10 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).not.toContain("<LocalSheet");
     expect(src).not.toContain("LocationPicker");
     expect(src).toContain("const origin = useActiveLocation();");
-    // A saved location, else the fix, else the city's centre (MESITA-2472).
-    expect(src).toContain(
-      "const base = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);",
-    );
-    expect(src).toContain("apiListAreaPool(supabase, from, families)");
+    // A saved location, else the fix, else no point (MESITA-4454; the
+    // city's centre before).
+    expect(src).toContain("const here = origin ?? coords ?? null;");
+    expect(src).toContain("apiListAreaPool(supabase, here, families, {");
   });
 
   it("removing the active saved location falls back to Current location", () => {

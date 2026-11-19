@@ -33,7 +33,7 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     // Every row asks for its own families; Social is a tab. Saved came back
     // above Top (MESITA-3718) and reads no pool.
     const rails = src("components/consumer/home/CatalogRails.tsx");
-    expect(rails).toContain("setFamilies(chipFamilies(key));");
+    expect(rails).toContain("const families = useMemo(() => chipFamilies(poolChip), [poolChip]);");
     for (const gone of [
       "POPULAR_CHIP",
       "chipPrefer",
@@ -44,11 +44,10 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     }
   });
 
-  it("Home keys its pool cache on the place and the row's family", () => {
+  it("Home keys its pool cache on the guest and the row's question (MESITA-4454)", () => {
     const rails = src("components/consumer/home/CatalogRails.tsx");
-    expect(rails).toContain(
-      'families.length > 0 ? families.join(",") : ALL_CHIP',
-    );
+    expect(rails).toContain("const mode = modeKey(rankMode, families);");
+    expect(rails).toContain("const requestKey = `${guest}|${mode}`;");
   });
 
   // MESITA-2438: a family row re-asks the server with its own key, so
@@ -58,7 +57,7 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     expect(chipFamilies("coffee")).toEqual(["coffee"]);
     expect(chipFamilies(ALL_CHIP)).toEqual([]);
     expect(src("components/consumer/home/CatalogRails.tsx")).toContain(
-      "apiListAreaPool(supabase, from, families)",
+      "apiListAreaPool(supabase, here, families, {",
     );
     expect(src("lib/api/places.ts")).toContain(
       "...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),",
@@ -67,19 +66,16 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
 
   // MESITA-2472 (Pato: the full-pane "Couldn't find you" "looks like …
   // shit"): no location is not a dead end. With no fix and no saved
-  // location, once the browser has answered, every row ranks around the
-  // city's centre (the Search map's fallback); before it answers, a
-  // skeleton and no request. MESITA-2587: no bar says so above the tiles —
+  // location, once the browser has answered, Popular and every family row
+  // rank with Proximity abstaining (MESITA-4454; the city's centre before);
+  // before it answers, a skeleton and no request. Nearby never asks
+  // without a point (H5). MESITA-2587: no bar says so above the tiles —
   // the header's location box reads "Monterrey" behind a crossed-out pin.
-  it("no location ranks around Monterrey, named in the header box, never a dead end", () => {
+  it("no location still ranks Popular, named in the header box, never a dead end", () => {
     const rails = src("components/consumer/home/CatalogRails.tsx");
-    expect(rails).toContain(
-      "const onCityFallback = origin === null && coords === null && locationSettled;",
-    );
-    expect(rails).toContain(
-      "const base = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);",
-    );
-    expect(rails).toContain("const requestKey = `${guest}|${areaPoolKey(from)}|${");
+    expect(rails).toContain("const here = origin ?? coords ?? null;");
+    expect(rails).toContain('const nearbyNoPoint = rankMode === "nearby" && here === null;');
+    expect(rails).not.toContain("MONTERREY_CENTER");
     const effect = rails.slice(
       rails.indexOf("useEffect(() => {\n    // Until the browser answers"),
     );

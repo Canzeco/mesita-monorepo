@@ -11,6 +11,7 @@ import { EFError, invokeEF } from "./_invoke";
 import { placeRowToDetail } from "@/lib/adapters/place-to-detail";
 import type { ResolvedTag } from "@/lib/adapters/place-to-detail";
 import type { PlaceDetail } from "@/lib/place-detail";
+import { readRankAdIds, type RankMode } from "@/lib/catalog-modes";
 
 export type Place = {
   /** Server's answer: did an Enrich run complete (`enriched_at` set,
@@ -92,6 +93,11 @@ export type Place = {
   /** The Area pipeline's breakdown for this place, computed by the server
    *  (MESITA-2379); only the one-pool Feed wire carries it. */
   area?: AreaDiagnostics;
+  /** True when the place sits in an ad slot (the Inorganic lane,
+   *  MESITA-4454): the only places that wear "Ad". A Premier place in an
+   *  organic slot has no `ad`. list-places and a Catalog fill send it; Home
+   *  reads the rank's `adIds` instead (`isAdPlace`). */
+  ad?: true;
   /** The Search map's score for this place (MESITA-2504 debug): the two
    *  signals, the sources that found it and the product. Only list-places
    *  sends it. */
@@ -157,6 +163,9 @@ export type MapScore = {
    *  (MESITA-2830); absent from an older EF. */
   distanceKm?: number | null;
   distancePenalty?: number;
+  /** premierFactor ^ PremierExp, the scored Premier value (MESITA-4454,
+   *  DX-e): 1 on every Organic row. Absent from an older EF. */
+  premierBoost?: number;
 };
 
 /** A Map dot (MESITA-3980): a ranked place past the pins, where it is and
@@ -343,6 +352,11 @@ export type AreaDiagnostics = {
    *  from an older EF. */
   distanceKm?: number | null;
   distancePenalty?: number;
+  /** premierFactor ^ PremierExp, the scored Premier value (MESITA-4454,
+   *  DX-e): 1 on every Organic row. Absent from an older EF. */
+  premierBoost?: number;
+  /** The half distance Proximity read (km); absent from an older EF. */
+  halfKm?: number | null;
   final: number;
   formula: "point" | "none";
 };
@@ -365,8 +379,20 @@ export type AreaPool = {
   /** How far into `order` cards have landed (or been dropped as gone). */
   asked: number;
   /** The point `order` was ranked from: every fill scores from it, never
-   *  from a newer fix inside the same ~1 km key. */
+   *  from a newer fix. With a seed point (MESITA-4454, M-a) it is that. */
   rankedFrom: AreaOrigin | null;
+  /** The question asked (MESITA-4454); every fill sends the same. */
+  rankMode?: RankMode;
+  /** The ids sitting in ad slots across the whole `order` (M-6), sent once
+   *  with it; a fill never adds or removes one. Empty from an older EF, or
+   *  refused from a two-lane answer that lacks it (M-d). */
+  adIds: string[];
+  /** id → its 1-based merged rank before the first page's shuffle (M-c);
+   *  the temporary score label reads "#3 → 1st" from it (H1). */
+  preShuffle: Record<string, number>;
+  /** The config row's `updatedAt` the rank read (DX-b); absent from an
+   *  older EF. */
+  updatedAt?: string | null;
 };
 
 function cleanPlace(place: Place): Place {
@@ -378,42 +404,74 @@ function cleanPlace(place: Place): Place {
 
 /**
  * Places' Catalog (MESITA-2384, MESITA-2909): every Mesita place the server
- * scored and ranked, Proximity × Popularity × Premier from `origin`, with no
- * radius. The server ranks the whole catalog ONCE and answers `order`, every
- * ranked id, with the first page's cards (MESITA-3057); `apiFillAreaPool`
- * reads the rest by id as the guest scrolls. No `offset` is sent, so an EF
- * from before MESITA-3057 answers its best 1000 and the pool is complete.
+ * scored and ranked, with no radius. The server ranks the whole catalog ONCE
+ * and answers `order`, every ranked id, with the first page's cards
+ * (MESITA-3057); `apiFillAreaPool` reads the rest by id as the guest scrolls.
  * `familyKeys` is a family row's question (MESITA-2438). None = every
- * family. No `prefer`. `nearest` sorts by distance alone (the Reward tab,
- * MESITA-3214).
+ * family. `nearest` sorts by distance alone (the Reward tab, MESITA-3214).
+ *
+ * DISCOVERY RANKING v2 (MESITA-4454): `rankMode` names the question
+ * (nearby · popular · family), `shuffleSeed` the tab session's seed for it
+ * and `seedPoint` the point that seed was made at, which ranks while the
+ * guest stays within 300 m of it. `origin` null sends no point: Proximity
+ * abstains (never for nearby, which the caller does not ask without one).
  */
 export async function apiListAreaPool(
   client: SupabaseClient,
   origin: AreaOrigin | null,
   familyKeys: readonly string[] = [],
-  opts: { nearest?: boolean } = {},
+  opts: {
+    nearest?: boolean;
+    rankMode?: RankMode;
+    shuffleSeed?: number;
+    seedPoint?: AreaOrigin | null;
+  } = {},
 ): Promise<AreaPool> {
+  const seedPoint = opts.seedPoint ?? null;
   const data = await invokeEF<{
     places?: Place[];
     location?: { kind?: "point" | "none" };
     pageSize?: number;
     order?: unknown;
+    lanes?: unknown;
+    adIds?: unknown;
+    preShuffle?: unknown;
+    updatedAt?: unknown;
+    rankMode?: unknown;
   }>(client, "consumer-web-list-catalog", {
     unified: true,
     ids: true,
     ...(opts.nearest ? { nearest: true } : {}),
+    ...(opts.rankMode ? { rankMode: opts.rankMode } : {}),
+    ...(typeof opts.shuffleSeed === "number" ? { shuffleSeed: opts.shuffleSeed } : {}),
+    ...(seedPoint ? { seedLat: seedPoint.lat, seedLng: seedPoint.lng } : {}),
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
     // The point only scores: the Catalog has no radius (MESITA-2909).
     ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
   });
   const size = data.pageSize;
-  const places = (data.places ?? []).map(cleanPlace);
+  const ads = readRankAdIds(data);
+  if (ads.refused) {
+    // A two-lane answer without its ad list (M-d): no row wears "Ad".
+    console.error("[catalog] lanes without adIds: ads refused");
+  }
+  const adSet = new Set(ads.adIds);
+  // Only the rank's list marks an ad: a card's own `ad` is kept only when
+  // its id is in it.
+  const places = (data.places ?? []).map((p) => {
+    const c = cleanPlace(p);
+    if (c.ad !== true || adSet.has(c.id)) return c;
+    const { ad: _drop, ...rest } = c;
+    void _drop;
+    return rest as Place;
+  });
   const pageSize = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : null;
   const order = Array.isArray(data.order) && data.order.every((id) => typeof id === "string")
     ? (data.order as string[])
     : null;
+  const rankedFrom = seedPoint ?? origin;
   return {
-    kind: data.location?.kind ?? (origin ? "point" : "none"),
+    kind: data.location?.kind ?? (rankedFrom ? "point" : "none"),
     places,
     ...(pageSize !== null ? { pageSize } : {}),
     // No `order` (an older EF): the answer is the whole list.
@@ -421,13 +479,31 @@ export async function apiListAreaPool(
     // The first page covers `order[0, pageSize)`: an id pass 2 did not
     // return there is never asked again.
     asked: order ? Math.min(pageSize ?? places.length, order.length) : places.length,
-    rankedFrom: origin ? { lat: origin.lat, lng: origin.lng } : null,
+    rankedFrom: rankedFrom ? { lat: rankedFrom.lat, lng: rankedFrom.lng } : null,
+    ...(opts.rankMode ? { rankMode: opts.rankMode } : {}),
+    adIds: ads.adIds,
+    preShuffle: readPreShuffle(data.preShuffle),
+    ...(typeof data.updatedAt === "string" || data.updatedAt === null
+      ? { updatedAt: data.updatedAt }
+      : {}),
   };
+}
+
+/** `preShuffle` as id → positive integer rank; anything else is dropped. */
+function readPreShuffle(raw: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [id, n] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof n === "number" && Number.isInteger(n) && n > 0) out[id] = n;
+  }
+  return out;
 }
 
 /**
  * The cards for ids from a pool's `order` (MESITA-3057), scored from the
- * point that order was ranked at. Ids the server no longer shows (gone,
+ * point that order was ranked at, with the same `rankMode` (MESITA-4454).
+ * `adIds` are the rank's ad-slot ids among `ids` (M-c): the server scores
+ * them with the mode's Inorganic row. Ids the server no longer shows (gone,
  * gated) are simply absent; the rest come back in the asked order.
  */
 export async function apiFillAreaPool(
@@ -435,10 +511,13 @@ export async function apiFillAreaPool(
   rankedFrom: AreaOrigin | null,
   familyKeys: readonly string[],
   ids: readonly string[],
+  opts: { rankMode?: RankMode; adIds?: readonly string[] } = {},
 ): Promise<Place[]> {
   const data = await invokeEF<{ places?: Place[] }>(client, "consumer-web-list-catalog", {
     unified: true,
     fill: [...ids],
+    ...(opts.rankMode ? { rankMode: opts.rankMode } : {}),
+    ...(opts.adIds && opts.adIds.length > 0 ? { adIds: [...opts.adIds] } : {}),
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
     ...(rankedFrom ? { lat: rankedFrom.lat, lng: rankedFrom.lng } : {}),
   });
