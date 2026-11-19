@@ -84,6 +84,7 @@ import { CategoriesModal } from "./CategoriesModal";
 import { RowFallback } from "./DiscoverFallback";
 import { ROW_LIST } from "./place-grid-classes";
 import { PlaceRowCard } from "./PlaceRowCard";
+import { useLiveReservations } from "@/lib/use-live-reservations";
 import { useActiveLocation } from "@/lib/active-location";
 import { cn, errMsg } from "@/lib/utils";
 
@@ -280,6 +281,9 @@ export function savedPlaceList(
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
   const viewer = useViewer();
+  // The guest's live tables, by place: a row with one wears the red badge
+  // on its photo (MESITA-4453).
+  const tables = useLiveReservations();
   const coords = useUserLocation();
   const openGooglePlace = useOpenGooglePlace();
   const [pool, setPool] = useState<AreaPool | null>(null);
@@ -747,6 +751,7 @@ export function CatalogRails() {
             key={place.id}
             place={withUserDistance(place, coords)}
             saved={cards.isSaved(place)}
+            table={tables.get(place.id) ?? null}
             onToggle={() => cards.toggle(place, i + 1)}
             onShare={() => cards.share(place)}
             onOpen={() =>
