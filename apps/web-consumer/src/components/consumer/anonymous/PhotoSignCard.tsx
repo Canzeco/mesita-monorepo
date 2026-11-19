@@ -19,12 +19,16 @@ export function PhotoSignCard({
   title,
   line,
   onSignIn,
+  actionLabel = "Sign in",
   secondLabel,
   onSecond,
 }: {
   title: string;
   line: string;
   onSignIn: () => void;
+  /** The white button's words: "Sign in", or "Open Google Maps" on the
+   *  leave-for-Maps confirm (MESITA-4448). */
+  actionLabel?: string;
   /** "Just browse" on the welcome, "Not now" on the gate. */
   secondLabel: string;
   onSecond: () => void;
@@ -65,7 +69,7 @@ export function PhotoSignCard({
             // number creates the account (MESITA-4287).
             className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl bg-white text-sm font-semibold text-neutral-900 transition hover:bg-white/90 active:scale-[0.99]"
           >
-            Sign in
+            {actionLabel}
           </button>
           <button
             type="button"

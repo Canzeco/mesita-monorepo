@@ -43,6 +43,9 @@ export const CONFIRM_FILES = [
   // Add a card (MESITA-4398, Pato: "card must not be another page. it must
   // be a modal."): Stripe's form, Save card or close.
   "components/consumer/wallet/AddCardModal.tsx",
+  // Leave for Google Maps (MESITA-4448, decision: Pato asked for a modal
+  // before the redirect): Open Google Maps or Not now.
+  "components/consumer/MapsLeaveModal.tsx",
   "components/consumer/me/CalendarModal.tsx",
   "components/consumer/me/InstagramModal.tsx",
   "components/consumer/pay/GuestPayScreen.tsx",

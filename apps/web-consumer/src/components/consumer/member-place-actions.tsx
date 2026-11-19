@@ -20,6 +20,7 @@ import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { runBankCheck } from "@/lib/api/tab";
 import { useAddCardModal } from "@/lib/added-card";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
+import { isGoogleMapsUrl, MapsLeaveModal } from "@/components/consumer/MapsLeaveModal";
 import { PlaceSocialList } from "@/components/consumer/PlaceSocialList";
 import {
   apiPlaceActivity,
@@ -178,9 +179,16 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     else toast(`Removed ${place.name} from favorites`);
   }, [place.id, place.name, saved, toggle]);
 
+  // A Google Maps link asks first (MESITA-4448): it waits here for the
+  // modal's yes. Every other outside link opens as before.
+  const [mapsAsk, setMapsAsk] = useState<string | null>(null);
   const onOpenLink = useCallback((url: string) => {
     if (url.startsWith("tel:")) {
       window.location.href = url;
+      return;
+    }
+    if (isGoogleMapsUrl(url)) {
+      setMapsAsk(url);
       return;
     }
     window.open(url, "_blank", "noopener,noreferrer");
@@ -270,6 +278,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         open={menu != null}
         onClose={() => setMenu(null)}
         menu={menu}
+      />
+      <MapsLeaveModal
+        url={mapsAsk}
+        placeName={place.name ?? null}
+        onClose={() => setMapsAsk(null)}
       />
     </>
   );
