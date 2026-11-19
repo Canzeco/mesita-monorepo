@@ -3,6 +3,7 @@ import { Fragment, type ReactNode } from "react";
 import {
   Bell,
   CalendarCheck,
+  Gift,
   CreditCard,
   Heart,
   Settings as SettingsIcon,
@@ -102,6 +103,15 @@ import { DestGrid, type DestShape } from "./profile-sections";
 //   Reservations · Tickets / Share · Integrations /
 //   Settings
 //
+// GIFT LEADS, ACROSS BOTH COLUMNS (MESITA-4420, Pato, 2026-11-18: "add
+// gift being double size / two colums for gift"): /me/gift is back on Me as
+// the first box, a full-width row (chip beside title and summary) above the
+// two-column cells. Share stays:
+//
+//   Gift (full width) /
+//   Profile · Instagram / Plan · Saved / Notifications · Reservations /
+//   Tickets · Share / Integrations · Settings
+//
 // route-structure T8 pins them.
 //
 // NO TILE PRINTS A GUEST FACT (Pato, MESITA-2607: "in the boxes below don't
@@ -118,12 +128,24 @@ export type HubTile = {
   href: string;
   /** Opens nothing yet: a Soon pill, no link (Plan, MESITA-3855). */
   soon?: boolean;
+  /** Spans both columns in the row shape (Gift, MESITA-4420). */
+  wide?: boolean;
 };
 
 /** The grid cells, in reading order; Settings is the last (ten with it
  *  since MESITA-4329: Profile · Instagram / Plan · Saved / Notifications ·
  *  Reservations / Tickets · Share / Integrations · Settings). */
 export const ME_HUB_GRID: readonly HubTile[] = [
+  // GIFT LEADS, DOUBLE SIZE (MESITA-4420): gift your credit at a place to a
+  // friend. It left under MESITA-3940 ("Share replaces Gift") and came back
+  // across both columns.
+  {
+    Icon: Gift,
+    title: "Gift",
+    summary: "Send credit to a friend",
+    href: CONSUMER_ROUTES.mePages.gift,
+    wide: true,
+  },
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // tile only names the page (MESITA-2607).
   {
@@ -233,9 +255,15 @@ export function MeHubFrame({
         <div className="flex flex-col gap-3">
           {bar}
           <DestGrid>
-            {ME_HUB_GRID.map((cell) => (
-              <Fragment key={cell.title}>{tile(cell, "cell")}</Fragment>
-            ))}
+            {ME_HUB_GRID.map((cell) =>
+              cell.wide ? (
+                <div key={cell.title} className="col-span-2">
+                  {tile(cell, "row")}
+                </div>
+              ) : (
+                <Fragment key={cell.title}>{tile(cell, "cell")}</Fragment>
+              ),
+            )}
             {/* SETTINGS CLOSES THE GRID, beside Integrations (MESITA-3954). */}
             {tile(ME_HUB_SETTINGS, "cell")}
           </DestGrid>
