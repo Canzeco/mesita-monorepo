@@ -151,7 +151,8 @@ const SocialFeed = dynamic(
 // sat on a grey band under a small label (both gone, MESITA-4416/4418); 24px emoji in 52px
 // columns, the names at the floor size (type-meta, 10px). A LITTLE BIGGER
 // (Pato, 2026-11-19, MESITA-4452: "a bit bigger, just a bitttt"): 44px
-// circles, 24px emoji, 56px columns; the names stay 10px.
+// circles, 56px columns; the names stay 10px. THE EMOJI SMALLER (MESITA-4464:
+// "carrousel emojis are just toooo big"): 18px in the 44px circle.
 const CAT =
   "flex w-14 shrink-0 flex-col items-center gap-0.5 pb-1 type-meta transition active:scale-[0.96]";
 // WHITE, BETWEEN TWO LINES, IN CIRCLES (Pato, 2026-11-18, MESITA-4416:
@@ -161,7 +162,7 @@ const CAT =
 // the Places · Social strip's own hairline, so the band draws only the one
 // below (two lines would stack into 2px).
 const CAT_EMOJI =
-  "flex h-11 w-11 items-center justify-center rounded-full text-2xl leading-none transition";
+  "flex h-11 w-11 items-center justify-center rounded-full text-lg leading-none transition";
 // SQUARES FOR THE SPECIALS, CIRCLES FOR THE FAMILIES (Pato, MESITA-4428:
 // "i don't like the current separations at all. the lines look like shit.
 // maybe try square boxes for the special boxes and circular boxes for the
