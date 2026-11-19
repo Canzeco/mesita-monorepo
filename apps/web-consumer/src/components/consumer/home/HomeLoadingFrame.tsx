@@ -24,13 +24,16 @@ export function HomeLoadingFrame() {
           </div>
         ))}
       </div>
-      <div className="border-border bg-card flex shrink-0 gap-1 overflow-hidden border-b px-2 pt-2.5 pb-2">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex w-16 shrink-0 flex-col items-center gap-1 pb-1">
-            <Skeleton className="h-11 w-11 rounded-full" />
-            <Skeleton className="h-3 w-10" />
-          </div>
-        ))}
+      <div className="bg-muted flex shrink-0 flex-col overflow-hidden pt-2 pb-1.5">
+        <Skeleton className="mx-4 mb-1.5 h-3 w-20 bg-card" />
+        <div className="flex gap-0.5 px-2">
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="flex w-[52px] shrink-0 flex-col items-center gap-0.5 pb-1">
+              <Skeleton className="bg-card h-8 w-8 rounded-full" />
+              <Skeleton className="bg-card h-2.5 w-8" />
+            </div>
+          ))}
+        </div>
       </div>
       <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden">
         <RowFallback />
