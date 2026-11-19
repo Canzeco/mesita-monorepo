@@ -318,51 +318,9 @@ export function CatalogRails() {
   const [families, setFamilies] = useState<string[]>([]);
   // The menu: every family at once, dropped over the rows (MESITA-4410).
   const [menuOpen, setMenuOpen] = useState(false);
-  // THE BAND HIDES ON THE WAY DOWN (Pato, 2026-11-18, MESITA-4428: "if i
-  // start scrolling to the bottom, hide the families bar and places and
-  // social; when i … scroll to the top, just 10px, show again … with an
-  // animation"): Places · Social and the category row fold away while the
-  // list scrolls down and slide back on a 10px scroll up or at the top.
-  const [bandHidden, setBandHidden] = useState(false);
-  const lastTops = useRef(new WeakMap<EventTarget, number>());
-  // A fold resizes the scroller, which moves scrollTop at the list's end;
-  // scroll events are ignored for the fold's 250ms so it never flickers.
-  const bandLockedUntil = useRef(0);
-  const setBand = (hidden: boolean) => {
-    bandLockedUntil.current = performance.now() + 250;
-    setBandHidden(hidden);
-  };
-  // A new tab or category shows the band again (set during render, the
-  // prop-to-state pattern; never in an effect).
-  const bandKey = `${tab}|${chip}`;
-  const [lastBandKey, setLastBandKey] = useState(bandKey);
-  if (bandKey !== lastBandKey) {
-    setLastBandKey(bandKey);
-    if (bandHidden) setBandHidden(false);
-  }
-  const onPaneScroll = (e: React.UIEvent<HTMLElement>) => {
-    const el = e.target as HTMLElement;
-    // Only a vertical scroller counts (a sideways carousel inside Social
-    // fires scroll too).
-    if (!(el instanceof HTMLElement) || el.scrollHeight <= el.clientHeight + 1) return;
-    const top = el.scrollTop;
-    if (performance.now() < bandLockedUntil.current) {
-      lastTops.current.set(el, top);
-      return;
-    }
-    const last = lastTops.current.get(el) ?? 0;
-    const delta = top - last;
-    if (top < 8) {
-      if (bandHidden) setBand(false);
-      lastTops.current.set(el, top);
-    } else if (delta > 6) {
-      if (!bandHidden && top > 48) setBand(true);
-      lastTops.current.set(el, top);
-    } else if (delta < -10) {
-      if (bandHidden) setBand(false);
-      lastTops.current.set(el, top);
-    }
-  };
+  // THE BAND NEVER HIDES (Pato, 2026-11-18, MESITA-4429: "Places and
+  // social are fixed, never move nor hide, and the families are fixed too"):
+  // MESITA-4428's fold-on-scroll is gone.
   const stripRef = useRef<HTMLElement | null>(null);
   // THE POOL IS THIS GUEST'S (autoplan eng E1, MESITA-4207): its offers are
   // narrowed per guest, so a pool kept across a sign-out or sign-in would
@@ -738,7 +696,10 @@ export function CatalogRails() {
               on ? "bg-foreground text-card border-transparent" : "bg-card text-foreground border-border",
             )}
           >
-            <span aria-hidden className={cn(CAT_EMOJI, CAT_SQUARE, on ? "bg-card" : CAT_TINT_SPECIAL)}>
+            {/* ONE BOX (Pato, MESITA-4429: "saved and near and top being on
+                double boxes looks pathetic"): the emoji sits bare in the
+                tile, no square of its own inside it. */}
+            <span aria-hidden className="text-2xl leading-none">
               {c.emoji}
             </span>
             {c.label}
@@ -755,23 +716,9 @@ export function CatalogRails() {
   // the pane scrolls on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* The band folds by its grid row (1fr → 0fr) and fades, 200ms
-          (MESITA-4428); nothing moves for reduced motion but the fold. */}
-      <div
-        className={cn(
-          "grid shrink-0 transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none",
-          bandHidden ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
-        )}
-        aria-hidden={bandHidden ? true : undefined}
-        inert={bandHidden}
-        data-home-band={bandHidden ? "hidden" : "shown"}
-      >
-        <div className="min-h-0 overflow-hidden">
-          {tabs}
-          {tab === "places" ? strip : null}
-        </div>
-      </div>
-      <div className="relative flex min-h-0 flex-1" onScrollCapture={onPaneScroll}>
+      {tabs}
+      {tab === "places" ? strip : null}
+      <div className="relative flex min-h-0 flex-1">
         {tab === "places" ? menu : null}
         {/* ISOLATE: the rows' own z-10 (the offer and Save · Share over the
             card's stretched link, MESITA-3797) stays inside this pane. */}
