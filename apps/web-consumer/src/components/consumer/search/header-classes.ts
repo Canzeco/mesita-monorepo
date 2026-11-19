@@ -59,6 +59,10 @@ export const HEADER_PILL = `${IN_BAND} hover:bg-border flex h-10 shrink-0 items-
 export const CHIP_DISC = `${FLOAT} border-transparent hover:bg-muted relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
 export const CHIP = `flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 ${HEADER_TEXT} whitespace-nowrap transition outline-none focus-visible:border-foreground active:scale-[0.97]`;
+/** SQUARES FOR THE SPECIALS, ROUND FOR THE FAMILIES (Home's rule,
+ *  MESITA-4428; on the map since MESITA-4466): Menu and Popular are rounded
+ *  squares, every family chip after them stays a pill. */
+export const CHIP_SPECIAL = CHIP.replace("rounded-full", "rounded-lg");
 /** A dark border is invisible on the ink chip, and the nav's overflow clips
  *  an outer ring: the selected chip focuses with an inset ring. */
 export const CHIP_ON =
