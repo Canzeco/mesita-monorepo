@@ -28,7 +28,7 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   visits: { label: "Visits", icon: FootprintsIcon, sub: "Who came and paid with Mesita." },
   money: { label: "Money", icon: MoneyIcon, sub: "Every payment and voucher at your place." },
   profile: { label: "Profile", icon: StorefrontIcon, sub: "What guests read about your place." },
-  premier: { label: "Premier", icon: MegaphoneIcon, sub: "Rank higher on Home and the Map. Marked as an ad." },
+  premier: { label: "Premier", icon: MegaphoneIcon, sub: "Ad spots on Home and the Map. Marked as an ad." },
   payments: { label: "Payments", icon: CreditCardIcon, sub: "Choose how guests pay you and earn credit here. Money and payouts are on Operations › Money." },
   reservations: { label: "Reservations", icon: CalendarCheckIcon, sub: "Whether guests can ask for a table here." },
   // Every product, current and future (MESITA-3238; was Soon, MESITA-3197). The

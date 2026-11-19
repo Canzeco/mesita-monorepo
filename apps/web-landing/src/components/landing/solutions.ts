@@ -39,7 +39,7 @@ export const PLACE_SOLUTIONS: Solution[] = [
   },
   {
     name: "Premier",
-    body: "Rank higher on Home and the Map, marked as an ad. See your level here and how it works.",
+    body: "Get ad spots on Home and the Map, marked as an ad. See your level here and how it works.",
   },
   {
     name: "Payments",
