@@ -16,6 +16,43 @@ import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsLines } from "./place-facts";
 
+/** Two decimals; anything missing reads "n/a", never 0. */
+function scoreNumber(n: number | null | undefined): string {
+  return typeof n === "number" && Number.isFinite(n) ? n.toFixed(2) : "n/a";
+}
+
+/**
+ * TEMPORARY (Pato, MESITA-4449: "Display score on top of image to see how
+ * much of each hyperparams"): the server's score parts on the photo, so the
+ * Discovery knobs can be judged on a phone. Every number is `place.area`
+ * (MESITA-2379); nothing is computed here. Final is the EF's
+ * Proximity × Popularity × Premier; Home's variety penalty and shuffle are
+ * not in it. No `area`, no label. TO REMOVE: delete this and its one use.
+ */
+function ScoreLabel({ area }: { area: Place["area"] }) {
+  if (!area) return null;
+  const rows: Array<[string, string]> = [
+    ["Popularity", scoreNumber(area.signals.popularity)],
+    ["Proximity", scoreNumber(area.signals.proximity)],
+    ["Premier", `×${area.selectedFactor ?? 1}`],
+    ["Final", scoreNumber(area.final)],
+  ];
+  return (
+    <dl
+      className="pointer-events-none absolute top-2 left-2 grid grid-cols-[auto_auto] gap-x-2 rounded-md bg-black/70 px-2 py-1 type-label font-mono leading-tight text-white tabular-nums"
+      aria-label="Score breakdown (temporary)"
+      data-score-label
+    >
+      {rows.map(([k, v]) => (
+        <div key={k} className={cn("contents", k === "Final" && "font-bold")}>
+          <dt>{k}</dt>
+          <dd className="text-right">{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 /**
  * One place in Places 3.0 (Pato, MESITA-3662: "image at the left and
  * information at the right, two squares, information with buttons"):
@@ -121,6 +158,7 @@ export function PlaceRowCard({
               </span>
             </div>
           )}
+          <ScoreLabel area={place.area} />
         </>,
         cn(ROW_PHOTO, "block", focus),
         `Open ${place.name}`,
