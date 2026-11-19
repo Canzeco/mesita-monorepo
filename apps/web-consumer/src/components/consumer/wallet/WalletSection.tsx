@@ -18,6 +18,7 @@ import { type Method, MethodSheet } from "./MethodSheet";
 import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
 import { useStoryNow } from "./use-story-now";
+import { openStories } from "@/lib/story-lines";
 import {
   AddCardTile,
   CardTileSkeleton,
@@ -190,7 +191,7 @@ export function WalletSection({
     return () => clearInterval(id);
   }, [anyPending]);
   // Story lines turn to "Checking your story…" at their bonus time (MESITA-4264).
-  const storyNow = useStoryNow(wallet?.waiting_stories ?? []);
+  const storyNow = useStoryNow(openStories(wallet?.waiting_stories ?? []));
   // The saved-card failure toast fires at most once per mount.
   const cardsToasted = useRef(false);
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
@@ -260,7 +261,8 @@ export function WalletSection({
 
 
   let shown = 0;
-  const stories = wallet?.waiting_stories ?? [];
+  // Open Stories only (MESITA-4446): a decided one lives in Tickets.
+  const stories = openStories(wallet?.waiting_stories ?? []);
   // One state drives the Credits heading button, box, empty row and error.
   const creditsState: "loading" | "failed" | "empty" | "rows" =
     failed && !wallet
