@@ -142,6 +142,12 @@ const CAT =
 // below (two lines would stack into 2px).
 const CAT_EMOJI =
   "flex h-10 w-10 items-center justify-center rounded-full text-xl leading-none transition";
+// SQUARES FOR THE SPECIALS, CIRCLES FOR THE FAMILIES (Pato, MESITA-4428:
+// "i don't like the current separations at all. the lines look like shit.
+// maybe try square boxes for the special boxes and circular boxes for the
+// family boxes"): Menu, Saved, Near and Top are rounded squares; the ticks
+// between them (MESITA-4427) are gone. The shape is the separation.
+const CAT_SQUARE = "rounded-xl";
 const CAT_EMOJI_OFF = "bg-card border-border border";
 // A FAINT TINT TELLS THEM APART (Pato, 2026-11-18, MESITA-4421: "special
 // families slightly purple background, normal families slightly blue, but
@@ -637,6 +643,7 @@ export function CatalogRails() {
           aria-hidden
           className={cn(
             CAT_EMOJI,
+            isSpecial(c.key) && CAT_SQUARE,
             on ? CAT_EMOJI_ON : isSpecial(c.key) ? CAT_TINT_SPECIAL : CAT_TINT_FAMILY,
           )}
         >
@@ -672,10 +679,9 @@ export function CatalogRails() {
     // dirty"): MESITA-4415's "Categories" eyebrow is gone; the circles say it.
     <div className="bg-card border-border flex shrink-0 items-start border-b pt-2.5 pb-1.5" data-places-strip>
       {/* THE MENU STAYS PUT (Pato, MESITA-4423: "menu must be fixed"): its
-          tile sits outside the scroller, pinned at the left with a short
-          tick after it, so it is always one tap away while the categories slide
+          tile sits outside the scroller, pinned at the left, so it is always one tap away while the categories slide
           under nothing. It was the row's first tile (MESITA-4410). */}
-      <div className="flex shrink-0 pl-2">
+      <div className="flex shrink-0 pl-2 pr-0.5">
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
@@ -688,6 +694,7 @@ export function CatalogRails() {
             aria-hidden
             className={cn(
               CAT_EMOJI,
+              CAT_SQUARE,
               menuOpen ? cn(CAT_EMOJI_ON, "text-card") : cn(CAT_EMOJI_OFF, "text-foreground"),
             )}
           >
@@ -700,18 +707,12 @@ export function CatalogRails() {
           <span className={cn(CAT_NAME, "text-muted-foreground font-medium")}>Menu</span>
         </button>
       </div>
-      {/* A SHORT TICK, NOT A WALL (Pato, MESITA-4427: "the line looks like
-          shit separating menu from others, make it not that large"): 24px,
-          level with the circles' middle. */}
-      <span aria-hidden className="bg-border mx-1 mt-2 h-6 w-px shrink-0" />
       <nav
         ref={stripRef}
         aria-label="Families"
         className="scrollbar-hide relative flex min-w-0 flex-1 gap-0.5 overflow-x-auto overscroll-x-contain px-1"
       >
-        {chips.filter((c) => isSpecial(c.key)).map((c) => pill(c, false))}
-        <span aria-hidden className="bg-border mx-1 mt-2 h-6 w-px shrink-0" />
-        {chips.filter((c) => !isSpecial(c.key)).map((c) => pill(c, false))}
+        {chips.map((c) => pill(c, false))}
       </nav>
     </div>
   );
@@ -737,7 +738,7 @@ export function CatalogRails() {
               on ? "bg-foreground text-card border-transparent" : "bg-card text-foreground border-border",
             )}
           >
-            <span aria-hidden className={cn(CAT_EMOJI, on ? "bg-card" : CAT_TINT_SPECIAL)}>
+            <span aria-hidden className={cn(CAT_EMOJI, CAT_SQUARE, on ? "bg-card" : CAT_TINT_SPECIAL)}>
               {c.emoji}
             </span>
             {c.label}
