@@ -25,7 +25,8 @@ export function CategoriesModal({
 }: {
   open: boolean;
   onClose: () => void;
-  /** Saved and Top as wide tiles (Top alone for an anonymous visitor). */
+  /** Saved, Near and Top as wide tiles side by side (no Saved for an
+   *  anonymous visitor), sharing the width (MESITA-4423). */
   specials: ReactNode;
   /** The family tiles, drawn by Home's row so both look the same. */
   children: ReactNode;
@@ -48,7 +49,7 @@ export function CategoriesModal({
         className="bg-card scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto"
         data-places-menu
       >
-        <div className="grid shrink-0 grid-cols-2 gap-2 px-4 pt-4" data-places-menu-specials>
+        <div className="flex shrink-0 gap-2 px-4 pt-4" data-places-menu-specials>
           {specials}
         </div>
         <div className="grid shrink-0 grid-cols-5 content-start gap-x-0.5 gap-y-4 px-1.5 py-4">

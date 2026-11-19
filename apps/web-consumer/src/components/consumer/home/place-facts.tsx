@@ -152,11 +152,13 @@ export function PlaceFactsLines({ place }: { place: Place }) {
       {facts.open !== null ? (
         <p className={line} data-row-open>
           <Clock
-            className={cn(icon, facts.open ? "text-fact-open" : "text-fact-closed")}
+            // ONE GREEN (Pato, MESITA-4423: "money and time must be same
+            // green"): Open wears the $$'s green.
+            className={cn(icon, facts.open ? "text-fact-price" : "text-fact-closed")}
             strokeWidth={2.5}
             aria-hidden
           />
-          <span className={cn("font-medium", facts.open ? "text-fact-open" : "text-fact-closed")}>
+          <span className={cn("font-semibold", facts.open ? "text-fact-price" : "text-fact-closed")}>
             {facts.open ? "Open" : "Closed"}
           </span>
           {until || opens ? (
