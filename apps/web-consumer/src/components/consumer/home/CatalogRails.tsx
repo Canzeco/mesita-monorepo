@@ -620,15 +620,12 @@ export function CatalogRails() {
   const strip = (
     // NO LABEL (Pato, MESITA-4418: "don't mention categories it looks super
     // dirty"): MESITA-4415's "Categories" eyebrow is gone; the circles say it.
-    <div className="bg-card border-border flex shrink-0 flex-col border-b pt-2.5 pb-1.5" data-places-strip>
-      <nav
-        ref={stripRef}
-        aria-label="Families"
-        className="scrollbar-hide relative flex min-w-0 gap-0.5 overflow-x-auto overscroll-x-contain px-2"
-      >
-        {/* THE MENU IS THE ROW'S FIRST TILE (MESITA-4410: "i want a menu"):
-            a grey round button with its name, the same column as a family,
-            opening every family at once. */}
+    <div className="bg-card border-border flex shrink-0 items-start border-b pt-2.5 pb-1.5" data-places-strip>
+      {/* THE MENU STAYS PUT (Pato, MESITA-4423: "menu must be fixed"): its
+          tile sits outside the scroller, pinned at the left with a hairline
+          after it, so it is always one tap away while the categories slide
+          under nothing. It was the row's first tile (MESITA-4410). */}
+      <div className="border-border flex shrink-0 border-r pr-1 pl-2">
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
@@ -652,6 +649,12 @@ export function CatalogRails() {
           </span>
           <span className={cn(CAT_NAME, "text-muted-foreground font-medium")}>Menu</span>
         </button>
+      </div>
+      <nav
+        ref={stripRef}
+        aria-label="Families"
+        className="scrollbar-hide relative flex min-w-0 flex-1 gap-0.5 overflow-x-auto overscroll-x-contain px-1"
+      >
         {chips.map((c) => pill(c, false))}
       </nav>
     </div>
