@@ -186,7 +186,7 @@ export function ProofView({
         ) : !refunded && !seen ? (
           <p className="text-muted-foreground text-sm font-semibold">Show this to the staff</p>
         ) : null}
-        <p className="font-display mt-2 text-4xl font-semibold tabular-nums" data-proof-total>
+        <p className="mt-2 text-4xl font-semibold tabular-nums" data-proof-total>
           {m(proof.amount_cents + tip)}
         </p>
         {tip > 0 ? (

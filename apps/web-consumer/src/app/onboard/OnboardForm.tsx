@@ -84,7 +84,7 @@ const FIELD = (key: (typeof ONBOARD_FIELDS)[number]["key"]) =>
   ONBOARD_FIELDS.find((f) => f.key === key)?.label ?? "";
 
 const FIELD_LABEL_CLASS =
-  "text-muted-foreground type-label mb-1 block font-medium";
+  "text-muted-foreground type-label mb-1 block font-semibold";
 
 export function OnboardForm({
   initial,
@@ -208,7 +208,7 @@ export function OnboardForm({
 
   return (
     <form onSubmit={submit} className="flex flex-1 flex-col">
-      <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight">
+      <h1 className="text-3xl leading-tight font-semibold tracking-tight">
         {ONBOARD_PAGE_HEADLINE}
       </h1>
       <p className="text-muted-foreground mt-2 text-sm">{ONBOARD_PAGE_DEK}</p>

@@ -94,7 +94,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <h3
-              className="font-display truncate text-base leading-tight font-semibold"
+              className="truncate text-base leading-tight font-semibold"
             >
               {r.placeName}
             </h3>

@@ -62,7 +62,7 @@ export const TYPE_ROLES: readonly TypeRole[] = [
   {
     name: "eyebrow",
     size: "0.75rem", // 12px
-    weight: "500",
+    weight: "600",
     tracking: "0.14em",
     transform: "uppercase",
     doc: "§C eyebrow / §D eyebrow-meta",

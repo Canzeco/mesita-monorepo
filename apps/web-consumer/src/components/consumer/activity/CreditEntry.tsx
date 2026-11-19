@@ -367,7 +367,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
         {canGift ? (
           <Link
             href={walletSendPath(placeId)}
-            className="text-muted-foreground hover:text-foreground -mt-2 self-center py-2 text-sm font-medium underline-offset-4 transition hover:underline"
+            className="text-muted-foreground hover:text-foreground -mt-2 self-center py-2 text-sm font-semibold underline-offset-4 transition hover:underline"
           >
             Gift credit
           </Link>

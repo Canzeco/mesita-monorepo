@@ -217,7 +217,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
       </div>
 
       <label className="block">
-        <span className="mb-1.5 block text-sm font-medium text-white/80">
+        <span className="mb-1.5 block text-sm font-semibold text-white/80">
           {OTP_LENGTH}-digit code
         </span>
         <input

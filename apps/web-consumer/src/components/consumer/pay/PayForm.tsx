@@ -342,7 +342,7 @@ function PayForm({
         >
           <ArrowLeft className="h-5 w-5" aria-hidden />
         </button>
-        <span className="text-muted-foreground text-sm font-medium">
+        <span className="text-muted-foreground text-sm font-semibold">
           Step {step + 1} of {steps.length}
         </span>
         <button type="button" aria-label="Close" onClick={onBack} className="hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full">

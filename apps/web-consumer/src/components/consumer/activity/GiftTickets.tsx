@@ -178,7 +178,7 @@ export function GiftTicketRow({
               its own line: the row grows rather than cut a word (MESITA-4343,
               Pato: "it's ok if tickets are a bit taller"). */}
           <span className="mt-0.5 block text-sm break-words">
-            <span className={cn("font-medium", GIFT_TONE[state.tone])}>{state.label}</span>
+            <span className={cn("font-semibold", GIFT_TONE[state.tone])}>{state.label}</span>
             {canTakeBack ? <span className="text-muted-foreground tabular-nums"> · {ago}</span> : null}
           </span>
           {showPlace ? (

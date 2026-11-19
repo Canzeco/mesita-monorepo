@@ -36,7 +36,7 @@ export function PayHeader({
       data-page-band
     >
       <div className="flex min-h-9 items-center justify-between gap-3 px-4 py-2">
-        <h1 className="font-display text-lg font-bold tracking-tight">{title}</h1>
+        <h1 className="text-lg font-bold tracking-tight">{title}</h1>
         {action}
       </div>
       {bar ? (

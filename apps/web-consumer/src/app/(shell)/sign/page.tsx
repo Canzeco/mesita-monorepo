@@ -116,7 +116,7 @@ export default async function SignPage({ searchParams }: Params) {
                 ? `${CONSUMER_ROUTES.sign}?next=${encodeURIComponent(next ?? "")}`
                 : CONSUMER_ROUTES.sign
             }
-            className="text-foreground min-h-11 font-medium underline underline-offset-2"
+            className="text-foreground min-h-11 font-semibold underline underline-offset-2"
           >
             Try again
           </a>
@@ -132,7 +132,7 @@ export default async function SignPage({ searchParams }: Params) {
           <SignOutButton
             redirectTo={CONSUMER_ROUTES.sign}
             label="Not you? Use another number"
-            className="text-muted-foreground hover:text-foreground inline-flex min-h-11 shrink-0 items-center font-medium underline underline-offset-2 transition"
+            className="text-muted-foreground hover:text-foreground inline-flex min-h-11 shrink-0 items-center font-semibold underline underline-offset-2 transition"
           />
         </div>
       </div>

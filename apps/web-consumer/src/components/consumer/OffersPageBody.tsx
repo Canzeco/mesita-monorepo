@@ -190,8 +190,8 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
             data-offers-credit-link
           >
             <span className="flex min-w-0 flex-1 flex-col gap-1">
-              <span className="text-paper/70 text-sm font-medium">Loyalty Card · ready now</span>
-              <span className="text-2xl leading-none font-extrabold tracking-tight tabular-nums">{credit.ready}</span>
+              <span className="text-paper/70 text-sm font-semibold">Loyalty Card · ready now</span>
+              <span className="text-2xl leading-none font-bold tracking-tight tabular-nums">{credit.ready}</span>
               {credit.pending ? (
                 <span className="text-paper/70 mt-1 flex items-center gap-1.5 text-sm tabular-nums" data-offers-pending>
                   <Clock className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />

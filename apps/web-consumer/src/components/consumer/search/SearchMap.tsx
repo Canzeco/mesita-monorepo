@@ -241,7 +241,7 @@ export function SearchMap({
   if (!apiKey) {
     return (
       <div className="bg-hero absolute inset-0">
-        <div className="text-muted-foreground bg-card/90 shadow-elev type-label absolute bottom-40 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 font-medium backdrop-blur">
+        <div className="text-muted-foreground bg-card/90 shadow-elev type-label absolute bottom-40 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold backdrop-blur">
           <MapPin className="h-3 w-3" />
           Live map coming soon
         </div>

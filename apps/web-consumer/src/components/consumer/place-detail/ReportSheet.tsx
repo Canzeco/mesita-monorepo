@@ -115,7 +115,7 @@ function ReportForm({
                   role="radio"
                   aria-checked={picked}
                   onClick={() => setReason(r.key)}
-                  className="hover:bg-muted flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium transition"
+                  className="hover:bg-muted flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold transition"
                 >
                   <span className="min-w-0 flex-1">{r.label}</span>
                   <span

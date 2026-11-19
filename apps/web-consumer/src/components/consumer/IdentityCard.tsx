@@ -259,7 +259,7 @@ export function IdentityModules({
         <span className="flex min-w-0 flex-col">
           <span className="text-foreground truncate font-bold tracking-tight">{handle}</span>
           {followers ? (
-            <span className="text-muted-foreground flex items-center gap-1 font-medium">
+            <span className="text-muted-foreground flex items-center gap-1 font-semibold">
               <span className="truncate">{followers}</span>
               {igReach && (
                 <span

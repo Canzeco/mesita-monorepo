@@ -49,7 +49,7 @@ export function RouteError({
       role="alert"
       className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center"
     >
-      <h1 className="font-display text-xl font-semibold tracking-tight">
+      <h1 className="text-xl font-semibold tracking-tight">
         Something went wrong
       </h1>
       <p className="text-muted-foreground mt-2 max-w-xs text-sm leading-relaxed">

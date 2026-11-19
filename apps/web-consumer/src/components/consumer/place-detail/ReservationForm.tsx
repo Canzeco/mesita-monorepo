@@ -382,7 +382,7 @@ export function ReservationForm({
         </h2>
         <p className="text-muted-foreground type-body mx-auto mt-2 max-w-xs leading-relaxed">
           Mesita is calling{" "}
-          <span className="text-foreground font-medium">{place.name}</span>{" "}
+          <span className="text-foreground font-semibold">{place.name}</span>{" "}
           to {rescheduling ? "move" : "book"} your table for {party}{" "}
           {guestNoun(party)}, {dayLabel ? `${dayLabel} ` : ""}at {time ?? "—"}. We&apos;ll update this reservation once the place
           confirms.
@@ -466,7 +466,7 @@ export function ReservationForm({
             cap): a warning on every step (MESITA-4393). */}
         {!plan.pro && plan.isBlocked && !plan.offer && (
           <p
-            className="type-body bg-destructive/10 text-destructive rounded-xl px-3 py-2 font-medium"
+            className="type-body bg-destructive/10 text-destructive rounded-xl px-3 py-2 font-semibold"
             data-reserve-no-left=""
           >
             No reservations left this month. More on {resetDay()}.
@@ -484,7 +484,7 @@ export function ReservationForm({
           />
         )}
         {!plan.pro && plan.paid && step === "when" && (
-          <p className="type-body rounded-xl bg-emerald-500/10 px-3 py-2 font-medium text-emerald-700">
+          <p className="type-body rounded-xl bg-emerald-500/10 px-3 py-2 font-semibold text-emerald-700">
             You&apos;re on Pro.
           </p>
         )}
@@ -574,12 +574,12 @@ export function ReservationForm({
       {/* The step's one button, pinned (Pay's footer). */}
       <div className="border-border -mx-4 shrink-0 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {plan.pro && plan.error && (
-          <p className="type-body bg-destructive/10 text-destructive mb-3 rounded-xl px-3 py-2 font-medium">
+          <p className="type-body bg-destructive/10 text-destructive mb-3 rounded-xl px-3 py-2 font-semibold">
             {plan.error}
           </p>
         )}
         {!plan.pro && plan.paid && last && (
-          <p className="type-body mb-2 text-center font-medium text-emerald-700">
+          <p className="type-body mb-2 text-center font-semibold text-emerald-700">
             You&apos;re on Pro.
           </p>
         )}
@@ -590,7 +590,7 @@ export function ReservationForm({
           </p>
         )}
         {!plan.pro && error && last && (
-          <p className="type-body bg-destructive/10 text-destructive mb-3 rounded-xl px-3 py-2 font-medium">
+          <p className="type-body bg-destructive/10 text-destructive mb-3 rounded-xl px-3 py-2 font-semibold">
             {error}
             {/* The cap's refusal leads to Plan, where Pro lifts it
                 (MESITA-4359, 5A): the moment of need, one tap away. */}

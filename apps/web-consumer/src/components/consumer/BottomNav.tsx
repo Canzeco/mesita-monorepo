@@ -174,7 +174,7 @@ export function BottomNav() {
             "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 transition",
             active
               ? "text-foreground font-semibold"
-              : "text-muted-foreground hover:text-foreground font-medium",
+              : "text-muted-foreground hover:text-foreground font-semibold",
           );
           const body = (
             <>

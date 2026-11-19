@@ -96,7 +96,7 @@ export function CoverAuthLayout({
         </span>
 
         <section className="mt-auto shrink-0 px-5 pt-16 pb-6">
-          <h1 className="font-display text-[2rem] leading-[1.04] font-semibold tracking-[-0.02em] text-balance">
+          <h1 className="text-[2rem] leading-[1.04] font-semibold tracking-[-0.02em] text-balance">
             {headline}
           </h1>
           <p className="mt-2 text-base leading-snug text-white/80">{line}</p>

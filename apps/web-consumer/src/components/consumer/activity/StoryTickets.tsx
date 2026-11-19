@@ -50,7 +50,7 @@ function StoryTicketRow({ s, showPlace, now }: { s: StoryTicket; showPlace: bool
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold break-words tabular-nums">Story bonus {storyBonus(s)}</span>
           <span className="mt-0.5 block text-sm break-words">
-            <span className={cn("font-medium", GIFT_TONE[status.tone])}>{status.label}</span>
+            <span className={cn("font-semibold", GIFT_TONE[status.tone])}>{status.label}</span>
           </span>
           <span className="text-muted-foreground mt-0.5 block text-sm break-words tabular-nums">{storyLine(s, now)}</span>
           {showPlace ? <span className="text-muted-foreground mt-0.5 block text-sm break-words">{place}</span> : null}

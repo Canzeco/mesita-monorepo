@@ -73,7 +73,7 @@ export function ReserveProStep({
         <button
           type="button"
           onClick={onNotNow}
-          className="text-muted-foreground type-body mx-auto inline-flex min-h-11 items-center font-medium underline-offset-2 hover:underline"
+          className="text-muted-foreground type-body mx-auto inline-flex min-h-11 items-center font-semibold underline-offset-2 hover:underline"
         >
           Not now
         </button>

@@ -704,7 +704,7 @@ function PersonCard({
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => trackEvent(supabase, "social_open_instagram", {})}
-              className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-sm font-medium"
+              className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-sm font-semibold"
               data-social-open-instagram
             >
               <InstagramGlyph className="h-3.5 w-3.5" />
@@ -719,7 +719,7 @@ function PersonCard({
                   ? CONSUMER_ROUTES.mePages.settings
                   : CONSUMER_ROUTES.mePages.instagram
               }
-              className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-center text-sm font-medium underline underline-offset-4"
+              className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-center text-sm font-semibold underline underline-offset-4"
               data-social-unlock-instagram
             >
               {igConnected

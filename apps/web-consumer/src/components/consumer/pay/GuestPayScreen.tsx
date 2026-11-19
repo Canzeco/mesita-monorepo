@@ -424,7 +424,7 @@ export function GuestPayScreen({
         <StepBody>
           <PaySection className="flex flex-col items-center p-4 text-center">
             <ReceiptText className="h-10 w-10 text-amber-700" aria-hidden />
-            <h2 className="font-display mt-2 text-xl font-semibold">Finish this bill first</h2>
+            <h2 className="mt-2 text-xl font-semibold">Finish this bill first</h2>
             <p className="mt-2 text-base">You have a bill open{blocked.name ? ` at ${blocked.name}` : ""}.</p>
             <p className="text-muted-foreground mt-1 text-sm">Pay it or cancel it before starting another.</p>
           </PaySection>
@@ -532,7 +532,7 @@ export function GuestPayScreen({
         <StepBody>
           <PaySection className="flex flex-col items-center p-4 text-center">
             <XCircle className={cn("h-10 w-10", BAD)} aria-hidden />
-            <h2 className="font-display mt-2 text-xl font-semibold">Not paid</h2>
+            <h2 className="mt-2 text-xl font-semibold">Not paid</h2>
             <p className="mt-2 text-base">{notPaid}</p>
             <p className="text-muted-foreground mt-1 text-sm">Nothing was charged</p>
           </PaySection>

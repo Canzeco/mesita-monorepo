@@ -111,7 +111,7 @@ export function PlaceRowCard({
                   "leading-none select-none",
                   placeholder.kind === "emoji"
                     ? "text-4xl"
-                    : "font-display text-2xl font-bold tracking-tight",
+                    : "text-2xl font-bold tracking-tight",
                 )}
                 aria-hidden
               >

@@ -44,7 +44,7 @@ export function PhoneInputWithCountry({
         <span className="text-base leading-none" aria-hidden>
           {country.flag}
         </span>
-        <span className="text-base font-medium tabular-nums">
+        <span className="text-base font-semibold tabular-nums">
           +{country.dial}
         </span>
         <ChevronDown className="text-muted-foreground h-3 w-3" aria-hidden />

@@ -103,13 +103,13 @@ function FreeLine({ current }: { current: boolean }) {
         <Ticket className="text-muted-foreground h-5 w-5" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
-        <h3 className="font-display text-lg leading-tight font-bold">
+        <h3 className="text-lg leading-tight font-bold">
           {words.title}
           {current && <CurrentPill data-plan-current="" />}
         </h3>
         <p className="text-muted-foreground text-sm">{words.perk}</p>
       </div>
-      <span className="shrink-0 text-lg font-extrabold tabular-nums">
+      <span className="shrink-0 text-lg font-bold tabular-nums">
         {words.price}
       </span>
     </section>

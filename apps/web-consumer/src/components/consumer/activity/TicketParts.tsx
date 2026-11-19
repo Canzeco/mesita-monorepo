@@ -100,7 +100,7 @@ export function TicketHeader({
       </div>
       <p
         className={cn(
-          "font-display mt-4 text-4xl font-semibold tracking-tight tabular-nums",
+          "mt-4 text-4xl font-semibold tracking-tight tabular-nums",
           dim && "text-muted-foreground",
         )}
       >
@@ -252,9 +252,9 @@ export function TicketLine({
       </span>
       <span className="flex shrink-0 flex-col items-end text-right">
         {value ? (
-          <span className={cn("text-base tabular-nums", strong ? "font-semibold" : "font-medium")}>{value}</span>
+          <span className={cn("text-base tabular-nums", strong && "font-semibold")}>{value}</span>
         ) : null}
-        {state ? <span className={cn("mt-0.5 text-xs font-medium", TONE[tone])}>{state}</span> : null}
+        {state ? <span className={cn("mt-0.5 text-xs font-semibold", TONE[tone])}>{state}</span> : null}
       </span>
       {trailing}
       {href ? <ChevronRight className="text-muted-foreground/60 h-4 w-4 shrink-0" aria-hidden /> : null}
@@ -325,7 +325,7 @@ export function TestModeNote({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "bg-muted text-muted-foreground inline-flex self-start rounded-full px-2.5 py-1 text-xs font-medium",
+        "bg-muted text-muted-foreground inline-flex self-start rounded-full px-2.5 py-1 text-xs font-semibold",
         className,
       )}
     >
