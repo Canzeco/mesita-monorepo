@@ -16,7 +16,11 @@ import { shouldGate } from "@/lib/supabase/middleware";
 import { isOpenToAnonymous } from "@/lib/consumer-route-contract";
 import { LEGACY_REDIRECTS } from "@/lib/legacy-redirects";
 import { TICKET_KINDS } from "@/lib/ticket-kinds";
-import { ME_HUB_GRID, ME_HUB_SETTINGS } from "@/app/(shell)/me/hub-tiles";
+import {
+  ME_HUB_GIFT,
+  ME_HUB_GRID,
+  ME_HUB_SETTINGS,
+} from "@/app/(shell)/me/hub-tiles";
 import nextConfig from "../../../next.config";
 
 // STRUCTURAL route guards (MESITA-1062 S0).
@@ -647,7 +651,7 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
   // map, so the fallback draws the page's own cells. These read the cells.
   /** Every cell, in render order: the grid, then Settings. */
-  const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
+  const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS, ME_HUB_GIFT];
   const gridTitles = () => cells().map((cell) => cell.title);
 
   it("renders ten cells in Pato's order", () => {
@@ -663,8 +667,6 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
     // Share is on the bar only ("remove share button from here is redundant").
     // MESITA-4306: Class left ("LETS REMOVE THE CLASS").
     expect(gridTitles()).toEqual([
-      // Gift leads across both columns (MESITA-4420).
-      "Gift",
       "Profile",
       "Instagram",
       "Plan",
@@ -682,6 +684,8 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
       // MCP's cell became Integrations (MESITA-3954): Calendar, MCP Soon.
       "Integrations",
       "Settings",
+      // Gift across both columns closes the page (MESITA-4420, MESITA-4424).
+      "Gift",
     ]);
     // No Soon cell since MESITA-3954: MCP is a Soon row on Integrations.
     expect(cells().filter((c) => c.soon).map((c) => c.title)).toEqual([]);
@@ -704,9 +708,10 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
     }
   });
 
-  it("Settings closes the page", () => {
+  it("Settings closes the grid, Gift the page", () => {
     // The tail cell (MESITA-1642). Support moved into it (MESITA-2169).
-    expect(gridTitles().at(-1)).toBe("Settings");
+    // Gift's full-width row sits under it (MESITA-4424).
+    expect(gridTitles().slice(-2)).toEqual(["Settings", "Gift"]);
     expect(gridTitles()).not.toContain("Support");
   });
 
@@ -719,8 +724,7 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
     for (const cell of cells()) {
       expect(
         Object.keys(cell)
-          // Gift's `wide` spans both columns (MESITA-4420).
-          .filter((k) => k !== "soon" && k !== "jump" && k !== "wide")
+          .filter((k) => k !== "soon" && k !== "jump")
           .sort(),
         cell.title,
       ).toEqual(["Icon", "href", "summary", "title"]);
