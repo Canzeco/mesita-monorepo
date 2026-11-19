@@ -768,7 +768,9 @@ function TicketPills({
   return (
     <nav
       aria-label="Kinds of ticket"
-      className={cn("bg-card border-border grid shrink-0 grid-cols-3 border-b", flush && "-mx-5")}
+      // FOUR EQUAL COLUMNS, ONE LINE (Pato, MESITA-4414: "25% each"): Stories
+      // (MESITA-4405) made it four; three columns wrapped it to a second line.
+      className={cn("bg-card border-border grid shrink-0 grid-cols-4 border-b", flush && "-mx-5")}
       data-ticket-pills
     >
       {TICKET_TABS.map((t) => {
@@ -781,7 +783,7 @@ function TicketPills({
             onClick={onPick ? () => onPick(t.kind) : undefined}
             disabled={!onPick}
             className={cn(
-              "-mb-px flex items-center justify-center gap-1.5 border-b-[3px] px-0.5 py-3 text-center type-body leading-normal tracking-wide whitespace-nowrap transition",
+              "-mb-px flex min-w-0 items-center justify-center gap-1 border-b-[3px] px-0 py-3 text-center type-body leading-normal tracking-wide whitespace-nowrap transition",
               chosen
                 ? "border-blue-600 font-bold text-blue-600"
                 : "text-muted-foreground hover:text-foreground border-transparent font-medium",
