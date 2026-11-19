@@ -24,7 +24,10 @@ const OFFER_BOX =
 /** ONE SWITCHING BOX (Pato, 2026-11-17, MESITA-4219: "this boxes looks like
  *  shit, return to the switching boxes"): every offer this guest can buy here
  *  in one box the height of Save · Share, Classic · Welcome · Story, each
- *  in its colour with its "N% Bonus" pill, on the shared 2s beat. A tap opens
+ *  in its colour with its "N% Bonus" pill, on the shared 2s beat. A TAP OPENS
+ *  THE PLACE (Pato, 2026-11-19, MESITA-4455: "don't redirect directly to the
+ *  offers page. direct to the place profile, and then i need to click
+ *  offers"); Offers is the profile's own tile. Before that a tap opened
  *  the place's Offers page, never one offer's sheet (MESITA-4358, Pato: "just
  *  redirect to the offers, wherever I click it"; `?voucher=` before). Held only
  *  while a finger is down (MESITA-4217). MESITA-4207's chip list before. */
@@ -48,7 +51,7 @@ export function OfferButton({
   const release = () => setHeld(null);
   return (
     <PushLink
-      href={`${href}/offers?rewards=${slide.section ?? "prepayment"}`}
+      href={href}
       aria-label={offersLabel(name, slides)}
       onClick={release}
       onPointerDown={hold}
