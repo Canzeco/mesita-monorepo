@@ -116,7 +116,7 @@ export function PlaceFactsRun({
  *   Taco Restaurant                 the Google category (back from MESITA-3786)
  *   $$ · ★ 4.7 (8.6K)
  *   ◷ Open · until 3:00             or Closed · opens 13:00
- *   ➤ Tecnológico · 0.4 km
+ *   ➤ 0.4 km · Tecnológico          distance first (MESITA-4422)
  */
 export function PlaceFactsLines({ place }: { place: Place }) {
   const facts = cardFacts(place);
@@ -169,7 +169,7 @@ export function PlaceFactsLines({ place }: { place: Place }) {
       {zone || facts.distance ? (
         <p className={cn(line, "text-muted-foreground")} data-row-where>
           <Navigation className={cn(icon, "fill-fact-distance text-fact-distance")} aria-hidden />
-          <span className="truncate">{[zone, facts.distance].filter(Boolean).join(" · ")}</span>
+          <span className="truncate">{[facts.distance, zone].filter(Boolean).join(" · ")}</span>
         </p>
       ) : null}
     </div>
