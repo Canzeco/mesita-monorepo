@@ -165,11 +165,6 @@ const CAT_TINT_SPECIAL = CAT_EMOJI_OFF;
 const CAT_TINT_FAMILY = CAT_EMOJI_OFF;
 const CAT_EMOJI_ON = "bg-foreground border border-transparent";
 const CAT_NAME = "relative w-full truncate text-center";
-// THE ROW ON BLACK (MESITA-4442): tiles white/10, names white/60; the chosen
-// tile white with an ink border-free face, its name white bold. The
-// Categories modal keeps the light tiles above.
-const BAND_TILE_OFF = "bg-paper/10 border border-transparent";
-const BAND_TILE_ON = "bg-paper border border-transparent";
 
 /** Saved, Near and Top: not families, so the Categories modal lists them
  *  first, apart (MESITA-4417, Near since MESITA-4423). */
@@ -527,7 +522,7 @@ export function CatalogRails() {
   const tabs = (
     <nav
       aria-label="Home"
-      className="border-paper/10 bg-foreground flex shrink-0 border-b"
+      className="border-border bg-card flex shrink-0 border-b"
       data-home-tabs
     >
       {HOME_TABS.map((t) => {
@@ -548,8 +543,7 @@ export function CatalogRails() {
               // fucking small the selected place … make it bigger"); 14px
               // before. The chosen word is bold ink, the other regular grey.
               "relative flex flex-1 justify-center px-1 text-base whitespace-nowrap transition",
-              // White on the black band (MESITA-4442).
-              on ? "text-paper font-bold" : "text-paper/60",
+              on ? "text-foreground font-bold" : "text-muted-foreground",
             )}
           >
             <span className="relative flex items-center gap-1.5 py-3">
@@ -567,7 +561,7 @@ export function CatalogRails() {
                 // "do the place selector full width of its box, like 50% the
                 // line below places"): 3px ink across the tab's cell, on the
                 // strip's hairline. It was as wide as the word (MESITA-4046).
-                className="bg-paper absolute inset-x-0 bottom-0 h-[3px]"
+                className="bg-foreground absolute inset-x-0 bottom-0 h-[3px]"
               />
             ) : null}
           </Link>
@@ -608,9 +602,7 @@ export function CatalogRails() {
           className={cn(
             CAT_EMOJI,
             isSpecial(c.key) && CAT_SQUARE,
-            inMenu
-              ? on ? CAT_EMOJI_ON : isSpecial(c.key) ? CAT_TINT_SPECIAL : CAT_TINT_FAMILY
-              : on ? BAND_TILE_ON : BAND_TILE_OFF,
+            on ? CAT_EMOJI_ON : isSpecial(c.key) ? CAT_TINT_SPECIAL : CAT_TINT_FAMILY,
           )}
         >
           {c.emoji}
@@ -618,9 +610,7 @@ export function CatalogRails() {
         <span
           className={cn(
             CAT_NAME,
-            inMenu
-              ? on ? "text-foreground font-bold" : "text-muted-foreground font-medium"
-              : on ? "text-paper font-bold" : "text-paper/60 font-medium",
+            on ? "text-foreground font-bold" : "text-muted-foreground font-medium",
           )}
         >
           {c.label}
@@ -647,7 +637,7 @@ export function CatalogRails() {
     // dirty"): MESITA-4415's "Categories" eyebrow is gone; the circles say it.
     // WHITE AGAIN (Pato, MESITA-4439: "make background white again of the
     // carousel"): MESITA-4436's grey band is undone.
-    <div className="bg-foreground border-paper/10 flex shrink-0 items-start border-b pt-2.5 pb-1.5" data-places-strip>
+    <div className="bg-card border-border flex shrink-0 items-start border-b pt-2.5 pb-1.5" data-places-strip>
       {/* THE MENU STAYS PUT (Pato, MESITA-4423: "menu must be fixed"): its
           tile sits outside the scroller, pinned at the left, so it is always one tap away while the categories slide
           under nothing. It was the row's first tile (MESITA-4410). */}
@@ -665,7 +655,7 @@ export function CatalogRails() {
             className={cn(
               CAT_EMOJI,
               CAT_SQUARE,
-              menuOpen ? cn(BAND_TILE_ON, "text-foreground") : cn(BAND_TILE_OFF, "text-paper"),
+              menuOpen ? cn(CAT_EMOJI_ON, "text-card") : cn(CAT_EMOJI_OFF, "text-foreground"),
             )}
           >
             {menuOpen ? (
@@ -674,7 +664,7 @@ export function CatalogRails() {
               <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
             )}
           </span>
-          <span className={cn(CAT_NAME, "text-paper/60 font-medium")}>Menu</span>
+          <span className={cn(CAT_NAME, "text-muted-foreground font-medium")}>Menu</span>
         </button>
       </div>
       <nav
