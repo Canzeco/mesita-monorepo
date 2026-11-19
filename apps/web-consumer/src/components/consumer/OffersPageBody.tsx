@@ -16,6 +16,7 @@ import { goBack, navigateTo } from "@/lib/navigate";
 import { useKeptScroll } from "@/lib/use-kept-scroll";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import type { PlaceDetail } from "@/lib/place-detail";
+import { storyRulesOf } from "@/lib/consumer-identity";
 
 /** The guest's credit here (MESITA-4224): spendable now, and the pending
  *  part with the time the next of it turns on. The server's cents,
@@ -133,6 +134,8 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
           instagramLinked: Boolean(profile.instagram_handle),
           instagramFollowers: profile.instagram_followers_count ?? null,
           instagramHandle: profile.instagram_handle ?? null,
+          storyMinFollowers: storyRulesOf(profile).minFollowers,
+          storyEmulator: storyRulesOf(profile).emulator,
         },
       }
       : {}),

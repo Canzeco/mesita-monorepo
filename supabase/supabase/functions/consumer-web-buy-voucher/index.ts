@@ -94,6 +94,7 @@ import {
   parseBasket,
   readStoryGuest,
   sameUnits,
+  storyEligibilityContext,
   storyRefusal,
   voucherOffer,
 } from "../_shared/vouchers.ts";
@@ -213,7 +214,8 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   // Story's own gate: the guest's public Instagram above the follower floor
   // (MESITA-3507, MESITA-4263). One per visit is buyRefusal's needs_visit.
   if (kinds.includes("voucher_story")) {
-    const story = storyRefusal("voucher_story", await readStoryGuest(admin, userId));
+    const [storyGuest, storyCtx] = await Promise.all([readStoryGuest(admin, userId), storyEligibilityContext(admin)]);
+    const story = storyRefusal("voucher_story", storyGuest, storyCtx);
     if (story) return json({ ok: false, code: story.code, error: story.error }, story.status);
   }
 

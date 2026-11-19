@@ -10,6 +10,7 @@ import { ticketsHref } from "@/lib/ticket-kinds";
 import { goBack, navigateTo } from "@/lib/navigate";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
+import { storyRulesOf } from "@/lib/consumer-identity";
 
 /**
  * THE STORY PAGE (MESITA-4303): the Story offer in boxes with its action
@@ -49,6 +50,8 @@ export function StoryPageBody({ place: fetched }: { place: PlaceDetail }) {
           instagramLinked: Boolean(profile.instagram_handle),
           instagramFollowers: profile.instagram_followers_count ?? null,
           instagramHandle: profile.instagram_handle ?? null,
+          storyMinFollowers: storyRulesOf(profile).minFollowers,
+          storyEmulator: storyRulesOf(profile).emulator,
         },
       }
       : {}),

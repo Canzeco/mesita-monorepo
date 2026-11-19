@@ -15,7 +15,7 @@ import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWE
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
 import { readMoneyConfig } from "./money-config.ts";
 import { readInstagramSyncState } from "./consumer-doc.ts";
-import { storyMode, type StoryMode } from "./story-mention.ts";
+import { readStoryRules, storyMode, type StoryMode } from "./story-mention.ts";
 import { instagramHandleOfUrl } from "./place-instagram.ts";
 import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount, VISIT_STATUSES } from "./visits.ts";
@@ -328,8 +328,8 @@ export async function withGuestOffers<T extends { id: string; offers: { sell: Mo
   }
   const [blocks, story] = await Promise.all([
     readGuestBlocks(admin, consumerId, rows.map((r) => r.id)),
-    readStoryGuest(admin, consumerId).then(
-      (g) => storyRefusal("voucher_story", g) === null,
+    Promise.all([readStoryGuest(admin, consumerId), storyEligibilityContext(admin)]).then(
+      ([g, ctx]) => storyRefusal("voucher_story", g, ctx) === null,
       (e) => {
         console.error("[vouchers] story_guest_read_failed", JSON.stringify({ message: String(e) }));
         return true;
@@ -445,20 +445,48 @@ export type StoryGuest = {
   instagram_is_private?: boolean | null;
 } | null;
 
-/** Story's guest gate (MESITA-3507): a linked Instagram with MORE than
- *  STORY_MIN_FOLLOWERS followers. Null when the guest may buy it. Any other
- *  voucher passes. */
-export function storyRefusal(voucher: MoneyVoucherKey, guest: StoryGuest): BuyRefusal | null {
+/** What Story's guest gate is measured against (MESITA-4425): the live
+ *  follower floor and whether emulator mode is in effect. Both REQUIRED on
+ *  storyRefusal so a caller that forgets them fails `deno check` instead of
+ *  quietly keeping the old floor. */
+export type StoryEligibility = {
+  /** money_config.story_min_followers (Admin › Configurations › Stories). */
+  minFollowers: number;
+  /** Emulator mode in effect: every guest with Instagram qualifies. Always
+   *  false until the emulator switch ships (MESITA-4426). */
+  emulator: boolean;
+};
+
+/** The floor STORY_MIN_FOLLOWERS and no emulator: what a failed read means. */
+export const STORY_ELIGIBILITY_DEFAULT: StoryEligibility = { minFollowers: STORY_MIN_FOLLOWERS, emulator: false };
+
+/** The one place every Story check gets its StoryEligibility. A failed read
+ *  is the default floor with no emulator, never an open door. */
+export async function storyEligibilityContext(admin: SupabaseClient): Promise<StoryEligibility> {
+  try {
+    const rules = await readStoryRules(admin);
+    return { minFollowers: rules.minFollowers, emulator: false };
+  } catch (e) {
+    console.error("[vouchers] story_rules_read_failed", JSON.stringify({ message: String(e) }));
+    return STORY_ELIGIBILITY_DEFAULT;
+  }
+}
+
+/** Story's guest gate (MESITA-3507, MESITA-4425): a linked Instagram with
+ *  `ctx.minFollowers` followers OR MORE. Null when the guest may buy it.
+ *  Any other voucher passes. */
+export function storyRefusal(voucher: MoneyVoucherKey, guest: StoryGuest, ctx: StoryEligibility): BuyRefusal | null {
   if (voucher !== "voucher_story") return null;
   if (!guest?.instagram_handle) {
     return { ok: false, status: 409, code: "needs_instagram", error: "Link your Instagram to buy the Story voucher" };
   }
-  if ((guest.instagram_followers_count ?? 0) < STORY_MIN_FOLLOWERS) {
+  if (ctx.emulator) return null;
+  if ((guest.instagram_followers_count ?? 0) < ctx.minFollowers) {
     return {
       ok: false,
       status: 409,
       code: "few_followers",
-      error: `The Story voucher is for Instagram accounts with ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} or more followers`,
+      error: `The Story voucher is for Instagram accounts with ${ctx.minFollowers.toLocaleString("en-US")} or more followers`,
     };
   }
   // MESITA-4296: a private account's mentions never reach Mesita (Mesita

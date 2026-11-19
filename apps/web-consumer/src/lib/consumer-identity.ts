@@ -12,10 +12,24 @@
 /** The Instagram bar, and the only number in this file. */
 export const INSTAGRAM_REACH_FOLLOWERS = 1_000;
 
-/** A Story voucher needs at least this many followers: the server's
- *  STORY_MIN_FOLLOWERS (_shared/money-state.ts; vouchers.ts refuses `<`,
- *  MESITA-4383). */
+/** The DEFAULT Story follower floor: the server's STORY_MIN_FOLLOWERS
+ *  (_shared/money-state.ts; vouchers.ts refuses `<`, MESITA-4383). The live
+ *  floor comes with the profile (story_rules, MESITA-4425); read it through
+ *  storyRulesOf, never this constant. */
 export const STORY_MIN_FOLLOWERS = 1_000;
+
+/** The Story rules the profile carried, or the defaults (an older EF, a
+ *  cached row, no profile): the floor above and no emulator. */
+export function storyRulesOf(
+  profile: { story_rules?: { min_followers?: unknown; emulator?: unknown } } | null | undefined,
+): { minFollowers: number; emulator: boolean } {
+  const r = profile?.story_rules;
+  const min = r?.min_followers;
+  return {
+    minFollowers: typeof min === "number" && Number.isInteger(min) && min >= 0 ? min : STORY_MIN_FOLLOWERS,
+    emulator: r?.emulator === true,
+  };
+}
 
 /** What the app knows about a guest's Instagram. `unknown` means the profile
  *  read FAILED — not "they have none". Every surface that STATES the fact
