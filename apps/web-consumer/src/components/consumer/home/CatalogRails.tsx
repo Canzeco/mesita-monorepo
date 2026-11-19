@@ -130,7 +130,7 @@ const SocialFeed = dynamic(
 // SMALLER, ON GREY, NAMED (Pato, 2026-11-18, MESITA-4415: "add a carousel
 // in a gray background, make icons smaller, and actually mention what is
 // about. very small letters for the family text. icon is enough"): the row
-// sits on a grey band under a small "Categories" label; 24px emoji in 52px
+// sat on a grey band under a small label (both gone, MESITA-4416/4418); 24px emoji in 52px
 // columns, the names at the floor size (type-meta, 10px).
 const CAT =
   "flex w-[52px] shrink-0 flex-col items-center gap-0.5 pb-1 type-meta transition active:scale-[0.96]";
@@ -595,8 +595,9 @@ export function CatalogRails() {
     else if (right > row.scrollLeft) row.scrollTo({ left: right, behavior: "smooth" });
   }, [chip, tab]);
   const strip = (
-    <div className="bg-card border-border flex shrink-0 flex-col border-b pt-2 pb-1.5" data-places-strip>
-      <p className="type-eyebrow text-muted-foreground px-4 pb-1.5">Categories</p>
+    // NO LABEL (Pato, MESITA-4418: "don't mention categories it looks super
+    // dirty"): MESITA-4415's "Categories" eyebrow is gone; the circles say it.
+    <div className="bg-card border-border flex shrink-0 flex-col border-b pt-2.5 pb-1.5" data-places-strip>
       <nav
         ref={stripRef}
         aria-label="Families"

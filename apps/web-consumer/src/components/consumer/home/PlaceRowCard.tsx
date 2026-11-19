@@ -14,18 +14,18 @@ import { cn } from "@/lib/utils";
 import { CardActions } from "@/components/consumer/place-card";
 import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
-import { PlaceFactsRun } from "./place-facts";
+import { PlaceFactsLines } from "./place-facts";
 
 /**
  * One place in Places 3.0 (Pato, MESITA-3662: "image at the left and
  * information at the right, two squares, information with buttons"):
  *
  *   ┌─────────┐ ┌────────────────┐
- *   │  photo  │ │ Name ✪          │   name on up to two lines, Premier seal
- *   │         │ │ $$ · Taco        │   one run of facts, 2–3 lines
- *   │         │ │ Restaurant · ★4.7│   (MESITA-3669)
- *   │         │ │ (8.6K) · ◷ Open ·│
- *   │         │ │ ➤ 0.4 km         │
+ *   │  photo  │ │ Name ✪          │   16px, up to two lines, Premier seal
+ *   │         │ │ Taco Restaurant │   one fact per line, 14px (MESITA-4418)
+ *   │         │ │ $$ · ★4.7 (8.6K)│
+ *   │         │ │ ◷ Open · until 3│
+ *   │         │ │ ➤ Tec · 0.4 km  │
  *   │         │ │[Welcome +100%]  │   every offer as a chip (MESITA-4207)
  *   │         │ │[Small +10%] …   │
  *   └─────────┘ │[♡ Save][Share]  │
@@ -133,14 +133,16 @@ export function PlaceRowCard({
             inset-0); the offer and Save · Share sit above it on their own. */}
         {open(
           <>
-            <p className="flex min-w-0 items-start gap-1 text-sm leading-5 font-semibold tracking-tight">
+            {/* BIGGER (Pato, MESITA-4418: "make the fucking text bigger"):
+                the name at 16px over one fact per line at 14px. */}
+            <p className="flex min-w-0 items-start gap-1 text-base leading-snug font-semibold tracking-tight">
               <span className="line-clamp-2">{place.name}</span>
               <PlaceMarks
                 tier={place.boost_tier}
                 ad={(place.boost_tier ?? 0) > 0}
               />
             </p>
-            <PlaceFactsRun place={place} />
+            <PlaceFactsLines place={place} />
           </>,
           cn(
             "flex min-w-0 flex-col gap-0.5 rounded-lg text-left after:absolute after:inset-0 after:rounded-r-2xl after:content-['']",
