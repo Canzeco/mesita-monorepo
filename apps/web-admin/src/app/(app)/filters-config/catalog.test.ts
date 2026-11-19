@@ -50,8 +50,8 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
 
   it("params keeps every typed key at its value, and an unknown key rides along untouched until a migration deletes it (H-2, MESITA-4454)", () => {
     const typed = (cfg: ReturnType<typeof coerceConfig>) => {
-      const { proximity, popularity, variety, shuffle, recipes, mix } = cfg.params;
-      return { proximity, popularity, variety, shuffle, recipes, mix };
+      const { proximity, popularity, shuffle, recipes, mix } = cfg.params;
+      return { proximity, popularity, shuffle, recipes, mix };
     };
     expect(typed(coerceConfig(LIVE_BLOB))).toEqual(DEFAULT_CONFIG.params);
     const params = coerceConfig({
@@ -83,9 +83,8 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(coerceConfig({ params: { proximity: { halfKm: 999, exponent: 9 } } }).params.proximity).toEqual({ halfKm: 100, exponent: 5 });
     expect(coerceConfig({ params: { popularity: { root: 0 } } }).params.popularity).toEqual({ root: 0.1, starsPower: 6 });
     expect(coerceConfig({ params: { popularity: { root: 5 } } }).params.popularity).toEqual({ root: 1, starsPower: 6 });
-    // MESITA-4153: the stars weight, the repeat penalty and the temperature clamp.
+    // MESITA-4153: the stars weight and the temperature clamp.
     expect(coerceConfig({ params: { popularity: { starsPower: 99 } } }).params.popularity.starsPower).toBe(12);
-    expect(coerceConfig({ params: { variety: { repeat: 0 } } }).params.variety).toEqual({ repeat: 0.1 });
     expect(coerceConfig({ params: { shuffle: { temperature: -1 } } }).params.shuffle).toEqual({ temperature: 0 });
   });
 
@@ -278,14 +277,14 @@ describe("recipes and mix (MESITA-4454), the twin of normalizeRecipes and normal
 });
 
 describe("Discovery page box order", () => {
-  it("is ONE page of five cards, no subpages (MESITA-2327, MESITA-3828, MESITA-4454)", () => {
+  it("is ONE page of five cards, no subpages (MESITA-2327, MESITA-3828, MESITA-4454, MESITA-4463)", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
     const nextConfig = readFileSync(
       join(__dirname, "../../../../next.config.ts"),
       "utf8",
     );
-    const order = ["<HowRankedCard", "<RankingBox", "<MixingBox", "<MapDisplayBox", "<NameBox", "<NameAdminBox"].map((tag) =>
+    const order = ["<HowRankedCard", "<RankingBox", "<MixingBox", "<MapDisplayBox", "<SearchbarsBox"].map((tag) =>
       page.indexOf(tag),
     );
     expect(order.every((at) => at > -1)).toBe(true);

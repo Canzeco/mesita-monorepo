@@ -11,6 +11,7 @@ export {
   TextAreaField,
   SelectField,
   NumberField,
+  NumberCell,
   ReadField,
 } from "./field";
 export { PhoneField } from "./phone";

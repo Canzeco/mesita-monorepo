@@ -55,8 +55,8 @@ export type DiscoverySlice =
   | "chat"
   // The Ranking card (MESITA-4454): `params.recipes`, sent whole.
   | "ranking"
-  // The Mixing card (MESITA-4454): `params.mix` and `params.variety`, sent
-  // whole, and `map.catalogPageSize`.
+  // The Mixing card (MESITA-4454): `params.mix`, sent whole, and
+  // `map.catalogPageSize` (the repeat penalty went with MESITA-4463).
   | "mixing"
   | "deep"
   // Name's Locations switch (MESITA-2319).
@@ -130,7 +130,7 @@ export async function updateDiscoveryConfig(
     params: {
       ...live.config.params,
       ...(keys.has("ranking") ? { recipes: config.params.recipes } : null),
-      ...(keys.has("mixing") ? { mix: config.params.mix, variety: config.params.variety } : null),
+      ...(keys.has("mixing") ? { mix: config.params.mix } : null),
     },
     deep: keys.has("deep") ? config.deep : live.config.deep,
     chat: keys.has("chat") ? config.chat : live.config.chat,

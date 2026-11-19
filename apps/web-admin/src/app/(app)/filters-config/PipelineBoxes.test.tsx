@@ -14,9 +14,8 @@ import {
   HowRankedCard,
   MapDisplayBox,
   MixingBox,
-  NameAdminBox,
-  NameBox,
   RankingBox,
+  SearchbarsBox,
 } from "./PipelineBoxes";
 
 const seed = { initialConfig: DEFAULT_CONFIG, initialUpdatedAt: null, loadError: null };
@@ -46,8 +45,7 @@ describe("the How places are ranked card draws the runtime model (MESITA-2338)",
       render(<RankingBox {...seed} />),
       render(<MixingBox {...seed} />),
       render(<MapDisplayBox {...seed} />),
-      render(<NameBox {...seed} />),
-      render(<NameAdminBox {...seed} />),
+      render(<SearchbarsBox {...seed} />),
     ].join("");
     expect(page).not.toContain("Not wired");
   });

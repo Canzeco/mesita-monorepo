@@ -117,14 +117,9 @@ export const STARS_POWER_DEFAULT = 6;
 export const STARS_POWER_MIN = 0;
 export const STARS_POWER_MAX = 12;
 
-/** THE REPEAT PENALTY r (MESITA-4153): the operator's
- *  `params.variety.repeat`, 0.1–1 at two decimals, default 0.6. Home's
- *  Catalog gives each place a kind, its rarest family, and the n-th place
- *  of a kind scores × r^(n − 1): the 2nd taquería × 0.6, the 3rd × 0.36.
- *  1 = no penalty. Applied in SQL (`catalog_rank`). */
-export const VARIETY_REPEAT_DEFAULT = 0.6;
-export const VARIETY_REPEAT_MIN = 0.1;
-export const VARIETY_REPEAT_MAX = 1;
+// The repeat penalty (`params.variety.repeat`, MESITA-4153) is gone
+// (MESITA-4463, Pato: "remove the variety in the backend too"): no list
+// lowers the n-th place of a kind any more.
 
 /** THE TEMPERATURE T (MESITA-4153): the operator's
  *  `params.shuffle.temperature`, 0–5 at two decimals, default 0.3. After

@@ -211,8 +211,6 @@ Deno.test("the admin twin mirrors the signal params' bounds", () => {
   assertEquals(constant("POPULARITY_ROOT_MAX"), SIGNAL_PARAM_BOUNDS.root.max);
   assertEquals(constant("STARS_POWER_MIN"), SIGNAL_PARAM_BOUNDS.starsPower.min);
   assertEquals(constant("STARS_POWER_MAX"), SIGNAL_PARAM_BOUNDS.starsPower.max);
-  assertEquals(constant("VARIETY_REPEAT_MIN"), SIGNAL_PARAM_BOUNDS.repeat.min);
-  assertEquals(constant("VARIETY_REPEAT_MAX"), SIGNAL_PARAM_BOUNDS.repeat.max);
   assertEquals(constant("SHUFFLE_TEMPERATURE_MIN"), SIGNAL_PARAM_BOUNDS.temperature.min);
   assertEquals(constant("SHUFFLE_TEMPERATURE_MAX"), SIGNAL_PARAM_BOUNDS.temperature.max);
 });
@@ -279,7 +277,7 @@ Deno.test("the deck's param bags and numbers are not typed params", () => {
   // (MESITA-2703) too. Popularity's half credit (`halfReviews`, read by
   // nothing) went with MESITA-3083; the half distance, the exponent and the
   // root arrive at their defaults.
-  assertEquals(cfg, { proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 }, recipes: DEFAULT_RECIPES, mix: DEFAULT_MIX });
+  assertEquals(cfg, { proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33, starsPower: 6 }, shuffle: { temperature: 0.3 }, recipes: DEFAULT_RECIPES, mix: DEFAULT_MIX });
 });
 
 // The tentative Social engine's box had no reader (MESITA-2144). A blob that

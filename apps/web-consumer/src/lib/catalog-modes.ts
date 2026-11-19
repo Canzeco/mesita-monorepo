@@ -3,11 +3,12 @@
 // consumer-web-list-catalog their own `rankMode`; they no longer share one
 // pool (MESITA-4423 had Near read Top's).
 //
-//   SEED   one per tab session and mode (C2, DX-a), in sessionStorage so a
-//          reload keeps it: the first page's shuffle is the same every time
-//          the guest comes back to a mode. It is made at a point (M-a) and
-//          that point is sent (`seedLat` / `seedLng`) until the guest moves
-//          more than 300 m; then a new seed at the new point. GPS drift never
+//   SEED   one per page load and mode (C2, DX-a), in memory only: a reload
+//          draws a new feed (MESITA-4463, Pato: "if i reload, the feed must
+//          be generated again"). Within one load the shuffle holds when the
+//          guest comes back to a mode. It is made at a point (M-a) and that
+//          point is sent (`seedLat` / `seedLng`) until the guest moves more
+//          than 300 m; then a new seed at the new point. GPS drift never
 //          reorders the list.
 //   POOL   each mode's ranked answer (`order`, `adIds`, `preShuffle`, the
 //          cards filled so far), in this tab's memory for the session (H3):
@@ -55,57 +56,14 @@ type Stored = {
   seeds: Record<string, StoredSeed>;
 };
 
-const STORE_KEY = "mesita.catalog-modes.v1";
+// Memory only (MESITA-4463): nothing survives a reload, so every page load
+// shuffles anew. The `mesita.catalog-modes.v1` sessionStorage key a build
+// before 2026-11-19 wrote is never read again.
 let mem: Stored | null = null;
 
-function isStoredSeed(v: unknown): v is StoredSeed {
-  if (!v || typeof v !== "object") return false;
-  const s = v as Record<string, unknown>;
-  const num = (x: unknown) => x === null || (typeof x === "number" && Number.isFinite(x));
-  return (
-    typeof s.seed === "number" &&
-    Number.isInteger(s.seed) &&
-    s.seed >= 0 &&
-    s.seed <= 0xffffffff &&
-    num(s.lat) &&
-    num(s.lng)
-  );
-}
-
-function readSession(): Stored | null {
-  try {
-    if (typeof sessionStorage === "undefined") return null;
-    const raw = sessionStorage.getItem(STORE_KEY);
-    if (!raw) return null;
-    const o = JSON.parse(raw) as Record<string, unknown>;
-    const seeds: Record<string, StoredSeed> = {};
-    if (o.seeds && typeof o.seeds === "object") {
-      for (const [k, v] of Object.entries(o.seeds as Record<string, unknown>)) {
-        if (isStoredSeed(v)) seeds[k] = v;
-      }
-    }
-    const u = o.updatedAt;
-    return {
-      ...(typeof u === "string" || u === null ? { updatedAt: u } : {}),
-      seeds,
-    };
-  } catch {
-    return null;
-  }
-}
-
 function load(): Stored {
-  if (!mem) mem = readSession() ?? { seeds: {} };
+  if (!mem) mem = { seeds: {} };
   return mem;
-}
-
-function save(): void {
-  try {
-    if (typeof sessionStorage === "undefined" || !mem) return;
-    sessionStorage.setItem(STORE_KEY, JSON.stringify(mem));
-  } catch {
-    // Storage blocked (private mode): the tab's memory still holds it.
-  }
 }
 
 /** A uint32 for the shuffle (DX-a; 0 is valid). */
@@ -142,7 +100,6 @@ export function seedFor(
       }
     } else if (point === null && here !== null) {
       s.seeds[key] = { seed: cur.seed, lat: here.lat, lng: here.lng };
-      save();
       return { seed: cur.seed, point: { lat: here.lat, lng: here.lng } };
     }
   }
@@ -151,7 +108,6 @@ export function seedFor(
     point: here ? { lat: here.lat, lng: here.lng } : null,
   };
   s.seeds[key] = { seed: next.seed, lat: next.point?.lat ?? null, lng: next.point?.lng ?? null };
-  save();
   return next;
 }
 
@@ -206,7 +162,6 @@ export function acceptRank(
     s.updatedAt = updatedAt;
   }
   s.seeds[key] = { seed: rec.seed, lat: rec.point?.lat ?? null, lng: rec.point?.lng ?? null };
-  save();
   pools.set(slot(guest, key), { seed: rec.seed, point: rec.point, pool });
   emit();
   return dropped;
@@ -241,15 +196,10 @@ export function subscribeModePools(l: () => void): () => void {
   };
 }
 
-/** Tests only: forget every seed and pool. */
+/** Tests only: forget every seed and pool (what a reload does). */
 export function resetCatalogModes(): void {
   mem = null;
   pools.clear();
-  try {
-    if (typeof sessionStorage !== "undefined") sessionStorage.removeItem(STORE_KEY);
-  } catch {
-    // nothing kept
-  }
 }
 
 // ── The "Ad" mark (H4, M-d, M-7) ────────────────────────────────────────

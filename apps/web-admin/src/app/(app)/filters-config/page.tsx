@@ -7,14 +7,14 @@ import {
   HowRankedCard,
   MapDisplayBox,
   MixingBox,
-  NameAdminBox,
-  NameBox,
   RankingBox,
+  SearchbarsBox,
 } from "./PipelineBoxes";
 
 // Discovery: ONE page, no subpages (MESITA-2327). Five cards since
 // MESITA-4454: How places are ranked (read only) · Ranking · Mixing · Map
-// display · Searchbars (the Consumer and the Admin & Business boxes).
+// display · Searchbars (the guest bar and the Admin & Business bar in one
+// card, MESITA-4463).
 // Consumer Deep (Soon) and Premier Prices left the page (MESITA-3828); their
 // stored settings stay on the config blob.
 export default async function DiscoveryPage() {
@@ -35,9 +35,7 @@ export default async function DiscoveryPage() {
           <RankingBox {...seed} />
           <MixingBox {...seed} />
           <MapDisplayBox {...seed} />
-          <p className="text-muted-foreground type-eyebrow -mb-3">Searchbars</p>
-          <NameBox {...seed} />
-          <NameAdminBox {...seed} />
+          <SearchbarsBox {...seed} />
         </div>
       </DiscoverySaveScope>
     </ConfigPageLayout>

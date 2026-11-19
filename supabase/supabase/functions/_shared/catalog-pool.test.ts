@@ -243,11 +243,11 @@ Deno.test("catalog_rank_lanes' arguments are the mode's two recipe rows, the gat
     [i.halfKm, i.distanceExp, i.starsExp, i.googleExp, i.premierExp],
   );
   assertEquals(near.p_ad_floor, cfg.params.mix.adFloor);
-  // Nearby sends repeat 1, hard-coded (E5); Family and Popular send the penalty.
-  assertEquals(near.p_repeat, 1);
+  // No repeat penalty since MESITA-4463: no mode sends one.
+  assert(!("p_repeat" in near));
   const popular = catalogRankLanesArgs(cfg, resolveAreaLocation(null, null), [], "popular");
   assertEquals([popular.p_lat, popular.p_lng], [null, null]);
-  assertEquals(popular.p_repeat, cfg.params.variety.repeat);
+  assert(!("p_repeat" in popular));
   assertEquals(popular.p_organic_half_km, cfg.params.recipes.catalogPopularOrganic.halfKm);
   assertEquals(
     catalogRankLanesArgs(cfg, resolveAreaLocation(CENTER, null), ["tacos"], "family").p_organic_half_km,

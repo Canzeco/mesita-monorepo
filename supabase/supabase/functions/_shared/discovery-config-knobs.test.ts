@@ -78,7 +78,7 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
     params: { proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 }, popularity: { confidence: 60 } },
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
-  assertEquals(cfg.params, v2({ proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } }));
+  assertEquals(cfg.params, v2({ proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33, starsPower: 6 }, shuffle: { temperature: 0.3 } }));
   assertEquals("catalog" in cfg, false);
 });
 
@@ -92,7 +92,7 @@ Deno.test("params clamp; the typed rebuild drops the reach, the divisor, Selecte
       balance: { proximity: 7 },
     },
   };
-  assertEquals(normalizeSignalParams(raw.params), v2({ proximity: { halfKm: 0.1, exponent: 1 }, popularity: { root: 0.1, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } }));
+  assertEquals(normalizeSignalParams(raw.params), v2({ proximity: { halfKm: 0.1, exponent: 1 }, popularity: { root: 0.1, starsPower: 6 }, shuffle: { temperature: 0.3 } }));
   // The blob keeps a key no build reads until a migration deletes it (H-2).
   const cfg = normalizeDiscoveryConfig(raw);
   assertEquals((cfg.params as unknown as Record<string, unknown>).selected, { otherFactor: 0.3 });
@@ -100,8 +100,8 @@ Deno.test("params clamp; the typed rebuild drops the reach, the divisor, Selecte
   // The exponent and the root clamp at their own decimals (MESITA-3083); a
   // stored `halfReviews` drops.
   assertEquals(
-    normalizeDiscoveryConfig({ params: { proximity: { exponent: 9 }, popularity: { root: 0.3333, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } } }).params,
-    v2({ proximity: { halfKm: 1, exponent: 5 }, popularity: { root: 0.33, starsPower: 6 }, variety: { repeat: 0.6 }, shuffle: { temperature: 0.3 } }),
+    normalizeDiscoveryConfig({ params: { proximity: { exponent: 9 }, popularity: { root: 0.3333, starsPower: 6 }, shuffle: { temperature: 0.3 } } }).params,
+    v2({ proximity: { halfKm: 1, exponent: 5 }, popularity: { root: 0.33, starsPower: 6 }, shuffle: { temperature: 0.3 } }),
   );
   assertEquals(normalizeDiscoveryConfig({ params: { proximity: { exponent: 0.04 } } }).params.proximity.exponent, 0.5);
   // One decimal, clamped to 100; a stored row with only the retired divisor

@@ -296,6 +296,68 @@ export function NumberField({
   );
 }
 
+/** NumberField's bounded number as a bare table cell (MESITA-4463): no
+ *  label row and no well, so a config table can hold one per cell. The
+ *  column header carries the visible label and range; `ariaLabel` names the
+ *  row and column for a screen reader. Same typing, clamping and Enter-to-
+ *  commit as NumberField. */
+export function NumberCell({
+  ariaLabel,
+  value,
+  min,
+  max,
+  decimals,
+  onChange,
+  disabled,
+  className,
+}: {
+  ariaLabel: string;
+  value: number;
+  min: number;
+  max: number;
+  decimals?: boolean;
+  onChange: (v: number) => void;
+  disabled: boolean;
+  className?: string;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const fractional = !!decimals;
+  const shown = draft ?? String(value);
+
+  function apply(raw: string, clamp: boolean) {
+    const next = commitNumberDraft(raw, { decimals: fractional, min, max, clamp });
+    if (next != null && next !== value) onChange(next);
+  }
+
+  return (
+    <Input
+      type="text"
+      inputMode={fractional ? "decimal" : "numeric"}
+      autoComplete="off"
+      spellCheck={false}
+      enterKeyHint="done"
+      aria-label={`${ariaLabel} (${min}–${max})`}
+      value={shown}
+      disabled={disabled}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => {
+        const next = fractional ? e.target.value.replace(",", ".") : e.target.value;
+        if (!numberDraftAllowed(next, fractional, min)) return;
+        setDraft(next);
+        apply(next, false);
+      }}
+      onBlur={() => {
+        if (draft != null) apply(draft, true);
+        setDraft(null);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+      }}
+      className={cn("w-24 min-w-20 text-right tabular-nums", className)}
+    />
+  );
+}
+
 /** A labelled read-only value. `auto` marks an Enricher-owned value. */
 export function ReadField({
   label,

@@ -86,7 +86,6 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
       ...live.params,
       proximity: { halfKm: 8, exponent: 2 },
       popularity: { root: 0.5, starsPower: 4 },
-      variety: { repeat: 0.7 },
       shuffle: { temperature: 1 },
       recipes: {
         ...live.params.recipes,
@@ -156,18 +155,17 @@ describe("each card writes its own slice and nothing else (MESITA-4454)", () => 
     expect({ ...after, params: { ...after.params, recipes: before.params.recipes } }).toEqual(before);
   });
 
-  it("Mixing writes params.mix, params.variety and map.catalogPageSize", async () => {
+  it("Mixing writes params.mix and map.catalogPageSize", async () => {
     const srv = server(storedBlob());
     const before = coerceConfig(srv.stored);
     const edited = editedEverywhere(before);
     await updateDiscoveryConfig(edited, [...BOX_SLICES.mixing]);
     const after = coerceConfig(srv.stored);
     expect(after.params.mix).toEqual(edited.params.mix);
-    expect(after.params.variety).toEqual({ repeat: 0.7 });
     expect(after.map.catalogPageSize).toBe(33);
     expect({
       ...after,
-      params: { ...after.params, mix: before.params.mix, variety: before.params.variety },
+      params: { ...after.params, mix: before.params.mix },
       map: { ...after.map, catalogPageSize: before.map.catalogPageSize },
     }).toEqual(before);
   });
@@ -244,7 +242,7 @@ describe("a stale page and an older server are refused aloud (H-2, H-3)", () => 
     const seen = srv.updatedAt;
     const edited = editedEverywhere(coerceConfig(srv.stored));
     // Another tab saves first.
-    await updateDiscoveryConfig(edited, [...BOX_SLICES.name], seen);
+    await updateDiscoveryConfig(edited, [...BOX_SLICES.searchbars], seen);
     const r = await updateDiscoveryConfig(edited, [...BOX_SLICES.ranking], seen);
     expect(srv.sent.at(-1)).toBeDefined();
     expect(mockInvoke.mock.calls.at(-1)?.[1]).toMatchObject({ section: "discovery", expectedUpdatedAt: seen });
@@ -275,15 +273,15 @@ describe("the Name boxes", () => {
     expect(after.name.idleSec).toBe(live.name.idleSec);
   });
 
-  it("the Name box writes its slices and not admin Find's caps, general or map", async () => {
+  it("the Searchbars card writes both bars and not general, map or params (MESITA-4463)", async () => {
     const srv = server(storedBlob());
     const live = coerceConfig(srv.stored);
-    await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.name]);
+    await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.searchbars]);
     const after = coerceConfig(srv.stored);
     expect(after.name.idleSec).toBe(2.5);
     expect(after.name.deep.autoCount).toBe(9);
+    expect(after.name.admin.textCount).toBe(3);
     expect(after.general).toEqual(live.general);
-    expect(after.name.admin).toEqual(live.name.admin);
     expect(after.map).toEqual(live.map);
     expect(after.params).toEqual(live.params);
   });
@@ -310,7 +308,7 @@ describe("the Name boxes", () => {
 
 describe("the cards' slices", () => {
   it("are the saving cards, each with its own slices, none shared; catalogPipeline is gone", () => {
-    expect(Object.keys(BOX_SLICES)).toEqual(["nameAdmin", "name", "ranking", "mixing", "mapDisplay", "premier"]);
+    expect(Object.keys(BOX_SLICES)).toEqual(["searchbars", "ranking", "mixing", "mapDisplay", "premier"]);
     const all: string[] = Object.values(BOX_SLICES).flat();
     expect(new Set(all).size).toBe(all.length);
     expect(all).not.toContain("catalogPipeline");
@@ -318,12 +316,12 @@ describe("the cards' slices", () => {
   });
 });
 
-describe("Minimum Popularity lives on Name and only the Name box writes it (MESITA-3086)", () => {
+describe("Minimum Popularity lives on Name and only the Searchbars card writes it (MESITA-3086)", () => {
   it.each(Object.entries(BOX_SLICES))("the %s card", async (box, slices) => {
     const srv = server(storedBlob());
     const live = coerceConfig(srv.stored);
     await updateDiscoveryConfig(editedEverywhere(live), [...slices]);
-    const want = box === "name" ? 6 : live.name.popularityFloor;
+    const want = box === "searchbars" ? 6 : live.name.popularityFloor;
     expect(coerceConfig(srv.stored).name.popularityFloor).toBe(want);
     // No card writes the Map's retired root any more.
     expect(map(srv.stored).popularityRoot).toBe(0.2);

@@ -50,7 +50,7 @@ import {
   type LatLng,
   rankArea,
 } from "./area-score.ts";
-import { cutAndShuffle, mergeLanes, type RankMode, VARIETY_REPEAT_DEFAULT } from "./pipeline-signals.ts";
+import { cutAndShuffle, mergeLanes, type RankMode } from "./pipeline-signals.ts";
 import {
   type DiscoveryConfig,
   mixFor,
@@ -64,14 +64,6 @@ import { finiteOrNull } from "./input.ts";
 /** Which pipeline runs: the Map (the Search tab) or the Catalog (Home),
  *  MESITA-2909. Chat ranks like the Catalog. */
 export type AreaSurface = "map" | "catalog";
-
-/** Home's repeat penalty (MESITA-4153): `catalog_rank_lanes` applies it
- *  per kind in the Organic lane. Out of range or missing reads the
- *  default. */
-export function varietyRepeat(params: Pick<SignalParams, "variety">): number {
-  const r = params.variety?.repeat;
-  return typeof r === "number" && Number.isFinite(r) && r > 0 && r <= 1 ? r : VARIETY_REPEAT_DEFAULT;
-}
 
 /** A Mesita row in the pool: active and ready. */
 export type PoolRow = Record<string, unknown> & {
@@ -635,7 +627,8 @@ function gateArgs(
 }
 
 /** `catalog_rank_lanes`' arguments (MESITA-4454): the mode's two recipe
- *  rows, the repeat penalty (Nearby sends 1, off: E5, R4) and the ad floor.
+ *  rows and the ad floor. No repeat penalty since MESITA-4463: the SQL
+ *  argument stays (default 1) until MESITA-4457 drops it.
  *  Every number comes from the TypeScript config; SQL owns the arithmetic
  *  only. */
 export function catalogRankLanesArgs(
@@ -658,7 +651,6 @@ export function catalogRankLanesArgs(
     p_ad_stars_exp: ad.starsExp,
     p_ad_google_exp: ad.googleExp,
     p_ad_premier_exp: ad.premierExp,
-    p_repeat: mode === "nearby" ? 1 : varietyRepeat(cfg.params),
     p_ad_floor: mixFor(cfg).adFloor,
   };
 }

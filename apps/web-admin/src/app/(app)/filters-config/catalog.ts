@@ -74,8 +74,6 @@ export type SignalParams = {
   /** Popularity is (1 + reviews × stars)^root; 0.33 is the cube root.
    *  `starsPower`: × (stars ÷ 5)^k on the Catalog and Chat (MESITA-4153). */
   popularity: { root: number; starsPower: number };
-  /** Home's n-th place of a kind × repeat^(n − 1) (MESITA-4153). */
-  variety: { repeat: number };
   /** Home's shuffle after the sort; 0 = none (MESITA-4153). UNREAD since
    *  MESITA-4454 (`mix.temperature` per mode replaces it); kept until the
    *  follow-up migration deletes it. `proximity` and `popularity` likewise. */
@@ -166,12 +164,10 @@ export const EXPONENT_MAX = 5;
 /** Mirrors the Popularity root bounds in _shared/pipeline-signals.ts (MESITA-3083). */
 export const POPULARITY_ROOT_MIN = 0.1;
 export const POPULARITY_ROOT_MAX = 1;
-/** Mirrors STARS_POWER_*, VARIETY_REPEAT_*, SHUFFLE_TEMPERATURE_* in
+/** Mirrors STARS_POWER_* and SHUFFLE_TEMPERATURE_* in
  *  _shared/pipeline-signals.ts (MESITA-4153). */
 export const STARS_POWER_MIN = 0;
 export const STARS_POWER_MAX = 12;
-export const VARIETY_REPEAT_MIN = 0.1;
-export const VARIETY_REPEAT_MAX = 1;
 export const SHUFFLE_TEMPERATURE_MIN = 0;
 export const SHUFFLE_TEMPERATURE_MAX = 5;
 /** Mirrors the recipe and mix bounds in _shared/pipeline-signals.ts
@@ -340,7 +336,6 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   proximity: { halfKm: 1, exponent: 1 },
   popularity: { root: 0.33, starsPower: 6 },
-  variety: { repeat: 0.6 },
   shuffle: { temperature: 0.3 },
   recipes: DEFAULT_RECIPES,
   mix: DEFAULT_MIX,
@@ -427,7 +422,6 @@ function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
-  const variety = (r.variety ?? {}) as Record<string, unknown>;
   const shuffle = (r.shuffle ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
@@ -438,9 +432,6 @@ function coerceParams(raw: unknown): SignalParams {
     popularity: {
       root: bounded(pop.root, d.popularity.root, POPULARITY_ROOT_MIN, POPULARITY_ROOT_MAX, 2),
       starsPower: bounded(pop.starsPower, d.popularity.starsPower, STARS_POWER_MIN, STARS_POWER_MAX, 1),
-    },
-    variety: {
-      repeat: bounded(variety.repeat, d.variety.repeat, VARIETY_REPEAT_MIN, VARIETY_REPEAT_MAX, 2),
     },
     shuffle: {
       temperature: bounded(

@@ -1561,9 +1561,9 @@ select ok(
       -- Proximity's stored reach and Selected; MESITA-2909 brought
       -- `params.proximity` back with `halfKm` alone (MESITA-2972), so
       -- `params` holds Proximity and Popularity only.
-      -- MESITA-4153 added `variety` and `shuffle`; MESITA-4454 added the recipe rows
+      -- MESITA-4153 added `shuffle` (its `variety` left with MESITA-4463); MESITA-4454 added the recipe rows
       -- (`recipes`) and the merge and shuffle settings (`mix`).
-      and (coalesce(discovery_config -> 'params', '{}'::jsonb) - 'popularity' - 'proximity' - 'variety' - 'shuffle' - 'recipes' - 'mix') = '{}'::jsonb
+      and (coalesce(discovery_config -> 'params', '{}'::jsonb) - 'popularity' - 'proximity' - 'shuffle' - 'recipes' - 'mix') = '{}'::jsonb
       and not (coalesce(discovery_config -> 'map', '{}'::jsonb)
              ?| array['supers', 'reloadMinKm', 'reloadMinSec', 'pinCount',
                       'googleFill', 'googlePlaces', 'mapGooglePlaces', 'mesitaPlaces',
