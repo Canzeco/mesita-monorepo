@@ -80,8 +80,9 @@ import { cn, errMsg } from "@/lib/utils";
  *  header (MESITA-2531) — grey, no outline, ink text. GREY AGAIN (Pato,
  *  MESITA-4441: "put it in a gray box without borders, as prev versions"):
  *  MESITA-4434's white bordered box lasted a day. */
+// On the black band (MESITA-4442): a white/10 box, white text, no border.
 export const HOME_LOCATION_CLASS =
-  "border-transparent bg-muted text-foreground hover:bg-border focus-visible:ring-ring ml-auto flex h-9 max-w-[65%] min-w-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold outline-none transition focus-visible:ring-2 active:scale-[0.98]";
+  "border-transparent bg-paper/10 text-paper hover:bg-paper/15 focus-visible:ring-ring ml-auto flex h-9 max-w-[65%] min-w-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold outline-none transition focus-visible:ring-2 active:scale-[0.98]";
 
 /** The box's word when Current location is chosen and the device has none. */
 export const NO_LOCATION_LABEL = "No location";
@@ -90,7 +91,7 @@ export const NO_LOCATION_LABEL = "No location";
  *  the Toaster's and ReservationSheet's pairing. Only the colour changes;
  *  the geometry stays `HOME_LOCATION_CLASS`. */
 export const HOME_LOCATION_OFF_CLASS =
-  "border-transparent bg-destructive/10 text-destructive hover:bg-destructive/15";
+  "border-transparent bg-red-500/20 text-red-300 hover:bg-red-500/25";
 
 /** What the pill says: the saved name, or the state of the device fix. The
  *  sheet's row adds the neighbourhood once known (MESITA-2466): "Current
@@ -329,7 +330,7 @@ export function LocationPicker() {
         )}
         <span className="min-w-0 truncate">{label}</span>
         <ChevronDown
-          className={cn("h-3.5 w-3.5 shrink-0", off ? "text-destructive" : "text-muted-foreground")}
+          className={cn("h-3.5 w-3.5 shrink-0", off ? "text-red-300" : "text-paper/60")}
           strokeWidth={2.25}
           aria-hidden
         />
