@@ -19,7 +19,7 @@ export function CashDialog({ open, onClose }: { open: boolean; onClose: () => vo
             <Banknote className="h-5 w-5" strokeWidth={2.25} />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="font-display text-base font-semibold tracking-tight">Cash or terminal</h2>
+            <h2 className="text-base font-semibold tracking-tight">Cash or terminal</h2>
             <p className="text-muted-foreground mt-1 text-sm">
               Pay the place directly with cash or its card terminal, outside the Mesita app.
             </p>

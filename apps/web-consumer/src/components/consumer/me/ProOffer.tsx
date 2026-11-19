@@ -48,7 +48,7 @@ export function ProOffer({
           "flex items-center justify-between gap-3 px-4 py-3.5 text-white",
         )}
       >
-        <h3 className="font-display text-xl leading-tight font-bold">
+        <h3 className="text-xl leading-tight font-bold">
           Mesita {words.title}
           {current && (
             <span

@@ -335,12 +335,12 @@ export function PlaceCredit({
             </span>
             <span className="line-clamp-2 min-w-0 text-sm leading-tight font-semibold">{card.name}</span>
           </span>
-          <span className="font-display shrink-0 text-sm font-semibold tracking-tight text-white/80">Mesita</span>
+          <span className="shrink-0 text-sm font-semibold tracking-tight text-white/80">Mesita</span>
         </div>
         <div className="relative flex flex-col items-start" aria-hidden>
           <span className={cn("text-3xl leading-tight font-semibold tabular-nums", muted && "text-white/70")}>{amount}</span>
           {coming ? (
-            <span className="text-sm font-medium text-white/80 tabular-nums" data-loyalty-card-pending>
+            <span className="text-sm font-semibold text-white/80 tabular-nums" data-loyalty-card-pending>
               {coming}
             </span>
           ) : null}

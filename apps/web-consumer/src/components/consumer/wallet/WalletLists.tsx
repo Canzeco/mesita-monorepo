@@ -478,7 +478,7 @@ export function PendingBox({ icon: Icon, children, quiet = false }: { icon: type
   return (
     <span
       className={cn(
-        "flex min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-sm leading-tight font-medium ring-1 ring-inset",
+        "flex min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-sm leading-tight font-semibold ring-1 ring-inset",
         quiet ? "bg-muted text-muted-foreground ring-border" : "bg-blue-50 text-blue-700 ring-blue-200",
       )}
       data-wallet-pending

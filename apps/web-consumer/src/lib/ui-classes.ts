@@ -27,7 +27,7 @@ export const PRIMARY_BUTTON_CLASS =
 // Sheet / section heading — the display-font h2 used at the top of modals and
 // page sections. Compose with cn() when a row needs extra layout classes.
 export const SHEET_TITLE_CLASS =
-  "font-display text-xl font-semibold tracking-tight";
+  "text-xl font-semibold tracking-tight";
 
 // Scrollable body region under a LocalSheet / BottomSheet header — the padded
 // content column every modal shares. Compose with cn() for per-sheet tweaks.

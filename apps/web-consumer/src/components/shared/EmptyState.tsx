@@ -63,7 +63,7 @@ export function EmptyState({
       <span className="bg-primary/10 text-primary flex h-14 w-14 items-center justify-center rounded-2xl">
         <Icon className="h-7 w-7" strokeWidth={2} />
       </span>
-      <h3 className="font-display mt-4 text-lg font-semibold tracking-tight">
+      <h3 className="mt-4 text-lg font-semibold tracking-tight">
         {title}
       </h3>
       {description && (

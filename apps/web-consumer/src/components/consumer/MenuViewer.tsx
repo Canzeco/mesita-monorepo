@@ -80,7 +80,7 @@ function MenuViewerBody({
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-display truncate text-sm font-semibold tracking-tight">
+          <p className="truncate text-sm font-semibold tracking-tight">
             {menu.name}
           </p>
           {nutritionLine(menu.nutrition) ? (

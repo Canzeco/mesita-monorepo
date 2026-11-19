@@ -19,7 +19,7 @@ export const PANEL_CLASS =
 /** A section's heading, inside its panel: 16px display, never an eyebrow. */
 export function PanelHeading({ children }: { children: ReactNode }) {
   return (
-    <h2 className="font-display text-base font-semibold tracking-tight">
+    <h2 className="text-base font-semibold tracking-tight">
       {children}
     </h2>
   );

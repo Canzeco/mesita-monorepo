@@ -249,7 +249,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
       <Screen title="Send Gift" paper>
         <div className="flex flex-col items-center pt-6 text-center" data-send-credit-packed>
           <GiftCardFace name={placeName} photo={row.card.photo} amount={amountText} />
-          <h2 className="font-display mt-8 text-2xl font-semibold tracking-tight">
+          <h2 className="mt-8 text-2xl font-semibold tracking-tight">
             {link.reopened ? "Send it to one friend." : "Packed! Send it to one friend."}
           </h2>
           <p className="text-muted-foreground mt-2 max-w-xs text-sm leading-relaxed">
@@ -272,7 +272,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
                   <span className={`flex h-14 w-14 items-center justify-center rounded-full [&_svg]:h-6 [&_svg]:w-6 ${CHANNEL_FACE[c.channel]}`}>
                     {CHANNEL_MARKS[c.channel]}
                   </span>
-                  <span className="text-sm font-medium">{c.label}</span>
+                  <span className="text-sm font-semibold">{c.label}</span>
                 </>
               );
               const cls = "flex flex-col items-center gap-2 rounded-xl py-1 transition active:opacity-70";
@@ -356,7 +356,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
               like notifications"; picked A of three): a mini of the wine
               card, the amount and when it was packed, a pill button. The
               whole box is the tap. */}
-          <h2 className="font-display mt-1 px-1 text-lg font-semibold">Waiting for a friend</h2>
+          <h2 className="mt-1 px-1 text-lg font-semibold">Waiting for a friend</h2>
           <ul className="flex flex-col gap-3" data-send-credit-open-list>
             {openHere.map((l) => {
               const shareable = l.can_share !== false;

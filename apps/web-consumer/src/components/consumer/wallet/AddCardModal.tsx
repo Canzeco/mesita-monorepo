@@ -41,7 +41,7 @@ export function AddCardModal() {
     <LocalDialog open={open} onClose={close} ariaLabel="Add a card" fit>
       <div className="flex max-h-full min-h-0 flex-col" data-add-card-modal>
         <div className="flex items-center justify-between gap-3 px-5 pt-5">
-          <h2 className="font-display text-xl font-semibold">Add a card</h2>
+          <h2 className="text-xl font-semibold">Add a card</h2>
           <button
             type="button"
             onClick={close}

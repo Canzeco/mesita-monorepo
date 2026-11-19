@@ -718,9 +718,9 @@ function SubpageTabs<K extends string>({
             disabled={!onPick}
             className={cn(
               // Home's strip, size for size (MESITA-4047 after MESITA-4046):
-              // 16px, the chosen word bold ink, the rest regular grey.
+              // 16px, every word semibold, the chosen one ink, the rest grey (MESITA-4447).
               "flex flex-1 justify-center px-1 text-base whitespace-nowrap transition",
-              chosen ? "text-foreground font-bold" : "text-muted-foreground",
+              chosen ? "text-foreground font-semibold" : "text-muted-foreground font-semibold",
             )}
           >
             <span className="relative flex items-center gap-1.5 py-3">
@@ -786,7 +786,7 @@ function TicketPills({
               "-mb-px flex min-w-0 items-center justify-center gap-1 border-b-[3px] px-0 py-3 text-center type-body leading-normal tracking-wide whitespace-nowrap transition",
               chosen
                 ? "border-blue-600 font-bold text-blue-600"
-                : "text-muted-foreground hover:text-foreground border-transparent font-medium",
+                : "text-muted-foreground hover:text-foreground border-transparent font-semibold",
             )}
           >
             {/* A little icon before each word (MESITA-4324, Pato: "is ok if

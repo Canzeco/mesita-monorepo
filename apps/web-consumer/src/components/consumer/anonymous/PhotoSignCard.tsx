@@ -53,7 +53,7 @@ export function PhotoSignCard({
           </span>
         </span>
         <div className="flex flex-col">
-          <p className="font-display text-3xl leading-[1.1] font-semibold tracking-[-0.02em] text-balance">
+          <p className="text-3xl leading-[1.1] font-semibold tracking-[-0.02em] text-balance">
             {title}
           </p>
           <p className="mt-2 text-sm leading-snug text-white/80">{line}</p>

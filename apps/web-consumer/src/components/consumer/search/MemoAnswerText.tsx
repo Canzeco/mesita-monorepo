@@ -123,7 +123,7 @@ export function MemoAnswerText({
         type="button"
         onClick={() => open(prediction)}
         className={cn(
-          "decoration-primary/50 hover:decoration-primary text-foreground rounded font-medium underline decoration-1 underline-offset-2 transition active:opacity-70",
+          "decoration-primary/50 hover:decoration-primary text-foreground rounded font-semibold underline decoration-1 underline-offset-2 transition active:opacity-70",
           adding && "opacity-60",
         )}
       >

@@ -192,7 +192,7 @@ export function GuestTabView({
               still fit a small phone). No time once signed (MESITA-4133). */}
           <div className="flex shrink-0 items-center gap-3 rounded-2xl bg-green-700 px-4 py-3 text-left text-white" data-guest-paid>
             <CircleCheck className="h-8 w-8 shrink-0" aria-hidden />
-            <h2 className="font-display flex-1 text-xl font-semibold">Paid</h2>
+            <h2 className="flex-1 text-xl font-semibold">Paid</h2>
             <p className="text-2xl font-semibold tabular-nums">{m(total)}</p>
           </div>
           {/* One panel (MESITA-4072): the place, the money rows, and what the
@@ -238,7 +238,7 @@ export function GuestTabView({
         <StepBody>
           <PaySection className="flex flex-col items-center p-4 text-center">
             <XCircle className={cn("h-10 w-10", BAD)} aria-hidden />
-            <h2 className="font-display mt-2 text-xl font-semibold">Not paid</h2>
+            <h2 className="mt-2 text-xl font-semibold">Not paid</h2>
             <p className="mt-2 text-base">{reason}</p>
             <p className="text-muted-foreground mt-1 max-w-xs text-sm">
               {cash > 0 ? "Nothing was charged in Mesita. If you gave cash, settle it with the waiter." : "Nothing was charged"}
@@ -283,7 +283,7 @@ export function GuestTabView({
           <PaySection className="flex flex-col items-center p-4 text-center" data-guest-confirming>
             <div role="status" className="flex flex-col items-center">
               <Loader2 className="h-10 w-10 animate-spin motion-reduce:animate-none" aria-hidden />
-              <h2 className="font-display mt-2 text-xl font-semibold">Confirming…</h2>
+              <h2 className="mt-2 text-xl font-semibold">Confirming…</h2>
             </div>
           </PaySection>
         </StepBody>

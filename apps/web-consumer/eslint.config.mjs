@@ -52,7 +52,7 @@ const eslintConfig = defineConfig([
             "    type-meta     0.625rem  (10px)  dense meta, the FLOOR\n" +
             "    type-label    0.6875rem (11px)  group label\n" +
             "    type-body     0.8125rem (13px)  field label / body\n" +
-            "    type-eyebrow  12px + uppercase + 0.14em + weight 500\n\n" +
+            "    type-eyebrow  12px + uppercase + 0.14em + weight 600\n\n" +
             "  Do NOT round to the nearest px — read the block and pick the ROLE.\n" +
             "  clamp() is allowed for fluid display type; a fractional size a\n" +
             "  machine computed is fine, one a human typed is always a bug.\n\n" +
@@ -94,6 +94,19 @@ const eslintConfig = defineConfig([
             "type-eyebrow already sets letter-spacing (0.14em, per §C).\n\n" +
             "  Same equal-specificity race. If you need the other legal value\n" +
             "  (0.12em), add it as a role rather than overriding this one.",
+        },
+        {
+          selector:
+            "Literal[value=/(^|[\\s:])font-(display|medium|extrabold|light|thin)(?![\\w-])/], TemplateElement[value.raw=/(^|[\\s:])font-(display|medium|extrabold|light|thin)(?![\\w-])/]",
+          message:
+            "Off-scale font style (MESITA-4447).\n\n" +
+            "  WHY: Pato, 2026-11-19: \"i don't want different font styles.\"\n" +
+            "  The app is ONE family (Inter) and three weights.\n\n" +
+            "  USE: regular (no class) for reading text, font-semibold for\n" +
+            "  names, titles and buttons, font-bold for money and figures.\n" +
+            "  font-display (the Fraunces serif) is gone; a title is Inter\n" +
+            "  semibold at its own size.\n\n" +
+            "  THE LAW LIVES IN NOTION: Docs > Design §B Type, §D Type roles.",
         },
       ],
     },

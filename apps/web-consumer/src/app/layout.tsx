@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
@@ -18,12 +18,9 @@ const inter = Inter({
   display: "swap",
 });
 
-const fraunces = Fraunces({
-  variable: "--font-display",
-  subsets: ["latin"],
-  display: "swap",
-  axes: ["opsz"],
-});
+// ONE FAMILY (MESITA-4447, Pato: "i don't want different font styles"):
+// Inter is the whole app. Fraunces is gone from the screens; only the OG
+// share images under app/og load it, as fixed pictures.
 
 // THE KEYBOARD MUST SHRINK THE PAGE, not sit on top of it. `MobileFrame` is
 // `h-dvh` with `BottomNav` as a flow child, so anything anchored to the bottom
@@ -110,7 +107,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${inter.variable} h-full antialiased`}
       style={{ colorScheme: "light" }}
     >
       <body className="bg-background text-foreground flex h-full flex-col">

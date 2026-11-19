@@ -167,7 +167,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
             className={cn(
               "text-base tabular-nums",
               t.dim
-                ? "text-muted-foreground font-medium"
+                ? "text-muted-foreground font-semibold"
                 : t.sign === "+"
                   ? "font-semibold text-green-700"
                   : "font-semibold",
@@ -177,7 +177,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
           </span>
         ) : null}
         {t.status.label ? (
-          <span className={cn("text-sm font-medium", TONE[t.status.tone])}>
+          <span className={cn("text-sm font-semibold", TONE[t.status.tone])}>
             {t.status.label}
           </span>
         ) : null}

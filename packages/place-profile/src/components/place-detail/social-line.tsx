@@ -47,7 +47,7 @@ export function SocialLine({
           )}
         </span>
       ) : null}
-      <span className="min-w-0 font-medium">{text}</span>
+      <span className="min-w-0 font-semibold">{text}</span>
     </p>
   );
 }

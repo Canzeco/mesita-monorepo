@@ -623,7 +623,7 @@ function QrScreen({
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center text-center" data-pay-tab-qr>
       {placeName ? <p className="w-full shrink-0 truncate text-base font-semibold">{placeName}</p> : null}
-      <p className="font-display mt-1 shrink-0 text-2xl font-semibold">Show this to the waiter</p>
+      <p className="mt-1 shrink-0 text-2xl font-semibold">Show this to the waiter</p>
       <FittedQr>
         {qr ? (
           <QRCodeSVG value={qr} size={240} marginSize={0} style={{ width: "100%", height: "100%" }} aria-label="Your bill's QR for the waiter" data-tab-qr />
@@ -1104,7 +1104,7 @@ function CardScreen({
     <div className="flex min-h-0 flex-1 flex-col" data-pay-tab-card>
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
         <p className="w-full truncate text-base font-semibold">{tab.place.name ?? "A Mesita place"}</p>
-        <p className="font-display mt-3 text-4xl font-semibold tabular-nums">{m(tab.card_bill_cents + tab.card_tip_cents)}</p>
+        <p className="mt-3 text-4xl font-semibold tabular-nums">{m(tab.card_bill_cents + tab.card_tip_cents)}</p>
         <p className="text-muted-foreground mt-1 text-base">on your card</p>
         <p className="mt-5 flex items-center gap-2 text-base font-semibold" role="status" aria-live="polite">
           <Dot />
@@ -1133,7 +1133,7 @@ function CashScreen({ tab, reconnecting, busy, onChange }: { tab: GuestTab; reco
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
         <p className="w-full truncate text-base font-semibold">{tab.place.name ?? "A Mesita place"}</p>
         <p className="text-muted-foreground mt-3 text-base">Give the waiter</p>
-        <p className="font-display mt-1 text-4xl font-semibold tabular-nums" data-tab-cash-due>
+        <p className="mt-1 text-4xl font-semibold tabular-nums" data-tab-cash-due>
           {m(tab.cash_due_cents)}
         </p>
         <p className="text-muted-foreground mt-1 text-base">in cash</p>
@@ -1181,7 +1181,7 @@ function PaidScreen({ tab, onDone }: { tab: GuestTab; onDone: () => void }) {
     >
       <CheckCircle2 className="h-24 w-24" aria-hidden strokeWidth={1.75} />
       <p className="mt-4 text-base font-semibold">{tab.paid_at ? `Paid · ${clockTime(tab.paid_at)}` : "Paid"}</p>
-      <p className="font-display mt-2 text-4xl font-semibold tabular-nums">{m(total)}</p>
+      <p className="mt-2 text-4xl font-semibold tabular-nums">{m(total)}</p>
       {tip > 0 ? (
         <p className="mt-1 text-sm text-white/80 tabular-nums">
           {m(total - tip)} + {m(tip)} tip

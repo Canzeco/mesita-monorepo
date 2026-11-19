@@ -58,7 +58,7 @@ export function MenusBox({
             className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
             strokeWidth={2.25}
           />
-          <p className="text-[13px] leading-snug font-medium text-foreground">
+          <p className="type-body leading-snug font-semibold text-foreground">
             Reference only — current product prices may differ at the place.
           </p>
         </div>

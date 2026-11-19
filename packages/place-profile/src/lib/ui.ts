@@ -54,7 +54,7 @@ export const PLACE_META_CLASS = "text-muted-foreground text-xs leading-snug";
 // had 12px on 28px ("a bit smaller, just a bit"), MESITA-2636 14px on
 // 32px. Families and Tags wear the same box, so they follow.
 export const PLACE_OUTLINE_CHIP_CLASS =
-  "border-border text-foreground inline-flex h-[30px] min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] font-medium whitespace-nowrap tabular-nums";
+  "border-border text-foreground inline-flex h-[30px] min-w-0 items-center gap-1.5 rounded-lg border px-2.5 type-body font-semibold whitespace-nowrap tabular-nums";
 /** A screen-level title (Soon, vote, creating): Inter 18px semibold. */
 export const PLACE_SCREEN_TITLE_CLASS =
   "text-foreground font-sans text-lg font-semibold tracking-tight";

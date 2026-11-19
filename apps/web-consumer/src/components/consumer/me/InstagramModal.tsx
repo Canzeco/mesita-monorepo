@@ -316,7 +316,7 @@ export function WhyConnect({ connected }: { connected: boolean }) {
   const need = storyRules.minFollowers;
   return (
     <section className="flex flex-col gap-3" aria-label="Why connect">
-      <h2 className="font-display px-0.5 text-base font-semibold tracking-tight">
+      <h2 className="px-0.5 text-base font-semibold tracking-tight">
         Why connect
       </h2>
       <div
@@ -1011,7 +1011,7 @@ function ConnectLookup({
               type="button"
               onClick={onCancel}
               disabled={busy}
-              className="text-muted-foreground hover:text-foreground type-label min-h-11 font-medium underline underline-offset-4 transition disabled:opacity-60"
+              className="text-muted-foreground hover:text-foreground type-label min-h-11 font-semibold underline underline-offset-4 transition disabled:opacity-60"
             >
               Cancel
             </button>

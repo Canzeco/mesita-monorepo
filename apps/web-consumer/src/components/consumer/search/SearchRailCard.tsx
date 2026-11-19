@@ -203,7 +203,7 @@ export function RailCard({
                     {placeholder.emoji}
                   </span>
                 ) : (
-                  <span className="font-display text-3xl font-bold tracking-tight">
+                  <span className="text-3xl font-bold tracking-tight">
                     {placeholder.text}
                   </span>
                 )}

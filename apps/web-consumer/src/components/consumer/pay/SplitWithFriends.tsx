@@ -79,7 +79,7 @@ export function SplitButton({
       </button>
       <LocalSheet open={open} onClose={() => setOpen(false)} ariaLabel="Split the bill with friends">
         <div className="px-4 pt-2 pb-6">
-          <p className="font-display text-2xl font-semibold">Split {money(bill, tab.currency)}</p>
+          <p className="text-2xl font-semibold">Split {money(bill, tab.currency)}</p>
           <p className="text-muted-foreground mt-1 text-sm">You pay your share; friends scan your screen to pay theirs.</p>
           <div className="mt-4 grid grid-cols-3 gap-2">
             {WAYS.map((n) => (

@@ -56,7 +56,7 @@ function LifecycleStepper({ state }: { state: ReservationItem["state"] }) {
             />
             <span
               className={cn(
-                "type-label truncate font-medium",
+                "type-label truncate font-semibold",
                 i === index
                   ? "text-foreground"
                   : done
@@ -211,14 +211,14 @@ export function ReservationDetailBody({
                     newTime: alt.time,
                   })
                 }
-                className="border-border hover:bg-muted rounded-xl border px-3 py-2.5 text-left text-sm font-medium disabled:opacity-60"
+                className="border-border hover:bg-muted rounded-xl border px-3 py-2.5 text-left text-sm font-semibold disabled:opacity-60"
               >
                 {label}
               </button>
             );
           })}
           {confirmError && (
-            <p className="text-destructive text-xs font-medium">
+            <p className="text-destructive text-xs font-semibold">
               {confirmError}
             </p>
           )}
@@ -272,7 +272,7 @@ export function ReservationDetailBody({
             </button>
           </div>
           {confirmError && (
-            <p className="text-destructive text-xs font-medium">
+            <p className="text-destructive text-xs font-semibold">
               {confirmError}
             </p>
           )}

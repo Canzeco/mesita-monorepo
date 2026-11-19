@@ -185,7 +185,7 @@ export function ReservationDatePicker({
                 d.disabled ? CHOICE_DEAD : active ? CHOICE_ON : CHOICE_OFF,
               )}
             >
-              <span className={cn("type-body truncate font-medium", !active && "text-muted-foreground")}>{top}</span>
+              <span className={cn("type-body truncate font-semibold", !active && "text-muted-foreground")}>{top}</span>
               <span className="text-lg leading-none">{d.day}</span>
             </button>
           );
@@ -305,7 +305,7 @@ export function ReservationField({
 }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className={cn("block min-w-0", className)}>
-      <span className="text-muted-foreground type-body mb-1.5 block font-medium">{label}</span>
+      <span className="text-muted-foreground type-body mb-1.5 block font-semibold">{label}</span>
       <input
         {...input}
         className="border-foreground/20 bg-card focus:border-foreground read-only:bg-muted read-only:text-muted-foreground h-11 w-full rounded-xl border px-3.5 text-base outline-none"
@@ -556,7 +556,7 @@ export function ReserveStepNav({
           <ChevronLeft className="h-6 w-6" aria-hidden />
         </button>
         <span className="shrink-0 [&>span]:h-9 [&>span]:w-9 [&>span]:text-sm">{place.photo}</span>
-        <h1 className="font-display line-clamp-2 min-w-0 flex-1 text-lg leading-tight font-semibold tracking-tight">
+        <h1 className="line-clamp-2 min-w-0 flex-1 text-lg leading-tight font-semibold tracking-tight">
           {place.name}
         </h1>
       </div>

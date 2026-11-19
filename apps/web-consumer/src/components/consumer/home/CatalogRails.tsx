@@ -541,9 +541,10 @@ export function CatalogRails() {
             className={cn(
               // 16px, the app's body step (MESITA-4046, Pato: "looks so
               // fucking small the selected place … make it bigger"); 14px
-              // before. The chosen word is bold ink, the other regular grey.
+              // before. Both words semibold, the chosen one ink, the other grey: weight
+              // never marks the choice, so the word keeps its width (MESITA-4447).
               "relative flex flex-1 justify-center px-1 text-base whitespace-nowrap transition",
-              on ? "text-foreground font-bold" : "text-muted-foreground",
+              on ? "text-foreground font-semibold" : "text-muted-foreground font-semibold",
             )}
           >
             <span className="relative flex items-center gap-1.5 py-3">
@@ -610,7 +611,7 @@ export function CatalogRails() {
         <span
           className={cn(
             CAT_NAME,
-            on ? "text-foreground font-bold" : "text-muted-foreground font-medium",
+            on ? "text-foreground font-semibold" : "text-muted-foreground font-semibold",
           )}
         >
           {c.label}
@@ -664,7 +665,7 @@ export function CatalogRails() {
               <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
             )}
           </span>
-          <span className={cn(CAT_NAME, "text-muted-foreground font-medium")}>Menu</span>
+          <span className={cn(CAT_NAME, "text-muted-foreground font-semibold")}>Menu</span>
         </button>
       </div>
       <nav

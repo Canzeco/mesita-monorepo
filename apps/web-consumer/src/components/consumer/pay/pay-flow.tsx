@@ -97,7 +97,7 @@ export function PlaceHero({
         className="absolute inset-x-0 bottom-0 flex flex-col items-start px-4 pb-3 text-left text-white"
         aria-label={`${place.name ?? "This place"}. Choose another place`}
       >
-        <span className="font-display max-w-full truncate text-xl font-semibold">{place.name ?? "A Mesita place"}</span>
+        <span className="max-w-full truncate text-xl font-semibold">{place.name ?? "A Mesita place"}</span>
         <span className="flex items-center gap-1 text-sm text-white/85">
           <MapPin className="h-4 w-4" aria-hidden />
           {place.distance_m !== null ? distanceText(place.distance_m) : "Tap to choose another place"}

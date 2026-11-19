@@ -164,7 +164,7 @@ function tag(reason: VoucherReason | undefined): string {
 
 /** A section title on the one-screen Offers page: 16px (MESITA-3452). */
 // The Panel heading's face since MESITA-4196 (16px display, as the Reserve page).
-const OFFERS_TITLE_CLASS = "text-foreground font-display text-base leading-tight font-semibold tracking-tight";
+const OFFERS_TITLE_CLASS = "text-foreground text-base leading-tight font-semibold tracking-tight";
 
 /** A card: one hairline edge, white, rounded. */
 const CARD = "border-border bg-card rounded-2xl border";
@@ -518,7 +518,7 @@ function StepList({ steps, dim }: { steps: Step[]; dim?: boolean }) {
             {i < steps.length - 1 ? <span className="bg-border my-1 w-0.5 flex-1" /> : null}
           </span>
           <span className={cn("flex min-w-0 flex-1 flex-col pt-1.5", i < steps.length - 1 && "pb-4")}>
-            <span className={cn("flex items-baseline justify-between gap-3 text-[17px] leading-snug font-bold tabular-nums", s.green ? "text-[#00A85A]" : "text-foreground")}>
+            <span className={cn("flex items-baseline justify-between gap-3 text-lg leading-snug font-bold tabular-nums", s.green ? "text-[#00A85A]" : "text-foreground")}>
               <span className="min-w-0">{s.title}</span>
               {s.amount ? <span className="shrink-0">{s.amount}</span> : null}
             </span>
@@ -564,7 +564,7 @@ function GoodToKnow({ productKey }: { productKey: MoneyVoucherKey }) {
           <li
             key={r.text}
             className={cn(
-              "flex items-start gap-2.5 text-[15px] leading-snug",
+              "flex items-start gap-2.5 text-base leading-snug",
               r.warn ? "-mx-1 rounded-xl bg-amber-50 px-3 py-2 font-semibold text-amber-900" : "text-foreground",
             )}
             data-offer-once={r.warn ? "" : undefined}
@@ -616,7 +616,7 @@ function NeedBox({ needs }: { needs: Need[] }) {
         {needs.map((n) => (
           <li
             key={n.label}
-            className={cn("flex items-center gap-2.5 text-[15px] leading-snug tabular-nums", n.state === "locked" ? "font-semibold text-amber-900" : "text-foreground")}
+            className={cn("flex items-center gap-2.5 text-base leading-snug tabular-nums", n.state === "locked" ? "font-semibold text-amber-900" : "text-foreground")}
             data-story-need={n.state}
           >
             {n.state === "ok" ? (
@@ -817,8 +817,8 @@ function CardLine({ offer }: { offer: Offer }) {
   return (
     <>
       {offer.payCard && !offer.signedOut ? (
-        <p className="flex items-center justify-between text-[15px]" data-pay-card-line>
-          <span className="text-foreground truncate font-medium">
+        <p className="flex items-center justify-between text-base" data-pay-card-line>
+          <span className="text-foreground truncate font-semibold">
             {offer.payCard.label} •••• {offer.payCard.last4}
           </span>
           {offer.canChange ? (
@@ -834,7 +834,7 @@ function CardLine({ offer }: { offer: Offer }) {
         </p>
       ) : null}
       {offer.payCards?.state === "error" ? (
-        <p className="flex items-center justify-between text-[15px]" role="alert">
+        <p className="flex items-center justify-between text-base" role="alert">
           <span className="text-foreground">Couldn&apos;t load your cards</span>
           <button type="button" onClick={offer.onRetryCards} className="text-foreground min-h-9 shrink-0 font-semibold underline underline-offset-2">
             Retry
@@ -910,13 +910,13 @@ function StoryPaid({ receipt, placeName, onDone, deadlineAt }: { receipt: Receip
           <CircleCheck className="h-7 w-7 shrink-0 text-[#00A85A]" strokeWidth={2.25} aria-hidden />
           {paid ? `${whole(receipt.pay)} is yours` : "Your bank is confirming"}
         </p>
-        <p className="text-muted-foreground mt-1 text-[15px] leading-snug">
+        <p className="text-muted-foreground mt-1 text-base leading-snug">
           {paid ? `Ready to spend now at ${placeName}.` : "The credit shows once it's through. You won't be charged twice."}
         </p>
       </Box>
       <Box title="Your bonus" data-story-next="">
-        <p className="text-foreground text-[17px] leading-snug font-bold">Now post your story</p>
-        <p className="text-muted-foreground mt-1 text-[15px] leading-snug tabular-nums">
+        <p className="text-foreground text-lg leading-snug font-bold">Now post your story</p>
+        <p className="text-muted-foreground mt-1 text-base leading-snug tabular-nums">
           {left ? `You have ${left}. ` : ""}Its steps are in Me › Tickets › Stories.
         </p>
       </Box>
@@ -999,8 +999,8 @@ function StoryFlow({
       >
         {deal}
         <Box data-story-gate="already_bought">
-          <p className="text-foreground text-[17px] leading-snug font-bold">You already have a Story here.</p>
-          <p className="text-muted-foreground mt-1 text-[15px] leading-snug">One per visit. Its steps and bonus are in Me › Tickets › Stories.</p>
+          <p className="text-foreground text-lg leading-snug font-bold">You already have a Story here.</p>
+          <p className="text-muted-foreground mt-1 text-base leading-snug">One per visit. Its steps and bonus are in Me › Tickets › Stories.</p>
         </Box>
         {good}
       </StoryFrame>
@@ -1040,7 +1040,7 @@ function StoryFlow({
           {failing === "instagram" || failing === "followers" ? null : (
             <p className="flex shrink-0 items-start gap-2.5 rounded-2xl bg-amber-50 px-4 py-3 text-amber-900">
               <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-              <span className="text-[15px] leading-snug font-semibold">{line.text}</span>
+              <span className="text-base leading-snug font-semibold">{line.text}</span>
             </p>
           )}
         </div>
@@ -1067,7 +1067,7 @@ function StoryFlow({
       bar={
         <>
           {refusal ? (
-            <p className="rounded-xl bg-amber-50 px-3 py-2.5 text-[15px] leading-snug font-semibold text-amber-900" role="alert" data-story-refusal>
+            <p className="rounded-xl bg-amber-50 px-3 py-2.5 text-base leading-snug font-semibold text-amber-900" role="alert" data-story-refusal>
               {refusal}
             </p>
           ) : null}
@@ -1108,7 +1108,7 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
         <span className="text-muted-foreground text-sm">
           You get <span className="text-foreground font-semibold">{bonus}</span>
         </span>
-        <span className="text-2xl font-extrabold text-[#00A85A] tabular-nums">{whole(get)}</span>
+        <span className="text-2xl font-bold text-[#00A85A] tabular-nums">{whole(get)}</span>
       </div>
     </div>
   );
@@ -1234,11 +1234,11 @@ function PaySheet({
                 </p>
               </div>
               {receipt.payWith ? (
-                <p className="text-muted-foreground -mt-2 text-[15px]" data-offer-paid-with={receipt.payWith}>
+                <p className="text-muted-foreground -mt-2 text-base" data-offer-paid-with={receipt.payWith}>
                   {receipt.payWith === "apple_pay" ? "Paid with Apple Pay" : "Paid with Google Pay"}
                 </p>
               ) : null}
-              <ul className="text-foreground flex flex-col gap-2 text-[15px] leading-snug">
+              <ul className="text-foreground flex flex-col gap-2 text-base leading-snug">
                 {receipt.outcome === "received" ? (
                   <li>
                     Your voucher will appear in{" "}
@@ -1303,18 +1303,18 @@ function PaySheet({
                     </div>
                   ) : null}
                   {locked ? (
-                    <p className="text-foreground text-center text-[15px] font-semibold" role="status" data-express-paying="">
+                    <p className="text-foreground text-center text-base font-semibold" role="status" data-express-paying="">
                       Paying…
                     </p>
                   ) : null}
                   {expressError && !locked ? (
-                    <p className="text-center text-[15px] leading-snug font-semibold text-red-700" role="alert" data-express-error="">
+                    <p className="text-center text-base leading-snug font-semibold text-red-700" role="alert" data-express-error="">
                       {expressError}
                     </p>
                   ) : null}
                   {locked ? null : asking && !buying ? (
                     <div className="flex flex-col gap-3" data-offer-confirm="">
-                      <p className="text-foreground text-[17px] leading-snug font-semibold tabular-nums">
+                      <p className="text-foreground text-lg leading-snug font-semibold tabular-nums">
                         {offer.payCard ? `Pay ${amount} with your ${offer.payCard.label} ending ${offer.payCard.last4}?` : `Pay ${amount}?`}
                       </p>
                       <button
@@ -1367,7 +1367,7 @@ function PaySheet({
                   {isStory && offer.guestLock ? null : (
                     <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-900" data-offer-status="locked">
                       <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-                      <span className="text-[15px] leading-snug font-semibold">{offer.status.text}</span>
+                      <span className="text-base leading-snug font-semibold">{offer.status.text}</span>
                     </p>
                   )}
                   {offer.unlock ? (
@@ -1541,7 +1541,7 @@ export function VouchersPane({
                         {/* IN INK (Pato, 2026-11-17, MESITA-4227: "the pay and
                             get must be clearer, it's too transparent"): Pay
                             medium, Get semibold, only the dot grey. */}
-                        <span className="text-foreground truncate text-[15px] font-medium tabular-nums">
+                        <span className="text-foreground truncate text-base font-semibold tabular-nums">
                           Pay {whole(pay)} <span className="text-muted-foreground">·</span>{" "}
                           <span className="font-semibold">Get {whole(get)}</span>
                         </span>
@@ -1558,8 +1558,8 @@ export function VouchersPane({
                         aria-hidden
                         data-offer-bonus
                       >
-                        <span className="text-lg leading-none font-extrabold tracking-tight">{bonus}</span>
-                        <span className="mt-1 text-[10px] leading-none font-bold tracking-wider uppercase opacity-80">Bonus</span>
+                        <span className="text-lg leading-none font-bold tracking-tight">{bonus}</span>
+                        <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase opacity-80">Bonus</span>
                       </span>
                     </button>
                   </li>

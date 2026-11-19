@@ -92,7 +92,7 @@ const ROW_TILE = "bg-foreground text-paper flex-row items-stretch gap-1.5 overfl
 const ROW_LEAD = "flex w-13 shrink-0 flex-col items-center justify-center gap-1";
 // The moving box: rounded inside the frame, a small caption over the words
 // at 14px so "+100% Bonus" fits a 360px phone (18px before, MESITA-4167).
-const ROW_CHIP = "relative min-w-0 flex-1 overflow-hidden rounded-md text-sm leading-tight font-extrabold tabular-nums";
+const ROW_CHIP = "relative min-w-0 flex-1 overflow-hidden rounded-md text-sm leading-tight font-bold tabular-nums";
 const RESERVE_CHIP = "bg-[#DA3743] text-white";
 // Stripe Link green, the offers' one green (MESITA-4210).
 const OFFERS_CHIP = "bg-[#00D66F] text-neutral-950";
@@ -503,7 +503,7 @@ function TableTile({
         className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-md bg-black/15 leading-none"
       >
         <span className="text-xs font-semibold opacity-90">{month ?? ""}</span>
-        <span className="mt-0.5 text-sm font-extrabold tabular-nums">{date ?? ""}</span>
+        <span className="mt-0.5 text-sm font-bold tabular-nums">{date ?? ""}</span>
       </span>
       <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
         {/* The state as a pill (MESITA-4444): Booking translucent with a
@@ -521,7 +521,7 @@ function TableTile({
           )}
           {state}
         </span>
-        <span className="max-w-full truncate text-sm leading-tight font-extrabold tabular-nums">
+        <span className="max-w-full truncate text-sm leading-tight font-bold tabular-nums">
           {weekday}
           {time ? ` · ${time}` : ""}
         </span>

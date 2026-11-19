@@ -156,12 +156,12 @@ export function ScreenHeader({
         </button>
       )}
       {titleMark ? (
-        <h1 className="font-display flex min-w-0 items-center justify-center gap-2 text-xl font-semibold tracking-tight">
+        <h1 className="flex min-w-0 items-center justify-center gap-2 text-xl font-semibold tracking-tight">
           {titleMark}
           <span className="min-w-0 truncate">{title}</span>
         </h1>
       ) : (
-        <h1 className="font-display min-w-0 truncate text-center text-xl font-semibold tracking-tight">
+        <h1 className="min-w-0 truncate text-center text-xl font-semibold tracking-tight">
           {title}
         </h1>
       )}

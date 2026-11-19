@@ -43,7 +43,7 @@ export function AddCreditsCardDialog({
       <div data-add-credits-card-dialog>
         <div className="flex items-start gap-3 p-4">
           <div className="min-w-0 flex-1">
-            <h2 className="font-display text-base font-semibold tracking-tight">
+            <h2 className="text-base font-semibold tracking-tight">
               Loyalty Cards add themselves
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
