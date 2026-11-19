@@ -20,9 +20,10 @@
 // here too"; Home's column has worn them since MESITA-3683).
 // Popular, as on Home (Pato, MESITA-4466: "rename top to popular here and
 // follow rule and filters is menu"; Top since MESITA-2882). MENU, NOT
-// FILTERS: the disc became Home's Menu box, the grid mark and the word, and
-// Menu and Popular are rounded squares while the families stay pills
-// (Home's MESITA-4428 rule: "square boxes for the special boxes"). THE DISC OPENS THE FILTERS SHEET
+// FILTERS: the disc became Home's Menu box, the grid mark and the word, a
+// rounded square; Popular and every family are pills (Pato, MESITA-4468:
+// "better in this page only popular too rounded"; MESITA-4466 had Popular
+// square too). THE DISC OPENS THE FILTERS SHEET
 // (Pato, MESITA-2903: "when i click filters, open the modal to see select
 // multiple families"; MESITA-2879 had deleted MESITA-2758's sheet and made
 // the disc a clear): any number of families, applied at once. While any is
@@ -179,7 +180,7 @@ export function SearchHeader({
                 type="button"
                 onClick={clearMapFamilies}
                 aria-pressed={everyFamily}
-                className={cn(CHIP_SPECIAL, everyFamily ? CHIP_ON : CHIP_OFF)}
+                className={cn(CHIP, everyFamily ? CHIP_ON : CHIP_OFF)}
                 data-search-chip-top
               >
                 <span aria-hidden className={CHIP_EMOJI}>
