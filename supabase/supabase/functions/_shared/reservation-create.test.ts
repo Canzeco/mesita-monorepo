@@ -70,12 +70,14 @@ Deno.test("idempotent: another guest's request_id is not this guest's ticket", a
 const NOW = new Date("2026-11-19T00:00:00.000Z");
 
 Deno.test("duplicate: a second live ticket at the same place and time is refused", async () => {
+  // Frozen clock: AT is 2026-11-20 02:00Z, and a real now past the grace
+  // window treats that ticket as over, so the guard would allow a new one.
   const g = await guardCreate(memoryStore([ticket]), {
     consumerId: "c1",
     placeId: "p1",
     reservedAtIso: AT,
     requestId: "11111111-2222-4333-8444-555555555555",
-  });
+  }, NOW);
   assertEquals(g, { kind: "duplicate", ticket });
   // Old clients send no request id: still refused.
   const old = await guardCreate(memoryStore([ticket]), {
@@ -83,7 +85,7 @@ Deno.test("duplicate: a second live ticket at the same place and time is refused
     placeId: "p1",
     reservedAtIso: AT,
     requestId: null,
-  });
+  }, NOW);
   assertEquals(old.kind, "duplicate");
 });
 
