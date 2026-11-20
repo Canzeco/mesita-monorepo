@@ -11,12 +11,12 @@ import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 // Escape closes it. It replaced a panel dropped over the blurred rows
 // (MESITA-4410). A sheet by Pato's call, against MESITA-4094's no-sheets
 // rule (as Offers was, MESITA-4224).
-// THE TWO SPECIALS FIRST (Pato, MESITA-4417: "first the 2 specials … then
-// 4 items per row"): Saved and Top, which are not families, side by side
-// on top as two wide tiles, no line under them (MESITA-4419: "being longer
-// than others already expresses they are different"); then the families,
-// five to a line (Pato,
-// MESITA-4418: "use 5 columns, not 4").
+// THE SPECIALS FIRST (Pato, MESITA-4417: "first the 2 specials … then
+// 4 items per row"): Saved, Nearby and Popular, which are not families,
+// then the families, five to a line (Pato, MESITA-4418: "use 5 columns,
+// not 4"). CIRCLES, NOT WIDE TILES (Pato, MESITA-4469: "those three top
+// special buttons must be circles not squares"): the same circle and the
+// name under it as every family. The wide tiles (MESITA-4419) are gone.
 export function CategoriesModal({
   open,
   onClose,
@@ -25,8 +25,8 @@ export function CategoriesModal({
 }: {
   open: boolean;
   onClose: () => void;
-  /** Saved, Near and Top as wide tiles side by side (no Saved for an
-   *  anonymous visitor), sharing the width (MESITA-4423). */
+  /** Saved, Nearby and Popular as circles, the same as the families
+   *  (no Saved for an anonymous visitor). */
   specials: ReactNode;
   /** The family tiles, drawn by Home's row so both look the same. */
   children: ReactNode;
@@ -52,7 +52,7 @@ export function CategoriesModal({
         className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto"
         data-places-menu
       >
-        <div className="flex shrink-0 gap-2 px-3 pt-3" data-places-menu-specials>
+        <div className="grid shrink-0 grid-cols-5 content-start gap-x-0.5 px-1.5 pt-3" data-places-menu-specials>
           {specials}
         </div>
         <div className="grid shrink-0 grid-cols-5 content-start gap-x-0.5 gap-y-3 px-1.5 pt-3 pb-4">

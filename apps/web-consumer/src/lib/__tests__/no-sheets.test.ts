@@ -80,7 +80,8 @@ const DIALOG_ALLOWLIST = [
   "components/consumer/home/CategoriesModal.tsx",
   "components/consumer/ComingSoonModal.tsx",
   "components/consumer/home/SocialFeed.tsx",
-  "components/consumer/search/FamilyFilterSheet.tsx",
+  // Search's Menu is Home's Categories modal (MESITA-4469). The dialog
+  // import lives in CategoriesModal, so this file is off the list.
   "components/consumer/search/GeneratePlaceDialog.tsx",
   "components/consumer/wallet/AddCreditsCardDialog.tsx",
 ];

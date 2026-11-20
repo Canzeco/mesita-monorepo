@@ -73,16 +73,18 @@ function patchMapFilters(partial: Partial<MapFilters>) {
 }
 
 /** The chip row's one-tap pick: that family ALONE (MESITA-2412). Picking
- *  it again when it is the only one goes back to Top. Several families come
- *  from the Filters sheet (`setMapFamilies`, MESITA-2903). */
+ *  it again when it is the only one goes back to Popular. The Menu does
+ *  the same (`setMapFamilies` with one key, or none for Popular;
+ *  MESITA-4469). */
 export function selectMapFamily(key: FamilyKey) {
   patchMapFilters({
     familyKeys: state.familyKeys.length === 1 && state.familyKeys[0] === key ? [] : [key],
   });
 }
 
-/** The Filters sheet's Show places (Pato, MESITA-2903: "select multiple
- *  families"): any number of families, deduped, unknown keys dropped. */
+/** The Menu's pick (MESITA-4469): one family, or none for Popular.
+ *  Unknown keys are dropped. An old session may still hold several; the
+ *  next pick replaces them. */
 export function setMapFamilies(keys: readonly FamilyKey[]) {
   patchMapFilters({
     familyKeys: [...new Set(keys)].filter((k) => KNOWN_FAMILY_KEYS.has(k)),
