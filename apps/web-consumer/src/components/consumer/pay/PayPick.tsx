@@ -1,28 +1,25 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronRight, MapPin, QrCode } from "lucide-react";
-import { Screen } from "@/components/consumer/nav/Screen";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import type { PayPlace } from "@/lib/api/wallet";
-import { payPlacePath } from "@/lib/consumer-route-contract";
-import { navigateTo } from "@/lib/navigate";
 import { PlacePhoto } from "./pay-common";
 import { distanceText, type Loc, usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 
-// /pay/pick — PAY BILL'S PLACE PICKER (Pato, 2026-11-17, MESITA-4232: "GIANT
-// BUTTON … WHEN YOU CLICK THAT BUTTON, THEN A MODAL APPEARS FOR YOU TO SELECT
-// THE PLACE TO PAY"; a pushed page, not a modal, D3: MESITA-4094 holds). It
-// holds what was Pay's own box (MESITA-4204): a search bar always shown
-// (MESITA-3725), then the places, every place the guest holds credit at
-// pinned first, then the nearest up to PLACES_SHOWN and "Show all". A row
-// opens that place's bill (/pay/place/<id>). The location is asked here
-// only, after a priming card.
+// PAY BILL'S PLACE PICKER (Pato, 2026-11-17, MESITA-4232: "WHEN YOU CLICK
+// THAT BUTTON, THEN A MODAL APPEARS"; MESITA-4478: it rises from the bottom
+// over the wallet). It holds what was Pay's own box (MESITA-4204): a search
+// bar always shown (MESITA-3725), then the places, every place the guest
+// holds credit at pinned first, then the nearest up to PLACES_SHOWN and
+// "Show all". A row opens that place's bill (/pay/place/<id>), which stays
+// a page. The location is asked here only, after a priming card, and only
+// while the sheet is open.
 //
 // NO BOX (Pato, 2026-11-17, MESITA-4280: "why inside a box … just use a
 // searchbar and the places directly display separated by hr"): the search
@@ -32,35 +29,51 @@ import { usePayPlaces } from "./use-pay-places";
 /** Places listed before "Show all" (MESITA-3720). */
 const PLACES_SHOWN = 5;
 
-export function PayPickPage() {
-  const router = useRouter();
+export function PayPickSheet({
+  open,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (placeId: string) => void;
+}) {
+  return (
+    <LocalSheet open={open} onClose={onClose} from="bottom" fit ariaLabel="Where are you paying?">
+      {open ? <PayPickBody onPick={onPick} /> : null}
+    </LocalSheet>
+  );
+}
+
+function PayPickBody({ onPick }: { onPick: (placeId: string) => void }) {
   const { loc, askLocation, notNow } = usePayLocation({ prime: true });
   const { places, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
   const [query, setQuery] = useState("");
 
   return (
-    <Screen title="Where are you paying?" paper>
-      <div className="-mx-5 -my-5" data-pay-box>
-        {/* A REAL FIELD (MESITA-4295, Pato: "better design"): the bare
-            SearchBar sits in a 44px grey pill; the list under it stays
-            boxless (MESITA-4280). */}
-        <div className="px-5 pt-4 pb-2">
-          <div className="bg-muted flex h-11 items-center rounded-full pr-1 pl-4" data-pay-pick-search>
-            <SearchBar
-              query={query}
+    <div className="flex min-h-0 flex-1 flex-col" data-pay-box>
+      <p className="px-5 pt-1 text-base font-semibold">Where are you paying?</p>
+      {/* A REAL FIELD (MESITA-4295, Pato: "better design"): the bare
+          SearchBar sits in a 44px grey pill; the list under it stays
+          boxless (MESITA-4280). It is not focused on open (MESITA-2939). */}
+      <div className="px-5 pt-3 pb-2">
+        <div className="bg-muted flex h-11 items-center rounded-full pr-1 pl-4" data-pay-pick-search>
+          <SearchBar
+            query={query}
             showClear={query.length > 0}
             onQueryChange={setQuery}
-              onClear={() => setQuery("")}
-              placeholder="Search a place"
-            />
-          </div>
+            onClear={() => setQuery("")}
+            placeholder="Search a place"
+          />
         </div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {places ? (
           <PlaceList
             places={places}
             query={query}
             loc={loc}
-            onPick={(id) => navigateTo(router, payPlacePath(id), { motion: "push" })}
+            onPick={onPick}
             onUseLocation={askLocation}
             onNotNow={notNow}
           />
@@ -78,7 +91,7 @@ export function PayPickPage() {
           <RowsSkeleton />
         )}
       </div>
-    </Screen>
+    </div>
   );
 }
 
@@ -244,19 +257,5 @@ function RowsSkeleton() {
       ))}
       </div>
     </div>
-  );
-}
-
-/** /pay/pick's loading frame: the header, the search bar's shape, rows. */
-export function PayPickLoading() {
-  return (
-    <Screen title="Where are you paying?" paper>
-      <div className="-mx-5 -my-5" aria-busy>
-        <div className="px-5 pt-4 pb-2">
-          <Skeleton className="h-11 w-full rounded-full" />
-        </div>
-        <RowsSkeleton />
-      </div>
-    </Screen>
   );
 }

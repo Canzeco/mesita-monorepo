@@ -27,5 +27,5 @@ export default async function Page({ searchParams }: { searchParams: Search }) {
   if (isRouteId(tab)) redirect(payBillPath(tab));
   const place = one(sp.place);
   if (isRouteId(place)) redirect(payPlacePath(place));
-  return <PayPage />;
+  return <PayPage pick={one(sp.pick) === "1"} />;
 }

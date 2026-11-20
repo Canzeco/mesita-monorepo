@@ -5,7 +5,7 @@ import { locationSnapshot, requestUserLocation } from "@/lib/use-user-location";
 
 // THE PAY LOCATION (MESITA-3457, split out of PayPage in MESITA-4232): the
 // fix the places read carries, rounded to 3 decimals (~110 m) and sent only
-// to that read. The picker (/pay/pick) asks for it after a priming card;
+// to that read. The place sheet asks for it after a priming card;
 // /pay itself never asks, it only uses a fix the browser already grants, so
 // Pay Bill can name the place the guest is at (MESITA-4232, D5).
 

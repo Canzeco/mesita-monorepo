@@ -118,7 +118,10 @@ export function takePanelExit(): boolean {
 // shell first loaded on: a replace keeps the index, a Back lowers it. Without
 // that API it falls back to `history.length`, as before.
 
-type NavigationLike = { currentEntry?: { index: number } | null };
+type NavigationLike = {
+  currentEntry?: { index: number; url?: string } | null;
+  entries?: () => Array<{ url?: string }>;
+};
 
 function entryIndex(): number | null {
   const nav = (window as unknown as { navigation?: NavigationLike }).navigation;
@@ -130,6 +133,22 @@ let shellEntry: number | null = null;
 /** The shell's first entry: called once when the shell mounts. */
 export function markShellEntry(): void {
   if (shellEntry === null) shellEntry = entryIndex();
+}
+
+/** The pathname of the history entry under this one, when the browser
+ *  exposes the Navigation API. Null when it does not, or this is the first entry. */
+export function previousEntryPath(): string | null {
+  const nav = (window as unknown as { navigation?: NavigationLike }).navigation;
+  const index = nav?.currentEntry?.index;
+  const entries = nav?.entries?.();
+  if (index == null || !entries || index < 1) return null;
+  const url = entries[index - 1]?.url;
+  if (!url) return null;
+  try {
+    return new URL(url, window.location.origin).pathname;
+  } catch {
+    return null;
+  }
 }
 
 /** Is there a screen of ours under this one? */

@@ -5,8 +5,10 @@
 // back: it reads every source file's imports from the overlay module.
 //
 //   (a) `LocalSheet` may be imported only by a file still on SHEET_ALLOWLIST.
-//       The list only shrinks (MESITA-4110/4111/4112/4113) and is empty after
-//       MESITA-4114 deletes `LocalSheet`.
+//       The list only shrinks (MESITA-4110/4111/4112/4113), except a
+//       Pato-named exception. This exception is the Pay Bill place picker
+//       (MESITA-4478, 2026-11-20): search and places only; the ticket stays
+//       a page. The list is empty after MESITA-4114 deletes `LocalSheet`.
 //   (b) `LocalDialog` is for a destructive yes/no confirm only: CONFIRM_FILES,
 //       plus DIALOG_ALLOWLIST (the non-confirm dialogs that become pages in
 //       MESITA-4112/4113; it only shrinks).
@@ -51,8 +53,11 @@ export const CONFIRM_FILES = [
   "components/consumer/reservation-actions.tsx",
 ];
 
-/** Files that still open a sheet. Remove a file when its sheet becomes a page. */
+/** Files that still open a sheet. Remove a file when its sheet becomes a page.
+ *  The Pay Bill place picker (MESITA-4478) is the one addition: Pato asked
+ *  for the search and the places in a bottom sheet. The ticket stays a page. */
 const SHEET_ALLOWLIST = [
+  "components/consumer/pay/PayPick.tsx",
   "components/consumer/MenuViewer.tsx",
   "components/consumer/PlaceContactSheet.tsx",
   "components/consumer/home/LocationPicker.tsx",

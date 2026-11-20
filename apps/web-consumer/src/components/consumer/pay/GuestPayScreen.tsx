@@ -104,6 +104,7 @@ export function GuestPayScreen({
   getSupabase,
   onPaid,
   onChoosePlace,
+  onLeavePay,
   onOpenPlace,
   registerBack,
   registerClose,
@@ -116,6 +117,8 @@ export function GuestPayScreen({
   onPaid: (tabId: string) => void;
   /** Open: the search to choose another place. */
   onChoosePlace: () => void;
+  /** Cancel bill: back to Pay, sheet shut. */
+  onLeavePay: () => void;
   /** Another place's ticket is pending: open it there (MESITA-3879). */
   onOpenPlace: (placeId: string) => void;
   /** The header's back arrow asks this first: true when it handled it. */
@@ -513,7 +516,7 @@ export function GuestPayScreen({
     if (cancelLocked) return;
     setConfirmCancel(false);
     clearGuestDraft(placeId);
-    onChoosePlace();
+    onLeavePay();
   };
   // The top of every step (MESITA-4061, Pato: "X Pay / Profile Name of place
   // / steps with arrows to nav across them < >"): the place, then the step

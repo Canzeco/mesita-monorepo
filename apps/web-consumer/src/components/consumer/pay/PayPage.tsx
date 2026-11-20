@@ -2,7 +2,8 @@
 
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Clock, QrCode } from "lucide-react";
 import { Panel } from "@/components/shared/Panel";
@@ -15,6 +16,7 @@ import { clearGuestDraft, readDraft } from "@/lib/guest-pay-draft";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES, payBillPath, payPlacePath } from "@/lib/consumer-route-contract";
+import { markPanelExit, navigateTo, previousEntryPath, replaceAddress } from "@/lib/navigate";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { forgetGuestTab, NETWORK_FAILURE, PlacePhoto, readGuestTabIds, CancelBillButtons } from "./pay-common";
@@ -23,6 +25,7 @@ import { usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
+import { PayPickSheet } from "./PayPick";
 import { TicketsShortcut, TicketsShortcutSkeleton } from "./TicketsShortcut";
 import { WalletShareGift, WalletShareGiftSkeleton } from "@/components/consumer/wallet/WalletShareGift";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
@@ -46,11 +49,12 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 //   Payment Method: [ Visa ••4242 · In the app ]  (MESITA-4477; the other box is Loyalty Cards)
 //   Loyalty Cards: rows, black pill = ready, amber line = pending
 //
-// Pay Bill opens /pay/pick (the place picker, a pushed page: the search bar
-// and the places that were this page's own box, MESITA-4204). At a place
-// (within AT_PLACE_M) it reads "Pay Bill at <place>" and opens that bill,
-// "Other place" under it. With a bill open it IS the bill (the amber panel
-// below). The bar is Home · Search · Pay · Me; /wallet forwards here.
+// Pay Bill opens a sheet over this page (MESITA-4478): the search bar and
+// the places that were this page's own box (MESITA-4204), rising from the
+// bottom. At a place (within AT_PLACE_M) it reads "Pay Bill at <place>" and
+// opens that bill, "Other place" under it opens the sheet. With a bill open
+// it IS the bill (the amber panel below). The bar is Home · Search · Pay ·
+// Me; /wallet forwards here. /pay/pick redirects here with ?pick=1.
 //
 // ONE OPEN PAYMENT (Pato, 2026-11-11, MESITA-3772: "you can only have one
 // ticket opened at a time ... in the pay page just display the button to go
@@ -62,19 +66,25 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 // (OpenBillPanel): the place, the amounts, its state and Continue; the amber
 // band (PendingTicketBanner) shows on every other tab, never on /pay.
 //
-// The location is asked on /pay/pick only (pay-location.ts); Pay uses a fix
-// the browser already grants.
+// The location is asked inside the place sheet only (pay-location.ts); Pay
+// uses a fix the browser already grants.
 
 /** The guest is at a place this close (MESITA-3861): Pay Bill names it. */
 const AT_PLACE_M = 150;
 
 export function PayPage({
   giftToken = null,
+  pick = false,
 }: {
   /** /wallet/gift/<token>: a friend's credit link opens over Pay. */
   giftToken?: string | null;
+  /** /pay?pick=1: Choose another place, or /pay/pick, opens the sheet. */
+  pick?: boolean;
 } = {}) {
+  const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pickDismissed = useRef(false);
   // Pay never asks for the location (the picker does); a fix the browser
   // already grants names the place the guest is at (MESITA-4232, D5).
   const { loc } = usePayLocation({ prime: false });
@@ -136,10 +146,78 @@ export function PayPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const pending = usePendingTicket();
+
+  // ?pick=1 waits for the bill read. A live tab or a draft strips the flag
+  // and shows the bill. Otherwise the sheet opens on the entry that is
+  // already there. A tap while the read is in flight hits the skeleton.
+  useEffect(() => {
+    if (!pick || !loaded || openTabs === null) return;
+    if (openTabs.length > 0 || pending) {
+      replaceAddress(CONSUMER_ROUTES.pay);
+      return;
+    }
+    if (pickDismissed.current) return;
+    setPickerOpen(true);
+  }, [pick, loaded, openTabs, pending]);
+
+  // Browser Back while the sheet is open. Capture phase, so ScreenStage's
+  // bubble listener sees the panel-exit mark and does not slide the wallet.
+  // The browser already popped; this does not call history.back() again.
+  useEffect(() => {
+    if (!pickerOpen) return;
+    function onPop() {
+      setPickerOpen(false);
+      markPanelExit();
+    }
+    window.addEventListener("popstate", onPop, true);
+    return () => window.removeEventListener("popstate", onPop, true);
+  }, [pickerOpen]);
+
+  function openPicker() {
+    if (pickerOpen) return;
+    window.history.pushState({ paySheet: 1 }, "");
+    setPickerOpen(true);
+  }
+
+  function closePicker() {
+    setPickerOpen(false);
+    const state = window.history.state as { paySheet?: number } | null;
+    // history.back() fires popstate, and the capture listener marks the
+    // panel exit. Marking here too would swallow the next slide.
+    if (state?.paySheet === 1) {
+      window.history.back();
+      return;
+    }
+    if (!pick) return;
+    pickDismissed.current = true;
+    if (previousEntryPath() === CONSUMER_ROUTES.pay) {
+      window.history.back();
+      return;
+    }
+    markPanelExit();
+    replaceAddress(CONSUMER_ROUTES.pay);
+  }
+
+  function choosePlace(id: string) {
+    const href = payPlacePath(id);
+    const state = window.history.state as { paySheet?: number } | null;
+    const onPay = previousEntryPath() === CONSUMER_ROUTES.pay;
+    setPickerOpen(false);
+    if (state?.paySheet === 1 || (pick && onPay)) {
+      navigateTo(router, href, { replace: true, motion: "push" });
+      return;
+    }
+    if (pick) {
+      pickDismissed.current = true;
+      replaceAddress(CONSUMER_ROUTES.pay);
+    }
+    navigateTo(router, href, { motion: "push" });
+  }
+
   // AT A PLACE (MESITA-3861, reshaped by MESITA-4232 D5): the nearest place
   // within AT_PLACE_M is named on Pay Bill. It no longer opens by itself:
   // the page never moves before the guest taps.
-  const pending = usePendingTicket();
   const here =
     loc.state === "on" && places
       ? (places
@@ -178,13 +256,14 @@ export function PayPage({
           />
         </div>
       ) : (
-        <PayBillButton here={here} />
+        <PayBillButton here={here} onOtherPlace={openPicker} />
       )}
 
       {/* The three doors under it, grey (MESITA-4232). */}
       {loaded ? <WalletShareGift /> : <WalletShareGiftSkeleton />}
 
       <WalletSection giftToken={giftToken} onReady={markWalletReady} />
+      <PayPickSheet open={pickerOpen} onClose={closePicker} onPick={choosePlace} />
     </KeptScroll>
   );
 }
@@ -198,33 +277,40 @@ export function PayPage({
  *  Bill" at text-base semibold, like Apple Pay or Stripe; the page's one dark
  *  thing. It was a pink 80px slab (MESITA-4240) and black 52px before. At a
  *  place it reads "Pay Bill at <place>" and opens that place's bill, with
- *  "Other place" under it for the picker; otherwise it opens the picker
- *  (/pay/pick). */
-function PayBillButton({ here }: { here: PayPlace | null }) {
+ *  "Other place" under it for the sheet; otherwise the button opens the sheet. */
+function PayBillButton({ here, onOtherPlace }: { here: PayPlace | null; onOtherPlace: () => void }) {
   const name = here?.name ?? null;
+  const face = (
+    <>
+      {/* The QR in a white circle (MESITA-4275, Pato: "put the qr inside a
+          circle"), purple ink, like the bar's Pay tab's black circle. */}
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white" style={{ color: "#635bff" }} aria-hidden>
+        <QrCode className="h-7 w-7" strokeWidth={2.25} />
+      </span>
+      <span className="max-w-full min-w-0 truncate text-lg font-semibold tracking-tight">{name ? `Pay Bill at ${name}` : "Pay Bill"}</span>
+    </>
+  );
+  const className = "flex h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl bg-[#635bff] px-4 text-white transition hover:bg-[#5249e6] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[#a5a0ff] focus-visible:ring-offset-2 outline-none";
   return (
     <div className="mt-2 flex flex-col" data-pay-bill>
-      <PushLink
-        href={here ? payPlacePath(here.place_id) : CONSUMER_ROUTES.payPick}
-        className="flex h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl bg-[#635bff] px-4 text-white transition hover:bg-[#5249e6] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[#a5a0ff] focus-visible:ring-offset-2 outline-none"
-        aria-label={name ? `Pay Bill at ${name}` : "Pay Bill"}
-        data-pay-bill-button
-      >
-        {/* The QR in a white circle (MESITA-4275, Pato: "put the qr inside a
-            circle"), purple ink, like the bar's Pay tab's black circle. */}
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white" style={{ color: "#635bff" }} aria-hidden>
-          <QrCode className="h-7 w-7" strokeWidth={2.25} />
-        </span>
-        <span className="max-w-full min-w-0 truncate text-lg font-semibold tracking-tight">{name ? `Pay Bill at ${name}` : "Pay Bill"}</span>
-      </PushLink>
       {here ? (
-        <PushLink
-          href={CONSUMER_ROUTES.payPick}
+        <PushLink href={payPlacePath(here.place_id)} className={className} aria-label={`Pay Bill at ${name}`} data-pay-bill-button>
+          {face}
+        </PushLink>
+      ) : (
+        <button type="button" className={className} aria-label="Pay Bill" data-pay-bill-button onClick={onOtherPlace}>
+          {face}
+        </button>
+      )}
+      {here ? (
+        <button
+          type="button"
+          onClick={onOtherPlace}
           className="text-muted-foreground hover:text-foreground mx-auto mt-1 flex min-h-11 items-center px-4 text-sm font-semibold transition"
           data-pay-bill-other
         >
           Other place
-        </PushLink>
+        </button>
       ) : null}
     </div>
   );
