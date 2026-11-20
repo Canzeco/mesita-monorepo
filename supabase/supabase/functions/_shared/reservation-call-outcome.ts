@@ -522,10 +522,14 @@ function decideBooking(
         : {
           attempts: kept,
           call_attempts: n - 1,
-          attempts_state: "error",
+          attempts_state: "exhausted",
           next_attempt_at: null,
-          last_call_state: cut(`intent ${n}: platform outage persisted — needs attention`),
+          state: "unresolved",
+          callback_state: "skipped",
+          ...releaseOldHold,
+          last_call_state: cut(`intent ${n}: platform outage persisted — ended`),
         },
+      notify: "unresolved",
     };
   }
 

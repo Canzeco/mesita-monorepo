@@ -6,6 +6,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   applyCallResult,
+  decideLegOutcome,
   GIVE_UP,
   INITIATION_FAILURE,
   type OutcomeStore,
@@ -16,6 +17,7 @@ import {
   signElevenPayload,
   verifyElevenSignature,
 } from "./reservation-call-outcome.ts";
+import { OUTAGE_MAX_RETRIES } from "./reservation-run.ts";
 import type { ReservationOutcome } from "./reservation-notification.ts";
 import { validateReservationPatch } from "./reservation-doc.ts";
 
@@ -123,6 +125,19 @@ const DONE_SUCCESS = readConversation({
 });
 
 // ── Idempotent apply ───────────────────────────────────────────────────────
+
+Deno.test("a spent platform outage ends the booking and tells the guest (MESITA-4144)", () => {
+  const killed = readConversation({ status: "failed", metadata: { error: { code: 1002 } } });
+  const d = decideLegOutcome(
+    "book",
+    placedBooking({ outage_retries: OUTAGE_MAX_RETRIES, consumer_notify: "app" }),
+    killed,
+    null,
+  );
+  assertEquals(d.patch.state, "unresolved");
+  assertEquals(d.patch.attempts_state, "exhausted");
+  assertEquals(d.notify, "unresolved");
+});
 
 Deno.test("apply: a place's yes confirms once; a second delivery changes nothing", async () => {
   const { store, table, notified, kicked } = memoryStore(placedBooking({ reported_verdict: "confirmed" }));

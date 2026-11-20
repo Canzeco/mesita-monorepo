@@ -552,9 +552,7 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
     : "book";
 
   const elevenKey = await resolveElevenLabsKey();
-  if (!elevenKey?.startsWith("sk_")) {
-    return json({ ok: false, error: "ELEVENLABS_KEY not configured" }, 503);
-  }
+  const keyOk = !!elevenKey?.startsWith("sk_");
 
   // Fetch place separately — reservation_tickets.place_id has no
   // PostgREST FK hint to places, so an embed 500s. places.id == projects.id.
@@ -614,6 +612,40 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
     if (!confirmationDue && !counterDue && !notBookedDue) {
       return json({ ok: true, skipped: "callback no longer applicable" });
     }
+  }
+
+  // A booking with no calling key ends here (MESITA-4144). Returning 503
+  // used to leave the ticket pending until four hours after the table.
+  if (!keyOk || !elevenKey) {
+    if (intent === "book") {
+      await endAtDeadEnd(
+        {
+          write: async (patch) => {
+            const res = await writeReservation(admin, {
+              mode: "update",
+              id: reservationId,
+              patch: patch as ReservationPatch,
+              match: { state: "pending" },
+              select: "id",
+            });
+            return res.ok && !!res.row;
+          },
+          notify: (outcome) =>
+            notifyReservationOutcome(admin, {
+              consumerId: r.consumer_id,
+              reservationId,
+              referenceCode: r.reference_code ?? null,
+              outcome,
+              placeName: null,
+              placePhotos: null,
+            }),
+        },
+        "no_key",
+        "no ELEVENLABS_KEY",
+      );
+      return json({ ok: true, ended: "no_key", reservation_id: reservationId });
+    }
+    return json({ ok: false, error: "ELEVENLABS_KEY not configured" }, 503);
   }
 
   const { data: settings } = await admin
