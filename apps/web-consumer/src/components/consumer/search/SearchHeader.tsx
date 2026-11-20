@@ -24,14 +24,9 @@
 // rounded square; Popular and every family are pills (Pato, MESITA-4468:
 // "better in this page only popular too rounded"; MESITA-4466 had Popular
 // square too). THE DISC OPENS THE FILTERS SHEET
-// (Pato, MESITA-2903: "when i click filters, open the modal to see select
-// multiple families"; MESITA-2879 had deleted MESITA-2758's sheet and made
-// the disc a clear): any number of families, applied at once. While any is
-// picked the disc wears a small black bubble with the count (MESITA-3006;
-// MESITA-2884's red disc is gone).
-// NO NEARBY, NO POPULAR (MESITA-2499/2502): the map is the where, a chip
-// is only the what. A chip picks its family ALONE; it is lit while its
-// family is in the set (the sheet may hold several); Popular is lit when none
+// (Pato, MESITA-2903). ONE FAMILY (Pato, MESITA-4469: "not multiselector"):
+// the Menu opens Home's Categories modal and a tap picks that one family,
+// or Popular, and closes. A chip does the same. Popular is lit when none
 // is; tapping the only lit family goes back to Popular. Sent as the
 // server-side `familyKeys`. The Minimum Popularity stays the operator's,
 // Admin › Discovery › Area.
@@ -71,7 +66,6 @@ import {
   HEADER_ICON,
   HEADER_ICON_STROKE,
   HEADER_PILL,
-  DISC_BADGE,
 } from "./header-classes";
 
 // A chip's mark is its family's emoji, the same one Home's column wears
@@ -142,14 +136,9 @@ export function SearchHeader({
             <button
               type="button"
               onClick={() => setSheetOpen(true)}
-              aria-label={
-                everyFamily
-                  ? "Menu"
-                  : `Menu (${filters.familyKeys.length} selected)`
-              }
+              aria-label="Menu"
               aria-haspopup="dialog"
-              data-active={everyFamily ? undefined : "true"}
-              className={cn(CHIP_SPECIAL, CHIP_OFF, "relative")}
+              className={cn(CHIP_SPECIAL, CHIP_OFF)}
               data-search-filters
             >
               <LayoutGrid
@@ -158,16 +147,6 @@ export function SearchHeader({
                 aria-hidden
               />
               <span>Menu</span>
-              {everyFamily ? null : (
-                <span
-                  aria-hidden
-                  // Only the bubble is red (Pato, MESITA-3216, replacing MESITA-3192).
-                  className={cn(DISC_BADGE, "bg-destructive text-destructive-foreground")}
-                  data-search-filters-badge
-                >
-                  {filters.familyKeys.length}
-                </span>
-              )}
             </button>
             <nav
               aria-label="Families"

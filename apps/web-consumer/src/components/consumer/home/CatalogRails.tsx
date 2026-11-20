@@ -678,7 +678,10 @@ export function CatalogRails() {
           aria-hidden
           className={cn(
             CAT_EMOJI,
-            isSpecial(c.key) && CAT_SQUARE,
+            // Squares stay on the strip (MESITA-4428). In the modal the
+            // three specials are circles, the same shape as the families
+            // (Pato, MESITA-4469).
+            !inMenu && isSpecial(c.key) && CAT_SQUARE,
             on ? CAT_EMOJI_ON : isSpecial(c.key) ? CAT_TINT_SPECIAL : CAT_TINT_FAMILY,
           )}
         >
@@ -759,32 +762,7 @@ export function CatalogRails() {
     <CategoriesModal
       open={menuOpen}
       onClose={() => setMenuOpen(false)}
-      specials={chips.filter((c) => isSpecial(c.key)).map((c) => {
-        const on = chip === c.key;
-        return (
-          <button
-            key={c.key}
-            type="button"
-            onClick={() => {
-              selectFamily(c.key);
-              setMenuOpen(false);
-            }}
-            aria-pressed={on}
-            className={cn(
-              "flex min-w-0 flex-1 items-center gap-2 rounded-2xl border p-2.5 text-left text-sm font-semibold transition active:scale-[0.98]",
-              on ? "bg-foreground text-card border-transparent" : "bg-card text-foreground border-border",
-            )}
-          >
-            {/* ONE BOX (Pato, MESITA-4429: "saved and near and top being on
-                double boxes looks pathetic"): the emoji sits bare in the
-                tile, no square of its own inside it. */}
-            <span aria-hidden className="text-2xl leading-none">
-              {c.emoji}
-            </span>
-            {c.label}
-          </button>
-        );
-      })}
+      specials={chips.filter((c) => isSpecial(c.key)).map((c) => pill(c, true))}
     >
       {chips.filter((c) => !isSpecial(c.key)).map((c) => pill(c, true))}
     </CategoriesModal>
