@@ -482,7 +482,7 @@ describe("T5b — Home's header and Search's header", () => {
       "utf8",
     );
     expect(header).toContain("href={CONSUMER_ROUTES.searchChat}");
-    expect(header).toContain("Ask AI");
+    expect(header).toContain("<span>AI</span>");
     expect(new Set(allPages().map(pageUrl))).toContain(
       CONSUMER_ROUTES.searchChat,
     );
