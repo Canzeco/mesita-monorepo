@@ -55,7 +55,7 @@ export default function SearchLoading() {
           <div className={cn(HEADER_BAND, "flex items-center gap-3 p-3")}>
             <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
             <Skeleton className="h-10 min-w-0 flex-1 rounded-full" />
-            <ControlSkeleton token={HEADER_PILL} label="Ask AI" />
+            <ControlSkeleton token={HEADER_PILL} label="AI" />
           </div>
           <div className="flex items-center gap-3 overflow-hidden pt-1 pl-3">
             <ControlSkeleton token={CHIP_SPECIAL} label="Menu" square />
