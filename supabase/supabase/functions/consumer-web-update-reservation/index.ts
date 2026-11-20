@@ -35,6 +35,7 @@ import { loadReservationsConfig } from "../_shared/reservations-config.ts";
 import { readOwnedTicket } from "../_shared/reservation-owned.ts";
 import { REMINDER_CLEAR } from "../_shared/reservation-reminder.ts";
 import { freshPlaceRound } from "../_shared/reservation-negotiation.ts";
+import { closeOpenChangePatch } from "../_shared/reservation-change.ts";
 import {
   RESERVATIONS_OFF_CODE,
   RESERVATIONS_OFF_MESSAGE,
@@ -104,11 +105,12 @@ serveJson("consumer-web-update-reservation", async (req) => {
     reschedules_day: string | null;
     modification_of: string | null;
     place_id: string;
+    change_state: string | null;
   }>(
     admin,
     id,
     user.id,
-    "id, state, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of, place_id",
+    "id, state, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of, place_id, change_state",
   );
   if (readErr) return json({ ok: false, error: readErr }, 500);
   if (!row) {
@@ -194,6 +196,9 @@ serveJson("consumer-web-update-reservation", async (req) => {
     last_conversation_id: null,
     last_called_at: null,
     last_call_state: "rescheduled by the guest — calling the place again",
+    // An open place proposal must not survive: Accept would move the table
+    // back with no call (MESITA-4140).
+    ...closeOpenChangePatch(row.change_state, new Date()),
   });
 
   const write = await writeReservation(admin, { mode: "update", id, patch });

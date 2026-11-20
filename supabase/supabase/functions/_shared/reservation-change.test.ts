@@ -9,6 +9,7 @@ import {
   acceptChangePatch,
   answerDeadline,
   changeIsOpen,
+  closeOpenChangePatch,
   judgeProposal,
   keepOriginalPatch,
 } from "./reservation-change.ts";
@@ -74,6 +75,16 @@ Deno.test("decline and expiry keep the original table and owe the place one call
   // A notice already owed is never overwritten.
   const busy = keepOriginalPatch("declined", "scheduled", NOW);
   assertEquals(busy.notice_kind, undefined);
+});
+
+Deno.test("a reschedule closes an open proposal and does not call it a decline notice (MESITA-4140)", () => {
+  const open = closeOpenChangePatch("proposed", NOW);
+  assert(validateReservationPatch(open).ok);
+  assertEquals(open.change_state, "declined");
+  assertEquals(open.change_answered_at, NOW.toISOString());
+  assertEquals(open.notice_kind, undefined);
+  assertEquals(closeOpenChangePatch("accepted", NOW), {});
+  assertEquals(closeOpenChangePatch(null, NOW), {});
 });
 
 Deno.test("accept moves the table on the spot, only while the proposal is open", () => {
