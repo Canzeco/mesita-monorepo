@@ -91,7 +91,7 @@ export function StoriesConfigClient({
           />
           <div className="grid grid-cols-2 gap-4">
             <ReadField label="Bonus wait" boxed>
-              {formatDuration(cfg.story_bonus_wait_sec)} after the waiter approves
+              {formatDuration(cfg.story_bonus_wait_sec)} after the story is posted
             </ReadField>
             <ReadField label="Time to post" boxed>
               {formatDuration(cfg.story_post_window_sec)} from payment
@@ -129,7 +129,7 @@ export function StoriesConfigClient({
               min={EMULATOR_BONUS_WAIT.min}
               max={EMULATOR_BONUS_WAIT.max}
               disabled={pending || loadBlocked || !cfg.story_emulator}
-              hint={`${formatDuration(cfg.story_emulator_bonus_wait_sec)} after the waiter approves a test story.`}
+              hint={`${formatDuration(cfg.story_emulator_bonus_wait_sec)} after a test story is posted.`}
               onChange={(v) => patch({ story_emulator_bonus_wait_sec: v })}
             />
             <NumberField

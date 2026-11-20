@@ -9,24 +9,21 @@
 // (TicketParts, MESITA-4118), top to bottom:
 //
 //   [IG][place]  +$50.00MX Story bonus      the hero, the state in its tone
-//   Post your story · Post by 21:40 · 3 h left
-//   Steps        Paid ✓ · Post · Waiter · Bonus, the current one lit
+//   Post your story · tag @mesita and the restaurant · no deadline
+//   Steps        Paid ✓ · Post · Keep it up, the current one lit
 //   Now          waiting_post: the tags to copy and Open Instagram
-//                found: the story and the waiter's QR
+//                found: a story that is not tied to this voucher
 //                approved: "Checking · bonus at HH:MM", keep it up
-//   Details      Paid · Bonus · Deadline
-//   Test         Tag the place / Simulate the waiter (approve, reject) /
-//                Simulate deleting it (test mode, Meta off)
+//   Details      Paid · Posted · Bonus if it stays up
+//   Test         Connect a public Instagram / Publish a story / Delete it
 //
-// While the Story waits for a post or the waiter it asks
-// consumer-web-check-story every 5 s, every 15 s after 2 minutes (the
-// server's hint), one call at a time, stopping at approved, void or the
-// deadline (storyPollDelay). A bought Story whose credit is still landing
-// reads 404 for a moment: the page says so and asks again.
+// While the voucher is waiting for a post, the screen reloads the voucher.
+// An approved story asks consumer-web-check-story every 5 s (storyPollDelay).
+// A bought Story whose credit is still landing reads 404 for a moment: the
+// page says so and asks again.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, Check, CircleCheck, Copy, Gift, QrCode, Wallet as WalletIcon } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { Camera, Check, CircleCheck, Copy, Gift, Wallet as WalletIcon } from "lucide-react";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Panel } from "@/components/shared/Panel";
@@ -108,23 +105,22 @@ function StorySteps({ s }: { s: StoryTicket }) {
   const at: Record<string, StepState> = (() => {
     switch (s.state) {
       case "waiting_post":
-        return { paid: "done", post: "current" };
+        return { paid: "done", credit: "done", post: "current" };
       case "found":
-        return { paid: "done", post: "done", waiter: "current" };
       case "approved":
-        return { paid: "done", post: "done", waiter: "done", bonus: "current" };
+        return { paid: "done", credit: "done", post: "done", bonus: "current" };
       case "released":
-        return { paid: "done", post: "done", waiter: "done", bonus: "done" };
+        return { paid: "done", credit: "done", post: "done", bonus: "done" };
       default:
-        return { paid: "done" };
+        return { paid: "done", credit: "done" };
     }
   })();
   const paid = money(s.amount_cents, s.currency ?? "mxn");
   const steps = [
-    { key: "paid", Icon: WalletIcon, title: "Paid, your credit is ready", amount: paid },
-    { key: "post", Icon: Camera, title: "Post a story", amount: null },
-    { key: "waiter", Icon: QrCode, title: "The waiter approves it", amount: null },
-    { key: "bonus", Icon: Gift, title: `Keep it up ${waitText(s.wait_sec)}`, amount: storyBonus(s) },
+    { key: "paid", Icon: WalletIcon, title: "Pay the voucher", amount: paid },
+    { key: "credit", Icon: WalletIcon, title: "Your credit is ready", amount: paid },
+    { key: "post", Icon: Camera, title: "Post a story tagging both and keep it up", amount: null },
+    { key: "bonus", Icon: Gift, title: `Cashback in ${waitText(s.wait_sec)}, by itself`, amount: storyBonus(s) },
   ];
   return (
     <Panel className="px-4 py-3" data-story-steps="">
@@ -186,7 +182,7 @@ function StoryCard({ s }: { s: StoryTicket }) {
 /** What the guest does now, by state. */
 function NowPanel({ s, now }: { s: StoryTicket; now: number }) {
   const handle = s.place_handle;
-  if (s.state === "waiting_post" && Date.parse(s.deadline_at) > now) {
+  if (s.state === "waiting_post") {
     return (
       <Panel title="Post your story" data-story-now="post">
         <div className="flex flex-col gap-3 px-4 pt-2 pb-4">
@@ -207,25 +203,19 @@ function NowPanel({ s, now }: { s: StoryTicket; now: number }) {
       </Panel>
     );
   }
-  if (s.state === "found" && s.review_url) {
+  if (s.state === "found") {
     return (
-      <Panel title="Show this to your waiter" data-story-now="waiter">
-        <div className="flex flex-col items-center gap-3 px-4 pt-2 pb-4 text-center" aria-live="polite">
+      <Panel title="Story found" data-story-now="found">
+        <div className="flex flex-col gap-3 px-4 pt-2 pb-4">
           <StoryCard s={s} />
-          <div className="rounded-2xl bg-white p-3" data-story-qr>
-            <QRCodeSVG value={s.review_url} size={224} marginSize={0} aria-label="Story QR for the waiter" />
-          </div>
-          <p className="text-sm leading-snug font-semibold">They scan it, check your story and approve it with the waiter code.</p>
-          <a href={s.review_url} target="_blank" rel="noreferrer" className="text-muted-foreground min-h-9 text-sm underline underline-offset-2">
-            Open the waiter&apos;s link
-          </a>
+          <p className="text-sm leading-snug">This story is not tied to a voucher at this restaurant, so it pays nothing.</p>
         </div>
       </Panel>
     );
   }
   if (s.state === "approved") {
     return (
-      <Panel title="Approved" data-story-now="approved">
+      <Panel title="Keep it up" data-story-now="approved">
         <div className="flex flex-col gap-3 px-4 pt-2 pb-4">
           <StoryCard s={s} />
           <p className="text-sm leading-snug">
@@ -241,15 +231,15 @@ function NowPanel({ s, now }: { s: StoryTicket; now: number }) {
 }
 
 /** THE TEST BAND (test mode, Instagram not connected): the emulator stands in
- *  for Instagram and the waiter, never the primary button. */
+ *  for the account and for publish and delete. Never the primary button. */
 function TestBand({ s, onChanged }: { s: StoryTicket; onChanged: () => void }) {
   const getSupabase = useLazyBrowserSupabase();
   const [busy, setBusy] = useState<string | null>(null);
   if (!s.emulator) return null;
-  const run = async (action: "post" | "delete" | "approve" | "reject") => {
+  const run = async (action: "connect" | "post" | "delete") => {
     setBusy(action);
     try {
-      await apiEmulateStory(getSupabase(), action, action === "approve" || action === "reject" ? s.story_id : undefined);
+      await apiEmulateStory(getSupabase(), action, action === "post" ? s.place_id : undefined);
       onChanged();
     } catch (err) {
       const code = err instanceof EFError ? err.code : null;
@@ -262,20 +252,15 @@ function TestBand({ s, onChanged }: { s: StoryTicket; onChanged: () => void }) {
   return (
     <div className="border-border flex flex-col items-center gap-1 rounded-2xl border border-dashed p-3" data-story-emulator>
       <TestModeNote className="self-center" />
-      {s.state === "waiting_post" ? (
-        <button type="button" disabled={busy !== null} onClick={() => void run("post")} className={QUIET} data-story-simulate="post">
-          {busy === "post" ? "Tagging…" : handle ? `Tag @${handle} (test story)` : "Tag the place (test story)"}
-        </button>
-      ) : null}
-      {s.state === "found" ? (
-        <span className="flex flex-wrap justify-center">
-          <button type="button" disabled={busy !== null} onClick={() => void run("approve")} className={QUIET} data-story-simulate="approve">
-            {busy === "approve" ? "Approving…" : "Simulate the waiter's approval"}
+      {s.state === "waiting_post" || s.state === "void" ? (
+        <>
+          <button type="button" disabled={busy !== null} onClick={() => void run("connect")} className={QUIET} data-story-simulate="connect">
+            {busy === "connect" ? "Connecting…" : "Connect a public test Instagram"}
           </button>
-          <button type="button" disabled={busy !== null} onClick={() => void run("reject")} className={QUIET} data-story-simulate="reject">
-            {busy === "reject" ? "Rejecting…" : "Simulate a reject"}
+          <button type="button" disabled={busy !== null} onClick={() => void run("post")} className={QUIET} data-story-simulate="post">
+            {busy === "post" ? "Publishing…" : handle ? `Publish a story tagging @mesita and @${handle}` : "Publish a test story"}
           </button>
-        </span>
+        </>
       ) : null}
       {s.state === "approved" ? (
         <button type="button" disabled={busy !== null} onClick={() => void run("delete")} className={QUIET} data-story-simulate="delete">
@@ -303,9 +288,10 @@ export function StoryPage({ id, byPurchase = false }: { id: string; byPurchase?:
   const fetchOnce = useCallback(
     async (poll: boolean): Promise<Omit<Read, "misses">> => {
       try {
-        const story = poll && read.story
+        const stayOnVoucher = byPurchase && (!read.story?.story_id || read.story.state === "waiting_post" || read.story.state === "void");
+        const story = poll && read.story?.story_id && !stayOnVoucher
           ? await apiPollStory(getSupabase(), read.story.story_id)
-          : await apiGetStory(getSupabase(), byPurchase ? { purchase_id: id } : { story_id: id });
+          : await apiGetStory(getSupabase(), byPurchase || stayOnVoucher ? { purchase_id: read.story?.purchase_id || id } : { story_id: id });
         return { story, error: null };
       } catch (err) {
         const missing = err instanceof EFError && err.status === 404;
@@ -408,10 +394,8 @@ export function StoryPage({ id, byPurchase = false }: { id: string; byPurchase?:
         <TicketPanel title="Details">
           <TicketLine label="You paid" value={money(s.amount_cents, s.currency ?? "mxn")} />
           <TicketLine label="Bonus" value={storyBonus(s)} strong />
-          {s.state === "waiting_post" || s.state === "found" ? (
-            <TicketLine label="Post and approve by" value={storyClock(s.deadline_at, zone, now)} />
-          ) : null}
-          {s.approved_at ? <TicketLine label="Approved" value={storyClock(s.approved_at, zone, now)} /> : null}
+          {s.mention?.mentioned_at ? <TicketLine label="Posted" value={storyClock(s.mention.mentioned_at, zone, now)} /> : null}
+          {s.bonus_at ? <TicketLine label="Bonus if it stays up" value={storyClock(s.bonus_at, zone, now)} /> : null}
           {s.decided_at ? <TicketLine label={s.state === "released" ? "Bonus added" : "Ended"} value={storyClock(s.decided_at, zone, now)} /> : null}
         </TicketPanel>
       </TicketPage>

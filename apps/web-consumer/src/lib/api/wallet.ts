@@ -366,19 +366,18 @@ export async function apiPollStory(client: SupabaseClient, storyId: string): Pro
  *  from STORY_EMULATOR_REFUSAL. */
 export async function apiEmulateStory(
   client: SupabaseClient,
-  action: "post" | "delete" | "approve" | "reject",
-  storyId?: string,
-): Promise<{ ok: true; action: string }> {
-  return await invokeEF(client, "consumer-web-emulate-story", { action, ...(storyId ? { story_id: storyId } : {}) });
+  action: "connect" | "post" | "delete",
+  placeId?: string,
+): Promise<{ ok: true; action: string; story_id?: string | null }> {
+  return await invokeEF(client, "consumer-web-emulate-story", { action, ...(placeId ? { place_id: placeId } : {}) });
 }
 
 /** What the guest reads when the emulator refuses, by the server's code. */
 export const STORY_EMULATOR_REFUSAL: Record<string, string> = {
   not_test_mode: "The simulator only works in test mode.",
   meta_on: "Instagram is connected: post a real story.",
-  needs_instagram: "Link your Instagram first.",
-  story_too_old: "That story is too old. Simulate a new one.",
-  no_story: "Tag the place first.",
+  needs_instagram: "Connect a test Instagram first.",
+  no_story: "Publish a test story first.",
   gone: "That story can't be decided any more.",
   already_decided: "That story was already decided.",
   emulate_failed: "Couldn't simulate the story. Try again.",
