@@ -43,7 +43,7 @@ function asIds(raw: unknown): string[] {
   return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : [];
 }
 
-serveJson(FN, async (req) => {
+serveJson("admin-web-preview-rank", async (req) => {
   const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;

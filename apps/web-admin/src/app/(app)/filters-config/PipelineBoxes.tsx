@@ -27,6 +27,8 @@ import {
   NumberField,
   Notice,
   SectionCard,
+  SelectField,
+  Button,
   SwitchRow,
   Table,
   TBody,
@@ -379,30 +381,23 @@ function RecipePreview({
         </p>
       </div>
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="type-meta">Mode</span>
-          <select
-            aria-label="Preview mode"
-            value={mode}
-            disabled={disabled || busy}
-            onChange={(e) => setMode(e.target.value as RankMode)}
-            className="border-border bg-card h-9 rounded-lg border px-2"
-          >
-            {PREVIEW_MODES.map((m) => (
-              <option key={m.mode} value={m.mode}>{m.label}</option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          label="Mode"
+          aria-label="Preview mode"
+          value={mode}
+          disabled={disabled || busy}
+          onChange={(v) => setMode(v as RankMode)}
+          well={false}
+        >
+          {PREVIEW_MODES.map((m) => (
+            <option key={m.mode} value={m.mode}>{m.label}</option>
+          ))}
+        </SelectField>
         <NumberField label="Latitude" value={lat} min={-90} max={90} decimals disabled={disabled || busy} onChange={setLat} well={false} />
         <NumberField label="Longitude" value={lng} min={-180} max={180} decimals disabled={disabled || busy} onChange={setLng} well={false} />
-        <button
-          type="button"
-          disabled={disabled || busy}
-          onClick={() => void run()}
-          className="bg-foreground text-paper h-9 rounded-lg px-3 text-sm font-semibold disabled:opacity-50"
-        >
-          {busy ? "Previewing…" : "Preview"}
-        </button>
+        <Button type="button" disabled={disabled || busy} pending={busy} onClick={() => void run()}>
+          Preview
+        </Button>
       </div>
       {error ? <p className="text-destructive type-meta">{error}</p> : null}
       {pages ? (
