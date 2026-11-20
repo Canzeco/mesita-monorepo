@@ -215,6 +215,18 @@ export function keepOriginalPatch(
   };
 }
 
+/** A guest reschedule closes an open proposal (MESITA-4140). The check
+ *  constraint has no `superseded`, so this is `declined`. No decline notice:
+ *  the reschedule call is what the place hears. A proposal that is not open
+ *  is left alone. */
+export function closeOpenChangePatch(changeState: string | null, now: Date): ReservationPatch {
+  if (changeState !== "proposed") return {};
+  return {
+    change_state: "declined",
+    change_answered_at: now.toISOString(),
+  };
+}
+
 /** The change, spoken, for a1's change_declined call ("las 9:00 p.m., para 4"). */
 export function changeToSpeech(
   t: { change_reserved_at: string | null; change_party_size: number | null; reserved_at: string },
