@@ -735,6 +735,10 @@ verify_jwt = true
 [functions.admin-web-update-config]
 verify_jwt = true
 
+# MESITA-4458: Ranking previews a draft recipe beside the live one. Read only.
+[functions.admin-web-preview-rank]
+verify_jwt = true
+
 
 # --- ElevenLabs Reservationist ---
 

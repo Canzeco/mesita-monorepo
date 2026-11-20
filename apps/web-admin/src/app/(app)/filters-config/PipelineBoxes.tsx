@@ -38,7 +38,7 @@ import {
 import { SaveRow } from "@/components/admin-ui/config";
 import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { formatShortDate } from "@/lib/format";
-import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "./actions";
+import { getDiscoveryConfig, previewDiscoveryRank, updateDiscoveryConfig, type DiscoverySlice, type RankPreviewRow } from "./actions";
 import {
   CATALOG_PAGE_SIZE_MAX,
   CATALOG_PAGE_SIZE_MIN,
@@ -316,6 +316,105 @@ const Fixed = ({ children }: { children: React.ReactNode }) => (
   <span className="text-muted-foreground">{children}</span>
 );
 
+const PREVIEW_MODES: { mode: RankMode; label: string }[] = [
+  { mode: "nearby", label: "Nearby" },
+  { mode: "family", label: "Family" },
+  { mode: "popular", label: "Popular" },
+];
+
+function PreviewColumn({ title, rows }: { title: string; rows: RankPreviewRow[] }) {
+  return (
+    <div className="min-w-0 flex-1">
+      <p className="text-sm font-semibold">{title}</p>
+      {rows.length === 0 ? (
+        <p className="text-muted-foreground type-meta mt-1">No places.</p>
+      ) : (
+        <ol className="mt-1 flex flex-col gap-0.5">
+          {rows.map((row, i) => (
+            <li key={row.id} className="type-meta flex items-baseline gap-2">
+              <span className="text-muted-foreground w-5 shrink-0 tabular-nums">{i + 1}</span>
+              <span className="min-w-0 flex-1 truncate">{row.name}</span>
+              <span className="text-muted-foreground shrink-0">{row.lane === "inorganic" ? "Ad" : "Organic"}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+/** The edited recipe's first page beside the saved one (MESITA-4458). */
+function RecipePreview({
+  recipes,
+  disabled,
+}: {
+  recipes: DiscoveryConfig["params"]["recipes"];
+  disabled: boolean;
+}) {
+  const [lat, setLat] = useState(25.67);
+  const [lng, setLng] = useState(-100.31);
+  const [mode, setMode] = useState<RankMode>("nearby");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pages, setPages] = useState<{ live: RankPreviewRow[]; draft: RankPreviewRow[] } | null>(null);
+  const run = async () => {
+    setBusy(true);
+    setError(null);
+    const r = await previewDiscoveryRank(lat, lng, mode, recipes);
+    setBusy(false);
+    if (!r.ok) {
+      setPages(null);
+      setError(r.error);
+      return;
+    }
+    setPages({ live: r.live, draft: r.draft });
+  };
+  return (
+    <div className="border-border flex flex-col gap-3 rounded-xl border p-3">
+      <div>
+        <p className="text-sm font-semibold">Preview before saving</p>
+        <p className="text-muted-foreground type-meta mt-1">
+          The first page this edit would show, beside the saved recipe. Same point and the same shuffle.
+          Each row is Organic or an Ad. Nothing is saved.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="type-meta">Mode</span>
+          <select
+            aria-label="Preview mode"
+            value={mode}
+            disabled={disabled || busy}
+            onChange={(e) => setMode(e.target.value as RankMode)}
+            className="border-border bg-card h-9 rounded-lg border px-2"
+          >
+            {PREVIEW_MODES.map((m) => (
+              <option key={m.mode} value={m.mode}>{m.label}</option>
+            ))}
+          </select>
+        </label>
+        <NumberField label="Latitude" value={lat} min={-90} max={90} decimals disabled={disabled || busy} onChange={setLat} well={false} />
+        <NumberField label="Longitude" value={lng} min={-180} max={180} decimals disabled={disabled || busy} onChange={setLng} well={false} />
+        <button
+          type="button"
+          disabled={disabled || busy}
+          onClick={() => void run()}
+          className="bg-foreground text-paper h-9 rounded-lg px-3 text-sm font-semibold disabled:opacity-50"
+        >
+          {busy ? "Previewing…" : "Preview"}
+        </button>
+      </div>
+      {error ? <p className="text-destructive type-meta">{error}</p> : null}
+      {pages ? (
+        <div className="flex gap-4">
+          <PreviewColumn title="Saved" rows={pages.live} />
+          <PreviewColumn title="This edit" rows={pages.draft} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
   const editor = useDiscoveryEditor(seed);
   const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
@@ -416,6 +515,7 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
           Proximity is ½ and its value at 2 km; Inorganic rows show how far a Premier place can be and still
           take an inorganic slot at the saved Inorganic floor ({inorganicFloor}).
         </Meta>
+        <RecipePreview recipes={cfg.params.recipes} disabled={off} />
       </div>
       <Save editor={editor} dirty={dirty} slices={BOX_SLICES.ranking} />
     </SectionCard>

@@ -19,7 +19,7 @@
 
 import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
-import { coerceConfig, type DiscoveryConfig } from "./catalog";
+import { coerceConfig, type DiscoveryConfig, type RankMode } from "./catalog";
 
 type GetDiscoveryConfigResult = ActionResult<{
   config: DiscoveryConfig;
@@ -150,4 +150,22 @@ export async function updateDiscoveryConfig(
   }
   if (!carriesWrittenSlices(r.data.config, keys)) return { ok: false, error: OLDER_SERVER };
   return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };
+}
+
+export type RankPreviewRow = { id: string; name: string; lane: "organic" | "inorganic" };
+
+/** The first page the edited recipes would rank, beside the saved ones
+ *  (MESITA-4458). Nothing is written. */
+export async function previewDiscoveryRank(
+  lat: number,
+  lng: number,
+  mode: RankMode,
+  recipes: DiscoveryConfig["params"]["recipes"],
+): Promise<ActionResult<{ live: RankPreviewRow[]; draft: RankPreviewRow[] }>> {
+  const r = await efInvoke<{ live: RankPreviewRow[]; draft: RankPreviewRow[] }>(
+    "admin-web-preview-rank",
+    { lat, lng, mode, recipes },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, live: r.data.live ?? [], draft: r.data.draft ?? [] };
 }
