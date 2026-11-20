@@ -25,9 +25,13 @@ export function PlaceDetailPageBody({
   const scored = usePlaceScore(measured);
   const router = useRouter();
   // Enriching once this view starts the run (MESITA-2952).
-  const { place, ready, actions, sheets, social } = useMemberPlaceActions(scored);
+  const { place, ready, actions, sheets, social, more } =
+    useMemberPlaceActions(scored);
   // Back where you came from, or Home on a cold open (lib/navigate.ts).
-  const onBack = useCallback(() => goBack(router, fallbackHref), [fallbackHref, router]);
+  const onBack = useCallback(
+    () => goBack(router, fallbackHref),
+    [fallbackHref, router],
+  );
   // Back from a page pushed over the place (Offers, Reserve, Story) finds it
   // scrolled where it was (MESITA-4379).
   const keep = useKeptScroll<HTMLDivElement>();
@@ -43,6 +47,8 @@ export function PlaceDetailPageBody({
         actions={actions}
         social={social}
         scrollRef={keep}
+        footer={more}
+        hideMore
       />
       {sheets}
     </div>

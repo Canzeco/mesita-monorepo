@@ -362,6 +362,28 @@ export function placeOffersPath(
   return `${placePath(idOrSlug)}/offers${qs ? `?${qs}` : ""}`;
 }
 
+/** Contact, a page under the place (MESITA-4111). Open to a signed-out
+ *  visitor, like the place itself: the rows are the place's own links. */
+export function placeContactPath(idOrSlug: string): string {
+  return `${placePath(idOrSlug)}/contact`;
+}
+
+/** Report, a page under the place (MESITA-4111). A member's screen. */
+export function placeReportPath(idOrSlug: string): string {
+  return `${placePath(idOrSlug)}/report`;
+}
+
+/** Upgrade, a page under the place (MESITA-4111). Checkout returns here. */
+export function placeUpgradePath(idOrSlug: string): string {
+  return `${placePath(idOrSlug)}/upgrade`;
+}
+
+/** One stored menu file (MESITA-4111). Menus have no id of their own;
+ *  `menuId` is the index in `products.menu`. */
+export function placeMenuPath(idOrSlug: string, menuId: number): string {
+  return `${placePath(idOrSlug)}/menu/${menuId}`;
+}
+
 /** /place/<id>/reserve: a full page, never the place slide-over. */
 export function isPlaceReservePath(pathname: string): boolean {
   return /^\/place\/[^/]+\/reserve\/?$/.test(pathname);
@@ -505,6 +527,13 @@ export const ROUTE_MAP = {
   // page"): it was a full-screen sheet over the profile at
   // /place/<id>?rewards=…, so the profile loaded before Offers showed.
   placeOffers: row("/place/:id/offers", "home", "page", "place", false),
+  // Contact, Report, Upgrade and one menu file, pages under the place
+  // (MESITA-4111). They were sheets over the profile. More is rows on the
+  // place page, so it has no address.
+  placeContact: row("/place/:id/contact", "home", "page", "place", false),
+  placeReport: row("/place/:id/report", "home", "page", "place", false),
+  placeUpgrade: row("/place/:id/upgrade", "home", "page", "place", false),
+  placeMenu: row("/place/:id/menu/:menuId", "home", "page", "place", false),
   // A reservation is reached from a place and from Me › Reservations; it
   // lights Me, whose list is where it lands back (MESITA-3855).
   reservation: row("/reservation/:id", "me", "panel", "meReservations"),
@@ -536,7 +565,13 @@ export const ROUTE_MAP = {
   // which was a sheet over it (MESITA-4096).
   walletBuy: row("/wallet/buy", "pay", "page", "pay"),
   walletSend: row("/wallet/send", "pay", "page", "pay"),
-  walletPlaceSend: row("/wallet/place/:placeId/send", "pay", "page", "walletPlace", false),
+  walletPlaceSend: row(
+    "/wallet/place/:placeId/send",
+    "pay",
+    "page",
+    "walletPlace",
+    false,
+  ),
   // Share's page, pushed from Pay's Share Mesita button.
   share: row("/share", "pay", "page", "pay"),
   me: row("/me", "me", "tab", null),
@@ -561,7 +596,12 @@ export const ROUTE_MAP = {
   meSettingsFeedback: row("/me/settings/feedback", "me", "page", "meSettings"),
   // Integrations (MESITA-3954); Calendar is also Reservations' header icon.
   meIntegrations: row("/me/integrations", "me", "page", "me"),
-  meIntegrationsCalendar: row("/me/integrations/calendar", "me", "page", "meIntegrations"),
+  meIntegrationsCalendar: row(
+    "/me/integrations/calendar",
+    "me",
+    "page",
+    "meIntegrations",
+  ),
 } as const satisfies Record<string, RouteRow>;
 
 export type RouteId = keyof typeof ROUTE_MAP;
@@ -644,6 +684,9 @@ const OPEN_ROUTES: ReadonlySet<RouteId> = new Set<RouteId>([
   "homeSocial",
   "search",
   "place",
+  // Contact and a menu file are the place's own public links (MESITA-4111).
+  "placeContact",
+  "placeMenu",
   "sign",
 ]);
 
