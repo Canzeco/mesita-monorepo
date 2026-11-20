@@ -111,11 +111,13 @@ serveJson("consumer-web-update-reservation", async (req) => {
     modification_of: string | null;
     place_id: string;
     change_state: string | null;
+    reported_verdict: string | null;
+    reported_time: string | null;
   }>(
     admin,
     id,
     user.id,
-    "id, state, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of, place_id, change_state",
+    "id, state, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of, place_id, change_state, reported_verdict, reported_time",
   );
   if (readErr) return json({ ok: false, error: readErr }, 500);
   if (!row) {
@@ -184,9 +186,13 @@ serveJson("consumer-web-update-reservation", async (req) => {
     claimed_at: null,
     reschedules_today: usedToday + 1,
     reschedules_day: todayStr,
-    modification_of: row.state === "confirmed"
-      ? row.reserved_at
+    // A mid-call "yes" (reported, not yet flipped to confirmed) is a hold too:
+    // the next call must MOVE that table, not book a second one (MESITA-4146).
+    modification_of: row.state === "confirmed" || row.reported_verdict === "confirmed"
+      ? (row.reported_time ?? row.reserved_at)
       : (row.modification_of ?? null),
+    // The guest named this time. The old window must not survive it.
+    ...(patch.reserved_at ? { time_window_minutes: 0 as const } : {}),
     state: "pending",
     consumer_confirmed_at: null,
     confirmed_at: null,

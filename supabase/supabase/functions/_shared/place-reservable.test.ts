@@ -32,7 +32,15 @@ Deno.test("reservationNumber: the Reservations phone, else Google's", () => {
 
 Deno.test("dialNumber: ticket, then test line, then Reservations phone, then Google's", () => {
   const place = { reservation_target: "+528111111111", phone: "+528122222222" };
-  assertEquals(dialNumber({ ticketPhone: "+528100000000", testNumber: "+15550000000", place }).number, "+528100000000");
+  assertEquals(
+    dialNumber({ ticketPhone: "+528100000000", testNumber: "+15550000000", place, usePinned: true }).number,
+    "+528100000000",
+  );
+  // A pin from a test dial is ignored once the test line is off (MESITA-4146).
+  assertEquals(
+    dialNumber({ ticketPhone: "+15550000000", testNumber: null, place }).number,
+    "+528111111111",
+  );
   assertEquals(dialNumber({ testNumber: "+15550000000", place }), { number: "+15550000000", via: "test-mode number" });
   assertEquals(dialNumber({ testNumber: null, place }), { number: "+528111111111", via: "Reservations phone" });
   assertEquals(dialNumber({ place: { phone: "+528122222222" } }), { number: "+528122222222", via: "Google phone" });

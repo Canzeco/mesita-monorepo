@@ -225,10 +225,12 @@ async function launchCancelNotice(ctx: LaunchCtx): Promise<Response> {
     .in("notice_state", ["pending", "scheduled"])
     .select("id");
   if (!claimed?.length) return json({ ok: true, skipped: "notice already claimed" });
-  // A place RELEASE after a failed modification speaks about the OLD slot —
-  // the one the place is still holding — not the ticket's new ask.
+  // A place RELEASE speaks about the OLD slot — the one the place is still
+  // holding — not the ticket's new ask. That includes a guest who cancelled
+  // a pending move: the new time was never confirmed, so modification_of is
+  // still the hold (MESITA-4146). A confirmed move clears modification_of.
   const noticeLegVars: ReservationLegVars =
-    kind === "place_cancel" && modificationOfIso && r.state !== "cancelled"
+    kind === "place_cancel" && modificationOfIso
       ? { ...legVars, dateEs: esDate(modificationOfIso, placeTz), timeEs: esTime(modificationOfIso, placeTz) }
       : legVars;
   // An offer nobody took (released by the cron, or cancelled by the guest
@@ -706,6 +708,8 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
   const guestPlaysPlace = cfg.testCall.enabled && cfg.testCall.target === "guest";
   const { number: businessNumber, via } = dialNumber({
     ticketPhone: r.place_phone,
+    // A number pinned during a test dial is not the place's number (MESITA-4146).
+    usePinned: cfg.testCall.enabled,
     testNumber: cfg.testCall.enabled ? (guestPlaysPlace ? consumerNumber : cfg.testCall.number) : null,
     testVia: guestPlaysPlace ? "test mode: the guest's phone" : "test-mode number",
     place,

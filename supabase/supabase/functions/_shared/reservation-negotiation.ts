@@ -66,6 +66,9 @@ export function negotiationRoundPatch(args: {
     next_attempt_at: nowIso,
     ...(args.movingFrom ? { modification_of: args.movingFrom } : {}),
     reserved_at: args.next.toISOString(),
+    // The guest named this slot. The old window must not let a1 take an hour
+    // away from it (MESITA-4146). 0 is exact.
+    time_window_minutes: 0,
     // New terms — the place hasn't agreed to them yet.
     state: "pending",
     consumer_confirmed_at: (args.now ?? new Date()).toISOString(),

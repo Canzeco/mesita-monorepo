@@ -57,6 +57,7 @@ const SPECS: ToolSpec[] = [
     schema: body("Resultado de la llamada con el restaurante.", ["reference_code", "verdict"], {
       reference_code: REFERENCE_CODE_BOUND,
       run_id: RUN_ID,
+      call_context: { type: "string", dynamic_variable: "call_context" },
       verdict: {
         type: "string",
         description:
