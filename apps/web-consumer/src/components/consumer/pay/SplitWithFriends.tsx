@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { readAmount } from "@mesita/place-profile/lib/money";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
 import { apiSetShare, apiSplitTab, apiUnsplitTab, equalShare, joinUrl, TAB_REFUSAL, type GuestTab } from "@/lib/api/tab";
@@ -77,7 +76,7 @@ export function SplitButton({
         Split with friends
         <span aria-hidden>›</span>
       </button>
-      <LocalSheet open={open} onClose={() => setOpen(false)} ariaLabel="Split the bill with friends">
+      {open ? (
         <div className="px-4 pt-2 pb-6">
           <p className="text-2xl font-semibold">Split {money(bill, tab.currency)}</p>
           <p className="text-muted-foreground mt-1 text-sm">You pay your share; friends scan your screen to pay theirs.</p>
@@ -126,7 +125,7 @@ export function SplitButton({
             {busy ? "Splitting…" : valid ? `Pay my share · ${money(share, tab.currency)}` : "Choose your share"}
           </Button>
         </div>
-      </LocalSheet>
+      ) : null}
     </>
   );
 }

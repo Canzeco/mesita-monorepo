@@ -61,10 +61,6 @@ export const CONFIRM_FILES = [
 const SHEET_ALLOWLIST = [
   "components/consumer/pay/PayPick.tsx",
   "components/consumer/home/LocationPicker.tsx",
-  "components/consumer/pay/GuestPayScreen.tsx",
-  "components/consumer/pay/PayForm.tsx",
-  "components/consumer/pay/SplitWithFriends.tsx",
-  "components/consumer/pay/TabView.tsx",
   "components/consumer/reservation-actions.tsx",
   "components/consumer/search/AddPlaceSheet.tsx",
 ];
