@@ -134,9 +134,9 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   // Welcome's MX$100 lands at once and its bonus in 3 hours (MESITA-4214;
   // fully instant from MESITA-4198, an hour from MESITA-3835).
   voucher_welcome: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
-  // STORY IS +50% (Pato, 2026-11-16, MESITA-4207): pay MX$100, get MX$150;
-  // +30% until then. Purchases keep their stored amounts.
-  voucher_story: { price_cents: 100_00, bonus_bps: 5000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
+  // STORY IS +40% (Pato, 2026-11-20, MESITA-4473): pay MX$100, get MX$140;
+  // +50% from MESITA-4207 until then. Purchases keep their stored amounts.
+  voucher_story: { price_cents: 100_00, bonus_bps: 4000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
 };
 
 /** VOUCHERS IN TWO CURRENCIES (Pato, 2026-11-14, MESITA-3914: "100 MX
