@@ -522,7 +522,20 @@ const row = (
 export const ROUTE_MAP = {
   home: row("/home/places", "home", "tab", null),
   homeSocial: row("/home/social", "home", "tab", null),
+  // A member's card (MESITA-4113). The event names them (place, kind, at);
+  // there is no member id (MESITA-2460).
+  homeSocialPerson: row(
+    "/home/social/person",
+    "home",
+    "page",
+    "homeSocial",
+    false,
+  ),
   search: row("/search", "search", "tab", null),
+  // Add a place, then Generate its profile (MESITA-4113). Both were sheets
+  // over the map.
+  searchAdd: row("/search/add", "search", "page", "search", false),
+  searchGenerate: row("/search/generate", "search", "page", "search", false),
   place: row("/place/:id", "home", "panel", "home", false),
   placeGoogle: row("/place/google/:gid", "home", "panel", "home", false),
   placeReserve: row("/place/:id/reserve", "home", "page", "place", false),
@@ -542,6 +555,14 @@ export const ROUTE_MAP = {
   // A reservation is reached from a place and from Me › Reservations; it
   // lights Me, whose list is where it lands back (MESITA-3855).
   reservation: row("/reservation/:id", "me", "panel", "meReservations"),
+  // Move your table (MESITA-4113). Cancel stays a confirm on the reservation.
+  reservationReschedule: row(
+    "/reservation/:id/reschedule",
+    "me",
+    "page",
+    "reservation",
+    false,
+  ),
   // A finished Visit, opened from Me › Tickets (MESITA-3770, MESITA-3855).
   visit: row("/me/tickets/visits/:visitId", "me", "page", "meTickets"),
   // A voucher, bonus, refund or gift, opened from Tickets (MESITA-3782).

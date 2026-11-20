@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MapPin, Search, X } from "lucide-react";
 
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared";
 import { apiSuggestPlaces, type PlacePrediction } from "@/lib/api/place-search";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -34,17 +33,14 @@ const MIN_QUERY = 2;
 const SEARCH_DELAY_MS = 400;
 
 export function AddPlaceSheet({
-  open,
   onClose,
   origin,
   onPick,
 }: {
-  open: boolean;
   onClose: () => void;
   /** Biases Google to where the guest is looking (the map's camera). */
   origin: { lat: number; lng: number };
-  /** Create (Google-only row) or open (Mesita row): SearchClient's
-   *  explicit open, which owns get-or-create. */
+  /** Create (Google-only row) or open (Mesita row). */
   onPick: (prediction: PlacePrediction) => void;
 }) {
   const supabase = useBrowserSupabase();
@@ -59,12 +55,10 @@ export function AddPlaceSheet({
     originRef.current = origin;
   }, [origin]);
 
-  // The field takes the keyboard as the sheet rises.
   useEffect(() => {
-    if (!open) return;
-    const t = window.setTimeout(() => inputRef.current?.focus(), 320);
+    const t = window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => window.clearTimeout(t);
-  }, [open]);
+  }, []);
 
   const trimmed = query.trim();
   useEffect(() => {
@@ -125,7 +119,6 @@ export function AddPlaceSheet({
   const typing = trimmed.length >= MIN_QUERY;
 
   return (
-    <LocalSheet open={open} onClose={close} ariaLabel="Add a place">
       <div className={SHEET_BODY_CLASS} data-search-add-sheet>
         <h2 className={SHEET_TITLE_CLASS}>Add a place</h2>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -211,6 +204,5 @@ export function AddPlaceSheet({
           </p>
         )}
       </div>
-    </LocalSheet>
   );
 }

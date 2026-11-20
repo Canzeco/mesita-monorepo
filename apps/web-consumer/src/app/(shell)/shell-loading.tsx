@@ -50,7 +50,10 @@ import SignLoading from "./sign/loading";
 const FRAMES: Record<RouteId, () => ReactNode> = {
   home: () => <HomeLoadingFrame />,
   homeSocial: () => <HomeLoadingFrame />,
+  homeSocialPerson: () => <HomeLoadingFrame />,
   search: () => <SearchLoading />,
+  searchAdd: () => <SearchLoading />,
+  searchGenerate: () => <SearchLoading />,
   place: () => <PlacePageSkeleton />,
   placeGoogle: () => (
     <div className="flex h-full min-h-0 flex-col">
@@ -65,6 +68,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   placeUpgrade: () => <PlaceUpgradeLoading />,
   placeMenu: () => <PlaceMenuLoading />,
   reservation: () => <ReservationPageLoading />,
+  reservationReschedule: () => <ReservationPageLoading />,
   pay: () => <PayLoading />,
   payPick: () => <PayBillSkeleton />,
   payPlace: () => <PayPlaceLoading />,

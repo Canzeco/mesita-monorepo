@@ -227,13 +227,13 @@ describe("a Google-only result opens through get-or-create, never a preview or a
     expect(client).not.toContain("setPreviewOpen");
     expect(client).not.toContain("places.googleapis.com");
     // The explicit open asks first (MESITA-2935): it opens the Generate
-    // dialog, whose confirm tap runs getOrCreateGooglePlace.
+    // page, whose confirm tap runs getOrCreateGooglePlace.
     expect(client).not.toContain("apiCreateProject(");
     const open = client.slice(
       client.indexOf("const openGoogleProfile"),
-      client.indexOf("const onGenerated"),
+      client.indexOf("const openGoogleOnly"),
     );
-    expect(open).toContain("setGenerateOpen(true)");
+    expect(open).toContain("generateHref(");
     const opener = readFileSync(
       join(SEARCH_DIR, "../../../lib/use-open-google-place.ts"),
       "utf8",
@@ -265,9 +265,9 @@ describe("a Google-only result opens through get-or-create, never a preview or a
 
 describe("every searchbar pick anchors the map (MESITA-1405)", () => {
   it("a searchbar pick never creates a place", () => {
-    // Data guard: a Google-only pick opens the Generate dialog (MESITA-2941),
-    // and only the dialog's Generate tap runs get-or-create. Neither the
-    // pick nor the dialog opener may create on a mere selection.
+    // Data guard: a Google-only pick opens the Generate page (MESITA-2941),
+    // and only that page's Generate tap runs get-or-create. Neither the
+    // pick nor the opener may create on a mere selection.
     const client = read("SearchClient.tsx");
     const barPick = client.slice(
       client.indexOf("const handleBarPick"),
@@ -275,14 +275,14 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     );
     const opener = client.slice(
       client.indexOf("const openGoogleProfile"),
-      client.indexOf("const onGenerated"),
+      client.indexOf("const openGoogleOnly"),
     );
     for (const body of [barPick, opener]) {
       expect(body).not.toContain("getOrCreateGooglePlace");
       expect(body).not.toContain("apiCreateProject");
       expect(body).not.toContain("openGooglePlace(");
     }
-    expect(opener).toContain("setGenerateOpen(true)");
+    expect(opener).toContain("generateHref(");
   });
 
   it("resolves a Location on pick, once (MESITA-1405, back in MESITA-2896)", () => {
