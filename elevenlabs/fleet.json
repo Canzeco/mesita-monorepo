@@ -1,6 +1,6 @@
 {
   "generated": "by `deno task sync-elevenlabs` from supabase/supabase/functions/_shared/reservationist/ — never edit",
-  "spec_hash": "6503980b53fafdb270a5c4ef772a0b902eb8e8e7b9b4bf8e96774640b2ac0f7a",
+  "spec_hash": "0189ac29b31cbfe5a6e1105ec6165a5cf3b065ddec7def03020ed0a6ff7d6c9b",
   "knowledge_version": 12,
   "deploy": ".github/workflows/agents-deploy.yml on every merge to main (supabase/scripts/sync-agents.sh)",
   "agents": [
@@ -34,6 +34,12 @@
         "mesita · a1 · tells the place the guest kept the original table",
         "mesita · a1 · books and confirms once",
         "mesita · a1 · never accepts another hour",
+        "mesita · a1 · holds every offered time",
+        "mesita · a1 · guest cancelled mid-call",
+        "mesita · a1 · moves a confirmed table",
+        "mesita · a1 · delivers a cancellation",
+        "mesita · a1 · releases offered times",
+        "mesita · a1 · voicemail leaves no details",
         "mesita · a1 · switches to English",
         "mesita · a1 · uses the place notes",
         "mesita · a1 · never gives the guest's phone"
@@ -63,6 +69,8 @@
       "tests": [
         "mesita · a2 · identity first, options once",
         "mesita · a2 · not booked, said once",
+        "mesita · a2 · place cancelled",
+        "mesita · a2 · guest asks for a new time",
         "mesita · a2 · tells a stranger nothing"
       ]
     },

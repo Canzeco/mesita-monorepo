@@ -210,6 +210,121 @@ export const FLEET_TESTS: FleetTest[] = [
   },
   {
     agent: "a1",
+    label: "holds every offered time",
+    scenario:
+      "Eres el encargado del restaurante Gran Central. A las 8:30 no tienes lugar. Ofreces las 9:30 en la terraza y las 7:00 adentro. Cuando te pidan apartarlas, dices «solo puedo apartar una, ¿le dejo la de las 9:30?» e insistes una vez. Si no eligen, dices que entonces no apartas ninguna y te despides.",
+    conditions: [
+      "El agente NO elige ni acepta apartar solo las 9:30 ni solo las 7:00.",
+      "El agente pide que dejen apartadas todas las opciones un momento mientras el comensal elige, y dice que si no pueden apartarlas todas está bien.",
+      "El agente no da ningún número de teléfono del comensal.",
+    ],
+    variables: BOOKING,
+    maxTurns: 10,
+    mocks: {
+      a1_report_outcome: mock({
+        ok: true,
+        recorded: {
+          reference_code: "48213907",
+          verdict: "counter_offer",
+          alternatives: [{ time: "21:30", note: "en la terraza" }, { time: "19:00", note: "adentro" }],
+        },
+      }),
+    },
+  },
+  {
+    agent: "a1",
+    label: "guest cancelled mid-call",
+    scenario:
+      "Eres la hostess del restaurante Gran Central. Contestas «Gran Central, buenas tardes». Cuando te pidan la mesa dices de inmediato que sí, que queda apartada a las 8:30. No preguntas nada más.",
+    conditions: [
+      "El agente NO dice que la mesa quedó confirmada ni pide que la aparten.",
+      "El agente dice, con una disculpa, que el comensal acaba de cancelar y que ya no aparten la mesa ni las opciones.",
+      "El agente no da ningún número de teléfono del comensal.",
+    ],
+    variables: BOOKING,
+    maxTurns: 8,
+    mocks: {
+      a1_report_outcome: mock({
+        ok: true,
+        stale_run: true,
+        ignored: true,
+        release_now: true,
+        say: "El comensal acaba de cancelar desde la app. Dígale al restaurante, con una disculpa, que ya no aparte la mesa ni las opciones.",
+      }),
+    },
+  },
+  {
+    agent: "a1",
+    label: "moves a confirmed table",
+    scenario:
+      "Eres la hostess del restaurante Gran Central. Contestas «Gran Central, buenas tardes». Ya tienes una mesa a nombre de Ana López el sábado a las 8:30. Cuando te pidan moverla a las 9:00, dices que sí, que queda pasada a las 9:00, y te despides. No ofrezcas una mesa nueva.",
+    conditions: [
+      "El agente pide mover la mesa que ya tienen de Ana López del sábado 21 de noviembre a las 8:30 p.m. hacia las 9:00 p.m., para 2 personas.",
+      "El agente NO pide una mesa nueva.",
+      "Cuando la hostess confirma el cambio, el agente no vuelve a pedir la mesa ni repite todos los datos.",
+      "El agente no da ningún número de teléfono del comensal.",
+    ],
+    variables: {
+      ...BOOKING,
+      call_context: "modification",
+      modification_of_date: "sábado 21 de noviembre",
+      modification_of_time: "8:30 p.m.",
+      reservation_time: "9:00 p.m.",
+    },
+    maxTurns: 8,
+    mocks: { a1_report_outcome: REPORTED },
+  },
+  {
+    agent: "a1",
+    label: "delivers a cancellation",
+    scenario:
+      "Eres la hostess del restaurante Gran Central. Contestas «Gran Central, buenas tardes». Escuchas el aviso. Preguntas una vez el código de la reservación. Luego dices «queda cancelada, gracias» y te despides.",
+    conditions: [
+      "El agente avisa que Ana López cancela su reservación del sábado 21 de noviembre a las 8:30 p.m.",
+      "El agente NO pide una mesa nueva.",
+      "Cuando le piden un número, da el código 48213907.",
+      "El agente ofrece una disculpa breve y se despide, sin dar ningún teléfono del comensal.",
+    ],
+    variables: { ...BOOKING, call_context: "cancellation" },
+    maxTurns: 8,
+  },
+  {
+    agent: "a1",
+    label: "releases offered times",
+    scenario:
+      "Eres el encargado del restaurante Gran Central. Contestas «Gran Central, buenas». Escuchas el aviso de que ya pueden soltar las opciones. Dices «perfecto, las libero» y te despides.",
+    conditions: [
+      "El agente avisa que ya pueden liberar las opciones que habían ofrecido (las 9:30 p.m. y las 7:00 p.m.) porque el comensal no tomó ninguna.",
+      "El agente NO pide una mesa ni confirma ninguna hora.",
+      "El agente no da ningún número de teléfono del comensal.",
+    ],
+    variables: {
+      ...BOOKING,
+      call_context: "offer_release",
+      venue_alternatives: "las 9:30 p.m. en la terraza, o las 7:00 p.m. adentro",
+    },
+    maxTurns: 6,
+  },
+  {
+    agent: "a1",
+    label: "voicemail leaves no details",
+    scenario:
+      "Eres el buzón de voz del restaurante Gran Central. Al contestar dices exactamente: «Ha llamado a Gran Central. Deje su mensaje después del tono.» Después solo hay silencio; no contestas nada más.",
+    conditions: [
+      "Después de oír que es un buzón, el agente no deja recado: no dice la fecha, la hora, el número de personas ni ningún teléfono.",
+      "El agente no dicta la reservación después del tono y cuelga.",
+    ],
+    variables: BOOKING,
+    maxTurns: 6,
+    mocks: {
+      a1_report_outcome: mock({
+        ok: true,
+        recorded: { reference_code: "48213907", verdict: "unreachable", alternatives: [] },
+      }),
+    },
+  },
+  {
+    agent: "a1",
     label: "switches to English",
     scenario:
       "You are the host at the restaurant Gran Central and you only speak English. You answer \"Gran Central, good evening\". If the caller speaks Spanish you say \"Sorry, I don't speak Spanish\". Once they ask in English, you confirm the table.",
@@ -295,6 +410,47 @@ export const FLEET_TESTS: FleetTest[] = [
     ],
     variables: { ...BOOKING, call_context: "not_booked" },
     maxTurns: 8,
+  },
+  {
+    agent: "a2",
+    label: "place cancelled",
+    scenario:
+      "Eres Ana López y contestas tu celular con «¿Bueno?». Cuando te pregunten si eres Ana López dices que sí. Cuando te den la noticia preguntas «¿y ahora qué hago?». Luego te despides.",
+    conditions: [
+      "El agente pregunta si habla con Ana López ANTES de mencionar Gran Central, la fecha o la hora.",
+      "El agente dice que Gran Central tuvo que cancelar la reservación del sábado 21 de noviembre a las 8:30 p.m., con una disculpa, una sola vez.",
+      "El agente le dice que desde la app puede reservar en otro lugar. NO promete otra mesa ni ofrece reservar él.",
+      "El agente se despide.",
+    ],
+    variables: { ...BOOKING, call_context: "cancelled_by_venue" },
+    maxTurns: 8,
+  },
+  {
+    agent: "a2",
+    label: "guest asks for a new time",
+    scenario:
+      "Eres Ana López y contestas tu celular con «¿Bueno?». Cuando te pregunten si eres Ana López dices que sí. Cuando te digan que la mesa está confirmada, dices «mejor el domingo 22 a las 7 de la tarde, ¿se puede?». No aceptas dejarla el sábado.",
+    conditions: [
+      "El agente pregunta si habla con Ana López ANTES de mencionar Gran Central, la fecha o la hora.",
+      "Cuando Ana pide el domingo a las 7, el agente NO dice que esa hora ya está confirmada.",
+      "El agente dice que Mesita llama al restaurante y le confirma en cuanto quede.",
+      "El agente se despide sin prometer la nueva hora.",
+    ],
+    variables: { ...BOOKING, call_context: "confirmation" },
+    maxTurns: 10,
+    mocks: {
+      a2_confirm_reservation: mock({
+        ok: true,
+        guest_confirmed: true,
+        changed: true,
+        reference_code: "48213907",
+        date_es: "domingo 22 de noviembre",
+        time_es: "7:00 p.m.",
+        needs_new_place_call: true,
+        place_call_started: true,
+        round: 1,
+      }),
+    },
   },
   {
     agent: "a2",
