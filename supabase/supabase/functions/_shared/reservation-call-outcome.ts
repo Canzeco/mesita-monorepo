@@ -680,7 +680,9 @@ function decideBooking(
         // The guest picks in the app first; a2 phones only if nothing came
         // in COUNTER_OFFER_CALL_DELAY_MIN (MESITA-3958). A pick in the app
         // clears this (reservation-confirm.ts), so no call goes out.
-        callback_next_attempt_at: appOnly ? null : new Date(now.getTime() + COUNTER_OFFER_CALL_DELAY_MIN * 60_000).toISOString(),
+        callback_next_attempt_at: appOnly
+          ? null
+          : deferToCallableHour(new Date(now.getTime() + COUNTER_OFFER_CALL_DELAY_MIN * 60_000), zone).at.toISOString(),
         callback_state: appOnly ? "skipped" : "scheduled",
         last_call_state: appOnly
           ? `intent ${n}: place counter-offer — guest prefers app-only; no call`

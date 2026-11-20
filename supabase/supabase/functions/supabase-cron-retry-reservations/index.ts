@@ -301,7 +301,9 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
     .eq("attempts_state", "scheduled")
     .not("next_attempt_at", "is", null)
     .lte("next_attempt_at", nowIso)
-    .gte("reserved_at", expiryFloor) // never dial about an already-buried slot
+    // The engine refuses to dial at or after reserved_at (MESITA-4145). This
+    // floor only skips tickets the expiry pass already buried.
+    .gte("reserved_at", expiryFloor)
     .order("next_attempt_at", { ascending: true })
     .limit(limit);
   if (bookErr) return json({ ok: false, error: bookErr.message }, 500);
