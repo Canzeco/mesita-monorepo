@@ -57,7 +57,7 @@ Deno.test("the engine dials through dialNumber, never by reservation_channel", a
 
 // The EFs are the gates that count. Each must refuse before it writes.
 for (const [ef, write] of [
-  ["consumer-web-create-reservation", "writeReservation(admin"],
+  ["consumer-web-create-reservation", "reservation_insert_capped"],
   ["consumer-web-update-reservation", "writeReservation(admin"],
   ["eleven-a2-confirm-reservation", "const rounds ="],
 ] as const) {

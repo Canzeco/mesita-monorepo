@@ -29,25 +29,23 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
-import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
+import { generateReservationCode } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
 import {
   ALREADY_RESERVED_CODE,
   ALREADY_RESERVED_MESSAGE,
   type CreateGuardStore,
   type CreateTicket,
-  createdTicketSchedule,
   guardCreate,
   readRequestId,
 } from "../_shared/reservation-create.ts";
 import {
   DEFAULT_TIME_WINDOW,
-  type Seating,
+  PASSED_GRACE_MS,
   SEATING_VALUES,
   TIME_WINDOW_VALUES,
-  type TimeWindowMinutes,
-  writeReservation,
 } from "../_shared/reservation-doc.ts";
+import { isBeyondBookingHorizon } from "../_shared/reservation-bounds.ts";
 import { DEFAULT_ZONE, zoneMonthStart } from "../_shared/local-time.ts";
 import {
   PLACE_CLOSED_CODE,
@@ -66,7 +64,6 @@ import {
   monthlyReservationCap,
   RESERVATION_LIMIT_CODE,
   RESERVATION_LIMIT_MESSAGE,
-  UNCOUNTED_STATES_FILTER,
 } from "../_shared/reservation-cap.ts";
 import { effectivePlan, needsRefresh, PLAN_COLUMNS, type PlanRow, syncPlan } from "../_shared/guest-plan.ts";
 import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/stripe.ts";
@@ -245,6 +242,11 @@ serveJson("consumer-web-create-reservation", async (req) => {
   if (slotInHours(reservable.hours, reservable.zone, reservedAt) === false) {
     return json({ ok: false, code: PLACE_CLOSED_CODE, error: PLACE_CLOSED_MESSAGE }, 409);
   }
+  // One calendar month ahead, on the place's clock (MESITA-4139). The form
+  // already stops there; a direct call must not book past it.
+  if (isBeyondBookingHorizon(reservedAt, new Date(), reservable.zone || DEFAULT_ZONE)) {
+    return json({ ok: false, error: "Pick a time within the next month." }, 400);
+  }
 
   const { data: consumerRow, error: consumerErr } = await admin
     .from("consumers")
@@ -294,10 +296,11 @@ serveJson("consumer-web-create-reservation", async (req) => {
     (settingsRow?.reservations_config as { unlimitedReservations?: unknown } | null)
       ?.unlimitedReservations === true;
 
+  // Pro is paid by subscription (MESITA-3870, _shared/guest-plan.ts): a
+  // paid period that ran out is read back from Stripe once before the
+  // plan's cap applies, so a renewal Stripe already charged never blocks.
+  let cap: number | null = null;
   if (!capLifted) {
-    // Pro is paid by subscription (MESITA-3870, _shared/guest-plan.ts): a
-    // paid period that ran out is read back from Stripe once before the
-    // plan's cap applies, so a renewal Stripe already charged never blocks.
     const livemode = boostLivemode();
     let planRow = consumerRow as PlanRow | null;
     const stripeKey = boostStripeKey();
@@ -308,88 +311,99 @@ serveJson("consumer-web-create-reservation", async (req) => {
         console.error("[consumer-web-create-reservation] plan_sync_failed", JSON.stringify({ consumer_id: consumerId, error: String(err) }));
       }
     }
-    const cap = monthlyReservationCap({
+    cap = monthlyReservationCap({
       plan: effectivePlan(planRow, Date.now(), livemode),
       reservation_cap_override: planRow?.reservation_cap_override,
     });
-    // The guest's month is Mexico City's (MESITA-3626): the cap is the
-    // guest's, not a place's, and the market's calendar is the one they live
-    // by — a booking at 7 p.m. on the 31st counts in that month, not the next
-    // UTC one.
-    const monthStart = zoneMonthStart(new Date(), DEFAULT_ZONE);
-    const { count, error: countErr } = await admin
-      .from("reservation_tickets")
-      .select("id", { count: "exact", head: true })
-      .eq("consumer_id", consumerId)
-      .eq("is_test", false)
-      .gte("created_at", monthStart.toISOString())
-      .not("state", "in", UNCOUNTED_STATES_FILTER);
-    if (countErr) return json({ ok: false, error: countErr.message }, 500);
-    if ((count ?? 0) >= cap) {
-      return json(
-        {
-          ok: false,
-          code: RESERVATION_LIMIT_CODE,
-          error: RESERVATION_LIMIT_MESSAGE,
-          limit: cap,
-        },
-        409,
-      );
-    }
   }
+  // The guest's month is Mexico City's (MESITA-3626): the cap is the
+  // guest's, not a place's.
+  const monthStart = zoneMonthStart(new Date(), DEFAULT_ZONE);
+  const liveSince = new Date(Date.now() - PASSED_GRACE_MS).toISOString();
 
-  // Insert with the ticket's 8-digit reference code — fresh code per try; a
-  // unique-index collision just redraws.
+  // Count, live-ticket check and insert are one locked call (MESITA-4139).
+  // A reference-code collision redraws; anything else stops the loop.
   let reservation: { id: string } & Record<string, unknown> | null = null;
-  let insertError: { message: string } | null = null;
+  let insertError = "insert failed";
   for (let i = 0; i < 3 && !reservation; i++) {
-    // NO `place:place_profiles(...)` embed here — the FK chain is two hops
-    // (reservation_tickets.place_id → places.id → place_profiles.id), so PostgREST
-    // fails with "Could not find a relationship between 'reservation_tickets' and
-    // 'place_profiles' in the schema cache". Select place_id and stitch via
-    // attachPlaces, exactly like the list EFs (#518/#523).
-    //
-    // The table was `reservations` and the column `project_id` when this was
-    // written; both were renamed and the comment was not (MESITA-1718).
-    const ins = await writeReservation(admin, {
-      mode: "insert",
-      patch: {
-        consumer_id: consumerId,
-        project_id: body.project_id,
-        reference_code: generateReservationCode(),
-        reserved_at: reservedAtIso,
-        party_size: partySize,
-        notes: (body.notes ?? "").trim() || null,
-        consumer_notify: guestNotify,
-        confirm_notify: confirmNotify,
-        state: "pending",
-        guest_first_name: firstName,
-        guest_last_name: lastName,
-        request_id: requestId,
-        time_window_minutes: timeWindow as TimeWindowMinutes,
-        seating: seating as Seating,
-        ...createdTicketSchedule(),
-      },
-      select: TICKET_COLUMNS,
+    const { data, error } = await admin.rpc("reservation_insert_capped", {
+      p_consumer_id: consumerId,
+      p_place_id: body.project_id,
+      p_reference_code: generateReservationCode(),
+      p_reserved_at: reservedAtIso,
+      p_party_size: partySize,
+      p_notes: (body.notes ?? "").trim() || null,
+      p_consumer_notify: guestNotify,
+      p_confirm_notify: confirmNotify,
+      p_guest_first_name: firstName,
+      p_guest_last_name: lastName,
+      p_request_id: requestId,
+      p_time_window_minutes: timeWindow,
+      p_seating: seating,
+      p_month_start: monthStart.toISOString(),
+      p_cap: cap,
+      p_live_since: liveSince,
     });
-    if (ins.ok) {
-      reservation = ins.row as { id: string } & Record<string, unknown>;
-      insertError = null;
-    } else {
-      insertError = { message: ins.error };
-      if (!isUniqueViolation({ code: ins.code })) break;
-      // The same request raced itself past the guard: return its ticket.
-      if (requestId) {
-        const prior = await guardStore.byRequest(consumerId, requestId).catch(() => null);
-        if (prior) {
-          const [withPlace] = await attachPlaces(admin, [prior as { project_id?: string | null }]);
-          return json({ ok: true, reservation: withPlace ?? prior, call_triggered: false, replayed: true });
-        }
+    if (error) {
+      insertError = error.message;
+      break;
+    }
+    const result = data as {
+      ok?: boolean;
+      replay?: boolean;
+      id?: string;
+      code?: string;
+      reservation_id?: string;
+      limit?: number;
+    } | null;
+    if (result?.ok && result.replay && result.id) {
+      const { data: priorRow, error: priorErr } = await admin
+        .from("reservation_tickets")
+        .select(TICKET_COLUMNS)
+        .eq("id", result.id)
+        .maybeSingle();
+      if (priorErr) return json({ ok: false, error: priorErr.message }, 500);
+      const prior = fromPlaceIdRow(priorRow ?? null) as CreateTicket | null;
+      if (prior) {
+        const [withPlace] = await attachPlaces(admin, [prior as { project_id?: string | null }]);
+        return json({ ok: true, reservation: withPlace ?? prior, call_triggered: false, replayed: true });
       }
     }
+    if (result?.ok && result.id) {
+      const { data: row, error: readErr } = await admin
+        .from("reservation_tickets")
+        .select(TICKET_COLUMNS)
+        .eq("id", result.id)
+        .maybeSingle();
+      if (readErr || !row) {
+        insertError = readErr?.message ?? "insert failed";
+        break;
+      }
+      reservation = fromPlaceIdRow(row) as { id: string } & Record<string, unknown>;
+      break;
+    }
+    if (result?.code === "reference_taken") continue;
+    if (result?.code === "already_reserved") {
+      return json({
+        ok: false,
+        code: ALREADY_RESERVED_CODE,
+        error: ALREADY_RESERVED_MESSAGE,
+        reservation_id: result.reservation_id,
+      }, 409);
+    }
+    if (result?.code === "reservation_limit_reached") {
+      return json({
+        ok: false,
+        code: RESERVATION_LIMIT_CODE,
+        error: RESERVATION_LIMIT_MESSAGE,
+        limit: result.limit ?? cap,
+      }, 409);
+    }
+    insertError = result?.code ?? "insert failed";
+    break;
   }
   if (!reservation) {
-    return json({ ok: false, error: insertError?.message ?? "insert failed" }, 500);
+    return json({ ok: false, error: insertError }, 500);
   }
 
   // Same flat `place` shape the clients already speak.

@@ -27,10 +27,15 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import {
-  PASSED_GRACE_MS,
   type ReservationPatch,
   writeReservation,
 } from "../_shared/reservation-doc.ts";
+import {
+  isBeyondBookingHorizon,
+  rescheduleStateAllowed,
+  slotHasPassed,
+} from "../_shared/reservation-bounds.ts";
+import { DEFAULT_ZONE } from "../_shared/local-time.ts";
 import { loadReservationsConfig } from "../_shared/reservations-config.ts";
 import { readOwnedTicket } from "../_shared/reservation-owned.ts";
 import { REMINDER_CLEAR } from "../_shared/reservation-reminder.ts";
@@ -119,7 +124,12 @@ serveJson("consumer-web-update-reservation", async (req) => {
   if (row.state === "cancelled") {
     return json({ ok: false, error: "This reservation is cancelled — book a new one." }, 409);
   }
-  if (new Date(row.reserved_at).getTime() < Date.now() - PASSED_GRACE_MS) {
+  // A declined, unreachable or unresolved ticket must not come back to
+  // pending through this door (MESITA-4139). The UI hides the button.
+  if (!rescheduleStateAllowed(row.state)) {
+    return json({ ok: false, error: "This reservation can no longer be changed — book a new one." }, 409);
+  }
+  if (slotHasPassed(row.reserved_at, Date.now())) {
     return json({ ok: false, error: "This reservation already happened." }, 409);
   }
 
@@ -140,6 +150,9 @@ serveJson("consumer-web-update-reservation", async (req) => {
   ) {
     if (slotInHours(reservable.hours, reservable.zone, new Date(patch.reserved_at)) === false) {
       return json({ ok: false, code: PLACE_CLOSED_CODE, error: PLACE_CLOSED_MESSAGE }, 409);
+    }
+    if (isBeyondBookingHorizon(new Date(patch.reserved_at), new Date(), reservable.zone || DEFAULT_ZONE)) {
+      return json({ ok: false, error: "Pick a time within the next month." }, 400);
     }
   }
 
