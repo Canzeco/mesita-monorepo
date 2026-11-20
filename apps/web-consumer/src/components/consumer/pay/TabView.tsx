@@ -7,7 +7,6 @@ import { clockTime } from "@mesita/place-profile/lib/money";
 import { Spinner } from "@/components/shared/Spinner";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { brandLabel } from "@/lib/api/cards";
 import { useAddCardModal } from "@/lib/added-card";
@@ -598,9 +597,7 @@ function ShareLine({ tab, children }: { tab: GuestTab; children: React.ReactNode
           <ChevronRight className="h-4 w-4" aria-hidden />
         </span>
       </button>
-      <LocalSheet open={open} onClose={() => setOpen(false)} ariaLabel="Split bill">
-        <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-4">{children}</div>
-      </LocalSheet>
+      {open ? <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-4">{children}</div> : null}
     </>
   );
 }
@@ -1032,7 +1029,7 @@ function SplitScreen({
         )}
       </div>
 
-      <LocalSheet open={cardSheet} onClose={() => setCardSheet(false)} ariaLabel="Your cards">
+      {cardSheet ? (
         <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
           <p className="pt-2 pb-3 text-lg font-semibold">Your cards</p>
           <div className="border-border scrollbar-thin-dark min-h-0 overflow-y-auto rounded-2xl border" role="radiogroup" aria-label="Card">
@@ -1067,7 +1064,7 @@ function SplitScreen({
             </button>
           </div>
         </div>
-      </LocalSheet>
+      ) : null}
     </div>
   );
 }

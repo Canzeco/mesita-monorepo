@@ -11,7 +11,7 @@ import { payReceiptPath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { PayFormSheet } from "./PayForm";
+import { PayForm } from "./PayForm";
 import { isGone, NETWORK_FAILURE, type Refill } from "./pay-common";
 import { ProofSkeleton, ProofView } from "./ProofView";
 import { usePayPlaces } from "./use-pay-places";
@@ -85,7 +85,24 @@ export function PayReceiptScreen({ paymentId }: { paymentId: string }) {
   return (
     <Screen title="Pay" onBack={leave} flush paper>
       <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {proof ? (
+        {refillPlace ? (
+          <PayForm
+            key={refillPlace.place_id}
+            place={refillPlace}
+            refill={refill}
+            onBack={() => {
+              setRefill(null);
+              leave();
+            }}
+            onPaid={(p) => {
+              setRefill(null);
+              setProof(p);
+              replaceAddress(payReceiptPath(p.payment_id));
+            }}
+            onTaken={(id) => navigateTo(router, payReceiptPath(id), { replace: true })}
+            onRefresh={refresh}
+          />
+        ) : proof ? (
           <ProofView proof={proof} onChange={setProof} onDone={leave} />
         ) : failed || refill ? (
           <EmptyState
@@ -98,22 +115,6 @@ export function PayReceiptScreen({ paymentId }: { paymentId: string }) {
           <ProofSkeleton />
         )}
       </div>
-      <PayFormSheet
-        place={refillPlace}
-        refill={refill}
-        onClose={() => {
-          // Closing the refilled form leaves the cancelled payment behind.
-          setRefill(null);
-          leave();
-        }}
-        onPaid={(p) => {
-          setRefill(null);
-          setProof(p);
-          replaceAddress(payReceiptPath(p.payment_id));
-        }}
-        onTaken={(id) => navigateTo(router, payReceiptPath(id), { replace: true })}
-        onRefresh={refresh}
-      />
     </Screen>
   );
 }

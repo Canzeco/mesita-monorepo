@@ -15,7 +15,7 @@ import { locationSnapshot } from "@/lib/use-user-location";
 import { SizedImg } from "@mesita/place-profile";
 import { GuestPayScreen } from "./GuestPayScreen";
 import { PayHeaderPlaceContext, type PayHeaderPlace } from "./pay-flow";
-import { PayFormSheet } from "./PayForm";
+import { PayForm } from "./PayForm";
 import { writeOpenTabId } from "./pay-common";
 import { TabView, type TabStart } from "./TabView";
 import { usePayPlaces } from "./use-pay-places";
@@ -109,7 +109,20 @@ export function PayTabScreen({ start }: { start: TabStart }) {
           each step's flexible part. A guest step's body scrolls only when its
           one centred group does not fit (MESITA-4061); the footer never moves. */}
         <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          {start.kind === "place" ? (
+          {formPlace ? (
+            <PayForm
+              key={formPlace.place_id}
+              place={formPlace}
+              refill={null}
+              onBack={() => {
+                setFormPlaceId(null);
+                leave();
+              }}
+              onPaid={(p) => navigateTo(router, payReceiptPath(p.payment_id), { replace: true })}
+              onTaken={(id) => navigateTo(router, payReceiptPath(id), { replace: true })}
+              onRefresh={refresh}
+            />
+          ) : start.kind === "place" ? (
             // MESITA-3709: the guest pays alone; the waiter verifies after.
             <GuestPayScreen
               placeId={start.placeId}
@@ -158,21 +171,6 @@ export function PayTabScreen({ start }: { start: TabStart }) {
             />
           )}
         </div>
-        <PayFormSheet
-          place={formPlace}
-          refill={null}
-          onClose={() => {
-            setFormPlaceId(null);
-            leave();
-          }}
-          onPaid={(p) =>
-            navigateTo(router, payReceiptPath(p.payment_id), { replace: true })
-          }
-          onTaken={(id) =>
-            navigateTo(router, payReceiptPath(id), { replace: true })
-          }
-          onRefresh={refresh}
-        />
       </Screen>
     </PayHeaderPlaceContext.Provider>
   );

@@ -5,7 +5,7 @@ import { Banknote, Check, CreditCard, Lock, ReceiptText, XCircle } from "lucide-
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
-import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { useAddCardModal } from "@/lib/added-card";
@@ -176,8 +176,6 @@ export function GuestPayScreen({
   const [cardId, setCardId] = useState<string | null>(draft?.cardId ?? readLastCard());
   // The card the bank just refused: Method says "Declined just now" (MESITA-4226).
   const [refusedCardId, setRefusedCardId] = useState<string | null>(draft?.refusedCardId ?? null);
-  const [tipSheet, setTipSheet] = useState(false);
-  const [otherTyping, setOtherTyping] = useState("");
   const [cardsLoad, setCardsLoad] = useState<CardsLoad>({ state: "loading" });
   const [cardsAttempt, setCardsAttempt] = useState(0);
   const latestCardsAttempt = useRef(0);
@@ -664,14 +662,17 @@ export function GuestPayScreen({
                 type="button"
                 className={tipChip(tip === "other")}
                 aria-pressed={tip === "other"}
-                onClick={() => {
-                  setOtherTyping(other);
-                  setTipSheet(true);
-                }}
+                onClick={() => setTip("other")}
               >
                 {tip === "other" ? m(tipCents) : "Other"}
               </button>
             </div>
+            {tip === "other" ? (
+              <div className="px-4 pb-4" data-guest-tip-other>
+                <AmountDisplay text={other} currency={place.currency} label="Tip" className="shrink-0" />
+                <AmountKeypad text={other} onKey={(k) => setOther((t) => pressKey(t, k))} />
+              </div>
+            ) : null}
             <div className="divide-border border-border divide-y border-t">
               <button type="button" onClick={() => setTyping(true)} className="hover:bg-muted/60 block w-full text-left transition" aria-label={`Bill ${m(billCents)}. Change it`} data-guest-bill-amount>
                 <MoneyRow label="Bill" value={m(billCents)} />
@@ -683,27 +684,6 @@ export function GuestPayScreen({
         </StepBody>
         {status}
         <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: !tipOk || billCents <= 0 || held, onClick: tipNext }} />
-
-        <LocalSheet open={tipSheet} onClose={() => setTipSheet(false)} ariaLabel="Another tip">
-          <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-            <p className="pt-2 text-lg font-semibold">Tip</p>
-            <AmountDisplay text={otherTyping} currency={place.currency} label="Tip" className="mt-4 shrink-0" />
-            <AmountKeypad text={otherTyping} onKey={(k) => setOtherTyping((t) => pressKey(t, k))} />
-            <Button
-              type="button"
-              size="lg"
-              className="mt-3 min-h-12 w-full text-base font-semibold"
-              disabled={readTip(otherTyping) === null}
-              onClick={() => {
-                setOther(otherTyping);
-                setTip("other");
-                setTipSheet(false);
-              }}
-            >
-              Set tip
-            </Button>
-          </div>
-        </LocalSheet>
       </>,
       "review",
     );

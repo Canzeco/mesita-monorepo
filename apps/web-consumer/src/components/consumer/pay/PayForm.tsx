@@ -7,7 +7,6 @@ import { amountText, readAmount } from "@mesita/place-profile/lib/money";
 import { readTip } from "@/lib/pay-keypad";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiLookCharge,
@@ -39,39 +38,6 @@ import { FIELD_CLASS, NETWORK_FAILURE, PlacePhoto, QUIET_BUTTON_CLASS, type Refi
 // server's own rule is tested against; the server is the last word. The
 // card part leaves for Stripe from the receipt's own address, so Stripe's
 // Back lands on the receipt.
-
-/** The form as a sheet: open while `place` is set. */
-export function PayFormSheet({
-  place,
-  refill,
-  onClose,
-  onPaid,
-  onTaken,
-  onRefresh,
-}: {
-  place: PayPlace | null;
-  refill: Refill | null;
-  onClose: () => void;
-  onPaid: (p: PayProof) => void;
-  onTaken: (paymentId: string) => void;
-  onRefresh: () => void;
-}) {
-  return (
-    <LocalSheet open={place !== null} onClose={onClose} ariaLabel={`Pay at ${place?.name ?? "a Mesita place"}`}>
-      {place ? (
-        <PayForm
-          key={place.place_id}
-          place={place}
-          refill={refill && refill.placeId === place.place_id ? refill : null}
-          onBack={onClose}
-          onPaid={onPaid}
-          onTaken={onTaken}
-          onRefresh={onRefresh}
-        />
-      ) : null}
-    </LocalSheet>
-  );
-}
 
 /** The tip buttons, in percent of the bill (MESITA-3536). */
 const TIP_PERCENTS = [10, 15, 20] as const;
@@ -125,7 +91,7 @@ function MethodRow({
   );
 }
 
-function PayForm({
+export function PayForm({
   place,
   refill,
   onBack,
