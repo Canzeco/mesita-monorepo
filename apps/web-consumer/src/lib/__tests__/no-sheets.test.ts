@@ -37,9 +37,6 @@ export const CONFIRM_FILES = [
   // Sign in for a gated tap (MESITA-4288: "display the modal before
   // aggressively redirecting"): Sign in or Not now.
   "components/consumer/anonymous/SignGateModal.tsx",
-  // Cash or terminal, a quick note (MESITA-4382: Pato asked for a modal
-  // instead of the full Cash page); Got it closes it.
-  "components/consumer/wallet/CashDialog.tsx",
   // Add a card (MESITA-4398, Pato: "card must not be another page. it must
   // be a modal."): Stripe's form, Save card or close.
   "components/consumer/wallet/AddCardModal.tsx",

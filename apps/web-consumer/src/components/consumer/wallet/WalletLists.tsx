@@ -306,10 +306,8 @@ export function CreditsPill({ children }: { children: ReactNode }) {
   );
 }
 
-/** PAYMENT METHODS, ONE LINE (Pato, 2026-11-17, MESITA-4232: "(Cash) (Card)
- *  Only one card. make it horizontal, cash at the left, card at the right";
- *  D8, D11): two tiles side by side, no panel around them, each saying where
- *  the money moves. */
+/** PAYMENT METHODS (Pato, 2026-11-20, MESITA-4475: the card only; cash
+ *  stays in the pay flow). One tile, the saved card or Add a card. */
 const TILE =
   "hover:bg-muted/60 flex min-h-[4.5rem] min-w-0 items-center gap-3 px-4 py-3 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-400";
 
@@ -319,15 +317,6 @@ function TileText({ title, line }: { title: string; line: string }) {
       <span className="block truncate text-base leading-tight font-semibold">{title}</span>
       <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{line}</span>
     </span>
-  );
-}
-
-export function CashTile({ onOpen }: { onOpen: () => void }) {
-  return (
-    <button type="button" onClick={onOpen} className={TILE} aria-label="Cash, paid outside the app" data-wallet-method="cash">
-      <CashChip />
-      <TileText title="Cash" line="Outside the app" />
-    </button>
   );
 }
 
@@ -377,13 +366,11 @@ export function CardTileSkeleton() {
   );
 }
 
-/** The two halves in ONE box (Pato, 2026-11-17, MESITA-4236: "PAYMENT
- *  METHODS IN A BOX", undoing MESITA-4232's D11): the panel and its heading
- *  like Loyalty Cards, Cash left and the card right, a hairline between. */
+/** The card in ONE box (MESITA-4236's box; MESITA-4475 drops the cash half). */
 export function PaymentMethods({ children }: { children: ReactNode }) {
   return (
     <Panel className="mt-2" title="Payment Methods" data-payment-methods>
-      <div className="border-border divide-border mt-3 grid grid-cols-2 divide-x border-t">{children}</div>
+      <div className="border-border mt-3 border-t">{children}</div>
     </Panel>
   );
 }
@@ -497,7 +484,6 @@ export function WalletBodySkeleton() {
   return (
     <div aria-busy>
       <PaymentMethods>
-        <div className="p-3"><Skeleton className="h-12 rounded-xl" /></div>
         <div className="p-3"><Skeleton className="h-12 rounded-xl" /></div>
       </PaymentMethods>
       <WalletPanelList title="Loyalty Cards">
