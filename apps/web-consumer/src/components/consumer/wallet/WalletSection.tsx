@@ -9,7 +9,6 @@ import { type SavedCard } from "@/lib/api/cards";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { CONSUMER_ROUTES, storyTicketPath, walletCardPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
-import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { placeHref } from "@/lib/place-route";
 import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
@@ -168,7 +167,6 @@ export function WalletSection({
   onReady?: () => void;
 }) {
   const router = useRouter();
-  const getSupabase = useLazyBrowserSupabase();
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
   const [explainAdd, setExplainAdd] = useState(false);
   // The pending boxes count down (MESITA-4360): a 30 s tick while any
