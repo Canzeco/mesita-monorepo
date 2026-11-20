@@ -2280,24 +2280,6 @@ export type Database = {
           },
         ]
       }
-      sign_in_calls: {
-        Row: {
-          called_at: string | null
-          phone: string
-          requested_at: string | null
-        }
-        Insert: {
-          called_at?: string | null
-          phone: string
-          requested_at?: string | null
-        }
-        Update: {
-          called_at?: string | null
-          phone?: string
-          requested_at?: string | null
-        }
-        Relationships: []
-      }
       stripe_connect_events: {
         Row: {
           account: string | null

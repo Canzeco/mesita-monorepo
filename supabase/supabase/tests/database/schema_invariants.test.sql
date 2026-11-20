@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(208);
+select plan(210);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -2073,6 +2073,11 @@ select has_index(
   array['consumer_id', 'created_at'],
   'the flood cap counts on (consumer_id, created_at)'
 );
+
+select hasnt_table('public', 'sign_in_calls',
+  'sign_in_calls is gone (MESITA-4318: phone sign-in is a text code only)');
+select hasnt_table('public', 'sign_in_codes',
+  'sign_in_codes is gone (dropped with the call path, 20261109010000)');
 
 select * from finish();
 
