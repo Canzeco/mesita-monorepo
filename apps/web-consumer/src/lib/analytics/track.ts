@@ -36,7 +36,9 @@ export type AnalyticsEvent =
   // who still have reservations from guests who do not.
   | "reserve_you_view"
   | "reserve_pro_shown"
-  | "reserve_upgrade_tap";
+  | "reserve_upgrade_tap"
+  // MESITA-4124 — which pay step the guest reached, so drop-off is a count.
+  | "pay_step_view";
 
 /**
  * Fire-and-forget product event. NEVER throws and NEVER awaited by a
