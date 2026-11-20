@@ -21,16 +21,20 @@ import { Skeleton } from "@/components/shared/Skeleton";
 // corners (rounded-xl, as Continue) and a › after the word. A MID GREY
 // (MESITA-4331, Pato: "a bit dark but not that much"): ink at 15%, between
 // the light bg-muted and the black of MESITA-4091.
-export function TicketsShortcut({ className }: { className?: string } = {}) {
+export function TicketsShortcut({ tall = false }: { tall?: boolean } = {}) {
   return (
     <PushLink
       href={CONSUMER_ROUTES.mePages.tickets}
-      className={cn(HEADER_PILL, "bg-foreground/15 text-foreground hover:bg-foreground/20 h-9 rounded-xl border-transparent pr-2 pl-3", className)}
+      className={
+        tall
+          ? "bg-foreground/15 text-foreground hover:bg-foreground/20 inline-flex h-14 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-transparent px-4 text-sm font-semibold whitespace-nowrap"
+          : cn(HEADER_PILL, "bg-foreground/15 text-foreground hover:bg-foreground/20 h-9 rounded-xl border-transparent pr-2 pl-3")
+      }
       data-tickets-shortcut
     >
-      <Ticket className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+      <Ticket className={tall ? "h-5 w-5 shrink-0" : "h-4 w-4 shrink-0"} strokeWidth={2} aria-hidden />
       Tickets
-      <ChevronRight className="-ml-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      <ChevronRight className={tall ? "h-5 w-5 shrink-0" : "-ml-0.5 h-4 w-4 shrink-0"} strokeWidth={2.25} aria-hidden />
     </PushLink>
   );
 }

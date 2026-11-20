@@ -32,6 +32,7 @@ import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
 import { PayPickSheet } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
+import { CreditsPill } from "@/components/consumer/wallet/WalletLists";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
@@ -241,7 +242,7 @@ export function PayPage({
         action={
           <span className="flex min-w-0 items-center gap-2">
             <MethodPreview />
-            <TicketsShortcut className="h-11" />
+            <TicketsShortcut tall />
           </span>
         }
         bar={
@@ -366,9 +367,9 @@ function PlaceList({
         </p>
       ) : loading && places === null ? (
         <div className="flex flex-col gap-2" aria-hidden>
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <Skeleton className="h-16 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
         </div>
       ) : shown.length === 0 ? (
         <p className="text-muted-foreground px-2 text-sm">
@@ -385,14 +386,12 @@ function PlaceList({
               key={p.place_id}
               name={name}
               subtitle={subtitle || null}
-              photo={<PlacePhoto place={p} className="h-10 w-10" />}
+              photo={<PlacePhoto place={p} className="h-12 w-12" />}
               extra={
-                <>
-                  {p.available_cents > 0 ? (
-                    <span className="bg-foreground text-background mt-1 inline-block rounded-full px-2 py-0.5 text-xs">{money(p.available_cents, p.currency)}</span>
-                  ) : null}
+                <span className="mt-1 flex flex-col items-start gap-1">
+                  {p.available_cents > 0 ? <CreditsPill>{money(p.available_cents, p.currency)}</CreditsPill> : null}
                   {p.pending_cents > 0 ? <span className="text-muted-foreground block text-sm">{money(p.pending_cents, p.currency)} pending</span> : null}
-                </>
+                </span>
               }
               left={{
                 label: "Add Funds",

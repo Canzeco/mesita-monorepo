@@ -22,7 +22,7 @@ export function PlaceActionRow({
   right: Action;
 }) {
   return (
-    <div className="border-border bg-card flex items-center gap-2 rounded-xl border p-3">
+    <div className="border-border bg-card flex items-center gap-2 rounded-xl border p-2">
       <ActionButton action={left} />
       <div className="flex min-w-0 flex-1 items-center gap-2">
         {photo}
@@ -56,12 +56,12 @@ function ActionButton({ action }: { action: Action }) {
         if (!action.disabled) action.onClick();
       }}
       className={cn(
-        "h-11 shrink-0 rounded-xl px-3 text-sm whitespace-nowrap",
+        "flex h-16 w-[4.75rem] shrink-0 items-center justify-center rounded-xl px-1 text-center text-sm leading-tight font-semibold",
         action.filled ? "bg-foreground text-background" : "border-border bg-card border",
         action.disabled && "opacity-40",
       )}
     >
-      {action.label}
+      <span className="min-w-0 whitespace-normal">{action.label}</span>
     </button>
   );
 }

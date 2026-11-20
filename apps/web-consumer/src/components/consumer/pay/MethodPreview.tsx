@@ -20,11 +20,11 @@ export function MethodPreview() {
   const label = card ? `${brandLabel(card.brand)} •• ${card.last4}` : face === "add" ? "Add card" : "Retry";
 
   return face === "bone" ? (
-    <Skeleton className="h-11 w-28 rounded-xl" aria-hidden />
+    <Skeleton className="h-14 w-32 rounded-xl" aria-hidden />
   ) : (
     <button
       type="button"
-      className="bg-foreground/15 text-foreground h-11 max-w-[42%] truncate rounded-xl px-3 text-sm"
+      className="bg-foreground/15 text-foreground inline-flex h-14 max-w-[11rem] shrink items-center overflow-hidden rounded-xl px-4 text-sm font-semibold"
       aria-label={face === "retry" ? "Couldn't load your saved cards. Tap Retry." : label}
       onClick={() => {
         if (card) navigateTo(router, walletCardPath(card.id), { motion: "drill" });
@@ -32,7 +32,7 @@ export function MethodPreview() {
         else reread();
       }}
     >
-      {label}
+      <span className="truncate">{label}</span>
     </button>
   );
 }
