@@ -17,14 +17,29 @@ function whyAttention(row: NeedsAttentionRow): string {
   return "Place confirmed, guest never picked up";
 }
 
-export function NeedsAttentionCard({ rows }: { rows: NeedsAttentionRow[] }) {
-  if (rows.length === 0) return null;
+export function NeedsAttentionCard({
+  rows,
+  error = null,
+  more = false,
+}: {
+  rows: NeedsAttentionRow[];
+  error?: string | null;
+  more?: boolean;
+}) {
+  if (!error && rows.length === 0) return null;
   return (
     <SectionCard
       icon={<AlertTriangle />}
-      title={`Reservations that need attention (${rows.length})`}
-      subtitle="These do not fix themselves."
+      title={error ? "Reservations that need attention" : `Reservations that need attention (${rows.length})`}
+      subtitle={
+        error
+          ? "The list could not be read. This is not an empty list."
+          : more
+            ? "These do not fix themselves. Showing the 30 newest. Older failures are not listed."
+            : "These do not fix themselves."
+      }
     >
+      {error && <p className="text-destructive mt-4 text-sm">{error}</p>}
       <ul className="mt-5 space-y-2">
         {rows.map((row) => (
           <li
