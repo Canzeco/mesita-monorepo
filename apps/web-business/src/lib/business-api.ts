@@ -233,6 +233,8 @@ export type PlacePremier = {
   /** Yearly only since MESITA-3285. */
   quotes: Record<BoostTier, { year: PremierQuote }> | null;
   outcome?: string;
+  /** How often an ad slot showed this place, and how often a guest opened it (MESITA-4460). */
+  ads?: { impressions: number; taps: number };
 };
 
 export async function getPremier(placeId: string, sessionId?: string | null): Promise<Result<PlacePremier>> {
