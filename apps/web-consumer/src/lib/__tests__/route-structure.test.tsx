@@ -472,29 +472,20 @@ describe("T5b — Home's header and Search's header", () => {
     expect(layout).toContain("<ModeTabs />");
   });
 
-  // Search's header links Ask AI; its order is UI layout, not pinned (MVP
-  // test rule, MESITA-2999).
-  // Ask AI lands on /search/chat, always its own page with a way back,
-  // never a sheet over Search (MESITA-3991).
-  it("Search's header links Ask AI, and Ask AI is a real Soon page", () => {
+  // Search's header opens Ask AI. Its order is UI layout, not pinned (MVP
+  // test rule, MESITA-2999). Ask AI is a popup over Search, not a page
+  // (MESITA-4480).
+  it("Search's header opens Ask AI as a popup, and Ask AI has no page", () => {
     const header = readFileSync(
       join(COMPONENTS, "search", "SearchHeader.tsx"),
       "utf8",
     );
-    expect(header).toContain("href={CONSUMER_ROUTES.searchChat}");
+    expect(header).toContain("<AskAiModal");
     expect(header).toContain("Ask AI");
-    expect(new Set(allPages().map(pageUrl))).toContain(
-      CONSUMER_ROUTES.searchChat,
-    );
-    const chat = readFileSync(
-      join(SHELL, "(discovery)", "search", "chat", "page.tsx"),
-      "utf8",
-    );
-    // The page wears the pushed-page frame, whose Back lands on Search
-    // (MESITA-3647); no @modal intercept turns it into a sheet (MESITA-3991).
-    expect(chat).toContain("<AskAiSoon");
-    expect(chat).toContain("<Screen");
-    expect(chat).not.toMatch(/<AskAiTab/);
+    expect(header).not.toContain("searchChat");
+    expect(
+      existsSync(join(SHELL, "(discovery)", "search", "chat", "page.tsx")),
+    ).toBe(false);
     expect(existsSync(join(SHELL, "@modal", "(.)search"))).toBe(false);
   });
 
@@ -541,14 +532,20 @@ describe("T5b — Home's header and Search's header", () => {
     expect(soon).toContain("is coming soon");
   });
 
-  // Chat left Home for the Search tab (MESITA-2401): no page, one hop.
-  it("/discover/chat has no page and 308s to /search/chat", async () => {
-    const hop = (await nextConfig.redirects!()).find(
-      (r) => r.source === "/discover/chat",
-    );
-    expect(hop?.destination).toBe(CONSUMER_ROUTES.searchChat);
+  // Chat left Home for Search (MESITA-2401), then left its page for a
+  // popup (MESITA-4480): no page, one hop onto Search.
+  it("/discover/chat and /search/chat have no page and 308 to /search", async () => {
+    for (const source of ["/discover/chat", "/search/chat"]) {
+      const hop = (await nextConfig.redirects!()).find(
+        (r) => r.source === source,
+      );
+      expect(hop?.destination, source).toBe(CONSUMER_ROUTES.search);
+    }
     expect(
       existsSync(join(SHELL, "(discovery)", "discover", "chat", "page.tsx")),
+    ).toBe(false);
+    expect(
+      existsSync(join(SHELL, "(discovery)", "search", "chat", "page.tsx")),
     ).toBe(false);
   });
 

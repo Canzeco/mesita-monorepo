@@ -85,6 +85,9 @@ const DIALOG_ALLOWLIST = [
   // Search's Menu is Home's Categories modal (MESITA-4469). The dialog
   // import lives in CategoriesModal, so this file is off the list.
   "components/consumer/search/GeneratePlaceDialog.tsx",
+  // Ask AI over Search (MESITA-4480, decision: Pato asked for a popup
+  // modal, not its own page).
+  "components/consumer/search/AskAiModal.tsx",
   "components/consumer/wallet/AddCreditsCardDialog.tsx",
 ];
 

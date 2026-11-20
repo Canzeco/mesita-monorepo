@@ -91,7 +91,6 @@ function liveAddresses(): Set<string> {
   return new Set([
     CONSUMER_ROUTES.onboard,
     CONSUMER_ROUTES.search,
-    CONSUMER_ROUTES.searchChat,
     CONSUMER_ROUTES.home,
     CONSUMER_ROUTES.homeSocial,
     CONSUMER_ROUTES.pay,
@@ -126,8 +125,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // /discover. See the legacy block below for the /discover/search entry
       // that replaced it as a redirect source.
       search: "/search",
-      // Ask AI: its own page under Search (MESITA-3991).
-      searchChat: "/search/chat",
       // HOME IS TWO TABS, EACH AN ADDRESS (Pato, MESITA-2597). Bare /home,
       // /discover and /discover/places are in the legacy block now.
       home: "/home/places",
@@ -200,6 +197,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         discoverFavs: "/discover/favs",
         discoverSocial: "/discover/social",
         discoverChat: "/discover/chat",
+        // Ask AI left its page for a popup over Search (MESITA-4480).
+        searchChat: "/search/chat",
         places: "/places",
         // The Second Stage tab and everything under it. All land on `pay`.
         newVisit: "/new-visit",
@@ -620,7 +619,12 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       {
         source: "/discover/chat",
-        destination: "/search/chat",
+        destination: "/search",
+        permanent: true,
+      },
+      {
+        source: "/search/chat",
+        destination: "/search",
         permanent: true,
       },
       { source: "/places", destination: "/home/places", permanent: true },
@@ -749,7 +753,7 @@ describe("middleware auth wall (shouldGate)", () => {
     "/",
     "/discover/places", // 308s to /home/places
     "/discover/social", // 308s to /home/social (MESITA-2597)
-    "/discover/chat", // 308s to /search/chat (MESITA-2401)
+    "/discover/chat", // 308s to /search (MESITA-4480)
     "/discover/favs", // 308s to Home (MESITA-2383)
     "/onboard",
     // Not gated but also unreachable as pages — next.config 308s them to a
