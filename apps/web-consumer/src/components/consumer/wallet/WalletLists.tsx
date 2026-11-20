@@ -63,6 +63,11 @@ const CHIP = "flex h-8 w-[3.2rem] shrink-0 items-center justify-center overflow-
 const ROW =
   "hover:bg-muted/60 flex min-h-16 w-full items-center gap-3.5 px-4 py-3 text-left transition";
 const DIVIDER = "bg-border h-px";
+/** The Wallet's one panel (MESITA-4497): places, cards and Add a Loyalty
+ *  Card, split by a hairline. Each child of WALLET_ROWS is one row; the
+ *  last row's line hides under the panel's own border. */
+export const WALLET_PANEL = "border-border bg-card mt-2 overflow-hidden rounded-xl border";
+export const WALLET_ROWS = "*:border-border -mb-px flex flex-col *:border-b";
 
 /** A section of rows in a panel (the app's one Panel, components/shared;
  *  MESITA-4063 drew it here first, MESITA-4071 shared it with Me): its heading, the rows split by hairlines
@@ -368,25 +373,6 @@ export function CardTileSkeleton() {
   );
 }
 
-/** The card in ONE box (MESITA-4236's box; MESITA-4475 drops the cash half).
- *  The heading is Payment Method (MESITA-4477): one card, so singular. Loyalty Cards is the other box. */
-export function PaymentMethods({ children }: { children: ReactNode }) {
-  return (
-    <Panel className="mt-2" title="Payment Method" data-payment-methods>
-      <div className="border-border mt-3 border-t">{children}</div>
-    </Panel>
-  );
-}
-
-/** No Loyalty Card yet (D10): one grey line above Add a Loyalty Card. */
-export function EmptyLoyaltyLine() {
-  return (
-    <p className="text-muted-foreground px-4 py-3 text-sm" data-wallet-empty-loyalty>
-      Buy credit at a place and its card shows here.
-    </p>
-  );
-}
-
 /** No Credits Card yet: one row, the way to get one (Search). */
 export function EmptyCreditsRow({ href }: { href: string }) {
   return (
@@ -477,22 +463,6 @@ export function PendingBox({ icon: Icon, children, quiet = false }: { icon: type
       {/* Wraps rather than cuts (MESITA-4362): the whole line is the point. */}
       <span className="min-w-0 flex-1">{children}</span>
     </span>
-  );
-}
-
-/** The whole Wallet while its one read runs (MESITA-3814): both lists in
- *  the rows' own shape, so the page lands without a jump. /wallet's
- *  loading frame draws the same. */
-export function WalletBodySkeleton() {
-  return (
-    <div aria-busy>
-      <PaymentMethods>
-        <div className="p-3"><Skeleton className="h-12 rounded-xl" /></div>
-      </PaymentMethods>
-      <WalletPanelList title="Loyalty Cards">
-        <RowsSkeleton count={2} />
-      </WalletPanelList>
-    </div>
   );
 }
 

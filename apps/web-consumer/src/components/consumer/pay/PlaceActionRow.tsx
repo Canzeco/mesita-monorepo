@@ -1,67 +1,79 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Plus } from "lucide-react";
+import { Skeleton } from "@/components/shared/Skeleton";
 import { cn } from "@/lib/utils";
 
-// A Wallet row (MESITA-4485): Add Funds, the place, Pay Here or Send Gift.
-// The actions are buttons. A disabled one does not navigate.
+// A Wallet row (MESITA-4497, Pato 2026-11-20): the photo and the place open
+// its page, a small "+" adds funds, and one button pays or sends. Pay is the
+// only black thing in the row. A control that cannot work is not drawn.
+// It was three equal blocks, Add Funds | place | Pay Here (MESITA-4485).
 
 export function PlaceActionRow({
   name,
   photo,
   subtitle,
   extra,
-  left,
-  right,
+  onOpen,
+  add,
+  primary,
 }: {
   name: string;
   photo: ReactNode;
   subtitle?: string | null;
   extra?: ReactNode;
-  left: Action;
-  right: Action;
+  /** The photo and the name open the place's page. */
+  onOpen?: () => void;
+  /** Add Funds. Left out where the place sells no credit. */
+  add?: () => void;
+  /** Pay or Send. Left out when neither can be done. `wait` draws a bone. */
+  primary?: { label: string; spoken: string; filled?: boolean; wait?: boolean; onClick: () => void };
 }) {
-  return (
-    <div className="border-border bg-card flex items-center gap-2 rounded-xl border p-2">
-      <ActionButton action={left} />
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        {photo}
-        <span className="min-w-0 flex-1">
-          <span className="text-foreground block truncate text-base">{name}</span>
-          {subtitle ? <span className="text-muted-foreground block truncate text-sm">{subtitle}</span> : null}
-          {extra}
-        </span>
-      </div>
-      <ActionButton action={right} />
-    </div>
+  const body = (
+    <>
+      {photo}
+      <span className="min-w-0 flex-1">
+        <span className="text-foreground block truncate text-base leading-tight">{name}</span>
+        {subtitle ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{subtitle}</span> : null}
+        {extra}
+      </span>
+    </>
   );
-}
-
-type Action = {
-  label: string;
-  filled?: boolean;
-  disabled?: boolean;
-  description?: string;
-  onClick: () => void;
-};
-
-function ActionButton({ action }: { action: Action }) {
   return (
-    <button
-      type="button"
-      disabled={action.disabled}
-      aria-label={action.description ? `${action.label}. ${action.description}` : action.label}
-      title={action.description}
-      onClick={() => {
-        if (!action.disabled) action.onClick();
-      }}
-      className={cn(
-        "flex h-16 w-[4.75rem] shrink-0 items-center justify-center rounded-xl px-1 text-center text-sm leading-tight font-semibold",
-        action.filled ? "bg-foreground text-background" : "border-border bg-card border",
-        action.disabled && "opacity-40",
+    <div className="flex min-h-[4.25rem] items-center gap-2 py-2 pr-3 pl-4" data-wallet-row>
+      {onOpen ? (
+        <button type="button" onClick={onOpen} aria-label={`Open ${name}`} className="flex min-h-11 min-w-0 flex-1 items-center gap-3.5 text-left">
+          {body}
+        </button>
+      ) : (
+        <div className="flex min-w-0 flex-1 items-center gap-3.5">{body}</div>
       )}
-    >
-      <span className="min-w-0 whitespace-normal">{action.label}</span>
-    </button>
+      {add ? (
+        <button
+          type="button"
+          onClick={add}
+          aria-label={`Add funds at ${name}`}
+          className="border-border bg-card hover:bg-muted/60 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border"
+        >
+          <Plus className="h-5 w-5" strokeWidth={2} aria-hidden />
+        </button>
+      ) : null}
+      {primary?.wait ? (
+        <Skeleton className="h-11 w-16 shrink-0 rounded-xl" aria-hidden />
+      ) : primary ? (
+        <button
+          type="button"
+          onClick={primary.onClick}
+          aria-label={primary.spoken}
+          className={cn(
+            "flex h-11 shrink-0 items-center justify-center rounded-xl px-4 text-sm font-semibold whitespace-nowrap",
+            primary.filled ? "bg-foreground text-background" : "border-border bg-card hover:bg-muted/60 border",
+          )}
+        >
+          {primary.label}
+        </button>
+      ) : null}
+    </div>
   );
 }
