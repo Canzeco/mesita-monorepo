@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(212);
+select plan(214);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -804,6 +804,16 @@ select has_function(
   'public', 'apply_place_request',
   array['uuid', 'uuid'],
   'apply_place_request is the idempotent request door'
+);
+
+select has_table(
+  'public', 'premier_ad_counts',
+  'a Premier ad keeps a shown count and an opened count (MESITA-4460)'
+);
+select has_function(
+  'public', 'record_premier_ad',
+  array['uuid', 'text'],
+  'only a paid Premier place moves its ad counters (MESITA-4460)'
 );
 
 select ok(

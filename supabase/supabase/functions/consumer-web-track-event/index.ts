@@ -46,6 +46,8 @@ const ALLOWED_EVENTS = new Set([
   "reserve_you_view",
   "reserve_pro_shown",
   "reserve_upgrade_tap",
+  // MESITA-4124 — the guest reached a pay step (bill, tip, method, pay).
+  "pay_step_view",
 ]);
 
 /** MESITA-4384: correlation ids are short; a longer one is cut. */

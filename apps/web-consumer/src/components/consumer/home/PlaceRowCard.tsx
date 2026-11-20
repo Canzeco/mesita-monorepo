@@ -19,6 +19,8 @@ import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsLines } from "./place-facts";
 import { ordinal } from "@/lib/catalog-modes";
+import { notePremierAd } from "@/lib/premier-ads";
+import { PremierAdBeacon } from "@/components/consumer/PremierAdBeacon";
 
 /** Four significant digits (MESITA-4450: Popularity runs into the tens,
  *  Proximity can sit under 0.01); under 0.0001 in scientific form so a
@@ -179,12 +181,16 @@ export function PlaceRowCard({
   const google = isGoogleOnlyPlace(place);
   const slides = google ? [] : offerSlides(place);
 
+  const openCard = () => {
+    if (ad) notePremierAd(place.id, "tap");
+    onOpen?.();
+  };
   const open = (children: ReactNode, className: string, label?: string) =>
     google ? (
       <button
         type="button"
         onClick={() => {
-          onOpen?.();
+          openCard();
           onOpenGoogle?.();
         }}
         aria-label={label}
@@ -195,7 +201,7 @@ export function PlaceRowCard({
     ) : (
       <Link
         href={placeHref(place.slug || place.id)}
-        onClick={onOpen}
+        onClick={openCard}
         aria-label={label}
         className={className}
       >
@@ -207,6 +213,7 @@ export function PlaceRowCard({
 
   return (
     <li className={cn(ROW_PAIR, "relative")} data-row-card>
+      <PremierAdBeacon placeId={place.id} ad={ad} />
       {open(
         <>
           {photo ? (

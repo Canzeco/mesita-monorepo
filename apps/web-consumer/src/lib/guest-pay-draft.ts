@@ -50,6 +50,9 @@ export type Draft = {
 const DRAFT_KEY = (placeId: string) => `mesita.pay.guest-lead.${placeId}`;
 /** The last tip chip sent at this place (MESITA-3713); it survives the draft. */
 const LAST_TIP_KEY = (placeId: string) => `mesita.pay.last-tip.${placeId}`;
+/** The last card charged, across bills (MESITA-4124). A draft's own card wins
+ *  while that bill is open; a new bill starts on this one. */
+const LAST_CARD_KEY = "mesita.pay.last-card";
 /** The place whose ticket is in progress (MESITA-3879). */
 const PENDING_KEY = "mesita.pay.pending-ticket";
 /** The pending ticket's place name, for the banner on the tabs (MESITA-3906). */
@@ -77,6 +80,24 @@ export function writeLastTip(placeId: string, tip: Tip) {
   if (typeof tip !== "number") return;
   try {
     store()?.setItem(LAST_TIP_KEY(placeId), String(tip));
+  } catch {
+    /* storage can be blocked */
+  }
+}
+
+export function readLastCard(): string | null {
+  try {
+    const id = store()?.getItem(LAST_CARD_KEY);
+    return id && id.length > 0 && id.length <= 128 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeLastCard(cardId: string | null) {
+  if (!cardId) return;
+  try {
+    store()?.setItem(LAST_CARD_KEY, cardId);
   } catch {
     /* storage can be blocked */
   }

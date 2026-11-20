@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { PlaceMarks, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
@@ -8,6 +10,8 @@ import {
 } from "@/lib/place-placeholder";
 import { cn } from "@/lib/utils";
 import { isAdPlace } from "@/lib/catalog-modes";
+import { notePremierAd } from "@/lib/premier-ads";
+import { PremierAdBeacon } from "@/components/consumer/PremierAdBeacon";
 import { Skeleton } from "@/components/shared";
 import {
   CARD_ACTIONS_ROW,
@@ -156,6 +160,7 @@ export function RailCard({
   const facts = cardFacts(place);
   // The offer strip, the Home tile's rotating offers on the same beat
   // (MESITA-3444, rotating since MESITA-3467); none = no strip.
+  const ad = isAdPlace(place);
   const slides = isGoogleOnlyPlace(place) ? [] : offerSlides(place);
   const strip = slides.length > 0;
 
@@ -167,12 +172,16 @@ export function RailCard({
         selected && "border-primary ring-primary/30 ring-2 ring-inset",
       )}
     >
+      <PremierAdBeacon placeId={place.id} ad={ad} />
       <button
         type="button"
         // ONE TAP OPENS (Pato, MESITA-2824: a card that only selected read
         // as "nothing opens"). The select-then-open dance stays on the pins;
         // a card the guest taps is the deliberate open, Google-only included
         // (the opening screen creates, never this tap).
+        onPointerDown={() => {
+          if (ad) notePremierAd(place.id, "tap");
+        }}
         onClick={onOpen}
         className="focus-visible:ring-primary absolute inset-0 flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
@@ -218,7 +227,7 @@ export function RailCard({
               {/* "Ad" only on an ad pin (MESITA-4454, H4): the Map sends
                   `ad: true` for a place in an ad slot; a Premier place in
                   an organic slot wears its seal only. */}
-              <PlaceMarks tier={place.boost_tier} compact ad={isAdPlace(place)} />
+              <PlaceMarks tier={place.boost_tier} compact ad={ad} />
             </p>
             <PriceKindRow facts={facts} />
             <StarsOpenRow facts={facts} withDistance={withDistance} />

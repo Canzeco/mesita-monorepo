@@ -1,25 +1,19 @@
-// The Story record (MESITA-4405). Pato, 2026-11-18: "a different entity for
-// vouchers and stories … 1. Pay $X. 2. Get principal immediately. 3. Solve
-// the Story artifact (substeps). 4. Receive bonus."
+// The Story record (MESITA-4484). The voucher and the story are different
+// tickets. Paying makes the credit and no story row. A detected mention
+// creates the story ticket and attaches it to the open Story voucher at the
+// tagged restaurant.
 //
-// The Story voucher is plain money: what the guest paid is Available at the
-// credit, which also creates one `stories` row (wallet_credit_purchase →
-// story_create). The Story then runs its own steps:
-//
-//   waiting_post  post a story tagging @mesita and the place (deadline_at)
-//   found         story_bind tied the guest's story; the screen shows the
-//                 waiter QR (visit.mesita.ai/story/<token>)
-//   approved      a waiter of the place approved it; the bonus lands at
-//                 recheck_at if the story is still up ("Checking · bonus at")
-//   released      the bonus landed
-//   void          no bonus: expired · deleted · unreachable · refunded · operator
+//   waiting_post  the voucher, before any story is detected (no deadline)
+//   found         a story with no matching open voucher at that restaurant
+//   approved      attached; the bonus clock is mentioned_at + the wait
+//   released      the bonus landed, once
+//   void          no bonus: deleted · unreachable · refunded · operator · expired
 //
 // Every reader goes through this file; the purchase's old story_* columns
 // are a frozen copy nobody reads.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { STORY_RULES } from "./story-mention.ts";
-import { storyReviewUrl } from "./story-review.ts";
 import { storyLog } from "./story-log.ts";
 
 export const STORY_STATES = ["waiting_post", "found", "approved", "released", "void"] as const;
@@ -35,9 +29,9 @@ export const OPEN_STORY_STATES: readonly StoryState[] = ["waiting_post", "found"
 
 export type StoryRecord = {
   id: string;
-  purchase_id: string;
+  purchase_id: string | null;
   consumer_id: string | null;
-  place_id: string;
+  place_id: string | null;
   livemode: boolean;
   state: StoryState;
   deadline_at: string;
@@ -154,7 +148,7 @@ export function storyView(
         deleted: !!x.mention.deleted_at,
       }
       : null,
-    review_url: s.state === "found" && x.mention?.review_token ? storyReviewUrl(x.mention.review_token) : null,
+    review_url: null,
     place_handle: x.placeHandle ?? null,
     time_zone: x.timeZone ?? null,
     test_mode: !s.livemode,
@@ -174,13 +168,21 @@ export async function readOwnStory(
   consumerId: string,
   by: { storyId?: string | null; purchaseId?: string | null },
 ): Promise<StoryRecord | null> {
-  let q = admin.from("stories").select(STORY_RECORD_COLUMNS).eq("consumer_id", consumerId);
-  if (by.storyId) q = q.eq("id", by.storyId);
-  else if (by.purchaseId) q = q.eq("purchase_id", by.purchaseId);
-  else return null;
-  const { data, error } = await q.maybeSingle();
+  if (by.storyId) {
+    const { data, error } = await admin.from("stories").select(STORY_RECORD_COLUMNS)
+      .eq("consumer_id", consumerId).eq("id", by.storyId).maybeSingle();
+    if (error) throw new Error(`stories: ${error.message}`);
+    return (data as StoryRecord | null) ?? null;
+  }
+  if (!by.purchaseId) return null;
+  const { data, error } = await admin.from("stories").select(STORY_RECORD_COLUMNS)
+    .eq("consumer_id", consumerId).eq("purchase_id", by.purchaseId)
+    .order("created_at", { ascending: false });
   if (error) throw new Error(`stories: ${error.message}`);
-  return (data as StoryRecord | null) ?? null;
+  const rows = (data ?? []) as StoryRecord[];
+  return rows.find((r) => r.state !== "void" && r.state !== "released")
+    ?? rows.find((r) => r.state === "released")
+    ?? null;
 }
 
 /** The Tickets Stories tab: every open Story plus the 20 most recently
@@ -209,11 +211,12 @@ export async function readStoryMentions(admin: SupabaseClient, mentionIds: Array
 }
 
 /** The purchases behind these Stories, by purchase id. */
-export async function readStoryPurchases(admin: SupabaseClient, purchaseIds: string[]): Promise<Map<string, StoryPurchase>> {
+export async function readStoryPurchases(admin: SupabaseClient, purchaseIds: Array<string | null>): Promise<Map<string, StoryPurchase>> {
   const out = new Map<string, StoryPurchase>();
-  if (purchaseIds.length === 0) return out;
+  const ids = [...new Set(purchaseIds.filter((x): x is string => !!x))];
+  if (ids.length === 0) return out;
   const { data, error } = await admin.from("wallet_purchases").select("id, amount_cents, currency, paid_at, status")
-    .in("id", [...new Set(purchaseIds)]);
+    .in("id", ids);
   if (error) throw new Error(`wallet_purchases: ${error.message}`);
   for (const p of (data ?? []) as Array<StoryPurchase & { id: string }>) out.set(p.id, p);
   return out;

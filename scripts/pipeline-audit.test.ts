@@ -171,7 +171,10 @@ function ioFor(w: World): Io & { calls: string[] } {
     return Promise.resolve({ code: 1, stdout: "", stderr: `unexpected git call: ${a}` });
   };
   const functions = () => Promise.resolve(w.failFunctions ?? ok(w.cloud));
-  const sql = () => Promise.resolve(w.failSql ?? ok(w.membership));
+  const sql = (query: string) => {
+    if (query.includes("from public.stories")) return Promise.resolve(ok([{ n: 0 }]));
+    return Promise.resolve(w.failSql ?? ok(w.membership));
+  };
   return { github, git, functions, sql, now: NOW, calls };
 }
 
@@ -190,6 +193,7 @@ Deno.test("a clean pipeline passes, and every check ran", async () => {
     ["edge-functions", true],
     ["bot-prs", true],
     ["catalog-membership", true],
+    ["story-recheck", true],
   ]);
   assertStringIncludes(render(r, NOW), "**PASS**");
 });

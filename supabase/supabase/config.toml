@@ -238,6 +238,10 @@ verify_jwt = false
 [functions.consumer-web-list-catalog]
 verify_jwt = true
 
+# A guest reports one Premier ad shown or opened (MESITA-4460). Anon is enough.
+[functions.consumer-web-record-premier-ad]
+verify_jwt = true
+
 # Consumer "Add to Mesita": creates the place inline (MESITA-128; MESITA-127
 # dropped the staggered creation queue — only enrichment is scheduled now).
 [functions.consumer-web-create-place]
@@ -430,6 +434,10 @@ verify_jwt = true
 
 # MESITA-4264: the operator's release / void / recheck_now of a Story.
 [functions.admin-web-story-override]
+verify_jwt = true
+
+# The Stories page's recent rows (MESITA-4267).
+[functions.admin-web-list-story-desk]
 verify_jwt = true
 
 # MESITA-3306 (W2c): the waiter's charge. No sign-in on visit.mesita.ai: the
@@ -733,6 +741,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.admin-web-update-config]
+verify_jwt = true
+
+# MESITA-4458: Ranking previews a draft recipe beside the live one. Read only.
+[functions.admin-web-preview-rank]
 verify_jwt = true
 
 

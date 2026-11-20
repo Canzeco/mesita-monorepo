@@ -32,5 +32,14 @@ serveJson("business-web-get-premier", async (req) => {
   const res = await readPremier(env, user, placeId, sessionId);
   if (!res.ok) return res;
   const body = await res.json();
-  return json({ ...body, role: access.role });
+  const counts = await admin.from("premier_ad_counts").select("impressions, taps").eq("place_id", placeId).maybeSingle();
+  const row = counts.data as { impressions?: number; taps?: number } | null;
+  return json({
+    ...body,
+    role: access.role,
+    ads: {
+      impressions: typeof row?.impressions === "number" ? row.impressions : 0,
+      taps: typeof row?.taps === "number" ? row.taps : 0,
+    },
+  });
 });

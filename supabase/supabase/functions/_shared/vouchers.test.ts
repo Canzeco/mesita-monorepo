@@ -284,7 +284,9 @@ Deno.test("storyRefusal: Story needs a linked Instagram with the live floor or m
   assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 5000, instagram_is_private: true }, D)?.code, "private_account");
   // …unless emulator mode is in effect: then only the link is needed.
   const emu = { minFollowers: 1000, emulator: true };
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 3, instagram_is_private: true }, emu), null);
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 3, instagram_is_private: true }, emu)?.code, "few_followers");
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1001, instagram_is_private: true }, emu)?.code, "private_account");
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1001, instagram_is_private: false }, emu), null);
   assertEquals(storyRefusal("voucher_story", { instagram_handle: null, instagram_followers_count: 3 }, emu)?.code, "needs_instagram");
 });
 

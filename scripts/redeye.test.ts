@@ -6,7 +6,8 @@
 //
 // Run: deno task test:redeye   (CI: .github/workflows/rules.yml)
 
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertStringIncludes } from "@std/assert";
+import { dirname, fromFileUrl, join } from "@std/path";
 
 import {
   arm,
@@ -184,6 +185,22 @@ Deno.test("an arming expires only after 24 hours", () => {
   const at = (ms: number) => ({ armedAt: new Date(NOW.getTime() - ms).toISOString(), settings: ALLOW });
   assert(!isExpired(at(ARMING_TTL_MS - 60_000), NOW));
   assert(isExpired(at(ARMING_TTL_MS + 60_000), NOW));
+});
+
+Deno.test("the card follows the worktree loop and still forbids asking and stopping", async () => {
+  const card = await Deno.readTextFile(join(dirname(fromFileUrl(import.meta.url)), "redeye.md"));
+  assertStringIncludes(card, "Asking is prohibited");
+  assertStringIncludes(card, "Never stop");
+  assertStringIncludes(card, "decision:");
+  assertStringIncludes(card, "needs-human");
+  assertStringIncludes(card, "preflight.sh");
+  assertStringIncludes(card, "deno task worktree pr");
+  assertStringIncludes(card, "Docs:");
+  assertStringIncludes(card, "SKIPPED");
+  assertStringIncludes(card, "deno task worktree leave");
+  assertStringIncludes(card, "Vercel Ready comment is not that ruleset");
+  const words = card.trim().split(/\s+/).filter(Boolean).length;
+  assert(words <= 500, `scripts/redeye.md is ${words} words`);
 });
 
 Deno.test("the expiry line says this session started armed and the next one prompts", () => {

@@ -342,7 +342,7 @@ export function walletRows(w: Wallet, now = Date.now()): Row[] {
       upcoming: false,
       place: s.place?.name ?? "A Mesita place",
       photo: s.place?.photo ?? null,
-      status: open ? { label: "Waiting", tone: "ink" } : { label: "Not added", tone: "grey" },
+      status: open ? { label: "Waiting", tone: "ink" } : { label: "Bonus not added", tone: "grey" },
       big: money(s.bonus_cents, s.currency),
       money: true,
       line: storyLine(s, now),

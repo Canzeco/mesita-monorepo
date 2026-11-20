@@ -1,7 +1,7 @@
-// THE STORY TICKET'S WORDS (MESITA-4405): what the Story screen and the
-// Tickets › Stories row say, by the Story record's state. The paid amount is
-// already credit; the Story is the bonus's steps: post, the waiter approves,
-// the bonus lands after the re-check if the story is still up. Times read in
+// THE STORY TICKET'S WORDS (MESITA-4484): what the Story screen and the
+// Tickets › Stories row say. Pay is already credit. The story ticket is a
+// later row: post tagging @mesita and the restaurant, keep it up, the bonus
+// lands by itself. There is no post deadline and no waiter. Times read in
 // the place's own zone. A PLAIN MODULE: no React.
 
 import { money, type StoryTicket } from "@/lib/api/wallet";
@@ -16,9 +16,9 @@ export function storyBonus(s: Pick<StoryTicket, "bonus_cents" | "currency">): st
   return `+${money(s.bonus_cents, s.currency ?? "mxn")}`;
 }
 
-/** Past its deadline but not yet swept by the cron: reads as ended. */
-export function storyLate(s: Pick<StoryTicket, "state" | "deadline_at">, now: number): boolean {
-  return (s.state === "waiting_post" || s.state === "found") && Date.parse(s.deadline_at) <= now;
+/** A story ticket has no post deadline (MESITA-4484). */
+export function storyLate(_s: Pick<StoryTicket, "state" | "deadline_at">, _now = Date.now()): boolean {
+  return false;
 }
 
 /** The state chip: one word or two, in its tone. */
@@ -28,7 +28,7 @@ export function storyStatus(s: StoryTicket, now = Date.now()): { label: string; 
     case "waiting_post":
       return { label: "Post your story", tone: "ink" };
     case "found":
-      return { label: "Show the waiter", tone: "ink" };
+      return { label: "Story found", tone: "ink" };
     case "approved":
       return { label: s.bonus_at ? `Checking · bonus at ${storyClock(s.bonus_at, zoneOf(s), now)}` : "Checking", tone: "ink" };
     case "released":
@@ -42,7 +42,7 @@ export function storyStatus(s: StoryTicket, now = Date.now()): { label: string; 
 export function storyVoidLine(s: StoryTicket): string {
   switch (s.void_reason) {
     case "expired":
-      return "Time ran out before a waiter approved a story. Your credit is kept.";
+      return "This story ended before the bonus. Your credit is kept.";
     case "deleted":
       return "Your story was deleted before the bonus time. Your credit is kept.";
     case "unreachable":
@@ -50,7 +50,7 @@ export function storyVoidLine(s: StoryTicket): string {
     case "refunded":
       return "This voucher was refunded.";
     default:
-      return "No bonus on this Story. Your credit is kept.";
+      return "Bonus not added. Your credit is kept.";
   }
 }
 
@@ -59,12 +59,10 @@ export function storyLine(s: StoryTicket, now = Date.now()): string {
   const zone = zoneOf(s);
   if (storyLate(s, now)) return "Time ran out. Your credit is kept.";
   switch (s.state) {
-    case "waiting_post": {
-      const left = storyLeft(s.deadline_at, now);
-      return `Post by ${storyClock(s.deadline_at, zone, now)}${left ? ` · ${left}` : ""}`;
-    }
+    case "waiting_post":
+      return "Post one story tagging @mesita and the restaurant, and leave it up. There is no deadline to post.";
     case "found":
-      return `Show your waiter the QR before ${storyClock(s.deadline_at, zone, now)}.`;
+      return "This story isn't tied to a voucher at this restaurant yet.";
     case "approved": {
       if (!s.bonus_at) return "Keep your story up. Your bonus lands by itself.";
       const left = storyLeft(s.bonus_at, now);

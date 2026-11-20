@@ -4,8 +4,7 @@ import { Fragment } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Globe, MessageCircle, Phone } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import { PlaceSubpage } from "@/components/consumer/place-detail/PlaceSubpage";
 import {
   RowDivider,
   SettingsGroup,
@@ -14,9 +13,9 @@ import {
 } from "@/components/consumer/me/settings-rows";
 import type { PlaceDetail } from "@/lib/place-detail";
 
-// Contact chooser opened from the place profile's "Contact" action. Lists only
-// the mediums this place actually exposes and reuses the Me-page row chrome so
-// every contact sheet in the app reads the same.
+// Contact, a page at /place/<id>/contact (MESITA-4111). It was a sheet over
+// the profile. Lists only the mediums this place actually exposes and reuses
+// the Me-page row chrome so every contact list in the app reads the same.
 //
 // decision: Pato (MESITA-383) — exactly four channels: WhatsApp · Call ·
 //   Instagram · Website (Email removed). tel: opens in place; the rest are
@@ -91,60 +90,33 @@ function buildContactRows(place: PlaceDetail): ContactRow[] {
   return rows;
 }
 
-export function PlaceContactSheet({
-  place,
-  open,
-  onClose,
-}: {
-  place: PlaceDetail;
-  open: boolean;
-  onClose: () => void;
-}) {
+export function PlaceContactPage({ place }: { place: PlaceDetail }) {
   const rows = buildContactRows(place);
-
   return (
-    <LocalSheet
-      open={open}
-      onClose={onClose}
-      ariaLabel={`Contact ${place.name}`}
-    >
-      <div className={SHEET_BODY_CLASS}>
-        <div className="flex items-center gap-3">
-          <span className="bg-muted text-muted-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-            <MessageCircle className="h-5 w-5" />
-          </span>
-          <div className="min-w-0">
-            <h2 className={SHEET_TITLE_CLASS}>Contact</h2>
-            <p className="text-muted-foreground truncate text-xs">
-              {place.name}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5">
-          {rows.length > 0 ? (
-            <SettingsGroup flat>
-              {rows.map((row, i) => (
-                <Fragment key={row.key}>
-                  {i > 0 && <RowDivider />}
-                  <SettingsLinkRow
-                    Icon={row.Icon}
-                    tint={row.tint}
-                    href={row.href}
-                    label={row.label}
-                    sub={row.sub}
-                    external={row.external}
-                  />
-                </Fragment>
-              ))}
-            </SettingsGroup>
-          ) : (
-            <p className="border-border bg-card text-muted-foreground type-body rounded-2xl border px-4 py-6 text-center">
-              No contact details yet.
-            </p>
-          )}
-        </div>
+    <PlaceSubpage title="Contact" placeName={place.name} placeId={place.id}>
+      <div className="px-4 py-2">
+        {rows.length > 0 ? (
+          <SettingsGroup flat>
+            {rows.map((row, i) => (
+              <Fragment key={row.key}>
+                {i > 0 && <RowDivider />}
+                <SettingsLinkRow
+                  Icon={row.Icon}
+                  tint={row.tint}
+                  href={row.href}
+                  label={row.label}
+                  sub={row.sub}
+                  external={row.external}
+                />
+              </Fragment>
+            ))}
+          </SettingsGroup>
+        ) : (
+          <p className="border-border bg-card text-muted-foreground type-body rounded-2xl border px-4 py-6 text-center">
+            No contact details yet.
+          </p>
+        )}
       </div>
-    </LocalSheet>
+    </PlaceSubpage>
   );
 }
