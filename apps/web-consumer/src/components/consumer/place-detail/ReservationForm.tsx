@@ -381,7 +381,7 @@ export function ReservationForm({
           {rescheduling ? "Reservation updated" : "Reservation requested"}
         </h2>
         <p className="text-muted-foreground type-body mx-auto mt-2 max-w-xs leading-relaxed">
-          Mesita is calling{" "}
+          Our AI reservation agent is calling{" "}
           <span className="text-foreground font-semibold">{place.name}</span>{" "}
           to {rescheduling ? "move" : "book"} your table for {party}{" "}
           {guestNoun(party)}, {dayLabel ? `${dayLabel} ` : ""}at {time ?? "—"}. We&apos;ll update this reservation once the place
@@ -417,6 +417,11 @@ export function ReservationForm({
   const at = Math.min(stepAt, steps.length - 1);
   const step = steps[at];
   const last = at === steps.length - 1;
+  // The call is the product (MESITA-4474). Said above the button on When,
+  // Party, and You. Hidden where the button is not a request: Your table,
+  // the Pro sheet, and a month that is already full.
+  const promisesACall =
+    !plan.pro && step !== "table" && !(last && !submitting && (plan.offer || plan.isBlocked));
   // Next waits for the duplicate answered and a time.
   const nextBlocked = step === "when" && (checking || awaitingChoice || !time);
   const next = () => {
@@ -608,6 +613,11 @@ export function ReservationForm({
             )}
           </p>
         )}
+        {promisesACall && (
+          <p className="text-muted-foreground type-body mb-2 text-center">
+            Our AI reservation agent will call this place to request the table.
+          </p>
+        )}
         {plan.pro ? null : step === "table" && existing ? (
           <div className="flex flex-col gap-2" data-reserve-table-step="">
             <button
@@ -675,11 +685,6 @@ export function ReservationForm({
           >
             {nextLabel}
           </button>
-        )}
-        {!plan.pro && last && (
-          <p className="text-muted-foreground type-body mt-2 text-center">
-            Mesita calls the place for you and tells you the answer.
-          </p>
         )}
       </div>
     </div>
