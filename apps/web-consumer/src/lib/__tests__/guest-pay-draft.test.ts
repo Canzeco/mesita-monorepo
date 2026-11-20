@@ -6,8 +6,10 @@ import {
   payDraftExpired,
   pendingTicketPlace,
   readDraft,
+  readLastCard,
   requestIdAfterEdit,
   writeDraft,
+  writeLastCard,
 } from "@/lib/guest-pay-draft";
 
 // Cancel bill throws a ticket away (data loss is the point; leaving a ghost
@@ -60,6 +62,16 @@ describe("clearGuestDraft", () => {
     expect(pendingTicketPlace()).toBe("place-a");
     clearGuestDraft("place-a");
     expect(pendingTicketPlace()).toBeNull();
+  });
+
+  it("remembers the last card across bills, and drops a blank id", () => {
+    expect(readLastCard()).toBeNull();
+    writeLastCard("pm_1");
+    expect(readLastCard()).toBe("pm_1");
+    writeLastCard(null);
+    expect(readLastCard()).toBe("pm_1");
+    writeLastCard("");
+    expect(readLastCard()).toBe("pm_1");
   });
 
   it("keeps another place's pointer", () => {

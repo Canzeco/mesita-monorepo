@@ -13,6 +13,7 @@ import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { useWakeLock } from "@/lib/use-wake-lock";
 import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
+import { trackEvent } from "@/lib/analytics/track";
 import { BAD, GOOD, MoneyRow, NOT_PAID_REASON, PaySection, PayTop, StepBody, StepFooter, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab, CancelBillButtons } from "./pay-common";
 import { STEP, startAgainStage } from "@/lib/guest-pay-stages";
@@ -75,6 +76,11 @@ export function GuestTabView({
   const total = tab.credit_cents + card + cash;
   const signed = tab.status === "paid" && !!tab.verified_at;
   const ended = tab.status === "cancelled" || tab.status === "expired";
+  useEffect(() => {
+    if (ended) return;
+    trackEvent(getSupabase(), "pay_step_view", { step: signed ? "receipt" : "sign" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signed, ended]);
   const cardFailed = tab.parts.some((p) => p.part === "card" && !p.paid_at && (p.status === "failed" || p.status === "expired"));
   // The bank hasn't held the card yet, or the charge runs at the signature.
   const cardMoving = card > 0 && tab.parts.some((p) => p.part === "card" && (p.status === "open" || p.status === "opening") && !p.held_at && !p.paid_at);

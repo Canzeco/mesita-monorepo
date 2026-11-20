@@ -22,14 +22,17 @@ import {
   pendingTicket,
   PENDING_NAME_KEY,
   readDraft,
+  readLastCard,
   readLastTip,
   requestIdAfterEdit,
   type Tip,
   TIP_CHIPS,
   type Stage,
   writeDraft,
+  writeLastCard,
   writeLastTip,
 } from "@/lib/guest-pay-draft";
+import { trackEvent } from "@/lib/analytics/track";
 import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 import { payPlacePath } from "@/lib/consumer-route-contract";
 import { clearSessionHref } from "@/lib/stale-session";
@@ -170,7 +173,7 @@ export function GuestPayScreen({
   const [wallets, setWallets] = useState<ExpressWallet[]>([]);
   const [applePhone, setApplePhone] = useState(false);
   const [expressState, setExpressState] = useState<"loading" | "ready" | "none">("loading");
-  const [cardId, setCardId] = useState<string | null>(draft?.cardId ?? null);
+  const [cardId, setCardId] = useState<string | null>(draft?.cardId ?? readLastCard());
   // The card the bank just refused: Method says "Declined just now" (MESITA-4226).
   const [refusedCardId, setRefusedCardId] = useState<string | null>(draft?.refusedCardId ?? null);
   const [tipSheet, setTipSheet] = useState(false);
@@ -318,6 +321,15 @@ export function GuestPayScreen({
     root.current?.focus({ preventScroll: true });
   }, [shown, typing, notPaid]);
 
+  // Which step the guest reached (MESITA-4124). Bill and Tip share "bill";
+  // the keypad is Bill, the chips are Tip.
+  useEffect(() => {
+    const step = shown === "bill" ? (typing ? "bill" : "tip") : shown;
+    trackEvent(getSupabase(), "pay_step_view", { step });
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown, typing]);
+
   // The header's X leaves (MESITA-3880), with the latest state each render.
   useEffect(() => {
     registerClose?.(leave);
@@ -350,6 +362,7 @@ export function GuestPayScreen({
   // A modal since MESITA-4398 (a page in MESITA-4101): once saved, the saved
   // card becomes the bill's card. The draft survives the trip.
   const openAddCard = useAddCardModal((id) => {
+    writeLastCard(id);
     setCardId(id);
     setCardsLoad({ state: "loading" });
     setCardsAttempt((n) => n + 1);
@@ -382,6 +395,7 @@ export function GuestPayScreen({
       }));
       rememberGuestTab(r.tab_id, r.qr_url);
       writeLastTip(placeId, tip);
+      if (w === "card") writeLastCard(chosenCard);
       // Start again comes back to the bill with everything typed; the draft
       // keeps the card actually charged, not only one the guest tapped.
       writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, cardId: w === "card" ? chosenCard : cardId, refusedCardId, sentTabId: r.tab_id });
