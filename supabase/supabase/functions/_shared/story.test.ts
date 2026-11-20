@@ -73,7 +73,7 @@ Deno.test("storyView: the QR only while found; the bonus time only while approve
   };
   const purchase = { amount_cents: 10000, currency: "mxn", paid_at: "2026-11-18T08:00:00Z", status: "paid" };
   const found = storyView(story({ state: "found", mention_id: "m1" }), { purchase, mention, emulator: true, nowMs: NOW });
-  assert(found.review_url?.endsWith("/story/0123456789abcdef0123456789abcdef"));
+  assertEquals(found.review_url, null);
   assertEquals(found.credit_cents, 15000);
   assertEquals(found.emulator, true);
   assert(found.poll !== null);

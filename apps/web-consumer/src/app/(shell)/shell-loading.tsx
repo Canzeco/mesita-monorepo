@@ -26,6 +26,10 @@ import WalletPlaceSendLoading from "./wallet/place/[placeId]/send/loading";
 import PlaceReserveLoading from "./place/[id]/reserve/loading";
 import PlaceStoryLoading from "./place/[id]/story/loading";
 import PlaceOffersLoading from "./place/[id]/offers/loading";
+import PlaceContactLoading from "./place/[id]/contact/loading";
+import PlaceReportLoading from "./place/[id]/report/loading";
+import PlaceUpgradeLoading from "./place/[id]/upgrade/loading";
+import PlaceMenuLoading from "./place/[id]/menu/[menuId]/loading";
 import PayPlaceLoading from "./pay/place/[placeId]/loading";
 import PayTabLoading from "./pay/bill/[billId]/loading";
 import PayReceiptLoading from "./pay/receipt/[paymentId]/loading";
@@ -56,6 +60,10 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   placeReserve: () => <PlaceReserveLoading />,
   placeStory: () => <PlaceStoryLoading />,
   placeOffers: () => <PlaceOffersLoading />,
+  placeContact: () => <PlaceContactLoading />,
+  placeReport: () => <PlaceReportLoading />,
+  placeUpgrade: () => <PlaceUpgradeLoading />,
+  placeMenu: () => <PlaceMenuLoading />,
   reservation: () => <ReservationPageLoading />,
   pay: () => <PayLoading />,
   payPick: () => <PayBillSkeleton />,

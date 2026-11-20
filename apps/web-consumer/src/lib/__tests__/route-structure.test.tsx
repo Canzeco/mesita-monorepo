@@ -218,9 +218,16 @@ describe("T4 — every redirect destination resolves", () => {
       const want = normalized.replace(/\/$/, "").split("/");
       return pages.some((page) => {
         const p = page.replace(/\[[^\]]+\]/g, "[param]");
-        if (p === normalized || p === normalized.replace(/\/$/, "")) return true;
+        if (p === normalized || p === normalized.replace(/\/$/, ""))
+          return true;
         const got = p.split("/");
-        return got.length === want.length && got.every((seg, i) => seg === want[i] || (seg === "[param]" && want[i] !== ""));
+        return (
+          got.length === want.length &&
+          got.every(
+            (seg, i) =>
+              seg === want[i] || (seg === "[param]" && want[i] !== ""),
+          )
+        );
       });
     };
 
@@ -687,8 +694,14 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
     ]);
     expect(ME_HUB_GIFT.href).toBe(CONSUMER_ROUTES.pay);
     // No Soon cell since MESITA-3954: MCP is a Soon row on Integrations.
-    expect(cells().filter((c) => c.soon).map((c) => c.title)).toEqual([]);
-    expect(existsSync(join(SHELL, "me", "integrations", "page.tsx"))).toBe(true);
+    expect(
+      cells()
+        .filter((c) => c.soon)
+        .map((c) => c.title),
+    ).toEqual([]);
+    expect(existsSync(join(SHELL, "me", "integrations", "page.tsx"))).toBe(
+      true,
+    );
   });
 
   it("holds no money door and no Second Stage door", () => {
@@ -893,7 +906,13 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
   it("(shell)/pay holds the door, the bill, a friend's share door and the receipt, and nothing else", () => {
     const pay = join(SHELL, "pay");
     expect(existsSync(join(pay, "page.tsx"))).toBe(true);
-    expect(childDirs(pay)).toEqual(["bill", "join", "pick", "place", "receipt"]);
+    expect(childDirs(pay)).toEqual([
+      "bill",
+      "join",
+      "pick",
+      "place",
+      "receipt",
+    ]);
     expect(childDirs(join(pay, "join"))).toEqual(["[token]"]);
     expect(childDirs(join(pay, "bill"))).toEqual(["[billId]"]);
     expect(childDirs(join(pay, "place"))).toEqual(["[placeId]"]);
@@ -906,7 +925,13 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     // Claim Gift's code page left in MESITA-4223: a gift is a link only.
     // Add a card is its own page since MESITA-4092.
     // Buy Credits and Send Gift lists, a Loyalty Card's send page (MESITA-4096).
-    expect(childDirs(wallet)).toEqual(["buy", "cards", "gift", "place", "send"]);
+    expect(childDirs(wallet)).toEqual([
+      "buy",
+      "cards",
+      "gift",
+      "place",
+      "send",
+    ]);
     expect(existsSync(join(wallet, "buy", "page.tsx"))).toBe(true);
     expect(existsSync(join(wallet, "send", "page.tsx"))).toBe(true);
     expect(existsSync(join(wallet, "place", "[placeId]", "send", "page.tsx"))).toBe(true);
@@ -1062,6 +1087,10 @@ describe("the route map", () => {
     expect(routeFor("/place/google/g1")).toBe("placeGoogle");
     expect(routeFor("/place/p1/reserve")).toBe("placeReserve");
     expect(routeFor("/place/p1/story")).toBe("placeStory");
+    expect(routeFor("/place/p1/contact")).toBe("placeContact");
+    expect(routeFor("/place/p1/report")).toBe("placeReport");
+    expect(routeFor("/place/p1/upgrade")).toBe("placeUpgrade");
+    expect(routeFor("/place/p1/menu/0")).toBe("placeMenu");
     expect(routeFor("/pay/bill/t1")).toBe("payBill");
     expect(routeFor("/wallet/gift/t1")).toBe("walletGift");
     expect(routeFor("/me/old-box")).toBeNull();
@@ -1080,6 +1109,7 @@ describe("the route map", () => {
 
   it("lands a cold Back on the parent, with the parent's params filled", () => {
     expect(parentHref("/place/p1/reserve")).toBe("/place/p1");
+    expect(parentHref("/place/p1/menu/0")).toBe("/place/p1");
     expect(parentHref("/reservation/r1")).toBe("/me/reservations");
     expect(parentHref("/me/tickets/visits/t1")).toBe("/me/tickets");
     expect(parentHref("/me/plan")).toBe("/me/settings");

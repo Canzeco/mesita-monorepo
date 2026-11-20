@@ -12,8 +12,8 @@ import type { PlaceDetail } from "@/lib/place-detail";
 //
 // THE TOP BAR IS THE PACKAGE'S PlaceTopBar (MESITA-2627), the same
 // Instagram-style bar the direct-link page draws: bare chevron, bold sans
-// name at the left with the Premier mark after it (MESITA-2925), three dots that open the
-// place's menu (MESITA-2692).
+// name at the left with the Premier mark after it (MESITA-2925). The three
+// dots are gone on this screen (MESITA-4111): More is rows at the foot.
 // Until MESITA-2627 this shell drew SlideOverHeader (a bordered back square
 // and a centred serif name), so a place opened from inside the app never
 // got MESITA-2619's bar. The chevron closes the slide-over.
@@ -26,12 +26,12 @@ import type { PlaceDetail } from "@/lib/place-detail";
 export function PlaceDetailModalShell({
   children,
   place,
-  onMore,
+  footer,
 }: {
   children: React.ReactNode;
   place: PlaceDetail;
-  /** The three dots open the place's menu (MESITA-2692); absent, inert. */
-  onMore?: () => void;
+  /** More rows at the foot of the scroller (MESITA-4111). */
+  footer?: React.ReactNode;
 }) {
   const close = useSlideOverClose();
   // BACK FINDS THE PLACE WHERE YOU LEFT IT (MESITA-4379): Offers, Reserve
@@ -44,7 +44,7 @@ export function PlaceDetailModalShell({
         name={place.name}
         premierTier={place.boost_tier ?? 0}
         onBack={close}
-        onMore={onMore}
+        moreHidden
       />
       {/*
         `min-h-0` is the load-bearing class here: without it, a flex-1 child
@@ -58,8 +58,12 @@ export function PlaceDetailModalShell({
           background in Overview, boxes white"): the slide-over panel is
           paper, so the scroller paints bg-background like the direct link's
           PlaceProfile; Overview's cards stay white on it. */}
-      <div ref={keep} className="scrollbar-thin-dark bg-background min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={keep}
+        className="scrollbar-thin-dark bg-background min-h-0 flex-1 overflow-y-auto"
+      >
         {children}
+        {footer}
       </div>
     </>
   );

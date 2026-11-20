@@ -75,7 +75,7 @@ export const STORY_CHECKING_LINE = "Checking your story now. Your bonus lands wi
 function voidLine(s: WaitingStory): string {
   switch (s.bonus_void_reason) {
     case "expired":
-      return "Time ran out before a waiter approved a story. Your credit is kept.";
+      return "This story ended before the bonus. Your credit is kept.";
     case "deleted":
       return "Your story was deleted before the bonus time.";
     case "unreachable":
@@ -92,7 +92,7 @@ function voidLine(s: WaitingStory): string {
 export function storyLine(s: WaitingStory, now = Date.now()): string {
   switch (s.state) {
     case "waiting": {
-      if (!s.bonus_at) return "Post your story and show it to the waiter.";
+      if (!s.bonus_at) return "Post one story tagging @mesita and the restaurant, and leave it up.";
       if (storyChecking(s, now)) return STORY_CHECKING_LINE;
       const left = storyLeft(s.bonus_at, now);
       return `Don't delete it until ${storyClock(s.bonus_at, s.time_zone, now)}${left ? ` · ${left}` : ""}`;

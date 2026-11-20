@@ -8,7 +8,7 @@ export const STORY_MIN_FOLLOWERS_MAX = 1_000_000;
 export type StoriesConfig = {
   /** Editable: the follower floor for buying a Story voucher. */
   story_min_followers: number;
-  /** Read-only here: the real bonus wait after the waiter approves. */
+  /** Read-only here: the real bonus wait after the story is posted. */
   story_bonus_wait_sec: number;
   /** Read-only here: payment → the deadline to post and be approved. */
   story_post_window_sec: number;

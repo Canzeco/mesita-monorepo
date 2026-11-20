@@ -231,12 +231,12 @@ function whole(v: string): string {
 /** YOUR MONEY NOW, THE BONUS IN 3 HOURS (Pato, 2026-11-17, MESITA-4214):
  *  every voucher. The row and the button say only "Pay $X · Get $Y"; the (i)
  *  says when each part is ready. Story's money is ready at once too since
- *  MESITA-4264; since MESITA-4405 the guest pays first and the bonus lands 3
- *  hours after a waiter approves the story, if it is still up. */
+ *  MESITA-4264; since MESITA-4484 the guest pays first and the bonus lands 3
+ *  hours after the story is posted, if it is still up. */
 function readyIn(key: MoneyVoucherKey, emulator = false): string {
   // MESITA-4426: emulator mode's test Story waits seconds, not 3 hours.
-  if (key === "voucher_story" && emulator) return "bonus moments after the waiter approves your story (test)";
-  return key === "voucher_story" ? "bonus 3 hr after the waiter approves your story" : "bonus in 3 hr";
+  if (key === "voucher_story" && emulator) return "bonus 30 sec after you post, if the story is still up (test)";
+  return key === "voucher_story" ? "bonus 3 hr after you post, if the story is still up" : "bonus in 3 hr";
 }
 
 /** The (i)'s "Your status" line for a prepayment offer (MESITA-3502). */
@@ -455,19 +455,18 @@ function sheetSteps(pay: string, bonus: string | null, card: { label: string; la
 
 /** Story: THE VOUCHER'S FOUR STEPS (Pato, MESITA-4431: "remember voucher
  *  entity and story entity … 1. Pay 2. Get credits immediately 3. Post story
- *  tagging place (resolve story task ticket) 4. receive bonus"). The waiter's
- *  approval belongs to the Story record, whose ticket (Tickets › Stories)
- *  walks it; this list is the voucher's. */
+ *  tagging place (resolve story task ticket) 4. receive bonus"). The story
+ *  ticket is a different row, born when the story is detected. */
 function storySteps(pay: string, bonus: string | null, post: ReactNode, emulator = false): Step[] {
   return [
     { Icon: CreditCard, title: "Pay", amount: pay, line: "By card." },
     { Icon: Wallet, title: "Get your credit now", amount: pay, line: CREDIT_LINE },
     {
       Icon: Camera,
-      title: "Post a story tagging the place",
+      title: "Post a story tagging Mesita and the restaurant",
       line: (
         <>
-          {post} Your Story ticket walks you through the rest.
+          {post} Keep that same story up. Your Story ticket is separate from this voucher.
         </>
       ),
     },
@@ -476,7 +475,7 @@ function storySteps(pay: string, bonus: string | null, post: ReactNode, emulator
       title: "Get your bonus",
       amount: bonus ? `+${bonus}` : undefined,
       // MESITA-4426: emulator mode's test Story waits seconds, not 3 hours.
-      line: emulator ? "Moments after the waiter approves it (test)." : "3 hours after the waiter approves it, if it is still up.",
+      line: emulator ? "30 seconds after you post it, if it is still up (test)." : "3 hours after you post it, if it is still up.",
       green: true,
     },
   ];

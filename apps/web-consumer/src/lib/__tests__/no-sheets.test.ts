@@ -60,16 +60,11 @@ export const CONFIRM_FILES = [
  *  for the search and the places in a bottom sheet. The ticket stays a page. */
 const SHEET_ALLOWLIST = [
   "components/consumer/pay/PayPick.tsx",
-  "components/consumer/MenuViewer.tsx",
-  "components/consumer/PlaceContactSheet.tsx",
   "components/consumer/home/LocationPicker.tsx",
   "components/consumer/pay/GuestPayScreen.tsx",
   "components/consumer/pay/PayForm.tsx",
   "components/consumer/pay/SplitWithFriends.tsx",
   "components/consumer/pay/TabView.tsx",
-  "components/consumer/place-detail/BoostSheet.tsx",
-  "components/consumer/place-detail/PlaceMoreSheet.tsx",
-  "components/consumer/place-detail/ReportSheet.tsx",
   "components/consumer/reservation-actions.tsx",
   "components/consumer/search/AddPlaceSheet.tsx",
 ];

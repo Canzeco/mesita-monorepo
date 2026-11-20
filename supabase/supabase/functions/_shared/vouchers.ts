@@ -204,7 +204,7 @@ async function readFreedStoryPurchases(admin: SupabaseClient, consumerId: string
   if (error) throw new Error(`stories: ${error.message}`);
   return new Set(
     ((data ?? []) as Array<Pick<StoryRecord, "purchase_id" | "state" | "void_reason" | "first_bound_at">>)
-      .filter((r) => storyFreesSlot(r)).map((r) => r.purchase_id),
+      .filter((r) => storyFreesSlot(r) && r.purchase_id).map((r) => r.purchase_id!),
   );
 }
 
@@ -475,15 +475,15 @@ export async function storyEligibilityContext(admin: SupabaseClient): Promise<St
   }
 }
 
-/** Story's guest gate (MESITA-3507, MESITA-4425): a linked Instagram with
- *  `ctx.minFollowers` followers OR MORE. Null when the guest may buy it.
- *  Any other voucher passes. */
+/** Story's guest gate (MESITA-3507, MESITA-4425, MESITA-4484): a linked public
+ *  Instagram with `ctx.minFollowers` followers OR MORE, emulator or not. The
+ *  emulator supplies that account; it does not skip the gate. Null when the
+ *  guest may buy it. Any other voucher passes. */
 export function storyRefusal(voucher: MoneyVoucherKey, guest: StoryGuest, ctx: StoryEligibility): BuyRefusal | null {
   if (voucher !== "voucher_story") return null;
   if (!guest?.instagram_handle) {
     return { ok: false, status: 409, code: "needs_instagram", error: "Link your Instagram to buy the Story voucher" };
   }
-  if (ctx.emulator) return null;
   if ((guest.instagram_followers_count ?? 0) < ctx.minFollowers) {
     return {
       ok: false,
