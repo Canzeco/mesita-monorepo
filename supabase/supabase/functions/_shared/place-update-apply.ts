@@ -7,10 +7,10 @@
 // It does not Sync. Sync is the Reviews header and the enrichment draft, through
 // one core (save-does-not-sync.test.ts pins it).
 //
-// An OWNER may write only OWNER_WRITABLE_FIELDS: the profile a guest reads.
-// Mesita's switches (reservations, prepayments) stay the operator's; any other
-// key in an owner's body is refused whole with `not_owner_field`, never
-// silently dropped.
+// An OWNER may write only OWNER_WRITABLE_FIELDS: the profile a guest reads,
+// plus the Reservations switch and phone (MESITA-4137). Prepayments stay
+// the operator's; any other key in an owner's body is refused whole with
+// `not_owner_field`, never silently dropped.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
@@ -54,6 +54,11 @@ export const OWNER_WRITABLE_FIELDS = [
   // Basics' Reset hands an edited field back to Enrich; an owner may undo
   // their own edit.
   "reset_fields",
+  // Business › Reservations (MESITA-4137): the owner turns the switch and
+  // sets the number the Reservationist dials. Phone shape stays
+  // reservationPhone in buildPlaceUpdate.
+  "reservations_enabled",
+  "reservation_target",
 ] as const;
 
 const OWNER_KEYS: ReadonlySet<string> = new Set(["id", ...OWNER_WRITABLE_FIELDS]);

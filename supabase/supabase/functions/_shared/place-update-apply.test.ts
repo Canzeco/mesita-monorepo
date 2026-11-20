@@ -17,10 +17,17 @@ Deno.test("a profile save does not verify or sync a link", () => {
   assertEquals(CODE.includes("reviewsTileKeyInBody"), true);
 });
 
-Deno.test("an owner may not flip Mesita's switches", () => {
-  for (const key of ["prepay_enabled", "reservations_enabled", "reservation_channel", "mesita_photos"]) {
+Deno.test("an owner may not flip Mesita's remaining switches", () => {
+  for (const key of ["prepay_enabled", "reservation_channel", "mesita_photos", "payments_enabled"]) {
     assertEquals(firstNonOwnerField({ id: "p", name: "x", [key]: true }), key);
   }
+});
+
+Deno.test("an owner may save the Reservations switch and phone (MESITA-4137)", () => {
+  assertEquals(firstNonOwnerField({ id: "p", reservations_enabled: false }), null);
+  assertEquals(firstNonOwnerField({ id: "p", reservation_target: "+528183782164" }), null);
+  assertEquals(OWNER_WRITABLE_FIELDS.includes("reservations_enabled"), true);
+  assertEquals(OWNER_WRITABLE_FIELDS.includes("reservation_target"), true);
 });
 
 Deno.test("an owner's profile body passes whole", () => {
