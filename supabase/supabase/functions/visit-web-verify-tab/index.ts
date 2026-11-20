@@ -41,7 +41,8 @@ serveJson("visit-web-verify-tab", async (req) => {
   const { token, place_id: placeId, staff_token: staffToken, cash_received_cents: received } = bodyRes.body;
   if (!isTabToken(token)) return json({ ok: false, code: "bad_request", error: "That is not a guest's payment" }, 400);
   if (!isUuid(placeId)) return json({ ok: false, code: "bad_request", error: "place_id must be a Mesita place id" }, 400);
-  if (typeof staffToken !== "string" || staffToken.length > 128) {
+  const typedCode = typeof staffToken === "string" && staffToken.length > 0;
+  if (typedCode && staffToken.length > 128) {
     return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
   }
   if (received !== undefined && received !== null
@@ -50,11 +51,15 @@ serveJson("visit-web-verify-tab", async (req) => {
   }
 
   try {
-    const keys = await supabaseStaffStore(admin).keys(placeId);
-    const info = await readStaffToken(env.serviceKey, placeId, staffToken, keys, Date.now());
-    if (!info || !info.jti) {
-      console.log("[visit-web-verify-tab]", JSON.stringify({ outcome: "staff_code_needed", place_id: placeId, version: info?.version ?? null }));
-      return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
+    let jti = "click";
+    if (typedCode) {
+      const keys = await supabaseStaffStore(admin).keys(placeId);
+      const info = await readStaffToken(env.serviceKey, placeId, staffToken, keys, Date.now());
+      if (!info || !info.jti) {
+        console.log("[visit-web-verify-tab]", JSON.stringify({ outcome: "staff_code_needed", place_id: placeId, version: info?.version ?? null }));
+        return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
+      }
+      jti = info.jti;
     }
     const tab = await readTabByToken(admin, token);
     if (!tab || tab.origin !== "guest") {
@@ -64,7 +69,7 @@ serveJson("visit-web-verify-tab", async (req) => {
       return json({ ok: false, code: "forbidden", error: "This payment is for another place." }, 403);
     }
 
-    const keyHash = await staffDeviceHash(info.jti);
+    const keyHash = await staffDeviceHash(jti);
     // MESITA-3856: a held card is captured first; the capture's settle signs
     // the bill. Anything Stripe has not answered yet reads Confirming.
     const begin = await callTabRpc(admin, "pay_tab_begin_capture", { p_tab_id: tab.id, p_place_id: placeId, p_staff_key_hash: keyHash });

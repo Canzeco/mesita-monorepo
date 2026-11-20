@@ -21,11 +21,11 @@ import { Skeleton } from "@/components/shared/Skeleton";
 // corners (rounded-xl, as Continue) and a › after the word. A MID GREY
 // (MESITA-4331, Pato: "a bit dark but not that much"): ink at 15%, between
 // the light bg-muted and the black of MESITA-4091.
-export function TicketsShortcut() {
+export function TicketsShortcut({ className }: { className?: string } = {}) {
   return (
     <PushLink
       href={CONSUMER_ROUTES.mePages.tickets}
-      className={cn(HEADER_PILL, "bg-foreground/15 text-foreground hover:bg-foreground/20 h-9 rounded-xl border-transparent pr-2 pl-3")}
+      className={cn(HEADER_PILL, "bg-foreground/15 text-foreground hover:bg-foreground/20 h-9 rounded-xl border-transparent pr-2 pl-3", className)}
       data-tickets-shortcut
     >
       <Ticket className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />

@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { SIGN } from "@mesita/place-profile/lib/pay-steps";
-import { listPayments, rejectTab, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
+import { rejectTab, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
 import { signRequest } from "@/lib/sign-gate";
-import { CodeBoxes } from "./CodeBoxes";
 import { BanknoteIcon, CheckIcon, HandCoinsIcon, SmartphoneIcon, UserIcon, WalletIcon, XIcon } from "./icons";
 
 // THE WAITER'S SCREEN (MESITA-3857, Pato's "14. Payments Flow Guest-Lead"
@@ -44,7 +43,6 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   reconnecting: React.ReactNode;
   onChanged: () => Promise<void>;
 }) {
-  const [typedCode, setTypedCode] = useState("");
   const [busy, setBusy] = useState<"sign" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
@@ -60,7 +58,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   const verifiedAt = mine?.at ?? tab.verified_at ?? null;
   const ended = tab.status === "expired" || tab.status === "cancelled";
   // The signature confirms the cash: what is owed is what was received.
-  const request = signRequest({ owedCents: cash, cashAnswer: cash > 0 ? "yes" : null, typedCode, cardPending: tab.card_pending === true });
+  const request = signRequest({ owedCents: cash, cashAnswer: cash > 0 ? "yes" : null, typedCode: "", cardPending: tab.card_pending === true });
   const placeName = tab.place.name ?? "A Mesita place";
 
   function refused(r: TabRefusal) {
@@ -71,38 +69,12 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
     setError(r.error);
   }
 
-  /** The waiter code buys a staff token for this one tap; null on refusal. */
-  async function staffToken(): Promise<string | null> {
-    if (!request) return null;
-    const key = await listPayments({ place_id: placeId, place_code: request.place_code });
-    setTypedCode("");
-    if (key === "failed") {
-      setError(SIGN.tapSignAgain);
-      return null;
-    }
-    if ("kind" in key) {
-      const wait = key.retryAfterS ? ` ${SIGN.tryAgainInMin(Math.ceil(key.retryAfterS / 60))}` : "";
-      setError(key.kind === "staff_only" ? SIGN.wrongWaiterCode : `${key.error}${wait}`);
-      return null;
-    }
-    if (!key.staff_token) setError(SIGN.couldntSign);
-    return key.staff_token ?? null;
-  }
-
   async function sign() {
     if (busy || !request) return;
     setBusy("sign");
     setError(null);
     try {
-      const key = await listPayments({ place_id: placeId, place_code: request.place_code });
-      setTypedCode("");
-      if (key === "failed") return setError(SIGN.tapSignAgain);
-      if ("kind" in key) {
-        const wait = key.retryAfterS ? ` ${SIGN.tryAgainInMin(Math.ceil(key.retryAfterS / 60))}` : "";
-        return setError(key.kind === "staff_only" ? SIGN.wrongWaiterCode : `${key.error}${wait}`);
-      }
-      if (!key.staff_token) return setError(SIGN.couldntSign);
-      const r = await verifyTab({ token, place_id: placeId, staff_token: key.staff_token, cash_received_cents: request.cash_received_cents });
+      const r = await verifyTab({ token, place_id: placeId, cash_received_cents: request.cash_received_cents });
       if (r === "failed") return setError(SIGN.tapSignAgain);
       if ("refused" in r) {
         refused(r);
@@ -127,9 +99,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
     setBusy("reject");
     setError(null);
     try {
-      const staff = await staffToken();
-      if (!staff) return;
-      const r = await rejectTab({ token, place_id: placeId, staff_token: staff });
+      const r = await rejectTab({ token, place_id: placeId });
       if (r === "failed") return setError("Couldn't reject. Tap again.");
       if ("refused" in r) refused(r);
       setRejecting(false);
@@ -254,7 +224,6 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
           void sign();
         }}
       >
-        <CodeBoxes value={typedCode} onChange={setTypedCode} />
         {error ? (
           <p className="proof-status warn" role="alert" aria-live="polite">
             {error}

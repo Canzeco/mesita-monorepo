@@ -1,13 +1,9 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
-import { getStory, listPayments, reviewStory, type StoryMention, VisitError, type WaiterStory } from "@/lib/visit-api";
-import { keepStaff, readStaff } from "@/lib/staff-key";
-import { waiterCode } from "@/lib/sign-gate";
+import { getStory, reviewStory, type StoryMention, VisitError, type WaiterStory } from "@/lib/visit-api";
 import { agoLabel } from "@/lib/story-time";
-import { CodeBoxes } from "../../tab/[token]/CodeBoxes";
 import { Bones } from "@/components/Bones";
 
 // /story/<token> — the waiter's page for a guest's Story voucher
@@ -16,10 +12,8 @@ import { Bones } from "@/components/Bones";
 // screen shows this QR once their story reached Mesita. Top to bottom: the place, "Story
 // voucher", the guest's verified @handle; the story, how long ago it was
 // posted, and what the waiter checks by eye (@mesita tagged, this place
-// tagged, the Paid partnership label); Approve and Reject. Both need the
-// waiter code, the tab page's sign-in: the 12-hour staff token kept on this
-// device, never the code. The guest holds the QR, so the token alone
-// approves nothing. No money here: an approval starts the bonus's 3-hour
+// tagged, the Paid partnership label); Approve and Reject. Both are one
+// click (MESITA-4485). No money here: an approval starts the bonus's 3-hour
 // wait; a reject sends the guest back to post a new story. Every rule is the
 // server's.
 
@@ -32,11 +26,8 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
   const { token } = use(params);
   const [read, setRead] = useState<Read>({ kind: "loading" });
   const [nonce, setNonce] = useState(0);
-  const [typedCode, setTypedCode] = useState("");
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Bumped when the kept staff token changes, so the code box shows or hides.
-  const [, setStaffBump] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,53 +84,14 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
   const placeId = s.place.id;
   const guest = handleOf(s.instagram_handle);
   const placeTag = handleOf(s.place.instagram_handle);
-  const staffKept = readStaff(placeId);
-
-  /** The staff token for this tap: the kept one, or the typed waiter code
-   *  traded for one (then kept, as the tab page does). Null on refusal. */
-  async function staffToken(): Promise<string | null> {
-    const kept = readStaff(placeId);
-    if (kept) return kept;
-    const code = waiterCode(typedCode);
-    if (!code) {
-      setError("Type the waiter code, then tap again.");
-      return null;
-    }
-    const key = await listPayments({ place_id: placeId, place_code: code });
-    setTypedCode("");
-    if (key === "failed") {
-      setError("Couldn't save. Try again");
-      return null;
-    }
-    if ("kind" in key) {
-      const wait = key.retryAfterS ? ` ${SIGN.tryAgainInMin(Math.ceil(key.retryAfterS / 60))}` : "";
-      setError(key.kind === "staff_only" ? SIGN.wrongWaiterCode : `${key.error}${wait}`);
-      return null;
-    }
-    if (!key.staff_token) {
-      setError("Couldn't save. Try again");
-      return null;
-    }
-    keepStaff(placeId, key.staff_token, key.staff_token_expires_at ?? null);
-    setStaffBump((n) => n + 1);
-    return key.staff_token;
-  }
-
   async function decide(decision: "approve" | "reject") {
     if (busy) return;
     setBusy(decision);
     setError(null);
     try {
-      const staff = await staffToken();
-      if (!staff) return;
-      const r = await reviewStory({ token, decision, staff_token: staff, place_id: placeId });
+      const r = await reviewStory({ token, decision, place_id: placeId });
       if (r === "failed") return setError("Couldn't save. Try again");
       if ("refused" in r) {
-        if (r.code === "staff_code_needed") {
-          keepStaff(placeId, null, null);
-          setStaffBump((n) => n + 1);
-          return setError("Type the waiter code again, then tap again.");
-        }
         if (r.code === "gone") return setRead({ kind: "invalid" });
         setError(r.code === "story_too_old" ? TOO_OLD : r.error);
         setNonce((n) => n + 1);
@@ -202,7 +154,6 @@ export default function StoryPage({ params }: { params: Promise<{ token: string 
             <li>{placeTag ?? "This place"} tagged</li>
             <li>Paid partnership label</li>
           </ul>
-          {staffKept === null ? <CodeBoxes value={typedCode} onChange={setTypedCode} /> : null}
           {error ? (
             <p className="proof-status warn" role="alert" aria-live="polite">
               {error}

@@ -128,7 +128,9 @@ export function staffGate(
   info: StaffTokenInfo | null,
 ): { ok: true; jti: string } | ReviewRefusal {
   if (body.placeId && body.placeId !== storyPlaceId) return refuse(403, "wrong_place", "This story is for another place.");
-  if (!body.staffToken || !info || info.version !== 2 || !info.jti) return refuse(403, "staff_code_needed", "Type the waiter code");
+  // A click approves. A code that was typed and does not match still fails.
+  if (!body.staffToken) return { ok: true, jti: "click" };
+  if (!info || info.version !== 2 || !info.jti) return refuse(403, "staff_code_needed", "That waiter code is not valid");
   return { ok: true, jti: info.jti };
 }
 
