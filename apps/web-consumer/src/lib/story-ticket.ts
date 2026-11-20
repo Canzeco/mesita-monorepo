@@ -50,7 +50,7 @@ export function storyVoidLine(s: StoryTicket): string {
     case "refunded":
       return "This voucher was refunded.";
     default:
-      return "No bonus on this Story. Your credit is kept.";
+      return "Bonus not added. Your credit is kept.";
   }
 }
 

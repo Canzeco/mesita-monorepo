@@ -154,13 +154,13 @@ describe("voucher rows (MESITA-4003)", () => {
     expect(rows[1]!.status.label).toBe("Waiting");
   });
 
-  it("a released Story bonus is not drawn twice; a voided one reads Not added", () => {
+  it("a released Story bonus is not drawn twice; a voided one reads Bonus not added", () => {
     const rows = walletRows(
       wallet([], {
         waiting_stories: [story({ purchase_id: "s1", state: "released", bonus: "released" }), story({ purchase_id: "s2", state: "void", bonus: "void", bonus_void_reason: "unreachable" })],
       } as unknown as Partial<Wallet>),
     );
-    expect(rows.map((r) => [r.key, r.status.label])).toEqual([["s-s2", "Not added"]]);
+    expect(rows.map((r) => [r.key, r.status.label])).toEqual([["s-s2", "Bonus not added"]]);
   });
 });
 

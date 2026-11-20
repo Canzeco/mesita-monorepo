@@ -432,6 +432,10 @@ verify_jwt = true
 [functions.admin-web-story-override]
 verify_jwt = true
 
+# The Stories page's recent rows (MESITA-4267).
+[functions.admin-web-list-story-desk]
+verify_jwt = true
+
 # MESITA-3306 (W2c): the waiter's charge. No sign-in on visit.mesita.ai: the
 # place code opens a charge, the 128-bit charge token reads it.
 [functions.visit-web-open-charge]
