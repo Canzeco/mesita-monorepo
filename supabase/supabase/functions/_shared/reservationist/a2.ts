@@ -21,12 +21,12 @@ const PROMPT = [
 const TALK = [
   `La llamada ya está conectada con el comensal y el motivo ya está decidido ({{call_context}}): no lo preguntes ni lo anuncies. Lo primero que dices, en cuanto contesten, es exactamente: «¡Hola! Le llamo de Mesita. ¿Hablo con {{guest_name}}?» Nada antes de esa frase, y no vuelvas a preguntarlo si ya contestaron. Hasta que lo confirme no digas el restaurante, la fecha, la hora ni que hay una reservación.`,
   `Confirmado, según {{call_context}}:`,
-  `- "confirmation": {{venue_name}} confirmó la mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}. Díselo una vez; no le pidas que lo confirme.`,
+  `- "confirmation": {{venue_name}} confirmó la mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}. Díselo una vez y detente: no te despidas ni tomes ninguna rama en ese turno. El «sí» a «¿Hablo con {{guest_name}}?» solo identifica; no es aceptar la mesa. Espera su siguiente respuesta. Si pide otra fecha u hora, no digas que ya quedó.`,
   `- "counter_offer": {{venue_name}} no pudo el {{reservation_date}} a las {{reservation_time}} y ofreció: {{venue_alternatives}}. Preséntalas tal cual.`,
   `- "not_booked": Mesita no pudo conseguirle mesa en {{venue_name}} para el {{reservation_date}} a las {{reservation_time}}. Díselo con tacto, en una frase, sin culpar al restaurante, y discúlpate de parte de Mesita. Luego deja que conteste una vez y, en tu siguiente respuesta, contéstale y despídete en la misma frase: si pidió otra hora u otro lugar, «lo puede pedir desde la app de Mesita; gracias y que tenga buen día»; no ofrezcas reservar tú ni prometas una hora. Después cuelga con end_call y toma la rama de aviso.`,
   `- "reminder": la mesa en {{venue_name}} ya está confirmada para el {{reservation_date}} a las {{reservation_time}}. Recuérdale los datos.`,
   `- "cancelled_by_venue": después del sí, di exactamente esta frase y nada más: «{{venue_name}} tuvo que cancelar su reservación del {{reservation_date}} a las {{reservation_time}}. Una disculpa de parte de Mesita: desde la app puede reservar en otro lugar.» Luego cuelga con end_call y toma la rama de aviso de cancelación del restaurante.`,
-  `Cuando el comensal ya decidió, no lo confirmes ni te despidas: toma la rama en ese momento; el paso de cierre se lo dice una sola vez.`,
+  `Cuando el comensal ya decidió, no lo confirmes ni te despidas: toma la rama en ese momento; el paso de cierre se lo dice una sola vez. Decidió solo si ya oyó el aviso y contestó sobre la mesa. El sí de identidad no es una decisión, y no tomes la rama en el mismo turno en que diste el aviso.`,
   `El comensal puede aceptar, elegir una opción, proponer otra fecha u hora (conviértela con {{system__time_utc}} como referencia), o cancelar: toma la rama que toque sin colgar. Si contesta otra persona o un buzón, toma su rama. El código {{reference_code}} solo si lo pide.`,
 ].join("\n");
 
@@ -100,7 +100,7 @@ export const A2: FleetAgent = {
         "talk",
         "do_confirm",
         llm(
-          "El comensal (ya identificado) aceptó tal cual, eligió una opción, o propuso otra fecha u hora — mándala en new_date AAAA-MM-DD / new_time HH:mm.",
+          "Ya le dijiste la mesa confirmada o las opciones, y en un turno posterior aceptó esa mesa, eligió una opción ofrecida, o propuso otra fecha u hora. El «sí» a «¿Hablo con …?» no cuenta, y esta rama no se toma en el mismo turno del aviso. Si propuso otra fecha u hora, mándala en new_date AAAA-MM-DD / new_time HH:mm.",
           "confirm",
         ),
         RESULT_FAIL,
