@@ -21,10 +21,9 @@ export const ACCOUNT = "/account";
 // Preview is a modal on Profile (MESITA-3136). All is the one page listing
 // every product, current and future (MESITA-3238; was Soon, MESITA-3197).
 // Payments (MESITA-3296) holds the place's Stripe account and money switches.
-// Operations is Views · Visits · Money (Pato, MESITA-3301: "include Views and
-// Visits and Transactions. Keep the pages even if Mesita Payments is not
-// enabled yet"; MESITA-3308: "call the Transactions page Money"); Visits is
-// back as a page, not the MESITA-3202 log.
+// Operations is Views · Visits · Vouchers · Stories · Gifts · Money
+// (MESITA-3301; Money was Transactions, MESITA-3308; MESITA-4487 adds the
+// ticket kinds). Visits is a page, not the MESITA-3202 log.
 // No Wallet (MESITA-3391, Pato: "wallet is for consumers, not for
 // businesses"; the MESITA-3377 mock is gone): credits are the guest's, and
 // a place's ways to pay live on Payments.
@@ -32,7 +31,7 @@ export const ACCOUNT = "/account";
 // reviews boxes sit under the Profile editor; /reviews redirects there.
 // Reservations (MESITA-3600, Pato: "in capabilities add Reservations, only
 // configure no or yes") holds its one switch, moved from Settings › Actions.
-export const PLACE_TABS = ["views", "visits", "money", "profile", "premier", "payments", "reservations", "all", "settings", "admin"] as const;
+export const PLACE_TABS = ["views", "visits", "vouchers", "stories", "gifts", "money", "profile", "premier", "payments", "reservations", "all", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {

@@ -6,6 +6,7 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 import type { RefillOrigin } from "@/lib/premier-origin";
+import type { PlaceTicketDesk, TicketCursor, TicketKind } from "@/lib/ticket-desk";
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string; code?: string | null };
 
@@ -562,6 +563,32 @@ export async function getPlaceMoney(
   });
   if (!r.ok) return fail(r);
   return { ok: true, data: { ...r.data, rows: r.data.rows ?? [], next: r.data.next ?? null } };
+}
+
+/** One kind of ticket at the place (MESITA-4487): the last 30 days, the
+ *  totals, and 50 rows before `before`. Owners and Mesita staff only. */
+export async function listPlaceTickets(
+  placeId: string,
+  kind: TicketKind,
+  before?: TicketCursor | null,
+): Promise<Result<PlaceTicketDesk>> {
+  const r = await efInvoke<PlaceTicketDesk>("business-web-list-place-tickets", {
+    place_id: placeId,
+    kind,
+    before: before ?? undefined,
+  });
+  if (!r.ok) return fail(r);
+  return {
+    ok: true,
+    data: {
+      ...r.data,
+      kind,
+      days: r.data.days ?? [],
+      totals: r.data.totals ?? {},
+      rows: r.data.rows ?? [],
+      next: r.data.next ?? null,
+    },
+  };
 }
 
 /** What one owner refund gave back (MESITA-3381): the card part through
