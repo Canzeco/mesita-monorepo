@@ -76,7 +76,7 @@ export const A2: FleetAgent = {
         label: "Close (registered)",
         position: pos(1300, -180),
         prompt:
-          "Quedó registrado. En una sola frase y sin repetir lo que ya dijiste, di lo que regresó la herramienta: si confirmed_on_the_spot=true, la mesa ya quedó confirmada porque tomó una opción que el restaurante había ofrecido; si parked=true, su petición quedó anotada y Mesita le confirma por la app; si pidió otra fecha u hora, Mesita llama al restaurante y le confirma en cuanto quede. Despídete corto y cuelga con end_call.",
+          "Quedó registrado. Si needs_new_place_call=true, di exactamente «Mesita llama al restaurante y le confirma en cuanto quede.» y nada más: no digas que la nueva hora ya quedó ni repitas la fecha. Si confirmed_on_the_spot=true, di que la mesa ya quedó confirmada porque tomó una opción que el restaurante había ofrecido. Si parked=true, di que su petición quedó anotada y Mesita le confirma por la app. Luego despídete corto y cuelga con end_call.",
         edgeOrder: ["e_fdone_end"],
       }),
       farewell_cancel: talkNode({
