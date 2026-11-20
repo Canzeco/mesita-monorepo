@@ -77,6 +77,21 @@ Deno.test("withVouchersUpTo sells nothing while buying is paused", async () => {
   assertEquals(paused[0].offers.sell, []);
 });
 
+const CHIP_KEYS = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_story"];
+
+Deno.test("chip percents match VOUCHER_CATALOG bonus_bps", async () => {
+  const money = await Deno.readTextFile(new URL("./money.ts", import.meta.url));
+  const offers = await Deno.readTextFile(new URL("../../../../packages/place-profile/src/lib/offers.ts", import.meta.url));
+  for (const key of CHIP_KEYS) {
+    const bps = money.match(new RegExp(`${key}:\\s*\\{[^}]*bonus_bps:\\s*(\\d+)`));
+    const standard = offers.match(new RegExp(`${key}:\\s*(\\d+)`));
+    const slide = offers.match(new RegExp(`bonus:\\s*(\\d+),\\s*voucher:\\s*"${key}"`));
+    const pct = standard ? Number(standard[1]) : slide ? Number(slide[1]) : null;
+    assert(bps, key);
+    assertEquals(pct, Number(bps[1]) / 100, key);
+  }
+});
+
 Deno.test("the catalog and map lists never call getUser", async () => {
   for (const path of ["consumer-web-list-catalog", "consumer-web-list-places"]) {
     const src = await Deno.readTextFile(new URL(`../${path}/index.ts`, import.meta.url));
