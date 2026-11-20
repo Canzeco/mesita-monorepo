@@ -265,11 +265,10 @@
     "name": "mesita · a1 · delivers a cancellation",
     "agent": "a1",
     "label": "delivers a cancellation",
-    "scenario": "Eres la hostess del restaurante Gran Central. Contestas «Gran Central, buenas tardes». Escuchas el aviso. Preguntas una vez el código de la reservación. Luego dices «queda cancelada, gracias» y te despides.",
+    "scenario": "Eres la hostess del restaurante Gran Central. Contestas «Gran Central, buenas tardes». Escuchas el aviso de cancelación. Dices «queda cancelada, gracias» y te despides. No pidas ningún código ni ningún teléfono.",
     "conditions": [
       "El agente avisa que Ana López cancela su reservación del sábado 21 de noviembre a las 8:30 p.m.",
       "El agente NO pide una mesa nueva.",
-      "Cuando le piden un número, da el código 48213907.",
       "El agente ofrece una disculpa breve y se despide, sin dar ningún teléfono del comensal."
     ],
     "variables": {
