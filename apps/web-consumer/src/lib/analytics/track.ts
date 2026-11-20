@@ -29,7 +29,12 @@ export type AnalyticsEvent =
   // MESITA-4384 — express pay: which wallets the phone offered (the Express
   // Checkout Element's ready), and an express payment that failed.
   | "express_ready"
-  | "express_failed";
+  | "express_failed"
+  // MESITA-4394 — reserve flow. `blocked` on the You view splits guests
+  // who still have reservations from guests who do not.
+  | "reserve_you_view"
+  | "reserve_pro_shown"
+  | "reserve_upgrade_tap";
 
 /**
  * Fire-and-forget product event. NEVER throws and NEVER awaited by a
