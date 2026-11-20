@@ -16,10 +16,13 @@ export function billRead(i: {
   return "clear";
 }
 
-/** Pay Here opens this place's checkout, this place's open bill, or nothing. */
-export function payHere(bill: BillRead, samePlace: boolean): "checkout" | "bill" | "blocked" {
-  if (bill === "loading" || bill === "unknown") return "blocked";
-  if (bill === "open") return samePlace ? "bill" : "blocked";
+/** What a row's Pay does (MESITA-4497). Only a clear read starts a checkout.
+ *  With a bill open, every Pay opens that bill: a second one never starts.
+ *  A failed read asks again; a read in flight waits. */
+export function payHere(bill: BillRead): "checkout" | "bill" | "recheck" | "wait" {
+  if (bill === "loading") return "wait";
+  if (bill === "unknown") return "recheck";
+  if (bill === "open") return "bill";
   return "checkout";
 }
 

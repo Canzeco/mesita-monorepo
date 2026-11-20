@@ -5,6 +5,7 @@ import { HEADER_PILL } from "@/components/consumer/search/header-classes";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/shared/Skeleton";
+import { PILL } from "./header-pill";
 
 // THE TICKETS SHORTCUT (Pato, 2026-11-14, MESITA-3891: "in wallet at the
 // top up show a shortcut to transactions/tickets in me", then the same "top
@@ -20,21 +21,22 @@ import { Skeleton } from "@/components/shared/Skeleton";
 // Pato: "tickets must look like a button. maybe tickets>"): the app's button
 // corners (rounded-xl, as Continue) and a › after the word. A MID GREY
 // (MESITA-4331, Pato: "a bit dark but not that much"): ink at 15%, between
-// the light bg-muted and the black of MESITA-4091.
+// the light bg-muted and the black of MESITA-4091. `tall` is the Wallet
+// header's 40px pill, the card pill's twin: glyph and word, no › (MESITA-4497).
 export function TicketsShortcut({ tall = false }: { tall?: boolean } = {}) {
   return (
     <PushLink
       href={CONSUMER_ROUTES.mePages.tickets}
       className={
         tall
-          ? "bg-foreground/15 text-foreground hover:bg-foreground/20 inline-flex h-14 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-transparent px-4 text-sm font-semibold whitespace-nowrap"
+          ? PILL
           : cn(HEADER_PILL, "bg-foreground/15 text-foreground hover:bg-foreground/20 h-9 rounded-xl border-transparent pr-2 pl-3")
       }
       data-tickets-shortcut
     >
       <Ticket className={tall ? "h-5 w-5 shrink-0" : "h-4 w-4 shrink-0"} strokeWidth={2} aria-hidden />
       Tickets
-      <ChevronRight className={tall ? "h-5 w-5 shrink-0" : "-ml-0.5 h-4 w-4 shrink-0"} strokeWidth={2.25} aria-hidden />
+      {tall ? null : <ChevronRight className="-ml-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />}
     </PushLink>
   );
 }

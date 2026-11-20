@@ -1,20 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { addFundsOn, billRead, methodFace, payHere } from "@/lib/pay-wallet";
 
-describe("Pay Here while a bill may be open", () => {
-  it("opens that place's bill, and does not open another place", () => {
-    expect(payHere("open", true)).toBe("bill");
-    expect(payHere("open", false)).toBe("blocked");
-    expect(payHere("clear", false)).toBe("checkout");
+describe("Pay while a bill may be open", () => {
+  it("only a clear read starts a checkout; an open bill is where every Pay lands", () => {
+    expect(payHere("clear")).toBe("checkout");
+    expect(payHere("open")).toBe("bill");
   });
 
   it("a failed visits read, a draft, or an unresolved local id does not start a second bill", () => {
     expect(billRead({ visitsOk: false, missed: false, live: 0, draft: false })).toBe("unknown");
-    expect(payHere("unknown", false)).toBe("blocked");
+    expect(payHere("unknown")).toBe("recheck");
     expect(billRead({ visitsOk: true, missed: false, live: 0, draft: true })).toBe("open");
-    expect(payHere("open", false)).toBe("blocked");
+    expect(payHere("open")).toBe("bill");
     expect(billRead({ visitsOk: true, missed: true, live: 0, draft: false })).toBe("unknown");
-    expect(payHere("loading", true)).toBe("blocked");
+    expect(payHere("loading")).toBe("wait");
   });
 });
 
@@ -26,10 +25,10 @@ describe("Method and Add Funds", () => {
     expect(methodFace([{ last4: "4242" }])).toBe("card");
   });
 
-  it("a missing card_ok does not enable Add Funds and does not decide Pay Here", () => {
+  it("a missing card_ok does not enable Add Funds and does not decide Pay", () => {
     expect(addFundsOn(undefined)).toBe(false);
     expect(addFundsOn(false)).toBe(false);
     expect(addFundsOn(true)).toBe(true);
-    expect(payHere("clear", false)).toBe("checkout");
+    expect(payHere("clear")).toBe("checkout");
   });
 });

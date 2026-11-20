@@ -3,27 +3,31 @@ import { GuestPayLoading } from "./GuestPayScreen";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { PayHeader } from "./PayHeader";
 import { TicketsShortcut } from "./TicketsShortcut";
-import { WalletBodySkeleton } from "../wallet/WalletLists";
+import { RowsSkeleton, WALLET_PANEL, WALLET_ROWS } from "../wallet/WalletLists";
 
 /** A Pay screen's frame while it loads: the title in place, the body in
  *  bones (Pato, MESITA-2701: "the placeholders must be similar to the page
  *  you are loading"). Every Pay address draws it (MESITA-3614). */
 export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "proof" }) {
   if (body === "list") {
-    // /pay (MESITA-4232): the title band, then everything in bones: Pay
-    // Bill, Tickets and the two doors too (MESITA-4376).
+    // /pay (MESITA-4232): the title band, then the one panel of rows in
+    // bones (MESITA-4497).
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-8 *:shrink-0" aria-busy>
         <PayHeader
           title="Wallet"
           action={
             <span className="flex items-center gap-2">
-              <Skeleton className="h-14 w-32 rounded-xl" aria-hidden />
+              <Skeleton className="h-10 w-20 rounded-xl" aria-hidden />
               <TicketsShortcut tall />
             </span>
           }
         />
-        <WalletBodySkeleton />
+        <div className={WALLET_PANEL}>
+          <div className={WALLET_ROWS}>
+            <RowsSkeleton count={4} />
+          </div>
+        </div>
       </div>
     );
   }

@@ -2,7 +2,7 @@
 
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Clock } from "lucide-react";
 import { Panel } from "@/components/shared/Panel";
@@ -15,7 +15,7 @@ import { addFundsOn, billRead, payHere, type BillRead } from "@/lib/pay-wallet";
 import { clearGuestDraft, pendingTicket, readDraft } from "@/lib/guest-pay-draft";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { cn } from "@/lib/utils";
-import { CONSUMER_ROUTES, payBillPath, payPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payBillPath, payPlacePath, placePath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { markPanelExit, navigateTo, previousEntryPath, replaceAddress } from "@/lib/navigate";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -32,8 +32,8 @@ import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
 import { PayPickSheet } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
-import { CreditsPill } from "@/components/consumer/wallet/WalletLists";
-import { WalletSection } from "@/components/consumer/wallet/WalletSection";
+import { RowsSkeleton } from "@/components/consumer/wallet/WalletLists";
+import { BalanceLines, fold, WalletSection } from "@/components/consumer/wallet/WalletSection";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
@@ -70,6 +70,15 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 // header but in the center") it is one panel at the top of the page
 // (OpenBillPanel): the place, the amounts, its state and Continue; the amber
 // band (PendingTicketBanner) shows on every other tab, never on /pay.
+//
+// ONE LIST, EACH PLACE ONCE (Pato, 2026-11-20, MESITA-4497): under the
+// header (two 40px grey pills: the saved card, Tickets) and the search bar,
+// one white panel of rows split by a hairline: the places to pay at, nearest
+// first, then the Loyalty Cards of places not listed above, then Add a
+// Loyalty Card. A row: photo and name (open the place), the balance in plain
+// bold, "+" (Add Funds, only where credit is sold) and one black Pay; a card
+// row ends in Send. With a bill open every Pay opens that bill. No "Places"
+// or "Loyalty" headings, no faded buttons. The drawing above is the history.
 //
 // The location is asked inside the place sheet only (pay-location.ts); Pay
 // uses a fix the browser already grants.
@@ -226,6 +235,23 @@ export function PayPage({
     navigateTo(router, href, { motion: "push" });
   }
 
+  // Nearest first; a place with no distance goes last. The search bar
+  // filters by name, here and on the cards.
+  const q = fold(query.trim());
+  const shownPlaces = [...(places ?? [])]
+    .sort((x, y) => (x.distance_m === null ? 1 : y.distance_m === null ? -1 : x.distance_m - y.distance_m))
+    .filter((p) => !q || fold(p.name ?? "").includes(q));
+  // Every place listed with Pay, whatever the search shows: its card is not
+  // drawn again. null while the places load; none when they failed.
+  const placeIds = useMemo(
+    () => (places === null && !placesFailed ? null : new Set((places ?? []).map((p) => p.place_id))),
+    [places, placesFailed],
+  );
+  const checkBill = () => {
+    setBillFacts(null);
+    setBillNonce((n) => n + 1);
+  };
+
   return (
     // 8PX, NOT 16 (Pato, 2026-11-17, MESITA-4276: "make body margins far
     // smaller in this page ... it feels like an old mobile app from the
@@ -271,149 +297,121 @@ export function PayPage({
       ) : null}
       {bill === "unknown" ? (
         <p className="text-muted-foreground px-2 py-3 text-sm" role="alert" data-error="open_bill_unknown">
-          Couldn&apos;t check for an open bill. Pay Here stays off. Tap Check again.
-          <button
-            type="button"
-            className="text-foreground ml-2 font-semibold underline"
-            onClick={() => {
-              setBillFacts(null);
-              setBillNonce((n) => n + 1);
-            }}
-          >
+          Couldn&apos;t check for an open bill.
+          <button type="button" className="text-foreground ml-2 font-semibold underline" onClick={checkBill}>
             Check again
           </button>
         </p>
       ) : null}
 
-      <PlaceList
-        places={places}
-        failed={placesFailed}
-        loading={placesLoading}
-        query={query}
-        loc={loc.state}
-        bill={bill}
-        openPlaceId={openTabs?.[0]?.place.id ?? pending?.placeId ?? null}
-        openHref={openTabs?.[0] ? payBillPath(openTabs[0].tab_id) : pending ? payPlacePath(pending.placeId) : null}
-        onRefresh={refreshPlaces}
-        onAskLocation={askLocation}
-        onNotNow={notNow}
-      />
-
-      <WalletSection giftToken={giftToken} />
-      <PayPickSheet open={pickerOpen} onClose={closePicker} onPick={choosePlace} />
-    </KeptScroll>
-  );
-}
-
-function fold(v: string): string {
-  return v.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-}
-
-function PlaceList({
-  places,
-  failed,
-  loading,
-  query,
-  loc,
-  bill,
-  openPlaceId,
-  openHref,
-  onRefresh,
-  onAskLocation,
-  onNotNow,
-}: {
-  places: PayPlace[] | null;
-  failed: boolean;
-  loading: boolean;
-  query: string;
-  loc: string;
-  bill: BillRead;
-  openPlaceId: string | null;
-  openHref: string | null;
-  onRefresh: () => void;
-  onAskLocation: () => void;
-  onNotNow: () => void;
-}) {
-  const router = useRouter();
-  const q = fold(query.trim());
-  const sorted = [...(places ?? [])].sort((a, b) => {
-    if (a.distance_m === null) return 1;
-    if (b.distance_m === null) return -1;
-    return a.distance_m - b.distance_m;
-  });
-  const shown = q ? sorted.filter((p) => fold(p.name ?? "").includes(q)) : sorted;
-  return (
-    <section className="mt-3 flex flex-col gap-2" aria-label="Places">
-      <h2 className="text-muted-foreground px-2 text-sm font-semibold">Places</h2>
-      {loc === "prime" ? (
-        <div className="border-border rounded-xl border p-3">
+      {loc.state === "prime" ? (
+        <div className="border-border mt-2 rounded-xl border p-3">
           <p className="text-sm font-semibold">See places near you</p>
           <div className="mt-2 flex gap-2">
-            <button type="button" className="bg-foreground text-background h-11 flex-1 rounded-xl text-sm" onClick={onAskLocation}>
+            <button type="button" className="bg-foreground text-background h-11 flex-1 rounded-xl text-sm" onClick={askLocation}>
               Use my location
             </button>
-            <button type="button" className="border-border h-11 flex-1 rounded-xl border text-sm" onClick={onNotNow}>
+            <button type="button" className="border-border h-11 flex-1 rounded-xl border text-sm" onClick={notNow}>
               Not now
             </button>
           </div>
         </div>
       ) : null}
-      {failed ? (
-        <p className="text-muted-foreground px-2 text-sm" role="alert" data-error="pay_places_unavailable">
-          Couldn&apos;t load the places. Tap Try again.
-          <button type="button" className="text-foreground ml-2 font-semibold underline" onClick={onRefresh}>
-            Try again
-          </button>
-        </p>
-      ) : loading && places === null ? (
-        <div className="flex flex-col gap-2" aria-hidden>
-          <Skeleton className="h-20 w-full rounded-xl" />
-          <Skeleton className="h-20 w-full rounded-xl" />
-          <Skeleton className="h-20 w-full rounded-xl" />
-        </div>
-      ) : shown.length === 0 ? (
-        <p className="text-muted-foreground px-2 text-sm">
-          {q ? `No place matches “${query.trim()}”.` : loc === "on" ? "No place near you takes App Payments" : "No places to pay at yet."}
-        </p>
-      ) : (
-        shown.map((p) => {
-          const name = p.name ?? "A Mesita place";
-          const subtitle = [p.distance_m !== null ? distanceText(p.distance_m) : null, p.address].filter(Boolean).join(" · ");
-          const here = payHere(bill, p.place_id === openPlaceId);
-          const funds = addFundsOn(p.card_ok);
-          return (
-            <PlaceActionRow
-              key={p.place_id}
-              name={name}
-              subtitle={subtitle || null}
-              photo={<PlacePhoto place={p} className="h-12 w-12" />}
-              extra={
-                <span className="mt-1 flex flex-col items-start gap-1">
-                  {p.available_cents > 0 ? <CreditsPill>{money(p.available_cents, p.currency)}</CreditsPill> : null}
-                  {p.pending_cents > 0 ? <span className="text-muted-foreground block text-sm">{money(p.pending_cents, p.currency)} pending</span> : null}
-                </span>
-              }
-              left={{
-                label: "Add Funds",
-                disabled: !funds,
-                description: funds ? undefined : "This place doesn't sell credit.",
-                onClick: () => navigateTo(router, prepayHref(p.place_id), { motion: "drill" }),
-              }}
-              right={{
-                label: "Pay Here",
-                filled: true,
-                disabled: here === "blocked",
-                description: here === "blocked" && bill === "open" ? "Finish or cancel the open bill first." : undefined,
-                onClick: () => {
-                  const href = here === "bill" ? openHref : payPlacePath(p.place_id);
-                  if (href) navigateTo(router, href, { motion: "push" });
-                },
-              }}
-            />
-          );
-        })
-      )}
-    </section>
+
+      {/* One panel (MESITA-4497): these place rows, then the Wallet's cards. */}
+      <WalletSection
+        giftToken={giftToken}
+        query={query}
+        leadIds={placeIds}
+        leadCount={shownPlaces.length}
+        leadSettled={places !== null && !placesFailed}
+        lead={
+          <PlaceRows
+            places={shownPlaces}
+            failed={placesFailed}
+            loading={placesLoading && places === null}
+            bill={bill}
+            openHref={openTabs?.[0] ? payBillPath(openTabs[0].tab_id) : pending ? payPlacePath(pending.placeId) : null}
+            onRefresh={refreshPlaces}
+            onCheckBill={checkBill}
+          />
+        }
+      />
+      <PayPickSheet open={pickerOpen} onClose={closePicker} onPick={choosePlace} />
+    </KeptScroll>
+  );
+}
+
+/** The Wallet's place rows (MESITA-4497): the photo and name open the
+ *  place, "+" adds funds where the place sells credit, Pay is the one black
+ *  button. They are the first rows of WalletSection's panel. */
+function PlaceRows({
+  places,
+  failed,
+  loading,
+  bill,
+  openHref,
+  onRefresh,
+  onCheckBill,
+}: {
+  places: PayPlace[];
+  failed: boolean;
+  loading: boolean;
+  bill: BillRead;
+  openHref: string | null;
+  onRefresh: () => void;
+  onCheckBill: () => void;
+}) {
+  const router = useRouter();
+  if (failed) {
+    return (
+      <p className="text-muted-foreground px-4 py-4 text-sm" role="alert" data-error="pay_places_unavailable">
+        Couldn&apos;t load the places.
+        <button type="button" className="text-foreground ml-2 font-semibold underline" onClick={onRefresh}>
+          Try again
+        </button>
+      </p>
+    );
+  }
+  if (loading) return <RowsSkeleton count={3} />;
+  const pay = payHere(bill);
+  return (
+    <>
+      {places.map((p) => {
+        const name = p.name ?? "A Mesita place";
+        const subtitle = [p.distance_m !== null ? distanceText(p.distance_m) : null, p.address].filter(Boolean).join(" · ");
+        // Money here means the guest holds this place's card: its page has
+        // Send Gift. Without one, the place itself opens.
+        const holds = p.available_cents > 0 || p.pending_cents > 0;
+        return (
+          <PlaceActionRow
+            key={p.place_id}
+            name={name}
+            subtitle={subtitle || null}
+            photo={<PlacePhoto place={p} className="h-12 w-12" />}
+            extra={
+              <BalanceLines
+                available={p.available_cents > 0 ? money(p.available_cents, p.currency) : null}
+                pending={p.pending_cents > 0 ? [`${money(p.pending_cents, p.currency)} pending`] : []}
+              />
+            }
+            onOpen={() => navigateTo(router, holds ? walletPlacePath(p.place_id) : placePath(p.place_id), { motion: "drill" })}
+            add={addFundsOn(p.card_ok) ? () => navigateTo(router, prepayHref(p.place_id), { motion: "drill" }) : undefined}
+            primary={{
+              label: "Pay",
+              spoken: pay === "bill" ? `Pay at ${name}: opens your open bill` : `Pay at ${name}`,
+              filled: true,
+              wait: pay === "wait",
+              onClick: () => {
+                if (pay === "recheck") return onCheckBill();
+                const href = pay === "bill" ? openHref : payPlacePath(p.place_id);
+                if (href) navigateTo(router, href, { motion: "push" });
+              },
+            }}
+          />
+        );
+      })}
+    </>
   );
 }
 
