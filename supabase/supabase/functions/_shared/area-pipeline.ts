@@ -684,6 +684,8 @@ export type CatalogRankSummary = AreaPoolSummary & {
   chunks: number;
   /** Kept ids pass 2 did not return (no backfill from below the cut). */
   missing: number;
+  /** True when `order` was cut at CATALOG_ORDER_CAP (MESITA-4462). */
+  capped: boolean;
 };
 
 /** What the two lanes held (MESITA-4454): the log line's numbers. All 0 on
@@ -704,8 +706,9 @@ export type CatalogLaneStats = {
 export type CatalogPool = {
   places: AreaPoolPlace[];
   summary: CatalogRankSummary;
-  /** Every ranked id (MESITA-3057), the merged list: the shuffled first
-   *  page, then the exact merged tail. Home fills cards by id. */
+  /** Ranked ids (MESITA-3057), the merged list: the shuffled first page,
+   *  then the exact merged tail, at most CATALOG_ORDER_CAP (MESITA-4462).
+   *  Home fills cards by id. */
   order: string[];
   /** The ids in ad slots, across the whole `order` (M-6); [] on `nearest`. */
   adIds: string[];
@@ -714,6 +717,10 @@ export type CatalogPool = {
   preShuffle: Record<string, number>;
   lanes: CatalogLaneStats;
 };
+
+/** Home follows `order` by id. Past this the answer stops and `summary.capped`
+ *  says so (MESITA-4462); the catalog itself is not cut. */
+export const CATALOG_ORDER_CAP = 1000;
 
 const ids = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
 const count = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
@@ -785,20 +792,28 @@ export async function selectCatalogPool<T extends PoolRow>(
       adsFirstPage: order.slice(0, page).filter((id) => ads.has(id)).length,
     };
   }
+  const ranked = order.length;
+  const capped = ranked > CATALOG_ORDER_CAP;
+  if (capped) {
+    order = order.slice(0, CATALOG_ORDER_CAP);
+    const keep = new Set(order);
+    adIds = adIds.filter((id) => keep.has(id));
+  }
   const kept = order.slice(0, page);
   const filled = await selectCatalogFill({ ...deps, mode, adIds, ids: kept });
   return {
     places: filled.places,
     summary: {
       read,
-      ranked: order.length,
+      ranked,
       returned: filled.places.length,
       surface: "catalog",
       halfKm: recipeFor(mode, "organic", deps.cfg).halfKm,
       placesShown: null,
       pageSize: catalogPageSize(deps.cfg.map),
       ads: filled.places.filter((p) => p.ad === true).length,
-      total: order.length,
+      total: ranked,
+      capped,
       chunks: filled.summary.chunks,
       missing: kept.length - filled.places.length,
     },
