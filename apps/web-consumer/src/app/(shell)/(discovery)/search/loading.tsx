@@ -3,7 +3,7 @@ import {
   CHIP,
   CHIP_SPECIAL,
   HEADER_BAND,
-  AI_PILL,
+  HEADER_PILL,
 } from "@/components/consumer/search/header-classes";
 import {
   CatalogRailSkeleton,
@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes"). The map under MapVeil with SearchHeader on its
 // top edge: the white band (MESITA-3019) holding the 40px locate disc, the
-// 40px bar and the 32px AI pill (MESITA-4471), then the floating 32px chip row (the Menu
+// 40px bar and the 40px Ask AI pill (MESITA-3009), then the floating 32px chip row (the Menu
 // square, then Popular and the families as pills; MESITA-4468). Then the spinner on the cross, and the carousel floating
 // over the map's foot (MESITA-2670): the same veil and the same first-load
 // row (skeleton pages) the mounted page draws until its
@@ -55,7 +55,7 @@ export default function SearchLoading() {
           <div className={cn(HEADER_BAND, "flex items-center gap-3 p-3")}>
             <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
             <Skeleton className="h-10 min-w-0 flex-1 rounded-full" />
-            <ControlSkeleton token={AI_PILL} label="AI" />
+            <ControlSkeleton token={HEADER_PILL} label="Ask AI" />
           </div>
           <div className="flex items-center gap-3 overflow-hidden pt-1 pl-3">
             <ControlSkeleton token={CHIP_SPECIAL} label="Menu" square />

@@ -63,8 +63,9 @@ import {
   CHIP_ON,
   CHIP_SPECIAL,
   HEADER_BAND,
+  HEADER_ICON,
   HEADER_ICON_STROKE,
-  AI_PILL,
+  HEADER_PILL,
 } from "./header-classes";
 
 // A chip's mark is its family's emoji, the same one Home's column wears
@@ -116,12 +117,11 @@ export function SearchHeader({
             (MESITA-3995, MESITA-3999) are gone. */}
         <PushLink
           href={CONSUMER_ROUTES.searchChat}
-          className={AI_PILL}
-          aria-label="AI"
+          className={HEADER_PILL}
           data-search-ask-ai
         >
-          <AiSparkle className="h-3.5 w-3.5 shrink-0" />
-          <span>AI</span>
+          <AiSparkle className={HEADER_ICON} />
+          <span>Ask AI</span>
         </PushLink>
       </div>
       <div className="relative" data-search-chip-band>

@@ -50,13 +50,9 @@ export const BAR = `${IN_BAND} focus-within:border-foreground flex h-10 min-w-0 
  *  MESITA-3006, under the chips in MESITA-3005). */
 export const HEADER_DISC = `${IN_BAND} hover:bg-border flex h-10 w-10 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
-/** A labelled 40px pill in the band: Pay's Tickets shortcut. */
+/** A labelled 40px pill in the band: Ask AI (the sparkle and its words,
+ *  MESITA-4007) and Pay's Tickets shortcut. */
 export const HEADER_PILL = `${IN_BAND} hover:bg-border flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 ${HEADER_TEXT} whitespace-nowrap outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
-
-/** Search's AI control (Pato, MESITA-4471: "make AI button smaller, only
- *  call it AI"): 32px, the chip's height, tighter padding. Its own string
- *  so h-8 is not fighting HEADER_PILL's h-10. */
-export const AI_PILL = `${IN_BAND} hover:bg-border flex h-8 shrink-0 items-center justify-center gap-1 rounded-full border px-2.5 ${HEADER_TEXT} whitespace-nowrap outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
 /** The Filters disc at the chip row's left: a chip's 32px, round, icon
  *  only (MESITA-3006). */
