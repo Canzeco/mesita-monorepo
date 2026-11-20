@@ -242,9 +242,10 @@ const TICKET_TABS: ReadonlyArray<{
 }> = [
   { kind: "visits", label: "Visits", icon: UtensilsCrossed },
   { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
-  { kind: "gifts", label: "Gifts", icon: Gift },
-  // STORIES (MESITA-4405): the Story record's own tickets, always shown.
+  // STORIES BEFORE GIFTS (Pato, 2026-11-20: "Visits. Vouchers. Stories.
+  // Gifts. THIS ORDER"). The Story record's own tickets (MESITA-4405), always shown.
   { kind: "stories", label: "Stories", icon: Instagram },
+  { kind: "gifts", label: "Gifts", icon: Gift },
 ];
 
 /** The tab a /me/tickets address shows: bare is Visits. */

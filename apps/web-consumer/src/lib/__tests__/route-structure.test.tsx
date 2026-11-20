@@ -617,14 +617,14 @@ describe("T6 — Activity's chips are Me's pages (MESITA-3855)", () => {
     expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
   });
 
-  it("Tickets has four kinds: Visits · Vouchers · Gifts · Stories; Refunds is a Settings page (MESITA-3855, MESITA-4402, MESITA-4405)", () => {
+  it("Tickets has four kinds: Visits · Vouchers · Stories · Gifts; Refunds is a Settings page (MESITA-3855, MESITA-4402, MESITA-4405)", () => {
     // Gifts split into Gifts-In and Gifts-Out (MESITA-3941), one list
-    // again (MESITA-4036).
+    // again (MESITA-4036). Stories sits before Gifts (Pato, 2026-11-20).
     expect([...TICKET_KINDS]).toEqual([
       "visits",
       "vouchers",
-      "gifts",
       "stories",
+      "gifts",
     ]);
   });
 
