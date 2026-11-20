@@ -31,6 +31,10 @@
               "type": "string",
               "dynamic_variable": "run_id"
             },
+            "call_context": {
+              "type": "string",
+              "dynamic_variable": "call_context"
+            },
             "verdict": {
               "type": "string",
               "description": "confirmed (aceptaron tal cual o a una hora dentro del rango) · counter_offer (ofrecieron otras opciones) · declined (no hay lugar) · unreachable (nadie que reserve) · wrong_number (no es este restaurante).",

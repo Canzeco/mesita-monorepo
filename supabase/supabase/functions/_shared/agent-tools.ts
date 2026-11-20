@@ -197,7 +197,7 @@ export function accentTolerantPattern(term: string): string {
 // ── Ticket reads ─────────────────────────────────────────────────────────────
 
 const TICKET_SELECT =
-  "id, run_id, reference_code, reserved_at, party_size, state, notes, is_test, place_id, consumer_id, reported_verdict, alternatives, consumer_confirmed_at, negotiation_rounds, guest_first_name, guest_last_name, time_window_minutes, consumer:consumers(full_name, first_name, last_name, phone)";
+  "id, run_id, reference_code, reserved_at, party_size, state, notes, is_test, place_id, consumer_id, reported_verdict, reported_time, alternatives, consumer_confirmed_at, negotiation_rounds, guest_first_name, guest_last_name, time_window_minutes, modification_of, notice_state, attempts_state, consumer:consumers(full_name, first_name, last_name, phone)";
 
 export type TicketRow = {
   run_id: string | null;
@@ -212,6 +212,10 @@ export type TicketRow = {
   project_id: string;
   consumer_id: string;
   reported_verdict: string | null;
+  reported_time?: string | null;
+  modification_of?: string | null;
+  notice_state?: string | null;
+  attempts_state?: string | null;
   alternatives: unknown;
   consumer_confirmed_at: string | null;
   negotiation_rounds: number;
@@ -407,11 +411,23 @@ export async function cancelAsGuest(
   admin: SupabaseClient,
   env: EFEnv,
   callerName: string,
-  ticket: { id: string; state: string; reported_verdict?: string | null },
+  ticket: {
+    id: string;
+    state: string;
+    reported_verdict?: string | null;
+    modification_of?: string | null;
+  },
   reason: string,
 ): Promise<{ ok: true; placeNotified: boolean } | { ok: false; error: string }> {
+  // The place is holding a table when the ticket is confirmed, when a1 already
+  // reported a yes or a counter-offer (the post-call flip to confirmed can
+  // still be in flight), or when a pending move still remembers the old slot
+  // (MESITA-4146).
   const placeHolds = ticket.state === "confirmed" ||
-    (ticket.state === "pending" && ticket.reported_verdict === "counter_offer");
+    (ticket.state === "pending" &&
+      (ticket.reported_verdict === "counter_offer" ||
+        ticket.reported_verdict === "confirmed" ||
+        !!ticket.modification_of));
   const notice = placeHolds ? "place_cancel" as const : null;
   const err = await cancelTicket(admin, ticket.id, "consumer", reason, notice);
   if (err) return { ok: false, error: err };

@@ -74,6 +74,7 @@ serveJson("eleven-a1-report-outcome", async (req) => {
     run_id?: unknown;
     confirmed_time?: unknown;
     terms?: unknown;
+    call_context?: unknown;
   }>(req, {});
 
   const verdict = typeof body.verdict === "string" ? body.verdict.trim() : "";
@@ -85,6 +86,15 @@ serveJson("eleven-a1-report-outcome", async (req) => {
   }
   const ticket = await ticketByCode(admin, body.reference_code);
   if (!ticket) return json({ ok: false, error: "reservation not found for that reference_code" }, 404);
+  // A notice call (cancellation, offer release, "the table stands") must not
+  // overwrite confirmed_terms or refetch Google (MESITA-4146). Booking and
+  // modification are the only calls that report an outcome.
+  const callContext = typeof body.call_context === "string" ? body.call_context.trim() : "";
+  const bookingReport = callContext === "booking" || callContext === "modification";
+  const noticeLeg = ticket.notice_state === "running" && ticket.attempts_state !== "running";
+  if ((callContext && !bookingReport) || (!callContext && noticeLeg)) {
+    return json({ ok: true, ignored: true, reason: "not_a_booking" });
+  }
   // Stale-run guard: a call from an orphaned run writes nothing. But when the
   // place just said yes or offered times, it is now holding something for a
   // guest who cancelled or rescheduled while a1 was on the phone (MESITA-3962):

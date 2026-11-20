@@ -48,7 +48,8 @@ serveJson("consumer-web-cancel-reservation", async (req) => {
     consumer_id: string;
     reference_code: string | null;
     reported_verdict: string | null;
-  }>(admin, id, user.id, "id, state, reserved_at, consumer_id, reference_code, reported_verdict");
+    modification_of: string | null;
+  }>(admin, id, user.id, "id, state, reserved_at, consumer_id, reference_code, reported_verdict, modification_of");
   if (readErr) return json({ ok: false, error: readErr }, 500);
   // Same answer for "doesn't exist" and "not yours" — never leak existence.
   if (!row) {
@@ -77,7 +78,7 @@ serveJson("consumer-web-cancel-reservation", async (req) => {
     admin,
     env,
     "consumer-web-cancel-reservation",
-    { id, state: row.state, reported_verdict: row.reported_verdict },
+    { id, state: row.state, reported_verdict: row.reported_verdict, modification_of: row.modification_of },
     reason,
   );
   if (!res.ok) return json({ ok: false, error: res.error }, 500);

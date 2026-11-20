@@ -51,19 +51,22 @@ export function isReservable(row: ReservableRow | null | undefined): boolean {
 }
 
 /**
- * Who the Booker dials at the place: the ticket's own number (test tickets
- * pre-resolve it), else the test target while testCall is on (`testNumber`
- * non-null: the test line, or the guest's own phone, named by `testVia`;
- * MESITA-4149), else the Reservations phone, else Google's.
+ * Who the Booker dials at the place: the ticket's pinned number only while
+ * the test line is on (`usePinned` — a pin from a test dial must not outlive
+ * the test line, MESITA-4146), else the test target while testCall is on
+ * (`testNumber` non-null: the test line, or the guest's own phone, named by
+ * `testVia`; MESITA-4149), else the Reservations phone, else Google's.
  */
 export function dialNumber(input: {
   ticketPhone?: string | null;
+  /** Honor `ticketPhone` only while the test line is on. */
+  usePinned?: boolean;
   testNumber?: string | null;
   testVia?: string;
   place?: ReservableRow | null;
 }): { number: string; via: string } {
   const ticket = clean(input.ticketPhone);
-  if (ticket) return { number: ticket, via: "row" };
+  if (ticket && input.usePinned) return { number: ticket, via: "row" };
   if (input.testNumber != null) {
     return { number: clean(input.testNumber), via: input.testVia ?? "test-mode number" };
   }
