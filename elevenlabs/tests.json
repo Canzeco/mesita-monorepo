@@ -547,7 +547,7 @@
     "name": "mesita · a2 · guest asks for a new time",
     "agent": "a2",
     "label": "guest asks for a new time",
-    "scenario": "Eres Ana López y contestas tu celular con «¿Bueno?». Cuando te pregunten si eres Ana López dices que sí. Cuando te digan que la mesa está confirmada, dices «mejor el domingo 22 a las 7 de la tarde, ¿se puede?». No aceptas dejarla el sábado.",
+    "scenario": "Eres Ana López. Tu primera frase es «¿Bueno?». En cuanto te pregunten si eres Ana López, tu siguiente frase es exactamente: «Sí, soy Ana. Mejor el domingo 22 a las 7 de la tarde, ¿se puede? El sábado no puedo.» Esa frase es obligatoria. No preguntes qué pasó y no aceptes el sábado.",
     "conditions": [
       "El agente pregunta si habla con Ana López ANTES de mencionar Gran Central, la fecha o la hora.",
       "Cuando Ana pide el domingo a las 7, el agente NO dice que esa hora ya está confirmada.",
