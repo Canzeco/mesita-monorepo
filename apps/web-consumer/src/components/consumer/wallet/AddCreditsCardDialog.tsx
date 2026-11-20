@@ -18,7 +18,7 @@ const WAYS: { icon: LucideIcon; title: string; line: string }[] = [
   {
     icon: CreditCard,
     title: "Buy credits at a place",
-    line: "Prepay on its page and get a bonus.",
+    line: "Buy credits on its page and get a bonus.",
   },
   {
     icon: Gift,
