@@ -488,7 +488,9 @@ describe("T5b — Home's header and Search's header", () => {
       "utf8",
     );
     expect(header).toContain("<AskAiModal");
-    expect(header).toContain("Ask AI");
+    // The pill reads "AI" (MESITA-4496); the popup it opens is still Ask AI.
+    expect(header).toContain("<span>AI</span>");
+    expect(header).toContain('aria-label="Ask AI"');
     expect(header).not.toContain("searchChat");
     expect(
       existsSync(join(SHELL, "(discovery)", "search", "chat", "page.tsx")),

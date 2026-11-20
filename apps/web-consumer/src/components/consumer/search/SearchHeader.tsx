@@ -112,20 +112,21 @@ export function SearchHeader({
       >
         {locate}
         <div className={cn(BAR, "min-w-0 flex-1")}>{bar}</div>
-        {/* Ask AI is the sparkle AND the words (Pato, MESITA-4007: "keep the
-            Ask AI word but with the icon"): the white pill again, as before
-            MESITA-3991's mark-only disc; the brain-circuit and chip marks
-            (MESITA-3995, MESITA-3999) are gone. It opens a popup over
-            Search (Pato, MESITA-4480: "a pop up modal, not its own page"). */}
+        {/* The pill is the sparkle and the short word "AI" (Pato,
+            MESITA-4496: "rename ask ai button to just ai to save space for
+            search bar"). The accessible name stays Ask AI. MESITA-4007 had
+            the full words beside the icon; MESITA-3991 was a mark-only disc.
+            It opens a popup titled Ask AI (MESITA-4480). */}
         <button
           type="button"
           onClick={() => setAskOpen(true)}
           className={HEADER_PILL}
           data-search-ask-ai
           aria-haspopup="dialog"
+          aria-label="Ask AI"
         >
           <AiSparkle className={HEADER_ICON} />
-          <span>Ask AI</span>
+          <span>AI</span>
         </button>
       </div>
       <div className="relative" data-search-chip-band>
