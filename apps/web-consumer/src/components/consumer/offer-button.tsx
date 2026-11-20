@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { OfferTrack, offerSlides as slidesFor, offersLabel, useOfferSlide, type OfferSlide } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
+import { trackEvent } from "@/lib/analytics/track";
+import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import { CARD_BUTTON_BOX } from "@/components/consumer/place-card";
 
@@ -35,15 +37,19 @@ export function OfferButton({
   href,
   name,
   slides,
+  placeId,
   className,
 }: {
   href: string;
   name: string;
   slides: OfferSlide[];
+  /** The place id, so a tap can say which voucher was showing (MESITA-4209). */
+  placeId?: string;
   className?: string;
 }) {
   const live = useOfferSlide(slides);
   const [held, setHeld] = useState<number | null>(null);
+  const getSupabase = useLazyBrowserSupabase();
   if (slides.length === 0) return null;
   const index = held ?? live.index;
   const slide = slides[index];
@@ -53,7 +59,13 @@ export function OfferButton({
     <PushLink
       href={href}
       aria-label={offersLabel(name, slides)}
-      onClick={release}
+      onClick={() => {
+        release();
+        const voucher = slide.voucher ?? slide.key;
+        if (placeId && voucher) {
+          trackEvent(getSupabase(), "offer_chip_tap", { place_id: placeId, voucher });
+        }
+      }}
       onPointerDown={hold}
       onPointerCancel={release}
       onPointerLeave={release}

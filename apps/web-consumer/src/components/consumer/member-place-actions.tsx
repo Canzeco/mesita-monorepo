@@ -43,6 +43,7 @@ import { toast } from "@/lib/toast";
 import { openSignGate } from "@/lib/anonymous";
 import { useViewer } from "@/lib/identity-context";
 import { trackEvent } from "@/lib/analytics/track";
+import { dropBoughtOffers } from "@/lib/catalog-modes";
 import { ExpressVoucherPay } from "@/components/consumer/ExpressVoucherPay";
 
 // THE SECONDARY SHEETS LOAD AFTER THE PLACE PAINTS (MESITA-3014). Each
@@ -505,6 +506,7 @@ export function usePlaceVouchers(
           writeLastCard(userKey.current, cardId);
           // The funnel's paid side (MESITA-4375): every voucher of the basket.
           trackEvent(getSupabase(), "voucher_paid", { place_id: placeId, items, method: "saved_card", status: r.card.status });
+          dropBoughtOffers(placeId, items.map((i) => i.voucher));
           // The Offers sheet's receipt says it (MESITA-4224): no toast.
           onPaid.current?.();
           // A STORY'S STEPS START AT THE TABLE (MESITA-4405): a paid Story
@@ -574,7 +576,10 @@ export function usePlaceVouchers(
           onDone={(d) => {
             a.onDone(d);
             void load();
-            if (d.outcome !== "received") onPaid.current?.();
+            if (d.outcome !== "received") {
+              dropBoughtOffers(placeId, a.items.map((i) => i.voucher));
+              onPaid.current?.();
+            }
           }}
         />
       ) : null,

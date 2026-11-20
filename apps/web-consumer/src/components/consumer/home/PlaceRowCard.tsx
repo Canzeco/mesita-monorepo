@@ -281,7 +281,7 @@ export function PlaceRowCard({
         <div className="pointer-events-none relative z-10 mt-auto flex flex-col gap-2">
           {/* ONE SWITCHING BOX (MESITA-4219): every offer, moving; nothing
               when the place sells none here. Chips in MESITA-4207. */}
-          <OfferButton href={placeHref(place.slug || place.id)} name={place.name} slides={slides} />
+          <OfferButton href={placeHref(place.slug || place.id)} placeId={place.id} name={place.name} slides={slides} />
           <div className="pointer-events-auto">
           <CardActions
             // White with a hairline, not grey (MESITA-4432).

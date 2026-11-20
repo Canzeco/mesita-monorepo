@@ -10,6 +10,7 @@ import type { AreaPool } from "@/lib/api/places";
 import {
   acceptRank,
   bumpSeen,
+  dropBoughtOffers,
   isAdPlace,
   oftenSeen,
   modePoolFor,
@@ -20,9 +21,9 @@ import {
   seedFor,
 } from "@/lib/catalog-modes";
 
-const pool = (order: string[], adIds: string[] = []): AreaPool => ({
+const pool = (order: string[], adIds: string[] = [], places: AreaPool["places"] = []): AreaPool => ({
   kind: "point",
-  places: [],
+  places,
   order,
   asked: 0,
   rankedFrom: null,
@@ -119,6 +120,27 @@ describe("rankModeForChip twin (DX-c)", () => {
     );
     const here = readFileSync(join(__dirname, "../catalog-modes.ts"), "utf8");
     expect(body(here)).toBe(body(shared));
+  });
+});
+
+describe("a paid voucher leaves Home at once (MESITA-4209)", () => {
+  const tec = { lat: 25.6512, lng: -100.2891 };
+
+  it("drops that voucher from every pool's card and keeps the rest", () => {
+    const rec = seedFor("nearby", tec, () => 1);
+    const places = [
+      { id: "p1", name: "A", offers: { sell: ["voucher_welcome", "voucher_200"] } },
+      { id: "p2", name: "B", offers: { sell: ["voucher_welcome"] } },
+    ] as AreaPool["places"];
+    acceptRank("g", "nearby", rec, pool(["p1", "p2"], [], places), null);
+    acceptRank("other", "popular", seedFor("popular", tec, () => 2), pool(["p1"], [], places), null);
+    dropBoughtOffers("p1", ["voucher_welcome"]);
+    expect(readModePool("g", "nearby")?.places.map((p) => p.offers?.sell ?? null)).toEqual([
+      ["voucher_200"],
+      ["voucher_welcome"],
+    ]);
+    expect(readModePool("other", "popular")?.places[0]?.offers?.sell).toEqual(["voucher_200"]);
+    expect(readModePool("g", "nearby")?.order).toEqual(["p1", "p2"]);
   });
 });
 

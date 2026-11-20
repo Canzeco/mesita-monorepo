@@ -35,6 +35,8 @@ const ALLOWED_EVENTS = new Set([
   // voucher paid (method saved_card until express ships).
   "offer_sheet_opened",
   "voucher_paid",
+  // MESITA-4209 — a tap on Home's offer box, with the voucher then showing.
+  "offer_chip_tap",
   // MESITA-4384 — express pay: which wallet the phone offered (from the
   // Express Checkout Element's ready), and an express payment that failed.
   "express_ready",
