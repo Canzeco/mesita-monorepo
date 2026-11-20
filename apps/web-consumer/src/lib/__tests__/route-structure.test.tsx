@@ -684,9 +684,11 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
       // MCP's cell became Integrations (MESITA-3954): Calendar, MCP Soon.
       "Integrations",
       "Settings",
-      // Gift across both columns closes the page (MESITA-4420, MESITA-4424).
+      // Gift across both columns closes the page (MESITA-4420, MESITA-4424)
+      // and opens Pay (MESITA-4476).
       "Gift",
     ]);
+    expect(ME_HUB_GIFT.href).toBe(CONSUMER_ROUTES.pay);
     // No Soon cell since MESITA-3954: MCP is a Soon row on Integrations.
     expect(cells().filter((c) => c.soon).map((c) => c.title)).toEqual([]);
     expect(existsSync(join(SHELL, "me", "integrations", "page.tsx"))).toBe(true);
