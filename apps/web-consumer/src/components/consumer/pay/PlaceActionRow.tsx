@@ -34,7 +34,8 @@ export function PlaceActionRow({
     <>
       {photo}
       <span className="min-w-0 flex-1">
-        <span className="text-foreground block truncate text-base leading-tight">{name}</span>
+        {/* Two lines, then cut (MESITA-4498): at 390px "Taquería Orinoco (TEC)" did not fit on one. */}
+        <span className="text-foreground line-clamp-2 text-base leading-tight break-words">{name}</span>
         {subtitle ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{subtitle}</span> : null}
         {extra}
       </span>
