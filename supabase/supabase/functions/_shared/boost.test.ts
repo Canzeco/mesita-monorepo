@@ -359,6 +359,19 @@ Deno.test("premier: a renewal receipt goes to the guest's email only when there 
   assertEquals("receipt_email" in renewalChargeParams({ ...base, receiptEmail: null }), false);
 });
 
+Deno.test("return urls: mesita.ai and Mesita previews only, never a foreign vercel.app (MESITA-4395)", () => {
+  assertEquals(isAllowedReturnUrl("https://mesita.ai/pay"), true);
+  assertEquals(isAllowedReturnUrl("https://www.mesita.ai/pay"), true);
+  assertEquals(isAllowedReturnUrl("https://mesita-web-consumer-git-pr-canzeco.vercel.app/pay?x=1"), true);
+  assertEquals(isAllowedReturnUrl("https://mesita-web-business-canzeco.vercel.app/places/p/payments"), true);
+  assertEquals(isAllowedReturnUrl("http://localhost:3000/pay"), true);
+  assertEquals(isAllowedReturnUrl("https://preview-x.vercel.app/p"), false);
+  assertEquals(isAllowedReturnUrl("https://mesita-web-consumer.vercel.app/pay"), false);
+  assertEquals(isAllowedReturnUrl("https://evil-mesita-web-x-canzeco.vercel.app/pay"), false);
+  assertEquals(isAllowedReturnUrl("https://mesita-web-x-canzeco.vercel.app.evil.com/pay"), false);
+  assertEquals(isAllowedReturnUrl("http://mesita.ai/pay"), false);
+});
+
 Deno.test("premier: start refuses a tier that is not one of the three, and a foreign return url", () => {
   const ok = { place_id: "11111111-1111-4111-8111-111111111111", tier: "boost_5x", return_url: "https://mesita.ai/x" };
   assertEquals(parseBoostStart(ok).ok, true);
@@ -369,7 +382,7 @@ Deno.test("premier: start refuses a tier that is not one of the three, and a for
   const odd = parseBoostStart({ ...ok, tier: "x".repeat(500) });
   assertEquals(odd.ok ? null : [odd.code, odd.error.length < 120], ["tier_invalid", true]);
   assertEquals(parseBoostStart({ ...ok, return_url: "https://evil.com" }).ok, false);
-  assertEquals(isAllowedReturnUrl("https://preview-x.vercel.app/p"), true);
+  assertEquals(isAllowedReturnUrl("https://preview-x.vercel.app/p"), false);
   const card = parseBoostStart({ place_id: ok.place_id, kind: "update_card", return_url: ok.return_url });
   assertEquals(card.ok && card.start.updateCard, true, "update card needs no tier");
 });

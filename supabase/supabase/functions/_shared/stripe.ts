@@ -62,8 +62,14 @@ export function paymentsPublishableKey(livemode: boolean, read: ReadEnv = envRea
   return key.startsWith(livemode ? "pk_live_" : "pk_test_") ? key : null;
 }
 
-/** Checkout's return address: https on a Mesita or Vercel host (a preview
- *  must come back to itself), or a local dev host. Never anywhere else. */
+/** A Mesita preview on the canzeco Vercel team: mesita-web-<project>-canzeco.vercel.app.
+ *  Any other *.vercel.app is someone else's project (MESITA-4395). */
+function isMesitaPreviewHost(host: string): boolean {
+  return /^mesita-web-[a-z0-9-]+-canzeco\.vercel\.app$/.test(host);
+}
+
+/** Checkout's return address: https on mesita.ai (and its subdomains) or a
+ *  Mesita Vercel preview, or http on a local dev host. Never anywhere else. */
 export function isAllowedReturnUrl(raw: string): boolean {
   let u: URL;
   try {
@@ -74,7 +80,7 @@ export function isAllowedReturnUrl(raw: string): boolean {
   const host = u.hostname.toLowerCase();
   if (u.protocol === "http:") return host === "localhost" || host === "127.0.0.1";
   if (u.protocol !== "https:") return false;
-  return host === "mesita.ai" || host.endsWith(".mesita.ai") || host.endsWith(".vercel.app");
+  return host === "mesita.ai" || host.endsWith(".mesita.ai") || isMesitaPreviewHost(host);
 }
 
 /** Stripe's form encoding: nested keys as a[b][c], arrays as a[0][b]. */
