@@ -21,7 +21,9 @@ import {
   resolvePhoneNumberId,
 } from "../_shared/elevenlabs.ts";
 import { firstCallPlan, nextAttemptAt } from "../_shared/reservation-retry.ts";
-import { nextGuestCallAt, spentLadderPatch } from "../_shared/reservation-callback.ts";
+import { deferToCallableHour, nextGuestCallAt, spentLadderPatch } from "../_shared/reservation-callback.ts";
+import { beforeTable } from "../_shared/reservation-call-outcome.ts";
+import { readReservable } from "../_shared/place-reservable.ts";
 import { REMINDER_MAX_ATTEMPTS, reminderParkPatch } from "../_shared/reservation-reminder.ts";
 import {
   classifyPlacementFailure,
@@ -493,6 +495,29 @@ export async function runCancelNotice(input: {
     }
   };
   try {
+    // A place is not rung while it is closed, and a guest is not rung outside
+    // 09:00–22:00 (MESITA-4145). The cron wakes the parked notice.
+    if (isPlaceSide) {
+      const paced = nextAttemptAt(input.placeHours, input.placeTz);
+      if (paced.reason.startsWith("closed")) {
+        await record({
+          notice_state: "scheduled",
+          notice_next_at: paced.at.toISOString(),
+          last_call_state: `cancel notice (place) — ${paced.reason}`.slice(0, 200),
+        });
+        return;
+      }
+    } else {
+      const quiet = deferToCallableHour(new Date(), input.placeTz);
+      if (quiet.deferred) {
+        await record({
+          notice_state: "scheduled",
+          notice_next_at: quiet.at.toISOString(),
+          last_call_state: "cancel notice (guest) — waiting for 09:00".slice(0, 200),
+        });
+        return;
+      }
+    }
     if (isPlaceSide) {
       const calls = await bumpPlaceCalls(admin, input.projectId, input.placeTz);
       if (calls !== null && calls > input.placeCallCap) {
@@ -619,10 +644,12 @@ export async function runIntents(input: {
     // made at 3 a.m. parks until opening time and the minute cron wakes it;
     // a slot the place doesn't open in time for ends here, and the guest is
     // told. Retries already pace by hours (nextAttemptAt).
-    if (input.attemptsDone === 0) {
+    // Every booking attempt, not only the first (MESITA-4145): closed places
+    // wait for opening, and nothing rings at or after the table's time.
+    {
       const plan = firstCallPlan(input.placeHours, input.placeTz, new Date(input.reservedAtIso));
-      if (plan.kind === "too_late") {
-        await end("closed", plan.reason);
+      if (plan.kind === "too_late" || !beforeTable(new Date(), input.reservedAtIso)) {
+        await end(plan.kind === "too_late" ? "closed" : "expired", plan.kind === "too_late" ? plan.reason : "the table's time passed — not calling");
         return;
       }
       if (plan.kind === "wait") {
@@ -633,6 +660,19 @@ export async function runIntents(input: {
         });
         return;
       }
+    }
+    const reservable = await readReservable(admin, input.projectId);
+    if (reservable.error) {
+      await record({
+        attempts_state: "scheduled",
+        next_attempt_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+        last_call_state: `could not read the Reservations switch — ${reservable.error}`.slice(0, 200),
+      });
+      return;
+    }
+    if (!reservable.reservable) {
+      await end("closed", "Reservations is off — not calling");
+      return;
     }
     const key = await resolveElevenLabsKey();
     if (!key?.startsWith("sk_")) {
@@ -677,13 +717,19 @@ export async function runIntents(input: {
       const meter = await bumpPlaceCalls(admin, input.projectId, input.placeTz);
       if (meter !== null && meter > input.placeCallCap) {
         attempts.pop(); // never rang — the entry must not count
+        const earliest = new Date(Date.now() + 6 * 3600_000);
+        const paced = nextAttemptAt(input.placeHours, input.placeTz, earliest);
+        if (!beforeTable(paced.at, input.reservedAtIso)) {
+          await end("expired", `intent ${n}: daily place-call cap — the table's time would pass before the next call`);
+          return;
+        }
         await record({
           attempts,
           call_attempts: n - 1,
           attempts_state: "scheduled",
-          next_attempt_at: new Date(Date.now() + 6 * 3600_000).toISOString(),
+          next_attempt_at: paced.at.toISOString(),
           last_call_state:
-            `intent ${n}: daily place-call cap (${input.placeCallCap}) reached — deferred`
+            `intent ${n}: daily place-call cap (${input.placeCallCap}) reached — ${paced.reason}`
               .slice(0, 200),
         });
         return;
@@ -704,7 +750,7 @@ export async function runIntents(input: {
         if (classifyPlacementFailure(call.httpStatus) === "platform") {
           attempts.pop();
           const next = outageRetryAt(input.outageRetries);
-          if (next) {
+          if (next && beforeTable(next.at, input.reservedAtIso)) {
             await record({
               attempts,
               call_attempts: n - 1,
@@ -715,6 +761,8 @@ export async function runIntents(input: {
                 `intent ${n}: not placed (HTTP ${call.httpStatus ?? "network"}) — ${next.reason}`
                   .slice(0, 200),
             });
+          } else if (next) {
+            await end("expired", `intent ${n}: platform outage — the table's time would pass before the retry`);
           } else {
             await end("outage", `intent ${n}: platform outage persisted — ended`, {
               attempts,
@@ -726,11 +774,15 @@ export async function runIntents(input: {
         entry.result = `placement failed: ${call.error}`.slice(0, 160);
         if (n < attemptsPlanned) {
           const next = nextAttemptAt(input.placeHours, input.placeTz);
+          if (!beforeTable(next.at, input.reservedAtIso)) {
+            await end("expired", `intent ${n} failed and the table's time would pass before the retry`);
+            return;
+          }
           await record({
             attempts,
             attempts_state: "scheduled",
             next_attempt_at: next.at.toISOString(),
-            last_call_state: `intent ${n} failed: ${call.error}`.slice(0, 200),
+            last_call_state: `intent ${n} failed: ${call.error} — ${next.reason}`.slice(0, 200),
           });
           return;
         }
