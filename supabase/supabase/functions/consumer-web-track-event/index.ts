@@ -39,6 +39,11 @@ const ALLOWED_EVENTS = new Set([
   // Express Checkout Element's ready), and an express payment that failed.
   "express_ready",
   "express_failed",
+  // MESITA-4394 — the reserve-flow Pro offer: You step (blocked or not),
+  // the hidden Pro step, and Upgrade.
+  "reserve_you_view",
+  "reserve_pro_shown",
+  "reserve_upgrade_tap",
 ]);
 
 /** MESITA-4384: correlation ids are short; a longer one is cut. */

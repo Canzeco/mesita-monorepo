@@ -35,6 +35,7 @@ import {
   CONSUMER_ROUTES,
   reservationPath,
 } from "@/lib/consumer-route-contract";
+import { trackEvent } from "@/lib/analytics/track";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
@@ -371,6 +372,23 @@ export function ReservationForm({
     missing,
   });
 
+  const steps: ReserveStep[] = existing
+    ? ["table", "when", "party"]
+    : rescheduling
+      ? ["when", "party"]
+      : ["when", "party", "you"];
+  const at = Math.min(stepAt, steps.length - 1);
+  const step = steps[at];
+  const last = at === steps.length - 1;
+  useEffect(() => {
+    if (plan.pro || step !== "you") return;
+    trackEvent(supabase, "reserve_you_view", { blocked: plan.isBlocked });
+  }, [plan.pro, plan.isBlocked, step, supabase]);
+  useEffect(() => {
+    if (!plan.pro) return;
+    trackEvent(supabase, "reserve_pro_shown");
+  }, [plan.pro, supabase]);
+
   if (done) {
     return (
       <div className="py-6 text-center">
@@ -409,14 +427,6 @@ export function ReservationForm({
   // already have a table, add it as a prev step … IF CANCELING, THEN DON'T
   // PROCEED TO NEXT STEP"): Your table · When · Party. Its button is Change
   // it; Cancel it opens the table's page and never moves on.
-  const steps: ReserveStep[] = existing
-    ? ["table", "when", "party"]
-    : rescheduling
-      ? ["when", "party"]
-      : ["when", "party", "you"];
-  const at = Math.min(stepAt, steps.length - 1);
-  const step = steps[at];
-  const last = at === steps.length - 1;
   // The call is the product (MESITA-4474). Said above the button on When,
   // Party, and You. Hidden where the button is not a request: Your table,
   // the Pro sheet, and a month that is already full.
@@ -483,7 +493,10 @@ export function ReservationForm({
             busy={plan.busy}
             pending={plan.pending}
             checkFailed={plan.checkFailed}
-            onUpgrade={() => void plan.upgrade(draftNow())}
+            onUpgrade={() => {
+              trackEvent(supabase, "reserve_upgrade_tap");
+              void plan.upgrade(draftNow());
+            }}
             onRetry={() => void plan.retryPayment()}
             onNotNow={() => plan.setPro(false)}
           />
