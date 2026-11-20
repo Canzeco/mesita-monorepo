@@ -1,8 +1,7 @@
-// When the waiter's Sign button may send, and what it sends (MESITA-3799).
-// Money and auth: the waiter types the 6-digit waiter code for every
-// signature, and when cash is owed answers one yes/no question. Yes means
-// exactly what is owed was received; No (or no answer) never signs. A card
-// still going through never signs.
+// When the waiter's Sign button may send, and what it sends (MESITA-3799,
+// MESITA-4485). A click signs. A half-typed code does not. When cash is owed,
+// Yes means exactly what is owed was received; No (or no answer) never signs.
+// A card still going through never signs.
 
 export type CashAnswer = "yes" | "no" | null;
 
@@ -18,9 +17,10 @@ export function signRequest(i: {
   cashAnswer: CashAnswer;
   typedCode: string;
   cardPending: boolean;
-}): { place_code: string; cash_received_cents: number | null } | null {
+}): { place_code: string | null; cash_received_cents: number | null } | null {
+  const typed = i.typedCode.trim();
   const code = waiterCode(i.typedCode);
-  if (!code || i.cardPending) return null;
+  if ((typed !== "" && !code) || i.cardPending) return null;
   if (i.owedCents > 0 && i.cashAnswer !== "yes") return null;
   return { place_code: code, cash_received_cents: i.owedCents > 0 ? i.owedCents : null };
 }

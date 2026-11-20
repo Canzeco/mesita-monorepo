@@ -10,16 +10,19 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 export function usePayPlaces(at: { lat: number; lng: number } | null): {
   places: PayPlace[] | null;
   failed: boolean;
+  loading: boolean;
   refresh: () => void;
 } {
   const getSupabase = useLazyBrowserSupabase();
   const [places, setPlaces] = useState<PayPlace[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [nonce, setNonce] = useState(0);
   const atKey = at ? `${at.lat},${at.lng}` : "";
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     void apiListPayPlaces(getSupabase(), at)
       .then((list) => {
         if (cancelled) return;
@@ -28,6 +31,9 @@ export function usePayPlaces(at: { lat: number; lng: number } | null): {
       })
       .catch(() => {
         if (!cancelled) setFailed(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
@@ -38,5 +44,5 @@ export function usePayPlaces(at: { lat: number; lng: number } | null): {
   }, [nonce, atKey]);
 
   const refresh = useCallback(() => setNonce((n) => n + 1), []);
-  return { places, failed, refresh };
+  return { places, failed, loading, refresh };
 }

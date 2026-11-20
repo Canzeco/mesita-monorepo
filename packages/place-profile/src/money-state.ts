@@ -43,8 +43,7 @@ export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
  *  keeps working. `loyalty_cards` is Loyalty Cards (On only while a signed
  *  Loyalty Cards Agreement exists, enforced in SQL). `cash_payments` is Cash
  *  Payments (the waiter confirms a bill paid outside). `has_place_code` is not a
- *  switch but a fact the caller passes when it read place_codes
- *  (MESITA-3545): the waiter's Received needs one. Absent reads false.
+ *  switch. A click signs (MESITA-4485), so Cash Payments does not wait on it.
  *  `prepayments` is Mesita Prepayments (MESITA-3597): a voucher sells only
  *  when it AND the voucher's own switch are on; absent reads ON, so a reader
  *  from before it keeps working. The six voucher switches are Mesita
@@ -141,7 +140,7 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
   const stripe = settings.stripe_payments !== false;
   const cards = charges && !billingDue && stripe && settings.pay_cards !== false;
   const loyaltyCards = settings.loyalty_cards === true;
-  const cash = settings.cash_payments === true && settings.has_place_code === true;
+  const cash = settings.cash_payments === true;
   // Mesita Prepayments (MESITA-3597). Absent means on, as pay_cards.
   const prepayments = stripe && settings.prepayments !== false;
   const sell: MoneyVoucherKey[] = [];

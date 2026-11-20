@@ -14,11 +14,11 @@ Deno.test("readReviewBody: a token, a decision; nothing else approves", () => {
   assertEquals(r.ok && r.body.staffToken, "s2.x");
 });
 
-Deno.test("staffGate: only a current s2 waiter-code token of the story's place", () => {
+Deno.test("staffGate: a click approves; a bad token of the story's place does not", () => {
   const info = { version: 2 as const, src: "code" as const, jti: "j".repeat(22), exp: 0 };
   assertEquals(staffGate({ staffToken: "t", placeId: PLACE }, PLACE, info).ok, true);
   assertEquals((staffGate({ staffToken: "t", placeId: OTHER }, PLACE, info) as { code: string }).code, "wrong_place");
-  assertEquals((staffGate({ staffToken: null, placeId: PLACE }, PLACE, null) as { code: string }).code, "staff_code_needed");
+  assertEquals(staffGate({ staffToken: null, placeId: PLACE }, PLACE, null).ok, true);
   assertEquals((staffGate({ staffToken: "t", placeId: PLACE }, PLACE, null) as { code: string }).code, "staff_code_needed", "another place's token never verifies");
   assertEquals((staffGate({ staffToken: "t", placeId: PLACE }, PLACE, { ...info, version: 1, jti: null }) as { code: string }).code, "staff_code_needed");
 });

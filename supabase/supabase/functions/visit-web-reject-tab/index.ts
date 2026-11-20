@@ -30,15 +30,20 @@ serveJson("visit-web-reject-tab", async (req) => {
   const { token, place_id: placeId, staff_token: staffToken } = bodyRes.body;
   if (!isTabToken(token)) return json({ ok: false, code: "bad_request", error: "That is not a guest's payment" }, 400);
   if (!isUuid(placeId)) return json({ ok: false, code: "bad_request", error: "place_id must be a Mesita place id" }, 400);
-  if (typeof staffToken !== "string" || staffToken.length > 128) {
+  const typedCode = typeof staffToken === "string" && staffToken.length > 0;
+  if (typedCode && staffToken.length > 128) {
     return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
   }
 
   try {
-    const keys = await supabaseStaffStore(admin).keys(placeId);
-    const info = await readStaffToken(env.serviceKey, placeId, staffToken, keys, Date.now());
-    if (!info || !info.jti) {
-      return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
+    let jti = "click";
+    if (typedCode) {
+      const keys = await supabaseStaffStore(admin).keys(placeId);
+      const info = await readStaffToken(env.serviceKey, placeId, staffToken, keys, Date.now());
+      if (!info || !info.jti) {
+        return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
+      }
+      jti = info.jti;
     }
     const tab = await readTabByToken(admin, token);
     if (!tab || tab.origin !== "guest") {
@@ -51,7 +56,7 @@ serveJson("visit-web-reject-tab", async (req) => {
     const r = await callTabRpc(admin, "pay_tab_reject", {
       p_tab_id: tab.id,
       p_place_id: placeId,
-      p_staff_key_hash: await staffDeviceHash(info.jti),
+      p_staff_key_hash: await staffDeviceHash(jti),
     });
     if (r.ok !== true) {
       const refusal = rpcRefusal(r);

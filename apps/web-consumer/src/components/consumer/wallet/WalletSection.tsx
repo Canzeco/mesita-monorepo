@@ -7,11 +7,11 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
 import { photoUrl } from "@mesita/place-profile";
 import { apiRemoveCard, CARD_REFUSAL, type SavedCard } from "@/lib/api/cards";
-import { CONSUMER_ROUTES, storyTicketPath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, storyTicketPath, walletSendPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { placeHref } from "@/lib/place-route";
+import { prepayHref } from "./WalletPickers";
 import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { GiftClaimSheet } from "./SendCredit";
@@ -19,13 +19,9 @@ import { useWallet } from "./use-wallet";
 import { useStoryNow } from "./use-story-now";
 import { openStories } from "@/lib/story-lines";
 import {
-  AddCardTile,
-  CardTileSkeleton,
   AddRow,
-  CardTile,
   CreditsRow,
   EmptyLoyaltyLine,
-  PaymentMethods,
   RowsSkeleton,
   StoryRow,
   WalletBodySkeleton,
@@ -33,7 +29,6 @@ import {
   pendingWords,
 } from "./WalletLists";
 import { money, type WalletBalance } from "@/lib/api/wallet";
-import { openAddCardModal } from "@/lib/added-card";
 
 // ONE READ, ONE PAINT (Pato, 2026-11-12, MESITA-3814: "first load the
 // functions and then display all the wallets, don't display stuff in an
@@ -199,7 +194,6 @@ export function WalletSection({
   }, [router]);
 
   // Saved cards come with the Wallet's read; null means Stripe failed.
-  const cards: SavedCard[] = wallet?.cards ?? [];
   const cardsFailed = wallet !== null && wallet.cards === null;
   useEffect(() => {
     if (cardsFailed && !cardsToasted.current) {
@@ -277,38 +271,42 @@ export function WalletSection({
         </p>
       ) : null}
 
-      {/* PAYMENT METHODS (Pato, 2026-11-20, MESITA-4475): the card only.
-          Cash stays in the pay flow, not on this list. No card yet = Add a
-          card; a card that has not loaded = the skeleton. */}
-      <PaymentMethods>
-        {cards[0] ? (
-          <CardTile card={cards[0]} onOpen={() => setMethod({ kind: "card", card: cards[0] })} />
-        ) : cardsFailed ? (
-          <CardTileSkeleton />
-        ) : (
-          <AddCardTile onClick={() => openAddCardModal(() => reread())} />
-        )}
-      </PaymentMethods>
-
-      {/* LOYALTY CARDS (MESITA-4232, D9/D10/D13): waiting Stories as their
-          place's pending, then each card with its ready pill, "Ready to
-          spend" and, when money is coming, a blue pending box (MESITA-4260),
-          then Add a Loyalty Card. Empty: one grey line. */}
-      <WalletPanelList title="Loyalty Cards">
+      {/* LOYALTY (MESITA-4485): under the places. The saved card lives in
+          the header. Stories, then each card, then Add a Loyalty Card. */}
+      <WalletPanelList title="Loyalty">
         {creditsState === "rows"
           ? stories.map((s) => <StoryRow key={s.purchase_id} story={s} now={storyNow} onOpen={() => navigateTo(router, storyTicketPath(s.story_id), { motion: "drill" })} />)
           : null}
         {creditsState === "rows"
           ? credits?.map((row) => (
-              <CreditsRow
-                key={row.card.key}
-                card={row.card}
-                href={row.card.tap.kind === "link" ? row.card.tap.href : placeHref(row.placeSlug)}
-                gone={row.balance.place === null}
-                eager={shown++ < EAGER_CARDS}
-                ready
-                pendingLines={pendingLines(row.balance, now)}
-              />
+              <div key={row.card.key} className="flex flex-col">
+                <CreditsRow
+                  card={row.card}
+                  gone={row.balance.place === null}
+                  eager={shown++ < EAGER_CARDS}
+                  ready
+                  pendingLines={pendingLines(row.balance, now)}
+                />
+                <div className="flex justify-end gap-2 px-3 pb-3">
+                  <button
+                    type="button"
+                    className="border-border h-11 rounded-xl border px-3 text-sm"
+                    onClick={() => navigateTo(router, prepayHref(row.placeSlug), { motion: "drill" })}
+                  >
+                    Add Funds
+                  </button>
+                  <button
+                    type="button"
+                    className="border-border h-11 rounded-xl border px-3 text-sm disabled:opacity-40"
+                    disabled={row.balance.place === null}
+                    onClick={() => {
+                      if (row.balance.place !== null) navigateTo(router, walletSendPath(row.placeId), { motion: "push" });
+                    }}
+                  >
+                    Send Gift
+                  </button>
+                </div>
+              </div>
             ))
           : null}
         {creditsState === "empty" ? <EmptyLoyaltyLine /> : null}

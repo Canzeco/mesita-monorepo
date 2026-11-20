@@ -215,7 +215,7 @@ function NowPanel({ s, now }: { s: StoryTicket; now: number }) {
           <div className="rounded-2xl bg-white p-3" data-story-qr>
             <QRCodeSVG value={s.review_url} size={224} marginSize={0} aria-label="Story QR for the waiter" />
           </div>
-          <p className="text-sm leading-snug font-semibold">They scan it, check your story and approve it with the waiter code.</p>
+          <p className="text-sm leading-snug font-semibold">They scan it, check your story and tap Approve.</p>
           <a href={s.review_url} target="_blank" rel="noreferrer" className="text-muted-foreground min-h-9 text-sm underline underline-offset-2">
             Open the waiter&apos;s link
           </a>

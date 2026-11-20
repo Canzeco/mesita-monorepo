@@ -128,7 +128,7 @@ export type StoryReviewed = { outcome: "approved" | "already_approved" | "reject
  *  refusal carries the server's code and words: `gone`, `wrong_place`,
  *  `already_decided`, `story_too_old`. */
 export async function reviewStory(
-  args: { token: string; decision: "approve" | "reject"; staff_token: string; place_id: string },
+  args: { token: string; decision: "approve" | "reject"; staff_token?: string; place_id: string },
 ): Promise<StoryReviewed | TabRefusal | "failed"> {
   const { res, data } = await post("visit-web-review-story", args);
   if (data?.ok) {
@@ -417,7 +417,7 @@ export type Verified = {
 };
 
 export async function verifyTab(
-  args: { token: string; place_id: string; staff_token: string; cash_received_cents: number | null },
+  args: { token: string; place_id: string; staff_token?: string; cash_received_cents: number | null },
 ): Promise<Verified | TabRefusal | "failed"> {
   const { res, data } = await post("visit-web-verify-tab", args);
   if (data?.ok) {
@@ -437,7 +437,7 @@ export async function verifyTab(
 /** MESITA-3857: the waiter's Reject of a guest's bill (the amount is wrong).
  *  Nothing is charged, no credit is spent; a second Reject moves nothing. */
 export async function rejectTab(
-  args: { token: string; place_id: string; staff_token: string },
+  args: { token: string; place_id: string; staff_token?: string },
 ): Promise<{ outcome: "rejected" | "already_rejected" } | TabRefusal | "failed"> {
   const { res, data } = await post("visit-web-reject-tab", args);
   if (data?.ok) return { outcome: data.outcome === "already_rejected" ? "already_rejected" : "rejected" };
