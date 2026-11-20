@@ -34,7 +34,7 @@ import {
   GenerateSteps,
   GenerateTile,
 } from "@/components/consumer/GeneratingPlace";
-import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { Screen } from "@/components/consumer/nav/Screen";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiPreviewGooglePlace,
@@ -62,47 +62,43 @@ export type GenerateTarget = {
 // closes the dialog once the address moves (MESITA-2957).
 type Phase = "confirm" | "generating" | "opening" | "error";
 
-export function GeneratePlaceDialog({
-  open,
+export function generateHref(target: {
+  gid: string;
+  name: string;
+  address?: string | null;
+}): string {
+  const q = new URLSearchParams({ gid: target.gid, name: target.name });
+  if (target.address) q.set("address", target.address);
+  return `/search/generate?${q.toString()}`;
+}
+
+/** The confirm, on its own page (MESITA-4113). The tap creates; the page
+ *  stays up until the real profile replaces it (MESITA-2957). */
+export function GeneratePlaceScreen({
   target,
   onClose,
   onGenerated,
 }: {
-  open: boolean;
-  /** Kept after close so the exit fade still has its text. */
-  target: GenerateTarget | null;
+  target: GenerateTarget;
   onClose: () => void;
   onGenerated: (opened: OpenedGooglePlace) => void;
 }) {
   const [busy, setBusy] = useState(false);
-  // Each open starts clean: an opening hand-off ends with the dialog closed
-  // while still busy, and a reopen must not inherit it.
-  const [opens, setOpens] = useState(0);
-  const [wasOpen, setWasOpen] = useState(open);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) {
-      setBusy(false);
-      setOpens((n) => n + 1);
-    }
-  }
   return (
-    <LocalDialog
-      open={open}
-      onClose={() => (busy ? undefined : onClose())}
-      ariaLabel="Generate a profile"
+    <Screen
+      title="Generate"
+      scrolls
+      onBack={() => {
+        if (!busy) onClose();
+      }}
     >
-      {target ? (
-        // A fresh body per place: no state carries over between opens.
-        <GenerateBody
-          key={`${target.gid}:${opens}`}
-          target={target}
-          onClose={onClose}
-          onGenerated={onGenerated}
-          onBusy={setBusy}
-        />
-      ) : null}
-    </LocalDialog>
+      <GenerateBody
+        target={target}
+        onClose={onClose}
+        onGenerated={onGenerated}
+        onBusy={setBusy}
+      />
+    </Screen>
   );
 }
 

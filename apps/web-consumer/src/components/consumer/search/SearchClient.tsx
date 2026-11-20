@@ -68,7 +68,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { usePathname } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { MapDot, Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
@@ -87,7 +86,6 @@ import {
 } from "@/lib/use-user-location";
 import { MAP_USER_ZOOM, MONTERREY_CENTER } from "@/lib/map-defaults";
 import { placeHref } from "@/lib/place-route";
-import type { OpenedGooglePlace } from "@/lib/use-open-google-place";
 import { useOpenPlaceHref } from "@/lib/use-open-place-href";
 import {
   createdPlaceId,
@@ -137,11 +135,7 @@ import {
   SearchRailOverlay,
   type LoadCoords,
 } from "./search-catalog-overlays";
-import { AddPlaceSheet } from "./AddPlaceSheet";
-import {
-  GeneratePlaceDialog,
-  type GenerateTarget,
-} from "./GeneratePlaceDialog";
+import { generateHref } from "./GeneratePlaceDialog";
 import { SearchLocateButton } from "./SearchLocateButton";
 import {
   anchorPlaceFromPrediction,
@@ -358,29 +352,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // a flicker — so this stays true until the query is really gone.
   const [barFocused, setBarFocused] = useState(false);
   const searchMode = barFocused || querying;
-  // ADD A PLACE IS ITS OWN SHEET (Pato, MESITA-2902: "open a new modal and
-  // write a searchbar of the place to add … and click the create new
-  // profile"): the rail's Add card opens AddPlaceSheet; MESITA-2885's Add
-  // mode on this bar is gone.
-  const [addOpen, setAddOpen] = useState(false);
-  // Generate's confirm (MESITA-2935). The target outlives `open` so the
-  // dialog's exit fade keeps its text.
-  const [generateOpen, setGenerateOpen] = useState(false);
-  const [generateTarget, setGenerateTarget] = useState<GenerateTarget | null>(
-    null,
-  );
-  // The hand-off (MESITA-2957: "transition from second image to fourth image
-  // directly, even if we await in the second image"). A landed create keeps
-  // the dialog up and pushes the profile; the dialog closes only once the
-  // address has moved, so the profile is what replaces it — never bare
-  // Search, never the blank frame of the push's hard-load fallback.
-  const pathname = usePathname();
-  const [handoffFrom, setHandoffFrom] = useState<string | null>(null);
-  if (handoffFrom !== null && pathname !== handoffFrom) {
-    setHandoffFrom(null);
-    setGenerateOpen(false);
-  }
-
   // Search biases to the CAMERA, not the device: on a map you have panned to
   // another neighbourhood, results near your house are the wrong answer.
   const searchOrigin = cameraCenter ?? location ?? MONTERREY_CENTER;
@@ -734,27 +705,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // along when the open came from a rail card or a pin.
   const openGoogleProfile = useCallback(
     (prediction: PlacePrediction, card?: Place) => {
-      setGenerateTarget({
-        gid: prediction.placeId,
-        name: card?.name || prediction.mainText,
-        address: card?.address || prediction.secondaryText || null,
-      });
-      setGenerateOpen(true);
+      openPlaceHref(
+        generateHref({
+          gid: prediction.placeId,
+          name: card?.name || prediction.mainText,
+          address: card?.address || prediction.secondaryText || null,
+        }),
+      );
     },
-    [],
+    [openPlaceHref],
   );
 
   // No toast on success: the profile opening is the payoff, and its Enrich
   // tab asks for votes (design review D7).
-  const onGenerated = useCallback(
-    (opened: OpenedGooglePlace) => {
-      setHandoffFrom(pathname);
-      resetSearchSession();
-      openPlaceHref(opened.href);
-    },
-    [openPlaceHref, pathname, resetSearchSession],
-  );
-
   // Pin / rail-card SECOND tap on a from-Google row = THE EXPLICIT OPEN
   // (MESITA-2298): a row this session already opened goes straight to its
   // profile; a Mesita row opens as Mesita; a Google-only row runs
@@ -1239,30 +1202,18 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             railScrollRef={railScrollRef}
             onRailScroll={handleRailScroll}
             onOpenPlace={handleOpenPlace}
-            onAdd={() => setAddOpen(true)}
+            onAdd={() => {
+              const q = new URLSearchParams({
+                lat: String(searchOrigin.lat),
+                lng: String(searchOrigin.lng),
+              });
+              openPlaceHref(`/search/add?${q.toString()}`);
+            }}
             setRailCardRef={(placeId, el) => {
               railRefs.current.set(placeId, el);
             }}
           />
         )}
-        {/* The Add card's sheet: a Google search whose row button generates
-            the profile (through the Generate dialog, MESITA-2935) or opens
-            the Mesita place (MESITA-2902). */}
-        <AddPlaceSheet
-          open={addOpen}
-          onClose={() => setAddOpen(false)}
-          origin={searchOrigin}
-          onPick={openGoogleOnly}
-        />
-        <GeneratePlaceDialog
-          open={generateOpen}
-          target={generateTarget}
-          onClose={() => {
-            setHandoffFrom(null);
-            setGenerateOpen(false);
-          }}
-          onGenerated={onGenerated}
-        />
       </div>
     </div>
   );

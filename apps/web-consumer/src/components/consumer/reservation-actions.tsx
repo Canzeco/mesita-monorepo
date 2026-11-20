@@ -1,14 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { PushLink } from "@/components/consumer/nav/PushLink";
+import { Screen } from "@/components/consumer/nav/Screen";
 import { PANEL_CLASS } from "@/components/shared/Panel";
 import { CalendarClock, Loader2, MapPin, XCircle } from "lucide-react";
 
-import {
-  LocalDialog,
-  LocalSheet,
-} from "@/components/consumer/overlay/LocalOverlay";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import {
   buildDateOptions,
   firstOpenDate,
@@ -18,8 +17,10 @@ import {
 } from "@/components/consumer/reservation-pickers";
 import {
   apiCancelReservation,
+  apiListReservations,
   apiUpdateReservation,
 } from "@/lib/api/reservations";
+import { toReservationItem } from "@/lib/reservations-adapter";
 import type { ReservationItem } from "@/lib/reservation-types";
 import { placeHref } from "@/lib/place-route";
 import { resolveSlot, weeklyHoursFrom } from "@/lib/reservation-slots";
@@ -27,7 +28,6 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import {
   ERROR_BOX_CLASS,
-  SHEET_BODY_CLASS,
   SHEET_TITLE_CLASS,
 } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
@@ -63,59 +63,12 @@ export function ReservationActions({
   onChanged?: () => void;
 }) {
   const supabase = useBrowserSupabase();
-  // Not memoised: the sheet can sit mounted across midnight, and both ends of
-  // the row would go stale — a dead "Today" pill and a last pill a day past the
-  // one-month horizon.
-  const tz = r.placeTimezone || null;
-  // Only times inside the place's hours (MESITA-3953); a place with none
-  // offers the baseline window.
-  const hours = useMemo(() => weeklyHoursFrom(r.placeHours), [r.placeHours]);
-  const dateOptions = buildDateOptions(hours, tz);
-
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Seeded from the current booking so "just move it an hour" is two taps.
-  const [dateChoice, setDateChoice] = useState(() =>
-    localDate(r.reservedAt, tz),
-  );
-  const [timeChoice, setTimeChoice] = useState(() =>
-    localTime(r.reservedAt, tz),
-  );
-  const [party, setParty] = useState(r.partySize);
-
-  // Derived, never stored: the seeded slot can already be behind the place's
-  // clock (tonight's table, rescheduled inside the 4h grace), so fall through
-  // to the first slot that's still ahead of it.
-  const date =
-    dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
-    firstOpenDate(dateOptions);
-  const time = resolveSlot(date, timeChoice, hours, tz);
-
   const canReschedule = r.canReschedule ?? false;
   const canCancel = r.canCancel ?? false;
-
-  async function submitReschedule() {
-    if (busy || !date || !time) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await apiUpdateReservation(supabase, {
-        reservationId: r.id,
-        reservedAt: placeInstantIso(date, time, tz),
-        partySize: party,
-      });
-      setSheetOpen(false);
-      toast.success("Mesita is calling the place with your new time.");
-      onChanged?.();
-    } catch (e) {
-      setError(errMsg(e, "Couldn't update the reservation."));
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function submitCancel() {
     if (busy) return;
@@ -154,12 +107,8 @@ export function ReservationActions({
       </PushLink>
 
       {canReschedule && (
-        <button
-          type="button"
-          onClick={() => {
-            setError(null);
-            setSheetOpen(true);
-          }}
+        <PushLink
+          href={`/reservation/${r.id}/reschedule`}
           className="hover:bg-muted flex items-center justify-between gap-3 px-4 py-3 text-left transition"
         >
           <span className="flex items-center gap-3">
@@ -171,7 +120,7 @@ export function ReservationActions({
           <span className="text-muted-foreground text-xs">
             We call the place again
           </span>
-        </button>
+        </PushLink>
       )}
 
       {canCancel && (
@@ -196,64 +145,6 @@ export function ReservationActions({
           </span>
         </button>
       )}
-
-      {/* ── Reschedule ─────────────────────────────────────────────────── */}
-      <LocalSheet
-        open={sheetOpen}
-        onClose={() => (busy ? undefined : setSheetOpen(false))}
-        ariaLabel={`Reschedule at ${r.placeName}`}
-      >
-        <div className={SHEET_BODY_CLASS}>
-          <div className="flex items-center gap-3">
-            <span className="bg-primary/10 text-primary flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-              <CalendarClock className="h-5 w-5" />
-            </span>
-            <div className="min-w-0">
-              <h2 className={SHEET_TITLE_CLASS}>Move your table</h2>
-              <p className="text-muted-foreground truncate text-xs">
-                {r.placeName} · now {r.when}
-              </p>
-            </div>
-          </div>
-
-          <p className="text-muted-foreground type-body mt-3 leading-snug">
-            Pick a new slot and Mesita calls {r.placeName} again to confirm it.
-            Your table isn&apos;t moved until they say yes.
-          </p>
-
-          <div className="mt-4 flex flex-col gap-4">
-            <ReservationDatePicker
-              options={dateOptions}
-              value={date}
-              onChange={setDateChoice}
-            />
-            <ReservationTimePicker
-              value={time}
-              onChange={setTimeChoice}
-              date={date}
-              hours={hours}
-              tz={tz}
-            />
-            <ReservationPartyPicker value={party} onChange={setParty} />
-          </div>
-
-          {error && <p className={cn(ERROR_BOX_CLASS, "mt-4")}>{error}</p>}
-
-          <button
-            type="button"
-            onClick={submitReschedule}
-            disabled={busy || !date || !time}
-            className="bg-primary text-primary-foreground mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition active:scale-[0.99] disabled:opacity-60"
-          >
-            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            {busy
-              ? "Updating…"
-              : !time
-                ? "No times left"
-                : `Ask for ${party} ${guestNoun(party)} at ${time}`}
-          </button>
-        </div>
-      </LocalSheet>
 
       {/* ── Cancel ─────────────────────────────────────────────────────── */}
       <LocalDialog
@@ -296,4 +187,140 @@ export function ReservationActions({
       </LocalDialog>
     </section>
   );
+}
+
+// Move your table, on its own page (MESITA-4113). Same EF as the old sheet.
+export function RescheduleForm({ r }: { r: ReservationItem }) {
+  const supabase = useBrowserSupabase();
+  const router = useRouter();
+  const tz = r.placeTimezone || null;
+  const hours = useMemo(() => weeklyHoursFrom(r.placeHours), [r.placeHours]);
+  const dateOptions = buildDateOptions(hours, tz);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dateChoice, setDateChoice] = useState(() =>
+    localDate(r.reservedAt, tz),
+  );
+  const [timeChoice, setTimeChoice] = useState(() =>
+    localTime(r.reservedAt, tz),
+  );
+  const [party, setParty] = useState(r.partySize);
+  const date =
+    dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
+    firstOpenDate(dateOptions);
+  const time = resolveSlot(date, timeChoice, hours, tz);
+
+  async function submitReschedule() {
+    if (busy || !date || !time) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await apiUpdateReservation(supabase, {
+        reservationId: r.id,
+        reservedAt: placeInstantIso(date, time, tz),
+        partySize: party,
+      });
+      toast.success("Mesita is calling the place with your new time.");
+      router.replace(`/reservation/${r.id}`);
+    } catch (e) {
+      setError(errMsg(e, "Couldn't update the reservation."));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Screen title="Reschedule" scrolls>
+      <div className="flex flex-col px-4 py-5">
+        <div className="flex items-center gap-3">
+          <span className="bg-primary/10 text-primary flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
+            <CalendarClock className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 className={SHEET_TITLE_CLASS}>Move your table</h2>
+            <p className="text-muted-foreground truncate text-xs">
+              {r.placeName} · now {r.when}
+            </p>
+          </div>
+        </div>
+        <p className="text-muted-foreground type-body mt-3 leading-snug">
+          Pick a new slot and Mesita calls {r.placeName} again to confirm it.
+          Your table isn&apos;t moved until they say yes.
+        </p>
+        <div className="mt-4 flex flex-col gap-4">
+          <ReservationDatePicker
+            options={dateOptions}
+            value={date}
+            onChange={setDateChoice}
+          />
+          <ReservationTimePicker
+            value={time}
+            onChange={setTimeChoice}
+            date={date}
+            hours={hours}
+            tz={tz}
+          />
+          <ReservationPartyPicker value={party} onChange={setParty} />
+        </div>
+        {error && <p className={cn(ERROR_BOX_CLASS, "mt-4")}>{error}</p>}
+        <button
+          type="button"
+          onClick={submitReschedule}
+          disabled={busy || !date || !time}
+          className="bg-primary text-primary-foreground mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition active:scale-[0.99] disabled:opacity-60"
+        >
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+          {busy
+            ? "Updating…"
+            : !time
+              ? "No times left"
+              : `Ask for ${party} ${guestNoun(party)} at ${time}`}
+        </button>
+      </div>
+    </Screen>
+  );
+}
+
+type Loaded = { state: "loading" } | { state: "missing" } | { state: "found"; r: ReservationItem };
+
+export function RescheduleRoute({ id }: { id: string }) {
+  const supabase = useBrowserSupabase();
+  const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    apiListReservations(supabase, { scope: "all", limit: 200 })
+      .then(({ reservations }) => {
+        if (cancelled) return;
+        const match = reservations.find((row) => row.id === id);
+        setLoaded(
+          match
+            ? { state: "found", r: toReservationItem(match) }
+            : { state: "missing" },
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setLoaded({ state: "missing" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, supabase]);
+
+  if (loaded.state === "loading") {
+    return (
+      <Screen title="Reschedule" scrolls>
+        <p className="text-muted-foreground px-4 py-6 text-sm">Loading…</p>
+      </Screen>
+    );
+  }
+  if (loaded.state === "missing" || !loaded.r.canReschedule) {
+    return (
+      <Screen title="Reschedule" scrolls>
+        <p className="text-muted-foreground px-4 py-6 text-sm">
+          This table can&apos;t be moved.
+        </p>
+      </Screen>
+    );
+  }
+  return <RescheduleForm r={loaded.r} />;
 }

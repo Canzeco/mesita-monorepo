@@ -96,7 +96,7 @@
 import { Suspense, useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUp,
   Clock,
@@ -129,7 +129,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { placeHref } from "@/lib/place-route";
 import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
 import { EmptyState, Skeleton } from "@/components/shared";
-import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { goBack } from "@/lib/navigate";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { cn, errMsg, formatKm } from "@/lib/utils";
 import {
@@ -415,8 +415,8 @@ function FeedRow({
   );
 }
 
-/** THE OPEN CARD IS AN ADDRESS (MESITA-3026, Pato: "use routing there …
- *  have a bit persistence"): /home/social?person=<place>&kind=<verb>&at=<time>,
+/** THE OPEN CARD IS AN ADDRESS (MESITA-3026, then a page in MESITA-4113):
+ *  /home/social/person?person=<place>&kind=<verb>&at=<time>,
  *  and &grid=saved on the Likes tab. The event names the member, never a
  *  member id (MESITA-2460). Opening a card pushes it, so back from a place
  *  the card is open again; the tab is replaced, never pushed. */
@@ -433,6 +433,9 @@ export function cardEventOf(params: {
   if (!at || !Number.isFinite(Date.parse(at))) return null;
   return { placeId, kind, at };
 }
+
+/** The member card's page. The query is the event (MESITA-2460, MESITA-4113). */
+export const PERSON_PROFILE_PATH = "/home/social/person";
 
 export function cardHref(
   base: string,
@@ -461,12 +464,6 @@ const cardMemory = new Map<
   string,
   { filled: ReadonlyMap<string, Place | null>; scrollTop: number }
 >();
-/** The card this tab pushed, so its close is a back, not a second entry. */
-let pushedCard: string | null = null;
-function setPushedCard(key: string | null) {
-  pushedCard = key;
-}
-
 function remember<V>(map: Map<string, V>, key: string, value: V) {
   map.delete(key);
   map.set(key, value);
@@ -590,12 +587,10 @@ function PersonCard({
       ? `https://www.instagram.com/${encodeURIComponent(person.handle)}/`
       : null;
   return (
-    <LocalDialog
-      open
-      onClose={onClose}
-      ariaLabel={`${who}'s profile`}
-      instant
-      scroll
+    <div
+      className="bg-card flex min-h-0 flex-1 flex-col"
+      role="region"
+      aria-label={`${who}'s profile`}
     >
       {/* A TOP BAR THAT NEVER SCROLLS (Pato, MESITA-3061: "leave the name
           or something and the x not overlapping"; the X had floated on the
@@ -729,7 +724,38 @@ function PersonCard({
           )}
         </div>
       </div>
-    </LocalDialog>
+    </div>
+  );
+}
+
+/** The member card as a page (MESITA-4113). */
+export function PersonProfile() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const event = params ? cardEventOf(params) : null;
+  const tab: HistoryTab = params?.get("grid") === "saved" ? "saved" : "viewed";
+  if (!event) {
+    return (
+      <p
+        className="text-muted-foreground flex flex-1 items-center justify-center p-6 text-center text-sm"
+        data-social-person-gone
+      >
+        This profile isn&apos;t available
+      </p>
+    );
+  }
+  return (
+    <PersonCard
+      event={event}
+      fallback={null}
+      tab={tab}
+      onTab={(t) => {
+        router.replace(cardHref(PERSON_PROFILE_PATH, event, t), {
+          scroll: false,
+        });
+      }}
+      onClose={() => goBack(router)}
+    />
   );
 }
 
@@ -1134,7 +1160,6 @@ function SocialFeedBody() {
   const [pendingNew, setPendingNew] = useState(0);
   // The person card is the address (MESITA-3026).
   const router = useRouter();
-  const pathname = usePathname() ?? CONSUMER_ROUTES.homeSocial;
   const params = useSearchParams();
   // Signed out, no person card draws, even from a ?person= address
   // (MESITA-4325): the tap asks to sign in instead (openPerson).
@@ -1294,82 +1319,55 @@ function SocialFeedBody() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [next, moreRound, gaveUp, fromKey, supabase]);
 
+  const legacyCard = cardEvent
+    ? `${cardEvent.placeId}|${cardEvent.kind}|${cardEvent.at}|${cardTab}`
+    : "";
+  // An old ?person= address on the feed moves to the page.
+  useEffect(() => {
+    if (!cardEvent || !legacyCard) return;
+    router.replace(cardHref(PERSON_PROFILE_PATH, cardEvent, cardTab));
+    // legacyCard is the address. cardEvent is a new object every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legacyCard, router]);
+
   const openPerson = (it: ActivityFeedItem) => {
-    // THE MODAL, NOT THE PROFILE (Pato, 2026-11-18, MESITA-4325: "if i
-    // click someone's profile, and not signed, you should not open its
-    // profile. just display the modal").
+    // Signed out, the sign modal — never the profile (Pato, MESITA-4325).
+    const href = cardHref(PERSON_PROFILE_PATH, it, "viewed");
     if (signedOut) {
-      openSignGate(cardHref(pathname, it, "viewed"), null);
+      openSignGate(href, null);
       return;
     }
-    setPushedCard(cardKey(it));
-    router.push(cardHref(pathname, it, "viewed"), { scroll: false });
+    router.push(href);
   };
-  const closePerson = () => {
-    if (cardEvent && pushedCard === cardKey(cardEvent)) {
-      setPushedCard(null);
-      router.back();
-    } else {
-      router.replace(pathname, { scroll: false });
-    }
-  };
-  const cardRow =
-    cardEvent && state.status === "ready"
-      ? state.items.find((it) => cardKey(it) === cardKey(cardEvent))
-      : undefined;
-  const card = (
-    <PersonCard
-      event={cardEvent}
-      fallback={cardRow?.person ?? null}
-      tab={cardTab}
-      onTab={(t) => {
-        if (cardEvent) {
-          router.replace(cardHref(pathname, cardEvent, t), { scroll: false });
-        }
-      }}
-      onClose={closePerson}
-    />
-  );
 
   if (state.status === "loading") {
-    return (
-      <>
-        <FeedSkeleton />
-        {card}
-      </>
-    );
+    return <FeedSkeleton />;
   }
   if (state.status === "error") {
     return (
-      <>
-        <EmptyState
-          icon={Users}
-          title="Couldn't load Social"
-          description={state.message}
-          action={{
-            label: "Try again",
-            onClick: () => {
-              setState({ status: "loading" });
-              setAttempt((n) => n + 1);
-            },
-          }}
-        />
-        {card}
-      </>
+      <EmptyState
+        icon={Users}
+        title="Couldn't load Social"
+        description={state.message}
+        action={{
+          label: "Try again",
+          onClick: () => {
+            setState({ status: "loading" });
+            setAttempt((n) => n + 1);
+          },
+        }}
+      />
     );
   }
   const rows = state.items;
   const more = next != null && !gaveUp;
   if (rows.length === 0 && !more) {
     return (
-      <>
-        <EmptyState
-          icon={Users}
-          title="No activity yet"
-          description="When members like or view a place, it shows up here."
-        />
-        {card}
-      </>
+      <EmptyState
+        icon={Users}
+        title="No activity yet"
+        description="When members like or view a place, it shows up here."
+      />
     );
   }
   return (
@@ -1444,7 +1442,6 @@ function SocialFeedBody() {
           </li>
         )}
       </ul>
-      {card}
     </div>
   );
 }

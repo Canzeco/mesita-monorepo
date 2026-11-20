@@ -61,8 +61,6 @@ export const CONFIRM_FILES = [
 const SHEET_ALLOWLIST = [
   "components/consumer/pay/PayPick.tsx",
   "components/consumer/home/LocationPicker.tsx",
-  "components/consumer/reservation-actions.tsx",
-  "components/consumer/search/AddPlaceSheet.tsx",
 ];
 
 /** Non-confirm dialogs that become pages (MESITA-4112/4113). Only shrinks. */
@@ -71,10 +69,6 @@ const DIALOG_ALLOWLIST = [
   // "modal floating"; a full-screen sheet in MESITA-4417).
   "components/consumer/home/CategoriesModal.tsx",
   "components/consumer/ComingSoonModal.tsx",
-  "components/consumer/home/SocialFeed.tsx",
-  // Search's Menu is Home's Categories modal (MESITA-4469). The dialog
-  // import lives in CategoriesModal, so this file is off the list.
-  "components/consumer/search/GeneratePlaceDialog.tsx",
   // Ask AI over Search (MESITA-4480, decision: Pato asked for a popup
   // modal, not its own page).
   "components/consumer/search/AskAiModal.tsx",
