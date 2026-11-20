@@ -224,11 +224,6 @@ verify_jwt = false
 verify_jwt = false
 
 
-# MESITA-3405: "Call me with the code" on phone sign-in. Public: the guest has
-# no session yet; it only repeats a code Auth already texted to that number.
-[functions.consumer-web-call-sign-in-code]
-verify_jwt = false
-
 # Memo — the consumer AI concierge (Mesita's third agent, alongside the
 # Enricher/Atlas and the Reservationist). Public like the catalog reads:
 # decision — the concierge answers signed-out visitors. Each message is one

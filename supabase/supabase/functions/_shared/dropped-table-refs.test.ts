@@ -130,6 +130,9 @@ const DROPPED_TABLES = [
   "saved_venues",
   "scheduled_project_creations",
   "scheduled_unit_creations",
+  // MESITA-4318: the call-me sign-in pick. sign_in_codes left in 20261109010000.
+  "sign_in_calls",
+  "sign_in_codes",
   "staff_invites",
   "staff_whatsapp_messages",
   "staff_whatsapp_sessions",

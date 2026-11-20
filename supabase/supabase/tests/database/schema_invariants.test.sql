@@ -2074,6 +2074,11 @@ select has_index(
   'the flood cap counts on (consumer_id, created_at)'
 );
 
+select hasnt_table('public', 'sign_in_calls',
+  'sign_in_calls is gone (MESITA-4318: phone sign-in is a text code only)');
+select hasnt_table('public', 'sign_in_codes',
+  'sign_in_codes is gone (dropped with the call path, 20261109010000)');
+
 select * from finish();
 
 rollback;
