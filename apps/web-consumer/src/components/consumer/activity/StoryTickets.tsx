@@ -1,7 +1,6 @@
 "use client";
 
-// TICKETS › STORIES (MESITA-4405, Pato 2026-11-18: Tickets is Visits ·
-// Vouchers · Gifts · Stories): every open Story first, then the 20 most
+// TICKETS › STORIES (MESITA-4405, Pato 2026-11-18): every open Story first, then the 20 most
 // recently decided, from the Wallet read's `stories`. A row is the place,
 // the bonus, the state in its tone and the one line of what to do now; it
 // opens the Story's screen. The tab is always shown (an empty list says so).
