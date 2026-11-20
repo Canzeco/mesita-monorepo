@@ -4,7 +4,6 @@ import { GeneratingPlaceScreen } from "@/components/consumer/GeneratingPlace";
 import { HomeLoadingFrame } from "@/components/consumer/home/HomeLoadingFrame";
 import { PlacePageSkeleton } from "@/components/consumer/overlay/DetailSkeletons";
 import { PayBillSkeleton } from "@/components/consumer/pay/PayPage";
-import SearchChatLoading from "./(discovery)/search/chat/loading";
 import SearchLoading from "./(discovery)/search/loading";
 import MeLoading from "./me/(hub)/loading";
 import InstagramLoading from "./me/instagram/loading";
@@ -48,7 +47,6 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   home: () => <HomeLoadingFrame />,
   homeSocial: () => <HomeLoadingFrame />,
   search: () => <SearchLoading />,
-  searchChat: () => <SearchChatLoading />,
   place: () => <PlacePageSkeleton />,
   placeGoogle: () => (
     <div className="flex h-full min-h-0 flex-col">

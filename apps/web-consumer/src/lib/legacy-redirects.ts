@@ -10,7 +10,7 @@
 // A REDIRECT WHOSE SOURCE IS A LIVE ROUTE SHADOWS IT ENTIRELY — the page
 // never renders and typecheck, build and the whole vitest suite stay green.
 // Nothing here may name /home/places, /home/social, /pay, /wallet, /search,
-// /search/chat, /me or any live /me/<box>. Pay and Wallet have live children
+// /me or any live /me/<box>. Pay and Wallet have live children
 // (/pay/place/<placeId>, /pay/bill/<id>, /pay/receipt/<id>,
 // /wallet/place/<placeId>, /wallet/gift/<token>), so their old children are
 // listed by name, never as a `:param` that would swallow a live one. The
@@ -242,10 +242,16 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: "/home/social",
     permanent: true,
   },
-  // CHAT LEFT HOME FOR THE SEARCH TAB (MESITA-2401).
+  // CHAT LEFT HOME FOR THE SEARCH TAB (MESITA-2401), THEN LEFT ITS PAGE
+  // FOR A POPUP OVER SEARCH (MESITA-4480). Both old addresses land on Search.
   {
     source: "/discover/chat",
-    destination: "/search/chat",
+    destination: "/search",
+    permanent: true,
+  },
+  {
+    source: "/search/chat",
+    destination: "/search",
     permanent: true,
   },
   // THE PLACES TEST TAB DIED (MESITA-2405).

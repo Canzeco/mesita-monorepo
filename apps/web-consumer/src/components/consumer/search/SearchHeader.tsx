@@ -10,7 +10,8 @@
 // THREE SEPARATE CONTROLS (Pato, MESITA-3009: "location at the left,
 // searchbar, ask ai at the right, all separated"; MESITA-2999's one long
 // bar held Ask AI and locate): the locate disc, the query bar, the white
-// Ask AI pill with sparkles (→ Search › Chat; MESITA-3010). One token set for every control lives in header-classes.ts. NO ADD
+// Ask AI pill with sparkles (opens a popup over Search; MESITA-4480,
+// MESITA-3010). One token set for every control lives in header-classes.ts. NO ADD
 // DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: Add a
 // place has its own sheet (MESITA-2902). Under the bar's row one chip row:
 // THE FILTERS DISC AT THE FAR LEFT (Pato, MESITA-2882: "keep the Filters
@@ -43,9 +44,9 @@
 // drawn at all (MESITA-2487).
 
 import { useState, type ReactNode } from "react";
-import { PushLink } from "@/components/consumer/nav/PushLink";
 import { LayoutGrid } from "lucide-react";
 import { AiSparkle } from "./AiSparkle";
+import { AskAiModal } from "./AskAiModal";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import {
   clearMapFamilies,
@@ -53,7 +54,6 @@ import {
   setMapFamilies,
   useMapFilters,
 } from "@/lib/use-map-filters";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { FamilyFilterSheet } from "./FamilyFilterSheet";
 import { cn } from "@/lib/utils";
 import {
@@ -93,6 +93,7 @@ export function SearchHeader({
   const filters = useMapFilters();
   const everyFamily = filters.familyKeys.length === 0;
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
   return (
     // pointer-events-none on the overlay, back on for each control: the gaps
     // between the pills are the map's.
@@ -114,15 +115,18 @@ export function SearchHeader({
         {/* Ask AI is the sparkle AND the words (Pato, MESITA-4007: "keep the
             Ask AI word but with the icon"): the white pill again, as before
             MESITA-3991's mark-only disc; the brain-circuit and chip marks
-            (MESITA-3995, MESITA-3999) are gone. */}
-        <PushLink
-          href={CONSUMER_ROUTES.searchChat}
+            (MESITA-3995, MESITA-3999) are gone. It opens a popup over
+            Search (Pato, MESITA-4480: "a pop up modal, not its own page"). */}
+        <button
+          type="button"
+          onClick={() => setAskOpen(true)}
           className={HEADER_PILL}
           data-search-ask-ai
+          aria-haspopup="dialog"
         >
           <AiSparkle className={HEADER_ICON} />
           <span>Ask AI</span>
-        </PushLink>
+        </button>
       </div>
       <div className="relative" data-search-chip-band>
         {chipsHidden ? null : (
@@ -205,6 +209,7 @@ export function SearchHeader({
         applied={filters.familyKeys}
         onApply={setMapFamilies}
       />
+      <AskAiModal open={askOpen} onClose={() => setAskOpen(false)} />
     </div>
   );
 }

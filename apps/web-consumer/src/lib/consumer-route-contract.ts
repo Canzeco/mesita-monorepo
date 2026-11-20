@@ -40,9 +40,6 @@ export const CONSUMER_ROUTES = {
   // the one search bar + Filters. `/discover/search` and `/discover/map` are
   // redirect SOURCES for the bookmarks those addresses shipped under.
   search: "/search",
-  // ASK AI (Pato, MESITA-2401; Soon, MESITA-2168): its own pushed page,
-  // never a sheet over Search (MESITA-3991). /discover/chat 308s here.
-  searchChat: "/search/chat",
   // HOME — two tabs, each its own address (Pato, MESITA-2597: "we should
   // have home/places and home/social"): Places, the catalog, is where every
   // "go Home" lands; Social is the activity feed. Bare /home and every older
@@ -220,8 +217,10 @@ export const CONSUMER_ROUTES = {
     discoverFavs: "/discover/favs",
     // Social became a pane of Home, not a page (MESITA-2474).
     discoverSocial: "/discover/social",
-    // Chat left Home for the Search tab (MESITA-2401).
+    // Chat left Home for the Search tab (MESITA-2401), then left its page
+    // for a popup over Search (MESITA-4480).
     discoverChat: "/discover/chat",
+    searchChat: "/search/chat",
     // The Places test tab (MESITA-2402) was deleted (MESITA-2405).
     places: "/places",
     // The Second Stage tab and everything under it (MESITA-2087). The QR
@@ -497,9 +496,6 @@ export const ROUTE_MAP = {
   home: row("/home/places", "home", "tab", null),
   homeSocial: row("/home/social", "home", "tab", null),
   search: row("/search", "search", "tab", null),
-  // Ask AI is its own pushed page, never a sheet over Search (Pato,
-  // MESITA-3991: "it must have own route and page, not mid modal").
-  searchChat: row("/search/chat", "search", "page", "search"),
   place: row("/place/:id", "home", "panel", "home", false),
   placeGoogle: row("/place/google/:gid", "home", "panel", "home", false),
   placeReserve: row("/place/:id/reserve", "home", "page", "place", false),
