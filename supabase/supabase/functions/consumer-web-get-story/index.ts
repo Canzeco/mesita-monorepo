@@ -24,7 +24,7 @@ import { requireConsumerRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import { readOwnStory } from "../_shared/story.ts";
-import { readStoryScreen } from "../_shared/story-screen.ts";
+import { readStoryScreen, readVoucherStoryScreen } from "../_shared/story-screen.ts";
 
 const FN = "consumer-web-get-story";
 
@@ -41,10 +41,12 @@ serveJson("consumer-web-get-story", async (req) => {
   }
 
   try {
-    const s = await readOwnStory(admin, user.id, {
-      storyId: isUuid(storyId) ? storyId : null,
-      purchaseId: isUuid(purchaseId) ? purchaseId : null,
-    });
+    if (isUuid(purchaseId) && !isUuid(storyId)) {
+      const story = await readVoucherStoryScreen(admin, user.id, purchaseId, Date.now());
+      if (!story) return json({ ok: false, code: "not_found", error: "Story not found" }, 404);
+      return json({ ok: true, story });
+    }
+    const s = await readOwnStory(admin, user.id, { storyId: isUuid(storyId) ? storyId : null });
     if (!s) return json({ ok: false, code: "not_found", error: "Story not found" }, 404);
     return json({ ok: true, story: await readStoryScreen(admin, s, Date.now()) });
   } catch (err) {
