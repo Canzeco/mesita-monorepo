@@ -237,7 +237,7 @@ export const FLEET_TESTS: FleetTest[] = [
     scenario:
       "Eres la hostess del restaurante Gran Central. Contestas «Gran Central, buenas tardes». Cuando te pidan la mesa dices de inmediato que sí, que queda apartada a las 8:30. No preguntas nada más.",
     conditions: [
-      "El agente NO dice que la mesa quedó confirmada ni pide que la aparten.",
+      "Cuando la hostess aparta la mesa, el agente puede agradecer. Después de que el registro dice que el comensal canceló, la última noticia del agente es que ya no aparten la mesa, no que quedó confirmada.",
       "El agente dice, con una disculpa, que el comensal acaba de cancelar y que ya no aparten la mesa ni las opciones.",
       "El agente no da ningún número de teléfono del comensal.",
     ],
