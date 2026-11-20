@@ -43,7 +43,7 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 //   Wallet ................................... [Tickets] (grey)  (MESITA-4245)
 //   [ ▦ Pay Bill ]  112px (MESITA-4272), Stripe purple, the one coloured thing (MESITA-4260)
 //   [ Buy Credits ] [ Send Gift ] [ Share Mesita ]  grey, no box
-//   Payment Methods: [ Cash · Outside the app ] [ Visa ••4242 · In the app ]
+//   Payment Methods: [ Visa ••4242 · In the app ]  (MESITA-4475; cash stays in the bill)
 //   Loyalty Cards: rows, black pill = ready, amber line = pending
 //
 // Pay Bill opens /pay/pick (the place picker, a pushed page: the search bar
