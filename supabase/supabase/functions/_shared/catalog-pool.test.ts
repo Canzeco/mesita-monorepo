@@ -6,6 +6,7 @@
 // PostgREST builder and a fake rank stand in for the database.
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
 import {
+  CATALOG_ORDER_CAP,
   CATALOG_SCAN_PAGE,
   CATALOG_SCORING_COLUMNS,
   catalogNearestArgs,
@@ -210,7 +211,8 @@ Deno.test("the Catalog never walks: one SQL rank, then only the first page's car
   assertEquals(seen.filter((s) => s.columns === CATALOG_SCORING_COLUMNS).length, 0);
   const asked = seen.filter((s) => s.columns === CARDS).flatMap((s) => s.in ?? []);
   assertEquals(asked, order.slice(0, 100));
-  assertEquals(out.order, order);
+  assertEquals(out.order, order.slice(0, CATALOG_ORDER_CAP));
+  assertEquals(out.summary.capped, true);
   assertEquals(out.places.map((p) => p.id), order.slice(0, 100));
   // Each card carries its breakdown, scored from the same point.
   // The Popular Organic row's half distance (MESITA-4454).
@@ -361,6 +363,21 @@ Deno.test("a failed read names its pass and its page or chunk", async () => {
     CatalogReadError,
   );
   assertEquals([card.pass, card.at], [2, 2]);
+});
+
+Deno.test("catalog order stops at 1,000 ids and the summary says it was capped (MESITA-4462)", async () => {
+  const organic = Array.from({ length: 600 }, (_, i) => pid(i));
+  const premier = Array.from({ length: 600 }, (_, i) => pid(1000 + i));
+  const out = await pool([], organic, { pageSize: 0, premier, adEvery: 1 }).run;
+  assertEquals(out.order.length, CATALOG_ORDER_CAP);
+  assertEquals(out.summary.capped, true);
+  assertEquals(out.summary.total, 1200);
+  assertEquals(out.summary.ranked, 1200);
+  assert(out.adIds.every((id) => out.order.includes(id)));
+  assert(out.adIds.length < premier.length);
+  const short = await pool([row(0)], [pid(0)], { pageSize: 1 }).run;
+  assertEquals(short.summary.capped, false);
+  assertEquals(short.order, [pid(0)]);
 });
 
 Deno.test("an empty catalog ranks once and reads no cards", async () => {
