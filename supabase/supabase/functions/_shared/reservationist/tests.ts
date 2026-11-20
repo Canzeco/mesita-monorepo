@@ -417,7 +417,7 @@ export const FLEET_TESTS: FleetTest[] = [
       "Eres Ana López y contestas tu celular con «¿Bueno?». Cuando te pregunten si eres Ana López dices que sí. Cuando te den la noticia preguntas «¿y ahora qué hago?». Luego te despides.",
     conditions: [
       "El agente pregunta si habla con Ana López ANTES de mencionar Gran Central, la fecha o la hora.",
-      "El agente dice que Gran Central tuvo que cancelar la reservación del sábado 21 de noviembre a las 8:30 p.m., con una disculpa, una sola vez.",
+      "El agente dice que Gran Central tuvo que cancelar su reservación del sábado 21 de noviembre a las 8:30 p.m., y dice «Una disculpa de parte de Mesita», una sola vez.",
       "El agente le dice que desde la app puede reservar en otro lugar. NO promete otra mesa ni ofrece reservar él.",
     ],
     variables: { ...BOOKING, call_context: "cancelled_by_venue" },
