@@ -904,6 +904,10 @@ verify_jwt = true
 [functions.business-web-get-place-money]
 verify_jwt = true
 
+# MESITA-4487: Operations ticket desk (visits, vouchers, stories, gifts).
+[functions.business-web-list-place-tickets]
+verify_jwt = true
+
 [functions.business-web-refund-payment]
 verify_jwt = true
 

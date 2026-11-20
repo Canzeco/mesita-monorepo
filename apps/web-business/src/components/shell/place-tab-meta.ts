@@ -10,22 +10,26 @@ import {
   EyeIcon,
   FootprintsIcon,
   GearIcon,
+  GiftIcon,
+  InstagramLogoIcon,
   MegaphoneIcon,
   MoneyIcon,
   ShieldCheckIcon,
   StorefrontIcon,
+  TicketIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import type { PlaceTab } from "@/lib/routes";
 
-// Discounts left with the discount product (MESITA-3299, Pato: "discounts are
-// gone across all the app"). Operations is Views · Visits · Money
-// (MESITA-3301; Money was Transactions for an hour, MESITA-3308): a visit is
-// a guest paying here with Mesita, Money is every payment and
-// voucher; both pages stand before any place takes payments (Pato: "keep the
-// pages even if Mesita Payments is not enabled yet").
+// Discounts left with the discount product (MESITA-3299). Operations is
+// Views · Visits · Vouchers · Stories · Gifts · Money (MESITA-3301, MESITA-3308,
+// MESITA-4487). Money stays the cash ledger. The four ticket pages list every
+// ticket of that kind and the last 30 days.
 export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: string }> = {
   views: { label: "Views", icon: EyeIcon, sub: "Who saw your place online." },
   visits: { label: "Visits", icon: FootprintsIcon, sub: "Who came and paid with Mesita." },
+  vouchers: { label: "Vouchers", icon: TicketIcon, sub: "Prepayments guests bought here." },
+  stories: { label: "Stories", icon: InstagramLogoIcon, sub: "Story tickets, including ones waiting for a look." },
+  gifts: { label: "Gifts", icon: GiftIcon, sub: "Credit guests sent each other here." },
   money: { label: "Money", icon: MoneyIcon, sub: "Every payment and voucher at your place." },
   profile: { label: "Profile", icon: StorefrontIcon, sub: "What guests read about your place." },
   premier: { label: "Premier", icon: MegaphoneIcon, sub: "Ad spots on Home and the Map. Marked as an ad." },
