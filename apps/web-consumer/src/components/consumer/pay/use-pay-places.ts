@@ -16,13 +16,14 @@ export function usePayPlaces(at: { lat: number; lng: number } | null): {
   const getSupabase = useLazyBrowserSupabase();
   const [places, setPlaces] = useState<PayPlace[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [nonce, setNonce] = useState(0);
+  const [settledKey, setSettledKey] = useState<string | null>(null);
   const atKey = at ? `${at.lat},${at.lng}` : "";
+  const requestKey = `${nonce}:${atKey}`;
+  const loading = settledKey !== requestKey;
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     void apiListPayPlaces(getSupabase(), at)
       .then((list) => {
         if (cancelled) return;
@@ -33,7 +34,7 @@ export function usePayPlaces(at: { lat: number; lng: number } | null): {
         if (!cancelled) setFailed(true);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setSettledKey(requestKey);
       });
     return () => {
       cancelled = true;
