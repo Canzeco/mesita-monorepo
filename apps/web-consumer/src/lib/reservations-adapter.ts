@@ -109,7 +109,8 @@ function noteFor(
         case "unreachable":
           return "The place didn't answer Mesita's calls. Try again or pick another time.";
         case "unresolved":
-          return "The call didn't reach a clear answer — Mesita follows up.";
+          // Terminal (Docs § E): nothing calls again (MESITA-4141).
+          return "The call ended without a table. Reserve again.";
         default:
           return undefined;
       }

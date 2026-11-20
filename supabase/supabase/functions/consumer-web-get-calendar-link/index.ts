@@ -33,12 +33,6 @@ serveJson("consumer-web-get-calendar-link", async (req) => {
     if (!CALENDARS.includes(body.calendar as Calendar) || typeof body.on !== "boolean") {
       return json({ ok: false, error: "calendar must be google, apple or outlook, with on: boolean" }, 400);
     }
-    const { error } = await admin
-      .from("consumer_calendar_feeds")
-      .update({ off: !body.on })
-      .eq("consumer_id", user.id)
-      .eq("calendar", body.calendar);
-    if (error) return json({ ok: false, error: error.message }, 500);
   }
 
   let rows: Row[] = [];
@@ -63,6 +57,18 @@ serveJson("consumer-web-get-calendar-link", async (req) => {
       );
     if (error) return json({ ok: false, error: error.message }, 500);
     rows = [...rows.filter((r) => !missing.includes(r.calendar)), ...fresh];
+  }
+
+  // Rows exist before on/off (MESITA-4141). A first request that turns a
+  // calendar off used to update zero rows, then create them with off:false.
+  if (body.calendar !== undefined && typeof body.on === "boolean") {
+    const { error } = await admin
+      .from("consumer_calendar_feeds")
+      .update({ off: !body.on })
+      .eq("consumer_id", user.id)
+      .eq("calendar", body.calendar);
+    if (error) return json({ ok: false, error: error.message }, 500);
+    rows = rows.map((r) => r.calendar === body.calendar ? { ...r, off: !body.on } : r);
   }
 
   const feed = `${env.url}/functions/v1/consumer-web-get-calendar-feed?token=`;
