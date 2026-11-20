@@ -1,23 +1,33 @@
 "use client";
 
 import { Skeleton } from "@/components/shared/Skeleton";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
+  ChevronLeft,
   ExternalLink,
   FileText,
   Minus,
   Plus,
   Utensils,
-  X,
 } from "lucide-react";
 import {
   EmbedFallback,
   ImagePane,
 } from "@/components/consumer/menu-viewer-panes";
 import { PdfPane } from "@/components/consumer/pdf-pane";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { drivePreviewUrl, menuKindLabel, type MenuKind } from "@mesita/place-profile/lib/menu-url";
-import { nutritionLine, type MenuNutrition } from "@mesita/place-profile/lib/nutrition";
+import {
+  drivePreviewUrl,
+  menuKindLabel,
+  type MenuKind,
+} from "@mesita/place-profile/lib/menu-url";
+import {
+  nutritionLine,
+  type MenuNutrition,
+} from "@mesita/place-profile/lib/nutrition";
+import { useRouter } from "next/navigation";
+import { placePath } from "@/lib/consumer-route-contract";
+import { goBack } from "@/lib/navigate";
+import type { PlaceDetail } from "@/lib/place-detail";
 import { cn } from "@/lib/utils";
 
 type MenuViewerItem = {
@@ -27,35 +37,67 @@ type MenuViewerItem = {
   nutrition?: MenuNutrition | null;
 };
 
-export function MenuViewer({
-  open,
-  onClose,
-  menu,
+/** The menu file at `menuId`, the index in `products.menu` (MESITA-4111).
+ *  Menus have no stored id. A missing index says so and offers Back. */
+export function PlaceMenuPage({
+  place,
+  menuId,
 }: {
-  open: boolean;
-  onClose: () => void;
-  menu: MenuViewerItem | null;
+  place: PlaceDetail;
+  menuId: string;
 }) {
-  if (!menu) return null;
-
+  const router = useRouter();
+  const back = useCallback(
+    () => goBack(router, placePath(place.id)),
+    [router, place.id],
+  );
+  const index = /^\d+$/.test(menuId) ? Number(menuId) : -1;
+  const menu = index >= 0 ? place.products.menu[index] : undefined;
+  if (!menu) {
+    return (
+      <div className="bg-background flex min-h-0 flex-1 flex-col overflow-hidden">
+        <header className="border-border flex shrink-0 items-center gap-2 border-b px-2 py-2">
+          <button
+            type="button"
+            onClick={back}
+            className="text-foreground inline-flex h-11 w-11 items-center justify-center rounded-full"
+            aria-label="Back"
+          >
+            <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
+          </button>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">Menu</p>
+            <p className="text-muted-foreground truncate text-xs">
+              {place.name}
+            </p>
+          </div>
+        </header>
+        <p className="text-muted-foreground px-5 py-8 text-center text-sm">
+          This menu isn&apos;t available.
+        </p>
+      </div>
+    );
+  }
   return (
-    <LocalSheet
-      open={open}
-      onClose={onClose}
-      ariaLabel={`${menu.name} menu`}
-    >
-      {/* key remounts body so zoom/loading reset without an effect */}
-      <MenuViewerBody key={menu.url} menu={menu} onClose={onClose} />
-    </LocalSheet>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <MenuViewerBody
+        key={menu.url}
+        menu={menu}
+        placeName={place.name}
+        onBack={back}
+      />
+    </div>
   );
 }
 
 function MenuViewerBody({
   menu,
-  onClose,
+  placeName,
+  onBack,
 }: {
   menu: MenuViewerItem;
-  onClose: () => void;
+  placeName: string;
+  onBack: () => void;
 }) {
   const [zoom, setZoom] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -72,7 +114,15 @@ function MenuViewerBody({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="border-border flex shrink-0 items-center gap-2 border-b px-4 py-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+          aria-label="Back"
+        >
+          <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
+        </button>
+        <span className="bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
           {menu.kind === "image" ? (
             <Utensils className="h-4 w-4" strokeWidth={2} />
           ) : (
@@ -83,6 +133,7 @@ function MenuViewerBody({
           <p className="truncate text-sm font-semibold tracking-tight">
             {menu.name}
           </p>
+          <p className="text-muted-foreground truncate text-xs">{placeName}</p>
           {nutritionLine(menu.nutrition) ? (
             <p className="type-label truncate tabular-nums">
               {nutritionLine(menu.nutrition)}
@@ -105,14 +156,6 @@ function MenuViewerBody({
         >
           <ExternalLink className="h-4 w-4" />
         </a>
-        <button
-          type="button"
-          onClick={onClose}
-          className="bg-muted text-foreground inline-flex h-9 w-9 items-center justify-center rounded-full transition hover:opacity-90"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
       </header>
 
       <div className="bg-muted/40 relative min-h-0 flex-1 overflow-hidden">
@@ -161,7 +204,11 @@ function MenuViewerBody({
         )}
 
         {loading && !embedFailed ? (
-          <div className="absolute inset-0 flex flex-col gap-3 p-5" aria-busy="true" aria-label="Loading menu">
+          <div
+            className="absolute inset-0 flex flex-col gap-3 p-5"
+            aria-busy="true"
+            aria-label="Loading menu"
+          >
             <Skeleton className="h-6 w-1/2" />
             {Array.from({ length: 8 }, (_, i) => (
               <Skeleton key={i} className="h-4 w-full" />

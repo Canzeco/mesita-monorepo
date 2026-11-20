@@ -35,6 +35,7 @@ export function PlaceTopBar({
   onBack,
   onMore,
   backOnly = false,
+  moreHidden = false,
   right,
 }: {
   /** Drawn where the three dots go, instead of them (the Offers page's
@@ -49,6 +50,9 @@ export function PlaceTopBar({
   onMore?: () => void;
   /** Chevron only: no title, no menu (a place still being generated). */
   backOnly?: boolean;
+  /** No three-dot button. The consumer place page draws those rows at its
+   *  foot (MESITA-4111), so the button would open nothing. */
+  moreHidden?: boolean;
 }) {
   return (
     // px-1.5: 6 + (44 − 24) / 2 = 16, the back chevron's glyph box on the
@@ -67,17 +71,20 @@ export function PlaceTopBar({
       {backOnly ? null : (
         <>
           <PlaceDetailTitle placeName={name} premierTier={premierTier} />
-          {right ?? (
-          <button
-              type="button"
-              aria-label="More options"
-              aria-haspopup="dialog"
-              className="text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
-              {...(onMore ? { onClick: onMore } : inertButtonProps(false))}
-            >
-              <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} />
-            </button>
-          )}
+          {right ??
+            (moreHidden ? (
+              <span className="h-11 w-11 shrink-0" aria-hidden />
+            ) : (
+              <button
+                type="button"
+                aria-label="More options"
+                aria-haspopup="dialog"
+                className="text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
+                {...(onMore ? { onClick: onMore } : inertButtonProps(false))}
+              >
+                <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} />
+              </button>
+            ))}
         </>
       )}
     </header>

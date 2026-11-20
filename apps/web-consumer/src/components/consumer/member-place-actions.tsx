@@ -1,10 +1,26 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { readCached, readCachedEntry, writeCached } from "@/lib/screen-cache";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import type { ExpressPayArgs, PayCard, PayCards, PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, StoryCheckAnswer, VoucherBasketItem, VoucherBuyOutcome, VoucherKey } from "@mesita/place-profile";
+import { readCachedEntry, writeCached } from "@/lib/screen-cache";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import type {
+  ExpressPayArgs,
+  PayCard,
+  PayCards,
+  PlaceActions,
+  PlaceMoney,
+  RewardsSection,
+  StoryCheckAnswer,
+  VoucherBasketItem,
+  VoucherBuyOutcome,
+  VoucherKey,
+} from "@mesita/place-profile";
 import { pickPayCard } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
@@ -19,8 +35,11 @@ import {
 import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { runBankCheck } from "@/lib/api/tab";
 import { useAddCardModal } from "@/lib/added-card";
-import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
-import { isGoogleMapsUrl, MapsLeaveModal } from "@/components/consumer/MapsLeaveModal";
+import {
+  isGoogleMapsUrl,
+  MapsLeaveModal,
+} from "@/components/consumer/MapsLeaveModal";
+import { PlaceMoreRows } from "@/components/consumer/place-detail/PlaceMoreSheet";
 import { PlaceSocialList } from "@/components/consumer/PlaceSocialList";
 import {
   apiPlaceActivity,
@@ -28,15 +47,29 @@ import {
   isMesitaPlaceId,
   type PlaceActivity,
 } from "@/lib/api/activity";
-import { apiGetBoost, type PlaceBoost } from "@/lib/api/boost";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
-import { useBrowserSupabase, useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import {
+  useBrowserSupabase,
+  useLazyBrowserSupabase,
+} from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
 import { navigateTo } from "@/lib/navigate";
-import { placeOffersPath, placeReservePath, reservationPath, storyPurchasePath } from "@/lib/consumer-route-contract";
-import { apiListReservations, type EFReservationRow } from "@/lib/api/reservations";
+import {
+  placeContactPath,
+  placeMenuPath,
+  placeOffersPath,
+  placeReportPath,
+  placeReservePath,
+  placeUpgradePath,
+  reservationPath,
+  storyPurchasePath,
+} from "@/lib/consumer-route-contract";
+import {
+  apiListReservations,
+  type EFReservationRow,
+} from "@/lib/api/reservations";
 import { statusLabel, whenLine } from "@/lib/reservation-when";
 import { toReservationItem } from "@/lib/reservations-adapter";
 import { toast } from "@/lib/toast";
@@ -46,32 +79,9 @@ import { trackEvent } from "@/lib/analytics/track";
 import { dropBoughtOffers } from "@/lib/catalog-modes";
 import { ExpressVoucherPay } from "@/components/consumer/ExpressVoucherPay";
 
-// THE SECONDARY SHEETS LOAD AFTER THE PLACE PAINTS (MESITA-3014). Each
-// opens on a tap, so none belongs in the first frame's bundle; they are
-// fetched once the screen is up, well before a finger reaches them. Reserve
-// is the screen's main action, so its sheet stays in the first bundle and
-// opens on the tap itself.
-const PlaceMoreSheet = dynamic(() =>
-  import("@/components/consumer/place-detail/PlaceMoreSheet").then(
-    (m) => m.PlaceMoreSheet,
-  ),
-);
-const ReportSheet = dynamic(() =>
-  import("@/components/consumer/place-detail/ReportSheet").then(
-    (m) => m.ReportSheet,
-  ),
-);
-const MenuViewer = dynamic(() =>
-  import("@/components/consumer/MenuViewer").then((m) => m.MenuViewer),
-);
-const BoostSheet = dynamic(() =>
-  import("@/components/consumer/place-detail/BoostSheet").then(
-    (m) => m.BoostSheet,
-  ),
-);
-
-// One hook per member surface so the body and the Reserve bar share the
-// sheets. The shared renderer stays presentational.
+// One hook per member surface. Contact, Report, Upgrade and a menu file are
+// pages (MESITA-4111); More is rows at the foot. The shared renderer stays
+// presentational.
 //
 // Social v1 (MESITA-2442): opening the profile records `viewed`; the line
 // under the title comes from consumer-web-list-place-likes. There is no
@@ -94,6 +104,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
    *  place's skeleton until then, so the profile paints in one frame. */
   ready: boolean;
   actions: PlaceActions;
+  /** More, drawn at the foot of the place page (MESITA-4111). */
+  more: ReactNode;
   sheets: ReactNode;
   social: ReactNode;
 } {
@@ -111,16 +123,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     else open();
   };
   const saved = isSaved(place.id);
-  const [contactOpen, setContactOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
-  // When the Upgrade tile or ⋯ › Upgrade last asked for the Upgrade sheet (ms).
-  const [boostAskedAt, setBoostAskedAt] = useState(0);
-  const [boostClosedAt, setBoostClosedAt] = useState(0);
-  const onBoost = () => setBoostAskedAt(Date.now());
-  const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
-  const boost = usePlaceBoost(place.id);
   // The place's offer and the guest's credit here, for the Wallet tile
   // (MESITA-3574). Buying happens on the Offers page (MESITA-4379).
   const vouchers = usePlaceVouchers(place.id);
@@ -134,10 +137,34 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   // writes), so the tap paints the grey Reserve frame at once and the page
   // fills in behind it.
   const reservePath = placeReservePath(place.id);
+  const contactPath = placeContactPath(place.id);
+  const reportPath = placeReportPath(place.id);
+  const upgradePath = placeUpgradePath(place.id);
   useEffect(() => {
+    // Contact is open to a signed-out visitor. The member pages prefetch
+    // only once they can be opened (MESITA-4443: a dynamic route prefetches
+    // its loading frame, so the tap paints at once).
+    router.prefetch(contactPath);
     if (signedOut || !isMesitaPlaceId(place.id)) return;
     router.prefetch(reservePath);
-  }, [router, reservePath, signedOut, place.id]);
+    router.prefetch(reportPath);
+    router.prefetch(upgradePath);
+  }, [
+    router,
+    contactPath,
+    reservePath,
+    reportPath,
+    upgradePath,
+    signedOut,
+    place.id,
+  ]);
+  // A Checkout that still returns to the place (an in-flight session from
+  // before Upgrade was a page) continues on the Upgrade page, refill intact.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get("refill")) return;
+    router.replace(`${upgradePath}?${params.toString()}`);
+  }, [router, upgradePath]);
   // ONE READ, ONE PAINT (Pato, MESITA-3803: "call those two functions in
   // parallel from the frontend and await them … i don't like that you load
   // and display items in different orders and not all at the same time").
@@ -168,10 +195,17 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   // A Google-only card has neither read: it paints at once.
   // Back to a place this session already read paints at once from the kept
   // answers (MESITA-4379) while both reads run again behind it.
-  const ready = !isMesitaPlaceId(place.id) || readFor === place.id || (vouchers.warm && reservation.warm);
-  // Stripe Checkout's return asks for the sheet too: it is open while the
-  // latest ask is newer than the last close (MESITA-3201).
-  const boostOpen = Math.max(boostAskedAt, boost.returnedAt ?? 0) > boostClosedAt;
+  const ready =
+    !isMesitaPlaceId(place.id) ||
+    readFor === place.id ||
+    (vouchers.warm && reservation.warm);
+
+  const openUpgrade = askOr(upgradePath, () =>
+    navigateTo(router, upgradePath, { motion: "drill" }),
+  );
+  const openReport = askOr(reportPath, () =>
+    navigateTo(router, reportPath, { motion: "drill" }),
+  );
 
   const onSave = useCallback(() => {
     const nowSaved = !saved;
@@ -198,10 +232,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const actions: PlaceActions = {
     onSave,
     saved,
-    onContact: () => setContactOpen(true),
+    onContact: () => navigateTo(router, contactPath, { motion: "drill" }),
     onShare: () => void sharePlace(place),
-    // The three dots open the menu (MESITA-2692).
-    onMore: () => setMoreOpen(true),
     // The full Reserve page (MESITA-3609), not a sheet.
     onReserve: askOr(placeReservePath(place.id), () =>
       navigateTo(router, placeReservePath(place.id), { motion: "drill" }),
@@ -209,14 +241,21 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // The guest's one live table here (MESITA-3640), under the four tiles.
     reservation: live
       ? {
-        when: whenLine(live.reserved_at, place.timezone || null),
-        status: statusLabel(live),
-        confirmed: toReservationItem(live).state === "confirmed",
-        onOpen: () => navigateTo(router, reservationPath(live.id), { motion: "drill" }),
-      }
+          when: whenLine(live.reserved_at, place.timezone || null),
+          status: statusLabel(live),
+          confirmed: toReservationItem(live).state === "confirmed",
+          onOpen: () =>
+            navigateTo(router, reservationPath(live.id), { motion: "drill" }),
+        }
       : null,
-    onBoost,
-    onOpenMenu: (item) => setMenu(item),
+    onBoost: openUpgrade,
+    onOpenMenu: (item) => {
+      const index = place.products.menu.findIndex(
+        (m) => m.name === item.name && m.url === item.url,
+      );
+      if (index < 0) return;
+      navigateTo(router, placeMenuPath(place.id, index), { motion: "drill" });
+    },
     onOpenLink,
     // The Social tab (MESITA-3417): this place's activity; a Google-only
     // card has none, so it keeps the package's empty screen.
@@ -243,55 +282,27 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         }
       : place;
   const sheets = (
-    <>
-      <PlaceContactSheet
-        place={place}
-        open={contactOpen}
-        onClose={() => setContactOpen(false)}
-      />
-      <BoostSheet
-        place={place}
-        boost={boost.data}
-        loading={boost.loading}
-        failed={boost.failed}
-        onRetry={boost.reload}
-        open={boostOpen}
-        onClose={() => setBoostClosedAt(Date.now())}
-      />
-      <PlaceMoreSheet
-        place={place}
-        open={moreOpen}
-        onClose={() => setMoreOpen(false)}
-        saved={saved}
-        onSave={onSave}
-        onBoost={onBoost}
-        // A Google-only card is not a place row yet: nothing to report.
-        onReport={
-          isMesitaPlaceId(place.id) ? () => setReportOpen(true) : undefined
-        }
-      />
-      <ReportSheet
-        place={place}
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-      />
-      <MenuViewer
-        open={menu != null}
-        onClose={() => setMenu(null)}
-        menu={menu}
-      />
-      <MapsLeaveModal
-        url={mapsAsk}
-        placeName={place.name ?? null}
-        onClose={() => setMapsAsk(null)}
-      />
-    </>
+    <MapsLeaveModal
+      url={mapsAsk}
+      placeName={place.name ?? null}
+      onClose={() => setMapsAsk(null)}
+    />
+  );
+  const more = (
+    <PlaceMoreRows
+      place={place}
+      saved={saved}
+      onSave={onSave}
+      onUpgrade={openUpgrade}
+      onReport={isMesitaPlaceId(place.id) ? openReport : undefined}
+    />
   );
 
   return {
     place: shown,
     ready,
     actions,
+    more,
     sheets,
     social: activity.social,
   };
@@ -328,15 +339,28 @@ function usePlaceReservation(placeId: string): {
   // KEPT FOR BACK (MESITA-4379): a page pushed over the place (Offers,
   // Reserve, Story) unmounts it; Back draws the last answer at once and
   // reads again behind it, instead of the skeleton.
-  const [found, setFound] = useState<{ placeId: string; row: EFReservationRow | null } | null>(() => {
-    const kept = readCachedEntry<EFReservationRow | null>(reservationKey(placeId));
+  const [found, setFound] = useState<{
+    placeId: string;
+    row: EFReservationRow | null;
+  } | null>(() => {
+    const kept = readCachedEntry<EFReservationRow | null>(
+      reservationKey(placeId),
+    );
     return kept ? { placeId, row: kept.value } : null;
   });
-  const [warm] = useState(() => readCachedEntry(reservationKey(placeId)) !== null);
+  const [warm] = useState(
+    () => readCachedEntry(reservationKey(placeId)) !== null,
+  );
   const load = useCallback(async () => {
     if (!mesita) return;
-    const row = await apiListReservations(supabase, { scope: "upcoming", limit: 100 })
-      .then(({ reservations }) => reservations.find((r) => r.place?.id === placeId) ?? null)
+    const row = await apiListReservations(supabase, {
+      scope: "upcoming",
+      limit: 100,
+    })
+      .then(
+        ({ reservations }) =>
+          reservations.find((r) => r.place?.id === placeId) ?? null,
+      )
       .catch(() => null);
     // Keyed by place: an answer for a place left behind is never drawn.
     setFound({ placeId, row });
@@ -366,7 +390,10 @@ export function usePlaceVouchers(
   load: () => Promise<void>;
   /** The Offers page's basket (MESITA-3841) paid with the card it drew
    *  (MESITA-4065); no card opens the card sheet. */
-  buy: (items: VoucherBasketItem[], cardId: string | null) => Promise<VoucherBuyOutcome>;
+  buy: (
+    items: VoucherBasketItem[],
+    cardId: string | null,
+  ) => Promise<VoucherBuyOutcome>;
   /** offer_sheet_opened (MESITA-4375). */
   opened: (voucher: VoucherKey, savedCard: boolean) => void;
   /** Apple Pay / Google Pay in the Offers sheet's pay box (MESITA-4384). */
@@ -390,7 +417,11 @@ export function usePlaceVouchers(
   // read failed. Written in the promise callbacks only (Next 16 lint), and
   // only by the latest request, so an older answer never lands last. An
   // answer with no offer clears earlier rows; a failed read keeps them.
-  const [offer, setOffer] = useState<{ placeId: string; money: PlaceMoney | null; failed: boolean } | null>(() => {
+  const [offer, setOffer] = useState<{
+    placeId: string;
+    money: PlaceMoney | null;
+    failed: boolean;
+  } | null>(() => {
     const kept = readCachedEntry<PlaceMoney | null>(vouchersKey(placeId));
     return kept ? { placeId, money: kept.value, failed: false } : null;
   });
@@ -413,7 +444,11 @@ export function usePlaceVouchers(
       .catch(() => {
         if (mine !== request.current) return;
         // The offer already on screen stays; the read is marked failed.
-        setOffer((prev) => ({ placeId, money: prev?.placeId === placeId ? prev.money : null, failed: true }));
+        setOffer((prev) => ({
+          placeId,
+          money: prev?.placeId === placeId ? prev.money : null,
+          failed: true,
+        }));
       });
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -435,19 +470,38 @@ export function usePlaceVouchers(
     // State is set after an await only (Next 16 lint: no setState in an effect body).
     await Promise.resolve();
     if (mine !== cardsRequest.current) return;
-    setPayCards((prev) => (prev?.state === "ready" ? prev : { state: "loading" }));
+    setPayCards((prev) =>
+      prev?.state === "ready" ? prev : { state: "loading" },
+    );
     try {
       const supabase = getSupabase();
-      const [{ cards }, session] = await Promise.all([apiListCards(supabase), supabase.auth.getSession()]);
+      const [{ cards }, session] = await Promise.all([
+        apiListCards(supabase),
+        supabase.auth.getSession(),
+      ]);
       if (mine !== cardsRequest.current) return;
       userKey.current = session.data.session?.user.id ?? null;
-      const list: PayCard[] = cards.map((c) => ({ id: c.id, label: brandLabel(c.brand), last4: c.last4, exp_month: c.exp_month, exp_year: c.exp_year }));
+      const list: PayCard[] = cards.map((c) => ({
+        id: c.id,
+        label: brandLabel(c.brand),
+        last4: c.last4,
+        exp_month: c.exp_month,
+        exp_year: c.exp_year,
+      }));
       setPayCards({ state: "ready", cards: list });
-      setPayCardId((prev) => (prev && list.some((c) => c.id === prev) ? prev : pickPayCard(list, readLastCard(userKey.current))));
+      setPayCardId((prev) =>
+        prev && list.some((c) => c.id === prev)
+          ? prev
+          : pickPayCard(list, readLastCard(userKey.current)),
+      );
     } catch (err) {
       if (mine !== cardsRequest.current) return;
       // Signed out: no "Pay with"; Pay opens the card sheet, which says why.
-      setPayCards(err instanceof EFError && err.code === "sign_in" ? undefined : { state: "error" });
+      setPayCards(
+        err instanceof EFError && err.code === "sign_in"
+          ? undefined
+          : { state: "error" },
+      );
     }
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -465,10 +519,17 @@ export function usePlaceVouchers(
   // after an unknown outcome (no answer, a 5xx, card_failed), so the server
   // finds the same purchase and never charges twice; dropped on a definitive
   // answer. Three unknown outcomes in a row stop with "check Wallet".
-  const pending = useRef<{ key: string; requestId: string; unknown: number } | null>(null);
+  const pending = useRef<{
+    key: string;
+    requestId: string;
+    unknown: number;
+  } | null>(null);
 
   const buy = useCallback(
-    async (what: VoucherBasketItem[], cardId: string | null): Promise<VoucherBuyOutcome> => {
+    async (
+      what: VoucherBasketItem[],
+      cardId: string | null,
+    ): Promise<VoucherBuyOutcome> => {
       if (!mesita) return "failed";
       const items = what.filter((i) => i.qty > 0);
       if (items.length === 0) return "failed";
@@ -477,7 +538,8 @@ export function usePlaceVouchers(
         return "failed";
       }
       const key = `${cardId}|${items.map((i) => `${i.voucher}x${i.qty}`).join(",")}`;
-      if (pending.current?.key !== key) pending.current = { key, requestId: crypto.randomUUID(), unknown: 0 };
+      if (pending.current?.key !== key)
+        pending.current = { key, requestId: crypto.randomUUID(), unknown: 0 };
       if (pending.current.unknown >= 3) {
         toast(BUY_REFUSAL.unconfirmed, { tone: "error" });
         return "failed";
@@ -496,7 +558,9 @@ export function usePlaceVouchers(
         let r = await apiBuyVoucher(getSupabase(), args);
         if (r.card.status === "requires_action") {
           if ((await runBankCheck(r.card)) === "unavailable") {
-            toast("Couldn't open the bank check. Try again.", { tone: "error" });
+            toast("Couldn't open the bank check. Try again.", {
+              tone: "error",
+            });
           }
           // The same purchase again: how the card payment ended.
           r = await apiBuyVoucher(getSupabase(), args);
@@ -505,15 +569,25 @@ export function usePlaceVouchers(
           pending.current = null;
           writeLastCard(userKey.current, cardId);
           // The funnel's paid side (MESITA-4375): every voucher of the basket.
-          trackEvent(getSupabase(), "voucher_paid", { place_id: placeId, items, method: "saved_card", status: r.card.status });
-          dropBoughtOffers(placeId, items.map((i) => i.voucher));
+          trackEvent(getSupabase(), "voucher_paid", {
+            place_id: placeId,
+            items,
+            method: "saved_card",
+            status: r.card.status,
+          });
+          dropBoughtOffers(
+            placeId,
+            items.map((i) => i.voucher),
+          );
           // The Offers sheet's receipt says it (MESITA-4224): no toast.
           onPaid.current?.();
           // A STORY'S STEPS START AT THE TABLE (MESITA-4405): a paid Story
           // lands on its own screen, where the guest posts and shows the
           // waiter; the screen waits for the Story while the credit lands.
           if (items.length === 1 && items[0].voucher === "voucher_story") {
-            navigateTo(router, storyPurchasePath(r.purchase_id), { motion: "drill" });
+            navigateTo(router, storyPurchasePath(r.purchase_id), {
+              motion: "drill",
+            });
           }
           return r.card.status === "succeeded" ? "paid" : "processing";
         }
@@ -530,7 +604,12 @@ export function usePlaceVouchers(
         if (action.kind === "story") return { story_refused: action.line };
         if (action.kind === "add_card") openAddCard();
         if (action.kind === "reload_cards") void loadCards();
-        const line = !isDefinitiveRefusal(status, code) && pending.current && pending.current.unknown >= 3 ? BUY_REFUSAL.unconfirmed : action.line;
+        const line =
+          !isDefinitiveRefusal(status, code) &&
+          pending.current &&
+          pending.current.unknown >= 3
+            ? BUY_REFUSAL.unconfirmed
+            : action.line;
         toast(line, { tone: "error" });
         if (action.kind === "say" && action.reload) void load();
         return "failed";
@@ -546,7 +625,12 @@ export function usePlaceVouchers(
 
   const opened = useCallback(
     (voucher: VoucherKey, savedCard: boolean) => {
-      if (mesita) trackEvent(getSupabase(), "offer_sheet_opened", { place_id: placeId, voucher, saved_card: savedCard });
+      if (mesita)
+        trackEvent(getSupabase(), "offer_sheet_opened", {
+          place_id: placeId,
+          voucher,
+          saved_card: savedCard,
+        });
     },
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -554,7 +638,10 @@ export function usePlaceVouchers(
   );
 
   const checkStory = useCallback(
-    (): Promise<StoryCheckAnswer> => (mesita ? apiCheckStory(getSupabase(), placeId) : Promise.resolve({ kind: "failed" })),
+    (): Promise<StoryCheckAnswer> =>
+      mesita
+        ? apiCheckStory(getSupabase(), placeId)
+        : Promise.resolve({ kind: "failed" }),
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [mesita, placeId],
@@ -577,7 +664,10 @@ export function usePlaceVouchers(
             a.onDone(d);
             void load();
             if (d.outcome !== "received") {
-              dropBoughtOffers(placeId, a.items.map((i) => i.voucher));
+              dropBoughtOffers(
+                placeId,
+                a.items.map((i) => i.voucher),
+              );
               onPaid.current?.();
             }
           }}
@@ -631,127 +721,6 @@ function writeLastCard(user: string | null, cardId: string): void {
   } catch {
     // nothing remembered
   }
-}
-
-// Premier (MESITA-3168): the place's level and the guest's Refill packs.
-// Checkout returns with `?refill=<session>`: settle it, say what happened
-// only from the server's line, and drop the parameter so a reload does not
-// settle twice. A payment still confirming is asked again for up to 20
-// seconds.
-const CONFIRM_POLL_MS = 2_500;
-const CONFIRM_POLL_FOR_MS = 20_000;
-
-function sayCheckoutOutcome(data: PlaceBoost) {
-  const p = data.purchase;
-  if (!p) return;
-  if (p.status === "granted") toast.success(`${p.line}.`);
-  else if (p.status === "open")
-    toast(
-      "Still confirming. This updates on its own; you won't be charged twice.",
-    );
-  else toast(`${p.line}.`);
-}
-
-const boostKey = (placeId: string) => `boost:${placeId}`;
-
-function usePlaceBoost(placeId: string): {
-  data: PlaceBoost | null;
-  loading: boolean;
-  failed: boolean;
-  /** When Checkout last sent the guest back here (ms), else null. */
-  returnedAt: number | null;
-  reload: () => void;
-} {
-  const getSupabase = useLazyBrowserSupabase();
-  const mesita = isMesitaPlaceId(placeId);
-  const [state, setState] = useState<{
-    placeId: string;
-    nonce: number;
-    data: PlaceBoost | null;
-    failed: boolean;
-  }>(() => ({
-    placeId,
-    nonce: -1,
-    // A boost read kept from an earlier open paints at once (MESITA-3014).
-    data: readCached<PlaceBoost>(boostKey(placeId)),
-    failed: false,
-  }));
-  const [nonce, setNonce] = useState(0);
-  const [returned, setReturned] = useState<{
-    placeId: string;
-    at: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!mesita) return;
-    let cancelled = false;
-    const params = new URLSearchParams(window.location.search);
-    const session = params.get("refill") ?? undefined;
-    if (session) {
-      params.delete("refill");
-      const q = params.toString();
-      window.history.replaceState(
-        window.history.state,
-        "",
-        `${window.location.pathname}${q ? `?${q}` : ""}`,
-      );
-    }
-    const startedAt = Date.now();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const read = (): Promise<PlaceBoost> =>
-      apiGetBoost(getSupabase(), placeId, session).then((data) => {
-        if (
-          session &&
-          !cancelled &&
-          data.purchase?.status === "open" &&
-          Date.now() - startedAt < CONFIRM_POLL_FOR_MS
-        ) {
-          return new Promise<PlaceBoost>((resolve, reject) => {
-            timer = setTimeout(
-              () => void read().then(resolve, reject),
-              CONFIRM_POLL_MS,
-            );
-          });
-        }
-        return data;
-      });
-    if (session) toast("Confirming your payment…");
-    void read()
-      .then((data) => {
-        if (cancelled) return;
-        setState({ placeId, nonce, data, failed: false });
-        // A checkout return reads fresh and is never served from the store;
-        // its answer still updates what the next open paints.
-        writeCached(boostKey(placeId), data);
-        if (session) setReturned({ placeId, at: Date.now() });
-        if (session) sayCheckoutOutcome(data);
-      })
-      .catch(() => {
-        if (!cancelled)
-          setState((s) => ({
-            placeId,
-            nonce,
-            data: s.placeId === placeId ? s.data : null,
-            failed: true,
-          }));
-      });
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [placeId, mesita, nonce]);
-
-  const fresh = state.placeId === placeId;
-  const data = mesita && fresh ? state.data : null;
-  return {
-    data,
-    // A kept read is shown while the fresh one is out, so it is not loading.
-    loading: mesita && (!fresh || state.nonce !== nonce) && data == null,
-    failed: mesita && fresh && state.failed,
-    returnedAt: mesita && returned?.placeId === placeId ? returned.at : null,
-    reload: () => setNonce((n) => n + 1),
-  };
 }
 
 function usePlaceActivity(placeId: string): {

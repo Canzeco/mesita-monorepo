@@ -31,6 +31,8 @@ export function PlaceProfile({
   creating,
   social,
   scrollRef,
+  footer,
+  hideMore = false,
 }: {
   place: PlaceDetail;
   onBack?: () => void;
@@ -45,6 +47,11 @@ export function PlaceProfile({
   /** The scroller's ref, so a host can keep its offset across a Back
    *  (MESITA-4379: the consumer's useKeptScroll). */
   scrollRef?: (el: HTMLDivElement | null) => void;
+  /** Drawn at the foot of the scrolling body (the consumer's More rows,
+   *  MESITA-4111). Admin's preview passes nothing. */
+  footer?: React.ReactNode;
+  /** Hides the three dots. The consumer's More rows are the menu. */
+  hideMore?: boolean;
 }) {
   return (
     <div className="bg-background relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -52,7 +59,8 @@ export function PlaceProfile({
         name={place.name}
         premierTier={place.boost_tier ?? 0}
         onBack={onBack}
-        onMore={actions?.onMore}
+        onMore={hideMore ? undefined : actions?.onMore}
+        moreHidden={hideMore}
       />
       <div
         ref={scrollRef}
@@ -66,6 +74,7 @@ export function PlaceProfile({
           creating={creating}
           social={social}
         />
+        {footer}
       </div>
     </div>
   );
