@@ -910,7 +910,7 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     expect(existsSync(join(wallet, "buy", "page.tsx"))).toBe(true);
     expect(existsSync(join(wallet, "send", "page.tsx"))).toBe(true);
     expect(existsSync(join(wallet, "place", "[placeId]", "send", "page.tsx"))).toBe(true);
-    expect(childDirs(join(wallet, "cards"))).toEqual(["new"]);
+    expect(childDirs(join(wallet, "cards"))).toEqual(["[cardId]", "new"]);
     expect(existsSync(join(wallet, "cards", "new", "page.tsx"))).toBe(true);
     expect(childDirs(join(wallet, "gift"))).toEqual(["[token]"]);
     expect(childDirs(join(wallet, "place"))).toEqual(["[placeId]"]);

@@ -435,6 +435,11 @@ export function walletSendPath(placeId: string): string {
   return `${walletPlacePath(placeId)}/send`;
 }
 
+/** A saved card's page (MESITA-4112). */
+export function walletCardPath(cardId: string): string {
+  return `/wallet/cards/${encodeURIComponent(cardId)}`;
+}
+
 /** A friend's credit link (shared outside the app: keep its shape). */
 export function walletGiftPath(token: string): string {
   return `${CONSUMER_ROUTES.walletGift.prefix}${encodeURIComponent(token)}`;
@@ -532,6 +537,9 @@ export const ROUTE_MAP = {
   walletPlace: row("/wallet/place/:placeId", "pay", "page", "pay", false),
   walletGift: row("/wallet/gift/:token", "pay", "page", "pay"),
   walletAddCard: row("/wallet/cards/new", "pay", "page", "pay"),
+  // A saved card, opened from the Wallet rail (MESITA-4112). /cards/new
+  // stays the add page: a fixed segment beats this param.
+  walletCard: row("/wallet/cards/:cardId", "pay", "page", "pay", false),
   // Pay's Buy Credits and Send Gift lists, and a Loyalty Card's send page,
   // which was a sheet over it (MESITA-4096).
   walletBuy: row("/wallet/buy", "pay", "page", "pay"),

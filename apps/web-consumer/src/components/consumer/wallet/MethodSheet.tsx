@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft } from "lucide-react";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 import { cardFace } from "@/components/shared/card-brand-marks";
 import { cn } from "@/lib/utils";
@@ -15,41 +13,9 @@ import { SECONDARY } from "./wallet-buttons";
 // A Story opens its own screen since MESITA-4405 (Me › Tickets › Stories).
 export type Method = { kind: "card"; card: SavedCard };
 
-export function MethodSheet({
-  method: opened,
-  onClose,
-  onRemoveCard,
-}: {
-  method: Method | null;
-  onClose: () => void;
-  /** Remove a saved card (MESITA-3523); resolves once the server answered. */
-  onRemoveCard?: (card: SavedCard) => Promise<void>;
-}) {
-  const method: Method | null = opened;
-  const title = method?.kind === "card" ? `${brandLabel(method.card.brand)} •••• ${method.card.last4}` : "Card · Apple Pay · Google Pay";
-  return (
-    <LocalSheet open={method !== null} onClose={onClose} ariaLabel={title} fullScreen>
-      <div className="border-border flex items-center gap-2 border-b px-2 py-2">
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Back"
-          className="hover:bg-muted flex h-11 w-11 items-center justify-center rounded-xl transition"
-        >
-          <ChevronLeft className="h-6 w-6" aria-hidden />
-        </button>
-        <h2 className="min-w-0 truncate text-base font-semibold">{title}</h2>
-      </div>
-      <div className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-8">
-        {method?.kind === "card" ? <CardBody card={method.card} onRemove={onRemoveCard} /> : null}
-      </div>
-    </LocalSheet>
-  );
-}
-
 /** A saved card (MESITA-3523): what Stripe told us about it, and Remove.
  *  A card a Premier plan renews with says so and offers no Remove. */
-function CardBody({ card, onRemove }: { card: SavedCard; onRemove?: (card: SavedCard) => Promise<void> }) {
+export function CardBody({ card, onRemove }: { card: SavedCard; onRemove?: (card: SavedCard) => Promise<void> }) {
   const [busy, setBusy] = useState(false);
   const face = cardFace(card.brand, brandLabel(card.brand));
   return (

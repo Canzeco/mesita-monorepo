@@ -50,6 +50,8 @@ export const CONFIRM_FILES = [
   "components/consumer/pay/GuestPayScreen.tsx",
   "components/consumer/pay/GuestTabView.tsx",
   "components/consumer/pay/PayPage.tsx",
+  // Remove a Loyalty Card that holds nothing (MESITA-4112).
+  "components/consumer/wallet/PlaceCredit.tsx",
   "components/consumer/reservation-actions.tsx",
 ];
 
@@ -70,9 +72,6 @@ const SHEET_ALLOWLIST = [
   "components/consumer/place-detail/ReportSheet.tsx",
   "components/consumer/reservation-actions.tsx",
   "components/consumer/search/AddPlaceSheet.tsx",
-  "components/consumer/wallet/MethodSheet.tsx",
-  "components/consumer/wallet/PlaceCredit.tsx",
-  "components/consumer/wallet/SendCredit.tsx",
 ];
 
 /** Non-confirm dialogs that become pages (MESITA-4112/4113). Only shrinks. */

@@ -4,16 +4,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { EFError } from "@/lib/api/_invoke";
 import { photoUrl } from "@mesita/place-profile";
-import { apiRemoveCard, CARD_REFUSAL, type SavedCard } from "@/lib/api/cards";
-import { CONSUMER_ROUTES, storyTicketPath } from "@/lib/consumer-route-contract";
+import { type SavedCard } from "@/lib/api/cards";
+import { Screen } from "@/components/consumer/nav/Screen";
+import { CONSUMER_ROUTES, storyTicketPath, walletCardPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { placeHref } from "@/lib/place-route";
 import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
-import { type Method, MethodSheet } from "./MethodSheet";
 import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
 import { useStoryNow } from "./use-story-now";
@@ -129,10 +128,6 @@ import { openAddCardModal } from "@/lib/added-card";
 // removes it. The list is the server's (consumer-web-list-cards), read on
 // mount and after every add or remove.
 
-function cardRefusal(err: unknown): string {
-  const code = err instanceof EFError ? err.code : null;
-  return (code && CARD_REFUSAL[code]) || "Something went wrong. Try again.";
-}
 /** Photos of the first cards load eagerly; the rest lazily. The page waits
  *  for these to decode before it shows (MESITA-3814). */
 const EAGER_CARDS = 3;
@@ -175,7 +170,6 @@ export function WalletSection({
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
-  const [method, setMethod] = useState<Method | null>(null);
   const [explainAdd, setExplainAdd] = useState(false);
   // The pending boxes count down (MESITA-4360): a 30 s tick while any
   // card has money on its way, so the minutes move without seconds.
@@ -236,22 +230,20 @@ export function WalletSection({
     if (ready) onReady?.();
   }, [ready, onReady]);
 
-  // Add a card in the app (MESITA-4065: no Stripe page), in a modal since
-  // MESITA-4398; saved, the Wallet reads again and lists it.
-
-  const removeCard = useCallback(
-    async (card: SavedCard) => {
-      try {
-        await apiRemoveCard(getSupabase(), card.id);
-        toast.success("Card removed.");
-        setMethod(null);
-        reread();
-      } catch (err) {
-        toast.error(cardRefusal(err));
-      }
-    },
-    [getSupabase, reread],
-  );
+  if (gift) {
+    return (
+      <Screen title="Credit from a friend" paper scrolls>
+        <GiftClaimSheet
+          token={gift}
+          onClose={closeGift}
+          onClaimed={() => {
+            closeGift();
+            reread();
+          }}
+        />
+      </Screen>
+    );
+  }
 
   if (!ready) return <WalletBodySkeleton />;
 
@@ -282,7 +274,7 @@ export function WalletSection({
           card; a card that has not loaded = the skeleton. */}
       <PaymentMethods>
         {cards[0] ? (
-          <CardTile card={cards[0]} onOpen={() => setMethod({ kind: "card", card: cards[0] })} />
+          <CardTile card={cards[0]} onOpen={() => navigateTo(router, walletCardPath(cards[0].id), { motion: "drill" })} />
         ) : cardsFailed ? (
           <CardTileSkeleton />
         ) : (
@@ -331,15 +323,6 @@ export function WalletSection({
 
       {/* Add a Credits Card explains, never navigates (MESITA-4088). */}
       <AddCreditsCardDialog open={explainAdd} onClose={() => setExplainAdd(false)} />
-      <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
-      <GiftClaimSheet
-        token={wallet || failed ? gift : null}
-        onClose={closeGift}
-        onClaimed={() => {
-          closeGift();
-          reread();
-        }}
-      />
     </div>
   );
 }
