@@ -188,6 +188,31 @@ export function dropModePool(guest: string, key: string): void {
   if (pools.delete(slot(guest, key))) emit();
 }
 
+/** A paid voucher leaves every Home pool at once (MESITA-4209). The pool is
+ *  this tab's memory, so a buy would keep the offer on the card until the
+ *  next rank. Drops those voucher keys from that place's `offers.sell` in
+ *  every guest's pools; an empty sell removes the box. The order stays. */
+export function dropBoughtOffers(placeId: string, vouchers: readonly string[]): void {
+  if (!placeId || vouchers.length === 0) return;
+  const drop = new Set(vouchers);
+  let changed = false;
+  for (const [key, hit] of pools) {
+    let touched = false;
+    const places = hit.pool.places.map((place) => {
+      const sell = place.offers?.sell;
+      if (place.id !== placeId || !sell || sell.length === 0) return place;
+      const next = sell.filter((v) => !drop.has(v));
+      if (next.length === sell.length) return place;
+      touched = true;
+      return { ...place, offers: next.length > 0 ? { ...place.offers, sell: next } : null };
+    });
+    if (!touched) continue;
+    pools.set(key, { ...hit, pool: { ...hit.pool, places } });
+    changed = true;
+  }
+  if (changed) emit();
+}
+
 /** Listen for any pool change (Home's useSyncExternalStore). */
 export function subscribeModePools(l: () => void): () => void {
   listeners.add(l);

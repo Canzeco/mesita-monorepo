@@ -26,6 +26,8 @@ export type AnalyticsEvent =
   // wallet_purchases at report time.
   | "offer_sheet_opened"
   | "voucher_paid"
+  // MESITA-4209 — the Home offer box: which voucher was showing, which place.
+  | "offer_chip_tap"
   // MESITA-4384 — express pay: which wallets the phone offered (the Express
   // Checkout Element's ready), and an express payment that failed.
   | "express_ready"
