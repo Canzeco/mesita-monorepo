@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Gift } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { EFError } from "@/lib/api/_invoke";
 import {
@@ -528,20 +527,21 @@ export function GiftClaimSheet({ token, onClose, onClaimed }: { token: string | 
   }
 
   return (
-    <LocalSheet open={token !== null} onClose={onClose} ariaLabel="Credit from a friend">
-      <div className="flex flex-col px-4 pt-5 pb-8" data-gift-claim>
-        <span className="bg-muted flex h-10 w-10 items-center justify-center rounded-full" aria-hidden>
-          <Gift className="h-5 w-5" />
-        </span>
-        <h2 className="mt-3 mb-3 text-xl font-semibold">Credit from a friend</h2>
-        {body}
-        {look?.place?.slug ? (
-          <Link href={placeHref(look.place.slug)} className="mt-4 block py-2 text-sm font-semibold underline-offset-4 hover:underline">
-            Open {name}
-          </Link>
-        ) : null}
-      </div>
-    </LocalSheet>
+    <div className="flex flex-col px-4 pt-5 pb-8" data-gift-claim>
+      <span className="bg-muted flex h-10 w-10 items-center justify-center rounded-full" aria-hidden>
+        <Gift className="h-5 w-5" />
+      </span>
+      <h2 className="mt-3 mb-3 text-xl font-semibold">Credit from a friend</h2>
+      {body}
+      {look?.place?.slug ? (
+        <Link href={placeHref(look.place.slug)} className="mt-4 block py-2 text-sm font-semibold underline-offset-4 hover:underline">
+          Open {name}
+        </Link>
+      ) : null}
+      <button type="button" className="text-muted-foreground mt-6 text-sm font-semibold" onClick={onClose}>
+        Back to Wallet
+      </button>
+    </div>
   );
 }
 

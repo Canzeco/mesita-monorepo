@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight, Clock3, Gift, Plus, QrCode, Store } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { offerSlides, SizedImg } from "@mesita/place-profile";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import {
   canRemoveLoyaltyCard,
@@ -517,7 +517,7 @@ export function PlaceCredit({
       ) : null}
 
       {removable ? (
-        <LocalSheet open={removeOpen} onClose={() => (removing ? undefined : setRemoveOpen(false))} ariaLabel="Remove this Loyalty Card">
+        <LocalDialog open={removeOpen} onClose={() => (removing ? undefined : setRemoveOpen(false))} ariaLabel="Remove this Loyalty Card">
           <div className="flex flex-col px-4 pt-5 pb-8" data-loyalty-card-remove-confirm>
             <h2 className="text-xl font-semibold">Remove this Loyalty Card?</h2>
             <p className="text-muted-foreground mt-1 text-sm leading-relaxed">You can add it again any time.</p>
@@ -541,7 +541,7 @@ export function PlaceCredit({
               </button>
             </div>
           </div>
-        </LocalSheet>
+        </LocalDialog>
       ) : null}
     </>
   );

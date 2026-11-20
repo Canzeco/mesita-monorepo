@@ -166,6 +166,24 @@ export function replaceAddress(href: string): void {
   window.history.replaceState(null, "", href);
 }
 
+/** A `?return=` path back into this app (MESITA-4112). Anything that is not
+ *  one absolute path is dropped: a protocol, a protocol-relative URL, a
+ *  backslash, or an encoded slash that decodes into one of those. */
+export function safeReturn(v: string | null | undefined): string | null {
+  if (typeof v !== "string") return null;
+  const raw = v.trim();
+  if (!raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\") || raw.includes("://")) return null;
+  let path: string;
+  try {
+    path = decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+  if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\") || path.includes("://")) return null;
+  if (/^\/\s*javascript:/i.test(path)) return null;
+  return path;
+}
+
 /** Back to the screen under this one, or, when this one was opened from
  *  outside the app, to `fallback`: by default the route map's parent of this
  *  screen (a bill → Pay, Reserve → its place, a reservation → Me ›

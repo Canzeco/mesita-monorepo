@@ -13,7 +13,8 @@ import { Screen } from "@/components/consumer/nav/Screen";
 import { Panel } from "@/components/shared/Panel";
 import { WALLET_CACHE_KEY } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { goBack } from "@/lib/navigate";
+import { goBack, safeReturn } from "@/lib/navigate";
+import { readDraft, writeDraft } from "@/lib/guest-pay-draft";
 import { invalidateCached } from "@/lib/screen-cache";
 import { toast } from "@/lib/toast";
 import { handOverAddedCard, PICK_PARAM } from "@/lib/added-card";
@@ -31,11 +32,17 @@ export function AddCardPage() {
   const form = useAddCard({
     active: true,
     onSaved: (id) => {
-      // Opened from a purchase (?pick=1, MESITA-4101): that screen selects it.
-      if (new URLSearchParams(window.location.search).has(PICK_PARAM)) handOverAddedCard(id);
+      const params = new URLSearchParams(window.location.search);
+      const back = safeReturn(params.get("return"));
+      const placeId = back?.match(/^\/pay\/place\/([^/?#]+)/)?.[1];
+      if (placeId) {
+        const draft = readDraft(decodeURIComponent(placeId));
+        if (draft) writeDraft(decodeURIComponent(placeId), { ...draft, cardId: id });
+      }
+      if (params.has(PICK_PARAM)) handOverAddedCard(id);
       toast.success("Card saved.");
       invalidateCached(WALLET_CACHE_KEY);
-      goBack(router, CONSUMER_ROUTES.pay);
+      goBack(router, back ?? CONSUMER_ROUTES.pay);
     },
   });
   return (
