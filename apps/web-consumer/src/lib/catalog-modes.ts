@@ -227,6 +227,68 @@ export function readRankAdIds(data: { lanes?: unknown; adIds?: unknown }): {
   return { adIds: [], refused: data.lanes === true };
 }
 
+/** A place shown this many times on Home sinks on the next rank (MESITA-4459). */
+export const SEEN_OFTEN = 3;
+const SEEN_STORE_CAP = 200;
+const SEEN_SEND_CAP = 40;
+const SEEN_KEY = "mesita.home-seen.v1";
+
+/** Count one more showing. The oldest ids past the cap drop first. */
+export function bumpSeen(
+  prev: Readonly<Record<string, number>>,
+  ids: readonly string[],
+): Record<string, number> {
+  const next: Record<string, number> = { ...prev };
+  for (const id of ids) {
+    if (!id) continue;
+    next[id] = (next[id] ?? 0) + 1;
+  }
+  const keys = Object.keys(next);
+  if (keys.length > SEEN_STORE_CAP) {
+    for (const id of keys.slice(0, keys.length - SEEN_STORE_CAP)) delete next[id];
+  }
+  return next;
+}
+
+/** The ids shown at least SEEN_OFTEN times, most-shown first, capped. */
+export function oftenSeen(counts: Readonly<Record<string, number>>): string[] {
+  return Object.entries(counts)
+    .filter(([, n]) => n >= SEEN_OFTEN)
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .slice(0, SEEN_SEND_CAP)
+    .map(([id]) => id);
+}
+
+function readSeenCounts(): Record<string, number> {
+  if (typeof localStorage === "undefined") return {};
+  try {
+    const raw = JSON.parse(localStorage.getItem(SEEN_KEY) ?? "{}") as unknown;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    const out: Record<string, number> = {};
+    for (const [id, n] of Object.entries(raw)) {
+      if (typeof n === "number" && n > 0) out[id] = n;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** Ids to send on the next Home rank. */
+export function oftenSeenIds(): string[] {
+  return oftenSeen(readSeenCounts());
+}
+
+/** Remember the first page Home just painted. */
+export function noteHomeSeen(ids: readonly string[]): void {
+  if (typeof localStorage === "undefined" || ids.length === 0) return;
+  try {
+    localStorage.setItem(SEEN_KEY, JSON.stringify(bumpSeen(readSeenCounts(), ids)));
+  } catch {
+    // A full store only costs the next page its variety.
+  }
+}
+
 /** "1st", "2nd", "3rd", "4th" … for the temporary score label (H1). */
 export function ordinal(n: number): string {
   const tens = n % 100;

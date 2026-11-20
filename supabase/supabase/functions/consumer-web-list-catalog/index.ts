@@ -96,6 +96,7 @@ import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { withVouchersUpTo } from "../_shared/payments.ts";
 import { withPlaceOffers } from "../_shared/vouchers.ts";
 import { isUuid } from "../_shared/place-id.ts";
+import { demoteSeen, readSeen } from "./seen.ts";
 
 type Body = {
   lat?: number;
@@ -129,6 +130,8 @@ type Body = {
   seedLng?: unknown;
   /** With `fill`: the rank's ad-slot ids (MESITA-4454, M-c). */
   adIds?: unknown;
+  /** Place ids Home has already shown 3+ times (MESITA-4459). */
+  seen?: unknown;
 };
 
 /** A fill's ids, duplicates collapsed, or null when the list is empty, too
@@ -303,7 +306,15 @@ serveJson("consumer-web-list-catalog", async (req) => {
 
   // The tile's voucher line (MESITA-3312), two reads for the page; every
   // offer the place sells, whoever looks (MESITA-4292).
-  const places = withPlaceOffers(await withVouchersUpTo(admin, pool.places));
+  const page = pool.summary.pageSize ?? pool.places.length;
+  const order = demoteSeen(pool.order, readSeen(body.seen), page);
+  const byId = new Map(pool.places.map((p) => [p.id, p]));
+  const shown = [];
+  for (const id of order.slice(0, page)) {
+    const row = byId.get(id);
+    if (row) shown.push(row);
+  }
+  const places = withPlaceOffers(await withVouchersUpTo(admin, shown.length > 0 ? shown : pool.places));
 
   console.log(JSON.stringify({
     fn: "consumer-web-list-catalog",
@@ -336,7 +347,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
     rankMode,
     pageSize: pool.summary.pageSize,
     total: pool.summary.total,
-    order: pool.order,
+    order,
     adIds: pool.adIds,
     lanes: true,
     preShuffle: pool.preShuffle,

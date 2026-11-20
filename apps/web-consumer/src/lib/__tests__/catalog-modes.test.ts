@@ -9,7 +9,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { AreaPool } from "@/lib/api/places";
 import {
   acceptRank,
+  bumpSeen,
   isAdPlace,
+  oftenSeen,
   modePoolFor,
   rankModeForChip,
   readModePool,
@@ -117,5 +119,15 @@ describe("rankModeForChip twin (DX-c)", () => {
     );
     const here = readFileSync(join(__dirname, "../catalog-modes.ts"), "utf8");
     expect(body(here)).toBe(body(shared));
+  });
+});
+
+describe("seen memory (MESITA-4459)", () => {
+  it("sends a place only after it has been shown three times", () => {
+    let counts = bumpSeen({}, ["a"]);
+    counts = bumpSeen(counts, ["a"]);
+    expect(oftenSeen(counts)).toEqual([]);
+    counts = bumpSeen(counts, ["a", "b"]);
+    expect(oftenSeen(counts)).toEqual(["a"]);
   });
 });

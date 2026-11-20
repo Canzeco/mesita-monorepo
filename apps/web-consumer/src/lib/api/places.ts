@@ -425,6 +425,8 @@ export async function apiListAreaPool(
     rankMode?: RankMode;
     shuffleSeed?: number;
     seedPoint?: AreaOrigin | null;
+    /** Places Home has already shown often (MESITA-4459). */
+    seen?: readonly string[];
   } = {},
 ): Promise<AreaPool> {
   const seedPoint = opts.seedPoint ?? null;
@@ -444,6 +446,7 @@ export async function apiListAreaPool(
     ...(opts.nearest ? { nearest: true } : {}),
     ...(opts.rankMode ? { rankMode: opts.rankMode } : {}),
     ...(typeof opts.shuffleSeed === "number" ? { shuffleSeed: opts.shuffleSeed } : {}),
+    ...(opts.seen && opts.seen.length > 0 ? { seen: [...opts.seen] } : {}),
     ...(seedPoint ? { seedLat: seedPoint.lat, seedLng: seedPoint.lng } : {}),
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
     // The point only scores: the Catalog has no radius (MESITA-2909).
