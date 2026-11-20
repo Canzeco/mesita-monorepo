@@ -223,13 +223,13 @@ export const ME_HUB_SETTINGS: HubTile = {
 };
 
 /** The last box: Gift across both columns, under Settings (MESITA-4420,
- *  MESITA-4424). Gift your credit at a place to a friend; it left under
- *  MESITA-3940 ("Share replaces Gift") and came back double size. */
+ *  MESITA-4424). A tap opens Pay (MESITA-4476). /me/gift stays a live
+ *  address; this box does not open it. */
 export const ME_HUB_GIFT: HubTile = {
   Icon: Gift,
   title: "Gift",
   summary: "Send credit to a friend",
-  href: CONSUMER_ROUTES.mePages.gift,
+  href: CONSUMER_ROUTES.pay,
 };
 
 /** The hub: the app bar fixed above by flex, then the grid and the Settings
