@@ -179,10 +179,10 @@ export function RailCard({
         // as "nothing opens"). The select-then-open dance stays on the pins;
         // a card the guest taps is the deliberate open, Google-only included
         // (the opening screen creates, never this tap).
-        onClick={() => {
+        onPointerDown={() => {
           if (ad) notePremierAd(place.id, "tap");
-          onOpen();
         }}
+        onClick={onOpen}
         className="focus-visible:ring-primary absolute inset-0 flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
         {strip ? <OfferStrip name={place.name} slides={slides} className={RAIL_CARD_STRIP} /> : null}
