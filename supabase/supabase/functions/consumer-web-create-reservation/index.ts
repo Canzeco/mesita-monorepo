@@ -357,11 +357,12 @@ serveJson("consumer-web-create-reservation", async (req) => {
       limit?: number;
     } | null;
     if (result?.ok && result.replay && result.id) {
-      const { data: priorRow } = await admin
+      const { data: priorRow, error: priorErr } = await admin
         .from("reservation_tickets")
         .select(TICKET_COLUMNS)
         .eq("id", result.id)
         .maybeSingle();
+      if (priorErr) return json({ ok: false, error: priorErr.message }, 500);
       const prior = fromPlaceIdRow(priorRow ?? null) as CreateTicket | null;
       if (prior) {
         const [withPlace] = await attachPlaces(admin, [prior as { project_id?: string | null }]);
