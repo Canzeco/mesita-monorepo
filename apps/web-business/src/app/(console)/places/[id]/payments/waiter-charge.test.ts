@@ -1,7 +1,6 @@
-// Money (MESITA-3306; Cash Payments since MESITA-3589): the waiter confirms a
-// bill paid outside with the waiter code (set on this page since MESITA-3600), so Cash Payments cannot turn on
-// without it and the page says so from the server's code_set. Loyalty Cards
-// and Mesita Payments are never gated on the code.
+// Money (MESITA-3306; MESITA-4485): Cash Payments is a switch. It does not
+// wait on a waiter code, and this page has no control for accepting codes.
+// Loyalty Cards and App Payments are not gated on a code either.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -9,11 +8,10 @@ import { describe, expect, it } from "vitest";
 const PANEL = readFileSync(join(__dirname, "PaymentsPanel.tsx"), "utf8");
 
 describe("the place code on Payments", () => {
-  it("blocks Cash Payments without a place code, says how to set it, and links the waiter's screen once it is", () => {
-    expect(PANEL).toMatch(/code_set: codeSetAtLoad/);
-    expect(PANEL).toContain("<WaiterCodeRow");
-    expect(PANEL).toContain('step("Set the waiter code first.", "#waiter-code")');
-    expect(PANEL).toMatch(/blocked: codeSet \? undefined : needsCode/);
+  it("does not gate Cash Payments on a waiter code, and links the waiter's screen", () => {
+    expect(PANEL).not.toContain("<WaiterCodeRow");
+    expect(PANEL).not.toContain("Set the waiter code first.");
+    expect(PANEL).toContain('accept: { key: "cash_payments" }');
     expect(PANEL).toContain("/charge/${encodeURIComponent(placeId)}");
   });
 

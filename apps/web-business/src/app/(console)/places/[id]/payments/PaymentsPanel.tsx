@@ -74,7 +74,6 @@ import {
   signLoyaltyCardsContract,
   startPaymentOnboarding,
 } from "@/lib/business-api";
-import { WaiterCodeRow } from "./WaiterCode";
 
 /** One row: mark · title and line · value · control; the line wraps, the rest hold. */
 const MARK_ROW = "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-4 px-5 py-3 text-sm sm:px-6";
@@ -219,9 +218,8 @@ export function PaymentsPanel({
   const [agreeing, setAgreeing] = useState(false);
   const [busy, setBusy] = useState<PaymentKey | "stripe" | "contract" | null>(null);
   const [error, setError] = useState<string | null>(back === "refresh" ? "The Stripe setup link expired. Open it again." : null);
-  const { account, can_edit: canEdit, test_mode: testMode, code_set: codeSetAtLoad, fee } = initial;
+  const { account, can_edit: canEdit, test_mode: testMode, fee } = initial;
   // The Waiter code row sets it here, so Cash Payments unlocks without a reload.
-  const [codeSet, setCodeSet] = useState(codeSetAtLoad);
   const chargeUrl = `${VISIT_ORIGIN}/charge/${encodeURIComponent(placeId)}`;
   const staffListUrl = `${VISIT_ORIGIN}/payments/${encodeURIComponent(placeId)}`;
   const copy = accountCopy(account);
@@ -234,7 +232,7 @@ export function PaymentsPanel({
   // switched.
   const takesCards = account.charges_enabled && account.livemode === !testMode;
   // The same rule the server sells and pays by (money-state, one source).
-  const state = moneyState({ ...settings, has_place_code: codeSet }, { charges_enabled: account.charges_enabled, fee_hold: fee.hold }, null);
+  const state = moneyState({ ...settings, has_place_code: true }, { charges_enabled: account.charges_enabled, fee_hold: fee.hold }, null);
 
   async function flip(key: PaymentKey, enabled: boolean) {
     setBusy(key);
@@ -281,7 +279,6 @@ export function PaymentsPanel({
   const needsContract = step("Sign the Loyalty Cards Agreement first.", "#loyalty-cards-agreement");
   const needsLoyaltyCards = step("Turn Loyalty Cards on first.", "#loyalty-cards");
   const needsStripe = step("Connect the Stripe Account first.", "#stripe-account");
-  const needsCode = step("Set the waiter code first.", "#waiter-code");
   const needsPrepayments = step("Turn App Prepayments on first.", "#mesita-prepayments");
   const needsStripePayments = step("Turn Accept Stripe Payments on first.", "#accept-stripe-payments");
   const balance = initial.credits_balance ?? null;
@@ -517,10 +514,10 @@ export function PaymentsPanel({
           {pairRow({
             id: "cash-payments",
             name: "Cash Payments",
-            line: codeSet ? "Cash or your terminal; your waiter taps Received. Waiter code set." : "Cash or your terminal; your waiter taps Received.",
+            line: "Cash or your terminal; your waiter taps Received.",
             icon: MoneyIcon,
             tone: "bg-lime-100 text-lime-700",
-            accept: { key: "cash_payments", blocked: codeSet ? undefined : needsCode },
+            accept: { key: "cash_payments" },
           })}
           {pairRow({
             id: "mesita-payments",
@@ -552,6 +549,16 @@ export function PaymentsPanel({
             accept: { key: "prepayments", stripe: true },
           })}
         </ul>
+        <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
+          Waiter&apos;s screen:{" "}
+          <a className="underline" href={chargeUrl} target="_blank" rel="noreferrer">
+            {chargeUrl.replace("https://", "")}
+          </a>
+          {" · "}Staff list:{" "}
+          <a className="underline" href={staffListUrl} target="_blank" rel="noreferrer">
+            {staffListUrl.replace("https://", "")}
+          </a>
+        </p>
       </Card>
       <Card className={SECTION}>
         <h2 className={HEAD}>Vouchers</h2>
@@ -562,29 +569,6 @@ export function PaymentsPanel({
             .filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key])
             .map(voucherRow)}
         </ul>
-      </Card>
-      {/* THE WAITER CODE IS ITS OWN SECTION, LAST (Pato, 2026-11-13,
-          MESITA-3824: "waiter code is not inherent of that. waiter code is to
-          sign qr. any qr, even digital payments. so separate them. waiter
-          code must be at the bottom"). It sat inside Cash Payments from
-          MESITA-3625. Cash Payments still waits for it. */}
-      <Card className={SECTION}>
-        <h2 className={HEAD}>Waiter Code</h2>
-        <ul className="divide-border divide-y">
-          <WaiterCodeRow placeId={placeId} isSet={codeSet} canEdit={canEdit} onSet={() => setCodeSet(true)} onError={setError} />
-        </ul>
-        {codeSet ? (
-          <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
-            Waiter&apos;s screen:{" "}
-            <a className="underline" href={chargeUrl} target="_blank" rel="noreferrer">
-              {chargeUrl.replace("https://", "")}
-            </a>
-            {" · "}Staff list:{" "}
-            <a className="underline" href={staffListUrl} target="_blank" rel="noreferrer">
-              {staffListUrl.replace("https://", "")}
-            </a>
-          </p>
-        ) : null}
       </Card>
       {agreeing ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="presentation" onClick={() => !pending && setAgreeing(false)}>

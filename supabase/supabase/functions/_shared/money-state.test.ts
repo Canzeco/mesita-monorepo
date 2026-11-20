@@ -65,10 +65,10 @@ Deno.test("credit is the place's debt (MESITA-3408): every switch off, no accoun
   assertEquals(moneyState(everythingOff, can, { spendable_cents: 100 }).pay, "credit");
 });
 
-Deno.test("cash (MESITA-3589): Cash Payments needs the switch and the place code, no Stripe", () => {
+Deno.test("cash (MESITA-3589, MESITA-4485): Cash Payments needs the switch, not a waiter code", () => {
   const cash = { ...off, cash_payments: true, has_place_code: true };
   assertEquals(moneyState(cash, null, null).cash, true);
-  assertEquals(moneyState({ ...cash, has_place_code: false }, null, null).cash, false);
+  assertEquals(moneyState({ ...cash, has_place_code: false }, null, null).cash, true);
   assertEquals(moneyState({ ...cash, cash_payments: false }, null, null).cash, false);
 });
 
