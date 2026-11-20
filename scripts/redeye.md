@@ -13,16 +13,14 @@ Nobody is awake. A question is not caution here, it is the rest of the night. Ev
 
 ## Never stop
 
-The unit of work is the QUEUE, not the issue. A merge does not finish you; it puts you between issues.
+The unit of work is the QUEUE, not the issue. A merge does not finish you.
 
-1. `deno task boot` — take the top unblocked issue whose footprint is disjoint from every live claim.
-2. `deno task worktree add MESITA-<id> <slug>` (a cloud clone: `--adopt .`) · In Progress · paste the claim line.
-3. Read the domain's Docs page. Commit and push every change the moment it is made; nothing is batched.
-4. `deno task worktree pr` → `gh pr ready` → checks → `gh pr merge --squash` the moment they pass. A path-filtered check reporting SKIPPED is mergeable.
-5. Rewrite the Docs page. Close the issue. `deno task worktree remove`.
+1. `deno task boot`. The top unblocked, footprint-disjoint issue. Resume a live claim with `deno task worktree add MESITA-<id>` and no `--adopt`.
+2. A new issue: `deno task worktree add MESITA-<id> <slug>`. `--adopt .` only for a cloud lobby already off `main`. In Progress, paste the claim line. That branch carries `MESITA-<id>`. One checkout, one claim.
+3. Docs first. Small commits. Push early, once CI should judge the commit. `bash scripts/preflight.sh pre-commit` when `core.hooksPath` skips `.git/hooks`.
+4. `deno task worktree pr` adopts the open PR and writes `Closes MESITA-<id>` and a `Docs:` line. `gh pr ready` if it is a draft. `gh pr merge --squash` when every required check is green or SKIPPED. A Vercel Ready comment is not that ruleset.
+5. Rewrite the Docs page. Close the issue. `deno task worktree remove` from a lobby. `deno task worktree leave` for a launch checkout.
 6. Back to 1, same breath. Announcing the loop is not running it.
-
-Red CI is yours to fix, not to report. A review comment is yours to answer in code. Stop only when Pato stops you, or when the queue holds nothing you may claim — say so in one line and stop.
 
 ## What the bypass does not buy
 
