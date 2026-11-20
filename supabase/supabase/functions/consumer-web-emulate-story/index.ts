@@ -71,13 +71,13 @@ serveJson("consumer-web-emulate-story", async (req) => {
       const rules = await readStoryRules(admin);
       const followers = Math.max(1001, rules.minFollowers);
       const handle = `emu${me.replace(/-/g, "").slice(0, 12)}`;
-      const { error } = await admin.from("consumers").update({
-        instagram_handle: handle,
-        instagram_followers_count: followers,
-        instagram_is_private: false,
-        instagram_verified_at: new Date().toISOString(),
-      }).eq("id", me);
-      if (error) throw new Error(`consumers: ${error.message}`);
+      const { error } = await admin.rpc("consumer_instagram_verify", {
+        p_consumer_id: me,
+        p_handle: handle,
+        p_followers: followers,
+        p_private: false,
+      });
+      if (error) throw new Error(`consumer_instagram_verify: ${error.message}`);
       return json({ ok: true, action, handle, followers, is_private: false });
     }
 

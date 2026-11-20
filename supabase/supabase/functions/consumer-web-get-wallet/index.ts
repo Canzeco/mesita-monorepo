@@ -206,7 +206,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
       const [purchases, mentions, zones] = await Promise.all([
         readStoryPurchases(admin, stories.map((st) => st.purchase_id)),
         readStoryMentions(admin, stories.map((st) => st.mention_id)),
-        admin.from("place_profiles").select(`id, ${PLACE_ZONE_COLUMNS}`).in("id", [...new Set(stories.map((st) => st.place_id))]),
+        admin.from("place_profiles").select(`id, ${PLACE_ZONE_COLUMNS}`).in("id", [...new Set(stories.flatMap((st) => st.place_id ? [st.place_id] : []))]),
       ]);
       storyPurchases = purchases;
       storyMentions = mentions;
@@ -221,9 +221,9 @@ serveJson("consumer-web-get-wallet", async (req) => {
   const nowMs = Date.now();
   const storyViews = stories.map((st) =>
     storyView(st, {
-      purchase: storyPurchases.get(st.purchase_id) ?? null,
+      purchase: st.purchase_id ? storyPurchases.get(st.purchase_id) ?? null : null,
       mention: st.mention_id ? storyMentions.get(st.mention_id) ?? null : null,
-      timeZone: storyZones.get(st.place_id) ?? placeZone(null),
+      timeZone: st.place_id ? storyZones.get(st.place_id) ?? placeZone(null) : placeZone(null),
       emulator: emulatorOn,
       nowMs,
     })
@@ -269,7 +269,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   );
 
   const ids = [
-    ...new Set([...balances.map((b) => b.place_id), ...stories.map((st) => st.place_id), ...gifts.map((g) => g.place_id)]),
+    ...new Set([...balances.map((b) => b.place_id), ...stories.flatMap((st) => st.place_id ? [st.place_id] : []), ...gifts.map((g) => g.place_id)]),
   ];
   // card_ok (MESITA-3305): the place's account can charge in this universe
   // and the owner's Cards switch is on, so the Pay tab may offer a card
@@ -334,14 +334,14 @@ serveJson("consumer-web-get-wallet", async (req) => {
       card_ok: (charging?.has(place_id) ?? false) && cardsOn.has(place_id),
       offers: offersById.get(place_id) ?? { sell: [] },
     })),
-    stories: storyViews.map((v) => ({ ...v, place: places.get(v.place_id) ?? null })),
+    stories: storyViews.map((v) => ({ ...v, place: v.place_id ? places.get(v.place_id) ?? null : null })),
     waiting_stories: waitingStories.map((st) => {
-      const p = storyPurchases.get(st.purchase_id);
+      const p = st.purchase_id ? storyPurchases.get(st.purchase_id) : undefined;
       const m = st.mention_id ? storyMentions.get(st.mention_id) : undefined;
       return {
         purchase_id: st.purchase_id,
         story_id: st.id,
-        place: places.get(st.place_id) ?? null,
+        place: st.place_id ? places.get(st.place_id) ?? null : null,
         place_id: st.place_id,
         amount_cents: p?.amount_cents ?? 0,
         bonus_cents: st.bonus_cents,
@@ -356,7 +356,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
         bonus_void_reason: st.void_reason,
         bonus_decided_at: st.decided_at,
         refunded: !!p && p.status !== "paid",
-        time_zone: storyZones.get(st.place_id) ?? placeZone(null),
+        time_zone: st.place_id ? storyZones.get(st.place_id) ?? placeZone(null) : placeZone(null),
         mention: m ? { id: m.id, media_url: m.media_url, media_kind: m.media_kind, mentioned_at: m.mentioned_at, source: m.source } : null,
         test_mode: !st.livemode,
         emulator: emulatorOn && !st.livemode && st.state === "approved",
