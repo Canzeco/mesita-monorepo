@@ -18,8 +18,8 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
           title="Wallet"
           action={
             <span className="flex items-center gap-2">
-              <Skeleton className="h-11 w-28 rounded-xl" aria-hidden />
-              <TicketsShortcut className="h-11" />
+              <Skeleton className="h-14 w-32 rounded-xl" aria-hidden />
+              <TicketsShortcut tall />
             </span>
           }
         />

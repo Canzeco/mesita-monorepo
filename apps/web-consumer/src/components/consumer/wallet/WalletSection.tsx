@@ -9,6 +9,7 @@ import { Screen } from "@/components/consumer/nav/Screen";
 import { CONSUMER_ROUTES, storyTicketPath, walletSendPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
+import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
 import { prepayHref } from "./WalletPickers";
 import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
 import { GiftClaimSheet } from "./SendCredit";
@@ -17,12 +18,12 @@ import { useStoryNow } from "./use-story-now";
 import { openStories } from "@/lib/story-lines";
 import {
   AddRow,
-  CreditsRow,
+  CreditsCardChip,
+  CreditsPill,
   EmptyLoyaltyLine,
   RowsSkeleton,
   StoryRow,
   WalletBodySkeleton,
-  WalletPanelList,
   pendingWords,
 } from "./WalletLists";
 import { money, type WalletBalance } from "@/lib/api/wallet";
@@ -260,50 +261,65 @@ export function WalletSection({
         </p>
       ) : null}
 
-      {/* LOYALTY (MESITA-4485): under the places. The saved card lives in
-          the header. Stories, then each card, then Add a Loyalty Card. */}
-      <WalletPanelList title="Loyalty">
+      {/* LOYALTY (MESITA-4492): the same row as a place. Add Funds, the card, Send Gift. */}
+      <section className="mt-3 flex flex-col gap-2" aria-label="Loyalty">
+        <h2 className="text-muted-foreground px-2 text-sm font-semibold">Loyalty</h2>
         {creditsState === "rows"
-          ? stories.map((s) => <StoryRow key={s.purchase_id} story={s} now={storyNow} onOpen={() => navigateTo(router, storyTicketPath(s.story_id), { motion: "drill" })} />)
-          : null}
-        {creditsState === "rows"
-          ? credits?.map((row) => (
-              <div key={row.card.key} className="flex flex-col">
-                <CreditsRow
-                  card={row.card}
-                  gone={row.balance.place === null}
-                  eager={shown++ < EAGER_CARDS}
-                  ready
-                  pendingLines={pendingLines(row.balance, now)}
-                />
-                <div className="flex justify-end gap-2 px-3 pb-3">
-                  <button
-                    type="button"
-                    className="border-border h-11 rounded-xl border px-3 text-sm"
-                    onClick={() => navigateTo(router, prepayHref(row.placeSlug), { motion: "drill" })}
-                  >
-                    Add Funds
-                  </button>
-                  <button
-                    type="button"
-                    className="border-border h-11 rounded-xl border px-3 text-sm disabled:opacity-40"
-                    disabled={row.balance.place === null}
-                    onClick={() => {
-                      if (row.balance.place !== null) navigateTo(router, walletSendPath(row.placeId), { motion: "push" });
-                    }}
-                  >
-                    Send Gift
-                  </button>
-                </div>
+          ? stories.map((s) => (
+              <div key={s.purchase_id} className="border-border bg-card overflow-hidden rounded-xl border">
+                <StoryRow story={s} now={storyNow} onOpen={() => navigateTo(router, storyTicketPath(s.story_id), { motion: "drill" })} />
               </div>
             ))
+          : null}
+        {creditsState === "rows"
+          ? credits?.map((row) => {
+              const gone = row.balance.place === null;
+              const pending = pendingLines(row.balance, now);
+              return (
+                <PlaceActionRow
+                  key={row.card.key}
+                  name={row.card.name || "A Mesita place"}
+                  photo={<CreditsCardChip photo={row.card.photo} name={row.card.name} eager={shown++ < EAGER_CARDS} className="h-12 w-12 rounded-full" />}
+                  extra={
+                    <span className="mt-1 flex flex-col items-start gap-1">
+                      {gone ? (
+                        <span className="text-muted-foreground block text-sm">Ask Mesita support to use it.</span>
+                      ) : (
+                        <>
+                          {row.card.available_cents > 0 ? <CreditsPill>{money(row.card.available_cents, row.card.currency)}</CreditsPill> : null}
+                          {pending.map((line, i) => (
+                            <span key={i} className="text-muted-foreground block text-sm">
+                              {line}
+                            </span>
+                          ))}
+                        </>
+                      )}
+                    </span>
+                  }
+                  left={{
+                    label: "Add Funds",
+                    disabled: gone,
+                    description: gone ? "Ask Mesita support to use it." : undefined,
+                    onClick: () => navigateTo(router, prepayHref(row.placeSlug), { motion: "drill" }),
+                  }}
+                  right={{
+                    label: "Send Gift",
+                    disabled: gone,
+                    description: gone ? "Ask Mesita support to use it." : undefined,
+                    onClick: () => navigateTo(router, walletSendPath(row.placeId), { motion: "push" }),
+                  }}
+                />
+              );
+            })
           : null}
         {creditsState === "empty" ? <EmptyLoyaltyLine /> : null}
         {creditsState === "loading" ? <RowsSkeleton count={2} /> : null}
         {creditsState === "rows" || creditsState === "empty" ? (
-          <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" onClick={() => setExplainAdd(true)} />
+          <div className="border-border bg-card overflow-hidden rounded-xl border">
+            <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" onClick={() => setExplainAdd(true)} />
+          </div>
         ) : null}
-      </WalletPanelList>
+      </section>
       {creditsState === "failed" ? (
         <div className="mt-2">
           <EmptyState

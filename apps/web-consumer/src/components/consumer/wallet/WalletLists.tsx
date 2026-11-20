@@ -283,13 +283,15 @@ export function CreditsCardChip({
   photo,
   name,
   eager = false,
+  className,
 }: {
   photo: string | null;
   name: string | null;
   eager?: boolean;
+  className?: string;
 }) {
   return (
-    <span className={cn(CHIP, "bg-neutral-950 text-sm font-semibold text-white")} aria-hidden>
+    <span className={cn(CHIP, "bg-neutral-950 text-sm font-semibold text-white", className)} aria-hidden>
       {photo ? (
         <SizedImg src={photo} size="thumb" alt="" loading={eager ? "eager" : "lazy"} className="h-full w-full object-cover" />
       ) : (
