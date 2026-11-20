@@ -192,8 +192,14 @@ function CardPortal({ children }: { children: React.ReactNode }) {
 //
 // Any routed sheet shell must reuse this same panel, because a guest cannot
 // tell a route modal from a state modal and should not have to.
+//
+// `fit` is the Pay Bill place picker only (MESITA-4478). Every other caller
+// stays exactly 88% tall.
 export const SEMI_MODAL_PANEL_CLASS =
   "border-border bg-popover shadow-elev relative flex h-[88%] max-h-[88%] min-h-0 flex-col overflow-hidden rounded-t-3xl border-t";
+
+const FIT_PANEL_CLASS =
+  "border-border bg-popover shadow-elev relative flex h-auto max-h-[88%] min-h-0 w-full flex-col overflow-hidden rounded-t-3xl border-t";
 
 const FULL_SCREEN_PANEL_CLASS =
   "bg-popover relative flex h-full min-h-0 flex-col overflow-hidden";
@@ -204,6 +210,7 @@ export function LocalSheet({
   children,
   ariaLabel,
   fullScreen = false,
+  fit = false,
   from = "bottom",
 }: {
   open: boolean;
@@ -212,6 +219,8 @@ export function LocalSheet({
   ariaLabel: string;
   /** The whole card, not the semi-modal (using a reward, MESITA-3254). */
   fullScreen?: boolean;
+  /** Content height, capped at 88% of the card. Pay Bill's place picker only. */
+  fit?: boolean;
   /** Where the panel comes from. "right" slides in right to left and out
    *  left to right, the place screen's own motion (SlideOverShell), for a
    *  full-screen page opened from it (the Offers page, MESITA-3453). */
@@ -250,7 +259,11 @@ export function LocalSheet({
           ref={panelRef}
           tabIndex={-1}
           className={cn(
-            fullScreen ? FULL_SCREEN_PANEL_CLASS : SEMI_MODAL_PANEL_CLASS,
+            fullScreen
+              ? FULL_SCREEN_PANEL_CLASS
+              : fit
+                ? FIT_PANEL_CLASS
+                : SEMI_MODAL_PANEL_CLASS,
             "outline-none",
             "transition-transform duration-300 motion-reduce:transition-none",
             OVERLAY_EASE,

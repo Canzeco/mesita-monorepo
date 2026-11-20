@@ -1,7 +1,7 @@
-import { PayPickPage } from "@/components/consumer/pay/PayPick";
+import { redirect } from "next/navigation";
 
-// /pay/pick — Pay Bill's place picker (MESITA-4232): a row opens that
-// place's bill.
+// /pay/pick — old address of Pay Bill's place picker. The picker is a sheet
+// on /pay (MESITA-4478). The route file stays so the route map still finds it.
 export default function Page() {
-  return <PayPickPage />;
+  redirect("/pay?pick=1");
 }

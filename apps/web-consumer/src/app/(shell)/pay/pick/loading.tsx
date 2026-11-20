@@ -1,6 +1,7 @@
-import { PayPickLoading } from "@/components/consumer/pay/PayPick";
+import { PayBillSkeleton } from "@/components/consumer/pay/PayPage";
 
-// /pay/pick's frame (MESITA-4232): the header, the search bar, rows in bones.
-export default function Loading() {
-  return <PayPickLoading />;
+// A cold hit of /pay/pick shows the wallet's Pay Bill bone, not the retired
+// "Where are you paying?" screen. The page redirects to /pay?pick=1.
+export default function PayPickLoading() {
+  return <PayBillSkeleton />;
 }

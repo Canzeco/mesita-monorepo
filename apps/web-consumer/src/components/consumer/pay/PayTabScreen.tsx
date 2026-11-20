@@ -127,6 +127,12 @@ export function PayTabScreen({ start }: { start: TabStart }) {
                   replace: true,
                 })
               }
+              onLeavePay={() =>
+                navigateTo(router, CONSUMER_ROUTES.pay, {
+                  replace: true,
+                  motion: "none",
+                })
+              }
               registerBack={registerBack}
               registerClose={registerClose}
             />

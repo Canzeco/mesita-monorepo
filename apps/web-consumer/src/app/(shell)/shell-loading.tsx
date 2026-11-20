@@ -3,6 +3,7 @@ import { routeFor, type RouteId } from "@/lib/consumer-route-contract";
 import { GeneratingPlaceScreen } from "@/components/consumer/GeneratingPlace";
 import { HomeLoadingFrame } from "@/components/consumer/home/HomeLoadingFrame";
 import { PlacePageSkeleton } from "@/components/consumer/overlay/DetailSkeletons";
+import { PayBillSkeleton } from "@/components/consumer/pay/PayPage";
 import SearchChatLoading from "./(discovery)/search/chat/loading";
 import SearchLoading from "./(discovery)/search/loading";
 import MeLoading from "./me/(hub)/loading";
@@ -13,7 +14,6 @@ import SettingsLoading from "./me/settings/(page)/loading";
 import ContactLoading from "./me/settings/contact/loading";
 import RefundsLoading from "./me/settings/refunds/loading";
 import PayLoading from "./pay/loading";
-import PayPickLoading from "./pay/pick/loading";
 import WalletLoading from "./wallet/loading";
 import GiftLoading from "./me/gift/loading";
 import FeedbackLoading from "./me/settings/feedback/loading";
@@ -60,7 +60,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   placeOffers: () => <PlaceOffersLoading />,
   reservation: () => <ReservationPageLoading />,
   pay: () => <PayLoading />,
-  payPick: () => <PayPickLoading />,
+  payPick: () => <PayBillSkeleton />,
   payPlace: () => <PayPlaceLoading />,
   payBill: () => <PayTabLoading />,
   payJoin: () => <PayTabLoading />,

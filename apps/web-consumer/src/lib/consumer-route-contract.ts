@@ -72,7 +72,7 @@ export const CONSUMER_ROUTES = {
   // is a door that opens the object:
   //
   //   /pay                       Pay Bill, your money (the tab)
-  //   /pay/pick                  the places you can pay at (MESITA-4232)
+  //   /pay/pick                  redirects to /pay?pick=1, the place sheet (MESITA-4478)
   //   /pay/place/<placeId>       pay at that place: opens your bill there and
   //                              becomes /pay/bill/<id> (the table QR's door)
   //   /pay/bill/<billId>         the bill at the table (MESITA-3564)
