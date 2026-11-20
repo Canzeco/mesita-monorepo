@@ -72,6 +72,8 @@ import {
   dropModePool,
   modeKey,
   modePoolFor,
+  noteHomeSeen,
+  oftenSeenIds,
   rankModeForChip,
   readModePool,
   seedFor,
@@ -405,8 +407,10 @@ export function CatalogRails() {
           rankMode,
           shuffleSeed: rec.seed,
           seedPoint: rec.point,
+          seen: oftenSeenIds(),
         });
         if (cancelled) return;
+        noteHomeSeen(next.order.slice(0, next.pageSize ?? next.places.length));
         // A new config drops every mode's list and seed (DX-b).
         acceptRank(guest, mode, rec, next, next.updatedAt);
       } catch (err) {
