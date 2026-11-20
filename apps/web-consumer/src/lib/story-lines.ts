@@ -83,7 +83,7 @@ function voidLine(s: WaitingStory): string {
     case "refunded":
       return "Refunded.";
     default:
-      return "No bonus on this Story.";
+      return "Bonus not added";
   }
 }
 

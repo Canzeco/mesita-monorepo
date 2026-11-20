@@ -91,7 +91,7 @@ import {
   type StoryRecord,
   storyView,
 } from "../_shared/story.ts";
-import { STORY_RULES, storyMode } from "../_shared/story-mention.ts";
+import { storyMode } from "../_shared/story-mention.ts";
 import { placeZone, PLACE_ZONE_COLUMNS } from "../_shared/local-time.ts";
 import { type GiftEntryRow, giftPeopleIds, type GiftRow, giftTickets, type PersonRow } from "../_shared/wallet-gifts.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
@@ -228,10 +228,10 @@ serveJson("consumer-web-get-wallet", async (req) => {
       nowMs,
     })
   );
-  // The old Wallet row (until the apps read `stories`): open Stories and
-  // those decided in the last 24 hours.
-  const decidedSince = nowMs - STORY_RULES.decidedListedSec * 1000;
-  const waitingStories = stories.filter((st) => !st.decided_at || Date.parse(st.decided_at) >= decidedSince).slice(0, 20);
+  // Tickets history (MESITA-4267): every open Story plus the 20 most recently
+  // decided, of any age. The 24-hour cutoff dropped a voided Story out of
+  // history. The Wallet itself shows only the open ones.
+  const waitingStories = stories;
 
   // EVERY GIFT SENT OR RECEIVED (MESITA-4036): Tickets' one Gifts list,
   // sender on the left, receiver on the right. The open ones the guest sent

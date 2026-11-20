@@ -2,6 +2,7 @@ import { ConfigPageLayout } from "@/components/admin-ui";
 import { getStoriesConfig } from "./actions";
 import { DEFAULT_STORIES } from "./catalog";
 import { StoriesConfigClient } from "./StoriesConfigClient";
+import { StoryDesk } from "./StoryDesk";
 
 // Admin › Configurations › Stories (MESITA-4425): who can buy the Story
 // voucher, and the real Story timings, read-only.
@@ -20,6 +21,7 @@ export default async function StoriesConfigPage() {
         initialStoryMode={res.ok ? res.storyMode : null}
         loadError={res.ok ? null : res.error}
       />
+      <StoryDesk />
     </ConfigPageLayout>
   );
 }
