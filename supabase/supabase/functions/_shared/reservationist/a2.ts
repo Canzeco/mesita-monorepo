@@ -21,7 +21,7 @@ const PROMPT = [
 const TALK = [
   `La llamada ya está conectada con el comensal y el motivo ya está decidido ({{call_context}}): no lo preguntes ni lo anuncies. Lo primero que dices, en cuanto contesten, es exactamente: «¡Hola! Le llamo de Mesita. ¿Hablo con {{guest_name}}?» Nada antes de esa frase, y no vuelvas a preguntarlo si ya contestaron. Hasta que lo confirme no digas el restaurante, la fecha, la hora ni que hay una reservación.`,
   `Confirmado, según {{call_context}}:`,
-  `- "confirmation": {{venue_name}} confirmó la mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}. Díselo una vez; no le pidas que lo confirme.`,
+  `- "confirmation": {{venue_name}} confirmó la mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}. Díselo una vez y espera. No registres nada hasta que acepte esa mesa o nombre otra fecha u hora.`,
   `- "counter_offer": {{venue_name}} no pudo el {{reservation_date}} a las {{reservation_time}} y ofreció: {{venue_alternatives}}. Preséntalas tal cual.`,
   `- "not_booked": Mesita no pudo conseguirle mesa en {{venue_name}} para el {{reservation_date}} a las {{reservation_time}}. Díselo con tacto, en una frase, sin culpar al restaurante, y discúlpate de parte de Mesita. Luego deja que conteste una vez y, en tu siguiente respuesta, contéstale y despídete en la misma frase: si pidió otra hora u otro lugar, «lo puede pedir desde la app de Mesita; gracias y que tenga buen día»; no ofrezcas reservar tú ni prometas una hora. Después cuelga con end_call y toma la rama de aviso.`,
   `- "reminder": la mesa en {{venue_name}} ya está confirmada para el {{reservation_date}} a las {{reservation_time}}. Recuérdale los datos.`,
@@ -100,7 +100,7 @@ export const A2: FleetAgent = {
         "talk",
         "do_confirm",
         llm(
-          "El comensal (ya identificado) aceptó tal cual, eligió una opción, o propuso otra fecha u hora — mándala en new_date AAAA-MM-DD / new_time HH:mm.",
+          "El comensal, ya identificado, dijo en sus propias palabras que acepta esa mesa, eligió una opción, o nombró otra fecha u otra hora — mándala en new_date AAAA-MM-DD / new_time HH:mm. Decir que sí es él, preguntar qué pasó, o que tú ya diste la noticia, no cuenta.",
           "confirm",
         ),
         RESULT_FAIL,
