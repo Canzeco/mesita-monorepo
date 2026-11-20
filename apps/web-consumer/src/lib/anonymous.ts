@@ -57,6 +57,7 @@ const OPEN = new Set([
   "consumer-web-get-place",
   "consumer-web-list-places",
   "consumer-web-list-catalog",
+  "consumer-web-record-premier-ad",
   "consumer-web-list-vouchers",
   "consumer-web-get-gift-preview",
   "consumer-web-get-pay-place-name",

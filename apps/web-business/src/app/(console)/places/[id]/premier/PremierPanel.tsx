@@ -258,6 +258,9 @@ export function PremierPanel({
             {rank > 0 ? <PremierRosette /> : null}
           </p>
           <p className="text-muted-foreground mt-1 text-sm">{statusLine(data)}</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Shown {(data.ads?.impressions ?? 0).toLocaleString("en-US")} times. Opened {(data.ads?.taps ?? 0).toLocaleString("en-US")} times.
+          </p>
           {outcome ? (
             <p role="status" className="mt-1 text-sm font-semibold">
               {outcome}
