@@ -366,10 +366,11 @@ export function CardTileSkeleton() {
   );
 }
 
-/** The card in ONE box (MESITA-4236's box; MESITA-4475 drops the cash half). */
+/** The card in ONE box (MESITA-4236's box; MESITA-4475 drops the cash half).
+ *  The heading is Payment Method (MESITA-4477): one card, so singular. Loyalty Cards is the other box. */
 export function PaymentMethods({ children }: { children: ReactNode }) {
   return (
-    <Panel className="mt-2" title="Payment Methods" data-payment-methods>
+    <Panel className="mt-2" title="Payment Method" data-payment-methods>
       <div className="border-border mt-3 border-t">{children}</div>
     </Panel>
   );
