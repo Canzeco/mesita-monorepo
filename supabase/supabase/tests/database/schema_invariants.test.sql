@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(210);
+select plan(212);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -2072,6 +2072,17 @@ select has_index(
   'public', 'place_reports', 'place_reports_consumer_recent_idx',
   array['consumer_id', 'created_at'],
   'the flood cap counts on (consumer_id, created_at)'
+);
+
+select has_index(
+  'public', 'wallet_purchases', 'wallet_purchases_consumer_place_idx',
+  array['consumer_id', 'place_id'],
+  'a guest offer list finds purchases by guest and place (MESITA-4208)'
+);
+select has_index(
+  'public', 'wallet_payments', 'wallet_payments_consumer_place_idx',
+  array['consumer_id', 'place_id'],
+  'a guest offer list finds visits by guest and place (MESITA-4208)'
 );
 
 select hasnt_table('public', 'sign_in_calls',

@@ -154,6 +154,8 @@ type CardRow = {
   google_review_count?: number | null;
 };
 
+// Anonymous on purpose (MESITA-4208): the map shows the place's offers,
+// so an anon token is never resolved into a user.
 serveJson("consumer-web-list-places", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");

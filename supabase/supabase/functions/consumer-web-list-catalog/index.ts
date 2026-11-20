@@ -160,6 +160,8 @@ function wirePlaces(rows: unknown[]): PoolRow[] {
   });
 }
 
+// Anonymous on purpose (MESITA-4208): the page shows the place's offers,
+// so an anon token is never resolved into a user.
 serveJson("consumer-web-list-catalog", async (req) => {
   const ctx = openRequest(req);
   if (ctx instanceof Response) return ctx;
