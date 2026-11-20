@@ -3,11 +3,12 @@
 // MESITA-4458: the Ranking card saves eight recipe rows. Before Save, the
 // operator picks a point and a mode and sees the first page that edited
 // recipe would produce beside the page the saved recipe produces now.
-// Both pages are the merged, shuffled first page (Organic and Inorganic),
-// the same seed, so only the recipe differs. Nothing is written.
+// Both answers are four first pages: Organic, Inorganic, the merge, and the
+// shuffle. The same seed, so only the recipe differs. Nothing is written.
 //
 // Body: { lat, lng, mode: "nearby" | "popular" | "family", recipes }
-// Response: { ok: true, live: Row[], draft: Row[] }
+// Response: { ok: true, live: Page, draft: Page }
+//   Page = { organic, inorganic, merged, shuffled }, each a Row[]
 //   Row = { id, name, lane: "organic" | "inorganic" }
 //   400 bad_request · 401/403 · 502 catalog_read_failed
 
@@ -17,22 +18,18 @@ import { requireAdminRequest } from "../_shared/request.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import {
   loadDiscoveryConfigWithMeta,
+  mixFor,
   normalizeRecipes,
   type DiscoveryConfig,
 } from "../_shared/discovery-config.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
-import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
-import { stripInternal } from "../_shared/place-pool-shape.ts";
-import type { PlaceProfileRow } from "../_shared/place-pool-shape.ts";
 import {
-  CatalogReadError,
   catalogPageSize,
-  type CatalogPool,
-  type PoolBuilder,
-  type PoolRow,
+  catalogRankLanesArgs,
+  CatalogReadError,
   resolveAreaLocation,
-  selectCatalogPool,
 } from "../_shared/area-pipeline.ts";
+import { cutAndShuffle, mergeLanes } from "../_shared/pipeline-signals.ts";
 
 const FN = "admin-web-preview-rank";
 type RankMode = "nearby" | "popular" | "family";
@@ -40,25 +37,10 @@ const MODES = new Set<RankMode>(["nearby", "popular", "family"]);
 const SEED = 1;
 
 type Row = { id: string; name: string; lane: "organic" | "inorganic" };
+type Page = { organic: Row[]; inorganic: Row[]; merged: Row[]; shuffled: Row[] };
 
-function wirePlaces(rows: unknown[]): PoolRow[] {
-  return (rows as PlaceProfileRow[]).map((r) => {
-    const out = stripInternal(r);
-    return { ...out, id: r.id, photos: Array.isArray(out.photos) ? out.photos : [] } as PoolRow;
-  });
-}
-
-function firstPage(pool: CatalogPool): Row[] {
-  const page = pool.summary.pageSize ?? pool.places.length;
-  const byId = new Map(pool.places.map((p) => [p.id, p]));
-  const ads = new Set(pool.adIds);
-  const rows: Row[] = [];
-  for (const id of pool.order.slice(0, page)) {
-    const place = byId.get(id);
-    const name = place && typeof place.name === "string" && place.name.trim() ? place.name : id;
-    rows.push({ id, name, lane: ads.has(id) ? "inorganic" : "organic" });
-  }
-  return rows;
+function asIds(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : [];
 }
 
 serveJson(FN, async (req) => {
@@ -87,26 +69,42 @@ serveJson(FN, async (req) => {
     };
     const location = resolveAreaLocation({ lat, lng }, null);
     const families = readGuestFamilyKeys(undefined).filter((f) => f !== "undefined");
-    const read = (columns: string) =>
-      admin.from("profiles").select(columns).eq("state", "active") as unknown as PoolBuilder;
-    const rank = async (cfg: DiscoveryConfig): Promise<Row[]> => {
-      const pool = await selectCatalogPool<PoolRow>({
-        rank: (args) => admin.rpc("catalog_rank", args),
-        rankLanes: (args) => admin.rpc("catalog_rank_lanes", args),
-        read,
-        cfg,
-        location,
-        families,
-        cardColumns: PLACE_CARD_COLUMNS,
-        wire: wirePlaces,
-        mode: rankMode,
-        seed: SEED,
-        pageSize: catalogPageSize(cfg.map),
-      });
-      return firstPage(pool);
+    const rank = async (cfg: DiscoveryConfig): Promise<{ page: Page; ids: string[] }> => {
+      const { data, error } = await admin.rpc("catalog_rank_lanes", catalogRankLanesArgs(cfg, location, families, rankMode));
+      if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
+      const answer = (data ?? {}) as Record<string, unknown>;
+      const organic = asIds(answer.ids);
+      const inorganic = asIds(answer.premier);
+      const mix = mixFor(cfg);
+      const merged = mergeLanes(organic, inorganic, mix.adEvery);
+      const n = catalogPageSize(cfg.map);
+      const shuffled = cutAndShuffle(merged.order, n, mix.temperature[rankMode], SEED);
+      const ads = new Set(merged.adIds);
+      const take = (list: readonly string[], laneOf: (id: string) => "organic" | "inorganic") =>
+        list.slice(0, n).map((id) => ({ id, name: id, lane: laneOf(id) }));
+      const page: Page = {
+        organic: take(organic, () => "organic"),
+        inorganic: take(inorganic, () => "inorganic"),
+        merged: take(merged.order, (id) => ads.has(id) ? "inorganic" : "organic"),
+        shuffled: take(shuffled, (id) => ads.has(id) ? "inorganic" : "organic"),
+      };
+      return { page, ids: [...page.organic, ...page.inorganic, ...page.merged, ...page.shuffled].map((r) => r.id) };
     };
-    const [live, edited] = await Promise.all([rank(loaded.cfg), rank(draft)]);
-    return json({ ok: true, live, draft: edited });
+    const [liveRaw, draftRaw] = await Promise.all([rank(loaded.cfg), rank(draft)]);
+    const wanted = [...new Set([...liveRaw.ids, ...draftRaw.ids])];
+    const names = new Map<string, string>();
+    if (wanted.length > 0) {
+      const { data, error } = await admin.from("profiles").select("id, name").in("id", wanted);
+      if (error) throw new CatalogReadError(2, 0, error.code ?? null, error.message);
+      for (const row of (data ?? []) as Array<{ id?: string; name?: string | null }>) {
+        if (row.id && row.name && row.name.trim()) names.set(row.id, row.name);
+      }
+    }
+    const namePage = (page: Page): Page => {
+      const rows = (list: Row[]) => list.map((row) => ({ ...row, name: names.get(row.id) ?? row.id }));
+      return { organic: rows(page.organic), inorganic: rows(page.inorganic), merged: rows(page.merged), shuffled: rows(page.shuffled) };
+    };
+    return json({ ok: true, live: namePage(liveRaw.page), draft: namePage(draftRaw.page) });
   } catch (err) {
     if (err instanceof CatalogReadError) {
       console.error(JSON.stringify({ fn: FN, event: "catalog_read_failed", pass: err.pass, message: err.message }));

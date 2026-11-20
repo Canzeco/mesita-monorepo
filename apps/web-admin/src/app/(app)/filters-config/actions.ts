@@ -153,6 +153,14 @@ export async function updateDiscoveryConfig(
 }
 
 export type RankPreviewRow = { id: string; name: string; lane: "organic" | "inorganic" };
+export type RankPreviewPage = {
+  organic: RankPreviewRow[];
+  inorganic: RankPreviewRow[];
+  merged: RankPreviewRow[];
+  shuffled: RankPreviewRow[];
+};
+
+const EMPTY_PAGE: RankPreviewPage = { organic: [], inorganic: [], merged: [], shuffled: [] };
 
 /** The first page the edited recipes would rank, beside the saved ones
  *  (MESITA-4458). Nothing is written. */
@@ -161,11 +169,11 @@ export async function previewDiscoveryRank(
   lng: number,
   mode: RankMode,
   recipes: DiscoveryConfig["params"]["recipes"],
-): Promise<ActionResult<{ live: RankPreviewRow[]; draft: RankPreviewRow[] }>> {
-  const r = await efInvoke<{ live: RankPreviewRow[]; draft: RankPreviewRow[] }>(
+): Promise<ActionResult<{ live: RankPreviewPage; draft: RankPreviewPage }>> {
+  const r = await efInvoke<{ live: RankPreviewPage; draft: RankPreviewPage }>(
     "admin-web-preview-rank",
     { lat, lng, mode, recipes },
   );
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, live: r.data.live ?? [], draft: r.data.draft ?? [] };
+  return { ok: true, live: r.data.live ?? EMPTY_PAGE, draft: r.data.draft ?? EMPTY_PAGE };
 }

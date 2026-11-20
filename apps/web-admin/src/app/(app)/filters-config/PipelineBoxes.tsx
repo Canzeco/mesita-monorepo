@@ -38,7 +38,7 @@ import {
 import { SaveRow } from "@/components/admin-ui/config";
 import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { formatShortDate } from "@/lib/format";
-import { getDiscoveryConfig, previewDiscoveryRank, updateDiscoveryConfig, type DiscoverySlice, type RankPreviewRow } from "./actions";
+import { getDiscoveryConfig, previewDiscoveryRank, updateDiscoveryConfig, type DiscoverySlice, type RankPreviewPage, type RankPreviewRow } from "./actions";
 import {
   CATALOG_PAGE_SIZE_MAX,
   CATALOG_PAGE_SIZE_MIN,
@@ -356,7 +356,7 @@ function RecipePreview({
   const [mode, setMode] = useState<RankMode>("nearby");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pages, setPages] = useState<{ live: RankPreviewRow[]; draft: RankPreviewRow[] } | null>(null);
+  const [pages, setPages] = useState<{ live: RankPreviewPage; draft: RankPreviewPage } | null>(null);
   const run = async () => {
     setBusy(true);
     setError(null);
@@ -374,8 +374,8 @@ function RecipePreview({
       <div>
         <p className="text-sm font-semibold">Preview before saving</p>
         <p className="text-muted-foreground type-meta mt-1">
-          The first page this edit would show, beside the saved recipe. Same point and the same shuffle.
-          Each row is Organic or an Ad. Nothing is saved.
+          The first page this edit would show, beside the saved recipe: Organic, Inorganic, the merge, then the shuffle.
+          Same point and the same shuffle. Nothing is saved.
         </p>
       </div>
       <div className="flex flex-wrap items-end gap-3">
@@ -406,9 +406,18 @@ function RecipePreview({
       </div>
       {error ? <p className="text-destructive type-meta">{error}</p> : null}
       {pages ? (
-        <div className="flex gap-4">
-          <PreviewColumn title="Saved" rows={pages.live} />
-          <PreviewColumn title="This edit" rows={pages.draft} />
+        <div className="flex flex-col gap-4">
+          {([
+            ["organic", "Organic"],
+            ["inorganic", "Inorganic"],
+            ["merged", "Merged"],
+            ["shuffled", "Shuffled"],
+          ] as const).map(([key, label]) => (
+            <div key={key} className="flex gap-4">
+              <PreviewColumn title={`Saved · ${label}`} rows={pages.live[key]} />
+              <PreviewColumn title={`This edit · ${label}`} rows={pages.draft[key]} />
+            </div>
+          ))}
         </div>
       ) : null}
     </div>
