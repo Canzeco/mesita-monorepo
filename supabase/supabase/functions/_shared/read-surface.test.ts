@@ -267,6 +267,8 @@ const PROFILES_READ_ALLOWLIST = [
   "consumer-web-get-pay-place-name/index.ts",
   // A gift link before sign-in (MESITA-4229): one place's name, anon client, for the sign-in title.
   "consumer-web-get-gift-preview/index.ts",
+  // Recipe preview (MESITA-4458): the names on the first page, admin only.
+  "admin-web-preview-rank/index.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {
