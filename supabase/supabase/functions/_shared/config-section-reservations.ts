@@ -45,10 +45,14 @@ export async function readReservationsSection(
   //                              MESITA-3619 every booking dead end ends the
   //                              ticket and tells the guest
   //   · callback_state=failed    guest leg could not be placed at all
-  const { data: attention } = await admin
+  // Newest failure first (updated_at), not table time. A failed read is
+  // named; a list longer than 30 says so (MESITA-4142). Failures are never
+  // cleared, so the cap used to hide the old ones with no hint.
+  const { data: attention, error: attentionErr, count } = await admin
     .from("reservation_tickets")
     .select(
       "id, reference_code, state, reserved_at, last_call_state, notice_state, notice_kind, attempts_state, callback_state, reminder_state, consumer_confirmed_at, is_test",
+      { count: "exact" },
     )
     .or(
       "notice_state.eq.failed," +
@@ -56,13 +60,15 @@ export async function readReservationsSection(
         "callback_state.eq.failed," +
         "reminder_state.eq.failed",
     )
-    .order("reserved_at", { ascending: false })
+    .order("updated_at", { ascending: false })
     .limit(30);
 
   return jsonOk({
     config: res.row[section.column],
     updatedAt: res.row.updated_at,
-    needs_attention: attention ?? [],
+    needs_attention: attentionErr ? [] : (attention ?? []),
+    needs_attention_error: attentionErr?.message ?? null,
+    needs_attention_more: !attentionErr && (count ?? 0) > 30,
   });
 }
 

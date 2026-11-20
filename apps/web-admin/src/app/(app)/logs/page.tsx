@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function LogsPage() {
   // Reservations that need a human (MESITA-4293: logs live here, never on a
-  // Configurations page). Hidden when empty or unreadable.
+  // Configurations page). A failed read is shown, not hidden (MESITA-4142).
   const [initialLogs, initialSummary, reservations] = await Promise.all([
     listLogs(),
     getActivitySummary(),
@@ -21,7 +21,11 @@ export default async function LogsPage() {
       description="A recent activity feed. Enrichment workflow lines stay available for deep debugging."
     >
       <div className="flex flex-col gap-4">
-        <NeedsAttentionCard rows={reservations.ok ? reservations.needsAttention : []} />
+        <NeedsAttentionCard
+          rows={reservations.ok ? reservations.needsAttention : []}
+          error={reservations.ok ? reservations.needsAttentionError : reservations.error}
+          more={reservations.ok ? reservations.needsAttentionMore : false}
+        />
         <LogsClient initialLogs={initialLogs} initialSummary={initialSummary} />
       </div>
     </ConfigPageLayout>

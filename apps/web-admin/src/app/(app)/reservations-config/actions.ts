@@ -21,6 +21,8 @@ type GetReservationsConfigResult = ActionResult<{
   config: ReservationsConfig;
   updatedAt: string | null;
   needsAttention: NeedsAttentionRow[];
+  needsAttentionError: string | null;
+  needsAttentionMore: boolean;
 }>;
 
 export async function getReservationsConfig(): Promise<GetReservationsConfigResult> {
@@ -28,6 +30,8 @@ export async function getReservationsConfig(): Promise<GetReservationsConfigResu
     config: unknown;
     updatedAt: string | null;
     needs_attention?: NeedsAttentionRow[];
+    needs_attention_error?: string | null;
+    needs_attention_more?: boolean;
   }>(
     "admin-web-get-config",
     { section: "reservations" },
@@ -38,6 +42,8 @@ export async function getReservationsConfig(): Promise<GetReservationsConfigResu
     config: coerceConfig(r.data.config),
     updatedAt: r.data.updatedAt ?? null,
     needsAttention: Array.isArray(r.data.needs_attention) ? r.data.needs_attention : [],
+    needsAttentionError: typeof r.data.needs_attention_error === "string" ? r.data.needs_attention_error : null,
+    needsAttentionMore: r.data.needs_attention_more === true,
   };
 }
 
