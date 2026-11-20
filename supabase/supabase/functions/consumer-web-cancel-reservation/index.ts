@@ -22,7 +22,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { cancelAsGuest } from "../_shared/agent-tools.ts";
 import { readOwnedTicket } from "../_shared/reservation-owned.ts";
-import { PASSED_GRACE_MS } from "../_shared/reservation-doc.ts";
+import { slotHasPassed } from "../_shared/reservation-bounds.ts";
 
 type Body = { reservation_id?: string; reason?: string };
 
@@ -58,7 +58,9 @@ serveJson("consumer-web-cancel-reservation", async (req) => {
   if (row.state === "cancelled") {
     return json({ ok: true, already: true, reservation_id: id, state: "cancelled" });
   }
-  if (new Date(row.reserved_at).getTime() < Date.now() - PASSED_GRACE_MS) {
+  // Once the slot's time has passed the call was spent (MESITA-4139). The
+  // 4h list grace must not refund the ticket.
+  if (slotHasPassed(row.reserved_at, Date.now())) {
     return json({ ok: false, error: "This reservation already happened." }, 409);
   }
 
