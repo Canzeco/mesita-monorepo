@@ -1,6 +1,7 @@
 "use client";
 
-// Who viewed, liked and shared (MESITA-3213, Pato: "the list of logs is super
+// Who viewed, liked and shared (MESITA-3213; the whole Views page since
+// MESITA-4538, a signed-in viewer's name links to Customers, Pato: "the list of logs is super
 // important, also mentioning who say what ... based that kinda of the current
 // social feed"). Social's row without the place's photo, since the page is one
 // place: the guest's face with the same two marks, the name, the verb, and under
@@ -8,11 +9,14 @@
 // photo or handle for a guest with Public profile off.
 
 import { useState } from "react";
+import Link from "next/link";
 import { Crown } from "lucide-react";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { Card } from "@/components/shell/Page";
 import { listPlaceViewsLog, type PlaceViewEvent, type PlaceViewsLog } from "@/lib/business-api";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { customerHref } from "@/lib/monitor";
+import { FilterBanner } from "@/components/place-manage/MonitorList";
 import { cn } from "@/lib/utils";
 
 const VERB: Record<PlaceViewEvent["kind"], string> = {
@@ -74,7 +78,7 @@ function Face({ person }: { person: PlaceViewEvent["person"] }) {
   );
 }
 
-function EventRow({ event, timezone }: { event: PlaceViewEvent; timezone: string }) {
+function EventRow({ placeId, event, timezone }: { placeId: string; event: PlaceViewEvent; timezone: string }) {
   const { person } = event;
   const followers = followersLine(person.followers);
   return (
@@ -82,7 +86,14 @@ function EventRow({ event, timezone }: { event: PlaceViewEvent; timezone: string
       <Face person={person} />
       <div className="min-w-0 flex-1">
         <p>
-          <span className="font-medium">{person.name}</span> {VERB[event.kind]}
+          {event.customer ? (
+            <Link href={customerHref(placeId, event.customer)} className="font-medium hover:underline underline-offset-2">
+              {person.name}
+            </Link>
+          ) : (
+            <span className="font-medium">{person.name}</span>
+          )}{" "}
+          {VERB[event.kind]}
         </p>
         <p className="text-muted-foreground">
           {person.handle ? (
@@ -106,7 +117,17 @@ function EventRow({ event, timezone }: { event: PlaceViewEvent; timezone: string
   );
 }
 
-export function ViewsLog({ placeId, timezone, initial }: { placeId: string; timezone: string; initial: PlaceViewsLog }) {
+export function ViewsLog({
+  placeId,
+  timezone,
+  initial,
+  customer = null,
+}: {
+  placeId: string;
+  timezone: string;
+  initial: PlaceViewsLog;
+  customer?: string | null;
+}) {
   const [events, setEvents] = useState(initial.events);
   const [next, setNext] = useState(initial.next);
   const [busy, setBusy] = useState(false);
@@ -116,7 +137,7 @@ export function ViewsLog({ placeId, timezone, initial }: { placeId: string; time
     if (!next) return;
     setBusy(true);
     setError(null);
-    const r = await listPlaceViewsLog(placeId, next);
+    const r = await listPlaceViewsLog(placeId, next, customer);
     setBusy(false);
     if (!r.ok) {
       setError(r.error);
@@ -128,15 +149,15 @@ export function ViewsLog({ placeId, timezone, initial }: { placeId: string; time
 
   return (
     <Card className="flex min-w-0 flex-col p-0 sm:p-0">
-      {/* Beside the chart, so it wears the chart's title. */}
-      <div className="px-5 py-4 sm:px-6">
-        <h2 className="font-sans text-sm font-medium tracking-normal">Log</h2>
-        <p className="text-muted-foreground text-sm">Who viewed, liked and shared.</p>
-      </div>
-      <ul className="divide-border border-border divide-y border-t">
-        {events.length === 0 ? <li className={cn(ROW, "text-muted-foreground")}>No guests yet.</li> : null}
+      {customer ? (
+        <FilterBanner text={`Showing ${events[0]?.person.name ?? "this guest"}'s views`} clearHref={`/places/${encodeURIComponent(placeId)}/views`} />
+      ) : null}
+      <ul className="divide-border divide-y">
+        {events.length === 0 ? (
+          <li className={cn(ROW, "text-muted-foreground")}>{customer ? "Nothing matches this filter." : "No views yet."}</li>
+        ) : null}
         {events.map((event, i) => (
-          <EventRow key={`${i}|${event.kind}|${event.at}`} event={event} timezone={timezone} />
+          <EventRow key={`${i}|${event.kind}|${event.at}`} placeId={placeId} event={event} timezone={timezone} />
         ))}
         {next ? (
           <li className={ROW}>

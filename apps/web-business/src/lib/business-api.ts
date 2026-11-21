@@ -6,7 +6,7 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 import type { RefillOrigin } from "@/lib/premier-origin";
-import type { PlaceTicketDesk, TicketCursor, TicketKind } from "@/lib/ticket-desk";
+import type { CustomerCursor, CustomersPage, MonitorCursor, MonitorFilter, MonitorKind, MonitorPage, PayoutsAnswer } from "@/lib/monitor";
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string; code?: string | null };
 
@@ -506,92 +506,47 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
   };
 }
 
-/** One row of the owner's money (MESITA-3307): a voucher bought or a payment
- *  made. `guest` is already masked by the server: a name, or two characters
- *  of the email's local part, never the email. */
-export type PlaceMoneyRow = {
-  kind: "voucher" | "payment";
-  id: string;
-  created_at: string;
-  paid_at: string;
-  status: string;
-  voucher: string | null;
-  ticket: string | null;
-  /** What the guest paid: credit + card + outside + tip on a payment. */
-  amount_cents: number;
-  credit_cents?: number;
-  card_cents?: number;
-  tip_cents: number;
-  refunded_cents: number;
-  /** MESITA-3548: who confirmed the bill was paid. Missing on the old shape. */
-  confirmed_by?: "stripe" | "waiter" | "credit" | null;
-  /** The part paid outside Mesita (cash the waiter marked Received). */
-  outside_cents?: number;
-  /** The waiter's bill, when this payment paid a charge or a tab. */
-  charge_amount_cents?: number | null;
-  /** Pay at the table: the tab this row pays, and which part it is. */
-  tab_id?: string | null;
-  part?: "credit" | "outside" | "card" | null;
-  /** MESITA-3709: a guest's own payment and the waiter's Verify: when, the
-   *  phone's short mark, and "check this phone" for a lone cash Verify. */
-  guest_verify?: { verified_at: string | null; phone: string | null; check_phone: boolean; cash: boolean; closed: boolean };
-  guest: string;
-};
-export type PlaceMoneyCursor = { created_at: string; id: string } | null;
-export type PlaceMoney = {
-  test_mode: boolean;
-  received_cents: number;
-  fee_cents: number;
-  tips_cents: number;
-  available_cents: number;
-  pending_cents: number;
-  /** MESITA-3548: bills with a waiter's bill over the window, and how many
-   *  ended in the waiter's Received (cash). Missing on the old shape. */
-  received_share?: { received: number; total: number };
-  rows: PlaceMoneyRow[];
-  next: PlaceMoneyCursor;
-};
+// ── Monitor lists (MESITA-4538) ─────────────────────────
 
-/** The owner's money: totals over [from, to) and 50 rows before `before`.
- *  Owners and Mesita staff only; an editor gets `forbidden`. */
-export async function getPlaceMoney(
+/** One page of a Monitor list: visits, vouchers, payments, credits or
+ *  stories, each row with the ids of the rows it relates to. Owners and
+ *  Mesita staff only; an editor gets `owner_only`. */
+export async function listMonitor(
   placeId: string,
-  range: { from?: string; to?: string; before?: PlaceMoneyCursor } = {},
-): Promise<Result<PlaceMoney>> {
-  const r = await efInvoke<PlaceMoney>("business-web-get-place-money", {
+  kind: MonitorKind,
+  filter: MonitorFilter = {},
+  before?: MonitorCursor,
+): Promise<Result<MonitorPage>> {
+  const r = await efInvoke<MonitorPage>("business-web-list-place-monitor", {
     place_id: placeId,
-    from: range.from,
-    to: range.to,
-    before: range.before ?? undefined,
+    kind,
+    ...(filter.customer ? { customer: filter.customer } : {}),
+    ...(filter.id ? { id: filter.id } : {}),
+    ...(before ? { before } : {}),
+  });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { ...r.data, kind, rows: r.data.rows ?? [], next: r.data.next ?? null } };
+}
+
+/** Monitor › Customers: guests with money rows here, what the place owes each. */
+export async function listCustomers(placeId: string, customer?: string | null, before?: CustomerCursor): Promise<Result<CustomersPage>> {
+  const r = await efInvoke<CustomersPage>("business-web-list-place-customers", {
+    place_id: placeId,
+    ...(customer ? { customer } : {}),
+    ...(before ? { before } : {}),
   });
   if (!r.ok) return fail(r);
   return { ok: true, data: { ...r.data, rows: r.data.rows ?? [], next: r.data.next ?? null } };
 }
 
-/** One kind of ticket at the place (MESITA-4487): the last 30 days, the
- *  totals, and 50 rows before `before`. Owners and Mesita staff only. */
-export async function listPlaceTickets(
-  placeId: string,
-  kind: TicketKind,
-  before?: TicketCursor | null,
-): Promise<Result<PlaceTicketDesk>> {
-  const r = await efInvoke<PlaceTicketDesk>("business-web-list-place-tickets", {
+/** Payouts to the place's bank, read live from Stripe. */
+export async function getPayouts(placeId: string, before?: string | null): Promise<Result<PayoutsAnswer>> {
+  const r = await efInvoke<PayoutsAnswer>("business-web-get-place-payouts", {
     place_id: placeId,
-    kind,
-    before: before ?? undefined,
+    ...(before ? { before } : {}),
   });
   if (!r.ok) return fail(r);
-  return {
-    ok: true,
-    data: {
-      ...r.data,
-      kind,
-      days: r.data.days ?? [],
-      totals: r.data.totals ?? {},
-      rows: r.data.rows ?? [],
-      next: r.data.next ?? null,
-    },
-  };
+  return { ok: true, data: r.data };
 }
 
 /** What one owner refund gave back (MESITA-3381): the card part through
@@ -602,7 +557,7 @@ export type MoneyRefund = { card_refunded_cents: number; credit_refunded_cents: 
  *  Owners and Mesita staff only; an editor gets `forbidden`. */
 export async function refundPlaceMoneyRow(
   placeId: string,
-  row: Pick<PlaceMoneyRow, "kind" | "id">,
+  row: { kind: "voucher" | "payment"; id: string },
   amountCents: number | null,
 ): Promise<Result<MoneyRefund>> {
   const r = await efInvoke<MoneyRefund>("business-web-refund-payment", {
@@ -683,6 +638,8 @@ export type PlaceViewEvent = {
   /** The stored kinds; `saved` reads "liked". */
   kind: "viewed" | "saved" | "shared";
   at: string;
+  /** The viewer's per-place customer key (MESITA-4538). */
+  customer: string | null;
   person: {
     name: string;
     avatarUrl: string | null;
@@ -695,10 +652,11 @@ export type PlaceViewEvent = {
 
 export type PlaceViewsLog = { events: PlaceViewEvent[]; next: string | null };
 
-export async function listPlaceViewsLog(placeId: string, before?: string): Promise<Result<PlaceViewsLog>> {
+export async function listPlaceViewsLog(placeId: string, before?: string, customer?: string | null): Promise<Result<PlaceViewsLog>> {
   const r = await efInvoke<PlaceViewsLog>("business-web-list-place-views-log", {
     place_id: placeId,
     ...(before ? { before } : {}),
+    ...(customer ? { customer } : {}),
   });
   if (!r.ok) return fail(r);
   return { ok: true, data: { events: r.data.events ?? [], next: r.data.next ?? null } };

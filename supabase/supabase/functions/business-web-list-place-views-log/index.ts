@@ -6,10 +6,13 @@
 // rule between guests (MESITA-2594), and the owner is not one. The member id
 // stops at this function.
 //
-// Body: { place_id: uuid, before?: ISO timestamp }
+// MESITA-4538: each event carries the viewer's per-place customer key (never
+// the member id), and `customer` filters the log to one guest.
+//
+// Body: { place_id: uuid, before?: ISO timestamp, customer?: key }
 // Response: { ok: true,
 //             events: [{ kind: "viewed" | "saved" | "shared", at,
-//                        person: { name, avatarUrl, handle, followers, guestClass, instagram } }],
+//                        customer, person: { name, avatarUrl, handle, followers, guestClass, instagram } }],
 //             next: ISO timestamp | null }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -18,6 +21,7 @@ import { requireBusinessRequest } from "../_shared/request.ts";
 import { requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { type ActivityRow, toPerson } from "../_shared/place-activity.ts";
+import { isCustomerKey } from "../_shared/monitor.ts";
 
 const PAGE = 30;
 
@@ -28,11 +32,12 @@ serveJson("business-web-list-place-views-log", async (req) => {
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const { place_id: placeId, before } = bodyRes.body;
+  const { place_id: placeId, before, customer } = bodyRes.body;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   if (before !== undefined && (typeof before !== "string" || Number.isNaN(Date.parse(before)))) {
     return json({ ok: false, error: "before must be a timestamp" }, 400);
   }
+  if (customer != null && !isCustomerKey(customer)) return json({ ok: false, error: "customer must be a customer key" }, 400);
 
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;
@@ -41,16 +46,18 @@ serveJson("business-web-list-place-views-log", async (req) => {
     p_place_id: placeId,
     p_before: typeof before === "string" ? before : null,
     p_limit: PAGE + 1,
+    p_customer: customer ?? null,
   });
   if (error) return json({ ok: false, error: `place_views_log: ${error.message}` }, 500);
 
-  const rows = (data ?? []) as ActivityRow[];
+  const rows = (data ?? []) as Array<ActivityRow & { customer?: string | null }>;
   const page = rows.slice(0, PAGE);
   const events = page.map((row) => {
     const { name, avatarUrl, handle, followers, guestClass, instagram } = toPerson(row, user.id);
     return {
       kind: row.kind,
       at: row.created_at,
+      customer: row.customer ?? null,
       person: { name, avatarUrl, handle, followers, guestClass, instagram },
     };
   });

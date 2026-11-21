@@ -1,10 +1,10 @@
-import { TicketDeskPage } from "@/components/place-manage/TicketDeskPage";
+import { MonitorPage, type SearchParams } from "@/components/place-manage/MonitorPage";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Vouchers" };
 
-// Vouchers (MESITA-4487): prepayments guests bought here.
-export default async function VouchersPage({ params }: { params: Promise<{ id: string }> }) {
+// Vouchers (MESITA-4538): prepayments guests bought, each linked to the credit it added and its story.
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: SearchParams }) {
   const { id } = await params;
-  return <TicketDeskPage placeId={id} kind="vouchers" />;
+  return <MonitorPage placeId={id} kind="vouchers" page="vouchers" searchParams={searchParams} refund />;
 }

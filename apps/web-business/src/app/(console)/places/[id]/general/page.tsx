@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { PLACE_TAB_META } from "@/components/shell/place-tab-meta";
-import { TicketDeskPage } from "@/components/place-manage/TicketDeskPage";
+import { listMonitor } from "@/lib/business-api";
+import { customerParam, uuidParam } from "@/lib/monitor";
+import { MonitorError, MonitorList } from "@/components/place-manage/MonitorList";
+import { ScrollToStories } from "./ScrollToStories";
 import { placeTabHref, type PlaceTab } from "@/lib/routes";
 import { FOCUS_RING_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { ReservationsPanel } from "../reservations/ReservationsPanel";
-import { MoneySection } from "../money/MoneySection";
 import { SettingsSection } from "../settings/SettingsSection";
 
 export const dynamic = "force-dynamic";
@@ -13,10 +15,12 @@ export const metadata = { title: "General" };
 
 // General (MESITA-4528) is ONE page of sections (MESITA-4534, Pato: "don't
 // create subpages in general btw — all there displayed in the same page but
-// in different sections"): Reservations, Stories, Money, Settings, then a
+// in different sections"): Reservations, Stories, Settings, then a
 // button to All. Admin is its own rail row for Mesita staff (Pato: "admin
 // must be its own page"). Each section's id is its old
-// address's tab, so /places/<id>/<tab> redirects to #<tab> here.
+// address's tab, so /places/<id>/<tab> redirects to #<tab> here. Money left for
+// Monitor › Payments and Stories is a plain linked list (MESITA-4538); a
+// story link lands here with ?story= or ?story_customer=.
 function Section({ tab, children }: { tab: PlaceTab; children: React.ReactNode }) {
   const { label, icon: Mark, sub } = PLACE_TAB_META[tab];
   return (
@@ -37,18 +41,39 @@ function Section({ tab, children }: { tab: PlaceTab; children: React.ReactNode }
   );
 }
 
-export default async function GeneralPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function GeneralPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
+  const sp = await searchParams;
+  const filter = { id: uuidParam(sp.story), customer: customerParam(sp.story_customer) };
+  const stories = await listMonitor(id, "stories", filter);
+  const filtered = Boolean(filter.id || filter.customer);
   return (
     <div className="flex flex-col gap-8 pb-8">
       <Section tab="reservations">
         <ReservationsPanel />
       </Section>
       <Section tab="stories">
-        <TicketDeskPage placeId={id} kind="stories" />
-      </Section>
-      <Section tab="money">
-        <MoneySection id={id} />
+        {filtered ? <ScrollToStories /> : null}
+        {stories.ok ? (
+          <div className="border-border bg-card overflow-hidden rounded-2xl border">
+            <MonitorList
+              key={`${filter.id ?? ""}|${filter.customer ?? ""}`}
+              placeId={id}
+              kind="stories"
+              initial={stories.data}
+              filter={filter}
+              clearHref={`/places/${encodeURIComponent(id)}/general#stories`}
+            />
+          </div>
+        ) : (
+          <MonitorError code={stories.code} error={stories.error} />
+        )}
       </Section>
       <Section tab="settings">
         <SettingsSection id={id} />
