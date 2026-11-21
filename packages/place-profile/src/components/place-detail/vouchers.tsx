@@ -116,7 +116,7 @@ const STANDARD: Product[] = [
 
 const SPECIAL: Product[] = [
   { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $200.00MX.", limit: "One per place.", bonus: "100% bonus", short: "Welcome", brief: "One per place" },
-  { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $140.00MX.", limit: "One per day.", bonus: "40% bonus", short: "Story", brief: "Post a story · 1/day" },
+  { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $140.00MX.", limit: "One per visit.", bonus: "40% bonus", short: "Story", brief: "Post a story · One per visit" },
 ];
 
 /** "$1,200.00MX" from cents: always two decimals (MESITA-3767). Formatting
@@ -302,11 +302,9 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
     if (!guest) return null;
     if (k === "voucher_story" && !guest.instagramLinked) return "instagram";
     // MESITA-4425: the server refuses Story BELOW the live floor (`<`, so
-    // exactly the floor buys; MESITA-4383), and not at all in emulator mode.
-    if (
-      k === "voucher_story" && !guest.storyEmulator && guest.instagramFollowers != null &&
-      guest.instagramFollowers < minFollowers
-    ) {
+    // exactly the floor buys; MESITA-4383), emulator mode included, as the
+    // server does (MESITA-4527).
+    if (k === "voucher_story" && guest.instagramFollowers != null && guest.instagramFollowers < minFollowers) {
       return "followers";
     }
     return null;
@@ -978,10 +976,8 @@ function StoryFlow({
     if (r) setReceipt(r);
   };
 
-  // The real post window is 12 hours; emulator mode's is the admin's few
-  // minutes (MESITA-4426), which the Story screen shows from the server.
-  const deadline = receipt && !offer.storyGuest.emulator ? new Date(Date.now() + 12 * 3600 * 1000).toISOString() : null;
-  if (receipt) return <StoryPaid receipt={receipt} placeName={placeName} onDone={onDone} deadlineAt={deadline} />;
+  // No post window since MESITA-4484 (MESITA-4527 removed the "12 h" line).
+  if (receipt) return <StoryPaid receipt={receipt} placeName={placeName} onDone={onDone} deadlineAt={null} />;
 
   const deal = <OfferBox pay={offer.pay} get={offer.get} bonus={offer.bonus} />;
   const amount = whole(offer.pay);

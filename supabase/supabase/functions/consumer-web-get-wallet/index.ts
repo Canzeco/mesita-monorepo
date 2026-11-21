@@ -93,7 +93,7 @@ import {
   type StoryRecord,
   storyView,
 } from "../_shared/story.ts";
-import { storyMode } from "../_shared/story-mention.ts";
+import { readStoryRules, storyMode } from "../_shared/story-mention.ts";
 import { placeZone, PLACE_ZONE_COLUMNS } from "../_shared/local-time.ts";
 import { type GiftEntryRow, giftPeopleIds, type GiftRow, giftTickets, type PersonRow } from "../_shared/wallet-gifts.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
@@ -220,7 +220,8 @@ serveJson("consumer-web-get-wallet", async (req) => {
   } catch (e) {
     console.error(`[consumer-web-get-wallet] stories read: ${e instanceof Error ? e.message : String(e)}`);
   }
-  const emulatorOn = !livemode && storyMode() === "emulated";
+  // MESITA-4527: the test buttons show only while Admin's emulator switch is on.
+  const emulatorOn = !livemode && storyMode() === "emulated" && (await readStoryRules(admin)).emulator;
   const nowMs = Date.now();
   const storyViews = stories.map((st) =>
     storyView(st, {

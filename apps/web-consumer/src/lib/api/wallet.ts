@@ -378,6 +378,7 @@ export async function apiEmulateStory(
 export const STORY_EMULATOR_REFUSAL: Record<string, string> = {
   not_test_mode: "The simulator only works in test mode.",
   meta_on: "Instagram is connected: post a real story.",
+  emulator_off: "Story emulator mode is off in Admin.",
   needs_instagram: "Connect a test Instagram first.",
   no_story: "Publish a test story first.",
   gone: "That story can't be decided any more.",

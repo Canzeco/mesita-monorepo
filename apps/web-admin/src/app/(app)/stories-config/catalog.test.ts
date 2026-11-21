@@ -27,8 +27,6 @@ describe("story config patches", () => {
     const emulator = emulatorPatch(full);
     for (const key of Object.keys(floor)) expect(emulator).not.toHaveProperty(key);
     expect(floor).not.toHaveProperty("story_bonus_wait_sec");
-    expect(floor).not.toHaveProperty("story_post_window_sec");
     expect(emulator).not.toHaveProperty("story_bonus_wait_sec");
-    expect(emulator).not.toHaveProperty("story_post_window_sec");
   });
 });

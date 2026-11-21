@@ -81,6 +81,10 @@ export function storyApprovedPoll(s: Pick<StoryRecord, "state" | "recheck_at">, 
   return at - nowMs <= APPROVED_POLL.beforeMs && nowMs - at <= APPROVED_POLL.afterMs;
 }
 
+/** An approved Story far from its bonus (MESITA-4527): asked once a minute,
+ *  so a 3-hour wait still turns to "released" without a reload. */
+export const APPROVED_SLOW_POLL = { every_ms: 60_000, slow_after_ms: 0, slow_every_ms: 60_000 } as const;
+
 /** The screen's poll: every 5 s, every 15 s after 2 minutes, stopping at
  *  approved, void or the deadline. */
 export const STORY_POLL = {
@@ -154,7 +158,10 @@ export function storyView(
     test_mode: !s.livemode,
     /** Test mode: Tag the place, Simulate the waiter, Simulate deleting it. */
     emulator: x.emulator && !s.livemode && isOpenStory(s),
-    poll: storyNeedsPoll(s, x.nowMs) || storyApprovedPoll(s, x.nowMs) ? STORY_POLL : null,
+    // MESITA-4527: an approved Story always has a poll until it is decided.
+    poll: storyNeedsPoll(s, x.nowMs) || storyApprovedPoll(s, x.nowMs)
+      ? STORY_POLL
+      : s.state === "approved" ? APPROVED_SLOW_POLL : null,
     server_time: new Date(x.nowMs).toISOString(),
   };
 }
@@ -188,7 +195,10 @@ export async function readOwnStory(
 /** The Tickets Stories tab: every open Story plus the 20 most recently
  *  decided, newest first. */
 export async function readStoryList(admin: SupabaseClient, consumerId: string, livemode: boolean): Promise<StoryRecord[]> {
-  const base = () => admin.from("stories").select(STORY_RECORD_COLUMNS).eq("consumer_id", consumerId).eq("livemode", livemode);
+  // MESITA-4527: a ticket no voucher holds is not listed (it showed as a
+  // never-ending "+$0.00" row); it attaches when the guest pays.
+  const base = () =>
+    admin.from("stories").select(STORY_RECORD_COLUMNS).eq("consumer_id", consumerId).eq("livemode", livemode).not("purchase_id", "is", null);
   const [open, decided] = await Promise.all([
     base().in("state", [...OPEN_STORY_STATES]).order("created_at", { ascending: false }).limit(50),
     base().in("state", ["released", "void"]).order("decided_at", { ascending: false }).limit(20),

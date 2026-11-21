@@ -10,8 +10,6 @@ export type StoriesConfig = {
   story_min_followers: number;
   /** Read-only here: the real bonus wait after the story is posted. */
   story_bonus_wait_sec: number;
-  /** Read-only here: payment → the deadline to post and be approved. */
-  story_post_window_sec: number;
   /** Emulator mode (MESITA-4426): in effect only with test payments and Meta off. */
   story_emulator: boolean;
   /** A test Story's bonus wait from an emulator story, 10–600 s. */
@@ -26,7 +24,6 @@ export const EMULATOR_POST_WINDOW = { min: 60, max: 3600 } as const;
 export const DEFAULT_STORIES: StoriesConfig = {
   story_min_followers: STORY_MIN_FOLLOWERS_DEFAULT,
   story_bonus_wait_sec: 3 * 3600,
-  story_post_window_sec: 12 * 3600,
   story_emulator: false,
   story_emulator_bonus_wait_sec: 30,
   story_emulator_post_window_sec: 120,
@@ -39,7 +36,6 @@ export function coerceStories(raw: unknown): StoriesConfig {
   return {
     story_min_followers: int(o.story_min_followers, DEFAULT_STORIES.story_min_followers),
     story_bonus_wait_sec: int(o.story_bonus_wait_sec, DEFAULT_STORIES.story_bonus_wait_sec),
-    story_post_window_sec: int(o.story_post_window_sec, DEFAULT_STORIES.story_post_window_sec),
     story_emulator: o.story_emulator === true,
     story_emulator_bonus_wait_sec: int(o.story_emulator_bonus_wait_sec, DEFAULT_STORIES.story_emulator_bonus_wait_sec),
     story_emulator_post_window_sec: int(o.story_emulator_post_window_sec, DEFAULT_STORIES.story_emulator_post_window_sec),
