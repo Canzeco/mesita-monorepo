@@ -1,8 +1,5 @@
 "use client";
 
-import { X } from "lucide-react";
-
-import { Screen } from "@/components/consumer/nav/Screen";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -14,9 +11,8 @@ import {
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
-import { SizedImg } from "@mesita/place-profile";
 import { GuestPayScreen } from "./GuestPayScreen";
-import { PayHeaderPlaceContext, type PayHeaderPlace } from "./pay-flow";
+import { PayHeadContext, TicketHeader, type PayHead } from "./pay-flow";
 import { PayForm } from "./PayForm";
 import { writeOpenTabId } from "./pay-common";
 import { TabView, type TabStart } from "./TabView";
@@ -73,59 +69,26 @@ export function PayTabScreen({ start }: { start: TabStart }) {
     setHasClose(fn !== null);
   }, []);
 
-  // "Pay at [photo] Name" once a step knows its place (MESITA-4122).
-  const [headerPlace, setHeaderPlace] = useState<PayHeaderPlace | null>(null);
+  // The screen's title and whether ← steps back (MESITA-4600): each step
+  // says it; no place name or photo (Pato: "don't even mention the place").
+  const [head, setHead] = useState<PayHead | null>(null);
 
   return (
-    <PayHeaderPlaceContext.Provider value={setHeaderPlace}>
-      <Screen
-        title={headerPlace?.name ?? "Pay"}
-        titleMark={
-          headerPlace ? (
-            <>
-              <span className="shrink-0">Pay at</span>
-              <span
-                className="bg-muted h-7 w-7 shrink-0 overflow-hidden rounded-full"
-                aria-hidden
-              >
-                {headerPlace.photo ? (
-                  <SizedImg
-                    src={headerPlace.photo}
-                    size="thumb"
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                ) : null}
-              </span>
-            </>
-          ) : undefined
-        }
-        // ← STEPS BACK, ✕ CLOSES (Pato, 2026-11-21, MESITA-4598: "put
-        // attention to the X on top right to close the modal and the <- to
-        // return step"): the header's ‹ is one step back (on the first step
-        // it reopens the places); the ✕ at the right ends the flow and the
-        // ticket with it. The ‹ left and kept the draft before (MESITA-4068).
-        onBack={back}
-        action={
-          hasClose ? (
-            <button
-              type="button"
-              onClick={() => close.current?.()}
-              aria-label="Close and discard this payment"
-              className="hover:bg-muted flex h-11 w-11 items-center justify-center rounded-xl transition"
-              data-pay-close
-            >
-              <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-            </button>
-          ) : undefined
-        }
-        flush
-        paper
-      >
+    <PayHeadContext.Provider value={setHead}>
+      {/* ONE CLEAN TICKET (MESITA-4600): the picker's header on every step,
+          the question at the left, ✕ at the right; ← only where it steps
+          back. It was Screen's centred "Pay at [photo] Name" (MESITA-4122). */}
+      <div className="bg-card flex h-full min-h-0 flex-1 flex-col">
+        <TicketHeader
+          title={head?.title ?? "Pay"}
+          onBack={!head || head.back ? back : undefined}
+          onClose={hasClose ? () => close.current?.() : undefined}
+          closeLabel="Close and discard this payment"
+        />
         {/* MESITA-3739: white, no tab bar, and a fixed height chain down to
           each step's flexible part. A guest step's body scrolls only when its
           one centred group does not fit (MESITA-4061); the footer never moves. */}
-        <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="flex min-h-0 flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {formPlace ? (
             <PayForm
               key={formPlace.place_id}
@@ -188,7 +151,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
             />
           )}
         </div>
-      </Screen>
-    </PayHeaderPlaceContext.Provider>
+      </div>
+    </PayHeadContext.Provider>
   );
 }

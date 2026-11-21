@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect } from "react";
 import { SizedImg } from "@mesita/place-profile";
-import { ChevronLeft, ChevronRight, CircleCheck, HandCoins, Lock, MapPin, ReceiptText, X, type LucideIcon } from "lucide-react";
+import { Check, ChevronLeft, MapPin, X } from "lucide-react";
+import { STRIP_STEPS } from "@/lib/guest-pay-stages";
 import { useRouter } from "next/navigation";
 import type { PayPlace } from "@/lib/api/wallet";
 import { Button } from "@/components/ui/button";
@@ -13,9 +14,9 @@ import { cn } from "@/lib/utils";
 
 // THE GUEST-LEAD PAY FLOW'S SHARED PIECES (MESITA-3861, Pato's "14. Payments
 // Flow Guest-Lead"): the place across the top (Open), the X in the corner,
-// the rows card, the three state colours and the Not paid reasons. The
-// screens are GuestPayScreen (Open, Bill, Tip, Method, Pay) and
-// GuestTabView (Confirm, Confirming, Receipt, Not paid).
+// the rows card, the three state colours, the Not paid reasons, the header
+// title and the steps strip. The screens are GuestPayScreen (Bill, Tip,
+// Method, Pay) and GuestTabView (Confirm, Confirming, Receipt, Not paid).
 
 /** State colours, used only for state, always with an icon and words. */
 export const GOOD = "text-green-700";
@@ -107,30 +108,6 @@ export function PlaceHero({
   );
 }
 
-/** The top of every step, Bill to Confirm (MESITA-4061: the keypad step too):
- *  the place's photo and name. With `onChoose` the name is a button (a grey
- *  chevron says so) to choose another place, keeping the draft; Confirm's is
- *  plain. Cancel bill is the footer's (MESITA-4051). */
-export function PlaceBar({ place, name, onChoose }: { place: PayPlace | null; name?: string | null; onChoose?: () => void }) {
-  const label = place?.name ?? name ?? "A Mesita place";
-  const row = (
-    <>
-      <span className="bg-muted h-9 w-9 shrink-0 overflow-hidden rounded-full" aria-hidden>
-        {place?.photo ? <SizedImg src={place.photo} size="thumb" alt="" className="h-full w-full object-cover" /> : null}
-      </span>
-      <span className="min-w-0 truncate text-base font-semibold">{label}</span>
-      {onChoose ? <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden /> : null}
-    </>
-  );
-  return onChoose ? (
-    <button type="button" onClick={onChoose} className="flex h-11 min-w-0 shrink-0 items-center gap-3 self-start text-left" aria-label={`${label}. Choose another place`}>
-      {row}
-    </button>
-  ) : (
-    <div className="flex h-11 shrink-0 items-center gap-3">{row}</div>
-  );
-}
-
 /** One row of a rows card: an icon, a label, the amount on the right. */
 export function MoneyRow({
   icon,
@@ -163,40 +140,6 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
   );
 }
 
-/** The steps (MESITA-4226, Pato: "remove card. we only have one card ...
- *  we should have all those steps. but don't mention them all"; eight until
- *  then, MESITA-4135). Pick is the Pay tab's list of places, done on every
- *  later step (lib/guest-pay-stages.ts). */
-export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Method", "Pay", "Confirm", "Receipt"] as const;
-
-/** WHAT THE BAR SHOWS (MESITA-4226, Pato: "Receipt only when its done ...
- *  before that, hide it"): Bill to Confirm, five; once the bill is done the
- *  Receipt joins as a sixth. Pick is hidden (it reads Bill). */
-const ALL_SHOWN = ["Bill", "Tip", "Pay", "Receipt"] as const;
-const SHOWN_AT: Record<(typeof PAY_FLOW_STEPS)[number], number> = {
-  Pick: 0,
-  Bill: 0,
-  Tip: 1,
-  Method: 2,
-  Pay: 2,
-  Confirm: 2,
-  Receipt: 3,
-};
-
-/** The segments drawn at a step: Receipt only on the Receipt. */
-export function shownSteps(at: number): readonly (typeof ALL_SHOWN)[number][] {
-  return PAY_FLOW_STEPS[at] === "Receipt" ? ALL_SHOWN : ALL_SHOWN.slice(0, -1);
-}
-
-/** Each shown step's icon beside its name (MESITA-4125, Pato: "use icons in
- *  the current steps for more clarity"). */
-const SHOWN_ICONS: Record<(typeof ALL_SHOWN)[number], LucideIcon> = {
-  Bill: ReceiptText,
-  Tip: HandCoins,
-  Pay: Lock,
-  Receipt: CircleCheck,
-};
-
 /** A step's body: its panels stacked FROM THE TOP, 16px apart, the empty
  *  room below them (MESITA-4077, Pato: "why is the bill box so separated
  *  from the steps box. optimize vertical space a lot"; MESITA-4061 had
@@ -210,118 +153,85 @@ export function StepBody({ children, className }: { children: React.ReactNode; c
   );
 }
 
-/** The step nav (MESITA-4061, Pato: "steps with arrows to nav across them
- *  < >"): ‹ one step back, "Tip · 2 of 5", › the footer's Next. An arrow
- *  that cannot act is hidden (its 44px slot kept, gone from the screen
- *  reader); › exists only where the footer's button is a plain Next, never
- *  where it moves money or leaves the app. Under it, five thin segments
- *  (six on the Receipt, MESITA-4226), done and current ink. A pure view:
- *  the screen owns the back logic. */
-export function StepNav({
-  at,
-  onBack,
-  next,
-}: {
-  at: number;
-  onBack?: () => void;
-  next?: { onClick: () => void; disabled: boolean };
-}) {
-  const shown = shownSteps(at);
-  const shownAt = SHOWN_AT[PAY_FLOW_STEPS[at]];
-  const name = ALL_SHOWN[shownAt];
-  const StepIcon = SHOWN_ICONS[name];
-  const prev = at - 1;
-  const following = at + 1;
-  const backLabel = prev <= 0 ? "Back to places" : `Back to ${PAY_FLOW_STEPS[prev]}`;
-  const arrow = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent";
+// ONE CLEAN TICKET (Pato, 2026-11-21, MESITA-4600: "all the steps in the
+// same ticket. all the ticket must have x, don't list the steps with the
+// progress bar [at the top]. don't even mention the place. keep all cleaner
+// … bottom must have steps. 1. Show place, 2 …"): every screen of the ticket
+// wears the picker's frame (MESITA-4598): the screen's question at the left
+// of the header, ✕ at the right, no place name or photo; the steps sit at
+// the bottom, over the step's one button. The boxed "‹ Bill · 1 of 3 ›" bar
+// with the place over it (MESITA-4061/4072/4122) is gone.
+
+/** What a screen puts in the page header: its title, and whether ← steps back. */
+export type PayHead = { title: string; back: boolean };
+
+/** Set by the bill's page (PayTabScreen); each screen hands it its head. */
+export const PayHeadContext = createContext<((h: PayHead | null) => void) | null>(null);
+
+/** A screen's header: renders nothing, tells the page header what to say. */
+export function PayTitle({ title, back = false }: { title: string; back?: boolean }) {
+  const setHead = useContext(PayHeadContext);
+  useEffect(() => {
+    setHead?.({ title, back });
+  }, [setHead, title, back]);
+  useEffect(() => () => setHead?.(null), [setHead]);
+  return null;
+}
+
+/** THE TICKET'S HEADER (MESITA-4598/4600), the picker sheet's and every
+ *  step's: ← (only where it steps back), the question at the left in 20px
+ *  semibold, a 44px ✕ at the right, a hairline under. One component so the
+ *  sheet and the page read as one ticket. */
+export function TicketHeader({ title, onBack, onClose, closeLabel = "Close" }: { title: string; onBack?: () => void; onClose?: () => void; closeLabel?: string }) {
   return (
-    // MESITA-4072 (Pato: "this payment workflow, all steps, maybe in boxes
-    // too"): the step nav is the bottom half of the top panel (PayTop), under
-    // a hairline from the place. MESITA-4068 drew it between two inset
-    // hairlines on the page.
-    <div className="border-border border-t px-2 py-2" data-pay-steps>
-      <div className="flex h-11 items-center">
-        <button
-          type="button"
-          onClick={onBack}
-          className={cn(arrow, !onBack && "invisible")}
-          aria-label={backLabel}
-          tabIndex={onBack ? undefined : -1}
-          data-pay-back
-        >
-          <ChevronLeft className="h-6 w-6" aria-hidden />
+    <div className={cn("border-border bg-card flex min-h-[3.75rem] shrink-0 items-center gap-1 border-b py-2 pr-3", onBack ? "pl-2" : "pl-5")} data-pay-head>
+      {onBack ? (
+        <button type="button" onClick={onBack} aria-label="Back" className="hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition" data-pay-back>
+          <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
         </button>
-        <p className="flex min-w-0 flex-1 items-center justify-center gap-1.5 truncate text-base">
-          <StepIcon className="h-5 w-5 shrink-0" aria-hidden />
-          <span className="font-semibold">{name}</span>
-          <span className="text-muted-foreground">{` · ${shownAt + 1} of ${shown.length}`}</span>
-        </p>
-        <button
-          type="button"
-          onClick={next?.onClick}
-          disabled={next?.disabled}
-          className={cn(arrow, !next && "invisible")}
-          aria-label={following < PAY_FLOW_STEPS.length ? `Next: ${PAY_FLOW_STEPS[following]}` : "Next"}
-          tabIndex={next ? undefined : -1}
-          data-pay-next
-        >
-          <ChevronRight className="h-6 w-6" aria-hidden />
+      ) : null}
+      <h1 className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight">{title}</h1>
+      {onClose ? (
+        <button type="button" onClick={onClose} aria-label={closeLabel} className="hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition" data-pay-close>
+          <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
         </button>
-      </div>
-      {/* Five segments, six on the Receipt (MESITA-4226): done and current
-          ink, not yet grey. */}
-      <ol className={cn("mt-1 grid gap-1.5", shown.length === 6 ? "grid-cols-6" : "grid-cols-5")} aria-label={`Step ${shownAt + 1} of ${shown.length}: ${name}`}>
-        {shown.map((step, i) => (
-          <li key={step} aria-current={i === shownAt ? "step" : undefined} className={cn("h-1 rounded-full", i <= shownAt ? "bg-foreground" : "bg-border")} />
-        ))}
-      </ol>
+      ) : null}
     </div>
   );
 }
 
-/** THE TOP PANEL (MESITA-4072): the place and, on a step, the step nav,
- *  one shared Panel across the top of every guest Pay screen. */
-/** The place a bill is at, for the page header (MESITA-4122). */
-export type PayHeaderPlace = { name: string; photo: string | null };
-
-/** Set by the bill's page (PayTabScreen): a step hands it its place, and the
- *  header reads "Pay at [photo] Name" (MESITA-4122, Pato: "move the place
- *  name and pp to the header ... steps directly. Optimize vertical space").
- *  Absent, the place keeps its own row in the top panel. */
-export const PayHeaderPlaceContext = createContext<((p: PayHeaderPlace | null) => void) | null>(null);
-
-export function PayTop({
-  place,
-  name,
-  onChoose,
-  step,
-}: {
-  place: PayPlace | null;
-  name?: string | null;
-  onChoose?: () => void;
-  step?: { at: number; onBack?: () => void; next?: { onClick: () => void; disabled: boolean } };
-}) {
-  const setHeader = useContext(PayHeaderPlaceContext);
-  const label = place?.name ?? name ?? null;
-  const photo = place?.photo ?? null;
-  useEffect(() => {
-    setHeader?.(label ? { name: label, photo } : null);
-  }, [setHeader, label, photo]);
-  // The header names the place: the panel is the steps alone.
-  if (setHeader) {
-    return step ? (
-      <Panel className="shrink-0" data-pay-top>
-        <StepNav at={step.at} onBack={step.onBack} next={step.next} />
-      </Panel>
-    ) : null;
-  }
+/** THE STEPS, AT THE BOTTOM (MESITA-4600): "1 Place · 2 Bill · 3 Tip · 4 Pay"
+ *  in one row, a thin bar under each, done and current in ink, the current
+ *  one semibold, the rest grey. A picture, not buttons: ← steps back.
+ *  `at` "done" (the Receipt) lights all four, a check on the last. */
+export function StepStrip({ at, className }: { at: 1 | 2 | 3 | 4 | "done"; className?: string }) {
+  const n = at === "done" ? 5 : at;
   return (
-    <Panel className="shrink-0" data-pay-top>
-      <div className="flex px-4 py-1.5">
-        <PlaceBar place={place} name={name} onChoose={onChoose} />
-      </div>
-      {step ? <StepNav at={step.at} onBack={step.onBack} next={step.next} /> : null}
-    </Panel>
+    <ol
+      className={cn("grid shrink-0 grid-cols-4 gap-1.5", className)}
+      aria-label={at === "done" ? "All steps done" : `Step ${at} of 4: ${STRIP_STEPS[at - 1]}`}
+      data-pay-strip
+    >
+      {STRIP_STEPS.map((name, i) => {
+        const step = i + 1;
+        const done = step < n;
+        const current = step === n;
+        return (
+          <li key={name} aria-current={current ? "step" : undefined} className="flex min-w-0 flex-col gap-1.5">
+            <span className={cn("h-1 rounded-full", done || current ? "bg-foreground" : "bg-border")} aria-hidden />
+            <span
+              className={cn(
+                "flex min-w-0 items-center gap-1 truncate text-xs tabular-nums",
+                current ? "text-foreground font-semibold" : done ? "text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {at === "done" && step === 4 ? <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden /> : <span>{step}</span>}
+              <span className="truncate">{name}</span>
+            </span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -348,55 +258,40 @@ export function PaySection({
   );
 }
 
-/** The bottom row, pinned under a full-width hairline: the red Cancel bill
- *  (MESITA-4051) a quarter, the step's one dark button three quarters
- *  (MESITA-4058, Pato: "maybe 25% and 75% for black button"). With no
- *  primary (Confirm: the waiter acts, not the guest) Cancel bill fills the row. */
+/** The bottom of a step, pinned under a full-width hairline (MESITA-4600):
+ *  the steps, then the step's one dark button, full width. The red Cancel
+ *  bill left the steps before the bill opens: the ✕ throws the ticket away
+ *  (MESITA-4598). Confirm keeps a small outlined Cancel bill (a card is held
+ *  there; its ✕ only closes, MESITA-4126/3908). */
 export function StepFooter({
+  strip,
   primary,
   onCancel,
-  cancelDisabled,
+  cancelDisabled = false,
 }: {
+  strip?: 1 | 2 | 3 | 4 | "done" | null;
   primary?: { label: React.ReactNode; onClick: () => void; disabled: boolean; busy: boolean };
-  onCancel: () => void;
-  cancelDisabled: boolean;
+  onCancel?: () => void;
+  cancelDisabled?: boolean;
 }) {
-  // NO PRIMARY, SMALL CANCEL (MESITA-4126, Pato: "make the red button
-  // smaller ... that looks like close the bill, not like cancel it"): while
-  // the guest waits for the waiter (Confirm) Cancel bill is a small centred
-  // outlined red button, never the full-width red bar.
-  if (!primary) {
-    return (
-      <div className="border-border -mx-4 mt-3 flex shrink-0 justify-center border-t px-4 pt-3">
+  return (
+    <div className="border-border -mx-4 mt-3 flex shrink-0 flex-col gap-3 border-t px-4 pt-3">
+      {strip ? <StepStrip at={strip} /> : null}
+      {primary ? (
+        <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={primary.disabled} onClick={primary.onClick}>
+          {primary.busy ? <Spinner size="sm" label="Working" /> : primary.label}
+        </Button>
+      ) : null}
+      {onCancel ? (
         <button
           type="button"
-          className="border-destructive/40 text-destructive hover:bg-destructive/5 h-11 rounded-xl border bg-card px-5 text-sm font-semibold transition disabled:opacity-50"
+          className="border-destructive/40 text-destructive hover:bg-destructive/5 h-11 self-center rounded-xl border bg-card px-5 text-sm font-semibold transition disabled:opacity-50"
           disabled={cancelDisabled}
           onClick={onCancel}
           data-guest-cancel-bill
         >
           Cancel bill
         </button>
-      </div>
-    );
-  }
-  return (
-    <div className={cn("border-border -mx-4 mt-3 grid shrink-0 gap-3 border-t px-4 pt-3", primary && "grid-cols-[1fr_3fr]")}>
-      <Button
-        type="button"
-        size="lg"
-        variant="danger"
-        className="min-h-12 w-full px-1 text-sm leading-tight font-semibold whitespace-normal"
-        disabled={cancelDisabled}
-        onClick={onCancel}
-        data-guest-cancel-bill
-      >
-        Cancel bill
-      </Button>
-      {primary ? (
-        <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={primary.disabled} onClick={primary.onClick}>
-          {primary.busy ? <Spinner size="sm" label="Working" /> : primary.label}
-        </Button>
       ) : null}
     </div>
   );

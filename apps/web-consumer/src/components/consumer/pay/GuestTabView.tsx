@@ -14,9 +14,8 @@ import { cn } from "@/lib/utils";
 import { useWakeLock } from "@/lib/use-wake-lock";
 import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
 import { trackEvent } from "@/lib/analytics/track";
-import { BAD, GOOD, MoneyRow, NOT_PAID_REASON, PaySection, PayTop, StepBody, StepFooter, WAIT } from "./pay-flow";
+import { BAD, GOOD, MoneyRow, NOT_PAID_REASON, PaySection, PayTitle, StepBody, StepFooter, StepStrip, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab, CancelBillButtons } from "./pay-common";
-import { STEP } from "@/lib/guest-pay-stages";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
 // /pay/bill/<id>, after App Pay, "I gave the cash" or credits alone:
@@ -144,9 +143,11 @@ export function GuestTabView({
   useWakeLock(signing);
   useEffect(() => {
     if (!registerClose) return;
-    registerClose(signing ? onDone : null);
+    // ✕ on every screen of the bill (MESITA-4600): it closes; the bill keeps
+    // waiting on Confirm (MESITA-3908).
+    registerClose(onDone);
     return () => registerClose(null);
-  }, [registerClose, signing, onDone]);
+  }, [registerClose, onDone]);
 
   useEffect(() => {
     if (!done) return;
@@ -192,7 +193,7 @@ export function GuestTabView({
   if (signed) {
     return (
       <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="receipt">
-        <PayTop place={place} name={tab.place.name} step={{ at: STEP.receipt }} />
+        <PayTitle title="Receipt" />
         <StepBody className="min-h-0 flex-1">
           {/* Paid, one green row with the total (it was a full-bleed band
               140px tall; under the step panel the rows and the gift must
@@ -225,6 +226,7 @@ export function GuestTabView({
         </StepBody>
         {/* The footer, always in reach. */}
         <div className="border-border -mx-4 mt-3 grid shrink-0 gap-3 border-t px-4 pt-3">
+          <StepStrip at="done" />
           <Button size="lg" className="min-h-12 w-full text-base font-semibold" onClick={onDone}>
             Done
           </Button>
@@ -241,11 +243,10 @@ export function GuestTabView({
       (tab.status === "expired" ? NOT_PAID_REASON.expired : cardFailed ? NOT_PAID_REASON.card_declined : NOT_PAID_REASON.cancelled);
     return (
       <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="not-paid">
-        <PayTop place={place} name={tab.place.name} />
+        <PayTitle title="Not paid" />
         <StepBody>
           <PaySection className="flex flex-col items-center p-4 text-center">
             <XCircle className={cn("h-10 w-10", BAD)} aria-hidden />
-            <h2 className="mt-2 text-xl font-semibold">Not paid</h2>
             <p className="mt-2 text-base">{reason}</p>
             <p className="text-muted-foreground mt-1 max-w-xs text-sm">
               {/* MESITA-4524: never "Nothing was charged" on cash the guest may have handed over. */}
@@ -290,7 +291,7 @@ export function GuestTabView({
   if (confirming) {
     return (
       <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="confirming">
-        <PayTop place={place} name={tab.place.name} />
+        <PayTitle title="Confirming…" />
         <StepBody>
           <PaySection className="flex flex-col items-center p-4 text-center" data-guest-confirming>
             <div role="status" className="flex flex-col items-center">
@@ -305,10 +306,11 @@ export function GuestTabView({
             </div>
           </PaySection>
         </StepBody>
+        <StepFooter strip={4} />
         {cardAction ? (
           <Button
             size="lg"
-            className="min-h-12 w-full shrink-0 text-base font-semibold"
+            className="mt-3 min-h-12 w-full shrink-0 text-base font-semibold"
             disabled={busy}
             onClick={() => {
               setBusy(true);
@@ -333,7 +335,7 @@ export function GuestTabView({
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
       {/* MESITA-4061: the same frame as every guest step. The bill is open,
           so neither arrow acts: going back is Cancel bill, the footer. */}
-      <PayTop place={place} name={tab.place.name} step={{ at: STEP.sign }} />
+      <PayTitle title="Show your waiter" />
       {/* FITS THE SCREEN, NEVER SCROLLS (MESITA-4102, Pato: "optimize
           vertical space ... i should not be scrolling here"). The body, the
           panel and the QR's slot are one column that fills the height left;
@@ -349,7 +351,7 @@ export function GuestTabView({
             then what the signature earns and what happens if time runs out. The time left
             sits on the heading's right, where the way's chip sat. */}
         <PaySection
-          title="Show your waiter"
+          title="Your QR"
           action={
             <span className="flex shrink-0 items-center gap-1.5 text-sm tabular-nums" role="timer" aria-live="off" data-guest-sign-timer>
               <Clock className={cn("h-4 w-4", closing ? WAIT : "text-muted-foreground")} aria-hidden />
@@ -432,7 +434,7 @@ export function GuestTabView({
         </div>
         </PaySection>
       </StepBody>
-      <StepFooter onCancel={() => setConfirmCancel(true)} cancelDisabled={busy} />
+      <StepFooter strip={4} onCancel={() => setConfirmCancel(true)} cancelDisabled={busy} />
 
       <LocalDialog open={confirmCancel} onClose={() => setConfirmCancel(false)} ariaLabel="Cancel this bill">
         <div className="p-5">

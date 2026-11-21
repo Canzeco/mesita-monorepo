@@ -47,7 +47,6 @@ export const CONFIRM_FILES = [
   "components/consumer/MapsLeaveModal.tsx",
   "components/consumer/me/CalendarModal.tsx",
   "components/consumer/me/InstagramModal.tsx",
-  "components/consumer/pay/GuestPayScreen.tsx",
   "components/consumer/pay/GuestTabView.tsx",
   "components/consumer/pay/PayPage.tsx",
   // Remove a Loyalty Card that holds nothing (MESITA-4112).
