@@ -2,8 +2,9 @@
 
 // Payouts to your bank (MESITA-4538, Pato: "it must include payments and
 // payouts to your bank"). Read live from Stripe after the payments list has
-// rendered, so a slow Stripe never holds the page. Its own Older. Open Stripe
-// sits in the card's title row (MESITA-4554).
+// rendered, so a slow Stripe never holds the page. Its own Older. Its own card,
+// the right column beside card payments (MESITA-4564, Pato: "two columns.
+// payments left, payouts right").
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -62,8 +63,7 @@ export function Payouts({ placeId, timezone }: { placeId: string; timezone: stri
   }
 
   return (
-    <section className="border-border flex flex-col border-t">
-      <h2 className="border-border border-b px-5 py-3.5 font-semibold sm:px-6">Payouts to your bank</h2>
+    <section className="flex flex-col">
       {answer === null && !error ? (
         <ul className="flex flex-col gap-2 px-5 py-4 sm:px-6" aria-label="Loading payouts">
           {[0, 1, 2].map((i) => (
@@ -71,10 +71,10 @@ export function Payouts({ placeId, timezone }: { placeId: string; timezone: stri
           ))}
         </ul>
       ) : null}
-      {error ? <p className="text-muted-foreground px-5 pb-4 text-sm sm:px-6">Stripe didn&apos;t answer. Try again.</p> : null}
-      {answer?.state === "stripe_error" ? <p className="text-muted-foreground px-5 pb-4 text-sm sm:px-6">Stripe didn&apos;t answer. Try again.</p> : null}
+      {error ? <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">Stripe didn&apos;t answer. Try again.</p> : null}
+      {answer?.state === "stripe_error" ? <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">Stripe didn&apos;t answer. Try again.</p> : null}
       {answer?.state === "no_account" ? (
-        <p className="text-muted-foreground px-5 pb-4 text-sm sm:px-6">
+        <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">
           Connect Stripe on{" "}
           <Link href={`/places/${encodeURIComponent(placeId)}/payments`} className="font-semibold underline underline-offset-2">
             Offers
@@ -84,7 +84,7 @@ export function Payouts({ placeId, timezone }: { placeId: string; timezone: stri
       ) : null}
       {answer?.state === "ok" ? (
         rows.length === 0 ? (
-          <p className="text-muted-foreground px-5 pb-4 text-sm sm:px-6">No payouts yet.</p>
+          <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">No payouts yet.</p>
         ) : (
           <ul className="divide-border divide-y">
             {rows.map((p) => (

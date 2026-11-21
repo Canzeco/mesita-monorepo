@@ -23,7 +23,7 @@ export async function MonitorPage({
   /** The URL segment, for Show all. */
   page: string;
   searchParams: SearchParams;
-  /** Payments: payouts to the bank in the same card (MESITA-4538). */
+  /** Payments: payouts to the bank in a second column (MESITA-4564). */
   payouts?: boolean;
 }) {
   const sp = await searchParams;
@@ -32,27 +32,42 @@ export async function MonitorPage({
   // Open Stripe only with a connected account (the dashboard needs one).
   const stripe = payments?.ok && payments.data.account.state !== "none";
   if (!r.ok) return <MonitorError code={r.code} error={r.error} />;
+  const list = (
+    <MonitorList
+      key={`${filter.id ?? ""}|${filter.customer ?? ""}`}
+      placeId={placeId}
+      kind={kind}
+      initial={r.data}
+      filter={filter}
+      clearHref={`/places/${encodeURIComponent(placeId)}/${page}`}
+    />
+  );
   return (
     <div className="flex flex-col gap-4 pb-8">
       <MonitorToolbar>
         {stripe ? <OpenStripeButton placeId={placeId} /> : null}
         <ExportButton placeId={placeId} kind={kind} filter={filter} name={page === "money" ? "stripe" : page} />
       </MonitorToolbar>
-      <MonitorCard>
-        {payouts ? <CardHeader title="Card payments" /> : null}
-        <MonitorList
-          key={`${filter.id ?? ""}|${filter.customer ?? ""}`}
-          placeId={placeId}
-          kind={kind}
-          initial={r.data}
-          filter={filter}
-          clearHref={`/places/${encodeURIComponent(placeId)}/${page}`}
-        />
-        {payouts && !filter.id && !filter.customer ? <Payouts placeId={placeId} timezone={r.data.timezone} /> : null}
-        {payouts && (filter.id || filter.customer) ? (
-          <p className="text-muted-foreground border-border border-t px-5 py-3 text-sm sm:px-6">Payouts are hidden while a filter is on.</p>
-        ) : null}
-      </MonitorCard>
+      {payouts ? (
+        // Two columns (MESITA-4564, Pato: "payments left, payouts right");
+        // stacked on a phone.
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+          <MonitorCard>
+            <CardHeader title="Card payments" />
+            {list}
+          </MonitorCard>
+          <MonitorCard>
+            <CardHeader title="Payouts to your bank" />
+            {filter.id || filter.customer ? (
+              <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">Payouts are hidden while a filter is on.</p>
+            ) : (
+              <Payouts placeId={placeId} timezone={r.data.timezone} />
+            )}
+          </MonitorCard>
+        </div>
+      ) : (
+        <MonitorCard>{list}</MonitorCard>
+      )}
     </div>
   );
 }
