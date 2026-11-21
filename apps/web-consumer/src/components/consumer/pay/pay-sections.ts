@@ -1,10 +1,11 @@
-// PAY'S TWO BOXES ON GREY (Pato, 2026-11-21, MESITA-4560: "a card that says
-// payment method, and below a box that says loyalty cards"): a small grey
-// title over one white box; a hairline between the rows inside.
-//
-// CLEANER TITLES (Pato, 2026-11-21, MESITA-4562: "make them cleaner"): black
-// 16px semibold, the rows' own size (no extra type size); 13px in, lined up
-// with the content inside the boxes (px-3 plus the 1px border); 24px of air
-// above, 8px below. Grey 14px at 8px in before (MESITA-4560).
-export const SECTION_TITLE = "text-foreground px-[13px] pt-6 pb-2 text-base font-semibold";
-export const SECTION_BOX = "border-border bg-card divide-border flex flex-col divide-y overflow-hidden rounded-2xl border empty:hidden";
+// PAY'S TWO BOXES (Pato, 2026-11-21, MESITA-4560: "a card that says payment
+// method, and below a box that says loyalty cards"). TITLES INSIDE, ON WHITE
+// (Pato, 2026-11-21, MESITA-4574: "payment method and loyalty cards each in
+// its own card. i don't want floating strings … MAKE ALL BACKGROUND WHITE"):
+// each section is one bordered white card, its title at the card's top left
+// (16px semibold, 12px in like the rows), the rows under it with a hairline
+// between them. The title floated over the box on a grey ground before
+// (MESITA-4560/4562).
+export const SECTION_CARD = "border-border bg-card mt-2 overflow-hidden rounded-2xl border";
+export const SECTION_TITLE = "text-foreground px-3 pt-3 text-base font-semibold";
+export const SECTION_ROWS = "divide-border flex flex-col divide-y";
