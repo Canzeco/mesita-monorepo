@@ -67,7 +67,12 @@ export function PlaceActionRow({
         {subtitle ? (
           <span className={cn(PAY_ROW_META, "max-w-[45%] shrink-0 truncate")}>{subtitle}</span>
         ) : amount ? (
-          <span className={cn(PAY_ROW_TEXT, "shrink-0 tabular-nums")} data-loyalty-balance>
+          // THE BALANCE IN A BLACK PILL (Pato, 2026-11-21, MESITA-4586: "balance
+          // put it in a black box with white text, just to make it clearer").
+          <span
+            className="bg-foreground text-background shrink-0 rounded-lg px-2 py-1 text-base font-semibold tabular-nums"
+            data-loyalty-balance
+          >
             {amount}
           </span>
         ) : distance ? (

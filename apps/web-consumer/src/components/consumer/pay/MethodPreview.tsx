@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, CreditCard, Plus, Smartphone } from "lucide-react";
 import { CardBrandChip } from "@/components/shared/card-brand-marks";
@@ -27,13 +27,25 @@ export function useApplePhone(): boolean {
  *  since MESITA-4112): the card's last four, or Apple Pay / Google Pay.
  *  It always opens Payment methods. A failed read ends on Retry. A 40px
  *  grey pill, Tickets' twin (MESITA-4497). */
-export function MethodPreview({ wide = false, row = false }: { wide?: boolean; row?: boolean } = {}) {
+export function MethodPreview({
+  wide = false,
+  row = false,
+  onReady,
+}: {
+  wide?: boolean;
+  row?: boolean;
+  /** Told once the method has answered (MESITA-4586): /pay waits for it. */
+  onReady?: () => void;
+} = {}) {
   const router = useRouter();
   const applePhone = useApplePhone();
   const { wallet, failed, reread } = useWallet({ withCards: true });
   const cards = failed ? null : wallet === null ? undefined : wallet.cards;
   const face = methodFace(cards);
   const way = face === "card" || face === "add" ? defaultMethod(wallet?.pay_method, cards as SavedCard[], applePhone, readLastCard()) : null;
+  useEffect(() => {
+    if (face !== "bone") onReady?.();
+  }, [face, onReady]);
 
   if (face === "bone") {
     if (row)
