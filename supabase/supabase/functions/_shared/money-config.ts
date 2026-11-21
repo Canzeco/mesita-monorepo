@@ -18,7 +18,16 @@ export type MoneyConfig = {
   /** MESITA-4384: the express-pay kill switch. Absent reads both wallets;
    *  [] turns express off; a list narrows it. Unknown names are dropped. */
   express_wallets: ExpressWallet[];
+  /** MESITA-4524: how long a guest pay ticket stays live (minutes, 5-120;
+   *  absent or bad reads 15). */
+  guest_pay_window_minutes: number;
 };
+
+export const GUEST_PAY_WINDOW_DEFAULT = 15;
+
+export function guestPayWindowFrom(raw: unknown): number {
+  return typeof raw === "number" && Number.isInteger(raw) && raw >= 5 && raw <= 120 ? raw : GUEST_PAY_WINDOW_DEFAULT;
+}
 
 export function expressWalletsFrom(raw: unknown): ExpressWallet[] {
   if (!Array.isArray(raw)) return [...EXPRESS_WALLETS];
@@ -31,6 +40,7 @@ export function moneyConfigFrom(raw: unknown): MoneyConfig {
     buying_paused: o.buying_paused === true,
     sending_live: o.sending_live === true,
     express_wallets: expressWalletsFrom(o.express_wallets),
+    guest_pay_window_minutes: guestPayWindowFrom(o.guest_pay_window_minutes),
   };
 }
 
@@ -42,7 +52,7 @@ export async function readMoneyConfig(admin: SupabaseClient): Promise<MoneyConfi
   if (!res.ok) {
     console.error("[money-config] read failed; reading as not paused, not sending live, express off");
     // Express is new money surface: off when in doubt (the card path stays).
-    return { buying_paused: false, sending_live: false, express_wallets: [] };
+    return { buying_paused: false, sending_live: false, express_wallets: [], guest_pay_window_minutes: GUEST_PAY_WINDOW_DEFAULT };
   }
   return moneyConfigFrom(res.row?.money_config);
 }

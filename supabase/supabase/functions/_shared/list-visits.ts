@@ -63,12 +63,29 @@ export async function listVisits(
   const all = (tabData ?? []) as Array<TabRow & { created_at: string }>;
   const truncated = all.length > VISITS_LIMIT;
   const tabs = all.slice(0, VISITS_LIMIT);
-  if (tabs.length === 0) return { ok: true, visits: [], truncated: false };
 
-  const { data: partData, error: partError } = await admin
-    .from("wallet_payments")
-    .select(LIST_PART_COLUMNS)
-    .in("tab_id", tabs.map((t) => t.id));
+  // MESITA-4524: a ticket not yet closed is a guest pay attempt. A live one
+  // is the guest's open payment (status paying); one that ended unpaid for
+  // the waiter, the clock or the bank shows as Not paid. A cancelled one,
+  // or a hold refused before any QR, never was a ticket to the guest.
+  const { data: attemptData, error: attemptError } = await admin
+    .from("guest_pay_attempts")
+    .select("id, place_id, status, currency, livemode, bill_cents, tip_cents, expires_at, created_at, end_reason, held_at, payment_id")
+    .eq("consumer_id", consumerId)
+    .eq("livemode", livemode)
+    .or("status.in.(opening,due),and(status.eq.released,end_reason.in.(rejected,expired,declined),held_at.not.is.null)")
+    .order("created_at", { ascending: false })
+    .limit(VISITS_LIMIT);
+  if (attemptError) return { ok: false, error: `attempts: ${attemptError.message}` };
+  const attempts = (attemptData ?? []) as Array<{
+    id: string; place_id: string; status: string; currency: string; bill_cents: number; tip_cents: number;
+    expires_at: string; created_at: string; end_reason: string | null; payment_id: string | null;
+  }>;
+  if (tabs.length === 0 && attempts.length === 0) return { ok: true, visits: [], truncated: false };
+
+  const { data: partData, error: partError } = tabs.length
+    ? await admin.from("wallet_payments").select(LIST_PART_COLUMNS).in("tab_id", tabs.map((t) => t.id))
+    : { data: [], error: null };
   if (partError) return { ok: false, error: `parts: ${partError.message}` };
   const partsByTab = new Map<string, PartRow[]>();
   for (const p of (partData ?? []) as PartRow[]) {
@@ -77,7 +94,7 @@ export async function listVisits(
     partsByTab.set(p.tab_id, list);
   }
 
-  const placesRes = await readWalletPlaces(admin, [...new Set(tabs.map((t) => t.place_id))]);
+  const placesRes = await readWalletPlaces(admin, [...new Set([...tabs.map((t) => t.place_id), ...attempts.map((a) => a.place_id)])]);
   if (!placesRes.ok) return { ok: false, error: placesRes.error };
 
   const visits = tabs.map((t): GuestVisit => {
@@ -100,5 +117,26 @@ export async function listVisits(
       part_payment_ids: parts.map((p) => p.id),
     };
   });
-  return { ok: true, visits, truncated };
+  for (const a of attempts) {
+    const place = placesRes.places.get(a.place_id);
+    const open = a.status === "opening" || a.status === "due";
+    visits.push({
+      tab_id: a.id,
+      place: { id: a.place_id, name: place?.name ?? null, slug: place?.slug ?? null, photo_url: place?.photo ?? null },
+      status: open ? "paying" : a.end_reason === "expired" ? "expired" : "cancelled",
+      currency: a.currency,
+      bill_cents: a.bill_cents,
+      tip_cents: a.tip_cents,
+      ticket: null,
+      waiter_name: null,
+      created_at: a.created_at,
+      paid_at: null,
+      expires_at: a.expires_at,
+      origin: "guest",
+      verified_at: null,
+      part_payment_ids: a.payment_id ? [a.payment_id] : [],
+    });
+  }
+  visits.sort((x, y) => Date.parse(y.created_at) - Date.parse(x.created_at));
+  return { ok: true, visits: visits.slice(0, VISITS_LIMIT), truncated: truncated || visits.length > VISITS_LIMIT };
 }

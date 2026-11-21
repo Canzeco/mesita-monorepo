@@ -495,7 +495,7 @@ function OpenBillPanel({
   const listed = places?.find((p) => p.place_id === placeId);
   const name = (tab ? tab.place.name : pending?.name) ?? listed?.name ?? null;
   const href = tab ? payBillPath(tab.tab_id) : payPlacePath(placeId);
-  const what = tab ? "Waiting for the waiter's signature" : "Bill in progress";
+  const what = tab ? "Waiting for the waiter" : "Bill in progress";
   const draft = tab ? null : readDraft(placeId);
   const currency = tab?.currency ?? listed?.currency ?? "mxn";
   const bill = tab ? tab.bill_cents : draft ? readAmount(draft.amount) : null;

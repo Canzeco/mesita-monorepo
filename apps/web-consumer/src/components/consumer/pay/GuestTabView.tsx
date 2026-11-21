@@ -16,7 +16,7 @@ import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
 import { trackEvent } from "@/lib/analytics/track";
 import { BAD, GOOD, MoneyRow, NOT_PAID_REASON, PaySection, PayTop, StepBody, StepFooter, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab, CancelBillButtons } from "./pay-common";
-import { STEP, startAgainStage } from "@/lib/guest-pay-stages";
+import { STEP } from "@/lib/guest-pay-stages";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
 // /pay/bill/<id>, after App Pay, "I gave the cash" or credits alone:
@@ -30,7 +30,8 @@ import { STEP, startAgainStage } from "@/lib/guest-pay-stages";
 //                 check, the charge at the signature).
 //   7 Receipt     the step panel, a green Paid with the total, the lines
 //                 with their icons, "Confirmed by staff" ✓; Done.
-//   Not paid      a red XCircle, one line why, "Nothing was charged", Start
+//   Not paid      a red XCircle, one line why, "Nothing was charged" (never on
+//                 cash), New ticket (MESITA-4524: the old ticket is done). Was Start
 //                 again (the bill with everything typed).
 //
 // The page reads the bill every two seconds while it's open.
@@ -247,7 +248,10 @@ export function GuestTabView({
             <h2 className="mt-2 text-xl font-semibold">Not paid</h2>
             <p className="mt-2 text-base">{reason}</p>
             <p className="text-muted-foreground mt-1 max-w-xs text-sm">
-              {cash > 0 ? "Nothing was charged in Mesita. If you gave cash, settle it with the waiter." : "Nothing was charged"}
+              {/* MESITA-4524: never "Nothing was charged" on cash the guest may have handed over. */}
+              {cash > 0
+                ? "The waiter didn't confirm your cash. If you handed it over, show this screen to the staff."
+                : "Nothing was charged"}
             </p>
           </PaySection>
         </StepBody>
@@ -255,15 +259,17 @@ export function GuestTabView({
           size="lg"
           className="min-h-12 w-full shrink-0 text-base font-semibold"
           onClick={() => {
-            // Start again opens where the bill failed (MESITA-4121).
-            // A failed card reopens Pay with it marked "Declined just now"
-            // (MESITA-4226).
-            const stage = startAgainStage({ endReason: tab.end_reason ?? cardError, cardFailed });
-            reopenGuestDraft(tab.place.id, stage, stage === "pay");
+            // MESITA-4524: a ticket that did not pay is done; this starts a
+            // NEW ticket. After a card decline it opens at Method with the
+            // bill and tip still typed (this session only); otherwise at an
+            // empty Bill.
+            const declined = cardFailed || tab.end_reason === "capture_failed" || tab.end_reason === "card_declined";
+            if (declined) reopenGuestDraft(tab.place.id, "method", true);
+            else clearGuestDraft(tab.place.id);
             onPayAgain(tab.place.id);
           }}
         >
-          Start again
+          New ticket
         </Button>
         <button
           type="button"
@@ -290,6 +296,12 @@ export function GuestTabView({
             <div role="status" className="flex flex-col items-center">
               <Loader2 className="h-10 w-10 animate-spin motion-reduce:animate-none" aria-hidden />
               <h2 className="mt-2 text-xl font-semibold">Confirming…</h2>
+              {/* MESITA-4524: past 20 s the guest may leave; the ticket still ends on its own. */}
+              {tab.signing && now - Date.parse(tab.updated_at) > 20_000 ? (
+                <p className="text-muted-foreground mt-2 max-w-xs text-sm">
+                  Your bank is taking longer than usual. You can go; your receipt will appear in Tickets.
+                </p>
+              ) : null}
             </div>
           </PaySection>
         </StepBody>

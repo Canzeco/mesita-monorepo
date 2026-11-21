@@ -49,19 +49,11 @@ describe("clearGuestDraft", () => {
     delete (globalThis as { window?: unknown }).window;
   });
 
-  it("removes this place's draft and its pending pointer", () => {
+  it("clears this place's draft; a typed bill is never a pending ticket (MESITA-4524)", () => {
     writeDraft("place-a", typed("250"));
-    expect(pendingTicketPlace()).toBe("place-a");
+    expect(pendingTicketPlace()).toBeNull();
     clearGuestDraft("place-a");
     expect(readDraft("place-a")).toBeNull();
-    expect(pendingTicketPlace()).toBeNull();
-  });
-
-  it("counts a typed 0 as a ticket, and clears it", () => {
-    writeDraft("place-a", typed("0."));
-    expect(pendingTicketPlace()).toBe("place-a");
-    clearGuestDraft("place-a");
-    expect(pendingTicketPlace()).toBeNull();
   });
 
   it("remembers the last card across bills, and drops a blank id", () => {
@@ -74,12 +66,12 @@ describe("clearGuestDraft", () => {
     expect(readLastCard()).toBe("pm_1");
   });
 
-  it("keeps another place's pointer", () => {
+  it("keeps another place's draft", () => {
     writeDraft("place-a", typed("250"));
     writeDraft("place-b", typed("90"));
     clearGuestDraft("place-a");
     expect(readDraft("place-a")).toBeNull();
-    expect(pendingTicketPlace()).toBe("place-b");
+    expect(readDraft("place-b")?.amount).toBe("90");
   });
 });
 

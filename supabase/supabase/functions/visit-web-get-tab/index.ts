@@ -20,6 +20,7 @@ import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts
 import { openRequest } from "../_shared/request.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { isTabToken, readTabByToken, readTabParts, readShares, staffTabView, tableView } from "../_shared/tab.ts";
+import { attemptAsTab, attemptParts, readAttemptByToken, readAttemptPayment } from "../_shared/guest-attempt.ts";
 
 serveJson("visit-web-get-tab", async (req) => {
   const ctx = openRequest(req);
@@ -31,10 +32,20 @@ serveJson("visit-web-get-tab", async (req) => {
   if (!isTabToken(token)) return json({ ok: false, error: "That is not a tab" }, 400);
 
   try {
-    const tab = await readTabByToken(admin, token);
+    let tab = await readTabByToken(admin, token);
+    // MESITA-4524: a ticket not yet closed is a guest pay attempt (a closed
+    // one's ticket carries the same token, so the read above finds it).
+    let attemptParts_: Awaited<ReturnType<typeof readTabParts>> | null = null;
+    if (!tab) {
+      const a = await readAttemptByToken(admin, token);
+      if (a) {
+        tab = attemptAsTab(a);
+        attemptParts_ = attemptParts(a, await readAttemptPayment(admin, a));
+      }
+    }
     if (!tab) return json({ ok: false, code: "not_found", error: "This tab is gone" }, 404);
     const [parts, placeRes] = await Promise.all([
-      readTabParts(admin, tab.id),
+      attemptParts_ ? Promise.resolve(attemptParts_) : readTabParts(admin, tab.id),
       readVoucherPlace(admin, tab.place_id),
     ]);
     if (!placeRes.ok) throw new Error(placeRes.error);

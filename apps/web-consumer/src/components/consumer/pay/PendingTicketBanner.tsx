@@ -89,7 +89,7 @@ export function PendingTicketBanner() {
       : null;
   if (!href) return null;
   const name = (bill ? bill.name : localName) || null;
-  const what = bill ? "Waiting for the waiter's signature" : "Bill in progress";
+  const what = bill ? "Waiting for the waiter" : "Bill in progress";
 
   return (
     <Link

@@ -15,6 +15,12 @@
 // a PI that went through settles here (the receiver and the cron are the
 // other two callers), and one that failed bills the tab again.
 //
+// MESITA-4524: `tab_id` may be a guest pay ATTEMPT id (a ticket not yet
+// closed). It reads as a guest bill (attemptAsTab); once closed it reads its
+// real ticket. The read moves the ticket on: a hold that landed goes live,
+// a live ticket past its window ends (expired; the hold let go first).
+// `remint: true` reissues the attempt's QR (the old one works 60 s more).
+// `server_now` lets the countdown run on the server's clock.
 // Body: { tab_id: uuid, with_cards?: boolean, remint?: boolean }
 // MESITA-3707: a guest tab's QR lives on the guest's phone; `remint: true`
 // (sent only when the phone lost it) answers `token` and `qr_url` for the
@@ -52,6 +58,7 @@ import { readPlaceBalance } from "../_shared/vouchers.ts";
 import { callTabRpc, guestTabView, hashTabToken, mintTabToken, readShares, readTabById, readTabParts, tableView, tabUrl } from "../_shared/tab.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
+import { attemptAsTab, attemptParts, endAttempt, phaseOf, pollPlacingHold, readAttemptById, readAttemptPayment } from "../_shared/guest-attempt.ts";
 
 serveJson("consumer-web-get-tab", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });
@@ -63,14 +70,43 @@ serveJson("consumer-web-get-tab", async (req) => {
   if (!isUuid(tabId)) return json({ ok: false, error: "tab_id must be a tab id" }, 400);
 
   try {
-    const tab = await readTabById(admin, tabId);
-    if (!tab || tab.consumer_id !== user.id) {
-      return json({ ok: false, code: "not_found", error: "This tab is gone" }, 404);
-    }
     const key = paymentsStripeKey();
     const livemode = paymentsLivemode();
     const stripe = key ? stripeClient(key) : null;
     const nowMs = Date.now();
+    let tab = await readTabById(admin, tabId);
+    // MESITA-4524: a ticket not yet closed is an attempt.
+    let attemptReminted: { token: string; qr_url: string } | null = null;
+    let attemptView: { parts: Awaited<ReturnType<typeof readTabParts>> } | null = null;
+    if (!tab) {
+      let a = await readAttemptById(admin, tabId);
+      if (!a || a.consumer_id !== user.id) {
+        return json({ ok: false, code: "not_found", error: "This tab is gone" }, 404);
+      }
+      if (stripe) await pollPlacingHold(admin, stripe, a, await readAttemptPayment(admin, a));
+      a = (await readAttemptById(admin, a.id)) ?? a;
+      const phase = phaseOf(a);
+      if ((phase === "live" || phase === "placing_hold") && Date.parse(a.expires_at) <= nowMs) {
+        await endAttempt(admin, stripe, a.id, phase === "live" ? "expired" : "cancelled", { consumerId: user.id, source: "consumer-web-get-tab" });
+        a = (await readAttemptById(admin, a.id)) ?? a;
+      }
+      if (a.status === "closed" && a.tab_id) {
+        tab = await readTabById(admin, a.tab_id);
+      }
+      if (!tab) {
+        if (bodyRes.body.remint === true && (a.status === "opening" || a.status === "due")) {
+          const token = mintTabToken();
+          const r = await callTabRpc(admin, "pay_guest_reissue_token", { p_attempt_id: a.id, p_consumer_id: user.id, p_token_hash: await hashTabToken(token) });
+          if (r.ok === true) attemptReminted = { token, qr_url: tabUrl(token) };
+          console.log("[consumer-web-get-tab]", JSON.stringify({ outcome: r.ok === true ? "reissued" : r.code, attempt_id: a.id }));
+        }
+        tab = attemptAsTab(a);
+        attemptView = { parts: attemptParts(a, await readAttemptPayment(admin, a)) };
+      }
+    }
+    if (!tab || tab.consumer_id !== user.id) {
+      return json({ ok: false, code: "not_found", error: "This tab is gone" }, 404);
+    }
 
     // A card part in flight: read its PaymentIntent first, so the tab the
     // guest gets back already says what it settled.
@@ -80,8 +116,8 @@ serveJson("consumer-web-get-tab", async (req) => {
     let expressAction: CardStep | null = null;
     let cardError: Record<string, unknown> | null = null;
     let tabNow = tab;
-    let parts = await readTabParts(admin, tab.id);
-    const inFlight = parts.find((p) => p.part === "card" && p.status === "open");
+    let parts = attemptView ? attemptView.parts : await readTabParts(admin, tab.id);
+    const inFlight = attemptView ? undefined : parts.find((p) => p.part === "card" && p.status === "open");
     if (inFlight && stripe) {
       const row = await readCardRow(admin, inFlight.id);
       if (row) {
@@ -96,8 +132,8 @@ serveJson("consumer-web-get-tab", async (req) => {
       }
     }
 
-    let reminted: { token: string; qr_url: string } | null = null;
-    if (bodyRes.body.remint === true && tabNow.origin === "guest") {
+    let reminted: { token: string; qr_url: string } | null = attemptReminted;
+    if (!attemptView && bodyRes.body.remint === true && tabNow.origin === "guest") {
       const token = mintTabToken();
       const r = await callTabRpc(admin, "pay_tab_guest_remint", {
         p_tab_id: tabNow.id,
@@ -135,7 +171,9 @@ serveJson("consumer-web-get-tab", async (req) => {
     // Friends split one bill (MESITA-3695).
     let table = null;
     let myShareTabId: string | null = null;
-    if (tabNow.parent_tab_id) {
+    if (attemptView) {
+      // An attempt is never split.
+    } else if (tabNow.parent_tab_id) {
       const parent = await readTabById(admin, tabNow.parent_tab_id);
       if (parent) table = { ...tableView(parent, await readShares(admin, parent.id), nowMs), mine: parent.consumer_id === user.id };
     } else if (tabNow.split_at) {
@@ -161,6 +199,7 @@ serveJson("consumer-web-get-tab", async (req) => {
       ...(cardAction ? { card_action: cardAction } : {}),
       ...(expressAction ? { express_action: expressAction } : {}),
       ...(cardError ? { card_error: cardError } : {}),
+      server_now: new Date(nowMs).toISOString(),
     });
   } catch (err) {
     return failWithRequestId("consumer-web-get-tab", "Couldn't read the tab. Try again.", err);

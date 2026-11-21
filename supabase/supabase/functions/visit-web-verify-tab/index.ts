@@ -32,6 +32,7 @@ import { readStaffToken, staffDeviceHash, supabaseStaffStore, tabStaffJti } from
 import { callTabRpc, isTabToken, readTabByToken, rpcRefusal } from "../_shared/tab.ts";
 import { captureHeldCard } from "../_shared/settle-payment.ts";
 import { paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
+import { confirmAttempt, readAttemptByToken } from "../_shared/guest-attempt.ts";
 
 serveJson("visit-web-verify-tab", async (req) => {
   const ctx = openRequest(req);
@@ -60,6 +61,20 @@ serveJson("visit-web-verify-tab", async (req) => {
       return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
     }
     const tab = await readTabByToken(admin, token);
+    // MESITA-4524: a ticket not yet closed (guest_pay_attempts). Confirm
+    // claims it, then captures the card hold (card) or closes it (cash,
+    // credits). A repeat while charging answers confirming, never an error.
+    if (!tab) {
+      const a = await readAttemptByToken(admin, token);
+      if (a) {
+        const k = paymentsStripeKey();
+        const out = await confirmAttempt(admin, k ? stripeClient(k) : null, a, { placeId, keyHash: await staffDeviceHash(jti) });
+        console.log("[visit-web-verify-tab]", JSON.stringify({ attempt_id: a.id, place_id: placeId, outcome: out.ok ? out.outcome : out.code }));
+        if (!out.ok) return json({ ok: false, code: out.code, error: out.error }, out.status);
+        if (out.outcome === "confirming") return json({ ok: true, outcome: "confirming" }, 202);
+        return json({ ok: true, outcome: out.outcome, verified_at: new Date().toISOString(), same_phone: null, cash_received_cents: a.tender === "cash" ? a.cash_cents : null, cash_tip_cents: null });
+      }
+    }
     if (!tab || tab.origin !== "guest") {
       return json({ ok: false, code: "gone", error: "Scan the guest's screen again." }, 404);
     }

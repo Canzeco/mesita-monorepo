@@ -13,6 +13,10 @@
 // 409 card_pending. "cancel" on a guest payment where money moved answers
 // 409 paid_part.
 //
+// MESITA-4524: `tab_id` may be a guest pay attempt (a ticket not yet
+// closed): "cancel" and "close" end it cancelled (its hold let go first);
+// once the waiter confirmed it answers 409 charging.
+//
 // Body: { tab_id: uuid, mode: "cancel" | "change" | "close" }
 // Response: { ok: true, outcome: cancelled | billed | closed, bill_version? }
 //   400 (a malformed call) · 401 sign_in · 404 not_found ·
@@ -26,6 +30,7 @@ import { isUuid } from "../_shared/place-id.ts";
 import { callTabRpc, rpcRefusal } from "../_shared/tab.ts";
 import { cancelReleasedHolds } from "../_shared/settle-payment.ts";
 import { paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
+import { endAttempt, readAttemptById } from "../_shared/guest-attempt.ts";
 
 serveJson("consumer-web-cancel-tab", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });
@@ -40,6 +45,16 @@ serveJson("consumer-web-cancel-tab", async (req) => {
   }
 
   try {
+    const attempt = await readAttemptById(admin, tabId);
+    if (attempt && attempt.consumer_id === user.id && !attempt.tab_id) {
+      const k = paymentsStripeKey();
+      const ended = await endAttempt(admin, k ? stripeClient(k) : null, attempt.id, "cancelled", { consumerId: user.id, source: "consumer-web-cancel-tab" });
+      if (ended.ok) return json({ ok: true, outcome: "cancelled", bill_version: null });
+      if (ended.code === "charging") return json({ ok: false, code: "charging", error: "The waiter already confirmed. Your card is being charged." }, 409);
+      if (ended.code === "already_final") return json({ ok: false, code: "verified", error: "This bill is already paid." }, 409);
+      if (ended.code === "pending") return json({ ok: false, code: "card_pending", error: "Your bank is still answering. Try again in a moment." }, 409);
+      return json({ ok: false, code: "not_found", error: "This bill is gone" }, 404);
+    }
     const r = await callTabRpc(admin, "pay_tab_change", {
       p_tab_id: tabId,
       p_consumer_id: user.id,

@@ -62,26 +62,3 @@ export const PAY_CARD_REFUSALS: ReadonlySet<string> = new Set([
   "card_unavailable",
   "cards_off",
 ]);
-
-/** Where Not paid's Start again opens (MESITA-4121, MESITA-4226): Pay when
- *  the bill's card failed (the card marked "Declined just now"), Method when
- *  the bill expired or the waiter rejected it, Bill otherwise. */
-export function startAgainStage(a: { endReason: string | null; cardFailed: boolean }): Stage {
-  switch (a.endReason) {
-    case "bank_check_failed":
-    case "capture_failed":
-    case "hold_released":
-    case "card_declined":
-    case "card_needs_auth":
-      return "pay";
-    case "expired":
-    case "rejected":
-      return "method";
-    case null:
-    case undefined:
-    case "":
-      return a.cardFailed ? "pay" : "bill";
-    default:
-      return "bill";
-  }
-}
