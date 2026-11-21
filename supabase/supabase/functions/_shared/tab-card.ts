@@ -395,7 +395,7 @@ async function openExpressHold(
   admin: SupabaseClient,
   stripe: StripeCall,
   ref: { id: string; account: string; cardCents: number; tipCents: number },
-  args: { currency: string; placeId: string; placeName: string | null; consumerId: string; tabId: string; publishableKey: string | null },
+  args: { currency: string; placeId: string; placeName: string | null; consumerId: string; tabId: string; publishableKey: string | null; hold?: boolean },
 ): Promise<{ ok: true; step: CardStep } | TabRefusal> {
   if (!args.publishableKey) {
     await releasePayment(admin, ref.id, "failed", "no_publishable_key");
@@ -407,7 +407,9 @@ async function openExpressHold(
       amount: toStripeAmount(ref.cardCents + ref.tipCents, args.currency),
       currency: args.currency,
       payment_method_types: ["card"],
-      capture_method: "manual",
+      // A new guest pay captures on confirm. A hold (the default) stays
+      // manual until the waiter signs.
+      ...(args.hold === false ? {} : { capture_method: "manual" }),
       description: `Mesita · ${(args.placeName ?? "place").slice(0, 200)}`,
       metadata: {
         mesita_kind: "wallet_payment",

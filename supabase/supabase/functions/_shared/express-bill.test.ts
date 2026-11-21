@@ -130,6 +130,16 @@ Deno.test("express bill opens ONE manual-capture hold: no payment method, no clo
   assertEquals(a.rpcs.map((r) => r.fn), ["wallet_open_payment_pi"]);
 });
 
+Deno.test("a new guest pay captures on confirm: the express PaymentIntent is not a manual hold", async () => {
+  const a = fakeAdmin(card());
+  const { stripe, calls } = fakeStripe(() => ({ id: "pi_c", status: "requires_payment_method", client_secret: "pi_c_secret", amount: 55000 }));
+  const res = await runTabCard(a.admin, stripe, { ...ARGS, hold: false });
+  assert(res.ok);
+  const create = calls[0].params!;
+  assertEquals("capture_method" in create, false);
+  assertEquals(create.amount, 55000);
+});
+
 Deno.test("replay before Face ID keeps the hold: the same secret, no cancel, no release", async () => {
   const a = fakeAdmin(card({ status: "open", stripe_payment_intent_id: "pi_h" }));
   const { stripe, calls } = fakeStripe(() => ({ id: "pi_h", status: "requires_payment_method", client_secret: "pi_h_secret", amount: 55000 }));

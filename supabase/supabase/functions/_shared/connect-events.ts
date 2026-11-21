@@ -510,6 +510,13 @@ async function dispatch(
       }
       if (event.type === "payment_intent.succeeded") {
         const outcome = await settlePaidPayment(admin, row.id, piId);
+        // A new guest pay has no waiter hold. Close that tab. An old hold
+        // (held_at set) and a cash bill stay for the sign path.
+        const tabId = typeof meta.tab_id === "string" ? meta.tab_id : null;
+        if (tabId) {
+          const { error } = await admin.rpc("pay_tab_guest_settle", { p_tab_id: tabId });
+          if (error) throw new Error(`pay_tab_guest_settle: ${error.message}`);
+        }
         return { status: 200, body: { ok: true, payment_id: row.id, outcome } };
       }
       // Canceled: a Checkout's own PI is checkout.session.expired's to release.

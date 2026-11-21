@@ -185,14 +185,24 @@ serveJson("consumer-web-pay-guest", async (req) => {
         consumerId: userId,
         tabId,
         publishableKey: paymentsPublishableKey(livemode),
-        // MESITA-3856: held until the waiter signs.
-        hold: true,
+        // MESITA-4501: a new guest pay captures now. A tab already held
+        // for Sign is not opened here.
+        hold: false,
       });
       if (!res.ok) {
         console.log("[consumer-web-pay-guest]", JSON.stringify({ outcome: res.code, tab_id: tabId, card_payment_id: cardPaymentId }));
+        // A declined new pay must not stay as an open ticket.
+        await callTabRpc(admin, "pay_tab_change", { p_tab_id: tabId, p_consumer_id: userId, p_mode: "cancel" });
         return json({ ok: false, code: res.code, error: res.error, tab_id: tabId, ...res.detail }, res.status);
       }
       cardStep = res.step;
+    }
+
+    const noCash = pay.cashBillCents === 0 && pay.cashTipCents === 0;
+    const cardDone = cardStep?.status === "succeeded";
+    if (noCash && (!hasCard || cardDone)) {
+      const settled = await callTabRpc(admin, "pay_tab_guest_settle", { p_tab_id: tabId });
+      if (settled.ok === true && typeof settled.status === "string") r.status = settled.status;
     }
 
     // Never the token in a log line.
