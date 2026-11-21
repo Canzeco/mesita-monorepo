@@ -1,8 +1,20 @@
-// The guest catalog is these thirty-seven families. Undefined is the leftover
+// The guest catalog is these thirty families. Undefined is the leftover
 // and is not a rail. A type may sit in several families: a list, never a
 // primary and a secondary (MESITA-2808).
 //
-// THIRTY-SEVEN (MESITA-2930, Pato 2026-10-27: "Fold Beer, Cocktails and
+// THIRTY (MESITA-4571, Pato 2026-11-21: "I WANT ONLY 30 FAMILIES. COMPRESS
+// THE LIST OR REMOVE ITEMS.", then "think what makes sense for mesita"). A
+// Mesita place is a table: a guest sits, orders and pays a bill, which is
+// what Reservations and Prepayments need, and every live place was a
+// restaurant, a café or a bar. So Family, Karaoke, Fun, Cinema, Casino, Spa
+// and Tourism are gone — none carried a live place, and all but Karaoke sell
+// tickets, lanes or treatments. Sports (sports bars) and Hookah (lounges)
+// are tables and stay. A karaoke bar is Bar and Night, a comedy club Night.
+// The Google types that are not tables sit in no family now
+// (`RETIRED_RAIL_TYPES`). Every paragraph below that names one of the seven,
+// or a stadium, a concert hall or a spa as a rail, is history.
+//
+// THIRTY-SEVEN before that (MESITA-2930, Pato 2026-10-27: "Fold Beer, Cocktails and
 // Wine into Bar. Keep Sports and Hookah."): `drinks` (Bar) absorbs the three.
 //
 // FORTY before that (MESITA-2888, Pato 2026-10-27: "do the list 40 items long. try as
@@ -40,7 +52,8 @@
 // MESITA-2962 narrowed the sights to ones somebody runs (museums, galleries,
 // attractions, zoos): parks, plazas, monuments, beaches and malls sit in no
 // family again, with massage, yoga, pools and the sweet and tea shops.
-// Sports is sports bars and stadiums — watching the game is social; a gym is
+// Sports is sports bars — watching the game at a table (stadiums left with
+// MESITA-4571); a gym is
 // not.
 //
 // ONE NIGHT RAIL (MESITA-2486, Pato 2026-10-19: "merge"): Go out folded
@@ -97,15 +110,8 @@ export const CATALOG_FAMILY_SLUGS = [
   "bakery",
   "nightclub",
   "music",
-  "family",
   "sports",
   "hookah",
-  "karaoke",
-  "fun",
-  "cinema",
-  "casino",
-  "spa",
-  "tourist",
 ] as const;
 
 export type CatalogFamilySlug = (typeof CATALOG_FAMILY_SLUGS)[number];
@@ -145,15 +151,8 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "bakery", label: "Bakery", emoji: "🥐", sort_order: 26 },
   { slug: "nightclub", label: "Club", emoji: "🪩", sort_order: 27 },
   { slug: "music", label: "Music", emoji: "🎶", sort_order: 28 },
-  { slug: "family", label: "Family", emoji: "👨‍👩‍👧", sort_order: 29 },
-  { slug: "sports", label: "Sports", emoji: "📺", sort_order: 30 },
-  { slug: "hookah", label: "Hookah", emoji: "💨", sort_order: 31 },
-  { slug: "karaoke", label: "Karaoke", emoji: "🎤", sort_order: 32 },
-  { slug: "fun", label: "Fun", emoji: "🎯", sort_order: 33 },
-  { slug: "cinema", label: "Cinema", emoji: "🎬", sort_order: 34 },
-  { slug: "casino", label: "Casino", emoji: "🎰", sort_order: 35 },
-  { slug: "spa", label: "Spa", emoji: "🧖", sort_order: 36 },
-  { slug: "tourist", label: "Tourism", emoji: "🏛️", sort_order: 37 },
+  { slug: "sports", label: "Sports", emoji: "📺", sort_order: 29 },
+  { slug: "hookah", label: "Hookah", emoji: "💨", sort_order: 30 },
   { slug: "undefined", label: "Undefined", emoji: "·", sort_order: 999 },
 ];
 
@@ -236,6 +235,88 @@ export const NO_FAMILY_TYPES = [
   "playground",
 ] as const;
 
+/**
+ * Off Mesita since MESITA-4571 (Pato 2026-11-21: "think what makes sense for
+ * mesita … reduce the size or list of allowed google categories"). A Mesita
+ * place is one where a guest sits at a table, orders and pays a bill — what
+ * Reservations and Prepayments need. These Google types are not: the rails
+ * that left (Family, Fun, Cinema, Casino, Spa, Tourism) and, below them, the
+ * halls, stadiums, shops and stands. Each sits in no family, so Search hides
+ * it and Create refuses it (`catalog_membership.enabled` is off for every
+ * one, flipped in the same migration). `catalog-families.test.ts` pins it.
+ */
+export const RETIRED_RAIL_TYPES = [
+  "bowling_alley",
+  "video_arcade",
+  "arcade",
+  "amusement_center",
+  "escape_room",
+  "laser_tag",
+  "axe_throwing",
+  "trampoline_park",
+  "go_karting_venue",
+  "go_kart",
+  "golf_course",
+  "indoor_golf_course",
+  "miniature_golf_course",
+  "mini_golf",
+  "adventure_sports_center",
+  "paintball_center",
+  "race_course",
+  "ice_skating_rink",
+  "water_park",
+  "movie_theater",
+  "performing_arts_theater",
+  "theater",
+  "casino",
+  "spa",
+  "massage_spa",
+  "sauna",
+  "wellness_center",
+  "public_bath",
+  "temazcal",
+  "hot_springs",
+  "zoo",
+  "aquarium",
+  "wildlife_park",
+  "amusement_park",
+  "indoor_playground",
+  "ferris_wheel",
+  "roller_coaster",
+  "planetarium",
+  "tourist_attraction",
+  "cultural_center",
+  "museum",
+  "art_museum",
+  "history_museum",
+  "art_gallery",
+  "botanical_garden",
+  "observation_deck",
+  "market",
+  "flea_market",
+  "farmers_market",
+  // Not a table (MESITA-4571): halls and stadiums sell seats, shops and
+  // stands sell goods to go, a food court is a building.
+  "concert_hall",
+  "concert_venue",
+  "amphitheatre",
+  "philharmonic_hall",
+  "opera_house",
+  "auditorium",
+  "stadium",
+  "arena",
+  "vineyard",
+  "chocolate_factory",
+  "chocolate_shop",
+  "confectionery",
+  "coffee_roastery",
+  "coffee_stand",
+  "hot_dog_stand",
+  "pizza_delivery",
+  "meal_takeaway",
+  "food_court",
+] as const;
+
 // The dictionary (MESITA-2834, rewritten by MESITA-2888): one row per
 // in-scope Google category and per leftover Mesita slug, its families as a
 // list. Order inside a row means nothing; `inOrder` hands every reader the
@@ -246,10 +327,8 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   coffee_shop: ["coffee", "breakfast"],
   cat_cafe: ["coffee"],
   dog_cafe: ["coffee"],
-  coffee_roastery: ["coffee"],
-  coffee_stand: ["coffee"],
   tea_house: ["coffee"],
-  board_game_cafe: ["coffee", "fun"],
+  board_game_cafe: ["coffee"],
   juice_shop: ["healthy", "coffee"],
   juice_bar: ["healthy", "coffee"],
   breakfast_restaurant: ["breakfast"],
@@ -263,9 +342,6 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   pastry_shop: ["bakery", "sweet", "breakfast"],
   donut_shop: ["bakery", "sweet", "breakfast"],
   cake_shop: ["bakery", "sweet"],
-  chocolate_factory: ["sweet"],
-  chocolate_shop: ["sweet"],
-  confectionery: ["sweet"],
   dessert_restaurant: ["sweet"],
   dessert_shop: ["sweet"],
   ice_cream_shop: ["sweet"],
@@ -287,7 +363,6 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   mexican: ["mexican", "tacos", "dinner"],
   // Pizza · Italian
   pizza_restaurant: ["pizza", "italian"],
-  pizza_delivery: ["pizza", "quick_bite"],
   pizza: ["pizza", "italian"],
   italian_restaurant: ["italian", "dinner"],
   italian: ["italian", "dinner"],
@@ -302,11 +377,8 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   fast_food_restaurant: ["quick_bite"],
   fast_food: ["quick_bite"],
   hot_dog_restaurant: ["quick_bite"],
-  hot_dog_stand: ["quick_bite"],
   snack_bar: ["quick_bite"],
-  food_court: ["quick_bite"],
   cafeteria: ["quick_bite"],
-  meal_takeaway: ["quick_bite"],
   food_truck: ["quick_bite"],
   food_hall: ["quick_bite"],
   fish_and_chips_restaurant: ["seafood", "quick_bite"],
@@ -424,11 +496,11 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   cajun_restaurant: ["american", "dinner"],
   californian_restaurant: ["american", "dinner"],
   hawaiian_restaurant: ["american", "dinner"],
-  // Dinner, the wide table · Fancy · Family
+  // Dinner, the wide table · Fancy
   restaurant: ["dinner"],
   fine_dining_restaurant: ["fancy", "dinner"],
   fine_dining: ["fancy", "dinner"],
-  family_restaurant: ["family", "dinner"],
+  family_restaurant: ["dinner"],
   buffet_restaurant: ["dinner"],
   fusion_restaurant: ["dinner"],
   soup_restaurant: ["dinner"],
@@ -452,83 +524,21 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   brewery: ["drinks"],
   beer_garden: ["drinks"],
   sports_bar: ["sports", "drinks"],
-  stadium: ["sports"],
-  arena: ["sports"],
   cocktail_bar: ["drinks", "night_out"],
   lounge_bar: ["drinks", "night_out"],
   hookah_bar: ["hookah", "drinks", "night_out"],
   wine_bar: ["drinks"],
   winery: ["drinks"],
-  vineyard: ["drinks"],
-  billiards: ["drinks", "fun"],
-  // Night · Club · Music · Karaoke
+  billiards: ["drinks"],
+  // Night · Club · Music
   night_club: ["nightclub", "night_out"],
   dance_hall: ["nightclub", "night_out", "music"],
-  karaoke: ["karaoke", "night_out"],
+  karaoke: ["drinks", "night_out"],
   live_music_venue: ["music", "night_out"],
-  concert_hall: ["music"],
-  concert_venue: ["music"],
-  amphitheatre: ["music"],
-  philharmonic_hall: ["music"],
-  opera_house: ["music"],
-  auditorium: ["music"],
-  comedy_club: ["cinema", "night_out"],
-  // Fun: what a group does with its hands
-  bowling_alley: ["fun"],
-  video_arcade: ["fun"],
-  arcade: ["fun"],
-  amusement_center: ["fun"],
-  escape_room: ["fun"],
-  laser_tag: ["fun"],
-  axe_throwing: ["fun"],
-  trampoline_park: ["fun"],
-  go_karting_venue: ["fun"],
-  go_kart: ["fun"],
-  golf_course: ["fun"],
-  indoor_golf_course: ["fun"],
-  miniature_golf_course: ["fun"],
-  mini_golf: ["fun"],
-  adventure_sports_center: ["fun"],
-  paintball_center: ["fun"],
-  race_course: ["fun"],
-  ice_skating_rink: ["fun", "family"],
-  water_park: ["fun", "family"],
-  // Cinema · Casino
-  movie_theater: ["cinema"],
-  performing_arts_theater: ["cinema"],
-  theater: ["cinema"],
-  casino: ["casino"],
-  // Spa
-  spa: ["spa"],
-  massage_spa: ["spa"],
-  sauna: ["spa"],
-  wellness_center: ["spa"],
-  public_bath: ["spa"],
-  temazcal: ["spa"],
-  hot_springs: ["spa"],
-  // Family: a day out with the kids
-  zoo: ["family", "tourist"],
-  aquarium: ["family", "tourist"],
-  wildlife_park: ["family", "tourist"],
-  amusement_park: ["family", "fun"],
-  indoor_playground: ["family"],
-  ferris_wheel: ["family", "tourist"],
-  roller_coaster: ["family", "fun"],
-  planetarium: ["family", "tourist"],
-  // Tourism: what a visitor sees
-  tourist_attraction: ["tourist"],
-  cultural_center: ["tourist"],
-  museum: ["tourist"],
-  art_museum: ["tourist"],
-  history_museum: ["tourist"],
-  art_gallery: ["tourist"],
-  botanical_garden: ["tourist"],
-  observation_deck: ["tourist"],
-  market: ["tourist"],
-  flea_market: ["tourist"],
-  farmers_market: ["tourist"],
+  comedy_club: ["night_out"],
   // No family (MESITA-2382): a place, not a trip a guest picks.
   ...Object.fromEntries(NO_FAMILY_TYPES.map((t) => [t, ["undefined"] as const])),
+  ...Object.fromEntries(RETIRED_RAIL_TYPES.map((t) => [t, ["undefined"] as const])),
   barbecue_area: ["undefined"],
   fishing_charter: ["undefined"],
   fishing_pier: ["undefined"],

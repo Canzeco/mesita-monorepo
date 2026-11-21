@@ -13,19 +13,14 @@ import {
   Beef,
   Beer,
   CakeSlice,
-  Clapperboard,
   Coffee,
   Croissant,
-  Dices,
   Drumstick,
   EggFried,
   Fish,
-  Gamepad2,
   Hamburger,
   HandPlatter,
   Heart,
-  Landmark,
-  MicVocal,
   Moon,
   Music,
   Pizza,
@@ -150,14 +145,6 @@ const Fries = drawnIcon("Fries", [
   "M16 11.5 17 4",
 ]);
 
-/** A grown-up and a child: Family. Social's Users is two equals. */
-const ParentAndChild = drawnIcon("ParentAndChild", [
-  "M9 3.5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
-  "M3 21v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 3.5 1.4",
-  "M18 11a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z",
-  "M14.5 21v-1a3 3 0 0 1 3-3h1a3 3 0 0 1 3 3v1",
-]);
-
 /** A soccer ball: Sports. */
 const SoccerBall = drawnIcon("SoccerBall", [
   "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z",
@@ -189,13 +176,6 @@ const DiscoBall = drawnIcon("DiscoBall", [
   "M12 6c2 2 3.2 4.7 3.2 7.5S14 19 12 21",
   "M19.5 2.5v3",
   "M18 4h3",
-]);
-
-/** A lotus: Spa. */
-const Lotus = drawnIcon("Lotus", [
-  "M12 20c-2.5-2-3.5-5-3.5-8S10 6.5 12 4.5c2 2 3.5 4.5 3.5 7.5s-1 6-3.5 8Z",
-  "M12 20c-4.5 0-8.5-2.5-9.5-7.5 2.5-.5 5 .3 6.5 1.8",
-  "M12 20c4.5 0 8.5-2.5 9.5-7.5-2.5-.5-5 .3-6.5 1.8",
 ]);
 
 /** A family with no icon of its own. */
@@ -237,19 +217,12 @@ export const FAMILY_ICONS: Readonly<Record<string, LineIcon>> = {
   american: Fries,
   dinner: UtensilsCrossed,
   fancy: HandPlatter,
-  family: ParentAndChild,
   drinks: Beer,
   sports: SoccerBall,
   hookah: Hookah,
   night_out: Moon,
   nightclub: DiscoBall,
   music: Music,
-  karaoke: MicVocal,
-  fun: Gamepad2,
-  cinema: Clapperboard,
-  casino: Dices,
-  spa: Lotus,
-  tourist: Landmark,
 };
 
 /** The icon for a row, chip or family key; Utensils when it has none. */

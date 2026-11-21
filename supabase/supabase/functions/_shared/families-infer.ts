@@ -26,7 +26,8 @@ export function familyChoices(families: readonly PlaceFamily[]): PlaceFamily[] {
 
 /**
  * What every family means (MESITA-4237 started it for eight; MESITA-4238 gives
- * all 37 a line and tightens Family and Fun). On 2026-11-17 Family sat on 83%
+ * all 37 a line and tightened Family and Fun; MESITA-4571 cut the list to
+ * thirty and both went). On 2026-11-17 Family sat on 83%
  * of places and Dinner on 76%: shown only a label, the model read Family as
  * "kids allowed" and Dinner as "open at night". Each line says what belongs
  * and, where the model strayed, the near-miss that does not. Keyed by slug,
@@ -58,19 +59,12 @@ export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
   american: "American food — diner, barbecue joint, fries and shakes",
   dinner: "a dinner destination — the evening meal is the occasion: bistros, steakhouses, trattorias, tasting menus, date-night places people book; not a casual or everyday restaurant that also serves at night, nor a café, counter, bar or beach club",
   fancy: "genuinely upscale — fine dining, a tasting menu, a dress code or special-occasion prices; not merely stylish, popular, well rated or at a nice hotel",
-  family: "a day out for kids — zoos, aquariums, water parks, indoor playgrounds; not a restaurant that welcomes children or has a kids' menu",
   drinks: "drinking is the point — a bar, cantina, brewery or wine bar; not a restaurant that serves beer",
   sports: "built to watch sports — screens and game nights are the draw",
   hookah: "hookah or shisha is a main draw",
   night_out: "a late night out — lounges, rooftops, bars that turn into parties; not a restaurant that is merely open late",
   nightclub: "a nightclub — a dance floor and DJs",
   music: "live music is the draw — bands, concerts, jazz",
-  karaoke: "karaoke is a main activity",
-  fun: "an activity a group does — bowling, arcades, karts, escape rooms, billiards, mini golf, rinks, shows; not a lively restaurant or a beach club",
-  cinema: "a cinema, theater or comedy club",
-  casino: "a casino",
-  spa: "a spa, sauna, bath or temazcal — relaxation treatments are the point",
-  tourist: "a landmark or attraction visitors seek out — museums, galleries, markets; not a restaurant with a view",
 };
 
 /** The FAMILY LIST block a prompt carries: `slug — Label`, plus its meaning. */
@@ -101,7 +95,7 @@ export function familiesRule(stage: FamiliesStage): string {
     "place. Pick a family only when this place matches the meaning its FAMILY " +
     "LIST line gives and a guest browsing that family would be glad to find " +
     "it there. An amenity never earns a family: welcoming kids, serving " +
-    "alcohol, having music or being open late is not Family, Bar, Music or " +
+    "alcohol, having music or being open late is not Bar, Music or " +
     "Night. Cuisine and meal families (every cuisine, Breakfast, Coffee, " +
     "Quick) describe what the place serves: give each one that truly applies; " +
     "Dinner only when its meaning fits. When unsure about a family, leave " +
@@ -111,10 +105,9 @@ export function familiesRule(stage: FamiliesStage): string {
 
 /**
  * The families a Google hint may name (MESITA-4238): cuisines and the
- * morning trio. Never a venue family (family, drinks, fun, night…) nor a
+ * morning trio. Never a venue family (drinks, night, music…) nor a
  * generic one (dinner, fancy, healthy, quick_bite, sweet): the code map gives
- * Family to `family_restaurant`, Bar to `bar_and_grill` and Dinner to every
- * sit-down cuisine, which would nudge the exact false positives this fixes.
+ * Bar to `bar_and_grill` and Dinner to every sit-down cuisine, which would nudge the exact false positives this fixes.
  */
 export const HINT_FAMILIES: ReadonlySet<string> = new Set([
   "tacos", "mexican", "sushi", "japanese", "italian", "pizza", "burgers",

@@ -18,18 +18,18 @@ const FAMILIES = [
   { slug: "breakfast", label: "Breakfast", emoji: "🍳", sort_order: 2 },
   { slug: "dinner", label: "Dinner", emoji: "🍽️", sort_order: 3 },
   { slug: "drinks", label: "Bar", emoji: "🍻", sort_order: 4 },
-  { slug: "fun", label: "Fun", emoji: "🎯", sort_order: 5 },
-  { slug: "spa", label: "Spa", emoji: "🧖", sort_order: 6 },
+  { slug: "sports", label: "Sports", emoji: "📺", sort_order: 5 },
+  { slug: "hookah", label: "Hookah", emoji: "💨", sort_order: 6 },
   { slug: "music", label: "Music", emoji: "🎶", sort_order: 7 },
-  { slug: "cinema", label: "Cinema", emoji: "🎬", sort_order: 8 },
+  { slug: "nightclub", label: "Club", emoji: "🪩", sort_order: 8 },
   { slug: "undefined", label: "Undefined", emoji: "❓", sort_order: 99 },
 ];
 
 Deno.test("pickFamilies: known slugs and salvaged labels, Undefined and junk dropped, at most seven", () => {
   assertEquals(pickFamilies(["coffee", "Bar", "undefined", "nope", "coffee"], FAMILIES), ["coffee", "drinks"]);
   assertEquals(
-    pickFamilies(["coffee", "breakfast", "dinner", "drinks", "fun", "spa", "music", "cinema"], FAMILIES),
-    ["coffee", "breakfast", "dinner", "drinks", "fun", "spa", "music"],
+    pickFamilies(["coffee", "breakfast", "dinner", "drinks", "sports", "hookah", "music", "nightclub"], FAMILIES),
+    ["coffee", "breakfast", "dinner", "drinks", "sports", "hookah", "music"],
   );
 });
 
@@ -74,8 +74,8 @@ Deno.test("familyVocabularyLines: a live family with no meaning still renders as
 // Family to family_restaurant, Bar to bar_and_grill, Dinner to every cuisine.
 Deno.test("HINT_FAMILIES: no venue or generic family is ever hinted", () => {
   const never = [
-    "family", "drinks", "fun", "night_out", "nightclub", "karaoke", "music", "tourist",
-    "cinema", "casino", "spa", "sports", "hookah", "dinner", "fancy", "healthy", "quick_bite", "sweet",
+    "drinks", "night_out", "nightclub", "music", "sports", "hookah",
+    "dinner", "fancy", "healthy", "quick_bite", "sweet",
   ];
   assertEquals(never.filter((f) => HINT_FAMILIES.has(f)), []);
 });

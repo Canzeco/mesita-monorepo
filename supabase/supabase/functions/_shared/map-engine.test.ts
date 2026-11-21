@@ -74,13 +74,13 @@ Deno.test("evaluatePlaceForMap admits a dinner place when Dinner is on", () => {
   assertEquals(ok.eligible, true);
 });
 
-Deno.test("evaluatePlaceForMap admits wellness; rejects hotels", () => {
+Deno.test("evaluatePlaceForMap rejects spas and hotels (Spa left the catalog, MESITA-4571)", () => {
   const spa = evaluatePlaceForMap(MAP, {
     primaryType: "spa",
     rating: 4.8,
     reviewCount: 200,
   });
-  assertEquals(spa.eligible, true);
+  assertEquals(spa.eligible, false);
   const hotel = evaluatePlaceForMap(MAP, {
     primaryType: "hotel",
     rating: 4.8,
@@ -116,11 +116,11 @@ Deno.test("evaluatePlaceForMap admits every family and still applies floors", ()
   if (!low.eligible) assertEquals(low.code, "below_min_rating");
 });
 
-Deno.test("Map types admit F&B, bars and spas, and drop hotels", () => {
+Deno.test("Map types admit F&B and bars, and drop spas and hotels (MESITA-4571)", () => {
   const admits = (category: string) => primaryTypeClearsMapTypes(category);
   assertEquals(
     ["thai_restaurant", "bar", "hotel", "spa", "undefined"].filter(admits),
-    ["thai_restaurant", "bar", "spa"],
+    ["thai_restaurant", "bar"],
   );
 });
 
