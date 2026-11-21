@@ -5,6 +5,7 @@ import {
   FILTERABLE_PLACE_FAMILIES,
   type FamilyKey,
 } from "@/lib/place-families";
+import type { MapSpecial } from "@/lib/map-filters-engine";
 import { cn } from "@/lib/utils";
 
 // SEARCH'S MENU (Pato, MESITA-4469: "modal in search must be similar as
@@ -60,6 +61,9 @@ export function FamilyFilterSheet({
   onClose,
   applied,
   onApply,
+  special,
+  onSpecial,
+  canSave,
 }: {
   open: boolean;
   onClose: () => void;
@@ -67,8 +71,13 @@ export function FamilyFilterSheet({
    *  replaces it with one. */
   applied: readonly FamilyKey[];
   onApply: (families: FamilyKey[]) => void;
+  /** Saved or Nearby, lit (MESITA-4592). */
+  special: MapSpecial | null;
+  onSpecial: (special: MapSpecial) => void;
+  /** Signed in: Saved shows (signed out, nothing is saved, MESITA-4325). */
+  canSave: boolean;
 }) {
-  const selected = applied.length === 1 ? applied[0] : null;
+  const selected = special === null && applied.length === 1 ? applied[0] : null;
   const pick = (families: FamilyKey[]) => {
     onApply(families);
     onClose();
@@ -78,13 +87,37 @@ export function FamilyFilterSheet({
     <CategoriesModal
       open={open}
       onClose={onClose}
+      // SAVED · NEARBY · POPULAR, AS ON HOME (Pato, 2026-11-21, MESITA-4592:
+      // "WHERE THE FUCK IS NEARBY AND SAVED????").
       specials={
-        <Circle
-          emoji="⭐"
-          label="Popular"
-          on={applied.length === 0}
-          onPick={() => pick([])}
-        />
+        <>
+          {canSave ? (
+            <Circle
+              emoji="❤️"
+              label="Saved"
+              on={special === "saved"}
+              onPick={() => {
+                onSpecial("saved");
+                onClose();
+              }}
+            />
+          ) : null}
+          <Circle
+            emoji="📍"
+            label="Nearby"
+            on={special === "nearby"}
+            onPick={() => {
+              onSpecial("nearby");
+              onClose();
+            }}
+          />
+          <Circle
+            emoji="⭐"
+            label="Popular"
+            on={special === null && applied.length === 0}
+            onPick={() => pick([])}
+          />
+        </>
       }
     >
       {FILTERABLE_PLACE_FAMILIES.map((family) => (

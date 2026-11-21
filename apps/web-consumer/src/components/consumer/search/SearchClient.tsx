@@ -98,6 +98,9 @@ import { cn, errMsg } from "@/lib/utils";
 import { EFError } from "@/lib/api/_invoke";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { useMapFilters } from "@/lib/use-map-filters";
+import { readSavedPlacePreviews, useSavedPlaces } from "@/lib/saved-places";
+import { useActiveLocation } from "@/lib/active-location";
+import { savedPlaceList } from "@/components/consumer/home/CatalogRails";
 import {
   buildSearchMapPins,
   catalogPlaceOnMesita,
@@ -249,6 +252,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // (MESITA-2499). The server is the one selector and ranks best first —
   // this component never recuts the catalog.
   const filters = useMapFilters();
+  const special = filters.special;
+  const { savedIds } = useSavedPlaces();
+  // The chosen location wins over the device fix (MESITA-4589's gate).
+  const chosen = useActiveLocation();
   const location = userLocation;
   // THE ONE CAMERA CHANNEL (MESITA-2440). Every move the guest asked for —
   // first load, the location disc, a tap, a bar pick — is a fresh intent;
@@ -310,15 +317,31 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     const anchorRow = pick
       ? withDistances([enrichPlaceOverview(pick)], distanceCenter)[0]
       : null;
+    // SAVED AND NEARBY, AS ON HOME (Pato, 2026-11-21, MESITA-4592). Saved:
+    // the guest's saved places are the pins and the cards, wherever they
+    // are. Nearby: every family, nearest first.
+    if (special === "saved") {
+      return withDistances(
+        savedPlaceList(savedIds, readSavedPlacePreviews<Place>()).filter(catalogPlaceOnMesita),
+        distanceCenter,
+      );
+    }
+    if (special === "nearby") {
+      const nearest = [...nearby].sort(
+        (a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity),
+      );
+      return prependAnchorPlace(nearest, anchorRow);
+    }
     return prependAnchorPlace(nearby, anchorRow);
-  }, [nearby, anchor, createdPlaces, distanceCenter]);
+  }, [nearby, anchor, createdPlaces, distanceCenter, special, savedIds]);
   // A dot never doubles a pin: the bar's anchored pick can be one of the
   // dots, and then it is card ONE and a pin (MESITA-3980).
   const mapDots = useMemo(() => {
-    if (dots.length === 0) return dots;
+    // Saved draws its own places only.
+    if (special === "saved" || dots.length === 0) return special === "saved" ? [] : dots;
     const pinned = new Set(catalog.map((p) => p.id));
     return dots.filter((d) => !pinned.has(d.id));
-  }, [dots, catalog]);
+  }, [dots, catalog, special]);
   // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
   // land, and on a bare list it lands nowhere.
   //
@@ -665,6 +688,22 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       void loadAt(location, boxAtSight(lastBoxRef.current, location));
     }
   }, [askCamera, clearPendingReload, loadAt, location, locate]);
+
+  // NEARBY CENTRES ON THE GUEST (MESITA-4592): picking Nearby moves the map
+  // to the chosen location (else the device fix) and reloads there, once
+  // per pick.
+  const nearbyHere = chosen ?? location;
+  const nearbyKey = special === "nearby" && nearbyHere ? `${nearbyHere.lat},${nearbyHere.lng}` : null;
+  useEffect(() => {
+    if (!nearbyKey || !nearbyHere) return;
+    askCamera({ kind: "center", lat: nearbyHere.lat, lng: nearbyHere.lng });
+    if (catalogIsStale(lastFetchedCenter.current, nearbyHere)) {
+      clearPendingReload();
+      void loadAt(nearbyHere, boxAtSight(lastBoxRef.current, nearbyHere));
+    }
+    // Once per pick and point: `nearbyKey` carries both.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nearbyKey]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {

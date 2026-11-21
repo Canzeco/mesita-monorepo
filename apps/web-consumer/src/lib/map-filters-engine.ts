@@ -18,13 +18,20 @@ import { type FamilyKey } from "@/lib/place-families";
 /** Which set a pin belongs to: a Google-only stub, or a Mesita place. */
 export type MapPlacesScope = "google" | "mesita";
 
+/** Search's two non-family modes, as on Home (MESITA-4592): Saved shows the
+ *  guest's saved places, Nearby every family around the guest. */
+export type MapSpecial = "saved" | "nearby";
+
 export type MapFilters = {
   /** Families: the twenty guest families; empty = All Families. */
   familyKeys: FamilyKey[];
+  /** Saved or Nearby; null = Popular or a family. */
+  special: MapSpecial | null;
 };
 
 export const MAP_FILTER_DEFAULTS: MapFilters = {
   familyKeys: [],
+  special: null,
 };
 
 /**
