@@ -1,8 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { OffersTile, offerSlides, SizedImg, type OfferInput } from "@mesita/place-profile";
-import { navigateTo } from "@/lib/navigate";
+import { ChevronRight, Tag } from "lucide-react";
+import { offerSlides, SizedImg, type OfferInput } from "@mesita/place-profile";
+import { PushLink } from "@/components/consumer/nav/PushLink";
+import { OfferButton } from "@/components/consumer/offer-button";
 import { cn } from "@/lib/utils";
 
 // TWO LINES (Pato, 2026-11-21, MESITA-4525: "optimize space in that card,
@@ -54,7 +55,6 @@ export function PlaceActionRow({
   /** The card's tap: its Loyalty Card page (or the place). */
   onOpen?: () => void;
 }) {
-  const router = useRouter();
   const slides = disabled || !placeHref ? [] : offerSlides(offers);
   return (
     // A 2x2 GRID (Pato, 2026-11-21, MESITA-4531: "card-name inside a box,
@@ -99,14 +99,25 @@ export function PlaceActionRow({
         )}
       </button>
       {slides.length > 0 && placeHref ? (
-        // "OFFERS" ON TOP (Pato, 2026-11-21, MESITA-4532: "it must say offers
-        // on the bottom or on the top, not on the right"): the place screen's
-        // tile turned to a column here only, the glyph and the word in one
-        // row across the top, the moving offer filling the rest. At the right
-        // (MESITA-4525) before; the place screen keeps its own order.
-        <div className="col-start-2 row-span-2 row-start-1 flex min-w-0 [&>button]:h-full [&>button]:w-full [&>button]:flex-col [&>button]:rounded-xl [&>button>span:first-child]:h-6 [&>button>span:first-child]:w-full [&>button>span:first-child]:flex-row [&>button>span:first-child]:gap-1.5">
-          <OffersTile name={name} slides={slides} open={() => () => navigateTo(router, placeHref, { motion: "drill" })} />
-        </div>
+        // A TRUE 2x2 (Pato, 2026-11-21, MESITA-4537, /plan-design-review:
+        // "offers … doesn't feel like a button. it doesn't respect the
+        // grid"): two boxes the left column's size, no frame in a frame. Top:
+        // a black "Offers ›" button. Bottom: the moving offer in its colour,
+        // Home's own OfferButton. Both open the place (MESITA-4455). The
+        // place screen's OffersTile spanned both rows before.
+        <>
+          <PushLink
+            href={placeHref}
+            aria-label={`Offers at ${name}`}
+            className="bg-foreground text-background hover:bg-foreground/90 col-start-2 row-start-1 flex min-w-0 items-center gap-2 rounded-xl px-3 text-sm font-semibold"
+            data-loyalty-offers
+          >
+            <Tag className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+            <span className="min-w-0 flex-1 truncate">Offers</span>
+            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+          </PushLink>
+          <OfferButton href={placeHref} name={name} slides={slides} placeId={placeId} className="col-start-2 row-start-2 h-full rounded-xl text-sm" />
+        </>
       ) : null}
     </div>
   );
