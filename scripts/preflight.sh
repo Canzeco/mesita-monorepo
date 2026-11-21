@@ -2,10 +2,13 @@
 # scripts/preflight.sh — the write gate behind Rules I-3 and I-4: ONE implementation, every platform.
 #
 #   bash scripts/preflight.sh check [path]      verdict for the checkout holding <path> (default: cwd); exit 1 = no writes here
-#   bash scripts/preflight.sh claude            Claude Code PreToolUse hook on Edit/Write/MultiEdit/NotebookEdit (stdin JSON); exit 2 refuses the write
+#   bash scripts/preflight.sh claude            Claude Code and Codex PreToolUse (stdin JSON); exit 2 refuses the write.
+#                                               File tools, apply_patch, and a shell command that writes. A command
+#                                               that does not write is allowed, including in the lobby.
 #   bash scripts/preflight.sh pre-commit        git pre-commit hook, installed by `deno task boot` / `worktree add` (or `install-hook`); exit 1 refuses the commit
-#   bash scripts/preflight.sh cursor            Cursor beforeShellExecution hook (stdin JSON): denies git commit/push/merge outside a claimed workspace
-#   bash scripts/preflight.sh session-start     Claude Code SessionStart hook: installs the git hook (and deno in a cloud clone), prints the verdict as context
+#   bash scripts/preflight.sh cursor            Cursor beforeShellExecution and preToolUse (stdin JSON). Same rule,
+#                                               answered as {"permission":"deny"|"allow"}.
+#   bash scripts/preflight.sh session-start     Claude Code and Codex SessionStart: installs the git hook (and deno in a cloud clone), prints the verdict as context
 #   bash scripts/preflight.sh install-hook [p]  write the pre-commit wrapper into the fleet's common hooks dir
 #
 # The rule: a repository write lands only in a WORKSPACE — a checkout a live claim names
@@ -122,6 +125,79 @@ print(d if isinstance(d, str) else "")' "$path" 2>/dev/null
 
 json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' '; }
 
+# ── what a shell command writes ──────────────────────────────────────────────
+# Quoted text is dropped first, so a message that mentions `git commit` is not a command.
+# Prints one target path per line and returns 0 when the command writes. Returns 1 when it
+# does not: the lobby still runs git status, deno task boot, and deno task worktree add.
+
+strip_quotes() { printf '%s' "$1" | sed -E "s/'[^']*'//g; s/\"[^\"]*\"//g"; }
+
+shell_targets() {
+  local cmd=$1 stripped redir writes=1
+  stripped=$(strip_quotes "$cmd")
+  if printf '%s' "$cmd" | grep -qE '(^|[;&|`(]|&&|\|\|)[[:space:]]*(sudo[[:space:]]+)?(python3?|node|deno|ruby)([[:space:]]|$)' \
+    && printf '%s' "$cmd" | grep -qE 'writeFile|writeFileSync|write_text|writeTextFile|Deno\.write|fs\.writeFile|os\.WriteFile|open\([^)]*['\''\"][wa]'; then
+    writes=0
+  fi
+  if printf '%s' "$stripped" | grep -qE '(^|[;&|`(]|&&|\|\|)[[:space:]]*(sudo[[:space:]]+)?(rm|mv|cp|mkdir|touch|truncate|chmod|chown|ln|install|tee|dd|patch)([[:space:]]|$)'; then
+    writes=0
+  fi
+  if printf '%s' "$stripped" | grep -qE '(^|[;&|`(]|&&|\|\|)[[:space:]]*(sudo[[:space:]]+)?git[[:space:]]+(commit|push|merge|rebase|cherry-pick|revert|am|add|checkout|switch|reset|clean|stash|mv|rm|apply|restore)([[:space:]]|$)'; then
+    writes=0
+  fi
+  if printf '%s' "$stripped" | grep -qE '(^|[;&|`(]|&&|\|\|)[[:space:]]*(sudo[[:space:]]+)?(sed|perl)[[:space:]]+[^;&|]*-[^[:space:];|&]*i'; then
+    writes=0
+  fi
+  if printf '%s' "$stripped" | grep -qiE '(^|[;&|`(]|&&|\|\|)[[:space:]]*(Set-Content|Add-Content|Out-File|Remove-Item|Move-Item|Copy-Item|New-Item|Clear-Content)([[:space:]]|$)'; then
+    writes=0
+  fi
+  redir=$(printf '%s' "$stripped" | sed -E 's/[0-9]*>>?[[:space:]]*\/dev\/null//g; s/[0-9]*>>?&[0-9]//g; s/&>>?[[:space:]]*\/dev\/null//g')
+  if printf '%s' "$redir" | grep -qE '(^|[^>=])[0-9]*>>?[[:space:]]*[^>&[:space:]]'; then
+    writes=0
+  fi
+  [ "$writes" -eq 0 ] || return 1
+  {
+    printf '%s\n' "$redir" | grep -oE '[0-9]*>>?[[:space:]]*[^[:space:];&|]+' | sed -E 's/^[0-9]*>>?[[:space:]]*//' || true
+    printf '%s\n' "$stripped" | grep -oE '/[^[:space:];|&<>'\''"`]+' || true
+  } | while IFS= read -r t; do
+    [ -n "$t" ] || continue
+    case "$t" in
+      /dev/null | /dev/stdout | /dev/stderr | /dev/fd/*) ;;
+      *) printf '%s\n' "$t" ;;
+    esac
+  done
+  return 0
+}
+
+# Codex apply_patch, and a unified diff: the file the patch names. Empty when none is readable.
+patch_paths() {
+  printf '%s\n' "$1" | grep -oE '\*\*\* (Update|Add|Delete) File: [^[:space:]]+' | sed -E 's/^\*\*\* (Update|Add|Delete) File: //' || true
+  printf '%s\n' "$1" | grep -E '^\+\+\+ ' | sed -E 's/^\+\+\+ //; s/^[ab]\///; s/[[:space:]].*$//' | grep -vx '/dev/null' || true
+  return 0
+}
+
+# 0 when every target may take a write. No target: the write lands in cwd.
+judge_targets() {
+  local targets=$1 cwd=$2 t target saw=1
+  [ -n "$cwd" ] || cwd=$PWD
+  if [ -z "$targets" ]; then
+    verdict "$cwd"
+    return
+  fi
+  while IFS= read -r t; do
+    [ -n "$t" ] || continue
+    saw=0
+    case "$t" in
+      /*) target=$t ;;
+      *) target="$cwd/$t" ;;
+    esac
+    verdict "$target" || return 1
+  done <<EOF
+$targets
+EOF
+  [ "$saw" -eq 0 ] || verdict "$cwd"
+}
+
 # ── the verdict ──────────────────────────────────────────────────────────────
 
 # verdict <path>: 0 = this checkout may receive writes, 1 = it may not. V_MSG explains either way.
@@ -219,30 +295,66 @@ mode_check() {
   exit 1
 }
 
+# Exit 2 is the harness's unconditional refusal; stderr is what the agent reads. Codex accepts the same.
+claude_refuse() {
+  printf '%s\n' "PREFLIGHT REFUSED ${1}" "$2" >&2
+  exit 2
+}
+
+# No JSON reader. A named file, or a write we can see in the raw text, is refused. A read is not:
+# judging the cwd instead could pass a write into the lobby, and refusing `ls` would block the lobby.
+claude_unread() {
+  local input=$1
+  case "$input" in
+    *'"file_path"'* | *'"notebook_path"'*)
+      claude_refuse "${tool:-write}: the payload names a file this host could not read" "$(unread)"
+      ;;
+    *"git commit"* | *"git push"* | *"git merge"* | *"git rebase"* | *"git cherry-pick"* | *"git revert"* | *"git am"* | *"sed -i"* | *">>"* | *">"*)
+      claude_refuse "${tool:-write}: the payload names a write this host could not read" "$(unread)"
+      ;;
+  esac
+  exit 0
+}
+
 mode_claude() {
-  local input tool cwd file target
+  local input tool cwd file cmd targets target
   input=$(cat)
   pick_reader || true
   tool=$(jget "$input" tool_name)
+  if [ -z "$READER" ]; then claude_unread "$input"; fi
   cwd=$(jget "$input" cwd)
+  [ -n "$cwd" ] || cwd=$(jget "$input" tool_input.working_directory)
+  [ -n "$cwd" ] || cwd=$PWD
+  cmd=$(jget "$input" tool_input.command)
+  [ -n "$cmd" ] || cmd=$(jget "$input" command)
+  case "$tool" in
+    Bash | PowerShell | Shell)
+      targets=$(shell_targets "$cmd") || exit 0
+      judge_targets "$targets" "$cwd" || claude_refuse "$tool → $cwd" "$V_MSG"
+      exit 0
+      ;;
+    apply_patch)
+      targets=$(patch_paths "$cmd")
+      judge_targets "$targets" "$cwd" || claude_refuse "apply_patch → $cwd" "$V_MSG"
+      exit 0
+      ;;
+  esac
   file=$(jget "$input" tool_input.file_path)
   [ -n "$file" ] || file=$(jget "$input" tool_input.notebook_path)
+  [ -n "$file" ] || file=$(jget "$input" tool_input.path)
   if [ -z "$file" ]; then
     # The payload names a file nobody here could read: the cwd is not that file's checkout, so
     # judging it instead could pass a write into the lobby.
     case "$input" in
       *'"file_path"'* | *'"notebook_path"'*)
-        printf '%s\n' "PREFLIGHT REFUSED ${tool:-write}: the payload names a file this host could not read" "$(unread)" >&2
-        exit 2
+        claude_refuse "${tool:-write}: the payload names a file this host could not read" "$(unread)"
         ;;
     esac
   fi
-  target=${file:-${cwd:-$PWD}}
-  case "$target" in /*) ;; *) target="${cwd:-$PWD}/$target" ;; esac
+  target=${file:-$cwd}
+  case "$target" in /*) ;; *) target="$cwd/$target" ;; esac
   if verdict "$target"; then exit 0; fi
-  # Exit 2 is the harness's unconditional refusal; stderr is what the agent reads.
-  printf '%s\n' "PREFLIGHT REFUSED ${tool:-write} → $target" "$V_MSG" >&2
-  exit 2
+  claude_refuse "${tool:-write} → $target" "$V_MSG"
 }
 
 mode_pre_commit() {
@@ -261,23 +373,64 @@ cursor_deny() {
   exit 0
 }
 
+cursor_allow() { printf '{"permission":"allow"}\n'; exit 0; }
+
+cursor_shell() {
+  local cmd=$1 cwd=$2 targets
+  targets=$(shell_targets "$cmd") || cursor_allow
+  judge_targets "$targets" "$cwd" || cursor_deny "$V_MSG"
+  cursor_allow
+}
+
+cursor_file() {
+  local file=$1 cwd=$2 target
+  [ -n "$file" ] || cursor_deny "the payload names a file this host could not read"
+  case "$file" in
+    /*) target=$file ;;
+    *) target="$cwd/$file" ;;
+  esac
+  verdict "$target" || cursor_deny "$V_MSG"
+  cursor_allow
+}
+
 mode_cursor() {
-  local input cmd cwd root target
+  local input tool cwd file cmd targets
   input=$(cat)
   pick_reader || true
-  cmd=$(jget "$input" command)
-  # With no reader the raw payload is matched instead, so a guarded verb is refused, never waved through.
-  [ -n "$READER" ] || cmd=$input
-  case "$cmd" in
-    *"git commit"* | *"git push"* | *"git merge"* | *"git rebase"* | *"git cherry-pick"* | *"git revert"* | *"git am"*) ;;
-    *) printf '{"permission":"allow"}\n'; exit 0 ;;
-  esac
-  [ -n "$READER" ] || cursor_deny "${NO_READER#preflight: }"
+  if [ -z "$READER" ]; then
+    # The raw payload is the only text we have, so a guarded verb is refused, never waved through.
+    case "$input" in
+      *'"file_path"'* | *'"notebook_path"'* | *"git commit"* | *"git push"* | *"git merge"* | *"git rebase"* | *"git cherry-pick"* | *"git revert"* | *"git am"* | *"sed -i"* | *">>"* | *">"*)
+        cursor_deny "${NO_READER#preflight: }"
+        ;;
+    esac
+    cursor_allow
+  fi
+  tool=$(jget "$input" tool_name)
   cwd=$(jget "$input" cwd)
-  root=$(jget "$input" workspace_roots.0)
-  target=${cwd:-${root:-$PWD}}
-  if verdict "$target"; then printf '{"permission":"allow"}\n'; exit 0; fi
-  cursor_deny "$V_MSG"
+  [ -n "$cwd" ] || cwd=$(jget "$input" tool_input.working_directory)
+  [ -n "$cwd" ] || cwd=$(jget "$input" workspace_roots.0)
+  [ -n "$cwd" ] || cwd=$PWD
+  cmd=$(jget "$input" command)
+  [ -n "$cmd" ] || cmd=$(jget "$input" tool_input.command)
+  file=$(jget "$input" tool_input.file_path)
+  [ -n "$file" ] || file=$(jget "$input" tool_input.path)
+  [ -n "$file" ] || file=$(jget "$input" tool_input.notebook_path)
+  [ -n "$file" ] || file=$(jget "$input" file_path)
+  case "$tool" in
+    "" | Bash | PowerShell | Shell)
+      if [ -n "$cmd" ]; then cursor_shell "$cmd" "$cwd"; fi
+      ;;
+    apply_patch)
+      targets=$(patch_paths "$cmd")
+      judge_targets "$targets" "$cwd" || cursor_deny "$V_MSG"
+      cursor_allow
+      ;;
+    Write | Edit | Delete | NotebookEdit | MultiEdit | StrReplace)
+      cursor_file "$file" "$cwd"
+      ;;
+  esac
+  cursor_allow
 }
 
 mode_session_start() {
