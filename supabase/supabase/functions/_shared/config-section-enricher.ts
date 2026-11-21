@@ -19,6 +19,9 @@
 //   imageAnalysisPrompt / imageSortingPrompt
 //   createOnOpenConsumer / createOnOpenAdmin (boolean, MESITA-2298)
 //   consumerCreatesPerDay (1–10000, MESITA-2376)
+//   createFamiliesMax / enrichFamiliesMax (1–7), createPresentationMaxChars /
+//     enrichPresentationMaxChars (200–2000), createTagsMax / enrichTagsMax
+//     (0–20): Atlas's field limits (MESITA-4581)
 //
 // READ-MERGE-WRITE of the jsonb (same lost-update accept as verification: one
 // super-admin). enrichment_triggers stays its own column, and this is the one
@@ -34,6 +37,7 @@ import { normalizeEnrichmentTriggers } from "./enrich-triggers.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import {
   CONSUMER_CREATES_PER_DAY_MAX,
+  PRESENTATION_LIMIT_MIN,
   UPDATE_EVERY_VIEWS_MAX,
   normalizeEnrichmentConfig,
 } from "./enrichment-config.ts";
@@ -73,7 +77,23 @@ type Body = {
   createOnOpenConsumer?: boolean;
   createOnOpenAdmin?: boolean;
   consumerCreatesPerDay?: number;
+  createFamiliesMax?: number;
+  enrichFamiliesMax?: number;
+  createPresentationMaxChars?: number;
+  enrichPresentationMaxChars?: number;
+  createTagsMax?: number;
+  enrichTagsMax?: number;
 };
+
+// Atlas's field limits (MESITA-4581): body key → stored key and range.
+const FIELD_LIMIT_KEYS = [
+  ["createFamiliesMax", 1, ENRICH_FIELD_LIMITS.familiesPerPlace.max],
+  ["enrichFamiliesMax", 1, ENRICH_FIELD_LIMITS.familiesPerPlace.max],
+  ["createPresentationMaxChars", PRESENTATION_LIMIT_MIN, ENRICH_FIELD_LIMITS.description.max],
+  ["enrichPresentationMaxChars", PRESENTATION_LIMIT_MIN, ENRICH_FIELD_LIMITS.description.max],
+  ["createTagsMax", 0, ENRICH_FIELD_LIMITS.tagsPerPlace.max],
+  ["enrichTagsMax", 0, ENRICH_FIELD_LIMITS.tagsPerPlace.max],
+] as const;
 
 // Two tiers since MESITA-2126. "high" is still ACCEPTED on write and stored as
 // "standard" (same gpt-4o), so an admin build from before the change never 400s
@@ -340,6 +360,14 @@ export async function writeEnricherSection(
       );
     }
     next.enrichConsumerCreatesPerDay = n;
+    blobTouched = true;
+  }
+
+  for (const [key, min, max] of FIELD_LIMIT_KEYS) {
+    if (body[key] === undefined) continue;
+    const n = intInRange(body[key], min, max);
+    if (n === null) return jsonError(`${key} must be an integer ${min}-${max}`, 400);
+    next[key] = n;
     blobTouched = true;
   }
 

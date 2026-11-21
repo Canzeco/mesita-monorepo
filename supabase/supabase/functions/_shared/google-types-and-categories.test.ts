@@ -31,3 +31,11 @@ Deno.test("Mesita tags: vocabulary only; a missing tags key is a failure, [] is 
   assertEquals(pickVocabularyTags(undefined, vocab), null);
 });
 
+
+// MESITA-4581: Create keeps fewer tags than Enrich when Atlas says so.
+Deno.test("pickVocabularyTags obeys a stage limit; 0 keeps none", () => {
+  const vocab = new Set(["dj", "terraza", "brunch"]);
+  assertEquals(pickVocabularyTags(["dj", "terraza", "brunch"], vocab, 2), ["dj", "terraza"]);
+  assertEquals(pickVocabularyTags(["dj"], vocab, 0), []);
+  assertEquals(pickVocabularyTags(undefined, vocab, 0), null);
+});

@@ -4,6 +4,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   FAMILY_MEANINGS,
+  familiesRule,
   familiesToStore,
   familyHintLine,
   familyVocabularyLines,
@@ -87,4 +88,12 @@ Deno.test("familyHintLine: cuisines pass, Dinner and Family never do", () => {
   assertEquals(familyHintLine(["family_restaurant"], null).includes("family"), false);
   assertEquals(familyHintLine(["bar_and_grill"], null).includes("drinks"), false);
   assertEquals(familyHintLine([], null), "");
+});
+
+// MESITA-4581: a stage's Atlas limit caps the pick and the prompt.
+Deno.test("pickFamilies and familiesRule obey a stage limit, never past seven", () => {
+  assertEquals(pickFamilies(["coffee", "breakfast", "dinner", "drinks"], FAMILIES, 2), ["coffee", "breakfast"]);
+  assertEquals(pickFamilies(["coffee", "breakfast", "dinner", "drinks", "sports", "hookah", "music", "nightclub"], FAMILIES, 99)?.length, 7);
+  assertEquals(familiesRule("create", 3).includes("never more than 3"), true);
+  assertEquals(familiesRule("enrich", 5).includes("never more than 5"), true);
 });

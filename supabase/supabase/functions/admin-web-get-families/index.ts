@@ -2,7 +2,9 @@
 //
 // Read-only taxonomy for Configurations › Atlas. One caller: that page.
 // The Mesita Families, the Google categories Mesita allows (MESITA-4576),
-// and the tag catalog — all live tables (MESITA-2891).
+// and the tag catalog — all live tables (MESITA-2891) — plus the field limits
+// Atlas edits (MESITA-4581): Create's, Enrich's and the hard maximum for
+// families, Presentation characters and tags.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
@@ -13,19 +15,25 @@ import {
 } from "../_shared/categories.ts";
 import { buildFamiliesMap } from "../_shared/families-map.ts";
 import { fetchPlaceTags } from "../_shared/tags.ts";
+import { fieldLimitsView, loadEnrichmentConfig } from "../_shared/enrichment-config.ts";
 
 serveJson("admin-web-get-families", async (req) => {
   const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 
-  const [googleCategories, families, tags] = await Promise.all([
+  const [googleCategories, families, tags, enrichment] = await Promise.all([
     fetchGoogleCategories(admin),
     fetchPlaceFamilies(admin),
     fetchPlaceTags(admin),
+    loadEnrichmentConfig(admin),
   ]);
   if (googleCategories.length === 0 || families.length === 0) {
     return json({ ok: false, error: "Atlas vocabulary unavailable" }, 500);
   }
-  return json({ ok: true, ...buildFamiliesMap(families, googleCategories, tags) });
+  return json({
+    ok: true,
+    ...buildFamiliesMap(families, googleCategories, tags),
+    limits: fieldLimitsView(enrichment),
+  });
 });

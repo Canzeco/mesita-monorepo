@@ -26,6 +26,15 @@ export type TagRow = {
   sortOrder: number;
 };
 
+/** One field's limits (MESITA-4581): Create's, Enrich's and the hard ceiling. */
+export type FieldLimitRow = { create: number; enrich: number; min: number; max: number };
+
+export type FieldLimits = {
+  families: FieldLimitRow;
+  presentation: FieldLimitRow;
+  tags: FieldLimitRow;
+};
+
 export type FamiliesMap = {
   families: FamilyRow[];
   enabledCategories: GoogleCategoryRow[];

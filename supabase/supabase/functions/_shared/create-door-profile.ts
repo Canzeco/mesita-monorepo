@@ -13,12 +13,13 @@
 // land it (gate D2).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { fetchPlaceTags, MAX_PLACE_TAGS, pickVocabularyTags } from "./tags.ts";
+import { fetchPlaceTags, pickVocabularyTags } from "./tags.ts";
 import {
   formatDescriptionParagraphs,
 } from "./enrich-synthesis-profile.ts";
 import { openaiChat } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
+import { loadEnrichmentConfig, stageFieldLimits } from "./enrichment-config.ts";
 import { capPresentation } from "./presentation-cap.ts";
 import { loadModelsConfig } from "./models-config.ts";
 import {
@@ -71,15 +72,18 @@ export async function synthesizeDoorProfile(
   openaiKey: string,
   signals: DoorSignals,
 ): Promise<DoorProfile | null> {
-  const [tagVocab, models, familyVocab, enabled] = await Promise.all([
+  const [tagVocab, models, limitsCfg, familyVocab, enabled] = await Promise.all([
     fetchPlaceTags(admin),
     loadModelsConfig(admin),
+    loadEnrichmentConfig(admin),
     fetchPlaceFamilies(admin),
     isGoogleCategoryEnabled(admin, mainGoogleCategory(signals.googleTypes, null)),
   ]);
   const familyLines = enabled ? familyVocabularyLines(familyVocab) : [];
   const familyHint = familyHintLine(signals.googleTypes, null);
   const tagSlugs = new Set(tagVocab.map((t) => t.slug));
+  // Create's Atlas limits (MESITA-4581): asked for in the prompt, kept below.
+  const limits = stageFieldLimits(limitsCfg, "create");
 
   const placeLines = [
     `Name: ${signals.name}`,
@@ -98,8 +102,9 @@ export async function synthesizeDoorProfile(
   const systemContent =
     "You are Mesita's create-door profiler. From the thin Google signals " +
     "provided, return ONE JSON object with EXACTLY these keys: " +
-    '{"tags":["<0-' + String(MAX_PLACE_TAGS) + ' slugs from the tag list>"],' +
-    '"presentation":"<2-3 short English paragraphs separated by \\n\\n>",' +
+    '{"tags":["<0-' + String(limits.tags) + ' slugs from the tag list>"],' +
+    '"presentation":"<2-3 short English paragraphs separated by \\n\\n, at most ' +
+    String(limits.presentation) + ' characters in all>",' +
     '"reservations_likely":<boolean>,' +
     '"mesita_name":"<clean display name, proper case; null when the given ' +
     'name already follows the MESITA NAME rule below>",' +
@@ -107,7 +112,7 @@ export async function synthesizeDoorProfile(
     'this place IS, for semantic search — no marketing voice>",' +
     '"families":["<slugs from the family list>"],' +
     '"zone":"<the Mesita Zone, or null>"}. ' +
-    familiesRule("create") + " " +
+    familiesRule("create", limits.families) + " " +
     ZONE_RULE + " " +
     RESERVATIONS_RULE + " " +
     "MESITA NAME: strip slogans, legal forms (S.A. de C.V., LLC, Inc.), " +
@@ -144,17 +149,17 @@ export async function synthesizeDoorProfile(
     if (!res.ok || !res.parsed) return null;
     const parsed = res.parsed as Record<string, unknown>;
 
-    const tags = pickVocabularyTags(parsed.tags, tagSlugs);
+    const tags = pickVocabularyTags(parsed.tags, tagSlugs, limits.tags);
     const description = (() => {
       const d = nonBlank(parsed.presentation);
       return d
-        ? capPresentation(formatDescriptionParagraphs(d))
+        ? capPresentation(formatDescriptionParagraphs(d), limits.presentation)
         : null;
     })();
     const nameMax = ENRICH_FIELD_LIMITS.placeName?.max ?? 80;
     return {
       tags,
-      families: familiesToStore(pickFamilies(parsed.families, familyVocab), enabled),
+      families: familiesToStore(pickFamilies(parsed.families, familyVocab, limits.families), enabled),
       zone: pickZone(parsed.zone, signals.city),
       description,
       reservationsLikely: reservationsLikelyFromInference(parsed),

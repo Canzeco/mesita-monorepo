@@ -84,11 +84,17 @@ export function familyVocabularyLines(families: readonly PlaceFamily[]): string[
  */
 export type FamiliesStage = "create" | "enrich";
 
-/** The instruction a Description prompt carries for `families`. */
-export function familiesRule(stage: FamiliesStage): string {
+/**
+ * The instruction a Description prompt carries for `families`. `max` is the
+ * stage's Atlas limit (MESITA-4581): the prompt never asks for more, and
+ * `pickFamilies` keeps no more.
+ */
+export function familiesRule(stage: FamiliesStage, max: number = FAMILIES_MAX): string {
+  const cap = Math.max(1, Math.min(max, FAMILIES_MAX));
+  const usual = Math.min(stage === "create" ? 3 : 4, cap);
   const count = stage === "create"
-    ? "With only these thin signals, usually pick one to three and at most about four."
-    : "Usually pick one to four; go up to about six only when the sources clearly support each one.";
+    ? `With only these thin signals, usually pick one to ${usual}, and never more than ${cap}.`
+    : `Usually pick one to ${usual}; never more than ${cap}, and go past ${usual} only when the sources clearly support each one.`;
   return (
     `"families" are Mesita families: slugs copied VERBATIM from the FAMILY ` +
     "LIST — what a guest is in the mood for when they would look for this " +
@@ -144,7 +150,9 @@ function normalise(v: string): string {
 export function pickFamilies(
   raw: unknown,
   families: readonly PlaceFamily[],
+  max: number = FAMILIES_MAX,
 ): string[] | null {
+  const cap = Math.max(1, Math.min(max, FAMILIES_MAX));
   if (!Array.isArray(raw)) return null;
   const offered = familyChoices(families);
   const valid = new Set(offered.map((f) => f.slug));
@@ -155,7 +163,7 @@ export function pickFamilies(
     const token = item.trim();
     const slug = valid.has(token) ? token : byLabel.get(normalise(token));
     if (slug && !out.includes(slug)) out.push(slug);
-    if (out.length === FAMILIES_MAX) break;
+    if (out.length === cap) break;
   }
   return out.length >= FAMILIES_MIN ? out : null;
 }

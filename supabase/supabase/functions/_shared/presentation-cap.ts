@@ -20,8 +20,10 @@ const MIN_KEEP = 0.4;
 
 export function capPresentation(
   text: string,
-  max: number = ENRICH_FIELD_LIMITS.description.max,
+  limit: number = ENRICH_FIELD_LIMITS.description.max,
 ): string {
+  // A stage's Atlas limit (MESITA-4581) never lifts the hard ceiling.
+  const max = Math.min(limit, ENRICH_FIELD_LIMITS.description.max);
   const t = text.trim();
   if (t.length <= max) return t;
   const head = t.slice(0, max);

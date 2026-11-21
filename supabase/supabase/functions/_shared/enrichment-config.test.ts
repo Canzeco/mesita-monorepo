@@ -2,6 +2,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 import {
   DEFAULT_ENRICHMENT_CONFIG,
   normalizeEnrichmentConfig,
+  stageFieldLimits,
 } from "./enrichment-config.ts";
 
 Deno.test("normalizeEnrichmentConfig: null/garbage falls back to the old scalar-column defaults", () => {
@@ -42,6 +43,12 @@ Deno.test("normalizeEnrichmentConfig: live-shaped blob round-trips", () => {
     enrichCreateOnOpenConsumer: true,
     enrichCreateOnOpenAdmin: false,
     enrichConsumerCreatesPerDay: 250,
+    createFamiliesMax: 3,
+    enrichFamiliesMax: 6,
+    createPresentationMaxChars: 900,
+    enrichPresentationMaxChars: 1800,
+    createTagsMax: 8,
+    enrichTagsMax: 15,
   };
   assertEquals(normalizeEnrichmentConfig(live), live);
 });
@@ -122,4 +129,23 @@ Deno.test("a blob saved before first-after keeps its live Update schedule (MESIT
   const got = normalizeEnrichmentConfig({ updateEveryViews: 20, reviewsUpdateEveryViews: 80 });
   assertEquals(got.updateFirstAfterViews, 20);
   assertEquals(got.reviewsUpdateFirstAfterViews, 80);
+});
+
+// MESITA-4581: Atlas's field limits. A stored value outside the range clamps
+// to it, so a bad save can never ask the Description step for more than the
+// hard ceiling (7 families · 2000 characters · 20 tags).
+Deno.test("field limits: defaults, clamped to the hard ceiling, one stage at a time", () => {
+  const d = normalizeEnrichmentConfig({});
+  assertEquals(stageFieldLimits(d, "create"), { families: 3, presentation: 1000, tags: 10 });
+  assertEquals(stageFieldLimits(d, "enrich"), { families: 5, presentation: 2000, tags: 20 });
+  const wild = normalizeEnrichmentConfig({
+    createFamiliesMax: 99,
+    enrichFamiliesMax: 0,
+    createPresentationMaxChars: 50,
+    enrichPresentationMaxChars: 99999,
+    createTagsMax: -3,
+    enrichTagsMax: 40,
+  });
+  assertEquals(stageFieldLimits(wild, "create"), { families: 7, presentation: 200, tags: 0 });
+  assertEquals(stageFieldLimits(wild, "enrich"), { families: 1, presentation: 2000, tags: 20 });
 });
