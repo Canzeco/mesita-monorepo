@@ -30,12 +30,14 @@ export function TicketsShortcut({
 }: { tall?: boolean; wide?: boolean; icon?: boolean } = {}) {
   // AN ICON, NO WORD (Pato, 2026-11-21, MESITA-4559: "it must not say
   // tickets, just a ticket icon with this > too"): the header's right-hand
-  // button, black like the page's other top buttons, a ticket glyph and a ›.
+  // button, a ticket glyph and a ›. WHITE, NOT BLACK (Pato, 2026-11-21,
+  // MESITA-4580: "make button white, not black"): the page's cards' white
+  // with their hairline and black ink; black since MESITA-4559.
   if (icon) {
     return (
       <PushLink
         href={CONSUMER_ROUTES.mePages.tickets}
-        className="bg-foreground text-background hover:bg-foreground/90 flex h-11 items-center gap-1 rounded-xl pr-2.5 pl-3.5"
+        className="border-border bg-card text-foreground hover:bg-muted/60 flex h-11 items-center gap-1 rounded-xl border pr-2.5 pl-3.5"
         aria-label="Tickets"
         data-tickets-shortcut
       >
