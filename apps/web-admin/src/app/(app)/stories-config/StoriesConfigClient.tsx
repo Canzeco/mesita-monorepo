@@ -69,14 +69,10 @@ export function StoriesConfigClient({
             hint="Guests need this many Instagram followers or more."
             onChange={(v) => patch({ story_min_followers: v })}
           />
-          <div className="grid grid-cols-2 gap-4">
-            <ReadField label="Bonus wait" boxed>
-              {formatDuration(cfg.story_bonus_wait_sec)} after the story is posted
-            </ReadField>
-            <ReadField label="Time to post" boxed>
-              {formatDuration(cfg.story_post_window_sec)} from payment
-            </ReadField>
-          </div>
+          {/* No time to post since MESITA-4484; its dead field left with MESITA-4527. */}
+          <ReadField label="Bonus wait" boxed>
+            {formatDuration(cfg.story_bonus_wait_sec)} after the story is posted
+          </ReadField>
         </div>
       </SectionCard>
 

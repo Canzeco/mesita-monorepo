@@ -12,7 +12,7 @@
 //   Post your story · tag @mesita and the restaurant · no deadline
 //   Steps        Paid ✓ · Post · Keep it up, the current one lit
 //   Now          waiting_post: the tags to copy and Open Instagram
-//                found: a story that is not tied to this voucher
+//                found: buy the voucher at the place and this story counts
 //                approved: "Checking · bonus at HH:MM", keep it up
 //   Details      Paid · Posted · Bonus if it stays up
 //   Test         Connect a public Instagram / Publish a story / Delete it
@@ -187,7 +187,7 @@ function NowPanel({ s, now }: { s: StoryTicket; now: number }) {
       <Panel title="Post your story" data-story-now="post">
         <div className="flex flex-col gap-3 px-4 pt-2 pb-4">
           <p className="text-sm leading-snug">
-            Post a story from your public account. Tag us both and turn on the paid-partnership label.
+            Post a story from your public account. Tag @mesita and the restaurant, and keep it up.
           </p>
           <span>
             <CopyChip text={handle ? `@mesita @${handle}` : "@mesita"} />
@@ -208,7 +208,7 @@ function NowPanel({ s, now }: { s: StoryTicket; now: number }) {
       <Panel title="Story found" data-story-now="found">
         <div className="flex flex-col gap-3 px-4 pt-2 pb-4">
           <StoryCard s={s} />
-          <p className="text-sm leading-snug">This story is not tied to a voucher at this restaurant, so it pays nothing.</p>
+          <p className="text-sm leading-snug">Buy the Story voucher at {s.place_name ?? s.place?.name ?? "this restaurant"} and this story counts.</p>
         </div>
       </Panel>
     );
@@ -252,7 +252,7 @@ function TestBand({ s, onChanged }: { s: StoryTicket; onChanged: () => void }) {
   return (
     <div className="border-border flex flex-col items-center gap-1 rounded-2xl border border-dashed p-3" data-story-emulator>
       <TestModeNote className="self-center" />
-      {s.state === "waiting_post" || s.state === "void" ? (
+      {s.state === "waiting_post" ? (
         <>
           <button type="button" disabled={busy !== null} onClick={() => void run("connect")} className={QUIET} data-story-simulate="connect">
             {busy === "connect" ? "Connecting…" : "Connect a public test Instagram"}
