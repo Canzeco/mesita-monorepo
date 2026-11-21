@@ -31,7 +31,10 @@ export const ACCOUNT = "/account";
 // reviews boxes sit under the Profile editor; /reviews redirects there.
 // Reservations (MESITA-3600, Pato: "in capabilities add Reservations, only
 // configure no or yes") holds its one switch, moved from Settings › Actions.
-export const PLACE_TABS = ["views", "visits", "vouchers", "stories", "gifts", "money", "profile", "premier", "payments", "reservations", "all", "settings", "admin"] as const;
+// General (MESITA-4528, Pato: "General (here include reservations and stories
+// and missing configuration… and the all there nested with a new button)")
+// gathers the pages the rail no longer lists.
+export const PLACE_TABS = ["views", "visits", "vouchers", "stories", "gifts", "money", "profile", "premier", "payments", "general", "reservations", "all", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {
