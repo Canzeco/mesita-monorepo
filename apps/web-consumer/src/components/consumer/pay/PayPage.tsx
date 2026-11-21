@@ -378,8 +378,11 @@ export function PayPage({
           tiles, green "Buy Credits" left, purple Pay Bill right; Send Gift
           is off Pay again. PREPAY & GET BONUS, A BIT LARGER (Pato,
           2026-11-21, MESITA-4593: "Prepay & Get Bonus / Pay Bill … make
-          green a bit larger"): the green tile takes 3fr, Pay Bill 2fr. */}
-      <div className="mt-2 grid grid-cols-[3fr_2fr] gap-2">
+          green a bit larger"): the green tile took 3fr for one deploy.
+          HALF AND HALF (Pato, MESITA-4594: "both buttons msut be 50%, if
+          not enough space, make letter a bit smaller, just a bit"): two
+          equal tiles, the words one step down (16px to text-sm) so the green one fits on a phone. */}
+      <div className="mt-2 grid grid-cols-2 gap-2">
         <PushLink
           href={CONSUMER_ROUTES.walletBuy}
           className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
@@ -505,6 +508,7 @@ function PlaceRows({
             photo={p.photo}
             amount={p.available_cents > 0 ? money(p.available_cents, p.currency) : null}
             distance={located && p.distance_m !== null ? distanceText(p.distance_m) : null}
+            pending={p.pending_cents > 0 ? money(p.pending_cents, p.currency) : null}
             placeId={p.place_id}
             onOpen={() =>
               navigateTo(router, p.available_cents > 0 || p.pending_cents > 0 ? walletPlacePath(p.place_id) : placePath(p.place_id), { motion: "drill" })
@@ -518,7 +522,7 @@ function PlaceRows({
 
 /** Pay's three buttons, side by side (MESITA-4579): one size. */
 const TILE =
-  "flex h-24 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-base font-semibold transition active:scale-[0.99]";
+  "flex h-24 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-sm leading-tight font-semibold whitespace-nowrap transition active:scale-[0.99]";
 /** THE ICON IN A WHITE CIRCLE (Pato, 2026-11-21, MESITA-4586: "+icon inside
  *  a circle … with white background, and purple thing also inside a circle";
  *  /plan-design-review pick): 40px, the tile's ink on white, the Loyalty
