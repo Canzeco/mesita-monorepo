@@ -1,5 +1,7 @@
 "use client";
 
+import { X } from "lucide-react";
+
 import { Screen } from "@/components/consumer/nav/Screen";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -98,10 +100,25 @@ export function PayTabScreen({ start }: { start: TabStart }) {
             </>
           ) : undefined
         }
-        // MESITA-4068 (Pato: "header on its own < pay"): the header's boxed ‹
-        // leaves, keeping the draft, as the X did (MESITA-3880); the step nav's
-        // own ‹ steps back. With no step's own close it is Back.
-        onBack={() => (hasClose ? close.current?.() : back())}
+        // ← STEPS BACK, ✕ CLOSES (Pato, 2026-11-21, MESITA-4598: "put
+        // attention to the X on top right to close the modal and the <- to
+        // return step"): the header's ‹ is one step back (on the first step
+        // it reopens the places); the ✕ at the right ends the flow and the
+        // ticket with it. The ‹ left and kept the draft before (MESITA-4068).
+        onBack={back}
+        action={
+          hasClose ? (
+            <button
+              type="button"
+              onClick={() => close.current?.()}
+              aria-label="Close and discard this payment"
+              className="hover:bg-muted flex h-11 w-11 items-center justify-center rounded-xl transition"
+              data-pay-close
+            >
+              <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+            </button>
+          ) : undefined
+        }
         flush
         paper
       >

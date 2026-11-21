@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { ChevronRight, MapPin, QrCode } from "lucide-react";
+import { ChevronRight, MapPin, QrCode, X } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -51,19 +51,28 @@ export function PayPickSheet({
 }) {
   return (
     <LocalSheet open={open} onClose={onClose} from="bottom" fit ariaLabel="Where are you paying?">
-      {open ? <PayPickBody onPick={onPick} /> : null}
+      {open ? <PayPickBody onPick={onPick} onClose={onClose} /> : null}
     </LocalSheet>
   );
 }
 
-function PayPickBody({ onPick }: { onPick: (placeId: string) => void }) {
-  return <PlacePickBody onPick={onPick} />;
+function PayPickBody({ onPick, onClose }: { onPick: (placeId: string) => void; onClose: () => void }) {
+  return <PlacePickBody onPick={onPick} onClose={onClose} />;
 }
 
 /** /wallet/buy's prepay count: the closest places listed first (MESITA-4597). */
 const NEAR_SHOWN = 3;
 
-export function PlacePickBody({ onPick, prepay = false }: { onPick: (placeId: string) => void; prepay?: boolean }) {
+export function PlacePickBody({
+  onPick,
+  onClose,
+  prepay = false,
+}: {
+  onPick: (placeId: string) => void;
+  /** Pay Bill's ✕ (MESITA-4598): closes the flow. */
+  onClose?: () => void;
+  prepay?: boolean;
+}) {
   const { loc, askLocation, notNow } = usePayLocation({ prime: true });
   const { places: all, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
   const places = prepay && all ? all.filter((p) => p.card_ok) : all;
@@ -71,12 +80,40 @@ export function PlacePickBody({ onPick, prepay = false }: { onPick: (placeId: st
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pay-box>
-      {prepay ? null : <p className="px-5 pt-1 text-base font-semibold">Where are you paying?</p>}
+      {/* STEP 1 OF THE FLOW (Pato, 2026-11-21, MESITA-4598: "where are you
+          paying must look like this. in fact is the first step of the payment
+          flow. put attention to the X on top right to close the modal"; the
+          inKind picker he sent): the question at 20px on the left, a 44px ✕
+          on the right, a hairline under; an outlined search box. */}
+      {prepay ? null : (
+        <div className="border-border flex items-center justify-between gap-3 border-b pr-3 pb-3 pl-5">
+          <h2 className="text-xl font-semibold tracking-tight">Where are you paying?</h2>
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition"
+              data-pay-pick-close
+            >
+              <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+            </button>
+          ) : null}
+        </div>
+      )}
       {/* A REAL FIELD (MESITA-4295, Pato: "better design"): the bare
-          SearchBar sits in a 44px grey pill; the list under it stays
-          boxless (MESITA-4280). It is not focused on open (MESITA-2939). */}
-      <div className="px-5 pt-3 pb-2">
-        <div className="bg-muted flex h-11 items-center rounded-full pr-1 pl-4" data-pay-pick-search>
+          SearchBar in a 44px grey pill; outlined on Pay Bill since MESITA-4598.
+          The list under it stays boxless (MESITA-4280). It is not focused on
+          open (MESITA-2939). */}
+      <div className={prepay ? "px-5 pt-3 pb-2" : "px-4 pt-4 pb-2"}>
+        <div
+          className={
+            prepay
+              ? "bg-muted flex h-11 items-center rounded-full pr-1 pl-4"
+              : "border-border bg-card flex h-12 items-center rounded-xl border pr-1 pl-4"
+          }
+          data-pay-pick-search
+        >
           <SearchBar
             query={query}
             showClear={query.length > 0}
@@ -211,8 +248,9 @@ function PlaceList({
             </>
           ) : (
             <>
-              <Section title="Your cards" places={shown.filter((p) => p.available_cents > 0)} onPick={onPick} />
-              <Section title="Near you" places={shown.filter((p) => p.available_cents <= 0)} onPick={onPick} />
+              {/* ONE LIST, CARDS FIRST (MESITA-4598, Pato picked it): no group
+                  titles; the places he holds credit at, then the nearest. */}
+              <Section places={shown} onPick={onPick} />
             </>
           )}
           {hidden > 0 ? (
@@ -237,7 +275,7 @@ function Section({
   onPick,
   prepay = false,
 }: {
-  title: string;
+  title?: string;
   places: PayPlace[];
   onPick: (placeId: string) => void;
   prepay?: boolean;
@@ -245,7 +283,7 @@ function Section({
   if (places.length === 0) return null;
   return (
     <section className="mt-3">
-      <p className="type-eyebrow text-muted-foreground px-5 pb-2">{title}</p>
+      {title ? <p className="type-eyebrow text-muted-foreground px-5 pb-2">{title}</p> : null}
       <div className="border-border divide-border divide-y border-y">
         {places.map((p) => (
           <PlaceRow key={p.place_id} p={p} onPick={onPick} prepay={prepay} />
@@ -257,7 +295,28 @@ function Section({
 
 /** A place: photo, name, "1.0 km · address", then the QR chip and a chevron. */
 function PlaceRow({ p, onPick, prepay = false }: { p: PayPlace; onPick: (placeId: string) => void; prepay?: boolean }) {
-  const line = [p.distance_m !== null ? distanceText(p.distance_m) : null, p.address].filter(Boolean).join(" · ");
+  const distance = p.distance_m !== null ? distanceText(p.distance_m) : null;
+  if (!prepay) {
+    // A PLACE, INKIND'S ROW (MESITA-4598): a 56px rounded-square photo, the
+    // name over its address (two lines at most), the distance at the right;
+    // no QR chip (MESITA-4242) and no ›.
+    return (
+      <button
+        type="button"
+        onClick={() => onPick(p.place_id)}
+        className="hover:bg-muted/60 flex w-full items-start gap-3.5 px-4 py-3 text-left transition"
+        data-pay-pick-place
+      >
+        <PlacePhoto place={p} className="h-14 w-14 rounded-lg" />
+        <span className="min-w-0 flex-1 pt-0.5">
+          <span className="block truncate text-base font-semibold">{p.name ?? "A Mesita place"}</span>
+          {p.address ? <span className="text-muted-foreground mt-0.5 line-clamp-2 text-sm">{p.address}</span> : null}
+        </span>
+        {distance ? <span className="text-muted-foreground shrink-0 pt-0.5 text-sm tabular-nums">{distance}</span> : null}
+      </button>
+    );
+  }
+  const line = [distance, p.address].filter(Boolean).join(" · ");
   return (
     <button
       type="button"
@@ -265,19 +324,12 @@ function PlaceRow({ p, onPick, prepay = false }: { p: PayPlace; onPick: (placeId
       className="hover:bg-muted/60 flex min-h-[4.5rem] w-full items-center gap-3.5 px-5 py-3 text-left transition"
     >
       {/* The Loyalty Card's shape on Prepay (MESITA-4597: "name … location
-          and card"): Pay's 48x32 card thumbnail; the bill picker keeps its circle. */}
-      <PlacePhoto place={p} className={prepay ? "h-8 w-12 rounded-md" : "h-12 w-12"} />
+          and card"): Pay's 48x32 card thumbnail. */}
+      <PlacePhoto place={p} className="h-8 w-12 rounded-md" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-base font-semibold">{p.name ?? "A Mesita place"}</span>
         {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm tabular-nums">{line}</span> : null}
       </span>
-      {/* THE QR (MESITA-4242, Pato: "a fictional qr at the right"): white on
-          a black chip (MESITA-4251). */}
-      {prepay ? null : (
-        <span className="flex h-8 w-[3.2rem] shrink-0 items-center justify-center rounded-md bg-neutral-950 text-white" aria-hidden data-pay-pick-qr>
-          <QrCode className="h-5 w-5" strokeWidth={2} />
-        </span>
-      )}
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
     </button>
   );

@@ -1,4 +1,4 @@
-import { ChevronRight, Ticket } from "lucide-react";
+import { ChevronRight, ReceiptText, Ticket } from "lucide-react";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { HEADER_PILL } from "@/components/consumer/search/header-classes";
@@ -39,12 +39,15 @@ export function TicketsShortcut({
     return (
       <PushLink
         href={CONSUMER_ROUTES.mePages.tickets}
-        className="bg-foreground/15 text-foreground hover:bg-foreground/20 flex h-11 items-center gap-1 rounded-xl pr-2.5 pl-3.5"
-        aria-label="Tickets"
+        className="bg-foreground/15 text-foreground hover:bg-foreground/20 flex h-11 items-center gap-2 rounded-xl px-3.5 text-base font-semibold"
         data-tickets-shortcut
       >
-        <Ticket className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
-        <ChevronRight className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+        {/* THE WORD, ANOTHER GLYPH, NO › (Pato, 2026-11-21, MESITA-4598: "in
+            tickets actually mention Tickets, not only the icons … use a
+            different icon because that looks like shit and remove the >"):
+            a receipt and "Tickets". */}
+        <ReceiptText className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+        Tickets
       </PushLink>
     );
   }
