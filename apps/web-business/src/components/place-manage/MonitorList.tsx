@@ -38,7 +38,9 @@ import {
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { GuestAvatar } from "./GuestAvatar";
-import { CreditBadge, VoucherBadge } from "./VoucherBadge";
+import { CardBadge, CreditBadge, VisitBadge, VoucherBadge } from "./VoucherBadge";
+import type { Icon } from "@phosphor-icons/react";
+import { CoinsIcon, CreditCardIcon, FootprintsIcon, TicketIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 
 /** The row grid every Monitor list shares: face · text · amount. */
 export const ROW = "grid grid-cols-[40px_minmax(0,1fr)_auto] items-start gap-x-3 px-5 py-3.5 text-sm sm:px-6";
@@ -46,6 +48,21 @@ export const ROW = "grid grid-cols-[40px_minmax(0,1fr)_auto] items-start gap-x-3
 export const CHIP =
   "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium whitespace-nowrap tabular-nums";
 const META = "text-muted-foreground text-sm";
+
+/** Every chip wears its kind's icon (Pato: "USE ICONS ALWAYS"). */
+const CHIP_ICON: Record<LinkKind | "customer", Icon> = {
+  customer: UserCircleIcon,
+  visit: FootprintsIcon,
+  payment: CreditCardIcon,
+  voucher: TicketIcon,
+  credit: CoinsIcon,
+  story: TicketIcon,
+};
+
+function ChipIcon({ kind }: { kind: LinkKind | "customer" }) {
+  const I = CHIP_ICON[kind];
+  return <I size={13} weight="bold" aria-hidden />;
+}
 
 /** At most three chips of one kind, then "+N" to that page filtered to the guest. */
 function Chips({ placeId, row }: { placeId: string; row: MonitorRow }) {
@@ -56,7 +73,8 @@ function Chips({ placeId, row }: { placeId: string; row: MonitorRow }) {
   const chips: React.ReactNode[] = [];
   if (row.customer) {
     chips.push(
-      <Link key="customer" href={customerHref(placeId, row.customer)} className={CHIP}>
+      <Link key="customer" href={customerHref(placeId, row.customer)} className={cn(CHIP, "gap-1")}>
+        <ChipIcon kind="customer" />
         {customerLabel(row.customer)}
       </Link>,
     );
@@ -64,7 +82,8 @@ function Chips({ placeId, row }: { placeId: string; row: MonitorRow }) {
   for (const [kind, links] of byKind) {
     for (const l of links.slice(0, 3)) {
       chips.push(
-        <Link key={`${kind}${l.id}`} href={linkHref(placeId, l)} className={CHIP}>
+        <Link key={`${kind}${l.id}`} href={linkHref(placeId, l)} className={cn(CHIP, "gap-1")}>
+          <ChipIcon kind={kind} />
           {linkLabel(l)}
         </Link>,
       );
@@ -112,18 +131,21 @@ export function MonitorRowItem({ placeId, kind, row, timezone }: { placeId: stri
             <span className="text-muted-foreground">{name}</span>
           )}
         </p>
-        {kind === "vouchers" || kind === "credits" || kind === "gifts" ? (
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-            {kind === "vouchers" ? (
-              <VoucherBadge code={(row.payload.voucher as string | null) ?? null} />
-            ) : (
-              <CreditBadge kind={kind === "gifts" ? "gift" : String(row.payload.kind ?? "")} voucher={(row.payload.voucher as string | null) ?? null} />
-            )}
-            <span className={META}>{[lead, detail, when(row.at, timezone)].filter(Boolean).join(" · ")}</span>
-          </p>
-        ) : (
-          <p className={META}>{[lead, detail, when(row.at, timezone)].filter(Boolean).join(" · ")}</p>
-        )}
+        {/* Every row leads with its kind's badge (Pato: "USE ICONS ALWAYS"). */}
+        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+          {kind === "vouchers" ? (
+            <VoucherBadge code={(row.payload.voucher as string | null) ?? null} />
+          ) : kind === "visits" ? (
+            <VisitBadge status={rowStatus(kind, row)} />
+          ) : kind === "payments" ? (
+            <CardBadge status={lead} />
+          ) : (
+            <CreditBadge kind={kind === "gifts" ? "gift" : String(row.payload.kind ?? "")} voucher={(row.payload.voucher as string | null) ?? null} />
+          )}
+          <span className={META}>
+            {[kind === "visits" || kind === "payments" ? null : lead, detail, when(row.at, timezone)].filter(Boolean).join(" · ")}
+          </span>
+        </p>
         <Chips placeId={placeId} row={row} />
       </div>
       <div className="text-right">

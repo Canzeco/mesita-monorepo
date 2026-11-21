@@ -13,13 +13,14 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { CHIP, FilterBanner, ROW } from "./MonitorList";
 import { GuestAvatar } from "./GuestAvatar";
+import { UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 
 const PAGES = [
   ["views", "Views"],
   ["visits", "Visits"],
   ["vouchers", "Vouchers"],
   ["gifts", "Gifts"],
-  ["money", "Payments"],
+  ["money", "Stripe"],
 ] as const;
 
 export function CustomersList({ placeId, initial, customer }: { placeId: string; initial: CustomersPage; customer: string | null }) {
@@ -59,7 +60,10 @@ export function CustomersList({ placeId, initial, customer }: { placeId: string;
                 <p className="truncate font-medium">{c.guest}</p>
                 <p className="text-muted-foreground text-sm">Last seen {when(c.last_seen, page.timezone)}</p>
                 <span className="mt-2 flex flex-wrap gap-1.5">
-                  <span className={CHIP}>{customerLabel(c.customer)}</span>
+                  <span className={cn(CHIP, "gap-1")}>
+                    <UserCircleIcon size={13} weight="bold" aria-hidden />
+                    {customerLabel(c.customer)}
+                  </span>
                   {PAGES.map(([p, label]) => (
                     <Link key={p} href={customerListHref(placeId, p, c.customer)} className={CHIP}>
                       {label}

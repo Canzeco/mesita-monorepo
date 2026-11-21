@@ -4,7 +4,7 @@
 // everywhere: Welcome blue confetti, Story pink Instagram, the sizes green
 // ticket, VIP black crown.
 import type { Icon } from "@phosphor-icons/react";
-import { ConfettiIcon, CrownSimpleIcon, FootprintsIcon, GiftIcon, InstagramLogoIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
+import { ConfettiIcon, CreditCardIcon, CrownSimpleIcon, FootprintsIcon, GiftIcon, InstagramLogoIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
 import { voucherName } from "@/lib/ticket-desk";
 import { cn } from "@/lib/utils";
 
@@ -50,4 +50,24 @@ export function CreditBadge({ kind, voucher }: { kind: string; voucher: string |
     );
   }
   return null;
+}
+
+/** A visit's mark: the footprints, with its status word (Open, Paid…). */
+export function VisitBadge({ status }: { status: string }) {
+  return (
+    <span className={cn(PILL, "bg-orange-100 text-orange-800")}>
+      <FootprintsIcon size={14} weight="fill" aria-hidden />
+      {status}
+    </span>
+  );
+}
+
+/** A Stripe card payment's mark, in Stripe's purple. */
+export function CardBadge({ status }: { status: string | null }) {
+  return (
+    <span className={PILL} style={{ color: "#635BFF", backgroundColor: "rgb(99 91 255 / 0.1)" }}>
+      <CreditCardIcon size={14} weight="fill" aria-hidden />
+      {status ?? "Card"}
+    </span>
+  );
 }

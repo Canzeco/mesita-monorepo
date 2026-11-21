@@ -324,7 +324,7 @@ export function customerParam(v: string | string[] | undefined): string | null {
 export const EMPTY: Record<MonitorKind | "customers" | "views", string> = {
   visits: "No visits yet.",
   vouchers: "No vouchers yet.",
-  payments: "No payments yet.",
+  payments: "No card payments yet.",
   credits: "No credit movements yet.",
   gifts: "No gifts yet.",
   stories: "No stories yet.",
@@ -335,7 +335,7 @@ export const EMPTY: Record<MonitorKind | "customers" | "views", string> = {
 export const NOUN: Record<MonitorKind, { one: string; many: string }> = {
   visits: { one: "visit", many: "visits" },
   vouchers: { one: "voucher", many: "vouchers" },
-  payments: { one: "payment", many: "payments" },
+  payments: { one: "card payment", many: "card payments" },
   credits: { one: "credit movement", many: "credit movements" },
   gifts: { one: "gift", many: "gifts" },
   stories: { one: "story", many: "stories" },
