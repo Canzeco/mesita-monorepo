@@ -115,7 +115,10 @@ function fakeRank(order: string[], opts: { fail?: boolean; read?: number; premie
       opts.fail ? fail : {
         data: {
           read: opts.read ?? order.length,
-          ids: order,
+          // Popular's close ranking (the Nearby Organic row, 0.1 km) comes
+          // back empty, so its "both" lane is empty and the feed is the
+          // Popular lane alone, as these tests assume (MESITA-4548).
+          ids: args.p_organic_half_km === 0.1 ? [] : order,
           premier: opts.premier ?? [],
           below_floor: 2,
           inorganic_total: (opts.premier ?? []).length + 2,
@@ -215,7 +218,8 @@ Deno.test("the Catalog never walks: one SQL rank, then only the first page's car
   const order = rows.map((r) => r.id).reverse();
   const { run, seen, calls, lanesCalls } = pool(rows, order, { pageSize: 100 });
   const out = await run;
-  assertEquals([lanesCalls.length, calls.length], [1, 0]);
+  // Popular: its two lanes and its close ranking (MESITA-4548).
+  assertEquals([lanesCalls.length, calls.length], [3, 0]);
   // No scoring-column walk at all, so no 10,000-row cap.
   assertEquals(seen.filter((s) => s.columns === CATALOG_SCORING_COLUMNS).length, 0);
   const asked = seen.filter((s) => s.columns === CARDS).flatMap((s) => s.in ?? []);
@@ -307,7 +311,8 @@ Deno.test("the lanes merge: ad slots carry adIds over the whole order, the ad ca
   const premier = [pid(28), pid(25)];
   const { run, calls, lanesCalls } = pool(rows, organic, { premier, pageSize: 10 });
   const out = await run;
-  assertEquals([lanesCalls.length, calls.length], [1, 0]);
+  // Popular: its two lanes and its close ranking (MESITA-4548).
+  assertEquals([lanesCalls.length, calls.length], [3, 0]);
   assertEquals(out.order.slice(0, 5), [pid(0), pid(28), pid(1), pid(25), pid(2)]);
   assertEquals(out.order.length, 30);
   assertEquals(new Set(out.order).size, 30);
@@ -315,7 +320,15 @@ Deno.test("the lanes merge: ad slots carry adIds over the whole order, the ad ca
   // Every ad-slot id on the page is marked, and nothing else is.
   assertEquals(out.places.filter((p) => p.ad).map((p) => p.id), premier);
   assertEquals(out.summary.ads, 2);
-  assertEquals(out.lanes, { organic: 30, premier: 2, belowFloor: 2, inorganicTotal: 4, adsFirstPage: 2 });
+  assertEquals(out.lanes, {
+    organic: 30,
+    premier: 2,
+    belowFloor: 2,
+    inorganicTotal: 4,
+    adsFirstPage: 2,
+    // Ads round-robin over Popular's two Inorganic lanes (MESITA-4548).
+    byLane: { catalogPopularOrganic: 28, catalogPopularBothInorganic: 1, catalogPopularInorganic: 1 },
+  });
   // adEvery 0: no ad slots at all.
   const off = await pool(rows, organic, { premier, adEvery: 0 }).run;
   assertEquals([off.adIds, off.order], [[], organic]);

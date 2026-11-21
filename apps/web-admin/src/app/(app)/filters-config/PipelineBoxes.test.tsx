@@ -55,12 +55,12 @@ describe("the How places are ranked card draws the runtime model (MESITA-2338)",
 describe("Ranking shows every lane row (MESITA-4454, MESITA-4517)", () => {
   it("renders without a page stamp and offers no field the server forces (C1, L-1)", () => {
     const html = render(<RankingBox {...seed} />);
-    // MESITA-4517: eight Catalog rows × 7 fields (Batch added) less 5
-    // forced organic Premier exponents; two Map rows × 4 editable fields (no
-    // distance, no batch) less 1 forced; plus the preview's lat and lng.
-    // 8×7 − 5 + 2×4 − 1 + 2 = 60.
-    expect(html.match(/<input/g)?.length).toBe(8 * 7 - 5 + 2 * 4 - 1 + 2);
-    for (const name of ["Family close", "Family well known", "Family both", "Family Inorganic"]) {
+    // MESITA-4548: fourteen Catalog rows × 7 fields (Batch included) less
+    // 7 forced organic Premier exponents; two Map rows × 4 editable fields
+    // (no distance, no batch) less 1 forced; plus the preview's lat and lng.
+    // 14×7 − 7 + 2×4 − 1 + 2 = 100.
+    expect(html.match(/<input/g)?.length).toBe(14 * 7 - 7 + 2 * 4 - 1 + 2);
+    for (const name of ["Nearby close", "Nearby both", "Family close", "Family well known", "Family both", "Popular both"]) {
       expect(html).toContain(name);
     }
   });

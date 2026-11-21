@@ -310,17 +310,28 @@ export function selectAreaPool<T extends PoolRow>(
   let lanes: Lane<T>[];
   if (catalog) {
     const ads = new Set(deps.adIds ?? []);
-    const adArea = new Map(
-      ads.size === 0 ? [] : rankArea(
-        items.filter((i) => ads.has(i.candidate.id)),
-        (item) => item.candidate,
-        ctx(adRecipe),
-      ).map((r) => [r.item.candidate.id, r.area] as const),
-    );
+    // An ad card scores with its own Inorganic lane's row when the rank
+    // named one (MESITA-4548), else the mode's Inorganic row.
+    const adRowOf = (id: string): RecipeRow | null => {
+      const row = deps.laneOf?.[id];
+      return row && row.endsWith("Inorganic") ? row : null;
+    };
+    const adArea = new Map<string, Lane<T>["area"]>();
+    const adGroups = new Map<RecipeRow | null, typeof items>();
+    for (const i of items) {
+      if (!ads.has(i.candidate.id)) continue;
+      const k = adRowOf(i.candidate.id);
+      adGroups.set(k, [...(adGroups.get(k) ?? []), i]);
+    }
+    for (const [row, members] of adGroups) {
+      for (const r of rankArea(members, (item) => item.candidate, ctx(row ? recipeRow(row, deps.cfg) : adRecipe))) {
+        adArea.set(r.item.candidate.id, r.area);
+      }
+    }
     // A named organic lane scores its own cards (MESITA-4517).
     const laneOf = deps.laneOf ?? {};
     const laneArea = new Map<string, { area: Lane<T>["area"]; row: RecipeRow }>();
-    const rows = new Set(Object.values(laneOf));
+    const rows = new Set(Object.values(laneOf).filter((row) => !row.endsWith("Inorganic")));
     for (const row of rows) {
       const members = items.filter((i) => laneOf[i.candidate.id] === row && !ads.has(i.candidate.id));
       if (members.length === 0) continue;
@@ -331,7 +342,7 @@ export function selectAreaPool<T extends PoolRow>(
     lanes = organic.map((r) => {
       const id = r.item.candidate.id;
       const a = adArea.get(id);
-      if (a) return { item: r.item, area: a, ad: true };
+      if (a) return { item: r.item, area: a, ad: true, row: adRowOf(id) ?? undefined };
       const l = laneArea.get(id);
       return l ? { item: r.item, area: l.area, ad: false, row: l.row } : { ...r, ad: false };
     });
@@ -363,7 +374,7 @@ export function selectAreaPool<T extends PoolRow>(
     const { distanceKm: km, ...diagnostics } = area;
     // The score tag prints it beside Proximity (MESITA-2830).
     const distanceKm = km === null ? null : Math.round(km * 100) / 100;
-    const halfKm = (ad ? adRecipe : row ? recipeRow(row, deps.cfg) : organicRecipe).halfKm;
+    const halfKm = (row ? recipeRow(row, deps.cfg) : ad ? adRecipe : organicRecipe).halfKm;
     return {
       ...item.place,
       ...(ad ? { ad: true } : {}),
@@ -688,9 +699,12 @@ export function catalogRankLanesArgs(
   /** Which organic row ranks (Family's three lanes, MESITA-4517); absent =
    *  the mode's organic row. */
   organicRow?: RecipeRow,
+  /** Which Inorganic row ranks Premier places (MESITA-4548); absent = the
+   *  mode's Inorganic row. */
+  adRow?: RecipeRow,
 ): Record<string, unknown> {
   const org = organicRow ? recipeRow(organicRow, cfg) : recipeFor(mode, "organic", cfg);
-  const ad = recipeFor(mode, "inorganic", cfg);
+  const ad = adRow ? recipeRow(adRow, cfg) : recipeFor(mode, "inorganic", cfg);
   return {
     ...gateArgs(cfg, location, families),
     p_organic_half_km: org.halfKm,
@@ -757,9 +771,9 @@ export type CatalogLaneStats = {
   inorganicTotal: number;
   /** Ad-slot places on the first page, after the shuffle. */
   adsFirstPage: number;
-  /** Family only (MESITA-4517): places on the close, well-known and both
-   *  lanes after the weave's dedupe. */
-  family?: { close: number; wellKnown: number; both: number };
+  /** Places per lane after the weave's dedupe (MESITA-4517, MESITA-4548),
+   *  keyed by recipe row. */
+  byLane?: Record<string, number>;
 };
 
 export type CatalogPool = {
@@ -788,11 +802,48 @@ export const CATALOG_ORDER_CAP = 1000;
 const ids = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
 const count = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 
-/** A feed's lanes, ranked and woven (MESITA-4517): Home's rank and the
- *  Admin preview share it. Family ranks close and well known in SQL and
- *  derives both; Nearby and Popular rank one organic lane. Every lane's
- *  batch is its row's. `answer` is the first SQL answer (its read and
- *  Inorganic counts). */
+/** The lanes of each feed (MESITA-4548): every lane has an Organic and an
+ *  Inorganic row. `rank` names the organic row whose SQL ranking the lane
+ *  is; a "both" lane is derived from its feed's close and well-known
+ *  rankings. Lane order is weave order: both first. */
+const FEEDS: Record<RankMode, {
+  close: RecipeRow;
+  wellKnown: RecipeRow;
+  lanes: Array<{ organic: RecipeRow; inorganic: RecipeRow; rank: "close" | "wellKnown" | "both" }>;
+}> = {
+  nearby: {
+    close: "catalogNearbyOrganic",
+    wellKnown: "catalogPopularOrganic",
+    lanes: [
+      { organic: "catalogNearbyBoth", inorganic: "catalogNearbyBothInorganic", rank: "both" },
+      { organic: "catalogNearbyOrganic", inorganic: "catalogNearbyInorganic", rank: "close" },
+    ],
+  },
+  popular: {
+    close: "catalogNearbyOrganic",
+    wellKnown: "catalogPopularOrganic",
+    lanes: [
+      { organic: "catalogPopularBoth", inorganic: "catalogPopularBothInorganic", rank: "both" },
+      { organic: "catalogPopularOrganic", inorganic: "catalogPopularInorganic", rank: "wellKnown" },
+    ],
+  },
+  family: {
+    close: "catalogFamilyClose",
+    wellKnown: "catalogFamilyWellKnown",
+    lanes: [
+      { organic: "catalogFamilyBoth", inorganic: "catalogFamilyBothInorganic", rank: "both" },
+      { organic: "catalogFamilyClose", inorganic: "catalogFamilyCloseInorganic", rank: "close" },
+      { organic: "catalogFamilyWellKnown", inorganic: "catalogFamilyWellKnownInorganic", rank: "wellKnown" },
+    ],
+  },
+};
+
+/** A feed's lanes, ranked and woven (MESITA-4517, MESITA-4548): Home's rank
+ *  and the Admin preview share it. Each lane's Inorganic row ranks Premier
+ *  places in the same SQL call as an organic ranking; the close and
+ *  well-known rankings feed the "both" lane. Every lane's batch is its
+ *  row's. `answer` is the first SQL answer (its read and Inorganic
+ *  counts). */
 export async function weaveCatalog(
   rankLanes: CatalogRankRpc,
   cfg: Pick<DiscoveryConfig, "general" | "map" | "params">,
@@ -805,37 +856,30 @@ export async function weaveCatalog(
   premier: string[];
   woven: ReturnType<typeof weaveLanes>;
 }> {
-  const rankWith = async (organicRow?: RecipeRow) => {
-    const { data, error } = await rankLanes(catalogRankLanesArgs(cfg, location, families, mode, organicRow));
+  const feed = FEEDS[mode];
+  const rankWith = async (organicRow: RecipeRow, adRow: RecipeRow) => {
+    const { data, error } = await rankLanes(catalogRankLanesArgs(cfg, location, families, mode, organicRow, adRow));
     if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
     return (data ?? {}) as Record<string, unknown>;
   };
+  // One SQL call per lane: its ranking row (close, well known, or for a
+  // both lane the well-known row) with that lane's Inorganic row.
+  const answers = await Promise.all(feed.lanes.map((l) =>
+    rankWith(l.rank === "close" ? feed.close : feed.wellKnown, l.inorganic)
+  ));
+  const closeAt = feed.lanes.findIndex((l) => l.rank === "close");
+  const closeIds = closeAt >= 0
+    ? ids(answers[closeAt].ids)
+    : ids((await rankWith(feed.close, feed.lanes[0].inorganic)).ids);
+  const wellIds = ids(answers[feed.lanes.findIndex((l) => l.rank !== "close")].ids);
   const lane = (key: RecipeRow, list: string[]) => ({ key, ids: list, batch: laneBatch(recipeRow(key, cfg)) });
-  const cap = mode[0].toUpperCase() + mode.slice(1);
-  let answer: Record<string, unknown>;
-  let organicLanes: Array<{ key: RecipeRow; ids: string[]; batch: number }>;
-  if (mode === "family") {
-    // Close and well known are two SQL ranks of the same gated set; both is
-    // the places strong on each (MESITA-4517).
-    const [close, wellKnown] = await Promise.all([
-      rankWith("catalogFamilyClose"),
-      rankWith("catalogFamilyWellKnown"),
-    ]);
-    answer = close;
-    const closeIds = ids(close.ids);
-    const wellIds = ids(wellKnown.ids);
-    organicLanes = [
-      lane("catalogFamilyBoth", strongOnBoth(closeIds, wellIds)),
-      lane("catalogFamilyClose", closeIds),
-      lane("catalogFamilyWellKnown", wellIds),
-    ];
-  } else {
-    answer = await rankWith();
-    organicLanes = [lane(`catalog${cap}Organic` as RecipeRow, ids(answer.ids))];
-  }
-  const premier = ids(answer.premier);
-  const woven = weaveLanes(organicLanes, lane(`catalog${cap}Inorganic` as RecipeRow, premier), mixFor(cfg).adEvery);
-  return { answer, organicLanes, premier, woven };
+  const organicLanes = feed.lanes.map((l) =>
+    lane(l.organic, l.rank === "both" ? strongOnBoth(closeIds, wellIds) : l.rank === "close" ? closeIds : wellIds)
+  );
+  const inorganicLanes = feed.lanes.map((l, i) => lane(l.inorganic, ids(answers[i].premier)));
+  const premier = [...new Set(inorganicLanes.flatMap((l) => l.ids))];
+  const woven = weaveLanes(organicLanes, inorganicLanes, mixFor(cfg).adEvery);
+  return { answer: answers[closeAt >= 0 ? closeAt : 0], organicLanes, premier, woven };
 }
 
 /**
@@ -914,22 +958,15 @@ export async function selectCatalogPool<T extends PoolRow>(
     const organicCount = organicLanes.reduce((n, l) => Math.max(n, l.ids.length), 0);
     read = typeof answer.read === "number" ? answer.read : organicCount;
     const ads = new Set(adIds);
-    const onLane = (key: RecipeRow) => Object.values(laneOf).filter((k) => k === key).length;
+    const byLane: Record<string, number> = {};
+    for (const k of Object.values(laneOf)) byLane[k] = (byLane[k] ?? 0) + 1;
     lanes = {
       organic: organicCount,
       premier: premier.length,
       belowFloor: count(answer.below_floor),
       inorganicTotal: count(answer.inorganic_total),
       adsFirstPage: order.slice(0, page).filter((id) => ads.has(id)).length,
-      ...(mode === "family"
-        ? {
-          family: {
-            close: onLane("catalogFamilyClose"),
-            wellKnown: onLane("catalogFamilyWellKnown"),
-            both: onLane("catalogFamilyBoth"),
-          },
-        }
-        : {}),
+      byLane,
     };
   }
   const ranked = order.length;

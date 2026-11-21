@@ -388,29 +388,31 @@ export function mergeLanes(
 export type WeaveLane = { key: string; ids: readonly string[]; batch: number };
 
 /**
- * THE WEAVE (MESITA-4517): a feed is its lanes' batches, round after round.
- * Each round takes the next `batch` unseen ids of every organic lane, in
- * lane order (an earlier lane claims a shared place first), and interleaves
- * them one from each lane; then ad slots go in as `mergeLanes` puts them
- * (one after every `adEvery` organic places), at most the Inorganic lane's
- * batch per round. A place appears once. Rounds repeat until no organic
- * lane has an unseen id left. `weaves` holds each round's length: the first
- * is Home's first screen and the shuffle's pool. `laneOf` names the lane
- * every id took (ads: the Inorganic key).
+ * THE WEAVE (MESITA-4517, MESITA-4548): a feed is its lanes' batches, round
+ * after round. Each round takes the next `batch` unseen ids of every organic
+ * lane, in lane order (an earlier lane claims a shared place first), and
+ * interleaves them one from each lane. Then ad slots go in: one after every
+ * `adEvery` organic places, drawn round-robin from the feed's Inorganic
+ * lanes, each giving at most its batch per round. A place appears once.
+ * Rounds repeat until no organic lane has an unseen id left. `weaves` holds
+ * each round's length: the first is Home's first screen and the shuffle's
+ * pool. `laneOf` names the lane every id took.
  */
 export function weaveLanes(
   organic: readonly WeaveLane[],
-  inorganic: WeaveLane | null,
+  inorganic: WeaveLane | readonly WeaveLane[] | null,
   adEvery: number,
 ): { order: string[]; adIds: string[]; laneOf: Record<string, string>; weaves: number[] } {
   const every = Number.isFinite(adEvery) ? Math.floor(adEvery) : 0;
+  const ads = inorganic === null ? [] : Array.isArray(inorganic) ? inorganic : [inorganic as WeaveLane];
   const seen = new Set<string>();
   const order: string[] = [];
   const adIds: string[] = [];
   const laneOf: Record<string, string> = {};
   const weaves: number[] = [];
   const at = organic.map(() => 0);
-  let p = 0;
+  const adAt = ads.map(() => 0);
+  let nextAdLane = 0;
   const batchOf = (n: number) => (Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1);
   for (;;) {
     // Each lane's next batch, claimed in lane order.
@@ -432,23 +434,34 @@ export function weaveLanes(
     }
     if (chunk.length === 0) break;
     const start = order.length;
-    let ads = 0;
-    const adCap = inorganic ? batchOf(inorganic.batch) : 0;
+    const quota = ads.map((l) => batchOf(l.batch));
+    // The next unseen Premier id, round-robin over lanes with quota left.
+    const nextAd = (): string | null => {
+      for (let tries = 0; tries < ads.length; tries++) {
+        const li = (nextAdLane + tries) % ads.length;
+        if (quota[li] <= 0) continue;
+        while (adAt[li] < ads[li].ids.length) {
+          const id = ads[li].ids[adAt[li]++];
+          if (seen.has(id)) continue;
+          seen.add(id);
+          laneOf[id] = ads[li].key;
+          quota[li]--;
+          nextAdLane = (li + 1) % ads.length;
+          return id;
+        }
+      }
+      return null;
+    };
     let sinceAd = 0;
     for (const id of chunk) {
       order.push(id);
       sinceAd++;
-      if (inorganic && every > 0 && sinceAd >= every && ads < adCap) {
+      if (ads.length > 0 && every > 0 && sinceAd >= every) {
         sinceAd = 0;
-        while (p < inorganic.ids.length) {
-          const ad = inorganic.ids[p++];
-          if (seen.has(ad)) continue;
-          seen.add(ad);
-          laneOf[ad] = inorganic.key;
+        const ad = nextAd();
+        if (ad !== null) {
           order.push(ad);
           adIds.push(ad);
-          ads++;
-          break;
         }
       }
     }
@@ -458,8 +471,8 @@ export function weaveLanes(
 }
 
 /**
- * FAMILY BOTH (MESITA-4517): the places in the better half of the close
- * ranking AND the better half of the well-known ranking (index < n ÷ 2 in
+ * BOTH (MESITA-4517; every feed since MESITA-4548): the places in the
+ * better half of the close ranking AND the better half of the well-known ranking (index < n ÷ 2 in
  * each), ordered by the worse of their two ranks, then the better, then the
  * close rank. Scores are never averaged.
  */

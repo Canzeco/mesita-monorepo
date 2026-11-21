@@ -38,17 +38,23 @@ export type Recipe = {
   batch: number | null;
 };
 
-/** The ten rows, Catalog modes × lanes plus the Map's two. Mirrors
+/** The rows (MESITA-4548: every lane Organic + Inorganic), Catalog modes × lanes plus the Map's two. Mirrors
  *  RECIPE_ROWS in _shared/discovery-config.ts. */
 export const RECIPE_ROWS = [
   "catalogNearbyOrganic",
   "catalogNearbyInorganic",
+  "catalogNearbyBoth",
+  "catalogNearbyBothInorganic",
   "catalogFamilyClose",
+  "catalogFamilyCloseInorganic",
   "catalogFamilyWellKnown",
+  "catalogFamilyWellKnownInorganic",
   "catalogFamilyBoth",
-  "catalogFamilyInorganic",
+  "catalogFamilyBothInorganic",
   "catalogPopularOrganic",
   "catalogPopularInorganic",
+  "catalogPopularBoth",
+  "catalogPopularBothInorganic",
   "mapOrganic",
   "mapInorganic",
 ] as const;
@@ -222,12 +228,22 @@ export const MIX_BOUNDS = {
 export const DEFAULT_RECIPES: Recipes = {
   catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
   catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
+  // MESITA-4548: Nearby both copies Nearby close; each new Inorganic row
+  // copies its feed's Inorganic row.
+  catalogNearbyBoth: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogNearbyBothInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
+  // MESITA-4517: close copies Nearby Organic, well known copies Popular
+  // Organic, both keeps the old Family Organic knobs.
   catalogFamilyClose: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogFamilyCloseInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
   catalogFamilyWellKnown: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogFamilyWellKnownInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
   catalogFamilyBoth: { halfKm: 2, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
-  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
+  catalogFamilyBothInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
   catalogPopularOrganic: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
   catalogPopularInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
+  catalogPopularBoth: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogPopularBothInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
   mapOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: null },
   mapInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: null },
 };
@@ -392,15 +408,26 @@ function bounds(raw: unknown, fallback: number, b: { min: number; max: number; d
   return Math.round(v * factor) / factor;
 }
 
-/** The ten recipe rows. Mirrors `normalizeRecipes`: a missing row or field
+/** A row saved under an older key (MESITA-4517, MESITA-4548): Family Organic
+ *  is Family both; the one Family Inorganic seeds all three Family Inorganic
+ *  rows until the next save writes them. */
+function legacyRow(row: RecipeRow, r: Record<string, unknown>): unknown {
+  if (row === "catalogFamilyBoth") return r.catalogFamilyOrganic;
+  if (
+    row === "catalogFamilyCloseInorganic" || row === "catalogFamilyWellKnownInorganic" ||
+    row === "catalogFamilyBothInorganic"
+  ) return r.catalogFamilyInorganic;
+  return undefined;
+}
+
+/** The recipe rows. Mirrors `normalizeRecipes`: a missing row or field
  *  reads the table; Map rows have no distance numbers (null); every Organic
  *  row's Premier exponent is 0 whatever is stored (C1, L-1). */
 export function coerceRecipes(raw: unknown): Recipes {
   const r = asRecord(raw);
   const out = {} as Recipes;
   for (const row of RECIPE_ROWS) {
-    // A save from before MESITA-4517: its Family Organic row is Family both.
-    const v = asRecord(row === "catalogFamilyBoth" && r[row] === undefined ? r.catalogFamilyOrganic : r[row]);
+    const v = asRecord(r[row] !== undefined ? r[row] : legacyRow(row, r));
     const d = DEFAULT_RECIPES[row];
     const map = isMapRow(row);
     out[row] = {
