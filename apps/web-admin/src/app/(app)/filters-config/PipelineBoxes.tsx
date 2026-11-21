@@ -201,34 +201,49 @@ const fmtProx = (p: number) => (p >= 0.01 ? p.toFixed(2) : p.toPrecision(1));
 const fmtKm = (km: number) =>
   !Number.isFinite(km) ? "any distance" : `${Number(km.toPrecision(2)).toLocaleString("en-US")} km`;
 
-/** The Ranking table, one flat list (MESITA-4517): a feed is what the
- *  guest sees, a lane is one ranked row inside it. */
-const LANE_ROWS: readonly { row: RecipeRow; name: string; note?: string }[] = [
-  { row: "catalogNearbyOrganic", name: "Nearby close", note: "Organic" },
-  { row: "catalogNearbyInorganic", name: "Nearby close", note: "Inorganic · Premier only" },
-  { row: "catalogNearbyBoth", name: "Nearby both", note: "Organic · close and well known" },
-  { row: "catalogNearbyBothInorganic", name: "Nearby both", note: "Inorganic · Premier only" },
-  { row: "catalogFamilyClose", name: "Family close", note: "Organic" },
-  { row: "catalogFamilyCloseInorganic", name: "Family close", note: "Inorganic · Premier only" },
-  { row: "catalogFamilyWellKnown", name: "Family well known", note: "Organic" },
-  { row: "catalogFamilyWellKnownInorganic", name: "Family well known", note: "Inorganic · Premier only" },
-  { row: "catalogFamilyBoth", name: "Family both", note: "Organic · close and well known" },
-  { row: "catalogFamilyBothInorganic", name: "Family both", note: "Inorganic · Premier only" },
-  { row: "catalogPopularOrganic", name: "Popular", note: "Organic" },
-  { row: "catalogPopularInorganic", name: "Popular", note: "Inorganic · Premier only" },
-  { row: "catalogPopularBoth", name: "Popular both", note: "Organic · close and well known" },
-  { row: "catalogPopularBothInorganic", name: "Popular both", note: "Inorganic · Premier only" },
-  { row: "mapOrganic", name: "Map", note: "Organic · Popular and Family share it" },
-  { row: "mapInorganic", name: "Map", note: "Inorganic · Premier only" },
+/** The Ranking table, one flat list (MESITA-4517). A Mode is what the guest
+ *  picks (Nearby, Family, Popular); a Lane is one ranked row inside it:
+ *  Nearby Lane (close), Popular Lane (well known), Local Favorites Lane (near
+ *  AND popular). Every lane has an Organic and an Inorganic row. Names are
+ *  labels only (MESITA-4557): the stored keys never change. */
+const LANE_ROWS: readonly { row: RecipeRow; lane: string; mode: string }[] = [
+  { row: "catalogNearbyOrganic", lane: "Nearby Lane", mode: "Nearby Mode" },
+  { row: "catalogNearbyInorganic", lane: "Nearby Lane", mode: "Nearby Mode" },
+  { row: "catalogNearbyBoth", lane: "Local Favorites Lane", mode: "Nearby Mode" },
+  { row: "catalogNearbyBothInorganic", lane: "Local Favorites Lane", mode: "Nearby Mode" },
+  { row: "catalogFamilyClose", lane: "Nearby Lane", mode: "Family Mode" },
+  { row: "catalogFamilyCloseInorganic", lane: "Nearby Lane", mode: "Family Mode" },
+  { row: "catalogFamilyWellKnown", lane: "Popular Lane", mode: "Family Mode" },
+  { row: "catalogFamilyWellKnownInorganic", lane: "Popular Lane", mode: "Family Mode" },
+  { row: "catalogFamilyBoth", lane: "Local Favorites Lane", mode: "Family Mode" },
+  { row: "catalogFamilyBothInorganic", lane: "Local Favorites Lane", mode: "Family Mode" },
+  { row: "catalogPopularOrganic", lane: "Popular Lane", mode: "Popular Mode" },
+  { row: "catalogPopularInorganic", lane: "Popular Lane", mode: "Popular Mode" },
+  { row: "catalogPopularBoth", lane: "Local Favorites Lane", mode: "Popular Mode" },
+  { row: "catalogPopularBothInorganic", lane: "Local Favorites Lane", mode: "Popular Mode" },
+  { row: "mapOrganic", lane: "Map Lane", mode: "Map" },
+  { row: "mapInorganic", lane: "Map Lane", mode: "Map" },
 ];
+
+/** "Organic Nearby Lane" / "Inorganic Local Favorites Lane". */
+const laneName = (row: RecipeRow, lane: string) => `${isOrganicRow(row) ? "Organic" : "Inorganic"} ${lane}`;
+
+/** Under the name: the Mode and how close (½ at N km). */
+function laneNote(row: RecipeRow, mode: string, recipe: Recipe): string {
+  const parts = [mode];
+  if (recipe.halfKm != null) parts.push(`½ at ${recipe.halfKm} km`);
+  else parts.push("no distance");
+  if (!isOrganicRow(row)) parts.push("Premier only");
+  return parts.join(" · ");
+}
 
 // 1 ─ How places are ranked ───────────────────────────────────────────────
 export function HowRankedCard() {
   const uses: readonly [string, string][] = [
-    ["Home › Nearby chip", "Nearby close + Nearby both, each Organic and Inorganic"],
-    ["Home › a family chip", "Family close + Family well known + Family both, each Organic and Inorganic, one family"],
-    ["Home › Popular chip", "Popular + Popular both, each Organic and Inorganic"],
-    ["Chat", "Family well known, inside its 15 km circle. No Inorganic lane, no shuffle."],
+    ["Home › Nearby chip (Nearby Mode)", "Nearby Lane + Local Favorites Lane, each Organic and Inorganic"],
+    ["Home › a family chip (Family Mode)", "Nearby Lane + Popular Lane + Local Favorites Lane of one family, each Organic and Inorganic"],
+    ["Home › Popular chip (Popular Mode)", "Popular Lane + Local Favorites Lane, each Organic and Inorganic"],
+    ["Chat", "Family Mode's Organic Popular Lane, inside its 15 km circle. No Inorganic lane, no shuffle."],
     ["The place screen's score", "Popular Organic"],
     ["Search map", "Map Organic + Map Inorganic"],
     ["Pay, Wallet and the Reward tab", "Nearest first. No rows, no Inorganic lane, no shuffle."],
@@ -258,11 +273,12 @@ export function HowRankedCard() {
           <p>
             A <strong>feed</strong> is what the guest sees; a <strong>lane</strong> is one ranked row inside
             it, and every lane has an <strong>Organic</strong> row and an <strong>Inorganic</strong> row.
-            Nearby is <strong>close</strong> + <strong>both</strong>; Popular is <strong>popular</strong> +{" "}
-            <strong>both</strong>, every family. Family is one family in <strong>close</strong>,{" "}
-            <strong>well known</strong> and <strong>both</strong>. Both is the places in the better half of
-            the close ranking and the better half of the well-known ranking, ordered by the worse of the two
-            ranks; the two scores are never averaged. Organic rows have Premier exponent 0, so a plan never
+            A <strong>Mode</strong> is what the guest picks. Nearby Mode is the <strong>Nearby Lane</strong>{" "}
+            (close) + the <strong>Local Favorites Lane</strong>; Popular Mode is the{" "}
+            <strong>Popular Lane</strong> (well known) + the Local Favorites Lane, every family. Family Mode is
+            one family in all three. The Local Favorites Lane is the places that are both near and popular:
+            the better half of the Nearby ranking and the better half of the Popular ranking, ordered by the
+            worse of the two ranks; the two scores are never averaged. Organic rows have Premier exponent 0, so a plan never
             moves them. Inorganic rows rank Premier places only; guests see them marked &ldquo;Ad&rdquo;.
           </p>
           <p>
@@ -350,7 +366,7 @@ const RECIPE_COLUMNS: readonly { key: RecipeKey; label: string }[] = [
 function recipeEffect(row: RecipeRow, recipe: Recipe, inorganicFloor: number): string {
   const organic = isOrganicRow(row);
   if (row === "catalogFamilyBoth" || row === "catalogNearbyBoth" || row === "catalogPopularBoth") {
-    return "Order: the worse of its close and well-known ranks";
+    return "Order: the worse of its Nearby and Popular ranks";
   }
   const h = recipe.halfKm;
   const e = recipe.distanceExp;
@@ -521,15 +537,17 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
             </Tr>
           </THead>
           <TBody>
-            {LANE_ROWS.map(({ row, name, note }) => (
+            {LANE_ROWS.map(({ row, lane, mode }) => (
               <Tr key={row}>
                 <Td sticky className="font-medium">
-                  {name}
-                  {note ? <span className="text-muted-foreground type-meta block font-normal">{note}</span> : null}
+                  {laneName(row, lane)}
+                  <span className="text-muted-foreground type-meta block font-normal">
+                    {laneNote(row, mode, cfg.params.recipes[row])}
+                  </span>
                 </Td>
                 {RECIPE_COLUMNS.map(({ key, label }) => (
                   <Td key={key} numeric>
-                    {cell(row, `${name} ${isOrganicRow(row) ? "Organic" : "Inorganic"}`, key, label)}
+                    {cell(row, `${laneName(row, lane)}, ${mode}`, key, label)}
                   </Td>
                 ))}
                 <Td className="text-muted-foreground type-meta min-w-48 whitespace-normal">

@@ -51,20 +51,20 @@ function scoreNumber(n: number | null | undefined): string {
  */
 /** A lane key's name on the tag (MESITA-4517). */
 const LANE_NAMES: Record<string, string> = {
-  catalogNearbyOrganic: "Nearby close",
-  catalogNearbyInorganic: "Nearby close · Inorganic",
-  catalogNearbyBoth: "Nearby both",
-  catalogNearbyBothInorganic: "Nearby both · Inorganic",
-  catalogFamilyClose: "Family close",
-  catalogFamilyCloseInorganic: "Family close · Inorganic",
-  catalogFamilyWellKnown: "Family well known",
-  catalogFamilyWellKnownInorganic: "Family well known · Inorganic",
-  catalogFamilyBoth: "Family both",
-  catalogFamilyBothInorganic: "Family both · Inorganic",
-  catalogPopularOrganic: "Popular",
-  catalogPopularInorganic: "Popular · Inorganic",
-  catalogPopularBoth: "Popular both",
-  catalogPopularBothInorganic: "Popular both · Inorganic",
+  catalogNearbyOrganic: "Organic Nearby Lane",
+  catalogNearbyInorganic: "Inorganic Nearby Lane",
+  catalogNearbyBoth: "Organic Local Favorites Lane",
+  catalogNearbyBothInorganic: "Inorganic Local Favorites Lane",
+  catalogFamilyClose: "Organic Nearby Lane",
+  catalogFamilyCloseInorganic: "Inorganic Nearby Lane",
+  catalogFamilyWellKnown: "Organic Popular Lane",
+  catalogFamilyWellKnownInorganic: "Inorganic Popular Lane",
+  catalogFamilyBoth: "Organic Local Favorites Lane",
+  catalogFamilyBothInorganic: "Inorganic Local Favorites Lane",
+  catalogPopularOrganic: "Organic Popular Lane",
+  catalogPopularInorganic: "Inorganic Popular Lane",
+  catalogPopularBoth: "Organic Local Favorites Lane",
+  catalogPopularBothInorganic: "Inorganic Local Favorites Lane",
 };
 
 function ScoreLabel({
