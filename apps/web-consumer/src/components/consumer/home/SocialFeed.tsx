@@ -1277,6 +1277,9 @@ function SocialFeedBody() {
           supabase,
           from ? { lat: from.lat, lng: from.lng } : null,
           next,
+          undefined,
+          // The feed ends at Admin's latest-events number (MESITA-4572).
+          lastFeed?.items.length ?? 0,
         )
           .then((page) => {
             moreFails.current = 0;

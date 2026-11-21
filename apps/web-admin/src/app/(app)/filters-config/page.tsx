@@ -9,6 +9,7 @@ import {
   MixingBox,
   RankingBox,
   SearchbarsBox,
+  SocialDiscoveryBox,
 } from "./PipelineBoxes";
 
 // Discovery: ONE page, no subpages (MESITA-2327). Five cards since
@@ -36,6 +37,7 @@ export default async function DiscoveryPage() {
           <MixingBox {...seed} />
           <MapDisplayBox {...seed} />
           <SearchbarsBox {...seed} />
+          <SocialDiscoveryBox {...seed} />
         </div>
       </DiscoverySaveScope>
     </ConfigPageLayout>

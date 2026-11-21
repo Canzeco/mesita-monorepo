@@ -162,7 +162,15 @@ export type DiscoveryConfig = {
   deep: DeepConfig;
   chat: { prompt: string };
   premier: PremierConfig;
+  /** Home › Social (MESITA-4572). Mirrors SocialConfig. */
+  social: SocialConfig;
 };
+
+/** Mirrors SocialConfig and its bounds in _shared/discovery-config.ts. */
+export type SocialConfig = { latestEvents: number };
+export const SOCIAL_LATEST_EVENTS_MIN = 1;
+export const SOCIAL_LATEST_EVENTS_MAX = 500;
+export const DEFAULT_SOCIAL: SocialConfig = { latestEvents: 100 };
 
 /** Mirrors DeepConfig in _shared/discovery-config.ts (MESITA-2327). */
 export type DeepConfig = { limit: number; minSimilarity: number };
@@ -387,6 +395,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   deep: DEFAULT_DEEP,
   chat: { prompt: "" },
   premier: DEFAULT_PREMIER,
+  social: DEFAULT_SOCIAL,
 };
 
 /** Round to the field's own decimals so a float cannot leave the page dirty. */
@@ -523,6 +532,13 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
         : DEFAULT_CONFIG.chat.prompt,
     },
     premier: coercePremier(r.premier),
+    social: {
+      latestEvents: bounds((r.social as { latestEvents?: unknown } | undefined)?.latestEvents, DEFAULT_SOCIAL.latestEvents, {
+        min: SOCIAL_LATEST_EVENTS_MIN,
+        max: SOCIAL_LATEST_EVENTS_MAX,
+        decimals: 0,
+      }),
+    },
   };
 }
 

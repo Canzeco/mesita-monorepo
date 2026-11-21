@@ -107,6 +107,9 @@ export async function apiListActivityFeed(
   before?: string,
   /** One place's events alone, no circle (the Social tab, MESITA-3417). */
   placeId?: string,
+  /** How many events Home already holds: the server stops at Admin's
+   *  latest-events number (MESITA-4572). */
+  shown?: number,
 ): Promise<ActivityFeedPage> {
   const { items, next } = await invokeEF<ActivityFeedPage>(
     client,
@@ -115,6 +118,7 @@ export async function apiListActivityFeed(
       ...(from ? { lat: from.lat, lng: from.lng } : {}),
       ...(before ? { before } : {}),
       ...(placeId ? { place_id: placeId } : {}),
+      ...(typeof shown === "number" && shown > 0 ? { shown } : {}),
     },
   );
   return { items, next };

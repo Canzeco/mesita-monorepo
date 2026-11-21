@@ -89,7 +89,7 @@ const LIVE_BLOB_2026_10_18 = {
 
 // The rails engine's `catalog` section retired with it (MESITA-2923).
 // `premier` joined with MESITA-3043 (Premier's prices).
-const LIVE_KEYS = ["chat", "deep", "general", "map", "name", "params", "premier"];
+const LIVE_KEYS = ["chat", "deep", "general", "map", "name", "params", "premier", "social"];
 const RETIRED_KEYS = ["weights", "weightsByMode", "engines", "swipe", "filters", "catalog"];
 
 Deno.test("the live blob loads: the retired keys drop, every live value stands", () => {
@@ -280,13 +280,16 @@ Deno.test("the deck's param bags and numbers are not typed params", () => {
   assertEquals(cfg, { proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33, starsPower: 6 }, shuffle: { temperature: 0.3 }, recipes: DEFAULT_RECIPES, mix: DEFAULT_MIX });
 });
 
-// The tentative Social engine's box had no reader (MESITA-2144). A blob that
-// still carries it must come back without it, like `slotting` before it.
-Deno.test("the retired social box does not survive a normalize", () => {
+// The tentative Social engine's box had no reader (MESITA-2144): its knobs
+// never survive a normalize. `social` is back since MESITA-4572 with one
+// setting, latestEvents (1–500, default 100).
+Deno.test("social keeps only latestEvents; the retired engine's knobs drop", () => {
   const cfg = normalizeDiscoveryConfig({
     social: { seedCount: 6, generatedCount: 6, eventsPerRail: 8, minSeedEvents: 1, horizonDays: 14 },
   });
-  assertEquals("social" in cfg, false);
+  assertEquals(cfg.social, { latestEvents: 100 });
+  assertEquals(normalizeDiscoveryConfig({ social: { latestEvents: 0 } }).social.latestEvents, 1);
+  assertEquals(normalizeDiscoveryConfig({ social: { latestEvents: 30.4 } }).social.latestEvents, 30);
 });
 
 Deno.test("chat.prompt round-trips, truncates, and garbage becomes blank", () => {

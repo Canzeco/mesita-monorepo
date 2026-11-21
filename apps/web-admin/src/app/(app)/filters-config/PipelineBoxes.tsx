@@ -22,7 +22,7 @@
 // exponent, Google exponent, Premier exponent, Temperature; never "root".
 
 import { createContext, useContext, useState } from "react";
-import { LayoutGrid, ListOrdered, MapPin, Search, Shuffle } from "lucide-react";
+import { LayoutGrid, ListOrdered, MapPin, Search, Shuffle, Users } from "lucide-react";
 import {
   NumberCell,
   NumberField,
@@ -46,6 +46,8 @@ import {
   isMapRow,
   isOrganicRow,
   MAP_DOTS_SHOWN_MAX,
+  SOCIAL_LATEST_EVENTS_MAX,
+  SOCIAL_LATEST_EVENTS_MIN,
   MAP_DOTS_SHOWN_MIN,
   MAP_PLACES_SHOWN_MAX,
   MAP_PLACES_SHOWN_MIN,
@@ -77,6 +79,7 @@ export const BOX_SLICES = {
   ranking: ["ranking"],
   mixing: ["mixing"],
   mapDisplay: ["mapDisplay"],
+  social: ["social"],
   // No box writes Premier's prices since MESITA-3828; the slice stays so
   // actions.test.ts keeps proving no other box can overwrite them.
   premier: ["premier"],
@@ -663,6 +666,41 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
         </Group>
       </div>
       <Save editor={editor} dirty={dirty} slices={BOX_SLICES.mixing} />
+    </SectionCard>
+  );
+}
+
+// Social discovery ─────────────────────────────────────────────────────
+// Home › Social (MESITA-4572, Pato: "display number of latest events. easy
+// peasy. nothing else").
+export function SocialDiscoveryBox(seed: ConfigSeed<DiscoveryConfig>) {
+  const editor = useDiscoveryEditor(seed);
+  const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
+  const off = pending || loadBlocked;
+  const dirty = cfg.social.latestEvents !== saved.social.latestEvents;
+  return (
+    <SectionCard
+      id="s-social"
+      icon={<Users />}
+      title="Social discovery"
+      subtitle="Home › Social: everyone's newest events near the guest."
+      className="scroll-mt-16"
+    >
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <NumberField
+          label="Latest events shown"
+          value={cfg.social.latestEvents}
+          min={SOCIAL_LATEST_EVENTS_MIN}
+          max={SOCIAL_LATEST_EVENTS_MAX}
+          disabled={off}
+          hint="How many of the newest events the Social feed shows, then it ends."
+          onChange={(latestEvents) => {
+            setOk(false);
+            setCfg((c) => ({ ...c, social: { latestEvents } }));
+          }}
+        />
+      </div>
+      <Save editor={editor} dirty={dirty} slices={BOX_SLICES.social} />
     </SectionCard>
   );
 }
