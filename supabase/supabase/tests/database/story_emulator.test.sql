@@ -42,7 +42,8 @@ create function pg_temp.story(k text) returns public.stories
 
 select is(
   (money_config_merge_story('{"story_emulator": true, "story_emulator_bonus_wait_sec": 5, "story_emulator_post_window_sec": 99999}'::jsonb) -> 'after')
-    - array['story_min_followers', 'story_bonus_wait_sec', 'story_post_window_sec', 'story_credit_margin_sec', 'story_check_margin_sec', 'story_recheck_meta'],
+    - array['story_min_followers', 'story_bonus_wait_sec', 'story_post_window_sec', 'story_credit_margin_sec', 'story_check_margin_sec', 'story_recheck_meta',
+              'story_ai_enabled', 'story_ai_batch', 'story_ai_max_tries', 'story_desk_hours', 'story_media_retention_hours', 'story_stale_days'],
   '{"story_emulator": true, "story_emulator_bonus_wait_sec": 10, "story_emulator_post_window_sec": 3600}'::jsonb,
   'the switch lands; the waits clamp to 10 s and 3,600 s');
 select throws_ok($$ select money_config_merge_story('{"story_emulator": "yes"}'::jsonb) $$, '22023', null, 'the switch must be a boolean');
