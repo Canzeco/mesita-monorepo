@@ -4,7 +4,8 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Clock, QrCode } from "lucide-react";
+import { Clock, Gift, QrCode } from "lucide-react";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -350,6 +351,19 @@ export function PayPage({
           </span>
         </button>
       )}
+
+      {/* SEND GIFT UNDER PAY BILL (Pato, 2026-11-21, MESITA-4520: "Payment
+          Method | Tickets · Pay Bill · Send Gift black button · then each
+          card"): black, full width, half Pay Bill's height so Pay stays the
+          main action. It opens the place list to gift from (MESITA-4096). */}
+      <PushLink
+        href={CONSUMER_ROUTES.walletSend}
+        className="bg-foreground text-background hover:bg-foreground/90 mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold"
+        data-send-gift
+      >
+        <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+        Send Gift
+      </PushLink>
 
       <hr className="border-border -mx-2 mt-3 mb-1" data-pay-divider />
 
