@@ -61,7 +61,9 @@
 //               universe (always in test; live once money_config.sending_live),
 //             outcome?: "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none",
 //             settling?: true, pending_purchases?: [purchase ids],
-//             cards?: [{ id, brand, last4, exp_month, exp_year, in_use }] | null }
+//             cards?: [{ id, brand, last4, exp_month, exp_year, in_use }] | null,
+//             pay_method?: card|apple_pay|google_pay|null (with_cards only,
+//               MESITA-4526: the default the Wallet header shows) }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
@@ -79,7 +81,7 @@ import {
   settleAll,
   type SettleOutcome,
 } from "../_shared/wallet.ts";
-import { readSavedCards } from "../_shared/cards.ts";
+import { readPayMethod, readSavedCards } from "../_shared/cards.ts";
 import { withGuestOffers } from "../_shared/vouchers.ts";
 import {
   legacyWaitingState,
@@ -111,6 +113,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   const livemode = paymentsLivemode();
   // Started first, awaited last: Stripe's card list runs beside the reads.
   const cardsRead = body.with_cards === true ? readSavedCards(admin, userId, livemode) : null;
+  const payMethodRead = body.with_cards === true ? readPayMethod(admin, userId) : null;
 
   // ── Settle what is still open ──────────────────────────────────────────
   const { data: open, error: openErr } = await admin
@@ -322,11 +325,13 @@ serveJson("consumer-web-get-wallet", async (req) => {
   const offersById = new Map(offerRows.map((r) => [r.id, r.offers]));
 
   const cards = cardsRead ? await cardsRead : undefined;
+  const payMethod = payMethodRead ? await payMethodRead : undefined;
 
   return json({
     ok: true,
     test_mode: !livemode,
     ...(cards === undefined ? {} : { cards }),
+    ...(payMethod === undefined ? {} : { pay_method: payMethod }),
     balances: balances.map(({ place_id, ...b }) => ({
       place: places.get(place_id) ?? null,
       place_id,
