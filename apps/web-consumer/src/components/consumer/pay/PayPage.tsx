@@ -331,11 +331,11 @@ export function PayPage({
             <button
               type="button"
               className="mt-2 flex h-24 w-full items-center justify-center gap-3 rounded-xl bg-[#635BFF] text-lg font-semibold text-white hover:bg-[#5249e6]"
-              aria-label={bill === "open" ? "Pay your open bill" : `Pay at ${selectedName}`}
+              aria-label={bill === "open" ? "Pay your open bill" : `Pay Bill at ${selectedName}`}
               onClick={paySelected}
             >
               <QrCode className="h-8 w-8" strokeWidth={2.25} aria-hidden />
-              Pay
+              Pay Bill
             </button>
           )
         ) : null}
