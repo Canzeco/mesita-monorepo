@@ -46,7 +46,7 @@ export async function MonitorPage({
     <div className="flex flex-col gap-4 pb-8">
       <MonitorToolbar>
         {stripe ? <OpenStripeButton placeId={placeId} /> : null}
-        <ExportButton placeId={placeId} kind={kind} filter={filter} name={page === "money" ? "payments" : page} />
+        <ExportButton placeId={placeId} kind={kind} filter={filter} name={page === "money" ? "stripe" : page} />
       </MonitorToolbar>
       {payouts ? (
         // Two columns (MESITA-4564, Pato: "payments left, payouts right");

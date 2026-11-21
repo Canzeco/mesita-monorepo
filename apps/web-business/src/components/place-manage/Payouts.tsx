@@ -11,28 +11,26 @@ import Link from "next/link";
 import { BankIcon } from "@phosphor-icons/react/dist/ssr";
 import { getPayouts } from "@/lib/business-api";
 import { day, money, payoutStatus, type Payout, type PayoutsAnswer } from "@/lib/monitor";
-import { Dash, MonitorTable, type Column } from "./MonitorTable";
 
-/** A payout's table (MESITA-4566): when Stripe sent it, to which bank, its
- *  state, when it lands, how much. */
-function payoutColumns(timezone: string): Column<Payout>[] {
-  return [
-    { head: "Sent", cell: (p) => (p.created ? day(p.created, timezone) : <Dash />) },
-    {
-      head: "Bank",
-      cell: (p) => (
-        <span className="flex items-center gap-2">
-          <span className="bg-muted text-muted-foreground grid size-6 place-items-center rounded-full">
-            <BankIcon size={12} aria-hidden />
-          </span>
-          <span className="font-medium">{p.bank ?? "Your bank"}</span>
+const ROW = "grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 text-sm sm:px-5";
+
+function PayoutRow({ p, timezone }: { p: Payout; timezone: string }) {
+  return (
+    <li className={ROW}>
+      <span className="bg-muted text-muted-foreground grid size-8 place-items-center rounded-full">
+        <BankIcon size={16} aria-hidden />
+      </span>
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2">
+        <span className="truncate font-medium">{p.bank ?? "Your bank"}</span>
+        <span className="text-muted-foreground text-sm">
+          {payoutStatus(p.status)}
+          {p.arrival_date ? ` · ${p.status === "paid" ? "Arrived" : "Arrives"} ${day(p.arrival_date, timezone)}` : ""}
+          {p.failure_message ? ` · ${p.failure_message}` : ""}
         </span>
-      ),
-    },
-    { head: "Status", cell: (p) => (p.failure_message ? `${payoutStatus(p.status)} · ${p.failure_message}` : payoutStatus(p.status)) },
-    { head: "Arrives", cell: (p) => (p.arrival_date ? day(p.arrival_date, timezone) : <Dash />) },
-    { head: "Amount", align: "right", cell: (p) => <span className="font-semibold">{money(p.amount_cents, p.currency)}</span> },
-  ];
+      </div>
+      <p className="font-semibold whitespace-nowrap tabular-nums">{money(p.amount_cents, p.currency)}</p>
+    </li>
+  );
 }
 
 export function Payouts({ placeId, timezone }: { placeId: string; timezone: string }) {
@@ -88,7 +86,11 @@ export function Payouts({ placeId, timezone }: { placeId: string; timezone: stri
         rows.length === 0 ? (
           <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">No payouts yet.</p>
         ) : (
-          <MonitorTable columns={payoutColumns(timezone)} rows={rows} rowKey={(p) => p.id} />
+          <ul className="divide-border divide-y">
+            {rows.map((p) => (
+              <PayoutRow key={p.id} p={p} timezone={timezone} />
+            ))}
+          </ul>
         )
       ) : null}
       {answer?.state === "ok" && answer.next ? (
