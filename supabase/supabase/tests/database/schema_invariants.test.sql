@@ -447,8 +447,8 @@ select is_empty(
 select is_empty(
   $$select 1 from information_schema.columns
      where table_schema = 'public' and table_name = 'place_profiles'
-       and column_name in ('tiktok_url', 'yelp_url', 'resy_url', 'didi_food_url', 'x_url', 'threads_url', 'reddit_url')$$,
-  'dead place URL columns are gone (tripadvisor_url is back, MESITA-4569)'
+       and column_name in ('tiktok_url', 'tripadvisor_url', 'yelp_url', 'resy_url', 'didi_food_url', 'x_url', 'threads_url', 'reddit_url')$$,
+  'dead place URL columns are gone (MESITA-4569 added five)'
 );
 
 -- Inverted by MESITA-2091. The four NULL/false dummies existed only so EFs
@@ -458,7 +458,7 @@ select ok(
   (
     select count(*) from information_schema.columns
      where table_schema = 'public' and table_name = 'profiles'
-       and column_name in ('tiktok_url', 'yelp_url', 'requires_story', 'resy_url', 'didi_food_url', 'x_url', 'threads_url', 'reddit_url')
+       and column_name in ('tiktok_url', 'tripadvisor_url', 'yelp_url', 'requires_story', 'resy_url', 'didi_food_url', 'x_url', 'threads_url', 'reddit_url')
   ) = 0,
   'profiles no longer projects the dummy leftover or dropped link columns'
 );

@@ -78,7 +78,6 @@ export function googleBasicsToUpdatePatch(input: {
     whatsapp_url: input.basics.whatsapp_url,
     opentable_url: input.basics.opentable_url,
     uber_eats_url: input.basics.uber_eats_url,
-    tripadvisor_url: input.basics.tripadvisor_url,
     google_maps_url: input.basics.google_maps_url,
     google_stars_overall: input.basics.google_stars_overall,
     google_review_count: input.basics.google_review_count,

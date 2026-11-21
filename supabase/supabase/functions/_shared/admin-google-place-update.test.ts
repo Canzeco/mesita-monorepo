@@ -35,7 +35,6 @@ function sampleBasics(): GoogleBasics {
     whatsapp_url: null,
     opentable_url: null,
     uber_eats_url: null,
-    tripadvisor_url: null,
     google_maps_url: "https://maps.google.com",
     google_stars_overall: 4.5,
     google_review_count: 10,

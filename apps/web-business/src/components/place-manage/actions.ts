@@ -96,7 +96,6 @@ export type AdminPlace = {
   google_maps_url: string | null;
   opentable_url: string | null;
   uber_eats_url: string | null;
-  tripadvisor_url: string | null;
   /** Foursquare's matched place (MESITA-4544) and its 0–1 popularity. */
   foursquare_url?: string | null;
   foursquare_popularity?: number | null;

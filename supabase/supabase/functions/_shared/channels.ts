@@ -11,14 +11,12 @@ export type ChannelKey =
   | "whatsapp_url"
   | "opentable_url"
   | "uber_eats_url"
-  | "tripadvisor_url"
   | "google_maps_url";
 
 export type Channels = Record<ChannelKey, string | null>;
 
 // Hostname → channel column. Accepts exact hostnames and subdomain matches
-// (`m.facebook.com` → `facebook_url`). TripAdvisor matches its brand label so
-// country TLDs and locale subdomains land (MESITA-4569).
+// (`m.facebook.com` → `facebook_url`).
 function matchChannel(host: string): ChannelKey | null {
   const h = host.replace(/^www\./, "").toLowerCase();
   if (h === "instagram.com" || h.endsWith(".instagram.com")) return "instagram_url";
@@ -28,7 +26,6 @@ function matchChannel(host: string): ChannelKey | null {
   if (h === "whatsapp.com" || h.endsWith(".whatsapp.com")) return "whatsapp_url";
   if (h.startsWith("opentable.")) return "opentable_url";
   if (h === "ubereats.com" || h.endsWith(".ubereats.com")) return "uber_eats_url";
-  if (/(^|\.)tripadvisor\./.test(h)) return "tripadvisor_url";
   // maps.google.com + goo.gl short links. (google.com/maps/* needs the path —
   // see matchChannelFromUrl / classifyLinks path check.)
   if (h === "maps.google.com" || h.endsWith(".maps.google.com")) return "google_maps_url";
@@ -36,13 +33,15 @@ function matchChannel(host: string): ChannelKey | null {
   return null;
 }
 
-// Hosts we still RECOGNISE but never track as a channel (TikTok, Yelp; X,
+// Hosts we still RECOGNISE but never track as a channel (TikTok, TripAdvisor,
+// Yelp; X,
 // Threads, Reddit, Resy and DiDi Food dropped by MESITA-4569). matchChannel
 // returns null for them, and classifyLinks absorbs them here so a link to any
 // of these can never leak into website_url.
 function isRetiredSocialHost(host: string): boolean {
   const h = host.replace(/^www\./, "").toLowerCase();
   if (h === "tiktok.com" || h.endsWith(".tiktok.com")) return true;
+  if (/(^|\.)tripadvisor\./.test(h)) return true;
   if (/(^|\.)yelp\./.test(h)) return true;
   if (["twitter.com", "x.com", "threads.net", "threads.com", "reddit.com", "resy.com", "didi.com", "sindelantal.com.mx"]
     .some((b) => h === b || h.endsWith(`.${b}`))) return true;
@@ -158,7 +157,6 @@ export function classifyLinks(input: (string | null | undefined)[]): Channels {
     whatsapp_url: pickShortest(buckets.whatsapp_url),
     opentable_url: pickShortest(buckets.opentable_url),
     uber_eats_url: pickShortest(buckets.uber_eats_url),
-    tripadvisor_url: pickShortest(buckets.tripadvisor_url),
     google_maps_url: pickShortest(buckets.google_maps_url),
   };
 }

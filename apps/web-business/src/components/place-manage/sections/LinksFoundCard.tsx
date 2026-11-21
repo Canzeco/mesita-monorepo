@@ -36,7 +36,6 @@ function rows(place: AdminPlace): Row[] {
     { name: "Foursquare", found: fsq, what: "The Foursquare place" },
     { name: "Uber Eats", found: link(place, "uber_eats_url"), what: "The Uber Eats store" },
     { name: "OpenTable", found: link(place, "opentable_url"), what: "The OpenTable page" },
-    { name: "TripAdvisor", found: link(place, "tripadvisor_url"), what: "The TripAdvisor page" },
     { name: "Website", found: link(place, "website_url"), what: "The website" },
     { name: "WhatsApp", found: link(place, "whatsapp_url"), what: "The WhatsApp link" },
   ];

@@ -8,11 +8,10 @@ export type GoogleChannel =
   | "instagram_url"
   | "facebook_url"
   | "opentable_url"
-  | "uber_eats_url"
-  | "tripadvisor_url";
+  | "uber_eats_url";
 
 const NOT_A_WEBSITE =
-  /(^|\.)(rappi|doordash|grubhub|postmates|seamless|ubereats|didifood|google|bing|duckduckgo|wikipedia|foursquare|linkedin|youtube|linktr|beacons|menudo|yelp|tiktok|twitter|x|threads|reddit|resy|didi|sindelantal)\./;
+  /(^|\.)(rappi|doordash|grubhub|postmates|seamless|ubereats|didifood|google|bing|duckduckgo|wikipedia|foursquare|linkedin|youtube|linktr|beacons|menudo|tripadvisor|yelp|tiktok|twitter|x|threads|reddit|resy|didi|sindelantal)\./;
 
 const NOT_A_WEBSITE_HOSTS = ["goo.gl", "youtu.be", "bio.link"];
 
@@ -95,10 +94,8 @@ export function channelFromUrl(
   if (host.startsWith("opentable.")) return { key: "opentable_url", url };
   if (host === "ubereats.com" || host.endsWith(".ubereats.com"))
     return { key: "uber_eats_url", url };
-  // MESITA-4569: TripAdvisor is a channel; X, Threads, Reddit, Resy and DiDi
-  // Food are not (NOT_A_WEBSITE keeps them out of website_url).
-  if (/(^|\.)tripadvisor\./.test(host))
-    return { key: "tripadvisor_url", url };
+  // MESITA-4569: X, Threads, Reddit, Resy and DiDi Food are no channel
+  // (NOT_A_WEBSITE keeps them out of website_url).
   if (
     NOT_A_WEBSITE.test(host) ||
     NOT_A_WEBSITE_HOSTS.some(

@@ -222,8 +222,6 @@ export type PlaceDetail = {
   };
   reviews_maps: {
     google_maps_url?: string;
-    /** The place's TripAdvisor page (MESITA-4569). */
-    tripadvisor_url?: string;
     /** Google's write-review form for this place, from google_place_id
      *  (MESITA-2916). The stored maps URL is a `?cid=` link and cannot open
      *  the form. Absent when the payload carries no Google id. */

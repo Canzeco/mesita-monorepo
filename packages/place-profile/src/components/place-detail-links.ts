@@ -1,11 +1,11 @@
-import { Bike, CalendarCheck, Globe, MapPin, MessageCircle, Star } from "lucide-react";
+import { Bike, CalendarCheck, Globe, MapPin, MessageCircle } from "lucide-react";
 
 import { Facebook, Instagram } from "./brand-icons";
 
 // `logo` points at a real brand mark in /public/channels (simple-icons SVG,
 // brand colour baked in) so the Channels chips read as the actual apps.
-// Channels without an available brand SVG (Website generic, TripAdvisor) keep
-// their neutral lucide `Icon` fallback. X, Threads, Reddit, Resy and DiDi Food
+// Channels without an available brand SVG (Website generic) keep their
+// neutral lucide `Icon` fallback. X, Threads, Reddit, Resy and DiDi Food
 // were dropped (MESITA-4569).
 //
 // EACH LINK IS THE QUIET GREY CHIP, ONLY ITS MARK IN THE BRAND'S COLOUR
@@ -76,7 +76,5 @@ export const REVIEW_DEFS = [
     logo: "/channels/google.svg",
     logoAsIs: true,
   },
-  // MESITA-4569: the place's TripAdvisor page, TripAdvisor's green.
-  { key: "tripadvisor_url", label: "TripAdvisor", Icon: Star, mark: "text-[#34E0A1]" },
 ] as const;
 

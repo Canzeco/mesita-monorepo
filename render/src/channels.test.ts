@@ -15,9 +15,9 @@ test("a Facebook page is kept and a reserved path is dropped", () => {
   assert.equal(channelFromUrl("https://www.facebook.com/events/123456789"), null);
 });
 
-test("WhatsApp and the dropped channels are not the website; TripAdvisor is its own (MESITA-4569)", () => {
+test("WhatsApp, a review site and the dropped channels are not the website (MESITA-4569)", () => {
   assert.equal(channelFromUrl("https://wa.me/525500000000"), null);
-  assert.equal(channelFromUrl("https://www.tripadvisor.com.mx/Restaurant_Review")?.key, "tripadvisor_url");
+  assert.equal(channelFromUrl("https://www.tripadvisor.com/Restaurant_Review"), null);
   for (const url of ["https://x.com/pujol", "https://www.threads.net/@pujol", "https://resy.com/pujol", "https://didifood.com/pujol", "https://www.reddit.com/r/pujol"]) {
     assert.equal(channelFromUrl(url), null, url);
   }

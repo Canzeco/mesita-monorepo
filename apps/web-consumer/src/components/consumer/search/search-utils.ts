@@ -108,7 +108,6 @@ export function anchorPlaceFromPrediction(
     whatsapp_url: null,
     opentable_url: null,
     uber_eats_url: null,
-    tripadvisor_url: null,
     google_maps_url: card.google_maps_url ?? null,
     created_at: new Date(0).toISOString(),
     ...(onMesita ? {} : { googleOnly: true, from_google: true }),

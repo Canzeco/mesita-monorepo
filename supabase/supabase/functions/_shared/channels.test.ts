@@ -9,7 +9,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { classifyLinks } from "./channels.ts";
 import type { ChannelKey } from "./channels.ts";
 
-Deno.test("classifyLinks: retired hosts (tiktok, yelp, x, threads, reddit, resy, didi) never leak into website_url", () => {
+Deno.test("classifyLinks: retired hosts (tiktok, tripadvisor, yelp, x, threads, reddit, resy, didi) never leak into website_url", () => {
   // A retired host ALONE — not "shortest wins against a real candidate".
   // The first version of this test used both a retired link and a real
   // site together and stayed green even with isRetiredSocialHost's tiktok
@@ -19,6 +19,10 @@ Deno.test("classifyLinks: retired hosts (tiktok, yelp, x, threads, reddit, resy,
   // retired host is the direct claim: a retired host must never become a
   // website CANDIDATE at all, regardless of what else is in the bag.
   assertEquals(classifyLinks(["https://www.tiktok.com/@someplace"]).website_url, null);
+  assertEquals(
+    classifyLinks(["https://www.tripadvisor.com.mx/Restaurant_Review-abc"]).website_url,
+    null,
+  );
   assertEquals(classifyLinks(["https://www.yelp.com/biz/someplace"]).website_url, null);
   // Dropped channels (MESITA-4569) are retired hosts now.
   for (const url of [
@@ -60,8 +64,6 @@ Deno.test("classifyLinks: each known host maps to its declared channel", () => {
     ["https://wa.me/525500000000", "whatsapp_url"],
     ["https://www.opentable.com.mx/someplace", "opentable_url"],
     ["https://www.ubereats.com/mx/store/someplace", "uber_eats_url"],
-    ["https://www.tripadvisor.com.mx/Restaurant_Review-abc", "tripadvisor_url"],
-    ["https://es.tripadvisor.com/Restaurant_Review-abc", "tripadvisor_url"],
     ["https://maps.google.com/?cid=123", "google_maps_url"],
     ["https://maps.app.goo.gl/abc123", "google_maps_url"],
   ];

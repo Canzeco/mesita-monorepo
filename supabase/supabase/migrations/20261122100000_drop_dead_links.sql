@@ -1,12 +1,8 @@
 -- MESITA-4569 (Pato: "completely deprecate resy, didi, x, threads, reddit …
--- those never existed. What you can add is a TripAdvisor link"). Live: no
--- place held any of the five (0 of 263). The `profiles` view and its two
--- write functions name them, so the view is rebuilt: same columns, minus the
--- five, plus tripadvisor_url; its INSTEAD OF triggers and grants come back.
-
-alter table public.place_profiles add column if not exists tripadvisor_url text;
-comment on column public.place_profiles.tripadvisor_url is
-  'MESITA-4569: the place''s TripAdvisor page.';
+-- those never existed"; TripAdvisor not added either: "fuck tripadvisor too
+-- for the moment"). Live: no place held any of the five (0 of 263). The
+-- `profiles` view and its two write functions name them, so the view is
+-- rebuilt minus the five; its INSTEAD OF triggers and grants come back.
 
 drop view if exists public.profiles;
 
@@ -22,7 +18,7 @@ begin
     id, created_at, updated_at, google_place_id, google_types, prepay_enabled, payments_enabled, category, category_label,
     price_level, lat, lng, address, timezone, closes_at, phone, pitch, story,
     photos, website_url, instagram_url, facebook_url, whatsapp_url,
-    opentable_url, uber_eats_url, tripadvisor_url,
+    opentable_url, uber_eats_url,
     google_maps_url, hours, embedding,
     embedding_source_text, description, menu_pdf_url, tags,
     google_stars_overall, google_review_count, instagram_followers_count,
@@ -40,7 +36,7 @@ begin
     new.timezone, new.closes_at, new.phone, new.pitch, new.story,
     coalesce(new.photos, '{}'), new.website_url, new.instagram_url,
     new.facebook_url, new.whatsapp_url, new.opentable_url,
-    new.uber_eats_url, new.tripadvisor_url,
+    new.uber_eats_url,
     new.google_maps_url,
     new.hours, new.embedding, new.embedding_source_text,
     new.description, new.menu_pdf_url, coalesce(new.tags, '{}'),
@@ -84,7 +80,7 @@ begin
     photos = new.photos, website_url = new.website_url, instagram_url = new.instagram_url,
     facebook_url = new.facebook_url,
     whatsapp_url = new.whatsapp_url, opentable_url = new.opentable_url,
-    uber_eats_url = new.uber_eats_url, tripadvisor_url = new.tripadvisor_url,
+    uber_eats_url = new.uber_eats_url,
     google_maps_url = new.google_maps_url,
     hours = new.hours,
     embedding = new.embedding,
@@ -191,8 +187,7 @@ create view public.profiles with (security_invoker = true) as
     p.foursquare_place_id,
     p.foursquare_url,
     p.foursquare_popularity,
-    p.foursquare_popularity_at,
-    p.tripadvisor_url
+    p.foursquare_popularity_at
    FROM places u
      JOIN place_profiles p ON p.id = u.id;
 

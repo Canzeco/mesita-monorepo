@@ -144,7 +144,6 @@ export type GoogleBasics = {
   whatsapp_url: string | null;
   opentable_url: string | null;
   uber_eats_url: string | null;
-  tripadvisor_url: string | null;
   google_maps_url: string | null;
   google_stars_overall: number | null;
   google_review_count: number | null;
@@ -363,7 +362,6 @@ export async function fetchGoogleBasics(
       whatsapp_url: channels.whatsapp_url,
       opentable_url: channels.opentable_url,
       uber_eats_url: channels.uber_eats_url,
-      tripadvisor_url: channels.tripadvisor_url,
       google_maps_url: mapsUrl,
       google_stars_overall: details.rating ?? null,
       google_review_count: details.userRatingCount ?? null,

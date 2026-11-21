@@ -304,7 +304,6 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
     },
     reviews_maps: {
       google_maps_url: str(row.google_maps_url),
-      tripadvisor_url: str(row.tripadvisor_url),
       google_review_url: googleReviewUrl(str(row.google_place_id)),
     },
 

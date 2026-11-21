@@ -52,7 +52,6 @@ export type Place = {
   whatsapp_url: string | null;
   opentable_url: string | null;
   uber_eats_url: string | null;
-  tripadvisor_url: string | null;
   google_maps_url: string | null;
   created_at: string;
 

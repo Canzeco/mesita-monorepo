@@ -173,7 +173,6 @@ const RAIL_PLACE = {
   whatsapp_url: null,
   opentable_url: null,
   uber_eats_url: null,
-  tripadvisor_url: null,
   google_maps_url: null,
   created_at: "2026-08-01T00:00:00Z",
 } as Place;
