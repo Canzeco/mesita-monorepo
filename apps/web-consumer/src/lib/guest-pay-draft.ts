@@ -67,6 +67,39 @@ function store(): Storage | null {
   }
 }
 
+/** MESITA-4524 (no zombie tickets): what the guest typed on Bill, Tip and
+ *  Method is not a ticket. It lives in this page's memory only, never in
+ *  localStorage, and is gone when the app closes; nothing ever resumes it as
+ *  "Bill in progress". The last tip and the last card are preferences and
+ *  stay in localStorage. */
+type MemoryWindow = { __mesitaPayDraft?: Map<string, string> };
+function draftStore(): Pick<Storage, "getItem" | "setItem" | "removeItem"> | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as MemoryWindow;
+  const m = (w.__mesitaPayDraft ??= new Map<string, string>());
+  return {
+    getItem: (k) => m.get(k) ?? null,
+    setItem: (k, v) => void m.set(k, v),
+    removeItem: (k) => void m.delete(k),
+  };
+}
+
+/** Drafts and the pending pointer a phone saved before MESITA-4524 are
+ *  dropped once, so an old "Bill in progress" never comes back. */
+function dropStoredDrafts() {
+  const s = store();
+  if (!s) return;
+  try {
+    for (let i = s.length - 1; i >= 0; i--) {
+      const k = s.key(i);
+      if (k && (k.startsWith("mesita.pay.guest-lead.") || k === PENDING_KEY || k === PENDING_NAME_KEY)) s.removeItem(k);
+    }
+  } catch {
+    /* storage can be blocked */
+  }
+}
+let droppedStoredDrafts = false;
+
 export function readLastTip(placeId: string): Tip {
   try {
     const n = Number(store()?.getItem(LAST_TIP_KEY(placeId)));
@@ -104,8 +137,12 @@ export function writeLastCard(cardId: string | null) {
 }
 
 export function readDraft(placeId: string): Draft | null {
+  if (!droppedStoredDrafts) {
+    droppedStoredDrafts = true;
+    dropStoredDrafts();
+  }
   try {
-    const d = JSON.parse(store()?.getItem(DRAFT_KEY(placeId)) ?? "null") as Draft | null;
+    const d = JSON.parse(draftStore()?.getItem(DRAFT_KEY(placeId)) ?? "null") as Draft | null;
     if (!d || typeof d.amount !== "string" || typeof d.savedAt !== "number") return null;
     if (payDraftExpired(d.savedAt, Date.now())) return null;
     // A stored stage is never trusted (MESITA-4117): an unknown one reads as
@@ -125,17 +162,11 @@ export function readDraft(placeId: string): Draft | null {
 /** Saves the draft, stamped now; null removes it. A ticket is pending once
  *  an amount is typed ("0" counts: the pointer's test is `amount !== ""`). */
 export function writeDraft(placeId: string, d: Omit<Draft, "savedAt"> | null) {
-  const s = store();
+  const s = draftStore();
   if (!s) return;
   try {
     if (d) s.setItem(DRAFT_KEY(placeId), JSON.stringify({ ...d, savedAt: Date.now() }));
     else s.removeItem(DRAFT_KEY(placeId));
-    const pending = s.getItem(PENDING_KEY);
-    if (d && d.amount !== "") s.setItem(PENDING_KEY, placeId);
-    else if (pending === placeId) {
-      s.removeItem(PENDING_KEY);
-      s.removeItem(PENDING_NAME_KEY);
-    }
   } catch {
     // The bill starts empty next time; nothing breaks.
   }
@@ -143,6 +174,13 @@ export function writeDraft(placeId: string, d: Omit<Draft, "savedAt"> | null) {
 
 /** The place with a ticket in progress (an amount typed, not expired), or null. */
 export function pendingTicketPlace(): string | null {
+  // MESITA-4524: a typed bill is never a pending ticket; only a live
+  // server ticket is (the Pay page and banner read it from the server).
+  return null;
+}
+
+/** Kept for the old pointer's shape; never read since MESITA-4524. */
+export function legacyPendingTicketPlace(): string | null {
   const s = store();
   if (!s) return null;
   try {

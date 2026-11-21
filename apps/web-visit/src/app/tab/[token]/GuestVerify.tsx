@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { listPayments, rejectTab, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
@@ -50,6 +50,12 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   const [rejecting, setRejecting] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [mine, setMine] = useState<{ at: string; again: boolean } | null>(null);
+  // MESITA-4524: a clock for the "still processing" line, ticking every 5 s.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 5_000);
+    return () => clearInterval(id);
+  }, []);
 
   const placeId = tab.place.id;
   const money = (c: number) => moneyLabel(c, tab.currency);
@@ -194,6 +200,10 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
         {reconnecting}
         <span className="pay-spinner" aria-hidden />
         <h1 role="status">Confirming…</h1>
+        {/* MESITA-4524: past 20 s the guest may leave; Mesita finishes it. */}
+        {nowMs - Date.parse(tab.updated_at) > 20_000 ? (
+          <p className="proof-line">Payment is still processing. Mesita will confirm it. The guest can leave.</p>
+        ) : null}
         <p className="proof-place">{placeName}</p>
       </main>
     );

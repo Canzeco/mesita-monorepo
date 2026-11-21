@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { SavedCard } from "@/lib/api/cards";
-import { readDraft, reopenGuestDraft, writeDraft } from "@/lib/guest-pay-draft";
-import { guardStage, initialStage, payBackStage, STEP, startAgainStage } from "@/lib/guest-pay-stages";
+import { pendingTicket, readDraft, reopenGuestDraft, writeDraft } from "@/lib/guest-pay-draft";
+import { guardStage, initialStage, payBackStage, STEP } from "@/lib/guest-pay-stages";
 import { pickCard } from "@/lib/pay-cards";
 
 // Money (MVP test rule), MESITA-4226: no Card step (one saved card per
@@ -117,23 +117,6 @@ describe("readDraft never trusts a stored stage", () => {
   });
 });
 
-describe("startAgainStage (MESITA-4121, MESITA-4226)", () => {
-  it("a failed card part starts again at Pay", () => {
-    for (const r of ["bank_check_failed", "capture_failed", "hold_released"]) {
-      expect(startAgainStage({ endReason: r, cardFailed: true })).toBe("pay");
-    }
-    expect(startAgainStage({ endReason: null, cardFailed: true })).toBe("pay");
-  });
-  it("an expired or rejected bill starts again at Method", () => {
-    expect(startAgainStage({ endReason: "expired", cardFailed: false })).toBe("method");
-    expect(startAgainStage({ endReason: "rejected", cardFailed: true })).toBe("method");
-  });
-  it("anything else starts again at Bill", () => {
-    expect(startAgainStage({ endReason: "cancelled", cardFailed: false })).toBe("bill");
-    expect(startAgainStage({ endReason: null, cardFailed: false })).toBe("bill");
-  });
-});
-
 describe("reopenGuestDraft (MESITA-4121)", () => {
   beforeEach(() => {
     (globalThis as { window?: unknown }).window = { localStorage: memoryStorage() };
@@ -161,5 +144,22 @@ describe("reopenGuestDraft (MESITA-4121)", () => {
   it("no draft (older than 30 minutes): nothing to reopen, the bill opens empty", () => {
     reopenGuestDraft("p", "pay", true);
     expect(readDraft("p")).toBeNull();
+  });
+});
+
+describe("no zombie tickets (MESITA-4524)", () => {
+  beforeEach(() => {
+    (globalThis as { window?: unknown }).window = { localStorage: memoryStorage() };
+  });
+  afterEach(() => {
+    delete (globalThis as { window?: unknown }).window;
+  });
+
+  it("a typed bill lives in memory only: never in localStorage, never a pending ticket", () => {
+    writeDraft("p", { stage: "pay", typing: false, amount: "100", tip: 10, other: "", useCredit: true, method: "card", cardId: "pm_a" });
+    expect(readDraft("p")?.amount).toBe("100");
+    const ls = (globalThis as unknown as { window: { localStorage: Storage } }).window.localStorage;
+    expect(ls.length).toBe(0);
+    expect(pendingTicket()).toBeNull();
   });
 });

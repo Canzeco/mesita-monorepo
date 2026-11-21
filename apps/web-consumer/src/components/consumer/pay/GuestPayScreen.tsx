@@ -443,7 +443,8 @@ export function GuestPayScreen({
       // The bank refused this card: never its default again (MESITA-4117).
       if (w === "card" && code && CARD_REFUSED.has(code)) setRefusedCardId(chosenCard);
       setOutcomeUnknown(outcomeUnknownAfter(code));
-      const openId = code === "too_many_open" && e instanceof EFError ? e.body?.open_tab_id : null;
+      // MESITA-4524: the open one is a ticket (open_attempt_id) or an older bill.
+      const openId = code === "too_many_open" && e instanceof EFError ? (e.body?.open_attempt_id ?? e.body?.open_tab_id) : null;
       if (typeof openId === "string" && openId) {
         onPaid(openId);
         return;
@@ -868,11 +869,11 @@ export function GuestPayScreen({
           cancelDisabled={cancelLocked}
           primary={
             creditsOnly
-              ? { label: "Pay with credits", busy, disabled: held, onClick: () => void openBill(null) }
+              ? { label: "Show the waiter", busy, disabled: held, onClick: () => void openBill(null) }
               : way === "cash"
                 ? { label: `Pay ${m(dueCents)} in cash`, busy, disabled: held, onClick: () => void openBill("cash") }
                 : way === "card" && !(express && expressOn)
-                  ? { label: `Pay ${m(dueCents)} with card`, busy, disabled: !chosenCard || held, onClick: () => void openBill("card") }
+                  ? { label: "Show the waiter", busy, disabled: !chosenCard || held, onClick: () => void openBill("card") }
                   : { label: "Next", busy, disabled: !way || held, onClick: toNext }
           }
         />
@@ -1004,9 +1005,9 @@ export function GuestPayScreen({
             ) : shownCard ? (
               <>
                 <span className="flex flex-col items-center gap-1">
-                  <span className="text-muted-foreground text-lg font-semibold">Pay</span>
+                  <span className="text-muted-foreground text-lg font-semibold">Hold</span>
                   <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
-                  <span className="text-muted-foreground text-lg">with this card</span>
+                  <span className="text-muted-foreground text-lg">on this card</span>
                 </span>
                 <span
                   className={cn("flex h-36 w-56 flex-col justify-between rounded-2xl p-5 text-left shadow-md", guestFace?.className)}
@@ -1020,7 +1021,8 @@ export function GuestPayScreen({
                 </span>
                 <p className="text-muted-foreground flex max-w-xs items-center justify-center gap-2 text-sm">
                   <Lock className="h-4 w-4 shrink-0" aria-hidden />
-                  Charged when you confirm.
+                  {/* MESITA-4524: the consent line. The waiter's Confirm charges it. */}
+                  {m(dueCents)} will be held on •••• {shownCard.last4} and charged when the waiter confirms.
                 </p>
               </>
             ) : null}
@@ -1046,7 +1048,7 @@ export function GuestPayScreen({
               ? { label: "Choose another way", busy: false, disabled: held, onClick: chooseAnother }
               : !cardsUnknown && !card
               ? { label: "Add a card", busy, disabled: held, onClick: addCard }
-              : { label: `Pay ${m(dueCents)}`, busy, disabled: held || !card, onClick: () => void openBill("card") }
+              : { label: "Show the waiter", busy, disabled: held || !card, onClick: () => void openBill("card") }
           }
         />
       </>,
