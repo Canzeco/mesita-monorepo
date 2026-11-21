@@ -1,10 +1,10 @@
 // Supabase Edge Function — business-web-set-place-code
 //
-// MESITA-3226 (on Payments since MESITA-3600, Settings before): the waiter code, six digits
+// MESITA-3226 (on Payments since MESITA-3600, Settings before): the waiter code, four digits (MESITA-4521)
 // staff type at visit.mesita.ai. Only the hash is stored, so it is never shown
 // again and a forgotten one is replaced. The owner and Mesita staff only.
 //
-// Body: { place_id: uuid, code: "123456" }
+// Body: { place_id: uuid, code: "1234" }
 // Response: { ok: true, code_set: true }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -24,7 +24,7 @@ serveJson("business-web-set-place-code", async (req) => {
   const placeId = bodyRes.body.place_id;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   const code = readPlaceCode(bodyRes.body.code);
-  if (!code) return json({ ok: false, code: "invalid", error: "The code is six digits" }, 400);
+  if (!code) return json({ ok: false, code: "invalid", error: "The code is four digits" }, 400);
 
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;

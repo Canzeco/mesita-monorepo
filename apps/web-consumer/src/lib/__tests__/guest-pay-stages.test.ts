@@ -26,7 +26,7 @@ function memoryStorage(): Storage {
 }
 
 describe("the steps", () => {
-  it("Pick · Bill · Tip · Method · Pay · Sign · Receipt", () => {
+  it("Pick · Bill · Tip · Method · Pay · Confirm · Receipt", () => {
     expect(STEP).toEqual({ pick: 0, bill: 1, tip: 2, method: 3, pay: 4, sign: 5, receipt: 6 });
   });
 });

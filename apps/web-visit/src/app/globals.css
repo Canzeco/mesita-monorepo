@@ -497,7 +497,7 @@ button.quiet {
   color: #ffffff;
 }
 
-/* The waiter code: six boxes, one digit each (MESITA-3818). */
+/* The waiter code: four boxes, one digit each (MESITA-3818; four since MESITA-4521). */
 .code-boxes {
   margin-top: 8px;
 }

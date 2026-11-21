@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { SIGN } from "@mesita/place-profile/lib/pay-steps";
-import { rejectTab, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
+import { listPayments, rejectTab, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
 import { signRequest } from "@/lib/sign-gate";
+import { CodeBoxes } from "./CodeBoxes";
 import { BanknoteIcon, CheckIcon, HandCoinsIcon, SmartphoneIcon, UserIcon, WalletIcon, XIcon } from "./icons";
 
 // THE WAITER'S SCREEN (MESITA-3857, Pato's "14. Payments Flow Guest-Lead"
@@ -12,12 +13,12 @@ import { BanknoteIcon, CheckIcon, HandCoinsIcon, SmartphoneIcon, UserIcon, Walle
 // one. Top to bottom: the guest's photo (a person glyph when there is none;
 // never a name), the total in large type, the lines with the guest's icons
 // (Wallet credits; Smartphone "by card" or Banknote "cash received";
-// HandCoins tip), the waiter code (until MESITA-3858 signs waiters in), the
-// dark "Sign · final" with a Check and "Check the amount. Signed payments
-// can't be undone.", and the red "Reject" with an X, as tall as Sign
-// (MESITA-4108, Pato: "reject button must be red same height as black"). The signature is the
-// cash's confirmation: no yes/no question. Sign trades the code for a staff
-// token for this one signature; neither is kept. Then: Receipt (green),
+// HandCoins tip), the 4-digit waiter code (MESITA-4521, Pato: "To avoid
+// trolls, use mesita code to accept payments"), the dark "Confirm · final"
+// with a Check, and the red "Reject" with an X, as tall as Confirm
+// (MESITA-4108, Pato: "reject button must be red same height as black").
+// Confirm is the cash's confirmation: no yes/no question. Confirm and Reject
+// trade the code for a staff token for this one tap; neither is kept. Then: Receipt (green),
 // Confirming (the card is being charged), Not charged (the charge failed;
 // it says to ask the guest to pay again, MESITA-4305),
 // or "This bill is no longer open" with why.
@@ -43,6 +44,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   reconnecting: React.ReactNode;
   onChanged: () => Promise<void>;
 }) {
+  const [typedCode, setTypedCode] = useState("");
   const [busy, setBusy] = useState<"sign" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
@@ -57,8 +59,8 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   const total = tab.credit_cents + card + cash;
   const verifiedAt = mine?.at ?? tab.verified_at ?? null;
   const ended = tab.status === "expired" || tab.status === "cancelled";
-  // The signature confirms the cash: what is owed is what was received.
-  const request = signRequest({ owedCents: cash, cashAnswer: cash > 0 ? "yes" : null, typedCode: "", cardPending: tab.card_pending === true });
+  // Confirm confirms the cash: what is owed is what was received.
+  const request = signRequest({ owedCents: cash, cashAnswer: cash > 0 ? "yes" : null, typedCode, cardPending: tab.card_pending === true });
   const placeName = tab.place.name ?? "A Mesita place";
 
   function refused(r: TabRefusal) {
@@ -69,12 +71,32 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
     setError(r.error);
   }
 
+  /** The waiter code buys a staff token for this one tap; null on refusal. */
+  async function staffToken(): Promise<string | null> {
+    if (!request) return null;
+    const key = await listPayments({ place_id: placeId, place_code: request.place_code });
+    setTypedCode("");
+    if (key === "failed") {
+      setError(SIGN.tapSignAgain);
+      return null;
+    }
+    if ("kind" in key) {
+      const wait = key.retryAfterS ? ` ${SIGN.tryAgainInMin(Math.ceil(key.retryAfterS / 60))}` : "";
+      setError(key.kind === "staff_only" ? SIGN.wrongWaiterCode : `${key.error}${wait}`);
+      return null;
+    }
+    if (!key.staff_token) setError(SIGN.couldntSign);
+    return key.staff_token ?? null;
+  }
+
   async function sign() {
     if (busy || !request) return;
     setBusy("sign");
     setError(null);
     try {
-      const r = await verifyTab({ token, place_id: placeId, cash_received_cents: request.cash_received_cents });
+      const staff = await staffToken();
+      if (!staff) return;
+      const r = await verifyTab({ token, place_id: placeId, staff_token: staff, cash_received_cents: request.cash_received_cents });
       if (r === "failed") return setError(SIGN.tapSignAgain);
       if ("refused" in r) {
         refused(r);
@@ -99,7 +121,9 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
     setBusy("reject");
     setError(null);
     try {
-      const r = await rejectTab({ token, place_id: placeId });
+      const staff = await staffToken();
+      if (!staff) return;
+      const r = await rejectTab({ token, place_id: placeId, staff_token: staff });
       if (r === "failed") return setError("Couldn't reject. Tap again.");
       if ("refused" in r) refused(r);
       setRejecting(false);
@@ -118,8 +142,8 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
           <CheckIcon className="pay-icon-xl" />
         </span>
         <p className="tab-paid-title" role="status">
-          {/* No time once signed (MESITA-4133). */}
-          {mine?.again ? "Already signed" : "Signed"}
+          {/* No time once confirmed (MESITA-4133). */}
+          {mine?.again ? "Already confirmed" : "Confirmed"}
         </p>
         <p className="tab-paid-amount">{money(total)}</p>
         {tip > 0 ? <p className="tab-paid-line">Includes {money(tip)} tip</p> : null}
@@ -128,7 +152,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
     );
   }
 
-  // NOT CHARGED: the card charge failed at the signature.
+  // NOT CHARGED: the card charge failed at Confirm.
   if (ended && tab.end_reason === "capture_failed") {
     return (
       <main className="proof pay-end" data-tab-state="not-charged">
@@ -139,7 +163,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
         <h1>Not charged</h1>
         <p className="proof-line">The card charge failed. Nothing was charged.</p>
         {/* MESITA-4305: the next step. The guest's Start again reopens Pay
-            with the same bill; their new QR comes back here to Sign. */}
+            with the same bill; their new QR comes back here to Confirm. */}
         <p className="proof-line">Ask the guest to pay again with another card or cash. Then scan their new QR.</p>
         <p className="proof-place">{placeName}</p>
       </main>
@@ -175,7 +199,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
     );
   }
 
-  // TO SIGN.
+  // TO CONFIRM.
   // Each line: the word on the left, the amount on the right (MESITA-4108).
   const lines: Array<{ key: string; icon: React.ReactNode; label: string; value: string; good?: boolean }> = [];
   if (tab.credit_cents > 0) lines.push({ key: "credit", icon: <WalletIcon className="pay-icon" />, label: "Credits", value: money(tab.credit_cents) });
@@ -190,7 +214,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
       {/* MODULAR, IN BOXES (MESITA-4108, Pato: "make a cleaner design ...
           modular in boxes. optimize vertical space"): box one is the bill
           (who, where, total, then each line word-left amount-right); box two
-          is the waiter code and its pad; then Reject and Sign. */}
+          is the waiter code and its pad; then Reject and Confirm. */}
       <section className="verify-box" aria-label="The guest's bill">
       <div className="pay-guest">
         <span className="pay-guest-photo" aria-hidden>
@@ -224,6 +248,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
           void sign();
         }}
       >
+        <CodeBoxes value={typedCode} onChange={setTypedCode} />
         {error ? (
           <p className="proof-status warn" role="alert" aria-live="polite">
             {error}
@@ -254,8 +279,8 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
             </div>
           </div>
         ) : (
-          // One row: Reject a third, Sign two thirds. "Sign · final" says
-          // it can't be undone; the pad says a code is needed.
+          // One row: Reject a third, Confirm two thirds. "Confirm · final"
+          // says it can't be undone; the pad says a code is needed.
           <div className="verify-actions">
             <button type="button" className="verify-reject pay-with-icon" disabled={!!busy || !request} onClick={() => setRejecting(true)}>
               <XIcon className="pay-icon" />
@@ -265,7 +290,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
               {busy === "sign" ? SIGN.signing : (
                 <>
                   <CheckIcon className="pay-icon" />
-                  Sign · final
+                  Confirm · final
                 </>
               )}
             </button>

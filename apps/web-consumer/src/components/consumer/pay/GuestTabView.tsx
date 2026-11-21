@@ -21,7 +21,7 @@ import { STEP, startAgainStage } from "@/lib/guest-pay-stages";
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
 // /pay/bill/<id>, after App Pay, "I gave the cash" or credits alone:
 //
-//   6 Sign        mostly a large QR; the countdown on the heading's right;
+//   6 Confirm     mostly a large QR; the countdown on the heading's right;
 //                 under the QR the bill's total with the way it's paid, what
 //                 the signature earns, and that an unsigned bill cancels
 //                 with nothing charged. Nothing is editable; Cancel bill goes back to the
@@ -29,7 +29,7 @@ import { STEP, startAgainStage } from "@/lib/guest-pay-stages";
 //   Confirming    a Loader and "Confirming…" while money moves (the bank's
 //                 check, the charge at the signature).
 //   7 Receipt     the step panel, a green Paid with the total, the lines
-//                 with their icons, "Signed by staff" ✓; Done.
+//                 with their icons, "Confirmed by staff" ✓; Done.
 //   Not paid      a red XCircle, one line why, "Nothing was charged", Start
 //                 again (the bill with everything typed).
 //
@@ -52,7 +52,7 @@ export function GuestTabView({
   /** Back to the bill at this place, everything typed. */
   onPayAgain: (placeId: string) => void;
   onDone: () => void;
-  /** The header's X (MESITA-3880): on Sign it closes; the bill keeps waiting (MESITA-3908). */
+  /** The header's X (MESITA-3880): on Confirm it closes; the bill keeps waiting (MESITA-3908). */
   registerClose?: (close: (() => void) | null) => void;
 }) {
   const [tab, setTab] = useState(first);
@@ -137,7 +137,7 @@ export function GuestTabView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done, tab.tab_id]);
 
-  // Sign only: the header's X asks to cancel; the other states keep Back.
+  // Confirm only: the header's X asks to cancel; the other states keep Back.
   const signing = !done && !confirming;
   // The phone must not lock while the guest waits for the waiter (MESITA-4131).
   useWakeLock(signing);
@@ -171,7 +171,7 @@ export function GuestTabView({
   }
 
   const placeName = tab.place.name ?? "A Mesita place";
-  // Every way this bill is paid (MESITA-4131): Sign named the card part alone,
+  // Every way this bill is paid (MESITA-4131): Confirm named the card part alone,
   // so a bill split with credits or cash showed less than the bill.
   const ways = [
     tab.credit_cents > 0 ? { key: "credits", icon: <Wallet aria-hidden />, cents: tab.credit_cents, alone: "credits", part: "credits" } : null,
@@ -217,8 +217,8 @@ export function GuestTabView({
             <MoneyRow label="Total" value={m(total)} strong />
             <MoneyRow
               icon={<PenLine />}
-              label="Signed by staff"
-              value={<CircleCheck className={cn("h-5 w-5", GOOD)} aria-label="Signed" />}
+              label="Confirmed by staff"
+              value={<CircleCheck className={cn("h-5 w-5", GOOD)} aria-label="Confirmed" />}
             />
           </PaySection>
         </StepBody>

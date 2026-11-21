@@ -4,13 +4,13 @@
 // with a Card step to pick among saved cards — a guest saves one card since
 // MESITA-4168).
 //
-//   0 Pick · 1 Bill · 2 Tip · 3 Method · 4 Pay · 5 Sign · 6 Receipt
+//   0 Pick · 1 Bill · 2 Tip · 3 Method · 4 Pay · 5 Confirm · 6 Receipt
 //
 // Pick is the Pay tab's list (never drawn as a current step); Bill and Tip
 // share GuestPayScreen's "bill" stage (typing or not); Method picks the way
 // (credits, Mesita App with the one card, or outside the app); Pay charges
-// the card or says to give the cash; Sign and Receipt are GuestTabView. The
-// bar shows Bill to Sign (five); Receipt joins it only once the bill is done.
+// the card or says to give the cash; Confirm and Receipt are GuestTabView. The
+// bar shows Bill to Confirm (five); Receipt joins it only once the bill is done.
 // Credits that cover everything open the bill from Method (Pay not shown).
 //
 // Every rule that decides which step shows lives here, React-free, so it is

@@ -87,7 +87,7 @@ export function readTip(v: unknown): { ok: true; tipCents: number } | Refusal {
 export function readOpenChargeBody(b: Record<string, unknown>): { ok: true; input: OpenChargeInput } | Refusal {
   if (!isUuid(b.place_id)) return refuse(400, "place_id must be a Mesita place id");
   const placeCode = readPlaceCode(b.place_code);
-  if (!placeCode) return refuse(400, "The place code is six digits");
+  if (!placeCode) return refuse(400, "The place code is four digits");
   const a = b.amount_cents;
   if (a === undefined || a === null || a === 0) return refuse(400, "Type an amount to charge", "amount_required");
   if (typeof a !== "number" || !Number.isInteger(a)) return refuse(400, "amount_cents must be a whole number of centavos");

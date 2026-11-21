@@ -10,7 +10,7 @@
 // MESITA-3545: staff also type the tip they asked the guest (tip_cents);
 // the guest's form starts from it.
 //
-// Body: { place_id: uuid, place_code: 6 digits, amount_cents: integer,
+// Body: { place_id: uuid, place_code: 4 digits, amount_cents: integer,
 //         tip_cents?: integer (0 to the cap), ticket?: string (at most 32, trimmed) }
 // Response: { ok: true, code, charge_token, amount_cents, tip_cents, currency, ticket,
 //             expires_at, server_time, place: { name }, test_mode }

@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 // Flow Guest-Lead"): the place across the top (Open), the X in the corner,
 // the rows card, the three state colours and the Not paid reasons. The
 // screens are GuestPayScreen (Open, Bill, Tip, Method, Pay) and
-// GuestTabView (Sign, Confirming, Receipt, Not paid).
+// GuestTabView (Confirm, Confirming, Receipt, Not paid).
 
 /** State colours, used only for state, always with an icon and words. */
 export const GOOD = "text-green-700";
@@ -107,9 +107,9 @@ export function PlaceHero({
   );
 }
 
-/** The top of every step, Bill to Sign (MESITA-4061: the keypad step too):
+/** The top of every step, Bill to Confirm (MESITA-4061: the keypad step too):
  *  the place's photo and name. With `onChoose` the name is a button (a grey
- *  chevron says so) to choose another place, keeping the draft; Sign's is
+ *  chevron says so) to choose another place, keeping the draft; Confirm's is
  *  plain. Cancel bill is the footer's (MESITA-4051). */
 export function PlaceBar({ place, name, onChoose }: { place: PayPlace | null; name?: string | null; onChoose?: () => void }) {
   const label = place?.name ?? name ?? "A Mesita place";
@@ -167,10 +167,10 @@ export function RowsCard({ children, className }: { children: React.ReactNode; c
  *  we should have all those steps. but don't mention them all"; eight until
  *  then, MESITA-4135). Pick is the Pay tab's list of places, done on every
  *  later step (lib/guest-pay-stages.ts). */
-export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Method", "Pay", "Sign", "Receipt"] as const;
+export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Method", "Pay", "Confirm", "Receipt"] as const;
 
 /** WHAT THE BAR SHOWS (MESITA-4226, Pato: "Receipt only when its done ...
- *  before that, hide it"): Bill to Sign, five; once the bill is done the
+ *  before that, hide it"): Bill to Confirm, five; once the bill is done the
  *  Receipt joins as a sixth. Pick is hidden (it reads Bill). */
 const ALL_SHOWN = ["Bill", "Tip", "Pay", "Receipt"] as const;
 const SHOWN_AT: Record<(typeof PAY_FLOW_STEPS)[number], number> = {
@@ -179,7 +179,7 @@ const SHOWN_AT: Record<(typeof PAY_FLOW_STEPS)[number], number> = {
   Tip: 1,
   Method: 2,
   Pay: 2,
-  Sign: 2,
+  Confirm: 2,
   Receipt: 3,
 };
 
@@ -351,7 +351,7 @@ export function PaySection({
 /** The bottom row, pinned under a full-width hairline: the red Cancel bill
  *  (MESITA-4051) a quarter, the step's one dark button three quarters
  *  (MESITA-4058, Pato: "maybe 25% and 75% for black button"). With no
- *  primary (Sign: the waiter acts, not the guest) Cancel bill fills the row. */
+ *  primary (Confirm: the waiter acts, not the guest) Cancel bill fills the row. */
 export function StepFooter({
   primary,
   onCancel,
@@ -363,7 +363,7 @@ export function StepFooter({
 }) {
   // NO PRIMARY, SMALL CANCEL (MESITA-4126, Pato: "make the red button
   // smaller ... that looks like close the bill, not like cancel it"): while
-  // the guest waits for the waiter (Sign) Cancel bill is a small centred
+  // the guest waits for the waiter (Confirm) Cancel bill is a small centred
   // outlined red button, never the full-width red bar.
   if (!primary) {
     return (

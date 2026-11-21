@@ -57,10 +57,10 @@ Deno.test({
       await admin.from("places").insert({ id: place, slug: `outside-live-${stamp}`, state: "active", content_state: "generating", currency: "MXN" }).throwOnError();
       await admin.from("loyalty_cards_contracts").insert({ place_id: place, signed_by: userId, signer_role: "owner", terms_version: "draft-2026-11", text_sha256: "0".repeat(64) }).throwOnError();
       await admin.from("place_payment_settings").upsert({ place_id: place, loyalty_cards: true, cash_payments: true }).throwOnError();
-      await admin.from("place_codes").insert({ place_id: place, code_hash: await hashPlaceCode(place, "123456") }).throwOnError();
+      await admin.from("place_codes").insert({ place_id: place, code_hash: await hashPlaceCode(place, "1234") }).throwOnError();
 
       // 1. Received pays it.
-      const open = await call("visit-web-open-charge", { place_id: place, place_code: "123456", amount_cents: 50000, tip_cents: 5000 });
+      const open = await call("visit-web-open-charge", { place_id: place, place_code: "1234", amount_cents: 50000, tip_cents: 5000 });
       assertEquals(open.status, 200, JSON.stringify(open.data));
       const token = String(open.data.charge_token);
       const look = await call("consumer-web-start-payment", { place_id: place, charge_code: open.data.code, look: true }, jwt);
@@ -78,7 +78,7 @@ Deno.test({
       assertEquals(entries?.length, 0);
 
       // 2. The guest cancels: Received reads closed.
-      const open2 = await call("visit-web-open-charge", { place_id: place, place_code: "123456", amount_cents: 20000 });
+      const open2 = await call("visit-web-open-charge", { place_id: place, place_code: "1234", amount_cents: 20000 });
       const start2 = await call("consumer-web-start-payment", {
         place_id: place, charge_code: open2.data.code, outside: true, tip_cents: 0, request_id: crypto.randomUUID(),
       }, jwt);

@@ -65,7 +65,7 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab, CancelBillButton
 //             the waiter signs.
 //   4B Cash   "Give MX$X to the waiter", then "I gave the cash".
 //
-// Paying opens the bill (/pay/bill/<id>, GuestTabView: Sign, Confirming,
+// Paying opens the bill (/pay/bill/<id>, GuestTabView: Confirm, Confirming,
 // Receipt, Not paid). The header's back arrow steps back.
 //
 // ONE TICKET AT A TIME (MESITA-3879, Pato: "imagine someone closes the app

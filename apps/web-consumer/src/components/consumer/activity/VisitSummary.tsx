@@ -270,7 +270,7 @@ function Statement({ tab }: { tab: GuestTab }) {
     else if (p.status === "failed" && p.created_at) events.push([p.created_at, `${name} payment failed`]);
   }
   if (tab.paid_at) events.push([tab.paid_at, "Paid", m(total)]);
-  if (tab.verified_at) events.push([tab.verified_at, "Signed by the waiter"]);
+  if (tab.verified_at) events.push([tab.verified_at, "Confirmed by the waiter"]);
   if (tab.status === "expired") events.push([tab.expires_at, "Expired"]);
   if (tab.status === "cancelled") events.push([tab.updated_at, "Cancelled"]);
   events.sort((a, b) => Date.parse(a[0]) - Date.parse(b[0]));

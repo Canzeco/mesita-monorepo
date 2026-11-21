@@ -128,7 +128,7 @@ export function TabView({
   onDone: () => void;
   /** The header's back arrow asks this first (the billed steps step back). */
   registerBack?: (back: (() => boolean) | null) => void;
-  /** The header's X in place of Back (MESITA-3880, the guest's Sign). */
+  /** The header's X in place of Back (MESITA-3880, the guest's Confirm). */
   registerClose?: (close: (() => void) | null) => void;
 }) {
   const [tabId, setTabId] = useState<string | null>(start.kind === "tab" ? start.tabId : null);
