@@ -294,9 +294,9 @@ export function PayPage({
           shit"; /autoplan): the page holds your money, the pink Pay Bill is
           the verb. "Mesita Wallet" since MESITA-4252 (Pato: "call at the top
           Mesita Wallet, not only wallet"); the bar tab stays "Wallet". */}
-      {/* DARK GRAY SLAB (MESITA-4509): --secondary, darker than the mid
-          gray and not black. The modules and Pay keep their own colors. */}
-      <div className="bg-secondary -mx-2 px-2 pb-3" data-wallet-band>
+      {/* GRAY SLAB (MESITA-4510): lighter than --secondary, which read as
+          black. About #636363. The modules and Pay keep their own colors. */}
+      <div className="bg-[oklch(0.50_0_0)] -mx-2 px-2 pb-3" data-wallet-band>
         <PayHeader title="Wallet" embedded />
         <div className="mt-2 flex gap-2">
           <MethodPreview wide />
