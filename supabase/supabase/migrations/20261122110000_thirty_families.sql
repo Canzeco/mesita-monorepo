@@ -15,8 +15,10 @@
 --   2. Every stored place_profiles.family_keys drops the seven, before the
 --      seed deletes the rows; a list left empty becomes null (Undefined).
 --   3. The seed runs.
---   4. catalog_membership.enabled goes off for the Google types whose only
---      rails were among the seven (RETIRED_RAIL_TYPES in catalog-families.ts):
+--   4. catalog_membership.enabled goes off for every Google type that is not
+--      a table — the seven's own types and the halls, stadiums, shops and
+--      stands (RETIRED_RAIL_TYPES in catalog-families.ts; Pato: "reduce the
+--      size or list of allowed google categories"):
 --      Search's gate reads the code map and Create reads this switch, and
 --      the two must agree (MESITA-2974).
 
@@ -91,7 +93,12 @@ update public.catalog_membership
      'indoor_playground', 'ferris_wheel', 'roller_coaster', 'planetarium',
      'tourist_attraction', 'cultural_center', 'museum', 'art_museum', 'history_museum',
      'art_gallery', 'botanical_garden', 'observation_deck', 'market', 'flea_market',
-     'farmers_market');
+     'farmers_market',
+     -- Not a table: halls, stadiums, shops, stands, a food court.
+     'concert_hall', 'concert_venue', 'amphitheatre', 'philharmonic_hall', 'opera_house',
+     'auditorium', 'stadium', 'arena', 'vineyard', 'chocolate_factory',
+     'chocolate_shop', 'confectionery', 'coffee_roastery', 'coffee_stand', 'hot_dog_stand',
+     'pizza_delivery', 'meal_takeaway', 'food_court');
 
 -- Postflight.
 do $$
@@ -108,7 +115,7 @@ begin
     raise exception '% places still store a family that is gone', n;
   end if;
   select count(*) into n from public.catalog_membership
-   where enabled and slug in ('tourist_attraction', 'museum', 'spa', 'casino', 'movie_theater', 'bowling_alley', 'zoo');
+   where enabled and slug in ('tourist_attraction', 'museum', 'spa', 'casino', 'movie_theater', 'bowling_alley', 'zoo', 'stadium', 'concert_hall', 'food_court', 'chocolate_shop');
   if n <> 0 then
     raise exception '% retired Google types are still enabled', n;
   end if;

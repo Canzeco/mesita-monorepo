@@ -3,12 +3,16 @@
 // primary and a secondary (MESITA-2808).
 //
 // THIRTY (MESITA-4571, Pato 2026-11-21: "I WANT ONLY 30 FAMILIES. COMPRESS
-// THE LIST OR REMOVE ITEMS."): Family, Karaoke, Fun, Cinema, Casino, Spa and
-// Tourism are gone — no live place carried one, and none is food or drink.
-// Sports and Hookah stay (MESITA-2930). Their Google types sit in no family
-// now (`RETIRED_RAIL_TYPES`), so Search hides them and Create refuses them;
-// a karaoke bar is Bar and Night, a comedy club Night. Every paragraph below
-// that names one of the seven is history.
+// THE LIST OR REMOVE ITEMS.", then "think what makes sense for mesita"). A
+// Mesita place is a table: a guest sits, orders and pays a bill, which is
+// what Reservations and Prepayments need, and every live place was a
+// restaurant, a café or a bar. So Family, Karaoke, Fun, Cinema, Casino, Spa
+// and Tourism are gone — none carried a live place, and all but Karaoke sell
+// tickets, lanes or treatments. Sports (sports bars) and Hookah (lounges)
+// are tables and stay. A karaoke bar is Bar and Night, a comedy club Night.
+// The Google types that are not tables sit in no family now
+// (`RETIRED_RAIL_TYPES`). Every paragraph below that names one of the seven,
+// or a stadium, a concert hall or a spa as a rail, is history.
 //
 // THIRTY-SEVEN before that (MESITA-2930, Pato 2026-10-27: "Fold Beer, Cocktails and
 // Wine into Bar. Keep Sports and Hookah."): `drinks` (Bar) absorbs the three.
@@ -48,7 +52,8 @@
 // MESITA-2962 narrowed the sights to ones somebody runs (museums, galleries,
 // attractions, zoos): parks, plazas, monuments, beaches and malls sit in no
 // family again, with massage, yoga, pools and the sweet and tea shops.
-// Sports is sports bars and stadiums — watching the game is social; a gym is
+// Sports is sports bars — watching the game at a table (stadiums left with
+// MESITA-4571); a gym is
 // not.
 //
 // ONE NIGHT RAIL (MESITA-2486, Pato 2026-10-19: "merge"): Go out folded
@@ -231,11 +236,14 @@ export const NO_FAMILY_TYPES = [
 ] as const;
 
 /**
- * The Google types whose only rails were Family, Fun, Cinema, Casino, Spa or
- * Tourism until MESITA-4571 cut the catalog to thirty. Each sits in no family:
- * Search hides it and Create refuses it (`catalog_membership.enabled` is off
- * for every one, flipped in the same migration). `catalog-families.test.ts`
- * pins it.
+ * Off Mesita since MESITA-4571 (Pato 2026-11-21: "think what makes sense for
+ * mesita … reduce the size or list of allowed google categories"). A Mesita
+ * place is one where a guest sits at a table, orders and pays a bill — what
+ * Reservations and Prepayments need. These Google types are not: the rails
+ * that left (Family, Fun, Cinema, Casino, Spa, Tourism) and, below them, the
+ * halls, stadiums, shops and stands. Each sits in no family, so Search hides
+ * it and Create refuses it (`catalog_membership.enabled` is off for every
+ * one, flipped in the same migration). `catalog-families.test.ts` pins it.
  */
 export const RETIRED_RAIL_TYPES = [
   "bowling_alley",
@@ -287,6 +295,26 @@ export const RETIRED_RAIL_TYPES = [
   "market",
   "flea_market",
   "farmers_market",
+  // Not a table (MESITA-4571): halls and stadiums sell seats, shops and
+  // stands sell goods to go, a food court is a building.
+  "concert_hall",
+  "concert_venue",
+  "amphitheatre",
+  "philharmonic_hall",
+  "opera_house",
+  "auditorium",
+  "stadium",
+  "arena",
+  "vineyard",
+  "chocolate_factory",
+  "chocolate_shop",
+  "confectionery",
+  "coffee_roastery",
+  "coffee_stand",
+  "hot_dog_stand",
+  "pizza_delivery",
+  "meal_takeaway",
+  "food_court",
 ] as const;
 
 // The dictionary (MESITA-2834, rewritten by MESITA-2888): one row per
@@ -299,8 +327,6 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   coffee_shop: ["coffee", "breakfast"],
   cat_cafe: ["coffee"],
   dog_cafe: ["coffee"],
-  coffee_roastery: ["coffee"],
-  coffee_stand: ["coffee"],
   tea_house: ["coffee"],
   board_game_cafe: ["coffee"],
   juice_shop: ["healthy", "coffee"],
@@ -316,9 +342,6 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   pastry_shop: ["bakery", "sweet", "breakfast"],
   donut_shop: ["bakery", "sweet", "breakfast"],
   cake_shop: ["bakery", "sweet"],
-  chocolate_factory: ["sweet"],
-  chocolate_shop: ["sweet"],
-  confectionery: ["sweet"],
   dessert_restaurant: ["sweet"],
   dessert_shop: ["sweet"],
   ice_cream_shop: ["sweet"],
@@ -340,7 +363,6 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   mexican: ["mexican", "tacos", "dinner"],
   // Pizza · Italian
   pizza_restaurant: ["pizza", "italian"],
-  pizza_delivery: ["pizza", "quick_bite"],
   pizza: ["pizza", "italian"],
   italian_restaurant: ["italian", "dinner"],
   italian: ["italian", "dinner"],
@@ -355,11 +377,8 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   fast_food_restaurant: ["quick_bite"],
   fast_food: ["quick_bite"],
   hot_dog_restaurant: ["quick_bite"],
-  hot_dog_stand: ["quick_bite"],
   snack_bar: ["quick_bite"],
-  food_court: ["quick_bite"],
   cafeteria: ["quick_bite"],
-  meal_takeaway: ["quick_bite"],
   food_truck: ["quick_bite"],
   food_hall: ["quick_bite"],
   fish_and_chips_restaurant: ["seafood", "quick_bite"],
@@ -505,26 +524,17 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   brewery: ["drinks"],
   beer_garden: ["drinks"],
   sports_bar: ["sports", "drinks"],
-  stadium: ["sports"],
-  arena: ["sports"],
   cocktail_bar: ["drinks", "night_out"],
   lounge_bar: ["drinks", "night_out"],
   hookah_bar: ["hookah", "drinks", "night_out"],
   wine_bar: ["drinks"],
   winery: ["drinks"],
-  vineyard: ["drinks"],
   billiards: ["drinks"],
   // Night · Club · Music
   night_club: ["nightclub", "night_out"],
   dance_hall: ["nightclub", "night_out", "music"],
   karaoke: ["drinks", "night_out"],
   live_music_venue: ["music", "night_out"],
-  concert_hall: ["music"],
-  concert_venue: ["music"],
-  amphitheatre: ["music"],
-  philharmonic_hall: ["music"],
-  opera_house: ["music"],
-  auditorium: ["music"],
   comedy_club: ["night_out"],
   // No family (MESITA-2382): a place, not a trip a guest picks.
   ...Object.fromEntries(NO_FAMILY_TYPES.map((t) => [t, ["undefined"] as const])),
