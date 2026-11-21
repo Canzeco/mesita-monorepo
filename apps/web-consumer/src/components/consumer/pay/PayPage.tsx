@@ -2,7 +2,7 @@
 
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Clock, Gift, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
@@ -16,7 +16,7 @@ import { billRead, payHere, type BillRead } from "@/lib/pay-wallet";
 import { clearGuestDraft, pendingTicket, readDraft } from "@/lib/guest-pay-draft";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { cn } from "@/lib/utils";
-import { CONSUMER_ROUTES, payBillPath, payPlacePath, placePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payBillPath, payPlacePath, placePath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { markPanelExit, navigateTo, previousEntryPath, replaceAddress } from "@/lib/navigate";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -28,6 +28,7 @@ import { distanceText, usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
+import { LoyaltyCardBoxSkeleton } from "./PayFrameLoading";
 import { PayPickSheet } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
@@ -83,9 +84,9 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 //
 // CHOOSE FIRST, THEN PAY (Pato, 2026-11-21, MESITA-4519, /plan-design-review:
 // "pay bill is not selected and then you pay"; "the placeholders look like
-// shit"): a white header, nothing selected until the guest taps a card. Pay
-// reads "Choose a place" and opens the Pay Bill sheet; after a tap it names
-// the place and checks it out. Each place is a two-half card (PlaceActionRow)
+// shit"): a white header. Since MESITA-4523 Pay Bill always opens the Pay
+// Bill sheet to pick the place, and a card opens its Loyalty Card (a card
+// tap selected the place for Pay in MESITA-4519/4520). Each place is a two-half card (PlaceActionRow)
 // with its offers; no Add a Loyalty Card row and no search bar (the sheet
 // has one). The notes above are the history.
 
@@ -106,15 +107,6 @@ export function PayPage({
   // already grants names the place the guest is at (MESITA-4232, D5).
   const { loc, askLocation, notNow } = usePayLocation({ prime: true });
   const { places, failed: placesFailed, loading: placesLoading, refresh: refreshPlaces } = usePayPlaces(loc.state === "on" ? loc.at : null);
-  // A tap picks the place Pay checks out. Absent means none (MESITA-4519).
-  const [picked, setPicked] = useState<string | null>(null);
-  const [farRows, setFarRows] = useState<{ id: string; name: string }[]>([]);
-  const onSelectable = useCallback((rows: { id: string; name: string }[]) => {
-    setFarRows((cur) => {
-      if (cur.length === rows.length && cur.every((r, i) => r.id === rows[i]?.id && r.name === rows[i]?.name)) return cur;
-      return rows;
-    });
-  }, []);
   // null while the open payment is still being looked for.
   const [openTabs, setOpenTabs] = useState<GuestTab[] | null>(null);
   const [billFacts, setBillFacts] = useState<{ visitsOk: boolean; missed: boolean } | null>(null);
@@ -267,12 +259,6 @@ export function PayPage({
     () => (places === null && !placesFailed ? null : new Set((places ?? []).map((p) => p.place_id))),
     [places, placesFailed],
   );
-  const selectable = shownPlaces.map((p) => p.place_id);
-  for (const row of farRows) if (!selectable.includes(row.id)) selectable.push(row.id);
-  // Nothing is chosen for the guest (MESITA-4519): Pay reads "Choose a
-  // place" until a card is tapped, and again if that card leaves the list.
-  const selectedId = picked !== null && selectable.includes(picked) ? picked : null;
-  const selectedName = shownPlaces.find((p) => p.place_id === selectedId)?.name ?? farRows.find((r) => r.id === selectedId)?.name ?? null;
   const payBusy = payHere(bill) === "wait";
   const checkBill = () => {
     setBillFacts(null);
@@ -289,9 +275,11 @@ export function PayPage({
           : pending
             ? payPlacePath(pending.placeId)
             : null
-        : selectedId
-          ? payPlacePath(selectedId)
-          : null;
+        : null;
+    // PAY BILL ALWAYS ASKS WHERE (Pato, 2026-11-21, MESITA-4523: "you click
+    // pay bill and then you select the place in the modal that opens. yes.
+    // double step. but it keeps everything clean"): no place is chosen on
+    // the page; with no open bill, Pay Bill opens the sheet.
     if (href) navigateTo(router, href, { motion: "push" });
     else if (decision !== "bill") openPicker();
   };
@@ -304,8 +292,9 @@ export function PayPage({
     <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-8 *:shrink-0">
       {/* A CLEAN WHITE HEADER (MESITA-4519): the black slab of MESITA-4512
           is gone ("remove the dark background … just a line dividing stuff
-          is clearer. button must be black"). Payment Method and Tickets,
-          then a black Pay, then a hairline over the places. */}
+          is clearer"). Payment Method and Tickets dark, then Pay Bill in
+          Stripe purple again (Pato, MESITA-4523: "Pay Bill must be purple";
+          black for one deploy, MESITA-4520), then Send Gift. */}
       <PayHeader title="Wallet" />
       <div className="mt-2 flex gap-2">
         <MethodPreview wide />
@@ -335,19 +324,18 @@ export function PayPage({
       ) : null}
 
       {payBusy ? (
-        <Skeleton className="mt-2 h-24 w-full rounded-xl" aria-hidden />
+        <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
       ) : (
         <button
           type="button"
-          className="bg-foreground text-background hover:bg-foreground/90 mt-2 flex h-24 w-full items-center justify-center gap-3 rounded-xl text-lg font-semibold"
-          aria-label={bill === "open" ? "Pay your open bill" : selectedName ? `Pay Bill at ${selectedName}` : "Pay Bill. Choose a place"}
+          className="mt-2 flex h-24 w-full items-center justify-center gap-3 rounded-xl bg-[#635BFF] text-lg font-semibold text-white hover:bg-[#5249e6]"
+          aria-label={bill === "open" ? "Pay your open bill" : "Pay Bill"}
           onClick={paySelected}
           data-pay-bill
         >
           <QrCode className="h-8 w-8 shrink-0" strokeWidth={2.25} aria-hidden />
           <span className="min-w-0 text-left">
             <span className="block">Pay Bill</span>
-            {bill !== "open" ? <span className="block max-w-[16rem] truncate text-sm">{selectedName ?? "Choose a place"}</span> : null}
           </span>
         </button>
       )}
@@ -387,16 +375,11 @@ export function PayPage({
         leadIds={placeIds}
         leadCount={shownPlaces.length}
         leadSettled={places !== null && !placesFailed}
-        selectedId={selectedId}
-        onSelect={setPicked}
-        onSelectable={onSelectable}
         lead={
           <PlaceRows
             places={shownPlaces}
             failed={placesFailed}
             loading={placesLoading && places === null}
-            selectedId={selectedId}
-            onSelect={setPicked}
             onRefresh={refreshPlaces}
             located={loc.state === "on"}
           />
@@ -413,19 +396,16 @@ function PlaceRows({
   places,
   failed,
   loading,
-  selectedId,
-  onSelect,
   onRefresh,
   located,
 }: {
   places: PayPlace[];
   failed: boolean;
   loading: boolean;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
   onRefresh: () => void;
   located: boolean;
 }) {
+  const router = useRouter();
   if (failed) {
     return (
       <p className="text-muted-foreground px-4 py-4 text-sm" role="alert" data-error="pay_places_unavailable">
@@ -439,9 +419,9 @@ function PlaceRows({
   if (loading) {
     return (
       <>
-        <Skeleton className="h-24 w-full rounded-2xl" aria-hidden />
-        <Skeleton className="h-24 w-full rounded-2xl" aria-hidden />
-        <Skeleton className="h-24 w-full rounded-2xl" aria-hidden />
+        <LoyaltyCardBoxSkeleton />
+        <LoyaltyCardBoxSkeleton />
+        <LoyaltyCardBoxSkeleton />
       </>
     );
   }
@@ -459,8 +439,9 @@ function PlaceRows({
             offers={p.offers ?? null}
             placeHref={placePath(p.place_id)}
             placeId={p.place_id}
-            selected={selectedId === p.place_id}
-            onSelect={() => onSelect(p.place_id)}
+            onOpen={() =>
+              navigateTo(router, p.available_cents > 0 || p.pending_cents > 0 ? walletPlacePath(p.place_id) : placePath(p.place_id), { motion: "drill" })
+            }
           />
         );
       })}

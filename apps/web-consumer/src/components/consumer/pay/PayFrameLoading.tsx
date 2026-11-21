@@ -8,22 +8,24 @@ import { PayHeader } from "./PayHeader";
  *  you are loading"). Every Pay address draws it (MESITA-3614). */
 export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "proof" }) {
   if (body === "list") {
-    // /pay (MESITA-4512): a black slab (Wallet, two light modules, a tall Pay), then search and place bones on white.
+    // /pay (Pato, 2026-11-21, MESITA-4523: "update placeholders when loading
+    // page"): the page MESITA-4519/4520 shipped. The white Wallet header, two
+    // 48px buttons, Pay Bill 96px, Send Gift 56px, the hairline, then Loyalty
+    // Card boxes. MESITA-4512's black slab and search bar before.
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-8 *:shrink-0" aria-busy>
-        <div className="bg-black -mx-2 px-2 pb-3">
-          <PayHeader title="Wallet" embedded />
-          <div className="mt-2 flex gap-2">
-            <Skeleton className="h-12 min-w-0 flex-1 rounded-xl bg-card" aria-hidden />
-            <Skeleton className="h-12 min-w-0 flex-1 rounded-xl bg-card" aria-hidden />
-          </div>
-          <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
+        <PayHeader title="Wallet" />
+        <div className="mt-2 flex gap-2">
+          <Skeleton className="h-12 min-w-0 flex-1 rounded-xl" aria-hidden />
+          <Skeleton className="h-12 min-w-0 flex-1 rounded-xl" aria-hidden />
         </div>
-        <Skeleton className="mt-2 h-12 w-full rounded-xl" aria-hidden />
+        <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
+        <Skeleton className="mt-2 h-14 w-full rounded-xl" aria-hidden />
+        <hr className="border-border -mx-2 mt-3 mb-1" />
         <div className="mt-2 flex flex-col gap-2">
-          <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
-          <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
-          <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
+          <LoyaltyCardBoxSkeleton />
+          <LoyaltyCardBoxSkeleton />
+          <LoyaltyCardBoxSkeleton />
         </div>
       </div>
     );
@@ -37,5 +39,16 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
         <GuestPayLoading />
       </div>
     </Screen>
+  );
+}
+
+/** One Loyalty Card box in bones (MESITA-4523): the card in a bank card's
+ *  proportions on the left, the Offers tile beside it, as PlaceActionRow. */
+export function LoyaltyCardBoxSkeleton() {
+  return (
+    <div className="border-border flex w-full items-stretch gap-2 rounded-2xl border p-2" aria-hidden>
+      <Skeleton className="aspect-[85.6/54] w-[46%] shrink-0 rounded-xl" />
+      <Skeleton className="min-w-0 flex-1 rounded-xl" />
+    </div>
   );
 }

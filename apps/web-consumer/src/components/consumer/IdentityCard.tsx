@@ -1,7 +1,7 @@
 "use client";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Crown, UserRound } from "lucide-react";
+import { Crown } from "lucide-react";
 import { useConsumerIdentity } from "@/lib/identity-context";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
@@ -182,10 +182,6 @@ export function IdentityCard({
 // followers on the right (opens Me › Instagram; "Connect Instagram" when
 // there is none). Social's member card keeps IdentityCard above.
 
-/** One module: a 1px hairline box on the card's white. */
-const MODULE_CLASS =
-  "border-border flex min-w-0 items-center rounded-lg border px-3 transition-colors hover:bg-muted/60";
-
 /** "@handle · ~320 followers" → ["@handle", "~320 followers"]. */
 function splitInstagramLabel(label: string): [string, string | null] {
   const at = label.indexOf(" · ");
@@ -208,20 +204,17 @@ export function IdentityModules({
   // count (Pato, MESITA-4370: "a tag saying more than +1000 followers …
   // maybe a crown"). Not a Class: Class left Me in MESITA-4306.
   const { igReach } = useConsumerIdentity();
-  // ONE UNIT, TWO UNITS (Pato, 2026-11-18, MESITA-4370: "name 1 unit tall
-  // and instagram 2 units tall"): a 36px name box over a 72px Instagram box
-  // holding the handle over its followers; the photo spans both, 116px.
-  // THE GRID (Pato, 2026-11-18, MESITA-4340: "photo name / photo instagram.
-  // name and instagram same height. photo double height"): the photo spans
-  // both rows, 48 + 8 + 48 = 104px; the two boxes beside it are 48px each.
-  // The "Name" label of MESITA-4335 is gone: the name says itself.
+  // CENTRED, SMALL, TWO LINES (Pato, 2026-11-21, MESITA-4523: "profile pic
+  // too big it looks like shit. lets return to the prev version. profile pic
+  // centered and two lines below: name on top, instagram below"): a 72px
+  // photo in its ring, centred, then the name (opens Profile) and the
+  // Instagram line (handle · followers, the 1K+ crown) as plain lines, no
+  // boxes. MESITA-4340 to 4370 had a 113px photo beside a name box and an
+  // Instagram box.
   return (
-    <div
-      className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[2.25rem_4.5rem] gap-x-3 gap-y-2"
-      data-identity-card
-    >
-      <span className={cn(IDENTITY_RING_CLASS, "row-span-2 self-center")} aria-hidden>
-        <span className="bg-muted relative block h-[113px] w-[113px] overflow-hidden rounded-full">
+    <div className="flex w-full min-w-0 flex-col items-center gap-2 text-center" data-identity-card>
+      <span className={IDENTITY_RING_CLASS} aria-hidden>
+        <span className="bg-muted relative block h-[72px] w-[72px] overflow-hidden rounded-full">
           {avatarUrl ? (
             <SizedImg src={avatarUrl} size="thumb" alt="" className="h-full w-full object-cover" />
           ) : (
@@ -229,52 +222,36 @@ export function IdentityModules({
           )}
         </span>
       </span>
-      <PushLink
-        href={nameHref}
-        aria-label={`Profile: ${name}`}
-        className={cn(MODULE_CLASS, "h-9 gap-2")}
-        data-identity-name
-      >
-        {/* A person before the name (Pato, 2026-11-18, MESITA-4354: "add an
-            icon for the name … like a person"), the Instagram badge's size
-            and place, so the two boxes line up. */}
-        <span
-          aria-hidden
-          className="bg-muted text-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+      <span className="flex w-full min-w-0 flex-col items-center gap-0.5">
+        <PushLink
+          href={nameHref}
+          aria-label={`Profile: ${name}`}
+          className={cn("text-foreground inline-flex min-h-11 max-w-full items-center text-base font-bold tracking-tight", DOOR_HOVER_CLASS)}
+          data-identity-name
         >
-          <UserRound className="h-3 w-3" strokeWidth={2.5} />
-        </span>
-        {/* ONE TYPE (Pato, 2026-11-18, MESITA-4348: "keep fonts
-            standardized"): the name and the handle are the Me tiles' own
-            text-sm bold; the followers the same size, muted. */}
-        <span className="text-foreground truncate text-sm font-bold tracking-tight">{name}</span>
-      </PushLink>
-      <PushLink
-        href={instagram.href}
-        aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
-        className={cn(MODULE_CLASS, "h-[4.5rem] gap-2 text-sm")}
-        data-identity-instagram
-      >
-        <InstagramBadge connected={instagram.connected} />
-        <span className="flex min-w-0 flex-col">
-          <span className="text-foreground truncate font-bold tracking-tight">{handle}</span>
-          {followers ? (
-            <span className="text-muted-foreground flex items-center gap-1 font-semibold">
-              <span className="truncate">{followers}</span>
-              {igReach && (
-                <span
-                  className="type-meta flex shrink-0 items-center gap-1 rounded-full bg-neutral-950 px-2 py-0.5 font-bold text-white"
-                  aria-label="Over 1,000 followers"
-                  data-identity-reach
-                >
-                  <Crown className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-                  1K+
-                </span>
-              )}
+          <span className="truncate">{name}</span>
+        </PushLink>
+        <PushLink
+          href={instagram.href}
+          aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
+          className={cn("inline-flex min-h-11 max-w-full items-center gap-1.5 text-sm", DOOR_HOVER_CLASS)}
+          data-identity-instagram
+        >
+          <InstagramBadge connected={instagram.connected} />
+          <span className="text-foreground truncate font-semibold">{handle}</span>
+          {followers ? <span className="text-muted-foreground shrink-0">· {followers}</span> : null}
+          {igReach && (
+            <span
+              className="type-meta flex shrink-0 items-center gap-1 rounded-full bg-neutral-950 px-2 py-0.5 font-bold text-white"
+              aria-label="Over 1,000 followers"
+              data-identity-reach
+            >
+              <Crown className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+              1K+
             </span>
-          ) : null}
-        </span>
-      </PushLink>
+          )}
+        </PushLink>
+      </span>
     </div>
   );
 }
