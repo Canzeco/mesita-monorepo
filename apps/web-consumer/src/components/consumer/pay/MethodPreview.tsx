@@ -12,6 +12,8 @@ import { useWallet } from "@/components/consumer/wallet/use-wallet";
 import { navigateTo } from "@/lib/navigate";
 import { walletMethodsPath } from "@/lib/consumer-route-contract";
 import { PILL, WIDE } from "./header-pill";
+import { PAY_ROW, PAY_ROW_TEXT, PAY_THUMB } from "./pay-sections";
+import { cn } from "@/lib/utils";
 
 const noSubscribe = () => () => {};
 
@@ -36,8 +38,8 @@ export function MethodPreview({ wide = false, row = false }: { wide?: boolean; r
   if (face === "bone") {
     if (row)
       return (
-        <span className="flex h-14 items-center gap-3 px-3" aria-hidden>
-          <Skeleton className="h-5 w-5 rounded" />
+        <span className={PAY_ROW} aria-hidden>
+          <Skeleton className={PAY_THUMB} />
           <Skeleton className="h-4 w-28 rounded" />
         </span>
       );
@@ -76,7 +78,7 @@ export function MethodPreview({ wide = false, row = false }: { wide?: boolean; r
   if (row) {
     const rowLabel = face !== "retry" && way?.kind === "card" ? `${brandLabel(way.card.brand)} ••${way.card.last4}` : label;
     return (
-      <button type="button" className="hover:bg-muted/60 flex h-14 w-full items-center gap-3 px-3 text-left" aria-label={aria} onClick={open} data-pay-method>
+      <button type="button" className={cn(PAY_ROW, "hover:bg-muted/60")} aria-label={aria} onClick={open} data-pay-method>
         {/* THE CARD IN MINIATURE (Pato, 2026-11-21, MESITA-4561: "add some
             pseudo icon to the card or something"): a saved card wears its
             brand chip, the Payment methods page's own (official mark on the
@@ -85,11 +87,11 @@ export function MethodPreview({ wide = false, row = false }: { wide?: boolean; r
         {face !== "retry" && way?.kind === "card" ? (
           <CardBrandChip brand={way.card.brand} last4={way.card.last4} />
         ) : (
-          <span className="bg-muted text-foreground flex h-8 w-[3.2rem] shrink-0 items-center justify-center rounded-md" aria-hidden>
+          <span className={cn(PAY_THUMB, "bg-muted text-foreground")} aria-hidden>
             {way ? <Icon className="h-4 w-4" strokeWidth={2} /> : <Plus className="h-4 w-4" strokeWidth={2.25} />}
           </span>
         )}
-        <span className="min-w-0 flex-1 truncate text-base font-semibold tabular-nums">{rowLabel}</span>
+        <span className={cn(PAY_ROW_TEXT, "min-w-0 flex-1 truncate tabular-nums")}>{rowLabel}</span>
         <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
       </button>
     );

@@ -9,3 +9,19 @@
 export const SECTION_CARD = "border-border bg-card mt-2 overflow-hidden rounded-2xl border";
 export const SECTION_TITLE = "text-foreground px-3 pt-3 text-base font-semibold";
 export const SECTION_ROWS = "divide-border flex flex-col divide-y";
+
+// ONE SIZE SCALE (Pato, 2026-11-21, MESITA-4578: "standarize … sizes and
+// fonts in this … page"): Pay speaks four sizes — 20 the page title, 18 the
+// three big buttons, 16 every row name, section title and amount, 14 the
+// secondary words — all semibold, never bold. Every row of a box is 56px with
+// one 48x32 thumbnail; chevrons 20px, glyphs inside a thumbnail 16px. Before:
+// the method row 56px over ~46px Loyalty Card rows, a 51x32 chip over 40x26
+// photos, the balance bold.
+/** A row of a Pay box: 56px, 12px in, the thumbnail 12px from the words. */
+export const PAY_ROW = "flex h-14 w-full min-w-0 items-center gap-3 px-3 text-left";
+/** The row's thumbnail: the method chip, the Loyalty Card's photo, the + chip. */
+export const PAY_THUMB = "flex h-8 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md";
+/** The row's main words, and its amount (add `shrink-0 tabular-nums`). */
+export const PAY_ROW_TEXT = "text-foreground text-base font-semibold";
+/** The row's secondary words: a distance, a note. */
+export const PAY_ROW_META = "text-muted-foreground text-sm";

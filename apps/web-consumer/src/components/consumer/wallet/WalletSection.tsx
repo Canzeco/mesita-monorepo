@@ -12,8 +12,9 @@ import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
 import { LoyaltyCardBoxSkeleton } from "@/components/consumer/pay/PayFrameLoading";
-import { SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "@/components/consumer/pay/pay-sections";
+import { PAY_ROW, PAY_ROW_TEXT, PAY_THUMB, SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "@/components/consumer/pay/pay-sections";
 import { GiftClaimSheet } from "./SendCredit";
+import { cn } from "@/lib/utils";
 import { useWallet } from "./use-wallet";
 import { useStoryNow } from "./use-story-now";
 import { openStories } from "@/lib/story-lines";
@@ -310,13 +311,13 @@ export function WalletSection({
             <button
               type="button"
               onClick={() => setAddOpen(true)}
-              className="flex min-h-11 w-full items-center gap-3 px-3 py-2.5 text-left"
+              className={PAY_ROW}
               data-wallet-add-card
             >
-              <span className="bg-muted text-foreground flex h-[26px] w-10 shrink-0 items-center justify-center rounded-[5px]" aria-hidden>
+              <span className={cn(PAY_THUMB, "bg-muted text-foreground")} aria-hidden>
                 <Plus className="h-4 w-4" strokeWidth={2.25} />
               </span>
-              <span className="text-foreground min-w-0 flex-1 truncate text-base font-semibold">Add Loyalty Card</span>
+              <span className={cn(PAY_ROW_TEXT, "min-w-0 flex-1 truncate")}>Add Loyalty Card</span>
               <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
             </button>
           ) : null}

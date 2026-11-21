@@ -3,7 +3,7 @@ import { GuestPayLoading } from "./GuestPayScreen";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { PayHeader } from "./PayHeader";
 import { TicketsShortcut } from "./TicketsShortcut";
-import { SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
+import { PAY_ROW, PAY_THUMB, SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
 
 /** A Pay screen's frame while it loads: the title in place, the body in
  *  bones (Pato, MESITA-2701: "the placeholders must be similar to the page
@@ -23,8 +23,8 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
         <div className="mt-1 flex flex-1 flex-col pb-8">
           <section className={SECTION_CARD}>
             <h2 className={SECTION_TITLE}>Payment method</h2>
-            <span className="flex h-14 items-center gap-3 px-3">
-              <Skeleton className="h-5 w-5 rounded" />
+            <span className={PAY_ROW}>
+              <Skeleton className={PAY_THUMB} />
               <Skeleton className="h-4 w-28 rounded" />
             </span>
           </section>
@@ -56,9 +56,9 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
  *  line since MESITA-4573. No box of its own: it sits in the Loyalty Cards box. */
 export function LoyaltyCardBoxSkeleton() {
   return (
-    <div className="px-3 py-2.5" aria-hidden>
-      <span className="flex min-h-11 items-center gap-3">
-        <Skeleton className="h-[26px] w-10 shrink-0 rounded-[5px]" />
+    <div aria-hidden>
+      <span className={PAY_ROW}>
+        <Skeleton className={PAY_THUMB} />
         <Skeleton className="h-4 w-32 rounded" />
         <Skeleton className="ml-auto h-4 w-16 rounded" />
       </span>
