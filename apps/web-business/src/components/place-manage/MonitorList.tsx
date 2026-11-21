@@ -42,7 +42,9 @@ export const CHIP =
 /** At most three chips of one kind, then "+N" to that page filtered to the guest. */
 function Chips({ placeId, row }: { placeId: string; row: MonitorRow }) {
   const byKind = new Map<LinkKind, MonitorLink[]>();
-  for (const l of row.links) byKind.set(l.kind, [...(byKind.get(l.kind) ?? []), l]);
+  // Stories has no list since MESITA-4553 (config only on General), so a
+  // story link has nowhere to land.
+  for (const l of row.links) if (l.kind !== "story") byKind.set(l.kind, [...(byKind.get(l.kind) ?? []), l]);
   const chips: React.ReactNode[] = [];
   for (const [kind, links] of byKind) {
     for (const l of links.slice(0, 3)) {
