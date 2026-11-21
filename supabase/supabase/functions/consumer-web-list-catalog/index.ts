@@ -22,10 +22,11 @@
 // (`catalog_rank_lanes`) ranks the Organic lane (every place; the n-th of a
 // kind × `params.variety.repeat`^(n − 1), off on Nearby) and the Inorganic
 // lane (Premier places whose Proximity × premierFactor reaches
-// `params.mix.adFloor`). FEEDS AND LANES (MESITA-4517): Nearby and Popular
-// are one organic lane plus Inorganic; Family is three organic lanes of the
-// one family (close, well known, and both: strong on each, ordered by the
-// worse rank) plus Inorganic. Close and well known are two SQL ranks. Each
+// `params.mix.adFloor`). FEEDS AND LANES (MESITA-4517, MESITA-4548): Nearby
+// is close + both, Popular is popular + both, Family is close + well known
+// + both of one family; both = strong on close and on well known, ordered
+// by the worse rank. Every lane has an Organic and an Inorganic row; one SQL
+// rank per lane. Each
 // lane gives its `batch` per weave; a weave interleaves the lanes and puts
 // one ad after every `params.mix.adEvery` organic places (0 = no ads; a
 // place appears once), weaves repeating until the lanes run out. The first
@@ -92,7 +93,6 @@ import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import {
   CATALOG_PAGE_SIZE_MAX,
   isMapRow,
-  isOrganicRow,
   loadDiscoveryConfigWithMeta,
   RECIPE_ROWS,
   type RecipeRow,
@@ -152,8 +152,8 @@ type Body = {
   laneOf?: unknown;
 };
 
-/** A fill's `laneOf`: absent is none; an object of uuid → organic recipe
- *  row, else null. */
+/** A fill's `laneOf`: absent is none; an object of uuid → Catalog recipe
+ *  row (organic or, since MESITA-4548, Inorganic), else null. */
 function readLaneOf(v: unknown): Record<string, RecipeRow> | null {
   if (v === undefined || v === null) return {};
   if (typeof v !== "object" || Array.isArray(v)) return null;
@@ -161,7 +161,7 @@ function readLaneOf(v: unknown): Record<string, RecipeRow> | null {
   for (const [id, row] of Object.entries(v as Record<string, unknown>)) {
     if (!isUuid(id) || typeof row !== "string") return null;
     if (!(RECIPE_ROWS as readonly string[]).includes(row)) return null;
-    if (!isOrganicRow(row as RecipeRow) || isMapRow(row as RecipeRow)) continue;
+    if (isMapRow(row as RecipeRow)) continue;
     out[id] = row as RecipeRow;
   }
   return out;
@@ -373,7 +373,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
     adsFirstPage: pool.lanes.adsFirstPage,
     below_floor: pool.lanes.belowFloor,
     inorganicTotal: pool.lanes.inorganicTotal,
-    familyLanes: pool.lanes.family,
+    byLane: pool.lanes.byLane,
     weaves: pool.weaves.slice(0, 5),
     seed: seeded.seed,
     seedSent: seeded.sent,

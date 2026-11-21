@@ -64,7 +64,7 @@
 // Migration 20261028233000 strips them from the stored row.
 
 //
-// DISCOVERY RANKING v2 (MESITA-4454): `params.recipes` (ten rows since MESITA-4517, one per
+// DISCOVERY RANKING v2 (MESITA-4454): `params.recipes` (sixteen Catalog rows plus the Map's two since MESITA-4548, one per
 // screen · mode · lane) and `params.mix` (per-mode Temperature, ad floor,
 // ad cadence) are what the Map, the Catalog and Chat read now. Seeded by
 // migration 20261119060000; a missing key reads its default. The keys they
@@ -136,7 +136,7 @@ export type SignalParams = {
   /** `temperature`: Home's shuffle after the sort; 0 = none (MESITA-4153).
    *  UNREAD since MESITA-4454 (`mix.temperature` per mode replaces it). */
   shuffle: { temperature: number };
-  /** The ten recipe rows (MESITA-4454, MESITA-4517). */
+  /** The recipe rows (MESITA-4454, MESITA-4517, MESITA-4548). */
   recipes: Recipes;
   /** Home's mix (MESITA-4454): per-mode Temperature, ad floor, ad cadence. */
   mix: MixParams;
@@ -148,12 +148,18 @@ export type SignalParams = {
 export const RECIPE_ROWS = [
   "catalogNearbyOrganic",
   "catalogNearbyInorganic",
+  "catalogNearbyBoth",
+  "catalogNearbyBothInorganic",
   "catalogFamilyClose",
+  "catalogFamilyCloseInorganic",
   "catalogFamilyWellKnown",
+  "catalogFamilyWellKnownInorganic",
   "catalogFamilyBoth",
-  "catalogFamilyInorganic",
+  "catalogFamilyBothInorganic",
   "catalogPopularOrganic",
   "catalogPopularInorganic",
+  "catalogPopularBoth",
+  "catalogPopularBothInorganic",
   "mapOrganic",
   "mapInorganic",
 ] as const;
@@ -182,14 +188,22 @@ export const isMapRow = (row: RecipeRow) => row.startsWith("map");
 export const DEFAULT_RECIPES: Recipes = {
   catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
   catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
+  // MESITA-4548: Nearby both copies Nearby close; each new Inorganic row
+  // copies its feed's Inorganic row.
+  catalogNearbyBoth: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogNearbyBothInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
   // MESITA-4517: close copies Nearby Organic, well known copies Popular
   // Organic, both keeps the old Family Organic knobs.
   catalogFamilyClose: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogFamilyCloseInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
   catalogFamilyWellKnown: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogFamilyWellKnownInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
   catalogFamilyBoth: { halfKm: 2, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
-  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
+  catalogFamilyBothInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
   catalogPopularOrganic: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
   catalogPopularInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
+  catalogPopularBoth: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogPopularBothInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
   mapOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: null },
   mapInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: null },
 };
@@ -752,8 +766,20 @@ function reportedParam(
   return Math.round(Math.min(b.max, Math.max(b.min, n)) * factor) / factor;
 }
 
+/** A row saved under an older key (MESITA-4517, MESITA-4548): Family Organic
+ *  is Family both; the one Family Inorganic seeds all three Family Inorganic
+ *  rows until the next save writes them. */
+function legacyRow(row: RecipeRow, r: Record<string, unknown>): unknown {
+  if (row === "catalogFamilyBoth") return r.catalogFamilyOrganic;
+  if (
+    row === "catalogFamilyCloseInorganic" || row === "catalogFamilyWellKnownInorganic" ||
+    row === "catalogFamilyBothInorganic"
+  ) return r.catalogFamilyInorganic;
+  return undefined;
+}
+
 /**
- * The ten recipe rows (MESITA-4454, MESITA-4517). A missing row or field reads the
+ * The recipe rows (MESITA-4454, MESITA-4517, MESITA-4548). A missing row or field reads the
  * recipe table. Map rows have no Proximity: their `halfKm` and
  * `distanceExp` are always null. A Catalog row's null distance number reads
  * its default and is reported (L-1). Every Organic row's Premier exponent is
@@ -763,11 +789,7 @@ export function normalizeRecipes(raw: unknown, onClamp?: OnClamp): Recipes {
   const r = asRecord(raw);
   const out = {} as Recipes;
   for (const row of RECIPE_ROWS) {
-    // A row saved before MESITA-4517 holds `catalogFamilyOrganic`: it is
-    // Family both until the next save writes the new key.
-    const v = asRecord(
-      row === "catalogFamilyBoth" && r[row] === undefined ? r.catalogFamilyOrganic : r[row],
-    );
+    const v = asRecord(r[row] !== undefined ? r[row] : legacyRow(row, r));
     const d = DEFAULT_RECIPES[row];
     const key = (f: string) => `params.recipes.${row}.${f}`;
     const map = isMapRow(row);
@@ -954,12 +976,13 @@ export function recipeFor(
 ): Recipe {
   const m = mode ?? "popular";
   const L = lane === "organic" ? "Organic" : "Inorganic";
-  // Family's organic side is three lanes (MESITA-4517); a caller that asks
-  // for one row (Chat, a card with no lane) reads Family well known.
+  // Family is three lanes (MESITA-4517), each with its own Inorganic row
+  // (MESITA-4548); a caller that asks for one row (Chat, a card with no
+  // lane) reads Family well known, or Family close Inorganic.
   const row = (m === "map"
     ? `map${L}`
-    : m === "family" && lane === "organic"
-    ? "catalogFamilyWellKnown"
+    : m === "family"
+    ? (lane === "organic" ? "catalogFamilyWellKnown" : "catalogFamilyCloseInorganic")
     : `catalog${m[0].toUpperCase()}${m.slice(1)}${L}`) as RecipeRow;
   return recipeRow(row, cfg);
 }

@@ -204,24 +204,30 @@ const fmtKm = (km: number) =>
 /** The Ranking table, one flat list (MESITA-4517): a feed is what the
  *  guest sees, a lane is one ranked row inside it. */
 const LANE_ROWS: readonly { row: RecipeRow; name: string; note?: string }[] = [
-  { row: "catalogNearbyOrganic", name: "Nearby Organic" },
-  { row: "catalogNearbyInorganic", name: "Nearby Inorganic", note: "Premier places only" },
-  { row: "catalogFamilyClose", name: "Family close" },
-  { row: "catalogFamilyWellKnown", name: "Family well known" },
-  { row: "catalogFamilyBoth", name: "Family both", note: "Strong on close and well known" },
-  { row: "catalogFamilyInorganic", name: "Family Inorganic", note: "Premier places only" },
-  { row: "catalogPopularOrganic", name: "Popular Organic" },
-  { row: "catalogPopularInorganic", name: "Popular Inorganic", note: "Premier places only" },
-  { row: "mapOrganic", name: "Map Organic", note: "Popular and Family share it" },
-  { row: "mapInorganic", name: "Map Inorganic", note: "Premier places only" },
+  { row: "catalogNearbyOrganic", name: "Nearby close", note: "Organic" },
+  { row: "catalogNearbyInorganic", name: "Nearby close", note: "Inorganic · Premier only" },
+  { row: "catalogNearbyBoth", name: "Nearby both", note: "Organic · close and well known" },
+  { row: "catalogNearbyBothInorganic", name: "Nearby both", note: "Inorganic · Premier only" },
+  { row: "catalogFamilyClose", name: "Family close", note: "Organic" },
+  { row: "catalogFamilyCloseInorganic", name: "Family close", note: "Inorganic · Premier only" },
+  { row: "catalogFamilyWellKnown", name: "Family well known", note: "Organic" },
+  { row: "catalogFamilyWellKnownInorganic", name: "Family well known", note: "Inorganic · Premier only" },
+  { row: "catalogFamilyBoth", name: "Family both", note: "Organic · close and well known" },
+  { row: "catalogFamilyBothInorganic", name: "Family both", note: "Inorganic · Premier only" },
+  { row: "catalogPopularOrganic", name: "Popular", note: "Organic" },
+  { row: "catalogPopularInorganic", name: "Popular", note: "Inorganic · Premier only" },
+  { row: "catalogPopularBoth", name: "Popular both", note: "Organic · close and well known" },
+  { row: "catalogPopularBothInorganic", name: "Popular both", note: "Inorganic · Premier only" },
+  { row: "mapOrganic", name: "Map", note: "Organic · Popular and Family share it" },
+  { row: "mapInorganic", name: "Map", note: "Inorganic · Premier only" },
 ];
 
 // 1 ─ How places are ranked ───────────────────────────────────────────────
 export function HowRankedCard() {
   const uses: readonly [string, string][] = [
-    ["Home › Nearby chip", "Nearby Organic + Nearby Inorganic"],
-    ["Home › a family chip", "Family close + Family well known + Family both + Family Inorganic, one family"],
-    ["Home › Popular chip", "Popular Organic + Popular Inorganic"],
+    ["Home › Nearby chip", "Nearby close + Nearby both, each Organic and Inorganic"],
+    ["Home › a family chip", "Family close + Family well known + Family both, each Organic and Inorganic, one family"],
+    ["Home › Popular chip", "Popular + Popular both, each Organic and Inorganic"],
     ["Chat", "Family well known, inside its 15 km circle. No Inorganic lane, no shuffle."],
     ["The place screen's score", "Popular Organic"],
     ["Search map", "Map Organic + Map Inorganic"],
@@ -251,17 +257,18 @@ export function HowRankedCard() {
           </p>
           <p>
             A <strong>feed</strong> is what the guest sees; a <strong>lane</strong> is one ranked row inside
-            it. Nearby and Popular are one Organic lane and one Inorganic lane, every family. Family is one
-            family in three organic lanes: <strong>close</strong>, <strong>well known</strong>, and{" "}
-            <strong>both</strong> (the places in the better half of close and the better half of well known,
-            ordered by the worse of the two ranks; the two scores are never averaged), plus Family Inorganic.
-            Organic lanes have Premier exponent 0, so a plan never moves them. <strong>Inorganic</strong>:
-            Premier places only; guests see them marked &ldquo;Ad&rdquo;.
+            it, and every lane has an <strong>Organic</strong> row and an <strong>Inorganic</strong> row.
+            Nearby is <strong>close</strong> + <strong>both</strong>; Popular is <strong>popular</strong> +{" "}
+            <strong>both</strong>, every family. Family is one family in <strong>close</strong>,{" "}
+            <strong>well known</strong> and <strong>both</strong>. Both is the places in the better half of
+            the close ranking and the better half of the well-known ranking, ordered by the worse of the two
+            ranks; the two scores are never averaged. Organic rows have Premier exponent 0, so a plan never
+            moves them. Inorganic rows rank Premier places only; guests see them marked &ldquo;Ad&rdquo;.
           </p>
           <p>
-            Each lane gives its <strong>batch</strong> per weave. A weave takes the next batch of every lane,
-            one from each in turn (both, then close, then well known), with inorganic places woven in by the
-            Mixing card&apos;s cadence. A place appears once. Weaves repeat until the lanes run out; the first
+            Each row gives its <strong>batch</strong> per weave. A weave takes the next batch of every organic
+            lane, one from each in turn (both first), and puts one inorganic place after every cadence organic
+            places, taken in turn from the feed&apos;s Inorganic rows, each up to its batch. A place appears once. Weaves repeat until the lanes run out; the first
             weave is Home&apos;s first screen. With every Family batch at 10 the three organic lanes give 30.
           </p>
           <p>
@@ -342,7 +349,9 @@ const RECIPE_COLUMNS: readonly { key: RecipeKey; label: string }[] = [
 /** What the row's numbers do, computed from the row as edited (1A). */
 function recipeEffect(row: RecipeRow, recipe: Recipe, inorganicFloor: number): string {
   const organic = isOrganicRow(row);
-  if (row === "catalogFamilyBoth") return "Order: the worse of its close and well-known ranks";
+  if (row === "catalogFamilyBoth" || row === "catalogNearbyBoth" || row === "catalogPopularBoth") {
+    return "Order: the worse of its close and well-known ranks";
+  }
   const h = recipe.halfKm;
   const e = recipe.distanceExp;
   if (h == null || e == null) return organic ? "No distance on the Map" : "Any Premier place on screen";
@@ -520,7 +529,7 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
                 </Td>
                 {RECIPE_COLUMNS.map(({ key, label }) => (
                   <Td key={key} numeric>
-                    {cell(row, name, key, label)}
+                    {cell(row, `${name} ${isOrganicRow(row) ? "Organic" : "Inorganic"}`, key, label)}
                   </Td>
                 ))}
                 <Td className="text-muted-foreground type-meta min-w-48 whitespace-normal">

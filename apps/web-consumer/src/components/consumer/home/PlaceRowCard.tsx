@@ -51,9 +51,20 @@ function scoreNumber(n: number | null | undefined): string {
  */
 /** A lane key's name on the tag (MESITA-4517). */
 const LANE_NAMES: Record<string, string> = {
+  catalogNearbyOrganic: "Nearby close",
+  catalogNearbyInorganic: "Nearby close · Inorganic",
+  catalogNearbyBoth: "Nearby both",
+  catalogNearbyBothInorganic: "Nearby both · Inorganic",
   catalogFamilyClose: "Family close",
+  catalogFamilyCloseInorganic: "Family close · Inorganic",
   catalogFamilyWellKnown: "Family well known",
+  catalogFamilyWellKnownInorganic: "Family well known · Inorganic",
   catalogFamilyBoth: "Family both",
+  catalogFamilyBothInorganic: "Family both · Inorganic",
+  catalogPopularOrganic: "Popular",
+  catalogPopularInorganic: "Popular · Inorganic",
+  catalogPopularBoth: "Popular both",
+  catalogPopularBothInorganic: "Popular both · Inorganic",
 };
 
 function ScoreLabel({
@@ -74,7 +85,7 @@ function ScoreLabel({
       : ordinal(rank.shown)
     : null;
   const rows: Array<[string, string]> = [
-    ["Lane", ad ? "Inorganic" : (lane && LANE_NAMES[lane]) || "Organic"],
+    ["Lane", (lane && LANE_NAMES[lane]) || (ad ? "Inorganic" : "Organic")],
     // Popularity = Google × the Foursquare boost (MESITA-4515, MESITA-4517).
     ...(area.google !== undefined ? [["Google", scoreNumber(area.google)] as [string, string]] : []),
     ...(area.foursquare
