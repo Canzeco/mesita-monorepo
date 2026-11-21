@@ -78,6 +78,7 @@ serveJson("business-web-list-place-tickets", async (req) => {
   if (error) return json({ ok: false, error: `place_ticket_desk: ${error.message}` }, 500);
 
   const s = (data ?? {}) as {
+    timezone?: unknown;
     days?: unknown;
     totals?: unknown;
     rows?: Array<Record<string, unknown>>;
@@ -96,6 +97,7 @@ serveJson("business-web-list-place-tickets", async (req) => {
     ok: true,
     test_mode: !livemode,
     kind: b.kind,
+    timezone: typeof s.timezone === "string" ? s.timezone : usableTimezone(placeRes.place?.timezone),
     days: s.days ?? [],
     totals: s.totals ?? {},
     rows,

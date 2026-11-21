@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ticketLine, ticketStatus, voucherName, type GiftTicket, type StoryTicket, type VisitTicket, type VoucherTicket } from "@/lib/ticket-desk";
+import { ticketLine, ticketStatus, ticketWhen, voucherName, type GiftTicket, type StoryTicket, type VisitTicket, type VoucherTicket } from "@/lib/ticket-desk";
 
 const at = "2026-11-20T12:00:00Z";
 const base = { id: "1", at, rank: 0, guest: "Ana" };
@@ -17,6 +17,10 @@ const visit = (over: Partial<VisitTicket> = {}): VisitTicket => ({
 });
 
 describe("ticket desk words", () => {
+  it("prints a log time in the place timezone", () => {
+    expect(ticketWhen("2026-11-20T18:00:00Z", "America/Mexico_City")).toBe("Nov 20, 12:00 PM");
+  });
+
   it("names the voucher products", () => {
     expect(voucherName("voucher_story")).toBe("Story Voucher");
     expect(voucherName("voucher_welcome")).toBe("Welcome Voucher");

@@ -51,6 +51,7 @@ export type TicketTotals = Record<string, number>;
 export type PlaceTicketDesk = {
   test_mode: boolean;
   kind: TicketKind;
+  timezone: string;
   days: TicketDay[];
   totals: TicketTotals;
   rows: TicketRow[];
@@ -116,6 +117,17 @@ export function ticketStatus(kind: TicketKind, row: TicketRow): string {
   const story = row as StoryTicket;
   if (story.state === "void") return VOID[story.void_reason ?? ""] ?? "Void";
   return STORY[story.state] ?? story.state;
+}
+
+/** The log clock, the place's, the same words Views uses. */
+export function ticketWhen(iso: string, timezone: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: timezone,
+  });
 }
 
 /** The grey line under the guest. */
