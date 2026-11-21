@@ -11,6 +11,7 @@ import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
 import { LoyaltyCardBoxSkeleton } from "@/components/consumer/pay/PayFrameLoading";
+import { SECTION_BOX, SECTION_TITLE } from "@/components/consumer/pay/pay-sections";
 import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
 import { useStoryNow } from "./use-story-now";
@@ -250,11 +251,14 @@ export function WalletSection({
         </p>
       ) : null}
 
-      <section className="mt-2 flex flex-col gap-2" aria-label="Places and Loyalty Cards">
+      {/* ONE BOX OF ROWS (MESITA-4560, /plan-design-review D1): a grey
+          "Loyalty Cards" title over one white box, a hairline between places. */}
+      <p className={SECTION_TITLE}>Loyalty Cards</p>
+      <section className={SECTION_BOX} aria-label="Loyalty Cards">
           {lead}
           {creditsState === "rows"
             ? stories.map((s) => (
-                <div key={s.purchase_id} className="border-border bg-card overflow-hidden rounded-xl border">
+                <div key={s.purchase_id}>
                   <StoryRow story={s} now={storyNow} onOpen={() => navigateTo(router, storyTicketPath(s.story_id), { motion: "drill" })} />
                 </div>
               ))
