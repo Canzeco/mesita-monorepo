@@ -14,11 +14,11 @@ import {
 } from "./area-score.ts";
 
 const ANCHOR = { lat: 19.43, lng: -99.13 };
-/** The test's Inorganic-shaped row: Popularity = (stars² × reviews)^0.5 =
- *  stars × √reviews, and the plan counts once (PremierExp 1). */
-const RECIPE: Recipe = { halfKm: 4, distanceExp: 1, starsExp: 2, googleExp: 0.5, premierExp: 1 };
-/** Popularity of a 4.0★ place with 100 reviews: 4 × √100 = 40. */
-const POP = 40;
+/** The test's Inorganic-shaped row: Popularity = (stars × reviews)^0.5 =
+ *  √(stars × reviews), and the plan counts once (PremierExp 1). */
+const RECIPE: Recipe = { halfKm: 4, distanceExp: 1, googleExp: 0.5, premierExp: 1 };
+/** Popularity of a 4.0★ place with 100 reviews: √400 = 20. */
+const POP = 20;
 const CTX: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: 8 },
   families: [],
@@ -175,7 +175,7 @@ Deno.test("the Map: the radius gates, Proximity is not read, Popularity orders (
   const far = cand({ id: "far", lat: ANCHOR.lat + 2.9 / 111.195, rating: 4.6, reviewCount: 1000 });
   const s = areaScore(far, map);
   assertEquals(s.signals.proximity, null);
-  assertAlmostEquals(s.final, 4.6 * Math.sqrt(1000), 1e-9);
+  assertAlmostEquals(s.final, Math.sqrt(4600), 1e-9);
   // The far, popular place outranks the near, quiet one inside the circle.
   assertEquals(rankArea([near, far], (c) => c, map).map((r) => r.item.id), ["far", "near"]);
   // Past the circle it is gated out.
@@ -195,12 +195,12 @@ Deno.test("the Catalog: no radius gate, Proximity ½ at the half distance (MESIT
   assertEquals(far.final > 0, true);
 });
 
-Deno.test("Popularity is (stars^StarsExp × reviews)^GoogleExp, never normalized, and the product is never clamped (MESITA-2710, MESITA-4454)", () => {
+Deno.test("Popularity is (stars × reviews)^GoogleExp, never normalized, and the product is never clamped (MESITA-2710, MESITA-4454)", () => {
   const big = areaScore(cand({ rating: 4.6, reviewCount: 1000 }), NONE);
-  assertAlmostEquals(big.signals.popularity!, 4.6 * Math.sqrt(1000), 1e-9);
+  assertAlmostEquals(big.signals.popularity!, Math.sqrt(4600), 1e-9);
   assertEquals(big.signals.popularity! > 1, true);
   // The score is Popularity itself, no cap at 1.
-  assertAlmostEquals(big.final, 4.6 * Math.sqrt(1000), 1e-9);
+  assertAlmostEquals(big.final, Math.sqrt(4600), 1e-9);
   // No reviews: 0, and the place ranks last (MESITA-4454; the old 1 + kept it at 1).
   assertEquals(areaScore(cand({ reviewCount: 0 }), NONE).signals.popularity, 0);
   assertEquals(areaScore(cand({ reviewCount: 0, premierTier: 2 }), NONE).final, 0);
@@ -240,7 +240,7 @@ Deno.test("Premier multiplies by premierFactor ^ PremierExp, every other place b
   assertAlmostEquals(areaScore(paid, CTX).final, 2 * areaScore(plain, CTX).final, 1e-9);
   assertEquals(rankArea([loved, plain, paid], (c) => c, CTX).map((r) => r.item.id), ["loved", "paid", "plain"]);
   // No location: Popularity × s.
-  assertAlmostEquals(areaScore(paid, NONE).final, 2 * 4 * Math.sqrt(50), 1e-9);
+  assertAlmostEquals(areaScore(paid, NONE).final, 2 * Math.sqrt(200), 1e-9);
   // An Organic row (PremierExp 0): the plan never moves the score (C1).
   const organic: AreaContext = { ...CTX, recipe: { ...RECIPE, premierExp: 0 } };
   assertEquals(areaScore(paid, organic).selectedFactor, 2);

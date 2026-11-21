@@ -86,14 +86,14 @@ import {
   AD_FLOOR_MIN,
   GOOGLE_EXP_MAX,
   GOOGLE_EXP_MIN,
+  GROWTH_WEIGHT_CAP_MAX,
+  GROWTH_WEIGHT_CAP_MIN,
   MIX_TEMPERATURE_MAX,
   MIX_TEMPERATURE_MIN,
   PREMIER_EXP_MAX,
   PREMIER_EXP_MIN,
   type RankMode,
   type Recipe,
-  STARS_EXP_MAX,
-  STARS_EXP_MIN,
   POPULARITY_ROOT_DEFAULT,
   POPULARITY_ROOT_MAX,
   POPULARITY_ROOT_MIN,
@@ -155,11 +155,14 @@ export type Recipes = Record<RecipeRow, Recipe>;
 /** `params.mix` (MESITA-4454). `temperature` per mode (the first-page
  *  shuffle; 0 = the merged order exactly); `adFloor`: Proximity ×
  *  premierFactor an ad needs; `adEvery`: one ad slot after every N organic
- *  places, 0 = no ads (Catalog and Map). */
+ *  places, 0 = no ads (Catalog and Map). `growthWeightCap` is Popularity's
+ *  growth share at 30 days of review history (MESITA-4514): 0.50 at launch,
+ *  0.80 is the later experiment. */
 export type MixParams = {
   temperature: Record<RankMode, number>;
   adFloor: number;
   adEvery: number;
+  growthWeightCap: number;
 };
 
 /** "…Organic" (capital O); an Inorganic row ends "…Inorganic". */
@@ -168,27 +171,27 @@ export const isMapRow = (row: RecipeRow) => row.startsWith("map");
 
 /** The recipe table (Pato, 2026-11-19); the migration seeds the same values. */
 export const DEFAULT_RECIPES: Recipes = {
-  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, starsExp: 2, googleExp: 0.33, premierExp: 0 },
-  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, starsExp: 2, googleExp: 0.17, premierExp: 1 },
-  catalogFamilyOrganic: { halfKm: 2, distanceExp: 2, starsExp: 2, googleExp: 0.33, premierExp: 0 },
-  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, starsExp: 2, googleExp: 0.17, premierExp: 1 },
-  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, starsExp: 2, googleExp: 0.33, premierExp: 0 },
-  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, starsExp: 2, googleExp: 0.17, premierExp: 1 },
-  mapOrganic: { halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.33, premierExp: 0 },
-  mapInorganic: { halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.17, premierExp: 1 },
+  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, premierExp: 0 },
+  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, premierExp: 1 },
+  catalogFamilyOrganic: { halfKm: 2, distanceExp: 2, googleExp: 0.33, premierExp: 0 },
+  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, premierExp: 1 },
+  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, googleExp: 0.33, premierExp: 0 },
+  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, premierExp: 1 },
+  mapOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, premierExp: 0 },
+  mapInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, premierExp: 1 },
 };
 
 export const DEFAULT_MIX: MixParams = {
   temperature: { nearby: 0.33, family: 0.5, popular: 1 },
   adFloor: 0.2,
   adEvery: 1,
+  growthWeightCap: 0.5,
 };
 
 /** Legal ranges of a recipe row and of the mix (MESITA-4454). */
 export const RECIPE_BOUNDS = {
   halfKm: { min: PROXIMITY_HALF_KM_MIN, max: PROXIMITY_HALF_KM_MAX, decimals: 2 },
   distanceExp: { min: PROXIMITY_EXPONENT_MIN, max: PROXIMITY_EXPONENT_MAX, decimals: 1 },
-  starsExp: { min: STARS_EXP_MIN, max: STARS_EXP_MAX, decimals: 1 },
   googleExp: { min: GOOGLE_EXP_MIN, max: GOOGLE_EXP_MAX, decimals: 2 },
   premierExp: { min: PREMIER_EXP_MIN, max: PREMIER_EXP_MAX, decimals: 1 },
 } as const;
@@ -197,6 +200,7 @@ export const MIX_BOUNDS = {
   temperature: { min: MIX_TEMPERATURE_MIN, max: MIX_TEMPERATURE_MAX, decimals: 2 },
   adFloor: { min: AD_FLOOR_MIN, max: AD_FLOOR_MAX, decimals: 2 },
   adEvery: { min: AD_EVERY_MIN, max: AD_EVERY_MAX, decimals: 0 },
+  growthWeightCap: { min: GROWTH_WEIGHT_CAP_MIN, max: GROWTH_WEIGHT_CAP_MAX, decimals: 2 },
 } as const;
 
 /** Told about every stored value the normalizer could not keep as is: out
@@ -743,7 +747,6 @@ export function normalizeRecipes(raw: unknown, onClamp?: OnClamp): Recipes {
       distanceExp: map
         ? null
         : reportedParam(v.distanceExp, d.distanceExp as number, RECIPE_BOUNDS.distanceExp, key("distanceExp"), onClamp),
-      starsExp: reportedParam(v.starsExp, d.starsExp, RECIPE_BOUNDS.starsExp, key("starsExp"), onClamp),
       googleExp: reportedParam(v.googleExp, d.googleExp, RECIPE_BOUNDS.googleExp, key("googleExp"), onClamp),
       premierExp: isOrganicRow(row)
         ? 0
@@ -763,6 +766,13 @@ export function normalizeMix(raw: unknown, onClamp?: OnClamp): MixParams {
     temperature: { nearby: temp("nearby"), family: temp("family"), popular: temp("popular") },
     adFloor: reportedParam(r.adFloor, DEFAULT_MIX.adFloor, MIX_BOUNDS.adFloor, "params.mix.adFloor", onClamp),
     adEvery: reportedParam(r.adEvery, DEFAULT_MIX.adEvery, MIX_BOUNDS.adEvery, "params.mix.adEvery", onClamp),
+    growthWeightCap: reportedParam(
+      r.growthWeightCap,
+      DEFAULT_MIX.growthWeightCap,
+      MIX_BOUNDS.growthWeightCap,
+      "params.mix.growthWeightCap",
+      onClamp,
+    ),
   };
 }
 

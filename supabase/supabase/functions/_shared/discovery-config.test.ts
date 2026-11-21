@@ -442,23 +442,23 @@ Deno.test("Premier prices: the admin twin mirrors the bounds and the defaults", 
 Deno.test("recipes: the table by default; organic Premier exponent forced 0; map rows have no distance; bounds clamp and report", () => {
   assertEquals(normalizeDiscoveryConfig({}).params.recipes, DEFAULT_RECIPES);
   assertEquals(normalizeDiscoveryConfig({}).params.mix, DEFAULT_MIX);
-  assertEquals(DEFAULT_RECIPES.catalogNearbyOrganic, { halfKm: 0.1, distanceExp: 4, starsExp: 2, googleExp: 0.33, premierExp: 0 });
-  assertEquals(DEFAULT_RECIPES.mapInorganic, { halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.17, premierExp: 1 });
+  assertEquals(DEFAULT_RECIPES.catalogNearbyOrganic, { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, premierExp: 0 });
+  assertEquals(DEFAULT_RECIPES.mapInorganic, { halfKm: null, distanceExp: null, googleExp: 0.17, premierExp: 1 });
   const clamps: Array<[string, unknown]> = [];
   const r = normalizeRecipes({
-    catalogPopularOrganic: { halfKm: 500, distanceExp: 0.1, starsExp: 9, googleExp: 0.01, premierExp: 2 },
+    catalogPopularOrganic: { halfKm: 500, distanceExp: 0.1, googleExp: 0.01, premierExp: 2 },
     catalogPopularInorganic: { premierExp: 3, googleExp: "0.5" },
     catalogFamilyOrganic: { halfKm: null, distanceExp: "x" },
     mapOrganic: { halfKm: 3, distanceExp: 2, premierExp: 1 },
   }, (key, raw) => clamps.push([key, raw]));
   // C1: an Organic row never carries a plan, whatever is stored.
-  assertEquals(r.catalogPopularOrganic, { halfKm: 100, distanceExp: 0.5, starsExp: 4, googleExp: 0.1, premierExp: 0 });
+  assertEquals(r.catalogPopularOrganic, { halfKm: 100, distanceExp: 0.5, googleExp: 0.1, premierExp: 0 });
   assertEquals(r.catalogPopularInorganic.premierExp, 2);
   assertEquals(r.catalogPopularInorganic.googleExp, 0.5);
   // L-1: a null on a Catalog row reads the default and is reported.
   assertEquals([r.catalogFamilyOrganic.halfKm, r.catalogFamilyOrganic.distanceExp], [2, 2]);
   // A Map row has no Proximity: its distance numbers are always null.
-  assertEquals(r.mapOrganic, { halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.33, premierExp: 0 });
+  assertEquals(r.mapOrganic, { halfKm: null, distanceExp: null, googleExp: 0.33, premierExp: 0 });
   assertEquals(clamps.map(([k]) => k).sort(), [
     "params.recipes.catalogFamilyOrganic.distanceExp",
     "params.recipes.catalogFamilyOrganic.halfKm",
@@ -466,7 +466,6 @@ Deno.test("recipes: the table by default; organic Premier exponent forced 0; map
     "params.recipes.catalogPopularOrganic.distanceExp",
     "params.recipes.catalogPopularOrganic.googleExp",
     "params.recipes.catalogPopularOrganic.halfKm",
-    "params.recipes.catalogPopularOrganic.starsExp",
   ]);
   // An absent key is not a clamp.
   const quiet: string[] = [];
@@ -481,7 +480,14 @@ Deno.test("mix: Temperature 0–5 per mode, ad floor 0–1, ad cadence 0–10 wh
     { temperature: { nearby: 9, family: -1, popular: 0.333 }, adFloor: 2, adEvery: 3.6 },
     (k) => seen.push(k),
   );
-  assertEquals(m, { temperature: { nearby: 5, family: 0, popular: 0.33 }, adFloor: 1, adEvery: 4 });
+  assertEquals(m, {
+    temperature: { nearby: 5, family: 0, popular: 0.33 },
+    adFloor: 1,
+    adEvery: 4,
+    growthWeightCap: 0.5,
+  });
+  assertEquals(normalizeMix({ growthWeightCap: 0.8 }).growthWeightCap, 0.8);
+  assertEquals(normalizeMix({ growthWeightCap: 2 }).growthWeightCap, 0.8);
   assertEquals(seen.sort(), ["params.mix.adFloor", "params.mix.temperature.family", "params.mix.temperature.nearby"]);
   assertEquals(normalizeMix({ adEvery: 0 }).adEvery, 0);
   assertEquals(normalizeMix({ adEvery: 99 }).adEvery, 10);

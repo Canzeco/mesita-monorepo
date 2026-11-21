@@ -233,7 +233,7 @@ export function HowRankedCard() {
     >
       <div className="mt-4 flex flex-col gap-4">
         <code className="bg-muted w-fit max-w-full rounded-md px-2 py-1 text-xs break-words whitespace-normal">
-          Score = Proximity × (stars ^ Stars exponent × reviews) ^ Google exponent × Premier ^ Premier exponent
+          Score = Proximity × ((1 − w) × stars × reviews + w × growth) ^ Google exponent × Premier ^ Premier exponent
         </code>
         <div className="text-foreground flex max-w-3xl flex-col gap-2 text-sm leading-relaxed">
           <p>
@@ -249,6 +249,12 @@ export function HowRankedCard() {
             Every list has two lanes. <strong>Organic</strong>: every place, with Premier exponent 0, so a
             plan never moves it. <strong>Inorganic</strong>: Premier places only; they fill the inorganic slots,
             and guests see them marked &ldquo;Ad&rdquo;. The Mixing card says how the two lanes merge.
+          </p>
+          <p>
+            w is the growth share. It is 0 until Fast Update has two snapshots at least 7 days apart in the
+            last 90 days, 0.20 at 7 days, and the Growth weight cap at 30 days. A place with no usable history
+            scores (stars × reviews) ^ Google exponent. Growth is that place&apos;s new reviews per day, scaled
+            to the local review base. A place we watched that did not gain reviews mixes in zero.
           </p>
           <p>A place with no reviews or no stars scores 0 and ranks last; it is never hidden.</p>
         </div>
@@ -293,12 +299,11 @@ export function HowRankedCard() {
 // 2026-11-19: 1A Effect column, 2A mode group rows, 3A kit NumberCell, 4A the
 // Row column pinned and the rest scrolling inside the card on a phone).
 
-type RecipeKey = "halfKm" | "distanceExp" | "starsExp" | "googleExp" | "premierExp";
+type RecipeKey = "halfKm" | "distanceExp" | "googleExp" | "premierExp";
 
 const RECIPE_COLUMNS: readonly { key: RecipeKey; label: string }[] = [
   { key: "halfKm", label: "Half distance (km)" },
   { key: "distanceExp", label: "Distance exponent" },
-  { key: "starsExp", label: "Stars exponent" },
   { key: "googleExp", label: "Google exponent" },
   { key: "premierExp", label: "Premier exponent" },
 ];
@@ -511,8 +516,7 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
         </Table>
         <Meta>
           Half distance {RECIPE_BOUNDS.halfKm.min}–{RECIPE_BOUNDS.halfKm.max} km: about 0.5 km on foot, 2–3 km
-          by car. Distance exponent: 1 is gentle, over 1 the list falls off past the Half distance. Stars
-          exponent: how much stars count against reviews; 0 ignores stars. Google exponent: how far apart
+          by car. Distance exponent: 1 is gentle, over 1 the list falls off past the Half distance. Google exponent: how far apart
           famous and unknown places sit; lower squeezes them together. Premier exponent: how much a plan
           counts in the Inorganic lane; at the same distance and stars a 2X place passes a 5X place only with
           2.5 ^ (Premier exponent ÷ Google exponent) times its reviews. Effect: Organic rows show where
@@ -597,6 +601,16 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
               disabled={off}
               hint="One inorganic place after every N organic places. 0 = the Organic lane alone, on Home and on the Map."
               onChange={(adEvery) => patchMix({ adEvery })}
+            />
+            <NumberField
+              label="Growth weight cap"
+              value={mix.growthWeightCap}
+              min={MIX_BOUNDS.growthWeightCap.min}
+              max={MIX_BOUNDS.growthWeightCap.max}
+              decimals
+              disabled={off}
+              hint="Growth's share of Popularity after 30 days of review history. 0.50 at launch. 0.80 is the experiment."
+              onChange={(growthWeightCap) => patchMix({ growthWeightCap })}
             />
           </div>
           <Meta>

@@ -5,8 +5,9 @@
 // DISCOVERY RANKING v2 (MESITA-4454): one formula on every screen, the
 // numbers from a recipe row (`params.recipes`, discovery-config.ts):
 //
-//   final = Proximity × (stars ^ StarsExp × reviews) ^ GoogleExp
-//           × premierFactor ^ PremierExp                 (pipeline-signals.ts)
+//   final = Proximity × Popularity × premierFactor ^ PremierExp
+//   Popularity = ((1 − w) × stars × reviews + w × growth) ^ GoogleExp
+//   w = 0 with no usable review history                   (pipeline-signals.ts)
 //
 // The Map's rows have no Proximity (distance is a SCREEN there, MESITA-2909:
 // the Radius gate decides who is in, the score orders them); with no
@@ -24,6 +25,7 @@
 // Ties break on distance then id (Catalog, Chat) or on id alone (the Map).
 
 import { googlePopularity, type Recipe, recipeScore } from "./pipeline-signals.ts";
+import { GROWTH_CAP_DEFAULT, type GrowthTerm } from "./review-growth.ts";
 import { haversineKm } from "./geo.ts";
 import { PREMIER_FACTOR } from "./boost.ts";
 
@@ -56,6 +58,11 @@ export type AreaContext = {
   /** Tie-break after the score: distance then id (the default: Catalog,
    *  Chat), or id alone (the Map, MESITA-4454). */
   ties?: "distance" | "id";
+  /** Review-growth terms from `discovery_growth_bases`, keyed by place id.
+   *  Absent: every place scores on its established base. */
+  growth?: ReadonlyMap<string, GrowthTerm>;
+  /** Shared cap from `params.mix.growthWeightCap`. */
+  growthWeightCap?: number;
 };
 
 /** One candidate, normalized from whichever source produced it. */
@@ -136,10 +143,15 @@ export function premierFactor(c: Pick<AreaCandidate, "source" | "premierTier">):
 
 /** Popularity, or null (n/a) when the place has no rating or no review
  *  count; 0 reviews is 0 (MESITA-4454). */
-function popularityOrNull(c: AreaCandidate, recipe: Recipe): number | null {
+function popularityOrNull(c: AreaCandidate, ctx: AreaContext): number | null {
   const ok = (v: unknown) => typeof v === "number" && Number.isFinite(v);
   if (!ok(c.rating) || !ok(c.reviewCount)) return null;
-  return googlePopularity(c, recipe.starsExp, recipe.googleExp);
+  return googlePopularity(
+    c,
+    ctx.recipe.googleExp,
+    ctx.growth?.get(c.id),
+    ctx.growthWeightCap ?? GROWTH_CAP_DEFAULT,
+  );
 }
 
 /** One candidate's breakdown — the wire's `area` object (MESITA-2379).
@@ -173,7 +185,7 @@ export type AreaScore = AreaDiagnostics & { distanceKm: number | null };
 
 export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const loc = ctx.location;
-  const pop = popularityOrNull(c, ctx.recipe);
+  const pop = popularityOrNull(c, ctx);
   let km: number | null = null;
   if (loc.kind === "point" && typeof c.lat === "number" && typeof c.lng === "number") {
     const d = haversineKm(loc.anchor.lat, loc.anchor.lng, c.lat, c.lng);
@@ -187,7 +199,10 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   // The Map's rows carry no half distance: distance screens, never sorts
   // (MESITA-2909). A place that cannot be measured from a point (no
   // coordinates) has Proximity 0.
-  const score = recipeScore(c, km, loc.kind === "point", sel, ctx.recipe);
+  const score = recipeScore(c, km, loc.kind === "point", sel, ctx.recipe, {
+    term: ctx.growth?.get(c.id),
+    cap: ctx.growthWeightCap ?? GROWTH_CAP_DEFAULT,
+  });
   const final = factor(score.proximity ?? 1) * factor(score.popularity) * score.premierBoost;
   const open = family === 1 && radius !== 0;
   return {

@@ -3,16 +3,6 @@
 -- only absent config keys (E3, DX-n). Six fixture places (M-e): 0 reviews,
 -- no stars, a 2X, a 5X, a 2X below the ad floor, and a family filter.
 --
--- Hand values (recipe rows below: half 1 km, exponent 2, stars exponent 2,
--- Google exponent 0.5; Premier exponent 0 organic, 1 inorganic), from the
--- point 25.67, -100.30, Popularity = stars × √reviews:
---   A tacos  4.5★ 1000  0 km    plain  organic 142.30
---   B tacos  4.0★    0  0.11 km plain  organic 0 (no reviews)
---   C coffee  —     50  0.22 km plain  organic 0 (no stars)
---   D dinner 4.0★  100  1.00 km 2X     organic 19.98  inorganic 39.97 (0.50 × 2 ≥ 0.2)
---   E dinner 4.8★  500  2.00 km 5X     organic 21.44  inorganic 107.2 (0.20 × 5 ≥ 0.2)
---   F coffee 4.6★  300 50.04 km 2X     organic 0.032  below the floor (0.0004 × 2)
-
 begin;
 
 create extension if not exists pgtap with schema public;
@@ -98,8 +88,8 @@ select is(
 
 -- ━━━ Both lanes from a point ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-select is(pg_temp.letters(pg_temp.lanes(25.67, -100.30, array[]::text[]) -> 'ids'), 'AEDFBC',
-  'Organic: the formula orders A, E, D, F; 0 reviews and no stars score 0 and sort last by distance');
+select is(pg_temp.letters(pg_temp.lanes(25.67, -100.30, array[]::text[]) -> 'ids'), 'ADEFBC',
+  'Organic: the formula orders A, D, E, F; 0 reviews and no stars score 0 and sort last by distance');
 
 select is(pg_temp.letters(pg_temp.lanes(25.67, -100.30, array[]::text[]) -> 'premier'), 'ED',
   'Inorganic: Premier places only, 5X E above 2X D; F under the floor is out');
@@ -125,7 +115,7 @@ select is(
     p_premier_1 => 2, p_premier_2 => 5, p_families => array[]::text[],
     p_known_families => array['tacos', 'coffee', 'dinner'], p_require_active => false,
     p_repeat => 0.001, p_ad_floor => 0.2) -> 'ids'),
-  'AEDFBC',
+  'ADEFBC',
   'p_repeat is ignored: two places of a kind keep the formula order');
 
 select ok(
@@ -168,8 +158,8 @@ select is(
             c.discovery_config #> '{params,recipes,catalogNearbyOrganic}',
             c.discovery_config #> '{params,recipes,mapInorganic}')
      from public.app_config c where c.id = 1),
-  '[{"halfKm": 0.1, "distanceExp": 4, "starsExp": 2, "googleExp": 0.33, "premierExp": 0},
-    {"halfKm": null, "distanceExp": null, "starsExp": 2, "googleExp": 0.17, "premierExp": 1}]'::jsonb,
+  '[{"halfKm": 0.1, "distanceExp": 4, "googleExp": 0.33, "premierExp": 0},
+    {"halfKm": null, "distanceExp": null, "googleExp": 0.17, "premierExp": 1}]'::jsonb,
   'recipe rows carry the table values; map rows have no distance numbers');
 
 select is(

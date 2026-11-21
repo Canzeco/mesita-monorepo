@@ -20,6 +20,12 @@
 
 import { cosineSim, parseVector } from "./embeddings-vector.ts";
 import { haversineKm } from "./geo.ts";
+import {
+  blendPopularity,
+  establishedBase,
+  GROWTH_CAP_DEFAULT,
+  type GrowthTerm,
+} from "./review-growth.ts";
 
 const clamp01 = (n: number) => (n <= 0 ? 0 : n >= 1 ? 1 : n);
 
@@ -183,10 +189,11 @@ export function shuffleByRank<T>(
 
 // ── Discovery ranking v2 (MESITA-4454): one formula, two lanes, three modes ──
 //
-//   Score     = Proximity × (stars ^ StarsExp × reviews) ^ GoogleExp
-//               × premierFactor ^ PremierExp
+//   Score     = Proximity × Popularity × premierFactor ^ PremierExp
+//   Popularity = ((1 − w) × stars × reviews + w × growthBase) ^ GoogleExp
 //   Proximity = 1 ÷ (1 + (distance ÷ HalfDistance) ^ DistanceExp)   (Map: none)
 //   premierFactor = 1 · 2 · 5 (no plan · 2X · 5X); premierBoost = premierFactor ^ PremierExp
+//   w = 0 with no usable review history, so a cold place is (stars × reviews) ^ GoogleExp
 //
 // Every number is a recipe row (`params.recipes`, discovery-config.ts); the
 // SQL copy is `catalog_rank_lanes` (pinned by catalog_rank_lanes.test.sql on
@@ -194,8 +201,6 @@ export function shuffleByRank<T>(
 
 /** Recipe bounds (DX-a, Names: never "root"). Half distance and Distance
  *  exponent are Proximity's own (above). */
-export const STARS_EXP_MIN = 0;
-export const STARS_EXP_MAX = 4;
 export const GOOGLE_EXP_MIN = 0.1;
 export const GOOGLE_EXP_MAX = 1;
 export const PREMIER_EXP_MIN = 0;
@@ -207,34 +212,35 @@ export const AD_FLOOR_MIN = 0;
 export const AD_FLOOR_MAX = 1;
 export const AD_EVERY_MIN = 0;
 export const AD_EVERY_MAX = 10;
+/** Growth's share of Popularity once a place has 30 days of review history. */
+export const GROWTH_WEIGHT_CAP_MIN = 0;
+export const GROWTH_WEIGHT_CAP_MAX = 0.8;
 
 /** One recipe row. `halfKm` and `distanceExp` are null on the Map's rows
  *  (no Proximity there); `premierExp` is 0 on every Organic row. */
 export type Recipe = {
   halfKm: number | null;
   distanceExp: number | null;
-  starsExp: number;
   googleExp: number;
   premierExp: number;
 };
 
 /**
- * Popularity v2: (stars ^ StarsExp × reviews) ^ GoogleExp. Unbounded, never
- * normalized. 0 reviews, no stars, or no review count → 0: such a place
- * ranks last (MESITA-4454; the old `1 +` kept it at 1).
+ * Popularity: (blend) ^ GoogleExp. With no growth term the blend is
+ * stars × reviews, so a cold place matches the linear-stars formula exactly.
+ * Unbounded, never normalized. 0 reviews, no stars, or no review count → 0
+ * (MESITA-4454; the old `1 +` kept it at 1).
  */
 export function googlePopularity(
   candidate: { rating?: number | null; reviewCount?: number | null },
-  starsExp: number,
   googleExp: number,
+  term?: GrowthTerm,
+  cap: number = GROWTH_CAP_DEFAULT,
 ): number {
-  const r = candidate.rating;
-  const n = candidate.reviewCount;
-  if (typeof r !== "number" || typeof n !== "number") return 0;
-  if (!Number.isFinite(r) || !Number.isFinite(n) || n <= 0) return 0;
-  const s = Number.isFinite(starsExp) && starsExp >= 0 ? starsExp : 0;
+  const base = blendPopularity(establishedBase(candidate.rating, candidate.reviewCount), term, cap);
+  if (!(base > 0)) return 0;
   const g = Number.isFinite(googleExp) && googleExp > 0 ? googleExp : 1;
-  return Math.pow(Math.pow(Math.max(0, r), s) * n, g);
+  return Math.pow(base, g);
 }
 
 /** premierFactor ^ PremierExp: 1 whenever the exponent is 0. */
@@ -267,8 +273,9 @@ export function recipeScore(
   hasAnchor: boolean,
   premierFactor: number,
   recipe: Recipe,
+  growth?: { term?: GrowthTerm; cap?: number },
 ): RecipeScore {
-  const popularity = googlePopularity(candidate, recipe.starsExp, recipe.googleExp);
+  const popularity = googlePopularity(candidate, recipe.googleExp, growth?.term, growth?.cap);
   const boost = premierBoost(premierFactor, recipe.premierExp);
   let prox: number | null = null;
   if (recipe.halfKm !== null && hasAnchor) {
