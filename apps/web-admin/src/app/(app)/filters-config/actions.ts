@@ -55,8 +55,9 @@ export type DiscoverySlice =
   | "chat"
   // The Ranking card (MESITA-4454): `params.recipes`, sent whole.
   | "ranking"
-  // The Mixing card (MESITA-4454): `params.mix`, sent whole, and
-  // `map.catalogPageSize` (the repeat penalty went with MESITA-4463).
+  // The Mixing card (MESITA-4454): `params.mix`, sent whole. It no longer
+  // writes `map.catalogPageSize` (MESITA-4517: the lanes' batches size
+  // each weave); the stored value loads and is ignored.
   | "mixing"
   | "deep"
   // Name's Locations switch (MESITA-2319).
@@ -110,7 +111,6 @@ export async function updateDiscoveryConfig(
     map: {
       ...live.config.map,
       ...(keys.has("mapDisplay") ? pick(config.map, MAP_DISPLAY_KEYS) : null),
-      ...(keys.has("mixing") ? { catalogPageSize: config.map.catalogPageSize } : null),
       ...(keys.has("mapFloors")
         ? { minRating: config.map.minRating, minReviews: config.map.minReviews }
         : null),

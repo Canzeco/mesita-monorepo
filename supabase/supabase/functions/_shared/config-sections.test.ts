@@ -423,7 +423,7 @@ Deno.test("discovery: an old-shape save keeps params.recipes, params.mix and ret
   const stored = row.discovery_config as Row;
   const params = stored.params as Row;
   assertEquals((params.recipes as Row).catalogNearbyOrganic, {
-    halfKm: 0.3, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0,
+    halfKm: 0.3, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10,
   });
   assertEquals((params.mix as Row).adEvery, 3);
   assertEquals((params.popularity as Row).root, 0.5);

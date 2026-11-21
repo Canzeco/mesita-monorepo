@@ -155,19 +155,14 @@ describe("each card writes its own slice and nothing else (MESITA-4454)", () => 
     expect({ ...after, params: { ...after.params, recipes: before.params.recipes } }).toEqual(before);
   });
 
-  it("Mixing writes params.mix and map.catalogPageSize", async () => {
+  it("Mixing writes params.mix only; the page size is no longer its key (MESITA-4517)", async () => {
     const srv = server(storedBlob());
     const before = coerceConfig(srv.stored);
     const edited = editedEverywhere(before);
     await updateDiscoveryConfig(edited, [...BOX_SLICES.mixing]);
     const after = coerceConfig(srv.stored);
     expect(after.params.mix).toEqual(edited.params.mix);
-    expect(after.map.catalogPageSize).toBe(33);
-    expect({
-      ...after,
-      params: { ...after.params, mix: before.params.mix },
-      map: { ...after.map, catalogPageSize: before.map.catalogPageSize },
-    }).toEqual(before);
+    expect({ ...after, params: { ...after.params, mix: before.params.mix } }).toEqual(before);
   });
 
   it("Map display writes the pins and the reload timing, never the page size, the floors or the root", async () => {
@@ -201,7 +196,6 @@ describe("each card writes its own slice and nothing else (MESITA-4454)", () => 
     }
     const after = coerceConfig(srv.stored);
     expect(after.params.mix).toEqual(edited.params.mix);
-    expect(after.map.catalogPageSize).toBe(33);
     expect(after.map.placesShown).toBe(77);
     expect(after.map.reloadIdleSec).toBe(3);
     expect(after.params.recipes).toEqual(seed.params.recipes);

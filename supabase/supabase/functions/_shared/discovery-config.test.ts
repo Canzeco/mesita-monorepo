@@ -442,32 +442,35 @@ Deno.test("Premier prices: the admin twin mirrors the bounds and the defaults", 
 Deno.test("recipes: the table by default; organic Premier exponent forced 0; map rows have no distance; bounds clamp and report", () => {
   assertEquals(normalizeDiscoveryConfig({}).params.recipes, DEFAULT_RECIPES);
   assertEquals(normalizeDiscoveryConfig({}).params.mix, DEFAULT_MIX);
-  assertEquals(DEFAULT_RECIPES.catalogNearbyOrganic, { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 });
-  assertEquals(DEFAULT_RECIPES.mapInorganic, { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 });
+  assertEquals(DEFAULT_RECIPES.catalogNearbyOrganic, { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 });
+  assertEquals(DEFAULT_RECIPES.mapInorganic, { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: null });
   const clamps: Array<[string, unknown]> = [];
   const r = normalizeRecipes({
     catalogPopularOrganic: { halfKm: 500, distanceExp: 0.1, googleExp: 0.01, premierExp: 2 },
     catalogPopularInorganic: { premierExp: 3, googleExp: "0.5" },
-    catalogFamilyOrganic: { halfKm: null, distanceExp: "x" },
+    catalogFamilyBoth: { halfKm: null, distanceExp: "x", batch: 99 },
     mapOrganic: { halfKm: 3, distanceExp: 2, premierExp: 1 },
   }, (key, raw) => clamps.push([key, raw]));
   // C1: an Organic row never carries a plan, whatever is stored.
-  assertEquals(r.catalogPopularOrganic, { halfKm: 100, distanceExp: 0.5, googleExp: 0.1, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 });
+  assertEquals(r.catalogPopularOrganic, { halfKm: 100, distanceExp: 0.5, googleExp: 0.1, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 });
   assertEquals(r.catalogPopularInorganic.premierExp, 2);
   assertEquals(r.catalogPopularInorganic.googleExp, 0.5);
   // L-1: a null on a Catalog row reads the default and is reported.
-  assertEquals([r.catalogFamilyOrganic.halfKm, r.catalogFamilyOrganic.distanceExp], [2, 2]);
+  assertEquals([r.catalogFamilyBoth.halfKm, r.catalogFamilyBoth.distanceExp], [2, 2]);
+  // A lane's batch is 1–25 whole (MESITA-4517).
+  assertEquals(r.catalogFamilyBoth.batch, 25);
   // A Map row has no Proximity: its distance numbers are always null.
-  assertEquals(r.mapOrganic, { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 });
+  assertEquals(r.mapOrganic, { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: null });
   // A missing Foursquare pair is the default. An explicit factor of 0 stays 0.
-  assertEquals(r.catalogFamilyOrganic.foursquareFactor, 1);
-  assertEquals(r.catalogFamilyOrganic.foursquareExponent, 20);
+  assertEquals(r.catalogFamilyBoth.foursquareFactor, 1);
+  assertEquals(r.catalogFamilyBoth.foursquareExponent, 20);
   const kept = normalizeRecipes({ catalogNearbyOrganic: { foursquareFactor: 0, foursquareExponent: 20 } });
   assertEquals(kept.catalogNearbyOrganic.foursquareFactor, 0);
   assertEquals(kept.catalogNearbyOrganic.foursquareExponent, 20);
   assertEquals(clamps.map(([k]) => k).sort(), [
-    "params.recipes.catalogFamilyOrganic.distanceExp",
-    "params.recipes.catalogFamilyOrganic.halfKm",
+    "params.recipes.catalogFamilyBoth.batch",
+    "params.recipes.catalogFamilyBoth.distanceExp",
+    "params.recipes.catalogFamilyBoth.halfKm",
     "params.recipes.catalogPopularInorganic.premierExp",
     "params.recipes.catalogPopularOrganic.distanceExp",
     "params.recipes.catalogPopularOrganic.googleExp",
@@ -478,6 +481,18 @@ Deno.test("recipes: the table by default; organic Premier exponent forced 0; map
   normalizeRecipes({}, (k) => quiet.push(k));
   normalizeMix({}, (k) => quiet.push(k));
   assertEquals(quiet, []);
+});
+
+Deno.test("recipes: a save from before MESITA-4517 keeps its Family Organic row as Family both; close and well known read their defaults", () => {
+  const old = { halfKm: 3, distanceExp: 2, googleExp: 0.25, premierExp: 0 };
+  const r = normalizeRecipes({ catalogFamilyOrganic: old });
+  assertEquals([r.catalogFamilyBoth.halfKm, r.catalogFamilyBoth.googleExp], [3, 0.25]);
+  assertEquals(r.catalogFamilyClose, DEFAULT_RECIPES.catalogFamilyClose);
+  assertEquals(r.catalogFamilyWellKnown, DEFAULT_RECIPES.catalogFamilyWellKnown);
+  // Once Family both is saved, the old key is ignored.
+  const both = normalizeRecipes({ catalogFamilyOrganic: old, catalogFamilyBoth: { halfKm: 1 } });
+  assertEquals(both.catalogFamilyBoth.halfKm, 1);
+  assertEquals("catalogFamilyOrganic" in both, false);
 });
 
 Deno.test("mix: Temperature 0–5 per mode, ad floor 0–1, ad cadence 0–10 whole", () => {

@@ -107,7 +107,7 @@ Deno.test("chat: the Catalog score ranks; the nearer twin first", () => {
   assertEquals(ids(loved), ["loved", "quiet"]);
 });
 
-Deno.test("chat: Chat ranks by the Family Organic row's half distance (MESITA-2909, MESITA-4454)", () => {
+Deno.test("chat: Chat ranks by the Family well-known row's half distance (MESITA-2909, MESITA-4517)", () => {
   const rows = [
     mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
     mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
@@ -118,7 +118,7 @@ Deno.test("chat: Chat ranks by the Family Organic row's half distance (MESITA-29
       ...selOpts.params,
       recipes: {
         ...selOpts.params.recipes,
-        catalogFamilyOrganic: { ...selOpts.params.recipes.catalogFamilyOrganic, halfKm },
+        catalogFamilyWellKnown: { ...selOpts.params.recipes.catalogFamilyWellKnown, halfKm },
       },
     },
   });

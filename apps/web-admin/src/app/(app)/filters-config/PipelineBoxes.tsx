@@ -5,10 +5,11 @@
 //
 //   1. How places are ranked   read only: the formula and which screen
 //                              reads which recipe row
-//   2. Ranking                 the eight recipe rows → `params.recipes`
-//   3. Mixing                  Home's shuffle, the Inorganic lane and paging →
-//                              `params.mix`,
-//                              `map.catalogPageSize`
+//   2. Ranking                 the ten lane rows, each with its batch →
+//                              `params.recipes` (MESITA-4517)
+//   3. Mixing                  Home's shuffle and the Inorganic lane →
+//                              `params.mix` (no page or feed size: the
+//                              lanes' batches size each weave)
 //   4. Map display             pins, dots, reload timing → four `map` keys
 //   5. Searchbars              the guest bar and the Admin & Business bar,
 //                              one card, one Save (MESITA-4463)
@@ -42,8 +43,6 @@ import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-conf
 import { formatShortDate } from "@/lib/format";
 import { getDiscoveryConfig, previewDiscoveryRank, updateDiscoveryConfig, type DiscoverySlice, type RankPreviewPage, type RankPreviewRow } from "./actions";
 import {
-  CATALOG_PAGE_SIZE_MAX,
-  CATALOG_PAGE_SIZE_MIN,
   isMapRow,
   isOrganicRow,
   MAP_DOTS_SHOWN_MAX,
@@ -202,23 +201,28 @@ const fmtProx = (p: number) => (p >= 0.01 ? p.toFixed(2) : p.toPrecision(1));
 const fmtKm = (km: number) =>
   !Number.isFinite(km) ? "any distance" : `${Number(km.toPrecision(2)).toLocaleString("en-US")} km`;
 
-const MODES: readonly { mode: RankMode | "map"; title: string; who: string }[] = [
-  { mode: "nearby", title: "Nearby", who: "Home's Nearby chip." },
-  { mode: "family", title: "Family", who: "Home's family chips. Chat ranks with Family Organic." },
-  { mode: "popular", title: "Popular", who: "Home's Popular chip. The place screen's score uses Popular Organic." },
-  { mode: "map", title: "Map", who: "The Search map. Popular and Family share these two rows; only the family filter differs." },
+/** The Ranking table, one flat list (MESITA-4517): a feed is what the
+ *  guest sees, a lane is one ranked row inside it. */
+const LANE_ROWS: readonly { row: RecipeRow; name: string; note?: string }[] = [
+  { row: "catalogNearbyOrganic", name: "Nearby Organic" },
+  { row: "catalogNearbyInorganic", name: "Nearby Inorganic", note: "Premier places only" },
+  { row: "catalogFamilyClose", name: "Family close" },
+  { row: "catalogFamilyWellKnown", name: "Family well known" },
+  { row: "catalogFamilyBoth", name: "Family both", note: "Strong on close and well known" },
+  { row: "catalogFamilyInorganic", name: "Family Inorganic", note: "Premier places only" },
+  { row: "catalogPopularOrganic", name: "Popular Organic" },
+  { row: "catalogPopularInorganic", name: "Popular Inorganic", note: "Premier places only" },
+  { row: "mapOrganic", name: "Map Organic", note: "Popular and Family share it" },
+  { row: "mapInorganic", name: "Map Inorganic", note: "Premier places only" },
 ];
-
-const rowOf = (mode: RankMode | "map", lane: "Organic" | "Inorganic") =>
-  (mode === "map" ? `map${lane}` : `catalog${mode[0].toUpperCase()}${mode.slice(1)}${lane}`) as RecipeRow;
 
 // 1 ─ How places are ranked ───────────────────────────────────────────────
 export function HowRankedCard() {
   const uses: readonly [string, string][] = [
     ["Home › Nearby chip", "Nearby Organic + Nearby Inorganic"],
-    ["Home › a family chip", "Family Organic + Family Inorganic"],
+    ["Home › a family chip", "Family close + Family well known + Family both + Family Inorganic, one family"],
     ["Home › Popular chip", "Popular Organic + Popular Inorganic"],
-    ["Chat", "Family Organic, inside its 15 km circle. No Inorganic lane, no shuffle."],
+    ["Chat", "Family well known, inside its 15 km circle. No Inorganic lane, no shuffle."],
     ["The place screen's score", "Popular Organic"],
     ["Search map", "Map Organic + Map Inorganic"],
     ["Pay, Wallet and the Reward tab", "Nearest first. No rows, no Inorganic lane, no shuffle."],
@@ -246,9 +250,19 @@ export function HowRankedCard() {
             the score is Premier ^ Premier exponent.
           </p>
           <p>
-            Every list has two lanes. <strong>Organic</strong>: every place, with Premier exponent 0, so a
-            plan never moves it. <strong>Inorganic</strong>: Premier places only; they fill the inorganic slots,
-            and guests see them marked &ldquo;Ad&rdquo;. The Mixing card says how the two lanes merge.
+            A <strong>feed</strong> is what the guest sees; a <strong>lane</strong> is one ranked row inside
+            it. Nearby and Popular are one Organic lane and one Inorganic lane, every family. Family is one
+            family in three organic lanes: <strong>close</strong>, <strong>well known</strong>, and{" "}
+            <strong>both</strong> (the places in the better half of close and the better half of well known,
+            ordered by the worse of the two ranks; the two scores are never averaged), plus Family Inorganic.
+            Organic lanes have Premier exponent 0, so a plan never moves them. <strong>Inorganic</strong>:
+            Premier places only; guests see them marked &ldquo;Ad&rdquo;.
+          </p>
+          <p>
+            Each lane gives its <strong>batch</strong> per weave. A weave takes the next batch of every lane,
+            one from each in turn (both, then close, then well known), with inorganic places woven in by the
+            Mixing card&apos;s cadence. A place appears once. Weaves repeat until the lanes run out; the first
+            weave is Home&apos;s first screen. With every Family batch at 10 the three organic lanes give 30.
           </p>
           <p>
             w is the growth share. It is 0 until Fast Update has two snapshots at least 7 days apart in the
@@ -306,9 +320,17 @@ export function HowRankedCard() {
 // 2026-11-19: 1A Effect column, 2A mode group rows, 3A kit NumberCell, 4A the
 // Row column pinned and the rest scrolling inside the card on a phone).
 
-type RecipeKey = "halfKm" | "distanceExp" | "googleExp" | "foursquareFactor" | "foursquareExponent" | "premierExp";
+type RecipeKey =
+  | "halfKm"
+  | "distanceExp"
+  | "googleExp"
+  | "foursquareFactor"
+  | "foursquareExponent"
+  | "premierExp"
+  | "batch";
 
 const RECIPE_COLUMNS: readonly { key: RecipeKey; label: string }[] = [
+  { key: "batch", label: "Batch" },
   { key: "halfKm", label: "Half distance (km)" },
   { key: "distanceExp", label: "Distance exponent" },
   { key: "googleExp", label: "Google exponent" },
@@ -320,6 +342,7 @@ const RECIPE_COLUMNS: readonly { key: RecipeKey; label: string }[] = [
 /** What the row's numbers do, computed from the row as edited (1A). */
 function recipeEffect(row: RecipeRow, recipe: Recipe, inorganicFloor: number): string {
   const organic = isOrganicRow(row);
+  if (row === "catalogFamilyBoth") return "Order: the worse of its close and well-known ranks";
   const h = recipe.halfKm;
   const e = recipe.distanceExp;
   if (h == null || e == null) return organic ? "No distance on the Map" : "Any Premier place on screen";
@@ -449,7 +472,7 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
   const inorganicFloor = saved.params.mix.adFloor;
   const cell = (row: RecipeRow, rowName: string, key: RecipeKey, label: string) => {
     const recipe = cfg.params.recipes[row];
-    if (isMapRow(row) && (key === "halfKm" || key === "distanceExp")) return <Fixed>—</Fixed>;
+    if (isMapRow(row) && (key === "halfKm" || key === "distanceExp" || key === "batch")) return <Fixed>—</Fixed>;
     if (isOrganicRow(row) && key === "premierExp") return <Fixed>0</Fixed>;
     return (
       <NumberCell
@@ -469,7 +492,7 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
       id="s-ranking"
       icon={<LayoutGrid />}
       title="Ranking"
-      subtitle="The numbers in the formula, one row per screen, mode and lane."
+      subtitle="One row per lane: its batch and the numbers in its formula."
       className="scroll-mt-16"
     >
       <div className="mt-4 flex flex-col gap-3">
@@ -489,42 +512,29 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
             </Tr>
           </THead>
           <TBody>
-            {MODES.flatMap(({ mode, title, who }) => [
-              <Tr key={mode} className="bg-muted/40 hover:bg-muted/40">
-                <Td sticky className="bg-muted/40 font-semibold">
-                  {title}
+            {LANE_ROWS.map(({ row, name, note }) => (
+              <Tr key={row}>
+                <Td sticky className="font-medium">
+                  {name}
+                  {note ? <span className="text-muted-foreground type-meta block font-normal">{note}</span> : null}
                 </Td>
-                <Td colSpan={RECIPE_COLUMNS.length + 1} className="text-muted-foreground type-meta whitespace-normal">
-                  {who}
+                {RECIPE_COLUMNS.map(({ key, label }) => (
+                  <Td key={key} numeric>
+                    {cell(row, name, key, label)}
+                  </Td>
+                ))}
+                <Td className="text-muted-foreground type-meta min-w-48 whitespace-normal">
+                  {recipeEffect(row, cfg.params.recipes[row], inorganicFloor)}
                 </Td>
-              </Tr>,
-              ...(["Organic", "Inorganic"] as const).map((lane) => {
-                const row = rowOf(mode, lane);
-                const rowName = `${title} ${lane}`;
-                return (
-                  <Tr key={row}>
-                    <Td sticky className="font-medium">
-                      {lane}
-                      {lane === "Inorganic" ? (
-                        <span className="text-muted-foreground type-meta block font-normal">Premier places only</span>
-                      ) : null}
-                    </Td>
-                    {RECIPE_COLUMNS.map(({ key, label }) => (
-                      <Td key={key} numeric>
-                        {cell(row, rowName, key, label)}
-                      </Td>
-                    ))}
-                    <Td className="text-muted-foreground type-meta min-w-48 whitespace-normal">
-                      {recipeEffect(row, cfg.params.recipes[row], inorganicFloor)}
-                    </Td>
-                  </Tr>
-                );
-              }),
-            ])}
+              </Tr>
+            ))}
           </TBody>
         </Table>
         <Meta>
-          Half distance {RECIPE_BOUNDS.halfKm.min}–{RECIPE_BOUNDS.halfKm.max} km: about 0.5 km on foot, 2–3 km
+          Batch {RECIPE_BOUNDS.batch.min}–{RECIPE_BOUNDS.batch.max}: how many places the lane gives each
+          weave; a lane with fewer left gives fewer, so a feed can be shorter than its batches add up to.
+          The Map has no batch: Most pins shown cuts it. Family both ranks by the other two Family lanes, so
+          its numbers only score its cards. Half distance {RECIPE_BOUNDS.halfKm.min}–{RECIPE_BOUNDS.halfKm.max} km: about 0.5 km on foot, 2–3 km
           by car. Distance exponent: 1 is gentle, over 1 the list falls off past the Half distance. Google exponent: how far apart
           famous and unknown places sit; lower squeezes them together. Premier exponent: how much a plan
           counts in the Inorganic lane; at the same distance and stars a 2X place passes a 5X place only with
@@ -555,20 +565,14 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
   };
   const temperature = (mode: RankMode, v: number) =>
     patchMix({ temperature: { ...mix.temperature, [mode]: v } });
-  const pageSize = (catalogPageSize: number) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, map: { ...c.map, catalogPageSize } }));
-  };
-  const dirty =
-    !same(mix, saved.params.mix) ||
-    cfg.map.catalogPageSize !== saved.map.catalogPageSize;
+  const dirty = !same(mix, saved.params.mix);
   const T = MIX_BOUNDS.temperature;
   return (
     <SectionCard
       id="s-mixing"
       icon={<Shuffle />}
       title="Mixing"
-      subtitle="How Home merges the two lanes and shuffles the first page. Home only: the Map and Chat are never shuffled."
+      subtitle="How Home weaves the lanes and shuffles the first weave. No page or feed size: each lane's batch sizes it. Home only: the Map and Chat are never shuffled."
       className="scroll-mt-16"
     >
       <div className="mt-4 flex flex-col gap-6">
@@ -588,7 +592,7 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
             ))}
           </div>
           <Meta>
-            Only the first page is shuffled; everything after it keeps its exact order. 0 keeps the order
+            Only the first weave is shuffled; everything after it keeps its exact order. 0 keeps the order
             exactly, 0.3 swaps neighbours, 1 is loose, 3 or more is almost random. Both lanes
             shuffle together. Every page load shuffles again (a reload draws a new feed), and so does moving
             more than 300 m; going back to a mode within one load keeps its order.
@@ -628,21 +632,6 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
             marked &ldquo;Ad&rdquo; only in an inorganic slot. On Home a Premier place takes an inorganic slot
             only when its Proximity (from its mode&apos;s Inorganic row) × its plan&apos;s 2 or 5 reaches the
             Inorganic floor; on the Map the screen is the cut, and inorganic pins count against Most pins shown.
-          </Meta>
-        </Group>
-        <Group title="Paging">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <NumberField
-              label="Page size"
-              value={cfg.map.catalogPageSize}
-              min={CATALOG_PAGE_SIZE_MIN}
-              max={CATALOG_PAGE_SIZE_MAX}
-              disabled={off}
-              onChange={pageSize}
-            />
-          </div>
-          <Meta>
-            Page size: Home draws the list this many places at a time; it is also the shuffled first page.
           </Meta>
         </Group>
       </div>

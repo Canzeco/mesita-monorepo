@@ -64,7 +64,7 @@
 // Migration 20261028233000 strips them from the stored row.
 
 //
-// DISCOVERY RANKING v2 (MESITA-4454): `params.recipes` (eight rows, one per
+// DISCOVERY RANKING v2 (MESITA-4454): `params.recipes` (ten rows since MESITA-4517, one per
 // screen · mode · lane) and `params.mix` (per-mode Temperature, ad floor,
 // ad cadence) are what the Map, the Catalog and Chat read now. Seeded by
 // migration 20261119060000; a missing key reads its default. The keys they
@@ -136,17 +136,21 @@ export type SignalParams = {
   /** `temperature`: Home's shuffle after the sort; 0 = none (MESITA-4153).
    *  UNREAD since MESITA-4454 (`mix.temperature` per mode replaces it). */
   shuffle: { temperature: number };
-  /** The eight recipe rows (MESITA-4454). */
+  /** The ten recipe rows (MESITA-4454, MESITA-4517). */
   recipes: Recipes;
   /** Home's mix (MESITA-4454): per-mode Temperature, ad floor, ad cadence. */
   mix: MixParams;
 };
 
-/** The recipe rows, Catalog modes × lanes plus the Map's two (MESITA-4454). */
+/** The recipe rows, Catalog modes × lanes plus the Map's two (MESITA-4454).
+ *  Family is three organic lanes since MESITA-4517: close, well known, and
+ *  both (strong on both; ordered by the worse of the two ranks). */
 export const RECIPE_ROWS = [
   "catalogNearbyOrganic",
   "catalogNearbyInorganic",
-  "catalogFamilyOrganic",
+  "catalogFamilyClose",
+  "catalogFamilyWellKnown",
+  "catalogFamilyBoth",
   "catalogFamilyInorganic",
   "catalogPopularOrganic",
   "catalogPopularInorganic",
@@ -169,21 +173,33 @@ export type MixParams = {
   growthWeightCap: number;
 };
 
-/** "…Organic" (capital O); an Inorganic row ends "…Inorganic". */
-export const isOrganicRow = (row: RecipeRow) => row.endsWith("Organic");
+/** Every row but "…Inorganic" is organic (the Family lanes end Close,
+ *  WellKnown and Both, MESITA-4517). */
+export const isOrganicRow = (row: RecipeRow) => !row.endsWith("Inorganic");
 export const isMapRow = (row: RecipeRow) => row.startsWith("map");
 
 /** The recipe table (Pato, 2026-11-19); the migration seeds the same values. */
 export const DEFAULT_RECIPES: Recipes = {
-  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 },
-  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 },
-  catalogFamilyOrganic: { halfKm: 2, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 },
-  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 },
-  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 },
-  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 },
-  mapOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 },
-  mapInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 },
+  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
+  // MESITA-4517: close copies Nearby Organic, well known copies Popular
+  // Organic, both keeps the old Family Organic knobs.
+  catalogFamilyClose: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogFamilyWellKnown: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogFamilyBoth: { halfKm: 2, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
+  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
+  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: 10 },
+  mapOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: null },
+  mapInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: null },
 };
+
+/** A Catalog lane's batch when a caller's row has none (MESITA-4517). */
+export const LANE_BATCH_DEFAULT = 10;
+export const LANE_BATCH_MIN = 1;
+/** 25: a Family weave (three lanes plus Inorganic) stays within one
+ *  100-id fill. */
+export const LANE_BATCH_MAX = 25;
 
 export const DEFAULT_MIX: MixParams = {
   temperature: { nearby: 0.33, family: 0.5, popular: 1 },
@@ -200,6 +216,7 @@ export const RECIPE_BOUNDS = {
   foursquareFactor: { min: FOURSQUARE_FACTOR_MIN, max: FOURSQUARE_FACTOR_MAX, decimals: 2 },
   foursquareExponent: { min: FOURSQUARE_EXPONENT_MIN, max: FOURSQUARE_EXPONENT_MAX, decimals: 0 },
   premierExp: { min: PREMIER_EXP_MIN, max: PREMIER_EXP_MAX, decimals: 1 },
+  batch: { min: LANE_BATCH_MIN, max: LANE_BATCH_MAX, decimals: 0 },
 } as const;
 
 export const MIX_BOUNDS = {
@@ -291,6 +308,8 @@ export type MapConfig = {
    * THE CATALOG'S PAGE SIZE (MESITA-2909): Home draws the ranked catalog
    * this many places at a time. `CATALOG_PAGE_SIZE_MIN`..`MAX`, whole,
    * default 20. It replaced `catalogPlacesShown` (MESITA-2727), a cut.
+   * UNREAD since MESITA-4517: each lane's `batch` sizes a weave, and the
+   * first weave is the page. Still loaded so an old save round-trips.
    */
   catalogPageSize: number;
   // `popularityFloor` moved to `name.popularityFloor` (MESITA-3086, Pato:
@@ -734,7 +753,7 @@ function reportedParam(
 }
 
 /**
- * The eight recipe rows (MESITA-4454). A missing row or field reads the
+ * The ten recipe rows (MESITA-4454, MESITA-4517). A missing row or field reads the
  * recipe table. Map rows have no Proximity: their `halfKm` and
  * `distanceExp` are always null. A Catalog row's null distance number reads
  * its default and is reported (L-1). Every Organic row's Premier exponent is
@@ -744,7 +763,11 @@ export function normalizeRecipes(raw: unknown, onClamp?: OnClamp): Recipes {
   const r = asRecord(raw);
   const out = {} as Recipes;
   for (const row of RECIPE_ROWS) {
-    const v = asRecord(r[row]);
+    // A row saved before MESITA-4517 holds `catalogFamilyOrganic`: it is
+    // Family both until the next save writes the new key.
+    const v = asRecord(
+      row === "catalogFamilyBoth" && r[row] === undefined ? r.catalogFamilyOrganic : r[row],
+    );
     const d = DEFAULT_RECIPES[row];
     const key = (f: string) => `params.recipes.${row}.${f}`;
     const map = isMapRow(row);
@@ -771,6 +794,7 @@ export function normalizeRecipes(raw: unknown, onClamp?: OnClamp): Recipes {
       premierExp: isOrganicRow(row)
         ? 0
         : reportedParam(v.premierExp, d.premierExp, RECIPE_BOUNDS.premierExp, key("premierExp"), onClamp),
+      batch: map ? null : reportedParam(v.batch, d.batch as number, RECIPE_BOUNDS.batch, key("batch"), onClamp),
     };
   }
   return out;
@@ -930,8 +954,28 @@ export function recipeFor(
 ): Recipe {
   const m = mode ?? "popular";
   const L = lane === "organic" ? "Organic" : "Inorganic";
-  const row = (m === "map" ? `map${L}` : `catalog${m[0].toUpperCase()}${m.slice(1)}${L}`) as RecipeRow;
+  // Family's organic side is three lanes (MESITA-4517); a caller that asks
+  // for one row (Chat, a card with no lane) reads Family well known.
+  const row = (m === "map"
+    ? `map${L}`
+    : m === "family" && lane === "organic"
+    ? "catalogFamilyWellKnown"
+    : `catalog${m[0].toUpperCase()}${m.slice(1)}${L}`) as RecipeRow;
+  return recipeRow(row, cfg);
+}
+
+/** One named row, or the recipe table's when a cfg predates it. */
+export function recipeRow(
+  row: RecipeRow,
+  cfg: { params: Pick<SignalParams, "recipes"> | SignalParams },
+): Recipe {
   return cfg.params?.recipes?.[row] ?? DEFAULT_RECIPES[row];
+}
+
+/** A Catalog lane's batch: the row's, else 10 (MESITA-4517). */
+export function laneBatch(recipe: Recipe): number {
+  const b = recipe.batch;
+  return typeof b === "number" && Number.isFinite(b) && b >= 1 ? Math.floor(b) : LANE_BATCH_DEFAULT;
 }
 
 /** The mix, or its defaults on a cfg that predates it. */

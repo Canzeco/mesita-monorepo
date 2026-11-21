@@ -1,6 +1,6 @@
 // Supabase Edge Function — admin-web-preview-rank
 //
-// MESITA-4458: the Ranking card saves eight recipe rows. Before Save, the
+// MESITA-4458: the Ranking card saves the recipe rows (ten since MESITA-4517). Before Save, the
 // operator picks a point and a mode and sees the first page that edited
 // recipe would produce beside the page the saved recipe produces now.
 // Both answers are four first pages: Organic, Inorganic, the merge, and the
@@ -23,13 +23,8 @@ import {
   type DiscoveryConfig,
 } from "../_shared/discovery-config.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
-import {
-  catalogPageSize,
-  catalogRankLanesArgs,
-  CatalogReadError,
-  resolveAreaLocation,
-} from "../_shared/area-pipeline.ts";
-import { cutAndShuffle, mergeLanes } from "../_shared/pipeline-signals.ts";
+import { CatalogReadError, resolveAreaLocation, weaveCatalog } from "../_shared/area-pipeline.ts";
+import { cutAndShuffle } from "../_shared/pipeline-signals.ts";
 
 const FN = "admin-web-preview-rank";
 type RankMode = "nearby" | "popular" | "family";
@@ -38,10 +33,6 @@ const SEED = 1;
 
 type Row = { id: string; name: string; lane: "organic" | "inorganic" };
 type Page = { organic: Row[]; inorganic: Row[]; merged: Row[]; shuffled: Row[] };
-
-function asIds(raw: unknown): string[] {
-  return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : [];
-}
 
 serveJson("admin-web-preview-rank", async (req) => {
   const ctx = await requireAdminRequest(req);
@@ -70,16 +61,20 @@ serveJson("admin-web-preview-rank", async (req) => {
     const location = resolveAreaLocation({ lat, lng }, null);
     const families = readGuestFamilyKeys(undefined).filter((f) => f !== "undefined");
     const rank = async (cfg: DiscoveryConfig): Promise<{ page: Page; ids: string[] }> => {
-      const { data, error } = await admin.rpc("catalog_rank_lanes", catalogRankLanesArgs(cfg, location, families, rankMode));
-      if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
-      const answer = (data ?? {}) as Record<string, unknown>;
-      const organic = asIds(answer.ids);
-      const inorganic = asIds(answer.premier);
-      const mix = mixFor(cfg);
-      const merged = mergeLanes(organic, inorganic, mix.adEvery);
-      const n = catalogPageSize(cfg.map);
-      const shuffled = cutAndShuffle(merged.order, n, mix.temperature[rankMode], SEED);
+      // The same weave Home runs (MESITA-4517): the page is the first weave.
+      const { premier: inorganic, woven } = await weaveCatalog(
+        (args) => admin.rpc("catalog_rank_lanes", args),
+        cfg,
+        location,
+        families,
+        rankMode,
+      );
+      const merged = woven;
       const ads = new Set(merged.adIds);
+      const organic = merged.order.filter((id) => !ads.has(id));
+      const mix = mixFor(cfg);
+      const n = merged.weaves[0] ?? 0;
+      const shuffled = cutAndShuffle(merged.order, n, mix.temperature[rankMode], SEED);
       const take = (list: readonly string[], laneOf: (id: string) => "organic" | "inorganic") =>
         list.slice(0, n).map((id) => ({ id, name: id, lane: laneOf(id) }));
       const page: Page = {

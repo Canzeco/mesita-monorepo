@@ -146,15 +146,21 @@ export function premierFactor(c: Pick<AreaCandidate, "source" | "premierTier">):
 /** Popularity, or null (n/a) when the place has no rating or no review
  *  count; 0 reviews is 0 (MESITA-4454). */
 function popularityOrNull(c: AreaCandidate, ctx: AreaContext): number | null {
+  const google = googleOrNull(c, ctx);
+  if (google === null) return null;
+  return google * foursquareBoost(c.foursquarePopularity, ctx.recipe.foursquareFactor, ctx.recipe.foursquareExponent);
+}
+
+/** Google popularity before the Foursquare boost, or null (n/a). */
+function googleOrNull(c: AreaCandidate, ctx: AreaContext): number | null {
   const ok = (v: unknown) => typeof v === "number" && Number.isFinite(v);
   if (!ok(c.rating) || !ok(c.reviewCount)) return null;
-  const google = googlePopularity(
+  return googlePopularity(
     c,
     ctx.recipe.googleExp,
     ctx.growth?.get(c.id),
     ctx.growthWeightCap ?? GROWTH_CAP_DEFAULT,
   );
-  return google * foursquareBoost(c.foursquarePopularity, ctx.recipe.foursquareFactor, ctx.recipe.foursquareExponent);
 }
 
 /** One candidate's breakdown — the wire's `area` object (MESITA-2379).
@@ -171,6 +177,11 @@ export type AreaDiagnostics = {
     // `popularity` (the Area floor gate, MESITA-2714) retired in MESITA-3086.
   };
   signals: { proximity: number | null; popularity: number | null };
+  /** Popularity's two halves (MESITA-4517, the dev score tag): Google
+   *  popularity before the boost (null = n/a), and Foursquare's raw 0–1
+   *  score (null = missing) with the multiplier it gave. */
+  google: number | null;
+  foursquare: { raw: number | null; boost: number };
   source: AreaSource;
   /** premierFactor, the raw plan value (DX-e): 2 or 5 for a Premier place,
    *  1 for every other. The wire key predates Premier and is kept so the
@@ -218,6 +229,13 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
       reviews: c.reviews ?? null,
     },
     signals: { proximity: score.proximity, popularity: pop },
+    google: googleOrNull(c, ctx),
+    foursquare: {
+      raw: typeof c.foursquarePopularity === "number" && Number.isFinite(c.foursquarePopularity)
+        ? c.foursquarePopularity
+        : null,
+      boost: foursquareBoost(c.foursquarePopularity, ctx.recipe.foursquareFactor, ctx.recipe.foursquareExponent),
+    },
     source: c.source,
     selectedFactor: sel,
     premierBoost: score.premierBoost,
