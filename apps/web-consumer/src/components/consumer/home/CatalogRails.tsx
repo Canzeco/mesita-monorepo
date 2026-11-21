@@ -167,6 +167,8 @@ const CAT_EMOJI =
 // maybe try square boxes for the special boxes and circular boxes for the
 // family boxes"): Menu, Saved, Near and Top are rounded squares; the ticks
 // between them (MESITA-4427) are gone. The shape is the separation.
+// ONLY MENU IS SQUARE (Pato, MESITA-4570: "make all circles except for the
+// menu"): Saved, Nearby and Popular are circles like the families again.
 const CAT_SQUARE = "rounded-xl";
 const CAT_EMOJI_OFF = "bg-card border-border border";
 // A FAINT TINT TELLS THEM APART (Pato, 2026-11-18, MESITA-4421: "special
@@ -706,10 +708,8 @@ export function CatalogRails() {
           aria-hidden
           className={cn(
             CAT_EMOJI,
-            // Squares stay on the strip (MESITA-4428). In the modal the
-            // three specials are circles, the same shape as the families
-            // (Pato, MESITA-4469).
-            !inMenu && isSpecial(c.key) && CAT_SQUARE,
+            // Every pill is a circle, strip and modal (MESITA-4570); only
+            // the Menu tile keeps CAT_SQUARE.
             on ? CAT_EMOJI_ON : isSpecial(c.key) ? CAT_TINT_SPECIAL : CAT_TINT_FAMILY,
           )}
         >
