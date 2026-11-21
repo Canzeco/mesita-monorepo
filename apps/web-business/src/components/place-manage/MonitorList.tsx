@@ -43,10 +43,10 @@ import type { Icon } from "@phosphor-icons/react";
 import { CoinsIcon, CreditCardIcon, FootprintsIcon, TicketIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 
 /** The row grid every Monitor list shares: face · text · amount. */
-export const ROW = "grid grid-cols-[40px_minmax(0,1fr)_auto] items-start gap-x-3 px-5 py-3.5 text-sm sm:px-6";
+export const ROW = "grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 text-sm sm:px-5";
 /** A small quiet link to a related row. */
 export const CHIP =
-  "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium whitespace-nowrap tabular-nums";
+  "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground inline-flex h-5 items-center rounded-full px-2 text-xs font-medium whitespace-nowrap tabular-nums";
 const META = "text-muted-foreground text-sm";
 
 /** Every chip wears its kind's icon (Pato: "USE ICONS ALWAYS"). */
@@ -61,7 +61,7 @@ const CHIP_ICON: Record<LinkKind | "customer", Icon> = {
 
 function ChipIcon({ kind }: { kind: LinkKind | "customer" }) {
   const I = CHIP_ICON[kind];
-  return <I size={13} weight="bold" aria-hidden />;
+  return <I size={12} weight="bold" aria-hidden />;
 }
 
 /** At most three chips of one kind, then "+N" to that page filtered to the guest. */
@@ -100,12 +100,12 @@ function Chips({ placeId, row }: { placeId: string; row: MonitorRow }) {
   if (row.other_customer && row.other) {
     chips.push(
       <Link key="other" href={customerHref(placeId, row.other_customer)} className={cn(CHIP, "gap-1.5 pl-0.5")}>
-        <GuestAvatar face={row.other_face ?? null} size={20} />
+        <GuestAvatar face={row.other_face ?? null} size={16} />
         {row.other}
       </Link>,
     );
   }
-  return chips.length ? <span className="mt-2 flex flex-wrap gap-1.5">{chips}</span> : null;
+  return chips.length ? <>{chips}</> : null;
 }
 
 export function MonitorRowItem({ placeId, kind, row, timezone }: { placeId: string; kind: MonitorKind; row: MonitorRow; timezone: string }) {
@@ -116,41 +116,37 @@ export function MonitorRowItem({ placeId, kind, row, timezone }: { placeId: stri
     <li className={ROW} id={row.id}>
       {row.customer ? (
         <Link href={customerHref(placeId, row.customer)} aria-label={name}>
-          <GuestAvatar face={row.face ?? null} />
+          <GuestAvatar face={row.face ?? null} size={32} />
         </Link>
       ) : (
-        <GuestAvatar face={null} />
+        <GuestAvatar face={null} size={32} />
       )}
-      <div className="min-w-0">
-        <p className="truncate font-medium">
-          {row.customer ? (
-            <Link href={customerHref(placeId, row.customer)} className="underline-offset-2 hover:underline">
-              {name}
-            </Link>
-          ) : (
-            <span className="text-muted-foreground">{name}</span>
-          )}
-        </p>
-        {/* Every row leads with its kind's badge (Pato: "USE ICONS ALWAYS"). */}
-        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-          {kind === "vouchers" ? (
-            <VoucherBadge code={(row.payload.voucher as string | null) ?? null} />
-          ) : kind === "visits" ? (
-            <VisitBadge status={rowStatus(kind, row)} />
-          ) : kind === "payments" ? (
-            <CardBadge status={lead} />
-          ) : (
-            <CreditBadge kind={kind === "gifts" ? "gift" : String(row.payload.kind ?? "")} voucher={(row.payload.voucher as string | null) ?? null} />
-          )}
-          <span className={META}>
-            {[kind === "visits" || kind === "payments" ? null : lead, detail, when(row.at, timezone)].filter(Boolean).join(" · ")}
-          </span>
-        </p>
+      {/* One line that wraps (Pato: "too big … make it cleaner"). */}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        {row.customer ? (
+          <Link href={customerHref(placeId, row.customer)} className="truncate font-medium underline-offset-2 hover:underline">
+            {name}
+          </Link>
+        ) : (
+          <span className="text-muted-foreground font-medium">{name}</span>
+        )}
+        {kind === "vouchers" ? (
+          <VoucherBadge code={(row.payload.voucher as string | null) ?? null} />
+        ) : kind === "visits" ? (
+          <VisitBadge status={rowStatus(kind, row)} />
+        ) : kind === "payments" ? (
+          <CardBadge status={lead} />
+        ) : (
+          <CreditBadge kind={kind === "gifts" ? "gift" : String(row.payload.kind ?? "")} voucher={(row.payload.voucher as string | null) ?? null} />
+        )}
+        <span className={META}>
+          {[kind === "visits" || kind === "payments" ? null : lead, detail, when(row.at, timezone)].filter(Boolean).join(" · ")}
+        </span>
         <Chips placeId={placeId} row={row} />
       </div>
       <div className="text-right">
         <p className="font-semibold whitespace-nowrap tabular-nums">{rowAmount(kind, row)}</p>
-        <p className="text-muted-foreground/70 mt-0.5 font-mono text-xs tabular-nums">{shortId(row.id)}</p>
+        <p className="text-muted-foreground/70 font-mono text-xs tabular-nums">{shortId(row.id)}</p>
       </div>
     </li>
   );

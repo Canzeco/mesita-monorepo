@@ -11,6 +11,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Crown } from "lucide-react";
+import { UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { Card } from "@/components/shell/Page";
 import { listPlaceViewsLog, type PlaceViewEvent, type PlaceViewsLog } from "@/lib/business-api";
@@ -25,8 +26,8 @@ const VERB: Record<PlaceViewEvent["kind"], string> = {
   shared: "shared",
 };
 
-const ROW = "flex min-h-14 items-center gap-3 px-5 py-3 text-sm sm:px-6";
-const MARK = "ring-card absolute -bottom-1 flex h-5 w-5 items-center justify-center rounded-full ring-2";
+const ROW = "flex items-center gap-3 px-4 py-2.5 text-sm sm:px-5";
+const MARK = "ring-card absolute -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full ring-2";
 
 /** "1.2K followers". */
 function followersLine(n: number): string | null {
@@ -48,11 +49,11 @@ function when(iso: string, timezone: string): string {
 function Face({ person }: { person: PlaceViewEvent["person"] }) {
   const vip = person.guestClass === "vip";
   return (
-    <span className="relative block h-11 w-11 shrink-0">
+    <span className="relative block h-8 w-8 shrink-0">
       {person.avatarUrl ? (
-        <SizedImg src={person.avatarUrl} size="thumb" alt="" className="h-11 w-11 rounded-full object-cover" />
+        <SizedImg src={person.avatarUrl} size="thumb" alt="" className="h-8 w-8 rounded-full object-cover" />
       ) : (
-        <span className="block h-11 w-11 overflow-hidden rounded-full">
+        <span className="block h-8 w-8 overflow-hidden rounded-full">
           <DefaultAvatar className="h-full w-full" />
         </span>
       )}
@@ -61,7 +62,7 @@ function Face({ person }: { person: PlaceViewEvent["person"] }) {
           aria-hidden
           className={cn(MARK, "-left-1 bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))] text-white")}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" className="h-[11px] w-[11px]">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" className="h-2.5 w-2.5">
             <rect width="20" height="20" x="2" y="2" rx="5" />
             <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
             <path d="M17.5 6.5h.01" />
@@ -70,7 +71,7 @@ function Face({ person }: { person: PlaceViewEvent["person"] }) {
       ) : null}
       {vip ? (
         <span aria-hidden className={cn(MARK, "bg-foreground text-background -right-1")}>
-          <Crown className="h-[11px] w-[11px]" strokeWidth={2.75} />
+          <Crown className="h-2.5 w-2.5" strokeWidth={2.75} />
         </span>
       ) : null}
       {vip ? <span className="sr-only">VIP</span> : null}
@@ -84,8 +85,8 @@ function EventRow({ placeId, event, timezone }: { placeId: string; event: PlaceV
   return (
     <li className={ROW}>
       <Face person={person} />
-      <div className="min-w-0 flex-1">
-        <p>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+        <span>
           {event.customer ? (
             <Link href={customerHref(placeId, event.customer)} className="font-medium hover:underline underline-offset-2">
               {person.name}
@@ -94,8 +95,8 @@ function EventRow({ placeId, event, timezone }: { placeId: string; event: PlaceV
             <span className="font-medium">{person.name}</span>
           )}{" "}
           {VERB[event.kind]}
-        </p>
-        <p className="text-muted-foreground">
+        </span>
+        <span className="text-muted-foreground">
           {person.handle ? (
             <>
               <a
@@ -111,13 +112,12 @@ function EventRow({ placeId, event, timezone }: { placeId: string; event: PlaceV
           ) : null}
           {followers ? `${followers} · ` : null}
           <span className="whitespace-nowrap">{when(event.at, timezone)}</span>
-        </p>
+        </span>
         {event.customer ? (
-          <span className="mt-2 flex flex-wrap gap-1.5">
-            <Link href={customerHref(placeId, event.customer)} className={CHIP}>
-              {customerLabel(event.customer)}
-            </Link>
-          </span>
+          <Link href={customerHref(placeId, event.customer)} className={cn(CHIP, "gap-1")}>
+            <UserCircleIcon size={12} weight="bold" aria-hidden />
+            {customerLabel(event.customer)}
+          </Link>
         ) : null}
       </div>
     </li>

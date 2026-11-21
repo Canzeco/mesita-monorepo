@@ -11,21 +11,21 @@ import { BankIcon } from "@phosphor-icons/react/dist/ssr";
 import { getPayouts } from "@/lib/business-api";
 import { day, money, payoutStatus, type Payout, type PayoutsAnswer } from "@/lib/monitor";
 
-const ROW = "grid grid-cols-[40px_minmax(0,1fr)_auto] items-start gap-x-3 px-5 py-3.5 text-sm sm:px-6";
+const ROW = "grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 text-sm sm:px-5";
 
 function PayoutRow({ p, timezone }: { p: Payout; timezone: string }) {
   return (
     <li className={ROW}>
-      <span className="bg-muted text-muted-foreground grid size-10 place-items-center rounded-full">
-        <BankIcon size={20} aria-hidden />
+      <span className="bg-muted text-muted-foreground grid size-8 place-items-center rounded-full">
+        <BankIcon size={16} aria-hidden />
       </span>
-      <div className="min-w-0">
-        <p className="truncate font-medium">{p.bank ?? "Your bank"}</p>
-        <p className="text-muted-foreground text-sm">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2">
+        <span className="truncate font-medium">{p.bank ?? "Your bank"}</span>
+        <span className="text-muted-foreground text-sm">
           {payoutStatus(p.status)}
           {p.arrival_date ? ` · ${p.status === "paid" ? "Arrived" : "Arrives"} ${day(p.arrival_date, timezone)}` : ""}
           {p.failure_message ? ` · ${p.failure_message}` : ""}
-        </p>
+        </span>
       </div>
       <p className="font-semibold whitespace-nowrap tabular-nums">{money(p.amount_cents, p.currency)}</p>
     </li>

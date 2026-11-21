@@ -55,25 +55,23 @@ export function CustomersList({ placeId, initial, customer }: { placeId: string;
         <ul className="divide-border divide-y">
           {page.rows.map((c) => (
             <li key={c.customer} className={ROW}>
-              <GuestAvatar face={c.face ?? null} />
-              <div className="min-w-0">
-                <p className="truncate font-medium">{c.guest}</p>
-                <p className="text-muted-foreground text-sm">Last seen {when(c.last_seen, page.timezone)}</p>
-                <span className="mt-2 flex flex-wrap gap-1.5">
-                  <span className={cn(CHIP, "gap-1")}>
-                    <UserCircleIcon size={13} weight="bold" aria-hidden />
-                    {customerLabel(c.customer)}
-                  </span>
-                  {PAGES.map(([p, label]) => (
-                    <Link key={p} href={customerListHref(placeId, p, c.customer)} className={CHIP}>
-                      {label}
-                    </Link>
-                  ))}
+              <GuestAvatar face={c.face ?? null} size={32} />
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="truncate font-medium">{c.guest}</span>
+                <span className="text-muted-foreground text-sm">Last seen {when(c.last_seen, page.timezone)}</span>
+                <span className={cn(CHIP, "gap-1")}>
+                  <UserCircleIcon size={12} weight="bold" aria-hidden />
+                  {customerLabel(c.customer)}
                 </span>
+                {PAGES.map(([p, label]) => (
+                  <Link key={p} href={customerListHref(placeId, p, c.customer)} className={CHIP}>
+                    {label}
+                  </Link>
+                ))}
               </div>
               <div className="text-right">
                 <p className="font-semibold whitespace-nowrap tabular-nums">{money(c.owed_cents)}</p>
-                <p className="text-muted-foreground mt-0.5 text-xs">owed</p>
+                <p className="text-muted-foreground text-xs">owed</p>
               </div>
             </li>
           ))}
