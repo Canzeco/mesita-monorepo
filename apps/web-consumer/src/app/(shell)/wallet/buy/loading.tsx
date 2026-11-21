@@ -1,15 +1,27 @@
 import { Screen } from "@/components/consumer/nav/Screen";
-import { AddRow, RowsSkeleton, WalletPanelList } from "@/components/consumer/wallet/WalletLists";
+import { Skeleton } from "@/components/shared/Skeleton";
 
-// /wallet/buy's frame (MESITA-4096): the header in place, the list in bones,
-// ending with the page's own Add a Credits Card row (MESITA-4119).
+// /wallet/buy's frame (MESITA-4597): Prepay & Get Credits as it draws, edge to
+// edge, grey bones only: the search pill, then three place rows.
 export default function Loading() {
   return (
-    <Screen title="Buy Credits" paper>
-      <WalletPanelList title="Places">
-        <RowsSkeleton count={3} />
-        <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" disabled />
-      </WalletPanelList>
+    <Screen title="Prepay & Get Credits" paper flush>
+      <div className="flex flex-col pt-3" aria-busy>
+        <div className="px-5 pt-3 pb-2">
+          <Skeleton className="h-11 w-full rounded-full" />
+        </div>
+        <div className="border-border divide-border mt-3 divide-y border-y">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex min-h-[4.5rem] items-center gap-3.5 px-5 py-3">
+              <Skeleton className="h-8 w-12 shrink-0 rounded-md" />
+              <div className="flex-1">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="mt-1.5 h-3 w-24" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </Screen>
   );
 }

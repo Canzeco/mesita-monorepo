@@ -32,70 +32,38 @@ function AddCreditsCardRow() {
 }
 
 import { useState } from "react";
-import { Gift, Store } from "lucide-react";
+import { Gift } from "lucide-react";
 
 import { Screen } from "@/components/consumer/nav/Screen";
+import { useRouter } from "next/navigation";
+import { navigateTo } from "@/lib/navigate";
+import { PlacePickBody } from "@/components/consumer/pay/PayPick";
 import { EmptyState } from "@/components/shared/EmptyState";
-import type { PayPlace } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES, walletSendPath } from "@/lib/consumer-route-contract";
 import { placeHref } from "@/lib/place-route";
-import { usePayPlaces } from "@/components/consumer/pay/use-pay-places";
 import { useWallet } from "./use-wallet";
 import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
 import { AddRow, CreditsRow, RowsSkeleton, WalletPanelList } from "./WalletLists";
-import type { WalletCardModel } from "./WalletCard";
 
 /** A place's prepay page: its Offers at Prepayments, Back returning here. */
 export function prepayHref(placeIdOrSlug: string): string {
   return `${placeHref(placeIdOrSlug)}/offers?rewards=prepayment&from=wallet`;
 }
 
-function payPlaceCard(p: PayPlace): WalletCardModel {
-  return {
-    key: `${p.place_id}:${p.currency}`,
-    name: p.name ?? "A Mesita place",
-    photo: p.photo,
-    tier: p.marks.tier,
-    currency: p.currency,
-    available_cents: p.available_cents,
-    pending_cents: p.pending_cents,
-    hasBalance: p.available_cents > 0 || p.pending_cents > 0,
-    tap: { kind: "plain" },
-  };
-}
-
-/** /wallet/buy — pick the place to buy credits from. */
+/** /wallet/buy — Prepay & Get Credits (MESITA-4597, Pato: "first of all
+ *  Prepay & Get Credits. NO MARGINS … searchbar at the top and then just
+ *  display first the 3 closest places. then … the loyalty cards you already
+ *  have"): the Pay Bill picker's body in prepay mode, edge to edge, no box,
+ *  no balance, no Add row; a place opens its Offers at Prepayments, where the
+ *  buying happens. A bordered "Places" list with balances and an Add row
+ *  before. */
 export function BuyCreditsPage() {
-  const { places, failed, refresh } = usePayPlaces(null);
-  const selling = places?.filter((p) => p.card_ok) ?? null;
+  const router = useRouter();
   return (
-    <Screen title="Buy Credits" paper>
-      {selling === null && failed ? (
-        <EmptyState
-          icon={Store}
-          title="Couldn't load the places"
-          description="Check your connection and try again."
-          action={{ label: "Try again", onClick: refresh }}
-        />
-      ) : selling === null ? (
-        <WalletPanelList title="Places">
-          <RowsSkeleton count={3} />
-          <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" disabled />
-        </WalletPanelList>
-      ) : selling.length === 0 ? (
-        <EmptyState
-          icon={Store}
-          title="No place sells credits yet"
-          action={{ label: "Find a place", href: CONSUMER_ROUTES.search }}
-        />
-      ) : (
-        <WalletPanelList title="Places">
-          {selling.map((p, i) => (
-            <CreditsRow key={p.place_id} card={payPlaceCard(p)} href={prepayHref(p.place_id)} eager={i < 4} />
-          ))}
-          <AddCreditsCardRow />
-        </WalletPanelList>
-      )}
+    <Screen title="Prepay & Get Credits" paper flush>
+      <div className="flex min-h-0 flex-1 flex-col pt-3 pb-8">
+        <PlacePickBody prepay onPick={(id) => navigateTo(router, prepayHref(id), { motion: "drill" })} />
+      </div>
     </Screen>
   );
 }
