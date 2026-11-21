@@ -1,7 +1,9 @@
 "use client";
 
 import { SizedImg } from "@mesita/place-profile";
+import { Clock3 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PendingBox } from "@/components/consumer/wallet/WalletLists";
 import { PAY_ROW, PAY_ROW_META, PAY_ROW_TEXT, PAY_THUMB } from "./pay-sections";
 
 // A ROW OF PAY'S LOYALTY CARDS BOX (MESITA-4560). History: a bank-card-sized
@@ -14,6 +16,7 @@ export function PlaceActionRow({
   amount,
   distance = null,
   subtitle,
+  pending = null,
   placeId,
   disabled = false,
   onOpen,
@@ -26,6 +29,8 @@ export function PlaceActionRow({
   /** "350 m" when the place is located. */
   distance?: string | null;
   subtitle?: string | null;
+  /** "$50.00MX" still landing here: shown in the Wallet's blue box under the row. */
+  pending?: string | null;
   placeId?: string;
   disabled?: boolean;
   /** The first line's tap: its Loyalty Card page (or the place). */
@@ -79,6 +84,15 @@ export function PlaceActionRow({
           <span className={cn(PAY_ROW_META, "shrink-0")}>{distance}</span>
         ) : null}
       </button>
+      {/* MONEY ON ITS WAY, UNDER THE CARD (Pato, 2026-11-21, MESITA-4594:
+          "if bonus pending, lit it below the loyalty card in that blue box
+          and make loylaty card conatiner taller"): the Loyalty Card page's
+          blue PendingBox, the row growing to hold it; it opens the card. */}
+      {pending && !disabled ? (
+        <button type="button" onClick={() => onOpen?.()} className="block w-full px-3 pb-3 text-left" data-loyalty-card-pending>
+          <PendingBox icon={Clock3}>{pending} pending</PendingBox>
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -279,6 +279,7 @@ export function WalletSection({
                     photo={row.card.photo}
                     amount={gone || row.card.available_cents <= 0 ? null : money(row.card.available_cents, row.card.currency)}
                     subtitle={gone ? "Ask Mesita support to use it." : null}
+                    pending={!gone && row.balance.pending_cents > 0 ? money(row.balance.pending_cents, row.card.currency) : null}
                     disabled={gone}
                     placeId={row.placeId}
                     onOpen={() => navigateTo(router, walletPlacePath(row.placeId), { motion: "drill" })}
