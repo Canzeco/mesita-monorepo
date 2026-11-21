@@ -53,7 +53,7 @@ export async function MonitorPage({
         // stacked on a phone.
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <MonitorCard>
-            <CardHeader title="Card payments" />
+            <CardHeader title="Payments" />
             {list}
           </MonitorCard>
           <MonitorCard>
