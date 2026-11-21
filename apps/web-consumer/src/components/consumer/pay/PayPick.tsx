@@ -26,6 +26,17 @@ import { usePayPlaces } from "./use-pay-places";
 // bar sits on its own under the header and the rows run edge to edge, a full
 // hairline between them; the Panel with its side margins is gone.
 
+// PREPAY & GET CREDITS USES IT TOO (Pato, 2026-11-21, MESITA-4597: "searchbar
+// at the top and then just display first the 3 closest places. then display
+// the list of all the loyalty cards you already have … don't display current
+// balance. Just display name of the place and location and card. when you
+// click the place, then you open its offers page"): `PlacePickBody` with
+// `prepay` is /wallet/buy's whole body: no "Where are you paying?", only
+// places that sell credits, "Near you" (the 3 closest) then "Your Loyalty
+// Cards" (every place the guest holds credit at, not already above), each
+// row the card-shaped photo, the name and the location line, no QR chip and
+// no "Show all"; a search lists every match.
+
 /** Places listed before "Show all" (MESITA-3720). */
 const PLACES_SHOWN = 5;
 
@@ -46,13 +57,21 @@ export function PayPickSheet({
 }
 
 function PayPickBody({ onPick }: { onPick: (placeId: string) => void }) {
+  return <PlacePickBody onPick={onPick} />;
+}
+
+/** /wallet/buy's prepay count: the closest places listed first (MESITA-4597). */
+const NEAR_SHOWN = 3;
+
+export function PlacePickBody({ onPick, prepay = false }: { onPick: (placeId: string) => void; prepay?: boolean }) {
   const { loc, askLocation, notNow } = usePayLocation({ prime: true });
-  const { places, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
+  const { places: all, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
+  const places = prepay && all ? all.filter((p) => p.card_ok) : all;
   const [query, setQuery] = useState("");
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pay-box>
-      <p className="px-5 pt-1 text-base font-semibold">Where are you paying?</p>
+      {prepay ? null : <p className="px-5 pt-1 text-base font-semibold">Where are you paying?</p>}
       {/* A REAL FIELD (MESITA-4295, Pato: "better design"): the bare
           SearchBar sits in a 44px grey pill; the list under it stays
           boxless (MESITA-4280). It is not focused on open (MESITA-2939). */}
@@ -76,6 +95,7 @@ function PayPickBody({ onPick }: { onPick: (placeId: string) => void }) {
             onPick={onPick}
             onUseLocation={askLocation}
             onNotNow={notNow}
+            prepay={prepay}
           />
         ) : failed ? (
           <div className="px-5 py-4">
@@ -110,7 +130,9 @@ function PlaceList({
   onPick,
   onUseLocation,
   onNotNow,
+  prepay = false,
 }: {
+  prepay?: boolean;
   places: PayPlace[];
   query: string;
   loc: Loc;
@@ -126,7 +148,11 @@ function PlaceList({
   const held = matches.filter((p) => p.available_cents > 0);
   const near = matches.filter((p) => p.available_cents <= 0);
   const shown = q || showAll ? matches : [...held, ...near.slice(0, Math.max(0, PLACES_SHOWN - held.length))];
-  const hidden = matches.length - shown.length;
+  const hidden = prepay ? 0 : matches.length - shown.length;
+  const holds = (p: PayPlace) => p.available_cents > 0 || p.pending_cents > 0;
+  const nearest = matches.slice(0, NEAR_SHOWN);
+  const nearIds = new Set(nearest.map((p) => p.place_id));
+  const cards = matches.filter((p) => holds(p) && !nearIds.has(p.place_id));
   return (
     <div className="flex flex-col">
       {loc.state === "prime" ? (
@@ -177,7 +203,12 @@ function PlaceList({
         // (MESITA-4280) with a hairline between them.
         <div data-pay-places>
           {q ? (
-            <Section title="Results" places={shown} onPick={onPick} />
+            <Section title="Results" places={prepay ? matches : shown} onPick={onPick} prepay={prepay} />
+          ) : prepay ? (
+            <>
+              <Section title="Near you" places={nearest} onPick={onPick} prepay />
+              <Section title="Your Loyalty Cards" places={cards} onPick={onPick} prepay />
+            </>
           ) : (
             <>
               <Section title="Your cards" places={shown.filter((p) => p.available_cents > 0)} onPick={onPick} />
@@ -200,14 +231,24 @@ function PlaceList({
 }
 
 /** One eyebrow and its rows; none, nothing. */
-function Section({ title, places, onPick }: { title: string; places: PayPlace[]; onPick: (placeId: string) => void }) {
+function Section({
+  title,
+  places,
+  onPick,
+  prepay = false,
+}: {
+  title: string;
+  places: PayPlace[];
+  onPick: (placeId: string) => void;
+  prepay?: boolean;
+}) {
   if (places.length === 0) return null;
   return (
     <section className="mt-3">
       <p className="type-eyebrow text-muted-foreground px-5 pb-2">{title}</p>
       <div className="border-border divide-border divide-y border-y">
         {places.map((p) => (
-          <PlaceRow key={p.place_id} p={p} onPick={onPick} />
+          <PlaceRow key={p.place_id} p={p} onPick={onPick} prepay={prepay} />
         ))}
       </div>
     </section>
@@ -215,7 +256,7 @@ function Section({ title, places, onPick }: { title: string; places: PayPlace[];
 }
 
 /** A place: photo, name, "1.0 km · address", then the QR chip and a chevron. */
-function PlaceRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
+function PlaceRow({ p, onPick, prepay = false }: { p: PayPlace; onPick: (placeId: string) => void; prepay?: boolean }) {
   const line = [p.distance_m !== null ? distanceText(p.distance_m) : null, p.address].filter(Boolean).join(" · ");
   return (
     <button
@@ -223,16 +264,20 @@ function PlaceRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => voi
       onClick={() => onPick(p.place_id)}
       className="hover:bg-muted/60 flex min-h-[4.5rem] w-full items-center gap-3.5 px-5 py-3 text-left transition"
     >
-      <PlacePhoto place={p} className="h-12 w-12" />
+      {/* The Loyalty Card's shape on Prepay (MESITA-4597: "name … location
+          and card"): Pay's 48x32 card thumbnail; the bill picker keeps its circle. */}
+      <PlacePhoto place={p} className={prepay ? "h-8 w-12 rounded-md" : "h-12 w-12"} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-base font-semibold">{p.name ?? "A Mesita place"}</span>
         {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm tabular-nums">{line}</span> : null}
       </span>
       {/* THE QR (MESITA-4242, Pato: "a fictional qr at the right"): white on
           a black chip (MESITA-4251). */}
-      <span className="flex h-8 w-[3.2rem] shrink-0 items-center justify-center rounded-md bg-neutral-950 text-white" aria-hidden data-pay-pick-qr>
-        <QrCode className="h-5 w-5" strokeWidth={2} />
-      </span>
+      {prepay ? null : (
+        <span className="flex h-8 w-[3.2rem] shrink-0 items-center justify-center rounded-md bg-neutral-950 text-white" aria-hidden data-pay-pick-qr>
+          <QrCode className="h-5 w-5" strokeWidth={2} />
+        </span>
+      )}
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
     </button>
   );
