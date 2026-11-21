@@ -20,6 +20,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { fetchPlaceFamilies } from "./categories.ts";
 import { openaiChat, QUALITY_MODEL } from "./enrich-config.ts";
+import { loadEnrichmentConfig, stageFieldLimits } from "./enrichment-config.ts";
 import { loadEnrichConfig } from "./enrich-config.ts";
 import { synthesisModelFor } from "./enrich-synthesis.ts";
 import {
@@ -149,11 +150,12 @@ export function buildRepickMessages(
   place: Pick<PlaceSnapshot, "name" | "googleTypes" | "category" | "texts">,
   familyLines: readonly string[],
   arm: RepickArm,
+  familiesMax?: number,
 ): { system: string; user: string } {
   const system =
     "You pick Mesita Families for one place. Return ONE JSON object: " +
     '{"families":["<slugs from the FAMILY LIST>"]}. ' +
-    familiesRule("enrich") +
+    familiesRule("enrich", familiesMax) +
     (arm === "repick" ? ` ${AMENITY_LINE}` : "");
   const hint = familyHintLine(place.googleTypes, place.category);
   const texts = [
@@ -294,7 +296,13 @@ export async function runRepick(
 ): Promise<RepickResult> {
   const cfg = await loadEnrichConfig(admin);
   const model = req.model ?? synthesisModelFor(cfg.synthesisQuality);
-  const [familyVocab, enabled] = await Promise.all([fetchPlaceFamilies(admin), enabledCategories(admin)]);
+  const [familyVocab, enabled, limitsCfg] = await Promise.all([
+    fetchPlaceFamilies(admin),
+    enabledCategories(admin),
+    loadEnrichmentConfig(admin),
+  ]);
+  // The re-pick runs as Enrich, so Enrich's Atlas limit binds it (MESITA-4581).
+  const familiesMax = stageFieldLimits(limitsCfg, "enrich").families;
   const familyLines = familyVocabularyLines(familyVocab);
   const counts: Record<string, number> = {};
   const bump = (k: string) => (counts[k] = (counts[k] ?? 0) + 1);
@@ -321,12 +329,12 @@ export async function runRepick(
   if (error) throw new Error(`place_profiles: ${error.message}`);
   const places = (data ?? []).map((r) => snapshot(r as Record<string, unknown>));
 
-  const pick = (raw: unknown) => pickFamilies(raw, familyVocab);
+  const pick = (raw: unknown) => pickFamilies(raw, familyVocab, familiesMax);
   const rows = await Promise.all(places.map(async (p): Promise<RepickRow> => {
     const base = { place_id: p.id, name: p.name, main_category: mainGoogleCategory(p.googleTypes, p.category), before: p.familyKeys };
     const skip = req.dryRun ? null : preSkip(p, enabled);
     if (skip) return { ...base, after: null, outcome: "skipped", reason: skip };
-    const reply = await askModel(ctx.openaiKey, model, buildRepickMessages(p, familyLines, req.arm));
+    const reply = await askModel(ctx.openaiKey, model, buildRepickMessages(p, familyLines, req.arm, familiesMax));
     const verdict = classifyReply(reply, p.familyKeys, pick);
     if (!("after" in verdict)) {
       // A dry run still shows what the model proposed when it proposed the same list.

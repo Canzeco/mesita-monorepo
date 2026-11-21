@@ -94,6 +94,7 @@ export function formatDescriptionParagraphs(raw: string): string {
 export function applyProfileToUpdate(
   update: Record<string, unknown>,
   parsed: ProfileResult,
+  presentationMax?: number,
 ): void {
   // Location is Google's structured response. Synthesis may read those facts
   // as input for Presentation. It does not write city or address; the Mesita
@@ -102,7 +103,7 @@ export function applyProfileToUpdate(
   const description = asProfileText(parsed.description);
   if (description) {
     // Cut at a sentence, never mid-word (MESITA-2641).
-    update.description = capPresentation(formatDescriptionParagraphs(description));
+    update.description = capPresentation(formatDescriptionParagraphs(description), presentationMax);
   }
   // products.menu is no longer synthesised — the website (its only source) is no
   // longer scraped. Existing menus on the place are left untouched.

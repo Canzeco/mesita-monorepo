@@ -100,13 +100,16 @@ export async function resolvePlaceTags(
 export function pickVocabularyTags(
   raw: unknown,
   vocabulary: ReadonlySet<string>,
+  max: number = MAX_PLACE_TAGS,
 ): string[] | null {
   if (!Array.isArray(raw)) return null;
+  const cap = Math.max(0, Math.min(max, MAX_PLACE_TAGS));
   const out: string[] = [];
+  if (cap === 0) return out;
   for (const t of raw) {
     const slug = typeof t === "string" ? t.trim().toLowerCase() : "";
     if (slug && vocabulary.has(slug) && !out.includes(slug)) out.push(slug);
-    if (out.length === MAX_PLACE_TAGS) break;
+    if (out.length === cap) break;
   }
   return out;
 }

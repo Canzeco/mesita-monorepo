@@ -13,6 +13,7 @@ import {
 } from "./enrich-config.ts";
 import { MAX_PLACE_TAGS } from "./tags.ts";
 import { familiesRule } from "./families-infer.ts";
+import type { StageFieldLimits } from "./enrichment-config.ts";
 import { ZONE_RULE } from "./zone-infer.ts";
 import {
   type ProfileResult,
@@ -77,11 +78,13 @@ export async function synthesizeProfile(input: {
   // authoritative. Labelled as such in the grounding block so synthesis treats
   // it as background, not as a source of facts/ratings/prices.
   serpSummary?: string | null;
+  /** Enrich's Atlas limits (MESITA-4581); the hard ceilings when absent. */
+  limits?: Partial<StageFieldLimits>;
 }): Promise<{ parsed: ProfileResult | null; diag: Record<string, unknown> }> {
   const {
     openaiKey, model, name, locationLine, category, zone, city, igBio,
     googleReviewsText, serpSummary, googleTypes, googleTags, tagVocabulary,
-    familyVocabulary, familyHint,
+    familyVocabulary, familyHint, limits,
   } = input;
 
   // Where this branch actually is — the qualifier the franchise rule spends.
@@ -111,6 +114,7 @@ export async function synthesizeProfile(input: {
     tagVocabulary: tagVocabulary ?? [],
     familyVocabulary: familyVocabulary ?? [],
     familyHint: familyHint ?? "",
+    limits,
   });
 
   const systemContent = PRESENTATION_INSTRUCTIONS;
@@ -163,8 +167,16 @@ export function buildPresentationInput(place: {
   familyVocabulary?: string[];
   /** Google's cuisine suggestion line (familyHintLine, MESITA-4238). */
   familyHint?: string;
+  /** Enrich's Atlas limits (MESITA-4581); the hard ceilings when absent. */
+  limits?: Partial<StageFieldLimits>;
 }): string {
   const { name, locationLine, category, branchAnchor, grounding } = place;
+  const presentationMax = Math.min(place.limits?.presentation ?? ENRICH_DESCRIPTION_MAX, ENRICH_DESCRIPTION_MAX);
+  // The target sits three quarters of the way to the limit, never above the
+  // 1500 the prompt was tuned on (MESITA-2739).
+  const targetChars = Math.min(ENRICH_DESCRIPTION_TARGET_CHARS, Math.round(presentationMax * 0.75));
+  const targetWords = Math.round(targetChars / (ENRICH_DESCRIPTION_TARGET_CHARS / ENRICH_DESCRIPTION_TARGET_WORDS));
+  const tagsMax = Math.min(place.limits?.tags ?? MAX_PLACE_TAGS, MAX_PLACE_TAGS);
   const vocabulary = place.tagVocabulary ?? [];
   const familyLines = place.familyVocabulary ?? [];
   return (
@@ -179,9 +191,9 @@ export function buildPresentationInput(place: {
     `into English; do not leave Spanish prose in any field. ` +
     `Write "description" as the public Presentation for the Place page: ` +
     `an inviting, factual narrative of about ` +
-    `${ENRICH_DESCRIPTION_TARGET_CHARS} characters (roughly ` +
-    `${ENRICH_DESCRIPTION_TARGET_WORDS} words), never more than ` +
-    `${ENRICH_DESCRIPTION_MAX} characters. ` +
+    `${targetChars} characters (roughly ` +
+    `${targetWords} words), never more than ` +
+    `${presentationMax} characters. ` +
     `CRITICAL — paragraphs: "description" MUST be several paragraphs ` +
     `separated by a blank line (the two-character sequence \\n\\n). Never ` +
     `return one unbroken wall of text. Aim for 3–4 paragraphs; each ` +
@@ -204,10 +216,10 @@ export function buildPresentationInput(place: {
     `show. An INDEPENDENT place — one location, not a chain — is NOT a ` +
     `franchise: never bolt a zone onto it. Return null when the given name ` +
     `already follows this rule. ` +
-    `"tags" are Mesita tags: up to ${MAX_PLACE_TAGS} slugs copied VERBATIM ` +
+    `"tags" are Mesita tags: up to ${tagsMax} slugs copied VERBATIM ` +
     `from the TAG VOCABULARY below that the sources clearly support (service, ` +
     `vibe, drinks, occasion, amenities…); [] when none is supported. ` +
-    (familyLines.length ? `${familiesRule("enrich")} ` : "") +
+    (familyLines.length ? `${familiesRule("enrich", place.limits?.families)} ` : "") +
     `${ZONE_RULE} ` +
     `"description" and ` +
     `every other text field MUST be a single JSON string — never an array or ` +

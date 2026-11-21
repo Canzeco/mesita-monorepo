@@ -97,7 +97,64 @@ export type EnrichmentConfig = {
    * before launch.
    */
   enrichConsumerCreatesPerDay: number;
+  /**
+   * FIELD LIMITS (MESITA-4581, Pato 2026-11-21: "two limits. One for on
+   * create, other for on enrich … LIMITS FOR BOTH FOR EACH FIELD"). How many
+   * Mesita Families, Presentation characters and Mesita tags the Description
+   * step keeps on Create's door and on Enrich (the families re-pick runs as
+   * Enrich). Each binds twice: the prompt asks for at most N and the save
+   * keeps at most N. The hard ceiling stays ENRICH_FIELD_LIMITS (7 · 2000 ·
+   * 20), which the editor and the database enforce. Google Update writes none
+   * of the three, so it has no limit. Set on Atlas.
+   */
+  createFamiliesMax: number;
+  enrichFamiliesMax: number;
+  createPresentationMaxChars: number;
+  enrichPresentationMaxChars: number;
+  createTagsMax: number;
+  enrichTagsMax: number;
 };
+
+/** The lowest Presentation limit Atlas accepts: below it a paragraph does not fit. */
+export const PRESENTATION_LIMIT_MIN = 200;
+
+/** The six field limits as one stage's numbers. */
+export type StageFieldLimits = { families: number; presentation: number; tags: number };
+
+/** One field's limits as Atlas shows them: Create's, Enrich's, the hard ceiling. */
+export type FieldLimitRow = { create: number; enrich: number; min: number; max: number };
+
+/** The three fields' limits for Atlas (MESITA-4581). */
+export function fieldLimitsView(cfg: EnrichmentConfig): {
+  families: FieldLimitRow;
+  presentation: FieldLimitRow;
+  tags: FieldLimitRow;
+} {
+  return {
+    families: { create: cfg.createFamiliesMax, enrich: cfg.enrichFamiliesMax, min: 1, max: ENRICH_FIELD_LIMITS.familiesPerPlace.max },
+    presentation: {
+      create: cfg.createPresentationMaxChars,
+      enrich: cfg.enrichPresentationMaxChars,
+      min: PRESENTATION_LIMIT_MIN,
+      max: ENRICH_FIELD_LIMITS.description.max,
+    },
+    tags: { create: cfg.createTagsMax, enrich: cfg.enrichTagsMax, min: 0, max: ENRICH_FIELD_LIMITS.tagsPerPlace.max },
+  };
+}
+
+export function stageFieldLimits(
+  cfg: Pick<
+    EnrichmentConfig,
+    | "createFamiliesMax" | "enrichFamiliesMax"
+    | "createPresentationMaxChars" | "enrichPresentationMaxChars"
+    | "createTagsMax" | "enrichTagsMax"
+  >,
+  stage: "create" | "enrich",
+): StageFieldLimits {
+  return stage === "create"
+    ? { families: cfg.createFamiliesMax, presentation: cfg.createPresentationMaxChars, tags: cfg.createTagsMax }
+    : { families: cfg.enrichFamiliesMax, presentation: cfg.enrichPresentationMaxChars, tags: cfg.enrichTagsMax };
+}
 
 export const CONSUMER_CREATES_PER_DAY_MAX = 10000;
 export const UPDATE_EVERY_VIEWS_MAX = 1000;
@@ -131,6 +188,14 @@ export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   enrichCreateOnOpenConsumer: true,
   enrichCreateOnOpenAdmin: true,
   enrichConsumerCreatesPerDay: 1000,
+  // MESITA-4581: Pato's example ("ON CREATE … 3, BUT ON ENRICH WE SAVE 5")
+  // for families; Create's thin door writes a shorter text and fewer tags.
+  createFamiliesMax: 3,
+  enrichFamiliesMax: 5,
+  createPresentationMaxChars: 1000,
+  enrichPresentationMaxChars: ENRICH_FIELD_LIMITS.description.max,
+  createTagsMax: 10,
+  enrichTagsMax: ENRICH_FIELD_LIMITS.tagsPerPlace.max,
 };
 
 function intIn(v: unknown, min: number, max: number, fallback: number): number {
@@ -211,6 +276,22 @@ export function normalizeEnrichmentConfig(raw: unknown): EnrichmentConfig {
       CONSUMER_CREATES_PER_DAY_MAX,
       d.enrichConsumerCreatesPerDay,
     ),
+    createFamiliesMax: intIn(r.createFamiliesMax, 1, ENRICH_FIELD_LIMITS.familiesPerPlace.max, d.createFamiliesMax),
+    enrichFamiliesMax: intIn(r.enrichFamiliesMax, 1, ENRICH_FIELD_LIMITS.familiesPerPlace.max, d.enrichFamiliesMax),
+    createPresentationMaxChars: intIn(
+      r.createPresentationMaxChars,
+      PRESENTATION_LIMIT_MIN,
+      ENRICH_FIELD_LIMITS.description.max,
+      d.createPresentationMaxChars,
+    ),
+    enrichPresentationMaxChars: intIn(
+      r.enrichPresentationMaxChars,
+      PRESENTATION_LIMIT_MIN,
+      ENRICH_FIELD_LIMITS.description.max,
+      d.enrichPresentationMaxChars,
+    ),
+    createTagsMax: intIn(r.createTagsMax, 0, ENRICH_FIELD_LIMITS.tagsPerPlace.max, d.createTagsMax),
+    enrichTagsMax: intIn(r.enrichTagsMax, 0, ENRICH_FIELD_LIMITS.tagsPerPlace.max, d.enrichTagsMax),
   };
 }
 

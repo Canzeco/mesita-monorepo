@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { loadEnrichConfig } from "../_shared/enrich-config.ts";
+import { loadEnrichmentConfig, stageFieldLimits } from "../_shared/enrichment-config.ts";
 import {
   applyProfileToUpdate,
   synthesizeProfile,
@@ -150,9 +151,10 @@ async function fillAtlasProfileInner(
   const openaiKey = Deno.env.get("OPENAI_KEY")?.trim() ?? "";
   if (!openaiKey) return { patch, mesitaName: null, families: undefined };
 
-  const [tagVocabulary, cfg, familyVocabulary, enabled] = await Promise.all([
+  const [tagVocabulary, cfg, limitsCfg, familyVocabulary, enabled] = await Promise.all([
     fetchPlaceTags(admin),
     loadEnrichConfig(admin),
+    loadEnrichmentConfig(admin),
     fetchPlaceFamilies(admin),
     isGoogleCategoryEnabled(admin, mainGoogleCategory(saved.google_types, saved.category)),
   ]);
@@ -168,6 +170,8 @@ async function fillAtlasProfileInner(
   const googleTypes = sourceTypes.length > 0 ? sourceTypes : slugs(saved.google_types);
   const googleTags = slugs(saved.google_tags);
   const tagSlugs = new Set(tagVocabulary.map((t) => t.slug));
+  // Enrich's Atlas limits (MESITA-4581): asked for in the prompt, kept here.
+  const limits = stageFieldLimits(limitsCfg, "enrich");
 
   let presentation: string | null = null;
   let mesitaName: string | null = null;
@@ -193,14 +197,15 @@ async function fillAtlasProfileInner(
       igBio: "",
       googleReviewsText: reviews,
       serpSummary: webRead || null,
+      limits,
     });
     if (parsed) {
       const drafted: Record<string, unknown> = {};
-      applyProfileToUpdate(drafted, parsed);
+      applyProfileToUpdate(drafted, parsed, limits.presentation);
       presentation = textField(drafted.description) || null;
       mesitaName = textField(parsed.mesita_name) || null;
-      tags = pickVocabularyTags(parsed.tags, tagSlugs);
-      pickedFamilies = pickFamilies(parsed.families, familyVocabulary);
+      tags = pickVocabularyTags(parsed.tags, tagSlugs, limits.tags);
+      pickedFamilies = pickFamilies(parsed.families, familyVocabulary, limits.families);
       zone = pickZone(parsed.zone, anchor.city);
     }
   }
@@ -208,7 +213,7 @@ async function fillAtlasProfileInner(
   if (families === undefined) {
     console.warn(`[enrich] ${placeId}: Mesita families not inferred; stored families kept`);
   }
-  if (!presentation && googleSummary) presentation = capPresentation(googleSummary);
+  if (!presentation && googleSummary) presentation = capPresentation(googleSummary, limits.presentation);
   if (!tags) console.warn(`[enrich] ${placeId}: Mesita tags not inferred; stored tags kept`);
   if (!zone) console.warn(`[enrich] ${placeId}: Mesita Zone not inferred; stored zone kept`);
 
