@@ -59,7 +59,7 @@ import {
   RESERVATIONS_KEY,
   type EFReservationRow,
 } from "@/lib/api/reservations";
-import { apiListVisits } from "@/lib/api/tab";
+import { apiListVisits, type GuestVisit } from "@/lib/api/tab";
 import { apiGetWallet, WALLET_CACHE_KEY, type Wallet } from "@/lib/api/wallet";
 import {
   CONSUMER_ROUTES,
@@ -137,6 +137,9 @@ function reservationRows(rows: EFReservationRow[], nowMs: number): Row[] {
 }
 
 // ─── Ordering ───────────────────────────────────────────────────────────────
+
+/** Rows a ticket list shows at first, and adds per Load more (MESITA-4595). */
+const PAGE = 10;
 
 function ordered(rows: Row[]): { upcoming: Row[]; past: Row[] } {
   const t = (r: Row) => (r.at ? Date.parse(r.at) : 0);
@@ -366,8 +369,7 @@ export function ReservationsPage() {
           failed={!!reservations.error}
           retry={reservations.reload}
           note={null}
-          foot={null}
-          empty={EMPTY_HALF[half]}
+            empty={EMPTY_HALF[half]}
         />
       </div>
     </MeScreen>
@@ -411,7 +413,6 @@ export function RefundsPage() {
         failed={!!wallet.error}
         retry={() => wallet.reload()}
         note={null}
-        foot={null}
       />
     </MeScreen>
   );
@@ -432,8 +433,12 @@ export function TicketsPage() {
       "",
       k === "visits" ? ticketsHref() : ticketsHref(k),
     );
+  // EDGE TO EDGE, THE STRIP FIXED (Pato, 2026-11-21, MESITA-4595: "when
+  // scrolling, keep menu 4 options fixed … don't put margins nor broders on
+  // tickets. just a line sepaaraitng each ticket"): no page padding; the
+  // board pins its strip and runs its rows full width.
   return (
-    <MeScreen title="Tickets">
+    <MeScreen title="Tickets" flush>
       <TicketsBoard kind={kind} onPick={pick} />
     </MeScreen>
   );
@@ -488,14 +493,46 @@ export function TicketsBoard({
       stories: (w.stories ?? []).filter((st) => st.place_id === placeId),
     };
   }, [wallet.data, placeId]);
+  // OLDER VISITS, ON ASK (MESITA-4595): the read holds the newest 50; Load
+  // more fetches the next 50 before the oldest one held. The pages belong
+  // to the read they followed: a fresh read starts them over.
+  const [older, setOlder] = useState<{
+    base: typeof visits.data;
+    visits: GuestVisit[];
+    truncated: boolean;
+  } | null>(null);
+  const [fetchingOlder, setFetchingOlder] = useState(false);
+  const olderPages = older && older.base === visits.data ? older : null;
+  const allVisits = useMemo(
+    () => (visits.data ? [...visits.data.visits, ...(olderPages?.visits ?? [])] : null),
+    [visits.data, olderPages],
+  );
+  const moreVisits = olderPages ? olderPages.truncated : !!visits.data?.truncated;
+  // While older visits are unread, nothing older than the oldest held shows,
+  // so a fetched page never lands among rows already on screen.
+  const visitCutoff =
+    moreVisits && allVisits && allVisits.length > 0
+      ? Math.min(...allVisits.map((v) => Date.parse(v.created_at)))
+      : null;
+  const fetchOlder = () => {
+    const base = visits.data;
+    if (!base || !allVisits || fetchingOlder || !moreVisits || visitCutoff === null) return;
+    setFetchingOlder(true);
+    void apiListVisits(getSupabase(), new Date(visitCutoff).toISOString())
+      .then((r) =>
+        setOlder({ base, visits: [...(olderPages?.visits ?? []), ...r.visits], truncated: r.truncated }),
+      )
+      .catch((e: unknown) => reportError("me tickets older visits failed", e))
+      .finally(() => setFetchingOlder(false));
+  };
   const visitList = useMemo(
     () =>
-      visits.data
+      allVisits
         ? placeId
-          ? visits.data.visits.filter((v) => v.place.id === placeId)
-          : visits.data.visits
+          ? allVisits.filter((v) => v.place.id === placeId)
+          : allVisits
         : null,
-    [visits.data, placeId],
+    [allVisits, placeId],
   );
 
   const byKind = useMemo(() => {
@@ -520,13 +557,15 @@ export function TicketsBoard({
         ? [
             ...visitRows(visitList, facts),
             ...payments.filter(
-              (r) => !(r.paymentId && visitIds.has(r.paymentId)),
+              (r) =>
+                !(r.paymentId && visitIds.has(r.paymentId)) &&
+                (visitCutoff === null || !r.at || Date.parse(r.at) >= visitCutoff),
             ),
           ]
         : null,
       vouchers: of("vouchers"),
     } satisfies Record<Exclude<TicketTab, "gifts" | "stories">, Row[] | null>;
-  }, [visitList, walletData]);
+  }, [visitList, walletData, visitCutoff]);
 
   const walletReady = !wallet.loading;
   // Visits waits for the wallet too, so its payments never pop in late.
@@ -538,12 +577,7 @@ export function TicketsBoard({
     if (wallet.error) wallet.reload();
   };
 
-  // The visits read is capped: say so under the list, not as a "+" alone.
-  const shown = byKind.visits?.length ?? 0;
-  const foot =
-    kind === "visits" && visits.data?.truncated && shown > 0
-      ? `Showing your latest ${shown} visits.`
-      : null;
+  // No "Showing your latest N" line any more (MESITA-4595): Load more.
 
   const note =
     kind === "visits" && !!wallet.error
@@ -552,16 +586,20 @@ export function TicketsBoard({
 
   // THE PLACE PROFILE'S STRIP (MESITA-4322; icon pills MESITA-3993 before):
   // four equal tabs, the chosen one blue. No counts, no intro.
+  const edge = flush && !boxed;
   return (
     <div
       className={cn(
         "flex flex-col",
         boxed
           ? `${PANEL_CLASS} [&_[data-activity]]:rounded-none [&_[data-activity]]:border-0`
-          : "gap-4",
+          : edge
+            ? // Full width, a hairline between tickets, no box (MESITA-4595).
+              "[&_[data-activity]]:rounded-none [&_[data-activity]]:border-x-0 [&_[data-activity]]:border-t-0 [&_section[aria-label]]:rounded-none [&_section[aria-label]]:border-x-0 [&_section[aria-label]]:border-t-0"
+            : "gap-4",
       )}
     >
-      <TicketPills on={kind} onPick={onPick} flush={boxed ? false : flush} />
+      <TicketPills on={kind} onPick={onPick} flush={false} sticky={edge} />
       {kind === "stories" && ready && !failed && walletData ? (
         <StoryTickets stories={walletData.stories ?? []} showPlace={!placeId} />
       ) : kind === "gifts" && ready && !failed && walletData ? (
@@ -571,13 +609,19 @@ export function TicketsBoard({
           }} />
       ) : (
         <TicketList
+          key={kind}
           type={kind}
           rows={kind === "gifts" || kind === "stories" ? null : byKind[kind]}
           ready={ready}
           failed={failed}
           retry={retry}
           note={note}
-          foot={foot}
+          edge={edge}
+          more={
+            kind === "visits" && moreVisits
+              ? { busy: fetchingOlder, fetch: fetchOlder }
+              : null
+          }
         />
       )}
     </div>
@@ -591,7 +635,8 @@ function TicketList({
   failed,
   retry,
   note,
-  foot,
+  edge = false,
+  more = null,
   empty,
 }: {
   type: ListType | "all";
@@ -600,7 +645,11 @@ function TicketList({
   failed: boolean;
   retry: () => void;
   note: string | null;
-  foot: string | null;
+  /** Full width under a pinned strip (Me › Tickets, MESITA-4595): the
+   *  words and buttons keep the page's 20px, the rows run edge to edge. */
+  edge?: boolean;
+  /** Older rows the server still holds (Visits): Load more fetches them. */
+  more?: { busy: boolean; fetch: () => void } | null;
   /** Words for an empty list other than the type's own (Reservations'
    *  halves, MESITA-3888/3889). */
   empty?: {
@@ -608,27 +657,38 @@ function TicketList({
     action?: { label: string; href: string };
   };
 }) {
+  // TEN AT A TIME (Pato, 2026-11-21, MESITA-4595: "offer button to load
+  // mroe … from 10 to 10 until complete"): the newest 10 past rows, then
+  // Load more adds 10, fetching older visits when the held ones run out.
+  const [limit, setLimit] = useState(PAGE);
   const Icon = ICON[type];
-  if (!ready) return <ActivityRowsSkeleton />;
+  const pad = edge ? "px-5 py-5" : "";
+  if (!ready) return <div className={pad}><ActivityRowsSkeleton /></div>;
   if (failed || !rows) {
     return (
+      <div className={pad}>
       <EmptyState
         icon={Icon}
         title={`Couldn't load your ${type === "all" ? "tickets" : type.replace("-", " ")}`}
         description="Check your connection and try again."
         action={{ label: "Try again", onClick: retry }}
       />
+      </div>
     );
   }
-  if (rows.length === 0) {
-    return empty ? (
-      <EmptyState icon={Icon} title={empty.title} action={empty.action} />
-    ) : (
-      <EmptyState
-        icon={Icon}
-        title={EMPTY[type].title}
-        action={EMPTY[type].action}
-      />
+  if (rows.length === 0 && !more) {
+    return (
+      <div className={pad}>
+        {empty ? (
+          <EmptyState icon={Icon} title={empty.title} action={empty.action} />
+        ) : (
+          <EmptyState
+            icon={Icon}
+            title={EMPTY[type].title}
+            action={EMPTY[type].action}
+          />
+        )}
+      </div>
     );
   }
   const { upcoming, past } = ordered(rows);
@@ -655,8 +715,27 @@ function TicketList({
       </section>
     ) : null;
   const lead = note ? (
-    <p className="text-muted-foreground mb-3 text-xs">{note}</p>
+    <p className={cn("text-muted-foreground mb-3 text-xs", edge && "mx-5 mt-3")}>{note}</p>
   ) : null;
+  // Load more lives under the list, outside it (MESITA-4595).
+  const canMore = (n: number) => n > limit || !!more;
+  const loadMore = (n: number) =>
+    canMore(n) ? (
+      <div className={cn("mt-4 flex justify-center", edge && "mb-6 px-5")}>
+        <button
+          type="button"
+          disabled={more?.busy}
+          onClick={() => {
+            setLimit((l) => l + PAGE);
+            if (n < limit + PAGE && more) more.fetch();
+          }}
+          className="border-border bg-card text-foreground h-11 w-full rounded-xl border text-sm font-semibold disabled:opacity-60"
+          data-tickets-load-more
+        >
+          {more?.busy ? "Loading…" : "Load more"}
+        </button>
+      </div>
+    ) : null;
 
   // ONE FLAT LIST (MESITA-4000, Pato: "why the fuck you separate tickets
   // by dates … just a list"): no Upcoming/Past or day headings. Reservations
@@ -665,7 +744,8 @@ function TicketList({
     return (
       <div>
         {lead}
-        {group(null, [...upcoming, ...past], true)}
+        {group(null, [...upcoming, ...past.slice(0, limit)], true)}
+        {loadMore(past.length)}
       </div>
     );
   }
@@ -677,10 +757,8 @@ function TicketList({
     <div>
       {lead}
       {group("Open now", upcoming, true)}
-      {group(null, past, upcoming.length === 0)}
-      {foot ? (
-        <p className="text-muted-foreground mt-4 text-center text-sm">{foot}</p>
-      ) : null}
+      {group(null, past.slice(0, limit), upcoming.length === 0)}
+      {loadMore(past.length)}
     </div>
   );
 }
@@ -760,18 +838,21 @@ function TicketPills({
   on,
   onPick,
   flush = true,
+  sticky = false,
 }: {
   on: TicketTab | null;
   onPick?: (k: TicketTab) => void;
   /** Runs to MeScreen's edges; false inside a card page's column. */
   flush?: boolean;
+  /** Pinned to the scroller's top while the list scrolls (MESITA-4595). */
+  sticky?: boolean;
 }) {
   return (
     <nav
       aria-label="Kinds of ticket"
       // FOUR EQUAL COLUMNS, ONE LINE (Pato, MESITA-4414: "25% each"): Stories
       // (MESITA-4405) made it four; three columns wrapped it to a second line.
-      className={cn("bg-card border-border grid shrink-0 grid-cols-4 border-b", flush && "-mx-5")}
+      className={cn("bg-card border-border grid shrink-0 grid-cols-4 border-b", flush && "-mx-5", sticky && "sticky top-0 z-10")}
       data-ticket-pills
     >
       {TICKET_TABS.map((t) => {
@@ -814,14 +895,17 @@ export function MeListSkeleton({
   tabs?: "reservations" | "tickets";
 }) {
   return (
-    <MeScreen title={title}>
+    // Tickets draws edge to edge since MESITA-4595, its frame too.
+    <MeScreen title={title} flush={tabs === "tickets"}>
       <div className="flex flex-col gap-4">
         {tabs === "tickets" ? (
-          <TicketPills on={null} />
+          <TicketPills on={null} flush={false} />
         ) : tabs ? (
           <SubpageTabs label={title} tabs={RESERVATION_TABS} on={null} />
         ) : null}
-        <ActivityRowsSkeleton />
+        <div className={tabs === "tickets" ? "px-5" : undefined}>
+          <ActivityRowsSkeleton />
+        </div>
         <p role="status" className="sr-only">
           Loading {title.toLowerCase()}
         </p>

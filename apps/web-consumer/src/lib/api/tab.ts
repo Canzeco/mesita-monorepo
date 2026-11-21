@@ -436,11 +436,13 @@ export type GuestVisit = {
 
 export async function apiListVisits(
   client: SupabaseClient,
+  /** MESITA-4595: the next 50, created before this instant. */
+  before?: string,
 ): Promise<{ visits: GuestVisit[]; truncated: boolean }> {
   return await invokeEF<{ visits: GuestVisit[]; truncated: boolean }>(
     client,
     "consumer-web-list-visits",
-    {},
+    before ? { before } : {},
     "Couldn't load your visits",
   );
 }
