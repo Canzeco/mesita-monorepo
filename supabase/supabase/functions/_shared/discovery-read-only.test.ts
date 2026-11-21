@@ -22,6 +22,7 @@ for (const file of FILES) {
     const src = (await Deno.readTextFile(new URL(file, import.meta.url)))
       .replaceAll('.rpc("catalog_rank",', "")
       .replaceAll('.rpc("catalog_rank_lanes",', "")
+      .replaceAll('.rpc("discovery_growth_bases",', "")
       .replaceAll('.rpc("deep_knn",', "");
     for (const write of [".insert(", ".update(", ".upsert(", ".delete(", ".rpc("]) {
       assertEquals(src.includes(write), false, `${file} calls ${write}`);

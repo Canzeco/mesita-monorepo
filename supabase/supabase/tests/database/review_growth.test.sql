@@ -28,18 +28,18 @@ values
   ('00000000-0000-4000-8000-000000451412', 'P7',      'g-412', 'Growthville', array['tacos'],    '{}'::jsonb, 25.81, -100.30, 5.0, 140, 'OPERATIONAL'),
   ('00000000-0000-4000-8000-000000451413', 'P8',      'g-413', 'Growthville', array['tacos'],    '{}'::jsonb, 25.82, -100.30, 5.0, 160, 'OPERATIONAL'),
   ('00000000-0000-4000-8000-000000451414', 'Coffee',  'g-414', 'Growthville', array['coffee'],   '{}'::jsonb, 25.83, -100.30, 5.0,  10, 'OPERATIONAL'),
-  ('00000000-0000-4000-8000-000000451415', 'L1',      'g-415', 'Lonely',      array['lonely'],   '{}'::jsonb, 25.84, -100.30, 4.0,  10, 'OPERATIONAL'),
-  ('00000000-0000-4000-8000-000000451416', 'L2',      'g-416', 'Lonely',      array['lonely'],   '{}'::jsonb, 25.85, -100.30, 4.0,  10, 'OPERATIONAL'),
-  ('00000000-0000-4000-8000-000000451417', 'L3',      'g-417', 'Lonely',      array['lonely'],   '{}'::jsonb, 25.86, -100.30, 4.0,  10, 'OPERATIONAL'),
-  ('00000000-0000-4000-8000-000000451418', 'Hero',    'g-418', 'Rankton',     array['rankcheck'],'{}'::jsonb, 25.50, -100.31, 4.0, 100, 'OPERATIONAL'),
-  ('00000000-0000-4000-8000-000000451419', 'Peer1',   'g-419', 'Rankton',     array['rankcheck'],'{}'::jsonb, 25.51, -100.31, 5.0, 200, 'OPERATIONAL'),
-  ('00000000-0000-4000-8000-000000451420', 'Peer2',   'g-420', 'Rankton',     array['rankcheck'],'{}'::jsonb, 25.52, -100.31, 5.0, 200, 'OPERATIONAL'),
-  ('00000000-0000-4000-8000-000000451421', 'Peer3',   'g-421', 'Rankton',     array['rankcheck'],'{}'::jsonb, 25.53, -100.31, 5.0, 200, 'OPERATIONAL'),
-  ('00000000-0000-4000-8000-000000451422', 'Peer4',   'g-422', 'Rankton',     array['rankcheck'],'{}'::jsonb, 25.54, -100.31, 5.0, 200, 'OPERATIONAL'),
-  ('00000000-0000-4000-8000-000000451423', 'Peer5',   'g-423', 'Rankton',     array['rankcheck'],'{}'::jsonb, 25.55, -100.31, 5.0, 200, 'OPERATIONAL'),
-  ('00000000-0000-4000-8000-000000451424', 'Peer6',   'g-424', 'Rankton',     array['rankcheck'],'{}'::jsonb, 25.56, -100.31, 5.0, 200, 'OPERATIONAL'),
-  ('00000000-0000-4000-8000-000000451425', 'Peer7',   'g-425', 'Rankton',     array['rankcheck'],'{}'::jsonb, 25.57, -100.31, 5.0, 200, 'OPERATIONAL'),
-  ('00000000-0000-4000-8000-000000451426', 'Cold',    'g-426', 'Rankton',     array['rankcheck'],'{}'::jsonb, 25.50, -100.31, 4.0, 100, 'OPERATIONAL');
+  ('00000000-0000-4000-8000-000000451415', 'L1',      'g-415', 'Lonely',      array['sweet'],   '{}'::jsonb, 25.84, -100.30, 4.0,  10, 'OPERATIONAL'),
+  ('00000000-0000-4000-8000-000000451416', 'L2',      'g-416', 'Lonely',      array['sweet'],   '{}'::jsonb, 25.85, -100.30, 4.0,  10, 'OPERATIONAL'),
+  ('00000000-0000-4000-8000-000000451417', 'L3',      'g-417', 'Lonely',      array['sweet'],   '{}'::jsonb, 25.86, -100.30, 4.0,  10, 'OPERATIONAL'),
+  ('00000000-0000-4000-8000-000000451418', 'Hero',    'g-418', 'Rankton',     array['dinner'],'{}'::jsonb, 25.50, -100.31, 4.0, 100, 'OPERATIONAL'),
+  ('00000000-0000-4000-8000-000000451419', 'Peer1',   'g-419', 'Rankton',     array['dinner'],'{}'::jsonb, 25.51, -100.31, 5.0, 200, 'OPERATIONAL'),
+  ('00000000-0000-4000-8000-000000451420', 'Peer2',   'g-420', 'Rankton',     array['dinner'],'{}'::jsonb, 25.52, -100.31, 5.0, 200, 'OPERATIONAL'),
+  ('00000000-0000-4000-8000-000000451421', 'Peer3',   'g-421', 'Rankton',     array['dinner'],'{}'::jsonb, 25.53, -100.31, 5.0, 200, 'OPERATIONAL'),
+  ('00000000-0000-4000-8000-000000451422', 'Peer4',   'g-422', 'Rankton',     array['dinner'],'{}'::jsonb, 25.54, -100.31, 5.0, 200, 'OPERATIONAL'),
+  ('00000000-0000-4000-8000-000000451423', 'Peer5',   'g-423', 'Rankton',     array['dinner'],'{}'::jsonb, 25.55, -100.31, 5.0, 200, 'OPERATIONAL'),
+  ('00000000-0000-4000-8000-000000451424', 'Peer6',   'g-424', 'Rankton',     array['dinner'],'{}'::jsonb, 25.56, -100.31, 5.0, 200, 'OPERATIONAL'),
+  ('00000000-0000-4000-8000-000000451425', 'Peer7',   'g-425', 'Rankton',     array['dinner'],'{}'::jsonb, 25.57, -100.31, 5.0, 200, 'OPERATIONAL'),
+  ('00000000-0000-4000-8000-000000451426', 'Cold',    'g-426', 'Rankton',     array['dinner'],'{}'::jsonb, 25.50, -100.31, 4.0, 100, 'OPERATIONAL');
 
 insert into public.places (id, slug, state, content_state, currency)
 select id, 'mesita-4514-' || right(id::text, 2), 'active', 'ready', 'MXN'
@@ -103,7 +103,7 @@ create or replace function pg_temp.kind_of(p_id uuid)
 returns text language sql as $$
   select kind from public.discovery_growth_bases(
     false,
-    array['tacos', 'coffee', 'lonely', 'rankcheck'],
+    array['tacos', 'coffee', 'sweet', 'dinner'],
     timestamptz '2026-11-21 00:00:00+00')
    where place_id = p_id
 $$;
@@ -112,7 +112,7 @@ create or replace function pg_temp.base_of(p_id uuid)
 returns double precision language sql as $$
   select growth_base from public.discovery_growth_bases(
     false,
-    array['tacos', 'coffee', 'lonely', 'rankcheck'],
+    array['tacos', 'coffee', 'sweet', 'dinner'],
     timestamptz '2026-11-21 00:00:00+00')
    where place_id = p_id
 $$;
@@ -124,8 +124,8 @@ returns jsonb language sql as $$
     p_organic_half_km => 1, p_organic_distance_exp => 2, p_organic_stars_exp => 2, p_organic_google_exp => 0.5, p_organic_premier_exp => 0,
     p_ad_half_km => 1, p_ad_distance_exp => 2, p_ad_stars_exp => 2, p_ad_google_exp => 0.5, p_ad_premier_exp => 0,
     p_premier_1 => 2, p_premier_2 => 5,
-    p_families => array['rankcheck'],
-    p_known_families => array['rankcheck'],
+    p_families => array['dinner'],
+    p_known_families => array['dinner'],
     p_require_active => false,
     p_repeat => 1,
     p_ad_floor => 0.2) -> 'ids'
