@@ -41,19 +41,19 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
   );
 }
 
-/** One Loyalty Card box in bones (MESITA-4525): the small card and name
- *  over the amount, the Offers tile beside them, as PlaceActionRow. */
+/** One Loyalty Card box in bones (MESITA-4531): the 2x2 grid, card + name
+ *  box over the balance box, the Offers tile beside both. */
 export function LoyaltyCardBoxSkeleton() {
   return (
-    <div className="border-border bg-card flex w-full items-stretch gap-2 rounded-2xl border p-2" aria-hidden>
-      <span className="flex min-w-0 flex-1 basis-0 flex-col justify-center gap-1 px-1">
-        <span className="flex items-center gap-2">
-          <Skeleton className="h-[26px] w-10 shrink-0 rounded-[5px]" />
-          <Skeleton className="h-4 w-28 rounded" />
-        </span>
-        <Skeleton className="h-6 w-24 rounded" />
+    <div className="border-border bg-card grid w-full grid-cols-2 grid-rows-[3rem_3rem] gap-2 rounded-2xl border p-2" aria-hidden>
+      <span className="border-border flex items-center gap-2 rounded-xl border px-3">
+        <Skeleton className="h-[26px] w-10 shrink-0 rounded-[5px]" />
+        <Skeleton className="h-4 w-24 rounded" />
       </span>
-      <Skeleton className="min-h-14 min-w-0 flex-1 basis-0 rounded-xl" />
+      <span className="border-border col-start-1 row-start-2 flex items-center rounded-xl border px-3">
+        <Skeleton className="h-5 w-24 rounded" />
+      </span>
+      <Skeleton className="col-start-2 row-span-2 row-start-1 rounded-xl" />
     </div>
   );
 }
