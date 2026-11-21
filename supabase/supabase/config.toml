@@ -916,6 +916,15 @@ verify_jwt = true
 [functions.business-web-list-place-tickets]
 verify_jwt = true
 
+[functions.business-web-list-place-monitor]
+verify_jwt = true
+
+[functions.business-web-list-place-customers]
+verify_jwt = true
+
+[functions.business-web-get-place-payouts]
+verify_jwt = true
+
 [functions.business-web-refund-payment]
 verify_jwt = true
 

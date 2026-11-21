@@ -16,6 +16,10 @@ const DOORS = [
   "business-web-get-place-money",
   // Owners refund their own place's rows (MESITA-3381).
   "business-web-refund-payment",
+  // Monitor lists and payouts (MESITA-4538): owner and staff only.
+  "business-web-list-place-monitor",
+  "business-web-list-place-customers",
+  "business-web-get-place-payouts",
 ];
 
 /** The payer door's call, checked by business-premier-payer-doors.test.ts. */
