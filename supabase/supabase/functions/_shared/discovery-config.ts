@@ -84,6 +84,10 @@ import {
   AD_EVERY_MIN,
   AD_FLOOR_MAX,
   AD_FLOOR_MIN,
+  FOURSQUARE_EXPONENT_MAX,
+  FOURSQUARE_EXPONENT_MIN,
+  FOURSQUARE_FACTOR_MAX,
+  FOURSQUARE_FACTOR_MIN,
   GOOGLE_EXP_MAX,
   GOOGLE_EXP_MIN,
   GROWTH_WEIGHT_CAP_MAX,
@@ -155,9 +159,9 @@ export type Recipes = Record<RecipeRow, Recipe>;
 /** `params.mix` (MESITA-4454). `temperature` per mode (the first-page
  *  shuffle; 0 = the merged order exactly); `adFloor`: Proximity ×
  *  premierFactor an ad needs; `adEvery`: one ad slot after every N organic
- *  places, 0 = no ads (Catalog and Map). `growthWeightCap` is Popularity's
- *  growth share at 30 days of review history (MESITA-4514): 0.50 at launch,
- *  0.80 is the later experiment. */
+ *  places, 0 = no ads (Catalog and Map). `growthWeightCap` is still loaded so
+ *  an old save round-trips. Ranking ignores it: recent weight is fixed at
+ *  0.20 + 0.60 × min(observedDays / 30, 1), capped at 80%. */
 export type MixParams = {
   temperature: Record<RankMode, number>;
   adFloor: number;
@@ -171,14 +175,14 @@ export const isMapRow = (row: RecipeRow) => row.startsWith("map");
 
 /** The recipe table (Pato, 2026-11-19); the migration seeds the same values. */
 export const DEFAULT_RECIPES: Recipes = {
-  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, premierExp: 0 },
-  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, premierExp: 1 },
-  catalogFamilyOrganic: { halfKm: 2, distanceExp: 2, googleExp: 0.33, premierExp: 0 },
-  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, premierExp: 1 },
-  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, googleExp: 0.33, premierExp: 0 },
-  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, premierExp: 1 },
-  mapOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, premierExp: 0 },
-  mapInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, premierExp: 1 },
+  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 },
+  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 },
+  catalogFamilyOrganic: { halfKm: 2, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 },
+  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 },
+  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 },
+  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 },
+  mapOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 },
+  mapInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 },
 };
 
 export const DEFAULT_MIX: MixParams = {
@@ -193,6 +197,8 @@ export const RECIPE_BOUNDS = {
   halfKm: { min: PROXIMITY_HALF_KM_MIN, max: PROXIMITY_HALF_KM_MAX, decimals: 2 },
   distanceExp: { min: PROXIMITY_EXPONENT_MIN, max: PROXIMITY_EXPONENT_MAX, decimals: 1 },
   googleExp: { min: GOOGLE_EXP_MIN, max: GOOGLE_EXP_MAX, decimals: 2 },
+  foursquareFactor: { min: FOURSQUARE_FACTOR_MIN, max: FOURSQUARE_FACTOR_MAX, decimals: 2 },
+  foursquareExponent: { min: FOURSQUARE_EXPONENT_MIN, max: FOURSQUARE_EXPONENT_MAX, decimals: 0 },
   premierExp: { min: PREMIER_EXP_MIN, max: PREMIER_EXP_MAX, decimals: 1 },
 } as const;
 
@@ -748,6 +754,20 @@ export function normalizeRecipes(raw: unknown, onClamp?: OnClamp): Recipes {
         ? null
         : reportedParam(v.distanceExp, d.distanceExp as number, RECIPE_BOUNDS.distanceExp, key("distanceExp"), onClamp),
       googleExp: reportedParam(v.googleExp, d.googleExp, RECIPE_BOUNDS.googleExp, key("googleExp"), onClamp),
+      foursquareFactor: reportedParam(
+        v.foursquareFactor,
+        d.foursquareFactor,
+        RECIPE_BOUNDS.foursquareFactor,
+        key("foursquareFactor"),
+        onClamp,
+      ),
+      foursquareExponent: reportedParam(
+        v.foursquareExponent,
+        d.foursquareExponent,
+        RECIPE_BOUNDS.foursquareExponent,
+        key("foursquareExponent"),
+        onClamp,
+      ),
       premierExp: isOrganicRow(row)
         ? 0
         : reportedParam(v.premierExp, d.premierExp, RECIPE_BOUNDS.premierExp, key("premierExp"), onClamp),

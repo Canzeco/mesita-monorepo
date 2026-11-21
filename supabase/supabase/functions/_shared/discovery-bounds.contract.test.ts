@@ -76,6 +76,8 @@ Deno.test("Ranking and Mixing bounds, the recipe table and the mix defaults matc
   // halfKm and distanceExp reuse the Proximity constants pinned above.
   for (const [name, b] of [
     ["GOOGLE_EXP", RECIPE_BOUNDS.googleExp],
+    ["FOURSQUARE_FACTOR", RECIPE_BOUNDS.foursquareFactor],
+    ["FOURSQUARE_EXPONENT", RECIPE_BOUNDS.foursquareExponent],
     ["PREMIER_EXP", RECIPE_BOUNDS.premierExp],
     ["MIX_TEMPERATURE", MIX_BOUNDS.temperature],
     ["AD_FLOOR", MIX_BOUNDS.adFloor],
@@ -100,11 +102,18 @@ Deno.test("Ranking and Mixing bounds, the recipe table and the mix defaults matc
   for (const row of RECIPE_ROWS) {
     const m = admin.match(
       new RegExp(
-        `  ${row}: \\{ halfKm: (null|[0-9.]+), distanceExp: (null|[0-9.]+), googleExp: ([0-9.]+), premierExp: ([0-9.]+) \\},`,
+        `  ${row}: \\{ halfKm: (null|[0-9.]+), distanceExp: (null|[0-9.]+), googleExp: ([0-9.]+), foursquareFactor: ([0-9.]+), foursquareExponent: ([0-9.]+), premierExp: ([0-9.]+) \\},`,
       ),
     );
     assertEquals(
-      m ? { halfKm: num(m[1]), distanceExp: num(m[2]), googleExp: num(m[3]), premierExp: num(m[4]) } : null,
+      m ? {
+        halfKm: num(m[1]),
+        distanceExp: num(m[2]),
+        googleExp: num(m[3]),
+        foursquareFactor: num(m[4]),
+        foursquareExponent: num(m[5]),
+        premierExp: num(m[6]),
+      } : null,
       DEFAULT_RECIPES[row],
       row,
     );

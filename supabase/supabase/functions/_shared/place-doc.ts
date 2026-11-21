@@ -133,6 +133,11 @@ export type PlaceProfileRow = {
   google_tags: string[];
   google_stars_overall: number | null;
   google_review_count: number | null;
+  /** Foursquare's matched branch (MESITA-4515). Popularity is null until a refresh stores 0–1. */
+  foursquare_place_id: string | null;
+  foursquare_url: string | null;
+  foursquare_popularity: number | null;
+  foursquare_popularity_at: string | null;
   instagram_followers_count: number | null;
   menu_pdf_name: string | null;
   enriched_at: string | null;
@@ -207,6 +212,10 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "google_tags",
   "google_stars_overall",
   "google_review_count",
+  "foursquare_place_id",
+  "foursquare_url",
+  "foursquare_popularity",
+  "foursquare_popularity_at",
   "instagram_followers_count",
   "menu_pdf_name",
   "enriched_at",
@@ -328,7 +337,10 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "embedding_source_text", "google_name", "name", "profile_photo",
   "reservation_target", "embedding",
   "google_place_id",
+  "foursquare_place_id",
+  "foursquare_url",
   "enriched_at", "business_state_at",
+  "foursquare_popularity_at",
 ]);
 const PLACE_UNRANGED_NUMBER_KEYS = new Set<string>(["lat", "lng"]);
 // place_profiles_google_stars_overall_check — 0..5 inclusive, null allowed.
@@ -420,6 +432,8 @@ function checkPlaceProfileField(key: string, v: unknown): string | null {
     // place_profiles_price_level_check
     case "price_level":
       return isNullableRange(v, 1, 4) ? null : "price_level must be between 1 and 4, or null";
+    case "foursquare_popularity":
+      return isNullableRange(v, 0, 1) ? null : "foursquare_popularity must be between 0 and 1, or null";
     // place_profiles_business_state_check
     case "business_state":
       return v === null || (typeof v === "string" && BUSINESS_STATE_VALUES.has(v)) ? null

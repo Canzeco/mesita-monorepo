@@ -34,22 +34,19 @@ export function growthCap(raw: number | null | undefined): number {
 }
 
 /**
- * Growth's share of Popularity. 0 until 7 days, the cap at 30 days, linear
- * between. Only a watched flat or growing place gets a share. The launch cap
- * is 0.50; a stored cap of 0.80 is the later experiment.
+ * Growth's share of Popularity once two snapshots are at least 7 days apart.
+ * `0.20 + 0.60 × min(observedDays / 30, 1)`: 7 days is 34% recent, 30 days
+ * is 80% recent, and it stays at 80%. The stored cap is ignored. Only a
+ * watched flat or growing place gets a share.
  */
 export function growthWeight(
   elapsedDays: number | null,
-  cap: number | null | undefined,
+  _cap: number | null | undefined,
   kind: GrowthKind,
 ): number {
   if (kind !== "flat" && kind !== "grow") return 0;
   if (elapsedDays === null || !Number.isFinite(elapsedDays) || elapsedDays < GROWTH_MIN_SPAN_DAYS) return 0;
-  const hi = growthCap(cap);
-  const lo = Math.min(GROWTH_W_AT_MIN, hi);
-  if (elapsedDays >= GROWTH_FULL_SPAN_DAYS) return hi;
-  const span = GROWTH_FULL_SPAN_DAYS - GROWTH_MIN_SPAN_DAYS;
-  return lo + ((elapsedDays - GROWTH_MIN_SPAN_DAYS) / span) * (hi - lo);
+  return 0.2 + 0.6 * Math.min(elapsedDays / GROWTH_FULL_SPAN_DAYS, 1);
 }
 
 /** googleReviewCount × googleStars. 0 when either is missing or the count is not positive. */

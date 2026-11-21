@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ReviewsSummary } from "./ReviewsSummary";
+import { ScoresCard } from "./ScoresCard";
 import { PhotosCard } from "./PhotosCard";
 import { ProfilePictureCard } from "./ProfilePictureCard";
 import { useSectionSaver } from "../useSectionDirty";
@@ -490,6 +491,7 @@ export function PlaceSection({ place, staff = false }: { place: AdminPlace; staf
 // Two columns at most (Pato, MESITA-3144: "make it max two columns, not 3";
 // xl:columns-3 since MESITA-1558 is gone).
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
+      <ScoresCard place={place} />
       {/* Box order (MESITA-547 / MESITA-720 / MESITA-834 / MESITA-900;
           Basics, Location and Hours are separate cards — Pato, 2026-08-29):
           Basics → Photos → Profile picture (MESITA-3528) → Location → Hours → Links. Photos is the gallery

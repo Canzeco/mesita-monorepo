@@ -16,7 +16,7 @@ import {
 const ANCHOR = { lat: 19.43, lng: -99.13 };
 /** The test's Inorganic-shaped row: Popularity = (stars × reviews)^0.5 =
  *  √(stars × reviews), and the plan counts once (PremierExp 1). */
-const RECIPE: Recipe = { halfKm: 4, distanceExp: 1, googleExp: 0.5, premierExp: 1 };
+const RECIPE: Recipe = { halfKm: 4, distanceExp: 1, googleExp: 0.5, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 };
 /** Popularity of a 4.0★ place with 100 reviews: √400 = 20. */
 const POP = 20;
 const CTX: AreaContext = {

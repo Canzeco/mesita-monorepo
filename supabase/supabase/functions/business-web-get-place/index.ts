@@ -21,6 +21,7 @@ import { requireBusinessRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { requirePlaceAccess } from "../_shared/place-access.ts";
 import { buildPlaceOverview } from "../_shared/place-overview.ts";
+import { loadPlaceScores } from "../_shared/place-scores.ts";
 import { anonymousReviews } from "../_shared/anonymous-reviews.ts";
 import { stripeStateByPlace } from "../_shared/payments.ts";
 import { boostLivemode } from "../_shared/stripe.ts";
@@ -45,13 +46,21 @@ serveJson("business-web-get-place", async (req) => {
   if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
 
   const stripe = await stripeStateByPlace(admin, [placeId], boostLivemode());
+  const scores = await loadPlaceScores(admin, placeId).catch((err) => {
+    console.error("[business-web-get-place] scores:", err);
+    return null;
+  });
 
   return json({
     ok: true,
     role: access.role,
     // Reviews are anonymous here too (MESITA-3145, as for guests, MESITA-2916):
     // stars, comment and date; no reviewer name or photo reaches Business.
-    place: { ...res.overview.place, google_reviews: anonymousReviews(res.overview.place.google_reviews) },
+    place: {
+      ...res.overview.place,
+      google_reviews: anonymousReviews(res.overview.place.google_reviews),
+      scores,
+    },
     profile: res.overview.profile,
     manager: access.manager ? { method: access.manager.method, expires_at: access.manager.expires_at, role: access.manager.role } : null,
     code_set: !!code,

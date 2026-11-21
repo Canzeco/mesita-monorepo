@@ -189,8 +189,10 @@ export function shuffleByRank<T>(
 
 // ── Discovery ranking v2 (MESITA-4454): one formula, two lanes, three modes ──
 //
-//   Score     = Proximity × Popularity × premierFactor ^ PremierExp
-//   Popularity = ((1 − w) × stars × reviews + w × growthBase) ^ GoogleExp
+//   Score     = Premier boost × Popularity × Proximity
+//   Popularity = Google popularity × Foursquare boost
+//   Google popularity = ((1 − w) × stars × reviews + w × growthBase) ^ GoogleExp
+//   Foursquare boost = 1 + factor × raw ^ exponent   (missing or 0 raw → 1×)
 //   Proximity = 1 ÷ (1 + (distance ÷ HalfDistance) ^ DistanceExp)   (Map: none)
 //   premierFactor = 1 · 2 · 5 (no plan · 2X · 5X); premierBoost = premierFactor ^ PremierExp
 //   w = 0 with no usable review history, so a cold place is (stars × reviews) ^ GoogleExp
@@ -205,6 +207,13 @@ export const GOOGLE_EXP_MIN = 0.1;
 export const GOOGLE_EXP_MAX = 1;
 export const PREMIER_EXP_MIN = 0;
 export const PREMIER_EXP_MAX = 2;
+/** Foursquare boost: 1 + factor × raw^exponent. Factor 0 turns the boost off. */
+export const FOURSQUARE_FACTOR_MIN = 0;
+export const FOURSQUARE_FACTOR_MAX = 5;
+export const FOURSQUARE_EXPONENT_MIN = 1;
+export const FOURSQUARE_EXPONENT_MAX = 40;
+export const FOURSQUARE_FACTOR_DEFAULT = 1;
+export const FOURSQUARE_EXPONENT_DEFAULT = 20;
 /** The mix: per-mode Temperature (the shuffle's), the ad floor and cadence. */
 export const MIX_TEMPERATURE_MIN = 0;
 export const MIX_TEMPERATURE_MAX = 5;
@@ -222,6 +231,10 @@ export type Recipe = {
   halfKm: number | null;
   distanceExp: number | null;
   googleExp: number;
+  /** Coefficient on the Foursquare term. 0 disables the boost. 1 allows up to 2×. */
+  foursquareFactor: number;
+  /** Applied to raw Foursquare popularity (0–1) before the factor. */
+  foursquareExponent: number;
   premierExp: number;
 };
 
@@ -241,6 +254,24 @@ export function googlePopularity(
   if (!(base > 0)) return 0;
   const g = Number.isFinite(googleExp) && googleExp > 0 ? googleExp : 1;
   return Math.pow(base, g);
+}
+
+/**
+ * 1 + factor × raw^exponent. A missing score, a measured 0, or factor 0 is
+ * exactly 1×. Raw is Foursquare's 0–1 popularity; values outside that clip.
+ * The exponent must be positive.
+ */
+export function foursquareBoost(
+  raw: number | null | undefined,
+  factor: number,
+  exponent: number,
+): number {
+  const f = Number.isFinite(factor) ? factor : FOURSQUARE_FACTOR_DEFAULT;
+  if (!(f > 0)) return 1;
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) return 1;
+  const e = Number.isFinite(exponent) && exponent > 0 ? exponent : FOURSQUARE_EXPONENT_DEFAULT;
+  const clipped = Math.min(1, Math.max(0, raw));
+  return 1 + f * Math.pow(clipped, e);
 }
 
 /** premierFactor ^ PremierExp: 1 whenever the exponent is 0. */
@@ -268,14 +299,19 @@ export type RecipeScore = {
  * anchor, has Proximity 0.
  */
 export function recipeScore(
-  candidate: { rating?: number | null; reviewCount?: number | null },
+  candidate: { rating?: number | null; reviewCount?: number | null; foursquarePopularity?: number | null },
   distanceKm: number | null,
   hasAnchor: boolean,
   premierFactor: number,
   recipe: Recipe,
   growth?: { term?: GrowthTerm; cap?: number },
 ): RecipeScore {
-  const popularity = googlePopularity(candidate, recipe.googleExp, growth?.term, growth?.cap);
+  const google = googlePopularity(candidate, recipe.googleExp, growth?.term, growth?.cap);
+  const popularity = google * foursquareBoost(
+    candidate.foursquarePopularity,
+    recipe.foursquareFactor ?? FOURSQUARE_FACTOR_DEFAULT,
+    recipe.foursquareExponent ?? FOURSQUARE_EXPONENT_DEFAULT,
+  );
   const boost = premierBoost(premierFactor, recipe.premierExp);
   let prox: number | null = null;
   if (recipe.halfKm !== null && hasAnchor) {

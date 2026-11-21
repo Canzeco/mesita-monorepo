@@ -58,6 +58,10 @@ describe("Ranking shows every recipe row (MESITA-4454)", () => {
     // Six Catalog rows × 4 fields (Stars exponent is gone) less 3 forced
     // Premier exponents, plus two Map rows × 2 fields less 1, plus the
     // preview's lat and lng.
-    expect(html.match(/<input/g)?.length).toBe(6 * 4 - 3 + 2 * 2 - 1 + 2);
+    // Catalog rows: 6 fields, 3 organic Premier exponents forced.
+    // Map rows: 4 editable fields (no distance), 1 organic Premier exponent forced.
+    // Plus the preview's latitude and longitude.
+    // 6×6 − 3 + 2×4 − 1 + 2 = 42.
+    expect(html.match(/<input/g)?.length).toBe(6 * 6 - 3 + 2 * 4 - 1 + 2);
   });
 });

@@ -142,11 +142,11 @@ select ok(
   'the snapshot table is service role only');
 
 select ok(public.discovery_growth_weight(6.9, 0.5, 'grow') = 0, 'under 7 days carries no growth');
-select ok(abs(public.discovery_growth_weight(7, 0.5, 'grow') - 0.20) < 1e-9, '7 days is 20 percent');
-select ok(abs(public.discovery_growth_weight(18.5, 0.5, 'grow') - 0.35) < 1e-9, 'halfway from 7 to 30 is 35 percent');
-select ok(abs(public.discovery_growth_weight(30, 0.5, 'flat') - 0.50) < 1e-9, '30 days uses the launch cap');
-select ok(abs(public.discovery_growth_weight(90, 0.8, 'grow') - 0.80) < 1e-9, 'a stored cap of 0.80 is the later experiment');
-select ok(public.discovery_growth_weight(30, 0.5, 'missing') = 0, 'missing history does not take the cap');
+select ok(abs(public.discovery_growth_weight(7, 0.5, 'grow') - 0.34) < 1e-9, '7 days is 34 percent recent');
+select ok(abs(public.discovery_growth_weight(18.5, 0.5, 'grow') - 0.57) < 1e-9, '18.5 days is 57 percent recent');
+select ok(abs(public.discovery_growth_weight(30, 0.5, 'flat') - 0.80) < 1e-9, '30 days is 80 percent recent');
+select ok(abs(public.discovery_growth_weight(90, 0.5, 'grow') - 0.80) < 1e-9, 'the share stays at 80 percent and ignores the stored cap');
+select ok(public.discovery_growth_weight(30, 0.5, 'missing') = 0, 'missing history does not take a share');
 
 select throws_ok(
   $$insert into public.google_review_observations (place_id, google_place_id, observed_at, review_count)

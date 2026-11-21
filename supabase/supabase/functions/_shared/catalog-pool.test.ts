@@ -244,6 +244,10 @@ Deno.test("catalog_rank_lanes' arguments are the mode's two recipe rows, the gat
     [near.p_ad_half_km, near.p_ad_distance_exp, near.p_ad_google_exp, near.p_ad_premier_exp],
     [i.halfKm, i.distanceExp, i.googleExp, i.premierExp],
   );
+  assertEquals(
+    [near.p_organic_fsq_factor, near.p_organic_fsq_exp, near.p_ad_fsq_factor, near.p_ad_fsq_exp],
+    [o.foursquareFactor, o.foursquareExponent, i.foursquareFactor, i.foursquareExponent],
+  );
   assertEquals(near.p_ad_floor, cfg.params.mix.adFloor);
   // No repeat penalty since MESITA-4463: no mode sends one.
   assert(!("p_repeat" in near));

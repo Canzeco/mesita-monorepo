@@ -49,6 +49,7 @@
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { fetchGoogleBasics } from "./enrich-google-basics.ts";
+import { deferFoursquare, foursquareServiceKey, syncFoursquare } from "./foursquare-places.ts";
 import { storeFirstPlaceImage } from "./store-place-images.ts";
 import { savePlaceData } from "./save-place.ts";
 import { runPlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
@@ -467,6 +468,12 @@ export async function createMinimalPlace(opts: {
   }
 
   // No Enricher seed here — votes or a later admin Enrich call start it.
+  // One Foursquare branch match, after the place exists, without holding
+  // the create response. A missing secret skips it. Deep Update retries a
+  // place that is still unmatched.
+  if (foursquareServiceKey()) {
+    deferFoursquare(syncFoursquare(admin, saved.place_id));
+  }
   return {
     ok: true,
     place: {

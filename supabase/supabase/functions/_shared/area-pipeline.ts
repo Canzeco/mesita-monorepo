@@ -17,9 +17,9 @@
 //
 // DISCOVERY RANKING v2 (MESITA-4454): every score is one formula with a
 // recipe row per screen, mode and lane (`recipeFor`, discovery-config.ts):
-// Proximity × Popularity × premierFactor^PremierExp. Popularity is
-// ((1 − w) × stars × reviews + w × growth)^GoogleExp, and w is 0 with no
-// usable review history.
+// Premier boost × (Google popularity × Foursquare boost) × Proximity.
+// Google popularity is ((1 − w) × stars × reviews + w × growth)^GoogleExp.
+// w is 0 with no usable review history. A missing Foursquare score is 1×.
 //
 // (Pato, MESITA-2909: on the Map distance is a screen, not a sort; the
 // Catalog "literal podemos sacar la lista final de todos los lugares en una
@@ -83,6 +83,7 @@ export function mesitaCandidate(row: Record<string, unknown>): AreaCandidate {
     lng: finiteOrNull(row.lng),
     rating: finiteOrNull(row.google_stars_overall),
     reviewCount: finiteOrNull(row.google_review_count),
+    foursquarePopularity: finiteOrNull(row.foursquare_popularity),
     familyKeys: familiesForPlace(row),
     source: "mesita",
     ready: 1,
@@ -450,7 +451,7 @@ export const CATALOG_SCAN_PAGE = 1000;
 export const CATALOG_SCAN_PAGES_MAX = 10;
 /** Everything `mesitaCandidate` reads, and nothing else. */
 export const CATALOG_SCORING_COLUMNS =
-  "id,lat,lng,google_stars_overall,google_review_count,family_keys,boost_tier";
+  "id,lat,lng,google_stars_overall,google_review_count,foursquare_popularity,family_keys,boost_tier";
 
 /** A failed Catalog or Map read: which pass and which page or chunk. */
 export class CatalogReadError extends Error {
@@ -663,11 +664,15 @@ export function catalogRankLanesArgs(
     p_organic_stars_exp: 1, // Legacy RPC signature.
     p_organic_google_exp: org.googleExp,
     p_organic_premier_exp: org.premierExp,
+    p_organic_fsq_factor: org.foursquareFactor,
+    p_organic_fsq_exp: org.foursquareExponent,
     p_ad_half_km: ad.halfKm,
     p_ad_distance_exp: ad.distanceExp,
     p_ad_stars_exp: 1, // Legacy RPC signature.
     p_ad_google_exp: ad.googleExp,
     p_ad_premier_exp: ad.premierExp,
+    p_ad_fsq_factor: ad.foursquareFactor,
+    p_ad_fsq_exp: ad.foursquareExponent,
     p_ad_floor: mixFor(cfg).adFloor,
   };
 }
@@ -969,7 +974,7 @@ export function rankMesitaPlaces<T extends Record<string, unknown>>(
 
 /** What a non-view caller needs of a Mesita place, About included. */
 const AREA_MESITA_COLUMNS =
-  "id, slug, name, address, lat, lng, family_keys, google_stars_overall, google_review_count, description, enriched_at, content_state, boost_tier";
+  "id, slug, name, address, lat, lng, family_keys, google_stars_overall, google_review_count, foursquare_popularity, description, enriched_at, content_state, boost_tier";
 /** The pool cap for a non-view caller: a few answers, not a map. */
 const AREA_MESITA_POOL = 300;
 
