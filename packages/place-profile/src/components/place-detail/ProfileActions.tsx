@@ -90,6 +90,9 @@ const ROW_TILE = "bg-foreground text-paper flex-row items-stretch gap-1.5 overfl
 // The glyph over the word, as in the row above, in one fixed width: the
 // boxes say "Reserve" and "Offers" (Pato, MESITA-4171).
 const ROW_LEAD = "flex w-13 shrink-0 flex-col items-center justify-center gap-1";
+// A longer word (the Loyalty Card's "Add Funds, Get a Bonus", MESITA-4577):
+// the glyph beside it, two lines at 14px, left-aligned.
+const WIDE_LEAD = "flex w-[8.5rem] shrink-0 items-center gap-2 px-2 text-left text-sm leading-tight";
 // The moving box: rounded inside the frame, a small caption over the words
 // at 14px so "+100% Bonus" fits a 360px phone (18px before, MESITA-4167).
 const ROW_CHIP = "relative min-w-0 flex-1 overflow-hidden rounded-md text-sm leading-tight font-bold tabular-nums";
@@ -399,11 +402,21 @@ export function OffersTile({
   name,
   slides,
   open,
+  label = "Offers",
+  className,
 }: {
   name: string;
   slides: OfferSlide[];
   open: (slide: OfferSlide) => (() => void) | undefined;
+  /** The tile's word. The Loyalty Card page says "Add Funds, Get a Bonus"
+   *  (Pato, 2026-11-21, MESITA-4577: "put that green box in a black box …
+   *  call the box add funds, get bonus"): the glyph beside two short lines,
+   *  in a wider lead, so the chip keeps the rest. */
+  label?: string;
+  /** The Loyalty Card draws it full width and taller (MESITA-4577). */
+  className?: string;
 }) {
+  const wide = label !== "Offers";
   const live = useOfferSlide(slides, ROW_TICK_MS, { every: ROW_TICKS_PER_CHANGE, phase: 1 });
   const [held, setHeld] = useState<number | null>(null);
   const index = held ?? live.index;
@@ -430,12 +443,12 @@ export function OffersTile({
       onPointerUp={() => setTimeout(release, 0)}
       onPointerCancel={release}
       onPointerLeave={release}
-      className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE)}
+      className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE, className)}
       data-tile-bonus
     >
-      <span className={ROW_LEAD}>
+      <span className={wide ? WIDE_LEAD : ROW_LEAD}>
         <Tag className={MESITA_TILE_ICON} strokeWidth={2.25} />
-        <span>Offers</span>
+        <span>{label}</span>
       </span>
       {/* THE CHIP WEARS THE OFFER ON SCREEN'S COLOUR (MESITA-4207): Welcome
           blue, Story pink, the sizes green; one green for all before. */}

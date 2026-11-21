@@ -28,7 +28,7 @@ import { ActivityRowsSkeleton } from "@/components/consumer/activity/ActivityRow
 import { PRIMARY, SECONDARY } from "./wallet-buttons";
 import { offerHref } from "@/components/consumer/offer-button";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
-import { OffersBanner, OffersBannerSkeleton } from "./OffersBanner";
+import { OffersTile } from "@mesita/place-profile";
 import { toast } from "@/lib/toast";
 import type { CreditRow } from "./use-wallet";
 
@@ -192,7 +192,7 @@ export function LoyaltyCardSkeleton() {
           ))}
         </div>
       </Panel>
-      <OffersBannerSkeleton />
+      <Skeleton className="mt-4 h-16 w-full rounded-2xl" />
       <div className={cn(PANEL_CLASS, "mt-4")}>
         <div className="border-border grid grid-cols-4 border-b">
           {[0, 1, 2, 3].map((i) => (
@@ -442,8 +442,24 @@ export function PlaceCredit({
       ) : null}
 
       {/* OFFERS SECOND (MESITA-4573): the card, then what to buy here, then
-          the Tickets. */}
-      {!gone ? <OffersBanner slides={offers} placeHref={href} /> : null}
+          the Tickets. THE PLACE PROFILE'S OFFERS TILE (Pato, 2026-11-21,
+          MESITA-4577: "ALL OFFERS MUST BE SHOWN IN A CARROUSEL, JUST LIKE
+          THE OFFERS THING IN PLACE PROFILE. YOU JUST CHANGE OFFER … PUT
+          THAT GREEN BOX IN A BLACK BOX … ADD FUNDS, GET BONUS"): one black
+          tile, full width and 64px, its chip in the offer's colour moving
+          to the next offer on the profile's beat and held under the finger;
+          a tap opens the Offers page on the offer on screen and comes back
+          here (from=wallet). A sliding strip of green tiles for one deploy
+          before (MESITA-4573). */}
+      {!gone && offers.length > 0 ? (
+        <OffersTile
+          name={card.name}
+          slides={offers}
+          label="Add Funds, Get a Bonus"
+          className="mt-4 h-16 w-full rounded-2xl"
+          open={(slide) => () => navigateTo(router, offerHref(href, slide, true), { motion: "drill" })}
+        />
+      ) : null}
 
       {/* VOUCHERS TO ACTIVATE (MESITA-4116, Pato: "also add a list of
           vouchers pending to activate if it's the case"): Story vouchers
