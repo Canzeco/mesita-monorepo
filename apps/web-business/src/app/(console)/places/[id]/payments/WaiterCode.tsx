@@ -2,8 +2,8 @@
 
 // The waiter code (MESITA-3226, Pato: "there they only set the fucking number";
 // on Payments since MESITA-3600, Pato: "move waiter code configuration to
-// Payments, not there"; its own section, last, since MESITA-3824). Six digits
-// waiters type at visit.mesita.ai to sign any payment's QR, cash or card. Only a hash is kept, so it is never
+// Payments, not there"; its own section, last, since MESITA-3824). Four digits (MESITA-4521)
+// waiters type at visit.mesita.ai to confirm any payment's QR, cash or card. Only a hash is kept, so it is never
 // shown again and a forgotten one is replaced. The server refuses editors.
 
 import { useState } from "react";
@@ -57,8 +57,8 @@ export function WaiterCodeRow({
           {saved
             ? "Saved. It won't be shown again."
             : isSet
-              ? "Six digits your waiters type at visit.mesita.ai to sign a guest's payment, cash or card. Type six new digits to replace it."
-              : "Six digits your waiters type at visit.mesita.ai to sign a guest's payment, cash or card."}
+              ? "Four digits your waiters type at visit.mesita.ai to confirm a guest's payment, cash or card. Type four new digits to replace it."
+              : "Four digits your waiters type at visit.mesita.ai to confirm a guest's payment, cash or card."}
         </p>
       </div>
       <p className={cn("font-semibold whitespace-nowrap", !isSet && "text-muted-foreground")}>{isSet ? "Set" : "Not set"}</p>
@@ -68,18 +68,18 @@ export function WaiterCodeRow({
             value={code}
             onChange={(e) => {
               setSaved(false);
-              setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+              setCode(e.target.value.replace(/\D/g, "").slice(0, 4));
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && code.length === 6 && !busy) void save();
+              if (e.key === "Enter" && code.length === 4 && !busy) void save();
             }}
             inputMode="numeric"
             autoComplete="off"
-            placeholder="6 digits"
+            placeholder="4 digits"
             aria-label="Waiter code"
-            className={cn(INPUT_BASE, "h-10 w-28 px-3 tabular-nums")}
+            className={cn(INPUT_BASE, "h-10 w-24 px-3 tabular-nums")}
           />
-          <button type="button" className={QUIET} disabled={code.length !== 6 || busy} onClick={() => void save()}>
+          <button type="button" className={QUIET} disabled={code.length !== 4 || busy} onClick={() => void save()}>
             {busy ? "Saving…" : "Save"}
           </button>
         </div>

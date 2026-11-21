@@ -121,7 +121,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
   const placeId = tab?.place.id ?? null;
   const staffToken = placeId ? readStaff(placeId) : null;
   const code = placeCode.replace(/\s/g, "");
-  const codeOk = staffToken !== null || /^\d{6}$/.test(code);
+  const codeOk = staffToken !== null || /^\d{4}$/.test(code);
   const staffKey = (): StaffKey => (staffToken ? { staff_token: staffToken } : { place_code: code });
 
   function keep(minted: { staff_token: string | null; staff_expires_at: string | null }) {
@@ -232,7 +232,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
     staffToken === null ? (
       <label className="field">
         Waiter code
-        <input className="secret" inputMode="numeric" autoComplete="off" maxLength={7} placeholder="7-digit code" value={placeCode} onChange={(e) => setPlaceCode(e.target.value)} />
+        <input className="secret" inputMode="numeric" autoComplete="off" maxLength={5} placeholder="4-digit code" value={placeCode} onChange={(e) => setPlaceCode(e.target.value)} />
       </label>
     ) : null;
 

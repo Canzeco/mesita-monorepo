@@ -5,7 +5,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { hashPlaceCode } from "./place-code.ts";
 import type { TryKind } from "./charge.ts";
-import { checkStaffToken, listPayments, mintStaffToken, readListBody, readStaffToken, staffAccess, staffDeviceHash, type StaffPaymentRow, type StaffStore, STAFF_TOKEN_TTL_SEC } from "./staff.ts";
+import { checkStaffToken, listPayments, mintStaffToken, readListBody, readStaffToken, staffAccess, staffDeviceHash, type StaffPaymentRow, type StaffStore, STAFF_TOKEN_TTL_SEC, tabStaffJti } from "./staff.ts";
 
 const PLACE = "00000000-0000-4000-8000-000000003462";
 const OTHER = "00000000-0000-4000-8000-000000004462";
@@ -53,11 +53,11 @@ function access(store: StaffStore, body: Record<string, unknown>, nowMs = T0) {
 }
 
 Deno.test("a read without staff access is refused 403 staff_only", async () => {
-  const { store } = await memoryStore({ [PLACE]: "123456" });
+  const { store } = await memoryStore({ [PLACE]: "1234" });
   const none = await access(store, { place_id: PLACE });
   assert(!none.ok);
   assertEquals([none.status, none.code], [403, "staff_only"]);
-  const wrong = await access(store, { place_id: PLACE, place_code: "654321" });
+  const wrong = await access(store, { place_id: PLACE, place_code: "4321" });
   assert(!wrong.ok);
   assertEquals([wrong.status, wrong.code], [403, "staff_only"]);
   const forged = await access(store, { place_id: PLACE, staff_token: `s1.${Math.floor(T0 / 1000) + 60}.${"A".repeat(43)}` });
@@ -67,14 +67,14 @@ Deno.test("a read without staff access is refused 403 staff_only", async () => {
 
 Deno.test("a place with no code answers place_code_required, even with a token", async () => {
   const { store } = await memoryStore({});
-  const r = await access(store, { place_id: PLACE, place_code: "123456" });
+  const r = await access(store, { place_id: PLACE, place_code: "1234" });
   assert(!r.ok);
   assertEquals([r.status, r.code], [409, "place_code_required"]);
 });
 
 Deno.test("the right code mints a token that reads for 12 hours, at this place only", async () => {
-  const { store } = await memoryStore({ [PLACE]: "123456", [OTHER]: "123456" });
-  const first = await access(store, { place_id: PLACE, place_code: "12 34 56" });
+  const { store } = await memoryStore({ [PLACE]: "1234", [OTHER]: "1234" });
+  const first = await access(store, { place_id: PLACE, place_code: "12 34" });
   assert(first.ok && first.minted);
   const token = first.minted.token;
 
@@ -93,10 +93,10 @@ Deno.test("the right code mints a token that reads for 12 hours, at this place o
 });
 
 Deno.test("changing the place code revokes every staff token; removing it too", async () => {
-  const s = await memoryStore({ [PLACE]: "123456" });
-  const first = await access(s.store, { place_id: PLACE, place_code: "123456" });
+  const s = await memoryStore({ [PLACE]: "1234" });
+  const first = await access(s.store, { place_id: PLACE, place_code: "1234" });
   assert(first.ok && first.minted);
-  s.hashes.set(PLACE, await hashPlaceCode(PLACE, "999999"));
+  s.hashes.set(PLACE, await hashPlaceCode(PLACE, "9999"));
   const r = await access(s.store, { place_id: PLACE, staff_token: first.minted.token });
   assert(!r.ok);
   assertEquals(r.code, "staff_only");
@@ -104,22 +104,22 @@ Deno.test("changing the place code revokes every staff token; removing it too", 
 });
 
 Deno.test("a token signed under another service key never reads", async () => {
-  const { store } = await memoryStore({ [PLACE]: "123456" });
-  const first = await access(store, { place_id: PLACE, place_code: "123456" });
+  const { store } = await memoryStore({ [PLACE]: "1234" });
+  const first = await access(store, { place_id: PLACE, place_code: "1234" });
   assert(first.ok && first.minted);
-  const keys = { codeHash: await hashPlaceCode(PLACE, "123456"), staffQr: null };
+  const keys = { codeHash: await hashPlaceCode(PLACE, "1234"), staffQr: null };
   assertEquals(await checkStaffToken("another-key", PLACE, first.minted.token, keys, T0), false);
   assertEquals(await checkStaffToken(KEY, PLACE, first.minted.token, keys, T0), true);
 });
 
 Deno.test("wrong codes are staff tries: the sixth from one address answers locked, a token never writes one", async () => {
-  const s = await memoryStore({ [PLACE]: "123456" });
+  const s = await memoryStore({ [PLACE]: "1234" });
   for (let i = 0; i < 5; i++) {
-    const r = await access(s.store, { place_id: PLACE, place_code: "000000" });
+    const r = await access(s.store, { place_id: PLACE, place_code: "0000" });
     assert(!r.ok);
     assertEquals(r.code, "staff_only");
   }
-  const sixth = await access(s.store, { place_id: PLACE, place_code: "123456" });
+  const sixth = await access(s.store, { place_id: PLACE, place_code: "1234" });
   assert(!sixth.ok);
   assertEquals([sixth.status, sixth.code], [409, "locked"]);
   assert(Number(sixth.detail?.retry_after_s) > 0);
@@ -130,7 +130,7 @@ Deno.test("wrong codes are staff tries: the sixth from one address answers locke
 });
 
 Deno.test("the list: this place, this mode, the last 12 hours, newest first, never who paid", async () => {
-  const s = await memoryStore({ [PLACE]: "123456" });
+  const s = await memoryStore({ [PLACE]: "1234" });
   const row = (id: string, place: string, hoursAgo: number, livemode = false, seen: string | null = null) => ({
     id,
     place_id: place,
@@ -153,10 +153,10 @@ Deno.test("the list: this place, this mode, the last 12 hours, newest first, nev
 });
 
 Deno.test("adding a Staff QR leaves no-QR places' tokens as they were signed", async () => {
-  const s = await memoryStore({ [PLACE]: "123456" });
-  const first = await access(s.store, { place_id: PLACE, place_code: "123456" });
+  const s = await memoryStore({ [PLACE]: "1234" });
+  const first = await access(s.store, { place_id: PLACE, place_code: "1234" });
   assert(first.ok && first.minted);
-  const keys = { codeHash: await hashPlaceCode(PLACE, "123456"), staffQr: null };
+  const keys = { codeHash: await hashPlaceCode(PLACE, "1234"), staffQr: null };
   assertEquals(await checkStaffToken(KEY, PLACE, first.minted.token, keys, T0), true);
 });
 
@@ -166,10 +166,10 @@ Deno.test("adding a Staff QR leaves no-QR places' tokens as they were signed", a
 // token may Verify and confirm cash (there is no Staff QR).
 
 Deno.test("the place code mints a code token with its own device id; two phones are two phones", async () => {
-  const s = await memoryStore({ [PLACE]: "123456" });
+  const s = await memoryStore({ [PLACE]: "1234" });
   const keys = await s.store.keys(PLACE);
-  const one = await access(s.store, { place_id: PLACE, place_code: "123456" });
-  const two = await access(s.store, { place_id: PLACE, place_code: "123456" });
+  const one = await access(s.store, { place_id: PLACE, place_code: "1234" });
+  const two = await access(s.store, { place_id: PLACE, place_code: "1234" });
   assert(one.ok && one.minted && two.ok && two.minted);
   const a = await readStaffToken(KEY, PLACE, one.minted.token, keys, T0);
   const b = await readStaffToken(KEY, PLACE, two.minted.token, keys, T0);
@@ -181,18 +181,18 @@ Deno.test("the place code mints a code token with its own device id; two phones 
 // MESITA-3734: the Staff QR is gone; a body carrying its old secret is no key
 // at all, even at a place that once made one (its tokens stay signed over it).
 Deno.test("a former Staff QR secret mints nothing", async () => {
-  const s = await memoryStore({ [PLACE]: "123456" });
+  const s = await memoryStore({ [PLACE]: "1234" });
   s.qrs.set(PLACE, "A".repeat(43));
   const r = await access(s.store, { place_id: PLACE, staff_qr: "A".repeat(43) });
   assert(!r.ok);
   assertEquals(r.code, "staff_only");
-  const byCode = await access(s.store, { place_id: PLACE, place_code: "123456" });
+  const byCode = await access(s.store, { place_id: PLACE, place_code: "1234" });
   assert(byCode.ok && byCode.minted);
   assert(await readStaffToken(KEY, PLACE, byCode.minted.token, await s.store.keys(PLACE), T0));
 });
 
 Deno.test("editing a token's source or device id fails the check", async () => {
-  const s = await memoryStore({ [PLACE]: "123456" });
+  const s = await memoryStore({ [PLACE]: "1234" });
   const keys = await s.store.keys(PLACE);
   const { token } = await mintStaffToken(KEY, PLACE, keys!, T0, "code");
   assert(await readStaffToken(KEY, PLACE, token, keys, T0));
@@ -205,11 +205,19 @@ Deno.test("editing a token's source or device id fails the check", async () => {
 });
 
 Deno.test("an s2 token lasts 12 hours and dies with a new code", async () => {
-  const s = await memoryStore({ [PLACE]: "123456" });
+  const s = await memoryStore({ [PLACE]: "1234" });
   const keys = await s.store.keys(PLACE);
   const { token } = await mintStaffToken(KEY, PLACE, keys!, T0, "qr");
   assert(await checkStaffToken(KEY, PLACE, token, keys, T0 + (STAFF_TOKEN_TTL_SEC - 60) * 1000));
   assertEquals(await checkStaffToken(KEY, PLACE, token, keys, T0 + (STAFF_TOKEN_TTL_SEC + 1) * 1000), false);
-  s.hashes.set(PLACE, await hashPlaceCode(PLACE, "654321"));
+  s.hashes.set(PLACE, await hashPlaceCode(PLACE, "4321"));
   assertEquals(await checkStaffToken(KEY, PLACE, token, await s.store.keys(PLACE), T0), false);
+});
+
+Deno.test("tabStaffJti (MESITA-4521): a guest's bill needs a waiter-code token; a click never confirms", () => {
+  const info = { version: 2 as const, src: "code" as const, jti: "j".repeat(22), exp: 0 };
+  assertEquals(tabStaffJti("s2.token", info), "j".repeat(22));
+  for (const t of [undefined, null, "", 42, "x".repeat(129)]) assertEquals(tabStaffJti(t, info), null);
+  assertEquals(tabStaffJti("s2.token", null), null, "a token that does not read never confirms");
+  assertEquals(tabStaffJti("s1.token", { ...info, version: 1, jti: null }), null, "an old s1 token types the code again");
 });

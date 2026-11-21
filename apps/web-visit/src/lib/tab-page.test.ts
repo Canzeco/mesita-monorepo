@@ -22,10 +22,13 @@ describe("the waiter's tab screen", () => {
   it("keeps the staff token, never the waiter code", () => {
     expect(PAGE).toMatch(/import \{[^}]*\bkeepStaff\b[^}]*\breadStaff\b[^}]*\} from "@\/lib\/staff-key"/);
     expect(STAFF_KEY).toMatch(/localStorage\.setItem\(staffKeyFor\(placeId\), JSON\.stringify\(\{ token, expires_at/);
-    // MESITA-4485: Sign is one click. The page keeps nothing, and it does not
-    // ask for a waiter code.
-    expect(VERIFY).not.toMatch(/keepStaff|readStaff|localStorage|CodeBoxes|listPayments/);
-    expect(VERIFY).toMatch(/verifyTab\(\{ token, place_id: placeId, cash_received_cents: request\.cash_received_cents \}\)/);
+    // MESITA-4521: Confirm keeps nothing; the 4-digit waiter code is typed for
+    // every Confirm and Reject, traded for a staff token, and that token acts.
+    expect(VERIFY).not.toMatch(/keepStaff|readStaff|localStorage/);
+    expect(VERIFY).toMatch(/<CodeBoxes value=\{typedCode\} onChange=\{setTypedCode\} \/>/);
+    expect(VERIFY).toMatch(/listPayments\(\{ place_id: placeId, place_code: request\.place_code \}\)/);
+    expect(VERIFY).toMatch(/verifyTab\(\{ token, place_id: placeId, staff_token: staff, cash_received_cents: request\.cash_received_cents \}\)/);
+    expect(VERIFY).toMatch(/rejectTab\(\{ token, place_id: placeId, staff_token: staff \}\)/);
     for (const src of [PAGE, VERIFY]) {
       expect(src).not.toMatch(/setItem\([^)]*(placeCode|secret)/);
       expect(src).not.toMatch(/sessionStorage/);

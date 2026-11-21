@@ -3,7 +3,7 @@
 import { CODE_LENGTH, codeDigits, padPress, type PadKey } from "@/lib/code-boxes";
 import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 
-// The waiter code as six boxes (MESITA-3818), typed on a pad drawn in the
+// The waiter code as four boxes (MESITA-3818; six until MESITA-4521), typed on a pad drawn in the
 // page (MESITA-4103, Pato: "when the keyboard opens in the web version in
 // mobile it looks like shit. so just put the numbers there floating below"):
 // the boxes only show, so the phone keyboard never opens, and the pad under

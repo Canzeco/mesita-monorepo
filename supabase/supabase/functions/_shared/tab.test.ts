@@ -17,11 +17,11 @@ Deno.test("Received needs staff: the guest's QR token alone is refused", () => {
 Deno.test("billing needs staff and the version the screen read", () => {
   const noKey = readBillBody({ token: TOKEN, bill_cents: 30000, bill_version: 0 });
   assertEquals(noKey.ok ? null : noKey.code, "staff_only");
-  const noVersion = readBillBody({ token: TOKEN, place_code: "123456", bill_cents: 30000 });
+  const noVersion = readBillBody({ token: TOKEN, place_code: "1234", bill_cents: 30000 });
   assertEquals(noVersion.ok ? null : noVersion.code, "bad_request");
-  const zero = readBillBody({ token: TOKEN, place_code: "123456", bill_cents: 0, bill_version: 0 });
+  const zero = readBillBody({ token: TOKEN, place_code: "1234", bill_cents: 0, bill_version: 0 });
   assertEquals(zero.ok ? null : zero.code, "amount_required");
-  const ok = readBillBody({ token: TOKEN, place_code: "123456", bill_cents: 30000, tip_cents: 4500, bill_version: 0, waiter_name: "  Ana " });
+  const ok = readBillBody({ token: TOKEN, place_code: "1234", bill_cents: 30000, tip_cents: 4500, bill_version: 0, waiter_name: "  Ana " });
   assertEquals(ok.ok ? [ok.input.billCents, ok.input.tipCents, ok.input.waiterName] : null, [30000, 4500, "Ana"]);
 });
 

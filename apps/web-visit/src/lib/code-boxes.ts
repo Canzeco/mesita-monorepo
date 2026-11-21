@@ -1,10 +1,10 @@
-// The waiter code as six boxes (MESITA-3818). Auth-adjacent: the code stays
+// The waiter code as four boxes (MESITA-3818; six until MESITA-4521). Auth-adjacent: the code stays
 // one string (an empty box is a space), so sign-gate reads it unchanged and a
-// gap never passes as six digits. Pure; GuestVerify moves the focus.
+// gap never passes as four digits. Pure; GuestVerify moves the focus.
 
-export const CODE_LENGTH = 6;
+export const CODE_LENGTH = 4;
 
-/** The six boxes' digits, "" for an empty box. */
+/** The four boxes' digits, "" for an empty box. */
 export function codeDigits(code: string): string[] {
   return Array.from({ length: CODE_LENGTH }, (_, i) => (/\d/.test(code[i] ?? "") ? code[i] : ""));
 }

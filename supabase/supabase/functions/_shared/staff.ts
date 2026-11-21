@@ -3,7 +3,7 @@
 //
 //   visit-web-list-payments   readListBody → staffAccess → listPayments
 //
-// Who is staff: whoever knows the place code (place_codes, six digits the
+// Who is staff: whoever knows the place code (place_codes, four digits the
 // owner sets on Business › Payments; MESITA-3299). There is no staff sign-in
 // and no staff table. Typing the code once answers a staff token, and the
 // screen's 15-second reads carry that token, never the code again.
@@ -130,6 +130,17 @@ export async function mintStaffToken(
 /** The token's facts when it is an unexpired token minted for this place
  *  under its current code hash and Staff QR; null otherwise. No keys (the
  *  owner removed the code) is never valid. */
+/** MESITA-4521 (Pato: "To avoid trolls, use mesita code to accept payments"):
+ *  a guest's bill is confirmed or rejected only with a waiter-code token of
+ *  its place. No token, a token over 128 characters, or one that does not read
+ *  as a current s2 token answers null: staff_code_needed. One click no longer
+ *  confirms (MESITA-4485 is undone for payments). */
+export function tabStaffJti(staffToken: unknown, info: StaffTokenInfo | null): string | null {
+  if (typeof staffToken !== "string" || staffToken.length === 0 || staffToken.length > 128) return null;
+  if (!info || info.version !== 2 || !info.jti) return null;
+  return info.jti;
+}
+
 export async function readStaffToken(
   serviceKey: string,
   placeId: string,

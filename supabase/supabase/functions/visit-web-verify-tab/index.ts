@@ -1,8 +1,9 @@
 // Supabase Edge Function — visit-web-verify-tab
 //
 // MESITA-3707 (guest pays, waiter verifies): the waiter scanned the guest's
-// QR (visit.mesita.ai/tab/<token>) and taps Verify. Any phone signed in with
-// the waiter code may verify (MESITA-3734: there is no Staff QR): its staff
+// QR (visit.mesita.ai/tab/<token>), types the 4-digit waiter code and taps
+// Confirm (MESITA-4521: the code is required; one click no longer confirms).
+// Any phone signed in with the waiter code may verify (MESITA-3734: there is no Staff QR): its staff
 // token must be a current `s2` token of the tab's place (_shared/staff.ts),
 // which carries the device id kept below. An older `s1` token answers
 // staff_code_needed: type the waiter code again.
@@ -27,7 +28,7 @@ import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts
 import { openRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { MAX_PAYMENT_INPUT_CENTS } from "../_shared/money.ts";
-import { readStaffToken, staffDeviceHash, supabaseStaffStore } from "../_shared/staff.ts";
+import { readStaffToken, staffDeviceHash, supabaseStaffStore, tabStaffJti } from "../_shared/staff.ts";
 import { callTabRpc, isTabToken, readTabByToken, rpcRefusal } from "../_shared/tab.ts";
 import { captureHeldCard } from "../_shared/settle-payment.ts";
 import { paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
@@ -41,8 +42,8 @@ serveJson("visit-web-verify-tab", async (req) => {
   const { token, place_id: placeId, staff_token: staffToken, cash_received_cents: received } = bodyRes.body;
   if (!isTabToken(token)) return json({ ok: false, code: "bad_request", error: "That is not a guest's payment" }, 400);
   if (!isUuid(placeId)) return json({ ok: false, code: "bad_request", error: "place_id must be a Mesita place id" }, 400);
-  const typedCode = typeof staffToken === "string" && staffToken.length > 0;
-  if (typedCode && staffToken.length > 128) {
+  // MESITA-4521: the waiter code is required again (a token from it).
+  if (typeof staffToken !== "string" || staffToken.length === 0 || staffToken.length > 128) {
     return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
   }
   if (received !== undefined && received !== null
@@ -51,15 +52,12 @@ serveJson("visit-web-verify-tab", async (req) => {
   }
 
   try {
-    let jti = "click";
-    if (typedCode) {
-      const keys = await supabaseStaffStore(admin).keys(placeId);
-      const info = await readStaffToken(env.serviceKey, placeId, staffToken, keys, Date.now());
-      if (!info || !info.jti) {
-        console.log("[visit-web-verify-tab]", JSON.stringify({ outcome: "staff_code_needed", place_id: placeId, version: info?.version ?? null }));
-        return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
-      }
-      jti = info.jti;
+    const keys = await supabaseStaffStore(admin).keys(placeId);
+    const info = await readStaffToken(env.serviceKey, placeId, staffToken, keys, Date.now());
+    const jti = tabStaffJti(staffToken, info);
+    if (!jti) {
+      console.log("[visit-web-verify-tab]", JSON.stringify({ outcome: "staff_code_needed", place_id: placeId, version: info?.version ?? null }));
+      return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
     }
     const tab = await readTabByToken(admin, token);
     if (!tab || tab.origin !== "guest") {

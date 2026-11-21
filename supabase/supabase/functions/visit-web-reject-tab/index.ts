@@ -16,7 +16,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
 import { openRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { readStaffToken, staffDeviceHash, supabaseStaffStore } from "../_shared/staff.ts";
+import { readStaffToken, staffDeviceHash, supabaseStaffStore, tabStaffJti } from "../_shared/staff.ts";
 import { callTabRpc, isTabToken, readTabByToken, rpcRefusal } from "../_shared/tab.ts";
 import { cancelReleasedHolds } from "../_shared/settle-payment.ts";
 import { paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
@@ -30,21 +30,16 @@ serveJson("visit-web-reject-tab", async (req) => {
   const { token, place_id: placeId, staff_token: staffToken } = bodyRes.body;
   if (!isTabToken(token)) return json({ ok: false, code: "bad_request", error: "That is not a guest's payment" }, 400);
   if (!isUuid(placeId)) return json({ ok: false, code: "bad_request", error: "place_id must be a Mesita place id" }, 400);
-  const typedCode = typeof staffToken === "string" && staffToken.length > 0;
-  if (typedCode && staffToken.length > 128) {
+  // MESITA-4521: the waiter code is required again (a token from it).
+  if (typeof staffToken !== "string" || staffToken.length === 0 || staffToken.length > 128) {
     return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
   }
 
   try {
-    let jti = "click";
-    if (typedCode) {
-      const keys = await supabaseStaffStore(admin).keys(placeId);
-      const info = await readStaffToken(env.serviceKey, placeId, staffToken, keys, Date.now());
-      if (!info || !info.jti) {
-        return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
-      }
-      jti = info.jti;
-    }
+    const keys = await supabaseStaffStore(admin).keys(placeId);
+    const info = await readStaffToken(env.serviceKey, placeId, staffToken, keys, Date.now());
+    const jti = tabStaffJti(staffToken, info);
+    if (!jti) return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
     const tab = await readTabByToken(admin, token);
     if (!tab || tab.origin !== "guest") {
       return json({ ok: false, code: "gone", error: "Scan the guest's screen again." }, 404);

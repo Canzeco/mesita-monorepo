@@ -513,7 +513,7 @@ function OpenBillPanel({
   const bill = tab ? tab.bill_cents : draft ? readAmount(draft.amount) : null;
   const tip = tab ? tab.card_tip_cents + tab.cash_tip_cents : null;
   // THE SIGN TIMER (MESITA-4130, Pato: "if sign, add the timer to sign in
-  // the outside ticket"): the same countdown as the bill's Sign step, from
+  // the outside ticket"): the same countdown as the bill's Confirm step, from
   // the server's expires_at, ticking each second while a sent bill waits.
   const [now, setNow] = useState(() => Date.now());
   const waiting = tab !== null && tab.status !== "cancelled" && tab.status !== "expired" && !(tab.status === "paid" && tab.verified_at);

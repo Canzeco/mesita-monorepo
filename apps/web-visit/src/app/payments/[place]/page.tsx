@@ -70,7 +70,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
   }, [place, token]);
 
   const code = placeCode.replace(/\s/g, "");
-  const canShow = /^\d{6}$/.test(code) && !busy;
+  const canShow = /^\d{4}$/.test(code) && !busy;
 
   async function show() {
     if (!canShow) return;
@@ -152,8 +152,8 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
             className="secret"
             inputMode="numeric"
             autoComplete="off"
-            maxLength={7}
-            placeholder="7-digit code"
+            maxLength={5}
+            placeholder="4-digit code"
             value={placeCode}
             onChange={(e) => setPlaceCode(e.target.value)}
           />

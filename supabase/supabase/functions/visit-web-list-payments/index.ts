@@ -6,7 +6,7 @@
 // token; every read after carries the token only. Changing the place code on
 // Business › Payments revokes every token of the place. Never who paid.
 //
-// Body: { place_id: uuid, place_code: 6 digits } | { place_id, staff_token }
+// Body: { place_id: uuid, place_code: 4 digits } | { place_id, staff_token }
 // Response: { ok: true, payments: [{ id, amount_cents, tip_cents, currency,
 //             paid_at, ticket, seen, refunded }], place: { name },
 //             server_time, test_mode, staff_token?, staff_token_expires_at? }

@@ -6,7 +6,7 @@
 // A plain module (no React): web-consumer and web-visit import it from
 // @mesita/place-profile/lib/pay-checklist.
 //
-// The labels say "Sign" (pay-steps.ts owns the words); the key "verified",
+// The labels say "Confirm" (pay-steps.ts owns the words); the key "verified",
 // verifiedAt and verifyLabel keep the wire name.
 
 import { SIGN, signLabel } from "./pay-steps";

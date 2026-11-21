@@ -656,7 +656,7 @@ export async function openPaymentDashboard(placeId: string): Promise<Result<{ ur
   return { ok: true, data: { url: r.data.url } };
 }
 
-/** The waiter code (MESITA-3226, on Payments since MESITA-3600): six digits,
+/** The waiter code (MESITA-3226, on Payments since MESITA-3600): four digits (MESITA-4521),
  *  stored only as a hash, typed by staff at visit.mesita.ai. */
 export async function setPlaceCode(placeId: string, code: string): Promise<Result<true>> {
   const r = await efInvoke<{ code_set: boolean }>("business-web-set-place-code", { place_id: placeId, code });
