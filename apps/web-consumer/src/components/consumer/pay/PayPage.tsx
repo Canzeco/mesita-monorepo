@@ -2,9 +2,9 @@
 
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Clock, Plus, QrCode } from "lucide-react";
+import { Clock, Gift, Plus, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -27,7 +27,7 @@ import { distanceText, usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
-import { LoyaltyCardBoxSkeleton } from "./PayFrameLoading";
+import { LoyaltyCardBoxSkeleton, PayFrameLoading } from "./PayFrameLoading";
 import { PayPickSheet } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
 import { MethodPreview } from "./MethodPreview";
@@ -285,12 +285,33 @@ export function PayPage({
     else if (decision !== "bill") openPicker();
   };
 
+  // LOAD ALL, SHOW ALL (Pato, 2026-11-21, MESITA-4586: "load all at the
+  // same time and show placeholder loading while loading. i don't want you
+  // to display certain things while not having others … load all, display
+  // all. load not all, display none"): the page starts every read at once
+  // (the open bill, the places, the Wallet and its photos, the payment
+  // method) but stays the loading frame until each has answered, then
+  // paints whole. Each read answers or fails on its own clock (the bill
+  // check gives up at 10 s), so the frame always ends. Once shown it stays:
+  // a later "Check again" never blanks the page. Before, each box painted
+  // when its own read landed.
+  const [walletReady, setWalletReady] = useState(false);
+  const [methodReady, setMethodReady] = useState(false);
+  const onWalletReady = useCallback(() => setWalletReady(true), []);
+  const onMethodReady = useCallback(() => setMethodReady(true), []);
+  const allReady = walletReady && methodReady && (places !== null || placesFailed) && bill !== "loading";
+  const [shown, setShown] = useState(false);
+  if (allReady && !shown) setShown(true);
+
   return (
-    // 8PX, NOT 16 (Pato, 2026-11-17, MESITA-4276: "make body margins far
-    // smaller in this page ... it feels like an old mobile app from the
-    // 2010s"): 8px at the sides and 8px between Pay Bill, the doors and each
-    // panel, Home's one step (MESITA-4035); panels keep their 16px insides.
-    <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0">
+    <>
+    {shown ? null : <PayFrameLoading />}
+    {/* 8PX, NOT 16 (Pato, 2026-11-17, MESITA-4276: "make body margins far
+        smaller in this page ... it feels like an old mobile app from the
+        2010s"): 8px at the sides and 8px between Pay Bill, the doors and each
+        panel, Home's one step (MESITA-4035); panels keep their 16px insides.
+        Mounted (so its reads run) but hidden until all have answered. */}
+    <KeptScroll className={cn("scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0", !shown && "hidden")}>
       {/* A CLEAN WHITE HEADER (MESITA-4519): the black slab of MESITA-4512
           is gone ("remove the dark background … just a line dividing stuff
           is clearer"). Payment Method and Tickets dark, then Pay Bill in
@@ -347,17 +368,31 @@ export function PayPage({
           Funds get a bonus at the left, Pay bill at the right. lets keep it
           simple"): green "Add Funds, Get a Bonus" left (two lines), purple
           Pay Bill right. Send Gift is off Pay; /wallet/send and the Loyalty
-          Card's Send Gift stay. */}
+          Card's Send Gift stay. THE GRID AGAIN (Pato, 2026-11-21, MESITA-4586:
+          "return to the previous grid: Add Funds Add Funds / Send Gift, Pay
+          Bill. that grid was better"): green "Add Funds, Get a Bonus" across
+          both columns, then black Send Gift left and purple Pay Bill right,
+          in his order; every icon in its white circle. */}
       <div className="mt-2 grid grid-cols-2 gap-2">
         <PushLink
           href={CONSUMER_ROUTES.walletBuy}
-          className={cn(TILE, "bg-[#00D66F] text-center leading-tight text-neutral-950 hover:bg-[#00c265]")}
+          className={cn(TILE, "col-span-2 bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
           data-add-funds
         >
           <span className={cn(ICON_CIRCLE, "text-neutral-950")} aria-hidden>
             <Plus className="h-5 w-5" strokeWidth={2.5} />
           </span>
           Add Funds, Get a Bonus
+        </PushLink>
+        <PushLink
+          href={CONSUMER_ROUTES.walletSend}
+          className={cn(TILE, "bg-foreground text-background hover:bg-foreground/90")}
+          data-send-gift
+        >
+          <span className={cn(ICON_CIRCLE, "text-neutral-950")} aria-hidden>
+            <Gift className="h-5 w-5" strokeWidth={2.25} />
+          </span>
+          Send Gift
         </PushLink>
         {payBusy ? (
           <Skeleton className="h-24 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
@@ -385,7 +420,7 @@ export function PayPage({
       <section className={SECTION_CARD} aria-label="Payment method">
         <h2 className={SECTION_TITLE}>Payment method</h2>
         <div className={SECTION_ROWS}>
-          <MethodPreview row />
+          <MethodPreview row onReady={onMethodReady} />
         </div>
       </section>
       {loc.state === "prime" ? (
@@ -404,6 +439,7 @@ export function PayPage({
 
       {/* One panel (MESITA-4497): these place rows, then the Wallet's cards. */}
       <WalletSection
+        onReady={onWalletReady}
         giftToken={giftToken}
         leadIds={placeIds}
         leadCount={shownPlaces.length}
@@ -421,6 +457,7 @@ export function PayPage({
       </div>
       <PayPickSheet open={pickerOpen} onClose={closePicker} onPick={choosePlace} />
     </KeptScroll>
+    </>
   );
 }
 
