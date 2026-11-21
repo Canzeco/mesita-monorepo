@@ -376,8 +376,10 @@ export function PayPage({
           (Pato, 2026-11-21, MESITA-4587: "better for the moment the buttons
           must only say Buy Credits. Pay Bill. Keep shit clean."): two equal
           tiles, green "Buy Credits" left, purple Pay Bill right; Send Gift
-          is off Pay again. */}
-      <div className="mt-2 grid grid-cols-2 gap-2">
+          is off Pay again. PREPAY & GET BONUS, A BIT LARGER (Pato,
+          2026-11-21, MESITA-4593: "Prepay & Get Bonus / Pay Bill … make
+          green a bit larger"): the green tile takes 3fr, Pay Bill 2fr. */}
+      <div className="mt-2 grid grid-cols-[3fr_2fr] gap-2">
         <PushLink
           href={CONSUMER_ROUTES.walletBuy}
           className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
@@ -388,7 +390,7 @@ export function PayPage({
           <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
             <Plus className="h-5 w-5" strokeWidth={2.5} />
           </span>
-          Buy Credits
+          Prepay &amp; Get Bonus
         </PushLink>
         {payBusy ? (
           <Skeleton className="h-24 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
