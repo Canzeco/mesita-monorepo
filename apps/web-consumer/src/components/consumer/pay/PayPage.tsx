@@ -326,46 +326,49 @@ export function PayPage({
         </p>
       ) : null}
 
-      {/* THREE BIG BUTTONS, STACKED (Pato, 2026-11-21, MESITA-4574: "make
-          three buttons bigger … Add Funds Green. Pay Bill purple … INSTEAD
-          OF THE UGLLY ASS BLACK BUTTONS THERE. Send Gift must also exist …
-          as a black box … Green to Add Funds, Get a Bonus. (Green color of
-          links)"): full width, 64px, 18px semibold, a 24px glyph, in his
-          order. "Add Funds, Get a Bonus" in Link green (#00D66F, the offers'
-          green, black words) opens the places that sell credits
-          (/wallet/buy); Pay Bill in Stripe purple opens the picker; Send Gift
-          in black opens the place list to gift from. Pay Bill over a black
-          Add funds | Send Gift pair, 56px, before (MESITA-4559/4560). */}
-      <PushLink
-        href={CONSUMER_ROUTES.walletBuy}
-        className={cn(BIG_BUTTON, "mt-2 bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
-        data-add-funds
-      >
-        <Plus className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
-        Add Funds, Get a Bonus
-      </PushLink>
-      {payBusy ? (
-        <Skeleton className="mt-2 h-16 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
-      ) : (
-        <button
-          type="button"
-          className={cn(BIG_BUTTON, "mt-2 bg-[#635BFF] text-white hover:bg-[#5249e6]")}
-          aria-label={bill === "open" ? "Pay your open bill" : "Pay Bill"}
-          onClick={paySelected}
-          data-pay-bill
+      {/* THREE BUTTONS IN ONE ROW (Pato, 2026-11-21, MESITA-4579: "try to
+          put the buttons in a horizontal instead of vertical, the three
+          buttons"): three equal tiles, 8px apart, 88px tall, the glyph over
+          the word. Add Funds in Link green (#00D66F, the offers' green,
+          black ink; it says "Add Funds, Get a Bonus" aloud) opens the
+          places that sell credits (/wallet/buy); Pay Bill in Stripe purple,
+          in the middle, opens the picker; Send Gift in black opens the place
+          list to gift from. Stacked full width, 64px, for one deploy
+          (MESITA-4574, Pato: "make three buttons bigger … Add Funds Green.
+          Pay Bill purple … Send Gift … as a black box"). */}
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        <PushLink
+          href={CONSUMER_ROUTES.walletBuy}
+          className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
+          aria-label="Add Funds, Get a Bonus"
+          data-add-funds
         >
-          <QrCode className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
-          Pay Bill
-        </button>
-      )}
-      <PushLink
-        href={CONSUMER_ROUTES.walletSend}
-        className={cn(BIG_BUTTON, "bg-foreground text-background hover:bg-foreground/90 mt-2")}
-        data-send-gift
-      >
-        <Gift className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
-        Send Gift
-      </PushLink>
+          <Plus className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
+          Add Funds
+        </PushLink>
+        {payBusy ? (
+          <Skeleton className="h-22 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
+        ) : (
+          <button
+            type="button"
+            className={cn(TILE, "bg-[#635BFF] text-white hover:bg-[#5249e6]")}
+            aria-label={bill === "open" ? "Pay your open bill" : "Pay Bill"}
+            onClick={paySelected}
+            data-pay-bill
+          >
+            <QrCode className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
+            Pay Bill
+          </button>
+        )}
+        <PushLink
+          href={CONSUMER_ROUTES.walletSend}
+          className={cn(TILE, "bg-foreground text-background hover:bg-foreground/90")}
+          data-send-gift
+        >
+          <Gift className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
+          Send Gift
+        </PushLink>
+      </div>
 
       {/* ALL WHITE (Pato, 2026-11-21, MESITA-4574: "MAKE ALL BACKGROUND
           WHITE"): the cards sit on the page's own white, each with its
@@ -471,9 +474,9 @@ function PlaceRows({
   );
 }
 
-/** Pay's three big buttons (MESITA-4574): one size. */
-const BIG_BUTTON =
-  "flex h-16 w-full items-center justify-center gap-2.5 rounded-xl text-lg font-semibold transition active:scale-[0.99]";
+/** Pay's three buttons, side by side (MESITA-4579): one size. */
+const TILE =
+  "flex h-22 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-base font-semibold transition active:scale-[0.99]";
 
 /** Pay Bill's shape while the open-bill read runs, so a bill that is open
  *  never flashes the black button first. */

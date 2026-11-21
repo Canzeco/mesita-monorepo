@@ -12,14 +12,16 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
   if (body === "list") {
     // /pay (Pato, 2026-11-21, MESITA-4523: "update placeholders when loading
     // page"): the page as MESITA-4559 draws it. The white Mesita Wallet header
-    // with its Tickets icon, the three 64px buttons (green, purple, black,
-    // MESITA-4574), then the Payment method and Loyalty Cards cards on white.
+    // with its Tickets icon, the three buttons in one row (green, purple,
+    // black, MESITA-4579), then the Payment method and Loyalty Cards cards on white.
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0" aria-busy>
         <PayHeader title="Mesita Wallet" action={<TicketsShortcut icon />} />
-        <Skeleton className="mt-2 h-16 w-full rounded-xl bg-[#00D66F]/40" aria-hidden />
-        <Skeleton className="mt-2 h-16 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
-        <Skeleton className="mt-2 h-16 w-full rounded-xl" aria-hidden />
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <Skeleton className="h-22 min-w-0 rounded-xl bg-[#00D66F]/40" aria-hidden />
+          <Skeleton className="h-22 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
+          <Skeleton className="h-22 min-w-0 rounded-xl" aria-hidden />
+        </div>
         <div className="mt-1 flex flex-1 flex-col pb-8">
           <section className={SECTION_CARD}>
             <h2 className={SECTION_TITLE}>Payment method</h2>
