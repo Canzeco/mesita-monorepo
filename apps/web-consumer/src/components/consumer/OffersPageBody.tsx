@@ -10,6 +10,7 @@ import {
   CONSUMER_ROUTES,
   placePath,
   placeStoryPath,
+  payPlacePath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo } from "@/lib/navigate";
@@ -42,6 +43,11 @@ function readFromWallet(): boolean {
   return new URLSearchParams(window.location.search).get("from") === "wallet";
 }
 
+/** Opened from Pay Bill's prepay offer (MESITA-4599): paid or Back, the bill. */
+function readFromPay(): boolean {
+  return new URLSearchParams(window.location.search).get("from") === "pay";
+}
+
 /** The voucher a Home offer chip, or the Add a card round trip, asked for
  *  (MESITA-4207, MESITA-4230). */
 function readVoucherAsk(): string | null {
@@ -68,6 +74,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const router = useRouter();
   const profile = useConsumerProfile().data;
   const fromWallet = useSyncExternalStore(noopSubscribe, readFromWallet, () => false);
+  const fromPay = useSyncExternalStore(noopSubscribe, readFromPay, () => false);
   const askedVoucher = useSyncExternalStore(noopSubscribe, readVoucherAsk, () => null);
   const [askDismissed, setAskDismissed] = useState(false);
   const keep = useKeptScroll<HTMLDivElement>();
@@ -79,7 +86,10 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const vouchers = usePlaceVouchers(fetched.id, {
     onPaid: () => {
       setAskDismissed(true);
-      if (fromWallet) goBack(router, walletPlacePath(fetched.id));
+      // ASKED FROM THE BILL (MESITA-4599): back to the bill, its typed amount
+      // still there, the new credits ready to pay it.
+      if (fromPay) goBack(router, payPlacePath(fetched.id));
+      else if (fromWallet) goBack(router, walletPlacePath(fetched.id));
       else navigateTo(router, walletPlacePath(fetched.id), { replace: true, motion: "push" });
     },
   });
@@ -90,8 +100,8 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   }, [load, loadCards]);
 
   const back = useCallback(
-    () => goBack(router, fromWallet ? walletPlacePath(fetched.id) : placePath(fetched.id)),
-    [router, fromWallet, fetched.id],
+    () => goBack(router, fromPay ? payPlacePath(fetched.id) : fromWallet ? walletPlacePath(fetched.id) : placePath(fetched.id)),
+    [router, fromPay, fromWallet, fetched.id],
   );
   const place: PlaceDetail = vouchers.money ? { ...fetched, money: vouchers.money } : fetched;
   const credit = creditHere(place);
