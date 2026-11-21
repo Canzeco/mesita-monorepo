@@ -118,6 +118,12 @@ describe("instance estimates", () => {
     expect(e.perPlace).toBeGreaterThan(computeCreateCost(settings).perPlace);
   });
 
+  it("prices Maps per review and Facebook at the Free-plan page rate", () => {
+    const e = computeEnrichTickCost(settings);
+    expect(e.lines.find((l) => l.label === "Google reviews + images")?.cost).toBeCloseTo(0.056, 6);
+    expect(e.lines.find((l) => l.label === "Facebook")?.cost).toBe(0.012);
+  });
+
   it("vision off drops image descriptions; reviews are a fixed 100 (MESITA-3939)", () => {
     const e = computeEnrichTickCost({
       ...settings,

@@ -1,8 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ACTIVITY_NAV, CONFIGURATIONS_NAV, MANAGE_NAV } from "./Sidebar";
-import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
+import { ACTIVITY_NAV, CONFIGURATIONS_NAV, EXTRA_NAV, MANAGE_NAV } from "./Sidebar";
 
 const APP = join(__dirname, "..", "app", "(app)");
 
@@ -48,9 +47,15 @@ describe("Activity rail", () => {
   });
 });
 
-describe("Testing rail", () => {
-  it("is Billing Test only", () => {
-    expect(BILLING_TEST_PARENT.label).toBe("Billing");
+describe("Extra rail", () => {
+  it("is exactly Ping · Cost", () => {
+    expect(EXTRA_NAV.map((i) => i.label)).toEqual(["Ping", "Cost"]);
+    expect(EXTRA_NAV.map((i) => i.href)).toEqual(["/billing-test", "/cost"]);
+  });
+
+  it("gives each row its own page", () => {
+    for (const href of ["/billing-test", "/cost"])
+      expect(existsSync(join(APP, ...href.split("/").filter(Boolean), "page.tsx")), href).toBe(true);
   });
 });
 

@@ -1,4 +1,5 @@
 import type { SynthesisQuality } from "@/lib/synthesis-quality";
+import { apifyMapsUsd, FACEBOOK_PAGE_USD } from "@/app/(app)/cost/prices";
 import type { CrenupSettings } from "./crenup-guards";
 
 // Cost estimate — the pure model behind the calculator + the inline cost card.
@@ -27,13 +28,12 @@ export const COST_RATES = {
   googleDetails: 0.025,
   googlePhoto: 0.007, // Place Photo (New) media fetch, $7/1k, per photo
   googleTimezone: 0.005, // Time Zone API, $5/1k
-  // Apify Google Maps (compass) run: base place + place-details add-on + up to
-  // maxReviews:100 @ $0.50/100. Representative ~55 reviews; caps ~$0.65 at 100.
-  apifyGoogleMaps: 0.3,
+  // Apify Google Maps is priced per event in cost/prices.ts (place + details +
+  // each review). A flat $0.30 here was not that bill (MESITA-4518).
   apifyInstagramProfile: 0.0026, // IG profile scraper, $2.60/1k results
   apifyInstagramPost: 0.0027, // IG post scraper, $2.70/1k results, per post pulled
   apifyInstagramVerify: 0.01, // identity check: Perplexity fallback + 2nd scrape (worst case)
-  apifyFacebook: 0.01, // FB pages scraper, $10/1k pages, one page
+  apifyFacebook: FACEBOOK_PAGE_USD, // FB pages scraper, Free plan $12/1k pages
   firecrawlSearchPerField: 0.001, // one channel-discovery search (~1–2 credits)
   perplexityAgent: 0.01, // Perplexity Agent call: web search $0.005 + sonar tokens
   visionEfficient: 0.0007, // gpt-6-luna vision, one image (estimated from $0.10/$0.50 per 1M)
@@ -234,7 +234,7 @@ export function computeEnrichmentCost({
       // collected at the end, so it overlaps everything after it. The rows are
       // in SPEND order, which is wall-clock order — not queue order.
       label: "Google reviews + images",
-      cost: COST_RATES.apifyGoogleMaps,
+      cost: apifyMapsUsd(reviews),
       secs: TIME_RATES.apifyGoogleMaps,
       stage: "gather",
       active: reviewsActive,
