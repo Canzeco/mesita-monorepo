@@ -8,10 +8,10 @@ import { PayHeader } from "./PayHeader";
  *  you are loading"). Every Pay address draws it (MESITA-3614). */
 export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "proof" }) {
   if (body === "list") {
-    // /pay (MESITA-4510): a gray slab, lighter than black (Wallet, two light modules, a tall Pay), then search and place bones on white.
+    // /pay (MESITA-4512): a black slab (Wallet, two light modules, a tall Pay), then search and place bones on white.
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-8 *:shrink-0" aria-busy>
-        <div className="bg-[oklch(0.50_0_0)] -mx-2 px-2 pb-3">
+        <div className="bg-black -mx-2 px-2 pb-3">
           <PayHeader title="Wallet" embedded />
           <div className="mt-2 flex gap-2">
             <Skeleton className="h-12 min-w-0 flex-1 rounded-xl bg-card" aria-hidden />
