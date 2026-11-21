@@ -8,7 +8,17 @@ export type PayCard = { id: string; label: string; last4: string; exp_month: num
 
 /** The host's read of the guest's cards. Absent on the actions: signed out,
  *  or a host with no cards (admin, business). */
-export type PayCards = { state: "loading" } | { state: "error" } | { state: "ready"; cards: PayCard[] };
+export type PayCards =
+  | { state: "loading" }
+  | { state: "error" }
+  | {
+      state: "ready";
+      cards: PayCard[];
+      /** The guest chose the card as their default way to pay (MESITA-4529,
+       *  web-consumer's Payment methods): Pay with the card leads, Apple Pay /
+       *  Google Pay follows under "or". Absent or false keeps the wallet first. */
+      cardFirst?: boolean;
+    };
 
 /** How many cards one guest may save (the server's rule: one since MESITA-4168). */
 export const MAX_PAY_CARDS = 1;

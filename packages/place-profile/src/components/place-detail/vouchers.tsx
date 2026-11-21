@@ -683,6 +683,8 @@ type Offer = {
   cardsPending: boolean;
   /** Cards were read and none is usable: Pay goes to Add a card. */
   needsCard: boolean;
+  /** The guest's default is the card and one is ready: it leads the pay box (MESITA-4529). */
+  cardFirst: boolean;
   onPay: () => Promise<PayResult>;
   /** Apple Pay / Google Pay (MESITA-4384): the host's button for this
    *  offer, or null (signed out, admin's preview, a locked offer). */
@@ -768,6 +770,7 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
       signedOut,
       cardsPending: payCards !== undefined && payCards.state !== "ready",
       needsCard: payCards?.state === "ready" && payCard === null,
+      cardFirst: payCards?.state === "ready" && payCards.cardFirst === true && payCard !== null,
       onOpened: () => actions?.onOfferOpened?.(p.key, payCard !== null),
       onPay: async (): Promise<PayResult> => {
         if (!live) return null;
@@ -1336,8 +1339,10 @@ function PaySheet({
                       Add a card
                     </button>
                   ) : (
-                    <>
-                      {offer.express && expressState !== "none" ? (
+                    // The card leads when it is the guest's default (MESITA-4529):
+                    // this block moves above the wallet, which stays mounted.
+                    <div className={cn("flex flex-col gap-3", offer.cardFirst && "order-first")} data-card-first={offer.cardFirst ? "" : undefined}>
+                      {offer.express && expressState !== "none" && !offer.cardFirst ? (
                         <div className="text-muted-foreground flex items-center gap-3 text-sm" aria-hidden data-express-or="">
                           <span className="bg-border h-px flex-1" />
                           or
@@ -1355,7 +1360,14 @@ function PaySheet({
                         {needsCard && !signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
                         {button}
                       </button>
-                    </>
+                      {offer.express && expressState !== "none" && offer.cardFirst ? (
+                        <div className="text-muted-foreground flex items-center gap-3 text-sm" aria-hidden data-express-or="">
+                          <span className="bg-border h-px flex-1" />
+                          or
+                          <span className="bg-border h-px flex-1" />
+                        </div>
+                      ) : null}
+                    </div>
                   )}
                 </div>
               ) : (
