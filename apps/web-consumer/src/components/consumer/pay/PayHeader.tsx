@@ -1,4 +1,3 @@
-import { MesitaMark } from "@/components/brand/MesitaMark";
 import { BAR } from "@/components/consumer/search/header-classes";
 import type { ReactNode } from "react";
 
@@ -51,15 +50,15 @@ export function PayHeader({
   // TITLE LEFT, TICKETS RIGHT (Pato, 2026-11-21, MESITA-4559: "Mesita
   // Wallet to the left, tickets to the right"): the mark and title at the
   // left edge, the action (Tickets' icon button) at the right. Centred
-  // before (MESITA-4525).
+  // before (MESITA-4525). NO MARK (Pato, 2026-11-21, MESITA-4573: "remove
+  // Mesita logo and only mention Mesita Wallet"): the words alone.
   return (
     <div
       className="border-border bg-card sticky top-0 z-10 -mx-2 border-b"
       data-page-band
     >
       <div className="flex min-h-11 items-center justify-between gap-2 px-3 py-2">
-        <h1 className="flex min-h-11 min-w-0 items-center gap-2 text-xl font-semibold tracking-tight">
-          <MesitaMark className="h-6 w-6 shrink-0" />
+        <h1 className="flex min-h-11 min-w-0 items-center text-xl font-semibold tracking-tight">
           <span className="min-w-0 truncate">{title}</span>
         </h1>
         {action ? <div className="flex shrink-0 justify-end">{action}</div> : null}

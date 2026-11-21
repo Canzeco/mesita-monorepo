@@ -28,6 +28,7 @@ import { ActivityRowsSkeleton } from "@/components/consumer/activity/ActivityRow
 import { PRIMARY, SECONDARY } from "./wallet-buttons";
 import { offerHref } from "@/components/consumer/offer-button";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
+import { OffersBanner, OffersBannerSkeleton } from "./OffersBanner";
 import { toast } from "@/lib/toast";
 import type { CreditRow } from "./use-wallet";
 
@@ -191,6 +192,7 @@ export function LoyaltyCardSkeleton() {
           ))}
         </div>
       </Panel>
+      <OffersBannerSkeleton />
       <div className={cn(PANEL_CLASS, "mt-4")}>
         <div className="border-border grid grid-cols-4 border-b">
           {[0, 1, 2, 3].map((i) => (
@@ -438,6 +440,10 @@ export function PlaceCredit({
           Confirming a payment…
         </p>
       ) : null}
+
+      {/* OFFERS SECOND (MESITA-4573): the card, then what to buy here, then
+          the Tickets. */}
+      {!gone ? <OffersBanner slides={offers} placeHref={href} /> : null}
 
       {/* VOUCHERS TO ACTIVATE (MESITA-4116, Pato: "also add a list of
           vouchers pending to activate if it's the case"): Story vouchers

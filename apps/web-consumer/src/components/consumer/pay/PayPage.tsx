@@ -467,8 +467,6 @@ function PlaceRows({
             photo={p.photo}
             amount={p.available_cents > 0 ? money(p.available_cents, p.currency) : null}
             distance={located && p.distance_m !== null ? distanceText(p.distance_m) : null}
-            offers={p.offers ?? null}
-            placeHref={placePath(p.place_id)}
             placeId={p.place_id}
             onOpen={() =>
               navigateTo(router, p.available_cents > 0 || p.pending_cents > 0 ? walletPlacePath(p.place_id) : placePath(p.place_id), { motion: "drill" })

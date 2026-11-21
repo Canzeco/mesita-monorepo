@@ -52,17 +52,16 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
   );
 }
 
-/** One Loyalty Cards row in bones (MESITA-4560): card, name and amount,
- *  then the offer bar. No box of its own: it sits in the Loyalty Cards box. */
+/** One Loyalty Cards row in bones (MESITA-4560): card, name and amount, one
+ *  line since MESITA-4573. No box of its own: it sits in the Loyalty Cards box. */
 export function LoyaltyCardBoxSkeleton() {
   return (
-    <div className="flex flex-col gap-2 px-3 py-2.5" aria-hidden>
+    <div className="px-3 py-2.5" aria-hidden>
       <span className="flex min-h-11 items-center gap-3">
         <Skeleton className="h-[26px] w-10 shrink-0 rounded-[5px]" />
         <Skeleton className="h-4 w-32 rounded" />
         <Skeleton className="ml-auto h-4 w-16 rounded" />
       </span>
-      <Skeleton className="h-11 w-full rounded-xl" />
     </div>
   );
 }
