@@ -41,8 +41,8 @@ describe("the family chips are the only guest filter (MESITA-2384, MESITA-2417)"
 });
 
 describe("PLACE_FAMILIES catalog (final law)", () => {
-  it("is thirty-seven guest families plus Undefined last", () => {
-    expect(PLACE_FAMILIES).toHaveLength(38);
+  it("is thirty guest families plus Undefined last", () => {
+    expect(PLACE_FAMILIES).toHaveLength(31);
     expect(PLACE_FAMILIES.map((f) => f.key)).toEqual([
       "dinner",
       "coffee",
@@ -72,15 +72,8 @@ describe("PLACE_FAMILIES catalog (final law)", () => {
       "bakery",
       "nightclub",
       "music",
-      "family",
       "sports",
       "hookah",
-      "karaoke",
-      "fun",
-      "cinema",
-      "casino",
-      "spa",
-      "tourist",
       "undefined",
     ]);
     const last = PLACE_FAMILIES[PLACE_FAMILIES.length - 1]!;
