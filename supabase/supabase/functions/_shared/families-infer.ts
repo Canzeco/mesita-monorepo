@@ -60,8 +60,8 @@ export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
   dinner: "a dinner destination — the evening meal is the occasion: bistros, steakhouses, trattorias, tasting menus, date-night places people book; not a casual or everyday restaurant that also serves at night, nor a café, counter, bar or beach club",
   fancy: "genuinely upscale — fine dining, a tasting menu, a dress code or special-occasion prices; not merely stylish, popular, well rated or at a nice hotel",
   drinks: "drinking is the point — a bar, cantina, brewery or wine bar; not a restaurant that serves beer",
-  sports: "built to watch sports — screens and game nights are the draw",
-  hookah: "hookah or shisha is a main draw",
+  fun: "an activity a group does — bowling, arcades, karts, escape rooms, billiards, mini golf, rinks, water parks; not a lively restaurant or a beach club",
+  casino: "a casino — slots and gaming tables are the draw",
   night_out: "a late night out — lounges, rooftops, bars that turn into parties; not a restaurant that is merely open late",
   nightclub: "a nightclub — a dance floor and DJs",
   music: "live music is the draw — bands, concerts, jazz",
@@ -111,7 +111,7 @@ export function familiesRule(stage: FamiliesStage, max: number = FAMILIES_MAX): 
 
 /**
  * The families a Google hint may name (MESITA-4238): cuisines and the
- * morning trio. Never a venue family (drinks, night, music…) nor a
+ * morning trio. Never a venue family (drinks, fun, casino, night…) nor a
  * generic one (dinner, fancy, healthy, quick_bite, sweet): the code map gives
  * Bar to `bar_and_grill` and Dinner to every sit-down cuisine, which would nudge the exact false positives this fixes.
  */

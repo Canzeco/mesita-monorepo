@@ -15,9 +15,11 @@ import {
   CakeSlice,
   Coffee,
   Croissant,
+  Dices,
   Drumstick,
   EggFried,
   Fish,
+  Gamepad2,
   Hamburger,
   HandPlatter,
   Heart,
@@ -145,26 +147,6 @@ const Fries = drawnIcon("Fries", [
   "M16 11.5 17 4",
 ]);
 
-/** A soccer ball: Sports. */
-const SoccerBall = drawnIcon("SoccerBall", [
-  "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z",
-  "M12 8.5l3.3 2.4-1.2 3.9H9.9l-1.2-3.9Z",
-  "M12 8.5V2",
-  "M15.3 10.9l6.2-2",
-  "M14.1 14.8l3.8 5.3",
-  "M9.9 14.8l-3.8 5.3",
-  "M8.7 10.9l-6.2-2",
-]);
-
-/** Bowl, tray, stem, base and hose: Hookah. */
-const Hookah = drawnIcon("Hookah", [
-  "M10 2.5h4l-.5 3h-3Z",
-  "M8 7h8",
-  "M12 5.5v9.5",
-  "M12 15a3.5 3.5 0 0 0-3.5 3.5c0 1 .4 1.9 1 2.5h5c.6-.6 1-1.5 1-2.5A3.5 3.5 0 0 0 12 15Z",
-  "M12 11c3.5 0 6 1.5 6 4.5 0 2-1 3.5-2 4.5",
-]);
-
 /** A hanging mirror ball and a glint: Club's 🪩. */
 const DiscoBall = drawnIcon("DiscoBall", [
   "M12 2v4",
@@ -218,8 +200,8 @@ export const FAMILY_ICONS: Readonly<Record<string, LineIcon>> = {
   dinner: UtensilsCrossed,
   fancy: HandPlatter,
   drinks: Beer,
-  sports: SoccerBall,
-  hookah: Hookah,
+  fun: Gamepad2,
+  casino: Dices,
   night_out: Moon,
   nightclub: DiscoBall,
   music: Music,

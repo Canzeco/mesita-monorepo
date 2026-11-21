@@ -17,11 +17,11 @@ Deno.test("not social: no gym, court, studio, salon or barber sits in a family (
   }
 });
 
-Deno.test("thirty families: the seven retired rails hold no Google type (MESITA-4571)", () => {
+Deno.test("thirty families: the retired rails hold no Google type (MESITA-4571, MESITA-4588)", () => {
   for (const t of RETIRED_RAIL_TYPES) {
     assertEquals(familiesForGoogleType(t), [], t);
   }
-  const gone = ["family", "karaoke", "fun", "cinema", "casino", "spa", "tourist", "go_out"];
+  const gone = ["family", "karaoke", "sports", "hookah", "cinema", "spa", "tourist", "go_out"];
   const stillThere = Object.keys(GOOGLE_TYPE_SUPER).filter((t) =>
     (familiesForGoogleType(t) as string[]).some((f) => gone.includes(f))
   );
@@ -30,8 +30,13 @@ Deno.test("thirty families: the seven retired rails hold no Google type (MESITA-
   assertEquals(familiesForGoogleType("family_restaurant"), ["dinner"]);
   assertEquals(familiesForGoogleType("karaoke"), ["drinks", "night_out"]);
   assertEquals(familiesForGoogleType("comedy_club"), ["night_out"]);
-  assertEquals(familiesForGoogleType("billiards"), ["drinks"]);
-  assertEquals(familiesForGoogleType("board_game_cafe"), ["coffee"]);
+  // Fun and Casino replaced Sports and Hookah (MESITA-4588).
+  assertEquals(familiesForGoogleType("billiards"), ["drinks", "fun"]);
+  assertEquals(familiesForGoogleType("board_game_cafe"), ["coffee", "fun"]);
+  assertEquals(familiesForGoogleType("bowling_alley"), ["fun"]);
+  assertEquals(familiesForGoogleType("casino"), ["casino"]);
+  assertEquals(familiesForGoogleType("sports_bar"), ["drinks"]);
+  assertEquals(familiesForGoogleType("hookah_bar"), ["drinks", "night_out"]);
 });
 
 Deno.test("sixteen rails folded into their parent (MESITA-2888)", () => {
@@ -39,7 +44,7 @@ Deno.test("sixteen rails folded into their parent (MESITA-2888)", () => {
   assertEquals(familiesForGoogleType("ice_cream_shop"), ["sweet"]);
   assertEquals(familiesForGoogleType("vegan_restaurant"), ["healthy"]);
   assertEquals(familiesForGoogleType("sandwich_shop"), ["quick_bite"]);
-  assertEquals(familiesForGoogleType("chicken_wings_restaurant"), ["chicken", "sports"]);
+  assertEquals(familiesForGoogleType("chicken_wings_restaurant"), ["chicken"]);
   assertEquals(familiesForGoogleType("kebab_shop"), ["quick_bite", "arabic"]);
   assertEquals(familiesForGoogleType("barbecue_restaurant"), ["dinner", "steak"]);
   assertEquals(familiesForGoogleType("ramen_restaurant"), ["japanese"]);
