@@ -6,7 +6,7 @@
 // operator's now) are ignored.
 
 import { useSyncExternalStore } from "react";
-import { MAP_FILTER_DEFAULTS, type MapFilters } from "@/lib/map-filters-engine";
+import { MAP_FILTER_DEFAULTS, type MapFilters, type MapSpecial } from "@/lib/map-filters-engine";
 import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
 // v6: v5 held `resultLimit` (How many). That stop is operator
@@ -37,6 +37,7 @@ function readPersisted(): MapFilters {
               typeof k === "string" && KNOWN_FAMILY_KEYS.has(k),
           )
         : [],
+      special: parsed.special === "saved" || parsed.special === "nearby" ? parsed.special : null,
     };
   } catch {
     return MAP_FILTER_DEFAULTS;
@@ -79,7 +80,14 @@ function patchMapFilters(partial: Partial<MapFilters>) {
 export function selectMapFamily(key: FamilyKey) {
   patchMapFilters({
     familyKeys: state.familyKeys.length === 1 && state.familyKeys[0] === key ? [] : [key],
+    special: null,
   });
+}
+
+/** Saved or Nearby (MESITA-4592): every family; a family pick or Popular
+ *  clears it. */
+export function setMapSpecial(special: MapSpecial) {
+  patchMapFilters({ familyKeys: [], special });
 }
 
 /** The Menu's pick (MESITA-4469): one family, or none for Popular.
@@ -88,12 +96,13 @@ export function selectMapFamily(key: FamilyKey) {
 export function setMapFamilies(keys: readonly FamilyKey[]) {
   patchMapFilters({
     familyKeys: [...new Set(keys)].filter((k) => KNOWN_FAMILY_KEYS.has(k)),
+    special: null,
   });
 }
 
 /** All Families: no family cut at all, the default (MESITA-2298). */
 export function clearMapFamilies() {
-  patchMapFilters({ familyKeys: [] });
+  patchMapFilters({ familyKeys: [], special: null });
 }
 
 export function useMapFilters(): MapFilters {

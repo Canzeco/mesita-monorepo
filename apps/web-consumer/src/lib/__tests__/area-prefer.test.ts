@@ -70,7 +70,7 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
   // and no request leaves; Saved never gates. The skeleton waits only for
   // the browser's FIRST answer: keying it on `settled` would swap the
   // chooser for the skeleton on a "Use my location" tap (eng review F1).
-  it("no location, no rank: the app-wide gate asks, Places waits", () => {
+  it("no location, no rank: Home and Search ask, Places waits", () => {
     const rails = src("components/consumer/home/CatalogRails.tsx");
     expect(rails).toContain("const here = origin ?? coords ?? null;");
     expect(rails).toContain("const noPoint = here === null && chip !== SAVED_CHIP;");
@@ -89,9 +89,9 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     const body = rails.slice(rails.indexOf("if (chip === SAVED_CHIP) {"));
     expect(body.indexOf("if (noPoint) return shell(waiting);")).toBeGreaterThan(-1);
     expect(rails).toContain('{tab === "places" && here !== null ? strip : null}');
-    // The gate covers every shell screen until a point exists.
+    // The gate covers Home and Search (only) until a point exists.
     const gateSrc = src("components/consumer/LocationGate.tsx");
-    expect(gateSrc).toContain("const asking = answered && !hasPoint;");
+    expect(gateSrc).toContain("const asking = here && answered && !hasPoint;");
     expect(gateSrc).toContain("<LocationChooser");
     expect(src("app/(shell)/layout.tsx")).toContain("<LocationGate />");
     expect(rails).not.toContain("cityBar");

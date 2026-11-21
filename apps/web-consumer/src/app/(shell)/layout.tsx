@@ -220,6 +220,11 @@ export default async function ConsumerShellLayout({
               one, Back slides it away (MESITA-3644). */}
           <ScreenStage>
             {children}
+            {/* Home and Search need a location (MESITA-4589, narrowed by
+                Pato 2026-11-21: "location only needed for home and for
+                search, not for all the app"): over their screen, under the
+                tab bar, so Pay and Me stay reachable. */}
+            <LocationGate />
             {/* The tapped tab's placeholder, drawn on finger-down over the
                 old screen until the new one commits (MESITA-2846). */}
             <PendingScreen
@@ -244,9 +249,6 @@ export default async function ConsumerShellLayout({
           <WelcomeModal />
           <SignGateModal />
           <AddCardModal />
-          {/* No location, no Mesita (MESITA-4589): over every screen and the
-              tab bar until a location is chosen. */}
-          <LocationGate />
         </div>
       </ConsumerIdentityProvider>
       <Toaster />

@@ -52,8 +52,10 @@ import {
   clearMapFamilies,
   selectMapFamily,
   setMapFamilies,
+  setMapSpecial,
   useMapFilters,
 } from "@/lib/use-map-filters";
+import { useViewer } from "@/lib/identity-context";
 import { FamilyFilterSheet } from "./FamilyFilterSheet";
 import { cn } from "@/lib/utils";
 import {
@@ -91,7 +93,10 @@ export function SearchHeader({
   children?: ReactNode;
 }) {
   const filters = useMapFilters();
-  const everyFamily = filters.familyKeys.length === 0;
+  const special = filters.special;
+  const everyFamily = special === null && filters.familyKeys.length === 0;
+  // Signed out, nothing is saved (MESITA-4325): no Saved chip.
+  const canSave = useViewer() !== "anonymous";
   const [sheetOpen, setSheetOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
   return (
@@ -160,6 +165,33 @@ export function SearchHeader({
             >
               {/* Menu, Popular, then the families (Pato, MESITA-3198, undoing
                   MESITA-3195): Menu stays pinned, Popular scrolls with them. */}
+              {/* Saved · Nearby · Popular, as on Home (MESITA-4592). */}
+              {canSave ? (
+                <button
+                  type="button"
+                  onClick={() => setMapSpecial("saved")}
+                  aria-pressed={special === "saved"}
+                  className={cn(CHIP, special === "saved" ? CHIP_ON : CHIP_OFF)}
+                  data-search-chip-saved
+                >
+                  <span aria-hidden className={CHIP_EMOJI}>
+                    ❤️
+                  </span>
+                  <span>Saved</span>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setMapSpecial("nearby")}
+                aria-pressed={special === "nearby"}
+                className={cn(CHIP, special === "nearby" ? CHIP_ON : CHIP_OFF)}
+                data-search-chip-nearby
+              >
+                <span aria-hidden className={CHIP_EMOJI}>
+                  📍
+                </span>
+                <span>Nearby</span>
+              </button>
               <button
                 type="button"
                 onClick={clearMapFamilies}
@@ -173,7 +205,7 @@ export function SearchHeader({
                 <span>Popular</span>
               </button>
               {FILTERABLE_PLACE_FAMILIES.map((family) => {
-                const on = filters.familyKeys.includes(family.key);
+                const on = special === null && filters.familyKeys.includes(family.key);
                 return (
                   <button
                     key={family.key}
@@ -209,6 +241,9 @@ export function SearchHeader({
         onClose={() => setSheetOpen(false)}
         applied={filters.familyKeys}
         onApply={setMapFamilies}
+        special={special}
+        onSpecial={setMapSpecial}
+        canSave={canSave}
       />
       <AskAiModal open={askOpen} onClose={() => setAskOpen(false)} />
     </div>

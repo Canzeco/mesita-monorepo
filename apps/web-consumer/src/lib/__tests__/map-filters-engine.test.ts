@@ -34,9 +34,11 @@ describe("placeSearchScope", () => {
 });
 
 describe("the family chips are the only guest filter (MESITA-2384, MESITA-2417)", () => {
-  it("holds family keys alone: no source, no How many, no Google reviews stop", () => {
-    expect(Object.keys(MAP_FILTER_DEFAULTS)).toEqual(["familyKeys"]);
+  it("holds family keys and Saved/Nearby only: no source, no How many, no Google reviews stop", () => {
+    // Saved and Nearby joined Popular on Search (MESITA-4592).
+    expect(Object.keys(MAP_FILTER_DEFAULTS)).toEqual(["familyKeys", "special"]);
     expect(MAP_FILTER_DEFAULTS.familyKeys).toEqual([]);
+    expect(MAP_FILTER_DEFAULTS.special).toBeNull();
   });
 });
 

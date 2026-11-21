@@ -5,8 +5,8 @@
 // ASK FOR LOCATION AND WHEN CLICK, THEN DISPLAY LOCATIONS MODAL TO ADD
 // LOCATION"). Once the browser has answered its first ask, a guest with no
 // point (no device fix, no chosen saved location) sees one full-screen ask
-// over every shell screen, the tab bar included: one dark "Choose location"
-// button. The button opens the locations sheet,
+// over Home and Search (their screen, under the tab bar): one dark
+// "Choose location" button. Pay, Me and the rest never ask. The button opens the locations sheet,
 // the header sheet's own body (LocationChooser: Current location, saved
 // locations, Add a location, search). Any choice makes a point and the
 // ask goes. It replaces Home's inline chooser (MESITA-4542, MESITA-4585).
@@ -16,6 +16,7 @@
 //   a point             → nothing
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
@@ -30,6 +31,12 @@ import { useUserLocation, useUserLocationSettled } from "@/lib/use-user-location
 import { PRIMARY_BUTTON_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import { Z_LOCATION_GATE } from "@/lib/z-index";
 import { cn } from "@/lib/utils";
+
+/** Where a location is needed: Home and Search only (Pato, 2026-11-21:
+ *  "location only needed for home and for search, not for all the app"). */
+export function needsLocation(path: string): boolean {
+  return path === "/home" || path.startsWith("/home/") || path === "/search" || path.startsWith("/search/");
+}
 
 /** The gate's page-load facts (MESITA-4542 eng review F1): the browser has
  *  answered its first ask, and each event fired once. `settled` goes false
@@ -63,7 +70,8 @@ export function LocationGate() {
   // later ask (which makes `settled` false again).
   const answered = settled || gate.answered;
   const hasPoint = (origin ?? coords) !== null;
-  const asking = answered && !hasPoint;
+  const here = needsLocation(usePathname() ?? "");
+  const asking = here && answered && !hasPoint;
   const wasAsking = useRef(false);
   useEffect(() => {
     if (settled) markAnswered();
