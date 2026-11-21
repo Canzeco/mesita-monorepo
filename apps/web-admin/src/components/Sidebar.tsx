@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { Icon } from "@phosphor-icons/react";
 import { ShieldCheckIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
+import { COST_PARENT } from "@/app/(app)/cost/nav";
 import { LOGS_PARENT } from "@/app/(app)/logs/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { FEEDBACK_PARENT } from "@/app/(app)/feedback/nav";
@@ -40,7 +41,7 @@ type NavItem = {
 const ACCOUNT_NAV: NavItem = { href: "/account", label: "Account", Icon: UserCircleIcon };
 
 // The MVP First Stage rail (MESITA-2088): Manage · Configurations · Activity ·
-// Testing, with Account at the foot (MESITA-3261). Alerts (Global Monitor, Credits Liability) are deleted, routes and
+// Extra, with Account at the foot (MESITA-3261). Alerts (Global Monitor, Credits Liability) are deleted, routes and
 // all — Pato, 2026-10-10: "kill the stupid alerts". Testing › Billing went
 // with them and came back the same day (MESITA-2125).
 
@@ -117,8 +118,8 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
 // guests report from a place's three dots, a log like the other two.
 export const ACTIVITY_NAV: NavItem[] = [LOGS_PARENT, FEEDBACK_PARENT];
 
-// Testing — operator tools that probe live external systems (Billing only).
-const TESTING_NAV: NavItem[] = [BILLING_TEST_PARENT];
+// Extra — Ping probes the paid vendors. Cost is the per-place bill (MESITA-4518).
+export const EXTRA_NAV: NavItem[] = [BILLING_TEST_PARENT, COST_PARENT];
 
 const SIDEBAR_SECTIONS: {
   id: string;
@@ -128,7 +129,7 @@ const SIDEBAR_SECTIONS: {
   { id: "manage", label: "Manage", items: MANAGE_NAV },
   { id: "configurations", label: "Configurations", items: CONFIGURATIONS_NAV },
   { id: "activity", label: "Activity", items: ACTIVITY_NAV },
-  { id: "testing", label: "Testing", items: TESTING_NAV },
+  { id: "extra", label: "Extra", items: EXTRA_NAV },
 ];
 
 /** "Mesita Admin" in the frame: Outfit, as Business and the consumer app draw
