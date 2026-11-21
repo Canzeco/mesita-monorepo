@@ -10,7 +10,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(27);
+select plan(36);
 
 create temp table cs (k text primary key, id uuid, handle text);
 insert into cs values
@@ -204,6 +204,73 @@ select is(
   (select void_reason from public.stories where purchase_id = (select id from sp where k = 'd')),
   'refunded',
   'a refund voids the open story'
+);
+
+-- ━━━ MESITA-4527: a freed voucher takes a found story; a story deleted mid-check pays nothing ━━━
+
+select wallet_credit_purchase((select id from sp where k = 'c'), 'pi_4484c', null);
+select pg_temp.post('c1', 'c', 'meta', interval '2 minutes');
+select story_detect((select id from mm where k = 'c1'), '00000000-0000-4000-8000-000000014484');
+select pg_temp.post('c2', 'c', 'meta', interval '1 minute');
+select story_detect((select id from mm where k = 'c2'), '00000000-0000-4000-8000-000000014484');
+select story_drop((select id from mm where k = 'c1'));
+select is(
+  (pg_temp.story_for('c')).mention_id,
+  (select id from mm where k = 'c2'),
+  'deleting the attached story hands the voucher to the story already found there'
+);
+update public.story_mentions set deleted_at = now() where id = (select id from mm where k = 'c2');
+select is(
+  story_settle((pg_temp.story_for('c')).id, true, false) ->> 'reason',
+  'deleted',
+  'a story deleted while the re-check fetched it is void, whatever the fetch said'
+);
+select is(
+  (select count(*)::int from public.wallet_entries where purchase_id = (select id from sp where k = 'c') and kind = 'bonus'),
+  0,
+  'and it pays no bonus'
+);
+
+-- ━━━ MESITA-4527: the operator acts on the live ticket ━━━━━━━━━━━━━━━━━━━━━━━━
+
+select is(
+  wallet_override_story((select id from sp where k = 'b'), 'void') ->> 'story_id',
+  (select id::text from public.stories where purchase_id = (select id from sp where k = 'b') and mention_id = (select id from mm where k = 'b2')),
+  'void hits the live ticket, not the older voided one'
+);
+select is(
+  (select count(*)::int from public.stories where purchase_id = (select id from sp where k = 'b') and state = 'void'),
+  2,
+  'both tickets of that voucher are now void'
+);
+
+-- ━━━ MESITA-4527: a refunded story never counts again ━━━━━━━━━━━━━━━━━━━━━━━━━
+
+select isnt(
+  (select mention_id from public.stories where purchase_id = (select id from sp where k = 'd')),
+  null,
+  'the refund void keeps its story'
+);
+select is(
+  story_detect((select id from mm where k = 'd'), '00000000-0000-4000-8000-000000014484') ->> 'outcome',
+  'duplicate',
+  'the same story cannot attach to another voucher after the refund'
+);
+select wallet_purge_story_mentions(now() + interval '2 days');
+select ok(
+  exists (select 1 from public.story_mentions where id = (select id from mm where k = 'b1')),
+  'the purge keeps a mention a void ticket holds'
+);
+
+-- ━━━ MESITA-4527: a waiter never approves an unattached story ━━━━━━━━━━━━━━━━━
+
+update public.story_mentions
+   set review_token = '45270000000000000000000000000e4e', review_place_id = '00000000-0000-4000-8000-000000024484'
+ where id = (select id from mm where k = 'e');
+select is(
+  story_review('45270000000000000000000000000e4e', '00000000-0000-4000-8000-000000024484', true, 'pgtap') ->> 'code',
+  'not_attached',
+  'story_review refuses a ticket no voucher holds'
 );
 
 select * from finish();
