@@ -19,6 +19,7 @@ import { isUuid } from "../_shared/place-id.ts";
 import { readStaffToken, staffDeviceHash, supabaseStaffStore, tabStaffJti } from "../_shared/staff.ts";
 import { callTabRpc, isTabToken, readTabByToken, rpcRefusal } from "../_shared/tab.ts";
 import { cancelReleasedHolds } from "../_shared/settle-payment.ts";
+import { endAttempt, readAttemptByToken } from "../_shared/guest-attempt.ts";
 import { paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("visit-web-reject-tab", async (req) => {
@@ -41,6 +42,21 @@ serveJson("visit-web-reject-tab", async (req) => {
     const jti = tabStaffJti(staffToken, info);
     if (!jti) return json({ ok: false, code: "staff_code_needed", error: "Type the waiter code" }, 403);
     const tab = await readTabByToken(admin, token);
+    // MESITA-4524: a ticket not yet closed. Reject ends it (its hold let go
+    // first); once the waiter confirmed it answers 409 verified.
+    if (!tab) {
+      const a = await readAttemptByToken(admin, token);
+      if (a) {
+        const k = paymentsStripeKey();
+        const ended = await endAttempt(admin, k ? stripeClient(k) : null, a.id, "rejected", { placeId, source: "visit-web-reject-tab" });
+        console.log("[visit-web-reject-tab]", JSON.stringify({ attempt_id: a.id, place_id: placeId, outcome: ended.ok ? ended.outcome : ended.code }));
+        if (ended.ok) return json({ ok: true, outcome: ended.outcome === "already" ? "already_rejected" : "rejected" });
+        if (ended.code === "forbidden") return json({ ok: false, code: "forbidden", error: "This payment is for another place." }, 403);
+        if (ended.code === "charging" || ended.code === "already_final") return json({ ok: false, code: "verified", error: "This bill is already confirmed." }, 409);
+        if (ended.code === "pending") return json({ ok: false, code: "card_pending", error: "The bank is still answering. Tap again in a moment." }, 409);
+        return json({ ok: false, code: "gone", error: "Scan the guest's screen again." }, 404);
+      }
+    }
     if (!tab || tab.origin !== "guest") {
       return json({ ok: false, code: "gone", error: "Scan the guest's screen again." }, 404);
     }

@@ -27,6 +27,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { cancelReleasedHolds, settlePayment } from "./settle-payment.ts";
+import { sweepGuestAttempts } from "./guest-attempt.ts";
 import { availableAtFor, type OpenPurchase, settlePurchase } from "./wallet.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
 import { errorMessage } from "./errors.ts";
@@ -240,6 +241,15 @@ export async function runSettleTick(deps: TickDeps, cfg: SettleConfig): Promise<
     if (holds > 0) console.log("[settle-cron] holds_cancelled", JSON.stringify({ count: holds }));
   } catch (err) {
     console.error("[settle-cron] holds_cancel", errorMessage(err));
+  }
+
+  // MESITA-4524: every guest pay ticket ends. Past its window it is let go
+  // (its hold cancelled and read back first); a confirmed card capture that
+  // has not answered is tried again; never released while money may move.
+  try {
+    await sweepGuestAttempts(deps.admin, deps.stripe, deps.now());
+  } catch (err) {
+    console.error("[settle-cron] guest_attempts", errorMessage(err));
   }
 
   // Pending credit that turned Available since the last ticks: one

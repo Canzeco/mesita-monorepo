@@ -57,6 +57,16 @@
 //   card_pm_id, or with no card part) · 409 disabled (the kill switch
 //   app_config.money_config.express_wallets is []).
 
+// MESITA-4524 (no zombie tickets): the tap opens a TICKET (guest_pay_attempts)
+// that always ends: closed (paid) or released with one reason. The card part
+// is a HOLD now (manual capture), placed on "Show the waiter"; the waiter's
+// Confirm captures it (visit-web-verify-tab, _shared/guest-attempt.ts).
+// Cash and credits wait for the same Confirm. The answer's `tab_id` is the
+// attempt id: the bill page reads it through consumer-web-get-tab until it
+// closes. `release: true` ends the guest's own attempt (a dismissed wallet
+// sheet, a Cancel before Confirm). An open attempt past its window ends here
+// before a new one begins.
+
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
@@ -69,6 +79,7 @@ import { readVoucherPlace } from "../_shared/wallet.ts";
 import { callTabRpc, hashTabToken, mintTabToken, readGuestPayBody, rpcRefusal, tabUrl } from "../_shared/tab.ts";
 import { ownCard, runTabCard, tabCardRates } from "../_shared/tab-card.ts";
 import { readMoneyConfig } from "../_shared/money-config.ts";
+import { endAttempt } from "../_shared/guest-attempt.ts";
 import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-pay-guest", async (req) => {
@@ -79,11 +90,16 @@ serveJson("consumer-web-pay-guest", async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   // A dismissed sheet retires this tap. No ticket.
   if (bodyRes.body.release === true && typeof bodyRes.body.request_id === "string") {
-    const released = await callTabRpc(admin, "pay_guest_release", {
-      p_consumer_id: user.id,
-      p_request_id: bodyRes.body.request_id,
-    });
-    return json({ ok: true, released: released.outcome ?? "released", tab_id: released.tab_id ?? null });
+    const { data: own, error: ownErr } = await admin.from("guest_pay_attempts").select("id")
+      .eq("consumer_id", user.id).eq("request_id", bodyRes.body.request_id).maybeSingle();
+    if (ownErr) throw new Error(`attempt_read: ${ownErr.message}`);
+    if (!own) return json({ ok: true, released: "none", tab_id: null });
+    const k = paymentsStripeKey();
+    const ended = await endAttempt(admin, k ? stripeClient(k) : null, String((own as { id: string }).id), "cancelled", { consumerId: user.id, source: "consumer-web-pay-guest" });
+    if (!ended.ok && ended.code === "charging") {
+      return json({ ok: false, code: "charging", error: "The waiter already confirmed. Your card is being charged." }, 409);
+    }
+    return json({ ok: true, released: ended.ok ? ended.outcome : ended.code, tab_id: ended.ok ? null : ended.tabId ?? null });
   }
   const parsed = readGuestPayBody(bodyRes.body);
   if (!parsed.ok) return json({ ok: false, code: parsed.code, error: parsed.error, ...parsed.detail }, parsed.status);
@@ -138,8 +154,9 @@ serveJson("consumer-web-pay-guest", async (req) => {
     }
 
     const token = mintTabToken();
+    const windowMinutes = (await readMoneyConfig(admin)).guest_pay_window_minutes;
     // MESITA-4502: no pay_tabs row until the money is done.
-    const r = await callTabRpc(admin, "pay_guest_begin", {
+    const beginArgs = {
       p_consumer_id: userId,
       p_place_id: pay.placeId,
       p_currency: currency,
@@ -154,7 +171,15 @@ serveJson("consumer-web-pay-guest", async (req) => {
       p_request_id: pay.requestId,
       p_stripe_account_id: (cardArgs.p_stripe_account_id as string | undefined) ?? null,
       p_card_fee_cents: (cardArgs.p_card_fee_cents as number | undefined) ?? 0,
-    });
+      p_window_minutes: windowMinutes,
+    };
+    let r = await callTabRpc(admin, "pay_guest_begin", beginArgs);
+    // MESITA-4524: an attempt of this guest past its window holding a card
+    // PaymentIntent ends first (its hold let go), then this one begins.
+    if (r.ok !== true && r.code === "too_many_open" && r.open_expired === true && typeof r.open_attempt_id === "string") {
+      await endAttempt(admin, stripe, r.open_attempt_id, "expired", { consumerId: userId, source: "consumer-web-pay-guest" });
+      r = await callTabRpc(admin, "pay_guest_begin", beginArgs);
+    }
     if (r.ok !== true) {
       const refusal = rpcRefusal(r);
       console.log("[consumer-web-pay-guest]", JSON.stringify({ outcome: refusal.code, place_id: pay.placeId }));
@@ -187,24 +212,22 @@ serveJson("consumer-web-pay-guest", async (req) => {
         consumerId: userId,
         tabId: attemptId,
         publishableKey: paymentsPublishableKey(livemode),
-        hold: false,
+        // MESITA-4524: a hold; the waiter's Confirm captures it.
+        hold: true,
         attemptId,
       });
       if (!res.ok) {
         console.log("[consumer-web-pay-guest]", JSON.stringify({ outcome: res.code, attempt_id: attemptId, card_payment_id: cardPaymentId }));
-        await callTabRpc(admin, "pay_guest_release", { p_consumer_id: userId, p_request_id: pay.requestId });
+        // A refused hold: the ticket ends declined at once (nothing held).
+        await callTabRpc(admin, "pay_guest_release", { p_consumer_id: userId, p_request_id: pay.requestId, p_reason: "declined" });
         return json({ ok: false, code: res.code, error: res.error, ...res.detail }, res.status);
       }
       cardStep = res.step;
     }
 
-    if (cardStep?.status === "succeeded") {
-      const closed = await callTabRpc(admin, "pay_guest_close", { p_attempt_id: attemptId });
-      if (closed.ok === true && typeof closed.tab_id === "string") {
-        tabId = closed.tab_id;
-        r.status = "paid";
-        r.tab_id = tabId;
-      }
+    // The hold landed: the ticket is live (the QR shows).
+    if (cardStep?.status === "held") {
+      await callTabRpc(admin, "pay_guest_mark_held", { p_attempt_id: attemptId });
     }
 
     // Never the token in a log line.
@@ -224,9 +247,10 @@ serveJson("consumer-web-pay-guest", async (req) => {
     return json({
       ok: true,
       outcome: r.outcome,
-      tab_id: tabId,
+      // MESITA-4524: the bill page reads the attempt by this id until it closes.
+      tab_id: tabId ?? attemptId,
       attempt_id: attemptId,
-      status: r.status === "paid" ? "paid" : r.status === "due" ? "due" : "paying",
+      status: r.status === "closed" ? "paid" : "paying",
       token,
       qr_url: tabUrl(token),
       expires_at: r.expires_at ?? null,
