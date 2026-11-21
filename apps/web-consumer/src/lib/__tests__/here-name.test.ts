@@ -19,10 +19,12 @@ describe("Current location names the neighbourhood", () => {
 
   it("asks only while the sheet is open, and the header keeps Current location", () => {
     const picker = read("components/consumer/home/LocationPicker.tsx");
-    expect(picker).toContain("const here = useHere(coords, picking);");
-    expect(picker).toContain("const hereName = here.name;");
-    expect(picker).toContain("title: locationLabel(null, coords !== null, locating),");
-    expect(picker).toContain("sub: coords !== null ? hereName");
+    // The rows live in LocationChooser (MESITA-4542), which mounts only
+    // while the sheet is open or Home's location gate shows.
+    const chooser = read("components/consumer/home/LocationChooser.tsx");
+    expect(chooser).toContain("const hereName = useHere(coords, true).name;");
+    expect(chooser).toContain("title: locationLabel(null, coords !== null, locating),");
+    expect(chooser).toContain("sub: coords !== null ? hereName");
     expect(picker).toContain(
       "const { label, off } = headerLocation(active, coords !== null, locating, settled);",
     );

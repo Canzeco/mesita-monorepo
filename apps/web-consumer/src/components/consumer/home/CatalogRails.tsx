@@ -47,7 +47,6 @@ import dynamic from "next/dynamic";
 // was left at. A row wears "Ad" only when the rank put it in an ad slot.
 
 import {
-  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -56,7 +55,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { Compass, Heart, LayoutGrid, MapPin, Store, Users, X } from "lucide-react";
+import { Compass, Heart, LayoutGrid, Store, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -85,10 +84,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useServerProfile, useViewer } from "@/lib/identity-context";
 import { trackEvent } from "@/lib/analytics/track";
 import {
-  useLocateUser,
   useUserLocation,
-  useUserLocationError,
-  useUserLocationLocating,
   useUserLocationSettled,
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
@@ -105,6 +101,7 @@ import { ROW_LIST } from "./place-grid-classes";
 import { PlaceRowCard } from "./PlaceRowCard";
 import { useLiveReservations } from "@/lib/use-live-reservations";
 import { useActiveLocation } from "@/lib/active-location";
+import { LocationChooser, takeLastChoiceSource } from "./LocationChooser";
 import { cn, errMsg } from "@/lib/utils";
 
 // Social is the second tab, and a big one: it loads when that tab first
@@ -294,26 +291,39 @@ export function savedPlaceList(
     .map((p) => enrichPlaceOverview(p));
 }
 
-/* NO LOCATION IS NOT A DEAD END (Pato, MESITA-2472): with no fix and no
- * saved location, Popular and every family row still rank, Proximity
- * abstaining (MESITA-4454: no point is sent; it was the city's centre
- * before). Nearby asks for the location instead (H5). The header's location
- * box names the city (MESITA-2587: no bar above the tiles says the location
- * is off). */
+/* NO LOCATION, NO FEED (Pato, 2026-11-21, MESITA-4542: "make location
+ * selector mandatory. don't say, if you don't have any location, go to
+ * popular. NO."). With no point every ranking chip (Nearby, Popular, each
+ * family) shows the location chooser in the Places body, the header sheet's
+ * own body (LocationChooser), and sends no request; the catalog EF refuses a
+ * rank with no point too. Saved and Social never gate. This reverses
+ * MESITA-2472 ("no location is not a dead end": Popular ranked with
+ * Proximity abstaining) and MESITA-4454's "See Popular". */
 
-/** The Nearby row's state with no point (MESITA-4454, H5): the browser is
- *  still answering (a skeleton), the location was never given (the prompt
- *  and its button), or it is blocked or unavailable (one line and "See
- *  Popular"). */
-export function nearbyWithoutPoint(
-  settled: boolean,
-  locating: boolean,
-  error: string | null,
-): "loading" | "prompt" | "off" {
-  if (!settled || locating) return "loading";
-  return error === "denied" || error === "unavailable" || error === "unsupported"
-    ? "off"
-    : "prompt";
+/** The browser has answered its FIRST ask this page load (MESITA-4542, eng
+ *  review F1). Only before that does a missing point draw the tile skeleton:
+ *  `settled` goes false again during any later ask, and keying on it would
+ *  swap the chooser for the skeleton (and remount it) on a "Use my
+ *  location" tap. A module latch: Home's layout outlives tab switches. */
+const gate = { answered: false, shown: false, chosen: false };
+
+function noteAnswered(settled: boolean): boolean {
+  if (settled) gate.answered = true;
+  return gate.answered;
+}
+
+/** The gate's two events, once per page load each (MESITA-4542, V3): the
+ *  share of guests shown the chooser who then pick a location. */
+function noteGateShown(): boolean {
+  if (gate.shown) return false;
+  gate.shown = true;
+  return true;
+}
+
+function noteGateChosen(): boolean {
+  if (!gate.shown || gate.chosen) return false;
+  gate.chosen = true;
+  return true;
 }
 
 /** Each chip's scroll offset, for the tab session (MESITA-4454, H3). */
@@ -326,9 +336,6 @@ export function CatalogRails() {
   // on its photo (MESITA-4453).
   const tables = useLiveReservations();
   const coords = useUserLocation();
-  const locating = useUserLocationLocating();
-  const locationError = useUserLocationError();
-  const locate = useLocateUser();
   const openGooglePlace = useOpenGooglePlace();
   // A failed rank, for the question it failed on: another question (or Try
   // again) hides it.
@@ -341,10 +348,11 @@ export function CatalogRails() {
   const locationSettled = useUserLocationSettled();
   // NO RADIUS (MESITA-2909): the Catalog ranks every Mesita place from
   // this point; a saved pin's radius no longer cuts anything. No point at
-  // all: Proximity abstains (MESITA-4454; the city's centre before).
+  // all: no rank, the chooser instead (MESITA-4542).
   const here = origin ?? coords ?? null;
   const hereKey = here ? `${here.lat},${here.lng}` : "none";
-  const waitingForFix = origin === null && coords === null && !locationSettled;
+  // The skeleton waits only for the browser's first answer (eng review F1).
+  const firstAnswerSeen = noteAnswered(locationSettled);
   // The tab is the address (MESITA-2597); this component lives in Home's
   // layout, so the chip, the pool and the scroll survive a tab switch.
   const tab = homeTabOf(usePathname() ?? CONSUMER_ROUTES.home);
@@ -368,8 +376,9 @@ export function CatalogRails() {
   // The question (MESITA-4454): Nearby, Popular or this family.
   const rankMode = rankModeForChip(poolChip);
   const mode = modeKey(rankMode, families);
-  // NEVER NEARBY WITHOUT A POINT (H5): the EF would refuse it.
-  const nearbyNoPoint = rankMode === "nearby" && here === null;
+  // NO POINT, NO FEED (MESITA-4542): every ranking chip shows the chooser;
+  // Saved never gates (it ranks nothing).
+  const noPoint = here === null && chip !== SAVED_CHIP;
   // The menu: every family at once, dropped over the rows (MESITA-4410).
   const [menuOpen, setMenuOpen] = useState(false);
   // THE BAND NEVER HIDES (Pato, 2026-11-18, MESITA-4429: "Places and
@@ -391,9 +400,10 @@ export function CatalogRails() {
   );
 
   useEffect(() => {
-    // Until the browser answers there is no point to rank from yet.
-    if (waitingForFix) return;
-    if (nearbyNoPoint) return;
+    // NO POINT, NO REQUEST (MESITA-4542), whatever the chip: the effect
+    // ranks `poolChip`, which stays on the last ranked chip while Saved
+    // shows, and the EF refuses a rank with no point.
+    if (here === null) return;
     // The mode's seed from here: the same while the guest stays within
     // 300 m of where it was made (C2, M-a).
     const rec = seedFor(mode, here);
@@ -431,7 +441,7 @@ export function CatalogRails() {
     };
     // `here` is read through hereKey; `families` and `rankMode` through mode.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, guest, mode, hereKey, waitingForFix, retry]);
+  }, [supabase, guest, mode, hereKey, retry]);
   const failed = fetchError?.tag === errorTag ? fetchError.message : null;
 
   // A GOOGLE CARD THE GUEST OPENED, SAVED OR SHARED IS A MESITA CARD once
@@ -659,12 +669,25 @@ export function CatalogRails() {
     if (tab !== "places" || !scrollerRef.current) return;
     scrollerRef.current.scrollTop = chipScroll.get(chip) ?? 0;
   }, [chip, tab]);
-  const seePopular = useCallback(() => {
-    if (scrollerRef.current) chipScroll.set(chip, scrollerRef.current.scrollTop);
-    trackEvent(supabase, "home_mode_view", { mode: TOP_LABEL });
-    setChip(ALL_CHIP);
-    setPoolChip(ALL_CHIP);
-  }, [chip, supabase]);
+  // THE GATE'S EVENTS AND THE LANDING (MESITA-4542). Shown once per page
+  // load when the chooser first draws; chosen once, when the point appears
+  // after it was shown, by whatever route (inline, header sheet, a late
+  // device fix: no note = `device`). The chosen place's feed starts at the
+  // top: the chip's stored offset is from before the gate.
+  const showGate = tab === "places" && noPoint && firstAnswerSeen;
+  useEffect(() => {
+    if (showGate && noteGateShown()) trackEvent(supabase, "location_gate_shown", { chip });
+    // `chip` is context for the first draw only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showGate, supabase]);
+  useLayoutEffect(() => {
+    if (here === null || !noteGateChosen()) return;
+    trackEvent(supabase, "location_gate_chosen", { source: takeLastChoiceSource(), chip });
+    chipScroll.delete(chip);
+    if (scrollerRef.current) scrollerRef.current.scrollTop = 0;
+    // Fires on the null → point transition only (noteGateChosen guards it).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hereKey]);
   const pill = (c: { key: string; label: string; emoji: string }, inMenu: boolean) => {
     const on = chip === c.key;
     return (
@@ -857,34 +880,23 @@ export function CatalogRails() {
     );
   }
 
-  // BOTH WAITS DRAW THE TILE COLUMN ITSELF (Pato, MESITA-2701: "the
-  // placeholders must be similar to the page you are loading, like the
-  // sizes"): the same three tile silhouettes, 60/40 with the Save · Share
-  // row, in the list's own pb-6 and gaps (DiscoverFallback.tsx). Locating
-  // drew one bare square before, so it grew to three, then to tiles.
-  if (waitingForFix) return shell(waiting);
-
-  // NEARBY WITH NO POINT (MESITA-4454, H5): never a request. A fix that
-  // lands while the guest is on another chip is read the next time Nearby
-  // opens.
-  if (nearbyNoPoint) {
-    const state = nearbyWithoutPoint(locationSettled, locating, locationError);
-    if (state === "loading") return shell(waiting);
+  // THE ORDER IS THE RULE (MESITA-4542): Social returned above, then Saved,
+  // and only now the point. No point and no first answer yet: the tile
+  // skeleton (Pato, MESITA-2701: "the placeholders must be similar to the
+  // page you are loading"). No point after that: the chooser, one instance
+  // at this spot for every ranking chip, so a typed search or an open pin
+  // step survives a chip switch; its pin step covers the Places body.
+  if (noPoint) {
+    if (!firstAnswerSeen) return shell(waiting);
     return shell(
-      state === "prompt" ? (
-        <EmptyState
-          icon={MapPin}
-          title="Places near you"
-          description="Share your location to see what's nearby."
-          action={{ label: "Use my location", onClick: locate }}
+      <div className="px-4 pt-5 pb-6" data-places-location-gate>
+        <h2 className="text-foreground mb-3 text-base font-semibold">Choose a location</h2>
+        <LocationChooser
+          inline
+          onDone={() => {}}
+          pickerClassName="bg-card absolute inset-0 z-20 flex flex-col overscroll-contain"
         />
-      ) : (
-        <EmptyState
-          icon={MapPin}
-          title="Nearby needs your location, and it isn't shared."
-          action={{ label: "See Popular", onClick: seePopular }}
-        />
-      ),
+      </div>,
     );
   }
 

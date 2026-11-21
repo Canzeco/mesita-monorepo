@@ -365,7 +365,9 @@ Deno.test("list-catalog: every refusal is a 400 with its code before any read (M
     const at = src.indexOf(`"${code}"`);
     assert(at > 0 && at < firstRead, `${code} is refused before the config read`);
   }
-  assert(src.includes("send lat/lng or use rankMode popular"));
+  // Every rank needs a point; a fill never does (MESITA-4542).
+  assert(src.includes("send lat/lng: every rank needs a point"));
+  assert(src.includes("if (fill === null && center === null) {"));
   // The rank answers the lanes' contract.
   for (const key of ["adIds: pool.adIds", "lanes: true", "preShuffle: pool.preShuffle", "seed: seeded.seed", "updatedAt: loaded.updatedAt"]) {
     assert(src.includes(key), key);

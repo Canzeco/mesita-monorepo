@@ -48,6 +48,9 @@ const ALLOWED_EVENTS = new Set([
   "reserve_upgrade_tap",
   // MESITA-4124 — the guest reached a pay step (bill, tip, method, pay).
   "pay_step_view",
+  // MESITA-4542 — Home's location gate: shown, then a location picked.
+  "location_gate_shown",
+  "location_gate_chosen",
 ]);
 
 /** MESITA-4384: correlation ids are short; a longer one is cut. */
