@@ -100,7 +100,13 @@ export type StoryMention = {
 
 /** One Story, as consumer-web-get-story and the Wallet's `stories` list
  *  answer it (the server's storyView). */
+/** What the AI bot says about the guest's newest story while the voucher
+ *  still waits for one (MESITA-4549). */
+export type StoryCheck = { state: "checking" | "checking_long" | "rejected"; reason: string | null; mentioned_at: string };
+
 export type StoryTicket = {
+  /** MESITA-4549: on a voucher still waiting for its story. */
+  ai_check?: StoryCheck | null;
   story_id: string;
   purchase_id: string;
   place_id: string;
@@ -368,7 +374,7 @@ export async function apiPollStory(client: SupabaseClient, storyId: string): Pro
  *  from STORY_EMULATOR_REFUSAL. */
 export async function apiEmulateStory(
   client: SupabaseClient,
-  action: "connect" | "post" | "delete",
+  action: "connect" | "post" | "post_untagged" | "post_video" | "delete",
   placeId?: string,
 ): Promise<{ ok: true; action: string; story_id?: string | null }> {
   return await invokeEF(client, "consumer-web-emulate-story", { action, ...(placeId ? { place_id: placeId } : {}) });
