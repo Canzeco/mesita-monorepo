@@ -2,7 +2,7 @@
 // cards of rows, as the page draws them.
 export default function PaymentsLoading() {
   return (
-    <div className="flex flex-col gap-4 pb-8" aria-busy="true" aria-label="Loading Payments">
+    <div className="flex flex-col gap-4 pb-8" aria-busy="true" aria-label="Loading Offers">
       {[1, 2, 3].map((rows, n) => (
         <div key={n} className="border-border bg-card divide-border divide-y rounded-2xl border">
           {Array.from({ length: rows }, (_, i) => (

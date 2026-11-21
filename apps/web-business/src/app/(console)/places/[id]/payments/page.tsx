@@ -3,7 +3,7 @@ import { Card } from "@/components/shell/Page";
 import { PaymentsPanel } from "./PaymentsPanel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Payments" };
+export const metadata = { title: "Offers" };
 
 // The money guests pay a place (MESITA-3296, Pato: "connect the Stripe account
 // with the Sandbox for the moment"): the place's Stripe account, then the
@@ -26,7 +26,7 @@ export default async function PaymentsPage({
         <PaymentsPanel placeId={id} initial={payments.data} back={stripe === "return" ? "return" : stripe === "refresh" ? "refresh" : null} />
       ) : (
         <Card>
-          <p className="font-semibold">Payments didn&apos;t load.</p>
+          <p className="font-semibold">Offers didn&apos;t load.</p>
           <p className="text-muted-foreground mt-1 text-sm">{payments.error}</p>
         </Card>
       )}
