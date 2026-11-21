@@ -31,7 +31,7 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   views: { label: "Views", icon: EyeIcon, sub: "Who saw your place online." },
   visits: { label: "Visits", icon: FootprintsIcon, sub: "Every bill at your place." },
   vouchers: { label: "Vouchers", icon: TicketIcon, sub: "Prepayments guests bought here." },
-  stories: { label: "Stories", icon: InstagramLogoIcon, sub: "Story tickets, including ones waiting for a look." },
+  stories: { label: "Stories", icon: InstagramLogoIcon, sub: "Whether guests can post a story here, and the Instagram they tag." },
   gifts: { label: "Gifts", icon: GiftIcon, sub: "Credit guests sent each other here." },
   money: { label: "Payments", icon: MoneyIcon, sub: "Bills paid with Mesita, and payouts to your bank." },
   credits: { label: "Credits", icon: CoinsIcon, sub: "Every credit movement here, gifts included." },
