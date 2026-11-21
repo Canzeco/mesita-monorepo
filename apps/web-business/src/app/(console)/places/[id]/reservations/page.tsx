@@ -1,18 +1,8 @@
-import { ReservationsPanel } from "./ReservationsPanel";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Reservations" };
-
-// Reservations (MESITA-3600, Pato: "in capabilities add Reservations, only
-// configure no or yes"): one switch, moved from Settings › Actions. Guests
-// ask for a table on Mesita and the Reservationist calls the place's phone to
-// book it (Pato: "Reservations are received via phone. There are no
-// operations logs"), so there is no list or log here; the page holds the
-// switch and the Reservations phone (MESITA-3601). The place comes from
-// the place layout's PlaceContext, so a flip survives moving between tabs.
-export default function ReservationsPage() {
-  return (
-    <div className="flex flex-col gap-4 pb-8">
-      <ReservationsPanel />
-    </div>
-  );
+// One page of sections since MESITA-4534 (Pato: "don't create subpages in
+// general"): this old address lands on General, scrolled to its section.
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  redirect(`/places/${encodeURIComponent(id)}/general#reservations`);
 }
