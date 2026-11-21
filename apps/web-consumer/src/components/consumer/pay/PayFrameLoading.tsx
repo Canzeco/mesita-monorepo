@@ -2,6 +2,7 @@ import { Screen } from "@/components/consumer/nav/Screen";
 import { GuestPayLoading } from "./GuestPayScreen";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { PayHeader } from "./PayHeader";
+import { TicketsShortcut } from "./TicketsShortcut";
 
 /** A Pay screen's frame while it loads: the title in place, the body in
  *  bones (Pato, MESITA-2701: "the placeholders must be similar to the page
@@ -9,18 +10,17 @@ import { PayHeader } from "./PayHeader";
 export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "proof" }) {
   if (body === "list") {
     // /pay (Pato, 2026-11-21, MESITA-4523: "update placeholders when loading
-    // page"): the page MESITA-4519/4520 shipped. The white Wallet header, two
-    // 48px buttons, Pay Bill 96px, Send Gift 56px, the hairline, then Loyalty
-    // Card boxes. MESITA-4512's black slab and search bar before.
+    // page"): the page as MESITA-4559 draws it. The white Mesita Wallet header
+    // with its Tickets icon, Pay Bill 96px, Add funds | Send Gift 56px, then
+    // the Loyalty Card boxes on grey.
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0" aria-busy>
-        <PayHeader title="Mesita Wallet" />
-        <div className="mt-2 flex gap-2">
-          <Skeleton className="h-12 min-w-0 flex-1 rounded-xl" aria-hidden />
-          <Skeleton className="h-12 min-w-0 flex-1 rounded-xl" aria-hidden />
-        </div>
+        <PayHeader title="Mesita Wallet" action={<TicketsShortcut icon />} />
         <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
-        <Skeleton className="mt-2 h-14 w-full rounded-xl" aria-hidden />
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <Skeleton className="h-14 min-w-0 rounded-xl" aria-hidden />
+          <Skeleton className="h-14 min-w-0 rounded-xl" aria-hidden />
+        </div>
         <div className="bg-border -mx-2 mt-3 flex flex-1 flex-col gap-2 px-2 pt-3 pb-8">
           <LoyaltyCardBoxSkeleton />
           <LoyaltyCardBoxSkeleton />

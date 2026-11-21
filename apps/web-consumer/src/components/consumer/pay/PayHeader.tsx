@@ -47,18 +47,22 @@ export function PayHeader({
   // 60px (8px over and under a 44px row), the title centred at 20px
   // semibold with the Mesita mark before it, a hairline under it. It was
   // 52px with an 18px bold title at the left (MESITA-4087).
+  //
+  // TITLE LEFT, TICKETS RIGHT (Pato, 2026-11-21, MESITA-4559: "Mesita
+  // Wallet to the left, tickets to the right"): the mark and title at the
+  // left edge, the action (Tickets' icon button) at the right. Centred
+  // before (MESITA-4525).
   return (
     <div
       className="border-border bg-card sticky top-0 z-10 -mx-2 border-b"
       data-page-band
     >
-      <div className="grid min-h-11 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-3 py-2">
-        <span aria-hidden />
-        <h1 className="flex min-h-11 min-w-0 items-center justify-center gap-2 text-xl font-semibold tracking-tight">
+      <div className="flex min-h-11 items-center justify-between gap-2 px-3 py-2">
+        <h1 className="flex min-h-11 min-w-0 items-center gap-2 text-xl font-semibold tracking-tight">
           <MesitaMark className="h-6 w-6 shrink-0" />
           <span className="min-w-0 truncate">{title}</span>
         </h1>
-        <div className="flex justify-end">{action}</div>
+        {action ? <div className="flex shrink-0 justify-end">{action}</div> : null}
       </div>
       {bar ? (
         <div className="border-border border-t px-4 py-2" data-pay-search>

@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Clock, Gift, QrCode } from "lucide-react";
+import { Clock, Gift, Plus, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -22,7 +22,6 @@ import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { forgetGuestTab, NETWORK_FAILURE, PlacePhoto, readGuestTabIds, CancelBillButtons } from "./pay-common";
 import { PlaceActionRow } from "./PlaceActionRow";
-import { MethodPreview } from "./MethodPreview";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { distanceText, usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
@@ -295,11 +294,13 @@ export function PayPage({
           is clearer"). Payment Method and Tickets dark, then Pay Bill in
           Stripe purple again (Pato, MESITA-4523: "Pay Bill must be purple";
           black for one deploy, MESITA-4520), then Send Gift. */}
-      <PayHeader title="Mesita Wallet" />
-      <div className="mt-2 flex gap-2">
-        <MethodPreview wide />
-        <TicketsShortcut wide />
-      </div>
+      {/* MESITA-4559 (Pato, 2026-11-21: "Mesita Wallet to the left,
+          tickets to the right … just a ticket icon with this >. then pay at
+          the top, also in purple. then add funds and send gift 50% and 50%.
+          then below each place ticket"): Tickets rides the header as an
+          icon; the Payment method | Tickets row is gone, so Pay Bill is the
+          page's first button. */}
+      <PayHeader title="Mesita Wallet" action={<TicketsShortcut icon />} />
 
       {bill === "open" ? (
         <div className="mt-2 flex flex-col">
@@ -340,18 +341,29 @@ export function PayPage({
         </button>
       )}
 
-      {/* SEND GIFT UNDER PAY BILL (Pato, 2026-11-21, MESITA-4520: "Payment
-          Method | Tickets · Pay Bill · Send Gift black button · then each
-          card"): black, full width, half Pay Bill's height so Pay stays the
-          main action. It opens the place list to gift from (MESITA-4096). */}
-      <PushLink
-        href={CONSUMER_ROUTES.walletSend}
-        className="bg-foreground text-background hover:bg-foreground/90 mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold"
-        data-send-gift
-      >
-        <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-        Send Gift
-      </PushLink>
+      {/* ADD FUNDS | SEND GIFT, HALF AND HALF (MESITA-4559): black, half
+          Pay Bill's height so Pay stays the main action. Add funds opens the
+          places that sell credits (/wallet/buy, MESITA-4096); Send Gift the
+          place list to gift from. Send Gift alone, full width, before
+          (MESITA-4520). */}
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <PushLink
+          href={CONSUMER_ROUTES.walletBuy}
+          className="bg-foreground text-background hover:bg-foreground/90 flex h-14 min-w-0 items-center justify-center gap-2 rounded-xl text-base font-semibold"
+          data-add-funds
+        >
+          <Plus className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+          Add funds
+        </PushLink>
+        <PushLink
+          href={CONSUMER_ROUTES.walletSend}
+          className="bg-foreground text-background hover:bg-foreground/90 flex h-14 min-w-0 items-center justify-center gap-2 rounded-xl text-base font-semibold"
+          data-send-gift
+        >
+          <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+          Send Gift
+        </PushLink>
+      </div>
 
       {/* THE CARDS SIT ON GREY (Pato, 2026-11-21, MESITA-4525: "make the
           background where the cards exist gray, the cards items white, but
