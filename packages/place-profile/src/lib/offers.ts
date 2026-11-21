@@ -71,8 +71,8 @@ const OFFER_SLIDES: OfferSlide[] = [
   // Offers" and "Special Offers" panels.
   { key: "prepay", lead: "Prepay", pill: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
   { key: "voucher_welcome", lead: "Welcome", pill: "+100% Bonus", short: "Welcome", spoken: "Welcome, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_welcome, bonus: 100, voucher: "voucher_welcome" },
-  // Story +40% since MESITA-4473 (pay $100, get $140); +50% from MESITA-4207 until then.
-  { key: "voucher_story", lead: "Story", pill: "+40% Bonus", short: "Story", spoken: "Story, 40% bonus", section: "special", tone: VOUCHER_TONE.voucher_story, bonus: 40, voucher: "voucher_story" },
+  // Story +30% since MESITA-4563 (pay $100, get $130); +40% from MESITA-4473, +50% from MESITA-4207.
+  { key: "voucher_story", lead: "Story", pill: "+30% Bonus", short: "Story", spoken: "Story, 30% bonus", section: "special", tone: VOUCHER_TONE.voucher_story, bonus: 30, voucher: "voucher_story" },
 ];
 
 /** The standard vouchers' bonuses: the server's catalog (supabase

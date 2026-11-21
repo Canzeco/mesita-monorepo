@@ -300,8 +300,8 @@ const ROW_BUTTON_CLASS =
 // voucher_story) with the deal as its headline. Connected, each box says
 // where the guest stands in a pill.
 /** The Story voucher's deal, as place-profile's vouchers.tsx prices it
- *  (`voucher_story`: "Pay $100.00MX, get $140.00MX."). Change both together. */
-const STORY_DEAL = { pay: "$100", get: "$140" } as const;
+ *  (`voucher_story`: "Pay $100.00MX, get $130.00MX."). Change both together. */
+const STORY_DEAL = { pay: "$100", get: "$130" } as const;
 
 /** The Story voucher's tint: VOUCHER_TONE.voucher_story. Change both together. */
 const STORY_PINK = "bg-pink-400 text-neutral-950";

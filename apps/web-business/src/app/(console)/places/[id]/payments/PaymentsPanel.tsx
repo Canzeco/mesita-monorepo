@@ -117,10 +117,10 @@ const STANDARD: VoucherSeed[] = [
   { key: "voucher_5000", name: "Big Voucher", bps: 3000, value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
 ];
 
-// Welcome blue, Story pink, the sizes green; Story +40% (MESITA-4473).
+// Welcome blue, Story pink, the sizes green; Story +30% (MESITA-4563; +40% from MESITA-4473).
 const SPECIAL: VoucherSeed[] = [
   { key: "voucher_welcome", name: "Welcome Voucher", bps: 10000, tail: "One per guest at your place.", value: "+100%", tone: "bg-blue-100 text-blue-700", icon: ConfettiIcon },
-  { key: "voucher_story", name: "Story Voucher", bps: 4000, tail: "After posting an Instagram story at your place.", value: "+40%", tone: "bg-pink-100 text-pink-700", icon: InstagramLogoIcon },
+  { key: "voucher_story", name: "Story Voucher", bps: 3000, tail: "After posting an Instagram story at your place.", value: "+30%", tone: "bg-pink-100 text-pink-700", icon: InstagramLogoIcon },
 ];
 
 /** The voucher rows in the place's currency; none where vouchers aren't sold. */

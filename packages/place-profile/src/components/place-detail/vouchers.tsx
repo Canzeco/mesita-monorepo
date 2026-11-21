@@ -116,7 +116,7 @@ const STANDARD: Product[] = [
 
 const SPECIAL: Product[] = [
   { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $200.00MX.", limit: "One per place.", bonus: "100% bonus", short: "Welcome", brief: "One per place" },
-  { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $140.00MX.", limit: "One per visit.", bonus: "40% bonus", short: "Story", brief: "Post a story · One per visit" },
+  { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $130.00MX.", limit: "One per visit.", bonus: "30% bonus", short: "Story", brief: "Post a story · One per visit" },
 ];
 
 /** "$1,200.00MX" from cents: always two decimals (MESITA-3767). Formatting
