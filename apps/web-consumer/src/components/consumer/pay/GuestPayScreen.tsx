@@ -35,6 +35,8 @@ import {
 import { trackEvent } from "@/lib/analytics/track";
 import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 import { payPlacePath } from "@/lib/consumer-route-contract";
+import { placeHref } from "@/lib/place-route";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { cardFace } from "@/components/shared/card-brand-marks";
@@ -697,6 +699,13 @@ export function GuestPayScreen({
               </div>
             </div>
           </PaySection>
+          {/* ONE LAST PREPAY OFFER (Pato, 2026-11-21, MESITA-4599: "before the
+              payment starts, actually offer the prepayment one last time …
+              embedded to upselling"; picked "on the Bill step, under the
+              amount"): with an amount typed, the smallest standard voucher
+              that covers it, in Link green; its button opens the place's
+              Offers with it ticked, and a paid voucher comes back here. */}
+          <PrepayOffer place={place} billCents={billCents} />
         </div>
         {status}
         <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: billCents <= 0 || held, onClick: toTip }} />
@@ -1190,6 +1199,44 @@ export function GuestPayLoading() {
       <Skeleton className="h-14 w-full rounded-2xl" />
       <Skeleton className="h-14 w-full rounded-2xl" />
       <Skeleton className="mt-auto h-12 w-full rounded-full" />
+    </div>
+  );
+}
+
+/** The standard vouchers (the server's catalog, _shared/money.ts; MESITA-4152):
+ *  what the guest pays and the credit they get, in centavos. */
+const PREPAY_SIZES = [
+  { key: "voucher_200", pay: 200_00, get: 220_00 },
+  { key: "voucher_1000", pay: 1_000_00, get: 1_200_00 },
+  { key: "voucher_5000", pay: 5_000_00, get: 6_500_00 },
+] as const;
+
+/** The Bill step's prepay offer (MESITA-4599): nothing until an amount is
+ *  typed, or where the place sells no standard voucher. */
+function PrepayOffer({ place, billCents }: { place: PayPlace; billCents: number }) {
+  const currency = (place.currency ?? "mxn").toLowerCase();
+  if (billCents <= 0 || currency !== "mxn") return null;
+  const sells = new Set(place.offers?.sell ?? []);
+  const sizes = PREPAY_SIZES.filter((v) => sells.has(v.key));
+  if (sizes.length === 0) return null;
+  const pick = sizes.find((v) => v.get >= billCents) ?? sizes[sizes.length - 1];
+  const m = (c: number) => money(c, currency);
+  const keeps = pick.get - billCents;
+  return (
+    <div className="shrink-0 rounded-2xl bg-[#00D66F] p-4 text-left text-neutral-950" data-pay-prepay-offer>
+      <p className="text-base font-semibold">
+        Prepay {m(pick.pay)}, get {m(pick.get)}
+      </p>
+      <p className="mt-0.5 text-sm">
+        {keeps >= 0 ? `Pay this bill and keep ${m(keeps)}.` : `It covers ${m(pick.get)} of this bill.`}
+      </p>
+      <PushLink
+        href={`${placeHref(place.place_id)}/offers?rewards=prepayment&voucher=${pick.key}&from=pay`}
+        className="mt-3 flex h-11 w-full items-center justify-center rounded-xl bg-neutral-950 text-base font-semibold text-white transition active:scale-[0.99]"
+        data-pay-prepay-offer-open
+      >
+        Prepay &amp; Get Bonus
+      </PushLink>
     </div>
   );
 }
