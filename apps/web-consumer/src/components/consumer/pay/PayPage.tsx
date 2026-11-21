@@ -302,7 +302,9 @@ export function PayPage({
     // panel, Home's one step (MESITA-4035); panels keep their 16px insides.
     <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-8 *:shrink-0">
       {/* A CLEAN WHITE HEADER (MESITA-4519): the black slab of MESITA-4512
-          is gone. Payment Method and Tickets, then Pay, the one filled thing. */}
+          is gone ("remove the dark background … just a line dividing stuff
+          is clearer. button must be black"). Payment Method and Tickets,
+          then a black Pay, then a hairline over the places. */}
       <PayHeader title="Wallet" />
       <div className="mt-2 flex gap-2">
         <MethodPreview wide />
@@ -332,11 +334,11 @@ export function PayPage({
       ) : null}
 
       {payBusy ? (
-        <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
+        <Skeleton className="mt-2 h-24 w-full rounded-xl" aria-hidden />
       ) : (
         <button
           type="button"
-          className="mt-2 flex h-24 w-full items-center justify-center gap-3 rounded-xl bg-[#635BFF] text-lg font-semibold text-white hover:bg-[#5249e6]"
+          className="bg-foreground text-background hover:bg-foreground/90 mt-2 flex h-24 w-full items-center justify-center gap-3 rounded-xl text-lg font-semibold"
           aria-label={bill === "open" ? "Pay your open bill" : selectedName ? `Pay Bill at ${selectedName}` : "Pay Bill. Choose a place"}
           onClick={paySelected}
           data-pay-bill
@@ -348,6 +350,8 @@ export function PayPage({
           </span>
         </button>
       )}
+
+      <hr className="border-border -mx-2 mt-3 mb-1" data-pay-divider />
 
       {loc.state === "prime" ? (
         <div className="border-border mt-2 rounded-xl border p-3">
