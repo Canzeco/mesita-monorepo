@@ -48,13 +48,17 @@ describe("Activity rail", () => {
 });
 
 describe("Extra rail", () => {
-  it("is exactly Ping · Cost", () => {
-    expect(EXTRA_NAV.map((i) => i.label)).toEqual(["Ping", "Cost"]);
-    expect(EXTRA_NAV.map((i) => i.href)).toEqual(["/billing-test", "/cost"]);
+  it("is exactly Ping · Story · Cost", () => {
+    expect(EXTRA_NAV.map((i) => i.label)).toEqual(["Ping", "Story", "Cost"]);
+    expect(EXTRA_NAV.map((i) => i.href)).toEqual(["/billing-test", "/story-test", "/cost"]);
   });
 
-  it("gives each row its own page", () => {
-    for (const href of ["/billing-test", "/cost"])
+  it("gives each row its own page, and Story does not light Stories or Ping", () => {
+    const hrefs = [...EXTRA_NAV.map((i) => i.href), "/stories-config"];
+    for (const a of hrefs)
+      for (const b of hrefs)
+        if (a !== b) expect(b.startsWith(`${a}/`), `${a} lights on ${b}`).toBe(false);
+    for (const href of EXTRA_NAV.map((i) => i.href))
       expect(existsSync(join(APP, ...href.split("/").filter(Boolean), "page.tsx")), href).toBe(true);
   });
 });

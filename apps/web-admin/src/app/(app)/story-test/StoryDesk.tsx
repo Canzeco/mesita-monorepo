@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button, Notice, SectionCard, TextField } from "@/components/admin-ui";
 import { listStoryDesk, overrideStory, type MentionRow, type StoryDeskRow } from "./actions";
 
-/** Settle a Story and see the recent mentions (MESITA-4267). */
+/** Settle a Story and see the recent mentions (MESITA-4267). Lives on Extra › Story. */
 export function StoryDesk() {
   const [purchaseId, setPurchaseId] = useState("");
   const [busy, setBusy] = useState(false);

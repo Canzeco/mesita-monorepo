@@ -8,7 +8,7 @@
 
 import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
-import { coerceStories, type StoriesConfig } from "./catalog";
+import { coerceStories, floorPatch, type StoriesConfig } from "./catalog";
 
 type StoriesAnswer = { config: unknown; updatedAt: string | null; payments_live?: boolean; story_mode?: string };
 
@@ -34,41 +34,12 @@ export async function getStoriesConfig(): Promise<StoriesResult> {
   return { ok: true, ...fromAnswer(r.data) };
 }
 
-/** The editable keys only; the read-only waits are never sent. */
+/** The follower floor only. The emulator keys belong to Extra › Story. */
 export async function updateStoriesConfig(c: StoriesConfig): Promise<StoriesResult> {
   const r = await efInvoke<StoriesAnswer>("admin-web-update-config", {
     section: "stories",
-    config: {
-      story_min_followers: c.story_min_followers,
-      story_emulator: c.story_emulator,
-      story_emulator_bonus_wait_sec: c.story_emulator_bonus_wait_sec,
-      story_emulator_post_window_sec: c.story_emulator_post_window_sec,
-    },
+    config: floorPatch(c),
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, ...fromAnswer(r.data) };
-}
-
-export type StoryDeskRow = {
-  id: string;
-  purchase_id: string;
-  state: string;
-  recheck_at: string | null;
-  void_reason: string | null;
-};
-export type MentionRow = { id: string; mentioned_at: string | null; source: string | null; deleted_at: string | null };
-
-export async function listStoryDesk(): Promise<ActionResult<{ stories: StoryDeskRow[]; mentions: MentionRow[] }>> {
-  const r = await efInvoke<{ stories: StoryDeskRow[]; mentions: MentionRow[] }>("admin-web-list-story-desk", {});
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, stories: r.data.stories ?? [], mentions: r.data.mentions ?? [] };
-}
-
-export async function overrideStory(
-  purchaseId: string,
-  action: "release" | "void" | "recheck_now",
-): Promise<ActionResult<{ outcome: string }>> {
-  const r = await efInvoke<{ outcome?: string }>("admin-web-story-override", { purchase_id: purchaseId, action });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, outcome: r.data.outcome ?? action };
 }
