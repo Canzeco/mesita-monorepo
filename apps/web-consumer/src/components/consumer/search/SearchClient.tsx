@@ -326,10 +326,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         distanceCenter,
       );
     }
-    const rows = special === "nearby"
-      ? [...nearby].sort((a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity))
-      : nearby;
-    return prependAnchorPlace(rows, anchorRow);
+    if (special === "nearby") {
+      const nearest = [...nearby].sort(
+        (a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity),
+      );
+      return prependAnchorPlace(nearest, anchorRow);
+    }
+    return prependAnchorPlace(nearby, anchorRow);
   }, [nearby, anchor, createdPlaces, distanceCenter, special, savedIds]);
   // A dot never doubles a pin: the bar's anchored pick can be one of the
   // dots, and then it is card ONE and a pin (MESITA-3980).
