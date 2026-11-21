@@ -48,6 +48,7 @@ export function PlaceDetailBody({
   actions,
   creating,
   social,
+  footer,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
@@ -56,6 +57,9 @@ export function PlaceDetailBody({
   creating?: PlaceCreatingView | null;
   /** Social v1's line (MESITA-2442), in the profile summary. */
   social?: React.ReactNode;
+  /** The host's More card, last in this column on every tab (MESITA-4508).
+   *  Overview's own last card is still Score, above it. */
+  footer?: React.ReactNode;
 }) {
   const [tab, setTab] = useState<PlaceTab>("place");
   const create = place.is_enriched ? null : (creating ?? null);
@@ -113,8 +117,10 @@ export function PlaceDetailBody({
               <LinksBox place={place} onOpenLink={actions?.onOpenLink} />
               <TagsBox place={place} />
               <StatsBox place={place} />
-              {/* The ranking breakdown, last (MESITA-3319); nothing on a
-                  payload with no score. */}
+              {/* THE SCORE BOX, LAST IN OVERVIEW (MESITA-3319, MESITA-4508):
+                  Proximity, Popularity, Premier, Final. Nothing on a payload
+                  with no score. The host's More card follows the tab, so
+                  this stays the bottom of Overview. */}
               <ScoreBox place={place} />
             </>
           )}
@@ -132,6 +138,7 @@ export function PlaceDetailBody({
                 line="Who viewed and saved this place shows here."
               />
             ))}
+          {footer}
       </div>
     </div>
   );

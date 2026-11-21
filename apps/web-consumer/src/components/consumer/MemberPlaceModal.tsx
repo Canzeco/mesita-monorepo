@@ -21,8 +21,13 @@ export function MemberPlaceModal({ place: fetched }: { place: PlaceDetail }) {
   if (!ready) return <PlaceSlideOverSkeleton />;
   return (
     <>
-      <PlaceDetailModalShell place={place} footer={more}>
-        <PlaceDetailBody place={place} actions={actions} social={social} />
+      <PlaceDetailModalShell place={place}>
+        <PlaceDetailBody
+          place={place}
+          actions={actions}
+          social={social}
+          footer={more}
+        />
       </PlaceDetailModalShell>
       {sheets}
     </>
