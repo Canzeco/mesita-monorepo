@@ -442,8 +442,8 @@ Deno.test("Premier prices: the admin twin mirrors the bounds and the defaults", 
 Deno.test("recipes: the table by default; organic Premier exponent forced 0; map rows have no distance; bounds clamp and report", () => {
   assertEquals(normalizeDiscoveryConfig({}).params.recipes, DEFAULT_RECIPES);
   assertEquals(normalizeDiscoveryConfig({}).params.mix, DEFAULT_MIX);
-  assertEquals(DEFAULT_RECIPES.catalogNearbyOrganic, { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, premierExp: 0 });
-  assertEquals(DEFAULT_RECIPES.mapInorganic, { halfKm: null, distanceExp: null, googleExp: 0.17, premierExp: 1 });
+  assertEquals(DEFAULT_RECIPES.catalogNearbyOrganic, { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 });
+  assertEquals(DEFAULT_RECIPES.mapInorganic, { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 });
   const clamps: Array<[string, unknown]> = [];
   const r = normalizeRecipes({
     catalogPopularOrganic: { halfKm: 500, distanceExp: 0.1, googleExp: 0.01, premierExp: 2 },
@@ -452,13 +452,19 @@ Deno.test("recipes: the table by default; organic Premier exponent forced 0; map
     mapOrganic: { halfKm: 3, distanceExp: 2, premierExp: 1 },
   }, (key, raw) => clamps.push([key, raw]));
   // C1: an Organic row never carries a plan, whatever is stored.
-  assertEquals(r.catalogPopularOrganic, { halfKm: 100, distanceExp: 0.5, googleExp: 0.1, premierExp: 0 });
+  assertEquals(r.catalogPopularOrganic, { halfKm: 100, distanceExp: 0.5, googleExp: 0.1, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 });
   assertEquals(r.catalogPopularInorganic.premierExp, 2);
   assertEquals(r.catalogPopularInorganic.googleExp, 0.5);
   // L-1: a null on a Catalog row reads the default and is reported.
   assertEquals([r.catalogFamilyOrganic.halfKm, r.catalogFamilyOrganic.distanceExp], [2, 2]);
   // A Map row has no Proximity: its distance numbers are always null.
-  assertEquals(r.mapOrganic, { halfKm: null, distanceExp: null, googleExp: 0.33, premierExp: 0 });
+  assertEquals(r.mapOrganic, { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 });
+  // A missing Foursquare pair is the default. An explicit factor of 0 stays 0.
+  assertEquals(r.catalogFamilyOrganic.foursquareFactor, 1);
+  assertEquals(r.catalogFamilyOrganic.foursquareExponent, 20);
+  const kept = normalizeRecipes({ catalogNearbyOrganic: { foursquareFactor: 0, foursquareExponent: 20 } });
+  assertEquals(kept.catalogNearbyOrganic.foursquareFactor, 0);
+  assertEquals(kept.catalogNearbyOrganic.foursquareExponent, 20);
   assertEquals(clamps.map(([k]) => k).sort(), [
     "params.recipes.catalogFamilyOrganic.distanceExp",
     "params.recipes.catalogFamilyOrganic.halfKm",

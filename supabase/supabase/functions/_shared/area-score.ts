@@ -24,7 +24,7 @@
 // location) and Radius (a point with a radius: the Map, and Chat's read).
 // Ties break on distance then id (Catalog, Chat) or on id alone (the Map).
 
-import { googlePopularity, type Recipe, recipeScore } from "./pipeline-signals.ts";
+import { foursquareBoost, googlePopularity, type Recipe, recipeScore } from "./pipeline-signals.ts";
 import { GROWTH_CAP_DEFAULT, type GrowthTerm } from "./review-growth.ts";
 import { haversineKm } from "./geo.ts";
 import { PREMIER_FACTOR } from "./boost.ts";
@@ -82,6 +82,8 @@ export type AreaCandidate = {
   /** Premier (MESITA-2925, was Boost MESITA-2789): the paid tier,
    *  `places.boost_tier` (0 · 1 · 2 = none · 2X · 5X); absent = 0. */
   premierTier?: number;
+  /** Raw Foursquare popularity, 0–1. Null is a missing score, a 1× boost. */
+  foursquarePopularity?: number | null;
 };
 
 /**
@@ -146,12 +148,13 @@ export function premierFactor(c: Pick<AreaCandidate, "source" | "premierTier">):
 function popularityOrNull(c: AreaCandidate, ctx: AreaContext): number | null {
   const ok = (v: unknown) => typeof v === "number" && Number.isFinite(v);
   if (!ok(c.rating) || !ok(c.reviewCount)) return null;
-  return googlePopularity(
+  const google = googlePopularity(
     c,
     ctx.recipe.googleExp,
     ctx.growth?.get(c.id),
     ctx.growthWeightCap ?? GROWTH_CAP_DEFAULT,
   );
+  return google * foursquareBoost(c.foursquarePopularity, ctx.recipe.foursquareFactor, ctx.recipe.foursquareExponent);
 }
 
 /** One candidate's breakdown — the wire's `area` object (MESITA-2379).

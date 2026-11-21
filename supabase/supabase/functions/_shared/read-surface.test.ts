@@ -191,6 +191,8 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/place-update-apply.ts",
   "business-web-reload-place-reviews/index.ts",
   "_shared/reviews-update.ts", // Update Reviews' links read: google_place_id, instagram_url, facebook_url (MESITA-3159)
+  "_shared/foursquare-places.ts", // name, coordinates, address and the stored Foursquare id before a match or a popularity-only refresh (MESITA-4515)
+  "_shared/place-scores.ts", // stars, review count, Google id and the saved Foursquare score for the Profile Scores box (MESITA-4515)
   "business-web-update-place/index.ts", // the links before a save, to run Update Reviews on a change (MESITA-3161)
   "_shared/place-reservable.ts", // the switch + number gate the Reserve doors share (MESITA-3622)
   "eleven-a4-cancel-reservation/index.ts",
@@ -284,6 +286,7 @@ const PLACES_READ_ALLOWLIST = [
   "admin-web-delete-place/index.ts",
   "_shared/place-listed-handler.ts",
   "consumer-web-create-reservation/index.ts",
+  "_shared/place-scores.ts", // boost_tier for the Premier row of the Profile Scores box (MESITA-4515)
 ];
 
 Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", async () => {

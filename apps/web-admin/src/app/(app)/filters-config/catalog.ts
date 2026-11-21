@@ -31,6 +31,8 @@ export type Recipe = {
   halfKm: number | null;
   distanceExp: number | null;
   googleExp: number;
+  foursquareFactor: number;
+  foursquareExponent: number;
   premierExp: number;
 };
 
@@ -178,6 +180,10 @@ export const GOOGLE_EXP_MIN = 0.1;
 export const GOOGLE_EXP_MAX = 1;
 export const PREMIER_EXP_MIN = 0;
 export const PREMIER_EXP_MAX = 2;
+export const FOURSQUARE_FACTOR_MIN = 0;
+export const FOURSQUARE_FACTOR_MAX = 5;
+export const FOURSQUARE_EXPONENT_MIN = 1;
+export const FOURSQUARE_EXPONENT_MAX = 40;
 export const MIX_TEMPERATURE_MIN = 0;
 export const MIX_TEMPERATURE_MAX = 5;
 export const AD_FLOOR_MIN = 0;
@@ -192,6 +198,8 @@ export const RECIPE_BOUNDS = {
   halfKm: { min: HALF_KM_MIN, max: HALF_KM_MAX, decimals: 2 },
   distanceExp: { min: EXPONENT_MIN, max: EXPONENT_MAX, decimals: 1 },
   googleExp: { min: GOOGLE_EXP_MIN, max: GOOGLE_EXP_MAX, decimals: 2 },
+  foursquareFactor: { min: FOURSQUARE_FACTOR_MIN, max: FOURSQUARE_FACTOR_MAX, decimals: 2 },
+  foursquareExponent: { min: FOURSQUARE_EXPONENT_MIN, max: FOURSQUARE_EXPONENT_MAX, decimals: 0 },
   premierExp: { min: PREMIER_EXP_MIN, max: PREMIER_EXP_MAX, decimals: 1 },
 } as const;
 
@@ -204,14 +212,14 @@ export const MIX_BOUNDS = {
 
 /** The recipe table (Pato, 2026-11-19). Mirrors DEFAULT_RECIPES. */
 export const DEFAULT_RECIPES: Recipes = {
-  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, premierExp: 0 },
-  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, premierExp: 1 },
-  catalogFamilyOrganic: { halfKm: 2, distanceExp: 2, googleExp: 0.33, premierExp: 0 },
-  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, premierExp: 1 },
-  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, googleExp: 0.33, premierExp: 0 },
-  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, premierExp: 1 },
-  mapOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, premierExp: 0 },
-  mapInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, premierExp: 1 },
+  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 },
+  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 },
+  catalogFamilyOrganic: { halfKm: 2, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 },
+  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 },
+  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 },
+  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 },
+  mapOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 },
+  mapInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 },
 };
 
 /** Mirrors DEFAULT_MIX. */
@@ -388,6 +396,8 @@ export function coerceRecipes(raw: unknown): Recipes {
       halfKm: map ? null : bounds(v.halfKm, d.halfKm as number, RECIPE_BOUNDS.halfKm),
       distanceExp: map ? null : bounds(v.distanceExp, d.distanceExp as number, RECIPE_BOUNDS.distanceExp),
       googleExp: bounds(v.googleExp, d.googleExp, RECIPE_BOUNDS.googleExp),
+      foursquareFactor: bounds(v.foursquareFactor, d.foursquareFactor, RECIPE_BOUNDS.foursquareFactor),
+      foursquareExponent: bounds(v.foursquareExponent, d.foursquareExponent, RECIPE_BOUNDS.foursquareExponent),
       premierExp: isOrganicRow(row) ? 0 : bounds(v.premierExp, d.premierExp, RECIPE_BOUNDS.premierExp),
     };
   }

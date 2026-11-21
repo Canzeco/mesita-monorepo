@@ -4,6 +4,7 @@ import {
   clearsAdFloor,
   clearsPopularityFloor,
   cutAndShuffle,
+  foursquareBoost,
   googlePopularity,
   mergeLanes,
   premierBoost,
@@ -201,7 +202,7 @@ Deno.test("shuffleByRank: temperature 0 keeps the sort, any temperature keeps ev
 // Organic {1 km, 2, 2, 0.5, 0}, Inorganic {1 km, 2, 2, 0.5, 1}, so
 // Popularity = stars × √reviews and Proximity = 1 ÷ (1 + km²).
 
-const ORG = { halfKm: 1, distanceExp: 2, googleExp: 0.5, premierExp: 0 };
+const ORG = { halfKm: 1, distanceExp: 2, googleExp: 0.5, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 };
 const INORG = { ...ORG, premierExp: 1 };
 
 Deno.test("v2 score: Proximity × (stars × reviews)^GoogleExp × premierFactor^PremierExp, by hand", () => {
@@ -235,14 +236,14 @@ Deno.test("growth blend keeps GoogleExp once, and cold start is the linear-stars
     { elapsedDays: 30, growthBase: 3000, kind: "grow" },
     0.5,
   );
-  // 50/50 of 400 and 3000 is 1700; the exponent is applied once.
-  assertAlmostEquals(grow, Math.sqrt(1700), 1e-9);
+  // Day 30 is 80% recent: 0.2 × 400 + 0.8 × 3000 = 2480. The exponent is applied once.
+  assertAlmostEquals(grow, Math.sqrt(2480), 1e-9);
   const flat = googlePopularity(
     { rating: 4, reviewCount: 100 },
     0.5,
     { elapsedDays: 30, growthBase: 0, kind: "flat" },
   );
-  assertAlmostEquals(flat, Math.sqrt(200), 1e-9);
+  assertAlmostEquals(flat, Math.sqrt(80), 1e-9);
   const missing = googlePopularity(
     { rating: 4, reviewCount: 100 },
     0.25,
@@ -317,6 +318,33 @@ Deno.test("cutAndShuffle: keyed by (seed, id); T 0 is the identity; seed 0 valid
   let moved = 0;
   for (let seed = 0; seed < 200; seed++) moved += cutAndShuffle(order, 20, 0.3, seed).indexOf("id00");
   assert(moved / 200 < 2, `rank 1 drifted to ${moved / 200} on average at T 0.3`);
+});
+
+Deno.test("foursquare boost: null and 0 are 1×, 0.95 is about 1.36×, 1 is 2×, factor 0 is 1×", () => {
+  assertEquals(foursquareBoost(null, 1, 20), 1);
+  assertEquals(foursquareBoost(0, 1, 20), 1);
+  assertAlmostEquals(foursquareBoost(0.95, 1, 20), 1 + Math.pow(0.95, 20), 1e-12);
+  assertEquals(foursquareBoost(1, 1, 20), 2);
+  assertEquals(foursquareBoost(0.95, 0, 20), 1);
+  assertEquals(foursquareBoost(1, 0, 20), 1);
+  const google = googlePopularity({ rating: 4, reviewCount: 100 }, 0.5);
+  const scored = recipeScore(
+    { rating: 4, reviewCount: 100, foursquarePopularity: 1 },
+    null,
+    false,
+    1,
+    ORG,
+  );
+  assertAlmostEquals(scored.popularity, google * 2, 1e-9);
+  assertAlmostEquals(scored.final, google * 2, 1e-9);
+  const off = recipeScore(
+    { rating: 4, reviewCount: 100, foursquarePopularity: 1 },
+    null,
+    false,
+    1,
+    { ...ORG, foursquareFactor: 0 },
+  );
+  assertAlmostEquals(off.popularity, google, 1e-9);
 });
 
 Deno.test("rankModeForChip: near is nearby, all is popular, any family key is family", () => {

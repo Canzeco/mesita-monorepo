@@ -55,17 +55,20 @@ $$;
 
 -- ━━━ The function and its door ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- MESITA-4515 appends four defaulted Foursquare arguments. Named calls that
+-- omit them still resolve; the stored signature is the full 23.
 select has_function('public', 'catalog_rank_lanes',
   array['double precision', 'double precision', 'double precision', 'double precision', 'double precision',
         'double precision', 'double precision', 'double precision', 'double precision', 'double precision',
         'double precision', 'double precision', 'double precision', 'double precision',
-        'text[]', 'text[]', 'boolean', 'double precision', 'double precision'],
+        'text[]', 'text[]', 'boolean', 'double precision', 'double precision',
+        'double precision', 'double precision', 'double precision', 'double precision'],
   'catalog_rank_lanes exists with its one signature');
 
 select ok(
-  has_function_privilege('service_role', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision)', 'execute')
-  and not has_function_privilege('anon', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision)', 'execute')
-  and not has_function_privilege('authenticated', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision)', 'execute'),
+  has_function_privilege('service_role', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute')
+  and not has_function_privilege('anon', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute')
+  and not has_function_privilege('authenticated', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute'),
   'service role only, like catalog_rank');
 
 -- The deployed EF keeps calling the old function, with its old named

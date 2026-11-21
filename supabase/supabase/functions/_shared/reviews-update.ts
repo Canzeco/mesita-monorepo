@@ -8,6 +8,7 @@
 // (consumer-web-track-activity) all run this.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { foursquareServiceKey, syncFoursquare } from "./foursquare-places.ts";
 import { writePlace } from "./place-doc.ts";
 import { runPlaceSync } from "./place-sync-run.ts";
 
@@ -31,5 +32,9 @@ export async function runReviewsUpdate(admin: SupabaseClient, placeId: string): 
   });
   const written = await writePlace(admin, { table: "place_profiles", mode: "update", id: placeId, patch: synced.patch });
   if (!written.ok) return { ok: false, status: 500, error: written.error };
+  // A linked place refreshes popularity only. An unlinked place tries one
+  // branch match. A failure keeps the previous score and does not fail the
+  // Google, Instagram or Facebook update. Fast Update does not come here.
+  if (foursquareServiceKey()) await syncFoursquare(admin, placeId);
   return { ok: true, synced };
 }

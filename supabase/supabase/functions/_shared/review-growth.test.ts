@@ -19,28 +19,27 @@ Deno.test("cold start is the established base, for every Google exponent the cal
   assertEquals(blendPopularity(4500, { kind: "fallback", elapsedDays: 40, growthBase: null }, 0.5), 4500);
 });
 
-Deno.test("growth weight: 0 under 7 days, 0.20 at 7, the cap at 30, linear between", () => {
+Deno.test("growth weight: 0 under 7 days, then 0.20 + 0.60 × min(days / 30, 1)", () => {
   assertEquals(growthWeight(6.9, 0.5, "grow"), 0);
-  assertAlmostEquals(growthWeight(7, 0.5, "grow"), 0.2, 1e-12);
-  // 7 + 11.5 days is the midpoint of the 23-day ramp: 0.20 + 0.5 × 0.30.
-  assertAlmostEquals(growthWeight(18.5, 0.5, "grow"), 0.35, 1e-12);
-  assertAlmostEquals(growthWeight(30, 0.5, "flat"), 0.5, 1e-12);
-  assertAlmostEquals(growthWeight(90, 0.5, "grow"), 0.5, 1e-12);
-  // The experiment raises the cap. Day 7 stays 0.20; day 30 becomes 0.80.
-  assertAlmostEquals(growthWeight(7, 0.8, "grow"), 0.2, 1e-12);
-  assertAlmostEquals(growthWeight(30, 0.8, "grow"), 0.8, 1e-12);
+  // 0.20 + 0.60 × 7/30 = 0.34. The stored cap does not move it.
+  assertAlmostEquals(growthWeight(7, 0.5, "grow"), 0.34, 1e-12);
+  assertAlmostEquals(growthWeight(7, 0.8, "grow"), 0.34, 1e-12);
+  assertAlmostEquals(growthWeight(18.5, 0.5, "grow"), 0.57, 1e-12);
+  assertAlmostEquals(growthWeight(30, 0.5, "flat"), 0.8, 1e-12);
+  assertAlmostEquals(growthWeight(90, 0.5, "grow"), 0.8, 1e-12);
   assertEquals(growthWeight(30, 0.5, "missing"), 0);
   assertEquals(growthWeight(30, 0.5, "fallback"), 0);
+  assertEquals(growthWeight(30, 0.5, "short"), 0);
 });
 
 Deno.test("a watched flat place mixes in a zero growth base; a growing place mixes its base", () => {
   const flat = blendPopularity(1000, { kind: "flat", elapsedDays: 30, growthBase: 0 }, 0.5);
-  assertAlmostEquals(flat, 500, 1e-9);
+  assertAlmostEquals(flat, 200, 1e-9);
   const grew = blendPopularity(1000, { kind: "grow", elapsedDays: 30, growthBase: 3000 }, 0.5);
-  assertAlmostEquals(grew, 2000, 1e-9);
-  // Day 7 is 80% established.
+  assertAlmostEquals(grew, 2600, 1e-9);
+  // Day 7 is 34% recent: 0.66 × 1000 + 0.34 × 3000.
   const week = blendPopularity(1000, { kind: "grow", elapsedDays: 7, growthBase: 3000 }, 0.5);
-  assertAlmostEquals(week, 0.8 * 1000 + 0.2 * 3000, 1e-9);
+  assertAlmostEquals(week, 0.66 * 1000 + 0.34 * 3000, 1e-9);
 });
 
 Deno.test("growth rows: a bad kind is dropped, numbers pass through", () => {

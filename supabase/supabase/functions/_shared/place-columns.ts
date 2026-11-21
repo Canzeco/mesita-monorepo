@@ -82,6 +82,10 @@ const COLUMNS: readonly string[] = [
   // surfaces that compare place_profiles.
   "google_stars_overall",
   "google_review_count",
+  "foursquare_place_id",
+  "foursquare_url",
+  "foursquare_popularity",
+  "foursquare_popularity_at",
   "instagram_followers_count",
   "facebook_followers",
   // Complete-place profile (migration 0039). Scalars + JSONB filled by the
