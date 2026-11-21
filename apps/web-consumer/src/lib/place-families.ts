@@ -37,7 +37,7 @@ export type FamilyKey =
   | "nightclub"
   | "music"
   | "sports"
-  | "fun"
+  | "hookah"
   | "undefined";
 
 type PlaceFamily = {
@@ -76,7 +76,7 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "nightclub", label: "Club", emoji: "🪩" },
   { key: "music", label: "Music", emoji: "🎶" },
   { key: "sports", label: "Sports", emoji: "📺" },
-  { key: "fun", label: "Fun", emoji: "🎯" },
+  { key: "hookah", label: "Hookah", emoji: "💨" },
   { key: "undefined", label: "Undefined", emoji: "·" },
 ];
 

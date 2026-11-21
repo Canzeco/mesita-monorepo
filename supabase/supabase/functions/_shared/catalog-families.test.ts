@@ -21,7 +21,7 @@ Deno.test("thirty families: the seven retired rails hold no Google type (MESITA-
   for (const t of RETIRED_RAIL_TYPES) {
     assertEquals(familiesForGoogleType(t), [], t);
   }
-  const gone = ["family", "karaoke", "hookah", "cinema", "casino", "spa", "tourist", "go_out"];
+  const gone = ["family", "karaoke", "fun", "cinema", "casino", "spa", "tourist", "go_out"];
   const stillThere = Object.keys(GOOGLE_TYPE_SUPER).filter((t) =>
     (familiesForGoogleType(t) as string[]).some((f) => gone.includes(f))
   );
@@ -30,12 +30,8 @@ Deno.test("thirty families: the seven retired rails hold no Google type (MESITA-
   assertEquals(familiesForGoogleType("family_restaurant"), ["dinner"]);
   assertEquals(familiesForGoogleType("karaoke"), ["drinks", "night_out"]);
   assertEquals(familiesForGoogleType("comedy_club"), ["night_out"]);
-  assertEquals(familiesForGoogleType("hookah_bar"), ["drinks", "night_out"]);
-  // Fun stays: what a group does with its hands.
-  assertEquals(familiesForGoogleType("billiards"), ["drinks", "fun"]);
-  assertEquals(familiesForGoogleType("board_game_cafe"), ["coffee", "fun"]);
-  assertEquals(familiesForGoogleType("bowling_alley"), ["fun"]);
-  assertEquals(familiesForGoogleType("water_park"), ["fun"]);
+  assertEquals(familiesForGoogleType("billiards"), ["drinks"]);
+  assertEquals(familiesForGoogleType("board_game_cafe"), ["coffee"]);
 });
 
 Deno.test("sixteen rails folded into their parent (MESITA-2888)", () => {

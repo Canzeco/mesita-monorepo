@@ -1,10 +1,10 @@
--- MESITA-4571: thirty families. Family, Karaoke, Hookah, Cinema, Casino, Spa
--- and Tourism leave the catalog.
+-- MESITA-4571: thirty families. Family, Karaoke, Fun, Cinema, Casino, Spa and
+-- Tourism leave the catalog.
 --
 -- Pato, 2026-11-21: "I WANT ONLY 30 FAMILIES. COMPRESS THE LIST OR REMOVE
 -- ITEMS. MUST ONLY 30 FAMILIES." On that day none of the seven sat on a live
--- place. Sports and Fun also sat on none but stay (Pato, same day, on the
--- first cut: "change hookhag for fun"); a hookah bar is Bar and Night. Slugs, labels, emoji and the
+-- place and none is food or drink. Sports and Hookah also sat on none but
+-- stay (MESITA-2930: "Keep Sports and Hookah"). Slugs, labels, emoji and the
 -- order of the thirty that stay are untouched; sort_order closes up, 1..30,
 -- Undefined stays 999.
 --
@@ -57,14 +57,14 @@ begin
     ('nightclub', 'Club', '🪩', 27),
     ('music', 'Music', '🎶', 28),
     ('sports', 'Sports', '📺', 29),
-    ('fun', 'Fun', '🎯', 30),
+    ('hookah', 'Hookah', '💨', 30),
     ('undefined', 'Undefined', '·', 999)
   on conflict (slug) do update set
     label = excluded.label,
     emoji = excluded.emoji,
     sort_order = excluded.sort_order;
   delete from public.place_families
-   where slug not in ('dinner','coffee','drinks','quick_bite','breakfast','mexican','tacos','seafood','asian','european','fancy','steak','japanese','american','healthy','italian','sushi','pizza','burgers','arabic','chinese','indian','chicken','sweet','night_out','bakery','nightclub','music','sports','fun','undefined');
+   where slug not in ('dinner','coffee','drinks','quick_bite','breakfast','mexican','tacos','seafood','asian','european','fancy','steak','japanese','american','healthy','italian','sushi','pizza','burgers','arabic','chinese','indian','chicken','sweet','night_out','bakery','nightclub','music','sports','hookah','undefined');
 end;
 $function$;
 
@@ -72,8 +72,8 @@ update public.place_profiles p
    set family_keys = (
      select array_agg(k.slug order by k.ord)
        from unnest(p.family_keys) with ordinality as k(slug, ord)
-      where k.slug not in ('family', 'karaoke', 'hookah', 'cinema', 'casino', 'spa', 'tourist'))
- where p.family_keys && array['family', 'karaoke', 'hookah', 'cinema', 'casino', 'spa', 'tourist']::text[];
+      where k.slug not in ('family', 'karaoke', 'fun', 'cinema', 'casino', 'spa', 'tourist'))
+ where p.family_keys && array['family', 'karaoke', 'fun', 'cinema', 'casino', 'spa', 'tourist']::text[];
 
 select public.seed_place_families();
 
@@ -81,12 +81,17 @@ update public.catalog_membership
    set enabled = false
  where enabled
    and slug in (
-     'movie_theater', 'performing_arts_theater', 'theater', 'casino', 'spa',
-     'massage_spa', 'sauna', 'wellness_center', 'public_bath', 'temazcal',
-     'hot_springs', 'zoo', 'aquarium', 'wildlife_park', 'indoor_playground',
-     'ferris_wheel', 'planetarium', 'tourist_attraction', 'cultural_center', 'museum',
-     'art_museum', 'history_museum', 'art_gallery', 'botanical_garden', 'observation_deck',
-     'market', 'flea_market', 'farmers_market');
+     'bowling_alley', 'video_arcade', 'arcade', 'amusement_center', 'escape_room',
+     'laser_tag', 'axe_throwing', 'trampoline_park', 'go_karting_venue', 'go_kart',
+     'golf_course', 'indoor_golf_course', 'miniature_golf_course', 'mini_golf',
+     'adventure_sports_center', 'paintball_center', 'race_course', 'ice_skating_rink',
+     'water_park', 'movie_theater', 'performing_arts_theater', 'theater', 'casino',
+     'spa', 'massage_spa', 'sauna', 'wellness_center', 'public_bath', 'temazcal',
+     'hot_springs', 'zoo', 'aquarium', 'wildlife_park', 'amusement_park',
+     'indoor_playground', 'ferris_wheel', 'roller_coaster', 'planetarium',
+     'tourist_attraction', 'cultural_center', 'museum', 'art_museum', 'history_museum',
+     'art_gallery', 'botanical_garden', 'observation_deck', 'market', 'flea_market',
+     'farmers_market');
 
 -- Postflight.
 do $$
@@ -98,12 +103,12 @@ begin
     raise exception 'place_families holds % rows, expected 30 families plus Undefined', n;
   end if;
   select count(*) into n from public.place_profiles
-   where family_keys && array['family', 'karaoke', 'hookah', 'cinema', 'casino', 'spa', 'tourist']::text[];
+   where family_keys && array['family', 'karaoke', 'fun', 'cinema', 'casino', 'spa', 'tourist']::text[];
   if n <> 0 then
     raise exception '% places still store a family that is gone', n;
   end if;
   select count(*) into n from public.catalog_membership
-   where enabled and slug in ('tourist_attraction', 'museum', 'spa', 'casino', 'movie_theater', 'zoo');
+   where enabled and slug in ('tourist_attraction', 'museum', 'spa', 'casino', 'movie_theater', 'bowling_alley', 'zoo');
   if n <> 0 then
     raise exception '% retired Google types are still enabled', n;
   end if;

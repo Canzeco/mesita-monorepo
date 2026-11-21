@@ -857,7 +857,7 @@ select is(
 
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
-  array['dinner','coffee','drinks','quick_bite','breakfast','mexican','tacos','seafood','asian','european','fancy','steak','japanese','american','healthy','italian','sushi','pizza','burgers','arabic','chinese','indian','chicken','sweet','night_out','bakery','nightclub','music','sports','fun',
+  array['dinner','coffee','drinks','quick_bite','breakfast','mexican','tacos','seafood','asian','european','fancy','steak','japanese','american','healthy','italian','sushi','pizza','burgers','arabic','chinese','indian','chicken','sweet','night_out','bakery','nightclub','music','sports','hookah',
         'undefined']::text[],
   'family catalog order is the thirty guest rails, biggest first, Undefined last (MESITA-4430, MESITA-4571)'
 );

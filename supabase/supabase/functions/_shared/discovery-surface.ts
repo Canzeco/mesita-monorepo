@@ -406,8 +406,8 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
   { key: "fancy", label: "Fancy", emoji: "🥂" },
   { key: "drinks", label: "Bar", emoji: "🍻" },
   { key: "sports", label: "Sports", emoji: "📺" },
+  { key: "hookah", label: "Hookah", emoji: "💨" },
   { key: "night_out", label: "Night", emoji: "🌙" },
   { key: "nightclub", label: "Club", emoji: "🪩" },
   { key: "music", label: "Music", emoji: "🎶" },
-  { key: "fun", label: "Fun", emoji: "🎯" },
 ];

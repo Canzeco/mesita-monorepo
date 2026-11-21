@@ -20,10 +20,10 @@ Deno.test("familiesForGoogleType: a place that is not a trip sits in no family (
   assertEquals(slugs.length, 23);
   // MESITA-2888 made rails of seven; MESITA-2962 sent the picnic ground,
   // plaza, fountain, sculpture and marina back out. A cafeteria is Quick and
-  // a race course Fun; the other twenty-one stay out.
+  // a race course was Fun until MESITA-4571 cut the catalog to thirty; the
+  // other twenty-two stay out.
   const rails: Record<string, string[]> = {
     cafeteria: ["quick_bite"],
-    race_course: ["fun"],
   };
   for (const slug of [...slugs.filter((s) => !(s in rails)), "car_repair", "church", "hotel"]) {
     assertEquals(familiesForGoogleType(slug), [], slug);
