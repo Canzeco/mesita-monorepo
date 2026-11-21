@@ -41,8 +41,8 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
   );
 }
 
-/** One Loyalty Card box in bones (MESITA-4531): the 2x2 grid, card + name
- *  box over the balance box, the Offers tile beside both. */
+/** One Loyalty Card box in bones (MESITA-4537): the true 2x2 grid, card +
+ *  name over balance, Offers over the moving offer. */
 export function LoyaltyCardBoxSkeleton() {
   return (
     <div className="border-border bg-card grid w-full grid-cols-2 grid-rows-[3rem_3rem] gap-2 rounded-2xl border p-2" aria-hidden>
@@ -53,7 +53,8 @@ export function LoyaltyCardBoxSkeleton() {
       <span className="border-border col-start-1 row-start-2 flex items-center rounded-xl border px-3">
         <Skeleton className="h-5 w-24 rounded" />
       </span>
-      <Skeleton className="col-start-2 row-span-2 row-start-1 rounded-xl" />
+      <Skeleton className="col-start-2 row-start-1 rounded-xl" />
+      <Skeleton className="col-start-2 row-start-2 rounded-xl" />
     </div>
   );
 }
