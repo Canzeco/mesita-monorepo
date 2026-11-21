@@ -74,7 +74,9 @@ export function PlaceActionRow({
         data-loyalty-card
       >
         <MiniCard photo={photo} name={name} />
-        <span className="text-foreground min-w-0 truncate text-sm font-semibold">{name}</span>
+        {/* Two lines before it cuts (MESITA-4532): "Taquería Orinoco (TEC)"
+            fits at 390px. */}
+        <span className="text-foreground line-clamp-2 min-w-0 text-sm leading-tight font-semibold">{name}</span>
       </button>
       <button
         type="button"
@@ -97,9 +99,12 @@ export function PlaceActionRow({
         )}
       </button>
       {slides.length > 0 && placeHref ? (
-        // THE WORD AT THE RIGHT (MESITA-4525): the place screen's tile,
-        // reversed here only, the whole right column.
-        <div className="col-start-2 row-span-2 row-start-1 flex min-w-0 [&>button]:h-full [&>button]:w-full [&>button]:flex-row-reverse [&>button]:rounded-xl">
+        // "OFFERS" ON TOP (Pato, 2026-11-21, MESITA-4532: "it must say offers
+        // on the bottom or on the top, not on the right"): the place screen's
+        // tile turned to a column here only, the glyph and the word in one
+        // row across the top, the moving offer filling the rest. At the right
+        // (MESITA-4525) before; the place screen keeps its own order.
+        <div className="col-start-2 row-span-2 row-start-1 flex min-w-0 [&>button]:h-full [&>button]:w-full [&>button]:flex-col [&>button]:rounded-xl [&>button>span:first-child]:h-6 [&>button>span:first-child]:w-full [&>button>span:first-child]:flex-row [&>button>span:first-child]:gap-1.5">
           <OffersTile name={name} slides={slides} open={() => () => navigateTo(router, placeHref, { motion: "drill" })} />
         </div>
       ) : null}
