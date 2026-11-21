@@ -6,15 +6,13 @@
 //   Place
 //   <place> ⌄ — Places: the current place by photo and name; opens /places
 //               to switch, claim or (staff) open any place
-//   ┌ Operations (MESITA-3202) ────────────────────┐
-//   │ Views · Visits · Vouchers · Stories · Gifts · Money │  MESITA-4487
-//   └────────────────────────────────────────────────────┘
-//   ┌ Capabilities (MESITA-3152; was Products) ────┐
-//   │ Profile · Premier · Payments · Reservations · All │  All: MESITA-3238,
-//   └───────────────────────────────────────────────────┘  every product
-//   ┌ Manage ─────────────────────────────────┐
-//   │ Settings · Admin (staff)               │  Admin: MESITA-3122
-//   └─────────────────────────────────────────┘
+//   ┌ Monitor (MESITA-4528; was Operations) ───┐
+//   │ Views · Visits · Vouchers · Gifts          │  a Story voucher shows
+//   └────────────────────────────────────────────┘  in Vouchers
+//   ┌ Manage (MESITA-4528; Capabilities folded in) ┐
+//   │ Profile · Premier · Payments · General        │  General: Reservations,
+//   └───────────────────────────────────────────────┘  Stories, Money, Settings,
+//                                                      Admin (staff), All
 //   …
 //   Account   — at the foot: email, sign-out, What you pay
 //
@@ -58,7 +56,10 @@ type Row = { key: string; label: string; icon: Icon; href: string | null; active
 /** The Places row: the current place, or plain Places without one. */
 type Switcher = { href: string; active: boolean; name: string; photo: string | null; role: string | null; hasPlace: boolean };
 
-type PlaceMenu = { operations: Row[]; products: Row[]; manage: Row[] };
+type PlaceMenu = { monitor: Row[]; manage: Row[] };
+
+/** The pages General gathers (MESITA-4528): its row lights on any of them. */
+const UNDER_GENERAL: readonly PlaceTab[] = ["general", "reservations", "stories", "money", "settings", "admin", "all"];
 
 function menu(
   pathname: string,
@@ -87,25 +88,19 @@ function menu(
     account,
     switcher,
     place: {
-      operations: [tab("views"), tab("visits"), tab("vouchers"), tab("stories"), tab("gifts"), tab("money")],
-      products: [
+      // Pato, MESITA-4528: "Not operations anymore. it must be called Monitor".
+      monitor: [tab("views"), tab("visits"), tab("vouchers"), tab("gifts")],
+      manage: [
         // Reviews lives inside Profile (MESITA-3393).
         tab("profile"),
         tab("premier"),
         // One quiet dot until the place's Stripe account can charge
         // (MESITA-3384); Payments leads with the Connect card meanwhile.
         { ...tab("payments"), ...(connectStripe ? { dot: "Connect Stripe" } : {}) },
-        // Its one On/Off switch (MESITA-3600; was Settings › Actions).
-        tab("reservations"),
-        // Last: every product, current and future (MESITA-3238).
-        tab("all"),
-      ],
-      manage: [
-        // Billing folded into Premier (MESITA-3620).
-        tab("settings"),
-        // Mesita staff only (MESITA-3122): the place's staff page. The server
-        // refuses anyone else.
-        ...(isSuperAdmin ? [tab("admin")] : []),
+        {
+          ...tab("general"),
+          active: !!placeId && UNDER_GENERAL.some((k) => under(placeTabHref(placeId, k))),
+        },
       ],
     },
   };
@@ -141,7 +136,7 @@ function PlaceSwitcher({ s }: { s: Switcher }) {
   );
 }
 
-/** A group's title; one style for Place, Operations, Capabilities and Manage. */
+/** A group's title; one style for Place, Monitor and Manage. */
 function GroupLabel({ label }: { label: string }) {
   return <p className="text-muted-foreground hidden h-7 items-center px-3 text-xs font-semibold lg:flex">{label}</p>;
 }
@@ -254,14 +249,13 @@ export function BusinessShell({
               and Account stays put (MESITA-3263). `-mx-1 px-1` keeps focus
               outlines and the switcher's shadow from clipping at the edge. */}
           <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain px-1 py-0.5">
-            {/* "Place" over the switcher, as Capabilities and Manage over
+            {/* "Place" over the switcher, as Monitor and Manage over
                 theirs (Pato, MESITA-3156: "just to keep symmetry"). */}
             <div role="group" aria-label="Place" className="flex flex-col gap-0.5">
               <GroupLabel label="Place" />
               <PlaceSwitcher s={switcher} />
             </div>
-            <Group label="Operations" rows={place.operations} />
-            <Group label="Capabilities" rows={place.products} />
+            <Group label="Monitor" rows={place.monitor} />
             <Group label="Manage" rows={place.manage} />
           </div>
           {/* Account sits at the foot (Pato, MESITA-3136). */}
