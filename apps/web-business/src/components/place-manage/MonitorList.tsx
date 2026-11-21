@@ -1,57 +1,48 @@
 "use client";
 
 // One Monitor list (MESITA-4538, Pato: "SIMPLE LISTS. NOTHING ELSE … the
-// lists have ids and those ids redirect to other tickets"; the row redrawn by
-// MESITA-4554, Pato: "more friendly profile picture"). One card, newest first,
-// 50 at a time with Older. A row reads like a contacts list: the guest's face,
-// their name, one quiet line of what happened and when, small chips to the
-// related rows; the amount and the row's own #ID on the right. No buttons on a
-// row (Pato: "don't add button to refund"). The server names guests (masked)
-// and refuses editors before this renders.
+// lists have ids and those ids redirect to other tickets"). A table since
+// MESITA-4566 (Pato: "make all those tables in table format"): one column per
+// field, newest first, 50 at a time with Older. The guest's face and name, a
+// Customer #ID, the kind's own fields, chips to the related rows, the amount
+// and the row's own #ID. No buttons on a row (Pato: "don't add button to
+// refund"). The server names guests (masked) and refuses editors before this
+// renders.
 
 import { useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/shell/Page";
 import { listMonitor } from "@/lib/business-api";
 import {
-  customerHref,
-  customerLabel,
   customerListHref,
   EMPTY,
   linkHref,
   linkKindPage,
   linkLabel,
+  money,
   NOUN,
   rowAmount,
-  rowDetail,
   rowStatus,
   shortId,
-  statusWorthShowing,
   when,
   type LinkKind,
   type MonitorFilter,
   type MonitorKind,
-  type MonitorLink,
   type MonitorPage,
   type MonitorRow,
 } from "@/lib/monitor";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { GuestAvatar } from "./GuestAvatar";
+import { CHIP, CustomerChip, Dash, GuestCell, IdCell, MonitorTable, type Column } from "./MonitorTable";
 import { CardBadge, CreditBadge, VisitBadge, VoucherBadge } from "./VoucherBadge";
 import type { Icon } from "@phosphor-icons/react";
-import { CoinsIcon, CreditCardIcon, FootprintsIcon, TicketIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
+import { CoinsIcon, CreditCardIcon, FootprintsIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
 
-/** The row grid every Monitor list shares: face · text · amount. */
-export const ROW = "grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 text-sm sm:px-5";
-/** A small quiet link to a related row. */
-export const CHIP =
-  "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground inline-flex h-5 items-center rounded-full px-2 text-xs font-medium whitespace-nowrap tabular-nums";
-const META = "text-muted-foreground text-sm";
+export { CHIP };
 
 /** Every chip wears its kind's icon (Pato: "USE ICONS ALWAYS"). */
-const CHIP_ICON: Record<LinkKind | "customer", Icon> = {
-  customer: UserCircleIcon,
+const CHIP_ICON: Record<LinkKind, Icon> = {
   visit: FootprintsIcon,
   payment: CreditCardIcon,
   voucher: TicketIcon,
@@ -59,97 +50,131 @@ const CHIP_ICON: Record<LinkKind | "customer", Icon> = {
   story: TicketIcon,
 };
 
-function ChipIcon({ kind }: { kind: LinkKind | "customer" }) {
-  const I = CHIP_ICON[kind];
-  return <I size={12} weight="bold" aria-hidden />;
-}
-
-/** At most three chips of one kind, then "+N" to that page filtered to the guest. */
-function Chips({ placeId, row }: { placeId: string; row: MonitorRow }) {
-  const byKind = new Map<LinkKind, MonitorLink[]>();
-  // Stories (MESITA-4553) and Credits (MESITA-4555) have no list, so their
-  // links have nowhere to land.
-  for (const l of row.links) if (l.kind !== "story" && l.kind !== "credit") byKind.set(l.kind, [...(byKind.get(l.kind) ?? []), l]);
+/** The related rows of some kinds: at most three chips, then "+N" to that
+ *  page filtered to the guest. Stories and Credits have no list, so their
+ *  links have nowhere to land. */
+function Related({ placeId, row, kinds }: { placeId: string; row: MonitorRow; kinds: LinkKind[] }) {
+  const links = row.links.filter((l) => kinds.includes(l.kind));
+  if (links.length === 0) return <Dash />;
   const chips: React.ReactNode[] = [];
-  if (row.customer) {
-    chips.push(
-      <Link key="customer" href={customerHref(placeId, row.customer)} className={cn(CHIP, "gap-1")}>
-        <ChipIcon kind="customer" />
-        {customerLabel(row.customer)}
-      </Link>,
-    );
-  }
-  for (const [kind, links] of byKind) {
-    for (const l of links.slice(0, 3)) {
+  for (const kind of kinds) {
+    const mine = links.filter((l) => l.kind === kind);
+    const I = CHIP_ICON[kind];
+    for (const l of mine.slice(0, 3)) {
       chips.push(
         <Link key={`${kind}${l.id}`} href={linkHref(placeId, l)} className={cn(CHIP, "gap-1")}>
-          <ChipIcon kind={kind} />
+          <I size={12} weight="bold" aria-hidden />
           {linkLabel(l)}
         </Link>,
       );
     }
     const page = linkKindPage(kind);
-    if (links.length > 3 && page && row.customer) {
+    if (mine.length > 3 && page && row.customer) {
       chips.push(
         <Link key={`${kind}+`} href={customerListHref(placeId, page, row.customer)} className={CHIP}>
-          +{links.length - 3}
+          +{mine.length - 3}
         </Link>,
       );
     }
   }
-  if (row.other_customer && row.other) {
-    chips.push(
-      <Link key="other" href={customerHref(placeId, row.other_customer)} className={cn(CHIP, "gap-1.5 pl-0.5")}>
-        <GuestAvatar face={row.other_face ?? null} size={16} />
-        {row.other}
-      </Link>,
-    );
-  }
-  return chips.length ? <>{chips}</> : null;
+  return <span className="flex gap-1.5">{chips}</span>;
 }
 
-export function MonitorRowItem({ placeId, kind, row, timezone }: { placeId: string; kind: MonitorKind; row: MonitorRow; timezone: string }) {
-  const detail = rowDetail(kind, row);
-  const lead = statusWorthShowing(kind, row) ? rowStatus(kind, row) : null;
-  const name = row.guest ?? "Deleted guest";
-  return (
-    <li className={ROW} id={row.id}>
-      {row.customer ? (
-        <Link href={customerHref(placeId, row.customer)} aria-label={name}>
-          <GuestAvatar face={row.face ?? null} size={32} />
-        </Link>
-      ) : (
-        <GuestAvatar face={null} size={32} />
-      )}
-      {/* One line that wraps (Pato: "too big … make it cleaner"). */}
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-        {row.customer ? (
-          <Link href={customerHref(placeId, row.customer)} className="truncate font-medium underline-offset-2 hover:underline">
-            {name}
-          </Link>
-        ) : (
-          <span className="text-muted-foreground font-medium">{name}</span>
-        )}
-        {kind === "vouchers" ? (
-          <VoucherBadge code={(row.payload.voucher as string | null) ?? null} />
-        ) : kind === "visits" ? (
-          <VisitBadge status={rowStatus(kind, row)} />
-        ) : kind === "payments" ? (
-          <CardBadge status={lead} />
-        ) : (
-          <CreditBadge kind={kind === "gifts" ? "gift" : String(row.payload.kind ?? "")} voucher={(row.payload.voucher as string | null) ?? null} />
-        )}
-        <span className={META}>
-          {[kind === "visits" || kind === "payments" ? null : lead, detail, when(row.at, timezone)].filter(Boolean).join(" · ")}
-        </span>
-        <Chips placeId={placeId} row={row} />
-      </div>
-      <div className="text-right">
-        <p className="font-semibold whitespace-nowrap tabular-nums">{rowAmount(kind, row)}</p>
-        <p className="text-muted-foreground/70 font-mono text-xs tabular-nums">{shortId(row.id)}</p>
-      </div>
-    </li>
-  );
+/** A money field of the payload, or "—" when it is zero. */
+function cents(row: MonitorRow, ...keys: string[]): React.ReactNode {
+  const n = keys.reduce((sum, k) => sum + Number(row.payload[k] ?? 0), 0);
+  return n > 0 ? money(n) : <Dash />;
+}
+
+function text(v: unknown): React.ReactNode {
+  return v == null || v === "" ? <Dash /> : String(v);
+}
+
+/** The columns of each kind's table. */
+function columnsFor(kind: MonitorKind, placeId: string, timezone: string): Column<MonitorRow>[] {
+  const id: Column<MonitorRow> = { head: "ID", cell: (r) => <IdCell id={shortId(r.id)} /> };
+  const date: Column<MonitorRow> = { head: "Date", cell: (r) => when(r.at, timezone) };
+  const guest: Column<MonitorRow> = {
+    head: "Guest",
+    cell: (r) => <GuestCell placeId={placeId} customer={r.customer} name={r.guest} face={r.face ?? null} />,
+  };
+  const customer: Column<MonitorRow> = { head: "Customer", cell: (r) => <CustomerChip placeId={placeId} customer={r.customer} /> };
+  const amount = (head: string): Column<MonitorRow> => ({ head, align: "right", cell: (r) => <span className="font-semibold">{rowAmount(kind, r)}</span> });
+
+  if (kind === "visits") {
+    return [
+      id,
+      date,
+      guest,
+      customer,
+      { head: "Status", cell: (r) => <VisitBadge status={rowStatus(kind, r)} /> },
+      { head: "Waiter", cell: (r) => text(r.payload.waiter_name) },
+      { head: "Ticket", cell: (r) => text(r.payload.ticket) },
+      { head: "Payment", cell: (r) => <Related placeId={placeId} row={r} kinds={["payment"]} /> },
+      { head: "Bill", align: "right", cell: (r) => cents(r, "bill_cents") },
+      { head: "Tip", align: "right", cell: (r) => cents(r, "tip_cents") },
+      amount("Total"),
+    ];
+  }
+  if (kind === "vouchers") {
+    return [
+      id,
+      date,
+      guest,
+      customer,
+      { head: "Voucher", cell: (r) => <VoucherBadge code={(r.payload.voucher as string | null) ?? null} /> },
+      { head: "Status", cell: (r) => rowStatus(kind, r) },
+      { head: "Related", cell: (r) => <Related placeId={placeId} row={r} kinds={["visit", "payment"]} /> },
+      { head: "Bonus", align: "right", cell: (r) => cents(r, "bonus_cents") },
+      amount("Paid"),
+    ];
+  }
+  if (kind === "gifts") {
+    return [
+      id,
+      date,
+      { ...guest, head: "From" },
+      {
+        head: "To",
+        cell: (r) =>
+          r.other ? (
+            <GuestCell placeId={placeId} customer={r.other_customer} name={r.other} face={r.other_face ?? null} />
+          ) : (
+            <span className="text-muted-foreground flex items-center gap-2">
+              <GuestAvatar face={null} size={24} />
+              Not claimed
+            </span>
+          ),
+      },
+      { head: "Status", cell: (r) => rowStatus(kind, r) },
+      amount("Amount"),
+    ];
+  }
+  if (kind === "payments") {
+    return [
+      id,
+      date,
+      guest,
+      customer,
+      { head: "Status", cell: (r) => <CardBadge status={rowStatus(kind, r)} /> },
+      { head: "Visit", cell: (r) => <Related placeId={placeId} row={r} kinds={["visit"]} /> },
+      { head: "Card", align: "right", cell: (r) => cents(r, "card_cents") },
+      { head: "Credit", align: "right", cell: (r) => cents(r, "credit_cents") },
+      { head: "Tip", align: "right", cell: (r) => cents(r, "tip_cents") },
+      { head: "Refunded", align: "right", cell: (r) => cents(r, "refunded_cents", "credit_refunded_cents") },
+      amount("Total"),
+    ];
+  }
+  // Credits and Stories have no page today; a plain table still reads.
+  return [
+    id,
+    date,
+    guest,
+    customer,
+    { head: "What", cell: (r) => <CreditBadge kind={String(r.payload.kind ?? "")} voucher={(r.payload.voucher as string | null) ?? null} /> },
+    { head: "Detail", cell: (r) => rowStatus(kind, r) },
+    amount("Amount"),
+  ];
 }
 
 /** "Showing visit #A1B2C3 · Show all" or "Showing Ana's visits · Show all". */
@@ -216,11 +241,7 @@ export function MonitorList({
       {page.rows.length === 0 ? (
         <p className="text-muted-foreground px-5 py-6 text-sm sm:px-6">{filtered ? "Nothing matches this filter." : EMPTY[kind]}</p>
       ) : (
-        <ul className="divide-border divide-y">
-          {page.rows.map((row) => (
-            <MonitorRowItem key={row.id} placeId={placeId} kind={kind} row={row} timezone={page.timezone} />
-          ))}
-        </ul>
+        <MonitorTable columns={columnsFor(kind, placeId, page.timezone)} rows={page.rows} rowKey={(r) => r.id} rowId={(r) => r.id} />
       )}
       {error ? <p className={cn(ERROR_BOX_CLASS, "mx-5 my-3 sm:mx-6")}>{error}</p> : null}
       {page.next ? (

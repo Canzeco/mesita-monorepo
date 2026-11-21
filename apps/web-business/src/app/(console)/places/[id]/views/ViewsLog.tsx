@@ -6,18 +6,19 @@
 // social feed"). Social's row without the place's photo, since the page is one
 // place: the guest's face with the same two marks, the name, the verb, and under
 // it their Instagram and the time. What the server sends is Social's rule: no
-// photo or handle for a guest with Public profile off.
+// photo or handle for a guest with Public profile off. A table since
+// MESITA-4566 (Pato: "make all those tables in table format").
 
 import { useState } from "react";
 import Link from "next/link";
 import { Crown } from "lucide-react";
-import { UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { Card } from "@/components/shell/Page";
 import { listPlaceViewsLog, type PlaceViewEvent, type PlaceViewsLog } from "@/lib/business-api";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { customerHref, customerLabel } from "@/lib/monitor";
-import { CHIP, FilterBanner } from "@/components/place-manage/MonitorList";
+import { customerHref } from "@/lib/monitor";
+import { FilterBanner } from "@/components/place-manage/MonitorList";
+import { CustomerChip, Dash, MonitorTable, type Column } from "@/components/place-manage/MonitorTable";
 import { cn } from "@/lib/utils";
 
 const VERB: Record<PlaceViewEvent["kind"], string> = {
@@ -26,7 +27,6 @@ const VERB: Record<PlaceViewEvent["kind"], string> = {
   shared: "shared",
 };
 
-const ROW = "flex items-center gap-3 px-4 py-2.5 text-sm sm:px-5";
 const MARK = "ring-card absolute -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full ring-2";
 
 /** "1.2K followers". */
@@ -49,11 +49,11 @@ function when(iso: string, timezone: string): string {
 function Face({ person }: { person: PlaceViewEvent["person"] }) {
   const vip = person.guestClass === "vip";
   return (
-    <span className="relative block h-8 w-8 shrink-0">
+    <span className="relative block h-6 w-6 shrink-0">
       {person.avatarUrl ? (
-        <SizedImg src={person.avatarUrl} size="thumb" alt="" className="h-8 w-8 rounded-full object-cover" />
+        <SizedImg src={person.avatarUrl} size="thumb" alt="" className="h-6 w-6 rounded-full object-cover" />
       ) : (
-        <span className="block h-8 w-8 overflow-hidden rounded-full">
+        <span className="block h-6 w-6 overflow-hidden rounded-full">
           <DefaultAvatar className="h-full w-full" />
         </span>
       )}
@@ -79,49 +79,46 @@ function Face({ person }: { person: PlaceViewEvent["person"] }) {
   );
 }
 
-function EventRow({ placeId, event, timezone }: { placeId: string; event: PlaceViewEvent; timezone: string }) {
-  const { person } = event;
-  const followers = followersLine(person.followers);
-  return (
-    <li className={ROW}>
-      <Face person={person} />
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-        <span>
-          {event.customer ? (
-            <Link href={customerHref(placeId, event.customer)} className="font-medium hover:underline underline-offset-2">
-              {person.name}
+type Indexed = PlaceViewEvent & { key: string };
+
+function viewColumns(placeId: string, timezone: string): Column<Indexed>[] {
+  return [
+    { head: "Date", cell: (e) => when(e.at, timezone) },
+    {
+      head: "Guest",
+      cell: (e) => (
+        <span className="flex items-center gap-2">
+          <Face person={e.person} />
+          {e.customer ? (
+            <Link href={customerHref(placeId, e.customer)} className="font-medium underline-offset-2 hover:underline">
+              {e.person.name}
             </Link>
           ) : (
-            <span className="font-medium">{person.name}</span>
-          )}{" "}
-          {VERB[event.kind]}
+            <span className="font-medium">{e.person.name}</span>
+          )}
         </span>
-        <span className="text-muted-foreground">
-          {person.handle ? (
-            <>
-              <a
-                href={`https://www.instagram.com/${encodeURIComponent(person.handle)}/`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-foreground underline underline-offset-2"
-              >
-                @{person.handle}
-              </a>
-              {" · "}
-            </>
-          ) : null}
-          {followers ? `${followers} · ` : null}
-          <span className="whitespace-nowrap">{when(event.at, timezone)}</span>
-        </span>
-        {event.customer ? (
-          <Link href={customerHref(placeId, event.customer)} className={cn(CHIP, "gap-1")}>
-            <UserCircleIcon size={12} weight="bold" aria-hidden />
-            {customerLabel(event.customer)}
-          </Link>
-        ) : null}
-      </div>
-    </li>
-  );
+      ),
+    },
+    { head: "Action", cell: (e) => <span className="capitalize">{VERB[e.kind]}</span> },
+    {
+      head: "Instagram",
+      cell: (e) =>
+        e.person.handle ? (
+          <a
+            href={`https://www.instagram.com/${encodeURIComponent(e.person.handle)}/`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            @{e.person.handle}
+          </a>
+        ) : (
+          <Dash />
+        ),
+    },
+    { head: "Followers", align: "right", cell: (e) => followersLine(e.person.followers) ?? <Dash /> },
+    { head: "Customer", cell: (e) => <CustomerChip placeId={placeId} customer={e.customer} /> },
+  ];
 }
 
 export function ViewsLog({
@@ -155,30 +152,25 @@ export function ViewsLog({
   }
 
   return (
-    <Card className="flex min-w-0 flex-col p-0 sm:p-0">
+    <Card className="flex min-w-0 flex-col overflow-hidden p-0 sm:p-0">
       {customer ? (
         <FilterBanner text={`Showing ${events[0]?.person.name ?? "this guest"}'s views`} clearHref={`/places/${encodeURIComponent(placeId)}/views`} />
       ) : null}
-      <ul className="divide-border divide-y">
-        {events.length === 0 ? (
-          <li className={cn(ROW, "text-muted-foreground")}>{customer ? "Nothing matches this filter." : "No views yet."}</li>
-        ) : null}
-        {events.map((event, i) => (
-          <EventRow key={`${i}|${event.kind}|${event.at}`} placeId={placeId} event={event} timezone={timezone} />
-        ))}
-        {next ? (
-          <li className={ROW}>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void more()}
-              className="border-border hover:bg-muted h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors disabled:opacity-40"
-            >
-              {busy ? "Loading…" : "Show more"}
-            </button>
-          </li>
-        ) : null}
-      </ul>
+      {events.length === 0 ? (
+        <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">{customer ? "Nothing matches this filter." : "No views yet."}</p>
+      ) : (
+        <MonitorTable columns={viewColumns(placeId, timezone)} rows={events.map((e, i) => ({ ...e, key: `${i}|${e.kind}|${e.at}` }))} rowKey={(e) => e.key} />
+      )}
+      {next ? (
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground border-border border-t px-5 py-3 text-left text-sm font-semibold sm:px-6"
+          disabled={busy}
+          onClick={() => void more()}
+        >
+          {busy ? "Loading…" : "Older"}
+        </button>
+      ) : null}
       {error ? <p className={cn(ERROR_BOX_CLASS, "mx-5 mb-4 sm:mx-6")}>{error}</p> : null}
     </Card>
   );
