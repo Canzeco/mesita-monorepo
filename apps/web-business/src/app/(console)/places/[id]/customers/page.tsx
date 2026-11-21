@@ -3,6 +3,7 @@ import { customerParam } from "@/lib/monitor";
 import { CustomersList } from "@/components/place-manage/CustomersList";
 import { MonitorCard, MonitorError } from "@/components/place-manage/MonitorList";
 import type { SearchParams } from "@/components/place-manage/MonitorPage";
+import { ExportButton, MonitorToolbar } from "@/components/place-manage/ExportButton";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Customers" };
@@ -17,6 +18,9 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   if (!r.ok) return <MonitorError code={r.code} error={r.error} />;
   return (
     <div className="flex flex-col gap-4 pb-8">
+      <MonitorToolbar>
+        <ExportButton placeId={id} kind="customers" filter={{ id: customer }} name="customers" />
+      </MonitorToolbar>
       <MonitorCard>
         <CustomersList key={customer ?? ""} placeId={id} initial={r.data} customer={customer} />
       </MonitorCard>

@@ -3,7 +3,10 @@
 // card. The server is the door: an editor gets the owner-only card.
 import { listMonitor } from "@/lib/business-api";
 import { customerParam, uuidParam, type MonitorKind } from "@/lib/monitor";
-import { MonitorCard, MonitorError, MonitorList } from "./MonitorList";
+import { getPlacePayments } from "@/lib/business-api";
+import { CardHeader, MonitorCard, MonitorError, MonitorList } from "./MonitorList";
+import { OpenStripeButton } from "./OpenStripeButton";
+import { ExportButton, MonitorToolbar } from "./ExportButton";
 import { Payouts } from "./Payouts";
 
 export type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -13,7 +16,6 @@ export async function MonitorPage({
   kind,
   page,
   searchParams,
-  refund = false,
   payouts = false,
 }: {
   placeId: string;
@@ -21,17 +23,23 @@ export async function MonitorPage({
   /** The URL segment, for Show all. */
   page: string;
   searchParams: SearchParams;
-  refund?: boolean;
   /** Payments: payouts to the bank in the same card (MESITA-4538). */
   payouts?: boolean;
 }) {
   const sp = await searchParams;
   const filter = { id: uuidParam(sp.id), customer: customerParam(sp.customer) };
-  const r = await listMonitor(placeId, kind, filter);
+  const [r, payments] = await Promise.all([listMonitor(placeId, kind, filter), payouts ? getPlacePayments(placeId) : Promise.resolve(null)]);
+  // Open Stripe only with a connected account (the dashboard needs one).
+  const stripe = payments?.ok && payments.data.account.state !== "none";
   if (!r.ok) return <MonitorError code={r.code} error={r.error} />;
   return (
     <div className="flex flex-col gap-4 pb-8">
+      <MonitorToolbar>
+        {stripe ? <OpenStripeButton placeId={placeId} /> : null}
+        <ExportButton placeId={placeId} kind={kind} filter={filter} name={page === "money" ? "payments" : page} />
+      </MonitorToolbar>
       <MonitorCard>
+        {payouts ? <CardHeader title="Payments" /> : null}
         <MonitorList
           key={`${filter.id ?? ""}|${filter.customer ?? ""}`}
           placeId={placeId}
@@ -39,8 +47,6 @@ export async function MonitorPage({
           initial={r.data}
           filter={filter}
           clearHref={`/places/${encodeURIComponent(placeId)}/${page}`}
-          title={payouts ? "Payments" : undefined}
-          refund={refund}
         />
         {payouts && !filter.id && !filter.customer ? <Payouts placeId={placeId} timezone={r.data.timezone} /> : null}
         {payouts && (filter.id || filter.customer) ? (

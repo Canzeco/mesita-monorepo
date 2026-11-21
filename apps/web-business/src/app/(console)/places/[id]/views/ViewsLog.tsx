@@ -15,8 +15,8 @@ import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { Card } from "@/components/shell/Page";
 import { listPlaceViewsLog, type PlaceViewEvent, type PlaceViewsLog } from "@/lib/business-api";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { customerHref } from "@/lib/monitor";
-import { FilterBanner } from "@/components/place-manage/MonitorList";
+import { customerHref, customerLabel } from "@/lib/monitor";
+import { CHIP, FilterBanner } from "@/components/place-manage/MonitorList";
 import { cn } from "@/lib/utils";
 
 const VERB: Record<PlaceViewEvent["kind"], string> = {
@@ -112,6 +112,13 @@ function EventRow({ placeId, event, timezone }: { placeId: string; event: PlaceV
           {followers ? `${followers} · ` : null}
           <span className="whitespace-nowrap">{when(event.at, timezone)}</span>
         </p>
+        {event.customer ? (
+          <span className="mt-2 flex flex-wrap gap-1.5">
+            <Link href={customerHref(placeId, event.customer)} className={CHIP}>
+              {customerLabel(event.customer)}
+            </Link>
+          </span>
+        ) : null}
       </div>
     </li>
   );
