@@ -29,6 +29,7 @@
 //   supabase-edgefunc-place-reservation-call
 //   supabase-edgefunc-start-agent-enrich
 //   supabase-edgefunc-start-smoke-enrich
+//   supabase-edgefunc-sync-foursquare
 //   supabase-edgefunc-sync-reservationist
 // enricher-edgefunc-write-place and enricher-edgefunc-sync-sources are not on
 // it: Render calls them with ENRICH_WRITE_KEY on verify_jwt = false, so this
