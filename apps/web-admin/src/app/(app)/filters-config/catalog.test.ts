@@ -158,14 +158,15 @@ describe("coerceConfig", () => {
     expect(coerceConfig({ map: { reloadMinViewportPct: 12.26 } }).map.reloadMinViewportPct).toBe(12.3);
   });
 
-  it("coerceConfig drops the retired social box (MESITA-2144)", () => {
+  it("coerceConfig keeps only latestEvents under social; the retired engine's knobs drop (MESITA-2144, MESITA-4572)", () => {
     // The tentative Social engine's knobs had no reader. A blob that still
     // carries them comes back without them, so a whole-blob Save stops
-    // writing them.
+    // writing them. The one Social setting since MESITA-4572 is latestEvents.
     const cfg = coerceConfig({
       social: { seedCount: 6, generatedCount: 6, eventsPerRail: 8, minSeedEvents: 1, horizonDays: 14 },
     });
-    expect(cfg).not.toHaveProperty("social");
+    expect(cfg.social).toEqual({ latestEvents: 100 });
+    expect(coerceConfig({ social: { latestEvents: 9999 } }).social.latestEvents).toBe(500);
   });
 
   it("coerceConfig drops the retired Search-bar family switches (MESITA-2767)", () => {

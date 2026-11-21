@@ -302,7 +302,7 @@ describe("the Name boxes", () => {
 
 describe("the cards' slices", () => {
   it("are the saving cards, each with its own slices, none shared; catalogPipeline is gone", () => {
-    expect(Object.keys(BOX_SLICES)).toEqual(["searchbars", "ranking", "mixing", "mapDisplay", "premier"]);
+    expect(Object.keys(BOX_SLICES)).toEqual(["searchbars", "ranking", "mixing", "mapDisplay", "social", "premier"]);
     const all: string[] = Object.values(BOX_SLICES).flat();
     expect(new Set(all).size).toBe(all.length);
     expect(all).not.toContain("catalogPipeline");

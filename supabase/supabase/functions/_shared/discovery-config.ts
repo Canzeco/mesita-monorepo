@@ -1,7 +1,7 @@
 // Discovery config — the operator's half of the Discovery model (Docs ›
 // Discovery, MESITA-2327).
 //
-// Keys: params · general · map · name · deep · chat · premier.
+// Keys: params · general · map · name · deep · chat · premier · social.
 // Admin: one page, five pipeline boxes (Admin Name · Consumer Name · Consumer
 // Map · Consumer Catalog · Consumer Deep); each box saves only its own slices.
 //
@@ -423,7 +423,24 @@ export type DiscoveryConfig = {
   deep: DeepConfig;
   chat: { prompt: string };
   premier: PremierConfig;
+  /** Home › Social (MESITA-4572): how many of the newest events near the
+   *  guest the all-places feed shows before it ends. */
+  social: SocialConfig;
 };
+
+export type SocialConfig = { latestEvents: number };
+export const SOCIAL_LATEST_EVENTS_MIN = 1;
+export const SOCIAL_LATEST_EVENTS_MAX = 500;
+export const DEFAULT_SOCIAL: SocialConfig = { latestEvents: 100 };
+
+export function normalizeSocialConfig(raw: unknown): SocialConfig {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  return {
+    latestEvents: Math.round(
+      num(r.latestEvents, DEFAULT_SOCIAL.latestEvents, SOCIAL_LATEST_EVENTS_MIN, SOCIAL_LATEST_EVENTS_MAX),
+    ),
+  };
+}
 
 /** Ceiling for discovery_config.chat.prompt. The console textarea matches it. */
 export const CHAT_PROMPT_MAX = 12_000;
@@ -567,6 +584,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   deep: DEFAULT_DEEP,
   chat: { prompt: "" },
   premier: DEFAULT_PREMIER,
+  social: DEFAULT_SOCIAL,
 };
 
 /** Every plan's price, whole cents, clamped; a missing or invalid one reads
@@ -916,6 +934,7 @@ export function normalizeDiscoveryConfig(raw: unknown, onClamp?: OnClamp): Disco
       ),
     },
     premier: normalizePremierConfig(r.premier),
+    social: normalizeSocialConfig(r.social),
   };
 }
 

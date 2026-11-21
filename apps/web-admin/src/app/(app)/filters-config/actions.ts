@@ -60,6 +60,8 @@ export type DiscoverySlice =
   // each weave); the stored value loads and is ignored.
   | "mixing"
   | "deep"
+  // The Social discovery card (MESITA-4572): `social`, sent whole.
+  | "social"
   // Name's Locations switch (MESITA-2319).
   | "nameLocations"
   // Name's idle seconds and Name by Admin's caps (MESITA-2322).
@@ -135,6 +137,7 @@ export async function updateDiscoveryConfig(
     deep: keys.has("deep") ? config.deep : live.config.deep,
     chat: keys.has("chat") ? config.chat : live.config.chat,
     premier: keys.has("premier") ? config.premier : live.config.premier,
+    social: keys.has("social") ? config.social : live.config.social,
   };
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
     "admin-web-update-config",

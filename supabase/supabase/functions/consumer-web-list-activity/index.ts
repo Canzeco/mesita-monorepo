@@ -29,7 +29,12 @@
 // (anonymousPerson) and every time to its day (coarseAt). A broken session
 // is a 401, never the anonymous view.
 //
-// Body: { lat?, lng?, before?, place_id? }
+// LATEST EVENTS (MESITA-4572, Pato: "display number of latest events"): the
+// all-places feed shows at most `discovery_config.social.latestEvents` events
+// (Admin › Discovery › Social discovery, default 100), then ends. The app
+// sends `shown`, how many it already holds. A place's own feed is not capped.
+//
+// Body: { lat?, lng?, before?, place_id?, shown? }
 //   → { viewer: "member"|"anonymous", items: [{ placeId, kind, at, person, distanceKm, place }], next }
 //   distanceKm is the guest to the PLACE (it draws the circle and is the
 //   row's "0.7 km away"). Nothing about where the EVENT happened leaves
@@ -57,14 +62,14 @@ import {
   nearYou,
 } from "../_shared/place-activity.ts";
 import { type Card, readCards, viewerSeesHandles } from "../_shared/place-activity-read.ts";
-import { NO_SCREEN_RADIUS_KM } from "../_shared/discovery-config.ts";
+import { loadDiscoveryConfig, NO_SCREEN_RADIUS_KM } from "../_shared/discovery-config.ts";
 import { finiteOrNull } from "../_shared/input.ts";
 
 const PAGE_ITEMS = 20;
 const SCAN_ROWS = 50;
 const MAX_SCANS = 6;
 
-type Body = { lat?: number; lng?: number; before?: string; place_id?: string };
+type Body = { lat?: number; lng?: number; before?: string; place_id?: string; shown?: number };
 
 serveJson("consumer-web-list-activity", async (req) => {
   const ctx = await consumerOrAnonymousRequest(req);
@@ -88,6 +93,11 @@ serveJson("consumer-web-list-activity", async (req) => {
   const lng = finiteOrNull(body.lng);
   const hasPoint = lat != null && lng != null;
   const canSee = user ? await viewerSeesHandles(admin, user.id) : false;
+  const shown = typeof body.shown === "number" && Number.isFinite(body.shown) ? Math.max(0, Math.floor(body.shown)) : 0;
+  const latest = placeId ? Number.POSITIVE_INFINITY : (await loadDiscoveryConfig(admin)).social.latestEvents;
+  const room = latest - shown;
+  if (room <= 0) return json({ ok: true, viewer, items: [], next: null });
+  const pageItems = Math.min(PAGE_ITEMS, room);
 
   const items: Array<FeedEvent & { distanceKm: number | null; place: Card }> = [];
   let cursor = before;
@@ -111,9 +121,11 @@ serveJson("consumer-web-list-activity", async (req) => {
       const distanceKm = Number.isFinite(km) ? km : null;
       if (!placeId && !nearYou(distanceKm, NO_SCREEN_RADIUS_KM, hasPoint)) continue;
       items.push({ ...e, distanceKm, place });
-      if (items.length === PAGE_ITEMS) {
+      if (items.length === pageItems) {
         // An anonymous visitor gets one page: the cursor is an exact time.
-        return json({ ok: true, viewer, items, next: user ? e.at : null });
+        // The latest-events cap ends the feed here (MESITA-4572).
+        const capped = pageItems === room;
+        return json({ ok: true, viewer, items, next: user && !capped ? e.at : null });
       }
     }
     // Fewer rows than asked for: the feed ends here.
