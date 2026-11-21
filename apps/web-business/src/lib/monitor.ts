@@ -4,7 +4,6 @@
 // the server sends raw values, this says them.
 
 import { moneyLabel } from "@mesita/place-profile/lib/money";
-import { voucherName } from "@/lib/ticket-desk";
 
 export const MONITOR_KINDS = ["visits", "vouchers", "payments", "credits", "stories"] as const;
 export type MonitorKind = (typeof MONITOR_KINDS)[number];
@@ -22,6 +21,9 @@ export type MonitorRow = {
   /** Masked by the server; null with no customer. */
   guest: string | null;
   other: string | null;
+  /** The guest's photo, VIP and Instagram mark (MESITA-4554). */
+  face?: { avatar_url: string | null; vip: boolean; instagram: boolean } | null;
+  other_face?: { avatar_url: string | null; vip: boolean; instagram: boolean } | null;
   payload: Record<string, unknown>;
   links: MonitorLink[];
 };
@@ -38,7 +40,13 @@ export type MonitorPage = {
 
 export type MonitorFilter = { id?: string | null; customer?: string | null };
 
-export type CustomerRow = { customer: string; owed_cents: number; last_seen: string; guest: string };
+export type CustomerRow = {
+  customer: string;
+  owed_cents: number;
+  last_seen: string;
+  guest: string;
+  face?: { avatar_url: string | null; vip: boolean; instagram: boolean } | null;
+};
 export type CustomerCursor = { owed: number; last_seen: string; key: string } | null;
 export type CustomersPage = {
   test_mode: boolean;
@@ -175,13 +183,13 @@ export function creditLabel(row: MonitorRow): string {
   switch (p.kind) {
     case "prepay":
     case "voucher":
-      return "Voucher credit";
+      return "Credit bought";
     case "bonus":
-      return p.story ? "Story bonus" : "Voucher bonus";
+      return p.story ? "Story bonus" : "Bonus credit";
     case "extra":
       return "Extra credit";
     case "spend":
-      return "Spent on a payment";
+      return "Spent on a visit";
     case "refund":
       return "Returned by a refund";
     case "reversal":
@@ -198,6 +206,13 @@ export function creditLabel(row: MonitorRow): string {
   }
 }
 
+/** Whether the status word is worth showing: "Paid" on a paid bill or
+ *  voucher is the normal case and only adds noise (MESITA-4554). */
+export function statusWorthShowing(kind: MonitorKind, row: MonitorRow): boolean {
+  if (kind === "payments" || kind === "vouchers") return row.payload.status !== "paid";
+  return true;
+}
+
 /** The grey detail after the status: what the row is about. */
 export function rowDetail(kind: MonitorKind, row: MonitorRow): string | null {
   const p = row.payload;
@@ -206,8 +221,8 @@ export function rowDetail(kind: MonitorKind, row: MonitorRow): string | null {
     return [p.waiter_name, p.ticket ? `Ticket ${p.ticket}` : null].filter(Boolean).join(" · ") || null;
   }
   if (kind === "vouchers") {
-    const bonus = n("bonus_cents") > 0 ? ` (+${money(n("bonus_cents"))} bonus)` : "";
-    return `${voucherName((p.voucher as string | null) ?? null)}${bonus}`;
+    // The voucher's name is its badge (VoucherBadge); the line keeps the bonus.
+    return n("bonus_cents") > 0 ? `+${money(n("bonus_cents"))} bonus` : null;
   }
   if (kind === "payments") {
     const parts = [
@@ -260,12 +275,18 @@ export function linkHref(placeId: string, link: MonitorLink): string {
     case "payment":
       return `${base(placeId)}/money?id=${id}`;
     case "voucher":
-      return `${base(placeId)}/vouchers?id=${id}`;
+      // Vouchers live in Credits since MESITA-4554: the voucher's credit rows.
+      return `${base(placeId)}/credits?id=${id}`;
     case "credit":
       return `${base(placeId)}/credits?id=${id}`;
     case "story":
       return `${base(placeId)}/general?story=${id}#stories`;
   }
+}
+
+/** "Customer #A1B2C3": the first six of the per-place guest key. */
+export function customerLabel(customer: string): string {
+  return `Customer #${customer.slice(0, 6).toUpperCase()}`;
 }
 
 /** One guest on Customers. */
@@ -274,15 +295,15 @@ export function customerHref(placeId: string, customer: string): string {
 }
 
 /** The page of one kind filtered to one guest. */
-export function customerListHref(placeId: string, page: "views" | "visits" | "vouchers" | "money" | "credits", customer: string): string {
+export function customerListHref(placeId: string, page: "views" | "visits" | "money" | "credits", customer: string): string {
   return `${base(placeId)}/${page}?customer=${encodeURIComponent(customer)}`;
 }
 
 /** A link kind's page, for "+N" overflow: the parent's guest filter there. */
-export function linkKindPage(kind: LinkKind): "visits" | "money" | "vouchers" | "credits" | null {
+export function linkKindPage(kind: LinkKind): "visits" | "money" | "credits" | null {
   if (kind === "visit") return "visits";
   if (kind === "payment") return "money";
-  if (kind === "voucher") return "vouchers";
+  if (kind === "voucher") return "credits";
   if (kind === "credit") return "credits";
   return null;
 }

@@ -3,13 +3,13 @@
 -- each guest's row is the sum of their wallet_entries here, and the total is
 -- the sum of every entry with a guest. Another place's credit never counts.
 -- A customer filter returns only that guest's rows. The member id never
--- leaves: guests are per-place keys.
+-- leaves: guests are per-place keys. An anonymous guest shows no photo.
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(10);
+select plan(11);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-0000000a4538', 'maria.lopez@example.com'),
@@ -96,6 +96,14 @@ select is(
       null, '00000000-0000-4000-8000-000000114538') -> 'rows' -> 0 -> 'links'),
   2,
   'a voucher links to the credit rows it added');
+
+-- MESITA-4554: a guest who appears anonymous never shows a photo on a row.
+update public.consumers set avatar_url = 'https://example.com/a.jpg', appear_anonymous = true
+ where id = '00000000-0000-4000-8000-0000000b4538';
+select is(
+  public.place_guest_face('00000000-0000-4000-8000-0000000b4538') ->> 'avatar_url',
+  null,
+  'an anonymous guest''s photo stays hidden');
 
 select * from finish();
 rollback;

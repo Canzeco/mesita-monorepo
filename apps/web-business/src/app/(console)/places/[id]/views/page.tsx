@@ -3,6 +3,7 @@ import { customerParam } from "@/lib/monitor";
 import { MonitorError } from "@/components/place-manage/MonitorList";
 import type { SearchParams } from "@/components/place-manage/MonitorPage";
 import { ViewsLog } from "./ViewsLog";
+import { ExportButton, MonitorToolbar } from "@/components/place-manage/ExportButton";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Views" };
@@ -17,6 +18,9 @@ export default async function ViewsPage({ params, searchParams }: { params: Prom
   if (!log.ok) return <MonitorError error={log.error} />;
   return (
     <div className="flex flex-col gap-4 pb-8">
+      <MonitorToolbar>
+        <ExportButton placeId={id} kind="views" filter={{ customer }} name="views" />
+      </MonitorToolbar>
       <ViewsLog
         key={customer ?? ""}
         placeId={id}

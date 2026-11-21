@@ -1,29 +1,33 @@
 "use client";
 
 // Payouts to your bank (MESITA-4538, Pato: "it must include payments and
-// payouts to your bank; leave a link to the stripe dashboard"). Read live from
-// Stripe after the payments list has rendered, so a slow Stripe never holds the
-// page. Its own Older. Open Stripe at the foot, only with a connected account.
+// payouts to your bank"). Read live from Stripe after the payments list has
+// rendered, so a slow Stripe never holds the page. Its own Older. Open Stripe
+// sits in the card's title row (MESITA-4554).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getPayouts, openPaymentDashboard } from "@/lib/business-api";
+import { BankIcon } from "@phosphor-icons/react/dist/ssr";
+import { getPayouts } from "@/lib/business-api";
 import { day, money, payoutStatus, type Payout, type PayoutsAnswer } from "@/lib/monitor";
 
-const ROW = "flex flex-col gap-1 px-5 py-3 text-sm sm:px-6";
+const ROW = "grid grid-cols-[40px_minmax(0,1fr)_auto] items-start gap-x-3 px-5 py-3.5 text-sm sm:px-6";
 
 function PayoutRow({ p, timezone }: { p: Payout; timezone: string }) {
   return (
     <li className={ROW}>
-      <div className="flex items-start gap-3">
-        <p className="min-w-0 flex-1 font-medium">{p.bank ?? "Your bank"}</p>
-        <p className="shrink-0 font-semibold tabular-nums">{money(p.amount_cents, p.currency)}</p>
+      <span className="bg-muted text-muted-foreground grid size-10 place-items-center rounded-full">
+        <BankIcon size={20} aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <p className="truncate font-medium">{p.bank ?? "Your bank"}</p>
+        <p className="text-muted-foreground text-sm">
+          {payoutStatus(p.status)}
+          {p.arrival_date ? ` · ${p.status === "paid" ? "Arrived" : "Arrives"} ${day(p.arrival_date, timezone)}` : ""}
+          {p.failure_message ? ` · ${p.failure_message}` : ""}
+        </p>
       </div>
-      <p className="text-muted-foreground">
-        {payoutStatus(p.status)}
-        {p.arrival_date ? ` · ${p.status === "paid" ? "Arrived" : "Arrives"} ${day(p.arrival_date, timezone)}` : ""}
-        {p.failure_message ? ` · ${p.failure_message}` : ""}
-      </p>
+      <p className="font-semibold whitespace-nowrap tabular-nums">{money(p.amount_cents, p.currency)}</p>
     </li>
   );
 }
@@ -33,7 +37,6 @@ export function Payouts({ placeId, timezone }: { placeId: string; timezone: stri
   const [rows, setRows] = useState<Payout[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [opening, setOpening] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -58,19 +61,11 @@ export function Payouts({ placeId, timezone }: { placeId: string; timezone: stri
     if (r.data.state === "ok") setRows((all) => [...all, ...(r.data as { payouts: Payout[] }).payouts]);
   }
 
-  async function openStripe() {
-    setOpening(true);
-    const r = await openPaymentDashboard(placeId);
-    setOpening(false);
-    if (r.ok) window.open(r.data.url, "_blank", "noopener,noreferrer");
-    else setError(r.error);
-  }
-
   return (
     <section className="border-border flex flex-col border-t">
-      <h2 className="px-5 pt-4 pb-2 font-semibold sm:px-6">Payouts to your bank</h2>
+      <h2 className="border-border border-b px-5 py-3.5 font-semibold sm:px-6">Payouts to your bank</h2>
       {answer === null && !error ? (
-        <ul className="flex flex-col gap-2 px-5 pb-4 sm:px-6" aria-label="Loading payouts">
+        <ul className="flex flex-col gap-2 px-5 py-4 sm:px-6" aria-label="Loading payouts">
           {[0, 1, 2].map((i) => (
             <li key={i} className="bg-muted h-10 animate-pulse rounded-lg" />
           ))}
@@ -107,18 +102,6 @@ export function Payouts({ placeId, timezone }: { placeId: string; timezone: stri
         >
           {busy ? "Loading…" : "Older"}
         </button>
-      ) : null}
-      {answer?.state === "ok" || answer?.state === "stripe_error" ? (
-        <div className="border-border border-t px-5 py-3 sm:px-6">
-          <button
-            type="button"
-            className="bg-muted text-foreground hover:bg-muted/70 h-8 rounded-full px-3 text-xs font-semibold disabled:opacity-50"
-            disabled={opening}
-            onClick={() => void openStripe()}
-          >
-            {opening ? "Opening…" : "Open Stripe"}
-          </button>
-        </div>
       ) : null}
     </section>
   );

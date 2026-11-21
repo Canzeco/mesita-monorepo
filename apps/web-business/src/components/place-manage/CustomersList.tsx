@@ -8,15 +8,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { listCustomers } from "@/lib/business-api";
-import { customerListHref, EMPTY, money, when, type CustomersPage } from "@/lib/monitor";
+import { customerLabel, customerListHref, EMPTY, money, when, type CustomersPage } from "@/lib/monitor";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
-import { CHIP, FilterBanner } from "./MonitorList";
+import { CHIP, FilterBanner, ROW } from "./MonitorList";
+import { GuestAvatar } from "./GuestAvatar";
 
 const PAGES = [
   ["views", "Views"],
   ["visits", "Visits"],
-  ["vouchers", "Vouchers"],
   ["money", "Payments"],
   ["credits", "Credits"],
 ] as const;
@@ -52,20 +52,23 @@ export function CustomersList({ placeId, initial, customer }: { placeId: string;
       ) : (
         <ul className="divide-border divide-y">
           {page.rows.map((c) => (
-            <li key={c.customer} className="flex flex-col gap-1 px-5 py-3 text-sm sm:px-6">
-              <div className="flex items-start gap-3">
-                <p className="min-w-0 flex-1 font-medium">{c.guest}</p>
-                <p className="shrink-0 font-semibold tabular-nums">{money(c.owed_cents)}</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                <p className="text-muted-foreground">Owed · last seen {when(c.last_seen, page.timezone)}</p>
-                <span className="flex flex-wrap gap-1.5">
+            <li key={c.customer} className={ROW}>
+              <GuestAvatar face={c.face ?? null} />
+              <div className="min-w-0">
+                <p className="truncate font-medium">{c.guest}</p>
+                <p className="text-muted-foreground text-sm">Last seen {when(c.last_seen, page.timezone)}</p>
+                <span className="mt-2 flex flex-wrap gap-1.5">
+                  <span className={CHIP}>{customerLabel(c.customer)}</span>
                   {PAGES.map(([p, label]) => (
                     <Link key={p} href={customerListHref(placeId, p, c.customer)} className={CHIP}>
                       {label}
                     </Link>
                   ))}
                 </span>
+              </div>
+              <div className="text-right">
+                <p className="font-semibold whitespace-nowrap tabular-nums">{money(c.owed_cents)}</p>
+                <p className="text-muted-foreground mt-0.5 text-xs">owed</p>
               </div>
             </li>
           ))}

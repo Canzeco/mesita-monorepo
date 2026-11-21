@@ -1,10 +1,23 @@
-import { MonitorPage, type SearchParams } from "@/components/place-manage/MonitorPage";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-export const metadata = { title: "Vouchers" };
-
-// Vouchers (MESITA-4538): prepayments guests bought, each linked to the credit it added and its story.
-export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: SearchParams }) {
+// Vouchers are Credits rows since MESITA-4554 (Pato: "dont add the section
+// vouchers but credits … include vouchers and gifts and visits"). A voucher
+// link keeps its id: Credits shows that voucher's credit rows.
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
-  return <MonitorPage placeId={id} kind="vouchers" page="vouchers" searchParams={searchParams} refund />;
+  const sp = await searchParams;
+  const q = new URLSearchParams();
+  for (const k of ["id", "customer"]) {
+    const v = sp[k];
+    const one = Array.isArray(v) ? v[0] : v;
+    if (one) q.set(k, one);
+  }
+  const query = q.toString();
+  redirect(`/places/${encodeURIComponent(id)}/credits${query ? `?${query}` : ""}`);
 }
