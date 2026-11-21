@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Clock } from "lucide-react";
+import { Clock, QrCode } from "lucide-react";
 import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -331,10 +331,11 @@ export function PayPage({
           ) : (
             <button
               type="button"
-              className="mt-2 flex h-24 w-full items-center justify-center rounded-xl bg-[#635BFF] text-lg font-semibold text-white hover:bg-[#5249e6]"
+              className="mt-2 flex h-24 w-full items-center justify-center gap-3 rounded-xl bg-[#635BFF] text-lg font-semibold text-white hover:bg-[#5249e6]"
               aria-label={bill === "open" ? "Pay your open bill" : `Pay at ${selectedName}`}
               onClick={paySelected}
             >
+              <QrCode className="h-8 w-8" strokeWidth={2.25} aria-hidden />
               Pay
             </button>
           )
