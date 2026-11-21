@@ -31,7 +31,7 @@ export function matchesCategory(row: GoogleCategoryRow, query: string): boolean 
   return !q || `${row.label} ${row.slug} ${row.slug.replaceAll("_", " ")}`.toLowerCase().includes(q);
 }
 
-// Atlas (MESITA-2891): the thirty-seven Mesita Families, every Google category
+// Atlas (MESITA-2891): the thirty Mesita Families, every Google category
 // split into enabled and not enabled on Mesita, then the tag catalog. There
 // is no category ↔ family matrix: a place's families are the Description
 // step's model pick.

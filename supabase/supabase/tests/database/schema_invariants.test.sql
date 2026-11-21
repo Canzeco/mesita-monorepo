@@ -845,8 +845,8 @@ select has_table(
 
 select is(
   (select count(*)::bigint from public.place_families),
-  38::bigint,
-  'place family catalog is thirty-seven guest families plus Undefined (MESITA-2930)'
+  31::bigint,
+  'place family catalog is thirty guest families plus Undefined (MESITA-4571)'
 );
 
 select is(
@@ -857,9 +857,9 @@ select is(
 
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
-  array['dinner','coffee','drinks','quick_bite','breakfast','mexican','tacos','seafood','asian','european','fancy','steak','japanese','american','healthy','italian','sushi','pizza','burgers','arabic','chinese','indian','chicken','sweet','night_out','bakery','nightclub','music','family','sports','hookah','karaoke','fun','cinema','casino','spa','tourist',
+  array['dinner','coffee','drinks','quick_bite','breakfast','mexican','tacos','seafood','asian','european','fancy','steak','japanese','american','healthy','italian','sushi','pizza','burgers','arabic','chinese','indian','chicken','sweet','night_out','bakery','nightclub','music','sports','hookah',
         'undefined']::text[],
-  'family catalog order is the thirty-seven guest rails, biggest first, Undefined last (MESITA-4430)'
+  'family catalog order is the thirty guest rails, biggest first, Undefined last (MESITA-4430, MESITA-4571)'
 );
 
 -- MESITA-2891: no category ↔ family dictionary. A place's Mesita Families
@@ -882,8 +882,8 @@ select ok(
 );
 select is(
   (select enabled from public.catalog_membership where slug = 'tourist_attraction'),
-  true,
-  'a tourist attraction is enabled: it sat in a family when the flag was seeded (MESITA-2888)'
+  false,
+  'a tourist attraction is not enabled: Tourism left the catalog (MESITA-4571)'
 );
 select is(
   (select enabled from public.catalog_membership where slug = 'gas_station'),

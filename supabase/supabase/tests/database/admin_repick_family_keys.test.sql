@@ -9,10 +9,10 @@ select plan(12);
 
 insert into public.place_profiles (id, google_name, family_keys, enrichment_sources) values
   ('00000000-0000-4000-8000-000000014238', 'Repick Null', null, '{}'::jsonb),
-  ('00000000-0000-4000-8000-000000024238', 'Repick List', array['family','dinner','mexican'], '{}'::jsonb),
-  ('00000000-0000-4000-8000-000000034238', 'Repick Owned', array['family'], '{"operator_fields":["family_keys"]}'::jsonb),
-  ('00000000-0000-4000-8000-000000044238', 'Repick Malformed', array['family'], '{"operator_fields":{"family_keys":true}}'::jsonb),
-  ('00000000-0000-4000-8000-000000054238', 'Repick Busy', array['family'], '{}'::jsonb);
+  ('00000000-0000-4000-8000-000000024238', 'Repick List', array['fancy','dinner','mexican'], '{}'::jsonb),
+  ('00000000-0000-4000-8000-000000034238', 'Repick Owned', array['fancy'], '{"operator_fields":["family_keys"]}'::jsonb),
+  ('00000000-0000-4000-8000-000000044238', 'Repick Malformed', array['fancy'], '{"operator_fields":{"family_keys":true}}'::jsonb),
+  ('00000000-0000-4000-8000-000000054238', 'Repick Busy', array['fancy'], '{}'::jsonb);
 insert into public.places (id, slug, state, content_state, currency) values
   ('00000000-0000-4000-8000-000000014238', 'mesita-4238-null', 'active', 'ready', 'MXN'),
   ('00000000-0000-4000-8000-000000024238', 'mesita-4238-list', 'active', 'ready', 'MXN'),
@@ -35,23 +35,23 @@ select is(
   1, 'one undo row with the old and new lists, in the same transaction');
 
 select is(
-  public.admin_repick_family_keys('00000000-0000-4000-8000-000000024238', array['family'], array['mexican'], 'run-4238', null, 'repick-families-agent'),
+  public.admin_repick_family_keys('00000000-0000-4000-8000-000000024238', array['fancy'], array['mexican'], 'run-4238', null, 'repick-families-agent'),
   'stale', 'a list that changed since it was read is not overwritten');
 
 select is(
-  public.admin_repick_family_keys('00000000-0000-4000-8000-000000024238', array['family','dinner','mexican'], array['mexican','tacos'], 'run-4238', null, 'repick-families-agent'),
+  public.admin_repick_family_keys('00000000-0000-4000-8000-000000024238', array['fancy','dinner','mexican'], array['mexican','tacos'], 'run-4238', null, 'repick-families-agent'),
   'written', 'the read list compares and is replaced');
 
 select is(
-  public.admin_repick_family_keys('00000000-0000-4000-8000-000000034238', array['family'], array['coffee'], 'run-4238', null, 'repick-families-agent'),
+  public.admin_repick_family_keys('00000000-0000-4000-8000-000000034238', array['fancy'], array['coffee'], 'run-4238', null, 'repick-families-agent'),
   'owned', 'an operator-owned list is never touched');
 
 select is(
-  public.admin_repick_family_keys('00000000-0000-4000-8000-000000044238', array['family'], array['coffee'], 'run-4238', null, 'repick-families-agent'),
+  public.admin_repick_family_keys('00000000-0000-4000-8000-000000044238', array['fancy'], array['coffee'], 'run-4238', null, 'repick-families-agent'),
   'written', 'a malformed operator_fields is not ownership (same reading as readOperatorFields)');
 
 select is(
-  public.admin_repick_family_keys('00000000-0000-4000-8000-000000054238', array['family'], array['coffee'], 'run-4238', null, 'repick-families-agent'),
+  public.admin_repick_family_keys('00000000-0000-4000-8000-000000054238', array['fancy'], array['coffee'], 'run-4238', null, 'repick-families-agent'),
   'generating', 'a place with an Enrich in flight is skipped');
 
 select throws_ok(
@@ -76,7 +76,7 @@ select is(
 
 select is(
   (select family_keys from public.place_profiles where id = '00000000-0000-4000-8000-000000024238'),
-  array['family','dinner','mexican'], 'the revert restores the old list');
+  array['fancy','dinner','mexican'], 'the revert restores the old list');
 
 select ok(
   not has_function_privilege('authenticated', 'public.admin_repick_family_keys(uuid, text[], text[], text, uuid, text)', 'EXECUTE')

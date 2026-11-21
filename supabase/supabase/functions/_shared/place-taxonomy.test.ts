@@ -6,8 +6,8 @@ import {
   sanitizeFamilyKeys,
 } from "./place-taxonomy.ts";
 
-Deno.test("place family catalog is thirty-seven guest families, Undefined last", () => {
-  assertEquals(FAMILIES.length, 38);
+Deno.test("place family catalog is thirty guest families, Undefined last", () => {
+  assertEquals(FAMILIES.length, 31);
   assertEquals(FAMILIES.map((s) => s.slug), [
     "dinner",
     "coffee",
@@ -37,15 +37,8 @@ Deno.test("place family catalog is thirty-seven guest families, Undefined last",
     "bakery",
     "nightclub",
     "music",
-    "family",
     "sports",
     "hookah",
-    "karaoke",
-    "fun",
-    "cinema",
-    "casino",
-    "spa",
-    "tourist",
     "undefined",
   ]);
   const last = FAMILIES[FAMILIES.length - 1]!;

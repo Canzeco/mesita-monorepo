@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { familyChips, NO_FAMILY_TYPES } from "./catalog-families.ts";
+import { familyChips, NO_FAMILY_TYPES, RETIRED_RAIL_TYPES } from "./catalog-families.ts";
 import { placeFamilies, familiesForGoogleType } from "./sourcing.ts";
 import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
 
@@ -17,21 +17,21 @@ Deno.test("not social: no gym, court, studio, salon or barber sits in a family (
   }
 });
 
-Deno.test("the six rails past the table (MESITA-2888)", () => {
-  assertEquals(familiesForGoogleType("tourist_attraction"), ["tourist"]);
-  assertEquals(familiesForGoogleType("museum"), ["tourist"]);
-  assertEquals(familiesForGoogleType("zoo"), ["family", "tourist"]);
-  assertEquals(familiesForGoogleType("bowling_alley"), ["fun"]);
-  assertEquals(familiesForGoogleType("golf_course"), ["fun"]);
-  assertEquals(familiesForGoogleType("movie_theater"), ["cinema"]);
-  assertEquals(familiesForGoogleType("comedy_club"), ["night_out", "cinema"]);
-  assertEquals(familiesForGoogleType("casino"), ["casino"]);
-  assertEquals(familiesForGoogleType("spa"), ["spa"]);
-  assertEquals(familiesForGoogleType("family_restaurant"), ["dinner", "family"]);
-  // Go out folded into Night (MESITA-2486); karaoke is Night and its own rail.
-  const onGoOut = Object.keys(GOOGLE_TYPE_SUPER).filter((t) => (familiesForGoogleType(t) as string[]).includes("go_out"));
-  assertEquals(onGoOut, []);
-  assertEquals(familiesForGoogleType("karaoke"), ["night_out", "karaoke"]);
+Deno.test("thirty families: the seven retired rails hold no Google type (MESITA-4571)", () => {
+  for (const t of RETIRED_RAIL_TYPES) {
+    assertEquals(familiesForGoogleType(t), [], t);
+  }
+  const gone = ["family", "karaoke", "fun", "cinema", "casino", "spa", "tourist", "go_out"];
+  const stillThere = Object.keys(GOOGLE_TYPE_SUPER).filter((t) =>
+    (familiesForGoogleType(t) as string[]).some((f) => gone.includes(f))
+  );
+  assertEquals(stillThere, []);
+  // What stays a trip keeps its food and drink rails.
+  assertEquals(familiesForGoogleType("family_restaurant"), ["dinner"]);
+  assertEquals(familiesForGoogleType("karaoke"), ["drinks", "night_out"]);
+  assertEquals(familiesForGoogleType("comedy_club"), ["night_out"]);
+  assertEquals(familiesForGoogleType("billiards"), ["drinks"]);
+  assertEquals(familiesForGoogleType("board_game_cafe"), ["coffee"]);
 });
 
 Deno.test("sixteen rails folded into their parent (MESITA-2888)", () => {
