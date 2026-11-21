@@ -38,7 +38,7 @@ export function PlaceActionRow({
         disabled
           ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}`
           : selected
-            ? `Pay at ${name}. Tap again to open.`
+            ? `Pay Bill at ${name}. Tap again to open.`
             : `Select ${name}`
       }
       onClick={() => {
