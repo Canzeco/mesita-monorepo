@@ -194,12 +194,18 @@ function CardPortal({ children }: { children: React.ReactNode }) {
 // tell a route modal from a state modal and should not have to.
 //
 // `fit` is the Pay Bill place picker only (MESITA-4478). Every other caller
-// stays exactly 88% tall.
+// stays exactly 88% tall. THE PICKER IS THE WHOLE PAGE (Pato, 2026-11-21,
+// MESITA-4582: "this modal must cover 100% of page … it goes from bottom to
+// top and covers 100% of the page, but still is a modal like that. even if
+// not enough places, still fill the top of the page"): still a sheet, rising
+// from the bottom with its grabber and round top corners, but always the
+// card's full height, however few places it lists. It was its content's
+// height up to 88% before.
 export const SEMI_MODAL_PANEL_CLASS =
   "border-border bg-popover shadow-elev relative flex h-[88%] max-h-[88%] min-h-0 flex-col overflow-hidden rounded-t-3xl border-t";
 
 const FIT_PANEL_CLASS =
-  "border-border bg-popover shadow-elev relative flex h-auto max-h-[88%] min-h-0 w-full flex-col overflow-hidden rounded-t-3xl border-t";
+  "border-border bg-popover shadow-elev relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-t-3xl border-t";
 
 const FULL_SCREEN_PANEL_CLASS =
   "bg-popover relative flex h-full min-h-0 flex-col overflow-hidden";
@@ -219,7 +225,7 @@ export function LocalSheet({
   ariaLabel: string;
   /** The whole card, not the semi-modal (using a reward, MESITA-3254). */
   fullScreen?: boolean;
-  /** Content height, capped at 88% of the card. Pay Bill's place picker only. */
+  /** The card's full height as a sheet (MESITA-4582). Pay Bill's place picker only. */
   fit?: boolean;
   /** Where the panel comes from. "right" slides in right to left and out
    *  left to right, the place screen's own motion (SlideOverShell), for a

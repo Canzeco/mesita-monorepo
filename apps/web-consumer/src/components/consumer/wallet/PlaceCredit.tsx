@@ -387,16 +387,20 @@ export function PlaceCredit({
             <PushLink
               href={offerHref(href, offers[0], true)}
               className={ROUND}
-              aria-label={offers[0].bonus ? `Add Funds: ${offers[0].bonus}% bonus` : "Add Funds"}
+              aria-label="View Offers"
               data-loyalty-card-offer
             >
               <span className={cn(ROUND_FACE, "text-foreground bg-white")}>
                 {/* ONLY THE + (MESITA-4373, Pato: "don't mention the amount,
                     only the plus icon is enough"); the bonus is on the Offers
-                    page. Undoes MESITA-4362/4366's number in the circle. */}
+                    page. Undoes MESITA-4362/4366's number in the circle.
+                    "VIEW OFFERS" (Pato, 2026-11-21, MESITA-4582: "don't call
+                    the button add funds, call it View Offers. does the same
+                    as bottom box, its okay that redundancy"): the same door
+                    as the Offers tile under the card. */}
                 <Plus className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
               </span>
-              Add Funds
+              View Offers
             </PushLink>
           ) : null}
           {/* Send Gift is its own page (MESITA-4096); it was a sheet here. */}
@@ -449,13 +453,14 @@ export function PlaceCredit({
           tile, full width and 64px, its chip in the offer's colour moving
           to the next offer on the profile's beat and held under the finger;
           a tap opens the Offers page on the offer on screen and comes back
-          here (from=wallet). A sliding strip of green tiles for one deploy
+          here (from=wallet). ITS WORD IS "OFFERS" (Pato, 2026-11-21,
+          MESITA-4582: "here don't mention add funds get a bonus, just
+          mention offers"), the profile tile's own. A sliding strip of green tiles for one deploy
           before (MESITA-4573). */}
       {!gone && offers.length > 0 ? (
         <OffersTile
           name={card.name}
           slides={offers}
-          label="Add Funds, Get a Bonus"
           className="mt-4 h-16 w-full rounded-2xl"
           open={(slide) => () => navigateTo(router, offerHref(href, slide, true), { motion: "drill" })}
         />

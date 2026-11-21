@@ -336,15 +336,21 @@ export function PayPage({
           list to gift from. Stacked full width, 64px, for one deploy
           (MESITA-4574, Pato: "make three buttons bigger … Add Funds Green.
           Pay Bill purple … Send Gift … as a black box"). */}
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      {/* ADD FUNDS ACROSS THE TOP, THEN HALF AND HALF (Pato, 2026-11-21,
+          MESITA-4582: "ADD FUNDS, GET A BONUS AT THE TOP. THEN BELOW, HALF
+          AND HALF. Pay Bill and Send Gift at the bottom"): a two-column
+          grid; the green tile spans both columns and says the whole "Add
+          Funds, Get a Bonus"; Pay Bill and Send Gift share the second row.
+          Every tile 88px, the glyph over the word. Three in one row for one
+          deploy (MESITA-4579). */}
+      <div className="mt-2 grid grid-cols-2 gap-2">
         <PushLink
           href={CONSUMER_ROUTES.walletBuy}
-          className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
-          aria-label="Add Funds, Get a Bonus"
+          className={cn(TILE, "col-span-2 bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
           data-add-funds
         >
           <Plus className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
-          Add Funds
+          Add Funds, Get a Bonus
         </PushLink>
         {payBusy ? (
           <Skeleton className="h-22 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
