@@ -40,7 +40,6 @@ import {
   isGoogleMapsUrl,
   MapsLeaveModal,
 } from "@/components/consumer/MapsLeaveModal";
-import { PlaceMoreRows } from "@/components/consumer/place-detail/PlaceMoreSheet";
 import { PlaceSocialList } from "@/components/consumer/PlaceSocialList";
 import {
   apiPlaceActivity,
@@ -61,7 +60,6 @@ import {
   placeContactPath,
   placeMenuPath,
   placeOffersPath,
-  placeReportPath,
   placeReservePath,
   placeUpgradePath,
   reservationPath,
@@ -105,8 +103,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
    *  place's skeleton until then, so the profile paints in one frame. */
   ready: boolean;
   actions: PlaceActions;
-  /** More, drawn at the foot of the place page (MESITA-4111). */
-  more: ReactNode;
   sheets: ReactNode;
   social: ReactNode;
 } {
@@ -139,7 +135,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   // fills in behind it.
   const reservePath = placeReservePath(place.id);
   const contactPath = placeContactPath(place.id);
-  const reportPath = placeReportPath(place.id);
   const upgradePath = placeUpgradePath(place.id);
   useEffect(() => {
     // Contact is open to a signed-out visitor. The member pages prefetch
@@ -148,13 +143,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     router.prefetch(contactPath);
     if (signedOut || !isMesitaPlaceId(place.id)) return;
     router.prefetch(reservePath);
-    router.prefetch(reportPath);
     router.prefetch(upgradePath);
   }, [
     router,
     contactPath,
     reservePath,
-    reportPath,
     upgradePath,
     signedOut,
     place.id,
@@ -203,9 +196,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 
   const openUpgrade = askOr(upgradePath, () =>
     navigateTo(router, upgradePath, { motion: "drill" }),
-  );
-  const openReport = askOr(reportPath, () =>
-    navigateTo(router, reportPath, { motion: "drill" }),
   );
 
   const onSave = useCallback(() => {
@@ -289,21 +279,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       onClose={() => setMapsAsk(null)}
     />
   );
-  const more = (
-    <PlaceMoreRows
-      place={place}
-      saved={saved}
-      onSave={onSave}
-      onUpgrade={openUpgrade}
-      onReport={isMesitaPlaceId(place.id) ? openReport : undefined}
-    />
-  );
 
   return {
     place: shown,
     ready,
     actions,
-    more,
     sheets,
     social: activity.social,
   };
