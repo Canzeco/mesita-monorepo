@@ -90,6 +90,11 @@ serveJson("business-web-get-payments", async (req) => {
     : { available_cents: Number(sum.available_cents ?? 0), pending_cents: Number(sum.pending_cents ?? 0) };
   // No Staff QR any more (MESITA-3734): the waiter code is the one staff key.
   const hold = account?.livemode === paymentsLivemode() && account?.fee_hold === true;
+  const { data: dueRows } = await admin.from("guest_pay_attempts")
+    .select("id, cash_cents, guest_label, created_at")
+    .eq("place_id", placeId)
+    .eq("status", "due")
+    .order("created_at", { ascending: true });
   return json({
     ok: true,
     can_edit: canManage(access.role),
@@ -101,5 +106,11 @@ serveJson("business-web-get-payments", async (req) => {
     code_set: !!code,
     credits_balance,
     fee: feeView(hold, (invoices ?? []) as FeeInvoiceRow[], Date.now()),
+    cash_due: (dueRows ?? []).map((row) => ({
+      attempt_id: row.id,
+      cash_cents: row.cash_cents,
+      guest_label: row.guest_label,
+      created_at: row.created_at,
+    })),
   });
 });

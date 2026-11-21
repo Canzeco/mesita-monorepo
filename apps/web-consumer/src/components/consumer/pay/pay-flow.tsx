@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect } from "react";
 import { SizedImg } from "@mesita/place-profile";
-import { ChevronLeft, ChevronRight, CircleCheck, HandCoins, Lock, MapPin, PenLine, ReceiptText, Wallet, X, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleCheck, HandCoins, Lock, MapPin, ReceiptText, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { PayPlace } from "@/lib/api/wallet";
 import { Button } from "@/components/ui/button";
@@ -172,15 +172,15 @@ export const PAY_FLOW_STEPS = ["Pick", "Bill", "Tip", "Method", "Pay", "Sign", "
 /** WHAT THE BAR SHOWS (MESITA-4226, Pato: "Receipt only when its done ...
  *  before that, hide it"): Bill to Sign, five; once the bill is done the
  *  Receipt joins as a sixth. Pick is hidden (it reads Bill). */
-const ALL_SHOWN = ["Bill", "Tip", "Method", "Pay", "Sign", "Receipt"] as const;
+const ALL_SHOWN = ["Bill", "Tip", "Pay", "Receipt"] as const;
 const SHOWN_AT: Record<(typeof PAY_FLOW_STEPS)[number], number> = {
   Pick: 0,
   Bill: 0,
   Tip: 1,
   Method: 2,
-  Pay: 3,
-  Sign: 4,
-  Receipt: 5,
+  Pay: 2,
+  Sign: 2,
+  Receipt: 3,
 };
 
 /** The segments drawn at a step: Receipt only on the Receipt. */
@@ -193,9 +193,7 @@ export function shownSteps(at: number): readonly (typeof ALL_SHOWN)[number][] {
 const SHOWN_ICONS: Record<(typeof ALL_SHOWN)[number], LucideIcon> = {
   Bill: ReceiptText,
   Tip: HandCoins,
-  Method: Wallet,
   Pay: Lock,
-  Sign: PenLine,
   Receipt: CircleCheck,
 };
 
