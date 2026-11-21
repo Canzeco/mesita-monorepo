@@ -66,8 +66,8 @@ export function PlaceDetailBody({
   return (
     // decision: Pato (2026-10-16) — the name header and the section strip
     // are both white (bg-card). The page wash shows in the content below.
-    // pb-4 gives the last section breathing room above whatever footer
-    // (nav) the parent layout renders below the scroll area.
+    // pb-4 gives the last card breathing room above the parent's nav.
+    // The host's More card is the last child of the column, not a sibling.
     <div className="flex flex-col pb-4">
       <ProfileSummary
         place={place}
