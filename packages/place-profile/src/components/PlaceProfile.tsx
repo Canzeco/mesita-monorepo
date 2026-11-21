@@ -47,8 +47,8 @@ export function PlaceProfile({
   /** The scroller's ref, so a host can keep its offset across a Back
    *  (MESITA-4379: the consumer's useKeptScroll). */
   scrollRef?: (el: HTMLDivElement | null) => void;
-  /** Drawn at the foot of the scrolling body (the consumer's More rows,
-   *  MESITA-4111). Admin's preview passes nothing. */
+  /** The consumer's More card, last in the place column (MESITA-4508).
+   *  Admin's preview passes nothing. */
   footer?: React.ReactNode;
   /** Hides the three dots. The consumer's More rows are the menu. */
   hideMore?: boolean;
@@ -73,8 +73,8 @@ export function PlaceProfile({
           actions={actions}
           creating={creating}
           social={social}
+          footer={footer}
         />
-        {footer}
       </div>
     </div>
   );

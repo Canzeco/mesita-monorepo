@@ -1,6 +1,5 @@
 "use client";
 
-import { Fragment } from "react";
 import {
   Flag,
   Heart,
@@ -10,23 +9,22 @@ import {
   Store,
   type LucideIcon,
 } from "lucide-react";
-import {
-  RowDivider,
-  SettingsGroup,
-} from "@/components/consumer/me/settings-rows";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { copyPlaceLink, sharePlace } from "@/lib/share-place";
 import { isMesitaPlaceId } from "@/lib/api/activity";
 import { businessClaimHref } from "@/lib/business-url";
 import { cn } from "@/lib/utils";
 
-// MORE, ROWS AT THE FOOT OF THE PLACE PAGE (MESITA-4111, the plan's row 13).
-// It was the three dots' sheet (Pato, MESITA-2692: "three dots in place
-// profile is not only to report"): one card of rows, Report last and red.
-// Share · Add to favorites · Copy link · Upgrade · Is this your business? ·
-// Report. Upgrade opens the Upgrade page and Report the Report page.
+// MORE, A PLACE-PROFILE CARD (Pato, 2026-11-20, MESITA-4508: "put more
+// inside a box"): the same white rounded card as Score, the title inside,
+// the rows under it. It was a label on the grey ground with flat rows
+// (MESITA-4111), and a sheet before that (MESITA-2692). Share · Add to
+// favorites · Copy link · Upgrade · Is this your business? · Report.
+// Upgrade opens the Upgrade page and Report the Report page.
 // decision: the rows are the place's own one-tap actions plus Copy link;
-// nothing new is built behind them.
+// nothing new is built behind them. The card is the place screen's Box
+// (rounded-xl, 16px pad, 16px title), drawn here so the consumer rows stay
+// in this app.
 
 type Row = {
   key: string;
@@ -102,19 +100,21 @@ export function PlaceMoreRows({
     });
 
   return (
-    <div className="px-4 pt-2 pb-8">
-      <p className="text-muted-foreground px-1 pb-2 text-xs font-semibold">
+    <section
+      className="border-border bg-card flex flex-col gap-3 rounded-xl border p-4"
+      data-place-more
+    >
+      <h3 className="text-foreground font-sans text-base font-semibold tracking-tight">
         More
-      </p>
-      <SettingsGroup flat>
-        {rows.map((r, i) => (
-          <Fragment key={r.key}>
-            {i > 0 && <RowDivider />}
+      </h3>
+      <ul className="divide-border divide-y">
+        {rows.map((r) => (
+          <li key={r.key}>
             <button
               type="button"
               onClick={r.run}
               className={cn(
-                "hover:bg-muted flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold transition",
+                "hover:bg-muted flex min-h-11 w-full items-center gap-3 rounded-lg py-2 text-left text-sm font-semibold transition",
                 r.danger && "text-destructive",
               )}
             >
@@ -128,9 +128,9 @@ export function PlaceMoreRows({
               />
               <span className="min-w-0 flex-1">{r.label}</span>
             </button>
-          </Fragment>
+          </li>
         ))}
-      </SettingsGroup>
-    </div>
+      </ul>
+    </section>
   );
 }
