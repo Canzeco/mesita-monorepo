@@ -31,8 +31,8 @@ insert into public.place_shares (consumer_id, place_id, shared_at) values
   ('00000000-0000-4000-8000-0000000a3213', '00000000-0000-4000-8000-000000003213', now() - interval '5 minutes');
 
 select ok(
-  not has_function_privilege('authenticated', 'public.place_views_log(uuid, timestamptz, integer)', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.place_views_log(uuid, timestamptz, integer)', 'EXECUTE')
+  not has_function_privilege('authenticated', 'public.place_views_log(uuid, timestamptz, integer, text)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.place_views_log(uuid, timestamptz, integer, text)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.place_views_days(uuid, text, integer)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.place_views_events(uuid)', 'EXECUTE'),
   'a client cannot read the log: without this any guest could list who viewed a place'
