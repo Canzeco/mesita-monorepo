@@ -4,7 +4,7 @@
 // everywhere: Welcome blue confetti, Story pink Instagram, the sizes green
 // ticket, VIP black crown.
 import type { Icon } from "@phosphor-icons/react";
-import { ConfettiIcon, CreditCardIcon, CrownSimpleIcon, FootprintsIcon, GiftIcon, InstagramLogoIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
+import { CoinsIcon, ConfettiIcon, CreditCardIcon, MoneyIcon, CrownSimpleIcon, FootprintsIcon, GiftIcon, InstagramLogoIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
 import { voucherName } from "@/lib/ticket-desk";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +41,14 @@ export function CreditBadge({ kind, voucher }: { kind: string; voucher: string |
       </span>
     );
   }
+  if (kind === "credit") {
+    return (
+      <span className={cn(PILL, "bg-muted text-foreground")}>
+        <CoinsIcon size={12} weight="fill" aria-hidden />
+        Credit
+      </span>
+    );
+  }
   if (kind === "spend" || kind === "refund") {
     return (
       <span className={cn(PILL, "bg-muted text-foreground")}>
@@ -68,6 +76,16 @@ export function CardBadge({ status }: { status: string | null }) {
     <span className={PILL} style={{ color: "#635BFF", backgroundColor: "rgb(99 91 255 / 0.1)" }}>
       <CreditCardIcon size={12} weight="fill" aria-hidden />
       {status ?? "Card"}
+    </span>
+  );
+}
+
+/** Cash: the part paid outside Mesita, at the table (MESITA-4567). */
+export function CashBadge() {
+  return (
+    <span className={cn(PILL, "bg-green-100 text-green-800")}>
+      <MoneyIcon size={12} weight="fill" aria-hidden />
+      Cash
     </span>
   );
 }

@@ -229,7 +229,7 @@ export function rowDetail(kind: MonitorKind, row: MonitorRow): string | null {
     const parts = [
       n("card_cents") > 0 ? `Card ${money(n("card_cents"))}` : null,
       n("credit_cents") > 0 ? `Credit ${money(n("credit_cents"))}` : null,
-      n("outside_cents") > 0 ? `Outside ${money(n("outside_cents"))}` : null,
+      n("outside_cents") > 0 ? `Cash ${money(n("outside_cents"))}` : null,
       n("tip_cents") > 0 ? `Tip ${money(n("tip_cents"))}` : null,
       n("refunded_cents") + n("credit_refunded_cents") > 0 ? `${money(n("refunded_cents") + n("credit_refunded_cents"))} refunded` : null,
     ].filter(Boolean);
@@ -324,7 +324,7 @@ export function customerParam(v: string | string[] | undefined): string | null {
 export const EMPTY: Record<MonitorKind | "customers" | "views", string> = {
   visits: "No visits yet.",
   vouchers: "No vouchers yet.",
-  payments: "No card payments yet.",
+  payments: "No payments yet.",
   credits: "No credit movements yet.",
   gifts: "No gifts yet.",
   stories: "No stories yet.",
@@ -335,7 +335,7 @@ export const EMPTY: Record<MonitorKind | "customers" | "views", string> = {
 export const NOUN: Record<MonitorKind, { one: string; many: string }> = {
   visits: { one: "visit", many: "visits" },
   vouchers: { one: "voucher", many: "vouchers" },
-  payments: { one: "card payment", many: "card payments" },
+  payments: { one: "payment", many: "payments" },
   credits: { one: "credit movement", many: "credit movements" },
   gifts: { one: "gift", many: "gifts" },
   stories: { one: "story", many: "stories" },

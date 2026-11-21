@@ -35,7 +35,7 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { GuestAvatar } from "./GuestAvatar";
 import { CHIP, CustomerChip, Dash, GuestCell, IdCell, MonitorTable, type Column } from "./MonitorTable";
-import { CardBadge, CreditBadge, VisitBadge, VoucherBadge } from "./VoucherBadge";
+import { CardBadge, CashBadge, CreditBadge, VisitBadge, VoucherBadge } from "./VoucherBadge";
 import type { Icon } from "@phosphor-icons/react";
 import { CoinsIcon, CreditCardIcon, FootprintsIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
 
@@ -88,6 +88,18 @@ function cents(row: MonitorRow, ...keys: string[]): React.ReactNode {
 
 function text(v: unknown): React.ReactNode {
   return v == null || v === "" ? <Dash /> : String(v);
+}
+
+/** How a bill was paid: Card (through Stripe), Cash (the outside part, paid
+ *  at the table), Credit; one badge per part that is not zero. */
+function MethodBadges({ row }: { row: MonitorRow }) {
+  const n = (k: string) => Number(row.payload[k] ?? 0);
+  const parts = [
+    n("card_cents") > 0 ? <CardBadge key="card" status="Card" /> : null,
+    n("outside_cents") > 0 ? <CashBadge key="cash" /> : null,
+    n("credit_cents") > 0 ? <CreditBadge key="credit" kind="credit" voucher={null} /> : null,
+  ].filter(Boolean);
+  return parts.length ? <span className="flex gap-1.5">{parts}</span> : <Dash />;
 }
 
 /** The columns of each kind's table. */
@@ -156,9 +168,13 @@ function columnsFor(kind: MonitorKind, placeId: string, timezone: string): Colum
       date,
       guest,
       customer,
-      { head: "Status", cell: (r) => <CardBadge status={rowStatus(kind, r)} /> },
+      // Card, cash or credit, or a mix (MESITA-4567, Pato: "payments must
+      // include cash option").
+      { head: "Method", cell: (r) => <MethodBadges row={r} /> },
+      { head: "Status", cell: (r) => rowStatus(kind, r) },
       { head: "Visit", cell: (r) => <Related placeId={placeId} row={r} kinds={["visit"]} /> },
       { head: "Card", align: "right", cell: (r) => cents(r, "card_cents") },
+      { head: "Cash", align: "right", cell: (r) => cents(r, "outside_cents") },
       { head: "Credit", align: "right", cell: (r) => cents(r, "credit_cents") },
       { head: "Tip", align: "right", cell: (r) => cents(r, "tip_cents") },
       { head: "Refunded", align: "right", cell: (r) => cents(r, "refunded_cents", "credit_refunded_cents") },
