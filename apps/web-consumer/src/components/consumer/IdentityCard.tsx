@@ -1,7 +1,7 @@
 "use client";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Crown } from "lucide-react";
+import { Crown, User } from "lucide-react";
 import { useConsumerIdentity } from "@/lib/identity-context";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
@@ -182,6 +182,11 @@ export function IdentityCard({
 // followers on the right (opens Me › Instagram; "Connect Instagram" when
 // there is none). Social's member card keeps IdentityCard above.
 
+/** Me's header pill (MESITA-4543): full width, 48px, a 1px hairline,
+ *  fully rounded, the content centred in ink. */
+export const IDENTITY_PILL_CLASS =
+  "border-border bg-card text-foreground hover:bg-muted/60 flex h-12 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition";
+
 /** "@handle · ~320 followers" → ["@handle", "~320 followers"]. */
 function splitInstagramLabel(label: string): [string, string | null] {
   const at = label.indexOf(" · ");
@@ -204,15 +209,15 @@ export function IdentityModules({
   // count (Pato, MESITA-4370: "a tag saying more than +1000 followers …
   // maybe a crown"). Not a Class: Class left Me in MESITA-4306.
   const { igReach } = useConsumerIdentity();
-  // CENTRED, SMALL, TWO LINES (Pato, 2026-11-21, MESITA-4523: "profile pic
-  // too big it looks like shit. lets return to the prev version. profile pic
-  // centered and two lines below: name on top, instagram below"): a 72px
-  // photo in its ring, centred, then the name (opens Profile) and the
-  // Instagram line (handle · followers, the 1K+ crown) as plain lines, no
-  // boxes. MESITA-4340 to 4370 had a 113px photo beside a name box and an
-  // Instagram box.
+  // TWO FULL-WIDTH PILLS UNDER THE PHOTO (Pato, 2026-11-21, MESITA-4543:
+  // "LIKE THIS. BUT WITHOUT THE CLASS. Just name 100% wide, instagram 100%
+  // wide", over the old pill header). The 72px photo stays centred; under
+  // it a rounded 1px pill with a person icon and the name (opens Profile),
+  // then one with the Instagram badge and "@handle (~320 followers)", the
+  // 1K+ crown inside it (opens Instagram). No Class pill (MESITA-4306).
+  // MESITA-4523 had plain lines.
   return (
-    <div className="flex w-full min-w-0 flex-col items-center gap-2 text-center" data-identity-card>
+    <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card>
       <span className={IDENTITY_RING_CLASS} aria-hidden>
         <span className="bg-muted relative block h-[72px] w-[72px] overflow-hidden rounded-full">
           {avatarUrl ? (
@@ -222,24 +227,24 @@ export function IdentityModules({
           )}
         </span>
       </span>
-      <span className="flex w-full min-w-0 flex-col items-center gap-0.5">
+      <span className="flex w-full min-w-0 flex-col gap-2">
         <PushLink
           href={nameHref}
           aria-label={`Profile: ${name}`}
-          className={cn("text-foreground inline-flex min-h-11 max-w-full items-center text-base font-bold tracking-tight", DOOR_HOVER_CLASS)}
+          className={IDENTITY_PILL_CLASS}
           data-identity-name
         >
+          <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
           <span className="truncate">{name}</span>
         </PushLink>
         <PushLink
           href={instagram.href}
           aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
-          className={cn("inline-flex min-h-11 max-w-full items-center gap-1.5 text-sm", DOOR_HOVER_CLASS)}
+          className={IDENTITY_PILL_CLASS}
           data-identity-instagram
         >
           <InstagramBadge connected={instagram.connected} />
-          <span className="text-foreground truncate font-semibold">{handle}</span>
-          {followers ? <span className="text-muted-foreground shrink-0">· {followers}</span> : null}
+          <span className="truncate">{followers ? `${handle} (${followers})` : handle}</span>
           {igReach && (
             <span
               className="type-meta flex shrink-0 items-center gap-1 rounded-full bg-neutral-950 px-2 py-0.5 font-bold text-white"
