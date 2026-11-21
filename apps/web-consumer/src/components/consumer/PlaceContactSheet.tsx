@@ -2,7 +2,7 @@
 
 import { Fragment } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Globe, MessageCircle, Phone } from "lucide-react";
+import { Flag, Globe, MessageCircle, Phone } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { PlaceSubpage } from "@/components/consumer/place-detail/PlaceSubpage";
 import {
@@ -12,6 +12,8 @@ import {
   type RowTint,
 } from "@/components/consumer/me/settings-rows";
 import type { PlaceDetail } from "@/lib/place-detail";
+import { isMesitaPlaceId } from "@/lib/api/activity";
+import { placeReportPath } from "@/lib/consumer-route-contract";
 
 // Contact, a page at /place/<id>/contact (MESITA-4111). It was a sheet over
 // the profile. Lists only the mediums this place actually exposes and reuses
@@ -90,11 +92,17 @@ function buildContactRows(place: PlaceDetail): ContactRow[] {
   return rows;
 }
 
+// REPORT LIVES HERE (Pato, 2026-11-21, MESITA-4550: "remove the more box
+// from place profile"): the More card's other rows have doors elsewhere
+// (Share, Save and Upgrade in the tile row, Copy link through Share, "Is
+// this your business?" on the Upgrade page); Report had none, so it is the
+// last row of Contact, in its own group, Mesita places only.
 export function PlaceContactPage({ place }: { place: PlaceDetail }) {
   const rows = buildContactRows(place);
+  const reportable = isMesitaPlaceId(place.id);
   return (
     <PlaceSubpage title="Contact" placeName={place.name} placeId={place.id}>
-      <div className="px-4 py-2">
+      <div className="flex flex-col gap-3 px-4 py-2">
         {rows.length > 0 ? (
           <SettingsGroup flat>
             {rows.map((row, i) => (
@@ -115,6 +123,17 @@ export function PlaceContactPage({ place }: { place: PlaceDetail }) {
           <p className="border-border bg-card text-muted-foreground type-body rounded-2xl border px-4 py-6 text-center">
             No contact details yet.
           </p>
+        )}
+        {reportable && (
+          <SettingsGroup flat>
+            <SettingsLinkRow
+              Icon={Flag}
+              tint="muted"
+              href={placeReportPath(place.id)}
+              label="Report"
+              sub="Something wrong with this place"
+            />
+          </SettingsGroup>
         )}
       </div>
     </PlaceSubpage>
