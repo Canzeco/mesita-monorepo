@@ -4,7 +4,16 @@
     "beforeShellExecution": [
       {
         "command": "bash scripts/preflight.sh cursor",
-        "timeout": 20
+        "timeout": 20,
+        "failClosed": true
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "bash scripts/preflight.sh cursor",
+        "matcher": "Write|Delete|Shell",
+        "timeout": 20,
+        "failClosed": true
       }
     ]
   }

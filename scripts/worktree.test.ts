@@ -562,7 +562,7 @@ Deno.test("the Cursor hook denies git commit and push outside a claimed workspac
   await add(makeEnv(f), { id: "MESITA-72", slug: "cursor" });
   const ws = await Deno.realPath(join(platformDirOf(f.main, "claude-code"), "MESITA-72-cursor"));
   const run = async (command: string, cwd: string, path?: string) => (await gate("cursor", JSON.stringify({ command, cwd, workspace_roots: [cwd] }), {}, { path })).stdout.trim();
-  assertEquals(await run("ls -la", f.main), '{"permission":"allow"}', "only git verbs that write are gated");
+  assertEquals(await run("ls -la", f.main), '{"permission":"allow"}', "a command that does not write is not gated");
   const lobby = await run("git commit -m x", f.main);
   assertStringIncludes(lobby, '"permission":"deny"');
   assertStringIncludes(lobby, "SHARED CHECKOUT");
@@ -572,6 +572,45 @@ Deno.test("the Cursor hook denies git commit and push outside a claimed workspac
   assertStringIncludes(blind, '"permission":"deny"');
   assertStringIncludes(blind, "cannot read the tool payload (no jq, no deno)");
   assertEquals(await run("ls -la", ws, none), '{"permission":"allow"}', "unread, a payload with no guarded verb still runs");
+});
+
+Deno.test("a shell write and a patch are refused outside a claimed workspace, and a read is not", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  const lane = await rawWorktree(f, "lane", "claude/lane-sh", { commit: false });
+  await add(env, { id: "MESITA-73", adopt: lane.path });
+  const bash = (cwd: string, command: string) =>
+    claudeHook({ cwd, tool_name: "Bash", tool_input: { command } });
+  assertEquals((await bash(f.main, "git status")).code, 0);
+  assertEquals((await bash(f.main, "git status 2>/dev/null")).code, 0);
+  assertEquals((await bash(f.main, "ls -la")).code, 0);
+  assertEquals((await bash(f.main, "deno task worktree add MESITA-1 slug")).code, 0);
+  assertEquals((await bash(f.main, 'echo "git commit"')).code, 0, "a quoted mention is not a command");
+  const redir = await bash(f.main, "echo hi > apps/x.ts");
+  assertEquals(redir.code, 2, redir.stderr);
+  assertStringIncludes(redir.stderr, "SHARED CHECKOUT");
+  const sed = await bash(f.main, "sed -i 's/a/b/' CLAUDE.md");
+  assertEquals(sed.code, 2, sed.stderr);
+  const py = await bash(f.main, `python3 -c 'open("apps/x.ts","w").write("x")'`);
+  assertEquals(py.code, 2, py.stderr);
+  const escape = await bash(lane.path, `sed -i 's/a/b/' ${f.main}/CLAUDE.md`);
+  assertEquals(escape.code, 2, escape.stderr);
+  assertStringIncludes(escape.stderr, "SHARED CHECKOUT");
+  assertEquals((await bash(lane.path, "echo hi > apps/x.ts")).code, 0);
+  assertEquals((await bash(f.main, `echo hi > ${f.tmp}/scratch.txt`)).code, 0, "a write outside the repo is not this law");
+  const patch = "*** Update File: apps/x.ts\n@@\n-a\n+b\n";
+  const refusedPatch = await claudeHook({ cwd: f.main, tool_name: "apply_patch", tool_input: { command: patch } });
+  assertEquals(refusedPatch.code, 2, refusedPatch.stderr);
+  assertEquals((await claudeHook({ cwd: lane.path, tool_name: "apply_patch", tool_input: { command: patch } })).code, 0);
+  const cursor = async (payload: Record<string, unknown>) => (await gate("cursor", JSON.stringify(payload))).stdout.trim();
+  const denied = await cursor({ command: "echo hi > apps/x.ts", cwd: f.main, workspace_roots: [f.main] });
+  assertStringIncludes(denied, '"permission":"deny"');
+  assertStringIncludes(denied, "SHARED CHECKOUT");
+  const write = await cursor({ tool_name: "Write", cwd: f.main, tool_input: { file_path: join(f.main, "CLAUDE.md") }, workspace_roots: [f.main] });
+  assertStringIncludes(write, '"permission":"deny"');
+  const okWrite = await cursor({ tool_name: "Write", cwd: lane.path, tool_input: { path: "apps/new.ts" }, workspace_roots: [lane.path] });
+  assertStringIncludes(okWrite, '"permission":"allow"');
+  assertEquals(await cursor({ command: "git status", cwd: f.main, workspace_roots: [f.main] }), '{"permission":"allow"}');
 });
 
 // ── classifyLanded (I-10) ───────────────────────────────────────────────────
