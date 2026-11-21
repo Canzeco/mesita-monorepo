@@ -297,15 +297,10 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
       whatsapp_url: str(row.whatsapp_url),
       instagram_url: str(row.instagram_url),
       facebook_url: str(row.facebook_url),
-      x_url: str(row.x_url),
-      threads_url: str(row.threads_url),
-      reddit_url: str(row.reddit_url),
     },
     reservations: {
       opentable_url: str(row.opentable_url),
-      resy_url: str(row.resy_url),
       uber_eats_url: str(row.uber_eats_url),
-      didi_food_url: str(row.didi_food_url),
     },
     reviews_maps: {
       google_maps_url: str(row.google_maps_url),

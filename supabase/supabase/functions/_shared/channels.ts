@@ -8,39 +8,24 @@ export type ChannelKey =
   | "website_url"
   | "instagram_url"
   | "facebook_url"
-  | "x_url"
-  | "threads_url"
-  | "reddit_url"
   | "whatsapp_url"
   | "opentable_url"
-  | "resy_url"
   | "uber_eats_url"
-  | "didi_food_url"
   | "google_maps_url";
 
 export type Channels = Record<ChannelKey, string | null>;
 
 // Hostname → channel column. Accepts exact hostnames and subdomain matches
-// (`m.facebook.com` → `facebook_url`). `didi` rules are loose
-// because the TLD varies by country (`.com`, `.com.mx`, `.es`, `.com.ar`).
+// (`m.facebook.com` → `facebook_url`).
 function matchChannel(host: string): ChannelKey | null {
   const h = host.replace(/^www\./, "").toLowerCase();
   if (h === "instagram.com" || h.endsWith(".instagram.com")) return "instagram_url";
   if (h === "facebook.com" || h.endsWith(".facebook.com")) return "facebook_url";
   if (h === "fb.com" || h.endsWith(".fb.com")) return "facebook_url";
-  if (h === "twitter.com" || h.endsWith(".twitter.com")) return "x_url";
-  if (h === "x.com" || h.endsWith(".x.com")) return "x_url";
-  if (h === "threads.net" || h.endsWith(".threads.net")) return "threads_url";
-  if (h === "threads.com" || h.endsWith(".threads.com")) return "threads_url";
-  if (h === "reddit.com" || h.endsWith(".reddit.com")) return "reddit_url";
   if (h === "wa.me" || h.endsWith(".wa.me")) return "whatsapp_url";
   if (h === "whatsapp.com" || h.endsWith(".whatsapp.com")) return "whatsapp_url";
   if (h.startsWith("opentable.")) return "opentable_url";
-  if (h === "resy.com" || h.endsWith(".resy.com")) return "resy_url";
   if (h === "ubereats.com" || h.endsWith(".ubereats.com")) return "uber_eats_url";
-  if (h === "didi.com" || h.endsWith(".didi.com")) return "didi_food_url";
-  if (h.startsWith("didifood.")) return "didi_food_url";
-  if (h === "sindelantal.com.mx" || h.endsWith(".sindelantal.com.mx")) return "didi_food_url";
   // maps.google.com + goo.gl short links. (google.com/maps/* needs the path —
   // see matchChannelFromUrl / classifyLinks path check.)
   if (h === "maps.google.com" || h.endsWith(".maps.google.com")) return "google_maps_url";
@@ -48,17 +33,19 @@ function matchChannel(host: string): ChannelKey | null {
   return null;
 }
 
-// Social hosts we still RECOGNISE but no longer track as a channel (TikTok /
-// TripAdvisor / Yelp retired product-wide). matchChannel returns null for
-// them, and classifyLinks absorbs them here so a link to any of these can
-// never leak into website_url.
+// Hosts we still RECOGNISE but never track as a channel (TikTok, TripAdvisor,
+// Yelp; X,
+// Threads, Reddit, Resy and DiDi Food dropped by MESITA-4569). matchChannel
+// returns null for them, and classifyLinks absorbs them here so a link to any
+// of these can never leak into website_url.
 function isRetiredSocialHost(host: string): boolean {
   const h = host.replace(/^www\./, "").toLowerCase();
   if (h === "tiktok.com" || h.endsWith(".tiktok.com")) return true;
-  // Brand label anywhere in the host so locale subdomains (es./fr.tripadvisor.com)
-  // AND country TLDs (tripadvisor.com.mx) both match.
   if (/(^|\.)tripadvisor\./.test(h)) return true;
   if (/(^|\.)yelp\./.test(h)) return true;
+  if (["twitter.com", "x.com", "threads.net", "threads.com", "reddit.com", "resy.com", "didi.com", "sindelantal.com.mx"]
+    .some((b) => h === b || h.endsWith(`.${b}`))) return true;
+  if (h.startsWith("didifood.")) return true;
   return false;
 }
 
@@ -167,14 +154,9 @@ export function classifyLinks(input: (string | null | undefined)[]): Channels {
     website_url: pickShortest(websiteCandidates),
     instagram_url: pickShortest(buckets.instagram_url),
     facebook_url: pickShortest(buckets.facebook_url),
-    x_url: pickShortest(buckets.x_url),
-    threads_url: pickShortest(buckets.threads_url),
-    reddit_url: pickShortest(buckets.reddit_url),
     whatsapp_url: pickShortest(buckets.whatsapp_url),
     opentable_url: pickShortest(buckets.opentable_url),
-    resy_url: pickShortest(buckets.resy_url),
     uber_eats_url: pickShortest(buckets.uber_eats_url),
-    didi_food_url: pickShortest(buckets.didi_food_url),
     google_maps_url: pickShortest(buckets.google_maps_url),
   };
 }

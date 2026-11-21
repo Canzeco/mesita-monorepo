@@ -3,7 +3,8 @@
 // Links Found (MESITA-4551, was Reviews States, MESITA-2190): one row per
 // source, true when the place has it. Google, Instagram and Facebook read
 // the resolved flags the payload carries; Foursquare is true once a place
-// is linked (MESITA-4544); every other row is true when its link is stored.
+// is linked by Foursquare's own search (MESITA-4544, MESITA-4552), never by
+// a web search; every other row is true when its link is stored.
 // Stars, snippets and follower counts stay on the Reviews tab as display.
 
 import { LinkIcon } from "@phosphor-icons/react/dist/ssr";
@@ -34,14 +35,9 @@ function rows(place: AdminPlace): Row[] {
     { name: "Facebook", found: flag("facebook_found"), what: "The Facebook page" },
     { name: "Foursquare", found: fsq, what: "The Foursquare place" },
     { name: "Uber Eats", found: link(place, "uber_eats_url"), what: "The Uber Eats store" },
-    { name: "DiDi Food", found: link(place, "didi_food_url"), what: "The DiDi Food store" },
     { name: "OpenTable", found: link(place, "opentable_url"), what: "The OpenTable page" },
-    { name: "Resy", found: link(place, "resy_url"), what: "The Resy page" },
     { name: "Website", found: link(place, "website_url"), what: "The website" },
     { name: "WhatsApp", found: link(place, "whatsapp_url"), what: "The WhatsApp link" },
-    { name: "X", found: link(place, "x_url"), what: "The X account" },
-    { name: "Threads", found: link(place, "threads_url"), what: "The Threads account" },
-    { name: "Reddit", found: link(place, "reddit_url"), what: "The Reddit page" },
   ];
 }
 

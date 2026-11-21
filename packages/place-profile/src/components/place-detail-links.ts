@@ -1,11 +1,12 @@
-import { AtSign, Bike, CalendarCheck, Globe, MapPin, MessageCircle } from "lucide-react";
+import { Bike, CalendarCheck, Globe, MapPin, MessageCircle } from "lucide-react";
 
-import { Facebook, Instagram, Twitter } from "./brand-icons";
+import { Facebook, Instagram } from "./brand-icons";
 
 // `logo` points at a real brand mark in /public/channels (simple-icons SVG,
 // brand colour baked in) so the Channels chips read as the actual apps.
-// Channels without an available brand SVG (Website generic, OpenTable, Resy,
-// DiDi Food) keep their neutral lucide `Icon` fallback.
+// Channels without an available brand SVG (Website generic) keep their
+// neutral lucide `Icon` fallback. X, Threads, Reddit, Resy and DiDi Food
+// were dropped (MESITA-4569).
 //
 // EACH LINK IS THE QUIET GREY CHIP, ONLY ITS MARK IN THE BRAND'S COLOUR
 // (Pato, MESITA-3340: "better keep the gray buttons below. too strong
@@ -38,21 +39,6 @@ export const CHANNEL_DEFS = [
     logo: "/channels/facebook.svg",
     mark: "text-[#0866FF]",
   },
-  { key: "x_url", label: "X", Icon: Twitter, logo: "/channels/x.svg", mark: "text-foreground" },
-  {
-    key: "threads_url",
-    label: "Threads",
-    Icon: AtSign,
-    logo: "/channels/threads.svg",
-    mark: "text-foreground",
-  },
-  {
-    key: "reddit_url",
-    label: "Reddit",
-    Icon: MessageCircle,
-    logo: "/channels/reddit.svg",
-    mark: "text-[#FF4500]",
-  },
 ] as const;
 
 /** Phone's mark: a call is green, as the phone app is. */
@@ -66,7 +52,6 @@ export const RESERVATION_DEFS = [
     logo: "/channels/opentable.svg",
     mark: "text-[#DA3743]",
   },
-  { key: "resy_url", label: "Resy", Icon: CalendarCheck, mark: "text-[#FF462D]" },
   {
     key: "uber_eats_url",
     // decision: Pato — real Uber Eats Simple Icons mark (green stacked
@@ -79,7 +64,6 @@ export const RESERVATION_DEFS = [
     // Uber Eats green with the Uber Eats mark (Pato, MESITA-3320, MESITA-3333).
     mark: "text-[#06C167]",
   },
-  { key: "didi_food_url", label: "DiDi Food", Icon: Bike, mark: "text-[#FF7D41]" },
 ] as const;
 
 export const REVIEW_DEFS = [
