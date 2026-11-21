@@ -18,8 +18,8 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0" aria-busy>
         <PayHeader title="Mesita Wallet" action={<TicketsShortcut icon />} />
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <Skeleton className="h-22 min-w-0 rounded-xl bg-[#00D66F]/40" aria-hidden />
-          <Skeleton className="h-22 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
+          <Skeleton className="h-24 min-w-0 rounded-xl bg-[#00D66F]/40" aria-hidden />
+          <Skeleton className="h-24 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
         </div>
         <div className="mt-1 flex flex-1 flex-col pb-8">
           <section className={SECTION_CARD}>
@@ -61,7 +61,7 @@ export function LoyaltyCardBoxSkeleton() {
       <span className={PAY_ROW}>
         <Skeleton className={PAY_THUMB} />
         <Skeleton className="h-4 w-32 rounded" />
-        <Skeleton className="ml-auto h-4 w-16 rounded" />
+        <Skeleton className="ml-auto h-8 w-24 rounded-lg" />
       </span>
     </div>
   );

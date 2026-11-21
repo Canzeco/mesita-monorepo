@@ -354,11 +354,13 @@ export function PayPage({
           className={cn(TILE, "bg-[#00D66F] text-center leading-tight text-neutral-950 hover:bg-[#00c265]")}
           data-add-funds
         >
-          <Plus className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
+          <span className={cn(ICON_CIRCLE, "text-neutral-950")} aria-hidden>
+            <Plus className="h-5 w-5" strokeWidth={2.5} />
+          </span>
           Add Funds, Get a Bonus
         </PushLink>
         {payBusy ? (
-          <Skeleton className="h-22 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
+          <Skeleton className="h-24 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
         ) : (
           <button
             type="button"
@@ -367,7 +369,9 @@ export function PayPage({
             onClick={paySelected}
             data-pay-bill
           >
-            <QrCode className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
+            <span className={ICON_CIRCLE} style={{ color: "#635BFF" }} aria-hidden>
+              <QrCode className="h-5 w-5" strokeWidth={2.25} />
+            </span>
             Pay Bill
           </button>
         )}
@@ -479,7 +483,12 @@ function PlaceRows({
 
 /** Pay's three buttons, side by side (MESITA-4579): one size. */
 const TILE =
-  "flex h-22 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-base font-semibold transition active:scale-[0.99]";
+  "flex h-24 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-base font-semibold transition active:scale-[0.99]";
+/** THE ICON IN A WHITE CIRCLE (Pato, 2026-11-21, MESITA-4586: "+icon inside
+ *  a circle … with white background, and purple thing also inside a circle";
+ *  /plan-design-review pick): 40px, the tile's ink on white, the Loyalty
+ *  Card page's round buttons' look. The tiles grew 88 to 96px to hold it. */
+const ICON_CIRCLE = "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white";
 
 /** Pay Bill's shape while the open-bill read runs, so a bill that is open
  *  never flashes the black button first. */
