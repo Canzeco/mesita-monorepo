@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { PlacePhoto } from "./pay-common";
 
 // A Wallet place (MESITA-4504): one line. The name, and the amount when
 // the guest holds credit. Tap selects it for the page's Pay. Tap the
@@ -8,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 export function PlaceActionRow({
   name,
+  photo = null,
   amount,
   subtitle,
   selected = false,
@@ -16,6 +18,8 @@ export function PlaceActionRow({
   onOpen,
 }: {
   name: string;
+  /** The place picture. A missing one still draws the initial. */
+  photo?: string | null;
   /** Plain amount. Absent when they hold nothing here. */
   amount?: string | null;
   subtitle?: string | null;
@@ -50,6 +54,7 @@ export function PlaceActionRow({
       data-wallet-row
       data-selected={selected ? "true" : undefined}
     >
+      <PlacePhoto place={{ photo, name }} className="h-10 w-10" />
       <span className="min-w-0 flex-1">
         <span className="text-foreground block truncate text-base font-semibold">{name}</span>
         {subtitle ? <span className="text-muted-foreground block truncate text-sm">{subtitle}</span> : null}

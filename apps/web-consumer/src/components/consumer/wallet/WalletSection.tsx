@@ -303,6 +303,7 @@ export function WalletSection({
                   <PlaceActionRow
                     key={row.card.key}
                     name={name}
+                    photo={row.card.photo}
                     amount={gone || row.card.available_cents <= 0 ? null : money(row.card.available_cents, row.card.currency)}
                     subtitle={gone ? "Ask Mesita support to use it." : null}
                     selected={!gone && selectedId === row.placeId}
