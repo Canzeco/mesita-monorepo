@@ -42,14 +42,15 @@
 //   `fill` is a rank)
 //   rankMode     "nearby" | "popular" | "family"; absent → familyKeys ?
 //                family : popular. Anything else = 400 `rank_mode_invalid`
-//                before any read. "nearby" with no point = 400
-//                `location_required`.
+//                before any read. Any rank (no `fill`) with no point = 400
+//                `location_required` (MESITA-4542).
 //   shuffleSeed  integer 0…2^32 − 1 (one per page load and mode); absent
 //                draws one, echoed as `seed`. Anything else = 400
 //                `shuffle_seed_invalid`.
 //   seedLat/Lng  the point the seed was made at (sent until the guest moves
 //                300 m): when a valid pair, it is the point that ranks.
-//   lat/lng      a POINT; none = no location (Proximity abstains at 1).
+//   lat/lng      a POINT; required for a rank (MESITA-4542). A fill without
+//                one scores with Proximity 1.
 //   familyKeys   the family row's families (MESITA-2438); absent = every one.
 //   nearest      true: `order` is distance alone (the Reward tab,
 //                MESITA-3214): no lanes, no ads (`adIds: []`), no shuffle.
@@ -226,8 +227,12 @@ serveJson("consumer-web-list-catalog", async (req) => {
   const center = readSeedPoint(body as Record<string, unknown>) ??
     (nearby.mode === "ok" ? { lat: nearby.lat, lng: nearby.lng } : null);
   const nearest = body.nearest === true;
-  if (rankMode === "nearby" && center === null && !nearest) {
-    return refuse("location_required", "send lat/lng or use rankMode popular");
+  // EVERY RANK NEEDS A POINT (Pato, 2026-11-21, MESITA-4542: "you must
+  // have location"): Home shows the location chooser instead of asking.
+  // A product rule, not a data limit. Fills carry the rank's point and are
+  // never refused here.
+  if (fill === null && center === null) {
+    return refuse("location_required", "send lat/lng: every rank needs a point");
   }
 
   const loaded = await loadDiscoveryConfigWithMeta(admin);

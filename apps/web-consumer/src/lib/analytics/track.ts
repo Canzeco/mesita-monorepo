@@ -38,7 +38,11 @@ export type AnalyticsEvent =
   | "reserve_pro_shown"
   | "reserve_upgrade_tap"
   // MESITA-4124 — which pay step the guest reached, so drop-off is a count.
-  | "pay_step_view";
+  | "pay_step_view"
+  // MESITA-4542 — Home's location gate: the chooser drew (once per page
+  // load), and a location was then picked (source device · saved · pin).
+  | "location_gate_shown"
+  | "location_gate_chosen";
 
 /**
  * Fire-and-forget product event. NEVER throws and NEVER awaited by a

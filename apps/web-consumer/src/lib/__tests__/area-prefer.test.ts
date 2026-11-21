@@ -64,25 +64,32 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     );
   });
 
-  // MESITA-2472 (Pato: the full-pane "Couldn't find you" "looks like …
-  // shit"): no location is not a dead end. With no fix and no saved
-  // location, once the browser has answered, Popular and every family row
-  // rank with Proximity abstaining (MESITA-4454; the city's centre before);
-  // before it answers, a skeleton and no request. Nearby never asks
-  // without a point (H5). MESITA-2587: no bar says so above the tiles —
-  // the header's location box reads "Monterrey" behind a crossed-out pin.
-  it("no location still ranks Popular, named in the header box, never a dead end", () => {
+  // NO LOCATION, NO RANK (Pato, 2026-11-21, MESITA-4542: "make location
+  // selector mandatory"), reversing MESITA-2472's "no location still ranks
+  // Popular". With no point every ranking chip shows the location chooser
+  // and no request leaves; Saved never gates. The skeleton waits only for
+  // the browser's FIRST answer: keying it on `settled` would swap the
+  // chooser for the skeleton on a "Use my location" tap (eng review F1).
+  it("no location, no rank: every ranking chip shows the chooser", () => {
     const rails = src("components/consumer/home/CatalogRails.tsx");
     expect(rails).toContain("const here = origin ?? coords ?? null;");
-    expect(rails).toContain('const nearbyNoPoint = rankMode === "nearby" && here === null;');
+    expect(rails).toContain("const noPoint = here === null && chip !== SAVED_CHIP;");
     expect(rails).not.toContain("MONTERREY_CENTER");
-    const effect = rails.slice(
-      rails.indexOf("useEffect(() => {\n    // Until the browser answers"),
-    );
-    expect(effect.indexOf("if (waitingForFix) return;")).toBeGreaterThan(-1);
-    expect(effect.indexOf("if (waitingForFix) return;")).toBeLessThan(
+    expect(rails).not.toContain("nearbyWithoutPoint");
+    expect(rails).not.toContain("seePopular");
+    expect(rails).not.toContain("waitingForFix");
+    // The effect sends nothing without a point, whatever the chip.
+    const effect = rails.slice(rails.indexOf("// NO POINT, NO REQUEST (MESITA-4542)"));
+    expect(effect.indexOf("if (here === null) return;")).toBeGreaterThan(-1);
+    expect(effect.indexOf("if (here === null) return;")).toBeLessThan(
       effect.indexOf("apiListAreaPool("),
     );
+    // The body: Saved first, then the chooser behind the first-answer latch.
+    const body = rails.slice(rails.indexOf("if (chip === SAVED_CHIP) {"));
+    const gate = body.indexOf("if (noPoint) {");
+    expect(gate).toBeGreaterThan(-1);
+    expect(body.indexOf("if (!firstAnswerSeen) return shell(waiting);")).toBeGreaterThan(gate);
+    expect(body.indexOf("<LocationChooser")).toBeGreaterThan(gate);
     expect(rails).not.toContain("cityBar");
     expect(rails).not.toContain("data-places-city-fallback");
     expect(rails).not.toContain("Location is off");

@@ -146,7 +146,9 @@ describe("what a failed reverse geocode means", () => {
 
 describe("the picker's map and sheet (source)", () => {
   const read = (p: string) => readFileSync(join(__dirname, "..", "..", p), "utf8");
-  const sheet = read("components/consumer/home/LocationPicker.tsx");
+  // The sheet body is LocationChooser since MESITA-4542 (shared with the
+  // Places gate).
+  const sheet = read("components/consumer/home/LocationChooser.tsx");
 
   it("nothing is saved by a pick: every way in opens the picker", () => {
     expect(sheet).not.toContain("addSavedLocation");
