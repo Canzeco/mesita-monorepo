@@ -16,8 +16,11 @@ const VERSION = "2025-06-17";
 const MATCH_KM = 0.15;
 const SEARCH_RADIUS_M = 250;
 
+/** The Places API service key. The cloud secret is `FOURSQUARE_KEY`
+ *  (MESITA-4544: reading only the other two names skipped every lookup). */
 export function foursquareServiceKey(): string | null {
-  const key = Deno.env.get("FOURSQUARE_SERVICE_KEY")?.trim()
+  const key = Deno.env.get("FOURSQUARE_KEY")?.trim()
+    || Deno.env.get("FOURSQUARE_SERVICE_KEY")?.trim()
     || Deno.env.get("FSQ_SERVICE_KEY")?.trim()
     || "";
   return key || null;

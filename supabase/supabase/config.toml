@@ -178,6 +178,11 @@ verify_jwt = true
 
 # Memo's own config: greeting, persona instructions and model. Read side only —
 # Chat persona writes stay on admin-web-update-config's `discovery` section.
+# MESITA-4544: links places to Foursquare (or refreshes linked venues'
+# popularity) in batches; internal-only, service-role bearer.
+[functions.supabase-edgefunc-sync-foursquare]
+verify_jwt = true
+
 [functions.supabase-edgefunc-get-memo-config]
 verify_jwt = true
 

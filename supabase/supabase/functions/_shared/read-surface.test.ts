@@ -197,6 +197,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/place-reservable.ts", // the switch + number gate the Reserve doors share (MESITA-3622)
   "eleven-a4-cancel-reservation/index.ts",
   "supabase-edgefunc-place-reservation-call/index.ts",
+  "supabase-edgefunc-sync-foursquare/index.ts", // ids of places with no Foursquare link, keyset by id, for the backfill (MESITA-4544)
 ];
 
 Deno.test("PLACE PROFILE READ: no new raw reader of place_profiles outside the allowlist", async () => {
