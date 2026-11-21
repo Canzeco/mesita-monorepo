@@ -84,13 +84,6 @@ serveJson("business-web-set-payment", async (req) => {
   if ((MONEY_VOUCHER_KEYS as readonly string[]).includes(key) && on && !current.loyalty_cards) {
     return json({ ok: false, code: "needs_loyalty_cards", error: "Turn Loyalty Cards on first." }, 409);
   }
-  if (key === "cash_payments" && on) {
-    const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).maybeSingle();
-    if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
-    if (!code) {
-      return json({ ok: false, code: "needs_place_code", error: "Set the place code first: your waiters confirm cash with it." }, 409);
-    }
-  }
   patch[key] = on;
 
   // Update the row, insert only when there is none (MESITA-3603): an upsert's

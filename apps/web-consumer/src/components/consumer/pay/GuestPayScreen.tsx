@@ -193,6 +193,7 @@ export function GuestPayScreen({
   const [outcomeUnknown, setOutcomeUnknown] = useState(false);
   // Cancel bill asks first (MESITA-4068, Pato: "ask confirmation to cancel bill").
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cashDue, setCashDue] = useState<number | null>(null);
 
   // ONE TICKET AT A TIME (MESITA-3879, MESITA-3908): another place's ticket
   // in progress, or a bill open on the server at another place, blocks this
@@ -391,12 +392,21 @@ export function GuestPayScreen({
         cash_tip_cents: w === "cash" ? tipCents : 0,
         card_pm_id: w === "card" ? chosenCard : null,
       }));
+      if (r.status === "due" || !r.tab_id) {
+        setCashDue(r.status === "due" ? dueCents : null);
+        setBusy(false);
+        if (r.status === "due") return;
+      }
+      if (!r.tab_id) {
+        setError("The payment is still going through.");
+        return;
+      }
       rememberGuestTab(r.tab_id, r.qr_url);
       writeLastTip(placeId, tip);
       if (w === "card") writeLastCard(chosenCard);
       // Start again comes back to the bill with everything typed; the draft
       // keeps the card actually charged, not only one the guest tapped.
-      writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, cardId: w === "card" ? chosenCard : cardId, refusedCardId, sentTabId: r.tab_id });
+      writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, cardId: w === "card" ? chosenCard : cardId, refusedCardId, sentTabId: r.tab_id ?? undefined });
       setOutcomeUnknown(false);
       if (r.card?.status === "requires_action") await runBankCheck(r.card);
       onPaid(r.tab_id);
@@ -568,6 +578,22 @@ export function GuestPayScreen({
         />
       </>,
       "not-paid",
+    );
+  }
+
+  if (cashDue !== null) {
+    return frame(
+      <>
+        {top(STEP.pay, backArrow)}
+        <StepBody>
+          <PaySection className="p-6 text-center">
+            <p className="text-muted-foreground text-lg font-semibold">Hand over</p>
+            <p className="mt-1 text-4xl font-semibold tabular-nums">{m(cashDue)}</p>
+            <p className="text-muted-foreground mt-3 text-sm">The place marks this received. Nothing else is charged.</p>
+          </PaySection>
+        </StepBody>
+      </>,
+      "cash-due",
     );
   }
 
@@ -774,7 +800,7 @@ export function GuestPayScreen({
                         lead={r.chip}
                         id={r.wallet}
                         title={r.title}
-                        line="Held now, charged when the waiter signs"
+                        line="Charged when you confirm"
                         onPick={() => {
                           setMethod("card");
                           setExpress(true);
@@ -802,6 +828,7 @@ export function GuestPayScreen({
             )}
             {creditOn ? <MoneyRow label="Credits" value={`−${m(creditCents)}`} /> : null}
             <MoneyRow label={leftCents === 0 ? "Tip to pay" : "Left to pay"} value={m(dueCents)} strong />
+            <a href="/pay" className="block px-4 py-3 text-sm font-semibold underline">Change</a>
             </div>
           </PaySection>
         </StepBody>
@@ -812,7 +839,11 @@ export function GuestPayScreen({
           primary={
             creditsOnly
               ? { label: "Pay with credits", busy, disabled: held, onClick: () => void openBill(null) }
-              : { label: "Next", busy, disabled: !way || held, onClick: toNext }
+              : way === "cash"
+                ? { label: `Pay ${m(dueCents)} in cash`, busy, disabled: held, onClick: () => void openBill("cash") }
+                : way === "card" && !(express && expressOn)
+                  ? { label: `Pay ${m(dueCents)} with card`, busy, disabled: !chosenCard || held, onClick: () => void openBill("card") }
+                  : { label: "Next", busy, disabled: !way || held, onClick: toNext }
           }
         />
       </>,
@@ -882,7 +913,7 @@ export function GuestPayScreen({
             ) : null}
             <p className="text-muted-foreground flex max-w-xs items-center justify-center gap-2 text-sm">
               <Lock className="h-4 w-4 shrink-0" aria-hidden />
-              Held now, charged when the waiter signs.
+              Charged when you confirm.
             </p>
           </PaySection>
         </StepBody>
@@ -959,7 +990,7 @@ export function GuestPayScreen({
                 </span>
                 <p className="text-muted-foreground flex max-w-xs items-center justify-center gap-2 text-sm">
                   <Lock className="h-4 w-4 shrink-0" aria-hidden />
-                  Held now, charged when the waiter signs.
+                  Charged when you confirm.
                 </p>
               </>
             ) : null}

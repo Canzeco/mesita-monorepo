@@ -14,7 +14,7 @@
 
 import { useRef } from "react";
 import { EFError } from "@/lib/api/_invoke";
-import { apiGetTab, apiPayGuest, TAB_REFUSAL, type TabSplit } from "@/lib/api/tab";
+import { apiGetTab, apiPayGuest, apiReleaseGuestPay, TAB_REFUSAL, type TabSplit } from "@/lib/api/tab";
 import { apiExpressSetup } from "@/lib/api/wallet";
 import { trackEvent } from "@/lib/analytics/track";
 import {
@@ -68,9 +68,11 @@ export function ExpressBillPay({
   const open = async (): Promise<ExpressPayOpen> => {
     try {
       const r = await apiPayGuest(getSupabase(), { place_id: placeId, bill_cents: billCents, request_id: requestId(), express: true, ...split });
-      tab.current = r.tab_id;
-      onOpened(r.tab_id, r.qr_url);
-      const step = r.express ?? (await apiGetTab(getSupabase(), r.tab_id)).express_action;
+      if (r.tab_id) {
+        tab.current = r.tab_id;
+        onOpened(r.tab_id, r.qr_url);
+      }
+      const step = r.express ?? (r.tab_id ? (await apiGetTab(getSupabase(), r.tab_id)).express_action : null);
       if (step && step.status === "requires_payment_method") return { kind: "confirm", client_secret: step.client_secret, amount_cents: step.amount_cents };
       // Already held (a replay after Face ID): straight to the bill.
       return { kind: "done", outcome: "processing", payWith: null };
@@ -83,18 +85,17 @@ export function ExpressBillPay({
   };
 
   const settle = async (): Promise<ExpressPaySettle> => {
-    if (!tab.current) throw new Error("no_bill");
-    const r = await apiGetTab(getSupabase(), tab.current);
-    const held = r.tab.parts.some((p) => p.part === "card" && (p.held_at || p.paid_at));
-    if (held) return { kind: "done", outcome: "paid", payWith: null };
-    if (r.card_error) return { kind: "refused", text: TAB_REFUSAL[r.card_error.code] ?? r.card_error.error };
-    // Still going through: the bill page keeps reading it.
+    const r = await apiPayGuest(getSupabase(), { place_id: placeId, bill_cents: billCents, request_id: requestId(), express: true, ...split });
+    if (r.tab_id && r.status === "paid") {
+      tab.current = r.tab_id;
+      return { kind: "done", outcome: "paid", payWith: null };
+    }
     throw new Error("express_unsettled");
   };
 
   return (
     <ExpressPayButton
-      hold
+      hold={false}
       setup={async () => {
         const s = await apiExpressSetup(getSupabase(), { place_id: placeId, bill: { amount_cents: dueCents } });
         return s.available
@@ -110,8 +111,8 @@ export function ExpressBillPay({
         if (tab.current) onBill(tab.current);
       }}
       onError={(text) => {
-        // After the bill opened, its page says what happened (Not paid,
-        // Start again); before, the Pay screen keeps the guest here.
+        // No ticket yet: release the attempt so the next tap can pay.
+        if (!tab.current) void apiReleaseGuestPay(getSupabase(), requestId()).catch(() => undefined);
         if (tab.current && text) onBill(tab.current);
         else onError(text, null);
       }}

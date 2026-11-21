@@ -470,6 +470,8 @@ export type PlacePayments = {
   /** Mesita's fee invoice (MESITA-3461): hold = card payments are off until
    *  it is paid; invoice = the one to pay, on Stripe's page. */
   fee: PlaceFee;
+  /** MESITA-4502: cash amounts waiting for Received. Not tickets. */
+  cash_due?: { attempt_id: string; cash_cents: number; guest_label: string; created_at: string }[];
 };
 
 export type PlaceFee = {
@@ -499,6 +501,7 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
           }
         : null,
       fee: { hold: r.data.fee?.hold === true, invoice: r.data.fee?.invoice ?? null },
+      cash_due: Array.isArray(r.data.cash_due) ? r.data.cash_due : [],
     },
   };
 }
@@ -616,6 +619,16 @@ export async function refundPlaceMoneyRow(
 }
 
 /** One switch: a way to pay or one voucher. Returns every switch as it now stands. */
+export async function receiveGuestCash(placeId: string, attemptId: string, amountCents: number): Promise<Result<{ outcome: string }>> {
+  const r = await efInvoke<{ outcome: string }>("business-web-receive-cash", {
+    place_id: placeId,
+    attempt_id: attemptId,
+    amount_cents: amountCents,
+  });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { outcome: r.data.outcome } };
+}
+
 export async function setPlacePayment(placeId: string, key: PaymentKey, enabled: boolean): Promise<Result<PaymentSettings>> {
   const r = await efInvoke<{ settings: PaymentSettings }>("business-web-set-payment", { place_id: placeId, key, enabled });
   if (!r.ok) return fail(r);

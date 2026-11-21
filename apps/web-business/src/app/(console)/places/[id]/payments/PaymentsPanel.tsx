@@ -70,6 +70,7 @@ import {
   type PaymentKey,
   type PlacePayments,
   type StripeStage,
+  receiveGuestCash,
   setPlacePayment,
   signLoyaltyCardsContract,
   startPaymentOnboarding,
@@ -213,6 +214,7 @@ export function PaymentsPanel({
   back: "return" | "refresh" | null;
 }) {
   const [settings, setSettings] = useState(initial.settings);
+  const [cashDue, setCashDue] = useState(initial.cash_due ?? []);
   const currency = initial.currency ?? "MXN";
   const [contract, setContract] = useState<LoyaltyCardsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
   const [agreeing, setAgreeing] = useState(false);
@@ -514,7 +516,9 @@ export function PaymentsPanel({
           {pairRow({
             id: "cash-payments",
             name: "Cash Payments",
-            line: "Cash or your terminal; your waiter taps Received.",
+            line: settings.cash_payments
+              ? "Open cash amounts appear below. Mark each one received when you have the cash."
+              : "Guests can't pay cash at this place until this is on.",
             icon: MoneyIcon,
             tone: "bg-lime-100 text-lime-700",
             accept: { key: "cash_payments" },
@@ -549,6 +553,32 @@ export function PaymentsPanel({
             accept: { key: "prepayments", stripe: true },
           })}
         </ul>
+        {cashDue.length > 0 ? (
+          <ul className="divide-border divide-y" data-cash-due>
+            {cashDue.map((row) => (
+              <li key={row.attempt_id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm sm:px-6">
+                <span>
+                  <span className="font-semibold">{moneyLabel(row.cash_cents, currency)}</span>
+                  <span className="text-muted-foreground"> · {row.guest_label} · {new Date(row.created_at).toLocaleString()}</span>
+                </span>
+                <button
+                  type="button"
+                  className={PILL_BUTTON_CLASS}
+                  onClick={() => {
+                    const amount = moneyLabel(row.cash_cents, currency);
+                    if (!window.confirm(`Mark ${amount} received?`)) return;
+                    void receiveGuestCash(placeId, row.attempt_id, row.cash_cents).then((r) => {
+                      if (!r.ok) return setError(r.code === "amount_changed" ? "Amount changed. Refresh this list." : r.error);
+                      setCashDue((rows) => rows.filter((x) => x.attempt_id !== row.attempt_id));
+                    });
+                  }}
+                >
+                  Received
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
           Waiter&apos;s screen:{" "}
           <a className="underline" href={chargeUrl} target="_blank" rel="noreferrer">

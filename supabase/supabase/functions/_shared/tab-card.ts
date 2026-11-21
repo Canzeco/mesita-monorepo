@@ -297,6 +297,8 @@ export async function runTabCard(
     consumerId: string;
     tabId: string;
     publishableKey: string | null;
+    /** MESITA-4502: close this attempt when the PaymentIntent succeeds. No ticket until then. */
+    attemptId?: string;
     /** MESITA-3856: a guest tab's card is held (manual capture) until the waiter signs. */
     hold?: boolean;
     nowMs?: number;
@@ -339,7 +341,8 @@ export async function runTabCard(
       payment_id: row.id,
       place_id: args.placeId,
       consumer_id: args.consumerId,
-      tab_id: args.tabId,
+      tab_id: args.attemptId ? "" : args.tabId,
+      ...(args.attemptId ? { attempt_id: args.attemptId } : {}),
       card_cents: String(row.card_cents),
       tip_cents: String(row.tip_cents),
     };
@@ -395,7 +398,7 @@ async function openExpressHold(
   admin: SupabaseClient,
   stripe: StripeCall,
   ref: { id: string; account: string; cardCents: number; tipCents: number },
-  args: { currency: string; placeId: string; placeName: string | null; consumerId: string; tabId: string; publishableKey: string | null; hold?: boolean },
+  args: { currency: string; placeId: string; placeName: string | null; consumerId: string; tabId: string; publishableKey: string | null; hold?: boolean; attemptId?: string },
 ): Promise<{ ok: true; step: CardStep } | TabRefusal> {
   if (!args.publishableKey) {
     await releasePayment(admin, ref.id, "failed", "no_publishable_key");
@@ -416,7 +419,8 @@ async function openExpressHold(
         payment_id: ref.id,
         place_id: args.placeId,
         consumer_id: args.consumerId,
-        tab_id: args.tabId,
+        tab_id: args.attemptId ? "" : args.tabId,
+        ...(args.attemptId ? { attempt_id: args.attemptId } : {}),
         card_cents: String(ref.cardCents),
         tip_cents: String(ref.tipCents),
         mesita_pay_with: "express",

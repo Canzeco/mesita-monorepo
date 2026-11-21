@@ -184,8 +184,8 @@ export async function apiGetTab(
  *  same and gets the same tab. Refusals arrive as EFError codes. */
 export type PaidGuest = {
   outcome: "opened" | "replayed";
-  tab_id: string;
-  status: "paying" | "paid";
+  tab_id: string | null;
+  status: "paying" | "paid" | "due";
   token: string;
   qr_url: string;
   expires_at: string | null;
@@ -194,6 +194,10 @@ export type PaidGuest = {
   /** MESITA-4386: the express hold's step (Apple Pay / Google Pay). */
   express?: TabExpressStep | { status: "held" | "processing" | "succeeded"; payment_intent_id: string };
 };
+
+export async function apiReleaseGuestPay(client: SupabaseClient, requestId: string): Promise<void> {
+  await invokeEF(client, "consumer-web-pay-guest", { release: true, request_id: requestId });
+}
 
 export async function apiPayGuest(
   client: SupabaseClient,

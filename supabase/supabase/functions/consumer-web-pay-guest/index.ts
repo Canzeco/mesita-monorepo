@@ -65,9 +65,7 @@ import { moneyState } from "../_shared/money-state.ts";
 import { readCustomer } from "../_shared/boost.ts";
 import { bps, MESITA_FEE_BPS_PAYMENT, MONEY_CURRENCY } from "../_shared/money.ts";
 import { cardRefusal } from "../_shared/pay-card.ts";
-import { PI_TTL_MS, SIGN_WINDOW } from "../_shared/settle-payment.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
-import { mintProofToken } from "../_shared/proof.ts";
 import { callTabRpc, hashTabToken, mintTabToken, readGuestPayBody, rpcRefusal, tabUrl } from "../_shared/tab.ts";
 import { ownCard, runTabCard, tabCardRates } from "../_shared/tab-card.ts";
 import { readMoneyConfig } from "../_shared/money-config.ts";
@@ -79,6 +77,14 @@ serveJson("consumer-web-pay-guest", async (req) => {
   const { admin, user } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
+  // A dismissed sheet retires this tap. No ticket.
+  if (bodyRes.body.release === true && typeof bodyRes.body.request_id === "string") {
+    const released = await callTabRpc(admin, "pay_guest_release", {
+      p_consumer_id: user.id,
+      p_request_id: bodyRes.body.request_id,
+    });
+    return json({ ok: true, released: released.outcome ?? "released", tab_id: released.tab_id ?? null });
+  }
   const parsed = readGuestPayBody(bodyRes.body);
   if (!parsed.ok) return json({ ok: false, code: parsed.code, error: parsed.error, ...parsed.detail }, parsed.status);
   const pay = parsed.input;
@@ -128,13 +134,12 @@ serveJson("consumer-web-pay-guest", async (req) => {
       cardArgs = {
         p_stripe_account_id: account.stripe_account_id,
         p_card_fee_cents: bps(pay.cardBillCents, MESITA_FEE_BPS_PAYMENT),
-        p_card_proof_token: mintProofToken(),
-        p_card_expires_at: new Date(Date.now() + PI_TTL_MS).toISOString(),
       };
     }
 
     const token = mintTabToken();
-    const r = await callTabRpc(admin, "pay_tab_guest_pay", {
+    // MESITA-4502: no pay_tabs row until the money is done.
+    const r = await callTabRpc(admin, "pay_guest_begin", {
       p_consumer_id: userId,
       p_place_id: pay.placeId,
       p_currency: currency,
@@ -147,19 +152,16 @@ serveJson("consumer-web-pay-guest", async (req) => {
       p_card_bill_cents: pay.cardBillCents,
       p_card_tip_cents: pay.cardTipCents,
       p_request_id: pay.requestId,
-      p_proof_token: mintProofToken(),
-      p_ticket: pay.ticket,
-      p_repeat_ok: pay.repeatOk,
-      // The waiter has an hour to sign (MESITA-4048; ten minutes, MESITA-3843).
-      p_window: SIGN_WINDOW,
-      ...cardArgs,
+      p_stripe_account_id: (cardArgs.p_stripe_account_id as string | undefined) ?? null,
+      p_card_fee_cents: (cardArgs.p_card_fee_cents as number | undefined) ?? 0,
     });
     if (r.ok !== true) {
       const refusal = rpcRefusal(r);
       console.log("[consumer-web-pay-guest]", JSON.stringify({ outcome: refusal.code, place_id: pay.placeId }));
       return json({ ok: false, code: refusal.code, error: refusal.error, ...refusal.detail }, refusal.status);
     }
-    const tabId = String(r.tab_id);
+    const attemptId = String(r.attempt_id);
+    let tabId = typeof r.tab_id === "string" ? r.tab_id : null;
 
     // The card part, charged inside the app on the place's account. A
     // replay of a tap whose card already started reads its state from
@@ -183,26 +185,26 @@ serveJson("consumer-web-pay-guest", async (req) => {
         placeId: pay.placeId,
         placeName: place.name ?? null,
         consumerId: userId,
-        tabId,
+        tabId: attemptId,
         publishableKey: paymentsPublishableKey(livemode),
-        // MESITA-4501: a new guest pay captures now. A tab already held
-        // for Sign is not opened here.
         hold: false,
+        attemptId,
       });
       if (!res.ok) {
-        console.log("[consumer-web-pay-guest]", JSON.stringify({ outcome: res.code, tab_id: tabId, card_payment_id: cardPaymentId }));
-        // A declined new pay must not stay as an open ticket.
-        await callTabRpc(admin, "pay_tab_change", { p_tab_id: tabId, p_consumer_id: userId, p_mode: "cancel" });
-        return json({ ok: false, code: res.code, error: res.error, tab_id: tabId, ...res.detail }, res.status);
+        console.log("[consumer-web-pay-guest]", JSON.stringify({ outcome: res.code, attempt_id: attemptId, card_payment_id: cardPaymentId }));
+        await callTabRpc(admin, "pay_guest_release", { p_consumer_id: userId, p_request_id: pay.requestId });
+        return json({ ok: false, code: res.code, error: res.error, ...res.detail }, res.status);
       }
       cardStep = res.step;
     }
 
-    const noCash = pay.cashBillCents === 0 && pay.cashTipCents === 0;
-    const cardDone = cardStep?.status === "succeeded";
-    if (noCash && (!hasCard || cardDone)) {
-      const settled = await callTabRpc(admin, "pay_tab_guest_settle", { p_tab_id: tabId });
-      if (settled.ok === true && typeof settled.status === "string") r.status = settled.status;
+    if (cardStep?.status === "succeeded") {
+      const closed = await callTabRpc(admin, "pay_guest_close", { p_attempt_id: attemptId });
+      if (closed.ok === true && typeof closed.tab_id === "string") {
+        tabId = closed.tab_id;
+        r.status = "paid";
+        r.tab_id = tabId;
+      }
     }
 
     // Never the token in a log line.
@@ -223,7 +225,8 @@ serveJson("consumer-web-pay-guest", async (req) => {
       ok: true,
       outcome: r.outcome,
       tab_id: tabId,
-      status: r.status,
+      attempt_id: attemptId,
+      status: r.status === "paid" ? "paid" : r.status === "due" ? "due" : "paying",
       token,
       qr_url: tabUrl(token),
       expires_at: r.expires_at ?? null,

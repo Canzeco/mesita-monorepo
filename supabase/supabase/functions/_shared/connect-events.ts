@@ -512,8 +512,12 @@ async function dispatch(
         const outcome = await settlePaidPayment(admin, row.id, piId);
         // A new guest pay has no waiter hold. Close that tab. An old hold
         // (held_at set) and a cash bill stay for the sign path.
-        const tabId = typeof meta.tab_id === "string" ? meta.tab_id : null;
-        if (tabId) {
+        const attemptId = typeof meta.attempt_id === "string" ? meta.attempt_id : null;
+        const tabId = typeof meta.tab_id === "string" && meta.tab_id.length > 0 ? meta.tab_id : null;
+        if (attemptId) {
+          const { error } = await admin.rpc("pay_guest_close", { p_attempt_id: attemptId });
+          if (error) throw new Error(`pay_guest_close: ${error.message}`);
+        } else if (tabId) {
           const { error } = await admin.rpc("pay_tab_guest_settle", { p_tab_id: tabId });
           if (error) throw new Error(`pay_tab_guest_settle: ${error.message}`);
         }
