@@ -5,7 +5,6 @@ import { Banknote, Check, CreditCard, Lock, ReceiptText, XCircle } from "lucide-
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
-import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiListCards, brandLabel } from "@/lib/api/cards";
 import { useAddCardModal } from "@/lib/added-card";
@@ -15,7 +14,7 @@ import { apiExpressSetup, money, type PayPlace } from "@/lib/api/wallet";
 import { ExpressBillPay } from "./ExpressBillPay";
 import type { ExpressWallet } from "./ExpressPayButton";
 import { acceptCardsAnswer, type CardsLoad, cardsFailure, loadedCards, pickCard } from "@/lib/pay-cards";
-import { guardStage, initialStage, PAY_CARD_REFUSALS, payBackStage, STEP } from "@/lib/guest-pay-stages";
+import { closeAction, guardStage, initialStage, PAY_CARD_REFUSALS, payBackStage } from "@/lib/guest-pay-stages";
 import {
   clearGuestDraft,
   outcomeUnknownAfter,
@@ -44,8 +43,8 @@ import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
 import { CashChip, CreditsCardChip, CreditsPill, SavedCardChip } from "@/components/consumer/wallet/WalletLists";
 import { isApplePhone, walletInBrowser } from "@/lib/pay-wallet";
 import { ApplePayChip, GooglePayChip } from "./wallet-chips";
-import { BAD, MoneyRow, NOT_PAID_REASON, PayTop, PaySection, PlaceHero, StepBody, StepFooter } from "./pay-flow";
-import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab, CancelBillButtons } from "./pay-common";
+import { BAD, MoneyRow, NOT_PAID_REASON, PaySection, PayTitle, PlaceHero, StepBody, StepFooter } from "./pay-flow";
+import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
 // THE GUEST PAYS (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
 // /pay/place/<placeId>, one screen a step. Every step wears one frame
@@ -214,8 +213,6 @@ export function GuestPayScreen({
   // server. Until that same request id answers, Cancel bill and ‹ are locked
   // and nothing mints a new id (MESITA-4061).
   const [outcomeUnknown, setOutcomeUnknown] = useState(false);
-  // Cancel bill asks first (MESITA-4068, Pato: "ask confirmation to cancel bill").
-  const [confirmCancel, setConfirmCancel] = useState(false);
   const [cashDue, setCashDue] = useState<number | null>(null);
 
   // ONE TICKET AT A TIME (MESITA-3879, MESITA-3908): another place's ticket
@@ -261,9 +258,12 @@ export function GuestPayScreen({
   // once"): what was typed here is dropped and Pay shows, no question. A
   // ticket already on the server (a card held, an answer still coming) is
   // real: ✕ only leaves it. It kept the draft before (MESITA-3908).
+  // MESITA-4600: the rule lives in closeAction (pinned by a test). A cash
+  // bill already handed over (cashDue) is open on the server too.
   const closeFlow = () => {
-    if (busy) return;
-    if (!held && !outcomeUnknown) clearGuestDraft(placeId);
+    const act = closeAction({ busy, billOpen: outcomeUnknown || cashDue !== null });
+    if (act === "ignore") return;
+    if (act === "discard") clearGuestDraft(placeId);
     onLeavePay();
   };
 
@@ -553,14 +553,6 @@ export function GuestPayScreen({
   const frame = (body: React.ReactNode, data: string) => (
     <div ref={root} tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none" onKeyDown={onKeyDown} data-guest-pay={data}>
       {body}
-      <LocalDialog open={confirmCancel} onClose={() => setConfirmCancel(false)} ariaLabel="Cancel this bill">
-        <div className="p-5">
-          <p className="text-base font-semibold">Cancel this bill?</p>
-          {/* Before the bill opens nothing has moved (MESITA-4106). */}
-          <p className="text-muted-foreground mt-1 text-sm">Nothing is paid. Your credits stay in your Wallet.</p>
-          <CancelBillButtons disabled={cancelLocked} onCancel={cancelBill} onKeep={() => setConfirmCancel(false)} />
-        </div>
-      </LocalDialog>
     </div>
   );
   // Under the body, over the footer; cleared on every step change.
@@ -570,47 +562,24 @@ export function GuestPayScreen({
     </p>
   ) : null;
   const held = busy;
-  // Cancel bill (MESITA-4051, Pato: "two buttons, left is red, next is next
-  // step"): every step before the QR ends in it. It throws the draft away
-  // here (nothing is held or charged yet) and goes back to Pay. Not while a
-  // pay call's outcome is unknown (MESITA-4061): the bill may already be open
-  // and the card held; the X still leaves, keeping the draft, and Pay finds
-  // the open bill on the way back in.
-  const cancelLocked = held || outcomeUnknown;
-  const askCancel = () => {
-    if (!cancelLocked) setConfirmCancel(true);
-  };
-  const cancelBill = () => {
-    if (cancelLocked) return;
-    setConfirmCancel(false);
-    clearGuestDraft(placeId);
-    onLeavePay();
-  };
-  // The top of every step (MESITA-4061, Pato: "X Pay / Profile Name of place
-  // / steps with arrows to nav across them < >"): the place, then the step
-  // nav. ‹ is the same step back as the header's back arrow; › only where
-  // the footer's button is a plain Next.
-  const backArrow = held || outcomeUnknown ? undefined : () => void backOneStep();
-  const top = (at: number, onBack: (() => void) | undefined, next?: { onClick: () => void; disabled: boolean }) => (
-    <PayTop place={place} onChoose={leave} step={{ at, onBack, next }} />
-  );
+  // Every screen's title (MESITA-4600): the question, no place. ← steps
+  // back through backOneStep (the header's ←, registered above); Cancel bill
+  // left the footer, the ✕ throws the ticket away (MESITA-4598).
+  const top = (title: string) => <PayTitle title={title} back />;
 
   // NOT PAID (before the bill opened: the card was refused).
   if (notPaid) {
     return frame(
       <>
-        <PayTop place={place} />
+        <PayTitle title="Not paid" back />
         <StepBody>
           <PaySection className="flex flex-col items-center p-4 text-center">
             <XCircle className={cn("h-10 w-10", BAD)} aria-hidden />
-            <h2 className="mt-2 text-xl font-semibold">Not paid</h2>
             <p className="mt-2 text-base">{notPaid}</p>
             <p className="text-muted-foreground mt-1 text-sm">Nothing was charged</p>
           </PaySection>
         </StepBody>
         <StepFooter
-          onCancel={askCancel}
-          cancelDisabled={cancelLocked}
           primary={{
             label: "Start again",
             busy,
@@ -630,14 +599,14 @@ export function GuestPayScreen({
   if (cashDue !== null) {
     return frame(
       <>
-        {top(STEP.pay, backArrow)}
+        <PayTitle title="Hand over cash" />
         <StepBody>
           <PaySection className="p-6 text-center">
-            <p className="text-muted-foreground text-lg font-semibold">Hand over</p>
             <p className="mt-1 text-4xl font-semibold tabular-nums">{m(cashDue)}</p>
             <p className="text-muted-foreground mt-3 text-sm">The place marks this received. Nothing else is charged.</p>
           </PaySection>
         </StepBody>
+        <StepFooter strip={4} />
       </>,
       "cash-due",
     );
@@ -647,6 +616,7 @@ export function GuestPayScreen({
   if (off) {
     return frame(
       <>
+        <PayTitle title="Can't pay here" />
         <PlaceHero place={place} off onChoose={onChoosePlace} />
         <StepBody>
           <PaySection className="p-4 text-center">
@@ -670,24 +640,14 @@ export function GuestPayScreen({
     return frame(
       <>
         {/* ‹ leaves to the places (MESITA-4117), keeping the draft. */}
-        {top(STEP.bill, held ? undefined : leave, { onClick: toTip, disabled: billCents <= 0 })}
+        {top("How much was your bill?")}
         {/* The bill's panel (MESITA-4072), at the top (MESITA-4077): one
             row, "Bill" and the typed amount on its right (MESITA-4082, no
             big display), then the keypad. A short phone shrinks the keys
             instead of scrolling. */}
         <div className="flex min-h-0 flex-1 flex-col gap-3 py-4">
-          {/* THE ASK (MESITA-4104, Pato: "just for the first step, make this
-              clearer ... say how much was your bill ... maybe even use an
-              icon"): one row under the step bar, the Bill step only. */}
-          <PaySection className="flex items-center gap-3 px-4 py-3" data-bill-ask>
-            <span className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden>
-              <ReceiptText className="h-5 w-5" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-base font-semibold">How much was your bill?</span>
-              <span className="text-muted-foreground block text-sm">Type the total on your ticket.</span>
-            </span>
-          </PaySection>
+          {/* THE ASK is the header's title since MESITA-4600 (it was its own
+              panel under the step bar, MESITA-4104). */}
           {/* THE AMOUNT, BIG AND CENTRED (MESITA-4125, Pato: "the bill amount
               must be bigger ... bigger and centralized"): AmountDisplay over
               the keypad, undoing MESITA-4082's small amount on the right. */}
@@ -708,7 +668,7 @@ export function GuestPayScreen({
           <PrepayOffer place={place} billCents={billCents} />
         </div>
         {status}
-        <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: billCents <= 0 || held, onClick: toTip }} />
+        <StepFooter strip={2} primary={{ label: "Next", busy, disabled: billCents <= 0 || held, onClick: toTip }} />
       </>,
       "bill",
     );
@@ -726,7 +686,7 @@ export function GuestPayScreen({
     const tipNext = () => setStage("method");
     return frame(
       <>
-        {top(STEP.tip, backArrow, { onClick: tipNext, disabled: !tipOk || billCents <= 0 || held })}
+        {top("Add a tip?")}
         {/* ONE PANEL (MESITA-4077): the tip choices, then Bill · Tip · Total.
             The Bill row opens the keypad again; what it earns is on Method. */}
         <StepBody>
@@ -762,7 +722,7 @@ export function GuestPayScreen({
           </PaySection>
         </StepBody>
         {status}
-        <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "Next", busy, disabled: !tipOk || billCents <= 0 || held, onClick: tipNext }} />
+        <StepFooter strip={3} primary={{ label: "Next", busy, disabled: !tipOk || billCents <= 0 || held, onClick: tipNext }} />
       </>,
       "review",
     );
@@ -790,7 +750,7 @@ export function GuestPayScreen({
     };
     return frame(
       <>
-        {top(STEP.method, backArrow, creditsOnly ? undefined : { onClick: toNext, disabled: !way || held })}
+        {top("How do you pay?")}
         {/* ONE PANEL (MESITA-4077): credits, App and Cash, then what is left
             to pay. Each way says what it earns; nothing else repeats it. */}
         <StepBody>
@@ -890,8 +850,7 @@ export function GuestPayScreen({
         </StepBody>
         {status}
         <StepFooter
-          onCancel={askCancel}
-          cancelDisabled={cancelLocked}
+          strip={4}
           primary={
             creditsOnly
               ? { label: "Show the waiter", busy, disabled: held, onClick: () => void openBill(null) }
@@ -922,7 +881,7 @@ export function GuestPayScreen({
     };
     return frame(
       <>
-        {top(STEP.pay, backArrow)}
+        {top("Pay")}
         <StepBody className="flex-1">
           <PaySection className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-10 text-center" data-guest-express-pay={expressState}>
             <span className="flex flex-col items-center gap-1">
@@ -975,8 +934,7 @@ export function GuestPayScreen({
         </StepBody>
         {status}
         <StepFooter
-          onCancel={askCancel}
-          cancelDisabled={cancelLocked}
+          strip={4}
           primary={{ label: "Choose another way", busy: false, disabled: held, onClick: chooseAnother }}
         />
       </>,
@@ -1005,7 +963,7 @@ export function GuestPayScreen({
     };
     return frame(
       <>
-        {top(STEP.pay, backArrow)}
+        {top("Pay")}
         {/* ONE CENTRED CHARGE (MESITA-4100, Pato: "the pay step must be a
             simple pay button centered with the selected card, like charge X
             to this card"): the card is picked on Method, so here it is the
@@ -1062,8 +1020,7 @@ export function GuestPayScreen({
           </button>
         ) : null}
         <StepFooter
-          onCancel={askCancel}
-          cancelDisabled={cancelLocked}
+          strip={4}
           // "Pay $X" (MESITA-4316, was "Pay in one click", MESITA-4106): the
           // card is held now and charged when the waiter signs. No card
           // saved: Add a card. After a refusal the main button leads back
@@ -1085,7 +1042,7 @@ export function GuestPayScreen({
   // words sit together in the middle.
   return frame(
     <>
-      {top(STEP.pay, backArrow)}
+      {top("Hand over cash")}
       {/* BIG AND CENTRED (MESITA-4100, Pato: "BIGGER AND CENTERED AND MORE
           BEAUTIFUL ... VERTICALLY CENTERED IN THE BODY ... MAKE THE CIRCLE AND
           THE ICON AND THE INSTRUCTIONS BIGGER"): the panel fills the body and
@@ -1104,7 +1061,7 @@ export function GuestPayScreen({
         </PaySection>
       </StepBody>
       {status}
-      <StepFooter onCancel={askCancel} cancelDisabled={cancelLocked} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
+      <StepFooter strip={4} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
     </>,
     "cash",
   );

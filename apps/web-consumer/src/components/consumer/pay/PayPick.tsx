@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { ChevronRight, MapPin, QrCode, X } from "lucide-react";
+import { ChevronRight, MapPin, QrCode } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import type { PayPlace } from "@/lib/api/wallet";
 import { PlacePhoto } from "./pay-common";
+import { StepStrip, TicketHeader } from "./pay-flow";
 import { distanceText, type Loc, usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 
@@ -85,22 +86,7 @@ export function PlacePickBody({
           flow. put attention to the X on top right to close the modal"; the
           inKind picker he sent): the question at 20px on the left, a 44px ✕
           on the right, a hairline under; an outlined search box. */}
-      {prepay ? null : (
-        <div className="border-border flex items-center justify-between gap-3 border-b pr-3 pb-3 pl-5">
-          <h2 className="text-xl font-semibold tracking-tight">Where are you paying?</h2>
-          {onClose ? (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition"
-              data-pay-pick-close
-            >
-              <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-            </button>
-          ) : null}
-        </div>
-      )}
+      {prepay ? null : <TicketHeader title="Where are you paying?" onClose={onClose} />}
       {/* A REAL FIELD (MESITA-4295, Pato: "better design"): the bare
           SearchBar in a 44px grey pill; outlined on Pay Bill since MESITA-4598.
           The list under it stays boxless (MESITA-4280). It is not focused on
@@ -148,6 +134,12 @@ export function PlacePickBody({
           <RowsSkeleton />
         )}
       </div>
+      {/* The ticket's steps (MESITA-4600): step 1 of 4, at the bottom. */}
+      {prepay ? null : (
+        <div className="border-border shrink-0 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <StepStrip at={1} />
+        </div>
+      )}
     </div>
   );
 }

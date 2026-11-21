@@ -9,9 +9,12 @@
 // Pick is the Pay tab's list (never drawn as a current step); Bill and Tip
 // share GuestPayScreen's "bill" stage (typing or not); Method picks the way
 // (credits, Mesita App with the one card, or outside the app); Pay charges
-// the card or says to give the cash; Confirm and Receipt are GuestTabView. The
-// bar shows Bill to Confirm (five); Receipt joins it only once the bill is done.
+// the card or says to give the cash; Confirm and Receipt are GuestTabView.
 // Credits that cover everything open the bill from Method (Pay not shown).
+//
+// THE STRIP AT THE BOTTOM (Pato, 2026-11-21, MESITA-4600: "bottom must have
+// steps. 1. Show place, 2 …"): four numbered steps, Place · Bill · Tip · Pay,
+// on every screen of the ticket; stripStep says which one a screen lights.
 //
 // Every rule that decides which step shows lives here, React-free, so it is
 // tested on its own and the screen never sets state while rendering.
@@ -20,6 +23,56 @@ import type { PayWith } from "@/lib/api/tab";
 import type { Stage } from "@/lib/guest-pay-draft";
 
 export const STEP = { pick: 0, bill: 1, tip: 2, method: 3, pay: 4, sign: 5, receipt: 6 } as const;
+
+/** Every screen of the ticket, by name (MESITA-4600). */
+export type PayScreen =
+  | "pick"
+  | "bill"
+  | "tip"
+  | "method"
+  | "pay"
+  | "cash-due"
+  | "confirm"
+  | "confirming"
+  | "receipt"
+  | "not-paid"
+  | "off";
+
+/** The bottom strip's four steps (MESITA-4600). */
+export const STRIP_STEPS = ["Place", "Bill", "Tip", "Pay"] as const;
+
+/** The step a screen lights: 1 Place · 2 Bill · 3 Tip · 4 Pay; "done" on the
+ *  Receipt (all four done); null where no strip shows (Not paid, Off). */
+export function stripStep(screen: PayScreen): 1 | 2 | 3 | 4 | "done" | null {
+  switch (screen) {
+    case "pick":
+      return 1;
+    case "bill":
+      return 2;
+    case "tip":
+      return 3;
+    case "method":
+    case "pay":
+    case "cash-due":
+    case "confirm":
+    case "confirming":
+      return 4;
+    case "receipt":
+      return "done";
+    case "not-paid":
+    case "off":
+      return null;
+  }
+}
+
+/** What the ✕ does before the waiter's screens (MESITA-4598: the ticket is
+ *  gone at once, no question; MESITA-4061: a bill that may already be open
+ *  on the server is never thrown away, the ✕ only leaves it). */
+export function closeAction(a: { busy: boolean; billOpen: boolean }): "ignore" | "leave-keep" | "discard" {
+  if (a.busy) return "ignore";
+  if (a.billOpen) return "leave-keep";
+  return "discard";
+}
 
 /** The stage the screen shows: a stored or live stage that no longer makes
  *  sense goes back to Method, where the guest sees why. Pay needs a way that

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { SavedCard } from "@/lib/api/cards";
 import { pendingTicket, readDraft, reopenGuestDraft, writeDraft } from "@/lib/guest-pay-draft";
-import { guardStage, initialStage, payBackStage, STEP } from "@/lib/guest-pay-stages";
+import { closeAction, guardStage, initialStage, payBackStage, STEP } from "@/lib/guest-pay-stages";
 import { pickCard } from "@/lib/pay-cards";
 
 // Money (MVP test rule), MESITA-4226: no Card step (one saved card per
@@ -163,3 +163,19 @@ describe("no zombie tickets (MESITA-4524)", () => {
     expect(pendingTicket()).toBeNull();
   });
 });
+
+// Data loss (MVP test rule), MESITA-4600: the ✕ never throws away a bill
+// that may already be open on the server, and never acts mid-call.
+describe("closeAction", () => {
+  it("does nothing while a pay call runs", () => {
+    expect(closeAction({ busy: true, billOpen: true })).toBe("ignore");
+    expect(closeAction({ busy: true, billOpen: false })).toBe("ignore");
+  });
+  it("leaves and keeps a bill that may be open", () => {
+    expect(closeAction({ busy: false, billOpen: true })).toBe("leave-keep");
+  });
+  it("discards a ticket nothing has paid yet", () => {
+    expect(closeAction({ busy: false, billOpen: false })).toBe("discard");
+  });
+});
+
