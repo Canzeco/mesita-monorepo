@@ -6,11 +6,11 @@ import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { photoUrl } from "@mesita/place-profile";
 import { Screen } from "@/components/consumer/nav/Screen";
-import { CONSUMER_ROUTES, payPlacePath, storyTicketPath, walletPlacePath, walletSendPath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, storyTicketPath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
-import { prepayHref } from "./WalletPickers";
+import { Skeleton } from "@/components/shared/Skeleton";
 import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
 import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
@@ -18,12 +18,9 @@ import { useStoryNow } from "./use-story-now";
 import { openStories } from "@/lib/story-lines";
 import {
   AddRow,
-  CreditsCardChip,
-  RowsSkeleton,
   StoryRow,
-  pendingWords,
 } from "./WalletLists";
-import { money, type WalletBalance } from "@/lib/api/wallet";
+import { money } from "@/lib/api/wallet";
 
 // ONE PANEL, EACH PLACE ONCE (Pato, 2026-11-20, MESITA-4497, after a
 // /plan-design-review of MESITA-4485/4492): Pay hands this its place rows
@@ -143,21 +140,6 @@ function decodeAll(urls: string[], ms: number): Promise<void> {
   return Promise.race([Promise.all(each).then(() => undefined), new Promise<void>((r) => setTimeout(r, ms))]);
 }
 
-/** ONE LINE PER PENDING AMOUNT (MESITA-4360, Pato: "if 2 bonuses, then 2
- *  blue boxes … show hours and minutes, not seconds, a counter"): each
- *  pending entry, soonest first, "$1,500.00MX bonus pending · ready in 2 h
- *  14 min". It was one line with the total and the first time (MESITA-4232,
- *  D9; "ready" since MESITA-4260). */
-function pendingLines(b: WalletBalance, now: number): string[] {
-  if (b.pending_cents <= 0) return [];
-  const rows = b.entries
-    .filter((e) => e.pending && e.amount_cents > 0)
-    .map((e) => ({ e, t: e.available_at ? Date.parse(e.available_at) : Number.NaN }))
-    .sort((x, y) => (Number.isFinite(x.t) ? x.t : Infinity) - (Number.isFinite(y.t) ? y.t : Infinity));
-  if (rows.length === 0) return [`${money(b.pending_cents, b.currency)} pending`];
-  return rows.map(({ e }) => pendingWords(e.amount_cents, b.currency, e.kind, e.available_at, now));
-}
-
 export function WalletSection({
   giftToken = null,
   onReady,
@@ -166,8 +148,9 @@ export function WalletSection({
   leadCount = 0,
   leadSettled = true,
   query = "",
-  onPay,
-  payWait = false,
+  selectedId = null,
+  onSelect,
+  onSelectable,
 }: {
   /** The place rows, first in the panel (MESITA-4497). */
   lead?: ReactNode;
@@ -182,23 +165,15 @@ export function WalletSection({
   giftToken?: string | null;
   /** Told once the Wallet has painted (MESITA-4376): /pay keeps its buttons in bones until then. */
   onReady?: () => void;
-  /** Pay on a card that is not in the place list. The page applies the open-bill rule. */
-  onPay?: (placeId: string) => void;
-  /** The open-bill read has not settled: Pay is a bone. */
-  payWait?: boolean;
+  /** The place Pay checks out. */
+  selectedId?: string | null;
+  onSelect?: (placeId: string) => void;
+  /** Loyalty cards the guest can still pay at, once that read has settled. */
+  onSelectable?: (rows: { id: string; name: string }[]) => void;
 }) {
   const router = useRouter();
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
   const [explainAdd, setExplainAdd] = useState(false);
-  // The pending boxes count down (MESITA-4360): a 30 s tick while any
-  // card has money on its way, so the minutes move without seconds.
-  const [now, setNow] = useState(() => Date.now());
-  const anyPending = (wallet?.balances ?? []).some((b) => b.pending_cents > 0);
-  useEffect(() => {
-    if (!anyPending) return;
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, [anyPending]);
   // Story lines turn to "Checking your story…" at their bonus time (MESITA-4264).
   const storyNow = useStoryNow(openStories(wallet?.waiting_stories ?? []));
   // The saved-card failure toast fires at most once per mount.
@@ -248,6 +223,30 @@ export function WalletSection({
     if (ready) onReady?.();
   }, [ready, onReady]);
 
+  // Cards the page's Pay can still check out, once this read has settled.
+  // Null while it is loading, so a refresh does not clear the selection.
+  const selectableKey =
+    !ready || !wallet || credits === null || leadIds === null
+      ? null
+      : credits
+          .filter((r) => {
+            const q = fold(query.trim());
+            return r.balance.place !== null && !leadIds.has(r.placeId) && (!q || fold(r.card.name ?? "").includes(q));
+          })
+          .map((r) => `${r.placeId}\t${r.card.name || "A Mesita place"}`)
+          .join("\n");
+  useEffect(() => {
+    if (selectableKey === null) return;
+    onSelectable?.(
+      selectableKey
+        ? selectableKey.split("\n").map((line) => {
+            const tab = line.indexOf("\t");
+            return { id: line.slice(0, tab), name: line.slice(tab + 1) };
+          })
+        : [],
+    );
+  }, [selectableKey, onSelectable]);
+
   if (gift) {
     return (
       <Screen title="Credit from a friend" paper scrolls>
@@ -278,7 +277,6 @@ export function WalletSection({
           ? "empty"
           : "rows";
   const settled = creditsState === "rows" || creditsState === "empty";
-  let shown = 0;
 
   return (
     <div className="flex flex-col" data-wallet>
@@ -300,41 +298,27 @@ export function WalletSection({
           {creditsState === "rows"
             ? cards.map((row) => {
                 const gone = row.balance.place === null;
-                const pending = pendingLines(row.balance, now);
                 const name = row.card.name || "A Mesita place";
                 return (
                   <PlaceActionRow
                     key={row.card.key}
                     name={name}
-                    photo={<CreditsCardChip photo={row.card.photo} name={row.card.name} eager={shown++ < EAGER_CARDS} className="h-full w-full rounded-xl" />}
+                    amount={gone || row.card.available_cents <= 0 ? null : money(row.card.available_cents, row.card.currency)}
                     subtitle={gone ? "Ask Mesita support to use it." : null}
-                    money={
-                      gone ? null : (
-                        <BalanceLines available={row.card.available_cents > 0 ? money(row.card.available_cents, row.card.currency) : null} pending={pending} />
-                      )
-                    }
-                    onOpen={gone ? undefined : () => navigateTo(router, walletPlacePath(row.placeId), { motion: "drill" })}
-                    offers={{
-                      spoken: gone ? `Offers at ${name}. Ask Mesita support to use it.` : `Offers at ${name}`,
-                      disabled: gone,
-                      onClick: () => navigateTo(router, prepayHref(row.placeSlug), { motion: "drill" }),
-                    }}
-                    gift={{
-                      spoken: gone ? `Gift from ${name}. Ask Mesita support to use it.` : `Gift from ${name}`,
-                      disabled: gone,
-                      onClick: () => navigateTo(router, walletSendPath(row.placeId), { motion: "push" }),
-                    }}
-                    pay={{
-                      spoken: `Pay at ${name}`,
-                      disabled: gone,
-                      wait: payWait,
-                      onClick: () => (onPay ? onPay(row.placeId) : navigateTo(router, payPlacePath(row.placeId), { motion: "push" })),
-                    }}
+                    selected={!gone && selectedId === row.placeId}
+                    disabled={gone}
+                    onSelect={() => onSelect?.(row.placeId)}
+                    onOpen={() => navigateTo(router, walletPlacePath(row.placeId), { motion: "drill" })}
                   />
                 );
               })
             : null}
-          {creditsState === "loading" ? <RowsSkeleton count={2} /> : null}
+          {creditsState === "loading" ? (
+            <>
+              <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
+              <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
+            </>
+          ) : null}
           {settled && q && leadCount === 0 && creditsState === "empty" ? (
             <p className="text-muted-foreground px-4 py-4 text-sm">No place matches “{query.trim()}”.</p>
           ) : null}
