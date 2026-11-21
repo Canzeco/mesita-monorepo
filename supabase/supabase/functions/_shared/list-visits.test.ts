@@ -53,6 +53,7 @@ function stub(rows: { tabs: unknown[]; parts?: unknown[] | Error; attempts?: unk
         select(s: string) { call.select = s; return q; },
         eq(c: string, v: unknown) { call.filters.push(["eq", c, v]); return q; },
         is(c: string, v: unknown) { call.filters.push(["is", c, v]); return q; },
+        lt(c: string, v: unknown) { call.filters.push(["lt", c, v]); return q; },
         in(c: string, v: unknown) { call.filters.push(["in", c, v]); return q; },
         or(v: string) { call.filters.push(["or", "", v]); return q; },
         order() { return q; },
@@ -132,4 +133,16 @@ Deno.test("MESITA-4524: a live ticket is the guest's open payment; one ended by 
   ]);
   const q = calls.find((c) => c.table === "guest_pay_attempts")!;
   assert(q.filters.some(([op, , v]) => op === "eq" && v === ME), "only this guest's tickets");
+});
+
+Deno.test("MESITA-4595: `before` pages both reads back from that instant", async () => {
+  const at = "2026-11-14T12:00:00.000Z";
+  const { client, calls } = stub({ tabs: [tab(1)] });
+  await listVisits(client, ME, false, Date.now(), at);
+  for (const table of ["pay_tabs", "guest_pay_attempts"]) {
+    assertEquals(calls.find((c) => c.table === table)!.filters.filter((f) => f[0] === "lt"), [["lt", "created_at", at]], table);
+  }
+  const first = stub({ tabs: [tab(1)] });
+  await listVisits(first.client, ME, false, Date.now());
+  assertEquals(first.calls.flatMap((c) => c.filters).filter((f) => f[0] === "lt"), []);
 });

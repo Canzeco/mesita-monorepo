@@ -49,14 +49,19 @@ export async function listVisits(
   consumerId: string,
   livemode: boolean,
   nowMs: number,
+  /** MESITA-4595: the next page, visits created before this instant (the
+   *  oldest `created_at` of the page already shown). Null: the newest. */
+  before: string | null = null,
 ): Promise<ListVisitsResult> {
-  const { data: tabData, error: tabError } = await admin
+  let tabQuery = admin
     .from("pay_tabs")
     .select(LIST_TAB_COLUMNS)
     .eq("consumer_id", consumerId)
     .eq("livemode", livemode)
     // MESITA-3695: a split table is listed as the guest's own share.
-    .is("split_at", null)
+    .is("split_at", null);
+  if (before) tabQuery = tabQuery.lt("created_at", before);
+  const { data: tabData, error: tabError } = await tabQuery
     .order("created_at", { ascending: false })
     .limit(VISITS_LIMIT + 1);
   if (tabError) return { ok: false, error: `tabs: ${tabError.message}` };
@@ -68,19 +73,23 @@ export async function listVisits(
   // is the guest's open payment (status paying); one that ended unpaid for
   // the waiter, the clock or the bank shows as Not paid. A cancelled one,
   // or a hold refused before any QR, never was a ticket to the guest.
-  const { data: attemptData, error: attemptError } = await admin
+  let attemptQuery = admin
     .from("guest_pay_attempts")
     .select("id, place_id, status, currency, livemode, bill_cents, tip_cents, expires_at, created_at, end_reason, held_at, payment_id")
     .eq("consumer_id", consumerId)
     .eq("livemode", livemode)
-    .or("status.in.(opening,due),and(status.eq.released,end_reason.in.(rejected,expired,declined),held_at.not.is.null)")
+    .or("status.in.(opening,due),and(status.eq.released,end_reason.in.(rejected,expired,declined),held_at.not.is.null)");
+  if (before) attemptQuery = attemptQuery.lt("created_at", before);
+  const { data: attemptData, error: attemptError } = await attemptQuery
     .order("created_at", { ascending: false })
-    .limit(VISITS_LIMIT);
+    .limit(VISITS_LIMIT + 1);
   if (attemptError) return { ok: false, error: `attempts: ${attemptError.message}` };
   const attempts = (attemptData ?? []) as Array<{
     id: string; place_id: string; status: string; currency: string; bill_cents: number; tip_cents: number;
     expires_at: string; created_at: string; end_reason: string | null; payment_id: string | null;
   }>;
+  const attemptsCut = attempts.length > VISITS_LIMIT;
+  if (attemptsCut) attempts.length = VISITS_LIMIT;
   if (tabs.length === 0 && attempts.length === 0) return { ok: true, visits: [], truncated: false };
 
   const { data: partData, error: partError } = tabs.length
@@ -138,5 +147,5 @@ export async function listVisits(
     });
   }
   visits.sort((x, y) => Date.parse(y.created_at) - Date.parse(x.created_at));
-  return { ok: true, visits: visits.slice(0, VISITS_LIMIT), truncated: truncated || visits.length > VISITS_LIMIT };
+  return { ok: true, visits: visits.slice(0, VISITS_LIMIT), truncated: truncated || attemptsCut || visits.length > VISITS_LIMIT };
 }

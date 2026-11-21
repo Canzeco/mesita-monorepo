@@ -4,7 +4,8 @@
 // table), newest first, in the money mode the wallet uses, so Visits and
 // Payments show the same world. Read-only. The work is _shared/list-visits.ts.
 //
-// Body: {}
+// Body: { before?: ISO timestamp } (MESITA-4595: Load more asks for the
+//   visits created before the oldest one it holds; absent, the newest)
 // Response: { ok: true, visits: [{ tab_id, place: { id, name, slug,
 //             photo_url }, status, currency, bill_cents, tip_cents, ticket,
 //             waiter_name, created_at, paid_at, expires_at,
@@ -19,7 +20,7 @@
 // screen's own read or the sweep settles it; this list never asks Stripe.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { failWithRequestId, json, serveJson } from "../_shared/http.ts";
+import { failWithRequestId, json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { listVisits } from "../_shared/list-visits.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
@@ -28,7 +29,14 @@ serveJson("consumer-web-list-visits", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to see your visits" });
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
-  const res = await listVisits(admin, user.id, paymentsLivemode(), Date.now());
+  // An empty or unreadable body is the first page, as before MESITA-4595.
+  const body = await readJsonOr<Record<string, unknown> | null>(req, {});
+  const raw = body?.before;
+  const before = typeof raw === "string" && raw !== "" ? raw : null;
+  if (raw !== undefined && raw !== null && (before === null || !Number.isFinite(Date.parse(before)))) {
+    return json({ ok: false, error: "before must be a timestamp" }, 400);
+  }
+  const res = await listVisits(admin, user.id, paymentsLivemode(), Date.now(), before && new Date(before).toISOString());
   if (!res.ok) return failWithRequestId("consumer-web-list-visits", "Couldn't load your visits", res.error);
   return json({ ok: true, visits: res.visits, truncated: res.truncated });
 });
