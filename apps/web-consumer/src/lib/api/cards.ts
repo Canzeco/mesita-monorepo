@@ -17,9 +17,10 @@ export type SavedCard = {
   in_use: boolean;
 };
 
-/** How many cards a guest may save: one (MESITA-4168). The server's rule
- *  (consumer-web-add-card answers too_many); here it only hides Add. */
-export const MAX_SAVED_CARDS = 1;
+/** How many cards a guest may save: three since MESITA-4590 (one under
+ *  MESITA-4168). The server's rule (consumer-web-add-card answers too_many);
+ *  here it only hides Add. */
+export const MAX_SAVED_CARDS = 3;
 
 /** The guest's default way to pay (MESITA-4526; consumers.pay_method, MESITA-4502).
  *  Null: never chosen, which reads as the saved card. */
@@ -88,7 +89,7 @@ export function expiryLabel(c: Pick<SavedCard, "exp_month" | "exp_year">): strin
 
 export const CARD_REFUSAL: Record<string, string> = {
   sign_in: "Sign in to save a card.",
-  too_many: "You already have a card. Remove it in Wallet to add another.",
+  too_many: "You can save up to 3 cards. Remove one to add another.",
   in_use: "This card pays your Premier plan. Change it there first.",
   not_found: "That card is already gone.",
   setup_failed: "Couldn't open the card form. Try again.",

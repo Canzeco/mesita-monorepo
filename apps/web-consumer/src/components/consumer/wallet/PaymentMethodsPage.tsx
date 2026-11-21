@@ -1,21 +1,24 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { ChevronRight, Plus, Trash2 } from "lucide-react";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { EFError } from "@/lib/api/_invoke";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { useApplePhone } from "@/components/consumer/pay/MethodPreview";
 import { ApplePayChip, GooglePayChip } from "@/components/consumer/pay/wallet-chips";
-import { apiSetPayMethod, brandLabel, expiryLabel, isExpired, MAX_SAVED_CARDS, type PayMethod, type SavedCard } from "@/lib/api/cards";
+import { apiRemoveCard, apiSetPayMethod, brandLabel, CARD_REFUSAL, expiryLabel, isExpired, MAX_SAVED_CARDS, type PayMethod, type SavedCard } from "@/lib/api/cards";
 import { openAddCardModal } from "@/lib/added-card";
 import { walletCardPath } from "@/lib/consumer-route-contract";
-import { readLastCard } from "@/lib/guest-pay-draft";
-import { defaultCard, defaultMethod, walletInBrowser } from "@/lib/pay-wallet";
+import { readLastCard, writeLastCard } from "@/lib/guest-pay-draft";
+import { defaultMethod, walletInBrowser } from "@/lib/pay-wallet";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { SavedCardChip, WALLET_PANEL, WALLET_ROWS } from "./WalletLists";
-import { SECONDARY } from "./wallet-buttons";
+import { PRIMARY, SECONDARY } from "./wallet-buttons";
 import { useWallet } from "./use-wallet";
 
 // PAYMENT METHODS (MESITA-4526, Pato 2026-11-21: "when i click the card or
@@ -28,6 +31,14 @@ import { useWallet } from "./use-wallet";
 // opens its own page, where Remove is. Add card shows under the one-card
 // limit (MESITA-4168). Apple Pay and Google Pay are the phone's own wallets:
 // nothing to add or remove, only "In this browser" or not.
+//
+// ADD OR REMOVE ON THE PAGE (Pato, 2026-11-21, MESITA-4590: "enable to add or
+// remove payment method in this page easy peasy. clean"; /autoplan, picked
+// "Allow up to 3 cards"): every usable card carries its own radio (picking
+// one makes it the default: pay_method "card" and this device's remembered
+// card) and a trash button with a yes/no confirm; a card paying a Premier
+// plan is refused with the reason. "Add card" is the panel's last row while
+// fewer than 3 cards are saved. The card's own page stays for its details.
 
 const ROW = "flex min-h-16 w-full items-center gap-3.5 px-4 py-3 text-left";
 
@@ -44,9 +55,29 @@ export function PaymentMethodsPage() {
   const stored = pending ?? wallet?.pay_method ?? null;
   const way = defaultMethod(stored, cards ?? [], applePhone, readLastCard());
   const checked: PayMethod | null = way === null ? null : way.kind;
+  const checkedCard = way?.kind === "card" ? way.card.id : null;
+  // The card asked about in the Remove confirm, and the remove in flight.
+  const [removing, setRemoving] = useState<SavedCard | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
 
-  async function choose(next: PayMethod) {
-    if (pending || checked === next) return;
+  async function remove(card: SavedCard) {
+    setRemoveBusy(true);
+    try {
+      await apiRemoveCard(getSupabase(), card.id);
+      toast.success("Card removed.");
+      reread();
+    } catch (err) {
+      const code = err instanceof EFError ? err.code : null;
+      toast.error((code && CARD_REFUSAL[code]) || "Couldn't remove the card. Try again.");
+    } finally {
+      setRemoveBusy(false);
+      setRemoving(null);
+    }
+  }
+
+  async function choose(next: PayMethod, cardId?: string) {
+    if (pending || (checked === next && (next !== "card" || !cardId || cardId === checkedCard))) return;
+    if (cardId) writeLastCard(cardId);
     setPending(next);
     try {
       await apiSetPayMethod(getSupabase(), next);
@@ -59,12 +90,10 @@ export function PaymentMethodsPage() {
   }
 
   const rows: ReactNode[] = [];
-  // Only the card checkout would charge takes the radio; older extra cards
-  // and expired ones open their page and nothing else.
-  const cardWithRadio = defaultCard(cards ?? [], readLastCard())?.id ?? null;
+  // Every usable card takes a radio (MESITA-4590); an expired one opens its
+  // page and can be removed, nothing else.
   for (const card of cards ?? []) {
     const expired = isExpired(card);
-    const pickable = card.id === cardWithRadio;
     rows.push(
       <MethodRow
         key={card.id}
@@ -72,7 +101,12 @@ export function PaymentMethodsPage() {
         title={`${brandLabel(card.brand)} •••• ${card.last4}`}
         line={cardLine(card, expired)}
         href={walletCardPath(card.id)}
-        radio={pickable ? { on: checked === "card", busy: pending !== null, onPick: () => void choose("card") } : null}
+        onRemove={() => setRemoving(card)}
+        radio={
+          expired
+            ? null
+            : { on: checked === "card" && checkedCard === card.id, busy: pending !== null, onPick: () => void choose("card", card.id) }
+        }
       />,
     );
   }
@@ -115,18 +149,52 @@ export function PaymentMethodsPage() {
               {rows.map((r, i) => (
                 <li key={i}>{r}</li>
               ))}
+              {!cardsFailed && (cards?.length ?? 0) < MAX_SAVED_CARDS ? (
+                <li>
+                  <button
+                    type="button"
+                    className={cn(ROW, "hover:bg-muted/60 transition")}
+                    onClick={() => openAddCardModal(() => reread())}
+                    data-add-card
+                  >
+                    <span className="bg-muted text-foreground flex h-8 w-[3.2rem] shrink-0 items-center justify-center rounded-md" aria-hidden>
+                      <Plus className="h-4 w-4" strokeWidth={2.25} />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-base font-semibold">Add card</span>
+                    <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+                  </button>
+                </li>
+              ) : null}
             </ul>
-            {!cardsFailed && (cards?.length ?? 0) < MAX_SAVED_CARDS ? (
-              <button type="button" className={cn(SECONDARY, "mt-4")} onClick={() => openAddCardModal(() => reread())}>
-                Add card
-              </button>
-            ) : null}
             <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
               Your default is picked for you when you pay. Stripe keeps the card number; Mesita only sees the last four digits.
             </p>
           </>
         )}
       </div>
+      <LocalDialog open={removing !== null} onClose={() => (removeBusy ? undefined : setRemoving(null))} ariaLabel="Remove this card">
+        <div className="flex flex-col px-4 pt-5 pb-8" data-remove-card-confirm>
+          <h2 className="text-xl font-semibold">
+            Remove {removing ? `${brandLabel(removing.brand)} •••• ${removing.last4}` : "this card"}?
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm leading-relaxed">You can add it again any time.</p>
+          <div className="mt-4 flex flex-col gap-2">
+            <button
+              type="button"
+              disabled={removeBusy}
+              className={cn(PRIMARY, "disabled:opacity-60")}
+              onClick={() => {
+                if (removing) void remove(removing);
+              }}
+            >
+              {removeBusy ? "Removing…" : "Remove"}
+            </button>
+            <button type="button" disabled={removeBusy} className={SECONDARY} onClick={() => setRemoving(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      </LocalDialog>
     </Screen>
   );
 }
@@ -148,12 +216,15 @@ function MethodRow({
   line,
   href,
   radio,
+  onRemove,
 }: {
   chip: ReactNode;
   title: string;
   line: string;
   href?: string;
   radio: { on: boolean; busy: boolean; onPick: () => void } | null;
+  /** A saved card's trash button (MESITA-4590). */
+  onRemove?: () => void;
 }) {
   const body = (
     <>
@@ -176,6 +247,17 @@ function MethodRow({
       ) : (
         <div className={cn(ROW, "min-w-0 flex-1")}>{body}</div>
       )}
+      {onRemove ? (
+        <button
+          type="button"
+          aria-label={`Remove ${title}`}
+          onClick={onRemove}
+          className="text-muted-foreground hover:text-foreground flex h-16 w-11 shrink-0 items-center justify-center transition"
+          data-remove-card
+        >
+          <Trash2 className="h-5 w-5" strokeWidth={2} aria-hidden />
+        </button>
+      ) : null}
       {radio ? (
         <button
           type="button"
