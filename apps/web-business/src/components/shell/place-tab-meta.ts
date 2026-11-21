@@ -5,7 +5,6 @@
 import type { Icon } from "@phosphor-icons/react";
 import {
   CalendarCheckIcon,
-  CreditCardIcon,
   DotsThreeCircleIcon,
   EyeIcon,
   FootprintsIcon,
@@ -17,6 +16,7 @@ import {
   ShieldCheckIcon,
   SlidersHorizontalIcon,
   StorefrontIcon,
+  TagIcon,
   TicketIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import type { PlaceTab } from "@/lib/routes";
@@ -34,7 +34,9 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   money: { label: "Money", icon: MoneyIcon, sub: "Every payment and voucher at your place." },
   profile: { label: "Profile", icon: StorefrontIcon, sub: "What guests read about your place." },
   premier: { label: "Premier", icon: MegaphoneIcon, sub: "Ad spots on Home and the Map. Marked as an ad." },
-  payments: { label: "Payments", icon: CreditCardIcon, sub: "Choose how guests pay you and earn credit here. Money and payouts are on General › Money." },
+  // Offers (MESITA-4530, Pato: "rename payment pages to offers"); the URL stays
+  // /payments, where Stripe returns.
+  payments: { label: "Offers", icon: TagIcon, sub: "Choose how guests pay you and earn credit here. Money and payouts are on General › Money." },
   general: { label: "General", icon: SlidersHorizontalIcon, sub: "Reservations, Stories, Money and Settings." },
   reservations: { label: "Reservations", icon: CalendarCheckIcon, sub: "Whether guests can ask for a table here." },
   // Every product, current and future (MESITA-3238; was Soon, MESITA-3197). The
