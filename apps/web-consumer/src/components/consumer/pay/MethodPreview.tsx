@@ -43,7 +43,10 @@ export function MethodPreview({ wide = false }: { wide?: boolean } = {}) {
           ? "Apple Pay"
           : way?.kind === "google_pay"
             ? "Google Pay"
-            : "Add payment method";
+            : // "Add card" (Pato, 2026-11-21, MESITA-4533): "Add payment
+              // method" cut to "Add payment me…" in the half-width button at
+              // 390px. The aria-label keeps the full words.
+              "Add card";
   const aria =
     face === "retry"
       ? "Couldn't load your payment methods. Tap Retry."
