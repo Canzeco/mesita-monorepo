@@ -33,6 +33,7 @@ import {
   isDefinitiveRefusal,
 } from "@/lib/api/wallet";
 import { apiListCards, brandLabel } from "@/lib/api/cards";
+import { isApplePhone, walletInBrowser } from "@/lib/pay-wallet";
 import { runBankCheck } from "@/lib/api/tab";
 import { useAddCardModal } from "@/lib/added-card";
 import {
@@ -475,7 +476,7 @@ export function usePlaceVouchers(
     );
     try {
       const supabase = getSupabase();
-      const [{ cards }, session] = await Promise.all([
+      const [{ cards, pay_method }, session] = await Promise.all([
         apiListCards(supabase),
         supabase.auth.getSession(),
       ]);
@@ -488,7 +489,12 @@ export function usePlaceVouchers(
         exp_month: c.exp_month,
         exp_year: c.exp_year,
       }));
-      setPayCards({ state: "ready", cards: list });
+      // The card leads the pay box when it is the guest's default way to pay
+      // (MESITA-4529): chosen as card, or a phone wallet this browser lacks.
+      const cardFirst =
+        pay_method === "card" ||
+        ((pay_method === "apple_pay" || pay_method === "google_pay") && !walletInBrowser(pay_method, isApplePhone()));
+      setPayCards({ state: "ready", cards: list, cardFirst });
       setPayCardId((prev) =>
         prev && list.some((c) => c.id === prev)
           ? prev
