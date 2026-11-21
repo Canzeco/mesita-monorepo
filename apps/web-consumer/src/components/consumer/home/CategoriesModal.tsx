@@ -52,9 +52,18 @@ export function CategoriesModal({
         className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto"
         data-places-menu
       >
-        <div className="grid shrink-0 grid-cols-5 content-start gap-x-0.5 px-1.5 pt-3" data-places-menu-specials>
+        {/* CENTRED, OVER A HAIRLINE (Pato, 2026-11-21, MESITA-4583: "add a
+            line separating families from special categories at the top, just
+            a simple line, and center them"): each special is one family
+            column wide (a fifth of the row, less its share of the four
+            0.125rem gaps), the row centred, then one 1px rule. */}
+        <div
+          className="flex shrink-0 justify-center gap-x-0.5 px-1.5 pt-3 [&>*]:w-[calc((100%-0.5rem)/5)] [&>*]:shrink-0"
+          data-places-menu-specials
+        >
           {specials}
         </div>
+        <hr className="border-border mx-5 mt-3 shrink-0" data-places-menu-divider />
         <div className="grid shrink-0 grid-cols-5 content-start gap-x-0.5 gap-y-3 px-1.5 pt-3 pb-4">
           {children}
         </div>
