@@ -70,12 +70,8 @@ const COLUMNS: readonly string[] = [
   "facebook_url",
   "whatsapp_url",
   "opentable_url",
-  "resy_url",
   "uber_eats_url",
-  "x_url",
-  "threads_url",
-  "reddit_url",
-  "didi_food_url",
+  "tripadvisor_url",
   "google_maps_url",
   // Read-only signal columns — populated by enrichment, never by the
   // business. Shown on the Place page's Signals section and on consumer

@@ -7,16 +7,12 @@ export type GoogleChannel =
   | "website_url"
   | "instagram_url"
   | "facebook_url"
-  | "x_url"
-  | "threads_url"
-  | "reddit_url"
   | "opentable_url"
-  | "resy_url"
   | "uber_eats_url"
-  | "didi_food_url";
+  | "tripadvisor_url";
 
 const NOT_A_WEBSITE =
-  /(^|\.)(rappi|doordash|grubhub|postmates|seamless|ubereats|didifood|google|bing|duckduckgo|wikipedia|foursquare|linkedin|youtube|linktr|beacons|menudo|tripadvisor|yelp|tiktok)\./;
+  /(^|\.)(rappi|doordash|grubhub|postmates|seamless|ubereats|didifood|google|bing|duckduckgo|wikipedia|foursquare|linkedin|youtube|linktr|beacons|menudo|yelp|tiktok|twitter|x|threads|reddit|resy|didi|sindelantal)\./;
 
 const NOT_A_WEBSITE_HOSTS = ["goo.gl", "youtu.be", "bio.link"];
 
@@ -96,36 +92,13 @@ export function channelFromUrl(
   ) {
     return null;
   }
-  if (
-    host === "twitter.com" ||
-    host.endsWith(".twitter.com") ||
-    host === "x.com" ||
-    host.endsWith(".x.com")
-  ) {
-    return { key: "x_url", url };
-  }
-  if (
-    host === "threads.net" ||
-    host.endsWith(".threads.net") ||
-    host === "threads.com" ||
-    host.endsWith(".threads.com")
-  ) {
-    return { key: "threads_url", url };
-  }
-  if (host === "reddit.com" || host.endsWith(".reddit.com"))
-    return { key: "reddit_url", url };
   if (host.startsWith("opentable.")) return { key: "opentable_url", url };
-  if (host === "resy.com" || host.endsWith(".resy.com"))
-    return { key: "resy_url", url };
   if (host === "ubereats.com" || host.endsWith(".ubereats.com"))
     return { key: "uber_eats_url", url };
-  if (
-    host === "didi.com" ||
-    host.endsWith(".didi.com") ||
-    host.startsWith("didifood.")
-  ) {
-    return { key: "didi_food_url", url };
-  }
+  // MESITA-4569: TripAdvisor is a channel; X, Threads, Reddit, Resy and DiDi
+  // Food are not (NOT_A_WEBSITE keeps them out of website_url).
+  if (/(^|\.)tripadvisor\./.test(host))
+    return { key: "tripadvisor_url", url };
   if (
     NOT_A_WEBSITE.test(host) ||
     NOT_A_WEBSITE_HOSTS.some(

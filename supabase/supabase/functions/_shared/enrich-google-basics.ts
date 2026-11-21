@@ -141,14 +141,10 @@ export type GoogleBasics = {
   website_url: string | null;
   instagram_url: string | null;
   facebook_url: string | null;
-  x_url: string | null;
-  threads_url: string | null;
-  reddit_url: string | null;
   whatsapp_url: string | null;
   opentable_url: string | null;
-  resy_url: string | null;
   uber_eats_url: string | null;
-  didi_food_url: string | null;
+  tripadvisor_url: string | null;
   google_maps_url: string | null;
   google_stars_overall: number | null;
   google_review_count: number | null;
@@ -364,14 +360,10 @@ export async function fetchGoogleBasics(
       website_url: channels.website_url,
       instagram_url: channels.instagram_url,
       facebook_url: channels.facebook_url,
-      x_url: channels.x_url,
-      threads_url: channels.threads_url,
-      reddit_url: channels.reddit_url,
       whatsapp_url: channels.whatsapp_url,
       opentable_url: channels.opentable_url,
-      resy_url: channels.resy_url,
       uber_eats_url: channels.uber_eats_url,
-      didi_food_url: channels.didi_food_url,
+      tripadvisor_url: channels.tripadvisor_url,
       google_maps_url: mapsUrl,
       google_stars_overall: details.rating ?? null,
       google_review_count: details.userRatingCount ?? null,

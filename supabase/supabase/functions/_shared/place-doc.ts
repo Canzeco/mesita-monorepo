@@ -116,13 +116,9 @@ export type PlaceProfileRow = {
   facebook_url: string | null;
   whatsapp_url: string | null;
   opentable_url: string | null;
-  resy_url: string | null;
   uber_eats_url: string | null;
-  x_url: string | null;
-  threads_url: string | null;
-  reddit_url: string | null;
+  tripadvisor_url: string | null;
   google_maps_url: string | null;
-  didi_food_url: string | null;
   hours: unknown | null;
   /** pgvector literal, e.g. "[0.1,0.2,...]" — always a string on the JS side. */
   embedding: string | null;
@@ -200,13 +196,9 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "facebook_url",
   "whatsapp_url",
   "opentable_url",
-  "resy_url",
   "uber_eats_url",
-  "x_url",
-  "threads_url",
-  "reddit_url",
+  "tripadvisor_url",
   "google_maps_url",
-  "didi_food_url",
   "hours",
   "embedding",
   "description",
@@ -334,9 +326,8 @@ function isNonNullEnum<T extends string>(v: unknown, legal: ReadonlySet<T>): v i
 const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "category", "address", "timezone", "closes_at", "phone", "pitch",
   "story", "website_url", "instagram_url", "facebook_url",
-  "whatsapp_url", "opentable_url", "resy_url", "uber_eats_url", "x_url",
-  "threads_url", "reddit_url", "google_maps_url",
-  "didi_food_url", "description",
+  "whatsapp_url", "opentable_url", "uber_eats_url", "tripadvisor_url",
+  "google_maps_url", "description",
   "menu_pdf_url", "menu_pdf_name",
   "zone", "city", "category_label",
   "embedding_source_text", "google_name", "name", "profile_photo",

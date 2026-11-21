@@ -73,7 +73,7 @@ const FUTURE: Array<{ name: string; line: string; icon: Icon }> = [
   },
   {
     name: "Orders Management",
-    line: "One queue for every order, labeled by source: Mesita members, your website and agents, and Uber Eats, Rappi and DiDi Food. Manage status, prep time, cancellations and sold-out items, and see the day's delivery sales.",
+    line: "One queue for every order, labeled by source: Mesita members, your website and agents, and Uber Eats and Rappi. Manage status, prep time, cancellations and sold-out items, and see the day's delivery sales.",
     icon: ShoppingBagIcon,
   },
   {

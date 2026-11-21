@@ -179,6 +179,10 @@ const LIVE_ELSEWHERE: Record<string, readonly string[]> = {
 const RESTORED: Record<string, readonly string[]> = {
   // MESITA-2548: consumers.plan is back (free or premium since MESITA-2560).
   consumers: ["plan"],
+  // MESITA-4569: the TripAdvisor link is back (Pato: "what you can add is a
+  // TripAdvisor link").
+  place_profiles: ["tripadvisor_url"],
+  profiles: ["tripadvisor_url"],
 };
 
 /** MESITA-2553 — `diamond` gave way to `guest_class` (Plan and Class). Its own
@@ -200,9 +204,25 @@ const PAY_WAYS_DROPPED_COLUMNS = {
   place_payment_settings: ["pay_cash", "pay_credits"],
 } as const satisfies Record<string, readonly string[]>;
 
+/** MESITA-4569 — Pato: "deprecate resy, didi, x, threads, reddit … those
+ *  never existed". 20261122100000_drop_dead_links_add_tripadvisor.sql. */
+const DEAD_LINKS_DROPPED_COLUMNS = {
+  place_profiles: ["resy_url", "didi_food_url", "x_url", "threads_url", "reddit_url"],
+  profiles: ["resy_url", "didi_food_url", "x_url", "threads_url", "reddit_url"],
+} as const satisfies Record<string, readonly string[]>;
+
 /** Every dropping table's columns, all cuts merged. */
 const DROPPED_BY_TABLE = new Map<string, Set<string>>();
-for (const list of [DROPPED_COLUMNS, RESIDUE_DROPPED_COLUMNS, CLASS_PLAN_DROPPED_COLUMNS, PRIMARY_TYPE_DROPPED_COLUMNS, PAY_WAYS_DROPPED_COLUMNS]) {
+for (
+  const list of [
+    DROPPED_COLUMNS,
+    RESIDUE_DROPPED_COLUMNS,
+    CLASS_PLAN_DROPPED_COLUMNS,
+    PRIMARY_TYPE_DROPPED_COLUMNS,
+    PAY_WAYS_DROPPED_COLUMNS,
+    DEAD_LINKS_DROPPED_COLUMNS,
+  ]
+) {
   for (const [table, cols] of Object.entries(list)) {
     const set = DROPPED_BY_TABLE.get(table) ?? new Set<string>();
     for (const col of cols) if (!RESTORED[table]?.includes(col)) set.add(col);

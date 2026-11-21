@@ -215,18 +215,15 @@ export type PlaceDetail = {
     whatsapp_url?: string;
     instagram_url?: string;
     facebook_url?: string;
-    x_url?: string;
-    threads_url?: string;
-    reddit_url?: string;
   };
   reservations: {
     opentable_url?: string;
-    resy_url?: string;
     uber_eats_url?: string;
-    didi_food_url?: string;
   };
   reviews_maps: {
     google_maps_url?: string;
+    /** The place's TripAdvisor page (MESITA-4569). */
+    tripadvisor_url?: string;
     /** Google's write-review form for this place, from google_place_id
      *  (MESITA-2916). The stored maps URL is a `?cid=` link and cannot open
      *  the form. Absent when the payload carries no Google id. */

@@ -22,8 +22,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //                         Payments · Mesita Payments
 //                         · Mesita Prepayments (MESITA-3588, Main §10).
 //   Links Found         Google · Instagram · Facebook · Foursquare · Uber
-//                         Eats · DiDi Food · OpenTable · Resy · Website ·
-//                         WhatsApp · X · Threads · Reddit (MESITA-4551).
+//                         Eats · OpenTable · TripAdvisor · Website ·
+//                         WhatsApp (MESITA-4551, MESITA-4569).
 //                         Yes or no. Stars and follower counts are display.
 // Reports and Enrichment left this tab (MESITA-4551, Pato: "remove reports
 // from there"; "remove enrichment box, with special actions is enough").

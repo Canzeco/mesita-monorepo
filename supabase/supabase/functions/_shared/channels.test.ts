@@ -9,7 +9,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { classifyLinks } from "./channels.ts";
 import type { ChannelKey } from "./channels.ts";
 
-Deno.test("classifyLinks: retired hosts (tiktok/tripadvisor/yelp) never leak into website_url", () => {
+Deno.test("classifyLinks: retired hosts (tiktok, yelp, x, threads, reddit, resy, didi) never leak into website_url", () => {
   // A retired host ALONE — not "shortest wins against a real candidate".
   // The first version of this test used both a retired link and a real
   // site together and stayed green even with isRetiredSocialHost's tiktok
@@ -19,17 +19,23 @@ Deno.test("classifyLinks: retired hosts (tiktok/tripadvisor/yelp) never leak int
   // retired host is the direct claim: a retired host must never become a
   // website CANDIDATE at all, regardless of what else is in the bag.
   assertEquals(classifyLinks(["https://www.tiktok.com/@someplace"]).website_url, null);
-  assertEquals(
-    classifyLinks(["https://www.tripadvisor.com.mx/Restaurant_Review-abc"]).website_url,
-    null,
-  );
   assertEquals(classifyLinks(["https://www.yelp.com/biz/someplace"]).website_url, null);
+  // Dropped channels (MESITA-4569) are retired hosts now.
+  for (const url of [
+    "https://x.com/someplace",
+    "https://twitter.com/someplace",
+    "https://www.threads.net/@someplace",
+    "https://www.reddit.com/r/someplace",
+    "https://resy.com/cities/mex/someplace",
+    "https://didifood.com/someplace",
+  ]) {
+    assertEquals(classifyLinks([url]).website_url, null, url);
+  }
 
   // And mixed with a real site, the real site still wins — same assertion
   // as before, kept as a belt-and-suspenders realistic-input case.
   const mixed = classifyLinks([
     "https://www.tiktok.com/@someplace",
-    "https://www.tripadvisor.com.mx/Restaurant_Review-abc",
     "https://www.yelp.com/biz/someplace",
     "https://realsite.example.com",
   ]);
@@ -51,15 +57,11 @@ Deno.test("classifyLinks: each known host maps to its declared channel", () => {
     ["https://www.instagram.com/someplace", "instagram_url"],
     ["https://www.facebook.com/someplace", "facebook_url"],
     ["https://fb.com/someplace", "facebook_url"],
-    ["https://twitter.com/someplace", "x_url"],
-    ["https://x.com/someplace", "x_url"],
-    ["https://www.threads.net/@someplace", "threads_url"],
-    ["https://www.reddit.com/r/someplace", "reddit_url"],
     ["https://wa.me/525500000000", "whatsapp_url"],
     ["https://www.opentable.com.mx/someplace", "opentable_url"],
-    ["https://resy.com/cities/mex/someplace", "resy_url"],
     ["https://www.ubereats.com/mx/store/someplace", "uber_eats_url"],
-    ["https://didifood.com/someplace", "didi_food_url"],
+    ["https://www.tripadvisor.com.mx/Restaurant_Review-abc", "tripadvisor_url"],
+    ["https://es.tripadvisor.com/Restaurant_Review-abc", "tripadvisor_url"],
     ["https://maps.google.com/?cid=123", "google_maps_url"],
     ["https://maps.app.goo.gl/abc123", "google_maps_url"],
   ];

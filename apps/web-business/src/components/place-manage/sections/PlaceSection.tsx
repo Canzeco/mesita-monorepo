@@ -75,6 +75,8 @@ const CHANNELS: {
     logo: "/channels/ubereats-mark.svg",
   },
   { key: "opentable_url", label: "OpenTable", logo: "/channels/opentable.svg" },
+  // MESITA-4569: the place's TripAdvisor page.
+  { key: "tripadvisor_url", label: "TripAdvisor", Icon: Star },
   // Found by the Foursquare match, never typed (MESITA-4552); its score
   // sits where Instagram and Facebook show followers.
   { key: "foursquare_url", label: "Foursquare", Icon: MapPin, readOnly: true },

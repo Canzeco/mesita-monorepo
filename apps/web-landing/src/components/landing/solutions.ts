@@ -76,7 +76,7 @@ export const PLACE_SOLUTIONS: Solution[] = [
   },
   {
     name: "Orders Management",
-    body: "One queue for every order, labeled by source: Mesita members, your website and agents, and Uber Eats, Rappi and DiDi Food. Manage status, prep time, cancellations and sold-out items, and see the day's delivery sales.",
+    body: "One queue for every order, labeled by source: Mesita members, your website and agents, and Uber Eats and Rappi. Manage status, prep time, cancellations and sold-out items, and see the day's delivery sales.",
     soon: true,
   },
   {
