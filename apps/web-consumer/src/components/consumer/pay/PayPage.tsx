@@ -15,7 +15,7 @@ import { addFundsOn, billRead, payHere, type BillRead } from "@/lib/pay-wallet";
 import { clearGuestDraft, pendingTicket, readDraft } from "@/lib/guest-pay-draft";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { cn } from "@/lib/utils";
-import { CONSUMER_ROUTES, payBillPath, payPlacePath, placePath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payBillPath, payPlacePath, placePath, walletPlacePath, walletSendPath } from "@/lib/consumer-route-contract";
 import { markPanelExit, navigateTo, previousEntryPath, replaceAddress } from "@/lib/navigate";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -325,6 +325,14 @@ export function PayPage({
         leadIds={placeIds}
         leadCount={shownPlaces.length}
         leadSettled={places !== null && !placesFailed}
+        payWait={payHere(bill) === "wait"}
+        onPay={(placeId) => {
+          const decision = payHere(bill);
+          if (decision === "recheck") return checkBill();
+          if (decision === "wait") return;
+          const href = decision === "bill" ? (openTabs?.[0] ? payBillPath(openTabs[0].tab_id) : pending ? payPlacePath(pending.placeId) : null) : payPlacePath(placeId);
+          if (href) navigateTo(router, href, { motion: "push" });
+        }}
         lead={
           <PlaceRows
             places={shownPlaces}
@@ -388,19 +396,25 @@ function PlaceRows({
             key={p.place_id}
             name={name}
             subtitle={subtitle || null}
-            photo={<PlacePhoto place={p} className="h-12 w-12" />}
-            extra={
+            photo={<PlacePhoto place={p} className="h-full w-full" />}
+            money={
               <BalanceLines
                 available={p.available_cents > 0 ? money(p.available_cents, p.currency) : null}
                 pending={p.pending_cents > 0 ? [`${money(p.pending_cents, p.currency)} pending`] : []}
               />
             }
             onOpen={() => navigateTo(router, holds ? walletPlacePath(p.place_id) : placePath(p.place_id), { motion: "drill" })}
-            add={addFundsOn(p.card_ok) ? () => navigateTo(router, prepayHref(p.place_id), { motion: "drill" }) : undefined}
-            primary={{
-              label: "Pay",
+            offers={{
+              spoken: addFundsOn(p.card_ok) ? `Offers at ${name}` : `Offers at ${name}. This place doesn't sell credit.`,
+              disabled: !addFundsOn(p.card_ok),
+              onClick: () => navigateTo(router, prepayHref(p.place_id), { motion: "drill" }),
+            }}
+            gift={{
+              spoken: `Gift from ${name}`,
+              onClick: () => navigateTo(router, walletSendPath(p.place_id), { motion: "push" }),
+            }}
+            pay={{
               spoken: pay === "bill" ? `Pay at ${name}: opens your open bill` : `Pay at ${name}`,
-              filled: true,
               wait: pay === "wait",
               onClick: () => {
                 if (pay === "recheck") return onCheckBill();

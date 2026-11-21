@@ -6,7 +6,7 @@ import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { photoUrl } from "@mesita/place-profile";
 import { Screen } from "@/components/consumer/nav/Screen";
-import { CONSUMER_ROUTES, storyTicketPath, walletPlacePath, walletSendPath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payPlacePath, storyTicketPath, walletPlacePath, walletSendPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
@@ -21,8 +21,6 @@ import {
   CreditsCardChip,
   RowsSkeleton,
   StoryRow,
-  WALLET_PANEL,
-  WALLET_ROWS,
   pendingWords,
 } from "./WalletLists";
 import { money, type WalletBalance } from "@/lib/api/wallet";
@@ -168,6 +166,8 @@ export function WalletSection({
   leadCount = 0,
   leadSettled = true,
   query = "",
+  onPay,
+  payWait = false,
 }: {
   /** The place rows, first in the panel (MESITA-4497). */
   lead?: ReactNode;
@@ -182,6 +182,10 @@ export function WalletSection({
   giftToken?: string | null;
   /** Told once the Wallet has painted (MESITA-4376): /pay keeps its buttons in bones until then. */
   onReady?: () => void;
+  /** Pay on a card that is not in the place list. The page applies the open-bill rule. */
+  onPay?: (placeId: string) => void;
+  /** The open-bill read has not settled: Pay is a bone. */
+  payWait?: boolean;
 }) {
   const router = useRouter();
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
@@ -284,14 +288,13 @@ export function WalletSection({
         </p>
       ) : null}
 
-      {/* ONE PANEL (MESITA-4497): the places to pay at, then the cards for
-          places not listed above, then Add a Loyalty Card. No headings. */}
-      <section className={WALLET_PANEL} aria-label="Places and Loyalty Cards">
-        <div className={WALLET_ROWS}>
+      <section className="mt-2 flex flex-col gap-2" aria-label="Places and Loyalty Cards">
           {lead}
           {creditsState === "rows"
             ? stories.map((s) => (
-                <StoryRow key={s.purchase_id} story={s} now={storyNow} onOpen={() => navigateTo(router, storyTicketPath(s.story_id), { motion: "drill" })} />
+                <div key={s.purchase_id} className="border-border bg-card overflow-hidden rounded-xl border">
+                  <StoryRow story={s} now={storyNow} onOpen={() => navigateTo(router, storyTicketPath(s.story_id), { motion: "drill" })} />
+                </div>
               ))
             : null}
           {creditsState === "rows"
@@ -303,24 +306,30 @@ export function WalletSection({
                   <PlaceActionRow
                     key={row.card.key}
                     name={name}
-                    photo={<CreditsCardChip photo={row.card.photo} name={row.card.name} eager={shown++ < EAGER_CARDS} className="h-12 w-12 rounded-full" />}
+                    photo={<CreditsCardChip photo={row.card.photo} name={row.card.name} eager={shown++ < EAGER_CARDS} className="h-full w-full rounded-xl" />}
                     subtitle={gone ? "Ask Mesita support to use it." : null}
-                    extra={
+                    money={
                       gone ? null : (
                         <BalanceLines available={row.card.available_cents > 0 ? money(row.card.available_cents, row.card.currency) : null} pending={pending} />
                       )
                     }
-                    onOpen={() => navigateTo(router, walletPlacePath(row.placeId), { motion: "drill" })}
-                    add={gone ? undefined : () => navigateTo(router, prepayHref(row.placeSlug), { motion: "drill" })}
-                    primary={
-                      gone
-                        ? undefined
-                        : {
-                            label: "Send",
-                            spoken: `Send credit from ${name}`,
-                            onClick: () => navigateTo(router, walletSendPath(row.placeId), { motion: "push" }),
-                          }
-                    }
+                    onOpen={gone ? undefined : () => navigateTo(router, walletPlacePath(row.placeId), { motion: "drill" })}
+                    offers={{
+                      spoken: gone ? `Offers at ${name}. Ask Mesita support to use it.` : `Offers at ${name}`,
+                      disabled: gone,
+                      onClick: () => navigateTo(router, prepayHref(row.placeSlug), { motion: "drill" }),
+                    }}
+                    gift={{
+                      spoken: gone ? `Gift from ${name}. Ask Mesita support to use it.` : `Gift from ${name}`,
+                      disabled: gone,
+                      onClick: () => navigateTo(router, walletSendPath(row.placeId), { motion: "push" }),
+                    }}
+                    pay={{
+                      spoken: `Pay at ${name}`,
+                      disabled: gone,
+                      wait: payWait,
+                      onClick: () => (onPay ? onPay(row.placeId) : navigateTo(router, payPlacePath(row.placeId), { motion: "push" })),
+                    }}
                   />
                 );
               })
@@ -330,7 +339,7 @@ export function WalletSection({
             <p className="text-muted-foreground px-4 py-4 text-sm">No place matches “{query.trim()}”.</p>
           ) : null}
           {creditsState === "empty" && !q && leadCount === 0 && leadSettled ? (
-            <div className="px-4 py-4" data-wallet-empty>
+            <div className="border-border bg-card rounded-xl border px-4 py-4" data-wallet-empty>
               <p className="text-base">No places near you yet.</p>
               <button
                 type="button"
@@ -341,8 +350,11 @@ export function WalletSection({
               </button>
             </div>
           ) : null}
-          {settled && !q ? <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" onClick={() => setExplainAdd(true)} /> : null}
-        </div>
+          {settled && !q ? (
+            <div className="border-border bg-card overflow-hidden rounded-xl border">
+              <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" onClick={() => setExplainAdd(true)} />
+            </div>
+          ) : null}
       </section>
       {creditsState === "failed" ? (
         <div className="mt-2">

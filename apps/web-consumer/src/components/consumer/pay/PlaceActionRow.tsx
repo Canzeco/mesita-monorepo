@@ -1,80 +1,95 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Plus } from "lucide-react";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { cn } from "@/lib/utils";
 
-// A Wallet row (MESITA-4497, Pato 2026-11-20): the photo and the place open
-// its page, a small "+" adds funds, and one button pays or sends. Pay is the
-// only black thing in the row. A control that cannot work is not drawn.
-// It was three equal blocks, Add Funds | place | Pay Here (MESITA-4485).
+// A Wallet card (MESITA-4500): two equal lines on one grid.
+// Line 1: profile, name, money. Line 2: Offers, Gift, Pay.
+// Pay is the only filled control. A disabled control stays in its cell.
 
 export function PlaceActionRow({
   name,
   photo,
   subtitle,
-  extra,
+  money,
   onOpen,
-  add,
-  primary,
+  offers,
+  gift,
+  pay,
 }: {
   name: string;
   photo: ReactNode;
   subtitle?: string | null;
-  extra?: ReactNode;
-  /** The photo and the name open the place's page. */
+  money?: ReactNode;
+  /** The profile and the name open the place's page. */
   onOpen?: () => void;
-  /** Add Funds. Left out where the place sells no credit. */
-  add?: () => void;
-  /** Pay or Send. Left out when neither can be done. `wait` draws a bone. */
-  primary?: { label: string; spoken: string; filled?: boolean; wait?: boolean; onClick: () => void };
+  offers?: Cell;
+  gift?: Cell;
+  pay?: Cell;
 }) {
-  const body = (
-    <>
-      {photo}
-      <span className="min-w-0 flex-1">
-        {/* Two lines, then cut (MESITA-4498): at 390px "Taquería Orinoco (TEC)" did not fit on one. */}
-        <span className="text-foreground line-clamp-2 text-base leading-tight break-words">{name}</span>
-        {subtitle ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{subtitle}</span> : null}
-        {extra}
-      </span>
-    </>
-  );
   return (
-    <div className="flex min-h-[4.25rem] items-center gap-2 py-2 pr-3 pl-4" data-wallet-row>
+    <div
+      className="border-border bg-card grid grid-cols-[3.5rem_minmax(0,1fr)_5.25rem_5.25rem] grid-rows-[3.5rem_3.5rem] gap-2 rounded-xl border p-2"
+      data-wallet-row
+    >
+      <span className="row-start-1 flex h-14 w-14 overflow-hidden rounded-xl [&>*]:h-full [&>*]:w-full [&>*]:rounded-xl">{photo}</span>
       {onOpen ? (
-        <button type="button" onClick={onOpen} aria-label={`Open ${name}`} className="flex min-h-11 min-w-0 flex-1 items-center gap-3.5 text-left">
-          {body}
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`Open ${name}`}
+          className="col-span-2 row-start-1 flex min-w-0 flex-col justify-center text-left"
+        >
+          <Name name={name} subtitle={subtitle} />
         </button>
       ) : (
-        <div className="flex min-w-0 flex-1 items-center gap-3.5">{body}</div>
+        <div className="col-span-2 row-start-1 flex min-w-0 flex-col justify-center">
+          <Name name={name} subtitle={subtitle} />
+        </div>
       )}
-      {add ? (
-        <button
-          type="button"
-          onClick={add}
-          aria-label={`Add funds at ${name}`}
-          className="border-border bg-card hover:bg-muted/60 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border"
-        >
-          <Plus className="h-5 w-5" strokeWidth={2} aria-hidden />
-        </button>
-      ) : null}
-      {primary?.wait ? (
-        <Skeleton className="h-11 w-16 shrink-0 rounded-xl" aria-hidden />
-      ) : primary ? (
-        <button
-          type="button"
-          onClick={primary.onClick}
-          aria-label={primary.spoken}
-          className={cn(
-            "flex h-11 shrink-0 items-center justify-center rounded-xl px-4 text-sm font-semibold whitespace-nowrap",
-            primary.filled ? "bg-foreground text-background" : "border-border bg-card hover:bg-muted/60 border",
-          )}
-        >
-          {primary.label}
-        </button>
-      ) : null}
+      <div className="col-start-4 row-start-1 flex min-w-0 items-center justify-end overflow-hidden text-right">{money}</div>
+      <GridButton label="Offers" cell={offers} className="col-span-2 row-start-2" />
+      <GridButton label="Gift" cell={gift} className="col-start-3 row-start-2" />
+      <GridButton label="Pay" cell={pay} filled className="col-start-4 row-start-2" />
     </div>
+  );
+}
+
+function Name({ name, subtitle }: { name: string; subtitle?: string | null }) {
+  return (
+    <>
+      <span className="text-foreground truncate text-base leading-tight font-semibold">{name}</span>
+      {subtitle ? <span className="text-muted-foreground truncate text-sm leading-tight">{subtitle}</span> : null}
+    </>
+  );
+}
+
+type Cell = {
+  spoken: string;
+  disabled?: boolean;
+  wait?: boolean;
+  onClick: () => void;
+};
+
+function GridButton({ label, cell, filled, className }: { label: string; cell?: Cell; filled?: boolean; className?: string }) {
+  if (cell?.wait) return <Skeleton className={cn("h-full rounded-xl", className)} aria-hidden />;
+  return (
+    <button
+      type="button"
+      disabled={!cell || cell.disabled}
+      aria-label={cell?.spoken ?? label}
+      onClick={() => {
+        if (cell && !cell.disabled) cell.onClick();
+      }}
+      className={cn(
+        "flex h-full items-center justify-center rounded-xl px-2 text-sm font-semibold",
+        filled ? "bg-foreground text-background" : "border-border border",
+        (!cell || cell.disabled) && "opacity-40",
+        className,
+      )}
+    >
+      {label}
+    </button>
   );
 }
