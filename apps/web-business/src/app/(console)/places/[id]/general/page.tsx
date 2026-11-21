@@ -1,24 +1,22 @@
 import Link from "next/link";
 import { PLACE_TAB_META } from "@/components/shell/place-tab-meta";
 import { TicketDeskPage } from "@/components/place-manage/TicketDeskPage";
-import { getManagePlace } from "@/lib/place-view";
 import { placeTabHref, type PlaceTab } from "@/lib/routes";
 import { FOCUS_RING_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { ReservationsPanel } from "../reservations/ReservationsPanel";
 import { MoneySection } from "../money/MoneySection";
 import { SettingsSection } from "../settings/SettingsSection";
-import { AdminSection } from "../admin/AdminSection";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "General" };
 
 // General (MESITA-4528) is ONE page of sections (MESITA-4534, Pato: "don't
 // create subpages in general btw — all there displayed in the same page but
-// in different sections"): Reservations, Stories, Money, Settings, and Admin
-// for Mesita staff, then a button to All. Each section's id is its old
-// address's tab, so /places/<id>/<tab> redirects to #<tab> here. Admin draws
-// nothing for anyone but staff; its writes are refused at the EF anyway.
+// in different sections"): Reservations, Stories, Money, Settings, then a
+// button to All. Admin is its own rail row for Mesita staff (Pato: "admin
+// must be its own page"). Each section's id is its old
+// address's tab, so /places/<id>/<tab> redirects to #<tab> here.
 function Section({ tab, children }: { tab: PlaceTab; children: React.ReactNode }) {
   const { label, icon: Mark, sub } = PLACE_TAB_META[tab];
   return (
@@ -41,7 +39,6 @@ function Section({ tab, children }: { tab: PlaceTab; children: React.ReactNode }
 
 export default async function GeneralPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const manage = await getManagePlace(id);
   return (
     <div className="flex flex-col gap-8 pb-8">
       <Section tab="reservations">
@@ -56,11 +53,6 @@ export default async function GeneralPage({ params }: { params: Promise<{ id: st
       <Section tab="settings">
         <SettingsSection id={id} />
       </Section>
-      {manage?.role === "superadmin" ? (
-        <Section tab="admin">
-          <AdminSection id={id} />
-        </Section>
-      ) : null}
       <Link
         href={placeTabHref(id, "all")}
         className={cn(

@@ -59,7 +59,7 @@ type Switcher = { href: string; active: boolean; name: string; photo: string | n
 type PlaceMenu = { monitor: Row[]; manage: Row[] };
 
 /** The pages General gathers (MESITA-4528): its row lights on any of them. */
-const UNDER_GENERAL: readonly PlaceTab[] = ["general", "reservations", "stories", "money", "settings", "admin", "all"];
+const UNDER_GENERAL: readonly PlaceTab[] = ["general", "reservations", "stories", "money", "settings", "all"];
 
 function menu(
   pathname: string,
@@ -101,6 +101,9 @@ function menu(
           ...tab("general"),
           active: !!placeId && UNDER_GENERAL.some((k) => under(placeTabHref(placeId, k))),
         },
+        // Its own page under General, Mesita staff only (MESITA-4534, Pato:
+        // "admin must be its own page"); the page 404s for anyone else.
+        ...(isSuperAdmin ? [tab("admin")] : []),
       ],
     },
   };

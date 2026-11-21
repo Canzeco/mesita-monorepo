@@ -38,7 +38,7 @@ export const PLACE_TABS = ["views", "visits", "vouchers", "stories", "gifts", "m
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 /** The tabs that are sections of General, not pages (MESITA-4534). */
-export const GENERAL_SECTIONS: readonly PlaceTab[] = ["reservations", "stories", "money", "settings", "admin"];
+export const GENERAL_SECTIONS: readonly PlaceTab[] = ["reservations", "stories", "money", "settings"];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {
   const base = `/places/${encodeURIComponent(placeId)}`;
