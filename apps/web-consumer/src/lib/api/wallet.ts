@@ -714,6 +714,9 @@ export type PayPlace = {
   paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;
   /** Cash Payments is on here (the owner's switch and a waiter code). */
   outside_ok?: boolean;
+  /** What the guest can buy here now (MESITA-4519), the card's offer
+   *  slides. Absent from an older server reads as none. */
+  offers?: { sell: string[] };
 };
 
 /** The places, credit first then nearest. `at` is rounded by the caller and
