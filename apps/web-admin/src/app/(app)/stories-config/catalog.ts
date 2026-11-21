@@ -71,3 +71,21 @@ export function emulatorStatus(on: boolean, paymentsLive: boolean, storyMode: st
 export function needsFloorConfirm(next: number, saved: number, paymentsLive: boolean): boolean {
   return paymentsLive && next < STORY_MIN_FOLLOWERS_DEFAULT && next < saved;
 }
+
+/** Stories sends the floor and nothing else, so a save there cannot clobber the emulator. */
+export function floorPatch(c: StoriesConfig): { story_min_followers: number } {
+  return { story_min_followers: c.story_min_followers };
+}
+
+/** Extra › Story sends the emulator keys and nothing else, so a save there cannot clobber the floor. */
+export function emulatorPatch(c: StoriesConfig): {
+  story_emulator: boolean;
+  story_emulator_bonus_wait_sec: number;
+  story_emulator_post_window_sec: number;
+} {
+  return {
+    story_emulator: c.story_emulator,
+    story_emulator_bonus_wait_sec: c.story_emulator_bonus_wait_sec,
+    story_emulator_post_window_sec: c.story_emulator_post_window_sec,
+  };
+}

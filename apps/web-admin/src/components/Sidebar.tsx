@@ -21,6 +21,7 @@ import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { PAYMENTS_PARENT } from "@/app/(app)/payments-config/nav";
 import { STORIES_PARENT } from "@/app/(app)/stories-config/nav";
+import { STORY_TEST_PARENT } from "@/app/(app)/story-test/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { isNavActive } from "@/lib/nav-active";
 import { FOCUS_RING_ON_DARK_CLASS } from "@/components/admin-ui";
@@ -118,8 +119,8 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
 // guests report from a place's three dots, a log like the other two.
 export const ACTIVITY_NAV: NavItem[] = [LOGS_PARENT, FEEDBACK_PARENT];
 
-// Extra — Ping probes the paid vendors. Cost is the per-place bill (MESITA-4518).
-export const EXTRA_NAV: NavItem[] = [BILLING_TEST_PARENT, COST_PARENT];
+// Extra — Ping probes the paid vendors. Story is the emulator and the settle desk (MESITA-4522). Cost is the per-place bill (MESITA-4518).
+export const EXTRA_NAV: NavItem[] = [BILLING_TEST_PARENT, STORY_TEST_PARENT, COST_PARENT];
 
 const SIDEBAR_SECTIONS: {
   id: string;
