@@ -12,14 +12,13 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
   if (body === "list") {
     // /pay (Pato, 2026-11-21, MESITA-4523: "update placeholders when loading
     // page"): the page as MESITA-4559 draws it. The white Mesita Wallet header
-    // with its Tickets icon, green Add Funds across the top, then Send Gift
-    // | Pay Bill (MESITA-4586), then the Payment method and Loyalty Cards cards on white.
+    // with its Tickets icon, green Buy Credits | purple Pay Bill
+    // (MESITA-4587), then the Payment method and Loyalty Cards cards on white.
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0" aria-busy>
         <PayHeader title="Mesita Wallet" action={<TicketsShortcut icon />} />
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <Skeleton className="col-span-2 h-24 min-w-0 rounded-xl bg-[#00D66F]/40" aria-hidden />
-          <Skeleton className="h-24 min-w-0 rounded-xl" aria-hidden />
+          <Skeleton className="h-24 min-w-0 rounded-xl bg-[#00D66F]/40" aria-hidden />
           <Skeleton className="h-24 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
         </div>
         <div className="mt-1 flex flex-1 flex-col pb-8">

@@ -4,6 +4,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, CreditCard, Plus, Smartphone } from "lucide-react";
 import { CardBrandChip } from "@/components/shared/card-brand-marks";
+import { ApplePayChip, GooglePayChip } from "./wallet-chips";
 import { brandLabel, type SavedCard } from "@/lib/api/cards";
 import { defaultMethod, isApplePhone, methodFace } from "@/lib/pay-wallet";
 import { readLastCard } from "@/lib/guest-pay-draft";
@@ -98,6 +99,13 @@ export function MethodPreview({
             chip of the same size with a glyph. A bare line icon before. */}
         {face !== "retry" && way?.kind === "card" ? (
           <CardBrandChip brand={way.card.brand} last4={way.card.last4} />
+        ) : face !== "retry" && way?.kind === "apple_pay" ? (
+          // THE WALLETS' OWN MARKS (Pato, 2026-11-21, MESITA-4587: "use google
+          // pay and apple pay icons"): the Payment methods page's chips, at
+          // the row's thumbnail size.
+          <ApplePayChip className="w-12" />
+        ) : face !== "retry" && way?.kind === "google_pay" ? (
+          <GooglePayChip className="w-12" />
         ) : (
           <span className={cn(PAY_THUMB, "bg-muted text-foreground")} aria-hidden>
             {way ? <Icon className="h-4 w-4" strokeWidth={2} /> : <Plus className="h-4 w-4" strokeWidth={2.25} />}
