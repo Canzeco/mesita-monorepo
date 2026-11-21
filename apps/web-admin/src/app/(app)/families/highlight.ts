@@ -29,6 +29,5 @@ export type TagRow = {
 export type FamiliesMap = {
   families: FamilyRow[];
   enabledCategories: GoogleCategoryRow[];
-  disabledCategories: GoogleCategoryRow[];
   tags: TagRow[];
 };

@@ -4,7 +4,8 @@
 // Categories vs Mesita Families matrix … Remove it. Delete it."
 //
 // So: the Mesita Families (the thirty the Description step picks from), every
-// Google category split by `catalog_membership.enabled`, and the tag catalog.
+// Google category Mesita allows (`catalog_membership`, the allow-list since
+// MESITA-4576), and the tag catalog.
 // No category ↔ family join is returned or stored any more.
 import type { GoogleCategory, PlaceFamily } from "./categories.ts";
 import { type PlaceTag, TAG_FACETS } from "./tags.ts";
@@ -32,10 +33,8 @@ export type FamiliesMapTag = {
 
 export type FamiliesMap = {
   families: FamiliesMapFamily[];
-  /** Google categories enabled on Mesita, by label. */
+  /** The Google categories Mesita allows, by label (MESITA-4576: no other is stored). */
   enabledCategories: FamiliesMapGoogleCategory[];
-  /** Google categories not enabled on Mesita, by label. */
-  disabledCategories: FamiliesMapGoogleCategory[];
   tags: FamiliesMapTag[];
 };
 
@@ -65,7 +64,6 @@ export function buildFamiliesMap(
         meaning: FAMILY_MEANINGS[f.slug] ?? "",
       })),
     enabledCategories: googleCategories.filter((c) => c.enabled).map(row).sort(byLabel),
-    disabledCategories: googleCategories.filter((c) => !c.enabled).map(row).sort(byLabel),
     tags: tags
       .map((tag) => {
         const facet = FACET_BY_SLUG.get(tag.facet);
