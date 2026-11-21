@@ -97,6 +97,9 @@ export type AdminPlace = {
   opentable_url: string | null;
   resy_url: string | null;
   uber_eats_url: string | null;
+  /** Foursquare's matched place (MESITA-4544) and its 0–1 popularity. */
+  foursquare_url?: string | null;
+  foursquare_popularity?: number | null;
   menu_pdf_url: string | null;
   menu_pdf_name: string | null;
   // Generic products payload — MENUS ONLY. Order + reservation routing left

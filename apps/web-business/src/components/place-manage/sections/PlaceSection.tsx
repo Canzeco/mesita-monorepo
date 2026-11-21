@@ -2,7 +2,7 @@
 
 import { type ReactNode, useMemo, useState } from "react";
 import { ClockIcon, GlobeIcon, MapPinIcon, StorefrontIcon } from "@phosphor-icons/react/dist/ssr";
-import { Globe, Star, type LucideIcon } from "lucide-react";
+import { Globe, MapPin, Star, type LucideIcon } from "lucide-react";
 import {
   type AdminPlace,
   type PlaceFieldLimits,
@@ -76,6 +76,9 @@ const CHANNELS: {
     logo: "/channels/ubereats-mark.svg",
   },
   { key: "opentable_url", label: "OpenTable", logo: "/channels/opentable.svg" },
+  // Found by the Foursquare match, never typed (MESITA-4552); its score
+  // sits where Instagram and Facebook show followers.
+  { key: "foursquare_url", label: "Foursquare", Icon: MapPin, readOnly: true },
 ];
 
 const EDITABLE_CHANNELS = CHANNELS.filter((c) => !c.readOnly);
@@ -173,6 +176,17 @@ function ChannelStat({ channel, place }: { channel: keyof AdminPlace; place: Adm
               {compactCount(count)} review{count === 1 ? "" : "s"}
             </span>
           ) : null}
+        </>
+      );
+    }
+  } else if (channel === "foursquare_url") {
+    const score = statNum(place.foursquare_popularity);
+    if (score != null) {
+      spoken = `Foursquare popularity score: ${score.toFixed(3)}`;
+      body = (
+        <>
+          <span className="text-foreground font-semibold">{score.toFixed(3)}</span>
+          <span className="truncate">score</span>
         </>
       );
     }
