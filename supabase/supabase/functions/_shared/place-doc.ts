@@ -138,6 +138,9 @@ export type PlaceProfileRow = {
   foursquare_url: string | null;
   foursquare_popularity: number | null;
   foursquare_popularity_at: string | null;
+  /** The matched place's Foursquare details, raw (MESITA-4552). Staff only. */
+  foursquare_details: unknown | null;
+  foursquare_details_at: string | null;
   instagram_followers_count: number | null;
   menu_pdf_name: string | null;
   enriched_at: string | null;
@@ -216,6 +219,8 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "foursquare_url",
   "foursquare_popularity",
   "foursquare_popularity_at",
+  "foursquare_details",
+  "foursquare_details_at",
   "instagram_followers_count",
   "menu_pdf_name",
   "enriched_at",
@@ -341,6 +346,7 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "foursquare_url",
   "enriched_at", "business_state_at",
   "foursquare_popularity_at",
+  "foursquare_details_at",
 ]);
 const PLACE_UNRANGED_NUMBER_KEYS = new Set<string>(["lat", "lng"]);
 // place_profiles_google_stars_overall_check — 0..5 inclusive, null allowed.
@@ -364,7 +370,7 @@ const PLACE_NONNEG_INT_KEYS = new Set<string>([
 // any future writer), not just the two hand-patched call sites.
 const PLACE_JSON_KEYS = new Set<string>([
   "hours", "enrichment_sources", "menus", "products", "google_address", "source_sync",
-  "google_types", "google_source_types",
+  "google_types", "google_source_types", "foursquare_details",
 ]);
 // Content-validated JSONB keys — nullable() wraps each schema because the
 // column itself is nullable and a patch clearing it to null must stay legal
