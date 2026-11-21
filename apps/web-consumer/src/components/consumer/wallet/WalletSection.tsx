@@ -12,7 +12,7 @@ import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
 import { LoyaltyCardBoxSkeleton } from "@/components/consumer/pay/PayFrameLoading";
-import { SECTION_BOX, SECTION_TITLE } from "@/components/consumer/pay/pay-sections";
+import { SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "@/components/consumer/pay/pay-sections";
 import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
 import { useStoryNow } from "./use-story-now";
@@ -255,8 +255,10 @@ export function WalletSection({
 
       {/* ONE BOX OF ROWS (MESITA-4560, /plan-design-review D1): a grey
           "Loyalty Cards" title over one white box, a hairline between places. */}
-      <p className={SECTION_TITLE}>Loyalty Cards</p>
-      <section className={SECTION_BOX} aria-label="Loyalty Cards">
+      {/* The title inside its own card on white (MESITA-4574). */}
+      <section className={SECTION_CARD} aria-label="Loyalty Cards">
+        <h2 className={SECTION_TITLE}>Loyalty Cards</h2>
+        <div className={SECTION_ROWS}>
           {lead}
           {creditsState === "rows"
             ? stories.map((s) => (
@@ -318,6 +320,7 @@ export function WalletSection({
               <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
             </button>
           ) : null}
+        </div>
       </section>
       <AddCreditsCardDialog open={addOpen} onClose={() => setAddOpen(false)} />
       {creditsState === "failed" ? (

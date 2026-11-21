@@ -31,7 +31,7 @@ import { LoyaltyCardBoxSkeleton } from "./PayFrameLoading";
 import { PayPickSheet } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
 import { MethodPreview } from "./MethodPreview";
-import { SECTION_BOX, SECTION_TITLE } from "./pay-sections";
+import { SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
@@ -326,65 +326,58 @@ export function PayPage({
         </p>
       ) : null}
 
+      {/* THREE BIG BUTTONS, STACKED (Pato, 2026-11-21, MESITA-4574: "make
+          three buttons bigger … Add Funds Green. Pay Bill purple … INSTEAD
+          OF THE UGLLY ASS BLACK BUTTONS THERE. Send Gift must also exist …
+          as a black box … Green to Add Funds, Get a Bonus. (Green color of
+          links)"): full width, 64px, 18px semibold, a 24px glyph, in his
+          order. "Add Funds, Get a Bonus" in Link green (#00D66F, the offers'
+          green, black words) opens the places that sell credits
+          (/wallet/buy); Pay Bill in Stripe purple opens the picker; Send Gift
+          in black opens the place list to gift from. Pay Bill over a black
+          Add funds | Send Gift pair, 56px, before (MESITA-4559/4560). */}
+      <PushLink
+        href={CONSUMER_ROUTES.walletBuy}
+        className={cn(BIG_BUTTON, "mt-2 bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
+        data-add-funds
+      >
+        <Plus className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
+        Add Funds, Get a Bonus
+      </PushLink>
       {payBusy ? (
-        <Skeleton className="mt-2 h-14 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
+        <Skeleton className="mt-2 h-16 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
       ) : (
         <button
           type="button"
-          className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#635BFF] text-base font-semibold text-white hover:bg-[#5249e6]"
+          className={cn(BIG_BUTTON, "mt-2 bg-[#635BFF] text-white hover:bg-[#5249e6]")}
           aria-label={bill === "open" ? "Pay your open bill" : "Pay Bill"}
           onClick={paySelected}
           data-pay-bill
         >
-          <QrCode className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-          <span className="min-w-0 text-left">
-            <span className="block">Pay Bill</span>
-          </span>
+          <QrCode className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
+          Pay Bill
         </button>
       )}
+      <PushLink
+        href={CONSUMER_ROUTES.walletSend}
+        className={cn(BIG_BUTTON, "bg-foreground text-background hover:bg-foreground/90 mt-2")}
+        data-send-gift
+      >
+        <Gift className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
+        Send Gift
+      </PushLink>
 
-      {/* ADD FUNDS | SEND GIFT, HALF AND HALF (MESITA-4559): black. ONE
-          SIZE (Pato, 2026-11-21, MESITA-4560: "standardize the sizes of the
-          buttons"): Pay Bill and these two are all 56px, 16px semibold, a
-          20px glyph; purple alone marks Pay Bill as the main action (it was
-          96px). Add funds opens the
-          places that sell credits (/wallet/buy, MESITA-4096); Send Gift the
-          place list to gift from. Send Gift alone, full width, before
-          (MESITA-4520). */}
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <PushLink
-          href={CONSUMER_ROUTES.walletBuy}
-          className="bg-foreground text-background hover:bg-foreground/90 flex h-14 min-w-0 items-center justify-center gap-2 rounded-xl text-base font-semibold"
-          data-add-funds
-        >
-          <Plus className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-          Add funds
-        </PushLink>
-        <PushLink
-          href={CONSUMER_ROUTES.walletSend}
-          className="bg-foreground text-background hover:bg-foreground/90 flex h-14 min-w-0 items-center justify-center gap-2 rounded-xl text-base font-semibold"
-          data-send-gift
-        >
-          <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-          Send Gift
-        </PushLink>
-      </div>
-
-      {/* THE CARDS SIT ON GREY (Pato, 2026-11-21, MESITA-4525: "make the
-          background where the cards exist gray, the cards items white, but
-          its container gray"): from under Send Gift to the bottom of the
-          page, a grey ground; the boxes stay white. "A bit darker" (Pato,
-          MESITA-4532): bg-border, Home's family-column grey, no hairline
-          needed at its edge; bg-background (Me's ground) was too faint. A
-          lone hairline (MESITA-4520) before. */}
-      <div className="bg-border -mx-2 mt-3 flex flex-1 flex-col px-2 pb-8" data-pay-cards>
-      {/* PAYMENT METHOD, THEN LOYALTY CARDS (Pato, 2026-11-21, MESITA-4560:
-          "a card that says payment method, and below a box that says loyalty
-          cards"): each a grey title over one white box. */}
-      <p className={SECTION_TITLE}>Payment method</p>
-      <div className={SECTION_BOX}>
-        <MethodPreview row />
-      </div>
+      {/* ALL WHITE (Pato, 2026-11-21, MESITA-4574: "MAKE ALL BACKGROUND
+          WHITE"): the cards sit on the page's own white, each with its
+          border. The grey ground under the buttons (MESITA-4525/4532) is
+          gone. */}
+      <div className="mt-1 flex flex-1 flex-col pb-8" data-pay-cards>
+      <section className={SECTION_CARD} aria-label="Payment method">
+        <h2 className={SECTION_TITLE}>Payment method</h2>
+        <div className={SECTION_ROWS}>
+          <MethodPreview row />
+        </div>
+      </section>
       {loc.state === "prime" ? (
         <div className="border-border bg-card mt-2 rounded-xl border p-3">
           <p className="text-sm font-semibold">See places near you</p>
@@ -477,6 +470,10 @@ function PlaceRows({
     </>
   );
 }
+
+/** Pay's three big buttons (MESITA-4574): one size. */
+const BIG_BUTTON =
+  "flex h-16 w-full items-center justify-center gap-2.5 rounded-xl text-lg font-semibold transition active:scale-[0.99]";
 
 /** Pay Bill's shape while the open-bill read runs, so a bill that is open
  *  never flashes the black button first. */
