@@ -334,8 +334,13 @@ export function PayPage({
               aria-label={bill === "open" ? "Pay your open bill" : `Pay Bill at ${selectedName}`}
               onClick={paySelected}
             >
-              <QrCode className="h-8 w-8" strokeWidth={2.25} aria-hidden />
-              Pay Bill
+              <QrCode className="h-8 w-8 shrink-0" strokeWidth={2.25} aria-hidden />
+              <span className="min-w-0 text-left">
+                <span className="block">Pay Bill</span>
+                {bill !== "open" && selectedName !== "this place" ? (
+                  <span className="block max-w-[16rem] truncate text-sm">{selectedName}</span>
+                ) : null}
+              </span>
             </button>
           )
         ) : null}
