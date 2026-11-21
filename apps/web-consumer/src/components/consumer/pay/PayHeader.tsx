@@ -1,3 +1,4 @@
+import { MesitaMark } from "@/components/brand/MesitaMark";
 import { BAR } from "@/components/consumer/search/header-classes";
 import type { ReactNode } from "react";
 
@@ -41,14 +42,23 @@ export function PayHeader({
       </div>
     );
   }
+  // THE APP'S OWN PAGE HEADER (Pato, 2026-11-21, MESITA-4525: "that header
+  // looks like shit. call it Mesita Wallet … improve size"): Screen's shape,
+  // 60px (8px over and under a 44px row), the title centred at 20px
+  // semibold with the Mesita mark before it, a hairline under it. It was
+  // 52px with an 18px bold title at the left (MESITA-4087).
   return (
     <div
       className="border-border bg-card sticky top-0 z-10 -mx-2 border-b"
       data-page-band
     >
-      <div className="flex min-h-9 items-center justify-between gap-3 px-4 py-2">
-        <h1 className="text-lg font-bold tracking-tight">{title}</h1>
-        {action}
+      <div className="grid min-h-11 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-3 py-2">
+        <span aria-hidden />
+        <h1 className="flex min-h-11 min-w-0 items-center justify-center gap-2 text-xl font-semibold tracking-tight">
+          <MesitaMark className="h-6 w-6 shrink-0" />
+          <span className="min-w-0 truncate">{title}</span>
+        </h1>
+        <div className="flex justify-end">{action}</div>
       </div>
       {bar ? (
         <div className="border-border border-t px-4 py-2" data-pay-search>

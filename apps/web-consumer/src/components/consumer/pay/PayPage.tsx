@@ -295,7 +295,7 @@ export function PayPage({
           is clearer"). Payment Method and Tickets dark, then Pay Bill in
           Stripe purple again (Pato, MESITA-4523: "Pay Bill must be purple";
           black for one deploy, MESITA-4520), then Send Gift. */}
-      <PayHeader title="Wallet" />
+      <PayHeader title="Mesita Wallet" />
       <div className="mt-2 flex gap-2">
         <MethodPreview wide />
         <TicketsShortcut wide />
