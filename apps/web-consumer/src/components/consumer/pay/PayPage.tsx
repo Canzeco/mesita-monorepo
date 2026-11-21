@@ -356,10 +356,11 @@ export function PayPage({
       {/* THE CARDS SIT ON GREY (Pato, 2026-11-21, MESITA-4525: "make the
           background where the cards exist gray, the cards items white, but
           its container gray"): from under Send Gift to the bottom of the
-          page, the page grey (bg-background, Me's ground) with a hairline at
-          its top edge; the boxes stay white. A lone hairline (MESITA-4520)
-          before. */}
-      <div className="bg-background border-border -mx-2 mt-3 flex flex-1 flex-col border-t px-2 pt-1 pb-8" data-pay-cards>
+          page, a grey ground; the boxes stay white. "A bit darker" (Pato,
+          MESITA-4532): bg-border, Home's family-column grey, no hairline
+          needed at its edge; bg-background (Me's ground) was too faint. A
+          lone hairline (MESITA-4520) before. */}
+      <div className="bg-border -mx-2 mt-3 flex flex-1 flex-col px-2 pt-1 pb-8" data-pay-cards>
       {loc.state === "prime" ? (
         <div className="border-border bg-card mt-2 rounded-xl border p-3">
           <p className="text-sm font-semibold">See places near you</p>

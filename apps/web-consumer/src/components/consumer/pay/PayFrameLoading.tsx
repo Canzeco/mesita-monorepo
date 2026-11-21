@@ -21,7 +21,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
         </div>
         <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
         <Skeleton className="mt-2 h-14 w-full rounded-xl" aria-hidden />
-        <div className="bg-background border-border -mx-2 mt-3 flex flex-1 flex-col gap-2 border-t px-2 pt-3 pb-8">
+        <div className="bg-border -mx-2 mt-3 flex flex-1 flex-col gap-2 px-2 pt-3 pb-8">
           <LoyaltyCardBoxSkeleton />
           <LoyaltyCardBoxSkeleton />
           <LoyaltyCardBoxSkeleton />
