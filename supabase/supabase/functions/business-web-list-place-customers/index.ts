@@ -63,6 +63,7 @@ serveJson("business-web-list-place-customers", async (req) => {
     owed_cents: Number(r.owed_cents ?? 0),
     last_seen: r.last_seen,
     guest: maskGuest(r.guest_name as string | null, r.guest_email as string | null),
+    face: r.face ?? null,
   }));
   return json({
     ok: true,
