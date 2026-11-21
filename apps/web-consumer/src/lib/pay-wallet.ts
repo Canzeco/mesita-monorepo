@@ -1,6 +1,55 @@
 // Wallet's Pay Here and Method (MESITA-4485). A failed bill read must not
 // look like a clear bill, and a missing card list must not look like Add card.
 
+import { isExpired, payMethodOf, type PayMethod, type SavedCard } from "@/lib/api/cards";
+import { pickCard } from "@/lib/pay-cards";
+
+// THE DEFAULT WAY TO PAY (MESITA-4526). One answer for the Wallet header,
+// the Payment methods page and checkout:
+//
+//   stored apple_pay/google_pay, in this browser  -> that wallet
+//   stored card, a wallet not in this browser, or never chosen
+//                                                 -> the default card
+//   no usable card                                -> null ("Add payment method")
+//
+// The default card is the one checkout preselects: the remembered card if it
+// is still saved and not expired, else the first non-expired one (Stripe's
+// order, newest first).
+
+export type DefaultMethod = { kind: "card"; card: SavedCard } | { kind: "apple_pay" } | { kind: "google_pay" } | null;
+
+/** Whether this browser is Apple's (Apple Pay, no Google Pay button). The
+ *  only test the app has without a place's Stripe element (MESITA-4397). */
+export function isApplePhone(): boolean {
+  return typeof window !== "undefined" && "ApplePaySession" in window;
+}
+
+/** Whether a phone wallet can be used in this browser. */
+export function walletInBrowser(wallet: "apple_pay" | "google_pay", applePhone: boolean): boolean {
+  return (wallet === "apple_pay") === applePhone;
+}
+
+/** The card checkout preselects: remembered if still usable, else the first
+ *  non-expired one, else none. */
+export function defaultCard(cards: SavedCard[], remembered: string | null, now: Date = new Date()): SavedCard | null {
+  const usable = cards.filter((c) => !isExpired(c, now));
+  const id = pickCard(usable, remembered);
+  return usable.find((c) => c.id === id) ?? null;
+}
+
+export function defaultMethod(
+  stored: unknown,
+  cards: SavedCard[],
+  applePhone: boolean,
+  remembered: string | null = null,
+  now: Date = new Date(),
+): DefaultMethod {
+  const s: PayMethod | null = payMethodOf(stored);
+  if ((s === "apple_pay" || s === "google_pay") && walletInBrowser(s, applePhone)) return { kind: s };
+  const card = defaultCard(cards, remembered, now);
+  return card ? { kind: "card", card } : null;
+}
+
 export type BillRead = "loading" | "clear" | "open" | "unknown";
 
 /** Clear only after a successful visits read, every local id resolved, and

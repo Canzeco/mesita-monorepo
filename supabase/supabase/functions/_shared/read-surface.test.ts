@@ -341,6 +341,10 @@ const CONSUMER_READ_ALLOWLIST = [
   // (appear_anonymous hides the photo; a closed account shows nothing).
   // Read-only, error logged.
   "consumer-web-get-gift-preview/index.ts",
+  // Payment methods (MESITA-4526): the caller's OWN pay_method, the default
+  // way to pay. Read-only, error logged (null falls back to the card).
+  // Writes go through the consumer_set_pay_method RPC.
+  "_shared/cards.ts",
 ];
 
 Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist", async () => {

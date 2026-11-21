@@ -9,7 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isStoryGateReason, placeMoneyFrom, type PlaceMoney, type StoryCheckAnswer, type VoucherKey } from "@mesita/place-profile";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { invokeEF } from "./_invoke";
-import type { SavedCard } from "./cards";
+import type { PayMethod, SavedCard } from "./cards";
 
 /** The screen cache's key for the Wallet read (lib/screen-cache.ts): Me ›
  *  Tickets, a credit movement's page and the Loyalty Card share one answer, so
@@ -198,6 +198,8 @@ export type Wallet = {
    *  /wallet page paints once from one read). Null: Stripe failed, the money
    *  is still here. Absent when not asked. */
   cards?: SavedCard[] | null;
+  /** The default way to pay (MESITA-4526), with `withCards` only. */
+  pay_method?: PayMethod | null;
 };
 
 export async function apiGetWallet(

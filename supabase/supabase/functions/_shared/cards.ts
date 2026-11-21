@@ -69,6 +69,27 @@ export async function listCards(stripe: StripeCall, customer: string, inUse: Rea
   return data.map((pm) => cardOf(pm, inUse)).filter((c): c is SavedCard => c !== null);
 }
 
+/** The guest's default way to pay (MESITA-4502 column, read since
+ *  MESITA-4526): card, apple_pay or google_pay. Null means never chosen,
+ *  which reads as the saved card when one exists. */
+export type PayMethod = "card" | "apple_pay" | "google_pay";
+
+/** A stored value as a PayMethod; anything else is null. */
+export function payMethodOf(value: unknown): PayMethod | null {
+  return value === "card" || value === "apple_pay" || value === "google_pay" ? value : null;
+}
+
+/** consumers.pay_method for one guest. A failed read is null (the default
+ *  then falls back to the card) and is logged, never thrown. */
+export async function readPayMethod(admin: SupabaseClient, consumerId: string): Promise<PayMethod | null> {
+  const { data, error } = await admin.from("consumers").select("pay_method").eq("id", consumerId).maybeSingle();
+  if (error) {
+    console.error("[readPayMethod]", JSON.stringify({ error: error.message }));
+    return null;
+  }
+  return payMethodOf((data as { pay_method?: unknown } | null)?.pay_method);
+}
+
 /** Cards a live Premier pledge of this guest renews with (open or ready). */
 export async function premierCards(admin: SupabaseClient, consumerId: string): Promise<Set<string>> {
   const { data, error } = await admin

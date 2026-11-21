@@ -1,5 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { addFundsOn, billRead, methodFace, payHere } from "@/lib/pay-wallet";
+import { addFundsOn, billRead, defaultMethod, methodFace, payHere } from "@/lib/pay-wallet";
+import type { SavedCard } from "@/lib/api/cards";
+
+// MESITA-4526: the default way to pay decides which card or wallet checkout
+// charges, so a wrong answer is a wrong charge.
+describe("The default way to pay", () => {
+  const now = new Date("2026-11-21T12:00:00Z");
+  const card = (id: string, exp_year = 2030, exp_month = 8): SavedCard => ({ id, brand: "visa", last4: id.slice(-4), exp_month, exp_year, in_use: false });
+  const a = card("pm_aaaa");
+  const b = card("pm_bbbb");
+  const old = card("pm_old0", 2025, 1);
+
+  it("a stored card, or nothing stored, is the first usable card", () => {
+    expect(defaultMethod("card", [a, b], false, null, now)).toEqual({ kind: "card", card: a });
+    expect(defaultMethod(null, [a, b], false, null, now)).toEqual({ kind: "card", card: a });
+    expect(defaultMethod("junk", [a], false, null, now)).toEqual({ kind: "card", card: a });
+  });
+
+  it("the remembered card wins while it is saved and usable; a removed one falls back", () => {
+    expect(defaultMethod("card", [a, b], false, "pm_bbbb", now)).toEqual({ kind: "card", card: b });
+    expect(defaultMethod("card", [a], false, "pm_bbbb", now)).toEqual({ kind: "card", card: a });
+    expect(defaultMethod("card", [old, a], false, "pm_old0", now)).toEqual({ kind: "card", card: a });
+  });
+
+  it("an expired card is never the default; no usable card is null", () => {
+    expect(defaultMethod("card", [old], false, null, now)).toBeNull();
+    expect(defaultMethod("card", [], false, null, now)).toBeNull();
+    expect(defaultMethod(null, [], false, null, now)).toBeNull();
+  });
+
+  it("a stored wallet is the default only in a browser that has it", () => {
+    expect(defaultMethod("apple_pay", [a], true, null, now)).toEqual({ kind: "apple_pay" });
+    expect(defaultMethod("apple_pay", [a], false, null, now)).toEqual({ kind: "card", card: a });
+    expect(defaultMethod("google_pay", [], false, null, now)).toEqual({ kind: "google_pay" });
+    expect(defaultMethod("google_pay", [a], true, null, now)).toEqual({ kind: "card", card: a });
+    expect(defaultMethod("google_pay", [], true, null, now)).toBeNull();
+  });
+});
 
 describe("Pay while a bill may be open", () => {
   it("only a clear read starts a checkout; an open bill is where every Pay lands", () => {

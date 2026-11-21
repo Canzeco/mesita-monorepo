@@ -152,6 +152,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       walletGift: { prefix: "/wallet/gift/" },
       // Add a card, its own page (MESITA-4092).
       walletAddCard: "/wallet/cards/new",
+      walletMethods: "/wallet/methods",
       // Buy Credits and Send Gift pick a place first (MESITA-4096).
       walletBuy: "/wallet/buy",
       walletSend: "/wallet/send",

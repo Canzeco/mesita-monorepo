@@ -1,7 +1,20 @@
 // MESITA-3523: a remove trusts no payment method id from the browser, and a
 // card Premier renews with is never detached from under it.
 import { assertEquals } from "jsr:@std/assert@1";
-import { addCardCheck, cardSetupIntentParams, MAX_CARDS, removeCheck } from "./cards.ts";
+import { addCardCheck, cardSetupIntentParams, MAX_CARDS, payMethodOf, removeCheck } from "./cards.ts";
+
+// MESITA-4526: a stored default reads as itself; anything else is null, which
+// falls back to the saved card.
+Deno.test("payMethodOf keeps the three ways and drops everything else", () => {
+  assertEquals(payMethodOf("card"), "card");
+  assertEquals(payMethodOf("apple_pay"), "apple_pay");
+  assertEquals(payMethodOf("google_pay"), "google_pay");
+  assertEquals(payMethodOf(null), null);
+  assertEquals(payMethodOf(undefined), null);
+  assertEquals(payMethodOf("cash"), null);
+  assertEquals(payMethodOf(""), null);
+  assertEquals(payMethodOf(1), null);
+});
 
 Deno.test("removeCheck refuses a card on another customer", () => {
   const r = removeCheck({ id: "pm_1", customer: "cus_other" }, "cus_me", new Set());

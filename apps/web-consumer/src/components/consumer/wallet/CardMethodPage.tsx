@@ -12,7 +12,8 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { CardBody } from "./MethodSheet";
 import { useWallet } from "./use-wallet";
 
-/** /wallet/cards/<id> — one saved card (MESITA-4112). Remove goes back to Pay. */
+/** /wallet/cards/<id> — one saved card (MESITA-4112). Remove goes back to
+ *  Payment methods, its opener since MESITA-4526. */
 export function CardMethodPage({ cardId }: { cardId: string }) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
@@ -26,7 +27,7 @@ export function CardMethodPage({ cardId }: { cardId: string }) {
       toast.success("Card removed.");
       setGone(true);
       reread();
-      goBack(router, CONSUMER_ROUTES.pay);
+      goBack(router, CONSUMER_ROUTES.walletMethods);
     } catch (err) {
       const code = err instanceof EFError ? err.code : null;
       toast.error((code && CARD_REFUSAL[code]) || "Something went wrong. Try again.");
