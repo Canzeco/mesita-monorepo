@@ -85,7 +85,6 @@ import { useServerProfile, useViewer } from "@/lib/identity-context";
 import { trackEvent } from "@/lib/analytics/track";
 import {
   useUserLocation,
-  useUserLocationSettled,
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { useCreatedPlaces, withCreatedPlaces } from "@/lib/created-places";
@@ -101,7 +100,6 @@ import { ROW_LIST } from "./place-grid-classes";
 import { PlaceRowCard } from "./PlaceRowCard";
 import { useLiveReservations } from "@/lib/use-live-reservations";
 import { useActiveLocation } from "@/lib/active-location";
-import { LocationChooser, takeLastChoiceSource } from "./LocationChooser";
 import { cn, errMsg } from "@/lib/utils";
 
 // Social is the second tab, and a big one: it loads when that tab first
@@ -296,37 +294,11 @@ export function savedPlaceList(
 /* NO LOCATION, NO FEED (Pato, 2026-11-21, MESITA-4542: "make location
  * selector mandatory. don't say, if you don't have any location, go to
  * popular. NO."). With no point every ranking chip (Nearby, Popular, each
- * family) shows the location chooser in the Places body, the header sheet's
- * own body (LocationChooser), and sends no request; the catalog EF refuses a
- * rank with no point too. Saved and Social never gate. This reverses
+ * family) sends no request and waits on the skeleton, under the app's
+ * location gate (MESITA-4589, Pato: "YOU CANNOT USE MESITA IF YOU DON'T
+ * SELECT A LOCATION"); the catalog EF refuses a rank with no point too. Saved and Social never gate. This reverses
  * MESITA-2472 ("no location is not a dead end": Popular ranked with
  * Proximity abstaining) and MESITA-4454's "See Popular". */
-
-/** The browser has answered its FIRST ask this page load (MESITA-4542, eng
- *  review F1). Only before that does a missing point draw the tile skeleton:
- *  `settled` goes false again during any later ask, and keying on it would
- *  swap the chooser for the skeleton (and remount it) on a "Use my
- *  location" tap. A module latch: Home's layout outlives tab switches. */
-const gate = { answered: false, shown: false, chosen: false };
-
-function noteAnswered(settled: boolean): boolean {
-  if (settled) gate.answered = true;
-  return gate.answered;
-}
-
-/** The gate's two events, once per page load each (MESITA-4542, V3): the
- *  share of guests shown the chooser who then pick a location. */
-function noteGateShown(): boolean {
-  if (gate.shown) return false;
-  gate.shown = true;
-  return true;
-}
-
-function noteGateChosen(): boolean {
-  if (!gate.shown || gate.chosen) return false;
-  gate.chosen = true;
-  return true;
-}
 
 /** Each chip's scroll offset, for the tab session (MESITA-4454, H3). */
 const chipScroll = new Map<string, number>();
@@ -347,14 +319,11 @@ export function CatalogRails() {
   const [retry, setRetry] = useState(0);
   // null = the guest's current location; a saved location = search from it.
   const origin = useActiveLocation();
-  const locationSettled = useUserLocationSettled();
   // NO RADIUS (MESITA-2909): the Catalog ranks every Mesita place from
   // this point; a saved pin's radius no longer cuts anything. No point at
   // all: no rank, the chooser instead (MESITA-4542).
   const here = origin ?? coords ?? null;
   const hereKey = here ? `${here.lat},${here.lng}` : "none";
-  // The skeleton waits only for the browser's first answer (eng review F1).
-  const firstAnswerSeen = noteAnswered(locationSettled);
   // The tab is the address (MESITA-2597); this component lives in Home's
   // layout, so the chip, the pool and the scroll survive a tab switch.
   const tab = homeTabOf(usePathname() ?? CONSUMER_ROUTES.home);
@@ -671,23 +640,17 @@ export function CatalogRails() {
     if (tab !== "places" || !scrollerRef.current) return;
     scrollerRef.current.scrollTop = chipScroll.get(chip) ?? 0;
   }, [chip, tab]);
-  // THE GATE'S EVENTS AND THE LANDING (MESITA-4542). Shown once per page
-  // load when the chooser first draws; chosen once, when the point appears
-  // after it was shown, by whatever route (inline, header sheet, a late
-  // device fix: no note = `device`). The chosen place's feed starts at the
-  // top: the chip's stored offset is from before the gate.
-  const showGate = tab === "places" && noPoint && firstAnswerSeen;
-  useEffect(() => {
-    if (showGate && noteGateShown()) trackEvent(supabase, "location_gate_shown", { chip });
-    // `chip` is context for the first draw only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showGate, supabase]);
+  // THE LANDING (MESITA-4542): a location chosen under the app's location
+  // gate (MESITA-4589) opens the feed at the top; the chip's stored offset
+  // is from before it.
+  const hadPoint = useRef(here !== null);
   useLayoutEffect(() => {
-    if (here === null || !noteGateChosen()) return;
-    trackEvent(supabase, "location_gate_chosen", { source: takeLastChoiceSource(), chip });
+    const had = hadPoint.current;
+    hadPoint.current = here !== null;
+    if (had || here === null) return;
     chipScroll.delete(chip);
     if (scrollerRef.current) scrollerRef.current.scrollTop = 0;
-    // Fires on the null → point transition only (noteGateChosen guards it).
+    // Fires on the null → point transition only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hereKey]);
   const pill = (c: { key: string; label: string; emoji: string }, inMenu: boolean) => {
@@ -802,9 +765,11 @@ export function CatalogRails() {
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       {tabs}
-      {tab === "places" ? strip : null}
+      {/* NO LOCATION, NO FAMILIES (Pato, 2026-11-21, MESITA-4589: "if no
+          location, don't even show the families carousel"). */}
+      {tab === "places" && here !== null ? strip : null}
       <div className="relative flex min-h-0 flex-1">
-        {tab === "places" ? menu : null}
+        {tab === "places" && here !== null ? menu : null}
         {/* ISOLATE: the rows' own z-10 (the offer and Save · Share over the
             card's stretched link, MESITA-3797) stays inside this pane. */}
         <div
@@ -881,23 +846,9 @@ export function CatalogRails() {
   }
 
   // THE ORDER IS THE RULE (MESITA-4542): Social returned above, then Saved,
-  // and only now the point. No point and no first answer yet: the tile
-  // skeleton (Pato, MESITA-2701: "the placeholders must be similar to the
-  // page you are loading"). No point after that: the chooser, one instance
-  // at this spot for every ranking chip, so a typed search or an open pin
-  // step survives a chip switch; its pin step covers the Places body.
-  if (noPoint) {
-    if (!firstAnswerSeen) return shell(waiting);
-    return shell(
-      <div className="bg-border flex flex-1 flex-col justify-center p-4" data-places-location-gate>
-        <LocationChooser
-          inline
-          onDone={() => {}}
-          pickerClassName="bg-card absolute inset-0 z-20 flex flex-col overscroll-contain"
-        />
-      </div>,
-    );
-  }
+  // and only now the point. No point: the tile skeleton, under the app's
+  // location gate (MESITA-4589), which asks for one over every screen.
+  if (noPoint) return shell(waiting);
 
   if (failed) {
     return shell(

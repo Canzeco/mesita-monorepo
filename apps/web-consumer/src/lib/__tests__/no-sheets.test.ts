@@ -63,6 +63,10 @@ export const CONFIRM_FILES = [
 const SHEET_ALLOWLIST = [
   "components/consumer/pay/PayPick.tsx",
   "components/consumer/home/LocationPicker.tsx",
+  // The app-wide location gate's button opens the locations sheet (Pato,
+  // 2026-11-21, MESITA-4589: "you click the button and you open a modal for
+  // the locations").
+  "components/consumer/LocationGate.tsx",
 ];
 
 /** Non-confirm dialogs that become pages (MESITA-4112/4113). Only shrinks. */
