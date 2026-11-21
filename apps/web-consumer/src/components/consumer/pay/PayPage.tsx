@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Clock, Gift, Plus, QrCode } from "lucide-react";
+import { Clock, Plus, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -342,11 +342,16 @@ export function PayPage({
           grid; the green tile spans both columns and says the whole "Add
           Funds, Get a Bonus"; Pay Bill and Send Gift share the second row.
           Every tile 88px, the glyph over the word. Three in one row for one
-          deploy (MESITA-4579). */}
+          deploy (MESITA-4579). TWO BUTTONS, HALF AND HALF (Pato, 2026-11-21,
+          MESITA-4584: "for the moment don't mention send gift there … Add
+          Funds get a bonus at the left, Pay bill at the right. lets keep it
+          simple"): green "Add Funds, Get a Bonus" left (two lines), purple
+          Pay Bill right. Send Gift is off Pay; /wallet/send and the Loyalty
+          Card's Send Gift stay. */}
       <div className="mt-2 grid grid-cols-2 gap-2">
         <PushLink
           href={CONSUMER_ROUTES.walletBuy}
-          className={cn(TILE, "col-span-2 bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
+          className={cn(TILE, "bg-[#00D66F] text-center leading-tight text-neutral-950 hover:bg-[#00c265]")}
           data-add-funds
         >
           <Plus className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
@@ -366,14 +371,6 @@ export function PayPage({
             Pay Bill
           </button>
         )}
-        <PushLink
-          href={CONSUMER_ROUTES.walletSend}
-          className={cn(TILE, "bg-foreground text-background hover:bg-foreground/90")}
-          data-send-gift
-        >
-          <Gift className="h-6 w-6 shrink-0" strokeWidth={2.25} aria-hidden />
-          Send Gift
-        </PushLink>
       </div>
 
       {/* ALL WHITE (Pato, 2026-11-21, MESITA-4574: "MAKE ALL BACKGROUND
