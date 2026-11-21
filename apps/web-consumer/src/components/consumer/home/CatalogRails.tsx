@@ -498,6 +498,7 @@ export function CatalogRails() {
         filling.current = tag;
         void apiFillAreaPool(supabase, rankedFrom, families, ids, {
           rankMode: fillMode,
+          laneOf: pool.laneOf,
           adIds,
         })
           .then((filled) => {

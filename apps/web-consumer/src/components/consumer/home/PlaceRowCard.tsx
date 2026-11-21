@@ -43,16 +43,28 @@ function scoreNumber(n: number | null | undefined): string {
  * page's shuffle and its shown position ("#3 → 1st"), and "Ad" on an
  * ad-slot row. The Lane line names the place's lane (MESITA-4465, Pato:
  * "mention the lane too, if organic or inorganic"): Inorganic in an
- * inorganic slot, Organic otherwise. No `area`, no label.
+ * inorganic slot, the Family lane's name on a family chip (MESITA-4517),
+ * Organic otherwise. Google and Foursquare (raw score, then its
+ * multiplier; "—" when missing) are Popularity's two halves (MESITA-4517).
+ * No `area`, no label.
  * TO REMOVE: delete this and its one use.
  */
+/** A lane key's name on the tag (MESITA-4517). */
+const LANE_NAMES: Record<string, string> = {
+  catalogFamilyClose: "Family close",
+  catalogFamilyWellKnown: "Family well known",
+  catalogFamilyBoth: "Family both",
+};
+
 function ScoreLabel({
   area,
   ad,
+  lane,
   rank,
 }: {
   area: Place["area"];
   ad: boolean;
+  lane?: string;
   rank?: { pre: number | null; shown: number } | null;
 }) {
   if (!area) return null;
@@ -62,7 +74,15 @@ function ScoreLabel({
       : ordinal(rank.shown)
     : null;
   const rows: Array<[string, string]> = [
-    ["Lane", ad ? "Inorganic" : "Organic"],
+    ["Lane", ad ? "Inorganic" : (lane && LANE_NAMES[lane]) || "Organic"],
+    // Popularity = Google × the Foursquare boost (MESITA-4515, MESITA-4517).
+    ...(area.google !== undefined ? [["Google", scoreNumber(area.google)] as [string, string]] : []),
+    ...(area.foursquare
+      ? [[
+        "Foursquare",
+        `${area.foursquare.raw === null ? "—" : scoreNumber(area.foursquare.raw)} ×${scoreNumber(area.foursquare.boost)}`,
+      ] as [string, string]]
+      : []),
     ["Popularity", scoreNumber(area.signals.popularity)],
     ["Proximity", scoreNumber(area.signals.proximity)],
     ["Premier", `×${scoreNumber(area.premierBoost ?? area.selectedFactor ?? 1)}`],
@@ -245,7 +265,7 @@ export function PlaceRowCard({
               </span>
             </div>
           )}
-          <ScoreLabel area={place.area} ad={ad} rank={rank} />
+          <ScoreLabel area={place.area} ad={ad} lane={place.lane} rank={rank} />
         </>,
         cn(ROW_PHOTO, "block", focus),
         `Open ${place.name}`,

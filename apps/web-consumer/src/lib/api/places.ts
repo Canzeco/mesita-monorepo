@@ -98,6 +98,9 @@ export type Place = {
    *  organic slot has no `ad`. list-places and a Catalog fill send it; Home
    *  reads the rank's `adIds` instead (`isAdPlace`). */
   ad?: true;
+  /** The Catalog lane that scored this card (MESITA-4517), a recipe row
+   *  key such as `catalogFamilyClose`; absent from an older EF. */
+  lane?: string;
   /** The Search map's score for this place (MESITA-2504 debug): the two
    *  signals, the sources that found it and the product. Only list-places
    *  sends it. */
@@ -357,6 +360,11 @@ export type AreaDiagnostics = {
   premierBoost?: number;
   /** The half distance Proximity read (km); absent from an older EF. */
   halfKm?: number | null;
+  /** Popularity's halves (MESITA-4517, the dev score tag): Google before
+   *  the boost, and Foursquare's raw 0–1 score with its multiplier.
+   *  Absent from an older EF. */
+  google?: number | null;
+  foursquare?: { raw: number | null; boost: number };
   final: number;
   formula: "point" | "none";
 };
@@ -390,6 +398,9 @@ export type AreaPool = {
   /** id → its 1-based merged rank before the first page's shuffle (M-c);
    *  the temporary score label reads "#3 → 1st" from it (H1). */
   preShuffle: Record<string, number>;
+  /** id → the lane the rank wove it from (MESITA-4517); each fill sends
+   *  its ids' entries back so cards score by their lane. */
+  laneOf?: Record<string, string>;
   /** The config row's `updatedAt` the rank read (DX-b); absent from an
    *  older EF. */
   updatedAt?: string | null;
@@ -438,6 +449,7 @@ export async function apiListAreaPool(
     lanes?: unknown;
     adIds?: unknown;
     preShuffle?: unknown;
+    laneOf?: unknown;
     updatedAt?: unknown;
     rankMode?: unknown;
   }>(client, "consumer-web-list-catalog", {
@@ -486,10 +498,21 @@ export async function apiListAreaPool(
     ...(opts.rankMode ? { rankMode: opts.rankMode } : {}),
     adIds: ads.adIds,
     preShuffle: readPreShuffle(data.preShuffle),
+    laneOf: readLaneOf(data.laneOf),
     ...(typeof data.updatedAt === "string" || data.updatedAt === null
       ? { updatedAt: data.updatedAt }
       : {}),
   };
+}
+
+/** `laneOf` as id → lane key; anything else is dropped. */
+function readLaneOf(raw: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [id, k] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof k === "string") out[id] = k;
+  }
+  return out;
 }
 
 /** `preShuffle` as id → positive integer rank; anything else is dropped. */
@@ -514,13 +537,17 @@ export async function apiFillAreaPool(
   rankedFrom: AreaOrigin | null,
   familyKeys: readonly string[],
   ids: readonly string[],
-  opts: { rankMode?: RankMode; adIds?: readonly string[] } = {},
+  opts: { rankMode?: RankMode; adIds?: readonly string[]; laneOf?: Readonly<Record<string, string>> } = {},
 ): Promise<Place[]> {
+  const laneOf = Object.fromEntries(
+    ids.flatMap((id) => (opts.laneOf?.[id] ? [[id, opts.laneOf[id]] as const] : [])),
+  );
   const data = await invokeEF<{ places?: Place[] }>(client, "consumer-web-list-catalog", {
     unified: true,
     fill: [...ids],
     ...(opts.rankMode ? { rankMode: opts.rankMode } : {}),
     ...(opts.adIds && opts.adIds.length > 0 ? { adIds: [...opts.adIds] } : {}),
+    ...(Object.keys(laneOf).length > 0 ? { laneOf } : {}),
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
     ...(rankedFrom ? { lat: rankedFrom.lat, lng: rankedFrom.lng } : {}),
   });

@@ -154,6 +154,15 @@ function pool(
         temperature: { nearby: t, family: t, popular: t },
         adEvery: opts.adEvery ?? 1,
       },
+      // The first page is the first weave (MESITA-4517): the Popular
+      // Organic lane's batch stands in for the old page size.
+      recipes: {
+        ...DISCOVERY_DEFAULTS.params.recipes,
+        catalogPopularOrganic: {
+          ...DISCOVERY_DEFAULTS.params.recipes.catalogPopularOrganic,
+          batch: opts.pageSize ?? 100,
+        },
+      },
     },
   };
   const run = selectCatalogPool({
@@ -257,7 +266,13 @@ Deno.test("catalog_rank_lanes' arguments are the mode's two recipe rows, the gat
   assertEquals(popular.p_organic_half_km, cfg.params.recipes.catalogPopularOrganic.halfKm);
   assertEquals(
     catalogRankLanesArgs(cfg, resolveAreaLocation(CENTER, null), ["tacos"], "family").p_organic_half_km,
-    cfg.params.recipes.catalogFamilyOrganic.halfKm,
+    cfg.params.recipes.catalogFamilyWellKnown.halfKm,
+  );
+  // Family's close lane ranks with its own row (MESITA-4517).
+  assertEquals(
+    catalogRankLanesArgs(cfg, resolveAreaLocation(CENTER, null), ["tacos"], "family", "catalogFamilyClose")
+      .p_organic_half_km,
+    cfg.params.recipes.catalogFamilyClose.halfKm,
   );
   // `nearest` keeps catalog_rank's old arguments: distance alone, no variety.
   const nearest = catalogNearestArgs(cfg, resolveAreaLocation(CENTER, null), []);

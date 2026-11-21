@@ -22,10 +22,15 @@
 // (`catalog_rank_lanes`) ranks the Organic lane (every place; the n-th of a
 // kind × `params.variety.repeat`^(n − 1), off on Nearby) and the Inorganic
 // lane (Premier places whose Proximity × premierFactor reaches
-// `params.mix.adFloor`). The two merge one ad after every
-// `params.mix.adEvery` organic places (0 = no ads; a place appears once); the
-// first page (`map.catalogPageSize`) is shuffled by the mode's
-// `params.mix.temperature` with the guest's seed, keyed per place, and the
+// `params.mix.adFloor`). FEEDS AND LANES (MESITA-4517): Nearby and Popular
+// are one organic lane plus Inorganic; Family is three organic lanes of the
+// one family (close, well known, and both: strong on each, ordered by the
+// worse rank) plus Inorganic. Close and well known are two SQL ranks. Each
+// lane gives its `batch` per weave; a weave interleaves the lanes and puts
+// one ad after every `params.mix.adEvery` organic places (0 = no ads; a
+// place appears once), weaves repeating until the lanes run out. The first
+// weave is the page and is shuffled by the mode's `params.mix.temperature`
+// with the guest's seed, keyed per place; the
 // tail keeps its exact order. A place with 0 reviews or no stars ranks last.
 // RETIRED, UNREAD (kept in the row until a follow-up migration deletes
 // them): `params.proximity`, `params.popularity.root`,
@@ -52,12 +57,17 @@
 //   adIds        with `fill`: the rank's `adIds` (uuids); those cards score
 //                with the mode's Inorganic row and carry `ad: true`. A fill
 //                never adds or removes an ad.
+//   laneOf       with `fill`: the rank's `laneOf` for those ids; each card
+//                scores with its organic lane's row and carries `lane`.
 //   radiusKm, bounds, google, unified, prefer, minReviews: ignored.
 // Rank response: { ok, location: { kind }, rankMode, pageSize, total, order,
 //   adIds, lanes: true, preShuffle, seed, updatedAt, places: [... { area,
 //   ad? }], summary }.
 //   order       every ranked id: the shuffled first page, then the merged tail
 //   adIds       ids sitting in ad slots, across the whole order
+//   laneOf      id → the recipe row it was woven from (MESITA-4517); a fill
+//               sends its ids' entries back so each card scores by its lane
+//   weaves      each weave's length; pageSize is the first
 //   preShuffle  id → its 1-based merged rank before the shuffle (first page)
 //   seed        the shuffle's seed (sent or drawn)
 //   updatedAt   the config row's updated_at: a change drops cached orders
@@ -79,12 +89,18 @@ import { openRequest } from "../_shared/request.ts";
 import { stripInternal } from "../_shared/place-pool-shape.ts";
 import type { PlaceProfileRow } from "../_shared/place-pool-shape.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
-import { CATALOG_PAGE_SIZE_MAX, loadDiscoveryConfigWithMeta } from "../_shared/discovery-config.ts";
+import {
+  CATALOG_PAGE_SIZE_MAX,
+  isMapRow,
+  isOrganicRow,
+  loadDiscoveryConfigWithMeta,
+  RECIPE_ROWS,
+  type RecipeRow,
+} from "../_shared/discovery-config.ts";
 import { decideNearby } from "../_shared/geo.ts";
 import {
   areaPoolLogFields,
   CatalogReadError,
-  catalogPageSize,
   type PoolBuilder,
   type PoolRow,
   resolveAreaLocation,
@@ -132,7 +148,24 @@ type Body = {
   adIds?: unknown;
   /** Place ids Home has already shown 3+ times (MESITA-4459). */
   seen?: unknown;
+  /** With `fill`: id → the lane the rank wove it from (MESITA-4517). */
+  laneOf?: unknown;
 };
+
+/** A fill's `laneOf`: absent is none; an object of uuid → organic recipe
+ *  row, else null. */
+function readLaneOf(v: unknown): Record<string, RecipeRow> | null {
+  if (v === undefined || v === null) return {};
+  if (typeof v !== "object" || Array.isArray(v)) return null;
+  const out: Record<string, RecipeRow> = {};
+  for (const [id, row] of Object.entries(v as Record<string, unknown>)) {
+    if (!isUuid(id) || typeof row !== "string") return null;
+    if (!(RECIPE_ROWS as readonly string[]).includes(row)) return null;
+    if (!isOrganicRow(row as RecipeRow) || isMapRow(row as RecipeRow)) continue;
+    out[id] = row as RecipeRow;
+  }
+  return out;
+}
 
 /** A fill's ids, duplicates collapsed, or null when the list is empty, too
  *  long or holds a non-uuid. */
@@ -243,8 +276,11 @@ serveJson("consumer-web-list-catalog", async (req) => {
   if (fill !== null) {
     const ids = readFill(fill);
     const adIds = readAdIds(body.adIds);
-    if (ids === null || adIds === null) {
-      return refuse("fill_invalid", "fill takes 1 to 100 place ids; adIds takes place ids", { n: fill.length });
+    const laneOf = readLaneOf(body.laneOf);
+    if (ids === null || adIds === null || laneOf === null) {
+      return refuse("fill_invalid", "fill takes 1 to 100 place ids; adIds takes place ids; laneOf maps place ids to lanes", {
+        n: fill.length,
+      });
     }
     let filled: Awaited<ReturnType<typeof selectCatalogFill<PoolRow>>>;
     try {
@@ -258,6 +294,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
         ids,
         mode: rankMode,
         adIds,
+        laneOf,
       });
     } catch (err) {
       if (!(err instanceof CatalogReadError)) throw err;
@@ -299,8 +336,9 @@ serveJson("consumer-web-list-catalog", async (req) => {
       nearest,
       mode: rankMode,
       seed: seeded.seed,
-      // A rank answers the first page; `order` carries the rest by id.
-      pageSize: catalogPageSize(cfg.map),
+      // `nearest` answers 20 cards; every mode's page is its first weave
+      // (MESITA-4517), and `order` carries the rest by id.
+      pageSize: 20,
     });
   } catch (err) {
     if (!(err instanceof CatalogReadError)) throw err;
@@ -335,6 +373,8 @@ serveJson("consumer-web-list-catalog", async (req) => {
     adsFirstPage: pool.lanes.adsFirstPage,
     below_floor: pool.lanes.belowFloor,
     inorganicTotal: pool.lanes.inorganicTotal,
+    familyLanes: pool.lanes.family,
+    weaves: pool.weaves.slice(0, 5),
     seed: seeded.seed,
     seedSent: seeded.sent,
     preShuffle: pool.preShuffle,
@@ -353,6 +393,8 @@ serveJson("consumer-web-list-catalog", async (req) => {
     order,
     adIds: pool.adIds,
     lanes: true,
+    laneOf: pool.laneOf,
+    weaves: pool.weaves,
     preShuffle: pool.preShuffle,
     seed: seeded.seed,
     updatedAt: loaded.updatedAt,

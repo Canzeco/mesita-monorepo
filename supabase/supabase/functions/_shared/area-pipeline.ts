@@ -52,12 +52,15 @@ import {
   type LatLng,
   rankArea,
 } from "./area-score.ts";
-import { cutAndShuffle, mergeLanes, type RankMode } from "./pipeline-signals.ts";
+import { cutAndShuffle, mergeLanes, type RankMode, strongOnBoth, weaveLanes } from "./pipeline-signals.ts";
 import {
   type DiscoveryConfig,
+  laneBatch,
   mixFor,
   NO_SCREEN_RADIUS_KM,
   recipeFor,
+  recipeRow,
+  type RecipeRow,
   type SignalParams,
 } from "./discovery-config.ts";
 import { chunked, ID_CHUNK } from "./postgrest.ts";
@@ -186,6 +189,10 @@ export type AreaPoolDeps<T extends PoolRow> = {
   /** A Catalog fill's ad-slot ids (M-c): scored with the mode's Inorganic
    *  row and marked `ad`. */
   adIds?: readonly string[];
+  /** A Catalog place's lane (MESITA-4517): id → the recipe row it was
+   *  woven from. A named organic row scores that card; absent = the mode's
+   *  default organic row. Ads still follow `adIds`. */
+  laneOf?: Readonly<Record<string, RecipeRow>>;
   /** Review-growth terms for this rank. Absent: established base only. */
   growth?: ReadonlyMap<string, GrowthTerm>;
 };
@@ -200,7 +207,14 @@ export type AreaPoolDiagnostics = AreaDiagnostics & {
 
 /** `ad: true` when the place sits in an ad slot (the Inorganic lane,
  *  MESITA-4454): the only places that wear "Ad". */
-export type AreaPoolPlace = Record<string, unknown> & { id: string; area: AreaPoolDiagnostics; ad?: true };
+export type AreaPoolPlace = Record<string, unknown> & {
+  id: string;
+  area: AreaPoolDiagnostics;
+  ad?: true;
+  /** The recipe row that scored this card (MESITA-4517); the score tag
+   *  names it. */
+  lane?: RecipeRow;
+};
 
 export type AreaPoolSummary = {
   /** Mesita rows the pipeline read, before its gates. */
@@ -261,6 +275,8 @@ type Lane<T> = {
   item: { candidate: AreaCandidate; place: T & { distance_km: number | null } };
   area: ReturnType<typeof rankArea>[number]["area"];
   ad: boolean;
+  /** A Catalog card's named lane (MESITA-4517). */
+  row?: RecipeRow;
 };
 
 /**
@@ -301,9 +317,23 @@ export function selectAreaPool<T extends PoolRow>(
         ctx(adRecipe),
       ).map((r) => [r.item.candidate.id, r.area] as const),
     );
+    // A named organic lane scores its own cards (MESITA-4517).
+    const laneOf = deps.laneOf ?? {};
+    const laneArea = new Map<string, { area: Lane<T>["area"]; row: RecipeRow }>();
+    const rows = new Set(Object.values(laneOf));
+    for (const row of rows) {
+      const members = items.filter((i) => laneOf[i.candidate.id] === row && !ads.has(i.candidate.id));
+      if (members.length === 0) continue;
+      for (const r of rankArea(members, (item) => item.candidate, ctx(recipeRow(row, deps.cfg)))) {
+        laneArea.set(r.item.candidate.id, { area: r.area, row });
+      }
+    }
     lanes = organic.map((r) => {
-      const a = adArea.get(r.item.candidate.id);
-      return a ? { item: r.item, area: a, ad: true } : { ...r, ad: false };
+      const id = r.item.candidate.id;
+      const a = adArea.get(id);
+      if (a) return { item: r.item, area: a, ad: true };
+      const l = laneArea.get(id);
+      return l ? { item: r.item, area: l.area, ad: false, row: l.row } : { ...r, ad: false };
     });
   } else {
     // The Map's Inorganic lane: Premier places only; the screen is its cut
@@ -329,14 +359,15 @@ export function selectAreaPool<T extends PoolRow>(
   }
   const shown = deps.cfg.map.placesShown ?? AREA_PLACES_SHOWN_FALLBACK;
   const kept = catalog ? lanes : lanes.slice(0, Math.max(0, shown));
-  const places = kept.map(({ item, area, ad }) => {
+  const places = kept.map(({ item, area, ad, row }) => {
     const { distanceKm: km, ...diagnostics } = area;
     // The score tag prints it beside Proximity (MESITA-2830).
     const distanceKm = km === null ? null : Math.round(km * 100) / 100;
-    const halfKm = (ad ? adRecipe : organicRecipe).halfKm;
+    const halfKm = (ad ? adRecipe : row ? recipeRow(row, deps.cfg) : organicRecipe).halfKm;
     return {
       ...item.place,
       ...(ad ? { ad: true } : {}),
+      ...(catalog && row ? { lane: row } : {}),
       area: { ...diagnostics, distanceKm, halfKm },
     } as AreaPoolPlace;
   });
@@ -654,8 +685,11 @@ export function catalogRankLanesArgs(
   location: AreaLocation,
   families: readonly string[],
   mode: RankMode,
+  /** Which organic row ranks (Family's three lanes, MESITA-4517); absent =
+   *  the mode's organic row. */
+  organicRow?: RecipeRow,
 ): Record<string, unknown> {
-  const org = recipeFor(mode, "organic", cfg);
+  const org = organicRow ? recipeRow(organicRow, cfg) : recipeFor(mode, "organic", cfg);
   const ad = recipeFor(mode, "inorganic", cfg);
   return {
     ...gateArgs(cfg, location, families),
@@ -723,6 +757,9 @@ export type CatalogLaneStats = {
   inorganicTotal: number;
   /** Ad-slot places on the first page, after the shuffle. */
   adsFirstPage: number;
+  /** Family only (MESITA-4517): places on the close, well-known and both
+   *  lanes after the weave's dedupe. */
+  family?: { close: number; wellKnown: number; both: number };
 };
 
 export type CatalogPool = {
@@ -738,6 +775,10 @@ export type CatalogPool = {
    *  first page's ids (M-c); {} on `nearest`. */
   preShuffle: Record<string, number>;
   lanes: CatalogLaneStats;
+  /** id → the lane it was woven from (MESITA-4517); {} on `nearest`. */
+  laneOf: Record<string, RecipeRow>;
+  /** Each weave's length (MESITA-4517): the first is the first screen. */
+  weaves: number[];
 };
 
 /** Home follows `order` by id. Past this the answer stops and `summary.capped`
@@ -746,6 +787,56 @@ export const CATALOG_ORDER_CAP = 1000;
 
 const ids = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
 const count = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+
+/** A feed's lanes, ranked and woven (MESITA-4517): Home's rank and the
+ *  Admin preview share it. Family ranks close and well known in SQL and
+ *  derives both; Nearby and Popular rank one organic lane. Every lane's
+ *  batch is its row's. `answer` is the first SQL answer (its read and
+ *  Inorganic counts). */
+export async function weaveCatalog(
+  rankLanes: CatalogRankRpc,
+  cfg: Pick<DiscoveryConfig, "general" | "map" | "params">,
+  location: AreaLocation,
+  families: readonly string[],
+  mode: RankMode,
+): Promise<{
+  answer: Record<string, unknown>;
+  organicLanes: Array<{ key: RecipeRow; ids: string[]; batch: number }>;
+  premier: string[];
+  woven: ReturnType<typeof weaveLanes>;
+}> {
+  const rankWith = async (organicRow?: RecipeRow) => {
+    const { data, error } = await rankLanes(catalogRankLanesArgs(cfg, location, families, mode, organicRow));
+    if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
+    return (data ?? {}) as Record<string, unknown>;
+  };
+  const lane = (key: RecipeRow, list: string[]) => ({ key, ids: list, batch: laneBatch(recipeRow(key, cfg)) });
+  const cap = mode[0].toUpperCase() + mode.slice(1);
+  let answer: Record<string, unknown>;
+  let organicLanes: Array<{ key: RecipeRow; ids: string[]; batch: number }>;
+  if (mode === "family") {
+    // Close and well known are two SQL ranks of the same gated set; both is
+    // the places strong on each (MESITA-4517).
+    const [close, wellKnown] = await Promise.all([
+      rankWith("catalogFamilyClose"),
+      rankWith("catalogFamilyWellKnown"),
+    ]);
+    answer = close;
+    const closeIds = ids(close.ids);
+    const wellIds = ids(wellKnown.ids);
+    organicLanes = [
+      lane("catalogFamilyBoth", strongOnBoth(closeIds, wellIds)),
+      lane("catalogFamilyClose", closeIds),
+      lane("catalogFamilyWellKnown", wellIds),
+    ];
+  } else {
+    answer = await rankWith();
+    organicLanes = [lane(`catalog${cap}Organic` as RecipeRow, ids(answer.ids))];
+  }
+  const premier = ids(answer.premier);
+  const woven = weaveLanes(organicLanes, lane(`catalog${cap}Inorganic` as RecipeRow, premier), mixFor(cfg).adEvery);
+  return { answer, organicLanes, premier, woven };
+}
 
 /**
  * The Catalog pool (MESITA-2921, MESITA-3059, MESITA-4454): one SQL rank
@@ -793,7 +884,11 @@ export async function selectCatalogPool<T extends PoolRow>(
   let preShuffle: Record<string, number> = {};
   let read: number;
   let lanes: CatalogLaneStats = { organic: 0, premier: 0, belowFloor: 0, inorganicTotal: 0, adsFirstPage: 0 };
-  const page = Math.max(0, deps.pageSize);
+  let laneOf: Record<string, RecipeRow> = {};
+  let weaves: number[] = [];
+  // `nearest` keeps the caller's page; every mode's page is its first weave
+  // (MESITA-4517).
+  let page = Math.max(0, deps.pageSize);
   if (nearest) {
     const { data, error } = await deps.rank(catalogNearestArgs(deps.cfg, deps.location, deps.families));
     if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
@@ -801,27 +896,40 @@ export async function selectCatalogPool<T extends PoolRow>(
     order = ids(answer.ids);
     read = typeof answer.read === "number" ? answer.read : order.length;
   } else {
-    const { data, error } = await deps.rankLanes(
-      catalogRankLanesArgs(deps.cfg, deps.location, deps.families, mode),
-    );
-    if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
-    const answer = (data ?? {}) as Record<string, unknown>;
-    const organic = ids(answer.ids);
-    const premier = ids(answer.premier);
     const mix = mixFor(deps.cfg);
-    const merged = mergeLanes(organic, premier, mix.adEvery);
-    order = cutAndShuffle(merged.order, page, mix.temperature[mode], deps.seed);
-    adIds = merged.adIds;
-    const rankOf = new Map(merged.order.map((id, i) => [id, i + 1] as const));
+    const { answer, organicLanes, premier, woven } = await weaveCatalog(
+      deps.rankLanes,
+      deps.cfg,
+      deps.location,
+      deps.families,
+      mode,
+    );
+    weaves = woven.weaves;
+    laneOf = woven.laneOf as Record<string, RecipeRow>;
+    page = weaves[0] ?? 0;
+    order = cutAndShuffle(woven.order, page, mix.temperature[mode], deps.seed);
+    adIds = woven.adIds;
+    const rankOf = new Map(woven.order.map((id, i) => [id, i + 1] as const));
     preShuffle = Object.fromEntries(order.slice(0, page).map((id) => [id, rankOf.get(id) ?? 0]));
-    read = typeof answer.read === "number" ? answer.read : organic.length;
+    const organicCount = organicLanes.reduce((n, l) => Math.max(n, l.ids.length), 0);
+    read = typeof answer.read === "number" ? answer.read : organicCount;
     const ads = new Set(adIds);
+    const onLane = (key: RecipeRow) => Object.values(laneOf).filter((k) => k === key).length;
     lanes = {
-      organic: organic.length,
+      organic: organicCount,
       premier: premier.length,
       belowFloor: count(answer.below_floor),
       inorganicTotal: count(answer.inorganic_total),
       adsFirstPage: order.slice(0, page).filter((id) => ads.has(id)).length,
+      ...(mode === "family"
+        ? {
+          family: {
+            close: onLane("catalogFamilyClose"),
+            wellKnown: onLane("catalogFamilyWellKnown"),
+            both: onLane("catalogFamilyBoth"),
+          },
+        }
+        : {}),
     };
   }
   const ranked = order.length;
@@ -830,9 +938,10 @@ export async function selectCatalogPool<T extends PoolRow>(
     order = order.slice(0, CATALOG_ORDER_CAP);
     const keep = new Set(order);
     adIds = adIds.filter((id) => keep.has(id));
+    laneOf = Object.fromEntries(Object.entries(laneOf).filter(([id]) => keep.has(id)));
   }
   const kept = order.slice(0, page);
-  const filled = await selectCatalogFill({ ...deps, mode, adIds, ids: kept, growth });
+  const filled = await selectCatalogFill({ ...deps, mode, adIds, laneOf, ids: kept, growth });
   return {
     places: filled.places,
     summary: {
@@ -842,7 +951,7 @@ export async function selectCatalogPool<T extends PoolRow>(
       surface: "catalog",
       halfKm: recipeFor(mode, "organic", deps.cfg).halfKm,
       placesShown: null,
-      pageSize: catalogPageSize(deps.cfg.map),
+      pageSize: page,
       ads: filled.places.filter((p) => p.ad === true).length,
       total: ranked,
       capped,
@@ -853,6 +962,8 @@ export async function selectCatalogPool<T extends PoolRow>(
     adIds,
     preShuffle,
     lanes,
+    laneOf,
+    weaves,
   };
 }
 
@@ -872,6 +983,8 @@ export async function selectCatalogFill<T extends PoolRow>(
     ids: readonly string[];
     mode?: RankMode;
     adIds?: readonly string[];
+    /** id → its woven lane (MESITA-4517). */
+    laneOf?: Readonly<Record<string, RecipeRow>>;
     growth?: ReadonlyMap<string, GrowthTerm>;
   },
 ): Promise<{ places: AreaPoolPlace[]; summary: { asked: number; returned: number; chunks: number; ads: number } }> {
@@ -893,6 +1006,7 @@ export async function selectCatalogFill<T extends PoolRow>(
     cfg: deps.cfg,
     mode: deps.mode,
     adIds: (deps.adIds ?? []).filter((id) => asked.has(id)),
+    laneOf: deps.laneOf,
     growth: deps.growth,
   });
   const byId = new Map(scored.places.map((p) => [p.id, p]));
@@ -943,9 +1057,9 @@ export type MesitaOpts = {
   growth?: ReadonlyMap<string, GrowthTerm>;
 };
 
-/** Ready Mesita rows ranked by the Catalog Family Organic row (M-f,
- *  MESITA-4454: no Inorganic lane, no ads, no shuffle), inside the
- *  radius. */
+/** Ready Mesita rows ranked by the Catalog Family well-known row (M-f,
+ *  MESITA-4454, MESITA-4517: no Inorganic lane, no ads, no shuffle), inside
+ *  the radius. */
 export function rankMesitaPlaces<T extends Record<string, unknown>>(
   rows: readonly T[],
   opts: MesitaOpts,
@@ -959,7 +1073,7 @@ export function rankMesitaPlaces<T extends Record<string, unknown>>(
     {
       location,
       families: opts.families ?? [],
-      // Chat ranks with the Catalog Family Organic row (MESITA-4454).
+      // Chat ranks with Family well known (MESITA-4517).
       recipe: recipeFor("family", "organic", { params: opts.params }),
       growth: opts.growth,
       growthWeightCap: mixFor({ params: opts.params }).growthWeightCap,

@@ -236,6 +236,9 @@ export type Recipe = {
   /** Applied to raw Foursquare popularity (0–1) before the factor. */
   foursquareExponent: number;
   premierExp: number;
+  /** A Catalog lane's batch (MESITA-4517): how many places it gives each
+   *  weave. Null on the Map's rows; absent on a caller's literal = 10. */
+  batch?: number | null;
 };
 
 /**
@@ -378,6 +381,101 @@ export function mergeLanes(
     }
   }
   return { order, adIds };
+}
+
+/** One organic lane of a feed (MESITA-4517): its ranked ids and how many
+ *  places it gives each weave. `key` names the lane (a recipe row). */
+export type WeaveLane = { key: string; ids: readonly string[]; batch: number };
+
+/**
+ * THE WEAVE (MESITA-4517): a feed is its lanes' batches, round after round.
+ * Each round takes the next `batch` unseen ids of every organic lane, in
+ * lane order (an earlier lane claims a shared place first), and interleaves
+ * them one from each lane; then ad slots go in as `mergeLanes` puts them
+ * (one after every `adEvery` organic places), at most the Inorganic lane's
+ * batch per round. A place appears once. Rounds repeat until no organic
+ * lane has an unseen id left. `weaves` holds each round's length: the first
+ * is Home's first screen and the shuffle's pool. `laneOf` names the lane
+ * every id took (ads: the Inorganic key).
+ */
+export function weaveLanes(
+  organic: readonly WeaveLane[],
+  inorganic: WeaveLane | null,
+  adEvery: number,
+): { order: string[]; adIds: string[]; laneOf: Record<string, string>; weaves: number[] } {
+  const every = Number.isFinite(adEvery) ? Math.floor(adEvery) : 0;
+  const seen = new Set<string>();
+  const order: string[] = [];
+  const adIds: string[] = [];
+  const laneOf: Record<string, string> = {};
+  const weaves: number[] = [];
+  const at = organic.map(() => 0);
+  let p = 0;
+  const batchOf = (n: number) => (Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1);
+  for (;;) {
+    // Each lane's next batch, claimed in lane order.
+    const batches = organic.map((lane, li) => {
+      const out: string[] = [];
+      const want = batchOf(lane.batch);
+      while (out.length < want && at[li] < lane.ids.length) {
+        const id = lane.ids[at[li]++];
+        if (seen.has(id)) continue;
+        seen.add(id);
+        laneOf[id] = lane.key;
+        out.push(id);
+      }
+      return out;
+    });
+    const chunk: string[] = [];
+    for (let i = 0; batches.some((b) => i < b.length); i++) {
+      for (const b of batches) if (i < b.length) chunk.push(b[i]);
+    }
+    if (chunk.length === 0) break;
+    const start = order.length;
+    let ads = 0;
+    const adCap = inorganic ? batchOf(inorganic.batch) : 0;
+    let sinceAd = 0;
+    for (const id of chunk) {
+      order.push(id);
+      sinceAd++;
+      if (inorganic && every > 0 && sinceAd >= every && ads < adCap) {
+        sinceAd = 0;
+        while (p < inorganic.ids.length) {
+          const ad = inorganic.ids[p++];
+          if (seen.has(ad)) continue;
+          seen.add(ad);
+          laneOf[ad] = inorganic.key;
+          order.push(ad);
+          adIds.push(ad);
+          ads++;
+          break;
+        }
+      }
+    }
+    weaves.push(order.length - start);
+  }
+  return { order, adIds, laneOf, weaves };
+}
+
+/**
+ * FAMILY BOTH (MESITA-4517): the places in the better half of the close
+ * ranking AND the better half of the well-known ranking (index < n ÷ 2 in
+ * each), ordered by the worse of their two ranks, then the better, then the
+ * close rank. Scores are never averaged.
+ */
+export function strongOnBoth(close: readonly string[], wellKnown: readonly string[]): string[] {
+  const rc = new Map(close.map((id, i) => [id, i] as const));
+  const rw = new Map(wellKnown.map((id, i) => [id, i] as const));
+  const both: Array<{ id: string; worse: number; better: number; c: number }> = [];
+  for (const [id, c] of rc) {
+    const w = rw.get(id);
+    if (w === undefined) continue;
+    if (c * 2 >= close.length || w * 2 >= wellKnown.length) continue;
+    both.push({ id, worse: Math.max(c, w), better: Math.min(c, w), c });
+  }
+  return both
+    .sort((a, b) => a.worse - b.worse || a.better - b.better || a.c - b.c)
+    .map((x) => x.id);
 }
 
 /** A keyed uniform in (0, 1) from (seed, id): FNV-1a over the id, mixed

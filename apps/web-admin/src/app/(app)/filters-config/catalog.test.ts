@@ -224,24 +224,27 @@ describe("recipes and mix (MESITA-4454), the twin of normalizeRecipes and normal
   it("read the recipe table and the mix defaults when absent", () => {
     expect(coerceConfig({}).params.recipes).toEqual(DEFAULT_RECIPES);
     expect(coerceConfig({}).params.mix).toEqual(DEFAULT_MIX);
-    expect(DEFAULT_RECIPES.catalogNearbyOrganic).toEqual({ halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 });
-    expect(DEFAULT_RECIPES.mapInorganic).toEqual({ halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1 });
+    expect(DEFAULT_RECIPES.catalogNearbyOrganic).toEqual({ halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 });
+    expect(DEFAULT_RECIPES.mapInorganic).toEqual({ halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: null });
   });
 
   it("clamp each field; an Organic row's Premier exponent is 0 and a Map row has no distance (C1, L-1)", () => {
     const r = coerceRecipes({
       catalogPopularOrganic: { halfKm: 500, distanceExp: 0.1, googleExp: 0.01, premierExp: 2 },
       catalogPopularInorganic: { premierExp: 3, googleExp: "0.5" },
-      catalogFamilyOrganic: { halfKm: null, distanceExp: "x" },
+      catalogFamilyBoth: { halfKm: null, distanceExp: "x", batch: 0 },
       catalogNearbyOrganic: { halfKm: 0.123 },
       mapOrganic: { halfKm: 3, distanceExp: 2, premierExp: 1 },
     });
-    expect(r.catalogPopularOrganic).toEqual({ halfKm: 100, distanceExp: 0.5, googleExp: 0.1, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 });
+    expect(r.catalogPopularOrganic).toEqual({ halfKm: 100, distanceExp: 0.5, googleExp: 0.1, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 });
     expect(r.catalogPopularInorganic.premierExp).toBe(2);
     expect(r.catalogPopularInorganic.googleExp).toBe(0.5);
-    expect([r.catalogFamilyOrganic.halfKm, r.catalogFamilyOrganic.distanceExp]).toEqual([2, 2]);
+    expect([r.catalogFamilyBoth.halfKm, r.catalogFamilyBoth.distanceExp]).toEqual([2, 2]);
+    expect(r.catalogFamilyBoth.batch).toBe(1);
+    // A save from before MESITA-4517: Family Organic becomes Family both.
+    expect(coerceRecipes({ catalogFamilyOrganic: { halfKm: 3 } }).catalogFamilyBoth.halfKm).toBe(3);
     expect(r.catalogNearbyOrganic.halfKm).toBe(0.12);
-    expect(r.mapOrganic).toEqual({ halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 });
+    expect(r.mapOrganic).toEqual({ halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: null });
     expect(coerceRecipes({ catalogNearbyOrganic: { foursquareFactor: 0 } }).catalogNearbyOrganic.foursquareFactor).toBe(0);
     expect(coerceRecipes({}).catalogNearbyOrganic.foursquareExponent).toBe(20);
   });
