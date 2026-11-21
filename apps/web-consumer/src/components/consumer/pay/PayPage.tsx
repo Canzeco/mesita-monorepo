@@ -294,48 +294,52 @@ export function PayPage({
           shit"; /autoplan): the page holds your money, the pink Pay Bill is
           the verb. "Mesita Wallet" since MESITA-4252 (Pato: "call at the top
           Mesita Wallet, not only wallet"); the bar tab stays "Wallet". */}
-      <PayHeader title="Wallet" />
-      <div className="mt-2 flex gap-2">
-        <MethodPreview wide />
-        <TicketsShortcut wide />
-      </div>
-
-      {bill === "open" ? (
-        <div className="mt-2 flex flex-col">
-          <OpenBillPanel
-            tab={openTabs?.[0] ?? null}
-            pending={pending}
-            places={places}
-            onCancelled={(tabId) => {
-              setOpenTabs((t) => (t ? t.filter((x) => x.tab_id !== tabId) : t));
-              setBillFacts({ visitsOk: true, missed: false });
-            }}
-          />
+      {/* DARK SLAB (MESITA-4505): Wallet, the two light modules, and Pay.
+          The list under it stays on the white page. */}
+      <div className="bg-foreground -mx-2 px-2 pb-3" data-wallet-band>
+        <PayHeader title="Wallet" embedded />
+        <div className="mt-2 flex gap-2">
+          <MethodPreview wide />
+          <TicketsShortcut wide />
         </div>
-      ) : null}
-      {bill === "unknown" ? (
-        <p className="text-muted-foreground px-2 py-3 text-sm" role="alert" data-error="open_bill_unknown">
-          Couldn&apos;t check for an open bill.
-          <button type="button" className="text-foreground ml-2 font-semibold underline" onClick={checkBill}>
-            Check again
-          </button>
-        </p>
-      ) : null}
 
-      {showPay ? (
-        payBusy ? (
-          <Skeleton className="mt-2 h-12 w-full rounded-xl" aria-hidden />
-        ) : (
-          <button
-            type="button"
-            className="bg-foreground text-background mt-2 flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold"
-            aria-label={bill === "open" ? "Pay your open bill" : `Pay at ${selectedName}`}
-            onClick={paySelected}
-          >
-            Pay
-          </button>
-        )
-      ) : null}
+        {bill === "open" ? (
+          <div className="mt-2 flex flex-col">
+            <OpenBillPanel
+              tab={openTabs?.[0] ?? null}
+              pending={pending}
+              places={places}
+              onCancelled={(tabId) => {
+                setOpenTabs((t) => (t ? t.filter((x) => x.tab_id !== tabId) : t));
+                setBillFacts({ visitsOk: true, missed: false });
+              }}
+            />
+          </div>
+        ) : null}
+        {bill === "unknown" ? (
+          <p className="text-background/70 px-2 py-3 text-sm" role="alert" data-error="open_bill_unknown">
+            Couldn&apos;t check for an open bill.
+            <button type="button" className="text-background ml-2 font-semibold underline" onClick={checkBill}>
+              Check again
+            </button>
+          </p>
+        ) : null}
+
+        {showPay ? (
+          payBusy ? (
+            <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
+          ) : (
+            <button
+              type="button"
+              className="mt-2 flex h-24 w-full items-center justify-center rounded-xl bg-[#635BFF] text-lg font-semibold text-white hover:bg-[#5249e6]"
+              aria-label={bill === "open" ? "Pay your open bill" : `Pay at ${selectedName}`}
+              onClick={paySelected}
+            >
+              Pay
+            </button>
+          )
+        ) : null}
+      </div>
 
       <div className="border-border bg-card mt-2 flex h-12 items-center rounded-xl border px-3">
         <SearchBar

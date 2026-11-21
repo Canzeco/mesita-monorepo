@@ -25,11 +25,22 @@ export function PayHeader({
   title,
   action,
   bar,
+  embedded = false,
 }: {
   title: "Pay" | "Wallet" | "Mesita Wallet";
   action?: ReactNode;
   bar?: ReactNode;
+  /** Inside Wallet's dark slab (MESITA-4505). No sticky white band of its own. */
+  embedded?: boolean;
 }) {
+  if (embedded) {
+    return (
+      <div className="flex min-h-9 items-center justify-between gap-3 px-2 py-2" data-page-band>
+        <h1 className="text-background text-lg font-bold tracking-tight">{title}</h1>
+        {action}
+      </div>
+    );
+  }
   return (
     <div
       className="border-border bg-card sticky top-0 z-10 -mx-2 border-b"
