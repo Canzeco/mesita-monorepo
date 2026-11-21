@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Clock, Gift, Plus, QrCode } from "lucide-react";
+import { Clock, Plus, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -372,27 +372,21 @@ export function PayPage({
           "return to the previous grid: Add Funds Add Funds / Send Gift, Pay
           Bill. that grid was better"): green "Add Funds, Get a Bonus" across
           both columns, then black Send Gift left and purple Pay Bill right,
-          in his order; every icon in its white circle. */}
+          in his order; every icon in its white circle. BUY CREDITS | PAY BILL
+          (Pato, 2026-11-21, MESITA-4587: "better for the moment the buttons
+          must only say Buy Credits. Pay Bill. Keep shit clean."): two equal
+          tiles, green "Buy Credits" left, purple Pay Bill right; Send Gift
+          is off Pay again. */}
       <div className="mt-2 grid grid-cols-2 gap-2">
         <PushLink
           href={CONSUMER_ROUTES.walletBuy}
-          className={cn(TILE, "col-span-2 bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
+          className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
           data-add-funds
         >
           <span className={cn(ICON_CIRCLE, "text-neutral-950")} aria-hidden>
             <Plus className="h-5 w-5" strokeWidth={2.5} />
           </span>
-          Add Funds, Get a Bonus
-        </PushLink>
-        <PushLink
-          href={CONSUMER_ROUTES.walletSend}
-          className={cn(TILE, "bg-foreground text-background hover:bg-foreground/90")}
-          data-send-gift
-        >
-          <span className={cn(ICON_CIRCLE, "text-neutral-950")} aria-hidden>
-            <Gift className="h-5 w-5" strokeWidth={2.25} />
-          </span>
-          Send Gift
+          Buy Credits
         </PushLink>
         {payBusy ? (
           <Skeleton className="h-24 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
