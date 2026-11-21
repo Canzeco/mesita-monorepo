@@ -10,11 +10,12 @@ export type CostLine = {
   usd: number;
 };
 
-export type CostSection = "fixed" | "variable";
+export type CostGroup = "fixed" | "variable";
 
 export type CostJob = {
   id: "create" | "fast-update" | "deep-update" | "enrich";
-  section: CostSection;
+  /** Which block of the Cost page. Not a config section key. */
+  group: CostGroup;
   title: string;
   /** Second name for the same run. Not a second charge. */
   alsoCalled?: string;
@@ -73,14 +74,14 @@ const ENRICH_LINES: CostLine[] = [
 export const COST_JOBS: CostJob[] = [
   {
     id: "create",
-    section: "fixed",
+    group: "fixed",
     title: "Create",
     when: "Once per new Google place. It does not start Enrich.",
     lines: CREATE_LINES,
   },
   {
     id: "fast-update",
-    section: "variable",
+    group: "variable",
     title: "Fast Update",
     when: "Every 10 new unique viewers.",
     note: "$0.025 of this is Place Details Enterprise + Atmosphere. The call asks for reviews and atmosphere fields, then drops them. The fields it keeps are the $0.020 Enterprise price.",
@@ -88,7 +89,7 @@ export const COST_JOBS: CostJob[] = [
   },
   {
     id: "deep-update",
-    section: "variable",
+    group: "variable",
     title: "Deep Update",
     when: "Every 50 new unique viewers. Reviews and follower counts. This is not Enrich.",
     note: "About $0.076 when the place has neither Instagram nor Facebook.",
@@ -96,7 +97,7 @@ export const COST_JOBS: CostJob[] = [
   },
   {
     id: "enrich",
-    section: "variable",
+    group: "variable",
     title: "Enrich",
     alsoCalled: "Deep Enrich",
     when: "First at 10 unique viewers, then every 300. Website, Instagram, Facebook, and 100 reviews.",
@@ -111,8 +112,8 @@ export function jobTotal(job: CostJob): number {
   return Math.round(sum * 1000) / 1000;
 }
 
-export function jobsIn(section: CostSection): CostJob[] {
-  return COST_JOBS.filter((job) => job.section === section);
+export function jobsIn(group: CostGroup): CostJob[] {
+  return COST_JOBS.filter((job) => job.group === group);
 }
 
 /**

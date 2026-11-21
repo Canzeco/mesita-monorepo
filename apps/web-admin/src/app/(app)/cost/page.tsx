@@ -1,11 +1,11 @@
 import { ConfigPageLayout, Notice, SectionCard, Stat, Table, TBody, Td, Th, THead, Tr } from "@/components/admin-ui";
-import { COST_JOBS, first300Viewers, jobTotal, type CostJob, type CostSection } from "./prices";
+import { COST_JOBS, first300Viewers, jobTotal, type CostGroup, type CostJob } from "./prices";
 
 // Extra › Cost (MESITA-4518). Static published rates. No Edge Function.
 
 const usd = (n: number) => `$${n.toFixed(3)}`;
 
-const SECTIONS: { id: CostSection; title: string; lede: string }[] = [
+const SECTIONS: { id: CostGroup; title: string; lede: string }[] = [
   {
     id: "fixed",
     title: "Fixed",
@@ -65,7 +65,7 @@ export default function CostPage() {
               <h2 className="font-display text-lg font-semibold tracking-tight">{section.title}</h2>
               <p className="text-muted-foreground mt-0.5 text-sm">{section.lede}</p>
             </div>
-            {COST_JOBS.filter((job) => job.section === section.id).map((job) => (
+            {COST_JOBS.filter((job) => job.group === section.id).map((job) => (
               <JobCard key={job.id} job={job} />
             ))}
           </section>
