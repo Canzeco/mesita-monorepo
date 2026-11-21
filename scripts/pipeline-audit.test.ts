@@ -99,9 +99,9 @@ function world() {
     failGithub: {} as Record<string, Got>,
     failFunctions: null as Got | null,
     rulesetBody: null as unknown,
-    // The cloud catalog_membership as `supabase db query --linked -o json` lists it: one row per Google type,
-    // enabled exactly where the category gate admits it (MESITA-2974).
-    membership: Object.keys(GOOGLE_TYPE_SUPER).sort().map((slug) => ({ slug, enabled: familiesForGoogleType(slug).length > 0 })) as { slug: string; enabled: boolean }[],
+    // The cloud catalog_membership as `supabase db query --linked -o json` lists it: one enabled row per
+    // Google type the category gate admits, and no other row (MESITA-2974, MESITA-4576).
+    membership: Object.keys(GOOGLE_TYPE_SUPER).sort().filter((slug) => familiesForGoogleType(slug).length > 0).map((slug) => ({ slug, enabled: true })) as { slug: string; enabled: boolean }[],
     failSql: null as Got | null,
   };
 }
@@ -233,10 +233,12 @@ const CASES: [string, (w: World) => void, string][] = [
   // MESITA-2759: an admin Reset emptied the table and Create refused most restaurants.
   ["an empty catalog_membership in the cloud", (w) => (w.membership = []), "PA-MEMBERSHIP-DRIFT:empty"],
   ["a catalog_membership with nothing enabled", (w) => w.membership.forEach((r) => (r.enabled = false)), "PA-MEMBERSHIP-DRIFT:none-enabled"],
-  ["a Google type missing from the cloud", (w) => (w.membership = w.membership.filter((r) => r.slug !== "restaurant")), "PA-MEMBERSHIP-DRIFT:count"],
+  ["an allowed Google type missing from the cloud", (w) => (w.membership = w.membership.filter((r) => r.slug !== "restaurant")), "PA-MEMBERSHIP-DRIFT:count"],
   // MESITA-2962/2974: Create reads the switch, Search reads the gate; apart, Search shows what Create refuses.
-  ["a Google type Atlas has off that the gate admits", (w) => w.membership.forEach((r) => r.slug === "bar" && (r.enabled = false)), "PA-MEMBERSHIP-DRIFT:gate"],
-  ["a Google type Atlas has on that the gate refuses", (w) => w.membership.forEach((r) => r.slug === "beauty_salon" && (r.enabled = true)), "PA-MEMBERSHIP-DRIFT:gate"],
+  ["an allowed Google type switched off", (w) => w.membership.forEach((r) => r.slug === "bar" && (r.enabled = false)), "PA-MEMBERSHIP-DRIFT:gate"],
+  ["a row for a Google type the gate refuses", (w) => w.membership.push({ slug: "beauty_salon", enabled: true }), "PA-MEMBERSHIP-DRIFT:gate"],
+  // MESITA-4576: the table is the allow-list; a switched-off leftover is not-allowed data again.
+  ["a switched-off row for a type the gate refuses", (w) => w.membership.push({ slug: "hotel", enabled: false }), "PA-MEMBERSHIP-DRIFT:gate"],
 ];
 
 for (const [name, mutate, code] of CASES) {

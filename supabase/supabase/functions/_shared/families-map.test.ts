@@ -1,8 +1,8 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { buildFamiliesMap } from "./families-map.ts";
 
-// MESITA-2891: Atlas lists every Google category exactly once, enabled or not.
-Deno.test("every Google category lands in exactly one of the two lists, Undefined is no family", () => {
+// MESITA-2891, MESITA-4576: Atlas lists the allowed Google categories only.
+Deno.test("only allowed Google categories are listed, Undefined is no family", () => {
   const map = buildFamiliesMap(
     [
       { slug: "coffee", label: "Coffee", emoji: "☕", sort_order: 1 },
@@ -15,7 +15,6 @@ Deno.test("every Google category lands in exactly one of the two lists, Undefine
     ],
   );
   assertEquals(map.enabledCategories.map((c) => c.slug), ["bakery", "cafe"]);
-  assertEquals(map.disabledCategories.map((c) => c.slug), ["gas_station"]);
   assertEquals(map.families.map((f) => f.slug), ["coffee"]);
 });
 

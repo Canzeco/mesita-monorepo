@@ -1,8 +1,8 @@
 // Supabase Edge Function — admin-web-get-families
 //
 // Read-only taxonomy for Configurations › Atlas. One caller: that page.
-// The Mesita Families, every Google category split into enabled and not
-// enabled on Mesita, and the tag catalog — all live tables (MESITA-2891).
+// The Mesita Families, the Google categories Mesita allows (MESITA-4576),
+// and the tag catalog — all live tables (MESITA-2891).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
