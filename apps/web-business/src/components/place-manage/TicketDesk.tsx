@@ -12,6 +12,7 @@ import { listPlaceTickets } from "@/lib/business-api";
 import {
   ticketLine,
   ticketStatus,
+  ticketWhen,
   type GiftTicket,
   type PlaceTicketDesk,
   type StoryTicket,
@@ -74,10 +75,6 @@ const COPY: Record<TicketKind, { chart: string; log: string; empty: string; rows
 
 function money(cents: number): string {
   return moneyLabel(cents, "MXN");
-}
-
-function when(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 function amount(kind: TicketKind, row: TicketRow): string {
@@ -145,7 +142,7 @@ export function TicketDesk({ placeId, kind, initial }: { placeId: string; kind: 
                     <p className="font-medium">{row.guest}</p>
                     <p className="text-muted-foreground">
                       {ticketStatus(kind, row)}
-                      {line ? ` · ${line}` : ""} · {when(row.at)}
+                      {line ? ` · ${line}` : ""} · {ticketWhen(row.at, desk.timezone)}
                     </p>
                   </div>
                   <p className="shrink-0 font-semibold tabular-nums">{amount(kind, row)}</p>
