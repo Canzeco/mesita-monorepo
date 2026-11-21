@@ -186,7 +186,7 @@ serveJson("consumer-web-pay-guest", async (req) => {
       return json({ ok: false, code: refusal.code, error: refusal.error, ...refusal.detail }, refusal.status);
     }
     const attemptId = String(r.attempt_id);
-    let tabId = typeof r.tab_id === "string" ? r.tab_id : null;
+    const tabId = typeof r.tab_id === "string" ? r.tab_id : null;
 
     // The card part, charged inside the app on the place's account. A
     // replay of a tap whose card already started reads its state from

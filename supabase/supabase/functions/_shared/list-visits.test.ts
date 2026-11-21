@@ -34,7 +34,7 @@ function tab(i: number, extra: Record<string, unknown> = {}) {
 }
 
 /** A query builder that records each call and answers from `rows`. */
-function stub(rows: { tabs: unknown[]; parts?: unknown[] | Error }) {
+function stub(rows: { tabs: unknown[]; parts?: unknown[] | Error; attempts?: unknown[] }) {
   const calls: Call[] = [];
   const client = {
     from(table: string) {
@@ -42,6 +42,8 @@ function stub(rows: { tabs: unknown[]; parts?: unknown[] | Error }) {
       calls.push(call);
       const answer = () => {
         if (table === "pay_tabs") return { data: rows.tabs.slice(0, call.limit ?? rows.tabs.length), error: null };
+        // MESITA-4524: tickets not yet closed.
+        if (table === "guest_pay_attempts") return { data: rows.attempts ?? [], error: null };
         if (table === "wallet_payments") {
           return rows.parts instanceof Error ? { data: null, error: { message: rows.parts.message } } : { data: rows.parts ?? [], error: null };
         }
@@ -52,6 +54,7 @@ function stub(rows: { tabs: unknown[]; parts?: unknown[] | Error }) {
         eq(c: string, v: unknown) { call.filters.push(["eq", c, v]); return q; },
         is(c: string, v: unknown) { call.filters.push(["is", c, v]); return q; },
         in(c: string, v: unknown) { call.filters.push(["in", c, v]); return q; },
+        or(v: string) { call.filters.push(["or", "", v]); return q; },
         order() { return q; },
         limit(n: number) { call.limit = n; return q; },
         then(resolve: (v: unknown) => void) { resolve(answer()); },
@@ -108,4 +111,25 @@ Deno.test("MESITA-3772: a guest's open payment is findable from any device (orig
   assert(res.ok);
   assert(calls.find((c) => c.table === "pay_tabs")!.select.includes("origin, verified_at"));
   assertEquals(res.visits.map((v) => [v.origin, v.verified_at, v.expires_at]), [["guest", null, FUTURE], ["waiter", null, FUTURE]]);
+});
+
+Deno.test("MESITA-4524: a live ticket is the guest's open payment; one ended by the waiter or the clock is Not paid", async () => {
+  const later = new Date(Date.now() + 7_200_000).toISOString();
+  const attempt = (id: string, extra: Record<string, unknown>) => ({
+    id, place_id: PLACE, currency: "mxn", livemode: false, bill_cents: 10000, tip_cents: 0,
+    expires_at: FUTURE, created_at: later, end_reason: null, held_at: later, payment_id: null, ...extra,
+  });
+  const { client, calls } = stub({
+    tabs: [tab(1)],
+    parts: [],
+    attempts: [attempt("att-live", { status: "opening" }), attempt("att-rej", { status: "released", end_reason: "rejected" })],
+  });
+  const res = await listVisits(client, ME, false, Date.now());
+  assert(res.ok);
+  assertEquals(res.visits.slice(0, 2).map((v) => [v.tab_id, v.status, v.origin, v.verified_at]), [
+    ["att-live", "paying", "guest", null],
+    ["att-rej", "cancelled", "guest", null],
+  ]);
+  const q = calls.find((c) => c.table === "guest_pay_attempts")!;
+  assert(q.filters.some(([op, , v]) => op === "eq" && v === ME), "only this guest's tickets");
 });

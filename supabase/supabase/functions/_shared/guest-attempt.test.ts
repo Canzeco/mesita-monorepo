@@ -74,7 +74,7 @@ Deno.test("capture unanswered (5xx) or processing: stays charging, nothing writt
 
 Deno.test("a capture refused but still requires_capture is not a decline: stays charging", async () => {
   const { admin, rpcs } = fakeAdmin();
-  const { stripe } = fakeStripe((method, path) => {
+  const { stripe } = fakeStripe((_method, path) => {
     if (path.endsWith("/capture")) throw new StripeError(path, "invalid_request_error", "", 400, "busy");
     return { id: "pi_1", status: "requires_capture" };
   });
