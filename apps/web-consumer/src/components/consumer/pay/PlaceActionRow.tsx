@@ -1,7 +1,7 @@
 "use client";
 
 import { SizedImg } from "@mesita/place-profile";
-import { Clock3 } from "lucide-react";
+import { ChevronRight, Clock3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PendingBox } from "@/components/consumer/wallet/WalletLists";
 import { PAY_ROW, PAY_ROW_META, PAY_ROW_TEXT, PAY_THUMB } from "./pay-sections";
@@ -83,6 +83,10 @@ export function PlaceActionRow({
         ) : distance ? (
           <span className={cn(PAY_ROW_META, "shrink-0")}>{distance}</span>
         ) : null}
+        {/* A › AFTER THE BALANCE (Pato, 2026-11-21, MESITA-4598: "at the right
+            of balance use this icon > to express that you can open that
+            card"). */}
+        {disabled ? null : <ChevronRight className="text-muted-foreground -ml-1 h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />}
       </button>
       {/* MONEY ON ITS WAY, UNDER THE CARD (Pato, 2026-11-21, MESITA-4594:
           "if bonus pending, lit it below the loyalty card in that blue box

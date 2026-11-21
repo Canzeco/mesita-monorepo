@@ -253,6 +253,17 @@ export function GuestPayScreen({
     if (busy) return;
     onChoosePlace();
   };
+  // THE ✕ CLOSES THE FLOW AND THE TICKET IS GONE (Pato, 2026-11-21,
+  // MESITA-4598: "the ticket is not saved until resolved … if i close the
+  // ticket before finishing, the ticket is gone, not saved"; picked "gone at
+  // once"): what was typed here is dropped and Pay shows, no question. A
+  // ticket already on the server (a card held, an answer still coming) is
+  // real: ✕ only leaves it. It kept the draft before (MESITA-3908).
+  const closeFlow = () => {
+    if (busy) return;
+    if (!held && !outcomeUnknown) clearGuestDraft(placeId);
+    onLeavePay();
+  };
 
   // The saved cards, when the place takes cards (and again on Retry).
   useEffect(() => {
@@ -358,7 +369,7 @@ export function GuestPayScreen({
 
   // The header's X leaves (MESITA-3880), with the latest state each render.
   useEffect(() => {
-    registerClose?.(leave);
+    registerClose?.(closeFlow);
   });
   useEffect(() => () => registerClose?.(null), [registerClose]);
 
@@ -373,7 +384,12 @@ export function GuestPayScreen({
     }
     if (shown === "pay" || shown === "method") setStage(payBackStage(shown));
     else if (!typing) setTyping(true);
-    else return false;
+    else {
+      // ← on the first step reopens the places (MESITA-4598, step 1 of the
+      // flow); history-back before.
+      leave();
+      return true;
+    }
     setError(null);
     setPayRefusal(null);
     return true;
