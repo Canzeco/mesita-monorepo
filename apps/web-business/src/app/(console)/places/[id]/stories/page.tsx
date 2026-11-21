@@ -1,11 +1,8 @@
-import { TicketDeskPage } from "@/components/place-manage/TicketDeskPage";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-export const metadata = { title: "Stories" };
-
-// Stories (MESITA-4487): the story tickets, a posted one that nobody has
-// looked at first, so verification has a place to land.
-export default async function StoriesPage({ params }: { params: Promise<{ id: string }> }) {
+// One page of sections since MESITA-4534 (Pato: "don't create subpages in
+// general"): this old address lands on General, scrolled to its section.
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <TicketDeskPage placeId={id} kind="stories" />;
+  redirect(`/places/${encodeURIComponent(id)}/general#stories`);
 }

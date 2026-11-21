@@ -37,8 +37,12 @@ export const ACCOUNT = "/account";
 export const PLACE_TABS = ["views", "visits", "vouchers", "stories", "gifts", "money", "profile", "premier", "payments", "general", "reservations", "all", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
+/** The tabs that are sections of General, not pages (MESITA-4534). */
+export const GENERAL_SECTIONS: readonly PlaceTab[] = ["reservations", "stories", "money", "settings", "admin"];
+
 export function placeTabHref(placeId: string, tab: PlaceTab): string {
-  return `/places/${encodeURIComponent(placeId)}/${tab}`;
+  const base = `/places/${encodeURIComponent(placeId)}`;
+  return GENERAL_SECTIONS.includes(tab) ? `${base}/general#${tab}` : `${base}/${tab}`;
 }
 
 /** A place's Premier page, optionally scrolled to its plans with one picked.

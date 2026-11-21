@@ -1,49 +1,66 @@
-import { CaretRightIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { PLACE_TAB_META } from "@/components/shell/place-tab-meta";
+import { TicketDeskPage } from "@/components/place-manage/TicketDeskPage";
 import { getManagePlace } from "@/lib/place-view";
 import { placeTabHref, type PlaceTab } from "@/lib/routes";
 import { FOCUS_RING_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
+import { ReservationsPanel } from "../reservations/ReservationsPanel";
+import { MoneySection } from "../money/MoneySection";
+import { SettingsSection } from "../settings/SettingsSection";
+import { AdminSection } from "../admin/AdminSection";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "General" };
 
-// General (MESITA-4528, Pato: "General (here include reservations and stories
-// and missing configuration, easy peasy, and the all there nested with a new
-// button)"): the pages the rail no longer lists, as one card of rows, and a
-// button to All. Admin shows for Mesita staff only; its page 404s for anyone
-// else, so hiding the row is never the gate.
-const ROWS: readonly PlaceTab[] = ["reservations", "stories", "money", "settings"];
+// General (MESITA-4528) is ONE page of sections (MESITA-4534, Pato: "don't
+// create subpages in general btw — all there displayed in the same page but
+// in different sections"): Reservations, Stories, Money, Settings, and Admin
+// for Mesita staff, then a button to All. Each section's id is its old
+// address's tab, so /places/<id>/<tab> redirects to #<tab> here. Admin draws
+// nothing for anyone but staff; its writes are refused at the EF anyway.
+function Section({ tab, children }: { tab: PlaceTab; children: React.ReactNode }) {
+  const { label, icon: Mark, sub } = PLACE_TAB_META[tab];
+  return (
+    <section id={tab} aria-labelledby={`${tab}-title`} className="flex scroll-mt-4 flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <span className="bg-muted grid size-10 shrink-0 place-items-center rounded-xl">
+          <Mark size={20} aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <h2 id={`${tab}-title`} className="font-semibold">
+            {label}
+          </h2>
+          <p className="text-muted-foreground text-sm">{sub}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default async function GeneralPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const manage = await getManagePlace(id);
-  const rows: PlaceTab[] = manage?.role === "superadmin" ? [...ROWS, "admin"] : [...ROWS];
   return (
-    <div className="flex flex-col gap-4 pb-8">
-      <ul className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border">
-        {rows.map((tab) => {
-          const { label, icon: Mark, sub } = PLACE_TAB_META[tab];
-          return (
-            <li key={tab}>
-              <Link
-                href={placeTabHref(id, tab)}
-                className={cn("hover:bg-muted/50 flex items-center gap-3 px-4 py-3.5 transition", FOCUS_RING_CLASS)}
-              >
-                <span className="bg-muted grid size-10 shrink-0 place-items-center rounded-xl">
-                  <Mark size={20} aria-hidden />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold">{label}</span>
-                  <span className="text-muted-foreground block text-sm">{sub}</span>
-                </span>
-                <CaretRightIcon size={16} className="text-muted-foreground shrink-0" aria-hidden />
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+    <div className="flex flex-col gap-8 pb-8">
+      <Section tab="reservations">
+        <ReservationsPanel />
+      </Section>
+      <Section tab="stories">
+        <TicketDeskPage placeId={id} kind="stories" />
+      </Section>
+      <Section tab="money">
+        <MoneySection id={id} />
+      </Section>
+      <Section tab="settings">
+        <SettingsSection id={id} />
+      </Section>
+      {manage?.role === "superadmin" ? (
+        <Section tab="admin">
+          <AdminSection id={id} />
+        </Section>
+      ) : null}
       <Link
         href={placeTabHref(id, "all")}
         className={cn(

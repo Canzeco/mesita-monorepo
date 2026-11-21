@@ -9,12 +9,12 @@ import {
   EyeIcon,
   FootprintsIcon,
   GearIcon,
+  SlidersHorizontalIcon,
   GiftIcon,
   InstagramLogoIcon,
   MegaphoneIcon,
   MoneyIcon,
   ShieldCheckIcon,
-  SlidersHorizontalIcon,
   StorefrontIcon,
   TagIcon,
   TicketIcon,
@@ -24,7 +24,8 @@ import type { PlaceTab } from "@/lib/routes";
 // Discounts left with the discount product (MESITA-3299). Monitor is
 // Views · Visits · Vouchers · Gifts; Stories and Money live in General
 // (MESITA-4528). Money stays the cash ledger. The four ticket pages list every
-// ticket of that kind and the last 30 days.
+// ticket of that kind and the last 30 days. General wears the gear (Pato,
+// MESITA-4534: "general icon must be a gear").
 export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: string }> = {
   views: { label: "Views", icon: EyeIcon, sub: "Who saw your place online." },
   visits: { label: "Visits", icon: FootprintsIcon, sub: "Who came and paid with Mesita." },
@@ -37,7 +38,7 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   // Offers (MESITA-4530, Pato: "rename payment pages to offers"); the URL stays
   // /payments, where Stripe returns.
   payments: { label: "Offers", icon: TagIcon, sub: "Choose how guests pay you and earn credit here. Money and payouts are on General › Money." },
-  general: { label: "General", icon: SlidersHorizontalIcon, sub: "Reservations, Stories, Money and Settings." },
+  general: { label: "General", icon: GearIcon, sub: "Reservations, Stories, Money and Settings." },
   reservations: { label: "Reservations", icon: CalendarCheckIcon, sub: "Whether guests can ask for a table here." },
   // Every product, current and future (MESITA-3238; was Soon, MESITA-3197). The
   // line is about Mesita, not the page (Pato, MESITA-3237); it leads with "the
@@ -47,6 +48,6 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
     icon: DotsThreeCircleIcon,
     sub: "Mesita Suite is the Shopify for independent restaurants: one platform for marketing, payments and operations.",
   },
-  settings: { label: "Settings", icon: GearIcon, sub: "Place and team." },
+  settings: { label: "Settings", icon: SlidersHorizontalIcon, sub: "Place and team." },
   admin: { label: "Admin", icon: ShieldCheckIcon, sub: "Mesita staff only." },
 };

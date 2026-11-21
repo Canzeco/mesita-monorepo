@@ -2,7 +2,7 @@
 
 // Payments (MESITA-3296; the Place states of Main §10 since MESITA-3589).
 // SINCE MESITA-3946 THE PAGE IS THREE CARDS, then Vouchers and Waiter Code:
-//   Stripe Account   · the account (a LARGE Open Stripe button, MESITA-4024: Pato, "must be far larger") · Accept Stripe Payments
+//   Stripe Account   · the account (a standard pill since MESITA-4534; was large, MESITA-4024) · Accept Stripe Payments
 //   Credits Account  · Credits Agreement · Credits Balance (read-only) · Accept
 //                      Credits Payments (Loyalty Cards: on once signed, then locked)
 //   Payments         · one row per way to pay, Accept only: Cash · App · Credits
@@ -428,12 +428,19 @@ export function PaymentsPanel({
             {copy.button ? (
               <button
                 type="button"
-                className="inline-flex min-h-14 shrink-0 items-center justify-center gap-2.5 rounded-full bg-[#635BFF] px-9 py-4 text-lg font-semibold whitespace-nowrap text-white transition hover:bg-[#5249e6] disabled:opacity-60"
+                // Standard pill size (MESITA-4534, Pato: "make stripe smaller…
+                // it only matters for the onboarding"): Stripe's purple while
+                // setup is unfinished, a quiet grey link once connected.
+                className={cn(
+                  PILL_BUTTON_CLASS,
+                  "shrink-0 whitespace-nowrap",
+                  ready ? QUIET_PILL_CLASS : "bg-[#635BFF] text-white hover:bg-[#5249e6] hover:opacity-100",
+                )}
                 disabled={pending}
                 onClick={() => void stripe()}
               >
                 {busy === "stripe" ? "Opening…" : copy.button}
-                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={22} weight="bold" aria-hidden /> : null}
+                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={14} weight="bold" aria-hidden /> : null}
               </button>
             ) : (
               <span />
