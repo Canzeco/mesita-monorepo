@@ -9,12 +9,12 @@ import { Skeleton } from "@/components/shared/Skeleton";
 import { useWallet } from "@/components/consumer/wallet/use-wallet";
 import { navigateTo } from "@/lib/navigate";
 import { walletCardPath } from "@/lib/consumer-route-contract";
-import { PILL } from "./header-pill";
+import { PILL, WIDE } from "./header-pill";
 
 /** The saved card in the Wallet header. A failed read ends on Retry.
  *  The card itself is a page (MESITA-4112). A 40px grey pill, the card
  *  glyph and the last four, Tickets' twin (MESITA-4497). */
-export function MethodPreview() {
+export function MethodPreview({ wide = false }: { wide?: boolean } = {}) {
   const router = useRouter();
   const { wallet, failed, reread } = useWallet({ withCards: true });
   const cards = failed ? null : wallet === null ? undefined : wallet.cards;
@@ -23,11 +23,11 @@ export function MethodPreview() {
   const label = card ? card.last4 : face === "add" ? "Add card" : "Retry";
 
   return face === "bone" ? (
-    <Skeleton className="h-10 w-20 rounded-xl" aria-hidden />
+    <Skeleton className={wide ? "h-12 min-w-0 flex-1 rounded-xl" : "h-10 w-20 rounded-xl"} aria-hidden />
   ) : (
     <button
       type="button"
-      className={PILL}
+      className={wide ? WIDE : PILL}
       aria-label={card ? `Payment card, ${brandLabel(card.brand)} ending in ${card.last4}` : face === "retry" ? "Couldn't load your saved cards. Tap Retry." : label}
       onClick={() => {
         if (card) navigateTo(router, walletCardPath(card.id), { motion: "drill" });

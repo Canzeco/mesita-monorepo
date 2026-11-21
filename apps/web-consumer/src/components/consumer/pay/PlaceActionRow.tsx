@@ -1,95 +1,60 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { Skeleton } from "@/components/shared/Skeleton";
 import { cn } from "@/lib/utils";
 
-// A Wallet card (MESITA-4500): two equal lines on one grid.
-// Line 1: profile, name, money. Line 2: Offers, Gift, Pay.
-// Pay is the only filled control. A disabled control stays in its cell.
+// A Wallet place (MESITA-4504): one line. The name, and the amount when
+// the guest holds credit. Tap selects it for the page's Pay. Tap the
+// selected row again to open the place. A gone card does not select.
 
 export function PlaceActionRow({
   name,
-  photo,
+  amount,
   subtitle,
-  money,
+  selected = false,
+  disabled = false,
+  onSelect,
   onOpen,
-  offers,
-  gift,
-  pay,
 }: {
   name: string;
-  photo: ReactNode;
+  /** Plain amount. Absent when they hold nothing here. */
+  amount?: string | null;
   subtitle?: string | null;
-  money?: ReactNode;
-  /** The profile and the name open the place's page. */
-  onOpen?: () => void;
-  offers?: Cell;
-  gift?: Cell;
-  pay?: Cell;
-}) {
-  return (
-    <div
-      className="border-border bg-card grid grid-cols-[3.5rem_minmax(0,1fr)_5.25rem_5.25rem] grid-rows-[3.5rem_3.5rem] gap-2 rounded-xl border p-2"
-      data-wallet-row
-    >
-      <span className="row-start-1 flex h-14 w-14 overflow-hidden rounded-xl [&>*]:h-full [&>*]:w-full [&>*]:rounded-xl">{photo}</span>
-      {onOpen ? (
-        <button
-          type="button"
-          onClick={onOpen}
-          aria-label={`Open ${name}`}
-          className="col-span-2 row-start-1 flex min-w-0 flex-col justify-center text-left"
-        >
-          <Name name={name} subtitle={subtitle} />
-        </button>
-      ) : (
-        <div className="col-span-2 row-start-1 flex min-w-0 flex-col justify-center">
-          <Name name={name} subtitle={subtitle} />
-        </div>
-      )}
-      <div className="col-start-4 row-start-1 flex min-w-0 items-center justify-end overflow-hidden text-right">{money}</div>
-      <GridButton label="Offers" cell={offers} className="col-span-2 row-start-2" />
-      <GridButton label="Gift" cell={gift} className="col-start-3 row-start-2" />
-      <GridButton label="Pay" cell={pay} filled className="col-start-4 row-start-2" />
-    </div>
-  );
-}
-
-function Name({ name, subtitle }: { name: string; subtitle?: string | null }) {
-  return (
-    <>
-      <span className="text-foreground truncate text-base leading-tight font-semibold">{name}</span>
-      {subtitle ? <span className="text-muted-foreground truncate text-sm leading-tight">{subtitle}</span> : null}
-    </>
-  );
-}
-
-type Cell = {
-  spoken: string;
+  selected?: boolean;
   disabled?: boolean;
-  wait?: boolean;
-  onClick: () => void;
-};
-
-function GridButton({ label, cell, filled, className }: { label: string; cell?: Cell; filled?: boolean; className?: string }) {
-  if (cell?.wait) return <Skeleton className={cn("h-full rounded-xl", className)} aria-hidden />;
+  onSelect?: () => void;
+  /** The place page. Fires on a second tap, once the row is selected. */
+  onOpen?: () => void;
+}) {
   return (
     <button
       type="button"
-      disabled={!cell || cell.disabled}
-      aria-label={cell?.spoken ?? label}
+      disabled={disabled}
+      aria-pressed={disabled ? undefined : selected}
+      aria-label={
+        disabled
+          ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}`
+          : selected
+            ? `Pay at ${name}. Tap again to open.`
+            : `Select ${name}`
+      }
       onClick={() => {
-        if (cell && !cell.disabled) cell.onClick();
+        if (disabled) return;
+        if (selected) onOpen?.();
+        else onSelect?.();
       }}
       className={cn(
-        "flex h-full items-center justify-center rounded-xl px-2 text-sm font-semibold",
-        filled ? "bg-foreground text-background" : "border-border border",
-        (!cell || cell.disabled) && "opacity-40",
-        className,
+        "bg-card flex h-14 w-full items-center gap-3 rounded-xl border px-3 text-left",
+        selected ? "border-foreground border-2" : "border-border",
+        disabled && "cursor-default",
       )}
+      data-wallet-row
+      data-selected={selected ? "true" : undefined}
     >
-      {label}
+      <span className="min-w-0 flex-1">
+        <span className="text-foreground block truncate text-base font-semibold">{name}</span>
+        {subtitle ? <span className="text-muted-foreground block truncate text-sm">{subtitle}</span> : null}
+      </span>
+      {amount ? <span className="text-foreground shrink-0 text-sm font-semibold tabular-nums">{amount}</span> : null}
     </button>
   );
 }
