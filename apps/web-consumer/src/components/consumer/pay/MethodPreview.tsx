@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { CreditCard, Smartphone } from "lucide-react";
+import { ChevronRight, CreditCard, Smartphone } from "lucide-react";
 import { brandLabel, type SavedCard } from "@/lib/api/cards";
 import { defaultMethod, isApplePhone, methodFace } from "@/lib/pay-wallet";
 import { readLastCard } from "@/lib/guest-pay-draft";
@@ -24,7 +24,7 @@ export function useApplePhone(): boolean {
  *  since MESITA-4112): the card's last four, or Apple Pay / Google Pay.
  *  It always opens Payment methods. A failed read ends on Retry. A 40px
  *  grey pill, Tickets' twin (MESITA-4497). */
-export function MethodPreview({ wide = false }: { wide?: boolean } = {}) {
+export function MethodPreview({ wide = false, row = false }: { wide?: boolean; row?: boolean } = {}) {
   const router = useRouter();
   const applePhone = useApplePhone();
   const { wallet, failed, reread } = useWallet({ withCards: true });
@@ -32,7 +32,16 @@ export function MethodPreview({ wide = false }: { wide?: boolean } = {}) {
   const face = methodFace(cards);
   const way = face === "card" || face === "add" ? defaultMethod(wallet?.pay_method, cards as SavedCard[], applePhone, readLastCard()) : null;
 
-  if (face === "bone") return <Skeleton className={wide ? "h-12 min-w-0 flex-1 rounded-xl" : "h-10 w-20 rounded-xl"} aria-hidden />;
+  if (face === "bone") {
+    if (row)
+      return (
+        <span className="flex h-14 items-center gap-3 px-3" aria-hidden>
+          <Skeleton className="h-5 w-5 rounded" />
+          <Skeleton className="h-4 w-28 rounded" />
+        </span>
+      );
+    return <Skeleton className={wide ? "h-12 min-w-0 flex-1 rounded-xl" : "h-10 w-20 rounded-xl"} aria-hidden />;
+  }
 
   const label =
     face === "retry"
@@ -56,16 +65,30 @@ export function MethodPreview({ wide = false }: { wide?: boolean } = {}) {
           ? `Payment methods. Default: ${label}`
           : "Add a payment method";
   const Icon = way && way.kind !== "card" ? Smartphone : CreditCard;
+  const open = () => {
+    if (face === "retry") reread();
+    else navigateTo(router, walletMethodsPath(), { motion: "drill" });
+  };
+
+  // ONE ROW IN PAY'S PAYMENT METHOD BOX (MESITA-4560, /plan-design-review
+  // D4): the glyph, "Visa ••4242" (or Apple Pay, Add card, Retry), a ›.
+  if (row) {
+    const rowLabel = face !== "retry" && way?.kind === "card" ? `${brandLabel(way.card.brand)} ••${way.card.last4}` : label;
+    return (
+      <button type="button" className="hover:bg-muted/60 flex h-14 w-full items-center gap-3 px-3 text-left" aria-label={aria} onClick={open} data-pay-method>
+        <Icon className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+        <span className="min-w-0 flex-1 truncate text-base font-semibold tabular-nums">{rowLabel}</span>
+        <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+      </button>
+    );
+  }
 
   return (
     <button
       type="button"
       className={wide ? WIDE : PILL}
       aria-label={aria}
-      onClick={() => {
-        if (face === "retry") reread();
-        else navigateTo(router, walletMethodsPath(), { motion: "drill" });
-      }}
+      onClick={open}
     >
       <Icon className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
       <span className="truncate tabular-nums">{label}</span>

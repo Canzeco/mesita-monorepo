@@ -1,30 +1,12 @@
 "use client";
 
-import { ChevronRight, Tag } from "lucide-react";
 import { offerSlides, SizedImg, type OfferInput } from "@mesita/place-profile";
-import { PushLink } from "@/components/consumer/nav/PushLink";
 import { OfferButton } from "@/components/consumer/offer-button";
 import { cn } from "@/lib/utils";
 
-// TWO LINES (Pato, 2026-11-21, MESITA-4525: "optimize space in that card,
-// make them shorter … card profile picture, name | Offers / amount |
-// Offers"): a 40x26 card cut from the place's photo and the name, the
-// amount under them (or the distance), the Offers tile beside both lines,
-// about 72px tall, split half and half (Pato: "LEFT MUST BE 50% AND RIGHT
-// MUST BE 50%"; an empty half holds the place when there are no offers).
-// The bank-card-sized card below was ~130px.
-//
-// A LOYALTY CARD BOX (Pato, 2026-11-21, MESITA-4520: "THE LEFT MUST BE THE
-// CARD, WITH THE AMOUNT ON TOP. IT MUST HAVE CARD DIMENSIONS. THE RIGHT REST
-// OF SPACE MUST BE THE BOX TO DISPLAY THE OFFERS IN CAROUSEL, BUT IT MUST BE
-// A DARK BUTTON SAYING OFFERS ... LIKE THAT BUTTON IN PLACE PROFILE"). Left:
-// a card in a bank card's proportions (85.6 x 54 mm), the place's photo,
-// the balance on top and the name at the bottom; a tap opens its Loyalty
-// Card (MESITA-4523: Pay Bill asks for the place in its sheet, so nothing
-// is selected here; a tap selected it for Pay in MESITA-4519). Right: the place
-// screen's own Offers tile (OffersTile, black with the moving chip), which
-// opens the place. No offers: the name and distance in plain text there.
-// MESITA-4519's two halves (photo and name over a mini card) before.
+// A ROW OF PAY'S LOYALTY CARDS BOX (MESITA-4560). History: a bank-card-sized
+// card with an Offers tile (MESITA-4520), two loose lines (MESITA-4525), a
+// 2x2 grid of boxes (MESITA-4531/4537).
 
 export function PlaceActionRow({
   name,
@@ -46,85 +28,62 @@ export function PlaceActionRow({
   /** "350 m" when the place is located. */
   distance?: string | null;
   subtitle?: string | null;
-  /** What the guest can buy here now; none shows the name instead of Offers. */
+  /** What the guest can buy here now; none leaves the row one line. */
   offers?: OfferInput | null;
-  /** The place page the Offers tile opens. */
+  /** The place page the offer opens. */
   placeHref?: string;
   placeId?: string;
   disabled?: boolean;
-  /** The card's tap: its Loyalty Card page (or the place). */
+  /** The first line's tap: its Loyalty Card page (or the place). */
   onOpen?: () => void;
 }) {
   const slides = disabled || !placeHref ? [] : offerSlides(offers);
   return (
-    // A 2x2 GRID (Pato, 2026-11-21, MESITA-4531: "card-name inside a box,
-    // then current balance inside a button box, 50% tall … 50% wide,
-    // occupying left side": "Card & Name | Offers / Balance | Offers"): two
-    // bordered 48px boxes in the left half, the Offers tile the whole right
-    // half. Both left boxes open the Loyalty Card. Two loose lines before.
-    <div className="bg-card border-border grid w-full grid-cols-2 grid-rows-[3rem_3rem] gap-2 rounded-2xl border p-2" data-wallet-row data-place-id={placeId}>
+    // TWO LINES IN ONE BOX OF ROWS (Pato, 2026-11-21, MESITA-4560: "each
+    // card must be two lines of height. first line … the place card, then
+    // the name, and at the right the amount. then below … the offers of
+    // bonuses available"; /plan-design-review D1-D3): a row of the Loyalty
+    // Cards box, a hairline between places. Line 1 opens the Loyalty Card;
+    // line 2 is the moving offer at full width (Home's OfferButton), opening
+    // the place. No offers: one line. The 2x2 grid of MESITA-4531/4537
+    // before.
+    <div className="flex flex-col gap-2 px-3 py-2.5" data-wallet-row data-place-id={placeId}>
       <button
         type="button"
         disabled={disabled}
-        aria-label={disabled ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}` : name}
+        aria-label={
+          disabled
+            ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}`
+            : amount
+              ? `${name}, balance ${amount}`
+              : distance
+                ? `${name}, ${distance} away`
+                : name
+        }
         onClick={() => {
           if (!disabled) onOpen?.();
         }}
-        className={cn(BOX, disabled && "cursor-default opacity-60")}
+        className={cn("flex min-h-11 w-full min-w-0 items-center gap-3 text-left", disabled && "cursor-default opacity-60")}
         data-loyalty-card
       >
         <MiniCard photo={photo} name={name} />
-        {/* Two lines before it cuts (MESITA-4532): "Taquería Orinoco (TEC)"
-            fits at 390px. */}
-        <span className="text-foreground line-clamp-2 min-w-0 text-sm leading-tight font-semibold">{name}</span>
-      </button>
-      <button
-        type="button"
-        disabled={disabled}
-        aria-label={subtitle ?? (amount ? `Balance at ${name}: ${amount}` : distance ? `${name}, ${distance} away` : name)}
-        onClick={() => {
-          if (!disabled) onOpen?.();
-        }}
-        className={cn(BOX, "col-start-1 row-start-2", disabled && "cursor-default opacity-60")}
-        data-loyalty-balance
-      >
+        <span className="text-foreground min-w-0 flex-1 truncate text-base font-semibold">{name}</span>
         {subtitle ? (
-          <span className="text-muted-foreground min-w-0 truncate text-sm">{subtitle}</span>
+          <span className="text-muted-foreground max-w-[45%] shrink-0 truncate text-sm">{subtitle}</span>
         ) : amount ? (
-          <span className="text-foreground min-w-0 truncate text-lg leading-tight font-bold tabular-nums">{amount}</span>
+          <span className="text-foreground shrink-0 text-base font-bold tabular-nums" data-loyalty-balance>
+            {amount}
+          </span>
         ) : distance ? (
-          <span className="text-muted-foreground text-sm">{distance} away</span>
-        ) : (
-          <span className="text-muted-foreground text-sm">No credit yet</span>
-        )}
+          <span className="text-muted-foreground shrink-0 text-sm">{distance}</span>
+        ) : null}
       </button>
       {slides.length > 0 && placeHref ? (
-        // A TRUE 2x2 (Pato, 2026-11-21, MESITA-4537, /plan-design-review:
-        // "offers … doesn't feel like a button. it doesn't respect the
-        // grid"): two boxes the left column's size, no frame in a frame. Top:
-        // a black "Offers ›" button. Bottom: the moving offer in its colour,
-        // Home's own OfferButton. Both open the place (MESITA-4455). The
-        // place screen's OffersTile spanned both rows before.
-        <>
-          <PushLink
-            href={placeHref}
-            aria-label={`Offers at ${name}`}
-            className="bg-foreground text-background hover:bg-foreground/90 col-start-2 row-start-1 flex min-w-0 items-center gap-2 rounded-xl px-3 text-sm font-semibold"
-            data-loyalty-offers
-          >
-            <Tag className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            <span className="min-w-0 flex-1 truncate">Offers</span>
-            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-          </PushLink>
-          <OfferButton href={placeHref} name={name} slides={slides} placeId={placeId} className="col-start-2 row-start-2 h-full rounded-xl text-sm" />
-        </>
+        <OfferButton href={placeHref} name={name} slides={slides} placeId={placeId} className="h-11 w-full rounded-xl text-sm" />
       ) : null}
     </div>
   );
 }
-
-/** One left box (MESITA-4531): a 1px hairline box, 48px, the Me tiles' radius. */
-const BOX = "border-border bg-card hover:bg-muted/60 flex min-w-0 items-center gap-2 rounded-xl border px-3 text-left transition-colors";
 
 /** The Loyalty Card's face, small (MESITA-4525): 40x26, the place's photo. */
 function MiniCard({ photo, name }: { photo: string | null; name: string }) {

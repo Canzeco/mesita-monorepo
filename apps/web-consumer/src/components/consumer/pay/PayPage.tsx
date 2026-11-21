@@ -30,6 +30,8 @@ import { PayHeader } from "./PayHeader";
 import { LoyaltyCardBoxSkeleton } from "./PayFrameLoading";
 import { PayPickSheet } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
+import { MethodPreview } from "./MethodPreview";
+import { SECTION_BOX, SECTION_TITLE } from "./pay-sections";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
@@ -325,24 +327,27 @@ export function PayPage({
       ) : null}
 
       {payBusy ? (
-        <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
+        <Skeleton className="mt-2 h-14 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
       ) : (
         <button
           type="button"
-          className="mt-2 flex h-24 w-full items-center justify-center gap-3 rounded-xl bg-[#635BFF] text-lg font-semibold text-white hover:bg-[#5249e6]"
+          className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#635BFF] text-base font-semibold text-white hover:bg-[#5249e6]"
           aria-label={bill === "open" ? "Pay your open bill" : "Pay Bill"}
           onClick={paySelected}
           data-pay-bill
         >
-          <QrCode className="h-8 w-8 shrink-0" strokeWidth={2.25} aria-hidden />
+          <QrCode className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
           <span className="min-w-0 text-left">
             <span className="block">Pay Bill</span>
           </span>
         </button>
       )}
 
-      {/* ADD FUNDS | SEND GIFT, HALF AND HALF (MESITA-4559): black, half
-          Pay Bill's height so Pay stays the main action. Add funds opens the
+      {/* ADD FUNDS | SEND GIFT, HALF AND HALF (MESITA-4559): black. ONE
+          SIZE (Pato, 2026-11-21, MESITA-4560: "standardize the sizes of the
+          buttons"): Pay Bill and these two are all 56px, 16px semibold, a
+          20px glyph; purple alone marks Pay Bill as the main action (it was
+          96px). Add funds opens the
           places that sell credits (/wallet/buy, MESITA-4096); Send Gift the
           place list to gift from. Send Gift alone, full width, before
           (MESITA-4520). */}
@@ -372,7 +377,14 @@ export function PayPage({
           MESITA-4532): bg-border, Home's family-column grey, no hairline
           needed at its edge; bg-background (Me's ground) was too faint. A
           lone hairline (MESITA-4520) before. */}
-      <div className="bg-border -mx-2 mt-3 flex flex-1 flex-col px-2 pt-1 pb-8" data-pay-cards>
+      <div className="bg-border -mx-2 mt-3 flex flex-1 flex-col px-2 pb-8" data-pay-cards>
+      {/* PAYMENT METHOD, THEN LOYALTY CARDS (Pato, 2026-11-21, MESITA-4560:
+          "a card that says payment method, and below a box that says loyalty
+          cards"): each a grey title over one white box. */}
+      <p className={SECTION_TITLE}>Payment method</p>
+      <div className={SECTION_BOX}>
+        <MethodPreview row />
+      </div>
       {loc.state === "prime" ? (
         <div className="border-border bg-card mt-2 rounded-xl border p-3">
           <p className="text-sm font-semibold">See places near you</p>

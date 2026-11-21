@@ -3,6 +3,7 @@ import { GuestPayLoading } from "./GuestPayScreen";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { PayHeader } from "./PayHeader";
 import { TicketsShortcut } from "./TicketsShortcut";
+import { SECTION_BOX, SECTION_TITLE } from "./pay-sections";
 
 /** A Pay screen's frame while it loads: the title in place, the body in
  *  bones (Pato, MESITA-2701: "the placeholders must be similar to the page
@@ -11,20 +12,30 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
   if (body === "list") {
     // /pay (Pato, 2026-11-21, MESITA-4523: "update placeholders when loading
     // page"): the page as MESITA-4559 draws it. The white Mesita Wallet header
-    // with its Tickets icon, Pay Bill 96px, Add funds | Send Gift 56px, then
-    // the Loyalty Card boxes on grey.
+    // with its Tickets icon, Pay Bill, Add funds | Send Gift (all 56px,
+    // MESITA-4560), then the Payment method and Loyalty Cards boxes on grey.
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0" aria-busy>
         <PayHeader title="Mesita Wallet" action={<TicketsShortcut icon />} />
-        <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
+        <Skeleton className="mt-2 h-14 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
         <div className="mt-2 grid grid-cols-2 gap-2">
           <Skeleton className="h-14 min-w-0 rounded-xl" aria-hidden />
           <Skeleton className="h-14 min-w-0 rounded-xl" aria-hidden />
         </div>
-        <div className="bg-border -mx-2 mt-3 flex flex-1 flex-col gap-2 px-2 pt-3 pb-8">
-          <LoyaltyCardBoxSkeleton />
-          <LoyaltyCardBoxSkeleton />
-          <LoyaltyCardBoxSkeleton />
+        <div className="bg-border -mx-2 mt-3 flex flex-1 flex-col px-2 pb-8">
+          <p className={SECTION_TITLE}>Payment method</p>
+          <div className={SECTION_BOX}>
+            <span className="flex h-14 items-center gap-3 px-3">
+              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="h-4 w-28 rounded" />
+            </span>
+          </div>
+          <p className={SECTION_TITLE}>Loyalty Cards</p>
+          <div className={SECTION_BOX}>
+            <LoyaltyCardBoxSkeleton />
+            <LoyaltyCardBoxSkeleton />
+            <LoyaltyCardBoxSkeleton />
+          </div>
         </div>
       </div>
     );
@@ -41,20 +52,17 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
   );
 }
 
-/** One Loyalty Card box in bones (MESITA-4537): the true 2x2 grid, card +
- *  name over balance, Offers over the moving offer. */
+/** One Loyalty Cards row in bones (MESITA-4560): card, name and amount,
+ *  then the offer bar. No box of its own: it sits in the Loyalty Cards box. */
 export function LoyaltyCardBoxSkeleton() {
   return (
-    <div className="border-border bg-card grid w-full grid-cols-2 grid-rows-[3rem_3rem] gap-2 rounded-2xl border p-2" aria-hidden>
-      <span className="border-border flex items-center gap-2 rounded-xl border px-3">
+    <div className="flex flex-col gap-2 px-3 py-2.5" aria-hidden>
+      <span className="flex min-h-11 items-center gap-3">
         <Skeleton className="h-[26px] w-10 shrink-0 rounded-[5px]" />
-        <Skeleton className="h-4 w-24 rounded" />
+        <Skeleton className="h-4 w-32 rounded" />
+        <Skeleton className="ml-auto h-4 w-16 rounded" />
       </span>
-      <span className="border-border col-start-1 row-start-2 flex items-center rounded-xl border px-3">
-        <Skeleton className="h-5 w-24 rounded" />
-      </span>
-      <Skeleton className="col-start-2 row-start-1 rounded-xl" />
-      <Skeleton className="col-start-2 row-start-2 rounded-xl" />
+      <Skeleton className="h-11 w-full rounded-xl" />
     </div>
   );
 }
