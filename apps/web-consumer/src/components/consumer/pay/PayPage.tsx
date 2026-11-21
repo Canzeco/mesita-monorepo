@@ -383,7 +383,9 @@ export function PayPage({
           className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
           data-add-funds
         >
-          <span className={cn(ICON_CIRCLE, "text-neutral-950")} aria-hidden>
+          {/* A BLACK CIRCLE (Pato, 2026-11-21, MESITA-4590: "Buy credits in a
+              black circle", Pay Bill's stays white). */}
+          <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
             <Plus className="h-5 w-5" strokeWidth={2.5} />
           </span>
           Buy Credits

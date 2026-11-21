@@ -52,6 +52,8 @@ export const CONFIRM_FILES = [
   "components/consumer/pay/PayPage.tsx",
   // Remove a Loyalty Card that holds nothing (MESITA-4112).
   "components/consumer/wallet/PlaceCredit.tsx",
+  // Remove a saved card right from Payment methods (MESITA-4590).
+  "components/consumer/wallet/PaymentMethodsPage.tsx",
   "components/consumer/reservation-actions.tsx",
 ];
 
