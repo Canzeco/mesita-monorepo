@@ -82,7 +82,8 @@ Deno.test("storyView: the QR only while found; the bonus time only while approve
   });
   assertEquals(approved.review_url, null);
   assertEquals(approved.bonus_at, "2026-11-18T15:00:00Z");
-  assertEquals(approved.poll, null);
+  // MESITA-4527: far from its bonus an approved Story still polls, once a minute.
+  assertEquals(approved.poll?.every_ms, 60_000);
   const live = storyView(story({ livemode: true }), { purchase, mention: null, emulator: true, nowMs: NOW });
   assertEquals(live.emulator, false, "never on a live Story");
   assertEquals(storyView(story(), { purchase: { ...purchase, status: "refunded" }, mention: null, emulator: false, nowMs: NOW }).refunded, true);

@@ -5,20 +5,21 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { readOwnStory, readStoryMentions, readStoryPurchases, STORY_POLL, type StoryRecord, storyView, type StoryView } from "./story.ts";
-import { storyMode } from "./story-mention.ts";
+import { readStoryRules, storyMode } from "./story-mention.ts";
 import { readVoucherPlace } from "./wallet.ts";
 import { instagramHandleOfUrl } from "./place-instagram.ts";
 import { placeZone, PLACE_ZONE_COLUMNS } from "./local-time.ts";
 import { paymentsLivemode } from "./stripe.ts";
 
 export async function readStoryScreen(admin: SupabaseClient, s: StoryRecord, nowMs: number): Promise<StoryView & { place_name: string | null }> {
-  const [purchases, mentions, placeRes, zone] = await Promise.all([
+  const [purchases, mentions, placeRes, zone, rules] = await Promise.all([
     readStoryPurchases(admin, [s.purchase_id]),
     readStoryMentions(admin, [s.mention_id]),
     s.place_id ? readVoucherPlace(admin, s.place_id) : Promise.resolve({ ok: true as const, place: null }),
     s.place_id
       ? admin.from("place_profiles").select(`id, ${PLACE_ZONE_COLUMNS}`).eq("id", s.place_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    readStoryRules(admin),
   ]);
   if (!placeRes.ok) throw new Error(placeRes.error);
   const place = placeRes.place;
@@ -27,7 +28,8 @@ export async function readStoryScreen(admin: SupabaseClient, s: StoryRecord, now
     mention: s.mention_id ? mentions.get(s.mention_id) ?? null : null,
     placeHandle: instagramHandleOfUrl(place?.instagram_url ?? null),
     timeZone: placeZone((zone.error ? null : zone.data) as { timezone?: unknown; lng?: unknown } | null),
-    emulator: !paymentsLivemode() && storyMode() === "emulated",
+    // MESITA-4527: the test buttons show only while Admin's switch is on.
+    emulator: !paymentsLivemode() && storyMode() === "emulated" && rules.emulator,
     nowMs,
   });
   return { ...view, place_name: place?.name ?? null };

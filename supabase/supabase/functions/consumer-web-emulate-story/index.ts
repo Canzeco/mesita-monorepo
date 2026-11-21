@@ -62,7 +62,7 @@ serveJson("consumer-web-emulate-story", async (req) => {
   if (action === "post" && !isUuid(placeId)) {
     return json({ ok: false, code: "bad_request", field: "place_id", error: "place_id is the restaurant this story tags" }, 400);
   }
-  const refusal = emulatorRefusal(paymentsLivemode(), readInstagramDmConfig() !== null);
+  const refusal = emulatorRefusal(paymentsLivemode(), readInstagramDmConfig() !== null, (await readStoryRules(admin)).emulator);
   if (refusal) return json({ ok: false, code: refusal.code, error: refusal.error }, refusal.status);
   const me = user.id;
 

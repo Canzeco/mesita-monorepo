@@ -483,13 +483,15 @@ export async function headMediaKind(url: string | null, fetchImpl: typeof fetch 
 
 // ── The emulator's gate ──────────────────────────────────────────────────────
 
-export type EmulatorRefusal = { status: number; code: "not_test_mode" | "meta_on"; error: string };
+export type EmulatorRefusal = { status: number; code: "not_test_mode" | "meta_on" | "emulator_off"; error: string };
 
 /** Why the emulator refuses, or null (MESITA-4296: before any purchase, so it
  *  asks only the mode): only in Stripe test mode, only while the real
- *  webhook is off. */
-export function emulatorRefusal(livemode: boolean, metaOn: boolean): EmulatorRefusal | null {
+ *  webhook is off, and only while Admin's emulator switch is on
+ *  (money_config.story_emulator, MESITA-4527). */
+export function emulatorRefusal(livemode: boolean, metaOn: boolean, switchOn: boolean): EmulatorRefusal | null {
   if (metaOn) return { status: 409, code: "meta_on", error: "Instagram is connected: post a real story" };
   if (livemode) return { status: 409, code: "not_test_mode", error: "The story simulator works only in test mode" };
+  if (!switchOn) return { status: 409, code: "emulator_off", error: "Story emulator mode is off in Admin" };
   return null;
 }

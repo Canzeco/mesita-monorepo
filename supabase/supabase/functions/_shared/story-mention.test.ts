@@ -97,9 +97,11 @@ Deno.test("storyMode: meta when the webhook is configured, emulated in test mode
 });
 
 Deno.test("emulator: test mode only, and never with Meta on (MESITA-4296: no purchase needed)", () => {
-  assertEquals(emulatorRefusal(false, false), null);
-  assertEquals(emulatorRefusal(true, false)?.code, "not_test_mode");
-  assertEquals(emulatorRefusal(false, true)?.code, "meta_on");
+  assertEquals(emulatorRefusal(false, false, true), null);
+  assertEquals(emulatorRefusal(true, false, true)?.code, "not_test_mode");
+  assertEquals(emulatorRefusal(false, true, true)?.code, "meta_on");
+  // MESITA-4527: Admin's switch off refuses even in test mode.
+  assertEquals(emulatorRefusal(false, false, false)?.code, "emulator_off");
 });
 
 Deno.test("emulator ids and URLs: emu-<consumer>-<n>, versioned", () => {
