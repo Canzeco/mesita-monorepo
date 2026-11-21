@@ -55,8 +55,9 @@ describe("the How places are ranked card draws the runtime model (MESITA-2338)",
 describe("Ranking shows every recipe row (MESITA-4454)", () => {
   it("renders without a page stamp and offers no field the server forces (C1, L-1)", () => {
     const html = render(<RankingBox {...seed} />);
-    // Six Catalog rows × 5 fields less 3 forced Premier exponents, plus two
-    // Map rows × 3 fields less 1, plus the preview's lat and lng.
-    expect(html.match(/<input/g)?.length).toBe(6 * 5 - 3 + 2 * 3 - 1 + 2);
+    // Six Catalog rows × 4 fields (Stars exponent is gone) less 3 forced
+    // Premier exponents, plus two Map rows × 2 fields less 1, plus the
+    // preview's lat and lng.
+    expect(html.match(/<input/g)?.length).toBe(6 * 4 - 3 + 2 * 2 - 1 + 2);
   });
 });
