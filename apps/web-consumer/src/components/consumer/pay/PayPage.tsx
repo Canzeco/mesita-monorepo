@@ -4,7 +4,8 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Clock, QrCode } from "lucide-react";
+import { Clock, Gift, QrCode } from "lucide-react";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -302,7 +303,9 @@ export function PayPage({
     // panel, Home's one step (MESITA-4035); panels keep their 16px insides.
     <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-8 *:shrink-0">
       {/* A CLEAN WHITE HEADER (MESITA-4519): the black slab of MESITA-4512
-          is gone. Payment Method and Tickets, then Pay, the one filled thing. */}
+          is gone ("remove the dark background … just a line dividing stuff
+          is clearer. button must be black"). Payment Method and Tickets,
+          then a black Pay, then a hairline over the places. */}
       <PayHeader title="Wallet" />
       <div className="mt-2 flex gap-2">
         <MethodPreview wide />
@@ -332,11 +335,11 @@ export function PayPage({
       ) : null}
 
       {payBusy ? (
-        <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
+        <Skeleton className="mt-2 h-24 w-full rounded-xl" aria-hidden />
       ) : (
         <button
           type="button"
-          className="mt-2 flex h-24 w-full items-center justify-center gap-3 rounded-xl bg-[#635BFF] text-lg font-semibold text-white hover:bg-[#5249e6]"
+          className="bg-foreground text-background hover:bg-foreground/90 mt-2 flex h-24 w-full items-center justify-center gap-3 rounded-xl text-lg font-semibold"
           aria-label={bill === "open" ? "Pay your open bill" : selectedName ? `Pay Bill at ${selectedName}` : "Pay Bill. Choose a place"}
           onClick={paySelected}
           data-pay-bill
@@ -348,6 +351,21 @@ export function PayPage({
           </span>
         </button>
       )}
+
+      {/* SEND GIFT UNDER PAY BILL (Pato, 2026-11-21, MESITA-4520: "Payment
+          Method | Tickets · Pay Bill · Send Gift black button · then each
+          card"): black, full width, half Pay Bill's height so Pay stays the
+          main action. It opens the place list to gift from (MESITA-4096). */}
+      <PushLink
+        href={CONSUMER_ROUTES.walletSend}
+        className="bg-foreground text-background hover:bg-foreground/90 mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold"
+        data-send-gift
+      >
+        <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+        Send Gift
+      </PushLink>
+
+      <hr className="border-border -mx-2 mt-3 mb-1" data-pay-divider />
 
       {loc.state === "prime" ? (
         <div className="border-border mt-2 rounded-xl border p-3">
