@@ -23,7 +23,27 @@ import { PILL, WIDE } from "./header-pill";
 // (MESITA-4331, Pato: "a bit dark but not that much"): ink at 15%, between
 // the light bg-muted and the black of MESITA-4091. `tall` is the Wallet
 // header's 40px pill, the card pill's twin: glyph and word, no › (MESITA-4497).
-export function TicketsShortcut({ tall = false, wide = false }: { tall?: boolean; wide?: boolean } = {}) {
+export function TicketsShortcut({
+  tall = false,
+  wide = false,
+  icon = false,
+}: { tall?: boolean; wide?: boolean; icon?: boolean } = {}) {
+  // AN ICON, NO WORD (Pato, 2026-11-21, MESITA-4559: "it must not say
+  // tickets, just a ticket icon with this > too"): the header's right-hand
+  // button, black like the page's other top buttons, a ticket glyph and a ›.
+  if (icon) {
+    return (
+      <PushLink
+        href={CONSUMER_ROUTES.mePages.tickets}
+        className="bg-foreground text-background hover:bg-foreground/90 flex h-11 items-center gap-1 rounded-xl pr-2.5 pl-3.5"
+        aria-label="Tickets"
+        data-tickets-shortcut
+      >
+        <Ticket className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+        <ChevronRight className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+      </PushLink>
+    );
+  }
   return (
     <PushLink
       href={CONSUMER_ROUTES.mePages.tickets}
