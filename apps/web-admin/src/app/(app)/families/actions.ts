@@ -14,7 +14,6 @@ export async function getFamiliesMap(): Promise<ActionResult<FamiliesMap & { lim
     ok: true,
     families: r.data.families,
     enabledCategories: r.data.enabledCategories ?? [],
-    disabledCategories: r.data.disabledCategories ?? [],
     tags: r.data.tags ?? [],
     limits: r.data.limits ?? null,
   };

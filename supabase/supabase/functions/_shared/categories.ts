@@ -8,8 +8,9 @@
 // the answer only if it is one of those live slugs. Both the create path
 // (_shared/create-place.ts) and the enrich path (the Enricher) call this
 // so a place's category is always a canonical slug, never free text.
-// Google categories are Google's canonical type list, catalog_membership,
-// each enabled on Mesita or not (MESITA-2891); fetchGoogleCategories reads it.
+// Google categories Mesita allows are catalog_membership, the allow-list
+// (MESITA-2891; MESITA-4576 deleted every row that was not allowed);
+// fetchGoogleCategories reads it.
 // A place's Google categories are Google's own types (MESITA-2836); its
 // Mesita Families are the Description step's model pick (MESITA-2891).
 
@@ -58,8 +59,8 @@ export async function fetchPlaceFamilies(
 /** One Google category and whether Mesita serves it (MESITA-2891). */
 export type GoogleCategory = { slug: string; label: string; enabled: boolean };
 
-// Google's canonical category list (catalog_membership: the Table A types),
-// each enabled on Mesita or not. [] on error, like the reads above.
+// The Google categories Mesita allows (catalog_membership, the allow-list
+// since MESITA-4576). [] on error, like the reads above.
 export async function fetchGoogleCategories(
   admin: SupabaseClient,
 ): Promise<GoogleCategory[]> {

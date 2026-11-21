@@ -31,8 +31,9 @@ export function matchesCategory(row: GoogleCategoryRow, query: string): boolean 
   return !q || `${row.label} ${row.slug} ${row.slug.replaceAll("_", " ")}`.toLowerCase().includes(q);
 }
 
-// Atlas (MESITA-2891): the thirty Mesita Families, every Google category
-// split into enabled and not enabled on Mesita, then the tag catalog. There
+// Atlas (MESITA-2891): the thirty Mesita Families, the Google categories
+// Mesita allows (MESITA-4576: the database stores no other), then the tag
+// catalog. There
 // is no category ↔ family matrix: a place's families are the Description
 // step's model pick.
 export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
@@ -45,11 +46,11 @@ export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
       <FamiliesList families={map.families} />
       <SectionCard
         title="Google categories"
-        right={<Count n={map.enabledCategories.length + map.disabledCategories.length} />}
+        right={<Count n={map.enabledCategories.length} />}
         subtitle={
           <>
-            Google&apos;s canonical list. A place whose main Google category is not
-            enabled gets no Mesita Families, so it never shows to a guest.
+            The Google categories Mesita allows. A place whose main Google
+            category is not on this list cannot be added.
           </>
         }
       >
@@ -60,15 +61,10 @@ export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
           aria-label="Search Google categories"
           className="mt-4"
         />
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="mt-4">
           <CategoryList
-            title="Enabled on Mesita"
+            title="Allowed on Mesita"
             rows={map.enabledCategories}
-            query={categoryQuery}
-          />
-          <CategoryList
-            title="Not enabled on Mesita"
-            rows={map.disabledCategories}
             query={categoryQuery}
           />
         </div>

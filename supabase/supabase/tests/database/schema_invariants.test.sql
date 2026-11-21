@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(214);
+select plan(215);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -877,18 +877,23 @@ select col_not_null('public', 'catalog_membership', 'enabled',
   'every Google category is enabled on Mesita or not (MESITA-2891)');
 select ok(
   (select count(*) from public.catalog_membership where enabled) > 0
-  and (select count(*) from public.catalog_membership where not enabled) > 0,
-  'Atlas has two non-empty lists: enabled and not enabled (MESITA-2891)'
+  and (select count(*) from public.catalog_membership where not enabled) = 0,
+  'catalog_membership is the allow-list: every row is an allowed Google category (MESITA-4576)'
 );
 select is(
-  (select enabled from public.catalog_membership where slug = 'tourist_attraction'),
-  false,
-  'a tourist attraction is not enabled: Tourism left the catalog (MESITA-4571)'
+  (select count(*)::int from public.catalog_membership where slug in ('tourist_attraction', 'gas_station', 'hotel')),
+  0,
+  'a tourist attraction, a gas station and a hotel have no row: not allowed is not stored (MESITA-4576)'
+);
+select throws_ok(
+  $$insert into public.catalog_membership (slug, enabled) values ('mesita_4576_probe', false)$$,
+  '23514'::char(5), null::text,
+  'a switched-off Google category cannot be stored (MESITA-4576)'
 );
 select is(
-  (select enabled from public.catalog_membership where slug = 'gas_station'),
-  false,
-  'a gas station is not enabled: it sat in no family'
+  (select array_agg(slug) from public.place_categories),
+  array['undefined']::text[],
+  'place_categories holds only Undefined: the legacy Mesita slugs are gone (MESITA-4576)'
 );
 
 select is_empty(
@@ -1141,8 +1146,8 @@ select ok(
 select cmp_ok(
   (select count(*)::int from public.catalog_membership),
   '>=',
-  478,
-  'catalog_membership holds every Google Table A type (MESITA-2759)'
+  150,
+  'catalog_membership holds the allowed Google categories, not an emptied table (MESITA-2759, MESITA-4576)'
 );
 
 -- MESITA-709: n8n ×3, Serper, and TripAdvisor vault rows are gone. A re-seed

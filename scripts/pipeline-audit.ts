@@ -13,7 +13,7 @@
 //   workflows         red on main, or red on half of the last 20 human PR runs
 //   edge functions    cloud slugs vs folders on main; the last functions merge redeployed
 //   bot PRs           Dependabot PRs open over 7 days (re-land the month's set under one issue)
-//   membership        cloud catalog_membership: not empty, some enabled, one row per Google type (MESITA-2933),
+//   membership        cloud catalog_membership: not empty, enabled, one row per allowed Google type and no other (MESITA-4576),
 //                     each type's switch equal to the category gate's answer (MESITA-2974)
 //
 // Exit 0: no finding outside scripts/pipeline-audit.accepted.json. Exit 1: an unaccepted
@@ -459,51 +459,46 @@ export function parseMembership(data: unknown): Map<string, boolean> {
   return rows;
 }
 
-// catalog_membership is Google's canonical type list (Table A), each type enabled on Mesita or
-// not (MESITA-2891); a place whose main Google category is not enabled gets no families. An
-// admin Reset once emptied the table and the cloud refused most restaurant Creates while CI,
-// rebuilt from migrations, stayed green (MESITA-2759). So the check flags an empty table, a
-// table with nothing enabled, and a row set that is not the checked-out GOOGLE_TYPE_SUPER map
-// (main in the workflow). Which types are enabled is an Atlas choice, never judged here — but
-// since MESITA-2962 Create reads the switch while Search reads the category gate
-// (map-engine.ts), so the two must give every type the same answer (MESITA-2974).
+// catalog_membership is the allow-list (MESITA-4576, Pato 2026-11-21: "clean db. i don't want
+// not allowed sht"): one row per Google type Mesita allows, and no row for any other. A place
+// whose main Google category has no row gets no families. An admin Reset once emptied the
+// table and the cloud refused most restaurant Creates while CI, rebuilt from migrations,
+// stayed green (MESITA-2759). Create reads the table while Search reads the category gate
+// (map-engine.ts), so the two must give every type the same answer (MESITA-2974): the check
+// flags an empty table, a table with nothing enabled, an allowed type with no row, a row
+// switched off, and a row for a type the gate refuses.
 async function checkMembership(io: Io): Promise<Omit<CheckResult, "check">> {
   const got = await io.sql(MEMBERSHIP_SQL);
   if (!got.ok) {
     throw new Blind({ endpoint: `supabase db query --linked "${MEMBERSHIP_SQL}"`, status: got.status, permission: NEEDS.membership, message: got.message });
   }
   const cloud = parseMembership(got.data);
-  const types = Object.keys(GOOGLE_TYPE_SUPER).sort();
+  const admits = (t: string) => familiesForGoogleType(t).length > 0;
+  const allowed = Object.keys(GOOGLE_TYPE_SUPER).filter(admits).sort();
   if (cloud.size === 0) {
     return {
-      findings: [{ code: "PA-MEMBERSHIP-DRIFT:empty", detail: `the cloud table is empty (the code map has ${types.length} Google types), so every Google category reads as not enabled and every new place is Undefined: reseed it from GOOGLE_TYPE_SUPER` }],
+      findings: [{ code: "PA-MEMBERSHIP-DRIFT:empty", detail: `the cloud table is empty (the code map allows ${allowed.length} Google types), so every Google category reads as not allowed and every new place is refused: reseed it from the types _shared/catalog-families.ts admits` }],
       notes: [],
     };
   }
   const findings: Finding[] = [];
+  const few = (xs: string[]) => `${xs.slice(0, 5).join(", ")}${xs.length > 5 ? ` and ${xs.length - 5} more` : ""}`;
   const enabled = [...cloud.values()].filter(Boolean).length;
   if (enabled === 0) {
-    findings.push({ code: "PA-MEMBERSHIP-DRIFT:none-enabled", detail: `none of the ${cloud.size} cloud rows is enabled, so every new place is Undefined: enable the Google categories on Atlas` });
+    findings.push({ code: "PA-MEMBERSHIP-DRIFT:none-enabled", detail: `none of the ${cloud.size} cloud rows is enabled, so every new place is refused: the allow-list holds only enabled rows` });
   }
-  const missing = types.filter((t) => !cloud.has(t));
-  const known = new Set(types);
-  const extra = [...cloud.keys()].filter((s) => !known.has(s));
-  if (cloud.size !== types.length || missing.length > 0) {
-    const parts = [`the cloud has ${cloud.size} rows, the code map ${types.length} Google types`];
-    if (missing.length > 0) parts.push(`missing ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? ` and ${missing.length - 5} more` : ""}`);
-    if (extra.length > 0) parts.push(`not in the map ${extra.slice(0, 5).join(", ")}${extra.length > 5 ? ` and ${extra.length - 5} more` : ""}`);
-    findings.push({ code: "PA-MEMBERSHIP-DRIFT:count", detail: `${parts.join("; ")}: a Table A change merged without its seed, or the seed never reached the cloud` });
+  const missing = allowed.filter((t) => !cloud.has(t));
+  if (missing.length > 0) {
+    findings.push({ code: "PA-MEMBERSHIP-DRIFT:count", detail: `the cloud has ${cloud.size} rows, the code map allows ${allowed.length} Google types; missing ${few(missing)}: a catalog change merged without its seed, or the seed never reached the cloud` });
   }
   if (enabled > 0) {
-    const admits = (t: string) => familiesForGoogleType(t).length > 0;
-    const offAdmitted = types.filter((t) => cloud.get(t) === false && admits(t));
-    const onRefused = types.filter((t) => cloud.get(t) === true && !admits(t));
-    if (offAdmitted.length > 0 || onRefused.length > 0) {
-      const few = (xs: string[]) => `${xs.slice(0, 5).join(", ")}${xs.length > 5 ? ` and ${xs.length - 5} more` : ""}`;
+    const offAdmitted = allowed.filter((t) => cloud.get(t) === false);
+    const notAllowed = [...cloud.keys()].filter((t) => !admits(t)).sort();
+    if (offAdmitted.length > 0 || notAllowed.length > 0) {
       const parts: string[] = [];
-      if (offAdmitted.length > 0) parts.push(`off on Atlas but the gate admits ${few(offAdmitted)}`);
-      if (onRefused.length > 0) parts.push(`on on Atlas but the gate refuses ${few(onRefused)}`);
-      findings.push({ code: "PA-MEMBERSHIP-DRIFT:gate", detail: `${parts.join("; ")}: Search shows a place Create refuses, or Create mints one Search hides — move the type in _shared/catalog-families.ts and flip catalog_membership.enabled in the same migration PR` });
+      if (offAdmitted.length > 0) parts.push(`switched off but the gate admits ${few(offAdmitted)}`);
+      if (notAllowed.length > 0) parts.push(`in the table but the gate refuses ${few(notAllowed)}`);
+      findings.push({ code: "PA-MEMBERSHIP-DRIFT:gate", detail: `${parts.join("; ")}: Search shows a place Create refuses, or Create mints one Search hides — move the type in _shared/catalog-families.ts and insert or delete its catalog_membership row in the same migration PR` });
     }
   }
   return { findings, notes: [] };

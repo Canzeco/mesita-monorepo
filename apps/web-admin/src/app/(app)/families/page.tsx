@@ -10,7 +10,7 @@ export default async function FamiliesPage() {
   return (
     <ConfigPageLayout
       title="Atlas"
-      description="The thirty Mesita Families, Google's categories split into enabled and not enabled on Mesita, and the Mesita Tags. A place's families are inferred by the Description step, one to seven, or set by hand on Single Place › Basics. Places are not listed."
+      description="The thirty Mesita Families, the Google categories Mesita allows, and the Mesita Tags. A place's families are inferred by the Description step, within the Limits below, or set by hand on Single Place › Basics. Places are not listed."
     >
       {map.ok ? (
         <div className="flex flex-col gap-4">
