@@ -372,7 +372,7 @@ export async function createMinimalPlace(opts: {
   // never stands in for an answer.
   const reservationEvidence = {
     googleReservable: basicsRes.googleReservable,
-    bookingUrl: basicsRes.basics.opentable_url ?? basicsRes.basics.resy_url,
+    bookingUrl: basicsRes.basics.opentable_url,
   };
   let reservationsSeeded = false;
   try {

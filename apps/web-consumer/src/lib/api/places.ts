@@ -51,12 +51,7 @@ export type Place = {
   facebook_url: string | null;
   whatsapp_url: string | null;
   opentable_url: string | null;
-  resy_url: string | null;
   uber_eats_url: string | null;
-  x_url: string | null;
-  threads_url: string | null;
-  reddit_url: string | null;
-  didi_food_url: string | null;
   google_maps_url: string | null;
   created_at: string;
 

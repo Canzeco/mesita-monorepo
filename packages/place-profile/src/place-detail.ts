@@ -215,15 +215,10 @@ export type PlaceDetail = {
     whatsapp_url?: string;
     instagram_url?: string;
     facebook_url?: string;
-    x_url?: string;
-    threads_url?: string;
-    reddit_url?: string;
   };
   reservations: {
     opentable_url?: string;
-    resy_url?: string;
     uber_eats_url?: string;
-    didi_food_url?: string;
   };
   reviews_maps: {
     google_maps_url?: string;
