@@ -3,7 +3,6 @@ import { Fragment, type ReactNode } from "react";
 import {
   Bell,
   CalendarCheck,
-  Gift,
   CreditCard,
   Heart,
   Settings as SettingsIcon,
@@ -222,15 +221,9 @@ export const ME_HUB_SETTINGS: HubTile = {
   href: CONSUMER_ROUTES.mePages.settings,
 };
 
-/** The last box: Gift across both columns, under Settings (MESITA-4420,
- *  MESITA-4424). A tap opens Pay (MESITA-4476). /me/gift stays a live
- *  address; this box does not open it. */
-export const ME_HUB_GIFT: HubTile = {
-  Icon: Gift,
-  title: "Gift",
-  summary: "Send credit to a friend",
-  href: CONSUMER_ROUTES.pay,
-};
+// NO GIFT BOX (Pato, 2026-11-21, MESITA-4523: "remove gift from here"):
+// Send Gift is a black button on Pay (MESITA-4520). MESITA-4420 to 4476
+// had a full-width Gift box under Settings that opened Pay.
 
 /** The hub: the app bar fixed above by flex, then the grid and the Settings
  *  row in their scroller — px-4 on the tiles' 16px edge, pt-3 so the header
@@ -259,8 +252,6 @@ export function MeHubFrame({
             ))}
             {/* SETTINGS CLOSES THE GRID, beside Integrations (MESITA-3954). */}
             {tile(ME_HUB_SETTINGS, "cell")}
-            {/* GIFT CLOSES THE PAGE, across both columns (MESITA-4424). */}
-            <div className="col-span-2">{tile(ME_HUB_GIFT, "row")}</div>
           </DestGrid>
         </div>
       </KeptScroll>

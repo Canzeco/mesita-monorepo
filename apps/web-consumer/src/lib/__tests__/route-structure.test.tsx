@@ -17,7 +17,6 @@ import { isOpenToAnonymous } from "@/lib/consumer-route-contract";
 import { LEGACY_REDIRECTS } from "@/lib/legacy-redirects";
 import { TICKET_KINDS } from "@/lib/ticket-kinds";
 import {
-  ME_HUB_GIFT,
   ME_HUB_GRID,
   ME_HUB_SETTINGS,
 } from "@/app/(shell)/me/hub-tiles";
@@ -657,7 +656,7 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
   // map, so the fallback draws the page's own cells. These read the cells.
   /** Every cell, in render order: the grid, then Settings. */
-  const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS, ME_HUB_GIFT];
+  const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
   it("renders ten cells in Pato's order", () => {
@@ -690,11 +689,8 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
       // MCP's cell became Integrations (MESITA-3954): Calendar, MCP Soon.
       "Integrations",
       "Settings",
-      // Gift across both columns closes the page (MESITA-4420, MESITA-4424)
-      // and opens Pay (MESITA-4476).
-      "Gift",
+      // No Gift box since MESITA-4523: Send Gift is on Pay (MESITA-4520).
     ]);
-    expect(ME_HUB_GIFT.href).toBe(CONSUMER_ROUTES.pay);
     // No Soon cell since MESITA-3954: MCP is a Soon row on Integrations.
     expect(
       cells()
@@ -722,10 +718,11 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
     }
   });
 
-  it("Settings closes the grid, Gift the page", () => {
+  it("Settings closes the grid and the page", () => {
     // The tail cell (MESITA-1642). Support moved into it (MESITA-2169).
-    // Gift's full-width row sits under it (MESITA-4424).
-    expect(gridTitles().slice(-2)).toEqual(["Settings", "Gift"]);
+    // No Gift row under it since MESITA-4523 (Send Gift is on Pay).
+    expect(gridTitles().at(-1)).toBe("Settings");
+    expect(gridTitles()).not.toContain("Gift");
     expect(gridTitles()).not.toContain("Support");
   });
 

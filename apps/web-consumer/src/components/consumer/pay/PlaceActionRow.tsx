@@ -10,8 +10,9 @@ import { cn } from "@/lib/utils";
 // OF SPACE MUST BE THE BOX TO DISPLAY THE OFFERS IN CAROUSEL, BUT IT MUST BE
 // A DARK BUTTON SAYING OFFERS ... LIKE THAT BUTTON IN PLACE PROFILE"). Left:
 // a card in a bank card's proportions (85.6 x 54 mm), the place's photo,
-// the balance on top and the name at the bottom; a tap selects it for the
-// page's Pay (nothing is selected until then, MESITA-4519). Right: the place
+// the balance on top and the name at the bottom; a tap opens its Loyalty
+// Card (MESITA-4523: Pay Bill asks for the place in its sheet, so nothing
+// is selected here; a tap selected it for Pay in MESITA-4519). Right: the place
 // screen's own Offers tile (OffersTile, black with the moving chip), which
 // opens the place. No offers: the name and distance in plain text there.
 // MESITA-4519's two halves (photo and name over a mini card) before.
@@ -25,9 +26,8 @@ export function PlaceActionRow({
   offers = null,
   placeHref,
   placeId,
-  selected = false,
   disabled = false,
-  onSelect,
+  onOpen,
 }: {
   name: string;
   /** The place picture. A missing one leaves the card black with the initial. */
@@ -42,33 +42,30 @@ export function PlaceActionRow({
   /** The place page the Offers tile opens. */
   placeHref?: string;
   placeId?: string;
-  selected?: boolean;
   disabled?: boolean;
-  onSelect?: () => void;
+  /** The card's tap: its Loyalty Card page (or the place). */
+  onOpen?: () => void;
 }) {
   const router = useRouter();
   const slides = disabled || !placeHref ? [] : offerSlides(offers);
   return (
     <div
       className={cn(
-        "bg-card flex w-full items-stretch gap-2 rounded-2xl border p-2",
-        selected ? "border-foreground border-2" : "border-border",
+        "bg-card border-border flex w-full items-stretch gap-2 rounded-2xl border p-2",
       )}
       data-wallet-row
       data-place-id={placeId}
-      data-selected={selected ? "true" : undefined}
     >
       <button
         type="button"
         disabled={disabled}
-        aria-pressed={disabled ? undefined : selected}
         aria-label={
           disabled
             ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}`
-            : `${selected ? "Selected" : "Select"} ${name}${amount ? `, ${amount}` : ""}`
+            : `${name}${amount ? `, ${amount}` : ""}`
         }
         onClick={() => {
-          if (!disabled && !selected) onSelect?.();
+          if (!disabled) onOpen?.();
         }}
         className={cn(
           "bg-foreground relative aspect-[85.6/54] w-[46%] shrink-0 overflow-hidden rounded-xl text-left text-white ring-1 ring-black/10",

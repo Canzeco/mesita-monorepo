@@ -6,11 +6,11 @@ import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { photoUrl } from "@mesita/place-profile";
 import { Screen } from "@/components/consumer/nav/Screen";
-import { CONSUMER_ROUTES, placePath, storyTicketPath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, placePath, storyTicketPath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
-import { Skeleton } from "@/components/shared/Skeleton";
+import { LoyaltyCardBoxSkeleton } from "@/components/consumer/pay/PayFrameLoading";
 import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
 import { useStoryNow } from "./use-story-now";
@@ -145,9 +145,6 @@ export function WalletSection({
   leadCount = 0,
   leadSettled = true,
   query = "",
-  selectedId = null,
-  onSelect,
-  onSelectable,
 }: {
   /** The place rows, first in the panel (MESITA-4497). */
   lead?: ReactNode;
@@ -162,11 +159,6 @@ export function WalletSection({
   giftToken?: string | null;
   /** Told once the Wallet has painted (MESITA-4376): /pay keeps its buttons in bones until then. */
   onReady?: () => void;
-  /** The place Pay checks out. */
-  selectedId?: string | null;
-  onSelect?: (placeId: string) => void;
-  /** Loyalty cards the guest can still pay at, once that read has settled. */
-  onSelectable?: (rows: { id: string; name: string }[]) => void;
 }) {
   const router = useRouter();
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
@@ -218,30 +210,6 @@ export function WalletSection({
   useEffect(() => {
     if (ready) onReady?.();
   }, [ready, onReady]);
-
-  // Cards the page's Pay can still check out, once this read has settled.
-  // Null while it is loading, so a refresh does not clear the selection.
-  const selectableKey =
-    !ready || !wallet || credits === null || leadIds === null
-      ? null
-      : credits
-          .filter((r) => {
-            const q = fold(query.trim());
-            return r.balance.place !== null && !leadIds.has(r.placeId) && (!q || fold(r.card.name ?? "").includes(q));
-          })
-          .map((r) => `${r.placeId}\t${r.card.name || "A Mesita place"}`)
-          .join("\n");
-  useEffect(() => {
-    if (selectableKey === null) return;
-    onSelectable?.(
-      selectableKey
-        ? selectableKey.split("\n").map((line) => {
-            const tab = line.indexOf("\t");
-            return { id: line.slice(0, tab), name: line.slice(tab + 1) };
-          })
-        : [],
-    );
-  }, [selectableKey, onSelectable]);
 
   if (gift) {
     return (
@@ -302,20 +270,19 @@ export function WalletSection({
                     photo={row.card.photo}
                     amount={gone || row.card.available_cents <= 0 ? null : money(row.card.available_cents, row.card.currency)}
                     subtitle={gone ? "Ask Mesita support to use it." : null}
-                    selected={!gone && selectedId === row.placeId}
                     disabled={gone}
                     offers={row.balance.offers ?? null}
                     placeHref={placePath(row.placeId)}
                     placeId={row.placeId}
-                    onSelect={() => onSelect?.(row.placeId)}
+                    onOpen={() => navigateTo(router, walletPlacePath(row.placeId), { motion: "drill" })}
                   />
                 );
               })
             : null}
           {creditsState === "loading" ? (
             <>
-              <Skeleton className="h-24 w-full rounded-2xl" aria-hidden />
-              <Skeleton className="h-24 w-full rounded-2xl" aria-hidden />
+              <LoyaltyCardBoxSkeleton />
+              <LoyaltyCardBoxSkeleton />
             </>
           ) : null}
           {settled && q && leadCount === 0 && creditsState === "empty" ? (
