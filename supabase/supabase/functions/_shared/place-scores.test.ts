@@ -44,5 +44,7 @@ Deno.test("seven observed days name the growth, and one snapshot says history is
   assertEquals(week.rows[3].detail, "recent 34% · lifetime 66%");
   const cold = explainPlaceScores({ ...BASE, history: "Collecting history." });
   assertEquals(cold.rows[1].detail, "Collecting history.");
+  // Never a dash: no history yet reads 0 (MESITA-4556).
+  assertEquals(cold.rows[1].value, "0");
   assertEquals(cold.rows[3].detail, "recent 0% · lifetime 100%");
 });

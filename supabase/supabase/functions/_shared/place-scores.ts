@@ -1,4 +1,5 @@
-// The Scores box on Mesita Business → Profile (MESITA-4515).
+// The Scores box on Mesita Business → Admin (MESITA-4515; on Profile until
+// MESITA-4556).
 //
 // Popular Organic, the place screen's ranking. The numbers are the same
 // functions Discovery uses. This read does not call Foursquare.
@@ -55,7 +56,10 @@ export function explainPlaceScores(input: {
   const recentBase = input.term && (input.term.kind === "grow" || input.term.kind === "flat")
     ? Math.max(0, input.term.growthBase ?? 0)
     : null;
-  const recent = recentBase === null ? null : recentBase > 0 ? Math.pow(recentBase, input.googleExp) : 0;
+  // NEVER A DASH (Pato, 2026-11-21, MESITA-4556: "recent cannot be that
+  // value. it must be zero, but never null"): with no measured growth yet
+  // the recent term is 0, which is what ranking uses too (weight 0).
+  const recent = recentBase !== null && recentBase > 0 ? Math.pow(recentBase, input.googleExp) : 0;
   const google = googlePopularity(
     { rating: input.rating, reviewCount: input.reviewCount },
     input.googleExp,
@@ -79,7 +83,7 @@ export function explainPlaceScores(input: {
       },
       {
         label: "Google recent popularity",
-        value: recent === null ? "—" : num(recent),
+        value: num(recent),
         detail: input.history,
       },
       {
