@@ -3,7 +3,7 @@
 // Monitor › Customers (MESITA-4538, Pato: "it counts the people and how much
 // you owe them … relational"). One line on top, then one row per guest with
 // money rows here: what the place owes them and when they were last seen, and
-// chips to their own Views, Visits, Vouchers, Payments and Credits.
+// chips to their own Views, Visits, Vouchers, Gifts and Payments.
 
 import { useState } from "react";
 import Link from "next/link";
@@ -13,12 +13,14 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { CHIP, FilterBanner, ROW } from "./MonitorList";
 import { GuestAvatar } from "./GuestAvatar";
+import { UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 
 const PAGES = [
   ["views", "Views"],
   ["visits", "Visits"],
-  ["money", "Payments"],
-  ["credits", "Credits"],
+  ["vouchers", "Vouchers"],
+  ["gifts", "Gifts"],
+  ["money", "Stripe"],
 ] as const;
 
 export function CustomersList({ placeId, initial, customer }: { placeId: string; initial: CustomersPage; customer: string | null }) {
@@ -53,22 +55,23 @@ export function CustomersList({ placeId, initial, customer }: { placeId: string;
         <ul className="divide-border divide-y">
           {page.rows.map((c) => (
             <li key={c.customer} className={ROW}>
-              <GuestAvatar face={c.face ?? null} />
-              <div className="min-w-0">
-                <p className="truncate font-medium">{c.guest}</p>
-                <p className="text-muted-foreground text-sm">Last seen {when(c.last_seen, page.timezone)}</p>
-                <span className="mt-2 flex flex-wrap gap-1.5">
-                  <span className={CHIP}>{customerLabel(c.customer)}</span>
-                  {PAGES.map(([p, label]) => (
-                    <Link key={p} href={customerListHref(placeId, p, c.customer)} className={CHIP}>
-                      {label}
-                    </Link>
-                  ))}
+              <GuestAvatar face={c.face ?? null} size={32} />
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="truncate font-medium">{c.guest}</span>
+                <span className="text-muted-foreground text-sm">Last seen {when(c.last_seen, page.timezone)}</span>
+                <span className={cn(CHIP, "gap-1")}>
+                  <UserCircleIcon size={12} weight="bold" aria-hidden />
+                  {customerLabel(c.customer)}
                 </span>
+                {PAGES.map(([p, label]) => (
+                  <Link key={p} href={customerListHref(placeId, p, c.customer)} className={CHIP}>
+                    {label}
+                  </Link>
+                ))}
               </div>
               <div className="text-right">
                 <p className="font-semibold whitespace-nowrap tabular-nums">{money(c.owed_cents)}</p>
-                <p className="text-muted-foreground mt-0.5 text-xs">owed</p>
+                <p className="text-muted-foreground text-xs">owed</p>
               </div>
             </li>
           ))}

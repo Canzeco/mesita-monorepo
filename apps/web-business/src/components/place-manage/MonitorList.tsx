@@ -38,25 +38,43 @@ import {
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { GuestAvatar } from "./GuestAvatar";
-import { CreditBadge, VoucherBadge } from "./VoucherBadge";
+import { CardBadge, CreditBadge, VisitBadge, VoucherBadge } from "./VoucherBadge";
+import type { Icon } from "@phosphor-icons/react";
+import { CoinsIcon, CreditCardIcon, FootprintsIcon, TicketIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 
 /** The row grid every Monitor list shares: face · text · amount. */
-export const ROW = "grid grid-cols-[40px_minmax(0,1fr)_auto] items-start gap-x-3 px-5 py-3.5 text-sm sm:px-6";
+export const ROW = "grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 text-sm sm:px-5";
 /** A small quiet link to a related row. */
 export const CHIP =
-  "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium whitespace-nowrap tabular-nums";
+  "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground inline-flex h-5 items-center rounded-full px-2 text-xs font-medium whitespace-nowrap tabular-nums";
 const META = "text-muted-foreground text-sm";
+
+/** Every chip wears its kind's icon (Pato: "USE ICONS ALWAYS"). */
+const CHIP_ICON: Record<LinkKind | "customer", Icon> = {
+  customer: UserCircleIcon,
+  visit: FootprintsIcon,
+  payment: CreditCardIcon,
+  voucher: TicketIcon,
+  credit: CoinsIcon,
+  story: TicketIcon,
+};
+
+function ChipIcon({ kind }: { kind: LinkKind | "customer" }) {
+  const I = CHIP_ICON[kind];
+  return <I size={12} weight="bold" aria-hidden />;
+}
 
 /** At most three chips of one kind, then "+N" to that page filtered to the guest. */
 function Chips({ placeId, row }: { placeId: string; row: MonitorRow }) {
   const byKind = new Map<LinkKind, MonitorLink[]>();
-  // Stories has no list since MESITA-4553 (config only on General), so a
-  // story link has nowhere to land.
-  for (const l of row.links) if (l.kind !== "story") byKind.set(l.kind, [...(byKind.get(l.kind) ?? []), l]);
+  // Stories (MESITA-4553) and Credits (MESITA-4555) have no list, so their
+  // links have nowhere to land.
+  for (const l of row.links) if (l.kind !== "story" && l.kind !== "credit") byKind.set(l.kind, [...(byKind.get(l.kind) ?? []), l]);
   const chips: React.ReactNode[] = [];
   if (row.customer) {
     chips.push(
-      <Link key="customer" href={customerHref(placeId, row.customer)} className={CHIP}>
+      <Link key="customer" href={customerHref(placeId, row.customer)} className={cn(CHIP, "gap-1")}>
+        <ChipIcon kind="customer" />
         {customerLabel(row.customer)}
       </Link>,
     );
@@ -64,7 +82,8 @@ function Chips({ placeId, row }: { placeId: string; row: MonitorRow }) {
   for (const [kind, links] of byKind) {
     for (const l of links.slice(0, 3)) {
       chips.push(
-        <Link key={`${kind}${l.id}`} href={linkHref(placeId, l)} className={CHIP}>
+        <Link key={`${kind}${l.id}`} href={linkHref(placeId, l)} className={cn(CHIP, "gap-1")}>
+          <ChipIcon kind={kind} />
           {linkLabel(l)}
         </Link>,
       );
@@ -81,12 +100,12 @@ function Chips({ placeId, row }: { placeId: string; row: MonitorRow }) {
   if (row.other_customer && row.other) {
     chips.push(
       <Link key="other" href={customerHref(placeId, row.other_customer)} className={cn(CHIP, "gap-1.5 pl-0.5")}>
-        <GuestAvatar face={row.other_face ?? null} size={20} />
+        <GuestAvatar face={row.other_face ?? null} size={16} />
         {row.other}
       </Link>,
     );
   }
-  return chips.length ? <span className="mt-2 flex flex-wrap gap-1.5">{chips}</span> : null;
+  return chips.length ? <>{chips}</> : null;
 }
 
 export function MonitorRowItem({ placeId, kind, row, timezone }: { placeId: string; kind: MonitorKind; row: MonitorRow; timezone: string }) {
@@ -97,38 +116,37 @@ export function MonitorRowItem({ placeId, kind, row, timezone }: { placeId: stri
     <li className={ROW} id={row.id}>
       {row.customer ? (
         <Link href={customerHref(placeId, row.customer)} aria-label={name}>
-          <GuestAvatar face={row.face ?? null} />
+          <GuestAvatar face={row.face ?? null} size={32} />
         </Link>
       ) : (
-        <GuestAvatar face={null} />
+        <GuestAvatar face={null} size={32} />
       )}
-      <div className="min-w-0">
-        <p className="truncate font-medium">
-          {row.customer ? (
-            <Link href={customerHref(placeId, row.customer)} className="underline-offset-2 hover:underline">
-              {name}
-            </Link>
-          ) : (
-            <span className="text-muted-foreground">{name}</span>
-          )}
-        </p>
-        {kind === "vouchers" || kind === "credits" ? (
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-            {kind === "vouchers" ? (
-              <VoucherBadge code={(row.payload.voucher as string | null) ?? null} />
-            ) : (
-              <CreditBadge kind={String(row.payload.kind ?? "")} voucher={(row.payload.voucher as string | null) ?? null} />
-            )}
-            <span className={META}>{[lead, detail, when(row.at, timezone)].filter(Boolean).join(" · ")}</span>
-          </p>
+      {/* One line that wraps (Pato: "too big … make it cleaner"). */}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        {row.customer ? (
+          <Link href={customerHref(placeId, row.customer)} className="truncate font-medium underline-offset-2 hover:underline">
+            {name}
+          </Link>
         ) : (
-          <p className={META}>{[lead, detail, when(row.at, timezone)].filter(Boolean).join(" · ")}</p>
+          <span className="text-muted-foreground font-medium">{name}</span>
         )}
+        {kind === "vouchers" ? (
+          <VoucherBadge code={(row.payload.voucher as string | null) ?? null} />
+        ) : kind === "visits" ? (
+          <VisitBadge status={rowStatus(kind, row)} />
+        ) : kind === "payments" ? (
+          <CardBadge status={lead} />
+        ) : (
+          <CreditBadge kind={kind === "gifts" ? "gift" : String(row.payload.kind ?? "")} voucher={(row.payload.voucher as string | null) ?? null} />
+        )}
+        <span className={META}>
+          {[kind === "visits" || kind === "payments" ? null : lead, detail, when(row.at, timezone)].filter(Boolean).join(" · ")}
+        </span>
         <Chips placeId={placeId} row={row} />
       </div>
       <div className="text-right">
         <p className="font-semibold whitespace-nowrap tabular-nums">{rowAmount(kind, row)}</p>
-        <p className="text-muted-foreground/70 mt-0.5 font-mono text-xs tabular-nums">{shortId(row.id)}</p>
+        <p className="text-muted-foreground/70 font-mono text-xs tabular-nums">{shortId(row.id)}</p>
       </div>
     </li>
   );

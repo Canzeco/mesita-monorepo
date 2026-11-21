@@ -21,6 +21,7 @@ import {
   type MonitorKind,
 } from "@/lib/monitor";
 import { voucherName } from "@/lib/ticket-desk";
+import { HeaderActions } from "@/components/shell/HeaderActions";
 
 const MAX = 5000;
 
@@ -135,7 +136,7 @@ export function ExportButton({
   );
 }
 
-/** The row above a Monitor card: its actions, top right. */
+/** A Monitor page's actions, in the page header top right (MESITA-4555). */
 export function MonitorToolbar({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-wrap items-center justify-end gap-2">{children}</div>;
+  return <HeaderActions>{children}</HeaderActions>;
 }

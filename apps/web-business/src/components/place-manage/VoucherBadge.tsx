@@ -4,7 +4,7 @@
 // everywhere: Welcome blue confetti, Story pink Instagram, the sizes green
 // ticket, VIP black crown.
 import type { Icon } from "@phosphor-icons/react";
-import { ConfettiIcon, CrownSimpleIcon, FootprintsIcon, GiftIcon, InstagramLogoIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
+import { ConfettiIcon, CreditCardIcon, CrownSimpleIcon, FootprintsIcon, GiftIcon, InstagramLogoIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
 import { voucherName } from "@/lib/ticket-desk";
 import { cn } from "@/lib/utils";
 
@@ -21,14 +21,14 @@ export function VoucherBadge({ code }: { code: string | null }) {
   const mark = MARK[code ?? ""] ?? { icon: TicketIcon, tone: "bg-green-100 text-green-700" };
   const Mark = mark.icon;
   return (
-    <span className={cn("inline-flex h-6 items-center gap-1 rounded-full pr-2.5 pl-1.5 text-xs font-semibold whitespace-nowrap", mark.tone)}>
-      <Mark size={14} weight="fill" aria-hidden />
+    <span className={cn("inline-flex h-5 items-center gap-1 rounded-full pr-2 pl-1.5 text-xs font-semibold whitespace-nowrap", mark.tone)}>
+      <Mark size={12} weight="fill" aria-hidden />
       {voucherName(code)}
     </span>
   );
 }
 
-const PILL = "inline-flex h-6 items-center gap-1 rounded-full pr-2.5 pl-1.5 text-xs font-semibold whitespace-nowrap";
+const PILL = "inline-flex h-5 items-center gap-1 rounded-full pr-2 pl-1.5 text-xs font-semibold whitespace-nowrap";
 
 /** A credit row's mark (MESITA-4554): its voucher's badge, or Gift, or Visit. */
 export function CreditBadge({ kind, voucher }: { kind: string; voucher: string | null }) {
@@ -36,7 +36,7 @@ export function CreditBadge({ kind, voucher }: { kind: string; voucher: string |
   if (kind.startsWith("gift")) {
     return (
       <span className={cn(PILL, "bg-amber-100 text-amber-800")}>
-        <GiftIcon size={14} weight="fill" aria-hidden />
+        <GiftIcon size={12} weight="fill" aria-hidden />
         Gift
       </span>
     );
@@ -44,10 +44,30 @@ export function CreditBadge({ kind, voucher }: { kind: string; voucher: string |
   if (kind === "spend" || kind === "refund") {
     return (
       <span className={cn(PILL, "bg-muted text-foreground")}>
-        <FootprintsIcon size={14} weight="fill" aria-hidden />
+        <FootprintsIcon size={12} weight="fill" aria-hidden />
         Visit
       </span>
     );
   }
   return null;
+}
+
+/** A visit's mark: the footprints, with its status word (Open, Paid…). */
+export function VisitBadge({ status }: { status: string }) {
+  return (
+    <span className={cn(PILL, "bg-orange-100 text-orange-800")}>
+      <FootprintsIcon size={12} weight="fill" aria-hidden />
+      {status}
+    </span>
+  );
+}
+
+/** A Stripe card payment's mark, in Stripe's purple. */
+export function CardBadge({ status }: { status: string | null }) {
+  return (
+    <span className={PILL} style={{ color: "#635BFF", backgroundColor: "rgb(99 91 255 / 0.1)" }}>
+      <CreditCardIcon size={12} weight="fill" aria-hidden />
+      {status ?? "Card"}
+    </span>
+  );
 }

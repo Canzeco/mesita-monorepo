@@ -89,10 +89,10 @@ function menu(
     switcher,
     place: {
       // Pato, MESITA-4528: "Not operations anymore. it must be called Monitor".
-      // Plain linked lists (MESITA-4538); Vouchers folded into Credits
-      // (MESITA-4554, Pato: "dont add the section vouchers but credits").
+      // Plain linked lists (MESITA-4538); Pato, MESITA-4555: "Views, Visits,
+      // Vouchers, Gifts, Payments, Customers … you don't need credits".
       // Payments is the /money page.
-      monitor: [tab("views"), tab("visits"), tab("money"), tab("credits"), tab("customers")],
+      monitor: [tab("views"), tab("visits"), tab("vouchers"), tab("gifts"), tab("money"), tab("customers")],
       manage: [
         // Reviews lives inside Profile (MESITA-3393).
         tab("profile"),
