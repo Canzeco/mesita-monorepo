@@ -8,7 +8,7 @@
 
 insert into public.profiles (slug, name, category, price_level, state, content_state, closes_at)
 select
-  'casa-luminar-seed', 'Casa Luminar (seed)', 'mediterranean', 3, 'active', 'ready', '02:00'
+  'casa-luminar-seed', 'Casa Luminar (seed)', 'mediterranean_restaurant', 3, 'active', 'ready', '02:00'
 where not exists (
   select 1 from public.profiles where slug = 'casa-luminar-seed'
 );
