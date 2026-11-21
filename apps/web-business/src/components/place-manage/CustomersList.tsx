@@ -20,7 +20,7 @@ const PAGES = [
   ["visits", "Visits"],
   ["vouchers", "Vouchers"],
   ["gifts", "Gifts"],
-  ["money", "Stripe"],
+  ["money", "Payments"],
 ] as const;
 
 export function CustomersList({ placeId, initial, customer }: { placeId: string; initial: CustomersPage; customer: string | null }) {
