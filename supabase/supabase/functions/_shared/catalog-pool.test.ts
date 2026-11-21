@@ -237,12 +237,12 @@ Deno.test("catalog_rank_lanes' arguments are the mode's two recipe rows, the gat
   const o = cfg.params.recipes.catalogNearbyOrganic;
   const i = cfg.params.recipes.catalogNearbyInorganic;
   assertEquals(
-    [near.p_organic_half_km, near.p_organic_distance_exp, near.p_organic_stars_exp, near.p_organic_google_exp, near.p_organic_premier_exp],
-    [o.halfKm, o.distanceExp, o.starsExp, o.googleExp, 0],
+    [near.p_organic_half_km, near.p_organic_distance_exp, near.p_organic_google_exp, near.p_organic_premier_exp],
+    [o.halfKm, o.distanceExp, o.googleExp, 0],
   );
   assertEquals(
-    [near.p_ad_half_km, near.p_ad_distance_exp, near.p_ad_stars_exp, near.p_ad_google_exp, near.p_ad_premier_exp],
-    [i.halfKm, i.distanceExp, i.starsExp, i.googleExp, i.premierExp],
+    [near.p_ad_half_km, near.p_ad_distance_exp, near.p_ad_google_exp, near.p_ad_premier_exp],
+    [i.halfKm, i.distanceExp, i.googleExp, i.premierExp],
   );
   assertEquals(near.p_ad_floor, cfg.params.mix.adFloor);
   // No repeat penalty since MESITA-4463: no mode sends one.

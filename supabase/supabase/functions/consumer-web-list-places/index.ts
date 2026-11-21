@@ -24,8 +24,9 @@
 // GATE and only a gate (Pato, MESITA-2909: distance "como screening dentro
 // del radio, pero no la metería ya para el sorting"): Mesita's read is boxed
 // to it, the Radius gate drops what lies past it, and the places inside are
-// ranked in two lanes, no Proximity (MESITA-4454): the Map Organic row
-// ((stars^StarsExp × reviews)^GoogleExp; its Premier exponent is 0) and the
+// ranked in two lanes, no Proximity (MESITA-4454, MESITA-4514): the Map Organic row
+// (((1 − w) × stars × reviews + w × growth)^GoogleExp; w is 0 with no usable
+// review history; its Premier exponent is 0) and the
 // Map Inorganic row over Premier places only (× premierFactor^PremierExp,
 // 2X · 5X), merged one ad after every `params.mix.adEvery` organic places
 // (0 = no ads; a place shows once). An ad pin carries `ad: true` and counts
@@ -195,8 +196,9 @@ serveJson("consumer-web-list-places", async (req) => {
   const guestSupers = readGuestFamilyKeys(body.familyKeys);
 
   const efEnv = readEFEnv();
-  const cfg = efEnv.ok
-    ? await loadDiscoveryConfig(adminClient(efEnv.env))
+  const admin = efEnv.ok ? adminClient(efEnv.env) : null;
+  const cfg = admin
+    ? await loadDiscoveryConfig(admin)
     : DISCOVERY_DEFAULTS;
   const center = { lat: nearbyDecision.lat, lng: nearbyDecision.lng };
   // The screen radius, or the fixed fallback when there is no screen to read.
@@ -216,6 +218,7 @@ serveJson("consumer-web-list-places", async (req) => {
       families: guestSupers,
       cardColumns: PLACE_CARD_COLUMNS,
       wire: (rows) => rows as PoolRow[],
+      growthBases: admin ? (args) => admin.rpc("discovery_growth_bases", args) : undefined,
     });
   } catch (err) {
     if (!(err instanceof CatalogReadError)) throw err;

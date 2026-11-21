@@ -1,8 +1,10 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1";
 import {
   assertGoogleUpdatePatchSafe,
+  fastUpdateShouldWrite,
   googleBasicsToUpdatePatch,
   keepFilledAndPinned,
+  reviewSnapshotFromPatch,
 } from "./admin-google-place-update.ts";
 import type { GoogleBasics } from "./enrich-google-basics.ts";
 
@@ -45,6 +47,49 @@ function sampleBasics(): GoogleBasics {
     google_tags: ["dine_in", "live_music"],
   };
 }
+
+Deno.test("a Fast Update snapshots a written review count, including zero", () => {
+  const patch = googleBasicsToUpdatePatch({
+    basics: sampleBasics(),
+    businessStatus: "OPERATIONAL",
+    googlePrimaryType: "restaurant",
+    googleTypes: ["restaurant"],
+    now: NOW,
+  });
+  assertEquals(reviewSnapshotFromPatch(patch, "ChIJtest", NOW), {
+    googlePlaceId: "ChIJtest",
+    observedAt: NOW,
+    reviewCount: 10,
+    stars: 4.5,
+  });
+  const zero = googleBasicsToUpdatePatch({
+    basics: { ...sampleBasics(), google_review_count: 0 },
+    businessStatus: null,
+    googlePrimaryType: null,
+    googleTypes: [],
+    now: NOW,
+  });
+  assertEquals(reviewSnapshotFromPatch(zero, "ChIJtest", NOW)?.reviewCount, 0);
+  const missing = googleBasicsToUpdatePatch({
+    basics: { ...sampleBasics(), google_review_count: null },
+    businessStatus: null,
+    googlePrimaryType: null,
+    googleTypes: [],
+    now: NOW,
+  });
+  assertEquals(reviewSnapshotFromPatch(missing, "ChIJtest", NOW), null);
+  const dropped = keepFilledAndPinned(missing, {}, new Date(NOW));
+  assertEquals("google_review_count" in dropped.patch, false);
+  assertEquals(reviewSnapshotFromPatch(dropped.patch, "ChIJtest", NOW), null);
+  assertEquals(reviewSnapshotFromPatch(patch, "  ", NOW), null);
+});
+
+Deno.test("an older Fast Update does not overwrite a newer place row", () => {
+  assertEquals(fastUpdateShouldWrite(null, NOW), true);
+  assertEquals(fastUpdateShouldWrite("2026-10-23T11:00:00.000Z", NOW), true);
+  assertEquals(fastUpdateShouldWrite(NOW, NOW), true);
+  assertEquals(fastUpdateShouldWrite("2026-10-23T13:00:00.000Z", NOW), false);
+});
 
 Deno.test("googleBasicsToUpdatePatch never carries the gallery", () => {
   const patch = googleBasicsToUpdatePatch({

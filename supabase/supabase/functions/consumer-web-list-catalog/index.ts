@@ -14,7 +14,7 @@
 // Every log line names its `mode` (fill | rank). Nothing here calls Google.
 //
 // DISCOVERY RANKING v2 (MESITA-4454): one formula, two lanes, three modes.
-//   Score     = Proximity × (stars ^ StarsExp × reviews) ^ GoogleExp
+//   Score     = Proximity × ((1 − w) × stars × reviews + w × growth) ^ GoogleExp
 //               × premierFactor ^ PremierExp
 //   Proximity = 1 ÷ (1 + (distance ÷ HalfDistance) ^ DistanceExp); no point = 1
 //   premierFactor = 1 · 2 · 5 (no plan · 2X · 5X)
@@ -287,6 +287,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
       // `nearest` keeps the distance-only rank; every mode ranks two lanes.
       rank: (args) => admin.rpc("catalog_rank", args),
       rankLanes: (args) => admin.rpc("catalog_rank_lanes", args),
+      growthBases: (args) => admin.rpc("discovery_growth_bases", args),
       read,
       cfg,
       location,

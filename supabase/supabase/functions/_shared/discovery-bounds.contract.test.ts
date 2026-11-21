@@ -75,12 +75,12 @@ Deno.test("the Minimum Popularity default matches the server, in the root's unit
 Deno.test("Ranking and Mixing bounds, the recipe table and the mix defaults match the server (MESITA-4454)", () => {
   // halfKm and distanceExp reuse the Proximity constants pinned above.
   for (const [name, b] of [
-    ["STARS_EXP", RECIPE_BOUNDS.starsExp],
     ["GOOGLE_EXP", RECIPE_BOUNDS.googleExp],
     ["PREMIER_EXP", RECIPE_BOUNDS.premierExp],
     ["MIX_TEMPERATURE", MIX_BOUNDS.temperature],
     ["AD_FLOOR", MIX_BOUNDS.adFloor],
     ["AD_EVERY", MIX_BOUNDS.adEvery],
+    ["GROWTH_WEIGHT_CAP", MIX_BOUNDS.growthWeightCap],
   ] as const) {
     assertEquals(constant(`${name}_MIN`), b.min, name);
     assertEquals(constant(`${name}_MAX`), b.max, name);
@@ -100,17 +100,17 @@ Deno.test("Ranking and Mixing bounds, the recipe table and the mix defaults matc
   for (const row of RECIPE_ROWS) {
     const m = admin.match(
       new RegExp(
-        `  ${row}: \\{ halfKm: (null|[0-9.]+), distanceExp: (null|[0-9.]+), starsExp: ([0-9.]+), googleExp: ([0-9.]+), premierExp: ([0-9.]+) \\},`,
+        `  ${row}: \\{ halfKm: (null|[0-9.]+), distanceExp: (null|[0-9.]+), googleExp: ([0-9.]+), premierExp: ([0-9.]+) \\},`,
       ),
     );
     assertEquals(
-      m ? { halfKm: num(m[1]), distanceExp: num(m[2]), starsExp: num(m[3]), googleExp: num(m[4]), premierExp: num(m[5]) } : null,
+      m ? { halfKm: num(m[1]), distanceExp: num(m[2]), googleExp: num(m[3]), premierExp: num(m[4]) } : null,
       DEFAULT_RECIPES[row],
       row,
     );
   }
   const mix = admin.match(
-    /export const DEFAULT_MIX: MixParams = \{\s*temperature: \{ nearby: ([0-9.]+), family: ([0-9.]+), popular: ([0-9.]+) \},\s*adFloor: ([0-9.]+),\s*adEvery: ([0-9]+),\s*\};/,
+    /export const DEFAULT_MIX: MixParams = \{\s*temperature: \{ nearby: ([0-9.]+), family: ([0-9.]+), popular: ([0-9.]+) \},\s*adFloor: ([0-9.]+),\s*adEvery: ([0-9]+),\s*growthWeightCap: ([0-9.]+),\s*\};/,
   );
   assertEquals(
     mix
@@ -118,6 +118,7 @@ Deno.test("Ranking and Mixing bounds, the recipe table and the mix defaults matc
         temperature: { nearby: Number(mix[1]), family: Number(mix[2]), popular: Number(mix[3]) },
         adFloor: Number(mix[4]),
         adEvery: Number(mix[5]),
+        growthWeightCap: Number(mix[6]),
       }
       : null,
     DEFAULT_MIX,

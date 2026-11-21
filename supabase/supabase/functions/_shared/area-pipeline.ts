@@ -17,7 +17,9 @@
 //
 // DISCOVERY RANKING v2 (MESITA-4454): every score is one formula with a
 // recipe row per screen, mode and lane (`recipeFor`, discovery-config.ts):
-// Proximity × (stars^StarsExp × reviews)^GoogleExp × premierFactor^PremierExp.
+// Proximity × Popularity × premierFactor^PremierExp. Popularity is
+// ((1 − w) × stars × reviews + w × growth)^GoogleExp, and w is 0 with no
+// usable review history.
 //
 // (Pato, MESITA-2909: on the Map distance is a screen, not a sort; the
 // Catalog "literal podemos sacar la lista final de todos los lugares en una
@@ -60,6 +62,7 @@ import {
 } from "./discovery-config.ts";
 import { chunked, ID_CHUNK } from "./postgrest.ts";
 import { finiteOrNull } from "./input.ts";
+import { fetchGrowthTerms, type GrowthTerm } from "./review-growth.ts";
 
 /** Which pipeline runs: the Map (the Search tab) or the Catalog (Home),
  *  MESITA-2909. Chat ranks like the Catalog. */
@@ -182,6 +185,8 @@ export type AreaPoolDeps<T extends PoolRow> = {
   /** A Catalog fill's ad-slot ids (M-c): scored with the mode's Inorganic
    *  row and marked `ad`. */
   adIds?: readonly string[];
+  /** Review-growth terms for this rank. Absent: established base only. */
+  growth?: ReadonlyMap<string, GrowthTerm>;
 };
 
 /** The breakdown a pool place carries (diagnostics only, no card draws it). */
@@ -277,6 +282,8 @@ export function selectAreaPool<T extends PoolRow>(
     families: deps.families,
     recipe,
     ties: catalog ? "distance" : "id",
+    growth: deps.growth,
+    growthWeightCap: mixFor(deps.cfg).growthWeightCap,
   });
   const items = deps.mesitaRows.map((row) => ({
     candidate: mesitaCandidate(row),
@@ -539,6 +546,8 @@ type RankedPoolDeps<T extends PoolRow> = {
   /** Shapes pass 2's raw rows (the EF's `wirePlaces`). */
   wire: (rows: unknown[]) => T[];
   pagesMax?: number;
+  /** `discovery_growth_bases`. Absent: the Map scores on the established base. */
+  growthBases?: CatalogRankRpc;
 };
 
 type RankedPool = {
@@ -559,12 +568,20 @@ async function selectRankedPool<T extends PoolRow>(
   keepMax: number,
 ): Promise<RankedPool> {
   const walk = await walkScoringRows(deps.read, deps.cfg, gates, deps.pagesMax);
+  const growth = deps.growthBases
+    ? await fetchGrowthTerms(
+      deps.growthBases,
+      deps.cfg.general.requireActive === true,
+      KNOWN_FAMILY_SLUGS,
+    )
+    : undefined;
   const ranked = await selectAreaPool({
     surface,
     location,
     families: deps.families,
     mesitaRows: walk.rows,
     cfg: deps.cfg,
+    growth,
   });
   const kept = ranked.places.slice(0, keepMax);
   const cards = await cardsForIds(
@@ -643,12 +660,12 @@ export function catalogRankLanesArgs(
     ...gateArgs(cfg, location, families),
     p_organic_half_km: org.halfKm,
     p_organic_distance_exp: org.distanceExp,
-    p_organic_stars_exp: org.starsExp,
+    p_organic_stars_exp: 1, // Legacy RPC signature.
     p_organic_google_exp: org.googleExp,
     p_organic_premier_exp: org.premierExp,
     p_ad_half_km: ad.halfKm,
     p_ad_distance_exp: ad.distanceExp,
-    p_ad_stars_exp: ad.starsExp,
+    p_ad_stars_exp: 1, // Legacy RPC signature.
     p_ad_google_exp: ad.googleExp,
     p_ad_premier_exp: ad.premierExp,
     p_ad_floor: mixFor(cfg).adFloor,
@@ -743,6 +760,9 @@ export async function selectCatalogPool<T extends PoolRow>(
     rank: CatalogRankRpc;
     /** `catalog_rank_lanes` (every mode). */
     rankLanes: CatalogRankRpc;
+    /** `discovery_growth_bases`. Absent: card scores use the established base.
+     *  The SQL rank still applies growth once the migration is deployed. */
+    growthBases?: CatalogRankRpc;
     location: AreaLocation;
     /** The first page's length: only these cards are read, and the shuffle
      *  pool. */
@@ -756,6 +776,13 @@ export async function selectCatalogPool<T extends PoolRow>(
 ): Promise<CatalogPool> {
   const nearest = deps.nearest === true;
   const mode: RankMode = deps.mode ?? "popular";
+  const growth = deps.growthBases
+    ? await fetchGrowthTerms(
+      deps.growthBases,
+      deps.cfg.general.requireActive === true,
+      KNOWN_FAMILY_SLUGS,
+    )
+    : undefined;
   let order: string[];
   let adIds: string[] = [];
   let preShuffle: Record<string, number> = {};
@@ -800,7 +827,7 @@ export async function selectCatalogPool<T extends PoolRow>(
     adIds = adIds.filter((id) => keep.has(id));
   }
   const kept = order.slice(0, page);
-  const filled = await selectCatalogFill({ ...deps, mode, adIds, ids: kept });
+  const filled = await selectCatalogFill({ ...deps, mode, adIds, ids: kept, growth });
   return {
     places: filled.places,
     summary: {
@@ -840,6 +867,7 @@ export async function selectCatalogFill<T extends PoolRow>(
     ids: readonly string[];
     mode?: RankMode;
     adIds?: readonly string[];
+    growth?: ReadonlyMap<string, GrowthTerm>;
   },
 ): Promise<{ places: AreaPoolPlace[]; summary: { asked: number; returned: number; chunks: number; ads: number } }> {
   const cards = await cardsForIds(
@@ -860,6 +888,7 @@ export async function selectCatalogFill<T extends PoolRow>(
     cfg: deps.cfg,
     mode: deps.mode,
     adIds: (deps.adIds ?? []).filter((id) => asked.has(id)),
+    growth: deps.growth,
   });
   const byId = new Map(scored.places.map((p) => [p.id, p]));
   const places = deps.ids.flatMap((id) => {
@@ -906,6 +935,7 @@ export type MesitaOpts = {
   families?: readonly string[];
   params: SignalParams;
   limit?: number;
+  growth?: ReadonlyMap<string, GrowthTerm>;
 };
 
 /** Ready Mesita rows ranked by the Catalog Family Organic row (M-f,
@@ -926,6 +956,8 @@ export function rankMesitaPlaces<T extends Record<string, unknown>>(
       families: opts.families ?? [],
       // Chat ranks with the Catalog Family Organic row (MESITA-4454).
       recipe: recipeFor("family", "organic", { params: opts.params }),
+      growth: opts.growth,
+      growthWeightCap: mixFor({ params: opts.params }).growthWeightCap,
     },
   );
   const out = ranked.map(({ item }) => ({
@@ -965,11 +997,17 @@ export async function areaMesitaPlaces(
     console.error("[area-pipeline] mesita:", error.message);
     return null;
   }
+  const growth = await fetchGrowthTerms(
+    (args) => admin.rpc("discovery_growth_bases", args),
+    cfg.general.requireActive === true,
+    KNOWN_FAMILY_SLUGS,
+  );
   return rankMesitaPlaces((data ?? []) as Record<string, unknown>[], {
     center: opts.center,
     radiusKm: NO_SCREEN_RADIUS_KM,
     families: opts.families,
     params: cfg.params,
     limit: opts.limit,
+    growth,
   });
 }

@@ -92,7 +92,7 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
         catalogNearbyOrganic: { ...live.params.recipes.catalogNearbyOrganic, halfKm: 0.3 },
         mapInorganic: { ...live.params.recipes.mapInorganic, googleExp: 0.5 },
       },
-      mix: { temperature: { nearby: 2, family: 2, popular: 2 }, adFloor: 0.5, adEvery: 3 },
+      mix: { temperature: { nearby: 2, family: 2, popular: 2 }, adFloor: 0.5, adEvery: 3, growthWeightCap: 0.5 },
     },
     map: {
       ...live.map,

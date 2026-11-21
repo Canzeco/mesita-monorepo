@@ -120,6 +120,50 @@ export function keepFilledAndPinned(
   return { patch: kept.update, pinned: kept.skipped };
 }
 
+/**
+ * A Fast Update snapshot. Only a review count that is actually written
+ * (present, finite, zero allowed). A missing count, a failed fetch, or a
+ * pinned count never reaches this: those values are not in the patch.
+ * Stars are stored when the patch has them.
+ */
+export function reviewSnapshotFromPatch(
+  patch: Record<string, unknown>,
+  googlePlaceId: string,
+  observedAt: string,
+): { googlePlaceId: string; observedAt: string; reviewCount: number; stars: number | null } | null {
+  if (!("google_review_count" in patch)) return null;
+  const count = patch.google_review_count;
+  if (typeof count !== "number" || !Number.isFinite(count) || count < 0) return null;
+  const id = googlePlaceId.trim();
+  if (!id || !observedAt) return null;
+  const stars = patch.google_stars_overall;
+  return {
+    googlePlaceId: id,
+    observedAt,
+    reviewCount: Math.round(count),
+    stars: typeof stars === "number" && Number.isFinite(stars) ? stars : null,
+  };
+}
+
+/** True when this fetch is at least as new as the place's last Fast Update.
+ *  An older request that finishes later must not overwrite the newer row. */
+export function fastUpdateShouldWrite(
+  storedAt: string | null | undefined,
+  observedAt: string,
+): boolean {
+  if (!storedAt) return true;
+  const stored = Date.parse(storedAt);
+  const next = Date.parse(observedAt);
+  if (!Number.isFinite(stored) || !Number.isFinite(next)) return true;
+  return stored <= next;
+}
+
+function lastGoogleUpdateAt(sourceSync: unknown): string | null {
+  if (!sourceSync || typeof sourceSync !== "object") return null;
+  const at = (sourceSync as Record<string, unknown>).lastGoogleUpdateAt;
+  return typeof at === "string" && at.trim() ? at : null;
+}
+
 export type GooglePlaceUpdateResult =
   | { ok: false; status: number; error: string; code?: string }
   | {
@@ -202,13 +246,39 @@ export async function runGooglePlaceUpdate(
     lastGoogleUpdateVia: "admin-web-update-place-google",
   };
 
-  const written = await writePlace(admin, {
-    table: "place_profiles",
-    mode: "update",
-    id: placeId,
-    patch,
-  });
-  if (!written.ok) return { ok: false, status: 500, error: written.error };
+  const snapshot = reviewSnapshotFromPatch(patch, googlePlaceId, now);
+  // Re-read the stamp so a newer Fast Update that landed during the Google
+  // call keeps the place row. The older fetch still records its snapshot.
+  // The table name stays a variable: this is a read, and writePlace remains
+  // the only place-profile write in this file.
+  const profiles = "place_profiles";
+  const { data: fresh, error: freshErr } = await admin
+    .from(profiles)
+    .select("source_sync")
+    .eq("id", placeId)
+    .maybeSingle();
+  if (freshErr) return { ok: false, status: 500, error: freshErr.message };
+  const writeRow = fastUpdateShouldWrite(lastGoogleUpdateAt(fresh?.source_sync), now);
+  if (writeRow) {
+    const written = await writePlace(admin, {
+      table: "place_profiles",
+      mode: "update",
+      id: placeId,
+      patch,
+    });
+    if (!written.ok) return { ok: false, status: 500, error: written.error };
+  }
+
+  if (snapshot) {
+    const { error: snapErr } = await admin.from("google_review_observations").upsert({
+      place_id: placeId,
+      google_place_id: snapshot.googlePlaceId,
+      observed_at: snapshot.observedAt,
+      review_count: snapshot.reviewCount,
+      stars: snapshot.stars,
+    }, { onConflict: "place_id,observed_at", ignoreDuplicates: true });
+    if (snapErr) return { ok: false, status: 500, error: snapErr.message };
+  }
 
   return {
     ok: true,

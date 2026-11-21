@@ -30,7 +30,6 @@ export type RankMode = "nearby" | "popular" | "family";
 export type Recipe = {
   halfKm: number | null;
   distanceExp: number | null;
-  starsExp: number;
   googleExp: number;
   premierExp: number;
 };
@@ -55,6 +54,8 @@ export type MixParams = {
   temperature: Record<RankMode, number>;
   adFloor: number;
   adEvery: number;
+  /** Growth's share of Popularity after 30 days of review history. 0.50 at launch. */
+  growthWeightCap: number;
 };
 
 /** "…Organic" (capital O); an Inorganic row ends "…Inorganic". */
@@ -173,8 +174,6 @@ export const SHUFFLE_TEMPERATURE_MAX = 5;
 /** Mirrors the recipe and mix bounds in _shared/pipeline-signals.ts
  *  (MESITA-4454). Half distance and Distance exponent are HALF_KM_* and
  *  EXPONENT_*. */
-export const STARS_EXP_MIN = 0;
-export const STARS_EXP_MAX = 4;
 export const GOOGLE_EXP_MIN = 0.1;
 export const GOOGLE_EXP_MAX = 1;
 export const PREMIER_EXP_MIN = 0;
@@ -185,12 +184,13 @@ export const AD_FLOOR_MIN = 0;
 export const AD_FLOOR_MAX = 1;
 export const AD_EVERY_MIN = 0;
 export const AD_EVERY_MAX = 10;
+export const GROWTH_WEIGHT_CAP_MIN = 0;
+export const GROWTH_WEIGHT_CAP_MAX = 0.8;
 
 /** Mirrors RECIPE_BOUNDS and MIX_BOUNDS in _shared/discovery-config.ts. */
 export const RECIPE_BOUNDS = {
   halfKm: { min: HALF_KM_MIN, max: HALF_KM_MAX, decimals: 2 },
   distanceExp: { min: EXPONENT_MIN, max: EXPONENT_MAX, decimals: 1 },
-  starsExp: { min: STARS_EXP_MIN, max: STARS_EXP_MAX, decimals: 1 },
   googleExp: { min: GOOGLE_EXP_MIN, max: GOOGLE_EXP_MAX, decimals: 2 },
   premierExp: { min: PREMIER_EXP_MIN, max: PREMIER_EXP_MAX, decimals: 1 },
 } as const;
@@ -199,18 +199,19 @@ export const MIX_BOUNDS = {
   temperature: { min: MIX_TEMPERATURE_MIN, max: MIX_TEMPERATURE_MAX, decimals: 2 },
   adFloor: { min: AD_FLOOR_MIN, max: AD_FLOOR_MAX, decimals: 2 },
   adEvery: { min: AD_EVERY_MIN, max: AD_EVERY_MAX, decimals: 0 },
+  growthWeightCap: { min: GROWTH_WEIGHT_CAP_MIN, max: GROWTH_WEIGHT_CAP_MAX, decimals: 2 },
 } as const;
 
 /** The recipe table (Pato, 2026-11-19). Mirrors DEFAULT_RECIPES. */
 export const DEFAULT_RECIPES: Recipes = {
-  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, starsExp: 2, googleExp: 0.33, premierExp: 0 },
-  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, starsExp: 2, googleExp: 0.17, premierExp: 1 },
-  catalogFamilyOrganic: { halfKm: 2, distanceExp: 2, starsExp: 2, googleExp: 0.33, premierExp: 0 },
-  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, starsExp: 2, googleExp: 0.17, premierExp: 1 },
-  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, starsExp: 2, googleExp: 0.33, premierExp: 0 },
-  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, starsExp: 2, googleExp: 0.17, premierExp: 1 },
-  mapOrganic: { halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.33, premierExp: 0 },
-  mapInorganic: { halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.17, premierExp: 1 },
+  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, premierExp: 0 },
+  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, premierExp: 1 },
+  catalogFamilyOrganic: { halfKm: 2, distanceExp: 2, googleExp: 0.33, premierExp: 0 },
+  catalogFamilyInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, premierExp: 1 },
+  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, googleExp: 0.33, premierExp: 0 },
+  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, premierExp: 1 },
+  mapOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, premierExp: 0 },
+  mapInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, premierExp: 1 },
 };
 
 /** Mirrors DEFAULT_MIX. */
@@ -218,6 +219,7 @@ export const DEFAULT_MIX: MixParams = {
   temperature: { nearby: 0.33, family: 0.5, popular: 1 },
   adFloor: 0.2,
   adEvery: 1,
+  growthWeightCap: 0.5,
 };
 
 /** Mirrors MAP_PLACES_SHOWN_* in _shared/discovery-config.ts (MESITA-2713, MESITA-2909). */
@@ -385,7 +387,6 @@ export function coerceRecipes(raw: unknown): Recipes {
     out[row] = {
       halfKm: map ? null : bounds(v.halfKm, d.halfKm as number, RECIPE_BOUNDS.halfKm),
       distanceExp: map ? null : bounds(v.distanceExp, d.distanceExp as number, RECIPE_BOUNDS.distanceExp),
-      starsExp: bounds(v.starsExp, d.starsExp, RECIPE_BOUNDS.starsExp),
       googleExp: bounds(v.googleExp, d.googleExp, RECIPE_BOUNDS.googleExp),
       premierExp: isOrganicRow(row) ? 0 : bounds(v.premierExp, d.premierExp, RECIPE_BOUNDS.premierExp),
     };
@@ -402,6 +403,7 @@ export function coerceMix(raw: unknown): MixParams {
     temperature: { nearby: temp("nearby"), family: temp("family"), popular: temp("popular") },
     adFloor: bounds(r.adFloor, DEFAULT_MIX.adFloor, MIX_BOUNDS.adFloor),
     adEvery: bounds(r.adEvery, DEFAULT_MIX.adEvery, MIX_BOUNDS.adEvery),
+    growthWeightCap: bounds(r.growthWeightCap, DEFAULT_MIX.growthWeightCap, MIX_BOUNDS.growthWeightCap),
   };
 }
 

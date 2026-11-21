@@ -224,24 +224,24 @@ describe("recipes and mix (MESITA-4454), the twin of normalizeRecipes and normal
   it("read the recipe table and the mix defaults when absent", () => {
     expect(coerceConfig({}).params.recipes).toEqual(DEFAULT_RECIPES);
     expect(coerceConfig({}).params.mix).toEqual(DEFAULT_MIX);
-    expect(DEFAULT_RECIPES.catalogNearbyOrganic).toEqual({ halfKm: 0.1, distanceExp: 4, starsExp: 2, googleExp: 0.33, premierExp: 0 });
-    expect(DEFAULT_RECIPES.mapInorganic).toEqual({ halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.17, premierExp: 1 });
+    expect(DEFAULT_RECIPES.catalogNearbyOrganic).toEqual({ halfKm: 0.1, distanceExp: 4, googleExp: 0.33, premierExp: 0 });
+    expect(DEFAULT_RECIPES.mapInorganic).toEqual({ halfKm: null, distanceExp: null, googleExp: 0.17, premierExp: 1 });
   });
 
   it("clamp each field; an Organic row's Premier exponent is 0 and a Map row has no distance (C1, L-1)", () => {
     const r = coerceRecipes({
-      catalogPopularOrganic: { halfKm: 500, distanceExp: 0.1, starsExp: 9, googleExp: 0.01, premierExp: 2 },
+      catalogPopularOrganic: { halfKm: 500, distanceExp: 0.1, googleExp: 0.01, premierExp: 2 },
       catalogPopularInorganic: { premierExp: 3, googleExp: "0.5" },
       catalogFamilyOrganic: { halfKm: null, distanceExp: "x" },
       catalogNearbyOrganic: { halfKm: 0.123 },
       mapOrganic: { halfKm: 3, distanceExp: 2, premierExp: 1 },
     });
-    expect(r.catalogPopularOrganic).toEqual({ halfKm: 100, distanceExp: 0.5, starsExp: 4, googleExp: 0.1, premierExp: 0 });
+    expect(r.catalogPopularOrganic).toEqual({ halfKm: 100, distanceExp: 0.5, googleExp: 0.1, premierExp: 0 });
     expect(r.catalogPopularInorganic.premierExp).toBe(2);
     expect(r.catalogPopularInorganic.googleExp).toBe(0.5);
     expect([r.catalogFamilyOrganic.halfKm, r.catalogFamilyOrganic.distanceExp]).toEqual([2, 2]);
     expect(r.catalogNearbyOrganic.halfKm).toBe(0.12);
-    expect(r.mapOrganic).toEqual({ halfKm: null, distanceExp: null, starsExp: 2, googleExp: 0.33, premierExp: 0 });
+    expect(r.mapOrganic).toEqual({ halfKm: null, distanceExp: null, googleExp: 0.33, premierExp: 0 });
   });
 
   it("mix: Temperature 0–5 per mode, ad floor 0–1, ad cadence 0–10 whole", () => {
@@ -249,7 +249,10 @@ describe("recipes and mix (MESITA-4454), the twin of normalizeRecipes and normal
       temperature: { nearby: 5, family: 0, popular: 0.33 },
       adFloor: 1,
       adEvery: 4,
+      growthWeightCap: 0.5,
     });
+    expect(coerceMix({ growthWeightCap: 0.8 }).growthWeightCap).toBe(0.8);
+    expect(coerceMix({ growthWeightCap: 2 }).growthWeightCap).toBe(0.8);
     expect(coerceMix({ adEvery: 0 }).adEvery).toBe(0);
     expect(coerceMix({ adEvery: 99 }).adEvery).toBe(10);
   });

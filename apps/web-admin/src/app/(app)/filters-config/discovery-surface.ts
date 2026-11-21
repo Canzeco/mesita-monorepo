@@ -168,13 +168,13 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
   {
     key: "popularity",
     label: "Popularity",
-    formula: "(stars ^ Stars exponent × reviews) ^ Google exponent",
+    formula: "((1 − w) × stars × reviews + w × growth) ^ Google exponent",
     requires: ["rating", "review_count"],
-    query: "Nothing.",
+    query: "Nothing. Growth is read from Fast Update snapshots, not from the guest.",
     computation: "runtime",
-    cost: "Local arithmetic over stored numbers, free.",
-    missing: "No rating, no review count or 0 reviews: 0 (shown as n/a), so the place ranks last. There is no new-place prior; that lowers the place, it never removes it.",
-    normalization: "None, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"). Both exponents are the recipe row's (MESITA-4454): Stars exponent 0–4 (2 on every row: stars count squared), Google exponent 0.1–1 (0.33 on Organic rows, the cube root: every 8× the reviews doubles it; 0.17 on Inorganic rows, which squeezes famous and unknown places together so the plan decides more). It replaced (1 + reviews × stars)^root × (stars ÷ 5)^weight (MESITA-3083, MESITA-4153). The score is a plain product, never clamped: Popularity × the Premier boost on the Map, × Proximity on the Catalog.",
+    cost: "Local arithmetic over stored numbers, plus one cohort read of Fast Update snapshots.",
+    missing: "No rating, no review count or 0 reviews: 0 (shown as n/a), so the place ranks last. No usable growth history (one snapshot, under 7 days, a changed Google listing, or history older than 90 days): w is 0, so Popularity is (stars × reviews) ^ Google exponent. Fewer than 8 peers with rising reviews in the city: the same, established only.",
+    normalization: "None on the final score, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"). Stars are linear. Growth is reviews per day over the observed span inside 90 days, at least 7 days apart, mapped onto the local established-base quantile, then mixed by w: 0.20 at 7 days and the Growth weight cap at 30 days (0.50 at launch; 0.80 is an experiment on the Mixing card). A watched place that did not gain reviews mixes in 0. The row’s Google exponent ranges from 0.1–1 (0.33 on Organic rows, 0.17 on Inorganic rows) and is applied once, after the mix. The score is a plain product, never clamped: Popularity × the Premier boost on the Map, × Proximity on the Catalog.",
   },
 ];
 

@@ -201,19 +201,16 @@ Deno.test("shuffleByRank: temperature 0 keeps the sort, any temperature keeps ev
 // Organic {1 km, 2, 2, 0.5, 0}, Inorganic {1 km, 2, 2, 0.5, 1}, so
 // Popularity = stars × √reviews and Proximity = 1 ÷ (1 + km²).
 
-const ORG = { halfKm: 1, distanceExp: 2, starsExp: 2, googleExp: 0.5, premierExp: 0 };
+const ORG = { halfKm: 1, distanceExp: 2, googleExp: 0.5, premierExp: 0 };
 const INORG = { ...ORG, premierExp: 1 };
 
-Deno.test("v2 score: Proximity × (stars^StarsExp × reviews)^GoogleExp × premierFactor^PremierExp, by hand", () => {
-  // A: 4.5★ × 1000 at the point: 4.5 × √1000 ≈ 142.30.
-  assertAlmostEquals(recipeScore({ rating: 4.5, reviewCount: 1000 }, 0, true, 1, ORG).final, 142.302, 1e-3);
-  // D: 4.0★ × 100, 2X, 1 km: Organic 0.5 × 40 = 20; Inorganic × 2 = 40.
+Deno.test("v2 score: Proximity × (stars × reviews)^GoogleExp × premierFactor^PremierExp, by hand", () => {
+  assertAlmostEquals(recipeScore({ rating: 4.5, reviewCount: 1000 }, 0, true, 1, ORG).final, Math.sqrt(4500), 1e-3);
   const d = recipeScore({ rating: 4, reviewCount: 100 }, 1, true, 2, ORG);
-  assertEquals([d.proximity, d.popularity, d.premierFactor, d.premierBoost, d.final], [0.5, 40, 2, 1, 20]);
-  assertAlmostEquals(recipeScore({ rating: 4, reviewCount: 100 }, 1, true, 2, INORG).final, 40, 1e-9);
-  // E: 4.8★ × 500, 5X, 2 km: Organic 0.2 × 107.33 ≈ 21.47; Inorganic × 5 ≈ 107.33.
-  assertAlmostEquals(recipeScore({ rating: 4.8, reviewCount: 500 }, 2, true, 5, ORG).final, 21.466, 1e-3);
-  assertAlmostEquals(recipeScore({ rating: 4.8, reviewCount: 500 }, 2, true, 5, INORG).final, 107.331, 1e-3);
+  assertEquals([d.proximity, d.popularity, d.premierFactor, d.premierBoost, d.final], [0.5, 20, 2, 1, 10]);
+  assertAlmostEquals(recipeScore({ rating: 4, reviewCount: 100 }, 1, true, 2, INORG).final, 20, 1e-9);
+  assertAlmostEquals(recipeScore({ rating: 4.8, reviewCount: 500 }, 2, true, 5, ORG).final, 0.2 * Math.sqrt(2400), 1e-3);
+  assertAlmostEquals(recipeScore({ rating: 4.8, reviewCount: 500 }, 2, true, 5, INORG).final, Math.sqrt(2400), 1e-3);
   // F: 2X at 50 km is under the 0.2 floor (0.0004 × 2); D and E clear it.
   const fProx = recipeScore({ rating: 4.6, reviewCount: 300 }, 50, true, 2, INORG).proximity;
   assertEquals(clearsAdFloor(fProx, 2, 0.2), false);
@@ -221,18 +218,44 @@ Deno.test("v2 score: Proximity × (stars^StarsExp × reviews)^GoogleExp × premi
   assertEquals(clearsAdFloor(0.2, 5, 0.2), true);
   // No anchor: Proximity abstains (null, counted as 1), every Premier place clears.
   const none = recipeScore({ rating: 4, reviewCount: 100 }, null, false, 2, INORG);
-  assertEquals([none.proximity, none.final], [null, 80]);
+  assertEquals([none.proximity, none.final], [null, 40]);
   assertEquals(clearsAdFloor(none.proximity, 2, 0.2), true);
   // A Map row has no Proximity even with an anchor.
-  assertEquals(recipeScore({ rating: 4, reviewCount: 100 }, 9, true, 1, { ...ORG, halfKm: null, distanceExp: null }).final, 40);
+  assertEquals(recipeScore({ rating: 4, reviewCount: 100 }, 9, true, 1, { ...ORG, halfKm: null, distanceExp: null }).final, 20);
   // Measured from an anchor without coordinates: Proximity 0.
   assertEquals(recipeScore({ rating: 4, reviewCount: 100 }, null, true, 1, ORG).final, 0);
 });
 
+Deno.test("growth blend keeps GoogleExp once, and cold start is the linear-stars formula", () => {
+  const cold = googlePopularity({ rating: 4, reviewCount: 100 }, 0.33);
+  assertAlmostEquals(cold, Math.pow(400, 0.33), 1e-9);
+  const grow = googlePopularity(
+    { rating: 4, reviewCount: 100 },
+    0.5,
+    { elapsedDays: 30, growthBase: 3000, kind: "grow" },
+    0.5,
+  );
+  // 50/50 of 400 and 3000 is 1700; the exponent is applied once.
+  assertAlmostEquals(grow, Math.sqrt(1700), 1e-9);
+  const flat = googlePopularity(
+    { rating: 4, reviewCount: 100 },
+    0.5,
+    { elapsedDays: 30, growthBase: 0, kind: "flat" },
+  );
+  assertAlmostEquals(flat, Math.sqrt(200), 1e-9);
+  const missing = googlePopularity(
+    { rating: 4, reviewCount: 100 },
+    0.25,
+    { elapsedDays: null, growthBase: null, kind: "missing" },
+    0.8,
+  );
+  assertAlmostEquals(missing, Math.pow(400, 0.25), 1e-9);
+});
+
 Deno.test("v2 score: 0 reviews or no stars scores 0; Premier exponent 0 ignores the plan", () => {
-  assertEquals(googlePopularity({ rating: 4, reviewCount: 0 }, 2, 0.33), 0);
-  assertEquals(googlePopularity({ rating: null, reviewCount: 50 }, 2, 0.33), 0);
-  assertEquals(googlePopularity({ rating: 4, reviewCount: null }, 2, 0.33), 0);
+  assertEquals(googlePopularity({ rating: 4, reviewCount: 0 }, 0.33), 0);
+  assertEquals(googlePopularity({ rating: null, reviewCount: 50 }, 0.33), 0);
+  assertEquals(googlePopularity({ rating: 4, reviewCount: null }, 0.33), 0);
   assertEquals(recipeScore({ rating: 4, reviewCount: 0 }, 0, true, 5, INORG).final, 0);
   assertEquals(premierBoost(5, 0), 1);
   assertEquals(premierBoost(2, 1), 2);
@@ -241,9 +264,7 @@ Deno.test("v2 score: 0 reviews or no stars scores 0; Premier exponent 0 ignores 
     recipeScore({ rating: 4, reviewCount: 100 }, 1, true, 5, ORG).final,
     recipeScore({ rating: 4, reviewCount: 100 }, 1, true, 1, ORG).final,
   );
-  // Stars count through StarsExp: at 0 only reviews do.
-  assertAlmostEquals(googlePopularity({ rating: 3, reviewCount: 100 }, 0, 1), 100, 1e-12);
-  assertAlmostEquals(googlePopularity({ rating: 3, reviewCount: 100 }, 2, 1), 900, 1e-12);
+  assertAlmostEquals(googlePopularity({ rating: 3, reviewCount: 100 }, 1), 300, 1e-12);
 });
 
 Deno.test("mergeLanes: one ad after every adEvery organic places; dupes skipped; empty slots dropped; 0 = no ads", () => {
