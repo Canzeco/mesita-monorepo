@@ -1,7 +1,6 @@
 "use client";
 
-import { offerSlides, SizedImg, type OfferInput } from "@mesita/place-profile";
-import { OfferButton } from "@/components/consumer/offer-button";
+import { SizedImg } from "@mesita/place-profile";
 import { cn } from "@/lib/utils";
 
 // A ROW OF PAY'S LOYALTY CARDS BOX (MESITA-4560). History: a bank-card-sized
@@ -14,8 +13,6 @@ export function PlaceActionRow({
   amount,
   distance = null,
   subtitle,
-  offers = null,
-  placeHref,
   placeId,
   disabled = false,
   onOpen,
@@ -28,16 +25,11 @@ export function PlaceActionRow({
   /** "350 m" when the place is located. */
   distance?: string | null;
   subtitle?: string | null;
-  /** What the guest can buy here now; none leaves the row one line. */
-  offers?: OfferInput | null;
-  /** The place page the offer opens. */
-  placeHref?: string;
   placeId?: string;
   disabled?: boolean;
   /** The first line's tap: its Loyalty Card page (or the place). */
   onOpen?: () => void;
 }) {
-  const slides = disabled || !placeHref ? [] : offerSlides(offers);
   return (
     // TWO LINES IN ONE BOX OF ROWS (Pato, 2026-11-21, MESITA-4560: "each
     // card must be two lines of height. first line … the place card, then
@@ -46,8 +38,11 @@ export function PlaceActionRow({
     // Cards box, a hairline between places. Line 1 opens the Loyalty Card;
     // line 2 is the moving offer at full width (Home's OfferButton), opening
     // the place. No offers: one line. The 2x2 grid of MESITA-4531/4537
-    // before.
-    <div className="flex flex-col gap-2 px-3 py-2.5" data-wallet-row data-place-id={placeId}>
+    // before. ONE LINE, NO OFFERS (Pato, 2026-11-21, MESITA-4573: "don't
+    // show offers in loyalty cards … show them but nested, but not there
+    // outside. that must only be the list"): the moving offer line is gone;
+    // the offers live one tap in, on the Loyalty Card page and the place.
+    <div className="px-3 py-2.5" data-wallet-row data-place-id={placeId}>
       <button
         type="button"
         disabled={disabled}
@@ -78,9 +73,6 @@ export function PlaceActionRow({
           <span className="text-muted-foreground shrink-0 text-sm">{distance}</span>
         ) : null}
       </button>
-      {slides.length > 0 && placeHref ? (
-        <OfferButton href={placeHref} name={name} slides={slides} placeId={placeId} className="h-11 w-full rounded-xl text-sm" />
-      ) : null}
     </div>
   );
 }

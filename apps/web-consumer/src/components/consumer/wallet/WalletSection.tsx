@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Wallet as WalletIcon } from "lucide-react";
+import { ChevronRight, Plus, Wallet as WalletIcon } from "lucide-react";
+import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { photoUrl } from "@mesita/place-profile";
 import { Screen } from "@/components/consumer/nav/Screen";
-import { CONSUMER_ROUTES, placePath, storyTicketPath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, storyTicketPath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
@@ -169,6 +170,7 @@ export function WalletSection({
   const cardsToasted = useRef(false);
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
   // Wallet has read; closing it leaves its address for the Wallet's.
+  const [addOpen, setAddOpen] = useState(false);
   const [gift, setGift] = useState(giftToken);
   const closeGift = useCallback(() => {
     setGift(null);
@@ -275,8 +277,6 @@ export function WalletSection({
                     amount={gone || row.card.available_cents <= 0 ? null : money(row.card.available_cents, row.card.currency)}
                     subtitle={gone ? "Ask Mesita support to use it." : null}
                     disabled={gone}
-                    offers={row.balance.offers ?? null}
-                    placeHref={placePath(row.placeId)}
                     placeId={row.placeId}
                     onOpen={() => navigateTo(router, walletPlacePath(row.placeId), { motion: "drill" })}
                   />
@@ -298,7 +298,28 @@ export function WalletSection({
               No Mesita places near you yet. Tap Pay Bill to find one.
             </p>
           ) : null}
+          {/* ADD ANOTHER CARD, LAST (Pato, 2026-11-21, MESITA-4573: "in
+              loyalty cards below offer option to add extra card"): one row
+              in the cards' shape, opening MESITA-4088's "Loyalty Cards add
+              themselves" dialog (buy credits at a place, or get a gift) with
+              its Find a place. Not while the cards load or a search narrows
+              the list. */}
+          {creditsState !== "loading" && !q ? (
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="flex min-h-11 w-full items-center gap-3 px-3 py-2.5 text-left"
+              data-wallet-add-card
+            >
+              <span className="bg-muted text-foreground flex h-[26px] w-10 shrink-0 items-center justify-center rounded-[5px]" aria-hidden>
+                <Plus className="h-4 w-4" strokeWidth={2.25} />
+              </span>
+              <span className="text-foreground min-w-0 flex-1 truncate text-base font-semibold">Add Loyalty Card</span>
+              <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+            </button>
+          ) : null}
       </section>
+      <AddCreditsCardDialog open={addOpen} onClose={() => setAddOpen(false)} />
       {creditsState === "failed" ? (
         <div className="mt-2">
           <EmptyState
