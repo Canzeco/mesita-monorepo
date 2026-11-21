@@ -7,7 +7,7 @@
 // PAYMENTS_STRIPE_MODE's. Guests are per-place keys and masked names; the
 // email and the member id never leave this function.
 //
-// Body: { place_id, kind: visits|vouchers|payments|credits|stories,
+// Body: { place_id, kind: visits|vouchers|gifts|payments|credits|stories,
 //         customer?: key, id?: uuid, before?: { rank, at, id } }
 // Response: { ok, test_mode, kind, timezone, rows, next }
 
@@ -42,7 +42,7 @@ serveJson("business-web-list-place-monitor", async (req) => {
   const b = bodyRes.body;
   if (!isUuid(b.place_id)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   if (typeof b.kind !== "string" || !(MONITOR_KINDS as readonly string[]).includes(b.kind)) {
-    return json({ ok: false, error: "kind must be visits, vouchers, payments, credits or stories" }, 400);
+    return json({ ok: false, error: "kind must be visits, vouchers, gifts, payments, credits or stories" }, 400);
   }
   if (b.customer != null && !isCustomerKey(b.customer)) return json({ ok: false, error: "customer must be a customer key" }, 400);
   if (b.id != null && !isUuid(b.id)) return json({ ok: false, error: "id must be a uuid" }, 400);
