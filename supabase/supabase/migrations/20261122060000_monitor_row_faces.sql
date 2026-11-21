@@ -4,7 +4,11 @@
 -- (MESITA-3213, place_views_log): no photo for a guest who chose to appear
 -- anonymous, and the Instagram mark only for a verified handle they show.
 -- place_monitor_list and place_customers return it as `face` (and
--- `other_face` for a gift's other guest); nothing else changes.
+-- `other_face` for a gift's other guest). Vouchers leave the rail for Credits
+-- (Pato: "dont add the section vouchers but credits … include vouchers and
+-- gifts and visits"): a credit row carries its voucher code and links to the
+-- visit its payment paid, and ?id= also finds the rows that link to that id
+-- (a voucher id lists the credit it added).
 
 create or replace function public.place_guest_face(p_consumer_id uuid)
 returns jsonb
@@ -120,13 +124,17 @@ begin
              'amount_cents', e.amount_cents,
              'currency', e.currency,
              'gift_status', g.status,
-             'story', st.id is not null),
+             'story', st.id is not null,
+             'voucher', pu.voucher),
            (case when e.purchase_id is not null then jsonb_build_array(jsonb_build_object('kind', 'voucher', 'id', e.purchase_id)) else '[]'::jsonb end)
            || (case when e.payment_id is not null then jsonb_build_array(jsonb_build_object('kind', 'payment', 'id', e.payment_id)) else '[]'::jsonb end)
+           || (case when pay.tab_id is not null then jsonb_build_array(jsonb_build_object('kind', 'visit', 'id', pay.tab_id)) else '[]'::jsonb end)
            || (case when st.id is not null and e.kind = 'bonus' then jsonb_build_array(jsonb_build_object('kind', 'story', 'id', st.id)) else '[]'::jsonb end)
       from public.wallet_entries e
       left join public.wallet_gifts g on g.id = e.gift_id
       left join public.stories st on st.purchase_id = e.purchase_id
+      left join public.wallet_purchases pu on pu.id = e.purchase_id
+      left join public.wallet_payments pay on pay.id = e.payment_id
      where p_kind = 'credits'
        and e.place_id = p_place_id and e.livemode = p_livemode
     union all
@@ -149,7 +157,8 @@ begin
   ), filtered as (
     select b.*
       from base b
-     where (p_id is null or b.id = p_id)
+     where (p_id is null or b.id = p_id
+            or b.links @> jsonb_build_array(jsonb_build_object('id', p_id::text)))
        and (p_customer is null
             or public.place_customer_key(p_place_id, b.consumer_id) = p_customer
             or public.place_customer_key(p_place_id, b.other_id) = p_customer)
