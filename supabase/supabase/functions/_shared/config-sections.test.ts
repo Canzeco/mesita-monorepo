@@ -207,7 +207,9 @@ const CASES: Record<string, SectionCase> = {
       assertEquals("updatedAt" in saved, false);
       const stored = row.models_config as Row;
       assertEquals(stored.v, 1);
-      assertEquals(Object.keys(stored).sort(), ["embeddings", "enricher", "memo", "v"]);
+      // MESITA-4535: the Story bot's model is a fourth kept key.
+      assertEquals(Object.keys(stored).sort(), ["embeddings", "enricher", "memo", "stories", "v"]);
+      assertEquals(stored.stories, { model: "gpt-6-luna" });
       assertEquals(stored.enricher, { model: "gpt-6-luna" });
     },
     invalid: { config: "not an object" },

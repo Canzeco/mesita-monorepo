@@ -51,6 +51,8 @@ import {
 import { adoptInstagramAvatar } from "../_shared/instagram-avatar.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { serveJson } from "../_shared/http.ts";
+import { copyStoryMedia } from "../_shared/story-verify.ts";
+import { runInBackground } from "../_shared/background.ts";
 import { headMediaKind, igUsername, parseStoryMentions, recordStoryMention, storageHostOf } from "../_shared/story-mention.ts";
 import { bindMentionToOpenStory } from "../_shared/story.ts";
 
@@ -192,6 +194,15 @@ serveJson("meta-instagram-receive-message", async (req) => {
         }, storageHostOf(envRes.env.url));
         const bound = rec.duplicate || !handles.get(sm.senderId) ? null : await bindMentionToOpenStory(admin, rec.id, "meta_webhook");
         console.log("instagram_story_mention", JSON.stringify({ id: rec.id, duplicate: rec.duplicate, handle: handles.get(sm.senderId) !== null, bound_story_id: bound }));
+        // MESITA-4535: keep a private copy for the AI bot after answering
+        // Meta; a failed copy is retried by the cron before the bot reads it.
+        if (!rec.duplicate) {
+          const mentionId = rec.id;
+          const kind = await headMediaKind(sm.url);
+          runInBackground(copyStoryMedia(admin, { id: mentionId, media_url: sm.url, media_kind: kind }).then((r) => {
+            if (!r.ok) console.log("story_media_copy", JSON.stringify({ id: mentionId, code: r.failure.code }));
+          }));
+        }
       } catch (e) {
         console.error("ig_story_mention_failed", e instanceof Error ? e.message : e);
         return text("story mention not saved", 500);

@@ -76,7 +76,7 @@
 //   timed out: start over), 503 payments_unavailable.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { storyMode } from "../_shared/story-mention.ts";
+import { storySaleModeLive } from "../_shared/story-mention.ts";
 import { storyBasketRefusal } from "../_shared/story-buy.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
@@ -192,7 +192,8 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   }
 
   // No mention source, no Story (MESITA-4264): live payments with Meta off.
-  if (kinds.includes("voucher_story") && storyMode() === "unavailable") {
+  // MESITA-4535: and none while the kill switch (story_recheck_meta) is off.
+  if (kinds.includes("voucher_story") && (await storySaleModeLive(admin)) === "unavailable") {
     return json({ ok: false, code: "story_unavailable", error: "The Story voucher is not available right now" }, 409);
   }
   // MESITA-4384: the kill switch stops a sheet that is already open too.

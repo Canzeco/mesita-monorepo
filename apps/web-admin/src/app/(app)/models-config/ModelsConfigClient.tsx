@@ -263,6 +263,10 @@ export function ModelsConfigClient({
             <dt className="text-sm">Enricher sorting and tagging</dt>
             <dd className="font-mono text-sm">{cfg ? cfg.enricher.model : UNAVAILABLE}</dd>
           </div>
+          <div className="flex items-center justify-between gap-4 py-2">
+            <dt className="text-sm">Stories: checks the restaurant tag on each story</dt>
+            <dd className="font-mono text-sm">{cfg ? cfg.stories.model : UNAVAILABLE}</dd>
+          </div>
         </dl>
       </SectionCard>
 

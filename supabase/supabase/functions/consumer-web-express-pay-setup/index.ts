@@ -39,7 +39,7 @@ import { readAccount } from "../_shared/payments.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readMoneyConfig } from "../_shared/money-config.ts";
 import { storyBasketRefusal } from "../_shared/story-buy.ts";
-import { storyMode } from "../_shared/story-mention.ts";
+import { storySaleModeLive } from "../_shared/story-mention.ts";
 import { basketUnits, buyRefusal, catalogLines, parseBasket, readStoryGuest, storyEligibilityContext, storyRefusal, voucherName, voucherOffer } from "../_shared/vouchers.ts";
 import { toStripeAmount } from "../_shared/money.ts";
 import { walletDomainsForSetup } from "../_shared/pm-domains.ts";
@@ -77,7 +77,8 @@ serveJson("consumer-web-express-pay-setup", async (req) => {
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const place = placeRes.place;
   if (!place || place.state !== "active") return json({ ok: false, error: "This place can't sell vouchers" }, 404);
-  if (kinds.includes("voucher_story") && storyMode() === "unavailable") return no("story_unavailable");
+  // MESITA-4535: the kill switch (story_recheck_meta) closes live Story sales too.
+  if (kinds.includes("voucher_story") && (await storySaleModeLive(admin)) === "unavailable") return no("story_unavailable");
 
   const livemode = paymentsLivemode();
   const [offer, account] = await Promise.all([voucherOffer(admin, place, user.id, livemode), readAccount(admin, placeId)]);

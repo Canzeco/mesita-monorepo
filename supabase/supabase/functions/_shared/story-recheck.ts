@@ -17,14 +17,21 @@ import {
 import { storyLog } from "./story-log.ts";
 
 type Due = { id: string; purchase_id: string; mention_id: string | null };
-type Held = { id: string; source: "meta" | "emulator"; media_url: string | null; deleted_at: string | null };
+type Held = {
+  id: string;
+  source: "meta" | "emulator";
+  media_url: string | null;
+  deleted_at: string | null;
+  mentioned_at: string | null;
+  reachable_at_bonus: boolean | null;
+};
 
 async function withMentions(admin: SupabaseClient, due: Due[]): Promise<RecheckRow[]> {
   if (due.length === 0) return [];
   const ids = due.map((d) => d.mention_id).filter((x): x is string => !!x);
   const byId = new Map<string, Held>();
   if (ids.length > 0) {
-    const { data, error } = await admin.from("story_mentions").select("id, source, media_url, deleted_at").in("id", ids);
+    const { data, error } = await admin.from("story_mentions").select("id, source, media_url, deleted_at, mentioned_at, reachable_at_bonus").in("id", ids);
     if (error) throw new Error(`story_mentions: ${error.message}`);
     for (const m of (data ?? []) as Held[]) byId.set(m.id, m);
   }
@@ -33,7 +40,9 @@ async function withMentions(admin: SupabaseClient, due: Due[]): Promise<RecheckR
     return {
       story_id: d.id,
       purchase_id: d.purchase_id,
-      mention: m ? { source: m.source, media_url: m.media_url, deleted_at: m.deleted_at } : null,
+      mention: m
+        ? { source: m.source, media_url: m.media_url, deleted_at: m.deleted_at, mentioned_at: m.mentioned_at, reachable_at_bonus: m.reachable_at_bonus }
+        : null,
     };
   });
 }

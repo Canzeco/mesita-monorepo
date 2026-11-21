@@ -15,7 +15,7 @@ import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWE
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
 import { readMoneyConfig } from "./money-config.ts";
 import { readInstagramSyncState } from "./consumer-doc.ts";
-import { readStoryRules, storyMode, type StoryMode } from "./story-mention.ts";
+import { readStoryRules, storyMode, storySaleModeLive, type StoryMode } from "./story-mention.ts";
 import { instagramHandleOfUrl } from "./place-instagram.ts";
 import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount, VISIT_STATUSES } from "./visits.ts";
@@ -382,7 +382,7 @@ export async function voucherOffer(
     welcomeUsed,
     perVisitUsed,
     hasPlaceCode: !code.error && !!code.data,
-  }), storyMode(), instagramHandleOfUrl(place.instagram_url) !== null);
+  }), await storySaleModeLive(admin), instagramHandleOfUrl(place.instagram_url) !== null);
 }
 
 /** Story is sold only while a mention source exists (MESITA-4264): with

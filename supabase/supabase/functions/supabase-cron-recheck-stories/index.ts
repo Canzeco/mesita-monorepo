@@ -33,10 +33,14 @@ import { errorMessage } from "../_shared/errors.ts";
 import { igUsername, readStoryRules, STORY_RULES } from "../_shared/story-mention.ts";
 import { recheckOne, recheckRows, runStoryRecheck } from "../_shared/story-recheck.ts";
 import { storyLog } from "../_shared/story-log.ts";
+import { runStorySweeps, runStoryVerify } from "../_shared/story-verify.ts";
+import { loadModelsConfig } from "../_shared/models-config.ts";
+import { storyStillUp } from "../_shared/story-mention.ts";
 
 const FN = "supabase-cron-recheck-stories";
 
 serveJson("supabase-cron-recheck-stories", async (req) => {
+  const startedMs = Date.now();
   const ctx = requireInternalRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
@@ -78,23 +82,47 @@ serveJson("supabase-cron-recheck-stories", async (req) => {
       const { data: stored } = await admin.from("meta_instagram_token").select("access_token").maybeSingle();
       const token = pickAccessToken((stored as { access_token?: string } | null)?.access_token, cfg.accessToken);
       const { data, error } = await admin.from("story_mentions")
-        .select("id, sender_igsid, handle_tries")
+        .select("id, sender_igsid, handle_tries, tagged_place_id")
         .is("ig_handle", null).not("sender_igsid", "is", null).lt("handle_tries", STORY_RULES.handleTries)
         .limit(20);
       if (error) throw new Error(`story_mentions: ${error.message}`);
-      for (const m of (data ?? []) as Array<{ id: string; sender_igsid: string; handle_tries: number }>) {
+      for (const m of (data ?? []) as Array<{ id: string; sender_igsid: string; handle_tries: number; tagged_place_id: string | null }>) {
         const handle = await igUsername(token, m.sender_igsid).catch(() => null);
         const { error: upErr } = await admin.from("story_mentions")
           .update({ ig_handle: handle, handle_tries: m.handle_tries + 1 }).eq("id", m.id);
         if (upErr) console.error(`[${FN}]`, JSON.stringify({ step: "handle", mention_id: m.id, error: upErr.message }));
-        else if (handle) handlesFilled++;
+        else if (handle) {
+          handlesFilled++;
+          // MESITA-4535: the bot already named the restaurant: attach now.
+          if (m.tagged_place_id) await admin.rpc("story_detect", { p_mention: m.id, p_place: m.tagged_place_id });
+        }
       }
     } catch (e) {
       console.error(`[${FN}]`, JSON.stringify({ step: "handle", error: errorMessage(e) }));
     }
   }
 
-  const out = { ...report, expired, swept, handles_filled: handlesFilled };
+  // MESITA-4535: housekeeping, then the AI bot with the time left (settling
+  // above always runs first, so a slow model never delays a bonus).
+  const sweeps = await runStorySweeps(admin, rules, (url) => storyStillUp(url));
+  let verify: Record<string, number> | { error: string } | { paused: true } = { paused: true };
+  if (rules.aiEnabled) {
+    try {
+      const models = await loadModelsConfig(admin);
+      verify = await runStoryVerify(admin, {
+        endAtMs: startedMs + 140_000,
+        batch: rules.aiBatch,
+        maxTries: rules.aiMaxTries,
+        model: models.storiesModel,
+        key: Deno.env.get("OPENAI_KEY")?.trim() || null,
+      });
+    } catch (e) {
+      verify = { error: errorMessage(e) };
+      console.error(`[${FN}]`, JSON.stringify({ step: "verify", error: errorMessage(e) }));
+    }
+  }
+
+  const out = { ...report, expired, swept, handles_filled: handlesFilled, sweeps, verify };
   console.log(`[${FN}]`, JSON.stringify(out));
   return json({ ok: true, ...out });
 });
