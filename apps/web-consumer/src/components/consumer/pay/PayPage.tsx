@@ -289,7 +289,7 @@ export function PayPage({
     // smaller in this page ... it feels like an old mobile app from the
     // 2010s"): 8px at the sides and 8px between Pay Bill, the doors and each
     // panel, Home's one step (MESITA-4035); panels keep their 16px insides.
-    <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-8 *:shrink-0">
+    <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0">
       {/* A CLEAN WHITE HEADER (MESITA-4519): the black slab of MESITA-4512
           is gone ("remove the dark background … just a line dividing stuff
           is clearer"). Payment Method and Tickets dark, then Pay Bill in
@@ -353,10 +353,15 @@ export function PayPage({
         Send Gift
       </PushLink>
 
-      <hr className="border-border -mx-2 mt-3 mb-1" data-pay-divider />
-
+      {/* THE CARDS SIT ON GREY (Pato, 2026-11-21, MESITA-4525: "make the
+          background where the cards exist gray, the cards items white, but
+          its container gray"): from under Send Gift to the bottom of the
+          page, the page grey (bg-background, Me's ground) with a hairline at
+          its top edge; the boxes stay white. A lone hairline (MESITA-4520)
+          before. */}
+      <div className="bg-background border-border -mx-2 mt-3 flex flex-1 flex-col border-t px-2 pt-1 pb-8" data-pay-cards>
       {loc.state === "prime" ? (
-        <div className="border-border mt-2 rounded-xl border p-3">
+        <div className="border-border bg-card mt-2 rounded-xl border p-3">
           <p className="text-sm font-semibold">See places near you</p>
           <div className="mt-2 flex gap-2">
             <button type="button" className="bg-foreground text-background h-11 flex-1 rounded-xl text-sm" onClick={askLocation}>
@@ -385,6 +390,7 @@ export function PayPage({
           />
         }
       />
+      </div>
       <PayPickSheet open={pickerOpen} onClose={closePicker} onPick={choosePlace} />
     </KeptScroll>
   );
