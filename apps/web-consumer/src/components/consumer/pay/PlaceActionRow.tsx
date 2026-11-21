@@ -2,6 +2,7 @@
 
 import { SizedImg } from "@mesita/place-profile";
 import { cn } from "@/lib/utils";
+import { PAY_ROW, PAY_ROW_META, PAY_ROW_TEXT, PAY_THUMB } from "./pay-sections";
 
 // A ROW OF PAY'S LOYALTY CARDS BOX (MESITA-4560). History: a bank-card-sized
 // card with an Offers tile (MESITA-4520), two loose lines (MESITA-4525), a
@@ -42,7 +43,7 @@ export function PlaceActionRow({
     // show offers in loyalty cards … show them but nested, but not there
     // outside. that must only be the list"): the moving offer line is gone;
     // the offers live one tap in, on the Loyalty Card page and the place.
-    <div className="px-3 py-2.5" data-wallet-row data-place-id={placeId}>
+    <div data-wallet-row data-place-id={placeId}>
       <button
         type="button"
         disabled={disabled}
@@ -58,33 +59,33 @@ export function PlaceActionRow({
         onClick={() => {
           if (!disabled) onOpen?.();
         }}
-        className={cn("flex min-h-11 w-full min-w-0 items-center gap-3 text-left", disabled && "cursor-default opacity-60")}
+        className={cn(PAY_ROW, disabled && "cursor-default opacity-60")}
         data-loyalty-card
       >
         <MiniCard photo={photo} name={name} />
-        <span className="text-foreground min-w-0 flex-1 truncate text-base font-semibold">{name}</span>
+        <span className={cn(PAY_ROW_TEXT, "min-w-0 flex-1 truncate")}>{name}</span>
         {subtitle ? (
-          <span className="text-muted-foreground max-w-[45%] shrink-0 truncate text-sm">{subtitle}</span>
+          <span className={cn(PAY_ROW_META, "max-w-[45%] shrink-0 truncate")}>{subtitle}</span>
         ) : amount ? (
-          <span className="text-foreground shrink-0 text-base font-bold tabular-nums" data-loyalty-balance>
+          <span className={cn(PAY_ROW_TEXT, "shrink-0 tabular-nums")} data-loyalty-balance>
             {amount}
           </span>
         ) : distance ? (
-          <span className="text-muted-foreground shrink-0 text-sm">{distance}</span>
+          <span className={cn(PAY_ROW_META, "shrink-0")}>{distance}</span>
         ) : null}
       </button>
     </div>
   );
 }
 
-/** The Loyalty Card's face, small (MESITA-4525): 40x26, the place's photo. */
+/** The Loyalty Card's face, small: Pay's one 48x32 thumbnail (MESITA-4578), the place's photo. */
 function MiniCard({ photo, name }: { photo: string | null; name: string }) {
   return (
-    <span className="bg-foreground relative h-[26px] w-10 shrink-0 overflow-hidden rounded-[5px] ring-1 ring-black/10" aria-hidden>
+    <span className={cn(PAY_THUMB, "bg-foreground relative ring-1 ring-black/10")} aria-hidden>
       {photo ? (
         <SizedImg src={photo} size="thumb" alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
       ) : (
-        <span className="text-background type-meta flex h-full w-full items-center justify-center font-bold">
+        <span className="text-background flex h-full w-full items-center justify-center text-sm font-semibold">
           {name.trim().charAt(0).toUpperCase()}
         </span>
       )}
