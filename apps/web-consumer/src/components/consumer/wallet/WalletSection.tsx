@@ -6,26 +6,23 @@ import { Wallet as WalletIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { photoUrl } from "@mesita/place-profile";
 import { Screen } from "@/components/consumer/nav/Screen";
-import { CONSUMER_ROUTES, storyTicketPath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, placePath, storyTicketPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
 import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
 import { useStoryNow } from "./use-story-now";
 import { openStories } from "@/lib/story-lines";
-import {
-  AddRow,
-  StoryRow,
-} from "./WalletLists";
+import { StoryRow } from "./WalletLists";
 import { money } from "@/lib/api/wallet";
 
 // ONE PANEL, EACH PLACE ONCE (Pato, 2026-11-20, MESITA-4497, after a
 // /plan-design-review of MESITA-4485/4492): Pay hands this its place rows
 // (`lead`); a card whose place is listed there is not drawn again, the rest
-// follow with Send, then Add a Loyalty Card. The place rows show at once;
+// follow as the same cards (MESITA-4519: no Add a Loyalty Card row, each
+// card with its offers). The place rows show at once;
 // the card rows are bones until the Wallet's read paints. The notes below
 // are the history.
 //
@@ -173,7 +170,6 @@ export function WalletSection({
 }) {
   const router = useRouter();
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
-  const [explainAdd, setExplainAdd] = useState(false);
   // Story lines turn to "Checking your story…" at their bonus time (MESITA-4264).
   const storyNow = useStoryNow(openStories(wallet?.waiting_stories ?? []));
   // The saved-card failure toast fires at most once per mount.
@@ -308,37 +304,28 @@ export function WalletSection({
                     subtitle={gone ? "Ask Mesita support to use it." : null}
                     selected={!gone && selectedId === row.placeId}
                     disabled={gone}
+                    offers={row.balance.offers ?? null}
+                    placeHref={placePath(row.placeId)}
+                    placeId={row.placeId}
                     onSelect={() => onSelect?.(row.placeId)}
-                    onOpen={() => navigateTo(router, walletPlacePath(row.placeId), { motion: "drill" })}
                   />
                 );
               })
             : null}
           {creditsState === "loading" ? (
             <>
-              <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
-              <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
+              <Skeleton className="h-24 w-full rounded-2xl" aria-hidden />
+              <Skeleton className="h-24 w-full rounded-2xl" aria-hidden />
             </>
           ) : null}
           {settled && q && leadCount === 0 && creditsState === "empty" ? (
             <p className="text-muted-foreground px-4 py-4 text-sm">No place matches “{query.trim()}”.</p>
           ) : null}
           {creditsState === "empty" && !q && leadCount === 0 && leadSettled ? (
-            <div className="border-border bg-card rounded-xl border px-4 py-4" data-wallet-empty>
-              <p className="text-base">No places near you yet.</p>
-              <button
-                type="button"
-                className="bg-foreground text-background mt-3 flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold"
-                onClick={() => navigateTo(router, CONSUMER_ROUTES.search, { motion: "push" })}
-              >
-                Find a place
-              </button>
-            </div>
-          ) : null}
-          {settled && !q ? (
-            <div className="border-border bg-card overflow-hidden rounded-xl border">
-              <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" onClick={() => setExplainAdd(true)} />
-            </div>
+            // One plain line (MESITA-4519): Pay Bill above opens the sheet.
+            <p className="text-muted-foreground px-2 py-4 text-sm" data-wallet-empty>
+              No Mesita places near you yet. Tap Pay Bill to find one.
+            </p>
           ) : null}
       </section>
       {creditsState === "failed" ? (
@@ -353,8 +340,6 @@ export function WalletSection({
         </div>
       ) : null}
 
-      {/* Add a Credits Card explains, never navigates (MESITA-4088). */}
-      <AddCreditsCardDialog open={explainAdd} onClose={() => setExplainAdd(false)} />
     </div>
   );
 }

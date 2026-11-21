@@ -13,7 +13,10 @@
 // Response: { ok: true, places: [{ place_id, name, photo, address, marks: { tier, mesita_pay },
 //             distance_m | null, currency, card_ok, available_cents,
 //             pending_cents, outside_ok, test_mode, card_min_cents,
-//             paid_recent: { payment_id, total_cents, paid_at } | null }] }
+//             paid_recent: { payment_id, total_cents, paid_at } | null,
+//             offers: { sell } }] }
+//   MESITA-4519: offers is what Home's and the place screen's offer slides
+//   read (withVouchersUpTo), so each Pay card carries the same carousel.
 //   available_cents is spendable now (Available minus held credit).
 //   card_min_cents is MIN_CHARGE_CENTS (money.ts), the minimum the start
 //   checks on card + tip.
@@ -28,7 +31,7 @@ import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { MIN_CHARGE_CENTS, MONEY_CURRENCY } from "../_shared/money.ts";
 import { moneyState } from "../_shared/money-state.ts";
-import { cardsAccepted, listRowMoney, type PaymentKey, type PaymentSettings, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
+import { cardsAccepted, listRowMoney, type PaymentKey, type PaymentSettings, SETTINGS_COLUMNS, settingsFromRow, withVouchersUpTo } from "../_shared/payments.ts";
 import { PAID_RECENT_HOURS, type PayPlaceInput, payPlaces, readLocation } from "../_shared/pay-places.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
@@ -128,13 +131,19 @@ serveJson("consumer-web-list-pay-places", async (req) => {
     });
   }
 
+  const listed = payPlaces(rows, {
+    at: loc.coords,
+    cardPlaceCount,
+    testMode: !livemode,
+    minCents: (c) => MIN_CHARGE_CENTS[c] ?? 0,
+  });
+  // The offer slides (MESITA-4519): one batched read for the listed places,
+  // the same rule as Home's rows. It logs its own failures and answers no
+  // offers then, so Pay still lists.
+  const withOffers = await withVouchersUpTo(admin, listed.map((p) => ({ id: p.place_id })));
+  const offers = new Map(withOffers.map((r) => [r.id, r.offers]));
   return json({
     ok: true,
-    places: payPlaces(rows, {
-      at: loc.coords,
-      cardPlaceCount,
-      testMode: !livemode,
-      minCents: (c) => MIN_CHARGE_CENTS[c] ?? 0,
-    }),
+    places: listed.map((p) => ({ ...p, offers: offers.get(p.place_id) ?? { sell: [] } })),
   });
 });

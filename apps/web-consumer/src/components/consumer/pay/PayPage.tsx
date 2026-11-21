@@ -15,22 +15,21 @@ import { billRead, payHere, type BillRead } from "@/lib/pay-wallet";
 import { clearGuestDraft, pendingTicket, readDraft } from "@/lib/guest-pay-draft";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { cn } from "@/lib/utils";
-import { CONSUMER_ROUTES, payBillPath, payPlacePath, placePath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payBillPath, payPlacePath, placePath } from "@/lib/consumer-route-contract";
 import { markPanelExit, navigateTo, previousEntryPath, replaceAddress } from "@/lib/navigate";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { forgetGuestTab, NETWORK_FAILURE, PlacePhoto, readGuestTabIds, CancelBillButtons } from "./pay-common";
 import { PlaceActionRow } from "./PlaceActionRow";
 import { MethodPreview } from "./MethodPreview";
-import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
-import { usePayLocation } from "./pay-location";
+import { distanceText, usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
 import { PayPickSheet } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
-import { fold, WalletSection } from "@/components/consumer/wallet/WalletSection";
+import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
@@ -79,9 +78,15 @@ import { fold, WalletSection } from "@/components/consumer/wallet/WalletSection"
 //
 // ONE PAY OVER ONE-LINE PLACES (Pato, 2026-11-20, MESITA-4504): the band
 // says Wallet. Under it, Payment Method and Tickets, then one filled Pay,
-// then search, then the places. The nearest place starts selected. Pay
-// checks that place out. A second tap opens the place. The notes above
-// are the history.
+// then search, then the places.
+//
+// CHOOSE FIRST, THEN PAY (Pato, 2026-11-21, MESITA-4519, /plan-design-review:
+// "pay bill is not selected and then you pay"; "the placeholders look like
+// shit"): a white header, nothing selected until the guest taps a card. Pay
+// reads "Choose a place" and opens the Pay Bill sheet; after a tap it names
+// the place and checks it out. Each place is a two-half card (PlaceActionRow)
+// with its offers; no Add a Loyalty Card row and no search bar (the sheet
+// has one). The notes above are the history.
 
 export function PayPage({
   giftToken = null,
@@ -100,8 +105,7 @@ export function PayPage({
   // already grants names the place the guest is at (MESITA-4232, D5).
   const { loc, askLocation, notNow } = usePayLocation({ prime: true });
   const { places, failed: placesFailed, loading: placesLoading, refresh: refreshPlaces } = usePayPlaces(loc.state === "on" ? loc.at : null);
-  const [query, setQuery] = useState("");
-  // A tap picks the place Pay checks out. Absent means the nearest row.
+  // A tap picks the place Pay checks out. Absent means none (MESITA-4519).
   const [picked, setPicked] = useState<string | null>(null);
   const [farRows, setFarRows] = useState<{ id: string; name: string }[]>([]);
   const onSelectable = useCallback((rows: { id: string; name: string }[]) => {
@@ -209,6 +213,12 @@ export function PayPage({
     return () => window.removeEventListener("popstate", onPop, true);
   }, [pickerOpen]);
 
+  function openPicker() {
+    if (pickerOpen) return;
+    window.history.pushState({ paySheet: 1 }, "");
+    setPickerOpen(true);
+  }
+
   function closePicker() {
     setPickerOpen(false);
     const state = window.history.state as { paySheet?: number } | null;
@@ -244,13 +254,13 @@ export function PayPage({
     navigateTo(router, href, { motion: "push" });
   }
 
-  // Nearest first; a place with no distance goes last. The search bar
-  // filters by name, here and on the cards.
-  const q = fold(query.trim());
-  const shownPlaces = [...(places ?? [])]
-    .sort((x, y) => (x.distance_m === null ? 1 : y.distance_m === null ? -1 : x.distance_m - y.distance_m))
-    .filter((p) => !q || fold(p.name ?? "").includes(q));
-  // Every place listed with Pay, whatever the search shows: its card is not
+  // Nearest first; a place with no distance goes last. No search bar on
+  // the page (Pato, 2026-11-21, MESITA-4519: "this page must not have
+  // searchbar"); the Pay Bill sheet keeps its own.
+  const shownPlaces = [...(places ?? [])].sort((x, y) =>
+    x.distance_m === null ? 1 : y.distance_m === null ? -1 : x.distance_m - y.distance_m,
+  );
+  // Every place listed with Pay: its Loyalty Card is not
   // drawn again. null while the places load; none when they failed.
   const placeIds = useMemo(
     () => (places === null && !placesFailed ? null : new Set((places ?? []).map((p) => p.place_id))),
@@ -258,10 +268,11 @@ export function PayPage({
   );
   const selectable = shownPlaces.map((p) => p.place_id);
   for (const row of farRows) if (!selectable.includes(row.id)) selectable.push(row.id);
-  const selectedId = picked !== null && selectable.includes(picked) ? picked : (selectable[0] ?? null);
-  const selectedName = shownPlaces.find((p) => p.place_id === selectedId)?.name ?? farRows.find((r) => r.id === selectedId)?.name ?? "this place";
-  const payBusy = payHere(bill) === "wait" || (bill !== "open" && placesLoading && places === null);
-  const showPay = bill === "open" || (!placesFailed && (payBusy || selectedId !== null));
+  // Nothing is chosen for the guest (MESITA-4519): Pay reads "Choose a
+  // place" until a card is tapped, and again if that card leaves the list.
+  const selectedId = picked !== null && selectable.includes(picked) ? picked : null;
+  const selectedName = shownPlaces.find((p) => p.place_id === selectedId)?.name ?? farRows.find((r) => r.id === selectedId)?.name ?? null;
+  const payBusy = payHere(bill) === "wait";
   const checkBill = () => {
     setBillFacts(null);
     setBillNonce((n) => n + 1);
@@ -281,6 +292,7 @@ export function PayPage({
           ? payPlacePath(selectedId)
           : null;
     if (href) navigateTo(router, href, { motion: "push" });
+    else if (decision !== "bill") openPicker();
   };
 
   return (
@@ -289,72 +301,53 @@ export function PayPage({
     // 2010s"): 8px at the sides and 8px between Pay Bill, the doors and each
     // panel, Home's one step (MESITA-4035); panels keep their 16px insides.
     <KeptScroll className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-8 *:shrink-0">
-      {/* The header: the title and Tickets, a quiet grey pill (MESITA-4232).
-          "Wallet" since MESITA-4245 (Pato: "the header just saying pay is
-          shit"; /autoplan): the page holds your money, the pink Pay Bill is
-          the verb. "Mesita Wallet" since MESITA-4252 (Pato: "call at the top
-          Mesita Wallet, not only wallet"); the bar tab stays "Wallet". */}
-      {/* BLACK SLAB (MESITA-4512). The modules and Pay keep their own colors. */}
-      <div className="bg-black -mx-2 px-2 pb-3" data-wallet-band>
-        <PayHeader title="Wallet" embedded />
-        <div className="mt-2 flex gap-2">
-          <MethodPreview wide />
-          <TicketsShortcut wide />
+      {/* A CLEAN WHITE HEADER (MESITA-4519): the black slab of MESITA-4512
+          is gone. Payment Method and Tickets, then Pay, the one filled thing. */}
+      <PayHeader title="Wallet" />
+      <div className="mt-2 flex gap-2">
+        <MethodPreview wide />
+        <TicketsShortcut wide />
+      </div>
+
+      {bill === "open" ? (
+        <div className="mt-2 flex flex-col">
+          <OpenBillPanel
+            tab={openTabs?.[0] ?? null}
+            pending={pending}
+            places={places}
+            onCancelled={(tabId) => {
+              setOpenTabs((t) => (t ? t.filter((x) => x.tab_id !== tabId) : t));
+              setBillFacts({ visitsOk: true, missed: false });
+            }}
+          />
         </div>
+      ) : null}
+      {bill === "unknown" ? (
+        <p className="text-muted-foreground px-2 py-3 text-sm" role="alert" data-error="open_bill_unknown">
+          Couldn&apos;t check for an open bill.
+          <button type="button" className="text-foreground ml-2 font-semibold underline" onClick={checkBill}>
+            Check again
+          </button>
+        </p>
+      ) : null}
 
-        {bill === "open" ? (
-          <div className="mt-2 flex flex-col">
-            <OpenBillPanel
-              tab={openTabs?.[0] ?? null}
-              pending={pending}
-              places={places}
-              onCancelled={(tabId) => {
-                setOpenTabs((t) => (t ? t.filter((x) => x.tab_id !== tabId) : t));
-                setBillFacts({ visitsOk: true, missed: false });
-              }}
-            />
-          </div>
-        ) : null}
-        {bill === "unknown" ? (
-          <p className="text-background/70 px-2 py-3 text-sm" role="alert" data-error="open_bill_unknown">
-            Couldn&apos;t check for an open bill.
-            <button type="button" className="text-background ml-2 font-semibold underline" onClick={checkBill}>
-              Check again
-            </button>
-          </p>
-        ) : null}
-
-        {showPay ? (
-          payBusy ? (
-            <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
-          ) : (
-            <button
-              type="button"
-              className="mt-2 flex h-24 w-full items-center justify-center gap-3 rounded-xl bg-[#635BFF] text-lg font-semibold text-white hover:bg-[#5249e6]"
-              aria-label={bill === "open" ? "Pay your open bill" : `Pay Bill at ${selectedName}`}
-              onClick={paySelected}
-            >
-              <QrCode className="h-8 w-8 shrink-0" strokeWidth={2.25} aria-hidden />
-              <span className="min-w-0 text-left">
-                <span className="block">Pay Bill</span>
-                {bill !== "open" && selectedName !== "this place" ? (
-                  <span className="block max-w-[16rem] truncate text-sm">{selectedName}</span>
-                ) : null}
-              </span>
-            </button>
-          )
-        ) : null}
-      </div>
-
-      <div className="border-border bg-card mt-2 flex h-12 items-center rounded-xl border px-3">
-        <SearchBar
-          query={query}
-          showClear={query.length > 0}
-          onQueryChange={setQuery}
-          onClear={() => setQuery("")}
-          placeholder="Search places and cards"
-        />
-      </div>
+      {payBusy ? (
+        <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
+      ) : (
+        <button
+          type="button"
+          className="mt-2 flex h-24 w-full items-center justify-center gap-3 rounded-xl bg-[#635BFF] text-lg font-semibold text-white hover:bg-[#5249e6]"
+          aria-label={bill === "open" ? "Pay your open bill" : selectedName ? `Pay Bill at ${selectedName}` : "Pay Bill. Choose a place"}
+          onClick={paySelected}
+          data-pay-bill
+        >
+          <QrCode className="h-8 w-8 shrink-0" strokeWidth={2.25} aria-hidden />
+          <span className="min-w-0 text-left">
+            <span className="block">Pay Bill</span>
+            {bill !== "open" ? <span className="block max-w-[16rem] truncate text-sm">{selectedName ?? "Choose a place"}</span> : null}
+          </span>
+        </button>
+      )}
 
       {loc.state === "prime" ? (
         <div className="border-border mt-2 rounded-xl border p-3">
@@ -373,7 +366,6 @@ export function PayPage({
       {/* One panel (MESITA-4497): these place rows, then the Wallet's cards. */}
       <WalletSection
         giftToken={giftToken}
-        query={query}
         leadIds={placeIds}
         leadCount={shownPlaces.length}
         leadSettled={places !== null && !placesFailed}
@@ -388,6 +380,7 @@ export function PayPage({
             selectedId={selectedId}
             onSelect={setPicked}
             onRefresh={refreshPlaces}
+            located={loc.state === "on"}
           />
         }
       />
@@ -396,8 +389,8 @@ export function PayPage({
   );
 }
 
-/** The places under Pay (MESITA-4504): one line each. The nearest starts
- *  selected. A second tap opens the place. */
+/** The places under Pay (MESITA-4519): a card each, none selected until
+ *  a tap. The offers half opens the place. */
 function PlaceRows({
   places,
   failed,
@@ -405,6 +398,7 @@ function PlaceRows({
   selectedId,
   onSelect,
   onRefresh,
+  located,
 }: {
   places: PayPlace[];
   failed: boolean;
@@ -412,8 +406,8 @@ function PlaceRows({
   selectedId: string | null;
   onSelect: (id: string) => void;
   onRefresh: () => void;
+  located: boolean;
 }) {
-  const router = useRouter();
   if (failed) {
     return (
       <p className="text-muted-foreground px-4 py-4 text-sm" role="alert" data-error="pay_places_unavailable">
@@ -427,9 +421,9 @@ function PlaceRows({
   if (loading) {
     return (
       <>
-        <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
-        <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
-        <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
+        <Skeleton className="h-24 w-full rounded-2xl" aria-hidden />
+        <Skeleton className="h-24 w-full rounded-2xl" aria-hidden />
+        <Skeleton className="h-24 w-full rounded-2xl" aria-hidden />
       </>
     );
   }
@@ -437,16 +431,18 @@ function PlaceRows({
     <>
       {places.map((p) => {
         const name = p.name ?? "A Mesita place";
-        const holds = p.available_cents > 0 || p.pending_cents > 0;
         return (
           <PlaceActionRow
             key={p.place_id}
             name={name}
             photo={p.photo}
             amount={p.available_cents > 0 ? money(p.available_cents, p.currency) : null}
+            distance={located && p.distance_m !== null ? distanceText(p.distance_m) : null}
+            offers={p.offers ?? null}
+            placeHref={placePath(p.place_id)}
+            placeId={p.place_id}
             selected={selectedId === p.place_id}
             onSelect={() => onSelect(p.place_id)}
-            onOpen={() => navigateTo(router, holds ? walletPlacePath(p.place_id) : placePath(p.place_id), { motion: "drill" })}
           />
         );
       })}
