@@ -124,8 +124,11 @@ export function PaymentMethodsPage() {
   }
 
   return (
-    <Screen title="Payment methods" paper scrolls>
-      <div className="px-4 pt-3 pb-8">
+    // PAY'S 8PX MARGINS (Pato, 2026-11-21, MESITA-4591: "too big borders …
+    // make them smaller and thinner like the margins"): Screen flush and 8px
+    // at the sides and top. It was Screen's 20px plus the page's 16px, 36px.
+    <Screen title="Payment methods" paper scrolls flush>
+      <div className="px-2 pt-2 pb-8">
         {loading ? (
           <div className={WALLET_PANEL} aria-hidden>
             {[0, 1, 2].map((i) => (
