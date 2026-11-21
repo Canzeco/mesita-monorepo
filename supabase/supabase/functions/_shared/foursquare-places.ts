@@ -87,9 +87,15 @@ function namesAgree(left: string, right: string): boolean {
   return union > 0 && shared / union >= 0.6;
 }
 
-function streetNumber(address: string | null): string | null {
-  const match = address?.match(/\b(\d+[a-zA-Z]?)\b/);
-  return match?.[1]?.toLowerCase() ?? null;
+/** The first street number in an address. A 5-digit number is a postal
+ *  code, never a street number (MESITA-4557: "64700 Monterrey" read as
+ *  64700 ≠ 221 rejected Taquería Orinoco TEC). */
+export function streetNumber(address: string | null): string | null {
+  for (const m of address?.matchAll(/\b(\d+[a-zA-Z]?)\b/g) ?? []) {
+    if (/^\d{5,}$/.test(m[1])) continue;
+    return m[1].toLowerCase();
+  }
+  return null;
 }
 
 /**

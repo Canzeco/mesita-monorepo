@@ -60,7 +60,7 @@ describe("Ranking shows every lane row (MESITA-4454, MESITA-4517)", () => {
     // (no distance, no batch) less 1 forced; plus the preview's lat and lng.
     // 14×7 − 7 + 2×4 − 1 + 2 = 100.
     expect(html.match(/<input/g)?.length).toBe(14 * 7 - 7 + 2 * 4 - 1 + 2);
-    for (const name of ["Nearby close", "Nearby both", "Family close", "Family well known", "Family both", "Popular both"]) {
+    for (const name of ["Organic Nearby Lane", "Inorganic Local Favorites Lane", "Organic Popular Lane", "Family Mode", "½ at 0.1 km"]) {
       expect(html).toContain(name);
     }
   });

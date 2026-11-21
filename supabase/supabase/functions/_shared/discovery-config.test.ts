@@ -443,7 +443,7 @@ Deno.test("recipes: the table by default; organic Premier exponent forced 0; map
   assertEquals(normalizeDiscoveryConfig({}).params.recipes, DEFAULT_RECIPES);
   assertEquals(normalizeDiscoveryConfig({}).params.mix, DEFAULT_MIX);
   assertEquals(DEFAULT_RECIPES.catalogNearbyOrganic, { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 });
-  assertEquals(DEFAULT_RECIPES.mapInorganic, { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: null });
+  assertEquals(DEFAULT_RECIPES.mapInorganic, { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 0.5, foursquareExponent: 20, premierExp: 1, batch: null });
   const clamps: Array<[string, unknown]> = [];
   const r = normalizeRecipes({
     catalogPopularOrganic: { halfKm: 500, distanceExp: 0.1, googleExp: 0.01, premierExp: 2 },

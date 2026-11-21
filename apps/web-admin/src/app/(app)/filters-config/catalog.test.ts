@@ -225,7 +225,7 @@ describe("recipes and mix (MESITA-4454), the twin of normalizeRecipes and normal
     expect(coerceConfig({}).params.recipes).toEqual(DEFAULT_RECIPES);
     expect(coerceConfig({}).params.mix).toEqual(DEFAULT_MIX);
     expect(DEFAULT_RECIPES.catalogNearbyOrganic).toEqual({ halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 });
-    expect(DEFAULT_RECIPES.mapInorganic).toEqual({ halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, batch: null });
+    expect(DEFAULT_RECIPES.mapInorganic).toEqual({ halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 0.5, foursquareExponent: 20, premierExp: 1, batch: null });
   });
 
   it("clamp each field; an Organic row's Premier exponent is 0 and a Map row has no distance (C1, L-1)", () => {
