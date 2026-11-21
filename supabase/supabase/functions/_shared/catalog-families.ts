@@ -9,9 +9,13 @@
 // restaurant, a café or a bar. So Family, Karaoke, Fun, Cinema, Casino, Spa
 // and Tourism are gone — none carried a live place, and all but Karaoke sell
 // tickets, lanes or treatments. Sports (sports bars) and Hookah (lounges)
-// are tables and stay. A karaoke bar is Bar and Night, a comedy club Night.
-// The Google types that are not tables sit in no family now
-// (`RETIRED_RAIL_TYPES`). Every paragraph below that names one of the seven,
+// stayed — until MESITA-4588 (Pato, the same day: "ADD CASINOS … I CAN GET
+// LOT OF EARLY DEALS FROM CASINOS. REMOVE HOOHAK", "CHANGE SPORTS FOR FUN"):
+// Fun and Casino took their slots, an exception to the table rule because
+// those venues sell early deals; a sports bar is Bar, a hookah bar Bar and
+// Night. A karaoke bar is Bar and Night, a comedy club Night.
+// The Google types that are not tables (and are not Fun or a casino) sit in
+// no family now (`RETIRED_RAIL_TYPES`). Every paragraph below that names one of the seven,
 // or a stadium, a concert hall or a spa as a rail, is history.
 //
 // THIRTY-SEVEN before that (MESITA-2930, Pato 2026-10-27: "Fold Beer, Cocktails and
@@ -110,8 +114,8 @@ export const CATALOG_FAMILY_SLUGS = [
   "bakery",
   "nightclub",
   "music",
-  "sports",
-  "hookah",
+  "fun",
+  "casino",
 ] as const;
 
 export type CatalogFamilySlug = (typeof CATALOG_FAMILY_SLUGS)[number];
@@ -151,8 +155,8 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "bakery", label: "Bakery", emoji: "🥐", sort_order: 26 },
   { slug: "nightclub", label: "Club", emoji: "🪩", sort_order: 27 },
   { slug: "music", label: "Music", emoji: "🎶", sort_order: 28 },
-  { slug: "sports", label: "Sports", emoji: "📺", sort_order: 29 },
-  { slug: "hookah", label: "Hookah", emoji: "💨", sort_order: 30 },
+  { slug: "fun", label: "Fun", emoji: "🎯", sort_order: 29 },
+  { slug: "casino", label: "Casino", emoji: "🎰", sort_order: 30 },
   { slug: "undefined", label: "Undefined", emoji: "·", sort_order: 999 },
 ];
 
@@ -236,7 +240,8 @@ export const NO_FAMILY_TYPES = [
 ] as const;
 
 /**
- * Off Mesita since MESITA-4571 (Pato 2026-11-21: "think what makes sense for
+ * Off Mesita since MESITA-4571 (Fun's types and casinos came back with
+ * MESITA-4588) (Pato 2026-11-21: "think what makes sense for
  * mesita … reduce the size or list of allowed google categories"). A Mesita
  * place is one where a guest sits at a table, orders and pays a bill — what
  * Reservations and Prepayments need. These Google types are not: the rails
@@ -246,29 +251,9 @@ export const NO_FAMILY_TYPES = [
  * one, flipped in the same migration). `catalog-families.test.ts` pins it.
  */
 export const RETIRED_RAIL_TYPES = [
-  "bowling_alley",
-  "video_arcade",
-  "arcade",
-  "amusement_center",
-  "escape_room",
-  "laser_tag",
-  "axe_throwing",
-  "trampoline_park",
-  "go_karting_venue",
-  "go_kart",
-  "golf_course",
-  "indoor_golf_course",
-  "miniature_golf_course",
-  "mini_golf",
-  "adventure_sports_center",
-  "paintball_center",
-  "race_course",
-  "ice_skating_rink",
-  "water_park",
   "movie_theater",
   "performing_arts_theater",
   "theater",
-  "casino",
   "spa",
   "massage_spa",
   "sauna",
@@ -279,10 +264,8 @@ export const RETIRED_RAIL_TYPES = [
   "zoo",
   "aquarium",
   "wildlife_park",
-  "amusement_park",
   "indoor_playground",
   "ferris_wheel",
-  "roller_coaster",
   "planetarium",
   "tourist_attraction",
   "cultural_center",
@@ -328,7 +311,7 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   cat_cafe: ["coffee"],
   dog_cafe: ["coffee"],
   tea_house: ["coffee"],
-  board_game_cafe: ["coffee"],
+  board_game_cafe: ["coffee", "fun"],
   juice_shop: ["healthy", "coffee"],
   juice_bar: ["healthy", "coffee"],
   breakfast_restaurant: ["breakfast"],
@@ -370,7 +353,7 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   hamburger_restaurant: ["burgers", "quick_bite", "american", "dinner"],
   burger: ["burgers", "quick_bite", "american", "dinner"],
   chicken_restaurant: ["chicken", "quick_bite"],
-  chicken_wings_restaurant: ["chicken", "sports"],
+  chicken_wings_restaurant: ["chicken"],
   sandwich_shop: ["quick_bite"],
   sandwich: ["quick_bite"],
   deli: ["quick_bite"],
@@ -523,19 +506,43 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   brewpub: ["drinks", "dinner"],
   brewery: ["drinks"],
   beer_garden: ["drinks"],
-  sports_bar: ["sports", "drinks"],
+  sports_bar: ["drinks"],
   cocktail_bar: ["drinks", "night_out"],
   lounge_bar: ["drinks", "night_out"],
-  hookah_bar: ["hookah", "drinks", "night_out"],
+  hookah_bar: ["drinks", "night_out"],
   wine_bar: ["drinks"],
   winery: ["drinks"],
-  billiards: ["drinks"],
+  billiards: ["drinks", "fun"],
   // Night · Club · Music
   night_club: ["nightclub", "night_out"],
   dance_hall: ["nightclub", "night_out", "music"],
   karaoke: ["drinks", "night_out"],
   live_music_venue: ["music", "night_out"],
   comedy_club: ["night_out"],
+  // Fun: what a group does with its hands (back with MESITA-4588)
+  bowling_alley: ["fun"],
+  video_arcade: ["fun"],
+  arcade: ["fun"],
+  amusement_center: ["fun"],
+  escape_room: ["fun"],
+  laser_tag: ["fun"],
+  axe_throwing: ["fun"],
+  trampoline_park: ["fun"],
+  go_karting_venue: ["fun"],
+  go_kart: ["fun"],
+  golf_course: ["fun"],
+  indoor_golf_course: ["fun"],
+  miniature_golf_course: ["fun"],
+  mini_golf: ["fun"],
+  adventure_sports_center: ["fun"],
+  paintball_center: ["fun"],
+  race_course: ["fun"],
+  ice_skating_rink: ["fun"],
+  water_park: ["fun"],
+  amusement_park: ["fun"],
+  roller_coaster: ["fun"],
+  // Casino (MESITA-4588: "I CAN GET LOT OF EARLY DEALS FROM CASINOS")
+  casino: ["casino"],
   // No family (MESITA-2382): a place, not a trip a guest picks.
   ...Object.fromEntries(NO_FAMILY_TYPES.map((t) => [t, ["undefined"] as const])),
   ...Object.fromEntries(RETIRED_RAIL_TYPES.map((t) => [t, ["undefined"] as const])),

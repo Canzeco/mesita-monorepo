@@ -72,8 +72,8 @@ describe("PLACE_FAMILIES catalog (final law)", () => {
       "bakery",
       "nightclub",
       "music",
-      "sports",
-      "hookah",
+      "fun",
+      "casino",
       "undefined",
     ]);
     const last = PLACE_FAMILIES[PLACE_FAMILIES.length - 1]!;

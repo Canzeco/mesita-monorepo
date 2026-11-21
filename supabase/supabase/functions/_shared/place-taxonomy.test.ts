@@ -37,8 +37,8 @@ Deno.test("place family catalog is thirty guest families, Undefined last", () =>
     "bakery",
     "nightclub",
     "music",
-    "sports",
-    "hookah",
+    "fun",
+    "casino",
     "undefined",
   ]);
   const last = FAMILIES[FAMILIES.length - 1]!;
