@@ -5,7 +5,7 @@
 
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 
-export const MONITOR_KINDS = ["visits", "vouchers", "payments", "credits", "stories"] as const;
+export const MONITOR_KINDS = ["visits", "vouchers", "gifts", "payments", "credits", "stories"] as const;
 export type MonitorKind = (typeof MONITOR_KINDS)[number];
 
 export type LinkKind = "visit" | "payment" | "voucher" | "credit" | "story";
@@ -169,6 +169,7 @@ export function rowStatus(kind: MonitorKind, row: MonitorRow): string {
   if (kind === "visits") return VISIT[String(p.status)] ?? raw(p.status);
   if (kind === "vouchers") return PURCHASE[String(p.status)] ?? raw(p.status);
   if (kind === "payments") return PAYMENT[String(p.status)] ?? raw(p.status);
+  if (kind === "gifts") return GIFT[String(p.status)] ?? raw(p.status);
   if (kind === "stories") {
     if (p.state === "void") return STORY_VOID[String(p.void_reason ?? "")] ?? "Void";
     return STORY[String(p.state)] ?? raw(p.state);
@@ -245,6 +246,7 @@ export function rowAmount(kind: MonitorKind, row: MonitorRow): string {
   if (kind === "vouchers") return money(n("amount_cents"));
   if (kind === "payments") return money(n("amount_cents") + n("tip_cents") + n("outside_cents"));
   if (kind === "stories") return money(n("bonus_cents"));
+  if (kind === "gifts") return money(n("amount_cents"), String(p.currency ?? "mxn"));
   return signedMoney(n("amount_cents"), String(p.currency ?? "mxn"));
 }
 
@@ -275,8 +277,7 @@ export function linkHref(placeId: string, link: MonitorLink): string {
     case "payment":
       return `${base(placeId)}/money?id=${id}`;
     case "voucher":
-      // Vouchers live in Credits since MESITA-4554: the voucher's credit rows.
-      return `${base(placeId)}/credits?id=${id}`;
+      return `${base(placeId)}/vouchers?id=${id}`;
     case "credit":
       return `${base(placeId)}/credits?id=${id}`;
     case "story":
@@ -295,16 +296,16 @@ export function customerHref(placeId: string, customer: string): string {
 }
 
 /** The page of one kind filtered to one guest. */
-export function customerListHref(placeId: string, page: "views" | "visits" | "money" | "credits", customer: string): string {
+export function customerListHref(placeId: string, page: "views" | "visits" | "vouchers" | "gifts" | "money", customer: string): string {
   return `${base(placeId)}/${page}?customer=${encodeURIComponent(customer)}`;
 }
 
 /** A link kind's page, for "+N" overflow: the parent's guest filter there. */
-export function linkKindPage(kind: LinkKind): "visits" | "money" | "credits" | null {
+export function linkKindPage(kind: LinkKind): "visits" | "money" | "vouchers" | null {
   if (kind === "visit") return "visits";
   if (kind === "payment") return "money";
-  if (kind === "voucher") return "credits";
-  if (kind === "credit") return "credits";
+  if (kind === "voucher") return "vouchers";
+  if (kind === "credit") return null;
   return null;
 }
 
@@ -325,6 +326,7 @@ export const EMPTY: Record<MonitorKind | "customers" | "views", string> = {
   vouchers: "No vouchers yet.",
   payments: "No payments yet.",
   credits: "No credit movements yet.",
+  gifts: "No gifts yet.",
   stories: "No stories yet.",
   customers: "No customers yet.",
   views: "No views yet.",
@@ -335,5 +337,6 @@ export const NOUN: Record<MonitorKind, { one: string; many: string }> = {
   vouchers: { one: "voucher", many: "vouchers" },
   payments: { one: "payment", many: "payments" },
   credits: { one: "credit movement", many: "credit movements" },
+  gifts: { one: "gift", many: "gifts" },
   stories: { one: "story", many: "stories" },
 };

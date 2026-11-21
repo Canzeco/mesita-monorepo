@@ -50,9 +50,9 @@ const META = "text-muted-foreground text-sm";
 /** At most three chips of one kind, then "+N" to that page filtered to the guest. */
 function Chips({ placeId, row }: { placeId: string; row: MonitorRow }) {
   const byKind = new Map<LinkKind, MonitorLink[]>();
-  // Stories has no list since MESITA-4553 (config only on General), so a
-  // story link has nowhere to land.
-  for (const l of row.links) if (l.kind !== "story") byKind.set(l.kind, [...(byKind.get(l.kind) ?? []), l]);
+  // Stories (MESITA-4553) and Credits (MESITA-4555) have no list, so their
+  // links have nowhere to land.
+  for (const l of row.links) if (l.kind !== "story" && l.kind !== "credit") byKind.set(l.kind, [...(byKind.get(l.kind) ?? []), l]);
   const chips: React.ReactNode[] = [];
   if (row.customer) {
     chips.push(
@@ -112,12 +112,12 @@ export function MonitorRowItem({ placeId, kind, row, timezone }: { placeId: stri
             <span className="text-muted-foreground">{name}</span>
           )}
         </p>
-        {kind === "vouchers" || kind === "credits" ? (
+        {kind === "vouchers" || kind === "credits" || kind === "gifts" ? (
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
             {kind === "vouchers" ? (
               <VoucherBadge code={(row.payload.voucher as string | null) ?? null} />
             ) : (
-              <CreditBadge kind={String(row.payload.kind ?? "")} voucher={(row.payload.voucher as string | null) ?? null} />
+              <CreditBadge kind={kind === "gifts" ? "gift" : String(row.payload.kind ?? "")} voucher={(row.payload.voucher as string | null) ?? null} />
             )}
             <span className={META}>{[lead, detail, when(row.at, timezone)].filter(Boolean).join(" · ")}</span>
           </p>

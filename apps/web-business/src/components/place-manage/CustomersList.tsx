@@ -3,7 +3,7 @@
 // Monitor › Customers (MESITA-4538, Pato: "it counts the people and how much
 // you owe them … relational"). One line on top, then one row per guest with
 // money rows here: what the place owes them and when they were last seen, and
-// chips to their own Views, Visits, Vouchers, Payments and Credits.
+// chips to their own Views, Visits, Vouchers, Gifts and Payments.
 
 import { useState } from "react";
 import Link from "next/link";
@@ -17,8 +17,9 @@ import { GuestAvatar } from "./GuestAvatar";
 const PAGES = [
   ["views", "Views"],
   ["visits", "Visits"],
+  ["vouchers", "Vouchers"],
+  ["gifts", "Gifts"],
   ["money", "Payments"],
-  ["credits", "Credits"],
 ] as const;
 
 export function CustomersList({ placeId, initial, customer }: { placeId: string; initial: CustomersPage; customer: string | null }) {
