@@ -21,7 +21,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Bookmark, Check, Loader2, MapPin, Navigation, Pencil, Plus, Search } from "lucide-react";
-import { ERROR_BOX_CLASS, INPUT_CLASS, PRIMARY_BUTTON_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS, INPUT_CLASS } from "@/lib/ui-classes";
 import { apiSuggestPlaces, type PlacePrediction } from "@/lib/api/place-search";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useHere } from "@/lib/use-here-name";
@@ -87,9 +87,7 @@ export function LocationChooser({
   onDone,
   picker: pickerProp,
   onPickerChange,
-  inline = false,
   bodyClassName,
-  pickerClassName,
 }: {
   /** A location was chosen or saved. The sheet closes; inline does nothing
    *  (the new point unlocks the feed). */
@@ -97,17 +95,10 @@ export function LocationChooser({
   /** Controlled pin step (the header sheet, whose backdrop acts as Back). */
   picker?: PickerTarget | null;
   onPickerChange?: (next: PickerTarget | null) => void;
-  /** The Places body (MESITA-4542): choices first, search under them, no
-   *  autofocus, the help line muted until a tap here fails. */
-  inline?: boolean;
   /** The list view's wrapper (the sheet's scrolling body). The pin step is
    *  rendered bare so it can fill its home; one instance either way, so
    *  Back returns to the list with the search kept. */
   bodyClassName?: string;
-  /** Inline: a box for the pin step. It covers the Places body (`absolute
-   *  inset-0` against the pane), because PinPicker fills its parent and
-   *  would collapse inside the scrolling list (eng review F4). */
-  pickerClassName?: string;
 }) {
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
@@ -116,9 +107,6 @@ export function LocationChooser({
   // The guest tapped "Use my location" with no fix: stay until the answer
   // lands (MESITA-2615); a fix is the choice.
   const [wantFix, setWantFix] = useState(false);
-  // Inline, an answer the guest did not ask for here reads muted; a tap that
-  // fails turns it red (design review S1).
-  const [tapped, setTapped] = useState(false);
   const active = useActiveLocation();
   const activeKey = useActiveLocationKey();
   const savedLocations = useSavedLocations();
@@ -182,7 +170,6 @@ export function LocationChooser({
     setError(null);
     setResolving(null);
     setWantFix(false);
-    setTapped(false);
     setToken(newSessionToken());
     onDone();
   };
@@ -194,9 +181,6 @@ export function LocationChooser({
 
   const locatingHere = coords === null && locating;
   const help = coords === null && !locating && locError ? LOCATION_HELP[locError] : null;
-  // Inline, an answer nobody asked for here is quiet; the sheet, which the
-  // guest opened on purpose, always says it in red.
-  const helpLoud = !inline || tapped;
 
   const back = () => setPicker(null);
 
@@ -233,7 +217,7 @@ export function LocationChooser({
         onDone={done}
       />
     );
-    return pickerClassName ? <div className={pickerClassName}>{step}</div> : step;
+    return step;
   }
 
   /** One row of the card: an icon disc, a title, a muted second line, a
@@ -346,14 +330,13 @@ export function LocationChooser({
       done();
       return;
     }
-    setTapped(true);
     setWantFix(true);
     locate();
   };
 
   const card = (
     <ul role="list" aria-label="Location" className={CARD_CLASS} data-places-location>
-      {inline ? null : row({
+      {row({
         key: "here",
         title: locationLabel(null, coords !== null, locating),
         sub: coords !== null ? hereName : "Tap to share where you are",
@@ -365,7 +348,6 @@ export function LocationChooser({
         selected: active === null && coords !== null,
         muted: coords === null && !help,
         alert: help,
-        alertLoud: helpLoud,
         onClick: chooseHere,
       })}
       {savedLocations.map((l) =>
@@ -426,59 +408,6 @@ export function LocationChooser({
   );
 
   const errorBox = error ? <p className={ERROR_BOX_CLASS}>{error}</p> : null;
-
-  // INLINE, A SCREEN OF ITS OWN (Pato, 2026-11-21, MESITA-4585: "choose a
-  // location preview looks like shit"): it read as a settings list dropped
-  // on the feed. Now a centred stack on the grey ground: the pin mark and
-  // the title, ONE dark Use my location button (the one-tap way in) with
-  // the reason under it when the browser said no, then the white card of
-  // saved places and Add a location, then the search. Every margin 16px.
-  if (inline) {
-    return (
-      <div
-        className={cn("mx-auto flex w-full flex-col items-stretch gap-4", bodyClassName)}
-        data-places-location-chooser="inline"
-      >
-        <div className="flex flex-col items-center gap-3 text-center">
-          <span
-            className="bg-foreground text-paper flex h-14 w-14 items-center justify-center rounded-full"
-            aria-hidden
-          >
-            <MapPin className="h-6 w-6" strokeWidth={2.25} />
-          </span>
-          <h2 className={SHEET_TITLE_CLASS}>Choose a location</h2>
-        </div>
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={chooseHere}
-            disabled={locatingHere}
-            className={PRIMARY_BUTTON_CLASS}
-            data-places-location-use-mine
-          >
-            {locatingHere ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            ) : (
-              <Navigation className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-            )}
-            {locatingHere ? "Locating…" : "Use my location"}
-          </button>
-          {help ? (
-            <p
-              className={cn("px-2 text-center text-xs", helpLoud ? "text-destructive" : "text-muted-foreground")}
-              role="status"
-              data-places-location-help
-            >
-              {help}
-            </p>
-          ) : null}
-        </div>
-        {typing ? matches : card}
-        {search}
-        {errorBox}
-      </div>
-    );
-  }
 
   return (
     <div className={cn("flex flex-col gap-4", bodyClassName)} data-places-location-chooser="sheet" data-places-location-sheet>

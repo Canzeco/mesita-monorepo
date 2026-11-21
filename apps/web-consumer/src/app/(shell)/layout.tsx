@@ -17,6 +17,7 @@ import { Toaster } from "@/components/consumer/Toaster";
 import { PendingSignIntent } from "@/components/consumer/anonymous/PendingSignIntent";
 import { SignGateModal } from "@/components/consumer/anonymous/SignGateModal";
 import { AddCardModal } from "@/components/consumer/wallet/AddCardModal";
+import { LocationGate } from "@/components/consumer/LocationGate";
 import { WelcomeModal } from "@/components/consumer/anonymous/WelcomeModal";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
@@ -243,6 +244,9 @@ export default async function ConsumerShellLayout({
           <WelcomeModal />
           <SignGateModal />
           <AddCardModal />
+          {/* No location, no Mesita (MESITA-4589): over every screen and the
+              tab bar until a location is chosen. */}
+          <LocationGate />
         </div>
       </ConsumerIdentityProvider>
       <Toaster />
