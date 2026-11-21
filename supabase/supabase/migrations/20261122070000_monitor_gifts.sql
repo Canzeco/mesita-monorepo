@@ -3,6 +3,9 @@
 -- credits"). place_monitor_list gains a gifts kind: one row per wallet_gifts
 -- link at the place, the sender as the guest and the friend as the other
 -- guest, with its status. The credits kind stays for Export and old links.
+-- The payments kind is the Stripe page now (Pato: "only digital payments …
+-- call that Stripe"): only payments with a card part, which went through
+-- Stripe; credit-only and outside bills stay on Visits.
 
 create or replace function public.place_monitor_list(
   p_place_id uuid,
@@ -84,6 +87,7 @@ begin
       from public.wallet_payments p
      where p_kind = 'payments'
        and p.place_id = p_place_id and p.livemode = p_livemode and p.paid_at is not null
+       and p.card_cents > 0
     union all
     -- Credits: every wallet_entries row, the ledger itself.
     select e.id, e.created_at, 0, e.consumer_id,
