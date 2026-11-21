@@ -18,19 +18,27 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0" aria-busy>
         <PayHeader title="Mesita Wallet" action={<TicketsShortcut icon />} />
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <Skeleton className="h-24 min-w-0 rounded-xl bg-[#00D66F]/40" aria-hidden />
-          <Skeleton className="h-24 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
+          {/* GREY BONES ONLY (Pato, 2026-11-21, MESITA-4596: "don't show word
+              payment method nor loyalty wallet, use placeholders. and the
+              buttons must be gray, not green and purple"): no colour and no
+              words while the page reads; the titles are bars in their place. */}
+          <Skeleton className="h-24 min-w-0 rounded-xl" aria-hidden />
+          <Skeleton className="h-24 min-w-0 rounded-xl" aria-hidden />
         </div>
         <div className="mt-1 flex flex-1 flex-col pb-8">
           <section className={SECTION_CARD}>
-            <h2 className={SECTION_TITLE}>Payment method</h2>
+            <div className={SECTION_TITLE} aria-hidden>
+              <Skeleton className="h-6 w-36 rounded" />
+            </div>
             <span className={PAY_ROW}>
               <Skeleton className={PAY_THUMB} />
               <Skeleton className="h-4 w-28 rounded" />
             </span>
           </section>
           <section className={SECTION_CARD}>
-            <h2 className={SECTION_TITLE}>Loyalty Cards</h2>
+            <div className={SECTION_TITLE} aria-hidden>
+              <Skeleton className="h-6 w-32 rounded" />
+            </div>
             <div className={SECTION_ROWS}>
               <LoyaltyCardBoxSkeleton />
               <LoyaltyCardBoxSkeleton />
