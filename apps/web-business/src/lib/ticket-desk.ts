@@ -1,14 +1,11 @@
-// The words on Operations' ticket desk (MESITA-4487). A plain module so the
+// The words on Operations' ticket desk (MESITA-4487; the Monitor lists reuse
+// voucherName since MESITA-4538, and the chart types went with the charts). A plain module so the
 // status a owner reads is pinned: a Story in `found` says it needs a look,
 // a voucher says its product name, a visit says Open or Paid. Money formatting
 // stays with the caller.
 
 export const TICKET_KINDS = ["visits", "vouchers", "stories", "gifts"] as const;
 export type TicketKind = (typeof TICKET_KINDS)[number];
-
-export type TicketDay = { day: string; count: number; amount_cents: number };
-
-export type TicketCursor = { created_at: string; id: string; rank: number };
 
 type RowBase = { id: string; at: string; rank: number; guest: string };
 
@@ -45,18 +42,6 @@ export type GiftTicket = RowBase & {
 };
 
 export type TicketRow = VisitTicket | VoucherTicket | StoryTicket | GiftTicket;
-
-export type TicketTotals = Record<string, number>;
-
-export type PlaceTicketDesk = {
-  test_mode: boolean;
-  kind: TicketKind;
-  timezone: string;
-  days: TicketDay[];
-  totals: TicketTotals;
-  rows: TicketRow[];
-  next: TicketCursor | null;
-};
 
 const VOUCHER: Record<string, string> = {
   voucher_200: "Small Voucher",

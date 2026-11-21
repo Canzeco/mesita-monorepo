@@ -59,7 +59,7 @@ type Switcher = { href: string; active: boolean; name: string; photo: string | n
 type PlaceMenu = { monitor: Row[]; manage: Row[] };
 
 /** The pages General gathers (MESITA-4528): its row lights on any of them. */
-const UNDER_GENERAL: readonly PlaceTab[] = ["general", "reservations", "stories", "money", "settings", "all"];
+const UNDER_GENERAL: readonly PlaceTab[] = ["general", "reservations", "stories", "settings", "all"];
 
 function menu(
   pathname: string,
@@ -89,7 +89,9 @@ function menu(
     switcher,
     place: {
       // Pato, MESITA-4528: "Not operations anymore. it must be called Monitor".
-      monitor: [tab("views"), tab("visits"), tab("vouchers"), tab("gifts")],
+      // Plain linked lists (MESITA-4538, Pato: "Views · Visits · Vouchers ·
+      // Payments · Credits · Customers"). Payments is the /money page.
+      monitor: [tab("views"), tab("visits"), tab("vouchers"), tab("money"), tab("credits"), tab("customers")],
       manage: [
         // Reviews lives inside Profile (MESITA-3393).
         tab("profile"),

@@ -1,11 +1,10 @@
-import { TicketDeskPage } from "@/components/place-manage/TicketDeskPage";
+import { MonitorPage, type SearchParams } from "@/components/place-manage/MonitorPage";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Visits" };
 
-// Visits (MESITA-3301, filled by MESITA-4487): a visit ticket is a guest
-// paying here with Mesita, or a waiter's bill still open.
-export default async function VisitsPage({ params }: { params: Promise<{ id: string }> }) {
+// Visits (MESITA-4538): every bill, one list, each linked to the payments that paid it.
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: SearchParams }) {
   const { id } = await params;
-  return <TicketDeskPage placeId={id} kind="visits" />;
+  return <MonitorPage placeId={id} kind="visits" page="visits" searchParams={searchParams} />;
 }
