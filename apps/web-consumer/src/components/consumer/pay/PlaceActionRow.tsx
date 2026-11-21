@@ -87,7 +87,11 @@ export function PlaceActionRow({
         ) : null}
       </button>
       {slides.length > 0 && placeHref ? (
-        <div className="flex min-w-0 flex-1 basis-0 [&>button]:h-full [&>button]:min-h-14 [&>button]:w-full [&>button]:rounded-xl">
+        // THE WORD AT THE RIGHT (Pato, MESITA-4525: "put the offers thing at
+        // the right, not the left"): the place screen's tile, reversed here
+        // only, so the moving offer sits next to the card and "Offers"
+        // closes the row. The place screen keeps its own order.
+        <div className="flex min-w-0 flex-1 basis-0 [&>button]:h-full [&>button]:min-h-14 [&>button]:w-full [&>button]:flex-row-reverse [&>button]:rounded-xl">
           <OffersTile name={name} slides={slides} open={() => () => navigateTo(router, placeHref, { motion: "drill" })} />
         </div>
       ) : (
