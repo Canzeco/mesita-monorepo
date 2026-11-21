@@ -1,6 +1,6 @@
 "use client";
 
-// Read-only Scores box (MESITA-4515). The numbers come from
+// Read-only Scores box (MESITA-4515), on Admin since MESITA-4556. The numbers come from
 // business-web-get-place, which uses the same Popular Organic formula as
 // the place screen. This card does not fetch Foursquare.
 

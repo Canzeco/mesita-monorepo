@@ -1,5 +1,6 @@
 "use client";
 
+import { ScoresCard } from "./ScoresCard";
 import { Braces, ChevronDown, Fingerprint } from "lucide-react";
 import { type AdminPlace } from "../actions";
 import { CopyIdButton, ReadField } from "@/components/ui/manage";
@@ -45,6 +46,9 @@ export function AdminSection({ place, children }: { place: AdminPlace; children?
   return (
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className={ADMIN_COLUMNS_CLASS}>
+      {/* Scores first (Pato, 2026-11-21, MESITA-4556: "MOVE SCORES TO
+          ADMIN"); it was the first card on Profile (MESITA-4515). */}
+      <ScoresCard place={place} />
       <StateCard place={place} />
       {/* key remounts the reads when the operator switches places. */}
       <PlaceStatesCard key={`place-states-${place.id}`} place={place} />
