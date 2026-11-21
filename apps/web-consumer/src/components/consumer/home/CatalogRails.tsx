@@ -889,8 +889,7 @@ export function CatalogRails() {
   if (noPoint) {
     if (!firstAnswerSeen) return shell(waiting);
     return shell(
-      <div className="px-4 pt-5 pb-6" data-places-location-gate>
-        <h2 className="text-foreground mb-3 text-base font-semibold">Choose a location</h2>
+      <div className="bg-border flex flex-1 flex-col justify-center p-4" data-places-location-gate>
         <LocationChooser
           inline
           onDone={() => {}}

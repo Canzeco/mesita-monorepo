@@ -21,7 +21,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Bookmark, Check, Loader2, MapPin, Navigation, Pencil, Plus, Search } from "lucide-react";
-import { ERROR_BOX_CLASS, INPUT_CLASS } from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS, INPUT_CLASS, PRIMARY_BUTTON_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { apiSuggestPlaces, type PlacePrediction } from "@/lib/api/place-search";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useHere } from "@/lib/use-here-name";
@@ -337,9 +337,23 @@ export function LocationChooser({
     </ul>
   );
 
+  /** Use my location: with a fix, choose it; without one, ask and stay (a
+   *  fix is the choice, a failure says why). */
+  const chooseHere = () => {
+    noteChoice(null);
+    setActiveLocation(null);
+    if (coords !== null) {
+      done();
+      return;
+    }
+    setTapped(true);
+    setWantFix(true);
+    locate();
+  };
+
   const card = (
     <ul role="list" aria-label="Location" className={CARD_CLASS} data-places-location>
-      {row({
+      {inline ? null : row({
         key: "here",
         title: locationLabel(null, coords !== null, locating),
         sub: coords !== null ? hereName : "Tap to share where you are",
@@ -352,19 +366,7 @@ export function LocationChooser({
         muted: coords === null && !help,
         alert: help,
         alertLoud: helpLoud,
-        // With a fix: choose it. Without one: ask and stay; a fix is the
-        // choice, a failure says why on this row.
-        onClick: () => {
-          noteChoice(null);
-          setActiveLocation(null);
-          if (coords !== null) {
-            done();
-            return;
-          }
-          setTapped(true);
-          setWantFix(true);
-          locate();
-        },
+        onClick: chooseHere,
       })}
       {savedLocations.map((l) =>
         row({
@@ -425,15 +427,60 @@ export function LocationChooser({
 
   const errorBox = error ? <p className={ERROR_BOX_CLASS}>{error}</p> : null;
 
-  // Inline: the choices first, then the search (design review H1). The
-  // sheet keeps the search on top, as the guest opened it to look.
-  return inline ? (
-    <div className={cn("flex flex-col gap-4", bodyClassName)} data-places-location-chooser="inline">
-      {typing ? matches : card}
-      {search}
-      {errorBox}
-    </div>
-  ) : (
+  // INLINE, A SCREEN OF ITS OWN (Pato, 2026-11-21, MESITA-4585: "choose a
+  // location preview looks like shit"): it read as a settings list dropped
+  // on the feed. Now a centred stack on the grey ground: the pin mark and
+  // the title, ONE dark Use my location button (the one-tap way in) with
+  // the reason under it when the browser said no, then the white card of
+  // saved places and Add a location, then the search. Every margin 16px.
+  if (inline) {
+    return (
+      <div
+        className={cn("mx-auto flex w-full flex-col items-stretch gap-4", bodyClassName)}
+        data-places-location-chooser="inline"
+      >
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span
+            className="bg-foreground text-paper flex h-14 w-14 items-center justify-center rounded-full"
+            aria-hidden
+          >
+            <MapPin className="h-6 w-6" strokeWidth={2.25} />
+          </span>
+          <h2 className={SHEET_TITLE_CLASS}>Choose a location</h2>
+        </div>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={chooseHere}
+            disabled={locatingHere}
+            className={PRIMARY_BUTTON_CLASS}
+            data-places-location-use-mine
+          >
+            {locatingHere ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <Navigation className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            )}
+            {locatingHere ? "Locating…" : "Use my location"}
+          </button>
+          {help ? (
+            <p
+              className={cn("px-2 text-center text-xs", helpLoud ? "text-destructive" : "text-muted-foreground")}
+              role="status"
+              data-places-location-help
+            >
+              {help}
+            </p>
+          ) : null}
+        </div>
+        {typing ? matches : card}
+        {search}
+        {errorBox}
+      </div>
+    );
+  }
+
+  return (
     <div className={cn("flex flex-col gap-4", bodyClassName)} data-places-location-chooser="sheet" data-places-location-sheet>
       {search}
       {errorBox}
