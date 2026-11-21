@@ -18,6 +18,7 @@ import {
   Drumstick,
   EggFried,
   Fish,
+  Gamepad2,
   Hamburger,
   HandPlatter,
   Heart,
@@ -156,15 +157,6 @@ const SoccerBall = drawnIcon("SoccerBall", [
   "M8.7 10.9l-6.2-2",
 ]);
 
-/** Bowl, tray, stem, base and hose: Hookah. */
-const Hookah = drawnIcon("Hookah", [
-  "M10 2.5h4l-.5 3h-3Z",
-  "M8 7h8",
-  "M12 5.5v9.5",
-  "M12 15a3.5 3.5 0 0 0-3.5 3.5c0 1 .4 1.9 1 2.5h5c.6-.6 1-1.5 1-2.5A3.5 3.5 0 0 0 12 15Z",
-  "M12 11c3.5 0 6 1.5 6 4.5 0 2-1 3.5-2 4.5",
-]);
-
 /** A hanging mirror ball and a glint: Club's 🪩. */
 const DiscoBall = drawnIcon("DiscoBall", [
   "M12 2v4",
@@ -219,10 +211,10 @@ export const FAMILY_ICONS: Readonly<Record<string, LineIcon>> = {
   fancy: HandPlatter,
   drinks: Beer,
   sports: SoccerBall,
-  hookah: Hookah,
   night_out: Moon,
   nightclub: DiscoBall,
   music: Music,
+  fun: Gamepad2,
 };
 
 /** The icon for a row, chip or family key; Utensils when it has none. */

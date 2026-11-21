@@ -3,9 +3,10 @@
 // primary and a secondary (MESITA-2808).
 //
 // THIRTY (MESITA-4571, Pato 2026-11-21: "I WANT ONLY 30 FAMILIES. COMPRESS
-// THE LIST OR REMOVE ITEMS."): Family, Karaoke, Fun, Cinema, Casino, Spa and
-// Tourism are gone — no live place carried one, and none is food or drink.
-// Sports and Hookah stay (MESITA-2930). Their Google types sit in no family
+// THE LIST OR REMOVE ITEMS.", then "change hookhag for fun"): Family,
+// Karaoke, Hookah, Cinema, Casino, Spa and Tourism are gone — no live place
+// carried one. Sports and Fun stay; a hookah bar is Bar and Night. The
+// Google types the other six held alone sit in no family
 // now (`RETIRED_RAIL_TYPES`), so Search hides them and Create refuses them;
 // a karaoke bar is Bar and Night, a comedy club Night. Every paragraph below
 // that names one of the seven is history.
@@ -106,7 +107,7 @@ export const CATALOG_FAMILY_SLUGS = [
   "nightclub",
   "music",
   "sports",
-  "hookah",
+  "fun",
 ] as const;
 
 export type CatalogFamilySlug = (typeof CATALOG_FAMILY_SLUGS)[number];
@@ -147,7 +148,7 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "nightclub", label: "Club", emoji: "🪩", sort_order: 27 },
   { slug: "music", label: "Music", emoji: "🎶", sort_order: 28 },
   { slug: "sports", label: "Sports", emoji: "📺", sort_order: 29 },
-  { slug: "hookah", label: "Hookah", emoji: "💨", sort_order: 30 },
+  { slug: "fun", label: "Fun", emoji: "🎯", sort_order: 30 },
   { slug: "undefined", label: "Undefined", emoji: "·", sort_order: 999 },
 ];
 
@@ -231,32 +232,13 @@ export const NO_FAMILY_TYPES = [
 ] as const;
 
 /**
- * The Google types whose only rails were Family, Fun, Cinema, Casino, Spa or
+ * The Google types whose only rails were Family, Cinema, Casino, Spa or
  * Tourism until MESITA-4571 cut the catalog to thirty. Each sits in no family:
  * Search hides it and Create refuses it (`catalog_membership.enabled` is off
  * for every one, flipped in the same migration). `catalog-families.test.ts`
  * pins it.
  */
 export const RETIRED_RAIL_TYPES = [
-  "bowling_alley",
-  "video_arcade",
-  "arcade",
-  "amusement_center",
-  "escape_room",
-  "laser_tag",
-  "axe_throwing",
-  "trampoline_park",
-  "go_karting_venue",
-  "go_kart",
-  "golf_course",
-  "indoor_golf_course",
-  "miniature_golf_course",
-  "mini_golf",
-  "adventure_sports_center",
-  "paintball_center",
-  "race_course",
-  "ice_skating_rink",
-  "water_park",
   "movie_theater",
   "performing_arts_theater",
   "theater",
@@ -271,10 +253,8 @@ export const RETIRED_RAIL_TYPES = [
   "zoo",
   "aquarium",
   "wildlife_park",
-  "amusement_park",
   "indoor_playground",
   "ferris_wheel",
-  "roller_coaster",
   "planetarium",
   "tourist_attraction",
   "cultural_center",
@@ -302,7 +282,7 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   coffee_roastery: ["coffee"],
   coffee_stand: ["coffee"],
   tea_house: ["coffee"],
-  board_game_cafe: ["coffee"],
+  board_game_cafe: ["coffee", "fun"],
   juice_shop: ["healthy", "coffee"],
   juice_bar: ["healthy", "coffee"],
   breakfast_restaurant: ["breakfast"],
@@ -496,7 +476,7 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   chilean_restaurant: ["dinner"],
   cuban_restaurant: ["dinner"],
   caribbean_restaurant: ["dinner"],
-  // Bar · Sports · Hookah (Beer, Cocktails and Wine folded into Bar, MESITA-2930)
+  // Bar · Sports (Beer, Cocktails and Wine folded into Bar, MESITA-2930)
   bar: ["drinks"],
   pub: ["drinks"],
   irish_pub: ["drinks"],
@@ -509,11 +489,11 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   arena: ["sports"],
   cocktail_bar: ["drinks", "night_out"],
   lounge_bar: ["drinks", "night_out"],
-  hookah_bar: ["hookah", "drinks", "night_out"],
+  hookah_bar: ["drinks", "night_out"],
   wine_bar: ["drinks"],
   winery: ["drinks"],
   vineyard: ["drinks"],
-  billiards: ["drinks"],
+  billiards: ["drinks", "fun"],
   // Night · Club · Music
   night_club: ["nightclub", "night_out"],
   dance_hall: ["nightclub", "night_out", "music"],
@@ -526,6 +506,28 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   opera_house: ["music"],
   auditorium: ["music"],
   comedy_club: ["night_out"],
+  // Fun: what a group does with its hands
+  bowling_alley: ["fun"],
+  video_arcade: ["fun"],
+  arcade: ["fun"],
+  amusement_center: ["fun"],
+  escape_room: ["fun"],
+  laser_tag: ["fun"],
+  axe_throwing: ["fun"],
+  trampoline_park: ["fun"],
+  go_karting_venue: ["fun"],
+  go_kart: ["fun"],
+  golf_course: ["fun"],
+  indoor_golf_course: ["fun"],
+  miniature_golf_course: ["fun"],
+  mini_golf: ["fun"],
+  adventure_sports_center: ["fun"],
+  paintball_center: ["fun"],
+  race_course: ["fun"],
+  ice_skating_rink: ["fun"],
+  water_park: ["fun"],
+  amusement_park: ["fun"],
+  roller_coaster: ["fun"],
   // No family (MESITA-2382): a place, not a trip a guest picks.
   ...Object.fromEntries(NO_FAMILY_TYPES.map((t) => [t, ["undefined"] as const])),
   ...Object.fromEntries(RETIRED_RAIL_TYPES.map((t) => [t, ["undefined"] as const])),

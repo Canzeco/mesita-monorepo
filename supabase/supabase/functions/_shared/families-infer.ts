@@ -27,7 +27,7 @@ export function familyChoices(families: readonly PlaceFamily[]): PlaceFamily[] {
 /**
  * What every family means (MESITA-4237 started it for eight; MESITA-4238 gives
  * all 37 a line and tightened Family and Fun; MESITA-4571 cut the list to
- * thirty and both went). On 2026-11-17 Family sat on 83%
+ * thirty and Family went). On 2026-11-17 Family sat on 83%
  * of places and Dinner on 76%: shown only a label, the model read Family as
  * "kids allowed" and Dinner as "open at night". Each line says what belongs
  * and, where the model strayed, the near-miss that does not. Keyed by slug,
@@ -61,10 +61,10 @@ export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
   fancy: "genuinely upscale — fine dining, a tasting menu, a dress code or special-occasion prices; not merely stylish, popular, well rated or at a nice hotel",
   drinks: "drinking is the point — a bar, cantina, brewery or wine bar; not a restaurant that serves beer",
   sports: "built to watch sports — screens and game nights are the draw",
-  hookah: "hookah or shisha is a main draw",
   night_out: "a late night out — lounges, rooftops, bars that turn into parties; not a restaurant that is merely open late",
   nightclub: "a nightclub — a dance floor and DJs",
   music: "live music is the draw — bands, concerts, jazz",
+  fun: "an activity a group does — bowling, arcades, karts, escape rooms, billiards, mini golf, rinks; not a lively restaurant or a beach club",
 };
 
 /** The FAMILY LIST block a prompt carries: `slug — Label`, plus its meaning. */
@@ -105,7 +105,7 @@ export function familiesRule(stage: FamiliesStage): string {
 
 /**
  * The families a Google hint may name (MESITA-4238): cuisines and the
- * morning trio. Never a venue family (drinks, night, music…) nor a
+ * morning trio. Never a venue family (drinks, fun, night…) nor a
  * generic one (dinner, fancy, healthy, quick_bite, sweet): the code map gives
  * Bar to `bar_and_grill` and Dinner to every sit-down cuisine, which would nudge the exact false positives this fixes.
  */

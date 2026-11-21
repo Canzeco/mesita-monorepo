@@ -36,7 +36,7 @@ const CUISINE = [
   "chinese", "asian", "indian", "arabic", "european", "american", "chicken", "coffee", "bakery", "breakfast",
 ];
 const VENUE = new Set([
-  "drinks", "night_out", "nightclub", "music", "sports", "hookah",
+  "drinks", "night_out", "nightclub", "music", "sports", "fun",
 ]);
 const BAR = { familyFP: 2, drinksFP: 5, dinnerFP: 6, precision: 0.85, dinnerRecall: 0.8, drinksRecall: 0.8 };
 
