@@ -33,9 +33,10 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   vouchers: { label: "Vouchers", icon: TicketIcon, sub: "Prepayments guests bought here." },
   stories: { label: "Stories", icon: InstagramLogoIcon, sub: "Whether guests can post a story here, and the Instagram they tag." },
   gifts: { label: "Gifts", icon: GiftIcon, sub: "Credit guests sent each other, and where each gift stands." },
-  // Stripe (MESITA-4555, Pato: "only digital payments … call that Stripe"):
-  // card payments through Stripe and payouts to the bank; URL stays /money.
-  money: { label: "Stripe", icon: StripeLogoIcon, sub: "Card payments through Stripe, and payouts to your bank." },
+  // Payments (MESITA-4565, Pato: "rename to Payments"; was Stripe in
+  // MESITA-4555): card payments through Stripe and payouts to the bank; the
+  // Stripe mark stays its icon; URL stays /money.
+  money: { label: "Payments", icon: StripeLogoIcon, sub: "Card payments through Stripe, and payouts to your bank." },
   credits: { label: "Credits", icon: CoinsIcon, sub: "Vouchers, gifts and visits: every credit movement here." },
   customers: { label: "Customers", icon: UsersThreeIcon, sub: "Who comes, and how much credit you owe them." },
   profile: { label: "Profile", icon: StorefrontIcon, sub: "What guests read about your place." },
