@@ -3,49 +3,30 @@
 // Monitor › Customers (MESITA-4538, Pato: "it counts the people and how much
 // you owe them … relational"). One line on top, then one row per guest with
 // money rows here: what the place owes them and when they were last seen, and
-// chips to their own Views, Visits, Vouchers, Gifts and Payments. A table since
-// MESITA-4566.
+// chips to their own Views, Visits, Vouchers, Gifts and Payments.
 
 import { useState } from "react";
 import Link from "next/link";
 import { listCustomers } from "@/lib/business-api";
-import { customerListHref, EMPTY, money, when, type CustomerRow, type CustomersPage } from "@/lib/monitor";
+import { customerLabel, customerListHref, EMPTY, money, when, type CustomersPage } from "@/lib/monitor";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
-import { FilterBanner } from "./MonitorList";
-import { CHIP, CustomerChip, GuestCell, MonitorTable, type Column } from "./MonitorTable";
+import { CHIP, FilterBanner, ROW } from "./MonitorList";
+import { GuestAvatar } from "./GuestAvatar";
+import { UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 
 const PAGES = [
   ["views", "Views"],
   ["visits", "Visits"],
   ["vouchers", "Vouchers"],
   ["gifts", "Gifts"],
-  ["money", "Payments"],
+  ["money", "Stripe"],
 ] as const;
 
 export function CustomersList({ placeId, initial, customer }: { placeId: string; initial: CustomersPage; customer: string | null }) {
   const [page, setPage] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const columns: Column<CustomerRow>[] = [
-    { head: "Guest", cell: (c) => <GuestCell placeId={placeId} customer={c.customer} name={c.guest} face={c.face ?? null} /> },
-    { head: "Customer", cell: (c) => <CustomerChip placeId={placeId} customer={c.customer} /> },
-    { head: "Last seen", cell: (c) => when(c.last_seen, page.timezone) },
-    {
-      head: "Lists",
-      cell: (c) => (
-        <span className="flex gap-1.5">
-          {PAGES.map(([p, label]) => (
-            <Link key={p} href={customerListHref(placeId, p, c.customer)} className={CHIP}>
-              {label}
-            </Link>
-          ))}
-        </span>
-      ),
-    },
-    { head: "You owe", align: "right", cell: (c) => <span className="font-semibold">{money(c.owed_cents)}</span> },
-  ];
 
   async function older() {
     if (!page.next || busy) return;
@@ -71,7 +52,30 @@ export function CustomersList({ placeId, initial, customer }: { placeId: string;
           {customer ? "This guest has no visits, payments or credit here yet." : EMPTY.customers}
         </p>
       ) : (
-        <MonitorTable columns={columns} rows={page.rows} rowKey={(c) => c.customer} />
+        <ul className="divide-border divide-y">
+          {page.rows.map((c) => (
+            <li key={c.customer} className={ROW}>
+              <GuestAvatar face={c.face ?? null} size={32} />
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="truncate font-medium">{c.guest}</span>
+                <span className="text-muted-foreground text-sm">Last seen {when(c.last_seen, page.timezone)}</span>
+                <span className={cn(CHIP, "gap-1")}>
+                  <UserCircleIcon size={12} weight="bold" aria-hidden />
+                  {customerLabel(c.customer)}
+                </span>
+                {PAGES.map(([p, label]) => (
+                  <Link key={p} href={customerListHref(placeId, p, c.customer)} className={CHIP}>
+                    {label}
+                  </Link>
+                ))}
+              </div>
+              <div className="text-right">
+                <p className="font-semibold whitespace-nowrap tabular-nums">{money(c.owed_cents)}</p>
+                <p className="text-muted-foreground text-xs">owed</p>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
       {error ? <p className={cn(ERROR_BOX_CLASS, "mx-5 my-3 sm:mx-6")}>{error}</p> : null}
       {page.next ? (
