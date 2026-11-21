@@ -3,12 +3,10 @@
 import { Braces, ChevronDown, Fingerprint } from "lucide-react";
 import { type AdminPlace } from "../actions";
 import { CopyIdButton, ReadField } from "@/components/ui/manage";
-import { EnrichmentCard } from "./EnrichmentCard";
 import { SpecialActionsCard } from "./SpecialActionsCard";
 import { StateCard } from "./StateCard";
 import { PlaceStatesCard } from "./PlaceStatesCard";
-import { ReviewsStateCard } from "./ReviewsStateCard";
-import { ReportsCard } from "./ReportsCard";
+import { LinksFoundCard } from "./LinksFoundCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
@@ -21,15 +19,15 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //   Place States        Owned · Plan · Billing · Stripe · Reservations · Cash
 //                         Payments · Mesita Payments
 //                         · Mesita Prepayments (MESITA-3588, Main §10).
-//   Reviews States      Google Found · Instagram Found · Facebook Found.
+//   Links Found         Google · Instagram · Facebook · Foursquare · Uber
+//                         Eats · DiDi Food · OpenTable · Resy · Website ·
+//                         WhatsApp · X · Threads · Reddit (MESITA-4551).
 //                         Yes or no. Stars and follower counts are display.
-//   Reports             the place's guest reports from the three dots,
-//                         newest first: reason, note, when, guest
-//                         (MESITA-2686). Read-only.
+// Reports and Enrichment left this tab (MESITA-4551, Pato: "remove reports
+// from there"; "remove enrichment box, with special actions is enough").
 // Then the rest:
 //   Special actions  Enrich · Update Google · Update Reviews · Enable ·
 //                    Disable, the five staff writes (MESITA-3159)
-//   Enrichment  the last run's state, read-only
 //   Vectors / Metadata (UID & audit). The SERP Summary box went with the
 //   enrichment stage path (MESITA-2424): Render never stored the summary.
 // Verification (claim requests, MESITA-3157) is a card in the same columns;
@@ -52,11 +50,7 @@ export function AdminSection({ place, children }: { place: AdminPlace; children?
       <PlaceStatesCard key={`place-states-${place.id}`} place={place} />
       {/* Enrich · Fast Update · Deep Update · Enable · Disable (MESITA-3159, MESITA-3934). */}
       <SpecialActionsCard place={place} />
-      <ReviewsStateCard place={place} />
-      {/* key remounts the list when the operator switches places. */}
-      <ReportsCard key={`reports-${place.id}`} place={place} />
-      {/* key remounts the loader when the operator switches places. */}
-      <EnrichmentCard key={`enrich-${place.id}`} place={place} />
+      <LinksFoundCard place={place} />
       {children}
       <EmbeddingCard place={place} />
       <MetaCard place={place} />
