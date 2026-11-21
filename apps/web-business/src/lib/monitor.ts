@@ -183,13 +183,13 @@ export function creditLabel(row: MonitorRow): string {
   switch (p.kind) {
     case "prepay":
     case "voucher":
-      return "Voucher credit";
+      return "Credit bought";
     case "bonus":
-      return p.story ? "Story bonus" : "Voucher bonus";
+      return p.story ? "Story bonus" : "Bonus credit";
     case "extra":
       return "Extra credit";
     case "spend":
-      return "Spent on a payment";
+      return "Spent on a visit";
     case "refund":
       return "Returned by a refund";
     case "reversal":
@@ -275,7 +275,8 @@ export function linkHref(placeId: string, link: MonitorLink): string {
     case "payment":
       return `${base(placeId)}/money?id=${id}`;
     case "voucher":
-      return `${base(placeId)}/vouchers?id=${id}`;
+      // Vouchers live in Credits since MESITA-4554: the voucher's credit rows.
+      return `${base(placeId)}/credits?id=${id}`;
     case "credit":
       return `${base(placeId)}/credits?id=${id}`;
     case "story":
@@ -294,15 +295,15 @@ export function customerHref(placeId: string, customer: string): string {
 }
 
 /** The page of one kind filtered to one guest. */
-export function customerListHref(placeId: string, page: "views" | "visits" | "vouchers" | "money" | "credits", customer: string): string {
+export function customerListHref(placeId: string, page: "views" | "visits" | "money" | "credits", customer: string): string {
   return `${base(placeId)}/${page}?customer=${encodeURIComponent(customer)}`;
 }
 
 /** A link kind's page, for "+N" overflow: the parent's guest filter there. */
-export function linkKindPage(kind: LinkKind): "visits" | "money" | "vouchers" | "credits" | null {
+export function linkKindPage(kind: LinkKind): "visits" | "money" | "credits" | null {
   if (kind === "visit") return "visits";
   if (kind === "payment") return "money";
-  if (kind === "voucher") return "vouchers";
+  if (kind === "voucher") return "credits";
   if (kind === "credit") return "credits";
   return null;
 }

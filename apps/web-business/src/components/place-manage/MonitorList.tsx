@@ -38,7 +38,7 @@ import {
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { GuestAvatar } from "./GuestAvatar";
-import { VoucherBadge } from "./VoucherBadge";
+import { CreditBadge, VoucherBadge } from "./VoucherBadge";
 
 /** The row grid every Monitor list shares: face · text · amount. */
 export const ROW = "grid grid-cols-[40px_minmax(0,1fr)_auto] items-start gap-x-3 px-5 py-3.5 text-sm sm:px-6";
@@ -112,9 +112,13 @@ export function MonitorRowItem({ placeId, kind, row, timezone }: { placeId: stri
             <span className="text-muted-foreground">{name}</span>
           )}
         </p>
-        {kind === "vouchers" ? (
+        {kind === "vouchers" || kind === "credits" ? (
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <VoucherBadge code={(row.payload.voucher as string | null) ?? null} />
+            {kind === "vouchers" ? (
+              <VoucherBadge code={(row.payload.voucher as string | null) ?? null} />
+            ) : (
+              <CreditBadge kind={String(row.payload.kind ?? "")} voucher={(row.payload.voucher as string | null) ?? null} />
+            )}
             <span className={META}>{[lead, detail, when(row.at, timezone)].filter(Boolean).join(" · ")}</span>
           </p>
         ) : (

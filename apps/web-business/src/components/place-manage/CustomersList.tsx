@@ -17,7 +17,6 @@ import { GuestAvatar } from "./GuestAvatar";
 const PAGES = [
   ["views", "Views"],
   ["visits", "Visits"],
-  ["vouchers", "Vouchers"],
   ["money", "Payments"],
   ["credits", "Credits"],
 ] as const;

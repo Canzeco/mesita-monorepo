@@ -4,7 +4,7 @@
 // everywhere: Welcome blue confetti, Story pink Instagram, the sizes green
 // ticket, VIP black crown.
 import type { Icon } from "@phosphor-icons/react";
-import { ConfettiIcon, CrownSimpleIcon, InstagramLogoIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
+import { ConfettiIcon, CrownSimpleIcon, FootprintsIcon, GiftIcon, InstagramLogoIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
 import { voucherName } from "@/lib/ticket-desk";
 import { cn } from "@/lib/utils";
 
@@ -26,4 +26,28 @@ export function VoucherBadge({ code }: { code: string | null }) {
       {voucherName(code)}
     </span>
   );
+}
+
+const PILL = "inline-flex h-6 items-center gap-1 rounded-full pr-2.5 pl-1.5 text-xs font-semibold whitespace-nowrap";
+
+/** A credit row's mark (MESITA-4554): its voucher's badge, or Gift, or Visit. */
+export function CreditBadge({ kind, voucher }: { kind: string; voucher: string | null }) {
+  if (voucher) return <VoucherBadge code={voucher} />;
+  if (kind.startsWith("gift")) {
+    return (
+      <span className={cn(PILL, "bg-amber-100 text-amber-800")}>
+        <GiftIcon size={14} weight="fill" aria-hidden />
+        Gift
+      </span>
+    );
+  }
+  if (kind === "spend" || kind === "refund") {
+    return (
+      <span className={cn(PILL, "bg-muted text-foreground")}>
+        <FootprintsIcon size={14} weight="fill" aria-hidden />
+        Visit
+      </span>
+    );
+  }
+  return null;
 }
