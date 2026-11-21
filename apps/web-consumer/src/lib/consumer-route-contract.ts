@@ -128,6 +128,8 @@ export const CONSUMER_ROUTES = {
   // ADD A CARD, ITS OWN PAGE (MESITA-4092, Pato: "OWN SUBPAGES IS CLEANER"),
   // pushed from Wallet's Add a card row; it was an 88% sheet.
   walletAddCard: "/wallet/cards/new",
+  // PAYMENT METHODS (MESITA-4526): the header's method button opens it.
+  walletMethods: "/wallet/methods",
   // BUY CREDITS AND SEND GIFT PICK A PLACE FIRST (MESITA-4096, Pato: "buy
   // credits and send credits must actually display a list of places to select
   // the action ... like a shortcut instead of going to the card subpage"):
@@ -457,6 +459,12 @@ export function walletSendPath(placeId: string): string {
   return `${walletPlacePath(placeId)}/send`;
 }
 
+/** Payment methods (MESITA-4526): the saved card, Apple Pay, Google Pay and
+ *  the default, opened from the Wallet header's method button. */
+export function walletMethodsPath(): string {
+  return "/wallet/methods";
+}
+
 /** A saved card's page (MESITA-4112). */
 export function walletCardPath(cardId: string): string {
   return `/wallet/cards/${encodeURIComponent(cardId)}`;
@@ -587,6 +595,8 @@ export const ROUTE_MAP = {
   walletPlace: row("/wallet/place/:placeId", "pay", "page", "pay", false),
   walletGift: row("/wallet/gift/:token", "pay", "page", "pay"),
   walletAddCard: row("/wallet/cards/new", "pay", "page", "pay"),
+  // Payment methods: a nested page, no bar (MESITA-4526).
+  walletMethods: row("/wallet/methods", "pay", "page", "pay", false),
   // A saved card, opened from the Wallet rail (MESITA-4112). /cards/new
   // stays the add page: a fixed segment beats this param.
   walletCard: row("/wallet/cards/:cardId", "pay", "page", "pay", false),

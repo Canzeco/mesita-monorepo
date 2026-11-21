@@ -21,9 +21,24 @@ export type SavedCard = {
  *  (consumer-web-add-card answers too_many); here it only hides Add. */
 export const MAX_SAVED_CARDS = 1;
 
-export async function apiListCards(client: SupabaseClient): Promise<{ cards: SavedCard[]; test_mode: boolean }> {
-  const r = await invokeEF<{ cards: SavedCard[]; test_mode: boolean }>(client, "consumer-web-list-cards", {});
-  return { cards: Array.isArray(r.cards) ? r.cards : [], test_mode: r.test_mode === true };
+/** The guest's default way to pay (MESITA-4526; consumers.pay_method, MESITA-4502).
+ *  Null: never chosen, which reads as the saved card. */
+export type PayMethod = "card" | "apple_pay" | "google_pay";
+
+export function payMethodOf(value: unknown): PayMethod | null {
+  return value === "card" || value === "apple_pay" || value === "google_pay" ? value : null;
+}
+
+export async function apiListCards(
+  client: SupabaseClient,
+): Promise<{ cards: SavedCard[]; test_mode: boolean; pay_method: PayMethod | null }> {
+  const r = await invokeEF<{ cards: SavedCard[]; test_mode: boolean; pay_method?: unknown }>(client, "consumer-web-list-cards", {});
+  return { cards: Array.isArray(r.cards) ? r.cards : [], test_mode: r.test_mode === true, pay_method: payMethodOf(r.pay_method) };
+}
+
+/** Save the default way to pay (consumer-web-set-pay-method, MESITA-4502). */
+export async function apiSetPayMethod(client: SupabaseClient, payMethod: PayMethod): Promise<void> {
+  await invokeEF<{ pay_method: PayMethod }>(client, "consumer-web-set-pay-method", { pay_method: payMethod });
 }
 
 /** A SetupIntent for one new card (MESITA-4065): the sheet confirms it with

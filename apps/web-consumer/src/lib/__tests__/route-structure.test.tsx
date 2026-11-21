@@ -924,13 +924,16 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     // Claim Gift's code page left in MESITA-4223: a gift is a link only.
     // Add a card is its own page since MESITA-4092.
     // Buy Credits and Send Gift lists, a Loyalty Card's send page (MESITA-4096).
+    // Payment methods, opened from the header's method button (MESITA-4526).
     expect(childDirs(wallet)).toEqual([
       "buy",
       "cards",
       "gift",
+      "methods",
       "place",
       "send",
     ]);
+    expect(existsSync(join(wallet, "methods", "page.tsx"))).toBe(true);
     expect(existsSync(join(wallet, "buy", "page.tsx"))).toBe(true);
     expect(existsSync(join(wallet, "send", "page.tsx"))).toBe(true);
     expect(existsSync(join(wallet, "place", "[placeId]", "send", "page.tsx"))).toBe(true);
