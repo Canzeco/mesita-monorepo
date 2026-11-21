@@ -46,14 +46,14 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
 export function LoyaltyCardBoxSkeleton() {
   return (
     <div className="border-border bg-card flex w-full items-stretch gap-2 rounded-2xl border p-2" aria-hidden>
-      <span className="flex min-w-0 flex-1 flex-col justify-center gap-1 px-1">
+      <span className="flex min-w-0 flex-1 basis-0 flex-col justify-center gap-1 px-1">
         <span className="flex items-center gap-2">
           <Skeleton className="h-[26px] w-10 shrink-0 rounded-[5px]" />
           <Skeleton className="h-4 w-28 rounded" />
         </span>
         <Skeleton className="h-6 w-24 rounded" />
       </span>
-      <Skeleton className="min-h-14 w-[48%] shrink-0 rounded-xl" />
+      <Skeleton className="min-h-14 min-w-0 flex-1 basis-0 rounded-xl" />
     </div>
   );
 }

@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils";
 // make them shorter … card profile picture, name | Offers / amount |
 // Offers"): a 40x26 card cut from the place's photo and the name, the
 // amount under them (or the distance), the Offers tile beside both lines,
-// about 72px tall. The bank-card-sized card below was ~130px.
+// about 72px tall, split half and half (Pato: "LEFT MUST BE 50% AND RIGHT
+// MUST BE 50%"; an empty half holds the place when there are no offers).
+// The bank-card-sized card below was ~130px.
 //
 // A LOYALTY CARD BOX (Pato, 2026-11-21, MESITA-4520: "THE LEFT MUST BE THE
 // CARD, WITH THE AMOUNT ON TOP. IT MUST HAVE CARD DIMENSIONS. THE RIGHT REST
@@ -69,7 +71,7 @@ export function PlaceActionRow({
         onClick={() => {
           if (!disabled) onOpen?.();
         }}
-        className={cn("flex min-w-0 flex-1 flex-col justify-center gap-1 px-1 text-left", disabled && "cursor-default opacity-60")}
+        className={cn("flex min-w-0 flex-1 basis-0 flex-col justify-center gap-1 px-1 text-left", disabled && "cursor-default opacity-60")}
         data-loyalty-card
       >
         <span className="flex min-w-0 items-center gap-2">
@@ -85,10 +87,12 @@ export function PlaceActionRow({
         ) : null}
       </button>
       {slides.length > 0 && placeHref ? (
-        <div className="flex w-[48%] shrink-0 [&>button]:h-full [&>button]:min-h-14 [&>button]:w-full [&>button]:rounded-xl">
+        <div className="flex min-w-0 flex-1 basis-0 [&>button]:h-full [&>button]:min-h-14 [&>button]:w-full [&>button]:rounded-xl">
           <OffersTile name={name} slides={slides} open={() => () => navigateTo(router, placeHref, { motion: "drill" })} />
         </div>
-      ) : null}
+      ) : (
+        <span className="min-w-0 flex-1 basis-0" aria-hidden />
+      )}
     </div>
   );
 }
