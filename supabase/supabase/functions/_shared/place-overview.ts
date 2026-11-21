@@ -64,7 +64,7 @@ export async function buildPlaceOverview(
         .maybeSingle(),
       admin
         .from("place_profiles")
-        .select("enrichment, google_found, instagram_found, facebook_found, enrichment_sources, profile_photo")
+        .select("enrichment, google_found, instagram_found, facebook_found, enrichment_sources, profile_photo, foursquare_details, foursquare_details_at")
         .eq("id", placeId)
         .maybeSingle(),
       fetchPlaceCategories(admin),
@@ -151,6 +151,10 @@ export async function buildPlaceOverview(
     const owners = await listPlaceOwners(admin, placeId);
     place.owners = owners.owners;
     place.pending_requests = owners.pending;
+    // The matched Foursquare place's details (MESITA-4552), staff only.
+    const fsq = enrichmentRow.data as { foursquare_details?: unknown; foursquare_details_at?: string | null } | null;
+    place.foursquare_details = fsq?.foursquare_details ?? null;
+    place.foursquare_details_at = fsq?.foursquare_details_at ?? null;
   } else {
     // Google's id is staff-only; `seeded` above already answered from it.
     delete place.google_place_id;

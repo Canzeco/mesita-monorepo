@@ -7,6 +7,7 @@ import { SpecialActionsCard } from "./SpecialActionsCard";
 import { StateCard } from "./StateCard";
 import { PlaceStatesCard } from "./PlaceStatesCard";
 import { LinksFoundCard } from "./LinksFoundCard";
+import { FoursquareCard } from "./FoursquareCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
@@ -51,6 +52,8 @@ export function AdminSection({ place, children }: { place: AdminPlace; children?
       {/* Enrich · Fast Update · Deep Update · Enable · Disable (MESITA-3159, MESITA-3934). */}
       <SpecialActionsCard place={place} />
       <LinksFoundCard place={place} />
+      {/* What Foursquare says about the matched place (MESITA-4552). */}
+      <FoursquareCard place={place} />
       {children}
       <EmbeddingCard place={place} />
       <MetaCard place={place} />

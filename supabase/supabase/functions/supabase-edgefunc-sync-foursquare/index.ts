@@ -8,7 +8,10 @@
 // name, and reusable for a later refresh. Calls only Foursquare; never
 // Google, Firecrawl or a model.
 //
-// Request: POST { after?: uuid, limit?: 1..60 (default 25), linked?: bool }
+// Request: POST { placeId: uuid, dryRun?: bool }  one place, answering
+//   { status, trace } (queries, every candidate with its verdict, the pick
+//   and who made it, the details read; MESITA-4552)
+// or POST { after?: uuid, limit?: 1..60 (default 25), linked?: bool }
 //   after   walk place ids greater than this (keyset; send back `next`)
 //   linked  false (default): places with no Foursquare link; true: every
 //           place (refreshes linked ones)
@@ -21,7 +24,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireInternalRequest } from "../_shared/request.ts";
-import { syncFoursquare } from "../_shared/foursquare-places.ts";
+import { type FoursquareTrace, syncFoursquare } from "../_shared/foursquare-places.ts";
 import { isUuid } from "../_shared/place-id.ts";
 
 const LIMIT_DEFAULT = 25;
@@ -35,6 +38,14 @@ serveJson("supabase-edgefunc-sync-foursquare", async (req) => {
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
+  // One place, with what each step saw (MESITA-4552). `dryRun` writes nothing.
+  if (body.placeId !== undefined) {
+    if (!isUuid(body.placeId)) return json({ ok: false, code: "bad_request", error: "placeId is a place id" }, 400);
+    const trace: FoursquareTrace = { queries: [], candidates: [], picked: null };
+    const result = await syncFoursquare(admin, body.placeId as string, { trace, dryRun: body.dryRun === true });
+    console.log(JSON.stringify({ fn: "supabase-edgefunc-sync-foursquare", event: "one", callerName, placeId: body.placeId, ...result }));
+    return json({ ok: true, placeId: body.placeId, dryRun: body.dryRun === true, ...result, trace });
+  }
   const after = body.after === undefined || body.after === null ? null : body.after;
   if (after !== null && !isUuid(after)) {
     return json({ ok: false, code: "bad_request", error: "after is a place id" }, 400);
