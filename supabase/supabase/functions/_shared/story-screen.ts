@@ -10,6 +10,7 @@ import { readVoucherPlace } from "./wallet.ts";
 import { instagramHandleOfUrl } from "./place-instagram.ts";
 import { placeZone, PLACE_ZONE_COLUMNS } from "./local-time.ts";
 import { paymentsLivemode } from "./stripe.ts";
+import { readInstagramSyncState } from "./consumer-doc.ts";
 
 export async function readStoryScreen(admin: SupabaseClient, s: StoryRecord, nowMs: number): Promise<StoryView & { place_name: string | null }> {
   const [purchases, mentions, placeRes, zone, rules] = await Promise.all([
@@ -93,8 +94,8 @@ export async function readStoryCheck(
   livemode: boolean,
   sinceIso: string | null,
 ): Promise<StoryCheck | null> {
-  const { data: c } = await admin.from("consumers").select("instagram_handle").eq("id", consumerId).maybeSingle();
-  const handle = (c as { instagram_handle?: string | null } | null)?.instagram_handle;
+  const guest = await readInstagramSyncState(admin, consumerId);
+  const handle = guest.ok ? guest.handle?.toLowerCase() : null;
   if (!handle) return null;
   let q = admin.from("story_mentions")
     .select("id, mentioned_at, ai_checked_at, ai_outcome, ai_reason, deleted_at")

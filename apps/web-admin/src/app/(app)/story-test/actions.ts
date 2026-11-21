@@ -41,12 +41,51 @@ export type StoryDeskRow = {
   recheck_at: string | null;
   void_reason: string | null;
 };
-export type MentionRow = { id: string; mentioned_at: string | null; source: string | null; deleted_at: string | null };
+export type MentionRow = {
+  id: string;
+  mentioned_at: string | null;
+  source: string | null;
+  deleted_at: string | null;
+  /** MESITA-4549: what the AI bot decided. */
+  ig_handle?: string | null;
+  livemode?: boolean | null;
+  ai_outcome?: string | null;
+  ai_reason?: string | null;
+  ai_model?: string | null;
+  ai_checked_at?: string | null;
+  ai_last_error?: string | null;
+  ai_tries?: number | null;
+  ai_reviewed_at?: string | null;
+  thumb_url?: string | null;
+  media?: "image" | "video" | "purged" | "none";
+  candidates?: Array<{ place_id: string; name: string | null; handle: string | null }>;
+};
+export type DeskCounters = { verified: number; rejected: number; unreadable: number; ambiguous: number; held: number };
 
-export async function listStoryDesk(): Promise<ActionResult<{ stories: StoryDeskRow[]; mentions: MentionRow[] }>> {
-  const r = await efInvoke<{ stories: StoryDeskRow[]; mentions: MentionRow[] }>("admin-web-list-story-desk", {});
+export async function listStoryDesk(): Promise<ActionResult<{ stories: StoryDeskRow[]; mentions: MentionRow[]; counters: DeskCounters }>> {
+  const r = await efInvoke<{ stories: StoryDeskRow[]; mentions: MentionRow[]; counters?: DeskCounters }>("admin-web-list-story-desk", {});
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, stories: r.data.stories ?? [], mentions: r.data.mentions ?? [] };
+  return {
+    ok: true,
+    stories: r.data.stories ?? [],
+    mentions: r.data.mentions ?? [],
+    counters: r.data.counters ?? { verified: 0, rejected: 0, unreadable: 0, ambiguous: 0, held: 0 },
+  };
+}
+
+/** MESITA-4549: the bot's desk actions on one story (mention). */
+export async function aiDeskAction(
+  mentionId: string,
+  action: "ai_attach" | "ai_reject" | "ai_recheck" | "ai_reviewed",
+  placeId?: string,
+): Promise<ActionResult<{ outcome: string }>> {
+  const r = await efInvoke<{ outcome?: string }>("admin-web-story-override", {
+    action,
+    mention_id: mentionId,
+    ...(placeId ? { place_id: placeId } : {}),
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, outcome: r.data.outcome ?? action };
 }
 
 export async function overrideStory(
