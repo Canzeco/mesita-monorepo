@@ -5,6 +5,14 @@ import { OffersTile, offerSlides, SizedImg, type OfferInput } from "@mesita/plac
 import { navigateTo } from "@/lib/navigate";
 import { cn } from "@/lib/utils";
 
+// TWO LINES (Pato, 2026-11-21, MESITA-4525: "optimize space in that card,
+// make them shorter … card profile picture, name | Offers / amount |
+// Offers"): a 40x26 card cut from the place's photo and the name, the
+// amount under them (or the distance), the Offers tile beside both lines,
+// about 72px tall, split half and half (Pato: "LEFT MUST BE 50% AND RIGHT
+// MUST BE 50%"; an empty half holds the place when there are no offers).
+// The bank-card-sized card below was ~130px.
+//
 // A LOYALTY CARD BOX (Pato, 2026-11-21, MESITA-4520: "THE LEFT MUST BE THE
 // CARD, WITH THE AMOUNT ON TOP. IT MUST HAVE CARD DIMENSIONS. THE RIGHT REST
 // OF SPACE MUST BE THE BOX TO DISPLAY THE OFFERS IN CAROUSEL, BUT IT MUST BE
@@ -59,42 +67,51 @@ export function PlaceActionRow({
       <button
         type="button"
         disabled={disabled}
-        aria-label={
-          disabled
-            ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}`
-            : `${name}${amount ? `, ${amount}` : ""}`
-        }
+        aria-label={disabled ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}` : `${name}${amount ? `, ${amount}` : ""}`}
         onClick={() => {
           if (!disabled) onOpen?.();
         }}
-        className={cn(
-          "bg-foreground relative aspect-[85.6/54] w-[46%] shrink-0 overflow-hidden rounded-xl text-left text-white ring-1 ring-black/10",
-          disabled && "cursor-default opacity-60",
-        )}
+        className={cn("flex min-w-0 flex-1 basis-0 flex-col justify-center gap-1 px-1 text-left", disabled && "cursor-default opacity-60")}
         data-loyalty-card
       >
-        {photo ? <SizedImg src={photo} size="card" alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" /> : null}
-        {/* Ink over the photo so the white words read on any picture. */}
-        <span className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/20 to-black/70" aria-hidden />
-        <span className="relative flex h-full flex-col justify-between p-2.5">
-          <span className="block text-lg leading-tight font-bold tabular-nums">{amount ?? ""}</span>
-          <span className="block truncate text-sm font-semibold">{name}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <MiniCard photo={photo} name={name} />
+          <span className="text-foreground min-w-0 truncate text-sm font-semibold">{name}</span>
         </span>
+        {subtitle ? (
+          <span className="text-muted-foreground block truncate text-sm">{subtitle}</span>
+        ) : amount ? (
+          <span className="text-foreground block text-lg leading-tight font-bold tabular-nums">{amount}</span>
+        ) : distance ? (
+          <span className="text-muted-foreground block text-sm">{distance} away</span>
+        ) : null}
       </button>
       {slides.length > 0 && placeHref ? (
-        <div className="flex min-w-0 flex-1 [&>button]:h-full [&>button]:w-full [&>button]:rounded-xl">
+        // THE WORD AT THE RIGHT (Pato, MESITA-4525: "put the offers thing at
+        // the right, not the left"): the place screen's tile, reversed here
+        // only, so the moving offer sits next to the card and "Offers"
+        // closes the row. The place screen keeps its own order.
+        <div className="flex min-w-0 flex-1 basis-0 [&>button]:h-full [&>button]:min-h-14 [&>button]:w-full [&>button]:flex-row-reverse [&>button]:rounded-xl">
           <OffersTile name={name} slides={slides} open={() => () => navigateTo(router, placeHref, { motion: "drill" })} />
         </div>
       ) : (
-        <div className="flex min-w-0 flex-1 flex-col justify-center px-1">
-          <span className="text-foreground block truncate text-base font-semibold">{name}</span>
-          {subtitle ? (
-            <span className="text-muted-foreground block truncate text-sm">{subtitle}</span>
-          ) : distance ? (
-            <span className="text-muted-foreground block text-sm">{distance} away</span>
-          ) : null}
-        </div>
+        <span className="min-w-0 flex-1 basis-0" aria-hidden />
       )}
     </div>
+  );
+}
+
+/** The Loyalty Card's face, small (MESITA-4525): 40x26, the place's photo. */
+function MiniCard({ photo, name }: { photo: string | null; name: string }) {
+  return (
+    <span className="bg-foreground relative h-[26px] w-10 shrink-0 overflow-hidden rounded-[5px] ring-1 ring-black/10" aria-hidden>
+      {photo ? (
+        <SizedImg src={photo} size="thumb" alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        <span className="text-background type-meta flex h-full w-full items-center justify-center font-bold">
+          {name.trim().charAt(0).toUpperCase()}
+        </span>
+      )}
+    </span>
   );
 }

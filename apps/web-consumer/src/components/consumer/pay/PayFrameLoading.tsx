@@ -13,16 +13,15 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
     // 48px buttons, Pay Bill 96px, Send Gift 56px, the hairline, then Loyalty
     // Card boxes. MESITA-4512's black slab and search bar before.
     return (
-      <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-8 *:shrink-0" aria-busy>
-        <PayHeader title="Wallet" />
+      <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0" aria-busy>
+        <PayHeader title="Mesita Wallet" />
         <div className="mt-2 flex gap-2">
           <Skeleton className="h-12 min-w-0 flex-1 rounded-xl" aria-hidden />
           <Skeleton className="h-12 min-w-0 flex-1 rounded-xl" aria-hidden />
         </div>
         <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
         <Skeleton className="mt-2 h-14 w-full rounded-xl" aria-hidden />
-        <hr className="border-border -mx-2 mt-3 mb-1" />
-        <div className="mt-2 flex flex-col gap-2">
+        <div className="bg-background border-border -mx-2 mt-3 flex flex-1 flex-col gap-2 border-t px-2 pt-3 pb-8">
           <LoyaltyCardBoxSkeleton />
           <LoyaltyCardBoxSkeleton />
           <LoyaltyCardBoxSkeleton />
@@ -42,13 +41,19 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
   );
 }
 
-/** One Loyalty Card box in bones (MESITA-4523): the card in a bank card's
- *  proportions on the left, the Offers tile beside it, as PlaceActionRow. */
+/** One Loyalty Card box in bones (MESITA-4525): the small card and name
+ *  over the amount, the Offers tile beside them, as PlaceActionRow. */
 export function LoyaltyCardBoxSkeleton() {
   return (
-    <div className="border-border flex w-full items-stretch gap-2 rounded-2xl border p-2" aria-hidden>
-      <Skeleton className="aspect-[85.6/54] w-[46%] shrink-0 rounded-xl" />
-      <Skeleton className="min-w-0 flex-1 rounded-xl" />
+    <div className="border-border bg-card flex w-full items-stretch gap-2 rounded-2xl border p-2" aria-hidden>
+      <span className="flex min-w-0 flex-1 basis-0 flex-col justify-center gap-1 px-1">
+        <span className="flex items-center gap-2">
+          <Skeleton className="h-[26px] w-10 shrink-0 rounded-[5px]" />
+          <Skeleton className="h-4 w-28 rounded" />
+        </span>
+        <Skeleton className="h-6 w-24 rounded" />
+      </span>
+      <Skeleton className="min-h-14 min-w-0 flex-1 basis-0 rounded-xl" />
     </div>
   );
 }
