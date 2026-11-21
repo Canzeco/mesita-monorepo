@@ -29,7 +29,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Panel } from "@/components/shared/Panel";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { EFError } from "@/lib/api/_invoke";
-import { apiEmulateStory, apiGetStory, apiPollStory, money, STORY_EMULATOR_REFUSAL, type StoryTicket } from "@/lib/api/wallet";
+import { apiEmulateStory, apiGetStory, apiPollStory, money, STORY_EMULATOR_REFUSAL, type StoryCheck, type StoryTicket } from "@/lib/api/wallet";
 import { walletPlacePath } from "@/lib/consumer-route-contract";
 import { storyClock } from "@/lib/story-lines";
 import { storyBonus, storyLine, storyPollDelay, storyStatus } from "@/lib/story-ticket";
@@ -179,15 +179,45 @@ function StoryCard({ s }: { s: StoryTicket }) {
   );
 }
 
+/** The bot's word on the guest's newest story (MESITA-4549): the panel's
+ *  title and one line; null while nothing was posted since paying. */
+function storyCheckLines(
+  c: StoryCheck | null,
+  handle: string | null | undefined,
+): { title: string; line: string; tone: "info" | "warn" } | null {
+  if (!c) return null;
+  const tag = handle ? `@${handle}` : "the restaurant";
+  if (c.state === "checking") return { title: "Checking your story", line: "About 10 minutes. You can close the app.", tone: "info" };
+  if (c.state === "checking_long") return { title: "Checking your story", line: "We decide within 2 days.", tone: "info" };
+  if (c.reason === "video") {
+    return { title: "We can't read video stories yet", line: `Post a photo story tagging @mesita and ${tag}. Your voucher is still open.`, tone: "warn" };
+  }
+  if (c.reason === "not_a_story") {
+    return { title: "That doesn't look like a story", line: `Post a new story tagging @mesita and ${tag}. Your voucher is still open.`, tone: "warn" };
+  }
+  return { title: `We couldn't see ${tag}`, line: "Post a new story with the tag visible. Your voucher is still open.", tone: "warn" };
+}
+
 /** What the guest does now, by state. */
 function NowPanel({ s, now }: { s: StoryTicket; now: number }) {
   const handle = s.place_handle;
   if (s.state === "waiting_post") {
+    const check = storyCheckLines(s.ai_check ?? null, handle);
     return (
-      <Panel title="Post your story" data-story-now="post">
+      <Panel title={check?.title ?? "Post your story"} data-story-now="post" data-story-check={s.ai_check?.state ?? "none"}>
         <div className="flex flex-col gap-3 px-4 pt-2 pb-4">
+          {check?.line ? (
+            <p
+              className={cn("rounded-xl p-3 text-sm leading-snug font-semibold", check.tone === "warn" ? "bg-amber-50 text-amber-800" : "bg-muted text-foreground")}
+              role="status"
+            >
+              {check.line}
+            </p>
+          ) : null}
           <p className="text-sm leading-snug">
-            Post a story from your public account. Tag @mesita and the restaurant, and keep it up.
+            {handle
+              ? `Tag @mesita and @${handle}, or add the restaurant's location. Keep the tags readable.`
+              : "Tag @mesita and the restaurant, or add its location. Keep the tags readable."}
           </p>
           <span>
             <CopyChip text={handle ? `@mesita @${handle}` : "@mesita"} />
@@ -197,7 +227,7 @@ function NowPanel({ s, now }: { s: StoryTicket; now: number }) {
             Open Instagram
           </button>
           <p className="text-muted-foreground text-center text-sm" aria-live="polite">
-            We look for it by itself. It shows up here in a minute.
+            A bot checks the tags in the background. We keep the image 3 days.
           </p>
         </div>
       </Panel>
@@ -236,10 +266,10 @@ function TestBand({ s, onChanged }: { s: StoryTicket; onChanged: () => void }) {
   const getSupabase = useLazyBrowserSupabase();
   const [busy, setBusy] = useState<string | null>(null);
   if (!s.emulator) return null;
-  const run = async (action: "connect" | "post" | "delete") => {
+  const run = async (action: "connect" | "post" | "post_untagged" | "post_video" | "delete") => {
     setBusy(action);
     try {
-      await apiEmulateStory(getSupabase(), action, action === "post" ? s.place_id : undefined);
+      await apiEmulateStory(getSupabase(), action, action.startsWith("post") ? s.place_id : undefined);
       onChanged();
     } catch (err) {
       const code = err instanceof EFError ? err.code : null;
@@ -259,6 +289,13 @@ function TestBand({ s, onChanged }: { s: StoryTicket; onChanged: () => void }) {
           </button>
           <button type="button" disabled={busy !== null} onClick={() => void run("post")} className={QUIET} data-story-simulate="post">
             {busy === "post" ? "Publishing…" : handle ? `Publish a story tagging @mesita and @${handle}` : "Publish a test story"}
+          </button>
+          {/* MESITA-4549: the bot's rejections, so every state shows on a preview. */}
+          <button type="button" disabled={busy !== null} onClick={() => void run("post_untagged")} className={QUIET} data-story-simulate="post_untagged">
+            {busy === "post_untagged" ? "Publishing…" : "Publish a story without the restaurant tag"}
+          </button>
+          <button type="button" disabled={busy !== null} onClick={() => void run("post_video")} className={QUIET} data-story-simulate="post_video">
+            {busy === "post_video" ? "Publishing…" : "Publish a video story"}
           </button>
         </>
       ) : null}

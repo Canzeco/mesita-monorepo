@@ -4,12 +4,13 @@
 // zone, and whether the test-mode buttons show.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { readOwnStory, readStoryMentions, readStoryPurchases, STORY_POLL, type StoryRecord, storyView, type StoryView } from "./story.ts";
+import { APPROVED_SLOW_POLL, readOwnStory, readStoryMentions, readStoryPurchases, STORY_POLL, type StoryRecord, storyView, type StoryView } from "./story.ts";
 import { readStoryRules, storyMode } from "./story-mention.ts";
 import { readVoucherPlace } from "./wallet.ts";
 import { instagramHandleOfUrl } from "./place-instagram.ts";
 import { placeZone, PLACE_ZONE_COLUMNS } from "./local-time.ts";
 import { paymentsLivemode } from "./stripe.ts";
+import { readInstagramSyncState } from "./consumer-doc.ts";
 
 export async function readStoryScreen(admin: SupabaseClient, s: StoryRecord, nowMs: number): Promise<StoryView & { place_name: string | null }> {
   const [purchases, mentions, placeRes, zone, rules] = await Promise.all([
@@ -42,7 +43,7 @@ export async function readVoucherStoryScreen(
   consumerId: string,
   purchaseId: string,
   nowMs: number,
-): Promise<(StoryView & { place_name: string | null }) | null> {
+): Promise<(StoryView & { place_name: string | null; ai_check?: StoryCheck | null }) | null> {
   const existing = await readOwnStory(admin, consumerId, { purchaseId });
   if (existing) return readStoryScreen(admin, existing, nowMs);
   const { data, error } = await admin.from("wallet_purchases")
@@ -73,6 +74,43 @@ export async function readVoucherStoryScreen(
     bonus_cents: p.bonus_cents,
     created_at: p.paid_at ?? new Date(nowMs).toISOString(),
   };
-  const view = await readStoryScreen(admin, synthetic, nowMs);
-  return { ...view, story_id: "", poll: STORY_POLL };
+  const [view, check] = await Promise.all([
+    readStoryScreen(admin, synthetic, nowMs),
+    readStoryCheck(admin, consumerId, p.livemode, p.paid_at),
+  ]);
+  return { ...view, story_id: "", poll: check?.state === "checking_long" ? APPROVED_SLOW_POLL : STORY_POLL, ai_check: check };
+}
+
+/** What the bot says about the guest's newest story since this voucher was
+ *  paid, while no story holds the voucher (MESITA-4549): checking (not read
+ *  yet), checking_long (the desk has it), or rejected with its reason. Null
+ *  when the guest has posted nothing since. A rejected story matched no
+ *  place, so this reads by guest, not by place. */
+export type StoryCheck = { state: "checking" | "checking_long" | "rejected"; reason: string | null; mentioned_at: string };
+
+export async function readStoryCheck(
+  admin: SupabaseClient,
+  consumerId: string,
+  livemode: boolean,
+  sinceIso: string | null,
+): Promise<StoryCheck | null> {
+  const guest = await readInstagramSyncState(admin, consumerId);
+  const handle = guest.ok ? guest.handle?.toLowerCase() : null;
+  if (!handle) return null;
+  let q = admin.from("story_mentions")
+    .select("id, mentioned_at, ai_checked_at, ai_outcome, ai_reason, deleted_at")
+    .eq("ig_handle", handle).eq("livemode", livemode).is("deleted_at", null)
+    .order("mentioned_at", { ascending: false }).limit(1);
+  if (sinceIso) q = q.gte("mentioned_at", sinceIso);
+  const { data, error } = await q;
+  if (error) {
+    console.error("[story-screen] check_read", JSON.stringify({ error: error.message }));
+    return null;
+  }
+  const m = (data ?? [])[0] as { mentioned_at: string; ai_checked_at: string | null; ai_outcome: string | null; ai_reason: string | null } | undefined;
+  if (!m) return null;
+  if (!m.ai_checked_at) return { state: "checking", reason: null, mentioned_at: m.mentioned_at };
+  if (m.ai_outcome === "ambiguous" || m.ai_outcome === "unreadable") return { state: "checking_long", reason: null, mentioned_at: m.mentioned_at };
+  if (m.ai_outcome === "rejected") return { state: "rejected", reason: m.ai_reason, mentioned_at: m.mentioned_at };
+  return null;
 }

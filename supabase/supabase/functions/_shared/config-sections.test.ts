@@ -260,6 +260,14 @@ Deno.test("stories: the read shows only Story keys; a save keeps every other mon
     story_emulator: false,
     story_emulator_bonus_wait_sec: 30,
     story_emulator_post_window_sec: 120,
+    // MESITA-4549: the AI bot's switches and limits, at their defaults.
+    story_ai_enabled: true,
+    story_recheck_meta: false,
+    story_ai_batch: 20,
+    story_ai_max_tries: 3,
+    story_desk_hours: 48,
+    story_media_retention_hours: 72,
+    story_stale_days: 30,
   });
   assertEquals(typeof read.payments_live, "boolean");
   assert(["meta", "emulated", "unavailable"].includes(String(read.story_mode)));
@@ -271,6 +279,8 @@ Deno.test("stories: the read shows only Story keys; a save keeps every other mon
     // MESITA-4426: the emulator keys are typed and ranged too.
     { story_emulator: "true" }, { story_emulator_bonus_wait_sec: 9 }, { story_emulator_bonus_wait_sec: 601 },
     { story_emulator_post_window_sec: 59 }, { story_emulator_post_window_sec: 3601 },
+    // MESITA-4549: the bot keys are typed and ranged too.
+    { story_ai_enabled: "yes" }, { story_ai_batch: 0 }, { story_ai_batch: 51 }, { story_media_retention_hours: 23 },
   ]) {
     const res = await writeConfigSection({ admin: fakeAdmin(row), userId: USER, body: { section: "stories", config: bad } }, "stories");
     assertEquals(res.status, 400, JSON.stringify(bad));

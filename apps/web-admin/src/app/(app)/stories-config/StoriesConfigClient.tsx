@@ -8,12 +8,12 @@
 // live asks first, inline above Save. The EF logs every save with the admin.
 
 import { useState } from "react";
-import { Camera } from "lucide-react";
-import { Button, Chip, Notice, NumberField, ReadField, SectionCard } from "@/components/admin-ui";
+import { Bot, Camera } from "lucide-react";
+import { Button, Chip, Notice, NumberField, ReadField, SectionCard, SwitchRow } from "@/components/admin-ui";
 import { SaveRow } from "@/components/admin-ui/config";
 import { useConfigEditor } from "@/components/admin-ui/use-config-editor";
 import { getStoriesConfig, updateStoriesConfig } from "./actions";
-import { formatDuration, needsFloorConfirm, type StoriesConfig, STORY_MIN_FOLLOWERS_MAX } from "./catalog";
+import { BOT_LIMITS, type BotLimitKey, formatDuration, needsFloorConfirm, type StoriesConfig, storiesDirty, STORY_MIN_FOLLOWERS_MAX } from "./catalog";
 
 export function StoriesConfigClient({
   initialConfig,
@@ -33,7 +33,7 @@ export function StoriesConfigClient({
     onLoaded: (r) => setPaymentsLive(r.paymentsLive),
   });
 
-  const dirty = cfg.story_min_followers !== saved.story_min_followers;
+  const dirty = storiesDirty(saved, cfg);
   const patch = (next: Partial<StoriesConfig>) => {
     setCfg((c) => ({ ...c, ...next }));
     setOk(false);
@@ -73,6 +73,40 @@ export function StoriesConfigClient({
           <ReadField label="Bonus wait" boxed>
             {formatDuration(cfg.story_bonus_wait_sec)} after the story is posted
           </ReadField>
+        </div>
+      </SectionCard>
+
+      {/* MESITA-4549: the AI bot that checks every real story (MESITA-4535). */}
+      <SectionCard icon={<Bot />} title="AI bot" subtitle="Checks that each real story tags the restaurant, then pays the bonus when the story is still up.">
+        <div className="mt-5 flex flex-col gap-4">
+          <SwitchRow
+            label="Check stories"
+            hint="Off pauses the bot. Stories wait in the queue and nothing is paid."
+            checked={cfg.story_ai_enabled}
+            disabled={pending || loadBlocked}
+            onCheckedChange={(v) => patch({ story_ai_enabled: v })}
+          />
+          <SwitchRow
+            label="Fetch each story before its bonus"
+            hint="Off holds every real bonus and closes live Story sales."
+            checked={cfg.story_recheck_meta}
+            disabled={pending || loadBlocked}
+            onCheckedChange={(v) => patch({ story_recheck_meta: v })}
+          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {(Object.keys(BOT_LIMITS) as BotLimitKey[]).map((k) => (
+              <NumberField
+                key={k}
+                label={BOT_LIMITS[k].label}
+                value={cfg[k]}
+                min={BOT_LIMITS[k].min}
+                max={BOT_LIMITS[k].max}
+                disabled={pending || loadBlocked}
+                hint={BOT_LIMITS[k].hint}
+                onChange={(v) => patch({ [k]: v } as Partial<StoriesConfig>)}
+              />
+            ))}
+          </div>
         </div>
       </SectionCard>
 

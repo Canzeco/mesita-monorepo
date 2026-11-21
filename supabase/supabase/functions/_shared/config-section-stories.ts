@@ -32,6 +32,14 @@ const STORY_CONFIG_RANGES: Record<string, { min: number; max: number } | null> =
   story_emulator: null,
   story_emulator_bonus_wait_sec: STORY_EMULATOR.bonusWait,
   story_emulator_post_window_sec: STORY_EMULATOR.postWindow,
+  // MESITA-4549: the AI bot's switches and limits (MESITA-4535).
+  story_ai_enabled: null,
+  story_recheck_meta: null,
+  story_ai_batch: { min: 1, max: 50 },
+  story_ai_max_tries: { min: 1, max: 10 },
+  story_desk_hours: { min: 1, max: 168 },
+  story_media_retention_hours: { min: 24, max: 720 },
+  story_stale_days: { min: 1, max: 90 },
 };
 export const STORY_CONFIG_KEYS = Object.keys(STORY_CONFIG_RANGES);
 
@@ -45,6 +53,13 @@ export function storiesConfigFrom(raw: unknown) {
     story_emulator: r.emulator,
     story_emulator_bonus_wait_sec: r.emulatorBonusWaitSec,
     story_emulator_post_window_sec: r.emulatorPostWindowSec,
+    story_ai_enabled: r.aiEnabled,
+    story_recheck_meta: r.recheckMeta,
+    story_ai_batch: r.aiBatch,
+    story_ai_max_tries: r.aiMaxTries,
+    story_desk_hours: r.deskHours,
+    story_media_retention_hours: r.mediaRetentionHours,
+    story_stale_days: r.staleDays,
   };
 }
 

@@ -8,7 +8,7 @@
 
 import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
-import { coerceStories, floorPatch, type StoriesConfig } from "./catalog";
+import { botPatch, coerceStories, floorPatch, type StoriesConfig } from "./catalog";
 
 type StoriesAnswer = { config: unknown; updatedAt: string | null; payments_live?: boolean; story_mode?: string };
 
@@ -38,7 +38,8 @@ export async function getStoriesConfig(): Promise<StoriesResult> {
 export async function updateStoriesConfig(c: StoriesConfig): Promise<StoriesResult> {
   const r = await efInvoke<StoriesAnswer>("admin-web-update-config", {
     section: "stories",
-    config: floorPatch(c),
+    // The floor and the AI bot's keys (MESITA-4549); never the emulator's.
+    config: { ...floorPatch(c), ...botPatch(c) },
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, ...fromAnswer(r.data) };
