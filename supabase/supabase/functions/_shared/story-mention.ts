@@ -73,6 +73,20 @@ export function storyModeOf(args: { livemode: boolean; metaOn: boolean }): Story
   return args.livemode ? "unavailable" : "emulated";
 }
 
+/** The sale gate with the kill switch (MESITA-4535): a real Meta source sells
+ *  Story only while story_recheck_meta is on, because the bonus is paid only
+ *  on a fetched "still up". Off, the live Story offer is unavailable. */
+export function storySaleMode(mode: StoryMode, recheckMeta: boolean): StoryMode {
+  return mode === "meta" && !recheckMeta ? "unavailable" : mode;
+}
+
+/** The sale gate read live: storyMode() and the kill switch together. */
+export async function storySaleModeLive(admin: SupabaseClient): Promise<StoryMode> {
+  const mode = storyMode();
+  if (mode !== "meta") return mode;
+  return storySaleMode(mode, (await readStoryRules(admin)).recheckMeta);
+}
+
 /** The one gate Offers, the buy door, the Wallet and the emulator read. */
 export function storyMode(get: (k: string) => string | undefined = (k) => Deno.env.get(k)): StoryMode {
   return storyModeOf({ livemode: paymentsLivemode(get), metaOn: readInstagramDmConfig(get) !== null });
@@ -206,7 +220,10 @@ export async function recordStoryMention(
 
 // ── The re-check ─────────────────────────────────────────────────────────────
 
-export type StillUp = { reachable: boolean; status: number | "timeout" | "error" | "no_url" | "kept" | "deleted" };
+export type StillUp = {
+  reachable: boolean;
+  status: number | "timeout" | "error" | "no_url" | "kept" | "deleted" | "held" | "stored";
+};
 
 /** Whether a story's media still loads: GET with Range bytes=0-0 (a video is
  *  never downloaded), the body discarded, a 10-second timeout. 2xx/206 is
@@ -237,18 +254,49 @@ export async function storyStillUp(
 export type RecheckRow = {
   story_id: string;
   purchase_id: string;
-  mention: { source: "meta" | "emulator"; media_url: string | null; deleted_at?: string | null } | null;
+  mention: {
+    source: "meta" | "emulator";
+    media_url: string | null;
+    deleted_at?: string | null;
+    mentioned_at?: string | null;
+    /** MESITA-4535: the still-up probe taken at bonus time for a story attached late. */
+    reachable_at_bonus?: boolean | null;
+  } | null;
 };
 
-/** Whether this row's story is still up. A real Meta mention is not fetched
- *  until the P9 spike passes (app_config.money_config.story_recheck_meta,
- *  default off): its bonus is released 3 hours after approval as is. */
+/** The expiry a signed Meta CDN link carries (`oe=`, hex seconds), or null. */
+export function cdnLinkExpiresAt(url: string | null): number | null {
+  if (!url) return null;
+  try {
+    const oe = new URL(url).searchParams.get("oe");
+    if (!oe || !/^[0-9a-f]{6,10}$/i.test(oe)) return null;
+    return parseInt(oe, 16) * 1000;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether this row's story is still up (MESITA-4535). A real Meta story is
+ *  fetched; with money_config.story_recheck_meta off (the kill switch) it is
+ *  HELD, never paid blind. A signed link past its own expiry is held too
+ *  (unknown, not down). A story attached after Instagram dropped it (24 h)
+ *  settles on the probe taken at its bonus time. */
 export async function recheckReachable(
   row: RecheckRow,
   recheckMeta: boolean,
   still: (url: string | null) => Promise<StillUp>,
+  nowMs: number = Date.now(),
 ): Promise<StillUp & { fetched: boolean }> {
-  if (row.mention?.source === "meta" && !recheckMeta) return { reachable: true, status: 200, fetched: false };
+  if (row.mention?.source === "meta") {
+    if (!recheckMeta) return { reachable: false, status: "held", fetched: false };
+    const posted = row.mention.mentioned_at ? Date.parse(row.mention.mentioned_at) : NaN;
+    const stored = row.mention.reachable_at_bonus;
+    if (typeof stored === "boolean" && Number.isFinite(posted) && nowMs - posted > 20 * 3600_000) {
+      return { reachable: stored, status: "stored", fetched: false };
+    }
+    const exp = cdnLinkExpiresAt(row.mention.media_url);
+    if (exp !== null && exp <= nowMs) return { reachable: false, status: "held", fetched: false };
+  }
   // MESITA-4310: a test story has no image; its delete is a flag.
   if (row.mention?.source === "emulator" && !row.mention.media_url) {
     return row.mention.deleted_at
@@ -281,11 +329,17 @@ export async function runRecheckTick(args: {
   const started = now();
   const report: TickReport = { processed: 0, released: 0, voided: 0, failed: 0, skipped: 0 };
   let next = 0;
+  let held = 0;
 
   const one = async (row: RecheckRow) => {
     let step = "check";
     try {
       const r = await args.check(row);
+      // MESITA-4535: a held story is not settled and spends no try.
+      if (r.status === "held") {
+        held++;
+        return;
+      }
       if (!r.reachable) {
         log(JSON.stringify({ fn: "recheck-stories", story_id: row.story_id, purchase_id: row.purchase_id, step: "fetch", status: r.status }));
       }
@@ -309,7 +363,7 @@ export async function runRecheckTick(args: {
     }
   };
   await Promise.all(Array.from({ length: Math.min(parallel, args.rows.length) }, worker));
-  report.skipped = args.rows.length - next;
+  report.skipped = args.rows.length - next + held;
   return report;
 }
 
@@ -404,6 +458,13 @@ export type StoryRulesLive = {
   emulatorBonusWaitSec: number;
   /** A test Story's time to post while the switch is on, 60–3600 s (120). */
   emulatorPostWindowSec: number;
+  /** MESITA-4535, the AI bot: on/off without a deploy, and its limits. */
+  aiEnabled: boolean;
+  aiBatch: number;
+  aiMaxTries: number;
+  deskHours: number;
+  mediaRetentionHours: number;
+  staleDays: number;
 };
 
 /** The emulator keys' bounds and defaults (MESITA-4426), as SQL clamps them. */
@@ -440,6 +501,13 @@ export function storyRulesFrom(raw: unknown): StoryRulesLive {
     emulator: o.story_emulator === true,
     emulatorBonusWaitSec: clampedInt(o.story_emulator_bonus_wait_sec, STORY_EMULATOR.bonusWait),
     emulatorPostWindowSec: clampedInt(o.story_emulator_post_window_sec, STORY_EMULATOR.postWindow),
+    // MESITA-4535: a missing key reads its default; the bot is on unless set off.
+    aiEnabled: o.story_ai_enabled !== false,
+    aiBatch: clampedInt(o.story_ai_batch, { min: 1, max: 50, default: 20 }),
+    aiMaxTries: clampedInt(o.story_ai_max_tries, { min: 1, max: 10, default: 3 }),
+    deskHours: clampedInt(o.story_desk_hours, { min: 1, max: 168, default: 48 }),
+    mediaRetentionHours: clampedInt(o.story_media_retention_hours, { min: 24, max: 720, default: 72 }),
+    staleDays: clampedInt(o.story_stale_days, { min: 1, max: 90, default: 30 }),
   };
 }
 

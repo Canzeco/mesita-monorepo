@@ -15,8 +15,13 @@
 //            from publication.
 //   delete   story_drop: the ticket voids at once and the voucher can take
 //            another story.
+//   post_untagged, post_video (MESITA-4535): a test story the bot rejects
+//            (no restaurant tag; a video), so every guest state shows on a
+//            preview. Every post goes through the same path as a real story:
+//            story_detect with no restaurant, then story_ai_verdict with the
+//            emulator's synthetic answer (no model is called).
 //
-// Body: { action: "connect" } | { action: "post", place_id } | { action: "delete" }
+// Body: { action: "connect" } | { action: "post" | "post_untagged" | "post_video", place_id } | { action: "delete" }
 // Response: connect { ok: true, action, handle, followers, is_private: false }
 //           post    { ok: true, action, mention, n, bound_story_id, story_id }
 //           delete  { ok: true, action, mention_id, n }
@@ -43,6 +48,8 @@ import {
 import { errorMessage } from "../_shared/errors.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 import { isUuid } from "../_shared/place-id.ts";
+import { readVoucherPlace } from "../_shared/wallet.ts";
+import { instagramHandleOfUrl } from "../_shared/place-instagram.ts";
 
 const FN = "consumer-web-emulate-story";
 const BUCKET = "story-emulator";
@@ -55,11 +62,12 @@ serveJson("consumer-web-emulate-story", async (req) => {
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const { action } = bodyRes.body;
-  if (action !== "post" && action !== "delete" && action !== "connect") {
-    return json({ ok: false, code: "bad_request", error: "Body needs action connect|post|delete" }, 400);
+  const posting = action === "post" || action === "post_untagged" || action === "post_video";
+  if (!posting && action !== "delete" && action !== "connect") {
+    return json({ ok: false, code: "bad_request", error: "Body needs action connect|post|post_untagged|post_video|delete" }, 400);
   }
   const placeId = bodyRes.body.place_id;
-  if (action === "post" && !isUuid(placeId)) {
+  if (posting && !isUuid(placeId)) {
     return json({ ok: false, code: "bad_request", field: "place_id", error: "place_id is the restaurant this story tags" }, 400);
   }
   const refusal = emulatorRefusal(paymentsLivemode(), readInstagramDmConfig() !== null, (await readStoryRules(admin)).emulator);
@@ -115,7 +123,7 @@ serveJson("consumer-web-emulate-story", async (req) => {
       source: "emulator",
       storyId: emulatorStoryId(me, n),
       mediaUrl: null,
-      mediaKind: "image",
+      mediaKind: action === "post_video" ? "video" : "image",
       mentionedAt: new Date().toISOString(),
       livemode: false,
       senderIgsid: null,
@@ -123,9 +131,28 @@ serveJson("consumer-web-emulate-story", async (req) => {
 
     const { data: m, error: mErr } = await admin.from("story_mentions").select(MENTION_COLUMNS).eq("id", rec.id).single();
     if (mErr) throw new Error(`story_mentions: ${mErr.message}`);
-    const { data: detected, error: detErr } = await admin.rpc("story_detect", { p_mention: rec.id, p_place: placeId });
+    // MESITA-4535: the same path as a real story. The webhook's detect with no
+    // restaurant, then the bot's verdict, here the emulator's synthetic one.
+    const { error: detErr } = await admin.rpc("story_detect", { p_mention: rec.id, p_place: null });
     if (detErr) throw new Error(`story_detect: ${detErr.message}`);
-    const storyId = (detected as { story_id?: string } | null)?.story_id ?? null;
+    const place = await readVoucherPlace(admin, placeId as string);
+    if (!place.ok) throw new Error(place.error);
+    const handle = instagramHandleOfUrl(place.place?.instagram_url ?? null);
+    const verdict = action === "post_video"
+      ? { mode: "video" }
+      : {
+        mode: "open",
+        looks_like_story: true,
+        place_handles: action === "post" && handle ? [handle] : [],
+        location_names: action === "post" && !handle && place.place?.name ? [place.place.name] : [],
+        mentions_mesita: true,
+        notes: "emulator",
+      };
+    const { data: judged, error: vErr } = await admin.rpc("story_ai_verdict", { p_mention: rec.id, p_verdict: verdict, p_model: "emulator" });
+    if (vErr) throw new Error(`story_ai_verdict: ${vErr.message}`);
+    const { data: ticket } = await admin.from("stories").select("id").eq("mention_id", rec.id).maybeSingle();
+    const storyId = (ticket as { id?: string } | null)?.id ?? null;
+    console.log(`[${FN}]`, JSON.stringify({ step: "verdict", mention_id: rec.id, outcome: (judged as { outcome?: string } | null)?.outcome }));
     console.log(`[${FN}]`, JSON.stringify({ action, consumer_id: me, mention_id: rec.id, n, duplicate: rec.duplicate, story_id: storyId, place_id: placeId }));
     return json({ ok: true, action, mention: mentionView(m as MentionRow), n, bound_story_id: storyId, story_id: storyId });
   } catch (err) {

@@ -21,14 +21,17 @@ export type ModelsConfig = {
   enricher?: { model?: string };
   embeddings?: { model?: string };
   memo?: { model?: string };
+  /** MESITA-4535: the Story bot's vision model. */
+  stories?: { model?: string };
 };
 
-type DefaultModels = Record<"enricher" | "embeddings" | "memo", { model: string }>;
+type DefaultModels = Record<"enricher" | "embeddings" | "memo" | "stories", { model: string }>;
 
 export const DEFAULT_MODELS_CONFIG: DefaultModels = {
   enricher: { model: "gpt-6-luna" },
   embeddings: { model: "text-embedding-3-small" },
   memo: { model: "gpt-6-luna" },
+  stories: { model: "gpt-6-luna" },
 };
 
 function nonEmpty(s: unknown, fallback: string): string {
@@ -42,6 +45,7 @@ export async function loadModelsConfig(
   enricherModel: string;
   embeddingModel: string;
   memoModel: string;
+  storiesModel: string;
 }> {
   const { data, error } = await admin
     .from("app_config")
@@ -56,5 +60,7 @@ export async function loadModelsConfig(
     enricherModel: nonEmpty(raw?.enricher?.model, DEFAULT_MODELS_CONFIG.enricher.model),
     embeddingModel: nonEmpty(raw?.embeddings?.model, DEFAULT_MODELS_CONFIG.embeddings.model),
     memoModel: nonEmpty(raw?.memo?.model, DEFAULT_MODELS_CONFIG.memo.model),
+    // A blob saved before MESITA-4535 has no `stories` key: the default.
+    storiesModel: nonEmpty(raw?.stories?.model, DEFAULT_MODELS_CONFIG.stories.model),
   };
 }

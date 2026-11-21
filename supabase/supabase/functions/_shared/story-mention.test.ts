@@ -182,14 +182,14 @@ Deno.test("storyStillUp: a Range GET; 2xx/206 up, anything else down, timeout do
   assertEquals(await storyStillUp(null, ok206), { reachable: false, status: "no_url" });
 });
 
-Deno.test("recheckReachable: a real Meta mention is not fetched while story_recheck_meta is off", async () => {
+Deno.test("recheckReachable: with story_recheck_meta off a real Meta story is HELD, never paid blind (MESITA-4535)", async () => {
   let fetched = 0;
   const still = () => {
     fetched++;
     return Promise.resolve({ reachable: false, status: 404 as const });
   };
   const meta: RecheckRow = { story_id: "s", purchase_id: "p", mention: { source: "meta", media_url: "https://lookaside.fbsbx.com/a" } };
-  assertEquals((await recheckReachable(meta, false, still)).reachable, true);
+  assertEquals(await recheckReachable(meta, false, still), { reachable: false, status: "held", fetched: false });
   assertEquals(fetched, 0);
   assertEquals((await recheckReachable(meta, true, still)).reachable, false);
   const emu: RecheckRow = { story_id: "s", purchase_id: "p", mention: { source: "emulator", media_url: "https://x/1.jpg" } };
@@ -258,4 +258,40 @@ Deno.test("runRecheckTick: an RPC refusal counts as failed, voided counts", asyn
     log: () => {},
   });
   assertEquals(report, { processed: 1, released: 0, voided: 1, failed: 1, skipped: 0 });
+});
+
+Deno.test("recheckReachable: an expired signed link is held; a late attach uses the stored probe (MESITA-4535)", async () => {
+  let fetched = 0;
+  const still = () => {
+    fetched++;
+    return Promise.resolve({ reachable: true, status: 200 as const });
+  };
+  const now = Date.parse("2026-11-21T12:00:00Z");
+  const expiredOe = Math.floor((now - 60_000) / 1000).toString(16);
+  const expired: RecheckRow = {
+    story_id: "s", purchase_id: "p",
+    mention: { source: "meta", media_url: `https://lookaside.fbsbx.com/a?oe=${expiredOe}`, mentioned_at: "2026-11-21T08:00:00Z" },
+  };
+  assertEquals(await recheckReachable(expired, true, still, now), { reachable: false, status: "held", fetched: false });
+  const late: RecheckRow = {
+    story_id: "s", purchase_id: "p",
+    mention: { source: "meta", media_url: "https://lookaside.fbsbx.com/a", mentioned_at: "2026-11-20T08:00:00Z", reachable_at_bonus: true },
+  };
+  assertEquals(await recheckReachable(late, true, still, now), { reachable: true, status: "stored", fetched: false });
+  assertEquals(fetched, 0);
+});
+
+Deno.test("runRecheckTick: a held story is not settled (MESITA-4535)", async () => {
+  let settled = 0;
+  const report = await runRecheckTick({
+    rows: [{ story_id: "s", purchase_id: "p", mention: { source: "meta", media_url: "https://x" } }],
+    check: () => Promise.resolve({ reachable: false, status: "held" as const }),
+    settle: () => {
+      settled++;
+      return Promise.resolve({ ok: true, outcome: "retry" });
+    },
+    log: () => {},
+  });
+  assertEquals(settled, 0);
+  assertEquals(report.skipped, 1);
 });

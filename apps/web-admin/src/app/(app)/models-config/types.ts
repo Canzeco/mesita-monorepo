@@ -50,6 +50,8 @@ export type ModelsConfig = {
   enricher: { model: string };
   embeddings: { model: string };
   memo: { model: string };
+  /** MESITA-4535: the Story bot's vision model (shown, kept on save). */
+  stories: { model: string };
 };
 
 // OpenAI chat catalog for the Discovery chat model. Model is stored as a free
@@ -74,6 +76,7 @@ export const DEFAULT_MODELS_CONFIG: ModelsConfig = {
   enricher: { model: "gpt-6-luna" },
   embeddings: { model: "text-embedding-3-small" },
   memo: { model: "gpt-6-luna" },
+  stories: { model: "gpt-6-luna" },
 };
 
 /** Merge a null / partial / untrusted blob into a complete, valid config. */
@@ -89,6 +92,7 @@ export function coerceModelsConfig(raw: unknown): ModelsConfig {
     enricher: { model: str(obj("enricher").model, d.enricher.model) },
     embeddings: { model: str(obj("embeddings").model, d.embeddings.model) },
     memo: { model: str(obj("memo").model, d.memo.model) },
+    stories: { model: str(obj("stories").model, d.stories.model) },
   };
 }
 
