@@ -141,13 +141,19 @@ export function GuestTabView({
   const signing = !done && !confirming;
   // The phone must not lock while the guest waits for the waiter (MESITA-4131).
   useWakeLock(signing);
+  // NO ZOMBIE BILLS (Pato, 2026-11-21, MESITA-4609: "if i press the X, ask if
+  // cancel bill. thats it. If you close the ticket, the ticket is gone"):
+  // while the bill waits for the waiter, ✕ asks "Cancel this bill?" (Cancel
+  // cancels it on the server and closes; Keep stays). Once it is done (paid,
+  // cancelled, expired) ✕ just closes, and so does it while the waiter is
+  // signing (money moving, no cancel; it resolves in seconds). It closed and
+  // left the bill waiting before (MESITA-4600, MESITA-3908).
+  const waiting = signing;
   useEffect(() => {
     if (!registerClose) return;
-    // ✕ on every screen of the bill (MESITA-4600): it closes; the bill keeps
-    // waiting on Confirm (MESITA-3908).
-    registerClose(onDone);
+    registerClose(waiting ? () => setConfirmCancel(true) : onDone);
     return () => registerClose(null);
-  }, [registerClose, onDone]);
+  }, [registerClose, onDone, waiting]);
 
   useEffect(() => {
     if (!done) return;
