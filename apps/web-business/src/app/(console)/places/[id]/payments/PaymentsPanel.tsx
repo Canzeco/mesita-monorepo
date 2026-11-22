@@ -124,7 +124,7 @@ const STANDARD: VoucherSeed[] = [
 const SPECIAL: VoucherSeed[] = [
   { key: "voucher_welcome", name: "Welcome Voucher", bps: 10000, tail: "One per guest at your place.", value: "+100%", tone: "bg-green-100 text-green-700", icon: ConfettiIcon },
   // VIP Offers (MESITA-4640): the VIP class only, one per visit.
-  { key: "voucher_vip", name: "VIP Voucher", bps: 10000, tail: "Only guests with an Instagram with more than 5,000 followers can buy it.", value: "+100%", tone: "bg-foreground text-background", icon: CrownSimpleIcon },
+  { key: "voucher_vip", name: "VIP Voucher", bps: 10000, tail: "Only guests with an Instagram with more than 5,000 followers can buy it.", value: "+100%", tone: "bg-yellow-100 text-yellow-800", icon: CrownSimpleIcon },
 ];
 
 /** The voucher rows in the place's currency; none where vouchers aren't sold. */

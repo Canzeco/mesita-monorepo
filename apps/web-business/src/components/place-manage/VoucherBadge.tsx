@@ -13,7 +13,8 @@ const MARK: Record<string, { icon: Icon; tone: string }> = {
   voucher_1000: { icon: TicketIcon, tone: "bg-green-100 text-green-700" },
   voucher_5000: { icon: TicketIcon, tone: "bg-green-100 text-green-700" },
   voucher_welcome: { icon: ConfettiIcon, tone: "bg-green-100 text-green-700" },
-  voucher_vip: { icon: CrownSimpleIcon, tone: "bg-foreground text-background" },
+  // Yellow (MESITA-4688), as on the guest's Offers page.
+  voucher_vip: { icon: CrownSimpleIcon, tone: "bg-yellow-100 text-yellow-800" },
 };
 
 export function VoucherBadge({ code }: { code: string | null }) {
