@@ -5,6 +5,11 @@
 // this universe, what the place owes each, when they were last seen; plus
 // the count and the total owed. The owner and Mesita staff only.
 //
+// MESITA-4682 (Pato: "SOMEONE BECOMES YOUR CUSTOMER IF THEY HAVE CREDIT WITH
+// YOU (EVEN IF GIFTED) … IF THEY HAVE SAVED YOUR PLACE BUT HAVEN'T VISITED
+// YET"): savers count too, and each row adds saved, visits, spent (net of
+// refunds) and vouchers, for the Customers table.
+//
 // Body: { place_id, customer?: key, before?: { owed, last_seen, key } }
 // Response: { ok, test_mode, timezone, count, owed_cents, rows, next }
 
@@ -64,6 +69,10 @@ serveJson("business-web-list-place-customers", async (req) => {
     last_seen: r.last_seen,
     guest: maskGuest(r.guest_name as string | null, r.guest_email as string | null),
     face: r.face ?? null,
+    saved: r.saved === true,
+    visits: Number(r.visits ?? 0),
+    spent_cents: Number(r.spent_cents ?? 0),
+    vouchers: Number(r.vouchers ?? 0),
   }));
   return json({
     ok: true,

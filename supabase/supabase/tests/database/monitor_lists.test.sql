@@ -9,7 +9,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(11);
+select plan(20);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-0000000a4538', 'maria.lopez@example.com'),
@@ -96,6 +96,92 @@ select is(
       null, '00000000-0000-4000-8000-000000114538') -> 'rows' -> 0 -> 'links'),
   2,
   'a voucher links to the credit rows it added');
+
+-- MESITA-4682: a split table and its two shares. Maria paid her share by
+-- card (MX$150 + MX$10 tip, MX$50 refunded); Ana paid hers outside.
+insert into public.pay_tabs (id, place_id, consumer_id, token_hash, currency, expires_at, status, bill_cents, tip_cents,
+                             origin, paid_at, split_at, split_ways)
+values ('00000000-0000-4000-8000-000000214538', '00000000-0000-4000-8000-000000014538',
+        '00000000-0000-4000-8000-0000000a4538', repeat('a', 64), 'mxn', now() + interval '1 day', 'paid', 30000, 0,
+        'waiter', now() - interval '3 hours', now() - interval '4 hours', 2);
+insert into public.pay_tabs (id, place_id, consumer_id, token_hash, currency, expires_at, status, bill_cents, tip_cents,
+                             origin, paid_at, parent_tab_id, card_bill_cents, card_tip_cents, cash_bill_cents)
+values
+  ('00000000-0000-4000-8000-000000224538', '00000000-0000-4000-8000-000000014538',
+   '00000000-0000-4000-8000-0000000a4538', repeat('b', 64), 'mxn', now() + interval '1 day', 'paid', 15000, 1000,
+   'waiter', now() - interval '3 hours', '00000000-0000-4000-8000-000000214538', 15000, 1000, 0),
+  ('00000000-0000-4000-8000-000000234538', '00000000-0000-4000-8000-000000014538',
+   '00000000-0000-4000-8000-0000000b4538', repeat('c', 64), 'mxn', now() + interval '1 day', 'paid', 15000, 0,
+   'waiter', now() - interval '3 hours', '00000000-0000-4000-8000-000000214538', 0, 0, 15000);
+insert into public.wallet_payments (id, consumer_id, place_id, amount_cents, card_cents, outside_cents, tip_cents, currency,
+                                    status, stripe_account_id, paid_at, tab_id, refunded_cents)
+values
+  ('00000000-0000-4000-8000-000000314538', '00000000-0000-4000-8000-0000000a4538', '00000000-0000-4000-8000-000000014538',
+   15000, 15000, 0, 1000, 'mxn', 'partly_refunded', 'acct_test_4538', now() - interval '3 hours',
+   '00000000-0000-4000-8000-000000224538', 5000),
+  ('00000000-0000-4000-8000-000000324538', '00000000-0000-4000-8000-0000000b4538', '00000000-0000-4000-8000-000000014538',
+   15000, 0, 15000, 0, 'mxn', 'paid', null, now() - interval '3 hours',
+   '00000000-0000-4000-8000-000000234538', 0);
+
+select is(
+  (select r ->> 'visits' from jsonb_array_elements(public.place_customers('00000000-0000-4000-8000-000000014538', false) -> 'rows') r
+    where r ->> 'customer' = public.place_customer_key('00000000-0000-4000-8000-000000014538', '00000000-0000-4000-8000-0000000a4538')),
+  '1',
+  'a split table is never a visit: Maria counts only her share');
+select is(
+  (select (r ->> 'spent_cents')::bigint from jsonb_array_elements(public.place_customers('00000000-0000-4000-8000-000000014538', false) -> 'rows') r
+    where r ->> 'customer' = public.place_customer_key('00000000-0000-4000-8000-000000014538', '00000000-0000-4000-8000-0000000a4538')),
+  11000::bigint,
+  'spent is her share plus tip, less what was refunded');
+select is(
+  (select (r ->> 'spent_cents')::bigint from jsonb_array_elements(public.place_customers('00000000-0000-4000-8000-000000014538', false) -> 'rows') r
+    where r ->> 'customer' = public.place_customer_key('00000000-0000-4000-8000-000000014538', '00000000-0000-4000-8000-0000000b4538')),
+  15000::bigint,
+  'Ana''s share paid outside counts as spent');
+select is(
+  (select (r -> 'payload' ->> 'card_cents') || '/' || (r -> 'payload' ->> 'outside_cents')
+     from jsonb_array_elements(public.place_monitor_list('00000000-0000-4000-8000-000000014538', false, 'visits') -> 'rows') r
+    where r ->> 'id' = '00000000-0000-4000-8000-000000224538'),
+  '16000/0',
+  'Visits reads how a bill was settled from the bill row, tip included');
+select is(
+  (select (r -> 'payload' ->> 'shares') || '/' || (r -> 'payload' ->> 'shares_total_cents')
+     from jsonb_array_elements(public.place_monitor_list('00000000-0000-4000-8000-000000014538', false, 'visits') -> 'rows') r
+    where r ->> 'id' = '00000000-0000-4000-8000-000000214538'),
+  '2/31000',
+  'a split table carries its shares'' count and total');
+select is(
+  (select array_agg(r ->> 'id') from jsonb_array_elements(
+     public.place_monitor_list('00000000-0000-4000-8000-000000014538', false, 'payments') -> 'rows') r),
+  array['00000000-0000-4000-8000-000000314538'],
+  'Payments lists Stripe card charges only; a bill paid outside stays on Visits');
+
+-- MESITA-4682: a save makes a customer before any visit. A quiet save does
+-- not (it was promised to stay in the browser), nor a closed account.
+insert into auth.users (id) values
+  ('00000000-0000-4000-8000-0000000c4538'), ('00000000-0000-4000-8000-0000000d4538'), ('00000000-0000-4000-8000-0000000e4538');
+insert into public.consumers (id, first_name, deleted_at) values
+  ('00000000-0000-4000-8000-0000000c4538', 'Saver', null),
+  ('00000000-0000-4000-8000-0000000d4538', 'Quiet', null),
+  ('00000000-0000-4000-8000-0000000e4538', 'Closed', now());
+insert into public.place_activity (consumer_id, place_id, kind, quiet) values
+  ('00000000-0000-4000-8000-0000000c4538', '00000000-0000-4000-8000-000000014538', 'saved', false),
+  ('00000000-0000-4000-8000-0000000d4538', '00000000-0000-4000-8000-000000014538', 'saved', true),
+  ('00000000-0000-4000-8000-0000000e4538', '00000000-0000-4000-8000-000000014538', 'saved', false);
+select is(
+  (public.place_customers('00000000-0000-4000-8000-000000014538', false) ->> 'count')::int, 3,
+  'a guest who saved the place is a customer; a quiet save or a closed account is not');
+select is(
+  (select r ->> 'saved' || '/' || (r ->> 'visits') || '/' || (r ->> 'owed_cents')
+     from jsonb_array_elements(public.place_customers('00000000-0000-4000-8000-000000014538', false) -> 'rows') r
+    where r ->> 'customer' = public.place_customer_key('00000000-0000-4000-8000-000000014538', '00000000-0000-4000-8000-0000000c4538')),
+  'true/0/0',
+  'the saver shows saved, no visits, no credit');
+select is(
+  (select count(*)::int from jsonb_array_elements(public.place_customers('00000000-0000-4000-8000-000000014538', false) -> 'rows') r
+    where (r ->> 'saved')::boolean),
+  1,
+  'only the saver reads saved');
 
 -- MESITA-4554: a guest who appears anonymous never shows a photo on a row.
 update public.consumers set avatar_url = 'https://example.com/a.jpg', appear_anonymous = true
