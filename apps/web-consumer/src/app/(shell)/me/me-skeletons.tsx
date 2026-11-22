@@ -48,10 +48,10 @@ export function IdentityCardSkeleton() {
         <Skeleton className="block h-[72px] w-[72px] rounded-full" />
       </div>
       <span className="grid w-full grid-cols-4 gap-2">
-        <Skeleton className="col-span-3 h-12 rounded-full" />
-        <Skeleton className="h-12 rounded-full" />
-        <Skeleton className="h-12 rounded-full" />
-        <Skeleton className="col-span-3 h-12 rounded-full" />
+        <Skeleton className="col-span-3 h-10 rounded-full" />
+        <Skeleton className="h-10 rounded-full" />
+        <Skeleton className="h-10 rounded-full" />
+        <Skeleton className="col-span-3 h-10 rounded-full" />
       </span>
     </div>
   );

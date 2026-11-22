@@ -665,24 +665,23 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
     // one that edits it. Support is a group on Settings (MESITA-2169).
     // MESITA-3855: Activity left the bar, its pages came to Me. MESITA-3880:
     // Share is on the bar only ("remove share button from here is redundant").
-    // MESITA-4306: Class left ("LETS REMOVE THE CLASS").
+    // MESITA-4306: Class left ("LETS REMOVE THE CLASS"); MESITA-4657: back,
+    // and Integrations moved inside Settings.
     expect(gridTitles()).toEqual([
       "Profile",
       "Instagram",
+      "Class",
       "Plan",
-      // A shortcut to Home's ❤️ Saved row (MESITA-4327), after Plan since
-      // MESITA-4329.
-      "Saved",
       "Notifications",
       "Reservations",
+      // A shortcut to Home's ❤️ Saved row (MESITA-4327).
+      "Saved",
       // Every transaction, four kinds (MESITA-3855); before Gift since
       // MESITA-3885 ("tickets before gift").
       "Tickets",
       // Share replaces Gift (MESITA-3940: "here add share instead of
       // gift"); it opens /share.
       "Share",
-      // MCP's cell became Integrations (MESITA-3954): Calendar, MCP Soon.
-      "Integrations",
       "Settings",
       // No Gift box since MESITA-4523: Send Gift is on Pay (MESITA-4520).
     ]);

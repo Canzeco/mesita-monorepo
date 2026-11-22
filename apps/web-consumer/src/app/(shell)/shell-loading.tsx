@@ -6,6 +6,7 @@ import { PlacePageSkeleton } from "@/components/consumer/overlay/DetailSkeletons
 import { PayBillSkeleton } from "@/components/consumer/pay/PayPage";
 import SearchLoading from "./(discovery)/search/loading";
 import MeLoading from "./me/(hub)/loading";
+import ClassLoading from "./me/class/loading";
 import InstagramLoading from "./me/instagram/loading";
 import PlanLoading from "./me/plan/loading";
 import ProfileLoading from "./me/profile/loading";
@@ -93,6 +94,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   sign: () => <SignLoading />,
   meProfile: () => <ProfileLoading />,
   meInstagram: () => <InstagramLoading />,
+  meClass: () => <ClassLoading />,
   mePlan: () => <PlanLoading />,
   meGift: () => <GiftLoading />,
   meNotifications: () => <NotificationsLoading />,

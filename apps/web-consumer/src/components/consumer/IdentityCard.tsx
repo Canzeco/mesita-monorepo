@@ -185,7 +185,7 @@ export function IdentityCard({
 /** Me's header pill (MESITA-4543): full width, 48px, a 1px hairline,
  *  fully rounded, the content centred in ink. */
 export const IDENTITY_PILL_CLASS =
-  "border-border bg-card text-foreground hover:bg-muted/60 flex h-12 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition";
+  "border-border bg-card text-foreground hover:bg-muted/60 flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition";
 
 /** "@handle · ~320 followers" → ["@handle", "~320 followers"]. */
 function splitInstagramLabel(label: string): [string, string | null] {
@@ -200,6 +200,7 @@ export function IdentityModules({
   nameHref,
   guestClass = "regular",
   privacy = null,
+  classHref,
 }: {
   name: string;
   avatarUrl: string | null;
@@ -210,6 +211,8 @@ export function IdentityModules({
   /** "Public", "Private" or "Privacy unknown" for a linked Instagram; null
    *  when none is linked (MESITA-4639). */
   privacy?: string | null;
+  /** Where the Class pill goes (MESITA-4657): /me/class. */
+  classHref: string;
 }) {
   // THE HANDLE ONLY (Pato, 2026-11-22, MESITA-4651: "don't mention the
   // number of followers there … only the instagram"): the count lives on Me
@@ -223,6 +226,11 @@ export function IdentityModules({
   // followers)", opens Me › Instagram) at two thirds. With no Instagram the
   // privacy cell is gone and Instagram reads "Connect Instagram" full width.
   // MESITA-4639 had full-width rows with the privacy inside the Instagram pill.
+  // THE SMALL PILLS ARE DOORS (Pato, 2026-11-22, MESITA-4657: "make regular
+  // or vip clickable"): Class opens /me/class, Public/Private opens Me ›
+  // Instagram, where its Account privacy row says how to change it
+  // (MESITA-4655). Every pill is 40px since MESITA-4657 ("make the header
+  // text boxes a bit shorter"); 48px before.
   const vip = guestClass === "vip";
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card>
@@ -249,10 +257,11 @@ export function IdentityModules({
           <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
           <span className="truncate">{name}</span>
         </PushLink>
-        <span
+        <PushLink
+          href={classHref}
           className={cn(
-            "flex h-12 min-w-0 items-center justify-center gap-1 rounded-full border px-2 text-xs font-semibold",
-            vip ? "border-neutral-950 bg-neutral-950 text-white" : "border-border bg-muted text-muted-foreground",
+            "flex h-10 min-w-0 items-center justify-center gap-1 rounded-full border px-2 text-xs font-semibold",
+            vip ? "border-neutral-950 bg-neutral-950 text-white" : "border-border bg-muted text-muted-foreground hover:bg-muted/70",
           )}
           aria-label={`Class: ${CLASS_LABEL[guestClass]}`}
           data-identity-class={guestClass}
@@ -265,10 +274,11 @@ export function IdentityModules({
             <UserRound className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
           )}
           <span className="hidden truncate @[18rem]:inline">{CLASS_LABEL[guestClass]}</span>
-        </span>
+        </PushLink>
         {privacy && (
-          <span
-            className="border-border bg-card text-foreground flex h-12 min-w-0 items-center justify-center gap-1 rounded-full border px-2 text-xs font-semibold"
+          <PushLink
+            href={instagram.href}
+            className="border-border bg-card text-foreground hover:bg-muted/60 flex h-10 min-w-0 items-center justify-center gap-1 rounded-full border px-2 text-xs font-semibold"
             aria-label={`Instagram: ${privacy}`}
             data-identity-privacy
           >
@@ -281,7 +291,7 @@ export function IdentityModules({
               <CircleHelp className="text-muted-foreground h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
             )}
             <span className="hidden truncate @[18rem]:inline">{privacy}</span>
-          </span>
+          </PushLink>
         )}
         <PushLink
           href={instagram.href}
