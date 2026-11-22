@@ -59,6 +59,8 @@ export async function tombstoneDeletedConsumer(
       instagram_handle: null,
       instagram_followers_count: null,
       instagram_verified_at: null,
+      // MESITA-4659: the sharing choice goes with the handle.
+      instagram_handle_shown: null,
     },
   });
   if (!row.ok) return { ok: false, error: `consumer_tombstone: ${row.error}` };

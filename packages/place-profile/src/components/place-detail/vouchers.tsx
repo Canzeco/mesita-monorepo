@@ -236,11 +236,10 @@ function offerStatus(
   // VIP ONLY (MESITA-4640): the bar, then the guest's own facts, objective,
   // never "you need N more" (design review).
   if (lock === "vip") {
-    const bar = `For VIP: a public Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`;
-    if (!guest?.instagramLinked) return { ok: false, text: bar };
-    const followers = guest.instagramFollowers != null ? `${guest.instagramFollowers.toLocaleString("en-US")} followers` : null;
-    const privacy = guest.instagramPrivate === false ? "Public" : guest.instagramPrivate === true ? "Private" : "Privacy unknown";
-    return { ok: false, text: `${bar} Yours: ${[followers, privacy].filter(Boolean).join(" · ")}.` };
+    // Any Instagram counts, public or private (MESITA-4659).
+    const bar = `For VIP: an Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`;
+    if (!guest?.instagramLinked || guest.instagramFollowers == null) return { ok: false, text: bar };
+    return { ok: false, text: `${bar} Yours: ${guest.instagramFollowers.toLocaleString("en-US")} followers.` };
   }
   if (can) {
     if (key === "voucher_welcome") return { ok: true, text: "Available. Once per guest at this place." };
@@ -845,7 +844,7 @@ export function VouchersPane({
 
   return (
     // ON THE GREY PAGE (MESITA-4196): two white panels, Special then Classic
-    // (MESITA-4218), and the Pay bar under them once anything is picked.
+    // (MESITA-4218), and the Pay bar under them, always (MESITA-4659).
     <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
       {GROUPS.map((g) => {
         const list = products.filter((p) => g.keys.has(p.key));
@@ -865,12 +864,19 @@ export function VouchersPane({
                 const blocked = !loading && !can;
                 const why = blocked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key], actions?.guest).text : "";
                 const n = basket[p.key] ?? 0;
+                // ASK TO LINK (MESITA-4659): a VIP row locked because the
+                // guest has no verified Instagram offers "Link Instagram"
+                // where the stepper goes, when the host can open Me › Instagram.
+                const linkIg =
+                  blocked && guestLock(p.key) === "vip" && actions?.guest != null && !actions.guest.instagramLinked
+                    ? actions.onLinkInstagram
+                    : undefined;
                 // A PRODUCT ROW (Pato, 2026-11-22, MESITA-4647): left ONE
                 // green box, black "+10%" over "BONUS"; the name and the deal
                 // with the (i); − n + at the right. A blocked row says why,
                 // with a lock, and has no stepper.
                 return (
-                  <li key={p.key} data-voucher={p.key} className={cn("flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2", blocked && dim && "opacity-50")}>
+                  <li key={p.key} data-voucher={p.key} className={cn("flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2", blocked && dim && !linkIg && "opacity-50")}>
                     <span
                       className={cn(
                         "flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl tabular-nums",
@@ -906,7 +912,18 @@ export function VouchersPane({
                         </span>
                       ) : null}
                     </span>
-                    {can && co.live ? <Stepper name={p.short} n={n} max={BASKET_MAX[p.key]} disabled={locked} onChange={(v) => setQty(p.key, v)} /> : null}
+                    {can && co.live ? (
+                      <Stepper name={p.short} n={n} max={BASKET_MAX[p.key]} disabled={locked} onChange={(v) => setQty(p.key, v)} />
+                    ) : linkIg ? (
+                      <button
+                        type="button"
+                        onClick={linkIg}
+                        className="bg-foreground text-background flex h-9 shrink-0 items-center rounded-full px-3 text-sm font-semibold"
+                        data-offer-link-instagram
+                      >
+                        Link Instagram
+                      </button>
+                    ) : null}
                   </li>
                 );
               })}
@@ -914,16 +931,31 @@ export function VouchersPane({
           </section>
         );
       })}
-      {count > 0 ? (
-        // THE PAY BAR (MESITA-4647): sticky at the bottom while anything is
-        // picked: how many, what the guest gets, the saved card, one Pay.
+      {/* THE PAY BAR (MESITA-4647), ALWAYS THERE (Pato, 2026-11-22,
+          MESITA-4659): sticky at the bottom, the same three lines whatever is
+          picked — Pay, Get immediately (the price is credit now), Get in 3
+          hours (the bonus, green) — then the saved card and one button. With
+          nothing picked every line reads $0 and the button "Select an
+          offer", disabled: an empty basket charges nothing. */}
+      {(() => {
+        const sum = totals ?? { price: 0, bonus: 0 };
+        const amount = (cents: number) => whole(pesos(cents, currency));
+        return (
         <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 flex flex-col gap-2 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-offer-pay-bar>
-          <p className="flex items-center justify-between text-base">
-            <span className="text-foreground font-semibold">
-              {count} {count === 1 ? "voucher" : "vouchers"}
-            </span>
-            {totals ? <span className="font-semibold text-[#00A85A] tabular-nums">Get {whole(pesos(totals.credit, currency))}</span> : null}
-          </p>
+          <dl className="flex flex-col gap-0.5 text-base" data-offer-summary>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-foreground font-semibold">Pay</dt>
+              <dd className="text-foreground font-semibold tabular-nums" data-offer-sum-pay>{amount(sum.price)}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-muted-foreground">Get immediately</dt>
+              <dd className="text-foreground font-semibold tabular-nums" data-offer-sum-now>{amount(sum.price)}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-muted-foreground">Get in 3 hours</dt>
+              <dd className="font-semibold text-[#00A85A] tabular-nums" data-offer-sum-bonus>+{amount(sum.bonus)}</dd>
+            </div>
+          </dl>
           {co.payCard && !co.signedOut ? (
             <p className="flex items-center justify-between text-sm" data-pay-card-line>
               <span className="text-muted-foreground truncate">
@@ -946,15 +978,16 @@ export function VouchersPane({
           ) : null}
           <button
             type="button"
-            disabled={locked || totals === null || (co.payCards !== undefined && co.payCards.state !== "ready")}
+            disabled={count === 0 || locked || totals === null || (co.payCards !== undefined && co.payCards.state !== "ready")}
             onClick={() => void pay()}
             className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-full text-base font-semibold disabled:opacity-60"
             data-offer-pay
           >
-            {locked ? "Paying…" : co.needsCard ? "Add a card" : totals ? `Pay ${whole(pesos(totals.price, currency))}` : "Pay"}
+            {count === 0 ? "Select an offer" : locked ? "Paying…" : co.needsCard ? "Add a card" : totals ? `Pay ${amount(totals.price)}` : "Pay"}
           </button>
         </div>
-      ) : null}
+        );
+      })()}
       {infoProduct ? (
         <OfferInfo product={infoProduct} line={catalog[infoProduct.key]} currency={currency} card={co.payCard} onClose={() => setInfo(null)} />
       ) : null}

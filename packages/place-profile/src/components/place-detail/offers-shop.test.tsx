@@ -67,7 +67,12 @@ describe("the Offers shop's charge (MESITA-4647)", () => {
   it("charges the whole basket once with the selected saved card; the receipt is what was sent", async () => {
     const buy = vi.fn(async (_items: VoucherBasketItem[], _card: string | null): Promise<VoucherBuyOutcome> => "paid");
     mount({ onBuyVoucher: buy, payCards: { state: "ready", cards: CARDS }, payCardId: "pm_pick" });
-    expect(q("[data-offer-pay]")).toBeNull();
+    // An empty basket charges nothing: the bar is there, its button disabled
+    // (MESITA-4659), and a tap sends no charge.
+    expect(q("[data-offer-pay]")!.disabled).toBe(true);
+    expect(q("[data-offer-pay]")!.textContent).toBe("Select an offer");
+    await pay();
+    expect(buy).not.toHaveBeenCalled();
     plus("voucher_5000");
     plus("voucher_5000");
     plus("voucher_200");

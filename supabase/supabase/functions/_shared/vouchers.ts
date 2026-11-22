@@ -14,7 +14,7 @@ import type { MoneyCode } from "./money-codes.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, VIP_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
 import { readMoneyConfig } from "./money-config.ts";
-import { readVipStanding } from "./consumer-doc.ts";
+import { readVipStanding, type VipGuestRow } from "./consumer-doc.ts";
 import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount, VISIT_STATUSES } from "./visits.ts";
 
@@ -341,7 +341,7 @@ export const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string
   paused: { code: "paused", error: "Voucher sales are paused for a moment" },
   used: { code: "welcome_used", error: "You already had your Welcome voucher here" },
   needs_visit: { code: "needs_visit", error: "One each visit: pay a bill here by card to buy it again" },
-  not_vip: { code: "not_vip", error: "The VIP voucher needs a public Instagram with more than 5,000 followers" },
+  not_vip: { code: "not_vip", error: "The VIP voucher needs an Instagram with more than 5,000 followers." },
 };
 
 /** Why a voucher cannot be bought right now, or null when it can. */
@@ -364,26 +364,57 @@ export function buyRefusal(offer: VoucherOffer, voucher: MoneyVoucherKey, accoun
   return null;
 }
 
-/** The buying guest's Class and the facts the refusal names (MESITA-4640). */
-export type VipGuest = { guest_class: string | null; followers: number | null; is_private: boolean | null } | null;
+/** The buying guest's Class, the follower count the refusal names, and when
+ *  that count was last read (MESITA-4640, MESITA-4659). */
+export type VipGuest = VipGuestRow | null;
+
+/** MESITA-4659: VIP is checked when it is claimed. The follower count must have
+ *  been read (a Sync, or the verification itself) within this long. */
+export const VIP_CHECK_MAX_AGE_MS = 3_600_000;
+
+/** When the guest's follower count was last read: the newer of the last Sync
+ *  and the verification. Null when neither is known. */
+export function vipCheckedAt(guest: VipGuest): number | null {
+  const times = [guest?.synced_at, guest?.verified_at]
+    .map((t) => (t ? Date.parse(t) : NaN))
+    .filter((t) => Number.isFinite(t));
+  return times.length ? Math.max(...times) : null;
+}
 
 /** VIP's guest gate (MESITA-4640; MESITA-3550 before it): the VIP class
- *  (consumers.guest_class, generated: a verified, public Instagram with more
- *  than VIP_MIN_FOLLOWERS followers). Null when the guest may buy it; any other
- *  voucher passes. The retired vip_until (the partner model) no longer gates
- *  it. One each new visit is the offer's (PER_VISIT_VOUCHERS). The 409 carries
- *  the caller's own followers and privacy so the ticket can say why. */
-export function vipRefusal(voucher: MoneyVoucherKey, guest: VipGuest): (BuyRefusal & { followers: number | null; isPrivate: boolean | null }) | null {
+ *  (consumers.guest_class, generated: a verified Instagram with more than
+ *  VIP_MIN_FOLLOWERS followers; privacy no longer counts, MESITA-4659), and a
+ *  follower count read within VIP_CHECK_MAX_AGE_MS of `now` (409 vip_recheck:
+ *  the Offers page Syncs, then buys). Null when the guest may buy it; any other
+ *  voucher passes. One each new visit is the offer's (PER_VISIT_VOUCHERS). The
+ *  409 carries the caller's own followers so the ticket can say why. */
+export function vipRefusal(
+  voucher: MoneyVoucherKey,
+  guest: VipGuest,
+  now: Date,
+): (BuyRefusal & { followers: number | null }) | null {
   if (voucher !== "voucher_vip") return null;
-  if (guest?.guest_class === "vip") return null;
-  return {
-    ok: false,
-    status: 409,
-    code: "not_vip",
-    error: `The VIP voucher needs a public Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers`,
-    followers: guest?.followers ?? null,
-    isPrivate: guest?.is_private ?? null,
-  };
+  const followers = guest?.followers ?? null;
+  if (guest?.guest_class !== "vip") {
+    return {
+      ok: false,
+      status: 409,
+      code: "not_vip",
+      error: `The VIP voucher needs an Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`,
+      followers,
+    };
+  }
+  const checked = vipCheckedAt(guest);
+  if (checked === null || now.getTime() - checked > VIP_CHECK_MAX_AGE_MS) {
+    return {
+      ok: false,
+      status: 409,
+      code: "vip_recheck",
+      error: "Check your Instagram again to claim VIP.",
+      followers,
+    };
+  }
+  return null;
 }
 
 /** The buying guest's Class, for vipRefusal. A closed account reads null. */

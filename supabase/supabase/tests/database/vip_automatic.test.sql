@@ -1,5 +1,6 @@
--- MESITA-3850 — VIP is automatic: a verified, PUBLIC Instagram (MESITA-4263)
--- with more than 5,000 followers (MESITA-4639), and nothing else. The class follows the count both ways, no
+-- MESITA-3850 — VIP is automatic: a verified Instagram with more than 5,000
+-- followers (MESITA-4639), and nothing else; privacy stopped counting
+-- (MESITA-4659 reverses MESITA-4263). The class follows the count both ways, no
 -- one can write it, and the manual doors are closed.
 
 begin;
@@ -52,7 +53,7 @@ select is(
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000c3850'),
   'vip',
-  '5,001 followers on a verified public Instagram is VIP (MESITA-4639)'
+  '5,001 followers on a verified Instagram is VIP (MESITA-4639)'
 );
 
 select is(
@@ -75,14 +76,14 @@ select is(
 
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000f3850'),
-  'regular',
-  'a PRIVATE Instagram is Regular, whatever its followers (MESITA-4263)'
+  'vip',
+  'a PRIVATE Instagram with more than 5,000 followers is VIP: privacy does not count (MESITA-4659)'
 );
 
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-000000103850'),
-  'regular',
-  'privacy not known is Regular until a sync says public (MESITA-4263)'
+  'vip',
+  'privacy not known is VIP over the bar too (MESITA-4659)'
 );
 
 update public.consumers set instagram_followers_count = 4000

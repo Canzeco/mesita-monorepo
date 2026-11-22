@@ -6,7 +6,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(17);
+select plan(19);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3219');
 insert into public.consumers (id, first_name) values ('00000000-0000-4000-8000-0000000a3219', 'Probe');
@@ -122,6 +122,32 @@ select throws_ok(
   '23514',
   null,
   'only a view may have no person: a like or share without one is refused'
+);
+
+-- MESITA-4659: Social shows a handle only when its guest opted in. The guest
+-- links a verified Instagram; no choice is recorded yet.
+update public.consumers
+   set instagram_handle = 'probe.3219', instagram_verified_at = now()
+ where id = '00000000-0000-4000-8000-0000000a3219';
+select ok(
+  (select bool_and(instagram_handle is null) and count(*) = 5
+     from public.place_activity_feed(500, null, '00000000-0000-4000-8000-000000003219'))
+    and (select bool_and(instagram_handle is null) and count(*) = 5
+           from public.place_activity_history_by('00000000-0000-4000-8000-000000003219', 'viewed', now() - interval '2 hours'))
+    and (select count(*) = 1 and bool_and(instagram_handle is null)
+           from public.place_activity_people('00000000-0000-4000-8000-000000003219')),
+  'no choice recorded: feed, person card and people line hide the handle'
+);
+
+update public.consumers set instagram_handle_shown = true where id = '00000000-0000-4000-8000-0000000a3219';
+select ok(
+  (select bool_and(instagram_handle = 'probe.3219')
+     from public.place_activity_feed(500, null, '00000000-0000-4000-8000-000000003219'))
+    and (select bool_and(instagram_handle = 'probe.3219')
+           from public.place_activity_history_by('00000000-0000-4000-8000-000000003219', 'viewed', now() - interval '2 hours'))
+    and (select bool_and(instagram_handle = 'probe.3219')
+           from public.place_activity_people('00000000-0000-4000-8000-000000003219')),
+  'opted in: feed, person card and people line show the handle'
 );
 
 select * from finish();

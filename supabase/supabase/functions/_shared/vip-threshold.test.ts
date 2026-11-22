@@ -16,4 +16,8 @@ Deno.test("guest_class's latest expression uses VIP_MIN_FOLLOWERS", () => {
   const m = latest.match(/instagram_followers_count,\s*0\)\s*>\s*(\d+)/);
   assert(m, "the latest guest_class expression has no follower bar");
   assertEquals(Number(m[1]), VIP_MIN_FOLLOWERS);
+  // MESITA-4659: privacy no longer counts toward VIP.
+  const expr = latest.slice(latest.search(/alter column guest_class set expression/i));
+  const body = expr.slice(0, expr.indexOf(";"));
+  assert(!/instagram_is_private/.test(body), "the latest guest_class expression still reads instagram_is_private");
 });

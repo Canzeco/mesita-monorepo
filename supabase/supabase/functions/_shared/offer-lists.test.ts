@@ -39,7 +39,6 @@ function admin(opts: { paused: boolean; handle: string | null; followers: number
         return query({
           instagram_handle: opts.handle,
           instagram_followers_count: opts.followers,
-          instagram_is_private: false,
           deleted_at: null,
         });
       }

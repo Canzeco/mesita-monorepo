@@ -3,14 +3,26 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Clock } from "lucide-react";
-import { readyClock, VouchersPane, type PlaceActions } from "@mesita/place-profile";
+import {
+  readyClock,
+  VouchersPane,
+  type PlaceActions,
+  type VoucherBasketItem,
+  type VoucherBuyOutcome,
+} from "@mesita/place-profile";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
 import { money } from "@/lib/api/wallet";
+import { apiSyncInstagram } from "@/lib/api/profile";
+import { EFError } from "@/lib/api/_invoke";
 import {
+  CONSUMER_ROUTES,
   placePath,
   payPlacePath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { toast } from "@/lib/toast";
+import { errMsg } from "@/lib/utils";
 import { goBack, navigateTo } from "@/lib/navigate";
 import { useKeptScroll } from "@/lib/use-kept-scroll";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -29,6 +41,21 @@ function creditHere(place: PlaceDetail): { label: string; ready: string; pending
     ? `Pending ${money(balance.pending_cents, currency)}${at ? ` · ready ${at}` : ""}`
     : null;
   return { label: `Ready now ${ready}${pending ? `. ${pending}` : ""}`, ready, pending };
+}
+
+/** VIP IS CHECKED AT CLAIM (Pato, 2026-11-22, MESITA-4659: "verify that
+ *  they meet the follower requirement when they claim the offer"): the
+ *  server refuses a VIP basket (`vip_recheck`) unless the follower count was
+ *  read within the last hour, so the page re-reads it first when it is older. */
+const VIP_CHECK_MAX_AGE_MS = 60 * 60 * 1000;
+
+/** When the guest's follower count was last read: the later of connect and
+ *  sync. Null when neither is known. */
+function lastInstagramCheck(profile: { instagram_synced_at?: string | null; instagram_verified_at?: string | null } | null | undefined): number | null {
+  const times = [profile?.instagram_synced_at, profile?.instagram_verified_at]
+    .map((v) => (typeof v === "string" ? Date.parse(v) : NaN))
+    .filter((t) => Number.isFinite(t));
+  return times.length ? Math.max(...times) : null;
 }
 
 function noopSubscribe() {
@@ -99,8 +126,33 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const place: PlaceDetail = vouchers.money ? { ...fetched, money: vouchers.money } : fetched;
   const credit = creditHere(place);
 
+  // A VIP basket re-reads the follower count first when the last read is over
+  // an hour old (MESITA-4659): one Instagram sync, then the buy. `slow_down`
+  // means a sync just ran, so it counts as fresh. Any other refusal shows its
+  // message and charges nothing.
+  const supabase = useBrowserSupabase();
+  const { buy } = vouchers;
+  const buyChecked = useCallback(
+    async (items: VoucherBasketItem[], cardId: string | null): Promise<VoucherBuyOutcome> => {
+      const hasVip = items.some((i) => i.voucher === "voucher_vip");
+      const last = lastInstagramCheck(profile);
+      if (hasVip && (last == null || Date.now() - last > VIP_CHECK_MAX_AGE_MS)) {
+        try {
+          await apiSyncInstagram(supabase);
+        } catch (err) {
+          if (!(err instanceof EFError && err.code === "slow_down")) {
+            toast.error(errMsg(err, "Couldn’t check your Instagram. Try again."));
+            return "failed";
+          }
+        }
+      }
+      return buy(items, cardId);
+    },
+    [buy, profile, supabase],
+  );
+
   const actions: PlaceActions = {
-    onBuyVoucher: vouchers.buy,
+    onBuyVoucher: buyChecked,
     onOfferOpened: vouchers.opened,
     onOffersDone: finish,
     buyingVoucher: vouchers.buying,
@@ -118,11 +170,13 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
         guest: {
           instagramLinked: Boolean(profile.instagram_handle),
           guestClass: profile.guest_class === "vip" ? "vip" : "regular",
-          instagramPrivate: profile.instagram_is_private ?? null,
           instagramFollowers: profile.instagram_followers_count ?? null,
         },
       }
       : {}),
+    // "Link Instagram" on a VIP row without one (MESITA-4659): a push to Me ›
+    // Instagram; Back returns here.
+    onLinkInstagram: () => navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" }),
   };
 
   return (

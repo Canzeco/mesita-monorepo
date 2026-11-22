@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(215);
+select plan(216);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -663,10 +663,26 @@ select ok(
   (select generation_expression from information_schema.columns
     where table_schema = 'public' and table_name = 'consumers'
       and column_name = 'guest_class') like '%> 5000%'
+    and (select generation_expression from information_schema.columns
+    where table_schema = 'public' and table_name = 'consumers'
+      and column_name = 'guest_class') not like '%instagram_is_private%'
     and (select column_default from information_schema.columns
     where table_schema = 'public' and table_name = 'consumers'
       and column_name = 'plan') like '''free''%',
-  'consumers.guest_class follows the more-than-5,000-follower rule (MESITA-4639) and consumers.plan defaults to free (MESITA-2553)'
+  'consumers.guest_class follows the more-than-5,000-follower rule (MESITA-4639), privacy does not count (MESITA-4659), and consumers.plan defaults to free (MESITA-2553)'
+);
+
+-- MESITA-4659: "Show my handle on Mesita" is nullable with no default (null =
+-- no choice = hidden), and the one rule that reads it is service_role only.
+select ok(
+  (select is_nullable = 'YES' and column_default is null and data_type = 'boolean'
+     from information_schema.columns
+    where table_schema = 'public' and table_name = 'consumers'
+      and column_name = 'instagram_handle_shown')
+    and not has_function_privilege('anon', 'public.place_shown_handle(public.consumers)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.place_shown_handle(public.consumers)', 'EXECUTE')
+    and has_function_privilege('service_role', 'public.place_shown_handle(public.consumers)', 'EXECUTE'),
+  'consumers.instagram_handle_shown is a nullable boolean with no default; place_shown_handle is service_role only (MESITA-4659)'
 );
 
 select ok(

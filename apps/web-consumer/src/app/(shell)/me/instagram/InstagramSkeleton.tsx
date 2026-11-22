@@ -36,7 +36,7 @@ export function InstagramSkeleton() {
 
       <div className="flex flex-col gap-4">
         {connected && <ConnectedAccount pending />}
-        <WhyConnect connected={connected} />
+        <WhyConnect />
         {!connected && <ConnectCardSkeleton />}
 
       </div>

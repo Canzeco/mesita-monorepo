@@ -10,6 +10,7 @@ import {
   basketUnits,
   buyRefusal,
   guestReason,
+  VIP_CHECK_MAX_AGE_MS,
   vipRefusal,
   CATALOG_LINES,
   guestBlocksFrom,
@@ -109,16 +110,38 @@ Deno.test("VIP is back (MESITA-4640), Welcome is back (MESITA-4645)", () => {
   assertEquals(parseBasket({ items: [{ voucher: "voucher_vip", qty: 2 }] }).ok, false);
 });
 
+const NOW = new Date("2026-11-22T12:00:00Z");
+const MIN_AGO = (m: number) => new Date(NOW.getTime() - m * 60_000).toISOString();
+
 Deno.test("vipRefusal: only the VIP class buys the VIP voucher; the 409 names the guest's own facts", () => {
-  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, is_private: false }), null);
-  const regular = vipRefusal("voucher_vip", { guest_class: "regular", followers: 2026, is_private: false });
+  assertEquals(VIP_CHECK_MAX_AGE_MS, 3_600_000);
+  // A count read 10 minutes ago passes.
+  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: MIN_AGO(10), verified_at: MIN_AGO(5000) }, NOW), null);
+  const regular = vipRefusal("voucher_vip", { guest_class: "regular", followers: 2026, synced_at: MIN_AGO(1), verified_at: MIN_AGO(1) }, NOW);
   assertEquals(regular?.status, 409);
   assertEquals(regular?.code, "not_vip");
+  assertEquals(regular?.error, "The VIP voucher needs an Instagram with more than 5,000 followers.");
   assertEquals(regular?.followers, 2026);
-  assertEquals(regular?.isPrivate, false);
-  assertEquals(vipRefusal("voucher_vip", null)?.code, "not_vip");
+  assertEquals(vipRefusal("voucher_vip", null, NOW)?.code, "not_vip");
   // Any other voucher passes, whatever the Class.
-  assertEquals(vipRefusal("voucher_200", { guest_class: "regular", followers: 0, is_private: true }), null);
+  assertEquals(vipRefusal("voucher_200", { guest_class: "regular", followers: 0, synced_at: null, verified_at: null }, NOW), null);
+});
+
+Deno.test("vipRefusal: VIP is checked at claim, the count read within the hour (MESITA-4659)", () => {
+  // A stale count: 409 vip_recheck, whatever the class says.
+  const stale = vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: MIN_AGO(61), verified_at: MIN_AGO(5000) }, NOW);
+  assertEquals(stale?.status, 409);
+  assertEquals(stale?.code, "vip_recheck");
+  assertEquals(stale?.error, "Check your Instagram again to claim VIP.");
+  assertEquals(stale?.followers, 6000);
+  // Never read at all: recheck.
+  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: null, verified_at: null }, NOW)?.code, "vip_recheck");
+  // A fresh verification after an old Sync counts: the newer of the two.
+  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: MIN_AGO(5000), verified_at: MIN_AGO(3) }, NOW), null);
+  // Exactly one hour old still passes.
+  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: MIN_AGO(60), verified_at: null }, NOW), null);
+  // Privacy is not an input any more: the guest shape has no privacy field.
+  assertEquals("is_private" in ({ guest_class: "vip", followers: 6000, synced_at: null, verified_at: null }), false);
 });
 
 Deno.test("VIP is one each new visit (MESITA-4640)", () => {

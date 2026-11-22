@@ -81,8 +81,12 @@ serveJson("consumer-web-express-pay-setup", async (req) => {
   }
   // No account that can charge: refused before any Stripe call.
   if (!account || !account.charges_enabled || account.livemode !== livemode) return no("no_account");
-  // VIP's own gate, the same as the buy door's (MESITA-4640).
-  if (kinds.includes("voucher_vip") && vipRefusal("voucher_vip", await readVipGuest(admin, user.id))) return no("not_vip");
+  // VIP's own gate, the same as the buy door's (MESITA-4640): the class and a
+  // follower count read within the hour (MESITA-4659: not_vip or vip_recheck).
+  if (kinds.includes("voucher_vip")) {
+    const vip = vipRefusal("voucher_vip", await readVipGuest(admin, user.id), new Date());
+    if (vip) return no(vip.code);
+  }
 
   const key = paymentsStripeKey();
   const publishableKey = paymentsPublishableKey(livemode);

@@ -1,11 +1,12 @@
 -- MESITA-3213 — Business Views names guests to a place's owner. It may name them
--- only as far as Social does, and only to the server.
+-- only as far as Social does, and only to the server. MESITA-4659: the handle
+-- only when the guest opted in (instagram_handle_shown = true).
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(8);
+select plan(10);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3213'),
@@ -44,16 +45,31 @@ select results_eq(
   'newest first, across both tables; no closed account and no quiet save'
 );
 
+select ok(
+  (select instagram_handle is null and instagram_followers_count = 1200 and not anonymous and instagram
+     from public.place_views_log('00000000-0000-4000-8000-000000003213') where first_name = 'Public' and kind = 'viewed'),
+  'no choice recorded: the handle is hidden, the guest is still named (MESITA-4659)'
+);
+
+update public.consumers set instagram_handle_shown = false where id = '00000000-0000-4000-8000-0000000a3213';
+select is(
+  (select instagram_handle from public.place_views_log('00000000-0000-4000-8000-000000003213') where first_name = 'Public' and kind = 'viewed'),
+  null,
+  'a guest who chose to hide their handle: hidden (MESITA-4659)'
+);
+
+update public.consumers set instagram_handle_shown = true where id = '00000000-0000-4000-8000-0000000a3213';
 select is(
   (select instagram_handle from public.place_views_log('00000000-0000-4000-8000-000000003213') where first_name = 'Public' and kind = 'viewed'),
   'public_one',
-  'a public guest with a verified Instagram shows their handle'
+  'a guest who opted in shows their handle (MESITA-4659)'
 );
 
+update public.consumers set instagram_handle_shown = true where id = '00000000-0000-4000-8000-0000000b3213';
 select ok(
   (select avatar_url is null and instagram_handle is null and instagram_followers_count is null and anonymous and not instagram
      from public.place_views_log('00000000-0000-4000-8000-000000003213') where first_name = 'Private'),
-  'Public profile off: no photo, no handle, no followers'
+  'Public profile off: no photo, no handle, no followers, even opted in'
 );
 
 select is(

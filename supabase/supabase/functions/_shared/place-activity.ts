@@ -97,15 +97,18 @@ export function maskHandle(handle: string): string {
 }
 
 /** Whether a viewer sees other members' full handles (MESITA-2594): only
- *  with their own Instagram verified and their profile public. */
+ *  with their own Instagram verified, their profile public and (MESITA-4659)
+ *  their own handle shown on Mesita. Give to get. */
 export function seesHandles(
   viewer: {
     instagram_verified_at: string | null;
     appear_anonymous: boolean | null;
+    instagram_handle_shown: boolean | null;
   } | null,
 ): boolean {
   return viewer != null && viewer.instagram_verified_at != null &&
-    viewer.appear_anonymous !== true;
+    viewer.appear_anonymous !== true &&
+    viewer.instagram_handle_shown === true;
 }
 
 /** "@Perdon " → "perdon", or null. */
