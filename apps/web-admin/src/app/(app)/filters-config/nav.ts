@@ -1,7 +1,7 @@
 import { CompassIcon } from "@phosphor-icons/react/dist/ssr";
 
-// Discovery — ONE sidebar entry, ONE page (MESITA-2327): five pipeline boxes,
-// no subpages. The prefix is frozen: /filters-config. Every retired subpage
+// Discovery — ONE sidebar entry, ONE page (MESITA-2327): six sections under a
+// jump row, no subpages. The prefix is frozen: /filters-config. Every retired subpage
 // (Modes, Signals, Sources, Matrix, Catalog, Chat, modules) redirects here
 // in one hop (next.config.ts).
 export const FILTERS_PARENT = {

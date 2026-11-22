@@ -1,6 +1,7 @@
 import { ConfigPageLayout } from "@/components/admin-ui";
 import type { ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { getDiscoveryConfig } from "./actions";
+import { JumpRow } from "./JumpRow";
 import { DEFAULT_CONFIG, type DiscoveryConfig } from "./catalog";
 import {
   DiscoverySaveScope,
@@ -12,10 +13,10 @@ import {
   SocialDiscoveryBox,
 } from "./PipelineBoxes";
 
-// Discovery: ONE page, no subpages (MESITA-2327). Five cards since
-// MESITA-4454: How places are ranked (read only) · Ranking · Mixing · Map
-// display · Searchbars (the guest bar and the Admin & Business bar in one
-// card, MESITA-4463).
+// Discovery: ONE page, no subpages (MESITA-2327). Numbers first since
+// MESITA-4694 (Pato: "make it cleaner … simpler"): a pinned jump row, then
+// the sections in the order the guest meets them: Home (Ranking, Mixing,
+// Social), then Search (Map, Search bars), and last the explanation, closed.
 // Consumer Deep (Soon) and Premier Prices left the page (MESITA-3828); their
 // stored settings stay on the config blob.
 export default async function DiscoveryPage() {
@@ -28,16 +29,17 @@ export default async function DiscoveryPage() {
   return (
     <ConfigPageLayout
       title="Discovery"
-      description="How every place search in Mesita finds and ranks places. Each card saves only its own settings. Family membership lives on Atlas."
+      description="How Mesita finds and ranks places. Each section saves on its own."
     >
+      <JumpRow />
       <DiscoverySaveScope initialUpdatedAt={seed.initialUpdatedAt}>
         <div className="flex flex-col gap-6">
-          <HowRankedCard />
           <RankingBox {...seed} />
           <MixingBox {...seed} />
+          <SocialDiscoveryBox {...seed} />
           <MapDisplayBox {...seed} />
           <SearchbarsBox {...seed} />
-          <SocialDiscoveryBox {...seed} />
+          <HowRankedCard />
         </div>
       </DiscoverySaveScope>
     </ConfigPageLayout>
