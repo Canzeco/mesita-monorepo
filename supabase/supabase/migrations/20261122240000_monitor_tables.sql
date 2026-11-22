@@ -6,9 +6,12 @@
 -- 1. place_visit_rows: the one rule for which bills are Visits (the desk's
 --    bills, MESITA-4487). Visits, Customers' visit counts and the Visits
 --    analytics all read it.
--- 2. place_monitor_list: Visits carries how each bill was settled from the
---    bill row (card, credit, outside = cash or the place's own terminal) and
---    marks split tables; Payments lists card charges only.
+-- 2. place_monitor_list: Visits carries how each bill was settled, read from
+--    the bill row rather than summed over payments (replaces MESITA-4684's
+--    20261122230000 sums): card, credit and outside (cash or the place's own
+--    terminal) are the bill's parts, the tip stands apart (Pato: "the tip is
+--    another type of payment"); split tables are marked. Payments lists card
+--    charges only.
 -- 3. place_customers: a customer is a guest with any money row here (gifted
 --    credit included) or a save of the place (quiet saves excluded: they
 --    were promised to stay in the browser; closed accounts excluded). Each
@@ -100,9 +103,9 @@ begin
              'status', t.status,
              'bill_cents', t.bill_cents,
              'tip_cents', t.tip_cents,
-             'card_cents', t.card_bill_cents + t.card_tip_cents,
+             'card_cents', t.card_bill_cents,
              'credit_cents', t.credit_cents,
-             'outside_cents', t.cash_bill_cents + t.cash_tip_cents,
+             'outside_cents', t.cash_bill_cents,
              'split', t.split_at is not null,
              'shares', t.shares,
              'shares_total_cents', t.shares_total_cents,

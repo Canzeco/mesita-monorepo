@@ -22,21 +22,39 @@ import {
 } from "@/lib/monitor";
 import { voucherName } from "@/lib/ticket-desk";
 import { HeaderActions } from "@/components/shell/HeaderActions";
+import { CUSTOMER_COLUMNS, MONITOR_COLUMNS, TABLE_KINDS, guestText, safeCell, type TableKind } from "@/lib/monitor-columns";
 
 const MAX = 5000;
 
 export type ExportKind = MonitorKind | "customers" | "views";
 
 function csv(rows: string[][]): string {
-  const cell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  // A cell a spreadsheet would run as a formula is quoted first (MESITA-4682).
+  const cell = (raw: string) => {
+    const v = safeCell(raw);
+    return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  };
   return "﻿" + rows.map((r) => r.map(cell).join(",")).join("\n");
 }
 
-function pesos(cents: number): string {
-  return (cents / 100).toFixed(2);
+/** A table's CSV: the same columns the screen shows (MESITA-4682). */
+async function tableRows(placeId: string, kind: TableKind, filter: MonitorFilter): Promise<string[][]> {
+  const cols = MONITOR_COLUMNS[kind];
+  const out: string[][] = [[kind === "gifts" ? "From" : "Guest", "Customer", ...cols.map((c) => (c.group ? `${c.group} ${c.label}` : c.label))]];
+  let before: MonitorCursor = null;
+  do {
+    const r = await listMonitor(placeId, kind, filter, before);
+    if (!r.ok) throw new Error(r.error);
+    for (const row of r.data.rows) {
+      out.push([guestText(row), row.customer ? customerLabel(row.customer) : "", ...cols.map((c) => c.text(row, r.data.timezone))]);
+    }
+    before = r.data.next;
+  } while (before && out.length <= MAX);
+  return out;
 }
 
 async function monitorRows(placeId: string, kind: MonitorKind, filter: MonitorFilter): Promise<string[][]> {
+  if (TABLE_KINDS.includes(kind)) return tableRows(placeId, kind as TableKind, filter);
   const out: string[][] = [["ID", "Date", "Guest", "Customer", "Status", "Detail", "Amount", "Related"]];
   let before: MonitorCursor = null;
   do {
@@ -60,12 +78,12 @@ async function monitorRows(placeId: string, kind: MonitorKind, filter: MonitorFi
 }
 
 async function customerRows(placeId: string, customer: string | null): Promise<string[][]> {
-  const out: string[][] = [["Customer", "Guest", "Owed (MXN)", "Last seen"]];
+  const out: string[][] = [["Customer", "Guest", ...CUSTOMER_COLUMNS.map((c) => c.label)]];
   let before: CustomerCursor = null;
   do {
     const r = await listCustomers(placeId, customer, before);
     if (!r.ok) throw new Error(r.error);
-    for (const c of r.data.rows) out.push([customerLabel(c.customer), c.guest, pesos(c.owed_cents), c.last_seen]);
+    for (const c of r.data.rows) out.push([customerLabel(c.customer), c.guest, ...CUSTOMER_COLUMNS.map((col) => col.text(c, r.data.timezone))]);
     before = r.data.next;
   } while (before && out.length <= MAX);
   return out;

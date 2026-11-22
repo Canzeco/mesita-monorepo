@@ -72,6 +72,12 @@ export type CustomerRow = {
   last_seen: string;
   guest: string;
   face?: { avatar_url: string | null; vip: boolean; instagram: boolean } | null;
+  /** MESITA-4682: the Customers table's columns, computed by the server. */
+  saved: boolean;
+  visits: number;
+  /** Paid bills and tips, less what was refunded. */
+  spent_cents: number;
+  vouchers: number;
 };
 export type CustomerCursor = { owed: number; last_seen: string; key: string } | null;
 export type CustomersPage = {

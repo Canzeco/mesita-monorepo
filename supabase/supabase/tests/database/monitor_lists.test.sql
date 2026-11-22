@@ -142,8 +142,8 @@ select is(
   (select (r -> 'payload' ->> 'card_cents') || '/' || (r -> 'payload' ->> 'outside_cents')
      from jsonb_array_elements(public.place_monitor_list('00000000-0000-4000-8000-000000014538', false, 'visits') -> 'rows') r
     where r ->> 'id' = '00000000-0000-4000-8000-000000224538'),
-  '16000/0',
-  'Visits reads how a bill was settled from the bill row, tip included');
+  '15000/0',
+  'Visits reads how a bill was settled from the bill row; the tip stands apart');
 select is(
   (select (r -> 'payload' ->> 'shares') || '/' || (r -> 'payload' ->> 'shares_total_cents')
      from jsonb_array_elements(public.place_monitor_list('00000000-0000-4000-8000-000000014538', false, 'visits') -> 'rows') r

@@ -1,27 +1,22 @@
 "use client";
 
 // Monitor › Customers (MESITA-4538, Pato: "it counts the people and how much
-// you owe them … relational"). One line on top, then one row per guest with
-// money rows here: what the place owes them and when they were last seen, and
-// chips to their own Views, Visits, Vouchers, Gifts and Payments.
+// you owe them"; a table since MESITA-4682, Pato: "THE CUSTOMERS PAGE CAN DO
+// BE A TABLE"). One line on top, then one row per guest who saved the place,
+// visited, paid, bought or holds credit here (gifted credit too): Saved ·
+// Visits · Spent · Credit · Vouchers · Last seen. The name opens their Views;
+// the Visits and Vouchers figures open those pages filtered to them.
 
 import { useState } from "react";
 import Link from "next/link";
 import { listCustomers } from "@/lib/business-api";
-import { customerLabel, customerListHref, EMPTY, money, when, type CustomersPage } from "@/lib/monitor";
+import { customerLabel, customerListHref, EMPTY, money, type CustomersPage } from "@/lib/monitor";
+import { CUSTOMER_COLUMNS } from "@/lib/monitor-columns";
+import { MonitorTable } from "./MonitorTable";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
-import { CHIP, FilterBanner, ROW } from "./MonitorList";
+import { FilterBanner } from "./MonitorList";
 import { GuestAvatar } from "./GuestAvatar";
-import { UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
-
-const PAGES = [
-  ["views", "Views"],
-  ["visits", "Visits"],
-  ["vouchers", "Vouchers"],
-  ["gifts", "Gifts"],
-  ["money", "Payments"],
-] as const;
 
 export function CustomersList({ placeId, initial, customer }: { placeId: string; initial: CustomersPage; customer: string | null }) {
   const [page, setPage] = useState(initial);
@@ -49,33 +44,31 @@ export function CustomersList({ placeId, initial, customer }: { placeId: string;
       )}
       {page.rows.length === 0 ? (
         <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">
-          {customer ? "This guest has no visits, payments or credit here yet." : EMPTY.customers}
+          {customer ? "This guest has not saved, visited or bought anything here yet." : EMPTY.customers}
         </p>
       ) : (
-        <ul className="divide-border divide-y">
-          {page.rows.map((c) => (
-            <li key={c.customer} className={ROW}>
-              <GuestAvatar face={c.face ?? null} size={32} />
-              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="truncate font-medium">{c.guest}</span>
-                <span className="text-muted-foreground text-sm">Last seen {when(c.last_seen, page.timezone)}</span>
-                <span className={cn(CHIP, "gap-1")}>
-                  <UserCircleIcon size={12} weight="bold" aria-hidden />
-                  {customerLabel(c.customer)}
-                </span>
-                {PAGES.map(([p, label]) => (
-                  <Link key={p} href={customerListHref(placeId, p, c.customer)} className={CHIP}>
-                    {label}
-                  </Link>
-                ))}
-              </div>
-              <div className="text-right">
-                <p className="font-semibold whitespace-nowrap tabular-nums">{money(c.owed_cents)}</p>
-                <p className="text-muted-foreground text-xs">owed</p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <MonitorTable
+          placeId={placeId}
+          rows={page.rows}
+          rowKey={(c) => c.customer}
+          guestLabel="Guest"
+          guest={(c) => (
+            <span className="flex items-center gap-2.5">
+              <GuestAvatar face={c.face ?? null} size={28} />
+              <span className="flex min-w-0 flex-col">
+                <Link
+                  href={customerListHref(placeId, "views", c.customer)}
+                  className="max-w-[12rem] truncate font-medium underline-offset-2 hover:underline"
+                >
+                  {c.guest}
+                </Link>
+                <span className="text-muted-foreground text-xs">{customerLabel(c.customer)}</span>
+              </span>
+            </span>
+          )}
+          columns={CUSTOMER_COLUMNS}
+          timezone={page.timezone}
+        />
       )}
       {error ? <p className={cn(ERROR_BOX_CLASS, "mx-5 my-3 sm:mx-6")}>{error}</p> : null}
       {page.next ? (
