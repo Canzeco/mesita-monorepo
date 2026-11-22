@@ -13,6 +13,9 @@ import {
 import {
   ArrowLeftRight,
   BadgeCheck,
+  ExternalLink,
+  Globe,
+  Lock,
   Check,
   Copy,
   Eye,
@@ -429,6 +432,7 @@ export function ConnectedAccount({
   return (
     <SettingsGroup>
       <CurrentConnectionRow pending={pending} />
+      <AccountPrivacyRow />
       {asking ? (
         <div className="px-4 pt-1 pb-4">
           <PhotoQuestion onAnswer={(y) => void answer(y)} busy={saving} />
@@ -1006,10 +1010,64 @@ function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
         )}
         <p className="text-muted-foreground type-label truncate">
           {followersLabel(igFollowers)}
-          {` · ${instagramPrivacyLabel(profile?.instagram_is_private)}`}
           {ago ? ` · Updated ${ago}` : ""}
         </p>
       </div>
+    </div>
+  );
+}
+
+// ACCOUNT PRIVACY (Pato, MESITA-4655: "public or private instagram must be
+// clearer to understand and enable to configure there"). Its own row with a
+// globe or a lock, not one word in the grey line, where it read like
+// Mesita's own sharing switch. Configuring it is Instagram's job: Meta offers
+// no API to change it, and a value typed here would let anyone claim the
+// public account VIP needs (MESITA-4639). So the button opens Instagram's own
+// setting and Sync reads the new value back.
+const INSTAGRAM_PRIVACY_URL =
+  "https://www.instagram.com/accounts/who_can_see_your_content/";
+
+function AccountPrivacyRow() {
+  const profile = useServerProfile();
+  const label = instagramPrivacyLabel(profile?.instagram_is_private);
+  const title =
+    label === "Public"
+      ? "Public account"
+      : label === "Private"
+        ? "Private account"
+        : "Account privacy unknown";
+  const line =
+    label === "Public"
+      ? "Anyone can see your Instagram. VIP needs this."
+      : label === "Private"
+        ? "VIP needs a public account. Switch it in Instagram, then Sync."
+        : "Tap Sync to read it from Instagram.";
+  return (
+    <div
+      className="border-border/60 mx-4 mb-3 flex items-center gap-3 rounded-xl border p-3"
+      data-instagram-privacy={label}
+    >
+      <IconChip>
+        {label === "Private" ? (
+          <Lock className="h-[18px] w-[18px]" />
+        ) : (
+          <Globe className="h-[18px] w-[18px]" />
+        )}
+      </IconChip>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{title}</span>
+        <span className="text-muted-foreground type-label block">{line}</span>
+      </span>
+      <a
+        href={INSTAGRAM_PRIVACY_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="bg-muted text-foreground hover:bg-muted/70 type-label flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 font-semibold transition"
+        data-instagram-privacy-change
+      >
+        Open Instagram
+        <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+      </a>
     </div>
   );
 }
