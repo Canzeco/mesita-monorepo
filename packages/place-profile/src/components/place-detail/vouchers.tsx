@@ -897,7 +897,11 @@ export function VouchersPane({
                     <span
                       className={cn(
                         "flex min-h-12 shrink-0 flex-col items-center justify-center rounded-xl px-2.5 py-2 tabular-nums",
-                        blocked ? "bg-muted text-muted-foreground" : "bg-[#00D66F] text-neutral-950",
+                        // Each voucher's own colour: VIP yellow, the rest green
+                        // (MESITA-4688); VIP keeps it while locked, the row dims.
+                        blocked && p.key !== "voucher_vip"
+                          ? "bg-muted text-muted-foreground"
+                          : ((VOUCHER_TONE as Record<string, string>)[p.key] ?? "bg-[#00D66F] text-neutral-950"),
                       )}
                       aria-hidden
                       data-offer-bonus

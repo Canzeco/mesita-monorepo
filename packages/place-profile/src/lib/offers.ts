@@ -50,8 +50,9 @@ export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
   voucher_200: GREEN,
   voucher_1000: GREEN,
   voucher_5000: GREEN,
-  // Every offer green (MESITA-4181); the crown tells VIP apart (MESITA-4640).
-  voucher_vip: GREEN,
+  // Every offer green (MESITA-4181) but VIP: YELLOW (Pato, 2026-11-22,
+  // MESITA-4688: "VIP voucher must be yellow"), black ink, the crown on it.
+  voucher_vip: "bg-[#FFD60A] text-neutral-950",
 };
 // THE WORDS (Pato, 2026-11-17, MESITA-4219): Classic, the best standard
 // voucher, leads; every pill reads "+N% Bonus" on every screen (the "+"
