@@ -1,12 +1,11 @@
 "use client";
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { Camera, Check, CircleCheck, Clock, Copy, CreditCard, Gift, Infinity as InfinityIcon, Lock, PartyPopper, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { Camera, Check, CircleCheck, Clock, Copy, CreditCard, Gift, Infinity as InfinityIcon, Lock, PartyPopper, Repeat, Repeat1, Ticket, Utensils, Wallet, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
-import type { ExpressPayArgs, PlaceActions, StoryRefused, VoucherBuyOutcome } from "../../actions";
+import type { PlaceActions, StoryRefused, VoucherBuyOutcome } from "../../actions";
 import { STORY_GATE_LINE, type StoryCheckAnswer } from "../../story-check";
 import { cn } from "../../lib/format";
 import {
@@ -656,15 +655,16 @@ function NeedBox({ needs }: { needs: Need[] }) {
   );
 }
 
-/** "received" (MESITA-4384): express pay where Stripe took the money and the
- *  settle answer was slow; the voucher lands within a few minutes. */
+/** How a card charge ended, as the ticket's Credits and Receipt draw it. */
 type Receipt = {
-  outcome: "paid" | "processing" | "received";
+  outcome: "paid" | "processing";
   pay: string;
   bonus: string | null;
   readyAt: string | null;
-  /** Express pay's wallet, for "Paid with Apple Pay" (MESITA-4384). */
-  payWith?: "apple_pay" | "google_pay" | null;
+  /** The saved card it was charged to. */
+  card: { label: string; last4: string } | null;
+  /** When the charge answered (ISO). */
+  at: string;
 };
 
 /** What a Pay ends in: a receipt, a Story refusal (back to the check), or
@@ -706,9 +706,6 @@ type Offer = {
   /** The guest's default is the card and one is ready: it leads the pay box (MESITA-4529). */
   cardFirst: boolean;
   onPay: () => Promise<PayResult>;
-  /** Apple Pay / Google Pay (MESITA-4384): the host's button for this
-   *  offer, or null (signed out, admin's preview, a locked offer). */
-  express: ((a: Omit<ExpressPayArgs, "items" | "onDone"> & { onReceipt: (r: Receipt) => void }) => ReactNode) | null;
   /** The host's offer_sheet_opened (MESITA-4375): called once a sheet's
    *  cards are known, with whether a saved card is ready. */
   onOpened: () => void;
@@ -758,11 +755,11 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
         ? { label: "Grew your account? Sync Instagram", onClick: actions.onLinkInstagram, quiet: true }
         : null;
     const bonusAmount = line ? pesos(line.bonus_cents, currency) : null;
-    const receiptFor = (outcome: Receipt["outcome"], payWith: Receipt["payWith"]): Receipt => {
+    const receiptFor = (outcome: Receipt["outcome"]): Receipt => {
       // Story's bonus waits 3 hours from payment (MESITA-4296).
       const wait = line ? line.available_after_sec : p.key === "voucher_story" ? 3 * 3600 : null;
       const readyAt = wait !== null ? new Date(Date.now() + wait * 1000).toISOString() : null;
-      return { outcome, pay, bonus: bonusAmount ? whole(bonusAmount) : null, readyAt, payWith };
+      return { outcome, pay, bonus: bonusAmount ? whole(bonusAmount) : null, readyAt, card: payCard, at: new Date().toISOString() };
     };
     return {
       pay,
@@ -804,16 +801,8 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
         const out = await actions?.onBuyVoucher?.([{ voucher: p.key, qty: 1 }], signedOut ? null : payCard?.id ?? null);
         if (isStoryRefused(out)) return out;
         if (out !== "paid" && out !== "processing") return null;
-        return receiptFor(out, null);
+        return receiptFor(out);
       },
-      express: actions?.renderExpressPay && live && can && !signedOut && p.key !== "voucher_story"
-        ? (a) =>
-          actions.renderExpressPay?.({
-            ...a,
-            items: [{ voucher: p.key, qty: 1 }],
-            onDone: (d) => a.onReceipt(receiptFor(d.outcome, d.payWith)),
-          })
-        : null,
     };
   };
   return { loading, ...rules, catalog, currency, offer, checkStory };
@@ -1134,293 +1123,315 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
   );
 }
 
-/** THE PAY SHEET (Pato, 2026-11-17, MESITA-4224: "simply click a button and
- *  the offer you select opens a modal and in that modal you click to pay"):
- *  a bottom sheet in the app card (Pay in thumb reach). IN BOXES ON GREY
- *  since MESITA-4303 (D2): the header, then the deal, How it works, Good to
- *  know, and the card with Pay, each its own white box, in that order. A
- *  locked offer shows its reason where Pay goes. Paid, it turns into a
- *  receipt. Escape or a tap outside closes it; focus returns to the row that
- *  opened it. Story opens its own page when the host has one (MESITA-4303);
- *  here it is only a preview (admin) or a host without the page.
- *  decision: a sheet in the package, against apps/web-consumer › Overlays
- *  (MESITA-4094, pages not sheets): Pato's live call in the design review. */
-function PaySheet({
+/** The four steps of a voucher's ticket (MESITA-4630). "Credits" is the
+ *  stored voucher ticket's word (MESITA-4627: Pay · Credits · Wait 3 hours ·
+ *  Bonus); the bought voucher's ticket picks up where this one ends. */
+export const OFFER_TICKET_STEPS = ["Offer", "Pay", "Credits", "Receipt"] as const;
+
+/** The vouchers bought on a ticket. Story keeps its own page (MESITA-4303). */
+export const OFFER_TICKET_KEYS: readonly MoneyVoucherKey[] = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome"];
+
+/** One step of the ticket, handed to the host's frame (the Pay Bill ticket's
+ *  header, body and footer, which live in the host). */
+export type OfferTicketFrame = {
+  /** 1 Offer · 2 Pay · 3 Credits · 4 Receipt. */
+  step: 1 | 2 | 3 | 4;
+  /** The strip lights every step, a check on Receipt. */
+  allDone: boolean;
+  title: string;
+  /** ← one step back; null where there is none. */
+  onBack: (() => void) | null;
+  /** The card is being charged: ✕ and ← do nothing. */
+  busy: boolean;
+  /** The charge answered: ✕ finishes like Done. */
+  paid: boolean;
+  body: ReactNode;
+  /** The step's one dark button; null when the step has none (a locked
+   *  offer with nothing that unlocks it). */
+  primary: { label: string; disabled: boolean; busy: boolean; onClick: () => void } | null;
+};
+
+/** A row of the receipt: a label at the left, the value at the right. */
+function ReceiptRow({ label, value, green }: { label: string; value: ReactNode; green?: boolean }) {
+  return (
+    <div className="flex min-h-11 items-center justify-between gap-3 px-4 text-base">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={cn("text-right font-semibold tabular-nums", green ? "text-[#00A85A]" : "text-foreground")}>{value}</span>
+    </div>
+  );
+}
+
+/** THE VOUCHER TICKET (Pato, 2026-11-21, MESITA-4630: "these tickets for
+ *  vouchers must also be like multi steps, kinda like the visit tickets …
+ *  full page … with an X at the top right"; "DON'T INCLUDE MULTIPLE PAYMENT
+ *  METHODS HERE. ONLY INCLUDE THE SAVED PAYMENT METHOD IN WALLET"). Pato's six
+ *  candidates (Overview · Pay · Credits · Wait · Bonus · Receipt) fold into
+ *  four: the Wait and the Bonus are one line on Credits, since nobody waits
+ *  three hours on a screen.
+ *
+ *    1 Offer ── Continue ──► 2 Pay ── Pay $X ──► 3 Credits ── See receipt ──► 4 Receipt ── Done
+ *       │ locked: the reason, its unlock      │ declined: stays, the host says why
+ *       └ (no Continue)                       └ no card: Add a card (a modal), stays
+ *
+ *  Nothing is stored before the card charge answers paid or processing: the
+ *  steps live in this component, so a reload starts at Offer again. The Pay
+ *  step is the confirm (the inline ask of MESITA-4357 went). Apple Pay /
+ *  Google Pay went with the sheet (MESITA-4384's express slot). The host
+ *  draws the frame: this hands it each step through `frame`. */
+export function OfferTicket({
+  place,
+  actions,
+  productKey,
+  frame,
+  onFinish,
+  onMissing,
+}: {
+  place: PlaceDetail;
+  actions?: PlaceActions;
+  productKey: MoneyVoucherKey;
+  frame: (f: OfferTicketFrame) => ReactNode;
+  /** Done, or ✕ after the charge. */
+  onFinish: () => void;
+  /** The place does not offer this voucher (or it is not a ticket voucher):
+   *  the host goes back to Offers. Called once the offer is read. */
+  onMissing: () => void;
+}) {
+  const onLoad = actions?.onLoadVouchers;
+  useEffect(() => {
+    onLoad?.();
+  }, [onLoad]);
+  const co = useOfferCheckout(place, actions);
+  const product = OFFER_TICKET_KEYS.includes(productKey) ? listedProducts().find((p) => p.key === productKey) ?? null : null;
+  const missing = product === null || (!co.loading && place.money != null && co.show(productKey) === "hidden");
+  useEffect(() => {
+    if (!missing) return;
+    let gone = false;
+    // After a tick: no navigation while rendering.
+    void Promise.resolve().then(() => {
+      if (!gone) onMissing();
+    });
+    return () => {
+      gone = true;
+    };
+  }, [missing, onMissing]);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
+  if (!product) return null;
+  return (
+    <OfferTicketSteps
+      product={product}
+      placeName={place.name}
+      offer={co.offer(product)}
+      loading={co.loading}
+      step={step}
+      setStep={setStep}
+      receipt={receipt}
+      setReceipt={setReceipt}
+      frame={frame}
+      onFinish={onFinish}
+    />
+  );
+}
+
+function OfferTicketSteps({
   product,
   placeName,
-  placeHandle,
   offer,
-  onClose,
+  loading,
+  step,
+  setStep,
+  receipt,
+  setReceipt,
+  frame,
+  onFinish,
 }: {
   product: Product;
   placeName: string;
-  /** The place's Instagram username, named in Story's steps (MESITA-4291). */
-  placeHandle: string | null;
   offer: Offer;
-  onClose: () => void;
+  loading: boolean;
+  step: 1 | 2 | 3 | 4;
+  setStep: (s: 1 | 2 | 3 | 4) => void;
+  receipt: Receipt | null;
+  setReceipt: (r: Receipt) => void;
+  frame: (f: OfferTicketFrame) => ReactNode;
+  onFinish: () => void;
 }) {
-  const [receipt, setReceipt] = useState<Receipt | null>(null);
   useOfferOpened(offer);
-  const panel = useRef<HTMLDivElement>(null);
-  // EXPRESS PAY (MESITA-4384): the slot is a 48 px skeleton until the host's
-  // button says ready or none; from the wallet's confirm until it ends the
-  // sheet is locked (X, backdrop and Escape do nothing).
-  const [expressState, setExpressState] = useState<"loading" | "ready" | "none">(offer.express ? "loading" : "none");
-  const [locked, setLocked] = useState(false);
-  const [expressError, setExpressError] = useState<string | null>(null);
-  const lockedRef = useRef(false);
-  const close = useCallback(() => {
-    if (!lockedRef.current) onClose();
-  }, [onClose]);
-  const lock = useCallback((on: boolean) => {
-    lockedRef.current = on;
-    setLocked(on);
-  }, []);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    };
-    window.addEventListener("keydown", onKey);
-    panel.current?.focus();
-    return () => window.removeEventListener("keydown", onKey);
-  }, [close]);
   const face = FACES[product.key];
   const Mark = face.Mark ?? Ticket;
-  const host = typeof document !== "undefined" ? document.getElementById("mesita-app-card") : null;
-  const { can, signedOut, buying, needsCard } = offer;
-  const button = signedOut ? "Sign in to buy" : buying ? "Paying…" : needsCard ? "Add a card to pay" : `Pay ${whole(offer.pay)}`;
-  // ONE CONFIRM BEFORE A CHARGE (MESITA-4357, Pato: "when you click pay,
-  // please add a confirmation … this just feels too aggressive"): a tap that
-  // would charge the saved card first asks in the pay box; signing in and
-  // adding a card charge nothing, so they go straight through.
-  const [asking, setAsking] = useState(false);
-  const charges = !signedOut && !needsCard;
-  const press = async () => {
-    if (charges && !asking) {
-      setAsking(true);
-      return;
-    }
-    setAsking(false);
-    const r = await offer.onPay();
-    if (r && !isStoryRefused(r)) setReceipt(r);
-  };
-  const isStory = product.key === "voucher_story";
   const amount = whole(offer.pay);
   const bonusText = offer.bonusAmount ? whole(offer.bonusAmount) : null;
-  if (typeof document === "undefined") return null;
-  return createPortal(
-    <div
-      className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex flex-col justify-end bg-black/40")}
-      onClick={close}
-      data-offer-sheet={product.key}
-    >
-      <div
-        ref={panel}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="offer-sheet-title"
-        tabIndex={-1}
-        className="bg-background flex max-h-[92%] w-full flex-col gap-3 overflow-y-auto rounded-t-3xl px-4 pt-2 pb-5 outline-none"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <span className="bg-border mx-auto h-1 w-10 shrink-0 rounded-full" aria-hidden />
-        <div className="flex shrink-0 items-center gap-3 px-1">
-          <span className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl", face.card)} aria-hidden>
-            <Mark className="h-7 w-7" strokeWidth={2.25} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h3 id="offer-sheet-title" className="text-foreground text-lg leading-tight font-bold">{product.short}</h3>
-            <p className="text-muted-foreground truncate text-sm">{placeName}</p>
-          </div>
-          <button
-            type="button"
-            onClick={close}
-            disabled={locked}
-            aria-label="Close"
-            className="text-muted-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
-          >
-            <X className="h-5 w-5" strokeWidth={2.25} />
-          </button>
-        </div>
+  const { can, signedOut, buying, needsCard } = offer;
+  const paid = receipt !== null;
+  // A charge in flight, or one that answered: the steps before it are gone.
+  const shown: 1 | 2 | 3 | 4 = paid ? (step < 3 ? 3 : step) : step > 2 ? 2 : step;
 
-        {receipt ? (
-          // THE RECEIPT (MESITA-4224, D5): what landed now and what lands later.
-          <Box data-offer-receipt={receipt.outcome}>
-            <div className="flex flex-col gap-4" role="status">
-              <div className="flex items-center gap-3">
-                <CircleCheck className="h-8 w-8 shrink-0 text-[#00A85A]" strokeWidth={2.25} aria-hidden />
-                <p className="text-foreground text-xl font-bold tabular-nums">
-                  {receipt.outcome === "paid" ? `Paid ${whole(receipt.pay)}` : receipt.outcome === "received" ? "Payment received" : "Your bank is confirming"}
-                </p>
-              </div>
-              {receipt.payWith ? (
-                <p className="text-muted-foreground -mt-2 text-base" data-offer-paid-with={receipt.payWith}>
-                  {receipt.payWith === "apple_pay" ? "Paid with Apple Pay" : "Paid with Google Pay"}
-                </p>
-              ) : null}
-              <ul className="text-foreground flex flex-col gap-2 text-base leading-snug">
-                {receipt.outcome === "received" ? (
-                  <li>
-                    Your voucher will appear in{" "}
-                    <a href="/me/tickets" className="font-semibold underline underline-offset-2">
-                      Me › Tickets
-                    </a>{" "}
-                    within a few minutes. Nothing else to do.
-                  </li>
-                ) : receipt.outcome === "paid" ? (
-                  <>
-                    <li className="tabular-nums">{`${whole(receipt.pay)} is ready to spend now.`}</li>
-                    <li className="tabular-nums">
-                      {receipt.bonus ? `The ${receipt.bonus} bonus` : "The bonus"}
-                      {receipt.readyAt ? ` is ready at ${readyClock(receipt.readyAt)}.` : " is ready 3 hours later."}
-                    </li>
-                  </>
-                ) : (
-                  <li>The credit shows here once it&apos;s through. You won&apos;t be charged twice.</li>
-                )}
-              </ul>
-              <button type="button" onClick={onClose} autoFocus className={PRIMARY}>
-                Done
-              </button>
-            </div>
-          </Box>
-        ) : (
-          <>
-            <OfferBox pay={offer.pay} get={offer.get} bonus={offer.bonus} />
-            {isStory ? (
-              <>
-                <NeedBox needs={storyNeeds(offer.storyGuest, offer.guestLock === "instagram" ? "instagram" : offer.guestLock === "followers" ? "followers" : null, false)} />
-                <Box title="How it works" className={can ? undefined : "opacity-50"}>
-                  <StepList steps={storySteps(amount, bonusText, storyPostLine(placeHandle), offer.storyGuest.emulator)} />
-                </Box>
-              </>
-            ) : (
-              <Box title="How it works" data-offer-steps-box="">
-                <StepList steps={sheetSteps(amount, bonusText, signedOut ? null : offer.payCard)} />
-              </Box>
-            )}
-            <GoodToKnow productKey={product.key} />
-            <Box data-offer-pay-box="">
-              {can ? (
-                <div className="flex flex-col gap-3">
-                  {/* APPLE PAY / GOOGLE PAY (MESITA-4384): kept mounted while
-                      the card's ask shows, so the wallet is never set up twice. */}
-                  {offer.express && expressState !== "none" ? (
-                    <div className={cn("relative min-h-12", asking && !buying && "hidden")} data-express-slot={expressState}>
-                      {expressState === "loading" ? <div className="bg-muted absolute inset-0 rounded-xl" aria-hidden /> : null}
-                      <div className={cn(expressState === "loading" && "opacity-0", buying && "pointer-events-none opacity-50")}>
-                        {offer.express({
-                          disabled: buying,
-                          onState: setExpressState,
-                          onLock: lock,
-                          onError: setExpressError,
-                          onReceipt: (r) => {
-                            setExpressError(null);
-                            setReceipt(r);
-                          },
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
-                  {locked ? (
-                    <p className="text-foreground text-center text-base font-semibold" role="status" data-express-paying="">
-                      Paying…
-                    </p>
-                  ) : null}
-                  {expressError && !locked ? (
-                    <p className="text-center text-base leading-snug font-semibold text-red-700" role="alert" data-express-error="">
-                      {expressError}
-                    </p>
-                  ) : null}
-                  {locked ? null : asking && !buying ? (
-                    <div className="flex flex-col gap-3" data-offer-confirm="">
-                      <p className="text-foreground text-lg leading-snug font-semibold tabular-nums">
-                        {offer.payCard ? `Pay ${amount} with your ${offer.payCard.label} ending ${offer.payCard.last4}?` : `Pay ${amount}?`}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => void press()}
-                        disabled={!offer.live || offer.cardsPending}
-                        className={PRIMARY}
-                        data-voucher-buy={product.key}
-                        autoFocus
-                      >
-                        {`Yes, pay ${amount}`}
-                      </button>
-                      <button type="button" onClick={() => setAsking(false)} className={QUIET}>
-                        Cancel
-                      </button>
-                    </div>
-                  ) : offer.express && expressState !== "none" && needsCard && !signedOut ? (
-                    // No saved card: the wallet leads, adding a card is the quiet way.
-                    <button type="button" onClick={() => void press()} disabled={!offer.live || buying} className={QUIET} data-voucher-ask={product.key}>
-                      Add a card
-                    </button>
-                  ) : (
-                    // The card leads when it is the guest's default (MESITA-4529):
-                    // this block moves above the wallet, which stays mounted.
-                    <div className={cn("flex flex-col gap-3", offer.cardFirst && "order-first")} data-card-first={offer.cardFirst ? "" : undefined}>
-                      {offer.express && expressState !== "none" && !offer.cardFirst ? (
-                        <div className="text-muted-foreground flex items-center gap-3 text-sm" aria-hidden data-express-or="">
-                          <span className="bg-border h-px flex-1" />
-                          or
-                          <span className="bg-border h-px flex-1" />
-                        </div>
-                      ) : null}
-                      <CardLine offer={offer} />
-                      <button
-                        type="button"
-                        onClick={() => void press()}
-                        disabled={!offer.live || buying || offer.cardsPending}
-                        className={PRIMARY}
-                        data-voucher-ask={product.key}
-                      >
-                        {needsCard && !signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
-                        {button}
-                      </button>
-                      {offer.express && expressState !== "none" && offer.cardFirst ? (
-                        <div className="text-muted-foreground flex items-center gap-3 text-sm" aria-hidden data-express-or="">
-                          <span className="bg-border h-px flex-1" />
-                          or
-                          <span className="bg-border h-px flex-1" />
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                // LOCKED (MESITA-4224, D4): the reason where Pay goes, and the
-                // one action that unlocks it when there is one.
-                <div className="flex flex-col gap-3">
-                  {/* The amber line only when the checklist does not already say it. */}
-                  {isStory && offer.guestLock ? null : (
-                    <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-900" data-offer-status="locked">
-                      <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-                      <span className="text-base leading-snug font-semibold">{offer.status.text}</span>
-                    </p>
-                  )}
-                  {offer.unlock ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onClose();
-                        offer.unlock?.onClick();
-                      }}
-                      className={offer.unlock.quiet ? QUIET : PRIMARY}
-                      data-offer-action={offer.unlock.quiet ? "quiet" : ""}
-                    >
-                      {offer.unlock.label}
-                    </button>
-                  ) : null}
-                </div>
-              )}
-            </Box>
-          </>
-        )}
+  const head = (
+    <div className="flex shrink-0 items-center gap-3 px-1">
+      <span className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl", face.card)} aria-hidden>
+        <Mark className="h-7 w-7" strokeWidth={2.25} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-foreground text-lg leading-tight font-bold">{product.short}</p>
+        <p className="text-muted-foreground truncate text-sm">{placeName}</p>
       </div>
-    </div>,
-    host ?? document.body,
+    </div>
   );
+
+  if (shown === 1) {
+    const locked = !loading && !can;
+    return frame({
+      step: 1,
+      allDone: false,
+      title: product.short,
+      onBack: null,
+      busy: false,
+      paid: false,
+      body: (
+        <>
+          {head}
+          <OfferBox pay={offer.pay} get={offer.get} bonus={offer.bonus} />
+          <Box title="How it works" data-offer-steps-box="">
+            <StepList steps={sheetSteps(amount, bonusText, signedOut ? null : offer.payCard)} />
+          </Box>
+          <GoodToKnow productKey={product.key} />
+          {locked ? (
+            // LOCKED (MESITA-4224, D4): the reason where Continue goes.
+            <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-left text-amber-900" data-offer-status="locked">
+              <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+              <span className="text-base leading-snug font-semibold">{offer.status.text}</span>
+            </p>
+          ) : null}
+        </>
+      ),
+      primary: locked
+        ? offer.unlock
+          ? { label: offer.unlock.label, disabled: false, busy: false, onClick: offer.unlock.onClick }
+          : null
+        : { label: "Continue", disabled: loading, busy: false, onClick: () => setStep(2) },
+    });
+  }
+
+  if (shown === 2) {
+    // ONLY THE SAVED CARD (MESITA-4630): no Apple Pay / Google Pay, no "or".
+    const label = signedOut ? "Sign in to buy" : needsCard ? "Add a card" : `Pay ${amount}`;
+    return frame({
+      step: 2,
+      allDone: false,
+      title: "Pay",
+      onBack: buying ? null : () => setStep(1),
+      busy: buying,
+      paid: false,
+      body: (
+        <>
+          {head}
+          <OfferBox pay={offer.pay} get={offer.get} bonus={offer.bonus} />
+          {signedOut ? null : (
+            <Box title="Pay with" data-offer-pay-box="">
+              <div className="flex flex-col gap-2">
+                {offer.cardsPending ? <p className="text-muted-foreground text-base">Reading your cards…</p> : null}
+                <CardLine offer={offer} />
+              </div>
+            </Box>
+          )}
+        </>
+      ),
+      primary: {
+        label,
+        disabled: !offer.live || buying || offer.cardsPending,
+        busy: buying,
+        onClick: () => {
+          void offer.onPay().then((r) => {
+            if (r && !isStoryRefused(r)) {
+              setReceipt(r);
+              setStep(3);
+            }
+          });
+        },
+      },
+    });
+  }
+
+  if (!receipt) return null;
+  const confirming = receipt.outcome === "processing";
+  const bonusAt = receipt.readyAt ? readyClock(receipt.readyAt) : "";
+
+  if (shown === 3) {
+    // CREDITS (MESITA-4630): the credit is ready now, the bonus waits; Wait
+    // and Bonus are one line, the stored ticket keeps counting.
+    const steps: Step[] = confirming
+      ? [
+        { Icon: CreditCard, title: "Your bank is confirming", amount, line: "The credit shows once it's through. You won't be charged twice.", state: "current" },
+        { Icon: Wallet, title: "Get your credit", amount, line: CREDIT_LINE },
+        { Icon: Gift, title: "Get your bonus in 3 hours", amount: bonusText ? `+${bonusText}` : undefined, line: "Added by itself. Nothing to do.", green: true },
+      ]
+      : [
+        { Icon: CreditCard, title: `Paid ${amount}`, line: receipt.card ? `With your ${receipt.card.label} ending ${receipt.card.last4}.` : "By card.", state: "done" },
+        { Icon: Wallet, title: "Your credit is ready", amount, line: `Spend it on any bill at ${placeName}.`, state: "done" },
+        {
+          Icon: Gift,
+          title: "Your bonus is on its way",
+          amount: bonusText ? `+${bonusText}` : undefined,
+          line: bonusAt ? `Ready at ${bonusAt}. Added by itself.` : "Ready in 3 hours. Added by itself.",
+          green: true,
+          state: "current",
+        },
+      ];
+    return frame({
+      step: 3,
+      allDone: false,
+      title: "Credits",
+      onBack: null,
+      busy: false,
+      paid: true,
+      body: (
+        <>
+          {head}
+          <Box data-offer-credits={receipt.outcome}>
+            <StepList steps={steps} />
+          </Box>
+        </>
+      ),
+      primary: { label: "See receipt", disabled: false, busy: false, onClick: () => setStep(4) },
+    });
+  }
+
+  // RECEIPT (MESITA-4630): what was paid, with what, when, and what it buys.
+  const when = new Date(receipt.at);
+  const whenText = Number.isNaN(when.getTime())
+    ? ""
+    : when.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return frame({
+    step: 4,
+    allDone: !confirming,
+    title: "Receipt",
+    onBack: () => setStep(3),
+    busy: false,
+    paid: true,
+    body: (
+      <>
+        <div className="flex shrink-0 flex-col items-center gap-2 py-2" role="status" data-offer-receipt={receipt.outcome}>
+          {confirming ? (
+            <Clock className="h-10 w-10 text-amber-600" strokeWidth={2.25} aria-hidden />
+          ) : (
+            <CircleCheck className="h-10 w-10 text-[#00A85A]" strokeWidth={2.25} aria-hidden />
+          )}
+          <p className="text-foreground text-2xl font-bold tabular-nums">{confirming ? "Confirming" : `Paid ${amount}`}</p>
+          <p className="text-muted-foreground text-sm">{confirming ? "Your bank is confirming. You won't be charged twice." : placeName}</p>
+        </div>
+        <section className={cn(CARD, "divide-border shrink-0 divide-y overflow-hidden text-left")}>
+          <ReceiptRow label="Voucher" value={product.short} />
+          <ReceiptRow label="You paid" value={amount} />
+          <ReceiptRow label="Card" value={receipt.card ? `${receipt.card.label} •••• ${receipt.card.last4}` : "Card"} />
+          {whenText ? <ReceiptRow label="Date" value={whenText} /> : null}
+          <ReceiptRow label="Credit now" value={amount} />
+          {bonusText ? <ReceiptRow label={bonusAt ? `Bonus at ${bonusAt}` : "Bonus in 3 hours"} value={`+${bonusText}`} green /> : null}
+          <ReceiptRow label="You get" value={whole(offer.get)} green />
+        </section>
+      </>
+    ),
+    primary: { label: "Done", disabled: false, busy: false, onClick: onFinish },
+  });
 }
 
 /** THE STORY OFFER ON ITS OWN PAGE (MESITA-4303): the host's
@@ -1481,42 +1492,14 @@ export function VouchersPane({
   // one (admin's preview) Story stays a sheet like the rest.
   const openStory = actions?.onOpenStory;
 
-  // A TAP OPENS THE SHEET (MESITA-4224): no tick, no foot Pay. A Home chip's
-  // voucher (MESITA-4207) opens its sheet at once, or Story's page.
-  const asked = actions?.askedVoucher;
-  const askedKey = asked && (MONEY_VOUCHER_KEYS as readonly string[]).includes(asked) ? (asked as MoneyVoucherKey) : null;
-  const [open, setOpen] = useState<MoneyVoucherKey | null>(() => (askedKey === "voucher_story" && openStory ? null : askedKey));
-  const opener = useRef<HTMLButtonElement | null>(null);
-  const close = useCallback(() => {
-    setOpen(null);
-    opener.current?.focus();
-  }, []);
-  // A Home chip asked for Story: its page, after a tick (no navigation in render).
-  useEffect(() => {
-    if (askedKey !== "voucher_story" || !openStory) return;
-    let gone = false;
-    void Promise.resolve().then(() => {
-      if (!gone) openStory();
-    });
-    return () => {
-      gone = true;
-    };
-  }, [askedKey, openStory]);
+  // A TAP OPENS THE TICKET (MESITA-4630): the host pushes the voucher's own
+  // page; Story's own page (MESITA-4303). A bottom sheet until then
+  // (MESITA-4224). Without the host's action (admin's preview), nothing opens.
+  const openOffer = actions?.onOpenOffer;
 
   // HIDDEN ROWS ARE GONE (MESITA-4603), never drawn while list-vouchers is
   // still loading (every row is a grey bone then).
   const products = listedProducts().filter((p) => loading || co.show(p.key) !== "hidden");
-
-  const sheetProduct = open && !loading ? products.find((p) => p.key === open) ?? null : null;
-  const sheet: ReactNode = sheetProduct ? (
-    <PaySheet
-      product={sheetProduct}
-      placeName={place.name}
-      placeHandle={instagramHandle(place.channels?.instagram_url)}
-      offer={co.offer(sheetProduct)}
-      onClose={close}
-    />
-  ) : null;
 
   return (
     // ON THE GREY PAGE (MESITA-4196): two white panels, Special then Classic
@@ -1550,12 +1533,10 @@ export function VouchersPane({
                     <button
                       type="button"
                       disabled={loading}
-                      onClick={(e) => {
-                        opener.current = e.currentTarget;
-                        if (p.key === "voucher_story" && openStory) openStory();
-                        else setOpen(p.key);
+                      onClick={() => {
+                        if (p.key === "voucher_story") openStory?.();
+                        else openOffer?.(p.key);
                       }}
-                      aria-haspopup={p.key === "voucher_story" && openStory ? undefined : "dialog"}
                       aria-label={`${p.short}, pay ${whole(pay)}, get ${whole(get)}, ${bonus} bonus${locked ? `. ${why}` : ""}`}
                       className="hover:bg-muted/50 flex min-h-[4.5rem] w-full cursor-pointer items-center gap-3 px-3.5 py-2 text-left"
                     >
@@ -1620,7 +1601,6 @@ export function VouchersPane({
           </section>
         );
       })}
-      {sheet}
     </div>
   );
 }
