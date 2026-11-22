@@ -2,6 +2,7 @@
 
 import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { useRouter } from "next/navigation";
 import { Gift } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
@@ -38,7 +39,7 @@ import { pressKey } from "@/lib/pay-keypad";
 import { GiftCardFace, GiftCardMini } from "./GiftCardFace";
 import { PlacePhotoMark } from "./PlaceCredit";
 import { useWallet } from "./use-wallet";
-import { prepayHref } from "./WalletPickers";
+import { prepayReturnHref } from "./WalletPickers";
 
 // SENDING CREDIT TO A FRIEND (MESITA-3292; Pato, 2026-11-06: "word of mouth
 // with value attached … same place only"). A guest sends some of their
@@ -124,7 +125,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
   const currency = row.card.currency;
   const spendableCents = row.balance.spendable_cents ?? 0;
   const gone = row.balance.place === null;
-  const buy = gone ? null : prepayHref(row.placeSlug);
+  const buy = gone ? null : prepayReturnHref(row.placeSlug);
   const canSend = wallet.can_send === true && !gone;
   const typed = readAmount(amount);
   const over = typed !== null && typed > spendableCents;
@@ -407,9 +408,9 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
                 {row.card.pending_cents > 0 ? GIFT_PENDING : `No credit at ${placeName} to send yet.`}
               </p>
               {buy ? (
-                <Link href={buy} className={`${PRIMARY} mt-6`} data-send-credit-buy>
+                <PushLink href={buy} className={`${PRIMARY} mt-6`} data-send-credit-buy>
                   Buy Credits
-                </Link>
+                </PushLink>
               ) : null}
             </>
           )}
@@ -431,9 +432,9 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
       footer={
         <div className="flex flex-col gap-2">
           {(over || short) && buy ? (
-            <Link href={buy} className={SECONDARY} data-send-credit-buy>
+            <PushLink href={buy} className={SECONDARY} data-send-credit-buy>
               Buy Credits
-            </Link>
+            </PushLink>
           ) : null}
           <button type="button" className={PRIMARY} disabled={busy || over || packCents <= 0} onClick={() => void send()}>
             {busy ? "Packing…" : packCents > 0 ? `Pack ${money(packCents, currency)}` : "Pack"}

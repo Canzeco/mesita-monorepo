@@ -1,6 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
+import { goBack } from "@/lib/navigate";
 import { Panel } from "@/components/shared/Panel";
 
 // The Reserve page's own placeholder, so the place screen's skeleton
@@ -13,6 +15,7 @@ import { Panel } from "@/components/shared/Panel";
 const BONE = "bg-muted rounded";
 
 export default function PlaceReserveLoading() {
+  const router = useRouter();
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden" aria-busy>
       <div className="flex min-h-0 flex-1 flex-col px-4">
@@ -21,7 +24,7 @@ export default function PlaceReserveLoading() {
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
-                onClick={() => window.history.back()}
+                onClick={() => goBack(router)}
                 className="hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
                 aria-label="Back"
               >

@@ -38,7 +38,11 @@ function noopSubscribe() {
   return () => {};
 }
 
-/** Add Funds on a Loyalty Card (MESITA-3883): a paid offer goes back there. */
+/** `from=wallet` (MESITA-3883, MESITA-4601): Offers was opened by a wallet
+ *  screen that wants the guest back (a Loyalty Card's Offers tile, Send
+ *  Gift's Buy Credits). A paid offer pops to that screen instead of
+ *  replacing Offers with the card, and a cold-open Back falls to the card.
+ *  No forward control reads it. */
 function readFromWallet(): boolean {
   return new URLSearchParams(window.location.search).get("from") === "wallet";
 }
@@ -185,15 +189,17 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
           // ONE DARK BOX (Pato, 2026-11-18, MESITA-4381: "just one box at the
           // top mentioning current balance"): the Loyalty Card's ink panel,
           // the balance and, while a bonus waits, the pending line; the whole
-          // box opens the Loyalty Card (back to it when Offers came from it).
-          // Replaces MESITA-4320's two buttons.
+          // box opens the Loyalty Card. Replaces MESITA-4320's two buttons.
+          //
+          // A TAP PUSHES, ALWAYS (Pato, 2026-11-21, MESITA-4601: "if from
+          // offers to card and then back '<' i must be redirected to offers
+          // … it depends where i came from where i must return"). MESITA-4381
+          // popped back to the card when Offers was opened from it, which
+          // dropped Offers out of the trail, so the card's Back landed on the
+          // Wallet. The card is pushed over Offers, whatever opened Offers.
           <button
             type="button"
-            onClick={() =>
-              fromWallet
-                ? goBack(router, walletPlacePath(fetched.id))
-                : navigateTo(router, walletPlacePath(fetched.id), { motion: "drill" })
-            }
+            onClick={() => navigateTo(router, walletPlacePath(fetched.id), { motion: "drill" })}
             aria-label={`See Loyalty Card. ${credit.label}`}
             className="bg-foreground text-paper flex w-full shrink-0 items-center gap-3 rounded-2xl p-4 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 active:scale-[0.99]"
             data-offers-balance

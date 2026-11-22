@@ -1,18 +1,21 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
+import { goBack } from "@/lib/navigate";
 
 // The Offers page's own placeholder (MESITA-4379): its one-line header (photo
 // and name in bones), the balance line and the two buttons, then the two
 // offer boxes, on the grey page — block for block where OffersPageBody draws.
 export default function PlaceOffersLoading() {
+  const router = useRouter();
   return (
     <div className="bg-card flex h-full min-h-0 flex-1 flex-col overflow-hidden" aria-busy>
       <header className="bg-card border-border flex h-14 shrink-0 items-center gap-1 border-b px-1.5">
         <button
           type="button"
           aria-label="Back"
-          onClick={() => window.history.back()}
+          onClick={() => goBack(router)}
           className="text-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
         >
           <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
