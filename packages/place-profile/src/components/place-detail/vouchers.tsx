@@ -698,13 +698,19 @@ function OfferInfo({
   const pay = priceValue(product, line, currency);
   const get = creditValue(product, line, currency);
   const bonusAmount = line ? whole(pesos(line.bonus_cents, currency)) : null;
+  // INTO THE APP'S CARD (MESITA-4664): on the body at z-50 the panel fell
+  // under the app's own layers and only the dim showed. Like OffTileSheet:
+  // the card when there is one (absolute, above the app's z-scale), else the
+  // body (admin's preview).
+  if (typeof document === "undefined") return null;
+  const host = document.getElementById("mesita-app-card");
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose} data-offer-info>
+    <div className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-4")} onClick={onClose} data-offer-info>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="offer-info-title"
-        className="bg-background flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl shadow-xl"
+        className="bg-background flex max-h-full w-full max-w-md cursor-auto flex-col overflow-hidden rounded-2xl shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-card border-border flex h-14 shrink-0 items-center justify-between border-b pr-1.5 pl-4">
@@ -724,7 +730,7 @@ function OfferInfo({
         </div>
       </div>
     </div>,
-    document.body,
+    host ?? document.body,
   );
 }
 
@@ -879,7 +885,7 @@ export function VouchersPane({
                   <li key={p.key} data-voucher={p.key} className={cn("flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2", blocked && dim && !linkIg && "opacity-50")}>
                     <span
                       className={cn(
-                        "flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl tabular-nums",
+                        "flex min-h-12 shrink-0 flex-col items-center justify-center rounded-xl px-2.5 py-2 tabular-nums",
                         blocked ? "bg-muted text-muted-foreground" : "bg-[#00D66F] text-neutral-950",
                       )}
                       aria-hidden
