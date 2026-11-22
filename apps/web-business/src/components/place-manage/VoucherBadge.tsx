@@ -4,7 +4,7 @@
 // ticket, Welcome green confetti (MESITA-4645), VIP black crown. Any other code (an old Story purchase,
 // MESITA-4641) wears the green ticket with its name.
 import type { Icon } from "@phosphor-icons/react";
-import { CoinsIcon, ConfettiIcon, CreditCardIcon, MoneyIcon, CrownSimpleIcon, FootprintsIcon, GiftIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
+import { CoinsIcon, ConfettiIcon, CreditCardIcon, MoneyIcon, CrownSimpleIcon, ReceiptIcon, GiftIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
 import { voucherName } from "@/lib/ticket-desk";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +52,7 @@ export function CreditBadge({ kind, voucher }: { kind: string; voucher: string |
   if (kind === "spend" || kind === "refund") {
     return (
       <span className={cn(PILL, "bg-muted text-foreground")}>
-        <FootprintsIcon size={12} weight="fill" aria-hidden />
+        <ReceiptIcon size={12} weight="fill" aria-hidden />
         Visit
       </span>
     );
@@ -64,7 +64,7 @@ export function CreditBadge({ kind, voucher }: { kind: string; voucher: string |
 export function VisitBadge({ status }: { status: string }) {
   return (
     <span className={cn(PILL, "bg-orange-100 text-orange-800")}>
-      <FootprintsIcon size={12} weight="fill" aria-hidden />
+      <ReceiptIcon size={12} weight="fill" aria-hidden />
       {status}
     </span>
   );

@@ -13,8 +13,11 @@
 //
 // MESITA-4677 (Pato: "add analytics to visits and vouchers too"): on the
 // first, unfiltered page of visits or vouchers, `analytics` is synthesized
-// here from every raw row (pay_tabs, wallet_purchases; the same rows the list
-// shows), read in pages. Nothing is stored (Rules §2).
+// here from every raw row (place_visit_rows, wallet_purchases; the same rows
+// the list shows), read in pages. Nothing is stored (Rules §2).
+//
+// MESITA-4682: Visits rows carry how each bill was settled (card, credit,
+// outside) and split tables; Payments lists Stripe card charges only.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -127,22 +130,20 @@ async function readAnalytics(
 ): Promise<{ value: unknown } | { error: string }> {
   const now = Date.now();
   if (kind === "visits") {
-    const r = await readAll<{ consumer_id: string | null; paid_at: string | null; created_at: string; status: string; origin: string; verified_at: string | null; bill_cents: number | null; tip_cents: number | null }>(
+    // place_visit_rows is the one rule for which bills are Visits (MESITA-4682).
+    // A split table is never a visit: its shares are.
+    const r = await readAll<{ consumer_id: string | null; at: string; status: string; bill_cents: number | null; tip_cents: number | null; split_at: string | null }>(
       (from, to) =>
         admin
-          .from("pay_tabs")
-          .select("id, consumer_id, paid_at, created_at, status, origin, verified_at, bill_cents, tip_cents")
-          .eq("place_id", placeId)
-          .eq("livemode", livemode)
-          .in("status", ["paid", "waiting_bill", "billed", "paying"])
-          .order("created_at")
+          .rpc("place_visit_rows", { p_place_id: placeId, p_livemode: livemode })
+          .order("at")
           .order("id")
           .range(from, to),
     );
     if ("error" in r) return r;
     const rows: VisitRow[] = r.rows
-      .filter((t) => t.status === "paid" ? t.origin !== "guest" || t.verified_at !== null : t.origin !== "guest")
-      .map((t) => ({ consumer_id: t.consumer_id, at: t.paid_at ?? t.created_at, status: t.status, bill_cents: t.bill_cents, tip_cents: t.tip_cents }));
+      .filter((t) => t.split_at === null)
+      .map((t) => ({ consumer_id: t.consumer_id, at: t.at, status: t.status, bill_cents: t.bill_cents, tip_cents: t.tip_cents }));
     return { value: synthesizeVisits(rows, now) };
   }
   const r = await readAll<VoucherRow & { paid_at: string }>(

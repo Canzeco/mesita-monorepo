@@ -10,8 +10,8 @@ import {
   CreditCardIcon,
   DotsThreeCircleIcon,
   EyeIcon,
-  FootprintsIcon,
   GearIcon,
+  ReceiptIcon,
   SlidersHorizontalIcon,
   GiftIcon,
   MegaphoneIcon,
@@ -29,16 +29,20 @@ import type { PlaceTab } from "@/lib/routes";
 // MESITA-4534: "general icon must be a gear").
 export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: string }> = {
   views: { label: "Views", icon: EyeIcon, sub: "Who saw your place online." },
-  visits: { label: "Visits", icon: FootprintsIcon, sub: "Every bill at your place." },
+  // A receipt, not footprints (Pato, MESITA-4682: "it should express it's
+  // financial"): each bill and how it was paid.
+  visits: { label: "Visits", icon: ReceiptIcon, sub: "Every bill at your place, and how it was paid." },
   vouchers: { label: "Vouchers", icon: TicketIcon, sub: "Prepayments guests bought here." },
   gifts: { label: "Gifts", icon: GiftIcon, sub: "Credit guests sent each other, and where each gift stands." },
   // Payments and Payouts are two pages (MESITA-4679, Pato: "Customers, Views,
   // Visits, Vouchers, Gifts, Payments, Payouts"; one page called Stripe since
   // MESITA-4568). Payments' URL stays /money: Offers owns /payments.
-  money: { label: "Payments", icon: CreditCardIcon, sub: "Every payment, card or cash." },
+  // Stripe card charges only since MESITA-4682 (Pato: "just mention the Stripe
+  // Payments events"); cash and credit are on Visits.
+  money: { label: "Payments", icon: CreditCardIcon, sub: "Card payments through Stripe." },
   payouts: { label: "Payouts", icon: BankIcon, sub: "Money Stripe sent to your bank." },
   credits: { label: "Credits", icon: CoinsIcon, sub: "Vouchers, gifts and visits: every credit movement here." },
-  customers: { label: "Customers", icon: UsersThreeIcon, sub: "Who comes, and how much credit you owe them." },
+  customers: { label: "Customers", icon: UsersThreeIcon, sub: "Guests who saved, visited or hold credit here." },
   profile: { label: "Profile", icon: StorefrontIcon, sub: "What guests read about your place." },
   premier: { label: "Premier", icon: MegaphoneIcon, sub: "Ad spots on Home and the Map. Marked as an ad." },
   // Offers (MESITA-4530, Pato: "rename payment pages to offers"); the URL stays

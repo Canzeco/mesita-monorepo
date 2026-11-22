@@ -21,7 +21,6 @@ import {
   linkHref,
   linkKindPage,
   linkLabel,
-  money,
   NOUN,
   rowAmount,
   rowDetail,
@@ -39,9 +38,11 @@ import {
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { GuestAvatar } from "./GuestAvatar";
+import { MonitorTable } from "./MonitorTable";
+import { MONITOR_COLUMNS, TABLE_KINDS, type TableKind } from "@/lib/monitor-columns";
 import { CardBadge, CashBadge, CreditBadge, VisitBadge, VoucherBadge } from "./VoucherBadge";
 import type { Icon } from "@phosphor-icons/react";
-import { CoinsIcon, CreditCardIcon, FootprintsIcon, TicketIcon, UserCircleIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import { CoinsIcon, CreditCardIcon, ReceiptIcon, TicketIcon, UserCircleIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 
 /** The row grid every Monitor list shares: face · text · amount. */
 export const ROW = "grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 text-sm sm:px-5";
@@ -53,7 +54,7 @@ const META = "text-muted-foreground text-sm";
 /** Every chip wears its kind's icon (Pato: "USE ICONS ALWAYS"). */
 const CHIP_ICON: Record<LinkKind | "customer", Icon> = {
   customer: UserCircleIcon,
-  visit: FootprintsIcon,
+  visit: ReceiptIcon,
   payment: CreditCardIcon,
   voucher: TicketIcon,
   credit: CoinsIcon,
@@ -167,178 +168,22 @@ export function MonitorRowItem({ placeId, kind, row, timezone }: { placeId: stri
   );
 }
 
-// ── Payments and Visits are tables (MESITA-4683, MESITA-4684; Pato: "payments
-// in a table too", "visits in a table too") ────────────────────────────────
-// A header row and one column per field; money sits right so the digits line
-// up. It scrolls sideways inside its card on a narrow screen; the page never
-// does. Vouchers and Gifts keep their rows (MESITA-4568).
-
-const TH = "text-muted-foreground px-3 py-2 text-xs font-medium whitespace-nowrap first:pl-4 last:pr-4 sm:first:pl-5 sm:last:pr-5";
-const TD = "px-3 py-2 align-middle whitespace-nowrap first:pl-4 last:pr-4 sm:first:pl-5 sm:last:pr-5";
-const NUM = "text-right tabular-nums";
-
-/** "—" for an empty cell, so a column never reads as broken. */
-function Dash() {
-  return <span className="text-muted-foreground/60">—</span>;
-}
-
-/** A money field of the payload, or "—" when it is zero. */
-function cents(row: MonitorRow, ...keys: string[]): React.ReactNode {
-  const n = keys.reduce((sum, k) => sum + Number(row.payload[k] ?? 0), 0);
-  return n > 0 ? money(n) : <Dash />;
-}
-
-/** The three ways a bill is paid; a row fills one or two (never Card and
- *  Cash together), the rest read "—". They sit under one "Bill" header; the
- *  tip is its own payment and stands apart (MESITA-4684, Pato: "3 columns,
- *  but only 2 selected … the tip is another type of payment"). */
-const BILL: readonly [string, string][] = [
-  ["Card", "card_cents"],
-  ["Cash", "outside_cents"],
-  ["Credit", "credit_cents"],
-];
-
-type Col = { head: string; right?: boolean; cell: (row: MonitorRow) => React.ReactNode; className?: string };
-
-function guestCol(placeId: string): Col {
-  return {
-    head: "Guest",
-    cell: (row) => {
-      const name = row.guest ?? "Deleted guest";
-      return (
-        <span className="flex items-center gap-2">
-          <GuestAvatar face={row.customer ? (row.face ?? null) : null} size={24} />
-          {row.customer ? (
-            <Link href={customerHref(placeId, row.customer)} className="font-medium underline-offset-2 hover:underline">
-              {name}
-            </Link>
-          ) : (
-            <span className="text-muted-foreground font-medium">{name}</span>
-          )}
-        </span>
-      );
-    },
-  };
-}
-
-function linkCol(placeId: string, head: string, kind: LinkKind): Col {
-  return {
-    head,
-    cell: (row) => {
-      const links = row.links.filter((l) => l.kind === kind);
-      if (!links.length) return <Dash />;
-      return (
-        <span className="flex gap-1.5">
-          {links.slice(0, 3).map((l) => (
-            <Link key={l.id} href={linkHref(placeId, l)} className={cn(CHIP, "gap-1")}>
-              <ChipIcon kind={kind} />
-              {linkLabel(l)}
-            </Link>
-          ))}
-        </span>
-      );
-    },
-  };
-}
-
-/** One table for Payments and Visits: `before` columns, the Bill group, then
- *  `after` columns. */
-function MoneyTable({ rows, before, after }: { rows: MonitorRow[]; before: Col[]; after: Col[] }) {
-  const th = (c: Col) => (
-    <th key={c.head} scope="col" className={cn(TH, c.right && "text-right")}>
-      {c.head}
-    </th>
-  );
-  const td = (c: Col, row: MonitorRow) => (
-    <td key={c.head} className={cn(TD, c.right && NUM, c.className)}>
-      {c.cell(row)}
-    </td>
-  );
+/** A table's guest cell: the face and the name, linked to the guest on
+ *  Customers (MESITA-4682). */
+export function GuestCell({ placeId, row }: { placeId: string; row: MonitorRow }) {
+  const name = row.guest ?? "Deleted guest";
   return (
-    <div className="scrollbar-thin-dark min-w-0 overflow-x-auto">
-      <table className="w-full border-collapse text-left text-sm">
-        <thead className="bg-muted/40 border-border border-b">
-          <tr>
-            <td colSpan={before.length} />
-            <th scope="colgroup" colSpan={BILL.length} className="text-muted-foreground border-border border-b px-3 pt-2 pb-1 text-center text-xs font-medium">
-              Bill
-            </th>
-            <td colSpan={after.length} />
-          </tr>
-          <tr>
-            {before.map(th)}
-            {BILL.map(([h]) => (
-              <th key={h} scope="col" className={cn(TH, "text-right")}>
-                {h}
-              </th>
-            ))}
-            {after.map(th)}
-          </tr>
-        </thead>
-        <tbody className="divide-border divide-y">
-          {rows.map((row) => (
-            <tr key={row.id} id={row.id} className="hover:bg-muted/30">
-              {before.map((c) => td(c, row))}
-              {BILL.map(([h, key]) => (
-                <td key={h} className={cn(TD, NUM)}>
-                  {cents(row, key)}
-                </td>
-              ))}
-              {after.map((c) => td(c, row))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <span className="flex items-center gap-2.5">
+      <GuestAvatar face={row.customer ? (row.face ?? null) : null} size={28} />
+      {row.customer ? (
+        <Link href={customerHref(placeId, row.customer)} className="max-w-[12rem] truncate font-medium underline-offset-2 hover:underline">
+          {name}
+        </Link>
+      ) : (
+        <span className="text-muted-foreground font-medium">{name}</span>
+      )}
+    </span>
   );
-}
-
-function moneyColumns(kind: "payments" | "visits", placeId: string, timezone: string): { before: Col[]; after: Col[] } {
-  const date: Col = { head: "Date", className: "text-muted-foreground", cell: (r) => when(r.at, timezone) };
-  const tip: Col = { head: "Tip", right: true, cell: (r) => cents(r, "tip_cents") };
-  const total: Col = { head: "Total", right: true, className: "font-semibold", cell: (r) => rowAmount(kind, r) };
-  const id: Col = { head: "ID", right: true, className: "text-muted-foreground/70 font-mono text-xs", cell: (r) => shortId(r.id) };
-  if (kind === "visits") {
-    return {
-      before: [
-        guestCol(placeId),
-        { head: "Status", cell: (r) => <VisitBadge status={rowStatus("visits", r)} /> },
-        date,
-        { head: "Ticket", cell: (r) => (r.payload.ticket ? String(r.payload.ticket) : <Dash />) },
-        { head: "Waiter", cell: (r) => (r.payload.waiter_name ? String(r.payload.waiter_name) : <Dash />) },
-        linkCol(placeId, "Payment", "payment"),
-      ],
-      after: [tip, total, id],
-    };
-  }
-  return {
-    before: [
-      guestCol(placeId),
-      {
-        head: "Method",
-        cell: (r) => (
-          <span className="flex gap-1.5">
-            <MethodBadges row={r} />
-          </span>
-        ),
-      },
-      date,
-      {
-        head: "Customer",
-        cell: (r) =>
-          r.customer ? (
-            <Link href={customerHref(placeId, r.customer)} className={cn(CHIP, "gap-1")}>
-              <ChipIcon kind="customer" />
-              {customerLabel(r.customer)}
-            </Link>
-          ) : (
-            <Dash />
-          ),
-      },
-      linkCol(placeId, "Visit", "visit"),
-    ],
-    after: [tip, { head: "Refunded", right: true, cell: (r) => cents(r, "refunded_cents", "credit_refunded_cents") }, total, id],
-  };
 }
 
 /** "Showing Ana's visits" with a Show all button (MESITA-4683, Pato: "the
@@ -410,8 +255,17 @@ export function MonitorList({
       ) : null}
       {page.rows.length === 0 ? (
         <p className="text-muted-foreground px-5 py-6 text-sm sm:px-6">{filtered ? "Nothing matches this filter." : EMPTY[kind]}</p>
-      ) : kind === "payments" || kind === "visits" ? (
-        <MoneyTable rows={page.rows} {...moneyColumns(kind, placeId, page.timezone)} />
+      ) : TABLE_KINDS.includes(kind) ? (
+        <MonitorTable
+          placeId={placeId}
+          rows={page.rows}
+          rowKey={(row) => row.id}
+          rowId={(row) => row.id}
+          guestLabel={kind === "gifts" ? "From" : "Guest"}
+          guest={(row) => <GuestCell placeId={placeId} row={row} />}
+          columns={MONITOR_COLUMNS[kind as TableKind]}
+          timezone={page.timezone}
+        />
       ) : (
         <ul className="divide-border divide-y">
           {page.rows.map((row) => (
