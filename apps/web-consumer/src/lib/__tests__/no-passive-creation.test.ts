@@ -219,14 +219,14 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
       }
     }
     // The opener is a memoised handler whose one door is the second tap
-    // (`openGoogleOnly`); it only opens the Generate page (MESITA-4113).
+    // (`openGoogleOnly`); it only opens the Generate confirm, floating since MESITA-4665.
     // The page's Generate button is what creates (MESITA-2935).
     expect(client).toContain("const openGoogleProfile = useCallback(");
     const opener = client.slice(
       client.indexOf("const openGoogleProfile"),
       client.indexOf("const openGoogleOnly"),
     );
-    expect(opener).toContain("generateHref(");
+    expect(opener).toContain("openGenerate(");
     expect(opener).not.toContain("getOrCreateGooglePlace");
     expect(client.match(/openGoogleProfile\(/g)).toHaveLength(1);
   });

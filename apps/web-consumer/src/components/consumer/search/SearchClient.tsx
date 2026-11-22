@@ -138,7 +138,7 @@ import {
   SearchRailOverlay,
   type LoadCoords,
 } from "./search-catalog-overlays";
-import { generateHref } from "./GeneratePlaceDialog";
+import { useGenerateModal } from "./GeneratePlaceDialog";
 import { SearchLocateButton } from "./SearchLocateButton";
 import {
   anchorPlaceFromPrediction,
@@ -742,17 +742,17 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // get-or-create and waits, and only the REAL profile opens — no draft
   // profile with a Creating fact. The catalog row's name and address ride
   // along when the open came from a rail card or a pin.
+  // Floating over Search, never a page (MESITA-4665).
+  const { openGenerate, modal: generateModal } = useGenerateModal();
   const openGoogleProfile = useCallback(
     (prediction: PlacePrediction, card?: Place) => {
-      openPlaceHref(
-        generateHref({
-          gid: prediction.placeId,
-          name: card?.name || prediction.mainText,
-          address: card?.address || prediction.secondaryText || null,
-        }),
-      );
+      openGenerate({
+        gid: prediction.placeId,
+        name: card?.name || prediction.mainText,
+        address: card?.address || prediction.secondaryText || null,
+      });
     },
-    [openPlaceHref],
+    [openGenerate],
   );
 
   // No toast on success: the profile opening is the payoff, and its Enrich
@@ -1146,6 +1146,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {generateModal}
       <div
         ref={mapFrameRef}
         className="relative min-h-0 flex-1 overflow-hidden"

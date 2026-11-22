@@ -228,7 +228,7 @@ describe("a Google-only result opens through get-or-create, never a preview or a
       client.indexOf("const openGoogleProfile"),
       client.indexOf("const openGoogleOnly"),
     );
-    expect(open).toContain("generateHref(");
+    expect(open).toContain("openGenerate(");
     const opener = readFileSync(
       join(SEARCH_DIR, "../../../lib/use-open-google-place.ts"),
       "utf8",
@@ -277,7 +277,7 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
       expect(body).not.toContain("apiCreateProject");
       expect(body).not.toContain("openGooglePlace(");
     }
-    expect(opener).toContain("generateHref(");
+    expect(opener).toContain("openGenerate(");
   });
 
   it("resolves a Location on pick, once (MESITA-1405, back in MESITA-2896)", () => {
