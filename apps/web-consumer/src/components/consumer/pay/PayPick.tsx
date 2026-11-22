@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { ChevronRight, MapPin, QrCode } from "lucide-react";
+import { MapPin, QrCode } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -91,15 +91,11 @@ export function PlacePickBody({
           SearchBar in a 44px grey pill; outlined on Pay Bill since MESITA-4598.
           The list under it stays boxless (MESITA-4280). It is not focused on
           open (MESITA-2939). */}
-      <div className={prepay ? "px-5 pt-3 pb-2" : "px-4 pt-4 pb-2"}>
-        <div
-          className={
-            prepay
-              ? "bg-muted flex h-11 items-center rounded-full pr-1 pl-4"
-              : "border-border bg-card flex h-12 items-center rounded-xl border pr-1 pl-4"
-          }
-          data-pay-pick-search
-        >
+      {/* ONE LOOK FOR BOTH (Pato, 2026-11-21, MESITA-4619: "keep same
+          structure here"): Prepay & Get Credits wears the picker's outlined
+          search box and rows. */}
+      <div className="px-4 pt-4 pb-2">
+        <div className="border-border bg-card flex h-12 items-center rounded-xl border pr-1 pl-4" data-pay-pick-search>
           <SearchBar
             query={query}
             showClear={query.length > 0}
@@ -288,43 +284,24 @@ function Section({
 }
 
 /** A place: photo, name, "1.0 km · address", then the QR chip and a chevron. */
-function PlaceRow({ p, onPick, prepay = false }: { p: PayPlace; onPick: (placeId: string) => void; prepay?: boolean }) {
+function PlaceRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void; prepay?: boolean }) {
   const distance = p.distance_m !== null ? distanceText(p.distance_m) : null;
-  if (!prepay) {
-    // A PLACE, INKIND'S ROW (MESITA-4598): a 56px rounded-square photo, the
-    // name over its address (two lines at most), the distance at the right;
-    // no QR chip (MESITA-4242) and no ›.
-    return (
-      <button
-        type="button"
-        onClick={() => onPick(p.place_id)}
-        className="hover:bg-muted/60 flex w-full items-start gap-3.5 px-4 py-3 text-left transition"
-        data-pay-pick-place
-      >
-        <PlacePhoto place={p} className="h-14 w-14 rounded-lg" />
-        <span className="min-w-0 flex-1 pt-0.5">
-          <span className="block truncate text-base font-semibold">{p.name ?? "A Mesita place"}</span>
-          {p.address ? <span className="text-muted-foreground mt-0.5 line-clamp-2 text-sm">{p.address}</span> : null}
-        </span>
-        {distance ? <span className="text-muted-foreground shrink-0 pt-0.5 text-sm tabular-nums">{distance}</span> : null}
-      </button>
-    );
-  }
-  const line = [distance, p.address].filter(Boolean).join(" · ");
+  // A PLACE, INKIND'S ROW (MESITA-4598; Prepay & Get Credits too since
+  // MESITA-4619): a 56px rounded-square photo, the name over its address (two
+  // lines at most), the distance at the right; no QR chip, no ›.
   return (
     <button
       type="button"
       onClick={() => onPick(p.place_id)}
-      className="hover:bg-muted/60 flex min-h-[4.5rem] w-full items-center gap-3.5 px-5 py-3 text-left transition"
+      className="hover:bg-muted/60 flex w-full items-start gap-3.5 px-4 py-3 text-left transition"
+      data-pay-pick-place
     >
-      {/* The Loyalty Card's shape on Prepay (MESITA-4597: "name … location
-          and card"): Pay's 48x32 card thumbnail. */}
-      <PlacePhoto place={p} className="h-8 w-12 rounded-md" />
-      <span className="min-w-0 flex-1">
+      <PlacePhoto place={p} className="h-14 w-14 rounded-lg" />
+      <span className="min-w-0 flex-1 pt-0.5">
         <span className="block truncate text-base font-semibold">{p.name ?? "A Mesita place"}</span>
-        {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm tabular-nums">{line}</span> : null}
+        {p.address ? <span className="text-muted-foreground mt-0.5 line-clamp-2 text-sm">{p.address}</span> : null}
       </span>
-      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+      {distance ? <span className="text-muted-foreground shrink-0 pt-0.5 text-sm tabular-nums">{distance}</span> : null}
     </button>
   );
 }

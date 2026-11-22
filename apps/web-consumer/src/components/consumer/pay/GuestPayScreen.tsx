@@ -401,7 +401,6 @@ export function GuestPayScreen({
       return true;
     }
     if (shown === "pay" || shown === "method") setStage(payBackStage(shown));
-    else if (!typing) setTyping(true);
     else {
       // ← on the first step reopens the places (MESITA-4598, step 1 of the
       // flow); history-back before.
@@ -627,7 +626,7 @@ export function GuestPayScreen({
             <p className="text-muted-foreground mt-3 text-sm">The place marks this received. Nothing else is charged.</p>
           </PaySection>
         </StepBody>
-        <StepFooter strip={5} />
+        <StepFooter strip={4} />
       </>,
       "cash-due",
     );
@@ -653,92 +652,66 @@ export function GuestPayScreen({
     );
   }
 
-  // 1 OPEN + 2 BILL, TYPING: the amount and the keypad, together in the
-  // middle. The keypad takes the room there is, between 11rem and 16rem, so
-  // a short phone (or an error line) shrinks it instead of scrolling.
-  if (shown === "bill" && typing) {
-    const toTip = () => billCents > 0 && setTyping(false);
-    return frame(
-      <>
-        {/* ‹ leaves to the places (MESITA-4117), keeping the draft. */}
-        {top("How much was your bill?")}
-        {/* The bill's panel (MESITA-4072), at the top (MESITA-4077): one
-            row, "Bill" and the typed amount on its right (MESITA-4082, no
-            big display), then the keypad. A short phone shrinks the keys
-            instead of scrolling. */}
-        <div className="flex min-h-0 flex-1 flex-col gap-3 py-4">
-          {/* THE ASK is the header's title since MESITA-4600 (it was its own
-              panel under the step bar, MESITA-4104). */}
-          {/* THE AMOUNT, BIG AND CENTRED (MESITA-4125, Pato: "the bill amount
-              must be bigger ... bigger and centralized"): AmountDisplay over
-              the keypad, undoing MESITA-4082's small amount on the right. */}
-          <PaySection title="Bill" className="flex min-h-0 shrink flex-col">
-            <div className="flex min-h-0 shrink flex-col px-4 pb-2">
-              <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mt-1 shrink-0" />
-              <div className="mt-2 flex h-64 min-h-44 shrink flex-col">
-                <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
-              </div>
-            </div>
-          </PaySection>
-        </div>
-        {status}
-        <StepFooter strip={2} primary={{ label: "Next", busy, disabled: billCents <= 0 || held, onClick: toTip }} />
-      </>,
-      "bill",
-    );
-  }
-
   const tipChip = (on: boolean) =>
     cn(
       "flex h-11 flex-1 items-center justify-center rounded-full border text-base font-semibold transition",
       on ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:bg-muted",
     );
 
-  // 2 TIP: the bill, the tip chips, credits, the summary card.
+  // 2 BILL & TIP, ONE SCREEN (Pato, 2026-11-21, MESITA-4619: "Bill & Tip
+  // MERGE THESE TWO into one.. KEEP IT CLEAN"): the typed bill big on top,
+  // the tip chips under it with the tip and the total on one line, the
+  // keypad below (it types the bill, or the tip while Other is picked),
+  // Next to Method. Two screens before (the keypad, then "Add a tip?").
   if (shown === "bill") {
     const tipOk = tip !== null;
-    const tipNext = () => setStage("method");
+    const tipTyping = tip === "other";
+    const toMethod = () => {
+      if (billCents <= 0 || !tipOk) return;
+      setTyping(false);
+      setStage("method");
+    };
     return frame(
       <>
-        {top("Add a tip?")}
-        {/* ONE PANEL (MESITA-4077): the tip choices, then Bill · Tip · Total.
-            The Bill row opens the keypad again; what it earns is on Method. */}
-        <StepBody>
-          <PaySection title="Tip" className="text-base">
-            <div className="flex gap-2 px-4 pt-3 pb-4" role="group" aria-label="Tip">
-              {TIP_CHIPS.map((p) => (
-                <button key={p} type="button" className={tipChip(tip === p)} aria-pressed={tip === p} onClick={() => setTip(p)}>
-                  {`${p}%`}
+        {top("Bill & Tip")}
+        <div className="flex min-h-0 flex-1 flex-col gap-3 py-4">
+          <PaySection className="flex min-h-0 shrink flex-col">
+            <div className="flex min-h-0 shrink flex-col px-4 pt-3 pb-2">
+              <AmountDisplay text={amount} currency={place.currency} label="Bill" className="shrink-0" />
+              <div className="mt-3 flex shrink-0 gap-2" role="group" aria-label="Tip">
+                {TIP_CHIPS.map((p) => (
+                  <button key={p} type="button" className={tipChip(tip === p)} aria-pressed={tip === p} onClick={() => setTip(p)}>
+                    {`${p}%`}
+                  </button>
+                ))}
+                <button type="button" className={tipChip(tipTyping)} aria-pressed={tipTyping} onClick={() => setTip("other")}>
+                  Other
                 </button>
-              ))}
-              <button
-                type="button"
-                className={tipChip(tip === "other")}
-                aria-pressed={tip === "other"}
-                onClick={() => setTip("other")}
-              >
-                {tip === "other" ? m(tipCents) : "Other"}
-              </button>
-            </div>
-            {tip === "other" ? (
-              <div className="px-4 pb-4" data-guest-tip-other>
-                <AmountDisplay text={other} currency={place.currency} label="Tip" className="shrink-0" />
-                <AmountKeypad text={other} onKey={(k) => setOther((t) => pressKey(t, k))} />
               </div>
-            ) : null}
-            <div className="divide-border border-border divide-y border-t">
-              <button type="button" onClick={() => setTyping(true)} className="hover:bg-muted/60 block w-full text-left transition" aria-label={`Bill ${m(billCents)}. Change it`} data-guest-bill-amount>
-                <MoneyRow label="Bill" value={m(billCents)} />
-              </button>
-              <MoneyRow label="Tip" value={tipOk ? m(tipCents) : "—"} />
-              <MoneyRow label="Total" value={m(billCents + tipCents)} strong />
+              <p className="text-muted-foreground mt-2 shrink-0 text-center text-sm tabular-nums" data-guest-bill-tip-sum>
+                {tipTyping ? (
+                  <>
+                    Tip <span className="text-foreground font-semibold">{m(tipCents)}</span> · keypad types the tip
+                  </>
+                ) : (
+                  <>
+                    Tip {tipOk ? m(tipCents) : "—"} · Total <span className="text-foreground font-semibold">{m(billCents + tipCents)}</span>
+                  </>
+                )}
+              </p>
+              <div className="mt-2 flex h-60 min-h-40 shrink flex-col">
+                <AmountKeypad
+                  text={tipTyping ? other : amount}
+                  onKey={(k) => (tipTyping ? setOther((t) => pressKey(t, k)) : setAmount((t) => pressKey(t, k)))}
+                />
+              </div>
             </div>
           </PaySection>
-        </StepBody>
+        </div>
         {status}
-        <StepFooter strip={3} primary={{ label: "Next", busy, disabled: !tipOk || billCents <= 0 || held, onClick: tipNext }} />
+        <StepFooter strip={2} primary={{ label: "Next", busy, disabled: billCents <= 0 || !tipOk || held, onClick: toMethod }} />
       </>,
-      "review",
+      "bill",
     );
   }
 
@@ -883,7 +856,7 @@ export function GuestPayScreen({
         </StepBody>
         {status}
         <StepFooter
-          strip={4}
+          strip={3}
           primary={
             creditsOnly
               ? { label: "Show the waiter", busy, disabled: held, onClick: () => void openBill(null) }
@@ -967,7 +940,7 @@ export function GuestPayScreen({
         </StepBody>
         {status}
         <StepFooter
-          strip={5}
+          strip={4}
           primary={{ label: "Choose another way", busy: false, disabled: held, onClick: chooseAnother }}
         />
       </>,
@@ -1053,7 +1026,7 @@ export function GuestPayScreen({
           </button>
         ) : null}
         <StepFooter
-          strip={5}
+          strip={4}
           // "Pay $X" (MESITA-4316, was "Pay in one click", MESITA-4106): the
           // card is held now and charged when the waiter signs. No card
           // saved: Add a card. After a refusal the main button leads back
@@ -1094,7 +1067,7 @@ export function GuestPayScreen({
         </PaySection>
       </StepBody>
       {status}
-      <StepFooter strip={5} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
+      <StepFooter strip={4} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
     </>,
     "cash",
   );
