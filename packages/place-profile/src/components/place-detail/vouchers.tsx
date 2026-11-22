@@ -2,7 +2,7 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
@@ -938,14 +938,22 @@ export function VouchersPane({
         );
       })}
       {/* THE PAY BAR (MESITA-4647), ALWAYS THERE (Pato, 2026-11-22,
-          MESITA-4659): sticky at the bottom, the same three lines whatever is
+          MESITA-4659): sticky at the bottom, the same lines whatever is
           picked — Pay, Get immediately (the price is credit now), Get in 3
-          hours (the bonus, green) — then the saved card and one button. With
-          nothing picked every line reads $0 and the button "Select an
-          offer", disabled: an empty basket charges nothing. */}
+          hours (the bonus, green), then under a hairline the total, You get
+          (MESITA-4669, Pato: "a bit confusing, add a line"). Then one black
+          pill. Ready to charge with a saved card, it splits in half
+          (MESITA-4669, Pato: "50% of button for the payment method, 50% right
+          for the amount … pay x get y, even if a bit redundant"): the card on
+          the left (a tap cycles cards, the old Change), Pay $X over Get $Y on
+          the right. Every other state is the one full-width button: with
+          nothing picked every line reads $0 and it says "Select an offer",
+          disabled: an empty basket charges nothing. */}
       {(() => {
         const sum = totals ?? { price: 0, bonus: 0 };
         const amount = (cents: number) => whole(pesos(cents, currency));
+        const payDisabled = count === 0 || locked || totals === null || (co.payCards !== undefined && co.payCards.state !== "ready");
+        const split = co.payCard !== null && !co.signedOut && count > 0 && totals !== null && !locked;
         return (
         <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 flex flex-col gap-2 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-offer-pay-bar>
           <dl className="flex flex-col gap-0.5 text-base" data-offer-summary>
@@ -961,19 +969,11 @@ export function VouchersPane({
               <dt className="text-muted-foreground">Get in 3 hours</dt>
               <dd className="font-semibold text-[#00A85A] tabular-nums" data-offer-sum-bonus>+{amount(sum.bonus)}</dd>
             </div>
+            <div className="border-border mt-1.5 flex items-center justify-between gap-3 border-t pt-1.5 text-lg">
+              <dt className="text-foreground font-bold">You get</dt>
+              <dd className="text-foreground font-bold tabular-nums" data-offer-sum-total>{amount(sum.price + sum.bonus)}</dd>
+            </div>
           </dl>
-          {co.payCard && !co.signedOut ? (
-            <p className="flex items-center justify-between text-sm" data-pay-card-line>
-              <span className="text-muted-foreground truncate">
-                {co.payCard.label} •••• {co.payCard.last4}
-              </span>
-              {co.canChange ? (
-                <button type="button" disabled={locked} onClick={co.nextCard} className="text-foreground min-h-9 shrink-0 font-semibold underline underline-offset-2 disabled:opacity-50">
-                  Change
-                </button>
-              ) : null}
-            </p>
-          ) : null}
           {co.payCards?.state === "error" ? (
             <p className="flex items-center justify-between text-sm" role="alert">
               <span className="text-foreground">Couldn&apos;t load your cards</span>
@@ -982,15 +982,45 @@ export function VouchersPane({
               </button>
             </p>
           ) : null}
-          <button
-            type="button"
-            disabled={count === 0 || locked || totals === null || (co.payCards !== undefined && co.payCards.state !== "ready")}
-            onClick={() => void pay()}
-            className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-full text-base font-semibold disabled:opacity-60"
-            data-offer-pay
-          >
-            {count === 0 ? "Select an offer" : locked ? "Paying…" : co.needsCard ? "Add a card" : totals ? `Pay ${amount(totals.price)}` : "Pay"}
-          </button>
+          {split && co.payCard && totals ? (
+            <div className="bg-foreground text-paper flex h-14 w-full items-stretch overflow-hidden rounded-full" data-offer-pay-split>
+              <button
+                type="button"
+                disabled={!co.canChange}
+                onClick={co.nextCard}
+                className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-3 text-sm opacity-80 disabled:cursor-default"
+                aria-label={co.canChange ? `Paying with ${co.payCard.label} ending ${co.payCard.last4}. Change card` : `Paying with ${co.payCard.label} ending ${co.payCard.last4}`}
+                data-pay-card-line
+              >
+                <CreditCard className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="truncate">
+                  {co.payCard.label} •••• {co.payCard.last4}
+                </span>
+                {co.canChange ? <ChevronDown className="h-4 w-4 shrink-0" aria-hidden /> : null}
+              </button>
+              <span className="bg-paper/25 my-3 w-px shrink-0" aria-hidden />
+              <button
+                type="button"
+                disabled={payDisabled}
+                onClick={() => void pay()}
+                className="flex min-w-0 flex-1 flex-col items-center justify-center px-3 leading-tight disabled:opacity-60"
+                data-offer-pay
+              >
+                <span className="text-base font-semibold tabular-nums">Pay {amount(totals.price)}</span>
+                <span className="text-xs tabular-nums opacity-70">Get {amount(totals.price + totals.bonus)}</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={payDisabled}
+              onClick={() => void pay()}
+              className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-full text-base font-semibold disabled:opacity-60"
+              data-offer-pay
+            >
+              {count === 0 ? "Select an offer" : locked ? "Paying…" : co.needsCard ? "Add a card" : totals ? `Pay ${amount(totals.price)}` : "Pay"}
+            </button>
+          )}
         </div>
         );
       })()}
