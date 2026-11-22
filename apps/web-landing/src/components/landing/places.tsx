@@ -18,6 +18,11 @@ function Places() {
           <h2 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">
             Your profile is already built. Claim it.
           </h2>
+          {/* The restaurant pitch in one line, Pato's (MESITA-4604). */}
+          <p className="text-foreground text-base leading-relaxed font-medium">
+            Mesita is a growth partner for restaurants, bringing capital from
+            diners who pay up front and tools that bring them back.
+          </p>
           <p className="text-muted-foreground text-base leading-relaxed">
             Find your place, claim it, and turn on what you want. No call, no
             demo, no contract, no onboarding. Four solutions are live today;
