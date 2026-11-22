@@ -131,16 +131,13 @@ import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
 import { EmptyState, Skeleton } from "@/components/shared";
 import { goBack } from "@/lib/navigate";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
-import { IdentityCard } from "@/components/consumer/IdentityCard";
+import { PersonInstagramPill, PersonModules } from "@/components/consumer/IdentityCard";
 import { cn, errMsg, formatKm } from "@/lib/utils";
-import {
-  approxFollowers,
-  instagramWithFollowers,
-} from "@/lib/consumer-identity";
+import { approxFollowers } from "@/lib/consumer-identity";
 import { useConsumerIdentity, useViewer } from "@/lib/identity-context";
+import { trackEvent } from "@/lib/analytics/track";
 import { openSignGate } from "@/lib/anonymous";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { trackEvent } from "@/lib/analytics/track";
 
 // Re-exported: the rounding lives with the identity model (MESITA-2574).
 export { approxFollowers };
@@ -527,13 +524,27 @@ function useMemberHistory(event: CardEvent | null): MemberHistory | null {
     : (historyMemory.get(key) ?? null);
 }
 
-/** The card's Instagram box, Me's own wording: "@handle · ~1.2K
- *  followers" beside the logo (no "Insta:" since MESITA-3067), a masked
- *  "@per***", or "No Instagram" (a fact about the member, MESITA-2696).
- *  On your own card the handle shows too. */
-function cardInstagramLabel(person: ActivityPerson): string {
-  if (!person.handle) return "No Instagram";
-  return instagramWithFollowers(`@${person.handle}`, person.followers, true);
+
+/** ADD YOURS TO SEE THEIRS (Pato, 2026-11-22, MESITA-4695: "for instagram
+ *  of other people, mention in a yellow pink box: add your instagram to see
+ *  other people's instagram, a shortcut button"): the Instagram gradient,
+ *  white words, one button to Me › Instagram. */
+function AddInstagramBox() {
+  return (
+    <div
+      className="flex w-full flex-col items-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#F9CE34] via-[#EE2A7B] to-[#6228D7] px-4 py-3.5 text-center text-white"
+      data-social-add-instagram
+    >
+      <p className="text-sm font-semibold">Add your Instagram to see other people&apos;s Instagram</p>
+      <PushLink
+        href={CONSUMER_ROUTES.mePages.instagram}
+        className="bg-white text-neutral-950 flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold"
+      >
+        <InstagramGlyph className="h-4 w-4" />
+        Add Instagram
+      </PushLink>
+    </div>
+  );
 }
 
 /** The person card (MESITA-2546, MESITA-2547, MESITA-2609): the member's
@@ -644,13 +655,28 @@ function PersonCard({
             the gap. Each block carries its own inset instead. */}
         <div className="px-5 pt-5">
           {person ? (
-            <IdentityCard
+            // THE ME CARD'S FORMAT (Pato, 2026-11-22, MESITA-4695): name,
+            // Class | Plan, then Instagram. A viewer without Instagram gets
+            // the add-yours box whatever this person has, so it never says
+            // whether they have one; "not shared" and "none" read alike.
+            <PersonModules
               name={who}
               avatarUrl={person.avatarUrl}
-              instagram={{
-                label: cardInstagramLabel(person),
-                connected: Boolean(person.handle),
-              }}
+              guestClass={person.guestClass}
+              guestPlan={person.plan}
+              instagram={
+                !person.isYou && !igConnected ? (
+                  <AddInstagramBox />
+                ) : person.handle && (person.isYou || !person.handleLocked) ? (
+                  <PersonInstagramPill
+                    label={`@${person.handle}`}
+                    href={igUrl}
+                    onOpen={() => trackEvent(supabase, "social_open_instagram", {})}
+                  />
+                ) : (
+                  <PersonInstagramPill label="No Instagram" />
+                )
+              }
             />
           ) : history ? (
             // A link to a member who is gone (deleted, or the event is).
@@ -691,38 +717,6 @@ function PersonCard({
           />
         </div>
         <div className="px-5 pb-5">
-          {/* Open Instagram (MESITA-2590): a new tab, so Mesita stays open
-            underneath; every tap is counted to measure who leaves. Under
-            the list, small (MESITA-2594): the card is Mesita's first. */}
-          {igUrl && (
-            <a
-              href={igUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => trackEvent(supabase, "social_open_instagram", {})}
-              className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-sm font-semibold"
-              data-social-open-instagram
-            >
-              <InstagramGlyph className="h-3.5 w-3.5" />
-              Open Instagram
-            </a>
-          )}
-          {/* You see others' Instagram only if you show yours (MESITA-2594). */}
-          {person?.handleLocked && !person.isYou && (
-            <PushLink
-              href={
-                igConnected
-                  ? CONSUMER_ROUTES.mePages.settings
-                  : CONSUMER_ROUTES.mePages.instagram
-              }
-              className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-center text-sm font-semibold underline underline-offset-4"
-              data-social-unlock-instagram
-            >
-              {igConnected
-                ? "Make your profile public to see their Instagram"
-                : "Connect your Instagram to see theirs"}
-            </PushLink>
-          )}
         </div>
       </div>
     </div>

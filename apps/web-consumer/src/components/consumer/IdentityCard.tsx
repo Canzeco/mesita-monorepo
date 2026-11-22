@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CreditCard, Crown, User } from "lucide-react";
 import {
@@ -301,5 +302,83 @@ export function IdentityModules({
         </PushLink>
       </span>
     </div>
+  );
+}
+
+/** ANOTHER GUEST'S HEADER, THE ME CARD'S FORMAT (Pato, 2026-11-22,
+ *  MESITA-4695: "same format. mention class and plan"): the photo, the first
+ *  name full width, Class | Plan in halves (yellow crown, green card), then
+ *  the Instagram row the caller decides (a handle, "No Instagram", or the
+ *  add-yours box). Nothing here is a link but what the caller passes. */
+export function PersonModules({
+  name,
+  avatarUrl,
+  guestClass,
+  guestPlan,
+  instagram,
+}: {
+  name: string;
+  avatarUrl: string | null;
+  guestClass: GuestClass;
+  guestPlan: GuestPlan;
+  instagram: ReactNode;
+}) {
+  const still = "hover:bg-card";
+  return (
+    <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card data-person-modules>
+      <span className={cn(IDENTITY_RING_CLASS, "block")} aria-hidden>
+        <span className="bg-muted relative block h-[72px] w-[72px] overflow-hidden rounded-full">
+          {avatarUrl ? (
+            <SizedImg src={avatarUrl} size="thumb" alt="" className="h-full w-full object-cover" />
+          ) : (
+            <DefaultAvatar className="h-full w-full" />
+          )}
+        </span>
+      </span>
+      <span className="grid w-full min-w-0 grid-cols-2 gap-2">
+        <span className={cn(IDENTITY_PILL_CLASS, still, "col-span-2")} data-identity-name>
+          <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+          <span className="truncate">{name}</span>
+        </span>
+        <span className={cn(IDENTITY_PILL_CLASS, still)} data-identity-class={guestClass}>
+          <Crown className={cn("h-4 w-4 shrink-0", CROWN_YELLOW)} strokeWidth={2.25} aria-hidden />
+          <span className="truncate">{CLASS_LABEL[guestClass]} Class</span>
+        </span>
+        <span className={cn(IDENTITY_PILL_CLASS, still)} data-identity-plan={guestPlan}>
+          <CreditCard className={cn("h-4 w-4 shrink-0", CARD_GREEN)} strokeWidth={2.25} aria-hidden />
+          <span className="truncate">{PLAN_LABEL[guestPlan]} Plan</span>
+        </span>
+        <span className="col-span-2 min-w-0">{instagram}</span>
+      </span>
+    </div>
+  );
+}
+
+/** The person card's Instagram pill: a handle (a link when it opens
+ *  Instagram) or "No Instagram" (MESITA-4695). */
+export function PersonInstagramPill({
+  label,
+  href,
+  onOpen,
+}: {
+  label: string;
+  href?: string | null;
+  /** Counts the tap (social_open_instagram). */
+  onOpen?: () => void;
+}) {
+  const body = (
+    <>
+      <InstagramBadge connected={label.startsWith("@")} />
+      <span className="truncate">{label}</span>
+    </>
+  );
+  return href ? (
+    <a href={href} target="_blank" rel="noopener noreferrer" onClick={onOpen} className={IDENTITY_PILL_CLASS} data-identity-instagram>
+      {body}
+    </a>
+  ) : (
+    <span className={cn(IDENTITY_PILL_CLASS, "hover:bg-card")} data-identity-instagram>
+      {body}
+    </span>
   );
 }
