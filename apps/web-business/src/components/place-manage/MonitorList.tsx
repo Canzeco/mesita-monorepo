@@ -21,6 +21,7 @@ import {
   linkHref,
   linkKindPage,
   linkLabel,
+  money,
   NOUN,
   rowAmount,
   rowDetail,
@@ -166,6 +167,112 @@ export function MonitorRowItem({ placeId, kind, row, timezone }: { placeId: stri
   );
 }
 
+// ── Payments is a table (MESITA-4683, Pato: "payments in a table too") ────
+// A header row and one column per field; money sits right so the digits line
+// up. It scrolls sideways inside its card on a narrow screen; the page never
+// does. The other Monitor pages keep their rows (MESITA-4568).
+
+const TH = "text-muted-foreground px-3 py-2 text-xs font-medium whitespace-nowrap first:pl-4 last:pr-4 sm:first:pl-5 sm:last:pr-5";
+const TD = "px-3 py-2 align-middle whitespace-nowrap first:pl-4 last:pr-4 sm:first:pl-5 sm:last:pr-5";
+const NUM = "text-right tabular-nums";
+
+/** "—" for an empty cell, so a column never reads as broken. */
+function Dash() {
+  return <span className="text-muted-foreground/60">—</span>;
+}
+
+/** A money field of the payload, or "—" when it is zero. */
+function cents(row: MonitorRow, ...keys: string[]): React.ReactNode {
+  const n = keys.reduce((sum, k) => sum + Number(row.payload[k] ?? 0), 0);
+  return n > 0 ? money(n) : <Dash />;
+}
+
+const PAYMENT_MONEY: readonly [string, string[]][] = [
+  ["Card", ["card_cents"]],
+  ["Cash", ["outside_cents"]],
+  ["Credit", ["credit_cents"]],
+  ["Tip", ["tip_cents"]],
+  ["Refunded", ["refunded_cents", "credit_refunded_cents"]],
+];
+
+function PaymentsTable({ placeId, rows, timezone }: { placeId: string; rows: MonitorRow[]; timezone: string }) {
+  return (
+    <div className="scrollbar-thin-dark min-w-0 overflow-x-auto">
+      <table className="w-full border-collapse text-left text-sm">
+        <thead className="bg-muted/40 border-border border-b">
+          <tr>
+            {["Guest", "Method", "Date", "Customer", "Visit"].map((h) => (
+              <th key={h} scope="col" className={TH}>{h}</th>
+            ))}
+            {PAYMENT_MONEY.map(([h]) => (
+              <th key={h} scope="col" className={cn(TH, "text-right")}>{h}</th>
+            ))}
+            <th scope="col" className={cn(TH, "text-right")}>Total</th>
+            <th scope="col" className={cn(TH, "text-right")}>ID</th>
+          </tr>
+        </thead>
+        <tbody className="divide-border divide-y">
+          {rows.map((row) => {
+            const name = row.guest ?? "Deleted guest";
+            const visits = row.links.filter((l) => l.kind === "visit");
+            return (
+              <tr key={row.id} id={row.id} className="hover:bg-muted/30">
+                <td className={TD}>
+                  <span className="flex items-center gap-2">
+                    <GuestAvatar face={row.customer ? (row.face ?? null) : null} size={24} />
+                    {row.customer ? (
+                      <Link href={customerHref(placeId, row.customer)} className="font-medium underline-offset-2 hover:underline">
+                        {name}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground font-medium">{name}</span>
+                    )}
+                  </span>
+                </td>
+                <td className={TD}>
+                  <span className="flex gap-1.5">
+                    <MethodBadges row={row} />
+                  </span>
+                </td>
+                <td className={cn(TD, "text-muted-foreground")}>{when(row.at, timezone)}</td>
+                <td className={TD}>
+                  {row.customer ? (
+                    <Link href={customerHref(placeId, row.customer)} className={cn(CHIP, "gap-1")}>
+                      <ChipIcon kind="customer" />
+                      {customerLabel(row.customer)}
+                    </Link>
+                  ) : (
+                    <Dash />
+                  )}
+                </td>
+                <td className={TD}>
+                  {visits.length ? (
+                    <span className="flex gap-1.5">
+                      {visits.slice(0, 3).map((l) => (
+                        <Link key={l.id} href={linkHref(placeId, l)} className={cn(CHIP, "gap-1")}>
+                          <ChipIcon kind="visit" />
+                          {linkLabel(l)}
+                        </Link>
+                      ))}
+                    </span>
+                  ) : (
+                    <Dash />
+                  )}
+                </td>
+                {PAYMENT_MONEY.map(([h, keys]) => (
+                  <td key={h} className={cn(TD, NUM)}>{cents(row, ...keys)}</td>
+                ))}
+                <td className={cn(TD, NUM, "font-semibold")}>{rowAmount("payments", row)}</td>
+                <td className={cn(TD, "text-muted-foreground/70 text-right font-mono text-xs tabular-nums")}>{shortId(row.id)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /** "Showing visit #A1B2C3 · Show all" or "Showing Ana's visits · Show all". */
 export function FilterBanner({ text, clearHref }: { text: string; clearHref: string }) {
   return (
@@ -229,6 +336,8 @@ export function MonitorList({
       ) : null}
       {page.rows.length === 0 ? (
         <p className="text-muted-foreground px-5 py-6 text-sm sm:px-6">{filtered ? "Nothing matches this filter." : EMPTY[kind]}</p>
+      ) : kind === "payments" ? (
+        <PaymentsTable placeId={placeId} rows={page.rows} timezone={page.timezone} />
       ) : (
         <ul className="divide-border divide-y">
           {page.rows.map((row) => (
