@@ -320,8 +320,30 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
     if (NOT_YET_SELLABLE[k]) return false;
     return unavailable[k] === undefined;
   };
-  return { unavailable, dim, guestLock, buyable, minFollowers };
+  // HIDDEN · BLOCKED · AVAILABLE (Pato, 2026-11-21, MESITA-4603: "If not
+  // available by the business, don't put it as offer ... never mention
+  // welcome twice ... STORY NEVER HID IT (ONLY HID IT IF THE BUSINESS DON'T
+  // OFFER IT) BUT IF AVAILABLE, JUST BLOCKED"). Reverses MESITA-4220's
+  // "every voucher, locked or not". Docs › Credits has the table.
+  const show = (k: MoneyVoucherKey): OfferShow => {
+    const reason = unavailable[k];
+    // The place doesn't offer it (switched off, no account, Loyalty Cards
+    // off, billing past due, card payments off, not yet sellable): gone.
+    if (reason !== undefined && !GUEST_SIDE_REASONS.has(reason)) return "hidden";
+    // Welcome is once per place: once had, it is never shown again.
+    if (k === "voucher_welcome" && reason === "used") return "hidden";
+    return buyable(k) ? "available" : "blocked";
+  };
+  return { unavailable, dim, guestLock, buyable, minFollowers, show };
 }
+
+/** How a voucher stands on the Offers page for this guest (MESITA-4603). */
+export type OfferShow = "hidden" | "blocked" | "available";
+
+/** The reasons that are the guest's, or a pause, never the place's: the row
+ *  stays and reads blocked. Every other reason means the place doesn't offer
+ *  it, and the row is hidden (MESITA-4603). */
+const GUEST_SIDE_REASONS: ReadonlySet<VoucherReason> = new Set<VoucherReason>(["used", "needs_visit", "needs_instagram", "paused"]);
 
 /** One of the six vouchers as a row elsewhere (the Loyalty Card, MESITA-3822):
  *  the Offers page's own words, colour and rules, formatted, never added. */
@@ -381,10 +403,10 @@ function listedProducts(): Product[] {
 /** The vouchers in the Offers page's order, Welcome · VIP · Small · Medium · Big (MESITA-4154)
  *  (MESITA-3834). */
 export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions["guest"]): VoucherOffer[] {
-  const { unavailable, dim, guestLock, buyable, minFollowers } = offerRules(money, guest);
+  const { unavailable, dim, guestLock, buyable, minFollowers, show } = offerRules(money, guest);
   const catalog = money?.catalog ?? {};
   const currency = money?.currency ?? "mxn";
-  return listedProducts().map((p) => {
+  return listedProducts().filter((p) => show(p.key) !== "hidden").map((p) => {
     const line = catalog[p.key];
     const can = buyable(p.key);
     const status = offerStatus(p.key, can, guestLock(p.key), unavailable[p.key], minFollowers);
@@ -1481,7 +1503,9 @@ export function VouchersPane({
     };
   }, [askedKey, openStory]);
 
-  const products = listedProducts();
+  // HIDDEN ROWS ARE GONE (MESITA-4603), never drawn while list-vouchers is
+  // still loading (every row is a grey bone then).
+  const products = listedProducts().filter((p) => loading || co.show(p.key) !== "hidden");
 
   const sheetProduct = open && !loading ? products.find((p) => p.key === open) ?? null : null;
   const sheet: ReactNode = sheetProduct ? (
