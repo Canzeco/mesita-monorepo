@@ -9,7 +9,12 @@
 //
 // Body: { place_id, kind: visits|vouchers|gifts|payments|credits,
 //         customer?: key, id?: uuid, before?: { rank, at, id } }
-// Response: { ok, test_mode, kind, timezone, rows, next }
+// Response: { ok, test_mode, kind, timezone, rows, next, analytics? }
+//
+// MESITA-4677 (Pato: "add analytics to visits and vouchers too"): on the
+// first, unfiltered page of visits or vouchers, `analytics` is synthesized
+// here from every raw row (pay_tabs, wallet_purchases; the same rows the list
+// shows), read in pages. Nothing is stored (Rules §2).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -19,8 +24,11 @@ import { readBoostPlace } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 import { isCustomerKey, maskMonitorRow, MONITOR_KINDS } from "../_shared/monitor.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { synthesizeVisits, synthesizeVouchers, type VisitRow, type VoucherRow } from "./analytics.ts";
 
 const DEFAULT_TIMEZONE = "America/Mexico_City";
+const PAGE = 1000;
 
 function usableTimezone(timezone: string | null | undefined): string {
   if (!timezone) return DEFAULT_TIMEZONE;
@@ -64,6 +72,8 @@ serveJson("business-web-list-place-monitor", async (req) => {
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
 
   const livemode = paymentsLivemode();
+  const wantsAnalytics = !before && b.customer == null && b.id == null && (b.kind === "visits" || b.kind === "vouchers");
+  const analyticsP = wantsAnalytics ? readAnalytics(admin, b.place_id, livemode, b.kind as "visits" | "vouchers") : null;
   const { data, error } = await admin.rpc("place_monitor_list", {
     p_place_id: b.place_id,
     p_livemode: livemode,
@@ -77,6 +87,12 @@ serveJson("business-web-list-place-monitor", async (req) => {
     return json({ ok: false, error: `place_monitor_list: ${error.message}` }, 500);
   }
 
+  const analytics = analyticsP ? await analyticsP : null;
+  if (analytics && "error" in analytics) {
+    console.error(`[monitor] analytics kind=${b.kind} place=${b.place_id} error=${analytics.error}`);
+    return json({ ok: false, error: `analytics: ${analytics.error}` }, 500);
+  }
+
   const s = (data ?? {}) as { rows?: Array<Record<string, unknown>>; next?: unknown };
   return json({
     ok: true,
@@ -85,5 +101,62 @@ serveJson("business-web-list-place-monitor", async (req) => {
     timezone: usableTimezone(placeRes.place?.timezone),
     rows: (s.rows ?? []).map(maskMonitorRow),
     next: s.next ?? null,
+    ...(analytics ? { analytics: analytics.value } : {}),
   });
 });
+
+/** Every raw row the list shows, in pages. Same filters as place_monitor_list. */
+async function readAll<T>(
+  query: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+): Promise<{ rows: T[] } | { error: string }> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await query(from, from + PAGE - 1);
+    if (error) return { error: error.message };
+    const page = (data ?? []) as T[];
+    rows.push(...page);
+    if (page.length < PAGE) return { rows };
+  }
+}
+
+async function readAnalytics(
+  admin: SupabaseClient,
+  placeId: string,
+  livemode: boolean,
+  kind: "visits" | "vouchers",
+): Promise<{ value: unknown } | { error: string }> {
+  const now = Date.now();
+  if (kind === "visits") {
+    const r = await readAll<{ consumer_id: string | null; paid_at: string | null; created_at: string; status: string; origin: string; verified_at: string | null; bill_cents: number | null; tip_cents: number | null }>(
+      (from, to) =>
+        admin
+          .from("pay_tabs")
+          .select("id, consumer_id, paid_at, created_at, status, origin, verified_at, bill_cents, tip_cents")
+          .eq("place_id", placeId)
+          .eq("livemode", livemode)
+          .in("status", ["paid", "waiting_bill", "billed", "paying"])
+          .order("created_at")
+          .order("id")
+          .range(from, to),
+    );
+    if ("error" in r) return r;
+    const rows: VisitRow[] = r.rows
+      .filter((t) => t.status === "paid" ? t.origin !== "guest" || t.verified_at !== null : t.origin !== "guest")
+      .map((t) => ({ consumer_id: t.consumer_id, at: t.paid_at ?? t.created_at, status: t.status, bill_cents: t.bill_cents, tip_cents: t.tip_cents }));
+    return { value: synthesizeVisits(rows, now) };
+  }
+  const r = await readAll<VoucherRow & { paid_at: string }>(
+    (from, to) =>
+      admin
+        .from("wallet_purchases")
+        .select("id, consumer_id, paid_at, amount_cents, bonus_cents, refunded_cents")
+        .eq("place_id", placeId)
+        .eq("livemode", livemode)
+        .not("paid_at", "is", null)
+        .order("paid_at")
+        .order("id")
+        .range(from, to),
+  );
+  if ("error" in r) return r;
+  return { value: synthesizeVouchers(r.rows.map((v) => ({ ...v, at: v.paid_at })), now) };
+}
