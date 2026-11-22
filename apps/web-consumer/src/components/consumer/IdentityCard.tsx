@@ -1,7 +1,7 @@
 "use client";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Crown, User, UserRound } from "lucide-react";
+import { Crown, User } from "lucide-react";
 import { CLASS_LABEL, type GuestClass } from "@/lib/guest-standing";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
@@ -261,13 +261,10 @@ export function IdentityModules({
           aria-label={`Class: ${CLASS_LABEL[guestClass]}`}
           data-identity-class={guestClass}
         >
-          {/* A LITTLE ICON ON EACH (MESITA-4651): a crown for VIP, a person
-              badge for Regular. */}
-          {vip ? (
-            <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-          ) : (
-            <UserRound className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-          )}
+          {/* A CROWN FOR EVERY CLASS (Pato, 2026-11-22, MESITA-4667: "use a
+              crown for the class"): grey on Regular, white on VIP; a person
+              badge on Regular until then (MESITA-4651). */}
+          <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
           <span className="truncate">{CLASS_LABEL[guestClass]}</span>
         </PushLink>
         <PushLink
