@@ -22,10 +22,15 @@ import { RAIL_CARD_HEIGHT_CLASS } from "./SearchRailCard";
 export function AddPlaceButton({
   onAdd,
   empty = false,
+  filterLabel = null,
 }: {
   onAdd: () => void;
   /** No places in this area: the line says so. */
   empty?: boolean;
+  /** The family the guest filtered by, named when empty (Pato, 2026-11-22,
+   *  MESITA-4685: "maybe they wrongly selected a filter and that's why there
+   *  is nothing"). */
+  filterLabel?: string | null;
 }) {
   return (
     <button
@@ -41,7 +46,9 @@ export function AddPlaceButton({
         Add a new place to Mesita
       </span>
       <span className="text-paper/70 text-sm leading-5">
-        {empty
+        {empty && filterLabel
+          ? `Nothing here for ${filterLabel} yet. Takes under 10 seconds.`
+          : empty
           ? "Nothing here yet. Takes under 10 seconds."
           : "Not on Mesita yet? Takes under 10 seconds."}
       </span>
