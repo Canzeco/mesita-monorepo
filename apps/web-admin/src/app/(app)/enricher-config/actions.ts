@@ -71,6 +71,9 @@ type AtlasConfigResponse = {
   enrichCreateOnOpenConsumer: boolean;
   enrichCreateOnOpenAdmin: boolean;
   enrichConsumerCreatesPerDay: number;
+  enrichConsumerMinGoogleReviews?: number;
+  enrichConsumerCreatesPerMonth?: number;
+  enrichAllowAnyGoogleCategory?: boolean;
   updatedAt: string | null;
 };
 
@@ -120,6 +123,9 @@ export async function updateAtlasConfig(patch: {
   createOnOpenConsumer?: boolean;
   createOnOpenAdmin?: boolean;
   consumerCreatesPerDay?: number;
+  consumerMinGoogleReviews?: number;
+  consumerCreatesPerMonth?: number;
+  allowAnyGoogleCategory?: boolean;
 }): Promise<UpdateAtlasConfigResult> {
   const r = await efInvoke<AtlasConfigResponse>(
     "admin-web-update-config",
