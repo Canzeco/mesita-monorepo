@@ -8,6 +8,7 @@ import { CardHeader, MonitorCard, MonitorError, MonitorList } from "./MonitorLis
 import { OpenStripeButton } from "./OpenStripeButton";
 import { ExportButton, MonitorToolbar } from "./ExportButton";
 import { Payouts } from "./Payouts";
+import { MonitorAnalytics } from "./MonitorAnalytics";
 
 export type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -42,12 +43,19 @@ export async function MonitorPage({
       clearHref={`/places/${encodeURIComponent(placeId)}/${page}`}
     />
   );
+  // Analytics on top (MESITA-4677): the server sends them on the first,
+  // unfiltered page of Visits and Vouchers only.
+  const analytics =
+    r.data.analytics && (kind === "visits" || kind === "vouchers")
+      ? ({ kind, ...r.data.analytics } as Parameters<typeof MonitorAnalytics>[0]["analytics"])
+      : null;
   return (
     <div className="flex flex-col gap-4 pb-8">
       <MonitorToolbar>
         {stripe ? <OpenStripeButton placeId={placeId} /> : null}
         <ExportButton placeId={placeId} kind={kind} filter={filter} name={page === "money" ? "stripe" : page} />
       </MonitorToolbar>
+      {analytics ? <MonitorAnalytics analytics={analytics} /> : null}
       {payouts ? (
         // Two columns (MESITA-4564, Pato: "payments left, payouts right");
         // stacked on a phone.
