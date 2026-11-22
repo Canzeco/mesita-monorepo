@@ -5,10 +5,16 @@
 // google_place_id Mesita already holds answers 200 with that row and
 // `created: false`, before the quota and before any Google spend; a new one
 // runs the shared core and answers 201 with `created: true`:
-//   1. authenticate the consumer,
+//   1. authenticate the consumer; an anonymous session is refused 401
+//      `sign_in` before anything (MESITA-4681: anonymous visitors never add
+//      a place),
 //   2. look the id up; an existing row opens at once,
 //   2b. Configurations › Creation › "Create the profile on open · consumer
 //       app" must be on, else 403 `create_on_open_off` (no quota, no Google),
+//   2c. the guest's month (MESITA-4681): at most Creation's places per
+//       month, else 429 `monthly_limit`; after Google's Details the minimum
+//       Google reviews and the Atlas category are checked by the same
+//       verdict the Generate preview shows (_shared/consumer-create-verdict.ts),
 //   3. createMinimalPlace (_shared/create-place.ts): dedupe → Google spine →
 //      save ready + enriched_at null. Does NOT seed Enricher. Guests vote
 //      on the Enrich tab; the Crenup threshold queues Enricher 1–8.
@@ -42,6 +48,7 @@ import {
 } from "../_shared/place-open-events.ts";
 import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
 import { readAppConfig } from "../_shared/write-config.ts";
+import { addVerdict, placesAddedThisMonth } from "../_shared/consumer-create-verdict.ts";
 
 type Body = { googlePlaceId?: string };
 
@@ -50,6 +57,11 @@ serveJson("consumer-web-create-place", async (req) => {
   const ctx = await requireConsumerRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
+  // Anonymous visitors never add a place (MESITA-4681), not even one Mesita holds:
+  // the app sends them to sign in.
+  if (user.raw?.is_anonymous === true) {
+    return json({ ok: false, code: "sign_in", error: "Sign in to add places to Mesita." }, 401);
+  }
 
   // Parse input.
   const bodyRes = await readJson<Body>(req);
@@ -104,6 +116,25 @@ serveJson("consumer-web-create-place", async (req) => {
     );
   }
 
+  // The guest's month, before any spend. The place's own gates (reviews,
+  // category) need Google's Details, so createMinimalPlace answers them below.
+  const used = await placesAddedThisMonth(
+    admin,
+    user.id,
+    creationConfig.enrichConsumerCreatesPerMonth,
+  );
+  const month = addVerdict({
+    signedIn: true,
+    reviewCount: null,
+    categoryAllowed: true,
+    usedThisMonth: used,
+    config: { ...creationConfig, enrichConsumerMinGoogleReviews: 0 },
+  });
+  if (!month.canAdd) {
+    await log({ outcome: "refused", code: month.code ?? "refused" });
+    return json({ ok: false, code: month.code, error: month.message }, 429);
+  }
+
   // Per-consumer rolling 24 h quota — every CREATE attempt is metered BEFORE
   // any Google spend (create-quota.ts has the abuse rationale).
   const quota = await consumeConsumerCreateQuota(
@@ -122,6 +153,7 @@ serveJson("consumer-web-create-place", async (req) => {
     admin,
     callerName: "consumer-web-create-place",
     googlePlaceId,
+    minGoogleReviews: creationConfig.enrichConsumerMinGoogleReviews,
   });
   if (!created.ok) {
     // Lost the unique-index race to a concurrent open: that row is the answer.

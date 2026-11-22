@@ -5,6 +5,8 @@ import {
   Gauge,
   Sparkles,
   Users,
+  Star,
+  CalendarDays,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -231,6 +233,42 @@ export function CrenupClient({
                   open says the daily limit is reached. 1000 while testing; lower
                   it before launch.
                 </p>
+                {/* The Create gates (Pato, 2026-11-22, MESITA-4681). A guest
+                    still sees any place's preview; Generate follows these. */}
+                <Fields>
+                  <NumberField
+                    icon={<Star className="text-muted-foreground h-4 w-4" />}
+                    label="Minimum Google reviews · guests"
+                    value={settings.consumerMinGoogleReviews}
+                    min={0}
+                    max={100000}
+                    onChange={(v) => patch({ consumerMinGoogleReviews: v })}
+                    disabled={pending}
+                  />
+                  <NumberField
+                    icon={<CalendarDays className="text-muted-foreground h-4 w-4" />}
+                    label="Places a guest may add per month"
+                    value={settings.consumerCreatesPerMonth}
+                    min={1}
+                    max={10000}
+                    onChange={(v) => patch({ consumerCreatesPerMonth: v })}
+                    disabled={pending}
+                  />
+                </Fields>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Consumer app only. A guest can search any place and see its
+                  preview, but Generate is off below the minimum reviews, and
+                  after their places for the month (counted from the 1st,
+                  Mexico City time). The preview tells them how many are left.
+                  Anonymous visitors never add a place.
+                </p>
+                <SwitchRow
+                  label="Allow places outside Atlas's Google categories · every app"
+                  hint="Off: Create refuses a place whose main Google category Atlas does not allow. On: it lands on Undefined. Rating and review floors still apply."
+                  checked={settings.allowAnyGoogleCategory}
+                  pending={pending}
+                  onCheckedChange={(next) => patch({ allowAnyGoogleCategory: next })}
+                />
               </div>
               {/* This page CONFIGURES Create; it does not run it. The door is
                   Multiple Places › Create, same idiom as the Models section's jump. */}

@@ -141,13 +141,15 @@ function SuggestionLine({
   // "is this a Premier place", and a Location has no profile to answer
   // for. The accessible label names the ENTITY ("City"), never the absence
   // of a profile.
+  // Told apart at a glance (Pato, 2026-11-22, MESITA-4681): a place wears a
+  // red pin, a Location a blue map.
   if (prediction.kind === "location") {
     return (
       <PlaceActionRow
         mark={
           <MapIcon
             aria-hidden
-            className="text-muted-foreground h-5 w-5"
+            className="text-fact-distance h-5 w-5"
             strokeWidth={2.25}
           />
         }
@@ -177,7 +179,7 @@ function SuggestionLine({
       mark={
         <MapPin
           aria-hidden
-          className="text-muted-foreground h-5 w-5"
+          className="text-fact-closed h-5 w-5"
           strokeWidth={2.25}
         />
       }

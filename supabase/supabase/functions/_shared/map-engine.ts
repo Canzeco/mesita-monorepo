@@ -75,8 +75,10 @@ export function primaryTypeClearsMapTypes(
 export function evaluatePlaceForMap(
   map: MapConfig,
   signals: MapPlaceSignals,
+  /** Creation's universal switch (MESITA-4681): skip the place-type check; the floors still apply. */
+  opts: { anyType?: boolean } = {},
 ): EligibilityResult {
-  if (!primaryTypeClearsMapTypes(signals.primaryType)) {
+  if (!opts.anyType && !primaryTypeClearsMapTypes(signals.primaryType)) {
     return {
       eligible: false,
       code: "family_not_eligible",

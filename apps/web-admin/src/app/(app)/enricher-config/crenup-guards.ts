@@ -32,6 +32,12 @@ export type CrenupSettings = {
   createOnOpenAdmin: boolean;
   /** Places one guest may create per rolling 24 h (MESITA-2376). */
   consumerCreatesPerDay: number;
+  /** The Create gates (MESITA-4681): guests need this many Google reviews… */
+  consumerMinGoogleReviews: number;
+  /** …and add at most this many places a calendar month. */
+  consumerCreatesPerMonth: number;
+  /** Every app: Create may add a place outside Atlas's Google categories. */
+  allowAnyGoogleCategory: boolean;
   /** Fast Update: first after N, then every M views (MESITA-3934). */
   updateFirstAfterViews: number;
   updateEveryViews: number;
@@ -105,6 +111,9 @@ export function savePayload(s: CrenupSettings) {
     createOnOpenConsumer: s.createOnOpenConsumer,
     createOnOpenAdmin: s.createOnOpenAdmin,
     consumerCreatesPerDay: s.consumerCreatesPerDay,
+    consumerMinGoogleReviews: s.consumerMinGoogleReviews,
+    consumerCreatesPerMonth: s.consumerCreatesPerMonth,
+    allowAnyGoogleCategory: s.allowAnyGoogleCategory,
     updateEveryViews: s.updateEveryViews,
     reviewsUpdateEveryViews: s.reviewsUpdateEveryViews,
     updateFirstAfterViews: s.updateFirstAfterViews,

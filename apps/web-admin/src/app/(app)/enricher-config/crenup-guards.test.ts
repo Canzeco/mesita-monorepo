@@ -29,6 +29,9 @@ const seed: CrenupSettings = {
   createOnOpenConsumer: true,
   createOnOpenAdmin: true,
   consumerCreatesPerDay: 1000,
+  consumerMinGoogleReviews: 10,
+  consumerCreatesPerMonth: 10,
+  allowAnyGoogleCategory: false,
   updateEveryViews: 10,
   reviewsUpdateEveryViews: 50,
   updateFirstAfterViews: 10,
@@ -108,6 +111,9 @@ describe("savePayload", () => {
     createOnOpenConsumer: false,
     createOnOpenAdmin: true,
     consumerCreatesPerDay: 123,
+    consumerMinGoogleReviews: 10,
+    consumerCreatesPerMonth: 10,
+    allowAnyGoogleCategory: false,
     updateEveryViews: 12,
     reviewsUpdateEveryViews: 13,
     updateFirstAfterViews: 14,
@@ -115,7 +121,7 @@ describe("savePayload", () => {
     enrichEveryViews: 16,
   };
 
-  it("sends exactly these 25 keys and values", () => {
+  it("sends exactly these 28 keys and values", () => {
     expect(savePayload(s)).toEqual({
       gatherGoogleImages: 7,
       gatherInstagramDepth: 21,
@@ -137,6 +143,9 @@ describe("savePayload", () => {
       createOnOpenConsumer: false,
       createOnOpenAdmin: true,
       consumerCreatesPerDay: 123,
+      consumerMinGoogleReviews: 10,
+      consumerCreatesPerMonth: 10,
+      allowAnyGoogleCategory: false,
       updateEveryViews: 12,
       reviewsUpdateEveryViews: 13,
       updateFirstAfterViews: 14,
@@ -144,7 +153,8 @@ describe("savePayload", () => {
       enrichEveryViews: 16,
     });
     expect(Object.keys(savePayload(s)).sort()).toEqual([
-      "analyzeGoogleImages", "analyzeInstagramImages", "consumerCreatesPerDay",
+      "allowAnyGoogleCategory", "analyzeGoogleImages", "analyzeInstagramImages",
+      "consumerCreatesPerDay", "consumerCreatesPerMonth", "consumerMinGoogleReviews",
       "createOnOpenAdmin", "createOnOpenConsumer", "discoverFacebookN",
       "discoverInstagramN", "discoverOpentableN", "discoverUbereatsN",
       "discoverWebsiteN", "enrichEveryViews", "gatherGoogleImages",

@@ -153,6 +153,9 @@ export type PlacePreview = {
   photoUrl: string | null;
   photoAuthor: string | null;
   mapsUrl: string | null;
+  /** Google's types, for the add verdict (MESITA-4681); the dialog never shows them. */
+  primaryType: string | null;
+  types: string[];
 };
 
 export type PlacePreviewResult =
@@ -164,6 +167,8 @@ const PREVIEW_FIELD_MASK = [
   "formattedAddress",
   "shortFormattedAddress",
   "primaryTypeDisplayName",
+  "primaryType",
+  "types",
   "rating",
   "userRatingCount",
   "photos",
@@ -187,6 +192,8 @@ export async function fetchPlacePreview(
       formattedAddress?: string;
       shortFormattedAddress?: string;
       primaryTypeDisplayName?: { text?: string };
+      primaryType?: string;
+      types?: string[];
       rating?: number;
       userRatingCount?: number;
       googleMapsUri?: string;
@@ -226,6 +233,8 @@ export async function fetchPlacePreview(
           ? first?.authorAttributions?.[0]?.displayName ?? null
           : null,
         mapsUrl: d.googleMapsUri ?? null,
+        primaryType: d.primaryType ?? null,
+        types: Array.isArray(d.types) ? d.types : [],
       },
     };
   } catch (err) {
