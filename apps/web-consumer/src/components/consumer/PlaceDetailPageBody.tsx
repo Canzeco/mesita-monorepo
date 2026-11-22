@@ -11,6 +11,7 @@ import { useMeasuredPlace } from "@/lib/place-distance";
 import { usePlaceScore } from "@/lib/place-score";
 import { useMemberPlaceActions } from "./member-place-actions";
 import { PlacePageSkeleton } from "./overlay/DetailSkeletons";
+import { usePlaceMoreMenu } from "./place-detail/PlaceMoreMenu";
 
 export function PlaceDetailPageBody({
   place: fetched,
@@ -35,6 +36,8 @@ export function PlaceDetailPageBody({
   // Back from a page pushed over the place (Offers, Reserve, Story) finds it
   // scrolled where it was (MESITA-4379).
   const keep = useKeptScroll<HTMLDivElement>();
+  // The three dots, top right: Claim this business, Report (MESITA-4621).
+  const more = usePlaceMoreMenu(place);
 
   // The route's own loading silhouette until the Wallet and reservation
   // reads are in, so the profile lands whole (MESITA-3803).
@@ -44,12 +47,13 @@ export function PlaceDetailPageBody({
       <PlaceProfile
         place={place}
         onBack={onBack}
-        actions={actions}
+        actions={{ ...actions, onMore: more.onMore }}
         social={social}
         scrollRef={keep}
-        hideMore
+        hideMore={!more.onMore}
       />
       {sheets}
+      {more.menu}
     </div>
   );
 }

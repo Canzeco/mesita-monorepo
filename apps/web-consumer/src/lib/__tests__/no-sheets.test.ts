@@ -54,6 +54,9 @@ export const CONFIRM_FILES = [
   // Remove a saved card right from Payment methods (MESITA-4590).
   "components/consumer/wallet/PaymentMethodsPage.tsx",
   "components/consumer/reservation-actions.tsx",
+  // The place's three dots (MESITA-4621, decision: Pato asked for a modal
+  // menu top right): Claim this business, Report, Cancel.
+  "components/consumer/place-detail/PlaceMoreMenu.tsx",
 ];
 
 /** Files that still open a sheet. Remove a file when its sheet becomes a page.

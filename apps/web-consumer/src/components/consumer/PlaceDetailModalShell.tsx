@@ -4,6 +4,7 @@ import { PlaceTopBar } from "@mesita/place-profile";
 import { useSlideOverClose } from "@/components/consumer/overlay/SlideOverShell";
 import { useKeptScroll } from "@/lib/use-kept-scroll";
 import type { PlaceDetail } from "@/lib/place-detail";
+import { usePlaceMoreMenu } from "@/components/consumer/place-detail/PlaceMoreMenu";
 
 // Content chrome for the intercepted /place/[id] route. The sliding panel
 // itself (enter/exit animation, backdrop, ESC, router.back on dismiss) is
@@ -13,7 +14,8 @@ import type { PlaceDetail } from "@/lib/place-detail";
 // THE TOP BAR IS THE PACKAGE'S PlaceTopBar (MESITA-2627), the same
 // Instagram-style bar the direct-link page draws: bare chevron, bold sans
 // name at the left with the Premier mark after it (MESITA-2925). The three
-// dots are gone on this screen (MESITA-4111): More is rows at the foot.
+// dots open Claim this business and Report (MESITA-4621; hidden from
+// MESITA-4111 until then).
 // Until MESITA-2627 this shell drew SlideOverHeader (a bordered back square
 // and a centred serif name), so a place opened from inside the app never
 // got MESITA-2619's bar. The chevron closes the slide-over.
@@ -38,14 +40,17 @@ export function PlaceDetailModalShell({
   // and Story are pages pushed over the place, so Back mounts it again; its
   // scroller returns to the offset it had (lib/use-kept-scroll.ts).
   const keep = useKeptScroll<HTMLDivElement>();
+  const more = usePlaceMoreMenu(place);
   return (
     <>
       <PlaceTopBar
         name={place.name}
         premierTier={place.boost_tier ?? 0}
         onBack={close}
-        moreHidden
+        onMore={more.onMore}
+        moreHidden={!more.onMore}
       />
+      {more.menu}
       {/*
         `min-h-0` is the load-bearing class here: without it, a flex-1 child
         keeps its default `min-height: auto` (= content size) and grows to
