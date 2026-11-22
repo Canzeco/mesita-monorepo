@@ -119,12 +119,16 @@ export function takePanelExit(): boolean {
 // that API it falls back to `history.length`, as before.
 
 type NavigationLike = {
-  currentEntry?: { index: number; url?: string } | null;
-  entries?: () => Array<{ url?: string }>;
+  currentEntry?: { index: number; url?: string; key?: string } | null;
+  entries?: () => Array<{ url?: string; key?: string }>;
 };
 
+function navigation(): NavigationLike | undefined {
+  return (window as unknown as { navigation?: NavigationLike }).navigation;
+}
+
 function entryIndex(): number | null {
-  const nav = (window as unknown as { navigation?: NavigationLike }).navigation;
+  const nav = navigation();
   return nav?.currentEntry ? nav.currentEntry.index : null;
 }
 
@@ -135,20 +139,36 @@ let shellEntry: number | null = null;
 // reloaded on, and Back then left for the screen's parent with the guest's
 // earlier screens stranded under it. The index is kept for the tab, and a
 // document that arrives by a reload, or by the browser's Back or Forward,
-// takes it back: its history is the same trail. A document that arrives by
-// a plain navigation (a table QR, a Stripe return, a shared link) starts a
-// new trail on its own entry, as before.
+// takes it back: its history is the same trail.
+//
+// A FULL LOAD KEEPS IT TOO (MESITA-4622, Pato: "the routing breaks when much
+// navigating"). Next turns a tap into a full page load when the page's read
+// fails or answers from a newer deploy; that document arrives by a plain
+// navigation, so it used to start a new trail, and its "<" fell to its
+// parent (Prepay → Offers → card → "<" → "<" landed on the place profile).
+// The app now remembers which history entries it showed (their Navigation
+// API keys, per tab): a plain load continues the trail when the entry under
+// it is one the app showed. A table QR in a new tab, a Stripe return or a
+// link from another site has none of ours under it and starts a new trail,
+// as before. A sign-in forgets the trail (`forgetTrail`), so Back never
+// reaches the previous guest's screens.
 const SHELL_ENTRY_KEY = "mesita.shell-entry";
+const SHOWN_ENTRIES_KEY = "mesita.shown-entries";
+const SHOWN_ENTRIES_MAX = 200;
 
 /** The shell entry this document starts with: the tab's kept one when this
- *  load continues the same trail and the kept entry is not above it. */
+ *  load continues the same trail and the kept entry is not above it. A
+ *  reload or a Back/Forward load continues it; a plain load does only when
+ *  the entry under it is one the app showed. */
 export function shellEntryFor(
   current: number | null,
   kept: number | null,
   arrivedBy: string | null,
+  underIsOurs: boolean,
 ): number | null {
   if (current === null) return null;
-  const sameTrail = arrivedBy === "reload" || arrivedBy === "back_forward";
+  const sameTrail =
+    arrivedBy === "reload" || arrivedBy === "back_forward" || (arrivedBy === "navigate" && underIsOurs);
   return sameTrail && kept !== null && kept <= current ? kept : current;
 }
 
@@ -162,6 +182,39 @@ function readKeptShellEntry(): number | null {
   }
 }
 
+function readShownEntries(): string[] {
+  try {
+    const parsed: unknown = JSON.parse(window.sessionStorage.getItem(SHOWN_ENTRIES_KEY) ?? "[]");
+    return Array.isArray(parsed) && parsed.every((k) => typeof k === "string") ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Remember that the app showed the current history entry (newest last,
+ *  the newest 200 kept). Called on every push and replace. */
+export function noteShownEntry(): void {
+  const key = navigation()?.currentEntry?.key;
+  if (!key) return;
+  const keys = readShownEntries().filter((k) => k !== key);
+  keys.push(key);
+  try {
+    window.sessionStorage.setItem(SHOWN_ENTRIES_KEY, JSON.stringify(keys.slice(-SHOWN_ENTRIES_MAX)));
+  } catch {
+    // Storage off (private mode): a full load starts a new trail, as before.
+  }
+}
+
+/** Was the history entry under this one shown by the app? */
+function entryUnderIsOurs(): boolean {
+  const nav = navigation();
+  const index = nav?.currentEntry?.index;
+  const entries = nav?.entries?.();
+  if (index == null || !entries || index < 1) return false;
+  const key = entries[index - 1]?.key;
+  return !!key && readShownEntries().includes(key);
+}
+
 function arrivedBy(): string | null {
   try {
     const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
@@ -171,10 +224,10 @@ function arrivedBy(): string | null {
   }
 }
 
-/** The shell's first entry: called once when the shell mounts. */
+/** The shell's first entry: marked once, and again after `forgetTrail`. */
 export function markShellEntry(): void {
   if (shellEntry !== null) return;
-  shellEntry = shellEntryFor(entryIndex(), readKeptShellEntry(), arrivedBy());
+  shellEntry = shellEntryFor(entryIndex(), readKeptShellEntry(), arrivedBy(), entryUnderIsOurs());
   if (shellEntry === null) return;
   try {
     window.sessionStorage.setItem(SHELL_ENTRY_KEY, String(shellEntry));
@@ -183,10 +236,22 @@ export function markShellEntry(): void {
   }
 }
 
+/** A sign-in starts a new trail: the earlier screens belong to whoever was
+ *  signed in before. The next screen marks itself as the first. */
+export function forgetTrail(): void {
+  shellEntry = null;
+  try {
+    window.sessionStorage.removeItem(SHELL_ENTRY_KEY);
+    window.sessionStorage.removeItem(SHOWN_ENTRIES_KEY);
+  } catch {
+    // Storage off: nothing was kept.
+  }
+}
+
 /** The pathname of the history entry under this one, when the browser
  *  exposes the Navigation API. Null when it does not, or this is the first entry. */
 export function previousEntryPath(): string | null {
-  const nav = (window as unknown as { navigation?: NavigationLike }).navigation;
+  const nav = navigation();
   const index = nav?.currentEntry?.index;
   const entries = nav?.entries?.();
   if (index == null || !entries || index < 1) return null;
@@ -202,7 +267,9 @@ export function previousEntryPath(): string | null {
 /** Is there a screen of ours under this one? */
 function hasInAppBack(): boolean {
   const at = entryIndex();
-  if (at !== null && shellEntry !== null) return at > shellEntry;
+  // With the Navigation API, an unmarked trail (just after a sign-in) has
+  // nothing of ours under it yet: never fall back to history.length there.
+  if (at !== null) return shellEntry !== null && at > shellEntry;
   return window.history.length > 1;
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Spinner } from "@/components/shared";
+import { forgetTrail } from "@/lib/navigate";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { PhoneInputWithCountry } from "./PhoneInputWithCountry";
 import {
@@ -136,6 +137,9 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
       setError(otpErrorMessage(verifyError));
       return;
     }
+    // A sign-in starts a new Back trail: the screens under this one were the
+    // previous guest's (MESITA-4622).
+    forgetTrail();
     // Force a server-side re-render so SSR pages see the new cookie.
     router.push(redirectAfter);
     router.refresh();
