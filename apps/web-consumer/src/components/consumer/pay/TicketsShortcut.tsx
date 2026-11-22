@@ -35,11 +35,13 @@ export function TicketsShortcut({
   // with their hairline and black ink; black since MESITA-4559. DARKER TO BE
   // SEEN (Pato, 2026-11-21, MESITA-4596: "tickets button at top right must be
   // darker to be visible"): MESITA-4331's mid grey, ink at 15%, black glyphs.
+  // DARK GREY (Pato, 2026-11-21, MESITA-4610: "make tickets button gray
+  // dark"): ink at 80% with white words and glyph.
   if (icon) {
     return (
       <PushLink
         href={CONSUMER_ROUTES.mePages.tickets}
-        className="bg-foreground/15 text-foreground hover:bg-foreground/20 flex h-11 items-center gap-2 rounded-xl px-3.5 text-base font-semibold"
+        className="bg-foreground/80 text-background hover:bg-foreground/90 flex h-11 items-center gap-2 rounded-xl px-3.5 text-base font-semibold"
         data-tickets-shortcut
       >
         {/* THE WORD, ANOTHER GLYPH, NO › (Pato, 2026-11-21, MESITA-4598: "in
