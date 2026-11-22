@@ -151,11 +151,18 @@ function OfferWords({
   // MESITA-4615: "if enough space, do mention the full offer: Prepay Up to
   // 30% Bonus. only in the card view"): the Loyalty Card's full-width tile
   // reads "Prepay up to +30% Bonus" (Prepay shows the best size).
+  // THE BONUS IN A BLACK BOX (Pato, 2026-11-22, MESITA-4656: "the bonus
+  // must be inside a box … the amount of bonus in a black box with white
+  // text again"): the lead in ink, then the pill, one size up from the chips'.
   if (full) {
     return (
-      <span className={cn("absolute inset-0 flex items-center justify-center px-2", className)}>
-        <span className="max-w-full truncate text-base font-semibold">
-          {slide.lead ? `${slide.lead}${slide.key === "prepay" ? " up to" : ""} ` : ""}
+      <span className={cn("absolute inset-0 flex items-center justify-center gap-2 px-2", className)}>
+        {slide.lead ? (
+          <span className="min-w-0 truncate text-base font-semibold">
+            {`${slide.lead}${slide.key === "prepay" ? " up to" : ""}`}
+          </span>
+        ) : null}
+        <span className="bg-foreground text-paper shrink-0 rounded-md px-2 py-1 text-sm leading-none font-bold tabular-nums">
           {slide.pill}
         </span>
       </span>
