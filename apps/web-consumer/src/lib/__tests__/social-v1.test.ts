@@ -59,6 +59,9 @@ describe("Saved is server-side", () => {
     await mod.syncSavedPlaces(async () => ({ ids: [B], places: [] }), push);
     expect(push).toHaveBeenCalledTimes(1);
     expect(new Set(saved())).toEqual(new Set([B, G]));
+    // MESITA-4616: B came back with no card (disabled), so its cached card
+    // is gone and the Saved row stops drawing it; the save itself stays.
+    expect(mod.readSavedPlacePreviews().has(B)).toBe(false);
   });
 
   it("a failed server read keeps the cache", async () => {
