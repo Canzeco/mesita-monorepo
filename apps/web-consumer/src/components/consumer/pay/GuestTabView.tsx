@@ -393,7 +393,19 @@ export function GuestTabView({
       <StepBody className="min-h-0 flex-1">
         <PaySection className="flex min-h-0 flex-1 flex-col" data-guest-sign-qr-step>
           <div className="flex min-h-0 flex-1 flex-col items-center gap-1 p-3 text-center">
-            <SignStep n={1} label="Waiter scans this" />
+            {/* CLEARER (Pato, 2026-11-22, MESITA-4660: "make this clearer"):
+                one instruction, the amount first, then the QR; no numbers of
+                its own inside the ticket's strip. */}
+            <h2 className="w-full shrink-0 text-center text-base font-semibold">Show this to your waiter</h2>
+            {/* The whole bill, never one part of it. */}
+            <p className="shrink-0 text-2xl font-semibold tabular-nums" data-guest-sign-total>
+              {m(total)}
+            </p>
+            {notCash.length > 0 ? (
+              <p className="text-muted-foreground shrink-0 text-sm tabular-nums" data-guest-sign-parts>
+                {notCash.map((w) => `${m(w.cents)} ${w.key === "credits" ? "from your credits" : "by card"}`).join(" · ")}
+              </p>
+            ) : null}
             <div className="flex min-h-[80px] w-full flex-1 items-center justify-center">
               <div className="flex aspect-square h-full max-h-[340px] max-w-full items-center justify-center rounded-2xl bg-white">
                 {qr ? (
@@ -419,15 +431,6 @@ export function GuestTabView({
                 )}
               </div>
             </div>
-            {/* The whole bill, never one part of it. */}
-            <p className="shrink-0 text-2xl font-semibold tabular-nums" data-guest-sign-total>
-              {m(total)}
-            </p>
-            {notCash.length > 0 ? (
-              <p className="text-muted-foreground shrink-0 text-sm tabular-nums" data-guest-sign-parts>
-                {notCash.map((w) => `${m(w.cents)} ${w.key === "credits" ? "from your credits" : "by card"}`).join(" · ")}
-              </p>
-            ) : null}
             {error ? (
               <p className="text-destructive shrink-0 text-sm" role="alert">
                 {error}
@@ -447,11 +450,11 @@ export function GuestTabView({
         {cash > 0 ? (
           <section
             className="flex shrink-0 items-center gap-3 rounded-2xl bg-[#00D66F] px-4 py-3 text-neutral-950"
-            aria-label={`Step 2: hand the waiter ${m(cash)} in cash`}
+            aria-label={`Give the waiter ${m(cash)} in cash`}
             data-guest-sign-cash
           >
             <span className="min-w-0 flex-1 whitespace-nowrap">
-              <SignStep n={2} label="Hand over cash" tone="cash" />
+              <span className="text-base font-semibold">Give the waiter cash</span>
             </span>
             <span className="shrink-0 text-3xl font-semibold tabular-nums">{m(cash)}</span>
           </section>
@@ -459,22 +462,18 @@ export function GuestTabView({
         {/* LAST: THE WAITER CONFIRMS (MESITA-4521: Confirm, never Sign). The
             time left lives here; an unconfirmed bill cancels with nothing
             charged. Reads failing twice: "Reconnecting…". */}
-        <section className="bg-muted flex shrink-0 items-center gap-3 rounded-2xl px-4 py-2" aria-label="The waiter confirms" data-guest-sign-confirm>
-          <StepNumber n={cash > 0 ? 3 : 2} tone="next" />
-          <span className="flex min-w-0 flex-1 flex-col text-left">
-            <span className="text-base font-semibold">Waiter confirms</span>
-            <span className="text-muted-foreground text-sm tabular-nums" role="timer" aria-live="off" data-guest-sign-timer>
-              {reconnecting ? (
-                "Reconnecting…"
-              ) : (
-                <>
-                  Waiting… · <span className={cn("font-semibold", closing && WAIT)}>{countdown}</span> left
-                </>
-              )}
-            </span>
+        <p className="text-muted-foreground flex shrink-0 items-center justify-center gap-2 py-1 text-sm tabular-nums" aria-label="The waiter confirms" data-guest-sign-confirm>
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden />
+          <span role="timer" aria-live="off" data-guest-sign-timer>
+            {reconnecting ? (
+              "Reconnecting…"
+            ) : (
+              <>
+                Waiting for the waiter to confirm · <span className={cn("font-semibold", closing && WAIT)}>{countdown}</span>
+              </>
+            )}
           </span>
-          <Loader2 className="text-muted-foreground h-5 w-5 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden />
-        </section>
+        </p>
       </StepBody>
       <StepFooter strip={3} onCancel={() => setConfirmCancel(true)} cancelDisabled={busy} />
 
@@ -507,33 +506,3 @@ export function GuestTabView({
   );
 }
 
-/** A step's number in a circle (MESITA-4654): dark for a step to do, white on
- *  the cash green, outlined for the waiter's. */
-function StepNumber({ n, tone = "do" }: { n: number; tone?: "do" | "cash" | "next" }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm font-semibold tabular-nums",
-        tone === "do" && "bg-foreground text-background",
-        tone === "cash" && "bg-neutral-950 text-white",
-        tone === "next" && "border-foreground text-foreground border-2",
-      )}
-      aria-hidden
-    >
-      {n}
-    </span>
-  );
-}
-
-/** A step's heading: its number, then what happens. */
-function SignStep({ n, label, tone = "do" }: { n: number; label: string; tone?: "do" | "cash" }) {
-  return (
-    <h2 className="flex w-full shrink-0 items-center gap-2 text-left text-base font-semibold">
-      <StepNumber n={n} tone={tone} />
-      <span>
-        <span className="sr-only">Step {n}: </span>
-        {label}
-      </span>
-    </h2>
-  );
-}
