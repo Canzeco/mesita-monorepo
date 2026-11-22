@@ -159,6 +159,8 @@ export function visitRows(
       sign: null,
       at,
       upcoming: open,
+      // PENDING IS YELLOW (Pato, 2026-11-21, MESITA-4623).
+      pending: open,
       place: v.place.name ?? "A Mesita place",
       photo: v.place.photo_url,
       status: { label, tone },
