@@ -331,7 +331,7 @@ export const EMPTY: Record<MonitorKind | "customers" | "views", string> = {
   vouchers: "No vouchers yet.",
   payments: "No payments yet.",
   credits: "No credit movements yet.",
-  gifts: "No gifts yet.",
+  gifts: "No gifts claimed yet.",
   customers: "No customers yet.",
   views: "No views yet.",
 };
