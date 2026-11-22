@@ -192,9 +192,12 @@ export function IdentityCard({
 export const IDENTITY_PILL_CLASS =
   "border-border bg-card text-foreground hover:bg-muted/60 flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition";
 
-/** VIP Class and Pro Plan (MESITA-4668 M2A): the same pill filled black. */
-const EARNED_PILL_CLASS =
-  "border-neutral-950 bg-neutral-950 text-white hover:bg-neutral-800";
+// NO BLACK PILLS (Pato, 2026-11-22, MESITA-4691: "don't mention that in
+// black … Just use a yellow crown … for plan use a green credit card"):
+// every pill is white; the colour is on the icon. VIP and Pro were filled
+// black under MESITA-4668 M2A.
+const CROWN_YELLOW = "text-yellow-500";
+const CARD_GREEN = "text-green-600";
 
 /** "@handle · ~320 followers" → ["@handle", "~320 followers"]. */
 function splitInstagramLabel(label: string): [string, string | null] {
@@ -238,8 +241,6 @@ export function IdentityModules({
   // (VIP, Pro) is filled black (MESITA-4668 M2A: the grey Regular read as
   // disabled). MESITA-4659 had name | Class over Instagram. Pills are 40px
   // (MESITA-4657).
-  const vip = guestClass === "vip";
-  const pro = guestPlan === "premium";
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card>
       {/* THE PHOTO IS A DOOR TOO (Pato, 2026-11-22, MESITA-4659: "if i click
@@ -271,22 +272,21 @@ export function IdentityModules({
         </PushLink>
         <PushLink
           href={classHref}
-          className={cn(IDENTITY_PILL_CLASS, vip && EARNED_PILL_CLASS)}
+          className={IDENTITY_PILL_CLASS}
           aria-label={`Class: ${CLASS_LABEL[guestClass]} Class`}
           data-identity-class={guestClass}
         >
-          {/* A crown for every Class (Pato, MESITA-4667: "use a crown for
-              the class"): ink on Regular, white on VIP. */}
-          <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+          {/* A yellow crown for every Class (MESITA-4667, MESITA-4691). */}
+          <Crown className={cn("h-4 w-4 shrink-0", CROWN_YELLOW)} strokeWidth={2.25} aria-hidden />
           <span className="truncate">{CLASS_LABEL[guestClass]} Class</span>
         </PushLink>
         <PushLink
           href={planHref}
-          className={cn(IDENTITY_PILL_CLASS, pro && EARNED_PILL_CLASS)}
+          className={IDENTITY_PILL_CLASS}
           aria-label={`Plan: ${PLAN_LABEL[guestPlan]} Plan`}
           data-identity-plan={guestPlan}
         >
-          <CreditCard className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+          <CreditCard className={cn("h-4 w-4 shrink-0", CARD_GREEN)} strokeWidth={2.25} aria-hidden />
           <span className="truncate">{PLAN_LABEL[guestPlan]} Plan</span>
         </PushLink>
         <PushLink
@@ -296,7 +296,8 @@ export function IdentityModules({
           data-identity-instagram
         >
           <InstagramBadge connected={instagram.connected} />
-          <span className="truncate">{handle}</span>
+          {/* No Instagram linked: says so plainly (MESITA-4691). */}
+          <span className="truncate">{instagram.connected ? handle : "No Instagram"}</span>
         </PushLink>
       </span>
     </div>
