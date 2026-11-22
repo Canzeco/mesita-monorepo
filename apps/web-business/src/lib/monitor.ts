@@ -30,12 +30,38 @@ export type MonitorRow = {
 
 export type MonitorCursor = { rank: number; at: string; id: string } | null;
 
+/** Synthesized by the EF from the raw rows on every load (MESITA-4677). */
+export type VisitsAnalytics = {
+  visits: number;
+  open: number;
+  guests: number;
+  returning: number;
+  visits7d: number;
+  visits30d: number;
+  billed_cents: number;
+  tips_cents: number;
+  average_bill_cents: number;
+};
+export type VouchersAnalytics = {
+  vouchers: number;
+  guests: number;
+  returning: number;
+  vouchers7d: number;
+  vouchers30d: number;
+  paid_cents: number;
+  bonus_cents: number;
+  refunded_cents: number;
+};
+export type MonitorAnalytics = ({ kind: "visits" } & VisitsAnalytics) | ({ kind: "vouchers" } & VouchersAnalytics);
+
 export type MonitorPage = {
   test_mode: boolean;
   kind: MonitorKind;
   timezone: string;
   rows: MonitorRow[];
   next: MonitorCursor;
+  /** Visits and Vouchers, first unfiltered page only. */
+  analytics?: VisitsAnalytics | VouchersAnalytics;
 };
 
 export type MonitorFilter = { id?: string | null; customer?: string | null };
