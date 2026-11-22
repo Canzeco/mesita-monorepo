@@ -91,8 +91,9 @@ function menu(
       // Pato, MESITA-4528: "Not operations anymore. it must be called Monitor".
       // Plain linked lists (MESITA-4538); Pato, MESITA-4555: "Views, Visits,
       // Vouchers, Gifts, Payments, Customers … you don't need credits".
-      // Payments is the /money page.
-      monitor: [tab("views"), tab("visits"), tab("vouchers"), tab("gifts"), tab("money"), tab("customers")],
+      // Payments is the /money page. Customers first, Payouts its own page
+      // (MESITA-4679).
+      monitor: [tab("customers"), tab("views"), tab("visits"), tab("vouchers"), tab("gifts"), tab("money"), tab("payouts")],
       manage: [
         // Reviews lives inside Profile (MESITA-3393).
         tab("profile"),

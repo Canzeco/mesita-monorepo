@@ -4,7 +4,7 @@
 import { listMonitor } from "@/lib/business-api";
 import { customerParam, uuidParam, type MonitorKind } from "@/lib/monitor";
 import { getPlacePayments } from "@/lib/business-api";
-import { CardHeader, MonitorCard, MonitorError, MonitorList } from "./MonitorList";
+import { MonitorCard, MonitorError, MonitorList } from "./MonitorList";
 import { OpenStripeButton } from "./OpenStripeButton";
 import { ExportButton, MonitorToolbar } from "./ExportButton";
 import { Payouts } from "./Payouts";
@@ -17,32 +17,17 @@ export async function MonitorPage({
   kind,
   page,
   searchParams,
-  payouts = false,
 }: {
   placeId: string;
   kind: MonitorKind;
   /** The URL segment, for Show all. */
   page: string;
   searchParams: SearchParams;
-  /** Payments: payouts to the bank in a second column (MESITA-4564). */
-  payouts?: boolean;
 }) {
   const sp = await searchParams;
   const filter = { id: uuidParam(sp.id), customer: customerParam(sp.customer) };
-  const [r, payments] = await Promise.all([listMonitor(placeId, kind, filter), payouts ? getPlacePayments(placeId) : Promise.resolve(null)]);
-  // Open Stripe only with a connected account (the dashboard needs one).
-  const stripe = payments?.ok && payments.data.account.state !== "none";
+  const r = await listMonitor(placeId, kind, filter);
   if (!r.ok) return <MonitorError code={r.code} error={r.error} />;
-  const list = (
-    <MonitorList
-      key={`${filter.id ?? ""}|${filter.customer ?? ""}`}
-      placeId={placeId}
-      kind={kind}
-      initial={r.data}
-      filter={filter}
-      clearHref={`/places/${encodeURIComponent(placeId)}/${page}`}
-    />
-  );
   // Analytics on top (MESITA-4677): the server sends them on the first,
   // unfiltered page of Visits and Vouchers only.
   const analytics =
@@ -52,30 +37,41 @@ export async function MonitorPage({
   return (
     <div className="flex flex-col gap-4 pb-8">
       <MonitorToolbar>
-        {stripe ? <OpenStripeButton placeId={placeId} /> : null}
-        <ExportButton placeId={placeId} kind={kind} filter={filter} name={page === "money" ? "stripe" : page} />
+        <ExportButton placeId={placeId} kind={kind} filter={filter} name={page === "money" ? "payments" : page} />
       </MonitorToolbar>
       {analytics ? <MonitorAnalytics analytics={analytics} /> : null}
-      {payouts ? (
-        // Two columns (MESITA-4564, Pato: "payments left, payouts right");
-        // stacked on a phone.
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-          <MonitorCard>
-            <CardHeader title="Payments" />
-            {list}
-          </MonitorCard>
-          <MonitorCard>
-            <CardHeader title="Payouts to your bank" />
-            {filter.id || filter.customer ? (
-              <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">Payouts are hidden while a filter is on.</p>
-            ) : (
-              <Payouts placeId={placeId} timezone={r.data.timezone} />
-            )}
-          </MonitorCard>
-        </div>
-      ) : (
-        <MonitorCard>{list}</MonitorCard>
-      )}
+      <MonitorCard>
+        <MonitorList
+          key={`${filter.id ?? ""}|${filter.customer ?? ""}`}
+          placeId={placeId}
+          kind={kind}
+          initial={r.data}
+          filter={filter}
+          clearHref={`/places/${encodeURIComponent(placeId)}/${page}`}
+        />
+      </MonitorCard>
+    </div>
+  );
+}
+
+/** Payouts to the bank, its own page (MESITA-4679; the right column of
+ *  Payments since MESITA-4564). The payments read is the door (an editor gets
+ *  the owner-only card) and gives the place's timezone. */
+export async function PayoutsPage({ placeId }: { placeId: string }) {
+  const [r, payments] = await Promise.all([listMonitor(placeId, "payments"), getPlacePayments(placeId)]);
+  if (!r.ok) return <MonitorError code={r.code} error={r.error} />;
+  // Open Stripe only with a connected account (the dashboard needs one).
+  const stripe = payments.ok && payments.data.account.state !== "none";
+  return (
+    <div className="flex flex-col gap-4 pb-8">
+      {stripe ? (
+        <MonitorToolbar>
+          <OpenStripeButton placeId={placeId} />
+        </MonitorToolbar>
+      ) : null}
+      <MonitorCard>
+        <Payouts placeId={placeId} timezone={r.data.timezone} />
+      </MonitorCard>
     </div>
   );
 }
