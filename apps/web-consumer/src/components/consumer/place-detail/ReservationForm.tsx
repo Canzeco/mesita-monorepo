@@ -399,7 +399,7 @@ export function ReservationForm({
           {rescheduling ? "Reservation updated" : "Reservation requested"}
         </h2>
         <p className="text-muted-foreground type-body mx-auto mt-2 max-w-xs leading-relaxed">
-          Our AI reservation agent is calling{" "}
+          Mesi is calling{" "}
           <span className="text-foreground font-semibold">{place.name}</span>{" "}
           to {rescheduling ? "move" : "book"} your table for {party}{" "}
           {guestNoun(party)}, {dayLabel ? `${dayLabel} ` : ""}at {time ?? "—"}. We&apos;ll update this reservation once the place
@@ -628,7 +628,7 @@ export function ReservationForm({
         )}
         {promisesACall && (
           <p className="text-muted-foreground type-body mb-2 text-center">
-            Our AI reservation agent will call this place to request the table.
+            Mesi, our AI agent, will call this place to request the table.
           </p>
         )}
         {plan.pro ? null : step === "table" && existing ? (

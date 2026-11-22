@@ -240,7 +240,7 @@ export function AskAiPanel({
               type="button"
               onClick={onCall}
               aria-haspopup="dialog"
-              aria-label="Call Don Memo"
+              aria-label="Call Mesi"
               className="bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground grid size-8 shrink-0 place-items-center rounded-full transition active:scale-95"
             >
               <Phone className="h-4 w-4" />
