@@ -411,7 +411,6 @@ export const BUY_REFUSAL: Record<string, string> = {
   // MESITA-4296: the account must be public; nothing was charged.
   private_account: "Your Instagram is private. Make it public, then sync it.",
   story_one_per_basket: "Story is paid on its own. Try again.",
-  welcome_used: "You already had your Welcome voucher here.",
   needs_visit: "One per visit. Pay a bill here by card to buy another.",
   below_minimum: "This amount is below the card minimum.",
   place_cap: "This place can't take more credit for now. Try again later.",

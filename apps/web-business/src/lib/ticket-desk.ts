@@ -47,7 +47,6 @@ const VOUCHER: Record<string, string> = {
   voucher_200: "Small Voucher",
   voucher_1000: "Medium Voucher",
   voucher_5000: "Big Voucher",
-  voucher_welcome: "Welcome Voucher",
   voucher_story: "Story Voucher",
   voucher_vip: "VIP Voucher",
 };
@@ -88,10 +87,10 @@ const GIFT: Record<string, string> = {
   taken_back: "Taken back",
 };
 
-/** The product name of a voucher code, or the code itself when it is new. */
+/** The product name of a voucher code; "Voucher" for one off the list (a retired Welcome, MESITA-4636). */
 export function voucherName(code: string | null): string {
   if (!code) return "Voucher";
-  return VOUCHER[code] ?? code;
+  return VOUCHER[code] ?? "Voucher";
 }
 
 /** The one status word on a ticket row. */
