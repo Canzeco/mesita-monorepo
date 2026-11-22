@@ -33,7 +33,9 @@ import {
 } from "@/lib/guest-pay-draft";
 import { trackEvent } from "@/lib/analytics/track";
 import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
-import { payPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payPlacePath } from "@/lib/consumer-route-contract";
+import { useRouter } from "next/navigation";
+import { navigateTo } from "@/lib/navigate";
 import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
 import { cardFace } from "@/components/shared/card-brand-marks";
@@ -130,6 +132,7 @@ export function GuestPayScreen({
   /** The header's X (MESITA-3880) runs this. */
   registerClose?: (close: (() => void) | null) => void;
 }) {
+  const router = useRouter();
   const place = places?.find((p) => p.place_id === placeId) ?? null;
   // The tabs' banner names the place (MESITA-3906).
   const placeName = place?.name ?? null;
@@ -180,6 +183,8 @@ export function GuestPayScreen({
   // Both answers it needs (the cards read's pay_method, the place's wallets)
   // land in callbacks, in either order; each one calls applyStoredWay.
   const storedWay = useRef<"card" | "apple_pay" | "google_pay" | null>(null);
+  // The same answer for drawing the Method step (MESITA-4617).
+  const [defaultWay, setDefaultWay] = useState<"card" | "apple_pay" | "google_pay" | null>(null);
   const expressSeen = useRef<{ wallets: ExpressWallet[]; applePhone: boolean } | null>(null);
   const picked = useRef(draft?.method != null || draft?.express === true || draft?.wallet != null);
   const applyStoredWay = () => {
@@ -275,6 +280,7 @@ export function GuestPayScreen({
         if (acceptCardsAnswer(attempt, latestCardsAttempt.current)) {
           setCardsLoad({ state: "loaded", cards: r.cards });
           storedWay.current = r.pay_method;
+          setDefaultWay(r.pay_method);
           applyStoredWay();
         }
       })
@@ -307,6 +313,18 @@ export function GuestPayScreen({
     : null;
   const cashWhy = place && !cashOk ? "This place doesn't take cash through Mesita." : null;
   const appOn = !appWhy;
+  // The default wallet the Method step shows instead of the Card (MESITA-4617):
+  // stored on Pay, offered by the place, usable in this browser.
+  // Saved cards answered and there is none (MESITA-4617).
+  const noCardYet = cardsLoad.state === "loaded" && (cards?.length ?? 0) === 0;
+  const defaultWallet =
+    (defaultWay === "apple_pay" || defaultWay === "google_pay") &&
+    expressOn &&
+    !appWhy &&
+    wallets.includes(defaultWay) &&
+    walletInBrowser(defaultWay, applePhone)
+      ? defaultWay
+      : null;
   const cashOn = !cashWhy;
   // The way the bill goes: the guest's pick if it can, else the only one.
   // Mesita App is preselected wherever the place takes cards and the guest
@@ -776,6 +794,13 @@ export function GuestPayScreen({
                 </span>
               </button>
             ) : null}
+            {/* THE DEFAULT AND CASH, NOTHING ELSE (Pato, 2026-11-21, MESITA-4617:
+                "don't list all the payment methods. just offer the default
+                payment method and cash. the default payment method is
+                selected before starting the bill"): the guest's default (Pay ›
+                Payment method) is Apple Pay or Google Pay when stored, offered
+                here and usable in this browser, else the Card; then Pay
+                outside the app. Every way was listed before (MESITA-4397). */}
             {creditsOnly ? null : (
               <div className="divide-border flex flex-col divide-y" role="radiogroup" aria-label="How you pay">
                 {/* CARD (MESITA-4244, Pato: "maybe just mentioning the card
@@ -783,26 +808,38 @@ export function GuestPayScreen({
                     was "Mesita App" on the brand pink, MESITA-4123): the
                     guest's one saved card, its brand chip as on the Wallet;
                     the choice is the ring. */}
+                {defaultWallet ? null : (
                 <MethodTile
                   on={way === "card" && !(express && expressOn)}
                   off={appWhy}
                   lead={card ? <SavedCardChip brand={card.brand} last4={card.last4} /> : <NoCardChip />}
                   id="app"
                   title="Card"
-                  line={card ? `${brandLabel(card.brand)} •••• ${card.last4}${card.id === refusedCardId ? " · Declined just now" : ""}` : "Add one on the next step"}
+                  line={card ? `${brandLabel(card.brand)} •••• ${card.last4}${card.id === refusedCardId ? " · Declined just now" : ""}` : noCardYet ? "Add a card" : "Add one on the next step"}
                   onPick={() => {
+                    // NO CARD YET: ADD ONE, THE TICKET GOES (Pato, 2026-11-21,
+                    // MESITA-4617: "if not added yet, offer redirect to add card
+                    // page and yes, the ticket is lost after addition and must
+                    // be created again"): Add a card's page, what was typed
+                    // here dropped.
+                    if (noCardYet) {
+                      clearGuestDraft(placeId);
+                      navigateTo(router, CONSUMER_ROUTES.walletAddCard, { motion: "drill" });
+                      return;
+                    }
                     picked.current = true;
                     setMethod("card");
                     setExpress(false);
                     setWallet(null);
                   }}
                 />
+                )}
                 {/* APPLE PAY and GOOGLE PAY (MESITA-4386; two rows since
                     MESITA-4397, Pato: "show apple pay and google pay
                     separated"): Face ID on Pay holds it; the waiter's code
                     charges it. The one this browser can't use stays, greyed. */}
                 {expressOn && !appWhy
-                  ? EXPRESS_ROWS.filter((r) => wallets.includes(r.wallet)).map((r) => (
+                  ? EXPRESS_ROWS.filter((r) => r.wallet === defaultWallet).map((r) => (
                       <MethodTile
                         key={r.wallet}
                         on={way === "card" && express && wallet === r.wallet}
