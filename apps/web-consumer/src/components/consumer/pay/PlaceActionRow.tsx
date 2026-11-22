@@ -3,7 +3,8 @@
 import { SizedImg } from "@mesita/place-profile";
 import { ChevronRight, Clock3 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PendingBox } from "@/components/consumer/wallet/WalletLists";
+import { useEffect, useState } from "react";
+import { PendingBox, untilLabel } from "@/components/consumer/wallet/WalletLists";
 import { PAY_ROW, PAY_ROW_META, PAY_ROW_TEXT, PAY_THUMB } from "./pay-sections";
 
 // A ROW OF PAY'S LOYALTY CARDS BOX (MESITA-4560). History: a bank-card-sized
@@ -17,6 +18,7 @@ export function PlaceActionRow({
   distance = null,
   subtitle,
   pending = null,
+  pendingAt = null,
   placeId,
   disabled = false,
   onOpen,
@@ -31,6 +33,9 @@ export function PlaceActionRow({
   subtitle?: string | null;
   /** "$50.00MX" still landing here: shown in the Wallet's blue box under the row. */
   pending?: string | null;
+  /** When the soonest of it turns Available (MESITA-4644): the box adds
+   *  "· ready in 1 h 48 min", ticking. */
+  pendingAt?: string | null;
   placeId?: string;
   disabled?: boolean;
   /** The first line's tap: its Loyalty Card page (or the place). */
@@ -94,11 +99,29 @@ export function PlaceActionRow({
           blue PendingBox, the row growing to hold it; it opens the card. */}
       {pending && !disabled ? (
         <button type="button" onClick={() => onOpen?.()} className="block w-full px-3 pb-3 text-left" data-loyalty-card-pending>
-          <PendingBox icon={Clock3}>{pending} pending</PendingBox>
+          <PendingBox icon={Clock3}>
+            {pending} pending
+            <PendingEta at={pendingAt} />
+          </PendingBox>
         </button>
       ) : null}
     </div>
   );
+}
+
+/** WHEN IT ARRIVES (Pato, 2026-11-22, MESITA-4644: "in the pending mention
+ *  in how much time will they arrive, like the credits"): " · ready in 1 h 48
+ *  min", the Loyalty Card page's words, every 30 s; " · ready soon" once due. */
+function PendingEta({ at }: { at: string | null }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!at) return;
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, [at]);
+  const t = at ? Date.parse(at) : Number.NaN;
+  if (!Number.isFinite(t)) return null;
+  return <span className="tabular-nums">{t > now ? ` · ready in ${untilLabel(t - now)}` : " · ready soon"}</span>;
 }
 
 /** The Loyalty Card's face, small: Pay's one 48x32 thumbnail (MESITA-4578), the place's photo. */
