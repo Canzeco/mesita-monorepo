@@ -661,7 +661,18 @@ function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number
       <button type="button" aria-label={`Remove one ${name}`} disabled={disabled || n <= 0} onClick={() => onChange(n - 1)} className={btn} data-offer-minus>
         <Minus className="h-4 w-4" strokeWidth={2.5} />
       </button>
-      <span className="text-foreground w-5 text-center text-base font-bold tabular-nums" aria-live="polite" data-offer-qty>
+      {/* THE COUNT READS FIRST (Pato, 2026-11-22, MESITA-4672: "make the
+          number of amount between - and + more visible"): 18px bold in a
+          fixed circle so it never jumps; picked (> 0) is an ink circle with
+          white digits, 0 stays plain and muted. */}
+      <span
+        className={cn(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg leading-none font-bold tabular-nums",
+          n > 0 ? "bg-foreground text-paper" : "text-muted-foreground",
+        )}
+        aria-live="polite"
+        data-offer-qty
+      >
         {n}
       </span>
       <button type="button" aria-label={`Add one ${name}`} disabled={disabled || n >= max} onClick={() => onChange(n + 1)} className={btn} data-offer-plus>
