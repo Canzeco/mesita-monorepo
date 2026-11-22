@@ -33,7 +33,7 @@ export const ACCOUNT = "/account";
 // configure no or yes") holds its one switch, moved from Settings › Actions.
 // General (MESITA-4528) gathers the pages the rail no longer lists.
 // No Stories (MESITA-4641): /places/<id>/stories redirects to General.
-export const PLACE_TABS = ["views", "visits", "vouchers", "gifts", "money", "credits", "customers", "profile", "premier", "payments", "general", "reservations", "all", "settings", "admin"] as const;
+export const PLACE_TABS = ["views", "visits", "vouchers", "gifts", "money", "payouts", "credits", "customers", "profile", "premier", "payments", "general", "reservations", "all", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 /** The tabs that are sections of General, not pages (MESITA-4534). */
