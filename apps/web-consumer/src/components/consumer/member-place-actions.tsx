@@ -514,6 +514,14 @@ export function usePlaceVouchers(
         return "failed";
       }
       const key = `${cardId}|${items.map((i) => `${i.voucher}x${i.qty}`).join(",")}`;
+      // A CHANGED BASKET NEVER OPENS A SECOND CHARGE (MESITA-4647): the shop's
+      // steppers can change the basket after an unknown outcome, and a new
+      // key is a new request_id the server can't match. Until the last one
+      // answers, only the same basket on the same card may pay.
+      if (pending.current && pending.current.key !== key && pending.current.unknown > 0) {
+        toast(BUY_REFUSAL.unconfirmedChanged, { tone: "error" });
+        return "failed";
+      }
       if (pending.current?.key !== key)
         pending.current = { key, requestId: crypto.randomUUID(), unknown: 0 };
       if (pending.current.unknown >= 3) {

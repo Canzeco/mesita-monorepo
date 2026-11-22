@@ -262,6 +262,8 @@ export const BUY_REFUSAL: Record<string, string> = {
   stripe_unreachable: "We couldn't reach the bank. Try again.",
   // Retries after an unknown outcome ran out (MESITA-4065).
   unconfirmed: "We couldn't confirm the payment. Check Wallet before trying again.",
+  // MESITA-4647: the basket changed while the last payment is unconfirmed.
+  unconfirmedChanged: "We're still checking your last payment. Pay the same vouchers again, or check Wallet.",
   failed: "Couldn't complete the purchase. Try again.",
   closed: "That purchase was cancelled. Tap Pay to start over.",
   // MESITA-4384: express pay's kill switch, flipped while the sheet was open.

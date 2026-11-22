@@ -362,13 +362,6 @@ export function placeOffersPath(
   return `${placePath(idOrSlug)}/offers${qs ? `?${qs}` : ""}`;
 }
 
-/** A voucher's ticket (MESITA-4630): Offer · Pay · Credits · Receipt on its
- *  own page under Offers. `from` is Offers' own (pay | wallet): it says where
- *  a paid ticket's Done returns (MESITA-4599/4601). */
-export function placeOfferPath(idOrSlug: string, voucher: string, from?: "pay" | "wallet" | null): string {
-  return `${placePath(idOrSlug)}/offers/${encodeURIComponent(voucher)}${from ? `?from=${from}` : ""}`;
-}
-
 /** Contact, a page under the place (MESITA-4111). Open to a signed-out
  *  visitor, like the place itself: the rows are the place's own links. */
 export function placeContactPath(idOrSlug: string): string {

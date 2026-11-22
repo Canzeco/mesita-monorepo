@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Clock } from "lucide-react";
-import { OFFER_TICKET_KEYS, readyClock, VouchersPane, type PlaceActions } from "@mesita/place-profile";
+import { readyClock, VouchersPane, type PlaceActions } from "@mesita/place-profile";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
 import { money } from "@/lib/api/wallet";
 import {
-  placeOfferPath,
   placePath,
   payPlacePath,
   walletPlacePath,
@@ -50,10 +49,12 @@ function readFromPay(): boolean {
   return new URLSearchParams(window.location.search).get("from") === "pay";
 }
 
-/** An old `?voucher=` (the Add a card round trip, MESITA-4230; Home chips
- *  before MESITA-4455): it now opens that voucher's ticket (MESITA-4630). */
-function readVoucherAsk(): string | null {
-  return new URLSearchParams(window.location.search).get("voucher");
+/** The voucher an old link asks for: `?pick=` (an old ticket link,
+ *  MESITA-4647) or `?voucher=` (the Add a card round trip, MESITA-4230;
+ *  Home chips before MESITA-4455). The shop picks it when it is buyable. */
+function readPick(): string | null {
+  const q = new URLSearchParams(window.location.search);
+  return q.get("pick") ?? q.get("voucher");
 }
 
 // THE OFFERS PAGE (MESITA-4379, Pato: "when i click to see a profile, why the
@@ -69,23 +70,22 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const profile = useConsumerProfile().data;
   const fromWallet = useSyncExternalStore(noopSubscribe, readFromWallet, () => false);
   const fromPay = useSyncExternalStore(noopSubscribe, readFromPay, () => false);
-  const askedVoucher = useSyncExternalStore(noopSubscribe, readVoucherAsk, () => null);
+  const pick = useSyncExternalStore(noopSubscribe, readPick, () => null);
   const keep = useKeptScroll<HTMLDivElement>();
 
   // A PAID VOUCHER ENDS ON THE LOYALTY CARD (Pato, MESITA-4055: "don't
   // redirect to prepay, maybe redirect to wallet … and don't leave that
   // open"). Asked from the card, Back returns to it; otherwise the card
   // replaces this page, so Back from it never reopens Offers.
-  // A voucher is bought on its own ticket now (MESITA-4630), which owns where
-  // a paid one returns; this page only lists the offers.
+  // THE SHOP (MESITA-4647): the basket is bought here, and its receipt's
+  // Done returns where Offers was opened from: from=pay the bill, from=wallet
+  // the Loyalty Card; otherwise the Loyalty Card replaces Offers.
   const vouchers = usePlaceVouchers(fetched.id);
-  const from: "pay" | "wallet" | null = fromPay ? "pay" : fromWallet ? "wallet" : null;
-  const ticketFor = useCallback((key: string) => placeOfferPath(fetched.id, key, from), [fetched.id, from]);
-  // An old ?voucher= link opens that voucher's ticket in place of this page.
-  useEffect(() => {
-    if (!askedVoucher) return;
-    if ((OFFER_TICKET_KEYS as readonly string[]).includes(askedVoucher)) navigateTo(router, ticketFor(askedVoucher), { replace: true });
-  }, [askedVoucher, router, fetched.id, ticketFor]);
+  const finish = useCallback(() => {
+    if (fromPay) goBack(router, payPlacePath(fetched.id));
+    else if (fromWallet) goBack(router, walletPlacePath(fetched.id));
+    else navigateTo(router, walletPlacePath(fetched.id), { replace: true, motion: "push" });
+  }, [router, fromPay, fromWallet, fetched.id]);
   const { load, loadCards } = vouchers;
   useEffect(() => {
     void load();
@@ -102,9 +102,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const actions: PlaceActions = {
     onBuyVoucher: vouchers.buy,
     onOfferOpened: vouchers.opened,
-    // A VOUCHER'S TICKET (MESITA-4630): pushed over this page, so ✕ before
-    // paying lands back here.
-    onOpenOffer: (key) => navigateTo(router, ticketFor(key), { motion: "drill" }),
+    onOffersDone: finish,
     buyingVoucher: vouchers.buying,
     // The checkout in the page (MESITA-4065): the saved cards and their pick.
     ...(vouchers.payCards ? { payCards: vouchers.payCards } : {}),
@@ -184,7 +182,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
           </div>
         ) : null}
         <div className={credit ? "flex flex-1 shrink-0 flex-col pt-3" : "flex flex-1 shrink-0 flex-col"}>
-          <VouchersPane place={place} actions={actions} />
+          <VouchersPane place={place} actions={actions} pick={pick} />
         </div>
       </div>
       {/* The pay-with-a-card sheet the vouchers hook owns (MESITA-3552). */}

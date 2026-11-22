@@ -49,13 +49,12 @@ export type PlaceActions = {
    *  sheet. Absent, the button is inert (admin's preview). Resolves with how
    *  it ended (MESITA-4224); a host that returns nothing leaves the sheet open. */
   onBuyVoucher?: (items: VoucherBasketItem[], cardId: string | null) => void | Promise<VoucherBuyOutcome>;
-  /** offer_sheet_opened (MESITA-4375): an offer's ticket opened;
+  /** offer_sheet_opened (MESITA-4375): a voucher's first + on the Offers shop (MESITA-4647);
    *  `savedCard` says a usable saved card was ready. Fire-and-forget. */
   onOfferOpened?: (voucher: VoucherKey, savedCard: boolean) => void;
-  /** A voucher's ticket (MESITA-4630): the host pushes
-   *  /place/<id>/offers/<voucher>. Absent (admin's preview), the row opens
-   *  nothing. */
-  onOpenOffer?: (voucher: VoucherKey) => void;
+  /** The Offers shop's receipt Done (MESITA-4647): the host returns where
+   *  Offers was opened from. Absent, Done shows the list again. */
+  onOffersDone?: () => void;
   /** A voucher of the basket being paid; while set the button reads Paying…
    *  and the card rows and steppers are locked. */
   buyingVoucher?: VoucherKey | null;
