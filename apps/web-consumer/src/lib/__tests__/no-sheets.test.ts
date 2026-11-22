@@ -64,15 +64,14 @@ export const CONFIRM_FILES = [
  *  for the search and the places in a bottom sheet. The ticket stays a page. */
 const SHEET_ALLOWLIST = [
   "components/consumer/pay/PayPick.tsx",
-  "components/consumer/home/LocationPicker.tsx",
-  // The app-wide location gate's button opens the locations sheet (Pato,
-  // 2026-11-21, MESITA-4589: "you click the button and you open a modal for
-  // the locations").
-  "components/consumer/LocationGate.tsx",
 ];
 
 /** Non-confirm dialogs that become pages (MESITA-4112/4113). Only shrinks. */
 const DIALOG_ALLOWLIST = [
+  // The location modal, floating (MESITA-4628, decision: Pato asked for "a
+  // centered floating modal" like Categories); Home's location button and
+  // the app-wide gate both open it. A bottom sheet until then (MESITA-4589).
+  "components/consumer/home/LocationModal.tsx",
   // Home's Categories, floating (MESITA-4433, decision: Pato asked for
   // "modal floating"; a full-screen sheet in MESITA-4417).
   "components/consumer/home/CategoriesModal.tsx",

@@ -61,6 +61,9 @@ const ICON = "h-4 w-4 shrink-0";
 
 /** The one card (MESITA-2945, Pato: "all in one box"). */
 const CARD_CLASS = "border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border";
+/** Inside the floating modal (MESITA-4628, Pato: no box inside a box): the
+ *  rows run to the card's edges, hairlines between them and above and below. */
+const FLUSH_CARD_CLASS = "border-border bg-card divide-border divide-y -mx-5 border-y";
 
 /** A saved pin reopened in the picker. */
 const SAVED_PIN_ZOOM = 16;
@@ -88,6 +91,7 @@ export function LocationChooser({
   picker: pickerProp,
   onPickerChange,
   bodyClassName,
+  flush = false,
 }: {
   /** A location was chosen or saved. The sheet closes; inline does nothing
    *  (the new point unlocks the feed). */
@@ -99,7 +103,11 @@ export function LocationChooser({
    *  rendered bare so it can fill its home; one instance either way, so
    *  Back returns to the list with the search kept. */
   bodyClassName?: string;
+  /** The rows run edge to edge (the floating modal, MESITA-4628); the inline
+   *  no-location chooser keeps its own card. */
+  flush?: boolean;
 }) {
+  const cardClass = flush ? FLUSH_CARD_CLASS : CARD_CLASS;
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
   const locate = useLocateUser();
@@ -297,7 +305,7 @@ export function LocationChooser({
   );
 
   const matches = (
-    <ul role="list" aria-label="Matches" className={CARD_CLASS} data-places-location-results>
+    <ul role="list" aria-label="Matches" className={cardClass} data-places-location-results>
       {results.map((r) =>
         row({
           key: r.placeId,
@@ -335,7 +343,7 @@ export function LocationChooser({
   };
 
   const card = (
-    <ul role="list" aria-label="Location" className={CARD_CLASS} data-places-location>
+    <ul role="list" aria-label="Location" className={cardClass} data-places-location>
       {row({
         key: "here",
         title: locationLabel(null, coords !== null, locating),
