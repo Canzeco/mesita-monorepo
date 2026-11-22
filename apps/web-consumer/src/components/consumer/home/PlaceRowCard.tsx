@@ -87,12 +87,11 @@ function ScoreLabel({
   const rows: Array<[string, string]> = [
     ["Lane", (lane && LANE_NAMES[lane]) || (ad ? "Inorganic" : "Organic")],
     // Popularity = Google × the Foursquare boost (MESITA-4515, MESITA-4517).
+    // The row shows only our boost, not Foursquare's raw 0–1 score (Pato,
+    // MESITA-4692: "show boost implicit").
     ...(area.google !== undefined ? [["Google", scoreNumber(area.google)] as [string, string]] : []),
     ...(area.foursquare
-      ? [[
-        "Foursquare",
-        `${area.foursquare.raw === null ? "—" : scoreNumber(area.foursquare.raw)} ×${scoreNumber(area.foursquare.boost)}`,
-      ] as [string, string]]
+      ? [["Foursquare", `×${scoreNumber(area.foursquare.boost)}`] as [string, string]]
       : []),
     ["Popularity", scoreNumber(area.signals.popularity)],
     ["Proximity", scoreNumber(area.signals.proximity)],
