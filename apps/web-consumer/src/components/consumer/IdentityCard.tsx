@@ -235,11 +235,15 @@ export function IdentityModules({
           )}
         </span>
       </span>
-      <span className="grid w-full min-w-0 grid-cols-3 gap-2">
+      {/* QUARTERS (Pato, 2026-11-22, MESITA-4652: "maybe 75% and 25% and 25%
+          and 75%, that way is better"): name 3/4 | Class 1/4, Public/Private
+          1/4 | Instagram 3/4. A quarter of a phone card is ~70px, so the two
+          small pills set 12px and show the icon alone below an 18rem card. */}
+      <span className="@container grid w-full min-w-0 grid-cols-4 gap-2">
         <PushLink
           href={nameHref}
           aria-label={`Profile: ${name}`}
-          className={cn(IDENTITY_PILL_CLASS, "col-span-2")}
+          className={cn(IDENTITY_PILL_CLASS, "col-span-3")}
           data-identity-name
         >
           <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
@@ -247,7 +251,7 @@ export function IdentityModules({
         </PushLink>
         <span
           className={cn(
-            "flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-full border px-3 text-sm font-semibold",
+            "flex h-12 min-w-0 items-center justify-center gap-1 rounded-full border px-2 text-xs font-semibold",
             vip ? "border-neutral-950 bg-neutral-950 text-white" : "border-border bg-muted text-muted-foreground",
           )}
           aria-label={`Class: ${CLASS_LABEL[guestClass]}`}
@@ -260,11 +264,11 @@ export function IdentityModules({
           ) : (
             <UserRound className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
           )}
-          <span className="truncate">{CLASS_LABEL[guestClass]}</span>
+          <span className="hidden truncate @[18rem]:inline">{CLASS_LABEL[guestClass]}</span>
         </span>
         {privacy && (
           <span
-            className="border-border bg-card text-foreground flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-full border px-3 text-sm font-semibold"
+            className="border-border bg-card text-foreground flex h-12 min-w-0 items-center justify-center gap-1 rounded-full border px-2 text-xs font-semibold"
             aria-label={`Instagram: ${privacy}`}
             data-identity-privacy
           >
@@ -276,13 +280,13 @@ export function IdentityModules({
             ) : (
               <CircleHelp className="text-muted-foreground h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
             )}
-            <span className="truncate">{privacy}</span>
+            <span className="hidden truncate @[18rem]:inline">{privacy}</span>
           </span>
         )}
         <PushLink
           href={instagram.href}
           aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
-          className={cn(IDENTITY_PILL_CLASS, privacy ? "col-span-2" : "col-span-3")}
+          className={cn(IDENTITY_PILL_CLASS, privacy ? "col-span-3" : "col-span-4")}
           data-identity-instagram
         >
           <InstagramBadge connected={instagram.connected} />
