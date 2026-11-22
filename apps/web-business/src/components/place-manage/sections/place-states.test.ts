@@ -26,6 +26,7 @@ const settings = (o: Partial<PaymentSettings> = {}): PaymentSettings => ({
   voucher_1000: false,
   voucher_5000: false,
   voucher_story: false,
+  voucher_vip: false,
   ...o,
 });
 const base = { codeSet: false, feeHold: false, feeOverdue: false, reservations: false, contract: { signed: true, signed_at: "2026-11-09T00:00:00Z", terms_version: "draft-2026-11" } };

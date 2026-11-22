@@ -412,6 +412,8 @@ export const BUY_REFUSAL: Record<string, string> = {
   private_account: "Your Instagram is private. Make it public, then sync it.",
   story_one_per_basket: "Story is paid on its own. Try again.",
   needs_visit: "One per visit. Pay a bill here by card to buy another.",
+  // MESITA-4640: the VIP voucher is VIP class only; nothing was charged.
+  not_vip: "VIP Offers need a public Instagram with more than 5,000 followers.",
   below_minimum: "This amount is below the card minimum.",
   place_cap: "This place can't take more credit for now. Try again later.",
   in_progress: "Your purchase is already on its way.",

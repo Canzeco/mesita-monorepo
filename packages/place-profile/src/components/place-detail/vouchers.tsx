@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { Camera, Check, CircleCheck, Clock, Copy, CreditCard, Gift, Infinity as InfinityIcon, Lock, Repeat, Repeat1, Ticket, Utensils, Wallet, type LucideIcon } from "lucide-react";
+import { Camera, Check, CircleCheck, Clock, Copy, CreditCard, Crown, Gift, Infinity as InfinityIcon, Lock, Repeat, Repeat1, Ticket, Utensils, Wallet, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -12,7 +12,7 @@ import {
   PLACE_META_CLASS,
 } from "../../lib/ui";
 import { VOUCHER_TONE } from "../../lib/offers";
-import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, STORY_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
+import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, STORY_MIN_FOLLOWERS, VIP_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 
 // THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
@@ -113,6 +113,12 @@ const STANDARD: Product[] = [
   { key: "voucher_5000", name: "Big", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big", brief: "As many as you like" },
 ];
 
+// VIP IS BACK (Pato, 2026-11-22, MESITA-4640: "Regular Offers · VIP Offers"):
+// MESITA-4249's deal, the VIP class only, one each new visit.
+const VIP: Product[] = [
+  { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $200.00MX.", limit: "One per visit.", bonus: "100% bonus", short: "VIP", brief: "VIP only · One per visit" },
+];
+
 const SPECIAL: Product[] = [
   { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $130.00MX.", limit: "One per visit.", bonus: "30% bonus", short: "Story", brief: "Post a story · One per visit" },
 ];
@@ -194,6 +200,8 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
     // voucher ... Green, but welcome make it blue, and story make it pink
     // like instagram"; soft tints). Every offer green from MESITA-4181.
     voucher_story: { ...green, card: VOUCHER_TONE.voucher_story, Mark: Instagram },
+    // The crown tells VIP apart; green like every offer (MESITA-4640).
+    voucher_vip: { ...green, card: VOUCHER_TONE.voucher_vip, Mark: Crown },
   };
 })();
 
@@ -239,14 +247,24 @@ function readyIn(key: MoneyVoucherKey, emulator = false): string {
 function offerStatus(
   key: MoneyVoucherKey,
   can: boolean,
-  lock: "instagram" | "followers" | null,
+  lock: GuestLock,
   reason: VoucherReason | undefined,
   minFollowers: number,
+  guest?: PlaceActions["guest"],
 ): InfoStatus {
+  // VIP ONLY (MESITA-4640): the bar, then the guest's own facts, objective,
+  // never "you need N more" (design review).
+  if (lock === "vip") {
+    const bar = `For VIP: a public Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`;
+    if (!guest?.instagramLinked) return { ok: false, text: bar };
+    const followers = guest.instagramFollowers != null ? `${guest.instagramFollowers.toLocaleString("en-US")} followers` : null;
+    const privacy = guest.instagramPrivate === false ? "Public" : guest.instagramPrivate === true ? "Private" : "Privacy unknown";
+    return { ok: false, text: `${bar} Yours: ${[followers, privacy].filter(Boolean).join(" · ")}.` };
+  }
   if (lock === "instagram") return { ok: false, text: "Link your Instagram to use Story offers." };
   if (lock === "followers") return { ok: false, text: `Your Instagram needs ${minFollowers.toLocaleString("en-US")} or more followers.` };
   if (can) {
-    if (key === "voucher_story") return { ok: true, text: "Available. One per visit." };
+    if (key === "voucher_story" || key === "voucher_vip") return { ok: true, text: "Available. One per visit." };
     return { ok: true, text: "Available. Buy as many as you like." };
   }
   // MESITA-3463: a visit is a paid bill here with a card part.
@@ -256,7 +274,7 @@ function offerStatus(
 
 /** The Offers page (MESITA-3412: the host's sheet off Prepay; it was the
  *  fourth tab). Prepayments only since MESITA-4062. */
-type GuestLock = "instagram" | "followers" | null;
+type GuestLock = "instagram" | "followers" | "vip" | null;
 
 /** Who may buy what, once for every list of the six vouchers (VouchersPane,
  *  and the Loyalty Card's Vouchers via voucherOffers, MESITA-3822). */
@@ -273,6 +291,7 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
       voucher_1000: money?.vouchers.voucher_1000 === true,
       voucher_5000: money?.vouchers.voucher_5000 === true,
       voucher_story: money?.vouchers.voucher_story === true,
+      voucher_vip: money?.vouchers.voucher_vip === true,
     },
     money ? { charges_enabled: money.charges_enabled } : null,
     null,
@@ -292,6 +311,9 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
   // THE GUEST'S OWN LOCKS (MESITA-3502): Story needs a linked Instagram with
   // enough followers; no offer names a Class (MESITA-4249). Unknown guest (no profile read), no lock.
   const guestLock = (k: MoneyVoucherKey): GuestLock => {
+    // VIP only (MESITA-4640): anyone not known to be VIP sees it locked; the
+    // buy door refuses a non-VIP whatever this says.
+    if (k === "voucher_vip" && guest?.guestClass !== "vip") return "vip";
     if (!guest) return null;
     if (k === "voucher_story" && !guest.instagramLinked) return "instagram";
     // MESITA-4425: the server refuses Story BELOW the live floor (`<`, so
@@ -369,16 +391,19 @@ export type VoucherOffer = {
  *  Instant / Prepayment Vouchers in MESITA-4198. One "Prepaid Vouchers" group from MESITA-4173,
  *  Special and Bonus Vouchers in MESITA-4154. The host still opens it by
  *  `?rewards=prepayment` or `?rewards=special`. */
-const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<MoneyVoucherKey> }[] = [
-  {
-    id: "special",
-    title: "Special Offers",
-    keys: new Set(["voucher_story"]),
-  },
+// REGULAR OFFERS · VIP OFFERS (Pato, 2026-11-22, MESITA-4640: "ONLY CLASSIC
+// OFFERS … JUST CALL THEM … Regular Offers · VIP Offers"): Regular first,
+// VIP under it; a place that sells no VIP voucher shows no VIP panel.
+const GROUPS: { id: "special" | "prepayment" | "vip"; title: string; keys: ReadonlySet<MoneyVoucherKey> }[] = [
   {
     id: "prepayment",
-    title: "Classic Offers",
-    keys: new Set(["voucher_200", "voucher_1000", "voucher_5000"]),
+    title: "Regular Offers",
+    keys: new Set(["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"]),
+  },
+  {
+    id: "vip",
+    title: "VIP Offers",
+    keys: new Set(["voucher_vip"]),
   },
 ];
 
@@ -388,7 +413,7 @@ const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<M
  *  a missing one; it was dropped from the page from MESITA-3831. */
 function listedProducts(): Product[] {
   // Story, Small, Medium, Big (MESITA-4154: the specials lead; no Welcome since MESITA-4636).
-  return [...SPECIAL, ...STANDARD];
+  return [...STANDARD, ...SPECIAL, ...VIP];
 }
 
 /** The vouchers in the Offers page's order, Story · Small · Medium · Big (MESITA-4154)
@@ -400,7 +425,7 @@ export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions[
   return listedProducts().filter((p) => show(p.key) !== "hidden").map((p) => {
     const line = catalog[p.key];
     const can = buyable(p.key);
-    const status = offerStatus(p.key, can, guestLock(p.key), unavailable[p.key], minFollowers);
+    const status = offerStatus(p.key, can, guestLock(p.key), unavailable[p.key], minFollowers, guest);
     return {
       key: p.key,
       title: p.short,
@@ -569,7 +594,7 @@ function Box({
 function GoodToKnow({ productKey }: { productKey: MoneyVoucherKey }) {
   const rows: { Icon: LucideIcon; text: string; warn?: boolean }[] = [];
   rows.push({ Icon: Utensils, text: "Spend it on any bill here." }, { Icon: InfinityIcon, text: "It never expires." });
-  if (productKey === "voucher_story") rows.push({ Icon: Repeat1, text: "One per visit." });
+  if (productKey === "voucher_story" || productKey === "voucher_vip") rows.push({ Icon: Repeat1, text: "One per visit." });
   else rows.push({ Icon: Repeat, text: "Buy as many as you like." });
   return (
     <Box title="Good to know" data-offer-good-to-know="">
@@ -1524,7 +1549,7 @@ export function VouchersPane({
                 const Mark = face.Mark ?? Ticket;
                 const bonus = `+${p.bonus.replace(/ bonus$/, "")}`;
                 const locked = !loading && !can;
-                const why = locked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key], co.minFollowers).text : "";
+                const why = locked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key], co.minFollowers, actions?.guest).text : "";
                 // A PRODUCT ROW (Pato, 2026-11-17, MESITA-4224: "offers must
                 // really look like products, like item products"; D8): the
                 // product's face, its name, the deal, the bonus in ink, an

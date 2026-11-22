@@ -448,6 +448,34 @@ export async function readSocialStanding(
 
 // ── Class — automatic since MESITA-3850 (a generated column; nothing writes it)
 
+/** The buying guest's Class for the VIP voucher's gate (MESITA-4640), with
+ *  the Instagram facts its refusal names. Null row = no live account. */
+export async function readVipStanding(
+  admin: SupabaseClient,
+  consumerId: string,
+): Promise<
+  | { ok: true; row: { guest_class: string | null; followers: number | null; is_private: boolean | null } | null }
+  | { ok: false; message: string }
+> {
+  const { data, error } = await admin
+    .from("consumers")
+    .select("guest_class, instagram_followers_count, instagram_is_private")
+    .eq("id", consumerId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) return { ok: false, message: error.message };
+  return {
+    ok: true,
+    row: data
+      ? {
+        guest_class: (data.guest_class as string | null) ?? null,
+        followers: (data.instagram_followers_count as number | null) ?? null,
+        is_private: (data.instagram_is_private as boolean | null) ?? null,
+      }
+      : null,
+  };
+}
+
 /** Name and member number for each guest id (MESITA-3540: who used a VIP
  *  code, on Admin › Guests). Closed accounts are included: the code was used. */
 export async function readGuestLabels(

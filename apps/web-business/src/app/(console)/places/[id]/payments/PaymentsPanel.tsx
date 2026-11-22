@@ -47,6 +47,7 @@ import type { Icon } from "@phosphor-icons/react";
 import {
   ArrowSquareOutIcon,
   CreditCardIcon,
+  CrownSimpleIcon,
   DeviceMobileIcon,
   InstagramLogoIcon,
   MoneyIcon,
@@ -99,7 +100,7 @@ type Product = { key: PaymentKey; name: string; line: string; value: string; ton
 // 2×, Medium 10×, Big 50× (MESITA-4152), Story at the base. TWIN of
 // VOUCHER_CURRENCY_LIST in _shared/money.ts.
 const SMALL: Record<string, number> = { MXN: 100, USD: 10, CAD: 10 };
-const TIMES: Record<VoucherKey, number> = { voucher_200: 2, voucher_1000: 10, voucher_5000: 50, voucher_story: 1 };
+const TIMES: Record<VoucherKey, number> = { voucher_200: 2, voucher_1000: 10, voucher_5000: 50, voucher_story: 1, voucher_vip: 1 };
 const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = Object.fromEntries(
   Object.entries(SMALL).map(([c, small]) => [
     c,
@@ -119,6 +120,8 @@ const STANDARD: VoucherSeed[] = [
 // Story pink, the sizes green (no Welcome since MESITA-4636); Story +30% (MESITA-4563; +40% from MESITA-4473).
 const SPECIAL: VoucherSeed[] = [
   { key: "voucher_story", name: "Story Voucher", bps: 3000, tail: "After posting an Instagram story at your place.", value: "+30%", tone: "bg-pink-100 text-pink-700", icon: InstagramLogoIcon },
+  // VIP Offers (MESITA-4640): the VIP class only, one per visit.
+  { key: "voucher_vip", name: "VIP Voucher", bps: 10000, tail: "Only guests with a public Instagram over 5,000 followers can buy it.", value: "+100%", tone: "bg-foreground text-background", icon: CrownSimpleIcon },
 ];
 
 /** The voucher rows in the place's currency; none where vouchers aren't sold. */

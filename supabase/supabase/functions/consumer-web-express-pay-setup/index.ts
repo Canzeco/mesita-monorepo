@@ -40,7 +40,7 @@ import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readMoneyConfig } from "../_shared/money-config.ts";
 import { storyBasketRefusal } from "../_shared/story-buy.ts";
 import { storySaleModeLive } from "../_shared/story-mention.ts";
-import { basketUnits, buyRefusal, catalogLines, parseBasket, readStoryGuest, storyEligibilityContext, storyRefusal, voucherName, voucherOffer } from "../_shared/vouchers.ts";
+import { basketUnits, buyRefusal, catalogLines, parseBasket, readStoryGuest, storyEligibilityContext, readVipGuest, storyRefusal, vipRefusal, voucherName, voucherOffer } from "../_shared/vouchers.ts";
 import { toStripeAmount } from "../_shared/money.ts";
 import { walletDomainsForSetup } from "../_shared/pm-domains.ts";
 import { expressLabel, expressWalletsFor } from "../_shared/express-pay.ts";
@@ -88,6 +88,8 @@ serveJson("consumer-web-express-pay-setup", async (req) => {
   }
   // No account that can charge: refused before any Stripe call.
   if (!account || !account.charges_enabled || account.livemode !== livemode) return no("no_account");
+  // VIP's own gate, the same as the buy door's (MESITA-4640).
+  if (kinds.includes("voucher_vip") && vipRefusal("voucher_vip", await readVipGuest(admin, user.id))) return no("not_vip");
   if (kinds.includes("voucher_story")) {
     const [storyGuest, storyCtx] = await Promise.all([readStoryGuest(admin, user.id), storyEligibilityContext(admin)]);
     const story = storyRefusal("voucher_story", storyGuest, storyCtx);

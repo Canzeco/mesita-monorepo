@@ -136,6 +136,9 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   // pay MX$100, get MX$130; +40% from MESITA-4473, +50% from MESITA-4207.
   // Purchases keep their stored amounts.
   voucher_story: { price_cents: 100_00, bonus_bps: 3000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
+  // VIP IS BACK (Pato, 2026-11-22, MESITA-4640): MESITA-4249's line, pay
+  // MX$100, get MX$200; the bonus in 3 hours like every voucher.
+  voucher_vip: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
 };
 
 /** VOUCHERS IN TWO CURRENCIES (Pato, 2026-11-14, MESITA-3914: "100 MX
@@ -174,7 +177,7 @@ export const UNSUPPORTED_COUNTRIES: readonly { region: string; why: string }[] =
 for (const r of VOUCHER_CURRENCY_LIST) {
   const s = r.small * 100;
   VOUCHER_PRICE_CENTS[r.code.toLowerCase()] = {
-    voucher_200: s * 2, voucher_1000: s * 10, voucher_5000: s * 50, voucher_story: s,
+    voucher_200: s * 2, voucher_1000: s * 10, voucher_5000: s * 50, voucher_story: s, voucher_vip: s,
   };
 }
 

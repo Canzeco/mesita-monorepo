@@ -12,7 +12,7 @@ import { pesos, readyClock, VouchersPane } from "./vouchers";
 const OFFER: PlaceMoney = {
   charges_enabled: true,
   mesita_pay: true,
-  vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_story: false },
+  vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_story: false, voucher_vip: false },
   test_mode: true,
   currency: "mxn",
   sell: ["voucher_200", "voucher_1000"],
@@ -28,7 +28,7 @@ const OFFER: PlaceMoney = {
 const STORY_ON: PlaceMoney = {
   ...OFFER,
   test_mode: false,
-  vouchers: { ...OFFER.vouchers, voucher_story: true },
+  vouchers: { ...OFFER.vouchers, voucher_story: true, voucher_vip: false },
   sell: ["voucher_200", "voucher_1000", "voucher_story"],
   unavailable: { voucher_5000: "not_yet" },
 };
@@ -124,7 +124,7 @@ describe("placeMoneyFrom", () => {
       charges_enabled: true,
       test_mode: true,
       currency: "mxn",
-      vouchers: { voucher_200: true, voucher_story: true },
+      vouchers: { voucher_200: true, voucher_story: true, voucher_vip: false },
       sell: ["voucher_200", "bogus"],
       unavailable: { voucher_story: "needs_visit" },
       catalog: {

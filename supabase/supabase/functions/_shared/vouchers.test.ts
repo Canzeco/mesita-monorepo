@@ -9,6 +9,8 @@ import type { AccountRow, PaymentSettings } from "./payments.ts";
 import {
   basketUnits,
   buyRefusal,
+  guestReason,
+  vipRefusal,
   CATALOG_LINES,
   guestBlocksFrom,
   guestSell,
@@ -39,6 +41,7 @@ const ALL_ON: PaymentSettings = {
   voucher_1000: true,
   voucher_5000: true,
   voucher_story: true,
+  voucher_vip: false,
 };
 
 const ACCOUNT: AccountRow = {
@@ -55,10 +58,10 @@ const ACCOUNT: AccountRow = {
 
 const base = { settings: ALL_ON, account: ACCOUNT, livemode: false, currency: "mxn", paused: false, balance: null };
 
-Deno.test("every switched-on voucher sells but VIP, off sale (MESITA-4197); Medium is back (MESITA-4056)", () => {
+Deno.test("every switched-on voucher sells; VIP off here reads off (MESITA-4640); Medium is back (MESITA-4056)", () => {
   const o = offerFrom(base);
   assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"]);
-  assertEquals(o.unavailable, {});
+  assertEquals(o.unavailable, { voucher_vip: "off" });
   assertEquals(o.test_mode, true);
   assertEquals(o.charges_enabled, true);
   assertEquals(o.mesita_pay, true);
@@ -90,11 +93,28 @@ Deno.test("paused stops every sale; an account from the other universe cannot ch
 
 // VIP's one-each-new-visit rule (MESITA-3463) is unreachable while VIP is
 // parked; the parked reason wins and the buy door refuses it.
-Deno.test("no VIP (MESITA-4249) and no Welcome (MESITA-4636): Story is the one special", () => {
-  const o = offerFrom(base);
-  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"]);
-  assertEquals(parseBasket({ voucher: "voucher_vip" }).ok, false);
+Deno.test("VIP is back (MESITA-4640), no Welcome (MESITA-4636)", () => {
+  assertEquals(parseBasket({ voucher: "voucher_vip" }).ok, true);
   assertEquals(parseBasket({ voucher: "voucher_welcome" }).ok, false);
+  // One VIP a basket: it is one each new visit.
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_vip", qty: 2 }] }).ok, false);
+});
+
+Deno.test("vipRefusal: only the VIP class buys the VIP voucher; the 409 names the guest's own facts", () => {
+  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, is_private: false }), null);
+  const regular = vipRefusal("voucher_vip", { guest_class: "regular", followers: 2026, is_private: false });
+  assertEquals(regular?.status, 409);
+  assertEquals(regular?.code, "not_vip");
+  assertEquals(regular?.followers, 2026);
+  assertEquals(regular?.isPrivate, false);
+  assertEquals(vipRefusal("voucher_vip", null)?.code, "not_vip");
+  // Any other voucher passes, whatever the Class.
+  assertEquals(vipRefusal("voucher_200", { guest_class: "regular", followers: 0, is_private: true }), null);
+});
+
+Deno.test("VIP is one each new visit, like Story (MESITA-4640)", () => {
+  assertEquals(guestReason("voucher_vip", { perVisitUsed: { voucher_vip: true } }), "needs_visit");
+  assertEquals(guestReason("voucher_vip", { perVisitUsed: { voucher_vip: false } }), null);
 });
 
 Deno.test("buyRefusal: codes for every closed door, null for an open one", () => {
@@ -249,7 +269,7 @@ Deno.test("Credits Limit: landing exactly on the limit sells; a place's own limi
 
 Deno.test("the mark (MESITA-3408) is taken before the pause, so it matches the list rows", () => {
   // Pay by phone off, so only the voucher can light the mark.
-  const onlySmall: PaymentSettings = { ...ALL_ON, pay_cards: false, voucher_1000: false, voucher_5000: false, voucher_story: false };
+  const onlySmall: PaymentSettings = { ...ALL_ON, pay_cards: false, voucher_1000: false, voucher_5000: false, voucher_story: false, voucher_vip: false };
   assertEquals(offerFrom({ ...base, settings: onlySmall, paused: true }).mesita_pay, true);
   // Nothing on: no mark.
   const nothing: PaymentSettings = { ...onlySmall, voucher_200: false };
@@ -424,7 +444,7 @@ Deno.test("list rows: guestSell drops a per-visit voucher spent this visit, like
 
 Deno.test("list rows: one Story per visit opens again after a visit (MESITA-3463, MESITA-4207)", () => {
   const blocks = guestBlocksFrom([{ place_id: "p", voucher: "voucher_story" }], [{ place_id: "p" }]);
-  assertEquals(blocks.get("p"), { perVisitUsed: { voucher_story: false } });
+  assertEquals(blocks.get("p"), { perVisitUsed: { voucher_story: false, voucher_vip: false } });
   assertEquals(guestSell(["voucher_story"], blocks.get("p")), ["voucher_story"]);
 });
 

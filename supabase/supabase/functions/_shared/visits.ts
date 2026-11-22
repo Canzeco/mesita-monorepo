@@ -43,7 +43,7 @@ export async function readVisitCount(admin: SupabaseClient, consumerId: string |
 }
 
 /** The vouchers sold one each new visit (Docs › Main §6). */
-export const PER_VISIT_VOUCHERS = ["voucher_story"] as const;
+export const PER_VISIT_VOUCHERS = ["voucher_story", "voucher_vip"] as const;
 export type PerVisitVoucher = (typeof PER_VISIT_VOUCHERS)[number];
 
 /** One each new visit: the first may be bought before any visit (the guest
