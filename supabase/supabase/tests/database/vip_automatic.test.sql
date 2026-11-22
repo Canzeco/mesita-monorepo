@@ -7,7 +7,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(16);
+select plan(17);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3850'),
@@ -17,7 +17,8 @@ insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000e3850'),
   ('00000000-0000-4000-8000-0000000f3850'),
   ('00000000-0000-4000-8000-000000103850'),
-  ('00000000-0000-4000-8000-000000113850');
+  ('00000000-0000-4000-8000-000000113850'),
+  ('00000000-0000-4000-8000-000000124662');
 insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, instagram_is_private) values
   ('00000000-0000-4000-8000-0000000a3850', null, null, null, null),
   ('00000000-0000-4000-8000-0000000b3850', 'probe_3850_b', now(), 5000, false),
@@ -103,6 +104,15 @@ select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000c3850'),
   'regular',
   'disconnecting Instagram makes a VIP Regular again'
+);
+
+-- MESITA-4662: the follower emulator's count stands in for the real one.
+insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, instagram_followers_emulated) values
+  ('00000000-0000-4000-8000-000000124662', 'probe_4662', now(), 300, 5001);
+select is(
+  (select guest_class from public.consumers where id = '00000000-0000-4000-8000-000000124662'),
+  'vip',
+  'an emulated 5,001 on a verified Instagram with 300 real followers is VIP (MESITA-4662)'
 );
 
 select throws_ok(

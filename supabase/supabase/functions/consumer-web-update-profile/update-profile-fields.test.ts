@@ -3,6 +3,7 @@ import {
   buildProfilePatch,
   parseAvatarUrl,
   parseBirthYear,
+  parseFollowersEmulated,
   parseName,
 } from "./update-profile-fields.ts";
 
@@ -186,4 +187,39 @@ Deno.test("buildProfilePatch writes birth_year only when given", () => {
   assertEquals(without.ok && "birth_year" in without.patch, false);
   const withYear = buildProfilePatch({ birth_year: 1990 }, { ...base, birthYear: 1990 });
   assertEquals(withYear.ok && withYear.patch.birth_year, 1990);
+});
+
+// MESITA-4662: the follower emulator changes the Class, so it writes only in
+// Stripe test mode; Reset to real (null) always works.
+Deno.test("parseFollowersEmulated: live mode refuses a number, 403 emulator_live", async () => {
+  const res = parseFollowersEmulated(10_000, false);
+  assertEquals(res.ok, false);
+  if (res.ok) return;
+  assertEquals(res.response.status, 403);
+  assertEquals((await res.response.json()).code, "emulator_live");
+});
+
+Deno.test("parseFollowersEmulated: null (Reset to real) passes in either mode; absent writes nothing", () => {
+  assertEquals(parseFollowersEmulated(null, false), { ok: true, followersEmulated: null });
+  assertEquals(parseFollowersEmulated(null, true), { ok: true, followersEmulated: null });
+  assertEquals(parseFollowersEmulated(undefined, false), { ok: true, followersEmulated: undefined });
+});
+
+Deno.test("parseFollowersEmulated: test mode takes a whole number 0..100,000,000", () => {
+  assertEquals(parseFollowersEmulated(0, true), { ok: true, followersEmulated: 0 });
+  assertEquals(parseFollowersEmulated(5001, true), { ok: true, followersEmulated: 5001 });
+  assertEquals(parseFollowersEmulated(100_000_000, true), { ok: true, followersEmulated: 100_000_000 });
+  for (const bad of [-1, 100_000_001, 1.5, "5001", true, Number.NaN]) {
+    const res = parseFollowersEmulated(bad, true);
+    assertEquals(res.ok, false, String(bad));
+    if (!res.ok) assertEquals(res.response.status, 400);
+  }
+});
+
+Deno.test("buildProfilePatch: the emulated count is written alone, null included", () => {
+  const fields = { firstName: null, lastName: null, fullName: null, sex: null, birthday: null };
+  const set = buildProfilePatch({ instagram_followers_emulated: 5001 }, { ...fields, followersEmulated: 5001 });
+  assertEquals(set.ok && set.patch, { instagram_followers_emulated: 5001 });
+  const reset = buildProfilePatch({ instagram_followers_emulated: null }, { ...fields, followersEmulated: null });
+  assertEquals(reset.ok && reset.patch, { instagram_followers_emulated: null });
 });

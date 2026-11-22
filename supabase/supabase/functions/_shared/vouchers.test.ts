@@ -116,32 +116,55 @@ const MIN_AGO = (m: number) => new Date(NOW.getTime() - m * 60_000).toISOString(
 Deno.test("vipRefusal: only the VIP class buys the VIP voucher; the 409 names the guest's own facts", () => {
   assertEquals(VIP_CHECK_MAX_AGE_MS, 3_600_000);
   // A count read 10 minutes ago passes.
-  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: MIN_AGO(10), verified_at: MIN_AGO(5000) }, NOW), null);
-  const regular = vipRefusal("voucher_vip", { guest_class: "regular", followers: 2026, synced_at: MIN_AGO(1), verified_at: MIN_AGO(1) }, NOW);
+  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: MIN_AGO(10), verified_at: MIN_AGO(5000), emulated: null }, NOW, false), null);
+  const regular = vipRefusal("voucher_vip", { guest_class: "regular", followers: 2026, synced_at: MIN_AGO(1), verified_at: MIN_AGO(1), emulated: null }, NOW, false);
   assertEquals(regular?.status, 409);
   assertEquals(regular?.code, "not_vip");
   assertEquals(regular?.error, "The VIP voucher needs an Instagram with more than 5,000 followers.");
   assertEquals(regular?.followers, 2026);
-  assertEquals(vipRefusal("voucher_vip", null, NOW)?.code, "not_vip");
+  assertEquals(vipRefusal("voucher_vip", null, NOW, false)?.code, "not_vip");
   // Any other voucher passes, whatever the Class.
-  assertEquals(vipRefusal("voucher_200", { guest_class: "regular", followers: 0, synced_at: null, verified_at: null }, NOW), null);
+  assertEquals(vipRefusal("voucher_200", { guest_class: "regular", followers: 0, synced_at: null, verified_at: null, emulated: null }, NOW, false), null);
 });
 
 Deno.test("vipRefusal: VIP is checked at claim, the count read within the hour (MESITA-4659)", () => {
   // A stale count: 409 vip_recheck, whatever the class says.
-  const stale = vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: MIN_AGO(61), verified_at: MIN_AGO(5000) }, NOW);
+  const stale = vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: MIN_AGO(61), verified_at: MIN_AGO(5000), emulated: null }, NOW, false);
   assertEquals(stale?.status, 409);
   assertEquals(stale?.code, "vip_recheck");
   assertEquals(stale?.error, "Check your Instagram again to claim VIP.");
   assertEquals(stale?.followers, 6000);
   // Never read at all: recheck.
-  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: null, verified_at: null }, NOW)?.code, "vip_recheck");
+  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: null, verified_at: null, emulated: null }, NOW, false)?.code, "vip_recheck");
   // A fresh verification after an old Sync counts: the newer of the two.
-  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: MIN_AGO(5000), verified_at: MIN_AGO(3) }, NOW), null);
+  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: MIN_AGO(5000), verified_at: MIN_AGO(3), emulated: null }, NOW, false), null);
   // Exactly one hour old still passes.
-  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: MIN_AGO(60), verified_at: null }, NOW), null);
+  assertEquals(vipRefusal("voucher_vip", { guest_class: "vip", followers: 6000, synced_at: MIN_AGO(60), verified_at: null, emulated: null }, NOW, false), null);
   // Privacy is not an input any more: the guest shape has no privacy field.
   assertEquals("is_private" in ({ guest_class: "vip", followers: 6000, synced_at: null, verified_at: null }), false);
+});
+
+Deno.test("vipRefusal: the follower emulator counts in test mode only (MESITA-4662)", () => {
+  // guest_class reads the emulated 10,000; the real count is 300.
+  const emulated = { guest_class: "vip", followers: 300, synced_at: MIN_AGO(5000), verified_at: MIN_AGO(5000), emulated: 10_000 };
+  // Live money ignores the emulator: the real 300 decides, whatever the class says.
+  const live = vipRefusal("voucher_vip", emulated, NOW, false);
+  assertEquals(live?.code, "not_vip");
+  assertEquals(live?.followers, 300);
+  // Test mode: the emulated count is the count, and always fresh (no vip_recheck).
+  assertEquals(vipRefusal("voucher_vip", emulated, NOW, true), null);
+  // Test mode, emulated below the bar: the class says regular, refused naming the emulated count.
+  const low = vipRefusal("voucher_vip", { ...emulated, guest_class: "regular", emulated: 320 }, NOW, true);
+  assertEquals(low?.code, "not_vip");
+  assertEquals(low?.followers, 320);
+  // Live with a real VIP behind an emulated value: the real count still needs the hour.
+  const realVip = { guest_class: "regular", followers: 9000, synced_at: MIN_AGO(5000), verified_at: MIN_AGO(5000), emulated: 320 };
+  assertEquals(vipRefusal("voucher_vip", realVip, NOW, false)?.code, "vip_recheck");
+  assertEquals(vipRefusal("voucher_vip", { ...realVip, synced_at: MIN_AGO(5) }, NOW, false), null);
+  // Live, an emulated value on an unverified Instagram: not VIP.
+  assertEquals(vipRefusal("voucher_vip", { ...realVip, synced_at: MIN_AGO(5), verified_at: null }, NOW, false)?.code, "not_vip");
+  // No emulated value: test mode changes nothing (the hour still applies).
+  assertEquals(vipRefusal("voucher_vip", { ...emulated, followers: 6000, emulated: null }, NOW, true)?.code, "vip_recheck");
 });
 
 Deno.test("VIP is one each new visit (MESITA-4640)", () => {

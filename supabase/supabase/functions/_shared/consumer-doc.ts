@@ -71,6 +71,9 @@ export type ConsumerDoc = {
   // hidden; only true shows it (place_shown_handle). A new handle, Disconnect
   // and account deletion put it back to null.
   instagram_handle_shown: boolean | null;
+  // MESITA-4662: the follower emulator (test mode only). null = the real count
+  // counts; a number stands in for it in guest_class. 0..100,000,000.
+  instagram_followers_emulated: number | null;
   // Not here on purpose: plan, guest_class, the VIP audit columns
   // (MESITA-2553) and the VIP's partner and last day (MESITA-2556). guest_class
   // is generated from the verified follower count (MESITA-3850); the rest are
@@ -99,6 +102,7 @@ export const CONSUMER_PATCH_KEYS = [
   "use_instagram_photo",
   "appear_anonymous",
   "instagram_handle_shown",
+  "instagram_followers_emulated",
   "deleted_at",
 ] as const satisfies readonly (keyof Omit<ConsumerDoc, "id" | "created_at">)[];
 
@@ -136,6 +140,14 @@ export function isCanonicalConsumerCode(code: string): boolean {
 }
 
 const INSTAGRAM_HANDLE_RE = /^[a-z0-9._]{1,30}$/;
+
+/** The follower emulator's ceiling (MESITA-4662), the DB CHECK's. */
+export const EMULATED_FOLLOWERS_MAX = 100_000_000;
+
+/** An emulated follower count: an integer 0..EMULATED_FOLLOWERS_MAX. */
+export function isEmulatedFollowers(v: unknown): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= EMULATED_FOLLOWERS_MAX;
+}
 
 /**
  * The consumer aggregate's runtime shape guard. Rejects an unknown key
@@ -262,6 +274,16 @@ export function validateConsumerPatch(
       return { ok: false, error: "instagram_handle_shown must be a boolean or null" };
     }
     patch.instagram_handle_shown = v;
+  }
+  if ("instagram_followers_emulated" in raw) {
+    const v = raw.instagram_followers_emulated;
+    if (v !== null && !isEmulatedFollowers(v)) {
+      return {
+        ok: false,
+        error: `instagram_followers_emulated must be an integer 0-${EMULATED_FOLLOWERS_MAX} or null`,
+      };
+    }
+    patch.instagram_followers_emulated = v as number | null;
   }
   if ("deleted_at" in raw) {
     const v = raw.deleted_at;
@@ -470,6 +492,8 @@ export type VipGuestRow = {
   followers: number | null;
   synced_at: string | null;
   verified_at: string | null;
+  // MESITA-4662: the emulated count, null when the real one counts.
+  emulated: number | null;
 };
 
 /** The buying guest's Class for the VIP voucher's gate (MESITA-4640), with
@@ -485,7 +509,7 @@ export async function readVipStanding(
 > {
   const { data, error } = await admin
     .from("consumers")
-    .select("guest_class, instagram_followers_count, instagram_synced_at, instagram_verified_at")
+    .select("guest_class, instagram_followers_count, instagram_synced_at, instagram_verified_at, instagram_followers_emulated")
     .eq("id", consumerId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -498,6 +522,7 @@ export async function readVipStanding(
         followers: (data.instagram_followers_count as number | null) ?? null,
         synced_at: (data.instagram_synced_at as string | null) ?? null,
         verified_at: (data.instagram_verified_at as string | null) ?? null,
+        emulated: (data.instagram_followers_emulated as number | null) ?? null,
       }
       : null,
   };

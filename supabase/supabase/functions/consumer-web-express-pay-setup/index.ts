@@ -84,7 +84,7 @@ serveJson("consumer-web-express-pay-setup", async (req) => {
   // VIP's own gate, the same as the buy door's (MESITA-4640): the class and a
   // follower count read within the hour (MESITA-4659: not_vip or vip_recheck).
   if (kinds.includes("voucher_vip")) {
-    const vip = vipRefusal("voucher_vip", await readVipGuest(admin, user.id), new Date());
+    const vip = vipRefusal("voucher_vip", await readVipGuest(admin, user.id), new Date(), !livemode);
     if (vip) return no(vip.code);
   }
 

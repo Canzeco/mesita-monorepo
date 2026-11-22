@@ -35,6 +35,12 @@ export type ConsumerProfile = {
   // shows it; null (no choice recorded) and false hide it. Linking never
   // sets it. Optional (older EF payloads).
   instagram_handle_shown?: boolean | null;
+  // MESITA-4662: the follower emulator (Stripe test mode only). A number
+  // stands in for the real count in the Class; null = the real count.
+  // emulator_available says whether the emulator box shows. Both optional
+  // (older EF payloads read as off).
+  instagram_followers_emulated?: number | null;
+  emulator_available?: boolean;
   // MESITA-2585: may verifying Instagram set the picture? Absent on an older
   // EF reads as on (the column defaults true).
   use_instagram_photo?: boolean;
@@ -91,6 +97,12 @@ type ConsumerHandleShownPatch = {
   instagram_handle_shown: boolean;
 };
 
+// The follower emulator on Me › Instagram (MESITA-4662): a number in test
+// mode only (403 emulator_live otherwise); null is Reset to real.
+type ConsumerFollowersEmulatedPatch = {
+  instagram_followers_emulated: number | null;
+};
+
 export async function apiUpdateConsumerProfile(
   client: SupabaseClient,
   input:
@@ -98,7 +110,8 @@ export async function apiUpdateConsumerProfile(
     | ConsumerAvatarPatch
     | ConsumerInstagramPhotoPatch
     | ConsumerAppearAnonymousPatch
-    | ConsumerHandleShownPatch,
+    | ConsumerHandleShownPatch
+    | ConsumerFollowersEmulatedPatch,
 ): Promise<ConsumerProfile> {
   const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
     client,

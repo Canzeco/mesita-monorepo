@@ -197,7 +197,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   // VIP's own gate: the VIP class (MESITA-4640) and a follower count read
   // within the hour (MESITA-4659, 409 vip_recheck); one each visit is the offer's.
   if (kinds.includes("voucher_vip")) {
-    const vip = vipRefusal("voucher_vip", await readVipGuest(admin, userId), new Date());
+    const vip = vipRefusal("voucher_vip", await readVipGuest(admin, userId), new Date(), !livemode);
     if (vip) {
       return json({ ok: false, code: vip.code, error: vip.error, followers: vip.followers }, vip.status);
     }
