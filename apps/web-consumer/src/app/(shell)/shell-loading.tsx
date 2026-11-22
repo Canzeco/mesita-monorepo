@@ -12,7 +12,7 @@ import ProfileLoading from "./me/profile/loading";
 import SettingsLoading from "./me/settings/(page)/loading";
 import ContactLoading from "./me/settings/contact/loading";
 import RefundsLoading from "./me/settings/refunds/loading";
-import PayLoading from "./pay/loading";
+import PayLoading from "./pay/(wallet)/loading";
 import WalletLoading from "./wallet/loading";
 import GiftLoading from "./me/gift/loading";
 import FeedbackLoading from "./me/settings/feedback/loading";
