@@ -1,6 +1,6 @@
 // visit.mesita.ai (MESITA-3221, Pato: "keep it super simple"). The close-visit
 // flow of the discount product (the guest's QR, the member number and the
-// place code, the bill and the Instagram story check) left with MESITA-3299.
+// place code, the bill and the Instagram check) left with MESITA-3299.
 // The payment proof lives at /proof/<token> (MESITA-3304): a guest's QR opens
 // it. The waiter's charge lives at /charge/<place> (MESITA-3306): the owner's
 // Business › Payments links it, and the staff list of the place's payments

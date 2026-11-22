@@ -50,6 +50,8 @@ const REDIRECTS: Array<{ source: string; destination: string }> = [
   { source: "/internal", destination: "/places" },
   { source: "/admin", destination: "/places" },
   { source: "/places/:id/internal", destination: "/places/:id/admin" },
+  // Stories are gone (MESITA-4641): their old General card lands on General.
+  { source: "/places/:id/stories", destination: "/places/:id/general" },
 ];
 
 // This build's identity, baked into the client bundle; DeploymentWatcher

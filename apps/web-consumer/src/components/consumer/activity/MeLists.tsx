@@ -23,7 +23,7 @@
 //               payments. A payment that paid a tab is written on that
 //               Visit's card (one meal, one ticket); any other payment is
 //               its own ticket
-//     Vouchers  credits bought, bonuses, Story vouchers waiting
+//     Vouchers  credits bought, bonuses
 //     Gifts     every gift sent or received, sender → receiver
 //               (GiftTickets, MESITA-4036; Gifts-In and Gifts-Out before)
 //     Refunds   purchases refunded; its own tab again since MESITA-3949
@@ -238,13 +238,12 @@ const TICKET_TABS: ReadonlyArray<{
   label: string;
   icon: LucideIcon;
 }> = [
-  // VOUCHERS · VISITS · GIFTS · STORIES (Pato, 2026-11-21, MESITA-4623:
-  // "Vouchers Visits Gifts Stories YES THAT ORDER", the card page and this
-  // feed alike). Bare /me/tickets still opens Visits: every link names it.
+  // VOUCHERS · VISITS · GIFTS (Pato, 2026-11-21, MESITA-4623, the card page
+  // and this feed alike). Bare /me/tickets still opens Visits: every link
+  // names it.
   { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
   { kind: "visits", label: "Visits", icon: UtensilsCrossed },
   { kind: "gifts", label: "Gifts", icon: Gift },
-  // NO STORIES TAB (MESITA-4627): a Story voucher is a Vouchers row.
 ];
 
 /** The tab a /me/tickets address shows: bare is Visits. */
@@ -252,8 +251,6 @@ function ticketTabOf(seg: string | undefined): TicketTab {
   if (seg === "vouchers") return "vouchers";
   if (seg === "gifts" || seg === "gifts-in" || seg === "gifts-out")
     return "gifts";
-  // /me/tickets/stories forwards to Vouchers (MESITA-4627).
-  if (seg === "stories") return "vouchers";
   return "visits";
 }
 
@@ -497,7 +494,6 @@ export function TicketsBoard({
       ...w,
       balances: w.balances.filter((b) => b.place_id === placeId),
       gifts: (w.gifts ?? []).filter((g) => g.place_id === placeId),
-      stories: (w.stories ?? []).filter((st) => st.place_id === placeId),
     };
   }, [wallet.data, placeId]);
   // OLDER VISITS, ON ASK (MESITA-4595): the read holds the newest 50; Load
@@ -574,8 +570,8 @@ export function TicketsBoard({
     } satisfies Record<Exclude<TicketTab, "gifts">, Row[] | null>;
   }, [visitList, walletData, visitCutoff]);
 
-  // PENDING TICKETS (MESITA-4623): bills waiting for the waiter, Stories
-  // waiting for their check. Their tab wears a yellow dot; the card page
+  // PENDING TICKETS (MESITA-4623): bills waiting for the waiter, vouchers
+  // still landing. Their tab wears a yellow dot; the card page
   // also says so in a yellow line above the tabs.
   const pending: Partial<Record<TicketTab, number>> = {
     visits: (byKind.visits ?? []).filter((r) => r.pending).length,
@@ -890,8 +886,7 @@ function TicketPills({
   return (
     <nav
       aria-label="Kinds of ticket"
-      // FOUR EQUAL COLUMNS, ONE LINE (Pato, MESITA-4414: "25% each"): Stories
-      // (MESITA-4405) made it four; three columns wrapped it to a second line.
+      // EQUAL COLUMNS, ONE LINE (Pato, MESITA-4414: "25% each").
       className={cn("bg-card border-border grid shrink-0 grid-cols-3 border-b", flush && "-mx-5", sticky && "sticky top-0 z-10")}
       data-ticket-pills
     >

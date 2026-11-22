@@ -23,7 +23,6 @@ const ICON: Record<TicketRowKind, LucideIcon> = {
   payment: UtensilsCrossed,
   voucher: BadgeDollarSign,
   bonus: BadgeDollarSign,
-  story: BadgeDollarSign,
   gift_in: Gift,
   gift_out: Send,
   gift_back: Send,

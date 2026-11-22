@@ -47,7 +47,6 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BadgeDollarSign, Clock3, Copy, Gift } from "lucide-react";
-import { storyPurchaseIds } from "@/lib/story-voucher";
 import { VoucherSteps } from "./VoucherSteps";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -77,7 +76,6 @@ import {
 import {
   creditEntryPath,
   giftTicketPath,
-  storyPurchasePath,
   payPlacePath,
   placePath,
   walletPlacePath,
@@ -166,13 +164,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
   const router = useRouter();
   const found = wallet.data ? findEntry(wallet.data, placeId, entryKey).e : undefined;
   const gift = wallet.data && found ? giftOfEntry(wallet.data, found) : null;
-  // A Story voucher's purchase (or its bonus) is the Story screen: one
-  // voucher, one page (MESITA-4627).
-  const storyBuy =
-    wallet.data && found?.purchase_id && (found.kind === "voucher" || found.kind === "bonus") && storyPurchaseIds(wallet.data).has(found.purchase_id)
-      ? found.purchase_id
-      : null;
-  const forward = gift ? giftTicketPath(gift.gift_id) : storyBuy ? storyPurchasePath(storyBuy) : null;
+  const forward = gift ? giftTicketPath(gift.gift_id) : null;
   useEffect(() => {
     if (forward) router.replace(forward);
   }, [forward, router]);

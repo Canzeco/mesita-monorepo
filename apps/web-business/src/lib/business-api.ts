@@ -435,6 +435,7 @@ export type PaymentKey =
   | "voucher_200"
   | "voucher_1000"
   | "voucher_5000"
+  // Never sold since MESITA-4641; the server still answers it, and money-state's twin needs it.
   | "voucher_story"
   | "voucher_vip";
 export type PaymentSettings = Record<PaymentKey, boolean>;
@@ -508,8 +509,8 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
 
 // ── Monitor lists (MESITA-4538) ─────────────────────────
 
-/** One page of a Monitor list: visits, vouchers, payments, credits or
- *  stories, each row with the ids of the rows it relates to. Owners and
+/** One page of a Monitor list: visits, vouchers, payments or credits, each
+ *  row with the ids of the rows it relates to. Owners and
  *  Mesita staff only; an editor gets `owner_only`. */
 export async function listMonitor(
   placeId: string,

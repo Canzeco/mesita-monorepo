@@ -93,6 +93,15 @@ Deno.test("paused stops every sale; an account from the other universe cannot ch
 
 // VIP's one-each-new-visit rule (MESITA-3463) is unreachable while VIP is
 // parked; the parked reason wins and the buy door refuses it.
+Deno.test("Story is retired (MESITA-4641): a basket naming it is refused with voucher_retired", () => {
+  const one = parseBasket({ voucher: "voucher_story" });
+  assertEquals(one.ok, false);
+  assertEquals(one.ok ? null : one.code, "voucher_retired");
+  const mixed = parseBasket({ items: [{ voucher: "voucher_200", qty: 1 }, { voucher: "voucher_story", qty: 1 }] });
+  assertEquals(mixed.ok ? null : mixed.code, "voucher_retired");
+  assertEquals(parseBasket({ voucher: "voucher_200" }).ok, true);
+});
+
 Deno.test("VIP is back (MESITA-4640), no Welcome (MESITA-4636)", () => {
   assertEquals(parseBasket({ voucher: "voucher_vip" }).ok, true);
   assertEquals(parseBasket({ voucher: "voucher_welcome" }).ok, false);

@@ -36,8 +36,8 @@ export function PlaceDetailModalShell({
   footer?: React.ReactNode;
 }) {
   const close = useSlideOverClose();
-  // BACK FINDS THE PLACE WHERE YOU LEFT IT (MESITA-4379): Offers, Reserve
-  // and Story are pages pushed over the place, so Back mounts it again; its
+  // BACK FINDS THE PLACE WHERE YOU LEFT IT (MESITA-4379): Offers and
+  // Reserve are pages pushed over the place, so Back mounts it again; its
   // scroller returns to the offset it had (lib/use-kept-scroll.ts).
   const keep = useKeptScroll<HTMLDivElement>();
   const more = usePlaceMoreMenu(place);

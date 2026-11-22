@@ -4,8 +4,7 @@
 // asserted, so the time zone cannot change a result.
 import { describe, expect, it } from "vitest";
 import type { GuestVisit } from "@/lib/api/tab";
-import { money, type StoryTicket, type Wallet, type WalletEntry } from "@/lib/api/wallet";
-import { storyPurchasePath } from "@/lib/consumer-route-contract";
+import { money, type Wallet, type WalletEntry } from "@/lib/api/wallet";
 import { KIND_WORD, visitRows, walletRows, type Row } from "@/lib/ticket-rows";
 
 const AT = "2026-11-14T12:00:00.000Z";
@@ -163,40 +162,15 @@ describe("every other kind lands on its tab with its kind", () => {
 
 });
 
-// A STORY VOUCHER IS ONE VOUCHER ROW (MESITA-4627): no Story row of its own;
-// the voucher row carries the Story's step and opens its Story screen.
-describe("Story vouchers (MESITA-4627)", () => {
-  const LATER = new Date(Date.parse(AT) + 3 * 3600_000).toISOString();
-  const NOW = Date.parse(AT) + 3600_000;
-  const st = (over: Partial<StoryTicket>): StoryTicket =>
-    ({ purchase_id: "p1", state: "approved", bonus_at: LATER, created_at: AT, ...over }) as StoryTicket;
-  const buy = e("voucher", 10000, { purchase_id: "p1" });
-
-  it("paid, no Story yet: one row, Post Story, blue, opening the Story screen by its purchase", () => {
-    const r = only(walletRows(wallet([buy], { story_purchase_ids: ["p1"] }), NOW));
-    expect([r.type, r.kind, r.status.label, r.landing, r.href]).toEqual(["vouchers", "story", "Post Story", true, storyPurchasePath("p1")]);
-  });
-
-  it("approved with its bonus hours later: the bonus folds into the one row, Waiting", () => {
+// An old Story purchase (MESITA-4641: Stories are gone) is a plain voucher
+// row: its bonus, landing hours later, folds in by the purchase.
+describe("an old Story purchase", () => {
+  it("is one voucher row with its later bonus", () => {
+    const LATER = new Date(Date.parse(AT) + 3 * 3600_000).toISOString();
+    const buy = e("voucher", 10000, { purchase_id: "p1" });
     const bonus = e("bonus", 5000, { purchase_id: "p1", at: LATER, pending: true });
-    const r = only(walletRows(wallet([bonus, buy], { story_purchase_ids: ["p1"], stories: [st({})] }), NOW));
-    expect([r.status.label, r.landing]).toEqual(["Waiting", true]);
+    const r = only(walletRows(wallet([bonus, buy])));
+    expect([r.type, r.kind, r.status.label]).toEqual(["vouchers", "voucher", "Pending"]);
     expect(r.line).toContain(money(5000, "MXN"));
-  });
-
-  it("past its bonus time it reads Checking; released reads Bonus added and is not blue", () => {
-    const after = Date.parse(LATER) + 1000;
-    expect(only(walletRows(wallet([buy], { stories: [st({})] }), after)).status.label).toBe("Checking");
-    const done = only(walletRows(wallet([buy], { stories: [st({ state: "released" })] }), after));
-    expect([done.status.label, done.landing]).toEqual(["Bonus added", false]);
-  });
-
-  it("a void Story on a paid purchase goes back to Post Story; a refunded purchase reads Bonus not added", () => {
-    expect(only(walletRows(wallet([buy], { stories: [st({ state: "void" })] }), NOW)).status.label).toBe("Post Story");
-    const rows = walletRows(
-      wallet([e("reversal", -10000, { purchase_id: "p1" }), buy], { story_purchase_ids: ["p1"] }),
-      NOW,
-    ).filter((r) => r.type === "vouchers");
-    expect(rows.map((r) => [r.status.label, r.landing])).toEqual([["Bonus not added", false]]);
   });
 });

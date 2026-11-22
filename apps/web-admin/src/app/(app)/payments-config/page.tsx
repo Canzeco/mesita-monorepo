@@ -27,15 +27,15 @@ const NAME: Record<string, string> = {
   voucher_200: "Small",
   voucher_1000: "Medium",
   voucher_5000: "Big",
-  voucher_story: "Story",
   voucher_vip: "VIP",
 };
-const ORDER = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story", "voucher_vip"];
+const ORDER = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_vip"];
+// No Story row since MESITA-4641, even while the server's catalog still lists it.
+const RETIRED = new Set(["voucher_story"]);
 const WHO: Record<string, string> = {
   voucher_200: "As many as they like",
   voucher_1000: "As many as they like",
   voucher_5000: "As many as they like",
-  voucher_story: "Guests with 1,000+ Instagram followers, one per visit",
   voucher_vip: "Only guests with a public Instagram over 5,000 followers, one per visit",
 };
 
@@ -53,7 +53,7 @@ const wait = (sec: number) => (sec <= 0 ? "At once" : sec % 3600 === 0 ? `${sec 
 export default async function PaymentsConfigPage() {
   const res = await getVoucherPrices();
   const rows: VoucherPriceRow[] = res.ok
-    ? [...res.vouchers].sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key))
+    ? res.vouchers.filter((v) => !RETIRED.has(v.key)).sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key))
     : [];
   return (
     <PageContainer className="flex flex-col gap-6 sm:gap-8">
@@ -126,7 +126,7 @@ export default async function PaymentsConfigPage() {
           <SectionCard
             icon={<CoinsIcon aria-hidden />}
             title="Currencies"
-            subtitle="Three countries at launch: Mexico, the United States and Canada, each in its own currency (fixed when the place signs the Loyalty Cards Agreement). Small +10% starts with 1; Big +20% is 10× Small; Welcome, Story and VIP cost the Small price."
+            subtitle="Three countries at launch: Mexico, the United States and Canada, each in its own currency (fixed when the place signs the Loyalty Cards Agreement). Small +10% starts with 1; Big +20% is 10× Small; VIP costs the Small price."
           >
             <div className="mt-4">
               <Table className="min-w-[640px]" data-admin-voucher-currencies>

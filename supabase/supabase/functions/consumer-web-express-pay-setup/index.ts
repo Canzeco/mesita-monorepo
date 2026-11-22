@@ -60,7 +60,10 @@ serveJson("consumer-web-express-pay-setup", async (req) => {
   if (!isUuid(placeId)) return json({ ok: false, code: "bad_body", field: "place_id", error: "place_id must be a Mesita place id" }, 400);
   if (bodyRes.body.bill !== undefined) return await billSetup(admin, placeId, bodyRes.body.bill);
   const basket = parseBasket(bodyRes.body);
-  if (!basket.ok) return json({ ok: false, code: "bad_body", field: "items", error: basket.error }, 400);
+  if (!basket.ok) {
+    if (basket.code === "voucher_retired") return json({ ok: true, available: false, code: basket.code });
+    return json({ ok: false, code: "bad_body", field: "items", error: basket.error }, 400);
+  }
   const units = basketUnits(basket.items);
   const kinds = basket.items.map((i) => i.voucher);
   const no = (code: string) => json({ ok: true, available: false, code });

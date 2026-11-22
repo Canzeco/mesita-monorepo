@@ -236,57 +236,8 @@ const CASES: Record<string, SectionCase> = {
     refuse: { status: 400, contains: "testCall must be an object" },
   },
 
-  stories: {
-    // Admin › Configurations › Stories (MESITA-4425): the follower floor.
-    valid: { config: { story_min_followers: 500 } },
-    assertSaved: (saved, row) => {
-      assertEquals((saved.config as Row).story_min_followers, 500);
-      assertEquals((row.money_config as Row).story_min_followers, 500);
-    },
-    // Refused, not clamped: a money rule never lands as something nobody typed.
-    invalid: { config: { story_min_followers: "abc" } },
-    refuse: { status: 400, contains: "story_min_followers must be a whole number" },
-  },
-};
 
-Deno.test("stories: the read shows only Story keys; a save keeps every other money_config key (MESITA-4425)", async () => {
-  const row = seedRow();
-  row.money_config = { buying_paused: true, express_wallets: ["apple_pay"], sending_live: false, story_bonus_wait_sec: 10800 };
-  const read = await body(await readConfigSection(fakeAdmin(row), "stories"));
-  assertEquals(read.config, {
-    story_min_followers: 1000,
-    story_bonus_wait_sec: 10800,
-    story_post_window_sec: 43200,
-    story_emulator: false,
-    story_emulator_bonus_wait_sec: 30,
-    story_emulator_post_window_sec: 120,
-    // MESITA-4549: the AI bot's switches and limits, at their defaults.
-    story_ai_enabled: true,
-    story_recheck_meta: false,
-    story_ai_batch: 20,
-    story_ai_max_tries: 3,
-    story_desk_hours: 48,
-    story_media_retention_hours: 72,
-    story_stale_days: 30,
-  });
-  assertEquals(typeof read.payments_live, "boolean");
-  assert(["meta", "emulated", "unavailable"].includes(String(read.story_mode)));
-  const saved = await writeConfigSection({ admin: fakeAdmin(row), userId: USER, body: { section: "stories", config: { story_min_followers: 0 } } }, "stories");
-  assertEquals(saved.status, 200);
-  assertEquals(row.money_config, { buying_paused: true, express_wallets: ["apple_pay"], sending_live: false, story_bonus_wait_sec: 10800, story_min_followers: 0 });
-  for (const bad of [
-    { story_min_followers: 1_000_001 }, { story_min_followers: 2.5 }, { story_min_followers: -1 }, { buying_paused: false }, {},
-    // MESITA-4426: the emulator keys are typed and ranged too.
-    { story_emulator: "true" }, { story_emulator_bonus_wait_sec: 9 }, { story_emulator_bonus_wait_sec: 601 },
-    { story_emulator_post_window_sec: 59 }, { story_emulator_post_window_sec: 3601 },
-    // MESITA-4549: the bot keys are typed and ranged too.
-    { story_ai_enabled: "yes" }, { story_ai_batch: 0 }, { story_ai_batch: 51 }, { story_media_retention_hours: 23 },
-  ]) {
-    const res = await writeConfigSection({ admin: fakeAdmin(row), userId: USER, body: { section: "stories", config: bad } }, "stories");
-    assertEquals(res.status, 400, JSON.stringify(bad));
-  }
-  assertEquals((row.money_config as Row).buying_paused, true);
-});
+};
 
 Deno.test("every registry key has a round-trip case — no section rides on another's proof", () => {
   assertEquals(

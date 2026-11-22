@@ -70,6 +70,12 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: "/wallet/place/:placeId",
     permanent: true,
   },
+  // A place's Story offer page (MESITA-4303) is gone (MESITA-4641): its Offers.
+  {
+    source: "/place/:id/story",
+    destination: "/place/:id/offers",
+    permanent: true,
+  },
   // A finished Visit's detail sits beside its chip (MESITA-4016).
   {
     source: "/me/tickets/visit/:visitId",
@@ -161,10 +167,15 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: "/me/settings/refunds",
     permanent: true,
   },
-  // No Stories tab (MESITA-4627): a Story voucher is a Vouchers row. Each
-  // Story's own screen keeps /me/tickets/stories/<id>.
+  // No Stories tab (MESITA-4627), and no Stories at all (MESITA-4641): the
+  // tab and one Story's screen land on Vouchers.
   {
     source: "/me/tickets/stories",
+    destination: ticketsHref("vouchers"),
+    permanent: true,
+  },
+  {
+    source: "/me/tickets/stories/:storyId",
     destination: ticketsHref("vouchers"),
     permanent: true,
   },

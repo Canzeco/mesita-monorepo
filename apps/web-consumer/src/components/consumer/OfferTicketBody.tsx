@@ -12,16 +12,13 @@ import {
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
 import { StepBody, StepFooter, TicketHeader } from "@/components/consumer/pay/pay-flow";
 import {
-  CONSUMER_ROUTES,
   payPlacePath,
   placeOffersPath,
-  placeStoryPath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo } from "@/lib/navigate";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
-import { storyRulesOf } from "@/lib/consumer-identity";
 
 function noopSubscribe() {
   return () => {};
@@ -42,7 +39,6 @@ function readFrom(): "pay" | "wallet" | null {
 //   Done / ✕ after it    → from=pay: back to the bill · from=wallet: back to
 //                          the Loyalty Card · neither: the Loyalty Card
 //                          replaces the ticket (MESITA-4055)
-//   Story                → its own page (MESITA-4303)
 //   unknown / not offered→ Offers
 //
 // Only the guest's saved card pays (Pato: "ONLY INCLUDE THE SAVED PAYMENT
@@ -66,9 +62,8 @@ export function OfferTicketBody({ place: fetched, voucher }: { place: PlaceDetai
     else navigateTo(router, walletPlacePath(fetched.id), { replace: true, motion: "push" });
   }, [router, from, fetched.id]);
   const missing = useCallback(() => {
-    if (voucher === "voucher_story") navigateTo(router, placeStoryPath(fetched.id), { replace: true });
-    else navigateTo(router, offersWithFrom, { replace: true });
-  }, [router, voucher, fetched.id, offersWithFrom]);
+    navigateTo(router, offersWithFrom, { replace: true });
+  }, [router, offersWithFrom]);
 
   const place: PlaceDetail = vouchers.money ? { ...fetched, money: vouchers.money } : fetched;
   const actions: PlaceActions = {
@@ -91,13 +86,9 @@ export function OfferTicketBody({ place: fetched, voucher }: { place: PlaceDetai
           guestClass: profile.guest_class === "vip" ? "vip" : "regular",
           instagramPrivate: profile.instagram_is_private ?? null,
           instagramFollowers: profile.instagram_followers_count ?? null,
-          instagramHandle: profile.instagram_handle ?? null,
-          storyMinFollowers: storyRulesOf(profile).minFollowers,
-          storyEmulator: storyRulesOf(profile).emulator,
         },
       }
       : {}),
-    onLinkInstagram: () => navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" }),
   };
 
   const frame = (f: OfferTicketFrame) => (

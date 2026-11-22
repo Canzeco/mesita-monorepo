@@ -2,7 +2,6 @@ import type { MouseEvent, ReactNode } from "react";
 
 import type { PlaceDetail, VoucherKey } from "./place-detail";
 import type { PayCards } from "./pay-cards";
-import type { StoryCheckAnswer } from "./story-check";
 
 export type PlaceMenuItem = PlaceDetail["products"]["menu"][number];
 
@@ -11,10 +10,7 @@ export type VoucherBasketItem = { voucher: VoucherKey; qty: number };
 /** How a voucher buy ended (MESITA-4224): the ticket moves to Credits on
  *  "paid" or "processing" and stays on Pay to try again on "failed" (the
  *  host already said why). */
-export type VoucherBuyOutcome = "paid" | "processing" | "failed" | StoryRefused;
-/** A Story buy the server refused about the guest (MESITA-4296:
- *  private_account): nothing was charged and the page says why. */
-export type StoryRefused = { story_refused: string };
+export type VoucherBuyOutcome = "paid" | "processing" | "failed";
 
 /** The profile is on screen before Mesita holds it — a Google-only card the
  *  guest opened (MESITA-2307). While the create runs a Creating fact leads
@@ -53,18 +49,9 @@ export type PlaceActions = {
    *  sheet. Absent, the button is inert (admin's preview). Resolves with how
    *  it ended (MESITA-4224); a host that returns nothing leaves the sheet open. */
   onBuyVoucher?: (items: VoucherBasketItem[], cardId: string | null) => void | Promise<VoucherBuyOutcome>;
-  /** offer_sheet_opened (MESITA-4375): an offer's sheet or Story page opened;
+  /** offer_sheet_opened (MESITA-4375): an offer's ticket opened;
    *  `savedCard` says a usable saved card was ready. Fire-and-forget. */
   onOfferOpened?: (voucher: VoucherKey, savedCard: boolean) => void;
-  /** The Story page's gate (MESITA-4296; gate only since MESITA-4405):
-   *  consumer-web-check-story for this place. Resolves `failed` on a 500 or
-   *  no answer, never throws. Absent (admin's preview, signed out), the page
-   *  shows the steps and no Pay. A paid Story's steps live on the host's
-   *  Story screen, where the host lands the guest after the buy. */
-  onCheckStory?: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
-  /** Story's own page (MESITA-4303): the host pushes /place/<id>/story.
-   *  Absent (admin's preview), the Story row opens nothing. */
-  onOpenStory?: () => void;
   /** A voucher's ticket (MESITA-4630): the host pushes
    *  /place/<id>/offers/<voucher>. Absent (admin's preview), the row opens
    *  nothing. */
@@ -99,29 +86,19 @@ export type PlaceActions = {
   /** The Offers tile's Pay slide (MESITA-3352, MESITA-4151): opens the
    *  host's Pay page. Absent, that slide is inert (admin's preview). */
   onPay?: () => void;
-  /** The guest's own facts for the Offers (i) status (MESITA-3502): Story
-   *  needs a linked Instagram. Absent (signed out, admin's
-   *  preview, profile not read yet), no guest lock is drawn. */
-  /** instagramFollowers (MESITA-3507): Story needs storyMinFollowers or more; absent reads as unknown, no lock. */
+  /** The guest's own facts for the VIP offer's locked line (MESITA-4640).
+   *  Absent (signed out, admin's preview, profile not read yet), VIP reads
+   *  locked with the bar alone. */
   guest?: {
     instagramLinked: boolean;
+    /** Absent or null reads as unknown. */
     instagramFollowers?: number | null;
-    /** The live follower floor (MESITA-4425, consumer-web-get-profile's
-     *  story_rules.min_followers); absent reads STORY_MIN_FOLLOWERS. */
-    storyMinFollowers?: number;
-    /** Emulator mode in effect (story_rules.emulator): no follower or
-     *  private-account lock, only the Instagram link. Absent reads false. */
-    storyEmulator?: boolean;
-    /** The guest's Instagram username, on the Story sheet's Found card (MESITA-4296). */
-    instagramHandle?: string | null;
     /** The guest's Class (MESITA-4640): the VIP voucher is VIP only. Absent
      *  reads Regular, so a signed-out or unread guest sees VIP locked. */
     guestClass?: "regular" | "vip";
     /** What the last scrape said (consumers.instagram_is_private); null = not known. */
     instagramPrivate?: boolean | null;
   };
-  /** Link Instagram in the Story (i): the host's Instagram page. */
-  onLinkInstagram?: () => void;
 };
 
 export function inertButtonProps(live: boolean): {
@@ -138,7 +115,7 @@ export function inertButtonProps(live: boolean): {
 }
 
 /** Why the Offers sheet opened (MESITA-3412): Prepay and the Wallet at
- *  `prepayment`, the Home offer button's Welcome and Story slides at
- *  `special` (MESITA-3467). Both show the same one section; "payment" went
+ *  `prepayment`, the Home offer button's special slides at `special`
+ *  (MESITA-3467). Both show the same one section; "payment" went
  *  with the Payments card (MESITA-4062). */
 export type RewardsSection = "prepayment" | "special";

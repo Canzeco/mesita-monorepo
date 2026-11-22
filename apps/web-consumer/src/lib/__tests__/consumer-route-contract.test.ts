@@ -110,6 +110,8 @@ function liveAddresses(): Set<string> {
     `${CONSUMER_ROUTES.gift.prefix}:id`,
     ...Object.values(CONSUMER_ROUTES.mePages),
     `${CONSUMER_ROUTES.place.prefix}:id`,
+    // A place's Offers page, where its retired Story page lands (MESITA-4641).
+    `${CONSUMER_ROUTES.place.prefix}:id/offers`,
     `${CONSUMER_ROUTES.placeGoogle.prefix}:id`,
     `${CONSUMER_ROUTES.reservation.prefix}:id`,
   ]);
@@ -145,7 +147,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       visit: { prefix: "/me/tickets/visits/" },
       credit: { prefix: "/me/tickets/credit/" },
       gift: { prefix: "/me/tickets/gift/" },
-      story: { prefix: "/me/tickets/stories/" },
       // Pay's second half (MESITA-3698).
       wallet: "/wallet",
       walletPlace: { prefix: "/wallet/place/" },
@@ -242,6 +243,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meTicketsGiftsOut: "/me/tickets/gifts-out",
         meTicketsRefunds: "/me/tickets/refunds",
         meTicketsStories: "/me/tickets/stories",
+        // No Stories at all (MESITA-4641).
+        meTicketsStoryPrefix: "/me/tickets/stories/",
+        placeStory: "/place/:id/story",
         subscribe: "/subscribe/premium",
         getTheApp: "/get-the-app",
         discoverFeed: "/discover/feed",
@@ -461,6 +465,11 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       {
+        source: "/place/:id/story",
+        destination: "/place/:id/offers",
+        permanent: true,
+      },
+      {
         source: "/me/tickets/visit/:visitId",
         destination: "/me/tickets/visits/:visitId",
         permanent: true,
@@ -543,6 +552,11 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       {
         source: "/me/tickets/stories",
+        destination: "/me/tickets/vouchers",
+        permanent: true,
+      },
+      {
+        source: "/me/tickets/stories/:storyId",
         destination: "/me/tickets/vouchers",
         permanent: true,
       },

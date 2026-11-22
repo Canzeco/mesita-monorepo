@@ -14,7 +14,7 @@ import { billRead, payHere, type BillRead } from "@/lib/pay-wallet";
 import { pendingTicket, readDraft } from "@/lib/guest-pay-draft";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { cn } from "@/lib/utils";
-import { CONSUMER_ROUTES, payBillPath, payPlacePath, placePath, storyPurchasePath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payBillPath, payPlacePath, placePath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { markPanelExit, navigateTo, previousEntryPath, replaceAddress } from "@/lib/navigate";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -29,8 +29,7 @@ import { PayPickSheet } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
 import { MethodPreview } from "./MethodPreview";
 import { SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
-import { type PendingVoucher, WalletSection } from "@/components/consumer/wallet/WalletSection";
-import { pendingWords } from "@/components/consumer/wallet/WalletLists";
+import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
@@ -295,15 +294,9 @@ export function PayPage({
   // a later "Check again" never blanks the page. Before, each box painted
   // when its own read landed.
   const [walletReady, setWalletReady] = useState(false);
-  // The vouchers still landing or still to post (MESITA-4625, MESITA-4627),
-  // handed up by the Wallet section.
-  const [pendingVouchers, setPendingVouchers] = useState<PendingVoucher[]>([]);
   // NO "BONUS PENDING" ROWS (Pato, 2026-11-22, MESITA-4638: "the blue box
   // below mentioning that is enough"): a bonus still landing shows only on
-  // its Loyalty Card row's blue pending box; Pending Tickets keeps the open
-  // bill and a Story voucher's next step.
-  const pendingTickets = pendingVouchers.filter((v) => v.story);
-  const onPending = useCallback((p: { vouchers: PendingVoucher[] }) => setPendingVouchers(p.vouchers), []);
+  // its place row's blue pending box; Pending Tickets is the open bill.
   const [methodReady, setMethodReady] = useState(false);
   const onWalletReady = useCallback(() => setWalletReady(true), []);
   const onMethodReady = useCallback(() => setMethodReady(true), []);
@@ -359,21 +352,16 @@ export function PayPage({
           the other sections, with a title"; below the buttons for one
           deploy, MESITA-4623). Shown only when something is pending, one row
           per ticket, each opening it: a bill waiting for the waiter in
-          yellow; a voucher still landing, or a Story voucher still to post,
-          wait or check (one row per voucher, MESITA-4627), in blue ("instead
-          of yellow put it blue"). THE SAME CARD AS ITS SIBLINGS (Pato,
+          yellow. THE SAME CARD AS ITS SIBLINGS (Pato,
           2026-11-21, MESITA-4632: "this design looks like shit but the idea
           kinda works"): the amber box and the blue rows are gone; it wears
           Payment method's and Loyalty Cards' card, the grey title strip and
           white rows, each the place over one grey line. */}
-      {bill === "open" || pendingTickets.length > 0 ? (
+      {bill === "open" ? (
         <section className={SECTION_CARD} aria-label="Pending Tickets" data-pay-pending>
           <h2 className={SECTION_TITLE}>Pending Tickets</h2>
           <div className={SECTION_ROWS}>
-            {bill === "open" ? <OpenBillPanel tab={openTabs?.[0] ?? null} pending={pending} places={places} /> : null}
-            {pendingTickets.map((v) => (
-              <PendingVoucherRow key={v.key} v={v} />
-            ))}
+            <OpenBillPanel tab={openTabs?.[0] ?? null} pending={pending} places={places} />
           </div>
         </section>
       ) : null}
@@ -461,7 +449,7 @@ export function PayPage({
       {/* One panel (MESITA-4497): these place rows, then the Wallet's cards. */}
       <WalletSection
         onReady={onWalletReady}
-        onPending={onPending}
+        hidePending
         giftToken={giftToken}
         leadIds={placeIds}
         leadCount={shownPlaces.length}
@@ -621,30 +609,3 @@ const PENDING_ROW =
   "hover:bg-muted/40 flex min-h-14 w-full items-center gap-3 px-3 py-2.5 text-left transition";
 const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums";
 
-/** A voucher still landing, one row of Pending Tickets (MESITA-4625): the
- *  place, "$X bonus pending · ready in 2 h 14 min" in blue, ›; it opens the
- *  Loyalty Card. Its clock ticks each 30 s. */
-function PendingVoucherRow({ v }: { v: PendingVoucher }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <PushLink
-      // A Story voucher opens its Story screen (MESITA-4627).
-      href={v.story && v.purchaseId ? storyPurchasePath(v.purchaseId) : walletPlacePath(v.placeId)}
-      className={PENDING_ROW}
-      data-pay-pending-voucher
-    >
-      <PlacePhoto place={{ photo: v.photo, name: v.name }} className="h-8 w-12 rounded-md" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-base font-semibold">{v.name ?? "A Mesita place"}</span>
-        <span className={PENDING_LINE}>
-          {v.story ? v.story.label : pendingWords(v.amountCents, v.currency, v.kind, v.availableAt, now)}
-        </span>
-      </span>
-      <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-    </PushLink>
-  );
-}

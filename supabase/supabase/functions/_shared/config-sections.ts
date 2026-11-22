@@ -37,7 +37,6 @@ import {
   readReservationsSection,
   writeReservationsSection,
 } from "./config-section-reservations.ts";
-import { readStoriesSection, storiesConfigFrom, writeStoriesSection } from "./config-section-stories.ts";
 
 /** Raw jsonb through unchanged — the section's client owns the coercion. */
 const asIs = (raw: unknown): unknown => raw ?? null;
@@ -85,14 +84,6 @@ export const CONFIG_SECTIONS: Record<string, ConfigSection> = {
     normalize: asIs,
     read: readReservationsSection,
     write: writeReservationsSection,
-  },
-  // The Story keys of money_config (MESITA-4425). Read hands back ONLY those
-  // keys plus the payments mode; write is the merge RPC, never the column.
-  stories: {
-    column: "money_config",
-    normalize: storiesConfigFrom,
-    read: readStoriesSection,
-    write: writeStoriesSection,
   },
 };
 

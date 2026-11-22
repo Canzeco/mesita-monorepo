@@ -111,10 +111,6 @@ export const CONSUMER_ROUTES = {
   // /me/tickets/gift/<giftId>, the gift found by its id in the wallet read;
   // a gift line's credit page forwards there.
   gift: { prefix: "/me/tickets/gift/" },
-  // ONE STORY, ONE PAGE (MESITA-4405): the Story record's steps (post, the
-  // waiter's QR, the bonus), opened from Tickets › Stories, the Wallet's
-  // Story row, and right after a Story buy (?by=purchase, the purchase id).
-  story: { prefix: "/me/tickets/stories/" },
   // PAY AND WALLET, TWO TABS (Pato, 2026-11-14, MESITA-3886: "separate pay
   // and wallet again. only pay and only wallet"): each its own bar tab and
   // page, no switch between them. They were two halves of the Pay tab under
@@ -278,8 +274,12 @@ export const CONSUMER_ROUTES = {
     meTicketsGiftsOut: "/me/tickets/gifts-out",
     // Refunds left Tickets for Settings (MESITA-4402).
     meTicketsRefunds: "/me/tickets/refunds",
-    // No Stories tab (MESITA-4627): a Story voucher is a Vouchers row.
+    // No Stories tab (MESITA-4627), and no Stories at all (MESITA-4641): the
+    // tab, one Story's screen and a place's Story offer land on Vouchers or
+    // that place's Offers.
     meTicketsStories: "/me/tickets/stories",
+    meTicketsStoryPrefix: "/me/tickets/stories/",
+    placeStory: "/place/:id/story",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
     // Diamond pair, Plan's Pro checkout, Visits, Metrics, Passport.
     // /me/plan (MESITA-2134) is live again. /me/class left Me with Class
@@ -342,11 +342,6 @@ export function placePath(idOrSlug: string): string {
 /** The full Reserve page under a place (MESITA-3609). */
 export function placeReservePath(idOrSlug: string): string {
   return `${placePath(idOrSlug)}/reserve`;
-}
-
-/** The Story offer's own page under a place (MESITA-4303). */
-export function placeStoryPath(idOrSlug: string): string {
-  return `${placePath(idOrSlug)}/story`;
 }
 
 /** The place's Offers page (MESITA-4379): a page under the place, never a
@@ -442,16 +437,6 @@ export function creditEntryPath(
 /** One gift's page (MESITA-4066), by its wallet_gifts id. */
 export function giftTicketPath(giftId: string): string {
   return `${CONSUMER_ROUTES.gift.prefix}${giftId}`;
-}
-
-/** One Story's screen (MESITA-4405). */
-export function storyTicketPath(storyId: string): string {
-  return `${CONSUMER_ROUTES.story.prefix}${storyId}`;
-}
-
-/** A Story's screen right after its buy, found by the purchase's id. */
-export function storyPurchasePath(purchaseId: string): string {
-  return `${CONSUMER_ROUTES.story.prefix}${purchaseId}?by=purchase`;
 }
 
 /** A paid bill's proof. */
@@ -557,8 +542,6 @@ export const ROUTE_MAP = {
   place: row("/place/:id", "home", "panel", "home", false),
   placeGoogle: row("/place/google/:gid", "home", "panel", "home", false),
   placeReserve: row("/place/:id/reserve", "home", "page", "place", false),
-  // The Story offer, pushed from Offers (MESITA-4303): a page, not a sheet.
-  placeStory: row("/place/:id/story", "home", "page", "place", false),
   // OFFERS IS A PAGE (MESITA-4379, Pato: "why it needs to pass across that
   // page"): it was a full-screen sheet over the profile at
   // /place/<id>?rewards=…, so the profile loaded before Offers showed.
@@ -592,8 +575,6 @@ export const ROUTE_MAP = {
   // A gift's ticket (MESITA-4637): Send · Receive · Receipt in the ticket
   // frame, no bar, like a voucher's ticket.
   gift: row("/me/tickets/gift/:giftId", "me", "page", "meTickets", false),
-  // One Story and its steps, opened from Tickets › Stories (MESITA-4405).
-  story: row("/me/tickets/stories/:storyId", "me", "page", "meTickets"),
   pay: row("/pay", "pay", "tab", null),
   // The pay screens own the whole frame, as the place screen does: no bar,
   // the header's back is the way out, so every step fits (MESITA-3739).

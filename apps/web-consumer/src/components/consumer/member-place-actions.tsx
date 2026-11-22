@@ -15,7 +15,6 @@ import type {
   PlaceActions,
   PlaceMoney,
   RewardsSection,
-  StoryCheckAnswer,
   VoucherBasketItem,
   VoucherBuyOutcome,
   VoucherKey,
@@ -25,7 +24,6 @@ import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiBuyVoucher,
-  apiCheckStory,
   apiListVouchers,
   BUY_REFUSAL,
   buyRefusalAction,
@@ -62,7 +60,6 @@ import {
   placeReservePath,
   placeUpgradePath,
   reservationPath,
-  storyPurchasePath,
 } from "@/lib/consumer-route-contract";
 import {
   apiListReservations,
@@ -316,7 +313,7 @@ function usePlaceReservation(placeId: string): {
   const supabase = useBrowserSupabase();
   const mesita = isMesitaPlaceId(placeId);
   // KEPT FOR BACK (MESITA-4379): a page pushed over the place (Offers,
-  // Reserve, Story) unmounts it; Back draws the last answer at once and
+  // Reserve) unmounts it; Back draws the last answer at once and
   // reads again behind it, instead of the skeleton.
   const [found, setFound] = useState<{
     placeId: string;
@@ -375,8 +372,6 @@ export function usePlaceVouchers(
   ) => Promise<VoucherBuyOutcome>;
   /** offer_sheet_opened (MESITA-4375). */
   opened: (voucher: VoucherKey, savedCard: boolean) => void;
-  /** The Story page's gate (MESITA-4296; gate only since MESITA-4405). */
-  checkStory: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
   /** The guest's saved cards; undefined signed out or off Mesita. */
   payCards: PayCards | undefined;
   payCardId: string | null;
@@ -388,7 +383,6 @@ export function usePlaceVouchers(
   sheet: ReactNode;
 } {
   const getSupabase = useLazyBrowserSupabase();
-  const router = useRouter();
   const mesita = isMesitaPlaceId(placeId);
   // ONE RESULT PER PLACE (MESITA-3868): the offer or none, and whether the
   // read failed. Written in the promise callbacks only (Next 16 lint), and
@@ -563,14 +557,6 @@ export function usePlaceVouchers(
           );
           // The Offers sheet's receipt says it (MESITA-4224): no toast.
           onPaid.current?.();
-          // A STORY'S STEPS START AT THE TABLE (MESITA-4405): a paid Story
-          // lands on its own screen, where the guest posts and shows the
-          // waiter; the screen waits for the Story while the credit lands.
-          if (items.length === 1 && items[0].voucher === "voucher_story") {
-            navigateTo(router, storyPurchasePath(r.purchase_id), {
-              motion: "drill",
-            });
-          }
           return r.card.status === "succeeded" ? "paid" : "processing";
         }
         toast("Your bank didn't confirm the payment.", { tone: "error" });
@@ -581,9 +567,6 @@ export function usePlaceVouchers(
         if (isDefinitiveRefusal(status, code)) pending.current = null;
         else if (pending.current) pending.current.unknown += 1;
         const action = buyRefusalAction(code);
-        // A Story refusal (MESITA-4296): nothing was charged; the Story page
-        // says why, no toast.
-        if (action.kind === "story") return { story_refused: action.line };
         if (action.kind === "add_card") openAddCard();
         if (action.kind === "reload_cards") void loadCards();
         const line =
@@ -602,7 +585,7 @@ export function usePlaceVouchers(
     },
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mesita, placeId, load, loadCards, router],
+    [mesita, placeId, load, loadCards],
   );
 
   const opened = useCallback(
@@ -614,16 +597,6 @@ export function usePlaceVouchers(
           saved_card: savedCard,
         });
     },
-    // getSupabase is a stable lazy getter (MESITA-3207).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mesita, placeId],
-  );
-
-  const checkStory = useCallback(
-    (): Promise<StoryCheckAnswer> =>
-      mesita
-        ? apiCheckStory(getSupabase(), placeId)
-        : Promise.resolve({ kind: "failed" }),
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [mesita, placeId],
@@ -645,7 +618,6 @@ export function usePlaceVouchers(
     load,
     buy: (items, cardId) => buy(items, cardId),
     opened,
-    checkStory,
     payCards,
     payCardId,
     selectCard,

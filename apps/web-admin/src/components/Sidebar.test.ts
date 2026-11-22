@@ -7,7 +7,7 @@ const APP = join(__dirname, "..", "app", "(app)");
 
 // Models, then Atlas, then the MESITA-2083 order.
 describe("Configurations rail", () => {
-  it("is exactly Models · Atlas · Creation · Updation · Discovery · Reservations · Payments · Stories", () => {
+  it("is exactly Models · Atlas · Creation · Updation · Discovery · Reservations · Payments", () => {
     expect(CONFIGURATIONS_NAV.map((i) => i.label)).toEqual([
       "Models",
       "Atlas",
@@ -16,7 +16,6 @@ describe("Configurations rail", () => {
       "Discovery",
       "Reservations",
       "Payments",
-      "Stories",
     ]);
   });
 
@@ -48,13 +47,13 @@ describe("Activity rail", () => {
 });
 
 describe("Extra rail", () => {
-  it("is exactly Ping · Story · Cost", () => {
-    expect(EXTRA_NAV.map((i) => i.label)).toEqual(["Ping", "Story", "Cost"]);
-    expect(EXTRA_NAV.map((i) => i.href)).toEqual(["/billing-test", "/story-test", "/cost"]);
+  it("is exactly Ping · Cost", () => {
+    expect(EXTRA_NAV.map((i) => i.label)).toEqual(["Ping", "Cost"]);
+    expect(EXTRA_NAV.map((i) => i.href)).toEqual(["/billing-test", "/cost"]);
   });
 
-  it("gives each row its own page, and Story does not light Stories or Ping", () => {
-    const hrefs = [...EXTRA_NAV.map((i) => i.href), "/stories-config"];
+  it("gives each row its own page", () => {
+    const hrefs = EXTRA_NAV.map((i) => i.href);
     for (const a of hrefs)
       for (const b of hrefs)
         if (a !== b) expect(b.startsWith(`${a}/`), `${a} lights on ${b}`).toBe(false);

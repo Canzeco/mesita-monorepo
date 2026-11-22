@@ -566,7 +566,18 @@ export const BASKET_ONE_ONLY: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_s
 /** The request's basket: `items: [{voucher, qty}]`, or the old one-voucher
  *  `voucher` as a basket of one. Known keys, whole qty 1..5, Story at
  *  most 1, no key twice. Pure. */
-export function parseBasket(body: { items?: unknown; voucher?: unknown }): { ok: true; items: BasketItem[] } | { ok: false; error: string } {
+/** Vouchers that existed and are not sold any more: STORIES ARE GONE (Pato,
+ *  2026-11-22, MESITA-4641). Old purchases keep their key; a buy is refused
+ *  with `voucher_retired` (409), never a bare bad_body. */
+export const RETIRED_VOUCHERS: ReadonlySet<string> = new Set(["voucher_story"]);
+
+export function parseBasket(body: { items?: unknown; voucher?: unknown }): { ok: true; items: BasketItem[] } | { ok: false; error: string; code?: "voucher_retired" } {
+  const asked = body.items === undefined || body.items === null
+    ? [body.voucher]
+    : Array.isArray(body.items) ? body.items.map((i) => (i ?? {} as Record<string, unknown>).voucher) : [];
+  if (asked.some((v) => typeof v === "string" && RETIRED_VOUCHERS.has(v))) {
+    return { ok: false, code: "voucher_retired", error: "This offer is no longer available" };
+  }
   const isKey = (v: unknown): v is MoneyVoucherKey => typeof v === "string" && (MONEY_VOUCHER_KEYS as readonly string[]).includes(v);
   if (body.items === undefined || body.items === null) {
     if (!isKey(body.voucher)) return { ok: false, error: "voucher must be one of the catalog's keys" };

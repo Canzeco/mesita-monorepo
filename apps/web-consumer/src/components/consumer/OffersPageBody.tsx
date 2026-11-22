@@ -7,10 +7,8 @@ import { OFFER_TICKET_KEYS, readyClock, VouchersPane, type PlaceActions } from "
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
 import { money } from "@/lib/api/wallet";
 import {
-  CONSUMER_ROUTES,
   placeOfferPath,
   placePath,
-  placeStoryPath,
   payPlacePath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
@@ -18,7 +16,6 @@ import { goBack, navigateTo } from "@/lib/navigate";
 import { useKeptScroll } from "@/lib/use-kept-scroll";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import type { PlaceDetail } from "@/lib/place-detail";
-import { storyRulesOf } from "@/lib/consumer-identity";
 
 /** The guest's credit here (MESITA-4224): spendable now, and the pending
  *  part with the time the next of it turns on. The server's cents,
@@ -63,10 +60,10 @@ function readVoucherAsk(): string | null {
 // fuck are you showing me that … why it needs to pass across that page"):
 // Offers was a full-screen sheet over the place profile at
 // /place/<id>?rewards=…, so every Offers tap loaded the profile first and
-// slid the sheet in over it. Now it is the place's own page, like Reserve
-// and Story: it slides in over whatever it was opened from, and Back
-// uncovers that screen. The reads are the place's vouchers and the guest's
-// saved cards (usePlaceVouchers), the same the Story page uses.
+// slid the sheet in over it. Now it is the place's own page, like Reserve:
+// it slides in over whatever it was opened from, and Back uncovers that
+// screen. The reads are the place's vouchers and the guest's saved cards
+// (usePlaceVouchers), the same a voucher's ticket uses.
 export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const router = useRouter();
   const profile = useConsumerProfile().data;
@@ -87,8 +84,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   // An old ?voucher= link opens that voucher's ticket in place of this page.
   useEffect(() => {
     if (!askedVoucher) return;
-    if (askedVoucher === "voucher_story") navigateTo(router, placeStoryPath(fetched.id), { replace: true });
-    else if ((OFFER_TICKET_KEYS as readonly string[]).includes(askedVoucher)) navigateTo(router, ticketFor(askedVoucher), { replace: true });
+    if ((OFFER_TICKET_KEYS as readonly string[]).includes(askedVoucher)) navigateTo(router, ticketFor(askedVoucher), { replace: true });
   }, [askedVoucher, router, fetched.id, ticketFor]);
   const { load, loadCards } = vouchers;
   useEffect(() => {
@@ -106,11 +102,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const actions: PlaceActions = {
     onBuyVoucher: vouchers.buy,
     onOfferOpened: vouchers.opened,
-    // The Story page's gate (MESITA-4296; Buy only since MESITA-4405).
-    onCheckStory: vouchers.checkStory,
-    // STORY IS A PAGE (MESITA-4303): pushed over this one, so Back lands
-    // here; the chip's ?voucher drops first so Back never reopens a sheet.
-    onOpenStory: () => navigateTo(router, placeStoryPath(fetched.id), { motion: "drill" }),
     // A VOUCHER'S TICKET (MESITA-4630): pushed over this page, so ✕ before
     // paying lands back here.
     onOpenOffer: (key) => navigateTo(router, ticketFor(key), { motion: "drill" }),
@@ -123,8 +114,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     onRetryPayCards: () => void vouchers.loadCards(),
     onLoadVouchers: vouchers.load,
     vouchersLoading: vouchers.loading,
-    // The Offers (i) status (MESITA-3502): Story needs a linked Instagram;
-    // its lock's action opens the page that lifts it.
+    // The guest's facts for VIP's locked line (MESITA-4640).
     ...(profile
       ? {
         guest: {
@@ -132,13 +122,9 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
           guestClass: profile.guest_class === "vip" ? "vip" : "regular",
           instagramPrivate: profile.instagram_is_private ?? null,
           instagramFollowers: profile.instagram_followers_count ?? null,
-          instagramHandle: profile.instagram_handle ?? null,
-          storyMinFollowers: storyRulesOf(profile).minFollowers,
-          storyEmulator: storyRulesOf(profile).emulator,
         },
       }
       : {}),
-    onLinkInstagram: () => navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" }),
   };
 
   return (

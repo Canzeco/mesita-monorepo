@@ -7,11 +7,11 @@
 //   <place> ⌄ — Places: the current place by photo and name; opens /places
 //               to switch, claim or (staff) open any place
 //   ┌ Monitor (MESITA-4528; was Operations) ───┐
-//   │ Views · Visits · Vouchers · Gifts          │  a Story voucher shows
-//   └────────────────────────────────────────────┘  in Vouchers
+//   │ Views · Visits · Vouchers · Gifts          │
+//   └────────────────────────────────────────────┘
 //   ┌ Manage (MESITA-4528; Capabilities folded in) ┐
 //   │ Profile · Premier · Payments · General        │  General: Reservations,
-//   └───────────────────────────────────────────────┘  Stories, Money, Settings,
+//   └───────────────────────────────────────────────┘  Money, Settings,
 //                                                      Admin (staff), All
 //   …
 //   Account   — at the foot: email, sign-out, What you pay
@@ -59,7 +59,7 @@ type Switcher = { href: string; active: boolean; name: string; photo: string | n
 type PlaceMenu = { monitor: Row[]; manage: Row[] };
 
 /** The pages General gathers (MESITA-4528): its row lights on any of them. */
-const UNDER_GENERAL: readonly PlaceTab[] = ["general", "reservations", "stories", "settings", "all"];
+const UNDER_GENERAL: readonly PlaceTab[] = ["general", "reservations", "settings", "all"];
 
 function menu(
   pathname: string,

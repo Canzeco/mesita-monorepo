@@ -113,7 +113,10 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   const { place_id: placeId, request_id: requestId } = bodyRes.body;
   if (!isUuid(placeId)) return json({ ok: false, code: "bad_body", field: "place_id", error: "place_id must be a Mesita place id" }, 400);
   const basket = parseBasket(bodyRes.body);
-  if (!basket.ok) return json({ ok: false, code: "bad_body", field: "items", error: basket.error }, 400);
+  if (!basket.ok) {
+    if (basket.code === "voucher_retired") return json({ ok: false, code: basket.code, error: basket.error }, 409);
+    return json({ ok: false, code: "bad_body", field: "items", error: basket.error }, 400);
+  }
   // One row per unit, the lead first.
   const units = basketUnits(basket.items);
   const voucher = units[0];

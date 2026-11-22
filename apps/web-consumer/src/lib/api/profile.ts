@@ -51,10 +51,6 @@ export type ConsumerProfile = {
   // each null when none is recorded. Shown only on the guest's own Class sheet.
   vip_partner?: string | null;
   vip_until?: string | null;
-  // MESITA-4425: the Story voucher's live rules (Admin › Configurations ›
-  // Stories). Optional: an older EF or a cached row reads the defaults
-  // through storyRulesOf (lib/consumer-identity).
-  story_rules?: { min_followers: number; emulator: boolean };
 };
 
 type ConsumerOnboardingInput = {

@@ -1,7 +1,7 @@
 // MESITA-4264: a staff page older than the server gets 409 `reload`. The
 // client reads that code before any status rule, so it says "Reload this
 // page", never "this proof is not valid", and a 404 gone still reads as not
-// valid. (The Story staff page that first needed it left with MESITA-4296.)
+// valid.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getProof, VisitError } from "./visit-api";
 

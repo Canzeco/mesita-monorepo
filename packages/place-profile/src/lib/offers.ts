@@ -31,48 +31,37 @@ export type OfferInput = {
   sell: readonly string[];
 };
 
-// THE WORDS ARE PATO'S (MESITA-3475, MESITA-3791: "Welcome (+X%) · Story
-// (+X%) · VIP (+X%) · Pay (+X% Back) · Prepay (+X%) ONLY SHOW THE HIGHEST
+// THE WORDS ARE PATO'S (MESITA-3475, MESITA-3791: "ONLY SHOW THE HIGHEST
 // STANDARD VOUCHER"). Pay reads "5% Back" with no "+" (MESITA-3871).
 // EVERY OFFER IS GREEN (MESITA-4181, Pato: "I WANT ALL OFFERS GREEN … JUST
-// GREENS, LESS CONFUSION"): Link green for all of them; MESITA-3475's blue
-// Welcome, pink Story and gold VIP are gone.
-// ONE COLOUR PER KIND (Pato, 2026-11-16, MESITA-4207): the sizes green,
-// Welcome blue, Story pink like Instagram, soft tints with black ink, the
-// Offers page's own chip colours. Link green (bg-green-400) for all before.
+// GREENS, LESS CONFUSION"): Link green for all of them.
 // THE GREEN IS STRIPE LINK'S (Pato, 2026-11-17, MESITA-4210: "MAKE THE DARK
 // GREEN BACK AGAIN. USING THE STRIPE LINK COLORS KINDA"): #00D66F, black ink;
 // MESITA-4207's pale green-200 is gone.
-// STRONG TINTS FOR ALL (Pato, 2026-11-17, MESITA-4211: "story must be darker
-// too. also welcome. and vip must be yellow."): the 400 weight next to Link
-// green, black ink. The VIP offer and its yellow are gone (MESITA-4249);
-// the Welcome offer and its blue too (MESITA-4636).
+// The Welcome offer is gone (MESITA-4636), the Story offer too (MESITA-4641).
 const GREEN = "bg-[#00D66F] text-neutral-950";
-const PINK = "bg-pink-400 text-neutral-950";
 
 /** THE ONE COLOUR MAP (autoplan F5, MESITA-4207): the slides, the Home chips
  *  and the Offers page rows (vouchers.tsx FACES) all read it, so the next
  *  colour call is one edit here. */
 export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
-  voucher_story: PINK,
+  // Never sold since MESITA-4641; an old purchase wears the sizes' green.
+  voucher_story: GREEN,
   voucher_200: GREEN,
   voucher_1000: GREEN,
   voucher_5000: GREEN,
   // Every offer green (MESITA-4181); the crown tells VIP apart (MESITA-4640).
   voucher_vip: GREEN,
 };
-// THE WORDS (Pato, 2026-11-17, MESITA-4219: "Classic (30% Bonus) · Welcome
-// (100% Bonus) · Story · VIP"): Classic, the best standard voucher, leads;
-// every pill reads "+N% Bonus" on every screen (the "+" back, MESITA-4221). Story keeps the catalog's real
-// 50%. Prepay led with "+N%" before.
+// THE WORDS (Pato, 2026-11-17, MESITA-4219): Classic, the best standard
+// voucher, leads; every pill reads "+N% Bonus" on every screen (the "+"
+// back, MESITA-4221). Prepay led with "+N%" before.
 const OFFER_SLIDES: OfferSlide[] = [
   // The best standard voucher on sale (offerSlides picks it).
   // "Prepay" on the previews since MESITA-4255 (Pato: "instead of classic use
   // the word prepay. its just clearer"); the Offers page keeps its "Classic
   // Offers" and "Special Offers" panels.
   { key: "prepay", lead: "Prepay", pill: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
-  // Story +30% since MESITA-4563 (pay $100, get $130); +40% from MESITA-4473, +50% from MESITA-4207.
-  { key: "voucher_story", lead: "Story", pill: "+30% Bonus", short: "Story", spoken: "Story, 30% bonus", section: "special", tone: VOUCHER_TONE.voucher_story, bonus: 30, voucher: "voucher_story" },
 ];
 
 /** The standard vouchers' bonuses: the server's catalog (supabase

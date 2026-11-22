@@ -33,7 +33,7 @@ export function PlaceDetailPageBody({
     () => goBack(router, fallbackHref),
     [fallbackHref, router],
   );
-  // Back from a page pushed over the place (Offers, Reserve, Story) finds it
+  // Back from a page pushed over the place (Offers, Reserve) finds it
   // scrolled where it was (MESITA-4379).
   const keep = useKeptScroll<HTMLDivElement>();
   // The three dots, top right: Claim this business, Report (MESITA-4621).

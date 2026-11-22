@@ -56,7 +56,6 @@ const CHIP_ICON: Record<LinkKind | "customer", Icon> = {
   payment: CreditCardIcon,
   voucher: TicketIcon,
   credit: CoinsIcon,
-  story: TicketIcon,
 };
 
 function ChipIcon({ kind }: { kind: LinkKind | "customer" }) {
@@ -67,9 +66,9 @@ function ChipIcon({ kind }: { kind: LinkKind | "customer" }) {
 /** At most three chips of one kind, then "+N" to that page filtered to the guest. */
 function Chips({ placeId, row }: { placeId: string; row: MonitorRow }) {
   const byKind = new Map<LinkKind, MonitorLink[]>();
-  // Stories (MESITA-4553) and Credits (MESITA-4555) have no list, so their
-  // links have nowhere to land.
-  for (const l of row.links) if (l.kind !== "story" && l.kind !== "credit") byKind.set(l.kind, [...(byKind.get(l.kind) ?? []), l]);
+  // Credits (MESITA-4555) have no list, so their links have nowhere to land;
+  // a kind this app does not know (an old Story, MESITA-4641) neither.
+  for (const l of row.links) if (l.kind !== "credit" && l.kind in CHIP_ICON) byKind.set(l.kind, [...(byKind.get(l.kind) ?? []), l]);
   const chips: React.ReactNode[] = [];
   if (row.customer) {
     chips.push(
