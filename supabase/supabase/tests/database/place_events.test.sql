@@ -6,7 +6,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(19);
+select plan(20);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3219');
 insert into public.consumers (id, first_name) values ('00000000-0000-4000-8000-0000000a3219', 'Probe');
@@ -111,10 +111,19 @@ select is(
   1,
   'Business Views'' total and chart count the signed-out open'
 );
+-- MESITA-4678: the log lists it as "Anonymous user", never a customer.
 select is(
-  (select count(*)::int from public.place_views_log('00000000-0000-4000-8000-000000003219', null, 200) where consumer_id is null),
+  (select count(*)::int from public.place_views_log('00000000-0000-4000-8000-000000003219', null, 200)
+    where consumer_id is null and customer is null and first_name is null and anonymous and not instagram),
+  1,
+  'the views log lists a signed-out open with no person and no customer key'
+);
+select is(
+  (select count(*)::int from public.place_views_log('00000000-0000-4000-8000-000000003219', null, 200,
+     public.place_customer_key('00000000-0000-4000-8000-000000003219', '00000000-0000-4000-8000-0000000a3219'))
+    where consumer_id is null),
   0,
-  'the views log never lists a signed-out open'
+  'a customer filter never matches a signed-out open: it is never a customer'
 );
 select throws_ok(
   $$insert into public.place_events (consumer_id, place_id, kind)
