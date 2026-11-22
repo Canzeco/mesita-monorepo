@@ -37,6 +37,7 @@ import {
   isGoogleMapsUrl,
   MapsLeaveModal,
 } from "@/components/consumer/MapsLeaveModal";
+import { RemoveSavedDialog } from "@/components/consumer/RemoveSavedDialog";
 import { PlaceSocialList } from "@/components/consumer/PlaceSocialList";
 import {
   apiPlaceActivity,
@@ -193,11 +194,15 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     navigateTo(router, upgradePath, { motion: "drill" }),
   );
 
+  // REMOVING ASKS FIRST (MESITA-4676): an unsave waits for the confirm.
+  const [askUnsave, setAskUnsave] = useState(false);
   const onSave = useCallback(() => {
-    const nowSaved = !saved;
+    if (saved) {
+      setAskUnsave(true);
+      return;
+    }
     toggle(place.id);
-    if (nowSaved) toast.success(`Added ${place.name} to favorites`);
-    else toast(`Removed ${place.name} from favorites`);
+    toast.success(`Added ${place.name} to Saved`);
   }, [place.id, place.name, saved, toggle]);
 
   // A Google Maps link asks first (MESITA-4448): it waits here for the
@@ -268,11 +273,22 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         }
       : place;
   const sheets = (
-    <MapsLeaveModal
-      url={mapsAsk}
-      placeName={place.name ?? null}
-      onClose={() => setMapsAsk(null)}
-    />
+    <>
+      <MapsLeaveModal
+        url={mapsAsk}
+        placeName={place.name ?? null}
+        onClose={() => setMapsAsk(null)}
+      />
+      <RemoveSavedDialog
+        name={askUnsave ? (place.name ?? "This place") : null}
+        onConfirm={() => {
+          setAskUnsave(false);
+          if (saved) toggle(place.id);
+          toast(`Removed ${place.name} from Saved`);
+        }}
+        onCancel={() => setAskUnsave(false)}
+      />
+    </>
   );
 
   return {

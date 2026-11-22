@@ -95,6 +95,7 @@ import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { CategoriesModal } from "./CategoriesModal";
+import { RemoveSavedDialog } from "@/components/consumer/RemoveSavedDialog";
 import { RowFallback } from "./DiscoverFallback";
 import { ROW_LIST } from "./place-grid-classes";
 import { PlaceRowCard } from "./PlaceRowCard";
@@ -764,6 +765,12 @@ export function CatalogRails() {
   // the pane scrolls on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* Removing from Saved asks first (MESITA-4676). */}
+      <RemoveSavedDialog
+        name={cards.pendingRemove?.name ?? null}
+        onConfirm={cards.confirmRemove}
+        onCancel={cards.cancelRemove}
+      />
       {tabs}
       {/* NO LOCATION, NO FAMILIES (Pato, 2026-11-21, MESITA-4589: "if no
           location, don't even show the families carousel"). */}

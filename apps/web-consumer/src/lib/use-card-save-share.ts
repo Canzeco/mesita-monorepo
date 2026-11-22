@@ -31,6 +31,11 @@ import { errMsg } from "@/lib/utils";
 
 export type CardSaveShare = {
   isSaved: (place: Place) => boolean;
+  /** A saved place waiting for the remove confirm (MESITA-4676); render
+   *  RemoveSavedDialog with it. */
+  pendingRemove: Place | null;
+  confirmRemove: () => void;
+  cancelRemove: () => void;
   /** Save or unsave; `rank` rides along to `onSaved` for analytics. */
   toggle: (place: Place, rank?: number) => void;
   share: (place: Place) => void;
@@ -43,6 +48,9 @@ export function useCardSaveShare(
   const supabase = useBrowserSupabase();
   const { savedIds, setSaved } = useSavedPlaces();
   const [createdIds, setCreatedIds] = useState<Record<string, string>>({});
+  // REMOVING ASKS FIRST (MESITA-4676): an unsave waits here for the
+  // confirm's yes; the undo toast it replaces is gone.
+  const [pending, setPending] = useState<{ place: Place; rank: number } | null>(null);
 
   const isSaved = (place: Place) => {
     if (savedIds.has(place.id)) return true;
@@ -55,13 +63,7 @@ export function useCardSaveShare(
     if (saved) {
       setSaved(place.id, false);
       removeSavedPlacePreview(place.id);
-      toast.action("Removed from favorites", {
-        label: "Undo",
-        onClick: () => {
-          upsertSavedPlacePreview(place);
-          setSaved(place.id, true);
-        },
-      });
+      toast("Removed from Saved");
       return;
     }
     upsertSavedPlacePreview(place);
@@ -97,8 +99,21 @@ export function useCardSaveShare(
 
   return {
     isSaved,
+    pendingRemove: pending?.place ?? null,
+    confirmRemove: () => {
+      if (!pending) return;
+      const { place, rank } = pending;
+      setPending(null);
+      if (isGoogleOnlyPlace(place)) void saveGoogle(place, true, rank);
+      else toggleSaved(place, true, rank);
+    },
+    cancelRemove: () => setPending(null),
     toggle: (place, rank = 0) => {
       const saved = isSaved(place);
+      if (saved) {
+        setPending({ place, rank });
+        return;
+      }
       if (isGoogleOnlyPlace(place)) void saveGoogle(place, saved, rank);
       else toggleSaved(place, saved, rank);
     },

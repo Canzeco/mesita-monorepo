@@ -1,5 +1,6 @@
 import type { RefObject } from "react";
 
+import { RemoveSavedDialog } from "@/components/consumer/RemoveSavedDialog";
 import type { MapScore, Place } from "@/lib/api/places";
 import { Skeleton } from "@/components/shared";
 import type { Coords } from "@/lib/use-user-location";
@@ -270,6 +271,12 @@ export function SearchRailOverlay({
       aria-live={firstLoad ? "polite" : undefined}
       data-search-rail-band
     >
+      {/* Removing from Saved asks first (MESITA-4676). */}
+      <RemoveSavedDialog
+        name={cards.pendingRemove?.name ?? null}
+        onConfirm={cards.confirmRemove}
+        onCancel={cards.cancelRemove}
+      />
       <div
         className="pointer-events-auto flex flex-col justify-center"
         data-search-rail-cards
