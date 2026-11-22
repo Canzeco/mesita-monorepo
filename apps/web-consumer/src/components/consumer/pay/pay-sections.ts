@@ -11,9 +11,10 @@
 // the words.
 export const SECTION_CARD = "border-border bg-card mt-2 overflow-hidden rounded-2xl border";
 // A FAINT GREY STRIP (Pato, 2026-11-21, MESITA-4605: "add a bit of color to
-// the headers … a bit gray, just a bit, minimum"): the title strip wears
-// bg-muted at 50%, the lightest grey step; the rows stay white.
-export const SECTION_TITLE = "text-foreground border-border border-b px-3 py-3 text-base font-semibold bg-muted/50";
+// the headers … a bit gray, just a bit, minimum"): the title strip is grey,
+// the rows stay white. A BIT DARKER (MESITA-4610, Pato: "better do payment
+// methods and loyalty cards a bit darker"): the full bg-muted, not 50%.
+export const SECTION_TITLE = "text-foreground border-border border-b px-3 py-3 text-base font-semibold bg-muted";
 export const SECTION_ROWS = "divide-border flex flex-col divide-y";
 
 // ONE SIZE SCALE (Pato, 2026-11-21, MESITA-4578: "standarize … sizes and
