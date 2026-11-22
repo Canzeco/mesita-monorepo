@@ -107,3 +107,12 @@ export function instagramWithFollowers(
   const n = connected ? approxFollowers(followers ?? 0) : null;
   return n ? `${summary} · ${n} followers` : summary;
 }
+
+/** The linked Instagram's privacy as the last scrape saw it (MESITA-4639,
+ *  consumers.instagram_is_private). VIP needs Public; null is not known yet
+ *  (a DM connect cannot see it) and a Sync on Me › Instagram settles it. */
+export function instagramPrivacyLabel(isPrivate: boolean | null | undefined): "Public" | "Private" | "Privacy unknown" {
+  if (isPrivate === false) return "Public";
+  if (isPrivate === true) return "Private";
+  return "Privacy unknown";
+}

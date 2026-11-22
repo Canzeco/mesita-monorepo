@@ -31,6 +31,9 @@ export type ConsumerProfile = {
   // the card's "Updated …" is the later one. Optional (older EF payloads).
   instagram_verified_at?: string | null;
   instagram_synced_at?: string | null;
+  // MESITA-4639: what the last profile scrape said; VIP needs false. null =
+  // not known yet. Optional (older EF payloads).
+  instagram_is_private?: boolean | null;
   // MESITA-2585: may verifying Instagram set the picture? Absent on an older
   // EF reads as on (the column defaults true).
   use_instagram_photo?: boolean;

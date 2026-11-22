@@ -113,6 +113,13 @@ export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> =
  *  read falls back to. */
 export const STORY_MIN_FOLLOWERS = 1000;
 
+/** VIP CLASS (MESITA-4639, Pato 2026-11-22: "RETURN VIP CLASS IF MORE THAN
+ *  5000 FOLLOWERS"): a verified, public Instagram with MORE THAN this many
+ *  followers. consumers.guest_class holds the same literal (a generated column
+ *  cannot read config); vip-threshold.test.ts pins the two together. Every
+ *  word a guest or owner reads about the bar comes from this constant. */
+export const VIP_MIN_FOLLOWERS = 5000;
+
 export type PayWay = "credit" | "card" | "both" | "none";
 
 export type MoneyState = {

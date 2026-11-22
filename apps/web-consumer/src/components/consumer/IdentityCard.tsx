@@ -2,7 +2,7 @@
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Crown, User } from "lucide-react";
-import { useConsumerIdentity } from "@/lib/identity-context";
+import { CLASS_LABEL, type GuestClass } from "@/lib/guest-standing";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -198,24 +198,29 @@ export function IdentityModules({
   avatarUrl,
   instagram,
   nameHref,
+  guestClass = "regular",
+  privacy = null,
 }: {
   name: string;
   avatarUrl: string | null;
   instagram: IdentityInstagram & { href: string };
   nameHref: string;
+  /** The guest's Class (MESITA-4639): Regular or VIP, computed by the server. */
+  guestClass?: GuestClass;
+  /** "Public", "Private" or "Privacy unknown" for a linked Instagram; null
+   *  when none is linked (MESITA-4639). */
+  privacy?: string | null;
 }) {
   const [handle, followers] = splitInstagramLabel(instagram.label);
-  // Over the bar (1,000+ followers, igReach) a black crown tag after the
-  // count (Pato, MESITA-4370: "a tag saying more than +1000 followers …
-  // maybe a crown"). Not a Class: Class left Me in MESITA-4306.
-  const { igReach } = useConsumerIdentity();
-  // TWO FULL-WIDTH PILLS UNDER THE PHOTO (Pato, 2026-11-21, MESITA-4543:
-  // "LIKE THIS. BUT WITHOUT THE CLASS. Just name 100% wide, instagram 100%
-  // wide", over the old pill header). The 72px photo stays centred; under
-  // it a rounded 1px pill with a person icon and the name (opens Profile),
-  // then one with the Instagram badge and "@handle (~320 followers)", the
-  // 1K+ crown inside it (opens Instagram). No Class pill (MESITA-4306).
-  // MESITA-4523 had plain lines.
+  const facts = [followers, privacy].filter(Boolean).join(" · ");
+  // NAME LEFT, CLASS RIGHT, INSTAGRAM BUTTON (Pato, 2026-11-22, MESITA-4639:
+  // "Name left, Class right, INSTAGRAM BUTTON. Class is regular class and vip
+  // class"). The 72px photo stays centred; under it the name pill with the
+  // Class chip at its right (Regular grey, VIP ink with a crown), then the
+  // full-width Instagram pill: "@handle (2,026 followers · Public)". The 1K+
+  // crown tag (MESITA-4370) is gone: the Class chip says VIP. MESITA-4543
+  // had no Class.
+  const vip = guestClass === "vip";
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card>
       <span className={IDENTITY_RING_CLASS} aria-hidden>
@@ -228,33 +233,36 @@ export function IdentityModules({
         </span>
       </span>
       <span className="flex w-full min-w-0 flex-col gap-2">
-        <PushLink
-          href={nameHref}
-          aria-label={`Profile: ${name}`}
-          className={IDENTITY_PILL_CLASS}
-          data-identity-name
-        >
-          <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-          <span className="truncate">{name}</span>
-        </PushLink>
+        <span className="flex w-full min-w-0 items-center gap-2">
+          <PushLink
+            href={nameHref}
+            aria-label={`Profile: ${name}`}
+            className={cn(IDENTITY_PILL_CLASS, "flex-1 justify-start")}
+            data-identity-name
+          >
+            <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+            <span className="truncate">{name}</span>
+          </PushLink>
+          <span
+            className={cn(
+              "flex h-12 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold",
+              vip ? "border-neutral-950 bg-neutral-950 text-white" : "border-border bg-muted text-muted-foreground",
+            )}
+            aria-label={`Class: ${CLASS_LABEL[guestClass]}`}
+            data-identity-class={guestClass}
+          >
+            {vip && <Crown className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
+            {CLASS_LABEL[guestClass]}
+          </span>
+        </span>
         <PushLink
           href={instagram.href}
-          aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
+          aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}${privacy ? ` · ${privacy}` : ""}` : instagram.label}
           className={IDENTITY_PILL_CLASS}
           data-identity-instagram
         >
           <InstagramBadge connected={instagram.connected} />
-          <span className="truncate">{followers ? `${handle} (${followers})` : handle}</span>
-          {igReach && (
-            <span
-              className="type-meta flex shrink-0 items-center gap-1 rounded-full bg-neutral-950 px-2 py-0.5 font-bold text-white"
-              aria-label="Over 1,000 followers"
-              data-identity-reach
-            >
-              <Crown className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-              1K+
-            </span>
-          )}
+          <span className="truncate">{facts ? `${handle} (${facts})` : handle}</span>
         </PushLink>
       </span>
     </div>

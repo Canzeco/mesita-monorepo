@@ -48,6 +48,7 @@ import {
 } from "@/lib/api/profile";
 import {
   followersLabel,
+  instagramPrivacyLabel,
   storyRulesOf,
   updatedAgo,
 } from "@/lib/consumer-identity";
@@ -1033,15 +1034,13 @@ export function ConnectCardSkeleton() {
 
 // THE ACCOUNT ROW (MESITA-3060). The handle links to the account on
 // Instagram (built only from the stored handle); the line under it is the
-// count, "Verified" at 1,000+, and "Updated …" from the later of connect and
+// count, Public/Private as the last scrape saw it (MESITA-4639: "display if
+// public or private at the top"; Sync re-reads it, nobody types it, since VIP
+// needs a public account), and "Updated …" from the later of connect and
 // sync, rendered client-only. Disconnect left this row for a link at the
 // page bottom.
 function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
-  const {
-    igHandle: handle,
-    igReach: verified,
-    igFollowers,
-  } = useConsumerIdentity();
+  const { igHandle: handle, igFollowers } = useConsumerIdentity();
   const profile = useServerProfile();
   const now = useSyncExternalStore(
     minuteClock.subscribe,
@@ -1077,7 +1076,7 @@ function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
         )}
         <p className="text-muted-foreground type-label truncate">
           {followersLabel(igFollowers)}
-          {verified ? " · Verified" : ""}
+          {` · ${instagramPrivacyLabel(profile?.instagram_is_private)}`}
           {ago ? ` · Updated ${ago}` : ""}
         </p>
       </div>
