@@ -157,8 +157,12 @@ export async function ensureVoice(
   voiceId: string,
   search: string,
 ): Promise<{ ok: true; action: "present" | "added" } | { ok: false; error: string }> {
-  const have = await elFetch(key, `/v1/voices/${encodeURIComponent(voiceId)}`);
-  if (have.ok) return { ok: true, action: "present" };
+  // The workspace's OWN voices: GET /v1/voices/{id} also answers 200 for a
+  // library voice the workspace never added (MESITA-4626).
+  const mine = await elFetch(key, `/v2/voices?page_size=100&search=${encodeURIComponent(search)}`);
+  if (!mine.ok) return { ok: false, error: `voice ${voiceId}: ${mine.error}` };
+  const own = ((mine.body as { voices?: Array<{ voice_id?: string }> })?.voices) ?? [];
+  if (own.some((v) => v.voice_id === voiceId)) return { ok: true, action: "present" };
   const found = await elFetch(key, `/v1/shared-voices?page_size=100&search=${encodeURIComponent(search)}`);
   if (!found.ok) return { ok: false, error: `voice ${voiceId}: ${found.error}` };
   const voices = ((found.body as { voices?: Array<{ voice_id?: string; public_owner_id?: string }> })?.voices) ?? [];
@@ -169,6 +173,6 @@ export async function ensureVoice(
     `/v1/voices/add/${encodeURIComponent(hit.public_owner_id!)}/${encodeURIComponent(voiceId)}`,
     { method: "POST", body: { new_name: search } },
   );
-  if (!add.ok) return { ok: false, error: `voice ${voiceId}: ${add.error}` };
+  if (!add.ok && !/already/i.test(add.error)) return { ok: false, error: `voice ${voiceId}: ${add.error}` };
   return { ok: true, action: "added" };
 }
