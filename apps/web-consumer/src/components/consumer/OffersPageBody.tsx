@@ -136,7 +136,10 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     async (items: VoucherBasketItem[], cardId: string | null): Promise<VoucherBuyOutcome> => {
       const hasVip = items.some((i) => i.voucher === "voucher_vip");
       const last = lastInstagramCheck(profile);
-      if (hasVip && (last == null || Date.now() - last > VIP_CHECK_MAX_AGE_MS)) {
+      // MESITA-4662: an emulated count in test mode is always fresh; a sync
+      // would change nothing the server reads.
+      const emulating = profile?.emulator_available === true && profile.instagram_followers_emulated != null;
+      if (hasVip && !emulating && (last == null || Date.now() - last > VIP_CHECK_MAX_AGE_MS)) {
         try {
           await apiSyncInstagram(supabase);
         } catch (err) {
@@ -170,7 +173,11 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
         guest: {
           instagramLinked: Boolean(profile.instagram_handle),
           guestClass: profile.guest_class === "vip" ? "vip" : "regular",
-          instagramFollowers: profile.instagram_followers_count ?? null,
+          // MESITA-4662: the emulated count when the emulator is on (test mode).
+          instagramFollowers:
+            (profile.emulator_available ? profile.instagram_followers_emulated : null) ??
+            profile.instagram_followers_count ??
+            null,
         },
       }
       : {}),

@@ -431,6 +431,7 @@ export function ConnectedAccount({
     <SettingsGroup>
       <CurrentConnectionRow pending={pending} />
       <HandleShownRow pending={pending} />
+      <FollowerEmulatorBox pending={pending} />
       {asking ? (
         <div className="px-4 pt-1 pb-4">
           <PhotoQuestion onAnswer={(y) => void answer(y)} busy={saving} />
@@ -1064,6 +1065,99 @@ function HandleShownRow({ pending = false }: { pending?: boolean }) {
       </span>
       <Switch on={shown} />
     </button>
+  );
+}
+
+// THE FOLLOWER EMULATOR (Pato, 2026-11-22, MESITA-4662: "here in instagram
+// for the moment add an emulator box to emulate public instagram with +x
+// followers"). Test mode only: the server sends emulator_available while
+// payments run in Stripe test mode and refuses a number otherwise
+// (emulator_live). The number stands in for the real count in the Class;
+// Reset to real writes null. Live money never reads it.
+const EMULATOR_PICKS = [320, 5001, 10000] as const;
+const EMULATOR_MAX = 100_000_000;
+
+function FollowerEmulatorBox({ pending = false }: { pending?: boolean }) {
+  const supabase = useBrowserSupabase();
+  const { data } = useConsumerProfile();
+  const [raw, setRaw] = useState("");
+  const [saving, setSaving] = useState(false);
+  if (!data?.emulator_available) return null;
+  const current = data.instagram_followers_emulated ?? null;
+  const value = raw.trim() === "" ? null : Number(raw);
+  const valid = value != null && Number.isInteger(value) && value >= 0 && value <= EMULATOR_MAX;
+
+  const write = (next: number | null) => {
+    if (saving || pending) return;
+    setSaving(true);
+    apiUpdateConsumerProfile(supabase, { instagram_followers_emulated: next })
+      .then(() => setRaw(""))
+      .catch((e) => toast.error(errMsg(e, "Couldn't change that.")))
+      .finally(() => setSaving(false));
+  };
+
+  return (
+    <div
+      className="border-border/60 mx-4 mb-3 flex flex-col gap-3 rounded-xl border border-dashed p-3"
+      data-instagram-emulator
+    >
+      <div>
+        <p className="text-sm font-semibold">Emulator (test)</p>
+        <p className="text-muted-foreground type-label">
+          {current != null
+            ? `Emulating ${current.toLocaleString("en-US")} followers.`
+            : "Using your real followers."}
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          inputMode="numeric"
+          placeholder="Followers"
+          value={raw}
+          disabled={pending || saving}
+          onChange={(e) => setRaw(e.target.value.replace(/[^0-9]/g, "").slice(0, 9))}
+          className={cn(INPUT_CLASS, "min-w-0 flex-1")}
+          aria-label="Emulated followers"
+          data-instagram-emulator-input
+        />
+        <button
+          type="button"
+          onClick={() => valid && write(value)}
+          disabled={!valid || pending || saving}
+          className={cn(ROW_BUTTON_CLASS, "h-auto px-4")}
+          data-instagram-emulator-apply
+        >
+          Apply
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {EMULATOR_PICKS.map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => write(n)}
+            disabled={pending || saving}
+            className={cn(ROW_BUTTON_CLASS, "h-9 px-3")}
+            data-instagram-emulator-pick={n}
+          >
+            {n.toLocaleString("en-US")}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => write(null)}
+          disabled={pending || saving || current == null}
+          className={cn(ROW_BUTTON_CLASS, "h-9 px-3")}
+          data-instagram-emulator-reset
+        >
+          Reset to real
+        </button>
+      </div>
+      <p className="text-muted-foreground type-label">
+        Test mode only. Changes your Class here, never real money.
+      </p>
+    </div>
   );
 }
 

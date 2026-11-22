@@ -14,6 +14,7 @@ import { clean } from "../_shared/input.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
 import { runInBackground } from "../_shared/background.ts";
 import { savePhotoSizes } from "../_shared/photo-sizes.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
 import {
   buildProfilePatch,
@@ -21,6 +22,7 @@ import {
   parseAvatarUrl,
   parseBirthday,
   parseBirthYear,
+  parseFollowersEmulated,
   parseName,
   parseSex,
   type UpdateProfileBody,
@@ -28,7 +30,7 @@ import {
 } from "./update-profile-fields.ts";
 
 const CONSUMER_PROFILE_SELECT =
-  "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, use_instagram_photo, appear_anonymous, instagram_handle_shown, guest_class, plan";
+  "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, use_instagram_photo, appear_anonymous, instagram_handle_shown, instagram_followers_emulated, guest_class, plan";
 
 serveJson("consumer-web-update-profile", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -80,6 +82,11 @@ serveJson("consumer-web-update-profile", async (req) => {
   if (!avatarRes.ok) return avatarRes.response;
   const { avatarUrl } = avatarRes;
 
+  // MESITA-4662: the follower emulator writes only in Stripe test mode (the
+  // gate the Stories emulator used, MESITA-4426); Reset to real always works.
+  const emulatedRes = parseFollowersEmulated(body.instagram_followers_emulated, !paymentsLivemode());
+  if (!emulatedRes.ok) return emulatedRes.response;
+
   // Ensure a consumer row exists. If not, create it with a generated code so
   // the validator can scan the QR immediately after onboarding.
   // first_name/last_name ride along because full_name is derived from BOTH
@@ -130,6 +137,7 @@ serveJson("consumer-web-update-profile", async (req) => {
     birthday,
     birthYear,
     avatarUrl,
+    followersEmulated: emulatedRes.followersEmulated,
   });
   if (!built.ok) return built.response;
   const patch = built.patch;
@@ -156,5 +164,7 @@ serveJson("consumer-web-update-profile", async (req) => {
     runInBackground(savePhotoSizes(admin, env.url, AVATAR_BUCKET, path));
   }
 
-  return json({ ok: true, consumer: update.row });
+  // The saved row replaces the app's cached profile, so it carries the
+  // emulator's availability too (MESITA-4662), as get-profile does.
+  return json({ ok: true, consumer: { ...update.row, emulator_available: !paymentsLivemode() } });
 });

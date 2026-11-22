@@ -1,4 +1,5 @@
 import { json } from "../_shared/http.ts";
+import { EMULATED_FOLLOWERS_MAX, isEmulatedFollowers } from "../_shared/consumer-doc.ts";
 
 /** Keys a guest can never change from the app (MESITA-2553): Plan and Class
  *  are set by an operator only, through admin_set_guest_standing, and so is
@@ -52,6 +53,9 @@ export type UpdateProfileBody = {
   // MESITA-4659: "Show my handle on Mesita" on Me › Instagram. true shows the
   // handle to others, false hides it; null (no choice) is not writable here.
   instagram_handle_shown?: boolean;
+  // MESITA-4662: the follower emulator on Me › Instagram. A number (test mode
+  // only) stands in for the real count in the Class; null is Reset to real.
+  instagram_followers_emulated?: number | null;
 };
 
 export const AVATAR_BUCKET = "consumer-avatars";
@@ -252,6 +256,39 @@ export function parseBirthYear(
   return { ok: true, birthYear: year };
 }
 
+export type ParseFollowersEmulatedResult =
+  | { ok: true; followersEmulated: number | null | undefined }
+  | { ok: false; response: Response };
+
+/** The follower emulator's write (MESITA-4662). Absent = nothing to write;
+ *  null (Reset to real) is always allowed; a number must be an integer
+ *  0..100,000,000 and is refused (403 emulator_live) unless payments run in
+ *  Stripe test mode (`testMode` = !paymentsLivemode()). */
+export function parseFollowersEmulated(raw: unknown, testMode: boolean): ParseFollowersEmulatedResult {
+  if (raw === undefined) return { ok: true, followersEmulated: undefined };
+  if (raw === null) return { ok: true, followersEmulated: null };
+  if (!isEmulatedFollowers(raw)) {
+    return {
+      ok: false,
+      response: json({
+        ok: false,
+        error: `instagram_followers_emulated must be a whole number from 0 to ${EMULATED_FOLLOWERS_MAX.toLocaleString("en-US")}, or null`,
+      }, 400),
+    };
+  }
+  if (!testMode) {
+    return {
+      ok: false,
+      response: json({
+        ok: false,
+        code: "emulator_live",
+        error: "The follower emulator works in test mode only",
+      }, 403),
+    };
+  }
+  return { ok: true, followersEmulated: raw };
+}
+
 export type ProfileFieldValues = {
   firstName: string | null;
   lastName: string | null;
@@ -262,6 +299,8 @@ export type ProfileFieldValues = {
   birthYear?: number | null;
   // undefined = not in this patch; null = clear; string = set.
   avatarUrl?: string | null;
+  // undefined = not in this patch; null = Reset to real (MESITA-4662).
+  followersEmulated?: number | null;
 };
 
 export type ProfilePatchResult =
@@ -313,6 +352,9 @@ export function buildProfilePatch(
       };
     }
     patch.instagram_handle_shown = body.instagram_handle_shown;
+  }
+  if (fields.followersEmulated !== undefined) {
+    patch.instagram_followers_emulated = fields.followersEmulated;
   }
 
   if (Object.keys(patch).length === 0) {

@@ -387,15 +387,28 @@ export function vipCheckedAt(guest: VipGuest): number | null {
  *  follower count read within VIP_CHECK_MAX_AGE_MS of `now` (409 vip_recheck:
  *  the Offers page Syncs, then buys). Null when the guest may buy it; any other
  *  voucher passes. One each new visit is the offer's (PER_VISIT_VOUCHERS). The
- *  409 carries the caller's own followers so the ticket can say why. */
+ *  409 carries the caller's own followers so the ticket can say why.
+ *
+ *  MESITA-4662, the follower emulator: guest_class counts an emulated count
+ *  when one is set. `testMode` is !paymentsLivemode(). In test mode an
+ *  emulated count is the count and is always fresh (no vip_recheck). In live
+ *  mode it never counts: the real count decides (verified, more than
+ *  VIP_MIN_FOLLOWERS), whatever guest_class says, then the hour as usual. */
 export function vipRefusal(
   voucher: MoneyVoucherKey,
   guest: VipGuest,
   now: Date,
+  testMode: boolean,
 ): (BuyRefusal & { followers: number | null }) | null {
   if (voucher !== "voucher_vip") return null;
-  const followers = guest?.followers ?? null;
-  if (guest?.guest_class !== "vip") {
+  const emulated = guest?.emulated ?? null;
+  const emulating = emulated !== null && testMode;
+  const followers = emulating ? emulated : guest?.followers ?? null;
+  const isVip = emulated !== null && !testMode
+    // Live money ignores the emulator: the real count, on a verified Instagram.
+    ? !!guest?.verified_at && (guest?.followers ?? 0) > VIP_MIN_FOLLOWERS
+    : guest?.guest_class === "vip";
+  if (!isVip) {
     return {
       ok: false,
       status: 409,
@@ -404,6 +417,7 @@ export function vipRefusal(
       followers,
     };
   }
+  if (emulating) return null;
   const checked = vipCheckedAt(guest);
   if (checked === null || now.getTime() - checked > VIP_CHECK_MAX_AGE_MS) {
     return {
