@@ -44,8 +44,6 @@ import {
   Ticket,
   UtensilsCrossed,
   type LucideIcon,
-  TriangleAlert,
-  ChevronRight,
 } from "lucide-react";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { HEADER_BUTTON_CLASS } from "@/components/consumer/nav/Screen";
@@ -571,18 +569,14 @@ export function TicketsBoard({
   }, [visitList, walletData, visitCutoff]);
 
   // PENDING TICKETS (MESITA-4623): bills waiting for the waiter, vouchers
-  // still landing. Their tab wears a yellow dot; the card page
-  // also says so in a yellow line above the tabs.
+  // still landing; their tab wears a dot. ON THE CARD PAGE, NO STRIP AND NO
+  // VOUCHER DOT (Pato, 2026-11-22, MESITA-4650: "what is this??? with pending
+  // bonuses is enough"): its Pending Bonuses box already says what is landing
+  // and when. The yellow "N pending tickets" line above the tabs is gone.
   const pending: Partial<Record<TicketTab, number>> = {
     visits: (byKind.visits ?? []).filter((r) => r.pending).length,
-    vouchers: (byKind.vouchers ?? []).filter((r) => r.landing).length,
+    vouchers: boxed ? 0 : (byKind.vouchers ?? []).filter((r) => r.landing).length,
   };
-  const pendingTotal = (pending.visits ?? 0) + (pending.vouchers ?? 0);
-  const pendingTab: TicketTab | null = pending.visits
-    ? "visits"
-    : pending.vouchers
-      ? "vouchers"
-      : null;
 
   const walletReady = !wallet.loading;
   // Visits waits for the wallet too, so its payments never pop in late.
@@ -616,20 +610,6 @@ export function TicketsBoard({
             : "gap-4",
       )}
     >
-      {boxed && pendingTab ? (
-        <button
-          type="button"
-          onClick={() => onPick(pendingTab)}
-          className="flex w-full items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm font-semibold text-amber-800"
-          data-tickets-pending
-        >
-          <TriangleAlert className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-          <span className="min-w-0 flex-1">
-            {pendingTotal === 1 ? "1 pending ticket" : `${pendingTotal} pending tickets`}
-          </span>
-          <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
-        </button>
-      ) : null}
       <TicketPills on={kind} onPick={onPick} flush={false} sticky={edge} pending={pending} />
       {kind === "gifts" && ready && !failed && walletData ? (
         <GiftTickets gifts={walletData.gifts ?? []} showPlace={!placeId} onChanged={() => {
