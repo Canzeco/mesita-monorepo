@@ -244,11 +244,12 @@ export const BUY_REFUSAL: Record<string, string> = {
   not_available: "This place doesn't sell that voucher.",
   not_yet: "This voucher isn't on sale yet.",
   needs_card_payments: "This voucher arrives with card payments.",
+  welcome_used: "You already had your Welcome voucher here.",
   needs_visit: "One per visit. Pay a bill here by card to buy another.",
   // MESITA-4641: a voucher no longer sold; nothing was charged.
   voucher_retired: "This voucher isn't sold any more.",
   // MESITA-4640: the VIP voucher is VIP class only; nothing was charged.
-  not_vip: "VIP Offers need a public Instagram with more than 5,000 followers.",
+  not_vip: "The VIP voucher needs a public Instagram with more than 5,000 followers.",
   below_minimum: "This amount is below the card minimum.",
   place_cap: "This place can't take more credit for now. Try again later.",
   in_progress: "Your purchase is already on its way.",

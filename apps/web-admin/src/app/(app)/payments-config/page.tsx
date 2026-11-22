@@ -24,13 +24,16 @@ import { getVoucherPrices, type VoucherPriceRow } from "./actions";
 export const dynamic = "force-dynamic";
 
 const NAME: Record<string, string> = {
+  voucher_welcome: "Welcome",
   voucher_200: "Small",
   voucher_1000: "Medium",
   voucher_5000: "Big",
   voucher_vip: "VIP",
 };
-const ORDER = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_vip"];
+// Welcome, then VIP, then the sizes (MESITA-4645: "WELCOME AND THEN THE OTHER BONUSES").
+const ORDER = ["voucher_welcome", "voucher_vip", "voucher_200", "voucher_1000", "voucher_5000"];
 const WHO: Record<string, string> = {
+  voucher_welcome: "One per guest per place",
   voucher_200: "As many as they like",
   voucher_1000: "As many as they like",
   voucher_5000: "As many as they like",

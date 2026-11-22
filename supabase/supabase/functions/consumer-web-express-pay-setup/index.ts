@@ -17,7 +17,7 @@
 //     shows no express slot and the card path stays as today. Codes: the
 //     buy's (no_account, currency_mismatch, paused, not_available, not_yet,
 //     needs_card_payments, needs_instagram, not_vip, needs_visit,
-//     below_minimum, voucher_retired) plus disabled (the kill switch
+//     welcome_used, below_minimum, voucher_retired) plus disabled (the kill switch
 //     app_config.money_config.express_wallets is []) and domains_inactive
 //     (mesita.ai is not an active wallet domain on the place's account, or
 //     the 1.5 s check timed out).

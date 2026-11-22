@@ -40,6 +40,7 @@ const VOUCHER: Record<string, string> = {
   voucher_200: "Small Voucher",
   voucher_1000: "Medium Voucher",
   voucher_5000: "Big Voucher",
+  voucher_welcome: "Welcome Voucher",
   // Never sold since MESITA-4641; an old purchase keeps its name (the
   // purchase row stores the voucher as text).
   voucher_story: "Story Voucher",
@@ -66,7 +67,7 @@ const GIFT: Record<string, string> = {
   taken_back: "Taken back",
 };
 
-/** The product name of a voucher code; "Voucher" for one off the list (a retired Welcome, MESITA-4636). */
+/** The product name of a voucher code; "Voucher" for one off the list. */
 export function voucherName(code: string | null): string {
   if (!code) return "Voucher";
   return VOUCHER[code] ?? "Voucher";

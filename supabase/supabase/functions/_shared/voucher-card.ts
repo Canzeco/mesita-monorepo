@@ -43,7 +43,7 @@ import type { MoneyVoucherKey } from "./money-state.ts";
 import type { AccountRow } from "./payments.ts";
 import { PURCHASE_PI_TTL_MS, type PurchaseStore, purchaseStore, recordPayWith } from "./purchase-pi.ts";
 import { type CardStep, isPaymentMethodId } from "./tab-card.ts";
-import { type BuyRefusal, openPurchaseRow, sameUnits, voucherMetadata, voucherName } from "./vouchers.ts";
+import { type BuyRefusal, openPurchaseRow, REFUSAL_FOR, sameUnits, voucherMetadata, voucherName } from "./vouchers.ts";
 import { availableAtFor, type VoucherPlace } from "./wallet.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
 
@@ -498,7 +498,16 @@ export async function openVoucherCard(
   let purchaseId: string;
   if (opened.duplicate) {
     const row = await readRequestRow(admin, args.consumerId, args.requestId);
-    if (!row) return refuse(409, "in_progress", "Your purchase is already on its way.");
+    if (!row) {
+      // Welcome's once-per-guest index refused it, not the request id.
+      if (args.voucher !== "voucher_welcome") return refuse(409, "in_progress", "Your purchase is already on its way.");
+      const { data: w, error: wErr } = await admin.from("wallet_purchases").select("id")
+        .eq("consumer_id", args.consumerId).eq("place_id", args.place.id)
+        .eq("voucher", "voucher_welcome").in("status", ["opening", "open"]).limit(1);
+      if (wErr) throw new Error(`welcome_read: ${wErr.message}`);
+      if ((w ?? []).length > 0) return refuse(409, "in_progress", "Your Welcome voucher is already on its way.");
+      return { ok: false, status: 409, ...REFUSAL_FOR.used };
+    }
     if (row.stripe_checkout_session_id || row.voucher !== args.voucher || row.place_id !== args.place.id || row.pay_source !== args.source.kind) {
       return refuse(409, "in_progress", "Your purchase is already on its way.");
     }

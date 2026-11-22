@@ -46,6 +46,7 @@ import { CARD_BILL_PAY_LIVE, moneyState, NOT_YET_SELLABLE, TestBand, type Vouche
 import type { Icon } from "@phosphor-icons/react";
 import {
   ArrowSquareOutIcon,
+  ConfettiIcon,
   CreditCardIcon,
   CrownSimpleIcon,
   DeviceMobileIcon,
@@ -96,10 +97,10 @@ type Product = { key: PaymentKey; name: string; line: string; value: string; ton
 // 20% · 10 USD 10% · 100 USD 20% ... all small must start with 1 and big be
 // 10X that"). TWIN of VOUCHER_PRICE_CENTS in _shared/money.ts.
 // The base price per currency, in whole units (MESITA-3943: the three); Small
-// 2×, Medium 10×, Big 50× (MESITA-4152), VIP at the base. TWIN of
+// 2×, Medium 10×, Big 50× (MESITA-4152), Welcome and VIP at the base. TWIN of
 // VOUCHER_CURRENCY_LIST in _shared/money.ts.
 const SMALL: Record<string, number> = { MXN: 100, USD: 10, CAD: 10 };
-const TIMES: Record<VoucherKey, number> = { voucher_200: 2, voucher_1000: 10, voucher_5000: 50, voucher_vip: 1 };
+const TIMES: Record<VoucherKey, number> = { voucher_200: 2, voucher_1000: 10, voucher_5000: 50, voucher_welcome: 1, voucher_vip: 1 };
 const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = Object.fromEntries(
   Object.entries(SMALL).map(([c, small]) => [
     c,
@@ -116,8 +117,12 @@ const STANDARD: VoucherSeed[] = [
   { key: "voucher_5000", name: "Big Voucher", bps: 3000, value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
 ];
 
-// The sizes green, VIP black (no Welcome since MESITA-4636, no Story since MESITA-4641).
+// Welcome green (every offer green, MESITA-4181), the sizes green, VIP black
+// (no Story since MESITA-4641). WELCOME IS BACK (Pato, 2026-11-22,
+// MESITA-4645: "RETURN THE WELCOME BONUS. WELCOME AND THEN THE OTHER
+// BONUSES."): the specials lead, Welcome first.
 const SPECIAL: VoucherSeed[] = [
+  { key: "voucher_welcome", name: "Welcome Voucher", bps: 10000, tail: "One per guest at your place.", value: "+100%", tone: "bg-green-100 text-green-700", icon: ConfettiIcon },
   // VIP Offers (MESITA-4640): the VIP class only, one per visit.
   { key: "voucher_vip", name: "VIP Voucher", bps: 10000, tail: "Only guests with a public Instagram over 5,000 followers can buy it.", value: "+100%", tone: "bg-foreground text-background", icon: CrownSimpleIcon },
 ];
@@ -126,7 +131,7 @@ const SPECIAL: VoucherSeed[] = [
 function voucherProducts(currency: string): Product[] {
   const prices = VOUCHER_PRICE[currency];
   if (!prices) return [];
-  return [...STANDARD, ...SPECIAL].map(({ bps, tail, ...p }) => {
+  return [...SPECIAL, ...STANDARD].map(({ bps, tail, ...p }) => {
     const price = prices[p.key];
     const credit = price + Math.floor((price * bps) / 10000);
     return { ...p, line: `Guest pays ${moneyLabel(price, currency)}, gets ${moneyLabel(credit, currency)} of credit.${tail ? ` ${tail}` : ""}` };
@@ -599,7 +604,7 @@ export function PaymentsPanel({
       <Card className={SECTION}>
         <h2 className={HEAD}>Vouchers</h2>
         <ul className="divide-border divide-y" data-place-state="vouchers">
-          {/* Small, Medium, Big, VIP; what money-state's NOT_YET_SELLABLE
+          {/* Welcome, VIP, Small, Medium, Big; what money-state's NOT_YET_SELLABLE
               lists is off sale. */}
           {voucherProducts(currency)
             .filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key])

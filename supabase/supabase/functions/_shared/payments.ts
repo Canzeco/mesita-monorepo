@@ -39,6 +39,7 @@ export const PAYMENT_KEYS = [
   "cash_payments",
   "pay_cards",
   "prepayments",
+  "voucher_welcome",
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
@@ -52,6 +53,7 @@ export type PaymentKey = (typeof PAYMENT_KEYS)[number];
 export const NEEDS_STRIPE_KEYS = [
   "pay_cards",
   "prepayments",
+  "voucher_welcome",
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
