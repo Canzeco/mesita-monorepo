@@ -17,7 +17,7 @@ export function signActionFromNext(raw: string | null | undefined): SignAction {
   if (isPlaceReservePath(path)) return "reserve";
   // Offers is its own page since MESITA-4379; `?rewards=` on the place is
   // the address it had before.
-  if (/^\/place\/[^/]+\/offers\/?$/.test(path)) return "offers";
+  if (/^\/place\/[^/]+\/offers(\/[^/]+)?\/?$/.test(path)) return "offers";
   if (path.startsWith("/place/") && /[?&]rewards=/.test(next)) return "offers";
   if (path.startsWith("/place/")) return "place";
   if (path === "/home/social") return "social";

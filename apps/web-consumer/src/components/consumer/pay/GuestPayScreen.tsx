@@ -658,7 +658,8 @@ export function GuestPayScreen({
       on ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:bg-muted",
     );
 
-  // 2 BILL & TIP, ONE SCREEN (Pato, 2026-11-21, MESITA-4619: "Bill & Tip
+  // 2 BILL, ONE SCREEN FOR THE BILL AND THE TIP (named "Bill" since
+  // MESITA-4630) (Pato, 2026-11-21, MESITA-4619: "Bill & Tip
   // MERGE THESE TWO into one.. KEEP IT CLEAN"): the typed bill big on top,
   // the tip chips under it with the tip and the total on one line, the
   // keypad below (it types the bill, or the tip while Other is picked),
@@ -673,7 +674,7 @@ export function GuestPayScreen({
     };
     return frame(
       <>
-        {top("Bill & Tip")}
+        {top("Bill")}
         <div className="flex min-h-0 flex-1 flex-col gap-3 py-4">
           <PaySection className="flex min-h-0 shrink flex-col">
             <div className="flex min-h-0 shrink flex-col px-4 pt-3 pb-2">

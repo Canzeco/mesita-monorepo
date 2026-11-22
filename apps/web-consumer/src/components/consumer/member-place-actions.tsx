@@ -10,7 +10,6 @@ import {
   type ReactNode,
 } from "react";
 import type {
-  ExpressPayArgs,
   PayCard,
   PayCards,
   PlaceActions,
@@ -76,7 +75,6 @@ import { openSignGate } from "@/lib/anonymous";
 import { useViewer } from "@/lib/identity-context";
 import { trackEvent } from "@/lib/analytics/track";
 import { dropBoughtOffers } from "@/lib/catalog-modes";
-import { ExpressVoucherPay } from "@/components/consumer/ExpressVoucherPay";
 
 // One hook per member surface. Contact, Report, Upgrade and a menu file are
 // pages (MESITA-4111); More is rows at the foot. The shared renderer stays
@@ -377,8 +375,6 @@ export function usePlaceVouchers(
   ) => Promise<VoucherBuyOutcome>;
   /** offer_sheet_opened (MESITA-4375). */
   opened: (voucher: VoucherKey, savedCard: boolean) => void;
-  /** Apple Pay / Google Pay in the Offers sheet's pay box (MESITA-4384). */
-  renderExpress: (args: ExpressPayArgs) => ReactNode;
   /** The Story page's gate (MESITA-4296; gate only since MESITA-4405). */
   checkStory: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
   /** The guest's saved cards; undefined signed out or off Mesita. */
@@ -633,35 +629,6 @@ export function usePlaceVouchers(
     [mesita, placeId],
   );
 
-  // EXPRESS PAY (MESITA-4384): Apple Pay / Google Pay on the Offers sheet.
-  // A paid or processing purchase ends like a card one (onPaid); "received"
-  // (Stripe took it, the settle answer was slow) stays on the sheet.
-  const renderExpress = useCallback(
-    (a: ExpressPayArgs): ReactNode =>
-      mesita ? (
-        <ExpressVoucherPay
-          placeId={placeId}
-          items={a.items}
-          disabled={a.disabled}
-          onState={a.onState}
-          onLock={a.onLock}
-          onError={a.onError}
-          onDone={(d) => {
-            a.onDone(d);
-            void load();
-            if (d.outcome !== "received") {
-              dropBoughtOffers(
-                placeId,
-                a.items.map((i) => i.voucher),
-              );
-              onPaid.current?.();
-            }
-          }}
-        />
-      ) : null,
-    [mesita, placeId, load],
-  );
-
   const mine = offer?.placeId === placeId ? offer : null;
   const money = mine?.money ?? null;
   // Add a card: a modal since MESITA-4398 (a page in MESITA-4101); then
@@ -678,7 +645,6 @@ export function usePlaceVouchers(
     load,
     buy: (items, cardId) => buy(items, cardId),
     opened,
-    renderExpress,
     checkStory,
     payCards,
     payCardId,

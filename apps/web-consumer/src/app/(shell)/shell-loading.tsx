@@ -26,6 +26,7 @@ import WalletSendLoading from "./wallet/send/loading";
 import WalletPlaceSendLoading from "./wallet/place/[placeId]/send/loading";
 import PlaceReserveLoading from "./place/[id]/reserve/loading";
 import PlaceStoryLoading from "./place/[id]/story/loading";
+import PlaceOfferLoading from "./place/[id]/offers/[voucher]/loading";
 import PlaceOffersLoading from "./place/[id]/offers/loading";
 import PlaceContactLoading from "./place/[id]/contact/loading";
 import PlaceReportLoading from "./place/[id]/report/loading";
@@ -63,6 +64,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   ),
   placeReserve: () => <PlaceReserveLoading />,
   placeStory: () => <PlaceStoryLoading />,
+  placeOffer: () => <PlaceOfferLoading />,
   placeOffers: () => <PlaceOffersLoading />,
   placeContact: () => <PlaceContactLoading />,
   placeReport: () => <PlaceReportLoading />,
