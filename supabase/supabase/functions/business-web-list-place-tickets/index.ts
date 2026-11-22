@@ -1,11 +1,11 @@
 // Supabase Edge Function — business-web-list-place-tickets
 //
 // MESITA-4487: Business Operations reads one kind of ticket at one place.
-// Visits, Vouchers, Stories, Gifts. The owner and Mesita staff only; an
+// Visits, Vouchers, Gifts. The owner and Mesita staff only; an
 // editor gets 403. The universe is PAYMENTS_STRIPE_MODE's, never the body's.
 // Who is named is masked here; the page never sees an email or a gift token.
 //
-// Body: { place_id, kind: visits|vouchers|stories|gifts,
+// Body: { place_id, kind: visits|vouchers|gifts,
 //         before?: { created_at, id, rank } }
 // Response: { ok, test_mode, kind, days, totals, rows, next }
 
@@ -18,7 +18,7 @@ import { isUuid } from "../_shared/place-id.ts";
 import { maskGuest } from "../_shared/money-admin.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
-const KINDS = new Set(["visits", "vouchers", "stories", "gifts"]);
+const KINDS = new Set(["visits", "vouchers", "gifts"]);
 const DEFAULT_TIMEZONE = "America/Mexico_City";
 
 function usableTimezone(timezone: string | null | undefined): string {
@@ -46,7 +46,7 @@ serveJson("business-web-list-place-tickets", async (req) => {
   const b = bodyRes.body;
   if (!isUuid(b.place_id)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   if (typeof b.kind !== "string" || !KINDS.has(b.kind)) {
-    return json({ ok: false, error: "kind must be visits, vouchers, stories or gifts" }, 400);
+    return json({ ok: false, error: "kind must be visits, vouchers or gifts" }, 400);
   }
 
   const access = await requirePlaceAccess(admin, user, b.place_id);

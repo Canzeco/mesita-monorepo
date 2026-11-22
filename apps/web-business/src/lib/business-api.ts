@@ -435,8 +435,6 @@ export type PaymentKey =
   | "voucher_200"
   | "voucher_1000"
   | "voucher_5000"
-  // Never sold since MESITA-4641; the server still answers it, and money-state's twin needs it.
-  | "voucher_story"
   | "voucher_vip";
 export type PaymentSettings = Record<PaymentKey, boolean>;
 /** The Loyalty Cards Agreement (MESITA-3589), independent of Stripe. */

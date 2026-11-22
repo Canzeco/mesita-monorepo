@@ -32,7 +32,6 @@ export const MONEY_VOUCHER_KEYS = [
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
-  "voucher_story",
   // VIP IS BACK (Pato, 2026-11-22, MESITA-4640: "Regular Offers · VIP Offers"):
   // the VIP class only (guest_class, more than VIP_MIN_FOLLOWERS on a public
   // Instagram), one each new visit.
@@ -84,7 +83,7 @@ export type VoucherReason =
   | "paused"
   /** The VIP voucher is for the VIP class (MESITA-4640). */
   | "not_vip"
-  /** Story and VIP, one each new visit (MESITA-3463): this guest already
+  /** VIP, one each new visit (MESITA-3463): this guest already
    *  bought one here for every visit (a paid bill with a card part). */
   | "needs_visit";
 
@@ -107,17 +106,14 @@ export type VoucherReason =
 //  GONE ACROSS ALL THE APP"): the special offers are Welcome and Story. Its
 //  key left the catalog; place_payment_settings.voucher_vip is a dead column.
 //  THE WELCOME VOUCHER IS GONE TOO (Pato, 2026-11-21, MESITA-4636: "i don't
-//  want fucking fradus"): Story is the one special offer. Its key left the
-//  catalog; place_payment_settings.voucher_welcome is a dead column, false
+//  want fucking fradus"). Its key left the catalog;
+//  place_payment_settings.voucher_welcome is a dead column, false
 //  everywhere. Welcome purchases already paid stay in the ledger.
+//  STORIES ARE GONE (Pato, 2026-11-22, MESITA-4641/4642: "REMOVE STORIES FROM
+//  EVERYWHERE"): voucher_story left the catalog the same way; its purchases
+//  stay readable (the voucher is stored as text) and a buy is refused with
+//  voucher_retired (vouchers.ts RETIRED_VOUCHERS).
 export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
-
-/** The DEFAULT follower floor for the Story voucher (MESITA-3507): a guest
- *  needs this many followers or more (MESITA-4383). The live floor is
- *  app_config.money_config.story_min_followers, set on Admin ›
- *  Configurations › Stories (MESITA-4425); this is what a missing or failed
- *  read falls back to. */
-export const STORY_MIN_FOLLOWERS = 1000;
 
 /** VIP CLASS (MESITA-4639, Pato 2026-11-22: "RETURN VIP CLASS IF MORE THAN
  *  5000 FOLLOWERS"): a verified, public Instagram with MORE THAN this many

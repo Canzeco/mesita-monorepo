@@ -29,12 +29,11 @@ function admin(opts: { paused: boolean; handle: string | null; followers: number
     voucher_200: true,
     voucher_1000: true,
     voucher_5000: true,
-    voucher_story: true,
     voucher_vip: false,
   };
   return {
     from(table: string) {
-      if (table === "wallet_purchases" || table === "wallet_payments" || table === "stories") return query([]);
+      if (table === "wallet_purchases" || table === "wallet_payments") return query([]);
       if (table === "consumers") {
         return query({
           instagram_handle: opts.handle,
@@ -45,34 +44,32 @@ function admin(opts: { paused: boolean; handle: string | null; followers: number
       }
       if (table === "app_config") {
         return query({
-          money_config: { buying_paused: opts.paused, story_min_followers: 1000, story_emulator: false },
+          money_config: { buying_paused: opts.paused },
         });
       }
       if (table === "place_payment_settings") return query([settings]);
       if (table === "place_payment_accounts") {
         return query([{ place_id: PLACE, charges_enabled: true, livemode: false }]);
       }
-      if (table === "profiles") return query([{ id: PLACE, instagram_url: "https://instagram.com/gran" }]);
       return query([]);
     },
   };
 }
 
-Deno.test("withGuestOffers drops Story when the guest cannot buy it", async () => {
+Deno.test("withGuestOffers keeps a per-visit voucher the guest never bought", async () => {
   Deno.env.set("PAYMENTS_STRIPE_MODE", "test");
   const rows = await withGuestOffers(
     admin({ paused: false, handle: null, followers: 0 }) as never,
     GUEST,
-    [{ id: PLACE, offers: { sell: ["voucher_200", "voucher_story"] as const } }],
+    [{ id: PLACE, offers: { sell: ["voucher_200", "voucher_vip"] as const } }],
   );
-  assertEquals(rows[0].offers.sell.includes("voucher_story"), false);
-  assert(rows[0].offers.sell.includes("voucher_200"));
+  assertEquals(rows[0].offers.sell, ["voucher_200", "voucher_vip"]);
 });
 
 Deno.test("withVouchersUpTo sells nothing while buying is paused", async () => {
   Deno.env.set("PAYMENTS_STRIPE_MODE", "test");
   const open = await withVouchersUpTo(admin({ paused: false, handle: "ana", followers: 5000 }) as never, [{ id: PLACE }]);
-  assert(open[0].offers.sell.includes("voucher_story"), "an open place sells Story");
+  assert(open[0].offers.sell.includes("voucher_200"), "an open place sells Small");
   const paused = await withVouchersUpTo(admin({ paused: true, handle: "ana", followers: 5000 }) as never, [{ id: PLACE }]);
   assertEquals(paused[0].offers.sell, []);
 });

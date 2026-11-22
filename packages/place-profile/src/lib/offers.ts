@@ -45,8 +45,6 @@ const GREEN = "bg-[#00D66F] text-neutral-950";
  *  and the Offers page rows (vouchers.tsx FACES) all read it, so the next
  *  colour call is one edit here. */
 export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
-  // Never sold since MESITA-4641; an old purchase wears the sizes' green.
-  voucher_story: GREEN,
   voucher_200: GREEN,
   voucher_1000: GREEN,
   voucher_5000: GREEN,

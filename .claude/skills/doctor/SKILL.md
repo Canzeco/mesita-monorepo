@@ -68,7 +68,6 @@ select role_name, v.relname as view, d.refobjid::regclass::text as base, a.attna
 4.3 **Places.** Coordinates inside Mexico, parseable hours, a `google_place_id`, and no `google_place_id` or name-and-location pair on two places.
 4.4 **Media.** References that 404 in `place-images`, `menu-images` or `menu-pdfs`; objects nothing references; a file in the wrong bucket.
 4.5 **Enrichment.** Places stuck in `content_state = generating`; runs with no terminal state.
-4.6 **Story re-check.** Approved Stories with `recheck_at` older than one hour and `decided_at` null. The weekly pipeline audit reports the same count as `PA-STORY-RECHECK` (MESITA-4267).
 
 ## Scope 5 — Config and boundaries · P1
 

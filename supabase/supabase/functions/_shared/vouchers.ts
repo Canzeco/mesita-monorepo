@@ -11,15 +11,12 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { moneyText } from "./pay.ts";
 import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, currencyForCountry, voucherPriceCents } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
-import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWERS, VIP_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
+import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, VIP_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
 import { readMoneyConfig } from "./money-config.ts";
-import { readInstagramSyncState, readVipStanding } from "./consumer-doc.ts";
-import { readStoryRules, storyMode, storySaleModeLive, type StoryMode } from "./story-mention.ts";
-import { instagramHandleOfUrl } from "./place-instagram.ts";
+import { readVipStanding } from "./consumer-doc.ts";
 import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount, VISIT_STATUSES } from "./visits.ts";
-import { type StoryRecord, storyFreesSlot } from "./story.ts";
 
 export type PlaceBalance = {
   available_cents: number;
@@ -94,16 +91,15 @@ export type OfferInput = {
   currency: string;
   paused: boolean;
   balance: PlaceBalance | null;
-  /** Story, one each new visit (MESITA-3463): true when this guest
+  /** VIP, one each new visit (MESITA-3463): true when this guest
    *  already bought one here for every visit they made. Absent reads false. */
   perVisitUsed?: Partial<Record<PerVisitVoucher, boolean>>;
   /** The place has a place code, so the waiter's charge can open (MESITA-3545). */
   hasPlaceCode?: boolean;
 };
 
-/** This guest's own block on one voucher at one place, or null: Story one
- *  each new visit ("needs_visit"). THE WELCOME VOUCHER IS GONE (Pato,
- *  2026-11-21, MESITA-4636: fraud). One rule for the place screen's offer (offerFrom) and
+/** This guest's own block on one voucher at one place, or null: a
+ *  per-visit voucher one each new visit ("needs_visit"). One rule for the place screen's offer (offerFrom) and
  *  the list rows (guestSell, MESITA-4207). */
 export function guestReason(
   k: MoneyVoucherKey,
@@ -179,24 +175,9 @@ export async function readPlaceBalance(
   return { ...sums, next_ready_at: at?.available_at ?? null };
 }
 
-/** The guest's Story purchases among these whose Story frees its visit
- *  slot (MESITA-4405, storyFreesSlot): expired with no story ever bound. */
-async function readFreedStoryPurchases(admin: SupabaseClient, consumerId: string, purchaseIds: string[]): Promise<Set<string>> {
-  if (purchaseIds.length === 0) return new Set();
-  const { data, error } = await admin.from("stories").select("purchase_id, state, void_reason, first_bound_at")
-    .eq("consumer_id", consumerId).eq("state", "void").eq("void_reason", "expired").is("first_bound_at", null)
-    .in("purchase_id", purchaseIds);
-  if (error) throw new Error(`stories: ${error.message}`);
-  return new Set(
-    ((data ?? []) as Array<Pick<StoryRecord, "purchase_id" | "state" | "void_reason" | "first_bound_at">>)
-      .filter((r) => storyFreesSlot(r) && r.purchase_id).map((r) => r.purchase_id!),
-  );
-}
-
-/** Story, one each new visit (MESITA-3463): each is spent when the
- *  guest's live purchases of it here (not expired or failed) outnumber
- *  their visits here (visits.ts). A Story that expired with no story ever
- *  posted does not count (MESITA-4405). */
+/** The per-visit vouchers, one each new visit (MESITA-3463): each is spent
+ *  when the guest's live purchases of it here (not expired or failed)
+ *  outnumber their visits here (visits.ts). */
 export async function readPerVisitUsed(
   admin: SupabaseClient,
   consumerId: string | null,
@@ -209,9 +190,7 @@ export async function readPerVisitUsed(
       .in("voucher", [...PER_VISIT_VOUCHERS]).not("status", "in", "(expired,failed)"),
   ]);
   if (bought.error) throw new Error(`wallet_purchases: ${bought.error.message}`);
-  const all = (bought.data ?? []) as Array<{ id: string; voucher: string }>;
-  const freed = await readFreedStoryPurchases(admin, consumerId, all.filter((r) => r.voucher === "voucher_story").map((r) => r.id));
-  const rows = all.filter((r) => !freed.has(r.id));
+  const rows = (bought.data ?? []) as Array<{ id: string; voucher: string }>;
   const out: Partial<Record<PerVisitVoucher, boolean>> = {};
   for (const k of PER_VISIT_VOUCHERS) {
     out[k] = perVisitSpent(rows.filter((r) => r.voucher === k).length, visits);
@@ -232,19 +211,17 @@ export function guestSell(sell: readonly MoneyVoucherKey[], blocks: GuestBlocks 
 }
 
 /** The pure half of readGuestBlocks: the guest's live purchases (not expired
- *  or failed) of Story, and their visits (visits.ts), one row each,
- *  grouped by place with readPerVisitUsed's definition. A place with no purchase row gets no entry (nothing spent).
- *  A purchase marked `freed` (its Story expired with no story ever posted,
- *  MESITA-4405) does not count. */
+ *  or failed) of the per-visit vouchers, and their visits (visits.ts), one
+ *  row each, grouped by place with readPerVisitUsed's definition. A place
+ *  with no purchase row gets no entry (nothing spent). */
 export function guestBlocksFrom(
-  purchases: readonly { place_id: string; voucher: string; freed?: boolean }[],
+  purchases: readonly { place_id: string; voucher: string }[],
   visits: readonly { place_id: string }[],
 ): Map<string, GuestBlocks> {
   const visitCount = new Map<string, number>();
   for (const v of visits) visitCount.set(v.place_id, (visitCount.get(v.place_id) ?? 0) + 1);
   const bought = new Map<string, Map<string, number>>();
   for (const p of purchases) {
-    if (p.freed) continue;
     const byVoucher = bought.get(p.place_id) ?? new Map<string, number>();
     byVoucher.set(p.voucher, (byVoucher.get(p.voucher) ?? 0) + 1);
     bought.set(p.place_id, byVoucher);
@@ -281,61 +258,22 @@ export async function readGuestBlocks(
     console.error("[vouchers] guest_blocks_read_failed", JSON.stringify({ message: error.message, places: ids.length }));
     return null;
   }
-  const rows = (bought.data ?? []) as { id: string; place_id: string; voucher: string }[];
-  let freed: Set<string>;
-  try {
-    freed = await readFreedStoryPurchases(admin, consumerId, rows.filter((r) => r.voucher === "voucher_story").map((r) => r.id));
-  } catch (e) {
-    console.error("[vouchers] guest_blocks_read_failed", JSON.stringify({ message: String(e), places: ids.length }));
-    return null;
-  }
   return guestBlocksFrom(
-    rows.map((r) => ({ ...r, freed: freed.has(r.id) })),
+    (bought.data ?? []) as { place_id: string; voucher: string }[],
     (visits.data ?? []) as { place_id: string }[],
   );
 }
 
 /** List rows with `offers.sell` narrowed to what this guest can buy
- *  (MESITA-4207). `vouchers_up_to_pct` and `mesita_pay` stay the place's.
- *  STORY NEEDS THE GUEST'S INSTAGRAM TOO (autoplan eng E2): Story leaves
- *  every row when storyRefusal would refuse this guest at the buy door, so
- *  no chip invites a purchase the guest cannot make. A failed read keeps it. */
+ *  (MESITA-4207). `vouchers_up_to_pct` and `mesita_pay` stay the place's. */
 export async function withGuestOffers<T extends { id: string; offers: { sell: MoneyVoucherKey[] } }>(
   admin: SupabaseClient | null,
   consumerId: string | null,
   rows: T[],
 ): Promise<T[]> {
-  // NO MENTION SOURCE, NO STORY (MESITA-4264): live payments with Meta off.
-  const storyOpen = storyMode() !== "unavailable";
-  if (!admin || !consumerId) {
-    return storyOpen ? rows : rows.map((r) => ({ ...r, offers: { ...r.offers, sell: r.offers.sell.filter((k) => k !== "voucher_story") } }));
-  }
-  const [blocks, story] = await Promise.all([
-    readGuestBlocks(admin, consumerId, rows.map((r) => r.id)),
-    Promise.all([readStoryGuest(admin, consumerId), storyEligibilityContext(admin)]).then(
-      ([g, ctx]) => storyRefusal("voucher_story", g, ctx) === null,
-      (e) => {
-        console.error("[vouchers] story_guest_read_failed", JSON.stringify({ message: String(e) }));
-        return true;
-      },
-    ),
-  ]);
-  return rows.map((r) => {
-    const sell = blocks ? guestSell(r.offers.sell, blocks.get(r.id)) : [...r.offers.sell];
-    return { ...r, offers: { ...r.offers, sell: story && storyOpen ? sell : sell.filter((k) => k !== "voucher_story") } };
-  });
-}
-
-/** EVERY OFFER THE PLACE SELLS (Pato, 2026-11-17, MESITA-4292: "the offers
- *  must be dancing … welcome story prepay (the three classics)"): Home's and
- *  Search's list rows keep the place's own `offers.sell`, whoever looks; only
- *  the place-wide Story gate applies (no mention source, MESITA-4264). The
- *  Offers page and the buy door still refuse what this guest cannot buy, with
- *  the reason. The Wallet reads withGuestOffers (MESITA-4207, again since
- *  MESITA-4611; this one for one day under MESITA-4582). */
-export function withPlaceOffers<T extends { offers: { sell: MoneyVoucherKey[] } }>(rows: T[]): T[] {
-  if (storyMode() !== "unavailable") return rows;
-  return rows.map((r) => ({ ...r, offers: { ...r.offers, sell: r.offers.sell.filter((k) => k !== "voucher_story") } }));
+  if (!admin || !consumerId) return rows;
+  const blocks = await readGuestBlocks(admin, consumerId, rows.map((r) => r.id));
+  return rows.map((r) => ({ ...r, offers: { ...r.offers, sell: blocks ? guestSell(r.offers.sell, blocks.get(r.id)) : [...r.offers.sell] } }));
 }
 
 /** The whole offer for one place and one (maybe anonymous) guest. */
@@ -356,7 +294,7 @@ export async function voucherOffer(
   ]);
   // A failed read reads no code: Offers never advertises 2% it cannot honour.
   if (code.error) console.error("[vouchers] place_code_read", JSON.stringify({ place_id: place.id, error: code.error.message }));
-  return withStoryMode(offerFrom({
+  return offerFrom({
     settings,
     account,
     livemode,
@@ -365,21 +303,7 @@ export async function voucherOffer(
     balance,
     perVisitUsed,
     hasPlaceCode: !code.error && !!code.data,
-  }), await storySaleModeLive(admin), instagramHandleOfUrl(place.instagram_url) !== null);
-}
-
-/** Story is sold only while a mention source exists (MESITA-4264): with
- *  live payments and Meta off ('unavailable') it leaves `sell`. NO PLACE
- *  INSTAGRAM, NO STORY (MESITA-4291): the story mentions the place's
- *  Instagram, so a place without one sells none. Absent `placeInstagram`
- *  reads false: a caller that did not read the place sells no Story. */
-export function withStoryMode(offer: VoucherOffer, mode: StoryMode, placeInstagram = false): VoucherOffer {
-  if ((mode !== "unavailable" && placeInstagram) || !offer.sell.includes("voucher_story")) return offer;
-  return {
-    ...offer,
-    sell: offer.sell.filter((k) => k !== "voucher_story"),
-    unavailable: { ...offer.unavailable, voucher_story: "off" },
-  };
+  });
 }
 
 // ── Buying ─────────────────────────────────────────────────────────────────
@@ -418,78 +342,6 @@ export function buyRefusal(offer: VoucherOffer, voucher: MoneyVoucherKey, accoun
     return { ok: false, status: 409, code: "below_minimum", error: "This amount is below Stripe's minimum charge" };
   }
   return null;
-}
-
-/** The guest's own Instagram, as `consumers` stores it. */
-export type StoryGuest = {
-  instagram_handle: string | null;
-  instagram_followers_count: number | null;
-  /** MESITA-4263: null = not known yet (never synced since); only false is public. */
-  instagram_is_private?: boolean | null;
-} | null;
-
-/** What Story's guest gate is measured against (MESITA-4425): the live
- *  follower floor and whether emulator mode is in effect. Both REQUIRED on
- *  storyRefusal so a caller that forgets them fails `deno check` instead of
- *  quietly keeping the old floor. */
-export type StoryEligibility = {
-  /** money_config.story_min_followers (Admin › Configurations › Stories). */
-  minFollowers: number;
-  /** Emulator mode in effect (MESITA-4426): money_config.story_emulator on
-   *  AND payments in test mode AND Meta off (storyMode() === "emulated").
-   *  Every guest with a linked Instagram then qualifies. */
-  emulator: boolean;
-};
-
-/** The floor STORY_MIN_FOLLOWERS and no emulator: what a failed read means. */
-export const STORY_ELIGIBILITY_DEFAULT: StoryEligibility = { minFollowers: STORY_MIN_FOLLOWERS, emulator: false };
-
-/** The one place every Story check gets its StoryEligibility. A failed read
- *  is the default floor with no emulator, never an open door. */
-export async function storyEligibilityContext(admin: SupabaseClient): Promise<StoryEligibility> {
-  try {
-    const rules = await readStoryRules(admin);
-    // Never a half-emulator: live payments or a real Meta source turn it off
-    // whatever the switch says.
-    return { minFollowers: rules.minFollowers, emulator: rules.emulator && storyMode() === "emulated" };
-  } catch (e) {
-    console.error("[vouchers] story_rules_read_failed", JSON.stringify({ message: String(e) }));
-    return STORY_ELIGIBILITY_DEFAULT;
-  }
-}
-
-/** Story's guest gate (MESITA-3507, MESITA-4425, MESITA-4484): a linked public
- *  Instagram with `ctx.minFollowers` followers OR MORE, emulator or not. The
- *  emulator supplies that account; it does not skip the gate. Null when the
- *  guest may buy it. Any other voucher passes. */
-export function storyRefusal(voucher: MoneyVoucherKey, guest: StoryGuest, ctx: StoryEligibility): BuyRefusal | null {
-  if (voucher !== "voucher_story") return null;
-  if (!guest?.instagram_handle) {
-    return { ok: false, status: 409, code: "needs_instagram", error: "Link your Instagram to buy the Story voucher" };
-  }
-  if ((guest.instagram_followers_count ?? 0) < ctx.minFollowers) {
-    return {
-      ok: false,
-      status: 409,
-      code: "few_followers",
-      error: `The Story voucher is for Instagram accounts with ${ctx.minFollowers.toLocaleString("en-US")} or more followers`,
-    };
-  }
-  // MESITA-4296: a private account's mentions never reach Mesita (Mesita
-  // follows no one), so the story could never be found. Unknown reads private
-  // until the next Sync records it (MESITA-4263).
-  if (guest.instagram_is_private !== false && guest.instagram_is_private !== undefined) {
-    return { ok: false, status: 409, code: "private_account", error: "Make your Instagram public, then sync it in Me" };
-  }
-  return null;
-}
-
-/** The buying guest's Instagram, for storyRefusal, through the consumer door. */
-export async function readStoryGuest(admin: SupabaseClient, consumerId: string): Promise<StoryGuest> {
-  const res = await readInstagramSyncState(admin, consumerId);
-  if (!res.ok) throw new Error(`consumers: ${res.error}`);
-  if (res.deleted) return null;
-  return { instagram_handle: res.handle, instagram_followers_count: res.followers, instagram_is_private: res.isPrivate };
 }
 
 /** The buying guest's Class and the facts the refusal names (MESITA-4640). */
@@ -560,16 +412,17 @@ export type BasketItem = { voucher: MoneyVoucherKey; qty: number };
 
 /** At most this many of one voucher in a basket (Small and Big). */
 export const BASKET_MAX_QTY = 5;
-/** One each visit (Story): one unit. */
-export const BASKET_ONE_ONLY: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_story", "voucher_vip"]);
+/** One each visit (VIP): one unit. */
+export const BASKET_ONE_ONLY: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_vip"]);
 
-/** The request's basket: `items: [{voucher, qty}]`, or the old one-voucher
- *  `voucher` as a basket of one. Known keys, whole qty 1..5, Story at
- *  most 1, no key twice. Pure. */
 /** Vouchers that existed and are not sold any more: STORIES ARE GONE (Pato,
  *  2026-11-22, MESITA-4641). Old purchases keep their key; a buy is refused
  *  with `voucher_retired` (409), never a bare bad_body. */
 export const RETIRED_VOUCHERS: ReadonlySet<string> = new Set(["voucher_story"]);
+
+/** The request's basket: `items: [{voucher, qty}]`, or the old one-voucher
+ *  `voucher` as a basket of one. Known keys, whole qty 1..5, VIP at
+ *  most 1, no key twice. Pure. */
 
 export function parseBasket(body: { items?: unknown; voucher?: unknown }): { ok: true; items: BasketItem[] } | { ok: false; error: string; code?: "voucher_retired" } {
   const asked = body.items === undefined || body.items === null
@@ -602,8 +455,8 @@ export function parseBasket(body: { items?: unknown; voucher?: unknown }): { ok:
   return { ok: true, items };
 }
 
-/** Catalog order, Story first: the lead is the first unit. */
-const BASKET_ORDER: readonly MoneyVoucherKey[] = ["voucher_story", "voucher_vip", "voucher_200", "voucher_1000", "voucher_5000"];
+/** Catalog order, VIP first: the lead is the first unit. */
+const BASKET_ORDER: readonly MoneyVoucherKey[] = ["voucher_vip", "voucher_200", "voucher_1000", "voucher_5000"];
 
 /** The basket as voucher units, one per row to write: the lead first. Pure. */
 export function basketUnits(items: readonly BasketItem[]): MoneyVoucherKey[] {
@@ -638,7 +491,6 @@ export function voucherName(k: MoneyVoucherKey, currency: string = MONEY_CURRENC
     case "voucher_1000":
     case "voucher_5000":
       return `${moneyText(catalogLines(currency)[k].price_cents, currency)} voucher`;
-    case "voucher_story": return "Story voucher";
     case "voucher_vip": return "VIP voucher";
   }
 }

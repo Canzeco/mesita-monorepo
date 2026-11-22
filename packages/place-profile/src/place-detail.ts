@@ -5,8 +5,8 @@
 
 import type { VoucherReason } from "./money-state";
 
-/** The six vouchers a place can switch on (MESITA-3296). */
-export const VOUCHER_KEYS = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story", "voucher_vip"] as const;
+/** The vouchers a place can switch on (MESITA-3296). */
+export const VOUCHER_KEYS = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_vip"] as const;
 export type VoucherKey = (typeof VOUCHER_KEYS)[number];
 
 /** One catalog line as the server prices it (MESITA-3303). The client shows

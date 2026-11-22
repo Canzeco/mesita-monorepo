@@ -108,8 +108,8 @@ export type VoucherEntry = {
  *  50% Bonus. Small Voucher: $200MX. 10% Bonus. Big Voucher: $1000MX. 20%
  *  Bonus. VIP Voucher: 50MX. 50% Bonus. KEEP IT LIKE THIS."): VIP is MX$50
  *  +50% (MX$100 +30% before); voucher_1000 is now called Big (Medium
- *  before); voucher_5000 and Story stay in this catalog for purchases already
- *  made but are off sale (money-state's NOT_YET_SELLABLE). WELCOME AND VIP
+ *  before); voucher_5000 and Story stayed in this catalog for purchases already
+ *  made but were off sale (money-state's NOT_YET_SELLABLE). WELCOME AND VIP
  *  ARE MX$100 +100% (Pato, MESITA-3835: "Welcome Voucher: $100 MX. 100%
  *  Bonus ... VIP Voucher: $100 MX. 100% Bonus."): pay MX$100, get MX$200.
  *  THE WAIT STAYS ONE HOUR for every voucher but Story (Pato, MESITA-3835:
@@ -132,10 +132,8 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
   voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
   // THE WELCOME VOUCHER IS GONE (Pato, 2026-11-21, MESITA-4636: fraud).
-  // STORY IS +30% (Pato, 2026-11-21, MESITA-4563: "set story bonus to 30%"):
-  // pay MX$100, get MX$130; +40% from MESITA-4473, +50% from MESITA-4207.
-  // Purchases keep their stored amounts.
-  voucher_story: { price_cents: 100_00, bonus_bps: 3000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
+  // THE STORY VOUCHER IS GONE (Pato, 2026-11-22, MESITA-4641/4642); its
+  // purchases keep their stored amounts.
   // VIP IS BACK (Pato, 2026-11-22, MESITA-4640): MESITA-4249's line, pay
   // MX$100, get MX$200; the bonus in 3 hours like every voucher.
   voucher_vip: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
@@ -149,12 +147,12 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
  *  voucher's key stays voucher_200 (a renamed key resets live config). */
 export const VOUCHER_PRICE_CENTS: Record<string, Record<MoneyVoucherKey, number>> = {};
 // Filled from VOUCHER_CURRENCY_LIST below (MESITA-3923; the three of MESITA-3943): Small
-// 2× the base, Medium (voucher_5000) 5×, Big 10×, Welcome · Story at the
-// base (MESITA-4056).
+// 2× the base, Medium (voucher_5000) 5×, Big 10×, VIP at the base
+// (MESITA-4056).
 
 /** THE TEN CURRENCIES (Pato, 2026-11-14, MESITA-3919: "make a list of all
  *  the currencies"): Small starts with 1, near half an inexpensive meal for
- *  one in that country; Big is 10× Small; Welcome and Story cost the
+ *  one in that country; Big is 10× Small; VIP costs the
  *  Small price. Amounts in whole units (¥1,000, not cents). All ten sell
  *  (MESITA-3923), each only at places whose currency it is. */
 // THREE SINCE MESITA-3943 (Pato, 2026-11-14: "just leave mex and usa and
@@ -177,7 +175,7 @@ export const UNSUPPORTED_COUNTRIES: readonly { region: string; why: string }[] =
 for (const r of VOUCHER_CURRENCY_LIST) {
   const s = r.small * 100;
   VOUCHER_PRICE_CENTS[r.code.toLowerCase()] = {
-    voucher_200: s * 2, voucher_1000: s * 10, voucher_5000: s * 50, voucher_story: s, voucher_vip: s,
+    voucher_200: s * 2, voucher_1000: s * 10, voucher_5000: s * 50, voucher_vip: s,
   };
 }
 

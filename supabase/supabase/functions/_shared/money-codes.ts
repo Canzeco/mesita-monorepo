@@ -68,8 +68,6 @@ export const MONEY_CODES = [
   "not_yet",
   "needs_card_payments",
   "needs_instagram",
-  // Story: the guest's Instagram has fewer than 1,000 followers (MESITA-3507, MESITA-4383)
-  "few_followers",
   // Sending credit to a friend (MESITA-3292): live sending waits on the
   // lawyer (money_config.sending_live), ten open links per place, a link is
   // never the sender's own, and a link taken or taken back gives nothing
@@ -80,7 +78,7 @@ export const MONEY_CODES = [
   "taken_back",
   // A guest typed too many wrong gift codes this hour (MESITA-3737)
   "too_many_tries",
-  // Story and VIP, one each new visit (MESITA-3463): bought for every visit
+  // VIP, one each new visit (MESITA-3463): bought for every visit
   "needs_visit",
   // The VIP voucher, VIP class only (MESITA-4640)
   "not_vip",
@@ -89,22 +87,6 @@ export const MONEY_CODES = [
   // A voucher buy without a saved card (MESITA-4065: no Stripe page; the
   // guest adds a card in the app first)
   "card_required",
-  // Story with live payments while Meta is off (MESITA-4264): no way to
-  // verify the story, so the buy is refused
-  "story_unavailable",
-  // Story verified before payment (MESITA-4296): the account must be public;
-  // the buy names the story the guest showed, which must still be theirs,
-  // free, young enough and of the same mode; a Story is paid alone; a payment
-  // for the same story still in flight blocks a second one
-  "private_account",
-  "story_not_found",
-  "story_taken",
-  "story_too_old",
-  "story_livemode",
-  "story_one_per_basket",
-  "story_payment_in_progress",
-  // A waiter approves the story before the guest pays (MESITA-4304)
-  "story_not_verified",
 ] as const;
 
 export type MoneyCode = (typeof MONEY_CODES)[number];

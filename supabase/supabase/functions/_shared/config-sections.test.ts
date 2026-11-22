@@ -98,20 +98,6 @@ function fakeAdmin(row: Row): SupabaseClient {
         },
       };
     },
-    // The stories section's write (MESITA-4425): money_config_merge_story,
-    // modelled as the SQL does it — only story_min_followers, merged over
-    // the other keys, stamped, answering before and after.
-    rpc(fn: string, args: Row) {
-      if (fn !== "money_config_merge_story") {
-        return Promise.resolve({ data: null, error: { message: `no rpc ${fn}` } });
-      }
-      const before = (row.money_config ?? {}) as Row;
-      const patch = args.p_patch as Row;
-      const after = { ...before, ...patch };
-      row.money_config = after;
-      row.updated_by = args.p_updated_by;
-      return Promise.resolve({ data: { before, after, updated_at: STAMP }, error: null });
-    },
     // deno-lint-ignore no-explicit-any
   } as any as SupabaseClient;
 }
@@ -207,9 +193,7 @@ const CASES: Record<string, SectionCase> = {
       assertEquals("updatedAt" in saved, false);
       const stored = row.models_config as Row;
       assertEquals(stored.v, 1);
-      // MESITA-4535: the Story bot's model is a fourth kept key.
-      assertEquals(Object.keys(stored).sort(), ["embeddings", "enricher", "memo", "stories", "v"]);
-      assertEquals(stored.stories, { model: "gpt-6-luna" });
+      assertEquals(Object.keys(stored).sort(), ["embeddings", "enricher", "memo", "v"]);
       assertEquals(stored.enricher, { model: "gpt-6-luna" });
     },
     invalid: { config: "not an object" },

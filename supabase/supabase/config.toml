@@ -422,29 +422,6 @@ verify_jwt = false
 [functions.visit-web-mark-proof-seen]
 verify_jwt = false
 
-# MESITA-4296, MESITA-4405: the Story screen's poll (binds a posted story to
-# the guest's Story) and the Story gate for Offers.
-[functions.consumer-web-check-story]
-verify_jwt = true
-
-# MESITA-4405: one Story for its screen, owner only.
-[functions.consumer-web-get-story]
-verify_jwt = true
-
-# MESITA-4264, MESITA-4296, MESITA-4310: the Meta emulator, test mode only,
-# posted before any purchase: "Tag the place" records a test story with no
-# image; delete marks it deleted; approve stands in for the waiter (MESITA-4307).
-[functions.consumer-web-emulate-story]
-verify_jwt = true
-
-# MESITA-4264: the operator's release / void / recheck_now of a Story.
-[functions.admin-web-story-override]
-verify_jwt = true
-
-# The Stories page's recent rows (MESITA-4267).
-[functions.admin-web-list-story-desk]
-verify_jwt = true
-
 # MESITA-3306 (W2c): the waiter's charge. No sign-in on visit.mesita.ai: the
 # place code opens a charge, the 128-bit charge token reads it.
 [functions.visit-web-open-charge]
@@ -502,14 +479,6 @@ verify_jwt = false
 [functions.visit-web-verify-tab]
 verify_jwt = false
 
-# MESITA-4304: the waiter's Story page reads the guest's story (the QR token is the key to read).
-[functions.visit-web-get-story]
-verify_jwt = false
-
-# MESITA-4304: the waiter approves or rejects the story with the waiter code, before the guest pays.
-[functions.visit-web-review-story]
-verify_jwt = false
-
 # MESITA-3843: the waiter's Reject of a guest's bill; the staff token is the gate.
 [functions.visit-web-reject-tab]
 verify_jwt = false
@@ -530,11 +499,6 @@ verify_jwt = false
 # MESITA-3461: Mesita's fee billed to places, every hour.
 # Kill switch: select cron.unschedule('bill-fees');
 [functions.supabase-cron-bill-fees]
-verify_jwt = true
-
-# MESITA-4264: the Story bonus re-check, every 10 minutes.
-# Kill switch: select cron.unschedule('recheck-stories');
-[functions.supabase-cron-recheck-stories]
 verify_jwt = true
 
 # MESITA-3305 (W2b): the money ledger's backstop, every 5 minutes.
@@ -917,7 +881,7 @@ verify_jwt = true
 [functions.business-web-get-place-money]
 verify_jwt = true
 
-# MESITA-4487: Operations ticket desk (visits, vouchers, stories, gifts).
+# MESITA-4487: Operations ticket desk (visits, vouchers, gifts).
 [functions.business-web-list-place-tickets]
 verify_jwt = true
 

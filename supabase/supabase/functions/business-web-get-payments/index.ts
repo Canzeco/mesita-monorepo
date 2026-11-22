@@ -9,7 +9,7 @@
 // Response: { ok: true, can_edit, test_mode,
 //             account: { state: none|onboarding|ready|restricted, ... },
 //             settings: { loyalty_cards, cash_payments, pay_cards, voucher_200,
-//                         ..., voucher_story },
+//                         ..., voucher_vip },
 //             contract: { signed, signed_at, terms_version },  the Loyalty
 //                          Cards Agreement (MESITA-3589), independent of Stripe
 //             account.stage: none|onboarding|in_review|connected|action_needed|

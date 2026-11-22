@@ -187,9 +187,6 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
     voucher_200: green,
     voucher_1000: green,
     voucher_5000: green,
-    // STORIES ARE GONE (MESITA-4641): never sold; the key stays only until
-    // the server drops it, and an old purchase reads as a plain voucher.
-    voucher_story: green,
     // The crown tells VIP apart; green like every offer (MESITA-4640).
     voucher_vip: { ...green, card: VOUCHER_TONE.voucher_vip, Mark: Crown },
   };
@@ -268,7 +265,6 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
       voucher_200: money?.vouchers.voucher_200 === true,
       voucher_1000: money?.vouchers.voucher_1000 === true,
       voucher_5000: money?.vouchers.voucher_5000 === true,
-      voucher_story: money?.vouchers.voucher_story === true,
       voucher_vip: money?.vouchers.voucher_vip === true,
     },
     money ? { charges_enabled: money.charges_enabled } : null,

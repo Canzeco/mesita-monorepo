@@ -19,11 +19,7 @@ import {
   overCreditLimit,
   parseBasket,
   sameUnits,
-  STORY_ELIGIBILITY_DEFAULT,
-  storyEligibilityContext,
-  storyRefusal,
   voucherMetadata,
-  withStoryMode,
 } from "./vouchers.ts";
 
 const PLACE = "00000000-0000-4000-8000-0000000a3303";
@@ -40,7 +36,6 @@ const ALL_ON: PaymentSettings = {
   voucher_200: true,
   voucher_1000: true,
   voucher_5000: true,
-  voucher_story: true,
   voucher_vip: false,
 };
 
@@ -60,16 +55,16 @@ const base = { settings: ALL_ON, account: ACCOUNT, livemode: false, currency: "m
 
 Deno.test("every switched-on voucher sells; VIP off here reads off (MESITA-4640); Medium is back (MESITA-4056)", () => {
   const o = offerFrom(base);
-  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"]);
+  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000"]);
   assertEquals(o.unavailable, { voucher_vip: "off" });
   assertEquals(o.test_mode, true);
   assertEquals(o.charges_enabled, true);
   assertEquals(o.mesita_pay, true);
   assertEquals("pay_cards" in o.vouchers, false);
   assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 10800 });
-  // Every voucher waits an hour except Story (MESITA-3323).
+  // No Welcome (MESITA-4636) and no Story (MESITA-4642) in the catalog.
   assertEquals("voucher_welcome" in o.catalog, false);
-  assertEquals(o.catalog.voucher_story.available_after_sec, 10800);
+  assertEquals("voucher_story" in o.catalog, false);
 });
 
 Deno.test("the catalog the client shows is the server's, credit = price + bonus", () => {
@@ -91,8 +86,6 @@ Deno.test("paused stops every sale; an account from the other universe cannot ch
   assertEquals(none.unavailable.voucher_200, "needs_account");
 });
 
-// VIP's one-each-new-visit rule (MESITA-3463) is unreachable while VIP is
-// parked; the parked reason wins and the buy door refuses it.
 Deno.test("Story is retired (MESITA-4641): a basket naming it is refused with voucher_retired", () => {
   const one = parseBasket({ voucher: "voucher_story" });
   assertEquals(one.ok, false);
@@ -121,7 +114,7 @@ Deno.test("vipRefusal: only the VIP class buys the VIP voucher; the 409 names th
   assertEquals(vipRefusal("voucher_200", { guest_class: "regular", followers: 0, is_private: true }), null);
 });
 
-Deno.test("VIP is one each new visit, like Story (MESITA-4640)", () => {
+Deno.test("VIP is one each new visit (MESITA-4640)", () => {
   assertEquals(guestReason("voucher_vip", { perVisitUsed: { voucher_vip: true } }), "needs_visit");
   assertEquals(guestReason("voucher_vip", { perVisitUsed: { voucher_vip: false } }), null);
 });
@@ -278,78 +271,16 @@ Deno.test("Credits Limit: landing exactly on the limit sells; a place's own limi
 
 Deno.test("the mark (MESITA-3408) is taken before the pause, so it matches the list rows", () => {
   // Pay by phone off, so only the voucher can light the mark.
-  const onlySmall: PaymentSettings = { ...ALL_ON, pay_cards: false, voucher_1000: false, voucher_5000: false, voucher_story: false, voucher_vip: false };
+  const onlySmall: PaymentSettings = { ...ALL_ON, pay_cards: false, voucher_1000: false, voucher_5000: false, voucher_vip: false };
   assertEquals(offerFrom({ ...base, settings: onlySmall, paused: true }).mesita_pay, true);
   // Nothing on: no mark.
   const nothing: PaymentSettings = { ...onlySmall, voucher_200: false };
   assertEquals(offerFrom({ ...base, settings: nothing }).mesita_pay, false);
 });
 
-Deno.test("storyRefusal: Story needs a linked Instagram with the live floor or more followers; other vouchers pass (MESITA-3507, MESITA-4383, MESITA-4425)", () => {
-  const D = STORY_ELIGIBILITY_DEFAULT;
-  assertEquals(D, { minFollowers: 1000, emulator: false });
-  assertEquals(storyRefusal("voucher_200", null, D), null);
-  assertEquals(storyRefusal("voucher_story", null, D)?.code, "needs_instagram");
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: null, instagram_followers_count: 50_000 }, D)?.code, "needs_instagram");
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: null }, D)?.code, "few_followers");
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 999 }, D)?.code, "few_followers");
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1000 }, D), null);
-  // The admin's floor, exactly at it and one below; the message names it.
-  const low = { minFollowers: 500, emulator: false };
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 500 }, low), null);
-  const below = storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 499 }, low);
-  assertEquals(below?.code, "few_followers");
-  assertEquals(below?.error, "The Story voucher is for Instagram accounts with 500 or more followers");
-  // A floor of 0 lets any linked public account through.
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 0, instagram_is_private: false }, { minFollowers: 0, emulator: false }), null);
-  // A private account is refused at any floor…
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 5000, instagram_is_private: true }, D)?.code, "private_account");
-  // …unless emulator mode is in effect: then only the link is needed.
-  const emu = { minFollowers: 1000, emulator: true };
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 3, instagram_is_private: true }, emu)?.code, "few_followers");
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1001, instagram_is_private: true }, emu)?.code, "private_account");
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1001, instagram_is_private: false }, emu), null);
-  assertEquals(storyRefusal("voucher_story", { instagram_handle: null, instagram_followers_count: 3 }, emu)?.code, "needs_instagram");
-});
-
-Deno.test("storyEligibilityContext: the live floor from money_config; a failed read is the default, never open (MESITA-4425)", async () => {
-  const fake = (result: unknown) => ({
-    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () => (result instanceof Error ? Promise.reject(result) : Promise.resolve(result)) }) }) }),
-  }) as unknown as SupabaseClient;
-  assertEquals(await storyEligibilityContext(fake({ data: { money_config: { story_min_followers: 250 } }, error: null })), { minFollowers: 250, emulator: false });
-  assertEquals(await storyEligibilityContext(fake({ data: { money_config: { buying_paused: true } }, error: null })), STORY_ELIGIBILITY_DEFAULT);
-  assertEquals(await storyEligibilityContext(fake({ data: { money_config: { story_min_followers: "abc" } }, error: null })), STORY_ELIGIBILITY_DEFAULT);
-  assertEquals(await storyEligibilityContext(fake({ data: null, error: { message: "down" } })), STORY_ELIGIBILITY_DEFAULT);
-  assertEquals(await storyEligibilityContext(fake(new Error("network"))), STORY_ELIGIBILITY_DEFAULT);
-});
-
-Deno.test("storyEligibilityContext: emulator mode only with the switch on, test payments and Meta off (MESITA-4426)", async () => {
-  const fake = (mc: unknown) => ({
-    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { money_config: mc }, error: null }) }) }) }),
-  }) as unknown as SupabaseClient;
-  const env = (vars: Record<string, string | undefined>, f: () => Promise<void>) => async () => {
-    const keep = Object.fromEntries(Object.keys(vars).map((k) => [k, Deno.env.get(k)]));
-    for (const [k, v] of Object.entries(vars)) v === undefined ? Deno.env.delete(k) : Deno.env.set(k, v);
-    try {
-      await f();
-    } finally {
-      for (const [k, v] of Object.entries(keep)) v === undefined ? Deno.env.delete(k) : Deno.env.set(k, v);
-    }
-  };
-  const metaOff = { META_IG_ACCESS_TOKEN: undefined, META_IG_USERNAME: undefined, META_IG_APP_SECRET: undefined, META_IG_VERIFY_TOKEN: undefined };
-  await env({ ...metaOff, PAYMENTS_STRIPE_MODE: "test", STRIPE_ALLOW_LIVE: undefined }, async () => {
-    assertEquals((await storyEligibilityContext(fake({ story_emulator: true }))).emulator, true, "on, test, Meta off");
-    assertEquals((await storyEligibilityContext(fake({ story_emulator: false }))).emulator, false, "switched off");
-    assertEquals((await storyEligibilityContext(fake({ story_emulator: "true" }))).emulator, false, "only a real boolean");
-  })();
-  await env({ ...metaOff, PAYMENTS_STRIPE_MODE: "live", STRIPE_ALLOW_LIVE: "true" }, async () => {
-    assertEquals((await storyEligibilityContext(fake({ story_emulator: true }))).emulator, false, "live payments: never");
-  })();
-});
-
 // ── The basket (MESITA-3841) ───────────────────────────────────────────────
 
-Deno.test("parseBasket: the old voucher field is a basket of one; items need known keys, qty 1..5, one Story, no key twice", () => {
+Deno.test("parseBasket: the old voucher field is a basket of one; items need known keys, qty 1..5, one VIP, no key twice", () => {
   assertEquals(parseBasket({ voucher: "voucher_200" }), { ok: true, items: [{ voucher: "voucher_200", qty: 1 }] });
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 2 }, { voucher: "voucher_1000", qty: 1 }] }).ok, true);
   assertEquals(parseBasket({ voucher: "bogus" }).ok, false);
@@ -358,14 +289,14 @@ Deno.test("parseBasket: the old voucher field is a basket of one; items need kno
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 0 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 1.5 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_welcome", qty: 1 }] }).ok, false);
-  assertEquals(parseBasket({ items: [{ voucher: "voucher_story", qty: 2 }] }).ok, false);
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_vip", qty: 2 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 1 }, { voucher: "voucher_200", qty: 1 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "nope", qty: 1 }] }).ok, false);
 });
 
-Deno.test("basketUnits: one unit per row, Story leads; sameUnits compares baskets as multisets", () => {
-  const units = basketUnits([{ voucher: "voucher_200", qty: 2 }, { voucher: "voucher_story", qty: 1 }, { voucher: "voucher_1000", qty: 1 }]);
-  assertEquals(units, ["voucher_story", "voucher_200", "voucher_200", "voucher_1000"]);
+Deno.test("basketUnits: one unit per row, VIP leads; sameUnits compares baskets as multisets", () => {
+  const units = basketUnits([{ voucher: "voucher_200", qty: 2 }, { voucher: "voucher_vip", qty: 1 }, { voucher: "voucher_1000", qty: 1 }]);
+  assertEquals(units, ["voucher_vip", "voucher_200", "voucher_200", "voucher_1000"]);
   assertEquals(sameUnits(["voucher_200", "voucher_1000"], ["voucher_1000", "voucher_200"]), true);
   assertEquals(sameUnits(["voucher_200"], ["voucher_200", "voucher_200"]), false);
   assertEquals(sameUnits([], []), true);
@@ -424,67 +355,36 @@ Deno.test("a basket's metadata names the lead and carries the sums; a single vou
 // MESITA-4207: the list rows' chips drop what THIS guest already used, by
 // the same rule as the place screen's Offers (offerFrom).
 Deno.test("list rows: guestSell drops a per-visit voucher spent this visit, like offerFrom", () => {
-  const sell = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"] as const;
+  const sell = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_vip"] as const;
+  const vipOn = { ...base, settings: { ...ALL_ON, voucher_vip: true } };
   const blocks = guestBlocksFrom(
     [
-      { place_id: "a", voucher: "voucher_welcome" },
-      { place_id: "b", voucher: "voucher_story" },
-      { place_id: "c", voucher: "voucher_story" },
-      { place_id: "c", voucher: "voucher_story" },
+      { place_id: "a", voucher: "voucher_story" },
+      { place_id: "b", voucher: "voucher_vip" },
+      { place_id: "c", voucher: "voucher_vip" },
+      { place_id: "c", voucher: "voucher_vip" },
     ],
     [{ place_id: "c" }, { place_id: "d" }],
   );
-  // a: a Welcome bought before MESITA-4636 blocks nothing.
+  // a: a Story bought before MESITA-4642 blocks nothing.
   assertEquals(guestSell(sell, blocks.get("a")), [...sell]);
-  // b: one Story, no visit yet: spent until the guest pays a bill here.
+  // b: one VIP, no visit yet: spent until the guest pays a bill here.
   assertEquals(guestSell(sell, blocks.get("b")), ["voucher_200", "voucher_1000", "voucher_5000"]);
-  // c: two Stories, one visit: spent.
-  assertEquals(blocks.get("c")?.perVisitUsed.voucher_story, true);
+  // c: two VIPs, one visit: spent.
+  assertEquals(blocks.get("c")?.perVisitUsed.voucher_vip, true);
   // d: a visit and no purchase: nothing blocked, no entry.
   assertEquals(blocks.has("d"), false);
   assertEquals(guestSell(sell, blocks.get("d")), [...sell]);
   // Same answer as the place screen's offer for every place.
   for (const id of ["a", "b", "c", "d"]) {
     const g = blocks.get(id);
-    const o = offerFrom({ ...base, perVisitUsed: g?.perVisitUsed });
+    const o = offerFrom({ ...vipOn, perVisitUsed: g?.perVisitUsed });
     assertEquals(guestSell(sell, g), o.sell);
   }
 });
 
-Deno.test("list rows: one Story per visit opens again after a visit (MESITA-3463, MESITA-4207)", () => {
-  const blocks = guestBlocksFrom([{ place_id: "p", voucher: "voucher_story" }], [{ place_id: "p" }]);
-  assertEquals(blocks.get("p"), { perVisitUsed: { voucher_story: false, voucher_vip: false } });
-  assertEquals(guestSell(["voucher_story"], blocks.get("p")), ["voucher_story"]);
-});
-
-Deno.test("list rows: a Story that expired with no story posted frees the visit's slot (MESITA-4405)", () => {
-  const spent = guestBlocksFrom([{ place_id: "p", voucher: "voucher_story" }], []);
-  assertEquals(guestSell(["voucher_story"], spent.get("p")), [], "a Story bought with no visit uses the slot");
-  const freed = guestBlocksFrom([{ place_id: "p", voucher: "voucher_story", freed: true }], []);
-  assertEquals(guestSell(["voucher_story"], freed.get("p")), ["voucher_story"], "an expired, never-posted Story does not");
-  const both = guestBlocksFrom([
-    { place_id: "p", voucher: "voucher_story", freed: true },
-    { place_id: "p", voucher: "voucher_story" },
-  ], []);
-  assertEquals(guestSell(["voucher_story"], both.get("p")), [], "only the freed one is skipped");
-});
-
-Deno.test("withStoryMode: Story leaves sell only when no mention source exists (MESITA-4264)", () => {
-  const o = offerFrom(base);
-  assertEquals(o.sell.includes("voucher_story"), true);
-  assertEquals(withStoryMode(o, "emulated", true).sell.includes("voucher_story"), true);
-  assertEquals(withStoryMode(o, "meta", true).sell.includes("voucher_story"), true);
-  const off = withStoryMode(o, "unavailable", true);
-  assertEquals(off.sell.includes("voucher_story"), false);
-  assertEquals(off.unavailable.voucher_story, "off");
-  assertEquals(off.sell.length, o.sell.length - 1, "every other voucher still sells");
-});
-
-Deno.test("withStoryMode: no place Instagram, no Story (MESITA-4291)", () => {
-  const o = offerFrom(base);
-  const off = withStoryMode(o, "meta", false);
-  assertEquals(off.sell.includes("voucher_story"), false);
-  assertEquals(off.unavailable.voucher_story, "off");
-  assertEquals(off.sell.length, o.sell.length - 1, "every other voucher still sells");
-  assertEquals(withStoryMode(o, "meta").sell.includes("voucher_story"), false, "absent reads no Instagram");
+Deno.test("list rows: one VIP per visit opens again after a visit (MESITA-3463, MESITA-4207)", () => {
+  const blocks = guestBlocksFrom([{ place_id: "p", voucher: "voucher_vip" }], [{ place_id: "p" }]);
+  assertEquals(blocks.get("p"), { perVisitUsed: { voucher_vip: false } });
+  assertEquals(guestSell(["voucher_vip"], blocks.get("p")), ["voucher_vip"]);
 });

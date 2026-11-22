@@ -30,8 +30,6 @@ const NAME: Record<string, string> = {
   voucher_vip: "VIP",
 };
 const ORDER = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_vip"];
-// No Story row since MESITA-4641, even while the server's catalog still lists it.
-const RETIRED = new Set(["voucher_story"]);
 const WHO: Record<string, string> = {
   voucher_200: "As many as they like",
   voucher_1000: "As many as they like",
@@ -53,7 +51,7 @@ const wait = (sec: number) => (sec <= 0 ? "At once" : sec % 3600 === 0 ? `${sec 
 export default async function PaymentsConfigPage() {
   const res = await getVoucherPrices();
   const rows: VoucherPriceRow[] = res.ok
-    ? res.vouchers.filter((v) => !RETIRED.has(v.key)).sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key))
+    ? [...res.vouchers].sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key))
     : [];
   return (
     <PageContainer className="flex flex-col gap-6 sm:gap-8">

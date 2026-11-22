@@ -111,7 +111,6 @@ import {
 import { readRankMode, readSeedPoint, readShuffleSeed } from "../_shared/catalog-request.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { withVouchersUpTo } from "../_shared/payments.ts";
-import { withPlaceOffers } from "../_shared/vouchers.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { demoteSeen, readSeen } from "./seen.ts";
 
@@ -318,7 +317,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
     }));
     // The tile's voucher line (MESITA-3312), two reads for the page; every
     // offer the place sells, whoever looks (MESITA-4292).
-    const fillPlaces = withPlaceOffers(await withVouchersUpTo(admin, filled.places));
+    const fillPlaces = await withVouchersUpTo(admin, filled.places);
     return json({ ok: true, rankMode, places: fillPlaces, summary: filled.summary });
   }
 
@@ -360,7 +359,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
     const row = byId.get(id);
     if (row) shown.push(row);
   }
-  const places = withPlaceOffers(await withVouchersUpTo(admin, shown.length > 0 ? shown : pool.places));
+  const places = await withVouchersUpTo(admin, shown.length > 0 ? shown : pool.places);
 
   console.log(JSON.stringify({
     fn: "consumer-web-list-catalog",

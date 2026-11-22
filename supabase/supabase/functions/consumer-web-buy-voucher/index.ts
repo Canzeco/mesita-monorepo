@@ -15,7 +15,7 @@
 //
 // MESITA-3841: a BASKET. `items: [{ voucher, qty }]` buys several vouchers
 // with ONE charge, all or nothing (the old `voucher` field is a basket of
-// one). Small, Medium and Big take qty 1..5; Story at most 1. Every gate
+// one). Small, Medium and Big take qty 1..5; VIP at most 1. Every gate
 // runs per voucher; the place cap counts the whole basket. One row per unit:
 // the lead under request_id, the others pointing to it (basket_lead_id).
 //
@@ -40,16 +40,9 @@
 //   404 card_not_found (not the guest's saved card: list the cards again)
 //   409 card_declined (+decline_code) | card_needs_auth | closed | in_progress
 //   404 place · 409 no_account | currency_mismatch | paused | not_available |
-//   not_yet | needs_card_payments | needs_instagram | few_followers (Story) |
-//   story_unavailable (Story with live payments and Meta off, MESITA-4264) |
-//   below_minimum | place_cap (MESITA-3947)
+//   not_yet | needs_card_payments | needs_instagram | voucher_retired |
+//   not_vip | below_minimum | place_cap (MESITA-3947)
 //   502 card_failed | stripe_unreachable · 503 payments not configured
-// MESITA-4405: THE STORY VOUCHER PAYS FIRST. It is bought like any voucher,
-// with no story gate: the credit creates its Story record (_shared/story.ts),
-// where the guest posts, a waiter approves and the bonus follows. A Story is
-// paid alone; the guest rules stay here: 409 private_account |
-// story_one_per_basket (and needs_instagram, few_followers, needs_visit
-// above). A `mention_id` in the body is ignored.
 // The client secret of a bank check is returned, never logged.
 //
 // MESITA-4384: EXPRESS PAY (Apple Pay / Google Pay through Stripe's Express
@@ -76,8 +69,6 @@
 //   timed out: start over), 503 payments_unavailable.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { storySaleModeLive } from "../_shared/story-mention.ts";
-import { storyBasketRefusal } from "../_shared/story-buy.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { readCustomer } from "../_shared/boost.ts";
@@ -92,10 +83,7 @@ import {
   basketUnits,
   buyRefusal,
   parseBasket,
-  readStoryGuest,
   sameUnits,
-  storyEligibilityContext,
-  storyRefusal,
   readVipGuest,
   vipRefusal,
   voucherOffer,
@@ -123,12 +111,6 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   const followers = units.slice(1);
   const kinds = basket.items.map((i) => i.voucher);
   if (!isUuid(requestId)) return json({ ok: false, code: "bad_body", field: "request_id", error: "request_id must be a uuid" }, 400);
-  // MESITA-4296: a Story is paid alone. Since MESITA-4405 it pays first:
-  // no story is named or checked here (the Story record follows the money).
-  {
-    const basketRefusal = storyBasketRefusal(kinds, units.length);
-    if (basketRefusal) return json({ ok: false, code: basketRefusal.code, error: basketRefusal.error }, basketRefusal.status);
-  }
   // MESITA-4384: express pay or a saved card, never both.
   const how = expressBodyGate(bodyRes.body);
   if (!how.ok) return json({ ok: false, code: how.code, field: how.field, error: how.error }, how.status);
@@ -196,11 +178,6 @@ serveJson("consumer-web-buy-voucher", async (req) => {
     }
   }
 
-  // No mention source, no Story (MESITA-4264): live payments with Meta off.
-  // MESITA-4535: and none while the kill switch (story_recheck_meta) is off.
-  if (kinds.includes("voucher_story") && (await storySaleModeLive(admin)) === "unavailable") {
-    return json({ ok: false, code: "story_unavailable", error: "The Story voucher is not available right now" }, 409);
-  }
   // MESITA-4384: the kill switch stops a sheet that is already open too.
   if (express && (await readMoneyConfig(admin)).express_wallets.length === 0) {
     return json({ ok: false, code: "disabled", error: "Apple Pay and Google Pay are off right now. Pay with a card." }, 409);
@@ -223,14 +200,6 @@ serveJson("consumer-web-buy-voucher", async (req) => {
     if (vip) {
       return json({ ok: false, code: vip.code, error: vip.error, followers: vip.followers, isPrivate: vip.isPrivate }, vip.status);
     }
-  }
-
-  // Story's own gate: the guest's public Instagram above the follower floor
-  // (MESITA-3507, MESITA-4263). One per visit is buyRefusal's needs_visit.
-  if (kinds.includes("voucher_story")) {
-    const [storyGuest, storyCtx] = await Promise.all([readStoryGuest(admin, userId), storyEligibilityContext(admin)]);
-    const story = storyRefusal("voucher_story", storyGuest, storyCtx);
-    if (story) return json({ ok: false, code: story.code, error: story.error }, story.status);
   }
 
   {

@@ -12,7 +12,7 @@ import { pesos, readyClock, VouchersPane } from "./vouchers";
 const OFFER: PlaceMoney = {
   charges_enabled: true,
   mesita_pay: true,
-  vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_story: false, voucher_vip: false },
+  vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_vip: false },
   test_mode: true,
   currency: "mxn",
   sell: ["voucher_200", "voucher_1000"],
@@ -28,8 +28,9 @@ const OFFER: PlaceMoney = {
 const STALE_SELL: PlaceMoney = {
   ...OFFER,
   test_mode: false,
-  vouchers: { ...OFFER.vouchers, voucher_story: true, voucher_vip: false },
-  sell: ["voucher_200", "voucher_1000", "voucher_story"],
+  vouchers: { ...OFFER.vouchers, voucher_vip: false },
+  // A stale server's retired key, outside the client's key type.
+  sell: ["voucher_200", "voucher_1000", "voucher_story"] as unknown as PlaceMoney["sell"],
   unavailable: { voucher_5000: "not_yet" },
 };
 
