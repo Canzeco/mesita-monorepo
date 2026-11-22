@@ -1,18 +1,16 @@
 "use client";
 
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { Camera, Check, CircleCheck, Clock, Copy, CreditCard, Crown, Gift, Infinity as InfinityIcon, Lock, Repeat, Repeat1, Ticket, Utensils, Wallet, type LucideIcon } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Check, CircleCheck, Clock, CreditCard, Crown, Gift, Infinity as InfinityIcon, Lock, Repeat, Repeat1, Ticket, Utensils, Wallet, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
-import { Instagram } from "../brand-icons";
 
-import type { PlaceActions, StoryRefused, VoucherBuyOutcome } from "../../actions";
-import { STORY_GATE_LINE, type StoryCheckAnswer } from "../../story-check";
+import type { PlaceActions } from "../../actions";
 import { cn } from "../../lib/format";
 import {
   PLACE_META_CLASS,
 } from "../../lib/ui";
 import { VOUCHER_TONE } from "../../lib/offers";
-import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, STORY_MIN_FOLLOWERS, VIP_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
+import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, VIP_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 
 // THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
@@ -21,8 +19,7 @@ import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 // "Make the vouchers vertical, not scrollable horizontally. Just a list of
 // 6 items vertical"). The six vouchers are one catalog on the server
 // (VOUCHER_CATALOG, MESITA-3302) and the six cards Business › Payments draws
-// (MESITA-3298): Standard MX$200 · MX$1,000 · MX$5,000 and Special Welcome ·
-// Story · VIP, each with the same mark and colour on both sides (one mark
+// (MESITA-3298): Standard MX$200 · MX$1,000 · MX$5,000 and VIP, each with the same mark and colour on both sides (one mark
 // everywhere). A guest sees them as A CATALOG (Pato, MESITA-3323: "make a
 // catalog, like it must feel e commerce like products"; MESITA-3326: "use
 // vertical list catalog with e-commerce vibes here. Not 2*3 but 1*6"): six
@@ -38,8 +35,7 @@ import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 // Promos", "Payment Promos"), over the screen's sentence
 // case. THE STANDARD THREE SHARE ONE MARK AND ONE COLOUR, the
 // wallet on emerald (MESITA-3326, Pato: "the standard deals/promos must
-// have the same icon and the same color. the deals that have different
-// colors are welcome and story VIP"); the specials keep their own. Under the title, one
+// have the same icon and the same color"); VIP keeps its own. Under the title, one
 // line reads "Pay $X · Get $Y"; the (i) says what the guest paid is ready at
 // once and the bonus 3 hours later, every voucher (MESITA-4214; one hour for
 // all of it from MESITA-3323).
@@ -100,9 +96,8 @@ type Product = {
 // SMALL, MEDIUM AND BIG VOUCHER SINCE MESITA-3452 (Pato: "rename the other
 // packages to small voucher, medium voucher, big voucher ... welcome
 // voucher"); Standard, Standard Medium, Standard Large before.
-// THE STANDARD THREE ARE NAMED, NOT PRICED (Pato, MESITA-3362: "the name
-// of the thing should be Welcome, Story, VIP, Standard, Medium Standard,
-// Large Standard"): the deal line carries the amounts.
+// THE STANDARD THREE ARE NAMED, NOT PRICED (Pato, MESITA-3362): the deal
+// line carries the amounts.
 const STANDARD: Product[] = [
   // SMALL · MEDIUM · BIG (Pato, 2026-11-15, MESITA-4056): MX$200 +10%,
   // MX$500 +20% (the voucher_5000 key), MX$1,000 +30%. EACH KEY ITS PRICE
@@ -117,10 +112,6 @@ const STANDARD: Product[] = [
 // MESITA-4249's deal, the VIP class only, one each new visit.
 const VIP: Product[] = [
   { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $200.00MX.", limit: "One per visit.", bonus: "100% bonus", short: "VIP", brief: "VIP only · One per visit" },
-];
-
-const SPECIAL: Product[] = [
-  { key: "voucher_story", name: "Story", line: "Pay $100.00MX, get $130.00MX.", limit: "One per visit.", bonus: "30% bonus", short: "Story", brief: "Post a story · One per visit" },
 ];
 
 /** "$1,200.00MX" from cents: always two decimals (MESITA-3767). Formatting
@@ -181,7 +172,7 @@ type Face = {
   /** The big bonus number's ink (green on the black cards). */
   big: string;
   buy: string;
-  Mark?: LucideIcon | typeof Instagram;
+  Mark?: LucideIcon;
 };
 // LIGHT FACES, BLACK WORDS (MESITA-3480, Pato: "standardize the colors, all
 // the boxes must have the same black letters, thus make them lighter, and the
@@ -196,10 +187,9 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
     voucher_200: green,
     voucher_1000: green,
     voucher_5000: green,
-    // ONE COLOUR PER KIND (Pato, 2026-11-16, MESITA-4207: "unlimited
-    // voucher ... Green, but welcome make it blue, and story make it pink
-    // like instagram"; soft tints). Every offer green from MESITA-4181.
-    voucher_story: { ...green, card: VOUCHER_TONE.voucher_story, Mark: Instagram },
+    // STORIES ARE GONE (MESITA-4641): never sold; the key stays only until
+    // the server drops it, and an old purchase reads as a plain voucher.
+    voucher_story: green,
     // The crown tells VIP apart; green like every offer (MESITA-4640).
     voucher_vip: { ...green, card: VOUCHER_TONE.voucher_vip, Mark: Crown },
   };
@@ -217,9 +207,6 @@ function SectionTitle({ id, title }: { id: string; title: string }) {
  *  MESITA-4224. */
 type InfoStatus = { ok: boolean; text: string };
 
-/** WHEN THE CREDITS ARRIVE (MESITA-3498, Pato: "Welcome, Story and VIP are
- *  activated immediately; the other vouchers take one hour ... Pay X, get Y
- *  in 1 hr ... Pay X, get Y instantly"). */
 /** The black button stays clean: no MX there, only on the rows (MESITA-3499,
  *  Pato: "don't mention MX below, just on the select"). */
 function noMx(v: string): string {
@@ -234,14 +221,8 @@ function whole(v: string): string {
 
 /** YOUR MONEY NOW, THE BONUS IN 3 HOURS (Pato, 2026-11-17, MESITA-4214):
  *  every voucher. The row and the button say only "Pay $X · Get $Y"; the (i)
- *  says when each part is ready. Story's money is ready at once too since
- *  MESITA-4264; since MESITA-4484 the guest pays first and the bonus lands 3
- *  hours after the story is posted, if it is still up. */
-function readyIn(key: MoneyVoucherKey, emulator = false): string {
-  // MESITA-4426: emulator mode's test Story waits seconds, not 3 hours.
-  if (key === "voucher_story" && emulator) return "bonus 30 sec after you post, if the story is still up (test)";
-  return key === "voucher_story" ? "bonus 3 hr after you post, if the story is still up" : "bonus in 3 hr";
-}
+ *  says when each part is ready. */
+const READY_IN = "bonus in 3 hr";
 
 /** The (i)'s "Your status" line for a prepayment offer (MESITA-3502). */
 function offerStatus(
@@ -249,7 +230,6 @@ function offerStatus(
   can: boolean,
   lock: GuestLock,
   reason: VoucherReason | undefined,
-  minFollowers: number,
   guest?: PlaceActions["guest"],
 ): InfoStatus {
   // VIP ONLY (MESITA-4640): the bar, then the guest's own facts, objective,
@@ -261,10 +241,8 @@ function offerStatus(
     const privacy = guest.instagramPrivate === false ? "Public" : guest.instagramPrivate === true ? "Private" : "Privacy unknown";
     return { ok: false, text: `${bar} Yours: ${[followers, privacy].filter(Boolean).join(" · ")}.` };
   }
-  if (lock === "instagram") return { ok: false, text: "Link your Instagram to use Story offers." };
-  if (lock === "followers") return { ok: false, text: `Your Instagram needs ${minFollowers.toLocaleString("en-US")} or more followers.` };
   if (can) {
-    if (key === "voucher_story" || key === "voucher_vip") return { ok: true, text: "Available. One per visit." };
+    if (key === "voucher_vip") return { ok: true, text: "Available. One per visit." };
     return { ok: true, text: "Available. Buy as many as you like." };
   }
   // MESITA-3463: a visit is a paid bill here with a card part.
@@ -274,7 +252,7 @@ function offerStatus(
 
 /** The Offers page (MESITA-3412: the host's sheet off Prepay; it was the
  *  fourth tab). Prepayments only since MESITA-4062. */
-type GuestLock = "instagram" | "followers" | "vip" | null;
+type GuestLock = "vip" | null;
 
 /** Who may buy what, once for every list of the six vouchers (VouchersPane,
  *  and the Loyalty Card's Vouchers via voucherOffers, MESITA-3822). */
@@ -305,23 +283,11 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
   // IN TEST MODE NOTHING IS GREYED (Pato, MESITA-3334); live mode dims a row
   // not for sale.
   const dim = money?.test_mode !== true;
-  // The live follower floor (MESITA-4425); an older host or a profile read
-  // without story_rules reads the old constant.
-  const minFollowers = guest?.storyMinFollowers ?? STORY_MIN_FOLLOWERS;
-  // THE GUEST'S OWN LOCKS (MESITA-3502): Story needs a linked Instagram with
-  // enough followers; no offer names a Class (MESITA-4249). Unknown guest (no profile read), no lock.
+  // THE GUEST'S OWN LOCK: only VIP has one.
   const guestLock = (k: MoneyVoucherKey): GuestLock => {
     // VIP only (MESITA-4640): anyone not known to be VIP sees it locked; the
     // buy door refuses a non-VIP whatever this says.
     if (k === "voucher_vip" && guest?.guestClass !== "vip") return "vip";
-    if (!guest) return null;
-    if (k === "voucher_story" && !guest.instagramLinked) return "instagram";
-    // MESITA-4425: the server refuses Story BELOW the live floor (`<`, so
-    // exactly the floor buys; MESITA-4383), emulator mode included, as the
-    // server does (MESITA-4527).
-    if (k === "voucher_story" && guest.instagramFollowers != null && guest.instagramFollowers < minFollowers) {
-      return "followers";
-    }
     return null;
   };
   // Buyable: the server sells it, in every mode (MESITA-4399: in test mode
@@ -337,8 +303,8 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
   };
   // HIDDEN · BLOCKED · AVAILABLE (Pato, 2026-11-21, MESITA-4603: "If not
   // available by the business, don't put it as offer ... never mention
-  // welcome twice ... STORY NEVER HID IT (ONLY HID IT IF THE BUSINESS DON'T
-  // OFFER IT) BUT IF AVAILABLE, JUST BLOCKED"). Reverses MESITA-4220's
+  // welcome twice ... ONLY HID IT IF THE BUSINESS DON'T OFFER IT ... BUT IF
+  // AVAILABLE, JUST BLOCKED"). Reverses MESITA-4220's
   // "every voucher, locked or not". Docs › Credits has the table.
   const show = (k: MoneyVoucherKey): OfferShow => {
     const reason = unavailable[k];
@@ -347,7 +313,7 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
     if (reason !== undefined && !GUEST_SIDE_REASONS.has(reason)) return "hidden";
     return buyable(k) ? "available" : "blocked";
   };
-  return { unavailable, dim, guestLock, buyable, minFollowers, show };
+  return { unavailable, dim, guestLock, buyable, show };
 }
 
 /** How a voucher stands on the Offers page for this guest (MESITA-4603). */
@@ -370,7 +336,7 @@ export type VoucherOffer = {
   bonus: string;
   pay: string;
   get: string;
-  /** "bonus in 3 hr", or Story's "bonus 3 hr after you pay, if your story is still up" (MESITA-4214, MESITA-4296). */
+  /** "bonus in 3 hr" (MESITA-4214). */
   ready: string;
   /** This guest can buy it now. */
   buyable: boolean;
@@ -382,7 +348,7 @@ export type VoucherOffer = {
 
 /** The Offers page's voucher list: TWO PANELS BY HOW MANY YOU CAN BUY
  *  (Pato, 2026-11-16, MESITA-4203: "both are prepayments ... IDK" → "Yes,
- *  rename"): SPECIAL OFFERS (Welcome one per place, Story and VIP one per
+ *  rename"): SPECIAL OFFERS (Welcome one per place, VIP one per
  *  visit), then CLASSIC OFFERS, the three sizes, as many as you like (Pato,
  *  2026-11-17, MESITA-4218: "Classic Offers · Special Offers"; Standard Offers
  *  in MESITA-4216; Limited and
@@ -398,7 +364,7 @@ const GROUPS: { id: "special" | "prepayment" | "vip"; title: string; keys: Reado
   {
     id: "prepayment",
     title: "Regular Offers",
-    keys: new Set(["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"]),
+    keys: new Set(["voucher_200", "voucher_1000", "voucher_5000"]),
   },
   {
     id: "vip",
@@ -412,20 +378,20 @@ const GROUPS: { id: "special" | "prepayment" | "vip"; title: string; keys: Reado
  *  sale yet (money-state's VIP today) is a locked row, never
  *  a missing one; it was dropped from the page from MESITA-3831. */
 function listedProducts(): Product[] {
-  // Story, Small, Medium, Big (MESITA-4154: the specials lead; no Welcome since MESITA-4636).
-  return [...STANDARD, ...SPECIAL, ...VIP];
+  // Small, Medium, Big, then VIP (no Welcome since MESITA-4636, no Story since MESITA-4641).
+  return [...STANDARD, ...VIP];
 }
 
-/** The vouchers in the Offers page's order, Story · Small · Medium · Big (MESITA-4154)
+/** The vouchers in the Offers page's order, Small · Medium · Big · VIP
  *  (MESITA-3834). */
 export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions["guest"]): VoucherOffer[] {
-  const { unavailable, dim, guestLock, buyable, minFollowers, show } = offerRules(money, guest);
+  const { unavailable, dim, guestLock, buyable, show } = offerRules(money, guest);
   const catalog = money?.catalog ?? {};
   const currency = money?.currency ?? "mxn";
   return listedProducts().filter((p) => show(p.key) !== "hidden").map((p) => {
     const line = catalog[p.key];
     const can = buyable(p.key);
-    const status = offerStatus(p.key, can, guestLock(p.key), unavailable[p.key], minFollowers, guest);
+    const status = offerStatus(p.key, can, guestLock(p.key), unavailable[p.key], guest);
     return {
       key: p.key,
       title: p.short,
@@ -433,7 +399,7 @@ export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions[
       bonus: `+${p.bonus.replace(/ bonus$/, "")}`,
       pay: priceValue(p, line, currency),
       get: creditValue(p, line, currency),
-      ready: readyIn(p.key, guest?.storyEmulator === true),
+      ready: READY_IN,
       buyable: can,
       dimmed: !can && dim,
       why: can ? null : status.text.replace(/\.$/, ""),
@@ -454,10 +420,7 @@ export function readyClock(iso: string, now = new Date()): string {
  *  bonus in 3 hours. JUST THIS 3 STEPS"): each step is one thing that
  *  happens, its amount on the right of a bold line and one small line under
  *  it; the bonus step in green. Where the credit spends and that it never
- *  expires is one line under the steps, never a step. Welcome is the same
- *  three under a one-time notice. Story's own three put the post first
- *  (MESITA-4296), and who can get it is a checklist apart from the steps
- *  (Pato: "the Instagram voucher is just too hard"). The Right now · In 3
+ *  expires is one line under the steps, never a step. The Right now · In 3
  *  hours · Anytime labels were MESITA-4290; each special's own first step
  *  MESITA-4234; four grey bullets MESITA-4224. */
 type Step = {
@@ -467,19 +430,11 @@ type Step = {
   amount?: string;
   line: ReactNode;
   green?: boolean;
-  /** Story's live sheet lights the step the guest is on and ticks the one done. */
+  /** The Credits step lights the step the guest is on and ticks the one done. */
   state?: "current" | "done";
   /** The word under the icon when the steps run across (MESITA-4635). */
   short?: string;
 };
-/** The place's Instagram username from its stored URL, or null: the twin of
- *  supabase _shared/place-instagram.ts (MESITA-4291). */
-export function instagramHandle(url: unknown): string | null {
-  if (typeof url !== "string") return null;
-  const m = url.trim().match(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})\/?(?:[?#].*)?$/i);
-  return m ? m[1].toLowerCase() : null;
-}
-
 
 /** Small, Medium and Big: pay, the credit now, the bonus in 3 hours. */
 function sheetSteps(pay: string, bonus: string | null, card: { label: string; last4: string } | null): Step[] {
@@ -488,45 +443,6 @@ function sheetSteps(pay: string, bonus: string | null, card: { label: string; la
     { Icon: Wallet, title: "Get your credit now", short: "Credits", amount: pay, line: "Right away" },
     { Icon: Gift, title: "Get your bonus in 3 hours", short: "Bonus", amount: bonus ? `+${bonus}` : undefined, line: "In 3 hours, by itself", green: true },
   ];
-}
-
-/** Story: THE VOUCHER'S FOUR STEPS (Pato, MESITA-4431: "remember voucher
- *  entity and story entity … 1. Pay 2. Get credits immediately 3. Post story
- *  tagging place (resolve story task ticket) 4. receive bonus"). The story
- *  ticket is a different row, born when the story is detected. */
-function storySteps(pay: string, bonus: string | null, post: ReactNode, emulator = false): Step[] {
-  return [
-    { Icon: CreditCard, title: "Pay", amount: pay, line: "By card" },
-    { Icon: Wallet, title: "Get your credit now", short: "Credits", amount: pay, line: "Right away" },
-    {
-      Icon: Camera,
-      title: "Post a story tagging Mesita and the restaurant",
-      short: "Post Story",
-      line: (
-        <>
-          {post} Keep that same story up. Your Story ticket is separate from this voucher.
-        </>
-      ),
-    },
-    {
-      Icon: Gift,
-      title: "Get your bonus",
-      short: "Bonus",
-      amount: bonus ? `+${bonus}` : undefined,
-      // MESITA-4426: emulator mode's test Story waits seconds, not 3 hours.
-      line: emulator ? "30 seconds after you post it, if it is still up (test)." : "3 hours after you post it, if it is still up.",
-      green: true,
-    },
-  ];
-}
-
-/** The two names a Story tags, as one text to copy (MESITA-4291). */
-function storyTags(handle: string | null): string {
-  return handle ? `@mesita @${handle}` : "@mesita";
-}
-
-function storyPostLine(handle: string | null): string {
-  return handle ? `Tag @mesita and @${handle} in it.` : "Tag @mesita and the place's Instagram in it.";
 }
 
 const SECTION_LABEL = "text-muted-foreground text-xs leading-tight font-bold tracking-wider uppercase";
@@ -594,7 +510,7 @@ function Box({
 function GoodToKnow({ productKey }: { productKey: MoneyVoucherKey }) {
   const rows: { Icon: LucideIcon; text: string; warn?: boolean }[] = [];
   rows.push({ Icon: Utensils, text: "Spend it on any bill here." }, { Icon: InfinityIcon, text: "It never expires." });
-  if (productKey === "voucher_story" || productKey === "voucher_vip") rows.push({ Icon: Repeat1, text: "One per visit." });
+  if (productKey === "voucher_vip") rows.push({ Icon: Repeat1, text: "One per visit." });
   else rows.push({ Icon: Repeat, text: "Buy as many as you like." });
   return (
     <Box title="Good to know" data-offer-good-to-know="">
@@ -617,65 +533,6 @@ function GoodToKnow({ productKey }: { productKey: MoneyVoucherKey }) {
   );
 }
 
-/** WHO CAN GET A STORY (MESITA-4299): the three things the guest's Instagram
- *  needs, apart from the steps, each ticked, locked or not known yet. */
-type StoryGuest = {
-  linked: boolean | null;
-  followers: number | null;
-  handle: string | null;
-  /** The live floor (MESITA-4425). */
-  minFollowers: number;
-  /** Emulator mode: only the link is checked, so the other rows are hidden. */
-  emulator: boolean;
-};
-type StoryFail = "instagram" | "private" | "followers" | null;
-type Need = { label: string; state: "ok" | "locked" | "unknown" };
-
-/** `passed`: the server's check let this guest through, so all three hold. */
-function storyNeeds(guest: StoryGuest, failing: StoryFail, passed: boolean): Need[] {
-  const state = (fail: StoryFail, known: boolean): Need["state"] => (failing === fail ? "locked" : passed || known ? "ok" : "unknown");
-  const linked = failing !== "instagram" && (passed || guest.linked === true);
-  const link: Need = { label: `Instagram linked${linked && guest.handle ? ` · @${guest.handle}` : ""}`, state: state("instagram", guest.linked === true) };
-  // Emulator mode checks only the link; a row that is never checked is not drawn.
-  if (guest.emulator) return [link];
-  return [
-    link,
-    { label: "Public account", state: state("private", false) },
-    {
-      label: `${guest.minFollowers.toLocaleString("en-US")}+ followers${guest.followers != null ? ` · you have ${guest.followers.toLocaleString("en-US")}` : ""}`,
-      state: state("followers", guest.followers != null && guest.followers >= guest.minFollowers),
-    },
-  ];
-}
-
-function NeedBox({ needs }: { needs: Need[] }) {
-  return (
-    <Box title="Who can get it" data-story-needs="">
-      <ul className="flex flex-col gap-2">
-        {needs.map((n) => (
-          <li
-            key={n.label}
-            className={cn("flex items-center gap-2.5 text-base leading-snug tabular-nums", n.state === "locked" ? "font-semibold text-amber-900" : "text-foreground")}
-            data-story-need={n.state}
-          >
-            {n.state === "ok" ? (
-              <CircleCheck className="h-5 w-5 shrink-0 text-[#00A85A]" strokeWidth={2.25} aria-hidden />
-            ) : n.state === "locked" ? (
-              <Lock className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-            ) : (
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden>
-                <span className="bg-border h-2 w-2 rounded-full" />
-              </span>
-            )}
-            <span>{n.label}</span>
-            {n.state === "unknown" ? null : <span className="sr-only">{n.state === "ok" ? "(yes)" : "(missing)"}</span>}
-          </li>
-        ))}
-      </ul>
-    </Box>
-  );
-}
-
 /** How a card charge ended, as the ticket's Credits and Receipt draw it. */
 type Receipt = {
   outcome: "paid" | "processing";
@@ -688,16 +545,12 @@ type Receipt = {
   at: string;
 };
 
-/** What a Pay ends in: a receipt, a Story refusal (back to the check), or
- *  nothing (the host already said why; the sheet stays). */
-type PayResult = Receipt | StoryRefused | null;
+/** What a Pay ends in: a receipt, or nothing (the host already said why;
+ *  the sheet stays). */
+type PayResult = Receipt | null;
 
-function isStoryRefused(r: PayResult | VoucherBuyOutcome | void): r is StoryRefused {
-  return typeof r === "object" && r !== null && "story_refused" in r;
-}
-
-/** One offer as the sheet and the Story page draw it: the deal, who may buy
- *  it, the card it pays with, and Pay. */
+/** One offer as the ticket draws it: the deal, who may buy it, the card it
+ *  pays with, and Pay. */
 type Offer = {
   pay: string;
   get: string;
@@ -707,11 +560,6 @@ type Offer = {
   bonusAmount: string | null;
   can: boolean;
   status: InfoStatus;
-  /** This guest's own Story lock; the checklist wears it (MESITA-4299). */
-  guestLock: GuestLock;
-  storyGuest: StoryGuest;
-  /** The one action that lifts a lock; `quiet` draws it as a text link. */
-  unlock: { label: string; onClick: () => void; quiet?: boolean } | null;
   live: boolean;
   buying: boolean;
   payCards: PayCards | undefined;
@@ -732,8 +580,8 @@ type Offer = {
   onOpened: () => void;
 };
 
-/** Everything the Offers page and the Story page share: the rules, the
- *  cards, and how one product is bought. */
+/** Everything the Offers page and the ticket share: the rules, the cards,
+ *  and how one product is bought. */
 function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined) {
   const money = place.money;
   // The host is still asking list-vouchers and the place read carried no
@@ -757,28 +605,15 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
   };
   // Signed out: no balance and no cards were read (MESITA-4224, D6).
   const signedOut = live && money != null && money.balance === null && payCards === undefined;
-  // The host's check, bound once so the Story look keeps one loop.
-  const onCheckStory = actions?.onCheckStory;
-  const checkStory = useCallback(
-    (opts: { poll: boolean }): Promise<StoryCheckAnswer> => onCheckStory ? onCheckStory(opts) : Promise.resolve({ kind: "failed" }),
-    [onCheckStory],
-  );
 
   const offer = (p: Product): Offer => {
     const line = catalog[p.key];
     const pay = priceValue(p, line, currency);
     const can = rules.buyable(p.key);
     const lock = rules.guestLock(p.key);
-    // Too few followers: the count is the last sync's, so the guest can read it again.
-    const unlock = lock === "instagram" && actions?.onLinkInstagram
-      ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
-      : lock === "followers" && actions?.onLinkInstagram
-        ? { label: "Grew your account? Sync Instagram", onClick: actions.onLinkInstagram, quiet: true }
-        : null;
     const bonusAmount = line ? pesos(line.bonus_cents, currency) : null;
     const receiptFor = (outcome: Receipt["outcome"]): Receipt => {
-      // Story's bonus waits 3 hours from payment (MESITA-4296).
-      const wait = line ? line.available_after_sec : p.key === "voucher_story" ? 3 * 3600 : null;
+      const wait = line ? line.available_after_sec : null;
       const readyAt = wait !== null ? new Date(Date.now() + wait * 1000).toISOString() : null;
       return { outcome, pay, bonus: bonusAmount ? whole(bonusAmount) : null, readyAt, card: payCard, at: new Date().toISOString() };
     };
@@ -788,16 +623,7 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
       bonus: `+${p.bonus.replace(/ bonus$/, "")}`,
       bonusAmount,
       can,
-      status: offerStatus(p.key, can, lock, rules.unavailable[p.key], rules.minFollowers),
-      guestLock: can ? null : lock,
-      storyGuest: {
-        linked: actions?.guest ? actions.guest.instagramLinked : null,
-        followers: actions?.guest?.instagramFollowers ?? null,
-        handle: actions?.guest?.instagramHandle ?? null,
-        minFollowers: rules.minFollowers,
-        emulator: actions?.guest?.storyEmulator === true,
-      },
-      unlock,
+      status: offerStatus(p.key, can, lock, rules.unavailable[p.key]),
       live,
       buying,
       payCards,
@@ -818,15 +644,14 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
           actions.onAddPayCard(p.key);
           return null;
         }
-        // One unit, nothing else in the basket (a Story is paid alone).
+        // One unit, nothing else in the basket.
         const out = await actions?.onBuyVoucher?.([{ voucher: p.key, qty: 1 }], signedOut ? null : payCard?.id ?? null);
-        if (isStoryRefused(out)) return out;
         if (out !== "paid" && out !== "processing") return null;
         return receiptFor(out);
       },
     };
   };
-  return { loading, ...rules, catalog, currency, offer, checkStory };
+  return { loading, ...rules, catalog, currency, offer };
 }
 
 /** OFFER EVENTS BASELINE (MESITA-4375): one offer_sheet_opened per opening,
@@ -882,250 +707,6 @@ function CardLine({ offer }: { offer: Offer }) {
   );
 }
 
-const PRIMARY = "bg-foreground text-paper disabled:bg-muted disabled:text-muted-foreground flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold tabular-nums hover:opacity-90";
-const QUIET = "text-muted-foreground min-h-11 self-center px-3 text-sm font-semibold underline underline-offset-2";
-
-/** What the Story page needs from the host besides the offer (MESITA-4405:
- *  the gate only; posting and the waiter live on the Story's own screen). */
-type StoryHost = {
-  check: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
-  /** The host's Instagram page: link it, or sync it after making it public. */
-  onInstagram: (() => void) | null;
-};
-
-/** "2 h 14 min" until `iso`, whole minutes, or null once it has passed. */
-function leftUntil(iso: string, now: number): string | null {
-  const at = Date.parse(iso);
-  if (!Number.isFinite(at) || at <= now) return null;
-  const min = Math.ceil((at - now) / 60_000);
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h === 0) return `${m} min`;
-  return m === 0 ? `${h} h` : `${h} h ${m} min`;
-}
-
-/** THE STORY PAGE'S FRAME (MESITA-4303, Pato: "definitely with own subpage,
- *  not modal weird view"; D5): the boxes scroll on the grey page, the one
- *  action is pinned under them on a white bar, clear of the phone's edge. */
-function StoryFrame({ children, bar }: { children: ReactNode; bar: ReactNode }) {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col" data-story-page>
-      <div className="scrollbar-thin-dark bg-background flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pt-4 pb-6">{children}</div>
-      <div className="bg-card border-border flex shrink-0 flex-col gap-2 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-story-bar>
-        {bar}
-      </div>
-    </div>
-  );
-}
-
-/** PAID (MESITA-4405): the money is the guest's now; the host moves the guest
- *  to the Story's own screen, where the steps start. This shows while it
- *  does (and stays for a payment the bank is still confirming). */
-function StoryPaid({ receipt, placeName, onDone, deadlineAt }: { receipt: Receipt; placeName: string; onDone: () => void; deadlineAt: string | null }) {
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => {
-    const t = window.setTimeout(() => setNow(Date.now()), 0);
-    return () => window.clearTimeout(t);
-  }, []);
-  const paid = receipt.outcome === "paid";
-  const left = deadlineAt && now !== null ? leftUntil(deadlineAt, now) : null;
-  return (
-    <StoryFrame
-      bar={
-        <button type="button" onClick={onDone} autoFocus className={PRIMARY}>
-          Done
-        </button>
-      }
-    >
-      <Box data-offer-receipt={receipt.outcome}>
-        <p className="text-foreground flex items-center gap-2 text-xl font-bold tabular-nums" role="status">
-          <CircleCheck className="h-7 w-7 shrink-0 text-[#00A85A]" strokeWidth={2.25} aria-hidden />
-          {paid ? `${whole(receipt.pay)} is yours` : "Your bank is confirming"}
-        </p>
-        <p className="text-muted-foreground mt-1 text-base leading-snug">
-          {paid ? `Ready to spend now at ${placeName}.` : "The credit shows once it's through. You won't be charged twice."}
-        </p>
-      </Box>
-      <Box title="Your bonus" data-story-next="">
-        <p className="text-foreground text-lg leading-snug font-bold">Now post your story</p>
-        <p className="text-muted-foreground mt-1 text-base leading-snug tabular-nums">
-          {left ? `You have ${left}. ` : ""}Its steps are in Me › Tickets › Stories.
-        </p>
-      </Box>
-    </StoryFrame>
-  );
-}
-
-/** THE STORY OFFER (MESITA-4303's page; Buy only since MESITA-4405, Pato:
- *  "1. Pay $X. 2. Get principal immediately. 3. Solve the Story artifact
- *  (substeps). 4. Receive bonus."). On open the gate runs once: a gate shows
- *  the checklist and its one action; otherwise the deal, how it works, and
- *  Pay. Paid, the host lands the guest on the Story's own screen. Already
- *  bought here: a box and the Story screen's list (D6). */
-function StoryFlow({
-  host,
-  offer,
-  placeName,
-  placeHandle,
-  onDone,
-  onWallet,
-}: {
-  host: StoryHost;
-  offer: Offer;
-  placeName: string;
-  placeHandle: string | null;
-  onDone: () => void;
-  onWallet: () => void;
-}) {
-  const [answer, setAnswer] = useState<StoryCheckAnswer | null>(null);
-  const [refusal, setRefusal] = useState<string | null>(null);
-  const [receipt, setReceipt] = useState<Receipt | null>(null);
-  useOfferOpened(offer);
-  const check = host.check;
-
-  useEffect(() => {
-    let gone = false;
-    void check({ poll: false })
-      .catch((): StoryCheckAnswer => ({ kind: "failed" }))
-      .then((a) => {
-        if (!gone) setAnswer(a);
-      });
-    return () => {
-      gone = true;
-    };
-  }, [check]);
-
-  const handle = answer && answer.kind !== "failed" ? (answer.placeHandle ?? placeHandle) : placeHandle;
-  const gate = answer?.kind === "gate" ? answer.reason : null;
-
-  const press = async () => {
-    setRefusal(null);
-    const r = await offer.onPay();
-    if (isStoryRefused(r)) {
-      setRefusal(r.story_refused);
-      return;
-    }
-    if (r) setReceipt(r);
-  };
-
-  // No post window since MESITA-4484 (MESITA-4527 removed the "12 h" line).
-  if (receipt) return <StoryPaid receipt={receipt} placeName={placeName} onDone={onDone} deadlineAt={null} />;
-
-  const deal = <OfferBox pay={offer.pay} get={offer.get} bonus={offer.bonus} />;
-  const amount = whole(offer.pay);
-  const bonusText = offer.bonusAmount ? whole(offer.bonusAmount) : null;
-  const good = <GoodToKnow productKey="voucher_story" />;
-  const steps = <StepList steps={storySteps(amount, bonusText, storyPostLine(handle), offer.storyGuest.emulator)} />;
-
-  // ALREADY BOUGHT HERE (D6): no lock; the Story and its steps are in Tickets.
-  if (gate === "already_bought") {
-    return (
-      <StoryFrame
-        bar={
-          <button type="button" onClick={onWallet} className={PRIMARY} data-story-wallet>
-            See your Stories
-          </button>
-        }
-      >
-        {deal}
-        <Box data-story-gate="already_bought">
-          <p className="text-foreground text-lg leading-snug font-bold">You already have a Story here.</p>
-          <p className="text-muted-foreground mt-1 text-base leading-snug">One per visit. Its steps and bonus are in Me › Tickets › Stories.</p>
-        </Box>
-        {good}
-      </StoryFrame>
-    );
-  }
-
-  if (gate) {
-    const line = STORY_GATE_LINE[gate];
-    const failing: StoryFail =
-      gate === "needs_instagram" ? "instagram" : gate === "private_account" ? "private" : gate === "few_followers" ? "followers" : null;
-    return (
-      <StoryFrame
-        bar={
-          <>
-            {line.action && host.onInstagram ? (
-              <button type="button" onClick={host.onInstagram} className={PRIMARY} data-offer-action>
-                {line.action === "sync_instagram" ? "Sync Instagram" : "Link Instagram"}
-              </button>
-            ) : (
-              <button type="button" onClick={onDone} className={PRIMARY} data-story-other-offers>
-                See other offers
-              </button>
-            )}
-            {/* Too few followers: the count is the last sync's, so a guest who grew can read it again. */}
-            {gate === "few_followers" && host.onInstagram ? (
-              <button type="button" onClick={host.onInstagram} className={QUIET} data-offer-action="quiet">
-                Grew your account? Sync Instagram
-              </button>
-            ) : null}
-          </>
-        }
-      >
-        {deal}
-        <div data-story-gate={gate} className="contents">
-          <NeedBox needs={storyNeeds(offer.storyGuest, failing, false)} />
-          {/* The amber line only when the checklist does not already say it. */}
-          {failing === "instagram" || failing === "followers" ? null : (
-            <p className="flex shrink-0 items-start gap-2.5 rounded-2xl bg-amber-50 px-4 py-3 text-amber-900">
-              <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-              <span className="text-base leading-snug font-semibold">{line.text}</span>
-            </p>
-          )}
-        </div>
-        <Box title="How it works" className="opacity-50">
-          {steps}
-        </Box>
-        {good}
-      </StoryFrame>
-    );
-  }
-
-  const button = offer.signedOut
-    ? "Sign in to buy"
-    : answer === null
-      ? "Checking…"
-      : offer.buying
-        ? "Paying…"
-        : offer.needsCard
-          ? "Add a card to pay"
-          : `Pay ${amount}`;
-
-  return (
-    <StoryFrame
-      bar={
-        <>
-          {refusal ? (
-            <p className="rounded-xl bg-amber-50 px-3 py-2.5 text-base leading-snug font-semibold text-amber-900" role="alert" data-story-refusal>
-              {refusal}
-            </p>
-          ) : null}
-          <CardLine offer={offer} />
-          <button
-            type="button"
-            onClick={() => void press()}
-            disabled={!offer.live || offer.buying || answer === null || offer.cardsPending}
-            className={PRIMARY}
-            data-voucher-buy="voucher_story"
-            data-story-primary="pay"
-          >
-            {offer.needsCard && !offer.signedOut ? <CreditCard className="h-5 w-5" strokeWidth={2.25} aria-hidden /> : null}
-            {button}
-          </button>
-        </>
-      }
-    >
-      {deal}
-      <NeedBox needs={storyNeeds(offer.storyGuest, null, answer?.kind === "ready")} />
-      <Box title="How it works" data-story-steps="">
-        {steps}
-      </Box>
-      {good}
-    </StoryFrame>
-  );
-}
-
 /** The deal: You pay $X · You get $Y with the bonus named, in its own box. */
 function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string }) {
   return (
@@ -1153,7 +734,7 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
  *  `step - 1`, none on the front. */
 export const OFFER_TICKET_STEPS = ["Pay", "Credits", "Receipt"] as const;
 
-/** The vouchers bought on a ticket. Story keeps its own page (MESITA-4303). */
+/** The vouchers bought on a ticket. */
 export const OFFER_TICKET_KEYS: readonly MoneyVoucherKey[] = ["voucher_200", "voucher_1000", "voucher_5000"];
 
 /** One step of the ticket, handed to the host's frame (the Pay Bill ticket's
@@ -1195,7 +776,7 @@ function ReceiptRow({ label, value, green }: { label: string; value: ReactNode; 
  *  three hours on a screen.
  *
  *    1 Offer ── Continue ──► 2 Pay ── Pay $X ──► 3 Credits ── See receipt ──► 4 Receipt ── Done
- *       │ locked: the reason, its unlock      │ declined: stays, the host says why
+ *       │ locked: the reason                  │ declined: stays, the host says why
  *       └ (no Continue)                       └ no card: Add a card (a modal), stays
  *
  *  Nothing is stored before the card charge answers paid or processing: the
@@ -1330,9 +911,7 @@ function OfferTicketSteps({
         </>
       ),
       primary: locked
-        ? offer.unlock
-          ? { label: offer.unlock.label, disabled: false, busy: false, onClick: offer.unlock.onClick }
-          : null
+        ? null
         : { label: "Continue", disabled: loading, busy: false, onClick: () => setStep(2) },
     });
   }
@@ -1367,7 +946,7 @@ function OfferTicketSteps({
         busy: buying,
         onClick: () => {
           void offer.onPay().then((r) => {
-            if (r && !isStoryRefused(r)) {
+            if (r) {
               setReceipt(r);
               setStep(3);
             }
@@ -1460,46 +1039,6 @@ function OfferTicketSteps({
   });
 }
 
-/** THE STORY OFFER ON ITS OWN PAGE (MESITA-4303): the host's
- *  /place/<id>/story draws this under its own header. Without the host's
- *  check (admin's preview) there is no page: Story stays a sheet. */
-export function StoryOfferPage({
-  place,
-  actions,
-  onDone,
-  onWallet,
-}: {
-  place: PlaceDetail;
-  actions?: PlaceActions;
-  /** Back to the Offers page. */
-  onDone: () => void;
-  /** This place's credit in Wallet, where a bought Story's countdown lives. */
-  onWallet: () => void;
-}) {
-  const onLoad = actions?.onLoadVouchers;
-  useEffect(() => {
-    onLoad?.();
-  }, [onLoad]);
-  const co = useOfferCheckout(place, actions);
-  const story = SPECIAL.find((p) => p.key === "voucher_story");
-  if (!story) return null;
-  const offer = co.offer(story);
-  const host: StoryHost = {
-    check: co.checkStory,
-    onInstagram: actions?.onLinkInstagram ?? null,
-  };
-  return (
-    <StoryFlow
-      host={host}
-      offer={offer}
-      placeName={place.name}
-      placeHandle={instagramHandle(place.channels?.instagram_url)}
-      onDone={onDone}
-      onWallet={onWallet}
-    />
-  );
-}
-
 export function VouchersPane({
   place,
   actions,
@@ -1514,12 +1053,8 @@ export function VouchersPane({
 
   const co = useOfferCheckout(place, actions);
   const { loading, dim, guestLock, buyable, unavailable, catalog, currency } = co;
-  // STORY IS A PAGE (MESITA-4303): the host opens /place/<id>/story; without
-  // one (admin's preview) Story stays a sheet like the rest.
-  const openStory = actions?.onOpenStory;
-
   // A TAP OPENS THE TICKET (MESITA-4630): the host pushes the voucher's own
-  // page; Story's own page (MESITA-4303). A bottom sheet until then
+  // page. A bottom sheet until then
   // (MESITA-4224). Without the host's action (admin's preview), nothing opens.
   const openOffer = actions?.onOpenOffer;
 
@@ -1549,7 +1084,7 @@ export function VouchersPane({
                 const Mark = face.Mark ?? Ticket;
                 const bonus = `+${p.bonus.replace(/ bonus$/, "")}`;
                 const locked = !loading && !can;
-                const why = locked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key], co.minFollowers, actions?.guest).text : "";
+                const why = locked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key], actions?.guest).text : "";
                 // A PRODUCT ROW (Pato, 2026-11-17, MESITA-4224: "offers must
                 // really look like products, like item products"; D8): the
                 // product's face, its name, the deal, the bonus in ink, an
@@ -1559,10 +1094,7 @@ export function VouchersPane({
                     <button
                       type="button"
                       disabled={loading}
-                      onClick={() => {
-                        if (p.key === "voucher_story") openStory?.();
-                        else openOffer?.(p.key);
-                      }}
+                      onClick={() => openOffer?.(p.key)}
                       aria-label={`${p.short}, pay ${whole(pay)}, get ${whole(get)}, ${bonus} bonus${locked ? `. ${why}` : ""}`}
                       className="hover:bg-muted/50 flex min-h-[4.5rem] w-full cursor-pointer items-center gap-3 px-3.5 py-2 text-left"
                     >

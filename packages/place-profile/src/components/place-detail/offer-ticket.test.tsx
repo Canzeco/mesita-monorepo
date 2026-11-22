@@ -23,7 +23,7 @@ const MONEY: PlaceMoney = {
   test_mode: false,
   currency: "mxn",
   sell: ["voucher_200", "voucher_1000", "voucher_5000"],
-  unavailable: { voucher_story: "off" },
+  unavailable: {},
   catalog: {
     voucher_5000: { price_cents: 500000, bonus_cents: 150000, credit_cents: 650000, available_after_sec: 10800 },
   },

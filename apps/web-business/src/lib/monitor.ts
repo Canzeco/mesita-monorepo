@@ -5,10 +5,10 @@
 
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 
-export const MONITOR_KINDS = ["visits", "vouchers", "gifts", "payments", "credits", "stories"] as const;
+export const MONITOR_KINDS = ["visits", "vouchers", "gifts", "payments", "credits"] as const;
 export type MonitorKind = (typeof MONITOR_KINDS)[number];
 
-export type LinkKind = "visit" | "payment" | "voucher" | "credit" | "story";
+export type LinkKind = "visit" | "payment" | "voucher" | "credit";
 export type MonitorLink = { kind: LinkKind; id: string };
 
 export type MonitorRow = {
@@ -137,19 +137,6 @@ const PAYMENT: Record<string, string> = {
   partly_refunded: "Partly refunded",
   needs_review: "Needs review",
 };
-const STORY: Record<string, string> = {
-  found: "Needs a look",
-  waiting_post: "Waiting for the post",
-  approved: "Approved",
-  released: "Bonus paid",
-};
-const STORY_VOID: Record<string, string> = {
-  expired: "Expired",
-  deleted: "Deleted",
-  unreachable: "Could not re-check",
-  refunded: "Refunded",
-  operator: "Voided by Mesita",
-};
 const PAYOUT: Record<string, string> = {
   paid: "Paid",
   in_transit: "In transit",
@@ -170,10 +157,6 @@ export function rowStatus(kind: MonitorKind, row: MonitorRow): string {
   if (kind === "vouchers") return PURCHASE[String(p.status)] ?? raw(p.status);
   if (kind === "payments") return PAYMENT[String(p.status)] ?? raw(p.status);
   if (kind === "gifts") return GIFT[String(p.status)] ?? raw(p.status);
-  if (kind === "stories") {
-    if (p.state === "void") return STORY_VOID[String(p.void_reason ?? "")] ?? "Void";
-    return STORY[String(p.state)] ?? raw(p.state);
-  }
   return creditLabel(row);
 }
 
@@ -186,7 +169,7 @@ export function creditLabel(row: MonitorRow): string {
     case "voucher":
       return "Credit bought";
     case "bonus":
-      return p.story ? "Story bonus" : "Bonus credit";
+      return "Bonus credit";
     case "extra":
       return "Extra credit";
     case "spend":
@@ -245,7 +228,6 @@ export function rowAmount(kind: MonitorKind, row: MonitorRow): string {
   if (kind === "visits") return p.bill_cents == null ? "Waiting for the bill" : money(n("bill_cents") + n("tip_cents"));
   if (kind === "vouchers") return money(n("amount_cents"));
   if (kind === "payments") return money(n("amount_cents") + n("tip_cents") + n("outside_cents"));
-  if (kind === "stories") return money(n("bonus_cents"));
   if (kind === "gifts") return money(n("amount_cents"), String(p.currency ?? "mxn"));
   return signedMoney(n("amount_cents"), String(p.currency ?? "mxn"));
 }
@@ -257,7 +239,6 @@ const LINK_LABEL: Record<LinkKind, string> = {
   payment: "Payment",
   voucher: "Voucher",
   credit: "Credit",
-  story: "Story",
 };
 
 export function linkLabel(link: MonitorLink): string {
@@ -280,8 +261,6 @@ export function linkHref(placeId: string, link: MonitorLink): string {
       return `${base(placeId)}/vouchers?id=${id}`;
     case "credit":
       return `${base(placeId)}/credits?id=${id}`;
-    case "story":
-      return `${base(placeId)}/general?story=${id}#stories`;
   }
 }
 
@@ -327,7 +306,6 @@ export const EMPTY: Record<MonitorKind | "customers" | "views", string> = {
   payments: "No payments yet.",
   credits: "No credit movements yet.",
   gifts: "No gifts yet.",
-  stories: "No stories yet.",
   customers: "No customers yet.",
   views: "No views yet.",
 };
@@ -338,5 +316,4 @@ export const NOUN: Record<MonitorKind, { one: string; many: string }> = {
   payments: { one: "payment", many: "payments" },
   credits: { one: "credit movement", many: "credit movements" },
   gifts: { one: "gift", many: "gifts" },
-  stories: { one: "story", many: "stories" },
 };

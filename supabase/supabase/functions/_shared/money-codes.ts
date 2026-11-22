@@ -84,6 +84,8 @@ export const MONEY_CODES = [
   "needs_visit",
   // The VIP voucher, VIP class only (MESITA-4640)
   "not_vip",
+  // A voucher no longer sold: Story (MESITA-4641)
+  "voucher_retired",
   // A voucher buy without a saved card (MESITA-4065: no Stripe page; the
   // guest adds a card in the app first)
   "card_required",

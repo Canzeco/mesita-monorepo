@@ -1,6 +1,5 @@
 "use client";
 
-import { openStories } from "@/lib/story-lines";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -89,7 +88,6 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
           <PlaceCredit
             row={row}
             canSend={wallet?.can_send === true}
-            stories={openStories(wallet?.waiting_stories ?? []).filter((s) => s.place_id === row.placeId)}
             confirming={confirming}
             onReread={reread}
             onRemove={removeLoyaltyCard}

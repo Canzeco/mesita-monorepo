@@ -11,10 +11,8 @@ import {
   payBillPath,
   creditEntryPath,
   visitPath,
-  storyPurchasePath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
-import { storyForPurchase, storyPurchaseIds, storyVoucherOpen, storyVoucherStage, storyVoucherWords } from "@/lib/story-voucher";
 import type { TicketKind } from "@/lib/ticket-kinds";
 import type {
   ActivityItem,
@@ -58,7 +56,6 @@ export const KIND_WORD: Record<TicketRowKind, string> = {
   payment: "Payment",
   voucher: "Credit bought",
   bonus: "Bonus",
-  story: "Story voucher",
   gift_in: "Gift received",
   gift_out: "Gift sent",
   gift_back: "Gift taken back",
@@ -188,9 +185,8 @@ const GIFT_KINDS = new Set(["gift_out", "gift_in", "gift_back"]);
 const BOUGHT_KINDS = new Set(["prepay", "voucher"]);
 const sum = (es: WalletEntry[]) => es.reduce((n, e) => n + e.amount_cents, 0);
 
-export function walletRows(w: Wallet, now = Date.now()): Row[] {
+export function walletRows(w: Wallet): Row[] {
   const out: Row[] = [];
-  const storyBuys = storyPurchaseIds(w);
   for (const b of w.balances) {
     const place = b.place?.name ?? "A Mesita place";
     const photo = b.place?.photo ?? null;
@@ -246,43 +242,13 @@ export function walletRows(w: Wallet, now = Date.now()): Row[] {
         return;
       }
       if (BOUGHT_KINDS.has(e.kind)) {
-        // Its bonus: by purchase when both carry one (a Story bonus lands
-        // hours later), else by the same instant (MESITA-4627).
+        // Its bonus: by purchase when both carry one, else by the same
+        // instant (MESITA-4627).
         const bonus = bonuses.find(
           (x) => !usedBonus.has(x) && (e.purchase_id && x.purchase_id ? x.purchase_id === e.purchase_id : x.at === e.at),
         );
         if (bonus) usedBonus.add(bonus);
         const pending = e.pending || !!bonus?.pending;
-        // A STORY VOUCHER (MESITA-4627): the same row, one more step; it
-        // opens the Story screen, which finds the Story by the purchase.
-        if (e.purchase_id && storyBuys.has(e.purchase_id)) {
-          const pid = e.purchase_id;
-          const refunded = b.entries.some((x) => x.kind === "reversal" && !x.payment_id && x.purchase_id === pid);
-          const stage = storyVoucherStage(storyForPurchase(w.stories, pid), refunded, now);
-          const words = storyVoucherWords(stage);
-          out.push({
-            key: `b-${b.place_id}-${e.at}-${i}`,
-            type: "vouchers",
-            kind: "story",
-            sign: "+",
-            at: e.at,
-            upcoming: false,
-            place,
-            photo,
-            status:
-              stage === "done"
-                ? { label: words.label, tone: "green" }
-                : stage === "lost"
-                  ? { label: words.label, tone: "grey" }
-                  : { label: words.label, tone: "ink" },
-            landing: storyVoucherOpen(stage),
-            big: money(e.amount_cents, cur),
-            money: true,
-            line: join(words.line, bonus && `+${money(bonus.amount_cents, cur)} bonus`),
-            href: storyPurchasePath(pid),
-          });
-          return;
-        }
         out.push({
           key: `b-${b.place_id}-${e.at}-${i}`,
           type: "vouchers",
@@ -367,8 +333,6 @@ export function walletRows(w: Wallet, now = Date.now()): Row[] {
       );
   }
 
-  // NO STORY ROWS OF THEIR OWN (MESITA-4627): a Story voucher is its
-  // voucher row above, which carries the Story's step.
   return out;
 }
 

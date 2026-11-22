@@ -21,7 +21,7 @@ export const ACCOUNT = "/account";
 // Preview is a modal on Profile (MESITA-3136). All is the one page listing
 // every product, current and future (MESITA-3238; was Soon, MESITA-3197).
 // Payments (MESITA-3296) holds the place's Stripe account and money switches.
-// Operations is Views · Visits · Vouchers · Stories · Gifts · Money
+// Operations is Views · Visits · Vouchers · Gifts · Money
 // (MESITA-3301; Money was Transactions, MESITA-3308; MESITA-4487 adds the
 // ticket kinds). Visits is a page, not the MESITA-3202 log.
 // No Wallet (MESITA-3391, Pato: "wallet is for consumers, not for
@@ -31,14 +31,13 @@ export const ACCOUNT = "/account";
 // reviews boxes sit under the Profile editor; /reviews redirects there.
 // Reservations (MESITA-3600, Pato: "in capabilities add Reservations, only
 // configure no or yes") holds its one switch, moved from Settings › Actions.
-// General (MESITA-4528, Pato: "General (here include reservations and stories
-// and missing configuration… and the all there nested with a new button)")
-// gathers the pages the rail no longer lists.
-export const PLACE_TABS = ["views", "visits", "vouchers", "stories", "gifts", "money", "credits", "customers", "profile", "premier", "payments", "general", "reservations", "all", "settings", "admin"] as const;
+// General (MESITA-4528) gathers the pages the rail no longer lists.
+// No Stories (MESITA-4641): /places/<id>/stories redirects to General.
+export const PLACE_TABS = ["views", "visits", "vouchers", "gifts", "money", "credits", "customers", "profile", "premier", "payments", "general", "reservations", "all", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 /** The tabs that are sections of General, not pages (MESITA-4534). */
-export const GENERAL_SECTIONS: readonly PlaceTab[] = ["reservations", "stories", "settings"];
+export const GENERAL_SECTIONS: readonly PlaceTab[] = ["reservations", "settings"];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {
   const base = `/places/${encodeURIComponent(placeId)}`;

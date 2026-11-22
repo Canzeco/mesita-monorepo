@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ticketLine, ticketStatus, ticketWhen, voucherName, type GiftTicket, type StoryTicket, type VisitTicket, type VoucherTicket } from "@/lib/ticket-desk";
+import { ticketLine, ticketStatus, ticketWhen, voucherName, type GiftTicket, type VisitTicket, type VoucherTicket } from "@/lib/ticket-desk";
 
 const at = "2026-11-20T12:00:00Z";
 const base = { id: "1", at, rank: 0, guest: "Ana" };
@@ -21,18 +21,10 @@ describe("ticket desk words", () => {
     expect(ticketWhen("2026-11-20T18:00:00Z", "America/Mexico_City")).toBe("Nov 20, 12:00 PM");
   });
 
-  it("names the voucher products", () => {
+  it("names the voucher products; an old Story purchase keeps its name (MESITA-4641)", () => {
     expect(voucherName("voucher_story")).toBe("Story Voucher");
     expect(voucherName("voucher_welcome")).toBe("Voucher");
     expect(voucherName(null)).toBe("Voucher");
-  });
-
-  it("says a posted story needs a look, and a void says why", () => {
-    const found: StoryTicket = { ...base, state: "found", void_reason: null, bonus_cents: 4000, deadline_at: at };
-    expect(ticketStatus("stories", found)).toBe("Needs a look");
-    expect(ticketLine("stories", found)).toContain("look");
-    const expired: StoryTicket = { ...found, state: "void", void_reason: "expired" };
-    expect(ticketStatus("stories", expired)).toBe("Expired");
   });
 
   it("says a visit is Open or Paid, with the waiter and the ticket", () => {

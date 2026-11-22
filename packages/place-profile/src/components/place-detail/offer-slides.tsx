@@ -150,8 +150,7 @@ function OfferWords({
   // THE WHOLE OFFER IN ONE LINE where there is room (Pato, 2026-11-21,
   // MESITA-4615: "if enough space, do mention the full offer: Prepay Up to
   // 30% Bonus. only in the card view"): the Loyalty Card's full-width tile
-  // reads "Prepay up to +30% Bonus" (Prepay shows the best size), "Welcome
-  // +100% Bonus", "Story +30% Bonus".
+  // reads "Prepay up to +30% Bonus" (Prepay shows the best size).
   if (full) {
     return (
       <span className={cn("absolute inset-0 flex items-center justify-center px-2", className)}>

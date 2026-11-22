@@ -18,12 +18,6 @@ describe("buyRefusalAction", () => {
     expect(buyRefusalAction("paused")).toEqual({ kind: "say", line: BUY_REFUSAL.paused, reload: true });
     expect(buyRefusalAction("nope")).toEqual({ kind: "say", line: BUY_REFUSAL.failed, reload: true });
   });
-  it("a Story refusal about the guest is said on the Story page (MESITA-4296, MESITA-4405: nothing charged, no story named)", () => {
-    for (const code of ["private_account", "story_one_per_basket"]) {
-      expect(buyRefusalAction(code)).toEqual({ kind: "story", line: BUY_REFUSAL[code] });
-    }
-    expect(buyRefusalAction("bad_body").kind).toBe("say");
-  });
 });
 
 describe("isDefinitiveRefusal", () => {

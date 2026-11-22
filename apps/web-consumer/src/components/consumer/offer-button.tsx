@@ -25,7 +25,7 @@ const OFFER_BOX =
 
 /** ONE SWITCHING BOX (Pato, 2026-11-17, MESITA-4219: "this boxes looks like
  *  shit, return to the switching boxes"): every offer this guest can buy here
- *  in one box the height of Save · Share, Classic · Story, each
+ *  in one box the height of Save · Share, each
  *  in its colour with its "N% Bonus" pill, on the shared 2s beat. A TAP OPENS
  *  THE PLACE (Pato, 2026-11-19, MESITA-4455: "don't redirect directly to the
  *  offers page. direct to the place profile, and then i need to click

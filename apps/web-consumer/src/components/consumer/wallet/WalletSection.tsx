@@ -17,25 +17,6 @@ import { GiftClaimSheet } from "./SendCredit";
 import { cn } from "@/lib/utils";
 import { useWallet } from "./use-wallet";
 import { money } from "@/lib/api/wallet";
-import { storyForPurchase, storyPurchaseIds, storyVoucherOpen, storyVoucherStage, storyVoucherWords } from "@/lib/story-voucher";
-import { splitEntries } from "@/lib/wallet-entries";
-
-/** A voucher's credit or bonus still landing (MESITA-4625): Pay lists it in
- *  Pending Tickets, blue. */
-export type PendingVoucher = {
-  key: string;
-  placeId: string;
-  name: string | null;
-  photo: string | null;
-  purchaseId: string | null;
-  amountCents: number;
-  currency: string;
-  kind: string;
-  availableAt: string | null;
-  /** A Story voucher still to post, wait or check (MESITA-4627). */
-  story?: { label: string; line: string };
-};
-const VOUCHER_KINDS = new Set(["voucher", "prepay", "bonus"]);
 
 // ONE PANEL, EACH PLACE ONCE (Pato, 2026-11-20, MESITA-4497, after a
 // /plan-design-review of MESITA-4485/4492): Pay hands this its place rows
@@ -60,7 +41,7 @@ const VOUCHER_KINDS = new Set(["voucher", "prepay", "bonus"]);
 // TWO LISTS, ONE ROW SHAPE (Pato, 2026-11-11, MESITA-3741: "make the same
 // list of cards as with the money payment methods. keep the symmetry"):
 // Credits Payment Methods is one white card of rows exactly like Money
-// Payment Methods: waiting Story rows, then a CreditsRow per place (its
+// Payment Methods: a CreditsRow per place (its
 // Loyalty Card on tap), "Find a place" when there is none. No black band,
 // transactions or Fund | Gift here any more: Buy Credits, Send Gift, Go
 // to Pay and the history are on the Loyalty Card page (PlaceCredit). The
@@ -70,8 +51,8 @@ const VOUCHER_KINDS = new Set(["voucher", "prepay", "bonus"]);
 // MESITA-3736, /plan-design-review, every choice his: "money payment methods
 // on top, and card payment methods on bottom. each card must have the
 // transactions and a button to add funds (prepay) and a button to gift
-// funds"): Money Payment Methods first, then Credits Payment Methods: waiting
-// Story rows, then one CreditsCard per place (a black band, its 3 newest
+// funds"): Money Payment Methods first, then Credits Payment Methods: one
+// CreditsCard per place (a black band, its 3 newest
 // entries, Fund | Gift). No card: EmptyCreditsCard. It undoes MESITA-3727's
 // Credits-first order and MESITA-3731's "Fund and Gift go inside"; the notes
 // below are the history.
@@ -88,7 +69,7 @@ const VOUCHER_KINDS = new Set(["voucher", "prepay", "bonus"]);
 //
 //   "Confirming a payment…" (settling; the TEST band left in MESITA-3732)
 //   Credits ................................. [Add] (only once there are cards)
-//     waiting Story rows, then each Credits Card with its Fund | Gift footer
+//     each Credits Card with its Fund | Gift footer
 //   Ways to pay ......................... [Add card]
 //     saved cards, then Cash last
 //
@@ -114,8 +95,7 @@ const VOUCHER_KINDS = new Set(["voucher", "prepay", "bonus"]);
 // places, with the page's band switched off (`testBand`).
 // Wallet was its own bar tab from MESITA-3295, then sat under Pay's list
 // (MESITA-3631) until this. A place's card is a link to its Loyalty Card,
-// /wallet/place/<placeId> (MESITA-3614); a saved card or a waiting Story opens its
-// sheet here. The money is useWallet's (consumer-web-get-wallet).
+// /wallet/place/<placeId> (MESITA-3614); a saved card opens its sheet here. The money is useWallet's (consumer-web-get-wallet).
 //
 // ADD A CREDITS CARD (Pato, MESITA-3705: "add Credits Card. not add credits
 // directly — to add credits you click the card"): Credits' Add goes to
@@ -159,7 +139,7 @@ function decodeAll(urls: string[], ms: number): Promise<void> {
 export function WalletSection({
   giftToken = null,
   onReady,
-  onPending,
+  hidePending = false,
   lead = null,
   leadIds = EMPTY_IDS,
   leadCount = 0,
@@ -179,68 +159,12 @@ export function WalletSection({
   giftToken?: string | null;
   /** Told once the Wallet has painted (MESITA-4376): /pay keeps its buttons in bones until then. */
   onReady?: () => void;
-  /** Pay's Pending Tickets (MESITA-4623, MESITA-4625): the open Stories and
-   *  the vouchers still landing go there, not in the Loyalty Cards box. */
-  onPending?: (p: { vouchers: PendingVoucher[] }) => void;
+  /** On Pay (MESITA-4623, MESITA-4625): the cards here draw no blue pending
+   *  box; Pay's own place rows carry it. */
+  hidePending?: boolean;
 }) {
   const router = useRouter();
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
-  // PENDING TICKETS (Pato, 2026-11-21, MESITA-4623/4625): with onPending the
-  // open Stories and every voucher still landing (credit or bonus, the
-  // wallet's pending entries) are handed to Pay's Pending Tickets box and
-  // left out of here: no Story rows, no blue pending box on the cards.
-  useEffect(() => {
-    if (!onPending || !wallet) return;
-    // A STORY VOUCHER IS ONE ROW (MESITA-4627): still to post, wait or
-    // check, it is one pending voucher opening its Story screen; its own
-    // credit or bonus entries are not listed again.
-    const storyBuys = storyPurchaseIds(wallet);
-    const now = Date.now();
-    const storyRows: PendingVoucher[] = wallet.balances.flatMap((b) =>
-      b.place === null
-        ? []
-        : b.entries.flatMap((e) => {
-            const pid = e.purchase_id;
-            if (e.kind !== "voucher" || !pid || !storyBuys.has(pid)) return [];
-            const refunded = b.entries.some((x) => x.kind === "reversal" && !x.payment_id && x.purchase_id === pid);
-            const stage = storyVoucherStage(storyForPurchase(wallet.stories, pid), refunded, now);
-            if (!storyVoucherOpen(stage)) return [];
-            const words = storyVoucherWords(stage);
-            return [
-              {
-                key: `${b.place_id}-story-${pid}`,
-                placeId: b.place_id,
-                purchaseId: pid,
-                name: b.place?.name ?? null,
-                photo: b.place?.photo ?? null,
-                amountCents: e.amount_cents,
-                currency: b.currency,
-                kind: "story",
-                availableAt: null,
-                story: { label: words.label, line: words.line },
-              },
-            ];
-          }),
-    );
-    const vouchers: PendingVoucher[] = wallet.balances.flatMap((b) =>
-      b.place === null
-        ? []
-        : splitEntries(b.entries)
-            .pending.filter((g) => VOUCHER_KINDS.has(g.kind) && !(g.purchase_id && storyBuys.has(g.purchase_id)))
-            .map((g, i) => ({
-              key: `${b.place_id}-${g.kind}-${g.purchase_id ?? g.at}-${i}`,
-              placeId: b.place_id,
-              name: b.place?.name ?? null,
-              photo: b.place?.photo ?? null,
-              amountCents: g.amount_cents,
-              currency: b.currency,
-              kind: g.kind,
-              purchaseId: g.purchase_id ?? null,
-              availableAt: g.available_at ?? null,
-            })),
-    );
-    onPending({ vouchers: [...storyRows, ...vouchers] });
-  }, [onPending, wallet]);
   // The saved-card failure toast fires at most once per mount.
   const cardsToasted = useRef(false);
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
@@ -305,10 +229,6 @@ export function WalletSection({
   }
 
   const q = fold(query.trim());
-  // Open Stories only (MESITA-4446): a decided one lives in Tickets.
-  // NO STORY ROWS HERE (Pato, 2026-11-21, MESITA-4627: "COMPLETELY REMOVE
-  // THE INDEPENDENT STORY TICKETS"): a Story voucher is its Loyalty Card's
-  // money and, while open, a Pending Tickets row on Pay.
   // A place already listed above with Pay is not listed again (MESITA-4497).
   const cards = (credits ?? []).filter((r) => !leadIds?.has(r.placeId) && (!q || fold(r.card.name ?? "").includes(q)));
   // One state drives the card rows, the empty block and the error.
@@ -348,7 +268,7 @@ export function WalletSection({
                     photo={row.card.photo}
                     amount={gone || row.card.available_cents <= 0 ? null : money(row.card.available_cents, row.card.currency)}
                     subtitle={gone ? "Ask Mesita support to use it." : null}
-                    pending={!onPending && !gone && row.balance.pending_cents > 0 ? money(row.balance.pending_cents, row.card.currency) : null}
+                    pending={!hidePending && !gone && row.balance.pending_cents > 0 ? money(row.balance.pending_cents, row.card.currency) : null}
                     disabled={gone}
                     placeId={row.placeId}
                     onOpen={() => navigateTo(router, walletPlacePath(row.placeId), { motion: "drill" })}

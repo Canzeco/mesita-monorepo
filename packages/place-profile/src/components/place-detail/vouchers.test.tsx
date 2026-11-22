@@ -16,7 +16,7 @@ const OFFER: PlaceMoney = {
   test_mode: true,
   currency: "mxn",
   sell: ["voucher_200", "voucher_1000"],
-  unavailable: { voucher_5000: "not_yet", voucher_story: "off" },
+  unavailable: { voucher_5000: "not_yet" },
   catalog: {
     voucher_200: { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 },
     voucher_1000: { price_cents: 100000, bonus_cents: 20000, credit_cents: 120000, available_after_sec: 3600 },
@@ -24,8 +24,8 @@ const OFFER: PlaceMoney = {
   balance: { available_cents: 22000, pending_cents: 10000, held_cents: 0, spendable_cents: 22000 },
 };
 
-// The place offers Story; every other line as OFFER.
-const STORY_ON: PlaceMoney = {
+// A server that still sells the retired Story key (MESITA-4641); every other line as OFFER.
+const STALE_SELL: PlaceMoney = {
   ...OFFER,
   test_mode: false,
   vouchers: { ...OFFER.vouchers, voucher_story: true, voucher_vip: false },
@@ -38,15 +38,15 @@ function render(money: PlaceMoney | undefined, onBuyVoucher?: () => void): strin
 }
 
 describe("Vouchers tab", () => {
-  // The VIP offer is gone (MESITA-4249), Welcome too (MESITA-4636): Story is the special.
-  it("lists Story and no VIP offer (MESITA-4249)", () => {
+  // Stories are gone (MESITA-4641): no row even while the server still sells the key.
+  it("never lists the retired Story voucher, nor a VIP the place doesn't sell", () => {
     const html = renderToStaticMarkup(
       <VouchersPane
-        place={{ money: STORY_ON, name: "Probe", photos: [] } as unknown as PlaceDetail}
+        place={{ money: STALE_SELL, name: "Probe", photos: [] } as unknown as PlaceDetail}
         actions={{ onBuyVoucher: () => {}, guest: { instagramLinked: true } }}
       />,
     );
-    expect(row(html, "voucher_story")).toContain("Story");
+    expect(html).not.toContain('data-voucher="voucher_story"');
     expect(html).not.toContain('data-voucher="voucher_vip"');
     expect(row(html, "voucher_200")).not.toContain("data-voucher-locked");
   });
@@ -57,15 +57,13 @@ describe("Vouchers tab", () => {
   });
 
   // HIDDEN · BLOCKED · AVAILABLE (MESITA-4603): what the place doesn't offer
-  // is not on the page (no Welcome at all since MESITA-4636); Story the place offers
-  // stays, blocked by the guest's own locks.
+  // is not on the page (no Welcome at all since MESITA-4636).
   it("hides what the place doesn't offer and any Welcome; Buy only on `sell`", () => {
     const html = render({ ...OFFER, test_mode: false }, () => {});
     expect(row(html, "voucher_200")).not.toContain("data-voucher-locked");
     expect(row(html, "voucher_1000")).not.toContain("data-voucher-locked");
     expect(html).not.toContain('data-voucher="voucher_5000"');
     expect(html).not.toContain('data-voucher="voucher_welcome"');
-    expect(html).not.toContain('data-voucher="voucher_story"');
     // An older read: switches on, no `sell`: nothing for sale, nothing shown.
     const older = render({ ...placeMoneyFrom({ charges_enabled: true, vouchers: { voucher_200: true } })!, test_mode: false }, () => {});
     expect(older).not.toContain("data-voucher=");
@@ -76,15 +74,6 @@ describe("Vouchers tab", () => {
     // A paused sale is not the place's: the row stays, blocked.
     const paused = render({ ...OFFER, sell: ["voucher_1000"], unavailable: { ...OFFER.unavailable, voucher_200: "paused" } }, () => {});
     expect(row(paused, "voucher_200")).toContain("data-voucher-locked");
-  });
-
-  it("Story the place offers is never hidden, only blocked (MESITA-4603)", () => {
-    const story = (money: PlaceMoney, guest: { instagramLinked: boolean; instagramFollowers?: number }) =>
-      row(renderToStaticMarkup(<VouchersPane place={{ money, name: "Probe", photos: [] } as unknown as PlaceDetail} actions={{ onBuyVoucher: () => {}, guest }} />), "voucher_story");
-    expect(story(STORY_ON, { instagramLinked: false })).toContain("Link your Instagram");
-    expect(story(STORY_ON, { instagramLinked: true, instagramFollowers: 10 })).toContain("followers");
-    expect(story({ ...STORY_ON, sell: ["voucher_200"], unavailable: { voucher_story: "needs_visit" } }, { instagramLinked: true })).toContain("data-voucher-locked");
-    expect(story(STORY_ON, { instagramLinked: true, instagramFollowers: 5000 })).not.toContain("data-voucher-locked");
   });
 
   it("the green mark is the server's; an older read without it keeps the old rule (MESITA-3408)", () => {
@@ -124,19 +113,19 @@ describe("placeMoneyFrom", () => {
       charges_enabled: true,
       test_mode: true,
       currency: "mxn",
-      vouchers: { voucher_200: true, voucher_story: true, voucher_vip: false },
+      vouchers: { voucher_200: true, voucher_vip: true },
       sell: ["voucher_200", "bogus"],
-      unavailable: { voucher_story: "needs_visit" },
+      unavailable: { voucher_vip: "needs_visit" },
       catalog: {
         voucher_200: { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 },
-        voucher_story: { price_cents: "100" },
+        voucher_vip: { price_cents: "100" },
       },
       balance: { available_cents: 22000, pending_cents: 0, held_cents: 0, spendable_cents: 22000 },
     });
     expect(m?.sell).toEqual(["voucher_200"]);
-    expect(m?.unavailable).toEqual({ voucher_story: "needs_visit" });
+    expect(m?.unavailable).toEqual({ voucher_vip: "needs_visit" });
     expect(m?.catalog.voucher_200?.credit_cents).toBe(22000);
-    expect(m?.catalog.voucher_story).toBeUndefined();
+    expect(m?.catalog.voucher_vip).toBeUndefined();
     expect(m?.balance?.available_cents).toBe(22000);
     expect(m?.test_mode).toBe(true);
     expect(m?.vouchers.voucher_1000).toBe(false);

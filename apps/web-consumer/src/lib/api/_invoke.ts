@@ -72,7 +72,7 @@ export async function invokeEF<T>(
   // `error` string. Useful for less obvious EFs whose default message
   // wouldn't be readable on its own.
   fallback = `${fn} failed`,
-  // Extra query parameters (MESITA-4296: check-story's `poll=1`), beside the
+  // Extra query parameters, beside the
   // region pin. The gate and the logs still read the bare name.
   query?: Record<string, string>,
 ): Promise<T> {

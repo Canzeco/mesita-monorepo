@@ -24,13 +24,13 @@ describe("offerSlides", () => {
     expect(offerSlides({ sell: [] })).toEqual([]);
   });
 
-  it("orders Prepay, Story (no VIP, MESITA-4249; no Welcome, MESITA-4636), shows only the best standard bonus (MESITA-4219)", () => {
+  it("shows only Prepay with the best standard bonus (MESITA-4219; no Welcome, MESITA-4636; no Story, MESITA-4641)", () => {
     const slides = offerSlides({
       sell: ["voucher_200", "voucher_5000", "voucher_story", "voucher_welcome"],
     });
-    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Prepay +30% Bonus", "Story +30% Bonus"]);
-    expect(slides.map((s) => s.section)).toEqual(["prepayment", "special"]);
-    expect(slides.map((s) => s.voucher)).toEqual(["voucher_5000", "voucher_story"]);
+    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Prepay +30% Bonus"]);
+    expect(slides.map((s) => s.section)).toEqual(["prepayment"]);
+    expect(slides.map((s) => s.voucher)).toEqual(["voucher_5000"]);
   });
 });
 

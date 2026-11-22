@@ -6,11 +6,10 @@ import { cardFace } from "@/components/shared/card-brand-marks";
 import { cn } from "@/lib/utils";
 import { SECONDARY } from "./wallet-buttons";
 
-// A PAYMENT METHOD, FULL SCREEN (Pato, MESITA-3533): a saved card or a
-// Story whose bonus is waiting (MESITA-4296), opened from a Wallet rail. A place's credit is a
-// page of its own, /wallet/place/<placeId> (PlaceCredit.tsx, MESITA-3614).
+// A PAYMENT METHOD, FULL SCREEN (Pato, MESITA-3533): a saved card, opened
+// from a Wallet rail. A place's credit is a page of its own,
+// /wallet/place/<placeId> (PlaceCredit.tsx, MESITA-3614).
 
-// A Story opens its own screen since MESITA-4405 (Me › Tickets › Stories).
 export type Method = { kind: "card"; card: SavedCard };
 
 /** A saved card (MESITA-3523): what Stripe told us about it, and Remove.

@@ -82,66 +82,6 @@ export function markProofSeen(token: string): Promise<{ seen_at: string }> {
   return call<{ seen_at: string }>("visit-web-mark-proof-seen", { token });
 }
 
-// ── The Story voucher: the waiter approves the guest's story (MESITA-4304) ─
-
-const STORY_WORDS: Words = {
-  invalid: "This Story QR is not valid. Ask the guest to show it again.",
-  failed: "Couldn't check this story. Try again.",
-};
-
-/** One Instagram story of the guest's verified handle, as Meta (or, in test
- *  mode, the emulator) reported it. `media_url` null: the card says it
- *  can't load. too_old: it would end before the bonus re-check. */
-export type StoryMention = {
-  id: string;
-  media_url: string | null;
-  media_kind: "image" | "video";
-  mentioned_at: string;
-  source: "meta" | "emulator";
-  status: "received" | "too_old";
-};
-
-/** waiting: approve or reject it; approved: the guest can pay; rejected: it
- *  never counts; used: a Story purchase took it. */
-export type WaiterStoryState = "waiting" | "approved" | "rejected" | "used";
-
-export type WaiterStory = {
-  mention_id: string;
-  place: { id: string; name: string | null; instagram_handle: string | null };
-  instagram_handle: string | null;
-  state: WaiterStoryState;
-  story: StoryMention;
-  reviewed_at: string | null;
-  bonus_wait_sec: number;
-  test_mode: boolean;
-  server_time: string;
-};
-
-export function getStory(token: string): Promise<WaiterStory> {
-  return call<WaiterStory>("visit-web-get-story", { token }, STORY_WORDS);
-}
-
-export type StoryReviewed = { outcome: "approved" | "already_approved" | "rejected" | "already_rejected"; reviewed_at: string | null };
-
-/** The waiter approves or rejects the story. Needs a current waiter-code
- *  staff token of the story's place (403 staff_code_needed otherwise). A
- *  refusal carries the server's code and words: `gone`, `wrong_place`,
- *  `already_decided`, `story_too_old`. */
-export async function reviewStory(
-  args: { token: string; decision: "approve" | "reject"; staff_token?: string; place_id: string },
-): Promise<StoryReviewed | TabRefusal | "failed"> {
-  const { res, data } = await post("visit-web-review-story", args);
-  if (data?.ok) {
-    const o = data.outcome;
-    return {
-      outcome: o === "already_approved" || o === "rejected" || o === "already_rejected" ? o : "approved",
-      reviewed_at: typeof data.reviewed_at === "string" ? data.reviewed_at : null,
-    };
-  }
-  if (!res || res.status >= 500 || !data) return "failed";
-  return tabRefusal(data, "Couldn't save. Try again");
-}
-
 // ── The waiter's charge (MESITA-3306) ───────────────────────────────────────
 
 /** A charge staff just opened: the 4-digit code the guest types on Pay and

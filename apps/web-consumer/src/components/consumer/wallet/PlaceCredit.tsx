@@ -7,11 +7,7 @@ import { PushLink } from "@/components/consumer/nav/PushLink";
 import { offerSlides, SizedImg } from "@mesita/place-profile";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
-import {
-  canRemoveLoyaltyCard,
-  money,
-  type WaitingStory,
-} from "@/lib/api/wallet";
+import { canRemoveLoyaltyCard, money } from "@/lib/api/wallet";
 import { creditEntryPath, payPlacePath, payReceiptPath, walletSendPath } from "@/lib/consumer-route-contract";
 import { useRouter } from "next/navigation";
 import { navigateTo } from "@/lib/navigate";
@@ -19,7 +15,6 @@ import { placeHref } from "@/lib/place-route";
 import { nextAvailableMs, shouldReread } from "@/lib/wallet-countdown";
 import { type EntryGroup, groupKeys, splitEntries } from "@/lib/wallet-entries";
 import { cn } from "@/lib/utils";
-import { storyBonusOpen } from "@/lib/story-lines";
 import { Panel, PANEL_CLASS } from "@/components/shared/Panel";
 import { PendingBox, pendingWords } from "./WalletLists";
 import { TicketsBoard, type TicketTab } from "@/components/consumer/activity/MeLists";
@@ -56,8 +51,6 @@ const ROUND_GLYPH = "h-5 w-5";
 //                         Send Gift follows giftAction (hidden, dimmed, open)
 //   (held-credit line)    only while an open payment holds credit
 //   (Confirming a payment…)  only while the server is still confirming one
-//   Vouchers to activate  Story bonuses still waiting on the story, only when
-//                         any (MESITA-4116; no staff since MESITA-4296)
 //   Pending               purchases not Available yet, soonest first
 //                         ("Pending · available in 25 min"), only when any
 //   Tickets               this place's Tickets, Me › Tickets' pills and rows
@@ -87,7 +80,7 @@ const ROUND_GLYPH = "h-5 w-5";
 // refunded before it landed is a settled row reading "Refunded", never money
 // on its way: a row is drawn as waiting only when it comes from the pending
 // list. A bill opens its receipt; a purchase, its refund, a lone bonus and a
-// gift open their own page (MESITA-3753); a Story row opens its story. Every row
+// gift open their own page (MESITA-3753). Every row
 // that opens something ends in a chevron. Every amount is the server's
 // (consumer-web-get-wallet); this screen formats, never adds.
 //
@@ -175,7 +168,6 @@ export function LoyaltyCardSkeleton() {
 export function PlaceCredit({
   row,
   canSend,
-  stories = [],
   confirming = false,
   onReread,
   onRemove,
@@ -183,9 +175,6 @@ export function PlaceCredit({
   row: CreditRow;
   /** Sending credit is open here (MESITA-3292). */
   canSend: boolean;
-  /** Story vouchers bought here whose bonus is undecided, or was decided in
-   *  the last 24 hours (MESITA-4264). */
-  stories?: WaitingStory[];
   /** The server is still confirming a purchase (Wallet-wide, so a line, not
    *  a row of this place's list). */
   confirming?: boolean;
@@ -246,14 +235,10 @@ export function PlaceCredit({
   // ON ITS WAY, ON THE CARD (MESITA-4321, Pato: "the card view here must
   // also express both current credits and pending credits … no time to
   // land, just pending"): money still landing here (the server's pending,
-  // a bonus's 3 hours) plus Story bonuses still waiting on their story,
-  // which the server has not credited yet, so they are not in it.
-  const comingCents =
-    Math.max(0, balance?.pending_cents ?? 0) +
-    stories.filter((s) => s.place_id === row.placeId && storyBonusOpen(s)).reduce((n, s) => n + Math.max(0, s.bonus_cents), 0);
+  // a bonus's 3 hours).
+  const comingCents = Math.max(0, balance?.pending_cents ?? 0);
   const coming = comingCents > 0 ? `+${money(comingCents, card.currency)} pending` : null;
-  // A card with a Story voucher waiting is never removable from here.
-  const removable = onRemove !== undefined && stories.length === 0 && canRemoveLoyaltyCard(balance);
+  const removable = onRemove !== undefined && canRemoveLoyaltyCard(balance);
   const pendingKeys = groupKeys(pending);
   return (
     <>
@@ -428,10 +413,6 @@ export function PlaceCredit({
           open={(slide) => () => navigateTo(router, offerHref(href, slide, true), { motion: "drill" })}
         />
       ) : null}
-
-      {/* NO STORY VOUCHERS PANEL (Pato, 2026-11-21, MESITA-4627: "COMPLETELY
-          REMOVE THE INDEPENDENT STORY TICKETS"): a Story voucher is its
-          Vouchers row in Tickets below, which opens its Story screen. */}
 
       {/* MONEY ON ITS WAY (MESITA-4279): the pending lines, each with its
           countdown, stay in their own panel while there are any. */}

@@ -38,7 +38,6 @@ export type TicketRowKind =
   | "payment"
   | "voucher"
   | "bonus"
-  | "story"
   | "gift_in"
   | "gift_out"
   | "gift_back"

@@ -453,8 +453,7 @@ export function OffersTile({
         <Tag className={MESITA_TILE_ICON} strokeWidth={2.25} />
         <span>{label}</span>
       </span>
-      {/* THE CHIP WEARS THE OFFER ON SCREEN'S COLOUR (MESITA-4207): Welcome
-          blue, Story pink, the sizes green; one green for all before. */}
+      {/* THE CHIP WEARS THE OFFER ON SCREEN'S COLOUR (MESITA-4207). */}
       <span className={cn(ROW_CHIP, "transition-colors duration-300", slides[index]?.tone ?? OFFERS_CHIP)}>
         <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} plain full={full} />
       </span>

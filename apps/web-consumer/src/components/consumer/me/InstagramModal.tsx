@@ -49,7 +49,6 @@ import {
 import {
   followersLabel,
   instagramPrivacyLabel,
-  storyRulesOf,
   updatedAgo,
 } from "@/lib/consumer-identity";
 import { EFError } from "@/lib/api/_invoke";
@@ -64,11 +63,10 @@ import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerIdentity, useServerProfile } from "@/lib/identity-context";
 
-// Instagram connect page (MESITA-936). Why connect is back with two reasons
-// (MESITA-4342, after MESITA-2983 cut it): see others' Instagram, and Story
-// vouchers over 1,000 followers. Connected: the account with Sync (half) |
-// Change | Disconnect in one row, then Why connect as two coloured boxes
-// with the guest's standing (MESITA-4350).
+// Instagram connect page (MESITA-936). Why connect is back (MESITA-4342,
+// after MESITA-2983 cut it): see others' Instagram. Connected: the account
+// with Sync (half) | Change | Disconnect in one row, then Why connect as a
+// box with the guest's standing (MESITA-4350).
 //
 // IT GRANTS NOTHING (Pato, MESITA-2040: "instagram is just 1000 followers").
 // A connected handle is an identity fact; crossing the bar makes the account
@@ -288,33 +286,14 @@ const QUIET_BUTTON_CLASS =
 const ROW_BUTTON_CLASS =
   "bg-muted text-foreground hover:bg-muted/70 flex h-14 min-w-0 items-center justify-center rounded-xl text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-60";
 
-// WHY CONNECT, TWO REASONS (Pato, MESITA-4342: "mention that why … TWO
-// REASONS"; it undoes MESITA-2983's cut). Both are server rules, not copy:
-//   1. Others' full handles show only to a guest whose own Instagram is
-//      connected and whose profile is public (place-activity seesHandles).
-//   2. A Story voucher needs the live floor (story_rules) followers or more
-//      (vouchers.ts refuses `<`, MESITA-4383). Named a discount, with the deal in plain
-//      numbers (Pato, MESITA-4347: "discount insta must be there too").
-// TWO COLOURED BOXES (Pato, MESITA-4350: "why connect looks like shit … use
-// boxes with color"): black with the Instagram mark for seeing others, and
-// the Story voucher's own pink (place-profile lib/offers.ts VOUCHER_TONE,
-// voucher_story) with the deal as its headline. Connected, each box says
-// where the guest stands in a pill.
-/** The Story voucher's deal, as place-profile's vouchers.tsx prices it
- *  (`voucher_story`: "Pay $100.00MX, get $130.00MX."). Change both together. */
-const STORY_DEAL = { pay: "$100", get: "$130" } as const;
-
-/** The Story voucher's tint: VOUCHER_TONE.voucher_story. Change both together. */
-const STORY_PINK = "bg-pink-400 text-neutral-950";
-
+// WHY CONNECT (Pato, MESITA-4342; it undoes MESITA-2983's cut). A server
+// rule, not copy: others' full handles show only to a guest whose own
+// Instagram is connected and whose profile is public (place-activity
+// seesHandles). A black box with the Instagram mark (MESITA-4350); the Story
+// discount box went with Stories (MESITA-4641).
 export function WhyConnect({ connected }: { connected: boolean }) {
-  const { igFollowers } = useConsumerIdentity();
   const { data } = useConsumerProfile();
   const hidden = data?.appear_anonymous === true;
-  // The live floor (MESITA-4425); emulator mode needs only the link.
-  const storyRules = storyRulesOf(data);
-  const storyOk = storyRules.emulator || igFollowers >= storyRules.minFollowers;
-  const need = storyRules.minFollowers;
   return (
     <section className="flex flex-col gap-3" aria-label="Why connect">
       <h2 className="px-0.5 text-base font-semibold tracking-tight">
@@ -343,55 +322,6 @@ export function WhyConnect({ connected }: { connected: boolean }) {
             ? "Your profile is hidden. Make it public in Settings to see theirs."
             : "It goes both ways: share yours to see theirs."}
         </p>
-      </div>
-      <div
-        className={cn("flex flex-col gap-2 rounded-2xl p-4", STORY_PINK)}
-        data-why-connect="story"
-      >
-        <div className="flex items-center gap-3">
-          <p className="min-w-0 flex-1 text-base leading-tight font-bold">
-            Story discount
-          </p>
-          <Pill className="bg-neutral-950 text-white">
-            {connected && storyOk ? (
-              <>
-                <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
-                You qualify
-              </>
-            ) : (
-              `${need.toLocaleString("en-US")}+ followers`
-            )}
-          </Pill>
-        </div>
-        <p className="text-2xl font-bold tracking-tight tabular-nums">
-          Pay {STORY_DEAL.pay}{" "}
-          <span className="text-base font-semibold opacity-70">→</span> get{" "}
-          {STORY_DEAL.get}
-        </p>
-        <p className="type-label">Post a Story at a place and pay with it.</p>
-        {connected && !storyOk && (
-          <>
-            <span
-              className="mt-1 block h-1.5 overflow-hidden rounded-full bg-black/20"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={need}
-              aria-valuenow={igFollowers}
-              aria-label="Followers toward the Story discount"
-            >
-              <span
-                className="block h-full rounded-full bg-neutral-950"
-                style={{
-                  width: `${Math.min(100, (igFollowers / need) * 100)}%`,
-                }}
-              />
-            </span>
-            <span className="type-label font-semibold tabular-nums">
-              {igFollowers.toLocaleString("en-US")} of{" "}
-              {need.toLocaleString("en-US")} followers
-            </span>
-          </>
-        )}
       </div>
     </section>
   );

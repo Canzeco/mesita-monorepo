@@ -624,8 +624,7 @@ describe("T6 — Activity's chips are Me's pages (MESITA-3855)", () => {
 
   it("Tickets has three kinds: Vouchers · Visits · Gifts; Refunds is a Settings page (MESITA-3855, MESITA-4402, MESITA-4627)", () => {
     // Gifts split into Gifts-In and Gifts-Out (MESITA-3941), one list
-    // again (MESITA-4036). No Stories tab: a Story voucher is a Vouchers
-    // row (Pato, 2026-11-21, MESITA-4627).
+    // again (MESITA-4036). No Stories (MESITA-4627, MESITA-4641).
     expect([...TICKET_KINDS]).toEqual(["vouchers", "visits", "gifts"]);
   });
 
@@ -1088,7 +1087,6 @@ describe("the route map", () => {
       expect(routeFor(sample(ROUTE_MAP[id].pattern)), id).toBe(id);
     expect(routeFor("/place/google/g1")).toBe("placeGoogle");
     expect(routeFor("/place/p1/reserve")).toBe("placeReserve");
-    expect(routeFor("/place/p1/story")).toBe("placeStory");
     expect(routeFor("/place/p1/contact")).toBe("placeContact");
     expect(routeFor("/place/p1/report")).toBe("placeReport");
     expect(routeFor("/place/p1/upgrade")).toBe("placeUpgrade");
