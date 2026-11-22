@@ -98,6 +98,7 @@ import { cn, errMsg } from "@/lib/utils";
 import { EFError } from "@/lib/api/_invoke";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { useMapFilters } from "@/lib/use-map-filters";
+import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { readSavedPlacePreviews, useSavedPlaces } from "@/lib/saved-places";
 import { useActiveLocation } from "@/lib/active-location";
 import { savedPlaceList } from "@/components/consumer/home/CatalogRails";
@@ -1237,6 +1238,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         {!searchMode && (
           <SearchRailOverlay
             places={catalog}
+            filterLabel={
+              FILTERABLE_PLACE_FAMILIES.find((f) => f.key === filters.familyKeys[0])?.label ?? null
+            }
             catalogLoading={catalogLoading}
             selectedId={railSelectedId}
             railScrollRef={railScrollRef}

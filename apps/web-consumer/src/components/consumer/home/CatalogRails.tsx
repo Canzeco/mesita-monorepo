@@ -717,7 +717,7 @@ export function CatalogRails() {
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
-          aria-label={menuOpen ? "Close families" : "All families"}
+          aria-label={menuOpen ? "Close families" : isSpecial(chip) ? "All families" : "All families, a family is chosen"}
           aria-expanded={menuOpen}
           className={CAT}
           data-places-menu-button
@@ -727,9 +727,18 @@ export function CatalogRails() {
             className={cn(
               CAT_EMOJI,
               CAT_SQUARE,
+              "relative",
               menuOpen ? cn(CAT_EMOJI_ON, "text-card") : cn(CAT_EMOJI_OFF, "text-foreground"),
             )}
           >
+            {/* A family is chosen (not Saved, Nearby or Popular): a red dot
+                says the list is filtered (Pato, 2026-11-22, MESITA-4685). */}
+            {!isSpecial(chip) && !menuOpen ? (
+              <span
+                className="bg-destructive ring-card absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2"
+                data-menu-filter-dot
+              />
+            ) : null}
             {menuOpen ? (
               <X className="h-4 w-4" strokeWidth={2.5} />
             ) : (

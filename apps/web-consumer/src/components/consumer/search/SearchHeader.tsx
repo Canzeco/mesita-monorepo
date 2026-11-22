@@ -95,6 +95,7 @@ export function SearchHeader({
   const filters = useMapFilters();
   const special = filters.special;
   const everyFamily = special === null && filters.familyKeys.length === 0;
+  const filtered = filters.familyKeys.length > 0;
   // Signed out, nothing is saved (MESITA-4325): no Saved chip.
   const canSave = useViewer() !== "anonymous";
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -146,9 +147,9 @@ export function SearchHeader({
             <button
               type="button"
               onClick={() => setSheetOpen(true)}
-              aria-label="Menu"
+              aria-label={filtered ? "Menu, a family is chosen" : "Menu"}
               aria-haspopup="dialog"
-              className={cn(CHIP_SPECIAL, CHIP_OFF)}
+              className={cn(CHIP_SPECIAL, CHIP_OFF, "relative")}
               data-search-filters
             >
               <LayoutGrid
@@ -157,6 +158,15 @@ export function SearchHeader({
                 aria-hidden
               />
               <span>Menu</span>
+              {/* A family is chosen: a red dot says the list is filtered
+                  (Pato, 2026-11-22, MESITA-4685). */}
+              {filtered ? (
+                <span
+                  aria-hidden
+                  className="bg-destructive ring-card absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2"
+                  data-menu-filter-dot
+                />
+              ) : null}
             </button>
             <nav
               aria-label="Families"

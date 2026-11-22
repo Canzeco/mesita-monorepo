@@ -242,6 +242,7 @@ export function SearchRailOverlay({
   onOpenPlace,
   onAdd,
   setRailCardRef,
+  filterLabel = null,
 }: {
   places: Place[];
   catalogLoading?: boolean;
@@ -252,6 +253,8 @@ export function SearchRailOverlay({
   /** The Add button's tap: the bar's Add mode (MESITA-2885). */
   onAdd: () => void;
   setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
+  /** The chosen family's name, for the empty card (MESITA-4685). */
+  filterLabel?: string | null;
 }) {
   const firstLoad = catalogLoading && places.length === 0;
   // Save and Share on a card, Home's own (MESITA-2668): a Google-only card
@@ -289,7 +292,7 @@ export function SearchRailOverlay({
           <div className={RAIL_ROW} data-search-rail-empty>
             <div className={RAIL_SCROLLER}>
               <div className={RAIL_PAGE}>
-                <AddPlaceButton onAdd={onAdd} empty />
+                <AddPlaceButton onAdd={onAdd} empty filterLabel={filterLabel} />
               </div>
             </div>
           </div>
