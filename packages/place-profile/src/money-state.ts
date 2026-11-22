@@ -33,6 +33,10 @@ export const MONEY_VOUCHER_KEYS = [
   "voucher_1000",
   "voucher_5000",
   "voucher_story",
+  // VIP IS BACK (Pato, 2026-11-22, MESITA-4640: "Regular Offers · VIP Offers"):
+  // the VIP class only (guest_class, more than VIP_MIN_FOLLOWERS on a public
+  // Instagram), one each new visit.
+  "voucher_vip",
 ] as const;
 export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
 
@@ -78,7 +82,9 @@ export type VoucherReason =
   | "needs_instagram"
   /** Selling is paused for every place (the admin console's kill switch). */
   | "paused"
-  /** Story, one each new visit (MESITA-3463): this guest already
+  /** The VIP voucher is for the VIP class (MESITA-4640). */
+  | "not_vip"
+  /** Story and VIP, one each new visit (MESITA-3463): this guest already
    *  bought one here for every visit (a paid bill with a card part). */
   | "needs_visit";
 

@@ -44,6 +44,7 @@ export const PAYMENT_KEYS = [
   "voucher_1000",
   "voucher_5000",
   "voucher_story",
+  "voucher_vip",
 ] as const;
 export type PaymentKey = (typeof PAYMENT_KEYS)[number];
 
@@ -57,6 +58,7 @@ export const NEEDS_STRIPE_KEYS = [
   "voucher_1000",
   "voucher_5000",
   "voucher_story",
+  "voucher_vip",
 ] as const;
 export function needsStripe(key: string): boolean {
   return (NEEDS_STRIPE_KEYS as readonly string[]).includes(key);

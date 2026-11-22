@@ -96,6 +96,8 @@ import {
   sameUnits,
   storyEligibilityContext,
   storyRefusal,
+  readVipGuest,
+  vipRefusal,
   voucherOffer,
 } from "../_shared/vouchers.ts";
 import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
@@ -211,6 +213,14 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   if (!key) return json({ ok: false, error: "Payments are not available right now" }, 503);
 
   const stripe = stripeClient(key);
+
+  // VIP's own gate: the VIP class (MESITA-4640); one each visit is the offer's.
+  if (kinds.includes("voucher_vip")) {
+    const vip = vipRefusal("voucher_vip", await readVipGuest(admin, userId));
+    if (vip) {
+      return json({ ok: false, code: vip.code, error: vip.error, followers: vip.followers, isPrivate: vip.isPrivate }, vip.status);
+    }
+  }
 
   // Story's own gate: the guest's public Instagram above the follower floor
   // (MESITA-3507, MESITA-4263). One per visit is buyRefusal's needs_visit.

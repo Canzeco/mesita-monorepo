@@ -11,10 +11,10 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { moneyText } from "./pay.ts";
 import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, currencyForCountry, voucherPriceCents } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
-import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
+import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWERS, VIP_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
 import { readMoneyConfig } from "./money-config.ts";
-import { readInstagramSyncState } from "./consumer-doc.ts";
+import { readInstagramSyncState, readVipStanding } from "./consumer-doc.ts";
 import { readStoryRules, storyMode, storySaleModeLive, type StoryMode } from "./story-mention.ts";
 import { instagramHandleOfUrl } from "./place-instagram.ts";
 import { readVoucherPlace, type VoucherPlace } from "./wallet.ts";
@@ -397,6 +397,7 @@ export const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string
   needs_instagram: { code: "needs_instagram", error: "This voucher needs the Instagram connection, which is not on yet" },
   paused: { code: "paused", error: "Voucher sales are paused for a moment" },
   needs_visit: { code: "needs_visit", error: "One each visit: pay a bill here by card to buy it again" },
+  not_vip: { code: "not_vip", error: "VIP Offers need a public Instagram with more than 5,000 followers" },
 };
 
 /** Why a voucher cannot be bought right now, or null when it can. */
@@ -491,6 +492,35 @@ export async function readStoryGuest(admin: SupabaseClient, consumerId: string):
   return { instagram_handle: res.handle, instagram_followers_count: res.followers, instagram_is_private: res.isPrivate };
 }
 
+/** The buying guest's Class and the facts the refusal names (MESITA-4640). */
+export type VipGuest = { guest_class: string | null; followers: number | null; is_private: boolean | null } | null;
+
+/** VIP's guest gate (MESITA-4640; MESITA-3550 before it): the VIP class
+ *  (consumers.guest_class, generated: a verified, public Instagram with more
+ *  than VIP_MIN_FOLLOWERS followers). Null when the guest may buy it; any other
+ *  voucher passes. The retired vip_until (the partner model) no longer gates
+ *  it. One each new visit is the offer's (PER_VISIT_VOUCHERS). The 409 carries
+ *  the caller's own followers and privacy so the ticket can say why. */
+export function vipRefusal(voucher: MoneyVoucherKey, guest: VipGuest): (BuyRefusal & { followers: number | null; isPrivate: boolean | null }) | null {
+  if (voucher !== "voucher_vip") return null;
+  if (guest?.guest_class === "vip") return null;
+  return {
+    ok: false,
+    status: 409,
+    code: "not_vip",
+    error: `VIP Offers need a public Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers`,
+    followers: guest?.followers ?? null,
+    isPrivate: guest?.is_private ?? null,
+  };
+}
+
+/** The buying guest's Class, for vipRefusal. A closed account reads null. */
+export async function readVipGuest(admin: SupabaseClient, consumerId: string): Promise<VipGuest> {
+  const res = await readVipStanding(admin, consumerId);
+  if (!res.ok) throw new Error(`consumers: ${res.message}`);
+  return res.row;
+}
+
 /** What a voucher's Stripe object carries: the saved card's PaymentIntent
  *  (MESITA-3552; the Checkout went with MESITA-4065): the receiver reads
  *  mesita_kind and purchase_id. */
@@ -531,7 +561,7 @@ export type BasketItem = { voucher: MoneyVoucherKey; qty: number };
 /** At most this many of one voucher in a basket (Small and Big). */
 export const BASKET_MAX_QTY = 5;
 /** One each visit (Story): one unit. */
-export const BASKET_ONE_ONLY: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_story"]);
+export const BASKET_ONE_ONLY: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_story", "voucher_vip"]);
 
 /** The request's basket: `items: [{voucher, qty}]`, or the old one-voucher
  *  `voucher` as a basket of one. Known keys, whole qty 1..5, Story at
@@ -562,7 +592,7 @@ export function parseBasket(body: { items?: unknown; voucher?: unknown }): { ok:
 }
 
 /** Catalog order, Story first: the lead is the first unit. */
-const BASKET_ORDER: readonly MoneyVoucherKey[] = ["voucher_story", "voucher_200", "voucher_1000", "voucher_5000"];
+const BASKET_ORDER: readonly MoneyVoucherKey[] = ["voucher_story", "voucher_vip", "voucher_200", "voucher_1000", "voucher_5000"];
 
 /** The basket as voucher units, one per row to write: the lead first. Pure. */
 export function basketUnits(items: readonly BasketItem[]): MoneyVoucherKey[] {
@@ -598,6 +628,7 @@ export function voucherName(k: MoneyVoucherKey, currency: string = MONEY_CURRENC
     case "voucher_5000":
       return `${moneyText(catalogLines(currency)[k].price_cents, currency)} voucher`;
     case "voucher_story": return "Story voucher";
+    case "voucher_vip": return "VIP voucher";
   }
 }
 

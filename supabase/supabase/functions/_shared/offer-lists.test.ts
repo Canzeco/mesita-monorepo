@@ -30,6 +30,7 @@ function admin(opts: { paused: boolean; handle: string | null; followers: number
     voucher_1000: true,
     voucher_5000: true,
     voucher_story: true,
+    voucher_vip: false,
   };
   return {
     from(table: string) {

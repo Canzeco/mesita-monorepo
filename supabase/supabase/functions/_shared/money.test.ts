@@ -62,8 +62,9 @@ Deno.test("Stripe gets yen and Chilean pesos in whole units; the ledger keeps hu
   for (const r of VOUCHER_CURRENCY_LIST) assertEquals(String(r.small)[0], "1");
   assertEquals(voucherBonusCents("voucher_1000"), 200_00);
   assertEquals(voucherBonusCents("voucher_5000"), 1_500_00);
-  // No VIP offer (MESITA-4249), no Welcome offer (MESITA-4636).
-  assertEquals("voucher_vip" in VOUCHER_CATALOG, false);
+  // VIP is back (MESITA-4640): MX$100 → +100%; no Welcome offer (MESITA-4636).
+  assertEquals(voucherBonusCents("voucher_vip"), 100_00);
+  assertEquals(VOUCHER_CATALOG.voucher_vip.available_after_sec, 10800);
   assertEquals("voucher_welcome" in VOUCHER_CATALOG, false);
   assertEquals(voucherFeeCents("voucher_200"), 10_00);
   assertEquals(VOUCHER_CATALOG.voucher_200.available_after_sec, 10800);
