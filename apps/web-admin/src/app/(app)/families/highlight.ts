@@ -38,5 +38,7 @@ export type FieldLimits = {
 export type FamiliesMap = {
   families: FamilyRow[];
   enabledCategories: GoogleCategoryRow[];
+  /** Google's other categories: read-only documentation (MESITA-4680). */
+  notAllowedCategories: GoogleCategoryRow[];
   tags: TagRow[];
 };

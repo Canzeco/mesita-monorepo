@@ -32,7 +32,8 @@ export function matchesCategory(row: GoogleCategoryRow, query: string): boolean 
 }
 
 // Atlas (MESITA-2891): the thirty Mesita Families, the Google categories
-// Mesita allows (MESITA-4576: the database stores no other), then the tag
+// side by side — allowed, and not allowed (MESITA-4680: Google's list from
+// code; the database stores only the allowed, MESITA-4576) — then the tag
 // catalog. There
 // is no category ↔ family matrix: a place's families are the Description
 // step's model pick.
@@ -46,11 +47,11 @@ export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
       <FamiliesList families={map.families} />
       <SectionCard
         title="Google categories"
-        right={<Count n={map.enabledCategories.length} />}
+        right={<Count n={map.enabledCategories.length + map.notAllowedCategories.length} />}
         subtitle={
           <>
-            The Google categories Mesita allows. A place whose main Google
-            category is not on this list cannot be added.
+            Which Google categories Mesita allows, and which it does not. A
+            place whose main Google category is not allowed cannot be added.
           </>
         }
       >
@@ -61,10 +62,15 @@ export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
           aria-label="Search Google categories"
           className="mt-4"
         />
-        <div className="mt-4">
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
           <CategoryList
             title="Allowed on Mesita"
             rows={map.enabledCategories}
+            query={categoryQuery}
+          />
+          <CategoryList
+            title="Not allowed"
+            rows={map.notAllowedCategories}
             query={categoryQuery}
           />
         </div>

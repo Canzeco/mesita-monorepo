@@ -5,11 +5,16 @@
 //
 // So: the Mesita Families (the thirty the Description step picks from), every
 // Google category Mesita allows (`catalog_membership`, the allow-list since
-// MESITA-4576), and the tag catalog.
+// MESITA-4576), every Google category it does not (MESITA-4680: Google's
+// Table A list kept in code, minus the allowed ones and Google's generic
+// Table B markers; the database stores none of them), and the tag catalog.
 // No category ↔ family join is returned or stored any more.
 import type { GoogleCategory, PlaceFamily } from "./categories.ts";
 import { type PlaceTag, TAG_FACETS } from "./tags.ts";
 import { FAMILY_MEANINGS } from "./families-infer.ts";
+import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
+import { GOOGLE_TABLE_B_TYPES } from "./google-table-b.ts";
+import { humanizeCategorySlug } from "./parse-utils.ts";
 
 export type FamiliesMapFamily = {
   slug: string;
@@ -35,6 +40,8 @@ export type FamiliesMap = {
   families: FamiliesMapFamily[];
   /** The Google categories Mesita allows, by label (MESITA-4576: no other is stored). */
   enabledCategories: FamiliesMapGoogleCategory[];
+  /** Every other Google Table A category, by label: read-only documentation (MESITA-4680). */
+  notAllowedCategories: FamiliesMapGoogleCategory[];
   tags: FamiliesMapTag[];
 };
 
@@ -53,6 +60,8 @@ export function buildFamiliesMap(
   tags: PlaceTag[] = [],
 ): FamiliesMap {
   const row = (c: GoogleCategory) => ({ slug: c.slug, label: c.label });
+  const enabled = googleCategories.filter((c) => c.enabled);
+  const allowed = new Set(enabled.map((c) => c.slug));
   return {
     families: families
       .filter((f) => f.slug !== "undefined")
@@ -63,7 +72,11 @@ export function buildFamiliesMap(
         sortOrder: f.sort_order,
         meaning: FAMILY_MEANINGS[f.slug] ?? "",
       })),
-    enabledCategories: googleCategories.filter((c) => c.enabled).map(row).sort(byLabel),
+    enabledCategories: enabled.map(row).sort(byLabel),
+    notAllowedCategories: Object.keys(GOOGLE_TYPE_SUPER)
+      .filter((slug) => !allowed.has(slug) && !GOOGLE_TABLE_B_TYPES.has(slug))
+      .map((slug) => ({ slug, label: humanizeCategorySlug(slug) ?? slug }))
+      .sort(byLabel),
     tags: tags
       .map((tag) => {
         const facet = FACET_BY_SLUG.get(tag.facet);
