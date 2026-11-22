@@ -1,7 +1,7 @@
 "use client";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Crown, User } from "lucide-react";
+import { CircleHelp, Crown, Globe, Lock, User, UserRound } from "lucide-react";
 import { CLASS_LABEL, type GuestClass } from "@/lib/guest-standing";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
@@ -211,7 +211,10 @@ export function IdentityModules({
    *  when none is linked (MESITA-4639). */
   privacy?: string | null;
 }) {
-  const [handle, followers] = splitInstagramLabel(instagram.label);
+  // THE HANDLE ONLY (Pato, 2026-11-22, MESITA-4651: "don't mention the
+  // number of followers there … only the instagram"): the count lives on Me
+  // › Instagram.
+  const [handle] = splitInstagramLabel(instagram.label);
   // A 66 / 33 · 33 / 66 GRID (Pato, 2026-11-22, MESITA-4646: "Name name class
   // / private instagram instagram / 66% 33% / 33% 66% … display name, not
   // last name"). Row one: the first name (opens Profile) at two thirds, the
@@ -250,15 +253,29 @@ export function IdentityModules({
           aria-label={`Class: ${CLASS_LABEL[guestClass]}`}
           data-identity-class={guestClass}
         >
-          {vip && <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />}
+          {/* A LITTLE ICON ON EACH (MESITA-4651): a crown for VIP, a person
+              badge for Regular. */}
+          {vip ? (
+            <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+          ) : (
+            <UserRound className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+          )}
           <span className="truncate">{CLASS_LABEL[guestClass]}</span>
         </span>
         {privacy && (
           <span
-            className="border-border bg-card text-foreground flex h-12 min-w-0 items-center justify-center rounded-full border px-3 text-sm font-semibold"
+            className="border-border bg-card text-foreground flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-full border px-3 text-sm font-semibold"
             aria-label={`Instagram: ${privacy}`}
             data-identity-privacy
           >
+            {/* A globe for Public, a lock for Private, a muted ? otherwise (MESITA-4651). */}
+            {privacy === "Public" ? (
+              <Globe className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+            ) : privacy === "Private" ? (
+              <Lock className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+            ) : (
+              <CircleHelp className="text-muted-foreground h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+            )}
             <span className="truncate">{privacy}</span>
           </span>
         )}
@@ -269,7 +286,7 @@ export function IdentityModules({
           data-identity-instagram
         >
           <InstagramBadge connected={instagram.connected} />
-          <span className="truncate">{followers ? `${handle} (${followers})` : handle}</span>
+          <span className="truncate">{handle}</span>
         </PushLink>
       </span>
     </div>
