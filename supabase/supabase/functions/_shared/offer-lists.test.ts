@@ -77,7 +77,8 @@ Deno.test("withVouchersUpTo sells nothing while buying is paused", async () => {
   assertEquals(paused[0].offers.sell, []);
 });
 
-const CHIP_KEYS = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"];
+// No Story chip since MESITA-4641 (Stories are gone).
+const CHIP_KEYS = ["voucher_200", "voucher_1000", "voucher_5000"];
 
 Deno.test("chip percents match VOUCHER_CATALOG bonus_bps", async () => {
   const money = await Deno.readTextFile(new URL("./money.ts", import.meta.url));
