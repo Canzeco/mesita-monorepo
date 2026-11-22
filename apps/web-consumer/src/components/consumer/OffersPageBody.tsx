@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { ChevronLeft, Clock } from "lucide-react";
 import { readyClock, VouchersPane, type PlaceActions, type VoucherKey } from "@mesita/place-profile";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
 import { money } from "@/lib/api/wallet";
@@ -188,35 +188,29 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
         {credit ? (
           // ONE DARK BOX (Pato, 2026-11-18, MESITA-4381: "just one box at the
           // top mentioning current balance"): the Loyalty Card's ink panel,
-          // the balance and, while a bonus waits, the pending line; the whole
-          // box opens the Loyalty Card. Replaces MESITA-4320's two buttons.
+          // the balance and, while a bonus waits, the pending line.
           //
-          // A TAP PUSHES, ALWAYS (Pato, 2026-11-21, MESITA-4601: "if from
-          // offers to card and then back '<' i must be redirected to offers
-          // … it depends where i came from where i must return"). MESITA-4381
-          // popped back to the card when Offers was opened from it, which
-          // dropped Offers out of the trail, so the card's Back landed on the
-          // Wallet. The card is pushed over Offers, whatever opened Offers.
-          <button
-            type="button"
-            onClick={() => navigateTo(router, walletPlacePath(fetched.id), { motion: "drill" })}
-            aria-label={`See Loyalty Card. ${credit.label}`}
-            className="bg-foreground text-paper flex w-full shrink-0 items-center gap-3 rounded-2xl p-4 text-left transition outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 active:scale-[0.99]"
+          // THE AMOUNT ONLY, NO LINK (Pato, 2026-11-21, MESITA-4633: "to
+          // avoid infinitely nested routes, just cut the hyperlink … just
+          // indicate amount but don't redirect to that card … block the card
+          // to offers path"): no chevron, no tap. The card opens Offers; Offers
+          // never opens the card, so Back from Offers lands on the card and
+          // the two can't stack. It pushed the card since MESITA-4601.
+          <div
+            className="bg-foreground text-paper flex w-full shrink-0 flex-col gap-1 rounded-2xl p-4"
+            role="group"
+            aria-label={credit.label}
             data-offers-balance
-            data-offers-credit-link
           >
-            <span className="flex min-w-0 flex-1 flex-col gap-1">
-              <span className="text-paper/70 text-sm font-semibold">Loyalty Card · ready now</span>
-              <span className="text-2xl leading-none font-bold tracking-tight tabular-nums">{credit.ready}</span>
-              {credit.pending ? (
-                <span className="text-paper/70 mt-1 flex items-center gap-1.5 text-sm tabular-nums" data-offers-pending>
-                  <Clock className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-                  <span className="truncate">{credit.pending}</span>
-                </span>
-              ) : null}
-            </span>
-            <ChevronRight className="text-paper/70 h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-          </button>
+            <span className="text-paper/70 text-sm font-semibold">Loyalty Card · ready now</span>
+            <span className="text-2xl leading-none font-bold tracking-tight tabular-nums">{credit.ready}</span>
+            {credit.pending ? (
+              <span className="text-paper/70 mt-1 flex items-center gap-1.5 text-sm tabular-nums" data-offers-pending>
+                <Clock className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                <span className="truncate">{credit.pending}</span>
+              </span>
+            ) : null}
+          </div>
         ) : null}
         <div className={credit ? "flex flex-1 shrink-0 flex-col pt-3" : "flex flex-1 shrink-0 flex-col"}>
           <VouchersPane key={actions.askedVoucher ?? "none"} place={place} actions={actions} />
