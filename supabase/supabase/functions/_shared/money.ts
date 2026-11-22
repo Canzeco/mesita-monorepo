@@ -131,9 +131,7 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   voucher_200: { price_cents: 200_00, bonus_bps: 1000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
   voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
   voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
-  // Welcome's MX$100 lands at once and its bonus in 3 hours (MESITA-4214;
-  // fully instant from MESITA-4198, an hour from MESITA-3835).
-  voucher_welcome: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
+  // THE WELCOME VOUCHER IS GONE (Pato, 2026-11-21, MESITA-4636: fraud).
   // STORY IS +30% (Pato, 2026-11-21, MESITA-4563: "set story bonus to 30%"):
   // pay MX$100, get MX$130; +40% from MESITA-4473, +50% from MESITA-4207.
   // Purchases keep their stored amounts.
@@ -176,7 +174,7 @@ export const UNSUPPORTED_COUNTRIES: readonly { region: string; why: string }[] =
 for (const r of VOUCHER_CURRENCY_LIST) {
   const s = r.small * 100;
   VOUCHER_PRICE_CENTS[r.code.toLowerCase()] = {
-    voucher_200: s * 2, voucher_1000: s * 10, voucher_5000: s * 50, voucher_welcome: s, voucher_story: s,
+    voucher_200: s * 2, voucher_1000: s * 10, voucher_5000: s * 50, voucher_story: s,
   };
 }
 

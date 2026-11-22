@@ -14,8 +14,7 @@
 //                 with no card part), an open, failed or expired row
 //
 // Readers: the Story voucher, one each new visit (vouchers.ts,
-// perVisitUsed). Welcome has its own gate (readWelcomeUsed: once per place,
-// any visit, MESITA-3854).
+// perVisitUsed).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 

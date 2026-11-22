@@ -328,7 +328,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // buying_paused kill switch). ONLY WHAT THIS GUEST CAN BUY (Pato,
   // 2026-11-21, MESITA-4611: "in the carousel only display enabled offers for
   // that specific user, not all the offers"): withGuestOffers (MESITA-4207)
-  // drops a used Welcome and a Story this guest cannot buy. MESITA-4582 had
+  // drops a Story this guest cannot buy. MESITA-4582 had
   // shown every offer the place sells (withPlaceOffers) for one day. A failed
   // guest read keeps the place's list (withGuestOffers logs it).
   const offerRows = await withGuestOffers(

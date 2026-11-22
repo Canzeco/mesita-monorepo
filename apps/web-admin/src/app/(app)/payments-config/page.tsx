@@ -24,15 +24,13 @@ import { getVoucherPrices, type VoucherPriceRow } from "./actions";
 export const dynamic = "force-dynamic";
 
 const NAME: Record<string, string> = {
-  voucher_welcome: "Welcome",
   voucher_200: "Small",
   voucher_1000: "Medium",
   voucher_5000: "Big",
   voucher_story: "Story",
 };
-const ORDER = ["voucher_welcome", "voucher_200", "voucher_1000", "voucher_5000", "voucher_story"];
+const ORDER = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"];
 const WHO: Record<string, string> = {
-  voucher_welcome: "One per guest per place",
   voucher_200: "As many as they like",
   voucher_1000: "As many as they like",
   voucher_5000: "As many as they like",
@@ -136,7 +134,6 @@ export default async function PaymentsConfigPage() {
                     <Th>Country</Th>
                     <Th numeric>Small · +10%</Th>
                     <Th numeric>Big · +20%</Th>
-                    <Th numeric>Welcome · VIP · +100%</Th>
                     <Th>Status</Th>
                   </Tr>
                 </THead>
@@ -150,9 +147,6 @@ export default async function PaymentsConfigPage() {
                       </Td>
                       <Td numeric className="whitespace-nowrap">
                         {whole(c.big, c.code)} → {whole(c.big * 1.2, c.code)}
-                      </Td>
-                      <Td numeric className="whitespace-nowrap">
-                        {whole(c.small, c.code)} → {whole(c.small * 2, c.code)}
                       </Td>
                       <Td className={c.selling ? "font-semibold whitespace-nowrap" : "text-muted-foreground whitespace-nowrap"}>
                         {c.selling ? "Selling" : "Not yet"}

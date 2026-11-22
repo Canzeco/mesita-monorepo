@@ -29,7 +29,6 @@ function admin(opts: { paused: boolean; handle: string | null; followers: number
     voucher_200: true,
     voucher_1000: true,
     voucher_5000: true,
-    voucher_welcome: true,
     voucher_story: true,
   };
   return {
@@ -63,10 +62,10 @@ Deno.test("withGuestOffers drops Story when the guest cannot buy it", async () =
   const rows = await withGuestOffers(
     admin({ paused: false, handle: null, followers: 0 }) as never,
     GUEST,
-    [{ id: PLACE, offers: { sell: ["voucher_welcome", "voucher_story"] as const } }],
+    [{ id: PLACE, offers: { sell: ["voucher_200", "voucher_story"] as const } }],
   );
   assertEquals(rows[0].offers.sell.includes("voucher_story"), false);
-  assert(rows[0].offers.sell.includes("voucher_welcome"));
+  assert(rows[0].offers.sell.includes("voucher_200"));
 });
 
 Deno.test("withVouchersUpTo sells nothing while buying is paused", async () => {
@@ -77,7 +76,7 @@ Deno.test("withVouchersUpTo sells nothing while buying is paused", async () => {
   assertEquals(paused[0].offers.sell, []);
 });
 
-const CHIP_KEYS = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_story"];
+const CHIP_KEYS = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"];
 
 Deno.test("chip percents match VOUCHER_CATALOG bonus_bps", async () => {
   const money = await Deno.readTextFile(new URL("./money.ts", import.meta.url));

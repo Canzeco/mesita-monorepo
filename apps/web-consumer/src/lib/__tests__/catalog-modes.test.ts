@@ -129,15 +129,15 @@ describe("a paid voucher leaves Home at once (MESITA-4209)", () => {
   it("drops that voucher from every pool's card and keeps the rest", () => {
     const rec = seedFor("nearby", tec, () => 1);
     const places = [
-      { id: "p1", name: "A", offers: { sell: ["voucher_welcome", "voucher_200"] } },
-      { id: "p2", name: "B", offers: { sell: ["voucher_welcome"] } },
+      { id: "p1", name: "A", offers: { sell: ["voucher_story", "voucher_200"] } },
+      { id: "p2", name: "B", offers: { sell: ["voucher_story"] } },
     ] as AreaPool["places"];
     acceptRank("g", "nearby", rec, pool(["p1", "p2"], [], places), null);
     acceptRank("other", "popular", seedFor("popular", tec, () => 2), pool(["p1"], [], places), null);
-    dropBoughtOffers("p1", ["voucher_welcome"]);
+    dropBoughtOffers("p1", ["voucher_story"]);
     expect(readModePool("g", "nearby")?.places.map((p) => p.offers?.sell ?? null)).toEqual([
       ["voucher_200"],
-      ["voucher_welcome"],
+      ["voucher_story"],
     ]);
     expect(readModePool("other", "popular")?.places[0]?.offers?.sell).toEqual(["voucher_200"]);
     expect(readModePool("g", "nearby")?.order).toEqual(["p1", "p2"]);

@@ -164,7 +164,7 @@ function TableBadge({ table, href, name }: { table: LiveTable; href: string; nam
  *   │         │ │ $$ · ★4.7 (8.6K)│
  *   │         │ │ ◷ Open · until 3│
  *   │         │ │ ➤ Tec · 0.4 km  │
- *   │         │ │[Welcome +100%]  │   every offer as a chip (MESITA-4207)
+ *   │         │ │[Story +30%]    │   every offer as a chip (MESITA-4207)
  *   │         │ │[Small +10%] …   │
  *   └─────────┘ │[♡ Save][Share]  │
  *               └────────────────┘

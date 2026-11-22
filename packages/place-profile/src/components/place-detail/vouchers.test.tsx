@@ -12,11 +12,11 @@ import { pesos, readyClock, VouchersPane } from "./vouchers";
 const OFFER: PlaceMoney = {
   charges_enabled: true,
   mesita_pay: true,
-  vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_welcome: true, voucher_story: false },
+  vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_story: false },
   test_mode: true,
   currency: "mxn",
   sell: ["voucher_200", "voucher_1000"],
-  unavailable: { voucher_5000: "not_yet", voucher_welcome: "used", voucher_story: "off" },
+  unavailable: { voucher_5000: "not_yet", voucher_story: "off" },
   catalog: {
     voucher_200: { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 },
     voucher_1000: { price_cents: 100000, bonus_cents: 20000, credit_cents: 120000, available_after_sec: 3600 },
@@ -30,7 +30,7 @@ const STORY_ON: PlaceMoney = {
   test_mode: false,
   vouchers: { ...OFFER.vouchers, voucher_story: true },
   sell: ["voucher_200", "voucher_1000", "voucher_story"],
-  unavailable: { voucher_5000: "not_yet", voucher_welcome: "used" },
+  unavailable: { voucher_5000: "not_yet" },
 };
 
 function render(money: PlaceMoney | undefined, onBuyVoucher?: () => void): string {
@@ -38,7 +38,7 @@ function render(money: PlaceMoney | undefined, onBuyVoucher?: () => void): strin
 }
 
 describe("Vouchers tab", () => {
-  // The VIP offer is gone (MESITA-4249): Welcome and Story are the specials.
+  // The VIP offer is gone (MESITA-4249), Welcome too (MESITA-4636): Story is the special.
   it("lists Story and no VIP offer (MESITA-4249)", () => {
     const html = renderToStaticMarkup(
       <VouchersPane
@@ -57,9 +57,9 @@ describe("Vouchers tab", () => {
   });
 
   // HIDDEN · BLOCKED · AVAILABLE (MESITA-4603): what the place doesn't offer
-  // and a Welcome already had are not on the page; Story the place offers
+  // is not on the page (no Welcome at all since MESITA-4636); Story the place offers
   // stays, blocked by the guest's own locks.
-  it("hides what the place doesn't offer and a used Welcome; Buy only on `sell`", () => {
+  it("hides what the place doesn't offer and any Welcome; Buy only on `sell`", () => {
     const html = render({ ...OFFER, test_mode: false }, () => {});
     expect(row(html, "voucher_200")).not.toContain("data-voucher-locked");
     expect(row(html, "voucher_1000")).not.toContain("data-voucher-locked");
@@ -124,19 +124,19 @@ describe("placeMoneyFrom", () => {
       charges_enabled: true,
       test_mode: true,
       currency: "mxn",
-      vouchers: { voucher_200: true, voucher_welcome: true },
+      vouchers: { voucher_200: true, voucher_story: true },
       sell: ["voucher_200", "bogus"],
-      unavailable: { voucher_welcome: "used" },
+      unavailable: { voucher_story: "needs_visit" },
       catalog: {
         voucher_200: { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 },
-        voucher_welcome: { price_cents: "100" },
+        voucher_story: { price_cents: "100" },
       },
       balance: { available_cents: 22000, pending_cents: 0, held_cents: 0, spendable_cents: 22000 },
     });
     expect(m?.sell).toEqual(["voucher_200"]);
-    expect(m?.unavailable).toEqual({ voucher_welcome: "used" });
+    expect(m?.unavailable).toEqual({ voucher_story: "needs_visit" });
     expect(m?.catalog.voucher_200?.credit_cents).toBe(22000);
-    expect(m?.catalog.voucher_welcome).toBeUndefined();
+    expect(m?.catalog.voucher_story).toBeUndefined();
     expect(m?.balance?.available_cents).toBe(22000);
     expect(m?.test_mode).toBe(true);
     expect(m?.vouchers.voucher_1000).toBe(false);
