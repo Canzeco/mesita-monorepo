@@ -301,49 +301,74 @@ const ROW_BUTTON_CLASS =
 // seesHandles), so a short second line says so. (2) VIP Class: the bar
 // (VIP_MIN_FOLLOWERS), any Instagram, public or private. It was one black box
 // (MESITA-4350); the Story box went with Stories (MESITA-4641).
-const WHY_CONNECT = [
-  {
-    key: "see",
-    Icon: Eye,
-    title: "See other people's activity",
-    line: "Connect your Instagram to see other people's Instagram.",
-    rule: "You see theirs while yours shows.",
-  },
-  {
-    key: "vip",
-    Icon: Crown,
-    title: "VIP Class",
-    line: `An Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`,
-    rule: null,
-  },
-] as const;
+// WHY CONNECT, CLEARER (Pato, 2026-11-22, MESITA-4693: "why connect must be
+// clearer"): two perks, no numbers, each saying what you get and where you
+// stand. The activity rule is the server's (place-activity seesHandles):
+// others' handles show to a guest whose own Instagram is connected.
+const VIP_LINE = `More than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers unlocks VIP Offers: bigger bonuses, like Pay $100 · Get $200.`;
 
-export function WhyConnect() {
+/** The follower count the guest sees: the emulated one while the emulator
+ *  is on (MESITA-4662/4693), else the real one. */
+function shownFollowers(real: number, emulated: number | null | undefined): { n: number; test: boolean } {
+  return emulated != null ? { n: emulated, test: true } : { n: real, test: false };
+}
+
+export function WhyConnect({ live = true }: { live?: boolean }) {
   return (
-    <section className="flex flex-col gap-3" aria-label="Why connect">
-      <h2 className="px-0.5 text-base font-semibold tracking-tight">
-        Why connect
-      </h2>
-      <ol className="bg-card border-border divide-border divide-y overflow-hidden rounded-2xl border">
-        {WHY_CONNECT.map((perk, i) => (
-          <li key={perk.key} className="flex items-center gap-3 px-4 py-3" data-why-connect={perk.key}>
-            <span className="text-muted-foreground w-4 shrink-0 text-center text-sm font-bold tabular-nums" aria-hidden>
-              {i + 1}
+    <section className="flex flex-col gap-3" aria-label="Why connect your Instagram">
+      <h2 className="px-0.5 text-base font-semibold tracking-tight">Why connect your Instagram</h2>
+      <ul className="bg-card border-border divide-border divide-y overflow-hidden rounded-2xl border">
+        <li className="flex items-start gap-3 px-4 py-3.5" data-why-connect="see">
+          <IconChip tint="instagram">
+            <Eye className="h-[18px] w-[18px]" />
+          </IconChip>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">See other people&apos;s Instagram</span>
+            <span className="text-muted-foreground type-label block">
+              On Social, tap anyone to see their @handle. Only guests who connect see others&apos;.
             </span>
-            <IconChip tint={perk.key === "see" ? "instagram" : "muted"}>
-              <perk.Icon className="h-[18px] w-[18px]" />
-            </IconChip>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">{perk.title}</span>
-              <span className="text-muted-foreground type-label block">{perk.line}</span>
-              {perk.rule ? (
-                <span className="text-muted-foreground type-label block">{perk.rule}</span>
-              ) : null}
-            </span>
-          </li>
-        ))}
-      </ol>
+          </span>
+          {live ? <SeeStatus /> : null}
+        </li>
+        <li className="flex items-start gap-3 px-4 py-3.5" data-why-connect="vip">
+          <IconChip tint="muted">
+            <Crown className="h-[18px] w-[18px] text-yellow-500" />
+          </IconChip>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">Become VIP</span>
+            <span className="text-muted-foreground type-label block">{VIP_LINE}</span>
+          </span>
+          {live ? <VipStatus /> : null}
+        </li>
+      </ul>
     </section>
+  );
+}
+
+const STATUS_CHIP = "bg-muted text-foreground shrink-0 self-center rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap tabular-nums";
+
+function SeeStatus() {
+  const { igConnected } = useConsumerIdentity();
+  return (
+    <span className={cn(STATUS_CHIP, igConnected && "bg-green-100 text-green-800")} data-why-connect-status="see">
+      {igConnected ? "On" : "Off"}
+    </span>
+  );
+}
+
+function VipStatus() {
+  const { igConnected, igFollowers } = useConsumerIdentity();
+  const { data } = useConsumerProfile();
+  if (!igConnected) return null;
+  if (data?.guest_class === "vip") {
+    return <span className={cn(STATUS_CHIP, "bg-yellow-100 text-yellow-800")} data-why-connect-status="vip">You&apos;re VIP</span>;
+  }
+  const f = shownFollowers(igFollowers, data?.instagram_followers_emulated);
+  return (
+    <span className={STATUS_CHIP} data-why-connect-status="vip">
+      You have {f.n.toLocaleString("en-US")}
+      {f.test ? " (test)" : ""}
+    </span>
   );
 }
 
@@ -973,6 +998,8 @@ export function ConnectCardSkeleton() {
 function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
   const { igHandle: handle, igFollowers } = useConsumerIdentity();
   const profile = useServerProfile();
+  // The emulated count while the emulator is on (MESITA-4693).
+  const emulated = useConsumerProfile().data?.instagram_followers_emulated ?? null;
   const now = useSyncExternalStore(
     minuteClock.subscribe,
     minuteClock.now,
@@ -1006,7 +1033,7 @@ function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
           </p>
         )}
         <p className="text-muted-foreground type-label truncate">
-          {followersLabel(igFollowers)}
+          {emulated != null ? `${followersLabel(emulated)} (test)` : followersLabel(igFollowers)}
           {ago ? ` · Updated ${ago}` : ""}
         </p>
       </div>
